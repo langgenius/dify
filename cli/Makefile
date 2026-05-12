@@ -15,7 +15,7 @@
 
 PNPM ?= pnpm
 
-.PHONY: help install build test coverage lint fix typecheck manifest version ci release clean
+.PHONY: help install build test coverage lint fix typecheck manifest version ci release clean sync-models
 
 help: ## Show this help.
 	@awk 'BEGIN{FS = ":.*## "; printf "Targets:\n"} /^[a-zA-Z_-]+:.*## / {printf "  \033[36m%-12s\033[0m %s\n", $$1, $$2}' $(MAKEFILE_LIST)
@@ -54,5 +54,24 @@ release: ## Multi-platform tarballs. Reads channel/version from cli/package.json
 
 clean: ## Remove build artifacts.
 	@rm -rf dist oclif.manifest.json node_modules/.cache
+
+sync-models: ## Regenerate TS models from API swagger spec.
+	@echo "→ Generating openapi swagger spec…"
+	cd ../api && uv run --project api dev/generate_swagger_specs.py
+	@echo "→ Converting Swagger 2.0 → OpenAPI 3.x…"
+	npx swagger2openapi ../api/openapi/openapi-swagger.json -o /tmp/openapi-oas3.json --patch
+	@echo "→ Generating Zod schemas + TS types…"
+	npx openapi-zod-client /tmp/openapi-oas3.json -o src/types/openapi-schemas.ts -t scripts/schemas-only.hbs --export-schemas
+	sed -i '' 's/z\.record(z\.string())/z.record(z.string(), z.string())/g' src/types/openapi-schemas.ts
+	sed -i '' 's/\.passthrough()/.loose()/g' src/types/openapi-schemas.ts
+	sed -i '' 's/z\.object({})\.partial()/z.record(z.string(), z.any())/g' src/types/openapi-schemas.ts
+	sed -i '' 's/z\.unknown()/z.null()/g' src/types/openapi-schemas.ts
+	sed -i '' 's/\.loose()//g' src/types/openapi-schemas.ts
+	sed -i '' 's/\.partial()//g' src/types/openapi-schemas.ts
+	@echo "→ Fixing lint style…"
+	@$(PNPM) lint:fix src/types/openapi-schemas.ts
+	@rm -f /tmp/openapi-oas3.json
+	@rm -f ../api/openapi/*-swagger.json
+	@echo "✓ src/types/openapi-schemas.ts updated"
 
 .DEFAULT_GOAL := help

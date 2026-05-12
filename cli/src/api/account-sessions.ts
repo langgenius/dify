@@ -1,6 +1,6 @@
 import type { KyInstance } from 'ky'
-import type { SessionListResponse } from '../types/account-session.js'
-import { SessionListResponseSchema } from '../types/account-session.js'
+import type { SessionListResponseType } from '../types/openapi-schemas.js'
+import { SessionListResponse } from '../types/openapi-schemas.js'
 
 export class AccountSessionsClient {
   private readonly http: KyInstance
@@ -9,9 +9,9 @@ export class AccountSessionsClient {
     this.http = http
   }
 
-  async list(): Promise<SessionListResponse> {
+  async list(): Promise<SessionListResponseType> {
     const raw = await this.http.get('account/sessions').json()
-    return SessionListResponseSchema.parse(raw)
+    return SessionListResponse.parse(raw)
   }
 
   async revoke(sessionId: string): Promise<void> {

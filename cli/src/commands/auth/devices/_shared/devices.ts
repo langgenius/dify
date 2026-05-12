@@ -2,7 +2,7 @@ import type { KyInstance } from 'ky'
 import type { HostsBundle } from '../../../../auth/hosts.js'
 import type { TokenStore } from '../../../../auth/store.js'
 import type { IOStreams } from '../../../../io/streams.js'
-import type { SessionRow } from '../../../../types/account-session.js'
+import type { SessionRowType } from '../../../../types/openapi-schemas.js'
 import { unlink } from 'node:fs/promises'
 import { join } from 'node:path'
 import { AccountSessionsClient } from '../../../../api/account-sessions.js'
@@ -90,7 +90,7 @@ export type PickResult = {
   selfHit: boolean
 }
 
-export function pickTargets(rows: readonly SessionRow[], opts: { target?: string, all: boolean }, currentId: string): PickResult {
+export function pickTargets(rows: readonly SessionRowType[], opts: { target?: string, all: boolean }, currentId: string): PickResult {
   if (opts.all) {
     const ids = rows.filter(r => r.id !== currentId).map(r => r.id)
     return { ids, selfHit: false }
@@ -121,7 +121,7 @@ export function pickTargets(rows: readonly SessionRow[], opts: { target?: string
   })
 }
 
-function ambiguous(target: string, rows: readonly SessionRow[]): BaseError {
+function ambiguous(target: string, rows: readonly SessionRowType[]): BaseError {
   const labels = rows.map(r => `${r.device_label} (${r.id})`).join(', ')
   return new BaseError({
     code: ErrorCode.UsageInvalidFlag,
@@ -129,7 +129,7 @@ function ambiguous(target: string, rows: readonly SessionRow[]): BaseError {
   })
 }
 
-function renderTable(rows: readonly SessionRow[], currentId: string): string {
+function renderTable(rows: readonly SessionRowType[], currentId: string): string {
   const header = ['DEVICE', 'CREATED', 'LAST USED', 'CURRENT']
   const body = rows.map(r => [
     r.device_label !== '' ? r.device_label : r.id,

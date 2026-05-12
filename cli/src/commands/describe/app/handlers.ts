@@ -1,11 +1,11 @@
 import type { TextHandler } from '../../../printers/format-text.js'
 import type { AppMeta } from '../../../types/app-meta.js'
-import type { DescribeInfo, Tag } from '../../../types/app.js'
+import type { AppDescribeInfoType, TagItemType } from '../../../types/openapi-schemas.js'
 
 export const APP_DESCRIBE_MODE_KEY = 'app-describe'
 
 export type AppDescribePayload = {
-  info: DescribeInfo | null
+  info: AppDescribeInfoType | null
   parameters: unknown
   input_schema: unknown
 }
@@ -31,19 +31,19 @@ export const appDescribeTextHandler: TextHandler = {
   render(raw): string {
     const payload = raw as AppDescribePayload
     const lines: string[] = []
-    if (payload.info !== null) {
+    if (payload.info !== null && payload.info !== undefined) {
       const info = payload.info
       const rows: [string, string][] = [
         ['Name', info.name],
         ['ID', info.id],
         ['Mode', info.mode],
-        ['Author', info.author],
+        ['Author', info.author ?? ''],
         ['Updated', info.updated_at ?? ''],
         ['Service API', info.service_api_enabled ? 'true' : 'false'],
         ['Tags', joinTags(info.tags)],
       ]
-      if (info.description !== '')
-        rows.push(['Description', info.description])
+      if (info.description !== '' && info.description !== undefined)
+        rows.push(['Description', info.description ?? ''])
       if (info.is_agent)
         rows.push(['Agent', 'true'])
       lines.push(...alignedRows(rows))
@@ -60,7 +60,7 @@ export const appDescribeTextHandler: TextHandler = {
   },
 }
 
-function joinTags(tags: readonly Tag[]): string {
+function joinTags(tags: readonly TagItemType[]): string {
   if (tags.length === 0)
     return '<none>'
   return tags.map(t => t.name).join(',')

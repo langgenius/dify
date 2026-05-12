@@ -1,8 +1,8 @@
-import type { WorkspaceListResponse } from '../../../types/workspace.js'
+import type { WorkspaceListResponseType } from '../../../types/openapi-schemas.js'
 import { describe, expect, it } from 'vitest'
 import { newWorkspaceObject, WORKSPACE_MODE_KEY, workspaceNameHandler, workspaceTableHandler } from './handlers.js'
 
-function env(): WorkspaceListResponse {
+function env(): WorkspaceListResponseType {
   return {
     workspaces: [
       { id: 'ws-1', name: 'Default', role: 'owner', status: 'normal', current: true },
@@ -25,7 +25,7 @@ describe('get/workspace handlers', () => {
   })
 
   it('workspaceTableHandler marks current via currentId fallback', () => {
-    const e: WorkspaceListResponse = {
+    const e: WorkspaceListResponseType = {
       workspaces: [
         { id: 'ws-1', name: 'Default', role: 'owner', status: 'normal', current: false },
         { id: 'ws-2', name: 'Other', role: 'normal', status: 'normal', current: false },

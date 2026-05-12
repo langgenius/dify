@@ -1,9 +1,8 @@
-import type { DescribeResponse } from './app.js'
+import type { AppDescribeResponseType } from './openapi-schemas.js'
 import { describe, expect, it } from 'vitest'
-import { covers, fromDescribe, mergeMeta } from './app-meta.js'
-import { FieldInfo, FieldInputSchema, FieldParameters } from './app.js'
+import { covers, FieldInfo, FieldInputSchema, FieldParameters, fromDescribe, mergeMeta } from './app-meta.js'
 
-function describeResp(): DescribeResponse {
+function describeResp(): AppDescribeResponseType {
   return {
     info: {
       id: 'app-1',

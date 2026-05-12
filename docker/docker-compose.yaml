@@ -226,7 +226,9 @@ services:
   # API service
   api:
     <<: *shared-api-worker-config
-    image: langgenius/dify-api:1.14.0
+    build:
+      context: ../api
+      dockerfile: Dockerfile
     environment:
       MODE: api
       SENTRY_DSN: ${API_SENTRY_DSN:-}
@@ -372,7 +374,9 @@ services:
 
   # Frontend web application.
   web:
-    image: langgenius/dify-web:1.14.0
+    build:
+      context: ..
+      dockerfile: web/Dockerfile
     restart: always
     env_file:
       - path: ./envs/core-services/web.env

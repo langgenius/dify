@@ -13,7 +13,16 @@ from sqlalchemy import and_, select, update
 from werkzeug.exceptions import BadRequest, NotFound
 
 from controllers.openapi import openapi_ns
-from controllers.openapi._models import MAX_PAGE_LIMIT, PaginationEnvelope
+from controllers.openapi._models import (
+    MAX_PAGE_LIMIT,
+    AccountPayload,
+    AccountResponse,
+    PaginationEnvelope,
+    RevokeResponse,
+    SessionListResponse,
+    SessionRow,
+    WorkspacePayload,
+)
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from libs.oauth_bearer import (
@@ -33,6 +42,7 @@ from models import Account, OAuthAccessToken, Tenant, TenantAccountJoin
 
 @openapi_ns.route("/account")
 class AccountApi(Resource):
+    @openapi_ns.response(200, "Account info", openapi_ns.models[AccountResponse.__name__])
     @validate_bearer(accept=ACCEPT_USER_ANY)
     def get(self):
         ctx = g.auth_ctx
@@ -43,14 +53,14 @@ class AccountApi(Resource):
             enforce(LIMIT_ME_PER_ACCOUNT, key=f"account:{ctx.account_id}")
 
         if ctx.subject_type == SubjectType.EXTERNAL_SSO:
-            return {
-                "subject_type": ctx.subject_type,
-                "subject_email": ctx.subject_email,
-                "subject_issuer": ctx.subject_issuer,
-                "account": None,
-                "workspaces": [],
-                "default_workspace_id": None,
-            }
+            return AccountResponse(
+                subject_type=ctx.subject_type,
+                subject_email=ctx.subject_email,
+                subject_issuer=ctx.subject_issuer,
+                account=None,
+                workspaces=[],
+                default_workspace_id=None,
+            ).model_dump(mode="json")
 
         account = (
             db.session.query(Account).filter(Account.id == ctx.account_id).one_or_none() if ctx.account_id else None
@@ -58,27 +68,29 @@ class AccountApi(Resource):
         memberships = _load_memberships(ctx.account_id) if ctx.account_id else []
         default_ws_id = _pick_default_workspace(memberships)
 
-        return {
-            "subject_type": ctx.subject_type,
-            "subject_email": ctx.subject_email or (account.email if account else None),
-            "account": _account_payload(account) if account else None,
-            "workspaces": [_workspace_payload(m) for m in memberships],
-            "default_workspace_id": default_ws_id,
-        }
+        return AccountResponse(
+            subject_type=ctx.subject_type,
+            subject_email=ctx.subject_email or (account.email if account else None),
+            account=_account_payload(account) if account else None,
+            workspaces=[_workspace_payload(m) for m in memberships],
+            default_workspace_id=default_ws_id,
+        ).model_dump(mode="json")
 
 
 @openapi_ns.route("/account/sessions/self")
 class AccountSessionsSelfApi(Resource):
+    @openapi_ns.response(200, "Session revoked", openapi_ns.models[RevokeResponse.__name__])
     @validate_bearer(accept=ACCEPT_USER_ANY)
     def delete(self):
         ctx = g.auth_ctx
         _require_oauth_subject(ctx)
         _revoke_token_by_id(str(ctx.token_id))
-        return {"status": "revoked"}, 200
+        return RevokeResponse(status="revoked").model_dump(mode="json"), 200
 
 
 @openapi_ns.route("/account/sessions")
 class AccountSessionsApi(Resource):
+    @openapi_ns.response(200, "Session list", openapi_ns.models[SessionListResponse.__name__])
     @validate_bearer(accept=ACCEPT_USER_ANY)
     def get(self):
         ctx = g.auth_ctx
@@ -111,15 +123,15 @@ class AccountSessionsApi(Resource):
         sliced = all_rows[(page - 1) * limit : page * limit]
 
         items = [
-            {
-                "id": str(r.id),
-                "prefix": r.prefix,
-                "client_id": r.client_id,
-                "device_label": r.device_label,
-                "created_at": _iso(r.created_at),
-                "last_used_at": _iso(r.last_used_at),
-                "expires_at": _iso(r.expires_at),
-            }
+            SessionRow(
+                id=str(r.id),
+                prefix=r.prefix,
+                client_id=r.client_id,
+                device_label=r.device_label,
+                created_at=_iso(r.created_at),
+                last_used_at=_iso(r.last_used_at),
+                expires_at=_iso(r.expires_at),
+            )
             for r in sliced
         ]
 
@@ -131,6 +143,7 @@ class AccountSessionsApi(Resource):
 
 @openapi_ns.route("/account/sessions/<string:session_id>")
 class AccountSessionByIdApi(Resource):
+    @openapi_ns.response(200, "Session revoked", openapi_ns.models[RevokeResponse.__name__])
     @validate_bearer(accept=ACCEPT_USER_ANY)
     def delete(self, session_id: str):
         ctx = g.auth_ctx
@@ -150,7 +163,7 @@ class AccountSessionByIdApi(Resource):
             raise NotFound("session not found")
 
         _revoke_token_by_id(session_id)
-        return {"status": "revoked"}, 200
+        return RevokeResponse(status="revoked").model_dump(mode="json"), 200
 
 
 def _subject_match(ctx: AuthContext) -> tuple:
@@ -227,10 +240,10 @@ def _pick_default_workspace(memberships) -> str | None:
     return str(memberships[0][1].id)
 
 
-def _workspace_payload(row) -> dict:
+def _workspace_payload(row) -> WorkspacePayload:
     join, tenant = row
-    return {"id": str(tenant.id), "name": tenant.name, "role": getattr(join, "role", "")}
+    return WorkspacePayload(id=str(tenant.id), name=tenant.name, role=getattr(join, "role", ""))
 
 
-def _account_payload(account) -> dict:
-    return {"id": str(account.id), "email": account.email, "name": account.name}
+def _account_payload(account) -> AccountPayload:
+    return AccountPayload(id=str(account.id), email=account.email, name=account.name)

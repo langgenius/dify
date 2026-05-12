@@ -17,6 +17,7 @@ import services
 from controllers.openapi import openapi_ns
 from controllers.openapi._audit import emit_app_run
 from controllers.openapi._models import (
+    AppRunRequest,
     ChatMessageResponse,
     CompletionMessageResponse,
     WorkflowRunResponse,
@@ -51,29 +52,6 @@ from services.errors.app import (
 from services.errors.llm import InvokeRateLimitError
 
 logger = logging.getLogger(__name__)
-
-
-class AppRunRequest(BaseModel):
-    inputs: dict[str, Any]
-    query: str | None = None
-    files: list[dict[str, Any]] | None = None
-    response_mode: Literal["blocking", "streaming"] | None = None
-    conversation_id: UUIDStrOrEmpty | None = None
-    auto_generate_name: bool = True
-    workflow_id: str | None = None
-    workspace_id: UUIDStrOrEmpty | None = None
-
-    @field_validator("conversation_id", mode="before")
-    @classmethod
-    def _normalize_conv(cls, value: str | UUID | None) -> str | None:
-        if isinstance(value, str):
-            value = value.strip()
-        if not value:
-            return None
-        try:
-            return helper.uuid_value(value)
-        except ValueError as exc:
-            raise ValueError("conversation_id must be a valid UUID") from exc
 
 
 @contextmanager
@@ -165,6 +143,8 @@ _DISPATCH: dict[AppMode, Callable[[App, Any, AppRunRequest, bool], tuple[Any, di
 
 @openapi_ns.route("/apps/<string:app_id>/run")
 class AppRunApi(Resource):
+    @openapi_ns.expect(openapi_ns.models[AppRunRequest.__name__])
+    @openapi_ns.response(200, "Run result")
     @OAUTH_BEARER_PIPELINE.guard(scope=Scope.APPS_RUN)
     def post(self, app_id: str, app_model: App, caller, caller_kind: str):
         body = request.get_json(silent=True) or {}

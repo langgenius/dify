@@ -67,6 +67,7 @@
     "eslint": "catalog:",
     "hono": "catalog:",
     "oclif": "catalog:",
+    "openapi-zod-client": "catalog:",
     "tsx": "catalog:",
     "typescript": "catalog:",
     "vite": "catalog:",

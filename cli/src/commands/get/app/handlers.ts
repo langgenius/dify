@@ -1,15 +1,15 @@
 import type { TableColumn, TableHandler, TableRow } from '../../../printers/format-table.js'
-import type { ListResponse, Tag } from '../../../types/app.js'
+import type { AppListResponseType, TagItemType } from '../../../types/openapi-schemas.js'
 import { isPayloadShape } from './payload-shape.js'
 
 export const APP_MODE_KEY = 'app'
 
 export type AppObject = {
   mode: () => string
-  raw: () => ListResponse
+  raw: () => AppListResponseType
 }
 
-export function newAppObject(env: ListResponse): AppObject {
+export function newAppObject(env: AppListResponseType): AppObject {
   return {
     mode: () => APP_MODE_KEY,
     raw: () => env,
@@ -29,7 +29,7 @@ const APP_COLUMNS: readonly TableColumn[] = [
 export const appTableHandler: TableHandler = {
   columns: () => APP_COLUMNS,
   rows: (raw): readonly TableRow[] => {
-    if (!isPayloadShape<ListResponse>(raw, 'data'))
+    if (!isPayloadShape<AppListResponseType>(raw, 'data'))
       throw new Error('get/app table: unexpected payload shape')
     return raw.data.map(r => [
       r.name,
@@ -45,7 +45,7 @@ export const appTableHandler: TableHandler = {
 
 export const appNameHandler = {
   id(raw: unknown): string {
-    if (!isPayloadShape<ListResponse>(raw, 'data'))
+    if (!isPayloadShape<AppListResponseType>(raw, 'data'))
       throw new Error('get/app name: unexpected payload shape')
     if (raw.data.length === 0)
       return ''
@@ -53,6 +53,6 @@ export const appNameHandler = {
   },
 }
 
-function joinTags(tags: readonly Tag[]): string {
+function joinTags(tags: readonly TagItemType[]): string {
   return tags.map(t => t.name).join(',')
 }

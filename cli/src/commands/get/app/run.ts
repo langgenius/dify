@@ -1,7 +1,7 @@
 import type { KyInstance } from 'ky'
 import type { HostsBundle } from '../../../auth/hosts.js'
 import type { IOStreams } from '../../../io/streams.js'
-import type { DescribeResponse, ListResponse } from '../../../types/app.js'
+import type { AppDescribeResponseType, AppListResponseType } from '../../../types/openapi-schemas.js'
 import { AppsClient } from '../../../api/apps.js'
 import { WorkspacesClient } from '../../../api/workspaces.js'
 import { runWithSpinner } from '../../../io/spinner.js'
@@ -48,7 +48,7 @@ export async function runGetApp(opts: GetAppOptions, deps: GetAppDeps): Promise<
 
   const envelope = await runWithSpinner(
     { io, label },
-    async (): Promise<ListResponse> => {
+    async (): Promise<AppListResponseType> => {
       if (opts.allWorkspaces === true) {
         const ws = wsFactory(deps.http)
         return runAllWorkspaces(apps, ws, opts, page, pageSize)
@@ -84,8 +84,8 @@ function resolveLimit(raw: string | undefined, env: (k: string) => string | unde
   return LIMIT_DEFAULT
 }
 
-function describeToEnvelope(desc: DescribeResponse, wsId: string, wsName: string): ListResponse {
-  if (desc.info === null) {
+function describeToEnvelope(desc: AppDescribeResponseType, wsId: string, wsName: string): AppListResponseType {
+  if (desc.info === null || desc.info === undefined) {
     return { page: 1, limit: 1, total: 0, has_more: false, data: [] }
   }
   return {
@@ -125,12 +125,12 @@ async function runAllWorkspaces(
   opts: GetAppOptions,
   page: number,
   limit: number,
-): Promise<ListResponse> {
+): Promise<AppListResponseType> {
   const wsResp = await ws.list()
   if (wsResp.workspaces.length === 0)
     return { page: 1, limit, total: 0, has_more: false, data: [] }
 
-  const merged: ListResponse = { page: 1, limit, total: 0, has_more: false, data: [] }
+  const merged: AppListResponseType = { page: 1, limit, total: 0, has_more: false, data: [] }
   const queue = [...wsResp.workspaces]
   const workers: Promise<void>[] = []
 

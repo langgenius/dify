@@ -2,7 +2,7 @@ import type { AppMeta, AppMetaCacheRecord, AppMetaFieldKey } from '../types/app-
 import { mkdir, readFile, rename, writeFile } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
 import { DIR_PERM, FILE_PERM } from '../config/dir.js'
-import { FieldInfo, FieldInputSchema, FieldParameters } from '../types/app.js'
+import { FieldInfo, FieldInputSchema, FieldParameters } from '../types/app-meta.js'
 
 const CACHE_FILE = 'app-info.json'
 export const APP_INFO_TTL_MS = 60 * 60 * 1000

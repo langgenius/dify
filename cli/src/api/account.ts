@@ -1,6 +1,6 @@
 import type { KyInstance } from 'ky'
-import type { AccountResponse } from '../types/account.js'
-import { AccountResponseSchema } from '../types/account.js'
+import type { AccountResponseType } from '../types/openapi-schemas.js'
+import { AccountResponse } from '../types/openapi-schemas.js'
 
 export class AccountClient {
   private readonly http: KyInstance
@@ -9,8 +9,8 @@ export class AccountClient {
     this.http = http
   }
 
-  async get(): Promise<AccountResponse> {
+  async get(): Promise<AccountResponseType> {
     const raw = await this.http.get('account').json()
-    return AccountResponseSchema.parse(raw)
+    return AccountResponse.parse(raw)
   }
 }

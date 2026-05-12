@@ -1,6 +1,6 @@
 import type { KyInstance } from 'ky'
-import type { DescribeResponse, ListResponse } from '../types/app.js'
-import { DescribeResponseSchema, ListResponseSchema } from '../types/app.js'
+import type { AppDescribeResponseType, AppListResponseType } from '../types/openapi-schemas.js'
+import { AppDescribeResponse, AppListResponse } from '../types/openapi-schemas.js'
 
 export type ListQuery = {
   readonly workspaceId: string
@@ -18,7 +18,7 @@ export class AppsClient {
     this.http = http
   }
 
-  async list(q: ListQuery): Promise<ListResponse> {
+  async list(q: ListQuery): Promise<AppListResponseType> {
     const params = new URLSearchParams()
     params.set('workspace_id', q.workspaceId)
     params.set('page', String(q.page ?? 1))
@@ -30,15 +30,15 @@ export class AppsClient {
     if (q.tag !== undefined && q.tag !== '')
       params.set('tag', q.tag)
     const raw = await this.http.get('apps', { searchParams: params }).json()
-    return ListResponseSchema.parse(raw)
+    return AppListResponse.parse(raw)
   }
 
-  async describe(appId: string, workspaceId: string, fields?: readonly string[]): Promise<DescribeResponse> {
+  async describe(appId: string, workspaceId: string, fields?: readonly string[]): Promise<AppDescribeResponseType> {
     const params = new URLSearchParams()
     params.set('workspace_id', workspaceId)
     if (fields !== undefined && fields.length > 0)
       params.set('fields', fields.join(','))
     const raw = await this.http.get(`apps/${encodeURIComponent(appId)}/describe`, { searchParams: params }).json()
-    return DescribeResponseSchema.parse(raw)
+    return AppDescribeResponse.parse(raw)
   }
 }

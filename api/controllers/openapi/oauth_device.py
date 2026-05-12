@@ -25,7 +25,19 @@ from werkzeug.exceptions import BadRequest
 
 from configs import dify_config
 from controllers.console.wraps import account_initialization_required, setup_required
+from controllers.common.schema import query_params_from_model
 from controllers.openapi import openapi_ns
+from controllers.openapi._models import (
+    AccountPayload,
+    DeviceCodeRequest,
+    DeviceCodeResponse,
+    DeviceLookupQuery,
+    DeviceLookupResponse,
+    DeviceMutateRequest,
+    DeviceMutateResponse,
+    DevicePollRequest,
+    WorkspacePayload,
+)
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from libs.helper import extract_remote_ip
@@ -55,26 +67,8 @@ logger = logging.getLogger(__name__)
 
 
 # =========================================================================
-# Request / query schemas
+# Validation helpers
 # =========================================================================
-
-
-class DeviceCodeRequest(BaseModel):
-    client_id: str
-    device_label: str
-
-
-class DevicePollRequest(BaseModel):
-    device_code: str
-    client_id: str
-
-
-class DeviceLookupQuery(BaseModel):
-    user_code: str
-
-
-class DeviceMutateRequest(BaseModel):
-    user_code: str
 
 
 def _validate_json[M: BaseModel](model: type[M]) -> M:
@@ -99,6 +93,8 @@ def _validate_query[M: BaseModel](model: type[M]) -> M:
 
 @openapi_ns.route("/oauth/device/code")
 class OAuthDeviceCodeApi(Resource):
+    @openapi_ns.expect(openapi_ns.models[DeviceCodeRequest.__name__])
+    @openapi_ns.response(200, "Device code created", openapi_ns.models[DeviceCodeResponse.__name__])
     @rate_limit(LIMIT_DEVICE_CODE_PER_IP)
     def post(self):
         payload = _validate_json(DeviceCodeRequest)
@@ -125,6 +121,7 @@ class OAuthDeviceCodeApi(Resource):
 class OAuthDeviceTokenApi(Resource):
     """RFC 8628 poll."""
 
+    @openapi_ns.expect(openapi_ns.models[DevicePollRequest.__name__])
     def post(self):
         payload = _validate_json(DevicePollRequest)
         device_code = payload.device_code
@@ -165,6 +162,8 @@ class OAuthDeviceLookupApi(Resource):
     high-entropy + short-TTL; per-IP rate limit blocks enumeration.
     """
 
+    @openapi_ns.doc(params=query_params_from_model(DeviceLookupQuery))
+    @openapi_ns.response(200, "Device lookup result", openapi_ns.models[DeviceLookupResponse.__name__])
     @rate_limit(LIMIT_LOOKUP_PUBLIC)
     def get(self):
         payload = _validate_query(DeviceLookupQuery)
@@ -197,6 +196,8 @@ _APPROVE_GUARD_TTL_SECONDS = 10
 
 @openapi_ns.route("/oauth/device/approve")
 class DeviceApproveApi(Resource):
+    @openapi_ns.expect(openapi_ns.models[DeviceMutateRequest.__name__])
+    @openapi_ns.response(200, "Approved", openapi_ns.models[DeviceMutateResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -271,6 +272,8 @@ class DeviceApproveApi(Resource):
 
 @openapi_ns.route("/oauth/device/deny")
 class DeviceDenyApi(Resource):
+    @openapi_ns.expect(openapi_ns.models[DeviceMutateRequest.__name__])
+    @openapi_ns.response(200, "Denied", openapi_ns.models[DeviceMutateResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -339,10 +342,10 @@ def _build_account_poll_payload(account, tenant, mint) -> dict:
         .filter(TenantAccountJoin.account_id == account.id)
         .all()
     )
-    workspaces = [{"id": str(t.id), "name": t.name, "role": getattr(m, "role", "")} for t, m in rows]
+    workspaces = [WorkspacePayload(id=str(t.id), name=t.name, role=getattr(m, "role", "")) for t, m in rows]
     # Prefer active session tenant → DB-flagged current join → first membership.
     default_ws_id = None
-    if tenant and any(w["id"] == str(tenant) for w in workspaces):
+    if tenant and any(w.id == str(tenant) for w in workspaces):
         default_ws_id = str(tenant)
     if default_ws_id is None:
         for _t, m in rows:
@@ -350,14 +353,14 @@ def _build_account_poll_payload(account, tenant, mint) -> dict:
                 default_ws_id = str(m.tenant_id)
                 break
     if default_ws_id is None and workspaces:
-        default_ws_id = workspaces[0]["id"]
+        default_ws_id = workspaces[0].id
 
     return {
         "token": mint.token,
         "expires_at": mint.expires_at.isoformat(),
         "subject_type": SubjectType.ACCOUNT,
-        "account": {"id": str(account.id), "email": account.email, "name": account.name},
-        "workspaces": workspaces,
+        "account": AccountPayload(id=str(account.id), email=account.email, name=account.name).model_dump(mode="json"),
+        "workspaces": [w.model_dump(mode="json") for w in workspaces],
         "default_workspace_id": default_ws_id,
         "token_id": str(mint.token_id),
     }
