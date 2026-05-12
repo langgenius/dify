@@ -9,6 +9,7 @@ from collections import Counter
 from collections.abc import Sequence
 from typing import Any, Literal, TypedDict, cast
 
+import pydantic
 import sqlalchemy as sa
 from redis.exceptions import LockNotOwnedError
 from sqlalchemy import delete, exists, func, select, update
@@ -105,6 +106,40 @@ from tasks.retry_document_indexing_task import retry_document_indexing_task
 from tasks.sync_website_document_indexing_task import sync_website_document_indexing_task
 
 logger = logging.getLogger(__name__)
+
+
+# Pydantic models for estimate_args_validate refactoring (issue #36001)
+class PreProcessingRuleItemPydantic(pydantic.BaseModel):
+    id: str
+    enabled: bool
+
+
+class SegmentationConfigPydantic(pydantic.BaseModel):
+    separator: str
+    max_tokens: int
+    chunk_overlap: int = 0
+
+
+class ProcessRulesPydantic(pydantic.BaseModel):
+    pre_processing_rules: list[PreProcessingRuleItemPydantic] = []
+    segmentation: SegmentationConfigPydantic | None = None
+
+
+class SummaryIndexSettingPydantic(pydantic.BaseModel):
+    enable: bool = False
+    model_name: str | None = None
+    model_provider_name: str | None = None
+
+
+class ProcessRulePydantic(pydantic.BaseModel):
+    mode: str
+    rules: ProcessRulesPydantic | None = None
+    summary_index_setting: SummaryIndexSettingPydantic | None = None
+
+
+class EstimateArgsPydantic(pydantic.BaseModel):
+    info_list: dict[str, Any]
+    process_rule: ProcessRulePydantic
 
 
 class ProcessRulesDict(TypedDict):
@@ -2851,94 +2886,59 @@ class DocumentService:
 
     @classmethod
     def estimate_args_validate(cls, args: dict[str, Any]):
-        if "info_list" not in args or not args["info_list"]:
-            raise ValueError("Data source info is required")
+        """Validate estimate args using Pydantic models (refactor for issue #36001)."""
+        try:
+            # Validate with Pydantic
+            validated_args = EstimateArgsPydantic(**args)
+        except pydantic.ValidationError as e:
+            raise ValueError(f"Invalid arguments: {e}")
 
-        if not isinstance(args["info_list"], dict):
-            raise ValueError("Data info is invalid")
+        process_rule = validated_args.process_rule
 
-        if "process_rule" not in args or not args["process_rule"]:
-            raise ValueError("Process rule is required")
-
-        if not isinstance(args["process_rule"], dict):
-            raise ValueError("Process rule is invalid")
-
-        if "mode" not in args["process_rule"] or not args["process_rule"]["mode"]:
-            raise ValueError("Process rule mode is required")
-
-        if args["process_rule"]["mode"] not in DatasetProcessRule.MODES:
+        # Validate mode
+        if process_rule.mode not in DatasetProcessRule.MODES:
             raise ValueError("Process rule mode is invalid")
 
-        if args["process_rule"]["mode"] == ProcessRuleMode.AUTOMATIC:
+        if process_rule.mode == ProcessRuleMode.AUTOMATIC:
             args["process_rule"]["rules"] = {}
         else:
-            if "rules" not in args["process_rule"] or not args["process_rule"]["rules"]:
+            if not process_rule.rules:
                 raise ValueError("Process rule rules is required")
 
-            if not isinstance(args["process_rule"]["rules"], dict):
-                raise ValueError("Process rule rules is invalid")
-
-            if (
-                "pre_processing_rules" not in args["process_rule"]["rules"]
-                or args["process_rule"]["rules"]["pre_processing_rules"] is None
-            ):
+            # Validate pre_processing_rules
+            if not process_rule.rules.pre_processing_rules:
                 raise ValueError("Process rule pre_processing_rules is required")
 
-            if not isinstance(args["process_rule"]["rules"]["pre_processing_rules"], list):
-                raise ValueError("Process rule pre_processing_rules is invalid")
+            # Check for duplicate IDs and validate each rule
+            seen_ids = set()
+            for rule in process_rule.rules.pre_processing_rules:
+                if rule.id not in DatasetProcessRule.PRE_PROCESSING_RULES:
+                    raise ValueError(f"Process rule pre_processing_rules id is invalid: {rule.id}")
+                if rule.id in seen_ids:
+                    raise ValueError(f"Duplicate pre_processing_rule id: {rule.id}")
+                seen_ids.add(rule.id)
 
-            unique_pre_processing_rule_dicts = {}
-            for pre_processing_rule in args["process_rule"]["rules"]["pre_processing_rules"]:
-                if "id" not in pre_processing_rule or not pre_processing_rule["id"]:
-                    raise ValueError("Process rule pre_processing_rules id is required")
-
-                if pre_processing_rule["id"] not in DatasetProcessRule.PRE_PROCESSING_RULES:
-                    raise ValueError("Process rule pre_processing_rules id is invalid")
-
-                if "enabled" not in pre_processing_rule or pre_processing_rule["enabled"] is None:
-                    raise ValueError("Process rule pre_processing_rules enabled is required")
-
-                if not isinstance(pre_processing_rule["enabled"], bool):
-                    raise ValueError("Process rule pre_processing_rules enabled is invalid")
-
-                unique_pre_processing_rule_dicts[pre_processing_rule["id"]] = pre_processing_rule
-
-            args["process_rule"]["rules"]["pre_processing_rules"] = list(unique_pre_processing_rule_dicts.values())
-
-            if (
-                "segmentation" not in args["process_rule"]["rules"]
-                or args["process_rule"]["rules"]["segmentation"] is None
-            ):
+            # Validate segmentation
+            if not process_rule.rules.segmentation:
                 raise ValueError("Process rule segmentation is required")
 
-            if not isinstance(args["process_rule"]["rules"]["segmentation"], dict):
-                raise ValueError("Process rule segmentation is invalid")
-
-            if (
-                "separator" not in args["process_rule"]["rules"]["segmentation"]
-                or not args["process_rule"]["rules"]["segmentation"]["separator"]
-            ):
+            if not process_rule.rules.segmentation.separator:
                 raise ValueError("Process rule segmentation separator is required")
 
-            if not isinstance(args["process_rule"]["rules"]["segmentation"]["separator"], str):
-                raise ValueError("Process rule segmentation separator is invalid")
-
-            if (
-                "max_tokens" not in args["process_rule"]["rules"]["segmentation"]
-                or not args["process_rule"]["rules"]["segmentation"]["max_tokens"]
-            ):
-                raise ValueError("Process rule segmentation max_tokens is required")
-
-            if not isinstance(args["process_rule"]["rules"]["segmentation"]["max_tokens"], int):
+            if not isinstance(process_rule.rules.segmentation.max_tokens, int):
                 raise ValueError("Process rule segmentation max_tokens is invalid")
 
-        # valid summary index setting
-        summary_index_setting = args["process_rule"].get("summary_index_setting")
-        if summary_index_setting and summary_index_setting.get("enable"):
-            if "model_name" not in summary_index_setting or not summary_index_setting["model_name"]:
+            if process_rule.rules.segmentation.max_tokens <= 0:
+                raise ValueError("Process rule segmentation max_tokens must be positive")
+
+        # Validate summary index setting
+        if process_rule.summary_index_setting and process_rule.summary_index_setting.enable:
+            if not process_rule.summary_index_setting.model_name:
                 raise ValueError("Summary index model name is required")
-            if "model_provider_name" not in summary_index_setting or not summary_index_setting["model_provider_name"]:
+            if not process_rule.summary_index_setting.model_provider_name:
                 raise ValueError("Summary index model provider name is required")
+
+        return validated_args
 
     @staticmethod
     def batch_update_document_status(
