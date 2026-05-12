@@ -159,6 +159,15 @@ class AppDslService:
                     status=ImportStatus.FAILED,
                     error="yaml_content is required when import_mode is yaml-content",
                 )
+
+            content_length = len(yaml_content.encode("utf-8"))
+            if content_length > DSL_MAX_SIZE:
+                return Import(
+                    id=import_id,
+                    status=ImportStatus.FAILED,
+                    error="File size exceeds the limit of 10MB",
+                )
+
             content = yaml_content
 
         # Process YAML content
