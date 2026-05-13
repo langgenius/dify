@@ -20,6 +20,7 @@ import { AppCardSkeleton } from './app-card-skeleton'
 import AppListHeaderFilters from './app-list-header-filters'
 import { APP_LIST_SEARCH_DEBOUNCE_MS } from './constants'
 import Empty from './empty'
+import FirstEmptyState from './first-empty-state'
 import Footer from './footer'
 import { isAppListCategory, useAppsQueryState } from './hooks/use-apps-query-state'
 import { useDSLDragDrop } from './hooks/use-dsl-drag-drop'
@@ -52,7 +53,7 @@ const List: FC<Props> = ({
 
   // eslint-disable-next-line react/use-state -- custom URL query hook, not React.useState
   const {
-    query: { category, tagIDs, keywords, isCreatedByMe },
+    query: { category, tagIDs, keywords, isCreatedByMe, emptyAppList },
     setCategory,
     setKeywords,
     setTagIDs,
@@ -173,7 +174,7 @@ const List: FC<Props> = ({
     setCategory(nextValue)
   }, [setCategory])
 
-  const pages = useMemo(() => data?.pages ?? [], [data?.pages])
+  const pages = useMemo(() => emptyAppList ? [{ data: [], total: 0 }] : data?.pages ?? [], [data?.pages, emptyAppList])
   const apps = useMemo(() => pages.flatMap(({ data: pageApps }) => pageApps), [pages])
 
   const workflowOnlineUserAppIds = useMemo(() => {
@@ -192,9 +193,12 @@ const List: FC<Props> = ({
     enabled: systemFeatures.enable_collaboration_mode,
   })
 
+  const hasResolvedFirstPage = pages.length > 0
   const hasAnyApp = (pages[0]?.total ?? 0) > 0
+  const hasActiveFilters = category !== 'all' || tagIDs.length > 0 || keywords.trim().length > 0 || debouncedKeywords.trim().length > 0 || isCreatedByMe
   // Show skeleton during initial load or when refetching with no previous data
-  const showSkeleton = isLoading || (isFetching && pages.length === 0)
+  const showSkeleton = !emptyAppList && (isLoading || (isFetching && pages.length === 0))
+  const showFirstEmptyState = !showSkeleton && !hasAnyApp && isCurrentWorkspaceEditor && (emptyAppList || (hasResolvedFirstPage && !hasActiveFilters))
 
   return (
     <>
@@ -211,55 +215,67 @@ const List: FC<Props> = ({
               <p className="system-sm-regular text-text-tertiary">{t('studioDescription', { ns: 'app' })}</p>
             </div>
           </div>
-          <AppListHeaderFilters
-            category={category}
-            tagIDs={tagIDs}
-            keywords={keywords}
-            isCreatedByMe={isCreatedByMe}
-            onCategoryChange={handleCategoryChange}
-            onTagIDsChange={setTagIDs}
-            onKeywordsChange={setKeywords}
-            onCreatedByMeChange={handleCreatedByMeChange}
-            onCreateBlank={() => setShowNewAppModal(true)}
-            onCreateTemplate={() => setShowNewAppTemplateDialog(true)}
-            onImportDSL={() => setShowCreateFromDSLModal(true)}
-            onOpenTagManagement={() => setShowTagManagementModal(true)}
-            showCreateButton={isCurrentWorkspaceEditor}
-          />
-        </div>
-        <div className={cn(
-          'relative grid grow grid-cols-1 content-start gap-3 px-6 pt-2 2k:grid-cols-6 sm:grid-cols-1 md:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-5',
-          !hasAnyApp && 'overflow-hidden',
-        )}
-        >
-          {(isCurrentWorkspaceEditor || isLoadingCurrentWorkspace) && (
-            <NewAppCard
-              ref={newAppCardRef}
-              isLoading={isLoadingCurrentWorkspace}
-              onSuccess={refetch}
-              selectedAppType={category}
-              className={cn(!hasAnyApp && 'z-10')}
+          {!showFirstEmptyState && (
+            <AppListHeaderFilters
+              category={category}
+              tagIDs={tagIDs}
+              keywords={keywords}
+              isCreatedByMe={isCreatedByMe}
+              onCategoryChange={handleCategoryChange}
+              onTagIDsChange={setTagIDs}
+              onKeywordsChange={setKeywords}
+              onCreatedByMeChange={handleCreatedByMeChange}
+              onCreateBlank={() => setShowNewAppModal(true)}
+              onCreateTemplate={() => setShowNewAppTemplateDialog(true)}
+              onImportDSL={() => setShowCreateFromDSLModal(true)}
+              onOpenTagManagement={() => setShowTagManagementModal(true)}
+              showCreateButton={isCurrentWorkspaceEditor}
             />
           )}
-          {showSkeleton
-            ? <AppCardSkeleton count={6} />
-            : hasAnyApp
-              ? apps.map(app => (
-                  <AppCard
-                    key={app.id}
-                    app={app}
-                    onlineUsers={workflowOnlineUsersMap[app.id] ?? []}
-                    onRefresh={refetch}
-                    onOpenTagManagement={() => setShowTagManagementModal(true)}
-                  />
-                ))
-              : <Empty />}
-          {isFetchingNextPage && (
-            <AppCardSkeleton count={3} />
-          )}
         </div>
+        {showFirstEmptyState
+          ? (
+              <FirstEmptyState
+                onCreateBlank={() => setShowNewAppModal(true)}
+                onCreateTemplate={() => setShowNewAppTemplateDialog(true)}
+                onImportDSL={() => setShowCreateFromDSLModal(true)}
+              />
+            )
+          : (
+              <div className={cn(
+                'relative grid grow grid-cols-1 content-start gap-3 px-6 pt-2 2k:grid-cols-6 sm:grid-cols-1 md:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-5',
+                !hasAnyApp && 'overflow-hidden',
+              )}
+              >
+                {(isCurrentWorkspaceEditor || isLoadingCurrentWorkspace) && (
+                  <NewAppCard
+                    ref={newAppCardRef}
+                    isLoading={isLoadingCurrentWorkspace}
+                    onSuccess={refetch}
+                    selectedAppType={category}
+                    className={cn(!hasAnyApp && 'z-10')}
+                  />
+                )}
+                {showSkeleton
+                  ? <AppCardSkeleton count={6} />
+                  : hasAnyApp
+                    ? apps.map(app => (
+                        <AppCard
+                          key={app.id}
+                          app={app}
+                          onlineUsers={workflowOnlineUsersMap[app.id] ?? []}
+                          onRefresh={refetch}
+                          onOpenTagManagement={() => setShowTagManagementModal(true)}
+                        />
+                      ))
+                    : <Empty />}
+                {isFetchingNextPage && (
+                  <AppCardSkeleton count={3} />
+                )}
+              </div>
+            )}
 
-        {isCurrentWorkspaceEditor && (
+        {isCurrentWorkspaceEditor && !showFirstEmptyState && (
           <div
             className={`flex items-center justify-center gap-2 py-4 ${dragging ? 'text-text-accent' : 'text-text-quaternary'}`}
             role="region"
@@ -269,7 +285,7 @@ const List: FC<Props> = ({
             <span className="system-xs-regular">{t('newApp.dropDSLToCreateApp', { ns: 'app' })}</span>
           </div>
         )}
-        {!systemFeatures.branding.enabled && (
+        {!systemFeatures.branding.enabled && !showFirstEmptyState && (
           <Footer />
         )}
         <CheckModal />

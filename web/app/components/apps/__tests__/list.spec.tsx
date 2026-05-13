@@ -64,6 +64,7 @@ const mockQueryState = {
   tagIDs: [] as string[],
   keywords: '',
   isCreatedByMe: false,
+  emptyAppList: false,
 }
 vi.mock('../hooks/use-apps-query-state', () => ({
   isAppListCategory: (value: string) => value === 'all' || Object.values(AppModeEnum).includes(value as AppModeEnum),
@@ -133,13 +134,14 @@ const defaultAppData = {
     total: 2,
   }],
 }
+let mockAppData = defaultAppData
 
 vi.mock('@tanstack/react-query', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@tanstack/react-query')>()
   return {
     ...actual,
     useInfiniteQuery: () => ({
-      data: defaultAppData,
+      data: mockAppData,
       isLoading: mockServiceState.isLoading,
       isFetching: mockServiceState.isFetching,
       isFetchingNextPage: mockServiceState.isFetchingNextPage,
@@ -281,6 +283,8 @@ describe('List', () => {
     mockQueryState.tagIDs = []
     mockQueryState.keywords = ''
     mockQueryState.isCreatedByMe = false
+    mockQueryState.emptyAppList = false
+    mockAppData = defaultAppData
     mockUseWorkflowOnlineUsers.mockClear()
     intersectionCallback = null
     localStorage.clear()
@@ -344,6 +348,66 @@ describe('List', () => {
     it('should render drop DSL hint for editors', () => {
       renderList()
       expect(screen.getByText('app.newApp.dropDSLToCreateApp'))!.toBeInTheDocument()
+    })
+
+    it('should render first empty state when there are no apps and no active filters', () => {
+      mockAppData = { pages: [{ data: [], total: 0 }] }
+
+      renderList()
+
+      expect(screen.getByText('app.firstEmpty.title'))!.toBeInTheDocument()
+      expect(screen.getByText('app.firstEmpty.description'))!.toBeInTheDocument()
+      expect(screen.getByText('explore.learnDify.title'))!.toBeInTheDocument()
+      expect(screen.queryByText('app.types.label')).not.toBeInTheDocument()
+      expect(screen.queryByTestId('new-app-card')).not.toBeInTheDocument()
+      expect(screen.queryByTestId('empty-state')).not.toBeInTheDocument()
+      expect(screen.queryByTestId('footer')).not.toBeInTheDocument()
+    })
+
+    it('should not render first empty state before the first app list page resolves', () => {
+      mockAppData = { pages: [] }
+
+      renderList()
+
+      expect(screen.queryByText('app.firstEmpty.title')).not.toBeInTheDocument()
+      expect(screen.getByText('app.types.label'))!.toBeInTheDocument()
+    })
+
+    it('should render first empty state when emptyAppList URL preview is enabled', () => {
+      mockQueryState.emptyAppList = true
+
+      renderList()
+
+      expect(screen.getByText('app.firstEmpty.title'))!.toBeInTheDocument()
+      expect(screen.queryByTestId('app-card-app-1')).not.toBeInTheDocument()
+      expect(screen.queryByText('app.types.label')).not.toBeInTheDocument()
+      expect(screen.queryByTestId('footer')).not.toBeInTheDocument()
+    })
+
+    it('should keep the regular empty state for empty filtered results', () => {
+      mockAppData = { pages: [{ data: [], total: 0 }] }
+      mockQueryState.keywords = 'missing app'
+
+      renderList()
+
+      expect(screen.getByTestId('empty-state'))!.toBeInTheDocument()
+      expect(screen.getByText('app.types.label'))!.toBeInTheDocument()
+      expect(screen.queryByText('app.firstEmpty.title')).not.toBeInTheDocument()
+    })
+
+    it('should open create flows from first empty state actions', () => {
+      mockAppData = { pages: [{ data: [], total: 0 }] }
+
+      renderList()
+
+      fireEvent.click(screen.getByRole('button', { name: /app\.newApp\.startFromBlank/ }))
+      expect(screen.getByTestId('create-app-modal'))!.toBeInTheDocument()
+
+      fireEvent.click(screen.getByRole('button', { name: /app\.newApp\.startFromTemplate/ }))
+      expect(screen.getByTestId('template-dialog'))!.toBeInTheDocument()
+
+      fireEvent.click(screen.getByRole('button', { name: /app\.importDSL/ }))
+      expect(screen.getByTestId('create-dsl-modal'))!.toBeInTheDocument()
     })
 
     it('should pass workflow app ids to online users hook', () => {

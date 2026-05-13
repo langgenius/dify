@@ -25,6 +25,7 @@ const appListQueryParsers = {
   isCreatedByMe: parseAsBoolean
     .withDefault(false)
     .withOptions({ history: 'push' }),
+  emptyAppList: parseAsBoolean.withDefault(false),
 }
 
 export function useAppsQueryState() {
