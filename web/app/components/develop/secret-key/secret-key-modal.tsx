@@ -11,6 +11,8 @@ import {
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
+import { Dialog, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
 import { RiDeleteBinLine } from '@remixicon/react'
 import {
   useState,
@@ -19,7 +21,6 @@ import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
 import CopyFeedback from '@/app/components/base/copy-feedback'
 import Loading from '@/app/components/base/loading'
-import Modal from '@/app/components/base/modal'
 import { useAppContext } from '@/context/app-context'
 import useTimestamp from '@/hooks/use-timestamp'
 import {
@@ -103,78 +104,99 @@ const SecretKeyModal = ({
     setShowConfirmDelete(false)
   }
 
+  const handleClose = () => {
+    setVisible(false)
+    onClose()
+  }
+
   return (
-    <Modal isShow={isShow} onClose={onClose} title={`${t('apiKeyModal.apiSecretKey', { ns: 'appApi' })}`} className={`${s.customModal} flex flex-col px-8`}>
-      <div className="-mt-6 -mr-2 mb-4 flex justify-end">
-        <XMarkIcon className="h-6 w-6 cursor-pointer text-text-tertiary" onClick={onClose} />
-      </div>
-      <p className="mt-1 shrink-0 text-[13px] leading-5 font-normal text-text-tertiary">{t('apiKeyModal.apiSecretKeyTips', { ns: 'appApi' })}</p>
-      {isApiKeysLoading && <div className="mt-4"><Loading /></div>}
-      {
-        !!apiKeysList?.data?.length && (
-          <div className="mt-4 flex grow flex-col overflow-hidden">
-            <div className="flex h-9 shrink-0 items-center border-b border-divider-regular text-xs font-semibold text-text-tertiary">
-              <div className="w-64 shrink-0 px-3">{t('apiKeyModal.secretKey', { ns: 'appApi' })}</div>
-              <div className="w-[200px] shrink-0 px-3">{t('apiKeyModal.created', { ns: 'appApi' })}</div>
-              <div className="w-[200px] shrink-0 px-3">{t('apiKeyModal.lastUsed', { ns: 'appApi' })}</div>
-              <div className="grow px-3"></div>
-            </div>
-            <div className="grow overflow-auto">
-              {apiKeysList.data.map(api => (
-                <div className="flex h-9 items-center border-b border-divider-regular text-sm font-normal text-text-secondary" key={api.id}>
-                  <div className="w-64 shrink-0 truncate px-3 font-mono">{generateToken(api.token)}</div>
-                  <div className="w-[200px] shrink-0 truncate px-3">{formatTime(Number(api.created_at), t('dateTimeFormat', { ns: 'appLog' }) as string)}</div>
-                  <div className="w-[200px] shrink-0 truncate px-3">{api.last_used_at ? formatTime(Number(api.last_used_at), t('dateTimeFormat', { ns: 'appLog' }) as string) : t('never', { ns: 'appApi' })}</div>
-                  <div className="flex grow space-x-2 px-3">
-                    <CopyFeedback content={api.token} />
-                    {isCurrentWorkspaceManager && (
-                      <ActionButton
-                        onClick={() => {
-                          setDelKeyId(api.id)
-                          setShowConfirmDelete(true)
-                        }}
-                      >
-                        <RiDeleteBinLine className="h-4 w-4" />
-                      </ActionButton>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )
-      }
-      <div className="flex">
-        <Button className={`mt-4 flex shrink-0 ${s.autoWidth}`} onClick={onCreate} disabled={!currentWorkspace || !isCurrentWorkspaceEditor}>
-          <PlusIcon className="mr-1 flex h-4 w-4 shrink-0" />
-          <div className="text-xs font-medium text-text-secondary">{t('apiKeyModal.createNewSecretKey', { ns: 'appApi' })}</div>
-        </Button>
-      </div>
-      <SecretKeyGenerateModal className="shrink-0" isShow={isVisible} onClose={() => setVisible(false)} newKey={newKey} />
-      <AlertDialog
-        open={showConfirmDelete}
-        onOpenChange={handleDeleteConfirmOpenChange}
+    <>
+      <Dialog
+        open={isShow}
+        onOpenChange={(open) => {
+          if (!open)
+            handleClose()
+        }}
       >
-        <AlertDialogContent>
-          <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
-            <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
-              {t('actionMsg.deleteConfirmTitle', { ns: 'appApi' })}
-            </AlertDialogTitle>
-            <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
-              {t('actionMsg.deleteConfirmTips', { ns: 'appApi' })}
-            </AlertDialogDescription>
+        <DialogContent className={cn('max-h-[calc(100vh-80px)]! w-full max-w-[800px]! overflow-hidden! border-none text-left align-middle', `${s.customModal} flex flex-col px-8`)}>
+          <DialogTitle className="title-2xl-semi-bold text-text-primary">
+            {`${t('apiKeyModal.apiSecretKey', { ns: 'appApi' })}`}
+          </DialogTitle>
+
+          <div className="-mt-6 -mr-2 mb-4 flex justify-end">
+            <XMarkIcon className="h-6 w-6 cursor-pointer text-text-tertiary" onClick={handleClose} />
           </div>
-          <AlertDialogActions>
-            <AlertDialogCancelButton>
-              {t('operation.cancel', { ns: 'common' })}
-            </AlertDialogCancelButton>
-            <AlertDialogConfirmButton onClick={onDel}>
-              {t('operation.confirm', { ns: 'common' })}
-            </AlertDialogConfirmButton>
-          </AlertDialogActions>
-        </AlertDialogContent>
-      </AlertDialog>
-    </Modal>
+          <p className="mt-1 shrink-0 text-[13px] leading-5 font-normal text-text-tertiary">{t('apiKeyModal.apiSecretKeyTips', { ns: 'appApi' })}</p>
+          {isApiKeysLoading && <div className="mt-4"><Loading /></div>}
+          {
+            !!apiKeysList?.data?.length && (
+              <div className="mt-4 flex grow flex-col overflow-hidden">
+                <div className="flex h-9 shrink-0 items-center border-b border-divider-regular text-xs font-semibold text-text-tertiary">
+                  <div className="w-64 shrink-0 px-3">{t('apiKeyModal.secretKey', { ns: 'appApi' })}</div>
+                  <div className="w-[200px] shrink-0 px-3">{t('apiKeyModal.created', { ns: 'appApi' })}</div>
+                  <div className="w-[200px] shrink-0 px-3">{t('apiKeyModal.lastUsed', { ns: 'appApi' })}</div>
+                  <div className="grow px-3"></div>
+                </div>
+                <div className="grow overflow-auto">
+                  {apiKeysList.data.map(api => (
+                    <div className="flex h-9 items-center border-b border-divider-regular text-sm font-normal text-text-secondary" key={api.id}>
+                      <div className="w-64 shrink-0 truncate px-3 font-mono">{generateToken(api.token)}</div>
+                      <div className="w-[200px] shrink-0 truncate px-3">{formatTime(Number(api.created_at), t('dateTimeFormat', { ns: 'appLog' }) as string)}</div>
+                      <div className="w-[200px] shrink-0 truncate px-3">{api.last_used_at ? formatTime(Number(api.last_used_at), t('dateTimeFormat', { ns: 'appLog' }) as string) : t('never', { ns: 'appApi' })}</div>
+                      <div className="flex grow space-x-2 px-3">
+                        <CopyFeedback content={api.token} />
+                        {isCurrentWorkspaceManager && (
+                          <ActionButton
+                            onClick={() => {
+                              setDelKeyId(api.id)
+                              setShowConfirmDelete(true)
+                            }}
+                          >
+                            <RiDeleteBinLine className="h-4 w-4" />
+                          </ActionButton>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )
+          }
+          <div className="flex">
+            <Button className={`mt-4 flex shrink-0 ${s.autoWidth}`} onClick={onCreate} disabled={!currentWorkspace || !isCurrentWorkspaceEditor}>
+              <PlusIcon className="mr-1 flex h-4 w-4 shrink-0" />
+              <div className="text-xs font-medium text-text-secondary">{t('apiKeyModal.createNewSecretKey', { ns: 'appApi' })}</div>
+            </Button>
+          </div>
+          <AlertDialog
+            open={showConfirmDelete}
+            onOpenChange={handleDeleteConfirmOpenChange}
+          >
+            <AlertDialogContent>
+              <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
+                <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
+                  {t('actionMsg.deleteConfirmTitle', { ns: 'appApi' })}
+                </AlertDialogTitle>
+                <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
+                  {t('actionMsg.deleteConfirmTips', { ns: 'appApi' })}
+                </AlertDialogDescription>
+              </div>
+              <AlertDialogActions>
+                <AlertDialogCancelButton>
+                  {t('operation.cancel', { ns: 'common' })}
+                </AlertDialogCancelButton>
+                <AlertDialogConfirmButton onClick={onDel}>
+                  {t('operation.confirm', { ns: 'common' })}
+                </AlertDialogConfirmButton>
+              </AlertDialogActions>
+            </AlertDialogContent>
+          </AlertDialog>
+        </DialogContent>
+      </Dialog>
+      {isShow && (
+        <SecretKeyGenerateModal className="shrink-0" isShow={isVisible} onClose={() => setVisible(false)} newKey={newKey} />
+      )}
+    </>
   )
 }
 

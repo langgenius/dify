@@ -175,7 +175,7 @@ class TestWorkflowPauseIntegration:
     """Comprehensive integration tests for workflow pause functionality."""
 
     @pytest.fixture(autouse=True)
-    def setup_test_data(self, db_session_with_containers):
+    def setup_test_data(self, db_session_with_containers: Session):
         """Set up test data for each test method using TestContainers."""
         # Create test tenant and account
 

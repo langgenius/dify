@@ -5,11 +5,12 @@ from baidubce.auth.bce_credentials import BceCredentials
 from baidubce.bce_client_configuration import BceClientConfiguration
 
 from extensions.storage.baidu_obs_storage import BaiduObsStorage
-from tests.unit_tests.oss.__mock.baidu_obs import setup_baidu_obs_mock
 from tests.unit_tests.oss.__mock.base import (
     BaseStorageTest,
     get_example_bucket,
 )
+
+pytest_plugins = ("tests.unit_tests.oss.__mock.baidu_obs",)
 
 
 class TestBaiduObs(BaseStorageTest):

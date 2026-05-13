@@ -7,11 +7,10 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { toast } from '@langgenius/dify-ui/toast'
 import { RiArrowRightLine, RiArrowRightSLine, RiExchange2Fill } from '@remixicon/react'
 import { useDebounceFn, useKeyPress } from 'ahooks'
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
 import Divider from '@/app/components/base/divider'
-import FullScreenModal from '@/app/components/base/fullscreen-modal'
 import { BubbleTextMod, ChatBot, ListSparkle, Logic } from '@/app/components/base/icons/src/vender/solid/communication'
 import Input from '@/app/components/base/input'
 import Textarea from '@/app/components/base/textarea'
@@ -28,12 +27,17 @@ import { trackCreateApp } from '@/utils/create-app-tracking'
 import { basePath } from '@/utils/var'
 import AppIconPicker from '../../base/app-icon-picker'
 import ShortcutsName from '../../workflow/shortcuts-name'
+import { CreateAppDialogShell } from '../create-app-dialog-shell'
 
 type CreateAppProps = {
   onSuccess: () => void
   onClose: () => void
   onCreateFromTemplate?: () => void
   defaultAppMode?: AppModeEnum
+}
+
+const shouldExpandBeginnerAppTypes = (appMode?: AppModeEnum) => {
+  return appMode === AppModeEnum.CHAT || appMode === AppModeEnum.AGENT_CHAT || appMode === AppModeEnum.COMPLETION
 }
 
 function CreateApp({ onClose, onSuccess, onCreateFromTemplate, defaultAppMode }: CreateAppProps) {
@@ -45,18 +49,13 @@ function CreateApp({ onClose, onSuccess, onCreateFromTemplate, defaultAppMode }:
   const [showAppIconPicker, setShowAppIconPicker] = useState(false)
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
-  const [isAppTypeExpanded, setIsAppTypeExpanded] = useState(false)
+  const [isAppTypeExpanded, setIsAppTypeExpanded] = useState(() => shouldExpandBeginnerAppTypes(defaultAppMode))
 
   const { plan, enableBilling } = useProviderContext()
   const isAppsFull = (enableBilling && plan.usage.buildApps >= plan.total.buildApps)
   const { isCurrentWorkspaceEditor } = useAppContext()
 
   const isCreatingRef = useRef(false)
-
-  useEffect(() => {
-    if (appMode === AppModeEnum.CHAT || appMode === AppModeEnum.AGENT_CHAT || appMode === AppModeEnum.COMPLETION)
-      setIsAppTypeExpanded(true)
-  }, [appMode])
 
   const onCreate = useCallback(async () => {
     if (!appMode) {
@@ -88,8 +87,8 @@ function CreateApp({ onClose, onSuccess, onCreateFromTemplate, defaultAppMode }:
       localStorage.setItem(NEED_REFRESH_APP_LIST_KEY, '1')
       getRedirection(isCurrentWorkspaceEditor, app, push)
     }
-    catch (e: any) {
-      toast.error(e.message || t('newApp.appCreateFailed', { ns: 'app' }))
+    catch (error) {
+      toast.error(error instanceof Error ? error.message : t('newApp.appCreateFailed', { ns: 'app' }))
     }
     isCreatingRef.current = false
   }, [name, t, appMode, appIcon, description, onSuccess, onClose, push, isCurrentWorkspaceEditor])
@@ -147,11 +146,11 @@ function CreateApp({ onClose, onSuccess, onCreateFromTemplate, defaultAppMode }:
                 <div className="mb-2 flex items-center">
                   <button
                     type="button"
-                    className="flex cursor-pointer items-center border-0 bg-transparent p-0"
+                    className="flex cursor-pointer items-center border-0 bg-transparent p-0 text-left focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
                     onClick={() => setIsAppTypeExpanded(!isAppTypeExpanded)}
                   >
                     <span className="system-2xs-medium-uppercase text-text-tertiary">{t('newApp.forBeginners', { ns: 'app' })}</span>
-                    <RiArrowRightSLine className={`ml-1 h-4 w-4 text-text-tertiary transition-transform ${isAppTypeExpanded ? 'rotate-90' : ''}`} />
+                    <RiArrowRightSLine className={`ml-1 h-4 w-4 text-text-tertiary transition-transform ${isAppTypeExpanded ? 'rotate-90' : ''}`} aria-hidden="true" />
                   </button>
                 </div>
                 {isAppTypeExpanded && (
@@ -250,12 +249,16 @@ function CreateApp({ onClose, onSuccess, onCreateFromTemplate, defaultAppMode }:
             </div>
             {isAppsFull && <AppsFull className="mt-4" loc="app-create" />}
             <div className="flex items-center justify-between pt-5 pb-10">
-              <div className="flex cursor-pointer items-center gap-1 system-xs-regular text-text-tertiary" onClick={onCreateFromTemplate}>
+              <button
+                type="button"
+                className="flex cursor-pointer items-center gap-1 border-none bg-transparent p-0 text-left system-xs-regular text-text-tertiary focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
+                onClick={onCreateFromTemplate}
+              >
                 <span>{t('newApp.noIdeaTip', { ns: 'app' })}</span>
                 <div className="p-px">
-                  <RiArrowRightLine className="h-3.5 w-3.5" />
+                  <RiArrowRightLine className="h-3.5 w-3.5" aria-hidden="true" />
                 </div>
-              </div>
+              </button>
               <div className="flex gap-2">
                 <Button onClick={onClose}>{t('newApp.Cancel', { ns: 'app' })}</Button>
                 <Button disabled={isAppsFull || !name} className="gap-1" variant="primary" onClick={handleCreateApp}>
@@ -290,15 +293,17 @@ type CreateAppDialogProps = CreateAppProps & {
   show: boolean
 }
 const CreateAppModal = ({ show, onClose, onSuccess, onCreateFromTemplate, defaultAppMode }: CreateAppDialogProps) => {
+  const { t } = useTranslation()
+
   return (
-    <FullScreenModal
-      overflowVisible
-      closable
-      open={show}
+    <CreateAppDialogShell
+      show={show}
+      title={t('newApp.startFromBlank', { ns: 'app' })}
+      contentClassName="overflow-visible"
       onClose={onClose}
     >
       <CreateApp onClose={onClose} onSuccess={onSuccess} onCreateFromTemplate={onCreateFromTemplate} defaultAppMode={defaultAppMode} />
-    </FullScreenModal>
+    </CreateAppDialogShell>
   )
 }
 

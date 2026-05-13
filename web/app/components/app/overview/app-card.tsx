@@ -1,7 +1,9 @@
 'use client'
+import type { WorkflowLaunchInputValue } from './app-card-utils'
 import type { ConfigParams } from './settings'
 import type { AppDetailResponse } from '@/models/app'
 import type { AppSSO } from '@/types/app'
+import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { Switch } from '@langgenius/dify-ui/switch'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import * as React from 'react'
@@ -9,7 +11,6 @@ import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppBasic from '@/app/components/app-sidebar/basic'
 import { useStore as useAppStore } from '@/app/components/app/store'
-import Tooltip from '@/app/components/base/tooltip'
 import SecretKeyButton from '@/app/components/develop/secret-key/secret-key-button'
 import Indicator from '@/app/components/header/indicator'
 import { useAppContext } from '@/context/app-context'
@@ -28,11 +29,16 @@ import {
   AppCardOperations,
   AppCardUrlSection,
   createAppCardOperations,
+  WorkflowLaunchDialog,
 } from './app-card-sections'
 import {
+  buildWorkflowLaunchUrl,
+  createWorkflowLaunchInitialValues,
   getAppCardDisplayState,
   getAppCardOperationKeys,
+  getAppHiddenLaunchVariables,
   isAppAccessConfigured,
+  isWorkflowLaunchInputSupported,
 } from './app-card-utils'
 
 export type IAppCardProps = {
@@ -63,7 +69,8 @@ function AppCard({
   const router = useRouter()
   const pathname = usePathname()
   const { isCurrentWorkspaceManager, isCurrentWorkspaceEditor } = useAppContext()
-  const { data: currentWorkflow } = useAppWorkflow(appInfo.mode === AppModeEnum.WORKFLOW ? appInfo.id : '')
+  const shouldFetchWorkflow = appInfo.mode === AppModeEnum.WORKFLOW || appInfo.mode === AppModeEnum.ADVANCED_CHAT
+  const { data: currentWorkflow } = useAppWorkflow(shouldFetchWorkflow ? appInfo.id : '')
   const docLink = useDocLink()
   const appDetail = useAppStore(state => state.appDetail)
   const setAppDetail = useAppStore(state => state.setAppDetail)
@@ -73,6 +80,8 @@ function AppCard({
   const [genLoading, setGenLoading] = useState(false)
   const [showConfirmDelete, setShowConfirmDelete] = useState(false)
   const [showAccessControl, setShowAccessControl] = useState(false)
+  const [showWorkflowLaunchDialog, setShowWorkflowLaunchDialog] = useState(false)
+  const [workflowLaunchValues, setWorkflowLaunchValues] = useState<Record<string, WorkflowLaunchInputValue>>({})
   const { t } = useTranslation()
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const { data: appAccessSubjects } = useAppWhiteListSubjects(
@@ -97,6 +106,25 @@ function AppCard({
   const isAppAccessSet = useMemo(
     () => isAppAccessConfigured(appDetail, appAccessSubjects),
     [appAccessSubjects, appDetail],
+  )
+  const hiddenLaunchVariables = useMemo(
+    () => getAppHiddenLaunchVariables({
+      appInfo,
+      currentWorkflow,
+    }) || [],
+    [appInfo, currentWorkflow],
+  )
+  const supportedWorkflowLaunchVariables = useMemo(
+    () => hiddenLaunchVariables.filter(isWorkflowLaunchInputSupported),
+    [hiddenLaunchVariables],
+  )
+  const unsupportedWorkflowLaunchVariables = useMemo(
+    () => hiddenLaunchVariables.filter(variable => !isWorkflowLaunchInputSupported(variable)),
+    [hiddenLaunchVariables],
+  )
+  const initialWorkflowLaunchValues = useMemo(
+    () => createWorkflowLaunchInitialValues(supportedWorkflowLaunchVariables),
+    [supportedWorkflowLaunchVariables],
   )
 
   const onGenCode = async () => {
@@ -139,6 +167,31 @@ function AppCard({
     window.open(cardState.accessibleUrl, '_blank')
   }, [cardState.accessibleUrl])
 
+  const handleOpenWorkflowLaunchDialog = useCallback(() => {
+    setWorkflowLaunchValues(initialWorkflowLaunchValues)
+    setShowWorkflowLaunchDialog(true)
+  }, [initialWorkflowLaunchValues])
+
+  const handleWorkflowLaunchValueChange = useCallback((variable: string, value: WorkflowLaunchInputValue) => {
+    setWorkflowLaunchValues(prev => ({
+      ...prev,
+      [variable]: value,
+    }))
+  }, [])
+
+  const handleWorkflowLaunchConfirm = useCallback(async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+
+    const targetUrl = await buildWorkflowLaunchUrl({
+      accessibleUrl: cardState.accessibleUrl,
+      variables: supportedWorkflowLaunchVariables,
+      values: workflowLaunchValues,
+    })
+
+    window.open(targetUrl, '_blank')
+    setShowWorkflowLaunchDialog(false)
+  }, [cardState.accessibleUrl, supportedWorkflowLaunchVariables, workflowLaunchValues])
+
   const handleOpenCustomize = useCallback(() => {
     setShowCustomizeModal(true)
   }, [])
@@ -179,6 +232,31 @@ function AppCard({
     triggerModeDisabled,
   ])
 
+  const missingStartNodeContent = cardState.appUnpublished || cardState.missingStartNode
+    ? (
+        <>
+          <div className="mb-1 text-xs font-normal text-text-secondary">
+            {t('overview.appInfo.enableTooltip.description', { ns: 'appOverview' })}
+          </div>
+          <button
+            type="button"
+            className="cursor-pointer rounded-sm text-xs font-normal text-text-accent outline-hidden hover:underline focus-visible:ring-1 focus-visible:ring-components-input-border-hover"
+            onClick={() => window.open(docLink('/use-dify/nodes/user-input'), '_blank')}
+          >
+            {t('overview.appInfo.enableTooltip.learnMore', { ns: 'appOverview' })}
+          </button>
+        </>
+      )
+    : ''
+
+  const statusPopoverContent = cardState.toggleDisabled
+    ? (
+        triggerModeDisabled && triggerModeMessage
+          ? triggerModeMessage
+          : missingStartNodeContent
+      )
+    : ''
+
   return (
     <div
       className={`${isInPanel ? 'border-t border-l-[0.5px]' : 'border-[0.5px] shadow-xs'} w-full max-w-full rounded-xl border-effects-highlight ${className ?? ''} ${cardState.isMinimalState ? 'h-12' : ''}`}
@@ -187,13 +265,19 @@ function AppCard({
         {triggerModeDisabled && (
           triggerModeMessage
             ? (
-                <Tooltip
-                  popupContent={triggerModeMessage}
-                  popupClassName="max-w-64 rounded-xl bg-components-panel-bg px-3 py-2 text-xs text-text-secondary shadow-lg"
-                  position="right"
-                >
-                  <div className="absolute inset-0 z-10 cursor-not-allowed rounded-xl" aria-hidden="true" />
-                </Tooltip>
+                <Popover>
+                  <PopoverTrigger
+                    openOnHover
+                    aria-label={typeof triggerModeMessage === 'string' ? triggerModeMessage : basicName}
+                    render={<button type="button" className="absolute inset-0 z-10 cursor-not-allowed rounded-xl outline-hidden focus-visible:ring-1 focus-visible:ring-components-input-border-hover" />}
+                  />
+                  <PopoverContent
+                    placement="right"
+                    popupClassName="max-w-64 rounded-xl bg-components-panel-bg px-3 py-2 text-xs text-text-secondary shadow-lg"
+                  >
+                    {triggerModeMessage}
+                  </PopoverContent>
+                </Popover>
               )
             : <div className="absolute inset-0 z-10 cursor-not-allowed rounded-xl" aria-hidden="true" />
         )}
@@ -219,38 +303,31 @@ function AppCard({
                   : t('overview.status.disable', { ns: 'appOverview' })}
               </div>
             </div>
-            <Tooltip
-              popupContent={
-                cardState.toggleDisabled
-                  ? (
-                      triggerModeDisabled && triggerModeMessage
-                        ? triggerModeMessage
-                        : (cardState.appUnpublished || cardState.missingStartNode)
-                            ? (
-                                <>
-                                  <div className="mb-1 text-xs font-normal text-text-secondary">
-                                    {t('overview.appInfo.enableTooltip.description', { ns: 'appOverview' })}
-                                  </div>
-                                  <div
-                                    className="cursor-pointer text-xs font-normal text-text-accent hover:underline"
-                                    onClick={() => window.open(docLink('/use-dify/nodes/user-input'), '_blank')}
-                                  >
-                                    {t('overview.appInfo.enableTooltip.learnMore', { ns: 'appOverview' })}
-                                  </div>
-                                </>
-                              )
-                            : ''
-                    )
-                  : ''
-              }
-              position="right"
-              popupClassName="w-58 max-w-60 rounded-xl bg-components-panel-bg px-3.5 py-3 shadow-lg"
-              offset={24}
-            >
-              <div>
-                <Switch checked={cardState.runningStatus} onCheckedChange={onChangeStatus} disabled={cardState.toggleDisabled} />
-              </div>
-            </Tooltip>
+            {cardState.toggleDisabled && statusPopoverContent
+              ? (
+                  <Popover>
+                    <PopoverTrigger
+                      openOnHover
+                      nativeButton={false}
+                      aria-label={typeof statusPopoverContent === 'string' ? statusPopoverContent : t('overview.appInfo.enableTooltip.description', { ns: 'appOverview' })}
+                      render={(
+                        <div>
+                          <Switch checked={cardState.runningStatus} onCheckedChange={onChangeStatus} disabled={cardState.toggleDisabled} />
+                        </div>
+                      )}
+                    />
+                    <PopoverContent
+                      placement="right"
+                      sideOffset={24}
+                      popupClassName="w-58 max-w-60 rounded-xl bg-components-panel-bg px-3.5 py-3 shadow-lg"
+                    >
+                      {statusPopoverContent}
+                    </PopoverContent>
+                  </Popover>
+                )
+              : (
+                  <Switch checked={cardState.runningStatus} onCheckedChange={onChangeStatus} disabled={cardState.toggleDisabled} />
+                )}
           </div>
           {!cardState.isMinimalState && (
             <AppCardUrlSection
@@ -280,7 +357,17 @@ function AppCard({
         {!cardState.isMinimalState && (
           <div className="flex items-center gap-1 self-stretch p-3">
             {!isApp && <SecretKeyButton appId={appInfo.id} />}
-            <AppCardOperations t={t} operations={operations} />
+            <AppCardOperations
+              t={t}
+              operations={operations}
+              launchConfigAction={hiddenLaunchVariables.length > 0
+                ? {
+                    label: t('operation.config', { ns: 'common' }),
+                    disabled: triggerModeDisabled || !cardState.runningStatus,
+                    onClick: handleOpenWorkflowLaunchDialog,
+                  }
+                : undefined}
+            />
           </div>
         )}
       </div>
@@ -299,6 +386,17 @@ function AppCard({
         onCloseAccessControl={() => setShowAccessControl(false)}
         onSaveSiteConfig={onSaveSiteConfig}
         onConfirmAccessControl={handleAccessControlUpdate}
+        hiddenInputs={hiddenLaunchVariables}
+      />
+      <WorkflowLaunchDialog
+        t={t}
+        open={showWorkflowLaunchDialog}
+        hiddenVariables={supportedWorkflowLaunchVariables}
+        unsupportedVariables={unsupportedWorkflowLaunchVariables}
+        values={workflowLaunchValues}
+        onOpenChange={setShowWorkflowLaunchDialog}
+        onValueChange={handleWorkflowLaunchValueChange}
+        onSubmit={handleWorkflowLaunchConfirm}
       />
     </div>
   )

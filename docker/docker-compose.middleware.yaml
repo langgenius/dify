@@ -51,7 +51,7 @@ services:
       MYSQL_ROOT_PASSWORD: ${DB_PASSWORD:-difyai123456}
       MYSQL_DATABASE: ${DB_DATABASE:-dify}
     command: >
-      --max_connections=1000
+      --max_connections=${MYSQL_MAX_CONNECTIONS:-1000}
       --innodb_buffer_pool_size=${MYSQL_INNODB_BUFFER_POOL_SIZE:-512M}
       --innodb_log_file_size=${MYSQL_INNODB_LOG_FILE_SIZE:-128M}
       --innodb_flush_log_at_trx_commit=${MYSQL_INNODB_FLUSH_LOG_AT_TRX_COMMIT:-2}
@@ -59,19 +59,25 @@ services:
       - ${MYSQL_HOST_VOLUME:-./volumes/mysql/data}:/var/lib/mysql
     ports:
       - "${EXPOSE_MYSQL_PORT:-3306}:3306"
+    # mysqladmin ping passes during mysql:8.0's TCP-listening stage even while
+    # the server is still finalising init, leading to "Lost connection during
+    # query" on the first real query. Verify with a real SELECT instead.
     healthcheck:
       test:
         [
           "CMD",
-          "mysqladmin",
-          "ping",
-          "-u",
-          "root",
+          "mysql",
+          "-h",
+          "127.0.0.1",
+          "-uroot",
           "-p${DB_PASSWORD:-difyai123456}",
+          "-e",
+          "SELECT 1",
         ]
       interval: 1s
       timeout: 3s
       retries: 30
+      start_period: 20s
 
   # The redis cache.
   redis:
@@ -97,7 +103,7 @@ services:
 
   # The DifySandbox
   sandbox:
-    image: langgenius/dify-sandbox:0.2.14
+    image: langgenius/dify-sandbox:0.2.15
     restart: always
     env_file:
       - ./middleware.env
@@ -123,7 +129,7 @@ services:
 
   # plugin daemon
   plugin_daemon:
-    image: langgenius/dify-plugin-daemon:0.5.3-local
+    image: langgenius/dify-plugin-daemon:0.6.0-local
     restart: always
     env_file:
       - ./middleware.env

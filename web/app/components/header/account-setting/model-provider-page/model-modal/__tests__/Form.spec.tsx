@@ -8,6 +8,7 @@ import type {
   CredentialFormSchemaTextInput,
   FormValue,
 } from '../../declarations'
+import type { AppSelectorValue } from '@/app/components/plugins/plugin-detail-panel/app-selector'
 import type { NodeOutPutVar } from '@/app/components/workflow/types'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -29,8 +30,8 @@ vi.mock('../../hooks', () => ({
 }))
 
 vi.mock('@/app/components/plugins/plugin-detail-panel/app-selector', () => ({
-  default: ({ onSelect }: { onSelect: (item: { id: string }) => void }) => (
-    <button type="button" onClick={() => onSelect({ id: 'app-1' })}>Select App</button>
+  AppSelector: ({ onSelect }: { onSelect: (item: AppSelectorValue) => void }) => (
+    <button type="button" onClick={() => onSelect({ app_id: 'app-1', inputs: {}, files: [] })}>Select App</button>
   ),
 }))
 
@@ -408,7 +409,7 @@ describe('Form', () => {
         multi_tool: [{ id: 'tool-1' }],
       }))
       expect(onChange).toHaveBeenCalledWith(expect.objectContaining({
-        app_selector: { id: 'app-1', type: FormTypeEnum.appSelector },
+        app_selector: { app_id: 'app-1', inputs: {}, files: [], type: FormTypeEnum.appSelector },
       }))
     })
 
@@ -1235,6 +1236,10 @@ describe('Form', () => {
       expect(screen.getByText('Region'))!.toBeInTheDocument()
       expect(screen.getByText('Model'))!.toBeInTheDocument()
       expect(screen.getByText('Agree'))!.toBeInTheDocument()
+      expect(screen.getByLabelText('Enter your API key here'))!.toBeInTheDocument()
+      expect(screen.getByLabelText('Select region'))!.toBeInTheDocument()
+      expect(screen.getByLabelText('Choose model'))!.toBeInTheDocument()
+      expect(screen.getByLabelText('Agree tooltip'))!.toBeInTheDocument()
     })
 
     it('should render required asterisk for radio, select, checkbox, and other field types', () => {

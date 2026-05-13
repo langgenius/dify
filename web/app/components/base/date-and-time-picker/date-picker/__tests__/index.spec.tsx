@@ -513,10 +513,7 @@ describe('DatePicker', () => {
       // Open year/month picker
       fireEvent.click(screen.getByText(/2024/))
 
-      // The header in year/month view shows selected month/year with an up arrow
-      // Clicking it closes the year/month picker
-      const headerButtons = screen.getAllByRole('button')
-      fireEvent.click(headerButtons[0]!) // First button in year/month view is the header
+      fireEvent.click(screen.getByRole('button', { name: /time\.months\.June 2024/ }))
 
       // Should return to date view
       expect(screen.getAllByText(/daysInWeek/).length).toBeGreaterThan(0)

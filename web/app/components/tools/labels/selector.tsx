@@ -6,7 +6,6 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@langgenius/dify-ui/popover'
-import { RiArrowDownSLine } from '@remixicon/react'
 import { useDebounceFn } from 'ahooks'
 import { noop } from 'es-toolkit/function'
 import { useMemo, useState } from 'react'
@@ -60,27 +59,23 @@ const LabelSelector: FC<LabelSelectorProps> = ({
     <Popover open={open} onOpenChange={setOpen}>
       <div className="relative">
         <PopoverTrigger
-          render={(
-            <div className={cn(
-              'flex h-10 cursor-pointer items-center gap-1 rounded-lg border-[0.5px] border-transparent bg-components-input-bg-normal px-3 hover:bg-components-input-bg-hover',
-              open && '!hover:bg-components-input-bg-hover hover:bg-components-input-bg-hover',
-            )}
-            >
-              <div title={value.length > 0 ? selectedLabels : ''} className={cn('grow truncate text-[13px] leading-[18px] text-text-secondary', !value.length && 'text-text-quaternary!')}>
-                {!value.length && t('createTool.toolInput.labelPlaceholder', { ns: 'tools' })}
-                {!!value.length && selectedLabels}
-              </div>
-              <div className="ml-1 shrink-0 text-text-secondary opacity-60">
-                <RiArrowDownSLine className="h-4 w-4" />
-              </div>
-            </div>
+          className={cn(
+            'flex h-10 cursor-pointer items-center gap-1 rounded-lg border-[0.5px] border-transparent bg-components-input-bg-normal px-3 text-left hover:bg-components-input-bg-hover',
+            open && 'bg-components-input-bg-hover hover:bg-components-input-bg-hover',
           )}
-        />
+        >
+          <div title={value.length > 0 ? selectedLabels : ''} className={cn('grow truncate text-[13px] leading-4.5 text-text-secondary', !value.length && 'text-text-quaternary!')}>
+            {!value.length && t('createTool.toolInput.labelPlaceholder', { ns: 'tools' })}
+            {!!value.length && selectedLabels}
+          </div>
+          <div className="ml-1 shrink-0 text-text-secondary opacity-60">
+            <span className="i-ri-arrow-down-s-line h-4 w-4" />
+          </div>
+        </PopoverTrigger>
         <PopoverContent
           placement="bottom-start"
           sideOffset={4}
           popupClassName="border-none bg-transparent p-0 shadow-none backdrop-blur-none"
-          positionerProps={{ style: { zIndex: 1040 } }}
         >
           <div className="relative w-[591px] rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-[5px]">
             <div className="border-b-[0.5px] border-divider-regular p-2">

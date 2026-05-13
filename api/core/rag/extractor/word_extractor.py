@@ -110,7 +110,7 @@ class WordExtractor(BaseExtractor):
     def _extract_images_from_docx(self, doc):
         image_count = 0
         image_map = {}
-        base_url = dify_config.INTERNAL_FILES_URL or dify_config.FILES_URL
+        base_url = dify_config.FILES_URL
 
         for r_id, rel in doc.part.rels.items():
             if "image" in rel.target_ref:

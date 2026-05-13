@@ -22,6 +22,7 @@ from core.workflow.node_runtime import (
     DifyPromptMessageSerializer,
     DifyRetrieverAttachmentLoader,
     DifyToolFileManager,
+    DifyToolNodeRuntime,
     apply_dify_debug_email_recipient,
     build_dify_llm_file_saver,
     resolve_dify_run_context,
@@ -30,6 +31,7 @@ from graphon.file import FileTransferMethod, FileType
 from graphon.model_runtime.entities.common_entities import I18nObject
 from graphon.model_runtime.entities.model_entities import AIModelEntity, FetchFrom, ModelType
 from graphon.nodes.human_input.entities import HumanInputNodeData
+from graphon.nodes.tool.entities import ToolNodeData, ToolProviderType
 from tests.workflow_test_utils import build_test_run_context
 
 
@@ -314,6 +316,81 @@ def test_dify_tool_file_manager_delegates_file_generator_lookup(monkeypatch: pyt
     get_file_generator.assert_called_once_with("tool-file-id")
 
 
+def test_dify_tool_node_runtime_injects_outer_workflow_run_id_for_workflow_tools(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    runtime_tool = SimpleNamespace(runtime=SimpleNamespace(runtime_parameters={}))
+    get_runtime = MagicMock(return_value=runtime_tool)
+    monkeypatch.setattr(node_runtime.ToolManager, "get_workflow_tool_runtime", get_runtime)
+    monkeypatch.setattr(
+        node_runtime,
+        "get_system_text",
+        lambda _pool, key: (
+            "outer-workflow-run-id" if key == node_runtime.SystemVariableKey.WORKFLOW_EXECUTION_ID else None
+        ),
+    )
+
+    runtime = node_runtime.DifyToolNodeRuntime(_build_run_context())
+    node_data = ToolNodeData(
+        title="Workflow Tool Node",
+        desc=None,
+        provider_id="workflow-provider-id",
+        provider_type=ToolProviderType.WORKFLOW,
+        provider_name="workflow-provider",
+        tool_name="workflow-tool",
+        tool_label="Workflow Tool",
+        tool_configurations={},
+        tool_parameters={},
+    )
+
+    handle = runtime.get_runtime(
+        node_id="tool-node",
+        node_data=node_data,
+        variable_pool=object(),
+        node_execution_id="node-execution-id",
+    )
+
+    assert handle.raw.tool is runtime_tool
+    assert handle.raw.parent_trace_context.model_dump() == {
+        "parent_workflow_run_id": "outer-workflow-run-id",
+        "parent_node_execution_id": "node-execution-id",
+    }
+    assert runtime_tool.runtime.runtime_parameters == {}
+    get_runtime.assert_called_once()
+
+
+def test_dify_tool_node_runtime_does_not_inject_outer_workflow_run_id_for_non_workflow_tools(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    runtime_tool = SimpleNamespace(runtime=SimpleNamespace(runtime_parameters={}))
+    get_runtime = MagicMock(return_value=runtime_tool)
+    monkeypatch.setattr(node_runtime.ToolManager, "get_workflow_tool_runtime", get_runtime)
+    monkeypatch.setattr(node_runtime, "get_system_text", lambda _pool, _key: None)
+
+    runtime = node_runtime.DifyToolNodeRuntime(_build_run_context())
+    node_data = ToolNodeData(
+        title="Builtin Tool Node",
+        desc=None,
+        provider_id="builtin-provider-id",
+        provider_type=ToolProviderType.BUILT_IN,
+        provider_name="builtin-provider",
+        tool_name="builtin-tool",
+        tool_label="Builtin Tool",
+        tool_configurations={},
+        tool_parameters={},
+    )
+
+    handle = runtime.get_runtime(
+        node_id="tool-node",
+        node_data=node_data,
+        variable_pool=object(),
+    )
+
+    assert handle.raw.tool is runtime_tool
+    assert "outer_workflow_run_id" not in runtime_tool.runtime.runtime_parameters
+    get_runtime.assert_called_once()
+
+
 def test_dify_human_input_runtime_builds_debug_repository(monkeypatch: pytest.MonkeyPatch) -> None:
     repository = MagicMock()
     repository_cls = MagicMock(return_value=repository)
@@ -332,6 +409,41 @@ def test_dify_human_input_runtime_builds_debug_repository(monkeypatch: pytest.Mo
         invoke_source="debugger",
         submission_actor_id="user-id",
     )
+
+
+def test_dify_tool_runtime_spec_prefers_tool_parameters_for_runtime_form_values() -> None:
+    node_data = ToolNodeData(
+        provider_id="video-mixcut-agent",
+        provider_type=ToolProviderType.PLUGIN,
+        provider_name="sawyer-shi/video-mixcut-agent",
+        tool_name="mixcut",
+        tool_label="MixCut",
+        tool_configurations={"count": 2},
+        tool_parameters={
+            "vision_llm_model": {
+                "type": "constant",
+                "value": {
+                    "provider": "langgenius/tongyi/tongyi",
+                    "model": "qwen3-vl-plus",
+                    "model_type": "llm",
+                },
+            }
+        },
+    )
+
+    spec = DifyToolNodeRuntime._build_tool_runtime_spec(node_data)
+
+    assert spec.tool_configurations == {
+        "count": 2,
+        "vision_llm_model": {
+            "type": "constant",
+            "value": {
+                "provider": "langgenius/tongyi/tongyi",
+                "model": "qwen3-vl-plus",
+                "model_type": "llm",
+            },
+        },
+    }
 
 
 def test_dify_human_input_runtime_create_form_filters_debugger_delivery_methods() -> None:

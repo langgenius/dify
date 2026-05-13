@@ -149,7 +149,7 @@ def _build_human_input_node(
     )
     return HumanInputNode(
         node_id=node_id,
-        config=typed_node_data,
+        data=typed_node_data,
         graph_init_params=graph_init_params,
         graph_runtime_state=graph_runtime_state,
         runtime=runtime,
@@ -241,16 +241,16 @@ class TestUserAction:
 
     def test_user_action_length_boundaries(self):
         """Test user action id and title length boundaries."""
-        action = UserAction(id="a" * 20, title="b" * 20)
+        action = UserAction(id="a" * 20, title="b" * 100)
 
         assert action.id == "a" * 20
-        assert action.title == "b" * 20
+        assert action.title == "b" * 100
 
     @pytest.mark.parametrize(
         ("field_name", "value"),
         [
             ("id", "a" * 21),
-            ("title", "b" * 21),
+            ("title", "b" * 101),
         ],
     )
     def test_user_action_length_limits(self, field_name: str, value: str):
@@ -427,7 +427,7 @@ class TestHumanInputNodeVariableResolution:
     """Tests for resolving variable-based defaults in HumanInputNode."""
 
     def test_resolves_variable_defaults(self):
-        variable_pool = VariablePool(
+        variable_pool = VariablePool.from_bootstrap(
             system_variables=build_system_variables(
                 user_id="user",
                 app_id="app",
@@ -504,7 +504,7 @@ class TestHumanInputNodeVariableResolution:
         assert params.resolved_default_values == expected_values
 
     def test_debugger_falls_back_to_recipient_token_when_webapp_disabled(self):
-        variable_pool = VariablePool(
+        variable_pool = VariablePool.from_bootstrap(
             system_variables=build_system_variables(
                 user_id="user",
                 app_id="app",
@@ -565,7 +565,7 @@ class TestHumanInputNodeVariableResolution:
         assert not hasattr(pause_event.reason, "form_token")
 
     def test_webapp_runtime_keeps_form_visible_in_ui_when_webapp_delivery_is_enabled(self):
-        variable_pool = VariablePool(
+        variable_pool = VariablePool.from_bootstrap(
             system_variables=build_system_variables(
                 user_id="user",
                 app_id="app",
@@ -631,7 +631,7 @@ class TestHumanInputNodeVariableResolution:
         assert params.display_in_ui is True
 
     def test_debugger_debug_mode_overrides_email_recipients(self):
-        variable_pool = VariablePool(
+        variable_pool = VariablePool.from_bootstrap(
             system_variables=build_system_variables(
                 user_id="user-123",
                 app_id="app",
@@ -748,7 +748,7 @@ class TestHumanInputNodeRenderedContent:
     """Tests for rendering submitted content."""
 
     def test_replaces_outputs_placeholders_after_submission(self):
-        variable_pool = VariablePool(
+        variable_pool = VariablePool.from_bootstrap(
             system_variables=build_system_variables(
                 user_id="user",
                 app_id="app",

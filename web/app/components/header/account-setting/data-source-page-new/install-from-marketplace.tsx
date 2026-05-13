@@ -48,10 +48,15 @@ const InstallFromMarketplace = ({
     <div className="mb-2">
       <Divider className="mt-4! h-px" />
       <div className="flex items-center justify-between">
-        <div className="flex cursor-pointer items-center gap-1 system-md-semibold text-text-primary" onClick={() => setCollapse(!collapse)}>
-          <RiArrowDownSLine className={cn('h-4 w-4', collapse && '-rotate-90')} />
+        <button
+          type="button"
+          aria-expanded={!collapse}
+          className="flex cursor-pointer items-center gap-1 border-none bg-transparent p-0 text-left system-md-semibold text-text-primary"
+          onClick={() => setCollapse(!collapse)}
+        >
+          <RiArrowDownSLine className={cn('h-4 w-4', collapse && '-rotate-90')} aria-hidden="true" />
           {t('modelProvider.installDataSourceProvider', { ns: 'common' })}
-        </div>
+        </button>
         <div className="mb-2 flex items-center pt-2">
           <span className="pr-1 system-sm-regular text-text-tertiary">{t('modelProvider.discoverMore', { ns: 'common' })}</span>
           <Link target="_blank" href={getMarketplaceUrl('', { theme })} className="inline-flex items-center system-sm-medium text-text-accent">

@@ -61,7 +61,6 @@ const ConditionAdd = ({
         placement="bottom-start"
         sideOffset={4}
         popupClassName="border-none bg-transparent p-0 shadow-none backdrop-blur-none"
-        positionerProps={{ style: { zIndex: 1000 } }}
       >
         <div className="w-[296px] rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg">
           <VarReferenceVars

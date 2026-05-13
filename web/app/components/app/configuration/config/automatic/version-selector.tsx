@@ -1,10 +1,16 @@
 import { cn } from '@langgenius/dify-ui/cn'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuTrigger,
+} from '@langgenius/dify-ui/dropdown-menu'
 import { RiArrowDownSLine, RiCheckLine } from '@remixicon/react'
 import { useBoolean } from 'ahooks'
 import * as React from 'react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import { PortalToFollowElem, PortalToFollowElemContent, PortalToFollowElemTrigger } from '@/app/components/base/portal-to-follow-elem'
 
 type VersionSelectorProps = {
   versionLen: number
@@ -16,19 +22,14 @@ const VersionSelector: React.FC<VersionSelectorProps> = ({ versionLen, value, on
   const { t } = useTranslation()
   const [isOpen, {
     setFalse: handleOpenFalse,
-    toggle: handleOpenToggle,
     set: handleOpenSet,
   }] = useBoolean(false)
 
   const moreThanOneVersion = versionLen > 1
-  const handleOpen = useCallback((value: boolean) => {
+  const handleOpen = useCallback((nextOpen: boolean) => {
     if (moreThanOneVersion)
-      handleOpenSet(value)
-  }, [moreThanOneVersion, handleOpenToggle])
-  const handleToggle = useCallback(() => {
-    if (moreThanOneVersion)
-      handleOpenToggle()
-  }, [moreThanOneVersion, handleOpenToggle])
+      handleOpenSet(nextOpen)
+  }, [moreThanOneVersion, handleOpenSet])
 
   const versions = Array.from({ length: versionLen }, (_, index) => ({
     label: `${t('generate.version', { ns: 'appDebug' })} ${index + 1}${index === versionLen - 1 ? ` · ${t('generate.latest', { ns: 'appDebug' })}` : ''}`,
@@ -38,67 +39,59 @@ const VersionSelector: React.FC<VersionSelectorProps> = ({ versionLen, value, on
   const isLatest = value === versionLen - 1
 
   return (
-    <PortalToFollowElem
-      placement="bottom-start"
-      offset={{
-        mainAxis: 4,
-        crossAxis: -12,
-      }}
+    <DropdownMenu
       open={isOpen}
       onOpenChange={handleOpen}
     >
-      <PortalToFollowElemTrigger
-        onClick={handleToggle}
-        asChild
+      <DropdownMenuTrigger
+        nativeButton={false}
+        render={(
+          <div className={cn('flex items-center system-xs-medium text-text-tertiary', isOpen && 'text-text-secondary', moreThanOneVersion && 'cursor-pointer')} />
+        )}
       >
-
-        <div className={cn('flex items-center system-xs-medium text-text-tertiary', isOpen && 'text-text-secondary', moreThanOneVersion && 'cursor-pointer')}>
-          <div>
-            {t('generate.version', { ns: 'appDebug' })}
-            {' '}
-            {value + 1}
-            {isLatest && ` · ${t('generate.latest', { ns: 'appDebug' })}`}
-          </div>
-          {moreThanOneVersion && <RiArrowDownSLine className="size-3" />}
+        <div>
+          {t('generate.version', { ns: 'appDebug' })}
+          {' '}
+          {value + 1}
+          {isLatest && ` · ${t('generate.latest', { ns: 'appDebug' })}`}
         </div>
-      </PortalToFollowElemTrigger>
-      <PortalToFollowElemContent className={cn(
-        'z-99',
-      )}
+        {moreThanOneVersion && <RiArrowDownSLine className="size-3" />}
+      </DropdownMenuTrigger>
+      <DropdownMenuContent
+        placement="bottom-start"
+        sideOffset={4}
+        alignOffset={-12}
+        popupClassName="w-[208px] rounded-xl border-[0.5px] bg-components-panel-bg-blur p-1"
       >
-        <div
-          className={cn(
-            'w-[208px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-1 shadow-lg',
-          )}
+        <div className={cn('flex h-[22px] items-center px-3 pl-3 system-xs-medium-uppercase text-text-tertiary')}>
+          {t('generate.versions', { ns: 'appDebug' })}
+        </div>
+        <DropdownMenuRadioGroup
+          value={value}
+          onValueChange={(nextValue) => {
+            onChange(nextValue)
+            handleOpenFalse()
+          }}
         >
-          <div className={cn('flex h-[22px] items-center px-3 pl-3 system-xs-medium-uppercase text-text-tertiary')}>
-            {t('generate.versions', { ns: 'appDebug' })}
-          </div>
-          {
-            versions.map(option => (
-              <div
-                key={option.value}
-                className={cn(
-                  'flex h-7 cursor-pointer items-center rounded-lg px-2 system-sm-medium text-text-secondary hover:bg-state-base-hover',
-                )}
-                title={option.label}
-                onClick={() => {
-                  onChange(option.value)
-                  handleOpenFalse()
-                }}
-              >
-                <div className="mr-1 grow truncate px-1 pl-1">
-                  {option.label}
-                </div>
-                {
-                  value === option.value && <RiCheckLine className="h-4 w-4 shrink-0 text-text-accent" />
-                }
+          {versions.map(option => (
+            <DropdownMenuRadioItem
+              key={option.value}
+              value={option.value}
+              closeOnClick
+              className="h-7 rounded-lg px-2 system-sm-medium text-text-secondary"
+              title={option.label}
+            >
+              <div className="mr-1 grow truncate px-1 pl-1">
+                {option.label}
               </div>
-            ))
-          }
-        </div>
-      </PortalToFollowElemContent>
-    </PortalToFollowElem>
+              {
+                value === option.value && <RiCheckLine className="h-4 w-4 shrink-0 text-text-accent" />
+              }
+            </DropdownMenuRadioItem>
+          ))}
+        </DropdownMenuRadioGroup>
+      </DropdownMenuContent>
+    </DropdownMenu>
   )
 }
 

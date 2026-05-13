@@ -51,7 +51,6 @@ const DependencyPicker: FC<Props> = ({
         placement="bottom-start"
         sideOffset={4}
         popupClassName="border-none bg-transparent p-0 shadow-none backdrop-blur-none"
-        positionerProps={{ style: { zIndex: 100 } }}
       >
         <div
           className="rounded-lg bg-white p-1 shadow-sm"

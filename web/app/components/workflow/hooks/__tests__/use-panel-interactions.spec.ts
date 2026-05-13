@@ -36,10 +36,10 @@ describe('usePanelInteractions', () => {
     container.remove()
   })
 
-  it('handlePaneContextMenu should set panelMenu with computed coordinates when container exists', () => {
+  it('handlePaneContextMenu should set panelMenu with viewport coordinates', () => {
     const { result, store } = renderWorkflowHook(() => usePanelInteractions(), {
       initialStoreState: {
-        nodeMenu: { top: 20, left: 40, nodeId: 'n1' },
+        nodeMenu: { clientX: 40, clientY: 20, nodeId: 'n1' },
         selectionMenu: { clientX: 30, clientY: 50 },
         edgeMenu: { clientX: 320, clientY: 180, edgeId: 'e1' },
       },
@@ -54,26 +54,12 @@ describe('usePanelInteractions', () => {
 
     expect(preventDefault).toHaveBeenCalled()
     expect(store.getState().panelMenu).toEqual({
-      top: 200,
-      left: 250,
+      clientX: 350,
+      clientY: 250,
     })
     expect(store.getState().nodeMenu).toBeUndefined()
     expect(store.getState().selectionMenu).toBeUndefined()
     expect(store.getState().edgeMenu).toBeUndefined()
-  })
-
-  it('handlePaneContextMenu should throw when container does not exist', () => {
-    container.remove()
-
-    const { result } = renderWorkflowHook(() => usePanelInteractions())
-
-    expect(() => {
-      result.current.handlePaneContextMenu({
-        preventDefault: vi.fn(),
-        clientX: 350,
-        clientY: 250,
-      } as unknown as React.MouseEvent)
-    }).toThrow()
   })
 
   it('handlePaneContextMenu should sync clipboard from navigator clipboard', async () => {
@@ -106,7 +92,7 @@ describe('usePanelInteractions', () => {
 
   it('handlePaneContextmenuCancel should clear panelMenu', () => {
     const { result, store } = renderWorkflowHook(() => usePanelInteractions(), {
-      initialStoreState: { panelMenu: { top: 10, left: 20 } },
+      initialStoreState: { panelMenu: { clientX: 20, clientY: 10 } },
     })
 
     result.current.handlePaneContextmenuCancel()
@@ -116,7 +102,7 @@ describe('usePanelInteractions', () => {
 
   it('handleNodeContextmenuCancel should clear nodeMenu', () => {
     const { result, store } = renderWorkflowHook(() => usePanelInteractions(), {
-      initialStoreState: { nodeMenu: { top: 10, left: 20, nodeId: 'n1' } },
+      initialStoreState: { nodeMenu: { clientX: 20, clientY: 10, nodeId: 'n1' } },
     })
 
     result.current.handleNodeContextmenuCancel()

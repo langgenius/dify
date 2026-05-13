@@ -35,13 +35,18 @@ const SearchInput = ({
         data-testid="notion-search-input"
       />
       {
-        value && (
-          <div
-            className="i-ri-close-circle-fill h-4 w-4 shrink-0 cursor-pointer text-components-input-text-placeholder"
-            onClick={handleClear}
-            data-testid="notion-search-input-clear"
-          />
-        )
+        value
+          ? (
+              <button
+                type="button"
+                aria-label={t('operation.clear', { ns: 'common' })}
+                className="flex h-4 w-4 shrink-0 cursor-pointer items-center justify-center rounded-full border-none bg-transparent p-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-components-input-border-active"
+                onClick={handleClear}
+              >
+                <span className="i-ri-close-circle-fill h-4 w-4 text-components-input-text-placeholder" aria-hidden="true" />
+              </button>
+            )
+          : null
       }
     </div>
   )

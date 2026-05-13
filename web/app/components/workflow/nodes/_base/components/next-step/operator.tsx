@@ -89,11 +89,13 @@ const Operator = ({
       open={open}
       onOpenChange={onOpenChange}
     >
-      <DropdownMenuTrigger render={<div />}>
-        <Button className="h-6 w-6 p-0">
-          <span aria-hidden className="i-ri-more-fill h-4 w-4" />
-        </Button>
-      </DropdownMenuTrigger>
+      <DropdownMenuTrigger
+        render={(
+          <Button className="h-6 w-6 p-0" aria-label={t('common.moreActions', { ns: 'workflow' })}>
+            <span aria-hidden className="i-ri-more-fill h-4 w-4" />
+          </Button>
+        )}
+      />
       <DropdownMenuContent
         placement="bottom-end"
         sideOffset={4}

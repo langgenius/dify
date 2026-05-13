@@ -166,7 +166,7 @@ class SystemFeatureModel(BaseModel):
     enable_email_code_login: bool = False
     enable_email_password_login: bool = True
     enable_social_oauth_login: bool = False
-    enable_collaboration_mode: bool = False
+    enable_collaboration_mode: bool = True
     is_allow_register: bool = False
     is_allow_create_workspace: bool = False
     is_email_setup: bool = False

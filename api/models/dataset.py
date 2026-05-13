@@ -8,10 +8,9 @@ import os
 import pickle
 import re
 import time
-from collections.abc import Sequence
 from datetime import datetime
 from json import JSONDecodeError
-from typing import Any, TypedDict, cast
+from typing import Any, ClassVar, TypedDict, cast
 from uuid import uuid4
 
 import sqlalchemy as sa
@@ -24,7 +23,7 @@ from core.rag.index_processor.constant.built_in_field import BuiltInField, Metad
 from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
 from core.rag.index_processor.constant.query_type import QueryType
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
-from core.tools.signature import sign_upload_file
+from core.tools.signature import sign_upload_file_preview_url
 from extensions.ext_storage import storage
 from libs.uuid_utils import uuidv7
 
@@ -441,23 +440,27 @@ class Dataset(Base):
         return f"{dify_config.VECTOR_INDEX_NAME_PREFIX}_{normalized_dataset_id}_Node"
 
 
-class DatasetProcessRule(Base):  # bug
+class DatasetProcessRule(TypeBase):
     __tablename__ = "dataset_process_rules"
     __table_args__ = (
         sa.PrimaryKeyConstraint("id", name="dataset_process_rule_pkey"),
         sa.Index("dataset_process_rule_dataset_id_idx", "dataset_id"),
     )
 
-    id = mapped_column(StringUUID, nullable=False, default=lambda: str(uuid4()))
-    dataset_id = mapped_column(StringUUID, nullable=False)
-    mode = mapped_column(EnumText(ProcessRuleMode, length=255), nullable=False, server_default=sa.text("'automatic'"))
-    rules = mapped_column(LongText, nullable=True)
-    created_by = mapped_column(StringUUID, nullable=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
+    id: Mapped[str] = mapped_column(StringUUID, nullable=False, default_factory=lambda: str(uuid4()), init=False)
+    dataset_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    mode: Mapped[ProcessRuleMode] = mapped_column(
+        EnumText(ProcessRuleMode, length=255), nullable=False, server_default=sa.text("'automatic'")
+    )
+    rules: Mapped[str | None] = mapped_column(LongText, nullable=True)
+    created_by: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, nullable=False, server_default=func.current_timestamp(), init=False
+    )
 
     MODES = ["automatic", "custom", "hierarchical"]
     PRE_PROCESSING_RULES = ["remove_stopwords", "remove_extra_spaces", "remove_urls_emails"]
-    AUTOMATIC_RULES: AutomaticRulesConfig = {
+    AUTOMATIC_RULES: ClassVar[AutomaticRulesConfig] = {
         "pre_processing_rules": [
             {"id": "remove_extra_spaces", "enabled": True},
             {"id": "remove_urls_emails", "enabled": False},
@@ -827,7 +830,7 @@ class Document(Base):
         )
 
 
-class DocumentSegment(Base):
+class DocumentSegment(TypeBase):
     __tablename__ = "document_segments"
     __table_args__ = (
         sa.PrimaryKeyConstraint("id", name="document_segment_pkey"),
@@ -840,35 +843,40 @@ class DocumentSegment(Base):
     )
 
     # initial fields
-    id = mapped_column(StringUUID, nullable=False, default=lambda: str(uuid4()))
-    tenant_id = mapped_column(StringUUID, nullable=False)
-    dataset_id = mapped_column(StringUUID, nullable=False)
-    document_id = mapped_column(StringUUID, nullable=False)
+    id: Mapped[str] = mapped_column(StringUUID, nullable=False, default_factory=lambda: str(uuid4()), init=False)
+    tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    dataset_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    document_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     position: Mapped[int]
-    content = mapped_column(LongText, nullable=False)
-    answer = mapped_column(LongText, nullable=True)
+    content: Mapped[str] = mapped_column(LongText, nullable=False)
     word_count: Mapped[int]
     tokens: Mapped[int]
 
-    # indexing fields
-    keywords = mapped_column(sa.JSON, nullable=True)
-    index_node_id = mapped_column(String(255), nullable=True)
-    index_node_hash = mapped_column(String(255), nullable=True)
-
+    created_by: Mapped[str] = mapped_column(StringUUID, nullable=False)
     # basic fields
+    # indexing fields
+    index_node_id: Mapped[str | None] = mapped_column(String(255), nullable=True, default=None)
+    index_node_hash: Mapped[str | None] = mapped_column(String(255), nullable=True, default=None)
+    enabled: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("true"), default=True)
+    answer: Mapped[str | None] = mapped_column(LongText, nullable=True, default=None)
+    keywords: Mapped[Any] = mapped_column(sa.JSON, nullable=True, default=None)
+    disabled_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, default=None)
+    disabled_by: Mapped[str | None] = mapped_column(StringUUID, nullable=True, default=None)
+    status: Mapped[SegmentStatus] = mapped_column(
+        EnumText(SegmentStatus, length=255), server_default=sa.text("'waiting'"), default=SegmentStatus.WAITING
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, nullable=False, server_default=func.current_timestamp(), init=False
+    )
+    updated_by: Mapped[str | None] = mapped_column(StringUUID, nullable=True, default=None)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, nullable=False, server_default=func.current_timestamp(), init=False
+    )
+    indexing_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, default=None)
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, default=None)
+    error: Mapped[str | None] = mapped_column(LongText, nullable=True, default=None)
+    stopped_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, default=None)
     hit_count: Mapped[int] = mapped_column(sa.Integer, nullable=False, default=0)
-    enabled: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("true"))
-    disabled_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
-    disabled_by = mapped_column(StringUUID, nullable=True)
-    status: Mapped[str] = mapped_column(EnumText(SegmentStatus, length=255), server_default=sa.text("'waiting'"))
-    created_by = mapped_column(StringUUID, nullable=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
-    updated_by = mapped_column(StringUUID, nullable=True)
-    updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
-    indexing_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
-    completed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
-    error = mapped_column(LongText, nullable=True)
-    stopped_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
     @property
     def dataset(self):
@@ -895,7 +903,7 @@ class DocumentSegment(Base):
         )
 
     @property
-    def child_chunks(self) -> Sequence[Any]:
+    def child_chunks(self):
         if not self.document:
             return []
         process_rule = self.document.dataset_process_rule
@@ -910,7 +918,7 @@ class DocumentSegment(Base):
                     return child_chunks or []
         return []
 
-    def get_child_chunks(self) -> Sequence[Any]:
+    def get_child_chunks(self):
         if not self.document:
             return []
         process_rule = self.document.dataset_process_rule
@@ -941,7 +949,7 @@ class DocumentSegment(Base):
             nonce = os.urandom(16).hex()
             timestamp = str(int(time.time()))
             data_to_sign = f"image-preview|{upload_file_id}|{timestamp}|{nonce}"
-            secret_key = dify_config.SECRET_KEY.encode() if dify_config.SECRET_KEY else b""
+            secret_key = dify_config.SECRET_KEY.encode()
             sign = hmac.new(secret_key, data_to_sign.encode(), hashlib.sha256).digest()
             encoded_sign = base64.urlsafe_b64encode(sign).decode()
 
@@ -958,7 +966,7 @@ class DocumentSegment(Base):
             nonce = os.urandom(16).hex()
             timestamp = str(int(time.time()))
             data_to_sign = f"file-preview|{upload_file_id}|{timestamp}|{nonce}"
-            secret_key = dify_config.SECRET_KEY.encode() if dify_config.SECRET_KEY else b""
+            secret_key = dify_config.SECRET_KEY.encode()
             sign = hmac.new(secret_key, data_to_sign.encode(), hashlib.sha256).digest()
             encoded_sign = base64.urlsafe_b64encode(sign).decode()
 
@@ -977,7 +985,7 @@ class DocumentSegment(Base):
             nonce = os.urandom(16).hex()
             timestamp = str(int(time.time()))
             data_to_sign = f"file-preview|{upload_file_id}|{timestamp}|{nonce}"
-            secret_key = dify_config.SECRET_KEY.encode() if dify_config.SECRET_KEY else b""
+            secret_key = dify_config.SECRET_KEY.encode()
             sign = hmac.new(secret_key, data_to_sign.encode(), hashlib.sha256).digest()
             encoded_sign = base64.urlsafe_b64encode(sign).decode()
 
@@ -1015,12 +1023,12 @@ class DocumentSegment(Base):
             nonce = os.urandom(16).hex()
             timestamp = str(int(time.time()))
             data_to_sign = f"image-preview|{upload_file_id}|{timestamp}|{nonce}"
-            secret_key = dify_config.SECRET_KEY.encode() if dify_config.SECRET_KEY else b""
+            secret_key = dify_config.SECRET_KEY.encode()
             sign = hmac.new(secret_key, data_to_sign.encode(), hashlib.sha256).digest()
             encoded_sign = base64.urlsafe_b64encode(sign).decode()
 
             params = f"timestamp={timestamp}&nonce={nonce}&sign={encoded_sign}"
-            reference_url = dify_config.CONSOLE_API_URL or ""
+            reference_url = dify_config.FILES_URL or dify_config.CONSOLE_API_URL or ""
             base_url = f"{reference_url}/files/{upload_file_id}/image-preview"
             source_url = f"{base_url}?{params}"
             attachment_list.append(
@@ -1162,7 +1170,7 @@ class DatasetQuery(TypeBase):
                                 "size": file_info.size,
                                 "extension": file_info.extension,
                                 "mime_type": file_info.mime_type,
-                                "source_url": sign_upload_file(file_info.id, file_info.extension),
+                                "source_url": sign_upload_file_preview_url(file_info.id, file_info.extension),
                             }
                     else:
                         query["file_info"] = None

@@ -19,7 +19,6 @@ import AuthForm from '@/app/components/base/form/form-scenarios/auth'
 import { FormTypeEnum } from '@/app/components/base/form/types'
 import Loading from '@/app/components/base/loading'
 import { ReadmeEntrance } from '../../readme-panel/entrance'
-import { ReadmeShowType } from '../../readme-panel/store'
 import {
   useAddPluginCredentialHook,
   useGetPluginCredentialSchemaHook,
@@ -140,7 +139,10 @@ const ApiKeyModal = ({
       open={open}
       onOpenChange={handleOpenChange}
     >
-      <DialogContent className="w-[640px]! max-w-[calc(100vw-2rem)]! p-0!">
+      <DialogContent
+        backdropProps={{ forceRender: true }}
+        className="w-[640px]! max-w-[calc(100vw-2rem)]! p-0!"
+      >
         <div data-testid="modal" className="flex max-h-[80dvh] flex-col">
           <div className="relative shrink-0 p-6 pr-14 pb-3">
             <DialogTitle data-testid="modal-title" className="title-2xl-semi-bold text-text-primary">
@@ -150,13 +152,12 @@ const ApiKeyModal = ({
               {t('auth.useApiAuthDesc', { ns: 'plugin' })}
             </div>
             <DialogCloseButton
-              data-testid="modal-close"
               className="top-5 right-5 h-8 w-8 rounded-lg"
             />
           </div>
           <div className="min-h-0 flex-1 overflow-y-auto px-6 py-3">
             {pluginPayload.detail && (
-              <ReadmeEntrance pluginDetail={pluginPayload.detail} showType={ReadmeShowType.modal} />
+              <ReadmeEntrance pluginDetail={pluginPayload.detail} presentation="dialog" />
             )}
             {
               isLoading && (

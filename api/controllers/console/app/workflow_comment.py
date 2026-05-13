@@ -23,7 +23,6 @@ from services.account_service import TenantService
 from services.workflow_comment_service import WorkflowCommentService
 
 logger = logging.getLogger(__name__)
-DEFAULT_REF_TEMPLATE_SWAGGER_2_0 = "#/definitions/{model}"
 
 
 class WorkflowCommentCreatePayload(BaseModel):
@@ -52,13 +51,14 @@ class WorkflowCommentMentionUsersPayload(BaseModel):
     users: list[AccountWithRole]
 
 
-for model in (
+register_schema_models(
+    console_ns,
+    AccountWithRole,
+    WorkflowCommentMentionUsersPayload,
     WorkflowCommentCreatePayload,
     WorkflowCommentUpdatePayload,
     WorkflowCommentReplyPayload,
-):
-    console_ns.schema_model(model.__name__, model.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0))
-register_schema_models(console_ns, AccountWithRole, WorkflowCommentMentionUsersPayload)
+)
 
 workflow_comment_basic_model = console_ns.model("WorkflowCommentBasic", workflow_comment_basic_fields)
 workflow_comment_detail_model = console_ns.model("WorkflowCommentDetail", workflow_comment_detail_fields)

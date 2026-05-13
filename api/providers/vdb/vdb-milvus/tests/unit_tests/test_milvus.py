@@ -99,7 +99,7 @@ def _build_fake_pymilvus_modules():
 
 
 @pytest.fixture
-def milvus_module(monkeypatch):
+def milvus_module(monkeypatch: pytest.MonkeyPatch):
     for name, module in _build_fake_pymilvus_modules().items():
         monkeypatch.setitem(sys.modules, name, module)
 
@@ -327,7 +327,7 @@ def test_process_search_results_and_search_methods(milvus_module):
     assert "document_id" in vector._client.search.call_args.kwargs["filter"]
 
 
-def test_create_collection_cache_and_existing_collection(milvus_module, monkeypatch):
+def test_create_collection_cache_and_existing_collection(milvus_module, monkeypatch: pytest.MonkeyPatch):
     lock = MagicMock()
     lock.__enter__.return_value = None
     lock.__exit__.return_value = None
@@ -351,7 +351,7 @@ def test_create_collection_cache_and_existing_collection(milvus_module, monkeypa
     milvus_module.redis_client.set.assert_called()
 
 
-def test_create_collection_builds_schema_and_indexes(milvus_module, monkeypatch):
+def test_create_collection_builds_schema_and_indexes(milvus_module, monkeypatch: pytest.MonkeyPatch):
     lock = MagicMock()
     lock.__enter__.return_value = None
     lock.__exit__.return_value = None
@@ -385,7 +385,7 @@ def test_create_collection_builds_schema_and_indexes(milvus_module, monkeypatch)
     assert call_kwargs["consistency_level"] == "Session"
 
 
-def test_factory_initializes_milvus_vector(milvus_module, monkeypatch):
+def test_factory_initializes_milvus_vector(milvus_module, monkeypatch: pytest.MonkeyPatch):
     factory = milvus_module.MilvusVectorFactory()
     dataset_with_index = SimpleNamespace(
         id="dataset-1",

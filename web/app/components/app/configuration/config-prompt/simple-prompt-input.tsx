@@ -5,11 +5,6 @@ import type { PromptVariable } from '@/models/debug'
 import type { GenRes } from '@/service/debug'
 import { cn } from '@langgenius/dify-ui/cn'
 import { toast } from '@langgenius/dify-ui/toast'
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from '@langgenius/dify-ui/tooltip'
 import { useBoolean } from 'ahooks'
 import { noop } from 'es-toolkit/function'
 import { produce } from 'immer'
@@ -21,6 +16,7 @@ import { ADD_EXTERNAL_DATA_TOOL } from '@/app/components/app/configuration/confi
 import AutomaticBtn from '@/app/components/app/configuration/config/automatic/automatic-btn'
 import GetAutomaticResModal from '@/app/components/app/configuration/config/automatic/get-automatic-res'
 import { useFeaturesStore } from '@/app/components/base/features/hooks'
+import { Infotip } from '@/app/components/base/infotip'
 import PromptEditor from '@/app/components/base/prompt-editor'
 import { PROMPT_EDITOR_UPDATE_VALUE_BY_EVENT_EMITTER } from '@/app/components/base/prompt-editor/plugins/update-block'
 import { INSERT_VARIABLE_VALUE_BLOCK_COMMAND } from '@/app/components/base/prompt-editor/plugins/variable-block'
@@ -183,18 +179,13 @@ const Prompt: FC<ISimplePromptInput> = ({
             <div className="flex items-center space-x-1">
               <div className="system-sm-semibold-uppercase text-text-secondary">{mode !== AppModeEnum.COMPLETION ? t('chatSubTitle', { ns: 'appDebug' }) : t('completionSubTitle', { ns: 'appDebug' })}</div>
               {!readonly && (
-                <Tooltip>
-                  <TooltipTrigger
-                    render={(
-                      <span className="ml-1 i-ri-question-line h-4 w-4 shrink-0 text-text-quaternary" />
-                    )}
-                  />
-                  <TooltipContent>
-                    <div className="w-[180px]">
-                      {t('promptTip', { ns: 'appDebug' })}
-                    </div>
-                  </TooltipContent>
-                </Tooltip>
+                <Infotip
+                  aria-label={t('promptTip', { ns: 'appDebug' })}
+                  className="ml-1"
+                  popupClassName="w-[180px]"
+                >
+                  {t('promptTip', { ns: 'appDebug' })}
+                </Infotip>
               )}
             </div>
             <div className="flex items-center">
