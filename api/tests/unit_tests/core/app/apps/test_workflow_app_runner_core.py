@@ -375,7 +375,11 @@ class TestWorkflowBasedAppRunner:
 
         runner = WorkflowBasedAppRunner(queue_manager=_QueueManager(), app_id="app")
         graph_runtime_state = GraphRuntimeState(
-            variable_pool=VariablePool(system_variables=default_system_variables()),
+            variable_pool=VariablePool.from_bootstrap(
+                system_variables=default_system_variables(),
+                user_inputs={},
+                environment_variables=[],
+            ),
             start_at=0.0,
         )
         workflow_entry = SimpleNamespace(graph_engine=SimpleNamespace(graph_runtime_state=graph_runtime_state))
