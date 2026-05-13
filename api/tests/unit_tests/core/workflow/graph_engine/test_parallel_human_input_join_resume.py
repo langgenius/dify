@@ -60,6 +60,21 @@ class InMemoryPauseStore:
         return GraphRuntimeState.from_snapshot(self._snapshot)
 
 
+class _TestFileReferenceFactory:
+    def build_from_mapping(self, *, mapping: Mapping[str, Any]) -> File:
+        return File(
+            file_id=mapping.get("id"),
+            file_type=FileType(mapping["type"]),
+            transfer_method=FileTransferMethod(mapping["transfer_method"]),
+            remote_url=mapping.get("remote_url") or mapping.get("url"),
+            related_id=mapping.get("related_id") or mapping.get("upload_file_id"),
+            filename=mapping.get("filename"),
+            extension=mapping.get("extension"),
+            mime_type=mapping.get("mime_type"),
+            size=mapping.get("size", -1),
+        )
+
+
 @dataclass
 class StaticForm(HumanInputFormEntity):
     form_id: str
@@ -178,6 +193,7 @@ def _build_graph(runtime_state: GraphRuntimeState, repo: HumanInputFormRepositor
         graph_runtime_state=runtime_state,
         form_repository=repo,
         runtime=DifyHumanInputNodeRuntime(graph_init_params.run_context),
+        file_reference_factory=_TestFileReferenceFactory(),
     )
 
     human_b_config = {"id": "human_b", "data": human_data.model_dump()}
@@ -188,6 +204,7 @@ def _build_graph(runtime_state: GraphRuntimeState, repo: HumanInputFormRepositor
         graph_runtime_state=runtime_state,
         form_repository=repo,
         runtime=DifyHumanInputNodeRuntime(graph_init_params.run_context),
+        file_reference_factory=_TestFileReferenceFactory(),
     )
 
     end_data = EndNodeData(

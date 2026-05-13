@@ -1,12 +1,14 @@
 import datetime
+from collections.abc import Mapping
 from types import SimpleNamespace
+from typing import Any
 
 from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, InvokeFrom, UserFrom
 from core.workflow.node_runtime import DifyHumanInputNodeRuntime
 from core.workflow.system_variables import default_system_variables
 from graphon.entities import GraphInitParams
 from graphon.enums import BuiltinNodeTypes
-from graphon.file import FileTransferMethod, FileType
+from graphon.file import File, FileTransferMethod, FileType
 from graphon.graph_events import (
     NodeRunHumanInputFormFilledEvent,
     NodeRunHumanInputFormTimeoutEvent,
@@ -23,6 +25,7 @@ from graphon.nodes.human_input.entities import (
 )
 from graphon.nodes.human_input.enums import HumanInputFormStatus
 from graphon.nodes.human_input.human_input_node import HumanInputNode
+from graphon.nodes.protocols import FileReferenceFactoryProtocol
 from graphon.runtime import GraphRuntimeState, VariablePool
 from graphon.variables.segments import ArrayFileSegment, FileSegment, StringSegment
 from graphon.variables.types import SegmentType
@@ -35,6 +38,21 @@ class _FakeFormRepository:
 
     def get_form(self, *_args, **_kwargs):
         return self._form
+
+
+class _TestFileReferenceFactory(FileReferenceFactoryProtocol):
+    def build_from_mapping(self, *, mapping: Mapping[str, Any]):
+        return File(
+            file_id=mapping.get("id"),
+            file_type=FileType(mapping["type"]),
+            transfer_method=FileTransferMethod(mapping["transfer_method"]),
+            remote_url=mapping.get("remote_url") or mapping.get("url"),
+            related_id=mapping.get("related_id") or mapping.get("upload_file_id"),
+            filename=mapping.get("filename"),
+            extension=mapping.get("extension"),
+            mime_type=mapping.get("mime_type"),
+            size=mapping.get("size", -1),
+        )
 
 
 def _create_human_input_node(
@@ -56,6 +74,7 @@ def _create_human_input_node(
         graph_runtime_state=graph_runtime_state,
         form_repository=repo,
         runtime=DifyHumanInputNodeRuntime(graph_init_params.run_context),
+        file_reference_factory=_TestFileReferenceFactory(),
     )
 
 
@@ -216,10 +235,7 @@ def test_human_input_node_emits_form_filled_event_before_succeeded():
     filled_event = events[1]
     assert filled_event.node_title == "Human Input"
     assert filled_event.rendered_content == (
-        "Please enter your name:\n\nAlice\n"
-        "Decision: approve\n"
-        "Attachment: [file]\n"
-        "Attachments: [1 files]"
+        "Please enter your name:\n\nAlice\nDecision: approve\nAttachment: [file]\nAttachments: [1 files]"
     )
     assert filled_event.action_id == "Accept"
     assert filled_event.action_text == "Approve"
