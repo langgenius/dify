@@ -98,8 +98,12 @@ export function useSearchTab() {
   const handleChange = useCallback(
     (newTab: string) => {
       const location = new URL(window.location.href)
+      const isAlreadyOnSearch = location.pathname.startsWith('/search/')
       location.pathname = `/search/${newTab}`
-      router.push(location.href)
+      if (isAlreadyOnSearch)
+        router.replace(location.href)
+      else
+        router.push(location.href)
     },
     [router],
   )
