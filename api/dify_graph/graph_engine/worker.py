@@ -10,9 +10,7 @@ import threading
 import time
 from collections.abc import Sequence
 from datetime import datetime
-from typing import TYPE_CHECKING, final
-
-from typing_extensions import override
+from typing import TYPE_CHECKING, final, override
 
 from dify_graph.context import IExecutionContext
 from dify_graph.enums import WorkflowNodeExecutionStatus

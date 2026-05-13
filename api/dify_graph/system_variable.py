@@ -1,11 +1,11 @@
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from types import MappingProxyType
 from typing import Any
 from uuid import uuid4
 
-from pydantic import AliasChoices, BaseModel, ConfigDict, Field, model_validator
+from pydantic import AliasChoices, BaseModel, ConfigDict, Field, PrivateAttr, model_validator
 
 from dify_graph.enums import SystemVariableKey
 from dify_graph.file.models import File
@@ -49,6 +49,8 @@ class SystemVariable(BaseModel):
     query: str | None = None
     conversation_id: str | None = None
     dialogue_count: int | None = None
+
+    _dialogue_count_resolver: Callable[[], int] | None = PrivateAttr(default=None)
     document_id: str | None = None
     original_document_id: str | None = None
     dataset_id: str | None = None

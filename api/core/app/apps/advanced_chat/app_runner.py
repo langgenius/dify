@@ -1,6 +1,6 @@
 import logging
 import time
-from collections.abc import Mapping, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from typing import Any, cast
 
 from sqlalchemy import select
@@ -58,7 +58,7 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
         queue_manager: AppQueueManager,
         conversation: Conversation,
         message: Message,
-        dialogue_count: int,
+        dialogue_count_resolver: Callable[[], int],
         variable_loader: VariableLoader,
         workflow: Workflow,
         system_user_id: str,
@@ -77,7 +77,7 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
         self.application_generate_entity = application_generate_entity
         self.conversation = conversation
         self.message = message
-        self._dialogue_count = dialogue_count
+        self._dialogue_count_resolver = dialogue_count_resolver
         self._workflow = workflow
         self.system_user_id = system_user_id
         self._app = app
@@ -95,11 +95,11 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
             files=self.application_generate_entity.files,
             conversation_id=self.conversation.id,
             user_id=self.system_user_id,
-            dialogue_count=self._dialogue_count,
             app_id=app_config.app_id,
             workflow_id=app_config.workflow_id,
             workflow_execution_id=self.application_generate_entity.workflow_run_id,
         )
+        system_inputs._dialogue_count_resolver = self._dialogue_count_resolver
 
         with Session(db.engine, expire_on_commit=False) as session:
             app_record = session.scalar(select(App).where(App.id == app_config.app_id))

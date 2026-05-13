@@ -7,9 +7,7 @@ graph execution for debugging purposes.
 
 import logging
 from collections.abc import Mapping
-from typing import Any, final
-
-from typing_extensions import override
+from typing import Any, final, override
 
 from dify_graph.graph_events import (
     GraphEngineEvent,

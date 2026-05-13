@@ -1,7 +1,5 @@
 import logging
-from typing import final
-
-from typing_extensions import override
+from typing import final, override
 
 from dify_graph.entities.pause_reason import SchedulingPause
 from dify_graph.runtime import VariablePool

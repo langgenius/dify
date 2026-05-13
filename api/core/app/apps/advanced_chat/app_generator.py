@@ -32,7 +32,6 @@ from core.app.entities.task_entities import ChatbotAppBlockingResponse, ChatbotA
 from core.app.layers.pause_state_persist_layer import PauseStateLayerConfig, PauseStatePersistenceLayer
 from core.helper.trace_id_helper import extract_external_trace_id_from_args
 from core.ops.ops_trace_manager import TraceQueueManager
-from core.prompt.utils.get_thread_messages_length import get_thread_messages_length
 from core.repositories import DifyCoreRepositoryFactory
 from dify_graph.graph_engine.layers.base import GraphEngineLayer
 from dify_graph.model_runtime.errors.invoke import InvokeAuthorizationError
@@ -473,10 +472,21 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
             db.session.commit()
             db.session.refresh(conversation)
 
-        # get conversation dialogue count
+        # get conversation dialogue count (lazy — computed only when referenced in workflow)
         # NOTE: dialogue_count should not start from 0,
         # because during the first conversation, dialogue_count should be 1.
-        self._dialogue_count = get_thread_messages_length(conversation.id) + 1
+        # Capture the engine reference while in app context to use it in the resolver closure
+        engine = db.engine
+
+        def _dialogue_count_resolver() -> int:
+            from sqlalchemy.orm import Session
+
+            from core.prompt.utils.get_thread_messages_length import get_thread_messages_length_with_session
+
+            with Session(engine) as session:
+                return get_thread_messages_length_with_session(conversation.id, session) + 1
+
+        self._dialogue_count_resolver = _dialogue_count_resolver
 
         # init queue manager
         queue_manager = MessageBasedAppQueueManager(
@@ -612,7 +622,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
                 queue_manager=queue_manager,
                 conversation=conversation,
                 message=message,
-                dialogue_count=self._dialogue_count,
+                dialogue_count_resolver=self._dialogue_count_resolver,
                 variable_loader=variable_loader,
                 workflow=workflow,
                 system_user_id=system_user_id,
@@ -675,7 +685,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
             conversation=conversation,
             message=message,
             user=user,
-            dialogue_count=self._dialogue_count,
+            dialogue_count_resolver=self._dialogue_count_resolver,
             stream=stream,
             draft_var_saver_factory=draft_var_saver_factory,
         )
@@ -693,8 +703,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
 _T = TypeVar("_T", bound=Base)
 
 
-def _refresh_model(session, model: _T) -> _T:
-    with Session(bind=db.engine, expire_on_commit=False) as session:
-        detach_model = session.get(type(model), model.id)
-        assert detach_model is not None
-        return detach_model
+def _refresh_model(session: Session, model: _T) -> _T:
+    detach_model = session.get(type(model), model.id)
+    assert detach_model is not None
+    return detach_model

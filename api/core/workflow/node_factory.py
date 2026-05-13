@@ -2,11 +2,10 @@ import importlib
 import pkgutil
 from collections.abc import Callable, Iterator, Mapping, MutableMapping
 from functools import lru_cache
-from typing import TYPE_CHECKING, Any, TypeAlias, cast, final
+from typing import TYPE_CHECKING, Any, TypeAlias, cast, final, override
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
-from typing_extensions import override
 
 from configs import dify_config
 from core.app.entities.app_invoke_entities import DifyRunContext

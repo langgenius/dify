@@ -9,11 +9,10 @@ associates with the node span.
 
 import logging
 from dataclasses import dataclass
-from typing import cast, final
+from typing import cast, final, override
 
 from opentelemetry import context as context_api
 from opentelemetry.trace import Span, SpanKind, Tracer, get_tracer, set_span_in_context
-from typing_extensions import override
 
 from configs import dify_config
 from dify_graph.enums import BuiltinNodeTypes, NodeType

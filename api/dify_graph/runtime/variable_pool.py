@@ -6,7 +6,7 @@ from collections.abc import Mapping, Sequence
 from copy import deepcopy
 from typing import Annotated, Any, Union, cast
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, PrivateAttr
 
 from dify_graph.constants import (
     CONVERSATION_VARIABLE_NODE_ID,
@@ -15,7 +15,7 @@ from dify_graph.constants import (
     SYSTEM_VARIABLE_NODE_ID,
 )
 from dify_graph.file import File, FileAttribute, file_manager
-from dify_graph.system_variable import SystemVariable
+from dify_graph.system_variable import SystemVariable, SystemVariableKey
 from dify_graph.variables import Segment, SegmentGroup, VariableBase
 from dify_graph.variables.consts import SELECTORS_LENGTH
 from dify_graph.variables.segments import FileSegment, ObjectSegment
@@ -58,6 +58,8 @@ class VariablePool(BaseModel):
         description="RAG pipeline variables.",
         default_factory=list,
     )
+
+    _lazy_resolvers: dict[tuple[str, str], Callable[[], Any]] = PrivateAttr(default_factory=dict)
 
     def model_post_init(self, context: Any, /):
         # Create a mapping from field names to SystemVariableKey enum values
@@ -168,7 +170,15 @@ class VariablePool(BaseModel):
         segment: Segment | None = node_map.get(name)
 
         if segment is None:
-            return None
+            # Check if this is a lazy system variable that hasn't been resolved yet
+            resolver = self._lazy_resolvers.get((node_id, name))
+            if resolver is not None:
+                resolved_value = resolver()
+                self.add((node_id, name), resolved_value)  # Cache the resolved value
+                del self._lazy_resolvers[(node_id, name)]  # Remove resolver
+                segment = node_map.get(name)  # Get the newly added segment
+            else:
+                return None
 
         if len(selector) == 2:
             return segment
@@ -263,14 +273,23 @@ class VariablePool(BaseModel):
         return result
 
     def _add_system_variables(self, system_variable: SystemVariable):
+        # Handle lazy dialogue_count resolver separately (not in to_dict when value is None)
+        if system_variable._dialogue_count_resolver is not None:
+            selector = (SYSTEM_VARIABLE_NODE_ID, SystemVariableKey.DIALOGUE_COUNT)
+            if not self._has(selector):
+                self._lazy_resolvers[selector] = system_variable._dialogue_count_resolver
+
         sys_var_mapping = system_variable.to_dict()
         for key, value in sys_var_mapping.items():
-            if value is None:
-                continue
             selector = (SYSTEM_VARIABLE_NODE_ID, key)
             # If the system variable already exists, do not add it again.
             # This ensures that we can keep the id of the system variables intact.
             if self._has(selector):
+                continue
+            # Skip dialogue_count here since it's handled by the lazy resolver above
+            if key == SystemVariableKey.DIALOGUE_COUNT:
+                continue
+            if value is None:
                 continue
             self.add(selector, value)
 

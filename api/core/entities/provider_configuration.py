@@ -9,7 +9,6 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from configs import dify_config
 from constants import HIDDEN_VALUE
 from core.entities.model_entities import ModelStatus, ModelWithProviderEntity, SimpleModelProviderEntity
 from core.entities.provider_entities import (

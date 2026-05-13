@@ -97,7 +97,7 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         message: Message,
         user: Union[Account, EndUser],
         stream: bool,
-        dialogue_count: int,
+        dialogue_count_resolver: Callable[[], int],
         draft_var_saver_factory: DraftVariableSaverFactory,
     ):
         self._base_task_pipeline = BasedGenerateTaskPipeline(
@@ -122,11 +122,11 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
             files=application_generate_entity.files,
             conversation_id=conversation.id,
             user_id=user_session_id,
-            dialogue_count=dialogue_count,
             app_id=application_generate_entity.app_config.app_id,
             workflow_id=workflow.id,
             workflow_execution_id=application_generate_entity.workflow_run_id,
         )
+        self._workflow_system_variables._dialogue_count_resolver = dialogue_count_resolver
         self._workflow_response_converter = WorkflowResponseConverter(
             application_generate_entity=application_generate_entity,
             user=user,
