@@ -6,7 +6,7 @@ import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@langgenius/dify-ui/dropdown-menu'
 import { Select, SelectContent, SelectItem, SelectItemIndicator, SelectItemText, SelectTrigger } from '@langgenius/dify-ui/select'
-import { useEffect, useMemo } from 'react'
+import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import Checkbox from '@/app/components/base/checkbox'
 import Input from '@/app/components/base/input'
@@ -35,14 +35,6 @@ type AppListHeaderFiltersProps = {
   showCreateButton: boolean
 }
 
-const isEditableTarget = (target: EventTarget | null) => {
-  if (!(target instanceof HTMLElement))
-    return false
-
-  const tagName = target.tagName.toLowerCase()
-  return tagName === 'input' || tagName === 'textarea' || target.isContentEditable
-}
-
 const AppListHeaderFilters: FC<AppListHeaderFiltersProps> = ({
   category,
   tagIDs,
@@ -67,36 +59,6 @@ const AppListHeaderFilters: FC<AppListHeaderFiltersProps> = ({
     { value: AppModeEnum.AGENT_CHAT, text: t('types.agent', { ns: 'app' }), icon: <span className="mr-1 i-ri-robot-3-line h-[14px] w-[14px]" /> },
     { value: AppModeEnum.COMPLETION, text: t('types.completion', { ns: 'app' }), icon: <span className="mr-1 i-ri-file-4-line h-[14px] w-[14px]" /> },
   ], [t])
-
-  useEffect(() => {
-    if (!showCreateButton)
-      return
-
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (
-        event.defaultPrevented
-        || event.repeat
-        || event.altKey
-        || isEditableTarget(event.target)
-        || !(event.metaKey || event.ctrlKey)
-        || event.key.toLowerCase() !== 'n'
-      ) {
-        return
-      }
-
-      event.preventDefault()
-
-      if (event.shiftKey)
-        onCreateTemplate()
-      else
-        onCreateBlank()
-    }
-
-    window.addEventListener('keydown', handleKeyDown, { capture: true })
-    return () => {
-      window.removeEventListener('keydown', handleKeyDown, { capture: true })
-    }
-  }, [onCreateBlank, onCreateTemplate, showCreateButton])
 
   return (
     <div className="flex flex-wrap items-center justify-between gap-2 pt-2">
@@ -172,10 +134,6 @@ const AppListHeaderFilters: FC<AppListHeaderFiltersProps> = ({
                 >
                   <span aria-hidden className="i-ri-sticky-note-add-line size-4 shrink-0 text-text-secondary" />
                   <span className="min-w-0 flex-1 truncate px-1">{t('newApp.startFromBlank', { ns: 'app' })}</span>
-                  <span className="flex shrink-0 items-center gap-0.5">
-                    <kbd className="min-w-4 rounded bg-components-kbd-bg-gray px-px text-center system-kbd text-text-tertiary">⌘</kbd>
-                    <kbd className="min-w-4 rounded bg-components-kbd-bg-gray px-px text-center system-kbd text-text-tertiary">N</kbd>
-                  </span>
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   className="h-8 gap-1 rounded-lg px-2 py-1 system-md-regular text-text-secondary"
@@ -183,11 +141,6 @@ const AppListHeaderFilters: FC<AppListHeaderFiltersProps> = ({
                 >
                   <span aria-hidden className="i-ri-apps-2-add-line size-4 shrink-0 text-text-secondary" />
                   <span className="min-w-0 flex-1 truncate px-1">{t('newApp.startFromTemplate', { ns: 'app' })}</span>
-                  <span className="flex shrink-0 items-center gap-0.5">
-                    <kbd className="min-w-4 rounded bg-components-kbd-bg-gray px-px text-center system-kbd text-text-tertiary">⇧</kbd>
-                    <kbd className="min-w-4 rounded bg-components-kbd-bg-gray px-px text-center system-kbd text-text-tertiary">⌘</kbd>
-                    <kbd className="min-w-4 rounded bg-components-kbd-bg-gray px-px text-center system-kbd text-text-tertiary">N</kbd>
-                  </span>
                 </DropdownMenuItem>
               </div>
               <div className="h-px bg-divider-subtle" />

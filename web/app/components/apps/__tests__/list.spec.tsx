@@ -494,30 +494,6 @@ describe('List', () => {
       expect(screen.getByTestId('create-dsl-modal'))!.toBeInTheDocument()
     })
 
-    it('should open blank app modal with create shortcut', () => {
-      renderList()
-
-      fireEvent.keyDown(window, { key: 'n', metaKey: true })
-
-      expect(screen.getByTestId('create-app-modal'))!.toBeInTheDocument()
-    })
-
-    it('should open template dialog with create template shortcut', () => {
-      renderList()
-
-      fireEvent.keyDown(window, { key: 'n', metaKey: true, shiftKey: true })
-
-      expect(screen.getByTestId('template-dialog'))!.toBeInTheDocument()
-    })
-
-    it('should not trigger create shortcut while typing in search', () => {
-      renderList()
-
-      fireEvent.keyDown(screen.getByRole('textbox'), { key: 'n', metaKey: true })
-
-      expect(screen.queryByTestId('create-app-modal'))!.not.toBeInTheDocument()
-    })
-
     it('should not render create button for non-editors', () => {
       mockIsCurrentWorkspaceEditor.mockReturnValue(false)
 
