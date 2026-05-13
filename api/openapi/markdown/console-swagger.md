@@ -12211,16 +12211,6 @@ Enum class for large language model mode.
 | ---- | ---- | ----------- | -------- |
 | LLMMode | string | Enum class for large language model mode. |  |
 
-#### LangContentPayload
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| body | string |  | Yes |
-| lang | string | Language tag: 'zh' \| 'en' \| 'jp' | Yes |
-| subtitle |  |  | No |
-| title | string |  | Yes |
-| title_pic_url |  |  | No |
-
 #### LegacyEndpointUpdatePayload
 
 | Name | Type | Description | Required |
