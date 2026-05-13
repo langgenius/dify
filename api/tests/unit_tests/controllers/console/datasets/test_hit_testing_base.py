@@ -170,6 +170,18 @@ class TestPerformHitTesting:
             }
         ]
 
+    def test_invalid_query_response_raises_value_error(self):
+        with pytest.raises(ValueError, match="Invalid hit testing query response"):
+            DatasetsHitTestingBase._extract_hit_testing_query("hello")
+
+    def test_invalid_records_response_raises_value_error(self):
+        with pytest.raises(ValueError, match="Invalid hit testing records response"):
+            DatasetsHitTestingBase._prepare_hit_testing_records({"records": []})
+
+    def test_invalid_record_response_raises_value_error(self):
+        with pytest.raises(ValueError, match="Invalid hit testing record response"):
+            DatasetsHitTestingBase._prepare_hit_testing_records(["record"])
+
     def test_index_not_initialized(self, dataset):
         with patch.object(
             HitTestingService,

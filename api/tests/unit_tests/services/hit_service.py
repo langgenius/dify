@@ -638,6 +638,44 @@ class TestHitTestingServiceCompactRetrieveResponse:
 
         assert result["records"] == []
 
+    def test_compact_retrieve_response_keeps_records_without_segment_dict(self):
+        query = "test query"
+        documents = [HitTestingTestDataFactory.create_document_mock(content="Doc 1")]
+        mock_record = Mock()
+        mock_record.model_dump.return_value = {
+            "segment": None,
+            "score": 0.95,
+        }
+        mock_record_with_document = Mock()
+        mock_record_with_document.model_dump.return_value = {
+            "segment": {
+                "id": "segment-1",
+                "document_id": "document-1",
+            },
+            "score": 0.9,
+        }
+        dataset_document = Mock()
+        dataset_document.id = "document-1"
+        dataset_document.data_source_type = "upload_file"
+        dataset_document.name = "guide.md"
+        dataset_document.doc_type = None
+        dataset_document.doc_metadata = None
+        scalars_result = Mock()
+        scalars_result.all.return_value = [dataset_document]
+
+        with (
+            patch(
+                "services.hit_testing_service.RetrievalService.format_retrieval_documents", autospec=True
+            ) as mock_format,
+            patch("services.hit_testing_service.db.session.scalars", return_value=scalars_result),
+        ):
+            mock_format.return_value = [mock_record, mock_record_with_document]
+
+            result = HitTestingService.compact_retrieve_response(query, documents)
+
+        assert result["records"][0] == {"segment": None, "score": 0.95}
+        assert result["records"][1]["segment"]["document"]["id"] == "document-1"
+
     def test_compact_retrieve_response_empty_documents(self):
         """
         Test response formatting with empty document list.
