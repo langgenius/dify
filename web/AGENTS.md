@@ -1,6 +1,13 @@
 ## Frontend Workflow
 
 - Refer to the `./docs/test.md` and `./docs/lint.md` for detailed frontend workflow instructions.
+- For frontend coding tasks, also apply the repo-local `how-to-write-component` and `tailwind-css-rules` skills when the change touches React components, state ownership, routing, styling, or Tailwind classes.
+- For frontend reviews, use the repo-local `frontend-code-review` skill as the canonical checklist.
+
+## i18n
+
+- User-facing strings must use `web/i18n/en-US/` keys instead of hardcoded text.
+- When adding or renaming an i18n key, update all supported locale files with correct localized values; do not leave fallback English in non-English locales unless the repo already intentionally does so for that exact key.
 
 ## Overlay Components (Mandatory)
 
