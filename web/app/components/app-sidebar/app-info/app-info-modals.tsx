@@ -14,7 +14,7 @@ import {
 } from '@langgenius/dify-ui/alert-dialog'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { Trans, useTranslation } from 'react-i18next'
 import Input from '@/app/components/base/input'
 import { DSLExportConfirmContent } from '@/app/components/workflow/dsl-export-confirm-modal'
 import dynamic from '@/next/dynamic'
@@ -157,7 +157,14 @@ const AppInfoModals = ({
               </AlertDialogDescription>
               <div className="mt-2">
                 <label className="mb-1 block system-sm-regular text-text-secondary">
-                  {t('deleteAppConfirmInputLabel', { ns: 'app', appName: appDetail.name })}
+                  <Trans
+                    i18nKey="deleteAppConfirmInputLabel"
+                    ns="app"
+                    values={{ appName: appDetail.name }}
+                    components={{
+                      appName: <span className="system-sm-semibold text-text-primary" translate="no" />,
+                    }}
+                  />
                 </label>
                 <Input
                   type="text"

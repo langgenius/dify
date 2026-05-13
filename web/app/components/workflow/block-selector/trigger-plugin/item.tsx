@@ -1,10 +1,11 @@
 'use client'
 import type { FC } from 'react'
+import type { TriggerPluginActionPreviewCardHandle } from './action-item'
 import type { TriggerDefaultValue, TriggerWithProvider } from '@/app/components/workflow/block-selector/types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { RiArrowDownSLine, RiArrowRightSLine } from '@remixicon/react'
 import * as React from 'react'
-import { useEffect, useMemo, useRef } from 'react'
+import { useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { CollectionType } from '@/app/components/tools/types'
 import BlockIcon from '@/app/components/workflow/block-icon'
@@ -27,6 +28,7 @@ type Props = {
   className?: string
   payload: TriggerWithProvider
   hasSearchText: boolean
+  previewCardHandle: TriggerPluginActionPreviewCardHandle
   onSelect: (type: BlockEnum, trigger?: TriggerDefaultValue) => void
 }
 
@@ -34,6 +36,7 @@ const TriggerPluginItem: FC<Props> = ({
   className,
   payload,
   hasSearchText,
+  previewCardHandle,
   onSelect,
 }) => {
   const { t } = useTranslation()
@@ -42,17 +45,14 @@ const TriggerPluginItem: FC<Props> = ({
   const notShowProvider = payload.type === CollectionType.workflow
   const actions = payload.events
   const hasAction = !notShowProvider
-  const [isFold, setFold] = React.useState<boolean>(true)
+  const [isFold, setIsFold] = React.useState<boolean>(true)
+  const [isFoldHasSearchText, setIsFoldHasSearchText] = React.useState(hasSearchText)
   const ref = useRef(null)
 
-  useEffect(() => {
-    if (hasSearchText && isFold) {
-      setFold(false)
-      return
-    }
-    if (!hasSearchText && !isFold)
-      setFold(true)
-  }, [hasSearchText])
+  if (isFoldHasSearchText !== hasSearchText) {
+    setIsFoldHasSearchText(hasSearchText)
+    setIsFold(!hasSearchText)
+  }
 
   const FoldIcon = isFold ? RiArrowRightSLine : RiArrowDownSLine
 
@@ -97,14 +97,14 @@ const TriggerPluginItem: FC<Props> = ({
           className="group/item flex w-full cursor-pointer items-center justify-between rounded-lg pr-1 pl-3 select-none hover:bg-state-base-hover"
           onClick={() => {
             if (hasAction) {
-              setFold(!isFold)
+              setIsFold(!isFold)
               return
             }
 
             const event = actions[0]
             const params: Record<string, string> = {}
             if (event!.parameters) {
-              event!.parameters.forEach((item: any) => {
+              event!.parameters.forEach((item) => {
                 params[item.name] = ''
               })
             }
@@ -150,6 +150,7 @@ const TriggerPluginItem: FC<Props> = ({
               key={action.name}
               provider={providerWithResolvedIcon}
               payload={action}
+              previewCardHandle={previewCardHandle}
               onSelect={onSelect}
               disabled={false}
               isAdded={false}
