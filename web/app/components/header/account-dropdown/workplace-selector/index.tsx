@@ -12,7 +12,7 @@ import {
 import { toast } from '@langgenius/dify-ui/toast'
 import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
-import PlanBadge from '@/app/components/header/plan-badge'
+import { PlanBadge } from '@/app/components/header/plan-badge'
 import { useWorkspacesContext } from '@/context/workspace-context'
 import { switchWorkspace } from '@/service/common'
 import { basePath } from '@/utils/var'

@@ -86,6 +86,10 @@ describe('DatasetMetadataDrawer', () => {
     vi.clearAllMocks()
   })
 
+  const clickFirstMetadataAction = (name: string) => {
+    fireEvent.click(screen.getAllByRole('button', { name })[0]!)
+  }
+
   describe('Rendering', () => {
     it('should render without crashing', async () => {
       render(<DatasetMetadataDrawer {...defaultProps} />)
@@ -143,7 +147,7 @@ describe('DatasetMetadataDrawer', () => {
         expect(screen.getByRole('dialog'))!.toBeInTheDocument()
       })
 
-      fireEvent.click(screen.getByTestId('close-icon'))
+      fireEvent.click(screen.getByRole('button', { name: 'common.operation.close' }))
 
       expect(onClose).toHaveBeenCalledTimes(1)
     })
@@ -247,21 +251,7 @@ describe('DatasetMetadataDrawer', () => {
         expect(screen.getByRole('dialog'))!.toBeInTheDocument()
       })
 
-      // Find user metadata items with group/item class (these have edit/delete icons)
-      const dialog = screen.getByRole('dialog')
-      const items = dialog.querySelectorAll('.group\\/item')
-      expect(items.length).toBe(2) // 2 user metadata items
-
-      // Find the hidden container with edit/delete icons
-      const actionsContainer = items[0]!.querySelector('.hidden.items-center')
-      expect(actionsContainer).toBeTruthy()
-
-      // Find and click the first SVG (edit icon)
-      if (actionsContainer) {
-        const svgs = actionsContainer.querySelectorAll('svg')
-        expect(svgs.length).toBeGreaterThan(0)
-        fireEvent.click(svgs[0]!)
-      }
+      clickFirstMetadataAction('common.operation.edit')
 
       // Wait for rename modal (contains input)
       await waitFor(() => {
@@ -278,14 +268,7 @@ describe('DatasetMetadataDrawer', () => {
         expect(screen.getByRole('dialog'))!.toBeInTheDocument()
       })
 
-      // Find and click edit icon
-      const dialog = screen.getByRole('dialog')
-      const items = dialog.querySelectorAll('.group\\/item')
-      const actionsContainer = items[0]!.querySelector('.hidden.items-center')
-      if (actionsContainer) {
-        const svgs = actionsContainer.querySelectorAll('svg')
-        fireEvent.click(svgs[0]!)
-      }
+      clickFirstMetadataAction('common.operation.edit')
 
       // Change name and save
       await waitFor(() => {
@@ -319,14 +302,7 @@ describe('DatasetMetadataDrawer', () => {
         expect(screen.getByRole('dialog'))!.toBeInTheDocument()
       })
 
-      // Find and click edit icon
-      const dialog = screen.getByRole('dialog')
-      const items = dialog.querySelectorAll('.group\\/item')
-      const actionsContainer = items[0]!.querySelector('.hidden.items-center')
-      if (actionsContainer) {
-        const svgs = actionsContainer.querySelectorAll('svg')
-        fireEvent.click(svgs[0]!)
-      }
+      clickFirstMetadataAction('common.operation.edit')
 
       // Wait for modal and click cancel
       await waitFor(() => {
@@ -355,14 +331,7 @@ describe('DatasetMetadataDrawer', () => {
         expect(screen.getByRole('dialog'))!.toBeInTheDocument()
       })
 
-      // Find and click edit icon
-      const dialog = screen.getByRole('dialog')
-      const items = dialog.querySelectorAll('.group\\/item')
-      const actionsContainer = items[0]!.querySelector('.hidden.items-center')
-      if (actionsContainer) {
-        const svgs = actionsContainer.querySelectorAll('svg')
-        fireEvent.click(svgs[0]!)
-      }
+      clickFirstMetadataAction('common.operation.edit')
 
       // Wait for rename modal
       await waitFor(() => {
@@ -387,19 +356,7 @@ describe('DatasetMetadataDrawer', () => {
         expect(screen.getByRole('dialog'))!.toBeInTheDocument()
       })
 
-      // Find user metadata items
-      const dialog = screen.getByRole('dialog')
-      const items = dialog.querySelectorAll('.group\\/item')
-
-      // Find the delete container
-      const deleteContainer = items[0]!.querySelector('.hover\\:text-text-destructive')
-      expect(deleteContainer).toBeTruthy()
-
-      if (deleteContainer) {
-        const deleteIcon = deleteContainer.querySelector('svg')
-        if (deleteIcon)
-          fireEvent.click(deleteIcon)
-      }
+      clickFirstMetadataAction('common.operation.remove')
 
       // Confirm dialog should appear
       await waitFor(() => {
@@ -419,15 +376,7 @@ describe('DatasetMetadataDrawer', () => {
         expect(screen.getByRole('dialog'))!.toBeInTheDocument()
       })
 
-      // Find and click delete icon
-      const dialog = screen.getByRole('dialog')
-      const items = dialog.querySelectorAll('.group\\/item')
-      const deleteContainer = items[0]!.querySelector('.hover\\:text-text-destructive')
-      if (deleteContainer) {
-        const deleteIcon = deleteContainer.querySelector('svg')
-        if (deleteIcon)
-          fireEvent.click(deleteIcon)
-      }
+      clickFirstMetadataAction('common.operation.remove')
 
       // Wait for confirm dialog
       await waitFor(() => {
@@ -465,15 +414,7 @@ describe('DatasetMetadataDrawer', () => {
         expect(screen.getByRole('dialog'))!.toBeInTheDocument()
       })
 
-      // Find and click delete icon
-      const dialog = screen.getByRole('dialog')
-      const items = dialog.querySelectorAll('.group\\/item')
-      const deleteContainer = items[0]!.querySelector('.hover\\:text-text-destructive')
-      if (deleteContainer) {
-        const deleteIcon = deleteContainer.querySelector('svg')
-        if (deleteIcon)
-          fireEvent.click(deleteIcon)
-      }
+      clickFirstMetadataAction('common.operation.remove')
 
       // Wait for confirm dialog
       await waitFor(() => {

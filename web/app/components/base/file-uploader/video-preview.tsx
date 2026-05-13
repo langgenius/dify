@@ -1,5 +1,6 @@
 import type { FC } from 'react'
 import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
+import { useTranslation } from 'react-i18next'
 
 type VideoPreviewProps = {
   url: string
@@ -11,6 +12,8 @@ const VideoPreview: FC<VideoPreviewProps> = ({
   title,
   onCancel,
 }) => {
+  const { t } = useTranslation()
+
   return (
     <Dialog
       open
@@ -37,12 +40,14 @@ const VideoPreview: FC<VideoPreviewProps> = ({
             />
           </video>
         </div>
-        <div
-          className="absolute top-6 right-6 flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg bg-white/[0.08] backdrop-blur-[2px]"
+        <button
+          type="button"
+          aria-label={t('operation.close', { ns: 'common' })}
+          className="absolute top-6 right-6 flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg border-none bg-white/[0.08] p-0 backdrop-blur-[2px]"
           onClick={onCancel}
         >
-          <span className="i-ri-close-line h-4 w-4 text-gray-500" data-testid="video-preview-close-btn" />
-        </div>
+          <span className="i-ri-close-line h-4 w-4 text-gray-500" aria-hidden="true" />
+        </button>
       </DialogContent>
     </Dialog>
   )

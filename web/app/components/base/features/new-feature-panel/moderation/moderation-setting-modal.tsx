@@ -226,24 +226,18 @@ const ModerationSettingModal: FC<ModerationSettingModalProps> = ({
 
   return (
     <Dialog open>
-      <DialogContent className="mt-14! w-[600px]! max-w-none! overflow-hidden! border-none p-6! text-left align-middle">
+      <DialogContent className="mt-14! w-[600px]! max-w-none! border-none p-6! text-left align-middle">
 
         <div className="flex items-center justify-between">
           <div className="title-2xl-semi-bold text-text-primary">{t('feature.moderation.modal.title', { ns: 'appDebug' })}</div>
-          <div
-            role="button"
-            tabIndex={0}
-            className="cursor-pointer p-1"
+          <button
+            type="button"
+            aria-label={t('operation.close', { ns: 'common' })}
+            className="cursor-pointer border-none bg-transparent p-1 focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
             onClick={onCancel}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' || e.key === ' ') {
-                e.preventDefault()
-                onCancel()
-              }
-            }}
           >
-            <span className="i-ri-close-line h-4 w-4 text-text-tertiary" />
-          </div>
+            <span className="i-ri-close-line h-4 w-4 text-text-tertiary" aria-hidden="true" />
+          </button>
         </div>
         <div className="py-2">
           <div className="text-sm leading-9 font-medium text-text-primary">

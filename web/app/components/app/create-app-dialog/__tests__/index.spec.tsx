@@ -11,12 +11,12 @@ vi.mock('../app-list', () => ({
     onSuccess: () => void
   }) {
     return (
-      <div data-testid="app-list">
-        <button data-testid="app-list-success" onClick={onSuccess}>
+      <div role="region" aria-label="App list">
+        <button type="button" onClick={onSuccess}>
           Success
         </button>
         {onCreateFromBlank && (
-          <button data-testid="create-from-blank" onClick={onCreateFromBlank}>
+          <button type="button" onClick={onCreateFromBlank}>
             Create from Blank
           </button>
         )}
@@ -48,13 +48,13 @@ describe('CreateAppTemplateDialog', () => {
       render(<CreateAppTemplateDialog {...defaultProps} show={true} />)
 
       expect(screen.getByRole('dialog'))!.toBeInTheDocument()
-      expect(screen.getByTestId('app-list'))!.toBeInTheDocument()
+      expect(screen.getByRole('region', { name: 'App list' }))!.toBeInTheDocument()
     })
 
     it('should render create from blank button when onCreateFromBlank is provided', () => {
       render(<CreateAppTemplateDialog {...defaultProps} show={true} />)
 
-      expect(screen.getByTestId('create-from-blank'))!.toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Create from Blank' }))!.toBeInTheDocument()
     })
 
     it('should not render create from blank button when onCreateFromBlank is not provided', () => {
@@ -62,7 +62,7 @@ describe('CreateAppTemplateDialog', () => {
 
       render(<CreateAppTemplateDialog {...propsWithoutOnCreate} show={true} />)
 
-      expect(screen.queryByTestId('create-from-blank')).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'Create from Blank' })).not.toBeInTheDocument()
     })
   })
 
@@ -99,8 +99,8 @@ describe('CreateAppTemplateDialog', () => {
       const dialog = screen.getByRole('dialog')
       expect(dialog)!.toBeInTheDocument()
 
-      expect(screen.getByTestId('app-list'))!.toBeInTheDocument()
-      expect(screen.getByTestId('app-list-success'))!.toBeInTheDocument()
+      expect(screen.getByRole('region', { name: 'App list' }))!.toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Success' }))!.toBeInTheDocument()
     })
 
     it('should call both onSuccess and onClose when app list success is triggered', () => {
@@ -115,7 +115,7 @@ describe('CreateAppTemplateDialog', () => {
         />,
       )
 
-      fireEvent.click(screen.getByTestId('app-list-success'))
+      fireEvent.click(screen.getByRole('button', { name: 'Success' }))
 
       expect(mockOnSuccess).toHaveBeenCalledTimes(1)
       expect(mockOnClose).toHaveBeenCalledTimes(1)
@@ -131,7 +131,7 @@ describe('CreateAppTemplateDialog', () => {
         />,
       )
 
-      fireEvent.click(screen.getByTestId('create-from-blank'))
+      fireEvent.click(screen.getByRole('button', { name: 'Create from Blank' }))
 
       expect(mockOnCreateFromBlank).toHaveBeenCalledTimes(1)
     })
@@ -186,8 +186,8 @@ describe('CreateAppTemplateDialog', () => {
         render(<CreateAppTemplateDialog {...propsWithoutOnCreate} show={true} />)
       }).not.toThrow()
 
-      expect(screen.getByTestId('app-list'))!.toBeInTheDocument()
-      expect(screen.queryByTestId('create-from-blank')).not.toBeInTheDocument()
+      expect(screen.getByRole('region', { name: 'App list' }))!.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'Create from Blank' })).not.toBeInTheDocument()
     })
 
     it('should work with all required props only', () => {
@@ -202,7 +202,7 @@ describe('CreateAppTemplateDialog', () => {
       }).not.toThrow()
 
       expect(screen.getByRole('dialog'))!.toBeInTheDocument()
-      expect(screen.getByTestId('app-list'))!.toBeInTheDocument()
+      expect(screen.getByRole('region', { name: 'App list' }))!.toBeInTheDocument()
     })
   })
 })

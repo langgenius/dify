@@ -111,9 +111,14 @@ const SwitchAppModal = ({ show, appDetail, inAppDetail = false, onSuccess, onClo
       <Dialog open={show}>
         <DialogContent className={cn('w-full overflow-hidden! border-none text-left align-middle', cn('w-[600px] max-w-[600px] p-8'))}>
 
-          <div className="absolute top-4 right-4 cursor-pointer p-2" onClick={onClose}>
-            <RiCloseLine className="h-4 w-4 text-text-tertiary" />
-          </div>
+          <button
+            type="button"
+            className="absolute top-4 right-4 cursor-pointer border-none bg-transparent p-2 focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
+            aria-label={t('operation.close', { ns: 'common' })}
+            onClick={onClose}
+          >
+            <RiCloseLine className="h-4 w-4 text-text-tertiary" aria-hidden="true" />
+          </button>
           <div className="h-12 w-12 rounded-xl border-[0.5px] border-divider-regular bg-background-default-burn p-3 shadow-xl">
             <AlertTriangle className="h-6 w-6 text-[rgb(247,144,9)]" />
           </div>
@@ -161,7 +166,13 @@ const SwitchAppModal = ({ show, appDetail, inAppDetail = false, onSuccess, onClo
           <div className="flex items-center justify-between pt-6">
             <div className="flex items-center">
               <Checkbox className="shrink-0" checked={removeOriginal} onCheck={() => setRemoveOriginal(!removeOriginal)} />
-              <div className="ml-2 cursor-pointer text-sm leading-5 text-text-secondary" onClick={() => setRemoveOriginal(!removeOriginal)}>{t('removeOriginal', { ns: 'app' })}</div>
+              <button
+                type="button"
+                className="ml-2 cursor-pointer border-none bg-transparent p-0 text-left text-sm leading-5 text-text-secondary focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
+                onClick={() => setRemoveOriginal(!removeOriginal)}
+              >
+                {t('removeOriginal', { ns: 'app' })}
+              </button>
             </div>
             <div className="flex items-center">
               <Button className="mr-2" onClick={onClose}>{t('newApp.Cancel', { ns: 'app' })}</Button>

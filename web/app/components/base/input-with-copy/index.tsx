@@ -61,8 +61,6 @@ const InputWithCopy = React.forwardRef<HTMLInputElement, InputWithCopyProps>((
       {showCopyButton && (
         <div
           className="absolute top-1/2 right-2 -translate-y-1/2"
-          onMouseLeave={reset}
-          data-testid="copy-button-wrapper"
         >
           <Tooltip>
             <TooltipTrigger
@@ -71,11 +69,12 @@ const InputWithCopy = React.forwardRef<HTMLInputElement, InputWithCopyProps>((
                   size="xs"
                   aria-label={safeTooltipText}
                   onClick={handleCopy}
+                  onMouseLeave={reset}
                   className="hover:bg-components-button-ghost-bg-hover"
                 >
                   {copied
-                    ? (<span className="i-ri-clipboard-fill h-3.5 w-3.5 text-text-tertiary" data-testid="copied-icon" />)
-                    : (<span className="i-ri-clipboard-line h-3.5 w-3.5 text-text-tertiary" data-testid="copy-icon" />)}
+                    ? (<span className="i-ri-clipboard-fill h-3.5 w-3.5 text-text-tertiary" aria-hidden="true" />)
+                    : (<span className="i-ri-clipboard-line h-3.5 w-3.5 text-text-tertiary" aria-hidden="true" />)}
                 </ActionButton>
               )}
             />

@@ -70,7 +70,7 @@ const Item: FC<ItemProps> = ({
     onRename?.()
   }, [onRename])
 
-  const deleteBtnRef = useRef<HTMLDivElement>(null)
+  const deleteBtnRef = useRef<HTMLButtonElement>(null)
   const isDeleteHovering = useHover(deleteBtnRef)
   const [isShowDeleteConfirm, {
     setTrue: showDeleteConfirm,
@@ -107,10 +107,23 @@ const Item: FC<ItemProps> = ({
           </div>
         )}
         <div className="ml-2 hidden items-center space-x-1 text-text-tertiary group-hover/item:flex">
-          <RiEditLine className="size-4 cursor-pointer" onClick={handleRename} />
-          <div ref={deleteBtnRef} className="hover:text-text-destructive">
-            <RiDeleteBinLine className="size-4 cursor-pointer" onClick={showDeleteConfirm} />
-          </div>
+          <button
+            type="button"
+            aria-label={t('operation.edit', { ns: 'common' })}
+            className="cursor-pointer rounded-md border-none bg-transparent p-0.5 hover:bg-state-base-hover focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
+            onClick={handleRename}
+          >
+            <RiEditLine className="size-4" aria-hidden="true" />
+          </button>
+          <button
+            type="button"
+            ref={deleteBtnRef}
+            aria-label={t('operation.remove', { ns: 'common' })}
+            className="cursor-pointer rounded-md border-none bg-transparent p-0.5 hover:bg-state-destructive-hover hover:text-text-destructive focus-visible:ring-1 focus-visible:ring-state-destructive-border focus-visible:outline-hidden"
+            onClick={showDeleteConfirm}
+          >
+            <RiDeleteBinLine className="size-4" aria-hidden="true" />
+          </button>
         </div>
         <AlertDialog open={isShowDeleteConfirm} onOpenChange={open => !open && hideDeleteConfirm()}>
           <AlertDialogContent>
@@ -205,7 +218,6 @@ const DatasetMetadataDrawer: FC<Props> = ({
                 <DrawerCloseButton
                   aria-label={t('operation.close', { ns: 'common' })}
                   className="h-6 w-6 rounded-md"
-                  data-testid="close-icon"
                 />
               </div>
               <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-6">

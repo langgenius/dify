@@ -78,19 +78,29 @@ const ConversationVariableModal = ({
     <Dialog open>
       <DialogContent className={cn('max-h-none w-full overflow-hidden! border-none text-left align-middle', cn('h-[640px] w-[920px] max-w-[920px] p-0'))}>
 
-        <div className="absolute top-4 right-4 cursor-pointer p-2" onClick={onHide}>
-          <RiCloseLine className="h-4 w-4 text-text-tertiary" />
-        </div>
+        <button
+          type="button"
+          aria-label={t('operation.close', { ns: 'common' })}
+          className="absolute top-4 right-4 cursor-pointer border-none bg-transparent p-2 focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
+          onClick={onHide}
+        >
+          <RiCloseLine className="h-4 w-4 text-text-tertiary" aria-hidden="true" />
+        </button>
         <div className="flex h-full w-full">
           {/* LEFT */}
           <div className="flex h-full w-[224px] shrink-0 flex-col border-r border-divider-burn bg-background-sidenav-bg">
             <div className="shrink-0 pt-5 pr-4 pb-3 pl-5 system-xl-semibold text-text-primary">{t('chatVariable.panelTitle', { ns: 'workflow' })}</div>
             <div className="grow overflow-y-auto px-3 py-2">
               {varList.map(chatVar => (
-                <div key={chatVar.id} className={cn('group mb-0.5 flex cursor-pointer items-center rounded-lg p-2 hover:bg-state-base-hover', currentVar.id === chatVar.id && 'bg-state-base-hover')} onClick={() => setCurrentVar(chatVar)}>
-                  <BubbleX className={cn('mr-1 h-4 w-4 shrink-0 text-text-tertiary group-hover:text-util-colors-teal-teal-700', currentVar.id === chatVar.id && 'text-util-colors-teal-teal-700')} />
+                <button
+                  key={chatVar.id}
+                  type="button"
+                  className={cn('group mb-0.5 flex w-full cursor-pointer items-center rounded-lg border-none bg-transparent p-2 text-left hover:bg-state-base-hover focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden', currentVar.id === chatVar.id && 'bg-state-base-hover')}
+                  onClick={() => setCurrentVar(chatVar)}
+                >
+                  <BubbleX className={cn('mr-1 h-4 w-4 shrink-0 text-text-tertiary group-hover:text-util-colors-teal-teal-700', currentVar.id === chatVar.id && 'text-util-colors-teal-teal-700')} aria-hidden="true" />
                   <div title={chatVar.name} className={cn('truncate system-sm-medium text-text-tertiary group-hover:text-util-colors-teal-teal-700', currentVar.id === chatVar.id && 'text-util-colors-teal-teal-700')}>{chatVar.name}</div>
-                </div>
+                </button>
               ))}
             </div>
           </div>

@@ -44,7 +44,6 @@ export const TagPanel = ({
               className="mr-1.5 flex size-5 shrink-0 cursor-pointer items-center justify-center rounded-md text-text-tertiary outline-hidden hover:bg-components-input-bg-hover hover:text-text-secondary focus-visible:bg-components-input-bg-hover focus-visible:text-text-secondary focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:ring-inset"
               onClick={() => onInputValueChange('')}
               onPointerDown={event => event.preventDefault()}
-              data-testid="tag-search-clear-button"
             >
               <span className="i-ri-close-line size-4" aria-hidden="true" />
             </button>
@@ -59,7 +58,6 @@ export const TagPanel = ({
                 <Fragment key={tag.id}>
                   <ComboboxItem
                     value={tag}
-                    data-testid="create-tag-option"
                   >
                     <ComboboxItemText className="flex items-center gap-x-1 px-0">
                       <span aria-hidden="true" className="i-ri-add-line h-4 w-4 shrink-0 text-text-tertiary" />

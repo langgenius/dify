@@ -6,6 +6,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from flask import Flask
+from sqlalchemy.orm import Session
 
 from controllers.console.auth.error import (
     EmailCodeError,
@@ -20,13 +21,15 @@ from controllers.console.auth.forgot_password import (
     ForgotPasswordSendEmailApi,
 )
 from controllers.console.error import AccountNotFound, EmailSendIpLimitError
+from tests.test_containers_integration_tests.controllers.console.helpers import ensure_dify_setup
 
 
 class TestForgotPasswordSendEmailApi:
     """Test cases for sending password reset emails."""
 
     @pytest.fixture
-    def app(self, flask_app_with_containers: Flask):
+    def app(self, flask_app_with_containers: Flask, db_session_with_containers: Session):
+        ensure_dify_setup(db_session_with_containers)
         return flask_app_with_containers
 
     @pytest.fixture
@@ -139,7 +142,8 @@ class TestForgotPasswordCheckApi:
     """Test cases for verifying password reset codes."""
 
     @pytest.fixture
-    def app(self, flask_app_with_containers: Flask):
+    def app(self, flask_app_with_containers: Flask, db_session_with_containers: Session):
+        ensure_dify_setup(db_session_with_containers)
         return flask_app_with_containers
 
     @patch("controllers.console.auth.forgot_password.AccountService.is_forgot_password_error_rate_limit")
@@ -322,7 +326,8 @@ class TestForgotPasswordResetApi:
     """Test cases for resetting password with verified token."""
 
     @pytest.fixture
-    def app(self, flask_app_with_containers: Flask):
+    def app(self, flask_app_with_containers: Flask, db_session_with_containers: Session):
+        ensure_dify_setup(db_session_with_containers)
         return flask_app_with_containers
 
     @pytest.fixture

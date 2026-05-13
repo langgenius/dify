@@ -246,11 +246,6 @@
       "count": 1
     }
   },
-  "web/app/components/app/app-access-control/add-member-or-group-pop.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
   "web/app/components/app/app-publisher/features-wrapper.tsx": {
     "ts/no-explicit-any": {
       "count": 4
@@ -1334,11 +1329,6 @@
       "count": 9
     }
   },
-  "web/app/components/base/markdown-blocks/form.tsx": {
-    "erasable-syntax-only/enums": {
-      "count": 3
-    }
-  },
   "web/app/components/base/markdown-blocks/index.ts": {
     "no-barrel-files/no-barrel-files": {
       "count": 10
@@ -1465,7 +1455,7 @@
   },
   "web/app/components/base/prompt-editor/index.tsx": {
     "ts/no-explicit-any": {
-      "count": 4
+      "count": 3
     }
   },
   "web/app/components/base/prompt-editor/plugins/component-picker-block/index.tsx": {
@@ -1744,11 +1734,6 @@
   "web/app/components/billing/type.ts": {
     "erasable-syntax-only/enums": {
       "count": 4
-    }
-  },
-  "web/app/components/billing/upgrade-btn/index.tsx": {
-    "ts/no-explicit-any": {
-      "count": 3
     }
   },
   "web/app/components/datasets/common/image-previewer/index.tsx": {
@@ -2528,11 +2513,6 @@
     }
   },
   "web/app/components/plugins/plugin-detail-panel/model-selector/tts-params-panel.tsx": {
-    "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
-  "web/app/components/plugins/plugin-detail-panel/multiple-tool-selector/index.tsx": {
     "ts/no-explicit-any": {
       "count": 1
     }
@@ -3858,30 +3838,9 @@
       "count": 9
     }
   },
-  "web/app/components/workflow/nodes/question-classifier/components/class-item.tsx": {
-    "react/set-state-in-effect": {
-      "count": 1
-    }
-  },
   "web/app/components/workflow/nodes/question-classifier/components/class-list.tsx": {
     "react/set-state-in-effect": {
       "count": 1
-    },
-    "react/unsupported-syntax": {
-      "count": 2
-    }
-  },
-  "web/app/components/workflow/nodes/question-classifier/default.ts": {
-    "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
-  "web/app/components/workflow/nodes/question-classifier/use-config.ts": {
-    "react/set-state-in-effect": {
-      "count": 2
-    },
-    "ts/no-explicit-any": {
-      "count": 2
     }
   },
   "web/app/components/workflow/nodes/question-classifier/use-single-run-form-params.ts": {
@@ -4456,11 +4415,6 @@
       "count": 1
     }
   },
-  "web/app/signin/one-more-step.tsx": {
-    "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
   "web/app/signup/layout.tsx": {
     "ts/no-explicit-any": {
       "count": 1
@@ -4745,9 +4699,6 @@
     },
     "ts/no-explicit-any": {
       "count": 3
-    },
-    "ts/no-non-null-asserted-optional-chain": {
-      "count": 1
     }
   },
   "web/service/use-tools.ts": {

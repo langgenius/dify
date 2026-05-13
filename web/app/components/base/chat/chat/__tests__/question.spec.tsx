@@ -183,7 +183,7 @@ describe('Question component', () => {
 
     renderWithProvider(makeItem())
 
-    const copyBtn = screen.getByTestId('copy-btn')
+    const copyBtn = screen.getByRole('button', { name: 'common.operation.copy' })
     await user.click(copyBtn)
 
     await waitFor(() => {
@@ -195,8 +195,8 @@ describe('Question component', () => {
   it('should not show edit action when enableEdit is false', () => {
     renderWithProvider(makeItem(), vi.fn() as unknown as OnRegenerate, { enableEdit: false })
 
-    expect(screen.getByTestId('copy-btn')).toBeInTheDocument()
-    expect(screen.queryByTestId('edit-btn')).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'common.operation.copy' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'common.operation.edit' })).not.toBeInTheDocument()
   })
 
   it('should enter edit mode when edit action clicked, allow editing and call onRegenerate on resend', async () => {
@@ -206,7 +206,7 @@ describe('Question component', () => {
     const item = makeItem()
     renderWithProvider(item, onRegenerate)
 
-    const editBtn = screen.getByTestId('edit-btn')
+    const editBtn = screen.getByRole('button', { name: 'common.operation.edit' })
     await user.click(editBtn)
 
     const textbox = await screen.findByRole('textbox')
@@ -227,14 +227,14 @@ describe('Question component', () => {
     const user = userEvent.setup()
     const { container } = renderWithProvider(makeItem())
 
-    const editBtn = screen.getByTestId('edit-btn')
+    const editBtn = screen.getByRole('button', { name: 'common.operation.edit' })
     await user.click(editBtn)
 
     const textbox = await screen.findByRole('textbox')
     await user.clear(textbox)
     await user.type(textbox, 'Edited question')
 
-    const cancelBtn = await screen.findByTestId('cancel-edit-btn')
+    const cancelBtn = await screen.findByRole('button', { name: 'common.operation.cancel' })
     await user.click(cancelBtn)
 
     await waitFor(() => {
@@ -250,7 +250,7 @@ describe('Question component', () => {
 
     renderWithProvider(makeItem(), onRegenerate)
 
-    await user.click(screen.getByTestId('edit-btn'))
+    await user.click(screen.getByRole('button', { name: 'common.operation.edit' }))
     const textbox = await screen.findByRole('textbox')
 
     await user.clear(textbox)
@@ -269,7 +269,7 @@ describe('Question component', () => {
 
     renderWithProvider(makeItem(), onRegenerate)
 
-    await user.click(screen.getByTestId('edit-btn'))
+    await user.click(screen.getByRole('button', { name: 'common.operation.edit' }))
     const textbox = await screen.findByRole('textbox')
 
     await user.clear(textbox)
@@ -285,7 +285,7 @@ describe('Question component', () => {
 
     renderWithProvider(makeItem(), onRegenerate)
 
-    fireEvent.click(screen.getByTestId('edit-btn'))
+    fireEvent.click(screen.getByRole('button', { name: 'common.operation.edit' }))
     const textbox = screen.getByRole('textbox')
 
     fireEvent.compositionStart(textbox)
@@ -302,7 +302,7 @@ describe('Question component', () => {
       const onRegenerate = vi.fn() as unknown as OnRegenerate
       renderWithProvider(makeItem(), onRegenerate)
 
-      fireEvent.click(screen.getByTestId('edit-btn'))
+      fireEvent.click(screen.getByRole('button', { name: 'common.operation.edit' }))
       const textbox = screen.getByRole('textbox')
       fireEvent.change(textbox, { target: { value: 'IME guard text' } })
 
@@ -392,7 +392,7 @@ describe('Question component', () => {
 
     renderWithProvider(item, onRegenerate)
 
-    const editBtn = screen.getByTestId('edit-btn')
+    const editBtn = screen.getByRole('button', { name: 'common.operation.edit' })
     await user.click(editBtn)
 
     const textbox = await screen.findByRole('textbox')
@@ -431,7 +431,7 @@ describe('Question component', () => {
 
     renderWithProvider(item, onRegenerate)
 
-    await user.click(screen.getByTestId('edit-btn'))
+    await user.click(screen.getByRole('button', { name: 'common.operation.edit' }))
     const textbox = await screen.findByRole('textbox')
 
     // Press Shift+Enter
@@ -445,7 +445,7 @@ describe('Question component', () => {
     const onRegenerate = vi.fn() as unknown as OnRegenerate
     renderWithProvider(makeItem(), onRegenerate)
 
-    await user.click(screen.getByTestId('edit-btn'))
+    await user.click(screen.getByRole('button', { name: 'common.operation.edit' }))
     const textbox = await screen.findByRole('textbox')
 
     // Create an event with nativeEvent.isComposing = true
@@ -461,7 +461,7 @@ describe('Question component', () => {
     const onRegenerate = vi.fn() as unknown as OnRegenerate
     const { unmount } = renderWithProvider(makeItem(), onRegenerate)
 
-    await user.click(screen.getByTestId('edit-btn'))
+    await user.click(screen.getByRole('button', { name: 'common.operation.edit' }))
     const textbox = await screen.findByRole('textbox')
 
     fireEvent.compositionStart(textbox)
@@ -471,11 +471,11 @@ describe('Question component', () => {
     fireEvent.compositionStart(textbox)
     fireEvent.compositionEnd(textbox)
 
-    const cancelBtn = await screen.findByTestId('cancel-edit-btn')
+    const cancelBtn = await screen.findByRole('button', { name: 'common.operation.cancel' })
     await user.click(cancelBtn)
 
     // Test unmount clearing timer
-    await user.click(screen.getByTestId('edit-btn'))
+    await user.click(screen.getByRole('button', { name: 'common.operation.edit' }))
     const textbox2 = await screen.findByRole('textbox')
     fireEvent.compositionStart(textbox2)
     fireEvent.compositionEnd(textbox2)
@@ -489,13 +489,13 @@ describe('Question component', () => {
     const onRegenerate = vi.fn() as unknown as OnRegenerate
     renderWithProvider(makeItem(), onRegenerate)
 
-    await user.click(screen.getByTestId('edit-btn'))
+    await user.click(screen.getByRole('button', { name: 'common.operation.edit' }))
     const textbox = await screen.findByRole('textbox')
 
     fireEvent.compositionStart(textbox)
     fireEvent.compositionEnd(textbox) // starts timer
 
-    const saveBtn = screen.getByTestId('save-edit-btn')
+    const saveBtn = screen.getByRole('button', { name: 'common.operation.save' })
     await user.click(saveBtn) // handleResend clears timer
 
     expect(onRegenerate).toHaveBeenCalled()
@@ -661,14 +661,14 @@ describe('Question component', () => {
   it('should hide edit button when enableEdit is explicitly true', () => {
     renderWithProvider(makeItem(), vi.fn() as unknown as OnRegenerate, { enableEdit: true })
 
-    expect(screen.getByTestId('edit-btn')).toBeInTheDocument()
-    expect(screen.getByTestId('copy-btn')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'common.operation.edit' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'common.operation.copy' })).toBeInTheDocument()
   })
 
   it('should show copy button always regardless of enableEdit setting', () => {
     renderWithProvider(makeItem(), vi.fn() as unknown as OnRegenerate, { enableEdit: false })
 
-    expect(screen.getByTestId('copy-btn')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'common.operation.copy' })).toBeInTheDocument()
   })
 
   it('should not render content switch when no siblings exist', () => {
@@ -687,7 +687,7 @@ describe('Question component', () => {
     const user = userEvent.setup()
     renderWithProvider(makeItem())
 
-    await user.click(screen.getByTestId('edit-btn'))
+    await user.click(screen.getByRole('button', { name: 'common.operation.edit' }))
     const textbox = await screen.findByRole('textbox')
 
     expect(textbox).toHaveValue('This is the question content')
@@ -713,7 +713,7 @@ describe('Question component', () => {
 
     const { container } = renderWithProvider(makeItem({ message_files: files }))
 
-    await user.click(screen.getByTestId('edit-btn'))
+    await user.click(screen.getByRole('button', { name: 'common.operation.edit' }))
 
     // FileList should be visible in edit mode with mb-3 margin
     expect(screen.getByText(/test.txt/i)).toBeInTheDocument()
@@ -769,7 +769,7 @@ describe('Question component', () => {
     const onRegenerate = vi.fn() as unknown as OnRegenerate
     renderWithProvider(makeItem(), onRegenerate)
 
-    await userEvent.click(screen.getByTestId('edit-btn'))
+    await userEvent.click(screen.getByRole('button', { name: 'common.operation.edit' }))
     const textbox = await screen.findByRole('textbox')
 
     // Rapid composition cycles
@@ -792,7 +792,7 @@ describe('Question component', () => {
     const onRegenerate = vi.fn() as unknown as OnRegenerate
     renderWithProvider(makeItem(), onRegenerate)
 
-    await user.click(screen.getByTestId('edit-btn'))
+    await user.click(screen.getByRole('button', { name: 'common.operation.edit' }))
     const textbox = await screen.findByRole('textbox')
 
     await user.clear(textbox)
@@ -821,7 +821,7 @@ describe('Question component', () => {
     const item = makeItem({ message_files: files })
     renderWithProvider(item, onRegenerate)
 
-    await user.click(screen.getByTestId('edit-btn'))
+    await user.click(screen.getByRole('button', { name: 'common.operation.edit' }))
     const textbox = await screen.findByRole('textbox')
 
     await user.clear(textbox)
@@ -842,24 +842,24 @@ describe('Question component', () => {
     renderWithProvider(makeItem())
 
     // First edit cycle
-    await user.click(screen.getByTestId('edit-btn'))
+    await user.click(screen.getByRole('button', { name: 'common.operation.edit' }))
     let textbox = await screen.findByRole('textbox')
     fireEvent.compositionStart(textbox)
     fireEvent.compositionEnd(textbox)
 
     // Cancel and re-edit
-    let cancelBtn = await screen.findByTestId('cancel-edit-btn')
+    let cancelBtn = await screen.findByRole('button', { name: 'common.operation.cancel' })
     await user.click(cancelBtn)
 
     // Second edit cycle
-    await user.click(screen.getByTestId('edit-btn'))
+    await user.click(screen.getByRole('button', { name: 'common.operation.edit' }))
     textbox = await screen.findByRole('textbox')
     expect(textbox).toHaveValue('This is the question content')
 
     fireEvent.compositionStart(textbox)
     fireEvent.compositionEnd(textbox)
 
-    cancelBtn = await screen.findByTestId('cancel-edit-btn')
+    cancelBtn = await screen.findByRole('button', { name: 'common.operation.cancel' })
     await user.click(cancelBtn)
 
     expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
@@ -875,7 +875,7 @@ describe('Question component', () => {
     expect(contentContainer).toHaveClass('rounded-2xl')
     expect(contentContainer).toHaveClass('bg-background-gradient-bg-fill-chat-bubble-bg-3')
 
-    await user.click(screen.getByTestId('edit-btn'))
+    await user.click(screen.getByRole('button', { name: 'common.operation.edit' }))
 
     // Edit mode classes
     expect(contentContainer).toHaveClass('rounded-[24px]')
@@ -918,8 +918,8 @@ describe('Question component', () => {
       </ChatContextProvider>,
     )
 
-    await user.click(screen.getByTestId('edit-btn'))
-    await user.click(screen.getByTestId('save-edit-btn'))
+    await user.click(screen.getByRole('button', { name: 'common.operation.edit' }))
+    await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
     // Should not throw
   })
 
@@ -969,7 +969,7 @@ describe('Question component', () => {
   it('should clear timer on unmount when timer is active', async () => {
     const user = userEvent.setup()
     const { unmount } = renderWithProvider(makeItem())
-    await user.click(screen.getByTestId('edit-btn'))
+    await user.click(screen.getByRole('button', { name: 'common.operation.edit' }))
     const textbox = await screen.findByRole('textbox')
     fireEvent.compositionStart(textbox)
     fireEvent.compositionEnd(textbox) // starts timer

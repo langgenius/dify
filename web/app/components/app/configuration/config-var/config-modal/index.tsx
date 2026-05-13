@@ -148,12 +148,17 @@ const ConfigModal: FC<IConfigModalProps> = ({
           onClose()
       }}
     >
-      <DialogContent className="overflow-hidden! border-none text-left align-middle">
-        <DialogTitle className="title-2xl-semi-bold text-text-primary">
+      <DialogContent className="flex max-h-[calc(100dvh-2rem)] flex-col overflow-hidden! border-none p-0! text-left align-middle">
+        <DialogTitle className="shrink-0 px-6 pt-6 title-2xl-semi-bold text-text-primary">
           {t(`variableConfig.${isCreate ? 'addModalTitle' : 'editModalTitle'}`, { ns: 'appDebug' })}
         </DialogTitle>
 
-        <div className="mb-8" ref={modalRef} tabIndex={-1}>
+        <div
+          ref={modalRef}
+          tabIndex={-1}
+          data-testid="config-modal-scroll-area"
+          className="min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto px-6 py-4 pb-8"
+        >
           <ConfigModalFormFields
             checkboxDefaultSelectValue={checkboxDefaultSelectValue}
             isStringInput={isStringInput}
@@ -172,10 +177,12 @@ const ConfigModal: FC<IConfigModalProps> = ({
             t={t}
           />
         </div>
-        <ModalFoot
-          onConfirm={handleConfirm}
-          onCancel={onClose}
-        />
+        <div className="shrink-0 px-6 pt-2 pb-6">
+          <ModalFoot
+            onConfirm={handleConfirm}
+            onCancel={onClose}
+          />
+        </div>
       </DialogContent>
     </Dialog>
   )

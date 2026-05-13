@@ -120,6 +120,8 @@ type BaseItemProps = {
   onRemove?: () => void
 }
 function BaseItem({ icon, onRemove, children }: BaseItemProps) {
+  const { t } = useTranslation()
+
   return (
     <div className="group flex flex-row items-center gap-x-1 rounded-full border-[0.5px] border-components-panel-border-subtle bg-components-badge-white-to-dark p-1 pr-1.5 shadow-xs">
       <div className="h-5 w-5 overflow-hidden rounded-full bg-components-icon-bg-blue-solid">
@@ -128,9 +130,14 @@ function BaseItem({ icon, onRemove, children }: BaseItemProps) {
         </div>
       </div>
       {children}
-      <div className="flex h-4 w-4 cursor-pointer items-center justify-center" onClick={onRemove}>
-        <RiCloseCircleFill className="h-[14px] w-[14px] text-text-quaternary" />
-      </div>
+      <button
+        type="button"
+        className="flex h-4 w-4 cursor-pointer items-center justify-center border-none bg-transparent p-0 focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
+        aria-label={t('operation.remove', { ns: 'common' })}
+        onClick={onRemove}
+      >
+        <RiCloseCircleFill className="h-[14px] w-[14px] text-text-quaternary" aria-hidden="true" />
+      </button>
     </div>
   )
 }

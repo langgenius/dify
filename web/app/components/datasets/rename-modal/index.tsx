@@ -93,9 +93,14 @@ const RenameDatasetModal = ({ show, dataset, onSuccess, onClose }: RenameDataset
 
         <div className="flex items-center justify-between pb-2">
           <div className="text-xl leading-[30px] font-medium text-text-primary">{t('title', { ns: 'datasetSettings' })}</div>
-          <div className="cursor-pointer p-2" onClick={onClose}>
-            <RiCloseLine className="h-4 w-4 text-text-tertiary" />
-          </div>
+          <button
+            type="button"
+            className="cursor-pointer border-none bg-transparent p-2 focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
+            aria-label={t('operation.close', { ns: 'common' })}
+            onClick={onClose}
+          >
+            <RiCloseLine className="h-4 w-4 text-text-tertiary" aria-hidden="true" />
+          </button>
         </div>
         <div>
           <div className={cn('flex flex-col py-4')}>

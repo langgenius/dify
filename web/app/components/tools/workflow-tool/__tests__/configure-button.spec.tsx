@@ -968,7 +968,7 @@ describe('WorkflowToolDrawer', () => {
 
       // Act
       render(<WorkflowToolDrawer {...props} />)
-      await user.click(screen.getByTestId('drawer-close'))
+      await user.click(screen.getByRole('button', { name: /Close|operation.close/ }))
 
       // Assert
       expect(onHide).toHaveBeenCalledTimes(1)

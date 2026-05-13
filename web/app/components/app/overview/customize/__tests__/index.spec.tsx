@@ -310,7 +310,7 @@ describe('CustomizeModal', () => {
         expect(screen.getByText('appOverview.overview.appInfo.customize.title')).toBeInTheDocument()
       })
 
-      const closeButton = screen.getByTestId('modal-close-button')
+      const closeButton = screen.getByRole('button', { name: 'Close' })
       fireEvent.click(closeButton)
       expect(onClose).toHaveBeenCalledTimes(1)
     })

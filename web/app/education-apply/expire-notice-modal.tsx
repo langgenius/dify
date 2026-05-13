@@ -49,7 +49,7 @@ const ExpireNoticeModal: React.FC<Props> = ({ expireAt, expired, onClose }) => {
       }}
     >
       <DialogContent className="w-full max-w-[600px] overflow-hidden! border-none text-left align-middle">
-        <DialogCloseButton data-testid="modal-close-button" />
+        <DialogCloseButton />
         <DialogTitle className="title-2xl-semi-bold text-text-primary">
           {expired ? t(`${i18nPrefix}.expired.title`, { ns: 'education' }) : t(`${i18nPrefix}.isAboutToExpire.title`, { ns: 'education', date: formatTime(expireAt, t(`${i18nPrefix}.dateFormat`, { ns: 'education' }) as string), interpolation: { escapeValue: false } })}
         </DialogTitle>

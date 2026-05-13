@@ -32,7 +32,7 @@ from core.app.entities.task_entities import (
 )
 from core.app.layers.pause_state_persist_layer import PauseStateLayerConfig, PauseStatePersistenceLayer
 from core.db.session_factory import session_factory
-from core.helper.trace_id_helper import extract_external_trace_id_from_args
+from core.helper.trace_id_helper import extract_external_trace_id_from_args, extract_parent_trace_context_from_args
 from core.ops.ops_trace_manager import TraceQueueManager
 from core.repositories import DifyCoreRepositoryFactory
 from core.repositories.factory import WorkflowExecutionRepository, WorkflowNodeExecutionRepository
@@ -166,6 +166,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
 
             extras = {
                 **extract_external_trace_id_from_args(args),
+                **extract_parent_trace_context_from_args(args),
             }
             workflow_run_id = str(workflow_run_id or uuid.uuid4())
             # FIXME (Yeuoly): we need to remove the SKIP_PREPARE_USER_INPUTS_KEY from the args

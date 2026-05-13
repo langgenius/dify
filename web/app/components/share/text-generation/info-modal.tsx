@@ -25,7 +25,7 @@ const InfoModal = ({
       }}
     >
       <DialogContent className="w-full max-w-[400px] min-w-[400px] overflow-hidden! border-none p-0! text-left align-middle">
-        <DialogCloseButton data-testid="modal-close-button" />
+        <DialogCloseButton />
 
         <div className={cn('flex flex-col items-center gap-4 px-4 pt-10 pb-8')}>
           <AppIcon

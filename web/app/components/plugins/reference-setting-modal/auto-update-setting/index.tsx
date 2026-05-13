@@ -33,7 +33,13 @@ const SettingTimeZone: FC<{
 }) => {
   const setShowAccountSettingModal = useModalContextSelector(s => s.setShowAccountSettingModal)
   return (
-    <span className="cursor-pointer body-xs-regular text-text-accent" onClick={() => setShowAccountSettingModal({ payload: ACCOUNT_SETTING_TAB.LANGUAGE })}>{children}</span>
+    <button
+      type="button"
+      className="cursor-pointer border-none bg-transparent p-0 text-left body-xs-regular text-text-accent focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
+      onClick={() => setShowAccountSettingModal({ payload: ACCOUNT_SETTING_TAB.LANGUAGE })}
+    >
+      {children}
+    </button>
   )
 }
 const AutoUpdateSetting: FC<Props> = ({
@@ -104,8 +110,9 @@ const AutoUpdateSetting: FC<Props> = ({
 
   const renderTimePickerTrigger = useCallback(({ inputElem, onClick, isOpen }: TriggerParams) => {
     return (
-      <div
-        className="group flex h-8 w-[160px] cursor-pointer items-center justify-between rounded-lg bg-components-input-bg-normal px-2 hover:bg-state-base-hover-alt"
+      <button
+        type="button"
+        className="group flex h-8 w-[160px] cursor-pointer items-center justify-between rounded-lg border-none bg-components-input-bg-normal px-2 text-left hover:bg-state-base-hover-alt focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
         onClick={onClick}
       >
         <div className="flex w-0 grow items-center gap-x-1">
@@ -117,7 +124,7 @@ const AutoUpdateSetting: FC<Props> = ({
           {inputElem}
         </div>
         <div className="system-sm-regular text-text-tertiary">{convertTimezoneToOffsetStr(timezone)}</div>
-      </div>
+      </button>
     )
   }, [timezone])
 

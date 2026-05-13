@@ -13786,6 +13786,14 @@ Tag type
 | unit | string |  | No |
 | variable | string |  | No |
 
+#### TrialSimpleAccount
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| email | string |  | No |
+| id | string |  | No |
+| name | string |  | No |
+
 #### TrialSite
 
 | Name | Type | Description | Required |
@@ -13829,7 +13837,7 @@ Tag type
 | ---- | ---- | ----------- | -------- |
 | conversation_variables | [ [TrialConversationVariable](#trialconversationvariable) ] |  | No |
 | created_at | object |  | No |
-| created_by | [SimpleAccount](#simpleaccount) |  | No |
+| created_by | [TrialSimpleAccount](#trialsimpleaccount) |  | No |
 | environment_variables | [ object ] |  | No |
 | features | object |  | No |
 | graph | object |  | No |
@@ -13840,7 +13848,7 @@ Tag type
 | rag_pipeline_variables | [ [TrialPipelineVariable](#trialpipelinevariable) ] |  | No |
 | tool_published | boolean |  | No |
 | updated_at | object |  | No |
-| updated_by | [SimpleAccount](#simpleaccount) |  | No |
+| updated_by | [TrialSimpleAccount](#trialsimpleaccount) |  | No |
 | version | string |  | No |
 
 #### TrialWorkflowPartial

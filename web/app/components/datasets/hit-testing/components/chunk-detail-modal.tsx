@@ -61,7 +61,6 @@ const ChunkDetailModal = ({
     >
       <DialogContent className={cn('max-h-none overflow-hidden! border-none p-6 text-left align-middle', isParentChildRetrieval ? 'w-[1200px] max-w-none! min-w-[1200px]!' : 'w-[800px] max-w-none! min-w-[800px]!')}>
         <DialogCloseButton
-          data-testid="modal-close-button"
           onClick={(e) => {
             e.stopPropagation()
             onHide()

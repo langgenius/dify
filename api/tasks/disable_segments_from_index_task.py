@@ -55,7 +55,7 @@ def disable_segments_from_index_task(segment_ids: list, dataset_id: str, documen
             return
 
         try:
-            index_node_ids = [segment.index_node_id for segment in segments]
+            index_node_ids = [segment.index_node_id for segment in segments if segment.index_node_id]
             if dataset.is_multimodal:
                 segment_ids = [segment.id for segment in segments]
                 segment_attachment_bindings = session.scalars(

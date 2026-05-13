@@ -106,7 +106,7 @@ describe('SegmentAdd', () => {
         />,
       )
 
-      fireEvent.click(screen.getByText(/list\.batchModal\.ok/i))
+      fireEvent.click(screen.getByRole('button', { name: /list\.batchModal\.ok/i }))
 
       expect(mockClearImportStatus).toHaveBeenCalledTimes(1)
     })
@@ -121,7 +121,7 @@ describe('SegmentAdd', () => {
         />,
       )
 
-      fireEvent.click(screen.getByText(/list\.batchModal\.ok/i))
+      fireEvent.click(screen.getByRole('button', { name: /list\.batchModal\.ok/i }))
 
       expect(mockClearImportStatus).toHaveBeenCalledTimes(1)
     })

@@ -210,9 +210,14 @@ const UpdateDSLModal = ({
 
           <div className="mb-3 flex items-center justify-between">
             <div className="title-2xl-semi-bold text-text-primary">{t('importApp', { ns: 'app' })}</div>
-            <div className="flex h-[22px] w-[22px] cursor-pointer items-center justify-center" onClick={onCancel}>
-              <RiCloseLine className="h-[18px] w-[18px] text-text-tertiary" />
-            </div>
+            <button
+              type="button"
+              className="flex h-[22px] w-[22px] cursor-pointer items-center justify-center border-none bg-transparent p-0 focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
+              aria-label={t('operation.close', { ns: 'common' })}
+              onClick={onCancel}
+            >
+              <RiCloseLine className="h-[18px] w-[18px] text-text-tertiary" aria-hidden="true" />
+            </button>
           </div>
           <div className="relative mb-2 flex grow gap-0.5 overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-2 shadow-xs">
             <div className="absolute top-0 left-0 h-full w-full bg-toast-warning-bg opacity-40" />

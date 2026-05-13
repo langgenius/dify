@@ -36,7 +36,7 @@ const HTTP_METHODS = [
   { name: 'DELETE', value: 'DELETE' },
   { name: 'PATCH', value: 'PATCH' },
   { name: 'HEAD', value: 'HEAD' },
-]
+] satisfies Array<{ name: string, value: HttpMethod }>
 
 const CONTENT_TYPES = [
   { name: 'application/json', value: 'application/json' },
@@ -45,6 +45,51 @@ const CONTENT_TYPES = [
   { name: 'application/octet-stream', value: 'application/octet-stream' },
   { name: 'multipart/form-data', value: 'multipart/form-data' },
 ]
+
+type WebhookMethodSelectorProps = {
+  nodeId: string
+  label: string
+  value: HttpMethod
+  disabled: boolean
+  onChange: (method: HttpMethod) => void
+}
+
+const WebhookMethodSelector = ({
+  nodeId,
+  label,
+  value,
+  disabled,
+  onChange,
+}: WebhookMethodSelectorProps) => {
+  const selectedMethod = HTTP_METHODS.find(item => item.value === value) ?? null
+
+  const handleMethodChange = (nextValue: string | null) => {
+    const nextMethod = HTTP_METHODS.find(item => item.value === nextValue)
+    if (nextMethod)
+      onChange(nextMethod.value)
+  }
+
+  return (
+    <Select
+      key={`${nodeId}-method-${value}`}
+      value={selectedMethod?.value ?? null}
+      disabled={disabled}
+      onValueChange={handleMethodChange}
+    >
+      <SelectTrigger aria-label={label} className="h-8 pr-8 text-sm">
+        {selectedMethod?.name}
+      </SelectTrigger>
+      <SelectContent popupClassName="w-26 min-w-26">
+        {HTTP_METHODS.map(item => (
+          <SelectItem key={item.value} value={item.value}>
+            <SelectItemText>{item.name}</SelectItemText>
+            <SelectItemIndicator />
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  )
+}
 
 const Panel: FC<NodePanelProps<WebhookTriggerNodeType>> = ({
   id,
@@ -75,7 +120,6 @@ const Panel: FC<NodePanelProps<WebhookTriggerNodeType>> = ({
     }
   }, [readOnly, inputs.webhook_url, generateWebhookUrl])
 
-  const selectedMethod = HTTP_METHODS.find(item => item.value === inputs.method) ?? null
   const selectedContentType = CONTENT_TYPES.find(item => item.value === inputs.content_type) ?? null
 
   return (
@@ -86,24 +130,13 @@ const Panel: FC<NodePanelProps<WebhookTriggerNodeType>> = ({
           <div className="space-y-1">
             <div className="flex gap-1" style={{ height: '32px' }}>
               <div className="w-26 shrink-0">
-                <Select
-                  key={`${id}-method-${inputs.method}`}
-                  value={selectedMethod?.value ?? null}
+                <WebhookMethodSelector
+                  nodeId={id}
+                  label={t(`${i18nPrefix}.method`, { ns: 'workflow' })}
+                  value={inputs.method}
                   disabled={readOnly}
-                  onValueChange={value => value && handleMethodChange(value as HttpMethod)}
-                >
-                  <SelectTrigger className="h-8 pr-8 text-sm">
-                    {selectedMethod?.name}
-                  </SelectTrigger>
-                  <SelectContent popupClassName="w-26 min-w-26">
-                    {HTTP_METHODS.map(item => (
-                      <SelectItem key={item.value} value={item.value}>
-                        <SelectItemText>{item.name}</SelectItemText>
-                        <SelectItemIndicator />
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                  onChange={handleMethodChange}
+                />
               </div>
               <div className="flex-1" style={{ width: '284px' }}>
                 <InputWithCopy

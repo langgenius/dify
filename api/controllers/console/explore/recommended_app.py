@@ -1,4 +1,5 @@
 from typing import Any
+from uuid import UUID
 
 from flask import request
 from flask_restx import Resource
@@ -80,7 +81,7 @@ class RecommendedAppListApi(Resource):
     @account_initialization_required
     def get(self):
         # language args
-        args = RecommendedAppsQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
+        args = RecommendedAppsQuery.model_validate(request.args.to_dict(flat=True))
         language = args.language
         if language and language in languages:
             language_prefix = language
@@ -99,6 +100,5 @@ class RecommendedAppListApi(Resource):
 class RecommendedAppApi(Resource):
     @login_required
     @account_initialization_required
-    def get(self, app_id):
-        app_id = str(app_id)
-        return RecommendedAppService.get_recommend_app_detail(app_id)
+    def get(self, app_id: UUID):
+        return RecommendedAppService.get_recommend_app_detail(str(app_id))

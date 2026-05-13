@@ -3,6 +3,10 @@ DOCKER_REGISTRY=langgenius
 WEB_IMAGE=$(DOCKER_REGISTRY)/dify-web
 API_IMAGE=$(DOCKER_REGISTRY)/dify-api
 VERSION=latest
+DOCKER_DIR=docker
+DOCKER_MIDDLEWARE_ENV=$(DOCKER_DIR)/middleware.env
+DOCKER_MIDDLEWARE_ENV_EXAMPLE=$(DOCKER_DIR)/envs/middleware.env.example
+DOCKER_MIDDLEWARE_PROJECT=dify-middlewares-dev
 
 # Default target - show help
 .DEFAULT_GOAL := help
@@ -17,8 +21,13 @@ dev-setup: prepare-docker prepare-web prepare-api
 # Step 1: Prepare Docker middleware
 prepare-docker:
 	@echo "🐳 Setting up Docker middleware..."
-	@cp -n docker/middleware.env.example docker/middleware.env 2>/dev/null || echo "Docker middleware.env already exists"
-	@cd docker && docker compose -f docker-compose.middleware.yaml --env-file middleware.env -p dify-middlewares-dev up -d
+	@if [ ! -f "$(DOCKER_MIDDLEWARE_ENV)" ]; then \
+		cp "$(DOCKER_MIDDLEWARE_ENV_EXAMPLE)" "$(DOCKER_MIDDLEWARE_ENV)"; \
+		echo "Docker middleware.env created"; \
+	else \
+		echo "Docker middleware.env already exists"; \
+	fi
+	@cd $(DOCKER_DIR) && docker compose -f docker-compose.middleware.yaml --env-file middleware.env -p $(DOCKER_MIDDLEWARE_PROJECT) up -d
 	@echo "✅ Docker middleware started"
 
 # Step 2: Prepare web environment
@@ -39,12 +48,18 @@ prepare-api:
 # Clean dev environment
 dev-clean:
 	@echo "⚠️  Stopping Docker containers..."
-	@cd docker && docker compose -f docker-compose.middleware.yaml --env-file middleware.env -p dify-middlewares-dev down
+	@if [ -f "$(DOCKER_MIDDLEWARE_ENV)" ]; then \
+		cd $(DOCKER_DIR) && docker compose -f docker-compose.middleware.yaml --env-file middleware.env -p $(DOCKER_MIDDLEWARE_PROJECT) down; \
+	else \
+		echo "Docker middleware.env does not exist, skipping compose down"; \
+	fi
 	@echo "🗑️  Removing volumes..."
 	@rm -rf docker/volumes/db
+	@rm -rf docker/volumes/mysql
 	@rm -rf docker/volumes/redis
 	@rm -rf docker/volumes/plugin_daemon
 	@rm -rf docker/volumes/weaviate
+	@rm -rf docker/volumes/sandbox/dependencies
 	@rm -rf api/storage
 	@echo "✅ Cleanup complete"
 
@@ -132,7 +147,7 @@ help:
 	@echo "  make prepare-docker - Set up Docker middleware"
 	@echo "  make prepare-web    - Set up web environment"
 	@echo "  make prepare-api    - Set up API environment"
-	@echo "  make dev-clean      - Stop Docker middleware containers"
+	@echo "  make dev-clean      - Stop Docker middleware containers and remove dev data"
 	@echo ""
 	@echo "Backend Code Quality:"
 	@echo "  make format         - Format code with ruff"

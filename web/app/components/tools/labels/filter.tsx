@@ -77,11 +77,10 @@ const LabelFilter: FC<LabelFilterProps> = ({
           <button
             type="button"
             aria-label={t('operation.clear', { ns: 'common' })}
-            className="group/clear absolute top-1/2 right-2 -translate-y-1/2 p-px"
-            data-testid="label-filter-clear-button"
+            className="group/clear absolute top-1/2 right-2 -translate-y-1/2 border-none bg-transparent p-px"
             onClick={() => onChange([])}
           >
-            <XCircle className="h-3.5 w-3.5 text-text-tertiary group-hover/clear:text-text-secondary" />
+            <XCircle className="h-3.5 w-3.5 text-text-tertiary group-hover/clear:text-text-secondary" aria-hidden="true" />
           </button>
         )}
         <PopoverContent
@@ -104,11 +103,11 @@ const LabelFilter: FC<LabelFilterProps> = ({
                 <button
                   key={label.name}
                   type="button"
-                  className="flex w-full items-center gap-2 rounded-lg py-[6px] pr-2 pl-3 text-left select-none hover:bg-state-base-hover"
+                  className="flex w-full items-center gap-2 rounded-lg border-none bg-transparent py-[6px] pr-2 pl-3 text-left select-none hover:bg-state-base-hover"
                   onClick={() => selectLabel(label)}
                 >
                   <div title={label.label} className="grow truncate text-sm leading-5 text-text-secondary">{label.label}</div>
-                  {value.includes(label.name) && <Check className="h-4 w-4 shrink-0 text-text-accent" />}
+                  {value.includes(label.name) && <Check className="h-4 w-4 shrink-0 text-text-accent" aria-hidden="true" />}
                 </button>
               ))}
               {!filteredLabelList.length && (

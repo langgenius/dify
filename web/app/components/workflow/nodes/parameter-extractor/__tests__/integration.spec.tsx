@@ -604,7 +604,7 @@ describe('parameter-extractor path', () => {
         />,
       )
 
-      expect(screen.getByTestId('add-button')).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'workflow.nodes.parameterExtractor.addExtractParameter' })).toBeInTheDocument()
     })
 
     it('should reject invalid names and reset add modal fields after canceling', async () => {
@@ -619,7 +619,7 @@ describe('parameter-extractor path', () => {
         />,
       )
 
-      await user.click(screen.getByTestId('add-button'))
+      await user.click(screen.getByRole('button', { name: 'workflow.nodes.parameterExtractor.addExtractParameter' }))
 
       const nameInput = screen.getByPlaceholderText('workflow.nodes.parameterExtractor.addExtractParameterContent.namePlaceholder')
       const descriptionInput = screen.getByPlaceholderText('workflow.nodes.parameterExtractor.addExtractParameterContent.descriptionPlaceholder')
@@ -635,7 +635,7 @@ describe('parameter-extractor path', () => {
       expect(onCancel).toHaveBeenCalledTimes(1)
       expect(screen.queryByTestId('base-modal')).not.toBeInTheDocument()
 
-      await user.click(screen.getByTestId('add-button'))
+      await user.click(screen.getByRole('button', { name: 'workflow.nodes.parameterExtractor.addExtractParameter' }))
       expect(screen.getByPlaceholderText('workflow.nodes.parameterExtractor.addExtractParameterContent.namePlaceholder')).toHaveValue('')
       expect(screen.getByPlaceholderText('workflow.nodes.parameterExtractor.addExtractParameterContent.descriptionPlaceholder')).toHaveValue('')
     })

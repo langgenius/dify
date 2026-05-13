@@ -119,9 +119,14 @@ const AddExtractParameter: FC<Props> = ({
   return (
     <div>
       {isAdd && (
-        <div className="mx-1 cursor-pointer rounded-md p-1 select-none hover:bg-state-base-hover" onClick={showAddModal} data-testid="add-button">
-          <span className="i-ri-add-line h-4 w-4 text-text-tertiary" />
-        </div>
+        <button
+          type="button"
+          aria-label={t(`${i18nPrefix}.addExtractParameter`, { ns: 'workflow' })}
+          className="mx-1 cursor-pointer rounded-md border-none bg-transparent p-1 select-none hover:bg-state-base-hover focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
+          onClick={showAddModal}
+        >
+          <span className="i-ri-add-line h-4 w-4 text-text-tertiary" aria-hidden="true" />
+        </button>
       )}
       {isShowModal && (
         <Dialog

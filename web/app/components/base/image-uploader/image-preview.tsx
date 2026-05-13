@@ -227,8 +227,8 @@ const ImagePreview: FC<ImagePreviewProps> = ({
                 onClick={imageCopy}
               >
                 {isCopied
-                  ? <span className="i-ri-file-copy-line h-4 w-4 text-green-500" data-testid="image-preview-copied-icon" />
-                  : <span className="i-ri-file-copy-line h-4 w-4 text-gray-500" data-testid="image-preview-copy-button" />}
+                  ? <span className="i-ri-file-copy-line h-4 w-4 text-green-500" aria-hidden="true" />
+                  : <span className="i-ri-file-copy-line h-4 w-4 text-gray-500" aria-hidden="true" />}
               </button>
             )}
           />
@@ -245,7 +245,7 @@ const ImagePreview: FC<ImagePreviewProps> = ({
                 className="absolute top-6 right-40 flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg"
                 onClick={zoomOut}
               >
-                <span className="i-ri-zoom-out-line h-4 w-4 text-gray-500" data-testid="image-preview-zoom-out-button" />
+                <span className="i-ri-zoom-out-line h-4 w-4 text-gray-500" aria-hidden="true" />
               </button>
             )}
           />
@@ -262,7 +262,7 @@ const ImagePreview: FC<ImagePreviewProps> = ({
                 className="absolute top-6 right-32 flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg"
                 onClick={zoomIn}
               >
-                <span className="i-ri-zoom-in-line h-4 w-4 text-gray-500" data-testid="image-preview-zoom-in-button" />
+                <span className="i-ri-zoom-in-line h-4 w-4 text-gray-500" aria-hidden="true" />
               </button>
             )}
           />
@@ -279,7 +279,7 @@ const ImagePreview: FC<ImagePreviewProps> = ({
                 className="absolute top-6 right-24 flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg"
                 onClick={downloadImage}
               >
-                <span className="i-ri-download-cloud-2-line h-4 w-4 text-gray-500" data-testid="image-preview-download-button" />
+                <span className="i-ri-download-cloud-2-line h-4 w-4 text-gray-500" aria-hidden="true" />
               </button>
             )}
           />
@@ -296,7 +296,7 @@ const ImagePreview: FC<ImagePreviewProps> = ({
                 className="absolute top-6 right-16 flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg"
                 onClick={openInNewTab}
               >
-                <span className="i-ri-add-box-line h-4 w-4 text-gray-500" data-testid="image-preview-open-in-tab-button" />
+                <span className="i-ri-add-box-line h-4 w-4 text-gray-500" aria-hidden="true" />
               </button>
             )}
           />
@@ -313,7 +313,7 @@ const ImagePreview: FC<ImagePreviewProps> = ({
                 className="absolute top-6 right-6 flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg bg-white/8 backdrop-blur-[2px]"
                 onClick={onCancel}
               >
-                <span className="i-ri-close-line h-4 w-4 text-gray-500" data-testid="image-preview-close-button" />
+                <span className="i-ri-close-line h-4 w-4 text-gray-500" aria-hidden="true" />
               </button>
             )}
           />

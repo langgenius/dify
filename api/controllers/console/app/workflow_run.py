@@ -154,7 +154,7 @@ class AdvancedChatAppWorkflowRunListApi(Resource):
         """
         Get advanced chat app workflow run list
         """
-        args_model = WorkflowRunListQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
+        args_model = WorkflowRunListQuery.model_validate(request.args.to_dict(flat=True))
         args: WorkflowRunListArgs = {"limit": args_model.limit}
         if args_model.last_id is not None:
             args["last_id"] = args_model.last_id
@@ -250,7 +250,7 @@ class AdvancedChatAppWorkflowRunCountApi(Resource):
         """
         Get advanced chat workflow runs count statistics
         """
-        args_model = WorkflowRunCountQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
+        args_model = WorkflowRunCountQuery.model_validate(request.args.to_dict(flat=True))
         args = args_model.model_dump(exclude_none=True)
 
         # Default to DEBUGGING if not specified
@@ -290,7 +290,7 @@ class WorkflowRunListApi(Resource):
         """
         Get workflow run list
         """
-        args_model = WorkflowRunListQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
+        args_model = WorkflowRunListQuery.model_validate(request.args.to_dict(flat=True))
         args: WorkflowRunListArgs = {"limit": args_model.limit}
         if args_model.last_id is not None:
             args["last_id"] = args_model.last_id
@@ -331,7 +331,7 @@ class WorkflowRunCountApi(Resource):
         """
         Get workflow runs count statistics
         """
-        args_model = WorkflowRunCountQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
+        args_model = WorkflowRunCountQuery.model_validate(request.args.to_dict(flat=True))
         args = args_model.model_dump(exclude_none=True)
 
         # Default to DEBUGGING for workflow if not specified (backward compatibility)

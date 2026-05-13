@@ -1,4 +1,0 @@
-interface:
-  display_name: "Frontend Query & Mutation"
-  short_description: "Dify TanStack Query, oRPC, and default option patterns"
-  default_prompt: "Use this skill when implementing or reviewing Dify frontend contracts, query and mutation call sites, oRPC default options, conditional queries, cache updates/invalidation, or legacy query/mutation migrations."

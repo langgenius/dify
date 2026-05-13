@@ -14,7 +14,6 @@ import {
   GENERATED_IGNORES,
   HYOBAN_PREFER_TAILWIND_ICONS_OPTIONS,
   NEXT_PLATFORM_RESTRICTED_IMPORT_PATHS,
-  OVERLAY_RESTRICTED_IMPORT_PATTERNS,
   WEB_RESTRICTED_IMPORT_PATTERNS,
 } from './eslint.constants.mjs'
 import dify from './plugins/eslint/index.js'
@@ -168,23 +167,6 @@ export default antfu(
       'no-restricted-imports': ['error', {
         paths: NEXT_PLATFORM_RESTRICTED_IMPORT_PATHS,
         patterns: WEB_RESTRICTED_IMPORT_PATTERNS,
-      }],
-    },
-  },
-  {
-    name: 'dify/overlay-import-policy',
-    files: [GLOB_TS, GLOB_TSX],
-    ignores: [
-      'next/**',
-      ...GLOB_TESTS,
-    ],
-    rules: {
-      'no-restricted-imports': ['error', {
-        paths: NEXT_PLATFORM_RESTRICTED_IMPORT_PATHS,
-        patterns: [
-          ...WEB_RESTRICTED_IMPORT_PATTERNS,
-          ...OVERLAY_RESTRICTED_IMPORT_PATTERNS,
-        ],
       }],
     },
   },

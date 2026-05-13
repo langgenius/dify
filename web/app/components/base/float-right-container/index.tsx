@@ -63,7 +63,6 @@ const FloatRightContainer = ({
                         <DrawerCloseButton
                           aria-label={t('operation.close', { ns: 'common' })}
                           className="h-6 w-6 rounded-md"
-                          data-testid="close-icon"
                         />
                       )}
                     </div>
