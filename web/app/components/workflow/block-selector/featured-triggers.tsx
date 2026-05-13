@@ -1,8 +1,10 @@
 'use client'
+import type { TFunction } from 'i18next'
+import type { TriggerPluginActionPreviewPayload } from './trigger-plugin/action-item'
 import type { TriggerDefaultValue, TriggerWithProvider } from './types'
 import type { Plugin } from '@/app/components/plugins/types'
 import type { Locale } from '@/i18n-config'
-import { PreviewCard, PreviewCardContent, PreviewCardTrigger } from '@langgenius/dify-ui/preview-card'
+import { createPreviewCardHandle, PreviewCard, PreviewCardContent, PreviewCardTrigger } from '@langgenius/dify-ui/preview-card'
 import { RiMoreLine } from '@remixicon/react'
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -17,6 +19,7 @@ import { formatNumber } from '@/utils/format'
 import { getMarketplaceUrl } from '@/utils/var'
 import BlockIcon from '../block-icon'
 import { BlockEnum } from '../types'
+import { TriggerPluginActionPreviewCard } from './trigger-plugin/action-item'
 import TriggerPluginItem from './trigger-plugin/item'
 
 const MAX_RECOMMENDED_COUNT = 15
@@ -28,6 +31,11 @@ type FeaturedTriggersProps = {
   onSelect: (type: BlockEnum, trigger?: TriggerDefaultValue) => void
   isLoading?: boolean
   onInstallSuccess?: () => void | Promise<void>
+}
+type FeaturedTriggerPreviewPayload = {
+  plugin: Plugin
+  label: string
+  description: string
 }
 
 const STORAGE_KEY = 'workflow_triggers_featured_collapsed'
@@ -41,7 +49,10 @@ const FeaturedTriggers = ({
 }: FeaturedTriggersProps) => {
   const { t } = useTranslation()
   const language = useGetLanguage()
+  const previewCardHandle = useMemo(() => createPreviewCardHandle<FeaturedTriggerPreviewPayload>(), [])
+  const triggerActionPreviewCardHandle = useMemo(() => createPreviewCardHandle<TriggerPluginActionPreviewPayload>(), [])
   const [visibleCount, setVisibleCount] = useState(INITIAL_VISIBLE_COUNT)
+  const [visibleCountPlugins, setVisibleCountPlugins] = useState(plugins)
   const [isCollapsed, setIsCollapsed] = useState<boolean>(() => {
     if (isServer)
       return false
@@ -52,20 +63,13 @@ const FeaturedTriggers = ({
   useEffect(() => {
     if (isServer)
       return
-    const stored = window.localStorage.getItem(STORAGE_KEY)
-    if (stored !== null)
-      setIsCollapsed(stored === 'true')
-  }, [])
-
-  useEffect(() => {
-    if (isServer)
-      return
     window.localStorage.setItem(STORAGE_KEY, String(isCollapsed))
   }, [isCollapsed])
 
-  useEffect(() => {
+  if (visibleCountPlugins !== plugins) {
+    setVisibleCountPlugins(plugins)
     setVisibleCount(INITIAL_VISIBLE_COUNT)
-  }, [plugins])
+  }
 
   const limitedPlugins = useMemo(
     () => plugins.slice(0, MAX_RECOMMENDED_COUNT),
@@ -156,6 +160,7 @@ const FeaturedTriggers = ({
                       key={provider.id}
                       payload={provider}
                       hasSearchText={false}
+                      previewCardHandle={triggerActionPreviewCardHandle}
                       onSelect={onSelect}
                     />
                   ))}
@@ -169,10 +174,11 @@ const FeaturedTriggers = ({
                       key={plugin.plugin_id}
                       plugin={plugin}
                       language={language}
+                      previewCardHandle={previewCardHandle}
                       onInstallSuccess={async () => {
                         await onInstallSuccess?.()
                       }}
-                      t={t as any}
+                      t={t}
                     />
                   ))}
                 </div>
@@ -209,6 +215,16 @@ const FeaturedTriggers = ({
           )}
         </>
       )}
+      <PreviewCard handle={previewCardHandle}>
+        {({ payload }) => (
+          <FeaturedTriggerPreviewCard payload={payload as FeaturedTriggerPreviewPayload | undefined} />
+        )}
+      </PreviewCard>
+      <PreviewCard handle={triggerActionPreviewCardHandle}>
+        {({ payload }) => (
+          <TriggerPluginActionPreviewCard payload={payload as TriggerPluginActionPreviewPayload | undefined} />
+        )}
+      </PreviewCard>
     </div>
   )
 }
@@ -216,13 +232,15 @@ const FeaturedTriggers = ({
 type FeaturedTriggerUninstalledItemProps = {
   plugin: Plugin
   language: Locale
+  previewCardHandle: ReturnType<typeof createPreviewCardHandle<FeaturedTriggerPreviewPayload>>
   onInstallSuccess?: () => Promise<void> | void
-  t: (key: string, options?: Record<string, any>) => string
+  t: TFunction
 }
 
 function FeaturedTriggerUninstalledItem({
   plugin,
   language,
+  previewCardHandle,
   onInstallSuccess,
   t,
 }: FeaturedTriggerUninstalledItemProps) {
@@ -291,16 +309,13 @@ function FeaturedTriggerUninstalledItem({
             // Preview is supplementary: icon / label / brief are all reachable from
             // the InstallFromMarketplace modal that opens on click, so hover/focus-only
             // activation is a11y-safe. See packages/dify-ui/AGENTS.md → Overlay Primitive Selection.
-            <PreviewCard>
-              <PreviewCardTrigger delay={150} closeDelay={150} render={row} />
-              <PreviewCardContent placement="right" popupClassName="w-[224px] px-3 py-2.5">
-                <div>
-                  <BlockIcon size="md" className="mb-2" type={BlockEnum.TriggerPlugin} toolIcon={plugin.icon} />
-                  <div className="mb-1 text-sm leading-5 text-text-primary">{label}</div>
-                  <div className="text-xs leading-[18px] text-text-secondary">{description}</div>
-                </div>
-              </PreviewCardContent>
-            </PreviewCard>
+            <PreviewCardTrigger
+              delay={150}
+              closeDelay={150}
+              handle={previewCardHandle}
+              payload={{ plugin, label, description }}
+              render={row}
+            />
           )
         : row}
       {isInstallModalOpen && (
@@ -317,6 +332,27 @@ function FeaturedTriggerUninstalledItem({
         />
       )}
     </>
+  )
+}
+
+type FeaturedTriggerPreviewCardProps = {
+  payload?: FeaturedTriggerPreviewPayload
+}
+
+function FeaturedTriggerPreviewCard({
+  payload,
+}: FeaturedTriggerPreviewCardProps) {
+  if (!payload)
+    return null
+
+  return (
+    <PreviewCardContent placement="right" popupClassName="w-[224px] px-3 py-2.5">
+      <div>
+        <BlockIcon size="md" className="mb-2" type={BlockEnum.TriggerPlugin} toolIcon={payload.plugin.icon} />
+        <div className="mb-1 text-sm leading-5 text-text-primary">{payload.label}</div>
+        <div className="text-xs leading-[18px] wrap-break-word text-text-secondary">{payload.description}</div>
+      </div>
+    </PreviewCardContent>
   )
 }
 

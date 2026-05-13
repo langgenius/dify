@@ -3,11 +3,12 @@ import type { FC } from 'react'
 import type { Tool as ToolType } from '../../../tools/types'
 import type { ToolWithProvider } from '../../types'
 import type { ToolDefaultValue, ToolValue } from '../types'
+import type { ToolActionPreviewCardHandle } from './action-item'
 import { cn } from '@langgenius/dify-ui/cn'
 import { RiArrowDownSLine, RiArrowRightSLine } from '@remixicon/react'
 import { useHover } from 'ahooks'
 import * as React from 'react'
-import { useCallback, useEffect, useMemo, useRef } from 'react'
+import { useCallback, useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Mcp } from '@/app/components/base/icons/src/vender/other'
 import { useMCPToolAvailability } from '@/app/components/workflow/nodes/_base/components/mcp-tool-availability'
@@ -33,6 +34,7 @@ const normalizeProviderIcon = (icon?: ToolWithProvider['icon']) => {
 type Props = {
   className?: string
   payload: ToolWithProvider
+  previewCardHandle: ToolActionPreviewCardHandle
   viewType: ViewType
   hasSearchText: boolean
   onSelect: (type: BlockEnum, tool: ToolDefaultValue) => void
@@ -45,6 +47,7 @@ type Props = {
 const Tool: FC<Props> = ({
   className,
   payload,
+  previewCardHandle,
   viewType,
   hasSearchText,
   onSelect,
@@ -59,7 +62,8 @@ const Tool: FC<Props> = ({
   const notShowProvider = payload.type === CollectionType.workflow
   const actions = payload.tools
   const hasAction = !notShowProvider
-  const [isFold, setFold] = React.useState<boolean>(true)
+  const [isFold, setIsFold] = React.useState<boolean>(true)
+  const [isFoldHasSearchText, setIsFoldHasSearchText] = React.useState(hasSearchText)
   const ref = useRef(null)
   const isHovering = useHover(ref)
   const isMCPTool = payload.type === CollectionType.mcp
@@ -146,14 +150,10 @@ const Tool: FC<Props> = ({
     )
   }, [actions, getIsDisabled, isAllSelected, isHovering, language, onSelectMultiple, payload.id, payload.is_team_authorization, payload.name, payload.type, selectedToolsNum, t, totalToolsNum])
 
-  useEffect(() => {
-    if (hasSearchText && isFold) {
-      setFold(false)
-      return
-    }
-    if (!hasSearchText && !isFold)
-      setFold(true)
-  }, [hasSearchText])
+  if (isFoldHasSearchText !== hasSearchText) {
+    setIsFoldHasSearchText(hasSearchText)
+    setIsFold(!hasSearchText)
+  }
 
   const FoldIcon = isFold ? RiArrowRightSLine : RiArrowDownSLine
 
@@ -181,7 +181,7 @@ const Tool: FC<Props> = ({
           className="group/item flex w-full cursor-pointer items-center justify-between rounded-lg pr-1 pl-3 select-none hover:bg-state-base-hover"
           onClick={() => {
             if (hasAction) {
-              setFold(!isFold)
+              setIsFold(!isFold)
               return
             }
 
@@ -240,6 +240,7 @@ const Tool: FC<Props> = ({
               key={action.name}
               provider={payload}
               payload={action}
+              previewCardHandle={previewCardHandle}
               onSelect={onSelect}
               disabled={getIsDisabled(action) || isShowCanNotChooseMCPTip}
               isAdded={getIsDisabled(action)}
