@@ -1,10 +1,13 @@
-import type { DescribeInfo, DescribeResponse } from './app.js'
-import { FieldInfo, FieldInputSchema, FieldParameters } from './app.js'
+import type { AppDescribeInfo, AppDescribeResponse } from './data-contracts.js'
+
+export const FieldInfo = 'info'
+export const FieldParameters = 'parameters'
+export const FieldInputSchema = 'input_schema'
 
 export type AppMetaFieldKey = typeof FieldInfo | typeof FieldParameters | typeof FieldInputSchema
 
 export type AppMeta = {
-  info: DescribeInfo | null
+  info: AppDescribeInfo | null
   parameters: unknown
   inputSchema: unknown
   coveredFields: ReadonlySet<AppMetaFieldKey>
@@ -15,7 +18,7 @@ export type AppMetaCacheRecord = {
   fetchedAt: string
 }
 
-export function fromDescribe(resp: DescribeResponse, requested: readonly AppMetaFieldKey[]): AppMeta {
+export function fromDescribe(resp: AppDescribeResponse, requested: readonly AppMetaFieldKey[]): AppMeta {
   const covered = new Set<AppMetaFieldKey>()
   if (requested.length === 0) {
     covered.add(FieldInfo)
@@ -26,7 +29,7 @@ export function fromDescribe(resp: DescribeResponse, requested: readonly AppMeta
     for (const f of requested) covered.add(f)
   }
   return {
-    info: resp.info,
+    info: resp.info ?? null,
     parameters: resp.parameters,
     inputSchema: resp.input_schema,
     coveredFields: covered,

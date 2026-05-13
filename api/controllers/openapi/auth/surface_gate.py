@@ -41,8 +41,7 @@ def check_surface(accepted: frozenset[SubjectType]) -> None:
     ctx = getattr(g, "auth_ctx", None)
     if ctx is None:
         raise RuntimeError(
-            "check_surface called without g.auth_ctx; "
-            "stack validate_bearer or BearerCheck above the surface gate"
+            "check_surface called without g.auth_ctx; stack validate_bearer or BearerCheck above the surface gate"
         )
 
     subject = _coerce_subject_type(getattr(ctx, "subject_type", None))

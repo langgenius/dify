@@ -12,18 +12,21 @@ from typing import Any
 import sqlalchemy as sa
 from flask import g, request
 from flask_restx import Resource
-from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator
+from pydantic import ValidationError
 from werkzeug.exceptions import Conflict, NotFound, UnprocessableEntity
 
 from controllers.common.fields import Parameters
+from controllers.common.schema import query_params_from_model
 from controllers.openapi import openapi_ns
 from controllers.openapi._input_schema import EMPTY_INPUT_SCHEMA, build_input_schema, resolve_app_config
 from controllers.openapi._models import (
-    MAX_PAGE_LIMIT,
     AppDescribeInfo,
+    AppDescribeQuery,
     AppDescribeResponse,
+    AppListQuery,
+    AppListResponse,
     AppListRow,
-    PaginationEnvelope,
+    TagItem,
 )
 from controllers.openapi.auth.surface_gate import accept_subjects
 from controllers.service_api.app.error import AppUnavailableError
@@ -39,7 +42,6 @@ from libs.oauth_bearer import (
     validate_bearer,
 )
 from models import App, Tenant
-from models.model import AppMode
 from services.app_service import AppListParams, AppService
 from services.openapi.visibility import apply_openapi_gate, is_openapi_visible
 from services.tag_service import TagService
@@ -54,44 +56,6 @@ _APPS_READ_DECORATORS = [
 ]
 
 _ALLOWED_DESCRIBE_FIELDS: frozenset[str] = frozenset({"info", "parameters", "input_schema"})
-
-
-class AppDescribeQuery(BaseModel):
-    """`?fields=` allow-list for GET /apps/<id>/describe.
-
-    Empty / omitted → all blocks. Unknown member → ValidationError → 422.
-    """
-
-    model_config = ConfigDict(extra="forbid")
-
-    fields: set[str] | None = None
-    workspace_id: str | None = None
-
-    @field_validator("workspace_id", mode="before")
-    @classmethod
-    def _validate_workspace_id(cls, v: object) -> str | None:
-        if v is None or v == "":
-            return None
-        if not isinstance(v, str):
-            raise ValueError("workspace_id must be a string")
-        try:
-            _uuid.UUID(v)
-        except ValueError:
-            raise ValueError("workspace_id must be a valid UUID")
-        return v
-
-    @field_validator("fields", mode="before")
-    @classmethod
-    def _parse_fields(cls, v: object) -> set[str] | None:
-        if v is None or v == "":
-            return None
-        if not isinstance(v, str):
-            raise ValueError("fields must be a comma-separated string")
-        members = {m.strip() for m in v.split(",") if m.strip()}
-        unknown = members - _ALLOWED_DESCRIBE_FIELDS
-        if unknown:
-            raise ValueError(f"unknown field(s): {sorted(unknown)}")
-        return members
 
 
 _EMPTY_PARAMETERS: dict[str, Any] = {
@@ -159,6 +123,8 @@ def parameters_payload(app: App) -> dict:
 
 @openapi_ns.route("/apps/<string:app_id>/describe")
 class AppDescribeApi(AppReadResource):
+    @openapi_ns.doc(params=query_params_from_model(AppDescribeQuery))
+    @openapi_ns.response(200, "App description", openapi_ns.models[AppDescribeResponse.__name__])
     def get(self, app_id: str):
         try:
             query = AppDescribeQuery.model_validate(request.args.to_dict(flat=True))
@@ -178,10 +144,11 @@ class AppDescribeApi(AppReadResource):
                 name=app.name,
                 mode=app.mode,
                 description=app.description,
-                tags=[{"name": t.name} for t in app.tags],
+                tags=[TagItem(name=t.name) for t in app.tags],
                 author=app.author_name,
                 updated_at=app.updated_at.isoformat() if app.updated_at else None,
                 service_api_enabled=bool(app.enable_api),
+                is_agent=app.mode in ("agent-chat", "advanced-chat"),
             )
             if want_info
             else None
@@ -210,26 +177,17 @@ class AppDescribeApi(AppReadResource):
         )
 
 
-class AppListQuery(BaseModel):
-    """`mode` is a closed enum — unknown values 422 instead of silently-empty data."""
-
-    workspace_id: str
-    page: int = Field(1, ge=1)
-    limit: int = Field(20, ge=1, le=MAX_PAGE_LIMIT)
-    mode: AppMode | None = None
-    name: str | None = Field(None, max_length=200)
-    tag: str | None = Field(None, max_length=100)
-
-
 @openapi_ns.route("/apps")
 class AppListApi(Resource):
     method_decorators = _APPS_READ_DECORATORS
 
+    @openapi_ns.doc(params=query_params_from_model(AppListQuery))
+    @openapi_ns.response(200, "App list", openapi_ns.models[AppListResponse.__name__])
     def get(self):
         ctx: AuthContext = g.auth_ctx
 
         try:
-            query = AppListQuery.model_validate(request.args.to_dict(flat=True))
+            query: AppListQuery = AppListQuery.model_validate(request.args.to_dict(flat=True))
         except ValidationError as exc:
             raise UnprocessableEntity(exc.json())
 
@@ -237,9 +195,9 @@ class AppListApi(Resource):
         require_workspace_member(ctx, workspace_id)
 
         empty = (
-            PaginationEnvelope[AppListRow]
-            .build(page=query.page, limit=query.limit, total=0, items=[])
-            .model_dump(mode="json"),
+            AppListResponse(page=query.page, limit=query.limit, total=0, has_more=False, data=[]).model_dump(
+                mode="json"
+            ),
             200,
         )
 
@@ -252,13 +210,8 @@ class AppListApi(Resource):
             parsed_uuid = None
 
         if parsed_uuid is not None:
-            app = db.session.get(App, str(parsed_uuid))
-            if (
-                not app
-                or app.status != "normal"
-                or str(app.tenant_id) != workspace_id
-                or not is_openapi_visible(app)
-            ):
+            app: App = db.session.get(App, str(parsed_uuid))
+            if not app or app.status != "normal" or str(app.tenant_id) != workspace_id or not is_openapi_visible(app):
                 return empty
             tenant_name = db.session.execute(
                 sa.select(Tenant.name).where(Tenant.id == workspace_id)
@@ -268,13 +221,13 @@ class AppListApi(Resource):
                 name=app.name,
                 description=app.description,
                 mode=app.mode,
-                tags=[{"name": t.name} for t in app.tags],
+                tags=[TagItem(name=t.name) for t in app.tags],
                 updated_at=app.updated_at.isoformat() if app.updated_at else None,
                 created_by_name=getattr(app, "author_name", None),
                 workspace_id=str(workspace_id),
                 workspace_name=tenant_name,
             )
-            env = PaginationEnvelope[AppListRow].build(page=1, limit=1, total=1, items=[item])
+            env = AppListResponse(page=1, limit=1, total=1, has_more=False, data=[item])
             return env.model_dump(mode="json"), 200
 
         tag_ids: list[str] | None = None
@@ -312,7 +265,7 @@ class AppListApi(Resource):
                 name=r.name,
                 description=r.description,
                 mode=r.mode,
-                tags=[{"name": t.name} for t in r.tags],
+                tags=[TagItem(name=t.name) for t in r.tags],
                 updated_at=r.updated_at.isoformat() if r.updated_at else None,
                 created_by_name=getattr(r, "author_name", None),
                 workspace_id=str(workspace_id),
@@ -320,10 +273,11 @@ class AppListApi(Resource):
             )
             for r in pagination.items
         ]
-        env = PaginationEnvelope[AppListRow].build(
+        env = AppListResponse(
             page=query.page,
             limit=query.limit,
             total=int(pagination.total),
-            items=items,
+            has_more=query.page * query.limit < int(pagination.total),
+            data=items,
         )
         return env.model_dump(mode="json"), 200

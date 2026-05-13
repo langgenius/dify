@@ -1,9 +1,8 @@
-import type { DescribeResponse } from './app.js'
+import type { AppDescribeResponse } from './data-contracts.js'
 import { describe, expect, it } from 'vitest'
-import { covers, fromDescribe, mergeMeta } from './app-meta.js'
-import { FieldInfo, FieldInputSchema, FieldParameters } from './app.js'
+import { covers, FieldInfo, FieldInputSchema, FieldParameters, fromDescribe, mergeMeta } from './app-meta.js'
 
-function describeResp(): DescribeResponse {
+function describeResp(): AppDescribeResponse {
   return {
     info: {
       id: 'app-1',
@@ -12,12 +11,12 @@ function describeResp(): DescribeResponse {
       mode: 'chat',
       author: 'tester',
       tags: [],
-      updated_at: null,
+      updated_at: undefined,
       service_api_enabled: false,
       is_agent: false,
     },
     parameters: { opening_statement: 'hi' },
-    input_schema: null,
+    input_schema: undefined,
   }
 }
 

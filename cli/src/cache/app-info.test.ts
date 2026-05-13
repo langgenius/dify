@@ -3,7 +3,7 @@ import { mkdtemp, readFile, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { FieldInfo, FieldParameters } from '../types/app.js'
+import { FieldInfo, FieldParameters } from '../types/app-meta.js'
 import { APP_INFO_TTL_MS, cachePath, loadAppInfoCache } from './app-info.js'
 
 function metaInfoOnly(): AppMeta {

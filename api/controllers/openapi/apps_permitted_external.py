@@ -10,14 +10,14 @@ from __future__ import annotations
 import sqlalchemy as sa
 from flask import request
 from flask_restx import Resource
-from pydantic import BaseModel, ConfigDict, Field, ValidationError
+from pydantic import ValidationError
 from werkzeug.exceptions import UnprocessableEntity
 
 from controllers.openapi import openapi_ns
 from controllers.openapi._models import (
-    MAX_PAGE_LIMIT,
     AppListRow,
-    PaginationEnvelope,
+    PermittedExternalAppsListQuery,
+    PermittedExternalAppsListResponse,
 )
 from controllers.openapi.auth.surface_gate import accept_subjects
 from extensions.ext_database import db
@@ -30,21 +30,9 @@ from libs.oauth_bearer import (
     validate_bearer,
 )
 from models import App, Tenant
-from models.model import AppMode
 from services.enterprise.app_permitted_service import list_permitted_apps
 from services.openapi.license_gate import license_required
 from services.openapi.visibility import apply_openapi_gate
-
-
-class PermittedExternalAppsListQuery(BaseModel):
-    """Strict (`extra='forbid'`) — rejects `workspace_id`/`tag`/etc. that are valid on /apps but not here."""
-
-    model_config = ConfigDict(extra="forbid")
-
-    page: int = Field(1, ge=1)
-    limit: int = Field(20, ge=1, le=MAX_PAGE_LIMIT)
-    mode: AppMode | None = None
-    name: str | None = Field(None, max_length=200)
 
 
 @openapi_ns.route("/permitted-external-apps")
@@ -64,9 +52,12 @@ class PermittedExternalAppsListApi(Resource):
         enterprise_only,
     ]
 
+    @openapi_ns.response(
+        200, "Permitted external apps list", openapi_ns.models[PermittedExternalAppsListResponse.__name__]
+    )
     def get(self):
         try:
-            query = PermittedExternalAppsListQuery.model_validate(request.args.to_dict(flat=True))
+            query: PermittedExternalAppsListQuery = PermittedExternalAppsListQuery.model_validate(request.args.to_dict(flat=True))
         except ValidationError as exc:
             raise UnprocessableEntity(exc.json())
 
@@ -78,16 +69,16 @@ class PermittedExternalAppsListApi(Resource):
         )
 
         if not page_result.app_ids:
-            env = PaginationEnvelope[AppListRow].build(
-                page=query.page, limit=query.limit, total=page_result.total, items=[]
+            env = PermittedExternalAppsListResponse(
+                page=query.page, limit=query.limit, total=page_result.total, has_more=False, data=[]
             )
             return env.model_dump(mode="json"), 200
 
-        apps_by_id = {
+        apps_by_id: dict[str, App] = {
             str(a.id): a
-            for a in db.session.execute(
-                apply_openapi_gate(sa.select(App).where(App.id.in_(page_result.app_ids)))
-            ).scalars().all()
+            for a in db.session.execute(apply_openapi_gate(sa.select(App).where(App.id.in_(page_result.app_ids))))
+            .scalars()
+            .all()
         }
         tenant_ids = list({a.tenant_id for a in apps_by_id.values()})
         tenants_by_id = {
@@ -113,9 +104,12 @@ class PermittedExternalAppsListApi(Resource):
                     workspace_name=tenant.name if tenant else None,
                 )
             )
-
         # total/has_more reflect the EE-side allow-list; len(items) may be < limit when local rows are dropped.
-        env = PaginationEnvelope[AppListRow].build(
-            page=query.page, limit=query.limit, total=page_result.total, items=items
+        env = PermittedExternalAppsListResponse(
+            page=query.page,
+            limit=query.limit,
+            total=page_result.total,
+            has_more=query.page * query.limit < page_result.total,
+            data=items,
         )
         return env.model_dump(mode="json"), 200

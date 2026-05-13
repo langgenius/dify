@@ -16,6 +16,7 @@ from sqlalchemy import select
 from werkzeug.exceptions import NotFound
 
 from controllers.openapi import openapi_ns
+from controllers.openapi._models import WorkspaceDetailResponse, WorkspaceListResponse, WorkspaceSummaryResponse
 from controllers.openapi.auth.surface_gate import accept_subjects
 from extensions.ext_database import db
 from libs.oauth_bearer import (
@@ -28,6 +29,7 @@ from models import Tenant, TenantAccountJoin
 
 @openapi_ns.route("/workspaces")
 class WorkspacesApi(Resource):
+    @openapi_ns.response(200, "Workspace list", openapi_ns.models[WorkspaceListResponse.__name__])
     @validate_bearer(accept=ACCEPT_USER_ANY)
     @accept_subjects(SubjectType.ACCOUNT)
     def get(self):
@@ -40,11 +42,12 @@ class WorkspacesApi(Resource):
             .order_by(Tenant.created_at.asc())
         ).all()
 
-        return {"workspaces": list(starmap(_workspace_summary, rows))}, 200
+        return WorkspaceListResponse(workspaces=list(starmap(_workspace_summary, rows))).model_dump(mode="json"), 200
 
 
 @openapi_ns.route("/workspaces/<string:workspace_id>")
 class WorkspaceByIdApi(Resource):
+    @openapi_ns.response(200, "Workspace detail", openapi_ns.models[WorkspaceDetailResponse.__name__])
     @validate_bearer(accept=ACCEPT_USER_ANY)
     @accept_subjects(SubjectType.ACCOUNT)
     def get(self, workspace_id: str):
@@ -63,25 +66,25 @@ class WorkspaceByIdApi(Resource):
             raise NotFound("workspace not found")
 
         tenant, membership = row
-        return _workspace_detail(tenant, membership), 200
+        return _workspace_detail(tenant, membership).model_dump(mode="json"), 200
 
 
-def _workspace_summary(tenant: Tenant, membership: TenantAccountJoin) -> dict:
-    return {
-        "id": str(tenant.id),
-        "name": tenant.name,
-        "role": getattr(membership, "role", ""),
-        "status": tenant.status,
-        "current": getattr(membership, "current", False),
-    }
+def _workspace_summary(tenant: Tenant, membership: TenantAccountJoin) -> WorkspaceSummaryResponse:
+    return WorkspaceSummaryResponse(
+        id=str(tenant.id),
+        name=tenant.name,
+        role=getattr(membership, "role", ""),
+        status=tenant.status,
+        current=getattr(membership, "current", False),
+    )
 
 
-def _workspace_detail(tenant: Tenant, membership: TenantAccountJoin) -> dict:
-    return {
-        "id": str(tenant.id),
-        "name": tenant.name,
-        "role": getattr(membership, "role", ""),
-        "status": tenant.status,
-        "current": getattr(membership, "current", False),
-        "created_at": tenant.created_at.isoformat() if tenant.created_at else None,
-    }
+def _workspace_detail(tenant: Tenant, membership: TenantAccountJoin) -> WorkspaceDetailResponse:
+    return WorkspaceDetailResponse(
+        id=str(tenant.id),
+        name=tenant.name,
+        role=getattr(membership, "role", ""),
+        status=tenant.status,
+        current=getattr(membership, "current", False),
+        created_at=tenant.created_at.isoformat() if tenant.created_at else None,
+    )

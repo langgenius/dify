@@ -16,6 +16,85 @@ api = ExternalApi(
 
 openapi_ns = Namespace("openapi", description="User-scoped operations", path="/")
 
+# Register response/query models BEFORE importing controller modules so that
+# @openapi_ns.response / @openapi_ns.expect decorators can resolve model names.
+from controllers.common.schema import register_response_schema_models, register_schema_models
+from controllers.openapi._models import (
+    AccountPayload,
+    AccountResponse,
+    AppDescribeInfo,
+    AppDescribeQuery,
+    AppDescribeResponse,
+    AppInfoResponse,
+    AppListQuery,
+    AppListResponse,
+    AppListRow,
+    AppRunRequest,
+    ChatMessageResponse,
+    CompletionMessageResponse,
+    DeviceCodeRequest,
+    DeviceCodeResponse,
+    DeviceLookupQuery,
+    DeviceLookupResponse,
+    DeviceMutateRequest,
+    DeviceMutateResponse,
+    DevicePollRequest,
+    MessageMetadata,
+    PermittedExternalAppsListQuery,
+    PermittedExternalAppsListResponse,
+    RevokeResponse,
+    SessionListResponse,
+    SessionRow,
+    TagItem,
+    UsageInfo,
+    WorkflowRunData,
+    WorkflowRunResponse,
+    WorkspaceDetailResponse,
+    WorkspaceListResponse,
+    WorkspacePayload,
+    WorkspaceSummaryResponse,
+)
+
+register_schema_models(
+    openapi_ns,
+    AppDescribeQuery,
+    AppListQuery,
+    AppRunRequest,
+    DeviceCodeRequest,
+    DevicePollRequest,
+    DeviceLookupQuery,
+    DeviceMutateRequest,
+    PermittedExternalAppsListQuery,
+)
+register_response_schema_models(
+    openapi_ns,
+    TagItem,
+    UsageInfo,
+    MessageMetadata,
+    AppListRow,
+    AppListResponse,
+    AppInfoResponse,
+    AppDescribeInfo,
+    AppDescribeResponse,
+    ChatMessageResponse,
+    CompletionMessageResponse,
+    WorkflowRunData,
+    WorkflowRunResponse,
+    AccountPayload,
+    WorkspacePayload,
+    AccountResponse,
+    SessionRow,
+    SessionListResponse,
+    PermittedExternalAppsListResponse,
+    RevokeResponse,
+    WorkspaceSummaryResponse,
+    WorkspaceListResponse,
+    WorkspaceDetailResponse,
+    DeviceCodeResponse,
+    DeviceLookupResponse,
+    DeviceMutateResponse,
+)
+
 from . import (
     account,
     app_run,
@@ -26,6 +105,8 @@ from . import (
     oauth_device_sso,
     workspaces,
 )
+
+# Request models are imported from _models.py and registered above.
 
 __all__ = [
     "account",

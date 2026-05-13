@@ -1,6 +1,5 @@
 import type { KyInstance } from 'ky'
-import type { AccountResponse } from '../types/account.js'
-import { AccountResponseSchema } from '../types/account.js'
+import type { AccountResponse } from '../types/data-contracts.js'
 
 export class AccountClient {
   private readonly http: KyInstance
@@ -10,7 +9,6 @@ export class AccountClient {
   }
 
   async get(): Promise<AccountResponse> {
-    const raw = await this.http.get('account').json()
-    return AccountResponseSchema.parse(raw)
+    return this.http.get('account').json<AccountResponse>()
   }
 }

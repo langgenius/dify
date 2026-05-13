@@ -1,6 +1,5 @@
 import type { KyInstance } from 'ky'
-import type { SessionListResponse } from '../types/account-session.js'
-import { SessionListResponseSchema } from '../types/account-session.js'
+import type { SessionListResponse } from '../types/data-contracts.js'
 
 export class AccountSessionsClient {
   private readonly http: KyInstance
@@ -10,8 +9,7 @@ export class AccountSessionsClient {
   }
 
   async list(): Promise<SessionListResponse> {
-    const raw = await this.http.get('account/sessions').json()
-    return SessionListResponseSchema.parse(raw)
+    return this.http.get('account/sessions').json<SessionListResponse>()
   }
 
   async revoke(sessionId: string): Promise<void> {

@@ -1,4 +1,4 @@
-import type { WorkspaceListResponse } from '../../../types/workspace.js'
+import type { WorkspaceListResponse } from '../../../types/data-contracts.js'
 import { describe, expect, it } from 'vitest'
 import { newWorkspaceObject, WORKSPACE_MODE_KEY, workspaceNameHandler, workspaceTableHandler } from './handlers.js'
 

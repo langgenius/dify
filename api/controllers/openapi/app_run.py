@@ -5,18 +5,18 @@ from __future__ import annotations
 import logging
 from collections.abc import Callable, Iterator, Mapping
 from contextlib import contextmanager
-from typing import Any, Literal
-from uuid import UUID
+from typing import Any
 
 from flask import request
 from flask_restx import Resource
-from pydantic import BaseModel, ValidationError, field_validator
+from pydantic import ValidationError
 from werkzeug.exceptions import BadRequest, HTTPException, InternalServerError, NotFound, UnprocessableEntity
 
 import services
 from controllers.openapi import openapi_ns
 from controllers.openapi._audit import emit_app_run
 from controllers.openapi._models import (
+    AppRunRequest,
     ChatMessageResponse,
     CompletionMessageResponse,
     WorkflowRunResponse,
@@ -39,7 +39,6 @@ from core.errors.error import (
 )
 from graphon.model_runtime.errors.invoke import InvokeError
 from libs import helper
-from libs.helper import UUIDStrOrEmpty
 from libs.oauth_bearer import Scope
 from models.model import App, AppMode
 from services.app_generate_service import AppGenerateService
@@ -51,29 +50,6 @@ from services.errors.app import (
 from services.errors.llm import InvokeRateLimitError
 
 logger = logging.getLogger(__name__)
-
-
-class AppRunRequest(BaseModel):
-    inputs: dict[str, Any]
-    query: str | None = None
-    files: list[dict[str, Any]] | None = None
-    response_mode: Literal["blocking", "streaming"] | None = None
-    conversation_id: UUIDStrOrEmpty | None = None
-    auto_generate_name: bool = True
-    workflow_id: str | None = None
-    workspace_id: UUIDStrOrEmpty | None = None
-
-    @field_validator("conversation_id", mode="before")
-    @classmethod
-    def _normalize_conv(cls, value: str | UUID | None) -> str | None:
-        if isinstance(value, str):
-            value = value.strip()
-        if not value:
-            return None
-        try:
-            return helper.uuid_value(value)
-        except ValueError as exc:
-            raise ValueError("conversation_id must be a valid UUID") from exc
 
 
 @contextmanager
@@ -165,6 +141,8 @@ _DISPATCH: dict[AppMode, Callable[[App, Any, AppRunRequest, bool], tuple[Any, di
 
 @openapi_ns.route("/apps/<string:app_id>/run")
 class AppRunApi(Resource):
+    @openapi_ns.expect(openapi_ns.models[AppRunRequest.__name__])
+    @openapi_ns.response(200, "Run result")
     @OAUTH_BEARER_PIPELINE.guard(scope=Scope.APPS_RUN)
     def post(self, app_id: str, app_model: App, caller, caller_kind: str):
         body = request.get_json(silent=True) or {}

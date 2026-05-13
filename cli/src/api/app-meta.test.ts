@@ -6,7 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { startMock } from '../../test/fixtures/dify-mock/server.js'
 import { loadAppInfoCache } from '../cache/app-info.js'
 import { createClient } from '../http/client.js'
-import { FieldInfo, FieldParameters } from '../types/app.js'
+import { FieldInfo, FieldParameters } from '../types/app-meta.js'
 import { AppMetaClient } from './app-meta.js'
 import { AppsClient } from './apps.js'
 
