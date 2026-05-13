@@ -68,9 +68,7 @@ def test_init(langfuse_config, monkeypatch: pytest.MonkeyPatch):
     assert instance.file_base_url == "http://test.url"
 
 
-def test_init_passes_isolated_tracer_provider_to_langfuse(
-    langfuse_config, monkeypatch: pytest.MonkeyPatch
-):
+def test_init_passes_isolated_tracer_provider_to_langfuse(langfuse_config, monkeypatch: pytest.MonkeyPatch):
     """Regression test for langfuse v3 SDK side effect.
 
     Without an explicit ``tracer_provider=`` kwarg, the Langfuse v3 SDK
