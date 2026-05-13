@@ -101,8 +101,8 @@ const FormContent: FC<FormContentProps> = ({
     acc[node.id] = {
       title: node.data.title,
       type: node.data.type,
-      width: node.width,
-      height: node.height,
+      width: node.width ?? undefined,
+      height: node.height ?? undefined,
       position: node.position,
     }
     if (node.data.type === BlockEnum.Start) {

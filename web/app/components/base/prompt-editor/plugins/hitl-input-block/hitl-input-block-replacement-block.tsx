@@ -9,6 +9,7 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
 } from 'react'
 import { HITL_INPUT_REG } from '@/config'
 import { decoratorTransform } from '../../utils'
@@ -39,6 +40,32 @@ const HITLInputReplacementBlock = ({
       acc.push(...curr.vars.filter(v => v.isRagVariable))
     return acc
   }, []), [variables])
+  const latestConfigRef = useRef({
+    nodeId,
+    formInputs,
+    onFormInputsChange,
+    onFormInputItemRename,
+    onFormInputItemRemove,
+    workflowNodesMap,
+    getVarType,
+    environmentVariables,
+    conversationVariables,
+    ragVariables,
+    readonly,
+  })
+  latestConfigRef.current = {
+    nodeId,
+    formInputs,
+    onFormInputsChange,
+    onFormInputItemRename,
+    onFormInputItemRemove,
+    workflowNodesMap,
+    getVarType,
+    environmentVariables,
+    conversationVariables,
+    ragVariables,
+    readonly,
+  }
 
   useEffect(() => {
     if (!editor.hasNodes([HITLInputNode]))
@@ -47,6 +74,20 @@ const HITLInputReplacementBlock = ({
 
   const createHITLInputBlockNode = useCallback((textNode: TextNode): HITLInputNode => {
     const varName = textNode.getTextContent().split('.')[1]!.replace(/#\}\}$/, '')
+    const {
+      nodeId,
+      formInputs,
+      onFormInputsChange,
+      onFormInputItemRename,
+      onFormInputItemRemove,
+      workflowNodesMap,
+      getVarType,
+      environmentVariables,
+      conversationVariables,
+      ragVariables,
+      readonly,
+    } = latestConfigRef.current
+
     return $applyNodeReplacement($createHITLInputNode(
       varName,
       nodeId,
@@ -61,7 +102,7 @@ const HITLInputReplacementBlock = ({
       ragVariables,
       readonly,
     ))
-  }, [nodeId, formInputs, onFormInputsChange, onFormInputItemRename, onFormInputItemRemove, workflowNodesMap, getVarType, environmentVariables, conversationVariables, ragVariables, readonly])
+  }, [])
 
   const getMatch = useCallback((text: string) => {
     const matchArr = REGEX.exec(text)
