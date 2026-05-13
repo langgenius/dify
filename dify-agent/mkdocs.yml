@@ -15,6 +15,7 @@ nav:
       - Examples: agenton/examples/index.md
   - Dify Agent:
       - Overview: dify-agent/index.md
+      - Get Started: dify-agent/get-started/index.md
       - Operations Guide: dify-agent/guide/index.md
       - Run API: dify-agent/api/index.md
       - Examples: dify-agent/examples/index.md
