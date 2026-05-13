@@ -828,6 +828,40 @@ class TestTenantService:
             assert mock_target_join.role == "admin"
             self._assert_database_operations_called(mock_db)
 
+    def test_create_owner_tenant_if_not_exist_rbac_enabled_assigns_owner_role(
+        self, mock_db_dependencies, mock_external_service_dependencies
+    ):
+        mock_account = TestAccountAssociatedDataFactory.create_account_mock(account_id="user-rbac", name="RBAC User")
+        mock_external_service_dependencies[
+            "feature_service"
+        ].get_system_features.return_value.is_allow_create_workspace = True
+        mock_external_service_dependencies[
+            "feature_service"
+        ].get_system_features.return_value.license.workspaces.is_available.return_value = True
+
+        mock_tenant = MagicMock()
+        mock_tenant.id = "tenant-rbac"
+        mock_tenant.name = "RBAC User's Workspace"
+
+        with (
+            patch("services.account_service.dify_config.RBAC_ENABLED", True),
+            patch("services.account_service.TenantService.create_tenant", return_value=mock_tenant),
+            patch("services.account_service.TenantService.create_tenant_member"),
+            patch("services.account_service.AccountService.resolve_workspace_rbac_role_id", return_value="rbac-owner-id"),
+            patch("services.account_service.RBACService") as mock_rbac_service,
+            patch("services.account_service.tenant_was_created.send"),
+        ):
+            mock_db_dependencies["db"].session.scalar.return_value = None
+
+            TenantService.create_owner_tenant_if_not_exist(mock_account, is_setup=True)
+
+        mock_rbac_service.MemberRoles.replace.assert_called_once_with(
+            tenant_id="tenant-rbac",
+            account_id="user-rbac",
+            member_account_id="user-rbac",
+            role_ids=["rbac-owner-id"],
+        )
+
     def test_admin_can_update_admin_member_role(self):
         """Test admin can update another non-owner member, including an admin."""
         mock_tenant = MagicMock()

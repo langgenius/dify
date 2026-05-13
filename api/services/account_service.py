@@ -1147,6 +1147,18 @@ class TenantService:
         else:
             tenant = TenantService.create_tenant(name=f"{account.name}'s Workspace", is_setup=is_setup)
         TenantService.create_tenant_member(tenant, account, role="owner")
+        if dify_config.RBAC_ENABLED:
+            resolved_role_id = AccountService.resolve_workspace_rbac_role_id(
+                tenant_id=str(tenant.id),
+                account_id=account.id,
+                role_identifier="所有者",
+            )
+            RBACService.MemberRoles.replace(
+                tenant_id=str(tenant.id),
+                account_id=account.id,
+                member_account_id=account.id,
+                role_ids=[resolved_role_id],
+            )
         account.current_tenant = tenant
         db.session.commit()
         tenant_was_created.send(tenant)
