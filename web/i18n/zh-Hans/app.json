@@ -120,6 +120,7 @@
   "iconPicker.ok": "确认",
   "importApp": "导入应用",
   "importDSL": "导入 DSL 文件",
+  "importDSLDescription": "拖放 DSL 文件到 Studio 导入",
   "importFromDSL": "导入 DSL",
   "importFromDSLFile": "文件",
   "importFromDSLUrl": "URL",

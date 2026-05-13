@@ -2,17 +2,14 @@
 
 import type { FC } from 'react'
 import type { AppListQuery } from '@/contract/console/apps'
-import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { cn } from '@langgenius/dify-ui/cn'
-import { Select, SelectContent, SelectItem, SelectItemIndicator, SelectItemText, SelectTrigger } from '@langgenius/dify-ui/select'
 import { keepPreviousData, useInfiniteQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useDebounce } from 'ahooks'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Input from '@/app/components/base/input'
 import { IS_DEV, NEED_REFRESH_APP_LIST_KEY } from '@/config'
 import { useAppContext } from '@/context/app-context'
-import { TagFilter } from '@/features/tag-management/components/tag-filter'
+import { useProviderContext } from '@/context/provider-context'
 import { CheckModal } from '@/hooks/use-pay'
 import dynamic from '@/next/dynamic'
 import { consoleQuery } from '@/service/client'
@@ -20,6 +17,7 @@ import { systemFeaturesQueryOptions } from '@/service/system-features'
 import { AppModeEnum } from '@/types/app'
 import AppCard from './app-card'
 import { AppCardSkeleton } from './app-card-skeleton'
+import AppListHeaderFilters from './app-list-header-filters'
 import { APP_LIST_SEARCH_DEBOUNCE_MS, MOCK_APP_LIST } from './constants'
 import Empty from './empty'
 import Footer from './footer'
@@ -34,6 +32,12 @@ const TagManagementModal = dynamic(() => import('@/features/tag-management/compo
 const CreateFromDSLModal = dynamic(() => import('@/app/components/app/create-from-dsl-modal'), {
   ssr: false,
 })
+const CreateAppModal = dynamic(() => import('@/app/components/app/create-app-modal'), {
+  ssr: false,
+})
+const CreateAppTemplateDialog = dynamic(() => import('@/app/components/app/create-app-dialog'), {
+  ssr: false,
+})
 
 type Props = {
   controlRefreshList?: number
@@ -44,6 +48,7 @@ const List: FC<Props> = ({
   const { t } = useTranslation()
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const { isCurrentWorkspaceEditor, isCurrentWorkspaceDatasetOperator, isLoadingCurrentWorkspace } = useAppContext()
+  const { onPlanInfoChanged } = useProviderContext()
 
   // eslint-disable-next-line react/use-state -- custom URL query hook, not React.useState
   const {
@@ -57,6 +62,8 @@ const List: FC<Props> = ({
   const newAppCardRef = useRef<HTMLDivElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const [showTagManagementModal, setShowTagManagementModal] = useState(false)
+  const [showNewAppTemplateDialog, setShowNewAppTemplateDialog] = useState(false)
+  const [showNewAppModal, setShowNewAppModal] = useState(false)
   const [showCreateFromDSLModal, setShowCreateFromDSLModal] = useState(false)
   const [droppedDSLFile, setDroppedDSLFile] = useState<File | undefined>()
 
@@ -112,14 +119,6 @@ const List: FC<Props> = ({
   }, [controlRefreshList, refetch])
 
   const anchorRef = useRef<HTMLDivElement>(null)
-  const options = [
-    { value: 'all', text: t('types.all', { ns: 'app' }), icon: <span className="mr-1 i-ri-apps-2-line h-[14px] w-[14px]" /> },
-    { value: AppModeEnum.WORKFLOW, text: t('types.workflow', { ns: 'app' }), icon: <span className="mr-1 i-ri-exchange-2-line h-[14px] w-[14px]" /> },
-    { value: AppModeEnum.ADVANCED_CHAT, text: t('types.advanced', { ns: 'app' }), icon: <span className="mr-1 i-ri-message-3-line h-[14px] w-[14px]" /> },
-    { value: AppModeEnum.CHAT, text: t('types.chatbot', { ns: 'app' }), icon: <span className="mr-1 i-ri-message-3-line h-[14px] w-[14px]" /> },
-    { value: AppModeEnum.AGENT_CHAT, text: t('types.agent', { ns: 'app' }), icon: <span className="mr-1 i-ri-robot-3-line h-[14px] w-[14px]" /> },
-    { value: AppModeEnum.COMPLETION, text: t('types.completion', { ns: 'app' }), icon: <span className="mr-1 i-ri-file-4-line h-[14px] w-[14px]" /> },
-  ]
 
   useEffect(() => {
     if (localStorage.getItem(NEED_REFRESH_APP_LIST_KEY) === '1') {
@@ -158,9 +157,9 @@ const List: FC<Props> = ({
     return () => observer?.disconnect()
   }, [isLoading, isFetchingNextPage, fetchNextPage, error, hasNextPage, isCurrentWorkspaceDatasetOperator])
 
-  const handleCreatedByMeChange = useCallback((checked: boolean) => {
-    setIsCreatedByMe(checked)
-  }, [setIsCreatedByMe])
+  const handleCreatedByMeChange = useCallback(() => {
+    setIsCreatedByMe(!isCreatedByMe)
+  }, [isCreatedByMe, setIsCreatedByMe])
 
   const categoryRef = useRef(category)
   useEffect(() => {
@@ -234,54 +233,21 @@ const List: FC<Props> = ({
               <p className="system-sm-regular text-text-tertiary">{t('studioDescription', { ns: 'app' })}</p>
             </div>
           </div>
-          <div className="flex flex-wrap items-center justify-between gap-2 py-2">
-            <div className="flex min-w-0 items-center gap-2">
-              <Select
-                value={category as string}
-                onValueChange={handleCategoryChange}
-              >
-                <SelectTrigger
-                  aria-label={t('types.label', { ns: 'app' })}
-                  className="w-auto shrink-0 gap-0 rounded-lg bg-components-input-bg-normal px-2 py-1 system-sm-regular text-text-tertiary hover:bg-components-input-bg-normal data-open:bg-components-input-bg-normal"
-                >
-                  <span className="flex items-center gap-0">
-                    <span aria-hidden className="i-ri-apps-2-line size-4 shrink-0 p-0.5" />
-                    <span className="px-1">{t('types.label', { ns: 'app' })}</span>
-                  </span>
-                </SelectTrigger>
-                <SelectContent popupClassName="min-w-40" listClassName="p-1">
-                  {options.map(option => (
-                    <SelectItem
-                      key={option.value}
-                      value={option.value}
-                      onClick={() => handleCategoryChange(option.value)}
-                    >
-                      {option.icon}
-                      <SelectItemText>{option.text}</SelectItemText>
-                      <SelectItemIndicator />
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <TagFilter type="app" value={tagIDs} onChange={setTagIDs} onOpenTagManagement={() => setShowTagManagementModal(true)} />
-              <Input
-                showLeftIcon
-                showClearIcon
-                wrapperClassName="w-[200px]"
-                value={keywords}
-                onChange={e => setKeywords(e.target.value)}
-                onClear={() => setKeywords('')}
-              />
-            </div>
-            <div className="flex items-center gap-2">
-              <label className="flex h-8 items-center gap-2 rounded-lg bg-components-input-bg-normal px-2 text-text-secondary">
-                <Checkbox checked={isCreatedByMe} onCheckedChange={handleCreatedByMeChange} />
-                <span className="system-sm-regular whitespace-nowrap">
-                  {t('showMyCreatedAppsOnly', { ns: 'app' })}
-                </span>
-              </label>
-            </div>
-          </div>
+          <AppListHeaderFilters
+            category={category}
+            tagIDs={tagIDs}
+            keywords={keywords}
+            isCreatedByMe={isCreatedByMe}
+            onCategoryChange={handleCategoryChange}
+            onTagIDsChange={setTagIDs}
+            onKeywordsChange={setKeywords}
+            onCreatedByMeChange={handleCreatedByMeChange}
+            onCreateBlank={() => setShowNewAppModal(true)}
+            onCreateTemplate={() => setShowNewAppTemplateDialog(true)}
+            onImportDSL={() => setShowCreateFromDSLModal(true)}
+            onOpenTagManagement={() => setShowTagManagementModal(true)}
+            showCreateButton={isCurrentWorkspaceEditor}
+          />
         </div>
         <div className={cn(
           'relative grid grow grid-cols-1 content-start gap-3 px-6 pt-2 2k:grid-cols-6 sm:grid-cols-1 md:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-5',
@@ -348,9 +314,39 @@ const List: FC<Props> = ({
           onSuccess={() => {
             setShowCreateFromDSLModal(false)
             setDroppedDSLFile(undefined)
+            onPlanInfoChanged()
             refetch()
           }}
           droppedFile={droppedDSLFile}
+        />
+      )}
+      {showNewAppModal && (
+        <CreateAppModal
+          show={showNewAppModal}
+          onClose={() => setShowNewAppModal(false)}
+          onSuccess={() => {
+            onPlanInfoChanged()
+            refetch()
+          }}
+          onCreateFromTemplate={() => {
+            setShowNewAppTemplateDialog(true)
+            setShowNewAppModal(false)
+          }}
+          defaultAppMode={category !== 'all' ? category : undefined}
+        />
+      )}
+      {showNewAppTemplateDialog && (
+        <CreateAppTemplateDialog
+          show={showNewAppTemplateDialog}
+          onClose={() => setShowNewAppTemplateDialog(false)}
+          onSuccess={() => {
+            onPlanInfoChanged()
+            refetch()
+          }}
+          onCreateFromBlank={() => {
+            setShowNewAppModal(true)
+            setShowNewAppTemplateDialog(false)
+          }}
         />
       )}
     </>

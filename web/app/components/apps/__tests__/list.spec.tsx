@@ -48,6 +48,13 @@ vi.mock('@/context/app-context', () => ({
   }),
 }))
 
+const mockOnPlanInfoChanged = vi.fn()
+vi.mock('@/context/provider-context', () => ({
+  useProviderContext: () => ({
+    onPlanInfoChanged: mockOnPlanInfoChanged,
+  }),
+}))
+
 const mockSetKeywords = vi.fn()
 const mockSetTagIDs = vi.fn()
 const mockSetIsCreatedByMe = vi.fn()
@@ -179,6 +186,20 @@ vi.mock('@/next/dynamic', () => ({
         return React.createElement('div', { 'data-testid': 'create-dsl-modal' }, React.createElement('button', { 'onClick': onClose, 'data-testid': 'close-dsl-modal' }, 'Close'), React.createElement('button', { 'onClick': onSuccess, 'data-testid': 'success-dsl-modal' }, 'Success'))
       }
     }
+    if (fnString.includes('create-app-modal')) {
+      return function MockCreateAppModal({ show, onClose, onSuccess, onCreateFromTemplate }: { show: boolean, onClose: () => void, onSuccess: () => void, onCreateFromTemplate: () => void }) {
+        if (!show)
+          return null
+        return React.createElement('div', { 'data-testid': 'create-app-modal' }, React.createElement('button', { 'onClick': onClose, 'data-testid': 'close-create-modal' }, 'Close'), React.createElement('button', { 'onClick': onSuccess, 'data-testid': 'success-create-modal' }, 'Success'), React.createElement('button', { 'onClick': onCreateFromTemplate, 'data-testid': 'to-template-modal' }, 'To Template'))
+      }
+    }
+    if (fnString.includes('create-app-dialog')) {
+      return function MockCreateAppTemplateDialog({ show, onClose, onSuccess, onCreateFromBlank }: { show: boolean, onClose: () => void, onSuccess: () => void, onCreateFromBlank: () => void }) {
+        if (!show)
+          return null
+        return React.createElement('div', { 'data-testid': 'template-dialog' }, React.createElement('button', { 'onClick': onClose, 'data-testid': 'close-template-dialog' }, 'Close'), React.createElement('button', { 'onClick': onSuccess, 'data-testid': 'success-template-dialog' }, 'Success'), React.createElement('button', { 'onClick': onCreateFromBlank, 'data-testid': 'to-blank-modal' }, 'To Blank'))
+      }
+    }
     return () => null
   },
 }))
@@ -296,6 +317,11 @@ describe('List', () => {
     it('should render created by me checkbox', () => {
       renderList()
       expect(screen.getByText('app.showMyCreatedAppsOnly'))!.toBeInTheDocument()
+    })
+
+    it('should render create button for editors', () => {
+      renderList()
+      expect(screen.getByRole('button', { name: 'common.operation.create' }))!.toBeInTheDocument()
     })
 
     it('should render app cards when apps exist', () => {
@@ -426,6 +452,78 @@ describe('List', () => {
       fireEvent.click(checkbox)
 
       expect(mockSetIsCreatedByMe).toHaveBeenCalledWith(true)
+    })
+  })
+
+  describe('Create Menu', () => {
+    it('should render all create menu options', async () => {
+      renderList()
+
+      fireEvent.click(screen.getByRole('button', { name: 'common.operation.create' }))
+
+      expect(await screen.findByText('app.newApp.startFromBlank'))!.toBeInTheDocument()
+      expect(await screen.findByText('app.newApp.startFromTemplate'))!.toBeInTheDocument()
+      expect(await screen.findByText('app.importDSL'))!.toBeInTheDocument()
+      expect(await screen.findAllByText('app.newApp.dropDSLToCreateApp')).toHaveLength(2)
+    })
+
+    it('should open blank app modal from create menu', async () => {
+      renderList()
+
+      fireEvent.click(screen.getByRole('button', { name: 'common.operation.create' }))
+      fireEvent.click(await screen.findByText('app.newApp.startFromBlank'))
+
+      expect(screen.getByTestId('create-app-modal'))!.toBeInTheDocument()
+    })
+
+    it('should open template dialog from create menu', async () => {
+      renderList()
+
+      fireEvent.click(screen.getByRole('button', { name: 'common.operation.create' }))
+      fireEvent.click(await screen.findByText('app.newApp.startFromTemplate'))
+
+      expect(screen.getByTestId('template-dialog'))!.toBeInTheDocument()
+    })
+
+    it('should open DSL import modal from create menu', async () => {
+      renderList()
+
+      fireEvent.click(screen.getByRole('button', { name: 'common.operation.create' }))
+      fireEvent.click(await screen.findByText('app.importDSL'))
+
+      expect(screen.getByTestId('create-dsl-modal'))!.toBeInTheDocument()
+    })
+
+    it('should open blank app modal with create shortcut', () => {
+      renderList()
+
+      fireEvent.keyDown(window, { key: 'n', metaKey: true })
+
+      expect(screen.getByTestId('create-app-modal'))!.toBeInTheDocument()
+    })
+
+    it('should open template dialog with create template shortcut', () => {
+      renderList()
+
+      fireEvent.keyDown(window, { key: 'n', metaKey: true, shiftKey: true })
+
+      expect(screen.getByTestId('template-dialog'))!.toBeInTheDocument()
+    })
+
+    it('should not trigger create shortcut while typing in search', () => {
+      renderList()
+
+      fireEvent.keyDown(screen.getByRole('textbox'), { key: 'n', metaKey: true })
+
+      expect(screen.queryByTestId('create-app-modal'))!.not.toBeInTheDocument()
+    })
+
+    it('should not render create button for non-editors', () => {
+      mockIsCurrentWorkspaceEditor.mockReturnValue(false)
+
+      renderList()
+
+      expect(screen.queryByRole('button', { name: 'common.operation.create' })).not.toBeInTheDocument()
     })
   })
 
