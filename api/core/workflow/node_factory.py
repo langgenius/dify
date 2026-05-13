@@ -394,6 +394,7 @@ class DifyNodeFactory(NodeFactory):
             BuiltinNodeTypes.HUMAN_INPUT: lambda: {
                 "runtime": self._human_input_runtime,
                 "form_repository": self._human_input_runtime.build_form_repository(),
+                "file_reference_factory": self._file_reference_factory,
             },
             BuiltinNodeTypes.LLM: lambda: self._build_llm_compatible_node_init_kwargs(
                 node_class=node_class,
