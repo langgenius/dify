@@ -77,7 +77,7 @@ const PublishAsKnowledgePipelineModal = ({
   return (
     <>
       <Dialog open>
-        <DialogContent className="relative w-full max-w-[480px]! overflow-hidden! border-none p-0! text-left align-middle">
+        <DialogContent className="w-full max-w-[480px]! overflow-hidden! border-none p-0! text-left align-middle">
 
           <div className="relative flex items-center p-6 pr-14 pb-3 title-2xl-semi-bold text-text-primary">
             {t('common.publishAs', { ns: 'pipeline' })}
