@@ -1176,7 +1176,11 @@ class RBACService:
                 account_id=account_id,
                 params={"account_id": member_account_id},
             )
-            return MemberRolesResponse.model_validate(data or {})
+            rst = MemberRolesResponse.model_validate(data or {})
+            for role in rst.roles:
+                if role.name in ("所有者", "owner"):
+                    role.role_tag = "owner"
+            return rst
 
         @staticmethod
         def batch_get(
@@ -1195,7 +1199,14 @@ class RBACService:
                 items = data
             else:
                 items = (data or {}).get("data") or []
-            return [MemberRolesResponse.model_validate(item) for item in items]
+            rst = []
+            for item in items:
+                tmp = MemberRolesResponse.model_validate(item)
+                for role in tmp.roles:
+                    if role.name in ("所有者", "owner"):
+                        role.role_tag = "owner"
+                rst.append(tmp)
+            return rst
 
         @staticmethod
         def replace(
