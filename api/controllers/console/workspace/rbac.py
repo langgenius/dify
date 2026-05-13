@@ -15,52 +15,33 @@ from libs.login import current_account_with_tenant, login_required
 from services.enterprise import rbac_service as svc
 
 
-_LEGACY_WORKSPACE_PERMISSION_KEYS: list[str] = [
-    # These keys are copied from the enterprise RBAC catalog examples in
-    # `dify-rbac.md` so the legacy workspace roles stay in the same key format
-    # as the enterprise RBAC surface.
-    "workspace.member.manage",
-    "workspace.role.manage",
-]
-
-_LEGACY_APP_PERMISSION_KEYS: list[str] = [
-    "app.acl.view_layout",
-    "app.acl.test_and_run",
-    "app.acl.edit",
-    "app.acl.access_config",
-]
-
-_LEGACY_DATASET_PERMISSION_KEYS: list[str] = [
-    "dataset.acl.readonly",
-    "dataset.acl.edit",
-    "dataset.acl.use",
-]
-
 _LEGACY_ROLE_PERMISSION_KEYS: dict[str, list[str]] = {
-    # These legacy role groups predate the RBAC refactor. The mapping keeps the
-    # old workspace roles readable through the new RBAC endpoint by translating
-    # each role into the closest enterprise permission keys that already exist
-    # in the catalog and tests.
+    # This is a compatibility projection from the pre-RBAC workspace roles into
+    # the 2.0 permission matrix documented in "权限整理2.0". It intentionally
+    # models the product-facing role surface for the new RBAC UI instead of the
+    # legacy backend's exact hard-authorization checks.
     "owner": [
-        *_LEGACY_WORKSPACE_PERMISSION_KEYS,
-        *_LEGACY_APP_PERMISSION_KEYS,
-        *_LEGACY_DATASET_PERMISSION_KEYS,
+        *svc._LEGACY_WORKSPACE_OWNER_KEYS,
+        *svc._LEGACY_APP_OWNER_KEYS,
+        *svc._LEGACY_DATASET_OWNER_KEYS,
     ],
     "admin": [
-        *_LEGACY_WORKSPACE_PERMISSION_KEYS,
-        *_LEGACY_APP_PERMISSION_KEYS,
-        *_LEGACY_DATASET_PERMISSION_KEYS,
+        *svc._LEGACY_WORKSPACE_ADMIN_KEYS,
+        *svc._LEGACY_APP_ADMIN_KEYS,
+        *svc._LEGACY_DATASET_ADMIN_KEYS,
     ],
     "editor": [
-        *_LEGACY_APP_PERMISSION_KEYS,
-        *_LEGACY_DATASET_PERMISSION_KEYS,
+        *svc._LEGACY_WORKSPACE_EDITOR_KEYS,
+        *svc._LEGACY_APP_EDITOR_KEYS,
+        *svc._LEGACY_DATASET_EDITOR_KEYS,
     ],
     "normal": [
-        "app.acl.view_layout",
-        "app.acl.test_and_run",
+        *svc._LEGACY_WORKSPACE_NORMAL_KEYS,
+        *svc._LEGACY_APP_NORMAL_KEYS,
     ],
     "dataset_operator": [
-        *_LEGACY_DATASET_PERMISSION_KEYS,
+        *svc._LEGACY_WORKSPACE_DATASET_OPERATOR_KEYS,
+        *svc._LEGACY_DATASET_DATASET_OPERATOR_KEYS,
     ],
 }
 
@@ -115,7 +96,7 @@ def _pagination_options() -> svc.ListOption:
 
 
 def _filter_out_owner(paginated: svc.Paginated[svc.RBACRole]) -> svc.Paginated[svc.RBACRole]:
-    filtered = [r for r in paginated.data if r.name != "所有者"]
+    filtered = [r for r in paginated.data if r.name not in {"所有者", "owner"}]
     return svc.Paginated[svc.RBACRole](
         data=filtered,
         pagination=paginated.pagination,
@@ -231,7 +212,7 @@ class RBACRolesApi(Resource):
 
         data = []
         for role in result.data:
-            if role.name == "所有者":
+            if role.name in {"所有者", "owner"}:
                 role.role_tag = "owner"
             else:
                 role.role_tag = ""

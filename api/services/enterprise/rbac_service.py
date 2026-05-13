@@ -189,66 +189,225 @@ class MyPermissionsResponse(_RBACModel):
     dataset: ResourcePermissionSnapshot = Field(default_factory=ResourcePermissionSnapshot)
 
 
+_LEGACY_WORKSPACE_OWNER_KEYS: list[str] = [
+    "workspace.member.view",
+    "workspace.member.manage",
+    "workspace.role.view",
+    "workspace.role.manage",
+    "data_source.manage",
+    "api_extension.manage",
+    "customization.manage",
+    "page.explore.access",
+    "page.datasets.access",
+    "page.tool.access",
+    "plugin.install",
+    "plugin.manage",
+    "plugin.uninstall",
+    "plugin.preference.manage",
+    "model.manage",
+    "credential.use",
+    "credential.manage",
+    "app_library.access",
+    "app.create",
+    "app.tag.manage",
+    "app.access_config",
+    "app.monitor.access",
+    "app.log.access",
+    "app.monitor.tracking_config",
+    "dataset.create",
+    "dataset.tag.manage",
+    "dataset.external.connect",
+    "dataset.access_config",
+    "tool.manage",
+    "mcp.manage",
+]
+
+_LEGACY_WORKSPACE_ADMIN_KEYS: list[str] = [
+    "workspace.member.view",
+    "workspace.member.manage",
+    "workspace.role.view",
+    "workspace.role.manage",
+    "data_source.manage",
+    "api_extension.manage",
+    "customization.manage",
+    "page.explore.access",
+    "page.datasets.access",
+    "page.tool.access",
+    "plugin.install",
+    "plugin.uninstall",
+    "plugin.preference.manage",
+    "model.manage",
+    "credential.use",
+    "credential.manage",
+    "app_library.access",
+    "app.create",
+    "app.tag.manage",
+    "app.access_config",
+    "app.monitor.access",
+    "app.log.access",
+    "app.monitor.tracking_config",
+    "dataset.create",
+    "dataset.tag.manage",
+    "dataset.external.connect",
+    "dataset.access_config",
+    "tool.manage",
+    "mcp.manage",
+]
+
+_LEGACY_WORKSPACE_EDITOR_KEYS: list[str] = [
+    "workspace.member.view",
+    "workspace.member.manage",
+    "api_extension.manage",
+    "page.explore.access",
+    "page.datasets.access",
+    "page.tool.access",
+    "plugin.install",
+    "plugin.uninstall",
+    "app_library.access",
+    "app.create",
+    "app.tag.manage",
+    "app.monitor.access",
+    "app.log.access",
+    "app.monitor.tracking_config",
+    "dataset.create",
+    "dataset.tag.manage",
+    "dataset.external.connect",
+]
+
+_LEGACY_WORKSPACE_NORMAL_KEYS: list[str] = [
+    "api_extension.manage",
+    "page.explore.access",
+    "page.datasets.access",
+    "page.tool.access",
+    "plugin.install",
+    "plugin.uninstall",
+    "app_library.access",
+    "app.monitor.access",
+]
+
+_LEGACY_WORKSPACE_DATASET_OPERATOR_KEYS: list[str] = [
+    "page.datasets.access",
+    "plugin.install",
+    "plugin.uninstall",
+    "dataset.create",
+    "dataset.external.connect",
+]
+
+_LEGACY_APP_OWNER_KEYS: list[str] = [
+    "app.acl.view_layout",
+    "app.acl.test_and_run",
+    "app.acl.edit",
+    "app.acl.import_export_dsl",
+    "app.acl.delete",
+    "app.acl.release_and_version",
+    "app.acl.monitor",
+    "app.acl.access_config",
+]
+
+_LEGACY_APP_ADMIN_KEYS: list[str] = [
+    "app.acl.view_layout",
+    "app.acl.test_and_run",
+    "app.acl.edit",
+    "app.acl.import_export_dsl",
+    "app.acl.delete",
+    "app.acl.release_and_version",
+    "app.acl.monitor",
+    "app.acl.access_config",
+]
+
+_LEGACY_APP_EDITOR_KEYS: list[str] = [
+    "app.acl.view_layout",
+    "app.acl.test_and_run",
+    "app.acl.edit",
+    "app.acl.import_export_dsl",
+    "app.acl.delete",
+    "app.acl.release_and_version",
+    "app.acl.monitor",
+]
+
+_LEGACY_APP_NORMAL_KEYS: list[str] = [
+    "app.acl.view_layout",
+    "app.acl.test_and_run",
+    "app.acl.monitor",
+]
+
+_LEGACY_DATASET_OWNER_KEYS: list[str] = [
+    "dataset.acl.readonly",
+    "dataset.acl.edit",
+    "dataset.acl.import_export_dsl",
+    "dataset.acl.pipeline_test",
+    "dataset.acl.document_download",
+    "dataset.acl.retrieval_recall",
+    "dataset.acl.use",
+    "dataset.acl.delete_file",
+    "dataset.acl.pipeline_release",
+    "dataset.acl.delete",
+    "dataset.acl.access_config",
+]
+
+_LEGACY_DATASET_ADMIN_KEYS: list[str] = [
+    "dataset.acl.readonly",
+    "dataset.acl.edit",
+    "dataset.acl.import_export_dsl",
+    "dataset.acl.pipeline_test",
+    "dataset.acl.document_download",
+    "dataset.acl.retrieval_recall",
+    "dataset.acl.use",
+    "dataset.acl.delete_file",
+    "dataset.acl.pipeline_release",
+    "dataset.acl.delete",
+    "dataset.acl.access_config",
+]
+
+_LEGACY_DATASET_EDITOR_KEYS: list[str] = [
+    "dataset.acl.readonly",
+    "dataset.acl.edit",
+    "dataset.acl.import_export_dsl",
+    "dataset.acl.pipeline_test",
+    "dataset.acl.document_download",
+    "dataset.acl.retrieval_recall",
+    "dataset.acl.use",
+    "dataset.acl.delete_file",
+    "dataset.acl.pipeline_release",
+    "dataset.acl.delete",
+]
+
+_LEGACY_DATASET_DATASET_OPERATOR_KEYS: list[str] = [
+    "dataset.acl.readonly",
+    "dataset.acl.edit",
+    "dataset.acl.import_export_dsl",
+    "dataset.acl.pipeline_test",
+    "dataset.acl.document_download",
+    "dataset.acl.retrieval_recall",
+    "dataset.acl.use",
+    "dataset.acl.delete_file",
+    "dataset.acl.pipeline_release",
+    "dataset.acl.delete",
+]
+
 _LEGACY_MY_PERMISSIONS: dict[TenantAccountRole, dict[str, list[str]]] = {
     TenantAccountRole.OWNER: {
-        "workspace": [
-            "workspace.member.manage",
-            "workspace.role.manage",
-        ],
-        "app": [
-            "app.acl.view_layout",
-            "app.acl.test_and_run",
-            "app.acl.edit",
-            "app.acl.access_config",
-        ],
-        "dataset": [
-            "dataset.acl.readonly",
-            "dataset.acl.edit",
-            "dataset.acl.use",
-        ],
+        "workspace": _LEGACY_WORKSPACE_OWNER_KEYS,
+        "app": _LEGACY_APP_OWNER_KEYS,
+        "dataset": _LEGACY_DATASET_OWNER_KEYS,
     },
     TenantAccountRole.ADMIN: {
-        "workspace": [
-            "workspace.member.manage",
-            "workspace.role.manage",
-        ],
-        "app": [
-            "app.acl.view_layout",
-            "app.acl.test_and_run",
-            "app.acl.edit",
-            "app.acl.access_config",
-        ],
-        "dataset": [
-            "dataset.acl.readonly",
-            "dataset.acl.edit",
-            "dataset.acl.use",
-        ],
+        "workspace": _LEGACY_WORKSPACE_ADMIN_KEYS,
+        "app": _LEGACY_APP_ADMIN_KEYS,
+        "dataset": _LEGACY_DATASET_ADMIN_KEYS,
     },
     TenantAccountRole.EDITOR: {
-        "app": [
-            "app.acl.view_layout",
-            "app.acl.test_and_run",
-            "app.acl.edit",
-            "app.acl.access_config",
-        ],
-        "dataset": [
-            "dataset.acl.readonly",
-            "dataset.acl.edit",
-            "dataset.acl.use",
-        ],
+        "workspace": _LEGACY_WORKSPACE_EDITOR_KEYS,
+        "app": _LEGACY_APP_EDITOR_KEYS,
+        "dataset": _LEGACY_DATASET_EDITOR_KEYS,
     },
     TenantAccountRole.NORMAL: {
-        "app": [
-            "app.acl.view_layout",
-            "app.acl.test_and_run",
-        ],
+        "workspace": _LEGACY_WORKSPACE_NORMAL_KEYS,
+        "app": _LEGACY_APP_NORMAL_KEYS,
     },
     TenantAccountRole.DATASET_OPERATOR: {
-        "dataset": [
-            "dataset.acl.readonly",
-            "dataset.acl.edit",
-            "dataset.acl.use",
-        ],
+        "workspace": _LEGACY_WORKSPACE_DATASET_OPERATOR_KEYS,
+        "dataset": _LEGACY_DATASET_DATASET_OPERATOR_KEYS,
     },
 }
 
