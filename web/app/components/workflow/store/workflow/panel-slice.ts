@@ -17,8 +17,8 @@ export type PanelSliceShape = {
   showUserCursors: boolean
   setShowUserCursors: (showUserCursors: boolean) => void
   panelMenu?: {
-    top: number
-    left: number
+    clientX: number
+    clientY: number
   }
   setPanelMenu: (panelMenu: PanelSliceShape['panelMenu']) => void
   selectionMenu?: {

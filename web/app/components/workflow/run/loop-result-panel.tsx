@@ -45,24 +45,34 @@ const LoopResultPanel: FC<Props> = ({
           <div className="truncate system-xl-semibold text-text-primary">
             {t(`${i18nPrefix}.testRunLoop`, { ns: 'workflow' }) }
           </div>
-          <div className="ml-2 shrink-0 cursor-pointer p-1" onClick={onHide}>
-            <RiCloseLine className="h-4 w-4 text-text-tertiary" />
-          </div>
+          <button
+            type="button"
+            className="ml-2 shrink-0 cursor-pointer border-none bg-transparent p-1 focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
+            aria-label={t('operation.close', { ns: 'common' })}
+            onClick={onHide}
+          >
+            <RiCloseLine className="h-4 w-4 text-text-tertiary" aria-hidden="true" />
+          </button>
         </div>
-        <div className="flex cursor-pointer items-center space-x-1 py-2 text-text-accent-secondary" onClick={onBack}>
-          <ArrowNarrowLeft className="h-4 w-4" />
+        <button
+          type="button"
+          className="flex cursor-pointer items-center space-x-1 border-none bg-transparent px-0 py-2 text-left text-text-accent-secondary focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
+          onClick={onBack}
+        >
+          <ArrowNarrowLeft className="h-4 w-4" aria-hidden="true" />
           <div className="system-sm-medium">{t(`${i18nPrefix}.back`, { ns: 'workflow' })}</div>
-        </div>
+        </button>
       </div>
       {/* List */}
       <div className={cn(!noWrap ? 'grow overflow-auto' : 'max-h-full', 'bg-components-panel-bg p-2')}>
         {list.map((loop, index) => (
           <div key={index} className={cn('mb-1 overflow-hidden rounded-xl border-none bg-background-section-burn')}>
-            <div
+            <button
+              type="button"
               className={cn(
                 'flex w-full cursor-pointer items-center justify-between px-3',
                 expandedLoops[index] ? 'pt-3 pb-2' : 'py-3',
-                'rounded-xl text-left',
+                'rounded-xl border-none bg-transparent text-left focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden',
               )}
               onClick={() => toggleLoop(index)}
             >
@@ -75,13 +85,15 @@ const LoopResultPanel: FC<Props> = ({
                   {' '}
                   {index + 1}
                 </span>
-                <RiArrowRightSLine className={cn(
-                  'h-4 w-4 shrink-0 text-text-tertiary transition-transform duration-200',
-                  expandedLoops[index] && 'rotate-90',
-                )}
+                <RiArrowRightSLine
+                  className={cn(
+                    'h-4 w-4 shrink-0 text-text-tertiary transition-transform duration-200',
+                    expandedLoops[index] && 'rotate-90',
+                  )}
+                  aria-hidden="true"
                 />
               </div>
-            </div>
+            </button>
             {expandedLoops[index] && (
               <div
                 className="h-px grow bg-divider-subtle"

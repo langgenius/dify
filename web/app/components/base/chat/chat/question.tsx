@@ -52,6 +52,8 @@ const Question: FC<QuestionProps> = ({
   const {
     onRegenerate,
   } = useChatContext()
+  const copyLabel = t('operation.copy', { ns: 'common' })
+  const editLabel = t('operation.edit', { ns: 'common' })
 
   const [isEditing, setIsEditing] = useState(false)
   const [editedContent, setEditedContent] = useState(content)
@@ -168,17 +170,17 @@ const Question: FC<QuestionProps> = ({
             style={{ right: contentWidth + 8 }}
           >
             <ActionButton
-              data-testid="copy-btn"
+              aria-label={copyLabel}
               onClick={() => {
                 copy(content)
                 toast.success(t('actionMsg.copySuccessfully', { ns: 'common' }))
               }}
             >
-              <div className="i-ri-clipboard-line h-4 w-4" />
+              <div className="i-ri-clipboard-line h-4 w-4" aria-hidden="true" />
             </ActionButton>
             {enableEdit && (
-              <ActionButton data-testid="edit-btn" onClick={handleEdit}>
-                <div className="i-ri-edit-line h-4 w-4" />
+              <ActionButton aria-label={editLabel} onClick={handleEdit}>
+                <div className="i-ri-edit-line h-4 w-4" aria-hidden="true" />
               </ActionButton>
             )}
           </div>
@@ -222,8 +224,8 @@ const Question: FC<QuestionProps> = ({
                     />
                   </div>
                   <div className="flex items-center justify-end gap-2">
-                    <Button className="min-w-24" onClick={handleCancelEditing} data-testid="cancel-edit-btn">{t('operation.cancel', { ns: 'common' })}</Button>
-                    <Button className="min-w-24" variant="primary" onClick={handleResend} data-testid="save-edit-btn">{t('operation.save', { ns: 'common' })}</Button>
+                    <Button className="min-w-24" onClick={handleCancelEditing}>{t('operation.cancel', { ns: 'common' })}</Button>
+                    <Button className="min-w-24" variant="primary" onClick={handleResend}>{t('operation.save', { ns: 'common' })}</Button>
                   </div>
                 </div>
               )}

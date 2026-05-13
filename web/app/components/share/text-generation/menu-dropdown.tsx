@@ -68,13 +68,13 @@ const MenuDropdown: FC<Props> = ({
         onOpenChange={setOpen}
       >
         <DropdownMenuTrigger
-          render={<div />}
+          render={(
+            <ActionButton size="l" className={cn(open && 'bg-state-base-hover')}>
+              <span aria-hidden className="i-ri-equalizer-2-line h-[18px] w-[18px]" />
+            </ActionButton>
+          )}
           aria-label={t('operation.more', { ns: 'common' })}
-        >
-          <ActionButton size="l" className={cn(open && 'bg-state-base-hover')}>
-            <span aria-hidden className="i-ri-equalizer-2-line h-[18px] w-[18px]" />
-          </ActionButton>
-        </DropdownMenuTrigger>
+        />
         <DropdownMenuContent
           placement={placement || 'bottom-end'}
           sideOffset={4}

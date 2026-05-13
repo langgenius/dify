@@ -324,9 +324,10 @@ class IndexingRunner:
         # one extract_setting is one source document
         for extract_setting in extract_settings:
             # extract
-            processing_rule = DatasetProcessRule(
-                mode=tmp_processing_rule["mode"], rules=json.dumps(tmp_processing_rule["rules"])
-            )
+            processing_rule = {
+                "mode": tmp_processing_rule["mode"],
+                "rules": tmp_processing_rule.get("rules"),
+            }
             # Extract document content
             text_docs = index_processor.extract(extract_setting, process_rule_mode=tmp_processing_rule["mode"])
             # Cleaning and segmentation
@@ -334,7 +335,7 @@ class IndexingRunner:
                 text_docs,
                 current_user=None,
                 embedding_model_instance=embedding_model_instance,
-                process_rule=processing_rule.to_dict(),
+                process_rule=processing_rule,
                 tenant_id=tenant_id,
                 doc_language=doc_language,
                 preview=True,

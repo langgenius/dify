@@ -1,6 +1,7 @@
 import json
 
 import pytest
+from pytest_mock import MockerFixture
 
 from core.plugin.endpoint.exc import EndpointSetupFailedError
 from core.plugin.entities.plugin_daemon import PluginDaemonInnerError
@@ -39,7 +40,7 @@ class _StreamContext:
 
 
 class TestBasePluginClientImpl:
-    def test_inject_trace_headers(self, mocker):
+    def test_inject_trace_headers(self, mocker: MockerFixture):
         client = BasePluginClient()
         mocker.patch("core.plugin.impl.base.dify_config.ENABLE_OTEL", True)
         trace_header = "00-abc-xyz-01"
@@ -54,7 +55,7 @@ class TestBasePluginClientImpl:
         client._inject_trace_headers(headers_with_existing)
         assert headers_with_existing["TraceParent"] == "exists"
 
-    def test_stream_request_handles_data_lines_and_dict_payload(self, mocker):
+    def test_stream_request_handles_data_lines_and_dict_payload(self, mocker: MockerFixture):
         client = BasePluginClient()
         stream_mock = mocker.patch(
             "httpx.Client.stream",
@@ -66,14 +67,14 @@ class TestBasePluginClientImpl:
         assert result == ["hello", "world"]
         assert stream_mock.call_args.kwargs["data"] == {"k": "v"}
 
-    def test_request_with_plugin_daemon_response_handles_request_exception(self, mocker):
+    def test_request_with_plugin_daemon_response_handles_request_exception(self, mocker: MockerFixture):
         client = BasePluginClient()
         mocker.patch.object(client, "_request", side_effect=RuntimeError("boom"))
 
         with pytest.raises(ValueError, match="Failed to request plugin daemon"):
             client._request_with_plugin_daemon_response("GET", "plugin/tenant/path", bool)
 
-    def test_request_with_plugin_daemon_response_applies_transformer(self, mocker):
+    def test_request_with_plugin_daemon_response_applies_transformer(self, mocker: MockerFixture):
         client = BasePluginClient()
         mocker.patch.object(client, "_request", return_value=_ResponseStub({"code": 0, "message": "", "data": True}))
 
@@ -88,14 +89,14 @@ class TestBasePluginClientImpl:
         assert result is True
         assert transformed == {"code": 0, "message": "", "data": True}
 
-    def test_request_with_plugin_daemon_response_stream_malformed_json_error(self, mocker):
+    def test_request_with_plugin_daemon_response_stream_malformed_json_error(self, mocker: MockerFixture):
         client = BasePluginClient()
         mocker.patch.object(client, "_stream_request", return_value=iter(['{"error":"bad-line"}']))
 
         with pytest.raises(ValueError, match="bad-line"):
             list(client._request_with_plugin_daemon_response_stream("GET", "p", bool))
 
-    def test_request_with_plugin_daemon_response_stream_plugin_daemon_inner_error(self, mocker):
+    def test_request_with_plugin_daemon_response_stream_plugin_daemon_inner_error(self, mocker: MockerFixture):
         client = BasePluginClient()
         mocker.patch.object(
             client, "_stream_request", return_value=iter(['{"code":-500,"message":"not-json","data":null}'])
@@ -105,14 +106,14 @@ class TestBasePluginClientImpl:
             list(client._request_with_plugin_daemon_response_stream("GET", "p", bool))
         assert exc_info.value.message == "not-json"
 
-    def test_request_with_plugin_daemon_response_stream_plugin_daemon_error(self, mocker):
+    def test_request_with_plugin_daemon_response_stream_plugin_daemon_error(self, mocker: MockerFixture):
         client = BasePluginClient()
         mocker.patch.object(client, "_stream_request", return_value=iter(['{"code":-1,"message":"err","data":null}']))
 
         with pytest.raises(ValueError, match="plugin daemon: err, code: -1"):
             list(client._request_with_plugin_daemon_response_stream("GET", "p", bool))
 
-    def test_request_with_plugin_daemon_response_stream_empty_data_error(self, mocker):
+    def test_request_with_plugin_daemon_response_stream_empty_data_error(self, mocker: MockerFixture):
         client = BasePluginClient()
         mocker.patch.object(client, "_stream_request", return_value=iter(['{"code":0,"message":"","data":null}']))
 

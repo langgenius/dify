@@ -181,7 +181,6 @@ def initialize_extensions(app: DifyApp):
         ext_import_modules,
         ext_orjson,
         ext_forward_refs,
-        ext_set_secretkey,
         ext_compress,
         ext_code_based_extension,
         ext_database,
@@ -189,6 +188,7 @@ def initialize_extensions(app: DifyApp):
         ext_migrate,
         ext_redis,
         ext_storage,
+        ext_set_secretkey,
         ext_logstore,  # Initialize logstore after storage, before celery
         ext_celery,
         ext_login,

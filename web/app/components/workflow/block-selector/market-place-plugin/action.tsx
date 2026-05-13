@@ -96,7 +96,7 @@ const OperationDropdown: FC<Props> = ({
           className="system-md-regular"
           href={getMarketplaceUrl(`/plugins/${author}/${name}`, { theme })}
           target="_blank"
-          rel="noreferrer"
+          rel="noopener noreferrer"
         >
           {t('operation.viewDetails', { ns: 'common' })}
         </DropdownMenuLinkItem>

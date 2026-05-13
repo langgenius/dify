@@ -3,14 +3,20 @@
 import type { FC } from 'react'
 import type { DefaultModel, Model } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { RetrievalConfig } from '@/types/app'
-import { Button } from '@langgenius/dify-ui/button'
+import {
+  AlertDialog,
+  AlertDialogActions,
+  AlertDialogCancelButton,
+  AlertDialogConfirmButton,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogTitle,
+} from '@langgenius/dify-ui/alert-dialog'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useTranslation } from 'react-i18next'
 import Badge from '@/app/components/base/badge'
-import CustomDialog from '@/app/components/base/dialog'
 import Divider from '@/app/components/base/divider'
 import { AlertTriangle } from '@/app/components/base/icons/src/vender/solid/alertsAndFeedback'
-import Tooltip from '@/app/components/base/tooltip'
 import EconomicalRetrievalMethodConfig from '@/app/components/datasets/common/economical-retrieval-method-config'
 import RetrievalMethodConfig from '@/app/components/datasets/common/retrieval-method-config'
 import ModelSelector from '@/app/components/header/account-setting/model-provider-page/model-selector'
@@ -65,6 +71,13 @@ export const IndexingModeSection: FC<IndexingModeSectionProps> = ({
   const docLink = useDocLink()
 
   const getIndexingTechnique = () => indexType
+  const economicalDisabledReason = (() => {
+    if (docForm === ChunkingMode.qa)
+      return t('stepTwo.notAvailableForQA', { ns: 'datasetCreation' })
+
+    if (docForm !== ChunkingMode.text)
+      return t('stepTwo.notAvailableForParentChild', { ns: 'datasetCreation' })
+  })()
 
   return (
     <>
@@ -72,7 +85,33 @@ export const IndexingModeSection: FC<IndexingModeSectionProps> = ({
       <div className="mb-1 system-md-semibold text-text-secondary">
         {t('stepTwo.indexMode', { ns: 'datasetCreation' })}
       </div>
-      <div className="flex items-center gap-2">
+      <AlertDialog
+        open={isQAConfirmDialogOpen}
+        onOpenChange={(open) => {
+          if (!open)
+            onQAConfirmDialogClose()
+        }}
+      >
+        <AlertDialogContent className="w-[432px]">
+          <div className="flex flex-col gap-2 p-6 pb-4">
+            <AlertDialogTitle className="text-lg leading-7 font-semibold text-text-primary">
+              {t('stepTwo.qaSwitchHighQualityTipTitle', { ns: 'datasetCreation' })}
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-sm leading-5 text-text-secondary">
+              {t('stepTwo.qaSwitchHighQualityTipContent', { ns: 'datasetCreation' })}
+            </AlertDialogDescription>
+          </div>
+          <AlertDialogActions>
+            <AlertDialogCancelButton variant="secondary">
+              {t('stepTwo.cancel', { ns: 'datasetCreation' })}
+            </AlertDialogCancelButton>
+            <AlertDialogConfirmButton tone="default" onClick={onQAConfirmDialogConfirm}>
+              {t('stepTwo.switch', { ns: 'datasetCreation' })}
+            </AlertDialogConfirmButton>
+          </AlertDialogActions>
+        </AlertDialogContent>
+      </AlertDialog>
+      <div className="flex items-stretch gap-2">
         {/* Qualified option */}
         {(!hasSetIndexType || (hasSetIndexType && indexType === IndexingType.QUALIFIED)) && (
           <OptionCard
@@ -106,49 +145,15 @@ export const IndexingModeSection: FC<IndexingModeSectionProps> = ({
 
         {/* Economical option */}
         {(!hasSetIndexType || (hasSetIndexType && indexType === IndexingType.ECONOMICAL)) && (
-          <>
-            <CustomDialog show={isQAConfirmDialogOpen} onClose={onQAConfirmDialogClose} className="w-[432px]">
-              <header className="mb-4 pt-6">
-                <h2 className="text-lg font-semibold text-text-primary">
-                  {t('stepTwo.qaSwitchHighQualityTipTitle', { ns: 'datasetCreation' })}
-                </h2>
-                <p className="mt-2 text-sm font-normal text-text-secondary">
-                  {t('stepTwo.qaSwitchHighQualityTipContent', { ns: 'datasetCreation' })}
-                </p>
-              </header>
-              <div className="flex gap-2 pb-6">
-                <Button className="ml-auto" onClick={onQAConfirmDialogClose}>
-                  {t('stepTwo.cancel', { ns: 'datasetCreation' })}
-                </Button>
-                <Button variant="primary" onClick={onQAConfirmDialogConfirm}>
-                  {t('stepTwo.switch', { ns: 'datasetCreation' })}
-                </Button>
-              </div>
-            </CustomDialog>
-            <Tooltip
-              popupContent={(
-                <div className="rounded-lg border-components-panel-border bg-components-tooltip-bg p-3 text-xs font-medium text-text-secondary shadow-lg">
-                  {docForm === ChunkingMode.qa
-                    ? t('stepTwo.notAvailableForQA', { ns: 'datasetCreation' })
-                    : t('stepTwo.notAvailableForParentChild', { ns: 'datasetCreation' })}
-                </div>
-              )}
-              noDecoration
-              position="top"
-              asChild={false}
-              triggerClassName="flex-1 self-stretch"
-            >
-              <OptionCard
-                className="h-full"
-                title={t('stepTwo.economical', { ns: 'datasetCreation' })}
-                description={t('stepTwo.economicalTip', { ns: 'datasetCreation' })}
-                icon={<img src={indexMethodIcon.economical} alt="" />}
-                isActive={!hasSetIndexType && indexType === IndexingType.ECONOMICAL}
-                disabled={hasSetIndexType || docForm !== ChunkingMode.text}
-                onSwitched={() => onIndexTypeChange(IndexingType.ECONOMICAL)}
-              />
-            </Tooltip>
-          </>
+          <OptionCard
+            className="flex-1 self-stretch"
+            title={t('stepTwo.economical', { ns: 'datasetCreation' })}
+            description={economicalDisabledReason || t('stepTwo.economicalTip', { ns: 'datasetCreation' })}
+            icon={<img src={indexMethodIcon.economical} alt="" />}
+            isActive={!hasSetIndexType && indexType === IndexingType.ECONOMICAL}
+            disabled={hasSetIndexType || !!economicalDisabledReason}
+            onSwitched={() => onIndexTypeChange(IndexingType.ECONOMICAL)}
+          />
         )}
       </div>
 

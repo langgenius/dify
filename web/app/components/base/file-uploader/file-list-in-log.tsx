@@ -39,7 +39,13 @@ const FileListInLog = ({ fileList, isExpanded = false, noBorder = false, noPaddi
     <div className={cn('px-3 py-2', expanded && 'py-3', !noBorder && 'border-t border-divider-subtle', noPadding && 'p-0!')}>
       <div className="flex justify-between gap-1">
         {expanded && (
-          <div className="grow cursor-pointer py-1 system-xs-semibold-uppercase text-text-secondary" onClick={() => setExpanded(!expanded)}>{t('runDetail.fileListLabel', { ns: 'appLog' })}</div>
+          <button
+            type="button"
+            className="grow cursor-pointer border-none bg-transparent px-0 py-1 text-left system-xs-semibold-uppercase text-text-secondary focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
+            onClick={() => setExpanded(!expanded)}
+          >
+            {t('runDetail.fileListLabel', { ns: 'appLog' })}
+          </button>
         )}
         {!expanded && (
           <div className="flex gap-1">
@@ -87,10 +93,15 @@ const FileListInLog = ({ fileList, isExpanded = false, noBorder = false, noPaddi
             })}
           </div>
         )}
-        <div className="flex cursor-pointer items-center gap-1" onClick={() => setExpanded(!expanded)}>
+        <button
+          type="button"
+          aria-label={t('runDetail.fileListDetail', { ns: 'appLog' })}
+          className="flex cursor-pointer items-center gap-1 border-none bg-transparent p-0 text-left focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
+          onClick={() => setExpanded(!expanded)}
+        >
           {!expanded && <div className="system-xs-medium-uppercase text-text-tertiary">{t('runDetail.fileListDetail', { ns: 'appLog' })}</div>}
-          <RiArrowRightSLine className={cn('h-4 w-4 text-text-tertiary', expanded && 'rotate-90')} />
-        </div>
+          <RiArrowRightSLine className={cn('h-4 w-4 text-text-tertiary', expanded && 'rotate-90')} aria-hidden="true" />
+        </button>
       </div>
       {expanded && (
         <div className="flex flex-col gap-3">

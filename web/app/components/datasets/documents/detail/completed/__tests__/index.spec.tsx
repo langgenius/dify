@@ -137,9 +137,8 @@ vi.mock('../hooks/use-child-segment-data', () => ({
   },
 }))
 
-// Mock child components to simplify testing
-vi.mock('../components', () => ({
-  MenuBar: ({ totalText, onInputChange, inputValue, isLoading, onSelectedAll, onChangeStatus }: {
+vi.mock('../components/menu-bar', () => ({
+  default: ({ totalText, onInputChange, inputValue, isLoading, onSelectedAll, onChangeStatus }: {
     totalText: string
     onInputChange: (value: string) => void
     inputValue: string
@@ -167,7 +166,13 @@ vi.mock('../components', () => ({
       )}
     </div>
   ),
+}))
+
+vi.mock('../components/drawer-group', () => ({
   DrawerGroup: () => <div data-testid="drawer-group" />,
+}))
+
+vi.mock('../components/segment-list-content', () => ({
   FullDocModeContent: () => <div data-testid="full-doc-mode-content" />,
   GeneralModeContent: () => <div data-testid="general-mode-content" />,
 }))
@@ -563,7 +568,7 @@ describe('Edge Cases', () => {
     expect(screen.getByTestId('general-mode-content'))!.toBeInTheDocument()
   })
 
-  it('should handle ProcessStatus.COMPLETED importStatus', () => {
+  it('should handle completed importStatus', () => {
     render(<Completed {...defaultProps} importStatus="completed" />, { wrapper: createWrapper() })
 
     expect(screen.getByTestId('general-mode-content'))!.toBeInTheDocument()

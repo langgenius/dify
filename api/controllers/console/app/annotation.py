@@ -1,4 +1,5 @@
 from typing import Any, Literal
+from uuid import UUID
 
 from flask import abort, make_response, request
 from flask_restx import Resource
@@ -32,8 +33,6 @@ from services.annotation_service import (
     UpdateAnnotationSettingArgs,
     UpsertAnnotationArgs,
 )
-
-DEFAULT_REF_TEMPLATE_SWAGGER_2_0 = "#/definitions/{model}"
 
 
 class AnnotationReplyPayload(BaseModel):
@@ -87,17 +86,6 @@ class AnnotationFilePayload(BaseModel):
         return uuid_value(value)
 
 
-def reg(model: type[BaseModel]) -> None:
-    console_ns.schema_model(model.__name__, model.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0))
-
-
-reg(AnnotationReplyPayload)
-reg(AnnotationSettingUpdatePayload)
-reg(AnnotationListQuery)
-reg(CreateAnnotationPayload)
-reg(UpdateAnnotationPayload)
-reg(AnnotationReplyStatusQuery)
-reg(AnnotationFilePayload)
 register_schema_models(
     console_ns,
     Annotation,
@@ -105,6 +93,13 @@ register_schema_models(
     AnnotationExportList,
     AnnotationHitHistory,
     AnnotationHitHistoryList,
+    AnnotationReplyPayload,
+    AnnotationSettingUpdatePayload,
+    AnnotationListQuery,
+    CreateAnnotationPayload,
+    UpdateAnnotationPayload,
+    AnnotationReplyStatusQuery,
+    AnnotationFilePayload,
 )
 
 
@@ -121,8 +116,7 @@ class AnnotationReplyActionApi(Resource):
     @account_initialization_required
     @cloud_edition_billing_resource_check("annotation")
     @edit_permission_required
-    def post(self, app_id, action: Literal["enable", "disable"]):
-        app_id = str(app_id)
+    def post(self, app_id: UUID, action: Literal["enable", "disable"]):
         args = AnnotationReplyPayload.model_validate(console_ns.payload)
         match action:
             case "enable":
@@ -131,9 +125,9 @@ class AnnotationReplyActionApi(Resource):
                     "embedding_provider_name": args.embedding_provider_name,
                     "embedding_model_name": args.embedding_model_name,
                 }
-                result = AppAnnotationService.enable_app_annotation(enable_args, app_id)
+                result = AppAnnotationService.enable_app_annotation(enable_args, str(app_id))
             case "disable":
-                result = AppAnnotationService.disable_app_annotation(app_id)
+                result = AppAnnotationService.disable_app_annotation(str(app_id))
         return result, 200
 
 
@@ -148,9 +142,8 @@ class AppAnnotationSettingDetailApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
-    def get(self, app_id):
-        app_id = str(app_id)
-        result = AppAnnotationService.get_app_annotation_setting_by_app_id(app_id)
+    def get(self, app_id: UUID):
+        result = AppAnnotationService.get_app_annotation_setting_by_app_id(str(app_id))
         return result, 200
 
 
@@ -166,14 +159,13 @@ class AppAnnotationSettingUpdateApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
-    def post(self, app_id, annotation_setting_id):
-        app_id = str(app_id)
+    def post(self, app_id: UUID, annotation_setting_id):
         annotation_setting_id = str(annotation_setting_id)
 
         args = AnnotationSettingUpdatePayload.model_validate(console_ns.payload)
 
         setting_args: UpdateAnnotationSettingArgs = {"score_threshold": args.score_threshold}
-        result = AppAnnotationService.update_app_annotation_setting(app_id, annotation_setting_id, setting_args)
+        result = AppAnnotationService.update_app_annotation_setting(str(app_id), annotation_setting_id, setting_args)
         return result, 200
 
 
@@ -189,7 +181,7 @@ class AnnotationReplyActionStatusApi(Resource):
     @account_initialization_required
     @cloud_edition_billing_resource_check("annotation")
     @edit_permission_required
-    def get(self, app_id, job_id, action):
+    def get(self, app_id: UUID, job_id, action):
         job_id = str(job_id)
         app_annotation_job_key = f"{action}_app_annotation_job_{str(job_id)}"
         cache_result = redis_client.get(app_annotation_job_key)
@@ -217,14 +209,13 @@ class AnnotationApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
-    def get(self, app_id):
-        args = AnnotationListQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
+    def get(self, app_id: UUID):
+        args = AnnotationListQuery.model_validate(request.args.to_dict(flat=True))
         page = args.page
         limit = args.limit
         keyword = args.keyword
 
-        app_id = str(app_id)
-        annotation_list, total = AppAnnotationService.get_annotation_list_by_app_id(app_id, page, limit, keyword)
+        annotation_list, total = AppAnnotationService.get_annotation_list_by_app_id(str(app_id), page, limit, keyword)
         annotation_models = TypeAdapter(list[Annotation]).validate_python(annotation_list, from_attributes=True)
         response = AnnotationList(
             data=annotation_models,
@@ -246,8 +237,7 @@ class AnnotationApi(Resource):
     @account_initialization_required
     @cloud_edition_billing_resource_check("annotation")
     @edit_permission_required
-    def post(self, app_id):
-        app_id = str(app_id)
+    def post(self, app_id: UUID):
         args = CreateAnnotationPayload.model_validate(console_ns.payload)
         upsert_args: UpsertAnnotationArgs = {}
         if args.answer is not None:
@@ -258,15 +248,14 @@ class AnnotationApi(Resource):
             upsert_args["message_id"] = args.message_id
         if args.question is not None:
             upsert_args["question"] = args.question
-        annotation = AppAnnotationService.up_insert_app_annotation_from_message(upsert_args, app_id)
+        annotation = AppAnnotationService.up_insert_app_annotation_from_message(upsert_args, str(app_id))
         return Annotation.model_validate(annotation, from_attributes=True).model_dump(mode="json")
 
     @setup_required
     @login_required
     @account_initialization_required
     @edit_permission_required
-    def delete(self, app_id):
-        app_id = str(app_id)
+    def delete(self, app_id: UUID):
 
         # Use request.args.getlist to get annotation_ids array directly
         annotation_ids = request.args.getlist("annotation_id")
@@ -280,11 +269,11 @@ class AnnotationApi(Resource):
                     "message": "annotation_ids are required if the parameter is provided.",
                 }, 400
 
-            result = AppAnnotationService.delete_app_annotations_in_batch(app_id, annotation_ids)
+            result = AppAnnotationService.delete_app_annotations_in_batch(str(app_id), annotation_ids)
             return result, 204
         # If no annotation_ids are provided, handle clearing all annotations
         else:
-            AppAnnotationService.clear_all_annotations(app_id)
+            AppAnnotationService.clear_all_annotations(str(app_id))
             return {"result": "success"}, 204
 
 
@@ -303,9 +292,8 @@ class AnnotationExportApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
-    def get(self, app_id):
-        app_id = str(app_id)
-        annotation_list = AppAnnotationService.export_annotation_list_by_app_id(app_id)
+    def get(self, app_id: UUID):
+        annotation_list = AppAnnotationService.export_annotation_list_by_app_id(str(app_id))
         annotation_models = TypeAdapter(list[Annotation]).validate_python(annotation_list, from_attributes=True)
         response_data = AnnotationExportList(data=annotation_models).model_dump(mode="json")
 
@@ -331,26 +319,22 @@ class AnnotationUpdateDeleteApi(Resource):
     @account_initialization_required
     @cloud_edition_billing_resource_check("annotation")
     @edit_permission_required
-    def post(self, app_id, annotation_id):
-        app_id = str(app_id)
-        annotation_id = str(annotation_id)
+    def post(self, app_id: UUID, annotation_id: UUID):
         args = UpdateAnnotationPayload.model_validate(console_ns.payload)
         update_args: UpdateAnnotationArgs = {}
         if args.answer is not None:
             update_args["answer"] = args.answer
         if args.question is not None:
             update_args["question"] = args.question
-        annotation = AppAnnotationService.update_app_annotation_directly(update_args, app_id, annotation_id)
+        annotation = AppAnnotationService.update_app_annotation_directly(update_args, str(app_id), str(annotation_id))
         return Annotation.model_validate(annotation, from_attributes=True).model_dump(mode="json")
 
     @setup_required
     @login_required
     @account_initialization_required
     @edit_permission_required
-    def delete(self, app_id, annotation_id):
-        app_id = str(app_id)
-        annotation_id = str(annotation_id)
-        AppAnnotationService.delete_app_annotation(app_id, annotation_id)
+    def delete(self, app_id: UUID, annotation_id: UUID):
+        AppAnnotationService.delete_app_annotation(str(app_id), str(annotation_id))
         return {"result": "success"}, 204
 
 
@@ -371,10 +355,8 @@ class AnnotationBatchImportApi(Resource):
     @annotation_import_rate_limit
     @annotation_import_concurrency_limit
     @edit_permission_required
-    def post(self, app_id):
+    def post(self, app_id: UUID):
         from configs import dify_config
-
-        app_id = str(app_id)
 
         # check file
         if "file" not in request.files:
@@ -391,9 +373,9 @@ class AnnotationBatchImportApi(Resource):
             raise ValueError("Invalid file type. Only CSV files are allowed")
 
         # Check file size before processing
-        file.seek(0, 2)  # Seek to end of file
-        file_size = file.tell()
-        file.seek(0)  # Reset to beginning
+        file.stream.seek(0, 2)  # Seek to end of file
+        file_size = file.stream.tell()
+        file.stream.seek(0)  # Reset to beginning
 
         max_size_bytes = dify_config.ANNOTATION_IMPORT_FILE_SIZE_LIMIT * 1024 * 1024
         if file_size > max_size_bytes:
@@ -406,7 +388,7 @@ class AnnotationBatchImportApi(Resource):
         if file_size == 0:
             raise ValueError("The uploaded file is empty")
 
-        return AppAnnotationService.batch_import_app_annotations(app_id, file)
+        return AppAnnotationService.batch_import_app_annotations(str(app_id), file)
 
 
 @console_ns.route("/apps/<uuid:app_id>/annotations/batch-import-status/<uuid:job_id>")
@@ -421,8 +403,7 @@ class AnnotationBatchImportStatusApi(Resource):
     @account_initialization_required
     @cloud_edition_billing_resource_check("annotation")
     @edit_permission_required
-    def get(self, app_id, job_id):
-        job_id = str(job_id)
+    def get(self, app_id: UUID, job_id: UUID):
         indexing_cache_key = f"app_annotation_batch_import_{str(job_id)}"
         cache_result = redis_client.get(indexing_cache_key)
         if cache_result is None:
@@ -456,13 +437,11 @@ class AnnotationHitHistoryListApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
-    def get(self, app_id, annotation_id):
+    def get(self, app_id: UUID, annotation_id: UUID):
         page = request.args.get("page", default=1, type=int)
         limit = request.args.get("limit", default=20, type=int)
-        app_id = str(app_id)
-        annotation_id = str(annotation_id)
         annotation_hit_history_list, total = AppAnnotationService.get_annotation_hit_histories(
-            app_id, annotation_id, page, limit
+            str(app_id), str(annotation_id), page, limit
         )
         history_models = TypeAdapter(list[AnnotationHitHistory]).validate_python(
             annotation_hit_history_list, from_attributes=True

@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import VersionSelector from '../version-selector'
 
 vi.mock('react-i18next', () => ({
@@ -25,7 +25,7 @@ describe('VersionSelector', () => {
     expect(onChange).not.toHaveBeenCalled()
   })
 
-  it('should open the selector and switch versions when multiple versions exist', () => {
+  it('should open the selector and switch versions when multiple versions exist', async () => {
     const onChange = vi.fn()
 
     render(
@@ -44,6 +44,8 @@ describe('VersionSelector', () => {
     fireEvent.click(screen.getByText('generate.version 1'))
 
     expect(onChange).toHaveBeenCalledWith(0)
-    expect(screen.queryByText('generate.versions')).not.toBeInTheDocument()
+    await waitFor(() => {
+      expect(screen.queryByText('generate.versions')).not.toBeInTheDocument()
+    })
   })
 })

@@ -12,28 +12,32 @@ import { formatDateForOutput, toDayjs } from '@/app/components/base/date-and-tim
 import Input from '@/app/components/base/input'
 import Textarea from '@/app/components/base/textarea'
 
-enum DATA_FORMAT {
-  TEXT = 'text',
-  JSON = 'json',
-}
-enum SUPPORTED_TAGS {
-  LABEL = 'label',
-  INPUT = 'input',
-  TEXTAREA = 'textarea',
-  BUTTON = 'button',
-}
-enum SUPPORTED_TYPES {
-  TEXT = 'text',
-  PASSWORD = 'password',
-  EMAIL = 'email',
-  NUMBER = 'number',
-  DATE = 'date',
-  TIME = 'time',
-  DATETIME = 'datetime',
-  CHECKBOX = 'checkbox',
-  SELECT = 'select',
-  HIDDEN = 'hidden',
-}
+const DATA_FORMAT = {
+  TEXT: 'text',
+  JSON: 'json',
+} as const
+
+const SUPPORTED_TAGS = {
+  LABEL: 'label',
+  INPUT: 'input',
+  TEXTAREA: 'textarea',
+  BUTTON: 'button',
+} as const
+
+const SUPPORTED_TYPES = {
+  TEXT: 'text',
+  PASSWORD: 'password',
+  EMAIL: 'email',
+  NUMBER: 'number',
+  DATE: 'date',
+  TIME: 'time',
+  DATETIME: 'datetime',
+  CHECKBOX: 'checkbox',
+  SELECT: 'select',
+  HIDDEN: 'hidden',
+} as const
+
+type SupportedType = typeof SUPPORTED_TYPES[keyof typeof SUPPORTED_TYPES]
 
 const SUPPORTED_TYPES_SET = new Set<string>(Object.values(SUPPORTED_TYPES))
 
@@ -253,7 +257,7 @@ const MarkdownForm = ({ node }: { node: HastElement }) => {
           if (!isSafeName(name))
             return null
 
-          const type = str(child.properties.type) as SUPPORTED_TYPES
+          const type = str(child.properties.type) as SupportedType
 
           if (type === SUPPORTED_TYPES.DATE || type === SUPPORTED_TYPES.DATETIME) {
             return (
@@ -309,7 +313,10 @@ const MarkdownForm = ({ node }: { node: HastElement }) => {
               <Select
                 key={key}
                 defaultValue={formValues[name] as string | undefined}
-                onValueChange={val => updateValue(name, val as string)}
+                onValueChange={(val) => {
+                  if (val != null)
+                    updateValue(name, val)
+                }}
               >
                 <SelectTrigger className="w-full">
                   <SelectValue />

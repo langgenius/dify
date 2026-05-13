@@ -87,7 +87,7 @@ const InviteModal = ({
         backdropProps={{ forceRender: true }}
         className="w-[400px] overflow-visible px-8 py-6"
       >
-        <DialogCloseButton data-testid="invite-modal-close" className="top-6 right-8" />
+        <DialogCloseButton className="top-6 right-8" />
         <div className="mb-2 pr-8">
           <DialogTitle className="text-xl font-semibold text-text-primary">
             {t('members.inviteTeamMember', { ns: 'common' })}
@@ -122,13 +122,15 @@ const InviteModal = ({
               getLabel={(email, index, removeEmail) => (
                 <div data-tag key={index} className={cn('bg-components-button-secondary-bg!')}>
                   <div data-tag-item>{email}</div>
-                  <span
-                    data-testid="remove-email-btn"
+                  <button
+                    type="button"
                     data-tag-handle
+                    aria-label={`${t('operation.remove', { ns: 'common' })} ${email}`}
+                    className="border-none bg-transparent p-0 text-inherit"
                     onClick={() => removeEmail(index)}
                   >
                     ×
-                  </span>
+                  </button>
                 </div>
               )}
               placeholder={t('members.emailPlaceholder', { ns: 'common' }) || ''}

@@ -22,7 +22,7 @@ const createApp = (overrides?: Partial<App>): App => ({
   copyright: '2024',
   privacy_policy: null,
   custom_disclaimer: null,
-  category: 'Assistant',
+  categories: ['Assistant'],
   position: 1,
   is_listed: true,
   install_count: 0,
@@ -167,7 +167,7 @@ describe('AppCard', () => {
         template_id: app.app_id,
         template_name: app.app.name,
         template_mode: app.app.mode,
-        template_category: app.category,
+        template_categories: app.categories,
         page: 'explore',
       })
     })

@@ -1,14 +1,14 @@
 'use client'
 import type { AccessControlAccount, AccessControlGroup } from '@/models/access-control'
 import { Avatar } from '@langgenius/dify-ui/avatar'
-import { RiAlertFill, RiCloseCircleFill, RiLockLine, RiOrganizationChart } from '@remixicon/react'
+import { RiCloseCircleFill, RiLockLine, RiOrganizationChart } from '@remixicon/react'
 import { useCallback, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { AccessMode } from '@/models/access-control'
 import { useAppWhiteListSubjects } from '@/service/access-control'
 import useAccessControlStore from '../../../../context/access-control-store'
+import { Infotip } from '../../base/infotip'
 import Loading from '../../base/loading'
-import Tooltip from '../../base/tooltip'
 import AddMemberOrGroupDialog from './add-member-or-group-pop'
 
 export default function SpecificGroupsOrMembers() {
@@ -120,26 +120,38 @@ type BaseItemProps = {
   onRemove?: () => void
 }
 function BaseItem({ icon, onRemove, children }: BaseItemProps) {
+  const { t } = useTranslation()
+
   return (
-    <div className="group flex flex-row items-center gap-x-1 rounded-full border-[0.5px] bg-components-badge-white-to-dark p-1 pr-1.5 shadow-xs">
+    <div className="group flex flex-row items-center gap-x-1 rounded-full border-[0.5px] border-components-panel-border-subtle bg-components-badge-white-to-dark p-1 pr-1.5 shadow-xs">
       <div className="h-5 w-5 overflow-hidden rounded-full bg-components-icon-bg-blue-solid">
         <div className="bg-access-app-icon-mask-bg flex h-full w-full items-center justify-center">
           {icon}
         </div>
       </div>
       {children}
-      <div className="flex h-4 w-4 cursor-pointer items-center justify-center" onClick={onRemove}>
-        <RiCloseCircleFill className="h-[14px] w-[14px] text-text-quaternary" />
-      </div>
+      <button
+        type="button"
+        className="flex h-4 w-4 cursor-pointer items-center justify-center border-none bg-transparent p-0 focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
+        aria-label={t('operation.remove', { ns: 'common' })}
+        onClick={onRemove}
+      >
+        <RiCloseCircleFill className="h-[14px] w-[14px] text-text-quaternary" aria-hidden="true" />
+      </button>
     </div>
   )
 }
 
 export function WebAppSSONotEnabledTip() {
   const { t } = useTranslation()
+  const tip = t('accessControlDialog.webAppSSONotEnabledTip', { ns: 'app' })
+
   return (
-    <Tooltip asChild={false} popupContent={t('accessControlDialog.webAppSSONotEnabledTip', { ns: 'app' })}>
-      <RiAlertFill className="h-4 w-4 shrink-0 text-text-warning-secondary" />
-    </Tooltip>
+    <Infotip
+      aria-label={tip}
+      iconClassName="h-4 w-4 shrink-0 text-text-warning-secondary hover:text-text-warning-secondary"
+    >
+      {tip}
+    </Infotip>
   )
 }

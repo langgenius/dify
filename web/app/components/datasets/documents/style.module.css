@@ -17,7 +17,7 @@
   @apply !p-2 !border-[0.5px] !border-components-button-secondary-border !bg-components-button-secondary-bg shadow-xs shadow-shadow-shadow-3 hover:!border-components-button-secondary-border-hover hover:!bg-components-button-secondary-bg-hover;
 }
 .actionItem {
-  @apply h-9 py-2 px-3 mx-1 flex items-center gap-2 hover:bg-state-base-hover rounded-lg cursor-pointer;
+  @apply h-9 py-2 px-3 mx-1 flex items-center gap-2 rounded-lg border-none bg-transparent text-left hover:bg-state-base-hover cursor-pointer;
 }
 .deleteActionItem {
   @apply hover:!bg-state-destructive-hover;
@@ -26,7 +26,7 @@
   @apply text-text-secondary text-sm;
 }
 .addFileBtn {
-  @apply mt-4 w-fit !text-[13px] font-medium border-[0.5px];
+  @apply mt-4 w-fit !text-[13px] font-medium border-[0.5px] border-components-button-secondary-border;
 }
 .plusIcon {
   @apply w-4 h-4 mr-2 stroke-current stroke-[1.5px];

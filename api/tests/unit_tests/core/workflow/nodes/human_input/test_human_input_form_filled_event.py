@@ -40,7 +40,7 @@ def _create_human_input_node(
     )
     return HumanInputNode(
         node_id=config["id"],
-        config=node_data,
+        data=node_data,
         graph_init_params=graph_init_params,
         graph_runtime_state=graph_runtime_state,
         form_repository=repo,
@@ -51,7 +51,11 @@ def _create_human_input_node(
 def _build_node(form_content: str = "Please enter your name:\n\n{{#$output.name#}}") -> HumanInputNode:
     system_variables = default_system_variables()
     graph_runtime_state = GraphRuntimeState(
-        variable_pool=VariablePool(system_variables=system_variables, user_inputs={}, environment_variables=[]),
+        variable_pool=VariablePool.from_bootstrap(
+            system_variables=system_variables,
+            user_inputs={},
+            environment_variables=[],
+        ),
         start_at=0.0,
     )
     graph_init_params = GraphInitParams(
@@ -114,7 +118,11 @@ def _build_node(form_content: str = "Please enter your name:\n\n{{#$output.name#
 def _build_timeout_node() -> HumanInputNode:
     system_variables = default_system_variables()
     graph_runtime_state = GraphRuntimeState(
-        variable_pool=VariablePool(system_variables=system_variables, user_inputs={}, environment_variables=[]),
+        variable_pool=VariablePool.from_bootstrap(
+            system_variables=system_variables,
+            user_inputs={},
+            environment_variables=[],
+        ),
         start_at=0.0,
     )
     graph_init_params = GraphInitParams(

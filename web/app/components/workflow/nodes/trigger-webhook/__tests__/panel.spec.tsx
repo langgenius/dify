@@ -94,10 +94,6 @@ vi.mock('@/app/components/base/input-with-copy', () => ({
   ),
 }))
 
-vi.mock('@/app/components/base/tooltip', () => ({
-  default: ({ children }: { children: React.ReactNode }) => <>{children}</>,
-}))
-
 vi.mock('@/app/components/workflow/nodes/_base/components/field', () => ({
   default: ({ title, children }: { title: string, children: React.ReactNode }) => (
     <div>

@@ -325,7 +325,36 @@ export type WorkflowRunResponse = {
   workflow_id: string
 }
 
+export type Condition = {
+  comparison_operator:
+    | 'contains'
+    | 'not contains'
+    | 'start with'
+    | 'end with'
+    | 'is'
+    | 'is not'
+    | 'empty'
+    | 'not empty'
+    | 'in'
+    | 'not in'
+    | '='
+    | '≠'
+    | '>'
+    | '<'
+    | '≥'
+    | '≤'
+    | 'before'
+    | 'after'
+  name: string
+  value?: unknown
+}
+
 export type DatasetPermissionEnum = 'only_me' | 'all_team_members' | 'partial_members'
+
+export type MetadataFilteringCondition = {
+  conditions?: Array<Condition> | null
+  logical_operator?: 'and' | 'or' | null
+}
 
 export type RerankingModel = {
   reranking_model_name?: string | null
@@ -339,6 +368,7 @@ export type RetrievalMethod
     | 'keyword_search'
 
 export type RetrievalModel = {
+  metadata_filtering_conditions?: MetadataFilteringCondition
   reranking_enable: boolean
   reranking_mode?: string | null
   reranking_model?: RerankingModel
@@ -1833,8 +1863,8 @@ export type GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdData =
   body?: never
   path: {
     segment_id: string
-    dataset_id: string
     document_id: string
+    dataset_id: string
   }
   query?: never
   url: '/datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}'

@@ -134,7 +134,7 @@ const ValueInput = ({
         <SelectTrigger className="h-8 grow text-[13px]">
           {selectedOption?.name ?? 'Select value'}
         </SelectTrigger>
-        <SelectContent popupClassName="w-(--anchor-width)">
+        <SelectContent>
           {selectOptions.map(option => (
             <SelectItem key={option.value} value={option.value}>
               <SelectItemText>{option.name}</SelectItemText>

@@ -127,8 +127,7 @@ const ProviderAddedCard: FC<ProviderAddedCardProps> = ({
             {(showModelProvider || !notConfigured) && (
               <button
                 type="button"
-                data-testid="show-models-button"
-                className="flex h-6 items-center rounded-lg pr-1.5 pl-1 hover:bg-components-button-ghost-bg-hover"
+                className="flex h-6 items-center rounded-lg border-none bg-transparent pr-1.5 pl-1 text-left hover:bg-components-button-ghost-bg-hover"
                 aria-label={t('modelProvider.showModels', { ns: 'common' })}
                 onClick={handleOpenModelList}
               >
@@ -137,7 +136,7 @@ const ProviderAddedCard: FC<ProviderAddedCardProps> = ({
                     ? t('modelProvider.modelsNum', { ns: 'common', num: modelList.length })
                     : t('modelProvider.showModels', { ns: 'common' })
                 }
-                {!loading && <div className="i-ri-arrow-right-s-line h-4 w-4" />}
+                {!loading && <div className="i-ri-arrow-right-s-line h-4 w-4" aria-hidden="true" />}
                 {
                   loading && (
                     <div className="ml-0.5 i-ri-loader-2-line h-3 w-3 animate-spin" />

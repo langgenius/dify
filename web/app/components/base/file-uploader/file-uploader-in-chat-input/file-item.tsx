@@ -2,6 +2,7 @@ import type { FileEntity } from '../types'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
 import AudioPreview from '@/app/components/base/file-uploader/audio-preview'
 import PdfPreview from '@/app/components/base/file-uploader/dynamic-pdf-preview'
@@ -32,6 +33,7 @@ const FileItem = ({
   onReUpload,
   canPreview,
 }: FileItemProps) => {
+  const { t } = useTranslation()
   const { id, name, type, progress, url, base64Url, isRemote } = file
   const [previewUrl, setPreviewUrl] = useState('')
   const ext = getFileExtension(name, type, isRemote)
@@ -56,11 +58,11 @@ const FileItem = ({
         {
           showDeleteAction && (
             <Button
+              aria-label={t('operation.remove', { ns: 'common' })}
               className="absolute -top-1.5 -right-1.5 z-11 hidden h-5 w-5 rounded-full p-0 group-hover/file-item:flex"
               onClick={() => onRemove?.(id)}
-              data-testid="delete-button"
             >
-              <span className="i-ri-close-line h-4 w-4 text-components-button-secondary-text" />
+              <span className="i-ri-close-line h-4 w-4 text-components-button-secondary-text" aria-hidden="true" />
             </Button>
           )
         }
@@ -93,15 +95,15 @@ const FileItem = ({
           {
             showDownloadAction && download_url && (
               <ActionButton
+                aria-label={t('operation.download', { ns: 'common' })}
                 size="m"
                 className="absolute -top-1 -right-1 hidden group-hover/file-item:flex"
                 onClick={(e) => {
                   e.stopPropagation()
                   downloadUrl({ url: download_url || '', fileName: name, target: '_blank' })
                 }}
-                data-testid="download-button"
               >
-                <span className="i-ri-download-line h-3.5 w-3.5 text-text-tertiary" />
+                <span className="i-ri-download-line h-3.5 w-3.5 text-text-tertiary" aria-hidden="true" />
               </ActionButton>
             )
           }
@@ -116,7 +118,14 @@ const FileItem = ({
           }
           {
             uploadError && (
-              <span className="i-custom-vender-other-replay-line h-4 w-4 cursor-pointer text-text-tertiary" onClick={() => onReUpload?.(id)} data-testid="replay-icon" role="button" tabIndex={0} />
+              <button
+                type="button"
+                aria-label={t('operation.retry', { ns: 'common' })}
+                className="h-4 w-4 cursor-pointer border-none bg-transparent p-0 text-text-tertiary focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
+                onClick={() => onReUpload?.(id)}
+              >
+                <span className="i-custom-vender-other-replay-line block h-4 w-4" aria-hidden="true" />
+              </button>
             )
           }
         </div>
