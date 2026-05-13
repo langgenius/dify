@@ -160,8 +160,7 @@ export default function ShortcutsPopupPlugin({
           Object.assign(elements.floating.style, {
             maxWidth: `${Math.min(400, availableWidth)}px`,
             maxHeight: `${Math.max(0, availableHeight)}px`,
-            overflowX: 'hidden',
-            overflowY: 'auto',
+            overflow: 'visible',
           })
         },
         padding: 8,
@@ -300,12 +299,13 @@ export default function ShortcutsPopupPlugin({
         refs.setFloating(node)
       }}
       className={cn(
-        useContainer ? '' : 'z-1002',
         'absolute rounded-xl bg-components-panel-bg-blur shadow-lg',
         className,
       )}
       style={{
         ...floatingStyles,
+        zIndex: useContainer ? undefined : 50,
+        overflow: 'visible',
         visibility: isPositioned ? 'visible' : 'hidden',
       }}
     >

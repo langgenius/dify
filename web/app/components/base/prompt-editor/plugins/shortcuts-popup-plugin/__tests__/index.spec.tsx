@@ -188,7 +188,7 @@ describe('ShortcutsPopupPlugin', () => {
     const portalContent = await screen.findByText(SHORTCUTS_EMPTY_CONTENT)
     const floatingDiv = portalContent.closest('div')
     expect(document.body).toContainElement(portalContent)
-    expect(floatingDiv).toHaveClass('z-1002')
+    expect(floatingDiv).toHaveStyle({ zIndex: '50' })
   })
 
   // ─── matchHotkey: string hotkey ───
