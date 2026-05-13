@@ -58,7 +58,7 @@ class LangFuseDataTrace(BaseTraceInstance):
         # SpanProcessor to the global OpenTelemetry TracerProvider, which would
         # otherwise siphon every Flask/Celery/SQLAlchemy span in the process into
         # this tenant's Langfuse project. See langfuse upgrade guide v2 -> v3.
-        self._tracer_provider = TracerProvider(
+        self._tracer_provider: TracerProvider | None = TracerProvider(
             resource=Resource.create({"service.name": "dify-langfuse-app-trace"}),
         )
         self.langfuse_client = Langfuse(
