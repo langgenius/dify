@@ -167,7 +167,7 @@ class MemberBindingsResponse(_RBACModel):
 
 class MemberRolesResponse(_RBACModel):
     account_id: str
-    roles: list[MemberRoleSummary] = Field(default_factory=list)
+    roles: list[RBACRole] = Field(default_factory=list)
 
 
 class MemberRolesBatchResponse(_RBACModel):
