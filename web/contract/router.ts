@@ -63,6 +63,9 @@ export const marketplaceRouterContract = {
 export type MarketPlaceInputs = InferContractRouterInputs<typeof marketplaceRouterContract>
 
 export const consoleRouterContract = {
+  // `enterprise` is the only backend-generated contract wired in here. Community API contracts
+  // are generated too, but backend definitions are not complete enough to consume directly yet,
+  // so those routes stay manually maintained for now.
   enterprise: enterpriseContract,
   account: {
     avatar: accountAvatarContract,

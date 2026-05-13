@@ -3,6 +3,7 @@ from collections.abc import Sequence
 from flask_restx import Resource
 from pydantic import BaseModel, Field
 
+from controllers.common.schema import register_enum_models, register_schema_models
 from controllers.console import console_ns
 from controllers.console.app.error import (
     CompletionRequestError,
@@ -19,12 +20,11 @@ from core.helper.code_executor.python3.python3_code_provider import Python3CodeP
 from core.llm_generator.entities import RuleCodeGeneratePayload, RuleGeneratePayload, RuleStructuredOutputPayload
 from core.llm_generator.llm_generator import LLMGenerator
 from extensions.ext_database import db
+from graphon.model_runtime.entities.llm_entities import LLMMode
 from graphon.model_runtime.errors.invoke import InvokeError
 from libs.login import current_account_with_tenant, login_required
 from models import App
 from services.workflow_service import WorkflowService
-
-DEFAULT_REF_TEMPLATE_SWAGGER_2_0 = "#/definitions/{model}"
 
 
 class InstructionGeneratePayload(BaseModel):
@@ -41,16 +41,16 @@ class InstructionTemplatePayload(BaseModel):
     type: str = Field(..., description="Instruction template type")
 
 
-def reg(cls: type[BaseModel]):
-    console_ns.schema_model(cls.__name__, cls.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0))
-
-
-reg(RuleGeneratePayload)
-reg(RuleCodeGeneratePayload)
-reg(RuleStructuredOutputPayload)
-reg(InstructionGeneratePayload)
-reg(InstructionTemplatePayload)
-reg(ModelConfig)
+register_enum_models(console_ns, LLMMode)
+register_schema_models(
+    console_ns,
+    RuleGeneratePayload,
+    RuleCodeGeneratePayload,
+    RuleStructuredOutputPayload,
+    InstructionGeneratePayload,
+    InstructionTemplatePayload,
+    ModelConfig,
+)
 
 
 @console_ns.route("/rule-generate")

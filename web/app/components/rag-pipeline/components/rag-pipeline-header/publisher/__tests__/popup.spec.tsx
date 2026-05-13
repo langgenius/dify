@@ -327,11 +327,18 @@ describe('Popup', () => {
 
     it('should request closing the outer popover before opening publish-as modal', () => {
       const onRequestClose = vi.fn()
-      render(<Popup onRequestClose={onRequestClose} />)
+      const onShowPublishAsKnowledgePipelineModal = vi.fn()
+      render(
+        <Popup
+          onRequestClose={onRequestClose}
+          onShowPublishAsKnowledgePipelineModal={onShowPublishAsKnowledgePipelineModal}
+        />,
+      )
 
       fireEvent.click(screen.getByText('pipeline.common.publishAs'))
 
       expect(onRequestClose).toHaveBeenCalledTimes(1)
+      expect(onShowPublishAsKnowledgePipelineModal).toHaveBeenCalledTimes(1)
     })
   })
 
@@ -349,27 +356,6 @@ describe('Popup', () => {
       fireEvent.click(screen.getByTestId('alert-dialog-close'))
 
       expect(hideConfirm).toHaveBeenCalledTimes(1)
-    })
-  })
-
-  describe('Publish params', () => {
-    it('should publish as template with empty pipeline id fallback', async () => {
-      mockPipelineId = undefined
-      mockUseBoolean
-        .mockImplementationOnce((initial: boolean) => [initial, { setFalse: vi.fn(), setTrue: vi.fn() }])
-        .mockImplementationOnce((initial: boolean) => [initial, { setFalse: vi.fn(), setTrue: vi.fn() }])
-        .mockImplementationOnce(() => [true, { setFalse: vi.fn(), setTrue: vi.fn() }])
-        .mockImplementationOnce((initial: boolean) => [initial, { setFalse: vi.fn(), setTrue: vi.fn() }])
-      render(<Popup />)
-
-      fireEvent.click(screen.getByTestId('publish-as-confirm'))
-
-      expect(mockPublishAsCustomizedPipeline).toHaveBeenCalledWith({
-        pipelineId: '',
-        name: 'My Pipeline',
-        icon_info: { icon_type: 'emoji' },
-        description: 'desc',
-      })
     })
   })
 

@@ -6,7 +6,7 @@ from pydantic import BaseModel, Field, TypeAdapter, field_validator, model_valid
 from werkzeug.exceptions import Forbidden, NotFound
 
 import services
-from controllers.common.schema import register_schema_models
+from controllers.common.schema import register_enum_models, register_schema_models
 from controllers.console.wraps import edit_permission_required
 from controllers.service_api import service_api_ns
 from controllers.service_api.dataset.error import DatasetInUseError, DatasetNameDuplicateError, InvalidActionError
@@ -34,13 +34,7 @@ from services.tag_service import (
     UpdateTagPayload,
 )
 
-DEFAULT_REF_TEMPLATE_SWAGGER_2_0 = "#/definitions/{model}"
-
-
-service_api_ns.schema_model(
-    DatasetPermissionEnum.__name__,
-    TypeAdapter(DatasetPermissionEnum).json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0),
-)
+register_enum_models(service_api_ns, DatasetPermissionEnum)
 
 
 class DatasetCreatePayload(BaseModel):

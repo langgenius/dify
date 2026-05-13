@@ -8,6 +8,7 @@ from flask_restx import Resource, fields, marshal, marshal_with
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import sessionmaker
 
+from controllers.common.schema import register_schema_models
 from controllers.console import console_ns
 from controllers.console.app.error import (
     DraftWorkflowNotExist,
@@ -33,7 +34,6 @@ from services.workflow_service import WorkflowService
 
 logger = logging.getLogger(__name__)
 _file_access_controller = DatabaseFileAccessController()
-DEFAULT_REF_TEMPLATE_SWAGGER_2_0 = "#/definitions/{model}"
 
 
 class WorkflowDraftVariableListQuery(BaseModel):
@@ -56,21 +56,12 @@ class EnvironmentVariableUpdatePayload(BaseModel):
     environment_variables: list[dict[str, Any]] = Field(..., description="Environment variables for the draft workflow")
 
 
-console_ns.schema_model(
-    WorkflowDraftVariableListQuery.__name__,
-    WorkflowDraftVariableListQuery.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0),
-)
-console_ns.schema_model(
-    WorkflowDraftVariableUpdatePayload.__name__,
-    WorkflowDraftVariableUpdatePayload.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0),
-)
-console_ns.schema_model(
-    ConversationVariableUpdatePayload.__name__,
-    ConversationVariableUpdatePayload.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0),
-)
-console_ns.schema_model(
-    EnvironmentVariableUpdatePayload.__name__,
-    EnvironmentVariableUpdatePayload.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0),
+register_schema_models(
+    console_ns,
+    WorkflowDraftVariableListQuery,
+    WorkflowDraftVariableUpdatePayload,
+    ConversationVariableUpdatePayload,
+    EnvironmentVariableUpdatePayload,
 )
 
 
@@ -260,7 +251,7 @@ class WorkflowVariableCollectionApi(Resource):
         """
         Get draft workflow
         """
-        args = WorkflowDraftVariableListQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
+        args = WorkflowDraftVariableListQuery.model_validate(request.args.to_dict(flat=True))
 
         # fetch draft workflow by app_model
         workflow_service = WorkflowService()

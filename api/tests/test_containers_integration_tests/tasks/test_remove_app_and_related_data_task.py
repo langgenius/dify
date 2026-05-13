@@ -21,7 +21,7 @@ from tasks.remove_app_and_related_data_task import (
 
 
 @pytest.fixture(autouse=True)
-def cleanup_database(db_session_with_containers):
+def cleanup_database(db_session_with_containers: Session):
     db_session_with_containers.execute(delete(WorkflowDraftVariable))
     db_session_with_containers.execute(delete(WorkflowDraftVariableFile))
     db_session_with_containers.execute(delete(UploadFile))
@@ -30,7 +30,7 @@ def cleanup_database(db_session_with_containers):
     db_session_with_containers.commit()
 
 
-def _create_tenant_and_app(db_session_with_containers):
+def _create_tenant_and_app(db_session_with_containers: Session):
     tenant = Tenant(name=f"test_tenant_{uuid.uuid4()}")
     db_session_with_containers.add(tenant)
     db_session_with_containers.flush()

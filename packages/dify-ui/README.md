@@ -84,20 +84,27 @@ Equivalent: any root element with `isolation: isolate` in CSS. Without it, overl
 
 Every overlay primitive uses a single, shared z-index. Do **not** override it at call sites.
 
-| Layer                                                                                                               | z-index  | Where                                                                      |
-| ------------------------------------------------------------------------------------------------------------------- | -------- | -------------------------------------------------------------------------- |
-| Overlays (Dialog, AlertDialog, Autocomplete, Combobox, Drawer, Popover, DropdownMenu, ContextMenu, Select, Tooltip) | `z-1002` | Positioner / Backdrop                                                      |
-| Toast viewport                                                                                                      | `z-1003` | One layer above overlays so notifications are never hidden under a dialog. |
+| Layer                                                                                                               | z-index | Where                                                                      |
+| ------------------------------------------------------------------------------------------------------------------- | ------- | -------------------------------------------------------------------------- |
+| Overlays (Dialog, AlertDialog, Autocomplete, Combobox, Drawer, Popover, DropdownMenu, ContextMenu, Select, Tooltip) | `z-50`  | Positioner / Backdrop                                                      |
+| Toast viewport                                                                                                      | `z-60`  | One layer above overlays so notifications are never hidden under a dialog. |
 
-Rationale: during Dify's migration from legacy `base/modal` / `base/dialog` / `base/drawer` / `base/drawer-plus` overlays to this package, new and old overlays coexist in the DOM. `z-1002` sits above any common legacy layer, eliminating per-call-site z-index hacks. Among themselves, new primitives share the same z-index and **rely on DOM order** for stacking — the portal mounted later wins.
+Rationale: Dify UI owns the normal application overlay layer. Overlay primitives share `z-50` and **rely on DOM order** for stacking — the portal mounted later wins. Toast owns `z-60` so notifications remain visible above dialogs, popovers, and other portalled surfaces without falling back to `z-9999`.
 
-See `[web/docs/overlay-migration.md](../../web/docs/overlay-migration.md)` for the Dify-web migration history. Once the legacy overlays are gone, the values in this table can drop back to `z-50` / `z-51`.
+See `[web/docs/overlay.md](../../web/docs/overlay.md)` for the web app overlay best practices.
 
 ### Rules
 
-- Never add `z-1003` / `z-9999` / etc. overrides on primitives from this package. If something is getting clipped, the **parent** overlay (typically a legacy one) is the problem and should be migrated.
+- Never add ad hoc `z-*` overrides on primitives from this package. If something is getting clipped, fix the parent overlay structure instead of raising the child primitive.
 - Never create an extra manual portal on top of our primitives — use the exported content / portal parts such as `DialogContent`, `PopoverContent`, and `DrawerPortal`. Base UI handles focus management, scroll-locking, and dismissal.
 - When a primitive needs additional presentation chrome (e.g. a custom backdrop), add it **inside** the exported component, not at call sites.
+
+### Tooltip, infotip, and popover semantics
+
+- Use `Tooltip` only for short, non-interactive visual labels. The trigger must already have visible text or an `aria-label`; the tooltip is not the accessible name and must not contain links, buttons, forms, or structured prose.
+- Use `Popover` for explanatory content, long text, rich layout, or anything users may need to reach on touch or with assistive technology. In `web/`, the `Infotip` wrapper is the preferred pattern for a `?` help glyph backed by `Popover`.
+- Pick a `placement` and let the primitive own spacing. Avoid per-call-site offsets unless the component API explicitly needs a measured layout exception.
+- When passing a Base UI trigger `render` prop, render a real `<button type="button">` for button-like triggers. If a Popover trigger must render a `div`, `span`, or another non-button element, pass `nativeButton={false}`.
 
 ## Development
 

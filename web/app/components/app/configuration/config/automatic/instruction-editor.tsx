@@ -113,7 +113,13 @@ const InstructionEditor: FC<Props> = ({
         <span>{t('generate.press', { ns: 'appDebug' })}</span>
         <span className="flex h-4 w-3.5 items-center justify-center rounded-sm bg-components-kbd-bg-gray system-kbd text-text-placeholder">/</span>
         <span>{t('generate.to', { ns: 'appDebug' })}</span>
-        <span onClick={handleInsertVariable} className="ml-1! cursor-pointer hover:border-b hover:border-dotted hover:border-text-tertiary hover:text-text-tertiary">{t('generate.insertContext', { ns: 'appDebug' })}</span>
+        <button
+          type="button"
+          className="ml-1! cursor-pointer border-none bg-transparent p-0 text-left hover:border-b hover:border-dotted hover:border-text-tertiary hover:text-text-tertiary focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
+          onClick={handleInsertVariable}
+        >
+          {t('generate.insertContext', { ns: 'appDebug' })}
+        </button>
       </div>
     </div>
   )

@@ -1,6 +1,6 @@
 'use client'
 import type { FC } from 'react'
-import type { DataSourceInfo, DocumentDisplayStatus, FileItem, FullDocumentDetail, LegacyDataSourceInfo } from '@/models/datasets'
+import type { DocumentDisplayStatus, FileItem, FullDocumentDetail } from '@/models/datasets'
 import type { SegmentImportStatus } from '@/types/dataset'
 import { cn } from '@langgenius/dify-ui/cn'
 import { toast } from '@langgenius/dify-ui/toast'
@@ -37,10 +37,6 @@ type DocumentDetailProps = {
 const NON_TERMINAL_DISPLAY_STATUSES = new Set<typeof DisplayStatusList[number]>(
   DisplayStatusList.filter(s => s === 'queuing' || s === 'indexing' || s === 'paused'),
 )
-
-const isLegacyDataSourceInfo = (info?: DataSourceInfo): info is LegacyDataSourceInfo => {
-  return !!info && 'upload_file' in info
-}
 
 const DocumentDetail: FC<DocumentDetailProps> = ({ datasetId, documentId }) => {
   const router = useRouter()
@@ -123,14 +119,6 @@ const DocumentDetail: FC<DocumentDetailProps> = ({ datasetId, documentId }) => {
 
   const embedding = NON_TERMINAL_DISPLAY_STATUSES.has(documentDetail?.display_status as DocumentDisplayStatus)
 
-  const documentUploadFile = useMemo(() => {
-    if (!documentDetail?.data_source_info)
-      return undefined
-    if (isLegacyDataSourceInfo(documentDetail.data_source_info))
-      return documentDetail.data_source_info.upload_file
-    return undefined
-  }, [documentDetail?.data_source_info])
-
   const invalidChunkList = useInvalid(useSegmentListKey)
   const invalidChildChunkList = useInvalid(useChildSegmentListKey)
   const invalidDocumentList = useInvalidDocumentList(datasetId)
@@ -200,11 +188,10 @@ const DocumentDetail: FC<DocumentDetailProps> = ({ datasetId, documentId }) => {
         <div className="flex min-h-16 flex-wrap items-center justify-between border-b border-b-divider-subtle py-2.5 pr-4 pl-3">
           <button
             type="button"
-            data-testid="document-detail-back-button"
             aria-label={backButtonLabel}
             title={backButtonLabel}
             onClick={backToPrev}
-            className="flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-full hover:bg-components-button-tertiary-bg"
+            className="flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-full border-none bg-transparent p-0 hover:bg-components-button-tertiary-bg focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
           >
             <span
               aria-hidden="true"
@@ -213,11 +200,9 @@ const DocumentDetail: FC<DocumentDetailProps> = ({ datasetId, documentId }) => {
           </button>
           <DocumentTitle
             datasetId={datasetId}
-            extension={documentUploadFile?.extension}
-            name={documentDetail?.name}
+            document={documentDetail}
             wrapperCls="mr-2"
-            parent_mode={parentMode}
-            chunkingMode={documentDetail?.doc_form as ChunkingMode}
+            parentMode={parentMode}
           />
           <div className="flex flex-wrap items-center">
             {embeddingAvailable && documentDetail && !documentDetail.archived && !isFullDocMode && (
@@ -292,7 +277,7 @@ const DocumentDetail: FC<DocumentDetailProps> = ({ datasetId, documentId }) => {
                       )}
                 </div>
               )}
-          <FloatRightContainer showClose isOpen={showMetadata} onClose={() => setShowMetadata(false)} isMobile={isMobile} panelClassName="justify-start!" footer={null}>
+          <FloatRightContainer showClose isOpen={showMetadata} onClose={() => setShowMetadata(false)} isMobile={isMobile} panelClassName="justify-start!">
             <Metadata
               className="mt-3 mr-2"
               datasetId={datasetId}

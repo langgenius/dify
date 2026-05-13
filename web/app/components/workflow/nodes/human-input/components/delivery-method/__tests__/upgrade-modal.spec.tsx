@@ -8,15 +8,6 @@ vi.mock('@/context/modal-context', () => ({
     mockUseModalContextSelector(selector),
 }))
 
-vi.mock('@/app/components/base/premium-badge', () => ({
-  __esModule: true,
-  default: ({ children, onClick }: { children: React.ReactNode, onClick?: () => void }) => (
-    <button type="button" onClick={onClick}>
-      {children}
-    </button>
-  ),
-}))
-
 describe('human-input/delivery-method/upgrade-modal', () => {
   beforeEach(() => {
     vi.clearAllMocks()

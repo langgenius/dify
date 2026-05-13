@@ -847,9 +847,7 @@ class TestDatasetProcessRule:
 
         # Act
         process_rule = DatasetProcessRule(
-            dataset_id=dataset_id,
-            mode=ProcessRuleMode.AUTOMATIC,
-            created_by=created_by,
+            dataset_id=dataset_id, mode=ProcessRuleMode.AUTOMATIC, created_by=created_by, rules=None
         )
 
         # Assert

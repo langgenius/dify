@@ -152,7 +152,6 @@ const ApiKeyModal = ({
               {t('auth.useApiAuthDesc', { ns: 'plugin' })}
             </div>
             <DialogCloseButton
-              data-testid="modal-close"
               className="top-5 right-5 h-8 w-8 rounded-lg"
             />
           </div>

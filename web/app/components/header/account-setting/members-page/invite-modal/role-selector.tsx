@@ -48,9 +48,10 @@ const RoleSelector = ({ value, onChange }: RoleSelectorProps) => {
         popupClassName="w-[336px] rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg"
       >
         <div className="p-1">
-          <div
-            data-testid="role-option-normal"
-            className="cursor-pointer rounded-lg p-2 hover:bg-state-base-hover"
+          <button
+            type="button"
+            aria-pressed={value === 'normal'}
+            className="w-full cursor-pointer rounded-lg border-none bg-transparent p-2 text-left hover:bg-state-base-hover"
             onClick={() => {
               onChange('normal')
               setOpen(false)
@@ -61,15 +62,16 @@ const RoleSelector = ({ value, onChange }: RoleSelectorProps) => {
               <div className="text-xs leading-[18px] text-text-tertiary">{t('members.normalTip', { ns: 'common' })}</div>
               {value === 'normal' && (
                 <div
-                  data-testid="role-option-check"
+                  aria-hidden="true"
                   className="absolute top-0.5 left-0 i-custom-vender-line-general-check h-4 w-4 text-text-accent"
                 />
               )}
             </div>
-          </div>
-          <div
-            data-testid="role-option-editor"
-            className="cursor-pointer rounded-lg p-2 hover:bg-state-base-hover"
+          </button>
+          <button
+            type="button"
+            aria-pressed={value === 'editor'}
+            className="w-full cursor-pointer rounded-lg border-none bg-transparent p-2 text-left hover:bg-state-base-hover"
             onClick={() => {
               onChange('editor')
               setOpen(false)
@@ -80,15 +82,16 @@ const RoleSelector = ({ value, onChange }: RoleSelectorProps) => {
               <div className="text-xs leading-[18px] text-text-tertiary">{t('members.editorTip', { ns: 'common' })}</div>
               {value === 'editor' && (
                 <div
-                  data-testid="role-option-check"
+                  aria-hidden="true"
                   className="absolute top-0.5 left-0 i-custom-vender-line-general-check h-4 w-4 text-text-accent"
                 />
               )}
             </div>
-          </div>
-          <div
-            data-testid="role-option-admin"
-            className="cursor-pointer rounded-lg p-2 hover:bg-state-base-hover"
+          </button>
+          <button
+            type="button"
+            aria-pressed={value === 'admin'}
+            className="w-full cursor-pointer rounded-lg border-none bg-transparent p-2 text-left hover:bg-state-base-hover"
             onClick={() => {
               onChange('admin')
               setOpen(false)
@@ -99,16 +102,17 @@ const RoleSelector = ({ value, onChange }: RoleSelectorProps) => {
               <div className="text-xs leading-[18px] text-text-tertiary">{t('members.adminTip', { ns: 'common' })}</div>
               {value === 'admin' && (
                 <div
-                  data-testid="role-option-check"
+                  aria-hidden="true"
                   className="absolute top-0.5 left-0 i-custom-vender-line-general-check h-4 w-4 text-text-accent"
                 />
               )}
             </div>
-          </div>
+          </button>
           {datasetOperatorEnabled && (
-            <div
-              data-testid="role-option-dataset_operator"
-              className="cursor-pointer rounded-lg p-2 hover:bg-state-base-hover"
+            <button
+              type="button"
+              aria-pressed={value === 'dataset_operator'}
+              className="w-full cursor-pointer rounded-lg border-none bg-transparent p-2 text-left hover:bg-state-base-hover"
               onClick={() => {
                 onChange('dataset_operator')
                 setOpen(false)
@@ -119,12 +123,12 @@ const RoleSelector = ({ value, onChange }: RoleSelectorProps) => {
                 <div className="text-xs leading-[18px] text-text-tertiary">{t('members.datasetOperatorTip', { ns: 'common' })}</div>
                 {value === 'dataset_operator' && (
                   <div
-                    data-testid="role-option-check"
+                    aria-hidden="true"
                     className="absolute top-0.5 left-0 i-custom-vender-line-general-check h-4 w-4 text-text-accent"
                   />
                 )}
               </div>
-            </div>
+            </button>
           )}
         </div>
       </PopoverContent>

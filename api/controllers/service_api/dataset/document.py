@@ -77,9 +77,6 @@ class DocumentTextCreatePayload(BaseModel):
         return value
 
 
-DEFAULT_REF_TEMPLATE_SWAGGER_2_0 = "#/definitions/{model}"
-
-
 class DocumentTextUpdate(BaseModel):
     name: str | None = None
     text: str | None = None
@@ -139,7 +136,7 @@ def _create_document_by_text(tenant_id: str, dataset_id: UUID) -> tuple[Mapping[
     if not dataset:
         raise ValueError("Dataset does not exist.")
 
-    if not dataset.indexing_technique and not args["indexing_technique"]:
+    if not dataset.indexing_technique and not args.get("indexing_technique"):
         raise ValueError("indexing_technique is required.")
 
     embedding_model_provider = payload.embedding_model_provider
@@ -435,7 +432,7 @@ class DocumentAddByFileApi(DatasetApiResource):
             raise ValueError("current_user is required")
         upload_file = FileService(db.engine).upload_file(
             filename=file.filename,
-            content=file.read(),
+            content=file.stream.read(),
             mimetype=file.mimetype,
             user=current_user,
             source="datasets",
@@ -509,7 +506,7 @@ def _update_document_by_file(tenant_id: str, dataset_id: UUID, document_id: UUID
         try:
             upload_file = FileService(db.engine).upload_file(
                 filename=file.filename,
-                content=file.read(),
+                content=file.stream.read(),
                 mimetype=file.mimetype,
                 user=current_user,
                 source="datasets",
