@@ -166,7 +166,7 @@ export default function AccountPage() {
             {userProfile.name}
             {isEducationAccount && (
               <PremiumBadge size="s" color="blue" className="ml-1 !px-2">
-                <RiGraduationCapFill className="mr-1 h-3 w-3" />
+                <RiGraduationCapFill aria-hidden="true" className="mr-1 h-3 w-3" />
                 <span className="system-2xs-medium">EDU</span>
               </PremiumBadge>
             )}

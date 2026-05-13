@@ -17,7 +17,7 @@ import AppIcon from '@/app/components/base/app-icon'
 import AppIconPicker from '@/app/components/base/app-icon-picker'
 import Divider from '@/app/components/base/divider'
 import Input from '@/app/components/base/input'
-import PremiumBadge from '@/app/components/base/premium-badge'
+import { PremiumBadgeButton } from '@/app/components/base/premium-badge'
 import Textarea from '@/app/components/base/textarea'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
 import { useModalContext } from '@/context/modal-context'
@@ -395,14 +395,14 @@ const SettingsModal: FC<ISettingsModalProps> = ({
                       {/* upgrade button */}
                       {enableBilling && isFreePlan && (
                         <div className="h-[18px] select-none">
-                          <PremiumBadge size="s" color="blue" allowHover={true} onClick={handlePlanClick}>
+                          <PremiumBadgeButton size="s" color="blue" onClick={handlePlanClick}>
                             <span aria-hidden="true" className="i-custom-public-common-sparkles-soft flex h-3.5 w-3.5 items-center py-px pl-[3px] text-components-premium-badge-indigo-text-stop-0" />
                             <div className="system-xs-medium">
                               <span className="p-1">
                                 {t('upgradeBtn.encourageShort', { ns: 'billing' })}
                               </span>
                             </div>
-                          </PremiumBadge>
+                          </PremiumBadgeButton>
                         </div>
                       )}
                     </div>

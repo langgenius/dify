@@ -1,32 +1,41 @@
-import type { DefaultModel, Model } from '../declarations'
+import type { ComponentProps } from 'react'
+import type { DefaultModel, Model, ModelItem } from '../declarations'
 import { cn } from '@langgenius/dify-ui/cn'
 import { ComboboxGroup, ComboboxItem, ComboboxItemIndicator } from '@langgenius/dify-ui/combobox'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
-import { PreviewCard, PreviewCardContent, PreviewCardTrigger } from '@langgenius/dify-ui/preview-card'
+import { PreviewCardTrigger } from '@langgenius/dify-ui/preview-card'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { CreditsCoin } from '@/app/components/base/icons/src/vender/line/financeAndECommerce'
 import { useModalContext } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
-import { ConfigurationMethodEnum, ModelFeatureEnum, ModelStatusEnum, ModelTypeEnum } from '../declarations'
+import { ConfigurationMethodEnum, ModelStatusEnum } from '../declarations'
 import { useLanguage, useUpdateModelList, useUpdateModelProviders } from '../hooks'
-import ModelBadge from '../model-badge'
 import ModelIcon from '../model-icon'
 import ModelName from '../model-name'
 import DropdownContent from '../provider-added-card/model-auth-dropdown/dropdown-content'
 import { useChangeProviderPriority } from '../provider-added-card/use-change-provider-priority'
 import { useCredentialPanelState } from '../provider-added-card/use-credential-panel-state'
-import { modelTypeFormat, sizeFormat } from '../utils'
-import FeatureIcon from './feature-icon'
+
+export type ModelSelectorPreviewPayload = {
+  provider: Model
+  modelItem: ModelItem
+}
+
+type PreviewCardHandle = NonNullable<ComponentProps<typeof PreviewCardTrigger>['handle']>
 
 type PopupItemProps = {
   defaultModel?: DefaultModel
   model: Model
+  previewCardHandle: PreviewCardHandle
+  onPreviewCardClose: () => void
   onHide: () => void
 }
 function PopupItem({
   defaultModel,
   model,
+  previewCardHandle,
+  onPreviewCardClose,
   onHide,
 }: PopupItemProps) {
   const [collapsed, setCollapsed] = useState(false)
@@ -167,7 +176,11 @@ function PopupItem({
         )
         const itemRender = modelItem.status === ModelStatusEnum.noConfigure
           ? (
-              <div className={rowClassName} aria-disabled="true">
+              <div
+                className={rowClassName}
+                aria-disabled="true"
+                onPointerDown={onPreviewCardClose}
+              >
                 {rowContent}
                 <button
                   type="button"
@@ -186,67 +199,21 @@ function PopupItem({
                 }}
                 disabled={modelItem.status !== ModelStatusEnum.active}
                 className={rowClassName}
+                onPointerDown={onPreviewCardClose}
               >
                 {rowContent}
               </ComboboxItem>
             )
 
         return (
-          <PreviewCard key={modelItem.model}>
-            <PreviewCardTrigger
-              delay={150}
-              closeDelay={150}
-              render={itemRender}
-            />
-            <PreviewCardContent
-              placement="right"
-              popupClassName="w-[206px] bg-components-panel-bg-blur p-3 shadow-none backdrop-blur-xs"
-            >
-              <div className="flex flex-col gap-1">
-                <div className="flex flex-col items-start gap-2">
-                  <ModelIcon
-                    className={cn('h-5 w-5 shrink-0')}
-                    provider={model}
-                    modelName={modelItem.model}
-                  />
-                  <div className="system-md-medium text-wrap wrap-break-word text-text-primary">{modelItem.label[language] || modelItem.label.en_US}</div>
-                </div>
-                <div className="flex flex-wrap gap-1">
-                  {!!modelItem.model_type && (
-                    <ModelBadge>
-                      {modelTypeFormat(modelItem.model_type)}
-                    </ModelBadge>
-                  )}
-                  {!!modelItem.model_properties.mode && (
-                    <ModelBadge>
-                      {(modelItem.model_properties.mode as string).toLocaleUpperCase()}
-                    </ModelBadge>
-                  )}
-                  {!!modelItem.model_properties.context_size && (
-                    <ModelBadge>
-                      {sizeFormat(modelItem.model_properties.context_size as number)}
-                    </ModelBadge>
-                  )}
-                </div>
-                {[ModelTypeEnum.textGeneration, ModelTypeEnum.textEmbedding, ModelTypeEnum.rerank].includes(modelItem.model_type as ModelTypeEnum)
-                  && modelItem.features?.some(feature => [ModelFeatureEnum.vision, ModelFeatureEnum.audio, ModelFeatureEnum.video, ModelFeatureEnum.document].includes(feature))
-                  && (
-                    <div className="pt-2">
-                      <div className="mb-1 system-2xs-medium-uppercase text-text-tertiary">{t('model.capabilities', { ns: 'common' })}</div>
-                      <div className="flex flex-wrap gap-1">
-                        {modelItem.features?.map(feature => (
-                          <FeatureIcon
-                            key={feature}
-                            feature={feature}
-                            showFeaturesLabel
-                          />
-                        ))}
-                      </div>
-                    </div>
-                  )}
-              </div>
-            </PreviewCardContent>
-          </PreviewCard>
+          <PreviewCardTrigger
+            key={modelItem.model}
+            delay={150}
+            closeDelay={150}
+            handle={previewCardHandle}
+            payload={{ provider: model, modelItem }}
+            render={itemRender}
+          />
         )
       })}
     </ComboboxGroup>

@@ -7,6 +7,7 @@ import pytest
 
 from core.app.entities.app_invoke_entities import WorkflowAppGenerateEntity
 from core.app.workflow.layers.persistence import PersistenceWorkflowInfo, WorkflowPersistenceLayer
+from core.ops.ops_trace_manager import TraceTask, TraceTaskName
 from core.workflow.system_variables import SystemVariableKey, build_system_variables
 from graphon.entities import WorkflowNodeExecution
 from graphon.entities.pause_reason import SchedulingPause
@@ -216,6 +217,59 @@ class TestWorkflowPersistenceLayer:
         assert node_repo.saved
         assert exec_repo.saved[-1].status == WorkflowExecutionStatus.FAILED
         assert trace_tasks
+
+    def test_handle_graph_run_succeeded_enqueues_parent_trace_context(self, monkeypatch):
+        trace_tasks: list[TraceTask] = []
+        trace_manager = SimpleNamespace(user_id="user", add_trace_task=lambda task: trace_tasks.append(task))
+        layer, _, _, _ = _make_layer(
+            extras={
+                "external_trace_id": "trace",
+                "parent_trace_context": {
+                    "parent_workflow_run_id": "outer-workflow-run-1",
+                    "parent_node_execution_id": "outer-node-execution-1",
+                },
+            },
+            trace_manager=trace_manager,
+        )
+        layer._handle_graph_run_started()
+
+        captured: dict[str, object] = {}
+
+        def fake_workflow_trace(
+            self: TraceTask,
+            *,
+            workflow_run_id: str | None,
+            conversation_id: str | None,
+            user_id: str | None,
+            total_tokens_override: int | None = None,
+        ):
+            captured["trace_type"] = self.trace_type
+            captured["external_trace_id"] = self.kwargs.get("external_trace_id")
+            captured["parent_trace_context"] = self.kwargs.get("parent_trace_context")
+            captured["workflow_run_id"] = workflow_run_id
+            return {"ok": True}
+
+        monkeypatch.setattr(TraceTask, "workflow_trace", fake_workflow_trace)
+
+        layer._handle_graph_run_succeeded(GraphRunSucceededEvent(outputs={"ok": True}))
+
+        assert trace_tasks
+        trace_task = trace_tasks[0]
+        assert trace_task.trace_type == TraceTaskName.WORKFLOW_TRACE
+        assert trace_task.kwargs["external_trace_id"] == "trace"
+        assert trace_task.kwargs["parent_trace_context"] == {
+            "parent_workflow_run_id": "outer-workflow-run-1",
+            "parent_node_execution_id": "outer-node-execution-1",
+        }
+
+        trace_task.execute()
+
+        assert captured["trace_type"] == TraceTaskName.WORKFLOW_TRACE
+        assert captured["external_trace_id"] == "trace"
+        assert captured["parent_trace_context"] == {
+            "parent_workflow_run_id": "outer-workflow-run-1",
+            "parent_node_execution_id": "outer-node-execution-1",
+        }
 
     def test_handle_graph_run_aborted_sets_status(self):
         layer, exec_repo, _, _ = _make_layer()

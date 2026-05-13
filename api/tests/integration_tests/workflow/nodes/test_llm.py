@@ -91,7 +91,11 @@ def init_llm_node(config: dict) -> LLMNode:
     return node
 
 
-def test_execute_llm():
+def _mock_db_session_close(monkeypatch) -> None:
+    monkeypatch.setattr(db.session, "close", MagicMock())
+
+
+def test_execute_llm(monkeypatch):
     node = init_llm_node(
         config={
             "id": "llm",
@@ -118,7 +122,7 @@ def test_execute_llm():
         },
     )
 
-    db.session.close = MagicMock()
+    _mock_db_session_close(monkeypatch)
 
     def build_mock_model_instance() -> MagicMock:
         from decimal import Decimal
@@ -195,7 +199,7 @@ def test_execute_llm():
                 assert item.node_run_result.outputs.get("usage", {})["total_tokens"] > 0
 
 
-def test_execute_llm_with_jinja2():
+def test_execute_llm_with_jinja2(monkeypatch):
     """
     Test execute LLM node with jinja2
     """
@@ -233,8 +237,7 @@ def test_execute_llm_with_jinja2():
         },
     )
 
-    # Mock db.session.close()
-    db.session.close = MagicMock()
+    _mock_db_session_close(monkeypatch)
 
     def build_mock_model_instance() -> MagicMock:
         from decimal import Decimal
