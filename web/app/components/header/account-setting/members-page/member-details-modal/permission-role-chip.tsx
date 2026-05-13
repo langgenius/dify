@@ -8,19 +8,22 @@ import {
 } from '@langgenius/dify-ui/preview-card'
 import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
+import Divider from '@/app/components/base/divider'
 
 export type PermissionRoleChipProps = {
-  roleKey: string
+  roleId: string
   label: string
-  permissionKeys?: string[]
-  onRemove?: () => void
+  isOwner: boolean
+  permissionKeys: string[]
+  onRemove?: (roleId: string) => void
   className?: string
 }
 
 const PermissionRoleChip = ({
-  roleKey,
+  roleId,
   label,
-  permissionKeys = [],
+  isOwner,
+  permissionKeys,
   onRemove,
   className,
 }: PermissionRoleChipProps) => {
@@ -36,10 +39,10 @@ const PermissionRoleChip = ({
         className,
       )}
       data-testid="permission-role-chip"
-      data-role-key={roleKey}
+      data-role-id={roleId}
     >
       <span className="truncate">{label}</span>
-      {onRemove && (
+      {!isOwner && onRemove && (
         <button
           type="button"
           aria-label={t('members.memberDetails.removeRoleAria', {
@@ -49,7 +52,7 @@ const PermissionRoleChip = ({
           })}
           onClick={(e) => {
             e.stopPropagation()
-            onRemove()
+            onRemove(roleId)
           }}
           className={cn(
             'flex h-4 w-4 items-center justify-center rounded hover:bg-black/5',
@@ -75,6 +78,7 @@ const PermissionRoleChip = ({
         <div className="mb-2 system-sm-semibold text-text-accent">
           {label}
         </div>
+        <Divider />
         <ul className="flex flex-col gap-1.5 system-xs-regular text-text-secondary">
           {permissions.map(key => (
             <li key={key} className="flex items-start gap-2">

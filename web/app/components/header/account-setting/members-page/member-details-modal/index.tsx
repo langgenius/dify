@@ -47,6 +47,11 @@ const MemberDetailsModal = ({
     setAssignOpen(false)
   }, [onAssignSubmit])
 
+  const handleRemove = useCallback((id: string) => {
+    const roleIds = member.roles.map(role => role.id).filter(roleId => roleId !== id)
+    onAssignSubmit?.(roleIds)
+  }, [member.roles, onAssignSubmit])
+
   return (
     <>
       <Dialog
@@ -125,9 +130,11 @@ const MemberDetailsModal = ({
                   {builtinRoles.map(role => (
                     <PermissionRoleChip
                       key={role.id}
-                      roleKey={role.id}
+                      roleId={role.id}
                       label={role.name}
+                      isOwner={role.role_tag === 'owner'}
                       permissionKeys={role.permission_keys}
+                      onRemove={handleRemove}
                     />
                   ))}
                 </div>
@@ -144,9 +151,11 @@ const MemberDetailsModal = ({
                   {customRoles.map(role => (
                     <PermissionRoleChip
                       key={role.id}
-                      roleKey={role.id}
+                      roleId={role.id}
                       label={role.name}
+                      isOwner={role.role_tag === 'owner'}
                       permissionKeys={role.permission_keys}
+                      onRemove={handleRemove}
                     />
                   ))}
                 </div>
