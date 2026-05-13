@@ -15,7 +15,7 @@ mkdir -p "${OPENDAL_FS_ROOT}"
 
 # Prepare env files like CI
 cp -n docker/.env.example docker/.env || true
-cp -n docker/middleware.env.example docker/middleware.env || true
+cp -n docker/envs/middleware.env.example docker/middleware.env || true
 cp -n api/tests/integration_tests/.env.example api/tests/integration_tests/.env || true
 
 # Expose service ports (same as CI) without leaving the repo dirty

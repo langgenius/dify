@@ -1,10 +1,11 @@
 import type { SiteInfo } from '@/models/share'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import copy from 'copy-to-clipboard'
 import * as React from 'react'
-
 import { act } from 'react'
-import { afterAll, afterEach, describe, expect, it, vi } from 'vitest'
+
+import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
+import { InputVarType } from '@/app/components/workflow/types'
 import Embedded from '../index'
 
 vi.mock('../style.module.css', () => ({
@@ -46,6 +47,7 @@ vi.mock('@/context/app-context', () => ({
 }))
 const mockWindowOpen = vi.spyOn(window, 'open').mockImplementation(() => null)
 const mockedCopy = vi.mocked(copy)
+const originalCompressionStream = globalThis.CompressionStream
 
 const siteInfo: SiteInfo = {
   title: 'test site',
@@ -70,6 +72,22 @@ const getCopyButton = () => {
 }
 
 describe('Embedded', () => {
+  beforeAll(() => {
+    class MockCompressionStream {
+      readable: ReadableStream<Uint8Array>
+      writable: WritableStream<Uint8Array>
+
+      constructor() {
+        const transformStream = new TransformStream<Uint8Array, Uint8Array>()
+        this.readable = transformStream.readable
+        this.writable = transformStream.writable
+      }
+    }
+
+    // @ts-expect-error test polyfill
+    globalThis.CompressionStream = MockCompressionStream
+  })
+
   afterEach(() => {
     vi.clearAllMocks()
     mockWindowOpen.mockClear()
@@ -77,6 +95,7 @@ describe('Embedded', () => {
 
   afterAll(() => {
     mockWindowOpen.mockRestore()
+    globalThis.CompressionStream = originalCompressionStream
   })
 
   it('builds theme and copies iframe snippet', async () => {
@@ -84,14 +103,20 @@ describe('Embedded', () => {
       render(<Embedded {...baseProps} />)
     })
 
+    await waitFor(() => {
+      expect(screen.getByText((content, node) => node?.tagName.toLowerCase() === 'pre' && content.includes('/chatbot/token'))).toBeInTheDocument()
+    })
+
     const actionButton = getCopyButton()
     const innerDiv = actionButton.querySelector('div')
-    act(() => {
+    await act(async () => {
       fireEvent.click(innerDiv ?? actionButton)
     })
 
     expect(mockThemeBuilder.buildTheme).toHaveBeenCalledWith(siteInfo.chat_color_theme, siteInfo.chat_color_theme_inverted)
-    expect(mockedCopy).toHaveBeenCalledWith(expect.stringContaining('/chatbot/token'))
+    await waitFor(() => {
+      expect(mockedCopy).toHaveBeenCalledWith(expect.stringContaining('/chatbot/token'))
+    })
   })
 
   it('opens chrome plugin store link when chrome option selected', async () => {
@@ -115,5 +140,107 @@ describe('Embedded', () => {
       '_blank',
       'noopener,noreferrer',
     )
+  })
+
+  it('keeps hidden inputs collapsed by default and updates iframe and script content when values change', async () => {
+    render(
+      <Embedded
+        {...baseProps}
+        hiddenInputs={[{
+          variable: 'secret',
+          label: 'Secret',
+          type: InputVarType.textInput,
+          hide: true,
+          required: true,
+          default: '',
+        }]}
+      />,
+    )
+
+    expect(screen.queryByLabelText('Secret')).not.toBeInTheDocument()
+
+    await act(async () => {
+      fireEvent.click(screen.getByText('appOverview.overview.appInfo.embedded.hiddenInputs.title').closest('button')!)
+    })
+
+    await waitFor(() => {
+      expect(screen.getByLabelText('Secret')).toBeInTheDocument()
+    })
+
+    await act(async () => {
+      fireEvent.change(screen.getByLabelText('Secret'), {
+        target: { value: 'top-secret' },
+      })
+    })
+
+    expect(document.querySelector('pre')?.textContent ?? '').toContain('/chatbot/token')
+
+    await waitFor(() => {
+      const codeBlock = document.querySelector('pre')
+      expect(codeBlock?.textContent ?? '').toContain('/chatbot/token?secret=dG9wLXNlY3JldA%3D%3D')
+    })
+
+    const optionButtons = document.body.querySelectorAll('[class*="option"]')
+    act(() => {
+      fireEvent.click(optionButtons[1]!)
+    })
+
+    await waitFor(() => {
+      const codeBlock = document.querySelector('pre')
+      expect(codeBlock?.textContent ?? '').toContain('secret: "top-secret"')
+    })
+  })
+
+  it('copies script content when scripts option is selected', async () => {
+    await act(async () => {
+      render(<Embedded {...baseProps} />)
+    })
+
+    const optionButtons = document.body.querySelectorAll('[class*="option"]')
+    act(() => {
+      fireEvent.click(optionButtons[1]!)
+    })
+
+    await waitFor(() => {
+      const codeBlock = document.querySelector('pre')
+      expect(codeBlock?.textContent ?? '').toContain('token: \'token\'')
+    })
+
+    const actionButton = getCopyButton()
+    const innerDiv = actionButton.querySelector('div')
+    await act(async () => {
+      fireEvent.click(innerDiv ?? actionButton)
+    })
+
+    await waitFor(() => {
+      expect(mockedCopy).toHaveBeenCalledWith(expect.stringContaining('token: \'token\''))
+    })
+  })
+
+  it('copies chrome plugin URL (without prefix) when chromePlugin option is selected', async () => {
+    await act(async () => {
+      render(<Embedded {...baseProps} />)
+    })
+
+    const optionButtons = document.body.querySelectorAll('[class*="option"]')
+    act(() => {
+      fireEvent.click(optionButtons[2]!)
+    })
+
+    await waitFor(() => {
+      const codeBlock = document.querySelector('pre')
+      expect(codeBlock?.textContent ?? '').toContain('ChatBot URL:')
+    })
+
+    const actionButton = getCopyButton()
+    const innerDiv = actionButton.querySelector('div')
+    await act(async () => {
+      fireEvent.click(innerDiv ?? actionButton)
+    })
+
+    await waitFor(() => {
+      expect(mockedCopy).toHaveBeenCalledWith(expect.stringContaining('/chatbot/token'))
+      expect(mockedCopy).not.toHaveBeenCalledWith(expect.stringContaining('ChatBot URL:'))
+    })
   })
 })

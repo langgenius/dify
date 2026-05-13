@@ -906,7 +906,7 @@ class TestMessageServiceSuggestedQuestions:
     ):
         """Test successful suggested questions generation in basic Chat mode."""
         # Arrange
-        app = factory.create_app_mock(mode=AppMode.CHAT.value)
+        app = factory.create_app_mock(mode=AppMode.CHAT)
         user = factory.create_end_user_mock()
         message = factory.create_message_mock()
         mock_get_message.return_value = message
@@ -953,7 +953,7 @@ class TestMessageServiceSuggestedQuestions:
         """Test suggested question generation uses frontend configured model and prompt."""
         from core.app.entities.app_invoke_entities import InvokeFrom
 
-        app = factory.create_app_mock(mode=AppMode.CHAT.value)
+        app = factory.create_app_mock(mode=AppMode.CHAT)
         app.tenant_id = "tenant-123"
         user = factory.create_end_user_mock()
         message = factory.create_message_mock()
@@ -1024,7 +1024,7 @@ class TestMessageServiceSuggestedQuestions:
         factory,
     ):
         """Test invalid frontend configured model falls back to tenant default model."""
-        app = factory.create_app_mock(mode=AppMode.CHAT.value)
+        app = factory.create_app_mock(mode=AppMode.CHAT)
         app.tenant_id = "tenant-123"
         user = factory.create_end_user_mock()
         message = factory.create_message_mock()

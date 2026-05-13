@@ -43,7 +43,7 @@ class TestMemberInviteEmailApi:
         mock_current_account,
         mock_invite_member,
         mock_get_features,
-        app,
+        app: Flask,
     ):
         mock_get_features.return_value = _build_feature_flags()
         mock_invite_member.return_value = "token-abc"

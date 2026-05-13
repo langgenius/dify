@@ -55,15 +55,23 @@ const BatchAction: FC<IBatchActionProps> = ({
           <span className="text-[13px] leading-[16px] font-semibold text-text-accent">{t(`${i18nPrefix}.selected`, { ns: 'appAnnotation' })}</span>
         </div>
         <Divider type="vertical" className="mx-0.5 h-3.5 bg-divider-regular" />
-        <div className="flex cursor-pointer items-center gap-x-0.5 px-3 py-2" onClick={showDeleteConfirm}>
-          <RiDeleteBinLine className="h-4 w-4 text-components-button-destructive-ghost-text" />
-          <button type="button" className="px-0.5 text-[13px] leading-[16px] font-medium text-components-button-destructive-ghost-text">
+        <button
+          type="button"
+          className="flex cursor-pointer items-center gap-x-0.5 border-none bg-transparent px-3 py-2 text-left text-components-button-destructive-ghost-text focus-visible:ring-1 focus-visible:ring-state-destructive-border focus-visible:outline-hidden"
+          onClick={showDeleteConfirm}
+        >
+          <RiDeleteBinLine className="h-4 w-4" aria-hidden="true" />
+          <span className="px-0.5 text-[13px] leading-[16px] font-medium">
             {t('operation.delete', { ns: 'common' })}
-          </button>
-        </div>
+          </span>
+        </button>
 
         <Divider type="vertical" className="mx-0.5 h-3.5 bg-divider-regular" />
-        <button type="button" className="px-3.5 py-2 text-[13px] leading-[16px] font-medium text-components-button-ghost-text" onClick={onCancel}>
+        <button
+          type="button"
+          className="border-none bg-transparent px-3.5 py-2 text-left text-[13px] leading-[16px] font-medium text-components-button-ghost-text focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
+          onClick={onCancel}
+        >
           {t('operation.cancel', { ns: 'common' })}
         </button>
       </div>

@@ -23,7 +23,7 @@ from controllers.web.wraps import WebApiResource
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
 from graphon.model_runtime.errors.invoke import InvokeError
 from libs.helper import uuid_value
-from models.model import App
+from models.model import App, EndUser
 from services.audio_service import AudioService
 from services.errors.audio import (
     AudioTooLargeServiceError,
@@ -69,12 +69,12 @@ class AudioApi(WebApiResource):
             500: "Internal Server Error",
         }
     )
-    def post(self, app_model: App, end_user):
+    def post(self, app_model: App, end_user: EndUser):
         """Convert audio to text"""
         file = request.files["file"]
 
         try:
-            response = AudioService.transcript_asr(app_model=app_model, file=file, end_user=end_user)
+            response = AudioService.transcript_asr(app_model=app_model, file=file, end_user=end_user.external_user_id)
 
             return response
         except services.errors.app_model_config.AppModelConfigBrokenError:
@@ -117,7 +117,7 @@ class TextApi(WebApiResource):
             500: "Internal Server Error",
         }
     )
-    def post(self, app_model: App, end_user):
+    def post(self, app_model: App, end_user: EndUser):
         """Convert text to audio"""
         try:
             payload = TextToAudioPayload.model_validate(web_ns.payload or {})

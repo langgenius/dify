@@ -1,10 +1,6 @@
-import type { FC } from 'react'
-import type {
-  DefaultModel,
-  Model,
-  ModelItem,
-} from '../declarations'
+import type { DefaultModel, Model, ModelFeatureEnum } from '../declarations'
 import type { ModelProviderQuotaGetPaid } from '@/types/model-provider'
+import { ComboboxList } from '@langgenius/dify-ui/combobox'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useTheme } from 'next-themes'
 import { useCallback, useMemo, useState } from 'react'
@@ -16,46 +12,37 @@ import { useModalContext } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
 import { systemFeaturesQueryOptions } from '@/service/system-features'
 import { useInstallPackageFromMarketPlace } from '@/service/use-plugins'
-import { supportFunctionCall } from '@/utils/tool-call'
-import {
-  CustomConfigurationStatusEnum,
-  ModelFeatureEnum,
-  ModelStatusEnum,
-} from '../declarations'
+import { CustomConfigurationStatusEnum, ModelStatusEnum } from '../declarations'
 import { useLanguage, useMarketplaceAllPlugins } from '../hooks'
 import CreditsExhaustedAlert from '../provider-added-card/model-auth-dropdown/credits-exhausted-alert'
 import { useTrialCredits } from '../provider-added-card/use-trial-credits'
 import { providerSupportsCredits } from '../supports-credits'
 import { MODEL_PROVIDER_QUOTA_GET_PAID, providerKeyToPluginId } from '../utils'
 import MarketplaceSection from './marketplace-section'
+import { createModelSelectorSearchIndex, filterModelSelectorModels } from './model-search'
 import ModelSelectorEmptyState from './popup-empty-state'
 import PopupItem from './popup-item'
-import {
-  CompatibleModelsNotice,
-  ModelProviderSettingsFooter,
-  ModelSelectorPopupFrame,
-  ModelSelectorScrollBody,
-  ModelSelectorSearchHeader,
-} from './popup-layout'
+import { CompatibleModelsNotice, ModelProviderSettingsFooter, ModelSelectorPopupFrame, ModelSelectorScrollBody, ModelSelectorSearchHeader } from './popup-layout'
 
-type PopupProps = {
+export type PopupProps = {
   defaultModel?: DefaultModel
+  inputValue: string
   modelList: Model[]
-  onSelect: (provider: string, model: ModelItem) => void
   scopeFeatures?: ModelFeatureEnum[]
+  onInputValueChange: (value: string) => void
   onHide: () => void
 }
-const Popup: FC<PopupProps> = ({
+function Popup({
   defaultModel,
+  inputValue,
   modelList,
-  onSelect,
   scopeFeatures = [],
+  onInputValueChange,
   onHide,
-}) => {
+}: PopupProps) {
   const { t } = useTranslation()
   const { theme } = useTheme()
   const language = useLanguage()
-  const [searchText, setSearchText] = useState('')
   const [marketplaceCollapsed, setMarketplaceCollapsed] = useState(false)
   const { setShowAccountSettingModal } = useModalContext()
   const { modelProviders } = useProviderContext()
@@ -142,57 +129,18 @@ const Popup: FC<PopupProps> = ({
     return [...installedMarketplaceModels, ...otherModels]
   }, [aiCreditVisibleProviders, installedProviderMap, modelList])
 
-  const filteredModelList = useMemo(() => {
-    const normalizedSearch = searchText.toLowerCase()
-    const matchesLabel = (label: Record<string, string>) => {
-      if (label[language] !== undefined)
-        return label[language].toLowerCase().includes(normalizedSearch)
-      return Object.values(label).some(value =>
-        value.toLowerCase().includes(normalizedSearch),
-      )
-    }
-
-    const filtered = installedModelList.map((model) => {
-      const providerMatched = !!searchText && (
-        matchesLabel(model.label)
-        || model.provider.toLowerCase().includes(normalizedSearch)
-      )
-
-      const filteredModels = model.models
-        .filter((modelItem) => {
-          if (!searchText || providerMatched)
-            return true
-          return matchesLabel(modelItem.label)
-        })
-        .filter((modelItem) => {
-          if (scopeFeatures.length === 0)
-            return true
-          return scopeFeatures.every((feature) => {
-            if (feature === ModelFeatureEnum.toolCall)
-              return supportFunctionCall(modelItem.features)
-            return modelItem.features?.includes(feature) ?? false
-          })
-        })
-      if (
-        (searchText && filteredModels.length === 0)
-        || (!searchText && filteredModels.length === 0 && !aiCreditVisibleProviders.has(model.provider))
-      ) {
-        return null
-      }
-
-      return { ...model, models: filteredModels }
-    }).filter((model): model is Model => model !== null)
-
-    if (defaultModel?.provider) {
-      filtered.sort((a, b) => {
-        const aSelected = a.provider === defaultModel.provider ? 0 : 1
-        const bSelected = b.provider === defaultModel.provider ? 0 : 1
-        return aSelected - bSelected
-      })
-    }
-
-    return filtered
-  }, [aiCreditVisibleProviders, defaultModel?.provider, installedModelList, language, scopeFeatures, searchText])
+  const searchIndex = useMemo(
+    () => createModelSelectorSearchIndex(installedModelList, language),
+    [installedModelList, language],
+  )
+  const filteredModelList = useMemo(() => filterModelSelectorModels({
+    aiCreditVisibleProviders,
+    defaultModel,
+    inputValue,
+    installedModelList,
+    scopeFeatures,
+    searchIndex,
+  }), [aiCreditVisibleProviders, defaultModel, inputValue, installedModelList, scopeFeatures, searchIndex])
 
   const marketplaceProviders = useMemo(() => {
     const installedProviders = new Set(modelProviders.map(provider => provider.provider))
@@ -207,33 +155,36 @@ const Popup: FC<PopupProps> = ({
   return (
     <ModelSelectorPopupFrame>
       <ModelSelectorSearchHeader
-        searchText={searchText}
-        onSearchTextChange={setSearchText}
+        inputValue={inputValue}
+        onInputValueChange={onInputValueChange}
       />
       {showCreditsExhaustedAlert && (
         <CreditsExhaustedAlert hasApiKeyFallback={hasApiKeyFallback} />
       )}
       <ModelSelectorScrollBody label={t('modelProvider.models', { ns: 'common' })}>
+        <ComboboxList className="max-h-none overflow-visible p-0">
+          <div className="pb-1">
+            {
+              filteredModelList.map(model => (
+                <PopupItem
+                  key={model.provider}
+                  defaultModel={defaultModel}
+                  model={model}
+                  onHide={onHide}
+                />
+              ))
+            }
+          </div>
+        </ComboboxList>
         <div className="pb-1">
-          {
-            filteredModelList.map(model => (
-              <PopupItem
-                key={model.provider}
-                defaultModel={defaultModel}
-                model={model}
-                onSelect={onSelect}
-                onHide={onHide}
-              />
-            ))
-          }
           {!filteredModelList.length && !installedModelList.length && (
             <ModelSelectorEmptyState
               onConfigure={handleOpenSettings}
             />
           )}
           {!filteredModelList.length && installedModelList.length > 0 && (
-            <div className="px-3 py-1.5 text-center text-xs leading-[18px] break-all text-text-tertiary">
-              {`No model found for \u201C${searchText}\u201D`}
+            <div className="px-3 py-1.5 text-center text-xs leading-4.5 break-all text-text-tertiary">
+              {`No model found for \u201C${inputValue}\u201D`}
             </div>
           )}
           {scopeFeatures.length > 0 && (

@@ -337,6 +337,8 @@
   "variableConfig.file.image.name": "Imagine",
   "variableConfig.file.supportFileTypes": "Tipuri de fișiere de asistență",
   "variableConfig.file.video.name": "Video",
+  "variableConfig.hidden": "Ascuns și precompletat",
+  "variableConfig.hiddenDescription": "Ascundeți acest câmp de la utilizatorii finali și furnizați valoarea dvs. înșivă. Incompatibil cu Obligatoriu. <docLink>Aflați mai multe</docLink>",
   "variableConfig.hide": "Ascundeți",
   "variableConfig.inputPlaceholder": "Vă rugăm să introduceți",
   "variableConfig.json": "Cod JSON",

@@ -133,7 +133,7 @@ const AppOperations = ({
             data-targetid={operation.id}
             size="small"
             variant="secondary"
-            className="gap-px"
+            className="gap-px focus-visible:ring-inset"
             tabIndex={-1}
           >
             {cloneElement(operation.icon, { className: 'h-3.5 w-3.5 text-components-button-secondary-text' })}
@@ -146,7 +146,7 @@ const AppOperations = ({
           id="more-measure"
           size="small"
           variant="secondary"
-          className="gap-px"
+          className="gap-px focus-visible:ring-inset"
           tabIndex={-1}
         >
           <RiMoreLine className="h-3.5 w-3.5 text-components-button-secondary-text" />
@@ -162,7 +162,7 @@ const AppOperations = ({
             data-targetid={operation.id}
             size="small"
             variant="secondary"
-            className="gap-px"
+            className="gap-px focus-visible:ring-inset"
             onClick={operation.onClick}
           >
             {cloneElement(operation.icon, { className: 'h-3.5 w-3.5 text-components-button-secondary-text' })}
@@ -178,7 +178,7 @@ const AppOperations = ({
                 <Button
                   size="small"
                   variant="secondary"
-                  className="gap-px"
+                  className="gap-px focus-visible:ring-inset"
                 />
               )}
             >

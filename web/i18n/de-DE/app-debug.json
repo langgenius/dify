@@ -337,6 +337,8 @@
   "variableConfig.file.image.name": "Bild",
   "variableConfig.file.supportFileTypes": "Unterstützte Dateitypen",
   "variableConfig.file.video.name": "Video",
+  "variableConfig.hidden": "Ausgeblendet und vorausgefüllt",
+  "variableConfig.hiddenDescription": "Blendet dieses Feld für Endbenutzer aus und stellt den Wert selbst bereit. Schließt sich gegenseitig mit Erforderlich aus. <docLink>Mehr erfahren</docLink>",
   "variableConfig.hide": "Verstecken",
   "variableConfig.inputPlaceholder": "Bitte geben Sie ein",
   "variableConfig.json": "JSON-Code",

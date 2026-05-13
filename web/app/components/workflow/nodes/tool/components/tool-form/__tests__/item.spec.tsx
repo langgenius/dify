@@ -171,7 +171,7 @@ describe('tool/tool-form/item', () => {
       } as unknown as SchemaRoot,
     })
 
-    const { container } = render(
+    render(
       <ToolFormItem
         readOnly={false}
         nodeId="tool-node"
@@ -182,7 +182,8 @@ describe('tool/tool-form/item', () => {
       />,
     )
 
-    fireEvent.mouseEnter(container.querySelector('svg')?.parentElement as HTMLElement)
+    const infotipTrigger = screen.getByRole('button', { name: 'Select from tools' })
+    fireEvent.click(infotipTrigger)
     expect(screen.getByText('Select from tools'))!.toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('button', { name: 'JSON Schema' }))

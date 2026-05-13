@@ -67,9 +67,14 @@ const TagInput: FC<TagInputProps> = ({ items, onChange, disableAdd, disableRemov
         <div key={item} className={cn('mt-1 mr-1 flex items-center rounded-md border border-divider-deep bg-components-badge-white-to-dark py-1 pr-1 pl-1.5 system-xs-regular text-text-secondary')}>
           {item}
           {!disableRemove && (
-            <div className="flex h-4 w-4 cursor-pointer items-center justify-center" onClick={() => handleRemove(index)}>
-              <span className="ml-0.5 i-ri-close-line h-3.5 w-3.5 text-text-tertiary" data-testid="remove-tag" />
-            </div>
+            <button
+              type="button"
+              aria-label={`${t('operation.remove', { ns: 'common' })} ${item}`}
+              className="flex h-4 w-4 cursor-pointer items-center justify-center border-none bg-transparent p-0 focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
+              onClick={() => handleRemove(index)}
+            >
+              <span className="ml-0.5 i-ri-close-line h-3.5 w-3.5 text-text-tertiary" aria-hidden="true" />
+            </button>
           )}
         </div>
       ))}
@@ -77,7 +82,7 @@ const TagInput: FC<TagInputProps> = ({ items, onChange, disableAdd, disableRemov
         <div className={cn('group/tag-add mt-1 flex items-center gap-x-0.5', !isSpecialMode ? 'rounded-md border border-dashed border-divider-deep px-1.5' : '')}>
           {!isSpecialMode && !focused && <span className="i-ri-add-line h-3.5 w-3.5 text-text-placeholder group-hover/tag-add:text-text-secondary" />}
           <AutosizeInput
-            inputClassName={cn('appearance-none text-text-primary caret-[#295EFF] outline-none placeholder:text-text-placeholder group-hover/tag-add:placeholder:text-text-secondary', isSpecialMode ? 'bg-transparent' : '', inputClassName)}
+            inputClassName={cn('appearance-none text-text-primary caret-[#295EFF] outline-hidden placeholder:text-text-placeholder group-hover/tag-add:placeholder:text-text-secondary', isSpecialMode ? 'bg-transparent' : '', inputClassName)}
             className={cn(!isInWorkflow && 'max-w-[300px]', isInWorkflow && 'max-w-[146px]', 'overflow-hidden rounded-md py-1 system-xs-regular', isSpecialMode && 'border border-transparent px-1.5', focused && isSpecialMode && 'border-dashed border-divider-deep')}
             onFocus={() => setFocused(true)}
             onBlur={handleBlur}

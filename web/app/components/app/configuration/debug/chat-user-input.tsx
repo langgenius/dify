@@ -113,7 +113,7 @@ const ChatUserInput = ({
                     <SelectTrigger className="w-full">
                       {String(inputs[key] || t('placeholder.select', { ns: 'common' }))}
                     </SelectTrigger>
-                    <SelectContent popupClassName="w-(--anchor-width)">
+                    <SelectContent>
                       {(options || []).map(option => (
                         <SelectItem key={option} value={option}>
                           <SelectItemText>{option}</SelectItemText>

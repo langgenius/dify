@@ -337,6 +337,8 @@
   "variableConfig.file.image.name": "Imagen",
   "variableConfig.file.supportFileTypes": "Tipos de archivos de soporte",
   "variableConfig.file.video.name": "Vídeo",
+  "variableConfig.hidden": "Oculto y Prerrellenado",
+  "variableConfig.hiddenDescription": "Oculta este campo a los usuarios finales y proporciona su valor tú mismo. Mutuamente exclusivo con Requerido. <docLink>Más información</docLink>",
   "variableConfig.hide": "Ocultar",
   "variableConfig.inputPlaceholder": "Por favor ingresa",
   "variableConfig.json": "Código JSON",

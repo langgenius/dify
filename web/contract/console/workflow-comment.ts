@@ -15,13 +15,13 @@ export type WorkflowCommentList = {
   position_y: number
   content: string
   created_by: string
-  created_by_account: UserProfile
+  created_by_account: UserProfile | null
   created_at: number
   updated_at: number
   resolved: boolean
-  resolved_by?: string
-  resolved_by_account?: UserProfile
-  resolved_at?: number
+  resolved_by?: string | null
+  resolved_by_account?: UserProfile | null
+  resolved_at?: number | null
   mention_count: number
   reply_count: number
   participants: UserProfile[]
@@ -47,59 +47,59 @@ export type WorkflowCommentDetail = {
   position_y: number
   content: string
   created_by: string
-  created_by_account: UserProfile
+  created_by_account: UserProfile | null
   created_at: number
   updated_at: number
   resolved: boolean
-  resolved_by?: string
-  resolved_by_account?: UserProfile
-  resolved_at?: number
+  resolved_by?: string | null
+  resolved_by_account?: UserProfile | null
+  resolved_at?: number | null
   replies: WorkflowCommentDetailReply[]
   mentions: WorkflowCommentDetailMention[]
 }
 
-export type WorkflowCommentCreateRes = {
+type WorkflowCommentCreateRes = {
   id: string
-  created_at: string
+  created_at: number
 }
 
-export type WorkflowCommentUpdateRes = {
+type WorkflowCommentUpdateRes = {
   id: string
-  updated_at: string
+  updated_at: number
 }
 
-export type WorkflowCommentResolveRes = {
+type WorkflowCommentResolveRes = {
   id: string
   resolved: boolean
   resolved_by: string
   resolved_at: number
 }
 
-export type WorkflowCommentReplyCreateRes = {
+type WorkflowCommentReplyCreateRes = {
   id: string
-  created_at: string
+  created_at: number
 }
 
-export type WorkflowCommentReplyUpdateRes = {
+type WorkflowCommentReplyUpdateRes = {
   id: string
-  updated_at: string
+  updated_at: number
 }
 
-export type CreateCommentParams = {
+type CreateCommentParams = {
   position_x: number
   position_y: number
   content: string
   mentioned_user_ids?: string[]
 }
 
-export type UpdateCommentParams = {
+type UpdateCommentParams = {
   content: string
   position_x?: number
   position_y?: number
   mentioned_user_ids?: string[]
 }
 
-export type CreateReplyParams = {
+type CreateReplyParams = {
   content: string
   mentioned_user_ids?: string[]
 }

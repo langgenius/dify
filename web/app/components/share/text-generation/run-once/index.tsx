@@ -138,7 +138,7 @@ const RunOnce: FC<IRunOnceProps> = ({
                         <SelectTrigger className="w-full">
                           {String(inputs[item.key] || item.default || t('placeholder.select', { ns: 'common' }))}
                         </SelectTrigger>
-                        <SelectContent popupClassName="w-(--anchor-width)">
+                        <SelectContent>
                           {(item.options || []).map(option => (
                             <SelectItem key={option} value={option}>
                               <SelectItemText>{option}</SelectItemText>
@@ -251,7 +251,6 @@ const RunOnce: FC<IRunOnceProps> = ({
                 variant={isRunning ? 'secondary' : 'primary'}
                 disabled={isRunning && runControl?.isStopping}
                 onClick={handlePrimaryClick}
-                data-testid={isRunning ? 'stop-button' : 'run-button'}
               >
                 {isRunning
                   ? (
