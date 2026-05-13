@@ -92,11 +92,11 @@ const MemberRow = ({
           <div className="system-xs-regular text-text-tertiary">{member.email}</div>
         </div>
       </div>
-      <div className="flex w-[120px] shrink-0 items-center py-2 system-sm-regular text-text-secondary">
+      <div className="flex w-30 shrink-0 items-center py-2 system-sm-regular text-text-secondary">
         {formatTimeFromNow(Number((member.last_active_at || member.created_at)) * 1000)}
       </div>
       <div
-        className="flex w-[215px] shrink-0 items-center gap-2 px-3"
+        className="flex w-53.75 shrink-0 items-center gap-2 px-3"
         onClick={stopPropagationOnClick}
         onKeyDown={stopPropagationOnKeyDown}
         role="presentation"

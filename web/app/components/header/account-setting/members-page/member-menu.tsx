@@ -12,6 +12,7 @@ import { toast } from '@langgenius/dify-ui/toast'
 import { memo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
+import { useUpdateRolesOfMember } from '@/service/access-control/use-member-roles'
 import { deleteMemberOrCancelInvitation } from '@/service/common'
 import AssignRolesModal from './assign-roles-modal'
 
@@ -40,18 +41,23 @@ const MemberMenu = ({
   const canRemove = !isOwner
   const showTransferOwnership = isOwner && canTransferOwnership
 
-  if (!canAssignRoles && !canRemove && !showTransferOwnership)
-    return null
-
   const handleOpenAssignRoles = () => {
     setOpen(false)
     setAssignModalOpen(true)
   }
 
-  const handleAssignRolesSubmit = (_roleIds: string[]) => {
-    // TODO: wire to backend once multi-role member endpoint is ready.
-    toast.success(t('actionMsg.modifiedSuccessfully', { ns: 'common' }))
-    onOperate()
+  const { mutateAsync: updateRolesOfMember } = useUpdateRolesOfMember()
+
+  const handleAssignRolesSubmit = (roleIds: string[]) => {
+    updateRolesOfMember({
+      memberId: member.id,
+      roleIds,
+    }, {
+      onSuccess: () => {
+        toast.success(t('actionMsg.modifiedSuccessfully', { ns: 'common' }))
+        onOperate()
+      },
+    })
   }
 
   const handleRemove = async () => {
@@ -69,6 +75,9 @@ const MemberMenu = ({
     setOpen(false)
     onTransferOwnership?.()
   }
+
+  if (!canAssignRoles && !canRemove && !showTransferOwnership)
+    return null
 
   return (
     <>
@@ -121,7 +130,6 @@ const MemberMenu = ({
       </DropdownMenu>
       {assignModalOpen && (
         <AssignRolesModal
-          open={assignModalOpen}
           member={member}
           onClose={() => setAssignModalOpen(false)}
           onSubmit={handleAssignRolesSubmit}

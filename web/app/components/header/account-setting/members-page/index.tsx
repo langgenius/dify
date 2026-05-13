@@ -12,6 +12,7 @@ import { useAppContext } from '@/context/app-context'
 import { useLocale } from '@/context/i18n'
 import { useProviderContext } from '@/context/provider-context'
 import { LanguagesSupported } from '@/i18n-config/language'
+import { useUpdateRolesOfMember } from '@/service/access-control/use-member-roles'
 import { systemFeaturesQueryOptions } from '@/service/system-features'
 import { useMembers } from '@/service/use-common'
 import EditWorkspaceModal from './edit-workspace-modal'
@@ -40,15 +41,28 @@ const MembersPage = () => {
   const [showTransferOwnershipModal, setShowTransferOwnershipModal] = useState(false)
   const [detailsMember, setDetailsMember] = useState<Member | null>(null)
 
-  const handleAssignRolesSubmit = (_roleIds: string[]) => {
-    // TODO: wire to backend once multi-role member endpoint is ready.
-    toast.success(t('actionMsg.modifiedSuccessfully', { ns: 'common' }))
-    refetch()
-  }
-
   const handleOpenDetails = useCallback((member: Member) => {
     setDetailsMember(member)
   }, [])
+
+  const handleCloseDetails = useCallback(() => {
+    setDetailsMember(null)
+  }, [])
+
+  const { mutateAsync: updateRolesOfMember } = useUpdateRolesOfMember()
+
+  const handleAssignRolesSubmit = (roleIds: string[]) => {
+    updateRolesOfMember({
+      memberId: detailsMember!.id,
+      roleIds,
+    }, {
+      onSuccess: () => {
+        toast.success(t('actionMsg.modifiedSuccessfully', { ns: 'common' }))
+        refetch()
+        handleCloseDetails()
+      },
+    })
+  }
 
   const handleTransferOwnership = useCallback(() => {
     setShowTransferOwnershipModal(true)
@@ -126,12 +140,12 @@ const MembersPage = () => {
           </div>
         </div>
         <div className="overflow-visible lg:overflow-visible">
-          <div className="flex min-w-[480px] items-center border-b border-divider-regular py-[7px]">
+          <div className="flex min-w-120 items-center border-b border-divider-regular py-1.75">
             <div className="grow px-3 system-xs-medium-uppercase text-text-tertiary">{t('members.name', { ns: 'common' })}</div>
-            <div className="w-[120px] shrink-0 system-xs-medium-uppercase text-text-tertiary">{t('members.lastActive', { ns: 'common' })}</div>
-            <div className="w-[215px] shrink-0 px-3 system-xs-medium-uppercase text-text-tertiary">{t('members.role', { ns: 'common' })}</div>
+            <div className="w-30 shrink-0 system-xs-medium-uppercase text-text-tertiary">{t('members.lastActive', { ns: 'common' })}</div>
+            <div className="w-53.75 shrink-0 px-3 system-xs-medium-uppercase text-text-tertiary">{t('members.role', { ns: 'common' })}</div>
           </div>
-          <div className="relative min-w-[480px]">
+          <div className="relative min-w-120">
             {accounts.map(account => (
               <MemberRow
                 key={account.id}
@@ -185,13 +199,12 @@ const MembersPage = () => {
       )}
       {detailsMember && (
         <MemberDetailsModal
-          open={!!detailsMember}
           member={detailsMember}
           canAssignRoles={
             isCurrentWorkspaceManager
             && detailsMember.role !== 'owner'
           }
-          onClose={() => setDetailsMember(null)}
+          onClose={handleCloseDetails}
           onAssignSubmit={handleAssignRolesSubmit}
         />
       )}

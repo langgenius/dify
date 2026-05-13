@@ -8,11 +8,11 @@ import {
 } from '@langgenius/dify-ui/preview-card'
 import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { getRolePermissionKeys } from './role-permissions'
 
 export type PermissionRoleChipProps = {
   roleKey: string
   label: string
+  permissionKeys?: string[]
   onRemove?: () => void
   className?: string
 }
@@ -20,11 +20,12 @@ export type PermissionRoleChipProps = {
 const PermissionRoleChip = ({
   roleKey,
   label,
+  permissionKeys = [],
   onRemove,
   className,
 }: PermissionRoleChipProps) => {
   const { t } = useTranslation()
-  const permissions = getRolePermissionKeys(roleKey)
+  const permissions = permissionKeys
   const hasPermissions = permissions.length > 0
 
   const chip = (
@@ -79,11 +80,11 @@ const PermissionRoleChip = ({
             <li key={key} className="flex items-start gap-2">
               <span
                 aria-hidden
-                className="mt-[7px] inline-block h-1 w-1 shrink-0 rounded-full bg-text-tertiary"
+                className="mt-1.75 inline-block h-1 w-1 shrink-0 rounded-full bg-text-tertiary"
               />
               <span>
-                {t(`members.memberDetails.permissions.${key}`, {
-                  ns: 'common',
+                {t(key, {
+                  ns: 'permission',
                   defaultValue: key,
                 })}
               </span>

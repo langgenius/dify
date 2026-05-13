@@ -16,7 +16,6 @@ import AssignRolesModal from '../assign-roles-modal'
 import PermissionRoleChip from './permission-role-chip'
 
 export type MemberDetailsModalProps = {
-  open: boolean
   member: Member
   canAssignRoles?: boolean
   onClose: () => void
@@ -24,7 +23,6 @@ export type MemberDetailsModalProps = {
 }
 
 const MemberDetailsModal = ({
-  open,
   member,
   canAssignRoles = false,
   onClose,
@@ -52,13 +50,13 @@ const MemberDetailsModal = ({
   return (
     <>
       <Dialog
-        open={open}
+        open
         onOpenChange={(next) => {
           if (!next)
             onClose()
         }}
       >
-        <DialogContent className="w-[440px] overflow-visible p-0" backdropProps={{ forceRender: true }}>
+        <DialogContent className="w-110 overflow-visible p-0" backdropProps={{ forceRender: true }}>
           <div className="relative px-6 pt-6 pb-5">
             <DialogCloseButton />
             <DialogTitle className="pr-8 system-xl-semibold text-text-primary">
@@ -129,6 +127,7 @@ const MemberDetailsModal = ({
                       key={role.id}
                       roleKey={role.id}
                       label={role.name}
+                      permissionKeys={role.permission_keys}
                     />
                   ))}
                 </div>
@@ -147,6 +146,7 @@ const MemberDetailsModal = ({
                       key={role.id}
                       roleKey={role.id}
                       label={role.name}
+                      permissionKeys={role.permission_keys}
                     />
                   ))}
                 </div>
