@@ -21,7 +21,7 @@ from graphon.graph_engine import GraphEngine
 from graphon.graph_engine.command_channels import InMemoryChannel
 from graphon.nodes.end.end_node import EndNode
 from graphon.nodes.end.entities import EndNodeData
-from graphon.nodes.human_input.entities import HumanInputNodeData, UserAction
+from graphon.nodes.human_input.entities import HumanInputNodeData, UserActionConfig
 from graphon.nodes.human_input.enums import HumanInputFormStatus
 from graphon.nodes.human_input.human_input_node import HumanInputNode
 from graphon.nodes.start.entities import StartNodeData
@@ -112,7 +112,7 @@ def _build_graph(
         form_content="Awaiting human input",
         inputs=[],
         user_actions=[
-            UserAction(id="continue", title="Continue"),
+            UserActionConfig(id="continue", title="Continue"),
         ],
     )
     human_node = HumanInputNode(

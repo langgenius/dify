@@ -1,12 +1,23 @@
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
-from typing import Any, TypeAlias
+from typing import Annotated, Any, TypeAlias
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from graphon.nodes.human_input.entities import FormInput, UserAction
+from graphon.nodes.human_input.entities import (
+    FileInputConfig,
+    FileListInputConfig,
+    ParagraphInputConfig,
+    SelectInputConfig,
+    UserActionConfig,
+)
 from models.execution_extra_content import ExecutionContentType
+
+HumanInputFormInputConfig = Annotated[
+    ParagraphInputConfig | SelectInputConfig | FileInputConfig | FileListInputConfig,
+    Field(discriminator="type"),
+]
 
 
 class HumanInputFormDefinition(BaseModel):
@@ -16,8 +27,8 @@ class HumanInputFormDefinition(BaseModel):
     node_id: str
     node_title: str
     form_content: str
-    inputs: Sequence[FormInput] = Field(default_factory=list)
-    actions: Sequence[UserAction] = Field(default_factory=list)
+    inputs: Sequence[HumanInputFormInputConfig] = Field(default_factory=list)
+    actions: Sequence[UserActionConfig] = Field(default_factory=list)
     display_in_ui: bool = False
     form_token: str | None = None
     resolved_default_values: Mapping[str, Any] = Field(default_factory=dict)

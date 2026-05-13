@@ -2,6 +2,32 @@
 
 import * as z from 'zod'
 
+/**
+ * HumanInputPauseTypeResponse
+ */
+export const zHumanInputPauseTypeResponse = z.object({
+  backstage_input_url: z.string().nullish(),
+  form_id: z.string(),
+  type: z.string(),
+})
+
+/**
+ * PausedNodeResponse
+ */
+export const zPausedNodeResponse = z.object({
+  node_id: z.string(),
+  node_title: z.string(),
+  pause_type: zHumanInputPauseTypeResponse,
+})
+
+/**
+ * WorkflowPauseDetailsResponse
+ */
+export const zWorkflowPauseDetailsResponse = z.object({
+  paused_at: z.string().nullish(),
+  paused_nodes: z.array(zPausedNodeResponse),
+})
+
 export const zGetWorkflowByWorkflowRunIdEventsPath = z.object({
   workflow_run_id: z.string(),
 })
@@ -16,6 +42,6 @@ export const zGetWorkflowByWorkflowRunIdPauseDetailsPath = z.object({
 })
 
 /**
- * Success
+ * Workflow pause details retrieved successfully
  */
-export const zGetWorkflowByWorkflowRunIdPauseDetailsResponse = z.record(z.string(), z.unknown())
+export const zGetWorkflowByWorkflowRunIdPauseDetailsResponse = zWorkflowPauseDetailsResponse

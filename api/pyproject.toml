@@ -44,7 +44,7 @@ dependencies = [
     # Emerging: newer and fast-moving, use compatible pins
     "dify-agent",
     "fastopenapi[flask]~=0.7.0",
-    "graphon~=0.3.1",
+    "graphon~=0.4.0",
     "httpx-sse~=0.4.0",
     "json-repair~=0.59.4",
 ]

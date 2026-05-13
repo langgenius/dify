@@ -45,7 +45,7 @@ from graphon.model_runtime.entities.model_entities import AIModelEntity
 from graphon.model_runtime.model_providers.base.large_language_model import LargeLanguageModel
 from graphon.nodes.human_input.entities import HumanInputNodeData
 from graphon.nodes.llm.runtime_protocols import (
-    PreparedLLMProtocol,
+    LLMProtocol,
     PromptMessageSerializerProtocol,
     RetrieverAttachmentLoaderProtocol,
 )
@@ -136,7 +136,7 @@ class DifyFileReferenceFactory(FileReferenceFactoryProtocol):
         )
 
 
-class DifyPreparedLLM(PreparedLLMProtocol):
+class DifyPreparedLLM(LLMProtocol):
     """Workflow-layer adapter that hides the full `ModelInstance` API from `graphon` nodes."""
 
     def __init__(self, model_instance: ModelInstance) -> None:

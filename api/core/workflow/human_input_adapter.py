@@ -190,6 +190,8 @@ def adapt_human_input_node_data_for_graph(node_data: Mapping[str, Any] | BaseMod
     if normalized is None:
         raise TypeError(f"human-input node data must be a mapping, got {type(node_data).__name__}")
 
+    normalized["inputs"] = _normalize_human_input_inputs(normalized.get("inputs"))
+
     delivery_methods = normalized.get("delivery_methods")
     if not isinstance(delivery_methods, list):
         return normalized
@@ -212,6 +214,24 @@ def adapt_human_input_node_data_for_graph(node_data: Mapping[str, Any] | BaseMod
 
     normalized["delivery_methods"] = normalized_methods
     return normalized
+
+
+def _normalize_human_input_inputs(inputs: object) -> object:
+    if not isinstance(inputs, list):
+        return inputs
+
+    normalized_inputs: list[Any] = []
+    for form_input in inputs:
+        input_mapping = _copy_mapping(form_input)
+        if input_mapping is None:
+            normalized_inputs.append(form_input)
+            continue
+
+        if input_mapping.get("type") in {"text-input", "text_input"}:
+            input_mapping["type"] = "paragraph"
+        normalized_inputs.append(input_mapping)
+
+    return normalized_inputs
 
 
 def parse_human_input_delivery_methods(node_data: Mapping[str, Any] | BaseModel) -> list[DeliveryChannelConfig]:

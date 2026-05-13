@@ -550,6 +550,7 @@ class TestDifyNodeFactoryCreateNode:
             assert kwargs["file_reference_factory"] is sentinel.file_reference_factory
         elif constructor_name == "HumanInputNode":
             assert kwargs["form_repository"] is form_repository
+            assert kwargs["file_reference_factory"] is sentinel.file_reference_factory
             assert kwargs["runtime"] is factory._human_input_runtime
             factory._human_input_runtime.build_form_repository.assert_called_once_with()
         elif constructor_name == "DocumentExtractorNode":

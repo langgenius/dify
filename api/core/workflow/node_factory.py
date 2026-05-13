@@ -48,7 +48,7 @@ from graphon.graph.graph import NodeFactory
 from graphon.model_runtime.memory import PromptMessageMemory
 from graphon.model_runtime.model_providers.base.large_language_model import LargeLanguageModel
 from graphon.nodes.base.node import Node
-from graphon.nodes.code.code_node import WorkflowCodeExecutor
+from graphon.nodes.code.code_node import CodeExecutorProtocol
 from graphon.nodes.code.entities import CodeLanguage
 from graphon.nodes.code.limits import CodeNodeLimits
 from graphon.nodes.document_extractor import UnstructuredApiConfig
@@ -285,7 +285,7 @@ class DifyNodeFactory(NodeFactory):
         self.graph_init_params = graph_init_params
         self.graph_runtime_state = graph_runtime_state
         self._dify_context = self._resolve_dify_context(graph_init_params.run_context)
-        self._code_executor: WorkflowCodeExecutor = DefaultWorkflowCodeExecutor()
+        self._code_executor: CodeExecutorProtocol = DefaultWorkflowCodeExecutor()
         self._code_limits = CodeNodeLimits(
             max_string_length=dify_config.CODE_MAX_STRING_LENGTH,
             max_number=dify_config.CODE_MAX_NUMBER,
@@ -393,6 +393,7 @@ class DifyNodeFactory(NodeFactory):
             },
             BuiltinNodeTypes.HUMAN_INPUT: lambda: {
                 "runtime": self._human_input_runtime,
+                "file_reference_factory": self._file_reference_factory,
                 "form_repository": self._human_input_runtime.build_form_repository(),
             },
             BuiltinNodeTypes.LLM: lambda: self._build_llm_compatible_node_init_kwargs(
