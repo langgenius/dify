@@ -161,7 +161,7 @@ function StartBlockPreviewCard({
             ? t('customWebhook', { ns: 'workflow' })
             : t(`blocks.${block.type}`, { ns: 'workflow' })}
         </div>
-        <div className="system-xs-regular text-text-secondary">
+        <div className="system-xs-regular wrap-break-word text-text-secondary">
           {t(`blocksAbout.${block.type}`, { ns: 'workflow' })}
         </div>
         {(block.type === BlockEnumValues.TriggerWebhook || block.type === BlockEnumValues.TriggerSchedule) && (

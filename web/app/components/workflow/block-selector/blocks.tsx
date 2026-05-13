@@ -183,7 +183,7 @@ function BlockPreviewCard({
           type={block.metaData.type}
         />
         <div className="mb-1 system-md-medium text-text-primary">{block.metaData.title}</div>
-        <div className="system-xs-regular text-text-tertiary">{block.metaData.description}</div>
+        <div className="system-xs-regular wrap-break-word text-text-tertiary">{block.metaData.description}</div>
       </div>
     </PreviewCardContent>
   )

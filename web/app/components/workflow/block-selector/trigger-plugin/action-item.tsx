@@ -115,7 +115,7 @@ export function TriggerPluginActionPreviewCard({
           toolIcon={payload.provider.icon}
         />
         <div className="mb-1 text-sm leading-5 text-text-primary">{payload.payload.label[payload.language]}</div>
-        <div className="text-xs leading-[18px] text-text-secondary">{payload.payload.description[payload.language]}</div>
+        <div className="text-xs leading-[18px] wrap-break-word text-text-secondary">{payload.payload.description[payload.language]}</div>
       </div>
     </PreviewCardContent>
   )
