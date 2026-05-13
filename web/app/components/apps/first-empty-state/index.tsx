@@ -69,7 +69,7 @@ const FirstEmptyState: FC<Props> = ({
                 )}
                 onClick={action.onClick}
               >
-                <span className="flex size-12 items-center justify-center rounded-xl bg-background-section text-2xl/8">
+                <span className="flex size-12 items-center justify-center rounded-xl bg-components-icon-bg-teal-soft text-2xl/8">
                   {action.icon}
                 </span>
                 <span className="mt-5 system-md-semibold text-text-primary">{action.title}</span>
@@ -83,8 +83,14 @@ const FirstEmptyState: FC<Props> = ({
           </div>
         </section>
       </div>
-      <div className="mb-6 rounded-xl border border-components-panel-border bg-components-panel-bg p-4 shadow-xs">
-        <LearnDify className="px-0 pb-0" dismissible={false} itemLimit={3} />
+      <div className="rounded-t-2xl rounded-b-none bg-background-section p-6 pb-8">
+        <LearnDify
+          className="px-0 pb-0"
+          dismissible={false}
+          itemLimit={3}
+          showDescription={false}
+          title={t('firstEmpty.learnDifyTitle', { ns: 'app' })}
+        />
       </div>
     </div>
   )

@@ -12,12 +12,16 @@ type LearnDifyProps = {
   className?: string
   dismissible?: boolean
   itemLimit?: number
+  showDescription?: boolean
+  title?: string
 }
 
 const LearnDify = ({
   className,
   dismissible = true,
   itemLimit,
+  showDescription = true,
+  title,
 }: LearnDifyProps) => {
   const { t } = useTranslation()
   const [hidden, setHidden] = useLearnDifyHiddenState()
@@ -75,7 +79,7 @@ const LearnDify = ({
         <div className="min-w-0 flex-1">
           <div className="flex items-center justify-between gap-4">
             <h2 id="learn-dify-title" className="min-w-0 truncate system-xl-semibold text-text-primary">
-              {t('learnDify.title', { ns: 'explore' })}
+              {title ?? t('learnDify.title', { ns: 'explore' })}
             </h2>
             {dismissible && (
               <button type="button" className="shrink-0 system-sm-medium text-text-primary" onClick={handleHide}>
@@ -83,11 +87,13 @@ const LearnDify = ({
               </button>
             )}
           </div>
-          <div className="mt-1 flex items-center justify-between gap-4">
-            <p className="min-w-0 truncate system-xs-regular text-text-tertiary">
-              {t('learnDify.description', { ns: 'explore' })}
-            </p>
-          </div>
+          {showDescription && (
+            <div className="mt-1 flex items-center justify-between gap-4">
+              <p className="min-w-0 truncate system-xs-regular text-text-tertiary">
+                {t('learnDify.description', { ns: 'explore' })}
+              </p>
+            </div>
+          )}
         </div>
       </div>
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">

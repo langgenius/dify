@@ -52,6 +52,7 @@
   "firstEmpty.blankDescription": "Start with an empty canvas and build your app step by step.",
   "firstEmpty.description": "Turn an idea into a working AI app - start from scratch, a template, or import an existing one.",
   "firstEmpty.importDescription": "Already have a Dify app exported as DSL? Bring it in to continue where you left off.",
+  "firstEmpty.learnDifyTitle": "Learn Dify form Template",
   "firstEmpty.templateDescription": "Pick a ready-made app and customize it. The fastest way to see Dify in action.",
   "firstEmpty.title": "Build your first App",
   "gotoAnything.actions.accountDesc": "Navigate to account page",

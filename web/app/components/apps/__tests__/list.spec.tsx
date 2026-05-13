@@ -357,7 +357,7 @@ describe('List', () => {
 
       expect(screen.getByText('app.firstEmpty.title'))!.toBeInTheDocument()
       expect(screen.getByText('app.firstEmpty.description'))!.toBeInTheDocument()
-      expect(screen.getByText('explore.learnDify.title'))!.toBeInTheDocument()
+      expect(screen.getByText('app.firstEmpty.learnDifyTitle'))!.toBeInTheDocument()
       expect(screen.queryByText('app.types.label')).not.toBeInTheDocument()
       expect(screen.queryByTestId('new-app-card')).not.toBeInTheDocument()
       expect(screen.queryByTestId('empty-state')).not.toBeInTheDocument()
