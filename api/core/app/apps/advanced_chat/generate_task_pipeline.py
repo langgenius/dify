@@ -630,7 +630,7 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         **kwargs,
     ) -> Generator[StreamResponse, None, None]:
         """Handle workflow succeeded events.
-        
+
         Note: workflow_finished is intentionally NOT yielded here.
         It is deferred to _wrapper_process_stream_response so that TTS audio
         chunks (tts_message) are fully sent before workflow_finished, matching
