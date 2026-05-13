@@ -42,9 +42,7 @@ def _request(
             )
         )
 
-    return CreateRunRequest(
-        composition=RunComposition(layers=layers)
-    )
+    return CreateRunRequest(composition=RunComposition(layers=layers))
 
 
 def _recursive_output_schema() -> dict[str, object]:
@@ -377,7 +375,9 @@ def test_create_run_rejects_reserved_output_name_with_wrong_layer_type_before_pe
                 composition=RunComposition(
                     layers=[
                         RunLayerSpec(name="prompt", type="plain.prompt", config=PromptLayerConfig(user="hello")),
-                        RunLayerSpec(name=DIFY_AGENT_OUTPUT_LAYER_ID, type="plain.prompt", config=PromptLayerConfig(user="hi")),
+                        RunLayerSpec(
+                            name=DIFY_AGENT_OUTPUT_LAYER_ID, type="plain.prompt", config=PromptLayerConfig(user="hi")
+                        ),
                     ]
                 )
             )

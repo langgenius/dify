@@ -175,14 +175,22 @@ def test_output_layer_builds_validated_output_contract_for_object_schema() -> No
 @pytest.mark.parametrize(
     ("invalid_output", "message"),
     [
-        ({"title": "Database outage", "severity": "high", "actions": "page on-call"}, "Output does not match JSON Schema"),
+        (
+            {"title": "Database outage", "severity": "high", "actions": "page on-call"},
+            "Output does not match JSON Schema",
+        ),
         ({"title": "Database outage", "actions": []}, "Output does not match JSON Schema"),
         ({"title": "Database outage", "severity": "urgent", "actions": []}, "Output does not match JSON Schema"),
-        ({"title": "Database outage", "severity": "high", "actions": [], "extra": True}, "Output does not match JSON Schema"),
+        (
+            {"title": "Database outage", "severity": "high", "actions": [], "extra": True},
+            "Output does not match JSON Schema",
+        ),
     ],
 )
 def test_output_layer_object_contract_retries_invalid_model_output(invalid_output: JsonValue, message: str) -> None:
-    output_contract = DifyOutputLayer.from_config(DifyOutputLayerConfig(json_schema=_json_schema())).build_output_contract()
+    output_contract = DifyOutputLayer.from_config(
+        DifyOutputLayerConfig(json_schema=_json_schema())
+    ).build_output_contract()
     output_adapter = TypeAdapter(_validated_output_type(output_contract.output_type))
 
     with pytest.raises(ValidationError, match=message):

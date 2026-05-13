@@ -291,7 +291,9 @@ def test_runner_passes_output_layer_spec_to_agent_and_serializes_structured_resu
     assert [layer.name for layer in terminal.data.session_snapshot.layers] == expected_snapshot_layer_names
     assert [layer.name for layer in resumed_terminal.data.session_snapshot.layers] == expected_snapshot_layer_names
     assert all(layer.lifecycle_state is LifecycleState.SUSPENDED for layer in terminal.data.session_snapshot.layers)
-    assert all(layer.lifecycle_state is LifecycleState.SUSPENDED for layer in resumed_terminal.data.session_snapshot.layers)
+    assert all(
+        layer.lifecycle_state is LifecycleState.SUSPENDED for layer in resumed_terminal.data.session_snapshot.layers
+    )
 
 
 def test_runner_retries_invalid_structured_output_and_eventually_succeeds(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -628,7 +630,9 @@ def test_runner_rejects_reserved_output_name_with_wrong_layer_type_before_model_
 
     async def scenario() -> None:
         async with httpx.AsyncClient() as client:
-            with pytest.raises(AgentRunValidationError, match=r"Layer 'output' must be DifyOutputLayer, got PromptLayer"):
+            with pytest.raises(
+                AgentRunValidationError, match=r"Layer 'output' must be DifyOutputLayer, got PromptLayer"
+            ):
                 await AgentRunRunner(
                     sink=sink,
                     request=request,

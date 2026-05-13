@@ -208,11 +208,12 @@ def _reject_non_local_refs(schema: JsonValue) -> None:
     """
     for ref in _iter_schema_refs(schema):
         if not ref.startswith("#"):
-            raise ValueError("Remote $ref values are not supported; only local fragment refs beginning with '#' are allowed.")
+            raise ValueError(
+                "Remote $ref values are not supported; only local fragment refs beginning with '#' are allowed."
+            )
         if not ref.startswith(_LOCAL_DEFS_REF_PREFIX):
             raise ValueError(
-                "Only local refs under '#/$defs/' are supported in this version; "
-                f"got unsupported local ref {ref!r}."
+                f"Only local refs under '#/$defs/' are supported in this version; got unsupported local ref {ref!r}."
             )
 
 
