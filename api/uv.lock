@@ -2941,7 +2941,7 @@ httpx = [
 [[package]]
 name = "graphon"
 version = "0.3.1"
-source = { git = "https://github.com/QuantumGhost/graphon?branch=hitl-form-dev#b8f72b598271032cd088a08cc68418a1a5f65479" }
+source = { git = "https://github.com/QuantumGhost/graphon?branch=hitl-form-dev#2287be4495a15ea2f3a59d603c22b1afa5909ae6" }
 dependencies = [
     { name = "charset-normalizer" },
     { name = "httpx" },
