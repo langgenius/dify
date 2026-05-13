@@ -8,6 +8,8 @@ type CheckboxProps = {
   className?: string
   disabled?: boolean
   indeterminate?: boolean
+  ariaLabel?: string
+  ariaLabelledBy?: string
 }
 
 const Checkbox = ({
@@ -17,6 +19,8 @@ const Checkbox = ({
   className,
   disabled,
   indeterminate,
+  ariaLabel,
+  ariaLabelledBy,
 }: CheckboxProps) => {
   const checkClassName = (checked || indeterminate)
     ? 'bg-components-checkbox-bg text-components-checkbox-icon hover:bg-components-checkbox-bg-hover'
@@ -52,6 +56,8 @@ const Checkbox = ({
       role="checkbox"
       aria-checked={indeterminate ? 'mixed' : !!checked}
       aria-disabled={!!disabled}
+      aria-label={ariaLabel}
+      aria-labelledby={ariaLabelledBy}
       tabIndex={disabled ? -1 : 0}
     >
       {!checked && indeterminate && <IndeterminateIcon />}

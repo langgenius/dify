@@ -35,15 +35,15 @@ describe('CopyFeedback', () => {
   describe('User Interactions', () => {
     it('calls copy with content when clicked', () => {
       render(<CopyFeedback content="test content" />)
-      const button = screen.getByRole('button')
-      fireEvent.click(button.firstChild as Element)
+      const button = screen.getByRole('button', { name: 'appOverview.overview.appInfo.embedded.copy' })
+      fireEvent.click(button)
       expect(mockCopy).toHaveBeenCalledWith('test content')
     })
 
     it('does not reset on mouse leave (relies on hook timeout)', () => {
       render(<CopyFeedback content="test content" />)
-      const button = screen.getByRole('button')
-      fireEvent.mouseLeave(button.firstChild as Element)
+      const button = screen.getByRole('button', { name: 'appOverview.overview.appInfo.embedded.copy' })
+      fireEvent.mouseLeave(button)
       expect(mockReset).not.toHaveBeenCalled()
     })
   })
@@ -57,8 +57,8 @@ describe('CopyFeedbackNew', () => {
 
   describe('Rendering', () => {
     it('renders the component', () => {
-      const { container } = render(<CopyFeedbackNew content="test content" />)
-      expect(container.querySelector('.cursor-pointer')).toBeInTheDocument()
+      render(<CopyFeedbackNew content="test content" />)
+      expect(screen.getByRole('button', { name: 'appOverview.overview.appInfo.embedded.copy' })).toBeInTheDocument()
     })
 
     it('renders with custom className', () => {
@@ -82,16 +82,14 @@ describe('CopyFeedbackNew', () => {
 
   describe('User Interactions', () => {
     it('calls copy with content when clicked', () => {
-      const { container } = render(<CopyFeedbackNew content="test content" />)
-      const clickableArea = container.querySelector('.cursor-pointer')!.firstChild as HTMLElement
-      fireEvent.click(clickableArea)
+      render(<CopyFeedbackNew content="test content" />)
+      fireEvent.click(screen.getByRole('button', { name: 'appOverview.overview.appInfo.embedded.copy' }))
       expect(mockCopy).toHaveBeenCalledWith('test content')
     })
 
     it('does not reset on mouse leave (relies on hook timeout)', () => {
-      const { container } = render(<CopyFeedbackNew content="test content" />)
-      const clickableArea = container.querySelector('.cursor-pointer')!.firstChild as HTMLElement
-      fireEvent.mouseLeave(clickableArea)
+      render(<CopyFeedbackNew content="test content" />)
+      fireEvent.mouseLeave(screen.getByRole('button', { name: 'appOverview.overview.appInfo.embedded.copy' }))
       expect(mockReset).not.toHaveBeenCalled()
     })
   })

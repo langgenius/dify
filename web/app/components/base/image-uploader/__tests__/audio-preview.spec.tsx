@@ -35,15 +35,14 @@ describe('AudioPreview', () => {
 
     it('should render close button', () => {
       render(<AudioPreview {...defaultProps} />)
-      const closeBtn = screen.getByTestId('close-preview')
-      expect(closeBtn).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'common.operation.close' })).toBeInTheDocument()
     })
 
     it('should render via portal into document.body', () => {
       render(<AudioPreview {...defaultProps} />)
       const overlay = screen.getByTestId('audio-preview-overlay')
       expect(overlay).toBeInTheDocument()
-      expect(overlay.parentElement).toBe(document.body)
+      expect(overlay.closest('[data-base-ui-portal]')?.parentElement).toBe(document.body)
     })
   })
 
@@ -78,7 +77,7 @@ describe('AudioPreview', () => {
       const onCancel = vi.fn()
       render(<AudioPreview {...defaultProps} onCancel={onCancel} />)
 
-      const closeBtn = screen.getByTestId('close-preview')
+      const closeBtn = screen.getByRole('button', { name: 'common.operation.close' })
       await user.click(closeBtn)
 
       expect(onCancel).toHaveBeenCalledTimes(1)

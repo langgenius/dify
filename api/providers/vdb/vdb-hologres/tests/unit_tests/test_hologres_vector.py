@@ -38,7 +38,7 @@ def _build_fake_hologres_modules():
 
 
 @pytest.fixture
-def hologres_module(monkeypatch):
+def hologres_module(monkeypatch: pytest.MonkeyPatch):
     for name, module in _build_fake_hologres_modules().items():
         monkeypatch.setitem(sys.modules, name, module)
 
@@ -266,7 +266,7 @@ def test_delete_handles_existing_and_missing_tables(hologres_module):
     vector._client.drop_table.assert_called_once_with(vector.table_name)
 
 
-def test_create_collection_returns_early_when_cache_hits(hologres_module, monkeypatch):
+def test_create_collection_returns_early_when_cache_hits(hologres_module, monkeypatch: pytest.MonkeyPatch):
     lock = MagicMock()
     lock.__enter__.return_value = None
     lock.__exit__.return_value = False
@@ -281,7 +281,7 @@ def test_create_collection_returns_early_when_cache_hits(hologres_module, monkey
     hologres_module.redis_client.set.assert_not_called()
 
 
-def test_create_collection_creates_table_and_indexes(hologres_module, monkeypatch):
+def test_create_collection_creates_table_and_indexes(hologres_module, monkeypatch: pytest.MonkeyPatch):
     lock = MagicMock()
     lock.__enter__.return_value = None
     lock.__exit__.return_value = False
@@ -313,7 +313,7 @@ def test_create_collection_creates_table_and_indexes(hologres_module, monkeypatc
     hologres_module.redis_client.set.assert_called_once()
 
 
-def test_create_collection_raises_when_table_never_becomes_ready(hologres_module, monkeypatch):
+def test_create_collection_raises_when_table_never_becomes_ready(hologres_module, monkeypatch: pytest.MonkeyPatch):
     lock = MagicMock()
     lock.__enter__.return_value = None
     lock.__exit__.return_value = False
@@ -331,7 +331,7 @@ def test_create_collection_raises_when_table_never_becomes_ready(hologres_module
     hologres_module.redis_client.set.assert_not_called()
 
 
-def test_hologres_factory_uses_existing_or_generated_collection(hologres_module, monkeypatch):
+def test_hologres_factory_uses_existing_or_generated_collection(hologres_module, monkeypatch: pytest.MonkeyPatch):
     factory = hologres_module.HologresVectorFactory()
     dataset_with_index = SimpleNamespace(
         id="dataset-1",

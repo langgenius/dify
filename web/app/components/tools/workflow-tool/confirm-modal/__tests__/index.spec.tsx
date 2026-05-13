@@ -93,13 +93,12 @@ describe('ConfirmModal', () => {
       // Arrange & Act
       renderComponent()
 
-      // Assert - Check for the dialog panel with modal content
-      // The real modal structure has nested divs, we need to find the one with our classes
-      const dialogContent = document.querySelector('.relative.rounded-2xl')
+      // Assert
+      const dialogContent = screen.getByRole('dialog')
       expect(dialogContent).toBeInTheDocument()
-      expect(dialogContent).toHaveClass('w-[600px]')
-      expect(dialogContent).toHaveClass('max-w-[600px]')
-      expect(dialogContent).toHaveClass('p-8')
+      expect(dialogContent).toHaveClass('w-[600px]!')
+      expect(dialogContent).toHaveClass('max-w-[600px]!')
+      expect(dialogContent).toHaveClass('p-8!')
     })
   })
 
@@ -111,10 +110,7 @@ describe('ConfirmModal', () => {
       const onClose = vi.fn()
       renderComponent({ onClose })
 
-      // Act - Find the close button and click it
-      const closeButton = document.querySelector('.cursor-pointer')
-      expect(closeButton).toBeInTheDocument() // Ensure the button is found before clicking
-      await user.click(closeButton!)
+      await user.click(screen.getByRole('button', { name: 'common.operation.close' }))
 
       // Assert
       expect(onClose).toHaveBeenCalledTimes(1)
@@ -244,10 +240,9 @@ describe('ConfirmModal', () => {
       renderComponent()
 
       // Assert
-      const buttons = screen.getAllByRole('button')
-      expect(buttons).toHaveLength(2)
-      expect(buttons[0]).toHaveTextContent('common.operation.cancel')
-      expect(buttons[1]).toHaveTextContent('common.operation.confirm')
+      expect(screen.getByRole('button', { name: 'common.operation.close' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'common.operation.cancel' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'common.operation.confirm' })).toBeInTheDocument()
     })
 
     it('should have proper text hierarchy', () => {

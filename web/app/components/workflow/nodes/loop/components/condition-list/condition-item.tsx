@@ -317,7 +317,7 @@ const ConditionItem = ({
                 <SelectTrigger className="h-8 rounded-t-none border-0 px-2 text-xs hover:bg-components-input-bg-normal focus-visible:bg-components-input-bg-normal">
                   {selectedSelectOption?.name ?? t('placeholder.select', { ns: 'common' })}
                 </SelectTrigger>
-                <SelectContent popupClassName="w-(--anchor-width)">
+                <SelectContent>
                   {selectOptions.map(option => (
                     <SelectItem key={option.value} value={option.value} className="text-xs">
                       <SelectItemText>{option.name}</SelectItemText>

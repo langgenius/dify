@@ -1,11 +1,11 @@
-import type { FC } from 'react'
+import type { ReactNode } from 'react'
 import {
   RiGraduationCapFill,
 } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
 import { useProviderContext } from '@/context/provider-context'
 import { SparklesSoft } from '../../base/icons/src/public/common'
-import PremiumBadge from '../../base/premium-badge'
+import PremiumBadge, { PremiumBadgeButton } from '../../base/premium-badge'
 import { Plan } from '../../billing/type'
 
 type PlanBadgeProps = {
@@ -15,7 +15,33 @@ type PlanBadgeProps = {
   onClick?: () => void
 }
 
-const PlanBadge: FC<PlanBadgeProps> = ({ plan, allowHover, sandboxAsUpgrade = false, onClick }) => {
+function PlanBadgeShell({
+  size,
+  color,
+  allowHover,
+  onClick,
+  children,
+}: Pick<PlanBadgeProps, 'allowHover' | 'onClick'> & {
+  size?: 's' | 'm'
+  color: 'blue' | 'indigo' | 'gray'
+  children: ReactNode
+}) {
+  if (onClick) {
+    return (
+      <PremiumBadgeButton className="select-none" size={size} color={color} allowHover={allowHover} onClick={onClick}>
+        {children}
+      </PremiumBadgeButton>
+    )
+  }
+
+  return (
+    <PremiumBadge className="select-none" size={size} color={color}>
+      {children}
+    </PremiumBadge>
+  )
+}
+
+export function PlanBadge({ plan, allowHover, sandboxAsUpgrade = false, onClick }: PlanBadgeProps) {
   const { isFetchedPlan, isEducationWorkspace } = useProviderContext()
   const { t } = useTranslation()
 
@@ -23,51 +49,49 @@ const PlanBadge: FC<PlanBadgeProps> = ({ plan, allowHover, sandboxAsUpgrade = fa
     return null
   if (plan === Plan.sandbox && sandboxAsUpgrade) {
     return (
-      <PremiumBadge className="select-none" color="blue" allowHover={allowHover} onClick={onClick}>
-        <SparklesSoft className="flex h-3.5 w-3.5 items-center py-px pl-[3px] text-components-premium-badge-indigo-text-stop-0" />
+      <PlanBadgeShell color="blue" allowHover={allowHover} onClick={onClick}>
+        <SparklesSoft aria-hidden="true" className="flex h-3.5 w-3.5 items-center py-px pl-[3px] text-components-premium-badge-indigo-text-stop-0" />
         <div className="system-xs-medium">
           <span className="p-1 whitespace-nowrap">
             {t('upgradeBtn.encourageShort', { ns: 'billing' })}
           </span>
         </div>
-      </PremiumBadge>
+      </PlanBadgeShell>
     )
   }
   if (plan === Plan.sandbox) {
     return (
-      <PremiumBadge className="select-none" size="s" color="gray" allowHover={allowHover} onClick={onClick}>
+      <PlanBadgeShell size="s" color="gray" allowHover={allowHover} onClick={onClick}>
         <div className="system-2xs-medium-uppercase">
           <span className="p-1">
             {plan}
           </span>
         </div>
-      </PremiumBadge>
+      </PlanBadgeShell>
     )
   }
   if (plan === Plan.professional) {
     return (
-      <PremiumBadge className="select-none" size="s" color="blue" allowHover={allowHover} onClick={onClick}>
+      <PlanBadgeShell size="s" color="blue" allowHover={allowHover} onClick={onClick}>
         <div className="system-2xs-medium-uppercase">
           <span className="inline-flex items-center gap-1 p-1">
-            {isEducationWorkspace && <RiGraduationCapFill className="h-3 w-3" />}
+            {isEducationWorkspace && <RiGraduationCapFill aria-hidden="true" className="h-3 w-3" />}
             pro
           </span>
         </div>
-      </PremiumBadge>
+      </PlanBadgeShell>
     )
   }
   if (plan === Plan.team) {
     return (
-      <PremiumBadge className="select-none" size="s" color="indigo" allowHover={allowHover} onClick={onClick}>
+      <PlanBadgeShell size="s" color="indigo" allowHover={allowHover} onClick={onClick}>
         <div className="system-2xs-medium-uppercase">
           <span className="p-1">
             {plan}
           </span>
         </div>
-      </PremiumBadge>
+      </PlanBadgeShell>
     )
   }
   return null
 }
-
-export default PlanBadge

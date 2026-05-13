@@ -42,6 +42,7 @@ const Filter: FC<FilterProps> = ({
       onOpenChange={setOpen}
     >
       <PopoverTrigger
+        nativeButton={false}
         render={(
           <div
             className={cn(

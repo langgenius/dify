@@ -3,6 +3,7 @@ from unittest.mock import ANY, call, patch
 
 import pytest
 from sqlalchemy import delete, func, select
+from sqlalchemy.orm import Session
 
 from core.db.session_factory import session_factory
 from extensions.storage.storage_type import StorageType
@@ -20,7 +21,7 @@ from tasks.remove_app_and_related_data_task import (
 
 
 @pytest.fixture(autouse=True)
-def cleanup_database(db_session_with_containers):
+def cleanup_database(db_session_with_containers: Session):
     db_session_with_containers.execute(delete(WorkflowDraftVariable))
     db_session_with_containers.execute(delete(WorkflowDraftVariableFile))
     db_session_with_containers.execute(delete(UploadFile))
@@ -29,7 +30,7 @@ def cleanup_database(db_session_with_containers):
     db_session_with_containers.commit()
 
 
-def _create_tenant_and_app(db_session_with_containers):
+def _create_tenant_and_app(db_session_with_containers: Session):
     tenant = Tenant(name=f"test_tenant_{uuid.uuid4()}")
     db_session_with_containers.add(tenant)
     db_session_with_containers.flush()
@@ -117,7 +118,7 @@ def _create_offload_data(db_session_with_containers, *, tenant_id: str, app_id: 
 
 
 class TestDeleteDraftVariablesBatch:
-    def test_delete_draft_variables_batch_success(self, db_session_with_containers):
+    def test_delete_draft_variables_batch_success(self, db_session_with_containers: Session):
         """Test successful deletion of draft variables in batches."""
         _, app1 = _create_tenant_and_app(db_session_with_containers)
         _, app2 = _create_tenant_and_app(db_session_with_containers)
@@ -137,7 +138,7 @@ class TestDeleteDraftVariablesBatch:
         assert app1_remaining_count == 0
         assert app2_remaining_count == 100
 
-    def test_delete_draft_variables_batch_empty_result(self, db_session_with_containers):
+    def test_delete_draft_variables_batch_empty_result(self, db_session_with_containers: Session):
         """Test deletion when no draft variables exist for the app."""
         result = delete_draft_variables_batch(str(uuid.uuid4()), 1000)
 
@@ -176,7 +177,7 @@ class TestDeleteDraftVariableOffloadData:
     """Test the Offload data cleanup functionality."""
 
     @patch("extensions.ext_storage.storage")
-    def test_delete_draft_variable_offload_data_success(self, mock_storage, db_session_with_containers):
+    def test_delete_draft_variable_offload_data_success(self, mock_storage, db_session_with_containers: Session):
         """Test successful deletion of offload data."""
         tenant, app = _create_tenant_and_app(db_session_with_containers)
         offload_data = _create_offload_data(db_session_with_containers, tenant_id=tenant.id, app_id=app.id, count=3)

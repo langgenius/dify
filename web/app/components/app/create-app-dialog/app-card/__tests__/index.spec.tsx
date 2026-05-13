@@ -35,7 +35,7 @@ const mockApp: App = {
   copyright: 'Test Corp',
   privacy_policy: null,
   custom_disclaimer: null,
-  category: 'Assistant',
+  categories: ['Assistant'],
   position: 1,
   is_listed: true,
   install_count: 100,
@@ -253,7 +253,7 @@ describe('AppCard', () => {
         template_id: mockApp.app_id,
         template_name: mockApp.app.name,
         template_mode: mockApp.app.mode,
-        template_category: mockApp.category,
+        template_categories: mockApp.categories,
         page: 'studio',
       })
       expect(mockSetShowTryAppPanel).toHaveBeenCalledWith(true, {

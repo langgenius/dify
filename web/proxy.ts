@@ -18,15 +18,16 @@ const wrapResponseWithXFrameOptions = (response: NextResponse, pathname: string)
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl
   const requestHeaders = new Headers(request.headers)
-  const response = NextResponse.next({
-    request: {
-      headers: requestHeaders,
-    },
-  })
 
   const isWhiteListEnabled = !!env.NEXT_PUBLIC_CSP_WHITELIST && process.env.NODE_ENV === 'production'
-  if (!isWhiteListEnabled)
+  if (!isWhiteListEnabled) {
+    const response = NextResponse.next({
+      request: {
+        headers: requestHeaders,
+      },
+    })
     return wrapResponseWithXFrameOptions(response, pathname)
+  }
 
   const whiteList = `${env.NEXT_PUBLIC_CSP_WHITELIST} ${NECESSARY_DOMAIN}`
   const nonce = Buffer.from(crypto.randomUUID()).toString('base64')
@@ -59,6 +60,12 @@ export function proxy(request: NextRequest) {
     'Content-Security-Policy',
     contentSecurityPolicyHeaderValue,
   )
+
+  const response = NextResponse.next({
+    request: {
+      headers: requestHeaders,
+    },
+  })
 
   response.headers.set(
     'Content-Security-Policy',

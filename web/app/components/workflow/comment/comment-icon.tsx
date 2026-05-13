@@ -1,7 +1,7 @@
 'use client'
 
 import type { FC, PointerEvent as ReactPointerEvent } from 'react'
-import type { WorkflowCommentList } from '@/service/workflow-comment'
+import type { WorkflowCommentList } from '@/contract/console/workflow-comment'
 import { memo, useCallback, useMemo, useRef, useState } from 'react'
 import { useReactFlow, useViewport } from 'reactflow'
 import { UserAvatarList } from '@/app/components/base/user-avatar-list'

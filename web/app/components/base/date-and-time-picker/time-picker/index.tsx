@@ -227,7 +227,14 @@ const TimePicker = ({
                   <TimezoneLabel timezone={timezone} inline className="shrink-0 text-xs select-none" />
                 )}
                 <span className={cn('i-ri-time-line h-4 w-4 shrink-0 text-text-quaternary', isOpen ? 'text-text-secondary' : 'group-hover:text-text-secondary', (displayValue || (isOpen && selectedTime)) && !notClearable && 'group-hover:hidden')} />
-                <span className={cn('i-ri-close-circle-fill hidden h-4 w-4 shrink-0 text-text-quaternary', (displayValue || (isOpen && selectedTime)) && !notClearable && 'group-hover:inline-block hover:text-text-secondary')} role="button" aria-label={t('operation.clear', { ns: 'common' })} onClick={handleClear} />
+                <button
+                  type="button"
+                  className={cn('hidden h-4 w-4 shrink-0 border-none bg-transparent p-0 text-text-quaternary hover:text-text-secondary focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden', (displayValue || (isOpen && selectedTime)) && !notClearable && 'group-hover:inline-block')}
+                  aria-label={t('operation.clear', { ns: 'common' })}
+                  onClick={handleClear}
+                >
+                  <span className="i-ri-close-circle-fill h-4 w-4" aria-hidden="true" />
+                </button>
               </div>
             )}
       />

@@ -112,3 +112,24 @@ def test_pause_details_tenant_isolation(app: Flask, monkeypatch: pytest.MonkeyPa
     with pytest.raises(NotFoundError):
         with app.test_request_context("/console/api/workflow/run-1/pause-details", method="GET"):
             response, status = workflow_run_module.ConsoleWorkflowPauseDetailsApi().get(workflow_run_id="run-1")
+
+
+def test_pause_details_returns_empty_response_for_non_paused_run(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+    account = _make_account()
+    _patch_console_guards(monkeypatch, account)
+
+    workflow_run = Mock(spec=WorkflowRun)
+    workflow_run.tenant_id = "tenant-123"
+    workflow_run.status = WorkflowExecutionStatus.RUNNING
+    fake_db = SimpleNamespace(engine=Mock(), session=SimpleNamespace(get=lambda *_: workflow_run))
+    monkeypatch.setattr(workflow_run_module, "db", fake_db)
+
+    with app.test_request_context("/console/api/workflow/run-1/pause-details", method="GET"):
+        response, status = workflow_run_module.ConsoleWorkflowPauseDetailsApi().get(workflow_run_id="run-1")
+
+    assert status == 200
+    assert response == {"paused_at": None, "paused_nodes": []}
+
+
+def test_pause_details_response_schema_is_registered() -> None:
+    assert workflow_run_module.WorkflowPauseDetailsResponse.__name__ in workflow_run_module.console_ns.models

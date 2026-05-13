@@ -115,7 +115,7 @@ vi.mock('@/next/navigation', () => ({
 
 const createAppEntry = (name: string, category: string) => ({
   app_id: name,
-  category,
+  categories: [category],
   app: {
     id: name,
     name,

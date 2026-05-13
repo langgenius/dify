@@ -3,6 +3,7 @@ import io
 from collections.abc import Callable
 from functools import wraps
 from typing import cast
+from uuid import UUID
 
 from flask import request
 from flask_restx import Resource
@@ -12,6 +13,7 @@ from werkzeug.exceptions import BadRequest, NotFound, Unauthorized
 
 from configs import dify_config
 from constants.languages import supported_language
+from controllers.common.schema import register_schema_models
 from controllers.console import console_ns
 from controllers.console.wraps import only_edition_cloud
 from core.db.session_factory import session_factory
@@ -19,8 +21,6 @@ from extensions.ext_database import db
 from libs.token import extract_access_token
 from models.model import App, ExporleBanner, InstalledApp, RecommendedApp, TrialApp
 from services.billing_service import BillingService, LangContentDict
-
-DEFAULT_REF_TEMPLATE_SWAGGER_2_0 = "#/definitions/{model}"
 
 
 class InsertExploreAppPayload(BaseModel):
@@ -58,15 +58,7 @@ class InsertExploreBannerPayload(BaseModel):
     model_config = {"populate_by_name": True}
 
 
-console_ns.schema_model(
-    InsertExploreAppPayload.__name__,
-    InsertExploreAppPayload.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0),
-)
-
-console_ns.schema_model(
-    InsertExploreBannerPayload.__name__,
-    InsertExploreBannerPayload.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0),
-)
+register_schema_models(console_ns, InsertExploreAppPayload, InsertExploreBannerPayload)
 
 
 def admin_required[**P, R](view: Callable[P, R]) -> Callable[P, R]:
@@ -190,7 +182,7 @@ class InsertExploreAppApi(Resource):
     @console_ns.response(204, "App removed successfully")
     @only_edition_cloud
     @admin_required
-    def delete(self, app_id):
+    def delete(self, app_id: UUID):
         with session_factory.create_session() as session:
             recommended_app = session.execute(
                 select(RecommendedApp).where(RecommendedApp.app_id == str(app_id))
@@ -301,15 +293,7 @@ class BatchAddNotificationAccountsPayload(BaseModel):
     user_email: list[str] = Field(..., description="List of account email addresses")
 
 
-console_ns.schema_model(
-    UpsertNotificationPayload.__name__,
-    UpsertNotificationPayload.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0),
-)
-
-console_ns.schema_model(
-    BatchAddNotificationAccountsPayload.__name__,
-    BatchAddNotificationAccountsPayload.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0),
-)
+register_schema_models(console_ns, UpsertNotificationPayload, BatchAddNotificationAccountsPayload)
 
 
 @console_ns.route("/admin/upsert_notification")
@@ -411,11 +395,11 @@ class BatchAddNotificationAccountsApi(Resource):
             raise BadRequest("Invalid file type. Only CSV (.csv) and TXT (.txt) files are allowed.")
 
         try:
-            content = file.read().decode("utf-8")
+            content = file.stream.read().decode("utf-8")
         except UnicodeDecodeError:
             try:
-                file.seek(0)
-                content = file.read().decode("gbk")
+                file.stream.seek(0)
+                content = file.stream.read().decode("gbk")
             except UnicodeDecodeError:
                 raise BadRequest("Unable to decode the file. Please use UTF-8 or GBK encoding.")
 

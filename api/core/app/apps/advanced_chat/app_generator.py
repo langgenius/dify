@@ -253,7 +253,20 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
     ):
         """
         Resume a paused advanced chat execution.
+
+        ``trace_manager`` is transient and excluded from generate-entity serialization,
+        so resumed executions rebuild it here before persistence layers receive the entity.
         """
+        if application_generate_entity.trace_manager is None:
+            application_generate_entity = application_generate_entity.model_copy(
+                update={
+                    "trace_manager": TraceQueueManager(
+                        app_id=app_model.id,
+                        user_id=user.id if isinstance(user, Account) else user.session_id,
+                    )
+                }
+            )
+
         return self._generate(
             workflow=workflow,
             user=user,

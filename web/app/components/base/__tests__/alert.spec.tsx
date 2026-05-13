@@ -25,8 +25,7 @@ describe('Alert', () => {
 
     it('should render the close icon', () => {
       render(<Alert {...defaultProps} />)
-      const closeIcon = screen.getByTestId('close-icon')
-      expect(closeIcon).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'common.operation.close' })).toBeInTheDocument()
     })
   })
 
@@ -66,7 +65,7 @@ describe('Alert', () => {
     it('should call onHide when close button is clicked', () => {
       const onHide = vi.fn()
       render(<Alert {...defaultProps} onHide={onHide} />)
-      const closeButton = screen.getByTestId('close-icon')
+      const closeButton = screen.getByRole('button', { name: 'common.operation.close' })
       fireEvent.click(closeButton)
       expect(onHide).toHaveBeenCalledTimes(1)
     })

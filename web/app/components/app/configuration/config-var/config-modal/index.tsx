@@ -2,13 +2,13 @@
 import type { ChangeEvent, FC } from 'react'
 import type { Item as SelectItem } from './type-select'
 import type { InputVar, InputVarType, MoreInfo } from '@/app/components/workflow/types'
+import { Dialog, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
 import { toast } from '@langgenius/dify-ui/toast'
 import * as React from 'react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
 import { useStore as useAppStore } from '@/app/components/app/store'
-import Modal from '@/app/components/base/modal'
 import ConfigContext from '@/context/debug-configuration'
 import { AppModeEnum } from '@/types/app'
 import { checkKeys, getNewVarInWorkflow, replaceSpaceWithUnderscoreInVarNameInput } from '@/utils/var'
@@ -141,35 +141,50 @@ const ConfigModal: FC<IConfigModalProps> = ({
   }
 
   return (
-    <Modal
-      title={t(`variableConfig.${isCreate ? 'addModalTitle' : 'editModalTitle'}`, { ns: 'appDebug' })}
-      isShow={isShow}
-      onClose={onClose}
+    <Dialog
+      open={isShow}
+      onOpenChange={(open) => {
+        if (!open)
+          onClose()
+      }}
     >
-      <div className="mb-8" ref={modalRef} tabIndex={-1}>
-        <ConfigModalFormFields
-          checkboxDefaultSelectValue={checkboxDefaultSelectValue}
-          isStringInput={isStringInput}
-          jsonSchemaStr={jsonSchemaStr}
-          maxLength={max_length}
-          modelId={modelConfig.model_id}
-          onFilePayloadChange={payload => setTempPayload(payload as InputVar)}
-          onJSONSchemaChange={handleJSONSchemaChange}
-          onPayloadChange={handlePayloadChange}
-          onTypeChange={handleTypeChange}
-          onVarKeyBlur={handleVarKeyBlur}
-          onVarNameChange={handleVarNameChange}
-          options={options}
-          selectOptions={selectOptions}
-          tempPayload={tempPayload}
-          t={t}
-        />
-      </div>
-      <ModalFoot
-        onConfirm={handleConfirm}
-        onCancel={onClose}
-      />
-    </Modal>
+      <DialogContent className="flex max-h-[calc(100dvh-2rem)] flex-col overflow-hidden! border-none p-0! text-left align-middle">
+        <DialogTitle className="shrink-0 px-6 pt-6 title-2xl-semi-bold text-text-primary">
+          {t(`variableConfig.${isCreate ? 'addModalTitle' : 'editModalTitle'}`, { ns: 'appDebug' })}
+        </DialogTitle>
+
+        <div
+          ref={modalRef}
+          tabIndex={-1}
+          data-testid="config-modal-scroll-area"
+          className="min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto px-6 py-4 pb-8"
+        >
+          <ConfigModalFormFields
+            checkboxDefaultSelectValue={checkboxDefaultSelectValue}
+            isStringInput={isStringInput}
+            jsonSchemaStr={jsonSchemaStr}
+            maxLength={max_length}
+            modelId={modelConfig.model_id}
+            onFilePayloadChange={payload => setTempPayload(payload as InputVar)}
+            onJSONSchemaChange={handleJSONSchemaChange}
+            onPayloadChange={handlePayloadChange}
+            onTypeChange={handleTypeChange}
+            onVarKeyBlur={handleVarKeyBlur}
+            onVarNameChange={handleVarNameChange}
+            options={options}
+            selectOptions={selectOptions}
+            tempPayload={tempPayload}
+            t={t}
+          />
+        </div>
+        <div className="shrink-0 px-6 pt-2 pb-6">
+          <ModalFoot
+            onConfirm={handleConfirm}
+            onCancel={onClose}
+          />
+        </div>
+      </DialogContent>
+    </Dialog>
   )
 }
 export default React.memo(ConfigModal)

@@ -45,7 +45,13 @@ const ResultText: FC<ResultTextProps> = ({
           <div className="mr-2">{t('resultEmpty.title', { ns: 'runLog' })}</div>
           <div>
             {t('resultEmpty.tipLeft', { ns: 'runLog' })}
-            <span onClick={onClick} className="cursor-pointer text-primary-600">{t('resultEmpty.link', { ns: 'runLog' })}</span>
+            <button
+              type="button"
+              onClick={onClick}
+              className="inline cursor-pointer border-none bg-transparent p-0 text-left text-primary-600"
+            >
+              {t('resultEmpty.link', { ns: 'runLog' })}
+            </button>
             {t('resultEmpty.tipRight', { ns: 'runLog' })}
           </div>
         </div>

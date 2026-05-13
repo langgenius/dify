@@ -1,11 +1,15 @@
 'use client'
-import { Menu, MenuButton, MenuItem, MenuItems, Transition } from '@headlessui/react'
 import { cn } from '@langgenius/dify-ui/cn'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@langgenius/dify-ui/dropdown-menu'
 import {
   RiArrowDownSLine,
 } from '@remixicon/react'
 import { useSuspenseQuery } from '@tanstack/react-query'
-import { Fragment } from 'react'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
 import { useAppContext } from '@/context/app-context'
@@ -31,39 +35,29 @@ const TransferOwnership = ({ onOperate }: Props) => {
   }
 
   return (
-    <Menu as="div" className="relative h-full w-full">
-      {
-        ({ open }) => (
-          <>
-            <MenuButton className={cn('group flex h-full w-full cursor-pointer items-center justify-between px-3 system-sm-regular text-text-secondary hover:bg-state-base-hover', open && 'bg-state-base-hover')}>
-              {t('members.owner', { ns: 'common' })}
-              <RiArrowDownSLine className={cn('h-4 w-4 group-hover:block', open ? 'block' : 'hidden')} />
-            </MenuButton>
-            <Transition
-              as={Fragment}
-              enter="transition ease-out duration-100"
-              enterFrom="transform opacity-0 scale-95"
-              enterTo="transform opacity-100 scale-100"
-              leave="transition ease-in duration-75"
-              leaveFrom="transform opacity-100 scale-100"
-              leaveTo="transform opacity-0 scale-95"
-            >
-              <MenuItems
-                className={cn('absolute top-[52px] right-0 z-10 origin-top-right rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-xs')}
-              >
-                <div className="p-1">
-                  <MenuItem>
-                    <div className="flex cursor-pointer rounded-lg px-3 py-2 hover:bg-state-base-hover" onClick={onOperate}>
-                      <div className="system-md-regular whitespace-nowrap text-text-secondary">{t('members.transferOwnership', { ns: 'common' })}</div>
-                    </div>
-                  </MenuItem>
-                </div>
-              </MenuItems>
-            </Transition>
-          </>
-        )
-      }
-    </Menu>
+    <DropdownMenu modal={false}>
+      <DropdownMenuTrigger
+        className={cn(
+          'group flex h-full w-full cursor-pointer items-center justify-between px-3 system-sm-regular text-text-secondary outline-hidden',
+          'hover:bg-state-base-hover focus-visible:bg-state-base-hover focus-visible:ring-1 focus-visible:ring-components-input-border-hover data-popup-open:bg-state-base-hover',
+        )}
+      >
+        {t('members.owner', { ns: 'common' })}
+        <RiArrowDownSLine className="hidden h-4 w-4 group-hover:block group-data-popup-open:block" />
+      </DropdownMenuTrigger>
+      <DropdownMenuContent
+        placement="bottom-end"
+        sideOffset={4}
+        popupClassName="bg-components-panel-bg-blur p-1 backdrop-blur-xs"
+      >
+        <DropdownMenuItem
+          className="h-auto px-3 py-2"
+          onClick={onOperate}
+        >
+          <span className="system-md-regular whitespace-nowrap text-text-secondary">{t('members.transferOwnership', { ns: 'common' })}</span>
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
   )
 }
 

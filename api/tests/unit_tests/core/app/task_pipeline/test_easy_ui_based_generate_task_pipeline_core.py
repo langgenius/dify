@@ -143,7 +143,7 @@ class TestEasyUiBasedGenerateTaskPipeline:
 
         assert pipeline._listen_audio_msg(publisher=None, task_id="task") is None
 
-    def test_process_stream_response_handles_chunks_and_end(self, monkeypatch):
+    def test_process_stream_response_handles_chunks_and_end(self, monkeypatch: pytest.MonkeyPatch):
         conversation = SimpleNamespace(id="conv", mode=AppMode.CHAT)
         message = SimpleNamespace(id="msg", created_at=datetime.now(UTC))
 
@@ -245,7 +245,7 @@ class TestEasyUiBasedGenerateTaskPipeline:
         assert any(isinstance(event, QueueLLMChunkEvent) for event in events)
         assert any(isinstance(event, QueueStopEvent) for event in events)
 
-    def test_handle_stop_updates_usage(self, monkeypatch):
+    def test_handle_stop_updates_usage(self, monkeypatch: pytest.MonkeyPatch):
         conversation = SimpleNamespace(id="conv", mode=AppMode.CHAT)
         message = SimpleNamespace(id="msg", created_at=datetime.now(UTC))
 
@@ -313,7 +313,7 @@ class TestEasyUiBasedGenerateTaskPipeline:
         assert pipeline._task_state.llm_result.usage.prompt_tokens == 10
         assert pipeline._task_state.llm_result.usage.completion_tokens == 5
 
-    def test_record_files_builds_file_payloads(self, monkeypatch):
+    def test_record_files_builds_file_payloads(self, monkeypatch: pytest.MonkeyPatch):
         conversation = SimpleNamespace(id="conv", mode=AppMode.CHAT)
         message = SimpleNamespace(id="msg", created_at=datetime.now(UTC))
 
@@ -405,7 +405,7 @@ class TestEasyUiBasedGenerateTaskPipeline:
         assert files
         assert len(files) == 3
 
-    def test_process_stream_response_handles_annotation_and_error(self, monkeypatch):
+    def test_process_stream_response_handles_annotation_and_error(self, monkeypatch: pytest.MonkeyPatch):
         conversation = SimpleNamespace(id="conv", mode=AppMode.CHAT)
         message = SimpleNamespace(id="msg", created_at=datetime.now(UTC))
 
@@ -472,7 +472,7 @@ class TestEasyUiBasedGenerateTaskPipeline:
         assert isinstance(responses[-1], ValueError)
         assert pipeline._task_state.llm_result.message.content == "annotatedagent"
 
-    def test_agent_thought_to_stream_response_returns_payload(self, monkeypatch):
+    def test_agent_thought_to_stream_response_returns_payload(self, monkeypatch: pytest.MonkeyPatch):
         conversation = SimpleNamespace(id="conv", mode=AppMode.CHAT)
         message = SimpleNamespace(id="msg", created_at=datetime.now(UTC))
 
@@ -681,7 +681,7 @@ class TestEasyUiBasedGenerateTaskPipeline:
 
         assert responses == ["payload"]
 
-    def test_wrapper_process_stream_response_with_tts_publisher(self, monkeypatch):
+    def test_wrapper_process_stream_response_with_tts_publisher(self, monkeypatch: pytest.MonkeyPatch):
         conversation = SimpleNamespace(id="conv", mode=AppMode.CHAT)
         message = SimpleNamespace(id="msg", created_at=datetime.now(UTC))
         entity = _make_entity(ChatAppGenerateEntity, AppMode.CHAT)
@@ -715,7 +715,7 @@ class TestEasyUiBasedGenerateTaskPipeline:
         assert responses[1] == "payload"
         assert isinstance(responses[-1], MessageAudioEndStreamResponse)
 
-    def test_wrapper_process_stream_response_timeout_yields_audio_chunk(self, monkeypatch):
+    def test_wrapper_process_stream_response_timeout_yields_audio_chunk(self, monkeypatch: pytest.MonkeyPatch):
         conversation = SimpleNamespace(id="conv", mode=AppMode.CHAT)
         message = SimpleNamespace(id="msg", created_at=datetime.now(UTC))
         entity = _make_entity(ChatAppGenerateEntity, AppMode.CHAT)
@@ -756,7 +756,7 @@ class TestEasyUiBasedGenerateTaskPipeline:
         assert any(isinstance(item, MessageAudioStreamResponse) for item in responses)
         assert isinstance(responses[-1], MessageAudioEndStreamResponse)
 
-    def test_process_stream_response_handles_stop_event_and_output_replacement(self, monkeypatch):
+    def test_process_stream_response_handles_stop_event_and_output_replacement(self, monkeypatch: pytest.MonkeyPatch):
         conversation = SimpleNamespace(id="conv", mode=AppMode.CHAT)
         message = SimpleNamespace(id="msg", created_at=datetime.now(UTC))
         pipeline = EasyUIBasedGenerateTaskPipeline(
@@ -896,7 +896,7 @@ class TestEasyUiBasedGenerateTaskPipeline:
 
         assert list(pipeline._process_stream_response(publisher=None)) == []
 
-    def test_save_message_persists_fields_and_emits_trace(self, monkeypatch):
+    def test_save_message_persists_fields_and_emits_trace(self, monkeypatch: pytest.MonkeyPatch):
         conversation = SimpleNamespace(id="conv", mode=AppMode.CHAT)
         message = SimpleNamespace(id="msg", created_at=datetime.now(UTC))
         pipeline = EasyUIBasedGenerateTaskPipeline(
@@ -981,7 +981,7 @@ class TestEasyUiBasedGenerateTaskPipeline:
         with pytest.raises(ValueError, match="Conversation conv not found"):
             pipeline._save_message(session=session)
 
-    def test_message_end_to_stream_response_includes_usage_metadata(self, monkeypatch):
+    def test_message_end_to_stream_response_includes_usage_metadata(self, monkeypatch: pytest.MonkeyPatch):
         conversation = SimpleNamespace(id="conv", mode=AppMode.CHAT)
         message = SimpleNamespace(id="msg", created_at=datetime.now(UTC))
         pipeline = EasyUIBasedGenerateTaskPipeline(
@@ -1021,7 +1021,7 @@ class TestEasyUiBasedGenerateTaskPipeline:
         assert response.id == "msg"
         assert response.metadata["usage"]["prompt_tokens"] == 1
 
-    def test_record_files_returns_none_when_message_has_no_files(self, monkeypatch):
+    def test_record_files_returns_none_when_message_has_no_files(self, monkeypatch: pytest.MonkeyPatch):
         conversation = SimpleNamespace(id="conv", mode=AppMode.CHAT)
         message = SimpleNamespace(id="msg", created_at=datetime.now(UTC))
         pipeline = EasyUIBasedGenerateTaskPipeline(
@@ -1059,7 +1059,7 @@ class TestEasyUiBasedGenerateTaskPipeline:
 
         assert response.files is None
 
-    def test_record_files_handles_local_fallback_and_tool_url_variants(self, monkeypatch):
+    def test_record_files_handles_local_fallback_and_tool_url_variants(self, monkeypatch: pytest.MonkeyPatch):
         conversation = SimpleNamespace(id="conv", mode=AppMode.CHAT)
         message = SimpleNamespace(id="msg", created_at=datetime.now(UTC))
         pipeline = EasyUIBasedGenerateTaskPipeline(
@@ -1155,7 +1155,7 @@ class TestEasyUiBasedGenerateTaskPipeline:
         assert response.id == "msg"
         assert response.answer == "hello"
 
-    def test_agent_thought_to_stream_response_returns_none_when_not_found(self, monkeypatch):
+    def test_agent_thought_to_stream_response_returns_none_when_not_found(self, monkeypatch: pytest.MonkeyPatch):
         conversation = SimpleNamespace(id="conv", mode=AppMode.CHAT)
         message = SimpleNamespace(id="msg", created_at=datetime.now(UTC))
         pipeline = EasyUIBasedGenerateTaskPipeline(

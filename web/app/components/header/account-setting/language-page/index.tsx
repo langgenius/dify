@@ -85,7 +85,7 @@ export default function LanguagePage() {
           <SelectTrigger size="large">
             {selectedLanguage?.name ?? t('placeholder.select', { ns: 'common' })}
           </SelectTrigger>
-          <SelectContent popupClassName="w-(--anchor-width)">
+          <SelectContent>
             {languageOptions.map(item => (
               <SelectItem key={item.value} value={item.value}>
                 <SelectItemText>{item.name}</SelectItemText>
@@ -111,7 +111,7 @@ export default function LanguagePage() {
           <SelectTrigger size="large">
             {selectedTimezone?.name ?? t('placeholder.select', { ns: 'common' })}
           </SelectTrigger>
-          <SelectContent popupClassName="w-(--anchor-width)">
+          <SelectContent>
             {timezones.map(item => (
               <SelectItem key={item.value} value={String(item.value)}>
                 <SelectItemText>{item.name}</SelectItemText>

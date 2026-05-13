@@ -6,8 +6,8 @@ import { RiCloseLine, RiSparklingFill } from '@remixicon/react'
 import * as React from 'react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
+import { Infotip } from '@/app/components/base/infotip'
 import Textarea from '@/app/components/base/textarea'
-import Tooltip from '@/app/components/base/tooltip'
 import ModelParameterModal from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
 
 type ModelInfo = {
@@ -44,9 +44,14 @@ const PromptEditor: FC<PromptEditorProps> = ({
 
   return (
     <div className="relative flex w-[480px] flex-col rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-2xl shadow-shadow-shadow-9">
-      <div className="absolute top-2.5 right-2.5 flex h-8 w-8 items-center justify-center" onClick={onClose}>
-        <RiCloseLine className="h-4 w-4 text-text-tertiary" />
-      </div>
+      <button
+        type="button"
+        aria-label={t('operation.close', { ns: 'common' })}
+        className="absolute top-2.5 right-2.5 flex h-8 w-8 items-center justify-center border-none bg-transparent p-0"
+        onClick={onClose}
+      >
+        <RiCloseLine className="h-4 w-4 text-text-tertiary" aria-hidden="true" />
+      </button>
       {/* Title */}
       <div className="flex flex-col gap-y-[0.5px] px-3 pt-3.5 pb-1">
         <div className="flex pr-8 pl-1 system-xl-semibold text-text-primary">
@@ -75,7 +80,13 @@ const PromptEditor: FC<PromptEditorProps> = ({
       <div className="flex flex-col gap-y-1 px-4 py-2">
         <div className="flex h-6 items-center system-sm-semibold-uppercase text-text-secondary">
           <span>{t('nodes.llm.jsonSchema.instruction', { ns: 'workflow' })}</span>
-          <Tooltip popupContent={t('nodes.llm.jsonSchema.promptTooltip', { ns: 'workflow' })} />
+          <Infotip
+            aria-label={t('nodes.llm.jsonSchema.promptTooltip', { ns: 'workflow' })}
+            className="h-3.5 w-3.5"
+            iconClassName="h-full w-full"
+          >
+            {t('nodes.llm.jsonSchema.promptTooltip', { ns: 'workflow' })}
+          </Infotip>
         </div>
         <div className="flex items-center">
           <Textarea

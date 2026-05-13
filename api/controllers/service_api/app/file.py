@@ -58,7 +58,7 @@ class FileApi(Resource):
         try:
             upload_file = FileService(db.engine).upload_file(
                 filename=file.filename,
-                content=file.read(),
+                content=file.stream.read(),
                 mimetype=file.mimetype,
                 user=end_user,
             )

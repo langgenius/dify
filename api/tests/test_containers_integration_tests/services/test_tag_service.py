@@ -1099,38 +1099,39 @@ class TestTagService:
             db_session_with_containers, mock_external_service_dependencies
         )
 
-        # Create tag
-        tag = self._create_test_tags(
-            db_session_with_containers, mock_external_service_dependencies, tenant.id, "knowledge", 1
-        )[0]
+        # Create tags
+        tags = self._create_test_tags(
+            db_session_with_containers, mock_external_service_dependencies, tenant.id, "knowledge", 2
+        )
 
-        # Create dataset and bind tag
+        # Create dataset and bind tags
         dataset = self._create_test_dataset(db_session_with_containers, mock_external_service_dependencies, tenant.id)
         self._create_test_tag_bindings(
-            db_session_with_containers, mock_external_service_dependencies, [tag], dataset.id, tenant.id
+            db_session_with_containers, mock_external_service_dependencies, tags, dataset.id, tenant.id
         )
 
-        # Verify binding exists before deletion
-
-        binding_before = (
+        # Verify bindings exist before deletion
+        bindings_before = (
             db_session_with_containers.query(TagBinding)
-            .where(TagBinding.tag_id == tag.id, TagBinding.target_id == dataset.id)
-            .first()
+            .where(TagBinding.tag_id.in_([tag.id for tag in tags]), TagBinding.target_id == dataset.id)
+            .all()
         )
-        assert binding_before is not None
+        assert len(bindings_before) == 2
 
         # Act: Execute the method under test
-        delete_payload = TagBindingDeletePayload(type="knowledge", target_id=dataset.id, tag_id=tag.id)
+        delete_payload = TagBindingDeletePayload(
+            type="knowledge", target_id=dataset.id, tag_ids=[tag.id for tag in tags]
+        )
         TagService.delete_tag_binding(delete_payload)
 
         # Assert: Verify the expected outcomes
-        # Verify tag binding was deleted
-        binding_after = (
+        # Verify tag bindings were deleted
+        bindings_after = (
             db_session_with_containers.query(TagBinding)
-            .where(TagBinding.tag_id == tag.id, TagBinding.target_id == dataset.id)
-            .first()
+            .where(TagBinding.tag_id.in_([tag.id for tag in tags]), TagBinding.target_id == dataset.id)
+            .all()
         )
-        assert binding_after is None
+        assert len(bindings_after) == 0
 
     def test_delete_tag_binding_non_existent_binding(
         self, db_session_with_containers: Session, mock_external_service_dependencies
@@ -1156,7 +1157,7 @@ class TestTagService:
         app = self._create_test_app(db_session_with_containers, mock_external_service_dependencies, tenant.id)
 
         # Act: Try to delete non-existent binding
-        delete_payload = TagBindingDeletePayload(type="app", target_id=app.id, tag_id=tag.id)
+        delete_payload = TagBindingDeletePayload(type="app", target_id=app.id, tag_ids=[tag.id])
         TagService.delete_tag_binding(delete_payload)
 
         # Assert: Verify the expected outcomes

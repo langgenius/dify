@@ -1,18 +1,9 @@
-import type { FC } from 'react'
-import type {
-  DefaultModel,
-  Model,
-  ModelItem,
-} from '../declarations'
+import type { DefaultModel, Model, ModelItem } from '../declarations'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useTranslation } from 'react-i18next'
 import { useProviderContext } from '@/context/provider-context'
-import {
-  DERIVED_MODEL_STATUS_BADGE_I18N,
-  DERIVED_MODEL_STATUS_TOOLTIP_I18N,
-  deriveModelStatus,
-} from '../derive-model-status'
+import { DERIVED_MODEL_STATUS_BADGE_I18N, DERIVED_MODEL_STATUS_TOOLTIP_I18N, deriveModelStatus } from '../derive-model-status'
 import ModelIcon from '../model-icon'
 import ModelName from '../model-name'
 import { useCredentialPanelState } from '../provider-added-card/use-credential-panel-state'
@@ -28,7 +19,7 @@ type ModelSelectorTriggerProps = {
   showDeprecatedWarnIcon?: boolean
 }
 
-const ModelSelectorTrigger: FC<ModelSelectorTriggerProps> = ({
+function ModelSelectorTrigger({
   currentProvider,
   currentModel,
   defaultModel,
@@ -37,7 +28,7 @@ const ModelSelectorTrigger: FC<ModelSelectorTriggerProps> = ({
   className,
   deprecatedClassName,
   showDeprecatedWarnIcon = true,
-}) => {
+}: ModelSelectorTriggerProps) {
   const { t } = useTranslation()
   const { modelProviders } = useProviderContext()
 
@@ -100,7 +91,7 @@ const ModelSelectorTrigger: FC<ModelSelectorTriggerProps> = ({
             />
           )}
 
-      <div className={cn('flex grow items-center gap-1 truncate px-1 py-[3px]', isDeprecated && deprecatedClassName)}>
+      <div className={cn('flex grow items-center gap-1 truncate px-1 py-0.75', isDeprecated && deprecatedClassName)}>
         {isSelected && (
           <ModelName
             className="grow"
@@ -127,8 +118,8 @@ const ModelSelectorTrigger: FC<ModelSelectorTriggerProps> = ({
               render={(
                 <div
                   className={cn(
-                    'flex shrink-0 items-center gap-[3px] rounded-md border border-text-warning px-[5px] py-0.5',
-                    isCreditsExhausted && 'min-w-[20px] justify-center bg-components-badge-bg-dimm',
+                    'flex shrink-0 items-center gap-0.75 rounded-md border border-text-warning px-1.25 py-0.5',
+                    isCreditsExhausted && 'min-w-5 justify-center bg-components-badge-bg-dimm',
                   )}
                 >
                   <span className="i-ri-alert-fill h-3 w-3 text-text-warning" />
@@ -150,7 +141,7 @@ const ModelSelectorTrigger: FC<ModelSelectorTriggerProps> = ({
           <Tooltip>
             <TooltipTrigger
               render={(
-                <div className="flex shrink-0 items-center gap-[3px] rounded-md border border-text-warning bg-components-badge-bg-dimm px-[5px] py-0.5">
+                <div className="flex shrink-0 items-center gap-0.75 rounded-md border border-text-warning bg-components-badge-bg-dimm px-1.25 py-0.5">
                   <span className="i-ri-alert-fill h-3 w-3 text-text-warning" />
                   <span className="system-xs-medium whitespace-nowrap text-text-warning">
                     {deprecatedStatusLabel}

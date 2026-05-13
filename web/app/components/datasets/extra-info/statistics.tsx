@@ -1,10 +1,10 @@
 import type { RelatedAppResponse } from '@/models/datasets'
+import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { RiInformation2Line } from '@remixicon/react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import Divider from '@/app/components/base/divider'
 import LinkedAppsPanel from '@/app/components/base/linked-apps-panel'
-import Tooltip from '@/app/components/base/tooltip'
 import NoLinkedAppsPanel from '../no-linked-apps-panel'
 
 type StatisticsProps = {
@@ -40,26 +40,34 @@ const Statistics = ({
         <div className="system-md-semibold-uppercase text-text-secondary">
           {relatedAppsTotal ?? '--'}
         </div>
-        <Tooltip
-          position="top-start"
-          noDecoration
-          needsDelay
-          popupContent={
-            hasRelatedApps
+        <Popover>
+          <PopoverTrigger
+            openOnHover
+            aria-label={t('datasetMenus.relatedApp', { ns: 'common' })}
+            render={(
+              <button
+                type="button"
+                className="flex cursor-pointer items-center gap-x-0.5 rounded-sm system-2xs-medium-uppercase text-text-tertiary outline-hidden hover:text-text-secondary focus-visible:ring-1 focus-visible:ring-components-input-border-hover"
+              >
+                <span>{t('datasetMenus.relatedApp', { ns: 'common' })}</span>
+                <RiInformation2Line className="size-3" />
+              </button>
+            )}
+          />
+          <PopoverContent
+            placement="top-start"
+            popupClassName="border-0 bg-transparent p-0 shadow-none"
+          >
+            {hasRelatedApps
               ? (
                   <LinkedAppsPanel
                     relatedApps={relatedApps.data}
                     isMobile={!expand}
                   />
                 )
-              : <NoLinkedAppsPanel />
-          }
-        >
-          <div className="flex cursor-pointer items-center gap-x-0.5 system-2xs-medium-uppercase text-text-tertiary">
-            <span>{t('datasetMenus.relatedApp', { ns: 'common' })}</span>
-            <RiInformation2Line className="size-3" />
-          </div>
-        </Tooltip>
+              : <NoLinkedAppsPanel />}
+          </PopoverContent>
+        </Popover>
       </div>
     </div>
   )

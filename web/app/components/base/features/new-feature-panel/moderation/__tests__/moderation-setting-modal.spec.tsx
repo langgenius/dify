@@ -1,5 +1,6 @@
 import type { ModerationConfig } from '@/models/debug'
 import { act, fireEvent, render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import * as i18n from 'react-i18next'
 import ModerationSettingModal from '../moderation-setting-modal'
 
@@ -181,10 +182,10 @@ describe('ModerationSettingModal', () => {
       />,
     )
 
-    const closeButton = document.querySelector('div[role="button"][tabindex="0"]') as HTMLElement
-    expect(closeButton)!.toBeInTheDocument()
+    const user = userEvent.setup()
+    const closeButton = screen.getByRole('button', { name: 'common.operation.close' })
     closeButton.focus()
-    fireEvent.keyDown(closeButton, { key: 'Enter' })
+    await user.keyboard('{Enter}')
 
     expect(onCancel).toHaveBeenCalledTimes(1)
   })
@@ -199,10 +200,10 @@ describe('ModerationSettingModal', () => {
       />,
     )
 
-    const closeButton = document.querySelector('div[role="button"][tabindex="0"]') as HTMLElement
-    expect(closeButton)!.toBeInTheDocument()
+    const user = userEvent.setup()
+    const closeButton = screen.getByRole('button', { name: 'common.operation.close' })
     closeButton.focus()
-    fireEvent.keyDown(closeButton, { key: ' ' })
+    await user.keyboard(' ')
 
     expect(onCancel).toHaveBeenCalledTimes(1)
   })
@@ -217,8 +218,7 @@ describe('ModerationSettingModal', () => {
       />,
     )
 
-    const closeButton = document.querySelector('div[role="button"][tabindex="0"]') as HTMLElement
-    expect(closeButton)!.toBeInTheDocument()
+    const closeButton = screen.getByRole('button', { name: 'common.operation.close' })
     closeButton.focus()
     fireEvent.keyDown(closeButton, { key: 'Escape' })
 

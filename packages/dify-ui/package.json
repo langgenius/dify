@@ -5,10 +5,6 @@
   "private": true,
   "exports": {
     "./styles.css": "./src/styles/styles.css",
-    "./tailwind-preset": {
-      "types": "./src/tailwind-preset.ts",
-      "import": "./src/tailwind-preset.ts"
-    },
     "./cn": {
       "types": "./src/cn.ts",
       "import": "./src/cn.ts"
@@ -16,6 +12,10 @@
     "./alert-dialog": {
       "types": "./src/alert-dialog/index.tsx",
       "import": "./src/alert-dialog/index.tsx"
+    },
+    "./autocomplete": {
+      "types": "./src/autocomplete/index.tsx",
+      "import": "./src/autocomplete/index.tsx"
     },
     "./avatar": {
       "types": "./src/avatar/index.tsx",
@@ -25,6 +25,10 @@
       "types": "./src/button/index.tsx",
       "import": "./src/button/index.tsx"
     },
+    "./combobox": {
+      "types": "./src/combobox/index.tsx",
+      "import": "./src/combobox/index.tsx"
+    },
     "./context-menu": {
       "types": "./src/context-menu/index.tsx",
       "import": "./src/context-menu/index.tsx"
@@ -32,6 +36,10 @@
     "./dialog": {
       "types": "./src/dialog/index.tsx",
       "import": "./src/dialog/index.tsx"
+    },
+    "./drawer": {
+      "types": "./src/drawer/index.tsx",
+      "import": "./src/drawer/index.tsx"
     },
     "./dropdown-menu": {
       "types": "./src/dropdown-menu/index.tsx",
@@ -68,6 +76,14 @@
     "./switch": {
       "types": "./src/switch/index.tsx",
       "import": "./src/switch/index.tsx"
+    },
+    "./tabs": {
+      "types": "./src/tabs/index.tsx",
+      "import": "./src/tabs/index.tsx"
+    },
+    "./toggle-group": {
+      "types": "./src/toggle-group/index.tsx",
+      "import": "./src/toggle-group/index.tsx"
     },
     "./toast": {
       "types": "./src/toast/index.tsx",
@@ -107,6 +123,7 @@
     "@storybook/addon-themes": "catalog:",
     "@storybook/react-vite": "catalog:",
     "@tailwindcss/vite": "catalog:",
+    "@tanstack/react-virtual": "catalog:",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
     "@typescript/native-preview": "catalog:",
