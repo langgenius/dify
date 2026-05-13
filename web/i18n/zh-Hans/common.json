@@ -218,8 +218,6 @@
   "members.adminTip": "能够建立应用程序和管理团队设置",
   "members.assignRoles": "分配角色",
   "members.assignRolesModal.description": "为该成员选择要分配的角色，所选角色的权限将被合并。",
-  "members.assignRolesModal.empty": "没有匹配的角色",
-  "members.assignRolesModal.searchPlaceholder": "搜索角色…",
   "members.assignRolesModal.selectedCount": "已选 {{count}} 项",
   "members.assignRolesModal.title": "分配角色",
   "members.builder": "构建器",

@@ -219,8 +219,6 @@
   "members.adminTip": "Can build apps & manage team settings",
   "members.assignRoles": "Assign Roles",
   "members.assignRolesModal.description": "Select roles to assign to this member. All permissions from selected roles will be combined.",
-  "members.assignRolesModal.empty": "No matching roles",
-  "members.assignRolesModal.searchPlaceholder": "Search roles...",
   "members.assignRolesModal.selectedCount": "{{count}} selected",
   "members.assignRolesModal.title": "Assign Roles",
   "members.builder": "Builder",

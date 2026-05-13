@@ -1,12 +1,14 @@
+import type { InfiniteData } from '@tanstack/react-query'
 import type { RoleListGroup } from './role-list'
 import type { RoleListResponse } from '@/models/access-control'
 
-export const formatRoleGroups = (roleListResponse: RoleListResponse | undefined): RoleListGroup[] => {
+export const formatRoleGroups = (roleListResponse: InfiniteData<RoleListResponse> | undefined): RoleListGroup[] => {
   if (!roleListResponse)
     return []
+  const roles = roleListResponse.pages.flatMap(page => page.data)
   const result: RoleListGroup[] = []
-  const builtinRoles = roleListResponse.data.filter(role => role.is_builtin)
-  const customRoles = roleListResponse.data.filter(role => !role.is_builtin)
+  const builtinRoles = roles.filter(role => role.is_builtin)
+  const customRoles = roles.filter(role => !role.is_builtin)
   if (builtinRoles.length > 0) {
     result.push({
       id: 'builtin',

@@ -173,7 +173,6 @@ export const ProviderContextProvider = ({
       isAllowTransferWorkspace,
       isAllowPublishAsCustomKnowledgePipelineTemplate,
       humanInputEmailDeliveryEnabled,
-      enableAccessControl: true, // todo: get from backend
     }}
     >
       {children}

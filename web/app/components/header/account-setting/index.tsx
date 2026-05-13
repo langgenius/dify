@@ -3,7 +3,8 @@ import type { AccountSettingTab } from '@/app/components/header/account-setting/
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { ScrollArea } from '@langgenius/dify-ui/scroll-area'
-import { useCallback, useState } from 'react'
+import { useSuspenseQuery } from '@tanstack/react-query'
+import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import SearchInput from '@/app/components/base/search-input'
 import BillingPage from '@/app/components/billing/billing-page'
@@ -16,6 +17,7 @@ import MenuDialog from '@/app/components/header/account-setting/menu-dialog'
 import { useAppContext } from '@/context/app-context'
 import { useProviderContext } from '@/context/provider-context'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
+import { systemFeaturesQueryOptions } from '@/service/system-features'
 import AccessRulesPage from './access-rules-page'
 import ApiBasedExtensionPage from './api-based-extension-page'
 import DataSourcePage from './data-source-page-new'
@@ -51,8 +53,10 @@ export default function AccountSetting({
   const resetModelProviderListExpanded = useResetModelProviderListExpanded()
   const activeMenu = activeTab
   const { t } = useTranslation()
-  const { enableBilling, enableReplaceWebAppLogo, enableAccessControl } = useProviderContext()
+  const { enableBilling, enableReplaceWebAppLogo } = useProviderContext()
   const { isCurrentWorkspaceDatasetOperator } = useAppContext()
+  const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
+  const containerRef = useRef<HTMLDivElement>(null)
 
   const workplaceGroupItems: GroupItem[] = (() => {
     if (isCurrentWorkspaceDatasetOperator)
@@ -73,7 +77,7 @@ export default function AccountSetting({
       },
     ]
 
-    if (enableAccessControl) {
+    if (systemFeatures.rbac_enabled) {
       items.push(
         {
           key: ACCOUNT_SETTING_TAB.PERMISSIONS,
@@ -170,8 +174,8 @@ export default function AccountSetting({
       show
       onClose={handleClose}
     >
-      <div className="mx-auto flex h-screen max-w-[1048px]">
-        <div className="flex w-[44px] flex-col border-r border-divider-burn pr-6 pl-4 sm:w-[224px]">
+      <div className="mx-auto flex h-screen max-w-262">
+        <div className="flex w-11 flex-col border-r border-divider-burn pr-6 pl-4 sm:w-56">
           <div className="mt-6 mb-8 px-3 py-2 title-2xl-semi-bold text-text-primary">{t('userProfile.settings', { ns: 'common' })}</div>
           <div className="w-full">
             {
@@ -187,7 +191,7 @@ export default function AccountSetting({
                           type="button"
                           key={item.key}
                           className={cn(
-                            'mb-0.5 flex h-[37px] w-full items-center rounded-lg p-1 pl-3 text-left text-sm',
+                            'mb-0.5 flex h-9.25 w-full items-center rounded-lg p-1 pl-3 text-left text-sm',
                             activeMenu === item.key ? 'bg-state-base-active system-sm-semibold text-components-menu-item-text-active' : 'system-sm-medium text-components-menu-item-text',
                           )}
                           aria-label={item.name}
@@ -207,7 +211,7 @@ export default function AccountSetting({
             }
           </div>
         </div>
-        <div className="relative flex min-h-0 w-[824px]">
+        <div className="relative flex min-h-0 w-206">
           <div className="fixed top-6 right-6 z-9999 flex flex-col items-center">
             <Button
               variant="tertiary"
@@ -221,13 +225,14 @@ export default function AccountSetting({
             <div className="mt-1 system-2xs-medium-uppercase text-text-tertiary">ESC</div>
           </div>
           <ScrollArea
+            ref={containerRef}
             className="h-full min-h-0 flex-1 bg-components-panel-bg"
             slotClassNames={{
               viewport: 'overscroll-contain',
               content: 'min-h-full pb-4',
             }}
           >
-            <div className="sticky top-0 z-20 mx-8 mb-[18px] flex items-center bg-components-panel-bg pt-[27px] pb-2">
+            <div className="sticky top-0 z-20 mx-8 mb-4.5 flex items-center bg-components-panel-bg pt-6.75 pb-2">
               <div className="shrink-0 title-2xl-semi-bold text-text-primary">
                 {activeItem?.name}
                 {activeItem?.description && (
@@ -237,7 +242,7 @@ export default function AccountSetting({
               {activeItem?.key === ACCOUNT_SETTING_TAB.PROVIDER && (
                 <div className="flex grow justify-end">
                   <SearchInput
-                    className="w-[200px]"
+                    className="w-50"
                     onChange={setSearchValue}
                     value={searchValue}
                   />
@@ -247,7 +252,7 @@ export default function AccountSetting({
             <div className="px-4 pt-2 sm:px-8">
               {activeMenu === ACCOUNT_SETTING_TAB.PROVIDER && <ModelProviderPage searchText={searchValue} />}
               {activeMenu === ACCOUNT_SETTING_TAB.MEMBERS && <MembersPage />}
-              {activeMenu === ACCOUNT_SETTING_TAB.PERMISSIONS && <PermissionsPage />}
+              {activeMenu === ACCOUNT_SETTING_TAB.PERMISSIONS && <PermissionsPage containerRef={containerRef} />}
               {activeMenu === ACCOUNT_SETTING_TAB.ACCESS_RULES && <AccessRulesPage />}
               {activeMenu === ACCOUNT_SETTING_TAB.BILLING && <BillingPage />}
               {activeMenu === ACCOUNT_SETTING_TAB.DATA_SOURCE && <DataSourcePage />}

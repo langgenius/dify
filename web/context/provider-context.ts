@@ -44,7 +44,6 @@ export type ProviderContextState = {
   isAllowTransferWorkspace: boolean
   isAllowPublishAsCustomKnowledgePipelineTemplate: boolean
   humanInputEmailDeliveryEnabled: boolean
-  enableAccessControl: boolean
 }
 
 export const baseProviderContextValue: ProviderContextState = {
@@ -79,7 +78,6 @@ export const baseProviderContextValue: ProviderContextState = {
   isAllowTransferWorkspace: false,
   isAllowPublishAsCustomKnowledgePipelineTemplate: false,
   humanInputEmailDeliveryEnabled: false,
-  enableAccessControl: true,
 }
 
 export const ProviderContext = createContext<ProviderContextState>(baseProviderContextValue)

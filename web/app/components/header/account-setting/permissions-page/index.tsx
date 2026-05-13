@@ -4,23 +4,37 @@ import type { RoleModalMode, submitRoleData } from './role-modal'
 import type { Role } from '@/models/access-control'
 import { Button } from '@langgenius/dify-ui/button'
 import { toast } from '@langgenius/dify-ui/toast'
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useCreateWorkspaceRole, useUpdateWorkspaceRole } from '@/service/access-control/use-workspace-roles'
 import { useRoleGroups } from './hooks'
 import RoleList from './role-list'
 import RoleModal from './role-modal'
+
+type PermissionsPageProps = {
+  containerRef: React.RefObject<HTMLDivElement | null>
+}
 
 type ModalState = {
   mode: RoleModalMode
   role?: Role
 } | null
 
-const PermissionsPage = () => {
-  const [modalState, setModalState] = useState<ModalState>(null)
+const PAGE_SIZE = 20
 
-  const { roleGroups } = useRoleGroups({
+const PermissionsPage = ({ containerRef }: PermissionsPageProps) => {
+  const [modalState, setModalState] = useState<ModalState>(null)
+  const anchorRef = useRef<HTMLDivElement>(null)
+
+  const {
+    roleGroups,
+    isLoading,
+    isFetchingNextPage,
+    fetchNextPage,
+    hasNextPage,
+    error,
+  } = useRoleGroups({
     page: 1,
-    limit: 20,
+    limit: PAGE_SIZE,
     include_owner: 1,
   })
 
@@ -66,6 +80,32 @@ const PermissionsPage = () => {
     [createWorkspaceRole, updateWorkspaceRole, closeModal, modalState],
   )
 
+  useEffect(() => {
+    const hasMore = hasNextPage ?? true
+    let observer: IntersectionObserver | undefined
+
+    if (error) {
+      if (observer)
+        observer.disconnect()
+      return
+    }
+
+    if (anchorRef.current && containerRef.current) {
+      const containerHeight = containerRef.current.clientHeight
+      const dynamicMargin = Math.max(100, Math.min(containerHeight * 0.2, 200))
+
+      observer = new IntersectionObserver((entries) => {
+        if (entries[0]!.isIntersecting && !isLoading && !isFetchingNextPage && !error && hasMore)
+          fetchNextPage()
+      }, {
+        root: containerRef.current,
+        rootMargin: `${dynamicMargin}px`,
+      })
+      observer.observe(anchorRef.current)
+    }
+    return () => observer?.disconnect()
+  }, [isLoading, isFetchingNextPage, fetchNextPage, error, hasNextPage, containerRef])
+
   return (
     <>
       <div className="flex flex-col">
@@ -93,6 +133,7 @@ const PermissionsPage = () => {
           onView={handleView}
           onEdit={handleEdit}
         />
+        <div ref={anchorRef} className="h-0" />
       </div>
       {modalState && (
         <RoleModal
