@@ -62,7 +62,7 @@ const RoleSelector = ({ value, onChange }: RoleSelectorProps) => {
   }, [rolesLoading, isFetchingNextPage, fetchNextPage, error, hasNextPage, open, observerReadyKey])
 
   const roles = useMemo(() => rolesData?.pages.flatMap(page => page.data) ?? [], [rolesData])
-  const selectedRole = roles.find(role => role.name === value)
+  const selectedRole = roles.find(role => role.id === value)
   const selectedRoleName = selectedRole?.name || value
 
   const setContainerElement = useCallback((node: HTMLDivElement | null) => {
@@ -75,8 +75,8 @@ const RoleSelector = ({ value, onChange }: RoleSelectorProps) => {
     setObserverReadyKey(key => key + 1)
   }, [])
 
-  const handleRoleChange = (roleName: string) => {
-    onChange(roleName)
+  const handleRoleChange = (roleId: string) => {
+    onChange(roleId)
     setOpen(false)
   }
 
@@ -128,13 +128,13 @@ const RoleSelector = ({ value, onChange }: RoleSelectorProps) => {
                         {roles.map(role => (
                           <DropdownMenuRadioItem
                             key={role.id}
-                            value={role.name}
+                            value={role.id}
                             className="mx-0 h-auto w-full cursor-pointer items-start gap-0 rounded-lg border-none bg-transparent p-2 text-left hover:bg-state-base-hover data-highlighted:bg-state-base-hover"
                           >
                             <div className="relative min-w-0 pl-5">
                               <div className="truncate text-sm leading-5 text-text-secondary">{role.name}</div>
                               <div className="line-clamp-2 text-xs leading-4.5 text-text-tertiary">{role.description || 'No description'}</div>
-                              {value === role.name && (
+                              {value === role.id && (
                                 <div
                                   aria-hidden="true"
                                   className="absolute top-0.5 left-0 i-custom-vender-line-general-check h-4 w-4 text-text-accent"
