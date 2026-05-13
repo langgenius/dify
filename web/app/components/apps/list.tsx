@@ -10,7 +10,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Input from '@/app/components/base/input'
 import TabSliderNew from '@/app/components/base/tab-slider-new'
-import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
+import { IS_DEV, NEED_REFRESH_APP_LIST_KEY } from '@/config'
 import { useAppContext } from '@/context/app-context'
 import { TagFilter } from '@/features/tag-management/components/tag-filter'
 import { CheckModal } from '@/hooks/use-pay'
@@ -20,7 +20,7 @@ import { systemFeaturesQueryOptions } from '@/service/system-features'
 import { AppModeEnum } from '@/types/app'
 import AppCard from './app-card'
 import { AppCardSkeleton } from './app-card-skeleton'
-import { APP_LIST_SEARCH_DEBOUNCE_MS } from './constants'
+import { APP_LIST_SEARCH_DEBOUNCE_MS, MOCK_APP_LIST } from './constants'
 import Empty from './empty'
 import Footer from './footer'
 import { isAppListCategory, useAppsQueryState } from './hooks/use-apps-query-state'
@@ -163,7 +163,29 @@ const List: FC<Props> = ({
   }, [setIsCreatedByMe])
 
   const pages = useMemo(() => data?.pages ?? [], [data?.pages])
-  const apps = useMemo(() => pages.flatMap(({ data: pageApps }) => pageApps), [pages])
+  const mockApps = useMemo(() => {
+    if (!IS_DEV)
+      return []
+    if (tagIDs.length)
+      return []
+
+    const normalizedKeywords = debouncedKeywords.trim().toLowerCase()
+
+    return MOCK_APP_LIST.filter((app) => {
+      if (category !== 'all' && app.mode !== category)
+        return false
+      if (!normalizedKeywords)
+        return true
+
+      return [app.name, app.description, app.author_name].some(value =>
+        value.toLowerCase().includes(normalizedKeywords),
+      )
+    })
+  }, [category, debouncedKeywords, tagIDs.length])
+  const apps = useMemo(() => [
+    ...pages.flatMap(({ data: pageApps }) => pageApps),
+    ...mockApps,
+  ], [mockApps, pages])
 
   const workflowOnlineUserAppIds = useMemo(() => {
     const appIds = new Set<string>()
@@ -181,7 +203,7 @@ const List: FC<Props> = ({
     enabled: systemFeatures.enable_collaboration_mode,
   })
 
-  const hasAnyApp = (pages[0]?.total ?? 0) > 0
+  const hasAnyApp = (pages[0]?.total ?? 0) > 0 || mockApps.length > 0
   // Show skeleton during initial load or when refetching with no previous data
   const showSkeleton = isLoading || (isFetching && pages.length === 0)
 
@@ -221,7 +243,7 @@ const List: FC<Props> = ({
           </div>
         </div>
         <div className={cn(
-          'relative grid grow grid-cols-1 content-start gap-4 px-12 pt-2 2k:grid-cols-6 sm:grid-cols-1 md:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-5',
+          'relative grid grow grid-cols-1 content-start gap-3 px-12 pt-2 2k:grid-cols-6 sm:grid-cols-1 md:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-5',
           !hasAnyApp && 'overflow-hidden',
         )}
         >

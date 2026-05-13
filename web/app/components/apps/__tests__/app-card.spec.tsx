@@ -426,32 +426,32 @@ describe('AppCard', () => {
   })
 
   describe('Access Mode Icons', () => {
-    it('should show public icon for public access mode', () => {
+    it('should not show public icon on the card', () => {
       const publicApp = { ...mockApp, access_mode: AccessMode.PUBLIC }
       const { container } = render(<AppCard app={publicApp} />)
       const tooltip = container.querySelector('[title="app.accessItemsDescription.anyone"]')
-      expect(tooltip).toBeInTheDocument()
+      expect(tooltip).not.toBeInTheDocument()
     })
 
-    it('should show lock icon for specific groups access mode', () => {
+    it('should not show lock icon on the card', () => {
       const specificApp = { ...mockApp, access_mode: AccessMode.SPECIFIC_GROUPS_MEMBERS }
       const { container } = render(<AppCard app={specificApp} />)
       const tooltip = container.querySelector('[title="app.accessItemsDescription.specific"]')
-      expect(tooltip).toBeInTheDocument()
+      expect(tooltip).not.toBeInTheDocument()
     })
 
-    it('should show organization icon for organization access mode', () => {
+    it('should not show organization icon on the card', () => {
       const orgApp = { ...mockApp, access_mode: AccessMode.ORGANIZATION }
       const { container } = render(<AppCard app={orgApp} />)
       const tooltip = container.querySelector('[title="app.accessItemsDescription.organization"]')
-      expect(tooltip).toBeInTheDocument()
+      expect(tooltip).not.toBeInTheDocument()
     })
 
-    it('should show external icon for external access mode', () => {
+    it('should not show external icon on the card', () => {
       const externalApp = { ...mockApp, access_mode: AccessMode.EXTERNAL_MEMBERS }
       const { container } = render(<AppCard app={externalApp} />)
       const tooltip = container.querySelector('[title="app.accessItemsDescription.external"]')
-      expect(tooltip).toBeInTheDocument()
+      expect(tooltip).not.toBeInTheDocument()
     })
   })
 
@@ -485,6 +485,8 @@ describe('AppCard', () => {
       render(<AppCard app={mockApp} />)
       const operationsTriggerWrapper = screen.getByTestId('dropdown-menu-trigger').closest('.absolute')
 
+      expect(operationsTriggerWrapper).toHaveClass('top-[-0.5px]')
+      expect(operationsTriggerWrapper).toHaveClass('right-[-0.5px]')
       expect(operationsTriggerWrapper).toHaveClass('group-focus-within:pointer-events-auto')
       expect(operationsTriggerWrapper).toHaveClass('group-focus-within:opacity-100')
       expect(screen.getByTestId('dropdown-menu-trigger')).toHaveClass('focus-visible:ring-1')

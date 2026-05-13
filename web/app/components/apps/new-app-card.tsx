@@ -68,7 +68,7 @@ const CreateAppCard = ({
     <div
       ref={ref}
       className={cn(
-        'relative col-span-1 inline-flex h-[160px] flex-col justify-between rounded-xl border-[0.5px] border-components-card-border bg-components-card-bg transition-opacity',
+        'relative col-span-1 inline-flex h-41.5 flex-col justify-between rounded-xl border-[0.5px] border-components-card-border bg-components-card-bg transition-opacity',
         isLoading && 'pointer-events-none opacity-50',
         className,
       )}

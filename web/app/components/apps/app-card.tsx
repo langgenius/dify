@@ -23,11 +23,6 @@ import {
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
 import { toast } from '@langgenius/dify-ui/toast'
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from '@langgenius/dify-ui/tooltip'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import * as React from 'react'
 import { useCallback, useId, useMemo, useState } from 'react'
@@ -41,7 +36,6 @@ import { useAppContext } from '@/context/app-context'
 import { useProviderContext } from '@/context/provider-context'
 import { AppCardTags } from '@/features/tag-management/components/app-card-tags'
 import { useAsyncWindowOpen } from '@/hooks/use-async-window-open'
-import { AccessMode } from '@/models/access-control'
 import dynamic from '@/next/dynamic'
 import { useRouter } from '@/next/navigation'
 import { useGetUserCanAccessApp } from '@/service/access-control'
@@ -207,7 +201,7 @@ const AppCardOperationsMenuContent: React.FC<AppCardOperationsMenuContentProps> 
   )
 }
 
-const AppCard = ({ app, onlineUsers = [], onRefresh, onOpenTagManagement = () => {} }: AppCardProps) => {
+const AppCard = ({ app, onlineUsers = [], onRefresh, onOpenTagManagement = () => { } }: AppCardProps) => {
   const { t } = useTranslation()
   const deleteAppNameInputId = useId()
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
@@ -396,13 +390,30 @@ const AppCard = ({ app, onlineUsers = [], onRefresh, onOpenTagManagement = () =>
   const shouldShowAccessControlOption = systemFeatures.webapp_auth.enabled && isCurrentWorkspaceEditor
   const operationsMenuWidthClassName = shouldShowSwitchOption ? 'w-[256px]' : 'w-[216px]'
 
-  const EditTimeText = useMemo(() => {
+  const editTimeText = useMemo(() => {
     const timeText = formatTime({
       date: (app.updated_at || app.created_at) * 1000,
       dateFormat: `${t('segment.dateTimeFormat', { ns: 'datasetDocuments' })}`,
     })
     return `${t('segment.editedAt', { ns: 'datasetDocuments' })} ${timeText}`
   }, [app.updated_at, app.created_at, t])
+
+  const appModeLabel = useMemo(() => {
+    switch (app.mode) {
+      case AppModeEnum.CHAT:
+        return t('types.chatbot', { ns: 'app' })
+      case AppModeEnum.ADVANCED_CHAT:
+        return t('types.advanced', { ns: 'app' })
+      case AppModeEnum.AGENT_CHAT:
+        return t('types.agent', { ns: 'app' })
+      case AppModeEnum.COMPLETION:
+        return t('types.completion', { ns: 'app' })
+      case AppModeEnum.WORKFLOW:
+        return t('types.workflow', { ns: 'app' })
+      default:
+        return app.mode
+    }
+  }, [app.mode, t])
 
   const onlinePresenceUsers = useMemo(() => {
     return onlineUsers
@@ -425,9 +436,9 @@ const AppCard = ({ app, onlineUsers = [], onRefresh, onOpenTagManagement = () =>
           e.preventDefault()
           getRedirection(isCurrentWorkspaceEditor, app, push)
         }}
-        className="group relative col-span-1 inline-flex h-[160px] cursor-pointer flex-col rounded-xl border border-solid border-components-card-border bg-components-card-bg shadow-sm transition-shadow duration-200 ease-in-out hover:shadow-lg"
+        className="group relative col-span-1 inline-flex h-41.5 cursor-pointer flex-col overflow-hidden rounded-xl border-[0.5px] border-solid border-components-card-border bg-components-card-bg shadow-xs transition-shadow duration-200 ease-in-out hover:shadow-lg"
       >
-        <div className="flex h-[66px] shrink-0 grow-0 items-center gap-3 px-[14px] pt-[14px] pb-3">
+        <div className="flex shrink-0 items-center gap-3 pt-4 pb-2 pl-4">
           <div className="relative shrink-0">
             <AppIcon
               size="large"
@@ -438,152 +449,115 @@ const AppCard = ({ app, onlineUsers = [], onRefresh, onOpenTagManagement = () =>
             />
             <AppTypeIcon type={app.mode} wrapperClassName="absolute -bottom-0.5 -right-0.5 w-4 h-4 shadow-sm" className="h-3 w-3" />
           </div>
-          <div className="w-0 grow py-px">
-            <div className="flex items-center text-sm leading-5 font-semibold text-text-secondary">
+          <div className="flex w-0 grow flex-col gap-1 py-px">
+            <div className="flex items-center text-sm/5 font-semibold text-text-secondary">
               <div className="truncate" title={app.name}>{app.name}</div>
             </div>
-            <div className="flex items-center gap-1 text-[10px] leading-[18px] font-medium text-text-tertiary">
-              <div className="truncate" title={app.author_name}>{app.author_name}</div>
-              <div>·</div>
-              <div className="truncate" title={EditTimeText}>{EditTimeText}</div>
-            </div>
+            <div className="truncate system-2xs-medium-uppercase text-text-tertiary" title={appModeLabel}>{appModeLabel}</div>
           </div>
-          <div className="flex h-full shrink-0 flex-col items-end justify-between py-px">
-            {onlinePresenceUsers.length > 0 && (
+          {onlinePresenceUsers.length > 0 && (
+            <div className="ml-3 flex h-10 shrink-0 flex-col items-end">
               <UserAvatarList users={onlinePresenceUsers} size="xxs" maxVisible={3} className="justify-end" />
-            )}
-            <div className="flex h-5 w-5 items-center justify-center">
-              {app.access_mode === AccessMode.PUBLIC && (
-                <Tooltip>
-                  <TooltipTrigger
-                    aria-label={t('accessItemsDescription.anyone', { ns: 'app' })}
-                    render={<span title={t('accessItemsDescription.anyone', { ns: 'app' })} className="i-ri-global-line h-4 w-4 text-text-quaternary" />}
-                  />
-                  <TooltipContent>{t('accessItemsDescription.anyone', { ns: 'app' })}</TooltipContent>
-                </Tooltip>
-              )}
-              {app.access_mode === AccessMode.SPECIFIC_GROUPS_MEMBERS && (
-                <Tooltip>
-                  <TooltipTrigger
-                    aria-label={t('accessItemsDescription.specific', { ns: 'app' })}
-                    render={<span title={t('accessItemsDescription.specific', { ns: 'app' })} className="i-ri-lock-line h-4 w-4 text-text-quaternary" />}
-                  />
-                  <TooltipContent>{t('accessItemsDescription.specific', { ns: 'app' })}</TooltipContent>
-                </Tooltip>
-              )}
-              {app.access_mode === AccessMode.ORGANIZATION && (
-                <Tooltip>
-                  <TooltipTrigger
-                    aria-label={t('accessItemsDescription.organization', { ns: 'app' })}
-                    render={<span title={t('accessItemsDescription.organization', { ns: 'app' })} className="i-ri-building-line h-4 w-4 text-text-quaternary" />}
-                  />
-                  <TooltipContent>{t('accessItemsDescription.organization', { ns: 'app' })}</TooltipContent>
-                </Tooltip>
-              )}
-              {app.access_mode === AccessMode.EXTERNAL_MEMBERS && (
-                <Tooltip>
-                  <TooltipTrigger
-                    aria-label={t('accessItemsDescription.external', { ns: 'app' })}
-                    render={<span title={t('accessItemsDescription.external', { ns: 'app' })} className="i-ri-verified-badge-line h-4 w-4 text-text-quaternary" />}
-                  />
-                  <TooltipContent>{t('accessItemsDescription.external', { ns: 'app' })}</TooltipContent>
-                </Tooltip>
-              )}
             </div>
-          </div>
+          )}
+
         </div>
-        <div className="h-[90px] px-[14px] text-xs leading-normal text-text-tertiary">
+        <div className="shrink-0 px-4 py-1 system-xs-regular text-text-tertiary">
           <div
-            className="line-clamp-2"
+            className="line-clamp-2 min-h-8"
             title={app.description}
           >
             {app.description}
           </div>
         </div>
-        <div className="absolute right-0 bottom-1 left-0 flex h-[42px] shrink-0 items-center pt-1 pr-[6px] pb-[6px] pl-[14px]">
+        <div className="flex h-[26px] shrink-0 items-start px-3">
           {isCurrentWorkspaceEditor && (
-            <>
-              <div
-                className={cn('flex w-0 grow items-center gap-1')}
+            <div
+              className="w-full min-w-0"
+              onClick={(e) => {
+                e.stopPropagation()
+                e.preventDefault()
+              }}
+            >
+              <AppCardTags
+                appId={app.id}
+                tags={app.tags}
+                onOpenTagManagement={onOpenTagManagement}
+                onTagsChange={onRefresh}
+              />
+            </div>
+          )}
+        </div>
+        <div className="flex min-w-0 shrink-0 items-center pt-2 pr-3 pb-3 pl-4 system-xs-regular text-text-tertiary">
+          <div className="flex min-w-0 flex-1 items-center gap-1 whitespace-nowrap">
+            <div className="truncate" title={app.author_name}>{app.author_name}</div>
+            <div className="shrink-0">·</div>
+            <div className="truncate" title={editTimeText}>{editTimeText}</div>
+          </div>
+        </div>
+        {isCurrentWorkspaceEditor && (
+          <div
+            className={cn(
+              'absolute top-[-0.5px] right-[-0.5px] flex h-16 w-[120px] items-start justify-end bg-linear-to-r from-components-card-bg-alt-transparent to-components-card-bg-alt p-2 transition-opacity',
+              isOperationsMenuOpen
+                ? 'pointer-events-auto opacity-100'
+                : 'pointer-events-none opacity-0 group-focus-within:pointer-events-auto group-focus-within:opacity-100 group-hover:pointer-events-auto group-hover:opacity-100',
+            )}
+          >
+            <DropdownMenu modal={false} open={isOperationsMenuOpen} onOpenChange={setIsOperationsMenuOpen}>
+              <DropdownMenuTrigger
+                aria-label={t('operation.more', { ns: 'common' })}
+                className={cn(
+                  'flex items-center overflow-hidden rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 backdrop-blur-xs hover:bg-components-actionbar-bg focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:ring-inset',
+                  isOperationsMenuOpen ? 'shadow-none' : 'shadow-lg',
+                )}
                 onClick={(e) => {
                   e.stopPropagation()
                   e.preventDefault()
                 }}
               >
-                <div className="mr-[41px] min-w-0 grow overflow-hidden">
-                  <AppCardTags
-                    appId={app.id}
-                    tags={app.tags}
-                    onOpenTagManagement={onOpenTagManagement}
-                    onTagsChange={onRefresh}
-                  />
+                <div className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg hover:bg-state-base-hover">
+                  <span className="sr-only">{t('operation.more', { ns: 'common' })}</span>
+                  <span aria-hidden className="i-ri-more-fill h-[18px] w-[18px] text-text-tertiary" />
                 </div>
-              </div>
-              <div
-                className={cn(
-                  'absolute top-1/2 right-[6px] flex -translate-y-1/2 items-center transition-opacity',
-                  isOperationsMenuOpen
-                    ? 'pointer-events-auto opacity-100'
-                    : 'pointer-events-none opacity-0 group-focus-within:pointer-events-auto group-focus-within:opacity-100 group-hover:pointer-events-auto group-hover:opacity-100',
-                )}
+              </DropdownMenuTrigger>
+              <DropdownMenuContent
+                placement="bottom-end"
+                sideOffset={4}
+                popupClassName={operationsMenuWidthClassName}
               >
-                <div className="mx-1 h-[14px] w-px shrink-0 bg-divider-regular" />
-                <DropdownMenu modal={false} open={isOperationsMenuOpen} onOpenChange={setIsOperationsMenuOpen}>
-                  <DropdownMenuTrigger
-                    aria-label={t('operation.more', { ns: 'common' })}
-                    className={cn(
-                      isOperationsMenuOpen ? 'bg-state-base-hover shadow-none' : 'bg-transparent',
-                      'flex h-8 w-8 items-center justify-center rounded-md border-none p-2 hover:bg-state-base-hover focus-visible:bg-state-base-hover focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:ring-inset',
+                {systemFeatures.webapp_auth.enabled
+                  ? (
+                      <AppCardOperationsMenuContent
+                        app={app}
+                        shouldShowSwitchOption={shouldShowSwitchOption}
+                        shouldShowAccessControlOption={shouldShowAccessControlOption}
+                        onEdit={handleShowEditModal}
+                        onDuplicate={handleShowDuplicateModal}
+                        onExport={exportCheck}
+                        onSwitch={handleShowSwitchModal}
+                        onDelete={handleShowDeleteConfirm}
+                        onAccessControl={handleShowAccessControl}
+                      />
+                    )
+                  : (
+                      <AppCardOperationsMenu
+                        app={app}
+                        shouldShowSwitchOption={shouldShowSwitchOption}
+                        shouldShowOpenInExploreOption={!app.has_draft_trigger}
+                        shouldShowAccessControlOption={shouldShowAccessControlOption}
+                        onEdit={handleShowEditModal}
+                        onDuplicate={handleShowDuplicateModal}
+                        onExport={exportCheck}
+                        onSwitch={handleShowSwitchModal}
+                        onDelete={handleShowDeleteConfirm}
+                        onAccessControl={handleShowAccessControl}
+                      />
                     )}
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      e.preventDefault()
-                    }}
-                  >
-                    <div className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-md">
-                      <span className="sr-only">{t('operation.more', { ns: 'common' })}</span>
-                      <span aria-hidden className="i-ri-more-fill h-4 w-4 text-text-tertiary" />
-                    </div>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent
-                    placement="bottom-end"
-                    sideOffset={4}
-                    popupClassName={operationsMenuWidthClassName}
-                  >
-                    {systemFeatures.webapp_auth.enabled
-                      ? (
-                          <AppCardOperationsMenuContent
-                            app={app}
-                            shouldShowSwitchOption={shouldShowSwitchOption}
-                            shouldShowAccessControlOption={shouldShowAccessControlOption}
-                            onEdit={handleShowEditModal}
-                            onDuplicate={handleShowDuplicateModal}
-                            onExport={exportCheck}
-                            onSwitch={handleShowSwitchModal}
-                            onDelete={handleShowDeleteConfirm}
-                            onAccessControl={handleShowAccessControl}
-                          />
-                        )
-                      : (
-                          <AppCardOperationsMenu
-                            app={app}
-                            shouldShowSwitchOption={shouldShowSwitchOption}
-                            shouldShowOpenInExploreOption={!app.has_draft_trigger}
-                            shouldShowAccessControlOption={shouldShowAccessControlOption}
-                            onEdit={handleShowEditModal}
-                            onDuplicate={handleShowDuplicateModal}
-                            onExport={exportCheck}
-                            onSwitch={handleShowSwitchModal}
-                            onDelete={handleShowDeleteConfirm}
-                            onAccessControl={handleShowAccessControl}
-                          />
-                        )}
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </div>
-            </>
-          )}
-        </div>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        )}
       </div>
       {showEditModal && (
         <EditAppModal
