@@ -162,7 +162,7 @@ describe('InstallPluginDropdown', () => {
   })
 
   it('shows all install methods when marketplace and custom installs are enabled', () => {
-    render(<InstallPluginDropdown onSwitchToMarketplaceTab={vi.fn()} />)
+    const { container } = render(<InstallPluginDropdown onSwitchToMarketplaceTab={vi.fn()} />)
 
     fireEvent.click(screen.getByTestId('dropdown-trigger'))
 
@@ -171,6 +171,9 @@ describe('InstallPluginDropdown', () => {
     expect(screen.getByText('plugin.source.marketplace')).toBeInTheDocument()
     expect(screen.getByText('plugin.source.github')).toBeInTheDocument()
     expect(screen.getByText('plugin.source.local')).toBeInTheDocument()
+    expect(container.querySelector('.i-custom-vender-integrations-install-marketplace')).toHaveClass('size-4', 'shrink-0')
+    expect(container.querySelector('.i-custom-vender-integrations-install-github')).toHaveClass('size-4', 'shrink-0')
+    expect(container.querySelector('.i-custom-vender-integrations-install-local-package')).toHaveClass('size-4', 'shrink-0')
   })
 
   it('applies custom trigger label and presentation props', () => {

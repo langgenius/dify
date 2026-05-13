@@ -1,4 +1,5 @@
 'use client'
+import type { ReactNode } from 'react'
 import type { PluginDetail } from '../types'
 import type { PluginPageContentInset } from './content-inset'
 import type { FilterState } from './filter-management'
@@ -13,6 +14,7 @@ import { useGetLanguage } from '@/context/i18n'
 import { renderI18nObject } from '@/i18n-config'
 import { useInstalledPluginList, useInvalidateInstalledPluginList } from '@/service/use-plugins'
 import { usePluginsWithLatestVersion } from '../hooks'
+import { PluginCategoryEnum } from '../types'
 import { pluginPageContentFrameClassNames, pluginPageContentInsetClassNames } from './content-inset'
 import { usePluginPageContext } from './context'
 import Empty from './empty'
@@ -46,10 +48,14 @@ const matchesSearchQuery = (plugin: PluginDetail & { latest_version: string }, q
 
 type PluginsPanelProps = {
   contentInset?: PluginPageContentInset
+  fixedCategory?: PluginCategoryEnum
+  toolbarAction?: ReactNode
 }
 
 const PluginsPanel = ({
   contentInset = 'default',
+  fixedCategory,
+  toolbarAction,
 }: PluginsPanelProps) => {
   const { t } = useTranslation()
   const locale = useGetLanguage()
@@ -67,15 +73,17 @@ const PluginsPanel = ({
 
   const filteredList = useMemo(() => {
     const { categories, searchQuery, tags } = filters
+    const effectiveCategories = fixedCategory ? [fixedCategory] : categories
+    const shouldApplyTagFilter = !fixedCategory || fixedCategory === PluginCategoryEnum.trigger
     const filteredList = pluginListWithLatestVersion.filter((plugin) => {
       return (
-        (categories.length === 0 || categories.includes(plugin.declaration.category))
-        && (tags.length === 0 || tags.some(tag => plugin.declaration.tags.includes(tag)))
+        (effectiveCategories.length === 0 || effectiveCategories.includes(plugin.declaration.category))
+        && (!shouldApplyTagFilter || tags.length === 0 || tags.some(tag => plugin.declaration.tags.includes(tag)))
         && matchesSearchQuery(plugin, searchQuery, locale)
       )
     })
     return filteredList
-  }, [pluginListWithLatestVersion, filters, locale])
+  }, [fixedCategory, pluginListWithLatestVersion, filters, locale])
 
   const currentPluginDetail = useMemo(() => {
     const detail = pluginListWithLatestVersion.find(plugin => plugin.plugin_id === currentPluginID)
@@ -84,22 +92,49 @@ const PluginsPanel = ({
 
   const handleHide = () => setCurrentPluginID(undefined)
   const contentPaddingClassName = pluginPageContentInsetClassNames[contentInset]
-  const contentFrameClassName = cn(pluginPageContentFrameClassNames[contentInset], contentPaddingClassName)
+  const isTriggerIntegrationPage = fixedCategory === PluginCategoryEnum.trigger
+  const isAgentStrategyIntegrationPage = fixedCategory === PluginCategoryEnum.agent
+  const shouldShowToolbar = !isAgentStrategyIntegrationPage
+  const contentFrameClassName = cn(
+    pluginPageContentFrameClassNames[contentInset],
+    contentPaddingClassName,
+  )
+  const emptyVariant = isTriggerIntegrationPage
+    ? 'integrationsTrigger'
+    : isAgentStrategyIntegrationPage
+      ? 'integrationsAgentStrategy'
+      : 'default'
 
   return (
     <>
-      <div className={cn('flex flex-col items-start justify-center gap-3 self-stretch pt-1 pb-3', contentFrameClassName)}>
-        <div className="h-px self-stretch bg-divider-subtle"></div>
-        <FilterManagement
-          onFilterChange={handleFilterChange}
-        />
-      </div>
+      {shouldShowToolbar && (
+        <div className={cn(
+          isTriggerIntegrationPage
+            ? 'flex h-12 shrink-0 items-center py-2'
+            : 'flex flex-col items-start justify-center gap-3 self-stretch pt-1 pb-3',
+          contentFrameClassName,
+        )}
+        >
+          {!isTriggerIntegrationPage && <div className="h-px self-stretch bg-divider-subtle"></div>}
+          <FilterManagement
+            hideCategoryFilter={!!fixedCategory}
+            hideTagFilter={!!fixedCategory && fixedCategory !== PluginCategoryEnum.trigger}
+            onFilterChange={handleFilterChange}
+            rightSlot={toolbarAction}
+          />
+        </div>
+      )}
       {isPluginListLoading && <Loading type="app" />}
       {!isPluginListLoading && (
         <>
           {(filteredList?.length ?? 0) > 0
             ? (
-                <div className={cn('flex grow flex-wrap content-start items-start justify-center gap-2 self-stretch overflow-y-auto', contentFrameClassName)}>
+                <div className={cn(
+                  'flex grow flex-wrap content-start items-start justify-center gap-2 self-stretch overflow-y-auto',
+                  isAgentStrategyIntegrationPage && 'pt-2',
+                  contentFrameClassName,
+                )}
+                >
                   <div className="w-full">
                     <List pluginList={filteredList || []} />
                   </div>
@@ -117,7 +152,10 @@ const PluginsPanel = ({
                 </div>
               )
             : (
-                <Empty contentInset={contentInset} />
+                <Empty
+                  contentInset={contentInset}
+                  variant={emptyVariant}
+                />
               )}
         </>
       )}

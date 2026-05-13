@@ -19,19 +19,36 @@ import { useInstalledPluginList } from '@/service/use-plugins'
 import Line from '../../marketplace/empty/line'
 import { pluginPageContentFrameClassNames, pluginPageContentInsetClassNames } from '../content-inset'
 import { usePluginPageContext } from '../context'
+import {
+  DropHintInstallSourceIcon,
+  GithubInstallSourceIcon,
+  LocalPackageInstallSourceIcon,
+  MarketplaceInstallSourceIcon,
+} from '../install-source-icons'
 
 type InstallMethod = {
-  icon: React.FC<{ className?: string }>
+  icon: React.ComponentType<{ className?: string }>
+  integrationIcon: React.ComponentType
   text: string
   action: string
 }
 
+const TriggerEmptyIcon = () => (
+  <span aria-hidden className="i-custom-vender-integrations-trigger size-6 shrink-0" />
+)
+
+const AgentStrategyEmptyIcon = () => (
+  <span aria-hidden className="i-custom-vender-integrations-agent-strategy size-6 shrink-0" />
+)
+
 type EmptyProps = {
   contentInset?: PluginPageContentInset
+  variant?: 'default' | 'integrationsAgentStrategy' | 'integrationsTrigger'
 }
 
 const Empty = ({
   contentInset = 'default',
+  variant = 'default',
 }: EmptyProps) => {
   const { t } = useTranslation()
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -67,43 +84,83 @@ const Empty = ({
   const installMethods = useMemo<InstallMethod[]>(() => {
     const methods: InstallMethod[] = []
     if (enable_marketplace)
-      methods.push({ icon: MagicBox, text: t('source.marketplace', { ns: 'plugin' }), action: 'marketplace' })
+      methods.push({ icon: MagicBox, integrationIcon: MarketplaceInstallSourceIcon, text: t('source.marketplace', { ns: 'plugin' }), action: 'marketplace' })
 
     if (plugin_installation_permission.restrict_to_marketplace_only)
       return methods
 
-    methods.push({ icon: Github, text: t('source.github', { ns: 'plugin' }), action: 'github' })
-    methods.push({ icon: FileZip, text: t('source.local', { ns: 'plugin' }), action: 'local' })
+    methods.push({ icon: Github, integrationIcon: GithubInstallSourceIcon, text: t('source.github', { ns: 'plugin' }), action: 'github' })
+    methods.push({ icon: FileZip, integrationIcon: LocalPackageInstallSourceIcon, text: t('source.local', { ns: 'plugin' }), action: 'local' })
     return methods
   }, [plugin_installation_permission, enable_marketplace, t])
   const contentPaddingClassName = pluginPageContentInsetClassNames[contentInset]
-  const contentFrameClassName = cn(pluginPageContentFrameClassNames[contentInset], contentPaddingClassName)
+  const canInstallLocalPackage = !plugin_installation_permission.restrict_to_marketplace_only
+  const isIntegrationsTrigger = variant === 'integrationsTrigger'
+  const isIntegrationsAgentStrategy = variant === 'integrationsAgentStrategy'
+  const isIntegrationsCategory = isIntegrationsTrigger || isIntegrationsAgentStrategy
+  const contentFrameClassName = cn(
+    pluginPageContentFrameClassNames[contentInset],
+    contentPaddingClassName,
+  )
+  const emptyText = isIntegrationsTrigger ? t('list.noTriggersFound', { ns: 'plugin' }) : text
 
   return (
     <div className="relative z-0 w-full grow">
       {/* skeleton */}
-      <div className={cn('absolute top-0 left-1/2 z-10 grid h-full -translate-x-1/2 grid-cols-2 gap-2 overflow-hidden', contentFrameClassName)}>
-        {Array.from({ length: 20 }).fill(0).map((_, i) => (
-          <div key={i} className="h-24 rounded-xl bg-components-card-bg" />
+      <div className={cn(
+        'absolute top-0 left-1/2 z-10 grid h-full -translate-x-1/2 grid-cols-2 content-start overflow-hidden',
+        isIntegrationsCategory ? 'gap-x-[7px] gap-y-[15px] pt-2' : 'gap-2',
+        contentFrameClassName,
+      )}
+      >
+        {Array.from({ length: isIntegrationsCategory ? 22 : 20 }).fill(0).map((_, i) => (
+          <div key={i} className={cn(isIntegrationsCategory ? 'h-[72px] rounded-lg bg-[#F9FAFB]/[0.52]' : 'h-24 rounded-xl bg-components-card-bg')} />
         ))}
       </div>
       {/* mask */}
       <div className="absolute z-20 h-full w-full bg-linear-to-b from-components-panel-bg-transparent to-components-panel-bg" />
-      <div className="relative z-30 flex h-full items-center justify-center">
-        <div className="flex flex-col items-center gap-y-3">
-          <div className="relative -z-10 flex size-14 items-center justify-center rounded-xl
-          border border-dashed border-divider-deep bg-components-card-bg shadow-xl shadow-shadow-shadow-5"
-          >
-            <Group className="h-5 w-5 text-text-tertiary" />
-            <Line className="absolute top-1/2 -right-px -translate-y-1/2" />
-            <Line className="absolute top-1/2 -left-px -translate-y-1/2" />
-            <Line className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 rotate-90" />
-            <Line className="absolute top-full left-1/2 -translate-x-1/2 -translate-y-1/2 rotate-90" />
+      <div className={cn(
+        'relative z-30 flex h-full justify-center',
+        isIntegrationsTrigger && 'items-start pt-[248px]',
+        isIntegrationsAgentStrategy && 'items-center',
+        !isIntegrationsCategory && 'items-center',
+      )}
+      >
+        <div className={cn(
+          'flex flex-col items-center',
+          isIntegrationsCategory ? 'gap-y-6' : 'gap-y-3',
+          isIntegrationsAgentStrategy && '-translate-y-7',
+        )}
+        >
+          <div className="flex flex-col items-center gap-y-3">
+            <div className={cn(
+              'relative -z-10 flex items-center justify-center border-dashed bg-components-card-bg',
+              isIntegrationsCategory
+                ? 'size-[60px] rounded-[13px] border-[0.667px] border-divider-deep shadow-xl shadow-shadow-shadow-5'
+                : 'size-14 rounded-xl border border-divider-deep shadow-xl shadow-shadow-shadow-5',
+            )}
+            >
+              {isIntegrationsCategory
+                ? (
+                    <span className="text-text-tertiary">
+                      {isIntegrationsAgentStrategy ? <AgentStrategyEmptyIcon /> : <TriggerEmptyIcon />}
+                    </span>
+                  )
+                : <Group className="size-5 text-text-tertiary" />}
+              {!isIntegrationsCategory && (
+                <>
+                  <Line className="absolute top-1/2 -right-px -translate-y-1/2" />
+                  <Line className="absolute top-1/2 -left-px -translate-y-1/2" />
+                  <Line className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 rotate-90" />
+                  <Line className="absolute top-full left-1/2 -translate-x-1/2 -translate-y-1/2 rotate-90" />
+                </>
+              )}
+            </div>
+            <div className={cn(isIntegrationsCategory ? 'system-sm-regular text-text-primary' : 'system-md-regular text-text-tertiary')}>
+              {emptyText}
+            </div>
           </div>
-          <div className="system-md-regular text-text-tertiary">
-            {text}
-          </div>
-          <div className="flex w-[236px] flex-col">
+          <div className={cn('flex flex-col', isIntegrationsCategory ? 'w-[200px]' : 'w-[236px]')}>
             <input
               type="file"
               ref={fileInputRef}
@@ -112,10 +169,11 @@ const Empty = ({
               accept={SUPPORT_INSTALL_LOCAL_FILE_EXTENSIONS}
             />
             <div className="flex w-full flex-col gap-y-1">
-              {installMethods.map(({ icon: Icon, text, action }) => (
+              {installMethods.map(({ icon: Icon, integrationIcon: IntegrationIcon, text, action }) => (
                 <Button
                   key={action}
-                  className="justify-start gap-x-0.5 px-3"
+                  variant="secondary"
+                  className="h-8 w-full justify-start gap-x-0.5 px-3 py-2 system-sm-medium"
                   onClick={() => {
                     if (action === 'local')
                       fileInputRef.current?.click()
@@ -125,12 +183,20 @@ const Empty = ({
                       setSelectedAction(action)
                   }}
                 >
-                  <Icon className="size-4" />
+                  {isIntegrationsCategory
+                    ? <IntegrationIcon />
+                    : <Icon className="size-4 text-components-button-secondary-text" />}
                   <span className="px-0.5">{text}</span>
                 </Button>
               ))}
             </div>
           </div>
+          {isIntegrationsCategory && canInstallLocalPackage && (
+            <div className="flex h-8 w-[243px] items-center gap-0.5 px-3 py-2 text-text-tertiary">
+              <DropHintInstallSourceIcon />
+              <span className="px-0.5 system-xs-regular">{t('installModal.dropPluginToInstall', { ns: 'plugin' })}</span>
+            </div>
+          )}
         </div>
         {selectedAction === 'github' && (
           <InstallFromGitHub

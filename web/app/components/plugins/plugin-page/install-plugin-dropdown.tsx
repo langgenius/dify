@@ -14,13 +14,15 @@ import { useSuspenseQuery } from '@tanstack/react-query'
 import { noop } from 'es-toolkit/function'
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { FileZip } from '@/app/components/base/icons/src/vender/solid/files'
-import { Github } from '@/app/components/base/icons/src/vender/solid/general'
-import { MagicBox } from '@/app/components/base/icons/src/vender/solid/mediaAndDevices'
 import InstallFromGitHub from '@/app/components/plugins/install-plugin/install-from-github'
 import InstallFromLocalPackage from '@/app/components/plugins/install-plugin/install-from-local-package'
 import { SUPPORT_INSTALL_LOCAL_FILE_EXTENSIONS } from '@/config'
 import { systemFeaturesQueryOptions } from '@/service/system-features'
+import {
+  GithubInstallSourceIcon,
+  LocalPackageInstallSourceIcon,
+  MarketplaceInstallSourceIcon,
+} from './install-source-icons'
 
 type Props = {
   onSwitchToMarketplaceTab: () => void
@@ -33,7 +35,7 @@ type Props = {
 }
 
 type InstallMethod = {
-  icon: React.FC<{ className?: string }>
+  icon: React.ComponentType
   text: string
   action: string
 }
@@ -95,14 +97,14 @@ const InstallPluginDropdown = ({
   useEffect(() => {
     const methods = []
     if (enable_marketplace)
-      methods.push({ icon: MagicBox, text: t('source.marketplace', { ns: 'plugin' }), action: 'marketplace' })
+      methods.push({ icon: MarketplaceInstallSourceIcon, text: t('source.marketplace', { ns: 'plugin' }), action: 'marketplace' })
 
     if (plugin_installation_permission.restrict_to_marketplace_only) {
       setInstallMethods(methods)
     }
     else {
-      methods.push({ icon: Github, text: t('source.github', { ns: 'plugin' }), action: 'github' })
-      methods.push({ icon: FileZip, text: t('source.local', { ns: 'plugin' }), action: 'local' })
+      methods.push({ icon: GithubInstallSourceIcon, text: t('source.github', { ns: 'plugin' }), action: 'github' })
+      methods.push({ icon: LocalPackageInstallSourceIcon, text: t('source.local', { ns: 'plugin' }), action: 'local' })
       setInstallMethods(methods)
     }
   }, [plugin_installation_permission, enable_marketplace, t])
@@ -166,7 +168,9 @@ const InstallPluginDropdown = ({
               onClick={() => handleInstallMethodSelect(action)}
             >
               <div className="flex items-center gap-1">
-                <Icon className="h-4 w-4 text-text-tertiary" />
+                <span className="text-text-tertiary">
+                  <Icon />
+                </span>
                 <span className="px-1 system-md-regular text-text-secondary">{text}</span>
               </div>
             </DropdownMenuItem>

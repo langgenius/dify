@@ -156,6 +156,41 @@ describe('Empty Component', () => {
       const lines = screen.getAllByTestId('line-component')
       expect(lines).toHaveLength(4)
     })
+
+    it('should render the Figma trigger empty layout variant', async () => {
+      // Arrange & Act
+      const { container } = render(<Empty contentInset="compact" variant="integrationsTrigger" />)
+      await flushEffects()
+
+      // Assert
+      expect(screen.getByText('plugin.list.noTriggersFound')).toBeInTheDocument()
+      expect(screen.getByText('plugin.installModal.dropPluginToInstall')).toBeInTheDocument()
+
+      const skeletonGrid = container.querySelector('.grid')
+      expect(skeletonGrid).toHaveClass('max-w-[1600px]', 'px-6', 'gap-x-[7px]', 'gap-y-[15px]', 'pt-2')
+
+      const skeletonCards = container.querySelectorAll('.h-\\[72px\\].rounded-lg')
+      expect(skeletonCards).toHaveLength(22)
+
+      const buttons = screen.getAllByRole('button')
+      buttons.forEach(button => expect(button).toHaveClass('h-8', 'w-full', 'justify-start'))
+    })
+
+    it('should render the Figma agent strategy empty layout without the trigger offset', async () => {
+      // Arrange & Act
+      const { container } = render(<Empty contentInset="compact" variant="integrationsAgentStrategy" />)
+      await flushEffects()
+
+      // Assert
+      expect(screen.getByText('plugin.list.noInstalled')).toBeInTheDocument()
+      expect(screen.getByText('plugin.installModal.dropPluginToInstall')).toBeInTheDocument()
+
+      const skeletonGrid = container.querySelector('.grid')
+      expect(skeletonGrid).toHaveClass('max-w-[1600px]', 'px-6', 'gap-x-[7px]', 'gap-y-[15px]', 'pt-2')
+      expect(container.querySelector('.items-center')).toBeInTheDocument()
+      expect(container.querySelector('.-translate-y-7')).toBeInTheDocument()
+      expect(container.querySelector('.i-custom-vender-integrations-agent-strategy')).toHaveClass('size-6', 'shrink-0')
+    })
   })
 
   // ==================== Text Display Tests (useMemo) ====================

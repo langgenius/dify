@@ -1,6 +1,7 @@
 import type { PluginDetail } from '../../types'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { PluginCategoryEnum } from '../../types'
 import PluginsPanel from '../plugins-panel'
 
 const mockState = vi.hoisted(() => ({
@@ -51,22 +52,34 @@ vi.mock('../context', () => ({
 }))
 
 vi.mock('../filter-management', () => ({
-  default: ({ onFilterChange }: { onFilterChange: (filters: typeof mockState.filters) => void }) => (
-    <button
-      data-testid="filter-management"
-      onClick={() => onFilterChange({
-        categories: [],
-        tags: [],
-        searchQuery: 'beta',
-      })}
-    >
-      filter
-    </button>
+  default: ({ hideCategoryFilter, hideTagFilter, onFilterChange, rightSlot }: {
+    hideCategoryFilter?: boolean
+    hideTagFilter?: boolean
+    onFilterChange: (filters: typeof mockState.filters) => void
+    rightSlot?: React.ReactNode
+  }) => (
+    <div data-testid="filter-management-wrap">
+      <button
+        data-testid="filter-management"
+        data-hide-category-filter={hideCategoryFilter ? 'true' : 'false'}
+        data-hide-tag-filter={hideTagFilter ? 'true' : 'false'}
+        onClick={() => onFilterChange({
+          categories: [],
+          tags: [],
+          searchQuery: 'beta',
+        })}
+      >
+        filter
+      </button>
+      {rightSlot}
+    </div>
   ),
 }))
 
 vi.mock('../empty', () => ({
-  default: ({ contentInset }: { contentInset?: string }) => <div data-testid="empty-state" data-content-inset={contentInset}>empty</div>,
+  default: ({ contentInset, variant }: { contentInset?: string, variant?: string }) => (
+    <div data-testid="empty-state" data-content-inset={contentInset} data-variant={variant}>empty</div>
+  ),
 }))
 
 vi.mock('../list', () => ({
@@ -87,7 +100,7 @@ vi.mock('@/app/components/plugins/plugin-detail-panel', () => ({
   ),
 }))
 
-const createPlugin = (pluginId: string, label: string, tags: string[] = []): PluginDetail => ({
+const createPlugin = (pluginId: string, label: string, tags: string[] = [], category: PluginCategoryEnum = PluginCategoryEnum.tool): PluginDetail => ({
   id: pluginId,
   created_at: '2024-01-01',
   updated_at: '2024-01-02',
@@ -95,7 +108,7 @@ const createPlugin = (pluginId: string, label: string, tags: string[] = []): Plu
   plugin_id: pluginId,
   plugin_unique_identifier: `${pluginId}-uid`,
   declaration: {
-    category: 'tool',
+    category,
     name: pluginId,
     label: { en_US: label },
     description: { en_US: `${label} description` },
@@ -151,17 +164,70 @@ describe('PluginsPanel', () => {
   it('uses default content inset for the standalone plugins page', () => {
     render(<PluginsPanel />)
 
-    expect(screen.getByTestId('filter-management').parentElement).toHaveClass('px-12')
-    expect(screen.getByTestId('filter-management').parentElement).not.toHaveClass('max-w-[1600px]')
+    expect(screen.getByTestId('filter-management-wrap').parentElement).toHaveClass('px-12')
+    expect(screen.getByTestId('filter-management-wrap').parentElement).not.toHaveClass('max-w-[1600px]')
     expect(screen.getByTestId('empty-state')).toHaveAttribute('data-content-inset', 'default')
   })
 
   it('uses compact content inset for integrations plugin categories', () => {
     render(<PluginsPanel contentInset="compact" />)
 
-    expect(screen.getByTestId('filter-management').parentElement).toHaveClass('px-6')
-    expect(screen.getByTestId('filter-management').parentElement).toHaveClass('max-w-[1600px]')
+    expect(screen.getByTestId('filter-management-wrap').parentElement).toHaveClass('px-6')
+    expect(screen.getByTestId('filter-management-wrap').parentElement).toHaveClass('max-w-[1600px]')
     expect(screen.getByTestId('empty-state')).toHaveAttribute('data-content-inset', 'compact')
+  })
+
+  it('hides category filtering UI and locks the list to the fixed category', () => {
+    mockState.filters.categories = []
+    mockPluginListWithLatestVersion.mockReturnValue([
+      createPlugin('trigger-plugin', 'Trigger Plugin', [], PluginCategoryEnum.trigger),
+      createPlugin('tool-plugin', 'Tool Plugin', [], PluginCategoryEnum.tool),
+    ])
+
+    render(<PluginsPanel contentInset="compact" fixedCategory={PluginCategoryEnum.trigger} />)
+
+    expect(screen.getByTestId('filter-management')).toHaveAttribute('data-hide-category-filter', 'true')
+    expect(screen.getByTestId('filter-management')).toHaveAttribute('data-hide-tag-filter', 'false')
+    expect(screen.getByTestId('plugin-list')).toHaveTextContent('trigger-plugin')
+    expect(screen.getByTestId('plugin-list')).not.toHaveTextContent('tool-plugin')
+  })
+
+  it('uses the Figma trigger toolbar frame and renders the toolbar action', () => {
+    render(
+      <PluginsPanel
+        contentInset="compact"
+        fixedCategory={PluginCategoryEnum.trigger}
+        toolbarAction={<button type="button">update setting</button>}
+      />,
+    )
+
+    expect(screen.getByTestId('filter-management-wrap').parentElement).toHaveClass('h-12', 'py-2', 'max-w-[1600px]', 'px-6')
+    expect(screen.getByText('update setting')).toBeInTheDocument()
+  })
+
+  it('uses the Figma agent strategy body without the filter toolbar', () => {
+    render(<PluginsPanel contentInset="compact" fixedCategory={PluginCategoryEnum.agent} />)
+
+    expect(screen.queryByTestId('filter-management')).not.toBeInTheDocument()
+    expect(screen.getByTestId('empty-state')).toHaveAttribute('data-variant', 'integrationsAgentStrategy')
+  })
+
+  it('hides tag filtering UI for the extension integrations category', () => {
+    render(<PluginsPanel contentInset="compact" fixedCategory={PluginCategoryEnum.extension} />)
+
+    expect(screen.getByTestId('filter-management')).toHaveAttribute('data-hide-category-filter', 'true')
+    expect(screen.getByTestId('filter-management')).toHaveAttribute('data-hide-tag-filter', 'true')
+  })
+
+  it('does not apply hidden tag filters outside the trigger integrations category', () => {
+    mockState.filters.tags = ['search']
+    mockPluginListWithLatestVersion.mockReturnValue([
+      createPlugin('extension-plugin', 'Extension Plugin', ['rag'], PluginCategoryEnum.extension),
+    ])
+
+    render(<PluginsPanel contentInset="compact" fixedCategory={PluginCategoryEnum.extension} />)
+
+    expect(screen.getByTestId('plugin-list')).toHaveTextContent('extension-plugin')
   })
 
   it('filters the list and exposes the load-more action', () => {

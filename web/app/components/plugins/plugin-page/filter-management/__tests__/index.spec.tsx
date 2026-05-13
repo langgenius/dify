@@ -124,8 +124,8 @@ const createFilterState = (overrides: Partial<FilterState> = {}): FilterState =>
   ...overrides,
 })
 
-const renderFilterManagement = (onFilterChange = vi.fn()) => {
-  const result = render(<FilterManagement onFilterChange={onFilterChange} />)
+const renderFilterManagement = (onFilterChange = vi.fn(), props?: Partial<React.ComponentProps<typeof FilterManagement>>) => {
+  const result = render(<FilterManagement onFilterChange={onFilterChange} {...props} />)
   return { ...result, onFilterChange }
 }
 
@@ -891,6 +891,26 @@ describe('FilterManagement Component', () => {
       // Assert - All three filters should be present
       expect(screen.getByText('plugin.allCategories'))!.toBeInTheDocument()
       expect(screen.getByText('pluginTags.allTags'))!.toBeInTheDocument()
+      expect(screen.getByPlaceholderText('plugin.search'))!.toBeInTheDocument()
+    })
+
+    it('should hide category filter when scoped to a fixed category', () => {
+      // Arrange & Act
+      renderFilterManagement(vi.fn(), { hideCategoryFilter: true })
+
+      // Assert
+      expect(screen.queryByText('plugin.allCategories'))!.not.toBeInTheDocument()
+      expect(screen.getByText('pluginTags.allTags'))!.toBeInTheDocument()
+      expect(screen.getByPlaceholderText('plugin.search'))!.toBeInTheDocument()
+    })
+
+    it('should hide tag filter when scoped category does not support tags', () => {
+      // Arrange & Act
+      renderFilterManagement(vi.fn(), { hideTagFilter: true })
+
+      // Assert
+      expect(screen.getByText('plugin.allCategories'))!.toBeInTheDocument()
+      expect(screen.queryByText('pluginTags.allTags'))!.not.toBeInTheDocument()
       expect(screen.getByPlaceholderText('plugin.search'))!.toBeInTheDocument()
     })
 

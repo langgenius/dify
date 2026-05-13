@@ -188,6 +188,7 @@
   "installModal.uploadingPackage": "Uploading {{packageName}}...",
   "installPlugin": "Install plugin",
   "list.noInstalled": "No plugins installed",
+  "list.noTriggersFound": "No Triggers found",
   "list.notFound": "No plugins found",
   "list.source.github": "Install from GitHub",
   "list.source.local": "Install from Local Package File",
