@@ -93,7 +93,6 @@ const FormInputItem: FC<Props> = ({
   schema,
   value,
   onChange,
-  inPanel,
   currentTool,
   currentProvider,
   showManageInputField,
@@ -489,7 +488,7 @@ const FormInputItem: FC<Props> = ({
           <SelectTrigger className="h-8 grow">
             {selectedStaticOption?.name ?? placeholder?.[language] ?? placeholder?.en_US}
           </SelectTrigger>
-          <SelectContent popupClassName="w-(--anchor-width)">
+          <SelectContent>
             {staticSelectItems.map(item => (
               <SelectItem key={item.value} value={item.value}>
                 {item.icon && (
@@ -522,7 +521,7 @@ const FormInputItem: FC<Props> = ({
           <SelectTrigger className="h-8 grow">
             {selectedDynamicOption?.name ?? (isLoadingOptions ? t('dynamicSelect.loading', { ns: 'common' }) : (placeholder?.[language] ?? placeholder?.en_US))}
           </SelectTrigger>
-          <SelectContent popupClassName="w-(--anchor-width)">
+          <SelectContent>
             {dynamicSelectItems.map(item => (
               <SelectItem key={item.value} value={item.value}>
                 {item.icon && (
@@ -588,7 +587,6 @@ const FormInputItem: FC<Props> = ({
       )}
       {showVariableSelector && (
         <VarReferencePicker
-          zIndex={inPanel ? 1000 : undefined}
           className="h-8 grow"
           readonly={readOnly}
           isShowNodeName

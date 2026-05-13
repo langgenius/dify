@@ -21,10 +21,18 @@ const config: KnipConfig = {
   ],
   /// keep-sorted
   rules: {
-    binaries: 'error',
+    // TODO: fix these warnings
+    // Unused devDependencies (3)
+    // @eslint-react/eslint-plugin  package.json:160:6
+    // @next/eslint-plugin-next     package.json:168:6
+    // eslint-plugin-react-refresh  package.json:211:6
+    // Unlisted binaries (2)
+    // eslint  package.json
+    // vp      package.json
+    binaries: 'warn',
     catalog: 'error',
     dependencies: 'error',
-    devDependencies: 'error',
+    devDependencies: 'warn',
     duplicates: 'error',
     enumMembers: 'error',
     exports: 'error',

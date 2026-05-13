@@ -13,8 +13,6 @@ from core.llm_generator.output_parser.rule_config_generator import RuleConfigGen
 from core.llm_generator.output_parser.suggested_questions_after_answer import SuggestedQuestionsAfterAnswerOutputParser
 from core.llm_generator.prompts import (
     CONVERSATION_TITLE_PROMPT,
-    DEFAULT_SUGGESTED_QUESTIONS_MAX_TOKENS,
-    DEFAULT_SUGGESTED_QUESTIONS_TEMPERATURE,
     GENERATOR_QA_PROMPT,
     JAVASCRIPT_CODE_GENERATOR_PROMPT_TEMPLATE,
     LLM_MODIFY_CODE_SYSTEM,
@@ -217,8 +215,8 @@ class LLMGenerator:
             else:
                 # Default-model generation keeps the built-in suggested-questions tuning.
                 model_parameters = {
-                    "max_tokens": DEFAULT_SUGGESTED_QUESTIONS_MAX_TOKENS,
-                    "temperature": DEFAULT_SUGGESTED_QUESTIONS_TEMPERATURE,
+                    "max_tokens": 2560,
+                    "temperature": 0.0,
                 }
                 stop = []
 

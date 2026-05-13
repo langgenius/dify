@@ -39,6 +39,58 @@ class AbstractVectorFactory(ABC):
         return index_struct_dict
 
 
+class _LazyEmbeddings(Embeddings):
+    """Lazy proxy that defers materializing the real embedding model.
+
+    Constructing the real embeddings (via ``ModelManager.get_model_instance``)
+    transitively calls ``FeatureService.get_features`` → ``BillingService``
+    HTTP GETs (see ``provider_manager.py``). Cleanup paths
+    (``delete_by_ids`` / ``delete`` / ``text_exists``) do not need embeddings
+    at all, so deferring this until an ``embed_*`` method is actually invoked
+    keeps cleanup tasks resilient to transient billing-API failures and avoids
+    leaving stranded ``document_segments`` / ``child_chunks`` whenever billing
+    hiccups.
+
+    Existing callers that perform create / search operations are unaffected:
+    the first ``embed_*`` call materializes the underlying model and the
+    behavior is identical from that point on.
+    """
+
+    def __init__(self, dataset: Dataset):
+        self._dataset = dataset
+        self._real: Embeddings | None = None
+
+    def _ensure(self) -> Embeddings:
+        if self._real is None:
+            model_manager = ModelManager.for_tenant(tenant_id=self._dataset.tenant_id)
+            embedding_model = model_manager.get_model_instance(
+                tenant_id=self._dataset.tenant_id,
+                provider=self._dataset.embedding_model_provider,
+                model_type=ModelType.TEXT_EMBEDDING,
+                model=self._dataset.embedding_model,
+            )
+            self._real = CacheEmbedding(embedding_model)
+        return self._real
+
+    def embed_documents(self, texts: list[str]) -> list[list[float]]:
+        return self._ensure().embed_documents(texts)
+
+    def embed_multimodal_documents(self, multimodel_documents: list[dict[str, Any]]) -> list[list[float]]:
+        return self._ensure().embed_multimodal_documents(multimodel_documents)
+
+    def embed_query(self, text: str) -> list[float]:
+        return self._ensure().embed_query(text)
+
+    def embed_multimodal_query(self, multimodel_document: dict[str, Any]) -> list[float]:
+        return self._ensure().embed_multimodal_query(multimodel_document)
+
+    async def aembed_documents(self, texts: list[str]) -> list[list[float]]:
+        return await self._ensure().aembed_documents(texts)
+
+    async def aembed_query(self, text: str) -> list[float]:
+        return await self._ensure().aembed_query(text)
+
+
 class Vector:
     def __init__(self, dataset: Dataset, attributes: list | None = None):
         if attributes is None:
@@ -60,7 +112,11 @@ class Vector:
                 "original_chunk_id",
             ]
         self._dataset = dataset
-        self._embeddings = self._get_embeddings()
+        # Use a lazy proxy so cleanup paths (delete_by_ids / delete / text_exists)
+        # never transitively trigger billing API calls during ``Vector(dataset)``
+        # construction. The real embedding model is materialized only when an
+        # ``embed_*`` method is actually invoked (i.e. create / search paths).
+        self._embeddings: Embeddings = _LazyEmbeddings(dataset)
         self._attributes = attributes
         self._vector_processor = self._init_vector()
 
@@ -88,8 +144,20 @@ class Vector:
     def get_vector_factory(vector_type: str) -> type[AbstractVectorFactory]:
         return get_vector_factory_class(vector_type)
 
+    @staticmethod
+    def _filter_empty_text_documents(documents: list[Document]) -> list[Document]:
+        filtered_documents = [document for document in documents if document.page_content.strip()]
+        skipped_count = len(documents) - len(filtered_documents)
+        if skipped_count:
+            logger.warning("skip %d empty documents before vector embedding", skipped_count)
+        return filtered_documents
+
     def create(self, texts: list | None = None, **kwargs):
         if texts:
+            texts = self._filter_empty_text_documents(texts)
+            if not texts:
+                return
+
             start = time.time()
             logger.info("start embedding %s texts %s", len(texts), start)
             batch_size = 1000
@@ -147,8 +215,14 @@ class Vector:
             logger.info("Embedding %s files took %s s", len(file_documents), time.time() - start)
 
     def add_texts(self, documents: list[Document], **kwargs):
+        documents = self._filter_empty_text_documents(documents)
+        if not documents:
+            return
+
         if kwargs.get("duplicate_check", False):
             documents = self._filter_duplicate_texts(documents)
+            if not documents:
+                return
 
         embeddings = self._embeddings.embed_documents([document.page_content for document in documents])
         self._vector_processor.create(texts=documents, embeddings=embeddings, **kwargs)

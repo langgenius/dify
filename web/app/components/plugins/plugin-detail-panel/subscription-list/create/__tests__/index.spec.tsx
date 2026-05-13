@@ -80,19 +80,30 @@ vi.mock('@/hooks/use-oauth', () => ({
 }))
 
 vi.mock('../common-modal', () => ({
-  CommonCreateModal: ({ createType, onClose, builder }: {
+  CommonCreateModal: ({ open, createType, onClose, builder }: {
+    open?: boolean
     createType: SupportedCreationMethods
     onClose: () => void
     builder?: TriggerSubscriptionBuilder
-  }) => (
-    <div
-      data-testid="common-create-modal"
-      data-create-type={createType}
-      data-has-builder={!!builder}
-    >
-      <button data-testid="close-modal" onClick={onClose}>Close</button>
-    </div>
-  ),
+  }) => {
+    if (open === false)
+      return null
+
+    return (
+      <div
+        data-testid="common-create-modal"
+        data-create-type={createType}
+        data-has-builder={!!builder}
+      >
+        <button
+          data-testid="close-modal"
+          onClick={onClose}
+        >
+          Close
+        </button>
+      </div>
+    )
+  },
 }))
 
 vi.mock('../oauth-client', () => ({

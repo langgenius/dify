@@ -7,11 +7,32 @@ import { AppModeEnum } from '@/types/app'
 
 import List from '../list'
 
+const mockAppListInfiniteOptions = vi.hoisted(() => vi.fn((options: unknown) => options))
+const mockUseWorkflowOnlineUsers = vi.hoisted(() => vi.fn((_options: unknown) => ({
+  onlineUsersMap: {},
+})))
+
 const mockReplace = vi.fn()
 const mockRouter = { replace: mockReplace }
 vi.mock('@/next/navigation', () => ({
   useRouter: () => mockRouter,
   useSearchParams: () => new URLSearchParams(''),
+}))
+
+vi.mock('@/service/client', () => ({
+  consoleClient: {
+    systemFeatures: vi.fn(),
+  },
+  consoleQuery: {
+    apps: {
+      list: {
+        infiniteOptions: (options: unknown) => mockAppListInfiniteOptions(options),
+      },
+    },
+    systemFeatures: {
+      queryKey: () => ['console', 'systemFeatures'],
+    },
+  },
 }))
 
 const mockIsCurrentWorkspaceEditor = vi.fn(() => true)
@@ -45,12 +66,17 @@ vi.mock('../hooks/use-dsl-drag-drop', () => ({
   },
 }))
 
+vi.mock('../hooks/use-workflow-online-users', () => ({
+  useWorkflowOnlineUsers: (options: unknown) => mockUseWorkflowOnlineUsers(options),
+}))
+
 const mockRefetch = vi.fn()
 const mockFetchNextPage = vi.fn()
 
 const mockServiceState = {
   error: null as Error | null,
   hasNextPage: false,
+  isFetching: false,
   isLoading: false,
   isFetchingNextPage: false,
 }
@@ -89,16 +115,24 @@ const defaultAppData = {
   }],
 }
 
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@tanstack/react-query')>()
+  return {
+    ...actual,
+    useInfiniteQuery: () => ({
+      data: defaultAppData,
+      isLoading: mockServiceState.isLoading,
+      isFetching: mockServiceState.isFetching,
+      isFetchingNextPage: mockServiceState.isFetchingNextPage,
+      fetchNextPage: mockFetchNextPage,
+      hasNextPage: mockServiceState.hasNextPage,
+      error: mockServiceState.error,
+      refetch: mockRefetch,
+    }),
+  }
+})
+
 vi.mock('@/service/use-apps', () => ({
-  useInfiniteAppList: () => ({
-    data: defaultAppData,
-    isLoading: mockServiceState.isLoading,
-    isFetchingNextPage: mockServiceState.isFetchingNextPage,
-    fetchNextPage: mockFetchNextPage,
-    hasNextPage: mockServiceState.hasNextPage,
-    error: mockServiceState.error,
-    refetch: mockRefetch,
-  }),
   useDeleteAppMutation: () => ({
     mutateAsync: vi.fn(),
     isPending: false,
@@ -194,6 +228,11 @@ const renderList = (searchParams = '') => {
   return renderWithNuqs(<SystemFeaturesWrapper><List /></SystemFeaturesWrapper>, { searchParams })
 }
 
+type AppListInfiniteOptions = {
+  input: (pageParam: number) => { query: Record<string, unknown> }
+  getNextPageParam: (lastPage: { has_more: boolean, page: number }) => number | undefined
+}
+
 describe('List', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -212,6 +251,7 @@ describe('List', () => {
     mockQueryState.tagIDs = []
     mockQueryState.keywords = ''
     mockQueryState.isCreatedByMe = false
+    mockUseWorkflowOnlineUsers.mockClear()
     intersectionCallback = null
     localStorage.clear()
   })
@@ -269,6 +309,15 @@ describe('List', () => {
       renderList()
       expect(screen.getByText('app.newApp.dropDSLToCreateApp'))!.toBeInTheDocument()
     })
+
+    it('should pass workflow app ids to online users hook', () => {
+      renderList()
+
+      expect(mockUseWorkflowOnlineUsers).toHaveBeenCalledWith({
+        appIds: ['app-2'],
+        enabled: expect.any(Boolean),
+      })
+    })
   })
 
   describe('Tab Navigation', () => {
@@ -320,6 +369,31 @@ describe('List', () => {
         fireEvent.click(clearButton)
 
       expect(mockSetQuery).toHaveBeenCalled()
+    })
+  })
+
+  describe('App List Query', () => {
+    it('should build paged query input from active filters', () => {
+      mockQueryState.tagIDs = ['tag-1']
+      mockQueryState.keywords = 'sales'
+      mockQueryState.isCreatedByMe = true
+
+      renderList('?category=workflow')
+
+      const options = mockAppListInfiniteOptions.mock.calls.at(-1)?.[0] as AppListInfiniteOptions
+
+      expect(options.input(2)).toEqual({
+        query: {
+          page: 2,
+          limit: 30,
+          name: 'sales',
+          tag_ids: ['tag-1'],
+          is_created_by_me: true,
+          mode: AppModeEnum.WORKFLOW,
+        },
+      })
+      expect(options.getNextPageParam({ has_more: true, page: 2 })).toBe(3)
+      expect(options.getNextPageParam({ has_more: false, page: 2 })).toBeUndefined()
     })
   })
 

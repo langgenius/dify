@@ -10,11 +10,11 @@ import type {
 } from '../declarations'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Switch } from '@langgenius/dify-ui/switch'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import Badge from '@/app/components/base/badge/index'
 import GridMask from '@/app/components/base/grid-mask'
-import Tooltip from '@/app/components/base/tooltip'
 import UpgradeBtn from '@/app/components/billing/upgrade-btn'
 import s from '@/app/components/custom/style.module.css'
 import { AddCredentialInLoadBalancing } from '@/app/components/header/account-setting/model-provider-page/model-auth'
@@ -152,11 +152,18 @@ const ModelLoadBalancingConfigs = ({
           <div className="grow">
             <div className="flex items-center gap-1 text-sm text-text-primary">
               {t('modelProvider.loadBalancing', { ns: 'common' })}
-              <Tooltip
-                popupContent={t('modelProvider.loadBalancingInfo', { ns: 'common' })}
-                popupClassName="max-w-[300px]"
-                triggerClassName="w-3 h-3"
-              />
+              <Tooltip>
+                <TooltipTrigger
+                  render={(
+                    <span className="flex h-3 w-3 shrink-0 p-px">
+                      <span aria-hidden className="i-ri-question-line h-full w-full text-text-quaternary hover:text-text-tertiary" />
+                    </span>
+                  )}
+                />
+                <TooltipContent className="max-w-[300px]">
+                  {t('modelProvider.loadBalancingInfo', { ns: 'common' })}
+                </TooltipContent>
+              </Tooltip>
             </div>
             <div className="text-xs text-text-tertiary">{t('modelProvider.loadBalancingDescription', { ns: 'common' })}</div>
           </div>
@@ -187,8 +194,15 @@ const ModelLoadBalancingConfigs = ({
                             <CooldownTimer secondsRemaining={config.ttl} onFinish={() => clearCountdown(index)} />
                           )
                         : (
-                            <Tooltip popupContent={t('modelProvider.apiKeyStatusNormal', { ns: 'common' })}>
-                              <Indicator color={credential?.not_allowed_to_use ? 'gray' : 'green'} />
+                            <Tooltip>
+                              <TooltipTrigger
+                                render={(
+                                  <Indicator color={credential?.not_allowed_to_use ? 'gray' : 'green'} />
+                                )}
+                              />
+                              <TooltipContent>
+                                {t('modelProvider.apiKeyStatusNormal', { ns: 'common' })}
+                              </TooltipContent>
                             </Tooltip>
                           )}
                     </div>
@@ -208,14 +222,21 @@ const ModelLoadBalancingConfigs = ({
                     {!isProviderManaged && (
                       <>
                         <div className="flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
-                          <Tooltip popupContent={t('operation.remove', { ns: 'common' })}>
-                            <span
-                              className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg bg-components-button-secondary-bg text-text-tertiary transition-colors hover:bg-components-button-secondary-bg-hover"
-                              onClick={() => updateConfigEntry(index, () => undefined)}
-                              data-testid={`load-balancing-remove-${config.id || index}`}
-                            >
-                              <div className="i-ri-indeterminate-circle-line h-4 w-4" />
-                            </span>
+                          <Tooltip>
+                            <TooltipTrigger
+                              render={(
+                                <span
+                                  className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg bg-components-button-secondary-bg text-text-tertiary transition-colors hover:bg-components-button-secondary-bg-hover"
+                                  onClick={() => updateConfigEntry(index, () => undefined)}
+                                  data-testid={`load-balancing-remove-${config.id || index}`}
+                                >
+                                  <div className="i-ri-indeterminate-circle-line h-4 w-4" />
+                                </span>
+                              )}
+                            />
+                            <TooltipContent>
+                              {t('operation.remove', { ns: 'common' })}
+                            </TooltipContent>
                           </Tooltip>
                         </div>
                       </>

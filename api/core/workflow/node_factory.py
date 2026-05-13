@@ -365,7 +365,8 @@ class DifyNodeFactory(NodeFactory):
             (including pydantic ValidationError, which subclasses ValueError),
             if node type is unknown, or if no implementation exists for the resolved version
         """
-        typed_node_config = NodeConfigDictAdapter.validate_python(adapt_node_config_for_graph(node_config))
+        adapted_node_config = adapt_node_config_for_graph(node_config)
+        typed_node_config = NodeConfigDictAdapter.validate_python(adapted_node_config)
         node_id = typed_node_config["id"]
         node_data = typed_node_config["data"]
         node_class = self._resolve_node_class(node_type=node_data.type, node_version=str(node_data.version))
@@ -373,6 +374,11 @@ class DifyNodeFactory(NodeFactory):
         # Re-validate using the resolved node class so workflow-local node schemas
         # stay explicit and constructors receive the concrete typed payload.
         resolved_node_data = self._validate_resolved_node_data(node_class, node_data)
+        config_for_node_init: BaseNodeData | dict[str, Any]
+        if isinstance(resolved_node_data, BaseNodeData):
+            config_for_node_init = resolved_node_data.model_dump(mode="python", by_alias=True)
+        else:
+            config_for_node_init = resolved_node_data
         node_type = node_data.type
         node_init_kwargs_factories: Mapping[NodeType, Callable[[], dict[str, object]]] = {
             BuiltinNodeTypes.CODE: lambda: {
@@ -442,7 +448,7 @@ class DifyNodeFactory(NodeFactory):
         node_init_kwargs = node_init_kwargs_factories.get(node_type, lambda: {})()
         return node_class(
             node_id=node_id,
-            config=resolved_node_data,
+            config=config_for_node_init,
             graph_init_params=self.graph_init_params,
             graph_runtime_state=self.graph_runtime_state,
             **node_init_kwargs,
@@ -474,10 +480,7 @@ class DifyNodeFactory(NodeFactory):
         include_retriever_attachment_loader: bool,
         include_jinja2_template_renderer: bool,
     ) -> dict[str, object]:
-        validated_node_data = cast(
-            LLMCompatibleNodeData,
-            self._validate_resolved_node_data(node_class=node_class, node_data=node_data),
-        )
+        validated_node_data = cast(LLMCompatibleNodeData, node_data)
         model_instance = self._build_model_instance_for_llm_node(validated_node_data)
         node_init_kwargs: dict[str, object] = {
             "credentials_provider": self._llm_credentials_provider,

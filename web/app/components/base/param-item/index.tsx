@@ -10,7 +10,7 @@ import {
 } from '@langgenius/dify-ui/number-field'
 import { Slider } from '@langgenius/dify-ui/slider'
 import { Switch } from '@langgenius/dify-ui/switch'
-import Tooltip from '@/app/components/base/tooltip'
+import { Infotip } from '@/app/components/base/infotip'
 
 type Props = {
   className?: string
@@ -44,11 +44,10 @@ const ParamItem: FC<Props> = ({ className, id, name, noTooltip, tip, step = 0.1,
             />
           )}
           <span className="mr-1 system-sm-semibold text-text-secondary">{name}</span>
-          {!noTooltip && (
-            <Tooltip
-              triggerClassName="w-4 h-4 shrink-0"
-              popupContent={<div className="w-[200px]">{tip}</div>}
-            />
+          {!noTooltip && tip && (
+            <Infotip aria-label={tip} popupClassName="w-[200px]">
+              {tip}
+            </Infotip>
           )}
         </div>
       </div>

@@ -1,6 +1,6 @@
+import type * as React from 'react'
 import type { TriggerSubscriptionBuilder } from '@/app/components/workflow/block-selector/types'
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
-import * as React from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { SupportedCreationMethods } from '@/app/components/plugins/types'
 import { TriggerCredentialTypeEnum } from '@/app/components/workflow/block-selector/types'
@@ -132,36 +132,6 @@ vi.mock('@langgenius/dify-ui/toast', () => ({
     update: vi.fn(),
     promise: vi.fn(),
   }),
-}))
-
-vi.mock('@/app/components/base/modal/modal', () => ({
-  default: ({
-    children,
-    onClose,
-    onConfirm,
-    title,
-    confirmButtonText,
-    bottomSlot,
-    size,
-    disabled,
-  }: {
-    children: React.ReactNode
-    onClose: () => void
-    onConfirm: () => void
-    title: string
-    confirmButtonText: string
-    bottomSlot?: React.ReactNode
-    size?: string
-    disabled?: boolean
-  }) => (
-    <div data-testid="modal" data-size={size} data-disabled={disabled}>
-      <div data-testid="modal-title">{title}</div>
-      <div data-testid="modal-content">{children}</div>
-      <div data-testid="modal-bottom-slot">{bottomSlot}</div>
-      <button data-testid="modal-confirm" onClick={onConfirm} disabled={disabled}>{confirmButtonText}</button>
-      <button data-testid="modal-close" onClick={onClose}>Close</button>
-    </div>
-  ),
 }))
 
 type MockFormValuesConfig = {

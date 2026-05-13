@@ -1,5 +1,5 @@
 from types import SimpleNamespace
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 from flask import Flask, g
@@ -14,10 +14,6 @@ def app():
     flask_app.config["TESTING"] = True
     flask_app.login_manager = SimpleNamespace(load_user_from_request_context=lambda: None)
     return flask_app
-
-
-def _mock_wraps_db(mock_db):
-    mock_db.session.query.return_value.first.return_value = MagicMock()
 
 
 def _build_feature_flags():
@@ -49,7 +45,6 @@ class TestMemberInviteEmailApi:
         mock_get_features,
         app,
     ):
-        _mock_wraps_db(mock_db)
         mock_get_features.return_value = _build_feature_flags()
         mock_invite_member.return_value = "token-abc"
 

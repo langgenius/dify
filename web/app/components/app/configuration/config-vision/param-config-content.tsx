@@ -6,8 +6,8 @@ import * as React from 'react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useFeatures, useFeaturesStore } from '@/app/components/base/features/hooks'
+import { Infotip } from '@/app/components/base/infotip'
 import ParamItem from '@/app/components/base/param-item'
-import Tooltip from '@/app/components/base/tooltip'
 import OptionCard from '@/app/components/workflow/nodes/_base/components/option-card'
 import { Resolution, TransferMethod } from '@/types/app'
 
@@ -47,15 +47,14 @@ const ParamConfigContent: FC = () => {
         <div>
           <div className="mb-2 flex items-center space-x-1">
             <div className="text-[13px] leading-[18px] font-semibold text-text-secondary">{t('vision.visionSettings.resolution', { ns: 'appDebug' })}</div>
-            <Tooltip
-              popupContent={(
-                <div className="w-[180px]">
-                  {t('vision.visionSettings.resolutionTooltip', { ns: 'appDebug' }).split('\n').map(item => (
-                    <div key={item}>{item}</div>
-                  ))}
-                </div>
-              )}
-            />
+            <Infotip
+              aria-label={t('vision.visionSettings.resolutionTooltip', { ns: 'appDebug' })}
+              popupClassName="w-[180px]"
+            >
+              {t('vision.visionSettings.resolutionTooltip', { ns: 'appDebug' }).split('\n').map(item => (
+                <div key={item}>{item}</div>
+              ))}
+            </Infotip>
           </div>
           <div className="flex items-center gap-1">
             <OptionCard

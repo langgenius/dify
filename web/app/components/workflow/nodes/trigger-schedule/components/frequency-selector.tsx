@@ -44,7 +44,7 @@ const FrequencySelector = ({ frequency, onChange }: FrequencySelectorProps) => {
       <SelectTrigger className="w-full py-2">
         {selectedFrequency?.name ?? t('nodes.triggerSchedule.selectFrequency', { ns: 'workflow' })}
       </SelectTrigger>
-      <SelectContent popupClassName="w-(--anchor-width)">
+      <SelectContent>
         <SelectGroup>
           <SelectLabel>{groupLabel}</SelectLabel>
           {frequencies.map(item => (

@@ -8,7 +8,7 @@ import type {
   HumanInputFormData,
 } from '@/types/workflow'
 
-export type MessageMore = {
+type MessageMore = {
   time: string
   tokens: number
   latency: number | string

@@ -5,6 +5,7 @@ from __future__ import annotations
 import sys
 import types
 from types import SimpleNamespace
+from typing import Any, TypedDict, cast
 from unittest.mock import MagicMock
 
 import pytest
@@ -12,7 +13,7 @@ from dify_trace_tencent import client as client_module
 from dify_trace_tencent.client import TencentTraceClient, _get_opentelemetry_sdk_version
 from dify_trace_tencent.entities.tencent_trace_entity import SpanData
 from opentelemetry.sdk.trace import Event
-from opentelemetry.trace import Status, StatusCode
+from opentelemetry.trace import SpanContext, Status, StatusCode, TraceFlags
 
 metric_reader_instances: list[DummyMetricReader] = []
 meter_provider_instances: list[DummyMeterProvider] = []
@@ -80,6 +81,16 @@ class DummyJsonMetricExporterNoTemporality:
         self.kwargs = kwargs
 
 
+class PatchedCoreComponents(TypedDict):
+    span_exporter: MagicMock
+    span_processor: MagicMock
+    tracer: MagicMock
+    span: MagicMock
+    tracer_provider: MagicMock
+    logger: MagicMock
+    trace_api: Any
+
+
 def _add_stub_modules(monkeypatch: pytest.MonkeyPatch) -> None:
     """Drop fake metric modules into sys.modules so the client imports resolve."""
 
@@ -118,7 +129,7 @@ def stub_metric_modules(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 @pytest.fixture(autouse=True)
-def patch_core_components(monkeypatch: pytest.MonkeyPatch) -> dict[str, object]:
+def patch_core_components(monkeypatch: pytest.MonkeyPatch) -> PatchedCoreComponents:
     span_exporter = MagicMock(name="span_exporter")
     monkeypatch.setattr(client_module, "OTLPSpanExporter", MagicMock(return_value=span_exporter))
 
@@ -168,6 +179,15 @@ def patch_core_components(monkeypatch: pytest.MonkeyPatch) -> dict[str, object]:
     }
 
 
+def _make_span_context(trace_id: int = 1, span_id: int = 2) -> SpanContext:
+    return SpanContext(
+        trace_id=trace_id,
+        span_id=span_id,
+        is_remote=False,
+        trace_flags=TraceFlags(TraceFlags.SAMPLED),
+    )
+
+
 def _build_client() -> TencentTraceClient:
     return TencentTraceClient(
         service_name="service",
@@ -208,7 +228,7 @@ def test_resolve_grpc_target_parsable_variants(endpoint: str, expected: tuple[st
 
 
 def test_resolve_grpc_target_handles_errors() -> None:
-    assert TencentTraceClient._resolve_grpc_target(123) == ("localhost:4317", True, "localhost", 4317)
+    assert TencentTraceClient._resolve_grpc_target(cast(str, 123)) == ("localhost:4317", True, "localhost", 4317)
 
 
 @pytest.mark.parametrize(
@@ -248,7 +268,7 @@ def test_record_methods_skip_when_histogram_missing() -> None:
     client.record_trace_duration(0.5)
 
 
-def test_record_llm_duration_handles_exceptions(patch_core_components: dict[str, object]) -> None:
+def test_record_llm_duration_handles_exceptions(patch_core_components: PatchedCoreComponents) -> None:
     client = _build_client()
     client.hist_llm_duration = MagicMock(name="hist_llm_duration")
     client.hist_llm_duration.record.side_effect = RuntimeError("boom")
@@ -258,10 +278,11 @@ def test_record_llm_duration_handles_exceptions(patch_core_components: dict[str,
     logger.debug.assert_called()
 
 
-def test_create_and_export_span_sets_attributes(patch_core_components: dict[str, object]) -> None:
+def test_create_and_export_span_sets_attributes(patch_core_components: PatchedCoreComponents) -> None:
     client = _build_client()
     span = patch_core_components["span"]
-    span.get_span_context.return_value = "ctx"
+    ctx = _make_span_context(span_id=2)
+    span.get_span_context.return_value = ctx
 
     data = SpanData(
         trace_id=1,
@@ -280,14 +301,15 @@ def test_create_and_export_span_sets_attributes(patch_core_components: dict[str,
     span.add_event.assert_called_once()
     span.set_status.assert_called_once()
     span.end.assert_called_once_with(end_time=20)
-    assert client.span_contexts[2] == "ctx"
+    assert client.span_contexts[2] == ctx
 
 
-def test_create_and_export_span_uses_parent_context(patch_core_components: dict[str, object]) -> None:
+def test_create_and_export_span_uses_parent_context(patch_core_components: PatchedCoreComponents) -> None:
     client = _build_client()
-    client.span_contexts[10] = "existing"
+    existing_context = _make_span_context(span_id=10)
+    client.span_contexts[10] = existing_context
     span = patch_core_components["span"]
-    span.get_span_context.return_value = "child"
+    span.get_span_context.return_value = _make_span_context(span_id=11)
 
     data = SpanData(
         trace_id=1,
@@ -302,14 +324,14 @@ def test_create_and_export_span_uses_parent_context(patch_core_components: dict[
 
     client._create_and_export_span(data)
     trace_api = patch_core_components["trace_api"]
-    trace_api.NonRecordingSpan.assert_called_once_with("existing")
+    trace_api.NonRecordingSpan.assert_called_once_with(existing_context)
     trace_api.set_span_in_context.assert_called_once()
 
 
-def test_create_and_export_span_exception_logs_error(patch_core_components: dict[str, object]) -> None:
+def test_create_and_export_span_exception_logs_error(patch_core_components: PatchedCoreComponents) -> None:
     client = _build_client()
     span = patch_core_components["span"]
-    span.get_span_context.return_value = "ctx"
+    span.get_span_context.return_value = _make_span_context(span_id=2)
     client.tracer.start_span.side_effect = RuntimeError("boom")
 
     client._create_and_export_span(
@@ -385,7 +407,7 @@ def test_get_project_url() -> None:
     assert client.get_project_url() == "https://console.cloud.tencent.com/apm"
 
 
-def test_shutdown_flushes_all_components(patch_core_components: dict[str, object]) -> None:
+def test_shutdown_flushes_all_components(patch_core_components: PatchedCoreComponents) -> None:
     client = _build_client()
     span_processor = patch_core_components["span_processor"]
     tracer_provider = patch_core_components["tracer_provider"]
@@ -401,10 +423,11 @@ def test_shutdown_flushes_all_components(patch_core_components: dict[str, object
     metric_reader.shutdown.assert_called_once()
 
 
-def test_shutdown_logs_when_meter_provider_fails(patch_core_components: dict[str, object]) -> None:
+def test_shutdown_logs_when_meter_provider_fails(patch_core_components: PatchedCoreComponents) -> None:
     client = _build_client()
     meter_provider = meter_provider_instances[-1]
     meter_provider.shutdown.side_effect = RuntimeError("boom")
+    assert client.metric_reader is not None
     client.metric_reader.shutdown.side_effect = RuntimeError("boom")
 
     client.shutdown()
@@ -433,7 +456,7 @@ def test_metrics_initialization_failure_sets_histogram_attributes(monkeypatch: p
     assert client.metric_reader is None
 
 
-def test_add_span_logs_exception(monkeypatch: pytest.MonkeyPatch, patch_core_components: dict[str, object]) -> None:
+def test_add_span_logs_exception(monkeypatch: pytest.MonkeyPatch, patch_core_components: PatchedCoreComponents) -> None:
     client = _build_client()
     monkeypatch.setattr(client, "_create_and_export_span", MagicMock(side_effect=RuntimeError("boom")))
 
@@ -454,10 +477,10 @@ def test_add_span_logs_exception(monkeypatch: pytest.MonkeyPatch, patch_core_com
     logger.exception.assert_called_once()
 
 
-def test_create_and_export_span_converts_attribute_types(patch_core_components: dict[str, object]) -> None:
+def test_create_and_export_span_converts_attribute_types(patch_core_components: PatchedCoreComponents) -> None:
     client = _build_client()
     span = patch_core_components["span"]
-    span.get_span_context.return_value = "ctx"
+    span.get_span_context.return_value = _make_span_context(span_id=2)
 
     data = SpanData.model_construct(
         trace_id=1,
@@ -485,7 +508,7 @@ def test_record_llm_duration_converts_attributes() -> None:
     hist_mock = MagicMock(name="hist_llm_duration")
     client.hist_llm_duration = hist_mock
 
-    client.record_llm_duration(0.3, {"foo": object(), "bar": 2})
+    client.record_llm_duration(0.3, cast(dict[str, str], {"foo": object(), "bar": 2}))
     _, attrs = hist_mock.record.call_args.args
     assert isinstance(attrs["foo"], str)
     assert attrs["bar"] == 2
@@ -496,7 +519,7 @@ def test_record_trace_duration_converts_attributes() -> None:
     hist_mock = MagicMock(name="hist_trace_duration")
     client.hist_trace_duration = hist_mock
 
-    client.record_trace_duration(1.0, {"meta": object(), "ok": True})
+    client.record_trace_duration(1.0, cast(dict[str, str], {"meta": object(), "ok": True}))
     _, attrs = hist_mock.record.call_args.args
     assert isinstance(attrs["meta"], str)
     assert attrs["ok"] is True
@@ -512,7 +535,7 @@ def test_record_trace_duration_converts_attributes() -> None:
     ],
 )
 def test_record_methods_handle_exceptions(
-    method: str, attr_name: str, args: tuple[object, ...], patch_core_components: dict[str, object]
+    method: str, attr_name: str, args: tuple[object, ...], patch_core_components: PatchedCoreComponents
 ) -> None:
     client = _build_client()
     hist_mock = MagicMock(name=attr_name)
@@ -527,35 +550,38 @@ def test_record_methods_handle_exceptions(
 def test_metrics_initializes_grpc_metric_exporter() -> None:
     client = _build_client()
     metric_reader = metric_reader_instances[-1]
+    exporter = cast(DummyGrpcMetricExporter, metric_reader.exporter)
 
-    assert isinstance(metric_reader.exporter, DummyGrpcMetricExporter)
+    assert isinstance(exporter, DummyGrpcMetricExporter)
     assert metric_reader.export_interval_millis == client.metrics_export_interval_sec * 1000
-    assert metric_reader.exporter.kwargs["endpoint"] == "trace.example.com:4317"
-    assert metric_reader.exporter.kwargs["insecure"] is False
-    assert metric_reader.exporter.kwargs["headers"]["authorization"] == "Bearer token"
+    assert exporter.kwargs["endpoint"] == "trace.example.com:4317"
+    assert exporter.kwargs["insecure"] is False
+    assert cast(dict[str, dict[str, str]], exporter.kwargs)["headers"]["authorization"] == "Bearer token"
 
 
 def test_metrics_initializes_http_protobuf_metric_exporter(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("OTEL_EXPORTER_OTLP_PROTOCOL", "http/protobuf")
     client = _build_client()
     metric_reader = metric_reader_instances[-1]
+    exporter = cast(DummyHttpMetricExporter, metric_reader.exporter)
 
-    assert isinstance(metric_reader.exporter, DummyHttpMetricExporter)
+    assert isinstance(exporter, DummyHttpMetricExporter)
     assert metric_reader.export_interval_millis == client.metrics_export_interval_sec * 1000
-    assert metric_reader.exporter.kwargs["endpoint"] == client.endpoint
-    assert metric_reader.exporter.kwargs["headers"]["authorization"] == "Bearer token"
+    assert exporter.kwargs["endpoint"] == client.endpoint
+    assert cast(dict[str, dict[str, str]], exporter.kwargs)["headers"]["authorization"] == "Bearer token"
 
 
 def test_metrics_initializes_http_json_metric_exporter(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("OTEL_EXPORTER_OTLP_PROTOCOL", "http/json")
     client = _build_client()
     metric_reader = metric_reader_instances[-1]
+    exporter = cast(DummyJsonMetricExporter, metric_reader.exporter)
 
-    assert isinstance(metric_reader.exporter, DummyJsonMetricExporter)
+    assert isinstance(exporter, DummyJsonMetricExporter)
     assert metric_reader.export_interval_millis == client.metrics_export_interval_sec * 1000
-    assert metric_reader.exporter.kwargs["endpoint"] == client.endpoint
-    assert metric_reader.exporter.kwargs["headers"]["authorization"] == "Bearer token"
-    assert "preferred_temporality" in metric_reader.exporter.kwargs
+    assert exporter.kwargs["endpoint"] == client.endpoint
+    assert cast(dict[str, dict[str, str]], exporter.kwargs)["headers"]["authorization"] == "Bearer token"
+    assert "preferred_temporality" in exporter.kwargs
 
 
 def test_metrics_http_json_metric_exporter_falls_back_without_temporality(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -564,9 +590,10 @@ def test_metrics_http_json_metric_exporter_falls_back_without_temporality(monkey
     monkeypatch.setattr(exporter_module, "OTLPMetricExporter", DummyJsonMetricExporterNoTemporality)
     _ = _build_client()
     metric_reader = metric_reader_instances[-1]
+    exporter = cast(DummyJsonMetricExporterNoTemporality, metric_reader.exporter)
 
-    assert isinstance(metric_reader.exporter, DummyJsonMetricExporterNoTemporality)
-    assert "preferred_temporality" not in metric_reader.exporter.kwargs
+    assert isinstance(exporter, DummyJsonMetricExporterNoTemporality)
+    assert "preferred_temporality" not in exporter.kwargs
 
 
 def test_metrics_http_json_uses_http_fallback_when_no_json_exporter(monkeypatch: pytest.MonkeyPatch) -> None:

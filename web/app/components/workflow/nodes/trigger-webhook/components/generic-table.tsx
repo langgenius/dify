@@ -16,9 +16,9 @@ const isPresent = (v: unknown): boolean => {
   return !(v === '' || v === null || v === undefined || v === false)
 }
 // Column configuration types for table components
-export type ColumnType = 'input' | 'select' | 'switch' | 'custom'
+type ColumnType = 'input' | 'select' | 'switch' | 'custom'
 
-export type SelectOption = {
+type SelectOption = {
   name: string
   value: string
 }
@@ -147,7 +147,7 @@ const renderSelectCell = (
       >
         {selectedOption?.name ?? column.placeholder}
       </SelectTrigger>
-      <SelectContent className="-translate-x-3" popupClassName="z-60 w-26 min-w-26">
+      <SelectContent className="-translate-x-3" popupClassName="w-26 min-w-26">
         {options.map(option => (
           <SelectItem key={option.value} value={option.value}>
             <SelectItemText>{option.name}</SelectItemText>

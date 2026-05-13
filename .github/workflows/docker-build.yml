@@ -14,28 +14,59 @@ concurrency:
 
 jobs:
   build-docker:
+    if: github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ${{ matrix.runs_on }}
+    permissions:
+      contents: read
+      id-token: write
     strategy:
       matrix:
         include:
           - service_name: "api-amd64"
             platform: linux/amd64
-            runs_on: ubuntu-latest
+            runs_on: depot-ubuntu-24.04-4
             context: "{{defaultContext}}:api"
             file: "Dockerfile"
           - service_name: "api-arm64"
             platform: linux/arm64
-            runs_on: ubuntu-24.04-arm
+            runs_on: depot-ubuntu-24.04-4
             context: "{{defaultContext}}:api"
             file: "Dockerfile"
           - service_name: "web-amd64"
             platform: linux/amd64
-            runs_on: ubuntu-latest
+            runs_on: depot-ubuntu-24.04-4
             context: "{{defaultContext}}"
             file: "web/Dockerfile"
           - service_name: "web-arm64"
             platform: linux/arm64
-            runs_on: ubuntu-24.04-arm
+            runs_on: depot-ubuntu-24.04-4
+            context: "{{defaultContext}}"
+            file: "web/Dockerfile"
+    steps:
+      - name: Set up Depot CLI
+        uses: depot/setup-action@15c09a5f77a0840ad4bce955686522a257853461 # v1.7.1
+
+      - name: Build Docker Image
+        uses: depot/build-push-action@5f3b3c2e5a00f0093de47f657aeaefcedff27d18 # v1.17.0
+        with:
+          project: ${{ vars.DEPOT_PROJECT_ID }}
+          push: false
+          context: ${{ matrix.context }}
+          file: ${{ matrix.file }}
+          platforms: ${{ matrix.platform }}
+
+  build-docker-fork:
+    if: github.event.pull_request.head.repo.full_name != github.repository
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    strategy:
+      matrix:
+        include:
+          - service_name: "api-amd64"
+            context: "{{defaultContext}}:api"
+            file: "Dockerfile"
+          - service_name: "web-amd64"
             context: "{{defaultContext}}"
             file: "web/Dockerfile"
     steps:
@@ -48,6 +79,4 @@ jobs:
           push: false
           context: ${{ matrix.context }}
           file: ${{ matrix.file }}
-          platforms: ${{ matrix.platform }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          platforms: linux/amd64

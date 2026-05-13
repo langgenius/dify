@@ -272,6 +272,14 @@ def _adapt_tool_node_data_for_graph(node_data: Mapping[str, Any]) -> dict[str, A
             normalized_tool_configurations[name] = value
             continue
 
+        selector_value = _extract_selector_configuration(value)
+        if selector_value is not None:
+            # Model/app selectors are dictionaries even when they come through the legacy tool configuration path.
+            # Move them to tool_parameters so graph validation does not flatten them as primitive constants.
+            found_legacy_tool_inputs = True
+            normalized_tool_parameters.setdefault(name, {"type": "constant", "value": selector_value})
+            continue
+
         input_type = value.get("type")
         input_value = value.get("value")
         if input_type not in {"mixed", "variable", "constant"}:
@@ -308,6 +316,28 @@ def _flatten_legacy_tool_configuration_value(*, input_type: Any, input_value: An
         return "{{#" + ".".join(input_value) + "#}}"
 
     return None
+
+
+def _extract_selector_configuration(value: Mapping[str, Any]) -> dict[str, Any] | None:
+    input_value = value.get("value")
+    if isinstance(input_value, Mapping) and _is_selector_configuration(input_value):
+        return dict(input_value)
+
+    if _is_selector_configuration(value):
+        selector_value = dict(value)
+        selector_value.pop("type", None)
+        selector_value.pop("value", None)
+        return selector_value
+
+    return None
+
+
+def _is_selector_configuration(value: Mapping[str, Any]) -> bool:
+    return (
+        isinstance(value.get("provider"), str)
+        and isinstance(value.get("model"), str)
+        and isinstance(value.get("model_type"), str)
+    ) or isinstance(value.get("app_id"), str)
 
 
 def _normalize_email_recipients(recipients: Mapping[str, Any]) -> dict[str, Any]:

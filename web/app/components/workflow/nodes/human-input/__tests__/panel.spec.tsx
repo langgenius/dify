@@ -30,11 +30,6 @@ vi.mock('@langgenius/dify-ui/toast', () => ({
   },
 }))
 
-vi.mock('@/app/components/base/tooltip', () => ({
-  __esModule: true,
-  default: () => <div>tooltip</div>,
-}))
-
 vi.mock('@/app/components/base/action-button', () => ({
   __esModule: true,
   default: (props: {

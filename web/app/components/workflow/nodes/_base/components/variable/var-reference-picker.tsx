@@ -82,7 +82,6 @@ type Props = {
   placeholder?: string
   minWidth?: number
   popupFor?: 'assigned' | 'toAssigned'
-  zIndex?: number
   currentTool?: Tool
   currentProvider?: ToolWithProvider | TriggerWithProvider
   preferSchemaType?: boolean
@@ -121,7 +120,6 @@ const VarReferencePicker: FC<Props> = ({
   placeholder,
   minWidth,
   popupFor,
-  zIndex,
   currentTool,
   currentProvider,
   preferSchemaType,
@@ -285,13 +283,15 @@ const VarReferencePicker: FC<Props> = ({
     [outputVarNode?.type, varName],
   )
   const showErrorIcon = hasValue && !isValidVar
+  const shouldShowNodeName = isShowNodeName && !isEnv && !isChatVar && !isGlobal && !isRagVar
+  const visibleNodeTitle = shouldShowNodeName ? outputVarNode?.title || '' : ''
 
   // 8(left/right-padding) + 14(icon) + 4 + 14 + 2 = 42 + 17 buff
   const {
     maxNodeNameWidth,
     maxTypeWidth,
     maxVarNameWidth,
-  } = getWidthAllocations(triggerWidth, outputVarNode?.title || '', varName || '', type || '')
+  } = getWidthAllocations(triggerWidth, visibleNodeTitle, varName || '', type || '')
 
   const hoverPopup = useMemo<HoverPopup | null>(() => {
     const tooltipType = getTooltipContent(hasValue, isShowAPart, isValidVar)
@@ -485,7 +485,7 @@ const VarReferencePicker: FC<Props> = ({
             isJustShowValue={isJustShowValue}
             isLoading={isLoading}
             isShowAPart={isShowAPart}
-            isShowNodeName={isShowNodeName && !isEnv && !isChatVar && !isGlobal && !isRagVar}
+            isShowNodeName={shouldShowNodeName}
             isSupportConstantValue={isSupportConstantValue}
             maxNodeNameWidth={maxNodeNameWidth}
             maxTypeWidth={maxTypeWidth}
@@ -523,11 +523,6 @@ const VarReferencePicker: FC<Props> = ({
           sideOffset={0}
           className="mt-1"
           popupClassName="border-none bg-transparent p-0 shadow-none backdrop-blur-none"
-          positionerProps={{
-            style: {
-              zIndex: zIndex || 100,
-            },
-          }}
         >
           {!isConstant && (
             <VarReferencePopup
@@ -536,7 +531,6 @@ const VarReferencePicker: FC<Props> = ({
               onChange={handleVarReferenceChange}
               itemWidth={isAddBtnTrigger ? 260 : (minWidth || triggerWidth)}
               isSupportFileVar={isSupportFileVar}
-              zIndex={zIndex}
               preferSchemaType={preferSchemaType}
             />
           )}

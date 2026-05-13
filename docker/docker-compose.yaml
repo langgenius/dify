@@ -629,6 +629,9 @@ x-shared-env: &shared-api-worker-env
   ENDPOINT_URL_TEMPLATE: ${ENDPOINT_URL_TEMPLATE:-http://localhost/e/{hook_id}}
   MARKETPLACE_ENABLED: ${MARKETPLACE_ENABLED:-true}
   MARKETPLACE_API_URL: ${MARKETPLACE_API_URL:-https://marketplace.dify.ai}
+  CREATORS_PLATFORM_FEATURES_ENABLED: ${CREATORS_PLATFORM_FEATURES_ENABLED:-true}
+  CREATORS_PLATFORM_API_URL: ${CREATORS_PLATFORM_API_URL:-https://creators.dify.ai}
+  CREATORS_PLATFORM_OAUTH_CLIENT_ID: ${CREATORS_PLATFORM_OAUTH_CLIENT_ID:-}
   FORCE_VERIFYING_SIGNATURE: ${FORCE_VERIFYING_SIGNATURE:-true}
   ENFORCE_LANGGENIUS_PLUGIN_SIGNATURES: ${ENFORCE_LANGGENIUS_PLUGIN_SIGNATURES:-true}
   PLUGIN_STDIO_BUFFER_SIZE: ${PLUGIN_STDIO_BUFFER_SIZE:-1024}
@@ -742,7 +745,7 @@ services:
 
   # API service
   api:
-    image: langgenius/dify-api:1.13.3
+    image: langgenius/dify-api:1.14.0
     restart: always
     environment:
       # Use the shared environment variables.
@@ -790,7 +793,7 @@ services:
   # worker service
   # The Celery worker for processing all queues (dataset, workflow, mail, etc.)
   worker:
-    image: langgenius/dify-api:1.13.3
+    image: langgenius/dify-api:1.14.0
     restart: always
     environment:
       # Use the shared environment variables.
@@ -836,7 +839,7 @@ services:
   # worker_beat service
   # Celery beat for scheduling periodic tasks.
   worker_beat:
-    image: langgenius/dify-api:1.13.3
+    image: langgenius/dify-api:1.14.0
     restart: always
     environment:
       # Use the shared environment variables.
@@ -873,7 +876,7 @@ services:
 
   # Frontend web application.
   web:
-    image: langgenius/dify-web:1.13.3
+    image: langgenius/dify-web:1.14.0
     restart: always
     environment:
       CONSOLE_API_URL: ${CONSOLE_API_URL:-}
@@ -989,7 +992,7 @@ services:
 
   # The DifySandbox
   sandbox:
-    image: langgenius/dify-sandbox:0.2.14
+    image: langgenius/dify-sandbox:0.2.15
     restart: always
     environment:
       # The DifySandbox configurations
@@ -1013,7 +1016,7 @@ services:
 
   # plugin daemon
   plugin_daemon:
-    image: langgenius/dify-plugin-daemon:0.5.3-local
+    image: langgenius/dify-plugin-daemon:0.6.0-local
     restart: always
     environment:
       # Use the shared environment variables.

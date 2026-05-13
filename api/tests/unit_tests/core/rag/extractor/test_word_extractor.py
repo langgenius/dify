@@ -1,14 +1,12 @@
 """Primarily used for testing merged cell scenarios"""
 
-import gc
 import io
 import os
 import tempfile
-import warnings
 from collections import UserDict
 from pathlib import Path
 from types import SimpleNamespace
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import MagicMock
 
 import pytest
 from docx import Document
@@ -377,23 +375,21 @@ def test_close_is_idempotent():
     extractor.temp_file.close.assert_called_once()
 
 
-def test_close_handles_async_close_mock():
+async def _async_close() -> None:
+    return None
+
+
+def test_close_closes_awaitable_close_result():
     extractor = object.__new__(WordExtractor)
     extractor._closed = False
     extractor.temp_file = MagicMock()
-    extractor.temp_file.close = AsyncMock()
+    close_result = _async_close()
+    extractor.temp_file.close = MagicMock(return_value=close_result)
 
-    with warnings.catch_warnings(record=True) as caught:
-        warnings.simplefilter("always")
-        extractor.close()
-        gc.collect()
+    extractor.close()
 
+    assert close_result.cr_frame is None
     extractor.temp_file.close.assert_called_once()
-    assert not [
-        warning
-        for warning in caught
-        if issubclass(warning.category, RuntimeWarning) and "AsyncMockMixin._execute_mock_call" in str(warning.message)
-    ]
 
 
 def test_extract_images_handles_invalid_external_cases(monkeypatch):

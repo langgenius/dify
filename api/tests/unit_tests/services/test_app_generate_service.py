@@ -23,6 +23,7 @@ import pytest
 
 import services.app_generate_service as ags_module
 from core.app.entities.app_invoke_entities import InvokeFrom
+from enums.quota_type import QuotaType
 from models.model import AppMode
 from services.app_generate_service import AppGenerateService
 from services.errors.app import WorkflowIdFormatError, WorkflowNotFoundError
@@ -448,8 +449,8 @@ class TestGenerateBilling:
     def test_billing_enabled_consumes_quota(self, mocker, monkeypatch):
         monkeypatch.setattr(ags_module.dify_config, "BILLING_ENABLED", True)
         quota_charge = MagicMock()
-        consume_mock = mocker.patch(
-            "services.app_generate_service.QuotaType.WORKFLOW.consume",
+        reserve_mock = mocker.patch(
+            "services.app_generate_service.QuotaService.reserve",
             return_value=quota_charge,
         )
         mocker.patch(
@@ -468,7 +469,8 @@ class TestGenerateBilling:
             invoke_from=InvokeFrom.SERVICE_API,
             streaming=False,
         )
-        consume_mock.assert_called_once_with("tenant-id")
+        reserve_mock.assert_called_once_with(QuotaType.WORKFLOW, "tenant-id")
+        quota_charge.commit.assert_called_once()
 
     def test_billing_quota_exceeded_raises_rate_limit_error(self, mocker, monkeypatch):
         from services.errors.app import QuotaExceededError
@@ -476,7 +478,7 @@ class TestGenerateBilling:
 
         monkeypatch.setattr(ags_module.dify_config, "BILLING_ENABLED", True)
         mocker.patch(
-            "services.app_generate_service.QuotaType.WORKFLOW.consume",
+            "services.app_generate_service.QuotaService.reserve",
             side_effect=QuotaExceededError(feature="workflow", tenant_id="t", required=1),
         )
 
@@ -493,7 +495,7 @@ class TestGenerateBilling:
         monkeypatch.setattr(ags_module.dify_config, "BILLING_ENABLED", True)
         quota_charge = MagicMock()
         mocker.patch(
-            "services.app_generate_service.QuotaType.WORKFLOW.consume",
+            "services.app_generate_service.QuotaService.reserve",
             return_value=quota_charge,
         )
         mocker.patch(

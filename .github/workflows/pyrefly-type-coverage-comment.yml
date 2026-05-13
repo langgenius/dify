@@ -12,7 +12,7 @@ permissions: {}
 jobs:
   comment:
     name: Comment PR with type coverage
-    runs-on: ubuntu-latest
+    runs-on: depot-ubuntu-24.04
     permissions:
       actions: read
       contents: read

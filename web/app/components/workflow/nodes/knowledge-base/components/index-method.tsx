@@ -1,5 +1,6 @@
 import { cn } from '@langgenius/dify-ui/cn'
 import { Slider } from '@langgenius/dify-ui/slider'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { RiQuestionLine } from '@remixicon/react'
 import {
   memo,
@@ -11,7 +12,6 @@ import {
   HighQuality,
 } from '@/app/components/base/icons/src/vender/knowledge'
 import Input from '@/app/components/base/input'
-import Tooltip from '@/app/components/base/tooltip'
 import { Field } from '@/app/components/workflow/nodes/_base/components/layout'
 import {
   ChunkStructureEnum,
@@ -97,10 +97,13 @@ const IndexMethod = ({
                   <div className="truncate system-xs-medium text-text-secondary">
                     {t('form.numberOfKeywords', { ns: 'datasetSettings' })}
                   </div>
-                  <Tooltip
-                    popupContent="number of keywords"
-                  >
-                    <RiQuestionLine className="ml-0.5 h-3.5 w-3.5 text-text-quaternary" />
+                  <Tooltip>
+                    <TooltipTrigger
+                      render={<RiQuestionLine className="ml-0.5 h-3.5 w-3.5 text-text-quaternary" />}
+                    />
+                    <TooltipContent>
+                      number of keywords
+                    </TooltipContent>
                   </Tooltip>
                 </div>
                 <Slider
