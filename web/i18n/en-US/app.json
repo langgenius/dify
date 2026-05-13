@@ -228,6 +228,7 @@
   "structOutput.required": "Required",
   "structOutput.structured": "Structured",
   "structOutput.structuredTip": "Structured Outputs is a feature that ensures the model will always generate responses that adhere to your supplied JSON Schema",
+  "studioDescription": "Store and manage your data here. Connect it to your apps in Studio to make AI responses more accurate and grounded.",
   "switch": "Switch to Workflow Orchestrate",
   "switchLabel": "The app copy to be created",
   "switchStart": "Start switch",
@@ -299,5 +300,6 @@
   "types.basic": "Basic",
   "types.chatbot": "Chatbot",
   "types.completion": "Completion",
+  "types.label": "Types",
   "types.workflow": "Workflow"
 }

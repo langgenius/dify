@@ -241,6 +241,10 @@ type AppListInfiniteOptions = {
   getNextPageParam: (lastPage: { has_more: boolean, page: number }) => number | undefined
 }
 
+const openAppTypeSelect = () => {
+  fireEvent.click(screen.getByRole('combobox', { name: 'app.types.label' }))
+}
+
 describe('List', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -264,18 +268,19 @@ describe('List', () => {
   describe('Rendering', () => {
     it('should render without crashing', () => {
       renderList()
-      expect(screen.getByText('app.types.all'))!.toBeInTheDocument()
+      expect(screen.getByText('app.types.label'))!.toBeInTheDocument()
     })
 
-    it('should render tab slider with all app types', () => {
+    it('should render app type select with all app types', async () => {
       renderList()
+      openAppTypeSelect()
 
-      expect(screen.getByText('app.types.all'))!.toBeInTheDocument()
-      expect(screen.getByText('app.types.workflow'))!.toBeInTheDocument()
-      expect(screen.getByText('app.types.advanced'))!.toBeInTheDocument()
-      expect(screen.getByText('app.types.chatbot'))!.toBeInTheDocument()
-      expect(screen.getByText('app.types.agent'))!.toBeInTheDocument()
-      expect(screen.getByText('app.types.completion'))!.toBeInTheDocument()
+      expect(await screen.findByText('app.types.all'))!.toBeInTheDocument()
+      expect(await screen.findByText('app.types.workflow'))!.toBeInTheDocument()
+      expect(await screen.findByText('app.types.advanced'))!.toBeInTheDocument()
+      expect(await screen.findByText('app.types.chatbot'))!.toBeInTheDocument()
+      expect(await screen.findByText('app.types.agent'))!.toBeInTheDocument()
+      expect(await screen.findByText('app.types.completion'))!.toBeInTheDocument()
     })
 
     it('should render search input', () => {
@@ -325,20 +330,22 @@ describe('List', () => {
     })
   })
 
-  describe('Tab Navigation', () => {
-    it('should update category when workflow tab is clicked', () => {
+  describe('App Type Select', () => {
+    it('should update category when workflow option is selected', async () => {
       renderList()
+      openAppTypeSelect()
 
-      fireEvent.click(screen.getByText('app.types.workflow'))
+      fireEvent.click(await screen.findByRole('option', { name: 'app.types.workflow' }))
 
       expect(mockSetCategory).toHaveBeenCalledWith(AppModeEnum.WORKFLOW)
     })
 
-    it('should update category when all tab is clicked', () => {
+    it('should update category when all option is selected', async () => {
       mockQueryState.category = AppModeEnum.WORKFLOW
       renderList()
+      openAppTypeSelect()
 
-      fireEvent.click(screen.getByText('app.types.all'))
+      fireEvent.click(await screen.findByRole('option', { name: 'app.types.all' }))
 
       expect(mockSetCategory).toHaveBeenCalledWith('all')
     })
@@ -364,7 +371,7 @@ describe('List', () => {
 
       renderList()
 
-      const clearButton = document.querySelector('.group')
+      const clearButton = document.querySelector('.i-ri-close-circle-fill')?.closest('button')
       expect(clearButton)!.toBeInTheDocument()
       if (clearButton)
         fireEvent.click(clearButton)
@@ -464,11 +471,11 @@ describe('List', () => {
   describe('Edge Cases', () => {
     it('should handle multiple renders without issues', () => {
       const { unmount } = renderList()
-      expect(screen.getByText('app.types.all'))!.toBeInTheDocument()
+      expect(screen.getByText('app.types.label'))!.toBeInTheDocument()
 
       unmount()
       renderList()
-      expect(screen.getByText('app.types.all'))!.toBeInTheDocument()
+      expect(screen.getByText('app.types.label'))!.toBeInTheDocument()
     })
 
     it('should render app cards correctly', () => {
@@ -500,21 +507,20 @@ describe('List', () => {
     })
   })
 
-  describe('App Type Tabs', () => {
-    it('should render all app type tabs', () => {
+  describe('App Type Select Options', () => {
+    it('should render all app type options', async () => {
       renderList()
+      openAppTypeSelect()
 
-      expect(screen.getByText('app.types.all'))!.toBeInTheDocument()
-      expect(screen.getByText('app.types.workflow'))!.toBeInTheDocument()
-      expect(screen.getByText('app.types.advanced'))!.toBeInTheDocument()
-      expect(screen.getByText('app.types.chatbot'))!.toBeInTheDocument()
-      expect(screen.getByText('app.types.agent'))!.toBeInTheDocument()
-      expect(screen.getByText('app.types.completion'))!.toBeInTheDocument()
+      expect(await screen.findByText('app.types.all'))!.toBeInTheDocument()
+      expect(await screen.findByText('app.types.workflow'))!.toBeInTheDocument()
+      expect(await screen.findByText('app.types.advanced'))!.toBeInTheDocument()
+      expect(await screen.findByText('app.types.chatbot'))!.toBeInTheDocument()
+      expect(await screen.findByText('app.types.agent'))!.toBeInTheDocument()
+      expect(await screen.findByText('app.types.completion'))!.toBeInTheDocument()
     })
 
-    it('should update category for each app type tab click', () => {
-      renderList()
-
+    it('should update category for each app type option click', async () => {
       const appTypeTexts = [
         { mode: AppModeEnum.WORKFLOW, text: 'app.types.workflow' },
         { mode: AppModeEnum.ADVANCED_CHAT, text: 'app.types.advanced' },
@@ -524,9 +530,12 @@ describe('List', () => {
       ]
 
       for (const { mode, text } of appTypeTexts) {
+        const { unmount } = renderList()
+        openAppTypeSelect()
         mockSetCategory.mockClear()
-        fireEvent.click(screen.getByText(text))
+        fireEvent.click(await screen.findByRole('option', { name: text }))
         expect(mockSetCategory).toHaveBeenCalledWith(mode)
+        unmount()
       }
     })
   })

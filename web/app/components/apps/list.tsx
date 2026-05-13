@@ -4,12 +4,12 @@ import type { FC } from 'react'
 import type { AppListQuery } from '@/contract/console/apps'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Select, SelectContent, SelectItem, SelectItemIndicator, SelectItemText, SelectTrigger } from '@langgenius/dify-ui/select'
 import { keepPreviousData, useInfiniteQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useDebounce } from 'ahooks'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Input from '@/app/components/base/input'
-import TabSliderNew from '@/app/components/base/tab-slider-new'
 import { IS_DEV, NEED_REFRESH_APP_LIST_KEY } from '@/config'
 import { useAppContext } from '@/context/app-context'
 import { TagFilter } from '@/features/tag-management/components/tag-filter'
@@ -162,6 +162,18 @@ const List: FC<Props> = ({
     setIsCreatedByMe(checked)
   }, [setIsCreatedByMe])
 
+  const categoryRef = useRef(category)
+  useEffect(() => {
+    categoryRef.current = category
+  }, [category])
+
+  const handleCategoryChange = useCallback((nextValue: string | null) => {
+    if (!nextValue || !isAppListCategory(nextValue) || nextValue === categoryRef.current)
+      return
+    categoryRef.current = nextValue
+    setCategory(nextValue)
+  }, [setCategory])
+
   const pages = useMemo(() => data?.pages ?? [], [data?.pages])
   const mockApps = useMemo(() => {
     if (!IS_DEV)
@@ -215,35 +227,64 @@ const List: FC<Props> = ({
           </div>
         )}
 
-        <div className="sticky top-0 z-10 flex flex-wrap items-center justify-between gap-y-2 bg-background-body px-12 pt-7 pb-5">
-          <TabSliderNew
-            value={category}
-            onChange={(nextValue) => {
-              if (isAppListCategory(nextValue))
-                setCategory(nextValue)
-            }}
-            options={options}
-          />
-          <div className="flex items-center gap-2">
-            <label className="mr-2 flex h-7 items-center space-x-2">
-              <Checkbox checked={isCreatedByMe} onCheckedChange={handleCreatedByMeChange} />
-              <div className="text-sm font-normal text-text-secondary">
-                {t('showMyCreatedAppsOnly', { ns: 'app' })}
-              </div>
-            </label>
-            <TagFilter type="app" value={tagIDs} onChange={setTagIDs} onOpenTagManagement={() => setShowTagManagementModal(true)} />
-            <Input
-              showLeftIcon
-              showClearIcon
-              wrapperClassName="w-[200px]"
-              value={keywords}
-              onChange={e => setKeywords(e.target.value)}
-              onClear={() => setKeywords('')}
-            />
+        <div className="sticky top-0 z-10 flex flex-col bg-background-body px-6 pt-2 pb-2">
+          <div className="flex min-h-14 items-start pt-2">
+            <div className="flex flex-col gap-0.5">
+              <h1 className="text-xl/6 font-semibold text-dify-logo-black">{t('menus.apps', { ns: 'common' })}</h1>
+              <p className="system-sm-regular text-text-tertiary">{t('studioDescription', { ns: 'app' })}</p>
+            </div>
+          </div>
+          <div className="flex flex-wrap items-center justify-between gap-2 py-2">
+            <div className="flex min-w-0 items-center gap-2">
+              <Select
+                value={category as string}
+                onValueChange={handleCategoryChange}
+              >
+                <SelectTrigger
+                  aria-label={t('types.label', { ns: 'app' })}
+                  className="w-auto shrink-0 gap-0 rounded-lg bg-components-input-bg-normal px-2 py-1 system-sm-regular text-text-tertiary hover:bg-components-input-bg-normal data-open:bg-components-input-bg-normal"
+                >
+                  <span className="flex items-center gap-0">
+                    <span aria-hidden className="i-ri-apps-2-line size-4 shrink-0 p-0.5" />
+                    <span className="px-1">{t('types.label', { ns: 'app' })}</span>
+                  </span>
+                </SelectTrigger>
+                <SelectContent popupClassName="min-w-40" listClassName="p-1">
+                  {options.map(option => (
+                    <SelectItem
+                      key={option.value}
+                      value={option.value}
+                      onClick={() => handleCategoryChange(option.value)}
+                    >
+                      {option.icon}
+                      <SelectItemText>{option.text}</SelectItemText>
+                      <SelectItemIndicator />
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <TagFilter type="app" value={tagIDs} onChange={setTagIDs} onOpenTagManagement={() => setShowTagManagementModal(true)} />
+              <Input
+                showLeftIcon
+                showClearIcon
+                wrapperClassName="w-[200px]"
+                value={keywords}
+                onChange={e => setKeywords(e.target.value)}
+                onClear={() => setKeywords('')}
+              />
+            </div>
+            <div className="flex items-center gap-2">
+              <label className="flex h-8 items-center gap-2 rounded-lg bg-components-input-bg-normal px-2 text-text-secondary">
+                <Checkbox checked={isCreatedByMe} onCheckedChange={handleCreatedByMeChange} />
+                <span className="system-sm-regular whitespace-nowrap">
+                  {t('showMyCreatedAppsOnly', { ns: 'app' })}
+                </span>
+              </label>
+            </div>
           </div>
         </div>
         <div className={cn(
-          'relative grid grow grid-cols-1 content-start gap-3 px-12 pt-2 2k:grid-cols-6 sm:grid-cols-1 md:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-5',
+          'relative grid grow grid-cols-1 content-start gap-3 px-6 pt-2 2k:grid-cols-6 sm:grid-cols-1 md:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-5',
           !hasAnyApp && 'overflow-hidden',
         )}
         >

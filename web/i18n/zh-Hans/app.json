@@ -228,6 +228,7 @@
   "structOutput.required": "必填",
   "structOutput.structured": "结构化输出",
   "structOutput.structuredTip": "结构化输出是一项功能，可确保模型始终生成符合您提供的 JSON 模式的响应",
+  "studioDescription": "在这里存储和管理你的数据。将它连接到 Studio 中的应用，让 AI 回复更准确、更有依据。",
   "switch": "迁移为工作流编排",
   "switchLabel": "新应用创建为",
   "switchStart": "开始迁移",
@@ -299,5 +300,6 @@
   "types.basic": "基础编排",
   "types.chatbot": "聊天助手",
   "types.completion": "文本生成",
+  "types.label": "类型",
   "types.workflow": "工作流"
 }
