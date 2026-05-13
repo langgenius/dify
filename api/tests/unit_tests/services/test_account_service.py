@@ -13,6 +13,7 @@ from services.errors.account import (
     AccountPasswordError,
     AccountRegisterError,
     CurrentPasswordIncorrectError,
+    NoPermissionError,
 )
 
 
@@ -817,8 +818,8 @@ class TestTenantService:
 
         # Mock the database queries in update_member_role method
         with patch("services.account_service.db") as mock_db:
-            # scalar calls: permission check, target member lookup
-            mock_db.session.scalar.side_effect = [mock_operator_join, mock_target_join]
+            # scalar calls: permission check, target member lookup, operator role lookup
+            mock_db.session.scalar.side_effect = [mock_operator_join, mock_target_join, mock_operator_join]
 
             # Execute test
             TenantService.update_member_role(mock_tenant, mock_member, "admin", mock_operator)
@@ -826,6 +827,65 @@ class TestTenantService:
             # Verify role was updated
             assert mock_target_join.role == "admin"
             self._assert_database_operations_called(mock_db)
+
+    def test_admin_can_update_admin_member_role(self):
+        """Test admin can update another non-owner member, including an admin."""
+        mock_tenant = MagicMock()
+        mock_tenant.id = "tenant-456"
+        mock_member = TestAccountAssociatedDataFactory.create_account_mock(account_id="member-789")
+        mock_operator = TestAccountAssociatedDataFactory.create_account_mock(account_id="operator-123")
+        mock_target_join = TestAccountAssociatedDataFactory.create_tenant_join_mock(
+            tenant_id="tenant-456", account_id="member-789", role="admin"
+        )
+        mock_operator_join = TestAccountAssociatedDataFactory.create_tenant_join_mock(
+            tenant_id="tenant-456", account_id="operator-123", role="admin"
+        )
+
+        with patch("services.account_service.db") as mock_db:
+            mock_db.session.scalar.side_effect = [mock_operator_join, mock_target_join, mock_operator_join]
+
+            TenantService.update_member_role(mock_tenant, mock_member, "editor", mock_operator)
+
+            assert mock_target_join.role == "editor"
+            self._assert_database_operations_called(mock_db)
+
+    def test_admin_cannot_update_owner_member_role(self):
+        """Test admin cannot update an owner member."""
+        mock_tenant = MagicMock()
+        mock_tenant.id = "tenant-456"
+        mock_member = TestAccountAssociatedDataFactory.create_account_mock(account_id="member-789")
+        mock_operator = TestAccountAssociatedDataFactory.create_account_mock(account_id="operator-123")
+        mock_target_join = TestAccountAssociatedDataFactory.create_tenant_join_mock(
+            tenant_id="tenant-456", account_id="member-789", role="owner"
+        )
+        mock_operator_join = TestAccountAssociatedDataFactory.create_tenant_join_mock(
+            tenant_id="tenant-456", account_id="operator-123", role="admin"
+        )
+
+        with patch("services.account_service.db") as mock_db:
+            mock_db.session.scalar.side_effect = [mock_operator_join, mock_target_join, mock_operator_join]
+
+            with pytest.raises(NoPermissionError):
+                TenantService.update_member_role(mock_tenant, mock_member, "editor", mock_operator)
+
+    def test_admin_cannot_promote_member_to_owner(self):
+        """Test admin cannot promote a non-owner member to owner."""
+        mock_tenant = MagicMock()
+        mock_tenant.id = "tenant-456"
+        mock_member = TestAccountAssociatedDataFactory.create_account_mock(account_id="member-789")
+        mock_operator = TestAccountAssociatedDataFactory.create_account_mock(account_id="operator-123")
+        mock_target_join = TestAccountAssociatedDataFactory.create_tenant_join_mock(
+            tenant_id="tenant-456", account_id="member-789", role="admin"
+        )
+        mock_operator_join = TestAccountAssociatedDataFactory.create_tenant_join_mock(
+            tenant_id="tenant-456", account_id="operator-123", role="admin"
+        )
+
+        with patch("services.account_service.db") as mock_db:
+            mock_db.session.scalar.side_effect = [mock_operator_join, mock_target_join, mock_operator_join]
+
+            with pytest.raises(NoPermissionError):
+                TenantService.update_member_role(mock_tenant, mock_member, "owner", mock_operator)
 
     # ==================== Permission Check Tests ====================
 
@@ -863,6 +923,39 @@ class TestTenantService:
             mock_operator,  # Same as operator
             "add",
         )
+
+    def test_admin_can_remove_non_owner_member(self, mock_db_dependencies):
+        """Test admin can remove a non-owner member."""
+        mock_tenant = MagicMock()
+        mock_tenant.id = "tenant-456"
+        mock_operator = TestAccountAssociatedDataFactory.create_account_mock(account_id="operator-123")
+        mock_member = TestAccountAssociatedDataFactory.create_account_mock(account_id="member-789")
+        mock_operator_join = TestAccountAssociatedDataFactory.create_tenant_join_mock(
+            tenant_id="tenant-456", account_id="operator-123", role="admin"
+        )
+        mock_member_join = TestAccountAssociatedDataFactory.create_tenant_join_mock(
+            tenant_id="tenant-456", account_id="member-789", role="admin"
+        )
+        mock_db_dependencies["db"].session.scalar.side_effect = [mock_operator_join, mock_member_join]
+
+        TenantService.check_member_permission(mock_tenant, mock_operator, mock_member, "remove")
+
+    def test_admin_cannot_remove_owner_member(self, mock_db_dependencies):
+        """Test admin cannot remove an owner member."""
+        mock_tenant = MagicMock()
+        mock_tenant.id = "tenant-456"
+        mock_operator = TestAccountAssociatedDataFactory.create_account_mock(account_id="operator-123")
+        mock_member = TestAccountAssociatedDataFactory.create_account_mock(account_id="member-789")
+        mock_operator_join = TestAccountAssociatedDataFactory.create_tenant_join_mock(
+            tenant_id="tenant-456", account_id="operator-123", role="admin"
+        )
+        mock_member_join = TestAccountAssociatedDataFactory.create_tenant_join_mock(
+            tenant_id="tenant-456", account_id="member-789", role="owner"
+        )
+        mock_db_dependencies["db"].session.scalar.side_effect = [mock_operator_join, mock_member_join]
+
+        with pytest.raises(NoPermissionError):
+            TenantService.check_member_permission(mock_tenant, mock_operator, mock_member, "remove")
 
 
 class TestRegisterService:
