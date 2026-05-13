@@ -1,5 +1,6 @@
 import type { TextNode } from 'lexical'
 import type { HITLInputBlockType } from '../../types'
+import type { Var } from '@/app/components/workflow/types'
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
 import { mergeRegister } from '@lexical/utils'
 import { $applyNodeReplacement } from 'lexical'
@@ -31,7 +32,7 @@ const HITLInputReplacementBlock = ({
 
   const environmentVariables = useMemo(() => variables?.find(o => o.nodeId === 'env')?.vars || [], [variables])
   const conversationVariables = useMemo(() => variables?.find(o => o.nodeId === 'conversation')?.vars || [], [variables])
-  const ragVariables = useMemo(() => variables?.reduce<any[]>((acc, curr) => {
+  const ragVariables = useMemo(() => variables?.reduce<Var[]>((acc, curr) => {
     if (curr.nodeId === 'rag')
       acc.push(...curr.vars)
     else
@@ -81,7 +82,7 @@ const HITLInputReplacementBlock = ({
     return mergeRegister(
       editor.registerNodeTransform(CustomTextNode, textNode => decoratorTransform(textNode, getMatch, createHITLInputBlockNode)),
     )
-  }, [])
+  }, [editor, getMatch, createHITLInputBlockNode])
 
   return null
 }

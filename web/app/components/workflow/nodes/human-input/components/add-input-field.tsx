@@ -6,12 +6,14 @@ import InputField from '@/app/components/base/prompt-editor/plugins/hitl-input-b
 
 type Props = {
   nodeId: string
+  unavailableVariableNames?: string[]
   onSave: (newPayload: FormInputItem) => void
   onCancel: () => void
 }
 
 const AddInputField: FC<Props> = ({
   nodeId,
+  unavailableVariableNames,
   onSave,
   onCancel,
 }) => {
@@ -19,6 +21,7 @@ const AddInputField: FC<Props> = ({
     <InputField
       nodeId={nodeId}
       isEdit={false}
+      unavailableVariableNames={unavailableVariableNames}
       onChange={onSave}
       onCancel={onCancel}
     />

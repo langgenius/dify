@@ -96,6 +96,26 @@ describe('human-input/use-form-content', () => {
     expect(result.current.editorKey).toBe(1)
   })
 
+  it('should not rename an input to an existing variable name', () => {
+    currentInputs = createPayload({
+      inputs: [
+        createFormInput(),
+        createFormInput({ output_variable_name: 'existing_name' }),
+      ],
+    })
+    const { result } = renderHook(() => useFormContent('human-input-node', currentInputs))
+
+    act(() => {
+      result.current.handleFormInputItemRename(createFormInput({
+        output_variable_name: 'existing_name',
+      }), 'old_name')
+    })
+
+    expect(mockSetInputs).not.toHaveBeenCalled()
+    expect(mockHandleOutVarRenameChange).not.toHaveBeenCalled()
+    expect(result.current.editorKey).toBe(0)
+  })
+
   it('should remove an input placeholder and its form input metadata', () => {
     const { result } = renderHook(() => useFormContent('human-input-node', currentInputs))
 

@@ -29,6 +29,13 @@ const useFormContent = (id: string, payload: HumanInputNodeType) => {
 
   const handleFormInputItemRename = useCallback((payload: FormInputItem, oldName: string) => {
     const inputs = inputsRef.current
+    if (
+      oldName !== payload.output_variable_name
+      && inputs.inputs.some(item => item.output_variable_name === payload.output_variable_name)
+    ) {
+      return
+    }
+
     const newInputs = produce(inputs, (draft) => {
       draft.form_content = draft.form_content.replaceAll(`{{#$output.${oldName}#}}`, `{{#$output.${payload.output_variable_name}#}}`)
       draft.inputs = draft.inputs.map(item => item.output_variable_name === oldName ? payload : item)

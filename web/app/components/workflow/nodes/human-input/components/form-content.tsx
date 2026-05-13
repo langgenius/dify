@@ -1,12 +1,13 @@
 'use client'
-import type { LexicalCommand } from 'lexical'
 import type { FC } from 'react'
 import type { FormInputItem } from '../types'
+import type { ShortcutPopupInsertHandler } from '@/app/components/base/prompt-editor/plugins/shortcuts-popup-plugin'
+import type { WorkflowNodesMap } from '@/app/components/base/prompt-editor/types'
 import type { Node, NodeOutPutVar } from '@/app/components/workflow/types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useBoolean } from 'ahooks'
 import * as React from 'react'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import PromptEditor from '@/app/components/base/prompt-editor'
 import { INSERT_HITL_INPUT_BLOCK_COMMAND } from '@/app/components/base/prompt-editor/plugins/hitl-input-block'
@@ -56,11 +57,20 @@ const FormContent: FC<FormContentProps> = ({
 
   const getVarType = useWorkflowVariableType()
 
-  const [needToAddFormInput, setNeedToAddFormInput] = useState(false)
-  const [newFormInputs, setNewFormInputs] = useState<FormInputItem[]>([])
-  const handleInsertHITLNode = (onInsert: (command: LexicalCommand<unknown>, params: any) => void) => {
+  const pendingFormInputsRef = useRef<{
+    value: string
+    formInputs: FormInputItem[]
+  } | null>(null)
+  const handleInsertHITLNode = (onInsert: ShortcutPopupInsertHandler) => {
     return (payload: FormInputItem) => {
+      if (formInputs.some(input => input.output_variable_name === payload.output_variable_name))
+        return
+
       const newFormInputs = [...(formInputs || []), payload]
+      pendingFormInputsRef.current = {
+        value,
+        formInputs: newFormInputs,
+      }
       onInsert(INSERT_HITL_INPUT_BLOCK_COMMAND, {
         variableName: payload.output_variable_name,
         nodeId,
@@ -69,25 +79,25 @@ const FormContent: FC<FormContentProps> = ({
         onFormInputItemRename,
         onFormInputItemRemove,
       })
-      setNewFormInputs(newFormInputs)
-      setNeedToAddFormInput(true)
     }
   }
 
   // avoid update formInputs would overwrite the value just inserted
   useEffect(() => {
-    if (needToAddFormInput) {
-      onFormInputsChange(newFormInputs)
-      setNeedToAddFormInput(false)
-    }
-  }, [value])
+    const pendingFormInputs = pendingFormInputsRef.current
+    if (!pendingFormInputs || pendingFormInputs.value === value)
+      return
+
+    onFormInputsChange(pendingFormInputs.formInputs)
+    pendingFormInputsRef.current = null
+  }, [onFormInputsChange, value])
 
   const [isFocus, {
     setTrue: setFocus,
     setFalse: setBlur,
   }] = useBoolean(false)
 
-  const workflowNodesMap = availableNodes.reduce((acc: any, node) => {
+  const workflowNodesMap = availableNodes.reduce<WorkflowNodesMap>((acc, node) => {
     acc[node.id] = {
       title: node.data.title,
       type: node.data.type,
@@ -137,7 +147,7 @@ const FormContent: FC<FormContentProps> = ({
           workflowVariableBlock={{
             show: true,
             variables: availableVars || [],
-            getVarType: getVarType as any,
+            getVarType,
             workflowNodesMap,
           }}
           editable={!readonly}
@@ -145,10 +155,12 @@ const FormContent: FC<FormContentProps> = ({
             ? []
             : [{
                 hotkey: ['mod', '/'],
+                // eslint-disable-next-line react/component-hook-factories, react/no-nested-component-definitions
                 Popup: ({ onClose, onInsert }) => (
                   <AddInputField
                     nodeId={nodeId}
-                    onSave={handleInsertHITLNode(onInsert!)}
+                    unavailableVariableNames={formInputs.map(input => input.output_variable_name)}
+                    onSave={handleInsertHITLNode(onInsert)}
                     onCancel={onClose}
                   />
                 ),

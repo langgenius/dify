@@ -26,6 +26,7 @@ type HITLInputComponentUIProps = {
   nodeId: string
   varName: string
   formInput?: FormInputItem
+  unavailableVariableNames?: string[]
   onChange: (input: FormInputItem) => void
   onRename: (payload: FormInputItem, oldName: string) => void
   onRemove: (varName: string) => void
@@ -44,6 +45,7 @@ const HITLInputComponentUI: FC<HITLInputComponentUIProps> = ({
   nodeId,
   varName,
   formInput,
+  unavailableVariableNames = [],
   onChange,
   onRename,
   onRemove,
@@ -63,6 +65,11 @@ const HITLInputComponentUI: FC<HITLInputComponentUIProps> = ({
     setTrue: showEditModal,
     setFalse: hideEditModal,
   }] = useBoolean(false)
+
+  useEffect(() => {
+    if (readonly)
+      hideEditModal()
+  }, [hideEditModal, readonly])
 
   // Lexical delegate the click make it unable to add click by the method of react
   const editBtnRef = useRef<HTMLDivElement>(null)
@@ -91,12 +98,15 @@ const HITLInputComponentUI: FC<HITLInputComponentUIProps> = ({
   }, [onRemove, varName])
 
   const handleChange = useCallback((newPayload: FormInputItem) => {
+    if (newPayload.output_variable_name !== varName && unavailableVariableNames.includes(newPayload.output_variable_name))
+      return
+
     if (varName === newPayload.output_variable_name)
       onChange(newPayload)
     else
       onRename(newPayload, varName)
     hideEditModal()
-  }, [hideEditModal, onChange, onRename, varName])
+  }, [hideEditModal, onChange, onRename, unavailableVariableNames, varName])
 
   const isDefaultValueVariable = useMemo(() => {
     return paragraphDefault?.type === 'variable'
@@ -203,6 +213,7 @@ const HITLInputComponentUI: FC<HITLInputComponentUIProps> = ({
               nodeId={nodeId}
               isEdit
               payload={formInput}
+              unavailableVariableNames={unavailableVariableNames}
               onChange={handleChange}
               onCancel={hideEditModal}
             />
