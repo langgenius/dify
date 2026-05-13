@@ -7,10 +7,11 @@ import time
 import uuid
 from collections import Counter
 from collections.abc import Sequence
-from typing import Any, Literal, TypedDict, cast
+from typing import Annotated, Any, Literal, TypedDict, cast
 
 import pydantic
 import sqlalchemy as sa
+from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator
 from redis.exceptions import LockNotOwnedError
 from sqlalchemy import delete, exists, func, select, update
 from sqlalchemy.orm import Session, sessionmaker
@@ -150,6 +151,86 @@ class ProcessRulesDict(TypedDict):
 class AutoDisableLogsDict(TypedDict):
     document_ids: list[str]
     count: int
+
+
+class _EstimatePreProcessingRule(BaseModel):
+    id: str = Field(min_length=1)
+    enabled: bool
+
+    @field_validator("id")
+    @classmethod
+    def _validate_id(cls, v: str) -> str:
+        if v not in DatasetProcessRule.PRE_PROCESSING_RULES:
+            raise ValueError("Process rule pre_processing_rules id is invalid")
+        return v
+
+
+class _EstimateSegmentation(BaseModel):
+    separator: str = Field(min_length=1)
+    max_tokens: int = Field(gt=0)
+
+
+class _EstimateRules(BaseModel):
+    pre_processing_rules: list[_EstimatePreProcessingRule]
+    segmentation: _EstimateSegmentation
+
+    @field_validator("pre_processing_rules")
+    @classmethod
+    def _deduplicate(cls, v: list[_EstimatePreProcessingRule]) -> list[_EstimatePreProcessingRule]:
+        seen: dict[str, _EstimatePreProcessingRule] = {}
+        for rule in v:
+            seen[rule.id] = rule
+        return list(seen.values())
+
+
+class _SummaryIndexSettingDisabled(BaseModel):
+    enable: Literal[False] = False
+
+
+class _SummaryIndexSettingEnabled(BaseModel):
+    enable: Literal[True]
+    model_name: str = Field(min_length=1)
+    model_provider_name: str = Field(min_length=1)
+
+
+_SummaryIndexSetting = Annotated[
+    _SummaryIndexSettingDisabled | _SummaryIndexSettingEnabled,
+    Field(discriminator="enable"),
+]
+
+
+class _AutomaticProcessRule(BaseModel):
+    model_config = ConfigDict(extra="allow")
+
+    mode: Literal[ProcessRuleMode.AUTOMATIC]
+    summary_index_setting: _SummaryIndexSetting | None = None
+
+
+class _CustomProcessRule(BaseModel):
+    model_config = ConfigDict(extra="allow")
+
+    mode: Literal[ProcessRuleMode.CUSTOM]
+    rules: _EstimateRules
+    summary_index_setting: _SummaryIndexSetting | None = None
+
+
+class _HierarchicalProcessRule(BaseModel):
+    model_config = ConfigDict(extra="allow")
+
+    mode: Literal[ProcessRuleMode.HIERARCHICAL]
+    rules: _EstimateRules
+    summary_index_setting: _SummaryIndexSetting | None = None
+
+
+_EstimateProcessRule = Annotated[
+    _AutomaticProcessRule | _CustomProcessRule | _HierarchicalProcessRule,
+    Field(discriminator="mode"),
+]
+
+
+class _EstimateArgs(BaseModel):
+    info_list: dict[str, Any]
+    process_rule: _EstimateProcessRule
 
 
 class DatasetService:
@@ -2886,57 +2967,16 @@ class DocumentService:
 
     @classmethod
     def estimate_args_validate(cls, args: dict[str, Any]):
-        """Validate estimate args using Pydantic models (refactor for issue #36001)."""
         try:
-            # Validate with Pydantic
-            validated_args = EstimateArgsPydantic(**args)
-        except pydantic.ValidationError as e:
-            raise ValueError(f"Invalid arguments: {e}")
-
-        process_rule = validated_args.process_rule
-
-        # Validate mode
-        if process_rule.mode not in DatasetProcessRule.MODES:
-            raise ValueError("Process rule mode is invalid")
-
-        if process_rule.mode == ProcessRuleMode.AUTOMATIC:
-            args["process_rule"]["rules"] = {}
-        else:
-            if not process_rule.rules:
-                raise ValueError("Process rule rules is required")
-
-            # Validate pre_processing_rules
-            if not process_rule.rules.pre_processing_rules:
-                raise ValueError("Process rule pre_processing_rules is required")
-
-            # Check for duplicate IDs and validate each rule
-            seen_ids = set()
-            for rule in process_rule.rules.pre_processing_rules:
-                if rule.id not in DatasetProcessRule.PRE_PROCESSING_RULES:
-                    raise ValueError(f"Process rule pre_processing_rules id is invalid: {rule.id}")
-                if rule.id in seen_ids:
-                    raise ValueError(f"Duplicate pre_processing_rule id: {rule.id}")
-                seen_ids.add(rule.id)
-
-            # Validate segmentation
-            if not process_rule.rules.segmentation:
-                raise ValueError("Process rule segmentation is required")
-
-            if not process_rule.rules.segmentation.separator:
-                raise ValueError("Process rule segmentation separator is required")
-
-            if not isinstance(process_rule.rules.segmentation.max_tokens, int):
-                raise ValueError("Process rule segmentation max_tokens is invalid")
-
-            if process_rule.rules.segmentation.max_tokens <= 0:
-                raise ValueError("Process rule segmentation max_tokens must be positive")
-
-        # Validate summary index setting
-        if process_rule.summary_index_setting and process_rule.summary_index_setting.enable:
-            if not process_rule.summary_index_setting.model_name:
-                raise ValueError("Summary index model name is required")
-            if not process_rule.summary_index_setting.model_provider_name:
-                raise ValueError("Summary index model provider name is required")
+            validated = _EstimateArgs.model_validate(args)
+        except ValidationError as e:
+            first = e.errors()[0]
+            original = first.get("ctx", {}).get("error")
+            raise ValueError(str(original) if isinstance(original, ValueError) else first["msg"]) from e
+        process_rule_dict = validated.process_rule.model_dump(exclude_none=True)
+        if validated.process_rule.mode == ProcessRuleMode.AUTOMATIC:
+            process_rule_dict["rules"] = {}
+        args["process_rule"] = process_rule_dict
 
         return validated_args
 
