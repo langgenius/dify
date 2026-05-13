@@ -149,11 +149,25 @@ describe('NewMCPCard', () => {
   })
 
   describe('Styling', () => {
-    it('should have correct card structure', () => {
+    it('should match the Figma card shell and section sizing', () => {
       render(<NewMCPCard {...defaultProps} />, { wrapper: createWrapper() })
 
-      const card = document.querySelector('.rounded-xl')
-      expect(card).toBeInTheDocument()
+      const card = screen.getByText('tools.mcp.create.cardTitle').closest('.col-span-1')
+      expect(card).toHaveClass(
+        'h-[120px]',
+        'overflow-hidden',
+        'rounded-xl',
+        'border-[0.5px]',
+        'border-components-panel-border',
+        'bg-components-panel-on-panel-item-bg',
+        'shadow-md',
+      )
+
+      const header = screen.getByRole('button', { name: 'tools.mcp.create.cardTitle' })
+      expect(header).toHaveClass('h-[84px]', 'gap-3', 'p-4')
+
+      const docLink = screen.getByText('tools.mcp.create.cardLink').closest('a')
+      expect(docLink).toHaveClass('h-8', 'border-t', 'border-divider-subtle', 'px-3', 'py-2')
     })
 
     it('should have clickable cursor style', () => {

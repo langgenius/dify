@@ -104,6 +104,39 @@ vi.mock('@/service/use-plugins', () => ({
   useInvalidateInstalledPluginList: () => mockInvalidateInstalledPluginList,
 }))
 
+const {
+  mockCanSetPermissions,
+  mockReferenceSetting,
+  mockSetReferenceSettings,
+} = vi.hoisted(() => ({
+  mockCanSetPermissions: vi.fn(() => true),
+  mockReferenceSetting: vi.fn(() => ({
+    permission: {
+      install_permission: 'everyone',
+      debug_permission: 'admins',
+    },
+    auto_upgrade: {},
+  })),
+  mockSetReferenceSettings: vi.fn(),
+}))
+
+vi.mock('@/app/components/plugins/plugin-page/use-reference-setting', () => ({
+  default: () => ({
+    referenceSetting: mockReferenceSetting(),
+    canSetPermissions: mockCanSetPermissions(),
+    setReferenceSettings: mockSetReferenceSettings,
+  }),
+}))
+
+vi.mock('@/app/components/plugins/reference-setting-modal', () => ({
+  __esModule: true,
+  default: ({ onHide }: { onHide: () => void }) => (
+    <div data-testid="reference-setting-modal">
+      <button type="button" onClick={onHide}>Close modal</button>
+    </div>
+  ),
+}))
+
 vi.mock('@/app/components/plugins/card', () => ({
   default: ({ payload, className }: { payload: { name: string }, className?: string }) => (
     <div data-testid={`card-${payload.name}`} className={className}>{payload.name}</div>
@@ -227,6 +260,14 @@ describe('ProviderList', () => {
     mockEnableMarketplace = false
     mockCollectionData = createDefaultCollections()
     mockCheckedInstalledData = null
+    mockCanSetPermissions.mockReturnValue(true)
+    mockReferenceSetting.mockReturnValue({
+      permission: {
+        install_permission: 'everyone',
+        debug_permission: 'admins',
+      },
+      auto_upgrade: {},
+    })
     Element.prototype.scrollTo = vi.fn()
   })
 
@@ -280,19 +321,26 @@ describe('ProviderList', () => {
     it('uses default content inset outside compact integrations layout', () => {
       const { container } = renderProviderList()
 
-      expect(container.querySelector('.sticky')).toHaveClass('px-12')
-      expect(container.querySelector('.sticky')).not.toHaveClass('max-w-[1600px]')
-      expect(screen.getByTestId('card-google-search').closest('.grid')).toHaveClass('px-12')
-      expect(screen.getByTestId('card-google-search').closest('.grid')).not.toHaveClass('max-w-[1600px]')
+      expect(container.querySelector('.sticky')).toHaveClass('px-12', 'pt-2', 'pb-0')
+      expect(container.querySelector('.sticky')).toHaveClass('max-w-[1600px]')
+      expect(screen.getByTestId('card-google-search').closest('.grid')).toHaveClass('px-12', 'gap-2', 'pt-2')
+      expect(screen.getByTestId('card-google-search').closest('.grid')).toHaveClass('max-w-[1600px]')
     })
 
     it('uses compact content inset when rendered by integrations layout', () => {
       const { container } = renderProviderList(undefined, 'builtin', 'compact')
 
-      expect(container.querySelector('.sticky')).toHaveClass('px-6')
+      expect(container.querySelector('.sticky')).toHaveClass('px-6', 'pt-2', 'pb-0')
       expect(container.querySelector('.sticky')).toHaveClass('max-w-[1600px]')
-      expect(screen.getByTestId('card-google-search').closest('.grid')).toHaveClass('px-6')
+      expect(screen.getByTestId('card-google-search').closest('.grid')).toHaveClass('px-6', 'gap-2', 'pt-2')
       expect(screen.getByTestId('card-google-search').closest('.grid')).toHaveClass('max-w-[1600px]')
+    })
+
+    it('keeps tool cards at three columns on desktop and wider screens', () => {
+      renderProviderList(undefined, 'builtin', 'compact')
+
+      expect(screen.getByTestId('card-google-search').closest('.grid')).toHaveClass('grid-cols-1', 'sm:grid-cols-2', 'md:grid-cols-3')
+      expect(screen.getByTestId('card-google-search').closest('.grid')).not.toHaveClass('lg:grid-cols-4')
     })
   })
 
@@ -344,6 +392,16 @@ describe('ProviderList', () => {
       expect(screen.getByTestId('card-weather-tool')).toBeInTheDocument()
     })
 
+    it('does not apply hidden tag filters on non-tools tabs', () => {
+      renderProviderList()
+
+      fireEvent.click(screen.getByTestId('add-filter'))
+      fireEvent.click(screen.getByText('tools.type.custom'))
+
+      expect(screen.queryByTestId('label-filter')).not.toBeInTheDocument()
+      expect(screen.getByTestId('card-my-api')).toBeInTheDocument()
+    })
+
     it('clears search with clear button', () => {
       renderProviderList()
       const input = screen.getByRole('textbox')
@@ -353,19 +411,45 @@ describe('ProviderList', () => {
       expect(screen.getByTestId('card-weather-tool')).toBeInTheDocument()
     })
 
-    it('shows label filter for non-MCP tabs', () => {
+    it('shows label filter for the built-in tools page', () => {
       renderProviderList()
       expect(screen.getByTestId('label-filter')).toBeInTheDocument()
     })
 
-    it('hides label filter for MCP tab', () => {
-      renderProviderList({ category: 'mcp' })
+    it.each([
+      ['api'],
+      ['workflow'],
+      ['mcp'],
+    ] as const)('hides label filter for the %s tool page', (category) => {
+      renderProviderList({ category })
       expect(screen.queryByTestId('label-filter')).not.toBeInTheDocument()
     })
 
     it('renders search input', () => {
       renderProviderList()
       expect(screen.getByRole('textbox')).toBeInTheDocument()
+    })
+
+    it('opens plugin update settings from the tools toolbar', () => {
+      renderProviderList(undefined, 'builtin')
+
+      expect(screen.getByText('common.modelProvider.updateSetting')).toBeInTheDocument()
+      expect(screen.getByText('plugin.autoUpdate.strategy.latest.name')).toBeInTheDocument()
+
+      fireEvent.click(screen.getByText('common.modelProvider.updateSetting'))
+
+      expect(screen.getByTestId('reference-setting-modal')).toBeInTheDocument()
+    })
+
+    it.each([
+      ['mcp'],
+      ['api'],
+      ['workflow'],
+    ] as const)('does not show plugin update settings on the %s tool page', (category) => {
+      renderProviderList({ category })
+
+      expect(screen.queryByText('common.modelProvider.updateSetting')).not.toBeInTheDocument()
+      expect(screen.queryByText('plugin.autoUpdate.strategy.latest.name')).not.toBeInTheDocument()
     })
   })
 

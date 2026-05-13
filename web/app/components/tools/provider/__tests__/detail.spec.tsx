@@ -174,6 +174,32 @@ describe('ProviderDetail', () => {
   })
 
   describe('Rendering', () => {
+    it('uses the full-height right drawer layout from the design', () => {
+      render(
+        <ProviderDetail
+          collection={createMockCollection()}
+          onHide={mockOnHide}
+          onRefreshData={mockOnRefreshData}
+        />,
+      )
+
+      const dialog = screen.getByRole('dialog')
+
+      expect(dialog).toHaveClass(
+        'data-[swipe-direction=right]:top-2',
+        'data-[swipe-direction=right]:right-2',
+        'data-[swipe-direction=right]:bottom-2',
+        'data-[swipe-direction=right]:h-[calc(100dvh-16px)]',
+        'data-[swipe-direction=right]:w-[400px]',
+        'data-[swipe-direction=right]:max-w-[calc(100vw-1rem)]',
+      )
+      expect(dialog).not.toHaveClass(
+        'data-[swipe-direction=right]:top-16',
+        'data-[swipe-direction=right]:w-[420px]',
+        'data-[swipe-direction=right]:max-w-[420px]',
+      )
+    })
+
     it('renders title, org info and description for a builtIn collection', async () => {
       render(
         <ProviderDetail

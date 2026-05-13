@@ -3,6 +3,7 @@ import type { ToolsContentInset } from './content-inset'
 import type { Collection } from './types'
 import type { Plugin } from '@/app/components/plugins/types'
 import type { ToolCategory } from '@/app/components/tools/integration-routes'
+import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { parseAsStringLiteral, useQueryState } from 'nuqs'
@@ -15,6 +16,8 @@ import CardMoreInfo from '@/app/components/plugins/card/card-more-info'
 import { useTags } from '@/app/components/plugins/hooks'
 import Empty from '@/app/components/plugins/marketplace/empty'
 import PluginDetailPanel from '@/app/components/plugins/plugin-detail-panel'
+import useReferenceSetting from '@/app/components/plugins/plugin-page/use-reference-setting'
+import ReferenceSettingModal from '@/app/components/plugins/reference-setting-modal'
 import { TOOL_CATEGORY_VALUES } from '@/app/components/tools/integration-routes'
 import LabelFilter from '@/app/components/tools/labels/filter'
 import CustomCreateCard from '@/app/components/tools/provider/custom-create-card'
@@ -23,7 +26,7 @@ import WorkflowToolEmpty from '@/app/components/tools/provider/empty'
 import { systemFeaturesQueryOptions } from '@/service/system-features'
 import { useCheckInstalled, useInvalidateInstalledPluginList } from '@/service/use-plugins'
 import { useAllToolProviders } from '@/service/use-tools'
-import { toolsContentFrameClassNames, toolsContentInsetClassNames } from './content-inset'
+import { toolsContentInsetClassNames, toolsUnifiedContentFrameClassName } from './content-inset'
 import Marketplace from './marketplace'
 import { useMarketplace } from './marketplace/hooks'
 import MCPList from './mcp'
@@ -51,6 +54,11 @@ const ProviderList = ({
   // searchParams.get('category') === 'workflow'
   const { t } = useTranslation()
   const { getTagLabel } = useTags()
+  const {
+    referenceSetting,
+    canSetPermissions,
+    setReferenceSettings,
+  } = useReferenceSetting()
   const { data: enable_marketplace } = useSuspenseQuery({
     ...systemFeaturesQueryOptions(),
     select: s => s.enable_marketplace,
@@ -61,7 +69,9 @@ const ProviderList = ({
   const activeTab = category ?? categoryParam
   const isRouteCategory = !!category
   const contentPaddingClassName = toolsContentInsetClassNames[contentInset]
-  const contentFrameClassName = cn(toolsContentFrameClassNames[contentInset], contentPaddingClassName)
+  const toolListFrameClassName = cn(contentPaddingClassName, toolsUnifiedContentFrameClassName)
+  const showToolsUpdateSetting = activeTab === 'builtin' && canSetPermissions && !!referenceSetting
+  const showLabelFilter = activeTab === 'builtin'
   const options = [
     { value: 'builtin', text: t('type.builtIn', { ns: 'tools' }) },
     { value: 'api', text: t('type.custom', { ns: 'tools' }) },
@@ -69,6 +79,7 @@ const ProviderList = ({
     { value: 'mcp', text: 'MCP' },
   ]
   const [tagFilterValue, setTagFilterValue] = useState<string[]>([])
+  const [showPluginSettingModal, setShowPluginSettingModal] = useState(false)
   const handleTagsChange = (value: string[]) => {
     setTagFilterValue(value)
   }
@@ -81,13 +92,13 @@ const ProviderList = ({
     return collectionList.filter((collection) => {
       if (collection.type !== activeTab)
         return false
-      if (tagFilterValue.length > 0 && (!collection.labels || collection.labels.every(label => !tagFilterValue.includes(label))))
+      if (showLabelFilter && tagFilterValue.length > 0 && (!collection.labels || collection.labels.every(label => !tagFilterValue.includes(label))))
         return false
       if (keywords)
         return Object.values(collection.label).some(value => value.toLowerCase().includes(keywords.toLowerCase()))
       return true
     })
-  }, [activeTab, tagFilterValue, keywords, collectionList])
+  }, [activeTab, showLabelFilter, tagFilterValue, keywords, collectionList])
 
   const [currentProviderId, setCurrentProviderId] = useState<string | undefined>()
   const currentProvider = useMemo<Collection | undefined>(() => {
@@ -146,8 +157,8 @@ const ProviderList = ({
         >
           <div
             className={cn(
-              'sticky top-0 z-10 flex flex-wrap items-center justify-start gap-x-4 gap-y-2 bg-background-body pt-4 pb-2',
-              contentFrameClassName,
+              'sticky top-0 z-10 flex flex-wrap items-center justify-start gap-x-2 gap-y-2 bg-background-body pt-2 pb-0',
+              toolListFrameClassName,
               currentProviderId && 'pr-6',
             )}
           >
@@ -165,25 +176,41 @@ const ProviderList = ({
                 options={options}
               />
             )}
-            <div className="flex items-center gap-2">
-              {activeTab !== 'mcp' && (
-                <LabelFilter value={tagFilterValue} onChange={handleTagsChange} />
+            <div className="flex min-w-[200px] flex-1 items-center justify-between gap-2">
+              <div className="flex min-w-0 items-center gap-2">
+                {showLabelFilter && (
+                  <LabelFilter value={tagFilterValue} onChange={handleTagsChange} />
+                )}
+                <Input
+                  showLeftIcon
+                  showClearIcon
+                  wrapperClassName="w-[200px]"
+                  value={keywords}
+                  onChange={e => handleKeywordsChange(e.target.value)}
+                  onClear={() => handleKeywordsChange('')}
+                />
+              </div>
+              {showToolsUpdateSetting && (
+                <Button
+                  variant="secondary"
+                  className="h-8 shrink-0 gap-0.5 px-3 system-sm-medium"
+                  onClick={() => setShowPluginSettingModal(true)}
+                >
+                  <span aria-hidden className="i-ri-flashlight-line size-4" />
+                  <span className="px-0.5">{t('modelProvider.updateSetting', { ns: 'common' })}</span>
+                  <span className="flex min-w-4 items-center justify-center rounded-[5px] border border-divider-deep bg-components-badge-bg-dimm px-1 py-0.5 system-2xs-medium-uppercase text-text-tertiary">
+                    {t('autoUpdate.strategy.latest.name', { ns: 'plugin' })}
+                  </span>
+                  <span aria-hidden className="i-ri-arrow-down-s-line size-4" />
+                </Button>
               )}
-              <Input
-                showLeftIcon
-                showClearIcon
-                wrapperClassName="w-[200px]"
-                value={keywords}
-                onChange={e => handleKeywordsChange(e.target.value)}
-                onClear={() => handleKeywordsChange('')}
-              />
             </div>
           </div>
           {activeTab !== 'mcp' && (
             <div
               className={cn(
-                'relative grid shrink-0 grid-cols-1 content-start gap-4 pt-2 pb-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4',
-                contentFrameClassName,
+                'relative grid shrink-0 grid-cols-1 content-start gap-2 pt-2 pb-4 sm:grid-cols-2 md:grid-cols-3',
+                toolListFrameClassName,
                 !filteredCollectionList.length && activeTab === 'workflow' && 'grow',
               )}
             >
@@ -217,7 +244,7 @@ const ProviderList = ({
             </div>
           )}
           {!filteredCollectionList.length && activeTab === 'builtin' && (
-            <Empty lightCard text={t('noTools', { ns: 'tools' })} className={cn('h-[224px] shrink-0', contentFrameClassName)} />
+            <Empty lightCard text={t('noTools', { ns: 'tools' })} className={cn('h-[224px] shrink-0', toolListFrameClassName)} />
           )}
           <div ref={toolListTailRef} />
           {enable_marketplace && activeTab === 'builtin' && (
@@ -247,6 +274,13 @@ const ProviderList = ({
         onUpdate={() => invalidateInstalledPluginList()}
         onHide={() => setCurrentProviderId(undefined)}
       />
+      {showPluginSettingModal && referenceSetting && (
+        <ReferenceSettingModal
+          payload={referenceSetting}
+          onHide={() => setShowPluginSettingModal(false)}
+          onSave={setReferenceSettings}
+        />
+      )}
     </>
   )
 }

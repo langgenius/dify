@@ -6,7 +6,7 @@ import { useMemo, useState } from 'react'
 import {
   useAllToolProviders,
 } from '@/service/use-tools'
-import { toolsContentFrameClassNames, toolsContentInsetClassNames } from '../content-inset'
+import { toolsContentInsetClassNames, toolsUnifiedContentFrameClassName } from '../content-inset'
 import NewMCPCard from './create-card'
 import MCPDetailPanel from './detail/provider-detail'
 import MCPCard from './provider-card'
@@ -44,9 +44,11 @@ const MCPList = ({
 
   const filteredList = useMemo(() => {
     return list.filter((collection) => {
+      if (collection.type !== 'mcp')
+        return false
       if (searchText)
         return Object.values(collection.name).some(value => (value as string).toLowerCase().includes(searchText.toLowerCase()))
-      return collection.type === 'mcp'
+      return true
     }) as ToolWithProvider[]
   }, [list, searchText])
 
@@ -68,12 +70,12 @@ const MCPList = ({
     setIsTriggerAuthorize(true)
   }
   const contentPaddingClassName = toolsContentInsetClassNames[contentInset]
-  const contentFrameClassName = cn(toolsContentFrameClassNames[contentInset], contentPaddingClassName)
+  const contentFrameClassName = cn(contentPaddingClassName, toolsUnifiedContentFrameClassName)
   return (
     <>
       <div
         className={cn(
-          'relative grid shrink-0 grid-cols-1 content-start gap-4 pt-2 pb-4 2k:grid-cols-6 sm:grid-cols-1 md:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-5',
+          'relative grid shrink-0 grid-cols-1 content-start gap-4 pt-2 pb-4 sm:grid-cols-2 md:grid-cols-3',
           contentFrameClassName,
           !list.length && 'h-[calc(100vh-136px)] overflow-hidden',
         )}

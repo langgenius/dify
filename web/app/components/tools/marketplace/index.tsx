@@ -11,7 +11,7 @@ import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
 import List from '@/app/components/plugins/marketplace/list'
 import { getMarketplaceUrl } from '@/utils/var'
-import { toolsContentFrameClassNames, toolsContentInsetClassNames } from '../content-inset'
+import { toolsContentInsetClassNames, toolsUnifiedContentFrameClassName } from '../content-inset'
 
 type MarketplaceProps = {
   searchPluginText: string
@@ -40,7 +40,8 @@ const Marketplace = ({
     page,
   } = marketplaceContext
   const contentPaddingClassName = toolsContentInsetClassNames[contentInset]
-  const contentFrameClassName = cn(toolsContentFrameClassNames[contentInset], contentPaddingClassName)
+  const marketplaceFrameClassName = cn(contentPaddingClassName, toolsUnifiedContentFrameClassName)
+  const cardContainerClassName = 'grid-cols-1 sm:grid-cols-2 md:grid-cols-3'
 
   return (
     <>
@@ -51,7 +52,7 @@ const Marketplace = ({
             onClick={showMarketplacePanel}
           />
         )}
-        <div className={cn('pt-4 pb-3', contentFrameClassName)}>
+        <div className={cn('pt-4 pb-3', marketplaceFrameClassName)}>
           <div className="bg-linear-to-r from-[rgba(11,165,236,0.95)] to-[rgba(21,90,239,0.95)] bg-clip-text title-2xl-semi-bold text-transparent">
             {t('marketplace.moreFrom', { ns: 'plugin' })}
           </div>
@@ -106,12 +107,13 @@ const Marketplace = ({
         }
         {
           (!isLoading || page > 1) && (
-            <div className={contentFrameClassName}>
+            <div className={marketplaceFrameClassName}>
               <List
                 marketplaceCollections={marketplaceCollections || []}
                 marketplaceCollectionPluginsMap={marketplaceCollectionPluginsMap || {}}
                 plugins={plugins}
                 showInstallButton
+                cardContainerClassName={cardContainerClassName}
               />
             </div>
           )

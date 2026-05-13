@@ -15,6 +15,7 @@ vi.mock('@/app/components/plugins/marketplace/list', () => ({
   default: (props: {
     marketplaceCollections: unknown[]
     marketplaceCollectionPluginsMap: Record<string, unknown[]>
+    cardContainerClassName?: string
     plugins?: unknown[]
     showInstallButton?: boolean
   }) => {
@@ -136,6 +137,7 @@ describe('Marketplace', () => {
       // Assert
       expect(screen.getByTestId('marketplace-list')).toBeInTheDocument()
       expect(listRenderSpy).toHaveBeenCalledWith(expect.objectContaining({
+        cardContainerClassName: 'grid-cols-1 sm:grid-cols-2 md:grid-cols-3',
         showInstallButton: true,
       }))
     })

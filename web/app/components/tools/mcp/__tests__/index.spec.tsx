@@ -167,6 +167,7 @@ describe('MCPList', () => {
       mockProviders = [
         { id: '1', name: { 'en-US': 'Search Tool' }, type: 'mcp' },
         { id: '2', name: { 'en-US': 'Another Provider' }, type: 'mcp' },
+        { id: '3', name: { 'en-US': 'Search API Tool' }, type: 'api' },
       ]
     })
 
@@ -175,6 +176,7 @@ describe('MCPList', () => {
 
       expect(screen.getByTestId('provider-card-1')).toBeInTheDocument()
       expect(screen.queryByTestId('provider-card-2')).not.toBeInTheDocument()
+      expect(screen.queryByTestId('provider-card-3')).not.toBeInTheDocument()
     })
 
     it('should filter case-insensitively', () => {
@@ -316,13 +318,14 @@ describe('MCPList', () => {
   })
 
   describe('Grid Layout', () => {
-    it('should have responsive grid layout', () => {
+    it('should keep MCP cards to three columns at desktop width and above', () => {
       render(<MCPList searchText="" />)
 
       const grid = document.querySelector('.grid')
-      expect(grid).toHaveClass('grid-cols-1')
-      expect(grid).toHaveClass('md:grid-cols-2')
-      expect(grid).toHaveClass('xl:grid-cols-4')
+      expect(grid).toHaveClass('grid-cols-1', 'sm:grid-cols-2', 'md:grid-cols-3')
+      expect(grid).not.toHaveClass('xl:grid-cols-4')
+      expect(grid).not.toHaveClass('2xl:grid-cols-5')
+      expect(grid).not.toHaveClass('2k:grid-cols-6')
     })
 
     it('should have overflow hidden when list is empty', () => {

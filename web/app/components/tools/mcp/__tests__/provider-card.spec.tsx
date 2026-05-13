@@ -183,6 +183,20 @@ describe('MCPCard', () => {
       render(<MCPCard {...defaultProps} />, { wrapper: createWrapper() })
       expect(screen.getByText(/tools.mcp.updateTime/)).toBeInTheDocument()
     })
+
+    it('should use the Figma card shell', () => {
+      render(<MCPCard {...defaultProps} />, { wrapper: createWrapper() })
+
+      const card = screen.getByText('Test MCP Server').closest('.group')
+      expect(card).toHaveClass(
+        'overflow-hidden',
+        'rounded-xl',
+        'border-[0.5px]',
+        'border-components-panel-border',
+        'bg-components-panel-on-panel-item-bg',
+        'shadow-md',
+      )
+    })
   })
 
   describe('No Tools State', () => {

@@ -1,9 +1,8 @@
 'use client'
 import type { ToolWithProvider } from '@/app/components/workflow/types'
 import {
-  RiAddCircleFill,
+  RiAddLine,
   RiArrowRightUpLine,
-  RiBookOpenLine,
 } from '@remixicon/react'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -35,22 +34,34 @@ const NewMCPCard = ({ handleCreate }: Props) => {
   return (
     <>
       {isCurrentWorkspaceManager && (
-        <div className="col-span-1 flex min-h-[108px] cursor-pointer flex-col rounded-xl bg-background-default-dimmed transition-all duration-200 ease-in-out">
-          <div className="group grow rounded-t-xl" onClick={() => setShowModal(true)}>
-            <div className="flex shrink-0 items-center p-4 pb-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg border border-dashed border-divider-deep group-hover:border-solid group-hover:border-state-accent-hover-alt group-hover:bg-state-accent-hover">
-                <RiAddCircleFill className="h-4 w-4 text-text-quaternary group-hover:text-text-accent" />
+        <div className="col-span-1 flex h-[120px] flex-col overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg shadow-md">
+          <button
+            type="button"
+            className="group flex h-[84px] w-full cursor-pointer items-center gap-3 p-4 text-left outline-hidden hover:bg-components-panel-on-panel-item-bg-hover focus-visible:ring-1 focus-visible:ring-components-input-border-hover"
+            onClick={() => setShowModal(true)}
+          >
+            <div className="flex size-10 shrink-0 items-center justify-center">
+              <div className="flex size-10 items-center justify-center rounded-lg border-[0.5px] border-dashed border-divider-regular bg-background-body">
+                <RiAddLine className="size-4 text-text-quaternary group-hover:text-text-accent" />
               </div>
-              <div className="ml-3 system-md-semibold text-text-secondary group-hover:text-text-accent">{t('mcp.create.cardTitle', { ns: 'tools' })}</div>
             </div>
-          </div>
-          <div className="rounded-b-xl border-t-[0.5px] border-divider-subtle px-4 py-3 text-text-tertiary hover:text-text-accent">
-            <a href={linkUrl} target="_blank" rel="noopener noreferrer" className="flex items-center space-x-1">
-              <RiBookOpenLine className="h-3 w-3 shrink-0" />
-              <div className="grow truncate system-xs-regular" title={t('mcp.create.cardLink', { ns: 'tools' }) || ''}>{t('mcp.create.cardLink', { ns: 'tools' })}</div>
-              <RiArrowRightUpLine className="h-3 w-3 shrink-0" />
-            </a>
-          </div>
+            <div className="min-w-0 flex-1 py-px">
+              <div className="truncate system-md-semibold text-text-primary group-hover:text-text-accent" title={t('mcp.create.cardTitle', { ns: 'tools' }) || ''}>
+                {t('mcp.create.cardTitle', { ns: 'tools' })}
+              </div>
+            </div>
+          </button>
+          <a
+            href={linkUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex h-8 items-center gap-0.5 border-t border-divider-subtle px-3 py-2 text-components-button-secondary-text outline-hidden hover:bg-components-panel-on-panel-item-bg-hover hover:text-text-accent focus-visible:ring-1 focus-visible:ring-components-input-border-hover"
+          >
+            <div className="min-w-0 flex-1 px-0.5">
+              <div className="truncate system-sm-medium" title={t('mcp.create.cardLink', { ns: 'tools' }) || ''}>{t('mcp.create.cardLink', { ns: 'tools' })}</div>
+            </div>
+            <RiArrowRightUpLine className="size-4 shrink-0" />
+          </a>
         </div>
       )}
       {showModal && (
