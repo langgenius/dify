@@ -15,6 +15,7 @@ import {
 import { CREATION_TYPE } from '@/app/components/plugins/marketplace/search-params'
 import { MARKETPLACE_URL_PREFIX } from '@/config'
 import { useDocLink } from '@/context/i18n'
+import { usePathname } from '@/next/navigation'
 import { cn } from '@/utils/classnames'
 import { useCreationType } from '../marketplace/atoms'
 
@@ -33,7 +34,7 @@ const DropdownItem = ({ href, icon, text, onClick }: DropdownItemProps) => (
     onClick={onClick}
   >
     {icon}
-    <span className="system-sm-medium text-text-secondary">{text}</span>
+    <span className="text-text-secondary system-sm-medium">{text}</span>
     <RiArrowRightUpLine className="ml-auto h-4 w-4 shrink-0 text-text-tertiary" />
   </Link>
 )
@@ -81,7 +82,7 @@ export const SubmitRequestDropdown = () => {
           )}
         >
           <RiAddLine className="h-4 w-4 shrink-0 lg:hidden" />
-          <span className="system-sm-medium hidden lg:inline">
+          <span className="hidden system-sm-medium lg:inline">
             {t('requestSubmit', { ns: 'plugin' })}
           </span>
         </Button>
@@ -104,6 +105,11 @@ export const SubmitRequestDropdown = () => {
 export const CreationTypeTabs = () => {
   const { t } = useTranslation()
   const creationType = useCreationType()
+  const pathname = usePathname()
+  // Search results span plugins/templates/creators, so neither top tab should be highlighted there.
+  const isOnSearch = pathname?.startsWith('/search/') ?? false
+  const isPluginsSelected = !isOnSearch && creationType === CREATION_TYPE.plugins
+  const isTemplatesSelected = !isOnSearch && creationType === CREATION_TYPE.templates
 
   return (
     <div className="flex items-center gap-1">
@@ -112,11 +118,11 @@ export const CreationTypeTabs = () => {
         className={cn(
           buttonVariants({ variant: 'ghost' }),
           'flex items-center gap-1 px-3 py-2 text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary',
-          creationType === CREATION_TYPE.plugins && 'bg-state-base-hover text-text-secondary',
+          isPluginsSelected && 'bg-state-base-hover text-text-secondary',
         )}
       >
         <Plugin className="h-4 w-4 shrink-0" />
-        <span className="system-sm-medium hidden md:inline">
+        <span className="hidden system-sm-medium md:inline">
           {t('plugins', { ns: 'plugin' })}
         </span>
       </Link>
@@ -125,11 +131,11 @@ export const CreationTypeTabs = () => {
         className={cn(
           buttonVariants({ variant: 'ghost' }),
           'flex items-center gap-1 px-3 py-2 text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary',
-          creationType === CREATION_TYPE.templates && 'bg-state-base-hover text-text-secondary',
+          isTemplatesSelected && 'bg-state-base-hover text-text-secondary',
         )}
       >
         <Playground className="h-4 w-4 shrink-0" />
-        <span className="system-sm-medium hidden md:inline">
+        <span className="hidden system-sm-medium md:inline">
           {t('templates', { ns: 'plugin' })}
         </span>
         <Badge className="ml-1 hidden h-4 rounded-[4px] border-none bg-saas-dify-blue-accessible px-1 text-[10px] font-bold leading-[14px] text-text-primary-on-surface md:inline-flex">
