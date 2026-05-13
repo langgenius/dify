@@ -12,8 +12,8 @@
   "scopes.timezone": "Fuso orario",
   "switchAccount": "Cambia account",
   "tips.common": "Rispettiamo la tua privacy e utilizzeremo queste informazioni solo per migliorare la tua esperienza con i nostri strumenti per sviluppatori.",
-  "tips.loggedIn": "Questa app vuole accedere alle seguenti informazioni dal tuo account Dify Cloud.",
+  "tips.loggedIn": "Questa app vuole accedere alle seguenti informazioni dal tuo account Bots Cloud.",
   "tips.needLogin": "Per favore, accedi per autorizzare",
-  "tips.notLoggedIn": "Questa app vuole accedere al tuo account Dify Cloud",
+  "tips.notLoggedIn": "Questa app vuole accedere al tuo account Bots Cloud",
   "unknownApp": "App sconosciuta"
 }

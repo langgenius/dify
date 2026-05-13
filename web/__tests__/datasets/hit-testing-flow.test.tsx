@@ -58,7 +58,7 @@ const createRetrievalConfig = (overrides = {}): RetrievalConfig => ({
 
 const createHitTestingResponse = (numResults: number): HitTestingResponse => ({
   query: {
-    content: 'What is Dify?',
+    content: 'What is Bots?',
     tsne_position: { x: 0, y: 0 },
   },
   records: Array.from({ length: numResults }, (_, i) => ({

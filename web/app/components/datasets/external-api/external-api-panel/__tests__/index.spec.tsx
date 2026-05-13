@@ -23,10 +23,6 @@ vi.mock('@/context/external-knowledge-api-context', () => ({
   }),
 }))
 
-vi.mock('@/context/i18n', () => ({
-  useDocLink: () => (path: string) => `https://docs.example.com${path}`,
-}))
-
 // Mock the ExternalKnowledgeAPICard to avoid mocking its internal dependencies
 vi.mock('../../external-knowledge-api-card', () => ({
   default: ({ api }: { api: ExternalAPIItem }) => (
@@ -59,11 +55,9 @@ describe('ExternalAPIPanel', () => {
       expect(screen.getByText('dataset.externalAPIPanelDescription'))!.toBeInTheDocument()
     })
 
-    it('should render documentation link', () => {
+    it('should not render external knowledge API documentation link', () => {
       render(<ExternalAPIPanel {...defaultProps} />)
-      const docLink = screen.getByText('dataset.externalAPIPanelDocumentation')
-      expect(docLink)!.toBeInTheDocument()
-      expect(docLink.closest('a'))!.toHaveAttribute('href', 'https://docs.example.com/use-dify/knowledge/external-knowledge-api')
+      expect(screen.queryByText('dataset.externalAPIPanelDocumentation')).not.toBeInTheDocument()
     })
 
     it('should render create button', () => {
@@ -198,10 +192,5 @@ describe('ExternalAPIPanel', () => {
       expect(screen.getByTestId('api-card-single-api'))!.toBeInTheDocument()
     })
 
-    it('should render documentation link with correct target', () => {
-      render(<ExternalAPIPanel {...defaultProps} />)
-      const docLink = screen.getByText('dataset.externalAPIPanelDocumentation').closest('a')
-      expect(docLink)!.toHaveAttribute('target', '_blank')
-    })
   })
 })

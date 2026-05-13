@@ -16,10 +16,7 @@ const mockOnToggle = vi.fn()
 const mockSetAppDetail = vi.fn()
 const mockTrackEvent = vi.fn()
 const mockRefetch = vi.fn()
-const mockOpenAsyncWindow = vi.fn()
-const mockFetchInstalledAppList = vi.fn()
 const mockFetchAppDetailDirect = vi.fn()
-const mockToastError = vi.fn()
 const mockWindowOpen = vi.fn()
 const mockInvalidateAppWorkflow = vi.fn()
 
@@ -62,10 +59,6 @@ vi.mock('@/hooks/use-format-time-from-now', () => ({
   }),
 }))
 
-vi.mock('@/hooks/use-async-window-open', () => ({
-  useAsyncWindowOpen: () => mockOpenAsyncWindow,
-}))
-
 vi.mock('@/service/access-control', () => ({
   useGetUserCanAccessApp: () => ({
     data: { result: true },
@@ -78,15 +71,8 @@ vi.mock('@/service/access-control', () => ({
   }),
 }))
 
-vi.mock('@/service/explore', () => ({
-  fetchInstalledAppList: (...args: unknown[]) => mockFetchInstalledAppList(...args),
-}))
-
-const mockPublishToCreatorsPlatform = vi.fn()
-
 vi.mock('@/service/apps', () => ({
   fetchAppDetailDirect: (...args: unknown[]) => mockFetchAppDetailDirect(...args),
-  publishToCreatorsPlatform: (...args: unknown[]) => mockPublishToCreatorsPlatform(...args),
 }))
 
 vi.mock('@/service/use-workflow', () => ({
@@ -108,25 +94,8 @@ vi.mock('@/context/app-context', () => ({
   }),
 }))
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
-  toast: {
-    error: (...args: unknown[]) => mockToastError(...args),
-  },
-}))
-
 vi.mock('@/app/components/base/amplitude', () => ({
   trackEvent: (...args: unknown[]) => mockTrackEvent(...args),
-}))
-
-vi.mock('@/app/components/app/overview/embedded', () => ({
-  default: ({ isShow, onClose }: { isShow: boolean, onClose: () => void }) => (isShow
-    ? (
-        <div data-testid="embedded-modal">
-          embedded modal
-          <button onClick={onClose}>close-embedded-modal</button>
-        </div>
-      )
-    : null),
 }))
 
 vi.mock('../../app-access-control', () => ({
@@ -167,8 +136,6 @@ vi.mock('../sections', () => ({
     sectionProps.actions = props
     return (
       <div>
-        <button onClick={props.handleEmbed}>publisher-embed</button>
-        <button onClick={() => void props.handleOpenInExplore()}>publisher-open-in-explore</button>
         {props.handleOpenRunConfig && (
           <>
             <button onClick={() => props.handleOpenRunConfig(props.appURL)}>publisher-run-config</button>
@@ -198,15 +165,9 @@ describe('AppPublisher', () => {
         access_token: 'token-1',
       },
     }
-    mockFetchInstalledAppList.mockResolvedValue({
-      installed_apps: [{ id: 'installed-1' }],
-    })
     mockFetchAppDetailDirect.mockResolvedValue({
       id: 'app-1',
       access_mode: AccessMode.PUBLIC,
-    })
-    mockOpenAsyncWindow.mockImplementation(async (resolver: () => Promise<string>) => {
-      await resolver()
     })
     Object.defineProperty(window, 'open', {
       writable: true,
@@ -253,19 +214,6 @@ describe('AppPublisher', () => {
         app_name: 'Demo App',
       }))
     })
-  })
-
-  it('should open the embedded modal from the actions section', () => {
-    render(
-      <AppPublisher
-        publishedAt={Date.now()}
-      />,
-    )
-
-    fireEvent.click(screen.getByText('common.publish'))
-    fireEvent.click(screen.getByText('publisher-embed'))
-
-    expect(screen.getByTestId('embedded-modal'))!.toBeInTheDocument()
   })
 
   it('should collect hidden inputs before opening published run links from config actions', async () => {
@@ -356,17 +304,12 @@ describe('AppPublisher', () => {
     expect(screen.getByTestId('workflow-tool-drawer')).toBeInTheDocument()
   })
 
-  it('should close embedded and access control panels through child callbacks', async () => {
+  it('should close access control panel through child callback', async () => {
     render(
       <AppPublisher
         publishedAt={Date.now()}
       />,
     )
-
-    fireEvent.click(screen.getByText('common.publish'))
-    fireEvent.click(screen.getByText('publisher-embed'))
-    fireEvent.click(screen.getByText('close-embedded-modal'))
-    expect(screen.queryByTestId('embedded-modal')).not.toBeInTheDocument()
 
     fireEvent.click(screen.getByText('common.publish'))
     fireEvent.click(screen.getByText('publisher-access-control'))
@@ -395,23 +338,6 @@ describe('AppPublisher', () => {
         id: 'app-1',
         access_mode: AccessMode.PUBLIC,
       })
-    })
-  })
-
-  it('should open the installed explore page through the async window helper', async () => {
-    render(
-      <AppPublisher
-        publishedAt={Date.now()}
-      />,
-    )
-
-    fireEvent.click(screen.getByText('common.publish'))
-    fireEvent.click(screen.getByText('publisher-open-in-explore'))
-
-    await waitFor(() => {
-      expect(mockOpenAsyncWindow).toHaveBeenCalledTimes(1)
-      expect(mockFetchInstalledAppList).toHaveBeenCalledWith('app-1')
-      expect(sectionProps.actions?.appURL).toBe(`https://example.com${basePath}/chat/token-1`)
     })
   })
 
@@ -489,125 +415,13 @@ describe('AppPublisher', () => {
     expect(screen.getByText('publisher-summary-publish'))!.toBeInTheDocument()
   })
 
-  it('should report missing explore installations', async () => {
-    mockFetchInstalledAppList.mockResolvedValueOnce({
-      installed_apps: [],
-    })
-    mockOpenAsyncWindow.mockImplementation(async (resolver: () => Promise<string>, options: { onError: (error: Error) => void }) => {
-      try {
-        await resolver()
-      }
-      catch (error) {
-        options.onError(error as Error)
-      }
-    })
-
-    render(
-      <AppPublisher
-        publishedAt={Date.now()}
-      />,
-    )
-
-    fireEvent.click(screen.getByText('common.publish'))
-    fireEvent.click(screen.getByText('publisher-open-in-explore'))
-
-    await waitFor(() => {
-      expect(mockToastError).toHaveBeenCalledWith('No app found in Explore')
-    })
-  })
-
-  it('should report explore errors when the app cannot be opened', async () => {
-    mockAppDetail = {
-      ...mockAppDetail,
-      id: undefined,
-    }
-    mockOpenAsyncWindow.mockImplementation(async (resolver: () => Promise<string>, options: { onError: (error: Error) => void }) => {
-      try {
-        await resolver()
-      }
-      catch (error) {
-        options.onError(error as Error)
-      }
-    })
-
-    render(
-      <AppPublisher
-        publishedAt={Date.now()}
-      />,
-    )
-
-    fireEvent.click(screen.getByText('common.publish'))
-    fireEvent.click(screen.getByText('publisher-open-in-explore'))
-
-    await waitFor(() => {
-      expect(mockToastError).toHaveBeenCalledWith('App not found')
-    })
-  })
-
-  it('should show marketplace button and open redirect URL on success', async () => {
-    mockPublishToCreatorsPlatform.mockResolvedValue({ redirect_url: 'https://marketplace.example.com/publish?code=abc' })
-    const windowOpenSpy = vi.spyOn(window, 'open').mockImplementation(() => null)
-
+  it('should not surface creator marketplace publish in the publish menu', () => {
     renderWithSystemFeatures(
       <AppPublisher
         publishedAt={Date.now()}
         onPublish={mockOnPublish}
       />,
       { systemFeatures: { webapp_auth: { enabled: true }, enable_creators_platform: true } },
-    )
-
-    fireEvent.click(screen.getByText('common.publish'))
-    fireEvent.click(screen.getByText('common.publishToMarketplace'))
-
-    await waitFor(() => {
-      expect(mockPublishToCreatorsPlatform).toHaveBeenCalledWith({ appID: 'app-1' })
-      expect(windowOpenSpy).toHaveBeenCalledWith('https://marketplace.example.com/publish?code=abc', '_blank')
-    })
-
-    windowOpenSpy.mockRestore()
-  })
-
-  it('should show toast error when publish to marketplace fails', async () => {
-    mockPublishToCreatorsPlatform.mockRejectedValue(new Error('network error'))
-
-    renderWithSystemFeatures(
-      <AppPublisher
-        publishedAt={Date.now()}
-        onPublish={mockOnPublish}
-      />,
-      { systemFeatures: { webapp_auth: { enabled: true }, enable_creators_platform: true } },
-    )
-
-    fireEvent.click(screen.getByText('common.publish'))
-    fireEvent.click(screen.getByText('common.publishToMarketplace'))
-
-    await waitFor(() => {
-      expect(mockToastError).toHaveBeenCalledWith('common.publishToMarketplaceFailed')
-    })
-  })
-
-  it('should disable marketplace button when not yet published', () => {
-    renderWithSystemFeatures(
-      <AppPublisher
-        onPublish={mockOnPublish}
-      />,
-      { systemFeatures: { webapp_auth: { enabled: true }, enable_creators_platform: true } },
-    )
-
-    fireEvent.click(screen.getByText('common.publish'))
-    const marketplaceButton = screen.getByText('common.publishToMarketplace').closest('a, button, div[role="button"]') as HTMLElement
-    expect(marketplaceButton).toBeInTheDocument()
-    // clicking should not call the API because publishedAt is undefined
-    fireEvent.click(screen.getByText('common.publishToMarketplace'))
-    expect(mockPublishToCreatorsPlatform).not.toHaveBeenCalled()
-  })
-
-  it('should hide marketplace button when enable_creators_platform is false', () => {
-    render(
-      <AppPublisher
-        publishedAt={Date.now()}
-        onPublish={mockOnPublish}
-      />,
     )
 
     fireEvent.click(screen.getByText('common.publish'))

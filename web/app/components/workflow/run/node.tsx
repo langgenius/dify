@@ -24,7 +24,6 @@ import ErrorHandleTip from '@/app/components/workflow/nodes/_base/components/err
 import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
 import StatusContainer from '@/app/components/workflow/run/status-container'
 import { hasRetryNode } from '@/app/components/workflow/utils'
-import { useDocLink } from '@/context/i18n'
 import BlockIcon from '../block-icon'
 import { BlockEnum } from '../types'
 import LargeDataAlert from '../variable-inspect/large-data-alert'
@@ -69,7 +68,6 @@ const NodePanel: FC<Props> = ({
     doSetCollapseState(state)
   }, [hideProcessDetail])
   const { t } = useTranslation()
-  const docLink = useDocLink()
 
   const getTime = (time: number) => {
     if (time < 1)
@@ -218,14 +216,6 @@ const NodePanel: FC<Props> = ({
               {(nodeInfo.status === 'exception') && (
                 <StatusContainer status="stopped">
                   {nodeInfo.error}
-                  <a
-                    href={docLink('/use-dify/debug/error-type')}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-text-accent"
-                  >
-                    {t('common.learnMore', { ns: 'workflow' })}
-                  </a>
                 </StatusContainer>
               )}
               {nodeInfo.status === 'failed' && (

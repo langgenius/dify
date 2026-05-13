@@ -1,14 +1,11 @@
 import { cn } from '@langgenius/dify-ui/cn'
 import { Switch } from '@langgenius/dify-ui/switch'
-import { RiArrowRightUpLine, RiBookOpenLine } from '@remixicon/react'
 import * as React from 'react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import Indicator from '@/app/components/header/indicator'
 import { useSelector as useAppContextSelector } from '@/context/app-context'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
-import { useDatasetApiAccessUrl } from '@/hooks/use-api-access-url'
-import Link from '@/next/link'
 import { useDisableDatasetServiceApi, useEnableDatasetServiceApi } from '@/service/knowledge/use-dataset'
 
 type CardProps = {
@@ -25,8 +22,6 @@ const Card = ({
   const { mutateAsync: disableDatasetServiceApi } = useDisableDatasetServiceApi()
 
   const isCurrentWorkspaceManager = useAppContextSelector(state => state.isCurrentWorkspaceManager)
-
-  const apiReferenceUrl = useDatasetApiAccessUrl()
 
   const onToggle = useCallback(async (state: boolean) => {
     let result: 'success' | 'fail'
@@ -69,21 +64,6 @@ const Card = ({
             {t('appMenus.apiAccessTip', { ns: 'common' })}
           </div>
         </div>
-      </div>
-      <div className="h-px bg-divider-subtle"></div>
-      <div className="p-1">
-        <Link
-          href={apiReferenceUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="flex h-8 items-center space-x-[7px] rounded-lg px-2 text-text-tertiary hover:bg-state-base-hover"
-        >
-          <RiBookOpenLine className="size-3.5 shrink-0" />
-          <div className="grow truncate system-sm-regular">
-            {t('overview.apiInfo.doc', { ns: 'appOverview' })}
-          </div>
-          <RiArrowRightUpLine className="size-3.5 shrink-0" />
-        </Link>
       </div>
     </div>
   )

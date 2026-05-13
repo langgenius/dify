@@ -14,18 +14,6 @@ import FailBranchCard from '../fail-branch-card'
 import { useDefaultValue, useErrorHandle } from '../hooks'
 import { ErrorHandleTypeEnum } from '../types'
 
-const { mockDocLink } = vi.hoisted(() => ({
-  mockDocLink: vi.fn((path: string) => `https://docs.example.com${path}`),
-}))
-
-vi.mock('@/context/i18n', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/context/i18n')>()
-  return {
-    ...actual,
-    useDocLink: () => mockDocLink,
-  }
-})
-
 vi.mock('../hooks', () => ({
   useDefaultValue: vi.fn(),
   useErrorHandle: vi.fn(),
@@ -86,7 +74,6 @@ describe('error-handle path', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
-    mockDocLink.mockImplementation((path: string) => `https://docs.example.com${path}`)
     mockUseDefaultValue.mockReturnValue({
       handleFormChange: vi.fn(),
     })
@@ -107,11 +94,11 @@ describe('error-handle path', () => {
 
   // The error-handle leaf components should expose selectable strategies and contextual help.
   describe('Leaf Components', () => {
-    it('should render the fail-branch card with the resolved learn-more link', () => {
+    it('should render the fail-branch card without documentation link', () => {
       render(<FailBranchCard />)
 
       expect(screen.getByText('workflow.nodes.common.errorHandle.failBranch.customize')).toBeInTheDocument()
-      expect(screen.getByRole('link')).toHaveAttribute('href', 'https://docs.example.com/use-dify/debug/error-type')
+      expect(screen.queryByRole('link')).not.toBeInTheDocument()
     })
 
     it('should render string forms and surface array forms in the default value editor', () => {

@@ -200,10 +200,6 @@ vi.mock('@langgenius/dify-ui/toast', () => ({
   },
 }))
 
-vi.mock('@/context/i18n', () => ({
-  useDocLink: () => (path: string) => `https://docs.dify.ai${path}`,
-}))
-
 vi.mock('../components/indexing-section', () => ({
   default: ({
     currentDataset,
@@ -216,9 +212,7 @@ vi.mock('../components/indexing-section', () => ({
       {!!currentDataset?.doc_form && (
         <>
           <div>form.chunkStructure.title</div>
-          <a href="https://docs.dify.ai/use-dify/knowledge/create-knowledge/chunking-and-cleaning-text">
-            form.chunkStructure.learnMore
-          </a>
+          <div>form.chunkStructure.description</div>
         </>
       )}
       {!!(currentDataset
@@ -231,9 +225,7 @@ vi.mock('../components/indexing-section', () => ({
       {currentDataset?.provider !== 'external' && indexMethod && (
         <>
           <div>form.retrievalSetting.title</div>
-          <a href="https://docs.dify.ai/use-dify/knowledge/create-knowledge/setting-indexing-methods">
-            form.retrievalSetting.learnMore
-          </a>
+          <div>form.retrievalSetting.description</div>
         </>
       )}
     </div>
@@ -327,10 +319,12 @@ describe('Form', () => {
       expect(screen.getByText(/form\.retrievalSetting\.title/i)).toBeInTheDocument()
     })
 
-    it('should render learn more links', () => {
+    it('should render chunk structure and retrieval hint text without learn-more keys', () => {
       render(<Form />)
-      const learnMoreLinks = screen.getAllByText(/learnMore/i)
-      expect(learnMoreLinks.length).toBeGreaterThan(0)
+      expect(screen.getByText(/form\.chunkStructure\.description/i)).toBeInTheDocument()
+      expect(screen.getByText(/form\.retrievalSetting\.description/i)).toBeInTheDocument()
+      expect(screen.queryByText(/form\.chunkStructure\.learnMore/i)).not.toBeInTheDocument()
+      expect(screen.queryByText(/form\.retrievalSetting\.learnMore/i)).not.toBeInTheDocument()
     })
   })
 

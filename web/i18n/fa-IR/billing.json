@@ -14,7 +14,7 @@
   "plans.community.features": [
     "تمام ویژگی‌های اصلی تحت مخزن عمومی منتشر شدند",
     "فضای کاری تنها",
-    "مطابق با مجوز متن باز Dify"
+    "مطابق با مجوز متن باز Bots"
   ],
   "plans.community.for": "برای کاربران فردی، تیم‌های کوچک یا پروژه‌های غیر تجاری",
   "plans.community.includesTitle": "ویژگی‌های رایگان:",
@@ -29,9 +29,9 @@
     "ویژگی‌های اختصاصی سازمانی",
     "چند فضای کاری و مدیریت سازمانی",
     "ورود یکپارچه",
-    "توافق‌نامه‌های سطح خدمات مذاکره شده توسط شرکای Dify",
+    "توافق‌نامه‌های سطح خدمات مذاکره شده توسط شرکای Bots",
     "امنیت و کنترل‌های پیشرفته",
-    "به‌روزرسانی‌ها و نگهداری توسط دیفی به‌طور رسمی",
+    "به‌روزرسانی‌ها و نگهداری توسط Bots به‌طور رسمی",
     "پشتیبانی فنی حرفه‌ای"
   ],
   "plans.enterprise.for": "برای تیم‌های بزرگ",
@@ -67,7 +67,7 @@
   "plansCommon.annotationQuota": "سهمیه حاشیه‌نویسی",
   "plansCommon.annualBilling": "صورتحساب سالانه، صرفه‌جویی {{percent}}%",
   "plansCommon.apiRateLimit": "محدودیت نرخ API",
-  "plansCommon.apiRateLimitTooltip": "محدودیت نرخ API برای همه درخواست‌های انجام شده از طریق API Dify اعمال می‌شود، از جمله تولید متن، محاوره‌های چت، اجرای گردش‌های کار و پردازش اسناد.",
+  "plansCommon.apiRateLimitTooltip": "محدودیت نرخ API برای همه درخواست‌های انجام شده از طریق API Bots اعمال می‌شود، از جمله تولید متن، محاوره‌های چت، اجرای گردش‌های کار و پردازش اسناد.",
   "plansCommon.apiRateLimitUnit": "{{count,number}}",
   "plansCommon.buildApps": "{{count,number}} اپلیکیشن",
   "plansCommon.cloud": "سرویس ابری",
@@ -106,7 +106,7 @@
   "plansCommon.priority.priority": "اولویت",
   "plansCommon.priority.standard": "استاندارد",
   "plansCommon.priority.top-priority": "اولویت بالا",
-  "plansCommon.ragAPIRequestTooltip": "به تعداد درخواست‌های API که فقط قابلیت‌های پردازش پایگاه دانش Dify را فراخوانی می‌کنند اشاره دارد.",
+  "plansCommon.ragAPIRequestTooltip": "به تعداد درخواست‌های API که فقط قابلیت‌های پردازش پایگاه دانش Bots را فراخوانی می‌کنند اشاره دارد.",
   "plansCommon.receiptInfo": "فقط صاحب تیم و مدیر تیم می‌توانند اشتراک تهیه کنند و اطلاعات صورتحساب را مشاهده کنند",
   "plansCommon.save": "صرفه‌جویی کنید ",
   "plansCommon.self": "خود میزبان",

@@ -142,11 +142,6 @@ vi.mock('@/context/dataset-detail', () => ({
   useDatasetDetailContextWithSelector: () => mockMutateDatasetRes,
 }))
 
-vi.mock('@/context/i18n', () => ({
-  useDocLink: () => () => 'https://docs.dify.ai',
-}))
-
-vi.mock('@/context/modal-context', () => ({
   useModalContextSelector: <T,>(selector: (state: { setShowPricingModal: typeof mockSetShowPricingModal }) => T) =>
     selector({ setShowPricingModal: mockSetShowPricingModal }),
 }))

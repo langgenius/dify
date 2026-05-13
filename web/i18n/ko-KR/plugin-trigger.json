@@ -45,7 +45,7 @@
   "modal.oauth.authorization.authFailed": "OAuth 인증 정보를 가져오지 못했습니다",
   "modal.oauth.authorization.authSuccess": "승인 성공",
   "modal.oauth.authorization.authorizeButton": "{{provider}}로 승인",
-  "modal.oauth.authorization.description": "Dify가 귀하의 계정에 접근하도록 허용",
+  "modal.oauth.authorization.description": "Bots가 귀하의 계정에 접근하도록 허용",
   "modal.oauth.authorization.redirectUrl": "리디렉션 URL",
   "modal.oauth.authorization.redirectUrlHelp": "이 URL을 OAuth 앱 구성에 사용하세요",
   "modal.oauth.authorization.title": "OAuth 인증",

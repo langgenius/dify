@@ -21,7 +21,6 @@ import { ModelTypeEnum } from '@/app/components/header/account-setting/model-pro
 import { useModelList } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import ModelSelector from '@/app/components/header/account-setting/model-provider-page/model-selector'
 import { useAppContext } from '@/context/app-context'
-import { useDocLink } from '@/context/i18n'
 import { useModalContext } from '@/context/modal-context'
 import { DatasetPermission } from '@/models/datasets'
 import { updateDatasetSetting } from '@/service/datasets'
@@ -50,7 +49,6 @@ const SettingsModal: FC<SettingsModalProps> = ({
   const { data: embeddingModelList } = useModelList(ModelTypeEnum.textEmbedding)
   const { data: rerankModelList } = useModelList(ModelTypeEnum.rerank)
   const { t } = useTranslation()
-  const docLink = useDocLink()
   const ref = useRef(null)
   const isExternal = currentDataset.provider === 'external'
   const { setShowAccountSettingModal } = useModalContext()
@@ -318,7 +316,6 @@ const SettingsModal: FC<SettingsModalProps> = ({
                 retrievalConfig={retrievalConfig}
                 showMultiModalTip={showMultiModalTip}
                 onRetrievalConfigChange={setRetrievalConfig}
-                docLink={docLink}
               />
             )}
       </div>

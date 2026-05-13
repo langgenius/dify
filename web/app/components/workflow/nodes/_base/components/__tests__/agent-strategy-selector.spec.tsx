@@ -262,7 +262,7 @@ const createStrategyDetail = (
   plugin_id: `plugin-${name}`,
   declaration: {
     identity: {
-      author: 'Dify',
+      author: 'Bots',
       name,
       description: { en_US: `${name} description` },
       icon: `${name}.png`,
@@ -272,7 +272,7 @@ const createStrategyDetail = (
     strategies: [{
       identity: {
         name: strategyName,
-        author: 'Dify',
+        author: 'Bots',
         label: { en_US: strategyLabel },
       },
       description: { en_US: `${strategyLabel} description` },

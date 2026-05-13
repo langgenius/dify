@@ -163,7 +163,7 @@ class Subscription(BaseModel):
         ..., description="The timestamp when the subscription will expire, this for refresh the subscription"
     )
 
-    endpoint: str = Field(..., description="The webhook endpoint URL allocated by Dify for receiving events")
+    endpoint: str = Field(..., description="The webhook endpoint URL allocated by Bots for receiving events")
     parameters: Mapping[str, Any] = Field(
         default_factory=dict, description="The parameters of the subscription constructor"
     )

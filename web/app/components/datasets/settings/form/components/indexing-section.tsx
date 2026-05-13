@@ -9,7 +9,6 @@ import EconomicalRetrievalMethodConfig from '@/app/components/datasets/common/ec
 import RetrievalMethodConfig from '@/app/components/datasets/common/retrieval-method-config'
 import ModelSelector from '@/app/components/header/account-setting/model-provider-page/model-selector'
 import { IS_CE_EDITION } from '@/config'
-import { useDocLink } from '@/context/i18n'
 import { ChunkingMode } from '@/models/datasets'
 import { IndexingType } from '../../../create/step-two'
 import ChunkStructure from '../../chunk-structure'
@@ -51,7 +50,6 @@ const IndexingSection = ({
   showMultiModalTip,
 }: IndexingSectionProps) => {
   const { t } = useTranslation()
-  const docLink = useDocLink()
 
   const isShowIndexMethod = currentDataset
     && currentDataset.doc_form !== ChunkingMode.parentChild
@@ -77,14 +75,6 @@ const IndexingSection = ({
                 {t('form.chunkStructure.title', { ns: 'datasetSettings' })}
               </div>
               <div className="body-xs-regular text-text-tertiary">
-                <a
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  href={docLink('/use-dify/knowledge/create-knowledge/chunking-and-cleaning-text')}
-                  className="text-text-accent"
-                >
-                  {t('form.chunkStructure.learnMore', { ns: 'datasetSettings' })}
-                </a>
                 {t('form.chunkStructure.description', { ns: 'datasetSettings' })}
               </div>
             </div>
@@ -170,14 +160,6 @@ const IndexingSection = ({
                   {t('form.retrievalSetting.title', { ns: 'datasetSettings' })}
                 </div>
                 <div className="body-xs-regular text-text-tertiary">
-                  <a
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    href={docLink('/use-dify/knowledge/create-knowledge/setting-indexing-methods')}
-                    className="text-text-accent"
-                  >
-                    {t('form.retrievalSetting.learnMore', { ns: 'datasetSettings' })}
-                  </a>
                   {t('form.retrievalSetting.description', { ns: 'datasetSettings' })}
                 </div>
               </div>

@@ -236,7 +236,7 @@
   "switchTipStart": "Une nouvelle copie de l'application sera créée pour vous, et la nouvelle copie passera à l'orchestration de flux de travail. La nouvelle copie ne permettra pas le ",
   "theme.switchDark": "Passer au thème sombre",
   "theme.switchLight": "Passer au thème clair",
-  "tracing.aliyun.description": "La plateforme d'observabilité entièrement gérée et sans maintenance fournie par Alibaba Cloud permet une surveillance, un traçage et une évaluation prêts à l'emploi des applications Dify.",
+  "tracing.aliyun.description": "La plateforme d'observabilité entièrement gérée et sans maintenance fournie par Alibaba Cloud permet une surveillance, un traçage et une évaluation prêts à l'emploi des applications Bots.",
   "tracing.aliyun.title": "Surveillance Cloud",
   "tracing.arize.description": "Observabilité de LLM de niveau entreprise, évaluation en ligne et hors ligne, surveillance et expérimentation—alimentée par OpenTelemetry. Conçue spécialement pour les applications basées sur LLM et agents.",
   "tracing.arize.title": "Arize",

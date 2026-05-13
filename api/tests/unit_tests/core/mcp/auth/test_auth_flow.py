@@ -168,7 +168,7 @@ class TestOAuthDiscovery:
         assert auth_url == "https://auth.example.com"
         mock_get.assert_called_once_with(
             "https://api.example.com/.well-known/oauth-protected-resource",
-            headers={"MCP-Protocol-Version": LATEST_PROTOCOL_VERSION, "User-Agent": "Dify"},
+            headers={"MCP-Protocol-Version": LATEST_PROTOCOL_VERSION, "User-Agent": "Bots"},
         )
 
     @patch("core.helper.ssrf_proxy.get")
@@ -197,7 +197,7 @@ class TestOAuthDiscovery:
         assert auth_url == "https://auth.example.com"
         mock_get.assert_called_once_with(
             "https://api.example.com/.well-known/oauth-protected-resource?query=1#fragment",
-            headers={"MCP-Protocol-Version": LATEST_PROTOCOL_VERSION, "User-Agent": "Dify"},
+            headers={"MCP-Protocol-Version": LATEST_PROTOCOL_VERSION, "User-Agent": "Bots"},
         )
 
     def test_discover_oauth_metadata_with_resource_discovery(self):
@@ -469,7 +469,7 @@ class TestAuthorizationFlow:
         mock_response.json.return_value = {
             "client_id": "new-client-id",
             "client_secret": "new-client-secret",
-            "client_name": "Dify",
+            "client_name": "Bots",
             "redirect_uris": ["https://redirect.example.com"],
         }
         mock_post.return_value = mock_response
@@ -481,7 +481,7 @@ class TestAuthorizationFlow:
             response_types_supported=["code"],
         )
         client_metadata = OAuthClientMetadata(
-            client_name="Dify",
+            client_name="Bots",
             redirect_uris=["https://redirect.example.com"],
             grant_types=["authorization_code"],
             response_types=["code"],
@@ -508,7 +508,7 @@ class TestAuthorizationFlow:
             registration_endpoint=None,
             response_types_supported=["code"],
         )
-        client_metadata = OAuthClientMetadata(client_name="Dify", redirect_uris=["https://redirect.example.com"])
+        client_metadata = OAuthClientMetadata(client_name="Bots", redirect_uris=["https://redirect.example.com"])
 
         with pytest.raises(ValueError) as exc_info:
             register_client("https://api.example.com", metadata, client_metadata)
@@ -576,7 +576,7 @@ class TestAuthOrchestration:
         provider.tenant_id = "tenant-id"
         provider.decrypt_server_url.return_value = "https://api.example.com"
         provider.client_metadata = OAuthClientMetadata(
-            client_name="Dify",
+            client_name="Bots",
             redirect_uris=["https://redirect.example.com"],
         )
         provider.redirect_url = "https://redirect.example.com"
@@ -607,7 +607,7 @@ class TestAuthOrchestration:
         )
         mock_register.return_value = OAuthClientInformationFull(
             client_id="new-client-id",
-            client_name="Dify",
+            client_name="Bots",
             redirect_uris=["https://redirect.example.com"],
         )
         mock_start_auth.return_value = ("https://auth.example.com/authorize?...", "code-verifier")
@@ -1220,14 +1220,14 @@ class TestAuthOrchestration:
             registration_endpoint="https://auth/register",
             response_types_supported=["code"],
         )
-        client_metadata = OAuthClientMetadata(client_name="Dify", redirect_uris=["https://re"])
+        client_metadata = OAuthClientMetadata(client_name="Bots", redirect_uris=["https://re"])
 
         res = Mock()
         res.is_success = True
         res.json.return_value = {
             "client_id": "c_new",
             "client_secret": "s_new",
-            "client_name": "Dify",
+            "client_name": "Bots",
             "redirect_uris": ["https://re"],
         }
         mock_post.return_value = res

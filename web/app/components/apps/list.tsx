@@ -22,7 +22,6 @@ import AppCard from './app-card'
 import { AppCardSkeleton } from './app-card-skeleton'
 import { APP_LIST_SEARCH_DEBOUNCE_MS } from './constants'
 import Empty from './empty'
-import Footer from './footer'
 import { isAppListCategory, useAppsQueryState } from './hooks/use-apps-query-state'
 import { useDSLDragDrop } from './hooks/use-dsl-drag-drop'
 import { useWorkflowOnlineUsers } from './hooks/use-workflow-online-users'
@@ -252,19 +251,6 @@ const List: FC<Props> = ({
           )}
         </div>
 
-        {isCurrentWorkspaceEditor && (
-          <div
-            className={`flex items-center justify-center gap-2 py-4 ${dragging ? 'text-text-accent' : 'text-text-quaternary'}`}
-            role="region"
-            aria-label={t('newApp.dropDSLToCreateApp', { ns: 'app' })}
-          >
-            <span className="i-ri-drag-drop-line h-4 w-4" />
-            <span className="system-xs-regular">{t('newApp.dropDSLToCreateApp', { ns: 'app' })}</span>
-          </div>
-        )}
-        {!systemFeatures.branding.enabled && (
-          <Footer />
-        )}
         <CheckModal />
         <div ref={anchorRef} className="h-0"> </div>
         <TagManagementModal

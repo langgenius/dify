@@ -1,13 +1,8 @@
-import {
-  RiExternalLinkLine,
-  RiPuzzle2Line,
-} from '@remixicon/react'
+import { RiPuzzle2Line } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
-import { useDocLink } from '@/context/i18n'
 
 const Empty = () => {
   const { t } = useTranslation()
-  const docLink = useDocLink()
 
   return (
     <div className="mb-2 rounded-xl bg-background-section p-6">
@@ -15,15 +10,6 @@ const Empty = () => {
         <RiPuzzle2Line className="h-5 w-5 text-text-accent" />
       </div>
       <div className="mb-1 system-sm-medium text-text-secondary">{t('apiBasedExtension.title', { ns: 'common' })}</div>
-      <a
-        className="flex items-center system-xs-regular text-text-accent"
-        href={docLink('/use-dify/workspace/api-extension/api-extension')}
-        target="_blank"
-        rel="noopener noreferrer"
-      >
-        {t('apiBasedExtension.link', { ns: 'common' })}
-        <RiExternalLinkLine className="ml-1 h-3 w-3" />
-      </a>
     </div>
   )
 }

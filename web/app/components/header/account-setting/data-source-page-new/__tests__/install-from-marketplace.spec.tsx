@@ -1,7 +1,6 @@
 import type { DataSourceAuth } from '../types'
 import type { Plugin } from '@/app/components/plugins/types'
 import { fireEvent, render, screen } from '@testing-library/react'
-import { useTheme } from 'next-themes'
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
 import { useMarketplaceAllPlugins } from '../hooks'
 import InstallFromMarketplace from '../install-from-marketplace'
@@ -10,23 +9,6 @@ import InstallFromMarketplace from '../install-from-marketplace'
  * InstallFromMarketplace Component Tests
  * Using Unit approach to focus on the component's internal state and conditional rendering.
  */
-
-// Mock external dependencies
-vi.mock('next-themes', () => ({
-  useTheme: vi.fn(),
-}))
-
-vi.mock('@/next/link', () => ({
-  default: ({ children, href }: { children: React.ReactNode, href: string }) => (
-    <a href={href} data-testid="mock-link">{children}</a>
-  ),
-}))
-
-vi.mock('@/utils/var', () => ({
-  getMarketplaceUrl: vi.fn((path: string, { theme }: { theme: string }) => `https://marketplace.url${path}?theme=${theme}`),
-}))
-
-// Mock marketplace components
 
 vi.mock('@/app/components/plugins/marketplace/list', () => ({
   default: ({ plugins, cardRender, cardContainerClassName, emptyClassName }: {
@@ -91,13 +73,6 @@ describe('InstallFromMarketplace Component', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
-    vi.mocked(useTheme).mockReturnValue({
-      theme: 'light',
-      setTheme: vi.fn(),
-      themes: ['light', 'dark'],
-      systemTheme: 'light',
-      resolvedTheme: 'light',
-    } as unknown as ReturnType<typeof useTheme>)
   })
 
   describe('Rendering', () => {
@@ -113,8 +88,7 @@ describe('InstallFromMarketplace Component', () => {
 
       // Assert
       expect(screen.getByText('common.modelProvider.installDataSourceProvider')).toBeInTheDocument()
-      expect(screen.getByText('common.modelProvider.discoverMore')).toBeInTheDocument()
-      expect(screen.getByTestId('mock-link')).toHaveAttribute('href', 'https://marketplace.url?theme=light')
+      expect(screen.queryByText('common.modelProvider.discoverMore')).not.toBeInTheDocument()
       expect(screen.getByTestId('mock-list')).toBeInTheDocument()
       expect(screen.getByTestId('mock-provider-card-plugin-1')).toBeInTheDocument()
       expect(screen.queryByTestId('mock-provider-card-bundle-1')).not.toBeInTheDocument()

@@ -12,8 +12,8 @@
   "scopes.timezone": "Múi giờ",
   "switchAccount": "Chuyển tài khoản",
   "tips.common": "Chúng tôi tôn trọng quyền riêng tư của bạn và sẽ chỉ sử dụng thông tin này để cải thiện trải nghiệm của bạn với các công cụ phát triển của chúng tôi.",
-  "tips.loggedIn": "Ứng dụng này muốn truy cập thông tin sau từ tài khoản Dify Cloud của bạn.",
+  "tips.loggedIn": "Ứng dụng này muốn truy cập thông tin sau từ tài khoản Bots Cloud của bạn.",
   "tips.needLogin": "Vui lòng đăng nhập để xác thực",
-  "tips.notLoggedIn": "Ứng dụng này muốn truy cập vào tài khoản Dify Cloud của bạn",
+  "tips.notLoggedIn": "Ứng dụng này muốn truy cập vào tài khoản Bots Cloud của bạn",
   "unknownApp": "Ứng dụng không xác định"
 }

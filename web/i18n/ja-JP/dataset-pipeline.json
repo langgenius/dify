@@ -51,7 +51,7 @@
   "inputFieldPanel.uniqueInputs.title": "各入口のユニークな入力",
   "inputFieldPanel.uniqueInputs.tooltip": "ユニークな入力は選択したデータソースとその下流ノードのみがアクセス可能です。他のデータソースを選択する際、ユーザーはこれを記入する必要がありません。データソース変数で参照される入力フィールドのみが最初のステップ（データソース）に表示され、他のフィールドは第二のステップ（ドキュメント処理）で表示されます。",
   "knowledgeDescription": "ナレッジベースの説明",
-  "knowledgeDescriptionPlaceholder": "このナレッジベースに何が含まれているかを説明してください。詳細な説明は、AIがデータセットの内容により正確にアクセスできるようにします。空の場合、Difyはデフォルトのヒット戦略を使用します。（オプション）",
+  "knowledgeDescriptionPlaceholder": "このナレッジベースに何が含まれているかを説明してください。詳細な説明は、AIがデータセットの内容により正確にアクセスできるようにします。空の場合、Botsはデフォルトのヒット戦略を使用します。（オプション）",
   "knowledgeNameAndIcon": "ナレッジベースの名前とアイコン",
   "knowledgeNameAndIconPlaceholder": "ナレッジベースの名前を入力してください",
   "knowledgePermissions": "権限",

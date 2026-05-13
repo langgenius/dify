@@ -109,7 +109,7 @@ def handle_initialize(description: str) -> mcp_types.InitializeResult:
     return mcp_types.InitializeResult(
         protocolVersion=mcp_types.SERVER_LATEST_PROTOCOL_VERSION,
         capabilities=capabilities,
-        serverInfo=mcp_types.Implementation(name="Dify", version=dify_config.project.version),
+        serverInfo=mcp_types.Implementation(name="Bots", version=dify_config.project.version),
         instructions=description,
     )
 

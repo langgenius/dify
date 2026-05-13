@@ -13,7 +13,7 @@ describe('ChatPreviewCard', () => {
 
     expect(screen.getByText('Chatflow App')).toBeInTheDocument()
     expect(screen.getByText('Hello! How can I assist you today?')).toBeInTheDocument()
-    expect(screen.getByText('Talk to Dify')).toBeInTheDocument()
+    expect(screen.getByText('Talk to Bots')).toBeInTheDocument()
     expect(screen.getByText('POWERED BY')).toBeInTheDocument()
   })
 

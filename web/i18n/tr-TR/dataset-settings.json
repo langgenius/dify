@@ -5,7 +5,7 @@
   "form.chunkStructure.title": "Yığın Yapısı",
   "form.desc": "Bilgi açıklaması",
   "form.descInfo": "Lütfen Bilginin içeriğini özetlemek için net bir metinsel açıklama yazın. Bu açıklama, çıkarım için birden fazla Bilgi arasından seçim yaparken eşleştirme temeli olarak kullanılacaktır.",
-  "form.descPlaceholder": "Bu Bilginin içeriğini açıklayın. Ayrıntılı bir açıklama, AI'nın Bilginin içeriğine zamanında erişmesini sağlar. Boş bırakılırsa, Dify varsayılan isabet stratejisini kullanır.",
+  "form.descPlaceholder": "Bu Bilginin içeriğini açıklayın. Ayrıntılı bir açıklama, AI'nın Bilginin içeriğine zamanında erişmesini sağlar. Boş bırakılırsa, Bots varsayılan isabet stratejisini kullanır.",
   "form.descWrite": "İyi bir Bilgi açıklamasının nasıl yazılacağını öğrenin.",
   "form.embeddingModel": "Yerleştirme Modeli",
   "form.embeddingModelTip": "Yerleştirme modelini değiştirmek için, lütfen ",

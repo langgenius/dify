@@ -30,8 +30,6 @@ describe('goCommand', () => {
         'go-apps',
         'go-datasets',
         'go-plugins',
-        'go-tools',
-        'go-explore',
         'go-account',
       ])
     })

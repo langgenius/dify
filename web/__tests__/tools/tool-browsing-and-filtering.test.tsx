@@ -52,7 +52,7 @@ const mockCollections: Collection[] = [
   {
     id: 'google-search',
     name: 'google_search',
-    author: 'Dify',
+    author: 'Bots',
     description: { en_US: 'Google Search Tool', zh_Hans: 'Google搜索工具' },
     icon: 'https://example.com/google.png',
     label: { en_US: 'Google Search', zh_Hans: 'Google搜索' },
@@ -65,7 +65,7 @@ const mockCollections: Collection[] = [
   {
     id: 'weather-api',
     name: 'weather_api',
-    author: 'Dify',
+    author: 'Bots',
     description: { en_US: 'Weather API Tool', zh_Hans: '天气API工具' },
     icon: 'https://example.com/weather.png',
     label: { en_US: 'Weather API', zh_Hans: '天气API' },

@@ -6,21 +6,14 @@ import type {
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { render, screen } from '@testing-library/react'
 import { FormTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import { createDocLinkMock } from '../../../../__tests__/i18n'
 import { AgentStrategy } from '../agent-strategy'
 
 const createI18nLabel = (text: string) => ({ en_US: text, zh_Hans: text })
-const mockDocLink = createDocLinkMock('/docs')
 
 vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () => ({
   useDefaultModel: () => ({ data: null }),
 }))
 
-vi.mock('@/context/i18n', () => ({
-  useDocLink: () => mockDocLink,
-}))
-
-vi.mock('@/hooks/use-i18n', () => ({
   useRenderI18nObject: () => (value: unknown) => {
     if (typeof value === 'string')
       return value

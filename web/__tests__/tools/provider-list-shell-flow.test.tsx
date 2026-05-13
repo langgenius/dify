@@ -26,7 +26,7 @@ vi.mock('@/service/use-tools', () => ({
       {
         id: 'builtin-plugin',
         name: 'plugin-tool',
-        author: 'Dify',
+        author: 'Bots',
         description: { en_US: 'Plugin Tool' },
         icon: 'icon-plugin',
         label: { en_US: 'Plugin Tool' },
@@ -40,7 +40,7 @@ vi.mock('@/service/use-tools', () => ({
       {
         id: 'builtin-basic',
         name: 'basic-tool',
-        author: 'Dify',
+        author: 'Bots',
         description: { en_US: 'Basic Tool' },
         icon: 'icon-basic',
         label: { en_US: 'Basic Tool' },

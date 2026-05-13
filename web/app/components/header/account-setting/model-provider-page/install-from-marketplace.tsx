@@ -3,15 +3,12 @@ import type {
 } from './declarations'
 import type { Plugin } from '@/app/components/plugins/types'
 import { cn } from '@langgenius/dify-ui/cn'
-import { useTheme } from 'next-themes'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Divider from '@/app/components/base/divider'
 import Loading from '@/app/components/base/loading'
 import List from '@/app/components/plugins/marketplace/list'
 import ProviderCard from '@/app/components/plugins/provider-card'
-import Link from '@/next/link'
-import { getMarketplaceUrl } from '@/utils/var'
 import {
   useMarketplaceAllPlugins,
 } from './hooks'
@@ -25,7 +22,6 @@ const InstallFromMarketplace = ({
   searchText,
 }: InstallFromMarketplaceProps) => {
   const { t } = useTranslation()
-  const { theme } = useTheme()
   const [collapse, setCollapse] = useState(false)
   const {
     plugins: allPlugins,
@@ -42,7 +38,7 @@ const InstallFromMarketplace = ({
   return (
     <div className="mb-2">
       <Divider className="mt-4! h-px" />
-      <div className="flex items-center justify-between">
+      <div className="flex items-center">
         <button
           type="button"
           className="flex cursor-pointer items-center gap-1 border-0 bg-transparent p-0 text-left system-md-semibold text-text-primary"
@@ -52,18 +48,6 @@ const InstallFromMarketplace = ({
           <span className={cn('i-ri-arrow-down-s-line h-4 w-4', collapse && '-rotate-90')} />
           {t('modelProvider.installProvider', { ns: 'common' })}
         </button>
-        <div className="mb-2 flex items-center pt-2">
-          <span className="pr-1 system-sm-regular text-text-tertiary">{t('modelProvider.discoverMore', { ns: 'common' })}</span>
-          <Link
-            target="_blank"
-            rel="noopener noreferrer"
-            href={getMarketplaceUrl('', { theme })}
-            className="inline-flex items-center system-sm-medium text-text-accent"
-          >
-            {t('marketplace.difyMarketplace', { ns: 'plugin' })}
-            <span className="i-ri-arrow-right-up-line h-4 w-4" />
-          </Link>
-        </div>
       </div>
       {!collapse && isAllPluginsLoading && <Loading type="area" />}
       {

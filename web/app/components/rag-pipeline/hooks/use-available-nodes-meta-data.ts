@@ -6,11 +6,9 @@ import dataSourceEmptyDefault from '@/app/components/workflow/nodes/data-source-
 import dataSourceDefault from '@/app/components/workflow/nodes/data-source/default'
 import knowledgeBaseDefault from '@/app/components/workflow/nodes/knowledge-base/default'
 import { BlockEnum } from '@/app/components/workflow/types'
-import { useDocLink } from '@/context/i18n'
 
 export const useAvailableNodesMetaData = () => {
   const { t } = useTranslation()
-  const docLink = useDocLink()
 
   const mergedNodesMetaData = useMemo(() => [
     // RAG pipeline doesn't support human-input node temporarily
@@ -26,10 +24,6 @@ export const useAvailableNodesMetaData = () => {
     dataSourceEmptyDefault,
   ], [])
 
-  const helpLinkUri = useMemo(() => docLink(
-    '/use-dify/knowledge/knowledge-pipeline/knowledge-pipeline-orchestration',
-  ), [docLink])
-
   const availableNodesMetaData = useMemo(() => mergedNodesMetaData.map((node) => {
     const { metaData } = node
     const title = t(`blocks.${metaData.type}`, { ns: 'workflow' })
@@ -40,7 +34,7 @@ export const useAvailableNodesMetaData = () => {
         ...metaData,
         title,
         description,
-        helpLinkUri,
+        helpLinkUri: undefined,
       },
       defaultValue: {
         ...node.defaultValue,
@@ -48,7 +42,7 @@ export const useAvailableNodesMetaData = () => {
         title,
       },
     }
-  }), [helpLinkUri, mergedNodesMetaData, t])
+  }), [mergedNodesMetaData, t])
 
   const availableNodesMetaDataMap = useMemo(() => availableNodesMetaData.reduce((acc, node) => {
     acc![node.metaData.type] = node

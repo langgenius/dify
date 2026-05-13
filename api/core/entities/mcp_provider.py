@@ -21,7 +21,7 @@ if TYPE_CHECKING:
     from models.tools import MCPToolProvider
 
 # Constants
-CLIENT_NAME = "Dify"
+CLIENT_NAME = "Bots"
 CLIENT_URI = "https://github.com/langgenius/dify"
 DEFAULT_TOKEN_TYPE = "Bearer"
 DEFAULT_EXPIRES_IN = 3600

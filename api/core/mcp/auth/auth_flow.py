@@ -137,7 +137,7 @@ def discover_protected_resource_metadata(
 ) -> ProtectedResourceMetadata | None:
     """Discover OAuth 2.0 Protected Resource Metadata (RFC 9470)."""
     urls = build_protected_resource_metadata_discovery_urls(prm_url, server_url)
-    headers = {"MCP-Protocol-Version": protocol_version or LATEST_PROTOCOL_VERSION, "User-Agent": "Dify"}
+    headers = {"MCP-Protocol-Version": protocol_version or LATEST_PROTOCOL_VERSION, "User-Agent": "Bots"}
 
     for url in urls:
         try:
@@ -157,7 +157,7 @@ def discover_oauth_authorization_server_metadata(
 ) -> OAuthMetadata | None:
     """Discover OAuth 2.0 Authorization Server Metadata (RFC 8414)."""
     urls = build_oauth_authorization_server_metadata_discovery_urls(auth_server_url, server_url)
-    headers = {"MCP-Protocol-Version": protocol_version or LATEST_PROTOCOL_VERSION, "User-Agent": "Dify"}
+    headers = {"MCP-Protocol-Version": protocol_version or LATEST_PROTOCOL_VERSION, "User-Agent": "Bots"}
 
     for url in urls:
         try:
@@ -264,7 +264,7 @@ def check_support_resource_discovery(server_url: str) -> tuple[bool, str]:
     if b_fragment:
         url_for_resource_discovery += f"#{b_fragment}"
     try:
-        headers = {"MCP-Protocol-Version": LATEST_PROTOCOL_VERSION, "User-Agent": "Dify"}
+        headers = {"MCP-Protocol-Version": LATEST_PROTOCOL_VERSION, "User-Agent": "Bots"}
         response = ssrf_proxy.get(url_for_resource_discovery, headers=headers)
         if 200 <= response.status_code < 300:
             body = response.json()

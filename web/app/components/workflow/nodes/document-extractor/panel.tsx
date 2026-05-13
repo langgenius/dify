@@ -4,14 +4,12 @@ import type { NodePanelProps } from '@/app/components/workflow/types'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import Field from '@/app/components/workflow/nodes/_base/components/field'
-import { BlockEnum } from '@/app/components/workflow/types'
 import { useLocale } from '@/context/i18n'
 import { LanguagesSupported } from '@/i18n-config/language'
 import { useFileSupportTypes } from '@/service/use-common'
 import OutputVars, { VarItem } from '../_base/components/output-vars'
 import Split from '../_base/components/split'
 import VarReferencePicker from '../_base/components/variable/var-reference-picker'
-import { useNodeHelpLink } from '../_base/hooks/use-node-help-link'
 import useConfig from './use-config'
 
 const i18nPrefix = 'nodes.docExtractor'
@@ -22,7 +20,6 @@ const Panel: FC<NodePanelProps<DocExtractorNodeType>> = ({
 }) => {
   const { t } = useTranslation()
   const locale = useLocale()
-  const link = useNodeHelpLink(BlockEnum.DocExtractor)
   const { data: supportFileTypesResponse } = useFileSupportTypes()
   const supportTypes = supportFileTypesResponse?.allowed_extensions || []
   const supportTypesShowNames = (() => {
@@ -66,7 +63,6 @@ const Panel: FC<NodePanelProps<DocExtractorNodeType>> = ({
             />
             <div className="mt-1 py-0.5 body-xs-regular text-text-tertiary">
               {t(`${i18nPrefix}.supportFileTypes`, { ns: 'workflow', types: supportTypesShowNames })}
-              <a className="text-text-accent" href={link} target="_blank" rel="noopener noreferrer">{t(`${i18nPrefix}.learnMore`, { ns: 'workflow' })}</a>
             </div>
           </>
         </Field>

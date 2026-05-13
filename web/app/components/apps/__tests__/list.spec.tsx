@@ -201,12 +201,6 @@ vi.mock('../empty', () => ({
   },
 }))
 
-vi.mock('../footer', () => ({
-  default: () => {
-    return React.createElement('footer', { 'data-testid': 'footer', 'role': 'contentinfo' }, 'Footer')
-  },
-}))
-
 let intersectionCallback: IntersectionObserverCallback | null = null
 const mockObserve = vi.fn()
 const mockDisconnect = vi.fn()
@@ -303,16 +297,6 @@ describe('List', () => {
     it('should render new app card for editors', () => {
       renderList()
       expect(screen.getByTestId('new-app-card'))!.toBeInTheDocument()
-    })
-
-    it('should render footer when branding is disabled', () => {
-      renderList()
-      expect(screen.getByTestId('footer'))!.toBeInTheDocument()
-    })
-
-    it('should render drop DSL hint for editors', () => {
-      renderList()
-      expect(screen.getByText('app.newApp.dropDSLToCreateApp'))!.toBeInTheDocument()
     })
 
     it('should pass workflow app ids to online users hook', () => {
@@ -488,11 +472,6 @@ describe('List', () => {
   })
 
   describe('Dragging State', () => {
-    it('should show drop hint when DSL feature is enabled for editors', () => {
-      renderList()
-      expect(screen.getByText('app.newApp.dropDSLToCreateApp'))!.toBeInTheDocument()
-    })
-
     it('should render dragging state overlay when dragging', () => {
       mockDragging = true
       const { container } = renderList()
@@ -544,13 +523,6 @@ describe('List', () => {
 
       expect(screen.getByText('Test App 1'))!.toBeInTheDocument()
       expect(screen.getByText('Test App 2'))!.toBeInTheDocument()
-    })
-  })
-
-  describe('Footer Visibility', () => {
-    it('should render footer when branding is disabled', () => {
-      renderList()
-      expect(screen.getByTestId('footer'))!.toBeInTheDocument()
     })
   })
 

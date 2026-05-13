@@ -161,7 +161,7 @@ class MessageCycleManager:
                 id=annotation.id,
                 account=AnnotationReplyAccount(
                     id=annotation.account_id,
-                    name=account.name if account else "Dify user",
+                    name=account.name if account else "Bots user",
                 ),
             )
 

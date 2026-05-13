@@ -236,7 +236,7 @@
   "switchTipStart": "새로운 앱의 복사본이 생성되어 새로운 복사본이 워크플로우 오케스트레이션으로 전환됩니다. 새로운 복사본은 ",
   "theme.switchDark": "다크 모드로 전환",
   "theme.switchLight": "라이트 테마로 전환",
-  "tracing.aliyun.description": "알리바바 클라우드에서 제공하는 완전 관리형 및 유지보수가 필요 없는 가시성 플랫폼은 Dify 애플리케이션의 모니터링, 추적 및 평가를 즉시 사용할 수 있도록 지원합니다.",
+  "tracing.aliyun.description": "알리바바 클라우드에서 제공하는 완전 관리형 및 유지보수가 필요 없는 가시성 플랫폼은 Bots 애플리케이션의 모니터링, 추적 및 평가를 즉시 사용할 수 있도록 지원합니다.",
   "tracing.aliyun.title": "클라우드 모니터",
   "tracing.arize.description": "엔터프라이즈급 LLM 가시성, 온라인 및 오프라인 평가, 모니터링 및 실험—OpenTelemetry를 기반으로 합니다. LLM 및 에이전트 기반 애플리케이션을 위해 특별히 설계되었습니다.",
   "tracing.arize.title": "Arize",

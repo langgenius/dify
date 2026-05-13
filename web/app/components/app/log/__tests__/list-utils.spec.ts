@@ -151,9 +151,9 @@ describe('log list utils', () => {
     const items = createChatItems()
 
     expect(applyAnnotationEdited(items, 'updated question', 'updated answer', 1)[0]!.content).toBe('updated question')
-    expect(applyAnnotationAdded(items, 'annotation-1', 'Dify', 'question', 'answer', 1)[1]!.annotation).toEqual(expect.objectContaining({
+    expect(applyAnnotationAdded(items, 'annotation-1', 'Bots', 'question', 'answer', 1)[1]!.annotation).toEqual(expect.objectContaining({
       id: 'annotation-1',
-      authorName: 'Dify',
+      authorName: 'Bots',
     }))
     expect(applyAnnotationRemoved(items, 1)[1]!.annotation).toBeUndefined()
   })

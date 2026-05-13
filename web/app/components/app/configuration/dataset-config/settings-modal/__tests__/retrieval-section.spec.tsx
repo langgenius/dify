@@ -1,6 +1,5 @@
 import type { DataSet } from '@/models/datasets'
 import type { RetrievalConfig } from '@/types/app'
-import type { DocPathWithoutLang } from '@/types/doc-paths'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { IndexingType } from '@/app/components/datasets/create/step-two'
@@ -255,9 +254,8 @@ describe('RetrievalSection', () => {
     expect(handleExternalChange).toHaveBeenCalledWith(expect.objectContaining({ top_k: 4 }))
   })
 
-  it('renders internal retrieval config with doc link', () => {
+  it('renders internal retrieval options without documentation link', () => {
     // Arrange
-    const docLink = vi.fn((path: string) => `https://docs.example${path}`)
     const retrievalConfig = createRetrievalConfig()
 
     // Act
@@ -271,16 +269,15 @@ describe('RetrievalSection', () => {
         retrievalConfig={retrievalConfig}
         showMultiModalTip
         onRetrievalConfigChange={vi.fn()}
-        docLink={docLink as unknown as (path?: DocPathWithoutLang) => string}
       />,
     )
 
     // Assert
-    // Assert
     expect(screen.getByText('dataset.retrieval.semantic_search.title'))!.toBeInTheDocument()
-    const learnMoreLink = screen.getByRole('link', { name: 'datasetSettings.form.retrievalSetting.learnMore' })
-    expect(learnMoreLink)!.toHaveAttribute('href', 'https://docs.example/use-dify/knowledge/create-knowledge/setting-indexing-methods')
-    expect(docLink).toHaveBeenCalledWith('/use-dify/knowledge/create-knowledge/setting-indexing-methods')
+    expect(
+      screen.queryByRole('link', { name: 'datasetSettings.form.retrievalSetting.learnMore' }),
+    ).not.toBeInTheDocument()
+    expect(screen.getByText('datasetSettings.form.retrievalSetting.description')).toBeInTheDocument()
   })
 
   it('propagates retrieval config changes for economical indexing', async () => {
@@ -298,7 +295,6 @@ describe('RetrievalSection', () => {
         retrievalConfig={createRetrievalConfig()}
         showMultiModalTip={false}
         onRetrievalConfigChange={handleRetrievalChange}
-        docLink={path => path || ''}
       />,
     )
     const [topKIncrement] = screen.getAllByRole('button', { name: /increment/i })

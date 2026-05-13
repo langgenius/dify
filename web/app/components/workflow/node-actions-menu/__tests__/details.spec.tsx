@@ -130,7 +130,7 @@ describe('node actions menu details', () => {
       isSingleton: false,
       isUndeletable: false,
       description: 'Node description',
-      author: 'Dify',
+      author: 'Bots',
       helpLinkUri: 'https://docs.example.com/node',
     } as ReturnType<typeof useNodeMetaData>)
     mockUseNodesInteractions.mockReturnValue({
@@ -222,7 +222,7 @@ describe('node actions menu details', () => {
     expect(screen.getByText('force-start:true')).toBeInTheDocument()
   })
 
-  it('should run, copy, duplicate, delete, and expose the help link', async () => {
+  it('should run, copy, duplicate, delete, and omit the documentation help link', async () => {
     const user = userEvent.setup()
     renderDropdownContent()
 
@@ -242,7 +242,7 @@ describe('node actions menu details', () => {
     expect(handleNodesCopy).toHaveBeenCalledWith('node-1')
     expect(handleNodesDuplicate).toHaveBeenCalledWith('node-1')
     expect(handleNodeDelete).toHaveBeenCalledWith('node-1')
-    expect(screen.getByRole('menuitem', { name: 'workflow.panel.helpLink' })).toHaveAttribute('href', 'https://docs.example.com/node')
+    expect(screen.queryByRole('menuitem', { name: 'workflow.panel.helpLink' })).not.toBeInTheDocument()
   })
 
   it('should hide change action when node is undeletable', () => {
@@ -251,7 +251,7 @@ describe('node actions menu details', () => {
       isSingleton: true,
       isUndeletable: true,
       description: 'Undeletable node',
-      author: 'Dify',
+      author: 'Bots',
     } as ReturnType<typeof useNodeMetaData>)
 
     renderDropdownContent({ showHelpLink: false })
@@ -292,7 +292,7 @@ describe('node actions menu details', () => {
       isSingleton: true,
       isUndeletable: true,
       description: 'Read only node',
-      author: 'Dify',
+      author: 'Bots',
     } as ReturnType<typeof useNodeMetaData>)
 
     rerender(

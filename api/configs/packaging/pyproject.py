@@ -3,7 +3,7 @@ from pydantic_settings import BaseSettings
 
 
 class PyProjectConfig(BaseModel):
-    version: str = Field(description="Dify version", default="")
+    version: str = Field(description="Bots version", default="")
 
 
 class PyProjectTomlConfig(BaseSettings):

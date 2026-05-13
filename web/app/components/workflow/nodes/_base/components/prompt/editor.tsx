@@ -220,7 +220,6 @@ const Editor: FC<Props> = ({
                       <PopoverContent popupClassName="px-3 py-2 system-xs-regular text-text-tertiary">
                         <div>
                           <div>{t('common.enableJinja', { ns: 'workflow' })}</div>
-                          <a className="text-text-accent hover:underline" target="_blank" rel="noopener noreferrer" href="https://jinja.palletsprojects.com/en/2.10.x/">{t('common.learnMore', { ns: 'workflow' })}</a>
                         </div>
                       </PopoverContent>
                     </Popover>

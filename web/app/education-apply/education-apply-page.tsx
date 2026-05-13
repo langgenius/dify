@@ -116,7 +116,7 @@ const EducationApplyAgeContent = () => {
   const handleReturnHome = () => {
     router.push('/')
   }
-  const renderBackToDifyButton = () => (
+  const renderBackToBotsButton = () => (
     <Button variant="ghost-accent" onClick={handleReturnHome}>
       <span className="mr-1 i-ri-arrow-left-line h-4 w-4" />
       {t('applied.noPaymentPermission.returnHome', { ns: 'education' })}
@@ -171,7 +171,7 @@ const EducationApplyAgeContent = () => {
               />
             </div>
           </div>
-          {renderBackToDifyButton()}
+          {renderBackToBotsButton()}
         </div>
       )
     }
@@ -184,7 +184,7 @@ const EducationApplyAgeContent = () => {
             {t('applied.noPaymentPermission.description', { ns: 'education' })}
           </div>
         </div>
-        {renderBackToDifyButton()}
+        {renderBackToBotsButton()}
       </div>
     )
   }

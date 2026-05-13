@@ -905,8 +905,8 @@ describe('ChunkCardList Integration', () => {
       const qaChunks = createQAChunks({
         qa_chunks: [
           {
-            question: 'What is Dify?',
-            answer: 'Dify is an open-source LLM application development platform.',
+            question: 'What is Bots?',
+            answer: 'Bots is an open-source LLM application development platform.',
           },
           {
             question: 'How do I get started?',
@@ -927,8 +927,8 @@ describe('ChunkCardList Integration', () => {
       expect(qLabels.length).toBe(2)
       expect(aLabels.length).toBe(2)
 
-      expect(screen.getByText('What is Dify?'))!.toBeInTheDocument()
-      expect(screen.getByText('Dify is an open-source LLM application development platform.'))!.toBeInTheDocument()
+      expect(screen.getByText('What is Bots?'))!.toBeInTheDocument()
+      expect(screen.getByText('Bots is an open-source LLM application development platform.'))!.toBeInTheDocument()
       expect(screen.getByText('How do I get started?'))!.toBeInTheDocument()
       expect(screen.getByText('You can start by installing the platform using Docker.'))!.toBeInTheDocument()
     })

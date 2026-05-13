@@ -21,7 +21,7 @@ const createDefaultCollections = () => [
   {
     id: 'builtin-1',
     name: 'google-search',
-    author: 'Dify',
+    author: 'Bots',
     description: { en_US: 'Google Search', zh_Hans: '谷歌搜索' },
     icon: 'icon-google',
     label: { en_US: 'Google Search', zh_Hans: '谷歌搜索' },
@@ -34,7 +34,7 @@ const createDefaultCollections = () => [
   {
     id: 'builtin-2',
     name: 'weather-tool',
-    author: 'Dify',
+    author: 'Bots',
     description: { en_US: 'Weather Tool', zh_Hans: '天气工具' },
     icon: 'icon-weather',
     label: { en_US: 'Weather Tool', zh_Hans: '天气工具' },
@@ -47,7 +47,7 @@ const createDefaultCollections = () => [
   {
     id: 'builtin-plugin',
     name: 'plugin-tool',
-    author: 'Dify',
+    author: 'Bots',
     description: { en_US: 'Plugin Tool', zh_Hans: '插件工具' },
     icon: 'icon-plugin',
     label: { en_US: 'Plugin Tool', zh_Hans: '插件工具' },
@@ -357,7 +357,7 @@ describe('ProviderList', () => {
       mockCollectionData = [{
         id: 'no-labels',
         name: 'no-label-tool',
-        author: 'Dify',
+        author: 'Bots',
         description: { en_US: 'Tool', zh_Hans: '工具' },
         icon: 'icon',
         label: { en_US: 'No Label Tool', zh_Hans: '无标签工具' },

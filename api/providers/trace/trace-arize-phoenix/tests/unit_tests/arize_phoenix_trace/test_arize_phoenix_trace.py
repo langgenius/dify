@@ -230,7 +230,7 @@ def test_safe_json_dumps():
 
 def test_wrap_span_metadata():
     res = wrap_span_metadata({"a": 1}, b=2)
-    assert res == {"a": 1, "b": 2, "created_from": "Dify"}
+    assert res == {"a": 1, "b": 2, "created_from": "Bots"}
 
 
 class TestGetNodeSpanKind:
@@ -715,7 +715,7 @@ def test_workflow_trace_falls_back_to_dify_name_when_workflow_run_id_is_blank(
     with patch.object(trace_instance, "get_service_account_with_tenant", return_value=MagicMock()):
         trace_instance.workflow_trace(info)
 
-    root_span_call = _get_start_span_call(trace_instance.tracer.start_span, span_name="Dify")
+    root_span_call = _get_start_span_call(trace_instance.tracer.start_span, span_name="Bots")
     assert root_span_call.kwargs["attributes"]["dify_trace_id"] == ""
 
 
@@ -1568,4 +1568,4 @@ def test_ensure_root_span_falls_back_to_dify_name_when_custom_name_is_blank(trac
     trace_instance.ensure_root_span("tid", root_span_name=" ")
 
     trace_instance.tracer.start_span.assert_called_once()
-    assert trace_instance.tracer.start_span.call_args.kwargs["name"] == "Dify"
+        assert trace_instance.tracer.start_span.call_args.kwargs["name"] == "Bots"

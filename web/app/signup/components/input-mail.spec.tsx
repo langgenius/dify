@@ -66,18 +66,18 @@ describe('InputMail Form', () => {
 
   // Prop-driven branding content visibility.
   describe('Props', () => {
-    it('should show terms links when branding is disabled', () => {
+    it('should show terms notice text when branding is disabled', () => {
       renderForm({ brandingEnabled: false })
 
-      expect(screen.getByRole('link', { name: 'login.tos' })).toBeInTheDocument()
-      expect(screen.getByRole('link', { name: 'login.pp' })).toBeInTheDocument()
+      expect(screen.getByText('login.tos')).toBeInTheDocument()
+      expect(screen.getByText('login.pp')).toBeInTheDocument()
     })
 
-    it('should hide terms links when branding is enabled', () => {
+    it('should hide terms notice when branding is enabled', () => {
       renderForm({ brandingEnabled: true })
 
-      expect(screen.queryByRole('link', { name: 'login.tos' })).not.toBeInTheDocument()
-      expect(screen.queryByRole('link', { name: 'login.pp' })).not.toBeInTheDocument()
+      expect(screen.queryByText('login.tos')).not.toBeInTheDocument()
+      expect(screen.queryByText('login.pp')).not.toBeInTheDocument()
     })
   })
 

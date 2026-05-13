@@ -58,6 +58,6 @@ class ClickZettaVolumeStorageConfig(BaseSettings):
     )
 
     CLICKZETTA_VOLUME_DIFY_PREFIX: str = Field(
-        description="Directory prefix for User Volume to organize Dify files",
+        description="Directory prefix for User Volume to organize Bots files",
         default="dify_km",
     )

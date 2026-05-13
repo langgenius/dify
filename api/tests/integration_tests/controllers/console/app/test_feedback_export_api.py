@@ -227,7 +227,7 @@ class TestFeedbackExportApi:
                 "app_id": mock_app_model.id,
                 "export_date": datetime.now().isoformat(),
                 "total_records": 2,
-                "data_source": "dify_feedback_export",
+                "data_source": "bots_feedback_export",
             },
             "feedback_data": [
                 {

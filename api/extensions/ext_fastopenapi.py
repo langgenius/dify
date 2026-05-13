@@ -27,9 +27,9 @@ def init_app(app: DifyApp) -> None:
         redoc_url=redoc_url,
         openapi_url=openapi_url,
         openapi_version="3.0.0",
-        title="Dify API (FastOpenAPI PoC)",
+        title="Bots API (FastOpenAPI PoC)",
         version="1.0",
-        description="FastOpenAPI proof of concept for Dify API",
+        description="FastOpenAPI proof of concept for Bots API",
     )
 
     # Ensure route decorators are evaluated.

@@ -41,7 +41,7 @@
   "completionMode.blocking": "blocking 阻塞型，等待执行完毕后返回结果。（请求若流程较长可能会被中断）",
   "completionMode.createCompletionApi": "创建文本补全消息",
   "completionMode.createCompletionApiTip": "创建文本补全消息，支持一问一答模式。",
-  "completionMode.info": "可用于生成高质量文本的应用，例如生成文章、摘要、翻译等，通过调用 completion-messages 接口，发送用户输入得到生成文本结果。用于生成文本的模型参数和提示词模板取决于开发者在 Dify 提示词编排页的设置。",
+  "completionMode.info": "可用于生成高质量文本的应用，例如生成文章、摘要、翻译等，通过调用 completion-messages 接口，发送用户输入得到生成文本结果。用于生成文本的模型参数和提示词模板取决于开发者在 Bots 提示词编排页的设置。",
   "completionMode.inputsTips": "（选填）以键值对方式提供用户输入字段，与提示词编排中的变量对应。Key 为变量名称，Value 是参数值。如果字段类型为 Select，传入的 Value 需为预设选项之一。",
   "completionMode.messageFeedbackApi": "消息反馈（点赞）",
   "completionMode.messageFeedbackApiTip": "代表最终用户对返回消息进行评价，可以点赞与点踩，该数据将在“日志与标注”页中可见，并用于后续的模型微调。",

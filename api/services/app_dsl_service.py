@@ -53,6 +53,32 @@ IMPORT_INFO_REDIS_EXPIRY = 10 * 60  # 10 minutes
 DSL_MAX_SIZE = 10 * 1024 * 1024  # 10MB
 CURRENT_DSL_VERSION = CURRENT_APP_DSL_VERSION
 
+# React Flow note node type id (matches web CUSTOM_NOTE_NODE).
+_WORKFLOW_CUSTOM_NOTE_NODE_TYPE = "custom-note"
+
+
+def normalize_workflow_custom_notes_hide_author(graph: Mapping[str, Any]) -> None:
+    """Set ``showAuthor`` to false on all workflow sticky-note nodes.
+
+    DSL templates often embed ``showAuthor: true``; the product default after
+    install/import is to hide the author footer until the user enables it.
+    """
+    if not isinstance(graph, dict):
+        return
+    nodes = graph.get("nodes")
+    if not isinstance(nodes, list):
+        return
+    for node in nodes:
+        if not isinstance(node, dict):
+            continue
+        if node.get("type") != _WORKFLOW_CUSTOM_NOTE_NODE_TYPE:
+            continue
+        data = node.get("data")
+        if not isinstance(data, dict):
+            data = {}
+            node["data"] = data
+        data["showAuthor"] = False
+
 
 class Import(BaseModel):
     id: str
@@ -491,6 +517,7 @@ class AppDslService:
                 else:
                     unique_hash = None
                 graph = workflow_data.get("graph", {})
+                normalize_workflow_custom_notes_hide_author(graph)
                 for node in graph.get("nodes", []):
                     if node.get("data", {}).get("type", "") == BuiltinNodeTypes.KNOWLEDGE_RETRIEVAL:
                         dataset_ids = node["data"].get("dataset_ids", [])

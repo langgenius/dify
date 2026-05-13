@@ -4,7 +4,7 @@ import { renderHookWithSystemFeatures } from '@/__tests__/utils/mock-system-feat
  *
  * This hook manages the browser document title with support for:
  * - Custom branding (when enabled in system features)
- * - Default "Dify" branding
+ * - Default "Bots" branding
  * - Pending state handling (prevents title flicker during loading)
  * - Page-specific titles with automatic suffix
  *
@@ -30,22 +30,22 @@ describe('title should be empty if systemFeatures is pending', () => {
 })
 
 /**
- * Test default Dify branding behavior
- * When custom branding is disabled, should use "Dify" as the brand name
+ * Test default Bots branding behavior
+ * When custom branding is disabled, should use "Bots" as the brand name
  */
 describe('use default branding', () => {
-  it('document title should be test-Dify if set title', () => {
+  it('document title should be test-Bots if set title', () => {
     renderHookWithSystemFeatures(() => useDocumentTitle('test'), {
       systemFeatures: { branding: { enabled: false } },
     })
-    expect(document.title).toBe('test - Dify')
+    expect(document.title).toBe('test - Bots')
   })
 
-  it('document title should be Dify if not set title', () => {
+  it('document title should be Bots if not set title', () => {
     renderHookWithSystemFeatures(() => useDocumentTitle(''), {
       systemFeatures: { branding: { enabled: false } },
     })
-    expect(document.title).toBe('Dify')
+    expect(document.title).toBe('Bots')
   })
 })
 

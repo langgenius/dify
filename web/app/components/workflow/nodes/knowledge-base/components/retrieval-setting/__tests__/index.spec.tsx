@@ -1,13 +1,6 @@
 import { render, screen } from '@testing-library/react'
-import { createDocLinkMock, resolveDocLink } from '@/app/components/workflow/__tests__/i18n'
 import { IndexMethodEnum } from '../../../types'
 import RetrievalSetting from '../index'
-
-const mockUseDocLink = createDocLinkMock()
-
-vi.mock('@/context/i18n', () => ({
-  useDocLink: () => mockUseDocLink,
-}))
 
 const baseProps = {
   onRetrievalSearchMethodChange: vi.fn(),
@@ -28,7 +21,7 @@ describe('RetrievalSetting', () => {
     vi.clearAllMocks()
   })
 
-  it('should render the learn-more link and qualified retrieval method options', () => {
+  it('should render retrieval method options without learn-more documentation link', () => {
     render(
       <RetrievalSetting
         {...baseProps}
@@ -36,10 +29,7 @@ describe('RetrievalSetting', () => {
       />,
     )
 
-    expect(screen.getByRole('link', { name: 'datasetSettings.form.retrievalSetting.learnMore' })).toHaveAttribute(
-      'href',
-      resolveDocLink('/use-dify/knowledge/create-knowledge/setting-indexing-methods'),
-    )
+    expect(screen.queryByRole('link', { name: 'datasetSettings.form.retrievalSetting.learnMore' })).not.toBeInTheDocument()
     expect(screen.getByText('dataset.retrieval.semantic_search.title')).toBeInTheDocument()
     expect(screen.getByText('dataset.retrieval.full_text_search.title')).toBeInTheDocument()
     expect(screen.getByText('dataset.retrieval.hybrid_search.title')).toBeInTheDocument()

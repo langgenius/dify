@@ -27,10 +27,10 @@ describe('PoweredByBrand', () => {
     expect(screen.getByAltText('logo')).toHaveAttribute('src', 'https://example.com/custom-logo.png?hash=42')
   })
 
-  it('should fall back to the Dify logo when no custom branding exists', () => {
+  it('should fall back to the Bots logo when no custom branding exists', () => {
     render(<PoweredByBrand imgKey={7} />)
 
-    expect(screen.getByAltText('Dify logo')).toBeInTheDocument()
+    expect(screen.getByAltText('Bots logo')).toBeInTheDocument()
   })
 
   it('should render nothing when branding is removed', () => {

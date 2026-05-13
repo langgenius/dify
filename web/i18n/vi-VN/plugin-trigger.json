@@ -45,7 +45,7 @@
   "modal.oauth.authorization.authFailed": "Không thể lấy thông tin xác thực OAuth",
   "modal.oauth.authorization.authSuccess": "Ủy quyền thành công",
   "modal.oauth.authorization.authorizeButton": "Ủy quyền với {{provider}}",
-  "modal.oauth.authorization.description": "Cho phép Dify truy cập vào tài khoản của bạn",
+  "modal.oauth.authorization.description": "Cho phép Bots truy cập vào tài khoản của bạn",
   "modal.oauth.authorization.redirectUrl": "Chuyển hướng URL",
   "modal.oauth.authorization.redirectUrlHelp": "Sử dụng URL này trong cấu hình ứng dụng OAuth của bạn",
   "modal.oauth.authorization.title": "Ủy quyền OAuth",

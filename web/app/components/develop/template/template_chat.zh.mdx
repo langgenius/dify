@@ -1367,7 +1367,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
 
     <Properties>
       <Property name='message_id' type='str' key='message_id'>
-        Dify 生成的文本消息，那么直接传递生成的message-id 即可，后台会通过 message_id 查找相应的内容直接合成语音信息。如果同时传 message_id 和 text，优先使用 message_id。
+        Bots 生成的文本消息，那么直接传递生成的message-id 即可，后台会通过 message_id 查找相应的内容直接合成语音信息。如果同时传 message_id 和 text，优先使用 message_id。
       </Property>
       <Property name='text' type='str' key='text'>
         语音生成内容。如果没有传 message-id的话，则会使用这个字段的内容
@@ -1385,7 +1385,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
       label="/text-to-audio"
       targetCode={`curl --location --request POST '${props.appDetail.api_base_url}/text-to-audio' \\
 --header 'Authorization: Bearer ENTER-YOUR-SECRET-KEY' \\
---form 'text=你好Dify;user=abc-123;message_id=5ad4cb98-f0c7-4085-b384-88c403be6290`}
+--form 'text=你好Bots;user=abc-123;message_id=5ad4cb98-f0c7-4085-b384-88c403be6290`}
     />
 
     <CodeGroup title="headers">
@@ -1433,7 +1433,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
         "tag2"
       ],
       "mode": "chat",
-      "author_name": "Dify"
+      "author_name": "Bots"
     }
     ```
     </CodeGroup>

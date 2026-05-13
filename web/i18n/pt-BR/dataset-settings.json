@@ -5,7 +5,7 @@
   "form.chunkStructure.title": "Estrutura de Chunk",
   "form.desc": "Descrição do conhecimento",
   "form.descInfo": "Por favor, escreva uma descrição textual clara para delinear o conteúdo do conhecimento. Esta descrição será usada como base para a correspondência ao selecionar entre vários conhecimentos para inferência.",
-  "form.descPlaceholder": "Descreva o que está neste conhecimento. Uma descrição detalhada permite que a IA acesse o conteúdo do conhecimento de forma oportuna. Se estiver vazio, o Dify usará a estratégia de correspondência padrão.",
+  "form.descPlaceholder": "Descreva o que está neste conhecimento. Uma descrição detalhada permite que a IA acesse o conteúdo do conhecimento de forma oportuna. Se estiver vazio, o Bots usará a estratégia de correspondência padrão.",
   "form.descWrite": "Aprenda como escrever uma boa descrição do conhecimento.",
   "form.embeddingModel": "Modelo de incorporação",
   "form.embeddingModelTip": "Altere o modelo incorporado, por favor, vá para ",

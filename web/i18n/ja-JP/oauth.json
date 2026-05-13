@@ -12,8 +12,8 @@
   "scopes.timezone": "タイムゾーン",
   "switchAccount": "アカウントを切り替える",
   "tips.common": "私たちはあなたのプライバシーを尊重し、この情報を私たちの開発者ツールによる体験を向上させるためにのみ使用します。",
-  "tips.loggedIn": "このアプリはあなたのDify Cloudアカウントから以下の情報にアクセスしたいと思っています。",
+  "tips.loggedIn": "このアプリはあなたのBots Cloudアカウントから以下の情報にアクセスしたいと思っています。",
   "tips.needLogin": "ログインして認証してください",
-  "tips.notLoggedIn": "このアプリはあなたのDify Cloudアカウントにアクセスしたいです",
+  "tips.notLoggedIn": "このアプリはあなたのBots Cloudアカウントにアクセスしたいです",
   "unknownApp": "不明なアプリ"
 }

@@ -2,7 +2,6 @@ import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { AddChunks } from '@/app/components/base/icons/src/vender/knowledge'
-import { useDocLink } from '@/context/i18n'
 import Line from './line'
 
 type InstructionProps = {
@@ -13,7 +12,6 @@ const Instruction = ({
   className,
 }: InstructionProps) => {
   const { t } = useTranslation()
-  const docLink = useDocLink()
 
   return (
     <div className={cn('flex flex-col gap-y-2 overflow-hidden rounded-[10px] bg-workflow-process-bg p-4', className)}>
@@ -30,14 +28,6 @@ const Instruction = ({
         </div>
         <div className="system-xs-regular">
           <p className="text-text-tertiary">{t('nodes.knowledgeBase.chunkStructureTip.message', { ns: 'workflow' })}</p>
-          <a
-            href={docLink('/use-dify/knowledge/create-knowledge/chunking-and-cleaning-text')}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-text-accent"
-          >
-            {t('nodes.knowledgeBase.chunkStructureTip.learnMore', { ns: 'workflow' })}
-          </a>
         </div>
       </div>
     </div>

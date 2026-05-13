@@ -1013,7 +1013,7 @@ class ExporleBanner(TypeBase):
 class OAuthProviderApp(TypeBase):
     """
     Globally shared OAuth provider app information.
-    Only for Dify Cloud.
+    Only for Bots Cloud.
     """
 
     __tablename__ = "oauth_provider_apps"

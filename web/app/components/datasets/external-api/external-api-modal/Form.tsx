@@ -1,11 +1,9 @@
 import type { FC } from 'react'
 import type { CreateExternalAPIReq, FormSchema } from '../declarations'
 import { cn } from '@langgenius/dify-ui/cn'
-import { RiBookOpenLine } from '@remixicon/react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import Input from '@/app/components/base/input'
-import { useDocLink } from '@/context/i18n'
 
 type FormProps = {
   className?: string
@@ -26,8 +24,7 @@ const Form: FC<FormProps> = React.memo(({
   formSchemas,
   inputClassName,
 }) => {
-  const { t, i18n } = useTranslation()
-  const docLink = useDocLink()
+  const { i18n } = useTranslation()
 
   const handleFormChange = (key: string, val: string) => {
     if (key === 'name') {
@@ -50,23 +47,10 @@ const Form: FC<FormProps> = React.memo(({
 
     return (
       <div key={variable} className={cn(itemClassName, 'flex flex-col items-start gap-1 self-stretch')}>
-        <div className="flex w-full items-center justify-between">
-          <label className={cn(fieldLabelClassName, 'system-sm-semibold text-text-secondary')} htmlFor={variable}>
-            {label[i18n.language] || label.en_US}
-            {required && <span className="ml-1 text-red-500">*</span>}
-          </label>
-          {variable === 'endpoint' && (
-            <a
-              href={docLink('/use-dify/knowledge/external-knowledge-api') || '/'}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center body-xs-regular text-text-accent"
-            >
-              <RiBookOpenLine className="mr-1 h-3 w-3 text-text-accent" />
-              {t('externalAPIPanelDocumentation', { ns: 'dataset' })}
-            </a>
-          )}
-        </div>
+        <label className={cn(fieldLabelClassName, 'w-full system-sm-semibold text-text-secondary')} htmlFor={variable}>
+          {label[i18n.language] || label.en_US}
+          {required && <span className="ml-1 text-red-500">*</span>}
+        </label>
         <Input
           type={type === 'secret' ? 'password' : 'text'}
           id={variable}

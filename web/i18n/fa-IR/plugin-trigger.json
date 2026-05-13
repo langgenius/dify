@@ -45,7 +45,7 @@
   "modal.oauth.authorization.authFailed": "دریافت اطلاعات مجوز OAuth ناکام ماند",
   "modal.oauth.authorization.authSuccess": "مجوز با موفقیت صادر شد",
   "modal.oauth.authorization.authorizeButton": "مجوزدهی با {{provider}}",
-  "modal.oauth.authorization.description": "اجازه دهید دیفی به حساب شما دسترسی داشته باشد",
+  "modal.oauth.authorization.description": "اجازه دهید Bots به حساب شما دسترسی داشته باشد",
   "modal.oauth.authorization.redirectUrl": "تغییر مسیر آدرس اینترنتی",
   "modal.oauth.authorization.redirectUrlHelp": "از این URL در تنظیمات برنامه OAuth خود استفاده کنید",
   "modal.oauth.authorization.title": "مجوز او‌آه‌اِس",

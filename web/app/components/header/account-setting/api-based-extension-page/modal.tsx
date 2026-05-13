@@ -5,8 +5,6 @@ import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { BookOpen01 } from '@/app/components/base/icons/src/vender/line/education'
-import { useDocLink } from '@/context/i18n'
 import { addApiBasedExtension, updateApiBasedExtension } from '@/service/common'
 
 export type ApiBasedExtensionData = {
@@ -21,7 +19,6 @@ type ApiBasedExtensionModalProps = {
 }
 const ApiBasedExtensionModal: FC<ApiBasedExtensionModalProps> = ({ data, onCancel, onSave }) => {
   const { t } = useTranslation()
-  const docLink = useDocLink()
   const [localeData, setLocaleData] = useState(data)
   const [loading, setLoading] = useState(false)
   const handleDataChange = (type: string, value: string) => {
@@ -75,12 +72,8 @@ const ApiBasedExtensionModal: FC<ApiBasedExtensionModalProps> = ({ data, onCance
           <input value={localeData.name || ''} onChange={e => handleDataChange('name', e.target.value)} className="block h-9 w-full appearance-none rounded-lg bg-components-input-bg-normal px-3 text-sm text-text-primary outline-hidden" placeholder={t('apiBasedExtension.modal.name.placeholder', { ns: 'common' }) || ''} />
         </div>
         <div className="py-2">
-          <div className="flex h-9 items-center justify-between text-sm font-medium text-text-primary">
+          <div className="text-sm leading-9 font-medium text-text-primary">
             {t('apiBasedExtension.modal.apiEndpoint.title', { ns: 'common' })}
-            <a href={docLink('/use-dify/workspace/api-extension/api-extension')} target="_blank" rel="noopener noreferrer" className="group flex items-center text-xs font-normal text-text-accent">
-              <BookOpen01 className="mr-1 h-3 w-3" />
-              {t('apiBasedExtension.link', { ns: 'common' })}
-            </a>
           </div>
           <input value={localeData.api_endpoint || ''} onChange={e => handleDataChange('api_endpoint', e.target.value)} className="block h-9 w-full appearance-none rounded-lg bg-components-input-bg-normal px-3 text-sm text-text-primary outline-hidden" placeholder={t('apiBasedExtension.modal.apiEndpoint.placeholder', { ns: 'common' }) || ''} />
         </div>

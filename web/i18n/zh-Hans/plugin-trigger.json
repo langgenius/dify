@@ -45,7 +45,7 @@
   "modal.oauth.authorization.authFailed": "获取 OAuth 授权信息失败",
   "modal.oauth.authorization.authSuccess": "授权成功",
   "modal.oauth.authorization.authorizeButton": "使用 {{provider}} 授权",
-  "modal.oauth.authorization.description": "授权 Dify 访问您的账户",
+  "modal.oauth.authorization.description": "授权 Bots 访问您的账户",
   "modal.oauth.authorization.redirectUrl": "重定向 URL",
   "modal.oauth.authorization.redirectUrlHelp": "在您的 OAuth 应用配置中使用此 URL",
   "modal.oauth.authorization.title": "OAuth 授权",

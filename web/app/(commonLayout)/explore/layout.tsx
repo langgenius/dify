@@ -1,18 +1,10 @@
-'use client'
-import type { FC, PropsWithChildren } from 'react'
-import * as React from 'react'
-import { useTranslation } from 'react-i18next'
-import ExploreClient from '@/app/components/explore'
-import useDocumentTitle from '@/hooks/use-document-title'
+import type { PropsWithChildren } from 'react'
+import { redirect } from '@/next/navigation'
 
-const ExploreLayout: FC<PropsWithChildren> = ({ children }) => {
-  const { t } = useTranslation()
-  useDocumentTitle(t('menus.explore', { ns: 'common' }))
-  return (
-    <ExploreClient>
-      {children}
-    </ExploreClient>
-  )
+/**
+ * Explore section is hidden from the product UI; keep routes from rendering by redirecting.
+ */
+export default function ExploreLayout(props: PropsWithChildren) {
+  void props.children
+  redirect('/apps')
 }
-
-export default React.memo(ExploreLayout)

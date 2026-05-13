@@ -14,7 +14,7 @@
   "plans.community.features": [
     "所有核心功能已在公共存儲庫中釋出",
     "單一工作區",
-    "符合 Dify 開源授權"
+    "符合 Bots 開源授權"
   ],
   "plans.community.for": "適用於個別用戶、小型團隊或非商業項目",
   "plans.community.includesTitle": "免費功能：",
@@ -29,9 +29,9 @@
     "企業專屬功能",
     "多工作區與企業管理",
     "單一登入",
-    "由 Dify 合作夥伴協商的服務水平協議",
+    "由 Bots 合作夥伴協商的服務水平協議",
     "進階安全與控管",
-    "Dify 官方更新與維護",
+    "Bots 官方更新與維護",
     "專業技術支援"
   ],
   "plans.enterprise.for": "適用於大規模團隊",
@@ -67,7 +67,7 @@
   "plansCommon.annotationQuota": "註釋配額",
   "plansCommon.annualBilling": "年度計費，省 {{percent}}%",
   "plansCommon.apiRateLimit": "API 限速",
-  "plansCommon.apiRateLimitTooltip": "API 使用次數限制適用於通過 Dify API 所做的所有請求，包括文本生成、聊天對話、工作流執行和文檔處理。",
+  "plansCommon.apiRateLimitTooltip": "API 使用次數限制適用於通過 Bots API 所做的所有請求，包括文本生成、聊天對話、工作流執行和文檔處理。",
   "plansCommon.apiRateLimitUnit": "{{count,number}} 次",
   "plansCommon.buildApps": "{{count,number}} 個應用程式",
   "plansCommon.cloud": "雲服務",
@@ -106,7 +106,7 @@
   "plansCommon.priority.priority": "優先",
   "plansCommon.priority.standard": "標準",
   "plansCommon.priority.top-priority": "最高優先順序",
-  "plansCommon.ragAPIRequestTooltip": "指單獨呼叫 Dify 知識庫資料處理能力的 API。",
+  "plansCommon.ragAPIRequestTooltip": "指單獨呼叫 Bots 知識庫資料處理能力的 API。",
   "plansCommon.receiptInfo": "只有團隊所有者和團隊管理員才能訂閱和檢視賬單資訊",
   "plansCommon.save": "節省",
   "plansCommon.self": "自我主持",

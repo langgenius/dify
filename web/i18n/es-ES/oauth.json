@@ -12,8 +12,8 @@
   "scopes.timezone": "Zona horaria",
   "switchAccount": "Cambiar de cuenta",
   "tips.common": "Respetamos su privacidad y solo utilizaremos esta información para mejorar su experiencia con nuestras herramientas para desarrolladores.",
-  "tips.loggedIn": "Esta aplicación quiere acceder a la siguiente información de su cuenta de Dify Cloud.",
+  "tips.loggedIn": "Esta aplicación quiere acceder a la siguiente información de su cuenta de Bots Cloud.",
   "tips.needLogin": "Por favor inicie sesión para autorizar",
-  "tips.notLoggedIn": "Esta aplicación quiere acceder a su cuenta de Dify Cloud",
+  "tips.notLoggedIn": "Esta aplicación quiere acceder a su cuenta de Bots Cloud",
   "unknownApp": "Aplicación Desconocida"
 }

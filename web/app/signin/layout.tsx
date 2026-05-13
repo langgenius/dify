@@ -1,13 +1,10 @@
 'use client'
 import { cn } from '@langgenius/dify-ui/cn'
-import { useSuspenseQuery } from '@tanstack/react-query'
 
 import useDocumentTitle from '@/hooks/use-document-title'
-import { systemFeaturesQueryOptions } from '@/service/system-features'
 import Header from './_header'
 
 export default function SignInLayout({ children }: any) {
-  const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   useDocumentTitle('')
   return (
     <>
@@ -19,15 +16,6 @@ export default function SignInLayout({ children }: any) {
               {children}
             </div>
           </div>
-          {systemFeatures.branding.enabled === false && (
-            <div className="px-8 py-6 system-xs-regular text-text-tertiary">
-              ©
-              {' '}
-              {new Date().getFullYear()}
-              {' '}
-              LangGenius, Inc. All rights reserved.
-            </div>
-          )}
         </div>
       </div>
     </>

@@ -2,7 +2,6 @@ import type { TFunction } from 'i18next'
 import type { ReactElement } from 'react'
 import { fireEvent, render as RTLRender, screen, waitFor } from '@testing-library/react'
 import * as reactI18next from 'react-i18next'
-import { useDocLink } from '@/context/i18n'
 import { addApiBasedExtension, updateApiBasedExtension } from '@/service/common'
 import ApiBasedExtensionModal from '../modal'
 
@@ -19,10 +18,6 @@ const { mockToast } = vi.hoisted(() => {
   return { mockToast }
 })
 
-vi.mock('@/context/i18n', () => ({
-  useDocLink: vi.fn(),
-}))
-
 vi.mock('@/service/common', () => ({
   addApiBasedExtension: vi.fn(),
   updateApiBasedExtension: vi.fn(),
@@ -35,13 +30,11 @@ vi.mock('@langgenius/dify-ui/toast', () => ({
 describe('ApiBasedExtensionModal', () => {
   const mockOnCancel = vi.fn()
   const mockOnSave = vi.fn()
-  const mockDocLink = vi.fn((path?: string) => `https://docs.dify.ai${path || ''}`)
 
   const render = (ui: ReactElement) => RTLRender(ui)
 
   beforeEach(() => {
     vi.clearAllMocks()
-    vi.mocked(useDocLink).mockReturnValue(mockDocLink)
   })
 
   describe('Rendering', () => {

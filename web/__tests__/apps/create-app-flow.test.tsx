@@ -409,12 +409,6 @@ describe('Create App Flow', () => {
 
   // -- DSL drag-and-drop flow (via List component) --
   describe('DSL Drag-Drop Flow', () => {
-    it('should show drag-drop hint in the list', () => {
-      renderList()
-
-      expect(screen.getByText('app.newApp.dropDSLToCreateApp')).toBeInTheDocument()
-    })
-
     it('should open create-from-DSL modal when DSL file is dropped', async () => {
       const { act } = await import('@testing-library/react')
       renderList()

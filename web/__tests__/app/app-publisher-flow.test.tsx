@@ -7,10 +7,7 @@ import { AppModeEnum } from '@/types/app'
 
 const mockTrackEvent = vi.fn()
 const mockRefetch = vi.fn()
-const mockFetchInstalledAppList = vi.fn()
 const mockFetchAppDetailDirect = vi.fn()
-const mockToastError = vi.fn()
-const mockOpenAsyncWindow = vi.fn()
 const mockSetAppDetail = vi.fn()
 
 let mockAppDetail: {
@@ -60,10 +57,6 @@ vi.mock('@/hooks/use-format-time-from-now', () => ({
   }),
 }))
 
-vi.mock('@/hooks/use-async-window-open', () => ({
-  useAsyncWindowOpen: () => mockOpenAsyncWindow,
-}))
-
 vi.mock('@/service/access-control', () => ({
   useGetUserCanAccessApp: () => ({
     data: { result: true },
@@ -76,34 +69,12 @@ vi.mock('@/service/access-control', () => ({
   }),
 }))
 
-vi.mock('@/service/explore', () => ({
-  fetchInstalledAppList: (...args: unknown[]) => mockFetchInstalledAppList(...args),
-}))
-
 vi.mock('@/service/apps', () => ({
   fetchAppDetailDirect: (...args: unknown[]) => mockFetchAppDetailDirect(...args),
 }))
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
-  toast: {
-    error: (...args: unknown[]) => mockToastError(...args),
-  },
-}))
-
 vi.mock('@/app/components/base/amplitude', () => ({
   trackEvent: (...args: unknown[]) => mockTrackEvent(...args),
-}))
-
-vi.mock('@/app/components/app/overview/embedded', () => ({
-  default: ({ isShow, onClose }: { isShow: boolean, onClose: () => void }) => (
-    isShow
-      ? (
-          <div data-testid="embedded-modal">
-            <button onClick={onClose}>close-embedded</button>
-          </div>
-        )
-      : null
-  ),
 }))
 
 vi.mock('@/app/components/workflow/collaboration/core/websocket-manager', () => ({
@@ -146,23 +117,9 @@ describe('App Publisher Flow', () => {
         access_token: 'token-1',
       },
     }
-    mockFetchInstalledAppList.mockResolvedValue({
-      installed_apps: [{ id: 'installed-1' }],
-    })
     mockFetchAppDetailDirect.mockResolvedValue({
       id: 'app-1',
       access_mode: AccessMode.PUBLIC,
-    })
-    mockOpenAsyncWindow.mockImplementation(async (
-      resolver: () => Promise<string>,
-      options?: { onError?: (error: Error) => void },
-    ) => {
-      try {
-        return await resolver()
-      }
-      catch (error) {
-        options?.onError?.(error as Error)
-      }
     })
   })
 
@@ -195,35 +152,15 @@ describe('App Publisher Flow', () => {
     expect(mockRefetch).toHaveBeenCalled()
   })
 
-  it('opens embedded modal and resolves the installed explore target', async () => {
+  it('does not surface embed, explore, or marketplace entries in the publish menu', () => {
     renderWithQueryClient(<AppPublisher publishedAt={1700000000} />)
 
     fireEvent.click(screen.getByText('common.publish'))
-    fireEvent.click(screen.getByText('common.embedIntoSite'))
 
-    expect(screen.getByTestId('embedded-modal')).toBeInTheDocument()
-
-    fireEvent.click(screen.getByText('common.publish'))
-    fireEvent.click(screen.getByText('common.openInExplore'))
-
-    await waitFor(() => {
-      expect(mockFetchInstalledAppList).toHaveBeenCalledWith('app-1')
-      expect(mockOpenAsyncWindow).toHaveBeenCalledTimes(1)
-    })
-  })
-
-  it('shows a toast error when no installed explore app is available', async () => {
-    mockFetchInstalledAppList.mockResolvedValue({
-      installed_apps: [],
-    })
-
-    renderWithQueryClient(<AppPublisher publishedAt={1700000000} />)
-
-    fireEvent.click(screen.getByText('common.publish'))
-    fireEvent.click(screen.getByText('common.openInExplore'))
-
-    await waitFor(() => {
-      expect(mockToastError).toHaveBeenCalledWith('No app found in Explore')
-    })
+    expect(screen.queryByText('common.embedIntoSite')).not.toBeInTheDocument()
+    expect(screen.queryByText('common.openInExplore')).not.toBeInTheDocument()
+    expect(screen.queryByText('common.publishToMarketplace')).not.toBeInTheDocument()
+    expect(screen.getByText('common.runApp')).toBeInTheDocument()
+    expect(screen.getByText('common.accessAPIReference')).toBeInTheDocument()
   })
 })

@@ -94,7 +94,7 @@ const CustomizeModal: FC<IShareLinkProps> = ({
                 {' '}
                 <br />
                 NEXT_PUBLIC_APP_KEY=
-                {'\'<Web API Key From Dify>\''}
+                {'\'<Web API Key From Bots>\''}
                 {' '}
                 <br />
                 NEXT_PUBLIC_API_URL=

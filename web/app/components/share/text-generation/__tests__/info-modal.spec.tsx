@@ -75,7 +75,7 @@ describe('InfoModal', () => {
     it('should render copyright when provided', async () => {
       const siteInfoWithCopyright: SiteInfo = {
         ...baseSiteInfo,
-        copyright: 'Dify Inc.',
+        copyright: 'Bots Inc.',
       }
 
       await renderModal(
@@ -86,7 +86,7 @@ describe('InfoModal', () => {
         />,
       )
 
-      expect(screen.getByText(/Dify Inc./)).toBeInTheDocument()
+      expect(screen.getByText(/Bots Inc./)).toBeInTheDocument()
     })
 
     it('should render current year in copyright', async () => {

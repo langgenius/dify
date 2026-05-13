@@ -14,7 +14,7 @@ const createDataSourceItem = (overrides: Partial<DataSourceItem> = {}): DataSour
     credentials_schema: [{ name: 'api_key' }],
     provider_type: 'hosted',
     identity: {
-      author: 'Dify',
+      author: 'Bots',
       description: createLocalizedText('Datasource provider'),
       icon: 'provider-icon',
       label: createLocalizedText('Provider A'),
@@ -25,7 +25,7 @@ const createDataSourceItem = (overrides: Partial<DataSourceItem> = {}): DataSour
       {
         description: createLocalizedText('Search in documents'),
         identity: {
-          author: 'Dify',
+          author: 'Bots',
           label: createLocalizedText('Document Search'),
           name: 'document_search',
           provider: 'provider-a',
@@ -54,7 +54,7 @@ describe('transformDataSourceToTool', () => {
       id: 'plugin-1',
       provider: 'provider-a',
       name: 'provider-a',
-      author: 'Dify',
+      author: 'Bots',
       description: createLocalizedText('Datasource provider'),
       icon: 'provider-icon',
       label: createLocalizedText('Provider A'),
@@ -72,7 +72,7 @@ describe('transformDataSourceToTool', () => {
     expect(result.tools).toEqual([
       {
         name: 'document_search',
-        author: 'Dify',
+        author: 'Bots',
         label: createLocalizedText('Document Search'),
         description: createLocalizedText('Search in documents'),
         parameters: [{ name: 'query', type: 'string' }],

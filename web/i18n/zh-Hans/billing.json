@@ -14,7 +14,7 @@
   "plans.community.features": [
     "所有核心功能已在公共仓库发布",
     "单一工作区",
-    "遵守 Dify 开源许可证"
+    "遵守 Bots 开源许可证"
   ],
   "plans.community.for": "适用于个人用户、小型团队或非商业项目",
   "plans.community.includesTitle": "免费功能：",
@@ -29,9 +29,9 @@
     "专属企业功能",
     "多个工作区与企业管理",
     "单点登录",
-    "由 Dify 合作伙伴协商的服务水平协议",
+    "由 Bots 合作伙伴协商的服务水平协议",
     "高级安全与控制",
-    "由 Dify 官方进行的更新和维护",
+    "由 Bots 官方进行的更新和维护",
     "专业技术支持"
   ],
   "plans.enterprise.for": "适合大人员规模的团队",
@@ -67,7 +67,7 @@
   "plansCommon.annotationQuota": "标注回复数",
   "plansCommon.annualBilling": "按年计费节省 {{percent}}%",
   "plansCommon.apiRateLimit": "API 请求频率限制",
-  "plansCommon.apiRateLimitTooltip": "API 请求频率限制涵盖所有通过 Dify API 发起的调用，例如文本生成、聊天对话、工作流执行和文档处理等。",
+  "plansCommon.apiRateLimitTooltip": "API 请求频率限制涵盖所有通过 Bots API 发起的调用，例如文本生成、聊天对话、工作流执行和文档处理等。",
   "plansCommon.apiRateLimitUnit": "{{count,number}} 次",
   "plansCommon.buildApps": "{{count,number}} 个应用程序",
   "plansCommon.cloud": "云服务",
@@ -96,7 +96,7 @@
   "plansCommon.memberAfter": "个成员",
   "plansCommon.messageRequest.title": "{{count,number}} 条消息额度",
   "plansCommon.messageRequest.titlePerMonth": "{{count,number}} 条消息额度/月",
-  "plansCommon.messageRequest.tooltip": "消息额度旨在帮助您便捷地试用 Dify 中来自 OpenAI、Anthropic、Gemini、xAI、深度求索、通义 的不同模型。不同模型会消耗不同额度。额度用尽后，您可以切换为使用自己的 API 密钥。",
+  "plansCommon.messageRequest.tooltip": "消息额度旨在帮助您便捷地试用 Bots 中来自 OpenAI、Anthropic、Gemini、xAI、深度求索、通义 的不同模型。不同模型会消耗不同额度。额度用尽后，您可以切换为使用自己的 API 密钥。",
   "plansCommon.modelProviders": "支持 OpenAI/Anthropic/Llama2/Azure OpenAI/Hugging Face/Replicate",
   "plansCommon.month": "月",
   "plansCommon.mostPopular": "最受欢迎",
@@ -106,7 +106,7 @@
   "plansCommon.priority.priority": "优先",
   "plansCommon.priority.standard": "标准",
   "plansCommon.priority.top-priority": "最高优先级",
-  "plansCommon.ragAPIRequestTooltip": "指单独调用 Dify 知识库数据处理能力的 API。",
+  "plansCommon.ragAPIRequestTooltip": "指单独调用 Bots 知识库数据处理能力的 API。",
   "plansCommon.receiptInfo": "只有团队所有者和团队管理员才能订阅和查看账单信息",
   "plansCommon.save": "节省",
   "plansCommon.self": "自部署",

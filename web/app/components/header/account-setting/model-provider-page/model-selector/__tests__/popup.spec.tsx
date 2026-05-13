@@ -807,7 +807,7 @@ describe('Popup', () => {
     expect(screen.queryByText('TestOpenAI')).not.toBeInTheDocument()
     expect(screen.getByText('TestAnthropic'))!.toBeInTheDocument()
     expect(screen.getByText(/modelProvider\.selector\.fromMarketplace/))!.toBeInTheDocument()
-    expect(screen.getByText(/modelProvider\.selector\.discoverMoreInMarketplace/))!.toBeInTheDocument()
+    expect(screen.queryByText(/modelProvider\.selector\.discoverMoreInMarketplace/)).not.toBeInTheDocument()
   })
 
   it('should show installed marketplace providers without models when AI credits are available', () => {

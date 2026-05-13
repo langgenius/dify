@@ -14,7 +14,7 @@
   "plans.community.features": [
     "Vse osnovne funkcije so izdane v javni repozitorij",
     "Enotno delovno okolje",
-    "V skladu z Dify licenco odprte kode"
+    "V skladu z Bots licenco odprte kode"
   ],
   "plans.community.for": "Za posamezne uporabnike, majhne skupine ali nekomercialne projekte",
   "plans.community.includesTitle": "Brezplačne funkcije:",
@@ -29,9 +29,9 @@
     "Ekskluzivne funkcije za podjetja",
     "Več delovnih prostorov in upravljanje podjetja",
     "SSO",
-    "Pogajani SLA-ji s strani partnerjev Dify",
+    "Pogajani SLA-ji s strani partnerjev Bots",
     "Napredna varnost in nadzor",
-    "Posodobitve in vzdrževanje s strani Dify uradno",
+    "Posodobitve in vzdrževanje s strani Bots uradno",
     "Strokovna tehnična podpora"
   ],
   "plans.enterprise.for": "Za velike ekipe",
@@ -67,7 +67,7 @@
   "plansCommon.annotationQuota": "Kvote za označevanje",
   "plansCommon.annualBilling": "Letno obračunavanje, prihranek {{percent}}%",
   "plansCommon.apiRateLimit": "Omejitev hitrosti API-ja",
-  "plansCommon.apiRateLimitTooltip": "API omejitev hitrosti velja za vse poizvedbe, opravljene prek Dify API, vključno z generiranjem besedila, klepetnimi pogovori, izvajanjem delovnih tokov in obdelavo dokumentov.",
+  "plansCommon.apiRateLimitTooltip": "API omejitev hitrosti velja za vse poizvedbe, opravljene prek Bots API, vključno z generiranjem besedila, klepetnimi pogovori, izvajanjem delovnih tokov in obdelavo dokumentov.",
   "plansCommon.apiRateLimitUnit": "{{count,number}}",
   "plansCommon.buildApps": "{{count,number}} aplikacij",
   "plansCommon.cloud": "Oblačna storitev",
@@ -106,7 +106,7 @@
   "plansCommon.priority.priority": "Prioriteta",
   "plansCommon.priority.standard": "Standard",
   "plansCommon.priority.top-priority": "Najvišja prioriteta",
-  "plansCommon.ragAPIRequestTooltip": "Nanaša se na število API klicev, ki vključujejo samo sposobnosti obdelave baze znanja Dify.",
+  "plansCommon.ragAPIRequestTooltip": "Nanaša se na število API klicev, ki vključujejo samo sposobnosti obdelave baze znanja Bots.",
   "plansCommon.receiptInfo": "Le lastnik ekipe in skrbnik ekipe lahko naročita in si ogledate podatke o plačilih",
   "plansCommon.save": "Prihranite ",
   "plansCommon.self": "Samostojno gostovanje",

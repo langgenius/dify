@@ -113,7 +113,7 @@ describe('useNodesMetaData', () => {
         metaData: {
           type: BlockEnum.LLM,
           title: 'LLM',
-          author: 'Dify',
+          author: 'Bots',
           description: 'Node description',
         },
       },
@@ -145,7 +145,7 @@ describe('useNodesMetaData', () => {
       description: 'Datasource description',
     }))
     expect(normalResult.result.current).toEqual(expect.objectContaining({
-      author: 'Dify',
+      author: 'Bots',
       description: 'Node description',
       title: 'LLM',
     }))

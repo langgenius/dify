@@ -28,20 +28,12 @@ vi.mock('@/app/components/header/env-nav', () => ({
   default: createMockComponent('env-nav'),
 }))
 
-vi.mock('@/app/components/header/explore-nav', () => ({
-  default: createMockComponent('explore-nav'),
-}))
-
 vi.mock('@/app/components/header/license-env', () => ({
   default: createMockComponent('license-nav'),
 }))
 
 vi.mock('@/app/components/header/plugins-nav', () => ({
   default: createMockComponent('plugins-nav'),
-}))
-
-vi.mock('@/app/components/header/tools-nav', () => ({
-  default: createMockComponent('tools-nav'),
 }))
 
 vi.mock('@/app/components/header/plan-badge', () => ({
@@ -122,7 +114,7 @@ describe('Header', () => {
   it('should render header with main nav components', () => {
     renderHeader()
 
-    expect(screen.getByRole('img', { name: /dify logo/i })).toBeInTheDocument()
+    expect(screen.getByRole('img', { name: /bots logo/i })).toBeInTheDocument()
     expect(screen.getByTestId('workplace-selector')).toBeInTheDocument()
     expect(screen.getByTestId('app-nav')).toBeInTheDocument()
     expect(screen.getByTestId('account-dropdown')).toBeInTheDocument()
@@ -140,11 +132,11 @@ describe('Header', () => {
     expect(screen.getByTestId('plan-badge')).toBeInTheDocument()
   })
 
-  it('should hide explore nav when user is dataset operator', () => {
+  it('should hide explore-related nav when user is dataset operator', () => {
     mockIsDatasetOperator = true
     renderHeader()
 
-    expect(screen.queryByTestId('explore-nav')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('app-nav')).not.toBeInTheDocument()
     expect(screen.getByTestId('dataset-nav')).toBeInTheDocument()
   })
 
@@ -166,7 +158,7 @@ describe('Header', () => {
     mockMedia = 'mobile'
     renderHeader()
 
-    expect(screen.getByRole('img', { name: /dify logo/i })).toBeInTheDocument()
+    expect(screen.getByRole('img', { name: /bots logo/i })).toBeInTheDocument()
     expect(screen.queryByTestId('env-nav')).not.toBeInTheDocument()
   })
 
@@ -179,10 +171,10 @@ describe('Header', () => {
 
     expect(screen.getByText('Acme Workspace')).toBeInTheDocument()
     expect(screen.getByRole('img', { name: /logo/i })).toBeInTheDocument()
-    expect(screen.queryByRole('img', { name: /dify logo/i })).not.toBeInTheDocument()
+    expect(screen.queryByRole('img', { name: /bots logo/i })).not.toBeInTheDocument()
   })
 
-  it('should show default Dify logo when branding is enabled but no workspace_logo', () => {
+  it('should show default Bots logo when branding is enabled but no workspace_logo', () => {
     mockBrandingEnabled = true
     mockBrandingTitle = 'Custom Title'
     mockBrandingLogo = null
@@ -190,17 +182,17 @@ describe('Header', () => {
     renderHeader()
 
     expect(screen.getByText('Custom Title')).toBeInTheDocument()
-    expect(screen.getByRole('img', { name: /dify logo/i })).toBeInTheDocument()
+    expect(screen.getByRole('img', { name: /bots logo/i })).toBeInTheDocument()
   })
 
-  it('should show default Dify text when branding enabled but no application_title', () => {
+  it('should show default Bots text when branding enabled but no application_title', () => {
     mockBrandingEnabled = true
     mockBrandingTitle = null
     mockBrandingLogo = null
 
     renderHeader()
 
-    expect(screen.getByText('Dify')).toBeInTheDocument()
+    expect(screen.getByText('Bots')).toBeInTheDocument()
   })
 
   it('should show dataset nav for editor who is not dataset operator', () => {
@@ -210,7 +202,6 @@ describe('Header', () => {
     renderHeader()
 
     expect(screen.getByTestId('dataset-nav')).toBeInTheDocument()
-    expect(screen.getByTestId('explore-nav')).toBeInTheDocument()
     expect(screen.getByTestId('app-nav')).toBeInTheDocument()
   })
 
@@ -229,9 +220,7 @@ describe('Header', () => {
 
     renderHeader()
 
-    expect(screen.queryByTestId('explore-nav')).not.toBeInTheDocument()
     expect(screen.queryByTestId('app-nav')).not.toBeInTheDocument()
-    expect(screen.queryByTestId('tools-nav')).not.toBeInTheDocument()
     expect(screen.getByTestId('dataset-nav')).toBeInTheDocument()
   })
 

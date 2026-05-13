@@ -107,16 +107,16 @@ describe('EmbeddedChatbot Header', () => {
       expect(img).toHaveAttribute('src', 'https://example.com/workspace.png')
     })
 
-    it('should render Dify logo by default when branding enabled is true but no logo provided', () => {
+    it('should render Bots logo by default when branding enabled is true but no logo provided', () => {
       mockBranding = { enabled: true, workspace_logo: '' }
       render(<Header title="Test Chatbot" />)
-      expect(screen.getByAltText('Dify logo')).toBeInTheDocument()
+      expect(screen.getByAltText('Bots logo')).toBeInTheDocument()
     })
 
-    it('should render Dify logo when branding is disabled', () => {
+    it('should render Bots logo when branding is disabled', () => {
       mockBranding = { enabled: false, workspace_logo: '' }
       render(<Header title="Test Chatbot" />)
-      expect(screen.getByAltText('Dify logo')).toBeInTheDocument()
+      expect(screen.getByAltText('Bots logo')).toBeInTheDocument()
     })
 
     it('should NOT render branding when remove_webapp_brand is true', () => {

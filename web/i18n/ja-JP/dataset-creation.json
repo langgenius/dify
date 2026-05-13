@@ -6,7 +6,7 @@
   "jinaReader.apiKeyPlaceholder": "jina.ai からの API キー",
   "jinaReader.configJinaReader": "Jina Reader の設定",
   "jinaReader.getApiKeyLinkText": "無料の API キーを jina.ai で取得",
-  "otherDataSource.description": "現在、Dify のナレッジベースには利用できるデータソースが限られています。Dify のナレッジベースにデータソースを提供いただくことは、プラットフォームの柔軟性と能力を向上させる上で非常に有益です。貢献ガイドをご用意していますので、ぜひご協力ください。詳細については、以下のリンクをクリックしてください。",
+  "otherDataSource.description": "現在、Bots のナレッジベースには利用できるデータソースが限られています。Bots のナレッジベースにデータソースを提供いただくことは、プラットフォームの柔軟性と能力を向上させる上で非常に有益です。貢献ガイドをご用意していますので、ぜひご協力ください。詳細については、以下のリンクをクリックしてください。",
   "otherDataSource.learnMore": "詳細はこちら",
   "otherDataSource.title": "他のデータソースと接続しますか？",
   "stepOne.button": "次へ",

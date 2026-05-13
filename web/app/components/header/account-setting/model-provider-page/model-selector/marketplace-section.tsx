@@ -2,7 +2,6 @@ import type { ModelProviderQuotaGetPaid } from '@/types/model-provider'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useTranslation } from 'react-i18next'
-import { getMarketplaceUrl } from '@/utils/var'
 import { modelNameMap, providerIconMap } from '../utils'
 
 type MarketplaceSectionProps = {
@@ -10,7 +9,6 @@ type MarketplaceSectionProps = {
   marketplaceCollapsed: boolean
   installingProvider: ModelProviderQuotaGetPaid | null
   isMarketplacePluginsLoading: boolean
-  theme?: string
   onMarketplaceCollapsedChange: (collapsed: boolean) => void
   onInstallPlugin: (key: ModelProviderQuotaGetPaid) => void | Promise<void>
 }
@@ -20,7 +18,6 @@ function MarketplaceSection({
   marketplaceCollapsed,
   installingProvider,
   isMarketplacePluginsLoading,
-  theme,
   onMarketplaceCollapsedChange,
   onInstallPlugin,
 }: MarketplaceSectionProps) {
@@ -77,17 +74,6 @@ function MarketplaceSection({
                 </div>
               )
             })}
-            <a
-              className="flex cursor-pointer items-center gap-0.5 px-3 py-1.5"
-              href={getMarketplaceUrl('', { theme })}
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              <span className="flex-1 system-xs-regular text-text-accent">
-                {t('modelProvider.selector.discoverMoreInMarketplace', { ns: 'common' })}
-              </span>
-              <span className="i-ri-arrow-right-up-line h-3! w-3! text-text-accent" />
-            </a>
           </div>
         )}
       </div>

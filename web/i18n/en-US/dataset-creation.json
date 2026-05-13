@@ -6,7 +6,7 @@
   "jinaReader.apiKeyPlaceholder": "API key from jina.ai",
   "jinaReader.configJinaReader": "Configure Jina Reader",
   "jinaReader.getApiKeyLinkText": "Get your free API key at jina.ai",
-  "otherDataSource.description": "Currently, Dify's knowledge base only has limited data sources. Contributing a data source to the Dify knowledge base is a fantastic way to help enhance the platform's flexibility and power for all users. Our contribution guide makes it easy to get started. Please click on the link below to learn more.",
+  "otherDataSource.description": "Currently, Bots's knowledge base only has limited data sources. Contributing a data source to the Bots knowledge base is a fantastic way to help enhance the platform's flexibility and power for all users. Our contribution guide makes it easy to get started. Please click on the link below to learn more.",
   "otherDataSource.learnMore": "Learn more",
   "otherDataSource.title": "Connect to other data sources?",
   "stepOne.button": "Next",

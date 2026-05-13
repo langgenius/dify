@@ -37,7 +37,7 @@ class _ConcreteBuiltinProvider(BuiltinToolProviderController):
 def _provider_yaml() -> dict[str, Any]:
     return {
         "identity": {
-            "author": "Dify",
+            "author": "Bots",
             "name": "fake_provider",
             "label": {"en_US": "Fake Provider"},
             "description": {"en_US": "Fake description"},
@@ -70,7 +70,7 @@ def _provider_yaml() -> dict[str, Any]:
 def _tool_yaml() -> dict[str, Any]:
     return {
         "identity": {
-            "author": "Dify",
+            "author": "Bots",
             "name": "tool_a",
             "label": {"en_US": "Tool A"},
         },
@@ -176,7 +176,7 @@ def test_builtin_tool_provider_handles_empty_credentials_and_oauth():
     provider.entity = ToolProviderEntity.model_validate(
         {
             "identity": {
-                "author": "Dify",
+                "author": "Bots",
                 "name": "fake_provider",
                 "label": {"en_US": "Fake Provider"},
                 "description": {"en_US": "Fake description"},

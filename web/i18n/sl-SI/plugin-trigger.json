@@ -45,7 +45,7 @@
   "modal.oauth.authorization.authFailed": "Ni uspelo pridobiti informacij o OAuth pooblastilu",
   "modal.oauth.authorization.authSuccess": "Pooblastilo uspešno",
   "modal.oauth.authorization.authorizeButton": "Avtorizirajte z {{provider}}",
-  "modal.oauth.authorization.description": "Dovoli Difyju dostop do vašega računa",
+  "modal.oauth.authorization.description": "Dovoli Bots dostop do vašega računa",
   "modal.oauth.authorization.redirectUrl": "Preusmeritveni URL",
   "modal.oauth.authorization.redirectUrlHelp": "Uporabite ta URL v konfiguraciji vaše OAuth aplikacije",
   "modal.oauth.authorization.title": "OAuth avtorizacija",

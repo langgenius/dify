@@ -236,7 +236,7 @@
   "switchTipStart": "Salinan aplikasi baru akan dibuat untuk Anda, dan salinan baru akan beralih ke Workflow Orchestrate. Salinan baru akan",
   "theme.switchDark": "Beralih ke tema gelap",
   "theme.switchLight": "Beralih ke tema terang",
-  "tracing.aliyun.description": "Platform observabilitas yang dikelola sepenuhnya dan bebas perawatan yang disediakan oleh Alibaba Cloud, memungkinkan pemantauan, pelacakan, dan evaluasi aplikasi Dify yang out-of-the-box.",
+  "tracing.aliyun.description": "Platform observabilitas yang dikelola sepenuhnya dan bebas perawatan yang disediakan oleh Alibaba Cloud, memungkinkan pemantauan, pelacakan, dan evaluasi aplikasi Bots yang out-of-the-box.",
   "tracing.aliyun.title": "Monitor Awan",
   "tracing.arize.description": "Observabilitas LLM tingkat perusahaan, evaluasi, pemantauan, dan eksperimen online & offline—didukung oleh OpenTelemetry. Dibuat khusus untuk LLM & aplikasi berbasis agen.",
   "tracing.arize.title": "Arize",

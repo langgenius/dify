@@ -14,7 +14,7 @@
   "plans.community.features": [
     "Tüm Temel Özellikler Açık Depoda Yayınlandı",
     "Tek Çalışma Alanı",
-    "Dify Açık Kaynak Lisansına uygundur"
+    "Bots Açık Kaynak Lisansına uygundur"
   ],
   "plans.community.for": "Bireysel Kullanıcılar, Küçük Ekipler veya Ticari Olmayan Projeler İçin",
   "plans.community.includesTitle": "Ücretsiz Özellikler:",
@@ -29,9 +29,9 @@
     "Özel Kurumsal Özellikler",
     "Birden Fazla Çalışma Alanı ve Kurumsal Yönetim",
     "SSO",
-    "Dify Ortakları tarafından Müzakere Edilen SLA'lar",
+    "Bots Ortakları tarafından Müzakere Edilen SLA'lar",
     "Gelişmiş Güvenlik ve Kontroller",
-    "Dify Resmi Tarafından Güncellemeler ve Bakım",
+    "Bots Resmi Tarafından Güncellemeler ve Bakım",
     "Profesyonel Teknik Destek"
   ],
   "plans.enterprise.for": "Büyük boyutlu Takımlar için",
@@ -67,7 +67,7 @@
   "plansCommon.annotationQuota": "Ek Açıklama Kotası",
   "plansCommon.annualBilling": "Yıllık faturalama, {{percent}}% tasarruf",
   "plansCommon.apiRateLimit": "API Hız Limiti",
-  "plansCommon.apiRateLimitTooltip": "Dify API'si aracılığıyla yapılan tüm isteklerde, metin oluşturma, sohbet konuşmaları, iş akışı yürütmeleri ve belge işleme dahil olmak üzere, API Oran Sınırı uygulanır.",
+  "plansCommon.apiRateLimitTooltip": "Bots API'si aracılığıyla yapılan tüm isteklerde, metin oluşturma, sohbet konuşmaları, iş akışı yürütmeleri ve belge işleme dahil olmak üzere, API Oran Sınırı uygulanır.",
   "plansCommon.apiRateLimitUnit": "{{count,number}}",
   "plansCommon.buildApps": "{{count,number}} uygulama",
   "plansCommon.cloud": "Bulut Hizmeti",
@@ -106,7 +106,7 @@
   "plansCommon.priority.priority": "Öncelikli",
   "plansCommon.priority.standard": "Standart",
   "plansCommon.priority.top-priority": "En Öncelikli",
-  "plansCommon.ragAPIRequestTooltip": "Dify'nin sadece bilgi tabanı işleme yeteneklerini çağıran API çağrıları sayısını ifade eder.",
+  "plansCommon.ragAPIRequestTooltip": "Bots'nin sadece bilgi tabanı işleme yeteneklerini çağıran API çağrıları sayısını ifade eder.",
   "plansCommon.receiptInfo": "Sadece takım sahibi ve takım yöneticisi abone olabilir ve faturalandırma bilgilerini görüntüleyebilir",
   "plansCommon.save": "Tasarruf et ",
   "plansCommon.self": "Kendi Barındırılan",

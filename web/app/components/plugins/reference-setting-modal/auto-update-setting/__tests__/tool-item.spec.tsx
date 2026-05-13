@@ -40,7 +40,7 @@ const payload = {
       en_US: 'Plugin One',
       zh_Hans: 'Plugin One',
     },
-    author: 'Dify',
+    author: 'Bots',
   },
 } as PluginDetail
 
@@ -49,7 +49,7 @@ describe('ToolItem', () => {
     render(<ToolItem payload={payload} isChecked onCheckChange={vi.fn()} />)
 
     expect(screen.getByText('Plugin One')).toBeInTheDocument()
-    expect(screen.getByText('Dify')).toBeInTheDocument()
+    expect(screen.getByText('Bots')).toBeInTheDocument()
     expect(screen.getByText('https://marketplace.example.com/plugins/dify/plugin-1/icon')).toBeInTheDocument()
     expect(screen.getByText('true')).toBeInTheDocument()
   })

@@ -11,8 +11,8 @@ vi.mock('../../base/icons/src/public/knowledge', () => ({
 
 function createQA(overrides: Partial<QA> = {}): QA {
   return {
-    question: 'What is Dify?',
-    answer: 'Dify is an open-source LLM app development platform.',
+    question: 'What is Bots?',
+    answer: 'Bots is an open-source LLM app development platform.',
     ...overrides,
   }
 }
@@ -182,14 +182,14 @@ describe('QAPreview', () => {
       const qa = createQA()
       render(<QAPreview qa={qa} />)
 
-      expect(screen.getByText('What is Dify?')).toBeInTheDocument()
+      expect(screen.getByText('What is Bots?')).toBeInTheDocument()
     })
 
     it('should render the answer text', () => {
       const qa = createQA()
       render(<QAPreview qa={qa} />)
 
-      expect(screen.getByText('Dify is an open-source LLM app development platform.')).toBeInTheDocument()
+      expect(screen.getByText('Bots is an open-source LLM app development platform.')).toBeInTheDocument()
     })
 
     it('should render Q and A labels', () => {

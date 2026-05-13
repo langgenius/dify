@@ -2,7 +2,6 @@ import type { DefaultModel, Model, ModelFeatureEnum } from '../declarations'
 import type { ModelProviderQuotaGetPaid } from '@/types/model-provider'
 import { ComboboxList } from '@langgenius/dify-ui/combobox'
 import { useSuspenseQuery } from '@tanstack/react-query'
-import { useTheme } from 'next-themes'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
@@ -41,7 +40,6 @@ function Popup({
   onHide,
 }: PopupProps) {
   const { t } = useTranslation()
-  const { theme } = useTheme()
   const language = useLanguage()
   const [marketplaceCollapsed, setMarketplaceCollapsed] = useState(false)
   const { setShowAccountSettingModal } = useModalContext()
@@ -195,7 +193,6 @@ function Popup({
             marketplaceCollapsed={marketplaceCollapsed}
             installingProvider={installingProvider}
             isMarketplacePluginsLoading={isMarketplacePluginsLoading}
-            theme={theme}
             onMarketplaceCollapsedChange={setMarketplaceCollapsed}
             onInstallPlugin={handleInstallPlugin}
           />

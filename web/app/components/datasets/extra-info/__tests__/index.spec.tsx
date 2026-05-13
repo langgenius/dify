@@ -82,11 +82,6 @@ vi.mock('@/service/knowledge/use-dataset', () => ({
   })),
 }))
 
-// Mock API access URL hook
-vi.mock('@/hooks/use-api-access-url', () => ({
-  useDatasetApiAccessUrl: vi.fn(() => 'https://docs.dify.ai/api-reference/datasets'),
-}))
-
 // Mock docLink hook
 vi.mock('@/context/i18n', () => ({
   useDocLink: vi.fn(() => (path: string) => `https://docs.example.com${path}`),
@@ -557,16 +552,6 @@ describe('ApiAccessCard', () => {
       expect(screen.getByText(/serviceApi\.disabled/i)).toBeInTheDocument()
     })
 
-    it('should render API Reference link', () => {
-      render(
-        <ApiAccessCard
-          apiEnabled={true}
-        />,
-      )
-
-      expect(screen.getByText(/overview\.apiInfo\.doc/i)).toBeInTheDocument()
-    })
-
     it('should render switch component', () => {
       render(
         <ApiAccessCard
@@ -651,16 +636,6 @@ describe('ApiAccessCard', () => {
       expect(mockMutateDatasetRes).not.toHaveBeenCalled()
     })
 
-    it('should have correct href for API Reference link', () => {
-      render(
-        <ApiAccessCard
-          apiEnabled={true}
-        />,
-      )
-
-      const apiRefLink = screen.getByText(/overview\.apiInfo\.doc/i).closest('a')
-      expect(apiRefLink).toHaveAttribute('href', 'https://docs.dify.ai/api-reference/datasets')
-    })
   })
 
   describe('Permission Handling', () => {

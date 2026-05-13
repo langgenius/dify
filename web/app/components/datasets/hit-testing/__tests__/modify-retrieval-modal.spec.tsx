@@ -54,11 +54,6 @@ vi.mock('@/context/dataset-detail', () => ({
   useDatasetDetailContextWithSelector: () => 'model-name',
 }))
 
-vi.mock('@/context/i18n', () => ({
-  useDocLink: () => (path: string) => `https://docs.dify.ai${path}`,
-}))
-
-vi.mock('../../settings/utils', () => ({
   checkShowMultiModalTip: () => false,
 }))
 
@@ -120,8 +115,8 @@ describe('ModifyRetrievalModal', () => {
     expect(defaultProps.onSave).toHaveBeenCalled()
   })
 
-  it('should render learn more link', () => {
+  it('should not render documentation learn more link', () => {
     render(<ModifyRetrievalModal {...defaultProps} />)
-    expect(screen.getByText('datasetSettings.form.retrievalSetting.learnMore')).toBeInTheDocument()
+    expect(screen.queryByText('datasetSettings.form.retrievalSetting.learnMore')).not.toBeInTheDocument()
   })
 })

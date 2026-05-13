@@ -23,7 +23,7 @@ def is_db_command() -> bool:
 
 def log_startup_banner(host: str, port: int) -> None:
     debugger_attached = sys.gettrace() is not None
-    logger.info("Serving Dify API via gevent WebSocket server")
+    logger.info("Serving Bots API via gevent WebSocket server")
     logger.info("Bound to http://%s:%s", host, port)
     logger.info("Debugger attached: %s", "on" if debugger_attached else "off")
     logger.info("Press CTRL+C to quit")

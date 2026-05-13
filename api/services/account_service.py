@@ -1571,7 +1571,7 @@ class RegisterService:
             language=language,
             to=account.email,
             token=token,
-            inviter_name=inviter.name if inviter else "Dify",
+            inviter_name=inviter.name if inviter else "Bots",
             workspace_name=tenant.name,
         )
 

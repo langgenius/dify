@@ -51,7 +51,7 @@
   "inputFieldPanel.uniqueInputs.title": "Đầu vào duy nhất cho mỗi lối vào",
   "inputFieldPanel.uniqueInputs.tooltip": "Đầu vào duy nhất chỉ có thể truy cập được vào nguồn dữ liệu đã chọn và các nút xuôi dòng của nó. Người dùng sẽ không cần phải điền vào nó khi chọn các nguồn dữ liệu khác. Chỉ các trường đầu vào được tham chiếu bởi các biến nguồn dữ liệu sẽ xuất hiện trong bước đầu tiên (Nguồn dữ liệu). Tất cả các trường khác sẽ được hiển thị trong bước thứ hai (Tài liệu xử lý).",
   "knowledgeDescription": "Mô tả kiến thức",
-  "knowledgeDescriptionPlaceholder": "Mô tả những gì có trong Cơ sở kiến thức này. Mô tả chi tiết cho phép AI truy cập nội dung của tập dữ liệu chính xác hơn. Nếu trống, Dify sẽ sử dụng chiến lược hit mặc định. (Tùy chọn)",
+  "knowledgeDescriptionPlaceholder": "Mô tả những gì có trong Cơ sở kiến thức này. Mô tả chi tiết cho phép AI truy cập nội dung của tập dữ liệu chính xác hơn. Nếu trống, Bots sẽ sử dụng chiến lược hit mặc định. (Tùy chọn)",
   "knowledgeNameAndIcon": "Tên kiến thức & biểu tượng",
   "knowledgeNameAndIconPlaceholder": "Vui lòng nhập tên của Cơ sở kiến thức",
   "knowledgePermissions": "Quyền",

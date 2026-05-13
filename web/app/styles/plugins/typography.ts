@@ -1,5 +1,5 @@
 /*
- * `@tailwindcss/typography` configured with Dify's prose color tokens.
+ * `@tailwindcss/typography` configured with Bots's prose color tokens.
  * Injects `theme.typography` for v4 CSS-first via plugin `config` merge.
  */
 import typographyPlugin from '@tailwindcss/typography'

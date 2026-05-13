@@ -2,9 +2,7 @@ import type { SlashCommandHandler } from './types'
 import {
   RiApps2Line,
   RiBookOpenLine,
-  RiCompassLine,
   RiPlugLine,
-  RiToolsLine,
   RiUserLine,
 } from '@remixicon/react'
 import * as React from 'react'
@@ -14,8 +12,6 @@ const NAV_ITEMS = [
   { id: 'apps', label: 'Apps', path: '/apps', icon: RiApps2Line },
   { id: 'datasets', label: 'Knowledge', path: '/datasets', icon: RiBookOpenLine },
   { id: 'plugins', label: 'Plugins', path: '/plugins', icon: RiPlugLine },
-  { id: 'tools', label: 'Tools', path: '/tools', icon: RiToolsLine },
-  { id: 'explore', label: 'Explore', path: '/explore', icon: RiCompassLine },
   { id: 'account', label: 'Account', path: '/account', icon: RiUserLine },
 ]
 

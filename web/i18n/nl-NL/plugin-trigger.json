@@ -45,7 +45,7 @@
   "modal.oauth.authorization.authFailed": "Failed to get OAuth authorization information",
   "modal.oauth.authorization.authSuccess": "Authorization successful",
   "modal.oauth.authorization.authorizeButton": "Authorize with {{provider}}",
-  "modal.oauth.authorization.description": "Authorize Dify to access your account",
+  "modal.oauth.authorization.description": "Authorize Bots to access your account",
   "modal.oauth.authorization.redirectUrl": "Redirect URL",
   "modal.oauth.authorization.redirectUrlHelp": "Use this URL in your OAuth app configuration",
   "modal.oauth.authorization.title": "OAuth Authorization",

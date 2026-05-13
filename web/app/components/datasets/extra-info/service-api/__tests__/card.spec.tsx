@@ -4,10 +4,6 @@ import { fireEvent, render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import Card from '../card'
 
-vi.mock('@/hooks/use-api-access-url', () => ({
-  useDatasetApiAccessUrl: () => 'https://docs.dify.ai/api-reference/datasets',
-}))
-
 const createWrapper = () => {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false } },
@@ -68,10 +64,6 @@ describe('Card (Service API)', () => {
       expect(screen.getByText(/serviceApi\.card\.apiKey/)).toBeInTheDocument()
     })
 
-    it('should render API reference button', () => {
-      renderWithProviders(<Card {...defaultProps} />)
-      expect(screen.getByText(/serviceApi\.card\.apiReference/)).toBeInTheDocument()
-    })
   })
 
   // Props: tests different apiBaseUrl values
@@ -106,12 +98,10 @@ describe('Card (Service API)', () => {
       expect(onOpenSecretKeyModal).toHaveBeenCalledTimes(1)
     })
 
-    it('should render API reference as a link', () => {
+    it('should not render API documentation link', () => {
       renderWithProviders(<Card {...defaultProps} />)
-      const link = screen.getByRole('link')
-      expect(link).toHaveAttribute('href', 'https://docs.dify.ai/api-reference/datasets')
-      expect(link).toHaveAttribute('target', '_blank')
-      expect(link).toHaveAttribute('rel', 'noopener noreferrer')
+      expect(screen.queryByText(/serviceApi\.card\.apiReference/)).not.toBeInTheDocument()
+      expect(screen.queryByRole('link')).not.toBeInTheDocument()
     })
   })
 

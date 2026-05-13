@@ -14622,8 +14622,8 @@ Workflow tool configuration
 
 ## FastOpenAPI Preview (OpenAPI 3.0)
 
-### Dify API (FastOpenAPI PoC)
-FastOpenAPI proof of concept for Dify API
+### Bots API (FastOpenAPI PoC)
+FastOpenAPI proof of concept for Bots API
 
 #### Version: 1.0
 

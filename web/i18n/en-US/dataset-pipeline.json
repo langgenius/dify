@@ -51,7 +51,7 @@
   "inputFieldPanel.uniqueInputs.title": "Unique Inputs for Each Entrance",
   "inputFieldPanel.uniqueInputs.tooltip": "Unique Inputs are only accessible to the selected data source and its downstream nodes. Users won't need to fill it in when choosing other data sources. Only input fields referenced by data source variables will appear in the first step(Data Source). All other fields will be shown in the second step(Process Documents).",
   "knowledgeDescription": "Knowledge description",
-  "knowledgeDescriptionPlaceholder": "Describe what is in this Knowledge Base. A detailed description allows AI to access the content of the dataset more accurately. If empty, Dify will use the default hit strategy. (Optional)",
+  "knowledgeDescriptionPlaceholder": "Describe what is in this Knowledge Base. A detailed description allows AI to access the content of the dataset more accurately. If empty, Bots will use the default hit strategy. (Optional)",
   "knowledgeNameAndIcon": "Knowledge name & icon",
   "knowledgeNameAndIconPlaceholder": "Please enter the name of the Knowledge Base",
   "knowledgePermissions": "Permissions",

@@ -45,7 +45,7 @@
   "modal.oauth.authorization.authFailed": "OAuth yetkilendirme bilgileri alınamadı",
   "modal.oauth.authorization.authSuccess": "Yetkilendirme başarılı",
   "modal.oauth.authorization.authorizeButton": "{{provider}} ile yetkilendir",
-  "modal.oauth.authorization.description": "Dify'nin hesabınıza erişmesine izin verin",
+  "modal.oauth.authorization.description": "Bots'nin hesabınıza erişmesine izin verin",
   "modal.oauth.authorization.redirectUrl": "Yönlendirme URL'si",
   "modal.oauth.authorization.redirectUrlHelp": "Bu URL'yi OAuth uygulama yapılandırmanızda kullanın",
   "modal.oauth.authorization.title": "OAuth Yetkilendirmesi",

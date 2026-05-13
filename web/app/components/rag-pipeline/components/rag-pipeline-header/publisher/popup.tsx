@@ -25,7 +25,6 @@ import ShortcutsName from '@/app/components/workflow/shortcuts-name'
 import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
 import { getKeyboardKeyCodeBySystem } from '@/app/components/workflow/utils'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
-import { useDocLink } from '@/context/i18n'
 import { useModalContextSelector } from '@/context/modal-context'
 import { useProviderContextSelector } from '@/context/provider-context'
 import { useDatasetApiAccessUrl } from '@/hooks/use-api-access-url'
@@ -55,7 +54,6 @@ const Popup = ({
   const { t } = useTranslation()
   const { datasetId } = useParams()
   const { push } = useRouter()
-  const docLink = useDocLink()
   const publishedAt = useStore(s => s.publishedAt)
   const draftUpdatedAt = useStore(s => s.draftUpdatedAt)
   const pipelineId = useStore(s => s.pipelineId)
@@ -157,14 +155,9 @@ const Popup = ({
       })
       toast.success(t('publishTemplate.success.message', { ns: 'datasetPipeline' }), {
         description: (
-          <div className="flex flex-col gap-y-1">
-            <span className="system-xs-regular text-text-secondary">
-              {t('publishTemplate.success.tip', { ns: 'datasetPipeline' })}
-            </span>
-            <Link href={docLink()} target="_blank" className="inline-block system-xs-medium-uppercase text-text-accent">
-              {t('publishTemplate.success.learnMore', { ns: 'datasetPipeline' })}
-            </Link>
-          </div>
+          <span className="system-xs-regular text-text-secondary">
+            {t('publishTemplate.success.tip', { ns: 'datasetPipeline' })}
+          </span>
         ),
       })
       invalidCustomizedTemplateList()
@@ -176,7 +169,7 @@ const Popup = ({
       hidePublishingAsCustomizedPipeline()
       hidePublishAsKnowledgePipelineModal()
     }
-  }, [showPublishingAsCustomizedPipeline, publishAsCustomizedPipeline, pipelineId, t, invalidCustomizedTemplateList, hidePublishingAsCustomizedPipeline, hidePublishAsKnowledgePipelineModal, docLink])
+  }, [showPublishingAsCustomizedPipeline, publishAsCustomizedPipeline, pipelineId, t, invalidCustomizedTemplateList, hidePublishingAsCustomizedPipeline, hidePublishAsKnowledgePipelineModal])
   const handleClickPublishAsKnowledgePipeline = useCallback(() => {
     onRequestClose?.()
     if (!isAllowPublishAsCustomKnowledgePipelineTemplate) {

@@ -13,7 +13,7 @@ const meta = {
     layout: 'centered',
     docs: {
       description: {
-        component: 'Brand assets rendered in different contexts. DifyLogo adapts to the active theme while other variants target specific surfaces.',
+        component: 'Brand assets rendered in different contexts. The brand logo adapts to the active theme while other variants target specific surfaces.',
       },
     },
   },

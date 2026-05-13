@@ -236,7 +236,7 @@
   "switchTipStart": "將為您建立一個使用工作流編排的新應用。新應用將",
   "theme.switchDark": "切換到深色主題",
   "theme.switchLight": "切換到亮色主題",
-  "tracing.aliyun.description": "阿里雲提供的完全管理且無需維護的可觀察性平台，支持即時監控、追蹤和評估 Dify 應用程序。",
+  "tracing.aliyun.description": "阿里雲提供的完全管理且無需維護的可觀察性平台，支持即時監控、追蹤和評估 Bots 應用程序。",
   "tracing.aliyun.title": "雲端監控",
   "tracing.arize.description": "企業級LLM可觀測性、線上與離線評估、監控和實驗平台，基於OpenTelemetry構建，專為LLM和代理驅動的應用程式設計。",
   "tracing.arize.title": "Arize",

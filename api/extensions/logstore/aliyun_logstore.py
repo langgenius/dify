@@ -200,7 +200,7 @@ class AliyunLogStore:
         # Append Dify identification to the existing user agent
         original_user_agent = self.client._user_agent  # pyright: ignore[reportPrivateUsage]
         dify_version = dify_config.project.version
-        enhanced_user_agent = f"Dify,Dify-{dify_version},{original_user_agent}"
+        enhanced_user_agent = f"Bots,Bots-{dify_version},{original_user_agent}"
         self.client.set_user_agent(enhanced_user_agent)
 
         # PG client will be initialized in init_project_logstore

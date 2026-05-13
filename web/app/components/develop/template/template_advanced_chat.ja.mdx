@@ -1840,7 +1840,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
 
     <Properties>
       <Property name='message_id' type='str' key='message_id'>
-        Difyによって生成されたテキストメッセージの場合、生成されたメッセージIDを直接渡します。バックエンドはメッセージIDを使用して対応する内容を検索し、音声情報を直接合成します。message_idとtextが同時に提供される場合、message_idが優先されます。
+        Botsによって生成されたテキストメッセージの場合、生成されたメッセージIDを直接渡します。バックエンドはメッセージIDを使用して対応する内容を検索し、音声情報を直接合成します。message_idとtextが同時に提供される場合、message_idが優先されます。
       </Property>
       <Property name='text' type='str' key='text'>
         音声生成コンテンツ。
@@ -1861,7 +1861,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
 --header 'Content-Type: application/json' \\
 --data-raw '{
     "message_id": "5ad4cb98-f0c7-4085-b384-88c403be6290",
-    "text": "Hello Dify",
+    "text": "Hello Bots",
     "user": "abc-123",
 }'`}
     />
@@ -1913,7 +1913,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
         "tag2"
       ],
       "mode": "advanced-chat",
-      "author_name": "Dify"
+      "author_name": "Bots"
     }
     ```
     </CodeGroup>

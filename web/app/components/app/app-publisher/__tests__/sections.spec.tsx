@@ -210,8 +210,6 @@ describe('app-publisher sections', () => {
   })
 
   it('should render workflow actions, batch run links, and workflow tool configuration', () => {
-    const handleOpenInExplore = vi.fn()
-    const handleEmbed = vi.fn()
     const handleOpenRunConfig = vi.fn()
 
     const { rerender } = render(
@@ -228,14 +226,10 @@ describe('app-publisher sections', () => {
         appURL="https://example.com/app"
         disabledFunctionButton={false}
         disabledFunctionTooltip="disabled"
-        handleEmbed={handleEmbed}
-        handleOpenInExplore={handleOpenInExplore}
         handleOpenRunConfig={handleOpenRunConfig}
-        handlePublish={vi.fn()}
         hasHumanInputNode={false}
         hasTriggerNode={false}
         missingStartNode={false}
-        published={false}
         publishedAt={Date.now()}
         showBatchRunConfig
         showRunConfig
@@ -254,8 +248,7 @@ describe('app-publisher sections', () => {
     expect(handleOpenRunConfig).toHaveBeenCalledWith('https://example.com/app')
     fireEvent.click(screen.getAllByRole('button', { name: 'operation.config' })[1]!)
     expect(handleOpenRunConfig).toHaveBeenCalledWith('https://example.com/app?mode=batch')
-    fireEvent.click(screen.getByText('common.openInExplore'))
-    expect(handleOpenInExplore).toHaveBeenCalled()
+    expect(screen.queryByText('common.openInExplore')).not.toBeInTheDocument()
     expect(screen.getByText('workflow-tool-configure')).toBeInTheDocument()
     expect(screen.getByText('workflow-disabled')).toBeInTheDocument()
 
@@ -269,14 +262,10 @@ describe('app-publisher sections', () => {
         appURL="https://example.com/app?foo=bar"
         disabledFunctionButton
         disabledFunctionTooltip="disabled"
-        handleEmbed={handleEmbed}
-        handleOpenInExplore={handleOpenInExplore}
         handleOpenRunConfig={handleOpenRunConfig}
-        handlePublish={vi.fn()}
         hasHumanInputNode={false}
         hasTriggerNode={false}
         missingStartNode
-        published={false}
         publishedAt={Date.now()}
         toolPublished={false}
         workflowToolAvailable
@@ -287,8 +276,7 @@ describe('app-publisher sections', () => {
       />,
     )
 
-    fireEvent.click(screen.getByText('common.embedIntoSite'))
-    expect(handleEmbed).toHaveBeenCalled()
+    expect(screen.queryByText('common.embedIntoSite')).not.toBeInTheDocument()
     expect(screen.getByText('common.accessAPIReference')).toBeDisabled()
 
     rerender(
@@ -296,14 +284,10 @@ describe('app-publisher sections', () => {
         appDetail={{ id: 'trigger-app', mode: AppModeEnum.WORKFLOW }}
         appURL="https://example.com/app"
         disabledFunctionButton={false}
-        handleEmbed={handleEmbed}
-        handleOpenInExplore={handleOpenInExplore}
         handleOpenRunConfig={handleOpenRunConfig}
-        handlePublish={vi.fn()}
         hasHumanInputNode={false}
         hasTriggerNode
         missingStartNode={false}
-        published={false}
         publishedAt={undefined}
         toolPublished={false}
         workflowToolAvailable

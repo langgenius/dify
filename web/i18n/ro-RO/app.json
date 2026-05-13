@@ -236,7 +236,7 @@
   "switchTipStart": "O nouă copie a aplicației va fi creată pentru tine, iar noua copie va comuta la Orchestrare Flux de Lucru. Noua copie ",
   "theme.switchDark": "Comută la tema închisă",
   "theme.switchLight": "Comută la tema deschisă",
-  "tracing.aliyun.description": "Platforma de observabilitate SaaS oferită de Alibaba Cloud permite monitorizarea, urmărirea și evaluarea aplicațiilor Dify din cutie.",
+  "tracing.aliyun.description": "Platforma de observabilitate SaaS oferită de Alibaba Cloud permite monitorizarea, urmărirea și evaluarea aplicațiilor Bots din cutie.",
   "tracing.aliyun.title": "Monitorizarea Cloud",
   "tracing.arize.description": "Observabilitate LLM de nivel enterprise, evaluare online și offline, monitorizare și experimentare—alimentată de OpenTelemetry. Proiectată special pentru aplicații bazate pe LLM și agenți.",
   "tracing.arize.title": "Arize",

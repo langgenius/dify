@@ -29,7 +29,7 @@ const createBlock = (type: BlockEnum, title: string): NodeDefault => ({
     title,
     sort: 0,
     classification: BlockClassificationEnum.Default,
-    author: 'Dify',
+    author: 'Bots',
     description: `${title} description`,
   },
   defaultValue: {},
@@ -39,7 +39,7 @@ const createBlock = (type: BlockEnum, title: string): NodeDefault => ({
 const dataSource: ToolWithProvider = {
   id: 'datasource-1',
   name: 'datasource',
-  author: 'Dify',
+  author: 'Bots',
   description: { en_US: 'Data source', zh_Hans: '数据源' },
   icon: 'icon',
   label: { en_US: 'Data Source', zh_Hans: 'Data Source' },

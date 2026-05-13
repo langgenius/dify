@@ -236,7 +236,7 @@
   "switchTipStart": "A new app copy will be created for you, and the new copy will switch to Workflow Orchestrate. The new copy will ",
   "theme.switchDark": "Switch to dark theme",
   "theme.switchLight": "Switch to light theme",
-  "tracing.aliyun.description": "The fully-managed and maintenance-free observability platform provided by Alibaba Cloud, enables out-of-the-box monitoring, tracing, and evaluation of Dify applications.",
+  "tracing.aliyun.description": "The fully-managed and maintenance-free observability platform provided by Alibaba Cloud, enables out-of-the-box monitoring, tracing, and evaluation of Bots applications.",
   "tracing.aliyun.title": "Cloud Monitor",
   "tracing.arize.description": "Enterprise-grade LLM observability, online & offline evaluation, monitoring, and experimentation—powered by OpenTelemetry. Purpose-built for LLM & agent-driven applications.",
   "tracing.arize.title": "Arize",

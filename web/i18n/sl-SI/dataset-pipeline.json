@@ -51,7 +51,7 @@
   "inputFieldPanel.uniqueInputs.title": "Edinstveni vhodi za vsak vhod",
   "inputFieldPanel.uniqueInputs.tooltip": "Enolični vhodi so dostopni samo izbranemu viru podatkov in njegovim nadaljnjim vozliščem. Uporabnikom ga ne bo treba izpolniti pri izbiri drugih virov podatkov. V prvem koraku (Vir podatkov) bodo prikazana samo vhodna polja, na katera se sklicujejo spremenljivke vira podatkov. Vsa druga polja bodo prikazana v drugem koraku (Obdelava dokumentov).",
   "knowledgeDescription": "Opis znanja",
-  "knowledgeDescriptionPlaceholder": "Opišite, kaj je v tej bazi znanja. Podroben opis omogoča umetni inteligenci natančnejši dostop do vsebine nabora podatkov. Če je prazen, bo Dify uporabil privzeto strategijo zadetkov. (Neobvezno)",
+  "knowledgeDescriptionPlaceholder": "Opišite, kaj je v tej bazi znanja. Podroben opis omogoča umetni inteligenci natančnejši dostop do vsebine nabora podatkov. Če je prazen, bo Bots uporabil privzeto strategijo zadetkov. (Neobvezno)",
   "knowledgeNameAndIcon": "Ime in ikona znanja",
   "knowledgeNameAndIconPlaceholder": "Prosimo, vnesite ime baze znanja",
   "knowledgePermissions": "Dovoljenja",

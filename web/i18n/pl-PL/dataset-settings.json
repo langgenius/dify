@@ -5,7 +5,7 @@
   "form.chunkStructure.title": "Struktura porcji",
   "form.desc": "Opis wiedzy",
   "form.descInfo": "Proszę napisać klarowny opis tekstowy, aby zarysować zawartość Wiedzy. Ten opis będzie wykorzystywany jako podstawa do dopasowywania podczas wyboru z wielu wiedz dla wnioskowania.",
-  "form.descPlaceholder": "Opisz, co znajduje się w tej Wiedzy. Szczegółowy opis pozwala sztucznej inteligencji na dostęp do treści Wiedzy w odpowiednim czasie. Jeśli jest pusty, Dify użyje domyślnej strategii trafień.",
+  "form.descPlaceholder": "Opisz, co znajduje się w tej Wiedzy. Szczegółowy opis pozwala sztucznej inteligencji na dostęp do treści Wiedzy w odpowiednim czasie. Jeśli jest pusty, Bots użyje domyślnej strategii trafień.",
   "form.descWrite": "Dowiedz się, jak napisać dobry opis Wiedzy.",
   "form.embeddingModel": "Model wbudowywania",
   "form.embeddingModelTip": "Aby zmienić model wbudowywania, przejdź do ",

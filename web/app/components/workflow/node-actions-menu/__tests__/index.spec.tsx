@@ -109,7 +109,7 @@ describe('NodeActionsDropdown', () => {
       isSingleton: false,
       isUndeletable: false,
       description: 'Node description',
-      author: 'Dify',
+      author: 'Bots',
       helpLinkUri: 'https://docs.example.com/node',
     } as ReturnType<typeof useNodeMetaData>)
     mockUseNodesInteractions.mockReturnValue({

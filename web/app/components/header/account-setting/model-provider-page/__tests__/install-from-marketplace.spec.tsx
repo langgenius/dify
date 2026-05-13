@@ -7,14 +7,6 @@ import { useMarketplaceAllPlugins } from '../hooks'
 import InstallFromMarketplace from '../install-from-marketplace'
 
 // Mock dependencies
-vi.mock('@/next/link', () => ({
-  default: ({ children, href }: { children: React.ReactNode, href: string }) => <a href={href}>{children}</a>,
-}))
-
-vi.mock('next-themes', () => ({
-  useTheme: () => ({ theme: 'light' }),
-}))
-
 vi.mock('@/app/components/base/divider', () => ({
   default: () => <div data-testid="divider" />,
 }))
@@ -109,8 +101,9 @@ describe('InstallFromMarketplace', () => {
     expect(screen.queryByText('Bundle 1')).not.toBeInTheDocument()
   })
 
-  it('should render discovery link', () => {
+  it('should not render marketplace discovery footer link', () => {
     render(<InstallFromMarketplace providers={mockProviders} searchText="" />)
-    expect(screen.getByText('plugin.marketplace.difyMarketplace')).toHaveAttribute('href')
+    expect(screen.queryByText('plugin.marketplace.difyMarketplace')).not.toBeInTheDocument()
+    expect(screen.queryByText(/common\.modelProvider\.discoverMore/)).not.toBeInTheDocument()
   })
 })

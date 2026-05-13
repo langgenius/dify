@@ -8,10 +8,10 @@ describe('QAItem', () => {
   })
 
   it('should render the question prefix', () => {
-    render(<QAItem type={QAItemType.Question} text="What is Dify?" />)
+    render(<QAItem type={QAItemType.Question} text="What is Bots?" />)
 
     expect(screen.getByText('Q')).toBeInTheDocument()
-    expect(screen.getByText('What is Dify?')).toBeInTheDocument()
+    expect(screen.getByText('What is Bots?')).toBeInTheDocument()
   })
 
   it('should render the answer prefix', () => {

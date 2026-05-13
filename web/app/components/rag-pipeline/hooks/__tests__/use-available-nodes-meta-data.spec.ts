@@ -3,10 +3,6 @@ import { describe, expect, it, vi } from 'vitest'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { useAvailableNodesMetaData } from '../use-available-nodes-meta-data'
 
-vi.mock('@/context/i18n', () => ({
-  useDocLink: () => (path?: string) => `https://docs.dify.ai${path || ''}`,
-}))
-
 vi.mock('@/app/components/workflow/constants/node', () => ({
   WORKFLOW_COMMON_NODES: [
     {
@@ -85,12 +81,11 @@ describe('useAvailableNodesMetaData', () => {
     })
   })
 
-  it('should set helpLinkUri on each node metaData', () => {
+  it('does not expose help documentation links on node metaData', () => {
     const { result } = renderHook(() => useAvailableNodesMetaData())
 
     result.current.nodes.forEach((node) => {
-      expect(node.metaData.helpLinkUri).toContain('https://docs.dify.ai')
-      expect(node.metaData.helpLinkUri).toContain('knowledge-pipeline')
+      expect(node.metaData.helpLinkUri).toBeUndefined()
     })
   })
 

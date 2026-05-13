@@ -3,11 +3,6 @@ import { fireEvent, render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import Form from '../Form'
 
-// Mock context for i18n doc link
-vi.mock('@/context/i18n', () => ({
-  useDocLink: () => (path: string) => `https://docs.example.com${path}`,
-}))
-
 describe('Form', () => {
   const defaultFormSchemas: FormSchema[] = [
     {
@@ -67,11 +62,9 @@ describe('Form', () => {
       expect(labels.length).toBe(3) // All 3 fields are required
     })
 
-    it('should render documentation link for endpoint field', () => {
+    it('should not render external knowledge API documentation link on endpoint row', () => {
       render(<Form {...defaultProps} />)
-      const docLink = screen.getByText('dataset.externalAPIPanelDocumentation')
-      expect(docLink).toBeInTheDocument()
-      expect(docLink.closest('a')).toHaveAttribute('href', expect.stringContaining('docs.example.com'))
+      expect(screen.queryByText('dataset.externalAPIPanelDocumentation')).not.toBeInTheDocument()
     })
 
     it('should render password type input for secret fields', () => {

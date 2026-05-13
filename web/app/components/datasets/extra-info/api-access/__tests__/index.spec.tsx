@@ -11,10 +11,6 @@ vi.mock('@/context/app-context', () => ({
   useSelector: vi.fn(() => true),
 }))
 
-vi.mock('@/hooks/use-api-access-url', () => ({
-  useDatasetApiAccessUrl: vi.fn(() => 'https://api.example.com/docs'),
-}))
-
 vi.mock('@/service/knowledge/use-dataset', () => ({
   useEnableDatasetServiceApi: vi.fn(() => ({ mutateAsync: vi.fn() })),
   useDisableDatasetServiceApi: vi.fn(() => ({ mutateAsync: vi.fn() })),

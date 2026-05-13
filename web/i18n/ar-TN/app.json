@@ -236,7 +236,7 @@
   "switchTipStart": "سيتم إنشاء نسخة تطبيق جديدة لك، وستنتقل النسخة الجديدة إلى Workflow Orchestrate. النسخة الجديدة ستكون ",
   "theme.switchDark": "التبديل إلى الوضع الداكن",
   "theme.switchLight": "التبديل إلى الوضع الفاتح",
-  "tracing.aliyun.description": "منصة المراقبة المدارة بالكامل والتي لا تحتاج إلى صيانة والمقدمة من Alibaba Cloud، تتيح المراقبة الجاهزة والتتبع وتقييم تطبيقات Dify.",
+  "tracing.aliyun.description": "منصة المراقبة المدارة بالكامل والتي لا تحتاج إلى صيانة والمقدمة من Alibaba Cloud، تتيح المراقبة الجاهزة والتتبع وتقييم تطبيقات Bots.",
   "tracing.aliyun.title": "Cloud Monitor",
   "tracing.arize.description": "مراقبة LLM على مستوى المؤسسة، والتقييم عبر الإنترنت وغير المتصل بالإنترنت، والمراقبة، والتجريب - بدعم من OpenTelemetry. مصمم خصيصًا لتطبيقات LLM والتطبيقات التي تعتمد على الوكيل.",
   "tracing.arize.title": "Arize",

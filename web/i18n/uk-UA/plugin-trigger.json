@@ -45,7 +45,7 @@
   "modal.oauth.authorization.authFailed": "Не вдалося отримати інформацію про авторизацію OAuth",
   "modal.oauth.authorization.authSuccess": "Авторизація успішна",
   "modal.oauth.authorization.authorizeButton": "Авторизуйтеся за допомогою {{provider}}",
-  "modal.oauth.authorization.description": "Дозвольте Dify отримати доступ до вашого акаунту",
+  "modal.oauth.authorization.description": "Дозвольте Bots отримати доступ до вашого акаунту",
   "modal.oauth.authorization.redirectUrl": "URL перенаправлення",
   "modal.oauth.authorization.redirectUrlHelp": "Використайте цей URL у налаштуваннях вашого OAuth-додатку",
   "modal.oauth.authorization.title": "Авторизація OAuth",

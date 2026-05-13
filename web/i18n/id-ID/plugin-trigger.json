@@ -45,7 +45,7 @@
   "modal.oauth.authorization.authFailed": "Gagal mendapatkan informasi otorisasi OAuth",
   "modal.oauth.authorization.authSuccess": "Otorisasi berhasil",
   "modal.oauth.authorization.authorizeButton": "Otorisasi dengan {{provider}}",
-  "modal.oauth.authorization.description": "Izinkan Dify untuk mengakses akun Anda",
+  "modal.oauth.authorization.description": "Izinkan Bots untuk mengakses akun Anda",
   "modal.oauth.authorization.redirectUrl": "URL Pengalihan",
   "modal.oauth.authorization.redirectUrlHelp": "Gunakan URL ini dalam konfigurasi aplikasi OAuth Anda",
   "modal.oauth.authorization.title": "Otorisasi OAuth",

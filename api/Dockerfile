@@ -1,5 +1,9 @@
-# base image
-FROM python:3.12-slim-bookworm AS base
+# Base image default is NOT docker.io so Docker Desktop "registry-mirrors" (e.g. daocloud r2)
+# do not rewrite pulls and hit EOF on blob fetch. Override when needed:
+#   docker compose build --build-arg PYTHON_IMAGE=python:3.12-slim-bookworm api
+# Compose: DIFY_API_PYTHON_IMAGE in docker/.env (see docker-compose.override.yaml).
+ARG PYTHON_IMAGE=public.ecr.aws/docker/library/python:3.12-slim-bookworm
+FROM ${PYTHON_IMAGE} AS base
 
 WORKDIR /app/api
 

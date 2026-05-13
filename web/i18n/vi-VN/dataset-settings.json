@@ -5,7 +5,7 @@
   "form.chunkStructure.title": "Cấu trúc Chunk",
   "form.desc": "Mô tả Kiến thức",
   "form.descInfo": "Vui lòng viết mô tả rõ ràng về nội dung của Kiến thức. Mô tả này sẽ được sử dụng làm cơ sở cho việc kết hợp khi lựa chọn từ nhiều Kiến thức trong quá trình suy luận.",
-  "form.descPlaceholder": "Mô tả những gì có trong Kiến thức này. Một mô tả chi tiết giúp AI truy cập nội dung của Kiến thức một cách hiệu quả. Nếu để trống, Dify sẽ sử dụng chiến lược truy xuất mặc định.",
+  "form.descPlaceholder": "Mô tả những gì có trong Kiến thức này. Một mô tả chi tiết giúp AI truy cập nội dung của Kiến thức một cách hiệu quả. Nếu để trống, Bots sẽ sử dụng chiến lược truy xuất mặc định.",
   "form.descWrite": "Tìm hiểu cách viết mô tả Kiến thức tốt.",
   "form.embeddingModel": "Mô hình nhúng",
   "form.embeddingModelTip": "Để thay đổi mô hình nhúng, vui lòng đi tới ",

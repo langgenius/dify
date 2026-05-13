@@ -24,7 +24,7 @@ def test_client_session_init(streams):
     read_stream, write_stream = streams
     session = ClientSession(read_stream, write_stream)
 
-    assert session._client_info.name == "Dify"
+    assert session._client_info.name == "Bots"
     assert session._sampling_callback == _default_sampling_callback
     assert session._list_roots_callback == _default_list_roots_callback
     assert session._logging_callback == _default_logging_callback

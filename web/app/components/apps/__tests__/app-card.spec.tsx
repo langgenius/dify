@@ -5,7 +5,6 @@ import * as React from 'react'
 import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
 import { AccessMode } from '@/models/access-control'
 import * as appsService from '@/service/apps'
-import * as exploreService from '@/service/explore'
 import * as workflowService from '@/service/workflow'
 import { AppModeEnum } from '@/types/app'
 import AppCard from '../app-card'
@@ -95,23 +94,6 @@ vi.mock('@/service/use-apps', () => ({
 
 vi.mock('@/service/workflow', () => ({
   fetchWorkflowDraft: vi.fn(() => Promise.resolve({ environment_variables: [] })),
-}))
-
-vi.mock('@/service/explore', () => ({
-  fetchInstalledAppList: vi.fn(() => Promise.resolve({ installed_apps: [{ id: 'installed-1' }] })),
-}))
-
-vi.mock('@/service/access-control', () => ({
-  useGetUserCanAccessApp: () => ({
-    data: { result: true },
-    isLoading: false,
-  }),
-}))
-
-// Mock hooks
-const mockOpenAsyncWindow = vi.fn()
-vi.mock('@/hooks/use-async-window-open', () => ({
-  useAsyncWindowOpen: () => mockOpenAsyncWindow,
 }))
 
 // Mock utils
@@ -339,7 +321,6 @@ describe('AppCard', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
-    mockOpenAsyncWindow.mockReset()
     mockWebappAuthEnabled = false
     mockDeleteMutationPending = false
   })
@@ -1024,13 +1005,14 @@ describe('AppCard', () => {
   })
 
   describe('Open in Explore', () => {
-    it('should show open in explore option when dropdown menu is opened', async () => {
+    it('does not show open in explore in the operations menu', async () => {
       render(<AppCard app={mockApp} />)
 
       fireEvent.click(screen.getByTestId('dropdown-menu-trigger'))
 
       await waitFor(() => {
-        expect(screen.getByText('app.openInExplore')).toBeInTheDocument()
+        expect(screen.getByText('app.editApp')).toBeInTheDocument()
+        expect(screen.queryByText('app.openInExplore')).not.toBeInTheDocument()
       })
     })
   })
@@ -1367,110 +1349,13 @@ describe('AppCard', () => {
         expect(screen.getByTestId('dropdown-menu-content')).toBeInTheDocument()
       })
 
+      expect(screen.queryByText('app.openInExplore')).not.toBeInTheDocument()
+
       fireEvent.click(screen.getByText('app.editApp'))
 
       await waitFor(() => {
         expect(screen.queryByTestId('dropdown-menu-content')).not.toBeInTheDocument()
         expect(screen.getByTestId('edit-app-modal')).toBeInTheDocument()
-      })
-    })
-
-    it('should click open in explore button', async () => {
-      render(<AppCard app={mockApp} />)
-
-      fireEvent.click(screen.getByTestId('dropdown-menu-trigger'))
-      await waitFor(() => {
-        const openInExploreBtn = screen.getByText('app.openInExplore')
-        fireEvent.click(openInExploreBtn)
-      })
-
-      // Verify openAsyncWindow was called with callback and options
-      await waitFor(() => {
-        expect(mockOpenAsyncWindow).toHaveBeenCalledWith(
-          expect.any(Function),
-          expect.objectContaining({ onError: expect.any(Function) }),
-        )
-      })
-    })
-
-    it('should handle open in explore via async window', async () => {
-      // Configure mockOpenAsyncWindow to actually call the callback
-      mockOpenAsyncWindow.mockImplementationOnce(async (callback: () => Promise<string>) => {
-        await callback()
-      })
-
-      render(<AppCard app={mockApp} />)
-
-      fireEvent.click(screen.getByTestId('dropdown-menu-trigger'))
-      await waitFor(() => {
-        const openInExploreBtn = screen.getByText('app.openInExplore')
-        fireEvent.click(openInExploreBtn)
-      })
-
-      await waitFor(() => {
-        expect(exploreService.fetchInstalledAppList).toHaveBeenCalledWith(mockApp.id)
-      })
-    })
-
-    it('should handle open in explore API failure', async () => {
-      (exploreService.fetchInstalledAppList as Mock).mockRejectedValueOnce(new Error('API Error'))
-
-      // Configure mockOpenAsyncWindow to call the callback and trigger error
-      mockOpenAsyncWindow.mockImplementationOnce(async (callback: () => Promise<string>, options?: { onError?: (err: unknown) => void }) => {
-        try {
-          await callback()
-        }
-        catch (err) {
-          options?.onError?.(err)
-        }
-      })
-
-      render(<AppCard app={mockApp} />)
-
-      fireEvent.click(screen.getByTestId('dropdown-menu-trigger'))
-      await waitFor(() => {
-        const openInExploreBtn = screen.getByText('app.openInExplore')
-        fireEvent.click(openInExploreBtn)
-      })
-
-      await waitFor(() => {
-        expect(exploreService.fetchInstalledAppList).toHaveBeenCalled()
-      })
-    })
-
-    it('should show string errors from open in explore onError callback', async () => {
-      mockOpenAsyncWindow.mockImplementationOnce(async (_callback: () => Promise<string>, options?: { onError?: (err: unknown) => void }) => {
-        options?.onError?.('Window failed')
-      })
-
-      render(<AppCard app={mockApp} />)
-
-      fireEvent.click(screen.getByTestId('dropdown-menu-trigger'))
-      await waitFor(() => {
-        fireEvent.click(screen.getByText('app.openInExplore'))
-      })
-
-      await waitFor(() => {
-        expect(toastMocks.record).toHaveBeenCalledWith({ type: 'error', message: 'Window failed' })
-      })
-    })
-
-    it('should handle non-Error rejections from open in explore', async () => {
-      const nonErrorRejection = { toString: () => 'Window rejected' }
-
-      mockOpenAsyncWindow.mockImplementationOnce(async () => {
-        return Promise.reject(nonErrorRejection)
-      })
-
-      render(<AppCard app={mockApp} />)
-
-      fireEvent.click(screen.getByTestId('dropdown-menu-trigger'))
-      await waitFor(() => {
-        fireEvent.click(screen.getByText('app.openInExplore'))
-      })
-
-      await waitFor(() => {
-        expect(toastMocks.record).toHaveBeenCalledWith({ type: 'error', message: 'Window rejected' })
       })
     })
   })
@@ -1489,55 +1374,6 @@ describe('AppCard', () => {
     })
   })
 
-  describe('Open in Explore - No App Found', () => {
-    it('should handle case when installed_apps is empty array', async () => {
-      (exploreService.fetchInstalledAppList as Mock).mockResolvedValueOnce({ installed_apps: [] })
-
-      // Configure mockOpenAsyncWindow to call the callback and trigger error
-      mockOpenAsyncWindow.mockImplementationOnce(async (callback: () => Promise<string>, options?: { onError?: (err: unknown) => void }) => {
-        try {
-          await callback()
-        }
-        catch (err) {
-          options?.onError?.(err)
-        }
-      })
-
-      render(<AppCard app={mockApp} />)
-
-      fireEvent.click(screen.getByTestId('dropdown-menu-trigger'))
-      await waitFor(() => {
-        const openInExploreBtn = screen.getByText('app.openInExplore')
-        fireEvent.click(openInExploreBtn)
-      })
-
-      await waitFor(() => {
-        expect(exploreService.fetchInstalledAppList).toHaveBeenCalled()
-      })
-    })
-
-    it('should handle case when API throws in callback', async () => {
-      (exploreService.fetchInstalledAppList as Mock).mockRejectedValueOnce(new Error('Network error'))
-
-      // Configure mockOpenAsyncWindow to call the callback without catching
-      mockOpenAsyncWindow.mockImplementationOnce(async (callback: () => Promise<string>) => {
-        return await callback()
-      })
-
-      render(<AppCard app={mockApp} />)
-
-      fireEvent.click(screen.getByTestId('dropdown-menu-trigger'))
-      await waitFor(() => {
-        const openInExploreBtn = screen.getByText('app.openInExplore')
-        fireEvent.click(openInExploreBtn)
-      })
-
-      await waitFor(() => {
-        expect(exploreService.fetchInstalledAppList).toHaveBeenCalled()
-      })
-    })
-  })
-
   describe('Draft Trigger Apps', () => {
     it('should not show open in explore option for apps with has_draft_trigger', async () => {
       const draftTriggerApp = createMockApp({ has_draft_trigger: true })
@@ -1546,7 +1382,6 @@ describe('AppCard', () => {
       fireEvent.click(screen.getByTestId('dropdown-menu-trigger'))
       await waitFor(() => {
         expect(screen.getByText('app.editApp')).toBeInTheDocument()
-        // openInExplore should not be shown for draft trigger apps
         expect(screen.queryByText('app.openInExplore')).not.toBeInTheDocument()
       })
     })
@@ -1627,12 +1462,13 @@ describe('AppCard', () => {
       })
     })
 
-    it('should show open in explore when userCanAccessApp is true', async () => {
+    it('should not show open in explore when webapp_auth is enabled', async () => {
       render(<AppCard app={mockApp} />)
 
       fireEvent.click(screen.getByTestId('dropdown-menu-trigger'))
       await waitFor(() => {
-        expect(screen.getByText('app.openInExplore')).toBeInTheDocument()
+        expect(screen.getByText('app.accessControl')).toBeInTheDocument()
+        expect(screen.queryByText('app.openInExplore')).not.toBeInTheDocument()
       })
     })
 

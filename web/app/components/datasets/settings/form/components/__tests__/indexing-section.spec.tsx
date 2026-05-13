@@ -14,10 +14,6 @@ vi.mock('react-i18next', () => ({
   }),
 }))
 
-vi.mock('@/context/i18n', () => ({
-  useDocLink: () => (path: string) => `https://docs.dify.ai${path}`,
-}))
-
 vi.mock('@/app/components/base/divider', () => ({
   default: ({ className }: { className?: string }) => (
     <div data-testid="divider" className={className} />
@@ -301,11 +297,10 @@ describe('IndexingSection', () => {
       expect(screen.queryByTestId('chunk-structure')).not.toBeInTheDocument()
     })
 
-    it('should render the chunk structure learn more link and description', () => {
+    it('should render the chunk structure description without documentation link', () => {
       renderComponent()
 
-      const learnMoreLink = screen.getByRole('link', { name: 'form.chunkStructure.learnMore' })
-      expect(learnMoreLink).toHaveAttribute('href', expect.stringContaining('chunking-and-cleaning-text'))
+      expect(screen.queryByRole('link', { name: 'form.chunkStructure.learnMore' })).not.toBeInTheDocument()
       expect(screen.getByText('form.chunkStructure.description')).toBeInTheDocument()
     })
   })
@@ -419,11 +414,10 @@ describe('IndexingSection', () => {
   })
 
   describe('Retrieval Settings Section', () => {
-    it('should render the retrieval learn more link', () => {
+    it('should render the retrieval description without documentation link', () => {
       renderComponent()
 
-      const learnMoreLink = screen.getByRole('link', { name: 'form.retrievalSetting.learnMore' })
-      expect(learnMoreLink).toHaveAttribute('href', expect.stringContaining('setting-indexing-methods'))
+      expect(screen.queryByRole('link', { name: 'form.retrievalSetting.learnMore' })).not.toBeInTheDocument()
       expect(screen.getByText('form.retrievalSetting.description')).toBeInTheDocument()
     })
 

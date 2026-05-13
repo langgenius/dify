@@ -86,10 +86,10 @@ class WorkflowCommentService:
             return []
 
         app_name_value = session.scalar(select(App.name).where(App.id == app_id, App.tenant_id == tenant_id))
-        app_name = app_name_value if isinstance(app_name_value, str) and app_name_value else "Dify app"
+        app_name = app_name_value if isinstance(app_name_value, str) and app_name_value else "Bots app"
         commenter_name_value = session.scalar(select(Account.name).where(Account.id == mentioner_id))
         commenter_name = (
-            commenter_name_value if isinstance(commenter_name_value, str) and commenter_name_value else "Dify user"
+            commenter_name_value if isinstance(commenter_name_value, str) and commenter_name_value else "Bots user"
         )
         comment_excerpt = WorkflowCommentService._format_comment_excerpt(content)
         base_url = dify_config.CONSOLE_WEB_URL.rstrip("/")

@@ -229,7 +229,7 @@ describe('output-schema-utils', () => {
       })
     })
 
-    describe('Dify compact types (workflow-as-tool output_schema)', () => {
+    describe('Bots compact types (workflow-as-tool output_schema)', () => {
       it('should resolve array[string] to arrayString (issue #34428)', () => {
         const result = resolveVarType({ type: 'array[string]' })
         expect(result.type).toBe(VarType.arrayString)

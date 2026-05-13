@@ -13,7 +13,7 @@ let mockDefaultLocale = 'en-US'
 const pluginTranslations: Record<string, string> = {
   'marketplace.empower': 'Empower your AI development',
   'marketplace.discover': 'Discover',
-  'marketplace.difyMarketplace': 'Dify Marketplace',
+  'marketplace.difyMarketplace': 'Bots Marketplace',
   'marketplace.and': 'and',
   'category.models': 'Models',
   'category.tools': 'Tools',
@@ -135,11 +135,11 @@ describe('Description', () => {
       expect(screen.getByText('in')).toBeInTheDocument()
     })
 
-    it('should render Dify Marketplace text at the end for non-Chinese locales', () => {
+    it('should render Bots Marketplace text at the end for non-Chinese locales', () => {
       render(<Description />)
 
       const subheading = screen.getByRole('heading', { level: 2 })
-      expect(subheading.textContent).toContain('Dify Marketplace')
+      expect(subheading.textContent).toContain('Bots Marketplace')
     })
 
     it('should render category spans with styled underline effect', () => {
@@ -174,11 +174,11 @@ describe('Description', () => {
       expect(inElements.length).toBeGreaterThanOrEqual(1)
     })
 
-    it('should render Dify Marketplace text for zh-Hans locale', () => {
+    it('should render Bots Marketplace text for zh-Hans locale', () => {
       render(<Description />)
 
       const subheading = screen.getByRole('heading', { level: 2 })
-      expect(subheading.textContent).toContain('Dify Marketplace')
+      expect(subheading.textContent).toContain('Bots Marketplace')
     })
 
     it('should render discover text for zh-Hans locale', () => {
@@ -202,7 +202,7 @@ describe('Description', () => {
     it('should render both zh-Hans specific elements and shared elements', () => {
       render(<Description />)
 
-      // zh-Hans has specific element order: "in" -> Dify Marketplace -> Discover
+      // zh-Hans has specific element order: "in" -> Bots Marketplace -> Discover
       // then the same category list with "and" -> Bundles
       const subheading = screen.getByRole('heading', { level: 2 })
       expect(subheading.textContent).toContain('and')
@@ -224,9 +224,9 @@ describe('Description', () => {
       mockDefaultLocale = 'ja-JP'
       render(<Description />)
 
-      // Should render in non-Chinese format (discover first, then "in Dify Marketplace" at end)
+      // Should render in non-Chinese format (discover first, then "in Bots Marketplace" at end)
       const subheading = screen.getByRole('heading', { level: 2 })
-      expect(subheading.textContent).toContain('Dify Marketplace')
+      expect(subheading.textContent).toContain('Bots Marketplace')
     })
 
     it('should handle ko-KR locale as non-Chinese', () => {
@@ -283,24 +283,24 @@ describe('Description', () => {
       mockDefaultLocale = 'en-US'
       render(<Description />)
 
-      // Non-Chinese has "in" and "Dify Marketplace" at the end
+      // Non-Chinese has "in" and "Bots Marketplace" at the end
       const subheading = screen.getByRole('heading', { level: 2 })
-      expect(subheading.textContent).toContain('Dify Marketplace')
+      expect(subheading.textContent).toContain('Bots Marketplace')
     })
 
     it('should not render zh-Hans intro content for non-Chinese locales', () => {
       mockDefaultLocale = 'en-US'
       render(<Description />)
 
-      // For en-US, the order should be Discover ... in Dify Marketplace
+      // For en-US, the order should be Discover ... in Bots Marketplace
       // The "in" text should only appear once at the end
       const subheading = screen.getByRole('heading', { level: 2 })
       const content = subheading.textContent || ''
 
-      // "in" should appear after "Bundles" and before "Dify Marketplace"
+      // "in" should appear after "Bundles" and before "Bots Marketplace"
       const bundlesIndex = content.indexOf('Bundles')
       const inIndex = content.indexOf('in')
-      const marketplaceIndex = content.indexOf('Dify Marketplace')
+      const marketplaceIndex = content.indexOf('Bots Marketplace')
 
       expect(bundlesIndex).toBeLessThan(inIndex)
       expect(inIndex).toBeLessThan(marketplaceIndex)
@@ -313,9 +313,9 @@ describe('Description', () => {
       const subheading = screen.getByRole('heading', { level: 2 })
       const content = subheading.textContent || ''
 
-      // zh-Hans order: in -> Dify Marketplace -> Discover -> categories
+      // zh-Hans order: in -> Bots Marketplace -> Discover -> categories
       const inIndex = content.indexOf('in')
-      const marketplaceIndex = content.indexOf('Dify Marketplace')
+      const marketplaceIndex = content.indexOf('Bots Marketplace')
       const discoverIndex = content.indexOf('Discover')
 
       expect(inIndex).toBeLessThan(marketplaceIndex)
@@ -406,11 +406,11 @@ describe('Description', () => {
       const subheading = screen.getByRole('heading', { level: 2 })
       const content = subheading.textContent || ''
 
-      // Check that "Dify Marketplace" appears at the end (non-Chinese format)
+      // Check that "Bots Marketplace" appears at the end (non-Chinese format)
       const discoverIndex = content.indexOf('Discover')
-      const marketplaceIndex = content.indexOf('Dify Marketplace')
+      const marketplaceIndex = content.indexOf('Bots Marketplace')
 
-      // For non-Chinese locales, Discover should come before Dify Marketplace
+      // For non-Chinese locales, Discover should come before Bots Marketplace
       expect(discoverIndex).toBeLessThan(marketplaceIndex)
     })
   })
@@ -460,7 +460,7 @@ describe('Description', () => {
         'and',
         'Bundles',
         'in',
-        'Dify Marketplace',
+        'Bots Marketplace',
       ]
 
       let lastIndex = -1
@@ -478,9 +478,9 @@ describe('Description', () => {
       const subheading = screen.getByRole('heading', { level: 2 })
       const content = subheading.textContent || ''
 
-      // zh-Hans order: in -> Dify Marketplace -> Discover -> categories -> and -> Bundles
+      // zh-Hans order: in -> Bots Marketplace -> Discover -> categories -> and -> Bundles
       const inIndex = content.indexOf('in')
-      const marketplaceIndex = content.indexOf('Dify Marketplace')
+      const marketplaceIndex = content.indexOf('Bots Marketplace')
       const discoverIndex = content.indexOf('Discover')
       const modelsIndex = content.indexOf('Models')
 
@@ -618,15 +618,15 @@ describe('Description Integration', () => {
     expect(zhContent).toContain('Models')
 
     // But order should differ
-    const enMarketplaceIndex = enContent.indexOf('Dify Marketplace')
+    const enMarketplaceIndex = enContent.indexOf('Bots Marketplace')
     const enDiscoverIndex = enContent.indexOf('Discover')
-    const zhMarketplaceIndex = zhContent.indexOf('Dify Marketplace')
+    const zhMarketplaceIndex = zhContent.indexOf('Bots Marketplace')
     const zhDiscoverIndex = zhContent.indexOf('Discover')
 
-    // en-US: Discover comes before Dify Marketplace
+    // en-US: Discover comes before Bots Marketplace
     expect(enDiscoverIndex).toBeLessThan(enMarketplaceIndex)
 
-    // zh-Hans: Dify Marketplace comes before Discover
+    // zh-Hans: Bots Marketplace comes before Discover
     expect(zhMarketplaceIndex).toBeLessThan(zhDiscoverIndex)
   })
 

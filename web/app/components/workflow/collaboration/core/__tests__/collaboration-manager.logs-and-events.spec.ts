@@ -134,7 +134,7 @@ describe('CollaborationManager logs and event helpers', () => {
         desc: '',
         text: 'note',
         theme: 'yellow',
-        author: 'Dify',
+        author: 'Bots',
         showAuthor: true,
       },
     }

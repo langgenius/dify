@@ -40,10 +40,6 @@ vi.mock('@/app/components/workflow/nodes/_base/components/variable/var-reference
   }) => <button type="button" onClick={() => onChange(['node-1', 'files'])}>pick-file-var</button>,
 }))
 
-vi.mock('@/app/components/workflow/nodes/_base/hooks/use-node-help-link', () => ({
-  useNodeHelpLink: () => 'https://docs.example.com/document-extractor',
-}))
-
 vi.mock('@/service/use-common', () => ({
   useFileSupportTypes: () => ({
     data: {
@@ -117,10 +113,7 @@ describe('document-extractor/panel', () => {
 
     expect(handleVarChanges).toHaveBeenCalledWith(['node-1', 'files'])
     expect(screen.getByText('workflow.nodes.docExtractor.supportFileTypes:{"types":"pdf, markdown, docx"}'))!.toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'workflow.nodes.docExtractor.learnMore' }))!.toHaveAttribute(
-      'href',
-      'https://docs.example.com/document-extractor',
-    )
+    expect(screen.queryByRole('link', { name: 'workflow.nodes.docExtractor.learnMore' })).not.toBeInTheDocument()
     expect(screen.getByText('text:string'))!.toBeInTheDocument()
   })
 

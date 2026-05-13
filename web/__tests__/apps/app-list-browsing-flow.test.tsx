@@ -5,7 +5,7 @@ import type { ReactElement, ReactNode } from 'react'
  * Tests the end-to-end user flow of browsing, filtering, searching,
  * and tab switching in the apps list page.
  *
- * Covers: List, Empty, Footer, AppCardSkeleton, useAppsQueryState, NewAppCard
+ * Covers: List, Empty, AppCardSkeleton, useAppsQueryState, NewAppCard
  */
 import type { AppListResponse } from '@/models/app'
 import type { App } from '@/types/app'
@@ -295,46 +295,6 @@ describe('App List Browsing Flow', () => {
       renderList()
 
       expect(screen.queryByText('app.createApp')).not.toBeInTheDocument()
-    })
-  })
-
-  // -- Footer visibility --
-  describe('Footer Visibility', () => {
-    it('should show footer when branding is disabled', () => {
-      mockSystemFeatures = { ...mockSystemFeatures, branding: { enabled: false } }
-      mockPages = [createPage([createMockApp()])]
-
-      renderList()
-
-      expect(screen.getByText('app.join')).toBeInTheDocument()
-      expect(screen.getByText('app.communityIntro')).toBeInTheDocument()
-    })
-
-    it('should hide footer when branding is enabled', () => {
-      mockSystemFeatures = { ...mockSystemFeatures, branding: { enabled: true } }
-      mockPages = [createPage([createMockApp()])]
-
-      renderList()
-
-      expect(screen.queryByText('app.join')).not.toBeInTheDocument()
-    })
-  })
-
-  // -- DSL drag-drop hint --
-  describe('DSL Drag-Drop Hint', () => {
-    it('should show drag-drop hint for workspace editors', () => {
-      mockPages = [createPage([createMockApp()])]
-      renderList()
-
-      expect(screen.getByText('app.newApp.dropDSLToCreateApp')).toBeInTheDocument()
-    })
-
-    it('should hide drag-drop hint for non-editors', () => {
-      mockIsCurrentWorkspaceEditor = false
-      mockPages = [createPage([createMockApp()])]
-      renderList()
-
-      expect(screen.queryByText('app.newApp.dropDSLToCreateApp')).not.toBeInTheDocument()
     })
   })
 

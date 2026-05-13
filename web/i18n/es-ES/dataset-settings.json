@@ -5,7 +5,7 @@
   "form.chunkStructure.title": "Estructura de fragmentos",
   "form.desc": "Descripción del conjunto de datos",
   "form.descInfo": "Por favor escribe una descripción textual clara para delinear el contenido del conjunto de datos. Esta descripción se utilizará como base para la coincidencia al seleccionar entre múltiples conjuntos de datos para la inferencia.",
-  "form.descPlaceholder": "Describe lo que hay en este conjunto de datos. Una descripción detallada permite que la IA acceda al contenido del conjunto de datos de manera oportuna. Si está vacío, Dify utilizará la estrategia de coincidencia predeterminada.",
+  "form.descPlaceholder": "Describe lo que hay en este conjunto de datos. Una descripción detallada permite que la IA acceda al contenido del conjunto de datos de manera oportuna. Si está vacío, Bots utilizará la estrategia de coincidencia predeterminada.",
   "form.descWrite": "Aprende cómo escribir una buena descripción del conjunto de datos.",
   "form.embeddingModel": "Modelo de incrustación",
   "form.embeddingModelTip": "Cambia el modelo de incrustación, por favor ve a ",

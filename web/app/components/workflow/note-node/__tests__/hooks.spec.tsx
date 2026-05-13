@@ -1,5 +1,4 @@
 import { act, renderHook } from '@testing-library/react'
-import { NOTE_SHOW_AUTHOR_STORAGE_KEY } from '../constants'
 import { useNote } from '../hooks'
 
 const mockHandleNodeDataUpdateWithSyncDraft = vi.hoisted(() => vi.fn())
@@ -41,7 +40,6 @@ describe('useNote', () => {
     })
     expect(mockSaveStateToHistory).toHaveBeenNthCalledWith(1, 'note-change', { nodeId: 'note-1' })
     expect(mockSaveStateToHistory).toHaveBeenNthCalledWith(2, 'note-change', { nodeId: 'note-1' })
-    expect(localStorage.getItem(NOTE_SHOW_AUTHOR_STORAGE_KEY)).toBe('true')
   })
 
   it('serializes non-empty editor state and clears empty editor state', () => {

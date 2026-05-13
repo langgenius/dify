@@ -91,25 +91,11 @@ export default function Form({
       {!systemFeatures.branding.enabled && (
         <>
           <div className="mt-3 block w-full system-xs-regular text-text-tertiary">
-            {t('tosDesc', { ns: 'login' })}
-            &nbsp;
-            <Link
-              className="system-xs-medium text-text-secondary hover:underline"
-              target="_blank"
-              rel="noopener noreferrer"
-              href="https://dify.ai/terms"
-            >
-              {t('tos', { ns: 'login' })}
-            </Link>
-            &nbsp;&&nbsp;
-            <Link
-              className="system-xs-medium text-text-secondary hover:underline"
-              target="_blank"
-              rel="noopener noreferrer"
-              href="https://dify.ai/privacy"
-            >
-              {t('pp', { ns: 'login' })}
-            </Link>
+            <span>{t('tosDesc', { ns: 'login' })}</span>
+            {' '}
+            <span className="system-xs-medium text-text-secondary">{t('tos', { ns: 'login' })}</span>
+            {' & '}
+            <span className="system-xs-medium text-text-secondary">{t('pp', { ns: 'login' })}</span>
           </div>
         </>
       )}

@@ -58,10 +58,6 @@ vi.mock('@/context/modal-context', () => ({
   }),
 }))
 
-vi.mock('@/context/i18n', () => ({
-  useDocLink: () => (path: string) => `https://docs.example.com${path}`,
-}))
-
 vi.mock('@/service/use-common', () => ({
   useLogout: () => ({
     mutateAsync: mockLogout,
@@ -107,36 +103,21 @@ const renderAccountDropdown = () => {
 describe('Header Account Dropdown Flow', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(JSON.stringify({
-      repo: { stars: 123456 },
-    }), {
-      status: 200,
-      headers: { 'Content-Type': 'application/json' },
-    }))
     localStorage.clear()
   })
 
-  it('opens account actions, fetches github stars, and opens the settings and about flows', async () => {
+  it('opens account actions and opens the settings flow', () => {
     renderAccountDropdown()
 
     fireEvent.click(screen.getByRole('button', { name: 'common.account.account' }))
 
     expect(screen.getByText('Ada Lovelace')).toBeInTheDocument()
     expect(screen.getByText('ada@example.com')).toBeInTheDocument()
-    expect(await screen.findByText('123,456')).toBeInTheDocument()
 
     fireEvent.click(screen.getByText('common.userProfile.settings'))
 
     expect(mockSetShowAccountSettingModal).toHaveBeenCalledWith({
       payload: ACCOUNT_SETTING_TAB.MEMBERS,
-    })
-
-    fireEvent.click(screen.getByRole('button', { name: 'common.account.account' }))
-    fireEvent.click(screen.getByText('common.userProfile.about'))
-
-    await waitFor(() => {
-      expect(screen.getByText(/Version/)).toBeInTheDocument()
-      expect(screen.getByText(/1\.0\.0/)).toBeInTheDocument()
     })
   })
 

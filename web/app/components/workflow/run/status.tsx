@@ -5,7 +5,6 @@ import { useMemo } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import Indicator from '@/app/components/header/indicator'
 import StatusContainer from '@/app/components/workflow/run/status-container'
-import { useDocLink } from '@/context/i18n'
 import { useWorkflowPausedDetails } from '@/service/use-log'
 
 type ResultProps = {
@@ -30,7 +29,6 @@ const StatusPanel: FC<ResultProps> = ({
   onOpenTracingTab,
 }) => {
   const { t } = useTranslation()
-  const docLink = useDocLink()
   const { data: pausedDetails } = useWorkflowPausedDetails({
     workflowRunId: workflowRunId || '',
     enabled: status === 'paused',
@@ -209,14 +207,6 @@ const StatusPanel: FC<ResultProps> = ({
             <div className="my-2 h-[0.5px] bg-divider-deep" />
             <div className="system-xs-medium text-text-warning">
               {error}
-              <a
-                href={docLink('/use-dify/debug/error-type')}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-text-accent"
-              >
-                {t('common.learnMore', { ns: 'workflow' })}
-              </a>
             </div>
           </>
         )

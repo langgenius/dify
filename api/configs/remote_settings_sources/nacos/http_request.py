@@ -37,7 +37,7 @@ class NacosHttpClient:
             return f"Request to Nacos failed: {e}"
 
     def _inject_auth_info(self, headers: dict[str, str], params: dict[str, str], module: str = "config") -> None:
-        headers.update({"User-Agent": "Nacos-Http-Client-In-Dify:v0.0.1"})
+        headers.update({"User-Agent": "Nacos-Http-Client-In-Bots:v0.0.1"})
 
         if module == "login":
             return

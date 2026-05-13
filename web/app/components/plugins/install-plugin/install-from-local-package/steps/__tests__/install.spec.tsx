@@ -462,9 +462,9 @@ describe('Install', () => {
   })
 
   // ================================
-  // Dify Version Compatibility Tests
+  // Bots Version Compatibility Tests
   // ================================
-  describe('Dify Version Compatibility', () => {
+  describe('Bots Version Compatibility', () => {
     it('should not show warning when dify version is compatible', () => {
       mockLangGeniusVersionInfo.current_version = '1.0.0'
       const payload = createMockManifest({ meta: { version: '1.0.0', minimum_dify_version: '0.8.0' } })

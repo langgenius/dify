@@ -14,7 +14,7 @@
   "plans.community.features": [
     "Wszystkie podstawowe funkcje udostępnione w publicznym repozytorium",
     "Pojedyncza przestrzeń robocza",
-    "Zgodne z licencją Dify Open Source"
+    "Zgodne z licencją Bots Open Source"
   ],
   "plans.community.for": "Dla użytkowników indywidualnych, małych zespołów lub projektów niekomercyjnych",
   "plans.community.includesTitle": "Darmowe funkcje:",
@@ -29,9 +29,9 @@
     "Ekskluzywne funkcje dla przedsiębiorstw",
     "Wiele przestrzeni roboczych i zarządzanie przedsiębiorstwem",
     "SSO",
-    "Negocjowane umowy SLA przez partnerów Dify",
+    "Negocjowane umowy SLA przez partnerów Bots",
     "Zaawansowane zabezpieczenia i kontrola",
-    "Aktualizacje i konserwacja przez Dify oficjalnie",
+    "Aktualizacje i konserwacja przez Bots oficjalnie",
     "Profesjonalne wsparcie techniczne"
   ],
   "plans.enterprise.for": "Dla dużych zespołów",
@@ -67,7 +67,7 @@
   "plansCommon.annotationQuota": "Przydział adnotacji",
   "plansCommon.annualBilling": "Roczne rozliczenie, oszczędź {{percent}}%",
   "plansCommon.apiRateLimit": "Limit liczby wywołań API",
-  "plansCommon.apiRateLimitTooltip": "Limit aktywności API dotyczy wszystkich żądań składanych za pośrednictwem API Dify, w tym generowania tekstu, rozmów czatowych, wykonywania przepływów pracy i przetwarzania dokumentów.",
+  "plansCommon.apiRateLimitTooltip": "Limit aktywności API dotyczy wszystkich żądań składanych za pośrednictwem API Bots, w tym generowania tekstu, rozmów czatowych, wykonywania przepływów pracy i przetwarzania dokumentów.",
   "plansCommon.apiRateLimitUnit": "{{count,number}}",
   "plansCommon.buildApps": "{{count,number}} aplikacji",
   "plansCommon.cloud": "Usługa chmurowa",
@@ -106,7 +106,7 @@
   "plansCommon.priority.priority": "Priorytetowy",
   "plansCommon.priority.standard": "Standardowy",
   "plansCommon.priority.top-priority": "Najwyższy priorytet",
-  "plansCommon.ragAPIRequestTooltip": "Odnosi się do liczby wywołań API wykorzystujących tylko zdolności przetwarzania bazy wiedzy Dify.",
+  "plansCommon.ragAPIRequestTooltip": "Odnosi się do liczby wywołań API wykorzystujących tylko zdolności przetwarzania bazy wiedzy Bots.",
   "plansCommon.receiptInfo": "Tylko właściciel zespołu i administrator zespołu mogą subskrybować i przeglądać informacje o rozliczeniach",
   "plansCommon.save": "Oszczędź ",
   "plansCommon.self": "Samo-hostowane",

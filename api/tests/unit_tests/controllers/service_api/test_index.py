@@ -29,7 +29,7 @@ class TestIndexApi:
                 response = index_api.get()
 
         # Assert
-        assert response["welcome"] == "Dify OpenAPI"
+        assert response["welcome"] == "Bots OpenAPI"
         assert response["api_version"] == "v1"
         assert response["server_version"] == "1.0.0-test"
 

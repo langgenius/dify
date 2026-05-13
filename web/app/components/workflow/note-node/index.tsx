@@ -100,7 +100,7 @@ const NoteNode = ({
                   onCopy={() => handleNodesCopy(id)}
                   onDuplicate={() => handleNodesDuplicate(id)}
                   onDelete={() => handleNodeDelete(id)}
-                  showAuthor={data.showAuthor}
+                  showAuthor={Boolean(data.showAuthor)}
                   onShowAuthorChange={handleShowAuthorChange}
                 />
               </div>

@@ -5,7 +5,7 @@
   "form.chunkStructure.title": "Structura bucății",
   "form.desc": "Descrierea cunoștințelor",
   "form.descInfo": "Vă rugăm să scrieți o descriere textuală clară pentru a contura conținutul cunoștințelor. Această descriere va fi utilizată ca bază pentru potrivire atunci când se selectează din mai multe cunoștințe pentru inferență.",
-  "form.descPlaceholder": "Descrieți ce se află în aceste cunoștințe. O descriere detaliată permite AI să acceseze conținutul cunoștințelor într-un timp oportun. Dacă este gol, Dify va folosi strategia implicită.",
+  "form.descPlaceholder": "Descrieți ce se află în aceste cunoștințe. O descriere detaliată permite AI să acceseze conținutul cunoștințelor într-un timp oportun. Dacă este gol, Bots va folosi strategia implicită.",
   "form.descWrite": "Aflați cum să scrieți o descriere bună a cunoștințelor.",
   "form.embeddingModel": "Model de încorporare",
   "form.embeddingModelTip": "Schimbați modelul încorporat, vă rugăm să accesați ",

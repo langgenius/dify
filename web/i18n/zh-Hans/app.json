@@ -236,7 +236,7 @@
   "switchTipStart": "将为您创建一个使用工作流编排的新应用。新应用将",
   "theme.switchDark": "切换至深色主题",
   "theme.switchLight": "切换至浅色主题",
-  "tracing.aliyun.description": "阿里云提供的全托管免运维可观测平台，一键开启Dify应用的监控追踪和评估",
+  "tracing.aliyun.description": "阿里云提供的全托管免运维可观测平台，一键开启Bots应用的监控追踪和评估",
   "tracing.aliyun.title": "云监控",
   "tracing.arize.description": "企业级LLM可观测性、在线和离线评估、监控和实验平台，基于OpenTelemetry构建，专为LLM和代理驱动的应用程序设计。",
   "tracing.arize.title": "Arize",

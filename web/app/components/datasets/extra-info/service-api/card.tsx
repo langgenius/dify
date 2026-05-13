@@ -1,13 +1,11 @@
 import { Button } from '@langgenius/dify-ui/button'
 import { PopoverClose } from '@langgenius/dify-ui/popover'
-import { RiBookOpenLine, RiKey2Line } from '@remixicon/react'
+import { RiKey2Line } from '@remixicon/react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import CopyFeedback from '@/app/components/base/copy-feedback'
 import { ApiAggregate } from '@/app/components/base/icons/src/vender/knowledge'
 import Indicator from '@/app/components/header/indicator'
-import { useDatasetApiAccessUrl } from '@/hooks/use-api-access-url'
-import Link from '@/next/link'
 
 type CardProps = {
   apiBaseUrl: string
@@ -19,8 +17,6 @@ const Card = ({
   onOpenSecretKeyModal,
 }: CardProps) => {
   const { t } = useTranslation()
-
-  const apiReferenceUrl = useDatasetApiAccessUrl()
 
   return (
     <div className="flex w-[360px] flex-col rounded-xl border border-components-panel-border bg-components-panel-bg shadow-lg shadow-shadow-shadow-1">
@@ -81,22 +77,6 @@ const Card = ({
             </Button>
           )}
         />
-        <Link
-          href={apiReferenceUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Button
-            variant="ghost"
-            size="small"
-            className="gap-x-px text-text-tertiary"
-          >
-            <RiBookOpenLine className="size-3.5 shrink-0" />
-            <span className="px-[3px] system-xs-medium">
-              {t('serviceApi.card.apiReference', { ns: 'dataset' })}
-            </span>
-          </Button>
-        </Link>
       </div>
     </div>
   )

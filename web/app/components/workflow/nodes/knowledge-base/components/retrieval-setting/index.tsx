@@ -11,7 +11,6 @@ import {
 } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Field } from '@/app/components/workflow/nodes/_base/components/layout'
-import { useDocLink } from '@/context/i18n'
 import { useRetrievalSetting } from './hooks'
 import SearchMethodOption from './search-method-option'
 
@@ -51,7 +50,6 @@ const RetrievalSetting = ({
   showMultiModalTip,
 }: RetrievalSettingProps) => {
   const { t } = useTranslation()
-  const docLink = useDocLink()
   const {
     options,
     hybridSearchModeOptions,
@@ -63,8 +61,6 @@ const RetrievalSetting = ({
         title: t('form.retrievalSetting.title', { ns: 'datasetSettings' }),
         subTitle: (
           <div className="flex items-center body-xs-regular text-text-tertiary">
-            <a target="_blank" rel="noopener noreferrer" href={docLink('/use-dify/knowledge/create-knowledge/setting-indexing-methods')} className="text-text-accent">{t('form.retrievalSetting.learnMore', { ns: 'datasetSettings' })}</a>
-            &nbsp;
             {t('nodes.knowledgeBase.aboutRetrieval', { ns: 'workflow' })}
           </div>
         ),

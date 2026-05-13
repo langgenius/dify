@@ -24,11 +24,6 @@ vi.mock('@/next/link', () => ({
   ),
 }))
 
-// Mock API access URL hook
-vi.mock('@/hooks/use-api-access-url', () => ({
-  useDatasetApiAccessUrl: vi.fn(() => 'https://docs.dify.ai/api-reference/datasets'),
-}))
-
 // Mock SecretKeyModal to avoid complex modal rendering
 vi.mock('@/app/components/develop/secret-key/secret-key-modal', () => ({
   default: ({ isShow, onClose }: { isShow: boolean, onClose: () => void }) => (
@@ -181,9 +176,9 @@ describe('Card (service-api)', () => {
       expect(screen.getByText(/serviceApi\.card\.apiKey/i)).toBeInTheDocument()
     })
 
-    it('should render API Reference button', () => {
+    it('should not render API Reference link', () => {
       renderCard(<Card apiBaseUrl="https://api.example.com" onOpenSecretKeyModal={onOpenSecretKeyModal} />)
-      expect(screen.getByText(/serviceApi\.card\.apiReference/i)).toBeInTheDocument()
+      expect(screen.queryByText(/serviceApi\.card\.apiReference/i)).not.toBeInTheDocument()
     })
   })
 
@@ -200,12 +195,6 @@ describe('Card (service-api)', () => {
       expect(onOpenSecretKeyModal).toHaveBeenCalledTimes(1)
     })
 
-    it('should have correct href for API Reference link', () => {
-      renderCard(<Card apiBaseUrl="https://api.example.com" onOpenSecretKeyModal={onOpenSecretKeyModal} />)
-
-      const apiRefLink = screen.getByText(/serviceApi\.card\.apiReference/i).closest('a')
-      expect(apiRefLink).toHaveAttribute('href', 'https://docs.dify.ai/api-reference/datasets')
-    })
   })
 })
 

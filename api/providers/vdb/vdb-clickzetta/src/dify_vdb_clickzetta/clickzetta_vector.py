@@ -496,7 +496,7 @@ class ClickzettaVector(BaseVector):
             {Field.VECTOR} VECTOR(FLOAT, {dimension}) NOT NULL COMMENT
                 'High-dimensional embedding vector for semantic similarity search',
             PRIMARY KEY (id)
-        ) COMMENT 'Dify RAG knowledge base vector storage table for document embeddings and content'
+        ) COMMENT 'Bots RAG knowledge base vector storage table for document embeddings and content'
         """
 
         with self.get_connection_context() as connection:

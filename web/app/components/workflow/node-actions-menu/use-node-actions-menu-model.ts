@@ -25,7 +25,7 @@ export function useNodeActionsMenuModel({
   id,
   data,
   onClose,
-  showHelpLink = true,
+  showHelpLink: _showHelpLink = true,
 }: UseNodeActionsMenuModelParams) {
   const edges = useEdges()
   const {
@@ -93,7 +93,7 @@ export function useNodeActionsMenuModel({
     handleDelete,
     handleDuplicate,
     handleRun,
-    helpLinkUri: showHelpLink ? nodeMetaData.helpLinkUri : undefined,
+    helpLinkUri: undefined,
     id,
     isSingleton: nodeMetaData.isSingleton,
     isUndeletable: nodeMetaData.isUndeletable,

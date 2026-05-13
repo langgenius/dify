@@ -42,14 +42,14 @@ vi.mock('@/app/components/plugins/plugin-auth', () => ({
 describe('DataSourcePage Component', () => {
   const mockProviders: DataSourceAuth[] = [
     {
-      author: 'Dify',
+      author: 'Bots',
       provider: 'dify',
       plugin_id: 'plugin-1',
       plugin_unique_identifier: 'unique-1',
       icon: 'icon-1',
-      name: 'Dify Source',
-      label: { en_US: 'Dify Source', zh_Hans: 'zh_hans_dify_source' },
-      description: { en_US: 'Dify Description', zh_Hans: 'zh_hans_dify_description' },
+      name: 'Bots Source',
+      label: { en_US: 'Bots Source', zh_Hans: 'zh_hans_dify_source' },
+      description: { en_US: 'Bots Description', zh_Hans: 'zh_hans_dify_description' },
       credentials_list: [],
     },
     {
@@ -101,7 +101,7 @@ describe('DataSourcePage Component', () => {
       })
 
       // Assert
-      expect(screen.queryByText('Dify Source')).not.toBeInTheDocument()
+      expect(screen.queryByText('Bots Source')).not.toBeInTheDocument()
       expect(screen.queryByText('common.modelProvider.installDataSourceProvider')).not.toBeInTheDocument()
     })
   })
@@ -119,7 +119,7 @@ describe('DataSourcePage Component', () => {
       })
 
       // Assert
-      expect(screen.getByText('Dify Source')).toBeInTheDocument()
+      expect(screen.getByText('Bots Source')).toBeInTheDocument()
       expect(screen.getByText('Partner Source')).toBeInTheDocument()
     })
   })
@@ -138,7 +138,7 @@ describe('DataSourcePage Component', () => {
 
       // Assert
       expect(screen.getByText('common.modelProvider.installDataSourceProvider')).toBeInTheDocument()
-      expect(screen.getByText('common.modelProvider.discoverMore')).toBeInTheDocument()
+      expect(screen.queryByText('common.modelProvider.discoverMore')).not.toBeInTheDocument()
     })
 
     it('should pass an empty array to InstallFromMarketplace if data result is missing but marketplace is enabled', () => {
@@ -168,7 +168,7 @@ describe('DataSourcePage Component', () => {
       })
 
       // Assert
-      expect(screen.queryByText('Dify Source')).not.toBeInTheDocument()
+      expect(screen.queryByText('Bots Source')).not.toBeInTheDocument()
       expect(screen.getByText('common.modelProvider.installDataSourceProvider')).toBeInTheDocument()
     })
 

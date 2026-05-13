@@ -5,7 +5,7 @@
   "form.chunkStructure.title": "Chunk Structure",
   "form.desc": "Description",
   "form.descInfo": "Please write a clear textual description to outline the content of the Knowledge. This description will be used as a basis for matching when selecting from multiple Knowledge for inference.",
-  "form.descPlaceholder": "Describe what is in this data set. A detailed description allows AI to access the content of the data set in a timely manner. If empty, Dify will use the default hit strategy.",
+  "form.descPlaceholder": "Describe what is in this data set. A detailed description allows AI to access the content of the data set in a timely manner. If empty, Bots will use the default hit strategy.",
   "form.descWrite": "Learn how to write a good Knowledge description.",
   "form.embeddingModel": "Embedding Model",
   "form.embeddingModelTip": "Change the embedded model, please go to ",

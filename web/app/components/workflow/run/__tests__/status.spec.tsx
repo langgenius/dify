@@ -1,12 +1,6 @@
 import type { WorkflowPausedDetailsResponse } from '@/models/log'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { cloneElement, isValidElement } from 'react'
-import { createDocLinkMock, resolveDocLink } from '../../__tests__/i18n'
-import Status from '../status'
-
-const mockDocLink = createDocLinkMock()
-const mockUseWorkflowPausedDetails = vi.fn()
-
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({
     t: (key: string, options?: Record<string, unknown>) => {
@@ -55,11 +49,6 @@ vi.mock('react-i18next', () => ({
   },
 }))
 
-vi.mock('@/context/i18n', () => ({
-  useDocLink: () => mockDocLink,
-}))
-
-vi.mock('@/service/use-log', () => ({
   useWorkflowPausedDetails: (params: { workflowRunId: string, enabled?: boolean }) => mockUseWorkflowPausedDetails(params),
 }))
 
@@ -133,14 +122,12 @@ describe('Status', () => {
     expect(onOpenTracingTab).toHaveBeenCalledTimes(1)
   })
 
-  it('renders the exception learn-more link', () => {
+  it('renders exception status without documentation learn-more link', () => {
     render(<Status status="exception" error="Bad request" />)
 
-    const learnMoreLink = screen.getByRole('link', { name: 'workflow.common.learnMore' })
-
     expect(screen.getByText('EXCEPTION')).toBeInTheDocument()
-    expect(learnMoreLink).toHaveAttribute('href', resolveDocLink('/use-dify/debug/error-type'))
-    expect(mockDocLink).toHaveBeenCalledWith('/use-dify/debug/error-type')
+    expect(screen.getByText('Bad request')).toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: 'workflow.common.learnMore' })).not.toBeInTheDocument()
   })
 
   it('renders paused placeholders when pause details have not loaded yet', () => {

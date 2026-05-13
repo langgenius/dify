@@ -234,7 +234,7 @@ describe('processNodesWithoutDataSource', () => {
       expect(noteData.theme).toBe('blue')
       expect(noteData.width).toBe(240)
       expect(noteData.height).toBe(300)
-      expect(noteData.showAuthor).toBe(true)
+      expect(noteData.showAuthor).toBe(false)
     })
   })
 

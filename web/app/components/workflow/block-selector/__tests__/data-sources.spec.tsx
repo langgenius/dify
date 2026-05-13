@@ -37,7 +37,7 @@ type UseMarketplacePluginsReturn = ReturnType<typeof useMarketplacePlugins>
 const createToolProvider = (overrides: Partial<ToolWithProvider> = {}): ToolWithProvider => ({
   id: 'langgenius/file',
   name: 'file',
-  author: 'Dify',
+  author: 'Bots',
   description: { en_US: 'desc', zh_Hans: '描述' },
   icon: 'icon',
   label: { en_US: 'File Source', zh_Hans: '文件源' },
@@ -51,7 +51,7 @@ const createToolProvider = (overrides: Partial<ToolWithProvider> = {}): ToolWith
   tools: [
     {
       name: 'local-file',
-      author: 'Dify',
+      author: 'Bots',
       label: { en_US: 'Local File', zh_Hans: '本地文件' },
       description: { en_US: 'Load local files', zh_Hans: '加载本地文件' },
       parameters: [],
@@ -125,7 +125,7 @@ describe('DataSources', () => {
               label: { en_US: 'Searchable Source', zh_Hans: '可搜索源' },
               tools: [{
                 name: 'searchable-tool',
-                author: 'Dify',
+                author: 'Bots',
                 label: { en_US: 'Searchable Tool', zh_Hans: '可搜索工具' },
                 description: { en_US: 'desc', zh_Hans: '描述' },
                 parameters: [],

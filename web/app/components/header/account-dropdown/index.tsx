@@ -13,20 +13,14 @@ import ThemeSwitcher from '@/app/components/base/theme-switcher'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
 import { IS_CLOUD_EDITION } from '@/config'
 import { useAppContext } from '@/context/app-context'
-import { useDocLink } from '@/context/i18n'
 import { useModalContext } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
-import { env } from '@/env'
 import Link from '@/next/link'
 import { useRouter } from '@/next/navigation'
 import { systemFeaturesQueryOptions } from '@/service/system-features'
 import { useLogout } from '@/service/use-common'
-import AccountAbout from '../account-about'
-import GithubStar from '../github-star'
-import Indicator from '../indicator'
 import Compliance from './compliance'
 import { ExternalLinkIndicator, MenuItemContent } from './menu-item-content'
-import Support from './support'
 
 type AccountMenuRouteItemProps = {
   href: string
@@ -45,31 +39,6 @@ function AccountMenuRouteItem({
     <DropdownMenuLinkItem
       className="justify-between"
       render={<Link href={href} />}
-    >
-      <MenuItemContent iconClassName={iconClassName} label={label} trailing={trailing} />
-    </DropdownMenuLinkItem>
-  )
-}
-
-type AccountMenuExternalItemProps = {
-  href: string
-  iconClassName: string
-  label: ReactNode
-  trailing?: ReactNode
-}
-
-function AccountMenuExternalItem({
-  href,
-  iconClassName,
-  label,
-  trailing,
-}: AccountMenuExternalItemProps) {
-  return (
-    <DropdownMenuLinkItem
-      className="justify-between"
-      href={href}
-      rel="noopener noreferrer"
-      target="_blank"
     >
       <MenuItemContent iconClassName={iconClassName} label={label} trailing={trailing} />
     </DropdownMenuLinkItem>
@@ -109,13 +78,11 @@ function AccountMenuSection({ children }: AccountMenuSectionProps) {
 
 export default function AppSelector() {
   const router = useRouter()
-  const [aboutVisible, setAboutVisible] = useState(false)
   const [isAccountMenuOpen, setIsAccountMenuOpen] = useState(false)
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
 
   const { t } = useTranslation()
-  const docLink = useDocLink()
-  const { userProfile, langGeniusVersionInfo, isCurrentWorkspaceOwner } = useAppContext()
+  const { userProfile, isCurrentWorkspaceOwner } = useAppContext()
   const { isEducationAccount } = useProviderContext()
   const { setShowAccountSettingModal } = useModalContext()
 
@@ -176,55 +143,10 @@ export default function AppSelector() {
             />
           </DropdownMenuGroup>
           <DropdownMenuSeparator className="my-0! bg-divider-subtle" />
-          {!systemFeatures.branding.enabled && (
+          {!systemFeatures.branding.enabled && IS_CLOUD_EDITION && isCurrentWorkspaceOwner && (
             <>
               <AccountMenuSection>
-                <AccountMenuExternalItem
-                  href={docLink('/use-dify/getting-started/introduction')}
-                  iconClassName="i-ri-book-open-line"
-                  label={t('userProfile.helpCenter', { ns: 'common' })}
-                  trailing={<ExternalLinkIndicator />}
-                />
-                <Support closeAccountDropdown={() => setIsAccountMenuOpen(false)} />
-                {IS_CLOUD_EDITION && isCurrentWorkspaceOwner && <Compliance />}
-              </AccountMenuSection>
-              <DropdownMenuSeparator className="my-0! bg-divider-subtle" />
-              <AccountMenuSection>
-                <AccountMenuExternalItem
-                  href="https://roadmap.dify.ai"
-                  iconClassName="i-ri-map-2-line"
-                  label={t('userProfile.roadmap', { ns: 'common' })}
-                  trailing={<ExternalLinkIndicator />}
-                />
-                <AccountMenuExternalItem
-                  href="https://github.com/langgenius/dify"
-                  iconClassName="i-ri-github-line"
-                  label={t('userProfile.github', { ns: 'common' })}
-                  trailing={(
-                    <div className="flex items-center gap-0.5 rounded-[5px] border border-divider-deep bg-components-badge-bg-dimm px-[5px] py-[3px]">
-                      <span aria-hidden className="i-ri-star-line size-3 shrink-0 text-text-tertiary" />
-                      <GithubStar className="system-2xs-medium-uppercase text-text-tertiary" />
-                    </div>
-                  )}
-                />
-                {
-                  env.NEXT_PUBLIC_SITE_ABOUT !== 'hide' && (
-                    <AccountMenuActionItem
-                      iconClassName="i-ri-information-2-line"
-                      label={t('userProfile.about', { ns: 'common' })}
-                      onClick={() => {
-                        setAboutVisible(true)
-                        setIsAccountMenuOpen(false)
-                      }}
-                      trailing={(
-                        <div className="flex shrink-0 items-center">
-                          <div className="mr-2 system-xs-regular text-text-tertiary">{langGeniusVersionInfo.current_version}</div>
-                          <Indicator color={langGeniusVersionInfo.current_version === langGeniusVersionInfo.latest_version ? 'green' : 'orange'} />
-                        </div>
-                      )}
-                    />
-                  )
-                }
+                <Compliance />
               </AccountMenuSection>
               <DropdownMenuSeparator className="my-0! bg-divider-subtle" />
             </>
@@ -253,9 +175,6 @@ export default function AppSelector() {
           </AccountMenuSection>
         </DropdownMenuContent>
       </DropdownMenu>
-      {
-        aboutVisible && <AccountAbout onCancel={() => setAboutVisible(false)} langGeniusVersionInfo={langGeniusVersionInfo} />
-      }
     </div>
   )
 }

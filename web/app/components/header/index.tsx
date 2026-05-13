@@ -16,17 +16,9 @@ import AccountDropdown from './account-dropdown'
 import AppNav from './app-nav'
 import DatasetNav from './dataset-nav'
 import EnvNav from './env-nav'
-import ExploreNav from './explore-nav'
 import LicenseNav from './license-env'
 import { PlanBadge } from './plan-badge'
 import PluginsNav from './plugins-nav'
-import ToolsNav from './tools-nav'
-
-const navClassName = `
-  flex items-center relative px-3 h-8 rounded-xl
-  font-medium text-sm
-  cursor-pointer
-`
 
 const Header = () => {
   const { isCurrentWorkspaceEditor, isCurrentWorkspaceDatasetOperator } = useAppContext()
@@ -47,7 +39,7 @@ const Header = () => {
   const renderLogo = () => (
     <h1>
       <Link href="/apps" className="flex h-8 shrink-0 items-center justify-center overflow-hidden px-0.5 indent-[-9999px] whitespace-nowrap">
-        {isBrandingEnabled && systemFeatures.branding.application_title ? systemFeatures.branding.application_title : 'Dify'}
+        {isBrandingEnabled && systemFeatures.branding.application_title ? systemFeatures.branding.application_title : 'Bots'}
         {systemFeatures.branding.enabled && systemFeatures.branding.workspace_logo
           ? (
               <img
@@ -81,10 +73,8 @@ const Header = () => {
           </div>
         </div>
         <div className="my-1 flex items-center justify-center space-x-1">
-          {!isCurrentWorkspaceDatasetOperator && <ExploreNav className={navClassName} />}
           {!isCurrentWorkspaceDatasetOperator && <AppNav />}
           {(isCurrentWorkspaceEditor || isCurrentWorkspaceDatasetOperator) && <DatasetNav />}
-          {!isCurrentWorkspaceDatasetOperator && <ToolsNav className={navClassName} />}
         </div>
       </div>
     )
@@ -101,10 +91,8 @@ const Header = () => {
         {enableBilling ? <PlanBadge allowHover sandboxAsUpgrade plan={plan.type} onClick={handlePlanClick} /> : <LicenseNav />}
       </div>
       <div className="flex items-center space-x-2">
-        {!isCurrentWorkspaceDatasetOperator && <ExploreNav className={navClassName} />}
         {!isCurrentWorkspaceDatasetOperator && <AppNav />}
         {(isCurrentWorkspaceEditor || isCurrentWorkspaceDatasetOperator) && <DatasetNav />}
-        {!isCurrentWorkspaceDatasetOperator && <ToolsNav className={navClassName} />}
       </div>
       <div className="flex min-w-0 flex-1 items-center justify-end pr-3 pl-2 min-[1280px]:pl-3">
         <EnvNav />

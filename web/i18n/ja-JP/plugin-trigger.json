@@ -45,7 +45,7 @@
   "modal.oauth.authorization.authFailed": "認証に失敗しました",
   "modal.oauth.authorization.authSuccess": "認証が成功しました",
   "modal.oauth.authorization.authorizeButton": "{{provider}} で認証",
-  "modal.oauth.authorization.description": "Dify があなたのアカウントにアクセスすることを認証",
+  "modal.oauth.authorization.description": "Bots があなたのアカウントにアクセスすることを認証",
   "modal.oauth.authorization.redirectUrl": "リダイレクト URL",
   "modal.oauth.authorization.redirectUrlHelp": "OAuth アプリ設定でこの URL を使用",
   "modal.oauth.authorization.title": "OAuth 認証",

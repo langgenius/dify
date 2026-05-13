@@ -35,7 +35,7 @@ const createBlock = (type: BlockEnum, title: string): NodeDefault => ({
     sort: 0,
     type,
     title,
-    author: 'Dify',
+    author: 'Bots',
     description: `${title} description`,
   },
   defaultValue: {},

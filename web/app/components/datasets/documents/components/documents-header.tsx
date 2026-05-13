@@ -4,7 +4,7 @@ import type { BuiltInMetadataItem, MetadataItemWithValueLength } from '@/app/com
 import type { SortType } from '@/service/datasets'
 import { PlusIcon } from '@heroicons/react/24/solid'
 import { Button } from '@langgenius/dify-ui/button'
-import { RiDraftLine, RiExternalLinkLine } from '@remixicon/react'
+import { RiDraftLine } from '@remixicon/react'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import Chip from '@/app/components/base/chip'
@@ -14,7 +14,6 @@ import AutoDisabledDocument from '@/app/components/datasets/common/document-stat
 import IndexFailed from '@/app/components/datasets/common/document-status-with-action/index-failed'
 import StatusWithAction from '@/app/components/datasets/common/document-status-with-action/status-with-action'
 import DatasetMetadataDrawer from '@/app/components/datasets/metadata/metadata-dataset/dataset-metadata-drawer'
-import { useDocLink } from '@/context/i18n'
 import { DataSourceType } from '@/models/datasets'
 import { useIndexStatus } from '../status-item/hooks'
 
@@ -80,7 +79,6 @@ const DocumentsHeader: FC<DocumentsHeaderProps> = ({
   onAddDocument,
 }) => {
   const { t } = useTranslation()
-  const docLink = useDocLink()
   const DOC_INDEX_STATUS_MAP = useIndexStatus()
 
   const isDataSourceNotion = dataSourceType === DataSourceType.NOTION
@@ -119,17 +117,8 @@ const DocumentsHeader: FC<DocumentsHeaderProps> = ({
         <h1 className="text-base font-semibold text-text-primary">
           {t('list.title', { ns: 'datasetDocuments' })}
         </h1>
-        <div className="flex items-center space-x-0.5 text-sm font-normal text-text-tertiary">
-          <span>{t('list.desc', { ns: 'datasetDocuments' })}</span>
-          <a
-            className="flex items-center text-text-accent"
-            target="_blank"
-            rel="noopener noreferrer"
-            href={docLink('/use-dify/knowledge/integrate-knowledge-within-application')}
-          >
-            <span>{t('list.learnMore', { ns: 'datasetDocuments' })}</span>
-            <RiExternalLinkLine className="h-3 w-3" />
-          </a>
+        <div className="text-sm font-normal text-text-tertiary">
+          {t('list.desc', { ns: 'datasetDocuments' })}
         </div>
       </div>
 

@@ -6,8 +6,6 @@ import * as React from 'react'
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
-import { IS_CE_EDITION } from '@/config'
-import Link from '@/next/link'
 import { systemFeaturesQueryOptions } from '@/service/system-features'
 import { LicenseStatus } from '@/types/feature'
 import MailAndCodeAuth from './components/mail-and-code-auth'
@@ -172,38 +170,12 @@ const NormalForm = () => {
           {!systemFeatures.branding.enabled && (
             <>
               <div className="mt-2 block w-full system-xs-regular text-text-tertiary">
-                {t('tosDesc', { ns: 'login' })}
-              &nbsp;
-                <Link
-                  className="system-xs-medium text-text-secondary hover:underline"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  href="https://dify.ai/terms"
-                >
-                  {t('tos', { ns: 'login' })}
-                </Link>
-              &nbsp;&&nbsp;
-                <Link
-                  className="system-xs-medium text-text-secondary hover:underline"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  href="https://dify.ai/privacy"
-                >
-                  {t('pp', { ns: 'login' })}
-                </Link>
+                <span>{t('tosDesc', { ns: 'login' })}</span>
+                {' '}
+                <span className="system-xs-medium text-text-secondary">{t('tos', { ns: 'login' })}</span>
+                {' & '}
+                <span className="system-xs-medium text-text-secondary">{t('pp', { ns: 'login' })}</span>
               </div>
-              {IS_CE_EDITION && (
-                <div className="w-hull mt-2 block system-xs-regular text-text-tertiary">
-                  {t('goToInit', { ns: 'login' })}
-              &nbsp;
-                  <Link
-                    className="system-xs-medium text-text-secondary hover:underline"
-                    href="/install"
-                  >
-                    {t('setAdminAccount', { ns: 'login' })}
-                  </Link>
-                </div>
-              )}
             </>
           )}
 

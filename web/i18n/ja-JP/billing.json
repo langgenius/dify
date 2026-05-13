@@ -14,7 +14,7 @@
   "plans.community.features": [
     "すべてのコア機能がパブリックリポジトリで公開されました",
     "単一ワークスペース",
-    "Difyオープンソースライセンスに準拠"
+    "Botsオープンソースライセンスに準拠"
   ],
   "plans.community.for": "個人/小規模チーム・非営利プロジェクト向け",
   "plans.community.includesTitle": "無料機能：",
@@ -29,9 +29,9 @@
     "エンタープライズ専用機能",
     "複数ワークスペースとエンタープライズ管理",
     "シングルサインオン",
-    "Difyパートナーによる交渉済みSLA",
+    "Botsパートナーによる交渉済みSLA",
     "高度なセキュリティと制御",
-    "Dify公式による更新とメンテナンス",
+    "Bots公式による更新とメンテナンス",
     "プロフェッショナル技術サポート"
   ],
   "plans.enterprise.for": "大規模チーム・企業向け",
@@ -67,7 +67,7 @@
   "plansCommon.annotationQuota": "アノテーション・クォータ",
   "plansCommon.annualBilling": "年次請求、{{percent}}%節約",
   "plansCommon.apiRateLimit": "API リクエスト制限",
-  "plansCommon.apiRateLimitTooltip": "API レート制限は、テキスト生成、チャットボット、ワークフロー、ドキュメント処理など、Dify API 経由のすべてのリクエストに適用されます。",
+  "plansCommon.apiRateLimitTooltip": "API レート制限は、テキスト生成、チャットボット、ワークフロー、ドキュメント処理など、Bots API 経由のすべてのリクエストに適用されます。",
   "plansCommon.apiRateLimitUnit": "{{count,number}} の",
   "plansCommon.buildApps": "アプリの数：{{count,number}}個",
   "plansCommon.cloud": "クラウドサービス",
@@ -96,7 +96,7 @@
   "plansCommon.memberAfter": "メンバー",
   "plansCommon.messageRequest.title": "{{count,number}}メッセージクレジット",
   "plansCommon.messageRequest.titlePerMonth": "{{count,number}}メッセージクレジット/月",
-  "plansCommon.messageRequest.tooltip": "メッセージクレジットは、DifyでOpenAI、Anthropic、Gemini、xAI、DeepSeek、Tongyiなどのさまざまなモデルを簡単に試すために提供されています。クレジットはモデルの種類に基づいて消費されます。使い切ったら、独自のAPIキーに切り替えることができます。",
+  "plansCommon.messageRequest.tooltip": "メッセージクレジットは、BotsでOpenAI、Anthropic、Gemini、xAI、DeepSeek、Tongyiなどのさまざまなモデルを簡単に試すために提供されています。クレジットはモデルの種類に基づいて消費されます。使い切ったら、独自のAPIキーに切り替えることができます。",
   "plansCommon.modelProviders": "OpenAI/Anthropic/Llama2/Azure OpenAI/Hugging Face/Replicateをサポート",
   "plansCommon.month": "月",
   "plansCommon.mostPopular": "人気",
@@ -106,7 +106,7 @@
   "plansCommon.priority.priority": "優先",
   "plansCommon.priority.standard": "標準",
   "plansCommon.priority.top-priority": "最優先",
-  "plansCommon.ragAPIRequestTooltip": "Dify のナレッジベース処理機能のみを呼び出す API 呼び出しの数を指します。",
+  "plansCommon.ragAPIRequestTooltip": "Bots のナレッジベース処理機能のみを呼び出す API 呼び出しの数を指します。",
   "plansCommon.receiptInfo": "チームオーナーとチーム管理者のみが購読および請求情報を表示できます",
   "plansCommon.save": "節約 ",
   "plansCommon.self": "セルフホストサービス",

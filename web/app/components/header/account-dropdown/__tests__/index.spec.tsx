@@ -22,19 +22,6 @@ vi.mock('../../account-setting', () => ({
   default: () => <div data-testid="account-setting">AccountSetting</div>,
 }))
 
-vi.mock('../../account-about', () => ({
-  default: ({ onCancel }: { onCancel: () => void }) => (
-    <div data-testid="account-about">
-      Version
-      <button onClick={onCancel}>Close</button>
-    </div>
-  ),
-}))
-
-vi.mock('@/app/components/header/github-star', () => ({
-  default: () => <div data-testid="github-star">GithubStar</div>,
-}))
-
 vi.mock('@/app/components/base/theme-switcher', () => ({
   default: () => <button type="button" data-testid="theme-switcher-button">Theme switcher</button>,
 }))
@@ -63,22 +50,13 @@ vi.mock('@/next/navigation', async (importOriginal) => {
   }
 })
 
-vi.mock('@/context/i18n', () => ({
-  useDocLink: () => (path: string) => `https://docs.dify.ai${path}`,
-}))
-
-// Mock config and env
-const { mockConfig, mockEnv } = vi.hoisted(() => ({
+// Mock config
+const { mockConfig } = vi.hoisted(() => ({
   mockConfig: {
     IS_CLOUD_EDITION: false,
     AMPLITUDE_API_KEY: '',
     ZENDESK_WIDGET_KEY: '',
     SUPPORT_EMAIL_ADDRESS: '',
-  },
-  mockEnv: {
-    env: {
-      NEXT_PUBLIC_SITE_ABOUT: 'show',
-    },
   },
 }))
 vi.mock('@/config', async (importOriginal) => {
@@ -94,7 +72,6 @@ vi.mock('@/config', async (importOriginal) => {
     IS_CE_EDITION: false,
   }
 })
-vi.mock('@/env', () => mockEnv)
 
 const baseAppContextValue: AppContextValue = {
   userProfile: {
@@ -155,7 +132,6 @@ describe('AccountDropdown', () => {
     vi.clearAllMocks()
     vi.stubGlobal('localStorage', { removeItem: vi.fn() })
     mockConfig.IS_CLOUD_EDITION = false
-    mockEnv.env.NEXT_PUBLIC_SITE_ABOUT = 'show'
 
     vi.mocked(useAppContext).mockReturnValue(baseAppContextValue)
     vi.mocked(useProviderContext).mockReturnValue({
@@ -282,22 +258,6 @@ describe('AccountDropdown', () => {
       })
     })
 
-    it('should show About section when about button is clicked and can close it', () => {
-      // Act
-      renderWithRouter(<AppSelector />)
-      fireEvent.click(screen.getByRole('button'))
-      fireEvent.click(screen.getByText('common.userProfile.about'))
-
-      // Assert
-      expect(screen.getByTestId('account-about')).toBeInTheDocument()
-
-      // Act
-      fireEvent.click(screen.getByText('Close'))
-
-      // Assert
-      expect(screen.queryByTestId('account-about')).not.toBeInTheDocument()
-    })
-
     it('should keep account dropdown open when clicking the theme switcher', () => {
       // Act
       renderWithRouter(<AppSelector />)
@@ -310,7 +270,13 @@ describe('AccountDropdown', () => {
   })
 
   describe('Branding and Environment', () => {
-    it('should hide sections when branding is enabled', () => {
+    it('should hide Compliance and docs-style entries when branding is enabled', () => {
+      mockConfig.IS_CLOUD_EDITION = true
+      vi.mocked(useAppContext).mockReturnValue({
+        ...baseAppContextValue,
+        isCurrentWorkspaceOwner: true,
+      })
+
       // Act
       renderWithRouter(<AppSelector />, {
         systemFeatures: { branding: { enabled: true } },
@@ -320,62 +286,7 @@ describe('AccountDropdown', () => {
       // Assert
       expect(screen.queryByText('common.userProfile.helpCenter')).not.toBeInTheDocument()
       expect(screen.queryByText('common.userProfile.roadmap')).not.toBeInTheDocument()
-    })
-
-    it('should hide About section when NEXT_PUBLIC_SITE_ABOUT is hide', () => {
-      // Arrange
-      mockEnv.env.NEXT_PUBLIC_SITE_ABOUT = 'hide'
-
-      // Act
-      renderWithRouter(<AppSelector />)
-      fireEvent.click(screen.getByRole('button'))
-
-      // Assert
-      expect(screen.queryByText('common.userProfile.about')).not.toBeInTheDocument()
-    })
-  })
-
-  describe('Version Indicators', () => {
-    it('should show orange indicator when version is not latest', () => {
-      // Arrange
-      vi.mocked(useAppContext).mockReturnValue({
-        ...baseAppContextValue,
-        userProfile: { ...baseAppContextValue.userProfile, name: 'User' },
-        langGeniusVersionInfo: {
-          ...baseAppContextValue.langGeniusVersionInfo,
-          current_version: '0.6.0',
-          latest_version: '0.7.0',
-        },
-      })
-
-      // Act
-      renderWithRouter(<AppSelector />)
-      fireEvent.click(screen.getByRole('button'))
-
-      // Assert
-      const indicator = screen.getByTestId('status-indicator')
-      expect(indicator).toHaveClass('bg-components-badge-status-light-warning-bg')
-    })
-
-    it('should show green indicator when version is latest', () => {
-      // Arrange
-      vi.mocked(useAppContext).mockReturnValue({
-        ...baseAppContextValue,
-        userProfile: { ...baseAppContextValue.userProfile, name: 'User' },
-        langGeniusVersionInfo: {
-          ...baseAppContextValue.langGeniusVersionInfo,
-          current_version: '0.7.0',
-          latest_version: '0.7.0',
-        },
-      })
-
-      // Act
-      renderWithRouter(<AppSelector />)
-      fireEvent.click(screen.getByRole('button'))
-
-      // Assert
-      const indicator = screen.getByTestId('status-indicator')
-      expect(indicator).toHaveClass('bg-components-badge-status-light-success-bg')
+      expect(screen.queryByText('common.userProfile.compliance')).not.toBeInTheDocument()
     })
   })
 })

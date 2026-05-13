@@ -61,11 +61,7 @@ type ActionsSectionProps = Pick<AppPublisherProps, | 'hasHumanInputNode'
     appURL: string
     disabledFunctionButton: boolean
     disabledFunctionTooltip?: string
-    handleEmbed: () => void
-    handleOpenInExplore: () => void
     handleOpenRunConfig?: (url: string) => void
-    handlePublish: (params?: ModelAndParameter | PublishWorkflowParams) => Promise<void>
-    published: boolean
     showBatchRunConfig?: boolean
     showRunConfig?: boolean
     workflowToolIsLoading: boolean
@@ -257,8 +253,6 @@ export const PublisherActionsSection = ({
   appURL,
   disabledFunctionButton,
   disabledFunctionTooltip,
-  handleEmbed,
-  handleOpenInExplore,
   handleOpenRunConfig,
   hasHumanInputNode = false,
   hasTriggerNode = false,
@@ -300,48 +294,25 @@ export const PublisherActionsSection = ({
           {t('common.runApp', { ns: 'workflow' })}
         </SuggestedAction>
       </ActionTooltip>
-      {appDetail?.mode === AppModeEnum.WORKFLOW || appDetail?.mode === AppModeEnum.COMPLETION
-        ? (
-            <ActionTooltip disabled={disabledFunctionButton} tooltip={disabledFunctionTooltip}>
-              <SuggestedAction
-                className="flex-1"
-                disabled={disabledFunctionButton}
-                link={`${appURL}${appURL.includes('?') ? '&' : '?'}mode=batch`}
-                icon={<span className="i-ri-play-list-2-line h-4 w-4" />}
-                actionButton={showBatchRunConfig
-                  ? {
-                      ariaLabel: t('operation.config', { ns: 'common' }),
-                      icon: <RiSettings2Line className="h-4 w-4" />,
-                      onClick: () => handleOpenRunConfig?.(`${appURL}${appURL.includes('?') ? '&' : '?'}mode=batch`),
-                    }
-                  : undefined}
-              >
-                {t('common.batchRunApp', { ns: 'workflow' })}
-              </SuggestedAction>
-            </ActionTooltip>
-          )
-        : (
-            <SuggestedAction
-              onClick={handleEmbed}
-              disabled={!publishedAt}
-              icon={<span className="i-custom-vender-line-development-code-browser h-4 w-4" />}
-            >
-              {t('common.embedIntoSite', { ns: 'workflow' })}
-            </SuggestedAction>
-          )}
-      <ActionTooltip disabled={disabledFunctionButton} tooltip={disabledFunctionTooltip}>
-        <SuggestedAction
-          className="flex-1"
-          onClick={() => {
-            if (publishedAt)
-              handleOpenInExplore()
-          }}
-          disabled={disabledFunctionButton}
-          icon={<span className="i-ri-planet-line h-4 w-4" />}
-        >
-          {t('common.openInExplore', { ns: 'workflow' })}
-        </SuggestedAction>
-      </ActionTooltip>
+      {(appDetail?.mode === AppModeEnum.WORKFLOW || appDetail?.mode === AppModeEnum.COMPLETION) && (
+        <ActionTooltip disabled={disabledFunctionButton} tooltip={disabledFunctionTooltip}>
+          <SuggestedAction
+            className="flex-1"
+            disabled={disabledFunctionButton}
+            link={`${appURL}${appURL.includes('?') ? '&' : '?'}mode=batch`}
+            icon={<span className="i-ri-play-list-2-line h-4 w-4" />}
+            actionButton={showBatchRunConfig
+              ? {
+                  ariaLabel: t('operation.config', { ns: 'common' }),
+                  icon: <RiSettings2Line className="h-4 w-4" />,
+                  onClick: () => handleOpenRunConfig?.(`${appURL}${appURL.includes('?') ? '&' : '?'}mode=batch`),
+                }
+              : undefined}
+          >
+            {t('common.batchRunApp', { ns: 'workflow' })}
+          </SuggestedAction>
+        </ActionTooltip>
+      )}
       <ActionTooltip
         disabled={!publishedAt || missingStartNode}
         tooltip={!publishedAt ? t('notPublishedYet', { ns: 'app' }) : t('noUserInputNode', { ns: 'app' })}
