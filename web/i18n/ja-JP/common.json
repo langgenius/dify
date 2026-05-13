@@ -101,6 +101,7 @@
   "appModes.completionApp": "テキスト生成",
   "avatar.deleteDescription": "本当にプロフィール写真を削除してもよろしいですか？あなたのアカウントはデフォルトの初期アバターを使用します。",
   "avatar.deleteTitle": "アバターを削除する",
+  "avatar.editAction": "アバターを編集する",
   "chat.citation.characters": "文字数：",
   "chat.citation.hitCount": "検索回数：",
   "chat.citation.hitScore": "検索スコア：",

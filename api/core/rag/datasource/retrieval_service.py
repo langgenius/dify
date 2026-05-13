@@ -1,5 +1,6 @@
 import concurrent.futures
 import logging
+from collections.abc import Sequence
 from concurrent.futures import ThreadPoolExecutor
 from typing import Any, NotRequired, TypedDict
 
@@ -526,7 +527,7 @@ class RetrievalService:
             index_node_ids = [i for i in index_node_ids if i]
 
             segment_ids: list[str] = []
-            index_node_segments: list[DocumentSegment] = []
+            index_node_segments: Sequence[DocumentSegment] = []
             segments: list[DocumentSegment] = []
             attachment_map: dict[str, list[AttachmentInfoDict]] = {}
             child_chunk_map: dict[str, list[ChildChunk]] = {}
@@ -568,8 +569,9 @@ class RetrievalService:
                         DocumentSegment.status == "completed",
                         DocumentSegment.index_node_id.in_(index_node_ids),
                     )
-                    index_node_segments = session.execute(document_segment_stmt).scalars().all()  # type: ignore
+                    index_node_segments = session.execute(document_segment_stmt).scalars().all()
                     for index_node_segment in index_node_segments:
+                        assert index_node_segment.index_node_id
                         doc_segment_map[index_node_segment.id] = [index_node_segment.index_node_id]
 
                 if segment_ids:

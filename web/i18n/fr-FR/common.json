@@ -101,6 +101,7 @@
   "appModes.completionApp": "Générateur de Texte",
   "avatar.deleteDescription": "Êtes-vous sûr de vouloir supprimer votre photo de profil ? Votre compte utilisera l'avatar par défaut.",
   "avatar.deleteTitle": "Supprimer l'avatar",
+  "avatar.editAction": "Modifier l'avatar",
   "chat.citation.characters": "Personnages :",
   "chat.citation.hitCount": "Nombre de récupérations :",
   "chat.citation.hitScore": "Score de Récupération:",

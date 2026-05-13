@@ -101,6 +101,7 @@
   "appModes.completionApp": "Генератор текста",
   "avatar.deleteDescription": "Вы уверены, что хотите удалить свою фотографию профиля? Ваш аккаунт будет использовать стандартный аватар.",
   "avatar.deleteTitle": "Удалить аватар",
+  "avatar.editAction": "Изменить аватар",
   "chat.citation.characters": "Символы:",
   "chat.citation.hitCount": "Количество совпадений:",
   "chat.citation.hitScore": "Оценка совпадения:",
