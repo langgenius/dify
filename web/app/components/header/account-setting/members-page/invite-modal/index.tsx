@@ -1,5 +1,4 @@
 'use client'
-import type { RoleKey } from './role-selector'
 import type { InvitationResult } from '@/models/common'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -43,7 +42,7 @@ const InviteModal = ({
   }, [licenseLimit, emails])
 
   const locale = useLocale()
-  const [role, setRole] = useState<RoleKey>('normal')
+  const [role, setRole] = useState<string>('')
 
   const [isSubmitting, {
     setTrue: setIsSubmitting,

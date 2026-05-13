@@ -10,6 +10,9 @@
   "app.acl.test_and_run": "アプリのテストと使用",
   "app.acl.view_layout": "オーケストレーションページの読み取り専用",
   "app.create": "アプリの作成と複製",
+  "app.log.access": "アプリログページにアクセス",
+  "app.monitor.access": "アプリ監視ページにアクセス",
+  "app.monitor.tracking_config": "アプリ監視トラッキングを設定",
   "app.tag.manage": "アプリタグを管理",
   "app_library.access": "アプリライブラリにアクセス",
   "credential.manage": "認証情報を管理",
@@ -40,10 +43,17 @@
   "group.tool_mcp": "ツールとMCP",
   "group.workspace": "ワークスペース",
   "mcp.manage": "MCPを管理",
+  "model.manage": "モデルを管理",
+  "page.datasets.access": "Datasets ページにアクセス",
+  "page.explore.access": "Explore ページにアクセス",
+  "page.tool.access": "Tool ページにアクセス",
   "plugin.install": "プラグインのインストールと更新",
   "plugin.manage": "プラグインを管理",
+  "plugin.preference.manage": "プラグイン設定を管理",
   "plugin.uninstall": "プラグインをアンインストール",
   "tool.manage": "ツールを管理",
   "workspace.member.manage": "メンバーを管理",
-  "workspace.role.manage": "ロール権限とリソースアクセスルールを管理"
+  "workspace.member.view": "メンバー一覧を表示",
+  "workspace.role.manage": "ロール権限とリソースアクセスルールを管理",
+  "workspace.role.view": "ロール一覧を表示"
 }

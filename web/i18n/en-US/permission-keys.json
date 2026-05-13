@@ -10,6 +10,9 @@
   "app.acl.test_and_run": "Test and use app",
   "app.acl.view_layout": "Read-only orchestration page",
   "app.create": "Create and duplicate apps",
+  "app.log.access": "Access app logs page",
+  "app.monitor.access": "Access app monitoring page",
+  "app.monitor.tracking_config": "Configure app monitoring tracking",
   "app.tag.manage": "Manage app tags",
   "app_library.access": "Access App Library",
   "credential.manage": "Manage credentials",
@@ -40,10 +43,17 @@
   "group.tool_mcp": "Tools and MCP",
   "group.workspace": "Workspace",
   "mcp.manage": "Manage MCP",
+  "model.manage": "Manage models",
+  "page.datasets.access": "Access Datasets page",
+  "page.explore.access": "Access Explore page",
+  "page.tool.access": "Access Tool page",
   "plugin.install": "Install and update plugins",
   "plugin.manage": "Manage plugins",
+  "plugin.preference.manage": "Manage plugin preferences",
   "plugin.uninstall": "Uninstall plugins",
   "tool.manage": "Manage tools",
   "workspace.member.manage": "Manage members",
-  "workspace.role.manage": "Manage role permissions and resource access rules"
+  "workspace.member.view": "View members",
+  "workspace.role.manage": "Manage role permissions and resource access rules",
+  "workspace.role.view": "View roles"
 }

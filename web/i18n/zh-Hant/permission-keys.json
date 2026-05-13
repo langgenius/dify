@@ -10,6 +10,9 @@
   "app.acl.test_and_run": "測試與使用應用",
   "app.acl.view_layout": "編排頁唯讀",
   "app.create": "建立與複製應用",
+  "app.log.access": "訪問應用日誌頁面",
+  "app.monitor.access": "訪問應用監測頁面",
+  "app.monitor.tracking_config": "配置應用監測追蹤",
   "app.tag.manage": "管理應用標籤",
   "app_library.access": "訪問應用庫",
   "credential.manage": "管理憑據",
@@ -40,10 +43,17 @@
   "group.tool_mcp": "工具與MCP",
   "group.workspace": "工作空間",
   "mcp.manage": "管理MCP",
+  "model.manage": "管理模型",
+  "page.datasets.access": "訪問 Datasets 頁面",
+  "page.explore.access": "訪問 Explore 頁面",
+  "page.tool.access": "訪問 Tool 頁面",
   "plugin.install": "安裝與更新插件",
   "plugin.manage": "管理插件",
+  "plugin.preference.manage": "管理插件偏好",
   "plugin.uninstall": "卸載插件",
   "tool.manage": "管理工具",
   "workspace.member.manage": "管理成員",
-  "workspace.role.manage": "管理角色權限與資源訪問規則"
+  "workspace.member.view": "查看成員列表",
+  "workspace.role.manage": "管理角色權限與資源訪問規則",
+  "workspace.role.view": "查看角色列表"
 }

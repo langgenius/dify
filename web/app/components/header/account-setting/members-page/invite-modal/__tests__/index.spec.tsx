@@ -4,6 +4,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { vi } from 'vitest'
 import { useProviderContextSelector } from '@/context/provider-context'
+import { useWorkspaceRoleList } from '@/service/access-control/use-workspace-roles'
 import { inviteMember } from '@/service/common'
 import InviteModal from '../index'
 
@@ -18,6 +19,7 @@ vi.mock('@/context/provider-context', () => ({
   })),
 }))
 vi.mock('@/service/common')
+vi.mock('@/service/access-control/use-workspace-roles')
 vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: {
     error: mockToastError,
@@ -49,6 +51,49 @@ describe('InviteModal', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
+
+    vi.mocked(useWorkspaceRoleList).mockReturnValue({
+      data: {
+        pages: [{
+          data: [
+            {
+              id: 'admin',
+              tenant_id: 'tenant-id',
+              type: 'workspace',
+              category: 'global_system_default',
+              name: 'Admin',
+              description: 'Can manage workspace settings',
+              is_builtin: true,
+              permission_keys: [],
+              role_tag: '',
+            },
+            {
+              id: 'normal',
+              tenant_id: 'tenant-id',
+              type: 'workspace',
+              category: 'global_system_default',
+              name: 'Normal',
+              description: 'Can use apps',
+              is_builtin: true,
+              permission_keys: [],
+              role_tag: '',
+            },
+          ],
+          pagination: {
+            total_count: 2,
+            per_page: 20,
+            current_page: 1,
+            total_pages: 1,
+          },
+        }],
+        pageParams: [1],
+      },
+      isLoading: false,
+      error: null,
+      hasNextPage: false,
+      isFetchingNextPage: false,
+      fetchNextPage: vi.fn(),
+    } as unknown as ReturnType<typeof useWorkspaceRoleList>)
 
     vi.mocked(useProviderContextSelector).mockImplementation(selector => selector({
       licenseLimit: { workspace_members: { size: 5, limit: 10 } },
@@ -116,6 +161,32 @@ describe('InviteModal', () => {
       expect(mockRefreshLicenseLimit).toHaveBeenCalled()
       expect(mockOnCancel).toHaveBeenCalled()
       expect(mockOnSend).toHaveBeenCalled()
+    })
+  })
+
+  it('should submit the selected workspace role name', async () => {
+    const user = userEvent.setup()
+    vi.mocked(inviteMember).mockResolvedValue({
+      result: 'success',
+      invitation_results: [],
+    } as InvitationResponse)
+
+    renderModal()
+
+    fillEmails('user@example.com')
+    await user.click(screen.getByRole('button', { name: /members\.invitedAsRole/i }))
+    await user.click(screen.getByRole('menuitemradio', { name: /Admin/i }))
+    await user.click(screen.getByRole('button', { name: /members\.sendInvite/i }))
+
+    await waitFor(() => {
+      expect(inviteMember).toHaveBeenCalledWith({
+        url: '/workspaces/current/members/invite-email',
+        body: {
+          emails: ['user@example.com'],
+          role: 'Admin',
+          language: 'en-US',
+        },
+      })
     })
   })
 

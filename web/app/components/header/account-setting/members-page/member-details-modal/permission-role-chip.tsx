@@ -88,7 +88,7 @@ const PermissionRoleChip = ({
               />
               <span>
                 {t(key, {
-                  ns: 'permission',
+                  ns: 'permissionKeys',
                   defaultValue: key,
                 })}
               </span>

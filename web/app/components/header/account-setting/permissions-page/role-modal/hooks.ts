@@ -10,13 +10,13 @@ export const useWorkspacePermissionGroups = () => {
     return (workspacePermissionCatalog?.groups || []).map(group => ({
       ...group,
       group_name: t(`group.${group.group_key}`, {
-        ns: 'permission',
+        ns: 'permissionKeys',
         defaultValue: group.group_name,
       }),
       permissions: group.permissions.map(permission => ({
         ...permission,
         name: t(permission.key, {
-          ns: 'permission',
+          ns: 'permissionKeys',
           defaultValue: permission.name,
         }),
       })),
