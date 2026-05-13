@@ -8,11 +8,13 @@ import { useTranslation } from 'react-i18next'
 import { Plan } from '@/app/components/billing/type'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
 import LicenseNav from '@/app/components/header/license-env'
+import { buildIntegrationPath } from '@/app/components/tools/integration-routes'
 import { IS_CLOUD_EDITION } from '@/config'
 import { useAppContext } from '@/context/app-context'
 import { useModalContext } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
 import { useWorkspacesContext } from '@/context/workspace-context'
+import { useRouter } from '@/next/navigation'
 import { switchWorkspace } from '@/service/common'
 import { basePath } from '@/utils/var'
 import { formatCredits, getRemainingCredits, getWorkspaceInitial } from '../utils'
@@ -52,6 +54,7 @@ const WorkspaceMenuItemContent = ({
 
 const WorkspaceCard = () => {
   const { t } = useTranslation()
+  const router = useRouter()
   const { currentWorkspace, isCurrentWorkspaceDatasetOperator, isCurrentWorkspaceManager } = useAppContext()
   const { workspaces } = useWorkspacesContext()
   const { enableBilling, plan } = useProviderContext()
@@ -126,7 +129,7 @@ const WorkspaceCard = () => {
               aria-label={t('mainNav.workspace.credits', { ns: 'common', count: formattedCredits })}
               onClick={(e) => {
                 e.stopPropagation()
-                setShowAccountSettingModal({ payload: ACCOUNT_SETTING_TAB.PROVIDER })
+                router.push(buildIntegrationPath('provider'))
               }}
             >
               <span className="i-custom-vender-main-nav-credits h-3 w-3 shrink-0" aria-hidden />

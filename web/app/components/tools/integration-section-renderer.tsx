@@ -1,5 +1,6 @@
 'use client'
 
+import type { ReactNode } from 'react'
 import type { IntegrationSection } from './integration-routes'
 import ApiBasedExtensionPage from '@/app/components/header/account-setting/api-based-extension-page'
 import DataSourcePage from '@/app/components/header/account-setting/data-source-page-new'
@@ -11,19 +12,21 @@ import ToolProviderList from './provider-list'
 
 type IntegrationSectionRendererProps = {
   onProviderSearchTextChange: (value: string) => void
+  pluginCategoryToolbarAction?: ReactNode
   providerSearchText: string
   section: IntegrationSection
 }
 
 const IntegrationSectionRenderer = ({
   onProviderSearchTextChange,
+  pluginCategoryToolbarAction,
   providerSearchText,
   section,
 }: IntegrationSectionRendererProps) => {
   switch (section) {
     case 'provider':
       return (
-        <div className={`${toolsContentFrameClassNames.compact} ${toolsContentInsetClassNames.compact} pt-6`}>
+        <div className={`${toolsContentFrameClassNames.compact} ${toolsContentInsetClassNames.compact} pt-2`}>
           <ModelProviderPage
             searchText={providerSearchText}
             onSearchTextChange={onProviderSearchTextChange}
@@ -51,7 +54,7 @@ const IntegrationSectionRenderer = ({
         </div>
       )
     case 'trigger':
-      return <PluginCategoryPage category={PluginCategoryEnum.trigger} />
+      return <PluginCategoryPage category={PluginCategoryEnum.trigger} toolbarAction={pluginCategoryToolbarAction} />
     case 'agent-strategy':
       return <PluginCategoryPage category={PluginCategoryEnum.agent} />
     case 'extension':

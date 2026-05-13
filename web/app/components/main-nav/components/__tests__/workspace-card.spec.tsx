@@ -8,6 +8,7 @@ import { useAppContext } from '@/context/app-context'
 import { useModalContext } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
 import { useWorkspacesContext } from '@/context/workspace-context'
+import { useRouter } from '@/next/navigation'
 import { LicenseStatus } from '@/types/feature'
 import WorkspaceCard from '../workspace-card'
 
@@ -33,6 +34,10 @@ vi.mock('@/context/modal-context', () => ({
 
 vi.mock('@/context/workspace-context', () => ({
   useWorkspacesContext: vi.fn(),
+}))
+
+vi.mock('@/next/navigation', () => ({
+  useRouter: vi.fn(),
 }))
 
 vi.mock('@/service/common', () => ({
@@ -95,6 +100,14 @@ describe('WorkspaceCard', () => {
       setShowPricingModal: vi.fn(),
       setShowAccountSettingModal: vi.fn(),
     } as unknown as ModalContextState)
+    vi.mocked(useRouter).mockReturnValue({
+      push: vi.fn(),
+      replace: vi.fn(),
+      prefetch: vi.fn(),
+      back: vi.fn(),
+      forward: vi.fn(),
+      refresh: vi.fn(),
+    })
     vi.mocked(useWorkspacesContext).mockReturnValue({
       workspaces: [
         { id: 'workspace-1', name: 'Solar Studio', plan: Plan.sandbox, status: 'normal', created_at: 0, current: true },

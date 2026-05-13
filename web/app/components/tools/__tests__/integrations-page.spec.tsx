@@ -121,8 +121,18 @@ describe('IntegrationsPage', () => {
     renderIntegrationsPage({ section: 'provider' })
 
     expect(screen.getByTestId('model-provider-page')).toBeInTheDocument()
+    expect(screen.getByTestId('model-provider-page').parentElement).toHaveClass('max-w-[1600px]', 'px-6', 'pt-2')
     expect(screen.getAllByText('common.settings.provider')).toHaveLength(2)
     expect(screen.getByRole('textbox', { name: 'search' })).toBeInTheDocument()
+  })
+
+  it('places data source directly under model provider in the sidebar', () => {
+    renderIntegrationsPage({ section: 'provider' })
+
+    const navText = screen.getByRole('navigation').textContent ?? ''
+
+    expect(navText.indexOf('common.settings.provider')).toBeLessThan(navText.indexOf('common.settings.dataSource'))
+    expect(navText.indexOf('common.settings.dataSource')).toBeLessThan(navText.indexOf('common.menus.tools'))
   })
 
   it('renders plugin category sections from the section query', () => {
@@ -154,6 +164,7 @@ describe('IntegrationsPage', () => {
     renderIntegrationsPage({ section: 'api-based-extension' })
 
     expect(screen.getByTestId('api-extension-page')).toBeInTheDocument()
+    expect(screen.queryByText('common.modelProvider.updateSetting')).not.toBeInTheDocument()
   })
 
   it('renders existing pages from route sections', () => {
@@ -186,6 +197,19 @@ describe('IntegrationsPage', () => {
 
     expect(screen.getAllByText('common.menus.tools')).toHaveLength(2)
     expect(screen.getByText('common.toolsPage.description')).toBeInTheDocument()
+    expect(screen.getByText('common.toolsPage.description').parentElement?.parentElement).toHaveClass('max-w-[1600px]', 'px-6')
+  })
+
+  it('aligns model provider headers to the unified content frame', () => {
+    renderIntegrationsPage({ section: 'provider' })
+
+    expect(screen.getByText('common.modelProvider.pageDesc').parentElement?.parentElement).toHaveClass('max-w-[1600px]', 'px-6')
+  })
+
+  it('aligns plugin category headers to the unified content frame', () => {
+    renderIntegrationsPage({ section: 'trigger' })
+
+    expect(screen.getByText('common.triggerPage.description').parentElement?.parentElement).toHaveClass('max-w-[1600px]', 'px-6')
   })
 
   it('renders the mcp header for the mcp section', () => {
@@ -217,6 +241,22 @@ describe('IntegrationsPage', () => {
     expect(screen.getAllByText(title)).toHaveLength(2)
     expect(screen.getByText(description)).toBeInTheDocument()
     expect(screen.queryByText('common.toolsPage.description')).not.toBeInTheDocument()
+  })
+
+  it.each([
+    ['builtin', 'common.toolsPage.description'],
+    ['mcp', 'common.mcpPage.description'],
+    ['custom-tool', 'common.swaggerAPIAsToolPage.description'],
+    ['workflow-tool', 'common.workflowAsToolPage.description'],
+    ['api-based-extension', 'common.apiBasedExtensionPage.description'],
+    ['data-source', 'common.dataSourcePage.description'],
+    ['trigger', 'common.triggerPage.description'],
+    ['extension', 'common.extensionPage.description'],
+    ['agent-strategy', 'common.agentStrategyPage.description'],
+  ] as const)('renders an unbordered header for %s', (section, description) => {
+    renderIntegrationsPage({ section })
+
+    expect(screen.getByText(description).parentElement?.parentElement?.parentElement).not.toHaveClass('border-b', 'border-divider-subtle')
   })
 
   it.each(['extension', 'agent-strategy'] as const)('renders plugin update settings action for %s', (section) => {

@@ -124,11 +124,9 @@ const ModelProviderPage = ({
     return 'fully-configured'
   }, [configuredProviders, textGenerationDefaultModel, embeddingsDefaultModel, rerankDefaultModel, speech2textDefaultModel, ttsDefaultModel])
   const warningTextKey
-    = systemModelConfigStatus === 'none-configured'
+    = systemModelConfigStatus === 'no-provider' || systemModelConfigStatus === 'none-configured'
       ? 'modelProvider.noneConfigured'
-      : systemModelConfigStatus === 'partially-configured'
-        ? 'modelProvider.notConfigured'
-        : null
+      : null
   const showWarning = !isDefaultModelLoading && !!warningTextKey
 
   const [filteredConfiguredProviders, filteredNotConfiguredProviders] = useMemo(() => {
@@ -145,8 +143,8 @@ const ModelProviderPage = ({
   }, [configuredProviders, debouncedSearchText, notConfiguredProviders])
 
   return (
-    <div className="relative -mt-2 pt-1">
-      <div className="mb-4 flex items-center justify-between gap-3">
+    <div className="relative">
+      <div className="mb-2 flex items-center justify-between gap-3">
         <SearchInput
           className="w-[200px] shrink-0"
           placeholder={t('modelProvider.searchModels', { ns: 'common' })}

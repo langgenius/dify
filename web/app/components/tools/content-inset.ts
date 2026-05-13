@@ -5,6 +5,8 @@ export const toolsContentFrameClassNames: Record<ToolsContentInset, string> = {
   compact: 'mx-auto box-border w-full max-w-[1600px]',
 }
 
+export const toolsUnifiedContentFrameClassName = 'mx-auto box-border w-full max-w-[1600px]'
+
 export const toolsContentInsetClassNames: Record<ToolsContentInset, string> = {
   default: 'px-12',
   compact: 'px-6',

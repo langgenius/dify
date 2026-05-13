@@ -23,6 +23,7 @@ import {
 } from '@/app/components/tools/integration-routes'
 import Link from '@/next/link'
 import { useRouter } from '@/next/navigation'
+import { toolsContentInsetClassNames, toolsUnifiedContentFrameClassName } from './content-inset'
 import IntegrationSectionRenderer from './integration-section-renderer'
 
 type IconComponent = typeof DatasourceIcon
@@ -211,6 +212,13 @@ export default function IntegrationsPage({
     icon: 'i-ri-brain-2-line',
     activeIcon: 'i-ri-brain-2-fill',
   }), [t])
+  const dataSourceItem = useMemo<NavItem>(() => ({
+    section: 'data-source',
+    label: t('settings.dataSource', { ns: 'common' }),
+    icon: DatasourceIcon,
+    activeIcon: 'i-ri-database-2-fill',
+    iconClassName: 'size-4',
+  }), [t])
   const toolItems = useMemo<NavItem[]>(() => [
     {
       section: 'mcp',
@@ -242,13 +250,6 @@ export default function IntegrationsPage({
   ], [t])
   const secondaryItems = useMemo<NavItem[]>(() => [
     {
-      section: 'data-source',
-      label: t('settings.dataSource', { ns: 'common' }),
-      icon: DatasourceIcon,
-      activeIcon: 'i-ri-database-2-fill',
-      iconClassName: 'size-4',
-    },
-    {
       section: 'trigger',
       label: t('settings.trigger', { ns: 'common' }),
       icon: 'i-custom-vender-integrations-trigger',
@@ -270,10 +271,14 @@ export default function IntegrationsPage({
       iconClassName: 'h-[13.5px] w-3',
     },
   ], [t])
-  const activeItem = [providerItem, ...toolItems, ...secondaryItems].find(item => item.section === section)
+  const activeItem = [providerItem, dataSourceItem, ...toolItems, ...secondaryItems].find(item => item.section === section)
   const isToolSection = Boolean(toolCategoryBySection[section])
   const isPluginCategorySection = section === 'trigger' || section === 'agent-strategy' || section === 'extension'
   const useFillLayout = isToolSection || isPluginCategorySection
+  const headerFrameClassName = cn(
+    toolsContentInsetClassNames.compact,
+    toolsUnifiedContentFrameClassName,
+  )
   const integrationHeader = useMemo(() => {
     switch (section) {
       case 'builtin':
@@ -326,6 +331,7 @@ export default function IntegrationsPage({
     }
   }, [section, t])
   const showHeaderPluginSetting = (section === 'extension' || section === 'agent-strategy') && canSetPermissions && !!referenceSetting
+  const showTriggerPluginSetting = section === 'trigger' && canSetPermissions && !!referenceSetting
   const showPermissionQuickPanel = canSetPermissions && !!referenceSetting
   const handlePermissionChange = (key: PermissionSettingKey, value: PermissionType) => {
     if (!referenceSetting)
@@ -420,6 +426,7 @@ export default function IntegrationsPage({
           )}
           <nav className="mt-6 shrink-0 space-y-0.5">
             <NavLinkItem collapsed={sidebarCollapsed} item={providerItem} section={section} />
+            <NavLinkItem collapsed={sidebarCollapsed} item={dataSourceItem} section={section} />
             <div>
               <Link
                 href={buildSectionHref('builtin')}
@@ -498,8 +505,8 @@ export default function IntegrationsPage({
       </aside>
       <section className="flex min-w-0 flex-1 flex-col overflow-hidden">
         {integrationHeader && (
-          <div className="flex min-h-14 shrink-0 items-start border-b border-divider-subtle px-6 pt-2 pb-2">
-            <div className="flex min-w-0 flex-1 items-end justify-between gap-3">
+          <div className="flex min-h-14 shrink-0 items-start">
+            <div className={cn('flex min-w-0 flex-1 items-end justify-between gap-3 pt-2 pb-2', headerFrameClassName)}>
               <div className="flex min-w-0 flex-col gap-0.5">
                 <div className="system-xl-semibold text-text-primary">
                   {integrationHeader.title}
@@ -526,14 +533,16 @@ export default function IntegrationsPage({
           </div>
         )}
         {!integrationHeader && !isToolSection && (
-          <div className="flex min-h-14 shrink-0 items-center justify-between border-b border-divider-subtle px-6 py-2">
-            <div>
-              <div className="system-xl-semibold text-text-primary">{activeItem?.label}</div>
-              {section === 'provider' && (
-                <div className="mt-0.5 system-xs-regular text-text-tertiary">
-                  {t('modelProvider.pageDesc', { ns: 'common' })}
-                </div>
-              )}
+          <div className="flex min-h-14 shrink-0 items-center justify-between">
+            <div className={cn('flex min-w-0 flex-1 items-center justify-between py-2', headerFrameClassName)}>
+              <div>
+                <div className="system-xl-semibold text-text-primary">{activeItem?.label}</div>
+                {section === 'provider' && (
+                  <div className="mt-0.5 system-xs-regular text-text-tertiary">
+                    {t('modelProvider.pageDesc', { ns: 'common' })}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         )}
@@ -546,6 +555,22 @@ export default function IntegrationsPage({
             section={section}
             providerSearchText={providerSearchText}
             onProviderSearchTextChange={setProviderSearchText}
+            pluginCategoryToolbarAction={showTriggerPluginSetting
+              ? (
+                  <Button
+                    variant="secondary"
+                    className="h-8 shrink-0 gap-0.5 px-3 system-sm-medium"
+                    onClick={() => setShowPluginSettingModal(true)}
+                  >
+                    <span aria-hidden className="i-ri-flashlight-line size-4" />
+                    <span className="px-0.5">{t('modelProvider.updateSetting', { ns: 'common' })}</span>
+                    <span className="flex min-w-4 items-center justify-center rounded-[5px] border border-divider-deep bg-components-badge-bg-dimm px-1 py-0.5 system-2xs-medium-uppercase text-text-tertiary">
+                      {t('autoUpdate.strategy.fixOnly.name', { ns: 'plugin' })}
+                    </span>
+                    <span aria-hidden className="i-ri-arrow-down-s-line size-4" />
+                  </Button>
+                )
+              : undefined}
           />
         </div>
       </section>

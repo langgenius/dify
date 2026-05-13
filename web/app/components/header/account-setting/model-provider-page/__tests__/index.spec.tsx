@@ -173,6 +173,15 @@ describe('ModelProviderPage', () => {
     expect(screen.getByTestId('install-from-marketplace')).toBeInTheDocument()
   })
 
+  it('should align the toolbar without extra internal top offset', () => {
+    const { container } = renderModelProviderPage()
+
+    expect(container.firstElementChild).toHaveClass('relative')
+    expect(container.firstElementChild).not.toHaveClass('-mt-2', 'pt-1')
+    expect(container.firstElementChild?.firstElementChild).toHaveClass('mb-2', 'flex')
+    expect(container.firstElementChild?.firstElementChild).not.toHaveClass('mb-4')
+  })
+
   it('should open plugin reference settings from the update setting button', () => {
     renderModelProviderPage()
 
@@ -212,7 +221,7 @@ describe('ModelProviderPage', () => {
   })
 
   describe('system model config status', () => {
-    it('should not show top warning when no configured providers exist (empty state card handles it)', () => {
+    it('should show none-configured warning when no configured providers exist', () => {
       mockProviders.splice(0, mockProviders.length, {
         provider: 'anthropic',
         label: { en_US: 'Anthropic' },
@@ -225,7 +234,7 @@ describe('ModelProviderPage', () => {
       })
 
       renderModelProviderPage()
-      expect(screen.queryByText('common.modelProvider.noneConfigured')).not.toBeInTheDocument()
+      expect(screen.getByText('common.modelProvider.noneConfigured')).toBeInTheDocument()
       expect(screen.queryByText('common.modelProvider.notConfigured')).not.toBeInTheDocument()
       expect(screen.getByText('common.modelProvider.emptyProviderTitle')).toBeInTheDocument()
     })
@@ -235,14 +244,15 @@ describe('ModelProviderPage', () => {
       expect(screen.getByText('common.modelProvider.noneConfigured')).toBeInTheDocument()
     })
 
-    it('should show partially-configured warning when some default models are set', () => {
+    it('should not show warning when some default models are set', () => {
       mockDefaultModels.llm = {
         data: { model: 'gpt-4', model_type: 'llm', provider: { provider: 'openai', icon_small: { en_US: '' } } },
         isLoading: false,
       }
 
       renderModelProviderPage()
-      expect(screen.getByText('common.modelProvider.notConfigured')).toBeInTheDocument()
+      expect(screen.queryByText('common.modelProvider.noneConfigured')).not.toBeInTheDocument()
+      expect(screen.queryByText('common.modelProvider.notConfigured')).not.toBeInTheDocument()
     })
 
     it('should not show warning when all default models are configured', () => {

@@ -366,7 +366,8 @@ describe('MainNav', () => {
     renderMainNav()
 
     fireEvent.click(screen.getByRole('button', { name: /common\.mainNav\.workspace\.credits|7,500 credits/ }))
-    expect(mockSetShowAccountSettingModal).toHaveBeenCalledWith({ payload: ACCOUNT_SETTING_TAB.PROVIDER })
+    expect(mockPush).toHaveBeenCalledWith('/integrations/model-provider')
+    expect(mockSetShowAccountSettingModal).not.toHaveBeenCalledWith({ payload: ACCOUNT_SETTING_TAB.PROVIDER })
 
     fireEvent.click(screen.getByText('billing.upgradeBtn.plain'))
     expect(mockSetShowPricingModal).toHaveBeenCalled()
