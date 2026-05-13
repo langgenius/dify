@@ -305,9 +305,7 @@ class TestFormValidation:
             "app_id": "app-def",
             "form_content": "Test form",
             "inputs": [
-                ParagraphInputConfig(
-                    type=FormInputType.PARAGRAPH, output_variable_name="required_input", default=None
-                )
+                ParagraphInputConfig(type=FormInputType.PARAGRAPH, output_variable_name="required_input", default=None)
             ],
             "user_actions": [UserActionConfig(id="submit", title="Submit")],
             "timeout": 1,
