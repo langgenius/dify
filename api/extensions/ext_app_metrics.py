@@ -5,6 +5,7 @@ import threading
 from flask import Response
 
 from configs import dify_config
+from controllers.console.admin import admin_required
 from dify_app import DifyApp
 
 
@@ -25,6 +26,7 @@ def init_app(app: DifyApp):
         )
 
     @app.route("/threads")
+    @admin_required
     def threads():  # pyright: ignore[reportUnusedFunction]
         num_threads = threading.active_count()
         threads = threading.enumerate()
@@ -50,6 +52,7 @@ def init_app(app: DifyApp):
         }
 
     @app.route("/db-pool-stat")
+    @admin_required
     def pool_stat():  # pyright: ignore[reportUnusedFunction]
         from extensions.ext_database import db
 
