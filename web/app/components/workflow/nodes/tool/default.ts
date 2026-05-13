@@ -44,7 +44,8 @@ const nodeDefault: NodeDefault<ToolNodeType> = {
             errorMessages = t(`${i18nPrefix}.fieldRequired`, { ns: 'workflow', field: field.label })
         }
         else {
-          if (!errorMessages && (value === undefined || value === null || value === ''))
+          const isEmptyArray = Array.isArray(value) && value.length === 0
+          if (!errorMessages && (value === undefined || value === null || value === '' || isEmptyArray))
             errorMessages = t(`${i18nPrefix}.fieldRequired`, { ns: 'workflow', field: field.label })
         }
       })

@@ -8,6 +8,7 @@ import type { ToolWithProvider, ValueSelector, Var } from '@/app/components/work
 import { cn } from '@langgenius/dify-ui/cn'
 import { Select, SelectContent, SelectItem, SelectItemIndicator, SelectItemText, SelectTrigger } from '@langgenius/dify-ui/select'
 import { useEffect, useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import CheckboxList from '@/app/components/base/checkbox-list'
 import Input from '@/app/components/base/input'
 import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
@@ -18,10 +19,11 @@ import VarReferencePicker from '@/app/components/workflow/nodes/_base/components
 import useAvailableVarList from '@/app/components/workflow/nodes/_base/hooks/use-available-var-list'
 import MixedVariableTextInput from '@/app/components/workflow/nodes/tool/components/mixed-variable-text-input'
 import { VarType } from '@/app/components/workflow/types'
-import { useFetchDynamicOptions } from '@/service/use-plugins'
+import { useFetchDynamicOptions, useFetchDynamicTreeOptions } from '@/service/use-plugins'
 import { useTriggerPluginDynamicOptions } from '@/service/use-triggers'
 import { VarKindType } from '../types'
 import FormInputBoolean from './form-input-boolean'
+import FormInputDynamicTreeSelect from './form-input-dynamic-tree-select'
 import {
   filterVisibleOptions,
   getCheckboxListOptions,
@@ -59,6 +61,31 @@ type Props = {
 
 type FormInputValue = string | number | boolean | string[] | Record<string, unknown> | null | undefined
 
+const normalizeDynamicTreeSelectValue = (rawValue: unknown): string[] => {
+  if (Array.isArray(rawValue))
+    return rawValue.filter(item => typeof item === 'string')
+
+  if (typeof rawValue === 'string' && rawValue)
+    return [rawValue]
+
+  return []
+}
+
+const filterVisibleTreeOptions = (options: FormOption[], values: ResourceVarInputs): FormOption[] => {
+  return options.reduce<FormOption[]>((acc, option) => {
+    const isVisible = !option.show_on?.length || option.show_on.every(
+      showOnItem => values[showOnItem.variable]?.value === showOnItem.value || values[showOnItem.variable] === showOnItem.value,
+    )
+
+    if (!isVisible)
+      return acc
+
+    const children = option.children?.length ? filterVisibleTreeOptions(option.children, values) : undefined
+    acc.push({ ...option, children })
+    return acc
+  }, [])
+}
+
 const FormInputItem: FC<Props> = ({
   readOnly,
   nodeId,
@@ -74,6 +101,7 @@ const FormInputItem: FC<Props> = ({
   disableVariableInsertion = false,
 }) => {
   const language = useLanguage()
+  const { t } = useTranslation()
   const [toolsOptions, setToolsOptions] = useState<FormOption[] | null>(null)
   const [isLoadingToolsOptions, setIsLoadingToolsOptions] = useState(false)
 
@@ -91,6 +119,7 @@ const FormInputItem: FC<Props> = ({
     isCheckbox,
     isConstant,
     isDynamicSelect,
+    isDynamicTreeSelect,
     isModelSelector,
     isMultipleSelect,
     isNumber,
@@ -122,6 +151,13 @@ const FormInputItem: FC<Props> = ({
     providerType,
     extraParams,
   )
+  const { mutateAsync: fetchDynamicTreeOptions } = useFetchDynamicTreeOptions(
+    currentProvider?.plugin_id || '',
+    currentProvider?.name || '',
+    currentTool?.name || '',
+    variable || '',
+    extraParams,
+  )
 
   // Fetch dynamic options hook for triggers
   const { data: triggerDynamicOptions, isLoading: isTriggerOptionsLoading } = useTriggerPluginDynamicOptions({
@@ -145,7 +181,29 @@ const FormInputItem: FC<Props> = ({
   // Fetch dynamic options for tools only (triggers use hook directly)
   useEffect(() => {
     const fetchPanelDynamicOptions = async () => {
-      if (isDynamicSelect && currentTool && currentProvider && (providerType === PluginCategoryEnum.tool || providerType === PluginCategoryEnum.trigger)) {
+      if (!currentTool || !currentProvider)
+        return
+
+      if (isDynamicTreeSelect) {
+        if (providerType !== PluginCategoryEnum.tool)
+          return
+
+        setIsLoadingToolsOptions(true)
+        try {
+          const data = await fetchDynamicTreeOptions()
+          setToolsOptions(data?.options || [])
+        }
+        catch (error) {
+          console.error('Failed to fetch dynamic options:', error)
+          setToolsOptions([])
+        }
+        finally {
+          setIsLoadingToolsOptions(false)
+        }
+        return
+      }
+
+      if (isDynamicSelect && (providerType === PluginCategoryEnum.tool || providerType === PluginCategoryEnum.trigger)) {
         setIsLoadingToolsOptions(true)
         try {
           const data = await fetchDynamicOptions()
@@ -164,12 +222,16 @@ const FormInputItem: FC<Props> = ({
     fetchPanelDynamicOptions()
   }, [
     isDynamicSelect,
+    isDynamicTreeSelect,
+    currentTool,
+    currentProvider,
     currentTool?.name,
     currentProvider?.name,
     variable,
     extraParams,
     providerType,
     fetchDynamicOptions,
+    fetchDynamicTreeOptions,
   ])
 
   const handleTypeChange = (newType: string) => {
@@ -249,6 +311,10 @@ const FormInputItem: FC<Props> = ({
   )
   const visibleDynamicOptions = useMemo(
     () => filterVisibleOptions(dynamicOptions || options || [], value),
+    [dynamicOptions, options, value],
+  )
+  const visibleDynamicTreeOptions = useMemo(
+    () => filterVisibleTreeOptions(dynamicOptions || options || [], value),
     [dynamicOptions, options, value],
   )
   const staticSelectItems = useMemo(
@@ -358,7 +424,7 @@ const FormInputItem: FC<Props> = ({
           onValueChange={value => value && handleValueChange(value)}
         >
           <SelectTrigger className="h-8 grow">
-            {selectedDynamicOption?.name ?? (isLoadingOptions ? 'Loading...' : (placeholder?.[language] ?? placeholder?.en_US))}
+            {selectedDynamicOption?.name ?? (isLoadingOptions ? t('dynamicSelect.loading', { ns: 'common' }) : (placeholder?.[language] ?? placeholder?.en_US))}
           </SelectTrigger>
           <SelectContent>
             {dynamicSelectItems.map(item => (
@@ -382,6 +448,18 @@ const FormInputItem: FC<Props> = ({
           onChange={handleValueChange}
           placeholder={placeholder?.[language] || placeholder?.en_US}
           selectedLabel={selectedLabels}
+        />
+      )}
+      {isDynamicTreeSelect && isConstant && (
+        <FormInputDynamicTreeSelect
+          disabled={readOnly}
+          isLoading={isLoadingOptions}
+          multiple={isMultipleSelect}
+          value={normalizeDynamicTreeSelectValue(varInput?.value)}
+          options={visibleDynamicTreeOptions}
+          onChange={handleValueChange}
+          placeholder={placeholder?.[language] || placeholder?.en_US || t('placeholder.select', { ns: 'common' })}
+          language={language}
         />
       )}
       {isShowJSONEditor && isConstant && (

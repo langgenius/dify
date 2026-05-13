@@ -653,6 +653,61 @@ class BuiltinToolManageService:
                 )
 
     @staticmethod
+    def get_builtin_tool_provider_runtime_credentials(
+        tenant_id: str,
+        provider: str,
+        credential_id: str | None,
+    ) -> tuple[Mapping[str, Any], str]:
+        """
+        Get decrypted runtime credentials for a builtin tool provider.
+
+        Returns the tenant-scoped selected credential by explicit id or default/oldest fallback.
+        """
+        provider_controller = ToolManager.get_builtin_provider(provider, tenant_id)
+        if not provider_controller.need_credentials:
+            return {}, CredentialType.UNAUTHORIZED.value
+
+        with Session(db.engine, autoflush=False) as session:
+            if credential_id:
+                db_provider = session.scalar(
+                    select(BuiltinToolProvider)
+                    .where(
+                        BuiltinToolProvider.tenant_id == tenant_id,
+                        BuiltinToolProvider.provider == provider,
+                        BuiltinToolProvider.id == credential_id,
+                    )
+                    .limit(1)
+                )
+            else:
+                db_provider = session.scalar(
+                    select(BuiltinToolProvider)
+                    .where(
+                        BuiltinToolProvider.tenant_id == tenant_id,
+                        BuiltinToolProvider.provider == provider,
+                    )
+                    .order_by(BuiltinToolProvider.is_default.desc(), BuiltinToolProvider.created_at.asc())
+                    .limit(1)
+                )
+
+        if db_provider is None:
+            raise ValueError(f"Builtin provider {provider} not found when fetching credentials")
+
+        encrypter, _ = create_provider_encrypter(
+            tenant_id=tenant_id,
+            config=[
+                x.to_basic_provider_config()
+                for x in provider_controller.get_credentials_schema_by_type(db_provider.credential_type)
+            ],
+            cache=ToolProviderCredentialsCache(
+                tenant_id=tenant_id,
+                provider=provider,
+                credential_id=db_provider.id,
+            ),
+        )
+
+        return encrypter.decrypt(db_provider.credentials), db_provider.credential_type
+
+    @staticmethod
     def save_custom_oauth_client_params(
         tenant_id: str,
         provider: str,
