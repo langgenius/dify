@@ -4,7 +4,7 @@ Context: the desktop MainNav rewrite moved several workspace, account, tools, an
 
 Current status:
 
-- Open: account-setting modal navigation API, Marketplace install/error status parity, default account language entry.
+- Open: account-setting modal navigation API, Marketplace install/error status parity, default account language entry, Integrations plugin install permission gating.
 - Partially resolved: Apps/Datasets quick-switch/create parity.
 - Resolved: Integrations sidebar placeholder state, branding-gated Help trigger, workspace plan billing access.
 
@@ -153,3 +153,27 @@ Resolution:
 - Keep sandbox/free and paid behavior as the explicit plan-action row.
 - Keep the workspace plan badge display-only.
 - Use the WorkspaceCard Settings item as the Billing entry.
+
+## 8. Integrations plugin install permission gating
+
+Status: Open.
+
+Old `/plugins` behavior:
+
+- `InstallPluginDropdown` is shown only when `canManagement` is true.
+- The plugins page drag-and-drop install uploader is enabled only when the plugins tab is active and `canManagement` is true.
+
+Current Integrations behavior:
+
+- The Integrations sidebar install dropdown remains visible.
+- Trigger and Agent Strategy empty states show Marketplace, GitHub, and Local Package File install entry points according to marketplace/local-package feature gates.
+- Trigger and Agent Strategy drag-and-drop package install is gated by `restrict_to_marketplace_only`, not by `canManagement`.
+
+Question:
+
+- Should `canManagement` hide all Integrations install entry points, including Marketplace, GitHub, Local Package File, and drag-and-drop install, or should some Marketplace browsing/entry affordances remain visible for users without plugin management permission?
+
+Follow-up decision needed:
+
+- If Integrations should match strict old `/plugins` install permission behavior, apply `canManagement` to every install path, not only drag-and-drop.
+- If Marketplace should remain visible as a read-only discovery path, separate browse affordances from install actions so users without `canManagement` cannot trigger installation flows.
