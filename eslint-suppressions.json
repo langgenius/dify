@@ -2987,22 +2987,6 @@
       "count": 1
     }
   },
-  "web/app/components/workflow/block-selector/featured-tools.tsx": {
-    "react/set-state-in-effect": {
-      "count": 2
-    },
-    "ts/no-explicit-any": {
-      "count": 2
-    }
-  },
-  "web/app/components/workflow/block-selector/featured-triggers.tsx": {
-    "react/set-state-in-effect": {
-      "count": 2
-    },
-    "ts/no-explicit-any": {
-      "count": 2
-    }
-  },
   "web/app/components/workflow/block-selector/hooks.ts": {
     "react/set-state-in-effect": {
       "count": 1
@@ -3035,29 +3019,6 @@
   },
   "web/app/components/workflow/block-selector/tool-picker.tsx": {
     "no-restricted-imports": {
-      "count": 1
-    }
-  },
-  "web/app/components/workflow/block-selector/tool/tool-list-flat-view/list.tsx": {
-    "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
-  "web/app/components/workflow/block-selector/tool/tool.tsx": {
-    "react/set-state-in-effect": {
-      "count": 2
-    }
-  },
-  "web/app/components/workflow/block-selector/trigger-plugin/action-item.tsx": {
-    "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
-  "web/app/components/workflow/block-selector/trigger-plugin/item.tsx": {
-    "react/set-state-in-effect": {
-      "count": 2
-    },
-    "ts/no-explicit-any": {
       "count": 1
     }
   },
