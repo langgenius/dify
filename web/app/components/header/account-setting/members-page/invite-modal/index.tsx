@@ -85,7 +85,7 @@ const InviteModal = ({
     >
       <DialogContent
         backdropProps={{ forceRender: true }}
-        className="w-[400px] overflow-visible px-8 py-6"
+        className="w-100 overflow-visible px-8 py-6"
       >
         <DialogCloseButton className="top-6 right-8" />
         <div className="mb-2 pr-8">
