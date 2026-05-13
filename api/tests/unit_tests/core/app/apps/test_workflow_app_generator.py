@@ -99,7 +99,7 @@ def test_resume_delegates_to_generate(mocker: MockerFixture):
     generator = WorkflowAppGenerator()
     mock_generate = mocker.patch.object(generator, "_generate", return_value="ok")
 
-    application_generate_entity = SimpleNamespace(stream=False, invoke_from="debugger")
+    application_generate_entity = SimpleNamespace(stream=False, invoke_from="debugger", trace_manager=MagicMock())
     runtime_state = MagicMock(name="runtime-state")
     pause_config = MagicMock(name="pause-config")
 

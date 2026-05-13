@@ -1,12 +1,12 @@
 'use client'
 
-import { useTranslation } from '#i18n'
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from '@langgenius/dify-ui/popover'
 import { useState } from 'react'
+import { useTranslation } from '#i18n'
 import Checkbox from '@/app/components/base/checkbox'
 import Input from '@/app/components/base/input'
 import { useTags } from '@/app/components/plugins/hooks'

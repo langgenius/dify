@@ -130,7 +130,7 @@ function ModelSelector({
       <ComboboxContent
         placement="bottom-start"
         sideOffset={4}
-        popupClassName={cn('min-w-[320px] overflow-hidden rounded-xl', popupClassName)}
+        popupClassName={cn('w-[432px] max-w-[432px] overflow-hidden rounded-xl', popupClassName)}
       >
         <Popup
           defaultModel={defaultModel}
