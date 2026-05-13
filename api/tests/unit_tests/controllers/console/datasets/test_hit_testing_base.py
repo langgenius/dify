@@ -120,7 +120,7 @@ class TestParseArgs:
 class TestPerformHitTesting:
     def test_success(self, dataset):
         response = {
-            "query": "hello",
+            "query": {"content": "hello"},
             "records": [],
         }
 
@@ -134,7 +134,7 @@ class TestPerformHitTesting:
         assert result["query"] == "hello"
         assert result["records"] == []
 
-    def test_success_normalizes_legacy_query_and_nullable_list_fields(self, dataset):
+    def test_success_prepares_nullable_list_fields(self, dataset):
         response = {
             "query": {"content": "hello"},
             "records": [
