@@ -2,8 +2,7 @@
 Credential utility functions for checking credential existence and policy compliance.
 """
 
-from dify.api.configs import dify_config
-
+from configs import dify_config
 from core.entities import PluginCredentialType
 
 
