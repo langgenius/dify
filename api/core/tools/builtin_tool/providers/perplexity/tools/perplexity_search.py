@@ -1,17 +1,31 @@
 from __future__ import annotations
 
 from collections.abc import Generator
+from importlib import metadata
 from typing import Any
 
-import requests
+import httpx
 
+from core.helper import ssrf_proxy
 from core.tools.builtin_tool.tool import BuiltinTool
 from core.tools.entities.tool_entities import ToolInvokeMessage
-from core.tools.errors import ToolInvokeError
+from core.tools.errors import ToolInvokeError, ToolSSRFError
 
 PERPLEXITY_SEARCH_URL = "https://api.perplexity.ai/search"
 DEFAULT_MAX_RESULTS = 5
+MIN_MAX_RESULTS = 1
+MAX_MAX_RESULTS = 20
 HTTP_TIMEOUT = 30
+
+
+def _get_dify_version() -> str:
+    try:
+        return metadata.version("dify-api")
+    except metadata.PackageNotFoundError:
+        return "0.1.0"
+
+
+INTEGRATION_HEADER = f"dify/{_get_dify_version()}"
 
 
 def _split_domains(value: str) -> list[str]:
@@ -21,13 +35,15 @@ def _split_domains(value: str) -> list[str]:
 def _build_payload(tool_parameters: dict[str, Any]) -> dict[str, Any]:
     payload: dict[str, Any] = {"query": tool_parameters["query"]}
 
-    max_results = tool_parameters.get("max_results")
-    if max_results in (None, ""):
+    raw_max_results = tool_parameters.get("max_results")
+    if raw_max_results is None or raw_max_results == "":
         max_results = DEFAULT_MAX_RESULTS
-    try:
-        payload["max_results"] = int(max_results)
-    except (TypeError, ValueError):
-        payload["max_results"] = DEFAULT_MAX_RESULTS
+    else:
+        try:
+            max_results = int(raw_max_results)
+        except (TypeError, ValueError):
+            max_results = DEFAULT_MAX_RESULTS
+    payload["max_results"] = min(max(max_results, MIN_MAX_RESULTS), MAX_MAX_RESULTS)
 
     domain_filter = tool_parameters.get("search_domain_filter")
     if isinstance(domain_filter, str) and domain_filter.strip():
@@ -75,20 +91,21 @@ class PerplexitySearchTool(BuiltinTool):
         payload = _build_payload({**tool_parameters, "query": query})
 
         try:
-            response = requests.post(
+            response = ssrf_proxy.post(
                 PERPLEXITY_SEARCH_URL,
                 json=payload,
                 headers={
                     "Authorization": f"Bearer {api_key}",
                     "Content-Type": "application/json",
+                    "X-Pplx-Integration": INTEGRATION_HEADER,
                 },
-                timeout=HTTP_TIMEOUT,
+                timeout=httpx.Timeout(HTTP_TIMEOUT),
             )
             response.raise_for_status()
             data = response.json()
-        except requests.HTTPError as e:
+        except httpx.HTTPStatusError as e:
             raise ToolInvokeError(f"Perplexity Search request failed: {e}") from e
-        except requests.RequestException as e:
+        except (httpx.RequestError, ssrf_proxy.MaxRetriesExceededError, ToolSSRFError) as e:
             raise ToolInvokeError(f"Perplexity Search request error: {e}") from e
         except ValueError as e:
             raise ToolInvokeError(f"Perplexity Search returned invalid JSON: {e}") from e

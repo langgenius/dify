@@ -1,10 +1,10 @@
 from __future__ import annotations
 
 from typing import Any
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
+import httpx
 import pytest
-import requests
 
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.tools.__base.tool_runtime import ToolRuntime
@@ -16,6 +16,8 @@ from core.tools.builtin_tool.providers.perplexity.tools.perplexity_search import
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_entities import ToolEntity, ToolIdentity, ToolInvokeMessage
 from core.tools.errors import ToolInvokeError
+
+SSRF_POST_PATCH_TARGET = "core.helper.ssrf_proxy.post"
 
 
 def _make_tool(api_key: str | None = "test-key") -> PerplexitySearchTool:
@@ -35,15 +37,12 @@ def _make_tool(api_key: str | None = "test-key") -> PerplexitySearchTool:
     return PerplexitySearchTool(provider="perplexity", entity=entity, runtime=runtime)
 
 
-def _mock_response(payload: dict[str, Any], status: int = 200) -> MagicMock:
-    response = MagicMock(spec=requests.Response)
-    response.status_code = status
-    response.json.return_value = payload
-    if status >= 400:
-        response.raise_for_status.side_effect = requests.HTTPError(f"HTTP {status}")
-    else:
-        response.raise_for_status.return_value = None
-    return response
+def _mock_response(payload: dict[str, Any], status: int = 200) -> httpx.Response:
+    return httpx.Response(
+        status,
+        json=payload,
+        request=httpx.Request("POST", PERPLEXITY_SEARCH_URL),
+    )
 
 
 def test_build_payload_defaults_and_overrides():
@@ -63,6 +62,8 @@ def test_build_payload_defaults_and_overrides():
     assert payload["search_recency_filter"] == "week"
     assert payload["search_after_date_filter"] == "1/1/2025"
     assert payload["search_before_date_filter"] == "12/31/2025"
+    assert _build_payload({"query": "hello", "max_results": 0})["max_results"] == 1
+    assert _build_payload({"query": "hello", "max_results": 25})["max_results"] == 20
 
 
 def test_build_payload_domain_filter_supports_string_and_list():
@@ -87,7 +88,7 @@ def test_invoke_returns_messages_for_results():
     }
 
     with patch(
-        "core.tools.builtin_tool.providers.perplexity.tools.perplexity_search.requests.post",
+        SSRF_POST_PATCH_TARGET,
         return_value=_mock_response(api_payload),
     ) as mock_post:
         messages = list(tool.invoke(user_id="u1", tool_parameters={"query": "test", "max_results": 2}))
@@ -108,7 +109,7 @@ def test_invoke_returns_messages_for_results():
 def test_invoke_with_no_results_returns_friendly_text():
     tool = _make_tool()
     with patch(
-        "core.tools.builtin_tool.providers.perplexity.tools.perplexity_search.requests.post",
+        SSRF_POST_PATCH_TARGET,
         return_value=_mock_response({"results": []}),
     ):
         messages = list(tool.invoke(user_id="u1", tool_parameters={"query": "obscure"}))
@@ -120,7 +121,7 @@ def test_invoke_with_no_results_returns_friendly_text():
 
 def test_invoke_missing_query_yields_prompt():
     tool = _make_tool()
-    with patch("core.tools.builtin_tool.providers.perplexity.tools.perplexity_search.requests.post") as mock_post:
+    with patch(SSRF_POST_PATCH_TARGET) as mock_post:
         messages = list(tool.invoke(user_id="u1", tool_parameters={"query": "  "}))
     mock_post.assert_not_called()
     assert len(messages) == 1
@@ -129,7 +130,7 @@ def test_invoke_missing_query_yields_prompt():
 
 def test_invoke_missing_api_key_yields_prompt():
     tool = _make_tool(api_key=None)
-    with patch("core.tools.builtin_tool.providers.perplexity.tools.perplexity_search.requests.post") as mock_post:
+    with patch(SSRF_POST_PATCH_TARGET) as mock_post:
         messages = list(tool.invoke(user_id="u1", tool_parameters={"query": "anything"}))
     mock_post.assert_not_called()
     assert len(messages) == 1
@@ -139,7 +140,7 @@ def test_invoke_missing_api_key_yields_prompt():
 def test_invoke_http_error_raises_tool_invoke_error():
     tool = _make_tool()
     with patch(
-        "core.tools.builtin_tool.providers.perplexity.tools.perplexity_search.requests.post",
+        SSRF_POST_PATCH_TARGET,
         return_value=_mock_response({}, status=500),
     ):
         with pytest.raises(ToolInvokeError):
@@ -149,7 +150,7 @@ def test_invoke_http_error_raises_tool_invoke_error():
 def test_invoke_passes_filter_parameters_through():
     tool = _make_tool()
     with patch(
-        "core.tools.builtin_tool.providers.perplexity.tools.perplexity_search.requests.post",
+        SSRF_POST_PATCH_TARGET,
         return_value=_mock_response({"results": [{"title": "x", "url": "https://x.test"}]}),
     ) as mock_post:
         list(
@@ -167,6 +168,7 @@ def test_invoke_passes_filter_parameters_through():
         )
 
     sent = mock_post.call_args.kwargs["json"]
+    headers = mock_post.call_args.kwargs["headers"]
     assert sent == {
         "query": "ai",
         "max_results": 3,
@@ -175,6 +177,7 @@ def test_invoke_passes_filter_parameters_through():
         "search_after_date_filter": "1/1/2025",
         "search_before_date_filter": "12/31/2025",
     }
+    assert headers["X-Pplx-Integration"].startswith("dify/")
 
 
 def test_format_results_as_text_renders_each_result():
