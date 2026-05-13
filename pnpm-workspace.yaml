@@ -208,7 +208,7 @@ catalog:
   react-multi-email: 1.0.25
   react-papaparse: 4.4.0
   react-pdf-highlighter: 8.0.0-rc.0
-  react-server-dom-webpack: 19.2.5
+  react-server-dom-webpack: 19.2.6
   react-sortablejs: 6.1.4
   react-textarea-autosize: 8.5.9
   reactflow: 11.11.4
