@@ -61,7 +61,7 @@ from services.errors.account import (
     TenantNotFoundError,
 )
 from services.errors.workspace import WorkSpaceNotAllowedCreateError, WorkspacesLimitExceededError
-from services.enterprise.rbac_service import RBACService
+from services.enterprise.rbac_service import ListOption, RBACService
 from services.feature_service import FeatureService
 from tasks.delete_account_task import delete_account_task
 from tasks.mail_account_deletion_task import send_account_deletion_verification_code
@@ -137,6 +137,38 @@ class AccountService:
     CHANGE_EMAIL_MAX_ERROR_LIMITS = 5
     OWNER_TRANSFER_MAX_ERROR_LIMITS = 5
     EMAIL_REGISTER_MAX_ERROR_LIMITS = 5
+
+    @staticmethod
+    def resolve_workspace_rbac_role_id(tenant_id: str, account_id: str, role_identifier: str) -> str:
+        """Resolve a legacy workspace role name or RBAC role id to a concrete RBAC role id.
+
+        The members API historically speaks in legacy role names (`owner`, `admin`,
+        `editor`, ...). When RBAC is enabled we must replace member-role bindings
+        with the actual RBAC role id returned by the RBAC service.
+        """
+        options = ListOption(page_number=1, results_per_page=100)
+        roles = RBACService.Roles.list(tenant_id, account_id, options=options).data
+
+        normalized_identifier = role_identifier.strip().lower()
+        expected_builtin_name = {
+            TenantAccountRole.OWNER.value: "所有者",
+            TenantAccountRole.ADMIN.value: "管理者",
+            TenantAccountRole.EDITOR.value: "编辑者",
+            TenantAccountRole.NORMAL.value: "普通用户",
+            TenantAccountRole.DATASET_OPERATOR.value: "知识库操作员",
+        }.get(normalized_identifier)
+        for role in roles:
+            role_id = str(role.id)
+            role_name = str(role.name)
+            if role_id == role_identifier:
+                return role_id
+            if expected_builtin_name and role.is_builtin and role.category == "global_system_default":
+                if role_name == expected_builtin_name:
+                    return role_id
+            if role_name.strip().lower() == normalized_identifier:
+                return role_id
+
+        raise ValueError(f"Workspace RBAC role not found for identifier: {role_identifier}")
 
     @staticmethod
     def _get_refresh_token_key(refresh_token: str) -> str:
@@ -1406,11 +1438,37 @@ class TenantService:
                 .where(TenantAccountJoin.tenant_id == tenant.id, TenantAccountJoin.role == "owner")
                 .limit(1)
             )
-            if current_owner_join:
-                current_owner_join.role = TenantAccountRole.ADMIN
+            if not dify_config.RBAC_ENABLED:
+                if current_owner_join:
+                    current_owner_join.role = TenantAccountRole.ADMIN
+            else:
+                admin_role_id = AccountService.resolve_workspace_rbac_role_id(
+                    tenant_id=str(tenant.id),
+                    account_id=operator.id,
+                    role_identifier=TenantAccountRole.ADMIN.value,
+                )
+                RBACService.MemberRoles.replace(
+                    tenant_id=str(tenant.id),
+                    account_id=operator.id,
+                    member_account_id=str(current_owner_join.account_id),
+                    role_ids=[admin_role_id],
+                )
 
         # Update the role of the target member
-        target_member_join.role = new_tenant_role
+        if dify_config.RBAC_ENABLED:
+            resolved_role_id = AccountService.resolve_workspace_rbac_role_id(
+                tenant_id=str(tenant.id),
+                account_id=operator.id,
+                role_identifier=TenantAccountRole.OWNER.value,
+            )
+            RBACService.MemberRoles.replace(
+                tenant_id=str(tenant.id),
+                account_id=operator.id,
+                member_account_id=member.id,
+                role_ids=[resolved_role_id],
+            )
+        else:
+            target_member_join.role = new_tenant_role
         db.session.commit()
 
     @staticmethod
@@ -1583,11 +1641,16 @@ class RegisterService:
 
         # Assign RBAC role if RBAC is enabled
         if dify_config.RBAC_ENABLED:
+            resolved_role_id = AccountService.resolve_workspace_rbac_role_id(
+                tenant_id=str(tenant.id),
+                account_id=inviter.id,
+                role_identifier=role,
+            )
             RBACService.MemberRoles.replace(
                 tenant_id=str(tenant.id),
                 account_id=inviter.id,
                 member_account_id=account.id,
-                role_ids=[role],
+                role_ids=[resolved_role_id],
             )
 
         token = cls.generate_invite_token(tenant, account)

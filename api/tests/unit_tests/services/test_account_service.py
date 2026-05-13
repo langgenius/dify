@@ -1727,6 +1727,7 @@ class TestRegisterService:
                 patch("services.account_service.TenantService.create_tenant_member") as mock_create_member,
                 patch("services.account_service.TenantService.switch_tenant"),
                 patch("services.account_service.RegisterService.generate_invite_token", return_value="rbac-token"),
+                patch("services.account_service.AccountService.resolve_workspace_rbac_role_id", return_value="rbac-role-id-123"),
                 patch("services.account_service.RBACService") as mock_rbac_service,
             ):
                 mock_register.return_value = mock_new_account
@@ -1772,6 +1773,7 @@ class TestRegisterService:
                 patch("services.account_service.TenantService.check_member_permission"),
                 patch("services.account_service.TenantService.create_tenant_member") as mock_create_member,
                 patch("services.account_service.RegisterService.generate_invite_token", return_value="rbac-token"),
+                patch("services.account_service.AccountService.resolve_workspace_rbac_role_id", return_value="rbac-role-id-456"),
                 patch("services.account_service.RBACService") as mock_rbac_service,
             ):
                 result = RegisterService.invite_new_member(
