@@ -17,12 +17,18 @@ public ``id``/``run_id``/``type``/``data``/``created_at`` shape, while each
 ``type`` has a typed ``data`` model so OpenAPI, Redis replay, and clients parse
 the same payload contract. Model/provider selection is part of the submitted
 composition, not a top-level run field; the runtime reads the model layer named
-by ``DIFY_AGENT_MODEL_LAYER_ID``. Request-level ``on_exit`` signals decide
+by ``DIFY_AGENT_MODEL_LAYER_ID`` and the optional structured output layer named
+by ``DIFY_AGENT_OUTPUT_LAYER_ID``. Request-level ``on_exit`` signals decide
 whether each active layer is suspended or deleted when the run exits, with
 suspend as the default so successful terminal events can include resumable
 snapshots. Successful runs publish the final JSON-safe agent output and the
 resumable Agenton session snapshot together on the terminal ``run_succeeded``
-event so consumers can treat terminal events as complete run summaries.
+event so consumers can treat terminal events as complete run summaries. Session
+snapshots carry only layer lifecycle/runtime state in compositor order; they do
+not persist output-layer config. Resumed structured-output runs therefore must
+resubmit the same ``output`` layer in ``composition.layers[]`` so snapshot layer
+name/order still matches the composition and the runtime can rebuild the same
+structured output contract.
 """
 
 from datetime import datetime, timezone
@@ -36,6 +42,7 @@ from agenton.layers import ExitIntent
 
 
 DIFY_AGENT_MODEL_LAYER_ID: Final[str] = "llm"
+DIFY_AGENT_OUTPUT_LAYER_ID: Final[str] = "output"
 RunStatus = Literal["running", "succeeded", "failed"]
 RunEventType = Literal[
     "run_started",
@@ -97,9 +104,14 @@ class CreateRunRequest(BaseModel):
     """Request body for creating one async agent run.
 
     Model/provider configuration must be supplied through the composition layer
-    named by ``DIFY_AGENT_MODEL_LAYER_ID``. ``on_exit`` defaults every active
-    layer to suspend so callers receive a resumable success snapshot unless they
-    explicitly request delete for one or more layers.
+    named by ``DIFY_AGENT_MODEL_LAYER_ID``. Structured output may be supplied
+    through the optional composition layer named by
+    ``DIFY_AGENT_OUTPUT_LAYER_ID``. ``on_exit`` defaults every active layer to
+    suspend so callers receive a resumable success snapshot unless they
+    explicitly request delete for one or more layers. Session snapshots do not
+    preserve output-layer config, so resume requests that rely on structured
+    output must include the same ``output`` layer in ``composition.layers[]`` to
+    keep snapshot compatibility and rebuild the output schema.
     """
 
     composition: RunComposition
@@ -243,6 +255,7 @@ __all__ = [
     "CreateRunRequest",
     "CreateRunResponse",
     "DIFY_AGENT_MODEL_LAYER_ID",
+    "DIFY_AGENT_OUTPUT_LAYER_ID",
     "EmptyRunEventData",
     "LayerExitSignals",
     "PydanticAIStreamRunEvent",

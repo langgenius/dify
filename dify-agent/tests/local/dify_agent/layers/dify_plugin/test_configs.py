@@ -3,8 +3,6 @@ from pydantic import ValidationError
 
 import dify_agent.layers.dify_plugin as dify_plugin_exports
 from dify_agent.layers.dify_plugin import (
-    DIFY_PLUGIN_LAYER_TYPE_ID,
-    DIFY_PLUGIN_LLM_LAYER_TYPE_ID,
     DifyPluginCredentialValue,
     DifyPluginLLMLayerConfig,
     DifyPluginLayerConfig,

@@ -107,6 +107,20 @@ class DifyLLMAdapterModelTests(unittest.IsolatedAsyncioTestCase):
                     },
                 )
             ],
+            output_mode="tool",
+            output_tools=[
+                ToolDefinition(
+                    name="incident_summary",
+                    description="Return the final structured incident summary",
+                    parameters_json_schema={
+                        "type": "object",
+                        "properties": {"title": {"type": "string"}},
+                        "required": ["title"],
+                        "additionalProperties": False,
+                    },
+                )
+            ],
+            allow_text_output=False,
             instruction_parts=[InstructionPart(content="be concise")],
         )
 
@@ -129,7 +143,9 @@ class DifyLLMAdapterModelTests(unittest.IsolatedAsyncioTestCase):
             )
             self.assertEqual(data["stop"], ["END"])
             self.assertFalse(data["stream"])
-            self.assertEqual(data["tools"][0]["name"], "weather")
+            tools_by_name = {tool["name"]: tool for tool in data["tools"]}
+            self.assertEqual(set(tools_by_name), {"weather", "incident_summary"})
+            self.assertEqual(tools_by_name["incident_summary"]["parameters"]["required"], ["title"])
             self.assertEqual(data["prompt_messages"][0]["role"], "system")
             self.assertEqual(data["prompt_messages"][0]["content"], "request system")
             self.assertEqual(data["prompt_messages"][1]["content"], "be concise")
@@ -167,6 +183,95 @@ class DifyLLMAdapterModelTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(response.provider_name, "DifyPlugin/langgenius/openai")
         self.assertEqual(response.usage.input_tokens, 11)
         self.assertEqual(response.usage.output_tokens, 7)
+        self.assertEqual(response.parts[0].part_kind, "text")
+        self.assertEqual(cast(TextPart, response.parts[0]).content, "adapter response")
+
+    async def test_request_maps_tool_call_only_assistant_history_to_empty_string_content(self) -> None:
+        messages = [
+            ModelRequest(parts=[SystemPromptPart("request system"), UserPromptPart("hello")]),
+            ModelResponse(
+                parts=[
+                    ToolCallPart(
+                        tool_name="weather",
+                        args='{"city":"Paris"}',
+                        tool_call_id="tool-1",
+                    )
+                ]
+            ),
+            ModelRequest(
+                parts=[
+                    ToolReturnPart(
+                        tool_name="weather",
+                        content={"temperature": "18C"},
+                        tool_call_id="tool-1",
+                    )
+                ]
+            ),
+        ]
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            payload = json.loads(request.content.decode("utf-8"))
+            prompt_messages = payload["data"]["prompt_messages"]
+
+            self.assertEqual([message["role"] for message in prompt_messages], ["system", "user", "assistant", "tool"])
+            self.assertEqual(prompt_messages[2]["content"], "")
+            self.assertEqual(prompt_messages[2]["tool_calls"][0]["id"], "tool-1")
+            self.assertEqual(prompt_messages[2]["tool_calls"][0]["type"], "function")
+            self.assertEqual(prompt_messages[2]["tool_calls"][0]["function"]["name"], "weather")
+            self.assertEqual(prompt_messages[2]["tool_calls"][0]["function"]["arguments"], '{"city":"Paris"}')
+            self.assertEqual(prompt_messages[3]["tool_call_id"], "tool-1")
+
+            return build_stream_response(*single_text_chunk("adapter response", prompt_tokens=11, completion_tokens=7))
+
+        async with self.mock_daemon_stream(httpx.MockTransport(handler)):
+            adapter = DifyLLMAdapterModel(
+                "demo-model",
+                self.make_provider(),
+                model_provider="openai",
+                credentials={"api_key": "secret"},
+            )
+
+            response = await adapter.request(
+                messages,
+                model_settings=None,
+                model_request_parameters=ModelRequestParameters(),
+            )
+
+        self.assertEqual(response.model_name, "demo-model")
+        self.assertEqual(response.parts[0].part_kind, "text")
+        self.assertEqual(cast(TextPart, response.parts[0]).content, "adapter response")
+
+    async def test_request_omits_empty_assistant_history_when_response_has_no_content_or_tool_calls(self) -> None:
+        messages = [
+            ModelRequest(parts=[SystemPromptPart("request system"), UserPromptPart("hello")]),
+            ModelResponse(parts=[]),
+            ModelRequest(parts=[UserPromptPart("follow up")]),
+        ]
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            payload = json.loads(request.content.decode("utf-8"))
+            prompt_messages = payload["data"]["prompt_messages"]
+
+            self.assertEqual([message["role"] for message in prompt_messages], ["system", "user", "user"])
+            self.assertEqual(prompt_messages[2]["content"], "follow up")
+
+            return build_stream_response(*single_text_chunk("adapter response", prompt_tokens=11, completion_tokens=7))
+
+        async with self.mock_daemon_stream(httpx.MockTransport(handler)):
+            adapter = DifyLLMAdapterModel(
+                "demo-model",
+                self.make_provider(),
+                model_provider="openai",
+                credentials={"api_key": "secret"},
+            )
+
+            response = await adapter.request(
+                messages,
+                model_settings=None,
+                model_request_parameters=ModelRequestParameters(),
+            )
+
+        self.assertEqual(response.model_name, "demo-model")
         self.assertEqual(response.parts[0].part_kind, "text")
         self.assertEqual(cast(TextPart, response.parts[0]).content, "adapter response")
 

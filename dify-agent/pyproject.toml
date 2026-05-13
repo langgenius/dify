@@ -15,6 +15,7 @@ dependencies = [
 server = [
     "fastapi>=0.136.0",
     "graphon~=0.2.2",
+    "jsonschema>=4.23.0",
     "pydantic-ai-slim[anthropic,google,openai]>=1.85.1",
     "pydantic-settings>=2.12.0",
     "redis>=5",

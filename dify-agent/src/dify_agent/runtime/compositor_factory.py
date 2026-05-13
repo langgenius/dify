@@ -1,12 +1,12 @@
 """Safe Agenton compositor construction for API-submitted configs.
 
 Only explicitly allowed provider type ids are constructible here. The default
-provider set contains prompt layers plus Dify plugin LLM layers. Public DTOs
-provide tenant/plugin/model data, while server-only plugin daemon settings are
-injected through the provider factory for ``DifyPluginLayer``. The resulting
-``Compositor`` remains Agenton state-only: live resources such as the plugin
-daemon HTTP client are supplied later by the runtime and never enter providers,
-layers, or session snapshots.
+provider set contains prompt layers, the state-free Dify structured output
+layer, plus Dify plugin LLM layers. Public DTOs provide tenant/plugin/model
+data, while server-only plugin daemon settings are injected through the provider
+factory for ``DifyPluginLayer``. The resulting ``Compositor`` remains Agenton
+state-only: live resources such as the plugin daemon HTTP client are supplied
+later by the runtime and never enter providers, layers, or session snapshots.
 """
 
 from collections.abc import Mapping, Sequence
@@ -21,6 +21,7 @@ from agenton_collections.transformers.pydantic_ai import PYDANTIC_AI_TRANSFORMER
 from dify_agent.layers.dify_plugin.configs import DifyPluginLayerConfig
 from dify_agent.layers.dify_plugin.llm_layer import DifyPluginLLMLayer
 from dify_agent.layers.dify_plugin.plugin_layer import DifyPluginLayer
+from dify_agent.layers.output.output_layer import DifyOutputLayer
 
 
 type DifyAgentLayerProvider = LayerProvider[Any]
@@ -34,6 +35,7 @@ def create_default_layer_providers(
     """Return the server provider set of safe config-constructible layers."""
     return (
         LayerProvider.from_layer_type(PromptLayer),
+        LayerProvider.from_layer_type(DifyOutputLayer),
         LayerProvider.from_factory(
             layer_type=DifyPluginLayer,
             create=lambda config: DifyPluginLayer.from_config_with_settings(

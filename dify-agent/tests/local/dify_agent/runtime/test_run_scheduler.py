@@ -1,5 +1,6 @@
 import asyncio
 from collections import defaultdict
+from collections.abc import Mapping
 
 import httpx
 import pytest
@@ -7,6 +8,8 @@ import pytest
 from agenton.compositor import CompositorSessionSnapshot, LayerSessionSnapshot
 from agenton.layers import ExitIntent, LifecycleState
 from agenton_collections.layers.plain import PromptLayerConfig
+from dify_agent.layers.output import DIFY_OUTPUT_LAYER_TYPE_ID, DifyOutputLayerConfig
+from dify_agent.protocol import DIFY_AGENT_OUTPUT_LAYER_ID
 from dify_agent.protocol.schemas import (
     CreateRunRequest,
     LayerExitSignals,
@@ -24,12 +27,39 @@ from dify_agent.runtime.run_scheduler import (
 from dify_agent.server.schemas import RunRecord
 
 
-def _request(user: str | list[str] = "hello") -> CreateRunRequest:
-    return CreateRunRequest(
-        composition=RunComposition(
-            layers=[RunLayerSpec(name="prompt", type="plain.prompt", config=PromptLayerConfig(user=user))]
+def _request(
+    user: str | list[str] = "hello",
+    *,
+    output_config: Mapping[str, object] | DifyOutputLayerConfig | None = None,
+) -> CreateRunRequest:
+    layers = [RunLayerSpec(name="prompt", type="plain.prompt", config=PromptLayerConfig(user=user))]
+    if output_config is not None:
+        layers.append(
+            RunLayerSpec(
+                name=DIFY_AGENT_OUTPUT_LAYER_ID,
+                type=DIFY_OUTPUT_LAYER_TYPE_ID,
+                config=output_config,
+            )
         )
+
+    return CreateRunRequest(
+        composition=RunComposition(layers=layers)
     )
+
+
+def _recursive_output_schema() -> dict[str, object]:
+    return {
+        "type": "object",
+        "properties": {"node": {"$ref": "#/$defs/node"}},
+        "$defs": {
+            "node": {
+                "type": "object",
+                "properties": {"child": {"$ref": "#/$defs/node"}},
+                "additionalProperties": False,
+            }
+        },
+        "additionalProperties": False,
+    }
 
 
 class FakeStore:
@@ -153,10 +183,245 @@ def test_create_run_rejects_blank_prompt_before_persisting() -> None:
     asyncio.run(scenario())
 
 
+def test_create_run_rejects_invalid_output_schema_before_persisting() -> None:
+    async def scenario() -> None:
+        store = FakeStore()
+        async with httpx.AsyncClient() as client:
+            scheduler = RunScheduler(store=store, plugin_daemon_http_client=client)
+
+            with pytest.raises(ValueError, match=r"Recursive \$defs refs are not supported"):
+                await scheduler.create_run(
+                    _request(
+                        output_config={
+                            "name": "incident_summary",
+                            "json_schema": _recursive_output_schema(),
+                        }
+                    )
+                )
+
+        assert store.records == {}
+
+    asyncio.run(scenario())
+
+
+def test_create_run_rejects_remote_ref_output_schema_before_persisting() -> None:
+    async def scenario() -> None:
+        store = FakeStore()
+        async with httpx.AsyncClient() as client:
+            scheduler = RunScheduler(store=store, plugin_daemon_http_client=client)
+
+            with pytest.raises(ValueError, match=r"Remote \$ref values are not supported"):
+                await scheduler.create_run(
+                    _request(
+                        output_config={
+                            "name": "incident_summary",
+                            "json_schema": {
+                                "type": "object",
+                                "properties": {
+                                    "title": {"$ref": "https://example.com/schema.json"},
+                                },
+                            },
+                        }
+                    )
+                )
+
+        assert store.records == {}
+
+    asyncio.run(scenario())
+
+
+def test_create_run_rejects_non_object_output_schema_before_persisting() -> None:
+    async def scenario() -> None:
+        store = FakeStore()
+        async with httpx.AsyncClient() as client:
+            scheduler = RunScheduler(store=store, plugin_daemon_http_client=client)
+
+            with pytest.raises(ValueError, match="Schema must declare an object output"):
+                await scheduler.create_run(
+                    _request(
+                        output_config={
+                            "name": "incident_actions",
+                            "json_schema": {
+                                "type": "array",
+                                "items": {"type": "string"},
+                            },
+                        }
+                    )
+                )
+
+        assert store.records == {}
+
+    asyncio.run(scenario())
+
+
+def test_create_run_rejects_non_defs_local_ref_in_direct_object_schema_before_persisting() -> None:
+    async def scenario() -> None:
+        store = FakeStore()
+        async with httpx.AsyncClient() as client:
+            scheduler = RunScheduler(store=store, plugin_daemon_http_client=client)
+
+            with pytest.raises(ValueError, match=r"Only local refs under '#/\$defs/' are supported"):
+                await scheduler.create_run(
+                    _request(
+                        output_config={
+                            "name": "incident_summary",
+                            "json_schema": {
+                                "type": "object",
+                                "properties": {
+                                    "items": {"$ref": "#/definitions/itemArray"},
+                                },
+                                "required": ["items"],
+                                "definitions": {
+                                    "itemArray": {
+                                        "type": "array",
+                                        "items": {"type": "string"},
+                                    },
+                                },
+                            },
+                        }
+                    )
+                )
+
+        assert store.records == {}
+
+    asyncio.run(scenario())
+
+
+def test_create_run_rejects_misnamed_output_layer_before_persisting() -> None:
+    async def scenario() -> None:
+        store = FakeStore()
+        async with httpx.AsyncClient() as client:
+            scheduler = RunScheduler(store=store, plugin_daemon_http_client=client)
+
+            request = CreateRunRequest(
+                composition=RunComposition(
+                    layers=[
+                        RunLayerSpec(name="prompt", type="plain.prompt", config=PromptLayerConfig(user="hello")),
+                        RunLayerSpec(
+                            name="structured-output",
+                            type=DIFY_OUTPUT_LAYER_TYPE_ID,
+                            config=DifyOutputLayerConfig(
+                                json_schema={
+                                    "type": "object",
+                                    "properties": {"title": {"type": "string"}},
+                                    "required": ["title"],
+                                    "additionalProperties": False,
+                                }
+                            ),
+                        ),
+                    ]
+                )
+            )
+
+            with pytest.raises(ValueError, match="must use reserved layer name 'output'"):
+                await scheduler.create_run(request)
+
+        assert store.records == {}
+
+    asyncio.run(scenario())
+
+
+def test_create_run_rejects_multiple_output_layers_before_persisting() -> None:
+    async def scenario() -> None:
+        store = FakeStore()
+        async with httpx.AsyncClient() as client:
+            scheduler = RunScheduler(store=store, plugin_daemon_http_client=client)
+
+            request = CreateRunRequest(
+                composition=RunComposition(
+                    layers=[
+                        RunLayerSpec(name="prompt", type="plain.prompt", config=PromptLayerConfig(user="hello")),
+                        RunLayerSpec(
+                            name=DIFY_AGENT_OUTPUT_LAYER_ID,
+                            type=DIFY_OUTPUT_LAYER_TYPE_ID,
+                            config=DifyOutputLayerConfig(
+                                json_schema={
+                                    "type": "object",
+                                    "properties": {"title": {"type": "string"}},
+                                    "required": ["title"],
+                                    "additionalProperties": False,
+                                }
+                            ),
+                        ),
+                        RunLayerSpec(
+                            name="secondary-output",
+                            type=DIFY_OUTPUT_LAYER_TYPE_ID,
+                            config=DifyOutputLayerConfig(
+                                json_schema={
+                                    "type": "object",
+                                    "properties": {"summary": {"type": "string"}},
+                                    "required": ["summary"],
+                                    "additionalProperties": False,
+                                }
+                            ),
+                        ),
+                    ]
+                )
+            )
+
+            with pytest.raises(ValueError, match="Only one 'dify.output' layer is supported"):
+                await scheduler.create_run(request)
+
+        assert store.records == {}
+
+    asyncio.run(scenario())
+
+
+def test_create_run_rejects_reserved_output_name_with_wrong_layer_type_before_persisting() -> None:
+    async def scenario() -> None:
+        store = FakeStore()
+        async with httpx.AsyncClient() as client:
+            scheduler = RunScheduler(store=store, plugin_daemon_http_client=client)
+
+            request = CreateRunRequest(
+                composition=RunComposition(
+                    layers=[
+                        RunLayerSpec(name="prompt", type="plain.prompt", config=PromptLayerConfig(user="hello")),
+                        RunLayerSpec(name=DIFY_AGENT_OUTPUT_LAYER_ID, type="plain.prompt", config=PromptLayerConfig(user="hi")),
+                    ]
+                )
+            )
+
+            with pytest.raises(ValueError, match=r"Layer 'output' must be DifyOutputLayer, got PromptLayer"):
+                await scheduler.create_run(request)
+
+        assert store.records == {}
+
+    asyncio.run(scenario())
+
+
 def test_validate_run_request_honors_explicit_empty_layer_providers() -> None:
     async def scenario() -> None:
         with pytest.raises(RunRequestValidationError, match="plain.prompt"):
             await validate_run_request(_request(), layer_providers=())
+
+    asyncio.run(scenario())
+
+
+def test_validate_run_request_rejects_misnamed_output_layer_before_provider_checks() -> None:
+    async def scenario() -> None:
+        request = CreateRunRequest(
+            composition=RunComposition(
+                layers=[
+                    RunLayerSpec(name="prompt", type="plain.prompt", config=PromptLayerConfig(user="hello")),
+                    RunLayerSpec(
+                        name="structured-output",
+                        type=DIFY_OUTPUT_LAYER_TYPE_ID,
+                        config=DifyOutputLayerConfig(
+                            json_schema={
+                                "type": "object",
+                                "properties": {"title": {"type": "string"}},
+                                "required": ["title"],
+                                "additionalProperties": False,
+                            }
+                        ),
+                    ),
+                ]
+            )
+        )
+
+        with pytest.raises(RunRequestValidationError, match="must use reserved layer name 'output'"):
+            await validate_run_request(request, layer_providers=())
 
     asyncio.run(scenario())
 

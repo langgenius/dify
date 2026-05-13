@@ -585,6 +585,7 @@ dependencies = [
 server = [
     { name = "fastapi" },
     { name = "graphon" },
+    { name = "jsonschema" },
     { name = "pydantic-ai-slim", extra = ["anthropic", "google", "openai"] },
     { name = "pydantic-settings" },
     { name = "redis" },
@@ -612,6 +613,7 @@ requires-dist = [
     { name = "fastapi", marker = "extra == 'server'", specifier = ">=0.136.0" },
     { name = "graphon", marker = "extra == 'server'", specifier = "~=0.2.2" },
     { name = "httpx", specifier = ">=0.28.1" },
+    { name = "jsonschema", marker = "extra == 'server'", specifier = ">=4.23.0" },
     { name = "pydantic", specifier = ">=2.13.3" },
     { name = "pydantic-ai-slim", specifier = ">=1.85.1" },
     { name = "pydantic-ai-slim", extras = ["anthropic", "google", "openai"], marker = "extra == 'server'", specifier = ">=1.85.1" },

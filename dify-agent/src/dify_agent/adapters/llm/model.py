@@ -327,6 +327,13 @@ def _map_tool_return_part_to_prompt_message(part: ToolReturnPart) -> ToolPromptM
 def _map_model_response_to_prompt_message(
     message: ModelResponse,
 ) -> AssistantPromptMessage | None:
+    """Map prior assistant output into daemon prompt history.
+
+    The plugin daemon requires ``PromptMessage.content`` to be present even when
+    an assistant turn contains only tool calls. Tool-call-only assistant history
+    therefore uses the empty string instead of ``null`` so the second request in
+    a tool round trip remains schema-compatible.
+    """
     content_parts: list[PromptMessageContentUnionTypes] = []
     tool_calls: list[AssistantPromptMessage.ToolCall] = []
 
@@ -358,6 +365,8 @@ def _map_model_response_to_prompt_message(
     content = _normalize_prompt_content(content_parts)
     if content is None and not tool_calls:
         return None
+    if content is None:
+        content = ""
 
     return AssistantPromptMessage(content=content, tool_calls=tool_calls)
 

@@ -16,6 +16,7 @@ CLIENT_SHARED_DTO_DEPENDENCIES = {
 SERVER_RUNTIME_DEPENDENCIES = {
     "fastapi>=0.136.0",
     "graphon~=0.2.2",
+    "jsonschema>=4.23.0",
     "pydantic-ai-slim[anthropic,google,openai]>=1.85.1",
     "pydantic-settings>=2.12.0",
     "redis>=5",
@@ -23,7 +24,7 @@ SERVER_RUNTIME_DEPENDENCIES = {
 }
 
 
-def _read_pyproject() -> dict[str, object]:
+def _read_pyproject():
     return tomllib.loads((PROJECT_ROOT / "pyproject.toml").read_text(encoding="utf-8"))
 
 

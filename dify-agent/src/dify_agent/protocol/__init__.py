@@ -2,6 +2,7 @@
 
 from .schemas import (
     DIFY_AGENT_MODEL_LAYER_ID,
+    DIFY_AGENT_OUTPUT_LAYER_ID,
     RUN_EVENT_ADAPTER,
     BaseRunEvent,
     CreateRunRequest,
@@ -30,6 +31,7 @@ __all__ = [
     "CreateRunRequest",
     "CreateRunResponse",
     "DIFY_AGENT_MODEL_LAYER_ID",
+    "DIFY_AGENT_OUTPUT_LAYER_ID",
     "EmptyRunEventData",
     "LayerExitSignals",
     "PydanticAIStreamRunEvent",
