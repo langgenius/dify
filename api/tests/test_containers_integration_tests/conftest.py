@@ -22,7 +22,7 @@ from sqlalchemy import Engine, text
 from sqlalchemy.orm import Session
 from testcontainers.core.container import DockerContainer
 from testcontainers.core.network import Network
-from testcontainers.core.waiting_utils import wait_for_logs
+from testcontainers.core.wait_strategies import LogMessageWaitStrategy
 from testcontainers.postgres import PostgresContainer
 from testcontainers.redis import RedisContainer
 
@@ -52,6 +52,10 @@ class _CloserProtocol(Protocol):
 def _auto_close[T: _CloserProtocol](closer: T) -> Generator[T, None, None]:
     yield closer
     closer.close()
+
+
+def _wait_for_log_message(message: str, timeout: int) -> LogMessageWaitStrategy:
+    return LogMessageWaitStrategy(message).with_startup_timeout(timeout)
 
 
 class DifyTestContainers:
@@ -99,6 +103,7 @@ class DifyTestContainers:
         self.postgres = PostgresContainer(
             image="postgres:14-alpine",
         ).with_network(self.network)
+        self.postgres.waiting_for(_wait_for_log_message("is ready to accept connections", 30))
         self.postgres.start()
         db_host = self.postgres.get_container_host_ip()
         db_port = self.postgres.get_exposed_port(5432)
@@ -115,9 +120,6 @@ class DifyTestContainers:
             self.postgres.dbname,
         )
 
-        # Wait for PostgreSQL to be ready
-        logger.info("Waiting for PostgreSQL to be ready to accept connections...")
-        wait_for_logs(self.postgres, "is ready to accept connections", timeout=30)
         logger.info("PostgreSQL container is ready and accepting connections")
 
         conn = psycopg2.connect(
@@ -152,6 +154,7 @@ class DifyTestContainers:
         # Redis is used for storing session data, cache entries, and temporary data
         logger.info("Initializing Redis container...")
         self.redis = RedisContainer(image="redis:6-alpine", port=6379).with_network(self.network)
+        self.redis.waiting_for(_wait_for_log_message("Ready to accept connections", 30))
         self.redis.start()
         redis_host = self.redis.get_container_host_ip()
         redis_port = self.redis.get_exposed_port(6379)
@@ -159,9 +162,6 @@ class DifyTestContainers:
         os.environ["REDIS_PORT"] = str(redis_port)
         logger.info("Redis container started successfully - Host: %s, Port: %s", redis_host, redis_port)
 
-        # Wait for Redis to be ready
-        logger.info("Waiting for Redis to be ready to accept connections...")
-        wait_for_logs(self.redis, "Ready to accept connections", timeout=30)
         logger.info("Redis container is ready and accepting connections")
 
         # Start Dify Sandbox container for code execution environment.
@@ -170,6 +170,7 @@ class DifyTestContainers:
         sandbox_image = os.getenv(SANDBOX_TEST_IMAGE_ENV, DEFAULT_SANDBOX_TEST_IMAGE)
         self.dify_sandbox = DockerContainer(image=sandbox_image).with_network(self.network)
         self.dify_sandbox.with_exposed_ports(8194)
+        self.dify_sandbox.waiting_for(_wait_for_log_message("config init success", 60))
         self.dify_sandbox.env = {
             "API_KEY": "test_api_key",
         }
@@ -185,9 +186,6 @@ class DifyTestContainers:
             sandbox_port,
         )
 
-        # Wait for Dify Sandbox to be ready
-        logger.info("Waiting for Dify Sandbox to be ready to accept connections...")
-        wait_for_logs(self.dify_sandbox, "config init success", timeout=60)
         logger.info("Dify Sandbox container is ready and accepting connections")
 
         # Start Dify Plugin Daemon container for plugin management
@@ -197,6 +195,7 @@ class DifyTestContainers:
             self.network
         )
         self.dify_plugin_daemon.with_exposed_ports(5002)
+        self.dify_plugin_daemon.waiting_for(_wait_for_log_message("start plugin manager daemon", 60))
         # Get container internal network addresses
         postgres_container_name = self.postgres.get_wrapped_container().name
         redis_container_name = self.redis.get_wrapped_container().name
@@ -243,9 +242,6 @@ class DifyTestContainers:
                 plugin_daemon_port,
             )
 
-            # Wait for Dify Plugin Daemon to be ready
-            logger.info("Waiting for Dify Plugin Daemon to be ready to accept connections...")
-            wait_for_logs(self.dify_plugin_daemon, "start plugin manager daemon", timeout=60)
             logger.info("Dify Plugin Daemon container is ready and accepting connections")
         except Exception as e:
             logger.warning("Failed to start Dify Plugin Daemon container: %s", e)
