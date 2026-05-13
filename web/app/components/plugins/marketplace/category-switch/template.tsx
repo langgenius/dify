@@ -21,7 +21,7 @@ const categoryValues = [
   TEMPLATE_CATEGORY_MAP.it,
   TEMPLATE_CATEGORY_MAP.knowledge,
   TEMPLATE_CATEGORY_MAP.design,
-  TEMPLATE_CATEGORY_MAP.other,
+  TEMPLATE_CATEGORY_MAP.others,
 ] as const
 
 export const TemplateCategorySwitch = ({
@@ -53,7 +53,7 @@ export const TemplateCategorySwitch = ({
   }
 
   return (
-    <div className="flex shrink-0 items-center gap-2 justify-between">
+    <div className="flex shrink-0 items-center justify-between gap-2">
       <CommonCategorySwitch
         className={className}
         variant={variant}

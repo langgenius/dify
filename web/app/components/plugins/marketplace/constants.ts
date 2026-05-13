@@ -46,7 +46,7 @@ export const TEMPLATE_CATEGORY_MAP = {
   it: 'it',
   knowledge: 'knowledge',
   design: 'design',
-  other: 'other',
+  others: 'others',
 } as const
 
 export type ActiveTemplateCategory = typeof TEMPLATE_CATEGORY_MAP[keyof typeof TEMPLATE_CATEGORY_MAP]
