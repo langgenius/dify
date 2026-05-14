@@ -2787,7 +2787,7 @@
   },
   "web/app/components/rag-pipeline/hooks/use-nodes-sync-draft.ts": {
     "ts/no-explicit-any": {
-      "count": 2
+      "count": 1
     }
   },
   "web/app/components/rag-pipeline/hooks/use-pipeline-config.ts": {
@@ -2797,7 +2797,7 @@
   },
   "web/app/components/rag-pipeline/hooks/use-pipeline-init.ts": {
     "ts/no-explicit-any": {
-      "count": 2
+      "count": 1
     }
   },
   "web/app/components/rag-pipeline/hooks/use-pipeline-run.ts": {
@@ -2949,12 +2949,12 @@
   },
   "web/app/components/workflow-app/hooks/use-nodes-sync-draft.ts": {
     "ts/no-explicit-any": {
-      "count": 2
+      "count": 1
     }
   },
   "web/app/components/workflow-app/hooks/use-workflow-init.ts": {
     "ts/no-explicit-any": {
-      "count": 3
+      "count": 2
     }
   },
   "web/app/components/workflow-app/hooks/use-workflow-refresh-draft.ts": {
@@ -4315,7 +4315,7 @@
       "count": 16
     },
     "ts/no-empty-object-type": {
-      "count": 3
+      "count": 1
     },
     "ts/no-explicit-any": {
       "count": 8
