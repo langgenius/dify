@@ -108,7 +108,7 @@ def resolve_variable_select_input_options(
         if option_values is None:
             resolved_inputs.append(form_input)
             continue
-        if not (option_values, ArrayStringSegment):
+        if not isinstance(option_values, ArrayStringSegment):
             raise TypeError(f"expected ArrayStringSegment, got {type(option_values)}")
 
         updated_option_source = option_source.model_copy(update={"value": option_values.value})

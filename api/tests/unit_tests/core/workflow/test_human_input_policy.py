@@ -1,3 +1,4 @@
+import pytest
 from core.workflow.human_input_policy import (
     HumanInputSurface,
     get_preferred_form_token,
@@ -57,7 +58,7 @@ def test_preferred_form_token_uses_shared_priority_order() -> None:
 def test_resolve_variable_select_input_options_uses_runtime_values() -> None:
     variable_pool = VariablePool()
     variable_pool.add(("start", "options"), ["approve", "reject"])
-    inputs = [
+    inputs: list[SelectInputConfig] = [
         SelectInputConfig(
             output_variable_name="decision",
             option_source=StringListSource(
@@ -69,7 +70,7 @@ def test_resolve_variable_select_input_options_uses_runtime_values() -> None:
     ]
 
     resolved = resolve_variable_select_input_options(inputs, variable_pool=variable_pool)
-
+    assert isinstance(resolved[0], SelectInputConfig)
     assert resolved[0].option_source.value == ["approve", "reject"]
 
 
@@ -87,6 +88,5 @@ def test_resolve_variable_select_input_options_keeps_original_when_value_not_str
         )
     ]
 
-    resolved = resolve_variable_select_input_options(inputs, variable_pool=variable_pool)
-
-    assert resolved[0].option_source.value == []
+    with pytest.raises(TypeError):
+        resolve_variable_select_input_options(inputs, variable_pool=variable_pool)
