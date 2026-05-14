@@ -140,6 +140,13 @@ class SQLAlchemyExecutionExtraContentRepository(ExecutionExtraContentRepository)
             expiration_time=int(form.expiration_time.timestamp()),
         )
 
+        if not submitted:
+            return HumanInputContentDomainModel(
+                workflow_run_id=model.workflow_run_id,
+                submitted=False,
+                form_definition=form_definition_domain_model,
+            )
+
         selected_action_id = form.selected_action_id
         if not selected_action_id:
             logger.warning("HumanInputContent(id=%s) form has no selected action", model.id)
