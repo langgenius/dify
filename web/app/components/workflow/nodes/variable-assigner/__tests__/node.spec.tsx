@@ -60,8 +60,6 @@ const baseNodeProps = {
   selected: false,
   zIndex: 1,
   isConnectable: true,
-  xPos: 0,
-  yPos: 0,
   dragging: false,
   dragHandle: '.drag-handle',
 }

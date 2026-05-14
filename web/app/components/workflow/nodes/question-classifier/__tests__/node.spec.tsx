@@ -58,8 +58,6 @@ const baseNodeProps = {
   type: 'custom',
   selected: false,
   zIndex: 1,
-  xPos: 0,
-  yPos: 0,
   dragging: false,
   isConnectable: true,
 }

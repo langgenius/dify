@@ -140,8 +140,6 @@ export type Node<T = Record<string, unknown>> = ReactFlowNode<CommonNodeType<T> 
 export type NodeProps<T = Record<string, unknown>> = {
   id: string
   data: CommonNodeType<T>
-  xPos?: number
-  yPos?: number
 } & Partial<ReactFlowNodeProps<Node<T>>>
 export type NodePanelProps<T = Record<string, unknown>> = {
   id: string

@@ -9,6 +9,7 @@ import { useWorkflowStoreApi } from '@/app/components/workflow/hooks/use-workflo
 import {
   useWorkflowStore,
 } from '@/app/components/workflow/store'
+import { normalizeNodeDimensionsForReactFlowV12 } from '@/app/components/workflow/utils/workflow-init'
 import { API_PREFIX } from '@/config'
 import { parseResponseError, postWithKeepalive } from '@/service/fetch'
 import { syncWorkflowDraft } from '@/service/workflow'
@@ -38,6 +39,7 @@ export const useNodesSyncDraft = () => {
     if (pipelineId && !!validNodes.length) {
       const producedNodes = produce(validNodes, (draft) => {
         draft.forEach((node) => {
+          normalizeNodeDimensionsForReactFlowV12(node)
           Object.keys(node.data).forEach((key) => {
             if (key.startsWith('_'))
               delete node.data[key]

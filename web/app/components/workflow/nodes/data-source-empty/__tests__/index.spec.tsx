@@ -50,8 +50,6 @@ const createNodeProps = (): DataSourceEmptyNodeProps => ({
   selected: false,
   zIndex: 0,
   isConnectable: true,
-  xPos: 0,
-  yPos: 0,
   dragging: false,
   dragHandle: undefined,
 } as unknown as DataSourceEmptyNodeProps)

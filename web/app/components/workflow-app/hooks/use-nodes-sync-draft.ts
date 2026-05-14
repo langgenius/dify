@@ -9,6 +9,7 @@ import { useSerialAsyncCallback } from '@/app/components/workflow/hooks/use-seri
 import { useNodesReadOnly } from '@/app/components/workflow/hooks/use-workflow'
 import { useWorkflowStoreApi } from '@/app/components/workflow/hooks/use-workflow-reactflow'
 import { useWorkflowStore } from '@/app/components/workflow/store'
+import { normalizeNodeDimensionsForReactFlowV12 } from '@/app/components/workflow/utils/workflow-init'
 import { API_PREFIX } from '@/config'
 import { parseResponseError, postWithKeepalive } from '@/service/fetch'
 import { systemFeaturesQueryOptions } from '@/service/system-features'
@@ -48,6 +49,7 @@ export const useNodesSyncDraft = () => {
     const features = featuresStore!.getState().features
     const producedNodes = produce(validNodes, (draft) => {
       draft.forEach((node) => {
+        normalizeNodeDimensionsForReactFlowV12(node)
         Object.keys(node.data).forEach((key) => {
           if (key.startsWith('_'))
             delete node.data[key]

@@ -20,8 +20,6 @@ describe('workflow preview loop-start node', () => {
       zIndex: 1,
       isConnectable: true,
       dragging: false,
-      xPos: 0,
-      yPos: 0,
       dragHandle: undefined,
       data: { title: '', desc: '', type: BlockEnum.LoopStart },
     }

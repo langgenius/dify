@@ -105,8 +105,11 @@ describe('useSelectionInteractions', () => {
 
     await waitFor(() => {
       expect(getBundledState(result.current.nodes.find(node => node.id === 'n1'))._isBundled).toBe(true)
+      expect(result.current.nodes.find(node => node.id === 'n1')?.selected).toBe(true)
       expect(getBundledState(result.current.nodes.find(node => node.id === 'n2'))._isBundled).toBe(false)
+      expect(result.current.nodes.find(node => node.id === 'n2')?.selected).toBe(false)
       expect(getBundledState(result.current.nodes.find(node => node.id === 'n3'))._isBundled).toBe(true)
+      expect(result.current.nodes.find(node => node.id === 'n3')?.selected).toBe(true)
     })
   })
 
@@ -128,8 +131,47 @@ describe('useSelectionInteractions', () => {
 
     await waitFor(() => {
       expect(getBundledState(result.current.edges.find(edge => edge.id === 'e1'))._isBundled).toBe(true)
-      expect(getBundledState(result.current.edges.find(edge => edge.id === 'e2'))._isBundled).toBe(false)
+      expect(result.current.edges.find(edge => edge.id === 'e1')?.selected).toBe(true)
+      expect(getBundledState(result.current.edges.find(edge => edge.id === 'e2'))._isBundled).toBeFalsy()
+      expect(result.current.edges.find(edge => edge.id === 'e2')?.selected).toBeFalsy()
     })
+  })
+
+  it('handleSelectionChange should skip store writes when bundled state is unchanged', async () => {
+    const { result } = renderSelectionInteractions()
+
+    act(() => {
+      result.current.reactFlowStore.setState({
+        userSelectionRect: { x: 0, y: 0, width: 100, height: 100 },
+      } as never)
+    })
+
+    act(() => {
+      result.current.handleSelectionChange({
+        nodes: [{ id: 'n1' }, { id: 'n3' }],
+        edges: [{ id: 'e1' }],
+      } as unknown as OnSelectionChangeParams)
+    })
+
+    await waitFor(() => {
+      expect(getBundledState(result.current.nodes.find(node => node.id === 'n1'))._isBundled).toBe(true)
+      expect(getBundledState(result.current.nodes.find(node => node.id === 'n3'))._isBundled).toBe(true)
+      expect(getBundledState(result.current.edges.find(edge => edge.id === 'e1'))._isBundled).toBe(true)
+    })
+
+    const reactFlowState = result.current.reactFlowStore.getState()
+    const setNodesSpy = vi.spyOn(reactFlowState, 'setNodes')
+    const setEdgesSpy = vi.spyOn(reactFlowState, 'setEdges')
+
+    act(() => {
+      result.current.handleSelectionChange({
+        nodes: [{ id: 'n1' }, { id: 'n3' }],
+        edges: [{ id: 'e1' }],
+      } as unknown as OnSelectionChangeParams)
+    })
+
+    expect(setNodesSpy).not.toHaveBeenCalled()
+    expect(setEdgesSpy).not.toHaveBeenCalled()
   })
 
   it('handleSelectionDrag should sync node positions', async () => {

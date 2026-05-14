@@ -2,7 +2,7 @@ import type {
   OnSelectionChangeFunc,
 } from '@xyflow/react'
 import type { MouseEvent } from 'react'
-import type { Node } from '../types'
+import type { Edge, Node } from '../types'
 import {
   produce,
 } from 'immer'
@@ -13,6 +13,31 @@ import { useWorkflowStoreApi } from '@/app/components/workflow/hooks/use-workflo
 import { useWorkflowStore } from '../store'
 import { useCollaborativeWorkflow } from './use-collaborative-workflow'
 import { useNodesReadOnly } from './use-workflow'
+
+type BundledItem = Node | Edge
+
+const applySelectionState = <T extends BundledItem>(items: T[], selectedIds: Set<string>) => {
+  let changed = false
+
+  const nextItems = items.map((item) => {
+    const shouldBeSelected = selectedIds.has(item.id)
+
+    if (!!item.data._isBundled === shouldBeSelected && !!item.selected === shouldBeSelected)
+      return item
+
+    changed = true
+    return {
+      ...item,
+      selected: shouldBeSelected,
+      data: {
+        ...item.data,
+        _isBundled: shouldBeSelected,
+      },
+    }
+  })
+
+  return changed ? nextItems : items
+}
 
 export const useSelectionInteractions = () => {
   const store = useWorkflowStoreApi()
@@ -30,20 +55,14 @@ export const useSelectionInteractions = () => {
     } = store.getState()
 
     if (!userSelectionRect?.width || !userSelectionRect?.height) {
-      const newNodes = produce(nodes, (draft) => {
-        draft.forEach((node) => {
-          if (node.data._isBundled)
-            node.data._isBundled = false
-        })
-      })
-      setNodes(newNodes)
-      const newEdges = produce(edges, (draft) => {
-        draft.forEach((edge) => {
-          if (edge.data._isBundled)
-            edge.data._isBundled = false
-        })
-      })
-      setEdges(newEdges)
+      const selectedIds = new Set<string>()
+      const newNodes = applySelectionState(nodes as Node[], selectedIds)
+      if (newNodes !== nodes)
+        setNodes(newNodes)
+
+      const newEdges = applySelectionState(edges as Edge[], selectedIds)
+      if (newEdges !== edges)
+        setEdges(newEdges)
     }
   }, [store])
 
@@ -59,28 +78,15 @@ export const useSelectionInteractions = () => {
     if (!userSelectionRect?.width || !userSelectionRect?.height)
       return
 
-    const newNodes = produce(nodes, (draft) => {
-      draft.forEach((node) => {
-        const nodeInSelection = nodesInSelection.find(n => n.id === node.id)
+    const selectedNodeIds = new Set(nodesInSelection.map(node => node.id))
+    const newNodes = applySelectionState(nodes as Node[], selectedNodeIds)
+    if (newNodes !== nodes)
+      setNodes(newNodes)
 
-        if (nodeInSelection)
-          node.data._isBundled = true
-        else
-          node.data._isBundled = false
-      })
-    })
-    setNodes(newNodes)
-    const newEdges = produce(edges, (draft) => {
-      draft.forEach((edge) => {
-        const edgeInSelection = edgesInSelection.find(e => e.id === edge.id)
-
-        if (edgeInSelection)
-          edge.data._isBundled = true
-        else
-          edge.data._isBundled = false
-      })
-    })
-    setEdges(newEdges)
+    const selectedEdgeIds = new Set(edgesInSelection.map(edge => edge.id))
+    const newEdges = applySelectionState(edges as Edge[], selectedEdgeIds)
+    if (newEdges !== edges)
+      setEdges(newEdges)
   }, [store])
 
   const handleSelectionDrag = useCallback((_: MouseEvent, nodesWithDrag: Node[]) => {
@@ -116,20 +122,14 @@ export const useSelectionInteractions = () => {
       userSelectionActive: true,
     })
 
-    const newNodes = produce(nodes, (draft) => {
-      draft.forEach((node) => {
-        if (node.data._isBundled)
-          node.data._isBundled = false
-      })
-    })
-    setNodes(newNodes)
-    const newEdges = produce(edges, (draft) => {
-      draft.forEach((edge) => {
-        if (edge.data._isBundled)
-          edge.data._isBundled = false
-      })
-    })
-    setEdges(newEdges)
+    const selectedIds = new Set<string>()
+    const newNodes = applySelectionState(nodes as Node[], selectedIds)
+    if (newNodes !== nodes)
+      setNodes(newNodes)
+
+    const newEdges = applySelectionState(edges as Edge[], selectedIds)
+    if (newEdges !== edges)
+      setEdges(newEdges)
   }, [store])
 
   const handleSelectionContextMenu = useCallback((e: MouseEvent) => {

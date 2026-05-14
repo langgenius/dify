@@ -28,6 +28,7 @@ import {
 import { branchNameCorrect } from '../nodes/if-else/utils'
 import { CUSTOM_ITERATION_START_NODE } from '../nodes/iteration-start/constants'
 import { CUSTOM_LOOP_START_NODE } from '../nodes/loop-start/constants'
+import { CUSTOM_NOTE_NODE } from '../note-node/constants'
 import {
   BlockEnum,
   ErrorHandleMode,
@@ -36,6 +37,26 @@ import {
 const WHITE = 'WHITE'
 const GRAY = 'GRAY'
 const BLACK = 'BLACK'
+
+type NodeWithOptionalDimensions = Pick<Node, 'data' | 'type'> & {
+  width?: number
+  height?: number
+}
+
+export const shouldUseExplicitNodeDimensions = (node: Pick<Node, 'data' | 'type'>) => {
+  return node.type === CUSTOM_NOTE_NODE
+    || node.data.type === BlockEnum.Iteration
+    || node.data.type === BlockEnum.Loop
+}
+
+export const normalizeNodeDimensionsForReactFlowV12 = (node: NodeWithOptionalDimensions) => {
+  if (shouldUseExplicitNodeDimensions(node))
+    return
+
+  delete node.width
+  delete node.height
+}
+
 const isCyclicUtil = (nodeId: string, color: Record<string, string>, adjList: Record<string, string[]>, stack: string[]) => {
   color[nodeId] = GRAY
   stack.push(nodeId)
@@ -219,6 +240,8 @@ export const initialNodes = (originNodes: Node[], originEdges: Edge[]) => {
   return nodes.map((node) => {
     if (!node.type)
       node.type = CUSTOM_NODE
+
+    normalizeNodeDimensionsForReactFlowV12(node)
 
     if (node.type === CUSTOM_ITERATION_START_NODE || node.type === CUSTOM_LOOP_START_NODE) {
       node.selectable = false

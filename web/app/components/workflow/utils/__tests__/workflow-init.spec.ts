@@ -12,6 +12,7 @@ import type {
 import { CUSTOM_NODE, DEFAULT_RETRY_INTERVAL, DEFAULT_RETRY_MAX } from '@/app/components/workflow/constants'
 import { CUSTOM_ITERATION_START_NODE } from '@/app/components/workflow/nodes/iteration-start/constants'
 import { CUSTOM_LOOP_START_NODE } from '@/app/components/workflow/nodes/loop-start/constants'
+import { CUSTOM_NOTE_NODE } from '@/app/components/workflow/note-node/constants'
 import { BlockEnum, ErrorHandleMode } from '@/app/components/workflow/types'
 import { createEdge, createNode, resetFixtureCounters } from '../../__tests__/fixtures'
 import { initialEdges, initialNodes, preprocessNodesAndEdges } from '../workflow-init'
@@ -257,6 +258,52 @@ describe('initialNodes', () => {
 
     const result = initialNodes(nodes, [])
     expect(result[0]!.type).toBe(CUSTOM_NODE)
+  })
+
+  it('should strip fixed dimensions from normal measured nodes for React Flow v12', () => {
+    const nodes = [
+      createNode({
+        id: 'normal-node',
+        width: 240,
+        height: 120,
+        data: { type: BlockEnum.Code, title: '', desc: '' },
+      }),
+    ]
+
+    const result = initialNodes(nodes, [])
+
+    expect(result[0]!.width).toBeUndefined()
+    expect(result[0]!.height).toBeUndefined()
+  })
+
+  it('should preserve explicit dimensions for resizable containers and notes', () => {
+    const nodes = [
+      createNode({
+        id: 'iteration-node',
+        width: 360,
+        height: 240,
+        data: { type: BlockEnum.Iteration, title: '', desc: '', width: 360, height: 240 },
+      }),
+      createNode({
+        id: 'loop-node',
+        width: 420,
+        height: 280,
+        data: { type: BlockEnum.Loop, title: '', desc: '', width: 420, height: 280 },
+      }),
+      createNode({
+        id: 'note-node',
+        type: CUSTOM_NOTE_NODE,
+        width: 240,
+        height: 88,
+        data: { type: '' as BlockEnum, title: '', desc: '', width: 240, height: 88 },
+      }),
+    ]
+
+    const result = initialNodes(nodes, [])
+
+    expect(result.find(node => node.id === 'iteration-node')).toMatchObject({ width: 360, height: 240 })
+    expect(result.find(node => node.id === 'loop-node')).toMatchObject({ width: 420, height: 280 })
+    expect(result.find(node => node.id === 'note-node')).toMatchObject({ width: 240, height: 88 })
   })
 
   it('should set connected source and target handle ids', () => {

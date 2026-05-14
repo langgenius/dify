@@ -86,6 +86,8 @@ export function createReactFlowModuleMock() {
       zoomTo: vi.fn(),
       nodes: rfState.nodes,
       edges: rfState.edges,
+      getNodes: () => rfState.nodes,
+      getEdges: () => rfState.edges,
       setNodes: rfState.setNodes,
       setEdges: rfState.setEdges,
       getViewport: () => ({ x: 0, y: 0, zoom: 1 }),

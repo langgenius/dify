@@ -2,6 +2,8 @@ import { act } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { renderHookWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
+import { CUSTOM_NOTE_NODE } from '@/app/components/workflow/note-node/constants'
+import { BlockEnum } from '@/app/components/workflow/types'
 import { useNodesSyncDraft } from '../use-nodes-sync-draft'
 
 const mockGetNodes = vi.fn()
@@ -270,6 +272,51 @@ describe('useNodesSyncDraft — handleRefreshWorkflowDraft(true) on 409', () => 
     expect(callbacks.onSuccess).toHaveBeenCalled()
     expect(callbacks.onError).not.toHaveBeenCalled()
     expect(callbacks.onSettled).toHaveBeenCalled()
+  })
+
+  it('should strip fixed dimensions from normal measured nodes before draft sync', async () => {
+    mockGetNodes.mockReturnValue([
+      {
+        id: 'normal-node',
+        width: 240,
+        height: 120,
+        position: { x: 0, y: 0 },
+        data: { type: BlockEnum.Code, title: 'Code' },
+      },
+      {
+        id: 'iteration-node',
+        width: 360,
+        height: 240,
+        position: { x: 100, y: 0 },
+        data: { type: BlockEnum.Iteration, title: 'Iteration', width: 360, height: 240 },
+      },
+      {
+        id: 'note-node',
+        type: CUSTOM_NOTE_NODE,
+        width: 240,
+        height: 88,
+        position: { x: 200, y: 0 },
+        data: { type: '' as BlockEnum, title: 'Note', width: 240, height: 88 },
+      },
+    ])
+
+    const { result } = renderUseNodesSyncDraft()
+
+    await act(async () => {
+      await result.current.doSyncWorkflowDraft(false)
+    })
+
+    const syncedNodes = mockSyncWorkflowDraft.mock.calls[0]![0].params.graph.nodes
+    expect(syncedNodes.find((node: { id: string }) => node.id === 'normal-node')).not.toHaveProperty('width')
+    expect(syncedNodes.find((node: { id: string }) => node.id === 'normal-node')).not.toHaveProperty('height')
+    expect(syncedNodes.find((node: { id: string }) => node.id === 'iteration-node')).toMatchObject({
+      width: 360,
+      height: 240,
+    })
+    expect(syncedNodes.find((node: { id: string }) => node.id === 'note-node')).toMatchObject({
+      width: 240,
+      height: 88,
+    })
   })
 
   it('should post workflow draft with keepalive when the page closes', () => {

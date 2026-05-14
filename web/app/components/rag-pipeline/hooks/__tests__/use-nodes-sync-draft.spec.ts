@@ -2,6 +2,8 @@ import { renderHook } from '@testing-library/react'
 import { act } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
+import { CUSTOM_NOTE_NODE } from '@/app/components/workflow/note-node/constants'
+import { BlockEnum } from '@/app/components/workflow/types'
 import { useNodesSyncDraft } from '../use-nodes-sync-draft'
 
 const mockGetNodes = vi.fn()
@@ -215,6 +217,51 @@ describe('useNodesSyncDraft', () => {
       expect(mockPostWithKeepalive).toHaveBeenCalled()
       const sentParams = mockPostWithKeepalive.mock.calls[0]![1]
       expect(sentParams.graph.nodes[0].data._privateData).toBeUndefined()
+    })
+
+    it('should strip fixed dimensions from normal measured nodes before keepalive sync', () => {
+      mockGetNodes.mockReturnValue([
+        {
+          id: 'normal-node',
+          width: 240,
+          height: 120,
+          data: { type: BlockEnum.Code },
+          position: { x: 0, y: 0 },
+        },
+        {
+          id: 'loop-node',
+          width: 360,
+          height: 240,
+          data: { type: BlockEnum.Loop, width: 360, height: 240 },
+          position: { x: 100, y: 0 },
+        },
+        {
+          id: 'note-node',
+          type: CUSTOM_NOTE_NODE,
+          width: 240,
+          height: 88,
+          data: { type: '' as BlockEnum, width: 240, height: 88 },
+          position: { x: 200, y: 0 },
+        },
+      ])
+
+      const { result } = renderHook(() => useNodesSyncDraft())
+
+      act(() => {
+        result.current.syncWorkflowDraftWhenPageClose()
+      })
+
+      const syncedNodes = mockPostWithKeepalive.mock.calls[0]![1].graph.nodes
+      expect(syncedNodes.find((node: { id: string }) => node.id === 'normal-node')).not.toHaveProperty('width')
+      expect(syncedNodes.find((node: { id: string }) => node.id === 'normal-node')).not.toHaveProperty('height')
+      expect(syncedNodes.find((node: { id: string }) => node.id === 'loop-node')).toMatchObject({
+        width: 360,
+        height: 240,
+      })
+      expect(syncedNodes.find((node: { id: string }) => node.id === 'note-node')).toMatchObject({
+        width: 240,
+        height: 88,
+      })
     })
   })
 
