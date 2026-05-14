@@ -8,3 +8,4 @@ Feature: Create Workflow app
     And I enter a unique E2E app name
     And I confirm app creation
     Then I should land on the workflow editor
+    And I should see the created app name in the editor

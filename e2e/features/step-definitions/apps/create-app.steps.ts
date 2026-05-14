@@ -53,6 +53,15 @@ Then('I should land on the workflow editor', async function (this: DifyWorld) {
   await expect(this.getPage()).toHaveURL(/\/app\/[^/]+\/workflow(?:\?.*)?$/)
 })
 
+Then('I should see the created app name in the editor', async function (this: DifyWorld) {
+  const appName = this.lastCreatedAppName
+
+  if (!appName)
+    throw new Error('No created app name found. Run "I enter a unique E2E app name" first.')
+
+  await expect(this.getPage().getByText(appName, { exact: true })).toBeVisible()
+})
+
 Then('I should land on the app configuration page', async function (this: DifyWorld) {
   await expect(this.getPage()).toHaveURL(/\/app\/[^/]+\/configuration(?:\?.*)?$/)
 })
