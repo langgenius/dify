@@ -480,8 +480,11 @@ class ModelInstance:
 
 
 class ModelManager:
-    def __init__(self, enable_credentials_cache: bool = False):
-        self._provider_manager = ProviderManager()
+    def __init__(self, enable_credentials_cache: bool = False, provider_manager: ProviderManager | None = None):
+        # ``provider_manager`` can be injected so callers that also hold a ProviderManager
+        # (e.g. ``DifyCredentialsProvider``) can share its per-instance configurations cache
+        # and avoid rebuilding the tenant provider graph more than once per request.
+        self._provider_manager = provider_manager or ProviderManager()
         self._credentials_cache: dict[tuple[str, str, str, str], Any] = {}
         self._enable_credentials_cache = enable_credentials_cache
 

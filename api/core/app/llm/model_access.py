@@ -63,9 +63,17 @@ class DifyModelFactory:
 
 
 def build_dify_model_access(tenant_id: str) -> tuple[CredentialsProvider, ModelFactory]:
+    # Share a single ProviderManager (and its per-instance configurations cache) between
+    # the credentials provider and the model factory. Otherwise each LLM node lookup
+    # rebuilds the tenant's provider configurations twice -- once via
+    # DifyCredentialsProvider.fetch() and once via ModelManager.get_provider_model_bundle().
+    provider_manager = ProviderManager()
     return (
-        DifyCredentialsProvider(tenant_id=tenant_id),
-        DifyModelFactory(tenant_id=tenant_id),
+        DifyCredentialsProvider(tenant_id=tenant_id, provider_manager=provider_manager),
+        DifyModelFactory(
+            tenant_id=tenant_id,
+            model_manager=ModelManager(enable_credentials_cache=True, provider_manager=provider_manager),
+        ),
     )
 
 
