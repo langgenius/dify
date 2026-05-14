@@ -442,10 +442,12 @@ describe('useWorkflowRun', () => {
       workflow_id: 'flow-1',
       reason: 'failed',
       node_type: 'llm',
-      workflow_status: WorkflowRunningStatus.Running,
-      workflow_tracing_count: 1,
-      workflow_data: workflowData,
-      workflow_data_json: JSON.stringify(workflowData),
+      data: {
+        workflow_status: WorkflowRunningStatus.Running,
+        workflow_tracing_count: 1,
+        workflow_data: workflowData,
+        workflow_data_json: JSON.stringify(workflowData),
+      },
     })
 
     mocks.mockTrackEvent.mockClear()
@@ -455,10 +457,12 @@ describe('useWorkflowRun', () => {
       workflow_id: 'flow-1',
       reason: 'Server Error',
       node_type: undefined,
-      workflow_status: WorkflowRunningStatus.Running,
-      workflow_tracing_count: 1,
-      workflow_data: workflowData,
-      workflow_data_json: JSON.stringify(workflowData),
+      data: {
+        workflow_status: WorkflowRunningStatus.Running,
+        workflow_tracing_count: 1,
+        workflow_data: workflowData,
+        workflow_data_json: JSON.stringify(workflowData),
+      },
     })
   })
 
