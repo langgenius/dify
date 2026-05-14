@@ -200,6 +200,10 @@ describe('useWorkflowRun callbacks helpers', () => {
     finalCallbacks.onTTSChunk?.('message-2', 'audio-chunk')
     expect(player.playAudioWithAudio).toHaveBeenCalledWith('audio-chunk', true)
     expect(mockResetMsgId).toHaveBeenCalledWith('message-2')
+
+    finalCallbacks.onTTSChunk?.('message-3', '')
+    expect(player.playAudioWithAudio).toHaveBeenCalledTimes(1)
+    expect(mockResetMsgId).toHaveBeenCalledTimes(1)
   })
 
   it('should route base workflow events through handlers, user callbacks, and pause continuation with the same callback object', async () => {

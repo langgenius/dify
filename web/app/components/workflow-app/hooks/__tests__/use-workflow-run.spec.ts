@@ -466,6 +466,53 @@ describe('useWorkflowRun', () => {
     })
   })
 
+  it('should track workflow failures when the error or workflow data is malformed', async () => {
+    const { result } = renderHook(() => useWorkflowRun())
+
+    await act(async () => {
+      await result.current.handleRun({ inputs: { query: 'hello' } })
+    })
+
+    const baseCallbackFactoryContext = mocks.mockCreateBaseWorkflowRunCallbacks.mock.calls.at(-1)?.[0] as {
+      trackWorkflowRunFailed: (params: unknown, workflowData: unknown) => void
+    }
+
+    baseCallbackFactoryContext.trackWorkflowRunFailed(new Error('network down'), undefined)
+
+    expect(mocks.mockTrackEvent).toHaveBeenCalledWith('workflow_run_failed', {
+      workflow_id: 'flow-1',
+      reason: 'network down',
+      node_type: undefined,
+      data: {
+        workflow_status: undefined,
+        workflow_tracing_count: undefined,
+        workflow_data: undefined,
+        workflow_data_json: undefined,
+      },
+    })
+
+    mocks.mockTrackEvent.mockClear()
+    const circularWorkflowData: Record<string, unknown> = {
+      result: null,
+      tracing: 'not-a-list',
+    }
+    circularWorkflowData.self = circularWorkflowData
+
+    baseCallbackFactoryContext.trackWorkflowRunFailed({ message: 'missing error' }, circularWorkflowData)
+
+    expect(mocks.mockTrackEvent).toHaveBeenCalledWith('workflow_run_failed', {
+      workflow_id: 'flow-1',
+      reason: undefined,
+      node_type: undefined,
+      data: {
+        workflow_status: undefined,
+        workflow_tracing_count: undefined,
+        workflow_data: circularWorkflowData,
+        workflow_data_json: undefined,
+      },
+    })
+  })
+
   it('should lazily create audio players with the correct public and private tts urls', async () => {
     const { result } = renderHook(() => useWorkflowRun())
 
