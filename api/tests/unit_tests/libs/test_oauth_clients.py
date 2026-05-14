@@ -37,19 +37,25 @@ class TestGitHubOAuth(BaseOAuthTest):
         return GitHubOAuth(oauth_config["client_id"], oauth_config["client_secret"], oauth_config["redirect_uri"])
 
     @pytest.mark.parametrize(
-        ("invite_token", "timezone", "expected_state"),
+        ("invite_token", "timezone", "language", "expected_state"),
         [
-            (None, None, None),
-            ("test_invite_token", None, {"invite_token": "test_invite_token"}),
-            ("", None, None),
-            (None, "Asia/Shanghai", {"timezone": "Asia/Shanghai"}),
-            ("test_invite_token", "Asia/Shanghai", {"invite_token": "test_invite_token", "timezone": "Asia/Shanghai"}),
+            (None, None, None, None),
+            ("test_invite_token", None, None, {"invite_token": "test_invite_token"}),
+            ("", None, None, None),
+            (None, "Asia/Shanghai", None, {"timezone": "Asia/Shanghai"}),
+            (None, None, "zh-Hans", {"language": "zh-Hans"}),
+            (
+                "test_invite_token",
+                "Asia/Shanghai",
+                "zh-Hans",
+                {"invite_token": "test_invite_token", "timezone": "Asia/Shanghai", "language": "zh-Hans"},
+            ),
         ],
     )
     def test_should_generate_authorization_url_correctly(
-        self, oauth, oauth_config, invite_token, timezone, expected_state
+        self, oauth, oauth_config, invite_token, timezone, language, expected_state
     ):
-        url = oauth.get_authorization_url(invite_token, timezone=timezone)
+        url = oauth.get_authorization_url(invite_token, timezone=timezone, language=language)
         parsed, params = self.parse_auth_url(url)
 
         assert parsed.scheme == "https"
@@ -212,19 +218,25 @@ class TestGoogleOAuth(BaseOAuthTest):
         return GoogleOAuth(oauth_config["client_id"], oauth_config["client_secret"], oauth_config["redirect_uri"])
 
     @pytest.mark.parametrize(
-        ("invite_token", "timezone", "expected_state"),
+        ("invite_token", "timezone", "language", "expected_state"),
         [
-            (None, None, None),
-            ("test_invite_token", None, {"invite_token": "test_invite_token"}),
-            ("", None, None),
-            (None, "Asia/Shanghai", {"timezone": "Asia/Shanghai"}),
-            ("test_invite_token", "Asia/Shanghai", {"invite_token": "test_invite_token", "timezone": "Asia/Shanghai"}),
+            (None, None, None, None),
+            ("test_invite_token", None, None, {"invite_token": "test_invite_token"}),
+            ("", None, None, None),
+            (None, "Asia/Shanghai", None, {"timezone": "Asia/Shanghai"}),
+            (None, None, "zh-Hans", {"language": "zh-Hans"}),
+            (
+                "test_invite_token",
+                "Asia/Shanghai",
+                "zh-Hans",
+                {"invite_token": "test_invite_token", "timezone": "Asia/Shanghai", "language": "zh-Hans"},
+            ),
         ],
     )
     def test_should_generate_authorization_url_correctly(
-        self, oauth, oauth_config, invite_token, timezone, expected_state
+        self, oauth, oauth_config, invite_token, timezone, language, expected_state
     ):
-        url = oauth.get_authorization_url(invite_token, timezone=timezone)
+        url = oauth.get_authorization_url(invite_token, timezone=timezone, language=language)
         parsed, params = self.parse_auth_url(url)
 
         assert parsed.scheme == "https"

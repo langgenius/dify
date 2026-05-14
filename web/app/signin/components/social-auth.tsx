@@ -2,6 +2,7 @@ import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useTranslation } from 'react-i18next'
 import { API_PREFIX } from '@/config'
+import { useLocale } from '@/context/i18n'
 import { useSearchParams } from '@/next/navigation'
 import { getPurifyHref } from '@/utils'
 import { getBrowserTimezone } from '@/utils/timezone'
@@ -14,6 +15,7 @@ type SocialAuthProps = {
 export default function SocialAuth(props: SocialAuthProps) {
   const { t } = useTranslation()
   const searchParams = useSearchParams()
+  const locale = useLocale()
 
   const getOAuthLink = (href: string) => {
     const url = getPurifyHref(`${API_PREFIX}${href}`)
@@ -21,6 +23,7 @@ export default function SocialAuth(props: SocialAuthProps) {
     const timezone = getBrowserTimezone()
     if (timezone)
       params.set('timezone', timezone)
+    params.set('language', locale)
 
     const query = params.toString()
     if (query)

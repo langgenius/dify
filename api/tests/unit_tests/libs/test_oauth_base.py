@@ -19,10 +19,14 @@ def test_oauth_base_methods_raise_not_implemented():
         oauth._transform_user_info({})
 
 
-def test_oauth_state_round_trips_invite_token_and_timezone():
-    state = encode_oauth_state(invite_token="invite-123", timezone="Asia/Shanghai")
+def test_oauth_state_round_trips_invite_token_timezone_and_language():
+    state = encode_oauth_state(invite_token="invite-123", timezone="Asia/Shanghai", language="zh-Hans")
 
-    assert decode_oauth_state(state) == {"invite_token": "invite-123", "timezone": "Asia/Shanghai"}
+    assert decode_oauth_state(state) == {
+        "invite_token": "invite-123",
+        "timezone": "Asia/Shanghai",
+        "language": "zh-Hans",
+    }
 
 
 def test_oauth_state_keeps_legacy_raw_invite_token_compatible():

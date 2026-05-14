@@ -182,6 +182,7 @@ export const useMailRegister = () => {
       token: string
       new_password: string
       password_confirm: string
+      language?: string
       timezone?: string
     }) => {
       return post<MailRegisterResponse>('/email-register', { body })

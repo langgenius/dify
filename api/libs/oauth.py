@@ -33,6 +33,7 @@ class AccessTokenResponse(TypedDict, total=False):
 class OAuthState(TypedDict, total=False):
     invite_token: str
     timezone: str
+    language: str
 
 
 class GitHubEmailRecord(TypedDict, total=False):
@@ -67,12 +68,18 @@ class OAuthUserInfo:
     email: str
 
 
-def encode_oauth_state(invite_token: str | None = None, timezone: str | None = None) -> str | None:
+def encode_oauth_state(
+    invite_token: str | None = None,
+    timezone: str | None = None,
+    language: str | None = None,
+) -> str | None:
     state: OAuthState = {}
     if invite_token:
         state["invite_token"] = invite_token
     if timezone:
         state["timezone"] = timezone
+    if language:
+        state["language"] = language
     if not state:
         return None
 
@@ -110,7 +117,12 @@ class OAuth:
         self.client_secret = client_secret
         self.redirect_uri = redirect_uri
 
-    def get_authorization_url(self, invite_token: str | None = None, timezone: str | None = None) -> str:
+    def get_authorization_url(
+        self,
+        invite_token: str | None = None,
+        timezone: str | None = None,
+        language: str | None = None,
+    ) -> str:
         raise NotImplementedError()
 
     def get_access_token(self, code: str) -> str:
@@ -133,13 +145,18 @@ class GitHubOAuth(OAuth):
     _USER_INFO_URL = "https://api.github.com/user"
     _EMAIL_INFO_URL = "https://api.github.com/user/emails"
 
-    def get_authorization_url(self, invite_token: str | None = None, timezone: str | None = None) -> str:
+    def get_authorization_url(
+        self,
+        invite_token: str | None = None,
+        timezone: str | None = None,
+        language: str | None = None,
+    ) -> str:
         params = {
             "client_id": self.client_id,
             "redirect_uri": self.redirect_uri,
             "scope": "user:email",  # Request only basic user information
         }
-        state = encode_oauth_state(invite_token=invite_token, timezone=timezone)
+        state = encode_oauth_state(invite_token=invite_token, timezone=timezone, language=language)
         if state:
             params["state"] = state
         return f"{self._AUTH_URL}?{urllib.parse.urlencode(params)}"
@@ -221,14 +238,19 @@ class GoogleOAuth(OAuth):
     _TOKEN_URL = "https://oauth2.googleapis.com/token"
     _USER_INFO_URL = "https://www.googleapis.com/oauth2/v3/userinfo"
 
-    def get_authorization_url(self, invite_token: str | None = None, timezone: str | None = None) -> str:
+    def get_authorization_url(
+        self,
+        invite_token: str | None = None,
+        timezone: str | None = None,
+        language: str | None = None,
+    ) -> str:
         params = {
             "client_id": self.client_id,
             "response_type": "code",
             "redirect_uri": self.redirect_uri,
             "scope": "openid email",
         }
-        state = encode_oauth_state(invite_token=invite_token, timezone=timezone)
+        state = encode_oauth_state(invite_token=invite_token, timezone=timezone, language=language)
         if state:
             params["state"] = state
         return f"{self._AUTH_URL}?{urllib.parse.urlencode(params)}"

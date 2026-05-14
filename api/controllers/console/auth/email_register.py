@@ -3,7 +3,7 @@ from flask_restx import Resource
 from pydantic import BaseModel, Field, field_validator
 
 from configs import dify_config
-from constants.languages import languages
+from constants.languages import get_valid_language, languages
 from controllers.common.schema import register_schema_models
 from controllers.console import console_ns
 from controllers.console.auth.error import (
@@ -41,6 +41,7 @@ class EmailRegisterResetPayload(BaseModel):
     token: str = Field(...)
     new_password: str = Field(...)
     password_confirm: str = Field(...)
+    language: str | None = Field(default=None)
     timezone: str | None = Field(default=None)
 
     @field_validator("new_password", "password_confirm")
@@ -152,8 +153,13 @@ class EmailRegisterResetApi(Resource):
         if account:
             raise EmailAlreadyInUseError()
         else:
-            if args.timezone:
-                account = self._create_new_account(normalized_email, args.password_confirm, args.timezone)
+            if args.timezone or args.language:
+                account = self._create_new_account(
+                    normalized_email,
+                    args.password_confirm,
+                    args.timezone,
+                    args.language,
+                )
             else:
                 account = self._create_new_account(normalized_email, args.password_confirm)
             if not account:
@@ -163,7 +169,13 @@ class EmailRegisterResetApi(Resource):
 
         return {"result": "success", "data": token_pair.model_dump()}
 
-    def _create_new_account(self, email: str, password: str, timezone: str | None = None) -> Account | None:
+    def _create_new_account(
+        self,
+        email: str,
+        password: str,
+        timezone: str | None = None,
+        language: str | None = None,
+    ) -> Account | None:
         # Create new account if allowed
         account = None
         try:
@@ -171,7 +183,7 @@ class EmailRegisterResetApi(Resource):
                 email=email,
                 name=email,
                 password=password,
-                interface_language=languages[0],
+                interface_language=get_valid_language(language),
                 timezone=timezone,
             )
         except AccountRegisterError:
