@@ -43,7 +43,7 @@ type NodeWithOptionalDimensions = Pick<Node, 'data' | 'type'> & {
   height?: number
 }
 
-export const shouldUseExplicitNodeDimensions = (node: Pick<Node, 'data' | 'type'>) => {
+const shouldUseExplicitNodeDimensions = (node: Pick<Node, 'data' | 'type'>) => {
   return node.type === CUSTOM_NOTE_NODE
     || node.data.type === BlockEnum.Iteration
     || node.data.type === BlockEnum.Loop
