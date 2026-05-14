@@ -87,8 +87,7 @@ class DatasourceProviderService:
             provider=provider,
         )
         redirect_uri = (
-            f"{dify_config.CONSOLE_API_URL}/console/api/oauth/plugin/"
-            f"{datasource_provider_id}/datasource/callback"
+            f"{dify_config.CONSOLE_API_URL}/console/api/oauth/plugin/{datasource_provider_id}/datasource/callback"
         )
         system_credentials = self.get_oauth_client(tenant_id, datasource_provider_id)
         try:
