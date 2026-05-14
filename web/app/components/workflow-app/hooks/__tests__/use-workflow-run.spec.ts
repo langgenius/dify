@@ -17,6 +17,7 @@ type DebugControllerWindow = Window & {
 type WorkflowStoreState = {
   backupDraft?: unknown
   environmentVariables?: unknown
+  workflowRunningData?: unknown
   setBackupDraft?: (value: unknown) => void
   setEnvironmentVariables?: (value: unknown) => void
   setWorkflowRunningData?: (value: unknown) => void
@@ -219,13 +220,16 @@ vi.mock('../use-workflow-run-callbacks', async (importOriginal) => {
 const createWorkflowStoreState = () => ({
   backupDraft: undefined,
   environmentVariables: [{ id: 'env-current', value: 'secret' }],
+  workflowRunningData: undefined,
   setBackupDraft: vi.fn((value: unknown) => {
     mocks.workflowStoreState.backupDraft = value
   }),
   setEnvironmentVariables: vi.fn((value: unknown) => {
     mocks.workflowStoreState.environmentVariables = value
   }),
-  setWorkflowRunningData: vi.fn(),
+  setWorkflowRunningData: vi.fn((value: unknown) => {
+    mocks.workflowStoreState.workflowRunningData = value
+  }),
   setIsListening: vi.fn(),
   setShowVariableInspectPanel: vi.fn(),
   setListeningTriggerType: vi.fn(),
@@ -252,6 +256,15 @@ describe('useWorkflowRun', () => {
     }))
     mocks.mockGetAudioPlayer.mockReturnValue({
       playAudioWithAudio: vi.fn(),
+    })
+    mocks.runEventHandlers.handleWorkflowFailed.mockImplementation(() => {
+      const workflowRunningData = mocks.workflowStoreState.workflowRunningData
+      if (typeof workflowRunningData !== 'object' || workflowRunningData === null)
+        return
+
+      const result = (workflowRunningData as { result?: { status?: string } }).result
+      if (result)
+        result.status = WorkflowRunningStatus.Failed
     })
     mocks.workflowStoreState.backupDraft = undefined
     Object.assign(mocks.workflowStoreState, createWorkflowStoreState())
@@ -415,15 +428,37 @@ describe('useWorkflowRun', () => {
     })
 
     const baseCallbackFactoryContext = mocks.mockCreateBaseWorkflowRunCallbacks.mock.calls.at(-1)?.[0] as {
-      trackWorkflowRunFailed: (params: { error?: string, node_type?: string }) => void
+      getWorkflowRunningData: () => unknown
+      trackWorkflowRunFailed: (params: unknown, workflowData: unknown) => void
+    }
+    const workflowData = {
+      result: { status: WorkflowRunningStatus.Running },
+      tracing: [{ node_id: 'node-1', status: 'running' }],
     }
 
-    baseCallbackFactoryContext.trackWorkflowRunFailed({ error: 'failed', node_type: 'llm' })
+    baseCallbackFactoryContext.trackWorkflowRunFailed({ error: 'failed', node_type: 'llm' }, workflowData)
 
     expect(mocks.mockTrackEvent).toHaveBeenCalledWith('workflow_run_failed', {
       workflow_id: 'flow-1',
       reason: 'failed',
       node_type: 'llm',
+      workflow_status: WorkflowRunningStatus.Running,
+      workflow_tracing_count: 1,
+      workflow_data: workflowData,
+      workflow_data_json: JSON.stringify(workflowData),
+    })
+
+    mocks.mockTrackEvent.mockClear()
+    baseCallbackFactoryContext.trackWorkflowRunFailed('Server Error', workflowData)
+
+    expect(mocks.mockTrackEvent).toHaveBeenCalledWith('workflow_run_failed', {
+      workflow_id: 'flow-1',
+      reason: 'Server Error',
+      node_type: undefined,
+      workflow_status: WorkflowRunningStatus.Running,
+      workflow_tracing_count: 1,
+      workflow_data: workflowData,
+      workflow_data_json: JSON.stringify(workflowData),
     })
   })
 
