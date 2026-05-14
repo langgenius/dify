@@ -43,7 +43,7 @@ dependencies = [
     "resend>=2.27.0,<3.0.0",
     # Emerging: newer and fast-moving, use compatible pins
     "fastopenapi[flask]~=0.7.0",
-    "graphon~=0.3.1",
+    "graphon~=0.4.0",
     "httpx-sse~=0.4.0",
     "json-repair~=0.59.4",
 ]
@@ -96,15 +96,11 @@ dify-trace-mlflow = { workspace = true }
 dify-trace-opik = { workspace = true }
 dify-trace-tencent = { workspace = true }
 dify-trace-weave = { workspace = true }
-graphon = { git = "https://github.com/QuantumGhost/graphon", branch = "hitl-form-dev" }
 
 [tool.uv]
 default-groups = ["storage", "tools", "vdb-all", "trace-all"]
 package = false
-override-dependencies = [
-    "litellm>=1.83.7",
-    "pyarrow>=18.0.0",
-]
+override-dependencies = ["litellm>=1.83.7", "pyarrow>=18.0.0"]
 
 [dependency-groups]
 

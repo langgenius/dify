@@ -1597,7 +1597,7 @@ requires-dist = [
     { name = "gmpy2", specifier = ">=2.3.0" },
     { name = "google-api-python-client", specifier = ">=2.196.0" },
     { name = "google-cloud-aiplatform", specifier = ">=1.151.0,<2.0.0" },
-    { name = "graphon", git = "https://github.com/QuantumGhost/graphon?branch=hitl-form-dev" },
+    { name = "graphon", specifier = "~=0.4.0" },
     { name = "gunicorn", specifier = ">=26.0.0" },
     { name = "httpx", extras = ["socks"], specifier = ">=0.28.1,<1.0.0" },
     { name = "httpx-sse", specifier = "~=0.4.0" },
@@ -2940,8 +2940,8 @@ httpx = [
 
 [[package]]
 name = "graphon"
-version = "0.3.1"
-source = { git = "https://github.com/QuantumGhost/graphon?branch=hitl-form-dev#2287be4495a15ea2f3a59d603c22b1afa5909ae6" }
+version = "0.4.0"
+source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "charset-normalizer" },
     { name = "httpx" },
@@ -2960,6 +2960,10 @@ dependencies = [
     { name = "typing-extensions" },
     { name = "unstructured", extra = ["docx", "epub", "md", "ppt", "pptx"] },
     { name = "webvtt-py" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/76/24/eb1e7983404dcac84816b76ea450e1bb97023e55e00c699d609340bc361e/graphon-0.4.0.tar.gz", hash = "sha256:afb0c7a58f89e09cfa585296429b4d08cd0df80b9ac54d550f88e7d76ec48ee0", size = 261812, upload-time = "2026-05-13T11:48:39.198Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/b7/de/bad6b3fd1e4b4defc16e6ea106e55c44725a159f1d191a99877bce1c9931/graphon-0.4.0-py3-none-any.whl", hash = "sha256:b33f95886da823d5b1b53d663a4f5f8fa383c37740f3bd19297b8d140fcb804c", size = 372711, upload-time = "2026-05-13T11:48:37.712Z" },
 ]
 
 [[package]]
