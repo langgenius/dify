@@ -103,17 +103,16 @@ describe('DatasetCardHeader', () => {
       expect(screen.getByText('Custom Dataset')).toBeInTheDocument()
     })
 
-    it('should render author name', () => {
+    it('should not render author name in the compact card header', () => {
       const dataset = createMockDataset({ author_name: 'John Doe' })
       render(<DatasetCardHeader dataset={dataset} />)
-      expect(screen.getByText('John Doe')).toBeInTheDocument()
+      expect(screen.queryByText('John Doe')).not.toBeInTheDocument()
     })
 
-    it('should render edit time', () => {
+    it('should not render edit time in the compact card header', () => {
       const dataset = createMockDataset()
       render(<DatasetCardHeader dataset={dataset} />)
-      // Should contain the formatted time
-      expect(screen.getByText(/segment\.editedAt/)).toBeInTheDocument()
+      expect(screen.queryByText(/segment\.editedAt/)).not.toBeInTheDocument()
     })
   })
 
@@ -213,9 +212,9 @@ describe('DatasetCardHeader', () => {
         runtime_mode: 'rag_pipeline',
         is_published: false,
       })
-      render(<DatasetCardHeader dataset={dataset} />)
-      // DocModeInfo should not be rendered since isShowDocModeInfo is false
+      const { container } = render(<DatasetCardHeader dataset={dataset} />)
       expect(screen.queryByText(/High Quality/)).not.toBeInTheDocument()
+      expect(container.querySelector('[aria-hidden="true"].min-h-3')).toBeInTheDocument()
     })
 
     it('should show doc mode info for published pipeline', () => {

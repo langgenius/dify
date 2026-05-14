@@ -4,11 +4,11 @@ import * as React from 'react'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
-import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import { useKnowledge } from '@/hooks/use-knowledge'
 import { DOC_FORM_ICON_WITH_BG, DOC_FORM_TEXT } from '@/models/datasets'
 
 const EXTERNAL_PROVIDER = 'external'
+const docModeInfoClassName = 'flex min-h-3 items-center gap-x-3 system-2xs-medium-uppercase text-text-tertiary'
 
 type DatasetCardHeaderProps = {
   dataset: DataSet
@@ -31,14 +31,14 @@ const DocModeInfo = ({
 
   if (isExternalProvider) {
     return (
-      <div className="flex items-center gap-x-3 system-2xs-medium-uppercase text-text-tertiary">
+      <div className={docModeInfoClassName}>
         <span>{t('externalKnowledgeBase', { ns: 'dataset' })}</span>
       </div>
     )
   }
 
   if (!isShowDocModeInfo)
-    return null
+    return <div aria-hidden="true" className={docModeInfoClassName} />
 
   const indexingText = dataset.indexing_technique
     ? formatIndexingTechniqueAndMethod(
@@ -48,7 +48,7 @@ const DocModeInfo = ({
     : ''
 
   return (
-    <div className="flex items-center gap-x-3 system-2xs-medium-uppercase text-text-tertiary">
+    <div className={docModeInfoClassName}>
       {!!dataset.doc_form && (
         <span
           className="max-w-full min-w-0 truncate"
@@ -79,9 +79,6 @@ const DocModeInfo = ({
 
 // Main DatasetCardHeader component
 const DatasetCardHeader = ({ dataset }: DatasetCardHeaderProps) => {
-  const { t } = useTranslation()
-  const { formatTimeFromNow } = useFormatTimeFromNow()
-
   const isExternalProvider = dataset.provider === EXTERNAL_PROVIDER
 
   const isShowChunkingModeIcon = dataset.doc_form && (dataset.runtime_mode !== 'rag_pipeline' || dataset.is_published)
@@ -101,11 +98,6 @@ const DatasetCardHeader = ({ dataset }: DatasetCardHeaderProps) => {
     icon_background: '#FFF4ED',
     icon_url: '',
   }, [dataset.icon_info])
-
-  const editTimeText = useMemo(
-    () => `${t('segment.editedAt', { ns: 'datasetDocuments' })} ${formatTimeFromNow(dataset.updated_at * 1000)}`,
-    [t, dataset.updated_at, formatTimeFromNow],
-  )
 
   return (
     <div className={cn('flex items-center gap-x-3 px-4 pt-4 pb-2', !dataset.embedding_available && 'opacity-30')}>
@@ -129,11 +121,6 @@ const DatasetCardHeader = ({ dataset }: DatasetCardHeaderProps) => {
           title={dataset.name}
         >
           {dataset.name}
-        </div>
-        <div className="flex items-center gap-1 text-[10px] leading-[18px] font-medium text-text-tertiary">
-          <div className="truncate" title={dataset.author_name}>{dataset.author_name}</div>
-          <div>·</div>
-          <div className="truncate" title={editTimeText}>{editTimeText}</div>
         </div>
         <DocModeInfo
           dataset={dataset}

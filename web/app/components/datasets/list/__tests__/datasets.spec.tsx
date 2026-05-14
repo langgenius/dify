@@ -329,7 +329,7 @@ describe('Datasets', () => {
     it('should have correct grid styling', () => {
       render(<Datasets {...defaultProps} />)
       const nav = screen.getByRole('navigation')
-      expect(nav).toHaveClass('grid', 'grow', 'gap-3', 'px-12')
+      expect(nav).toHaveClass('grid', 'grow', 'grid-cols-[repeat(auto-fill,minmax(296px,1fr))]', 'gap-3', 'px-6')
     })
   })
 
