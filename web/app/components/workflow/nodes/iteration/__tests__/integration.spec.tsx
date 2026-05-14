@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import type { Node as WorkflowNode } from '../../../types'
 import type { IterationNodeType } from '../types'
 import type { PanelProps } from '@/types/workflow'
 import { toast } from '@langgenius/dify-ui/toast'
@@ -13,6 +14,9 @@ import useConfig from '../use-config'
 
 const mockHandleNodeAdd = vi.fn()
 const mockHandleNodeIterationRerender = vi.fn()
+const mockFlowNodes = vi.hoisted(() => ({
+  value: [] as WorkflowNode[],
+}))
 let mockNodesReadOnly = false
 
 vi.mock('@langgenius/dify-ui/toast', () => ({
@@ -24,8 +28,8 @@ vi.mock('@langgenius/dify-ui/toast', () => ({
   },
 }))
 
-vi.mock('reactflow', async () => {
-  const actual = await vi.importActual<typeof import('reactflow')>('reactflow')
+vi.mock('@xyflow/react', async () => {
+  const actual = await vi.importActual<typeof import('@xyflow/react')>('@xyflow/react')
   return {
     ...actual,
     Background: ({ id }: { id: string }) => <div data-testid={id} />,
@@ -68,6 +72,10 @@ vi.mock('../use-interactions', () => ({
   useNodeIterationInteractions: () => ({
     handleNodeIterationRerender: mockHandleNodeIterationRerender,
   }),
+}))
+
+vi.mock('@/app/components/workflow/hooks/use-workflow-reactflow', () => ({
+  useWorkflowFlowNodes: () => mockFlowNodes.value,
 }))
 
 vi.mock('../../../hooks', () => ({
@@ -158,6 +166,7 @@ const panelProps: PanelProps = {
 describe('iteration path', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockFlowNodes.value = []
     mockNodesReadOnly = false
     mockUseConfig.mockReturnValue(createConfigResult())
   })
@@ -201,6 +210,51 @@ describe('iteration path', () => {
     expect(screen.getByTestId('iteration-background-iteration-node')).toBeInTheDocument()
     expect(mockHandleNodeIterationRerender).toHaveBeenCalledWith('iteration-node')
     expect(mockToastWarning).toHaveBeenCalledWith('workflow.nodes.iteration.answerNodeWarningDesc')
+  })
+
+  it('should rerender the container after a child node is measured', () => {
+    mockFlowNodes.value = [{
+      id: 'start-node',
+      parentId: 'iteration-node',
+      position: { x: 24, y: 68 },
+      measured: { width: 44, height: 44 },
+      data: { type: BlockEnum.IterationStart, title: '', desc: '' },
+    }]
+
+    const { rerender } = render(
+      <Node
+        id="iteration-node"
+        data={createData({
+          _children: [{ nodeId: 'start-node', nodeType: BlockEnum.IterationStart }],
+        })}
+      />,
+    )
+    mockHandleNodeIterationRerender.mockClear()
+
+    mockFlowNodes.value = [
+      ...mockFlowNodes.value,
+      {
+        id: 'child-node',
+        parentId: 'iteration-node',
+        position: { x: 128, y: 68 },
+        measured: { width: 244, height: 184 },
+        data: { type: BlockEnum.QuestionClassifier, title: 'Question Classifier', desc: '' },
+      },
+    ]
+
+    rerender(
+      <Node
+        id="iteration-node"
+        data={createData({
+          _children: [
+            { nodeId: 'start-node', nodeType: BlockEnum.IterationStart },
+            { nodeId: 'child-node', nodeType: BlockEnum.QuestionClassifier },
+          ],
+        })}
+      />,
+    )
+
+    expect(mockHandleNodeIterationRerender).toHaveBeenCalledWith('iteration-node')
   })
 
   it('should wire panel input, output, parallel, numeric, error mode, and flatten actions', async () => {

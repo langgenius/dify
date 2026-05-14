@@ -1,4 +1,4 @@
-import type { NodeProps } from 'reactflow'
+import type { NodeProps } from '@/app/components/workflow/types'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { RiAddLine } from '@remixicon/react'

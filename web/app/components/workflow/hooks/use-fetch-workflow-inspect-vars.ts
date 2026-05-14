@@ -3,8 +3,8 @@ import type { SchemaTypeDefinition } from '@/service/use-common'
 import type { FlowType } from '@/types/common'
 import type { NodeWithVar, VarInInspect } from '@/types/workflow'
 import { useCallback, useMemo } from 'react'
-import { useStoreApi } from 'reactflow'
 import { useNodesInteractionsWithoutSync } from '@/app/components/workflow/hooks/use-nodes-interactions-without-sync'
+import { useWorkflowStoreApi } from '@/app/components/workflow/hooks/use-workflow-reactflow'
 import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
 import {
   useAllBuiltInTools,
@@ -27,7 +27,7 @@ export const useSetWorkflowVarsWithValue = ({
   flowId,
 }: Params) => {
   const workflowStore = useWorkflowStore()
-  const store = useStoreApi()
+  const store = useWorkflowStoreApi()
   const invalidateConversationVarValues = useInvalidateConversationVarValues(flowType, flowId)
   const invalidateSysVarValues = useInvalidateSysVarValues(flowType, flowId)
   const { handleCancelAllNodeSuccessStatus } = useNodesInteractionsWithoutSync()
@@ -50,9 +50,9 @@ export const useSetWorkflowVarsWithValue = ({
 
   const setInspectVarsToStore = useCallback((inspectVars: VarInInspect[], passedInAllPluginInfoList?: Record<string, ToolWithProvider[]>, passedInSchemaTypeDefinitions?: SchemaTypeDefinition[]) => {
     const { setNodesWithInspectVars } = workflowStore.getState()
-    const { getNodes } = store.getState()
+    const { nodes } = store.getState()
 
-    const nodeArr = getNodes()
+    const nodeArr = nodes
     const allNodesOutputVars = toNodeOutputVars(nodeArr, false, () => true, [], [], [], passedInAllPluginInfoList || allPluginInfoList, passedInSchemaTypeDefinitions || schemaTypeDefinitions)
 
     const nodesKeyValue: Record<string, Node> = {}

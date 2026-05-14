@@ -1,8 +1,8 @@
-import type { Node } from 'reactflow'
 import type { ReasoningConfigValue as ReasoningConfigValueShape } from './reasoning-config-form.helpers'
 import type { ToolFormSchema } from '@/app/components/tools/utils/to-form-schema'
 import type { SchemaRoot } from '@/app/components/workflow/nodes/llm/types'
 import type {
+  Node,
   NodeOutPutVar,
   ValueSelector,
 } from '@/app/components/workflow/types'

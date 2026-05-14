@@ -2,13 +2,13 @@ import type { ValueSelector, Var } from '../../types'
 import type { DocExtractorNodeType } from './types'
 import { produce } from 'immer'
 import { useCallback, useMemo } from 'react'
-import { useStoreApi } from 'reactflow'
 import {
   useIsChatMode,
   useNodesReadOnly,
   useWorkflow,
   useWorkflowVariables,
 } from '@/app/components/workflow/hooks'
+import { useWorkflowStoreApi } from '@/app/components/workflow/hooks/use-workflow-reactflow'
 import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
 import { VarType } from '../../types'
 
@@ -22,16 +22,16 @@ const useConfig = (id: string, payload: DocExtractorNodeType) => {
 
   const isChatMode = useIsChatMode()
 
-  const store = useStoreApi()
+  const store = useWorkflowStoreApi()
   const { getBeforeNodesInSameBranch } = useWorkflow()
   const {
-    getNodes,
+    nodes,
   } = store.getState()
-  const currentNode = getNodes().find(n => n.id === id)
+  const currentNode = nodes.find(n => n.id === id)
   const isInIteration = payload.isInIteration
-  const iterationNode = isInIteration ? getNodes().find(n => n.id === currentNode!.parentId) : null
+  const iterationNode = isInIteration ? nodes.find(n => n.id === currentNode!.parentId) : null
   const isInLoop = payload.isInLoop
-  const loopNode = isInLoop ? getNodes().find(n => n.id === currentNode!.parentId) : null
+  const loopNode = isInLoop ? nodes.find(n => n.id === currentNode!.parentId) : null
   const availableNodes = useMemo(() => {
     return getBeforeNodesInSameBranch(id)
   }, [getBeforeNodesInSameBranch, id])

@@ -1,6 +1,6 @@
 import type { Edge, Node } from '../types'
 import { render, screen } from '@testing-library/react'
-import { useStoreApi } from 'reactflow'
+import { useWorkflowStoreApi } from '@/app/components/workflow/hooks/use-workflow-reactflow'
 import { WorkflowContextProvider } from '../context'
 import { useDatasetsDetailStore } from '../datasets-detail-store/store'
 import WorkflowWithDefaultContext from '../index'
@@ -38,7 +38,7 @@ const edges: Edge[] = [
 const ContextConsumer = () => {
   const { store } = useWorkflowHistoryStore()
   const datasetCount = useDatasetsDetailStore(state => Object.keys(state.datasetsDetail).length)
-  const reactFlowStore = useStoreApi()
+  const reactFlowStore = useWorkflowStoreApi()
 
   return (
     <div>

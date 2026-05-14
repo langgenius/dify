@@ -7,16 +7,15 @@ import {
   useEffect,
   useMemo,
 } from 'react'
-import { useStoreApi } from 'reactflow'
 import { useNodeDataUpdate } from '@/app/components/workflow/hooks'
+import { useWorkflowStoreApi } from '@/app/components/workflow/hooks/use-workflow-reactflow'
 
 export const useConfig = (id: string, dataSourceList?: any[]) => {
-  const store = useStoreApi()
+  const store = useWorkflowStoreApi()
   const { handleNodeDataUpdateWithSyncDraft } = useNodeDataUpdate()
 
   const getNodeData = useCallback(() => {
-    const { getNodes } = store.getState()
-    const nodes = getNodes()
+    const { nodes } = store.getState()
 
     return nodes.find(node => node.id === id)
   }, [store, id])

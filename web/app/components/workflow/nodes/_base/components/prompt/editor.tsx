@@ -33,6 +33,7 @@ import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/
 import ToggleExpandBtn from '@/app/components/workflow/nodes/_base/components/toggle-expand-btn'
 import useToggleExpend from '@/app/components/workflow/nodes/_base/hooks/use-toggle-expend'
 import { useStore } from '@/app/components/workflow/store'
+import { getNodeDimensions } from '@/app/components/workflow/utils/node'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { BlockEnum, EditionType } from '../../../../types'
 import { CodeLanguage } from '../../../code/types'
@@ -305,11 +306,12 @@ const Editor: FC<Props> = ({
                         variables: nodesOutputVars || [],
                         getVarType: getVarType as any,
                         workflowNodesMap: availableNodes.reduce((acc, node) => {
+                          const { width, height } = getNodeDimensions(node)
                           acc[node.id] = {
                             title: node.data.title,
                             type: node.data.type,
-                            width: node.width,
-                            height: node.height,
+                            width,
+                            height,
                             position: node.position,
                             ...(node.data.type === BlockEnum.LLM && {
                               modelProvider: (node.data as { model?: ModelConfig }).model?.provider,

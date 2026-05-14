@@ -1,4 +1,3 @@
-import type { Node } from 'reactflow'
 import type {
   CredentialFormSchema,
   CredentialFormSchemaBase,
@@ -9,7 +8,7 @@ import type {
   FormValue,
 } from '../../declarations'
 import type { AppSelectorValue } from '@/app/components/plugins/plugin-detail-panel/app-selector'
-import type { NodeOutPutVar } from '@/app/components/workflow/types'
+import type { Node, NodeOutPutVar } from '@/app/components/workflow/types'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { FormTypeEnum } from '../../declarations'

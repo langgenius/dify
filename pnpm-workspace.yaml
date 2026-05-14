@@ -138,6 +138,7 @@ catalog:
   '@vitejs/plugin-react': 6.0.1
   '@vitejs/plugin-rsc': 0.5.26
   '@vitest/coverage-v8': 4.1.6
+  '@xyflow/react': 12.10.2
   abcjs: 6.6.3
   agentation: 3.0.2
   ahooks: 3.9.7
@@ -215,7 +216,6 @@ catalog:
   react-server-dom-webpack: 19.2.6
   react-sortablejs: 6.1.4
   react-textarea-autosize: 8.5.9
-  reactflow: 11.11.4
   remark-breaks: 4.0.0
   remark-directive: 4.0.0
   scheduler: 0.27.0

@@ -29,7 +29,7 @@ const globalFeatureState = vi.hoisted(() => ({
   enableCollaboration: true,
 }))
 
-vi.mock('reactflow', () => ({
+vi.mock('@xyflow/react', () => ({
   useReactFlow: () => ({
     screenToFlowPosition: mockScreenToFlowPosition,
     setCenter: mockSetCenter,

@@ -1,9 +1,10 @@
 import type { FC } from 'react'
 import type { VersionHistoryPanelProps } from '@/app/components/workflow/panel/version-history-panel'
-import { cn } from '@langgenius/dify-ui/cn'
-import { memo, useEffect, useRef } from 'react'
-import { useStore as useReactflow } from 'reactflow'
-import { useShallow } from 'zustand/react/shallow'
+import {
+  cn,
+} from '@langgenius/dify-ui/cn'
+import { memo, useEffect, useMemo, useRef } from 'react'
+import { useWorkflowFlowNodes } from '@/app/components/workflow/hooks/use-workflow-reactflow'
 import dynamic from '@/next/dynamic'
 import { Panel as NodePanel } from '../nodes'
 import { useStore } from '../store'
@@ -85,8 +86,8 @@ const Panel: FC<PanelProps> = ({
   components,
   versionHistoryPanelProps,
 }) => {
-  const selectedNode = useReactflow(useShallow((s) => {
-    const nodes = s.getNodes()
+  const nodes = useWorkflowFlowNodes()
+  const selectedNode = useMemo(() => {
     const currentNode = nodes.find(node => node.data.selected)
 
     if (currentNode) {
@@ -96,7 +97,7 @@ const Panel: FC<PanelProps> = ({
         data: currentNode.data,
       }
     }
-  }))
+  }, [nodes])
   const showEnvPanel = useStore(s => s.showEnvPanel)
   const isRestoring = useStore(s => s.isRestoring)
   const showWorkflowVersionHistoryPanel = useStore(s => s.showWorkflowVersionHistoryPanel)

@@ -66,6 +66,33 @@ describe('loop interaction helpers', () => {
     ] as Node[], 'loop-1').map(item => item.id)).toEqual(['child'])
   })
 
+  it('uses v12 measured dimensions when width and height are not fixed on nodes', () => {
+    const child = createNode({
+      id: 'child',
+      position: { x: 24, y: 68 },
+      width: undefined,
+      height: undefined,
+      measured: { width: 44, height: 44 },
+      data: { isInLoop: true },
+    })
+    const parent = createNode({
+      width: undefined,
+      height: undefined,
+      measured: { width: 100, height: 100 },
+    })
+
+    const bounds = getContainerBounds([child] as Node[])
+
+    expect(getContainerResize(parent as Node, bounds)).toEqual({
+      width: undefined,
+      height: 132,
+    })
+    expect(getRestrictedLoopPosition(child as Node, parent as Node)).toEqual({
+      x: undefined,
+      y: 36,
+    })
+  })
+
   it('builds copied loop children with derived title and loop metadata', () => {
     const child = createNode({
       id: 'child',
@@ -87,6 +114,7 @@ describe('loop interaction helpers', () => {
     expect(result.newId).toBe('loop-23')
     expect(result.params).toEqual(expect.objectContaining({
       parentId: 'loop-2',
+      extent: (child as Node).extent,
       zIndex: 1002,
       data: expect.objectContaining({
         title: 'Code 3',

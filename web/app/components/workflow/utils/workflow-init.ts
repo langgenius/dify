@@ -7,10 +7,10 @@ import type {
   Edge,
   Node,
 } from '../types'
-import { cloneDeep } from 'es-toolkit/object'
 import {
   getConnectedEdges,
-} from 'reactflow'
+} from '@xyflow/react'
+import { cloneDeep } from 'es-toolkit/object'
 import { correctModelProvider } from '@/utils'
 import {
   getIterationStartNode,
@@ -219,6 +219,11 @@ export const initialNodes = (originNodes: Node[], originEdges: Edge[]) => {
   return nodes.map((node) => {
     if (!node.type)
       node.type = CUSTOM_NODE
+
+    if (node.type === CUSTOM_ITERATION_START_NODE || node.type === CUSTOM_LOOP_START_NODE) {
+      node.selectable = false
+      node.draggable = false
+    }
 
     const connectedEdges = getConnectedEdges([node], edges)
     node.data._connectedSourceHandleIds = connectedEdges.filter(edge => edge.source === node.id).map(edge => edge.sourceHandle || 'source')

@@ -1,30 +1,29 @@
 import type { DataSourceNodeType } from '../../workflow/nodes/data-source/types'
 import type { Node, ValueSelector } from '../../workflow/types'
+import { getOutgoers } from '@xyflow/react'
 import { uniqBy } from 'es-toolkit/compat'
 import { useCallback } from 'react'
-import { getOutgoers, useStoreApi } from 'reactflow'
+import { useWorkflowStoreApi } from '@/app/components/workflow/hooks/use-workflow-reactflow'
 import { findUsedVarNodes, updateNodeVars } from '../../workflow/nodes/_base/components/variable/utils'
 import { BlockEnum } from '../../workflow/types'
 
 export const usePipeline = () => {
-  const store = useStoreApi()
+  const store = useWorkflowStoreApi()
 
   const getAllDatasourceNodes = useCallback(() => {
     const {
-      getNodes,
+      nodes,
     } = store.getState()
-    const nodes = getNodes() as Node<DataSourceNodeType>[]
-    const datasourceNodes = nodes.filter(node => node.data.type === BlockEnum.DataSource)
+    const datasourceNodes = (nodes as Node<DataSourceNodeType>[]).filter(node => node.data.type === BlockEnum.DataSource)
 
     return datasourceNodes
   }, [store])
 
   const getAllNodesInSameBranch = useCallback((nodeId: string) => {
     const {
-      getNodes,
+      nodes,
       edges,
     } = store.getState()
-    const nodes = getNodes()
     const list: Node[] = []
 
     const traverse = (root: Node, callback: (node: Node) => void) => {
@@ -78,11 +77,11 @@ export const usePipeline = () => {
   }, [getAllNodesInSameBranch])
 
   const handleInputVarRename = useCallback((nodeId: string, oldValeSelector: ValueSelector, newVarSelector: ValueSelector) => {
-    const { getNodes, setNodes } = store.getState()
+    const { nodes, setNodes } = store.getState()
     const afterNodes = getAllNodesInSameBranch(nodeId)
     const effectNodes = findUsedVarNodes(oldValeSelector, afterNodes)
     if (effectNodes.length > 0) {
-      const newNodes = getNodes().map((node) => {
+      const newNodes = nodes.map((node) => {
         if (effectNodes.find(n => n.id === node.id))
           return updateNodeVars(node, oldValeSelector, newVarSelector)
 
@@ -94,11 +93,11 @@ export const usePipeline = () => {
 
   const removeUsedVarInNodes = useCallback((varSelector: ValueSelector) => {
     const nodeId = varSelector[1] // Assuming the first element is always 'VARIABLE_PREFIX'(rag)
-    const { getNodes, setNodes } = store.getState()
+    const { nodes, setNodes } = store.getState()
     const afterNodes = getAllNodesInSameBranch(nodeId!)
     const effectNodes = findUsedVarNodes(varSelector, afterNodes)
     if (effectNodes.length > 0) {
-      const newNodes = getNodes().map((node) => {
+      const newNodes = nodes.map((node) => {
         if (effectNodes.find(n => n.id === node.id))
           return updateNodeVars(node, varSelector, [])
 

@@ -3,7 +3,7 @@ import type { ListFilterNodeType } from './types'
 import type { Node, NodeProps } from '@/app/components/workflow/types'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import { useNodes } from 'reactflow'
+import { useWorkflowFlowNodes } from '@/app/components/workflow/hooks/use-workflow-reactflow'
 import { isSystemVar } from '@/app/components/workflow/nodes/_base/components/variable/utils'
 import {
   VariableLabelInNode,
@@ -17,7 +17,7 @@ const NodeComponent: FC<NodeProps<ListFilterNodeType>> = ({
 }) => {
   const { t } = useTranslation()
 
-  const nodes: Node[] = useNodes()
+  const nodes: Node[] = useWorkflowFlowNodes()
   const { variable } = data
 
   if (!variable || variable.length === 0)

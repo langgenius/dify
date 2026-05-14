@@ -6,10 +6,6 @@ import type { VersionHistory } from '@/types/workflow'
 import { noop } from 'es-toolkit/function'
 import { produce } from 'immer'
 import { useCallback, useRef } from 'react'
-import {
-  useReactFlow,
-  useStoreApi,
-} from 'reactflow'
 import { v4 as uuidV4 } from 'uuid'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { trackEvent } from '@/app/components/base/amplitude'
@@ -17,6 +13,7 @@ import { AudioPlayerManager } from '@/app/components/base/audio-btn/audio.player
 import { useFeaturesStore } from '@/app/components/base/features/hooks'
 import { TriggerType } from '@/app/components/workflow/header/test-run-menu'
 import { useWorkflowUpdate } from '@/app/components/workflow/hooks/use-workflow-interactions'
+import { useWorkflowReactFlow, useWorkflowStoreApi } from '@/app/components/workflow/hooks/use-workflow-reactflow'
 import { useWorkflowRunEvent } from '@/app/components/workflow/hooks/use-workflow-run-event/use-workflow-run-event'
 import { useWorkflowStore } from '@/app/components/workflow/store'
 import { usePathname } from '@/next/navigation'
@@ -49,9 +46,9 @@ import {
 } from './use-workflow-run-utils'
 
 export const useWorkflowRun = () => {
-  const store = useStoreApi()
+  const store = useWorkflowStoreApi()
   const workflowStore = useWorkflowStore()
-  const reactflow = useReactFlow()
+  const reactflow = useWorkflowReactFlow()
   const featuresStore = useFeaturesStore()
   const { doSyncWorkflowDraft } = useNodesSyncDraft()
   const { handleUpdateWorkflowCanvas } = useWorkflowUpdate()
@@ -91,7 +88,7 @@ export const useWorkflowRun = () => {
 
   const handleBackupDraft = useCallback(() => {
     const {
-      getNodes,
+      nodes,
       edges,
     } = store.getState()
     const { getViewport } = reactflow
@@ -104,7 +101,7 @@ export const useWorkflowRun = () => {
 
     if (!backupDraft) {
       setBackupDraft({
-        nodes: getNodes(),
+        nodes,
         edges,
         viewport: getViewport(),
         features,
@@ -148,10 +145,10 @@ export const useWorkflowRun = () => {
     const runMode = options?.mode ?? TriggerType.UserInput
     const resolvedParams = params ?? {}
     const {
-      getNodes,
+      nodes,
       setNodes,
     } = store.getState()
-    const newNodes = produce(getNodes(), (draft: Node[]) => {
+    const newNodes = produce(nodes, (draft: Node[]) => {
       draft.forEach((node) => {
         node.data.selected = false
         node.data._runningStatus = undefined

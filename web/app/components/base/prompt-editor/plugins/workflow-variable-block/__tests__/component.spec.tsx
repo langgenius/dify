@@ -1,11 +1,13 @@
 import type { LexicalEditor } from 'lexical'
 import type { UpdateWorkflowNodesMapPayload } from '../index'
 import type { ValueSelector, Var } from '@/app/components/workflow/types'
-import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
+import {
+  useLexicalComposerContext,
+} from '@lexical/react/LexicalComposerContext'
 import { mergeRegister } from '@lexical/utils'
 import { act, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { useReactFlow, useStoreApi } from 'reactflow'
+import { useReactFlow, useStoreApi } from '@xyflow/react'
 import { Type } from '@/app/components/workflow/nodes/llm/types'
 import { BlockEnum, VarType } from '@/app/components/workflow/types'
 import { useSelectOrDelete } from '../../../hooks'
@@ -21,7 +23,7 @@ const { mockVarLabel, mockIsExceptionVariable, mockForcedVariableKind } = vi.hoi
 
 vi.mock('@lexical/react/LexicalComposerContext')
 vi.mock('@lexical/utils')
-vi.mock('reactflow')
+vi.mock('@xyflow/react')
 vi.mock('../../../hooks')
 vi.mock('@/app/components/workflow/utils', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/app/components/workflow/utils')>()

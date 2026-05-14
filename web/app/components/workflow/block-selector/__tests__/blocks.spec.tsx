@@ -9,10 +9,10 @@ const runtimeState = vi.hoisted(() => ({
   nodes: [] as Array<{ data: { type?: BlockEnum } }>,
 }))
 
-vi.mock('reactflow', () => ({
+vi.mock('@xyflow/react', () => ({
   useStoreApi: () => ({
     getState: () => ({
-      getNodes: () => runtimeState.nodes,
+      nodes: runtimeState.nodes,
     }),
   }),
 }))

@@ -8,7 +8,7 @@ import type {
   NodeStartedResponse,
   WorkflowStartedResponse,
 } from '@/types/workflow'
-import { useEdges, useNodes, useStoreApi } from 'reactflow'
+import { useWorkflowFlowEdges, useWorkflowFlowNodes, useWorkflowStoreApi } from '@/app/components/workflow/hooks/use-workflow-reactflow'
 import { createEdge, createNode } from '../../../__tests__/fixtures'
 import { renderWorkflowFlowHook } from '../../../__tests__/workflow-test-env'
 import { NodeRunningStatus, WorkflowRunningStatus } from '../../../types'
@@ -110,8 +110,8 @@ export function renderRunEventHook<T extends Record<string, unknown>>(
 
   return renderWorkflowFlowHook(() => ({
     ...useHook(),
-    nodes: useNodes(),
-    edges: useEdges(),
+    nodes: useWorkflowFlowNodes(),
+    edges: useWorkflowFlowEdges(),
   }), {
     nodes,
     edges,
@@ -136,9 +136,9 @@ export function renderViewportHook<T extends Record<string, unknown>>(
 
   return renderWorkflowFlowHook(() => ({
     ...useHook(),
-    nodes: useNodes(),
-    edges: useEdges(),
-    reactFlowStore: useStoreApi(),
+    nodes: useWorkflowFlowNodes(),
+    edges: useWorkflowFlowEdges(),
+    reactFlowStore: useWorkflowStoreApi(),
   }), {
     nodes,
     edges,

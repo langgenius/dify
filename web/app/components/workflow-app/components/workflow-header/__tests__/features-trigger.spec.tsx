@@ -96,7 +96,7 @@ vi.mock('@/app/components/workflow/store/workflow/use-nodes', () => ({
   default: () => mockUseNodes(),
 }))
 
-vi.mock('reactflow', () => ({
+vi.mock('@xyflow/react', () => ({
   useEdges: () => mockUseEdges(),
 }))
 

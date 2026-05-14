@@ -4,16 +4,16 @@ import type {
 import type {
   Node,
 } from '@/app/components/workflow/types'
+import {
+  useViewport,
+} from '@xyflow/react'
 import { useEventListener } from 'ahooks'
 import { produce } from 'immer'
 import {
   memo,
 } from 'react'
-import {
-  useReactFlow,
-  useViewport,
-} from 'reactflow'
 import { useCollaborativeWorkflow } from '@/app/components/workflow/hooks/use-collaborative-workflow'
+import { useWorkflowReactFlow } from '@/app/components/workflow/hooks/use-workflow-reactflow'
 import { CUSTOM_NODE } from './constants'
 import { useAutoGenerateWebhookUrl, useNodesInteractions, useNodesSyncDraft, useWorkflowHistory, WorkflowHistoryEvent } from './hooks'
 import CustomNode from './nodes'
@@ -32,7 +32,7 @@ type Props = {
 const CandidateNodeMain: FC<Props> = ({
   candidateNode,
 }) => {
-  const reactflow = useReactFlow()
+  const reactflow = useWorkflowReactFlow()
   const workflowStore = useWorkflowStore()
   const mousePosition = useStore(s => s.mousePosition)
   const { zoom } = useViewport()

@@ -8,7 +8,6 @@ import {
   useCallback,
   useState,
 } from 'react'
-import { useStoreApi } from 'reactflow'
 import { DSL_EXPORT_CHECK, START_INITIAL_POSITION } from '@/app/components/workflow/constants'
 import {
   useAutoGenerateWebhookUrl,
@@ -16,6 +15,7 @@ import {
   usePanelInteractions,
 } from '@/app/components/workflow/hooks'
 import { useNodesSyncDraft } from '@/app/components/workflow/hooks/use-nodes-sync-draft'
+import { useWorkflowStoreApi } from '@/app/components/workflow/hooks/use-workflow-reactflow'
 import { useStore } from '@/app/components/workflow/store'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { generateNewNode } from '@/app/components/workflow/utils'
@@ -75,7 +75,7 @@ const WorkflowChildren = () => {
   const setShowOnboarding = useStore(s => s.setShowOnboarding)
   const setHasSelectedStartNode = useStore(s => s.setHasSelectedStartNode)
   const setShouldAutoOpenStartNodeSelector = useStore(s => s.setShouldAutoOpenStartNodeSelector)
-  const reactFlowStore = useStoreApi()
+  const reactFlowStore = useWorkflowStoreApi()
   const availableNodesMetaData = useAvailableNodesMetaData()
   const { handleSyncWorkflowDraft } = useNodesSyncDraft()
   const { handleOnboardingClose } = useAutoOnboarding()

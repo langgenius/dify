@@ -17,7 +17,7 @@ vi.mock('react-i18next', () => ({
 // Mutable holder so mock data can reference BlockEnum after imports
 const mockNodesHolder = vi.hoisted(() => ({ value: [] as Record<string, unknown>[] }))
 
-vi.mock('reactflow', () => ({
+vi.mock('@xyflow/react', () => ({
   useNodes: () => mockNodesHolder.value,
 }))
 

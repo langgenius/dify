@@ -2,7 +2,7 @@ import { resetReactFlowMockState, rfState } from '../../__tests__/reactflow-mock
 import { renderWorkflowHook } from '../../__tests__/workflow-test-env'
 import { useWorkflowVariables, useWorkflowVariableType } from '../use-workflow-variables'
 
-vi.mock('reactflow', async () =>
+vi.mock('@xyflow/react', async () =>
   (await import('../../__tests__/reactflow-mock-state')).createReactFlowModuleMock())
 
 vi.mock('@/service/use-tools', async () =>

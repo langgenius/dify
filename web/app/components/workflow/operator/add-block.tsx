@@ -10,8 +10,8 @@ import {
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useStoreApi } from 'reactflow'
 import BlockSelector from '@/app/components/workflow/block-selector'
+import { useWorkflowStoreApi } from '@/app/components/workflow/hooks/use-workflow-reactflow'
 import {
   BlockEnum,
 } from '@/app/components/workflow/types'
@@ -40,7 +40,7 @@ const AddBlock = ({
   offset,
 }: AddBlockProps) => {
   const { t } = useTranslation()
-  const store = useStoreApi()
+  const store = useWorkflowStoreApi()
   const workflowStore = useWorkflowStore()
   const isChatMode = useIsChatMode()
   const { nodesReadOnly } = useNodesReadOnly()
@@ -59,9 +59,8 @@ const AddBlock = ({
 
   const handleSelect = useCallback<OnSelectBlock>((type, pluginDefaultValue) => {
     const {
-      getNodes,
+      nodes,
     } = store.getState()
-    const nodes = getNodes()
     const nodesWithSameType = nodes.filter(node => node.data.type === type)
     const {
       defaultValue,

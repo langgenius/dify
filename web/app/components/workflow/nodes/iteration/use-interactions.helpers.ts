@@ -6,6 +6,10 @@ import type {
 import {
   ITERATION_PADDING,
 } from '../../constants'
+import {
+  getNodeHeight,
+  getNodeWidth,
+} from '../../utils/node'
 import { CUSTOM_ITERATION_START_NODE } from '../iteration-start/constants'
 
 type ContainerBounds = {
@@ -15,10 +19,10 @@ type ContainerBounds = {
 
 export const getIterationContainerBounds = (childrenNodes: Node[]): ContainerBounds => {
   return childrenNodes.reduce<ContainerBounds>((acc, node) => {
-    const nextRightNode = !acc.rightNode || node.position.x + node.width! > acc.rightNode.position.x + acc.rightNode.width!
+    const nextRightNode = !acc.rightNode || node.position.x + getNodeWidth(node) > acc.rightNode.position.x + getNodeWidth(acc.rightNode)
       ? node
       : acc.rightNode
-    const nextBottomNode = !acc.bottomNode || node.position.y + node.height! > acc.bottomNode.position.y + acc.bottomNode.height!
+    const nextBottomNode = !acc.bottomNode || node.position.y + getNodeHeight(node) > acc.bottomNode.position.y + getNodeHeight(acc.bottomNode)
       ? node
       : acc.bottomNode
 
@@ -30,11 +34,11 @@ export const getIterationContainerBounds = (childrenNodes: Node[]): ContainerBou
 }
 
 export const getIterationContainerResize = (currentNode: Node, bounds: ContainerBounds) => {
-  const width = bounds.rightNode && currentNode.width! < bounds.rightNode.position.x + bounds.rightNode.width!
-    ? bounds.rightNode.position.x + bounds.rightNode.width! + ITERATION_PADDING.right
+  const width = bounds.rightNode && getNodeWidth(currentNode) < bounds.rightNode.position.x + getNodeWidth(bounds.rightNode)
+    ? bounds.rightNode.position.x + getNodeWidth(bounds.rightNode) + ITERATION_PADDING.right
     : undefined
-  const height = bounds.bottomNode && currentNode.height! < bounds.bottomNode.position.y + bounds.bottomNode.height!
-    ? bounds.bottomNode.position.y + bounds.bottomNode.height! + ITERATION_PADDING.bottom
+  const height = bounds.bottomNode && getNodeHeight(currentNode) < bounds.bottomNode.position.y + getNodeHeight(bounds.bottomNode)
+    ? bounds.bottomNode.position.y + getNodeHeight(bounds.bottomNode) + ITERATION_PADDING.bottom
     : undefined
 
   return {
@@ -53,10 +57,10 @@ export const getRestrictedIterationPosition = (node: Node, parentNode?: Node) =>
     restrictPosition.y = ITERATION_PADDING.top
   if (node.position.x < ITERATION_PADDING.left)
     restrictPosition.x = ITERATION_PADDING.left
-  if (node.position.x + node.width! > parentNode.width! - ITERATION_PADDING.right)
-    restrictPosition.x = parentNode.width! - ITERATION_PADDING.right - node.width!
-  if (node.position.y + node.height! > parentNode.height! - ITERATION_PADDING.bottom)
-    restrictPosition.y = parentNode.height! - ITERATION_PADDING.bottom - node.height!
+  if (node.position.x + getNodeWidth(node) > getNodeWidth(parentNode) - ITERATION_PADDING.right)
+    restrictPosition.x = getNodeWidth(parentNode) - ITERATION_PADDING.right - getNodeWidth(node)
+  if (node.position.y + getNodeHeight(node) > getNodeHeight(parentNode) - ITERATION_PADDING.bottom)
+    restrictPosition.y = getNodeHeight(parentNode) - ITERATION_PADDING.bottom - getNodeHeight(node)
 
   return restrictPosition
 }

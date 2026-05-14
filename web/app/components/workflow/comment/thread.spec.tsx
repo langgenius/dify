@@ -41,7 +41,7 @@ vi.mock('@/context/app-context', () => ({
   }),
 }))
 
-vi.mock('reactflow', () => ({
+vi.mock('@xyflow/react', () => ({
   useReactFlow: () => ({
     flowToScreenPosition: mockFlowToScreenPosition,
   }),

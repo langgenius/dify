@@ -1,4 +1,4 @@
-import type { Viewport } from 'reactflow'
+import type { Viewport } from '@xyflow/react'
 import type { Node } from '@/app/components/workflow/types'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { processNodesWithoutDataSource } from '../nodes'

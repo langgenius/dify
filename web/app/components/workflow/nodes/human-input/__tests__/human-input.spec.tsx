@@ -17,8 +17,8 @@ import { BlockEnum } from '@/app/components/workflow/types'
 import { initialNodes, preprocessNodesAndEdges } from '@/app/components/workflow/utils/workflow-init'
 
 // Mock reactflow which is needed by initialNodes and NodeSourceHandle
-vi.mock('reactflow', async () => {
-  const reactflow = await vi.importActual('reactflow')
+vi.mock('@xyflow/react', async () => {
+  const reactflow = await vi.importActual('@xyflow/react')
   return {
     ...reactflow,
     Handle: ({ children }: { children?: ReactNode }) => <div data-testid="handle">{children}</div>,
@@ -41,7 +41,7 @@ vi.mock('@/app/components/workflow/store', () => ({
   ),
   useWorkflowStore: vi.fn(() => ({
     getState: () => ({
-      getNodes: () => [],
+      nodes: [],
     }),
   })),
 }))

@@ -7,7 +7,7 @@ import {
   useMemo,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useNodes } from 'reactflow'
+import { useWorkflowFlowNodes } from '@/app/components/workflow/hooks/use-workflow-reactflow'
 import { isSystemVar } from '@/app/components/workflow/nodes/_base/components/variable/utils'
 import {
   VariableLabelInText,
@@ -33,7 +33,7 @@ const ConditionValue = ({
   value,
 }: ConditionValueProps) => {
   const { t } = useTranslation()
-  const nodes = useNodes()
+  const nodes = useWorkflowFlowNodes()
   const variableName = labelName || (isSystemVar(variableSelector) ? variableSelector.slice(0).join('.') : variableSelector.slice(1).join('.'))
   const operatorName = isComparisonOperatorNeedTranslate(operator) ? t(`nodes.ifElse.comparisonOperator.${operator}`, { ns: 'workflow' }) : operator
   const notHasValue = comparisonOperatorNotRequireValue(operator)

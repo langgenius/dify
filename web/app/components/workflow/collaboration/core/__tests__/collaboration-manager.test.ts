@@ -4,8 +4,8 @@ import type {
   NodePanelPresenceUser,
 } from '@/app/components/workflow/collaboration/types/collaboration'
 import type { CommonNodeType, Edge, Node } from '@/app/components/workflow/types'
+import { Position } from '@xyflow/react'
 import { LoroDoc } from 'loro-crdt/base64'
-import { Position } from 'reactflow'
 import { CollaborationManager } from '@/app/components/workflow/collaboration/core/collaboration-manager'
 import { BlockEnum } from '@/app/components/workflow/types'
 

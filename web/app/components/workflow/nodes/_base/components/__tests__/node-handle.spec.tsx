@@ -61,7 +61,7 @@ type BlockSelectorProps = {
   triggerClassName?: (open: boolean) => string
 }
 
-vi.mock('reactflow', () => ({
+vi.mock('@xyflow/react', () => ({
   Handle: ({ id, className, children, onClick }: HandleProps) => (
     <div
       data-testid={`handle-${id ?? 'unknown'}`}

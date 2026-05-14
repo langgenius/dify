@@ -2,7 +2,7 @@ import { render } from '@testing-library/react'
 import { BlockEnum } from '@/app/components/workflow/types'
 import Node from '../node'
 
-vi.mock('reactflow', () => ({
+vi.mock('@xyflow/react', () => ({
   Handle: (props: { id: string, type: string, className?: string }) => (
     <div data-testid="handle" data-handleid={props.id} data-type={props.type} className={props.className} />
   ),

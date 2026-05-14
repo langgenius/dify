@@ -1,12 +1,15 @@
 import type { AssignerNodeOperation, AssignerNodeType } from '../types'
-import { render, screen } from '@testing-library/react'
-import { useNodes } from 'reactflow'
+import {
+  render,
+  screen,
+} from '@testing-library/react'
+import { useNodes } from '@xyflow/react'
 import { BlockEnum } from '@/app/components/workflow/types'
 import Node from '../node'
 import { AssignerNodeInputType, WriteMode } from '../types'
 
-vi.mock('reactflow', async () => {
-  const actual = await vi.importActual<typeof import('reactflow')>('reactflow')
+vi.mock('@xyflow/react', async () => {
+  const actual = await vi.importActual<typeof import('@xyflow/react')>('@xyflow/react')
   return {
     ...actual,
     useNodes: vi.fn(),
@@ -59,6 +62,7 @@ describe('assigner/node', () => {
         id: 'node-1',
         data: {
           title: 'Answer',
+          desc: '',
           type: BlockEnum.Answer,
         },
       },
@@ -66,10 +70,11 @@ describe('assigner/node', () => {
         id: 'start-node',
         data: {
           title: 'Start',
+          desc: '',
           type: BlockEnum.Start,
         },
       },
-    ] as ReturnType<typeof useNodes>)
+    ] as unknown as ReturnType<typeof useNodes>)
   })
 
   it('renders the empty-state hint when no assignable variable is configured', () => {

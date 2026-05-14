@@ -9,15 +9,15 @@ import {
 } from '@langgenius/dify-ui/dropdown-menu'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import {
+  useViewport,
+} from '@xyflow/react'
+import {
   Fragment,
   memo,
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import {
-  useReactFlow,
-  useViewport,
-} from 'reactflow'
+import { useWorkflowReactFlow } from '@/app/components/workflow/hooks/use-workflow-reactflow'
 import { systemFeaturesQueryOptions } from '@/service/system-features'
 import {
   useNodesSyncDraft,
@@ -63,7 +63,7 @@ const ZoomInOut: FC<ZoomInOutProps> = ({
     zoomOut,
     zoomTo,
     fitView,
-  } = useReactFlow()
+  } = useWorkflowReactFlow()
   const { zoom } = useViewport()
   const { handleSyncWorkflowDraft } = useNodesSyncDraft()
   const [open, setOpen] = useState(false)

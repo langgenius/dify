@@ -32,7 +32,7 @@ import Cookies from 'js-cookie'
 import { API_PREFIX, CSRF_COOKIE_NAME, CSRF_HEADER_NAME, IS_CE_EDITION, PASSPORT_HEADER_NAME, PUBLIC_API_PREFIX, WEB_APP_SHARE_CODE_HEADER_NAME } from '@/config'
 import { asyncRunSafe } from '@/utils'
 import { basePath } from '@/utils/var'
-import { base, ContentType, getBaseOptions } from './fetch'
+import { base, ContentType, getBaseOptions, parseResponseError } from './fetch'
 import { refreshAccessTokenOrReLogin } from './refresh-token'
 import { getWebAppPassport } from './webapp-auth'
 
@@ -523,15 +523,15 @@ export const ssePost = async (
       if (!/^[23]\d{2}$/.test(String(res.status))) {
         if (res.status === 401) {
           if (isPublicAPI) {
-            res.json().then((data: { code?: string, message?: string }) => {
+            parseResponseError(res).then((data) => {
               if (isPublicAPI) {
-                if (data.code === 'web_app_access_denied')
+                if (data?.code === 'web_app_access_denied')
                   requiredWebSSOLogin(data.message, 403)
 
-                if (data.code === 'web_sso_auth_required')
+                if (data?.code === 'web_sso_auth_required')
                   requiredWebSSOLogin()
 
-                if (data.code === 'unauthorized')
+                if (data?.code === 'unauthorized')
                   requiredWebSSOLogin()
               }
             })
@@ -545,8 +545,8 @@ export const ssePost = async (
           }
         }
         else {
-          res.json().then((data) => {
-            toast.error(data.message || 'Server Error')
+          parseResponseError(res).then((data) => {
+            toast.error(data?.message || 'Server Error')
           })
           onError?.('Server Error')
         }
@@ -670,15 +670,15 @@ export const sseGet = async (
       if (!/^[23]\d{2}$/.test(String(res.status))) {
         if (res.status === 401) {
           if (isPublicAPI) {
-            res.json().then((data: { code?: string, message?: string }) => {
+            parseResponseError(res).then((data) => {
               if (isPublicAPI) {
-                if (data.code === 'web_app_access_denied')
+                if (data?.code === 'web_app_access_denied')
                   requiredWebSSOLogin(data.message, 403)
 
-                if (data.code === 'web_sso_auth_required')
+                if (data?.code === 'web_sso_auth_required')
                   requiredWebSSOLogin()
 
-                if (data.code === 'unauthorized')
+                if (data?.code === 'unauthorized')
                   requiredWebSSOLogin()
               }
             })
@@ -692,8 +692,8 @@ export const sseGet = async (
           }
         }
         else {
-          res.json().then((data) => {
-            toast.error(data.message || 'Server Error')
+          parseResponseError(res).then((data) => {
+            toast.error(data?.message || 'Server Error')
           })
           onError?.('Server Error')
         }

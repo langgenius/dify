@@ -4,13 +4,10 @@ import type { NodeRunResult, NodeTracing } from '@/types/workflow'
 import { toast } from '@langgenius/dify-ui/toast'
 import { unionBy } from 'es-toolkit/compat'
 import { noop } from 'es-toolkit/function'
-
 import { produce } from 'immer'
+
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import {
-  useStoreApi,
-} from 'reactflow'
 import { trackEvent } from '@/app/components/base/amplitude'
 import { getInputVars as doGetInputVars } from '@/app/components/base/prompt-editor/constants'
 import {
@@ -19,6 +16,7 @@ import {
   useWorkflow,
 } from '@/app/components/workflow/hooks'
 import useInspectVarsCrud from '@/app/components/workflow/hooks/use-inspect-vars-crud'
+import { useWorkflowStoreApi } from '@/app/components/workflow/hooks/use-workflow-reactflow'
 import { getNodeInfoById, isConversationVar, isENV, isSystemVar, toNodeOutputVars } from '@/app/components/workflow/nodes/_base/components/variable/utils'
 import Assigner from '@/app/components/workflow/nodes/assigner/default'
 import CodeDefault from '@/app/components/workflow/nodes/code/default'
@@ -215,7 +213,7 @@ const useOneStepRun = <T>({
   const iterationTimes = iteratorInputKey ? runInputData[iteratorInputKey]?.length : 0
   const loopTimes = loopInputKey ? runInputData[loopInputKey]?.length : 0
 
-  const store = useStoreApi()
+  const store = useWorkflowStoreApi()
   const {
     setShowSingleRunPanel,
     setIsListening,
@@ -244,8 +242,8 @@ const useOneStepRun = <T>({
         }
       }
       else if (isRunning) {
-        const { getNodes } = store.getState()
-        const target = getNodes().find(node => node.id === nodeId)
+        const { nodes } = store.getState()
+        const target = nodes.find(node => node.id === nodeId)
         if (target) {
           draft.unshift({
             nodeId,
@@ -308,8 +306,7 @@ const useOneStepRun = <T>({
 
     // run fail may also update the inspect vars when the node set the error default output.
     const vars = await fetchNodeInspectVars(flowType, flowId!, id)
-    const { getNodes } = store.getState()
-    const nodes = getNodes()
+    const { nodes } = store.getState()
     appendNodeInspectVars(id, vars, nodes)
     updateNodeInspectRunningState(id, false)
     if (data?.status === NodeRunningStatus.Succeeded) {

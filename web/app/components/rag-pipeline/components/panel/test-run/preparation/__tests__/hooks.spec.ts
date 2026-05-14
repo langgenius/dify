@@ -6,7 +6,7 @@ import { BlockEnum } from '@/app/components/workflow/types'
 import { useDatasourceOptions, useOnlineDocument, useOnlineDrive, useTestRunSteps, useWebsiteCrawl } from '../hooks'
 
 const mockNodes: Array<{ id: string, data: Partial<DataSourceNodeType> & { type: string } }> = []
-vi.mock('reactflow', () => ({
+vi.mock('@xyflow/react', () => ({
   useNodes: () => mockNodes,
 }))
 

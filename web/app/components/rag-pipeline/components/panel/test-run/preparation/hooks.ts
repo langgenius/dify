@@ -1,9 +1,13 @@
 import type { DataSourceOption } from '../types'
 import type { DataSourceNodeType } from '@/app/components/workflow/nodes/data-source/types'
-import { useCallback, useMemo, useState } from 'react'
+import {
+  useCallback,
+  useMemo,
+  useState,
+} from 'react'
 import { useTranslation } from 'react-i18next'
-import { useNodes } from 'reactflow'
 import { useDataSourceStore } from '@/app/components/datasets/documents/create-from-pipeline/data-source/store'
+import { useWorkflowFlowNodes } from '@/app/components/workflow/hooks/use-workflow-reactflow'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { CrawlStep } from '@/models/datasets'
 import { TestRunStep } from '../types'
@@ -40,7 +44,7 @@ export const useTestRunSteps = () => {
 }
 
 export const useDatasourceOptions = () => {
-  const nodes = useNodes<DataSourceNodeType>()
+  const nodes = useWorkflowFlowNodes<DataSourceNodeType>()
   const datasourceNodes = nodes.filter(node => node.data.type === BlockEnum.DataSource)
 
   const options = useMemo(() => {

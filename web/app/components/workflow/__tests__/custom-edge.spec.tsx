@@ -1,6 +1,11 @@
 import type { ReactNode } from 'react'
-import { fireEvent, render, screen } from '@testing-library/react'
-import { Position } from 'reactflow'
+import {
+  fireEvent,
+  render,
+  screen,
+} from '@testing-library/react'
+import { Position,
+} from '@xyflow/react'
 import { ErrorHandleTypeEnum } from '@/app/components/workflow/nodes/_base/components/error-handle/types'
 import CustomEdge from '../custom-edge'
 import { BlockEnum, NodeRunningStatus } from '../types'
@@ -10,7 +15,7 @@ const mockUseNodesInteractions = vi.hoisted(() => vi.fn())
 const mockBlockSelector = vi.hoisted(() => vi.fn())
 const mockGradientRender = vi.hoisted(() => vi.fn())
 
-vi.mock('reactflow', () => ({
+vi.mock('@xyflow/react', () => ({
   BaseEdge: (props: {
     id: string
     path: string

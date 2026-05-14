@@ -1,16 +1,18 @@
 import type { StartNodeType } from '../nodes/start/types'
-import { Button } from '@langgenius/dify-ui/button'
+import {
+  Button,
+} from '@langgenius/dify-ui/button'
 import {
   memo,
   useCallback,
   useMemo,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useNodes } from 'reactflow'
 import { useCheckInputsForms } from '@/app/components/base/chat/chat/check-input-forms-hooks'
 import {
   getProcessedInputs,
 } from '@/app/components/base/chat/chat/utils'
+import { useWorkflowFlowNodes } from '@/app/components/workflow/hooks/use-workflow-reactflow'
 import { TransferMethod } from '../../base/text-generation/types'
 import { useWorkflowRun } from '../hooks'
 import { useHooksStore } from '../hooks-store'
@@ -34,7 +36,7 @@ const InputsPanel = ({ onRun }: Props) => {
   const workflowStore = useWorkflowStore()
   const inputs = useStore(s => s.inputs)
   const fileSettings = useHooksStore(s => s.configsMap?.fileSettings)
-  const nodes = useNodes<StartNodeType>()
+  const nodes = useWorkflowFlowNodes<StartNodeType>()
   const files = useStore(s => s.files)
   const workflowRunningData = useStore(s => s.workflowRunningData)
   const {

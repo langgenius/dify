@@ -44,10 +44,10 @@ vi.mock('@/app/components/workflow/nodes/loop/use-interactions', () => ({
 }))
 
 vi.mock('../use-node-resize-observer', () => ({
-  default: (options: { enabled: boolean, onResize: () => void }) => {
+  default: (options: { enabled: boolean, onResize: (size: { width: number, height: number }) => void }) => {
     mockUseNodeResizeObserver(options)
     if (options.enabled)
-      options.onResize()
+      options.onResize({ width: 244, height: 184 })
   },
 }))
 
@@ -201,7 +201,7 @@ describe('BaseNode', () => {
 
     expect(screen.getByTestId('node-resizer')).toBeInTheDocument()
     expect(screen.getByTestId('workflow-node-install-overlay')).toBeInTheDocument()
-    expect(mockHandleNodeIterationChildSizeChange).toHaveBeenCalledWith('node-1')
+    expect(mockHandleNodeIterationChildSizeChange).toHaveBeenCalledWith('node-1', { width: 244, height: 184 })
   })
 
   it('should trigger loop resize updates when the selected node is inside a loop', () => {
@@ -218,7 +218,7 @@ describe('BaseNode', () => {
       </BaseNode>,
     )
 
-    expect(mockHandleNodeLoopChildSizeChange).toHaveBeenCalledWith('node-2')
+    expect(mockHandleNodeLoopChildSizeChange).toHaveBeenCalledWith('node-2', { width: 244, height: 184 })
     expect(mockUseNodeResizeObserver).toHaveBeenCalledTimes(2)
   })
 

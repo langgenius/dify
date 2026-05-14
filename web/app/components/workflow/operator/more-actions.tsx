@@ -8,6 +8,8 @@ import {
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
 import { RiExportLine, RiMoreFill } from '@remixicon/react'
+import { getNodesBounds,
+} from '@xyflow/react'
 import { toJpeg, toPng, toSvg } from 'html-to-image'
 import {
   memo,
@@ -16,10 +18,10 @@ import {
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import { getNodesBounds, useReactFlow } from 'reactflow'
 import { useShallow } from 'zustand/react/shallow'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import ImagePreview from '@/app/components/base/image-uploader/image-preview'
+import { useWorkflowReactFlow } from '@/app/components/workflow/hooks/use-workflow-reactflow'
 import { useStore } from '@/app/components/workflow/store'
 import { downloadUrl } from '@/utils/download'
 import { useNodesReadOnly } from '../hooks'
@@ -28,7 +30,7 @@ import TipPopup from './tip-popup'
 const MoreActions: FC = () => {
   const { t } = useTranslation()
   const { getNodesReadOnly } = useNodesReadOnly()
-  const reactFlow = useReactFlow()
+  const reactFlow = useWorkflowReactFlow()
 
   const [open, setOpen] = useState(false)
   const [previewUrl, setPreviewUrl] = useState('')

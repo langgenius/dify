@@ -12,12 +12,13 @@ import type {
   HandleUpdateSubVariableCondition,
   IfElseNodeType,
 } from './types'
+import { useUpdateNodeInternals,
+} from '@xyflow/react'
 import {
   useCallback,
   useMemo,
   useRef,
 } from 'react'
-import { useUpdateNodeInternals } from 'reactflow'
 import {
   useEdgesInteractions,
   useNodesReadOnly,

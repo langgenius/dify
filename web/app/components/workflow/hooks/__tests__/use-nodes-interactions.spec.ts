@@ -4,6 +4,12 @@ import { createEdge, createNode } from '../../__tests__/fixtures'
 import { resetReactFlowMockState, rfState } from '../../__tests__/reactflow-mock-state'
 import { renderWorkflowHook } from '../../__tests__/workflow-test-env'
 import { collaborationManager } from '../../collaboration/core/collaboration-manager'
+import {
+  ITERATION_CHILDREN_Z_INDEX,
+  LOOP_CHILDREN_Z_INDEX,
+} from '../../constants'
+import { CUSTOM_ITERATION_START_NODE } from '../../nodes/iteration-start/constants'
+import { CUSTOM_LOOP_START_NODE } from '../../nodes/loop-start/constants'
 import { CUSTOM_NOTE_NODE } from '../../note-node/constants'
 import { BlockEnum, ControlMode } from '../../types'
 import { useNodesInteractions } from '../use-nodes-interactions'
@@ -32,7 +38,7 @@ const runtimeState = vi.hoisted(() => ({
 let currentNodes: Node[] = []
 let currentEdges: Edge[] = []
 
-vi.mock('reactflow', async () =>
+vi.mock('@xyflow/react', async () =>
   (await import('../../__tests__/reactflow-mock-state')).createReactFlowModuleMock())
 
 vi.mock('../use-workflow', () => ({
@@ -632,7 +638,7 @@ describe('useNodesInteractions', () => {
         sourceHandle: 'source',
         targetHandle: 'target',
       })
-      result.current.handleNodeConnectEnd({ clientX: 0, clientY: 0 } as never)
+      result.current.handleNodeConnectEnd({ clientX: 0, clientY: 0 } as never, {} as never)
     })
 
     expect(rfState.setNodes).toHaveBeenCalled()
@@ -716,6 +722,106 @@ describe('useNodesInteractions', () => {
     })
 
     expect(rfState.setNodes).toHaveBeenCalled()
+  })
+
+  it.each([
+    {
+      containerType: BlockEnum.Iteration,
+      startNodeType: CUSTOM_ITERATION_START_NODE,
+      startDataType: BlockEnum.IterationStart,
+      expectedDataFlag: 'isInIteration',
+      expectedContainerKey: 'iteration_id',
+      expectedZIndex: ITERATION_CHILDREN_Z_INDEX,
+    },
+    {
+      containerType: BlockEnum.Loop,
+      startNodeType: CUSTOM_LOOP_START_NODE,
+      startDataType: BlockEnum.LoopStart,
+      expectedDataFlag: 'isInLoop',
+      expectedContainerKey: 'loop_id',
+      expectedZIndex: LOOP_CHILDREN_Z_INDEX,
+    },
+  ])('adds a child inside a %s using v12 measured dimensions', ({
+    containerType,
+    startNodeType,
+    startDataType,
+    expectedDataFlag,
+    expectedContainerKey,
+    expectedZIndex,
+  }) => {
+    runtimeNodesMetaDataMap.value = {
+      [BlockEnum.Code]: {
+        defaultValue: {
+          type: BlockEnum.Code,
+          title: 'Code',
+          desc: '',
+        },
+        metaData: {
+          isSingleton: false,
+        },
+      },
+    }
+
+    const containerId = 'container-node'
+    currentNodes = [
+      createNode({
+        id: containerId,
+        position: { x: 100, y: 100 },
+        data: {
+          type: containerType,
+          title: 'Container',
+          desc: '',
+          _children: [{ nodeId: 'container-start', nodeType: startDataType }],
+        },
+      }),
+      createNode({
+        id: 'container-start',
+        type: startNodeType,
+        parentId: containerId,
+        position: { x: 24, y: 68 },
+        measured: { width: 44, height: 44 },
+        data: {
+          type: startDataType,
+          title: '',
+          desc: '',
+          [expectedDataFlag]: true,
+        },
+      }),
+    ]
+    currentEdges = []
+    rfState.nodes = currentNodes as unknown as typeof rfState.nodes
+    rfState.edges = []
+
+    const { result } = renderWorkflowHook(() => useNodesInteractions(), {
+      historyStore: {
+        nodes: currentNodes,
+        edges: [],
+      },
+    })
+
+    act(() => {
+      result.current.handleNodeAdd(
+        { nodeType: BlockEnum.Code },
+        {
+          prevNodeId: 'container-start',
+          prevNodeSourceHandle: 'source',
+        },
+      )
+    })
+
+    const nodes = rfState.setNodes.mock.calls.at(-1)?.[0] as Node[]
+    const addedNode = nodes.find(node => node.data.type === BlockEnum.Code && node.id !== 'container-start')
+
+    expect(addedNode).toMatchObject({
+      parentId: containerId,
+      position: { x: 128, y: 68 },
+      zIndex: expectedZIndex,
+      data: expect.objectContaining({
+        [expectedDataFlag]: true,
+        [expectedContainerKey]: containerId,
+      }),
+    })
+    expect(addedNode?.extent).toBeUndefined()
   })
 
   // Paste title handling should preserve original names until the destination canvas conflicts.

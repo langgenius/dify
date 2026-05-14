@@ -2,12 +2,10 @@ import type {
   Edge,
   Node,
 } from '../types'
+import { getOutgoers } from '@xyflow/react'
 import {
   uniqBy,
 } from 'es-toolkit/compat'
-import {
-  getOutgoers,
-} from 'reactflow'
 import { v4 as uuid4 } from 'uuid'
 import {
   BlockEnum,

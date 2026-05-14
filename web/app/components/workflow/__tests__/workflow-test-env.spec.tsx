@@ -4,7 +4,7 @@
 import type { Shape } from '../store/workflow'
 import { act, screen } from '@testing-library/react'
 import * as React from 'react'
-import { useNodes } from 'reactflow'
+import { useWorkflowFlowNodes } from '@/app/components/workflow/hooks/use-workflow-reactflow'
 import { FlowType } from '@/types/common'
 import { useHooksStore } from '../hooks-store/store'
 import { useStore, useWorkflowStore } from '../store/workflow'
@@ -51,7 +51,7 @@ function NodeRenderer(props: { id: string, data: { title: string }, selected?: b
 }
 
 function FlowReader() {
-  const nodes = useNodes()
+  const nodes = useWorkflowFlowNodes()
   const showConfirm = useStore(s => s.showConfirm)
   return React.createElement('div', { 'data-testid': 'flow-reader' }, `${nodes.length}:${showConfirm ? 'confirm' : 'clear'}`)
 }
@@ -164,7 +164,7 @@ describe('renderWorkflowFlowComponent', () => {
 
 describe('renderWorkflowFlowHook', () => {
   it('should render hooks inside a real ReactFlow provider', () => {
-    const { result } = renderWorkflowFlowHook(() => useNodes(), {
+    const { result } = renderWorkflowFlowHook(() => useWorkflowFlowNodes(), {
       nodes: [
         createNode({ id: 'flow-1' }),
       ],

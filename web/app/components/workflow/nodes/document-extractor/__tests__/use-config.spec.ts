@@ -1,6 +1,6 @@
 import type { DocExtractorNodeType } from '../types'
 import { renderHook } from '@testing-library/react'
-import { useStoreApi } from 'reactflow'
+import { useStoreApi } from '@xyflow/react'
 import {
   useIsChatMode,
   useNodesReadOnly,
@@ -18,8 +18,8 @@ const mockUseIsChatMode = vi.mocked(useIsChatMode)
 const mockUseWorkflow = vi.mocked(useWorkflow)
 const mockUseWorkflowVariables = vi.mocked(useWorkflowVariables)
 
-vi.mock('reactflow', async () => {
-  const actual = await vi.importActual<typeof import('reactflow')>('reactflow')
+vi.mock('@xyflow/react', async () => {
+  const actual = await vi.importActual<typeof import('@xyflow/react')>('@xyflow/react')
   return {
     ...actual,
     useStoreApi: vi.fn(),
@@ -63,12 +63,12 @@ describe('document-extractor/use-config', () => {
     } as unknown as ReturnType<typeof useWorkflowVariables>)
     mockUseStoreApi.mockReturnValue({
       getState: () => ({
-        getNodes: () => [
+        nodes: [
           { id: 'doc-node', parentId: 'loop-1', data: { type: BlockEnum.DocExtractor } },
           { id: 'loop-1', data: { type: BlockEnum.Loop } },
         ],
       }),
-    } as ReturnType<typeof useStoreApi>)
+    } as unknown as ReturnType<typeof useStoreApi>)
     mockUseNodeCrud.mockReturnValue({
       inputs: createData(),
       setInputs,

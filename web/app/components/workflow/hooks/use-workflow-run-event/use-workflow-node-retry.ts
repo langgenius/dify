@@ -3,11 +3,11 @@ import type {
 } from '@/types/workflow'
 import { produce } from 'immer'
 import { useCallback } from 'react'
-import { useStoreApi } from 'reactflow'
+import { useWorkflowStoreApi } from '@/app/components/workflow/hooks/use-workflow-reactflow'
 import { useWorkflowStore } from '@/app/components/workflow/store'
 
 export const useWorkflowNodeRetry = () => {
-  const store = useStoreApi()
+  const store = useWorkflowStoreApi()
   const workflowStore = useWorkflowStore()
 
   const handleWorkflowNodeRetry = useCallback((params: NodeFinishedResponse) => {
@@ -17,11 +17,9 @@ export const useWorkflowNodeRetry = () => {
       setWorkflowRunningData,
     } = workflowStore.getState()
     const {
-      getNodes,
+      nodes,
       setNodes,
     } = store.getState()
-
-    const nodes = getNodes()
     setWorkflowRunningData(produce(workflowRunningData!, (draft) => {
       draft.tracing!.push(data)
     }))

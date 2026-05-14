@@ -1,3 +1,4 @@
+import type { WebhookTriggerNodeType } from '@/app/components/workflow/nodes/trigger-webhook/types'
 import { produce } from 'immer'
 import { useCallback } from 'react'
 import { useStore as useAppStore } from '@/app/components/app/store'
@@ -18,7 +19,8 @@ export const useAutoGenerateWebhookUrl = () => {
     if (!node || node.data.type !== BlockEnum.TriggerWebhook)
       return
 
-    if (node.data.webhook_url && node.data.webhook_url.length > 0)
+    const nodeData = node.data as WebhookTriggerNodeType
+    if (nodeData.webhook_url && nodeData.webhook_url.length > 0)
       return
 
     try {

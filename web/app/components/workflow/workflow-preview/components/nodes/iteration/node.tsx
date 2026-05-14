@@ -1,14 +1,16 @@
 import type { FC } from 'react'
 import type { IterationNodeType } from '@/app/components/workflow/nodes/iteration/types'
 import type { NodeProps } from '@/app/components/workflow/types'
-import { cn } from '@langgenius/dify-ui/cn'
 import {
-  memo,
-} from 'react'
+  cn,
+} from '@langgenius/dify-ui/cn'
 import {
   Background,
   useViewport,
-} from 'reactflow'
+} from '@xyflow/react'
+import {
+  memo,
+} from 'react'
 
 const Node: FC<NodeProps<IterationNodeType>> = ({
   id,

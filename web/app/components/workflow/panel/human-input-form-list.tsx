@@ -1,10 +1,10 @@
-import type { DeliveryMethod } from '@/app/components/workflow/nodes/human-input/types'
+import type { DeliveryMethod, HumanInputNodeType } from '@/app/components/workflow/nodes/human-input/types'
 import type { HumanInputFormData } from '@/types/workflow'
 import { useCallback, useMemo } from 'react'
-import { useStoreApi } from 'reactflow'
 import ContentWrapper from '@/app/components/base/chat/chat/answer/human-input-content/content-wrapper'
 import { UnsubmittedHumanInputContent } from '@/app/components/base/chat/chat/answer/human-input-content/unsubmitted'
 import { CUSTOM_NODE } from '@/app/components/workflow/constants'
+import { useWorkflowStoreApi } from '@/app/components/workflow/hooks/use-workflow-reactflow'
 import { DeliveryMethodType } from '@/app/components/workflow/nodes/human-input/types'
 
 type HumanInputFormListProps = {
@@ -16,14 +16,14 @@ const HumanInputFormList = ({
   humanInputFormDataList,
   onHumanInputFormSubmit,
 }: HumanInputFormListProps) => {
-  const store = useStoreApi()
+  const store = useWorkflowStoreApi<HumanInputNodeType>()
 
   const getHumanInputNodeData = useCallback((nodeID: string) => {
     const {
-      getNodes,
+      nodes,
     } = store.getState()
-    const nodes = getNodes().filter(node => node.type === CUSTOM_NODE)
-    const node = nodes.find(n => n.id === nodeID)
+    const customNodes = nodes.filter(node => node.type === CUSTOM_NODE)
+    const node = customNodes.find(n => n.id === nodeID)
     return node
   }, [store])
 

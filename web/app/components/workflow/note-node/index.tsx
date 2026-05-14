@@ -1,5 +1,5 @@
-import type { NodeProps } from 'reactflow'
 import type { NoteNodeType } from './types'
+import type { NodeProps } from '@/app/components/workflow/types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useClickAway } from 'ahooks'
 import {

@@ -8,15 +8,15 @@ import {
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
 import {
+  useViewport,
+} from '@xyflow/react'
+import {
   Fragment,
   memo,
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import {
-  useReactFlow,
-  useViewport,
-} from 'reactflow'
+import { useWorkflowReactFlow } from '@/app/components/workflow/hooks/use-workflow-reactflow'
 import TipPopup from '@/app/components/workflow/operator/tip-popup'
 import { ShortcutKbd } from '@/app/components/workflow/shortcuts/shortcut-kbd'
 
@@ -36,7 +36,7 @@ const ZoomInOut: FC = () => {
     zoomOut,
     zoomTo,
     fitView,
-  } = useReactFlow()
+  } = useWorkflowReactFlow()
   const { zoom } = useViewport()
   const [open, setOpen] = useState(false)
 

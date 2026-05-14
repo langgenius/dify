@@ -7,7 +7,7 @@ import { useNodesSyncDraft } from '../use-nodes-sync-draft'
 const mockGetNodes = vi.fn()
 const mockStoreGetState = vi.fn()
 
-vi.mock('reactflow', () => ({
+vi.mock('@xyflow/react', () => ({
   useStoreApi: () => ({
     getState: mockStoreGetState,
   }),
@@ -53,8 +53,24 @@ vi.mock('@/config', () => ({
   API_PREFIX: '/api',
 }))
 
-const mockPostWithKeepalive = vi.fn()
+const {
+  mockPostWithKeepalive,
+  mockParseResponseError,
+} = vi.hoisted(() => ({
+  mockPostWithKeepalive: vi.fn(),
+  mockParseResponseError: vi.fn(async (error: { bodyUsed?: boolean, json?: () => Promise<unknown> }) => {
+    if (error.bodyUsed || !error.json)
+      return null
+    try {
+      return await error.json()
+    }
+    catch {
+      return null
+    }
+  }),
+}))
 vi.mock('@/service/fetch', () => ({
+  parseResponseError: mockParseResponseError,
   postWithKeepalive: (...args: unknown[]) => mockPostWithKeepalive(...args),
 }))
 
@@ -62,16 +78,15 @@ describe('useNodesSyncDraft', () => {
   beforeEach(() => {
     vi.clearAllMocks()
 
-    mockStoreGetState.mockReturnValue({
-      getNodes: mockGetNodes,
-      edges: [],
-      transform: [0, 0, 1],
-    })
-
     mockGetNodes.mockReturnValue([
       { id: 'node-1', data: { type: 'start', _temp: true }, position: { x: 0, y: 0 } },
       { id: 'node-2', data: { type: 'end' }, position: { x: 100, y: 0 } },
     ])
+    mockStoreGetState.mockImplementation(() => ({
+      nodes: mockGetNodes(),
+      edges: [],
+      transform: [0, 0, 1],
+    }))
 
     mockWorkflowStoreGetState.mockReturnValue({
       pipelineId: 'test-pipeline-id',
@@ -376,7 +391,7 @@ describe('useNodesSyncDraft', () => {
   describe('getPostParams', () => {
     it('should include viewport coordinates in params', () => {
       mockStoreGetState.mockReturnValue({
-        getNodes: mockGetNodes,
+        nodes: mockGetNodes(),
         edges: [],
         transform: [100, 200, 1.5],
       })
@@ -457,7 +472,7 @@ describe('useNodesSyncDraft', () => {
 
     it('should remove underscore-prefixed keys from edges', () => {
       mockStoreGetState.mockReturnValue({
-        getNodes: mockGetNodes,
+        nodes: mockGetNodes(),
         edges: [{ id: 'edge-1', source: 'node-1', target: 'node-2', data: { _hidden: true, visible: false } }],
         transform: [0, 0, 1],
       })

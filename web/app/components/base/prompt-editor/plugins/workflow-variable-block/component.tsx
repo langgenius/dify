@@ -17,7 +17,7 @@ import {
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useReactFlow, useStoreApi } from 'reactflow'
+import { useWorkflowReactFlow, useWorkflowStoreApi } from '@/app/components/workflow/hooks/use-workflow-reactflow'
 import { isRagVariableVar, isSpecialVar, isSystemVar } from '@/app/components/workflow/nodes/_base/components/variable/utils'
 import VarFullPathPanel from '@/app/components/workflow/nodes/_base/components/variable/var-full-path-panel'
 import {
@@ -88,8 +88,8 @@ const WorkflowVariableBlockComponent = ({
     return sourceNode.vars.some(v => v.variable === variables[1])
   }, [localAvailableVariables, variables])
 
-  const reactflow = useReactFlow()
-  const store = useStoreApi()
+  const reactflow = useWorkflowReactFlow()
+  const store = useWorkflowStoreApi()
 
   useEffect(() => {
     if (!editor.hasNodes([WorkflowVariableBlockNode]))

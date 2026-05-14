@@ -48,7 +48,7 @@ let workflowStoreState: WorkflowStoreState
 let eventSubscription: ((value: { type: string, payload: { data: Array<Record<string, unknown>> } }) => void) | null = null
 let lastGenerateNodeInput: Record<string, unknown> | null = null
 
-vi.mock('reactflow', () => ({
+vi.mock('@xyflow/react', () => ({
   useStoreApi: () => ({
     getState: () => ({
       setNodes: mockSetNodes,

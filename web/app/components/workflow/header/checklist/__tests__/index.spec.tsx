@@ -32,7 +32,7 @@ type PopoverProps = {
 
 let latestOnOpenChange: PopoverProps['onOpenChange']
 
-vi.mock('reactflow', () => ({
+vi.mock('@xyflow/react', () => ({
   useEdges: () => [],
 }))
 

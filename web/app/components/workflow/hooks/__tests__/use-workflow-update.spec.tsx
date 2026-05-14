@@ -8,7 +8,7 @@ const mockEventEmit = vi.hoisted(() => vi.fn())
 const mockInitialNodes = vi.hoisted(() => vi.fn((nodes: unknown[], _edges: unknown[]) => nodes))
 const mockInitialEdges = vi.hoisted(() => vi.fn((edges: unknown[], _nodes: unknown[]) => edges))
 
-vi.mock('reactflow', () => ({
+vi.mock('@xyflow/react', () => ({
   Position: {
     Left: 'left',
     Right: 'right',

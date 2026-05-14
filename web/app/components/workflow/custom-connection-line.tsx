@@ -1,9 +1,11 @@
-import type { ConnectionLineComponentProps } from 'reactflow'
-import { memo } from 'react'
+import type { ConnectionLineComponentProps } from '@xyflow/react'
 import {
   getBezierPath,
   Position,
-} from 'reactflow'
+} from '@xyflow/react'
+import {
+  memo,
+} from 'react'
 
 const CustomConnectionLine = ({ fromX, fromY, toX, toY }: ConnectionLineComponentProps) => {
   const [

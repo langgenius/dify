@@ -34,9 +34,9 @@ type NodePanelPresenceEventData = {
 
 type ReactFlowStore = {
   getState: () => {
-    getNodes: () => Node[]
+    nodes: Node[]
     setNodes: (nodes: Node[]) => void
-    getEdges: () => Edge[]
+    edges: Edge[]
     setEdges: (edges: Edge[]) => void
   }
 }
@@ -513,7 +513,7 @@ export class CollaborationManager {
       excludeOriginPrefixes: [], // Don't exclude anything - let UndoManager track all local operations
       onPush: (_isUndo, _range, _event) => {
         // Store current selection state when an operation is pushed
-        const selectedNode = this.reactFlowStore?.getState().getNodes().find((n: Node) => n.data?.selected)
+        const selectedNode = this.reactFlowStore?.getState().nodes.find((n: Node) => n.data?.selected)
 
         // Emit event to update UI button states when new operation is pushed
         setTimeout(() => {
@@ -538,7 +538,7 @@ export class CollaborationManager {
           if (selectedNodeId) {
             const state = this.reactFlowStore.getState()
             const { setNodes } = state
-            const nodes = state.getNodes()
+            const nodes = state.nodes
             const newNodes = nodes.map((n: Node) => ({
               ...n,
               data: {
@@ -823,7 +823,7 @@ export class CollaborationManager {
         requestAnimationFrame(() => {
           // Get ReactFlow's native setters, not the collaborative ones
           const state = reactFlowStore.getState()
-          const previousNodes = state.getNodes()
+          const previousNodes = state.nodes
           const updatedNodes = Array.from(this.nodesMap?.values() || []) as Node[]
           const updatedEdges = Array.from(this.edgesMap?.values() || []) as Edge[]
           // Call ReactFlow's native setters directly to avoid triggering collaboration
@@ -865,7 +865,7 @@ export class CollaborationManager {
         requestAnimationFrame(() => {
           // Get ReactFlow's native setters, not the collaborative ones
           const state = reactFlowStore.getState()
-          const previousNodes = state.getNodes()
+          const previousNodes = state.nodes
           const updatedNodes = Array.from(this.nodesMap?.values() || []) as Node[]
           const updatedEdges = Array.from(this.edgesMap?.values() || []) as Edge[]
           // Call ReactFlow's native setters directly to avoid triggering collaboration
@@ -990,8 +990,8 @@ export class CollaborationManager {
       this.recordGraphSyncDiagnostic('nodes_subscribe', 'queued', 'raf_scheduled')
       requestAnimationFrame(() => {
         const state = reactFlowStore.getState()
-        const previousNodes: Node[] = state.getNodes()
-        const previousEdges: Edge[] = state.getEdges()
+        const previousNodes: Node[] = state.nodes
+        const previousEdges: Edge[] = state.edges
         this.startImportLog('nodes', { nodes: previousNodes, edges: previousEdges })
         const previousNodeMap = new Map(previousNodes.map(node => [node.id, node]))
         const selectedIds = new Set(
@@ -1084,8 +1084,8 @@ export class CollaborationManager {
       requestAnimationFrame(() => {
         // Get ReactFlow's native setters, not the collaborative ones
         const state = reactFlowStore.getState()
-        const previousNodes = state.getNodes()
-        const previousEdges = state.getEdges()
+        const previousNodes = state.nodes
+        const previousEdges = state.edges
         this.startImportLog('edges', { nodes: previousNodes, edges: previousEdges })
         const updatedEdges = Array.from(this.edgesMap?.values() || []) as Edge[]
 
@@ -1158,7 +1158,7 @@ export class CollaborationManager {
   private mergeLocalNodeState(nodes: Node[]): Node[] {
     const reactFlowStore = this.reactFlowStore
     const state = reactFlowStore?.getState()
-    const localNodes = state?.getNodes() || []
+    const localNodes = state?.nodes || []
 
     if (localNodes.length === 0)
       return nodes
@@ -1225,8 +1225,8 @@ export class CollaborationManager {
           edges: this.getEdges().length,
         },
         reactFlowCounts: {
-          nodes: reactFlowState?.getNodes().length ?? 0,
-          edges: reactFlowState?.getEdges().length ?? 0,
+          nodes: reactFlowState?.nodes.length ?? 0,
+          edges: reactFlowState?.edges.length ?? 0,
         },
       },
     }
@@ -1328,8 +1328,8 @@ export class CollaborationManager {
 
     const state = this.reactFlowStore.getState()
     return {
-      nodes: cloneDeep(state.getNodes()),
-      edges: cloneDeep(state.getEdges()),
+      nodes: cloneDeep(state.nodes),
+      edges: cloneDeep(state.edges),
     }
   }
 
@@ -1599,8 +1599,8 @@ export class CollaborationManager {
       return
 
     const state = this.reactFlowStore.getState()
-    const nodes = state.getNodes()
-    const edges = state.getEdges()
+    const nodes = state.nodes
+    const edges = state.edges
 
     if (!nodes.length && !edges.length)
       return

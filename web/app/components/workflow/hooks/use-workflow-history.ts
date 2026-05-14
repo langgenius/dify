@@ -6,9 +6,7 @@ import {
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import {
-  useStoreApi,
-} from 'reactflow'
+import { useWorkflowStoreApi } from '@/app/components/workflow/hooks/use-workflow-reactflow'
 import { useWorkflowHistoryStore } from '../workflow-history-store'
 
 /**
@@ -39,7 +37,7 @@ export const WorkflowHistoryEvent = {
 export type WorkflowHistoryEventT = keyof typeof WorkflowHistoryEvent
 
 export const useWorkflowHistory = () => {
-  const store = useStoreApi()
+  const store = useWorkflowStoreApi()
   const { store: workflowHistoryStore } = useWorkflowHistoryStore()
   const { t } = useTranslation()
 
@@ -73,7 +71,7 @@ export const useWorkflowHistory = () => {
     workflowHistoryStore.setState({
       workflowHistoryEvent: event,
       workflowHistoryEventMeta: meta,
-      nodes: store.getState().getNodes(),
+      nodes: store.getState().nodes,
       edges: store.getState().edges,
     })
   }, 500))

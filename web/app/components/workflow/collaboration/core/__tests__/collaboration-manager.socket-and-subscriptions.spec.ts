@@ -14,9 +14,9 @@ import { webSocketClient } from '../websocket-manager'
 
 type ReactFlowStore = {
   getState: () => {
-    getNodes: () => Node[]
+    nodes: Node[]
     setNodes: (nodes: Node[]) => void
-    getEdges: () => Edge[]
+    edges: Edge[]
     setEdges: (edges: Edge[]) => void
   }
 }
@@ -520,9 +520,9 @@ describe('CollaborationManager socket and subscription behavior', () => {
     })
     internals.reactFlowStore = {
       getState: () => ({
-        getNodes: () => reactFlowNodes,
+        nodes: reactFlowNodes,
         setNodes: setNodesSpy,
-        getEdges: () => reactFlowEdges,
+        edges: reactFlowEdges,
         setEdges: setEdgesSpy,
       }),
     }
@@ -644,9 +644,9 @@ describe('CollaborationManager socket and subscription behavior', () => {
 
     const reactFlowStore = {
       getState: () => ({
-        getNodes: () => [],
+        nodes: [],
         setNodes: vi.fn(),
-        getEdges: () => [],
+        edges: [],
         setEdges: vi.fn(),
       }),
     }
@@ -758,9 +758,9 @@ describe('CollaborationManager socket and subscription behavior', () => {
     const { manager, internals } = setupManagerWithDoc()
     const reactFlowStore = {
       getState: () => ({
-        getNodes: () => [{ ...createNode('local-node'), selected: true }],
+        nodes: [{ ...createNode('local-node'), selected: true }],
         setNodes: vi.fn(),
-        getEdges: () => [],
+        edges: [],
         setEdges: vi.fn(),
       }),
     }
@@ -937,9 +937,9 @@ describe('CollaborationManager socket and subscription behavior', () => {
 
     const reactFlowStore = {
       getState: () => ({
-        getNodes: () => [],
+        nodes: [],
         setNodes: vi.fn(),
-        getEdges: () => [],
+        edges: [],
         setEdges: vi.fn(),
       }),
     }
@@ -1000,9 +1000,9 @@ describe('CollaborationManager socket and subscription behavior', () => {
     const { internals } = setupManagerWithDoc()
     const reactFlowStore = {
       getState: () => ({
-        getNodes: () => [],
+        nodes: [],
         setNodes: vi.fn(),
-        getEdges: () => [],
+        edges: [],
         setEdges: vi.fn(),
       }),
     }
@@ -1077,9 +1077,9 @@ describe('CollaborationManager socket and subscription behavior', () => {
     })
     const reactFlowStore = {
       getState: () => ({
-        getNodes: () => nodes,
+        nodes,
         setNodes: setNodesSpy,
-        getEdges: () => edges,
+        edges,
         setEdges: setEdgesSpy,
       }),
     }

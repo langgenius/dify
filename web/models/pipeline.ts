@@ -1,4 +1,4 @@
-import type { Viewport } from 'reactflow'
+import type { Viewport } from '@xyflow/react'
 import type { DSLImportMode, DSLImportStatus } from './app'
 import type { ChunkingMode, DocumentIndexingStatus, FileIndexingEstimateResponse, IconInfo } from './datasets'
 import type { Dependency } from '@/app/components/plugins/types'

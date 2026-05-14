@@ -9,9 +9,9 @@ import { webSocketClient } from '../websocket-manager'
 
 type ReactFlowStore = {
   getState: () => {
-    getNodes: () => Node[]
+    nodes: Node[]
     setNodes: (nodes: Node[]) => void
-    getEdges: () => Edge[]
+    edges: Edge[]
     setEdges: (edges: Edge[]) => void
   }
 }
@@ -92,7 +92,7 @@ describe('CollaborationManager logs and event helpers', () => {
 
     internals.reactFlowStore = {
       getState: () => ({
-        getNodes: () => [{
+        nodes: [{
           ...node,
           data: {
             ...node.data,
@@ -100,7 +100,7 @@ describe('CollaborationManager logs and event helpers', () => {
           },
         }],
         setNodes: vi.fn(),
-        getEdges: () => [edge],
+        edges: [edge],
         setEdges: vi.fn(),
       }),
     }
@@ -154,9 +154,9 @@ describe('CollaborationManager logs and event helpers', () => {
 
     internals.reactFlowStore = {
       getState: () => ({
-        getNodes: () => oldNodes,
+        nodes: oldNodes,
         setNodes: vi.fn(),
-        getEdges: () => [edge],
+        edges: [edge],
         setEdges: vi.fn(),
       }),
     }
@@ -201,9 +201,9 @@ describe('CollaborationManager logs and event helpers', () => {
     internals.graphSyncDiagnostics = [{ timestamp: 3 }]
     internals.reactFlowStore = {
       getState: () => ({
-        getNodes: () => [createNode('rf-1'), createNode('rf-2')],
+        nodes: [createNode('rf-1'), createNode('rf-2')],
         setNodes: vi.fn(),
-        getEdges: () => [createEdge('rf-e', 'rf-1', 'rf-2')],
+        edges: [createEdge('rf-e', 'rf-1', 'rf-2')],
         setEdges: vi.fn(),
       }),
     }
@@ -319,9 +319,9 @@ describe('CollaborationManager logs and event helpers', () => {
     const setEdgesSpy = vi.fn()
     internals.reactFlowStore = {
       getState: () => ({
-        getNodes: () => [createNode('old-node')],
+        nodes: [createNode('old-node')],
         setNodes: setNodesSpy,
-        getEdges: () => [createEdge('old-edge', 'old-node', 'old-target')],
+        edges: [createEdge('old-edge', 'old-node', 'old-target')],
         setEdges: setEdgesSpy,
       }),
     }

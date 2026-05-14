@@ -2,7 +2,7 @@ import type { InputVar } from '../types'
 import type { PromptVariable } from '@/models/debug'
 import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { useNodes } from 'reactflow'
+import { useWorkflowFlowNodes } from '@/app/components/workflow/hooks/use-workflow-reactflow'
 import Features from '../features'
 import { InputVarType } from '../types'
 import { createStartNode } from './fixtures'
@@ -126,7 +126,7 @@ const startNode = createStartNode({
 })
 
 const DelayedFeatures = () => {
-  const nodes = useNodes()
+  const nodes = useWorkflowFlowNodes()
 
   if (!nodes.length)
     return null

@@ -1,15 +1,15 @@
 import type { StartNodeType } from './nodes/start/types'
-import type { CommonNodeType, InputVar, Node } from './types'
+import type { InputVar, Node } from './types'
 import type { PromptVariable } from '@/models/debug'
 import type { WorkflowDraftFeaturesPayload } from '@/service/workflow'
 import {
   memo,
   useCallback,
 } from 'react'
-import { useNodes } from 'reactflow'
 import { useFeaturesStore } from '@/app/components/base/features/hooks'
 import NewFeaturePanel from '@/app/components/base/features/new-feature-panel'
 import { webSocketClient } from '@/app/components/workflow/collaboration/core/websocket-manager'
+import { useWorkflowFlowNodes } from '@/app/components/workflow/hooks/use-workflow-reactflow'
 import { updateFeatures } from '@/service/workflow'
 import {
   useIsChatMode,
@@ -25,7 +25,7 @@ const Features = () => {
   const isChatMode = useIsChatMode()
   const { nodesReadOnly } = useNodesReadOnly()
   const featuresStore = useFeaturesStore()
-  const nodes = useNodes<CommonNodeType>()
+  const nodes = useWorkflowFlowNodes()
   const startNode = nodes.find(node => node.data.type === 'start')
   const { id, data } = startNode as Node<StartNodeType>
   const { handleAddVariable } = useConfig(id, data)

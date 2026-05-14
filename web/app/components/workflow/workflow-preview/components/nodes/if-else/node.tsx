@@ -1,6 +1,6 @@
 import type { FC } from 'react'
-import type { NodeProps } from 'reactflow'
 import type { Condition, IfElseNodeType } from '@/app/components/workflow/nodes/if-else/types'
+import type { NodeProps } from '@/app/components/workflow/types'
 import * as React from 'react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'

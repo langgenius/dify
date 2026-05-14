@@ -15,7 +15,7 @@ const mockCollaborationEmitSyncRequest = vi.fn()
 let isCollaborationEnabled = false
 
 let reactFlowState: {
-  getNodes: typeof mockGetNodes
+  nodes: Array<Record<string, unknown>>
   edges: Array<Record<string, unknown>>
   transform: [number, number, number]
 }
@@ -42,7 +42,7 @@ let featuresState: {
   }
 }
 
-vi.mock('reactflow', () => ({
+vi.mock('@xyflow/react', () => ({
   useStoreApi: () => ({ getState: () => reactFlowState }),
 }))
 
@@ -109,7 +109,9 @@ describe('useNodesSyncDraft — handleRefreshWorkflowDraft(true) on 409', () => 
   beforeEach(() => {
     vi.clearAllMocks()
     reactFlowState = {
-      getNodes: mockGetNodes,
+      get nodes() {
+        return mockGetNodes()
+      },
       edges: [],
       transform: [0, 0, 1],
     }
@@ -197,6 +199,9 @@ describe('useNodesSyncDraft — handleRefreshWorkflowDraft(true) on 409', () => 
   it('should strip temp entities and private data, use the latest hash, and invoke success callbacks', async () => {
     reactFlowState = {
       ...reactFlowState,
+      get nodes() {
+        return mockGetNodes()
+      },
       edges: [
         { id: 'edge-1', source: 'n1', target: 'n2', data: { _isTemp: false, _private: 'drop', stable: 'keep' } },
         { id: 'temp-edge', source: 'n2', target: 'n3', data: { _isTemp: true } },
@@ -270,6 +275,9 @@ describe('useNodesSyncDraft — handleRefreshWorkflowDraft(true) on 409', () => 
   it('should post workflow draft with keepalive when the page closes', () => {
     reactFlowState = {
       ...reactFlowState,
+      get nodes() {
+        return mockGetNodes()
+      },
       transform: [1, 2, 3],
     }
     workflowStoreState = {
@@ -327,5 +335,26 @@ describe('useNodesSyncDraft — handleRefreshWorkflowDraft(true) on 409', () => 
     })
 
     expect(mockPostWithKeepalive).not.toHaveBeenCalled()
+  })
+
+  it('should ignore non-JSON upstream errors without creating an unhandled rejection', async () => {
+    const callbacks = {
+      onError: vi.fn(),
+      onSettled: vi.fn(),
+    }
+    const error = new Response('Upstream proxy error', {
+      status: 502,
+      headers: { 'Content-Type': 'text/plain' },
+    })
+    mockSyncWorkflowDraft.mockRejectedValue(error)
+
+    const { result } = renderUseNodesSyncDraft()
+    await act(async () => {
+      await expect(result.current.doSyncWorkflowDraft(false, callbacks)).resolves.toBeUndefined()
+    })
+
+    expect(mockHandleRefreshWorkflowDraft).not.toHaveBeenCalled()
+    expect(callbacks.onError).toHaveBeenCalled()
+    expect(callbacks.onSettled).toHaveBeenCalled()
   })
 })

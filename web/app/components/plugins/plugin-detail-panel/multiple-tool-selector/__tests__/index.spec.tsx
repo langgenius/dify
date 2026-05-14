@@ -1,6 +1,5 @@
-import type { Node } from 'reactflow'
 import type { ToolValue } from '@/app/components/workflow/block-selector/types'
-import type { NodeOutPutVar, ToolWithProvider } from '@/app/components/workflow/types'
+import type { Node, NodeOutPutVar, ToolWithProvider } from '@/app/components/workflow/types'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -8,6 +7,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 // ==================== Imports (after mocks) ====================
 
 import { MCPToolAvailabilityProvider } from '@/app/components/workflow/nodes/_base/components/mcp-tool-availability'
+import { BlockEnum } from '@/app/components/workflow/types'
 import MultipleToolSelector from '../index'
 
 // ==================== Mock Setup ====================
@@ -175,7 +175,7 @@ const createNodeOutputVar = (overrides: Partial<NodeOutPutVar> = {}): NodeOutPut
 const createNode = (overrides: Partial<Node> = {}): Node => ({
   id: 'node-1',
   position: { x: 0, y: 0 },
-  data: { title: 'Test Node' },
+  data: { title: 'Test Node', desc: '', type: BlockEnum.Start },
   ...overrides,
 })
 

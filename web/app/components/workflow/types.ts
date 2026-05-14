@@ -1,9 +1,10 @@
 import type {
   Edge as ReactFlowEdge,
   Node as ReactFlowNode,
+  NodeProps as ReactFlowNodeProps,
   Viewport,
   XYPosition,
-} from 'reactflow'
+} from '@xyflow/react'
 import type { Plugin, PluginMeta } from '@/app/components/plugins/types'
 import type { Collection, Tool } from '@/app/components/tools/types'
 import type { BlockClassificationEnum, PluginDefaultValue } from '@/app/components/workflow/block-selector/types'
@@ -73,7 +74,7 @@ export type Branch = {
   name: string
 }
 
-export type CommonNodeType<T = {}> = {
+export type CommonNodeType<T = Record<string, unknown>> = {
   _connectedSourceHandleIds?: string[]
   _connectedTargetHandleIds?: string[]
   _targetBranches?: Branch[]
@@ -123,6 +124,7 @@ export type CommonEdgeType = {
   _sourceRunningStatus?: NodeRunningStatus
   _targetRunningStatus?: NodeRunningStatus
   _waitingRun?: boolean
+  _dimmed?: boolean
   isInIteration?: boolean
   iteration_id?: string
   isInLoop?: boolean
@@ -132,14 +134,23 @@ export type CommonEdgeType = {
   _isTemp?: boolean
 }
 
-export type Node<T = {}> = ReactFlowNode<CommonNodeType<T>>
-export type NodeProps<T = unknown> = { id: string, data: CommonNodeType<T> }
-export type NodePanelProps<T> = {
+export type Node<T = Record<string, unknown>> = ReactFlowNode<CommonNodeType<T> & Record<string, unknown>> & {
+  positionAbsolute?: XYPosition
+}
+export type NodeProps<T = Record<string, unknown>> = {
+  id: string
+  data: CommonNodeType<T>
+  xPos?: number
+  yPos?: number
+} & Partial<ReactFlowNodeProps<Node<T>>>
+export type NodePanelProps<T = Record<string, unknown>> = {
   id: string
   data: CommonNodeType<T>
   panelProps: PanelProps
 }
-export type Edge = ReactFlowEdge<CommonEdgeType>
+export type Edge = ReactFlowEdge<CommonEdgeType> & {
+  data: CommonEdgeType
+}
 
 export type WorkflowDataUpdater = {
   nodes: Node[]

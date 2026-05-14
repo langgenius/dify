@@ -30,7 +30,7 @@ const createNodeData = (overrides?: Partial<DataSourceNodeType>): DataSourceNode
   ...overrides,
 } as unknown as DataSourceNodeType)
 
-vi.mock('reactflow', () => ({
+vi.mock('@xyflow/react', () => ({
   useNodes: () => mockNodes,
 }))
 

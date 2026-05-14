@@ -79,6 +79,33 @@ describe('iteration interaction helpers', () => {
     )).toEqual({ x: undefined, y: undefined })
   })
 
+  it('uses v12 measured dimensions when width and height are not fixed on nodes', () => {
+    const child = createNode({
+      id: 'child',
+      position: { x: 24, y: 68 },
+      width: undefined,
+      height: undefined,
+      measured: { width: 44, height: 44 },
+      data: { isInIteration: true },
+    })
+    const parent = createNode({
+      width: undefined,
+      height: undefined,
+      measured: { width: 100, height: 100 },
+    })
+
+    const bounds = getIterationContainerBounds([child] as Node[])
+
+    expect(getIterationContainerResize(parent as Node, bounds)).toEqual({
+      width: undefined,
+      height: 132,
+    })
+    expect(getRestrictedIterationPosition(child as Node, parent as Node)).toEqual({
+      x: undefined,
+      y: 36,
+    })
+  })
+
   it('builds copied iteration children with iteration metadata', () => {
     const child = createNode({
       id: 'child',
@@ -99,6 +126,7 @@ describe('iteration interaction helpers', () => {
 
     expect(result).toEqual(expect.objectContaining({
       parentId: 'iteration-2',
+      extent: (child as Node).extent,
       zIndex: 7,
       data: expect.objectContaining({
         title: 'blocks.code 3',

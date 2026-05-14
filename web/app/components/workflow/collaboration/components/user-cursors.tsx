@@ -1,6 +1,6 @@
 import type { FC } from 'react'
 import type { CursorPosition, OnlineUser } from '@/app/components/workflow/collaboration/types/collaboration'
-import { useViewport } from 'reactflow'
+import { useViewport } from '@xyflow/react'
 import { getUserColor } from '../utils/user-color'
 
 type UserCursorsProps = {

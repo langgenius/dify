@@ -1,4 +1,4 @@
-import type { NodeOutPutVar } from '../../../types'
+import type { NodeOutPutVar, Node as WorkflowNode } from '../../../types'
 import type { Condition, LoopNodeType, LoopVariable } from '../types'
 import type { PanelProps } from '@/types/workflow'
 import { fireEvent, render, screen } from '@testing-library/react'
@@ -33,17 +33,19 @@ import useConfig from '../use-config'
 const mockHandleNodeAdd = vi.fn()
 const mockHandleNodeLoopRerender = vi.fn()
 const mockToastNotify = vi.fn()
+const mockFlowNodes = vi.hoisted(() => ({
+  value: [] as WorkflowNode[],
+}))
 
-vi.mock('reactflow', async () => {
-  const actual = await vi.importActual<typeof import('reactflow')>('reactflow')
+vi.mock('@xyflow/react', async () => {
+  const actual = await vi.importActual<typeof import('@xyflow/react')>('@xyflow/react')
   return {
     ...actual,
     Background: ({ id }: { id: string }) => <div data-testid={id} />,
     useViewport: () => ({ zoom: 1 }),
     useNodesInitialized: () => true,
-    useStore: (selector: (state: { d3Selection: null, d3Zoom: null }) => unknown) => selector({
-      d3Selection: null,
-      d3Zoom: null,
+    useStore: (selector: (state: { panZoom: null }) => unknown) => selector({
+      panZoom: null,
     }),
   }
 })
@@ -89,6 +91,10 @@ vi.mock('../use-interactions', () => ({
   useNodeLoopInteractions: () => ({
     handleNodeLoopRerender: mockHandleNodeLoopRerender,
   }),
+}))
+
+vi.mock('@/app/components/workflow/hooks/use-workflow-reactflow', () => ({
+  useWorkflowFlowNodes: () => mockFlowNodes.value,
 }))
 
 vi.mock('../../../hooks', () => ({
@@ -297,6 +303,7 @@ const panelProps: PanelProps = {
 describe('loop path', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockFlowNodes.value = []
     mockHandleNodeAdd.mockReset()
     mockHandleNodeLoopRerender.mockReset()
     mockWorkflowStoreState.controlPromptEditorRerenderKey = 0
@@ -627,6 +634,51 @@ describe('loop path', () => {
       expect(screen.getByText('loop-start-node')).toBeInTheDocument()
       expect(screen.getByTestId('loop-background-loop-node')).toBeInTheDocument()
       expect(screen.getByText('select-block')).toBeInTheDocument()
+      expect(mockHandleNodeLoopRerender).toHaveBeenCalledWith('loop-node')
+    })
+
+    it('should rerender the container after a child node is measured', () => {
+      mockFlowNodes.value = [{
+        id: 'start-node',
+        parentId: 'loop-node',
+        position: { x: 24, y: 68 },
+        measured: { width: 44, height: 44 },
+        data: { type: BlockEnum.LoopStart, title: '', desc: '' },
+      }]
+
+      const { rerender } = render(
+        <Node
+          id="loop-node"
+          data={createData({
+            _children: [{ nodeId: 'start-node', nodeType: BlockEnum.LoopStart }],
+          })}
+        />,
+      )
+      mockHandleNodeLoopRerender.mockClear()
+
+      mockFlowNodes.value = [
+        ...mockFlowNodes.value,
+        {
+          id: 'child-node',
+          parentId: 'loop-node',
+          position: { x: 128, y: 68 },
+          measured: { width: 244, height: 184 },
+          data: { type: BlockEnum.QuestionClassifier, title: 'Question Classifier', desc: '' },
+        },
+      ]
+
+      rerender(
+        <Node
+          id="loop-node"
+          data={createData({
+            _children: [
+              { nodeId: 'start-node', nodeType: BlockEnum.LoopStart },
+              { nodeId: 'child-node', nodeType: BlockEnum.QuestionClassifier },
+            ],
+          })}
+        />,
+      )
+
       expect(mockHandleNodeLoopRerender).toHaveBeenCalledWith('loop-node')
     })
   })

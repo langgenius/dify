@@ -2,8 +2,8 @@ import type {
   HelpLineHorizontalPosition,
   HelpLineVerticalPosition,
 } from './types'
+import { useViewport } from '@xyflow/react'
 import { memo } from 'react'
-import { useViewport } from 'reactflow'
 import { useStore } from '../store'
 
 const HelpLineHorizontal = memo(({

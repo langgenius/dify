@@ -3,17 +3,22 @@ import type { LoopNodeType } from './types'
 import type { NodeProps } from '@/app/components/workflow/types'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
-  memo,
-  useEffect,
-} from 'react'
-import {
   Background,
   useNodesInitialized,
   useViewport,
-} from 'reactflow'
+} from '@xyflow/react'
+import {
+  memo,
+  useEffect,
+  useMemo,
+} from 'react'
+import { useWorkflowFlowNodes } from '../../hooks/use-workflow-reactflow'
+import {
+  getNodeHeight,
+  getNodeWidth,
+} from '../../utils/node'
 import { LoopStartNodeDumb } from '../loop-start'
 import AddBlock from './add-block'
-
 import { useNodeLoopInteractions } from './use-interactions'
 
 const Node: FC<NodeProps<LoopNodeType>> = ({
@@ -22,12 +27,25 @@ const Node: FC<NodeProps<LoopNodeType>> = ({
 }) => {
   const { zoom } = useViewport()
   const nodesInitialized = useNodesInitialized()
+  const nodes = useWorkflowFlowNodes()
   const { handleNodeLoopRerender } = useNodeLoopInteractions()
+  const childrenLayoutKey = useMemo(() => {
+    return nodes
+      .filter(node => node.parentId === id)
+      .map(node => [
+        node.id,
+        node.position.x,
+        node.position.y,
+        getNodeWidth(node),
+        getNodeHeight(node),
+      ].join(':'))
+      .join('|')
+  }, [nodes, id])
 
   useEffect(() => {
     if (nodesInitialized)
       handleNodeLoopRerender(id)
-  }, [nodesInitialized, id, handleNodeLoopRerender])
+  }, [nodesInitialized, childrenLayoutKey, id, handleNodeLoopRerender])
 
   return (
     <div className={cn(

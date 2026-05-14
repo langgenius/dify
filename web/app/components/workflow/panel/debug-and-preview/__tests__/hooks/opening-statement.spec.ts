@@ -36,10 +36,10 @@ vi.mock('@langgenius/dify-ui/toast', () => ({
   },
 }))
 
-vi.mock('reactflow', () => ({
+vi.mock('@xyflow/react', () => ({
   useStoreApi: () => ({
     getState: () => ({
-      getNodes: mockGetNodes,
+      nodes: mockGetNodes(),
     }),
   }),
 }))

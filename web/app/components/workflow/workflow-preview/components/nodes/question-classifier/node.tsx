@@ -1,6 +1,6 @@
 import type { FC } from 'react'
-import type { NodeProps } from 'reactflow'
 import type { QuestionClassifierNodeType } from '@/app/components/workflow/nodes/question-classifier/types'
+import type { NodeProps } from '@/app/components/workflow/types'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import InfoPanel from '@/app/components/workflow/nodes/_base/components/info-panel'

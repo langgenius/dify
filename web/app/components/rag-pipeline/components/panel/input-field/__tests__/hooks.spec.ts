@@ -3,9 +3,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { useFloatingRight } from '../hooks'
 
 const mockGetNodes = vi.fn()
-vi.mock('reactflow', () => ({
-  useStore: (selector: (s: { getNodes: () => { id: string, data: { selected: boolean } }[] }) => unknown) => {
-    return selector({ getNodes: mockGetNodes })
+vi.mock('@xyflow/react', () => ({
+  useStore: (selector: (s: { nodes: { id: string, data: { selected: boolean } }[] }) => unknown) => {
+    return selector({ nodes: mockGetNodes() })
   },
 }))
 

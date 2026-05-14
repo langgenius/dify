@@ -1,28 +1,30 @@
-import type { MouseEvent } from 'react'
 import type {
-  NodeDragHandler,
   NodeMouseHandler,
   OnConnect,
   OnConnectEnd,
   OnConnectStart,
+  OnNodeDrag,
   ResizeParamsWithDirection,
-} from 'reactflow'
+} from '@xyflow/react'
+import type { MouseEvent } from 'react'
 import type { PluginDefaultValue } from '../block-selector/types'
 import type { IterationNodeType } from '../nodes/iteration/types'
 import type { LoopNodeType } from '../nodes/loop/types'
 import type { VariableAssignerNodeType } from '../nodes/variable-assigner/types'
 import type { Edge, Node, OnNodeAdd } from '../types'
 import type { RAGPipelineVariables } from '@/models/pipeline'
-import { toast } from '@langgenius/dify-ui/toast'
+import {
+  toast,
+} from '@langgenius/dify-ui/toast'
 import { useSuspenseQuery } from '@tanstack/react-query'
-import { produce } from 'immer'
-import { useCallback, useRef, useState } from 'react'
-import { useTranslation } from 'react-i18next'
 import {
   getConnectedEdges,
   getOutgoers,
-  useReactFlow,
-} from 'reactflow'
+} from '@xyflow/react'
+import { produce } from 'immer'
+import { useCallback, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { useWorkflowReactFlow } from '@/app/components/workflow/hooks/use-workflow-reactflow'
 import { systemFeaturesQueryOptions } from '@/service/system-features'
 import { collaborationManager } from '../collaboration/core/collaboration-manager'
 import {
@@ -58,6 +60,10 @@ import {
   sanitizeClipboardValueByDefault,
   writeWorkflowClipboard,
 } from '../utils'
+import {
+  getNodeHeight,
+  getNodeWidth,
+} from '../utils/node'
 import { useWorkflowHistoryStore } from '../workflow-history-store'
 import { useAutoGenerateWebhookUrl } from './use-auto-generate-webhook-url'
 import { useCollaborativeWorkflow } from './use-collaborative-workflow'
@@ -151,7 +157,7 @@ export const useNodesInteractions = () => {
   })
   const collaborativeWorkflow = useCollaborativeWorkflow()
   const workflowStore = useWorkflowStore()
-  const reactflow = useReactFlow()
+  const reactflow = useWorkflowReactFlow()
   const { store: workflowHistoryStore } = useWorkflowHistoryStore()
   const { handleSyncWorkflowDraft } = useNodesSyncDraft()
   const { getAfterNodesInSameBranch } = useWorkflow()
@@ -175,7 +181,7 @@ export const useNodesInteractions = () => {
   } = useWorkflowHistory()
   const autoGenerateWebhookUrl = useAutoGenerateWebhookUrl()
 
-  const handleNodeDragStart = useCallback<NodeDragHandler>(
+  const handleNodeDragStart = useCallback<OnNodeDrag<Node>>(
     (_, node) => {
       workflowStore.setState({ nodeAnimation: false })
 
@@ -204,7 +210,7 @@ export const useNodesInteractions = () => {
     [workflowStore, getNodesReadOnly],
   )
 
-  const handleNodeDrag = useCallback<NodeDragHandler>(
+  const handleNodeDrag = useCallback<OnNodeDrag<Node>>(
     (e, node: Node) => {
       if (getNodesReadOnly())
         return
@@ -283,7 +289,7 @@ export const useNodesInteractions = () => {
     [getNodesReadOnly, collaborativeWorkflow, handleNodeIterationChildDrag, handleNodeLoopChildDrag, handleSetHelpline],
   )
 
-  const handleNodeDragStop = useCallback<NodeDragHandler>(
+  const handleNodeDragStop = useCallback<OnNodeDrag<Node>>(
     (_, node) => {
       const { setHelpLineHorizontal, setHelpLineVertical }
         = workflowStore.getState()
@@ -313,7 +319,7 @@ export const useNodesInteractions = () => {
     ],
   )
 
-  const handleNodeEnter = useCallback<NodeMouseHandler>(
+  const handleNodeEnter = useCallback<NodeMouseHandler<Node>>(
     (_, node) => {
       if (getNodesReadOnly())
         return
@@ -346,9 +352,10 @@ export const useNodesInteractions = () => {
         const sameLevel = connectingNode.parentId === node.parentId
 
         if (sameLevel) {
+          const enteringNodeData = node.data as VariableAssignerNodeType
           setEnteringNodePayload({
             nodeId: node.id,
-            nodeData: node.data as VariableAssignerNodeType,
+            nodeData: enteringNodeData,
           })
           const fromType = connectingNodePayload.handleType
 
@@ -360,7 +367,7 @@ export const useNodesInteractions = () => {
                 && (node.data.type === BlockEnum.VariableAssigner
                   || node.data.type === BlockEnum.VariableAggregator)
               ) {
-                if (!node.data.advanced_settings?.group_enabled)
+                if (!enteringNodeData.advanced_settings?.group_enabled)
                   n.data._isEntering = true
               }
               if (
@@ -393,7 +400,7 @@ export const useNodesInteractions = () => {
     [collaborativeWorkflow, workflowStore, getNodesReadOnly],
   )
 
-  const handleNodeLeave = useCallback<NodeMouseHandler>(
+  const handleNodeLeave = useCallback<NodeMouseHandler<Node>>(
     (_, node) => {
       if (getNodesReadOnly())
         return
@@ -479,7 +486,7 @@ export const useNodesInteractions = () => {
     [collaborativeWorkflow],
   )
 
-  const handleNodeClick = useCallback<NodeMouseHandler>(
+  const handleNodeClick = useCallback<NodeMouseHandler<Node>>(
     (event, node) => {
       const { controlMode } = workflowStore.getState()
       if (controlMode === ControlMode.Comment)
@@ -656,14 +663,15 @@ export const useNodesInteractions = () => {
           && (toNode.data.type === BlockEnum.VariableAssigner
             || toNode.data.type === BlockEnum.VariableAggregator)
         ) {
-          const groupEnabled = toNode.data.advanced_settings?.group_enabled
-          const firstGroupId = toNode.data.advanced_settings?.groups[0].groupId
+          const toNodeData = toNode.data as VariableAssignerNodeType
+          const groupEnabled = toNodeData.advanced_settings?.group_enabled
+          const firstGroupId = toNodeData.advanced_settings?.groups[0]?.groupId
           let handleId = 'target'
 
           if (groupEnabled) {
             if (hoveringAssignVariableGroupId)
               handleId = hoveringAssignVariableGroupId
-            else handleId = firstGroupId
+            else handleId = firstGroupId ?? handleId
           }
           const newNodes = produce(nodes, (draft) => {
             draft.forEach((node) => {
@@ -678,7 +686,7 @@ export const useNodesInteractions = () => {
             nodeId: fromNode.id,
             nodeData: fromNode.data,
             variableAssignerNodeId: toNode.id,
-            variableAssignerNodeData: toNode.data,
+            variableAssignerNodeData: toNodeData,
             variableAssignerNodeHandleId: handleId,
             parentNode: toParentNode,
             x: x - toNode.positionAbsolute!.x,
@@ -927,9 +935,9 @@ export const useNodesInteractions = () => {
         newNode.position = {
           x: lastOutgoer
             ? lastOutgoer.position.x
-            : prevNode!.position.x + prevNode!.width! + X_OFFSET,
+            : prevNode!.position.x + getNodeWidth(prevNode) + X_OFFSET,
           y: lastOutgoer
-            ? lastOutgoer.position.y + lastOutgoer.height! + Y_OFFSET
+            ? lastOutgoer.position.y + getNodeHeight(lastOutgoer) + Y_OFFSET
             : prevNode!.position.y,
         }
         newNode.parentId = prevNode!.parentId
@@ -959,7 +967,7 @@ export const useNodesInteractions = () => {
               || newNode.data.type === BlockEnum.Tool
               || newNode.data.type === BlockEnum.Assigner)
           ) {
-            const iterNodeData: IterationNodeType = parentNode.data
+            const iterNodeData = parentNode.data as IterationNodeType
             iterNodeData._isShowTips = true
           }
           if (
@@ -968,7 +976,7 @@ export const useNodesInteractions = () => {
               || newNode.data.type === BlockEnum.Tool
               || newNode.data.type === BlockEnum.Assigner)
           ) {
-            const iterNodeData: IterationNodeType = parentNode.data
+            const iterNodeData = parentNode.data as IterationNodeType
             iterNodeData._isShowTips = true
           }
         }
@@ -2372,7 +2380,7 @@ export const useNodesInteractions = () => {
 
       childrenNodes.forEach((n) => {
         if (rightNode) {
-          if (n.position.x + n.width! > rightNode.position.x + rightNode.width!)
+          if (n.position.x + getNodeWidth(n) > rightNode.position.x + getNodeWidth(rightNode))
             rightNode = n
         }
         else {
@@ -2380,8 +2388,8 @@ export const useNodesInteractions = () => {
         }
         if (bottomNode) {
           if (
-            n.position.y + n.height!
-            > bottomNode.position.y + bottomNode.height!
+            n.position.y + getNodeHeight(n)
+            > bottomNode.position.y + getNodeHeight(bottomNode)
           ) {
             bottomNode = n
           }
@@ -2398,11 +2406,11 @@ export const useNodesInteractions = () => {
             ? ITERATION_PADDING
             : LOOP_PADDING
 
-        if (width < rightNode!.position.x + rightNode.width! + paddingMap.right)
+        if (width < rightNode!.position.x + getNodeWidth(rightNode) + paddingMap.right)
           return
         if (
           height
-          < bottomNode.position.y + bottomNode.height! + paddingMap.bottom
+          < bottomNode.position.y + getNodeHeight(bottomNode) + paddingMap.bottom
         ) {
           return
         }

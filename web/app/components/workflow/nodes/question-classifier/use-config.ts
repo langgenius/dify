@@ -1,8 +1,11 @@
 import type { Memory, ValueSelector, Var } from '../../types'
 import type { QuestionClassifierNodeType, Topic } from './types'
-import { produce } from 'immer'
+import { useUpdateNodeInternals,
+} from '@xyflow/react'
+import {
+  produce,
+} from 'immer'
 import { startTransition, useCallback, useEffect, useRef } from 'react'
-import { useUpdateNodeInternals } from 'reactflow'
 import { checkHasQueryBlock } from '@/app/components/base/prompt-editor/constants'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'

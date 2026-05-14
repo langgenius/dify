@@ -17,6 +17,10 @@ import { CUSTOM_LOOP_START_NODE } from '@/app/components/workflow/nodes/loop-sta
 import {
   BlockEnum,
 } from '@/app/components/workflow/types'
+import {
+  getNodeHeight,
+  getNodeWidth,
+} from '@/app/components/workflow/utils/node'
 
 let elk: import('elkjs/lib/elk-api').ELK | undefined
 
@@ -419,8 +423,8 @@ const buildPortAwareGraph = (nodes: Node[], edges: Edge[]) => {
 
     elkNodes.push({
       id: node.id,
-      width: node.width ?? DEFAULT_NODE_WIDTH,
-      height: node.height ?? DEFAULT_NODE_HEIGHT,
+      width: getNodeWidth(node) || DEFAULT_NODE_WIDTH,
+      height: getNodeHeight(node) || DEFAULT_NODE_HEIGHT,
       ...(ports.length > 0 && {
         ports,
         layoutOptions: { 'elk.portConstraints': 'FIXED_ORDER' },

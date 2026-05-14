@@ -1,6 +1,6 @@
 import type {
-  Connection,
-} from 'reactflow'
+  IsValidConnection,
+} from '@xyflow/react'
 import type { IterationNodeType } from '../nodes/iteration/types'
 import type { LoopNodeType } from '../nodes/loop/types'
 import type {
@@ -9,14 +9,14 @@ import type {
   Node,
   ValueSelector,
 } from '../types'
+import {
+  getIncomers,
+  getOutgoers,
+} from '@xyflow/react'
 import { uniqBy } from 'es-toolkit/compat'
 import {
   useCallback,
 } from 'react'
-import {
-  getIncomers,
-  getOutgoers,
-} from 'reactflow'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { useCollaborativeWorkflow } from '@/app/components/workflow/hooks/use-collaborative-workflow'
 import { CUSTOM_ITERATION_START_NODE } from '@/app/components/workflow/nodes/iteration-start/constants'
@@ -348,7 +348,7 @@ export const useWorkflow = () => {
     return startNodes
   }, [nodesMap, getRootNodesById])
 
-  const isValidConnection = useCallback(({ source, sourceHandle: _sourceHandle, target }: Connection) => {
+  const isValidConnection = useCallback<IsValidConnection<Edge>>(({ source, sourceHandle: _sourceHandle, target }) => {
     const { nodes, edges } = collaborativeWorkflow.getState()
     const sourceNode: Node = nodes.find(node => node.id === source)!
     const targetNode: Node = nodes.find(node => node.id === target)!

@@ -2,12 +2,9 @@ import type { IOtherOptions } from '@/service/base'
 import type { VersionHistory } from '@/types/workflow'
 import { produce } from 'immer'
 import { useCallback, useRef } from 'react'
-import {
-  useReactFlow,
-  useStoreApi,
-} from 'reactflow'
 import { useSetWorkflowVarsWithValue } from '@/app/components/workflow/hooks/use-fetch-workflow-inspect-vars'
 import { useWorkflowUpdate } from '@/app/components/workflow/hooks/use-workflow-interactions'
+import { useWorkflowReactFlow, useWorkflowStoreApi } from '@/app/components/workflow/hooks/use-workflow-reactflow'
 import { useWorkflowRunEvent } from '@/app/components/workflow/hooks/use-workflow-run-event/use-workflow-run-event'
 import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
 import { WorkflowRunningStatus } from '@/app/components/workflow/types'
@@ -18,9 +15,9 @@ import { FlowType } from '@/types/common'
 import { useNodesSyncDraft } from './use-nodes-sync-draft'
 
 export const usePipelineRun = () => {
-  const store = useStoreApi()
+  const store = useWorkflowStoreApi()
   const workflowStore = useWorkflowStore()
-  const reactflow = useReactFlow()
+  const reactflow = useWorkflowReactFlow()
   const { doSyncWorkflowDraft } = useNodesSyncDraft()
   const { handleUpdateWorkflowCanvas } = useWorkflowUpdate()
 
@@ -46,7 +43,7 @@ export const usePipelineRun = () => {
 
   const handleBackupDraft = useCallback(() => {
     const {
-      getNodes,
+      nodes,
       edges,
     } = store.getState()
     const { getViewport } = reactflow
@@ -58,7 +55,7 @@ export const usePipelineRun = () => {
 
     if (!backupDraft) {
       setBackupDraft({
-        nodes: getNodes(),
+        nodes,
         edges,
         viewport: getViewport(),
         environmentVariables,
@@ -104,10 +101,10 @@ export const usePipelineRun = () => {
     callback?: IOtherOptions,
   ) => {
     const {
-      getNodes,
+      nodes,
       setNodes,
     } = store.getState()
-    const newNodes = produce(getNodes(), (draft) => {
+    const newNodes = produce(nodes, (draft) => {
       draft.forEach((node) => {
         node.data.selected = false
         node.data._runningStatus = undefined

@@ -1,4 +1,4 @@
-import type { Viewport } from 'reactflow'
+import type { Viewport } from '@xyflow/react'
 import type { NoteNodeType } from '@/app/components/workflow/note-node/types'
 import type { Node } from '@/app/components/workflow/types'
 import {

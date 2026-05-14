@@ -15,7 +15,7 @@ const {
   mockViewport: { zoom: 1 },
 }))
 
-vi.mock('reactflow', () => ({
+vi.mock('@xyflow/react', () => ({
   useReactFlow: () => ({
     zoomIn: mockZoomIn,
     zoomOut: mockZoomOut,

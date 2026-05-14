@@ -2,7 +2,7 @@ import type { Edge, Node } from '../types'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useEffect } from 'react'
-import { useEdges, useNodes, useStoreApi } from 'reactflow'
+import { useWorkflowFlowEdges, useWorkflowFlowNodes, useWorkflowStoreApi } from '@/app/components/workflow/hooks/use-workflow-reactflow'
 import { createEdge, createNode } from '../__tests__/fixtures'
 import { renderWorkflowFlowComponent } from '../__tests__/workflow-test-env'
 import EdgeContextmenu from '../edge-contextmenu'
@@ -91,8 +91,8 @@ let latestNodes: Node[] = []
 let latestEdges: Edge[] = []
 
 const RuntimeProbe = () => {
-  latestNodes = useNodes() as Node[]
-  latestEdges = useEdges() as Edge[]
+  latestNodes = useWorkflowFlowNodes() as Node[]
+  latestEdges = useWorkflowFlowEdges() as Edge[]
 
   return null
 }
@@ -103,8 +103,8 @@ const hooksStoreProps = {
 
 const EdgeMenuHarness = () => {
   const { handleEdgeContextMenu, handleEdgeDelete } = useEdgesInteractions()
-  const edges = useEdges() as Edge[]
-  const reactFlowStore = useStoreApi()
+  const edges = useWorkflowFlowEdges() as Edge[]
+  const reactFlowStore = useWorkflowStoreApi()
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {

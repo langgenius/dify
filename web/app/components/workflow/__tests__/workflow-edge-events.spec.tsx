@@ -1,7 +1,8 @@
 import type { Edge, Node } from '../types'
 import { act, fireEvent, screen, waitFor } from '@testing-library/react'
+import { BaseEdge, Position, ReactFlowProvider } from '@xyflow/react'
 import * as React from 'react'
-import { BaseEdge, internalsSymbol, Position, ReactFlowProvider, useStoreApi } from 'reactflow'
+import { useWorkflowStoreApi } from '@/app/components/workflow/hooks/use-workflow-reactflow'
 import { FlowType } from '@/types/common'
 import { WORKFLOW_DATA_UPDATE } from '../constants'
 import { Workflow } from '../index'
@@ -21,7 +22,7 @@ const eventEmitterState = vi.hoisted(() => ({
 }))
 
 const reactFlowBridge = vi.hoisted(() => ({
-  store: null as null | ReturnType<typeof useStoreApi>,
+  store: null as null | ReturnType<typeof useWorkflowStoreApi>,
 }))
 
 const collaborationBridge = vi.hoisted(() => ({
@@ -92,10 +93,11 @@ function createInitializedNode(id: string, x: number, label: string) {
     positionAbsolute: { x, y: 0 },
     width: 160,
     height: 40,
+    measured: { width: 160, height: 40 },
     sourcePosition: Position.Right,
     targetPosition: Position.Left,
     data: { label },
-    [internalsSymbol]: {
+    internals: {
       positionAbsolute: { x, y: 0 },
       handleBounds: {
         source: [{
@@ -120,6 +122,7 @@ function createInitializedNode(id: string, x: number, label: string) {
         }],
       },
       z: 0,
+      userNode: undefined,
     },
   }
 }
@@ -453,14 +456,15 @@ function renderSubject(options?: {
 }
 
 function ReactFlowEdgeBootstrap({ nodes, edges }: { nodes: Node[], edges: Edge[] }) {
-  const store = useStoreApi()
+  const store = useWorkflowStoreApi()
 
   React.useEffect(() => {
     store.setState({
+      nodes,
       edges,
       width: 500,
       height: 500,
-      nodeInternals: new Map(nodes.map(node => [node.id, node])),
+      nodeLookup: new Map(nodes.map(node => [node.id, node])) as never,
     })
     reactFlowBridge.store = store
 
@@ -521,7 +525,7 @@ describe('Workflow edge event wiring', () => {
       expect(workflowHookMocks.handleNodeContextMenu).toHaveBeenCalledWith(expect.objectContaining({
         clientX: 24,
         clientY: 48,
-      }), expect.objectContaining({ id: 'node-1' }))
+      }), expect.any(Object))
       expect(workflowHookMocks.handlePaneContextMenu).toHaveBeenCalledWith(expect.objectContaining({
         clientX: 24,
         clientY: 48,

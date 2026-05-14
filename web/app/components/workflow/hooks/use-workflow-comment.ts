@@ -1,8 +1,8 @@
 import type { UserProfile, WorkflowCommentDetail, WorkflowCommentList } from '@/contract/console/workflow-comment'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useCallback, useEffect, useMemo, useRef } from 'react'
-import { useReactFlow } from 'reactflow'
 import { collaborationManager } from '@/app/components/workflow/collaboration/core/collaboration-manager'
+import { useWorkflowReactFlow } from '@/app/components/workflow/hooks/use-workflow-reactflow'
 import { useAppContext } from '@/context/app-context'
 import { useParams } from '@/next/navigation'
 import { consoleClient } from '@/service/client'
@@ -32,7 +32,7 @@ const toCommentDetailPreview = (comment: WorkflowCommentList): WorkflowCommentDe
 export const useWorkflowComment = () => {
   const params = useParams()
   const appId = params.appId as string
-  const reactflow = useReactFlow()
+  const reactflow = useWorkflowReactFlow()
   const controlMode = useStore(s => s.controlMode)
   const pendingComment = useStore(s => s.pendingComment)
   const setPendingComment = useStore(s => s.setPendingComment)

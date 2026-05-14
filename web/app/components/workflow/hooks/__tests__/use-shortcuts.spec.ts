@@ -74,7 +74,7 @@ vi.mock('@tanstack/react-hotkeys', () => {
   }
 })
 
-vi.mock('reactflow', () => ({
+vi.mock('@xyflow/react', () => ({
   useReactFlow: () => ({
     zoomTo: mockZoomTo,
     getZoom: mockGetZoom,

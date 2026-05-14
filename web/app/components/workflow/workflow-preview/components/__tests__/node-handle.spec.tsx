@@ -1,5 +1,4 @@
-import type { NodeProps } from 'reactflow'
-import type { CommonNodeType } from '@/app/components/workflow/types'
+import type { CommonNodeType, NodeProps } from '@/app/components/workflow/types'
 import { waitFor } from '@testing-library/react'
 import { createNode } from '@/app/components/workflow/__tests__/fixtures'
 import { renderWorkflowFlowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'

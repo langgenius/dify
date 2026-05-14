@@ -10,7 +10,7 @@ const mockUseWorkflowVariables = vi.hoisted(() => vi.fn())
 const mockUseIsChatMode = vi.hoisted(() => vi.fn())
 const mockUseWorkflowStore = vi.hoisted(() => vi.fn())
 
-vi.mock('reactflow', () => ({
+vi.mock('@xyflow/react', () => ({
   useStoreApi: () => mockUseStoreApi(),
   useNodes: () => mockUseNodes(),
 }))
@@ -31,11 +31,9 @@ describe('variable-assigner/hooks', () => {
   const mockSetNodes = vi.fn()
   const mockSetShowAssignVariablePopup = vi.fn()
   const mockSetHoveringAssignVariableGroupId = vi.fn()
-  const getNodes = vi.fn()
-
   beforeEach(() => {
     vi.clearAllMocks()
-    getNodes.mockReturnValue([{
+    const nodes = [{
       id: 'assigner-1',
       data: {
         variables: [['start', 'foo']],
@@ -48,10 +46,10 @@ describe('variable-assigner/hooks', () => {
           }],
         },
       },
-    }])
+    }]
     mockUseStoreApi.mockReturnValue({
       getState: () => ({
-        getNodes,
+        nodes,
         setNodes: mockSetNodes,
       }),
     })
@@ -110,29 +108,34 @@ describe('variable-assigner/hooks', () => {
   })
 
   it('should close the popup and add variables through the positioned add-variable flow', () => {
-    getNodes.mockReturnValue([
-      {
-        id: 'source-node',
-        data: {
-          _showAddVariablePopup: true,
-          _holdAddVariablePopup: true,
-        },
-      },
-      {
-        id: 'assigner-1',
-        data: {
-          variables: [],
-          advanced_settings: {
-            groups: [{
-              groupId: 'group-1',
-              variables: [],
-            }],
+    mockUseStoreApi.mockReturnValue({
+      getState: () => ({
+        nodes: [
+          {
+            id: 'source-node',
+            data: {
+              _showAddVariablePopup: true,
+              _holdAddVariablePopup: true,
+            },
           },
-          _showAddVariablePopup: true,
-          _holdAddVariablePopup: true,
-        },
-      },
-    ])
+          {
+            id: 'assigner-1',
+            data: {
+              variables: [],
+              advanced_settings: {
+                groups: [{
+                  groupId: 'group-1',
+                  variables: [],
+                }],
+              },
+              _showAddVariablePopup: true,
+              _holdAddVariablePopup: true,
+            },
+          },
+        ],
+        setNodes: mockSetNodes,
+      }),
+    } as never)
 
     const { result } = renderHook(() => useVariableAssigner())
 

@@ -1,9 +1,9 @@
 import type { ComponentProps } from 'react'
-import type { Node } from 'reactflow'
 import type { NodeOutPutVar } from '../../../types'
 import type { ToolVarInputs } from '../../tool/types'
 import type { CredentialFormSchema, CredentialFormSchemaNumberInput, CredentialFormSchemaTextInput } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { PluginMeta } from '@/app/components/plugins/types'
+import type { Node } from '@/app/components/workflow/types'
 import {
   NumberField,
   NumberFieldControls,

@@ -4,10 +4,10 @@ import type { LLMNodeType } from '../nodes/llm/types'
 import type { CommonNodeType } from '../types'
 import type { Emoji } from '@/app/components/tools/types'
 import { useCallback, useEffect, useMemo } from 'react'
-import { useNodes } from 'reactflow'
 import { workflowNodesAction } from '@/app/components/goto-anything/actions/workflow-nodes'
 import { CollectionType } from '@/app/components/tools/types'
 import BlockIcon from '@/app/components/workflow/block-icon'
+import { useWorkflowFlowNodes } from '@/app/components/workflow/hooks/use-workflow-reactflow'
 import {
   useAllBuiltInTools,
   useAllCustomTools,
@@ -23,7 +23,7 @@ import { useNodesInteractions } from './use-nodes-interactions'
  * Hook to register workflow nodes search functionality
  */
 export const useWorkflowSearch = () => {
-  const nodes = useNodes()
+  const nodes = useWorkflowFlowNodes()
   const { handleNodeSelect } = useNodesInteractions()
 
   // Filter and process nodes for search

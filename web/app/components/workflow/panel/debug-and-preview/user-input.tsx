@@ -1,9 +1,11 @@
 import type { StartNodeType } from '../../nodes/start/types'
-import { cn } from '@langgenius/dify-ui/cn'
+import {
+  cn,
+} from '@langgenius/dify-ui/cn'
 import {
   memo,
 } from 'react'
-import { useNodes } from 'reactflow'
+import { useWorkflowFlowNodes } from '@/app/components/workflow/hooks/use-workflow-reactflow'
 import FormItem from '../../nodes/_base/components/before-run-form/form-item'
 import {
   useStore,
@@ -15,7 +17,7 @@ const UserInput = () => {
   const workflowStore = useWorkflowStore()
   const inputs = useStore(s => s.inputs)
   const showDebugAndPreviewPanel = useStore(s => s.showDebugAndPreviewPanel)
-  const nodes = useNodes<StartNodeType>()
+  const nodes = useWorkflowFlowNodes<StartNodeType>()
   const startNode = nodes.find(node => node.data.type === BlockEnum.Start)
   const variables = startNode?.data.variables || []
   const visibleVariables = showDebugAndPreviewPanel ? variables : variables.filter(v => v.hide !== true)

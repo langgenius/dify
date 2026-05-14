@@ -10,11 +10,10 @@ const mockStore = {
 }
 
 let mockReactflowState = {
-  d3Selection: null as object | null,
-  d3Zoom: null as object | null,
+  panZoom: null as object | null,
 }
 
-vi.mock('reactflow', () => ({
+vi.mock('@xyflow/react', () => ({
   useStore: (selector: (state: typeof mockReactflowState) => unknown) => selector(mockReactflowState),
 }))
 
@@ -35,8 +34,7 @@ describe('hooks-store provider', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockReactflowState = {
-      d3Selection: null,
-      d3Zoom: null,
+      panZoom: null,
     }
   })
 
@@ -51,11 +49,10 @@ describe('hooks-store provider', () => {
     expect(mockRefreshAll).not.toHaveBeenCalled()
   })
 
-  it('should refresh the hooks store when both d3Selection and d3Zoom are available', async () => {
+  it('should refresh the hooks store when panZoom is available', async () => {
     const handleRun = vi.fn()
     mockReactflowState = {
-      d3Selection: {},
-      d3Zoom: {},
+      panZoom: {},
     }
 
     render(

@@ -11,12 +11,15 @@ import {
 } from '@langgenius/dify-ui/dropdown-menu'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { RiArrowDownSLine, RiArrowUpSLine, RiCheckboxCircleFill, RiCheckboxCircleLine, RiCloseLine, RiDeleteBinLine, RiMoreFill } from '@remixicon/react'
+import {
+  useViewport,
+} from '@xyflow/react'
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useReactFlow, useViewport } from 'reactflow'
 import Divider from '@/app/components/base/divider'
 import InlineDeleteConfirm from '@/app/components/base/inline-delete-confirm'
 import { getUserColor } from '@/app/components/workflow/collaboration/utils/user-color'
+import { useWorkflowReactFlow } from '@/app/components/workflow/hooks/use-workflow-reactflow'
 import { useAppContext } from '@/context/app-context'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import { useParams } from '@/next/navigation'
@@ -173,7 +176,7 @@ export const CommentThread: FC<CommentThreadProps> = memo(({
 }) => {
   const params = useParams()
   const appId = params.appId as string
-  const { flowToScreenPosition } = useReactFlow()
+  const { flowToScreenPosition } = useWorkflowReactFlow()
   const viewport = useViewport()
   const { userProfile } = useAppContext()
   const { t } = useTranslation()

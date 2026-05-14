@@ -1,7 +1,7 @@
 import type { NodeFinishedResponse } from '@/types/workflow'
 import { produce } from 'immer'
 import { useCallback } from 'react'
-import { useStoreApi } from 'reactflow'
+import { useWorkflowStoreApi } from '@/app/components/workflow/hooks/use-workflow-reactflow'
 import { ErrorHandleTypeEnum } from '@/app/components/workflow/nodes/_base/components/error-handle/types'
 import { useWorkflowStore } from '@/app/components/workflow/store'
 import {
@@ -10,22 +10,22 @@ import {
 } from '@/app/components/workflow/types'
 
 export const useWorkflowNodeFinished = () => {
-  const store = useStoreApi()
+  const store = useWorkflowStoreApi()
   const workflowStore = useWorkflowStore()
 
   const handleWorkflowNodeFinished = useCallback((params: NodeFinishedResponse) => {
     const { data } = params
+    const status = data.status as NodeRunningStatus
     const {
       workflowRunningData,
       setWorkflowRunningData,
     } = workflowStore.getState()
     const {
-      getNodes,
+      nodes,
       setNodes,
       edges,
       setEdges,
     } = store.getState()
-    const nodes = getNodes()
     setWorkflowRunningData(produce(workflowRunningData!, (draft) => {
       const currentIndex = draft.tracing!.findIndex(item => item.id === data.id)
       if (currentIndex > -1) {
@@ -38,8 +38,8 @@ export const useWorkflowNodeFinished = () => {
 
     const newNodes = produce(nodes, (draft) => {
       const currentNode = draft.find(node => node.id === data.node_id)!
-      currentNode.data._runningStatus = data.status
-      if (data.status === NodeRunningStatus.Exception) {
+      currentNode.data._runningStatus = status
+      if (status === NodeRunningStatus.Exception) {
         if (data.execution_metadata?.error_strategy === ErrorHandleTypeEnum.failBranch)
           currentNode.data._runningBranchId = ErrorHandleTypeEnum.failBranch
       }
@@ -61,7 +61,7 @@ export const useWorkflowNodeFinished = () => {
       incomeEdges.forEach((edge) => {
         edge.data = {
           ...edge.data,
-          _targetRunningStatus: data.status,
+          _targetRunningStatus: status,
         }
       })
     })

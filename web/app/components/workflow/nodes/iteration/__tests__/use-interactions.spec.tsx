@@ -12,13 +12,13 @@ const mockGetNodes = vi.hoisted(() => vi.fn())
 const mockSetNodes = vi.hoisted(() => vi.fn())
 const mockGenerateNewNode = vi.hoisted(() => vi.fn())
 
-vi.mock('reactflow', async () => {
-  const actual = await vi.importActual<typeof import('reactflow')>('reactflow')
+vi.mock('@xyflow/react', async () => {
+  const actual = await vi.importActual<typeof import('@xyflow/react')>('@xyflow/react')
   return {
     ...actual,
     useStoreApi: () => ({
       getState: () => ({
-        getNodes: mockGetNodes,
+        nodes: mockGetNodes(),
         setNodes: mockSetNodes,
       }),
     }),
@@ -128,6 +128,31 @@ describe('useNodeIterationInteractions', () => {
     result.current.handleNodeIterationChildSizeChange('child-node')
 
     expect(mockSetNodes).toHaveBeenCalledTimes(1)
+  })
+
+  it('should use the observed child size when React Flow has not published measured dimensions yet', () => {
+    mockGetNodes.mockReturnValue([
+      createIterationNode({
+        id: 'iteration-node',
+        width: 240,
+        height: 90,
+        data: { width: 240, height: 90 },
+      }),
+      createNode({
+        id: 'child-node',
+        parentId: 'iteration-node',
+        position: { x: 128, y: 68 },
+      }),
+    ])
+
+    const { result } = renderHook(() => useNodeIterationInteractions())
+    result.current.handleNodeIterationChildSizeChange('child-node', { width: 244, height: 184 })
+
+    expect(mockSetNodes).toHaveBeenCalledTimes(1)
+    const updatedNodes = mockSetNodes.mock.calls[0]![0]
+    const updatedIterationNode = updatedNodes.find((node: Node) => node.id === 'iteration-node')
+    expect(updatedIterationNode.width).toBe(128 + 244 + ITERATION_PADDING.right)
+    expect(updatedIterationNode.height).toBe(68 + 184 + ITERATION_PADDING.bottom)
   })
 
   it('should skip iteration rerender when the resized node has no parent', () => {

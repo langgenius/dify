@@ -4,7 +4,7 @@ import HelpLine from '../index'
 const mockUseViewport = vi.hoisted(() => vi.fn())
 const mockUseStore = vi.hoisted(() => vi.fn())
 
-vi.mock('reactflow', () => ({
+vi.mock('@xyflow/react', () => ({
   useViewport: () => mockUseViewport(),
 }))
 

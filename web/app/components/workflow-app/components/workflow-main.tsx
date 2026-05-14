@@ -10,13 +10,13 @@ import {
   useMemo,
   useRef,
 } from 'react'
-import { useReactFlow } from 'reactflow'
 import { useFeaturesStore } from '@/app/components/base/features/hooks'
 import { FILE_EXTS } from '@/app/components/base/prompt-editor/constants'
 import { WorkflowWithInnerContext } from '@/app/components/workflow'
 import { collaborationManager } from '@/app/components/workflow/collaboration/core/collaboration-manager'
 import { useCollaboration } from '@/app/components/workflow/collaboration/hooks/use-collaboration'
 import { useWorkflowUpdate } from '@/app/components/workflow/hooks/use-workflow-interactions'
+import { useWorkflowReactFlow } from '@/app/components/workflow/hooks/use-workflow-reactflow'
 import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
 import { SupportUploadFileTypes } from '@/app/components/workflow/types'
 import { fetchWorkflowDraft } from '@/service/workflow'
@@ -45,13 +45,13 @@ const WorkflowMain = ({
   const workflowStore = useWorkflowStore()
   const appId = useStore(s => s.appId)
   const containerRef = useRef<HTMLDivElement>(null)
-  const reactFlow = useReactFlow()
+  const reactFlow = useWorkflowReactFlow()
 
   const reactFlowStore = useMemo(() => ({
     getState: () => ({
-      getNodes: () => reactFlow.getNodes(),
+      nodes: reactFlow.getNodes(),
       setNodes: (nodesToSet: Node[]) => reactFlow.setNodes(nodesToSet),
-      getEdges: () => reactFlow.getEdges(),
+      edges: reactFlow.getEdges(),
       setEdges: (edgesToSet: Edge[]) => reactFlow.setEdges(edgesToSet),
     }),
   }), [reactFlow])

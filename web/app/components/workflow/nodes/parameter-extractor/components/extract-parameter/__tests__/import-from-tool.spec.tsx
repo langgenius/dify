@@ -8,10 +8,10 @@ import { renderWorkflowComponent } from '@/app/components/workflow/__tests__/wor
 import { createTool, createToolProvider } from '@/app/components/workflow/block-selector/__tests__/factories'
 import ImportFromTool from '../import-from-tool'
 
-vi.mock('reactflow', () => ({
+vi.mock('@xyflow/react', () => ({
   useStoreApi: () => ({
     getState: () => ({
-      getNodes: () => [],
+      nodes: [],
     }),
   }),
 }))

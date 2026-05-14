@@ -1,8 +1,8 @@
 import type { ChecklistItem } from '../../hooks/use-checklist'
-import type {
-  CommonEdgeType,
-} from '../../types'
-import { cn } from '@langgenius/dify-ui/cn'
+
+import {
+  cn,
+} from '@langgenius/dify-ui/cn'
 import {
   Popover,
   PopoverClose,
@@ -17,9 +17,7 @@ import {
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import {
-  useEdges,
-} from 'reactflow'
+import { useWorkflowFlowEdges } from '@/app/components/workflow/hooks/use-workflow-reactflow'
 import useNodes from '@/app/components/workflow/store/workflow/use-nodes'
 import {
   useChecklist,
@@ -41,7 +39,7 @@ const WorkflowChecklist = ({
 }: WorkflowChecklistProps) => {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
-  const edges = useEdges<CommonEdgeType>()
+  const edges = useWorkflowFlowEdges()
   const nodes = useNodes()
   const needWarningNodes = useChecklist(nodes, edges)
   const { handleNodeSelect } = useNodesInteractions()

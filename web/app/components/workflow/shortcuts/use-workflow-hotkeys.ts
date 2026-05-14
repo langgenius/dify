@@ -6,7 +6,7 @@ import type {
 import type { WorkflowHotkeyMeta, WorkflowShortcutDefinition, WorkflowShortcutId } from './definitions'
 import { useHotkeys, useKeyHold } from '@tanstack/react-hotkeys'
 import { useCallback, useEffect, useMemo, useRef } from 'react'
-import { useReactFlow } from 'reactflow'
+import { useWorkflowReactFlow } from '@/app/components/workflow/hooks/use-workflow-reactflow'
 import { collaborationManager } from '../collaboration/core/collaboration-manager'
 import { useEdgesInteractions } from '../hooks/use-edges-interactions'
 import { useNodesInteractions } from '../hooks/use-nodes-interactions'
@@ -90,7 +90,7 @@ export const useWorkflowHotkeys = (): void => {
     getZoom,
     fitView,
     getNodes,
-  } = useReactFlow()
+  } = useWorkflowReactFlow()
   const isShiftHeld = useKeyHold('Shift')
   const shiftDimmedRef = useRef(false)
   const undimAllNodesRef = useRef(undimAllNodes)

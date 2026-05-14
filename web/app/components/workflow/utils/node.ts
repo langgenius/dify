@@ -3,9 +3,7 @@ import type { LoopNodeType } from '../nodes/loop/types'
 import type {
   Node,
 } from '../types'
-import {
-  Position,
-} from 'reactflow'
+import { Position } from '@xyflow/react'
 import { CUSTOM_SIMPLE_NODE } from '@/app/components/workflow/simple-node/constants'
 import {
   CUSTOM_NODE,
@@ -101,6 +99,21 @@ export function getLoopStartNode(loopId: string): Node {
     selectable: false,
     draggable: false,
   }).newNode
+}
+
+export const getNodeWidth = (node?: Pick<Node, 'width' | 'measured'> | null) => {
+  return node?.measured?.width ?? node?.width ?? 0
+}
+
+export const getNodeHeight = (node?: Pick<Node, 'height' | 'measured'> | null) => {
+  return node?.measured?.height ?? node?.height ?? 0
+}
+
+export const getNodeDimensions = (node?: Pick<Node, 'width' | 'height' | 'measured'> | null) => {
+  return {
+    width: getNodeWidth(node),
+    height: getNodeHeight(node),
+  }
 }
 
 export const genNewNodeTitleFromOld = (oldTitle: string) => {

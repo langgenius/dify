@@ -49,7 +49,7 @@ vi.mock('@/app/components/workflow/store', () => ({
   }),
 }))
 
-vi.mock('reactflow', () => ({
+vi.mock('@xyflow/react', () => ({
   useStore: () => undefined,
 }))
 

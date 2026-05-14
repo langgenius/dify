@@ -6,10 +6,10 @@ import { BlockEnum } from '../../types'
 import NodeSelector from '../main'
 import { BlockClassificationEnum } from '../types'
 
-vi.mock('reactflow', () => ({
+vi.mock('@xyflow/react', () => ({
   useStoreApi: () => ({
     getState: () => ({
-      getNodes: () => [],
+      nodes: [],
     }),
   }),
 }))

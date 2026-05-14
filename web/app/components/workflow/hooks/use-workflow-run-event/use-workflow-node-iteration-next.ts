@@ -1,11 +1,11 @@
 import type { IterationNextResponse } from '@/types/workflow'
 import { produce } from 'immer'
 import { useCallback } from 'react'
-import { useStoreApi } from 'reactflow'
+import { useWorkflowStoreApi } from '@/app/components/workflow/hooks/use-workflow-reactflow'
 import { useWorkflowStore } from '@/app/components/workflow/store'
 
 export const useWorkflowNodeIterationNext = () => {
-  const store = useStoreApi()
+  const store = useWorkflowStoreApi()
   const workflowStore = useWorkflowStore()
 
   const handleWorkflowNodeIterationNext = useCallback((params: IterationNextResponse) => {
@@ -16,11 +16,9 @@ export const useWorkflowNodeIterationNext = () => {
 
     const { data } = params
     const {
-      getNodes,
+      nodes,
       setNodes,
     } = store.getState()
-
-    const nodes = getNodes()
     const newNodes = produce(nodes, (draft) => {
       const currentNode = draft.find(node => node.id === data.node_id)!
       currentNode.data._iterationIndex = iterTimes

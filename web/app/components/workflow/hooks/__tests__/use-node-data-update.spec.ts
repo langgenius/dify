@@ -4,7 +4,7 @@ import { renderWorkflowHook } from '../../__tests__/workflow-test-env'
 import { WorkflowRunningStatus } from '../../types'
 import { useNodeDataUpdate } from '../use-node-data-update'
 
-vi.mock('reactflow', async () =>
+vi.mock('@xyflow/react', async () =>
   (await import('../../__tests__/reactflow-mock-state')).createReactFlowModuleMock())
 
 describe('useNodeDataUpdate', () => {

@@ -1,5 +1,5 @@
 import { useCallback } from 'react'
-import { useReactFlow } from 'reactflow'
+import { useWorkflowReactFlow } from '@/app/components/workflow/hooks/use-workflow-reactflow'
 import { useNodesSyncDraft } from './use-nodes-sync-draft'
 import { useWorkflowReadOnly } from './use-workflow'
 
@@ -11,7 +11,7 @@ export const useWorkflowZoom = () => {
     zoomOut,
     zoomTo,
     fitView,
-  } = useReactFlow()
+  } = useWorkflowReactFlow()
 
   const runZoomAction = useCallback((action: () => void) => {
     if (getWorkflowReadOnly())

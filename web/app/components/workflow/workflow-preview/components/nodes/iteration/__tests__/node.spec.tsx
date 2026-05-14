@@ -1,7 +1,7 @@
 import { render, screen } from '@testing-library/react'
 import IterationNode from '../node'
 
-vi.mock('reactflow', () => ({
+vi.mock('@xyflow/react', () => ({
   Background: (props: {
     id: string
     gap: [number, number]

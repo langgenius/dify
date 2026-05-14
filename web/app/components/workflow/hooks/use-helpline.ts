@@ -1,8 +1,12 @@
 import type { Node } from '../types'
 import { useCallback } from 'react'
-import { useStoreApi } from 'reactflow'
+import { useWorkflowStoreApi } from '@/app/components/workflow/hooks/use-workflow-reactflow'
 import { useWorkflowStore } from '../store'
 import { BlockEnum, isTriggerNode } from '../types'
+import {
+  getNodeHeight,
+  getNodeWidth,
+} from '../utils'
 
 // Entry node (Start/Trigger) wrapper offsets
 // The EntryNodeContainer adds a wrapper with status indicator above the actual node
@@ -32,7 +36,7 @@ const getEntryNodeDimension = (
     ? ENTRY_NODE_WRAPPER_OFFSET.x
     : ENTRY_NODE_WRAPPER_OFFSET.y
 
-  return (node[dimension] ?? 0) - offset
+  return (dimension === 'width' ? getNodeWidth(node) : getNodeHeight(node)) - offset
 }
 
 const getAlignedNodes = ({
@@ -87,16 +91,16 @@ const buildHorizontalHelpLine = ({
   const helpLine = {
     top: firstPos.y,
     left: firstPos.x,
-    width: lastPos.x + (isEntryNode(last!) ? getEntryNodeDimension(last!, 'width') : last!.width ?? 0) - firstPos.x,
+    width: lastPos.x + (isEntryNode(last!) ? getEntryNodeDimension(last!, 'width') : getNodeWidth(last)) - firstPos.x,
   }
 
   if (nodeAlignPos.x < firstPos.x) {
     helpLine.left = nodeAlignPos.x
-    helpLine.width = firstPos.x + (isEntryNode(first!) ? getEntryNodeDimension(first!, 'width') : first!.width ?? 0) - nodeAlignPos.x
+    helpLine.width = firstPos.x + (isEntryNode(first!) ? getEntryNodeDimension(first!, 'width') : getNodeWidth(first)) - nodeAlignPos.x
   }
 
   if (nodeAlignPos.x > lastPos.x)
-    helpLine.width = nodeAlignPos.x + (isEntryNode(node) ? getEntryNodeDimension(node, 'width') : node.width ?? 0) - firstPos.x
+    helpLine.width = nodeAlignPos.x + (isEntryNode(node) ? getEntryNodeDimension(node, 'width') : getNodeWidth(node)) - firstPos.x
 
   return helpLine
 }
@@ -124,22 +128,22 @@ const buildVerticalHelpLine = ({
   const helpLine = {
     top: firstPos.y,
     left: firstPos.x,
-    height: lastPos.y + (isEntryNode(last!) ? getEntryNodeDimension(last!, 'height') : last!.height ?? 0) - firstPos.y,
+    height: lastPos.y + (isEntryNode(last!) ? getEntryNodeDimension(last!, 'height') : getNodeHeight(last)) - firstPos.y,
   }
 
   if (nodeAlignPos.y < firstPos.y) {
     helpLine.top = nodeAlignPos.y
-    helpLine.height = firstPos.y + (isEntryNode(first!) ? getEntryNodeDimension(first!, 'height') : first!.height ?? 0) - nodeAlignPos.y
+    helpLine.height = firstPos.y + (isEntryNode(first!) ? getEntryNodeDimension(first!, 'height') : getNodeHeight(first)) - nodeAlignPos.y
   }
 
   if (nodeAlignPos.y > lastPos.y)
-    helpLine.height = nodeAlignPos.y + (isEntryNode(node) ? getEntryNodeDimension(node, 'height') : node.height ?? 0) - firstPos.y
+    helpLine.height = nodeAlignPos.y + (isEntryNode(node) ? getEntryNodeDimension(node, 'height') : getNodeHeight(node)) - firstPos.y
 
   return helpLine
 }
 
 export const useHelpline = () => {
-  const store = useStoreApi()
+  const store = useWorkflowStoreApi()
   const workflowStore = useWorkflowStore()
 
   // Check if a node is an entry node (Start or Trigger)
@@ -162,8 +166,7 @@ export const useHelpline = () => {
   }, [isEntryNode])
 
   const handleSetHelpline = useCallback((node: Node) => {
-    const { getNodes } = store.getState()
-    const nodes = getNodes()
+    const { nodes } = store.getState()
     const {
       setHelpLineHorizontal,
       setHelpLineVertical,

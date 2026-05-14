@@ -1,5 +1,5 @@
 import { act, waitFor } from '@testing-library/react'
-import { useEdges, useNodes } from 'reactflow'
+import { useWorkflowFlowEdges, useWorkflowFlowNodes } from '@/app/components/workflow/hooks/use-workflow-reactflow'
 import { createEdge, createNode } from '../../__tests__/fixtures'
 import { renderWorkflowFlowHook } from '../../__tests__/workflow-test-env'
 import { useEdgesInteractions } from '../use-edges-interactions'
@@ -80,8 +80,8 @@ function renderEdgesInteractions(options?: {
   return {
     ...renderWorkflowFlowHook(() => ({
       ...useEdgesInteractions(),
-      nodes: useNodes(),
-      edges: useEdges(),
+      nodes: useWorkflowFlowNodes(),
+      edges: useWorkflowFlowEdges(),
     }), {
       nodes,
       edges,

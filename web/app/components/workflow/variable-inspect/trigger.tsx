@@ -1,11 +1,12 @@
 import type { FC } from 'react'
-import type { CommonNodeType } from '@/app/components/workflow/types'
-import { cn } from '@langgenius/dify-ui/cn'
+import {
+  cn,
+} from '@langgenius/dify-ui/cn'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { RiLoader2Line, RiStopCircleFill } from '@remixicon/react'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useNodes } from 'reactflow'
+import { useWorkflowFlowNodes } from '@/app/components/workflow/hooks/use-workflow-reactflow'
 import { NodeRunningStatus, WorkflowRunningStatus } from '@/app/components/workflow/types'
 import { EVENT_WORKFLOW_STOP } from '@/app/components/workflow/variable-inspect/types'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
@@ -37,7 +38,7 @@ const VariableInspectTrigger: FC = () => {
     getNodesReadOnly,
   } = useNodesReadOnly()
   const workflowRunningData = useStore(s => s.workflowRunningData)
-  const nodes = useNodes<CommonNodeType>()
+  const nodes = useWorkflowFlowNodes()
   const isStepRunning = useMemo(() => nodes.some(node => node.data._singleRunningStatus === NodeRunningStatus.Running), [nodes])
   const isPreviewRunning = useMemo(() => {
     if (!workflowRunningData)

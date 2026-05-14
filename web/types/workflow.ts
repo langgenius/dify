@@ -1,5 +1,5 @@
+import type { Viewport } from '@xyflow/react'
 import type { RefObject } from 'react'
-import type { Viewport } from 'reactflow'
 import type { ErrorHandleTypeEnum } from '@/app/components/workflow/nodes/_base/components/error-handle/types'
 import type { FormInputItem, UserAction } from '@/app/components/workflow/nodes/human-input/types'
 import type {

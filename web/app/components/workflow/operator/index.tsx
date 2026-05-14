@@ -1,6 +1,14 @@
-import type { Node } from 'reactflow'
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { MiniMap } from 'reactflow'
+import type { Node } from '@/app/components/workflow/types'
+import { MiniMap,
+} from '@xyflow/react'
+import {
+  memo,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react'
 import UndoRedo from '../header/undo-redo'
 import { useStore } from '../store'
 import { ControlMode } from '../types'
@@ -49,9 +57,7 @@ const Operator = ({ handleUndo, handleRedo }: OperatorProps) => {
   }, [workflowCanvasWidth, rightPanelWidth])
 
   const getMiniMapNodeClassName = useCallback((node: Node) => {
-    return node.data?.selected
-      ? 'bg-workflow-minimap-block border-components-option-card-option-selected-border'
-      : 'bg-workflow-minimap-block'
+    return node.selected ? 'workflow-minimap-node-selected' : ''
   }, [])
 
   // update bottom panel height
@@ -113,11 +119,16 @@ const Operator = ({ handleUndo, handleRedo }: OperatorProps) => {
                 width: 102,
                 height: 72,
               }}
+              bgColor="var(--color-components-panel-bg)"
               maskColor="var(--color-workflow-minimap-bg)"
+              maskStrokeColor="var(--color-workflow-link-line-active)"
+              maskStrokeWidth={1}
+              nodeColor="var(--color-workflow-minimap-block)"
+              nodeStrokeColor="var(--color-workflow-link-line-normal)"
               nodeClassName={getMiniMapNodeClassName}
               nodeStrokeWidth={3}
               className="!absolute bottom-10! z-9 m-0! h-[73px]! w-[103px]! rounded-lg! border-[0.5px]!
-            border-divider-subtle! bg-background-default-subtle! shadow-md! shadow-shadow-shadow-5!"
+            border-divider-subtle! bg-components-panel-bg! shadow-md! shadow-shadow-shadow-5!"
             />
           )}
           <ZoomInOut

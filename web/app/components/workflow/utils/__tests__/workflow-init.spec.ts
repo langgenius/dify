@@ -16,8 +16,8 @@ import { BlockEnum, ErrorHandleMode } from '@/app/components/workflow/types'
 import { createEdge, createNode, resetFixtureCounters } from '../../__tests__/fixtures'
 import { initialEdges, initialNodes, preprocessNodesAndEdges } from '../workflow-init'
 
-vi.mock('reactflow', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('reactflow')>()
+vi.mock('@xyflow/react', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@xyflow/react')>()
   return {
     ...actual,
     getConnectedEdges: vi.fn((_nodes: Node[], edges: Edge[]) => {
@@ -182,6 +182,56 @@ describe('preprocessNodesAndEdges', () => {
     const loopNode = result.nodes.find(n => n.id === 'loop-1')
     expect((iterNode!.data as IterationNodeType).start_node_id).toBeTruthy()
     expect((loopNode!.data as LoopNodeType).start_node_id).toBeTruthy()
+  })
+
+  it('should normalize existing iteration and loop start node interaction flags', () => {
+    const nodes = [
+      createNode({
+        id: 'iter-1',
+        data: { type: BlockEnum.Iteration, title: '', desc: '', start_node_id: 'iter-start' },
+      }),
+      createNode({
+        id: 'iter-start',
+        type: CUSTOM_ITERATION_START_NODE,
+        parentId: 'iter-1',
+        data: { type: BlockEnum.IterationStart, title: '', desc: '' },
+      }),
+      createNode({
+        id: 'iter-child',
+        parentId: 'iter-1',
+        data: { type: BlockEnum.Code, title: '', desc: '' },
+      }),
+      createNode({
+        id: 'loop-1',
+        data: { type: BlockEnum.Loop, title: '', desc: '', start_node_id: 'loop-start' },
+      }),
+      createNode({
+        id: 'loop-start',
+        type: CUSTOM_LOOP_START_NODE,
+        parentId: 'loop-1',
+        data: { type: BlockEnum.LoopStart, title: '', desc: '' },
+      }),
+      createNode({
+        id: 'loop-child',
+        parentId: 'loop-1',
+        data: { type: BlockEnum.Code, title: '', desc: '' },
+      }),
+    ]
+
+    const result = initialNodes(nodes as Node[], [])
+
+    expect(result.find(node => node.id === 'iter-start')).toMatchObject({
+      selectable: false,
+      draggable: false,
+    })
+    expect(result.find(node => node.id === 'iter-start')?.extent).toBeUndefined()
+    expect(result.find(node => node.id === 'iter-child')?.extent).toBeUndefined()
+    expect(result.find(node => node.id === 'loop-start')).toMatchObject({
+      selectable: false,
+      draggable: false,
+    })
+    expect(result.find(node => node.id === 'loop-start')?.extent).toBeUndefined()
+    expect(result.find(node => node.id === 'loop-child')?.extent).toBeUndefined()
   })
 })
 

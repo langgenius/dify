@@ -4,9 +4,9 @@ import type { FlowType } from '@/types/common'
 import type { VarInInspect } from '@/types/workflow'
 import { produce } from 'immer'
 import { useCallback } from 'react'
-import { useStoreApi } from 'reactflow'
 import { useEdgesInteractionsWithoutSync } from '@/app/components/workflow/hooks/use-edges-interactions-without-sync'
 import { useNodesInteractionsWithoutSync } from '@/app/components/workflow/hooks/use-nodes-interactions-without-sync'
+import { useWorkflowStoreApi } from '@/app/components/workflow/hooks/use-workflow-reactflow'
 import {
   isConversationVar,
   isENV,
@@ -33,7 +33,7 @@ export const useInspectVarsCrudCommon = ({
   flowType,
 }: Params) => {
   const workflowStore = useWorkflowStore()
-  const store = useStoreApi()
+  const store = useWorkflowStoreApi()
   const {
     useInvalidateConversationVarValues,
     useInvalidateSysVarValues,
@@ -121,8 +121,8 @@ export const useInspectVarsCrudCommon = ({
       invalidateConversationVarValues()
       return
     }
-    const { getNodes } = store.getState()
-    const nodeArr = getNodes()
+    const { nodes } = store.getState()
+    const nodeArr = nodes
     const currentNode = nodeArr.find(node => node.id === nodeId)
     const allPluginInfoList = {
       buildInTools: buildInTools || [],

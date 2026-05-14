@@ -4,7 +4,7 @@ import { renderWorkflowHook } from '../../__tests__/workflow-test-env'
 import { BlockEnum } from '../../types'
 import { useGetToolIcon, useToolIcon } from '../use-tool-icon'
 
-vi.mock('reactflow', async () =>
+vi.mock('@xyflow/react', async () =>
   (await import('../../__tests__/reactflow-mock-state')).createReactFlowModuleMock())
 
 vi.mock('@/service/use-tools', async () =>

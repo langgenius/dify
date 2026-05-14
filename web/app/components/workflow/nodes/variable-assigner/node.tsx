@@ -1,6 +1,6 @@
 import type { FC } from 'react'
-import type { NodeProps } from 'reactflow'
 import type { VariableAssignerNodeType } from './types'
+import type { NodeProps } from '@/app/components/workflow/types'
 import {
   memo,
   useMemo,

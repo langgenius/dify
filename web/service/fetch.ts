@@ -38,6 +38,33 @@ export type ResponseError = {
   status: number
 }
 
+export type ResponseErrorPayload = Partial<ResponseError> & {
+  error?: unknown
+}
+
+type JsonReadableResponse = {
+  json: () => Promise<unknown>
+  bodyUsed?: boolean
+}
+
+export const parseResponseError = async (error: unknown): Promise<ResponseErrorPayload | null> => {
+  if (!(typeof error === 'object' && error !== null && 'json' in error && typeof error.json === 'function'))
+    return null
+
+  const readableError = error as JsonReadableResponse
+
+  if (readableError.bodyUsed)
+    return null
+
+  try {
+    const response: JsonReadableResponse = error instanceof Response ? error.clone() : readableError
+    return await response.json() as ResponseErrorPayload
+  }
+  catch {
+    return null
+  }
+}
+
 const createResponseFromHTTPError = (error: HTTPError): Response => {
   const headers = new Headers(error.response.headers)
   headers.delete('content-length')

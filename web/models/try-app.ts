@@ -1,4 +1,4 @@
-import type { Viewport } from 'reactflow'
+import type { Viewport } from '@xyflow/react'
 import type { Edge, Node } from '@/app/components/workflow/types'
 import type { SiteInfo } from '@/models/share'
 import type { AppModeEnum, ModelConfig } from '@/types/app'

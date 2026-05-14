@@ -8,7 +8,7 @@ import { useWorkflowSearch } from '../use-workflow-search'
 const mockHandleNodeSelect = vi.hoisted(() => vi.fn())
 const runtimeNodes = vi.hoisted(() => [] as Node[])
 
-vi.mock('reactflow', () => ({
+vi.mock('@xyflow/react', () => ({
   useNodes: () => runtimeNodes,
 }))
 

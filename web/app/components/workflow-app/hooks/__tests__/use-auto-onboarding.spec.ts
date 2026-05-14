@@ -11,10 +11,10 @@ const mockSetHasShownOnboarding = vi.fn()
 const mockSetShouldAutoOpenStartNodeSelector = vi.fn()
 const mockSetHasSelectedStartNode = vi.fn()
 
-vi.mock('reactflow', () => ({
+vi.mock('@xyflow/react', () => ({
   useStoreApi: () => ({
     getState: () => ({
-      getNodes: mockGetNodes,
+      nodes: mockGetNodes(),
     }),
   }),
 }))

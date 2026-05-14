@@ -21,16 +21,44 @@ import {
   getRestrictedIterationPosition,
 } from './use-interactions.helpers'
 
+type NodeSize = {
+  width: number
+  height: number
+}
+
+type NodeSizeOverrides = Record<string, NodeSize>
+
+const applyNodeSizeOverrides = (nodes: Node[], nodeSizeOverrides?: NodeSizeOverrides) => {
+  if (!nodeSizeOverrides)
+    return nodes
+
+  return nodes.map((node) => {
+    const size = nodeSizeOverrides[node.id]
+    if (!size)
+      return node
+
+    return {
+      ...node,
+      measured: {
+        ...node.measured,
+        width: size.width,
+        height: size.height,
+      },
+    }
+  })
+}
+
 export const useNodeIterationInteractions = () => {
   const { t } = useTranslation()
   const { nodesMap: nodesMetaDataMap } = useNodesMetaData()
   const collaborativeWorkflow = useCollaborativeWorkflow()
 
-  const handleNodeIterationRerender = useCallback((nodeId: string) => {
+  const handleNodeIterationRerender = useCallback((nodeId: string, nodeSizeOverrides?: NodeSizeOverrides) => {
     const { nodes, setNodes } = collaborativeWorkflow.getState()
 
-    const currentNode = nodes.find(n => n.id === nodeId)!
-    const childrenNodes = nodes.filter(n => n.parentId === nodeId)
+    const layoutNodes = applyNodeSizeOverrides(nodes, nodeSizeOverrides)
+    const currentNode = layoutNodes.find(n => n.id === nodeId)!
+    const childrenNodes = layoutNodes.filter(n => n.parentId === nodeId)
     const resize = getIterationContainerResize(currentNode, getIterationContainerBounds(childrenNodes))
 
     if (resize.width || resize.height) {
@@ -61,13 +89,13 @@ export const useNodeIterationInteractions = () => {
     }
   }, [collaborativeWorkflow])
 
-  const handleNodeIterationChildSizeChange = useCallback((nodeId: string) => {
+  const handleNodeIterationChildSizeChange = useCallback((nodeId: string, size?: NodeSize) => {
     const { nodes } = collaborativeWorkflow.getState()
     const currentNode = nodes.find(n => n.id === nodeId)!
     const parentId = currentNode.parentId
 
     if (parentId)
-      handleNodeIterationRerender(parentId)
+      handleNodeIterationRerender(parentId, size ? { [nodeId]: size } : undefined)
   }, [collaborativeWorkflow, handleNodeIterationRerender])
 
   const handleNodeIterationChildrenCopy = useCallback((nodeId: string, newNodeId: string, idMapping: Record<string, string>) => {

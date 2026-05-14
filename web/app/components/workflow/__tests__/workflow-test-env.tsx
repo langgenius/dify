@@ -4,19 +4,28 @@
  * ## Quick start (hook)
  *
  * ```ts
- * import { resetReactFlowMockState, rfState } from '../../__tests__/reactflow-mock-state'
+ * import {
+  resetReactFlowMockState,
+  rfState } from '../../__tests__/reactflow-mock-state'
  * import { renderWorkflowHook } from '../../__tests__/workflow-test-env'
  *
- * // Mock ReactFlow (one line, only needed when the hook imports reactflow)
- * vi.mock('reactflow', async () =>
+ * // Mock ReactFlow (one line,
+  only needed when the hook imports /react)
+ * vi.mock('@xyflow/react',
+  async () =>
  *   (await import('../../__tests__/reactflow-mock-state')).createReactFlowModuleMock(),
  * )
  *
- * it('example', () => {
+ * it('example',
+  () => {
  *   resetReactFlowMockState()
- *   rfState.nodes = [{ id: 'n1', position: { x: 0, y: 0 }, data: {} }]
+ *   rfState.nodes = [{ id: 'n1',
+  position: { x: 0,
+  y: 0 },
+  data: {} }]
  *
- *   const { result, store } = renderWorkflowHook(
+ *   const { result,
+  store } = renderWorkflowHook(
  *     () => useMyHook(),
  *     {
  *       initialStoreState: { workflowRunningData: {...} },
@@ -35,8 +44,10 @@
  * ```ts
  * import { renderWorkflowComponent } from '../../__tests__/workflow-test-env'
  *
- * it('renders correctly', () => {
- *   const { getByText, store } = renderWorkflowComponent(
+ * it('renders correctly',
+  () => {
+ *   const { getByText,
+  store } = renderWorkflowComponent(
  *     <MyComponent someProp="value" />,
  *     { initialStoreState: { showConfirm: undefined } },
  *   )
@@ -50,11 +61,16 @@
  * ```ts
  * import { renderNodeComponent } from '../../__tests__/workflow-test-env'
  *
- * it('renders node', () => {
- *   const { getByText, store } = renderNodeComponent(
+ * it('renders node',
+  () => {
+ *   const { getByText,
+  store } = renderNodeComponent(
  *     MyNodeComponent,
- *     { type: BlockEnum.Code, title: 'My Node', desc: '' },
- *     { nodeId: 'n-1', initialStoreState: { ... } },
+ *     { type: BlockEnum.Code,
+  title: 'My Node',
+  desc: '' },
+ *     { nodeId: 'n-1',
+  initialStoreState: { ... } },
  *   )
  *   expect(getByText('My Node')).toBeInTheDocument()
  * })
@@ -67,8 +83,8 @@ import type { WorkflowHistoryState } from '../store/workflow/history-slice'
 import type { Edge, Node, WorkflowRunningData } from '../types'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, renderHook } from '@testing-library/react'
+import { ReactFlow, ReactFlowProvider } from '@xyflow/react'
 import * as React from 'react'
-import ReactFlow, { ReactFlowProvider } from 'reactflow'
 import { seedSystemFeatures } from '@/__tests__/utils/mock-system-features'
 import { WorkflowContext } from '../context'
 import { HooksStoreContext } from '../hooks-store/provider'

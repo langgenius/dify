@@ -21,7 +21,7 @@ vi.mock('ahooks', () => ({
   useEventListener: (...args: unknown[]) => mockUseEventListener(...args),
 }))
 
-vi.mock('reactflow', () => ({
+vi.mock('@xyflow/react', () => ({
   useStoreApi: () => mockUseStoreApi(),
   useReactFlow: () => mockUseReactFlow(),
   useViewport: () => mockUseViewport(),
@@ -104,7 +104,7 @@ describe('CandidateNodeMain', () => {
     })
     mockUseStoreApi.mockReturnValue({
       getState: () => ({
-        getNodes: () => nodes,
+        nodes,
         setNodes: mockSetNodes,
       }),
     })

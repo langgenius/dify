@@ -1,7 +1,7 @@
 import type { DeliveryMethod, HumanInputNodeType, UserAction } from '../types'
+import { useUpdateNodeInternals } from '@xyflow/react'
 import { produce } from 'immer'
 import { useState } from 'react'
-import { useUpdateNodeInternals } from 'reactflow'
 import {
   useNodesReadOnly,
 } from '@/app/components/workflow/hooks'

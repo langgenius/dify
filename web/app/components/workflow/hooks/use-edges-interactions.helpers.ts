@@ -1,5 +1,5 @@
-import type { Edge, EdgeChange } from 'reactflow'
-import type { Node } from '../types'
+import type { EdgeChange } from '@xyflow/react'
+import type { Edge, Node } from '../types'
 import { produce } from 'immer'
 import { getNodesConnectedSourceOrTargetHandleIdsMap } from '../utils'
 

@@ -1,5 +1,5 @@
 import { act, waitFor } from '@testing-library/react'
-import { useNodes } from 'reactflow'
+import { useWorkflowFlowNodes } from '@/app/components/workflow/hooks/use-workflow-reactflow'
 import { createNode } from '../../__tests__/fixtures'
 import { renderWorkflowFlowHook } from '../../__tests__/workflow-test-env'
 import { NodeRunningStatus } from '../../types'
@@ -22,7 +22,7 @@ const createFlowNodes = () => [
 const renderNodesInteractionsHook = () =>
   renderWorkflowFlowHook(() => ({
     ...useNodesInteractionsWithoutSync(),
-    nodes: useNodes(),
+    nodes: useWorkflowFlowNodes(),
   }), {
     nodes: createFlowNodes(),
     edges: [],

@@ -1,9 +1,9 @@
 import type { CustomRunFormProps, DataSourceNodeType } from '../types'
 import type { NodeRunResult } from '@/types/workflow'
 import { useEffect, useMemo, useRef } from 'react'
-import { useStoreApi } from 'reactflow'
 import { useShallow } from 'zustand/react/shallow'
 import { useDataSourceStore, useDataSourceStoreWithSelector } from '@/app/components/datasets/documents/create-from-pipeline/data-source/store'
+import { useWorkflowStoreApi } from '@/app/components/workflow/hooks/use-workflow-reactflow'
 import { DatasourceType } from '@/models/pipeline'
 import { useDatasourceSingleRun } from '@/service/use-pipeline'
 import { useInvalidLastRun } from '@/service/use-workflow'
@@ -25,7 +25,7 @@ const useBeforeRunForm = ({
   onSuccess,
   appendNodeInspectVars,
 }: CustomRunFormProps) => {
-  const store = useStoreApi()
+  const store = useWorkflowStoreApi()
   const dataSourceStore = useDataSourceStore()
   const isPausedRef = useRef(isPaused)
   const { handleNodeDataUpdate } = useNodeDataUpdate()
@@ -92,8 +92,7 @@ const useBeforeRunForm = ({
 
     // run fail may also update the inspect vars when the node set the error default output.
     const vars = await fetchNodeInspectVars(FlowType.ragPipeline, flowId, nodeId)
-    const { getNodes } = store.getState()
-    const nodes = getNodes()
+    const { nodes } = store.getState()
     appendNodeInspectVars(nodeId, vars, nodes)
     if (data?.status === NodeRunningStatus.Succeeded)
       onSuccess()

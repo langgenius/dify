@@ -1,4 +1,5 @@
 import type { StartNodeType } from '@/app/components/workflow/nodes/start/types'
+import type { Edge } from '@/app/components/workflow/types'
 import { useTranslation } from 'react-i18next'
 import {
   NODE_WIDTH_X_OFFSET,
@@ -56,20 +57,28 @@ export const useWorkflowTemplate = () => {
       },
     } as any)
 
-    const startToLlmEdge = {
+    const startToLlmEdge: Edge = {
       id: `${startNode.id}-${llmNode.id}`,
       source: startNode.id,
       sourceHandle: 'source',
       target: llmNode.id,
       targetHandle: 'target',
+      data: {
+        sourceType: startDefault.metaData.type,
+        targetType: llmDefault.metaData.type,
+      },
     }
 
-    const llmToAnswerEdge = {
+    const llmToAnswerEdge: Edge = {
       id: `${llmNode.id}-${answerNode.id}`,
       source: llmNode.id,
       sourceHandle: 'source',
       target: answerNode.id,
       targetHandle: 'target',
+      data: {
+        sourceType: llmDefault.metaData.type,
+        targetType: answerDefault.metaData.type,
+      },
     }
 
     return {

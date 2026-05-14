@@ -1,5 +1,6 @@
+import type { Viewport } from '@xyflow/react'
 import type { PropsWithChildren } from 'react'
-import type { Edge, Node, Viewport } from 'reactflow'
+import type { Edge, Node } from '@/app/components/workflow/types'
 import { cleanup, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import RagPipelineMain from '../rag-pipeline-main'

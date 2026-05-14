@@ -27,7 +27,7 @@ const {
 let workflowReadOnly = false
 let collaborationEnabled = true
 
-vi.mock('reactflow', () => ({
+vi.mock('@xyflow/react', () => ({
   useReactFlow: () => ({
     zoomIn: mockZoomIn,
     zoomOut: mockZoomOut,

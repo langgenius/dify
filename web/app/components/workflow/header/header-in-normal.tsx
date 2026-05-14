@@ -3,8 +3,8 @@ import type { RunAndHistoryProps } from './run-and-history'
 import {
   useCallback,
 } from 'react'
-import { useNodes } from 'reactflow'
 import { useInputFieldPanel } from '@/app/components/rag-pipeline/hooks'
+import { useWorkflowFlowNodes } from '@/app/components/workflow/hooks/use-workflow-reactflow'
 import Divider from '../../base/divider'
 import {
   useNodesInteractions,
@@ -44,7 +44,7 @@ const HeaderInNormal = ({
   const setShowVariableInspectPanel = useStore(s => s.setShowVariableInspectPanel)
   const setShowChatVariablePanel = useStore(s => s.setShowChatVariablePanel)
   const setShowGlobalVariablePanel = useStore(s => s.setShowGlobalVariablePanel)
-  const nodes = useNodes<StartNodeType>()
+  const nodes = useWorkflowFlowNodes<StartNodeType>()
   const selectedNode = nodes.find(node => node.data.selected)
   const { handleBackupDraft } = useWorkflowRun()
   const { closeAllInputFieldPanels } = useInputFieldPanel()

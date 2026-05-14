@@ -1,11 +1,17 @@
+import type { OnSelectionChangeFunc,
+} from '@xyflow/react'
 import type * as React from 'react'
-import type { OnSelectionChangeParams } from 'reactflow'
-import { act, waitFor } from '@testing-library/react'
-import { useEdges, useNodes, useStoreApi } from 'reactflow'
+import {
+  act,
+  waitFor,
+} from '@testing-library/react'
+import { useWorkflowFlowEdges, useWorkflowFlowNodes, useWorkflowStoreApi } from '@/app/components/workflow/hooks/use-workflow-reactflow'
 import { createEdge, createNode } from '../../__tests__/fixtures'
 import { renderWorkflowFlowHook } from '../../__tests__/workflow-test-env'
 import { collaborationManager } from '../../collaboration/core/collaboration-manager'
 import { useSelectionInteractions } from '../use-selection-interactions'
+
+type OnSelectionChangeParams = Parameters<OnSelectionChangeFunc>[0]
 
 type BundledState = {
   _isBundled?: boolean
@@ -32,9 +38,9 @@ function createFlowEdges() {
 function renderSelectionInteractions(initialStoreState?: Record<string, unknown>) {
   return renderWorkflowFlowHook(() => ({
     ...useSelectionInteractions(),
-    nodes: useNodes(),
-    edges: useEdges(),
-    reactFlowStore: useStoreApi(),
+    nodes: useWorkflowFlowNodes(),
+    edges: useWorkflowFlowEdges(),
+    reactFlowStore: useWorkflowStoreApi(),
   }), {
     nodes: createFlowNodes(),
     edges: createFlowEdges(),

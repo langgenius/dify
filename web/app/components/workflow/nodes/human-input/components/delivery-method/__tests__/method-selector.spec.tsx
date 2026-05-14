@@ -17,6 +17,10 @@ vi.mock('@/app/components/workflow/store/workflow/use-nodes', () => ({
   default: () => mockUseWorkflowNodes(),
 }))
 
+vi.mock('@/app/components/workflow/hooks/use-workflow-reactflow', () => ({
+  useWorkflowFlowNodes: () => mockUseWorkflowNodes(),
+}))
+
 vi.mock('@/context/provider-context', () => ({
   useProviderContextSelector: (selector: (state: { humanInputEmailDeliveryEnabled: boolean }) => boolean) =>
     mockUseProviderContextSelector(selector),

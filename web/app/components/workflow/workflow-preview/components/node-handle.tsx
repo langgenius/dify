@@ -1,12 +1,14 @@
 import type { Node } from '@/app/components/workflow/types'
-import { cn } from '@langgenius/dify-ui/cn'
 import {
-  memo,
-} from 'react'
+  cn,
+} from '@langgenius/dify-ui/cn'
 import {
   Handle,
   Position,
-} from 'reactflow'
+} from '@xyflow/react'
+import {
+  memo,
+} from 'react'
 import {
   BlockEnum,
 } from '@/app/components/workflow/types'
@@ -30,7 +32,7 @@ export const NodeTargetHandle = memo(({
         type="target"
         position={Position.Left}
         className={cn(
-          'z-1 h-4! w-4! rounded-none! border-none! bg-transparent! outline-hidden!',
+          'workflow-node-handle z-1 h-4! w-4! rounded-none! border-none! bg-transparent! outline-hidden!',
           'after:absolute after:top-1 after:left-1.5 after:h-2 after:w-0.5 after:bg-workflow-link-line-handle',
           'transition-all hover:scale-125',
           !connected && 'after:opacity-0',
@@ -60,7 +62,7 @@ export const NodeSourceHandle = memo(({
       type="source"
       position={Position.Right}
       className={cn(
-        'group/handle z-1 h-4! w-4! rounded-none! border-none! bg-transparent! outline-hidden!',
+        'workflow-node-handle group/handle z-1 h-4! w-4! rounded-none! border-none! bg-transparent! outline-hidden!',
         'after:absolute after:top-1 after:right-1.5 after:h-2 after:w-0.5 after:bg-workflow-link-line-handle',
         'transition-all hover:scale-125',
         !connected && 'after:opacity-0',

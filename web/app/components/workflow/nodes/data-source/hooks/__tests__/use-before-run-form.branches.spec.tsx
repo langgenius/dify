@@ -1,7 +1,10 @@
 import type { CustomRunFormProps, DataSourceNodeType } from '../../types'
 import type { NodeRunResult, VarInInspect } from '@/types/workflow'
-import { act, renderHook } from '@testing-library/react'
-import { useStoreApi } from 'reactflow'
+import {
+  act,
+  renderHook,
+} from '@testing-library/react'
+import { useStoreApi } from '@xyflow/react'
 import { useDataSourceStore, useDataSourceStoreWithSelector } from '@/app/components/datasets/documents/create-from-pipeline/data-source/store'
 import { BlockEnum, NodeRunningStatus } from '@/app/components/workflow/types'
 import { DatasourceType } from '@/models/pipeline'
@@ -47,8 +50,8 @@ const mockFetchNodeInspectVars = vi.hoisted(() => vi.fn())
 const mockUseDataSourceStore = vi.hoisted(() => vi.fn())
 const mockUseDataSourceStoreWithSelector = vi.hoisted(() => vi.fn())
 
-vi.mock('reactflow', async () => {
-  const actual = await vi.importActual<typeof import('reactflow')>('reactflow')
+vi.mock('@xyflow/react', async () => {
+  const actual = await vi.importActual<typeof import('@xyflow/react')>('@xyflow/react')
   return {
     ...actual,
     useStoreApi: vi.fn(),
@@ -137,9 +140,9 @@ describe('data-source/hooks/use-before-run-form branches', () => {
 
     mockUseStoreApi.mockReturnValue({
       getState: () => ({
-        getNodes: () => [{ id: 'data-source-node', data: { title: 'Datasource' } }],
+        nodes: [{ id: 'data-source-node', data: { title: 'Datasource' } }],
       }),
-    } as ReturnType<typeof useStoreApi>)
+    } as unknown as ReturnType<typeof useStoreApi>)
 
     mockUseNodeDataUpdateHook.mockReturnValue({
       handleNodeDataUpdate: mockHandleNodeDataUpdate,

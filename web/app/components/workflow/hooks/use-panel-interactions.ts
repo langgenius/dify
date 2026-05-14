@@ -1,4 +1,4 @@
-import type { MouseEvent } from 'react'
+import type { MouseEvent as ReactMouseEvent } from 'react'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useCallback } from 'react'
 import { systemFeaturesQueryOptions } from '@/service/system-features'
@@ -12,7 +12,7 @@ export const usePanelInteractions = () => {
     select: s => s.app_dsl_version,
   })
 
-  const handlePaneContextMenu = useCallback((e: MouseEvent) => {
+  const handlePaneContextMenu = useCallback((e: MouseEvent | ReactMouseEvent<Element, MouseEvent>) => {
     e.preventDefault()
     // Sync the latest system clipboard into the workflow store before opening
     // the pane menu because "Paste here" is disabled when no compatible node

@@ -6,7 +6,7 @@ import UserInput from '../user-input'
 
 const runtimeNodes = vi.hoisted(() => [] as Array<{ data: StartNodeType }>)
 
-vi.mock('reactflow', () => ({
+vi.mock('@xyflow/react', () => ({
   useNodes: () => runtimeNodes,
 }))
 

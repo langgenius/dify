@@ -1,5 +1,4 @@
 import type { ReactNode } from 'react'
-import type { Node } from 'reactflow'
 import type {
   CredentialFormSchema,
   CredentialFormSchemaNumberInput,
@@ -9,9 +8,7 @@ import type {
   CredentialFormSchemaTextInput,
   FormValue,
 } from '../declarations'
-import type {
-  NodeOutPutVar,
-} from '@/app/components/workflow/types'
+import type { Node, NodeOutPutVar } from '@/app/components/workflow/types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Select, SelectContent, SelectItem, SelectItemIndicator, SelectItemText, SelectTrigger } from '@langgenius/dify-ui/select'
 import { useCallback, useState } from 'react'

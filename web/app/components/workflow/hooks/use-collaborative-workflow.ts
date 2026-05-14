@@ -1,6 +1,6 @@
 import type { Edge, Node } from '../types'
 import { useCallback, useMemo } from 'react'
-import { useStoreApi } from 'reactflow'
+import { useWorkflowStoreApi } from '@/app/components/workflow/hooks/use-workflow-reactflow'
 import { collaborationManager } from '../collaboration/core/collaboration-manager'
 
 const sanitizeNodeForBroadcast = (node: Node): Node => {
@@ -36,15 +36,14 @@ const sanitizeEdgeForBroadcast = (edge: Edge): Edge => {
 }
 
 export const useCollaborativeWorkflow = () => {
-  const store = useStoreApi()
+  const store = useWorkflowStoreApi()
   const { setNodes: collabSetNodes, setEdges: collabSetEdges } = collaborationManager
 
   const setNodes = useCallback((newNodes: Node[], shouldBroadcast: boolean = true, source = 'use-collaborative-workflow:setNodes') => {
-    const { getNodes, setNodes: reactFlowSetNodes } = store.getState()
+    const { nodes, setNodes: reactFlowSetNodes } = store.getState()
     if (shouldBroadcast) {
-      const oldNodes = getNodes()
       collabSetNodes(
-        oldNodes.map(sanitizeNodeForBroadcast),
+        nodes.map(sanitizeNodeForBroadcast),
         newNodes.map(sanitizeNodeForBroadcast),
         source,
       )
@@ -68,7 +67,7 @@ export const useCollaborativeWorkflow = () => {
     const state = store.getState()
     return {
 
-      nodes: state.getNodes(),
+      nodes: state.nodes,
       edges: state.edges,
 
       setNodes,

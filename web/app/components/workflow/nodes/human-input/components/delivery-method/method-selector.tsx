@@ -1,4 +1,5 @@
 'use client'
+
 import type { FC } from 'react'
 import type { DeliveryMethod } from '../../types'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -20,7 +21,7 @@ import { v4 as uuid4 } from 'uuid'
 import ActionButton from '@/app/components/base/action-button'
 import Badge from '@/app/components/base/badge'
 import { Slack, Teams } from '@/app/components/base/icons/src/public/other'
-import useWorkflowNodes from '@/app/components/workflow/store/workflow/use-nodes'
+import { useWorkflowFlowNodes } from '@/app/components/workflow/hooks/use-workflow-reactflow'
 import { isTriggerWorkflow } from '@/app/components/workflow/utils/workflow-entry'
 import { IS_CE_EDITION } from '@/config'
 import { useProviderContextSelector } from '@/context/provider-context'
@@ -42,7 +43,7 @@ const MethodSelector: FC<MethodSelectorProps> = ({
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
   const humanInputEmailDeliveryEnabled = useProviderContextSelector(s => s.humanInputEmailDeliveryEnabled)
-  const nodes = useWorkflowNodes()
+  const nodes = useWorkflowFlowNodes()
 
   const webAppDeliveryInfo = useMemo(() => {
     const isTriggerMode = isTriggerWorkflow(nodes)

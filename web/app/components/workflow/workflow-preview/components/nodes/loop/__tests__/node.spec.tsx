@@ -3,7 +3,7 @@ import LoopNode from '../node'
 
 const mockHandleNodeLoopRerender = vi.hoisted(() => vi.fn())
 
-vi.mock('reactflow', () => ({
+vi.mock('@xyflow/react', () => ({
   Background: (props: {
     id: string
   }) => <div data-testid="background" data-id={props.id} />,

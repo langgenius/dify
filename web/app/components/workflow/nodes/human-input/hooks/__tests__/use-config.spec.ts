@@ -9,7 +9,7 @@ const mockUseEdgesInteractions = vi.hoisted(() => vi.fn())
 const mockUseNodeCrud = vi.hoisted(() => vi.fn())
 const mockUseFormContent = vi.hoisted(() => vi.fn())
 
-vi.mock('reactflow', () => ({
+vi.mock('@xyflow/react', () => ({
   useUpdateNodeInternals: () => mockUseUpdateNodeInternals(),
 }))
 

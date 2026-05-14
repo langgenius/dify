@@ -1,26 +1,28 @@
-import type { MouseEvent } from 'react'
 import type {
   OnSelectionChangeFunc,
-} from 'reactflow'
+} from '@xyflow/react'
+import type { MouseEvent } from 'react'
 import type { Node } from '../types'
-import { produce } from 'immer'
+import {
+  produce,
+} from 'immer'
 import {
   useCallback,
 } from 'react'
-import { useStoreApi } from 'reactflow'
+import { useWorkflowStoreApi } from '@/app/components/workflow/hooks/use-workflow-reactflow'
 import { useWorkflowStore } from '../store'
 import { useCollaborativeWorkflow } from './use-collaborative-workflow'
 import { useNodesReadOnly } from './use-workflow'
 
 export const useSelectionInteractions = () => {
-  const store = useStoreApi()
+  const store = useWorkflowStoreApi()
   const workflowStore = useWorkflowStore()
   const collaborativeWorkflow = useCollaborativeWorkflow()
   const { getNodesReadOnly } = useNodesReadOnly()
 
   const handleSelectionStart = useCallback(() => {
     const {
-      getNodes,
+      nodes,
       setNodes,
       edges,
       setEdges,
@@ -28,7 +30,6 @@ export const useSelectionInteractions = () => {
     } = store.getState()
 
     if (!userSelectionRect?.width || !userSelectionRect?.height) {
-      const nodes = getNodes()
       const newNodes = produce(nodes, (draft) => {
         draft.forEach((node) => {
           if (node.data._isBundled)
@@ -48,14 +49,12 @@ export const useSelectionInteractions = () => {
 
   const handleSelectionChange = useCallback<OnSelectionChangeFunc>(({ nodes: nodesInSelection, edges: edgesInSelection }) => {
     const {
-      getNodes,
+      nodes,
       setNodes,
       edges,
       setEdges,
       userSelectionRect,
     } = store.getState()
-
-    const nodes = getNodes()
 
     if (!userSelectionRect?.width || !userSelectionRect?.height)
       return
@@ -106,7 +105,7 @@ export const useSelectionInteractions = () => {
 
   const handleSelectionCancel = useCallback(() => {
     const {
-      getNodes,
+      nodes,
       setNodes,
       edges,
       setEdges,
@@ -117,7 +116,6 @@ export const useSelectionInteractions = () => {
       userSelectionActive: true,
     })
 
-    const nodes = getNodes()
     const newNodes = produce(nodes, (draft) => {
       draft.forEach((node) => {
         if (node.data._isBundled)

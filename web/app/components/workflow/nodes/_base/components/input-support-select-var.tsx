@@ -15,6 +15,7 @@ import { Variable02 } from '@/app/components/base/icons/src/vender/solid/develop
 import PromptEditor from '@/app/components/base/prompt-editor'
 import { useStore } from '@/app/components/workflow/store'
 import { BlockEnum } from '@/app/components/workflow/types'
+import { getNodeDimensions } from '@/app/components/workflow/utils/node'
 
 type Props = {
   instanceId?: string
@@ -92,11 +93,12 @@ const Editor: FC<Props> = ({
             show: true,
             variables: nodesOutputVars || [],
             workflowNodesMap: availableNodes.reduce((acc, node) => {
+              const { width, height } = getNodeDimensions(node)
               acc[node.id] = {
                 title: node.data.title,
                 type: node.data.type,
-                width: node.width,
-                height: node.height,
+                width,
+                height,
                 position: node.position,
               }
               if (node.data.type === BlockEnum.Start) {

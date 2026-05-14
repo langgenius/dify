@@ -1,5 +1,5 @@
-import type { NodeProps } from 'reactflow'
 import type { Node } from '../types'
+import type { NodeProps } from '@/app/components/workflow/types'
 import {
   memo,
   useMemo,

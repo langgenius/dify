@@ -1,10 +1,11 @@
 'use client'
+
 import type { FC } from 'react'
 import type { HoverPopup } from './var-reference-picker.trigger'
 import type { CredentialFormSchema, CredentialFormSchemaSelect, FormOption } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { Tool } from '@/app/components/tools/types'
 import type { TriggerWithProvider } from '@/app/components/workflow/block-selector/types'
-import type { CommonNodeType, Node, NodeOutPutVar, ToolWithProvider, ValueSelector, Var } from '@/app/components/workflow/types'
+import type { Node, NodeOutPutVar, ToolWithProvider, ValueSelector, Var } from '@/app/components/workflow/types'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   Popover,
@@ -16,21 +17,25 @@ import { produce } from 'immer'
 import * as React from 'react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import {
-  useNodes,
-  useReactFlow,
-  useStoreApi,
-} from 'reactflow'
 import { FormTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import {
   useIsChatMode,
   useWorkflowVariables,
 } from '@/app/components/workflow/hooks'
+import {
+  useWorkflowFlowNodes,
+  useWorkflowReactFlow,
+  useWorkflowStoreApi,
+} from '@/app/components/workflow/hooks/use-workflow-reactflow'
 // import type { BaseResource, BaseResourceProvider } from '@/app/components/workflow/nodes/_base/types'
 import { VarType as VarKindType } from '@/app/components/workflow/nodes/tool/types'
 import { useStore as useWorkflowStore } from '@/app/components/workflow/store'
 import { BlockEnum } from '@/app/components/workflow/types'
-import { isExceptionVariable } from '@/app/components/workflow/utils'
+import {
+  getNodeHeight,
+  getNodeWidth,
+  isExceptionVariable,
+} from '@/app/components/workflow/utils'
 import { useFetchDynamicOptions } from '@/service/use-plugins'
 import useAvailableVarList from '../../hooks/use-available-var-list'
 import { removeFileVars, varTypeToStructType } from './utils'
@@ -121,8 +126,8 @@ const VarReferencePicker: FC<Props> = ({
   preferSchemaType,
 }) => {
   const { t } = useTranslation()
-  const store = useStoreApi()
-  const nodes = useNodes<CommonNodeType>()
+  const store = useWorkflowStoreApi()
+  const nodes = useWorkflowFlowNodes()
   const isChatMode = useIsChatMode()
   const isWorkflowDataLoaded = useWorkflowStore(s => s.isWorkflowDataLoaded)
   const { getCurrentVariableType } = useWorkflowVariables()
@@ -132,7 +137,7 @@ const VarReferencePicker: FC<Props> = ({
     filterVar,
   })
 
-  const reactflow = useReactFlow()
+  const reactflow = useWorkflowReactFlow()
 
   const startNode = availableNodes.find((node: Node) => {
     return node.data.type === BlockEnum.Start
@@ -253,8 +258,8 @@ const VarReferencePicker: FC<Props> = ({
     const zoom = transform[2]
     const position = currentNode!.position
     setViewport({
-      x: (clientWidth - 400 - currentNode!.width! * zoom) / 2 - position.x * zoom,
-      y: (clientHeight - currentNode!.height! * zoom) / 2 - position.y * zoom,
+      x: (clientWidth - 400 - getNodeWidth(currentNode) * zoom) / 2 - position.x * zoom,
+      y: (clientHeight - getNodeHeight(currentNode) * zoom) / 2 - position.y * zoom,
       zoom: transform[2],
     })
   }, [availableNodes, reactflow, store])

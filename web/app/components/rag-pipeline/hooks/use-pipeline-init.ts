@@ -8,6 +8,7 @@ import {
   useWorkflowStore,
 } from '@/app/components/workflow/store'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
+import { parseResponseError } from '@/service/fetch'
 import {
   fetchWorkflowDraft,
   syncWorkflowDraft,
@@ -57,28 +58,25 @@ export const usePipelineInit = () => {
       setIsLoading(false)
     }
     catch (error: any) {
-      if (error && error.json && !error.bodyUsed && datasetId) {
-        error.json().then((err: any) => {
-          if (err.code === 'draft_workflow_not_exist') {
-            workflowStore.setState({
-              notInitialWorkflow: true,
-              shouldAutoOpenStartNodeSelector: true,
-            })
-            syncWorkflowDraft({
-              url: `/rag/pipelines/${datasetId}/workflows/draft`,
-              params: {
-                graph: {
-                  nodes: nodesTemplate,
-                  edges: edgesTemplate,
-                },
-                environment_variables: [],
-              },
-            }).then((res) => {
-              const { setDraftUpdatedAt } = workflowStore.getState()
-              setDraftUpdatedAt(res.updated_at)
-              handleGetInitialWorkflowData()
-            })
-          }
+      const err = await parseResponseError(error)
+      if (err?.code === 'draft_workflow_not_exist' && datasetId) {
+        workflowStore.setState({
+          notInitialWorkflow: true,
+          shouldAutoOpenStartNodeSelector: true,
+        })
+        syncWorkflowDraft({
+          url: `/rag/pipelines/${datasetId}/workflows/draft`,
+          params: {
+            graph: {
+              nodes: nodesTemplate,
+              edges: edgesTemplate,
+            },
+            environment_variables: [],
+          },
+        }).then((res) => {
+          const { setDraftUpdatedAt } = workflowStore.getState()
+          setDraftUpdatedAt(res.updated_at)
+          handleGetInitialWorkflowData()
         })
       }
     }

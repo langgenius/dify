@@ -1,6 +1,6 @@
 import type { CommonEdgeType, CommonNodeType, Edge, Node, WorkflowRunningData } from '../types'
 import type { NodeTracing } from '@/types/workflow'
-import { Position } from 'reactflow'
+import { Position } from '@xyflow/react'
 import { CUSTOM_NODE } from '../constants'
 import { BlockEnum, NodeRunningStatus } from '../types'
 

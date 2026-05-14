@@ -1,3 +1,27 @@
+#workflow-container .react-flow {
+  --xy-background-color: var(--color-workflow-canvas-workflow-bg);
+  --xy-background-pattern-color: var(--color-workflow-canvas-workflow-dot-color);
+  --xy-edge-stroke: var(--color-workflow-link-line-normal);
+  --xy-edge-stroke-selected: var(--color-workflow-link-line-active);
+  --xy-connectionline-stroke: var(--color-workflow-link-line-handle);
+  --xy-handle-background-color: var(--color-workflow-link-line-handle);
+  --xy-handle-border-color: var(--color-components-panel-bg);
+  --xy-minimap-background-color: var(--color-components-panel-bg);
+  --xy-minimap-mask-background-color: var(--color-workflow-minimap-bg);
+  --xy-minimap-node-background-color: var(--color-workflow-minimap-block);
+  --xy-minimap-node-stroke-color: var(--color-workflow-link-line-normal);
+  --xy-node-color: var(--color-text-primary);
+  --xy-node-background-color: var(--color-components-panel-bg);
+  --xy-node-border: 1px solid var(--color-components-panel-border);
+  --xy-node-border-radius: 8px;
+  --xy-selection-background-color: color-mix(in srgb, var(--color-workflow-link-line-active) 8%, transparent);
+  --xy-selection-border: 1px solid var(--color-workflow-link-line-active);
+  --xy-edge-label-background-color: var(--color-components-panel-bg);
+  --xy-edge-label-color: var(--color-text-secondary);
+  --xy-resize-background-color: var(--color-workflow-link-line-active);
+  --xy-attribution-background-color: transparent;
+}
+
 .workflow-panel-animation .react-flow__viewport {
   transition: transform 0.3s ease-in-out;
 }
@@ -13,14 +37,28 @@
 }
 
 #workflow-container .react-flow__nodesselection-rect {
-  border: 1px solid #528BFF;
-  background: rgba(21, 94, 239, 0.05);
+  border: var(--xy-selection-border);
+  background: var(--xy-selection-background-color);
   cursor: move;
 }
 
 #workflow-container .react-flow__selection {
-  border: 1px solid #528BFF;
-  background: rgba(21, 94, 239, 0.05);
+  border: var(--xy-selection-border);
+  background: var(--xy-selection-background-color);
+}
+
+#workflow-container .workflow-node-handle.react-flow__handle-left,
+#workflow-container .workflow-node-handle.react-flow__handle-right {
+  transform: translateY(-50%);
+}
+
+#workflow-container .react-flow__minimap {
+  color: var(--color-text-secondary);
+}
+
+#workflow-container .react-flow__minimap-node.workflow-minimap-node-selected {
+  stroke: var(--color-workflow-link-line-active);
+  stroke-width: 2;
 }
 
 #workflow-container .react-flow__node-custom-note {
