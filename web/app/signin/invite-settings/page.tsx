@@ -11,6 +11,7 @@ import { useTranslation } from 'react-i18next'
 import Input from '@/app/components/base/input'
 import Loading from '@/app/components/base/loading'
 import { LICENSE_LINK } from '@/constants/link'
+import { useLocale } from '@/context/i18n'
 import { setLocaleOnClient } from '@/i18n-config'
 import { languages, LanguagesSupported } from '@/i18n-config/language'
 import Link from '@/next/link'
@@ -43,14 +44,22 @@ const TIMEZONE_OPTIONS: TimezoneSelectOption[] = timezones.map(item => ({
   name: item.name,
 }))
 
+const getInitialLanguage = (locale: Locale): Locale => {
+  if (LANGUAGE_OPTIONS.some(item => item.value === locale))
+    return locale
+
+  return LanguagesSupported[0]!
+}
+
 export default function InviteSettingsPage() {
   const { t } = useTranslation()
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const router = useRouter()
   const searchParams = useSearchParams()
   const token = decodeURIComponent(searchParams.get('invite_token') as string)
+  const locale = useLocale()
   const [name, setName] = useState('')
-  const [language, setLanguage] = useState(LanguagesSupported[0])
+  const [language, setLanguage] = useState(() => getInitialLanguage(locale))
   const [timezone, setTimezone] = useState(() => getBrowserTimezone() || 'America/Los_Angeles')
   const selectedLanguage = LANGUAGE_OPTIONS.find(item => item.value === language)
   const selectedTimezone = TIMEZONE_OPTIONS.find(item => item.value === timezone)
