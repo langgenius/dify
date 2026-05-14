@@ -582,6 +582,25 @@ class TestDifyNodeFactoryCreateNode:
         assert kwargs["file_reference_factory"] is sentinel.file_reference_factory
         factory._human_input_runtime.build_form_repository.assert_called_once_with()
 
+    def test_tool_node_receives_tool_file_manager(self, monkeypatch: pytest.MonkeyPatch, factory) -> None:
+        created_node = object()
+        constructor = _node_constructor(return_value=created_node)
+        factory._bound_tool_file_manager_factory = MagicMock(return_value=sentinel.tool_file_manager)
+        monkeypatch.setattr(
+            factory,
+            "_resolve_node_class",
+            MagicMock(return_value=constructor),
+        )
+
+        result = factory.create_node({"id": "tool-node", "data": {"type": BuiltinNodeTypes.TOOL}})
+
+        assert result is created_node
+        kwargs = constructor.call_args.kwargs
+        assert kwargs["tool_file_manager"] is sentinel.tool_file_manager
+        assert kwargs["runtime"] is sentinel.tool_runtime
+        assert "tool_file_manager_factory" not in kwargs
+        factory._bound_tool_file_manager_factory.assert_called_once_with()
+
     def test_build_llm_compatible_node_init_kwargs_preserves_structured_output_switch(self, factory):
         node_data = LLMNodeData.model_validate(
             {

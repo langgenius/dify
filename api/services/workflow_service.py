@@ -1,5 +1,3 @@
-from core.app.entities.app_invoke_entities import DifyRunContext
-from core.workflow.node_runtime import DifyFileReferenceFactory
 import json
 import logging
 import time
@@ -31,7 +29,11 @@ from core.workflow.node_factory import (
     get_node_type_classes_mapping,
     is_start_node_type,
 )
-from core.workflow.node_runtime import DifyHumanInputNodeRuntime, apply_dify_debug_email_recipient
+from core.workflow.node_runtime import (
+    DifyFileReferenceFactory,
+    DifyHumanInputNodeRuntime,
+    apply_dify_debug_email_recipient,
+)
 from core.workflow.system_variables import build_bootstrap_variables, build_system_variables, default_system_variables
 from core.workflow.variable_pool_initializer import add_node_inputs_to_pool, add_variables_to_pool
 from core.workflow.workflow_entry import WorkflowEntry
@@ -1267,15 +1269,7 @@ class WorkflowService:
             graph_init_params=graph_init_params,
             graph_runtime_state=graph_runtime_state,
             runtime=DifyHumanInputNodeRuntime(run_context),
-            file_reference_factory=DifyFileReferenceFactory(
-                DifyRunContext(
-                    tenant_id=workflow.tenant_id,
-                    app_id=workflow.app_id,
-                    user_id=account.id,
-                    user_from=UserFrom.ACCOUNT,
-                    invoke_from=InvokeFrom.DEBUGGER,
-                )
-            ),
+            file_reference_factory=DifyFileReferenceFactory(run_context),
         )
         return node
 

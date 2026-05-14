@@ -431,7 +431,7 @@ class DifyNodeFactory(NodeFactory):
                 include_jinja2_template_renderer=False,
             ),
             BuiltinNodeTypes.TOOL: lambda: {
-                "tool_file_manager_factory": self._bound_tool_file_manager_factory(),
+                "tool_file_manager": self._bound_tool_file_manager_factory(),
                 "runtime": self._tool_runtime,
             },
             BuiltinNodeTypes.AGENT: lambda: {

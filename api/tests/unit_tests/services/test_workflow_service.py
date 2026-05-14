@@ -2691,7 +2691,7 @@ class TestWorkflowServiceHumanInputOperations:
             patch.object(service, "_resolve_human_input_delivery_method") as mock_resolve,
             patch("services.workflow_service.apply_dify_debug_email_recipient"),
             patch.object(service, "_build_human_input_variable_pool"),
-            patch.object(service, "_build_human_input_node"),
+            patch.object(service, "_build_human_input_node_for_debugging"),
             patch.object(service, "_create_human_input_delivery_test_form", return_value=("form-1", [])),
             patch("services.workflow_service.HumanInputDeliveryTestService") as mock_test_srv,
         ):
@@ -2819,8 +2819,8 @@ class TestWorkflowServiceFreeNodeExecution:
         with pytest.raises(Exception, match="unreachable"):
             _rebuild_single_file("tenant-1", {}, cast(Any, "invalid_type"))
 
-    def test_build_human_input_node(self, service: WorkflowService) -> None:
-        """Cover _build_human_input_node (lines 1065-1088)."""
+    def test_build_human_input_node_for_debugging(self, service: WorkflowService) -> None:
+        """Cover _build_human_input_node_for_debugging."""
         workflow = MagicMock()
         workflow.id = "wf-1"
         workflow.tenant_id = "t-1"
@@ -2839,10 +2839,11 @@ class TestWorkflowServiceFreeNodeExecution:
             ) as mock_adapt_node_data,
             patch("services.workflow_service.build_dify_run_context") as mock_build_dify_run_context,
             patch("services.workflow_service.DifyHumanInputNodeRuntime") as mock_runtime_cls,
+            patch("services.workflow_service.DifyFileReferenceFactory") as mock_file_reference_factory_cls,
             patch("services.workflow_service.HumanInputNode") as mock_node_cls,
         ):
             mock_node_cls.validate_node_data.return_value = sentinel.node_data
-            node = service._build_human_input_node(
+            node = service._build_human_input_node_for_debugging(
                 workflow=workflow, account=account, node_config=node_config, variable_pool=variable_pool
             )
             assert node == mock_node_cls.return_value
@@ -2854,6 +2855,7 @@ class TestWorkflowServiceFreeNodeExecution:
                 call_depth=0,
             )
             mock_runtime_cls.assert_called_once_with(mock_build_dify_run_context.return_value)
+            mock_file_reference_factory_cls.assert_called_once_with(mock_build_dify_run_context.return_value)
             mock_adapt_node_data.assert_called_once_with(node_config["data"])
             mock_node_cls.validate_node_data.assert_called_once_with(sentinel.adapted_node_data)
             mock_node_cls.assert_called_once_with(
@@ -2862,4 +2864,5 @@ class TestWorkflowServiceFreeNodeExecution:
                 graph_init_params=mock_graph_init_context_cls.return_value.to_graph_init_params.return_value,
                 graph_runtime_state=ANY,
                 runtime=mock_runtime_cls.return_value,
+                file_reference_factory=mock_file_reference_factory_cls.return_value,
             )
