@@ -29,7 +29,9 @@ import FormInputTypeSwitch from '@/app/components/workflow/nodes/_base/component
 import VarReferencePicker from '@/app/components/workflow/nodes/_base/components/variable/var-reference-picker'
 import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
 import MixedVariableTextInput from '@/app/components/workflow/nodes/tool/components/mixed-variable-text-input'
+import ToolDateRangePicker from '@/app/components/workflow/nodes/tool/components/tool-date-range-picker'
 import { VarType as VarKindType } from '@/app/components/workflow/nodes/tool/types'
+import { useAppContext } from '@/context/app-context'
 import {
   createPickerProps,
   getFieldFlags,
@@ -64,9 +66,11 @@ const ReasoningConfigForm: React.FC<Props> = ({
 }) => {
   const { t } = useTranslation()
   const language = useLanguage()
+  const { userProfile } = useAppContext()
+  const timezone = userProfile.timezone ?? 'UTC'
 
-  const handleAutomatic = (key: string, val: boolean, type: string) => {
-    onChange(updateInputAutoState(value, key, val, type))
+  const handleAutomatic = (key: string, val: boolean, type: string, fieldSchema: ToolFormSchema) => {
+    onChange(updateInputAutoState(value, key, val, type, fieldSchema))
   }
 
   const handleTypeChange = useCallback((variable: string, defaultValue: unknown) => {
@@ -75,9 +79,9 @@ const ReasoningConfigForm: React.FC<Props> = ({
     }
   }, [onChange, value])
 
-  const handleValueChange = useCallback((variable: string, varType: string) => {
+  const handleValueChange = useCallback((variable: string, varType: string, fieldSchema: ToolFormSchema) => {
     return (newValue: unknown) => {
-      onChange(updateReasoningValue(value, variable, varType, newValue))
+      onChange(updateReasoningValue(value, variable, varType, newValue, fieldSchema))
     }
   }, [onChange, value])
 
@@ -146,10 +150,12 @@ const ReasoningConfigForm: React.FC<Props> = ({
       isSelect,
       isAppSelector,
       isModelSelector,
+      isDate,
+      isDatePicker,
       showTypeSwitch,
       isConstant,
       showVariableSelector,
-    } = getFieldFlags(type, varInput)
+    } = getFieldFlags(type, varInput, schema)
     const pickerProps = createPickerProps({
       type,
       value,
@@ -170,7 +176,7 @@ const ReasoningConfigForm: React.FC<Props> = ({
             )}
             {tooltipContent}
             <span className="mx-1 system-xs-regular text-text-quaternary">·</span>
-            <span className="system-xs-regular text-text-tertiary">{resolveTargetVarType(type)}</span>
+            <span className="system-xs-regular text-text-tertiary">{resolveTargetVarType(type, schema)}</span>
             {isShowJSONEditor && (
               <Tooltip>
                 <TooltipTrigger
@@ -192,12 +198,12 @@ const ReasoningConfigForm: React.FC<Props> = ({
             )}
 
           </div>
-          <div className="flex cursor-pointer items-center gap-1 rounded-md border border-divider-subtle bg-background-default-lighter px-2 py-1 hover:bg-state-base-hover" onClick={() => handleAutomatic(variable, !auto, type)}>
+          <div className="flex cursor-pointer items-center gap-1 rounded-md border border-divider-subtle bg-background-default-lighter px-2 py-1 hover:bg-state-base-hover" onClick={() => handleAutomatic(variable, !auto, type, schema)}>
             <span className="system-xs-medium text-text-secondary">{t('detailPanel.toolSelector.auto', { ns: 'plugin' })}</span>
             <Switch
               size="xs"
               checked={!!auto}
-              onCheckedChange={val => handleAutomatic(variable, val, type)}
+              onCheckedChange={val => handleAutomatic(variable, val, type, schema)}
             />
           </div>
         </div>
@@ -209,7 +215,7 @@ const ReasoningConfigForm: React.FC<Props> = ({
             {isString && (
               <MixedVariableTextInput
                 value={varInput?.value as string || ''}
-                onChange={handleValueChange(variable, type)}
+                onChange={handleValueChange(variable, type, schema)}
                 nodesOutputVars={nodeOutputVars}
                 availableNodes={availableNodes}
               />
@@ -219,18 +225,36 @@ const ReasoningConfigForm: React.FC<Props> = ({
                 className="h-8 grow"
                 type="number"
                 value={(varInput?.value as string | number) || ''}
-                onChange={e => handleValueChange(variable, type)(e.target.value)}
+                onChange={e => handleValueChange(variable, type, schema)(e.target.value)}
                 placeholder={placeholder?.[language] || placeholder?.en_US}
               />
+            )}
+            {isDate && isConstant && (
+              <Input
+                className="h-8 grow"
+                type="date"
+                value={typeof varInput?.value === 'string' ? varInput.value : ''}
+                onChange={e => handleValueChange(variable, type, schema)(e.target.value)}
+                placeholder={placeholder?.[language] || placeholder?.en_US}
+              />
+            )}
+            {isDatePicker && varInput?.type !== VarKindType.variable && (
+              <div className="grow">
+                <ToolDateRangePicker
+                  value={varInput?.value}
+                  onChange={handleValueChange(variable, type, schema)}
+                  timezone={timezone}
+                />
+              </div>
             )}
             {isBoolean && (
               <FormInputBoolean
                 value={varInput?.value as boolean}
-                onChange={handleValueChange(variable, type)}
+                onChange={handleValueChange(variable, type, schema)}
               />
             )}
             {isSelect && options && (
-              <Select value={selectedOption ? String(selectedOption.value) : null} onValueChange={value => value && handleValueChange(variable, type)(value)}>
+              <Select value={selectedOption ? String(selectedOption.value) : null} onValueChange={value => value && handleValueChange(variable, type, schema)(value)}>
                 <SelectTrigger className="h-8 grow">
                   {selectedOption?.name ?? placeholder?.[language] ?? placeholder?.en_US}
                 </SelectTrigger>
@@ -253,7 +277,7 @@ const ReasoningConfigForm: React.FC<Props> = ({
                   isInNode
                   height={100}
                   language={CodeLanguage.json}
-                  onChange={handleValueChange(variable, type)}
+                  onChange={handleValueChange(variable, type, schema)}
                   className="w-full"
                   placeholder={<div className="whitespace-pre">{placeholder?.[language] || placeholder?.en_US}</div>}
                 />

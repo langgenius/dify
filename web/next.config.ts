@@ -38,6 +38,7 @@ const nextConfig: NextConfig = {
   compiler: {
     removeConsole: isDev ? false : { exclude: ['warn', 'error'] },
   },
+  allowedDevOrigins: ['192.168.219.128'],
 }
 
 export default withMDX(nextConfig)

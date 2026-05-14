@@ -7,7 +7,12 @@ import * as React from 'react'
 import { useCallback, useMemo } from 'react'
 import { FormTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
+import {
+  toolDeclarativeTypeMatches,
+} from '@/app/components/workflow/nodes/_base/components/form-input-item.helpers'
+import ToolDateRangePicker from '@/app/components/workflow/nodes/tool/components/tool-date-range-picker'
 import { VarType as VarKindType } from '@/app/components/workflow/nodes/tool/types'
+import { useAppContext } from '@/context/app-context'
 
 type Props = {
   schema: Partial<CredentialFormSchema>
@@ -29,6 +34,8 @@ const ConstantField: FC<Props> = ({
   isLoading,
 }) => {
   const language = useLanguage()
+  const { userProfile } = useAppContext()
+  const timezone = userProfile.timezone ?? 'UTC'
   const placeholder = (schema as CredentialFormSchemaSelect).placeholder
   const selectOptions = useMemo(() => {
     if (schema.type !== FormTypeEnum.select && schema.type !== FormTypeEnum.dynamicSelect)
@@ -87,6 +94,26 @@ const ConstantField: FC<Props> = ({
           min={(schema as CredentialFormSchemaNumberInput).min}
           max={(schema as CredentialFormSchemaNumberInput).max}
         />
+      )}
+      {schema.type === FormTypeEnum.date && (
+        <input
+          type="date"
+          className="h-8 w-full overflow-hidden rounded-lg bg-workflow-block-parma-bg p-2 text-[13px] font-normal leading-8 text-text-secondary placeholder:text-gray-400 focus:outline-none"
+          value={typeof value === 'string' ? value : ''}
+          onChange={e => onChange(e.target.value, VarKindType.constant)}
+          readOnly={readonly}
+          placeholder={placeholder?.[language] || placeholder?.en_US}
+        />
+      )}
+      {toolDeclarativeTypeMatches(schema, 'date-picker') && (
+        <div className="w-full min-w-0 shrink-0">
+          <ToolDateRangePicker
+            value={typeof value === 'string' ? value : ''}
+            onChange={next => onChange(next, VarKindType.constant)}
+            readOnly={readonly}
+            timezone={timezone}
+          />
+        </div>
       )}
     </>
   )
