@@ -3,7 +3,6 @@ import re
 import uuid
 from datetime import datetime
 from typing import Any, Literal
-from uuid import UUID
 
 from flask import request
 from flask_restx import Resource
@@ -850,10 +849,11 @@ class AppTraceApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def get(self, app_id: UUID):
+    @get_app_model
+    def get(self, app_model):
         """Get app trace"""
         with session_factory.create_session() as session:
-            app_trace_config = OpsTraceManager.get_app_tracing_config(str(app_id), session)
+            app_trace_config = OpsTraceManager.get_app_tracing_config(app_model.id, session)
 
         return app_trace_config
 
@@ -867,12 +867,13 @@ class AppTraceApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
-    def post(self, app_id: UUID):
+    @get_app_model
+    def post(self, app_model):
         # add app trace
         args = AppTracePayload.model_validate(console_ns.payload)
 
         OpsTraceManager.update_app_tracing_config(
-            app_id=str(app_id),
+            app_id=app_model.id,
             enabled=args.enabled,
             tracing_provider=args.tracing_provider,
         )
