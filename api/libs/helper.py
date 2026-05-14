@@ -136,6 +136,14 @@ def build_icon_url(icon_type: Any, icon: str | None) -> str | None:
     return file_helpers.get_signed_file_url(icon)
 
 
+def build_avatar_url(avatar: str | None) -> str | None:
+    if avatar is None:
+        return None
+    if avatar.startswith(("http://", "https://")):
+        return avatar
+    return file_helpers.get_signed_file_url(avatar)
+
+
 class AvatarUrlField(fields.Raw):
     def output(self, key, obj, **kwargs):
         if obj is None:
@@ -144,9 +152,7 @@ class AvatarUrlField(fields.Raw):
         from models import Account
 
         if isinstance(obj, Account) and obj.avatar is not None:
-            if obj.avatar.startswith(("http://", "https://")):
-                return obj.avatar
-            return file_helpers.get_signed_file_url(obj.avatar)
+            return build_avatar_url(obj.avatar)
         return None
 
 
@@ -179,6 +185,11 @@ def to_timestamp(value: datetime | int | None) -> int | None:
     if isinstance(value, datetime):
         return int(value.timestamp())
     return value
+
+
+def dump_response(model: type[BaseModel], data: Any) -> dict[str, Any]:
+    """Serialize a Pydantic response model to JSON-compatible dict output."""
+    return model.model_validate(data, from_attributes=True).model_dump(mode="json")
 
 
 def current_timestamp() -> int:

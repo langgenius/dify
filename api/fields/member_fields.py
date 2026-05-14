@@ -6,22 +6,13 @@ from flask_restx import fields
 from pydantic import computed_field, field_validator
 
 from fields.base import ResponseModel
-from graphon.file import helpers as file_helpers
-from libs.helper import to_timestamp
+from libs.helper import build_avatar_url, to_timestamp
 
 simple_account_fields = {
     "id": fields.String,
     "name": fields.String,
     "email": fields.String,
 }
-
-
-def _build_avatar_url(avatar: str | None) -> str | None:
-    if avatar is None:
-        return None
-    if avatar.startswith(("http://", "https://")):
-        return avatar
-    return file_helpers.get_signed_file_url(avatar)
 
 
 class SimpleAccount(ResponseModel):
@@ -36,7 +27,7 @@ class _AccountAvatar(ResponseModel):
     @computed_field(return_type=str | None)  # type: ignore[prop-decorator]
     @property
     def avatar_url(self) -> str | None:
-        return _build_avatar_url(self.avatar)
+        return build_avatar_url(self.avatar)
 
 
 class Account(_AccountAvatar):

@@ -2404,7 +2404,7 @@ Get all comments for a workflow
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Comments retrieved successfully | [WorkflowCommentBasic](#workflowcommentbasic) |
+| 200 | Comments retrieved successfully | [WorkflowCommentBasicList](#workflowcommentbasiclist) |
 
 #### POST
 ##### Summary
@@ -13927,32 +13927,47 @@ User action configuration.
 | trigger_metadata |  |  | No |
 | workflow_run |  |  | No |
 
+#### WorkflowCommentAccount
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| avatar_url |  |  | Yes |
+| email | string |  | Yes |
+| id | string |  | Yes |
+| name | string |  | Yes |
+
 #### WorkflowCommentBasic
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| content | string |  | No |
-| created_at | object |  | No |
-| created_by | string |  | No |
-| created_by_account | [_AnonymousInlineModel_6fec07cd0d85](#_anonymousinlinemodel_6fec07cd0d85) |  | No |
-| id | string |  | No |
-| mention_count | integer |  | No |
-| participants | [ [_AnonymousInlineModel_6fec07cd0d85](#_anonymousinlinemodel_6fec07cd0d85) ] |  | No |
-| position_x | number |  | No |
-| position_y | number |  | No |
-| reply_count | integer |  | No |
-| resolved | boolean |  | No |
-| resolved_at | object |  | No |
-| resolved_by | string |  | No |
-| resolved_by_account | [_AnonymousInlineModel_6fec07cd0d85](#_anonymousinlinemodel_6fec07cd0d85) |  | No |
-| updated_at | object |  | No |
+| content | string |  | Yes |
+| created_at |  |  | No |
+| created_by | string |  | Yes |
+| created_by_account |  |  | No |
+| id | string |  | Yes |
+| mention_count | integer |  | Yes |
+| participants | [ [WorkflowCommentAccount](#workflowcommentaccount) ] |  | Yes |
+| position_x | number |  | Yes |
+| position_y | number |  | Yes |
+| reply_count | integer |  | Yes |
+| resolved | boolean |  | Yes |
+| resolved_at |  |  | No |
+| resolved_by |  |  | No |
+| resolved_by_account |  |  | No |
+| updated_at |  |  | No |
+
+#### WorkflowCommentBasicList
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [WorkflowCommentBasic](#workflowcommentbasic) ] |  | Yes |
 
 #### WorkflowCommentCreate
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| created_at | object |  | No |
-| id | string |  | No |
+| created_at |  |  | No |
+| id | string |  | Yes |
 
 #### WorkflowCommentCreatePayload
 
@@ -13967,20 +13982,28 @@ User action configuration.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| content | string |  | No |
-| created_at | object |  | No |
-| created_by | string |  | No |
-| created_by_account | [_AnonymousInlineModel_6fec07cd0d85](#_anonymousinlinemodel_6fec07cd0d85) |  | No |
-| id | string |  | No |
-| mentions | [ [_AnonymousInlineModel_f7ff64cce858](#_anonymousinlinemodel_f7ff64cce858) ] |  | No |
-| position_x | number |  | No |
-| position_y | number |  | No |
-| replies | [ [_AnonymousInlineModel_55c39c6a4b9e](#_anonymousinlinemodel_55c39c6a4b9e) ] |  | No |
-| resolved | boolean |  | No |
-| resolved_at | object |  | No |
-| resolved_by | string |  | No |
-| resolved_by_account | [_AnonymousInlineModel_6fec07cd0d85](#_anonymousinlinemodel_6fec07cd0d85) |  | No |
-| updated_at | object |  | No |
+| content | string |  | Yes |
+| created_at |  |  | No |
+| created_by | string |  | Yes |
+| created_by_account |  |  | No |
+| id | string |  | Yes |
+| mentions | [ [WorkflowCommentMention](#workflowcommentmention) ] |  | Yes |
+| position_x | number |  | Yes |
+| position_y | number |  | Yes |
+| replies | [ [WorkflowCommentReply](#workflowcommentreply) ] |  | Yes |
+| resolved | boolean |  | Yes |
+| resolved_at |  |  | No |
+| resolved_by |  |  | No |
+| resolved_by_account |  |  | No |
+| updated_at |  |  | No |
+
+#### WorkflowCommentMention
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| mentioned_user_account |  |  | No |
+| mentioned_user_id | string |  | Yes |
+| reply_id |  |  | No |
 
 #### WorkflowCommentMentionUsersPayload
 
@@ -13988,12 +14011,22 @@ User action configuration.
 | ---- | ---- | ----------- | -------- |
 | users | [ [AccountWithRole](#accountwithrole) ] |  | Yes |
 
+#### WorkflowCommentReply
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| content | string |  | Yes |
+| created_at |  |  | No |
+| created_by | string |  | Yes |
+| created_by_account |  |  | No |
+| id | string |  | Yes |
+
 #### WorkflowCommentReplyCreate
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| created_at | object |  | No |
-| id | string |  | No |
+| created_at |  |  | No |
+| id | string |  | Yes |
 
 #### WorkflowCommentReplyPayload
 
@@ -14006,24 +14039,24 @@ User action configuration.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| id | string |  | No |
-| updated_at | object |  | No |
+| id | string |  | Yes |
+| updated_at |  |  | No |
 
 #### WorkflowCommentResolve
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| id | string |  | No |
-| resolved | boolean |  | No |
-| resolved_at | object |  | No |
-| resolved_by | string |  | No |
+| id | string |  | Yes |
+| resolved | boolean |  | Yes |
+| resolved_at |  |  | No |
+| resolved_by |  |  | No |
 
 #### WorkflowCommentUpdate
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| id | string |  | No |
-| updated_at | object |  | No |
+| id | string |  | Yes |
+| updated_at |  |  | No |
 
 #### WorkflowCommentUpdatePayload
 
@@ -14427,25 +14460,6 @@ Workflow tool configuration
 | limit | integer |  | No |
 | page | integer |  | No |
 
-#### _AnonymousInlineModel_55c39c6a4b9e
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| content | string |  | No |
-| created_at | object |  | No |
-| created_by | string |  | No |
-| created_by_account | [_AnonymousInlineModel_6fec07cd0d85](#_anonymousinlinemodel_6fec07cd0d85) |  | No |
-| id | string |  | No |
-
-#### _AnonymousInlineModel_6fec07cd0d85
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| avatar_url | object |  | No |
-| email | string |  | No |
-| id | string |  | No |
-| name | string |  | No |
-
 #### _AnonymousInlineModel_b1954337d565
 
 | Name | Type | Description | Required |
@@ -14454,14 +14468,6 @@ Workflow tool configuration
 | model_name | string |  | No |
 | model_provider_name | string |  | No |
 | summary_prompt | string |  | No |
-
-#### _AnonymousInlineModel_f7ff64cce858
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| mentioned_user_account | [_AnonymousInlineModel_6fec07cd0d85](#_anonymousinlinemodel_6fec07cd0d85) |  | No |
-| mentioned_user_id | string |  | No |
-| reply_id | string |  | No |
 
 ## FastOpenAPI Preview (OpenAPI 3.0)
 
