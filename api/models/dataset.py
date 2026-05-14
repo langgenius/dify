@@ -1,4 +1,3 @@
-from dataclasses import asdict
 import base64
 import hashlib
 import hmac
@@ -9,6 +8,7 @@ import pickle
 import re
 import time
 from collections.abc import Sequence
+from dataclasses import asdict
 from datetime import datetime
 from json import JSONDecodeError
 from typing import Any, ClassVar, TypedDict, cast, override
@@ -552,61 +552,76 @@ class Document(TypeBase):
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     created_from: Mapped[DocumentCreatedFrom] = mapped_column(EnumText(DocumentCreatedFrom, length=255), nullable=False)
     created_by: Mapped[str] = mapped_column(StringUUID, nullable=False)
-    data_source_info: Mapped[str | None] = mapped_column(LongText, nullable=True,default=None)
-    dataset_process_rule_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True,default=None)
-    created_api_request_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True,default=None)
-    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp(),init=False)
+    data_source_info: Mapped[str | None] = mapped_column(LongText, nullable=True, default=None)
+    dataset_process_rule_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True, default=None)
+    created_api_request_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True, default=None)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, nullable=False, server_default=func.current_timestamp(), init=False
+    )
 
     # start processing
-    processing_started_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True,default=None)
+    processing_started_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, default=None)
 
     # parsing
-    file_id: Mapped[str | None] = mapped_column(LongText, nullable=True,default=None)
-    word_count: Mapped[int | None] = mapped_column(sa.Integer, nullable=True,default=None)  # TODO: make this not nullable
-    parsing_completed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True,default=None)
+    file_id: Mapped[str | None] = mapped_column(LongText, nullable=True, default=None)
+    word_count: Mapped[int | None] = mapped_column(
+        sa.Integer, nullable=True, default=None
+    )  # TODO: make this not nullable
+    parsing_completed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, default=None)
 
     # cleaning
-    cleaning_completed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True,default=None)
+    cleaning_completed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, default=None)
 
     # split
-    splitting_completed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True,default=None)
+    splitting_completed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, default=None)
 
     # indexing
-    tokens: Mapped[int | None] = mapped_column(sa.Integer, nullable=True,default=None)
-    indexing_latency: Mapped[float | None] = mapped_column(sa.Float, nullable=True,default=None)
-    completed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True,default=None)
+    tokens: Mapped[int | None] = mapped_column(sa.Integer, nullable=True, default=None)
+    indexing_latency: Mapped[float | None] = mapped_column(sa.Float, nullable=True, default=None)
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, default=None)
 
     # pause
-    is_paused: Mapped[bool | None] = mapped_column(sa.Boolean, nullable=True, server_default=sa.text("false"),default=False)
-    paused_by: Mapped[str | None] = mapped_column(StringUUID, nullable=True,default=None)
-    paused_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True,default=None)
+    is_paused: Mapped[bool | None] = mapped_column(
+        sa.Boolean, nullable=True, server_default=sa.text("false"), default=False
+    )
+    paused_by: Mapped[str | None] = mapped_column(StringUUID, nullable=True, default=None)
+    paused_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, default=None)
 
     # error
-    error: Mapped[str | None] = mapped_column(LongText, nullable=True,default=None)
-    stopped_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True,default=None)
+    error: Mapped[str | None] = mapped_column(LongText, nullable=True, default=None)
+    stopped_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, default=None)
 
     # basic fields
     indexing_status: Mapped[IndexingStatus] = mapped_column(
-        EnumText(IndexingStatus, length=255), nullable=False, server_default=sa.text("'waiting'")
-        ,default=IndexingStatus.WAITING
+        EnumText(IndexingStatus, length=255),
+        nullable=False,
+        server_default=sa.text("'waiting'"),
+        default=IndexingStatus.WAITING,
     )
-    enabled: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("true"),default=True)
-    disabled_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True,default=None)
-    disabled_by: Mapped[str | None] = mapped_column(StringUUID, nullable=True,default=None)
-    archived: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("false"),default=False)
-    archived_reason: Mapped[str | None] = mapped_column(String(255), nullable=True,default=None)
-    archived_by: Mapped[str | None] = mapped_column(StringUUID, nullable=True,default=None)
-    archived_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True,default=None)
+    enabled: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("true"), default=True)
+    disabled_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, default=None)
+    disabled_by: Mapped[str | None] = mapped_column(StringUUID, nullable=True, default=None)
+    archived: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("false"), default=False)
+    archived_reason: Mapped[str | None] = mapped_column(String(255), nullable=True, default=None)
+    archived_by: Mapped[str | None] = mapped_column(StringUUID, nullable=True, default=None)
+    archived_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, default=None)
     updated_at: Mapped[datetime] = mapped_column(
-        DateTime, nullable=False, server_default=func.current_timestamp(), onupdate=func.current_timestamp(),init=False
+        DateTime, nullable=False, server_default=func.current_timestamp(), onupdate=func.current_timestamp(), init=False
     )
-    doc_type: Mapped[DocumentDocType | None] = mapped_column(EnumText(DocumentDocType, length=40), nullable=True,default=None)
-    doc_metadata: Mapped[dict[str, Any] | None] = mapped_column(AdjustedJSON, nullable=True,default=None)
+    doc_type: Mapped[DocumentDocType | None] = mapped_column(
+        EnumText(DocumentDocType, length=40), nullable=True, default=None
+    )
+    doc_metadata: Mapped[dict[str, Any] | None] = mapped_column(AdjustedJSON, nullable=True, default=None)
     doc_form: Mapped[IndexStructureType] = mapped_column(
-        EnumText(IndexStructureType, length=255), nullable=False, server_default=sa.text("'text_model'"),default=IndexStructureType.PARAGRAPH_INDEX
+        EnumText(IndexStructureType, length=255),
+        nullable=False,
+        server_default=sa.text("'text_model'"),
+        default=IndexStructureType.PARAGRAPH_INDEX,
     )
-    doc_language: Mapped[str | None] = mapped_column(String(255), nullable=True,default=None)
-    need_summary: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("false"),default=False)
+    doc_language: Mapped[str | None] = mapped_column(String(255), nullable=True, default=None)
+    need_summary: Mapped[bool] = mapped_column(
+        sa.Boolean, nullable=False, server_default=sa.text("false"), default=False
+    )
 
     DATA_SOURCES = ["upload_file", "notion_import", "website_crawl"]
 
@@ -807,7 +822,8 @@ class Document(TypeBase):
         return built_in_fields
 
     def to_dict(self) -> DocumentDict:
-        return asdict(self) # type: ignore
+        return asdict(self)  # type: ignore
+
 
 class DocumentSegment(TypeBase):
     __tablename__ = "document_segments"
