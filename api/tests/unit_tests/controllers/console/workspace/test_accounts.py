@@ -1,3 +1,4 @@
+from datetime import UTC, datetime
 from unittest.mock import MagicMock, PropertyMock, patch
 
 import pytest
@@ -16,6 +17,7 @@ from controllers.console.workspace.account import (
     AccountDeleteVerifyApi,
     AccountInitApi,
     AccountIntegrateApi,
+    AccountIntegrateResponse,
     AccountInterfaceLanguageApi,
     AccountInterfaceThemeApi,
     AccountNameApi,
@@ -25,6 +27,9 @@ from controllers.console.workspace.account import (
     ChangeEmailCheckApi,
     ChangeEmailResetApi,
     CheckEmailUnique,
+    EducationApi,
+    EducationStatusResponse,
+    EducationVerifyApi,
 )
 from controllers.console.workspace.error import (
     AccountAlreadyInitedError,
@@ -334,6 +339,55 @@ class TestAccountIntegrateApi:
 
         assert "data" in result
         assert len(result["data"]) == 2
+
+    def test_integrate_response_accepts_z_timestamp(self):
+        response = AccountIntegrateResponse.model_validate(
+            {"provider": "google", "created_at": "2024-01-01T00:00:00Z", "is_bound": True}
+        )
+
+        assert response.created_at == 1704067200
+
+    def test_education_status_accepts_naive_iso_timestamp(self):
+        response = EducationStatusResponse.model_validate({"expire_at": "2024-01-01T00:00:00"})
+
+        expected = int(datetime(2024, 1, 1, 0, 0, 0, tzinfo=UTC).timestamp())
+        assert response.expire_at == expected
+
+    def test_education_status_accepts_offset_iso_timestamp(self):
+        response = EducationStatusResponse.model_validate({"expire_at": "2024-01-01T08:00:00+08:00"})
+
+        expected = int(datetime(2024, 1, 1, 0, 0, 0, tzinfo=UTC).timestamp())
+        assert response.expire_at == expected
+
+
+class TestEducationApis:
+    def test_verify_allows_empty_billing_response(self, app):
+        api = EducationVerifyApi()
+        method = unwrap(api.get)
+        account = MagicMock(id="acc1", email="student@example.com")
+
+        with (
+            app.test_request_context("/"),
+            patch("controllers.console.workspace.account.current_account_with_tenant", return_value=(account, "t1")),
+            patch("controllers.console.workspace.account.BillingService.EducationIdentity.verify", return_value=None),
+        ):
+            result = method(api)
+
+        assert result == {"token": None}
+
+    def test_status_allows_empty_billing_response(self, app):
+        api = EducationApi()
+        method = unwrap(api.get)
+        account = MagicMock(id="acc1")
+
+        with (
+            app.test_request_context("/"),
+            patch("controllers.console.workspace.account.current_account_with_tenant", return_value=(account, "t1")),
+            patch("controllers.console.workspace.account.BillingService.EducationIdentity.status", return_value=None),
+        ):
+            result = method(api)
+
+        assert result == {"result": None, "is_student": None, "expire_at": None, "allow_refresh": None}
 
 
 class TestAccountDeleteApi:
