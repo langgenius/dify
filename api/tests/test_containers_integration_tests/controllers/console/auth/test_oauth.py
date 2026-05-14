@@ -119,9 +119,7 @@ class TestOAuthLogin:
         with app.test_request_context("/auth/oauth/github?timezone=Asia/Shanghai"):
             resource.get("github")
 
-        mock_oauth_provider.get_authorization_url.assert_called_once_with(
-            invite_token=None, timezone="Asia/Shanghai"
-        )
+        mock_oauth_provider.get_authorization_url.assert_called_once_with(invite_token=None, timezone="Asia/Shanghai")
         mock_redirect.assert_called_once_with("https://github.com/login/oauth/authorize?...")
 
     @pytest.mark.parametrize(
