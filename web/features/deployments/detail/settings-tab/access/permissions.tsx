@@ -6,20 +6,36 @@ import type {
   EnvironmentAccessRow,
   Subject,
 } from '@dify/contracts/enterprise/types.gen'
+import type { ComboboxRootChangeEventDetails } from '@langgenius/dify-ui/combobox'
 import { cn } from '@langgenius/dify-ui/cn'
+import {
+  Combobox,
+  ComboboxChip,
+  ComboboxChipRemove,
+  ComboboxChips,
+  ComboboxContent,
+  ComboboxEmpty,
+  ComboboxInput,
+  ComboboxInputGroup,
+  ComboboxInputTrigger,
+  ComboboxItem,
+  ComboboxItemIndicator,
+  ComboboxItemText,
+  ComboboxList,
+  ComboboxStatus,
+  ComboboxValue,
+} from '@langgenius/dify-ui/combobox'
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
-import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { useDebounce } from 'ahooks'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Input from '@/app/components/base/input'
 import { SkeletonRectangle, SkeletonRow } from '@/app/components/base/skeleton'
 import { consoleQuery } from '@/service/client'
 import { environmentName } from '../../../environment'
@@ -130,6 +146,18 @@ function subjectKey(subject: Pick<SelectableAccessSubject, 'id' | 'subjectType'>
   return `${subject.subjectType}:${subject.id}`
 }
 
+function getSubjectLabel(subject: SelectableAccessSubject) {
+  return subject.name || subject.id
+}
+
+function getSubjectValue(subject: SelectableAccessSubject) {
+  return subjectKey(subject)
+}
+
+function isSameSubject(item: SelectableAccessSubject, value: SelectableAccessSubject) {
+  return item.id === value.id && item.subjectType === value.subjectType
+}
+
 const SUBJECT_PICKER_SKELETON_KEYS = ['first-subject', 'second-subject', 'third-subject']
 
 function policySubjects(subjects: SelectableAccessSubject[]): AccessSubject[] {
@@ -145,34 +173,13 @@ function selectedSubjectsFromPolicy(policy?: EnvironmentAccessRow) {
     .filter((subject): subject is SelectableAccessSubject => Boolean(subject)) ?? []
 }
 
-function SubjectPill({ subject, disabled, onRemove }: {
+function SubjectIcon({ subject }: {
   subject: SelectableAccessSubject
-  disabled?: boolean
-  onRemove: () => void
 }) {
-  const { t } = useTranslation('deployments')
   const isGroup = subject.subjectType === 'group'
 
   return (
-    <div className="inline-flex max-w-full items-center gap-1 rounded-full border border-divider-subtle bg-components-badge-white-to-dark px-2 py-1">
-      <span className={cn(isGroup ? 'i-ri-group-line' : 'i-ri-user-line', 'size-3.5 shrink-0 text-text-tertiary')} />
-      <span className="truncate system-xs-medium text-text-secondary">{subject.name || subject.id}</span>
-      {isGroup && subject.memberCount != null && (
-        <span className="system-2xs-regular text-text-tertiary">{subject.memberCount}</span>
-      )}
-      <button
-        type="button"
-        disabled={disabled}
-        onClick={onRemove}
-        aria-label={t('operation.remove', { ns: 'common' })}
-        className={cn(
-          'flex size-4 shrink-0 items-center justify-center rounded-full text-text-quaternary hover:text-text-secondary',
-          disabled && 'cursor-not-allowed opacity-40',
-        )}
-      >
-        <span className="i-ri-close-circle-fill size-3.5" />
-      </button>
-    </div>
+    <span className={cn(isGroup ? 'i-ri-group-line' : 'i-ri-user-line', 'size-3.5 shrink-0 text-text-tertiary')} aria-hidden="true" />
   )
 }
 
@@ -191,7 +198,6 @@ function SubjectPicker({
   const [open, setOpen] = useState(false)
   const [keyword, setKeyword] = useState('')
   const debouncedKeyword = useDebounce(keyword, { wait: 300 })
-  const selectedKeys = new Set(selectedSubjects.map(subjectKey))
   const subjectsQuery = useQuery(consoleQuery.enterprise.accessSubjectService.listAccessSubjects.queryOptions({
     input: {
       query: {
@@ -206,93 +212,114 @@ function SubjectPicker({
     ?.map(normalizeSubject)
     .filter((subject): subject is SelectableAccessSubject => Boolean(subject)) ?? []
 
-  const toggleSubject = (subject: SelectableAccessSubject) => {
-    const key = subjectKey(subject)
-    if (selectedKeys.has(key)) {
-      if (selectedSubjects.length <= 1)
-        return
-      onChange(selectedSubjects.filter(item => subjectKey(item) !== key))
-      return
-    }
-    onChange([...selectedSubjects, subject])
+  const handleOpenChange = (nextOpen: boolean) => {
+    if (!nextOpen)
+      setKeyword('')
+    setOpen(nextOpen)
+  }
+
+  const handleInputValueChange = (inputValue: string, details: ComboboxRootChangeEventDetails) => {
+    if (details.reason !== 'item-press')
+      setKeyword(inputValue)
+  }
+
+  const handleValueChange = (nextSubjects: SelectableAccessSubject[]) => {
+    setKeyword('')
+    onChange(nextSubjects)
   }
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger
-        render={(
-          <button
-            type="button"
-            disabled={disabled}
-            className={cn(
-              'inline-flex h-8 items-center gap-1.5 rounded-lg border border-components-button-secondary-border bg-components-button-secondary-bg px-3 system-sm-medium text-components-button-secondary-text hover:bg-components-button-secondary-bg-hover',
-              disabled && 'cursor-not-allowed opacity-50',
-            )}
-          >
-            <span className="i-ri-add-line size-3.5" />
-            {t('access.members.pickPlaceholder')}
-          </button>
-        )}
-      />
-      {open && (
-        <PopoverContent placement="bottom-start" sideOffset={4} popupClassName="w-90 p-0">
-          <div className="flex max-h-105 flex-col overflow-hidden rounded-xl border border-components-panel-border bg-components-panel-bg shadow-lg">
-            <div className="border-b border-divider-subtle p-2">
-              <Input
-                showLeftIcon
-                value={keyword}
-                onChange={e => setKeyword(e.target.value)}
-                placeholder={t('access.members.searchPlaceholder')}
-                className="h-8"
+    <Combobox<SelectableAccessSubject, true>
+      multiple
+      open={open}
+      value={selectedSubjects}
+      inputValue={keyword}
+      items={subjects}
+      disabled={disabled}
+      itemToStringLabel={getSubjectLabel}
+      itemToStringValue={getSubjectValue}
+      isItemEqualToValue={isSameSubject}
+      filter={null}
+      onOpenChange={handleOpenChange}
+      onInputValueChange={handleInputValueChange}
+      onValueChange={handleValueChange}
+    >
+      <ComboboxInputGroup className="h-auto min-h-8 max-w-full overflow-hidden py-1 pr-1">
+        <ComboboxValue>
+          {(selectedValue: SelectableAccessSubject[]) => (
+            <>
+              {selectedValue.length > 0 && (
+                <ComboboxChips className="flex-nowrap overflow-hidden">
+                  {selectedValue.map(subject => (
+                    <ComboboxChip
+                      key={subjectKey(subject)}
+                      className="shrink-0 rounded-full border border-divider-subtle bg-components-badge-white-to-dark"
+                    >
+                      <SubjectIcon subject={subject} />
+                      <span className="max-w-32 truncate">{getSubjectLabel(subject)}</span>
+                      {subject.subjectType === 'group' && subject.memberCount != null && (
+                        <span className="system-2xs-regular text-text-tertiary">{subject.memberCount}</span>
+                      )}
+                      <ComboboxChipRemove
+                        disabled={disabled || selectedSubjects.length <= 1}
+                        aria-label={t('operation.remove', { ns: 'common' })}
+                      >
+                        <span className="i-ri-close-circle-fill size-3.5" aria-hidden="true" />
+                      </ComboboxChipRemove>
+                    </ComboboxChip>
+                  ))}
+                </ComboboxChips>
+              )}
+              <ComboboxInput
+                aria-label={t('access.members.pickPlaceholder')}
+                placeholder={selectedValue.length ? '' : t('access.members.pickPlaceholder')}
+                className={cn('px-2 py-0 system-sm-medium', selectedValue.length ? 'min-w-16' : 'min-w-0')}
               />
-            </div>
-            <div className="min-h-10 overflow-y-auto p-1">
-              {subjectsQuery.isLoading
-                ? (
-                    <div className="flex flex-col gap-2 px-3 py-3">
-                      {SUBJECT_PICKER_SKELETON_KEYS.map(key => (
-                        <SkeletonRow key={key} className="h-6">
-                          <SkeletonRectangle className="h-3 w-full animate-pulse" />
-                        </SkeletonRow>
-                      ))}
-                    </div>
-                  )
-                : subjects.length === 0
-                  ? (
-                      <div className="px-3 py-5 text-center system-xs-regular text-text-tertiary">
-                        {t('access.members.empty')}
-                      </div>
-                    )
-                  : subjects.map((subject) => {
-                      const isSelected = selectedKeys.has(subjectKey(subject))
-                      const isGroup = subject.subjectType === 'group'
-                      return (
-                        <button
-                          key={subjectKey(subject)}
-                          type="button"
-                          onClick={() => toggleSubject(subject)}
-                          className="flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left hover:bg-state-base-hover"
-                        >
-                          <span className={cn(isGroup ? 'i-ri-group-line' : 'i-ri-user-line', 'size-4 shrink-0 text-text-tertiary')} />
-                          <span className="min-w-0 flex-1 truncate system-sm-medium text-text-secondary">
-                            {subject.name || subject.id}
+            </>
+          )}
+        </ComboboxValue>
+        <ComboboxInputTrigger />
+      </ComboboxInputGroup>
+      <ComboboxContent popupClassName="w-(--anchor-width) min-w-90 p-0">
+        {subjectsQuery.isLoading
+          ? (
+              <ComboboxStatus className="flex flex-col gap-2 px-3 py-3">
+                {SUBJECT_PICKER_SKELETON_KEYS.map(key => (
+                  <SkeletonRow key={key} className="h-6">
+                    <SkeletonRectangle className="h-3 w-full animate-pulse" />
+                  </SkeletonRow>
+                ))}
+              </ComboboxStatus>
+            )
+          : (
+              <>
+                <ComboboxList className="p-1">
+                  {subjects.map(subject => (
+                    <ComboboxItem
+                      key={subjectKey(subject)}
+                      value={subject}
+                      className="mx-0"
+                    >
+                      <ComboboxItemText className="flex items-center gap-2 px-0">
+                        <SubjectIcon subject={subject} />
+                        <span className="min-w-0 flex-1 truncate">{getSubjectLabel(subject)}</span>
+                        {subject.subjectType === 'group' && subject.memberCount != null && (
+                          <span className="shrink-0 system-xs-regular text-text-tertiary">
+                            {t('access.members.memberCount', { count: subject.memberCount })}
                           </span>
-                          {isGroup && subject.memberCount != null && (
-                            <span className="system-xs-regular text-text-tertiary">
-                              {t('access.members.memberCount', { count: subject.memberCount })}
-                            </span>
-                          )}
-                          {isSelected && (
-                            <span className="i-ri-check-line size-4 shrink-0 text-text-accent" />
-                          )}
-                        </button>
-                      )
-                    })}
-            </div>
-          </div>
-        </PopoverContent>
-      )}
-    </Popover>
+                        )}
+                      </ComboboxItemText>
+                      <ComboboxItemIndicator />
+                    </ComboboxItem>
+                  ))}
+                </ComboboxList>
+                <ComboboxEmpty className="px-3 py-5 text-center system-xs-regular">
+                  {t('access.members.empty')}
+                </ComboboxEmpty>
+              </>
+            )}
+      </ComboboxContent>
+    </Combobox>
   )
 }
 
@@ -397,30 +424,16 @@ export function EnvironmentPermissionRow({
         />
       </div>
       {permissionKind === 'specific' && (
-        <div className="flex min-w-0 flex-col gap-2 sm:col-start-2">
-          <div className="flex flex-wrap items-center gap-2">
-            <SubjectPicker
-              selectedSubjects={subjects}
-              disabled={controlsDisabled}
-              onChange={handleSubjectsChange}
-            />
-            {subjects.length === 0 && (
-              <span className="system-xs-regular text-text-tertiary">
-                {t('access.members.emptySelection')}
-              </span>
-            )}
-          </div>
-          {subjects.length > 0 && (
-            <div className="flex flex-wrap gap-1.5">
-              {subjects.map(subject => (
-                <SubjectPill
-                  key={subjectKey(subject)}
-                  subject={subject}
-                  disabled={controlsDisabled || subjects.length <= 1}
-                  onRemove={() => handleSubjectsChange(subjects.filter(item => subjectKey(item) !== subjectKey(subject)))}
-                />
-              ))}
-            </div>
+        <div className="min-w-0 sm:col-start-2">
+          <SubjectPicker
+            selectedSubjects={subjects}
+            disabled={controlsDisabled}
+            onChange={handleSubjectsChange}
+          />
+          {subjects.length === 0 && (
+            <span className="mt-1.5 block system-xs-regular text-text-tertiary">
+              {t('access.members.emptySelection')}
+            </span>
           )}
         </div>
       )}
