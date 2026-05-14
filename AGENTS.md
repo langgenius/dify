@@ -38,6 +38,13 @@ The codebase is split into:
 - Inject dependencies through constructors and preserve clean architecture boundaries.
 - Handle errors with domain-specific exceptions at the correct layer.
 
+## Cherry-Picking to LTS Branches
+
+- Always use `git cherry-pick -x` when backporting commits from `main` to any `lts/*` branch.
+- The `-x` flag appends `(cherry picked from commit <sha>)` to the commit message. CI validates this provenance line; commits without it will fail.
+- When cherry-picking multiple commits, each must carry its own `(cherry picked from ...)` annotation.
+- Run `git cherry-pick --continue` with `HUSKY=0` to skip pre-existing lint errors that are unrelated to the fix.
+
 ## Project Conventions
 
 - Backend architecture adheres to DDD and Clean Architecture principles.
