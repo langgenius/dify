@@ -101,6 +101,7 @@
   "appModes.completionApp": "Text Generator",
   "avatar.deleteDescription": "Are you sure you want to remove your profile picture? Your account will use the default initial avatar.",
   "avatar.deleteTitle": "Remove Avatar",
+  "avatar.editAction": "Edit Avatar",
   "chat.citation.characters": "Characters:",
   "chat.citation.hitCount": "Retrieval count:",
   "chat.citation.hitScore": "Retrieval Score:",

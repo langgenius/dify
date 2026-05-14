@@ -308,12 +308,7 @@ class TestWorkspaceListApi:
         method = unwrap(api.get)
 
         tenant = MagicMock(id="t1", name="T", status="active", created_at=naive_utc_now())
-
-        paginate_result = MagicMock(
-            items=[tenant],
-            has_next=False,
-            total=1,
-        )
+        paginate_result = MagicMock(items=[tenant], has_next=False, total=1)
 
         with (
             app.test_request_context("/all-workspaces", query_string={"page": 1, "limit": 20}),
@@ -329,25 +324,12 @@ class TestWorkspaceListApi:
         api = WorkspaceListApi()
         method = unwrap(api.get)
 
-        tenant = MagicMock(
-            id="t1",
-            name="T",
-            status="active",
-            created_at=naive_utc_now(),
-        )
-
-        paginate_result = MagicMock(
-            items=[tenant],
-            has_next=True,
-            total=10,
-        )
+        tenant = MagicMock(id="t1", name="T", status="active", created_at=naive_utc_now())
+        paginate_result = MagicMock(items=[tenant], has_next=True, total=10)
 
         with (
             app.test_request_context("/all-workspaces", query_string={"page": 1, "limit": 1}),
-            patch(
-                "controllers.console.workspace.workspace.db.paginate",
-                return_value=paginate_result,
-            ),
+            patch("controllers.console.workspace.workspace.db.paginate", return_value=paginate_result),
         ):
             result, status = method(api)
 

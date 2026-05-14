@@ -1151,7 +1151,7 @@
   },
   "web/app/components/base/icons/src/vender/line/general/index.ts": {
     "no-barrel-files/no-barrel-files": {
-      "count": 12
+      "count": 11
     }
   },
   "web/app/components/base/icons/src/vender/line/images/index.ts": {
@@ -2960,11 +2960,6 @@
   "web/app/components/workflow-app/hooks/use-workflow-refresh-draft.ts": {
     "ts/no-explicit-any": {
       "count": 2
-    }
-  },
-  "web/app/components/workflow-app/hooks/use-workflow-run.ts": {
-    "ts/no-explicit-any": {
-      "count": 5
     }
   },
   "web/app/components/workflow-app/hooks/use-workflow-template.ts": {
