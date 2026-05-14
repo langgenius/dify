@@ -73,11 +73,9 @@ vi.mock('@/service/knowledge/use-dataset', () => ({
 
 // Mock Datasets component
 vi.mock('../datasets', () => ({
-  default: ({ tags, keywords, includeAll }: { tags: string[], keywords: string, includeAll: boolean }) => (
+  default: ({ datasetList }: { datasetList?: { pages: Array<{ total?: number }> } }) => (
     <div data-testid="datasets-component">
-      <span data-testid="tags">{tags.join(',')}</span>
-      <span data-testid="keywords">{keywords}</span>
-      <span data-testid="include-all">{includeAll ? 'true' : 'false'}</span>
+      <span data-testid="dataset-total">{datasetList?.pages[0]?.total}</span>
     </div>
   ),
 }))

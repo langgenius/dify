@@ -1,41 +1,33 @@
 'use client'
 
+import type { useDatasetList } from '@/service/knowledge/use-dataset'
 import { useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
 import { useSelector as useAppContextWithSelector } from '@/context/app-context'
-import { useDatasetList, useInvalidDatasetList } from '@/service/knowledge/use-dataset'
+import { useInvalidDatasetList } from '@/service/knowledge/use-dataset'
 import DatasetCard from './dataset-card'
 import NewDatasetCard from './new-dataset-card'
 
 type Props = {
-  tags: string[]
-  keywords: string
-  includeAll: boolean
+  datasetList: ReturnType<typeof useDatasetList>['data'] | null
+  fetchNextPage: ReturnType<typeof useDatasetList>['fetchNextPage']
+  hasNextPage: ReturnType<typeof useDatasetList>['hasNextPage']
+  isFetching: ReturnType<typeof useDatasetList>['isFetching']
+  isFetchingNextPage: ReturnType<typeof useDatasetList>['isFetchingNextPage']
   onOpenTagManagement?: () => void
 }
 
 const Datasets = ({
-  tags,
-  keywords,
-  includeAll,
+  datasetList,
+  fetchNextPage,
+  hasNextPage,
+  isFetching,
+  isFetchingNextPage,
   onOpenTagManagement = () => {},
 }: Props) => {
   const { t } = useTranslation()
   const isCurrentWorkspaceEditor = useAppContextWithSelector(state => state.isCurrentWorkspaceEditor)
-  const {
-    data: datasetList,
-    fetchNextPage,
-    hasNextPage,
-    isFetching,
-    isFetchingNextPage,
-  } = useDatasetList({
-    initialPage: 1,
-    tag_ids: tags,
-    limit: 30,
-    include_all: includeAll,
-    keyword: keywords,
-  })
   const invalidDatasetList = useInvalidDatasetList()
   const anchorRef = useRef<HTMLDivElement>(null)
   const observerRef = useRef<IntersectionObserver>(null)
