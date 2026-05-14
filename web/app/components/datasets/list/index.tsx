@@ -5,7 +5,7 @@ import { useSuspenseQuery } from '@tanstack/react-query'
 import { useBoolean, useDebounceFn } from 'ahooks'
 
 // Libraries
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Input from '@/app/components/base/input'
 import CheckboxWithLabel from '@/app/components/datasets/create/website/base/checkbox-with-label'
@@ -15,7 +15,7 @@ import { TagFilter } from '@/features/tag-management/components/tag-filter'
 import { TagManagementModal } from '@/features/tag-management/components/tag-management-modal'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { useSearchParams } from '@/next/navigation'
-import { useDatasetApiBaseUrl, useInvalidDatasetList } from '@/service/knowledge/use-dataset'
+import { useDatasetApiBaseUrl, useDatasetList, useInvalidDatasetList } from '@/service/knowledge/use-dataset'
 import { systemFeaturesQueryOptions } from '@/service/system-features'
 // Components
 import ExternalAPIPanel from '../external-api/external-api-panel'
@@ -55,8 +55,21 @@ const List = () => {
   }
 
   const isCurrentWorkspaceManager = useAppContextSelector(state => state.isCurrentWorkspaceManager)
+  const isCurrentWorkspaceEditor = useAppContextSelector(state => state.isCurrentWorkspaceEditor)
   const { data: apiBaseInfo } = useDatasetApiBaseUrl()
-  const showEmptyDataList = searchParams.get('emptyDataList') === 'true'
+  const emptyDataList = searchParams.get('emptyDataList') === 'true'
+  const datasetListQuery = useDatasetList({
+    initialPage: 1,
+    tag_ids: tagIDs,
+    limit: 30,
+    include_all: includeAll,
+    keyword: searchKeywords,
+  })
+  const pages = useMemo(() => emptyDataList ? [{ data: [], total: 0 }] : datasetListQuery.data?.pages ?? [], [datasetListQuery.data?.pages, emptyDataList])
+  const hasResolvedFirstPage = pages.length > 0
+  const hasAnyDataset = (pages[0]?.total ?? 0) > 0
+  const hasActiveFilters = tagIDs.length > 0 || keywords.trim().length > 0 || searchKeywords.trim().length > 0 || includeAll
+  const showEmptyDataList = !hasAnyDataset && isCurrentWorkspaceEditor && (emptyDataList || (hasResolvedFirstPage && !hasActiveFilters))
 
   return (
     <div className="relative flex grow flex-col overflow-y-auto bg-background-body">

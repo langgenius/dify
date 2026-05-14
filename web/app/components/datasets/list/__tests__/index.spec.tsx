@@ -59,7 +59,7 @@ vi.mock('@/hooks/use-knowledge', () => ({
 
 vi.mock('@/service/knowledge/use-dataset', () => ({
   useDatasetList: vi.fn(() => ({
-    data: { pages: [{ data: [] }] },
+    data: { pages: [{ data: [], total: 1 }] },
     fetchNextPage: vi.fn(),
     hasNextPage: false,
     isFetching: false,
@@ -135,10 +135,18 @@ vi.mock('@/app/components/datasets/create/website/base/checkbox-with-label', () 
 }))
 
 describe('List', () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     vi.clearAllMocks()
     mockBrandingEnabled = false
     mockSearchParams = new URLSearchParams()
+    const { useDatasetList } = await import('@/service/knowledge/use-dataset')
+    vi.mocked(useDatasetList).mockReturnValue({
+      data: { pages: [{ data: [], total: 1 }] },
+      fetchNextPage: vi.fn(),
+      hasNextPage: false,
+      isFetching: false,
+      isFetchingNextPage: false,
+    } as unknown as ReturnType<typeof useDatasetList>)
   })
 
   describe('Rendering', () => {
@@ -190,19 +198,34 @@ describe('List', () => {
   })
 
   describe('Props', () => {
-    it('should pass includeAll prop to Datasets', () => {
+    it('should query datasets with includeAll disabled initially', async () => {
+      const { useDatasetList } = await import('@/service/knowledge/use-dataset')
+
       render(<List />)
-      expect(screen.getByTestId('include-all')).toHaveTextContent('false')
+
+      expect(useDatasetList).toHaveBeenCalledWith(expect.objectContaining({
+        include_all: false,
+      }))
     })
 
-    it('should pass empty keywords initially', () => {
+    it('should query datasets with empty keywords initially', async () => {
+      const { useDatasetList } = await import('@/service/knowledge/use-dataset')
+
       render(<List />)
-      expect(screen.getByTestId('keywords')).toHaveTextContent('')
+
+      expect(useDatasetList).toHaveBeenCalledWith(expect.objectContaining({
+        keyword: '',
+      }))
     })
 
-    it('should pass empty tags initially', () => {
+    it('should query datasets with empty tags initially', async () => {
+      const { useDatasetList } = await import('@/service/knowledge/use-dataset')
+
       render(<List />)
-      expect(screen.getByTestId('tags')).toHaveTextContent('')
+
+      expect(useDatasetList).toHaveBeenCalledWith(expect.objectContaining({
+        tag_ids: [],
+      }))
     })
   })
 
@@ -255,6 +278,57 @@ describe('List', () => {
       render(<List />)
       // Should render without errors even with empty data
       expect(screen.getByTestId('datasets-component')).toBeInTheDocument()
+    })
+
+    it('should render first empty state when there are no datasets and no active filters', async () => {
+      const { useDatasetList } = await import('@/service/knowledge/use-dataset')
+      vi.mocked(useDatasetList).mockReturnValue({
+        data: { pages: [{ data: [], total: 0 }] },
+        fetchNextPage: vi.fn(),
+        hasNextPage: false,
+        isFetching: false,
+        isFetchingNextPage: false,
+      } as unknown as ReturnType<typeof useDatasetList>)
+
+      render(<List />)
+
+      expect(screen.getByText('dataset.firstEmpty.title')).toBeInTheDocument()
+      expect(screen.queryByTestId('datasets-component')).not.toBeInTheDocument()
+      expect(screen.queryByTestId('dataset-footer')).not.toBeInTheDocument()
+    })
+
+    it('should not render first empty state before the first dataset page resolves', async () => {
+      const { useDatasetList } = await import('@/service/knowledge/use-dataset')
+      vi.mocked(useDatasetList).mockReturnValue({
+        data: { pages: [] },
+        fetchNextPage: vi.fn(),
+        hasNextPage: false,
+        isFetching: false,
+        isFetchingNextPage: false,
+      } as unknown as ReturnType<typeof useDatasetList>)
+
+      render(<List />)
+
+      expect(screen.queryByText('dataset.firstEmpty.title')).not.toBeInTheDocument()
+      expect(screen.getByTestId('datasets-component')).toBeInTheDocument()
+    })
+
+    it('should keep the regular list for empty filtered results', async () => {
+      const { useDatasetList } = await import('@/service/knowledge/use-dataset')
+      vi.mocked(useDatasetList).mockImplementation(params => ({
+        data: { pages: [{ data: [], total: params.include_all ? 0 : 1 }] },
+        fetchNextPage: vi.fn(),
+        hasNextPage: false,
+        isFetching: false,
+        isFetchingNextPage: false,
+      } as unknown as ReturnType<typeof useDatasetList>))
+
+      render(<List />)
+
+      fireEvent.click(screen.getByTestId('include-all-checkbox'))
+
+      expect(screen.getByTestId('datasets-component')).toBeInTheDocument()
+      expect(screen.queryByText('dataset.firstEmpty.title')).not.toBeInTheDocument()
     })
   })
 
