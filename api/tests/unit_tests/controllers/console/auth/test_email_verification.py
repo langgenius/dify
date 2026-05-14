@@ -342,6 +342,7 @@ class TestEmailCodeLoginApi:
                 "code": encode_code("123456"),
                 "token": "valid_token",
                 "language": "en-US",
+                "timezone": "Asia/Shanghai",
             },
         ):
             api = EmailCodeLoginApi()
@@ -349,7 +350,12 @@ class TestEmailCodeLoginApi:
 
         # Assert
         assert response.json["result"] == "success"
-        mock_create_account.assert_called_once()
+        mock_create_account.assert_called_once_with(
+            email="newuser@example.com",
+            name="newuser@example.com",
+            interface_language="en-US",
+            timezone="Asia/Shanghai",
+        )
 
     @patch("controllers.console.wraps.db")
     @patch("controllers.console.auth.login.AccountService.get_email_code_login_data")

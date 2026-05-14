@@ -178,7 +178,12 @@ export type MailRegisterResponse = { result: string, data: {} }
 export const useMailRegister = () => {
   return useMutation({
     mutationKey: [NAME_SPACE, 'mail-register'],
-    mutationFn: (body: { token: string, new_password: string, password_confirm: string }) => {
+    mutationFn: (body: {
+      token: string
+      new_password: string
+      password_confirm: string
+      timezone?: string
+    }) => {
       return post<MailRegisterResponse>('/email-register', { body })
     },
   })

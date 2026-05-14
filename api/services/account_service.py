@@ -29,6 +29,7 @@ from extensions.ext_database import db
 from extensions.ext_redis import redis_client, redis_fallback
 from libs.datetime_utils import naive_utc_now
 from libs.helper import RateLimiter, TokenManager
+from libs.helper import timezone as validate_timezone
 from libs.passport import PassportService
 from libs.password import compare_password, hash_password, valid_password
 from libs.rsa import generate_key_pair
@@ -271,8 +272,9 @@ class AccountService:
         password: str | None = None,
         interface_theme: str = "light",
         is_setup: bool | None = False,
+        timezone: str | None = None,
     ) -> Account:
-        """create account"""
+        """Create an account, preferring explicit user timezone over language-derived defaults."""
         if not FeatureService.get_system_features().is_allow_register and not is_setup:
             from controllers.console.error import AccountNotFound
 
@@ -309,7 +311,9 @@ class AccountService:
             password_salt=salt_to_set,
             interface_language=interface_language,
             interface_theme=interface_theme,
-            timezone=language_timezone_mapping.get(interface_language, "UTC"),
+            timezone=(
+                validate_timezone(timezone) if timezone else language_timezone_mapping.get(interface_language, "UTC")
+            ),
         )
 
         db.session.add(account)
@@ -318,12 +322,24 @@ class AccountService:
 
     @staticmethod
     def create_account_and_tenant(
-        email: str, name: str, interface_language: str, password: str | None = None
+        email: str, name: str, interface_language: str, password: str | None = None, timezone: str | None = None
     ) -> Account:
         """create account"""
-        account = AccountService.create_account(
-            email=email, name=name, interface_language=interface_language, password=password
-        )
+        if timezone:
+            account = AccountService.create_account(
+                email=email,
+                name=name,
+                interface_language=interface_language,
+                password=password,
+                timezone=timezone,
+            )
+        else:
+            account = AccountService.create_account(
+                email=email,
+                name=name,
+                interface_language=interface_language,
+                password=password,
+            )
 
         try:
             TenantService.create_owner_tenant_if_not_exist(account=account)
@@ -1483,17 +1499,29 @@ class RegisterService:
         status: AccountStatus | None = None,
         is_setup: bool | None = False,
         create_workspace_required: bool | None = True,
+        timezone: str | None = None,
     ) -> Account:
         db.session.begin_nested()
         """Register account"""
         try:
-            account = AccountService.create_account(
-                email=email,
-                name=name,
-                interface_language=get_valid_language(language),
-                password=password,
-                is_setup=is_setup,
-            )
+            interface_language = get_valid_language(language)
+            if timezone:
+                account = AccountService.create_account(
+                    email=email,
+                    name=name,
+                    interface_language=interface_language,
+                    password=password,
+                    is_setup=is_setup,
+                    timezone=timezone,
+                )
+            else:
+                account = AccountService.create_account(
+                    email=email,
+                    name=name,
+                    interface_language=interface_language,
+                    password=password,
+                    is_setup=is_setup,
+                )
             account.status = status or AccountStatus.ACTIVE
             account.initialized_at = naive_utc_now()
 

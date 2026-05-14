@@ -18,7 +18,7 @@ import { useRouter, useSearchParams } from '@/next/navigation'
 import { activateMember } from '@/service/common'
 import { systemFeaturesQueryOptions } from '@/service/system-features'
 import { useInvitationCheck } from '@/service/use-common'
-import { timezones } from '@/utils/timezone'
+import { getBrowserTimezone, timezones } from '@/utils/timezone'
 import { resolvePostLoginRedirect } from '../utils/post-login-redirect'
 
 type LanguageSelectOption = {
@@ -51,7 +51,7 @@ export default function InviteSettingsPage() {
   const token = decodeURIComponent(searchParams.get('invite_token') as string)
   const [name, setName] = useState('')
   const [language, setLanguage] = useState(LanguagesSupported[0])
-  const [timezone, setTimezone] = useState(() => Intl.DateTimeFormat().resolvedOptions().timeZone || 'America/Los_Angeles')
+  const [timezone, setTimezone] = useState(() => getBrowserTimezone() || 'America/Los_Angeles')
   const selectedLanguage = LANGUAGE_OPTIONS.find(item => item.value === language)
   const selectedTimezone = TIMEZONE_OPTIONS.find(item => item.value === timezone)
 

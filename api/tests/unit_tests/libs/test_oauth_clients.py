@@ -4,7 +4,7 @@ from unittest.mock import MagicMock, patch
 import httpx
 import pytest
 
-from libs.oauth import GitHubOAuth, GoogleOAuth, OAuthUserInfo
+from libs.oauth import GitHubOAuth, GoogleOAuth, OAuthUserInfo, decode_oauth_state
 
 
 class BaseOAuthTest:
@@ -37,15 +37,19 @@ class TestGitHubOAuth(BaseOAuthTest):
         return GitHubOAuth(oauth_config["client_id"], oauth_config["client_secret"], oauth_config["redirect_uri"])
 
     @pytest.mark.parametrize(
-        ("invite_token", "expected_state"),
+        ("invite_token", "timezone", "expected_state"),
         [
-            (None, None),
-            ("test_invite_token", "test_invite_token"),
-            ("", None),
+            (None, None, None),
+            ("test_invite_token", None, {"invite_token": "test_invite_token"}),
+            ("", None, None),
+            (None, "Asia/Shanghai", {"timezone": "Asia/Shanghai"}),
+            ("test_invite_token", "Asia/Shanghai", {"invite_token": "test_invite_token", "timezone": "Asia/Shanghai"}),
         ],
     )
-    def test_should_generate_authorization_url_correctly(self, oauth, oauth_config, invite_token, expected_state):
-        url = oauth.get_authorization_url(invite_token)
+    def test_should_generate_authorization_url_correctly(
+        self, oauth, oauth_config, invite_token, timezone, expected_state
+    ):
+        url = oauth.get_authorization_url(invite_token, timezone=timezone)
         parsed, params = self.parse_auth_url(url)
 
         assert parsed.scheme == "https"
@@ -56,7 +60,7 @@ class TestGitHubOAuth(BaseOAuthTest):
         assert params["scope"][0] == "user:email"
 
         if expected_state:
-            assert params["state"][0] == expected_state
+            assert decode_oauth_state(params["state"][0]) == expected_state
         else:
             assert "state" not in params
 
@@ -208,15 +212,19 @@ class TestGoogleOAuth(BaseOAuthTest):
         return GoogleOAuth(oauth_config["client_id"], oauth_config["client_secret"], oauth_config["redirect_uri"])
 
     @pytest.mark.parametrize(
-        ("invite_token", "expected_state"),
+        ("invite_token", "timezone", "expected_state"),
         [
-            (None, None),
-            ("test_invite_token", "test_invite_token"),
-            ("", None),
+            (None, None, None),
+            ("test_invite_token", None, {"invite_token": "test_invite_token"}),
+            ("", None, None),
+            (None, "Asia/Shanghai", {"timezone": "Asia/Shanghai"}),
+            ("test_invite_token", "Asia/Shanghai", {"invite_token": "test_invite_token", "timezone": "Asia/Shanghai"}),
         ],
     )
-    def test_should_generate_authorization_url_correctly(self, oauth, oauth_config, invite_token, expected_state):
-        url = oauth.get_authorization_url(invite_token)
+    def test_should_generate_authorization_url_correctly(
+        self, oauth, oauth_config, invite_token, timezone, expected_state
+    ):
+        url = oauth.get_authorization_url(invite_token, timezone=timezone)
         parsed, params = self.parse_auth_url(url)
 
         assert parsed.scheme == "https"
@@ -228,7 +236,7 @@ class TestGoogleOAuth(BaseOAuthTest):
         assert params["scope"][0] == "openid email"
 
         if expected_state:
-            assert params["state"][0] == expected_state
+            assert decode_oauth_state(params["state"][0]) == expected_state
         else:
             assert "state" not in params
 

@@ -1,6 +1,6 @@
 import pytest
 
-from libs.oauth import OAuth
+from libs.oauth import OAuth, decode_oauth_state, encode_oauth_state
 
 
 def test_oauth_base_methods_raise_not_implemented():
@@ -17,3 +17,13 @@ def test_oauth_base_methods_raise_not_implemented():
 
     with pytest.raises(NotImplementedError):
         oauth._transform_user_info({})
+
+
+def test_oauth_state_round_trips_invite_token_and_timezone():
+    state = encode_oauth_state(invite_token="invite-123", timezone="Asia/Shanghai")
+
+    assert decode_oauth_state(state) == {"invite_token": "invite-123", "timezone": "Asia/Shanghai"}
+
+
+def test_oauth_state_keeps_legacy_raw_invite_token_compatible():
+    assert decode_oauth_state("legacy-invite-token") == {"invite_token": "legacy-invite-token"}

@@ -13,6 +13,7 @@ import { useRouter, useSearchParams } from '@/next/navigation'
 import { useMailRegister } from '@/service/use-common'
 import { rememberCreateAppExternalAttribution } from '@/utils/create-app-tracking'
 import { sendGAEvent } from '@/utils/gtag'
+import { getBrowserTimezone } from '@/utils/timezone'
 
 const parseUtmInfo = () => {
   const utmInfoStr = Cookies.get('utm_info')
@@ -65,6 +66,7 @@ const ChangePasswordForm = () => {
         token,
         new_password: password,
         password_confirm: confirmPassword,
+        timezone: getBrowserTimezone(),
       })
       const { result } = res as MailRegisterResponse
       if (result === 'success') {

@@ -15,6 +15,7 @@ from controllers.console.auth.error import (
     PasswordMismatchError,
 )
 from libs.helper import EmailStr, extract_remote_ip
+from libs.helper import timezone as validate_timezone_string
 from libs.password import valid_password
 from models import Account
 from services.account_service import AccountService
@@ -40,11 +41,17 @@ class EmailRegisterResetPayload(BaseModel):
     token: str = Field(...)
     new_password: str = Field(...)
     password_confirm: str = Field(...)
+    timezone: str | None = Field(default=None)
 
     @field_validator("new_password", "password_confirm")
     @classmethod
     def validate_password(cls, value: str) -> str:
         return valid_password(value)
+
+    @field_validator("timezone")
+    @classmethod
+    def validate_timezone(cls, value: str | None) -> str | None:
+        return validate_timezone_string(value) if value else value
 
 
 register_schema_models(console_ns, EmailRegisterSendPayload, EmailRegisterValidityPayload, EmailRegisterResetPayload)
@@ -145,7 +152,10 @@ class EmailRegisterResetApi(Resource):
         if account:
             raise EmailAlreadyInUseError()
         else:
-            account = self._create_new_account(normalized_email, args.password_confirm)
+            if args.timezone:
+                account = self._create_new_account(normalized_email, args.password_confirm, args.timezone)
+            else:
+                account = self._create_new_account(normalized_email, args.password_confirm)
             if not account:
                 raise AccountNotFoundError()
             token_pair = AccountService.login(account=account, ip_address=extract_remote_ip(request))
@@ -153,7 +163,7 @@ class EmailRegisterResetApi(Resource):
 
         return {"result": "success", "data": token_pair.model_dump()}
 
-    def _create_new_account(self, email: str, password: str) -> Account | None:
+    def _create_new_account(self, email: str, password: str, timezone: str | None = None) -> Account | None:
         # Create new account if allowed
         account = None
         try:
@@ -162,6 +172,7 @@ class EmailRegisterResetApi(Resource):
                 name=email,
                 password=password,
                 interface_language=languages[0],
+                timezone=timezone,
             )
         except AccountRegisterError:
             raise AccountInFreezeError()

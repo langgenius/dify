@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { API_PREFIX } from '@/config'
 import { useSearchParams } from '@/next/navigation'
 import { getPurifyHref } from '@/utils'
+import { getBrowserTimezone } from '@/utils/timezone'
 import style from '../page.module.css'
 
 type SocialAuthProps = {
@@ -16,8 +17,14 @@ export default function SocialAuth(props: SocialAuthProps) {
 
   const getOAuthLink = (href: string) => {
     const url = getPurifyHref(`${API_PREFIX}${href}`)
-    if (searchParams.has('invite_token'))
-      return `${url}?${searchParams.toString()}`
+    const params = new URLSearchParams(searchParams.toString())
+    const timezone = getBrowserTimezone()
+    if (timezone)
+      params.set('timezone', timezone)
+
+    const query = params.toString()
+    if (query)
+      return `${url}?${query}`
 
     return url
   }
