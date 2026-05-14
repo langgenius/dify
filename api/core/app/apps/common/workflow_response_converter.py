@@ -52,7 +52,11 @@ from core.tools.tool_manager import ToolManager
 from core.trigger.constants import TRIGGER_PLUGIN_NODE_TYPE
 from core.trigger.trigger_manager import TriggerManager
 from core.workflow.human_input_forms import load_form_tokens_by_form_id
-from core.workflow.human_input_policy import HumanInputSurface, enrich_human_input_pause_reasons
+from core.workflow.human_input_policy import (
+    HumanInputSurface,
+    enrich_human_input_pause_reasons,
+    resolve_variable_select_input_options,
+)
 from core.workflow.system_variables import SystemVariableKey, system_variables_to_mapping
 from core.workflow.workflow_entry import WorkflowEntry
 from extensions.ext_database import db
@@ -365,6 +369,11 @@ class WorkflowResponseConverter:
                 expiration_time = expiration_times_by_form_id.get(reason.form_id)
                 if expiration_time is None:
                     raise ValueError(f"HumanInputForm not found for pause reason, form_id={reason.form_id}")
+                variable_pool = graph_runtime_state.variable_pool
+                inputs = resolve_variable_select_input_options(
+                    reason.inputs,
+                    variable_pool=variable_pool,
+                )
                 responses.append(
                     HumanInputRequiredResponse(
                         task_id=task_id,
@@ -374,7 +383,7 @@ class WorkflowResponseConverter:
                             node_id=reason.node_id,
                             node_title=reason.node_title,
                             form_content=reason.form_content,
-                            inputs=reason.inputs,
+                            inputs=inputs,
                             actions=reason.actions,
                             display_in_ui=display_in_ui_by_form_id.get(reason.form_id, False),
                             form_token=form_token_by_form_id.get(reason.form_id),

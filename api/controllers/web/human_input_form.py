@@ -4,6 +4,7 @@ Web App Human Input Form APIs.
 
 import json
 import logging
+from collections.abc import Sequence
 from datetime import datetime
 from typing import Any, NotRequired, TypedDict
 
@@ -20,6 +21,7 @@ from controllers.web import web_ns
 from controllers.web.error import NotFoundError, WebFormRateLimitExceededError
 from controllers.web.site import serialize_app_site_payload
 from extensions.ext_database import db
+from graphon.nodes.human_input.entities import FormInputConfig
 from libs.helper import RateLimiter, extract_remote_ip
 from models.account import TenantStatus
 from models.model import App, Site
@@ -79,12 +81,17 @@ class FormDefinitionPayload(TypedDict):
     site: NotRequired[dict]
 
 
-def _jsonify_form_definition(form: Form, site_payload: dict | None = None) -> Response:
+def _jsonify_form_definition(
+    form: Form,
+    *,
+    inputs: Sequence[FormInputConfig] = (),
+    site_payload: dict | None = None,
+) -> Response:
     """Return the form payload (optionally with site) as a JSON response."""
-    definition_payload = form.get_definition().model_dump()
+    definition_payload = form.get_definition().model_dump(mode="json")
     payload: FormDefinitionPayload = {
         "form_content": definition_payload["rendered_content"],
-        "inputs": definition_payload["inputs"],
+        "inputs": [i.model_dump(mode="json") for i in inputs],
         "resolved_default_values": _stringify_default_values(definition_payload["default_values"]),
         "user_actions": definition_payload["user_actions"],
         "expiration_time": _to_timestamp(form.expiration_time),
@@ -149,8 +156,13 @@ class HumanInputFormApi(Resource):
 
         service.ensure_form_active(form)
         app_model, site = _get_app_site_from_form(form)
+        inputs = service.resolve_form_inputs(form)
 
-        return _jsonify_form_definition(form, site_payload=serialize_app_site_payload(app_model, site, None))
+        return _jsonify_form_definition(
+            form,
+            inputs=inputs,
+            site_payload=serialize_app_site_payload(app_model, site, None),
+        )
 
     # def post(self, _app_model: App, _end_user: EndUser, form_token: str):
     def post(self, form_token: str):

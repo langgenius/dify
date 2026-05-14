@@ -5,6 +5,10 @@ from enum import StrEnum
 from typing import Any
 
 from graphon.entities.pause_reason import PauseReasonType
+from graphon.nodes.human_input.entities import FormInputConfig, SelectInputConfig
+from graphon.nodes.human_input.enums import ValueSourceType
+from graphon.runtime.graph_runtime_state_protocol import ReadOnlyVariablePool
+from graphon.variables import ArrayStringSegment
 from models.human_input import RecipientType
 
 
@@ -71,3 +75,47 @@ def enrich_human_input_pause_reasons(
                     updated["expiration_time"] = expiration_time
         enriched.append(updated)
     return enriched
+
+
+def resolve_variable_select_input_options(
+    inputs: Sequence[FormInputConfig],
+    *,
+    variable_pool: ReadOnlyVariablePool | None,
+) -> list[FormInputConfig]:
+    """Resolve variable-backed select options to runtime values."""
+
+    # This function replace the SelectInputConfig.option_source.value
+    # field with acutial runtime values when option_source.type is VARIABLE.
+    #
+    # This is a dirty hacks. However it does reduces the logic leaked to callers of
+    # the api.
+    resolved_inputs: list[FormInputConfig] = []
+
+    if variable_pool is None:
+        return list(inputs)
+
+    for form_input in inputs:
+        if not isinstance(form_input, SelectInputConfig):
+            resolved_inputs.append(form_input)
+            continue
+
+        option_source = form_input.option_source
+        if option_source.type != ValueSourceType.VARIABLE:
+            resolved_inputs.append(form_input)
+            continue
+
+        option_values = variable_pool.get(option_source.selector)
+        if option_values is None:
+            resolved_inputs.append(form_input)
+            continue
+        if not (option_values, ArrayStringSegment):
+            raise TypeError(f"expected ArrayStringSegment, got {type(option_values)}")
+
+        updated_option_source = option_source.model_copy(update={"value": option_values.value})
+        # Ensure frontend receives concrete select options instead of unresolved selectors.
+        resolved_inputs.append(
+            form_input.model_copy(
+                update={"option_source": updated_option_source},
+            )
+        )
+    return resolved_inputs

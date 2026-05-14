@@ -9,10 +9,12 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from configs import dify_config
 from core.app.file_access import DatabaseFileAccessController
+from core.app.layers.pause_state_persist_layer import WorkflowResumptionContext
 from core.repositories.human_input_repository import (
     HumanInputFormRecord,
     HumanInputFormSubmissionRepository,
 )
+from core.workflow.human_input_policy import resolve_variable_select_input_options
 from factories.file_factory import build_from_mapping, build_from_mappings
 from graphon.file import FileUploadConfig
 from graphon.nodes.human_input.entities import (
@@ -28,6 +30,8 @@ from graphon.nodes.human_input.entities import (
     validate_human_input_submission as graphon_validate_human_input_submission,
 )
 from graphon.nodes.human_input.enums import HumanInputFormKind, HumanInputFormStatus, ValueSourceType
+from graphon.runtime import GraphRuntimeState
+from graphon.runtime.graph_runtime_state_protocol import ReadOnlyVariablePool
 from libs.datetime_utils import ensure_naive_utc, naive_utc_now
 from libs.exception import BaseHTTPException
 from models.human_input import RecipientType
@@ -176,6 +180,13 @@ class HumanInputService:
         self._ensure_not_submitted(form)
         return form
 
+    def resolve_form_inputs(self, form: Form) -> Sequence[FormInputConfig]:
+        variable_pool = self._load_variable_pool_for_form(form)
+        return resolve_variable_select_input_options(
+            form.get_definition().inputs,
+            variable_pool=variable_pool,
+        )
+
     def submit_form_by_token(
         self,
         recipient_type: RecipientType,
@@ -269,6 +280,22 @@ class HumanInputService:
             return
 
         logger.warning("App mode %s does not support resume for workflow run %s", app.mode, workflow_run_id)
+
+    def _load_variable_pool_for_form(self, form: Form) -> ReadOnlyVariablePool | None:
+        workflow_run_id = form.workflow_run_id
+        if workflow_run_id is None:
+            return None
+
+        workflow_run_repo = DifyAPIRepositoryFactory.create_api_workflow_run_repository(self._session_factory)
+        pause_entity = workflow_run_repo.get_workflow_pause(workflow_run_id)
+
+        if pause_entity is None or pause_entity.resumed_at is not None:
+            return None
+
+        resumption_context = WorkflowResumptionContext.loads(pause_entity.get_state().decode())
+        runtime_state = GraphRuntimeState.from_snapshot(resumption_context.serialized_graph_runtime_state)
+
+        return runtime_state.variable_pool
 
     def _is_globally_expired(self, form: Form, *, now: datetime | None = None) -> bool:
         global_timeout_seconds = dify_config.HUMAN_INPUT_GLOBAL_TIMEOUT_SECONDS

@@ -6,6 +6,9 @@ import pytest
 from pytest_mock import MockerFixture
 
 import services.human_input_service as human_input_service_module
+from core.app.app_config.entities import WorkflowUIBasedAppConfig
+from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerateEntity
+from core.app.layers.pause_state_persist_layer import WorkflowResumptionContext, _WorkflowGenerateEntityWrapper
 from core.repositories.human_input_repository import (
     HumanInputFormRecord,
     HumanInputFormSubmissionRepository,
@@ -21,8 +24,10 @@ from graphon.nodes.human_input.entities import (
     UserActionConfig,
 )
 from graphon.nodes.human_input.enums import HumanInputFormKind, HumanInputFormStatus, ValueSourceType
+from graphon.runtime import GraphRuntimeState, VariablePool
 from libs.datetime_utils import naive_utc_now
 from models.human_input import RecipientType
+from models.model import AppMode
 from services.human_input_service import (
     Form,
     FormExpiredError,
@@ -181,6 +186,70 @@ def test_get_form_definition_by_token_for_console_uses_repository(sample_form_re
     repo.get_by_token.assert_called_once_with("token")
     assert form is not None
     assert form.get_definition() == console_record.definition
+
+
+def _build_resumption_context_state(*, options: list[str], workflow_run_id: str) -> bytes:
+    app_config = WorkflowUIBasedAppConfig(
+        tenant_id="tenant-id",
+        app_id="app-id",
+        app_mode=AppMode.WORKFLOW,
+        workflow_id="workflow-id",
+    )
+    generate_entity = WorkflowAppGenerateEntity(
+        task_id="task-id",
+        app_config=app_config,
+        inputs={},
+        files=[],
+        user_id="user-id",
+        stream=True,
+        invoke_from=InvokeFrom.EXPLORE,
+        call_depth=0,
+        workflow_execution_id=workflow_run_id,
+    )
+    runtime_state = GraphRuntimeState(variable_pool=VariablePool(), start_at=0.0)
+    runtime_state.variable_pool.add(("start", "options"), options)
+    context = WorkflowResumptionContext(
+        generate_entity=_WorkflowGenerateEntityWrapper(entity=generate_entity),
+        serialized_graph_runtime_state=runtime_state.dumps(),
+    )
+    return context.dumps().encode()
+
+
+def test_resolve_form_inputs_uses_runtime_select_options(sample_form_record, mock_session_factory, mocker):
+    session_factory, _ = mock_session_factory
+    configured_input = SelectInputConfig(
+        output_variable_name="decision",
+        option_source=StringListSource(
+            type=ValueSourceType.VARIABLE,
+            selector=["start", "options"],
+            value=["configured"],
+        ),
+    )
+    record = dataclasses.replace(
+        sample_form_record,
+        definition=sample_form_record.definition.model_copy(update={"inputs": [configured_input]}),
+    )
+    pause = MagicMock()
+    pause.resumed_at = None
+    pause.get_state.return_value = _build_resumption_context_state(
+        options=["approve", "reject"],
+        workflow_run_id=record.workflow_run_id or "",
+    )
+    workflow_run_repo = MagicMock()
+    workflow_run_repo.get_workflow_pause.return_value = pause
+    mocker.patch(
+        "services.human_input_service.DifyAPIRepositoryFactory.create_api_workflow_run_repository",
+        return_value=workflow_run_repo,
+    )
+    service = HumanInputService(session_factory)
+
+    resolved_inputs = service.resolve_form_inputs(Form(record))
+
+    assert len(resolved_inputs) == 1
+    resolved_input = resolved_inputs[0]
+    assert isinstance(resolved_input, SelectInputConfig)
+    assert resolved_input.option_source.value == ["approve", "reject"]
+    workflow_run_repo.get_workflow_pause.assert_called_once_with(record.workflow_run_id)
 
 
 def test_submit_form_by_token_calls_repository_and_enqueue(

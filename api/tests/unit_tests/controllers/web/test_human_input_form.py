@@ -64,7 +64,7 @@ def test_get_form_includes_site(monkeypatch: pytest.MonkeyPatch, app: Flask):
     expiration_time = datetime(2099, 1, 1, tzinfo=UTC)
 
     class _FakeDefinition:
-        def model_dump(self):
+        def model_dump(self, mode: str | None = None):
             return {
                 "form_content": "Raw content",
                 "rendered_content": "Rendered {{#$output.name#}}",
@@ -118,6 +118,7 @@ def test_get_form_includes_site(monkeypatch: pytest.MonkeyPatch, app: Flask):
     # Patch service to return fake form.
     service_mock = MagicMock()
     service_mock.get_form_by_token.return_value = form
+    service_mock.resolve_form_inputs.return_value = [{"type": "text", "output_variable_name": "name", "default": None}]
     monkeypatch.setattr(human_input_module, "HumanInputService", lambda engine: service_mock)
 
     # Patch db session.
@@ -181,6 +182,103 @@ def test_get_form_includes_site(monkeypatch: pytest.MonkeyPatch, app: Flask):
     limiter_mock.increment_rate_limit.assert_called_once_with("203.0.113.10")
 
 
+def test_get_form_uses_runtime_select_options(monkeypatch: pytest.MonkeyPatch, app: Flask):
+    """GET returns variable-backed select options resolved from runtime state."""
+
+    expiration_time = datetime(2099, 1, 1, tzinfo=UTC)
+    configured_inputs = [
+        {
+            "type": "select",
+            "output_variable_name": "decision",
+            "option_source": {
+                "type": "variable",
+                "selector": ["start", "options"],
+                "value": ["configured"],
+            },
+        }
+    ]
+    runtime_inputs = [
+        {
+            "type": "select",
+            "output_variable_name": "decision",
+            "option_source": {
+                "type": "variable",
+                "selector": ["start", "options"],
+                "value": ["approve", "reject"],
+            },
+        }
+    ]
+
+    class _FakeDefinition:
+        def model_dump(self, mode: str | None = None):
+            return {
+                "form_content": "Raw content",
+                "rendered_content": "Rendered",
+                "inputs": configured_inputs,
+                "default_values": {},
+                "user_actions": [],
+            }
+
+    class _FakeForm:
+        def __init__(self, expiration: datetime):
+            self.workflow_run_id = "workflow-1"
+            self.app_id = "app-1"
+            self.tenant_id = "tenant-1"
+            self.recipient_type = RecipientType.STANDALONE_WEB_APP
+            self.expiration_time = expiration
+
+        def get_definition(self):
+            return _FakeDefinition()
+
+    limiter_mock = MagicMock()
+    limiter_mock.is_rate_limited.return_value = False
+    monkeypatch.setattr(human_input_module, "_FORM_ACCESS_RATE_LIMITER", limiter_mock)
+    monkeypatch.setattr(human_input_module, "extract_remote_ip", lambda req: "203.0.113.10")
+
+    tenant = SimpleNamespace(
+        id="tenant-1",
+        status=TenantStatus.NORMAL,
+        plan="basic",
+        custom_config_dict={},
+    )
+    app_model = SimpleNamespace(id="app-1", tenant_id="tenant-1", tenant=tenant, enable_site=True)
+    site_model = SimpleNamespace(
+        title="My Site",
+        icon_type="emoji",
+        icon="robot",
+        icon_background="#fff",
+        description="desc",
+        default_language="en",
+        chat_color_theme="light",
+        chat_color_theme_inverted=False,
+        copyright=None,
+        privacy_policy=None,
+        custom_disclaimer=None,
+        prompt_public=False,
+        show_workflow_steps=True,
+        use_icon_as_answer_icon=False,
+    )
+
+    form = _FakeForm(expiration_time)
+    service_mock = MagicMock()
+    service_mock.get_form_by_token.return_value = form
+    service_mock.resolve_form_inputs.return_value = runtime_inputs
+    monkeypatch.setattr(human_input_module, "HumanInputService", lambda engine: service_mock)
+    monkeypatch.setattr(human_input_module, "db", _FakeDB(_FakeSession({"App": app_model, "Site": site_model})))
+    monkeypatch.setattr(
+        site_module.FeatureService,
+        "get_features",
+        lambda tenant_id: SimpleNamespace(can_replace_logo=True),
+    )
+
+    with app.test_request_context("/api/form/human_input/token-1", method="GET"):
+        response = HumanInputFormApi().get("token-1")
+
+    body = json.loads(response.get_data(as_text=True))
+    assert body["inputs"] == runtime_inputs
+    service_mock.resolve_form_inputs.assert_called_once_with(form)
+
+
 def test_create_upload_token_returns_token_and_form_expiration(monkeypatch: pytest.MonkeyPatch, app: Flask):
     """POST returns a HITL upload token for an active form token."""
 
@@ -216,7 +314,7 @@ def test_get_form_allows_backstage_token(monkeypatch: pytest.MonkeyPatch, app: F
     expiration_time = datetime(2099, 1, 2, tzinfo=UTC)
 
     class _FakeDefinition:
-        def model_dump(self):
+        def model_dump(self, mode: str | None = None):
             return {
                 "form_content": "Raw content",
                 "rendered_content": "Rendered",
@@ -267,6 +365,7 @@ def test_get_form_allows_backstage_token(monkeypatch: pytest.MonkeyPatch, app: F
 
     service_mock = MagicMock()
     service_mock.get_form_by_token.return_value = form
+    service_mock.resolve_form_inputs.return_value = []
     monkeypatch.setattr(human_input_module, "HumanInputService", lambda engine: service_mock)
 
     db_stub = _FakeDB(_FakeSession({"WorkflowRun": workflow_run, "App": app_model, "Site": site_model}))
@@ -335,7 +434,7 @@ def test_get_form_raises_forbidden_when_site_missing(monkeypatch: pytest.MonkeyP
     expiration_time = datetime(2099, 1, 3, tzinfo=UTC)
 
     class _FakeDefinition:
-        def model_dump(self):
+        def model_dump(self, mode: str | None = None):
             return {
                 "form_content": "Raw content",
                 "rendered_content": "Rendered",
