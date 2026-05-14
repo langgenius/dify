@@ -11,11 +11,13 @@ const render = (ui: ReactElement) => renderWithSystemFeatures(ui, {
 
 const mockPush = vi.fn()
 const mockReplace = vi.fn()
+let mockSearchParams = new URLSearchParams()
 vi.mock('@/next/navigation', () => ({
   useRouter: () => ({
     push: mockPush,
     replace: mockReplace,
   }),
+  useSearchParams: () => mockSearchParams,
 }))
 
 // Mock app context
@@ -136,6 +138,7 @@ describe('List', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockBrandingEnabled = false
+    mockSearchParams = new URLSearchParams()
   })
 
   describe('Rendering', () => {
@@ -162,6 +165,27 @@ describe('List', () => {
     it('should render dataset footer when branding is disabled', () => {
       render(<List />)
       expect(screen.getByTestId('dataset-footer')).toBeInTheDocument()
+    })
+
+    it('should render first empty state when emptyDataList URL preview is enabled', () => {
+      mockSearchParams = new URLSearchParams('emptyDataList=true')
+
+      render(<List />)
+
+      expect(screen.getByText('dataset.firstEmpty.title')).toBeInTheDocument()
+      expect(screen.getByText('dataset.firstEmpty.description')).toBeInTheDocument()
+      expect(screen.getByText('dataset.createDataset')).toBeInTheDocument()
+      expect(screen.getByText('dataset.createFromPipeline')).toBeInTheDocument()
+      expect(screen.getByText('dataset.connectDataset')).toBeInTheDocument()
+      expect(screen.getByText('firstEmpty.pickHint')).toBeInTheDocument()
+      expect(screen.getByText('dataset.firstEmpty.basicBadge')).toBeInTheDocument()
+      expect(screen.getAllByText('dataset.firstEmpty.advancedBadge')).toHaveLength(2)
+      expect(screen.getByText('📚')).toBeInTheDocument()
+      expect(screen.getByText('🧭')).toBeInTheDocument()
+      expect(screen.getByText('🎓')).toBeInTheDocument()
+      expect(screen.queryByTestId('datasets-component')).not.toBeInTheDocument()
+      expect(screen.queryByTestId('dataset-footer')).not.toBeInTheDocument()
+      expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
     })
   })
 

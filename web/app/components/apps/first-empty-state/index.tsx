@@ -1,9 +1,9 @@
 'use client'
 
 import type { FC } from 'react'
-import { cn } from '@langgenius/dify-ui/cn'
 import { useTranslation } from 'react-i18next'
 import LearnDify from '@/app/components/explore/learn-dify'
+import FirstEmptyActionCard from './action-card'
 
 type EmptyCreateAction = {
   id: string
@@ -60,21 +60,13 @@ const FirstEmptyState: FC<Props> = ({
           </p>
           <div className="mt-6 grid w-full grid-cols-1 gap-4 md:grid-cols-3">
             {actions.map(action => (
-              <button
+              <FirstEmptyActionCard
                 key={action.id}
-                type="button"
-                className={cn(
-                  'flex min-h-[204px] flex-col rounded-xl border border-components-panel-border bg-components-panel-on-panel-item-bg p-6 text-left shadow-xs',
-                  'transition-colors hover:bg-components-panel-on-panel-item-bg-hover hover:shadow-sm',
-                )}
+                description={action.description}
+                icon={action.icon}
                 onClick={action.onClick}
-              >
-                <span className="flex size-12 items-center justify-center rounded-xl bg-components-icon-bg-teal-soft text-2xl/8">
-                  {action.icon}
-                </span>
-                <span className="mt-5 system-md-semibold text-text-primary">{action.title}</span>
-                <span className="mt-2 system-sm-regular text-text-tertiary">{action.description}</span>
-              </button>
+                title={action.title}
+              />
             ))}
           </div>
           <div className="mt-6 flex items-center justify-center gap-2 text-text-quaternary">

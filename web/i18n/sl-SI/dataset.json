@@ -84,6 +84,7 @@
   "externalKnowledgeName": "Ime zunanjega znanja",
   "externalKnowledgeNamePlaceholder": "Prosimo, vnesite ime baze znanja",
   "externalTag": "Zunanje",
+  "firstEmpty.pickHint": "Niste prepričani, kaj izbrati? Začnite z <highlight>Ustvari znanje</highlight> - pozneje lahko vedno preklopite.",
   "imageUploader.browse": "Brskaj",
   "imageUploader.button": "Povlecite in spustite datoteko ali mapo, ali",
   "imageUploader.fileSizeLimitExceeded": "Velikost datoteke presega omejitev {{size}} MB",

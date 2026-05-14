@@ -84,6 +84,7 @@
   "externalKnowledgeName": "외부 지식 이름",
   "externalKnowledgeNamePlaceholder": "기술 자료의 이름을 입력하십시오.",
   "externalTag": "외부",
+  "firstEmpty.pickHint": "무엇을 선택할지 모르겠나요? <highlight>지식 만들기</highlight>로 시작하세요. 나중에 언제든지 전환할 수 있습니다.",
   "imageUploader.browse": "둘러보기",
   "imageUploader.button": "파일 또는 폴더를 끌어다 놓거나",
   "imageUploader.fileSizeLimitExceeded": "파일 크기가 {{size}}MB 제한을 초과합니다",

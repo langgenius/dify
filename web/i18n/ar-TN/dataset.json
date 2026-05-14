@@ -84,6 +84,7 @@
   "externalKnowledgeName": "اسم المعرفة الخارجية",
   "externalKnowledgeNamePlaceholder": "يرجى إدخال اسم قاعدة المعرفة",
   "externalTag": "خارجي",
+  "firstEmpty.pickHint": "لست متأكدا مما تختار؟ ابدأ بـ <highlight>إنشاء معرفة</highlight> - يمكنك دائما التبديل لاحقا.",
   "imageUploader.browse": "تصفح",
   "imageUploader.button": "اسحب وأفلت الملف أو المجلد، أو",
   "imageUploader.fileSizeLimitExceeded": "حجم الملف يتجاوز الحد الأقصى {{size}} ميغابايت",

@@ -84,6 +84,7 @@
   "externalKnowledgeName": "Tên kiến thức bên ngoài",
   "externalKnowledgeNamePlaceholder": "Vui lòng nhập tên của cơ sở kiến thức",
   "externalTag": "Ngoài",
+  "firstEmpty.pickHint": "Chưa chắc nên chọn gì? Hãy bắt đầu với <highlight>Tạo Tri thức</highlight> - bạn luôn có thể chuyển đổi sau.",
   "imageUploader.browse": "Duyệt",
   "imageUploader.button": "Kéo và thả tệp hoặc thư mục, hoặc",
   "imageUploader.fileSizeLimitExceeded": "Kích thước tệp vượt quá giới hạn {{size}}MB",

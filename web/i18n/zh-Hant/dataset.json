@@ -84,6 +84,7 @@
   "externalKnowledgeName": "外部知識名稱",
   "externalKnowledgeNamePlaceholder": "請輸入知識庫的名稱",
   "externalTag": "外部",
+  "firstEmpty.pickHint": "不確定選哪個？從<highlight>建立知識</highlight>開始，之後可以隨時切換。",
   "imageUploader.browse": "瀏覽",
   "imageUploader.button": "拖放檔案或資料夾，或",
   "imageUploader.fileSizeLimitExceeded": "檔案大小超過 {{size}}MB 限制",

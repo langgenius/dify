@@ -84,6 +84,7 @@
   "externalKnowledgeName": "बाहरी ज्ञान का नाम",
   "externalKnowledgeNamePlaceholder": "कृपया नॉलेज बेस का नाम दर्ज करें",
   "externalTag": "बाह्य",
+  "firstEmpty.pickHint": "समझ नहीं आ रहा क्या चुनें? <highlight>नॉलेज बनाएं</highlight> से शुरू करें - आप बाद में कभी भी बदल सकते हैं.",
   "imageUploader.browse": "ब्राउज़",
   "imageUploader.button": "फ़ाइल या फ़ोल्डर खींचें और छोड़ें, या",
   "imageUploader.fileSizeLimitExceeded": "फ़ाइल का आकार {{size}}MB सीमा से अधिक है",

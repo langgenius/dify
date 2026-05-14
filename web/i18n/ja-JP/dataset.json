@@ -84,6 +84,7 @@
   "externalKnowledgeName": "外部ナレッジベース名",
   "externalKnowledgeNamePlaceholder": "ナレッジベース名を入力",
   "externalTag": "外部",
+  "firstEmpty.pickHint": "どれを選ぶか迷っていますか？まずは<highlight>ナレッジを作成</highlight>から始めましょう。あとからいつでも切り替えられます。",
   "imageUploader.browse": "閲覧",
   "imageUploader.button": "ファイルまたはフォルダをドラッグアンドドロップ、または",
   "imageUploader.fileSizeLimitExceeded": "ファイルサイズが {{size}}MB の制限を超えています",

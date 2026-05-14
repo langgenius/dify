@@ -84,6 +84,7 @@
   "externalKnowledgeName": "Nombre del conocimiento externo",
   "externalKnowledgeNamePlaceholder": "Introduzca el nombre de la base de conocimientos",
   "externalTag": "Externo",
+  "firstEmpty.pickHint": "¿No sabes qué elegir? Empieza con <highlight>Crear conocimiento</highlight>; siempre puedes cambiar más tarde.",
   "imageUploader.browse": "Examinar",
   "imageUploader.button": "Arrastra y suelta el archivo o la carpeta, o",
   "imageUploader.fileSizeLimitExceeded": "El tamaño del archivo excede el límite de {{size}} MB",
