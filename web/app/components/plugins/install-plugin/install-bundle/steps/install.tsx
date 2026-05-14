@@ -171,11 +171,11 @@ const Install: FC<Props> = ({
   const { canInstallPluginFromMarketplace } = useCanInstallPluginFromMarketplace()
   return (
     <>
-      <div className="flex flex-col items-start justify-center gap-4 self-stretch px-6 py-3">
+      <div className="flex min-h-0 flex-1 flex-col items-start justify-center gap-4 self-stretch px-6 py-3">
         <div className="system-md-regular text-text-secondary">
           <p>{t(`${i18nPrefix}.${selectedPluginsNum > 1 ? 'readyToInstallPackages' : 'readyToInstallPackage'}`, { ns: 'plugin', num: selectedPluginsNum })}</p>
         </div>
-        <div className="w-full space-y-1 rounded-2xl bg-background-section-burn p-2">
+        <div className="flex min-h-0 w-full flex-1 flex-col gap-1 overflow-y-auto rounded-2xl bg-background-section-burn p-2">
           <InstallMulti
             ref={installMultiRef}
             allPlugins={allPlugins}

@@ -265,6 +265,12 @@ describe('Install Component', () => {
       expect(screen.getByTestId('all-plugins-count')).toHaveTextContent('2')
     })
 
+    it('should make the plugin list scrollable inside the modal body', () => {
+      render(<Install {...defaultProps} />)
+
+      expect(screen.getByTestId('install-multi').parentElement).toHaveClass('overflow-y-auto')
+    })
+
     it('should show singular text when one plugin is selected', async () => {
       render(<Install {...defaultProps} />)
 
