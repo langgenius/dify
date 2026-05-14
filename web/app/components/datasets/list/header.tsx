@@ -110,7 +110,7 @@ const DatasetListHeader = ({
               <DropdownMenuContent
                 placement="bottom-end"
                 sideOffset={4}
-                popupClassName="w-70 p-1"
+                popupClassName="w-80 p-1"
               >
                 <DropdownMenuItem
                   className="h-8 gap-1 rounded-lg px-2 py-1 system-md-regular text-text-secondary"
