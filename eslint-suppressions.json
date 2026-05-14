@@ -1422,14 +1422,6 @@
       "count": 1
     }
   },
-  "web/app/components/base/message-log-modal/index.tsx": {
-    "react/set-state-in-effect": {
-      "count": 1
-    },
-    "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
   "web/app/components/base/new-audio-button/index.tsx": {
     "ts/no-explicit-any": {
       "count": 1
@@ -2960,11 +2952,6 @@
   "web/app/components/workflow-app/hooks/use-workflow-refresh-draft.ts": {
     "ts/no-explicit-any": {
       "count": 2
-    }
-  },
-  "web/app/components/workflow-app/hooks/use-workflow-run.ts": {
-    "ts/no-explicit-any": {
-      "count": 5
     }
   },
   "web/app/components/workflow-app/hooks/use-workflow-template.ts": {
