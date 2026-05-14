@@ -101,6 +101,7 @@
   "appModes.completionApp": "Generatore di Testi",
   "avatar.deleteDescription": "Sei sicuro di voler rimuovere la tua immagine del profilo? Il tuo account utilizzerà l'avatar iniziale predefinito.",
   "avatar.deleteTitle": "Rimuovi avatar",
+  "avatar.editAction": "Modifica avatar",
   "chat.citation.characters": "Caratteri:",
   "chat.citation.hitCount": "Conteggio dei recuperi:",
   "chat.citation.hitScore": "Punteggio di recupero:",
