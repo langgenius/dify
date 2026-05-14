@@ -7,6 +7,7 @@ from pydantic import BaseModel, Field, TypeAdapter, field_validator
 
 from constants import HIDDEN_VALUE
 from fields.base import ResponseModel
+from libs.helper import to_timestamp
 from libs.login import current_account_with_tenant, login_required
 from models.api_based_extension import APIBasedExtension
 from services.api_based_extension_service import APIBasedExtensionService
@@ -40,12 +41,6 @@ def _mask_api_key(api_key: str) -> str:
     return api_key[:3] + "******" + api_key[-3:]
 
 
-def _to_timestamp(value: datetime | int | None) -> int | None:
-    if isinstance(value, datetime):
-        return int(value.timestamp())
-    return value
-
-
 class APIBasedExtensionResponse(ResponseModel):
     id: str
     name: str
@@ -61,7 +56,7 @@ class APIBasedExtensionResponse(ResponseModel):
     @field_validator("created_at", mode="before")
     @classmethod
     def _normalize_created_at(cls, value: datetime | int | None) -> int | None:
-        return _to_timestamp(value)
+        return to_timestamp(value)
 
 
 register_schema_models(console_ns, APIBasedExtensionPayload, CodeBasedExtensionResponse, APIBasedExtensionResponse)

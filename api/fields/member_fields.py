@@ -7,18 +7,13 @@ from pydantic import computed_field, field_validator
 
 from fields.base import ResponseModel
 from graphon.file import helpers as file_helpers
+from libs.helper import to_timestamp
 
 simple_account_fields = {
     "id": fields.String,
     "name": fields.String,
     "email": fields.String,
 }
-
-
-def _to_timestamp(value: datetime | int | None) -> int | None:
-    if isinstance(value, datetime):
-        return int(value.timestamp())
-    return value
 
 
 def _build_avatar_url(avatar: str | None) -> str | None:
@@ -59,7 +54,7 @@ class Account(_AccountAvatar):
     @field_validator("last_login_at", "created_at", mode="before")
     @classmethod
     def _normalize_timestamp(cls, value: datetime | int | None) -> int | None:
-        return _to_timestamp(value)
+        return to_timestamp(value)
 
 
 class AccountWithRole(_AccountAvatar):
@@ -75,7 +70,7 @@ class AccountWithRole(_AccountAvatar):
     @field_validator("last_login_at", "last_active_at", "created_at", mode="before")
     @classmethod
     def _normalize_timestamp(cls, value: datetime | int | None) -> int | None:
-        return _to_timestamp(value)
+        return to_timestamp(value)
 
 
 class AccountWithRoleList(ResponseModel):

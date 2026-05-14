@@ -34,7 +34,7 @@ from core.trigger.constants import TRIGGER_NODE_TYPES
 from extensions.ext_database import db
 from fields.base import ResponseModel
 from graphon.enums import WorkflowExecutionStatus
-from libs.helper import build_icon_url
+from libs.helper import build_icon_url, to_timestamp
 from libs.login import current_account_with_tenant, login_required
 from models import App, DatasetPermissionEnum, Workflow
 from models.model import IconType
@@ -178,12 +178,6 @@ class AppTracePayload(BaseModel):
 type JSONValue = Any
 
 
-def _to_timestamp(value: datetime | int | None) -> int | None:
-    if isinstance(value, datetime):
-        return int(value.timestamp())
-    return value
-
-
 class Tag(ResponseModel):
     id: str
     name: str
@@ -200,7 +194,7 @@ class WorkflowPartial(ResponseModel):
     @field_validator("created_at", "updated_at", mode="before")
     @classmethod
     def _normalize_timestamp(cls, value: datetime | int | None) -> int | None:
-        return _to_timestamp(value)
+        return to_timestamp(value)
 
 
 class ModelConfigPartial(ResponseModel):
@@ -214,7 +208,7 @@ class ModelConfigPartial(ResponseModel):
     @field_validator("created_at", "updated_at", mode="before")
     @classmethod
     def _normalize_timestamp(cls, value: datetime | int | None) -> int | None:
-        return _to_timestamp(value)
+        return to_timestamp(value)
 
 
 class ModelConfig(ResponseModel):
@@ -275,7 +269,7 @@ class ModelConfig(ResponseModel):
     @field_validator("created_at", "updated_at", mode="before")
     @classmethod
     def _normalize_timestamp(cls, value: datetime | int | None) -> int | None:
-        return _to_timestamp(value)
+        return to_timestamp(value)
 
 
 class Site(ResponseModel):
@@ -318,7 +312,7 @@ class Site(ResponseModel):
     @field_validator("created_at", "updated_at", mode="before")
     @classmethod
     def _normalize_timestamp(cls, value: datetime | int | None) -> int | None:
-        return _to_timestamp(value)
+        return to_timestamp(value)
 
 
 class DeletedTool(ResponseModel):
@@ -361,7 +355,7 @@ class AppPartial(ResponseModel):
     @field_validator("created_at", "updated_at", mode="before")
     @classmethod
     def _normalize_timestamp(cls, value: datetime | int | None) -> int | None:
-        return _to_timestamp(value)
+        return to_timestamp(value)
 
 
 class AppDetail(ResponseModel):
@@ -391,7 +385,7 @@ class AppDetail(ResponseModel):
     @field_validator("created_at", "updated_at", mode="before")
     @classmethod
     def _normalize_timestamp(cls, value: datetime | int | None) -> int | None:
-        return _to_timestamp(value)
+        return to_timestamp(value)
 
 
 class AppDetailWithSite(AppDetail):

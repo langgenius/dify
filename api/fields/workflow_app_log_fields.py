@@ -17,7 +17,7 @@ from fields.workflow_run_fields import (
     workflow_run_for_archived_log_fields,
     workflow_run_for_log_fields,
 )
-from libs.helper import TimestampField
+from libs.helper import TimestampField, to_timestamp
 
 workflow_app_log_partial_fields = {
     "id": fields.String,
@@ -96,12 +96,6 @@ def build_workflow_archived_log_pagination_model(api_or_ns: Namespace):
     return api_or_ns.model("WorkflowArchivedLogPagination", copied_fields)
 
 
-def _to_timestamp(value: datetime | int | None) -> int | None:
-    if isinstance(value, datetime):
-        return int(value.timestamp())
-    return value
-
-
 class WorkflowAppLogPartialResponse(ResponseModel):
     id: str
     workflow_run: WorkflowRunForLogResponse | None = None
@@ -115,7 +109,7 @@ class WorkflowAppLogPartialResponse(ResponseModel):
     @field_validator("created_at", mode="before")
     @classmethod
     def _normalize_timestamp(cls, value: datetime | int | None) -> int | None:
-        return _to_timestamp(value)
+        return to_timestamp(value)
 
 
 class WorkflowArchivedLogPartialResponse(ResponseModel):
@@ -129,7 +123,7 @@ class WorkflowArchivedLogPartialResponse(ResponseModel):
     @field_validator("created_at", mode="before")
     @classmethod
     def _normalize_timestamp(cls, value: datetime | int | None) -> int | None:
-        return _to_timestamp(value)
+        return to_timestamp(value)
 
 
 class WorkflowAppLogPaginationResponse(ResponseModel):
