@@ -231,7 +231,10 @@ class ClearFreePlanTenantExpiredLogs:
                     f"-{time.time()}.json",
                     json.dumps(
                         jsonable_encoder(
-                            [cls._serialize_record(workflow_node_execution) for workflow_node_execution in workflow_node_executions]
+                            [
+                                cls._serialize_record(workflow_node_execution)
+                                for workflow_node_execution in workflow_node_executions
+                            ]
                         ),
                     ).encode("utf-8"),
                 )
