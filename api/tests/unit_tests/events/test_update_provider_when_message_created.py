@@ -1,14 +1,25 @@
+from collections.abc import Iterator
+from contextlib import contextmanager
 from types import SimpleNamespace
 from unittest.mock import patch
 from uuid import uuid4
 
 from sqlalchemy import create_engine, select
+from sqlalchemy.engine import Engine
+from sqlalchemy.orm import sessionmaker
 
 from core.app.entities.app_invoke_entities import ChatAppGenerateEntity
 from core.entities.provider_entities import ProviderQuotaType, QuotaUnit
 from events.event_handlers import update_provider_when_message_created
 from models import TenantCreditPool
 from models.provider import ProviderType
+
+
+@contextmanager
+def _patched_credit_pool_session_factory(engine: Engine) -> Iterator[None]:
+    session_maker = sessionmaker(bind=engine, expire_on_commit=False)
+    with patch("services.credit_pool_service.session_factory.get_session_maker", return_value=session_maker):
+        yield
 
 
 def test_message_created_trial_credit_accounting_does_not_raise_when_balance_is_insufficient() -> None:
@@ -54,7 +65,7 @@ def test_message_created_trial_credit_accounting_does_not_raise_when_balance_is_
     message = SimpleNamespace(message_tokens=2, answer_tokens=1)
 
     with (
-        patch("services.credit_pool_service.db", SimpleNamespace(engine=engine)),
+        _patched_credit_pool_session_factory(engine),
         patch.object(update_provider_when_message_created, "_execute_provider_updates"),
     ):
         update_provider_when_message_created.handle(
