@@ -103,12 +103,20 @@ export const zAppRunnerBootstrapAssignment = z.object({
   executionTokenVersion: z.string().optional(),
   executionToken: z.string().optional(),
   releaseId: z.string().optional(),
+  operation: z.string().optional(),
+  deploymentId: z.string().optional(),
+  reportStatus: z.boolean().optional(),
 })
 
 export const zAppRunnerBootstrapReply = z.object({
   runnerId: z.string().optional(),
   assignmentRevision: z.string().optional(),
   assignments: z.array(zAppRunnerBootstrapAssignment).optional(),
+})
+
+export const zAppRunnerReportRuntimeAssignmentStatusReply = z.object({
+  accepted: z.boolean().optional(),
+  stale: z.boolean().optional(),
 })
 
 export const zAppRunnerRunnerInfo = z.object({
@@ -128,6 +136,7 @@ export const zAppRunnerRuntimeArtifactReply = z.object({
 export const zAppRunnerRuntimeArtifactRequest = z.object({
   instanceId: z.string().optional(),
   releaseId: z.string().optional(),
+  deploymentId: z.string().optional(),
   bindingSnapshotVersion: z.string().optional(),
 })
 
@@ -141,10 +150,28 @@ export const zAppRunnerRuntimeArtifactResult = z.object({
   artifact: zAppRunnerRuntimeArtifactReply.optional(),
   errorCode: z.string().optional(),
   errorMessage: z.string().optional(),
+  deploymentId: z.string().optional(),
 })
 
 export const zAppRunnerBatchRuntimeArtifactReply = z.object({
   results: z.array(zAppRunnerRuntimeArtifactResult).optional(),
+})
+
+export const zAppRunnerRuntimeLastError = z.object({
+  phase: z.string().optional(),
+  code: z.string().optional(),
+  message: z.string().optional(),
+  releaseId: z.string().optional(),
+})
+
+export const zAppRunnerReportRuntimeAssignmentStatusRequest = z.object({
+  deploymentId: z.string().optional(),
+  instanceId: z.string().optional(),
+  releaseId: z.string().optional(),
+  status: z.string().optional(),
+  lastError: zAppRunnerRuntimeLastError.optional(),
+  runnerId: z.string().optional(),
+  assignmentRevision: z.string().optional(),
 })
 
 export const zAppRunnerTokenExchangeReply = z.object({

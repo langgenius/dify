@@ -133,6 +133,9 @@ export type AppRunnerBootstrapAssignment = {
   executionTokenVersion?: string
   executionToken?: string
   releaseId?: string
+  operation?: string
+  deploymentId?: string
+  reportStatus?: boolean
 }
 
 export type AppRunnerBootstrapReply = {
@@ -143,6 +146,21 @@ export type AppRunnerBootstrapReply = {
 
 export type AppRunnerBootstrapRequest = {
   runner?: AppRunnerRunnerInfo
+}
+
+export type AppRunnerReportRuntimeAssignmentStatusReply = {
+  accepted?: boolean
+  stale?: boolean
+}
+
+export type AppRunnerReportRuntimeAssignmentStatusRequest = {
+  deploymentId?: string
+  instanceId?: string
+  releaseId?: string
+  status?: string
+  lastError?: AppRunnerRuntimeLastError
+  runnerId?: string
+  assignmentRevision?: string
 }
 
 export type AppRunnerRunnerInfo = {
@@ -160,6 +178,7 @@ export type AppRunnerRuntimeArtifactReply = {
 export type AppRunnerRuntimeArtifactRequest = {
   instanceId?: string
   releaseId?: string
+  deploymentId?: string
   bindingSnapshotVersion?: string
 }
 
@@ -169,6 +188,14 @@ export type AppRunnerRuntimeArtifactResult = {
   artifact?: AppRunnerRuntimeArtifactReply
   errorCode?: string
   errorMessage?: string
+  deploymentId?: string
+}
+
+export type AppRunnerRuntimeLastError = {
+  phase?: string
+  code?: string
+  message?: string
+  releaseId?: string
 }
 
 export type AppRunnerTokenExchangeReply = {
