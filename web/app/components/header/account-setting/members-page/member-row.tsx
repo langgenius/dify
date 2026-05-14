@@ -28,7 +28,6 @@ const MemberRow = ({
   roles,
   isCurrentUser,
   canManage,
-  operatorRole,
   canTransferOwnership,
   onOpenDetails,
   onOperate,
@@ -108,7 +107,7 @@ const MemberRow = ({
         {canManage && (
           <MemberMenu
             member={member}
-            operatorRole={operatorRole}
+            isCurrentUser={isCurrentUser}
             canTransferOwnership={canTransferOwnership}
             onOperate={onOperate}
             onTransferOwnership={onTransferOwnership}

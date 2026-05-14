@@ -5,7 +5,9 @@ import type { Role } from '@/models/access-control'
 import { Button } from '@langgenius/dify-ui/button'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { useSelector as useAppContextWithSelector } from '@/context/app-context'
 import { useCreateWorkspaceRole, useUpdateWorkspaceRole } from '@/service/access-control/use-workspace-roles'
+import { hasPermission } from '@/utils/permission'
 import { useRoleGroups } from './hooks'
 import RoleList from './role-list'
 import RoleModal from './role-modal'
@@ -24,6 +26,8 @@ const PAGE_SIZE = 20
 const PermissionsPage = ({ containerRef }: PermissionsPageProps) => {
   const [modalState, setModalState] = useState<ModalState>(null)
   const anchorRef = useRef<HTMLDivElement>(null)
+
+  const workspacePermissionKeys = useAppContextWithSelector(s => s.workspacePermissionKeys)
 
   const {
     roleGroups,
@@ -106,6 +110,8 @@ const PermissionsPage = ({ containerRef }: PermissionsPageProps) => {
     return () => observer?.disconnect()
   }, [isLoading, isFetchingNextPage, fetchNextPage, error, hasNextPage, containerRef])
 
+  const canManageRoles = hasPermission(workspacePermissionKeys, 'workspace.role.manage')
+
   return (
     <>
       <div className="flex flex-col">
@@ -118,15 +124,17 @@ const PermissionsPage = ({ containerRef }: PermissionsPageProps) => {
               A default global permission scheme applied to the workspace
             </div>
           </div>
-          <div className="flex items-center">
-            <Button
-              variant="primary"
-              size="small"
-              onClick={openCreate}
-            >
-              + Add Role
-            </Button>
-          </div>
+          {canManageRoles && (
+            <div className="flex items-center">
+              <Button
+                variant="primary"
+                size="small"
+                onClick={openCreate}
+              >
+                + Add Role
+              </Button>
+            </div>
+          )}
         </div>
         <RoleList
           groups={roleGroups}

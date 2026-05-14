@@ -15,6 +15,7 @@ import { LanguagesSupported } from '@/i18n-config/language'
 import { useUpdateRolesOfMember } from '@/service/access-control/use-member-roles'
 import { systemFeaturesQueryOptions } from '@/service/system-features'
 import { useMembers } from '@/service/use-common'
+import { hasPermission } from '@/utils/permission'
 import EditWorkspaceModal from './edit-workspace-modal'
 import InviteButton from './invite-button'
 import InviteModal from './invite-modal'
@@ -27,7 +28,7 @@ const MembersPage = () => {
   const { t } = useTranslation()
   const locale = useLocale()
 
-  const { userProfile, currentWorkspace, isCurrentWorkspaceOwner, isCurrentWorkspaceManager } = useAppContext()
+  const { userProfile, currentWorkspace, isCurrentWorkspaceOwner, workspacePermissionKeys } = useAppContext()
   const { data, refetch } = useMembers()
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const [inviteModalVisible, setInviteModalVisible] = useState(false)
@@ -40,6 +41,8 @@ const MembersPage = () => {
   const [editWorkspaceModalVisible, setEditWorkspaceModalVisible] = useState(false)
   const [showTransferOwnershipModal, setShowTransferOwnershipModal] = useState(false)
   const [detailsMember, setDetailsMember] = useState<Member | null>(null)
+
+  const canManageMembers = hasPermission(workspacePermissionKeys, 'workspace.member.manage')
 
   const handleOpenDetails = useCallback((member: Member) => {
     setDetailsMember(member)
@@ -136,7 +139,7 @@ const MembersPage = () => {
             <UpgradeBtn className="mr-2" loc="member-invite" />
           )}
           <div className="shrink-0">
-            {isCurrentWorkspaceManager && <InviteButton disabled={isMemberFull} onClick={() => setInviteModalVisible(true)} />}
+            {canManageMembers && <InviteButton disabled={isMemberFull} onClick={() => setInviteModalVisible(true)} />}
           </div>
         </div>
         <div className="overflow-visible lg:overflow-visible">
@@ -152,7 +155,7 @@ const MembersPage = () => {
                 member={account}
                 roles={account.roles}
                 isCurrentUser={userProfile.email === account.email}
-                canManage={isCurrentWorkspaceManager}
+                canManage={canManageMembers}
                 operatorRole={currentWorkspace.role}
                 canTransferOwnership={isCurrentWorkspaceOwner && isAllowTransferWorkspace}
                 onOpenDetails={handleOpenDetails}
@@ -201,7 +204,7 @@ const MembersPage = () => {
         <MemberDetailsModal
           member={detailsMember}
           canAssignRoles={
-            isCurrentWorkspaceManager
+            canManageMembers
             && detailsMember.role !== 'owner'
           }
           onClose={handleCloseDetails}

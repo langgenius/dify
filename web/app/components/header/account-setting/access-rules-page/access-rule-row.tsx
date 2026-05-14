@@ -8,6 +8,7 @@ import RoleTag from './role-tag'
 
 export type AccessRuleRowProps = {
   rule: AccessPolicyWithBindings
+  canManage: boolean
   className?: string
   showMenu?: boolean
   onEdit?: (rule: AccessPolicyWithBindings) => void
@@ -17,6 +18,7 @@ export type AccessRuleRowProps = {
 
 const AccessRuleRow = ({
   rule,
+  canManage,
   className,
   showMenu = true,
   onEdit,
@@ -64,6 +66,7 @@ const AccessRuleRow = ({
               id={role.role_id}
               label={role.role_name}
               type="role"
+              showRemove={canManage}
               onRemove={handleRemove}
             />
           ))}
@@ -73,21 +76,24 @@ const AccessRuleRow = ({
               id={account.account_id}
               label={account.account_name}
               type="account"
+              showRemove={canManage}
               onRemove={handleRemove}
             />
           ))}
-          <button
-            type="button"
-            onClick={handleAddRole}
-            className="inline-flex h-6 items-center gap-0.5 rounded-md border border-divider-deep px-1.5 system-xs-medium text-text-tertiary hover:border-divider-solid hover:text-text-secondary"
-            aria-label={`Add role to ${policy.name}`}
-          >
-            <span aria-hidden className="i-ri-add-line h-3 w-3" />
-            Add
-          </button>
+          {canManage && (
+            <button
+              type="button"
+              onClick={handleAddRole}
+              className="inline-flex h-6 items-center gap-0.5 rounded-md border border-divider-deep px-1.5 system-xs-medium text-text-tertiary hover:border-divider-solid hover:text-text-secondary"
+              aria-label={`Add role to ${policy.name}`}
+            >
+              <span aria-hidden className="i-ri-add-line h-3 w-3" />
+              Add
+            </button>
+          )}
         </div>
       </div>
-      {showMenu && (
+      {showMenu && canManage && (
         <AccessRuleRowMenu
           onEdit={handleEdit}
           rule={policy}

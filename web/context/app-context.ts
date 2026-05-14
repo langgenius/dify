@@ -17,6 +17,7 @@ export type AppContextValue = {
   useSelector: typeof useSelector
   isLoadingCurrentWorkspace: boolean
   isValidatingCurrentWorkspace: boolean
+  workspacePermissionKeys: string[]
 }
 
 export const userProfilePlaceholder = {
@@ -64,6 +65,7 @@ export const AppContext = createContext<AppContextValue>({
   useSelector,
   isLoadingCurrentWorkspace: false,
   isValidatingCurrentWorkspace: false,
+  workspacePermissionKeys: [],
 })
 
 export function useSelector<T>(selector: (value: AppContextValue) => T): T {

@@ -4,7 +4,6 @@ import { Button } from '@langgenius/dify-ui/button'
 import {
   RiBook2Line,
   RiFileEditLine,
-  RiGraduationCapLine,
   RiGroupLine,
 } from '@remixicon/react'
 import { useUnmountedRef } from 'ahooks'
@@ -113,14 +112,14 @@ const PlanComp: FC<Props> = ({
           <div className="flex shrink-0 items-center gap-1">
             {enableEducationPlan && (!isEducationAccount || isAboutToExpire) && (
               <Button variant="ghost" onClick={handleVerify} disabled={isPending}>
-                <RiGraduationCapLine className="mr-1 h-4 w-4" />
+                <span className="mr-1 i-ri-graduation-cap-line h-4 w-4" />
                 {t('toVerified', { ns: 'education' })}
                 {isPending && <Loading className="ml-1 animate-spin-slow" />}
               </Button>
             )}
             {enableEducationPlan && isEducationAccount && type === Plan.sandbox && isCurrentWorkspaceManager && (
               <Button variant="ghost" onClick={handleEducationDiscount} disabled={isEducationDiscountLoading}>
-                <RiGraduationCapLine className="mr-1 h-4 w-4" />
+                <span className="mr-1 i-ri-graduation-cap-line h-4 w-4" />
                 {t('useEducationDiscount', { ns: 'education' })}
                 {isEducationDiscountLoading && <Loading className="ml-1 animate-spin-slow" />}
               </Button>

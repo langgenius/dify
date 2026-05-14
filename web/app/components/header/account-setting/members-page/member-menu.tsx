@@ -18,7 +18,7 @@ import AssignRolesModal from './assign-roles-modal'
 
 type MemberMenuProps = {
   member: Member
-  operatorRole: string
+  isCurrentUser: boolean
   canTransferOwnership?: boolean
   onOperate: () => void
   onTransferOwnership?: () => void
@@ -26,7 +26,7 @@ type MemberMenuProps = {
 
 const MemberMenu = ({
   member,
-  operatorRole,
+  isCurrentUser,
   canTransferOwnership = false,
   onOperate,
   onTransferOwnership,
@@ -36,9 +36,8 @@ const MemberMenu = ({
   const [assignModalOpen, setAssignModalOpen] = useState(false)
 
   const isOwner = member.role === 'owner'
-  const canAssignRoles
-    = !isOwner && (operatorRole === 'owner' || operatorRole === 'admin')
-  const canRemove = !isOwner
+  const canAssignRoles = !isOwner
+  const canRemove = !isOwner && !isCurrentUser
   const showTransferOwnership = isOwner && canTransferOwnership
 
   const handleOpenAssignRoles = () => {

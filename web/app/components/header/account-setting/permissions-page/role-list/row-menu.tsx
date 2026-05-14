@@ -10,7 +10,9 @@ import {
 import { toast } from '@langgenius/dify-ui/toast'
 import { useCallback, useState } from 'react'
 import ActionButton from '@/app/components/base/action-button'
+import { useSelector as useAppContextWithSelector } from '@/context/app-context'
 import { useCopyWorkspaceRole, useDeleteWorkspaceRole } from '@/service/access-control/use-workspace-roles'
+import { hasPermission } from '@/utils/permission'
 
 type RowMenuProps = {
   roleCategory: RoleCategory
@@ -26,6 +28,8 @@ const RowMenu = ({
   onEdit,
 }: RowMenuProps) => {
   const [open, setOpen] = useState(false)
+
+  const workspacePermissionKeys = useAppContextWithSelector(s => s.workspacePermissionKeys)
 
   const handleView = useCallback(() => onView?.(role), [onView, role])
 
@@ -53,10 +57,11 @@ const RowMenu = ({
     })
   }, [deleteRole, role.id])
 
-  const hasViewAction = roleCategory === 'global_system_default' && role.role_tag === 'owner'
-  const hasEditAction = roleCategory === 'global_custom' || (roleCategory === 'global_system_default' && role.role_tag !== 'owner')
-  const hasDuplicateAction = roleCategory === 'global_custom'
-  const hasDeleteAction = roleCategory === 'global_custom'
+  const canManageRoles = hasPermission(workspacePermissionKeys, 'workspace.role.manage')
+
+  const hasEditAction = (roleCategory === 'global_custom' || (roleCategory === 'global_system_default' && role.role_tag !== 'owner')) && canManageRoles
+  const hasDuplicateAction = roleCategory === 'global_custom' && canManageRoles
+  const hasDeleteAction = roleCategory === 'global_custom' && canManageRoles
 
   return (
     <DropdownMenu open={open} onOpenChange={setOpen}>
@@ -64,13 +69,10 @@ const RowMenu = ({
         <span aria-hidden className="i-ri-more-fill h-4 w-4 text-text-tertiary" />
       </DropdownMenuTrigger>
       <DropdownMenuContent placement="bottom-end" sideOffset={4} popupClassName="min-w-[160px]">
-        {
-          hasViewAction && (
-            <DropdownMenuItem className="system-sm-semibold text-text-secondary" onClick={handleView}>
-              View
-            </DropdownMenuItem>
-          )
-        }
+        <DropdownMenuItem className="system-sm-semibold text-text-secondary" onClick={handleView}>
+          View
+        </DropdownMenuItem>
+        )
         {
           hasEditAction && (
             <DropdownMenuItem className="system-sm-semibold text-text-secondary" onClick={handleEdit}>

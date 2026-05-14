@@ -1,3 +1,4 @@
+import type { PermissionKey } from '@/models/access-control'
 import { DatasetPermission } from '@/models/datasets'
 
 type DatasetConfig = {
@@ -15,4 +16,8 @@ export const hasEditPermissionForDataset = (userId: string, datasetConfig: Datas
   if (permission === DatasetPermission.partialMembers)
     return partialMemberList.includes(userId)
   return false
+}
+
+export const hasPermission = (permissionKeys: readonly PermissionKey[], permissionKey: PermissionKey) => {
+  return !!permissionKeys.includes(permissionKey)
 }

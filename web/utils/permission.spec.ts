@@ -3,7 +3,7 @@ import { DatasetPermission } from '@/models/datasets'
  * Test suite for permission utility functions
  * Tests dataset edit permission logic based on user roles and dataset settings
  */
-import { hasEditPermissionForDataset } from './permission'
+import { hasEditPermissionForDataset, hasPermission } from './permission'
 
 describe('permission', () => {
   /**
@@ -90,6 +90,18 @@ describe('permission', () => {
         permission: DatasetPermission.partialMembers,
       }
       expect(hasEditPermissionForDataset(creatorId, config)).toBe(true)
+    })
+  })
+
+  describe('hasPermissionKey', () => {
+    const permissionKey = 'workspace.member.manage'
+
+    it('returns true when the permission key exists', () => {
+      expect(hasPermission(['workspace.member.view', permissionKey], permissionKey)).toBe(true)
+    })
+
+    it('returns false when the permission key does not exist', () => {
+      expect(hasPermission(['workspace.member.view'], permissionKey)).toBe(false)
     })
   })
 })

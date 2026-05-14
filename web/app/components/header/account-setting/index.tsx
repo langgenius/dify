@@ -14,10 +14,11 @@ import {
 
 } from '@/app/components/header/account-setting/constants'
 import MenuDialog from '@/app/components/header/account-setting/menu-dialog'
-import { useAppContext } from '@/context/app-context'
+import { useSelector as useAppContextWithSelector } from '@/context/app-context'
 import { useProviderContext } from '@/context/provider-context'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import { systemFeaturesQueryOptions } from '@/service/system-features'
+import { hasPermission } from '@/utils/permission'
 import AccessRulesPage from './access-rules-page'
 import ApiBasedExtensionPage from './api-based-extension-page'
 import DataSourcePage from './data-source-page-new'
@@ -54,14 +55,11 @@ export default function AccountSetting({
   const activeMenu = activeTab
   const { t } = useTranslation()
   const { enableBilling, enableReplaceWebAppLogo } = useProviderContext()
-  const { isCurrentWorkspaceDatasetOperator } = useAppContext()
+  const workspacePermissionKeys = useAppContextWithSelector(s => s.workspacePermissionKeys)
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const containerRef = useRef<HTMLDivElement>(null)
 
   const workplaceGroupItems: GroupItem[] = (() => {
-    if (isCurrentWorkspaceDatasetOperator)
-      return []
-
     const items: GroupItem[] = [
       {
         key: ACCOUNT_SETTING_TAB.PROVIDER,
@@ -69,15 +67,18 @@ export default function AccountSetting({
         icon: <span className={cn('i-ri-brain-2-line', iconClassName)} />,
         activeIcon: <span className={cn('i-ri-brain-2-fill', iconClassName)} />,
       },
-      {
+    ]
+
+    if (hasPermission(workspacePermissionKeys, 'workspace.member.manage')) {
+      items.push({
         key: ACCOUNT_SETTING_TAB.MEMBERS,
         name: t('settings.members', { ns: 'common' }),
         icon: <span className={cn('i-ri-group-2-line', iconClassName)} />,
         activeIcon: <span className={cn('i-ri-group-2-fill', iconClassName)} />,
-      },
-    ]
+      })
+    }
 
-    if (systemFeatures.rbac_enabled) {
+    if (systemFeatures.rbac_enabled && hasPermission(workspacePermissionKeys, 'workspace.role.view')) {
       items.push(
         {
           key: ACCOUNT_SETTING_TAB.PERMISSIONS,
@@ -104,22 +105,29 @@ export default function AccountSetting({
       })
     }
 
-    items.push(
-      {
-        key: ACCOUNT_SETTING_TAB.DATA_SOURCE,
-        name: t('settings.dataSource', { ns: 'common' }),
-        icon: <span className={cn('i-ri-database-2-line', iconClassName)} />,
-        activeIcon: <span className={cn('i-ri-database-2-fill', iconClassName)} />,
-      },
-      {
-        key: ACCOUNT_SETTING_TAB.API_BASED_EXTENSION,
-        name: t('settings.apiBasedExtension', { ns: 'common' }),
-        icon: <span className={cn('i-ri-puzzle-2-line', iconClassName)} />,
-        activeIcon: <span className={cn('i-ri-puzzle-2-fill', iconClassName)} />,
-      },
-    )
+    if (hasPermission(workspacePermissionKeys, 'data_source.manage')) {
+      items.push(
+        {
+          key: ACCOUNT_SETTING_TAB.DATA_SOURCE,
+          name: t('settings.dataSource', { ns: 'common' }),
+          icon: <span className={cn('i-ri-database-2-line', iconClassName)} />,
+          activeIcon: <span className={cn('i-ri-database-2-fill', iconClassName)} />,
+        },
+      )
+    }
 
-    if (enableReplaceWebAppLogo || enableBilling) {
+    if (hasPermission(workspacePermissionKeys, 'api_extension.manage')) {
+      items.push(
+        {
+          key: ACCOUNT_SETTING_TAB.API_BASED_EXTENSION,
+          name: t('settings.apiBasedExtension', { ns: 'common' }),
+          icon: <span className={cn('i-ri-puzzle-2-line', iconClassName)} />,
+          activeIcon: <span className={cn('i-ri-puzzle-2-fill', iconClassName)} />,
+        },
+      )
+    }
+
+    if ((enableReplaceWebAppLogo || enableBilling) && hasPermission(workspacePermissionKeys, 'customization.manage')) {
       items.push({
         key: ACCOUNT_SETTING_TAB.CUSTOM,
         name: t('custom', { ns: 'custom' }),
@@ -181,7 +189,7 @@ export default function AccountSetting({
             {
               menuItems.map(menuItem => (
                 <div key={menuItem.key} className="mb-2">
-                  {!isCurrentWorkspaceDatasetOperator && (
+                  {menuItem.items.length === 0 && (
                     <div className="mb-0.5 py-2 pb-1 pl-3 system-xs-medium-uppercase text-text-tertiary">{menuItem.name}</div>
                   )}
                   <div>

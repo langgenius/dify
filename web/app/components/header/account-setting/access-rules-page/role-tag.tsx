@@ -8,6 +8,7 @@ export type RoleTagProps = {
   id: string
   label: string
   type: BindingType
+  showRemove?: boolean
   onRemove?: (id: string, type: BindingType) => void
   className?: string
 }
@@ -16,6 +17,7 @@ const RoleTag = ({
   id,
   label,
   type,
+  showRemove = false,
   onRemove,
   className,
 }: RoleTagProps) => {
@@ -28,7 +30,7 @@ const RoleTag = ({
       data-testid="access-rule-role-tag"
     >
       <span className="truncate">{label}</span>
-      {onRemove && (
+      {showRemove && onRemove && (
         <button
           type="button"
           aria-label={`Remove ${label}`}

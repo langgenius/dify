@@ -189,3 +189,21 @@ export type RemoveBindingPayload = {
   policy_id: string
   resource_type: AccessPolicyResourceType
 } & BindingsPayload
+
+type WorkspacePermissionKeys = {
+  permission_keys: string[]
+}
+
+type ResourcePermissionKeys = {
+  default_permission_keys: string[]
+  overrides: Array<{
+    resource_id: string
+    permission_keys: string[]
+  }>
+}
+
+export type PermissionKeysResponse = {
+  workspace: WorkspacePermissionKeys
+  app: ResourcePermissionKeys
+  dataset: ResourcePermissionKeys
+}

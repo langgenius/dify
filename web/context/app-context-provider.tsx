@@ -16,6 +16,7 @@ import {
   useSelector,
 } from '@/context/app-context'
 import { env } from '@/env'
+// import { useWorkspacePermissionKeys } from '@/service/access-control/use-permission-keys'
 import { systemFeaturesQueryOptions } from '@/service/system-features'
 import {
   useCurrentWorkspace,
@@ -26,6 +27,39 @@ import {
 type AppContextProviderProps = {
   children: ReactNode
 }
+
+const ALL_PERMISSION_KEYS = [
+  'workspace.member.view',
+  'workspace.member.manage',
+  'workspace.role.view',
+  'workspace.role.manage',
+  'data_source.manage',
+  'api_extension.manage',
+  'customization.manage',
+  'page.explore.access',
+  'page.datasets.access',
+  'page.tool.access',
+  'plugin.install',
+  'plugin.manage',
+  'plugin.uninstall',
+  'plugin.preference.manage',
+  'model.manage',
+  'credential.use',
+  'credential.manage',
+  'app_library.access',
+  'app.create',
+  'app.tag.manage',
+  'app.access_config',
+  'app.monitor.access',
+  'app.log.access',
+  'app.monitor.tracking_config',
+  'dataset.create',
+  'dataset.tag.manage',
+  'dataset.external.connect',
+  'dataset.access_config',
+  'tool.manage',
+  'mcp.manage',
+]
 
 export const AppContextProvider: FC<AppContextProviderProps> = ({ children }) => {
   const queryClient = useQueryClient()
@@ -63,6 +97,8 @@ export const AppContextProvider: FC<AppContextProviderProps> = ({ children }) =>
   const isCurrentWorkspaceOwner = useMemo(() => currentWorkspace.role === 'owner', [currentWorkspace.role])
   const isCurrentWorkspaceEditor = useMemo(() => ['owner', 'admin', 'editor'].includes(currentWorkspace.role), [currentWorkspace.role])
   const isCurrentWorkspaceDatasetOperator = useMemo(() => currentWorkspace.role === 'dataset_operator', [currentWorkspace.role])
+
+  // const { data: workspacePermissionKeys } = useWorkspacePermissionKeys()
 
   const mutateUserProfile = useCallback(() => {
     queryClient.invalidateQueries({ queryKey: ['common', 'user-profile'] })
@@ -146,6 +182,7 @@ export const AppContextProvider: FC<AppContextProviderProps> = ({ children }) =>
       mutateCurrentWorkspace,
       isLoadingCurrentWorkspace,
       isValidatingCurrentWorkspace,
+      workspacePermissionKeys: ALL_PERMISSION_KEYS, // todo: replace with actual permission keys from backend when available
     }}
     >
       <div className="flex h-full flex-col overflow-y-auto">
