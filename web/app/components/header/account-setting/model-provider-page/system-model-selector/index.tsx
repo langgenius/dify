@@ -155,74 +155,76 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
         onClick={() => setOpen(true)}
       >
         {isLoading
-          ? <span className="mr-1 i-ri-loader-2-line h-3.5 w-3.5 animate-spin" />
-          : <span className="mr-1 i-ri-equalizer-2-line h-3.5 w-3.5" />}
+          ? <span className="mr-1 i-ri-loader-2-line size-3.5 animate-spin" />
+          : <span className="mr-1 i-ri-equalizer-2-line size-3.5" />}
         {t('modelProvider.systemModelSettings', { ns: 'common' })}
       </Button>
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent
           backdropProps={{ forceRender: true }}
-          className="w-[480px] max-w-[480px] overflow-hidden p-0"
+          className="flex max-h-[calc(100dvh-2rem)] w-[480px] max-w-[480px] flex-col overflow-hidden p-0"
         >
           <DialogCloseButton className="top-5 right-5" />
-          <div className="px-6 pt-6 pr-14 pb-3">
+          <div className="shrink-0 px-6 pt-6 pr-14 pb-3">
             <DialogTitle className="title-2xl-semi-bold text-text-primary">
               {t('modelProvider.systemModelSettings', { ns: 'common' })}
             </DialogTitle>
           </div>
-          <div className="flex flex-col gap-4 px-6 py-3">
-            <div className="flex flex-col gap-1">
-              {renderModelLabel('modelProvider.systemReasoningModel.key', 'modelProvider.systemReasoningModel.tip')}
-              <div>
-                <ModelSelector
-                  defaultModel={currentTextGenerationDefaultModel}
-                  modelList={textGenerationModelList}
-                  onSelect={model => handleChangeDefaultModel(ModelTypeEnum.textGeneration, model)}
-                />
+          <div className="min-h-0 flex-1 overflow-y-auto px-6 py-3">
+            <div className="flex flex-col gap-4">
+              <div className="flex flex-col gap-1">
+                {renderModelLabel('modelProvider.systemReasoningModel.key', 'modelProvider.systemReasoningModel.tip')}
+                <div>
+                  <ModelSelector
+                    defaultModel={currentTextGenerationDefaultModel}
+                    modelList={textGenerationModelList}
+                    onSelect={model => handleChangeDefaultModel(ModelTypeEnum.textGeneration, model)}
+                  />
+                </div>
               </div>
-            </div>
-            <div className="flex flex-col gap-1">
-              {renderModelLabel('modelProvider.embeddingModel.key', 'modelProvider.embeddingModel.tip')}
-              <div>
-                <ModelSelector
-                  defaultModel={currentEmbeddingsDefaultModel}
-                  modelList={embeddingModelList}
-                  onSelect={model => handleChangeDefaultModel(ModelTypeEnum.textEmbedding, model)}
-                />
+              <div className="flex flex-col gap-1">
+                {renderModelLabel('modelProvider.embeddingModel.key', 'modelProvider.embeddingModel.tip')}
+                <div>
+                  <ModelSelector
+                    defaultModel={currentEmbeddingsDefaultModel}
+                    modelList={embeddingModelList}
+                    onSelect={model => handleChangeDefaultModel(ModelTypeEnum.textEmbedding, model)}
+                  />
+                </div>
               </div>
-            </div>
-            <div className="flex flex-col gap-1">
-              {renderModelLabel('modelProvider.rerankModel.key', 'modelProvider.rerankModel.tip')}
-              <div>
-                <ModelSelector
-                  defaultModel={currentRerankDefaultModel}
-                  modelList={rerankModelList}
-                  onSelect={model => handleChangeDefaultModel(ModelTypeEnum.rerank, model)}
-                />
+              <div className="flex flex-col gap-1">
+                {renderModelLabel('modelProvider.rerankModel.key', 'modelProvider.rerankModel.tip')}
+                <div>
+                  <ModelSelector
+                    defaultModel={currentRerankDefaultModel}
+                    modelList={rerankModelList}
+                    onSelect={model => handleChangeDefaultModel(ModelTypeEnum.rerank, model)}
+                  />
+                </div>
               </div>
-            </div>
-            <div className="flex flex-col gap-1">
-              {renderModelLabel('modelProvider.speechToTextModel.key', 'modelProvider.speechToTextModel.tip')}
-              <div>
-                <ModelSelector
-                  defaultModel={currentSpeech2textDefaultModel}
-                  modelList={speech2textModelList}
-                  onSelect={model => handleChangeDefaultModel(ModelTypeEnum.speech2text, model)}
-                />
+              <div className="flex flex-col gap-1">
+                {renderModelLabel('modelProvider.speechToTextModel.key', 'modelProvider.speechToTextModel.tip')}
+                <div>
+                  <ModelSelector
+                    defaultModel={currentSpeech2textDefaultModel}
+                    modelList={speech2textModelList}
+                    onSelect={model => handleChangeDefaultModel(ModelTypeEnum.speech2text, model)}
+                  />
+                </div>
               </div>
-            </div>
-            <div className="flex flex-col gap-1">
-              {renderModelLabel('modelProvider.ttsModel.key', 'modelProvider.ttsModel.tip')}
-              <div>
-                <ModelSelector
-                  defaultModel={currentTTSDefaultModel}
-                  modelList={ttsModelList}
-                  onSelect={model => handleChangeDefaultModel(ModelTypeEnum.tts, model)}
-                />
+              <div className="flex flex-col gap-1">
+                {renderModelLabel('modelProvider.ttsModel.key', 'modelProvider.ttsModel.tip')}
+                <div>
+                  <ModelSelector
+                    defaultModel={currentTTSDefaultModel}
+                    modelList={ttsModelList}
+                    onSelect={model => handleChangeDefaultModel(ModelTypeEnum.tts, model)}
+                  />
+                </div>
               </div>
             </div>
           </div>
-          <div className="flex items-center justify-end gap-2 px-6 pt-5 pb-6">
+          <div className="flex shrink-0 items-center justify-end gap-2 px-6 pt-5 pb-6">
             <Button
               className="min-w-[72px]"
               onClick={() => setOpen(false)}

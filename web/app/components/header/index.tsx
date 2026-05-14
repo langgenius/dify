@@ -8,9 +8,9 @@ import { useAppContext } from '@/context/app-context'
 import { useModalContext } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
 import { WorkspaceProvider } from '@/context/workspace-context-provider'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import Link from '@/next/link'
-import { systemFeaturesQueryOptions } from '@/service/system-features'
 import { Plan } from '../billing/type'
 import AccountDropdown from './account-dropdown'
 import AppNav from './app-nav'
@@ -44,21 +44,23 @@ const Header = () => {
       setShowAccountSettingModal({ payload: ACCOUNT_SETTING_TAB.BILLING })
   }, [isFreePlan, setShowAccountSettingModal, setShowPricingModal])
 
+  const logoLabel = isBrandingEnabled && systemFeatures.branding.application_title ? systemFeatures.branding.application_title : 'Dify'
   const renderLogo = () => (
-    <h1>
-      <Link href="/apps" className="flex h-8 shrink-0 items-center justify-center overflow-hidden px-0.5 indent-[-9999px] whitespace-nowrap">
-        {isBrandingEnabled && systemFeatures.branding.application_title ? systemFeatures.branding.application_title : 'Dify'}
-        {systemFeatures.branding.enabled && systemFeatures.branding.workspace_logo
-          ? (
-              <img
-                src={systemFeatures.branding.workspace_logo}
-                className="block h-[22px] w-auto object-contain"
-                alt="logo"
-              />
-            )
-          : <DifyLogo />}
-      </Link>
-    </h1>
+    <Link
+      href="/apps"
+      className="flex h-8 shrink-0 items-center justify-center overflow-hidden rounded-sm px-0.5 hover:opacity-80 focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
+      aria-label={logoLabel}
+    >
+      {systemFeatures.branding.enabled && systemFeatures.branding.workspace_logo
+        ? (
+            <img
+              src={systemFeatures.branding.workspace_logo}
+              className="block h-[22px] w-auto object-contain"
+              alt=""
+            />
+          )
+        : <DifyLogo alt="" />}
+    </Link>
   )
 
   if (isMobile) {

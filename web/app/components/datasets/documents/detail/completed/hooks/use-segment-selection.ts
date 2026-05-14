@@ -1,42 +1,38 @@
-import type { SegmentDetailModel } from '@/models/datasets'
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useState } from 'react'
 
 type UseSegmentSelectionReturn = {
   selectedSegmentIds: string[]
-  isAllSelected: boolean
-  isSomeSelected: boolean
-  onSelected: (segId: string) => void
-  onSelectedAll: () => void
+  onSelectedSegmentIdsChange: (segmentIds: string[]) => void
   onCancelBatchOperation: () => void
   clearSelection: () => void
 }
 
-export const useSegmentSelection = (segments: SegmentDetailModel[]): UseSegmentSelectionReturn => {
+type MergeCurrentPageSelectedSegmentIdsOptions = {
+  selectedSegmentIds: string[]
+  currentPageSegmentIds: string[]
+  nextCurrentPageSelectedSegmentIds: string[]
+}
+
+export const mergeCurrentPageSelectedSegmentIds = ({
+  selectedSegmentIds,
+  currentPageSegmentIds,
+  nextCurrentPageSelectedSegmentIds,
+}: MergeCurrentPageSelectedSegmentIdsOptions) => {
+  const currentPageSegmentIdSet = new Set(currentPageSegmentIds)
+  const selectedSegmentIdsOutsideCurrentPage = selectedSegmentIds.filter(segmentId => !currentPageSegmentIdSet.has(segmentId))
+
+  return [
+    ...selectedSegmentIdsOutsideCurrentPage,
+    ...nextCurrentPageSelectedSegmentIds,
+  ]
+}
+
+export const useSegmentSelection = (): UseSegmentSelectionReturn => {
   const [selectedSegmentIds, setSelectedSegmentIds] = useState<string[]>([])
 
-  const onSelected = useCallback((segId: string) => {
-    setSelectedSegmentIds(prev =>
-      prev.includes(segId)
-        ? prev.filter(id => id !== segId)
-        : [...prev, segId],
-    )
+  const onSelectedSegmentIdsChange = useCallback((segmentIds: string[]) => {
+    setSelectedSegmentIds(segmentIds)
   }, [])
-
-  const isAllSelected = useMemo(() => {
-    return segments.length > 0 && segments.every(seg => selectedSegmentIds.includes(seg.id))
-  }, [segments, selectedSegmentIds])
-
-  const isSomeSelected = useMemo(() => {
-    return segments.some(seg => selectedSegmentIds.includes(seg.id))
-  }, [segments, selectedSegmentIds])
-
-  const onSelectedAll = useCallback(() => {
-    setSelectedSegmentIds((prev) => {
-      const currentAllSegIds = segments.map(seg => seg.id)
-      const prevSelectedIds = prev.filter(item => !currentAllSegIds.includes(item))
-      return [...prevSelectedIds, ...(isAllSelected ? [] : currentAllSegIds)]
-    })
-  }, [segments, isAllSelected])
 
   const onCancelBatchOperation = useCallback(() => {
     setSelectedSegmentIds([])
@@ -48,10 +44,7 @@ export const useSegmentSelection = (segments: SegmentDetailModel[]): UseSegmentS
 
   return {
     selectedSegmentIds,
-    isAllSelected,
-    isSomeSelected,
-    onSelected,
-    onSelectedAll,
+    onSelectedSegmentIdsChange,
     onCancelBatchOperation,
     clearSelection,
   }

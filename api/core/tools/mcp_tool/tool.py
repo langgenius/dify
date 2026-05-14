@@ -67,23 +67,27 @@ class MCPTool(Tool):
 
         # handle dify tool output
         for content in result.content:
-            if isinstance(content, TextContent):
-                yield from self._process_text_content(content)
-            elif isinstance(content, ImageContent | AudioContent):
-                yield self.create_blob_message(
-                    blob=base64.b64decode(content.data), meta={"mime_type": content.mimeType}
-                )
-            elif isinstance(content, EmbeddedResource):
-                resource = content.resource
-                if isinstance(resource, TextResourceContents):
-                    yield self.create_text_message(resource.text)
-                elif isinstance(resource, BlobResourceContents):
-                    mime_type = resource.mimeType or "application/octet-stream"
-                    yield self.create_blob_message(blob=base64.b64decode(resource.blob), meta={"mime_type": mime_type})
-                else:
-                    raise ToolInvokeError(f"Unsupported embedded resource type: {type(resource)}")
-            else:
-                logger.warning("Unsupported content type=%s", type(content))
+            match content:
+                case TextContent():
+                    yield from self._process_text_content(content)
+                case ImageContent() | AudioContent():
+                    yield self.create_blob_message(
+                        blob=base64.b64decode(content.data), meta={"mime_type": content.mimeType}
+                    )
+                case EmbeddedResource():
+                    resource = content.resource
+                    match resource:
+                        case TextResourceContents():
+                            yield self.create_text_message(resource.text)
+                        case BlobResourceContents():
+                            mime_type = resource.mimeType or "application/octet-stream"
+                            yield self.create_blob_message(
+                                blob=base64.b64decode(resource.blob), meta={"mime_type": mime_type}
+                            )
+                        case _:
+                            raise ToolInvokeError(f"Unsupported embedded resource type: {type(resource)}")
+                case _:
+                    logger.warning("Unsupported content type=%s", type(content))
 
         # handle MCP structured output
         if self.entity.output_schema and result.structuredContent:

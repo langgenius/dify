@@ -5,11 +5,10 @@ import * as z from 'zod'
 
 import {
   zGetNotionPagesByPageIdByPageTypePreviewPath,
+  zGetNotionPagesByPageIdByPageTypePreviewQuery,
   zGetNotionPagesByPageIdByPageTypePreviewResponse,
+  zGetNotionPreImportPagesQuery,
   zGetNotionPreImportPagesResponse,
-  zPostNotionPagesByPageIdByPageTypePreviewBody,
-  zPostNotionPagesByPageIdByPageTypePreviewPath,
-  zPostNotionPagesByPageIdByPageTypePreviewResponse,
 } from './zod.gen'
 
 export const get = oc
@@ -20,28 +19,16 @@ export const get = oc
     path: '/notion/pages/{page_id}/{page_type}/preview',
     tags: ['console'],
   })
-  .input(z.object({ params: zGetNotionPagesByPageIdByPageTypePreviewPath }))
-  .output(zGetNotionPagesByPageIdByPageTypePreviewResponse)
-
-export const post = oc
-  .route({
-    inputStructure: 'detailed',
-    method: 'POST',
-    operationId: 'postNotionPagesByPageIdByPageTypePreview',
-    path: '/notion/pages/{page_id}/{page_type}/preview',
-    tags: ['console'],
-  })
   .input(
     z.object({
-      body: zPostNotionPagesByPageIdByPageTypePreviewBody,
-      params: zPostNotionPagesByPageIdByPageTypePreviewPath,
+      params: zGetNotionPagesByPageIdByPageTypePreviewPath,
+      query: zGetNotionPagesByPageIdByPageTypePreviewQuery,
     }),
   )
-  .output(zPostNotionPagesByPageIdByPageTypePreviewResponse)
+  .output(zGetNotionPagesByPageIdByPageTypePreviewResponse)
 
 export const preview = {
   get,
-  post,
 }
 
 export const byPageType = {
@@ -64,6 +51,7 @@ export const get2 = oc
     path: '/notion/pre-import/pages',
     tags: ['console'],
   })
+  .input(z.object({ query: zGetNotionPreImportPagesQuery }))
   .output(zGetNotionPreImportPagesResponse)
 
 export const pages2 = {

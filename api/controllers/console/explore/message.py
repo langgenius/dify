@@ -1,14 +1,16 @@
 import logging
 from typing import Literal
+from uuid import UUID
 
 from flask import request
 from pydantic import BaseModel, TypeAdapter
 from werkzeug.exceptions import InternalServerError, NotFound
 
 from controllers.common.controller_schemas import MessageFeedbackPayload, MessageListQuery
-from controllers.common.schema import register_schema_models
+from controllers.common.schema import register_response_schema_models, register_schema_models
 from controllers.console.app.error import (
     AppMoreLikeThisDisabledError,
+    AppUnavailableError,
     CompletionRequestError,
     ProviderModelCurrentlyNotSupportError,
     ProviderNotInitializeError,
@@ -20,15 +22,16 @@ from controllers.console.explore.error import (
     NotCompletionAppError,
 )
 from controllers.console.explore.wraps import InstalledAppResource
+from controllers.console.wraps import with_current_user
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
 from fields.conversation_fields import ResultResponse
 from fields.message_fields import MessageInfiniteScrollPagination, MessageListItem, SuggestedQuestionsResponse
 from graphon.model_runtime.errors.invoke import InvokeError
 from libs import helper
-from libs.login import current_account_with_tenant
+from models import Account
 from models.enums import FeedbackRating
-from models.model import AppMode
+from models.model import AppMode, InstalledApp
 from services.app_generate_service import AppGenerateService
 from services.errors.app import MoreLikeThisDisabledError
 from services.errors.conversation import ConversationNotExistsError
@@ -49,6 +52,7 @@ class MoreLikeThisQuery(BaseModel):
 
 
 register_schema_models(console_ns, MessageListQuery, MessageFeedbackPayload, MoreLikeThisQuery)
+register_response_schema_models(console_ns, ResultResponse, SuggestedQuestionsResponse)
 
 
 @console_ns.route(
@@ -57,9 +61,11 @@ register_schema_models(console_ns, MessageListQuery, MessageFeedbackPayload, Mor
 )
 class MessageListApi(InstalledAppResource):
     @console_ns.expect(console_ns.models[MessageListQuery.__name__])
-    def get(self, installed_app):
-        current_user, _ = current_account_with_tenant()
+    @with_current_user
+    def get(self, current_user: Account, installed_app: InstalledApp):
         app_model = installed_app.app
+        if app_model is None:
+            raise AppUnavailableError()
 
         app_mode = AppMode.value_of(app_model.mode)
         if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:
@@ -93,18 +99,21 @@ class MessageListApi(InstalledAppResource):
 )
 class MessageFeedbackApi(InstalledAppResource):
     @console_ns.expect(console_ns.models[MessageFeedbackPayload.__name__])
-    def post(self, installed_app, message_id):
-        current_user, _ = current_account_with_tenant()
+    @console_ns.response(200, "Feedback submitted successfully", console_ns.models[ResultResponse.__name__])
+    @with_current_user
+    def post(self, current_user: Account, installed_app: InstalledApp, message_id: UUID):
         app_model = installed_app.app
+        if app_model is None:
+            raise AppUnavailableError()
 
-        message_id = str(message_id)
+        message_id_str = str(message_id)
 
         payload = MessageFeedbackPayload.model_validate(console_ns.payload or {})
 
         try:
             MessageService.create_feedback(
                 app_model=app_model,
-                message_id=message_id,
+                message_id=message_id_str,
                 user=current_user,
                 rating=FeedbackRating(payload.rating) if payload.rating else None,
                 content=payload.content,
@@ -121,13 +130,15 @@ class MessageFeedbackApi(InstalledAppResource):
 )
 class MessageMoreLikeThisApi(InstalledAppResource):
     @console_ns.expect(console_ns.models[MoreLikeThisQuery.__name__])
-    def get(self, installed_app, message_id):
-        current_user, _ = current_account_with_tenant()
+    @with_current_user
+    def get(self, current_user: Account, installed_app: InstalledApp, message_id: UUID):
         app_model = installed_app.app
+        if app_model is None:
+            raise AppUnavailableError()
         if app_model.mode != "completion":
             raise NotCompletionAppError()
 
-        message_id = str(message_id)
+        message_id_str = str(message_id)
 
         args = MoreLikeThisQuery.model_validate(request.args.to_dict())
 
@@ -137,7 +148,7 @@ class MessageMoreLikeThisApi(InstalledAppResource):
             response = AppGenerateService.generate_more_like_this(
                 app_model=app_model,
                 user=current_user,
-                message_id=message_id,
+                message_id=message_id_str,
                 invoke_from=InvokeFrom.EXPLORE,
                 streaming=streaming,
             )
@@ -166,18 +177,21 @@ class MessageMoreLikeThisApi(InstalledAppResource):
     endpoint="installed_app_suggested_question",
 )
 class MessageSuggestedQuestionApi(InstalledAppResource):
-    def get(self, installed_app, message_id):
-        current_user, _ = current_account_with_tenant()
+    @console_ns.response(200, "Success", console_ns.models[SuggestedQuestionsResponse.__name__])
+    @with_current_user
+    def get(self, current_user: Account, installed_app: InstalledApp, message_id: UUID):
         app_model = installed_app.app
+        if app_model is None:
+            raise AppUnavailableError()
         app_mode = AppMode.value_of(app_model.mode)
         if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:
             raise NotChatAppError()
 
-        message_id = str(message_id)
+        message_id_str = str(message_id)
 
         try:
             questions = MessageService.get_suggested_questions_after_answer(
-                app_model=app_model, user=current_user, message_id=message_id, invoke_from=InvokeFrom.EXPLORE
+                app_model=app_model, user=current_user, message_id=message_id_str, invoke_from=InvokeFrom.EXPLORE
             )
         except MessageNotExistsError:
             raise NotFound("Message not found")

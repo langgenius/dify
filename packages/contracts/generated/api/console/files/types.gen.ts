@@ -4,6 +4,10 @@ export type ClientOptions = {
   baseUrl: `${string}://${string}/console/api` | (string & {})
 }
 
+export type AllowedExtensionsResponse = {
+  allowed_extensions: Array<string>
+}
+
 export type UploadConfig = {
   attachment_image_file_size_limit?: number | null
   audio_file_size_limit: number
@@ -34,6 +38,10 @@ export type FileResponse = {
   user_id?: string | null
 }
 
+export type TextContentResponse = {
+  content: string
+}
+
 export type GetFilesSupportTypeData = {
   body?: never
   path?: never
@@ -42,9 +50,7 @@ export type GetFilesSupportTypeData = {
 }
 
 export type GetFilesSupportTypeResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: AllowedExtensionsResponse
 }
 
 export type GetFilesSupportTypeResponse
@@ -86,9 +92,7 @@ export type GetFilesByFileIdPreviewData = {
 }
 
 export type GetFilesByFileIdPreviewResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: TextContentResponse
 }
 
 export type GetFilesByFileIdPreviewResponse

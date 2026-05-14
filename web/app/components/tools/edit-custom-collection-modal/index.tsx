@@ -13,6 +13,9 @@ import {
   DrawerTitle,
   DrawerViewport,
 } from '@langgenius/dify-ui/drawer'
+import { Input } from '@langgenius/dify-ui/input'
+import { ScrollArea } from '@langgenius/dify-ui/scroll-area'
+import { Textarea } from '@langgenius/dify-ui/textarea'
 import { toast } from '@langgenius/dify-ui/toast'
 import { RiSettings2Line } from '@remixicon/react'
 import { useDebounce, useGetState } from 'ahooks'
@@ -22,8 +25,6 @@ import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
 import EmojiPicker from '@/app/components/base/emoji-picker'
-import Input from '@/app/components/base/input'
-import Textarea from '@/app/components/base/textarea'
 import LabelSelector from '@/app/components/tools/labels/selector'
 import { parseParamsSchema } from '@/service/tools'
 import { LinkExternal02 } from '../../base/icons/src/vender/line/general'
@@ -216,11 +217,11 @@ const EditCustomCollectionModal: FC<Props> = ({
               className={cn(
                 'data-[swipe-direction=right]:top-2 data-[swipe-direction=right]:bottom-2 data-[swipe-direction=right]:h-auto data-[swipe-direction=right]:w-160 data-[swipe-direction=right]:max-w-[calc(100vw-1rem)] data-[swipe-direction=right]:rounded-xl data-[swipe-direction=right]:border-r-[0.5px] data-[swipe-direction=right]:border-divider-subtle',
                 isAdd && !positionLeft
-                  ? 'data-[swipe-direction=right]:right-[max(0.5rem,calc(50%_-_320px))]'
+                  ? 'data-[swipe-direction=right]:right-[max(0.5rem,calc(50%-320px))]'
                   : 'data-[swipe-direction=right]:right-2',
               )}
             >
-              <DrawerContent className="flex min-h-0 flex-1 flex-col p-0 pb-0">
+              <DrawerContent className="flex min-h-0 flex-1 flex-col overflow-hidden p-0 pb-0">
                 <div className="shrink-0 border-b border-divider-regular py-4">
                   <div className="flex h-6 items-center justify-between pr-5 pl-6">
                     <DrawerTitle className="min-w-0 truncate system-xl-semibold text-text-primary">
@@ -228,13 +229,19 @@ const EditCustomCollectionModal: FC<Props> = ({
                     </DrawerTitle>
                     <DrawerCloseButton
                       aria-label={t('operation.close', { ns: 'common' })}
-                      className="h-6 w-6 rounded-md"
+                      className="size-6 rounded-md"
                     />
                   </div>
                 </div>
                 <div className="min-h-0 flex-1">
-                  <div className="flex h-full flex-col">
-                    <div className="h-0 grow space-y-4 overflow-y-auto px-6 py-3">
+                  <div className="flex h-full min-h-0 flex-col">
+                    <ScrollArea
+                      className="min-h-0 flex-1 overflow-hidden"
+                      slotClassNames={{
+                        viewport: 'overscroll-contain',
+                        content: 'space-y-4 py-3 pr-8 pl-6',
+                      }}
+                    >
                       <div>
                         <div className="py-2 system-sm-medium text-text-primary">
                           {t('createTool.name', { ns: 'tools' })}
@@ -273,16 +280,17 @@ const EditCustomCollectionModal: FC<Props> = ({
                               className="flex h-[18px] items-center space-x-1 text-text-accent"
                             >
                               <div className="text-xs font-normal">{t('createTool.viewSchemaSpec', { ns: 'tools' })}</div>
-                              <LinkExternal02 className="h-3 w-3" />
+                              <LinkExternal02 className="size-3" />
                             </a>
                           </div>
                           <GetSchema onChange={setSchema} />
 
                         </div>
                         <Textarea
+                          aria-label={t('createTool.schema', { ns: 'tools' })}
                           className="h-[240px] resize-none"
                           value={schema}
-                          onChange={e => setSchema(e.target.value)}
+                          onValueChange={value => setSchema(value)}
                           placeholder={t('createTool.schemaPlaceHolder', { ns: 'tools' })!}
                         />
                       </div>
@@ -331,7 +339,7 @@ const EditCustomCollectionModal: FC<Props> = ({
                         <div className="py-2 system-sm-medium text-text-primary">{t('createTool.authMethod.title', { ns: 'tools' })}</div>
                         <div className="flex h-9 cursor-pointer items-center justify-between rounded-lg bg-components-input-bg-normal px-2.5" onClick={() => setCredentialsModalShow(true)}>
                           <div className="system-xs-regular text-text-primary">{t(`createTool.authMethod.types.${credential.auth_type}`, { ns: 'tools' })}</div>
-                          <RiSettings2Line className="h-4 w-4 text-text-secondary" />
+                          <RiSettings2Line className="size-4 text-text-secondary" />
                         </div>
                       </div>
 
@@ -372,7 +380,7 @@ const EditCustomCollectionModal: FC<Props> = ({
                         />
                       </div>
 
-                    </div>
+                    </ScrollArea>
                     <div className={cn(isEdit ? 'justify-between' : 'justify-end', 'mt-2 flex shrink-0 rounded-b-[10px] border-t border-divider-regular bg-background-section-burn px-6 py-4')}>
                       {
                         isEdit && (
@@ -386,12 +394,10 @@ const EditCustomCollectionModal: FC<Props> = ({
                     </div>
                     {showEmojiPicker && (
                       <EmojiPicker
+                        open={showEmojiPicker}
+                        onOpenChange={setShowEmojiPicker}
                         onSelect={(icon, icon_background) => {
                           setEmoji({ content: icon, background: icon_background })
-                          setShowEmojiPicker(false)
-                        }}
-                        onClose={() => {
-                          setShowEmojiPicker(false)
                         }}
                       />
                     )}

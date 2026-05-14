@@ -2,10 +2,12 @@
  * @vitest-environment node
  */
 import type { ChildProcessByStdio } from 'node:child_process'
+import type { Server } from 'node:http'
 import type { Readable } from 'node:stream'
 import { spawn } from 'node:child_process'
 import { once } from 'node:events'
 import fs from 'node:fs/promises'
+import http from 'node:http'
 import net from 'node:net'
 import os from 'node:os'
 import path from 'node:path'
@@ -16,6 +18,7 @@ const tempDirs: string[] = []
 type DevProxyCliProcess = ChildProcessByStdio<null, Readable, Readable>
 
 const childProcesses: DevProxyCliProcess[] = []
+const httpServers: Server[] = []
 const binPath = fileURLToPath(new URL('../bin/dev-proxy.js', import.meta.url))
 
 const createTempDir = async () => {
@@ -86,6 +89,23 @@ const waitForOutput = (
   onData()
 })
 
+const fetchTextWithRetry = async (url: string) => {
+  let lastError: unknown
+
+  for (let attempt = 0; attempt < 10; attempt += 1) {
+    try {
+      const response = await fetch(url)
+      return response.text()
+    }
+    catch (error) {
+      lastError = error
+      await new Promise(resolve => setTimeout(resolve, 50))
+    }
+  }
+
+  throw lastError
+}
+
 const spawnCli = (args: readonly string[], cwd: string) => {
   const child = spawn(process.execPath, [binPath, ...args], {
     cwd,
@@ -107,9 +127,45 @@ const stopChildProcess = async (child: DevProxyCliProcess) => {
   await once(child, 'exit')
 }
 
+const closeHttpServer = async (server: Server) => {
+  if (!server.listening)
+    return
+
+  await new Promise<void>((resolve, reject) => {
+    server.close((error) => {
+      if (error)
+        reject(error)
+      else
+        resolve()
+    })
+  })
+}
+
+const startTextServer = async (body: string) => {
+  const server = http.createServer((_, response) => {
+    response.writeHead(200, { 'content-type': 'text/plain' })
+    response.end(body)
+  })
+
+  await new Promise<void>((resolve, reject) => {
+    server.once('error', reject)
+    server.listen(0, '127.0.0.1', resolve)
+  })
+
+  const address = server.address()
+  if (!address || typeof address === 'string')
+    throw new Error('Failed to start test server.')
+
+  httpServers.push(server)
+  return {
+    port: address.port,
+  }
+}
+
 describe('dev proxy CLI', () => {
   afterEach(async () => {
     await Promise.all(childProcesses.splice(0).map(stopChildProcess))
+    await Promise.all(httpServers.splice(0).map(closeHttpServer))
     await Promise.all(tempDirs.splice(0).map(tempDir => fs.rm(tempDir, {
       force: true,
       recursive: true,
@@ -154,5 +210,50 @@ describe('dev proxy CLI', () => {
     expect(child.exitCode).toBeNull()
     expect(child.signalCode).toBeNull()
     expect(response.status).toBe(404)
+  })
+
+  // Scenario: editing the configured env file should reload route targets without restarting the CLI process.
+  it('should reload proxy config when the env file changes', async () => {
+    // Arrange
+    const tempDir = await createTempDir()
+    const port = await getFreePort()
+    const firstTarget = await startTextServer('first target')
+    const secondTarget = await startTextServer('second target')
+
+    await fs.writeFile(path.join(tempDir, '.env.proxy'), `DEV_PROXY_TEST_TARGET=http://127.0.0.1:${firstTarget.port}\n`)
+    await fs.writeFile(path.join(tempDir, 'dev-proxy.config.ts'), `
+      export default {
+        routes: [{ paths: '/api', target: process.env.DEV_PROXY_TEST_TARGET }],
+      }
+    `)
+
+    let output = ''
+    const child = spawnCli([
+      '--config',
+      './dev-proxy.config.ts',
+      '--env-file',
+      './.env.proxy',
+      '--host',
+      '127.0.0.1',
+      '--port',
+      String(port),
+    ], tempDir)
+    child.stdout.on('data', chunk => output += chunk.toString())
+    child.stderr.on('data', chunk => output += chunk.toString())
+    const proxyUrl = `http://127.0.0.1:${port}/api/ping`
+
+    // Act
+    await waitForOutput(child, () => output, `[dev-proxy] listening on http://127.0.0.1:${port}`)
+    const firstResponse = await fetchTextWithRetry(proxyUrl)
+
+    await fs.writeFile(path.join(tempDir, '.env.proxy'), `DEV_PROXY_TEST_TARGET=http://127.0.0.1:${secondTarget.port}\n`)
+    await waitForOutput(child, () => output, '[dev-proxy] reloaded env file changes')
+    const secondResponse = await fetchTextWithRetry(proxyUrl)
+
+    // Assert
+    expect(firstResponse).toBe('first target')
+    expect(secondResponse).toBe('second target')
+    expect(child.exitCode).toBeNull()
+    expect(child.signalCode).toBeNull()
   })
 })

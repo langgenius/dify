@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import type { Node } from 'reactflow'
+import type { PluginSource } from '@/app/components/plugins/types'
 import type { Collection } from '@/app/components/tools/types'
 import type { ToolDefaultValue, ToolValue } from '@/app/components/workflow/block-selector/types'
 import type { SchemaRoot } from '@/app/components/workflow/nodes/llm/types'
@@ -32,17 +33,23 @@ let mockWorkflowTools: ToolWithProvider[] | undefined = []
 let mockMcpTools: ToolWithProvider[] | undefined = []
 
 vi.mock('@/service/use-tools', () => ({
-  useAllBuiltInTools: () => ({ data: mockBuildInTools }),
-  useAllCustomTools: () => ({ data: mockCustomTools }),
-  useAllWorkflowTools: () => ({ data: mockWorkflowTools }),
-  useAllMCPTools: () => ({ data: mockMcpTools }),
+  useAllBuiltInTools: () => ({ data: mockBuildInTools, isFetched: true }),
+  useAllCustomTools: () => ({ data: mockCustomTools, isFetched: true }),
+  useAllWorkflowTools: () => ({ data: mockWorkflowTools, isFetched: true }),
+  useAllMCPTools: () => ({ data: mockMcpTools, isFetched: true }),
   useInvalidateAllBuiltInTools: () => vi.fn(),
 }))
 
 // Track manifest mock state
 let mockManifestData: Record<string, unknown> | null = null
+let mockInstalledPlugins: Array<{ source: PluginSource }> = []
 
 vi.mock('@/service/use-plugins', () => ({
+  useCheckInstalled: ({ pluginIds, enabled }: { pluginIds: string[], enabled: boolean }) => ({
+    data: enabled && pluginIds.length > 0
+      ? { plugins: mockInstalledPlugins }
+      : undefined,
+  }),
   usePluginManifestInfo: () => ({ data: mockManifestData }),
   useInvalidateInstalledPluginList: () => vi.fn(),
 }))
@@ -416,11 +423,12 @@ const defaultProps = {
 describe('usePluginInstalledCheck Hook', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockInstalledPlugins = []
   })
 
   it('should return inMarketPlace as false when manifest is null', () => {
     const { result } = renderHook(
-      () => usePluginInstalledCheck('test-provider/tool'),
+      () => usePluginInstalledCheck({}),
       { wrapper: createWrapper() },
     )
 
@@ -430,7 +438,7 @@ describe('usePluginInstalledCheck Hook', () => {
 
   it('should handle empty provider name', () => {
     const { result } = renderHook(
-      () => usePluginInstalledCheck(''),
+      () => usePluginInstalledCheck({}),
       { wrapper: createWrapper() },
     )
 
@@ -439,12 +447,12 @@ describe('usePluginInstalledCheck Hook', () => {
 
   it('should extract pluginID from provider name correctly', () => {
     const { result } = renderHook(
-      () => usePluginInstalledCheck('org/plugin/extra'),
+      () => usePluginInstalledCheck({ providerPluginId: 'org/plugin' }),
       { wrapper: createWrapper() },
     )
 
-    // The hook should parse "org/plugin" from "org/plugin/extra"
     expect(result.current.inMarketPlace).toBe(false)
+    expect(result.current.pluginID).toBe('org/plugin')
   })
 })
 
@@ -523,9 +531,7 @@ describe('useToolSelectorState Hook', () => {
       )
 
       act(() => {
-        result.current.handleDescriptionChange({
-          target: { value: 'new description' },
-        } as React.ChangeEvent<HTMLTextAreaElement>)
+        result.current.handleDescriptionChange('new description')
       })
 
       expect(onSelect).toHaveBeenCalledWith(
@@ -1724,9 +1730,7 @@ describe('Edge Cases', () => {
       )
 
       act(() => {
-        result.current.handleDescriptionChange({
-          target: { value: '' },
-        } as React.ChangeEvent<HTMLTextAreaElement>)
+        result.current.handleDescriptionChange('')
       })
 
       expect(onSelect).toHaveBeenCalledWith(

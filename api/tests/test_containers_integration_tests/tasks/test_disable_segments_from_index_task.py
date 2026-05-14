@@ -185,30 +185,31 @@ class TestDisableSegmentsFromIndexTask:
         segments = []
 
         for i in range(count):
-            segment = DocumentSegment()
-            segment.id = fake.uuid4()
-            segment.tenant_id = dataset.tenant_id
-            segment.dataset_id = dataset.id
-            segment.document_id = document.id
-            segment.position = i + 1
-            segment.content = f"Test segment content {i + 1}: {fake.text(max_nb_chars=200)}"
-            segment.answer = f"Test answer {i + 1}" if i % 2 == 0 else None
-            segment.word_count = fake.random_int(min=10, max=100)
-            segment.tokens = fake.random_int(min=5, max=50)
-            segment.keywords = [fake.word() for _ in range(3)]
-            segment.index_node_id = f"node_{segment.id}"
-            segment.index_node_hash = fake.sha256()
-            segment.hit_count = 0
-            segment.enabled = True
-            segment.disabled_at = None
-            segment.disabled_by = None
-            segment.status = SegmentStatus.COMPLETED
-            segment.created_by = account.id
-            segment.updated_by = account.id
-            segment.indexing_at = fake.date_time_this_year()
-            segment.completed_at = fake.date_time_this_year()
-            segment.error = None
-            segment.stopped_at = None
+            id = fake.uuid4()
+            segment = DocumentSegment(
+                tenant_id=dataset.tenant_id,
+                dataset_id=dataset.id,
+                document_id=document.id,
+                position=i + 1,
+                content=f"Test segment content {i + 1}: {fake.text(max_nb_chars=200)}",
+                answer=f"Test answer {i + 1}" if i % 2 == 0 else None,
+                word_count=fake.random_int(min=10, max=100),
+                tokens=fake.random_int(min=5, max=50),
+                keywords=[fake.word() for _ in range(3)],
+                index_node_id=f"node_{id}",
+                index_node_hash=fake.sha256(),
+                hit_count=0,
+                enabled=True,
+                disabled_at=None,
+                disabled_by=None,
+                status=SegmentStatus.COMPLETED,
+                created_by=account.id,
+                updated_by=account.id,
+                indexing_at=fake.date_time_this_year(),
+                completed_at=fake.date_time_this_year(),
+                error=None,
+                stopped_at=None,
+            )
 
             segments.append(segment)
 

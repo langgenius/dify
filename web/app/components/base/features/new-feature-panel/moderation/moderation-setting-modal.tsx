@@ -1,14 +1,15 @@
-import type { ChangeEvent, FC } from 'react'
+import type { FC } from 'react'
 import type { CodeBasedExtensionItem } from '@/models/common'
 import type { ModerationConfig, ModerationContentConfig } from '@/models/debug'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
+import { Textarea } from '@langgenius/dify-ui/textarea'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Divider from '@/app/components/base/divider'
-import ApiBasedExtensionSelector from '@/app/components/header/account-setting/api-based-extension-page/selector'
+import { ApiBasedExtensionSelector } from '@/app/components/header/account-setting/api-based-extension-page/selector'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
 import { CustomConfigurationStatusEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useDocLink, useLocale } from '@/context/i18n'
@@ -103,9 +104,7 @@ const ModerationSettingModal: FC<ModerationSettingModalProps> = ({
     })
   }
 
-  const handleDataKeywordsChange = (e: ChangeEvent<HTMLTextAreaElement>) => {
-    const value = e.target.value
-
+  const handleDataKeywordsChange = (value: string) => {
     const arr = value.split('\n').reduce((prev: string[], next: string) => {
       if (next !== '')
         prev.push(next.slice(0, 100))
@@ -236,11 +235,11 @@ const ModerationSettingModal: FC<ModerationSettingModalProps> = ({
             className="cursor-pointer border-none bg-transparent p-1 focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
             onClick={onCancel}
           >
-            <span className="i-ri-close-line h-4 w-4 text-text-tertiary" aria-hidden="true" />
+            <span className="i-ri-close-line size-4 text-text-tertiary" aria-hidden="true" />
           </button>
         </div>
         <div className="py-2">
-          <div className="text-sm leading-9 font-medium text-text-primary">
+          <div className="text-sm/9 font-medium text-text-primary">
             {t('feature.moderation.modal.provider.title', { ns: 'appDebug' })}
           </div>
           <div className="grid grid-cols-3 gap-2.5">
@@ -257,7 +256,7 @@ const ModerationSettingModal: FC<ModerationSettingModalProps> = ({
                   onClick={() => handleDataTypeChange(provider.key)}
                 >
                   <div className={cn(
-                    'mr-2 h-4 w-4 rounded-full border border-components-radio-border bg-components-radio-bg shadow-xs',
+                    'mr-2 size-4 rounded-full border border-components-radio-border bg-components-radio-bg shadow-xs',
                     localeData.type === provider.key && 'border-[5px] border-components-radio-border-checked',
                   )}
                   >
@@ -292,11 +291,13 @@ const ModerationSettingModal: FC<ModerationSettingModalProps> = ({
             <div className="py-2">
               <div className="mb-1 text-sm font-medium text-text-primary">{t('feature.moderation.modal.provider.keywords', { ns: 'appDebug' })}</div>
               <div className="mb-2 text-xs text-text-tertiary">{t('feature.moderation.modal.keywords.tip', { ns: 'appDebug' })}</div>
-              <div className="relative h-[88px] rounded-lg bg-components-input-bg-normal px-3 py-2">
-                <textarea
+              {/* Keep this counter composed locally; extract only if more textarea counter cases repeat. */}
+              <div className="relative h-[88px]">
+                <Textarea
+                  aria-label={t('feature.moderation.modal.provider.keywords', { ns: 'appDebug' }) as string}
                   value={localeData.config?.keywords || ''}
-                  onChange={handleDataKeywordsChange}
-                  className="block h-full w-full resize-none appearance-none bg-transparent text-sm text-text-secondary outline-hidden"
+                  onValueChange={handleDataKeywordsChange}
+                  className="size-full resize-none pb-8"
                   placeholder={t('feature.moderation.modal.keywords.placeholder', { ns: 'appDebug' }) || ''}
                 />
                 <div className="absolute right-2 bottom-2 flex h-5 items-center rounded-md bg-background-section px-1 text-xs font-medium text-text-quaternary">
@@ -322,7 +323,7 @@ const ModerationSettingModal: FC<ModerationSettingModalProps> = ({
                   rel="noopener noreferrer"
                   className="group flex items-center text-xs text-text-tertiary hover:text-primary-600"
                 >
-                  <span className="mr-1 i-custom-vender-line-education-book-open-01 h-3 w-3 text-text-tertiary group-hover:text-primary-600" />
+                  <span className="mr-1 i-custom-vender-line-education-book-open-01 size-3 text-text-tertiary group-hover:text-primary-600" />
                   {t('apiBasedExtension.link', { ns: 'common' })}
                 </a>
               </div>

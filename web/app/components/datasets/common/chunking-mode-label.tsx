@@ -21,7 +21,7 @@ const ChunkingModeLabel: FC<Props> = ({
   return (
     <Badge>
       <div className="flex h-full items-center space-x-0.5 text-text-tertiary">
-        <TypeIcon className="h-3 w-3" />
+        <TypeIcon className="size-3" />
         <span className="system-2xs-medium-uppercase">{isGeneralMode ? `${t('chunkingMode.general', { ns: 'dataset' })}${generalSuffix}` : t('chunkingMode.parentChild', { ns: 'dataset' })}</span>
       </div>
     </Badge>

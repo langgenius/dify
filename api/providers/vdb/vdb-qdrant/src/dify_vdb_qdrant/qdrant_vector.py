@@ -471,7 +471,7 @@ class QdrantVector(BaseVector):
 
     def _reload_if_needed(self):
         if isinstance(self._client, QdrantLocal):
-            self._client._load()  # pyright: ignore[reportPrivateUsage]
+            self._client._load()
 
     @classmethod
     def _document_from_scored_point(

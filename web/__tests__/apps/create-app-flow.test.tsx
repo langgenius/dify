@@ -42,6 +42,7 @@ vi.mock('@/next/navigation', () => ({
     push: mockRouterPush,
     replace: mockRouterReplace,
   }),
+  usePathname: () => '/apps',
   useSearchParams: () => new URLSearchParams(),
 }))
 
@@ -79,6 +80,9 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@tanstack/react-query')>()
   return {
     ...actual,
+    useQuery: () => ({
+      data: [],
+    }),
     useInfiniteQuery: () => ({
       data: { pages: mockPages },
       isLoading: mockIsLoading,

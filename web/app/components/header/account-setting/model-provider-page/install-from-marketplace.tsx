@@ -49,7 +49,7 @@ const InstallFromMarketplace = ({
           onClick={() => setCollapse(prev => !prev)}
           aria-expanded={!collapse}
         >
-          <span className={cn('i-ri-arrow-down-s-line h-4 w-4', collapse && '-rotate-90')} />
+          <span className={cn('i-ri-arrow-down-s-line size-4', collapse && '-rotate-90')} />
           {t('modelProvider.installProvider', { ns: 'common' })}
         </button>
         <div className="mb-2 flex items-center pt-2">
@@ -61,7 +61,7 @@ const InstallFromMarketplace = ({
             className="inline-flex items-center system-sm-medium text-text-accent"
           >
             {t('marketplace.difyMarketplace', { ns: 'plugin' })}
-            <span className="i-ri-arrow-right-up-line h-4 w-4" />
+            <span className="i-ri-arrow-right-up-line size-4" />
           </Link>
         </div>
       </div>

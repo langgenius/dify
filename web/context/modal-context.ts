@@ -18,7 +18,6 @@ import type { UpdatePluginPayload } from '@/app/components/plugins/types'
 import type { InputVar } from '@/app/components/workflow/types'
 import type { ExpireNoticeModalPayloadProps } from '@/app/education-apply/expire-notice-modal'
 import type {
-  ApiBasedExtension,
   ExternalDataTool,
 } from '@/models/common'
 import type { ModerationConfig, PromptVariable } from '@/models/debug'
@@ -48,7 +47,6 @@ export type ModelModalType = {
 
 export type ModalContextState = {
   setShowAccountSettingModal: Dispatch<SetStateAction<ModalState<AccountSettingTab> | null>>
-  setShowApiBasedExtensionModal: Dispatch<SetStateAction<ModalState<ApiBasedExtension> | null>>
   setShowModerationSettingModal: Dispatch<SetStateAction<ModalState<ModerationConfig> | null>>
   setShowExternalDataToolModal: Dispatch<SetStateAction<ModalState<ExternalDataTool> | null>>
   setShowPricingModal: () => void
@@ -68,7 +66,6 @@ export type ModalContextState = {
 
 export const ModalContext = createContext<ModalContextState>({
   setShowAccountSettingModal: noop,
-  setShowApiBasedExtensionModal: noop,
   setShowModerationSettingModal: noop,
   setShowExternalDataToolModal: noop,
   setShowPricingModal: noop,

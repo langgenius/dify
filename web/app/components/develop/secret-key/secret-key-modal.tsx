@@ -124,7 +124,7 @@ const SecretKeyModal = ({
           </DialogTitle>
 
           <div className="-mt-6 -mr-2 mb-4 flex justify-end">
-            <XMarkIcon className="h-6 w-6 cursor-pointer text-text-tertiary" onClick={handleClose} />
+            <XMarkIcon className="size-6 cursor-pointer text-text-tertiary" onClick={handleClose} />
           </div>
           <p className="mt-1 shrink-0 text-[13px] leading-5 font-normal text-text-tertiary">{t('apiKeyModal.apiSecretKeyTips', { ns: 'appApi' })}</p>
           {isApiKeysLoading && <div className="mt-4"><Loading /></div>}
@@ -152,7 +152,7 @@ const SecretKeyModal = ({
                               setShowConfirmDelete(true)
                             }}
                           >
-                            <RiDeleteBinLine className="h-4 w-4" />
+                            <RiDeleteBinLine className="size-4" />
                           </ActionButton>
                         )}
                       </div>
@@ -164,7 +164,7 @@ const SecretKeyModal = ({
           }
           <div className="flex">
             <Button className={`mt-4 flex shrink-0 ${s.autoWidth}`} onClick={onCreate} disabled={!currentWorkspace || !isCurrentWorkspaceEditor}>
-              <PlusIcon className="mr-1 flex h-4 w-4 shrink-0" />
+              <PlusIcon className="mr-1 flex size-4 shrink-0" />
               <div className="text-xs font-medium text-text-secondary">{t('apiKeyModal.createNewSecretKey', { ns: 'appApi' })}</div>
             </Button>
           </div>

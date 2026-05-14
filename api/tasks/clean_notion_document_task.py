@@ -38,7 +38,7 @@ def clean_notion_document_task(document_ids: list[str], dataset_id: str):
 
         for document_id in document_ids:
             segments = session.scalars(select(DocumentSegment).where(DocumentSegment.document_id == document_id)).all()
-            total_index_node_ids.extend([segment.index_node_id for segment in segments])
+            total_index_node_ids.extend([segment.index_node_id for segment in segments if segment.index_node_id])
 
     # Wrap vector / keyword index cleanup in try/except so that a transient
     # failure here (e.g. billing API hiccup propagated via FeatureService when

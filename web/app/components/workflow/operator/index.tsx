@@ -92,7 +92,7 @@ const Operator = ({ handleUndo, handleRedo }: OperatorProps) => {
   return (
     <div
       ref={bottomPanelRef}
-      className="absolute right-0 bottom-0 left-0 z-10 px-1"
+      className="absolute inset-x-0 bottom-0 z-10 px-1"
       style={
         {
           width: bottomPanelWidth,
@@ -116,7 +116,7 @@ const Operator = ({ handleUndo, handleRedo }: OperatorProps) => {
               maskColor="var(--color-workflow-minimap-bg)"
               nodeClassName={getMiniMapNodeClassName}
               nodeStrokeWidth={3}
-              className="!absolute bottom-10! z-9 m-0! h-[73px]! w-[103px]! rounded-lg! border-[0.5px]!
+              className="absolute! bottom-10! z-9 m-0! h-[73px]! w-[103px]! rounded-lg! border-[0.5px]!
             border-divider-subtle! bg-background-default-subtle! shadow-md! shadow-shadow-shadow-5!"
             />
           )}

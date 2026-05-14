@@ -1,19 +1,8 @@
 import type { OnlineDriveFile } from '@/models/pipeline'
+import { RadioGroup } from '@langgenius/dify-ui/radio-group'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import Item from '../item'
-
-vi.mock('@/app/components/base/checkbox', () => ({
-  default: ({ checked, onCheck, disabled }: { checked: boolean, onCheck: () => void, disabled?: boolean }) => (
-    <input type="checkbox" data-testid="checkbox" checked={checked} onChange={onCheck} disabled={disabled} />
-  ),
-}))
-
-vi.mock('@/app/components/base/radio/ui', () => ({
-  default: ({ isChecked, onCheck }: { isChecked: boolean, onCheck: () => void }) => (
-    <input type="radio" data-testid="radio" checked={isChecked} onChange={onCheck} />
-  ),
-}))
 
 vi.mock('../file-icon', () => ({
   default: () => <span data-testid="file-icon" />,
@@ -45,17 +34,22 @@ describe('Item', () => {
 
   it('should render checkbox for file type in multiple choice mode', () => {
     render(<Item {...defaultProps} />)
-    expect(screen.getByTestId('checkbox')).toBeInTheDocument()
+    expect(screen.getByRole('checkbox', { name: 'test.pdf' })).toBeInTheDocument()
   })
 
   it('should render radio for file type in single choice mode', () => {
-    render(<Item {...defaultProps} isMultipleChoice={false} />)
-    expect(screen.getByTestId('radio')).toBeInTheDocument()
+    render(
+      <RadioGroup aria-label="Files" value={defaultProps.file.id}>
+        <Item {...defaultProps} isMultipleChoice={false} />
+      </RadioGroup>,
+    )
+
+    expect(screen.getByRole('radio', { name: 'test.pdf' })).toBeInTheDocument()
   })
 
   it('should not render checkbox for bucket type', () => {
     render(<Item {...defaultProps} file={makeFile('bucket', 'my-bucket')} />)
-    expect(screen.queryByTestId('checkbox')).not.toBeInTheDocument()
+    expect(screen.queryByRole('checkbox')).not.toBeInTheDocument()
   })
 
   it('should call onOpen for folder click', () => {
@@ -69,6 +63,16 @@ describe('Item', () => {
     render(<Item {...defaultProps} />)
     fireEvent.click(screen.getByText('test.pdf'))
     expect(defaultProps.onSelect).toHaveBeenCalledWith(defaultProps.file)
+  })
+
+  it('should call onSelect once without bubbling to row click when checkbox is clicked', () => {
+    render(<Item {...defaultProps} />)
+
+    fireEvent.click(screen.getByRole('checkbox', { name: 'test.pdf' }))
+
+    expect(defaultProps.onSelect).toHaveBeenCalledTimes(1)
+    expect(defaultProps.onSelect).toHaveBeenCalledWith(defaultProps.file)
+    expect(defaultProps.onOpen).not.toHaveBeenCalled()
   })
 
   it('should not call handlers when disabled', () => {

@@ -8,12 +8,8 @@ import { useProviderContext } from '@/context/provider-context'
 import { mailToSupport } from '../utils/util'
 import { ExternalLinkIndicator, MenuItemContent } from './menu-item-content'
 
-type SupportProps = {
-  closeAccountDropdown: () => void
-}
-
 // Submenu-only: this component must be rendered within an existing DropdownMenu root.
-export default function Support({ closeAccountDropdown }: SupportProps) {
+export default function Support() {
   const { t } = useTranslation()
   const { plan } = useProviderContext()
   const { userProfile, langGeniusVersionInfo } = useAppContext()
@@ -37,7 +33,6 @@ export default function Support({ closeAccountDropdown }: SupportProps) {
               className="justify-between"
               onClick={() => {
                 toggleZendeskWindow(true)
-                closeAccountDropdown()
               }}
             >
               <MenuItemContent

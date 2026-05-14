@@ -6,6 +6,7 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 import pytest
+from flask import Flask
 
 from controllers.console.app import app_import as app_import_module
 from services.app_dsl_service import ImportStatus
@@ -48,7 +49,9 @@ class TestAppImportApi:
     def api(self):
         return app_import_module.AppImportApi()
 
-    def test_import_post_returns_failed_status_and_rolls_back(self, api, app, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_import_post_returns_failed_status_and_rolls_back(
+        self, api, app: Flask, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         method = _unwrap(api.post)
 
         _install_features(monkeypatch, enabled=False)
@@ -58,17 +61,18 @@ class TestAppImportApi:
             "import_app",
             lambda *_args, **_kwargs: _Result(ImportStatus.FAILED, app_id=None),
         )
-        monkeypatch.setattr(app_import_module, "current_account_with_tenant", lambda: (SimpleNamespace(id="u1"), "t1"))
 
         with app.test_request_context("/console/api/apps/imports", method="POST", json={"mode": "yaml-content"}):
-            response, status = method()
+            response, status = method(SimpleNamespace(id="u1"))
 
         session.rollback.assert_called_once_with()
         session.commit.assert_not_called()
         assert status == 400
         assert response["status"] == ImportStatus.FAILED
 
-    def test_import_post_returns_pending_status_and_commits(self, api, app, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_import_post_returns_pending_status_and_commits(
+        self, api, app: Flask, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         method = _unwrap(api.post)
 
         _install_features(monkeypatch, enabled=False)
@@ -78,17 +82,18 @@ class TestAppImportApi:
             "import_app",
             lambda *_args, **_kwargs: _Result(ImportStatus.PENDING),
         )
-        monkeypatch.setattr(app_import_module, "current_account_with_tenant", lambda: (SimpleNamespace(id="u1"), "t1"))
 
         with app.test_request_context("/console/api/apps/imports", method="POST", json={"mode": "yaml-content"}):
-            response, status = method()
+            response, status = method(SimpleNamespace(id="u1"))
 
         session.commit.assert_called_once_with()
         session.rollback.assert_not_called()
         assert status == 202
         assert response["status"] == ImportStatus.PENDING
 
-    def test_import_post_updates_webapp_auth_when_enabled(self, api, app, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_import_post_updates_webapp_auth_when_enabled(
+        self, api, app: Flask, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         method = _unwrap(api.post)
 
         _install_features(monkeypatch, enabled=True)
@@ -100,10 +105,9 @@ class TestAppImportApi:
         )
         update_access = MagicMock()
         monkeypatch.setattr(app_import_module.EnterpriseService.WebAppAuth, "update_app_access_mode", update_access)
-        monkeypatch.setattr(app_import_module, "current_account_with_tenant", lambda: (SimpleNamespace(id="u1"), "t1"))
 
         with app.test_request_context("/console/api/apps/imports", method="POST", json={"mode": "yaml-content"}):
-            response, status = method()
+            response, status = method(SimpleNamespace(id="u1"))
 
         session.commit.assert_called_once_with()
         session.rollback.assert_not_called()
@@ -118,7 +122,7 @@ class TestAppImportConfirmApi:
         return app_import_module.AppImportConfirmApi()
 
     def test_import_confirm_returns_failed_status_and_rolls_back(
-        self, api, app, monkeypatch: pytest.MonkeyPatch
+        self, api, app: Flask, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         method = _unwrap(api.post)
 
@@ -128,10 +132,9 @@ class TestAppImportConfirmApi:
             "confirm_import",
             lambda *_args, **_kwargs: _Result(ImportStatus.FAILED),
         )
-        monkeypatch.setattr(app_import_module, "current_account_with_tenant", lambda: (SimpleNamespace(id="u1"), "t1"))
 
         with app.test_request_context("/console/api/apps/imports/import-1/confirm", method="POST"):
-            response, status = method(import_id="import-1")
+            response, status = method(SimpleNamespace(id="u1"), import_id="import-1")
 
         session.rollback.assert_called_once_with()
         session.commit.assert_not_called()

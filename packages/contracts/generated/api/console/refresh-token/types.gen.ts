@@ -4,6 +4,10 @@ export type ClientOptions = {
   baseUrl: `${string}://${string}/console/api` | (string & {})
 }
 
+export type SimpleResultResponse = {
+  result: string
+}
+
 export type PostRefreshTokenData = {
   body?: never
   path?: never
@@ -12,9 +16,7 @@ export type PostRefreshTokenData = {
 }
 
 export type PostRefreshTokenResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: SimpleResultResponse
 }
 
 export type PostRefreshTokenResponse = PostRefreshTokenResponses[keyof PostRefreshTokenResponses]

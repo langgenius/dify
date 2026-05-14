@@ -169,7 +169,7 @@ const Installed: FC<Props> = ({
           disabled={isInstalling || isLoading || !canInstall}
           onClick={handleInstall}
         >
-          {isInstalling && <RiLoader2Line className="h-4 w-4 animate-spin-slow" />}
+          {isInstalling && <RiLoader2Line className="size-4 animate-spin-slow" />}
           <span>{t(`${i18nPrefix}.${isInstalling ? 'installing' : 'install'}`, { ns: 'plugin' })}</span>
         </Button>
       </div>

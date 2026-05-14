@@ -1,3 +1,4 @@
+import type { ComponentProps } from 'react'
 import { fireEvent, render, screen } from '@testing-library/react'
 import TextAreaField from '../text-area'
 
@@ -29,5 +30,21 @@ describe('TextAreaField', () => {
     render(<TextAreaField label="Note" />)
     fireEvent.change(screen.getByLabelText('Note'), { target: { value: 'Updated note' } })
     expect(mockField.handleChange).toHaveBeenCalledWith('Updated note')
+  })
+
+  it('should keep form writeback when external props contain onValueChange', () => {
+    const externalOnValueChange = vi.fn()
+
+    render(
+      <TextAreaField
+        label="Note"
+        {...({ onValueChange: externalOnValueChange } as Partial<ComponentProps<typeof TextAreaField>>)}
+      />,
+    )
+
+    fireEvent.change(screen.getByLabelText('Note'), { target: { value: 'Updated note' } })
+
+    expect(mockField.handleChange).toHaveBeenCalledWith('Updated note')
+    expect(externalOnValueChange).not.toHaveBeenCalled()
   })
 })

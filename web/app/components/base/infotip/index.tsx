@@ -71,11 +71,11 @@ export function Infotip({
         aria-label={ariaLabel}
         onClick={handleClick}
         className={cn(
-          'inline-flex h-4 w-4 shrink-0 cursor-pointer items-center justify-center border-0 bg-transparent p-0 focus-visible:ring-1 focus-visible:ring-components-input-border-hover focus-visible:outline-hidden',
+          'inline-flex size-4 shrink-0 cursor-pointer items-center justify-center border-0 bg-transparent p-0 focus-visible:ring-1 focus-visible:ring-components-input-border-hover focus-visible:outline-hidden',
           className,
         )}
       >
-        <span aria-hidden className={cn('i-ri-question-line h-3.5 w-3.5 text-text-quaternary hover:text-text-tertiary', iconClassName)} />
+        <span aria-hidden className={cn('i-ri-question-line size-3.5 text-text-quaternary hover:text-text-tertiary', iconClassName)} />
       </PopoverTrigger>
       <PopoverContent
         placement={placement}

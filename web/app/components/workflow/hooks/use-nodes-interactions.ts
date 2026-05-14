@@ -14,7 +14,7 @@ import type { VariableAssignerNodeType } from '../nodes/variable-assigner/types'
 import type { Edge, Node, OnNodeAdd } from '../types'
 import type { RAGPipelineVariables } from '@/models/pipeline'
 import { toast } from '@langgenius/dify-ui/toast'
-import { useSuspenseQuery } from '@tanstack/react-query'
+import { useQuery } from '@tanstack/react-query'
 import { produce } from 'immer'
 import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -23,7 +23,7 @@ import {
   getOutgoers,
   useReactFlow,
 } from 'reactflow'
-import { systemFeaturesQueryOptions } from '@/service/system-features'
+import { consoleQuery } from '@/service/client'
 import { collaborationManager } from '../collaboration/core/collaboration-manager'
 import {
   CUSTOM_EDGE,
@@ -145,10 +145,10 @@ const isNoteLinkClickTarget = (target: EventTarget | null, node: Node) => {
 
 export const useNodesInteractions = () => {
   const { t } = useTranslation()
-  const { data: appDslVersion } = useSuspenseQuery({
-    ...systemFeaturesQueryOptions(),
-    select: s => s.app_dsl_version,
-  })
+  const { data: appDslVersion = '' } = useQuery(consoleQuery.appDslVersion.get.queryOptions({
+    staleTime: Infinity,
+    select: data => data.app_dsl_version,
+  }))
   const collaborativeWorkflow = useCollaborativeWorkflow()
   const workflowStore = useWorkflowStore()
   const reactflow = useReactFlow()
@@ -440,16 +440,12 @@ export const useNodesInteractions = () => {
       if (initShowLastRunTab)
         workflowStore.setState({ initShowLastRunTab: true })
       const { nodes, setNodes, edges, setEdges } = collaborativeWorkflow.getState()
-      const selectedNode = nodes.find(node => node.data.selected)
-
-      if (!cancelSelection && selectedNode?.id === nodeId)
-        return
 
       const newNodes = produce(nodes, (draft) => {
         draft.forEach((node) => {
-          if (node.id === nodeId)
-            node.data.selected = !cancelSelection
-          else node.data.selected = false
+          const selected = node.id === nodeId && !cancelSelection
+          node.selected = selected
+          node.data.selected = selected
         })
       })
       setNodes(newNodes, false)
@@ -1689,6 +1685,7 @@ export const useNodesInteractions = () => {
         node.type === CUSTOM_NOTE_NODE
         || node.type === CUSTOM_ITERATION_START_NODE
       ) {
+        e.stopPropagation()
         return
       }
 
@@ -1696,17 +1693,14 @@ export const useNodesInteractions = () => {
         node.type === CUSTOM_NOTE_NODE
         || node.type === CUSTOM_LOOP_START_NODE
       ) {
+        e.stopPropagation()
         return
       }
 
       e.preventDefault()
       workflowStore.setState({
-        panelMenu: undefined,
-        selectionMenu: undefined,
-        edgeMenu: undefined,
-        nodeMenu: {
-          clientX: e.clientX,
-          clientY: e.clientY,
+        contextMenuTarget: {
+          type: 'node',
           nodeId: node.id,
         },
       })
@@ -2478,7 +2472,7 @@ export const useNodesInteractions = () => {
     setNodes(nodes, shouldBroadcast, 'nodes:history-back')
     if (shouldBroadcast)
       collaborationManager.emitHistoryAction('undo')
-    workflowStore.setState({ edgeMenu: undefined })
+    workflowStore.setState({ contextMenuTarget: undefined })
   }, [
     collaborativeWorkflow,
     workflowStore,
@@ -2503,7 +2497,7 @@ export const useNodesInteractions = () => {
     setNodes(nodes, shouldBroadcast, 'nodes:history-forward')
     if (shouldBroadcast)
       collaborationManager.emitHistoryAction('redo')
-    workflowStore.setState({ edgeMenu: undefined })
+    workflowStore.setState({ contextMenuTarget: undefined })
   }, [
     collaborativeWorkflow,
     redo,

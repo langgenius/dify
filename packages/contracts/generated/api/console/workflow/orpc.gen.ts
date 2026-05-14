@@ -16,11 +16,16 @@ import {
  * GET /console/api/workflow/<workflow_run_id>/events
  *
  * Returns Server-Sent Events stream.
+ *
+ * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
+ *
+ * @deprecated
  */
 export const get = oc
   .route({
+    deprecated: true,
     description:
-      'GET /console/api/workflow/<workflow_run_id>/events\n\nReturns Server-Sent Events stream.',
+      'GET /console/api/workflow/<workflow_run_id>/events\n\nReturns Server-Sent Events stream.\n\nGenerated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getWorkflowByWorkflowRunIdEvents',
@@ -38,6 +43,7 @@ export const events = {
 /**
  * Get workflow pause details
  *
+ * Get workflow pause details
  * GET /console/api/workflow/<workflow_run_id>/pause-details
  *
  * Returns information about why and where the workflow is paused.
@@ -45,7 +51,7 @@ export const events = {
 export const get2 = oc
   .route({
     description:
-      'GET /console/api/workflow/<workflow_run_id>/pause-details\n\nReturns information about why and where the workflow is paused.',
+      'Get workflow pause details\nGET /console/api/workflow/<workflow_run_id>/pause-details\n\nReturns information about why and where the workflow is paused.',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getWorkflowByWorkflowRunIdPauseDetails',

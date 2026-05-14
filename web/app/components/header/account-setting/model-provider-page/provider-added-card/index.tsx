@@ -136,17 +136,17 @@ const ProviderAddedCard: FC<ProviderAddedCardProps> = ({
                     ? t('modelProvider.modelsNum', { ns: 'common', num: modelList.length })
                     : t('modelProvider.showModels', { ns: 'common' })
                 }
-                {!loading && <div className="i-ri-arrow-right-s-line h-4 w-4" aria-hidden="true" />}
+                {!loading && <div className="i-ri-arrow-right-s-line size-4" aria-hidden="true" />}
                 {
                   loading && (
-                    <div className="ml-0.5 i-ri-loader-2-line h-3 w-3 animate-spin" />
+                    <div className="ml-0.5 i-ri-loader-2-line size-3 animate-spin" />
                   )
                 }
               </button>
             )}
             {!showModelProvider && notConfigured && (
               <div className="flex h-6 items-center pr-1.5 pl-1">
-                <div className="mr-1 i-ri-information-2-fill h-4 w-4 text-text-accent" />
+                <div className="mr-1 i-ri-information-2-fill size-4 text-text-accent" />
                 <span className="system-xs-medium text-text-secondary">{t('modelProvider.configureTip', { ns: 'common' })}</span>
               </div>
             )}

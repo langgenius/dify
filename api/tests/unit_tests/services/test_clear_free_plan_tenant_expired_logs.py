@@ -304,8 +304,11 @@ def test_process_tenant_processes_all_batches(monkeypatch: pytest.MonkeyPatch) -
     monkeypatch.setattr(service_module, "select", fake_select)
 
     # Repositories for workflow node executions and workflow runs
+    node_execution = SimpleNamespace(id="ne-1")
+    node_execution.__table__ = SimpleNamespace(columns=[SimpleNamespace(name="id")])
+
     node_repo = MagicMock()
-    node_repo.get_expired_executions_batch.side_effect = [[SimpleNamespace(id="ne-1")], []]
+    node_repo.get_expired_executions_batch.side_effect = [[node_execution], []]
     node_repo.delete_executions_by_ids.return_value = 1
 
     run_repo = MagicMock()
@@ -327,6 +330,21 @@ def test_process_tenant_processes_all_batches(monkeypatch: pytest.MonkeyPatch) -
     # messages backup, conversations backup, node executions backup, runs backup, workflow app logs backup
     assert mock_storage.save.call_count >= 5
     clear_related.assert_called()
+
+
+def test_serialize_record_falls_back_to_table_columns() -> None:
+    record = SimpleNamespace(id="ne-1", node_id="node-1")
+    record.__table__ = SimpleNamespace(
+        columns=[
+            SimpleNamespace(name="id"),
+            SimpleNamespace(name="node_id"),
+        ]
+    )
+
+    assert ClearFreePlanTenantExpiredLogs._serialize_record(record) == {
+        "id": "ne-1",
+        "node_id": "node-1",
+    }
 
 
 def test_process_with_tenant_ids_filters_by_plan_and_logs_errors(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -533,9 +551,14 @@ def test_process_tenant_repo_loops_break_on_empty_second_batch(monkeypatch: pyte
     monkeypatch.setattr(service_module, "select", fake_select)
 
     # Repos: first returns exactly batch items -> no "< batch" break, second returns [] -> hit the len==0 break.
+    node_execution_1 = SimpleNamespace(id="ne-1")
+    node_execution_1.__table__ = SimpleNamespace(columns=[SimpleNamespace(name="id")])
+    node_execution_2 = SimpleNamespace(id="ne-2")
+    node_execution_2.__table__ = SimpleNamespace(columns=[SimpleNamespace(name="id")])
+
     node_repo = MagicMock()
     node_repo.get_expired_executions_batch.side_effect = [
-        [SimpleNamespace(id="ne-1"), SimpleNamespace(id="ne-2")],
+        [node_execution_1, node_execution_2],
         [],
     ]
     node_repo.delete_executions_by_ids.return_value = 2

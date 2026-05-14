@@ -1,13 +1,14 @@
 import type { AutoUpdateConfig } from '../types'
 import type { PluginDeclaration, PluginDetail } from '@/app/components/plugins/types'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { QueryClientProvider } from '@tanstack/react-query'
+import { fireEvent, render as rtlRender, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import dayjs from 'dayjs'
 import timezone from 'dayjs/plugin/timezone'
 import utc from 'dayjs/plugin/utc'
 import * as React from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { createAccountProfileQueryClient } from '@/test/account-profile-query'
 import { PluginCategoryEnum, PluginSource } from '../../../types'
 import { defaultValue } from '../config'
 import AutoUpdateSetting from '../index'
@@ -179,23 +180,6 @@ vi.mock('@/app/components/plugins/marketplace/search-box', () => ({
   ),
 }))
 
-// Mock Checkbox component
-vi.mock('@/app/components/base/checkbox', () => ({
-  default: ({ checked, onCheck, className }: {
-    checked?: boolean
-    onCheck: () => void
-    className?: string
-  }) => (
-    <input
-      type="checkbox"
-      checked={checked}
-      onChange={onCheck}
-      className={className}
-      data-testid="checkbox"
-    />
-  ),
-}))
-
 // Mock Icon component
 vi.mock('@/app/components/plugins/card/base/card-icon', () => ({
   default: ({ size, src }: { size: string, src: string }) => (
@@ -308,21 +292,22 @@ const createMockAutoUpdateConfig = (overrides: Partial<AutoUpdateConfig> = {}): 
 // Helper Functions
 // ================================
 
-const createQueryClient = () => new QueryClient({
-  defaultOptions: {
-    queries: {
-      retry: false,
-    },
-  },
-})
+const createQueryClient = () => createAccountProfileQueryClient({ timezone: mockTimezone })
+
+const render = (ui: React.ReactElement) => {
+  const queryClient = createQueryClient()
+  const Wrapper = ({ children }: { children: React.ReactNode }) => (
+    <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+  )
+  return rtlRender(ui, { wrapper: Wrapper })
+}
 
 const renderWithQueryClient = (ui: React.ReactElement) => {
   const queryClient = createQueryClient()
-  return render(
-    <QueryClientProvider client={queryClient}>
-      {ui}
-    </QueryClientProvider>,
+  const Wrapper = ({ children }: { children: React.ReactNode }) => (
+    <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
   )
+  return rtlRender(ui, { wrapper: Wrapper })
 }
 
 // ================================
@@ -739,7 +724,7 @@ describe('auto-update-setting', () => {
         render(<ToolItem {...defaultProps} isChecked={false} />)
 
         // Assert
-        expect(screen.getByTestId('checkbox')).not.toBeChecked()
+        expect(screen.getByRole('checkbox')).not.toBeChecked()
       })
 
       it('should render checkbox checked when isChecked is true', () => {
@@ -747,7 +732,7 @@ describe('auto-update-setting', () => {
         render(<ToolItem {...defaultProps} isChecked={true} />)
 
         // Assert
-        expect(screen.getByTestId('checkbox')).toBeChecked()
+        expect(screen.getByRole('checkbox')).toBeChecked()
       })
     })
 
@@ -758,7 +743,7 @@ describe('auto-update-setting', () => {
 
         // Act
         render(<ToolItem {...defaultProps} onCheckChange={onCheckChange} />)
-        fireEvent.click(screen.getByTestId('checkbox'))
+        fireEvent.click(screen.getByRole('checkbox'))
 
         // Assert
         expect(onCheckChange).toHaveBeenCalledTimes(1)
@@ -1008,7 +993,7 @@ describe('auto-update-setting', () => {
 
         // Act
         renderWithQueryClient(<ToolPicker {...defaultProps} isShow={true} onChange={onChange} />)
-        fireEvent.click(screen.getByTestId('checkbox'))
+        fireEvent.click(screen.getByRole('checkbox'))
 
         // Assert
         expect(onChange).toHaveBeenCalledWith(['test-plugin'])
@@ -1029,7 +1014,7 @@ describe('auto-update-setting', () => {
         renderWithQueryClient(
           <ToolPicker {...defaultProps} isShow={true} value={['test-plugin']} onChange={onChange} />,
         )
-        fireEvent.click(screen.getByTestId('checkbox'))
+        fireEvent.click(screen.getByRole('checkbox'))
 
         // Assert
         expect(onChange).toHaveBeenCalledWith([])
@@ -1054,7 +1039,7 @@ describe('auto-update-setting', () => {
         )
 
         // Click to select
-        fireEvent.click(screen.getByTestId('checkbox'))
+        fireEvent.click(screen.getByRole('checkbox'))
         expect(onChange).toHaveBeenCalledWith(['plugin-1'])
 
         // Rerender with new value
@@ -1066,7 +1051,7 @@ describe('auto-update-setting', () => {
         )
 
         // Click to unselect
-        fireEvent.click(screen.getByTestId('checkbox'))
+        fireEvent.click(screen.getByRole('checkbox'))
         expect(onChange).toHaveBeenCalledWith([])
       })
     })

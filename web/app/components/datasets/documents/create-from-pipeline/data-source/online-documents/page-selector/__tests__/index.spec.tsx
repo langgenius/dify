@@ -9,20 +9,17 @@ vi.mock('@tanstack/react-virtual')
 
 // Note: NotionIcon from @/app/components/base/ is NOT mocked - using real component per testing guidelines
 
-// Helper Functions for Base Components
-// Get checkbox element (uses data-testid pattern from base Checkbox component)
-const getCheckbox = () => document.querySelector('[data-testid^="checkbox-"]') as HTMLElement
-const getAllCheckboxes = () => document.querySelectorAll('[data-testid^="checkbox-"]')
+const getCheckbox = (name = 'Test Page') => screen.getByRole('checkbox', { name })
+const queryCheckbox = (name = 'Test Page') => screen.queryByRole('checkbox', { name })
+const getAllCheckboxes = () => screen.getAllByRole('checkbox')
 
 // Get radio element (uses size-4 rounded-full class pattern from base Radio component)
 const getRadio = () => document.querySelector('.size-4.rounded-full') as HTMLElement
 const getAllRadios = () => document.querySelectorAll('.size-4.rounded-full')
 
-// Check if checkbox is checked by looking for check icon
-const isCheckboxChecked = (checkbox: Element) => checkbox.querySelector('[data-testid^="check-icon-"]') !== null
+const isCheckboxChecked = (checkbox: Element) => checkbox.getAttribute('aria-checked') === 'true'
 
-// Check if checkbox is disabled by looking for disabled class
-const isCheckboxDisabled = (checkbox: Element) => checkbox.classList.contains('cursor-not-allowed')
+const isCheckboxDisabled = (checkbox: Element) => checkbox.hasAttribute('data-disabled') || checkbox.getAttribute('aria-disabled') === 'true'
 
 const createMockPage = (overrides?: Partial<DataSourceNotionPage>): DataSourceNotionPage => ({
   page_id: 'page-1',
@@ -152,7 +149,7 @@ describe('PageSelector', () => {
       render(<PageSelector {...props} />)
 
       // Assert - NotionIcon renders svg when page_icon is null
-      const notionIcon = document.querySelector('.h-5.w-5')
+      const notionIcon = document.querySelector('.size-5')
       expect(notionIcon)!.toBeInTheDocument()
     })
 
@@ -443,7 +440,7 @@ describe('PageSelector', () => {
         render(<PageSelector {...props} />)
 
         expect(getRadio())!.toBeInTheDocument()
-        expect(getCheckbox()).not.toBeInTheDocument()
+        expect(queryCheckbox()).not.toBeInTheDocument()
       })
 
       it('should use default value true when isMultipleChoice is not provided', () => {
@@ -795,7 +792,7 @@ describe('PageSelector', () => {
       render(<PageSelector {...props} />)
 
       // Check the root page
-      fireEvent.click(getCheckbox())
+      fireEvent.click(getCheckbox('Root Page'))
 
       // Assert - onSelect should be called with the page and its descendants
       expect(mockOnSelect).toHaveBeenCalled()
@@ -817,7 +814,7 @@ describe('PageSelector', () => {
       render(<PageSelector {...props} />)
 
       // Uncheck the root page
-      fireEvent.click(getCheckbox())
+      fireEvent.click(getCheckbox('Root Page'))
 
       // Assert - onSelect should be called with empty/reduced set
       expect(mockOnSelect).toHaveBeenCalled()
@@ -1042,7 +1039,7 @@ describe('PageSelector', () => {
       })
 
       render(<PageSelector {...props} />)
-      fireEvent.click(getCheckbox())
+      fireEvent.click(getCheckbox('Root Page'))
 
       // Assert - Only the clicked page should be selected (no descendants)
       expect(mockOnSelect).toHaveBeenCalled()
@@ -1074,7 +1071,7 @@ describe('PageSelector', () => {
       render(<PageSelector {...props} />)
 
       // Assert - NotionIcon renders svg (RiFileTextLine) when page_icon is null
-      const notionIcon = document.querySelector('.h-5.w-5')
+      const notionIcon = document.querySelector('.size-5')
       expect(notionIcon)!.toBeInTheDocument()
     })
 

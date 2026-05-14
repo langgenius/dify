@@ -12,6 +12,7 @@ import {
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import { StatusDot } from '@langgenius/dify-ui/status-dot'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useBoolean } from 'ahooks'
 import copy from 'copy-to-clipboard'
@@ -19,7 +20,6 @@ import * as React from 'react'
 import { useCallback, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
-import Indicator from '@/app/components/header/indicator'
 import Icon from '@/app/components/plugins/card/base/card-icon'
 import { useAppContext } from '@/context/app-context'
 import { openOAuthPopup } from '@/hooks/use-oauth'
@@ -219,7 +219,7 @@ const MCPDetailContent: FC<Props> = ({
               onRemove={showDeleteConfirm}
             />
             <ActionButton aria-label={t('operation.close', { ns: 'common' })} onClick={onHide}>
-              <span aria-hidden className="i-ri-close-line h-4 w-4" />
+              <span aria-hidden className="i-ri-close-line size-4" />
             </ActionButton>
           </div>
         </div>
@@ -231,7 +231,7 @@ const MCPDetailContent: FC<Props> = ({
               onClick={handleAuthorize}
               disabled={!isCurrentWorkspaceManager}
             >
-              <Indicator className="mr-2" color="green" />
+              <StatusDot className="mr-2" status="success" />
               {t('auth.authorized', { ns: 'tools' })}
             </Button>
           )}
@@ -251,7 +251,7 @@ const MCPDetailContent: FC<Props> = ({
               className="w-full"
               disabled
             >
-              <span aria-hidden className="mr-1 i-ri-loader-2-line h-4 w-4 animate-spin" />
+              <span aria-hidden className="mr-1 i-ri-loader-2-line size-4 animate-spin" />
               {t('mcp.authorizing', { ns: 'tools' })}
             </Button>
           )}
@@ -267,13 +267,13 @@ const MCPDetailContent: FC<Props> = ({
               </div>
               <div></div>
             </div>
-            <div className="flex h-full w-full grow flex-col overflow-hidden px-4 pb-4">
+            <div className="flex size-full grow flex-col overflow-hidden px-4 pb-4">
               <ListLoading />
             </div>
           </>
         )}
         {!isUpdating && detail.is_team_authorization && !isGettingTools && !toolList.length && (
-          <div className="flex h-full w-full flex-col items-center justify-center">
+          <div className="flex size-full flex-col items-center justify-center">
             <div className="mb-3 system-sm-regular text-text-tertiary">{t('mcp.toolsEmpty', { ns: 'tools' })}</div>
             <Button
               variant="primary"
@@ -292,7 +292,7 @@ const MCPDetailContent: FC<Props> = ({
               </div>
               <div>
                 <Button size="small" onClick={showUpdateConfirm}>
-                  <span aria-hidden className="mr-1 i-ri-loop-left-line h-3.5 w-3.5" />
+                  <span aria-hidden className="mr-1 i-ri-loop-left-line size-3.5" />
                   {t('mcp.update', { ns: 'tools' })}
                 </Button>
               </div>
@@ -309,7 +309,7 @@ const MCPDetailContent: FC<Props> = ({
         )}
 
         {!isUpdating && !detail.is_team_authorization && (
-          <div className="flex h-full w-full flex-col items-center justify-center">
+          <div className="flex size-full flex-col items-center justify-center">
             {!isAuthorizing && <div className="mb-1 system-md-medium text-text-secondary">{t('mcp.authorizingRequired', { ns: 'tools' })}</div>}
             {isAuthorizing && <div className="mb-1 system-md-medium text-text-secondary">{t('mcp.authorizing', { ns: 'tools' })}</div>}
             <div className="system-sm-regular text-text-tertiary">{t('mcp.authorizeTip', { ns: 'tools' })}</div>

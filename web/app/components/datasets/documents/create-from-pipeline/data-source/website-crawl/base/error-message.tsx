@@ -20,7 +20,7 @@ const ErrorMessage = ({
     )}
     >
       <div className="flex size-6 items-center justify-center">
-        <RiErrorWarningFill className="h-4 w-4 text-text-destructive" />
+        <RiErrorWarningFill className="size-4 text-text-destructive" />
       </div>
       <div className="flex flex-col gap-y-0.5 py-1">
         <div className="system-xs-medium text-text-primary">{title}</div>

@@ -52,6 +52,7 @@ def retry_document_indexing_task(dataset_id: str, document_ids: list[str], user_
                 try:
                     if features.billing.enabled:
                         vector_space = features.vector_space
+                        assert vector_space is not None
                         if 0 < vector_space.limit <= vector_space.size:
                             raise ValueError(
                                 "Your total number of documents plus the number of uploads have over the limit of "
@@ -85,7 +86,7 @@ def retry_document_indexing_task(dataset_id: str, document_ids: list[str], user_
                         select(DocumentSegment).where(DocumentSegment.document_id == document_id)
                     ).all()
                     if segments:
-                        index_node_ids = [segment.index_node_id for segment in segments]
+                        index_node_ids = [segment.index_node_id for segment in segments if segment.index_node_id]
                         # delete from vector index
                         index_processor.clean(dataset, index_node_ids, with_keywords=True, delete_child_chunks=True)
 

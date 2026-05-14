@@ -18,12 +18,6 @@ export type NodeSliceShape = {
   setNodeAnimation: (nodeAnimation: boolean) => void
   candidateNode?: Node
   setCandidateNode: (candidateNode?: Node) => void
-  nodeMenu?: {
-    clientX: number
-    clientY: number
-    nodeId: string
-  }
-  setNodeMenu: (nodeMenu: NodeSliceShape['nodeMenu']) => void
   showAssignVariablePopup?: {
     nodeId: string
     nodeData: Node['data']
@@ -65,8 +59,6 @@ export const createNodeSlice: StateCreator<NodeSliceShape> = set => ({
   setNodeAnimation: nodeAnimation => set(() => ({ nodeAnimation })),
   candidateNode: undefined,
   setCandidateNode: candidateNode => set(() => ({ candidateNode })),
-  nodeMenu: undefined,
-  setNodeMenu: nodeMenu => set(() => ({ nodeMenu })),
   showAssignVariablePopup: undefined,
   setShowAssignVariablePopup: showAssignVariablePopup => set(() => ({ showAssignVariablePopup })),
   hoveringAssignVariableGroupId: undefined,

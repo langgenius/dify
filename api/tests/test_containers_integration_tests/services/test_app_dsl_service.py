@@ -35,9 +35,9 @@ from services.app_dsl_service import (
     ImportMode,
     ImportStatus,
     PendingData,
-    _check_version_compatibility,
 )
 from services.app_service import AppService, CreateAppParams
+from services.dsl_version import check_version_compatibility
 from tests.test_containers_integration_tests.helpers import generate_valid_password
 
 _DEFAULT_TENANT_ID = "00000000-0000-0000-0000-000000000001"
@@ -193,22 +193,25 @@ class TestAppDslService:
     # ── Version Compatibility ─────────────────────────────────────────
 
     def test_check_version_compatibility_invalid_version_returns_failed(self):
-        assert _check_version_compatibility("not-a-version") == ImportStatus.FAILED
+        assert check_version_compatibility("not-a-version", app_dsl_service.CURRENT_DSL_VERSION) == ImportStatus.FAILED
 
     def test_check_version_compatibility_newer_version_returns_pending(self):
-        assert _check_version_compatibility("99.0.0") == ImportStatus.PENDING
+        assert check_version_compatibility("99.0.0", app_dsl_service.CURRENT_DSL_VERSION) == ImportStatus.PENDING
 
     def test_check_version_compatibility_major_older_returns_pending(self, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.setattr(app_dsl_service, "CURRENT_DSL_VERSION", "1.0.0")
-        assert _check_version_compatibility("0.9.9") == ImportStatus.PENDING
+        assert check_version_compatibility("0.9.9", app_dsl_service.CURRENT_DSL_VERSION) == ImportStatus.PENDING
 
     def test_check_version_compatibility_minor_older_returns_completed_with_warnings(
         self,
     ):
-        assert _check_version_compatibility("0.5.0") == ImportStatus.COMPLETED_WITH_WARNINGS
+        assert (
+            check_version_compatibility("0.5.0", app_dsl_service.CURRENT_DSL_VERSION)
+            == ImportStatus.COMPLETED_WITH_WARNINGS
+        )
 
     def test_check_version_compatibility_equal_returns_completed(self):
-        assert _check_version_compatibility(CURRENT_DSL_VERSION) == ImportStatus.COMPLETED
+        assert check_version_compatibility(CURRENT_DSL_VERSION, CURRENT_DSL_VERSION) == ImportStatus.COMPLETED
 
     # ── Import: Validation ────────────────────────────────────────────
 
@@ -313,9 +316,9 @@ class TestAppDslService:
         self, db_session_with_containers: Session, monkeypatch: pytest.MonkeyPatch
     ):
         monkeypatch.setattr(
-            app_dsl_service.ssrf_proxy,
-            "get",
-            lambda _url, **_kw: (_ for _ in ()).throw(RuntimeError("boom")),
+            app_dsl_service.remote_fetcher,
+            "make_request",
+            lambda _method, _url, **_kw: (_ for _ in ()).throw(RuntimeError("boom")),
         )
 
         service = AppDslService(db_session_with_containers)
@@ -333,7 +336,7 @@ class TestAppDslService:
         response = MagicMock()
         response.content = b""
         response.raise_for_status.return_value = None
-        monkeypatch.setattr(app_dsl_service.ssrf_proxy, "get", lambda _url, **_kw: response)
+        monkeypatch.setattr(app_dsl_service.remote_fetcher, "make_request", lambda _method, _url, **_kw: response)
 
         service = AppDslService(db_session_with_containers)
         result = service.import_app(
@@ -350,7 +353,7 @@ class TestAppDslService:
         response = MagicMock()
         response.content = b"x" * (DSL_MAX_SIZE + 1)
         response.raise_for_status.return_value = None
-        monkeypatch.setattr(app_dsl_service.ssrf_proxy, "get", lambda _url, **_kw: response)
+        monkeypatch.setattr(app_dsl_service.remote_fetcher, "make_request", lambda _method, _url, **_kw: response)
 
         service = AppDslService(db_session_with_containers)
         result = service.import_app(
@@ -369,14 +372,15 @@ class TestAppDslService:
 
         requested_urls: list[str] = []
 
-        def fake_get(url: str, **kwargs):
+        def fake_make_request(method: str, url: str, **kwargs):
+            assert method == "GET"
             requested_urls.append(url)
             response = MagicMock()
             response.content = yaml_bytes
             response.raise_for_status.return_value = None
             return response
 
-        monkeypatch.setattr(app_dsl_service.ssrf_proxy, "get", fake_get)
+        monkeypatch.setattr(app_dsl_service.remote_fetcher, "make_request", fake_make_request)
 
         service = AppDslService(db_session_with_containers)
         result = service.import_app(
@@ -398,7 +402,8 @@ class TestAppDslService:
 
         requested_urls: list[str] = []
 
-        def fake_get(url: str, **kwargs):
+        def fake_make_request(method: str, url: str, **kwargs):
+            assert method == "GET"
             requested_urls.append(url)
             assert url == raw_url
             response = MagicMock()
@@ -406,7 +411,7 @@ class TestAppDslService:
             response.raise_for_status.return_value = None
             return response
 
-        monkeypatch.setattr(app_dsl_service.ssrf_proxy, "get", fake_get)
+        monkeypatch.setattr(app_dsl_service.remote_fetcher, "make_request", fake_make_request)
 
         service = AppDslService(db_session_with_containers)
         result = service.import_app(

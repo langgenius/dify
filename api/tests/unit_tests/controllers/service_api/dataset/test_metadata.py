@@ -67,7 +67,6 @@ class TestDatasetMetadataCreatePost:
     def _call_post(api, **kwargs):
         return _unwrap(api.post)(api, **kwargs)
 
-    @patch("controllers.service_api.dataset.metadata.marshal")
     @patch("controllers.service_api.dataset.metadata.MetadataService")
     @patch("controllers.service_api.dataset.metadata.DatasetService")
     @patch("controllers.service_api.dataset.metadata.current_user")
@@ -76,7 +75,6 @@ class TestDatasetMetadataCreatePost:
         mock_current_user,
         mock_dataset_svc,
         mock_meta_svc,
-        mock_marshal,
         app: Flask,
         mock_tenant,
         mock_dataset,
@@ -84,9 +82,8 @@ class TestDatasetMetadataCreatePost:
         """Test successful metadata creation."""
         mock_dataset_svc.get_dataset.return_value = mock_dataset
         mock_dataset_svc.check_dataset_permission.return_value = None
-        mock_metadata = Mock()
+        mock_metadata = {"id": "meta-1", "type": "string", "name": "Author"}
         mock_meta_svc.create_metadata.return_value = mock_metadata
-        mock_marshal.return_value = {"id": "meta-1", "name": "Author"}
 
         with app.test_request_context(
             f"/datasets/{mock_dataset.id}/metadata",
@@ -101,6 +98,7 @@ class TestDatasetMetadataCreatePost:
             )
 
         assert status == 201
+        assert response == {"id": "meta-1", "type": "string", "name": "Author"}
         mock_meta_svc.create_metadata.assert_called_once()
 
     @patch("controllers.service_api.dataset.metadata.DatasetService")
@@ -143,7 +141,10 @@ class TestDatasetMetadataCreateGet:
     ):
         """Test successful metadata list retrieval."""
         mock_dataset_svc.get_dataset.return_value = mock_dataset
-        mock_meta_svc.get_dataset_metadatas.return_value = [{"id": "m1"}]
+        mock_meta_svc.get_dataset_metadatas.return_value = {
+            "doc_metadata": [{"id": "m1", "name": "Author", "type": "string", "count": 0}],
+            "built_in_field_enabled": False,
+        }
 
         with app.test_request_context(
             f"/datasets/{mock_dataset.id}/metadata",
@@ -156,6 +157,10 @@ class TestDatasetMetadataCreateGet:
             )
 
         assert status == 200
+        assert response == {
+            "doc_metadata": [{"id": "m1", "name": "Author", "type": "string", "count": 0}],
+            "built_in_field_enabled": False,
+        }
 
     @patch("controllers.service_api.dataset.metadata.DatasetService")
     def test_get_metadata_dataset_not_found(
@@ -192,7 +197,6 @@ class TestDatasetMetadataServiceApiPatch:
     def _call_patch(api, **kwargs):
         return _unwrap(api.patch)(api, **kwargs)
 
-    @patch("controllers.service_api.dataset.metadata.marshal")
     @patch("controllers.service_api.dataset.metadata.MetadataService")
     @patch("controllers.service_api.dataset.metadata.DatasetService")
     @patch("controllers.service_api.dataset.metadata.current_user")
@@ -201,7 +205,6 @@ class TestDatasetMetadataServiceApiPatch:
         mock_current_user,
         mock_dataset_svc,
         mock_meta_svc,
-        mock_marshal,
         app: Flask,
         mock_tenant,
         mock_dataset,
@@ -210,8 +213,7 @@ class TestDatasetMetadataServiceApiPatch:
         metadata_id = str(uuid.uuid4())
         mock_dataset_svc.get_dataset.return_value = mock_dataset
         mock_dataset_svc.check_dataset_permission.return_value = None
-        mock_meta_svc.update_metadata_name.return_value = Mock()
-        mock_marshal.return_value = {"id": metadata_id, "name": "New Name"}
+        mock_meta_svc.update_metadata_name.return_value = {"id": metadata_id, "type": "string", "name": "New Name"}
 
         with app.test_request_context(
             f"/datasets/{mock_dataset.id}/metadata/{metadata_id}",
@@ -227,6 +229,7 @@ class TestDatasetMetadataServiceApiPatch:
             )
 
         assert status == 200
+        assert response == {"id": metadata_id, "type": "string", "name": "New Name"}
         mock_meta_svc.update_metadata_name.assert_called_once()
 
     @patch("controllers.service_api.dataset.metadata.DatasetService")
@@ -357,7 +360,7 @@ class TestDatasetMetadataBuiltInFieldGet:
             )
 
         assert status == 200
-        assert "fields" in response
+        assert response == {"fields": [{"name": "source", "type": "string"}]}
 
 
 # ---------------------------------------------------------------------------
