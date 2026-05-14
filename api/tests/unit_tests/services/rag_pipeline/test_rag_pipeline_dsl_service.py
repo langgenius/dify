@@ -259,6 +259,8 @@ workflow:
     if result.status == ImportStatus.FAILED:
         print(f"DEBUG: {result.error}")
     assert result.status == ImportStatus.COMPLETED
+    session.commit.assert_not_called()
+    session.flush.assert_called()
 
 
 def test_import_rag_pipeline_pending_version(mocker) -> None:
@@ -421,6 +423,8 @@ def test_create_or_update_pipeline_create_new(mocker) -> None:
 
     assert result == pipeline_instance
     session.add.assert_called()
+    session.commit.assert_not_called()
+    session.flush.assert_called()
 
 
 # --- export_rag_pipeline_dsl comprehensive ---
