@@ -12,8 +12,8 @@ import Input from '@/app/components/base/input'
 import Loading from '@/app/components/base/loading'
 import { LICENSE_LINK } from '@/constants/link'
 import { useLocale } from '@/context/i18n'
-import { setLocaleOnClient } from '@/i18n-config'
-import { languages, LanguagesSupported } from '@/i18n-config/language'
+import { i18n, setLocaleOnClient } from '@/i18n-config'
+import { languages } from '@/i18n-config/language'
 import Link from '@/next/link'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { activateMember } from '@/service/common'
@@ -48,7 +48,7 @@ const getInitialLanguage = (locale: Locale): Locale => {
   if (LANGUAGE_OPTIONS.some(item => item.value === locale))
     return locale
 
-  return LanguagesSupported[0]!
+  return i18n.defaultLocale
 }
 
 export default function InviteSettingsPage() {

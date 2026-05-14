@@ -27,6 +27,9 @@ vi.mock('@/context/i18n', () => ({
 }))
 
 vi.mock('@/i18n-config', () => ({
+  i18n: {
+    defaultLocale: 'en-US',
+  },
   setLocaleOnClient: vi.fn(() => Promise.resolve()),
 }))
 
@@ -104,6 +107,29 @@ describe('InviteSettingsPage', () => {
             token: 'invite-token',
             name: 'Invitee',
             interface_language: 'zh-Hans',
+            timezone: 'Asia/Shanghai',
+          },
+        })
+      })
+    })
+
+    it('should fall back to configured default locale when current locale is unsupported', async () => {
+      mockUseLocale.mockReturnValue('unsupported-locale' as ReturnType<typeof useLocale>)
+
+      render(<InviteSettingsPage />)
+
+      fireEvent.change(screen.getByLabelText('login.name'), {
+        target: { value: 'Invitee' },
+      })
+      fireEvent.click(screen.getByRole('button', { name: 'login.join Acme' }))
+
+      await waitFor(() => {
+        expect(mockActivateMember).toHaveBeenCalledWith({
+          url: '/activate',
+          body: {
+            token: 'invite-token',
+            name: 'Invitee',
+            interface_language: 'en-US',
             timezone: 'Asia/Shanghai',
           },
         })
