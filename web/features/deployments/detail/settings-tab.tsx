@@ -403,7 +403,7 @@ export function SettingsTab({ appInstanceId }: {
   appInstanceId: string
 }) {
   return (
-    <div className="flex w-full max-w-[960px] flex-col gap-y-4 px-6 py-6 sm:px-20 sm:py-8">
+    <div className="mx-auto flex w-full max-w-[960px] min-w-0 flex-col gap-y-4 px-6 py-6 sm:px-20 sm:py-8">
       <AccessPermissionsSection appInstanceId={appInstanceId} />
       <AccessChannelsSection appInstanceId={appInstanceId} />
       <DeveloperApiSection appInstanceId={appInstanceId} />

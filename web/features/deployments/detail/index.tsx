@@ -22,11 +22,11 @@ export function InstanceDetail({ appInstanceId, children }: {
 
   return (
     <>
-      <div className="relative flex h-full overflow-hidden rounded-t-2xl shadow-xs">
+      <div className="relative flex h-full min-w-0 overflow-hidden rounded-t-2xl shadow-xs">
         <DeploymentSidebar appInstanceId={appInstanceId} />
-        <div className="grow overflow-hidden bg-components-panel-bg">
-          <div className="h-full overflow-y-auto">
-            <div className="flex flex-col gap-y-0.5 px-6 pt-3 pb-2">
+        <div className="min-w-0 grow overflow-hidden bg-components-panel-bg">
+          <div className="h-full min-w-0 overflow-y-auto">
+            <div className="mx-auto flex w-full max-w-[1280px] flex-col gap-y-0.5 px-6 pt-3 pb-2 2xl:max-w-[1440px]">
               <div className="system-xl-semibold text-text-primary">{t(`tabs.${activeTab}.name`)}</div>
               <div className="system-sm-regular text-text-tertiary">{t(`tabs.${activeTab}.description`)}</div>
             </div>

@@ -13,7 +13,7 @@ const OVERVIEW_RELEASE_WINDOW = 20
 
 function OverviewLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="flex w-full max-w-[1280px] flex-col gap-6 px-6 py-6 2xl:max-w-[1440px]">
+    <div className="mx-auto flex w-full max-w-[1280px] min-w-0 flex-col gap-6 px-6 py-6 2xl:max-w-[1440px]">
       {children}
     </div>
   )

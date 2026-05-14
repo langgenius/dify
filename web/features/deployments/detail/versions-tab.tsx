@@ -30,7 +30,7 @@ export function VersionsTab({ appInstanceId }: {
   const { t } = useTranslation('deployments')
 
   return (
-    <div className="flex w-full flex-col gap-4 px-6 py-6">
+    <div className="mx-auto flex w-full max-w-[1280px] min-w-0 flex-col gap-4 px-6 py-6 2xl:max-w-[1440px]">
       <div className="flex items-center justify-between gap-3">
         <div className="system-sm-semibold text-text-primary">
           {t('versions.releaseHistory')}
