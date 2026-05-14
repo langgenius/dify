@@ -3,6 +3,8 @@ from __future__ import annotations
 from unittest.mock import patch
 from uuid import uuid4
 
+from sqlalchemy.orm import Session
+
 from models.model import App, RecommendedApp, Site
 from services.recommend_app.database.database_retrieval import DatabaseRecommendAppRetrieval
 from services.recommend_app.recommend_app_type import RecommendAppType
@@ -45,6 +47,7 @@ def _create_recommended_app(
     *,
     app_id: str,
     category: str = "chat",
+    categories: list[str] | None = None,
     language: str = "en-US",
     is_listed: bool = True,
     position: int = 1,
@@ -55,6 +58,7 @@ def _create_recommended_app(
         copyright="copy",
         privacy_policy="pp",
         category=category,
+        categories=[category] if categories is None else categories,
         language=language,
         is_listed=is_listed,
         position=position,
@@ -91,7 +95,7 @@ class TestDatabaseRecommendAppRetrieval:
 
 
 class TestFetchRecommendedAppsFromDb:
-    def test_returns_apps_and_sorted_categories(self, flask_app_with_containers, db_session_with_containers):
+    def test_returns_apps_and_sorted_categories(self, flask_app_with_containers, db_session_with_containers: Session):
         tenant_id = str(uuid4())
         app1 = _create_app(db_session_with_containers, tenant_id=tenant_id)
         _create_site(db_session_with_containers, app_id=app1.id)
@@ -111,7 +115,56 @@ class TestFetchRecommendedAppsFromDb:
         assert "assistant" in result["categories"]
         assert "writing" in result["categories"]
 
-    def test_falls_back_to_default_language_when_empty(self, flask_app_with_containers, db_session_with_containers):
+    def test_returns_multiple_categories_for_one_app(
+        self, flask_app_with_containers, db_session_with_containers: Session
+    ):
+        tenant_id = str(uuid4())
+        created_app = _create_app(db_session_with_containers, tenant_id=tenant_id)
+        _create_site(db_session_with_containers, app_id=created_app.id)
+        _create_recommended_app(
+            db_session_with_containers,
+            app_id=created_app.id,
+            category="writing",
+            categories=["writing", "assistant"],
+        )
+
+        db_session_with_containers.expire_all()
+
+        result = DatabaseRecommendAppRetrieval.fetch_recommended_apps_from_db("en-US")
+
+        recommended_app = next(item for item in result["recommended_apps"] if item["app_id"] == created_app.id)
+        assert recommended_app["categories"] == ["writing", "assistant"]
+        assert "writing" in result["categories"]
+        assert "assistant" in result["categories"]
+
+    def test_ignores_legacy_category_when_categories_are_empty(
+        self,
+        flask_app_with_containers,
+        db_session_with_containers: Session,
+    ):
+        legacy_category = f"legacy-empty-{uuid4()}"
+        tenant_id = str(uuid4())
+        created_app = _create_app(db_session_with_containers, tenant_id=tenant_id)
+        _create_site(db_session_with_containers, app_id=created_app.id)
+        _create_recommended_app(
+            db_session_with_containers,
+            app_id=created_app.id,
+            category=legacy_category,
+            categories=[],
+        )
+
+        db_session_with_containers.expire_all()
+
+        result = DatabaseRecommendAppRetrieval.fetch_recommended_apps_from_db("en-US")
+
+        recommended_app = next(item for item in result["recommended_apps"] if item["app_id"] == created_app.id)
+        assert "category" not in recommended_app
+        assert recommended_app["categories"] == []
+        assert legacy_category not in result["categories"]
+
+    def test_falls_back_to_default_language_when_empty(
+        self, flask_app_with_containers, db_session_with_containers: Session
+    ):
         tenant_id = str(uuid4())
         app1 = _create_app(db_session_with_containers, tenant_id=tenant_id)
         _create_site(db_session_with_containers, app_id=app1.id)
@@ -124,7 +177,7 @@ class TestFetchRecommendedAppsFromDb:
         app_ids = {r["app_id"] for r in result["recommended_apps"]}
         assert app1.id in app_ids
 
-    def test_skips_non_public_apps(self, flask_app_with_containers, db_session_with_containers):
+    def test_skips_non_public_apps(self, flask_app_with_containers, db_session_with_containers: Session):
         tenant_id = str(uuid4())
         app1 = _create_app(db_session_with_containers, tenant_id=tenant_id, is_public=False)
         _create_site(db_session_with_containers, app_id=app1.id)
@@ -137,7 +190,7 @@ class TestFetchRecommendedAppsFromDb:
         app_ids = {r["app_id"] for r in result["recommended_apps"]}
         assert app1.id not in app_ids
 
-    def test_skips_apps_without_site(self, flask_app_with_containers, db_session_with_containers):
+    def test_skips_apps_without_site(self, flask_app_with_containers, db_session_with_containers: Session):
         tenant_id = str(uuid4())
         app1 = _create_app(db_session_with_containers, tenant_id=tenant_id)
         _create_recommended_app(db_session_with_containers, app_id=app1.id)
@@ -151,12 +204,12 @@ class TestFetchRecommendedAppsFromDb:
 
 
 class TestFetchRecommendedAppDetailFromDb:
-    def test_returns_none_when_not_listed(self, flask_app_with_containers, db_session_with_containers):
+    def test_returns_none_when_not_listed(self, flask_app_with_containers, db_session_with_containers: Session):
         result = DatabaseRecommendAppRetrieval.fetch_recommended_app_detail_from_db(str(uuid4()))
 
         assert result is None
 
-    def test_returns_none_when_app_not_public(self, flask_app_with_containers, db_session_with_containers):
+    def test_returns_none_when_app_not_public(self, flask_app_with_containers, db_session_with_containers: Session):
         tenant_id = str(uuid4())
         app1 = _create_app(db_session_with_containers, tenant_id=tenant_id, is_public=False)
         _create_recommended_app(db_session_with_containers, app_id=app1.id)
@@ -168,7 +221,7 @@ class TestFetchRecommendedAppDetailFromDb:
         assert result is None
 
     @patch("services.recommend_app.database.database_retrieval.AppDslService")
-    def test_returns_detail_on_success(self, mock_dsl, flask_app_with_containers, db_session_with_containers):
+    def test_returns_detail_on_success(self, mock_dsl, flask_app_with_containers, db_session_with_containers: Session):
         tenant_id = str(uuid4())
         app1 = _create_app(db_session_with_containers, tenant_id=tenant_id)
         _create_site(db_session_with_containers, app_id=app1.id)

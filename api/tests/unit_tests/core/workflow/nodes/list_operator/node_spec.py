@@ -16,10 +16,10 @@ class TestListOperatorNode:
     """Comprehensive tests for ListOperatorNode."""
 
     @staticmethod
-    def _build_node(*, config, graph_init_params, graph_runtime_state):
+    def _build_node(*, data, graph_init_params, graph_runtime_state):
         return ListOperatorNode(
             node_id="test",
-            config=config if isinstance(config, ListOperatorNodeData) else ListOperatorNodeData.model_validate(config),
+            data=data if isinstance(data, ListOperatorNodeData) else ListOperatorNodeData.model_validate(data),
             graph_init_params=graph_init_params,
             graph_runtime_state=graph_runtime_state,
         )
@@ -65,7 +65,7 @@ class TestListOperatorNode:
         def _create_node(config, mock_variable):
             mock_graph_runtime_state.variable_pool.get.return_value = mock_variable
             return self._build_node(
-                config=config,
+                data=config,
                 graph_init_params=graph_init_params,
                 graph_runtime_state=mock_graph_runtime_state,
             )
@@ -83,7 +83,7 @@ class TestListOperatorNode:
         }
 
         node = self._build_node(
-            config=config,
+            data=config,
             graph_init_params=graph_init_params,
             graph_runtime_state=mock_graph_runtime_state,
         )
@@ -127,7 +127,7 @@ class TestListOperatorNode:
         mock_graph_runtime_state.variable_pool.get.return_value = mock_var
 
         node = self._build_node(
-            config=config,
+            data=config,
             graph_init_params=graph_init_params,
             graph_runtime_state=mock_graph_runtime_state,
         )
@@ -153,7 +153,7 @@ class TestListOperatorNode:
         mock_graph_runtime_state.variable_pool.get.return_value = mock_var
 
         node = self._build_node(
-            config=config,
+            data=config,
             graph_init_params=graph_init_params,
             graph_runtime_state=mock_graph_runtime_state,
         )
@@ -177,7 +177,7 @@ class TestListOperatorNode:
         mock_graph_runtime_state.variable_pool.get.return_value = mock_var
 
         node = self._build_node(
-            config=config,
+            data=config,
             graph_init_params=graph_init_params,
             graph_runtime_state=mock_graph_runtime_state,
         )
@@ -201,7 +201,7 @@ class TestListOperatorNode:
         mock_graph_runtime_state.variable_pool.get.return_value = mock_var
 
         node = self._build_node(
-            config=config,
+            data=config,
             graph_init_params=graph_init_params,
             graph_runtime_state=mock_graph_runtime_state,
         )
@@ -228,7 +228,7 @@ class TestListOperatorNode:
         mock_graph_runtime_state.variable_pool.get.return_value = mock_var
 
         node = self._build_node(
-            config=config,
+            data=config,
             graph_init_params=graph_init_params,
             graph_runtime_state=mock_graph_runtime_state,
         )
@@ -255,7 +255,7 @@ class TestListOperatorNode:
         mock_graph_runtime_state.variable_pool.get.return_value = mock_var
 
         node = self._build_node(
-            config=config,
+            data=config,
             graph_init_params=graph_init_params,
             graph_runtime_state=mock_graph_runtime_state,
         )
@@ -282,7 +282,7 @@ class TestListOperatorNode:
         mock_graph_runtime_state.variable_pool.get.return_value = mock_var
 
         node = self._build_node(
-            config=config,
+            data=config,
             graph_init_params=graph_init_params,
             graph_runtime_state=mock_graph_runtime_state,
         )
@@ -312,7 +312,7 @@ class TestListOperatorNode:
         mock_graph_runtime_state.variable_pool.get.return_value = mock_var
 
         node = self._build_node(
-            config=config,
+            data=config,
             graph_init_params=graph_init_params,
             graph_runtime_state=mock_graph_runtime_state,
         )
@@ -335,7 +335,7 @@ class TestListOperatorNode:
         mock_graph_runtime_state.variable_pool.get.return_value = None
 
         node = self._build_node(
-            config=config,
+            data=config,
             graph_init_params=graph_init_params,
             graph_runtime_state=mock_graph_runtime_state,
         )
@@ -359,7 +359,7 @@ class TestListOperatorNode:
         mock_graph_runtime_state.variable_pool.get.return_value = mock_var
 
         node = self._build_node(
-            config=config,
+            data=config,
             graph_init_params=graph_init_params,
             graph_runtime_state=mock_graph_runtime_state,
         )
@@ -384,7 +384,7 @@ class TestListOperatorNode:
         mock_graph_runtime_state.variable_pool.get.return_value = mock_var
 
         node = self._build_node(
-            config=config,
+            data=config,
             graph_init_params=graph_init_params,
             graph_runtime_state=mock_graph_runtime_state,
         )
@@ -408,7 +408,7 @@ class TestListOperatorNode:
         mock_graph_runtime_state.variable_pool.get.return_value = mock_var
 
         node = self._build_node(
-            config=config,
+            data=config,
             graph_init_params=graph_init_params,
             graph_runtime_state=mock_graph_runtime_state,
         )
@@ -432,7 +432,7 @@ class TestListOperatorNode:
         mock_graph_runtime_state.variable_pool.get.return_value = mock_var
 
         node = self._build_node(
-            config=config,
+            data=config,
             graph_init_params=graph_init_params,
             graph_runtime_state=mock_graph_runtime_state,
         )
@@ -456,7 +456,7 @@ class TestListOperatorNode:
         mock_graph_runtime_state.variable_pool.get.return_value = mock_var
 
         node = self._build_node(
-            config=config,
+            data=config,
             graph_init_params=graph_init_params,
             graph_runtime_state=mock_graph_runtime_state,
         )
@@ -483,7 +483,7 @@ class TestListOperatorNode:
         mock_graph_runtime_state.variable_pool.get.return_value = mock_var
 
         node = self._build_node(
-            config=config,
+            data=config,
             graph_init_params=graph_init_params,
             graph_runtime_state=mock_graph_runtime_state,
         )

@@ -337,6 +337,8 @@
   "variableConfig.file.image.name": "Образ",
   "variableConfig.file.supportFileTypes": "Типы файлов поддержки",
   "variableConfig.file.video.name": "Видео",
+  "variableConfig.hidden": "Скрыто и предзаполнено",
+  "variableConfig.hiddenDescription": "Скройте это поле от конечных пользователей и укажите значение самостоятельно. Взаимно исключает Обязательное. <docLink>Подробнее</docLink>",
   "variableConfig.hide": "Скрыть",
   "variableConfig.inputPlaceholder": "Пожалуйста, введите",
   "variableConfig.json": "JSON код",

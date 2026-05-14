@@ -369,8 +369,8 @@ describe('MarkdownForm', () => {
 
       render(<MarkdownForm node={node} />)
 
-      const clearIcon = screen.getByTestId('date-picker-clear-button')
-      await user.click(clearIcon)
+      const clearButton = screen.getByRole('button', { name: 'common.operation.clear' })
+      await user.click(clearButton)
 
       await user.click(screen.getByRole('button', { name: 'Submit' }))
 

@@ -402,7 +402,7 @@ class WebhookService:
         for name, file in files.items():
             if file and file.filename:
                 try:
-                    file_content = file.read()
+                    file_content = file.stream.read()
                     mimetype = file.content_type or mimetypes.guess_type(file.filename)[0] or "application/octet-stream"
                     file_obj = cls._create_file_from_binary(file_content, mimetype, webhook_trigger)
                     processed_files[name] = file_obj.to_dict()

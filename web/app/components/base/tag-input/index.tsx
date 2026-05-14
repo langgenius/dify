@@ -67,9 +67,14 @@ const TagInput: FC<TagInputProps> = ({ items, onChange, disableAdd, disableRemov
         <div key={item} className={cn('mt-1 mr-1 flex items-center rounded-md border border-divider-deep bg-components-badge-white-to-dark py-1 pr-1 pl-1.5 system-xs-regular text-text-secondary')}>
           {item}
           {!disableRemove && (
-            <div className="flex h-4 w-4 cursor-pointer items-center justify-center" onClick={() => handleRemove(index)}>
-              <span className="ml-0.5 i-ri-close-line h-3.5 w-3.5 text-text-tertiary" data-testid="remove-tag" />
-            </div>
+            <button
+              type="button"
+              aria-label={`${t('operation.remove', { ns: 'common' })} ${item}`}
+              className="flex h-4 w-4 cursor-pointer items-center justify-center border-none bg-transparent p-0 focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
+              onClick={() => handleRemove(index)}
+            >
+              <span className="ml-0.5 i-ri-close-line h-3.5 w-3.5 text-text-tertiary" aria-hidden="true" />
+            </button>
           )}
         </div>
       ))}

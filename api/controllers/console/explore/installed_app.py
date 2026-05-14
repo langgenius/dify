@@ -16,6 +16,7 @@ from extensions.ext_database import db
 from fields.base import ResponseModel
 from graphon.file import helpers as file_helpers
 from libs.datetime_utils import naive_utc_now
+from libs.helper import to_timestamp
 from libs.login import current_account_with_tenant, login_required
 from models import App, InstalledApp, RecommendedApp
 from models.model import IconType
@@ -105,9 +106,7 @@ class InstalledAppResponse(ResponseModel):
     @field_validator("last_used_at", mode="before")
     @classmethod
     def _normalize_timestamp(cls, value: datetime | int | None) -> int | None:
-        if isinstance(value, datetime):
-            return int(value.timestamp())
-        return value
+        return to_timestamp(value)
 
 
 class InstalledAppListResponse(ResponseModel):

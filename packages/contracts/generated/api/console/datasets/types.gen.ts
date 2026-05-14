@@ -255,6 +255,7 @@ export type ProcessRule = {
 }
 
 export type RetrievalModel = {
+  metadata_filtering_conditions?: MetadataFilteringCondition
   reranking_enable: boolean
   reranking_mode?: string | null
   reranking_model?: RerankingModel
@@ -310,6 +311,11 @@ export type Rule = {
   pre_processing_rules?: Array<PreProcessingRule> | null
   segmentation?: Segmentation
   subchunk_segmentation?: Segmentation
+}
+
+export type MetadataFilteringCondition = {
+  conditions?: Array<Condition> | null
+  logical_operator?: 'and' | 'or' | null
 }
 
 export type RerankingModel = {
@@ -403,6 +409,30 @@ export type Segmentation = {
   chunk_overlap?: number
   max_tokens: number
   separator?: string
+}
+
+export type Condition = {
+  comparison_operator:
+    | 'contains'
+    | 'not contains'
+    | 'start with'
+    | 'end with'
+    | 'is'
+    | 'is not'
+    | 'empty'
+    | 'not empty'
+    | 'in'
+    | 'not in'
+    | '='
+    | '≠'
+    | '>'
+    | '<'
+    | '≥'
+    | '≤'
+    | 'before'
+    | 'after'
+  name: string
+  value?: unknown
 }
 
 export type WeightKeywordSetting = {
@@ -1174,8 +1204,8 @@ export type PatchDatasetsByDatasetIdDocumentsStatusByActionBatchResponse
 export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdData = {
   body?: never
   path: {
-    dataset_id: string
     document_id: string
+    dataset_id: string
   }
   query?: never
   url: '/datasets/{dataset_id}/documents/{document_id}'

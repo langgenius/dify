@@ -8,6 +8,15 @@ cd "$REPO_ROOT"
 
 EXCLUDES_FILE="api/pyrefly-local-excludes.txt"
 
+target_paths=()
+for target_path in "$@"; do
+  if [[ "$target_path" == api/* ]]; then
+    target_paths+=("${target_path#api/}")
+  else
+    target_paths+=("$target_path")
+  fi
+done
+
 pyrefly_args=(
   "--summary=none"
   "--use-ignore-files=false"
@@ -26,7 +35,7 @@ fi
 
 tmp_output="$(mktemp)"
 set +e
-uv run --directory api --dev pyrefly check "${pyrefly_args[@]}" >"$tmp_output" 2>&1
+uv run --directory api --dev pyrefly check "${pyrefly_args[@]}" "${target_paths[@]}" >"$tmp_output" 2>&1
 pyrefly_status=$?
 set -e
 

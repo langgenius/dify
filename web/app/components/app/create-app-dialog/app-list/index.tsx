@@ -74,7 +74,7 @@ const Apps = ({
     const filteredByCategory = allList.filter((item) => {
       if (currCategory === allCategoriesEn)
         return true
-      return item.category === currCategory
+      return item.categories?.includes(currCategory) ?? false
     })
     if (currentType.length === 0)
       return filteredByCategory

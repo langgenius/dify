@@ -3,8 +3,7 @@ import { Button } from '@langgenius/dify-ui/button'
 import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
 import { toast } from '@langgenius/dify-ui/toast'
 import { RiCloseLine } from '@remixicon/react'
-import * as React from 'react'
-import { useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import Input from '@/app/components/base/input'
 import { useRouter } from '@/next/navigation'
@@ -18,22 +17,23 @@ import { useLogout } from '@/service/use-common'
 import { asyncRunSafe } from '@/utils'
 
 type Props = {
-  show: boolean
   onClose: () => void
   email: string
 }
 
-enum STEP {
-  start = 'start',
-  verifyOrigin = 'verifyOrigin',
-  newEmail = 'newEmail',
-  verifyNew = 'verifyNew',
-}
+const STEP = {
+  start: 'start',
+  verifyOrigin: 'verifyOrigin',
+  newEmail: 'newEmail',
+  verifyNew: 'verifyNew',
+} as const
 
-const EmailChangeModal = ({ onClose, email, show }: Props) => {
+type Step = typeof STEP[keyof typeof STEP]
+
+const EmailChangeModal = ({ onClose, email }: Props) => {
   const { t } = useTranslation()
   const router = useRouter()
-  const [step, setStep] = useState<STEP>(STEP.start)
+  const [step, setStep] = useState<Step>(STEP.start)
   const [code, setCode] = useState<string>('')
   const [mail, setMail] = useState<string>('')
   const [time, setTime] = useState<number>(0)
@@ -41,13 +41,25 @@ const EmailChangeModal = ({ onClose, email, show }: Props) => {
   const [newEmailExited, setNewEmailExited] = useState<boolean>(false)
   const [unAvailableEmail, setUnAvailableEmail] = useState<boolean>(false)
   const [isCheckingEmail, setIsCheckingEmail] = useState<boolean>(false)
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
+  const clearCountdown = useCallback(() => {
+    if (!timerRef.current)
+      return
+
+    clearInterval(timerRef.current)
+    timerRef.current = null
+  }, [])
+
+  useEffect(() => clearCountdown, [clearCountdown])
 
   const startCount = () => {
+    clearCountdown()
     setTime(60)
-    const timer = setInterval(() => {
+    timerRef.current = setInterval(() => {
       setTime((prev) => {
-        if (prev <= 0) {
-          clearInterval(timer)
+        if (prev <= 1) {
+          clearCountdown()
           return 0
         }
         return prev - 1
@@ -181,7 +193,7 @@ const EmailChangeModal = ({ onClose, email, show }: Props) => {
   }
 
   return (
-    <Dialog open={show} onOpenChange={open => !open && onClose()}>
+    <Dialog open onOpenChange={open => !open && onClose()}>
       <DialogContent className="w-[420px]! p-6!">
         <div className="absolute top-5 right-5 cursor-pointer p-1.5" onClick={onClose}>
           <RiCloseLine className="h-5 w-5 text-text-tertiary" />

@@ -1,4 +1,5 @@
 import uuid
+from typing import Literal
 from unittest.mock import ANY, MagicMock, patch
 
 import pytest
@@ -7,6 +8,7 @@ from faker import Faker
 from sqlalchemy.orm import Session
 
 from core.app.entities.app_invoke_entities import InvokeFrom
+from models import App
 from models.model import EndUser
 from models.workflow import Workflow
 from services.app_generate_service import AppGenerateService
@@ -132,7 +134,10 @@ class TestAppGenerateService:
             }
 
     def _create_test_app_and_account(
-        self, db_session_with_containers: Session, mock_external_service_dependencies, mode="chat"
+        self,
+        db_session_with_containers: Session,
+        mock_external_service_dependencies,
+        mode: Literal["chat", "agent-chat", "advanced-chat", "workflow", "completion"] = "chat",
     ):
         """
         Helper method to create a test app and account for testing.
@@ -164,27 +169,27 @@ class TestAppGenerateService:
         TenantService.create_owner_tenant_if_not_exist(account, name=fake.company())
         tenant = account.current_tenant
 
-        # Create app with realistic data
-        app_args = {
-            "name": fake.company(),
-            "description": fake.text(max_nb_chars=100),
-            "mode": mode,
-            "icon_type": "emoji",
-            "icon": "🤖",
-            "icon_background": "#FF6B6B",
-            "api_rph": 100,
-            "api_rpm": 10,
-            "max_active_requests": 5,
-        }
+        from services.app_service import AppService, CreateAppParams
 
-        from services.app_service import AppService
+        # Create app with realistic data
+        app_args = CreateAppParams(
+            name=fake.company(),
+            description=fake.text(max_nb_chars=100),
+            mode=mode,
+            icon_type="emoji",
+            icon="🤖",
+            icon_background="#FF6B6B",
+            api_rph=100,
+            api_rpm=10,
+            max_active_requests=5,
+        )
 
         app_service = AppService()
         app = app_service.create_app(tenant.id, app_args, account)
 
         return app, account
 
-    def _create_test_workflow(self, db_session_with_containers: Session, app):
+    def _create_test_workflow(self, db_session_with_containers: Session, app: App):
         """
         Helper method to create a test workflow for testing.
 

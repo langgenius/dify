@@ -4156,8 +4156,8 @@ export type GetAppsByAppIdWorkflowsDraftVariablesResponse
 export type DeleteAppsByAppIdWorkflowsDraftVariablesByVariableIdData = {
   body?: never
   path: {
-    app_id: string
     variable_id: string
+    app_id: string
   }
   query?: never
   url: '/apps/{app_id}/workflows/draft/variables/{variable_id}'
@@ -4210,8 +4210,8 @@ export type GetAppsByAppIdWorkflowsDraftVariablesByVariableIdResponse
 export type PatchAppsByAppIdWorkflowsDraftVariablesByVariableIdData = {
   body: WorkflowDraftVariableUpdatePayload
   path: {
-    app_id: string
     variable_id: string
+    app_id: string
   }
   query?: never
   url: '/apps/{app_id}/workflows/draft/variables/{variable_id}'
