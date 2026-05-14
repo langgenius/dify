@@ -73,11 +73,17 @@ describe('Empty', () => {
       expect(link).not.toBeInTheDocument()
     })
 
-    it('should not render link for Workflow type', () => {
+    it('should render workflow empty guide with studio and docs links', () => {
       render(<Empty type={ToolTypeEnum.Workflow} />)
 
-      const link = document.querySelector('a')
-      expect(link).not.toBeInTheDocument()
+      expect(screen.getByText('tools.workflowToolEmpty.title')).toBeInTheDocument()
+      expect(screen.getByText('tools.workflowToolEmpty.description')).toBeInTheDocument()
+      expect(screen.getByText('tools.workflowToolEmpty.step1')).toBeInTheDocument()
+      expect(screen.getByText('tools.workflowToolEmpty.step2')).toBeInTheDocument()
+      expect(screen.getByText('tools.workflowToolEmpty.step3')).toBeInTheDocument()
+
+      expect(screen.getByRole('link', { name: /tools\.workflowToolEmpty\.goToStudio/i })).toHaveAttribute('href', '/apps')
+      expect(screen.getByRole('link', { name: /tools\.workflowToolEmpty\.learnMore/i })).toHaveAttribute('target', '_blank')
     })
   })
 

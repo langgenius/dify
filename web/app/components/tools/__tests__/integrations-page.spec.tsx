@@ -7,10 +7,12 @@ const { mockRouterPush } = vi.hoisted(() => ({
 }))
 
 const {
+  mockCanDebugger,
   mockCanSetPermissions,
   mockReferenceSetting,
   mockSetReferenceSettings,
 } = vi.hoisted(() => ({
+  mockCanDebugger: vi.fn(() => true),
   mockCanSetPermissions: vi.fn(() => true),
   mockReferenceSetting: vi.fn(() => ({
     permission: {
@@ -31,9 +33,15 @@ vi.mock('@/next/navigation', () => ({
 vi.mock('@/app/components/plugins/plugin-page/use-reference-setting', () => ({
   default: () => ({
     referenceSetting: mockReferenceSetting(),
+    canDebugger: mockCanDebugger(),
     canSetPermissions: mockCanSetPermissions(),
     setReferenceSettings: mockSetReferenceSettings,
   }),
+}))
+
+vi.mock('@/app/components/plugins/plugin-page/debug-info', () => ({
+  __esModule: true,
+  default: () => <button type="button" aria-label="plugin debug">debug</button>,
 }))
 
 vi.mock('@/app/components/plugins/reference-setting-modal', () => ({
@@ -42,6 +50,29 @@ vi.mock('@/app/components/plugins/reference-setting-modal', () => ({
     <div data-testid="reference-setting-modal">
       <button type="button" onClick={onHide}>close</button>
     </div>
+  ),
+}))
+
+vi.mock('@/app/components/header/account-setting/update-setting-popover', () => ({
+  __esModule: true,
+  default: ({ defaultStrategy = 'fix_only', onSave, referenceSetting }: {
+    defaultStrategy?: string
+    onSave: (payload: Record<string, unknown>) => void
+    referenceSetting: Record<string, unknown>
+  }) => (
+    <button
+      type="button"
+      data-testid="update-setting-popover"
+      onClick={() => onSave({
+        ...referenceSetting,
+        auto_upgrade: {
+          strategy_setting: defaultStrategy,
+        },
+      })}
+    >
+      common.modelProvider.updateSetting
+      <span>{defaultStrategy === 'latest' ? 'plugin.autoUpdate.strategy.latest.name' : 'plugin.autoUpdate.strategy.fixOnly.name'}</span>
+    </button>
   ),
 }))
 
@@ -83,14 +114,28 @@ vi.mock('@/app/components/header/account-setting/api-based-extension-page', () =
   default: () => <div data-testid="api-extension-page" />,
 }))
 
-vi.mock('../provider-list', () => ({
-  __esModule: true,
-  default: ({ category }: { category?: string }) => <div data-testid="tool-provider-list">{category}</div>,
-}))
+vi.mock('../provider-list', async () => {
+  const { useState } = await vi.importActual<typeof import('react')>('react')
+
+  const MockProviderList = ({ category }: { category?: string }) => {
+    const [mountedCategory] = useState(category)
+
+    return <div data-testid="tool-provider-list" data-mounted-category={mountedCategory}>{category}</div>
+  }
+
+  return {
+    __esModule: true,
+    default: MockProviderList,
+  }
+})
 
 vi.mock('../plugin-category-page', () => ({
   __esModule: true,
-  default: ({ category }: { category: string }) => <div data-testid={`plugin-category-${category}`} />,
+  default: ({ category, toolbarAction }: { category: string, toolbarAction?: React.ReactNode }) => (
+    <div data-testid={`plugin-category-${category}`}>
+      {toolbarAction}
+    </div>
+  ),
 }))
 
 const renderIntegrationsPage = (searchParams?: Record<string, string>, section?: React.ComponentProps<typeof IntegrationsPage>['section']) => {
@@ -100,6 +145,7 @@ const renderIntegrationsPage = (searchParams?: Record<string, string>, section?:
 describe('IntegrationsPage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockCanDebugger.mockReturnValue(true)
     mockCanSetPermissions.mockReturnValue(true)
     mockReferenceSetting.mockReturnValue({
       permission: {
@@ -111,10 +157,12 @@ describe('IntegrationsPage', () => {
   })
 
   it('defaults to the model provider section when no query is provided', () => {
-    renderIntegrationsPage()
+    const { container } = renderIntegrationsPage()
 
     expect(screen.getByTestId('model-provider-page')).toBeInTheDocument()
     expect(screen.getAllByText('common.settings.provider')).toHaveLength(2)
+    expect(container.firstElementChild).toHaveClass('bg-components-panel-bg')
+    expect(container.querySelector('aside')).toHaveClass('bg-components-panel-bg')
   })
 
   it('renders the model provider section from the section query', () => {
@@ -133,6 +181,16 @@ describe('IntegrationsPage', () => {
 
     expect(navText.indexOf('common.settings.provider')).toBeLessThan(navText.indexOf('common.settings.dataSource'))
     expect(navText.indexOf('common.settings.dataSource')).toBeLessThan(navText.indexOf('common.menus.tools'))
+  })
+
+  it('renders the Figma-matched database icon for the data source sidebar item', () => {
+    const providerView = renderIntegrationsPage({ section: 'provider' })
+
+    expect(screen.getByRole('link', { name: 'common.settings.dataSource' }).querySelector('.i-ri-database-2-line')).toBeInTheDocument()
+
+    providerView.rerender(<IntegrationsPage section="data-source" />)
+
+    expect(screen.getByRole('link', { name: 'common.settings.dataSource' }).querySelector('.i-ri-database-2-fill')).toBeInTheDocument()
   })
 
   it('renders plugin category sections from the section query', () => {
@@ -159,12 +217,21 @@ describe('IntegrationsPage', () => {
     const { unmount } = renderIntegrationsPage({ section: 'data-source' })
 
     expect(screen.getByTestId('data-source-page')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'plugin debug' }).parentElement).toHaveClass('size-8', 'shrink-0')
 
     unmount()
     renderIntegrationsPage({ section: 'api-based-extension' })
 
     expect(screen.getByTestId('api-extension-page')).toBeInTheDocument()
     expect(screen.queryByText('common.modelProvider.updateSetting')).not.toBeInTheDocument()
+  })
+
+  it('hides the plugin debug action when debug permission is unavailable', () => {
+    mockCanDebugger.mockReturnValue(false)
+
+    renderIntegrationsPage({ section: 'data-source' })
+
+    expect(screen.queryByRole('button', { name: 'plugin debug' })).not.toBeInTheDocument()
   })
 
   it('renders existing pages from route sections', () => {
@@ -182,6 +249,16 @@ describe('IntegrationsPage', () => {
     renderIntegrationsPage(undefined, 'data-source')
 
     expect(screen.getByTestId('data-source-page')).toBeInTheDocument()
+  })
+
+  it('remounts the tools section content when the route section changes', () => {
+    const view = renderIntegrationsPage(undefined, 'builtin')
+
+    expect(screen.getByTestId('tool-provider-list')).toHaveAttribute('data-mounted-category', 'builtin')
+
+    view.rerender(<IntegrationsPage section="mcp" />)
+
+    expect(screen.getByTestId('tool-provider-list')).toHaveAttribute('data-mounted-category', 'mcp')
   })
 
   it('keeps existing category-only tools URLs functional', () => {
@@ -259,7 +336,7 @@ describe('IntegrationsPage', () => {
     expect(screen.getByText(description).parentElement?.parentElement?.parentElement).not.toHaveClass('border-b', 'border-divider-subtle')
   })
 
-  it.each(['extension', 'agent-strategy'] as const)('renders plugin update settings action for %s', (section) => {
+  it.each(['trigger', 'extension', 'agent-strategy'] as const)('renders plugin update settings action in the category toolbar for %s', (section) => {
     renderIntegrationsPage({ section })
 
     expect(screen.getByText('common.modelProvider.updateSetting')).toBeInTheDocument()
@@ -267,7 +344,15 @@ describe('IntegrationsPage', () => {
 
     fireEvent.click(screen.getByText('common.modelProvider.updateSetting'))
 
-    expect(screen.getByTestId('reference-setting-modal')).toBeInTheDocument()
+    expect(mockSetReferenceSettings).toHaveBeenCalledWith({
+      permission: {
+        install_permission: 'everyone',
+        debug_permission: 'admins',
+      },
+      auto_upgrade: {
+        strategy_setting: 'fix_only',
+      },
+    })
   })
 
   it('opens the original plugins marketplace path from the install dropdown marketplace action', () => {

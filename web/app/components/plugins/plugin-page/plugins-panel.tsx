@@ -66,6 +66,10 @@ const PluginsPanel = ({
   const invalidateInstalledPluginList = useInvalidateInstalledPluginList()
   const currentPluginID = usePluginPageContext(v => v.currentPluginID)
   const setCurrentPluginID = usePluginPageContext(v => v.setCurrentPluginID)
+  const isTriggerIntegrationPage = fixedCategory === PluginCategoryEnum.trigger
+  const isAgentStrategyIntegrationPage = fixedCategory === PluginCategoryEnum.agent
+  const isExtensionIntegrationPage = fixedCategory === PluginCategoryEnum.extension
+  const isIntegrationCategoryPage = isTriggerIntegrationPage || isAgentStrategyIntegrationPage || isExtensionIntegrationPage
 
   const { run: handleFilterChange } = useDebounceFn((filters: FilterState) => {
     setFilters(filters)
@@ -74,7 +78,7 @@ const PluginsPanel = ({
   const filteredList = useMemo(() => {
     const { categories, searchQuery, tags } = filters
     const effectiveCategories = fixedCategory ? [fixedCategory] : categories
-    const shouldApplyTagFilter = !fixedCategory || fixedCategory === PluginCategoryEnum.trigger
+    const shouldApplyTagFilter = !fixedCategory || isTriggerIntegrationPage
     const filteredList = pluginListWithLatestVersion.filter((plugin) => {
       return (
         (effectiveCategories.length === 0 || effectiveCategories.includes(plugin.declaration.category))
@@ -83,7 +87,7 @@ const PluginsPanel = ({
       )
     })
     return filteredList
-  }, [fixedCategory, pluginListWithLatestVersion, filters, locale])
+  }, [fixedCategory, isTriggerIntegrationPage, pluginListWithLatestVersion, filters, locale])
 
   const currentPluginDetail = useMemo(() => {
     const detail = pluginListWithLatestVersion.find(plugin => plugin.plugin_id === currentPluginID)
@@ -92,9 +96,6 @@ const PluginsPanel = ({
 
   const handleHide = () => setCurrentPluginID(undefined)
   const contentPaddingClassName = pluginPageContentInsetClassNames[contentInset]
-  const isTriggerIntegrationPage = fixedCategory === PluginCategoryEnum.trigger
-  const isAgentStrategyIntegrationPage = fixedCategory === PluginCategoryEnum.agent
-  const shouldShowToolbar = !isAgentStrategyIntegrationPage
   const contentFrameClassName = cn(
     pluginPageContentFrameClassNames[contentInset],
     contentPaddingClassName,
@@ -103,27 +104,27 @@ const PluginsPanel = ({
     ? 'integrationsTrigger'
     : isAgentStrategyIntegrationPage
       ? 'integrationsAgentStrategy'
-      : 'default'
+      : isExtensionIntegrationPage
+        ? 'integrationsExtension'
+        : 'default'
 
   return (
     <>
-      {shouldShowToolbar && (
-        <div className={cn(
-          isTriggerIntegrationPage
-            ? 'flex h-12 shrink-0 items-center py-2'
-            : 'flex flex-col items-start justify-center gap-3 self-stretch pt-1 pb-3',
-          contentFrameClassName,
-        )}
-        >
-          {!isTriggerIntegrationPage && <div className="h-px self-stretch bg-divider-subtle"></div>}
-          <FilterManagement
-            hideCategoryFilter={!!fixedCategory}
-            hideTagFilter={!!fixedCategory && fixedCategory !== PluginCategoryEnum.trigger}
-            onFilterChange={handleFilterChange}
-            rightSlot={toolbarAction}
-          />
-        </div>
+      <div className={cn(
+        isIntegrationCategoryPage
+          ? 'sticky top-0 z-10 flex h-12 shrink-0 items-center bg-components-panel-bg py-2'
+          : 'sticky top-0 z-10 flex flex-col items-start justify-center gap-3 self-stretch bg-components-panel-bg pt-1 pb-3',
+        contentFrameClassName,
       )}
+      >
+        {!isIntegrationCategoryPage && <div className="h-px self-stretch bg-divider-subtle"></div>}
+        <FilterManagement
+          hideCategoryFilter={!!fixedCategory}
+          hideTagFilter={!!fixedCategory && !isTriggerIntegrationPage}
+          onFilterChange={handleFilterChange}
+          rightSlot={toolbarAction}
+        />
+      </div>
       {isPluginListLoading && <Loading type="app" />}
       {!isPluginListLoading && (
         <>
@@ -131,6 +132,7 @@ const PluginsPanel = ({
             ? (
                 <div className={cn(
                   'flex grow flex-wrap content-start items-start justify-center gap-2 self-stretch overflow-y-auto',
+                  'bg-components-panel-bg',
                   isAgentStrategyIntegrationPage && 'pt-2',
                   contentFrameClassName,
                 )}

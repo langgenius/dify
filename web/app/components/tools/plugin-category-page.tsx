@@ -30,7 +30,7 @@ const PluginCategoryPageContent = ({
     ...systemFeaturesQueryOptions(),
     select: s => s.plugin_installation_permission,
   })
-  const supportsDropInstall = category === PluginCategoryEnum.trigger || category === PluginCategoryEnum.agent
+  const supportsDropInstall = category === PluginCategoryEnum.trigger || category === PluginCategoryEnum.agent || category === PluginCategoryEnum.extension
   const canDropLocalPackage = supportsDropInstall && !pluginInstallationPermission.restrict_to_marketplace_only
 
   const handleFileChange = (file: File | null) => {
@@ -53,7 +53,7 @@ const PluginCategoryPageContent = ({
   })
 
   return (
-    <div ref={containerRef} className="relative flex h-0 grow flex-col overflow-hidden bg-background-body">
+    <div ref={containerRef} className="relative flex h-0 grow flex-col overflow-hidden bg-components-panel-bg">
       <PluginsPanel contentInset="compact" fixedCategory={category} toolbarAction={toolbarAction} />
       {dragging && (
         <div

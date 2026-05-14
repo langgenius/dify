@@ -163,8 +163,11 @@ describe('Empty Component', () => {
       await flushEffects()
 
       // Assert
-      expect(screen.getByText('plugin.list.noTriggersFound')).toBeInTheDocument()
-      expect(screen.getByText('plugin.installModal.dropPluginToInstall')).toBeInTheDocument()
+      expect(screen.getByText('plugin.list.noTriggerFound')).toBeInTheDocument()
+      expect(screen.getByText('plugin.installModal.dropIntegrationToInstall')).toBeInTheDocument()
+      expect(container.firstElementChild).toHaveClass('bg-components-panel-bg')
+      expect(container.querySelector('.i-custom-vender-integrations-trigger-active')).toBeInTheDocument()
+      expect(container.querySelector('.i-custom-vender-integrations-trigger')).not.toBeInTheDocument()
 
       const skeletonGrid = container.querySelector('.grid')
       expect(skeletonGrid).toHaveClass('max-w-[1600px]', 'px-6', 'gap-x-[7px]', 'gap-y-[15px]', 'pt-2')
@@ -176,20 +179,36 @@ describe('Empty Component', () => {
       buttons.forEach(button => expect(button).toHaveClass('h-8', 'w-full', 'justify-start'))
     })
 
-    it('should render the Figma agent strategy empty layout without the trigger offset', async () => {
+    it('should render the Figma agent strategy empty layout at the shared center position', async () => {
       // Arrange & Act
       const { container } = render(<Empty contentInset="compact" variant="integrationsAgentStrategy" />)
       await flushEffects()
 
       // Assert
-      expect(screen.getByText('plugin.list.noInstalled')).toBeInTheDocument()
-      expect(screen.getByText('plugin.installModal.dropPluginToInstall')).toBeInTheDocument()
+      expect(screen.getByText('plugin.list.noAgentStrategyFound')).toBeInTheDocument()
+      expect(screen.getByText('plugin.installModal.dropIntegrationToInstall')).toBeInTheDocument()
+      expect(container.firstElementChild).toHaveClass('bg-components-panel-bg')
 
       const skeletonGrid = container.querySelector('.grid')
       expect(skeletonGrid).toHaveClass('max-w-[1600px]', 'px-6', 'gap-x-[7px]', 'gap-y-[15px]', 'pt-2')
       expect(container.querySelector('.items-center')).toBeInTheDocument()
-      expect(container.querySelector('.-translate-y-7')).toBeInTheDocument()
-      expect(container.querySelector('.i-custom-vender-integrations-agent-strategy')).toHaveClass('size-6', 'shrink-0')
+      expect(container.querySelector('.-translate-y-7')).not.toBeInTheDocument()
+      expect(container.querySelector('.i-custom-vender-integrations-agent-strategy-active')).toHaveClass('size-6', 'shrink-0')
+    })
+
+    it('should render the Figma extension empty layout with extension copy', async () => {
+      // Arrange & Act
+      const { container } = render(<Empty contentInset="compact" variant="integrationsExtension" />)
+      await flushEffects()
+
+      // Assert
+      expect(screen.getByText('plugin.list.noExtensionFound')).toBeInTheDocument()
+      expect(screen.getByText('plugin.installModal.dropIntegrationToInstall')).toBeInTheDocument()
+
+      const skeletonGrid = container.querySelector('.grid')
+      expect(skeletonGrid).toHaveClass('max-w-[1600px]', 'px-6', 'gap-x-[7px]', 'gap-y-[15px]', 'pt-2')
+      expect(skeletonGrid).toHaveStyle({ background: 'radial-gradient(ellipse at 50% 48%, #F3F4F7 0%, #FFFFFF 58%)' })
+      expect(container.querySelector('.i-custom-vender-integrations-extension-active')).toHaveClass('size-6', 'shrink-0')
     })
   })
 

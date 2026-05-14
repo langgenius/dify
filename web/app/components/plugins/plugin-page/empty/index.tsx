@@ -34,16 +34,20 @@ type InstallMethod = {
 }
 
 const TriggerEmptyIcon = () => (
-  <span aria-hidden className="i-custom-vender-integrations-trigger size-6 shrink-0" />
+  <span aria-hidden className="i-custom-vender-integrations-trigger-active size-6 shrink-0" />
 )
 
 const AgentStrategyEmptyIcon = () => (
-  <span aria-hidden className="i-custom-vender-integrations-agent-strategy size-6 shrink-0" />
+  <span aria-hidden className="i-custom-vender-integrations-agent-strategy-active size-6 shrink-0" />
+)
+
+const ExtensionEmptyIcon = () => (
+  <span aria-hidden className="i-custom-vender-integrations-extension-active size-6 shrink-0" />
 )
 
 type EmptyProps = {
   contentInset?: PluginPageContentInset
-  variant?: 'default' | 'integrationsAgentStrategy' | 'integrationsTrigger'
+  variant?: 'default' | 'integrationsAgentStrategy' | 'integrationsExtension' | 'integrationsTrigger'
 }
 
 const Empty = ({
@@ -97,21 +101,33 @@ const Empty = ({
   const canInstallLocalPackage = !plugin_installation_permission.restrict_to_marketplace_only
   const isIntegrationsTrigger = variant === 'integrationsTrigger'
   const isIntegrationsAgentStrategy = variant === 'integrationsAgentStrategy'
-  const isIntegrationsCategory = isIntegrationsTrigger || isIntegrationsAgentStrategy
+  const isIntegrationsExtension = variant === 'integrationsExtension'
+  const isIntegrationsCategory = isIntegrationsTrigger || isIntegrationsAgentStrategy || isIntegrationsExtension
+  const supportsDropInstall = isIntegrationsCategory
   const contentFrameClassName = cn(
     pluginPageContentFrameClassNames[contentInset],
     contentPaddingClassName,
   )
-  const emptyText = isIntegrationsTrigger ? t('list.noTriggersFound', { ns: 'plugin' }) : text
+  const emptyText = isIntegrationsTrigger
+    ? t('list.noTriggerFound', { ns: 'plugin' })
+    : isIntegrationsAgentStrategy
+      ? t('list.noAgentStrategyFound', { ns: 'plugin' })
+      : isIntegrationsExtension
+        ? t('list.noExtensionFound', { ns: 'plugin' })
+        : text
 
   return (
-    <div className="relative z-0 w-full grow">
+    <div className="relative z-0 w-full grow bg-components-panel-bg">
       {/* skeleton */}
-      <div className={cn(
-        'absolute top-0 left-1/2 z-10 grid h-full -translate-x-1/2 grid-cols-2 content-start overflow-hidden',
-        isIntegrationsCategory ? 'gap-x-[7px] gap-y-[15px] pt-2' : 'gap-2',
-        contentFrameClassName,
-      )}
+      <div
+        className={cn(
+          'absolute top-0 left-1/2 z-10 grid h-full -translate-x-1/2 grid-cols-2 content-start overflow-hidden',
+          isIntegrationsCategory ? 'gap-x-[7px] gap-y-[15px] pt-2' : 'gap-2',
+          contentFrameClassName,
+        )}
+        style={isIntegrationsCategory
+          ? { background: 'radial-gradient(ellipse at 50% 48%, #F3F4F7 0%, #FFFFFF 58%)' }
+          : undefined}
       >
         {Array.from({ length: isIntegrationsCategory ? 22 : 20 }).fill(0).map((_, i) => (
           <div key={i} className={cn(isIntegrationsCategory ? 'h-[72px] rounded-lg bg-[#F9FAFB]/[0.52]' : 'h-24 rounded-xl bg-components-card-bg')} />
@@ -119,17 +135,10 @@ const Empty = ({
       </div>
       {/* mask */}
       <div className="absolute z-20 h-full w-full bg-linear-to-b from-components-panel-bg-transparent to-components-panel-bg" />
-      <div className={cn(
-        'relative z-30 flex h-full justify-center',
-        isIntegrationsTrigger && 'items-start pt-[248px]',
-        isIntegrationsAgentStrategy && 'items-center',
-        !isIntegrationsCategory && 'items-center',
-      )}
-      >
+      <div className="relative z-30 flex h-full items-center justify-center">
         <div className={cn(
           'flex flex-col items-center',
           isIntegrationsCategory ? 'gap-y-6' : 'gap-y-3',
-          isIntegrationsAgentStrategy && '-translate-y-7',
         )}
         >
           <div className="flex flex-col items-center gap-y-3">
@@ -143,7 +152,11 @@ const Empty = ({
               {isIntegrationsCategory
                 ? (
                     <span className="text-text-tertiary">
-                      {isIntegrationsAgentStrategy ? <AgentStrategyEmptyIcon /> : <TriggerEmptyIcon />}
+                      {isIntegrationsAgentStrategy
+                        ? <AgentStrategyEmptyIcon />
+                        : isIntegrationsExtension
+                          ? <ExtensionEmptyIcon />
+                          : <TriggerEmptyIcon />}
                     </span>
                   )
                 : <Group className="size-5 text-text-tertiary" />}
@@ -191,10 +204,10 @@ const Empty = ({
               ))}
             </div>
           </div>
-          {isIntegrationsCategory && canInstallLocalPackage && (
-            <div className="flex h-8 w-[243px] items-center gap-0.5 px-3 py-2 text-text-tertiary">
+          {supportsDropInstall && canInstallLocalPackage && (
+            <div className="flex h-8 w-[243px] items-start gap-0.5 px-3 py-2 text-text-tertiary">
               <DropHintInstallSourceIcon />
-              <span className="px-0.5 system-xs-regular">{t('installModal.dropPluginToInstall', { ns: 'plugin' })}</span>
+              <span className="px-0.5 system-xs-regular">{t('installModal.dropIntegrationToInstall', { ns: 'plugin' })}</span>
             </div>
           )}
         </div>

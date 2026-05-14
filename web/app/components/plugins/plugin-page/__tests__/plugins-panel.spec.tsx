@@ -201,33 +201,55 @@ describe('PluginsPanel', () => {
       />,
     )
 
-    expect(screen.getByTestId('filter-management-wrap').parentElement).toHaveClass('h-12', 'py-2', 'max-w-[1600px]', 'px-6')
+    expect(screen.getByTestId('filter-management-wrap').parentElement).toHaveClass('sticky', 'top-0', 'z-10', 'h-12', 'py-2', 'max-w-[1600px]', 'px-6')
+    expect(screen.getByTestId('filter-management-wrap').parentElement).toHaveClass('bg-components-panel-bg')
     expect(screen.getByText('update setting')).toBeInTheDocument()
   })
 
-  it('uses the Figma agent strategy body without the filter toolbar', () => {
-    render(<PluginsPanel contentInset="compact" fixedCategory={PluginCategoryEnum.agent} />)
+  it('uses the Figma agent strategy toolbar frame and renders the toolbar action', () => {
+    render(
+      <PluginsPanel
+        contentInset="compact"
+        fixedCategory={PluginCategoryEnum.agent}
+        toolbarAction={<button type="button">update setting</button>}
+      />,
+    )
 
-    expect(screen.queryByTestId('filter-management')).not.toBeInTheDocument()
+    expect(screen.getByTestId('filter-management-wrap').parentElement).toHaveClass('sticky', 'top-0', 'z-10', 'h-12', 'py-2', 'max-w-[1600px]', 'px-6')
+    expect(screen.getByTestId('filter-management-wrap').parentElement).toHaveClass('bg-components-panel-bg')
+    expect(screen.getByTestId('filter-management')).toHaveAttribute('data-hide-category-filter', 'true')
+    expect(screen.getByTestId('filter-management')).toHaveAttribute('data-hide-tag-filter', 'true')
+    expect(screen.getByText('update setting')).toBeInTheDocument()
     expect(screen.getByTestId('empty-state')).toHaveAttribute('data-variant', 'integrationsAgentStrategy')
   })
 
-  it('hides tag filtering UI for the extension integrations category', () => {
-    render(<PluginsPanel contentInset="compact" fixedCategory={PluginCategoryEnum.extension} />)
+  it('uses the Figma extension toolbar frame and renders the extension empty state', () => {
+    render(
+      <PluginsPanel
+        contentInset="compact"
+        fixedCategory={PluginCategoryEnum.extension}
+        toolbarAction={<button type="button">update setting</button>}
+      />,
+    )
 
+    expect(screen.getByTestId('filter-management-wrap').parentElement).toHaveClass('sticky', 'top-0', 'z-10', 'h-12', 'py-2', 'max-w-[1600px]', 'px-6')
     expect(screen.getByTestId('filter-management')).toHaveAttribute('data-hide-category-filter', 'true')
     expect(screen.getByTestId('filter-management')).toHaveAttribute('data-hide-tag-filter', 'true')
+    expect(screen.getByText('update setting')).toBeInTheDocument()
+    expect(screen.getByTestId('empty-state')).toHaveAttribute('data-variant', 'integrationsExtension')
   })
 
-  it('does not apply hidden tag filters outside the trigger integrations category', () => {
+  it('ignores hidden tag filters within the fixed extension integrations category', () => {
     mockState.filters.tags = ['search']
     mockPluginListWithLatestVersion.mockReturnValue([
-      createPlugin('extension-plugin', 'Extension Plugin', ['rag'], PluginCategoryEnum.extension),
+      createPlugin('rag-extension', 'Rag Extension', ['rag'], PluginCategoryEnum.extension),
+      createPlugin('search-extension', 'Search Extension', ['search'], PluginCategoryEnum.extension),
     ])
 
     render(<PluginsPanel contentInset="compact" fixedCategory={PluginCategoryEnum.extension} />)
 
-    expect(screen.getByTestId('plugin-list')).toHaveTextContent('extension-plugin')
+    expect(screen.getByTestId('plugin-list')).toHaveTextContent('search-extension')
+    expect(screen.getByTestId('plugin-list')).toHaveTextContent('rag-extension')
   })
 
   it('filters the list and exposes the load-more action', () => {

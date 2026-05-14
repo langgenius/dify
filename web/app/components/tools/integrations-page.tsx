@@ -1,5 +1,6 @@
 'use client'
 
+import type { ComponentType } from 'react'
 import type { Permissions, ReferenceSetting } from '@/app/components/plugins/types'
 import type { IntegrationSection } from '@/app/components/tools/integration-routes'
 import { Button } from '@langgenius/dify-ui/button'
@@ -9,10 +10,10 @@ import { ToggleGroup, ToggleGroupItem } from '@langgenius/dify-ui/toggle-group'
 import { parseAsStringLiteral, useQueryState } from 'nuqs'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import DatasourceIcon from '@/app/components/base/icons/src/vender/workflow/Datasource'
+import UpdateSettingPopover from '@/app/components/header/account-setting/update-setting-popover'
+import DebugInfo from '@/app/components/plugins/plugin-page/debug-info'
 import InstallPluginDropdown from '@/app/components/plugins/plugin-page/install-plugin-dropdown'
 import useReferenceSetting from '@/app/components/plugins/plugin-page/use-reference-setting'
-import ReferenceSettingModal from '@/app/components/plugins/reference-setting-modal'
 import { PermissionType } from '@/app/components/plugins/types'
 import {
   buildIntegrationPath,
@@ -26,7 +27,7 @@ import { useRouter } from '@/next/navigation'
 import { toolsContentInsetClassNames, toolsUnifiedContentFrameClassName } from './content-inset'
 import IntegrationSectionRenderer from './integration-section-renderer'
 
-type IconComponent = typeof DatasourceIcon
+type IconComponent = ComponentType<{ className?: string }>
 
 const parseAsIntegrationSection = parseAsStringLiteral(INTEGRATION_SECTION_VALUES)
 const parseAsToolCategory = parseAsStringLiteral(TOOL_CATEGORY_VALUES)
@@ -197,6 +198,7 @@ export default function IntegrationsPage({
   const router = useRouter()
   const {
     referenceSetting,
+    canDebugger,
     canSetPermissions,
     setReferenceSettings,
   } = useReferenceSetting()
@@ -205,7 +207,6 @@ export default function IntegrationsPage({
   const section = routeSection ?? sectionParam ?? (categoryParam ? sectionByToolCategory[categoryParam] : 'provider')
   const [providerSearchText, setProviderSearchText] = useState('')
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
-  const [showPluginSettingModal, setShowPluginSettingModal] = useState(false)
   const providerItem = useMemo<NavItem>(() => ({
     section: 'provider',
     label: t('settings.provider', { ns: 'common' }),
@@ -215,7 +216,7 @@ export default function IntegrationsPage({
   const dataSourceItem = useMemo<NavItem>(() => ({
     section: 'data-source',
     label: t('settings.dataSource', { ns: 'common' }),
-    icon: DatasourceIcon,
+    icon: 'i-ri-database-2-line',
     activeIcon: 'i-ri-database-2-fill',
     iconClassName: 'size-4',
   }), [t])
@@ -330,8 +331,7 @@ export default function IntegrationsPage({
         return null
     }
   }, [section, t])
-  const showHeaderPluginSetting = (section === 'extension' || section === 'agent-strategy') && canSetPermissions && !!referenceSetting
-  const showTriggerPluginSetting = section === 'trigger' && canSetPermissions && !!referenceSetting
+  const showPluginCategorySetting = isPluginCategorySection && canSetPermissions && !!referenceSetting
   const showPermissionQuickPanel = canSetPermissions && !!referenceSetting
   const handlePermissionChange = (key: PermissionSettingKey, value: PermissionType) => {
     if (!referenceSetting)
@@ -345,11 +345,19 @@ export default function IntegrationsPage({
       },
     } satisfies ReferenceSetting)
   }
+  const pluginSettingAction = showPluginCategorySetting
+    ? (
+        <UpdateSettingPopover
+          referenceSetting={referenceSetting}
+          onSave={setReferenceSettings}
+        />
+      )
+    : undefined
 
   return (
-    <div className="flex h-full min-h-0 bg-background-body">
+    <div className="flex h-full min-h-0 bg-components-panel-bg">
       <aside className={cn(
-        'flex shrink-0 flex-col border-r border-divider-burn bg-background-body px-2 py-2 transition-[width]',
+        'flex shrink-0 flex-col border-r border-divider-burn bg-components-panel-bg px-2 py-2 transition-[width]',
         sidebarCollapsed ? 'w-14 items-center' : 'w-[200px] items-end',
       )}
       >
@@ -395,6 +403,11 @@ export default function IntegrationsPage({
                 popupClassName="w-[240px] rounded-2xl py-2 shadow-xl"
                 onSwitchToMarketplaceTab={() => router.push('/plugins?tab=discover')}
               />
+              {canDebugger && (
+                <div className="size-8 shrink-0">
+                  <DebugInfo />
+                </div>
+              )}
               <Popover>
                 <PopoverTrigger
                   render={(
@@ -515,20 +528,6 @@ export default function IntegrationsPage({
                   {integrationHeader.description}
                 </div>
               </div>
-              {showHeaderPluginSetting && (
-                <Button
-                  variant="secondary"
-                  className="h-8 shrink-0 gap-0.5 px-3 system-sm-medium"
-                  onClick={() => setShowPluginSettingModal(true)}
-                >
-                  <span aria-hidden className="i-ri-flashlight-line size-4" />
-                  <span className="px-0.5">{t('modelProvider.updateSetting', { ns: 'common' })}</span>
-                  <span className="flex min-w-4 items-center justify-center rounded-[5px] border border-divider-deep bg-components-badge-bg-dimm px-1 py-0.5 system-2xs-medium-uppercase text-text-tertiary">
-                    {t('autoUpdate.strategy.fixOnly.name', { ns: 'plugin' })}
-                  </span>
-                  <span aria-hidden className="i-ri-arrow-down-s-line size-4" />
-                </Button>
-              )}
             </div>
           </div>
         )}
@@ -552,35 +551,14 @@ export default function IntegrationsPage({
         )}
         >
           <IntegrationSectionRenderer
+            key={section}
             section={section}
             providerSearchText={providerSearchText}
             onProviderSearchTextChange={setProviderSearchText}
-            pluginCategoryToolbarAction={showTriggerPluginSetting
-              ? (
-                  <Button
-                    variant="secondary"
-                    className="h-8 shrink-0 gap-0.5 px-3 system-sm-medium"
-                    onClick={() => setShowPluginSettingModal(true)}
-                  >
-                    <span aria-hidden className="i-ri-flashlight-line size-4" />
-                    <span className="px-0.5">{t('modelProvider.updateSetting', { ns: 'common' })}</span>
-                    <span className="flex min-w-4 items-center justify-center rounded-[5px] border border-divider-deep bg-components-badge-bg-dimm px-1 py-0.5 system-2xs-medium-uppercase text-text-tertiary">
-                      {t('autoUpdate.strategy.fixOnly.name', { ns: 'plugin' })}
-                    </span>
-                    <span aria-hidden className="i-ri-arrow-down-s-line size-4" />
-                  </Button>
-                )
-              : undefined}
+            pluginCategoryToolbarAction={pluginSettingAction}
           />
         </div>
       </section>
-      {showPluginSettingModal && referenceSetting && (
-        <ReferenceSettingModal
-          payload={referenceSetting}
-          onHide={() => setShowPluginSettingModal(false)}
-          onSave={setReferenceSettings}
-        />
-      )}
     </div>
   )
 }

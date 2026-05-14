@@ -1,14 +1,13 @@
 'use client'
 import type { CustomCollectionBackend } from '../types'
 import { toast } from '@langgenius/dify-ui/toast'
-import {
-  RiAddCircleFill,
-} from '@remixicon/react'
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import EditCustomToolModal from '@/app/components/tools/edit-custom-collection-modal'
 import { useAppContext } from '@/context/app-context'
+import { useDocLink } from '@/context/i18n'
 import { createCustomCollection } from '@/service/tools'
+import CreateEntryCard from './create-entry-card'
 
 type Props = {
   onRefreshData: () => void
@@ -16,8 +15,10 @@ type Props = {
 
 const Contribute = ({ onRefreshData }: Props) => {
   const { t } = useTranslation()
+  const docLink = useDocLink()
   const { isCurrentWorkspaceManager } = useAppContext()
 
+  const linkUrl = useMemo(() => docLink('/use-dify/nodes/tools'), [docLink])
   const [isShowEditCollectionToolModal, setIsShowEditCustomCollectionModal] = useState(false)
   const doCreateCustomToolCollection = async (data: CustomCollectionBackend) => {
     await createCustomCollection(data)
@@ -29,16 +30,12 @@ const Contribute = ({ onRefreshData }: Props) => {
   return (
     <>
       {isCurrentWorkspaceManager && (
-        <div className="col-span-1 flex min-h-[135px] cursor-pointer flex-col rounded-xl bg-background-default-dimmed transition-all duration-200 ease-in-out">
-          <div className="group grow rounded-t-xl" onClick={() => setIsShowEditCustomCollectionModal(true)}>
-            <div className="flex shrink-0 items-center p-4 pb-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg border border-dashed border-divider-deep group-hover:border-solid group-hover:border-state-accent-hover-alt group-hover:bg-state-accent-hover">
-                <RiAddCircleFill className="h-4 w-4 text-text-quaternary group-hover:text-text-accent" />
-              </div>
-              <div className="ml-3 system-md-semibold text-text-secondary group-hover:text-text-accent">{t('createCustomTool', { ns: 'tools' })}</div>
-            </div>
-          </div>
-        </div>
+        <CreateEntryCard
+          title={t('createSwaggerAPIAsTool', { ns: 'tools' })}
+          linkText={t('swaggerAPIAsToolTip', { ns: 'tools' })}
+          linkUrl={linkUrl}
+          onCreate={() => setIsShowEditCustomCollectionModal(true)}
+        />
       )}
       {isShowEditCollectionToolModal && (
         <EditCustomToolModal

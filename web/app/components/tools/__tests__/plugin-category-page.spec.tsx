@@ -63,13 +63,19 @@ describe('PluginCategoryPage', () => {
   it.each([
     [PluginCategoryEnum.trigger, true],
     [PluginCategoryEnum.agent, true],
-    [PluginCategoryEnum.extension, false],
+    [PluginCategoryEnum.extension, true],
   ])('sets drop install availability for %s', (category, enabled) => {
     render(<PluginCategoryPage category={category} />)
 
     expect(mockUseUploader).toHaveBeenCalledWith(expect.objectContaining({
       enabled,
     }))
+  })
+
+  it('uses the Figma panel background for scoped integration categories', () => {
+    const { container } = render(<PluginCategoryPage category={PluginCategoryEnum.trigger} />)
+
+    expect(container.firstElementChild).toHaveClass('bg-components-panel-bg')
   })
 
   it('disables drop install when local packages are restricted', () => {

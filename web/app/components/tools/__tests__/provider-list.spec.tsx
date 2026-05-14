@@ -128,11 +128,36 @@ vi.mock('@/app/components/plugins/plugin-page/use-reference-setting', () => ({
   }),
 }))
 
-vi.mock('@/app/components/plugins/reference-setting-modal', () => ({
+vi.mock('@/app/components/header/account-setting/update-setting-popover', () => ({
   __esModule: true,
-  default: ({ onHide }: { onHide: () => void }) => (
-    <div data-testid="reference-setting-modal">
-      <button type="button" onClick={onHide}>Close modal</button>
+  default: ({ referenceSetting, onSave }: {
+    referenceSetting: {
+      auto_upgrade?: {
+        strategy_setting?: string
+      }
+      permission?: Record<string, string>
+    }
+    onSave: (payload: {
+      auto_upgrade?: {
+        strategy_setting?: string
+      }
+      permission?: Record<string, string>
+    }) => void
+  }) => (
+    <div data-testid="update-setting-popover">
+      <button
+        type="button"
+        onClick={() => onSave({
+          ...referenceSetting,
+          auto_upgrade: {
+            ...referenceSetting.auto_upgrade,
+            strategy_setting: 'fix_only',
+          },
+        })}
+      >
+        common.modelProvider.updateSetting
+        <span>plugin.autoUpdate.strategy.fixOnly.name</span>
+      </button>
     </div>
   ),
 }))
@@ -321,7 +346,8 @@ describe('ProviderList', () => {
     it('uses default content inset outside compact integrations layout', () => {
       const { container } = renderProviderList()
 
-      expect(container.querySelector('.sticky')).toHaveClass('px-12', 'pt-2', 'pb-0')
+      expect(container.querySelector('.overflow-y-auto')).toHaveClass('bg-components-panel-bg')
+      expect(container.querySelector('.sticky')).toHaveClass('px-12', 'pt-2', 'pb-0', 'bg-components-panel-bg')
       expect(container.querySelector('.sticky')).toHaveClass('max-w-[1600px]')
       expect(screen.getByTestId('card-google-search').closest('.grid')).toHaveClass('px-12', 'gap-2', 'pt-2')
       expect(screen.getByTestId('card-google-search').closest('.grid')).toHaveClass('max-w-[1600px]')
@@ -330,7 +356,8 @@ describe('ProviderList', () => {
     it('uses compact content inset when rendered by integrations layout', () => {
       const { container } = renderProviderList(undefined, 'builtin', 'compact')
 
-      expect(container.querySelector('.sticky')).toHaveClass('px-6', 'pt-2', 'pb-0')
+      expect(container.querySelector('.overflow-y-auto')).toHaveClass('bg-components-panel-bg')
+      expect(container.querySelector('.sticky')).toHaveClass('px-6', 'pt-2', 'pb-0', 'bg-components-panel-bg')
       expect(container.querySelector('.sticky')).toHaveClass('max-w-[1600px]')
       expect(screen.getByTestId('card-google-search').closest('.grid')).toHaveClass('px-6', 'gap-2', 'pt-2')
       expect(screen.getByTestId('card-google-search').closest('.grid')).toHaveClass('max-w-[1600px]')
@@ -341,6 +368,18 @@ describe('ProviderList', () => {
 
       expect(screen.getByTestId('card-google-search').closest('.grid')).toHaveClass('grid-cols-1', 'sm:grid-cols-2', 'md:grid-cols-3')
       expect(screen.getByTestId('card-google-search').closest('.grid')).not.toHaveClass('lg:grid-cols-4')
+    })
+
+    it('keeps the default plugin card border visible until a card is selected', () => {
+      renderProviderList(undefined, 'builtin', 'compact')
+
+      expect(screen.getByTestId('card-google-search')).toHaveClass('cursor-pointer')
+      expect(screen.getByTestId('card-google-search')).not.toHaveClass('border-transparent')
+      expect(screen.getByTestId('card-google-search')).not.toHaveClass('border-[1.5px]')
+
+      fireEvent.click(screen.getByTestId('card-google-search'))
+
+      expect(screen.getByTestId('card-google-search')).toHaveClass('border-[1.5px]', 'border-components-option-card-option-selected-border')
     })
   })
 
@@ -430,26 +469,35 @@ describe('ProviderList', () => {
       expect(screen.getByRole('textbox')).toBeInTheDocument()
     })
 
-    it('opens plugin update settings from the tools toolbar', () => {
+    it('uses the new plugin update settings popover from the tools toolbar', () => {
       renderProviderList(undefined, 'builtin')
 
       expect(screen.getByText('common.modelProvider.updateSetting')).toBeInTheDocument()
-      expect(screen.getByText('plugin.autoUpdate.strategy.latest.name')).toBeInTheDocument()
+      expect(screen.getByText('plugin.autoUpdate.strategy.fixOnly.name')).toBeInTheDocument()
+      expect(screen.getByTestId('update-setting-popover')).toBeInTheDocument()
 
       fireEvent.click(screen.getByText('common.modelProvider.updateSetting'))
 
-      expect(screen.getByTestId('reference-setting-modal')).toBeInTheDocument()
+      expect(mockSetReferenceSettings).toHaveBeenCalledWith({
+        permission: {
+          install_permission: 'everyone',
+          debug_permission: 'admins',
+        },
+        auto_upgrade: {
+          strategy_setting: 'fix_only',
+        },
+      })
     })
 
     it.each([
       ['mcp'],
       ['api'],
       ['workflow'],
-    ] as const)('does not show plugin update settings on the %s tool page', (category) => {
+    ] as const)('hides plugin update settings on the %s tool page', (category) => {
       renderProviderList({ category })
 
       expect(screen.queryByText('common.modelProvider.updateSetting')).not.toBeInTheDocument()
-      expect(screen.queryByText('plugin.autoUpdate.strategy.latest.name')).not.toBeInTheDocument()
+      expect(screen.queryByText('plugin.autoUpdate.strategy.fixOnly.name')).not.toBeInTheDocument()
     })
   })
 

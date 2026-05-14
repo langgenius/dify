@@ -29,6 +29,7 @@ const IntegrationSectionRenderer = ({
         <div className={`${toolsContentFrameClassNames.compact} ${toolsContentInsetClassNames.compact} pt-2`}>
           <ModelProviderPage
             searchText={providerSearchText}
+            stickyToolbar
             onSearchTextChange={onProviderSearchTextChange}
           />
         </div>
@@ -43,8 +44,8 @@ const IntegrationSectionRenderer = ({
       return <ToolProviderList category="workflow" contentInset="compact" />
     case 'data-source':
       return (
-        <div className={`${toolsContentFrameClassNames.compact} ${toolsContentInsetClassNames.compact} pt-6`}>
-          <DataSourcePage />
+        <div className={`${toolsContentFrameClassNames.compact} ${toolsContentInsetClassNames.compact} pt-2`}>
+          <DataSourcePage stickyToolbar />
         </div>
       )
     case 'api-based-extension':
@@ -56,9 +57,9 @@ const IntegrationSectionRenderer = ({
     case 'trigger':
       return <PluginCategoryPage category={PluginCategoryEnum.trigger} toolbarAction={pluginCategoryToolbarAction} />
     case 'agent-strategy':
-      return <PluginCategoryPage category={PluginCategoryEnum.agent} />
+      return <PluginCategoryPage category={PluginCategoryEnum.agent} toolbarAction={pluginCategoryToolbarAction} />
     case 'extension':
-      return <PluginCategoryPage category={PluginCategoryEnum.extension} />
+      return <PluginCategoryPage category={PluginCategoryEnum.extension} toolbarAction={pluginCategoryToolbarAction} />
     default:
       return null
   }

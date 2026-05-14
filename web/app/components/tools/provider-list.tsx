@@ -3,7 +3,6 @@ import type { ToolsContentInset } from './content-inset'
 import type { Collection } from './types'
 import type { Plugin } from '@/app/components/plugins/types'
 import type { ToolCategory } from '@/app/components/tools/integration-routes'
-import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { parseAsStringLiteral, useQueryState } from 'nuqs'
@@ -11,13 +10,13 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Input from '@/app/components/base/input'
 import TabSliderNew from '@/app/components/base/tab-slider-new'
+import UpdateSettingPopover from '@/app/components/header/account-setting/update-setting-popover'
 import Card from '@/app/components/plugins/card'
 import CardMoreInfo from '@/app/components/plugins/card/card-more-info'
 import { useTags } from '@/app/components/plugins/hooks'
 import Empty from '@/app/components/plugins/marketplace/empty'
 import PluginDetailPanel from '@/app/components/plugins/plugin-detail-panel'
 import useReferenceSetting from '@/app/components/plugins/plugin-page/use-reference-setting'
-import ReferenceSettingModal from '@/app/components/plugins/reference-setting-modal'
 import { TOOL_CATEGORY_VALUES } from '@/app/components/tools/integration-routes'
 import LabelFilter from '@/app/components/tools/labels/filter'
 import CustomCreateCard from '@/app/components/tools/provider/custom-create-card'
@@ -79,7 +78,6 @@ const ProviderList = ({
     { value: 'mcp', text: 'MCP' },
   ]
   const [tagFilterValue, setTagFilterValue] = useState<string[]>([])
-  const [showPluginSettingModal, setShowPluginSettingModal] = useState(false)
   const handleTagsChange = (value: string[]) => {
     setTagFilterValue(value)
   }
@@ -153,11 +151,11 @@ const ProviderList = ({
       <div className="relative flex h-0 shrink-0 grow overflow-hidden">
         <div
           ref={containerRef}
-          className="relative flex grow flex-col overflow-y-auto bg-background-body"
+          className="relative flex grow flex-col overflow-y-auto bg-components-panel-bg"
         >
           <div
             className={cn(
-              'sticky top-0 z-10 flex flex-wrap items-center justify-start gap-x-2 gap-y-2 bg-background-body pt-2 pb-0',
+              'sticky top-0 z-10 flex flex-wrap items-center justify-start gap-x-2 gap-y-2 bg-components-panel-bg pt-2 pb-0',
               toolListFrameClassName,
               currentProviderId && 'pr-6',
             )}
@@ -191,18 +189,10 @@ const ProviderList = ({
                 />
               </div>
               {showToolsUpdateSetting && (
-                <Button
-                  variant="secondary"
-                  className="h-8 shrink-0 gap-0.5 px-3 system-sm-medium"
-                  onClick={() => setShowPluginSettingModal(true)}
-                >
-                  <span aria-hidden className="i-ri-flashlight-line size-4" />
-                  <span className="px-0.5">{t('modelProvider.updateSetting', { ns: 'common' })}</span>
-                  <span className="flex min-w-4 items-center justify-center rounded-[5px] border border-divider-deep bg-components-badge-bg-dimm px-1 py-0.5 system-2xs-medium-uppercase text-text-tertiary">
-                    {t('autoUpdate.strategy.latest.name', { ns: 'plugin' })}
-                  </span>
-                  <span aria-hidden className="i-ri-arrow-down-s-line size-4" />
-                </Button>
+                <UpdateSettingPopover
+                  referenceSetting={referenceSetting}
+                  onSave={setReferenceSettings}
+                />
               )}
             </div>
           </div>
@@ -222,8 +212,8 @@ const ProviderList = ({
                 >
                   <Card
                     className={cn(
-                      'cursor-pointer border-[1.5px] border-transparent',
-                      currentProviderId === collection.id && 'border-components-option-card-option-selected-border',
+                      'cursor-pointer',
+                      currentProviderId === collection.id && 'border-[1.5px] border-components-option-card-option-selected-border',
                     )}
                     hideCornerMark
                     payload={{
@@ -240,7 +230,11 @@ const ProviderList = ({
                   />
                 </div>
               ))}
-              {!filteredCollectionList.length && activeTab === 'workflow' && <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2"><WorkflowToolEmpty type={getToolType(activeTab)} /></div>}
+              {!filteredCollectionList.length && activeTab === 'workflow' && (
+                <div className="absolute top-1/2 left-1/2 w-full max-w-[1060px] -translate-x-1/2 -translate-y-1/2 px-6">
+                  <WorkflowToolEmpty type={getToolType(activeTab)} />
+                </div>
+              )}
             </div>
           )}
           {!filteredCollectionList.length && activeTab === 'builtin' && (
@@ -274,13 +268,6 @@ const ProviderList = ({
         onUpdate={() => invalidateInstalledPluginList()}
         onHide={() => setCurrentProviderId(undefined)}
       />
-      {showPluginSettingModal && referenceSetting && (
-        <ReferenceSettingModal
-          payload={referenceSetting}
-          onHide={() => setShowPluginSettingModal(false)}
-          onSave={setReferenceSettings}
-        />
-      )}
     </>
   )
 }
