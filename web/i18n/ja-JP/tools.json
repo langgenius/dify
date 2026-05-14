@@ -27,6 +27,7 @@
   "contribute.viewGuide": "ガイドを見る",
   "copyToolName": "名前をコピー",
   "createCustomTool": "カスタムツールを作成する",
+  "createSwaggerAPIAsTool": "Create a Swagger API as Tool",
   "createTool.authHeaderPrefix.title": "認証タイプ",
   "createTool.authHeaderPrefix.types.basic": "ベーシック",
   "createTool.authHeaderPrefix.types.bearer": "ベアラー",
@@ -194,6 +195,7 @@
   "setBuiltInTools.setting": "設定",
   "setBuiltInTools.string": "文字列",
   "setBuiltInTools.toolDescription": "ツールの説明",
+  "swaggerAPIAsToolTip": "Learn more about Swagger API as Tool",
   "test.parameters": "パラメーター",
   "test.parametersValue": "パラメーター＆値",
   "test.testResult": "テスト結果",
@@ -209,5 +211,12 @@
   "toolRemoved": "ツールが削除されました",
   "type.builtIn": "ツール",
   "type.custom": "カスタム",
-  "type.workflow": "ワークフロー"
+  "type.workflow": "ワークフロー",
+  "workflowToolEmpty.description": "ワークフローをツールとして使うには、まず Studio から公開してください。公開後ここに表示され、任意のアプリに追加できます。",
+  "workflowToolEmpty.goToStudio": "Studio へ移動",
+  "workflowToolEmpty.learnMore": "ヘルプが必要ですか？ワークフローをツールとして公開する方法を見る →",
+  "workflowToolEmpty.step1": "Studio でワークフローを作成する",
+  "workflowToolEmpty.step2": "公開メニューで「Workflow as Tool」をクリックし、ツールとして利用可能にする",
+  "workflowToolEmpty.step3": "ここに戻って管理し、再利用する",
+  "workflowToolEmpty.title": "ツールとして公開されたワークフローはまだありません"
 }
