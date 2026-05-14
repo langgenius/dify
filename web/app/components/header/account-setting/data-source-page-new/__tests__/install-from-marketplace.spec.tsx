@@ -47,8 +47,8 @@ vi.mock('@/app/components/plugins/marketplace/list', () => ({
 }))
 
 vi.mock('@/app/components/plugins/provider-card', () => ({
-  default: ({ payload }: { payload: Plugin }) => (
-    <div data-testid={`mock-provider-card-${payload.plugin_id}`}>
+  default: ({ className, payload }: { className?: string, payload: Plugin }) => (
+    <div data-testid={`mock-provider-card-${payload.plugin_id}`} className={className}>
       {payload.name}
     </div>
   ),
@@ -116,7 +116,8 @@ describe('InstallFromMarketplace Component', () => {
       expect(screen.getByText('common.modelProvider.discoverMore')).toBeInTheDocument()
       expect(screen.getByTestId('mock-link')).toHaveAttribute('href', 'https://marketplace.url?theme=light')
       expect(screen.getByTestId('mock-list')).toBeInTheDocument()
-      expect(screen.getByTestId('mock-provider-card-plugin-1')).toBeInTheDocument()
+      expect(screen.getByTestId('mock-list')).toHaveClass('grid', 'grid-cols-3', 'gap-2')
+      expect(screen.getByTestId('mock-provider-card-plugin-1')).toHaveClass('h-[146px]')
       expect(screen.queryByTestId('mock-provider-card-bundle-1')).not.toBeInTheDocument()
       expect(screen.queryByRole('status')).not.toBeInTheDocument()
     })

@@ -70,7 +70,7 @@ describe('Configure Component', () => {
         credential_schema: [mockFormSchema],
       }
       render(<Configure item={itemWithApiKey} pluginPayload={mockPluginPayload} />)
-      const trigger = screen.getByRole('button', { name: /dataSource.configure/i })
+      const trigger = screen.getByRole('button', { name: /dataSource.connect/i })
 
       // Assert: Initially closed (button from content should not be present)
       expect(screen.queryByTestId('add-api-key')).not.toBeInTheDocument()
@@ -97,7 +97,7 @@ describe('Configure Component', () => {
 
       // Act
       render(<Configure item={itemWithApiKey} pluginPayload={mockPluginPayload} />)
-      fireEvent.click(screen.getByRole('button', { name: /dataSource.configure/i }))
+      fireEvent.click(screen.getByRole('button', { name: /dataSource.connect/i }))
 
       // Assert
       expect(screen.getByTestId('add-api-key')).toBeInTheDocument()
@@ -115,7 +115,7 @@ describe('Configure Component', () => {
 
       // Act
       render(<Configure item={itemWithOAuth} pluginPayload={mockPluginPayload} />)
-      fireEvent.click(screen.getByRole('button', { name: /dataSource.configure/i }))
+      fireEvent.click(screen.getByRole('button', { name: /dataSource.connect/i }))
 
       // Assert
       expect(screen.getByTestId('add-oauth')).toBeInTheDocument()
@@ -134,7 +134,7 @@ describe('Configure Component', () => {
 
       // Act
       render(<Configure item={itemWithBoth} pluginPayload={mockPluginPayload} />)
-      fireEvent.click(screen.getByRole('button', { name: /dataSource.configure/i }))
+      fireEvent.click(screen.getByRole('button', { name: /dataSource.connect/i }))
 
       // Assert
       expect(screen.getByTestId('add-api-key')).toBeInTheDocument()
@@ -153,7 +153,7 @@ describe('Configure Component', () => {
       render(<Configure item={itemWithApiKey} pluginPayload={mockPluginPayload} onUpdate={mockOnUpdate} />)
 
       // Act: Open and click update
-      fireEvent.click(screen.getByRole('button', { name: /dataSource.configure/i }))
+      fireEvent.click(screen.getByRole('button', { name: /dataSource.connect/i }))
       fireEvent.click(screen.getByTestId('add-api-key'))
 
       // Assert
@@ -173,11 +173,11 @@ describe('Configure Component', () => {
       render(<Configure item={itemWithBoth} pluginPayload={mockPluginPayload} />)
 
       // Act & Assert
-      fireEvent.click(screen.getByRole('button', { name: /dataSource.configure/i }))
+      fireEvent.click(screen.getByRole('button', { name: /dataSource.connect/i }))
       fireEvent.click(screen.getByTestId('add-api-key'))
       expect(screen.queryByTestId('add-api-key')).not.toBeInTheDocument()
 
-      fireEvent.click(screen.getByRole('button', { name: /dataSource.configure/i }))
+      fireEvent.click(screen.getByRole('button', { name: /dataSource.connect/i }))
       fireEvent.click(screen.getByTestId('add-oauth'))
       expect(screen.queryByTestId('add-oauth')).not.toBeInTheDocument()
     })
@@ -196,7 +196,7 @@ describe('Configure Component', () => {
 
       // Act: Open the configuration menu
       render(<Configure item={itemWithBoth} pluginPayload={mockPluginPayload} disabled={true} />)
-      fireEvent.click(screen.getByRole('button', { name: /dataSource.configure/i }))
+      fireEvent.click(screen.getByRole('button', { name: /dataSource.connect/i }))
 
       // Assert
       expect(screen.getByTestId('add-api-key')).toBeDisabled()
@@ -206,7 +206,7 @@ describe('Configure Component', () => {
     it('should handle edge cases for missing, empty, or partial item data', () => {
       // Act & Assert (Missing schemas)
       const { rerender } = render(<Configure item={mockItemBase} pluginPayload={mockPluginPayload} />)
-      fireEvent.click(screen.getByRole('button', { name: /dataSource.configure/i }))
+      fireEvent.click(screen.getByRole('button', { name: /dataSource.connect/i }))
       expect(screen.queryByTestId('add-api-key')).not.toBeInTheDocument()
       expect(screen.queryByTestId('add-oauth')).not.toBeInTheDocument()
 
@@ -256,7 +256,7 @@ describe('Configure Component', () => {
       } as unknown as DataSourceAuth
 
       render(<Configure item={itemWithGlitchedSchema} pluginPayload={mockPluginPayload} />)
-      fireEvent.click(screen.getByRole('button', { name: /dataSource.configure/i }))
+      fireEvent.click(screen.getByRole('button', { name: /dataSource.connect/i }))
 
       await waitFor(() => {
         expect(screen.getByTestId('add-oauth')).toBeInTheDocument()

@@ -25,6 +25,7 @@ type Props = {
   sideOffset?: number
   alignOffset?: number
   popupClassName?: string
+  triggerSize?: 'm' | 'xs'
 }
 
 const OperationDropdown: FC<Props> = ({
@@ -37,6 +38,7 @@ const OperationDropdown: FC<Props> = ({
   sideOffset = 4,
   alignOffset = 0,
   popupClassName,
+  triggerSize = 'm',
 }) => {
   const { t } = useTranslation()
   const [open, setOpen] = React.useState(false)
@@ -48,7 +50,7 @@ const OperationDropdown: FC<Props> = ({
   return (
     <DropdownMenu open={open} onOpenChange={setOpen}>
       <DropdownMenuTrigger
-        className={cn('action-btn action-btn-m', open && 'bg-state-base-hover')}
+        className={cn('action-btn', triggerSize === 'xs' ? 'action-btn-xs' : 'action-btn-m', open && 'bg-state-base-hover')}
       >
         <span className="i-ri-more-fill h-4 w-4" />
       </DropdownMenuTrigger>

@@ -104,6 +104,7 @@ const Action: FC<Props> = ({
       const res = await uninstallPlugin(installationId)
       if (res.success) {
         hideDeleteConfirm()
+        invalidateInstalledPluginList()
         onDelete()
       }
     }
@@ -113,7 +114,7 @@ const Action: FC<Props> = ({
     finally {
       hideDeleting()
     }
-  }, [hideDeleteConfirm, hideDeleting, installationId, onDelete, showDeleting])
+  }, [hideDeleteConfirm, hideDeleting, installationId, invalidateInstalledPluginList, onDelete, showDeleting])
   return (
     <div className="flex space-x-1">
       {/* Only plugin installed from GitHub need to check if it's the new version  */}

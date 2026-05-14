@@ -1,13 +1,21 @@
 import type { UseQueryResult } from '@tanstack/react-query'
 import type { DataSourceAuth } from '../types'
-import { screen } from '@testing-library/react'
+import type { PluginDetail } from '@/app/components/plugins/types'
+import { fireEvent, screen } from '@testing-library/react'
 import { useTheme } from 'next-themes'
 import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
+import { usePluginsWithLatestVersion } from '@/app/components/plugins/hooks'
 import { usePluginAuthAction } from '@/app/components/plugins/plugin-auth'
 import { useRenderI18nObject } from '@/hooks/use-i18n'
-import { useGetDataSourceListAuth, useGetDataSourceOAuthUrl } from '@/service/use-datasource'
+import { useGetDataSourceListAuth, useGetDataSourceOAuthUrl, useInvalidDataSourceListAuth } from '@/service/use-datasource'
+import { useInvalidDataSourceList } from '@/service/use-pipeline'
+import { useInstalledPluginList, useInvalidateInstalledPluginList } from '@/service/use-plugins'
 import { useDataSourceAuthUpdate, useMarketplaceAllPlugins } from '../hooks'
 import DataSourcePage from '../index'
+
+const { mockSetReferenceSettings } = vi.hoisted(() => ({
+  mockSetReferenceSettings: vi.fn(),
+}))
 
 /**
  * DataSourcePage Component Tests
@@ -26,6 +34,24 @@ vi.mock('@/hooks/use-i18n', () => ({
 vi.mock('@/service/use-datasource', () => ({
   useGetDataSourceListAuth: vi.fn(),
   useGetDataSourceOAuthUrl: vi.fn(),
+  useInvalidDataSourceListAuth: vi.fn(),
+}))
+
+vi.mock('@/service/use-pipeline', () => ({
+  useInvalidDataSourceList: vi.fn(),
+}))
+
+vi.mock('@/service/use-plugins', () => ({
+  useInstalledPluginList: vi.fn(),
+  useInvalidateInstalledPluginList: vi.fn(),
+}))
+
+vi.mock('@/app/components/plugins/hooks', () => ({
+  usePluginsWithLatestVersion: vi.fn(),
+}))
+
+vi.mock('../plugin-actions', () => ({
+  default: ({ detail }: { detail: { plugin_id: string } }) => <button data-testid={`plugin-actions-${detail.plugin_id}`}>Actions</button>,
 }))
 
 vi.mock('../hooks', () => ({
@@ -37,6 +63,17 @@ vi.mock('@/app/components/plugins/plugin-auth', () => ({
   usePluginAuthAction: vi.fn(),
   ApiKeyModal: () => <div data-testid="mock-api-key-modal" />,
   AuthCategory: { datasource: 'datasource' },
+}))
+
+vi.mock('@/app/components/plugins/plugin-page/use-reference-setting', () => ({
+  default: () => ({
+    referenceSetting: {
+      permission: {},
+      auto_upgrade: {},
+    },
+    canSetPermissions: true,
+    setReferenceSettings: mockSetReferenceSettings,
+  }),
 }))
 
 describe('DataSourcePage Component', () => {
@@ -64,12 +101,69 @@ describe('DataSourcePage Component', () => {
       credentials_list: [],
     },
   ]
+  const mockPluginDetail = {
+    id: 'installation-id-1',
+    created_at: '',
+    updated_at: '',
+    name: 'Dify Source',
+    plugin_id: 'plugin-1',
+    plugin_unique_identifier: 'unique-1',
+    declaration: {
+      plugin_unique_identifier: 'unique-1',
+      version: '1.0.0',
+      author: 'Dify',
+      icon: 'icon-1',
+      name: 'Dify Source',
+      category: 'datasource',
+      label: { en_US: 'Dify Source', zh_Hans: 'zh_hans_dify_source' },
+      description: { en_US: 'Dify Description', zh_Hans: 'zh_hans_dify_description' },
+      created_at: '',
+      resource: {},
+      plugins: {},
+      verified: false,
+      endpoint: undefined,
+      model: undefined,
+      tags: [],
+      agent_strategy: undefined,
+      trigger: undefined,
+      datasource: {
+        identity: {
+          author: 'Dify',
+          name: 'Dify Source',
+          description: { en_US: 'Dify Description', zh_Hans: 'zh_hans_dify_description' },
+          icon: 'icon-1',
+          label: { en_US: 'Dify Source', zh_Hans: 'zh_hans_dify_source' },
+          tags: [],
+        },
+        credentials_schema: [],
+      },
+      meta: {
+        version: '1.0.0',
+      },
+    },
+    installation_id: 'installation-id-1',
+    tenant_id: 'tenant-id',
+    endpoints_setups: 0,
+    endpoints_active: 0,
+    version: '1.0.0',
+    latest_version: '1.2.0',
+    latest_unique_identifier: 'unique-1-new',
+    source: 'marketplace',
+    status: 'active',
+    deprecated_reason: '',
+    alternative_plugin_id: '',
+  } as unknown as PluginDetail
 
   beforeEach(() => {
     vi.clearAllMocks()
     vi.mocked(useTheme).mockReturnValue({ theme: 'light' } as unknown as ReturnType<typeof useTheme>)
     vi.mocked(useRenderI18nObject).mockReturnValue((obj: Record<string, string>) => obj?.en_US || '')
     vi.mocked(useGetDataSourceOAuthUrl).mockReturnValue({ mutateAsync: vi.fn() } as unknown as ReturnType<typeof useGetDataSourceOAuthUrl>)
+    vi.mocked(useInvalidDataSourceListAuth).mockReturnValue(vi.fn())
+    vi.mocked(useInvalidDataSourceList).mockReturnValue(vi.fn())
+    vi.mocked(useInstalledPluginList).mockReturnValue({ data: { plugins: [], total: 0 } } as unknown as ReturnType<typeof useInstalledPluginList>)
+    vi.mocked(usePluginsWithLatestVersion).mockImplementation((plugins = []) => plugins as PluginDetail[])
+    vi.mocked(useInvalidateInstalledPluginList).mockReturnValue(vi.fn())
     vi.mocked(useDataSourceAuthUpdate).mockReturnValue({ handleAuthUpdate: vi.fn() })
     vi.mocked(useMarketplaceAllPlugins).mockReturnValue({ plugins: [], isLoading: false })
     vi.mocked(usePluginAuthAction).mockReturnValue({
@@ -96,12 +190,19 @@ describe('DataSourcePage Component', () => {
       } as unknown as UseQueryResult<{ result: DataSourceAuth[] }, Error>)
 
       // Act
-      renderWithSystemFeatures(<DataSourcePage />, {
+      renderWithSystemFeatures(<DataSourcePage stickyToolbar />, {
         systemFeatures: { enable_marketplace: false },
       })
 
       // Assert
+      expect(screen.getByPlaceholderText('common.modelProvider.searchModels')).toBeInTheDocument()
+      expect(screen.getByPlaceholderText('common.modelProvider.searchModels').closest('.sticky')).toHaveClass('top-0', 'z-10', '-mx-6', 'bg-components-panel-bg', 'px-6', 'pb-2')
+      expect(screen.getByText('common.modelProvider.updateSetting')).toBeInTheDocument()
+      expect(screen.getAllByText('plugin.autoUpdate.strategy.fixOnly.name')[0]).toBeInTheDocument()
       expect(screen.queryByText('Dify Source')).not.toBeInTheDocument()
+      expect(screen.getByText('common.settings.dataSource')).toBeInTheDocument()
+      expect(screen.getByText('common.dataSourcePage.notSetUp')).toBeInTheDocument()
+      expect(screen.getByText('common.dataSourcePage.installFirst')).toBeInTheDocument()
       expect(screen.queryByText('common.modelProvider.installDataSourceProvider')).not.toBeInTheDocument()
     })
   })
@@ -119,8 +220,47 @@ describe('DataSourcePage Component', () => {
       })
 
       // Assert
+      expect(screen.getByPlaceholderText('common.modelProvider.searchModels')).toBeInTheDocument()
       expect(screen.getByText('Dify Source')).toBeInTheDocument()
       expect(screen.getByText('Partner Source')).toBeInTheDocument()
+    })
+
+    it('should map installed plugin operations onto the data source card header', () => {
+      // Arrange
+      vi.mocked(useGetDataSourceListAuth).mockReturnValue({
+        data: { result: mockProviders },
+      } as unknown as UseQueryResult<{ result: DataSourceAuth[] }, Error>)
+      vi.mocked(useInstalledPluginList).mockReturnValue({
+        data: { plugins: [mockPluginDetail], total: 1 },
+      } as unknown as ReturnType<typeof useInstalledPluginList>)
+
+      // Act
+      renderWithSystemFeatures(<DataSourcePage />, {
+        systemFeatures: { enable_marketplace: false },
+      })
+
+      // Assert
+      expect(screen.getByTestId('plugin-actions-plugin-1')).toBeInTheDocument()
+    })
+
+    it('should filter installed data sources and pass search text to marketplace', () => {
+      // Arrange
+      vi.mocked(useGetDataSourceListAuth).mockReturnValue({
+        data: { result: mockProviders },
+      } as unknown as UseQueryResult<{ result: DataSourceAuth[] }, Error>)
+
+      // Act
+      renderWithSystemFeatures(<DataSourcePage />, {
+        systemFeatures: { enable_marketplace: true },
+      })
+      fireEvent.change(screen.getByPlaceholderText('common.modelProvider.searchModels'), {
+        target: { value: 'partner' },
+      })
+
+      // Assert
+      expect(screen.queryByText('Dify Source')).not.toBeInTheDocument()
+      expect(screen.getByText('Partner Source')).toBeInTheDocument()
+      expect(useMarketplaceAllPlugins).toHaveBeenLastCalledWith(mockProviders, 'partner')
     })
   })
 
