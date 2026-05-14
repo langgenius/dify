@@ -147,6 +147,7 @@ class Tool(ABC):
                     tool_parameter.default = parameter.default
                     tool_parameter.options = parameter.options
                     tool_parameter.llm_description = parameter.llm_description
+                    tool_parameter.show_on = parameter.show_on
                     break
             else:
                 # add new parameter
