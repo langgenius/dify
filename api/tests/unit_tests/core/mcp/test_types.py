@@ -22,6 +22,7 @@ from core.mcp.types import (
     Completion,
     CompletionArgument,
     CompletionContext,
+    CompletionsCapability,
     ErrorData,
     ImageContent,
     Implementation,
@@ -35,6 +36,7 @@ from core.mcp.types import (
     JSONRPCResponse,
     ListToolsRequest,
     ListToolsResult,
+    LoggingCapability,
     OAuthClientInformation,
     OAuthClientMetadata,
     OAuthMetadata,
@@ -43,13 +45,18 @@ from core.mcp.types import (
     ProgressNotification,
     ProgressNotificationParams,
     PromptReference,
+    PromptsCapability,
     RequestParams,
+    ResourcesCapability,
     ResourceTemplateReference,
     Result,
+    RootsCapability,
+    SamplingCapability,
     ServerCapabilities,
     TextContent,
     Tool,
     ToolAnnotations,
+    ToolsCapability,
 )
 
 
@@ -87,9 +94,10 @@ class TestRequestParams:
 
     def test_request_params_meta_extra_fields(self):
         """Test RequestParams.Meta allows extra fields."""
-        meta = RequestParams.Meta(progressToken="token", customField="value")
+        meta = RequestParams.Meta.model_validate({"progressToken": "token", "customField": "value"})
         assert meta.progressToken == "token"
-        assert meta.customField == "value"  # type: ignore
+        assert meta.model_extra is not None
+        assert meta.model_extra["customField"] == "value"
 
     def test_request_params_serialization(self):
         """Test RequestParams serialization with _meta alias."""
@@ -173,27 +181,30 @@ class TestCapabilities:
         """Test ClientCapabilities creation."""
         caps = ClientCapabilities(
             experimental={"feature": {"enabled": True}},
-            sampling={"model_config": {"extra": "allow"}},
-            roots={"listChanged": True},
+            sampling=SamplingCapability(),
+            roots=RootsCapability(listChanged=True),
         )
 
         assert caps.experimental == {"feature": {"enabled": True}}
         assert caps.sampling is not None
-        assert caps.roots.listChanged is True  # type: ignore
+        assert caps.roots is not None
+        assert caps.roots.listChanged is True
 
     def test_server_capabilities(self):
         """Test ServerCapabilities creation."""
         caps = ServerCapabilities(
-            tools={"listChanged": True},
-            resources={"subscribe": True, "listChanged": False},
-            prompts={"listChanged": True},
-            logging={},
-            completions={},
+            tools=ToolsCapability(listChanged=True),
+            resources=ResourcesCapability(subscribe=True, listChanged=False),
+            prompts=PromptsCapability(listChanged=True),
+            logging=LoggingCapability(),
+            completions=CompletionsCapability(),
         )
 
-        assert caps.tools.listChanged is True  # type: ignore
-        assert caps.resources.subscribe is True  # type: ignore
-        assert caps.resources.listChanged is False  # type: ignore
+        assert caps.tools is not None
+        assert caps.tools.listChanged is True
+        assert caps.resources is not None
+        assert caps.resources.subscribe is True
+        assert caps.resources.listChanged is False
 
 
 class TestInitialization:
@@ -251,6 +262,7 @@ class TestTools:
         assert tool.title == "Test Tool"
         assert tool.description == "A tool for testing"
         assert tool.inputSchema["properties"]["input"]["type"] == "string"
+        assert tool.annotations is not None
         assert tool.annotations.idempotentHint is True
 
     def test_call_tool_request(self):
@@ -272,7 +284,9 @@ class TestTools:
         )
 
         assert len(result.content) == 1
-        assert result.content[0].text == "Tool executed successfully"  # type: ignore
+        content = result.content[0]
+        assert isinstance(content, TextContent)
+        assert content.text == "Tool executed successfully"
         assert result.structuredContent == {"status": "success", "data": "test"}
         assert result.isError is False
 
@@ -332,6 +346,7 @@ class TestOAuth:
 
         assert metadata.client_name == "Test Client"
         assert len(metadata.redirect_uris) == 1
+        assert metadata.grant_types is not None
         assert "authorization_code" in metadata.grant_types
 
     def test_oauth_client_information(self):
@@ -377,6 +392,7 @@ class TestOAuth:
 
         assert metadata.authorization_endpoint == "https://auth.example.com/authorize"
         assert "code" in metadata.response_types_supported
+        assert metadata.code_challenge_methods_supported is not None
         assert "S256" in metadata.code_challenge_methods_supported
 
 
@@ -434,7 +450,8 @@ class TestCompletion:
         request = CompleteRequest(params=params)
 
         assert request.method == "completion/complete"
-        assert request.params.ref.name == "test_prompt"  # type: ignore
+        assert isinstance(request.params.ref, PromptReference)
+        assert request.params.ref.name == "test_prompt"
         assert request.params.argument.name == "arg1"
 
     def test_complete_result(self):
@@ -454,11 +471,7 @@ class TestValidation:
     def test_invalid_jsonrpc_version(self):
         """Test invalid JSON-RPC version validation."""
         with pytest.raises(ValidationError):
-            JSONRPCRequest(
-                jsonrpc="1.0",  # Invalid version
-                id=1,
-                method="test",
-            )
+            JSONRPCRequest.model_validate({"jsonrpc": "1.0", "id": 1, "method": "test"})
 
     def test_tool_annotations_validation(self):
         """Test ToolAnnotations with invalid values."""
@@ -471,12 +484,9 @@ class TestValidation:
     def test_extra_fields_allowed(self):
         """Test that extra fields are allowed in models."""
         # Most models should allow extra fields
-        tool = Tool(
-            name="test",
-            inputSchema={},
-            customField="allowed",  # type: ignore
-        )
-        assert tool.customField == "allowed"  # type: ignore
+        tool = Tool.model_validate({"name": "test", "inputSchema": {}, "customField": "allowed"})
+        assert tool.model_extra is not None
+        assert tool.model_extra["customField"] == "allowed"
 
     def test_result_meta_alias(self):
         """Test Result model with _meta alias."""
