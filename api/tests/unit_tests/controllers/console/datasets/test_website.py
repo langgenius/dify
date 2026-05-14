@@ -2,6 +2,7 @@ from unittest.mock import Mock, PropertyMock, patch
 
 import pytest
 from flask import Flask
+from pytest_mock import MockerFixture
 
 from controllers.console import console_ns
 from controllers.console.datasets.error import WebsiteCrawlError
@@ -31,7 +32,7 @@ def app():
 
 
 @pytest.fixture(autouse=True)
-def bypass_auth_and_setup(mocker):
+def bypass_auth_and_setup(mocker: MockerFixture):
     """Bypass setup/login/account decorators."""
     mocker.patch(
         "controllers.console.datasets.website.login_required",
@@ -48,7 +49,7 @@ def bypass_auth_and_setup(mocker):
 
 
 class TestWebsiteCrawlApi:
-    def test_crawl_success(self, app, mocker):
+    def test_crawl_success(self, app, mocker: MockerFixture):
         api = WebsiteCrawlApi()
         method = unwrap(api.post)
 
@@ -85,7 +86,7 @@ class TestWebsiteCrawlApi:
         assert status == 200
         assert result["job_id"] == "job-1"
 
-    def test_crawl_invalid_payload(self, app, mocker):
+    def test_crawl_invalid_payload(self, app, mocker: MockerFixture):
         api = WebsiteCrawlApi()
         method = unwrap(api.post)
 
@@ -113,7 +114,7 @@ class TestWebsiteCrawlApi:
             with pytest.raises(WebsiteCrawlError, match="invalid payload"):
                 method(api)
 
-    def test_crawl_service_error(self, app, mocker):
+    def test_crawl_service_error(self, app, mocker: MockerFixture):
         api = WebsiteCrawlApi()
         method = unwrap(api.post)
 
@@ -150,7 +151,7 @@ class TestWebsiteCrawlApi:
 
 
 class TestWebsiteCrawlStatusApi:
-    def test_get_status_success(self, app, mocker):
+    def test_get_status_success(self, app, mocker: MockerFixture):
         api = WebsiteCrawlStatusApi()
         method = unwrap(api.get)
 
@@ -181,7 +182,7 @@ class TestWebsiteCrawlStatusApi:
         assert status == 200
         assert result["status"] == "completed"
 
-    def test_get_status_invalid_provider(self, app, mocker):
+    def test_get_status_invalid_provider(self, app, mocker: MockerFixture):
         api = WebsiteCrawlStatusApi()
         method = unwrap(api.get)
 
@@ -203,7 +204,7 @@ class TestWebsiteCrawlStatusApi:
             with pytest.raises(WebsiteCrawlError, match="invalid provider"):
                 method(api, job_id)
 
-    def test_get_status_service_error(self, app, mocker):
+    def test_get_status_service_error(self, app, mocker: MockerFixture):
         api = WebsiteCrawlStatusApi()
         method = unwrap(api.get)
 

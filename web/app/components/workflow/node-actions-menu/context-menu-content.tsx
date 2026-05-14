@@ -8,6 +8,7 @@ import {
 import { useTranslation } from 'react-i18next'
 import { ChangeBlockMenuTrigger } from './change-block-menu-trigger'
 import {
+  NODE_ACTIONS_MENU_DELETE_ITEM_CLASS_NAME,
   NODE_ACTIONS_MENU_ITEM_WITH_SHORTCUT_CLASS_NAME,
   NodeActionsMenuAbout,
   NodeActionsMenuItemContent,
@@ -64,8 +65,7 @@ export function NodeActionsContextMenuContent(props: NodeActionsMenuProps) {
       {hasDeleteGroup && (
         <ContextMenuGroup>
           <ContextMenuItem
-            variant="destructive"
-            className={NODE_ACTIONS_MENU_ITEM_WITH_SHORTCUT_CLASS_NAME}
+            className={NODE_ACTIONS_MENU_DELETE_ITEM_CLASS_NAME}
             onClick={model.handleDelete}
           >
             <NodeActionsMenuItemContent shortcut="workflow.delete">

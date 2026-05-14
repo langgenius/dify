@@ -70,9 +70,8 @@ const Popup: FC<PopupProps> = ({
                 {(data.dataSourceType === 'upload_file' || data.dataSourceType === 'file') && !!data.sources?.[0]?.dataset_id
                   ? (
                       <button
-                        data-testid="popup-download-btn"
                         type="button"
-                        className="cursor-pointer truncate text-text-tertiary hover:underline"
+                        className="cursor-pointer truncate border-none bg-transparent p-0 text-left text-text-tertiary hover:underline"
                         onClick={handleDownloadUploadFile}
                         disabled={isDownloading}
                       >

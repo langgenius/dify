@@ -1,16 +1,17 @@
 'use client'
 import type { FC } from 'react'
 import type { InputVarType } from '@/app/components/workflow/types'
-import { ChevronDownIcon } from '@heroicons/react/20/solid'
 import { cn } from '@langgenius/dify-ui/cn'
-import * as React from 'react'
-import { useState } from 'react'
-import Badge from '@/app/components/base/badge'
 import {
-  PortalToFollowElem,
-  PortalToFollowElemContent,
-  PortalToFollowElemTrigger,
-} from '@/app/components/base/portal-to-follow-elem'
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectItemIndicator,
+  SelectItemText,
+  SelectTrigger,
+} from '@langgenius/dify-ui/select'
+import * as React from 'react'
+import Badge from '@/app/components/base/badge'
 import InputVarTypeIcon from '@/app/components/workflow/nodes/_base/components/input-var-type-icon'
 import { inputVarTypeToVarType } from '@/app/components/workflow/nodes/_base/components/variable/utils'
 
@@ -35,21 +36,26 @@ const TypeSelector: FC<Props> = ({
   popupInnerClassName,
   readonly,
 }) => {
-  const [open, setOpen] = useState(false)
   const selectedItem = value ? items.find(item => item.value === value) : undefined
 
   return (
-    <PortalToFollowElem
-      open={open}
-      onOpenChange={setOpen}
-      placement="bottom-start"
-      offset={4}
+    <Select
+      value={selectedItem?.value}
+      readOnly={readonly}
+      onValueChange={(nextValue) => {
+        const selected = items.find(item => item.value === nextValue)
+        if (selected)
+          onSelect(selected)
+      }}
     >
-      <PortalToFollowElemTrigger onClick={() => !readonly && setOpen(v => !v)} className="w-full">
-        <div
-          className={cn(`group flex h-9 items-center justify-between rounded-lg border-0 bg-components-input-bg-normal px-2 text-sm hover:bg-state-base-hover-alt ${readonly ? 'cursor-not-allowed' : 'cursor-pointer'}`)}
-          title={selectedItem?.name}
-        >
+      <SelectTrigger
+        className={cn(
+          'h-9 rounded-lg px-2 text-sm',
+          readonly ? 'cursor-not-allowed' : 'cursor-pointer',
+        )}
+        title={selectedItem?.name}
+      >
+        <div className="flex min-w-0 items-center justify-between">
           <div className="flex items-center">
             <InputVarTypeIcon type={selectedItem?.value as InputVarType} className="size-4 shrink-0 text-text-secondary" />
             <span
@@ -60,37 +66,35 @@ const TypeSelector: FC<Props> = ({
               {selectedItem?.name}
             </span>
           </div>
-          <div className="flex items-center space-x-1">
+          <div className="ml-2 flex shrink-0 items-center space-x-1">
             <Badge uppercase={false}>{inputVarTypeToVarType(selectedItem?.value as InputVarType)}</Badge>
-            <ChevronDownIcon className={cn('h-4 w-4 shrink-0 text-text-quaternary group-hover:text-text-secondary', open && 'text-text-secondary')} />
           </div>
         </div>
-
-      </PortalToFollowElemTrigger>
-      <PortalToFollowElemContent className="z-61">
-        <div
-          className={cn('w-[432px] rounded-md border-[0.5px] border-components-panel-border bg-components-panel-bg px-1 py-1 text-base shadow-lg focus:outline-hidden sm:text-sm', popupInnerClassName)}
-        >
-          {items.map((item: Item) => (
-            <div
-              key={item.value}
-              className="flex h-9 cursor-pointer items-center justify-between rounded-lg px-2 text-text-secondary hover:bg-state-base-hover"
-              title={item.name}
-              onClick={() => {
-                onSelect(item)
-                setOpen(false)
-              }}
+      </SelectTrigger>
+      <SelectContent
+        sideOffset={4}
+        popupClassName={cn('w-[432px] rounded-md px-1 py-1 text-base sm:text-sm', popupInnerClassName)}
+        listClassName="max-h-80 p-0"
+      >
+        {items.map((item: Item) => (
+          <SelectItem
+            key={item.value}
+            value={item.value}
+            className="h-9 justify-between px-2 text-text-secondary"
+            title={item.name}
+          >
+            <SelectItemText
+              className="flex items-center space-x-2 px-0"
             >
-              <div className="flex items-center space-x-2">
-                <InputVarTypeIcon type={item.value} className="size-4 shrink-0 text-text-secondary" />
-                <span title={item.name}>{item.name}</span>
-              </div>
-              <Badge uppercase={false}>{inputVarTypeToVarType(item.value)}</Badge>
-            </div>
-          ))}
-        </div>
-      </PortalToFollowElemContent>
-    </PortalToFollowElem>
+              <InputVarTypeIcon type={item.value} className="size-4 shrink-0 text-text-secondary" />
+              <span title={item.name}>{item.name}</span>
+            </SelectItemText>
+            <Badge uppercase={false}>{inputVarTypeToVarType(item.value)}</Badge>
+            <SelectItemIndicator />
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
   )
 }
 

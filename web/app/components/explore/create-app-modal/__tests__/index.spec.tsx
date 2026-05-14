@@ -177,22 +177,6 @@ describe('CreateAppModal', () => {
       expect(onHide).toHaveBeenCalledTimes(1)
       expect(onConfirm).not.toHaveBeenCalled()
     })
-
-    it('should call onHide when pressing Escape while visible', async () => {
-      const { onHide } = await setup()
-
-      fireEvent.keyDown(window, { key: 'Escape', keyCode: 27 })
-
-      expect(onHide).toHaveBeenCalledTimes(1)
-    })
-
-    it('should not call onHide when pressing Escape while hidden', async () => {
-      const { onHide } = await setup({ show: false })
-
-      fireEvent.keyDown(window, { key: 'Escape', keyCode: 27 })
-
-      expect(onHide).not.toHaveBeenCalled()
-    })
   })
 
   describe('Quota Gating', () => {

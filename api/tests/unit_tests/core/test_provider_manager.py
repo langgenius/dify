@@ -289,7 +289,7 @@ def test_get_default_model_uses_injected_runtime_for_existing_default_record(moc
 
         result = manager.get_default_model("tenant-id", ModelType.LLM)
 
-    mock_factory_cls.assert_called_once_with(model_runtime=manager._model_runtime)
+    mock_factory_cls.assert_called_once_with(runtime=manager._model_runtime)
     assert result is not None
     assert result.model == "gpt-4"
     assert result.provider.provider == "openai"
@@ -316,7 +316,7 @@ def test_get_configurations_uses_injected_runtime_and_adds_provider_aliases(mock
         result = manager.get_configurations("tenant-id")
 
     expected_alias = str(ModelProviderID("openai"))
-    mock_factory_cls.assert_called_once_with(model_runtime=manager._model_runtime)
+    mock_factory_cls.assert_called_once_with(runtime=manager._model_runtime)
     assert result.tenant_id == "tenant-id"
     assert expected_alias in provider_records
     assert expected_alias in provider_model_records
@@ -402,7 +402,7 @@ def test_get_configurations_reuses_cached_result_for_same_tenant(mocker: MockerF
 
     assert first is second
     mock_get_all_providers.assert_called_once_with("tenant-id")
-    mock_factory_cls.assert_called_once_with(model_runtime=manager._model_runtime)
+    mock_factory_cls.assert_called_once_with(runtime=manager._model_runtime)
     mock_provider_configuration.assert_called_once()
     provider_configuration.bind_model_runtime.assert_called_once_with(manager._model_runtime)
 
@@ -570,8 +570,7 @@ def test_get_all_providers_normalizes_provider_names_with_model_provider_id() ->
     session.scalars.return_value = [openai_provider, gemini_provider]
 
     with (
-        patch("core.provider_manager.db", SimpleNamespace(engine=object())),
-        patch("core.provider_manager.Session", return_value=_build_session_context(session)),
+        patch("core.provider_manager.session_factory.create_session", return_value=_build_session_context(session)),
     ):
         result = ProviderManager._get_all_providers("tenant-id")
 
@@ -595,8 +594,7 @@ def test_provider_grouping_helpers_group_records_by_provider_name(method_name: s
     session.scalars.return_value = [openai_primary, openai_secondary, anthropic_record]
 
     with (
-        patch("core.provider_manager.db", SimpleNamespace(engine=object())),
-        patch("core.provider_manager.Session", return_value=_build_session_context(session)),
+        patch("core.provider_manager.session_factory.create_session", return_value=_build_session_context(session)),
     ):
         result = getattr(ProviderManager, method_name)("tenant-id")
 
@@ -611,8 +609,7 @@ def test_get_all_preferred_model_providers_returns_mapping_by_provider_name() ->
     session.scalars.return_value = [openai_preference, anthropic_preference]
 
     with (
-        patch("core.provider_manager.db", SimpleNamespace(engine=object())),
-        patch("core.provider_manager.Session", return_value=_build_session_context(session)),
+        patch("core.provider_manager.session_factory.create_session", return_value=_build_session_context(session)),
     ):
         result = ProviderManager._get_all_preferred_model_providers("tenant-id")
 
@@ -626,13 +623,13 @@ def test_get_all_provider_load_balancing_configs_returns_empty_when_cached_flag_
     with (
         patch("core.provider_manager.redis_client.get", return_value=b"False"),
         patch("core.provider_manager.FeatureService.get_features") as mock_get_features,
-        patch("core.provider_manager.Session") as mock_session_cls,
+        patch("core.provider_manager.session_factory.create_session") as mock_create_session,
     ):
         result = ProviderManager._get_all_provider_load_balancing_configs("tenant-id")
 
     assert result == {}
     mock_get_features.assert_not_called()
-    mock_session_cls.assert_not_called()
+    mock_create_session.assert_not_called()
 
 
 def test_get_all_provider_load_balancing_configs_populates_cache_and_groups_configs() -> None:
@@ -642,14 +639,13 @@ def test_get_all_provider_load_balancing_configs_populates_cache_and_groups_conf
     session.scalars.return_value = [openai_config, anthropic_config]
 
     with (
-        patch("core.provider_manager.db", SimpleNamespace(engine=object())),
         patch("core.provider_manager.redis_client.get", return_value=None),
         patch("core.provider_manager.redis_client.setex") as mock_setex,
         patch(
             "core.provider_manager.FeatureService.get_features",
             return_value=SimpleNamespace(model_load_balancing_enabled=True),
         ),
-        patch("core.provider_manager.Session", return_value=_build_session_context(session)),
+        patch("core.provider_manager.session_factory.create_session", return_value=_build_session_context(session)),
     ):
         result = ProviderManager._get_all_provider_load_balancing_configs("tenant-id")
 

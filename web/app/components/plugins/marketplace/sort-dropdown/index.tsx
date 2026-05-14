@@ -1,5 +1,4 @@
 'use client'
-import { useTranslation } from '#i18n'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -7,6 +6,7 @@ import {
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
 import { useState } from 'react'
+import { useTranslation } from '#i18n'
 import { useMarketplaceSort } from '../atoms'
 
 const SortDropdown = () => {

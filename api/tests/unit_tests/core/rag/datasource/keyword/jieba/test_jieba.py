@@ -67,7 +67,7 @@ def _dataset(dataset_keyword_table=None, keyword_number=None):
 
 
 @pytest.fixture
-def patched_runtime(monkeypatch):
+def patched_runtime(monkeypatch: pytest.MonkeyPatch):
     session = MagicMock()
     db = SimpleNamespace(session=session)
     storage = MagicMock()
@@ -151,7 +151,7 @@ def test_add_texts_without_keywords_list_always_uses_extractor(monkeypatch, patc
     assert set(keyword._update_segment_keywords.call_args.args[2]) == {"from-extractor"}
 
 
-def test_text_exists_handles_missing_and_existing_keyword_table(monkeypatch):
+def test_text_exists_handles_missing_and_existing_keyword_table(monkeypatch: pytest.MonkeyPatch):
     keyword = Jieba(_dataset(_dataset_keyword_table()))
 
     monkeypatch.setattr(keyword, "_get_dataset_keyword_table", MagicMock(return_value=None))
@@ -308,7 +308,7 @@ def test_add_and_delete_ids_from_keyword_table_helpers():
     assert deleted["kw2"] == {"node-2"}
 
 
-def test_retrieve_ids_by_query_ranks_by_keyword_frequency(monkeypatch):
+def test_retrieve_ids_by_query_ranks_by_keyword_frequency(monkeypatch: pytest.MonkeyPatch):
     keyword = Jieba(_dataset(_dataset_keyword_table()))
     handler = MagicMock()
     handler.extract_keywords.return_value = ["kw-a", "kw-b"]
@@ -350,7 +350,7 @@ def test_update_segment_keywords_updates_when_segment_exists(monkeypatch, patche
     patched_runtime.session.commit.assert_not_called()
 
 
-def test_create_segment_keywords_and_update_segment_keywords_index(monkeypatch):
+def test_create_segment_keywords_and_update_segment_keywords_index(monkeypatch: pytest.MonkeyPatch):
     keyword = Jieba(_dataset(_dataset_keyword_table()))
     monkeypatch.setattr(keyword, "_get_dataset_keyword_table", MagicMock(return_value={}))
     monkeypatch.setattr(keyword, "_update_segment_keywords", MagicMock())
@@ -365,7 +365,7 @@ def test_create_segment_keywords_and_update_segment_keywords_index(monkeypatch):
     keyword._save_dataset_keyword_table.assert_called_once()
 
 
-def test_multi_create_segment_keywords_uses_provided_and_extracted_keywords(monkeypatch):
+def test_multi_create_segment_keywords_uses_provided_and_extracted_keywords(monkeypatch: pytest.MonkeyPatch):
     keyword = Jieba(_dataset(_dataset_keyword_table(), keyword_number=2))
     handler = MagicMock()
     handler.extract_keywords.return_value = {"auto"}

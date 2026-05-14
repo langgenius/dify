@@ -57,6 +57,7 @@ const EmojiPickerInner: FC<IEmojiPickerInnerProps> = ({
 
   const [searchedEmojis, setSearchedEmojis] = useState<string[]>([])
   const [isSearching, setIsSearching] = useState(false)
+  const styleColorsLabelId = React.useId()
 
   React.useEffect(() => {
     if (selectedEmoji) {
@@ -101,18 +102,20 @@ const EmojiPickerInner: FC<IEmojiPickerInnerProps> = ({
               <div className="grid h-full w-full grid-cols-8 gap-1">
                 {searchedEmojis.map((emoji: string, index: number) => {
                   return (
-                    <div
+                    <button
+                      type="button"
                       key={`emoji-search-${index}`}
-                      className="inline-flex h-10 w-10 items-center justify-center rounded-lg"
+                      aria-label={emoji}
+                      className="inline-flex h-10 w-10 items-center justify-center rounded-lg border-none bg-transparent p-0"
                       onClick={() => {
                         setSelectedEmoji(emoji)
                         setShowStyleColors(true)
                       }}
                     >
-                      <div className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg p-1 ring-components-input-border-hover ring-offset-1 hover:ring-1" data-testid={`emoji-search-result-${emoji}`}>
+                      <span className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg p-1 ring-components-input-border-hover ring-offset-1 hover:ring-1">
                         <em-emoji id={emoji} />
-                      </div>
-                    </div>
+                      </span>
+                    </button>
                   )
                 })}
               </div>
@@ -127,18 +130,20 @@ const EmojiPickerInner: FC<IEmojiPickerInnerProps> = ({
               <div className="grid h-full w-full grid-cols-8 gap-1">
                 {category.emojis.map((emoji, index: number) => {
                   return (
-                    <div
+                    <button
+                      type="button"
                       key={`emoji-${index}`}
-                      className="inline-flex h-10 w-10 items-center justify-center rounded-lg"
+                      aria-label={emoji}
+                      className="inline-flex h-10 w-10 items-center justify-center rounded-lg border-none bg-transparent p-0"
                       onClick={() => {
                         setSelectedEmoji(emoji)
                         setShowStyleColors(true)
                       }}
                     >
-                      <div className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg p-1 ring-components-input-border-hover ring-offset-1 hover:ring-1" data-testid={`emoji-container-${emoji}`}>
+                      <span className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg p-1 ring-components-input-border-hover ring-offset-1 hover:ring-1">
                         <em-emoji id={emoji} />
-                      </div>
-                    </div>
+                      </span>
+                    </button>
                   )
                 })}
 
@@ -150,21 +155,40 @@ const EmojiPickerInner: FC<IEmojiPickerInnerProps> = ({
 
       {/* Color Select */}
       <div className={cn('flex items-center justify-between p-3 pb-0')}>
-        <p className="mb-2 system-xs-medium-uppercase text-text-primary">Choose Style</p>
+        <p id={styleColorsLabelId} className="mb-2 system-xs-medium-uppercase text-text-primary">Choose Style</p>
         {showStyleColors
-          ? <span className="i-heroicons-chevron-down h-4 w-4 cursor-pointer text-text-quaternary" onClick={() => setShowStyleColors(!showStyleColors)} data-testid="toggle-colors" />
-          : <span className="i-heroicons-chevron-up h-4 w-4 cursor-pointer text-text-quaternary" onClick={() => setShowStyleColors(!showStyleColors)} data-testid="toggle-colors" />}
+          ? (
+              <button
+                type="button"
+                aria-labelledby={styleColorsLabelId}
+                aria-expanded="true"
+                className="i-heroicons-chevron-down h-4 w-4 cursor-pointer border-none bg-transparent p-0 text-text-quaternary"
+                onClick={() => setShowStyleColors(!showStyleColors)}
+              />
+            )
+          : (
+              <button
+                type="button"
+                aria-labelledby={styleColorsLabelId}
+                aria-expanded="false"
+                className="i-heroicons-chevron-up h-4 w-4 cursor-pointer border-none bg-transparent p-0 text-text-quaternary"
+                onClick={() => setShowStyleColors(!showStyleColors)}
+              />
+            )}
       </div>
       {showStyleColors && (
         <div className="grid w-full grid-cols-8 gap-1 px-3">
           {backgroundColors.map((color) => {
             return (
-              <div
+              <button
+                type="button"
                 key={color}
+                aria-label={color}
                 className={
                   cn(
                     'cursor-pointer',
-                    'ring-offset-1 hover:ring-1',
+                    'border-none bg-transparent p-0',
+                    'ring-components-input-border-hover ring-offset-1 hover:ring-1',
                     'inline-flex h-10 w-10 items-center justify-center rounded-lg',
                     color === selectedBackground ? 'ring-1 ring-components-input-border-hover' : '',
                   )
@@ -173,15 +197,15 @@ const EmojiPickerInner: FC<IEmojiPickerInnerProps> = ({
                   setSelectedBackground(color)
                 }}
               >
-                <div
+                <span
                   className={cn(
                     'flex h-8 w-8 items-center justify-center rounded-lg p-1',
                   )}
                   style={{ background: color }}
                 >
                   {selectedEmoji !== '' && <em-emoji id={selectedEmoji} />}
-                </div>
-              </div>
+                </span>
+              </button>
             )
           })}
         </div>

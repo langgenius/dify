@@ -64,6 +64,12 @@ const createUserCallbacks = () => ({
   onCompleted: vi.fn(),
 })
 
+const createWorkflowData = () => ({
+  result: { status: 'running' },
+  tracing: [{ node_id: 'node-1', status: 'running' }],
+  resultText: 'partial result',
+})
+
 describe('useWorkflowRun callbacks helpers', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -77,6 +83,8 @@ describe('useWorkflowRun callbacks helpers', () => {
     const fetchInspectVars = vi.fn()
     const invalidAllLastRun = vi.fn()
     const trackWorkflowRunFailed = vi.fn()
+    const workflowData = createWorkflowData()
+    const getWorkflowRunningData = vi.fn(() => workflowData)
     const userOnWorkflowFinished = vi.fn()
     const userOnError = vi.fn()
     const userOnWorkflowPaused = vi.fn()
@@ -95,6 +103,7 @@ describe('useWorkflowRun callbacks helpers', () => {
       invalidateRunHistory,
       clearAbortController,
       clearListeningState,
+      getWorkflowRunningData,
       trackWorkflowRunFailed,
       handlers,
       callbacks: {
@@ -118,7 +127,8 @@ describe('useWorkflowRun callbacks helpers', () => {
     expect(clearAbortController).toHaveBeenCalled()
     expect(handlers.handleWorkflowFailed).toHaveBeenCalled()
     expect(userOnError).toHaveBeenCalled()
-    expect(trackWorkflowRunFailed).toHaveBeenCalledWith({ error: 'failed', node_type: 'llm' })
+    expect(getWorkflowRunningData).toHaveBeenCalled()
+    expect(trackWorkflowRunFailed).toHaveBeenCalledWith({ error: 'failed', node_type: 'llm' }, workflowData)
 
     callbacks.onTTSChunk?.('message-1', 'audio-chunk')
     expect(getOrCreatePlayer).toHaveBeenCalled()
@@ -149,6 +159,7 @@ describe('useWorkflowRun callbacks helpers', () => {
       invalidateRunHistory: vi.fn(),
       clearAbortController: vi.fn(),
       clearListeningState: vi.fn(),
+      getWorkflowRunningData: vi.fn(() => createWorkflowData()),
       trackWorkflowRunFailed: vi.fn(),
       handlers,
       callbacks: {},
@@ -166,6 +177,7 @@ describe('useWorkflowRun callbacks helpers', () => {
       invalidateRunHistory: vi.fn(),
       clearAbortController: vi.fn(),
       clearListeningState: vi.fn(),
+      getWorkflowRunningData: vi.fn(() => createWorkflowData()),
       trackWorkflowRunFailed: vi.fn(),
       handlers,
       callbacks: {},
@@ -188,6 +200,10 @@ describe('useWorkflowRun callbacks helpers', () => {
     finalCallbacks.onTTSChunk?.('message-2', 'audio-chunk')
     expect(player.playAudioWithAudio).toHaveBeenCalledWith('audio-chunk', true)
     expect(mockResetMsgId).toHaveBeenCalledWith('message-2')
+
+    finalCallbacks.onTTSChunk?.('message-3', '')
+    expect(player.playAudioWithAudio).toHaveBeenCalledTimes(1)
+    expect(mockResetMsgId).toHaveBeenCalledTimes(1)
   })
 
   it('should route base workflow events through handlers, user callbacks, and pause continuation with the same callback object', async () => {
@@ -199,6 +215,8 @@ describe('useWorkflowRun callbacks helpers', () => {
     const fetchInspectVars = vi.fn()
     const invalidAllLastRun = vi.fn()
     const trackWorkflowRunFailed = vi.fn()
+    const workflowData = createWorkflowData()
+    const getWorkflowRunningData = vi.fn(() => workflowData)
     const player = {
       playAudioWithAudio: vi.fn(),
     } as unknown as AudioPlayer
@@ -213,6 +231,7 @@ describe('useWorkflowRun callbacks helpers', () => {
       invalidateRunHistory,
       clearAbortController,
       clearListeningState,
+      getWorkflowRunningData,
       trackWorkflowRunFailed,
       handlers,
       callbacks: userCallbacks,
@@ -297,7 +316,8 @@ describe('useWorkflowRun callbacks helpers', () => {
     expect(clearAbortController).toHaveBeenCalled()
     expect(handlers.handleWorkflowFailed).toHaveBeenCalled()
     expect(userCallbacks.onError).toHaveBeenCalledWith({ error: 'failed', node_type: 'llm' }, '500')
-    expect(trackWorkflowRunFailed).toHaveBeenCalledWith({ error: 'failed', node_type: 'llm' })
+    expect(getWorkflowRunningData).toHaveBeenCalled()
+    expect(trackWorkflowRunFailed).toHaveBeenCalledWith({ error: 'failed', node_type: 'llm' }, workflowData)
     expect(invalidateRunHistory).toHaveBeenCalledWith('/apps/app-1/workflow-runs')
   })
 
@@ -317,6 +337,7 @@ describe('useWorkflowRun callbacks helpers', () => {
       invalidateRunHistory: vi.fn(),
       clearAbortController: vi.fn(),
       clearListeningState: vi.fn(),
+      getWorkflowRunningData: vi.fn(() => createWorkflowData()),
       trackWorkflowRunFailed: vi.fn(),
       handlers,
       callbacks: {},
@@ -340,6 +361,11 @@ describe('useWorkflowRun callbacks helpers', () => {
     const fetchInspectVars = vi.fn()
     const invalidAllLastRun = vi.fn()
     const invalidateRunHistory = vi.fn()
+    const clearAbortController = vi.fn()
+    const clearListeningState = vi.fn()
+    const trackWorkflowRunFailed = vi.fn()
+    const workflowData = createWorkflowData()
+    const getWorkflowRunningData = vi.fn(() => workflowData)
     const setAbortController = vi.fn()
     const player = {
       playAudioWithAudio: vi.fn(),
@@ -355,6 +381,7 @@ describe('useWorkflowRun callbacks helpers', () => {
       invalidateRunHistory: vi.fn(),
       clearAbortController: vi.fn(),
       clearListeningState: vi.fn(),
+      getWorkflowRunningData: vi.fn(() => createWorkflowData()),
       trackWorkflowRunFailed: vi.fn(),
       handlers,
       callbacks: {},
@@ -370,9 +397,10 @@ describe('useWorkflowRun callbacks helpers', () => {
       fetchInspectVars,
       invalidAllLastRun,
       invalidateRunHistory,
-      clearAbortController: vi.fn(),
-      clearListeningState: vi.fn(),
-      trackWorkflowRunFailed: vi.fn(),
+      clearAbortController,
+      clearListeningState,
+      getWorkflowRunningData,
+      trackWorkflowRunFailed,
       handlers,
       callbacks: userCallbacks,
       restCallback: {},
@@ -444,8 +472,12 @@ describe('useWorkflowRun callbacks helpers', () => {
     expect(mockSseGet).toHaveBeenCalledWith('/workflow/run-2/events', {}, finalCallbacks)
     expect(player.playAudioWithAudio).toHaveBeenCalledWith('audio-chunk', true)
     expect(player.playAudioWithAudio).toHaveBeenCalledWith('audio-finished', false)
+    expect(clearAbortController).toHaveBeenCalled()
     expect(handlers.handleWorkflowFailed).toHaveBeenCalled()
+    expect(clearListeningState).toHaveBeenCalled()
     expect(userCallbacks.onError).toHaveBeenCalledWith({ error: 'failed' }, '500')
+    expect(getWorkflowRunningData).toHaveBeenCalled()
+    expect(trackWorkflowRunFailed).toHaveBeenCalledWith({ error: 'failed' }, workflowData)
     expect(invalidateRunHistory).toHaveBeenCalledWith('/apps/app-1/workflow-runs')
   })
 })

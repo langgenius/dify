@@ -79,7 +79,7 @@ const ExternalApiSelect: React.FC<ExternalApiSelectProps> = ({ items, value, onS
         <RiArrowDownSLine className={`h-4 w-4 text-text-quaternary transition-transform ${isOpen ? 'text-text-secondary' : ''}`} />
       </div>
       {isOpen && (
-        <div className="absolute z-10 mt-1 w-full rounded-xl border bg-components-panel-bg-blur shadow-lg">
+        <div className="absolute z-10 mt-1 w-full rounded-xl border border-components-panel-border bg-components-panel-bg-blur shadow-lg">
           {items.map(item => (
             <div
               key={item.value}

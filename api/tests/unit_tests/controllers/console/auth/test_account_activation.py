@@ -67,7 +67,7 @@ class TestActivateCheckApi:
         assert response["data"]["email"] == "invitee@example.com"
 
     @patch("controllers.console.auth.activate.RegisterService.get_invitation_with_case_fallback")
-    def test_check_invalid_invitation_token(self, mock_get_invitation, app):
+    def test_check_invalid_invitation_token(self, mock_get_invitation, app: Flask):
         """
         Test checking invalid invitation token.
 
@@ -185,7 +185,7 @@ class TestActivateApi:
         mock_db,
         mock_revoke_token,
         mock_get_invitation,
-        app,
+        app: Flask,
         mock_invitation,
         mock_account,
     ):
@@ -227,7 +227,7 @@ class TestActivateApi:
         mock_db.session.commit.assert_called_once()
 
     @patch("controllers.console.auth.activate.RegisterService.get_invitation_with_case_fallback")
-    def test_activation_with_invalid_token(self, mock_get_invitation, app):
+    def test_activation_with_invalid_token(self, mock_get_invitation, app: Flask):
         """
         Test account activation with invalid token.
 
@@ -263,7 +263,7 @@ class TestActivateApi:
         mock_db,
         mock_revoke_token,
         mock_get_invitation,
-        app,
+        app: Flask,
         mock_invitation,
         mock_account,
     ):
@@ -312,7 +312,7 @@ class TestActivateApi:
         mock_db,
         mock_revoke_token,
         mock_get_invitation,
-        app,
+        app: Flask,
         mock_invitation,
         mock_account,
         language,
@@ -358,7 +358,7 @@ class TestActivateApi:
         mock_db,
         mock_revoke_token,
         mock_get_invitation,
-        app,
+        app: Flask,
         mock_invitation,
     ):
         """
@@ -398,7 +398,7 @@ class TestActivateApi:
         mock_db,
         mock_revoke_token,
         mock_get_invitation,
-        app,
+        app: Flask,
         mock_invitation,
     ):
         """
@@ -438,7 +438,7 @@ class TestActivateApi:
         mock_db,
         mock_revoke_token,
         mock_get_invitation,
-        app,
+        app: Flask,
         mock_invitation,
         mock_account,
     ):

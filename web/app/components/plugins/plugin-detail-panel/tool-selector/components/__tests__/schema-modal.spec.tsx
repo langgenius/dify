@@ -2,14 +2,11 @@ import { fireEvent, render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import SchemaModal from '../schema-modal'
 
-vi.mock('@/app/components/base/modal', () => ({
-  default: ({
-    children,
-    isShow,
-  }: {
-    children: React.ReactNode
-    isShow: boolean
-  }) => isShow ? <div data-testid="modal">{children}</div> : null,
+vi.mock('@langgenius/dify-ui/dialog', () => ({
+  Dialog: ({ children, open }: { children: React.ReactNode, open?: boolean }) =>
+    open === false ? null : <>{children}</>,
+  DialogContent: ({ children }: { children: React.ReactNode }) => <div data-testid="modal">{children}</div>,
+  DialogTitle: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
 }))
 
 vi.mock('@/app/components/workflow/nodes/llm/components/json-schema-config-modal/visual-editor', () => ({
@@ -53,8 +50,7 @@ describe('SchemaModal', () => {
     expect(screen.getByText('workflow.nodes.agent.parameterSchema')).toBeInTheDocument()
     expect(screen.getByTestId('visual-editor')).toHaveTextContent('response')
 
-    const closeButton = document.body.querySelector('div.absolute.right-5.top-5')
-    fireEvent.click(closeButton!)
+    fireEvent.click(screen.getByRole('button', { name: 'common.operation.close' }))
 
     expect(onClose).toHaveBeenCalled()
   })

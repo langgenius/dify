@@ -67,9 +67,10 @@ const ConfigSelect: FC<IConfigSelectProps> = ({
                   onFocus={() => setFocusID(index)}
                   onBlur={() => setFocusID(null)}
                 />
-                <div
-                  role="button"
-                  className="absolute top-1/2 right-1.5 block translate-y-[-50%] cursor-pointer rounded-md p-1 text-text-tertiary hover:bg-state-destructive-hover hover:text-text-destructive"
+                <button
+                  type="button"
+                  aria-label={t('operation.delete', { ns: 'common' })}
+                  className="absolute top-1/2 right-1.5 block translate-y-[-50%] cursor-pointer rounded-md border-none bg-transparent p-1 text-text-tertiary hover:bg-state-destructive-hover hover:text-text-destructive focus-visible:ring-1 focus-visible:ring-state-destructive-border focus-visible:outline-hidden"
                   onClick={() => {
                     onChange(options.filter((_, i) => index !== i))
                     setDeletingID(null)
@@ -77,8 +78,8 @@ const ConfigSelect: FC<IConfigSelectProps> = ({
                   onMouseEnter={() => setDeletingID(index)}
                   onMouseLeave={() => setDeletingID(null)}
                 >
-                  <RiDeleteBinLine className="h-3.5 w-3.5" />
-                </div>
+                  <RiDeleteBinLine className="h-3.5 w-3.5" aria-hidden="true" />
+                </button>
               </div>
             ))}
           </ReactSortable>

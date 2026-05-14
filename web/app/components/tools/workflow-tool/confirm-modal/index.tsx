@@ -21,9 +21,14 @@ const ConfirmModal = ({ show, onConfirm, onClose }: ConfirmModalProps) => {
         backdropProps={{ forceRender: true }}
         className={cn('w-[600px]! max-w-[600px]! p-8!')}
       >
-        <div className="absolute top-4 right-4 cursor-pointer p-2" onClick={onClose}>
-          <span className="i-ri-close-line h-4 w-4 text-text-tertiary" />
-        </div>
+        <button
+          type="button"
+          aria-label={t('operation.close', { ns: 'common' })}
+          className="absolute top-4 right-4 cursor-pointer border-none bg-transparent p-2"
+          onClick={onClose}
+        >
+          <span aria-hidden className="i-ri-close-line h-4 w-4 text-text-tertiary" />
+        </button>
         <div className="h-12 w-12 rounded-xl border-[0.5px] border-divider-regular bg-background-section p-3 shadow-xl">
           <AlertTriangle className="h-6 w-6 text-[rgb(247,144,9)]" />
         </div>
