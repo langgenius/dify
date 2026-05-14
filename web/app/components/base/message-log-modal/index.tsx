@@ -3,7 +3,8 @@ import type { IChatItem } from '@/app/components/base/chat/chat/type'
 import { cn } from '@langgenius/dify-ui/cn'
 import { RiCloseLine } from '@remixicon/react'
 import { useClickAway } from 'ahooks'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useId, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
 import { useStore } from '@/app/components/app/store'
 import Run from '@/app/components/workflow/run'
@@ -23,6 +24,7 @@ const MessageLogModal: FC<MessageLogModalProps> = ({
   onCancel,
 }) => {
   const { t } = useTranslation()
+  const titleId = useId()
   const ref = useRef(null)
   const [mounted, setMounted] = useState(false)
   const appDetail = useStore(state => state.appDetail)
@@ -39,17 +41,23 @@ const MessageLogModal: FC<MessageLogModalProps> = ({
   if (!currentLogItem || !currentLogItem.workflow_run_id)
     return null
 
-  return (
+  const floatingWidth = 480
+  const content = (
     <div
-      className={cn('relative z-10 flex flex-col rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg pt-3 shadow-xl')}
+      role="dialog"
+      aria-labelledby={titleId}
+      className={cn(
+        fixedWidth ? 'relative z-10' : 'fixed z-50',
+        'flex flex-col rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg pt-3 shadow-xl',
+      )}
       style={{
-        width: fixedWidth ? width : 480,
+        width: fixedWidth ? width : floatingWidth,
         ...(!fixedWidth
           ? {
-              position: 'fixed',
               top: 56 + 8,
-              left: 8 + (width - 480),
+              left: Math.max(8, 8 + (width - floatingWidth)),
               bottom: 16,
+              maxWidth: 'calc(100vw - 16px)',
             }
           : {
               marginRight: 8,
@@ -57,7 +65,7 @@ const MessageLogModal: FC<MessageLogModalProps> = ({
       }}
       ref={ref}
     >
-      <h1 className="shrink-0 px-4 py-1 system-xl-semibold text-text-primary">{t('runDetail.title', { ns: 'appLog' })}</h1>
+      <h1 id={titleId} className="shrink-0 px-4 py-1 system-xl-semibold text-text-primary">{t('runDetail.title', { ns: 'appLog' })}</h1>
       <button
         type="button"
         aria-label={t('operation.close', { ns: 'common' })}
@@ -74,6 +82,11 @@ const MessageLogModal: FC<MessageLogModalProps> = ({
       />
     </div>
   )
+
+  if (!fixedWidth && typeof document !== 'undefined')
+    return createPortal(content, document.body)
+
+  return content
 }
 
 export default MessageLogModal

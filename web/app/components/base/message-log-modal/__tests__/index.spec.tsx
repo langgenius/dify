@@ -76,14 +76,19 @@ describe('MessageLogModal', () => {
 
     it('sets fixed style when fixedWidth is false (floating)', () => {
       const { container } = render(<MessageLogModal width={1000} onCancel={onCancel} currentLogItem={mockLog} fixedWidth={false} />)
-      const modal = container.firstChild as HTMLElement
-      expect(modal.style.position).toBe('fixed')
+      const modal = screen.getByRole('dialog')
+      expect(container).not.toContainElement(modal)
+      expect(document.body).toContainElement(modal)
+      expect(modal).toHaveClass('fixed', 'z-50')
       expect(modal.style.width).toBe('480px')
+      expect(modal.style.left).toBe('528px')
     })
 
     it('sets fixed width when fixedWidth is true', () => {
       const { container } = render(<MessageLogModal width={1000} onCancel={onCancel} currentLogItem={mockLog} fixedWidth={true} />)
-      const modal = container.firstChild as HTMLElement
+      const modal = screen.getByRole('dialog')
+      expect(container).toContainElement(modal)
+      expect(modal).toHaveClass('relative', 'z-10')
       expect(modal.style.width).toBe('1000px')
     })
   })
