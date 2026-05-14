@@ -1,6 +1,6 @@
 'use client'
 
-import type { RuntimeInstanceRow } from '@dify/contracts/enterprise/types.gen'
+import type { EnvironmentDeployment } from '@dify/contracts/enterprise/types.gen'
 import { useTranslation } from 'react-i18next'
 import { releaseLabel } from '../../release'
 import {
@@ -9,7 +9,7 @@ import {
 } from '../../runtime-status'
 
 export function DeploymentStatusSummary({ row }: {
-  row: RuntimeInstanceRow
+  row: EnvironmentDeployment
 }) {
   const { t } = useTranslation('deployments')
   if (isUndeployedDeploymentRow(row)) {

@@ -1,11 +1,10 @@
 'use client'
 
 import type {
-  AccessPolicyDetail,
   AccessSubject,
-  AccessSubjectDisplay,
-  ConsoleEnvironment,
+  AppDeployEnvironment,
   EnvironmentAccessRow,
+  Subject,
 } from '@dify/contracts/enterprise/types.gen'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
@@ -16,7 +15,7 @@ import {
 } from '@langgenius/dify-ui/dropdown-menu'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { toast } from '@langgenius/dify-ui/toast'
-import { skipToken, useMutation, useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery } from '@tanstack/react-query'
 import { useDebounce } from 'ahooks'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -106,25 +105,24 @@ function PermissionPicker({ value, disabled, onChange }: {
   )
 }
 
-type SelectableAccessSubject = AccessSubjectDisplay & {
+type SelectableAccessSubject = {
   id: string
   subjectType: string
+  name?: string
+  memberCount?: number
 }
 
-type AccessPolicyOptionWithSubjects = NonNullable<AccessPolicyDetail['options']>[number] & {
-  groups?: AccessSubjectDisplay[]
-  members?: AccessSubjectDisplay[]
-}
-
-function normalizeSubject(subject: AccessSubjectDisplay): SelectableAccessSubject | undefined {
-  const id = subject.id
-  if (!id || !subject.subjectType)
+function normalizeSubject(subject: Subject): SelectableAccessSubject | undefined {
+  const id = subject.subjectId || subject.accountData?.id || subject.groupData?.id
+  const subjectType = subject.subjectType || (subject.groupData ? 'group' : 'account')
+  if (!id || !subjectType)
     return undefined
 
   return {
-    ...subject,
     id,
-    subjectType: subject.subjectType,
+    subjectType,
+    name: subject.accountData?.name || subject.accountData?.email || subject.groupData?.name || id,
+    memberCount: subject.groupData?.groupSize,
   }
 }
 
@@ -141,20 +139,10 @@ function policySubjects(subjects: SelectableAccessSubject[]): AccessSubject[] {
   }))
 }
 
-function selectedSubjectsFromPolicy(policy?: AccessPolicyDetail) {
-  if (policy?.subjects?.length) {
-    return policy.subjects
-      .map(normalizeSubject)
-      .filter((subject): subject is SelectableAccessSubject => Boolean(subject))
-  }
-  const selectedOption = (
-    policy?.options?.find(option => option.selected)
-    ?? policy?.options?.find(option => option.mode === policy?.accessMode)
-  ) as AccessPolicyOptionWithSubjects | undefined
-  return [
-    ...(selectedOption?.groups ?? []),
-    ...(selectedOption?.members ?? []),
-  ].map(normalizeSubject).filter((subject): subject is SelectableAccessSubject => Boolean(subject))
+function selectedSubjectsFromPolicy(policy?: EnvironmentAccessRow) {
+  return policy?.subjects
+    ?.map(normalizeSubject)
+    .filter((subject): subject is SelectableAccessSubject => Boolean(subject)) ?? []
 }
 
 function SubjectPill({ subject, disabled, onRemove }: {
@@ -189,14 +177,12 @@ function SubjectPill({ subject, disabled, onRemove }: {
 }
 
 type SubjectPickerProps = {
-  appInstanceId: string
   disabled?: boolean
   selectedSubjects: SelectableAccessSubject[]
   onChange: (subjects: SelectableAccessSubject[]) => void
 }
 
 function SubjectPicker({
-  appInstanceId,
   disabled,
   selectedSubjects,
   onChange,
@@ -206,17 +192,17 @@ function SubjectPicker({
   const [keyword, setKeyword] = useState('')
   const debouncedKeyword = useDebounce(keyword, { wait: 300 })
   const selectedKeys = new Set(selectedSubjects.map(subjectKey))
-  const subjectsQuery = useQuery(consoleQuery.enterprise.appDeploy.searchAccessSubjects.queryOptions({
+  const subjectsQuery = useQuery(consoleQuery.enterprise.accessSubjectService.listAccessSubjects.queryOptions({
     input: {
-      params: { appInstanceId },
       query: {
         keyword: debouncedKeyword.trim() || undefined,
-        subjectTypes: ['account', 'group'],
+        pageNumber: 1,
+        resultsPerPage: 50,
       },
     },
     enabled: open,
   }))
-  const subjects = subjectsQuery.data?.data
+  const subjects = subjectsQuery.data?.subjects
     ?.map(normalizeSubject)
     .filter((subject): subject is SelectableAccessSubject => Boolean(subject)) ?? []
 
@@ -312,7 +298,7 @@ function SubjectPicker({
 
 type EnvironmentPermissionRowProps = {
   appInstanceId: string
-  environment: ConsoleEnvironment
+  environment: AppDeployEnvironment
   summaryPolicy?: EnvironmentAccessRow
 }
 
@@ -323,27 +309,16 @@ export function EnvironmentPermissionRow({
 }: EnvironmentPermissionRowProps) {
   const { t } = useTranslation('deployments')
   const environmentId = environment.id
-  const setEnvironmentAccessPolicy = useMutation(consoleQuery.enterprise.appDeploy.updateEnvironmentAccessPolicy.mutationOptions())
-  const policyQuery = useQuery(consoleQuery.enterprise.appDeploy.getEnvironmentAccessPolicy.queryOptions({
-    input: environmentId
-      ? {
-          params: {
-            appInstanceId,
-            environmentId,
-          },
-        }
-      : skipToken,
-  }))
-  const detailPolicy = policyQuery.data?.policy
-  const policyKind = accessModeToPermissionKey(detailPolicy?.accessMode ?? summaryPolicy?.accessMode)
-  const policySubjectFingerprint = detailPolicy?.subjects
-    ?.map(subject => `${subject.subjectType ?? ''}:${subject.id ?? ''}`)
+  const setEnvironmentAccessPolicy = useMutation(consoleQuery.enterprise.appDeployAccessService.updateEnvironmentAccessPolicy.mutationOptions())
+  const policyKind = accessModeToPermissionKey(summaryPolicy?.accessMode)
+  const policySubjectFingerprint = summaryPolicy?.subjects
+    ?.map(subject => `${subject.subjectType ?? ''}:${subject.subjectId ?? subject.accountData?.id ?? subject.groupData?.id ?? ''}`)
     .join(',')
   const policyFingerprint = [
-    detailPolicy?.accessMode ?? summaryPolicy?.accessMode ?? '',
+    summaryPolicy?.accessMode ?? '',
     policySubjectFingerprint ?? '',
   ].join(':')
-  const policySelectedSubjects = policyKind === 'specific' ? selectedSubjectsFromPolicy(detailPolicy) : []
+  const policySelectedSubjects = policyKind === 'specific' ? selectedSubjectsFromPolicy(summaryPolicy) : []
   const [draft, setDraft] = useState<{
     fingerprint?: string
     kind?: AccessPermissionKind
@@ -353,7 +328,7 @@ export function EnvironmentPermissionRow({
   const permissionKind = hasDraft && draft.kind ? draft.kind : policyKind
   const subjects = hasDraft && draft.subjects ? draft.subjects : policySelectedSubjects
   const isSaving = setEnvironmentAccessPolicy.isPending
-  const controlsDisabled = isSaving || policyQuery.isLoading || policyQuery.isError
+  const controlsDisabled = isSaving
 
   const persistPolicy = (nextKind: AccessPermissionKind, nextSubjects: SelectableAccessSubject[]) => {
     if (!environmentId)
@@ -368,6 +343,8 @@ export function EnvironmentPermissionRow({
           environmentId,
         },
         body: {
+          appInstanceId,
+          environmentId,
           accessMode: permissionKeyToAccessMode(nextKind),
           subjects: nextKind === 'specific' ? policySubjects(nextSubjects) : [],
         },
@@ -408,31 +385,21 @@ export function EnvironmentPermissionRow({
   }
 
   return (
-    <div className="flex flex-col gap-1.5">
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
-        <span className="min-w-35 system-xs-regular text-text-tertiary">
-          {environmentName(environment)}
-        </span>
-        {policyQuery.isLoading
-          ? <SkeletonRectangle className="my-0 h-8 w-55 animate-pulse rounded-lg" />
-          : (
-              <PermissionPicker
-                value={permissionKind}
-                disabled={controlsDisabled}
-                onChange={handlePermissionChange}
-              />
-            )}
+    <div className="grid gap-x-3 gap-y-2 sm:grid-cols-[minmax(96px,112px)_minmax(0,1fr)]">
+      <span className="pt-1.5 system-xs-regular text-text-tertiary">
+        {environmentName(environment)}
+      </span>
+      <div className="min-w-0">
+        <PermissionPicker
+          value={permissionKind}
+          disabled={controlsDisabled}
+          onChange={handlePermissionChange}
+        />
       </div>
-      {policyQuery.isError && (
-        <div className="system-xs-regular text-text-destructive">
-          {t('common.loadFailed')}
-        </div>
-      )}
       {permissionKind === 'specific' && (
-        <div className="flex flex-col gap-2 pl-0 sm:pl-38">
+        <div className="flex min-w-0 flex-col gap-2 sm:col-start-2">
           <div className="flex flex-wrap items-center gap-2">
             <SubjectPicker
-              appInstanceId={appInstanceId}
               selectedSubjects={subjects}
               disabled={controlsDisabled}
               onChange={handleSubjectsChange}

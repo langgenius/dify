@@ -62,7 +62,7 @@ function SettingsSelectedIcon({ className }: TailwindNavIconProps) {
 const TABS: TabDef[] = [
   { key: 'overview', icon: OverviewIcon, selectedIcon: OverviewSelectedIcon },
   { key: 'deploy', icon: DeployIcon, selectedIcon: DeploySelectedIcon },
-  { key: 'versions', icon: VersionsIcon, selectedIcon: VersionsSelectedIcon },
+  { key: 'releases', icon: VersionsIcon, selectedIcon: VersionsSelectedIcon },
   { key: 'settings', icon: SettingsIcon, selectedIcon: SettingsSelectedIcon },
 ]
 
@@ -102,12 +102,12 @@ function DeploymentSidebarInstanceInfo({ appInstanceId, expand }: {
 }) {
   const { t } = useTranslation('deployments')
   const { t: tCommon } = useTranslation()
-  const overviewQuery = useQuery(consoleQuery.enterprise.appDeploy.getAppInstanceOverview.queryOptions({
+  const overviewQuery = useQuery(consoleQuery.enterprise.appInstanceService.getAppInstanceOverview.queryOptions({
     input: {
       params: { appInstanceId },
     },
   }))
-  const app = overviewQuery.data?.instance
+  const app = overviewQuery.data?.overview?.appInstance
   const isLoading = !app?.id && overviewQuery.isLoading
   const isUnavailable = !app?.id || overviewQuery.isError
   const instanceName = app?.name ?? appInstanceId

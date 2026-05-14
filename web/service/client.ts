@@ -143,7 +143,7 @@ export const consoleQuery: RouterUtils<typeof consoleClient> = createTanstackQue
       },
     },
     enterprise: {
-      appDeploy: {
+      appInstanceService: {
         createAppInstance: {
           mutationOptions: {
             onSuccess: async (data, _variables, _result, context) => {
@@ -153,7 +153,7 @@ export const consoleQuery: RouterUtils<typeof consoleClient> = createTanstackQue
                     await new Promise(resolve => setTimeout(resolve, delay))
 
                   const listResponse = await context.client
-                    .fetchQuery(consoleQuery.enterprise.appDeploy.listAppInstances.queryOptions({
+                    .fetchQuery(consoleQuery.enterprise.appInstanceService.listAppInstances.queryOptions({
                       input: {
                         query: {
                           pageNumber: 1,
@@ -169,7 +169,7 @@ export const consoleQuery: RouterUtils<typeof consoleClient> = createTanstackQue
               }
 
               await context.client.invalidateQueries({
-                queryKey: consoleQuery.enterprise.appDeploy.listAppInstances.key({ type: 'query' }),
+                queryKey: consoleQuery.enterprise.appInstanceService.listAppInstances.key({ type: 'query' }),
               })
             },
           },
@@ -180,16 +180,16 @@ export const consoleQuery: RouterUtils<typeof consoleClient> = createTanstackQue
               const appInstanceId = variables.params.appInstanceId
               return Promise.all([
                 context.client.invalidateQueries({
-                  queryKey: consoleQuery.enterprise.appDeploy.listAppInstances.key({ type: 'query' }),
+                  queryKey: consoleQuery.enterprise.appInstanceService.listAppInstances.key({ type: 'query' }),
                 }),
                 context.client.invalidateQueries({
-                  queryKey: consoleQuery.enterprise.appDeploy.getAppInstanceOverview.key({
+                  queryKey: consoleQuery.enterprise.appInstanceService.getAppInstanceOverview.key({
                     type: 'query',
                     input: { params: { appInstanceId } },
                   }),
                 }),
                 context.client.invalidateQueries({
-                  queryKey: consoleQuery.enterprise.appDeploy.getAppInstanceSettings.key({
+                  queryKey: consoleQuery.enterprise.appInstanceService.getAppInstanceSettings.key({
                     type: 'query',
                     input: { params: { appInstanceId } },
                   }),
@@ -203,51 +203,49 @@ export const consoleQuery: RouterUtils<typeof consoleClient> = createTanstackQue
             onSuccess: (_data, variables, _result, context) => {
               const appInstanceId = variables.params.appInstanceId
               ;[
-                consoleQuery.enterprise.appDeploy.getAppInstanceOverview.key({
+                consoleQuery.enterprise.appInstanceService.getAppInstanceOverview.key({
                   type: 'query',
                   input: { params: { appInstanceId } },
                 }),
-                consoleQuery.enterprise.appDeploy.getAppInstanceSettings.key({
+                consoleQuery.enterprise.appInstanceService.getAppInstanceSettings.key({
                   type: 'query',
                   input: { params: { appInstanceId } },
                 }),
-                consoleQuery.enterprise.appDeploy.listRuntimeInstances.key({
+                consoleQuery.enterprise.appDeploymentService.listEnvironmentDeployments.key({
                   type: 'query',
                   input: { params: { appInstanceId } },
                 }),
-                consoleQuery.enterprise.appDeploy.listReleases.key({
+                consoleQuery.enterprise.appReleaseService.listReleases.key({
                   type: 'query',
                   input: { params: { appInstanceId } },
                 }),
-                consoleQuery.enterprise.appDeploy.getAppInstanceAccess.key({
-                  type: 'query',
-                  input: { params: { appInstanceId } },
-                }),
-                consoleQuery.enterprise.appDeploy.getEnvironmentAccessPolicy.key({
+                consoleQuery.enterprise.appDeployAccessService.getAppInstanceAccess.key({
                   type: 'query',
                   input: { params: { appInstanceId } },
                 }),
               ].forEach(queryKey => context.client.removeQueries({ queryKey }))
 
               return context.client.invalidateQueries({
-                queryKey: consoleQuery.enterprise.appDeploy.listAppInstances.key({ type: 'query' }),
+                queryKey: consoleQuery.enterprise.appInstanceService.listAppInstances.key({ type: 'query' }),
               })
             },
           },
         },
+      },
+      appReleaseService: {
         createRelease: {
           mutationOptions: {
             onSuccess: (_data, variables, _result, context) => {
               const appInstanceId = variables.params.appInstanceId
               return Promise.all([
                 context.client.invalidateQueries({
-                  queryKey: consoleQuery.enterprise.appDeploy.listReleases.key({
+                  queryKey: consoleQuery.enterprise.appReleaseService.listReleases.key({
                     type: 'query',
                     input: { params: { appInstanceId } },
                   }),
                 }),
                 context.client.invalidateQueries({
-                  queryKey: consoleQuery.enterprise.appDeploy.getAppInstanceOverview.key({
+                  queryKey: consoleQuery.enterprise.appInstanceService.getAppInstanceOverview.key({
                     type: 'query',
                     input: { params: { appInstanceId } },
                   }),
@@ -256,34 +254,36 @@ export const consoleQuery: RouterUtils<typeof consoleClient> = createTanstackQue
             },
           },
         },
+      },
+      appDeploymentService: {
         createDeployment: {
           mutationOptions: {
             onSuccess: (_data, variables, _result, context) => {
               const appInstanceId = variables.params.appInstanceId
               return Promise.all([
                 context.client.invalidateQueries({
-                  queryKey: consoleQuery.enterprise.appDeploy.listAppInstances.key({ type: 'query' }),
+                  queryKey: consoleQuery.enterprise.appInstanceService.listAppInstances.key({ type: 'query' }),
                 }),
                 context.client.invalidateQueries({
-                  queryKey: consoleQuery.enterprise.appDeploy.getAppInstanceOverview.key({
+                  queryKey: consoleQuery.enterprise.appInstanceService.getAppInstanceOverview.key({
                     type: 'query',
                     input: { params: { appInstanceId } },
                   }),
                 }),
                 context.client.invalidateQueries({
-                  queryKey: consoleQuery.enterprise.appDeploy.listRuntimeInstances.key({
+                  queryKey: consoleQuery.enterprise.appDeploymentService.listEnvironmentDeployments.key({
                     type: 'query',
                     input: { params: { appInstanceId } },
                   }),
                 }),
                 context.client.invalidateQueries({
-                  queryKey: consoleQuery.enterprise.appDeploy.listReleases.key({
+                  queryKey: consoleQuery.enterprise.appReleaseService.listReleases.key({
                     type: 'query',
                     input: { params: { appInstanceId } },
                   }),
                 }),
                 context.client.invalidateQueries({
-                  queryKey: consoleQuery.enterprise.appDeploy.getAppInstanceAccess.key({
+                  queryKey: consoleQuery.enterprise.appDeployAccessService.getAppInstanceAccess.key({
                     type: 'query',
                     input: { params: { appInstanceId } },
                   }),
@@ -292,34 +292,34 @@ export const consoleQuery: RouterUtils<typeof consoleClient> = createTanstackQue
             },
           },
         },
-        cancelRuntimeDeployment: {
+        cancelDeployment: {
           mutationOptions: {
             onSuccess: (_data, variables, _result, context) => {
               const appInstanceId = variables.params.appInstanceId
               return Promise.all([
                 context.client.invalidateQueries({
-                  queryKey: consoleQuery.enterprise.appDeploy.listAppInstances.key({ type: 'query' }),
+                  queryKey: consoleQuery.enterprise.appInstanceService.listAppInstances.key({ type: 'query' }),
                 }),
                 context.client.invalidateQueries({
-                  queryKey: consoleQuery.enterprise.appDeploy.getAppInstanceOverview.key({
+                  queryKey: consoleQuery.enterprise.appInstanceService.getAppInstanceOverview.key({
                     type: 'query',
                     input: { params: { appInstanceId } },
                   }),
                 }),
                 context.client.invalidateQueries({
-                  queryKey: consoleQuery.enterprise.appDeploy.listRuntimeInstances.key({
+                  queryKey: consoleQuery.enterprise.appDeploymentService.listEnvironmentDeployments.key({
                     type: 'query',
                     input: { params: { appInstanceId } },
                   }),
                 }),
                 context.client.invalidateQueries({
-                  queryKey: consoleQuery.enterprise.appDeploy.listReleases.key({
+                  queryKey: consoleQuery.enterprise.appReleaseService.listReleases.key({
                     type: 'query',
                     input: { params: { appInstanceId } },
                   }),
                 }),
                 context.client.invalidateQueries({
-                  queryKey: consoleQuery.enterprise.appDeploy.getAppInstanceAccess.key({
+                  queryKey: consoleQuery.enterprise.appDeployAccessService.getAppInstanceAccess.key({
                     type: 'query',
                     input: { params: { appInstanceId } },
                   }),
@@ -334,28 +334,28 @@ export const consoleQuery: RouterUtils<typeof consoleClient> = createTanstackQue
               const appInstanceId = variables.params.appInstanceId
               return Promise.all([
                 context.client.invalidateQueries({
-                  queryKey: consoleQuery.enterprise.appDeploy.listAppInstances.key({ type: 'query' }),
+                  queryKey: consoleQuery.enterprise.appInstanceService.listAppInstances.key({ type: 'query' }),
                 }),
                 context.client.invalidateQueries({
-                  queryKey: consoleQuery.enterprise.appDeploy.getAppInstanceOverview.key({
+                  queryKey: consoleQuery.enterprise.appInstanceService.getAppInstanceOverview.key({
                     type: 'query',
                     input: { params: { appInstanceId } },
                   }),
                 }),
                 context.client.invalidateQueries({
-                  queryKey: consoleQuery.enterprise.appDeploy.listRuntimeInstances.key({
+                  queryKey: consoleQuery.enterprise.appDeploymentService.listEnvironmentDeployments.key({
                     type: 'query',
                     input: { params: { appInstanceId } },
                   }),
                 }),
                 context.client.invalidateQueries({
-                  queryKey: consoleQuery.enterprise.appDeploy.listReleases.key({
+                  queryKey: consoleQuery.enterprise.appReleaseService.listReleases.key({
                     type: 'query',
                     input: { params: { appInstanceId } },
                   }),
                 }),
                 context.client.invalidateQueries({
-                  queryKey: consoleQuery.enterprise.appDeploy.getAppInstanceAccess.key({
+                  queryKey: consoleQuery.enterprise.appDeployAccessService.getAppInstanceAccess.key({
                     type: 'query',
                     input: { params: { appInstanceId } },
                   }),
@@ -364,19 +364,21 @@ export const consoleQuery: RouterUtils<typeof consoleClient> = createTanstackQue
             },
           },
         },
+      },
+      appDeployAccessService: {
         createDeveloperApiKey: {
           mutationOptions: {
             onSuccess: (_data, variables, _result, context) => {
               const appInstanceId = variables.params.appInstanceId
               return Promise.all([
                 context.client.invalidateQueries({
-                  queryKey: consoleQuery.enterprise.appDeploy.getAppInstanceOverview.key({
+                  queryKey: consoleQuery.enterprise.appInstanceService.getAppInstanceOverview.key({
                     type: 'query',
                     input: { params: { appInstanceId } },
                   }),
                 }),
                 context.client.invalidateQueries({
-                  queryKey: consoleQuery.enterprise.appDeploy.getAppInstanceAccess.key({
+                  queryKey: consoleQuery.enterprise.appDeployAccessService.getAppInstanceAccess.key({
                     type: 'query',
                     input: { params: { appInstanceId } },
                   }),
@@ -391,13 +393,13 @@ export const consoleQuery: RouterUtils<typeof consoleClient> = createTanstackQue
               const appInstanceId = variables.params.appInstanceId
               return Promise.all([
                 context.client.invalidateQueries({
-                  queryKey: consoleQuery.enterprise.appDeploy.getAppInstanceOverview.key({
+                  queryKey: consoleQuery.enterprise.appInstanceService.getAppInstanceOverview.key({
                     type: 'query',
                     input: { params: { appInstanceId } },
                   }),
                 }),
                 context.client.invalidateQueries({
-                  queryKey: consoleQuery.enterprise.appDeploy.getAppInstanceAccess.key({
+                  queryKey: consoleQuery.enterprise.appDeployAccessService.getAppInstanceAccess.key({
                     type: 'query',
                     input: { params: { appInstanceId } },
                   }),
@@ -412,13 +414,13 @@ export const consoleQuery: RouterUtils<typeof consoleClient> = createTanstackQue
               const appInstanceId = variables.params.appInstanceId
               return Promise.all([
                 context.client.invalidateQueries({
-                  queryKey: consoleQuery.enterprise.appDeploy.getAppInstanceOverview.key({
+                  queryKey: consoleQuery.enterprise.appInstanceService.getAppInstanceOverview.key({
                     type: 'query',
                     input: { params: { appInstanceId } },
                   }),
                 }),
                 context.client.invalidateQueries({
-                  queryKey: consoleQuery.enterprise.appDeploy.getAppInstanceAccess.key({
+                  queryKey: consoleQuery.enterprise.appDeployAccessService.getAppInstanceAccess.key({
                     type: 'query',
                     input: { params: { appInstanceId } },
                   }),
@@ -433,13 +435,13 @@ export const consoleQuery: RouterUtils<typeof consoleClient> = createTanstackQue
               const appInstanceId = variables.params.appInstanceId
               return Promise.all([
                 context.client.invalidateQueries({
-                  queryKey: consoleQuery.enterprise.appDeploy.getAppInstanceOverview.key({
+                  queryKey: consoleQuery.enterprise.appInstanceService.getAppInstanceOverview.key({
                     type: 'query',
                     input: { params: { appInstanceId } },
                   }),
                 }),
                 context.client.invalidateQueries({
-                  queryKey: consoleQuery.enterprise.appDeploy.getAppInstanceAccess.key({
+                  queryKey: consoleQuery.enterprise.appDeployAccessService.getAppInstanceAccess.key({
                     type: 'query',
                     input: { params: { appInstanceId } },
                   }),
@@ -451,26 +453,13 @@ export const consoleQuery: RouterUtils<typeof consoleClient> = createTanstackQue
         updateEnvironmentAccessPolicy: {
           mutationOptions: {
             onSuccess: (_data, variables, _result, context) => {
-              const { appInstanceId, environmentId } = variables.params
-              return Promise.all([
-                context.client.invalidateQueries({
-                  queryKey: consoleQuery.enterprise.appDeploy.getAppInstanceAccess.key({
-                    type: 'query',
-                    input: { params: { appInstanceId } },
-                  }),
+              const { appInstanceId } = variables.params
+              return context.client.invalidateQueries({
+                queryKey: consoleQuery.enterprise.appDeployAccessService.getAppInstanceAccess.key({
+                  type: 'query',
+                  input: { params: { appInstanceId } },
                 }),
-                context.client.invalidateQueries({
-                  queryKey: consoleQuery.enterprise.appDeploy.getEnvironmentAccessPolicy.key({
-                    type: 'query',
-                    input: {
-                      params: {
-                        appInstanceId,
-                        environmentId,
-                      },
-                    },
-                  }),
-                }),
-              ])
+              })
             },
           },
         },

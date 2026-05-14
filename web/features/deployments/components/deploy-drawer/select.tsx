@@ -1,13 +1,13 @@
 'use client'
 
-import type { DeploymentEnvironmentOption } from '@dify/contracts/enterprise/types.gen'
+import type { AppDeployEnvironment } from '@dify/contracts/enterprise/types.gen'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Select, SelectContent, SelectItem, SelectItemIndicator, SelectItemText, SelectTrigger } from '@langgenius/dify-ui/select'
 import { useTranslation } from 'react-i18next'
 import { environmentHealth, environmentMode, environmentName } from '../../environment'
 import { HealthBadge, ModeBadge } from '../status-badge'
 
-type EnvironmentOption = DeploymentEnvironmentOption & {
+type EnvironmentOption = AppDeployEnvironment & {
   disabled?: boolean
 }
 

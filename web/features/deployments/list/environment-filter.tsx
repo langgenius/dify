@@ -1,6 +1,5 @@
 'use client'
 
-import type { DeploymentEnvironmentOption } from '@dify/contracts/enterprise/types.gen'
 import type { ReactNode } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
@@ -9,44 +8,22 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
-import { useQuery } from '@tanstack/react-query'
 import { useQueryState } from 'nuqs'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { consoleQuery } from '@/service/client'
 import { envFilterQueryState } from './query-state'
 
 type EnvironmentFilterOption = {
   value: string
   text: string
   icon: ReactNode
-  disabled?: boolean
-  disabledReason?: string
-}
-
-function hasEnvironmentId(env: DeploymentEnvironmentOption): env is DeploymentEnvironmentOption & { id: string } {
-  return Boolean(env.id)
-}
-
-function getEnvironmentFilterOption(env: DeploymentEnvironmentOption & { id: string }): EnvironmentFilterOption {
-  return {
-    value: env.id,
-    text: env.name || env.id,
-    icon: <span className="i-ri-stack-line size-[14px]" />,
-    disabled: env.deployable === false,
-    disabledReason: env.disabledReason,
-  }
 }
 
 export function EnvironmentFilter() {
   const { t } = useTranslation('deployments')
   const [open, setOpen] = useState(false)
   const [envFilter, setEnvFilter] = useQueryState('env', envFilterQueryState)
-  const { data: environmentOptionsReply } = useQuery(consoleQuery.enterprise.appDeploy.listDeploymentEnvironmentOptions.queryOptions())
-  const environmentOptions = environmentOptionsReply?.environments ?? []
-  const environments = environmentOptions.filter(hasEnvironmentId)
-  const envIdSet = new Set(environments.map(env => env.id))
-  const activeFilter = envFilter === 'all' || envFilter === 'not-deployed' || envIdSet.has(envFilter)
+  const activeFilter = envFilter === 'all' || envFilter === 'not-deployed'
     ? envFilter
     : 'all'
   const filterOptions: EnvironmentFilterOption[] = [
@@ -55,7 +32,6 @@ export function EnvironmentFilter() {
       text: t('filter.allEnvs'),
       icon: <span className="i-ri-apps-2-line size-[14px]" />,
     },
-    ...environments.map(getEnvironmentFilterOption),
     {
       value: 'not-deployed',
       text: t('filter.notDeployed'),
@@ -93,18 +69,12 @@ export function EnvironmentFilter() {
               <DropdownMenuItem
                 key={option.value}
                 onClick={() => {
-                  if (option.disabled)
-                    return
                   void setEnvFilter(option.value)
                   setOpen(false)
                 }}
-                title={option.disabled ? option.disabledReason : undefined}
-                aria-disabled={option.disabled}
                 className={cn(
                   'flex items-center gap-2 rounded-lg py-1.5 pr-2 pl-3 select-none',
-                  option.disabled
-                    ? 'cursor-not-allowed opacity-50'
-                    : 'cursor-pointer hover:bg-state-base-hover',
+                  'cursor-pointer hover:bg-state-base-hover',
                 )}
               >
                 <span className="shrink-0 text-text-tertiary">{option.icon}</span>

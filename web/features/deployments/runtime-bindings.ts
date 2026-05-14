@@ -1,7 +1,7 @@
 import type { ReleaseRuntimeBinding } from '@dify/contracts/enterprise/types.gen'
 
 export function runtimeBindingSummary(binding?: ReleaseRuntimeBinding) {
-  return binding?.label || binding?.displayValue || binding?.kind || '—'
+  return binding?.name || binding?.displayValue || binding?.kind || '—'
 }
 
 export function isRuntimeEnvVarBinding(binding?: ReleaseRuntimeBinding) {

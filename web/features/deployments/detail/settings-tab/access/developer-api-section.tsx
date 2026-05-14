@@ -1,7 +1,7 @@
 'use client'
 
 import type {
-  ConsoleEnvironment,
+  AppDeployEnvironment,
   EnvironmentAccessRow,
 } from '@dify/contracts/enterprise/types.gen'
 import { Switch, SwitchSkeleton } from '@langgenius/dify-ui/switch'
@@ -21,7 +21,7 @@ type CreatedApiToken = {
 
 const DEVELOPER_API_KEY_SKELETON_KEYS = ['primary-key', 'secondary-key']
 
-function permissionEnvironment(row: EnvironmentAccessRow): ConsoleEnvironment | undefined {
+function permissionEnvironment(row: EnvironmentAccessRow): AppDeployEnvironment | undefined {
   return row.environment?.id ? row.environment : undefined
 }
 
@@ -30,7 +30,7 @@ function DeveloperApiSwitch({ appInstanceId, checked, disabled }: {
   checked: boolean
   disabled?: boolean
 }) {
-  const toggleDeveloperAPI = useMutation(consoleQuery.enterprise.appDeploy.updateDeveloperApi.mutationOptions())
+  const toggleDeveloperAPI = useMutation(consoleQuery.enterprise.appDeployAccessService.updateDeveloperApi.mutationOptions())
 
   return (
     <Switch
@@ -39,7 +39,7 @@ function DeveloperApiSwitch({ appInstanceId, checked, disabled }: {
       onCheckedChange={(enabled) => {
         toggleDeveloperAPI.mutate({
           params: { appInstanceId },
-          body: { enabled },
+          body: { appInstanceId, enabled },
         })
       }}
     />
@@ -53,7 +53,7 @@ function CreatedApiTokenCard({ token, onDismiss }: {
   const { t } = useTranslation('deployments')
 
   return (
-    <div className="flex flex-col gap-2 rounded-lg border border-components-panel-border bg-components-panel-bg-blur p-3">
+    <div className="flex flex-col gap-2 border-y border-divider-subtle bg-background-default-subtle px-3 py-2.5">
       <div className="flex items-start justify-between gap-3">
         <div className="flex min-w-0 flex-col">
           <span className="system-sm-medium text-text-primary">
@@ -113,7 +113,7 @@ export function DeveloperApiSection({
 }) {
   const { t } = useTranslation('deployments')
   const [createdApiToken, setCreatedApiToken] = useState<CreatedApiToken>()
-  const accessConfigQuery = useQuery(consoleQuery.enterprise.appDeploy.getAppInstanceAccess.queryOptions({
+  const accessConfigQuery = useQuery(consoleQuery.enterprise.appDeployAccessService.getAppInstanceAccess.queryOptions({
     input: {
       params: { appInstanceId },
     },
@@ -124,7 +124,7 @@ export function DeveloperApiSection({
   const apiKeys = accessConfig?.developerApi?.apiKeys ?? []
   const environments = accessConfig?.permissions
     ?.map(permissionEnvironment)
-    .filter((environment): environment is ConsoleEnvironment => Boolean(environment)) ?? []
+    .filter((environment): environment is AppDeployEnvironment => Boolean(environment)) ?? []
   const visibleCreatedApiToken = createdApiToken?.appInstanceId === appInstanceId
     ? createdApiToken.token
     : undefined
@@ -133,6 +133,7 @@ export function DeveloperApiSection({
     <Section
       title={t('access.api.developerTitle')}
       description={t('access.api.description')}
+      layout="row"
       action={(
         accessConfigQuery.isLoading
           ? <SwitchSkeleton />
@@ -182,11 +183,11 @@ export function DeveloperApiSection({
                   )}
                   {apiKeys.length === 0
                     ? (
-                        <div className="rounded-lg border border-dashed border-components-panel-border bg-components-panel-bg-blur px-4 py-6 text-center system-sm-regular text-text-tertiary">
+                        <SectionState>
                           {environments.length === 0
                             ? t('access.api.empty')
                             : t('access.api.noKeys')}
-                        </div>
+                        </SectionState>
                       )
                     : (
                         <ApiKeyList

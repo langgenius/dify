@@ -1,12 +1,12 @@
-import type { RuntimeInstanceRow } from '@dify/contracts/enterprise/types.gen'
+import type { EnvironmentDeployment } from '@dify/contracts/enterprise/types.gen'
 
 type DeploymentUiStatus = 'ready' | 'deploying' | 'deploy_failed' | 'unknown'
 
-export function isUndeployedDeploymentRow(row?: RuntimeInstanceRow) {
-  return (row?.status?.toLowerCase() ?? '').includes('undeployed') || (!row?.id && !row?.currentRelease && !row?.detail)
+export function isUndeployedDeploymentRow(row?: EnvironmentDeployment) {
+  return (row?.status?.toLowerCase() ?? '').includes('undeployed') || (!row?.runtime?.runtimeInstanceId && !row?.currentRelease && !row?.runtime)
 }
 
-export function deploymentStatus(row?: Pick<RuntimeInstanceRow, 'status'>): DeploymentUiStatus {
+export function deploymentStatus(row?: Pick<EnvironmentDeployment, 'status'>): DeploymentUiStatus {
   const runtimeStatus = row?.status?.toLowerCase() ?? ''
   if (!runtimeStatus || runtimeStatus.includes('undeployed'))
     return 'unknown'

@@ -10,19 +10,6 @@ export type AccessChannels = {
   cli?: CliAccess
 }
 
-export type AccessModeOption = {
-  mode?: string
-  label?: string
-  disabled?: boolean
-  selected?: boolean
-}
-
-export type AccessPolicyDetail = {
-  accessMode?: string
-  subjects?: Array<AccessSubjectDisplay>
-  options?: Array<AccessModeOption>
-}
-
 export type AccessStatus = {
   accessChannelsEnabled?: boolean
   webappUrl?: string
@@ -35,14 +22,6 @@ export type AccessStatus = {
 export type AccessSubject = {
   subjectId?: string
   subjectType?: string
-}
-
-export type AccessSubjectDisplay = {
-  id?: string
-  subjectType?: string
-  name?: string
-  avatarUrl?: string
-  memberCount?: string
 }
 
 export type Account = {
@@ -85,9 +64,35 @@ export type AckDeploymentReq = {
   lastError?: LastError
 }
 
+export type ActorSummary = {
+  id?: string
+  name?: string
+}
+
 export type AddGroupAppsRequest = {
   id?: string
   app_ids?: Array<string>
+}
+
+export type AppDeployEnvironment = {
+  id?: string
+  name?: string
+  type?: string
+  backend?: string
+  status?: string
+  managedBy?: string
+}
+
+export type AppInstance = {
+  id?: string
+  name?: string
+  icon?: string
+  mode?: string
+  sourceAppName?: string
+  statuses?: Array<StatusCount>
+  lastDeployedAt?: string
+  sourceAppAvailable?: boolean
+  iconBackground?: string
 }
 
 export type AppInstanceBasicInfo = {
@@ -99,22 +104,14 @@ export type AppInstanceBasicInfo = {
   mode?: string
   createdAt?: string
   sourceAppAvailable?: boolean
-  canCreateRelease?: boolean
   icon?: string
   iconBackground?: string
 }
 
-export type AppInstanceCard = {
-  id?: string
-  name?: string
-  icon?: string
-  mode?: string
-  sourceAppName?: string
-  statuses?: Array<StatusCount>
-  lastDeployedAt?: string
-  sourceAppAvailable?: boolean
-  canCreateRelease?: boolean
-  iconBackground?: string
+export type AppInstanceOverview = {
+  appInstance?: AppInstanceBasicInfo
+  deployments?: Array<DeploymentStatusRow>
+  access?: AccessStatus
 }
 
 export type AppRunnerBatchRuntimeArtifactReply = {
@@ -223,13 +220,14 @@ export type BrandingInfo = {
   favicon?: string
 }
 
-export type CancelRuntimeDeploymentReply = {
-  status?: string
+export type CancelDeploymentReply = {
+  [key: string]: unknown
 }
 
-export type CancelRuntimeDeploymentReq = {
+export type CancelDeploymentReq = {
   appInstanceId?: string
-  runtimeInstanceId?: string
+  environmentId?: string
+  deploymentId?: string
 }
 
 export type CheckPasswordStatusReply = {
@@ -247,26 +245,6 @@ export type CliAccess = {
   url?: string
 }
 
-export type ConsoleEnvironment = {
-  id?: string
-  name?: string
-  runtime?: string
-  type?: string
-  status?: string
-}
-
-export type ConsoleRelease = {
-  id?: string
-  name?: string
-  shortCommitId?: string
-  createdAt?: string
-}
-
-export type ConsoleUser = {
-  id?: string
-  name?: string
-}
-
 export type CreateAppInstanceReply = {
   appInstanceId?: string
 }
@@ -282,9 +260,7 @@ export type CreateBearerTokenResponse = {
 }
 
 export type CreateDeploymentReply = {
-  runtimeInstanceId?: string
   deploymentId?: string
-  status?: string
 }
 
 export type CreateDeploymentReq = {
@@ -342,7 +318,7 @@ export type CreateNewGroupsRes = {
 }
 
 export type CreateReleaseReply = {
-  release?: ConsoleRelease
+  release?: ReleaseSummary
 }
 
 export type CreateReleaseReq = {
@@ -427,11 +403,6 @@ export type DeleteGroupsRes = {
   message?: string
 }
 
-export type DeleteGuard = {
-  canDelete?: boolean
-  disabledReason?: string
-}
-
 export type DeleteMemberReply = {
   account?: Account
 }
@@ -453,12 +424,12 @@ export type DeployedEnvironment = {
   environmentName?: string
 }
 
-export type DeploymentBindingOptionSlot = {
+export type DeploymentBindingSlot = {
   slot?: string
   kind?: string
-  label?: string
+  name?: string
   required?: boolean
-  candidates?: Array<DeploymentCredentialOption>
+  credentialCandidates?: Array<DeploymentCredentialOption>
   envVarCandidates?: Array<DeploymentEnvVarOption>
 }
 
@@ -477,15 +448,9 @@ export type DeploymentEnvVarOption = {
   displayValue?: string
 }
 
-export type DeploymentEnvironmentOption = {
-  id?: string
-  name?: string
-  type?: string
-  backend?: string
-  status?: string
-  managedBy?: string
-  deployable?: boolean
-  disabledReason?: string
+export type DeploymentPlan = {
+  release?: ReleaseSummary
+  slots?: Array<DeploymentBindingSlot>
 }
 
 export type DeploymentRuntimeBinding = {
@@ -495,8 +460,8 @@ export type DeploymentRuntimeBinding = {
 }
 
 export type DeploymentStatusRow = {
-  environment?: ConsoleEnvironment
-  release?: ConsoleRelease
+  environment?: AppDeployEnvironment
+  currentRelease?: ReleaseSummary
   status?: string
 }
 
@@ -509,7 +474,7 @@ export type DeveloperApiAccess = {
 export type DeveloperApiKeyRow = {
   id?: string
   name?: string
-  environment?: ConsoleEnvironment
+  environment?: AppDeployEnvironment
   maskedKey?: string
 }
 
@@ -543,17 +508,17 @@ export type Environment = {
 }
 
 export type EnvironmentAccessRow = {
-  environment?: ConsoleEnvironment
-  currentRelease?: ConsoleRelease
+  environment?: AppDeployEnvironment
+  currentRelease?: ReleaseSummary
   accessMode?: string
-  accessModeLabel?: string
-  hint?: string
+  subjects?: Array<Subject>
 }
 
-export type EnvironmentFilter = {
-  id?: string
-  name?: string
-  kind?: string
+export type EnvironmentDeployment = {
+  environment?: AppDeployEnvironment
+  status?: string
+  currentRelease?: ReleaseSummary
+  runtime?: RuntimeDeployment
 }
 
 export type GetAppInstanceAccessReply = {
@@ -563,15 +528,16 @@ export type GetAppInstanceAccessReply = {
 }
 
 export type GetAppInstanceOverviewReply = {
-  instance?: AppInstanceBasicInfo
-  deployments?: Array<DeploymentStatusRow>
-  access?: AccessStatus
+  overview?: AppInstanceOverview
+}
+
+export type GetAppInstanceReply = {
+  appInstance?: AppInstanceBasicInfo
 }
 
 export type GetAppInstanceSettingsReply = {
   name?: string
   description?: string
-  deleteGuard?: DeleteGuard
 }
 
 export type GetBearerTokenResponse = {
@@ -589,8 +555,8 @@ export type GetDefaultWorkspaceReply = {
   workspace?: Workspace
 }
 
-export type GetEnvironmentAccessPolicyReply = {
-  policy?: AccessPolicyDetail
+export type GetDeploymentPlanReply = {
+  plan?: DeploymentPlan
 }
 
 export type GetEnvironmentReply = {
@@ -689,6 +655,17 @@ export type HealthzReply = {
 export type HostEnvironmentConfig = {
   machineId?: string
   joinTokenHash?: string
+}
+
+export type ImportAppInstanceReply = {
+  appInstanceId?: string
+}
+
+export type ImportAppInstanceReq = {
+  dslYaml?: string
+  name?: string
+  description?: string
+  releaseName?: string
 }
 
 export type InfoConfigReply = {
@@ -868,18 +845,18 @@ export type LimitFields = {
   workspaces?: ResourceQuota
 }
 
-export type ListAppInstancesReply = {
-  filters?: Array<EnvironmentFilter>
-  data?: Array<AppInstanceCard>
+export type ListAccessSubjectsReply = {
+  subjects?: Array<Subject>
   pagination?: Pagination
 }
 
-export type ListDeploymentBindingOptionsReply = {
-  slots?: Array<DeploymentBindingOptionSlot>
+export type ListAppInstancesReply = {
+  data?: Array<AppInstance>
+  pagination?: Pagination
 }
 
-export type ListDeploymentEnvironmentOptionsReply = {
-  environments?: Array<DeploymentEnvironmentOption>
+export type ListEnvironmentDeploymentsReply = {
+  data?: Array<EnvironmentDeployment>
 }
 
 export type ListEnvironmentsReply = {
@@ -905,10 +882,6 @@ export type ListReleasesReply = {
 export type ListResourceGroupsResponse = {
   items?: Array<ResourceGroupItem>
   total?: string
-}
-
-export type ListRuntimeInstancesReply = {
-  data?: Array<RuntimeInstanceRow>
 }
 
 export type ListSecretKeysReply = {
@@ -1057,28 +1030,34 @@ export type PluginInstallationSettingsReply = {
 }
 
 export type PreviewReleaseReply = {
-  release?: ConsoleRelease
   bindings?: Array<ReleaseRuntimeBinding>
 }
 
 export type PreviewReleaseReq = {
   appInstanceId?: string
-  releaseId?: string
 }
 
 export type ReleaseRow = {
   id?: string
   name?: string
+  shortCommitId?: string
   createdAt?: string
-  createdBy?: ConsoleUser
+  createdBy?: ActorSummary
   deployedTo?: Array<DeployedEnvironment>
 }
 
 export type ReleaseRuntimeBinding = {
   kind?: string
-  label?: string
+  name?: string
   displayValue?: string
   valueType?: string
+}
+
+export type ReleaseSummary = {
+  id?: string
+  name?: string
+  shortCommitId?: string
+  createdAt?: string
 }
 
 export type ResetMemberPasswordReply = {
@@ -1175,26 +1154,23 @@ export type RevealDeveloperApiKeyReply = {
   token?: string
 }
 
+export type RevealDeveloperApiKeyReq = {
+  appInstanceId?: string
+  environmentId?: string
+  apiKeyId?: string
+}
+
+export type RuntimeDeployment = {
+  runtimeInstanceId?: string
+  replicas?: number
+  endpoints?: RuntimeEndpoints
+  bindings?: Array<ReleaseRuntimeBinding>
+  currentDeploymentId?: string
+}
+
 export type RuntimeEndpoints = {
   run?: string
   health?: string
-}
-
-export type RuntimeInstanceDetail = {
-  deploymentName?: string
-  replicas?: number
-  runtimeMode?: string
-  runtimeNote?: string
-  endpoints?: RuntimeEndpoints
-  bindings?: Array<ReleaseRuntimeBinding>
-}
-
-export type RuntimeInstanceRow = {
-  id?: string
-  environment?: ConsoleEnvironment
-  status?: string
-  currentRelease?: ConsoleRelease
-  detail?: RuntimeInstanceDetail
 }
 
 export type SamlConfig = {
@@ -1227,10 +1203,6 @@ export type SsoSettingsReply = {
 export type ScimSettings = {
   enabled?: boolean
   lastSyncTime?: string
-}
-
-export type SearchAccessSubjectsReply = {
-  data?: Array<AccessSubjectDisplay>
 }
 
 export type SearchAppItem = {
@@ -1330,17 +1302,16 @@ export type ToggleEndpointRequest = {
 }
 
 export type UndeployRuntimeInstanceReply = {
-  deploymentId?: string
-  status?: string
+  [key: string]: unknown
 }
 
 export type UndeployRuntimeInstanceReq = {
   appInstanceId?: string
-  runtimeInstanceId?: string
+  environmentId?: string
 }
 
 export type UpdateAccessChannelsReply = {
-  accessChannels?: AccessChannels
+  [key: string]: unknown
 }
 
 export type UpdateAccessChannelsReq = {
@@ -1358,7 +1329,7 @@ export type UpdateAccessModeRes = {
 }
 
 export type UpdateAppInstanceReply = {
-  appInstanceId?: string
+  [key: string]: unknown
 }
 
 export type UpdateAppInstanceReq = {
@@ -1376,7 +1347,7 @@ export type UpdateBrandingInfoReq = {
 }
 
 export type UpdateDeveloperApiReply = {
-  developerApi?: DeveloperApiAccess
+  [key: string]: unknown
 }
 
 export type UpdateDeveloperApiReq = {
@@ -1385,7 +1356,7 @@ export type UpdateDeveloperApiReq = {
 }
 
 export type UpdateEnvironmentAccessPolicyReply = {
-  permission?: EnvironmentAccessRow
+  [key: string]: unknown
 }
 
 export type UpdateEnvironmentAccessPolicyReq = {
@@ -1551,7 +1522,7 @@ export type UpdateWorkspaceReq = {
 }
 
 export type WebAppAccessRow = {
-  environment?: ConsoleEnvironment
+  environment?: AppDeployEnvironment
   url?: string
 }
 
@@ -1599,7 +1570,26 @@ export type Pagination = {
   totalPages?: number
 }
 
-export type EnterpriseAppDeployConsoleListAppInstancesData = {
+export type AccessSubjectServiceListAccessSubjectsData = {
+  body?: never
+  path?: never
+  query?: {
+    keyword?: string
+    groupId?: string
+    pageNumber?: number
+    resultsPerPage?: number
+  }
+  url: '/enterprise/access-subjects'
+}
+
+export type AccessSubjectServiceListAccessSubjectsResponses = {
+  200: ListAccessSubjectsReply
+}
+
+export type AccessSubjectServiceListAccessSubjectsResponse
+  = AccessSubjectServiceListAccessSubjectsResponses[keyof AccessSubjectServiceListAccessSubjectsResponses]
+
+export type AppInstanceServiceListAppInstancesData = {
   body?: never
   path?: never
   query?: {
@@ -1612,28 +1602,42 @@ export type EnterpriseAppDeployConsoleListAppInstancesData = {
   url: '/enterprise/app-instances'
 }
 
-export type EnterpriseAppDeployConsoleListAppInstancesResponses = {
+export type AppInstanceServiceListAppInstancesResponses = {
   200: ListAppInstancesReply
 }
 
-export type EnterpriseAppDeployConsoleListAppInstancesResponse
-  = EnterpriseAppDeployConsoleListAppInstancesResponses[keyof EnterpriseAppDeployConsoleListAppInstancesResponses]
+export type AppInstanceServiceListAppInstancesResponse
+  = AppInstanceServiceListAppInstancesResponses[keyof AppInstanceServiceListAppInstancesResponses]
 
-export type EnterpriseAppDeployConsoleCreateAppInstanceData = {
+export type AppInstanceServiceCreateAppInstanceData = {
   body: CreateAppInstanceReq
   path?: never
   query?: never
   url: '/enterprise/app-instances'
 }
 
-export type EnterpriseAppDeployConsoleCreateAppInstanceResponses = {
+export type AppInstanceServiceCreateAppInstanceResponses = {
   200: CreateAppInstanceReply
 }
 
-export type EnterpriseAppDeployConsoleCreateAppInstanceResponse
-  = EnterpriseAppDeployConsoleCreateAppInstanceResponses[keyof EnterpriseAppDeployConsoleCreateAppInstanceResponses]
+export type AppInstanceServiceCreateAppInstanceResponse
+  = AppInstanceServiceCreateAppInstanceResponses[keyof AppInstanceServiceCreateAppInstanceResponses]
 
-export type EnterpriseAppDeployConsoleDeleteAppInstanceData = {
+export type AppInstanceServiceImportAppInstanceData = {
+  body: ImportAppInstanceReq
+  path?: never
+  query?: never
+  url: '/enterprise/app-instances/import'
+}
+
+export type AppInstanceServiceImportAppInstanceResponses = {
+  200: ImportAppInstanceReply
+}
+
+export type AppInstanceServiceImportAppInstanceResponse
+  = AppInstanceServiceImportAppInstanceResponses[keyof AppInstanceServiceImportAppInstanceResponses]
+
+export type AppInstanceServiceDeleteAppInstanceData = {
   body?: never
   path: {
     appInstanceId: string
@@ -1642,14 +1646,30 @@ export type EnterpriseAppDeployConsoleDeleteAppInstanceData = {
   url: '/enterprise/app-instances/{appInstanceId}'
 }
 
-export type EnterpriseAppDeployConsoleDeleteAppInstanceResponses = {
+export type AppInstanceServiceDeleteAppInstanceResponses = {
   200: DeleteAppInstanceReply
 }
 
-export type EnterpriseAppDeployConsoleDeleteAppInstanceResponse
-  = EnterpriseAppDeployConsoleDeleteAppInstanceResponses[keyof EnterpriseAppDeployConsoleDeleteAppInstanceResponses]
+export type AppInstanceServiceDeleteAppInstanceResponse
+  = AppInstanceServiceDeleteAppInstanceResponses[keyof AppInstanceServiceDeleteAppInstanceResponses]
 
-export type EnterpriseAppDeployConsoleUpdateAppInstanceData = {
+export type AppInstanceServiceGetAppInstanceData = {
+  body?: never
+  path: {
+    appInstanceId: string
+  }
+  query?: never
+  url: '/enterprise/app-instances/{appInstanceId}'
+}
+
+export type AppInstanceServiceGetAppInstanceResponses = {
+  200: GetAppInstanceReply
+}
+
+export type AppInstanceServiceGetAppInstanceResponse
+  = AppInstanceServiceGetAppInstanceResponses[keyof AppInstanceServiceGetAppInstanceResponses]
+
+export type AppInstanceServiceUpdateAppInstanceData = {
   body: UpdateAppInstanceReq
   path: {
     appInstanceId: string
@@ -1658,14 +1678,14 @@ export type EnterpriseAppDeployConsoleUpdateAppInstanceData = {
   url: '/enterprise/app-instances/{appInstanceId}'
 }
 
-export type EnterpriseAppDeployConsoleUpdateAppInstanceResponses = {
+export type AppInstanceServiceUpdateAppInstanceResponses = {
   200: UpdateAppInstanceReply
 }
 
-export type EnterpriseAppDeployConsoleUpdateAppInstanceResponse
-  = EnterpriseAppDeployConsoleUpdateAppInstanceResponses[keyof EnterpriseAppDeployConsoleUpdateAppInstanceResponses]
+export type AppInstanceServiceUpdateAppInstanceResponse
+  = AppInstanceServiceUpdateAppInstanceResponses[keyof AppInstanceServiceUpdateAppInstanceResponses]
 
-export type EnterpriseAppDeployConsoleGetAppInstanceAccessData = {
+export type AppDeployAccessServiceGetAppInstanceAccessData = {
   body?: never
   path: {
     appInstanceId: string
@@ -1674,14 +1694,14 @@ export type EnterpriseAppDeployConsoleGetAppInstanceAccessData = {
   url: '/enterprise/app-instances/{appInstanceId}/access'
 }
 
-export type EnterpriseAppDeployConsoleGetAppInstanceAccessResponses = {
+export type AppDeployAccessServiceGetAppInstanceAccessResponses = {
   200: GetAppInstanceAccessReply
 }
 
-export type EnterpriseAppDeployConsoleGetAppInstanceAccessResponse
-  = EnterpriseAppDeployConsoleGetAppInstanceAccessResponses[keyof EnterpriseAppDeployConsoleGetAppInstanceAccessResponses]
+export type AppDeployAccessServiceGetAppInstanceAccessResponse
+  = AppDeployAccessServiceGetAppInstanceAccessResponses[keyof AppDeployAccessServiceGetAppInstanceAccessResponses]
 
-export type EnterpriseAppDeployConsoleUpdateAccessChannelsData = {
+export type AppDeployAccessServiceUpdateAccessChannelsData = {
   body: UpdateAccessChannelsReq
   path: {
     appInstanceId: string
@@ -1690,117 +1710,14 @@ export type EnterpriseAppDeployConsoleUpdateAccessChannelsData = {
   url: '/enterprise/app-instances/{appInstanceId}/access-channels'
 }
 
-export type EnterpriseAppDeployConsoleUpdateAccessChannelsResponses = {
+export type AppDeployAccessServiceUpdateAccessChannelsResponses = {
   200: UpdateAccessChannelsReply
 }
 
-export type EnterpriseAppDeployConsoleUpdateAccessChannelsResponse
-  = EnterpriseAppDeployConsoleUpdateAccessChannelsResponses[keyof EnterpriseAppDeployConsoleUpdateAccessChannelsResponses]
+export type AppDeployAccessServiceUpdateAccessChannelsResponse
+  = AppDeployAccessServiceUpdateAccessChannelsResponses[keyof AppDeployAccessServiceUpdateAccessChannelsResponses]
 
-export type EnterpriseAppDeployConsoleSearchAccessSubjectsData = {
-  body?: never
-  path: {
-    appInstanceId: string
-  }
-  query?: {
-    keyword?: string
-    subjectTypes?: Array<string>
-  }
-  url: '/enterprise/app-instances/{appInstanceId}/access-subjects:search'
-}
-
-export type EnterpriseAppDeployConsoleSearchAccessSubjectsResponses = {
-  200: SearchAccessSubjectsReply
-}
-
-export type EnterpriseAppDeployConsoleSearchAccessSubjectsResponse
-  = EnterpriseAppDeployConsoleSearchAccessSubjectsResponses[keyof EnterpriseAppDeployConsoleSearchAccessSubjectsResponses]
-
-export type EnterpriseAppDeployConsoleCreateDeveloperApiKeyData = {
-  body: CreateDeveloperApiKeyReq
-  path: {
-    appInstanceId: string
-  }
-  query?: never
-  url: '/enterprise/app-instances/{appInstanceId}/api-keys'
-}
-
-export type EnterpriseAppDeployConsoleCreateDeveloperApiKeyResponses = {
-  200: CreateDeveloperApiKeyReply
-}
-
-export type EnterpriseAppDeployConsoleCreateDeveloperApiKeyResponse
-  = EnterpriseAppDeployConsoleCreateDeveloperApiKeyResponses[keyof EnterpriseAppDeployConsoleCreateDeveloperApiKeyResponses]
-
-export type EnterpriseAppDeployConsoleDeleteDeveloperApiKeyData = {
-  body?: never
-  path: {
-    appInstanceId: string
-    apiKeyId: string
-  }
-  query?: never
-  url: '/enterprise/app-instances/{appInstanceId}/api-keys/{apiKeyId}'
-}
-
-export type EnterpriseAppDeployConsoleDeleteDeveloperApiKeyResponses = {
-  200: DeleteDeveloperApiKeyReply
-}
-
-export type EnterpriseAppDeployConsoleDeleteDeveloperApiKeyResponse
-  = EnterpriseAppDeployConsoleDeleteDeveloperApiKeyResponses[keyof EnterpriseAppDeployConsoleDeleteDeveloperApiKeyResponses]
-
-export type EnterpriseAppDeployConsoleRevealDeveloperApiKeyData = {
-  body?: never
-  path: {
-    appInstanceId: string
-    apiKeyId: string
-  }
-  query?: never
-  url: '/enterprise/app-instances/{appInstanceId}/api-keys/{apiKeyId}:reveal'
-}
-
-export type EnterpriseAppDeployConsoleRevealDeveloperApiKeyResponses = {
-  200: RevealDeveloperApiKeyReply
-}
-
-export type EnterpriseAppDeployConsoleRevealDeveloperApiKeyResponse
-  = EnterpriseAppDeployConsoleRevealDeveloperApiKeyResponses[keyof EnterpriseAppDeployConsoleRevealDeveloperApiKeyResponses]
-
-export type EnterpriseAppDeployConsoleListDeploymentBindingOptionsData = {
-  body?: never
-  path: {
-    appInstanceId: string
-  }
-  query?: {
-    releaseId?: string
-  }
-  url: '/enterprise/app-instances/{appInstanceId}/deployment-binding-options'
-}
-
-export type EnterpriseAppDeployConsoleListDeploymentBindingOptionsResponses = {
-  200: ListDeploymentBindingOptionsReply
-}
-
-export type EnterpriseAppDeployConsoleListDeploymentBindingOptionsResponse
-  = EnterpriseAppDeployConsoleListDeploymentBindingOptionsResponses[keyof EnterpriseAppDeployConsoleListDeploymentBindingOptionsResponses]
-
-export type EnterpriseAppDeployConsoleCreateDeploymentData = {
-  body: CreateDeploymentReq
-  path: {
-    appInstanceId: string
-  }
-  query?: never
-  url: '/enterprise/app-instances/{appInstanceId}/deployments'
-}
-
-export type EnterpriseAppDeployConsoleCreateDeploymentResponses = {
-  200: CreateDeploymentReply
-}
-
-export type EnterpriseAppDeployConsoleCreateDeploymentResponse
-  = EnterpriseAppDeployConsoleCreateDeploymentResponses[keyof EnterpriseAppDeployConsoleCreateDeploymentResponses]
-
-export type EnterpriseAppDeployConsoleUpdateDeveloperApiData = {
+export type AppDeployAccessServiceUpdateDeveloperApiData = {
   body: UpdateDeveloperApiReq
   path: {
     appInstanceId: string
@@ -1809,31 +1726,30 @@ export type EnterpriseAppDeployConsoleUpdateDeveloperApiData = {
   url: '/enterprise/app-instances/{appInstanceId}/developer-api'
 }
 
-export type EnterpriseAppDeployConsoleUpdateDeveloperApiResponses = {
+export type AppDeployAccessServiceUpdateDeveloperApiResponses = {
   200: UpdateDeveloperApiReply
 }
 
-export type EnterpriseAppDeployConsoleUpdateDeveloperApiResponse
-  = EnterpriseAppDeployConsoleUpdateDeveloperApiResponses[keyof EnterpriseAppDeployConsoleUpdateDeveloperApiResponses]
+export type AppDeployAccessServiceUpdateDeveloperApiResponse
+  = AppDeployAccessServiceUpdateDeveloperApiResponses[keyof AppDeployAccessServiceUpdateDeveloperApiResponses]
 
-export type EnterpriseAppDeployConsoleGetEnvironmentAccessPolicyData = {
+export type AppDeploymentServiceListEnvironmentDeploymentsData = {
   body?: never
   path: {
     appInstanceId: string
-    environmentId: string
   }
   query?: never
-  url: '/enterprise/app-instances/{appInstanceId}/environments/{environmentId}/access-policy'
+  url: '/enterprise/app-instances/{appInstanceId}/environment-deployments'
 }
 
-export type EnterpriseAppDeployConsoleGetEnvironmentAccessPolicyResponses = {
-  200: GetEnvironmentAccessPolicyReply
+export type AppDeploymentServiceListEnvironmentDeploymentsResponses = {
+  200: ListEnvironmentDeploymentsReply
 }
 
-export type EnterpriseAppDeployConsoleGetEnvironmentAccessPolicyResponse
-  = EnterpriseAppDeployConsoleGetEnvironmentAccessPolicyResponses[keyof EnterpriseAppDeployConsoleGetEnvironmentAccessPolicyResponses]
+export type AppDeploymentServiceListEnvironmentDeploymentsResponse
+  = AppDeploymentServiceListEnvironmentDeploymentsResponses[keyof AppDeploymentServiceListEnvironmentDeploymentsResponses]
 
-export type EnterpriseAppDeployConsoleUpdateEnvironmentAccessPolicyData = {
+export type AppDeployAccessServiceUpdateEnvironmentAccessPolicyData = {
   body: UpdateEnvironmentAccessPolicyReq
   path: {
     appInstanceId: string
@@ -1843,14 +1759,119 @@ export type EnterpriseAppDeployConsoleUpdateEnvironmentAccessPolicyData = {
   url: '/enterprise/app-instances/{appInstanceId}/environments/{environmentId}/access-policy'
 }
 
-export type EnterpriseAppDeployConsoleUpdateEnvironmentAccessPolicyResponses = {
+export type AppDeployAccessServiceUpdateEnvironmentAccessPolicyResponses = {
   200: UpdateEnvironmentAccessPolicyReply
 }
 
-export type EnterpriseAppDeployConsoleUpdateEnvironmentAccessPolicyResponse
-  = EnterpriseAppDeployConsoleUpdateEnvironmentAccessPolicyResponses[keyof EnterpriseAppDeployConsoleUpdateEnvironmentAccessPolicyResponses]
+export type AppDeployAccessServiceUpdateEnvironmentAccessPolicyResponse
+  = AppDeployAccessServiceUpdateEnvironmentAccessPolicyResponses[keyof AppDeployAccessServiceUpdateEnvironmentAccessPolicyResponses]
 
-export type EnterpriseAppDeployConsoleGetAppInstanceOverviewData = {
+export type AppDeployAccessServiceCreateDeveloperApiKeyData = {
+  body: CreateDeveloperApiKeyReq
+  path: {
+    appInstanceId: string
+    environmentId: string
+  }
+  query?: never
+  url: '/enterprise/app-instances/{appInstanceId}/environments/{environmentId}/api-keys'
+}
+
+export type AppDeployAccessServiceCreateDeveloperApiKeyResponses = {
+  200: CreateDeveloperApiKeyReply
+}
+
+export type AppDeployAccessServiceCreateDeveloperApiKeyResponse
+  = AppDeployAccessServiceCreateDeveloperApiKeyResponses[keyof AppDeployAccessServiceCreateDeveloperApiKeyResponses]
+
+export type AppDeployAccessServiceDeleteDeveloperApiKeyData = {
+  body?: never
+  path: {
+    appInstanceId: string
+    environmentId: string
+    apiKeyId: string
+  }
+  query?: never
+  url: '/enterprise/app-instances/{appInstanceId}/environments/{environmentId}/api-keys/{apiKeyId}'
+}
+
+export type AppDeployAccessServiceDeleteDeveloperApiKeyResponses = {
+  200: DeleteDeveloperApiKeyReply
+}
+
+export type AppDeployAccessServiceDeleteDeveloperApiKeyResponse
+  = AppDeployAccessServiceDeleteDeveloperApiKeyResponses[keyof AppDeployAccessServiceDeleteDeveloperApiKeyResponses]
+
+export type AppDeployAccessServiceRevealDeveloperApiKeyData = {
+  body: RevealDeveloperApiKeyReq
+  path: {
+    appInstanceId: string
+    environmentId: string
+    apiKeyId: string
+  }
+  query?: never
+  url: '/enterprise/app-instances/{appInstanceId}/environments/{environmentId}/api-keys/{apiKeyId}/reveal'
+}
+
+export type AppDeployAccessServiceRevealDeveloperApiKeyResponses = {
+  200: RevealDeveloperApiKeyReply
+}
+
+export type AppDeployAccessServiceRevealDeveloperApiKeyResponse
+  = AppDeployAccessServiceRevealDeveloperApiKeyResponses[keyof AppDeployAccessServiceRevealDeveloperApiKeyResponses]
+
+export type AppDeploymentServiceCreateDeploymentData = {
+  body: CreateDeploymentReq
+  path: {
+    appInstanceId: string
+    environmentId: string
+  }
+  query?: never
+  url: '/enterprise/app-instances/{appInstanceId}/environments/{environmentId}/deployments'
+}
+
+export type AppDeploymentServiceCreateDeploymentResponses = {
+  200: CreateDeploymentReply
+}
+
+export type AppDeploymentServiceCreateDeploymentResponse
+  = AppDeploymentServiceCreateDeploymentResponses[keyof AppDeploymentServiceCreateDeploymentResponses]
+
+export type AppDeploymentServiceCancelDeploymentData = {
+  body: CancelDeploymentReq
+  path: {
+    appInstanceId: string
+    environmentId: string
+    deploymentId: string
+  }
+  query?: never
+  url: '/enterprise/app-instances/{appInstanceId}/environments/{environmentId}/deployments/{deploymentId}/cancel'
+}
+
+export type AppDeploymentServiceCancelDeploymentResponses = {
+  200: CancelDeploymentReply
+}
+
+export type AppDeploymentServiceCancelDeploymentResponse
+  = AppDeploymentServiceCancelDeploymentResponses[keyof AppDeploymentServiceCancelDeploymentResponses]
+
+export type AppDeploymentServiceUndeployRuntimeInstanceData = {
+  body: UndeployRuntimeInstanceReq
+  path: {
+    appInstanceId: string
+    environmentId: string
+  }
+  query?: never
+  url: '/enterprise/app-instances/{appInstanceId}/environments/{environmentId}/undeploy'
+}
+
+export type AppDeploymentServiceUndeployRuntimeInstanceResponses = {
+  200: UndeployRuntimeInstanceReply
+}
+
+export type AppDeploymentServiceUndeployRuntimeInstanceResponse
+  = AppDeploymentServiceUndeployRuntimeInstanceResponses[keyof AppDeploymentServiceUndeployRuntimeInstanceResponses]
+
+export type AppInstanceServiceGetAppInstanceOverviewData = {
   body?: never
   path: {
     appInstanceId: string
@@ -1859,14 +1880,14 @@ export type EnterpriseAppDeployConsoleGetAppInstanceOverviewData = {
   url: '/enterprise/app-instances/{appInstanceId}/overview'
 }
 
-export type EnterpriseAppDeployConsoleGetAppInstanceOverviewResponses = {
+export type AppInstanceServiceGetAppInstanceOverviewResponses = {
   200: GetAppInstanceOverviewReply
 }
 
-export type EnterpriseAppDeployConsoleGetAppInstanceOverviewResponse
-  = EnterpriseAppDeployConsoleGetAppInstanceOverviewResponses[keyof EnterpriseAppDeployConsoleGetAppInstanceOverviewResponses]
+export type AppInstanceServiceGetAppInstanceOverviewResponse
+  = AppInstanceServiceGetAppInstanceOverviewResponses[keyof AppInstanceServiceGetAppInstanceOverviewResponses]
 
-export type EnterpriseAppDeployConsoleListReleasesData = {
+export type AppReleaseServiceListReleasesData = {
   body?: never
   path: {
     appInstanceId: string
@@ -1878,14 +1899,14 @@ export type EnterpriseAppDeployConsoleListReleasesData = {
   url: '/enterprise/app-instances/{appInstanceId}/releases'
 }
 
-export type EnterpriseAppDeployConsoleListReleasesResponses = {
+export type AppReleaseServiceListReleasesResponses = {
   200: ListReleasesReply
 }
 
-export type EnterpriseAppDeployConsoleListReleasesResponse
-  = EnterpriseAppDeployConsoleListReleasesResponses[keyof EnterpriseAppDeployConsoleListReleasesResponses]
+export type AppReleaseServiceListReleasesResponse
+  = AppReleaseServiceListReleasesResponses[keyof AppReleaseServiceListReleasesResponses]
 
-export type EnterpriseAppDeployConsoleCreateReleaseData = {
+export type AppReleaseServiceCreateReleaseData = {
   body: CreateReleaseReq
   path: {
     appInstanceId: string
@@ -1894,80 +1915,47 @@ export type EnterpriseAppDeployConsoleCreateReleaseData = {
   url: '/enterprise/app-instances/{appInstanceId}/releases'
 }
 
-export type EnterpriseAppDeployConsoleCreateReleaseResponses = {
+export type AppReleaseServiceCreateReleaseResponses = {
   200: CreateReleaseReply
 }
 
-export type EnterpriseAppDeployConsoleCreateReleaseResponse
-  = EnterpriseAppDeployConsoleCreateReleaseResponses[keyof EnterpriseAppDeployConsoleCreateReleaseResponses]
+export type AppReleaseServiceCreateReleaseResponse
+  = AppReleaseServiceCreateReleaseResponses[keyof AppReleaseServiceCreateReleaseResponses]
 
-export type EnterpriseAppDeployConsolePreviewReleaseData = {
+export type AppReleaseServicePreviewReleaseData = {
   body: PreviewReleaseReq
   path: {
     appInstanceId: string
   }
   query?: never
-  url: '/enterprise/app-instances/{appInstanceId}/releases:preview'
+  url: '/enterprise/app-instances/{appInstanceId}/releases/preview'
 }
 
-export type EnterpriseAppDeployConsolePreviewReleaseResponses = {
+export type AppReleaseServicePreviewReleaseResponses = {
   200: PreviewReleaseReply
 }
 
-export type EnterpriseAppDeployConsolePreviewReleaseResponse
-  = EnterpriseAppDeployConsolePreviewReleaseResponses[keyof EnterpriseAppDeployConsolePreviewReleaseResponses]
+export type AppReleaseServicePreviewReleaseResponse
+  = AppReleaseServicePreviewReleaseResponses[keyof AppReleaseServicePreviewReleaseResponses]
 
-export type EnterpriseAppDeployConsoleListRuntimeInstancesData = {
+export type AppDeploymentServiceGetDeploymentPlanData = {
   body?: never
   path: {
     appInstanceId: string
+    releaseId: string
   }
   query?: never
-  url: '/enterprise/app-instances/{appInstanceId}/runtime-instances'
+  url: '/enterprise/app-instances/{appInstanceId}/releases/{releaseId}/deployment-plan'
 }
 
-export type EnterpriseAppDeployConsoleListRuntimeInstancesResponses = {
-  200: ListRuntimeInstancesReply
+export type AppDeploymentServiceGetDeploymentPlanResponses = {
+  200: GetDeploymentPlanReply
 }
 
-export type EnterpriseAppDeployConsoleListRuntimeInstancesResponse
-  = EnterpriseAppDeployConsoleListRuntimeInstancesResponses[keyof EnterpriseAppDeployConsoleListRuntimeInstancesResponses]
+export type AppDeploymentServiceGetDeploymentPlanResponse
+  = AppDeploymentServiceGetDeploymentPlanResponses[keyof AppDeploymentServiceGetDeploymentPlanResponses]
 
-export type EnterpriseAppDeployConsoleCancelRuntimeDeploymentData = {
-  body: CancelRuntimeDeploymentReq
-  path: {
-    appInstanceId: string
-    runtimeInstanceId: string
-  }
-  query?: never
-  url: '/enterprise/app-instances/{appInstanceId}/runtime-instances/{runtimeInstanceId}/deployment:cancel'
-}
-
-export type EnterpriseAppDeployConsoleCancelRuntimeDeploymentResponses = {
-  200: CancelRuntimeDeploymentReply
-}
-
-export type EnterpriseAppDeployConsoleCancelRuntimeDeploymentResponse
-  = EnterpriseAppDeployConsoleCancelRuntimeDeploymentResponses[keyof EnterpriseAppDeployConsoleCancelRuntimeDeploymentResponses]
-
-export type EnterpriseAppDeployConsoleUndeployRuntimeInstanceData = {
-  body: UndeployRuntimeInstanceReq
-  path: {
-    appInstanceId: string
-    runtimeInstanceId: string
-  }
-  query?: never
-  url: '/enterprise/app-instances/{appInstanceId}/runtime-instances/{runtimeInstanceId}:undeploy'
-}
-
-export type EnterpriseAppDeployConsoleUndeployRuntimeInstanceResponses = {
-  200: UndeployRuntimeInstanceReply
-}
-
-export type EnterpriseAppDeployConsoleUndeployRuntimeInstanceResponse
-  = EnterpriseAppDeployConsoleUndeployRuntimeInstanceResponses[keyof EnterpriseAppDeployConsoleUndeployRuntimeInstanceResponses]
-
-export type EnterpriseAppDeployConsoleGetAppInstanceSettingsData = {
+export type AppInstanceServiceGetAppInstanceSettingsData = {
   body?: never
   path: {
     appInstanceId: string
@@ -1976,26 +1964,12 @@ export type EnterpriseAppDeployConsoleGetAppInstanceSettingsData = {
   url: '/enterprise/app-instances/{appInstanceId}/settings'
 }
 
-export type EnterpriseAppDeployConsoleGetAppInstanceSettingsResponses = {
+export type AppInstanceServiceGetAppInstanceSettingsResponses = {
   200: GetAppInstanceSettingsReply
 }
 
-export type EnterpriseAppDeployConsoleGetAppInstanceSettingsResponse
-  = EnterpriseAppDeployConsoleGetAppInstanceSettingsResponses[keyof EnterpriseAppDeployConsoleGetAppInstanceSettingsResponses]
-
-export type EnterpriseAppDeployConsoleListDeploymentEnvironmentOptionsData = {
-  body?: never
-  path?: never
-  query?: never
-  url: '/enterprise/deployment-environment-options'
-}
-
-export type EnterpriseAppDeployConsoleListDeploymentEnvironmentOptionsResponses = {
-  200: ListDeploymentEnvironmentOptionsReply
-}
-
-export type EnterpriseAppDeployConsoleListDeploymentEnvironmentOptionsResponse
-  = EnterpriseAppDeployConsoleListDeploymentEnvironmentOptionsResponses[keyof EnterpriseAppDeployConsoleListDeploymentEnvironmentOptionsResponses]
+export type AppInstanceServiceGetAppInstanceSettingsResponse
+  = AppInstanceServiceGetAppInstanceSettingsResponses[keyof AppInstanceServiceGetAppInstanceSettingsResponses]
 
 export type ConsoleSsoOAuth2LoginData = {
   body?: never

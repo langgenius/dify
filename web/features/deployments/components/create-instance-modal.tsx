@@ -234,7 +234,7 @@ function CreateInstanceForm({ onClose }: {
 }) {
   const { t } = useTranslation('deployments')
   const router = useRouter()
-  const createInstance = useMutation(consoleQuery.enterprise.appDeploy.createAppInstance.mutationOptions())
+  const createInstance = useMutation(consoleQuery.enterprise.appInstanceService.createAppInstance.mutationOptions())
 
   const [sourceApp, setSourceApp] = useState<App>()
 

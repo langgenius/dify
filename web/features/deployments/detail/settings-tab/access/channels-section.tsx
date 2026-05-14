@@ -21,7 +21,7 @@ function AccessChannelsSwitch({ appInstanceId, checked, disabled }: {
   checked: boolean
   disabled?: boolean
 }) {
-  const toggleAccessChannel = useMutation(consoleQuery.enterprise.appDeploy.updateAccessChannels.mutationOptions())
+  const toggleAccessChannel = useMutation(consoleQuery.enterprise.appDeployAccessService.updateAccessChannels.mutationOptions())
 
   return (
     <Switch
@@ -30,7 +30,7 @@ function AccessChannelsSwitch({ appInstanceId, checked, disabled }: {
       onCheckedChange={(enabled) => {
         toggleAccessChannel.mutate({
           params: { appInstanceId },
-          body: { enabled },
+          body: { appInstanceId, enabled },
         })
       }}
     />
@@ -67,7 +67,7 @@ export function AccessChannelsSection({
   appInstanceId: string
 }) {
   const { t } = useTranslation('deployments')
-  const accessConfigQuery = useQuery(consoleQuery.enterprise.appDeploy.getAppInstanceAccess.queryOptions({
+  const accessConfigQuery = useQuery(consoleQuery.enterprise.appDeployAccessService.getAppInstanceAccess.queryOptions({
     input: {
       params: { appInstanceId },
     },
@@ -82,6 +82,7 @@ export function AccessChannelsSection({
     <Section
       title={t('access.channels.title')}
       description={t('access.channels.description')}
+      layout="row"
       action={(
         accessConfigQuery.isLoading
           ? <SwitchSkeleton />
@@ -133,9 +134,9 @@ export function AccessChannelsSection({
                             </div>
                           )
                         : (
-                            <div className="rounded-lg border border-dashed border-components-panel-border bg-components-panel-bg-blur px-4 py-6 text-center system-sm-regular text-text-tertiary">
+                            <SectionState>
                               {t('access.runAccess.webappEmpty')}
-                            </div>
+                            </SectionState>
                           )}
                     </div>
                     <div className="flex flex-col gap-1.5 border-t border-divider-subtle pt-3">

@@ -1,8 +1,8 @@
 'use client'
 
-import type { AppInstanceBasicInfo, AppInstanceCard } from '@dify/contracts/enterprise/types.gen'
+import type { AppInstance, AppInstanceBasicInfo } from '@dify/contracts/enterprise/types.gen'
 import type { NavItem } from '@/app/components/header/nav/nav-selector'
-import { keepPreviousData, skipToken, useInfiniteQuery, useQuery } from '@tanstack/react-query'
+import { keepPreviousData, useInfiniteQuery, useQuery } from '@tanstack/react-query'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Nav from '@/app/components/header/nav'
@@ -12,7 +12,7 @@ import { toAppMode } from '../app-mode'
 import { CreateInstanceModal } from '../components/create-instance-modal'
 import { getNextPageParamFromPagination, SOURCE_APPS_PAGE_SIZE } from '../data'
 
-function navItemFromListApp(app: AppInstanceCard): NavItem[] {
+function navItemFromListApp(app: AppInstance): NavItem[] {
   if (!app.id || !app.name)
     return []
 
@@ -52,18 +52,17 @@ export function DeploymentsNav() {
   const isActive = selectedSegment === 'deployments'
   const params = useParams<{ appInstanceId?: string }>()
   const appInstanceId = params?.appInstanceId
+  const hasAppInstanceId = Boolean(appInstanceId)
   const [createModalOpen, setCreateModalOpen] = useState(false)
 
-  const { data: currentInstance } = useQuery(consoleQuery.enterprise.appDeploy.getAppInstanceOverview.queryOptions({
-    input: appInstanceId
-      ? { params: { appInstanceId } }
-      : skipToken,
-    enabled: isActive,
-    select: data => data.instance,
+  const { data: currentInstance } = useQuery(consoleQuery.enterprise.appInstanceService.getAppInstanceOverview.queryOptions({
+    input: { params: { appInstanceId: appInstanceId ?? '' } },
+    enabled: isActive && hasAppInstanceId,
+    select: data => data.overview?.appInstance,
   }))
 
   const listQuery = useInfiniteQuery({
-    ...consoleQuery.enterprise.appDeploy.listAppInstances.infiniteOptions({
+    ...consoleQuery.enterprise.appInstanceService.listAppInstances.infiniteOptions({
       input: pageParam => ({
         query: {
           pageNumber: Number(pageParam),

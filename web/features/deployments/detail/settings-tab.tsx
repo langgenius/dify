@@ -1,5 +1,6 @@
 'use client'
 import type { AppInstanceBasicInfo, GetAppInstanceSettingsReply } from '@dify/contracts/enterprise/types.gen'
+import type { ReactNode } from 'react'
 import {
   AlertDialog,
   AlertDialogActions,
@@ -51,8 +52,7 @@ function SettingsFormSkeleton() {
 
 function DeleteInstanceSkeleton() {
   return (
-    <div className="flex flex-col gap-3 rounded-xl border border-util-colors-red-red-200 bg-util-colors-red-red-50 p-4">
-      <SkeletonRectangle className="h-3.5 w-20 animate-pulse" />
+    <div className="flex min-h-9 flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
       <SkeletonRectangle className="h-3 w-3/5 animate-pulse" />
       <SkeletonRow className="items-center justify-between gap-2">
         <SkeletonRectangle className="h-3 w-48 animate-pulse" />
@@ -75,11 +75,11 @@ function DeleteInstanceButton({
 }: DeleteInstanceControlProps) {
   const { t } = useTranslation('deployments')
   const router = useRouter()
-  const deleteInstance = useMutation(consoleQuery.enterprise.appDeploy.deleteAppInstance.mutationOptions())
+  const deleteInstance = useMutation(consoleQuery.enterprise.appInstanceService.deleteAppInstance.mutationOptions())
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const appInstanceId = app.id
   const appName = app.name ?? appInstanceId
-  const canDelete = !hasDeployments && Boolean(settings) && settings?.deleteGuard?.canDelete !== false
+  const canDelete = !hasDeployments && Boolean(settings)
 
   const handleDelete = () => {
     deleteInstance.mutate(
@@ -146,24 +146,42 @@ function DeleteInstanceControl({
   const { t } = useTranslation('deployments')
 
   return (
-    <div className="flex flex-col gap-3 rounded-xl border border-util-colors-red-red-200 bg-util-colors-red-red-50 p-4">
-      <div className="system-sm-semibold text-util-colors-red-red-700">{t('settings.danger')}</div>
-      <div className="system-xs-regular text-util-colors-red-red-600">
-        {t('settings.dangerDesc')}
+    <div className="flex min-h-9 flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="system-xs-regular text-text-secondary">
+        {hasDeployments
+          ? t('settings.undeployFirst')
+          : t('settings.safeToDelete')}
       </div>
-      <div className="flex items-center justify-between gap-2">
-        <div className="system-xs-regular text-text-tertiary">
-          {hasDeployments
-            ? t('settings.undeployFirst')
-            : settings?.deleteGuard?.disabledReason || t('settings.safeToDelete')}
-        </div>
-        <DeleteInstanceButton
-          app={app}
-          settings={settings}
-          hasDeployments={hasDeployments}
-        />
-      </div>
+      <DeleteInstanceButton
+        app={app}
+        settings={settings}
+        hasDeployments={hasDeployments}
+      />
     </div>
+  )
+}
+
+function DangerSection({ children }: {
+  children: ReactNode
+}) {
+  const { t } = useTranslation('deployments')
+
+  return (
+    <section className="border-b border-divider-subtle py-4 first:pt-0 last:border-b-0 last:pb-0">
+      <div className="flex flex-col gap-3 sm:flex-row sm:gap-x-1">
+        <div className="flex min-w-0 shrink-0 flex-col sm:w-[180px] sm:pt-1">
+          <div className="system-sm-semibold text-util-colors-red-red-700">
+            {t('settings.danger')}
+          </div>
+          <p className="mt-1 body-xs-regular text-util-colors-red-red-600">
+            {t('settings.dangerDesc')}
+          </p>
+        </div>
+        <div className="min-w-0 grow">
+          {children}
+        </div>
+      </div>
+    </section>
   )
 }
 
@@ -172,7 +190,7 @@ function SettingsForm({ app, settings }: {
   settings?: GetAppInstanceSettingsReply
 }) {
   const { t } = useTranslation('deployments')
-  const updateInstance = useMutation(consoleQuery.enterprise.appDeploy.updateAppInstance.mutationOptions())
+  const updateInstance = useMutation(consoleQuery.enterprise.appInstanceService.updateAppInstance.mutationOptions())
   const appName = app.name ?? app.id
   const [name, setName] = useState(settings?.name ?? appName)
   const [description, setDescription] = useState(settings?.description ?? app.description ?? '')
@@ -190,6 +208,7 @@ function SettingsForm({ app, settings }: {
           appInstanceId,
         },
         body: {
+          appInstanceId,
           name: name.trim(),
           description: description.trim() || undefined,
         },
@@ -206,7 +225,11 @@ function SettingsForm({ app, settings }: {
   }
 
   return (
-    <Section title={t('settings.general')} description={t('settings.descriptionHelp')}>
+    <Section
+      title={t('settings.general')}
+      description={t('settings.descriptionHelp')}
+      layout="row"
+    >
       <div className="flex flex-col gap-3">
         <div className="flex flex-col gap-2">
           <label className="system-xs-medium-uppercase text-text-tertiary" htmlFor="settings-name">
@@ -256,18 +279,22 @@ function SettingsFormSection({ appInstanceId }: {
 }) {
   const { t } = useTranslation('deployments')
   const appInput = { params: { appInstanceId } }
-  const overviewQuery = useQuery(consoleQuery.enterprise.appDeploy.getAppInstanceOverview.queryOptions({
+  const overviewQuery = useQuery(consoleQuery.enterprise.appInstanceService.getAppInstanceOverview.queryOptions({
     input: appInput,
   }))
   const overview = overviewQuery.data
-  const app = overview?.instance
-  const settingsQuery = useQuery(consoleQuery.enterprise.appDeploy.getAppInstanceSettings.queryOptions({
+  const app = overview?.overview?.appInstance
+  const settingsQuery = useQuery(consoleQuery.enterprise.appInstanceService.getAppInstanceSettings.queryOptions({
     input: appInput,
   }))
 
   if (overviewQuery.isLoading || settingsQuery.isLoading) {
     return (
-      <Section title={t('settings.general')} description={t('settings.descriptionHelp')}>
+      <Section
+        title={t('settings.general')}
+        description={t('settings.descriptionHelp')}
+        layout="row"
+      >
         <SettingsFormSkeleton />
       </Section>
     )
@@ -275,7 +302,11 @@ function SettingsFormSection({ appInstanceId }: {
 
   if (overviewQuery.isError || settingsQuery.isError) {
     return (
-      <Section title={t('settings.general')} description={t('settings.descriptionHelp')}>
+      <Section
+        title={t('settings.general')}
+        description={t('settings.descriptionHelp')}
+        layout="row"
+      >
         <SectionState>{t('common.loadFailed')}</SectionState>
       </Section>
     )
@@ -283,7 +314,11 @@ function SettingsFormSection({ appInstanceId }: {
 
   if (!app?.id) {
     return (
-      <Section title={t('settings.general')} description={t('settings.descriptionHelp')}>
+      <Section
+        title={t('settings.general')}
+        description={t('settings.descriptionHelp')}
+        layout="row"
+      >
         <SectionState>{t('detail.notFound')}</SectionState>
       </Section>
     )
@@ -310,38 +345,40 @@ function DeleteInstanceControlSection({ appInstanceId }: {
 }) {
   const { t } = useTranslation('deployments')
   const appInput = { params: { appInstanceId } }
-  const overviewQuery = useQuery(consoleQuery.enterprise.appDeploy.getAppInstanceOverview.queryOptions({
+  const overviewQuery = useQuery(consoleQuery.enterprise.appInstanceService.getAppInstanceOverview.queryOptions({
     input: appInput,
   }))
   const overview = overviewQuery.data
-  const environmentDeploymentsQuery = useQuery(consoleQuery.enterprise.appDeploy.listRuntimeInstances.queryOptions({
+  const environmentDeploymentsQuery = useQuery(consoleQuery.enterprise.appDeploymentService.listEnvironmentDeployments.queryOptions({
     input: appInput,
   }))
-  const settingsQuery = useQuery(consoleQuery.enterprise.appDeploy.getAppInstanceSettings.queryOptions({
+  const settingsQuery = useQuery(consoleQuery.enterprise.appInstanceService.getAppInstanceSettings.queryOptions({
     input: appInput,
   }))
   const environmentDeployments = environmentDeploymentsQuery.data
-  const app = overview?.instance
+  const app = overview?.overview?.appInstance
 
   if (overviewQuery.isLoading || environmentDeploymentsQuery.isLoading || settingsQuery.isLoading) {
-    return <DeleteInstanceSkeleton />
+    return (
+      <DangerSection>
+        <DeleteInstanceSkeleton />
+      </DangerSection>
+    )
   }
 
   if (overviewQuery.isError || environmentDeploymentsQuery.isError || settingsQuery.isError) {
     return (
-      <div className="flex flex-col gap-3 rounded-xl border border-util-colors-red-red-200 bg-util-colors-red-red-50 p-4">
-        <div className="system-sm-semibold text-util-colors-red-red-700">{t('settings.danger')}</div>
+      <DangerSection>
         <SectionState>{t('common.loadFailed')}</SectionState>
-      </div>
+      </DangerSection>
     )
   }
 
   if (!app?.id) {
     return (
-      <div className="flex flex-col gap-3 rounded-xl border border-util-colors-red-red-200 bg-util-colors-red-red-50 p-4">
-        <div className="system-sm-semibold text-util-colors-red-red-700">{t('settings.danger')}</div>
+      <DangerSection>
         <SectionState>{t('detail.notFound')}</SectionState>
-      </div>
+      </DangerSection>
     )
   }
 
@@ -352,11 +389,13 @@ function DeleteInstanceControlSection({ appInstanceId }: {
   }
 
   return (
-    <DeleteInstanceControl
-      app={appWithId}
-      settings={settingsQuery.data}
-      hasDeployments={hasDeployments}
-    />
+    <DangerSection>
+      <DeleteInstanceControl
+        app={appWithId}
+        settings={settingsQuery.data}
+        hasDeployments={hasDeployments}
+      />
+    </DangerSection>
   )
 }
 
@@ -364,7 +403,7 @@ export function SettingsTab({ appInstanceId }: {
   appInstanceId: string
 }) {
   return (
-    <div className="flex w-full max-w-240 flex-col gap-5 p-6">
+    <div className="flex w-full max-w-[960px] flex-col gap-y-4 px-6 py-6 sm:px-20 sm:py-8">
       <AccessPermissionsSection appInstanceId={appInstanceId} />
       <AccessChannelsSection appInstanceId={appInstanceId} />
       <DeveloperApiSection appInstanceId={appInstanceId} />

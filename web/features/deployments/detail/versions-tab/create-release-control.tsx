@@ -1,0 +1,196 @@
+'use client'
+
+import { Button } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
+import { Dialog, DialogCloseButton, DialogContent, DialogDescription, DialogTitle } from '@langgenius/dify-ui/dialog'
+import { toast } from '@langgenius/dify-ui/toast'
+import { useMutation, useQuery } from '@tanstack/react-query'
+import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import Input from '@/app/components/base/input'
+import { consoleQuery } from '@/service/client'
+
+const DESCRIPTION_MAX_LENGTH = 512
+const DESCRIPTION_WARN_THRESHOLD = 460
+
+export function CreateReleaseControl({ appInstanceId, variant = 'primary', size = 'small' }: {
+  appInstanceId: string
+  variant?: 'primary' | 'secondary'
+  size?: 'small' | 'medium'
+}) {
+  const { t } = useTranslation('deployments')
+  const createRelease = useMutation(consoleQuery.enterprise.appReleaseService.createRelease.mutationOptions())
+  const [isCreating, setIsCreating] = useState(false)
+  const [description, setDescription] = useState('')
+  const { data: overview } = useQuery(consoleQuery.enterprise.appInstanceService.getAppInstanceOverview.queryOptions({
+    input: {
+      params: { appInstanceId },
+    },
+  }))
+  const canCreateRelease = overview ? overview.overview?.appInstance?.sourceAppAvailable !== false : false
+
+  function closeDialog() {
+    setIsCreating(false)
+    setDescription('')
+  }
+
+  function handleCreateRelease(form: HTMLFormElement) {
+    if (!canCreateRelease || createRelease.isPending)
+      return
+
+    const formData = new FormData(form)
+    const releaseName = String(formData.get('name') ?? '').trim()
+    const releaseDescription = description.trim()
+    if (!releaseName)
+      return
+
+    createRelease.mutate(
+      {
+        params: {
+          appInstanceId,
+        },
+        body: {
+          name: releaseName,
+          description: releaseDescription || undefined,
+        },
+      },
+      {
+        onSuccess: (response) => {
+          if (!response.release?.id) {
+            toast.error(t('versions.createFailed'))
+            return
+          }
+          const createdName = response.release.name ?? releaseName
+          toast.success(t('versions.createSuccess', { name: createdName }))
+          form.reset()
+          closeDialog()
+        },
+        onError: () => {
+          toast.error(t('versions.createFailed'))
+        },
+      },
+    )
+  }
+
+  const descriptionLength = description.length
+  const isNearLimit = descriptionLength >= DESCRIPTION_WARN_THRESHOLD
+
+  return (
+    <>
+      <Button
+        size={size}
+        variant={variant}
+        disabled={!canCreateRelease}
+        onClick={() => setIsCreating(true)}
+      >
+        {t('versions.createRelease')}
+      </Button>
+
+      <Dialog
+        open={isCreating}
+        onOpenChange={(open) => {
+          if (!open)
+            closeDialog()
+          else
+            setIsCreating(true)
+        }}
+      >
+        <DialogContent className="w-140 overflow-hidden p-0">
+          <DialogCloseButton />
+          {isCreating && (
+            <form
+              onSubmit={(event) => {
+                event.preventDefault()
+                handleCreateRelease(event.currentTarget)
+              }}
+            >
+              <div className="border-b border-divider-subtle px-6 py-5 pr-14">
+                <div className="min-w-0">
+                  <DialogTitle className="title-xl-semi-bold text-text-primary">
+                    {t('versions.createRelease')}
+                  </DialogTitle>
+                  <DialogDescription className="mt-1 system-sm-regular text-text-tertiary">
+                    {t('versions.createReleaseDescription')}
+                  </DialogDescription>
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-5 px-6 py-5">
+                <div className="flex flex-col gap-2">
+                  <label className="system-xs-medium-uppercase text-text-tertiary" htmlFor="release-name">
+                    {t('versions.releaseNameLabel')}
+                  </label>
+                  <Input
+                    id="release-name"
+                    name="name"
+                    placeholder={t('versions.releaseNamePlaceholder')}
+                    maxLength={128}
+                    required
+                    autoFocus
+                    className="h-9"
+                  />
+                </div>
+
+                <div className="flex flex-col gap-2">
+                  <div className="flex items-center justify-between gap-3">
+                    <label className="system-xs-medium-uppercase text-text-tertiary" htmlFor="release-description">
+                      {t('versions.releaseDescriptionLabel')}
+                    </label>
+                    <div className="flex items-center gap-2">
+                      <span className="system-xs-regular text-text-quaternary">
+                        {t('versions.optional')}
+                      </span>
+                      <span
+                        className={cn(
+                          'system-xs-regular tabular-nums',
+                          isNearLimit ? 'text-util-colors-warning-warning-700' : 'text-text-quaternary',
+                        )}
+                      >
+                        {descriptionLength}
+                        /
+                        {DESCRIPTION_MAX_LENGTH}
+                      </span>
+                    </div>
+                  </div>
+                  <textarea
+                    id="release-description"
+                    name="description"
+                    placeholder={t('versions.releaseDescriptionPlaceholder')}
+                    maxLength={DESCRIPTION_MAX_LENGTH}
+                    value={description}
+                    onChange={e => setDescription(e.target.value)}
+                    className="min-h-24 w-full resize-none appearance-none rounded-md border border-transparent bg-components-input-bg-normal p-2 px-3 system-sm-regular text-components-input-text-filled caret-primary-600 outline-hidden placeholder:text-components-input-text-placeholder hover:border-components-input-border-hover hover:bg-components-input-bg-hover focus:border-components-input-border-active focus:bg-components-input-bg-active focus:shadow-xs"
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between gap-4 border-t border-divider-subtle bg-background-default-subtle px-6 py-4">
+                <div className="system-xs-regular text-text-tertiary">
+                  {t('versions.createReleaseHint')}
+                </div>
+                <div className="flex shrink-0 justify-end gap-2">
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    disabled={createRelease.isPending}
+                    onClick={closeDialog}
+                  >
+                    {t('versions.cancelCreate')}
+                  </Button>
+                  <Button
+                    type="submit"
+                    variant="primary"
+                    className="min-w-22"
+                    disabled={!canCreateRelease || createRelease.isPending}
+                  >
+                    {createRelease.isPending ? t('versions.creating') : t('versions.create')}
+                  </Button>
+                </div>
+              </div>
+            </form>
+          )}
+        </DialogContent>
+      </Dialog>
+    </>
+  )
+}

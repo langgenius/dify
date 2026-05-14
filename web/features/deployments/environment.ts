@@ -1,34 +1,28 @@
-import type { ConsoleEnvironment, DeploymentEnvironmentOption } from '@dify/contracts/enterprise/types.gen'
+import type { AppDeployEnvironment } from '@dify/contracts/enterprise/types.gen'
 
-export function environmentId(environment?: ConsoleEnvironment | DeploymentEnvironmentOption) {
+export function environmentId(environment?: AppDeployEnvironment) {
   return environment?.id ?? ''
 }
 
-export function environmentName(environment?: ConsoleEnvironment | DeploymentEnvironmentOption) {
+export function environmentName(environment?: AppDeployEnvironment) {
   return environment?.name || environment?.id || '—'
 }
 
-export function environmentMode(environment?: ConsoleEnvironment | DeploymentEnvironmentOption) {
+export function environmentMode(environment?: AppDeployEnvironment) {
   const type = environment?.type?.toLowerCase() ?? ''
   return type.includes('isolated') ? 'isolated' : 'shared'
 }
 
-function environmentRuntimeName(environment?: ConsoleEnvironment | DeploymentEnvironmentOption) {
-  if (!environment)
-    return ''
-  if ('backend' in environment && environment.backend)
-    return environment.backend
-  if ('runtime' in environment && environment.runtime)
-    return environment.runtime
-  return ''
+function environmentRuntimeName(environment?: AppDeployEnvironment) {
+  return environment?.backend ?? ''
 }
 
-export function environmentBackend(environment?: ConsoleEnvironment | DeploymentEnvironmentOption) {
+export function environmentBackend(environment?: AppDeployEnvironment) {
   const runtime = environmentRuntimeName(environment).toLowerCase()
   return runtime.includes('host') ? 'host' : 'k8s'
 }
 
-export function environmentHealth(environment?: ConsoleEnvironment | DeploymentEnvironmentOption) {
+export function environmentHealth(environment?: AppDeployEnvironment) {
   const status = environment?.status?.toLowerCase() ?? ''
   return status.includes('ready') ? 'ready' : 'degraded'
 }

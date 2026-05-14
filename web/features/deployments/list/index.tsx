@@ -131,9 +131,6 @@ export function DeploymentsList() {
   const anchorRef = useRef<HTMLDivElement>(null)
   const queryKeywords = keywords.trim()
 
-  const requestedEnvironmentId = envFilter !== 'all' && envFilter !== 'not-deployed'
-    ? envFilter
-    : undefined
   const {
     data,
     error,
@@ -144,12 +141,11 @@ export function DeploymentsList() {
     isFetchingNextPage,
     isLoading,
   } = useInfiniteQuery({
-    ...consoleQuery.enterprise.appDeploy.listAppInstances.infiniteOptions({
+    ...consoleQuery.enterprise.appInstanceService.listAppInstances.infiniteOptions({
       input: pageParam => ({
         query: {
           pageNumber: Number(pageParam),
           resultsPerPage: SOURCE_APPS_PAGE_SIZE,
-          ...(requestedEnvironmentId ? { environmentId: requestedEnvironmentId } : {}),
           ...(envFilter === 'not-deployed' ? { notDeployed: true } : {}),
           ...(queryKeywords ? { query: queryKeywords } : {}),
         },

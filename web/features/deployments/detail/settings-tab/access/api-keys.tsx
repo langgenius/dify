@@ -1,6 +1,6 @@
 'use client'
 
-import type { ConsoleEnvironment, DeveloperApiKeyRow } from '@dify/contracts/enterprise/types.gen'
+import type { AppDeployEnvironment, DeveloperApiKeyRow } from '@dify/contracts/enterprise/types.gen'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   DropdownMenu,
@@ -19,17 +19,19 @@ function ApiKeyRow({ appInstanceId, apiKey }: {
   apiKey: DeveloperApiKeyRow
 }) {
   const { t } = useTranslation('deployments')
-  const revokeApiKey = useMutation(consoleQuery.enterprise.appDeploy.deleteDeveloperApiKey.mutationOptions())
+  const revokeApiKey = useMutation(consoleQuery.enterprise.appDeployAccessService.deleteDeveloperApiKey.mutationOptions())
   const displayValue = apiKey.maskedKey || apiKey.id || '—'
   const environmentLabel = environmentName(apiKey.environment)
 
   function handleRevoke() {
-    if (!apiKey.id)
+    const environmentId = apiKey.environment?.id
+    if (!apiKey.id || !environmentId)
       return
 
     revokeApiKey.mutate({
       params: {
         appInstanceId,
+        environmentId,
         apiKeyId: apiKey.id,
       },
     })
@@ -79,13 +81,13 @@ export function ApiKeyList({ appInstanceId, apiKeys }: {
 
 export function ApiKeyGenerateMenu({ appInstanceId, environments, apiKeys, onCreatedToken }: {
   appInstanceId: string
-  environments: ConsoleEnvironment[]
+  environments: AppDeployEnvironment[]
   apiKeys: DeveloperApiKeyRow[]
   onCreatedToken: (token: string) => void
 }) {
   const { t } = useTranslation('deployments')
   const [open, setOpen] = useState(false)
-  const generateApiKey = useMutation(consoleQuery.enterprise.appDeploy.createDeveloperApiKey.mutationOptions())
+  const generateApiKey = useMutation(consoleQuery.enterprise.appDeployAccessService.createDeveloperApiKey.mutationOptions())
   const selectableEnvironments = environments.filter(env => env.id)
   const disabled = selectableEnvironments.length === 0
 
@@ -103,8 +105,10 @@ export function ApiKeyGenerateMenu({ appInstanceId, environments, apiKeys, onCre
       {
         params: {
           appInstanceId,
+          environmentId,
         },
         body: {
+          appInstanceId,
           environmentId,
           name: createApiKeyLabel(environmentId),
         },

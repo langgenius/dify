@@ -1,6 +1,6 @@
 'use client'
 
-import type { ReleaseRow } from '@dify/contracts/enterprise/types.gen'
+import type { AppDeployEnvironment, EnvironmentDeployment, ReleaseRow } from '@dify/contracts/enterprise/types.gen'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   DropdownMenu,
@@ -18,6 +18,33 @@ import { releaseDeploymentAction } from '../../release-action'
 import { deploymentStatus, isUndeployedDeploymentRow } from '../../runtime-status'
 import { openDeployDrawerAtom } from '../../store'
 
+type EnvironmentOption = AppDeployEnvironment & {
+  id: string
+}
+
+type DeployMenuRowState = 'promote' | 'deploy' | 'rollback' | 'current' | 'deploying'
+
+type DeployMenuRow = {
+  env: EnvironmentOption
+  state: DeployMenuRowState
+  label: string
+  disabledReason?: string
+}
+
+type DeployMenuGroup = 'promote' | 'deploy' | 'rollback' | 'unavailable'
+
+const GROUP_ORDER: DeployMenuGroup[] = ['promote', 'deploy', 'rollback', 'unavailable']
+
+function stateToGroup(state: DeployMenuRowState): DeployMenuGroup {
+  if (state === 'promote')
+    return 'promote'
+  if (state === 'rollback')
+    return 'rollback'
+  if (state === 'deploy')
+    return 'deploy'
+  return 'unavailable'
+}
+
 export function DeployReleaseMenu({ appInstanceId, releaseId, releaseRows }: {
   appInstanceId: string
   releaseId: string
@@ -26,28 +53,79 @@ export function DeployReleaseMenu({ appInstanceId, releaseId, releaseRows }: {
   const { t } = useTranslation('deployments')
   const openDeployDrawer = useSetAtom(openDeployDrawerAtom)
   const [open, setOpen] = useState(false)
-  const { data: environmentDeployments } = useQuery(consoleQuery.enterprise.appDeploy.listRuntimeInstances.queryOptions({
+  const { data: environmentDeployments } = useQuery(consoleQuery.enterprise.appDeploymentService.listEnvironmentDeployments.queryOptions({
     input: {
       params: { appInstanceId },
     },
     enabled: open,
   }))
-  const { data: environmentOptionsReply } = useQuery(consoleQuery.enterprise.appDeploy.listDeploymentEnvironmentOptions.queryOptions({
-    enabled: open,
-  }))
 
-  const environmentOptions = environmentOptionsReply?.environments
-    ?.filter(environment => environment.id)
-    .map(environment => ({
-      ...environment,
-      disabled: environment.deployable === false,
-    })) ?? []
-  const environments = environmentOptions.filter(env => env.id)
+  const environments: EnvironmentOption[] = (environmentDeployments?.data ?? [])
+    .map(row => row.environment)
+    .filter((env): env is EnvironmentOption => Boolean(env?.id))
   const deploymentRows = environmentDeployments?.data?.filter(row => Boolean(row.environment?.id) && !isUndeployedDeploymentRow(row)) ?? []
   const targetRelease = releaseRows.find(release => release.id === releaseId)
 
   if (!targetRelease)
     return null
+
+  const menuRows: DeployMenuRow[] = environments.map((env) => {
+    const envId = env.id
+    const envName = environmentName(env)
+    const row: EnvironmentDeployment | undefined = deploymentRows.find(item => environmentId(item.environment) === envId)
+    const currentRelease = row?.currentRelease
+    const isCurrent = currentRelease?.id === releaseId
+    const isEnvironmentDeploying = row ? deploymentStatus(row) === 'deploying' : false
+
+    if (isEnvironmentDeploying) {
+      return {
+        env,
+        state: 'deploying',
+        label: t('versions.deployingTo', { name: envName }),
+        disabledReason: t('versions.disabledReason.deploying'),
+      }
+    }
+    if (isCurrent) {
+      return {
+        env,
+        state: 'current',
+        label: t('versions.currentOn', { name: envName }),
+        disabledReason: t('versions.disabledReason.current', { name: envName }),
+      }
+    }
+
+    const action = releaseDeploymentAction({
+      targetRelease,
+      currentRelease,
+      releaseRows,
+      isExistingRelease: true,
+    })
+
+    if (!row) {
+      return {
+        env,
+        state: 'deploy',
+        label: t('versions.deployTo', { name: envName }),
+      }
+    }
+    if (action === 'rollback') {
+      return {
+        env,
+        state: 'rollback',
+        label: t('versions.rollbackTo', { name: envName }),
+      }
+    }
+    return {
+      env,
+      state: 'promote',
+      label: t('versions.promoteTo', { name: envName }),
+    }
+  })
+
+  const groupedRows = GROUP_ORDER.map(group => ({
+    group,
+    rows: menuRows.filter(row => stateToGroup(row.state) === group),
+  })).filter(section => section.rows.length > 0)
 
   return (
     <DropdownMenu modal={false} open={open} onOpenChange={setOpen}>
@@ -62,44 +140,40 @@ export function DeployReleaseMenu({ appInstanceId, releaseId, releaseRows }: {
         <span className="i-ri-arrow-down-s-line size-3.5" />
       </DropdownMenuTrigger>
       {open && (
-        <DropdownMenuContent placement="bottom-end" sideOffset={4} popupClassName="w-55">
-          {environments.map((env) => {
-            const envId = env.id!
-            const row = deploymentRows.find(item => environmentId(item.environment) === envId)
-            const currentRelease = row?.currentRelease
-            const isCurrent = currentRelease?.id === releaseId
-            const isEnvironmentDeploying = row ? deploymentStatus(row) === 'deploying' : false
-            const disabled = Boolean(env.disabled || isCurrent || isEnvironmentDeploying)
-            const action = releaseDeploymentAction({
-              targetRelease,
-              currentRelease,
-              releaseRows,
-              isExistingRelease: true,
-            })
-            return (
-              <DropdownMenuItem
-                key={envId}
-                className="gap-2 px-3"
-                disabled={disabled}
-                onClick={() => {
-                  setOpen(false)
-                  if (disabled)
-                    return
-                  openDeployDrawer({ appInstanceId, environmentId: envId, releaseId })
-                }}
-              >
-                <span className="system-sm-regular text-text-secondary">
-                  {isEnvironmentDeploying
-                    ? t('versions.deployingTo', { name: environmentName(env) })
-                    : isCurrent
-                      ? t('versions.currentOn', { name: environmentName(env) })
-                      : row
-                        ? t(action === 'rollback' ? 'versions.rollbackTo' : 'versions.promoteTo', { name: environmentName(env) })
-                        : t('versions.deployTo', { name: environmentName(env) })}
-                </span>
-              </DropdownMenuItem>
-            )
-          })}
+        <DropdownMenuContent placement="bottom-end" sideOffset={4} popupClassName="w-60">
+          {groupedRows.map((section, sectionIndex) => (
+            <div key={section.group}>
+              {sectionIndex > 0 && <div className="my-1 border-t border-divider-subtle" aria-hidden />}
+              <div className="px-3 pt-1.5 pb-1 system-2xs-medium-uppercase text-text-quaternary">
+                {t(`versions.groupHeader.${section.group}`)}
+              </div>
+              {section.rows.map((row) => {
+                const isDisabled = row.state === 'current' || row.state === 'deploying'
+                return (
+                  <DropdownMenuItem
+                    key={row.env.id}
+                    disabled={isDisabled}
+                    title={isDisabled ? row.disabledReason : undefined}
+                    aria-disabled={isDisabled}
+                    className={cn(
+                      'gap-2 px-3',
+                      isDisabled && 'cursor-not-allowed opacity-60',
+                    )}
+                    onClick={() => {
+                      if (isDisabled)
+                        return
+                      setOpen(false)
+                      openDeployDrawer({ appInstanceId, environmentId: row.env.id, releaseId })
+                    }}
+                  >
+                    <span className="system-sm-regular text-text-secondary">
+                      {row.label}
+                    </span>
+                  </DropdownMenuItem>
+                )
+              })}
+            </div>
+          ))}
         </DropdownMenuContent>
       )}
     </DropdownMenu>

@@ -37,7 +37,7 @@ export function AccessPermissionsSection({
   appInstanceId: string
 }) {
   const { t } = useTranslation('deployments')
-  const accessConfigQuery = useQuery(consoleQuery.enterprise.appDeploy.getAppInstanceAccess.queryOptions({
+  const accessConfigQuery = useQuery(consoleQuery.enterprise.appDeployAccessService.getAppInstanceAccess.queryOptions({
     input: {
       params: { appInstanceId },
     },
@@ -49,6 +49,7 @@ export function AccessPermissionsSection({
     <Section
       title={t('access.permissions.title')}
       description={t('access.permissions.description')}
+      layout="row"
     >
       {accessConfigQuery.isLoading
         ? <AccessPermissionsSkeleton />
@@ -56,9 +57,9 @@ export function AccessPermissionsSection({
           ? <SectionState>{t('common.loadFailed')}</SectionState>
           : permissionRows.length === 0
             ? (
-                <div className="rounded-lg border border-dashed border-components-panel-border bg-components-panel-bg-blur px-4 py-6 text-center system-sm-regular text-text-tertiary">
+                <SectionState>
                   {t('access.runAccess.noEnvs')}
-                </div>
+                </SectionState>
               )
             : (
                 <div className="flex flex-col gap-3">

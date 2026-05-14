@@ -1,4 +1,4 @@
-import type { DeployedEnvironment, ReleaseRow, RuntimeInstanceRow } from '@dify/contracts/enterprise/types.gen'
+import type { DeployedEnvironment, EnvironmentDeployment, ReleaseRow } from '@dify/contracts/enterprise/types.gen'
 import { environmentId, environmentName } from '../../environment'
 import { deploymentStatus } from '../../runtime-status'
 
@@ -36,7 +36,7 @@ function dedupeReleaseDeployments(items: ReleaseDeployment[]) {
   })
 }
 
-export function getReleaseDeployments(row: ReleaseRow, deploymentRows: RuntimeInstanceRow[]) {
+export function getReleaseDeployments(row: ReleaseRow, deploymentRows: EnvironmentDeployment[]) {
   const releaseId = row.id
   if (!releaseId)
     return []

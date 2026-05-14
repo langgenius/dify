@@ -1,4 +1,4 @@
-import type { ReleaseRow, RuntimeInstanceRow } from '@dify/contracts/enterprise/types.gen'
+import type { EnvironmentDeployment, ReleaseRow } from '@dify/contracts/enterprise/types.gen'
 import { describe, expect, it } from 'vitest'
 import { getReleaseDeployments } from '../release-deployments'
 
@@ -16,7 +16,7 @@ describe('getReleaseDeployments', () => {
     } satisfies ReleaseRow
     const deploymentRows = [
       {
-        id: 'deployment-1',
+        runtime: { runtimeInstanceId: 'deployment-1' },
         environment: {
           id: 'env-1',
           name: 'Production',
@@ -26,7 +26,7 @@ describe('getReleaseDeployments', () => {
           id: 'release-1',
         },
       },
-    ] satisfies RuntimeInstanceRow[]
+    ] satisfies EnvironmentDeployment[]
 
     // Act
     const result = getReleaseDeployments(releaseRow, deploymentRows)
@@ -54,7 +54,7 @@ describe('getReleaseDeployments', () => {
     } satisfies ReleaseRow
     const deploymentRows = [
       {
-        id: 'deployment-2',
+        runtime: { runtimeInstanceId: 'deployment-2' },
         environment: {
           id: 'env-2',
           name: 'Staging',
@@ -64,7 +64,7 @@ describe('getReleaseDeployments', () => {
           id: 'release-1',
         },
       },
-    ] satisfies RuntimeInstanceRow[]
+    ] satisfies EnvironmentDeployment[]
 
     // Act
     const result = getReleaseDeployments(releaseRow, deploymentRows)

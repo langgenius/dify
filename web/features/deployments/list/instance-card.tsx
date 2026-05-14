@@ -1,6 +1,6 @@
 'use client'
 
-import type { AppInstanceCard } from '@dify/contracts/enterprise/types.gen'
+import type { AppInstance } from '@dify/contracts/enterprise/types.gen'
 import type { InstanceDetailTabKey } from '../detail/tabs'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
@@ -17,14 +17,14 @@ import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import Link from '@/next/link'
 import { toAppMode } from '../app-mode'
 
-const INSTANCE_CARD_MENU_TAB_KEYS = ['deploy', 'versions', 'settings'] satisfies InstanceDetailTabKey[]
+const INSTANCE_CARD_MENU_TAB_KEYS = ['deploy', 'releases', 'settings'] satisfies InstanceDetailTabKey[]
 
 function getInstanceTabHref(appInstanceId: string, tabKey: InstanceDetailTabKey) {
   return `/deployments/${appInstanceId}/${tabKey}`
 }
 
 export function InstanceCard({ app }: {
-  app: AppInstanceCard
+  app: AppInstance
 }) {
   const { t } = useTranslation('deployments')
   const { formatTimeFromNow } = useFormatTimeFromNow()
