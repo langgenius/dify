@@ -120,6 +120,9 @@
     }
   },
   "web/app/(commonLayout)/app/(appDetailLayout)/[appId]/overview/tracing/provider-panel.tsx": {
+    "react/static-components": {
+      "count": 2
+    },
     "ts/no-explicit-any": {
       "count": 1
     }
@@ -190,6 +193,11 @@
     },
     "react-refresh/only-export-components": {
       "count": 1
+    }
+  },
+  "web/app/components/app/annotation/batch-add-annotation-modal/csv-downloader.tsx": {
+    "react/static-components": {
+      "count": 2
     }
   },
   "web/app/components/app/annotation/batch-add-annotation-modal/index.tsx": {
@@ -411,7 +419,7 @@
   },
   "web/app/components/app/configuration/debug/index.tsx": {
     "react/set-state-in-effect": {
-      "count": 2
+      "count": 1
     },
     "ts/no-explicit-any": {
       "count": 11
@@ -470,6 +478,11 @@
   "web/app/components/app/log/model-info.tsx": {
     "ts/no-explicit-any": {
       "count": 2
+    }
+  },
+  "web/app/components/app/overview/app-chart.tsx": {
+    "react/component-hook-factories": {
+      "count": 1
     }
   },
   "web/app/components/app/overview/trigger-card.tsx": {
@@ -612,14 +625,14 @@
     "react-refresh/only-export-components": {
       "count": 1
     },
-    "react/component-hook-factories": {
-      "count": 1
-    },
     "react/no-nested-component-definitions": {
       "count": 1
     },
     "react/set-state-in-effect": {
       "count": 1
+    },
+    "react/static-components": {
+      "count": 2
     }
   },
   "web/app/components/base/carousel/index.tsx": {
@@ -690,9 +703,6 @@
     }
   },
   "web/app/components/base/chat/chat/answer/index.tsx": {
-    "react/set-state-in-effect": {
-      "count": 3
-    },
     "ts/no-explicit-any": {
       "count": 1
     }
@@ -811,7 +821,7 @@
     "react-refresh/only-export-components": {
       "count": 3
     },
-    "react/component-hook-factories": {
+    "react/jsx-no-key-after-spread": {
       "count": 1
     },
     "ts/no-explicit-any": {
@@ -929,12 +939,19 @@
       "count": 1
     }
   },
+  "web/app/components/base/form/form-scenarios/base/__tests__/field.spec.tsx": {
+    "react/static-components": {
+      "count": 2
+    }
+  },
   "web/app/components/base/form/form-scenarios/base/field.tsx": {
-    "react/component-hook-factories": {
-      "count": 1
-    },
     "ts/no-explicit-any": {
       "count": 1
+    }
+  },
+  "web/app/components/base/form/form-scenarios/base/index.tsx": {
+    "react/static-components": {
+      "count": 2
     }
   },
   "web/app/components/base/form/form-scenarios/base/types.ts": {
@@ -950,10 +967,12 @@
       "count": 2
     }
   },
+  "web/app/components/base/form/form-scenarios/input-field/__tests__/field.spec.tsx": {
+    "react/static-components": {
+      "count": 2
+    }
+  },
   "web/app/components/base/form/form-scenarios/input-field/field.tsx": {
-    "react/component-hook-factories": {
-      "count": 1
-    },
     "ts/no-explicit-any": {
       "count": 1
     }
@@ -966,10 +985,12 @@
       "count": 2
     }
   },
+  "web/app/components/base/form/form-scenarios/node-panel/__tests__/field.spec.tsx": {
+    "react/static-components": {
+      "count": 2
+    }
+  },
   "web/app/components/base/form/form-scenarios/node-panel/field.tsx": {
-    "react/component-hook-factories": {
-      "count": 1
-    },
     "ts/no-explicit-any": {
       "count": 1
     }
@@ -1130,7 +1151,7 @@
   },
   "web/app/components/base/icons/src/vender/line/general/index.ts": {
     "no-barrel-files/no-barrel-files": {
-      "count": 12
+      "count": 11
     }
   },
   "web/app/components/base/icons/src/vender/line/images/index.ts": {
@@ -1322,9 +1343,6 @@
     }
   },
   "web/app/components/base/markdown-blocks/code-block.tsx": {
-    "react/set-state-in-effect": {
-      "count": 7
-    },
     "ts/no-explicit-any": {
       "count": 9
     }
@@ -1379,7 +1397,7 @@
   },
   "web/app/components/base/mermaid/index.tsx": {
     "react/set-state-in-effect": {
-      "count": 7
+      "count": 4
     },
     "regexp/no-super-linear-backtracking": {
       "count": 3
@@ -1398,14 +1416,6 @@
   },
   "web/app/components/base/message-log-modal/index.stories.tsx": {
     "no-console": {
-      "count": 1
-    },
-    "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
-  "web/app/components/base/message-log-modal/index.tsx": {
-    "react/set-state-in-effect": {
       "count": 1
     },
     "ts/no-explicit-any": {
@@ -1659,11 +1669,6 @@
       "count": 1
     }
   },
-  "web/app/components/base/video-gallery/VideoPlayer.tsx": {
-    "react/set-state-in-effect": {
-      "count": 1
-    }
-  },
   "web/app/components/base/voice-input/__tests__/index.spec.tsx": {
     "ts/no-explicit-any": {
       "count": 3
@@ -1685,15 +1690,9 @@
   "web/app/components/base/with-input-validation/index.stories.tsx": {
     "no-console": {
       "count": 1
-    },
-    "react/component-hook-factories": {
-      "count": 1
     }
   },
   "web/app/components/base/with-input-validation/index.tsx": {
-    "react/component-hook-factories": {
-      "count": 1
-    },
     "ts/no-explicit-any": {
       "count": 1
     }
@@ -1726,6 +1725,11 @@
       "count": 1
     }
   },
+  "web/app/components/billing/pricing/plans/self-hosted-plan-item/button.tsx": {
+    "react/static-components": {
+      "count": 2
+    }
+  },
   "web/app/components/billing/pricing/types.ts": {
     "erasable-syntax-only/enums": {
       "count": 1
@@ -1734,6 +1738,11 @@
   "web/app/components/billing/type.ts": {
     "erasable-syntax-only/enums": {
       "count": 4
+    }
+  },
+  "web/app/components/datasets/common/document-status-with-action/status-with-action.tsx": {
+    "react/static-components": {
+      "count": 2
     }
   },
   "web/app/components/datasets/common/image-previewer/index.tsx": {
@@ -1919,6 +1928,9 @@
     }
   },
   "web/app/components/datasets/documents/create-from-pipeline/data-source/website-crawl/base/options/index.tsx": {
+    "react/static-components": {
+      "count": 2
+    },
     "ts/no-explicit-any": {
       "count": 1
     }
@@ -1934,6 +1946,9 @@
     }
   },
   "web/app/components/datasets/documents/create-from-pipeline/process-documents/form.tsx": {
+    "react/static-components": {
+      "count": 2
+    },
     "ts/no-explicit-any": {
       "count": 3
     }
@@ -1951,6 +1966,11 @@
   "web/app/components/datasets/documents/create-from-pipeline/types.tsx": {
     "erasable-syntax-only/enums": {
       "count": 1
+    }
+  },
+  "web/app/components/datasets/documents/detail/batch-modal/csv-downloader.tsx": {
+    "react/static-components": {
+      "count": 2
     }
   },
   "web/app/components/datasets/documents/detail/completed/common/chunk-content.tsx": {
@@ -1977,6 +1997,11 @@
     },
     "react/use-memo": {
       "count": 1
+    }
+  },
+  "web/app/components/datasets/documents/detail/completed/segment-list.tsx": {
+    "react/static-components": {
+      "count": 2
     }
   },
   "web/app/components/datasets/documents/detail/context.ts": {
@@ -2075,6 +2100,16 @@
       "count": 2
     }
   },
+  "web/app/components/datasets/metadata/metadata-dataset/dataset-metadata-drawer.tsx": {
+    "react/static-components": {
+      "count": 2
+    }
+  },
+  "web/app/components/datasets/metadata/metadata-dataset/select-metadata.tsx": {
+    "react/static-components": {
+      "count": 2
+    }
+  },
   "web/app/components/datasets/metadata/types.ts": {
     "erasable-syntax-only/enums": {
       "count": 2
@@ -2090,6 +2125,11 @@
       "count": 7
     }
   },
+  "web/app/components/develop/doc.tsx": {
+    "react/static-components": {
+      "count": 2
+    }
+  },
   "web/app/components/develop/md.tsx": {
     "ts/no-empty-object-type": {
       "count": 1
@@ -2103,7 +2143,7 @@
       "count": 1
     },
     "react/set-state-in-effect": {
-      "count": 3
+      "count": 1
     }
   },
   "web/app/components/explore/banner/indicator-button.tsx": {
@@ -2329,7 +2369,7 @@
   },
   "web/app/components/header/account-setting/model-provider-page/provider-added-card/cooldown-timer.tsx": {
     "react/set-state-in-effect": {
-      "count": 2
+      "count": 1
     }
   },
   "web/app/components/header/account-setting/model-provider-page/provider-added-card/model-auth-dropdown/__tests__/use-activate-credential.spec.tsx": {
@@ -2618,9 +2658,19 @@
       "count": 1
     }
   },
+  "web/app/components/rag-pipeline/components/panel/input-field/editor/form/__tests__/hidden-fields.spec.tsx": {
+    "react/static-components": {
+      "count": 4
+    }
+  },
+  "web/app/components/rag-pipeline/components/panel/input-field/editor/form/__tests__/show-all-settings.spec.tsx": {
+    "react/static-components": {
+      "count": 4
+    }
+  },
   "web/app/components/rag-pipeline/components/panel/input-field/editor/form/hidden-fields.tsx": {
-    "react/component-hook-factories": {
-      "count": 1
+    "react/static-components": {
+      "count": 2
     },
     "ts/no-explicit-any": {
       "count": 1
@@ -2631,18 +2681,20 @@
       "count": 2
     }
   },
+  "web/app/components/rag-pipeline/components/panel/input-field/editor/form/index.tsx": {
+    "react/static-components": {
+      "count": 6
+    }
+  },
   "web/app/components/rag-pipeline/components/panel/input-field/editor/form/initial-fields.tsx": {
-    "react/component-hook-factories": {
-      "count": 1
+    "react/static-components": {
+      "count": 2
     },
     "ts/no-explicit-any": {
       "count": 2
     }
   },
   "web/app/components/rag-pipeline/components/panel/input-field/editor/form/show-all-settings.tsx": {
-    "react/component-hook-factories": {
-      "count": 1
-    },
     "ts/no-explicit-any": {
       "count": 1
     }
@@ -2657,12 +2709,20 @@
       "count": 1
     }
   },
+  "web/app/components/rag-pipeline/components/panel/input-field/preview/form.tsx": {
+    "react/static-components": {
+      "count": 2
+    }
+  },
   "web/app/components/rag-pipeline/components/panel/test-run/preparation/document-processing/index.tsx": {
     "ts/no-explicit-any": {
       "count": 1
     }
   },
   "web/app/components/rag-pipeline/components/panel/test-run/preparation/document-processing/options.tsx": {
+    "react/static-components": {
+      "count": 2
+    },
     "ts/no-explicit-any": {
       "count": 2
     }
@@ -2772,8 +2832,21 @@
       "count": 1
     }
   },
+  "web/app/components/share/text-generation/run-batch/csv-download/index.tsx": {
+    "react/static-components": {
+      "count": 2
+    }
+  },
   "web/app/components/share/text-generation/run-batch/csv-reader/index.tsx": {
+    "react/static-components": {
+      "count": 2
+    },
     "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "web/app/components/share/text-generation/run-batch/res-download/index.tsx": {
+    "react/static-components": {
       "count": 2
     }
   },
@@ -2846,6 +2919,11 @@
       "count": 4
     }
   },
+  "web/app/components/workflow-app/components/__tests__/workflow-children.spec.tsx": {
+    "react/static-components": {
+      "count": 2
+    }
+  },
   "web/app/components/workflow-app/components/workflow-children.tsx": {
     "ts/no-explicit-any": {
       "count": 3
@@ -2876,11 +2954,6 @@
       "count": 2
     }
   },
-  "web/app/components/workflow-app/hooks/use-workflow-run.ts": {
-    "ts/no-explicit-any": {
-      "count": 5
-    }
-  },
   "web/app/components/workflow-app/hooks/use-workflow-template.ts": {
     "ts/no-explicit-any": {
       "count": 2
@@ -2899,22 +2972,6 @@
   "web/app/components/workflow/block-selector/all-start-blocks.tsx": {
     "react/set-state-in-effect": {
       "count": 1
-    }
-  },
-  "web/app/components/workflow/block-selector/featured-tools.tsx": {
-    "react/set-state-in-effect": {
-      "count": 2
-    },
-    "ts/no-explicit-any": {
-      "count": 2
-    }
-  },
-  "web/app/components/workflow/block-selector/featured-triggers.tsx": {
-    "react/set-state-in-effect": {
-      "count": 2
-    },
-    "ts/no-explicit-any": {
-      "count": 2
     }
   },
   "web/app/components/workflow/block-selector/hooks.ts": {
@@ -2949,29 +3006,6 @@
   },
   "web/app/components/workflow/block-selector/tool-picker.tsx": {
     "no-restricted-imports": {
-      "count": 1
-    }
-  },
-  "web/app/components/workflow/block-selector/tool/tool-list-flat-view/list.tsx": {
-    "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
-  "web/app/components/workflow/block-selector/tool/tool.tsx": {
-    "react/set-state-in-effect": {
-      "count": 2
-    }
-  },
-  "web/app/components/workflow/block-selector/trigger-plugin/action-item.tsx": {
-    "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
-  "web/app/components/workflow/block-selector/trigger-plugin/item.tsx": {
-    "react/set-state-in-effect": {
-      "count": 2
-    },
-    "ts/no-explicit-any": {
       "count": 1
     }
   },
@@ -3011,6 +3045,11 @@
   "web/app/components/workflow/datasets-detail-store/provider.tsx": {
     "react-refresh/only-export-components": {
       "count": 1
+    }
+  },
+  "web/app/components/workflow/header/__tests__/index.spec.tsx": {
+    "react/static-components": {
+      "count": 2
     }
   },
   "web/app/components/workflow/header/run-mode.tsx": {
@@ -3159,9 +3198,6 @@
     }
   },
   "web/app/components/workflow/nodes/_base/components/editor/code-editor/editor-support-vars.tsx": {
-    "react/set-state-in-effect": {
-      "count": 1
-    },
     "ts/no-explicit-any": {
       "count": 6
     }
@@ -3201,6 +3237,9 @@
     }
   },
   "web/app/components/workflow/nodes/_base/components/input-var-type-icon.tsx": {
+    "react/static-components": {
+      "count": 2
+    },
     "ts/no-explicit-any": {
       "count": 1
     }
@@ -3273,8 +3312,16 @@
       "count": 1
     }
   },
+  "web/app/components/workflow/nodes/_base/components/variable/variable-label/base/variable-icon.tsx": {
+    "react/static-components": {
+      "count": 2
+    }
+  },
   "web/app/components/workflow/nodes/_base/components/variable/variable-label/hooks.ts": {
     "react/no-unnecessary-use-prefix": {
+      "count": 2
+    },
+    "react/use-memo": {
       "count": 2
     }
   },
@@ -3285,7 +3332,7 @@
   },
   "web/app/components/workflow/nodes/_base/components/workflow-panel/index.tsx": {
     "react/set-state-in-effect": {
-      "count": 3
+      "count": 2
     },
     "ts/no-explicit-any": {
       "count": 6
@@ -3363,6 +3410,9 @@
     }
   },
   "web/app/components/workflow/nodes/agent/node.tsx": {
+    "react/jsx-no-key-after-spread": {
+      "count": 2
+    },
     "ts/no-explicit-any": {
       "count": 2
     }
@@ -3554,9 +3604,6 @@
     }
   },
   "web/app/components/workflow/nodes/human-input/components/form-content.tsx": {
-    "react/component-hook-factories": {
-      "count": 1
-    },
     "react/no-nested-component-definitions": {
       "count": 1
     },
@@ -3595,6 +3642,11 @@
   "web/app/components/workflow/nodes/if-else/use-single-run-form-params.ts": {
     "ts/no-explicit-any": {
       "count": 5
+    }
+  },
+  "web/app/components/workflow/nodes/index.tsx": {
+    "react/static-components": {
+      "count": 4
     }
   },
   "web/app/components/workflow/nodes/iteration/default.ts": {
@@ -3716,11 +3768,6 @@
       "count": 2
     }
   },
-  "web/app/components/workflow/nodes/llm/components/json-schema-config-modal/visual-editor/edit-card/auto-width-input.tsx": {
-    "react/set-state-in-effect": {
-      "count": 1
-    }
-  },
   "web/app/components/workflow/nodes/llm/components/json-schema-config-modal/visual-editor/hooks.ts": {
     "ts/no-explicit-any": {
       "count": 1
@@ -3836,11 +3883,6 @@
   "web/app/components/workflow/nodes/parameter-extractor/use-single-run-form-params.ts": {
     "ts/no-explicit-any": {
       "count": 9
-    }
-  },
-  "web/app/components/workflow/nodes/question-classifier/components/class-list.tsx": {
-    "react/set-state-in-effect": {
-      "count": 1
     }
   },
   "web/app/components/workflow/nodes/question-classifier/use-single-run-form-params.ts": {
@@ -4053,6 +4095,11 @@
       "count": 1
     }
   },
+  "web/app/components/workflow/panel/__tests__/index.spec.tsx": {
+    "react/static-components": {
+      "count": 2
+    }
+  },
   "web/app/components/workflow/panel/chat-record/index.tsx": {
     "ts/no-explicit-any": {
       "count": 8
@@ -4144,7 +4191,7 @@
   },
   "web/app/components/workflow/run/index.tsx": {
     "react/set-state-in-effect": {
-      "count": 2
+      "count": 1
     }
   },
   "web/app/components/workflow/run/iteration-log/index.tsx": {
@@ -4464,9 +4511,6 @@
     }
   },
   "web/hooks/use-mitt.ts": {
-    "react/component-hook-factories": {
-      "count": 1
-    },
     "ts/no-explicit-any": {
       "count": 2
     }
@@ -4699,9 +4743,6 @@
     },
     "ts/no-explicit-any": {
       "count": 3
-    },
-    "ts/no-non-null-asserted-optional-chain": {
-      "count": 1
     }
   },
   "web/service/use-tools.ts": {
@@ -4777,11 +4818,6 @@
   },
   "web/utils/completion-params.ts": {
     "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
-  "web/utils/context.ts": {
-    "react/component-hook-factories": {
       "count": 1
     }
   },

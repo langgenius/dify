@@ -1,8 +1,12 @@
+from collections.abc import Iterator
+from contextlib import contextmanager
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 import pytest
 from sqlalchemy import create_engine, select
+from sqlalchemy.engine import Engine
+from sqlalchemy.orm import sessionmaker
 
 from configs import dify_config
 from core.app.llm.quota import (
@@ -19,6 +23,13 @@ from graphon.model_runtime.entities.model_entities import ModelType
 from models import TenantCreditPool
 from models.enums import ProviderQuotaType as ModelProviderQuotaType
 from models.provider import Provider, ProviderType
+
+
+@contextmanager
+def _patched_credit_pool_session_factory(engine: Engine) -> Iterator[None]:
+    session_maker = sessionmaker(bind=engine, expire_on_commit=False)
+    with patch("services.credit_pool_service.session_factory.get_session_maker", return_value=session_maker):
+        yield
 
 
 def test_ensure_llm_quota_available_for_model_raises_when_system_model_is_exhausted() -> None:
@@ -148,7 +159,7 @@ def test_deduct_llm_quota_for_model_caps_trial_pool_when_usage_exceeds_remaining
 
     with (
         patch("core.app.llm.quota.create_plugin_provider_manager", return_value=provider_manager),
-        patch("services.credit_pool_service.db", SimpleNamespace(engine=engine)),
+        _patched_credit_pool_session_factory(engine),
     ):
         deduct_llm_quota_for_model(
             tenant_id="tenant-id",

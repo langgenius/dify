@@ -29,7 +29,7 @@ from controllers.console.wraps import (
 from enums.cloud_plan import CloudPlan
 from extensions.ext_database import db
 from fields.base import ResponseModel
-from libs.helper import TimestampField
+from libs.helper import TimestampField, to_timestamp
 from libs.login import current_account_with_tenant, login_required
 from models.account import Tenant, TenantCustomConfigDict, TenantStatus
 from services.account_service import TenantService
@@ -86,9 +86,7 @@ class TenantInfoResponse(ResponseModel):
     @field_validator("created_at", mode="before")
     @classmethod
     def _normalize_created_at(cls, value: datetime | int | None):
-        if isinstance(value, datetime):
-            return int(value.timestamp())
-        return value
+        return to_timestamp(value)
 
 
 register_schema_models(

@@ -340,116 +340,6 @@ Check if activation token is valid
 | ---- | ----------- | ------ |
 | 200 | Success | [ActivationCheckResponse](#activationcheckresponse) |
 
-### /admin/batch_add_notification_accounts
-
-#### POST
-##### Description
-
-Register target accounts for a notification by email address. JSON body: {"notification_id": "...", "user_email": ["a@example.com", ...]}. File upload: multipart/form-data with a 'file' field (CSV or TXT, one email per line) plus a 'notification_id' field. Emails that do not match any account are silently skipped.
-
-##### Responses
-
-| Code | Description |
-| ---- | ----------- |
-| 200 | Accounts added successfully |
-
-### /admin/delete-explore-banner/{banner_id}
-
-#### DELETE
-##### Description
-
-Delete an explore banner
-
-##### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| banner_id | path | Banner ID to delete | Yes | string |
-
-##### Responses
-
-| Code | Description |
-| ---- | ----------- |
-| 204 | Banner deleted successfully |
-
-### /admin/insert-explore-apps
-
-#### POST
-##### Description
-
-Insert or update an app in the explore list
-
-##### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [InsertExploreAppPayload](#insertexploreapppayload) |
-
-##### Responses
-
-| Code | Description |
-| ---- | ----------- |
-| 200 | App updated successfully |
-| 201 | App inserted successfully |
-| 404 | App not found |
-
-### /admin/insert-explore-apps/{app_id}
-
-#### DELETE
-##### Description
-
-Remove an app from the explore list
-
-##### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID to remove | Yes | string |
-
-##### Responses
-
-| Code | Description |
-| ---- | ----------- |
-| 204 | App removed successfully |
-
-### /admin/insert-explore-banner
-
-#### POST
-##### Description
-
-Insert an explore banner
-
-##### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [InsertExploreBannerPayload](#insertexplorebannerpayload) |
-
-##### Responses
-
-| Code | Description |
-| ---- | ----------- |
-| 201 | Banner inserted successfully |
-
-### /admin/upsert_notification
-
-#### POST
-##### Description
-
-Create or update an in-product notification. Supply notification_id to update an existing one; omit it to create a new one. Pass at least one language variant in contents (zh / en / jp).
-
-##### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [UpsertNotificationPayload](#upsertnotificationpayload) |
-
-##### Responses
-
-| Code | Description |
-| ---- | ----------- |
-| 200 | Notification upserted successfully |
-
 ### /all-workspaces
 
 #### GET
@@ -10731,13 +10621,6 @@ AppMCPServer Status Enum
 | ---- | ---- | ----------- | -------- |
 | text | string | Transcribed text from audio | Yes |
 
-#### BatchAddNotificationAccountsPayload
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| notification_id | string |  | Yes |
-| user_email | [ string ] | List of account email addresses | Yes |
-
 #### BatchImportPayload
 
 | Name | Type | Description | Required |
@@ -12233,33 +12116,6 @@ Form input types.
 | model_type | [ModelType](#modeltype) |  | Yes |
 | provider |  |  | No |
 
-#### InsertExploreAppPayload
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| app_id | string |  | Yes |
-| can_trial | boolean |  | No |
-| category | string |  | Yes |
-| copyright |  |  | No |
-| custom_disclaimer |  |  | No |
-| desc |  |  | No |
-| language | string |  | Yes |
-| position | integer |  | Yes |
-| privacy_policy |  |  | No |
-| trial_limit | integer |  | No |
-
-#### InsertExploreBannerPayload
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| category | string |  | Yes |
-| description | string |  | Yes |
-| img-src | string |  | Yes |
-| language | string |  | No |
-| link | string |  | Yes |
-| sort | integer |  | Yes |
-| title | string |  | Yes |
-
 #### InstallPermission
 
 | Name | Type | Description | Required |
@@ -12369,16 +12225,6 @@ Enum class for large language model mode.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | LLMMode | string | Enum class for large language model mode. |  |
-
-#### LangContentPayload
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| body | string |  | Yes |
-| lang | string | Language tag: 'zh' \| 'en' \| 'jp' | Yes |
-| subtitle |  |  | No |
-| title | string |  | Yes |
-| title_pic_url |  |  | No |
 
 #### LegacyEndpointUpdatePayload
 
@@ -13936,17 +13782,6 @@ Tag type
 | single_chunk_attachment_limit | integer |  | Yes |
 | video_file_size_limit | integer |  | Yes |
 | workflow_file_upload_limit | integer |  | Yes |
-
-#### UpsertNotificationPayload
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| contents | [ [LangContentPayload](#langcontentpayload) ] |  | Yes |
-| end_time |  | RFC3339, e.g. 2026-03-20T23:59:59Z | No |
-| frequency | string | 'once' \| 'every_page_load' | No |
-| notification_id |  | Omit to create; supply UUID to update | No |
-| start_time |  | RFC3339, e.g. 2026-03-01T00:00:00Z | No |
-| status | string | 'active' \| 'inactive' | No |
 
 #### UserAction
 

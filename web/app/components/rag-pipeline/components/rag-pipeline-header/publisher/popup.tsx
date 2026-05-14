@@ -1,4 +1,3 @@
-import type { IconInfo } from '@/models/datasets'
 import type { PublishWorkflowParams } from '@/types/workflow'
 import {
   AlertDialog,
@@ -25,7 +24,6 @@ import ShortcutsName from '@/app/components/workflow/shortcuts-name'
 import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
 import { getKeyboardKeyCodeBySystem } from '@/app/components/workflow/utils'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
-import { useDocLink } from '@/context/i18n'
 import { useModalContextSelector } from '@/context/modal-context'
 import { useProviderContextSelector } from '@/context/provider-context'
 import { useDatasetApiAccessUrl } from '@/hooks/use-api-access-url'
@@ -34,9 +32,8 @@ import Link from '@/next/link'
 import { useParams, useRouter } from '@/next/navigation'
 import { useInvalidDatasetList } from '@/service/knowledge/use-dataset'
 import { useInvalid } from '@/service/use-base'
-import { publishedPipelineInfoQueryKeyPrefix, useInvalidCustomizedTemplateList, usePublishAsCustomizedPipeline } from '@/service/use-pipeline'
+import { publishedPipelineInfoQueryKeyPrefix } from '@/service/use-pipeline'
 import { usePublishWorkflow } from '@/service/use-workflow'
-import PublishAsKnowledgePipelineModal from '../../publish-as-knowledge-pipeline-modal'
 
 const PUBLISH_SHORTCUT = ['ctrl', '⇧', 'P']
 type PopupProps = {
@@ -44,6 +41,8 @@ type PopupProps = {
   confirmVisible?: boolean
   onShowConfirm?: () => void
   onHideConfirm?: () => void
+  isPublishingAsCustomizedPipeline?: boolean
+  onShowPublishAsKnowledgePipelineModal?: () => void
 }
 
 const Popup = ({
@@ -51,11 +50,12 @@ const Popup = ({
   confirmVisible: controlledConfirmVisible,
   onShowConfirm,
   onHideConfirm,
+  isPublishingAsCustomizedPipeline = false,
+  onShowPublishAsKnowledgePipelineModal,
 }: PopupProps) => {
   const { t } = useTranslation()
   const { datasetId } = useParams()
   const { push } = useRouter()
-  const docLink = useDocLink()
   const publishedAt = useStore(s => s.publishedAt)
   const draftUpdatedAt = useStore(s => s.draftUpdatedAt)
   const pipelineId = useStore(s => s.pipelineId)
@@ -73,9 +73,6 @@ const Popup = ({
   const showConfirm = onShowConfirm ?? showLocalConfirm
   const hideConfirm = onHideConfirm ?? hideLocalConfirm
   const [publishing, { setFalse: hidePublishing, setTrue: showPublishing }] = useBoolean(false)
-  const { mutateAsync: publishAsCustomizedPipeline } = usePublishAsCustomizedPipeline()
-  const [showPublishAsKnowledgePipelineModal, { setFalse: hidePublishAsKnowledgePipelineModal, setTrue: setShowPublishAsKnowledgePipelineModal }] = useBoolean(false)
-  const [isPublishingAsCustomizedPipeline, { setFalse: hidePublishingAsCustomizedPipeline, setTrue: showPublishingAsCustomizedPipeline }] = useBoolean(false)
   const invalidPublishedPipelineInfo = useInvalid([...publishedPipelineInfoQueryKeyPrefix, pipelineId])
   const invalidDatasetList = useInvalidDatasetList()
   const handleHideConfirm = useCallback(() => {
@@ -145,47 +142,15 @@ const Popup = ({
   const goToAddDocuments = useCallback(() => {
     push(`/datasets/${datasetId}/documents/create-from-pipeline`)
   }, [datasetId, push])
-  const invalidCustomizedTemplateList = useInvalidCustomizedTemplateList()
-  const handlePublishAsKnowledgePipeline = useCallback(async (name: string, icon: IconInfo, description?: string) => {
-    try {
-      showPublishingAsCustomizedPipeline()
-      await publishAsCustomizedPipeline({
-        pipelineId: pipelineId || '',
-        name,
-        icon_info: icon,
-        description,
-      })
-      toast.success(t('publishTemplate.success.message', { ns: 'datasetPipeline' }), {
-        description: (
-          <div className="flex flex-col gap-y-1">
-            <span className="system-xs-regular text-text-secondary">
-              {t('publishTemplate.success.tip', { ns: 'datasetPipeline' })}
-            </span>
-            <Link href={docLink()} target="_blank" className="inline-block system-xs-medium-uppercase text-text-accent">
-              {t('publishTemplate.success.learnMore', { ns: 'datasetPipeline' })}
-            </Link>
-          </div>
-        ),
-      })
-      invalidCustomizedTemplateList()
-    }
-    catch {
-      toast.error(t('publishTemplate.error.message', { ns: 'datasetPipeline' }))
-    }
-    finally {
-      hidePublishingAsCustomizedPipeline()
-      hidePublishAsKnowledgePipelineModal()
-    }
-  }, [showPublishingAsCustomizedPipeline, publishAsCustomizedPipeline, pipelineId, t, invalidCustomizedTemplateList, hidePublishingAsCustomizedPipeline, hidePublishAsKnowledgePipelineModal, docLink])
   const handleClickPublishAsKnowledgePipeline = useCallback(() => {
     onRequestClose?.()
     if (!isAllowPublishAsCustomKnowledgePipelineTemplate) {
       setShowPricingModal()
     }
     else {
-      setShowPublishAsKnowledgePipelineModal()
+      onShowPublishAsKnowledgePipelineModal?.()
     }
-  }, [isAllowPublishAsCustomKnowledgePipelineTemplate, onRequestClose, setShowPublishAsKnowledgePipelineModal, setShowPricingModal])
+  }, [isAllowPublishAsCustomKnowledgePipelineTemplate, onRequestClose, onShowPublishAsKnowledgePipelineModal, setShowPricingModal])
   return (
     <div className={cn('rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-xl shadow-shadow-shadow-5', isAllowPublishAsCustomKnowledgePipelineTemplate ? 'w-[360px]' : 'w-[400px]')}>
       <div className="p-4 pt-3">
@@ -279,7 +244,6 @@ const Popup = ({
           </AlertDialogActions>
         </AlertDialogContent>
       </AlertDialog>
-      {showPublishAsKnowledgePipelineModal && (<PublishAsKnowledgePipelineModal confirmDisabled={isPublishingAsCustomizedPipeline} onConfirm={handlePublishAsKnowledgePipeline} onCancel={hidePublishAsKnowledgePipelineModal} />)}
     </div>
   )
 }
