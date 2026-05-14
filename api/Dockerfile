@@ -1,3 +1,4 @@
+# syntax=docker/dockerfile:1
 # base image
 FROM python:3.12-slim-bookworm AS base
 
@@ -22,8 +23,11 @@ RUN apt-get update \
           libmpfr-dev libmpc-dev
 
 # Install Python dependencies (workspace members under providers/vdb/)
+# dify-agent is a path dependency (../dify-agent); supply it via:
+#   docker build --build-context dify-agent=./dify-agent ...
 COPY pyproject.toml uv.lock ./
 COPY providers ./providers
+COPY --from=dify-agent . /app/dify-agent
 RUN uv sync --locked --no-dev
 
 # production stage
