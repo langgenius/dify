@@ -100,6 +100,13 @@ class CheckDependenciesPendingData(BaseModel):
 
 
 class RagPipelineDslService:
+    """Import, export, and inspect RAG pipeline DSL using the caller-owned session.
+
+    Controllers wrap this service in a SQLAlchemy transaction context, so methods must only flush interim changes when
+    generated IDs are needed. Committing inside the service would close the caller's transaction and break later work in
+    the same context manager.
+    """
+
     def __init__(self, session: Session):
         self._session = session
 
@@ -325,7 +332,7 @@ class RagPipelineDslService:
                                 type=CollectionBindingType.DATASET,
                             )
                             self._session.add(dataset_collection_binding)
-                            self._session.commit()
+                            self._session.flush()
                         dataset_collection_binding_id = dataset_collection_binding.id
                         dataset.collection_binding_id = dataset_collection_binding_id
                         dataset.embedding_model = knowledge_configuration.embedding_model
@@ -337,7 +344,7 @@ class RagPipelineDslService:
                         dataset.summary_index_setting = knowledge_configuration.summary_index_setting
                     dataset.pipeline_id = pipeline.id
                     self._session.add(dataset)
-                    self._session.commit()
+                    self._session.flush()
                     dataset_id = dataset.id
             if not dataset_id:
                 raise ValueError("DSL is not valid, please check the Knowledge Index node.")
@@ -462,7 +469,7 @@ class RagPipelineDslService:
                                 type=CollectionBindingType.DATASET,
                             )
                             self._session.add(dataset_collection_binding)
-                            self._session.commit()
+                            self._session.flush()
                         dataset_collection_binding_id = dataset_collection_binding.id
                         dataset.collection_binding_id = dataset_collection_binding_id
                         dataset.embedding_model = knowledge_configuration.embedding_model
@@ -474,7 +481,7 @@ class RagPipelineDslService:
                         dataset.summary_index_setting = knowledge_configuration.summary_index_setting
                     dataset.pipeline_id = pipeline.id
                     self._session.add(dataset)
-                    self._session.commit()
+                    self._session.flush()
                     dataset_id = dataset.id
             if not dataset_id:
                 raise ValueError("DSL is not valid, please check the Knowledge Index node.")
@@ -585,7 +592,7 @@ class RagPipelineDslService:
             pipeline.id = str(uuid4())
 
             self._session.add(pipeline)
-            self._session.commit()
+            self._session.flush()
         # save dependencies
         if dependencies:
             redis_client.setex(
@@ -627,8 +634,8 @@ class RagPipelineDslService:
             workflow.environment_variables = environment_variables
             workflow.conversation_variables = conversation_variables
             workflow.rag_pipeline_variables = rag_pipeline_variables_list
-        # commit db session changes
-        self._session.commit()
+        # Keep transaction ownership with the caller while materializing IDs and constraint checks before returning.
+        self._session.flush()
 
         return pipeline
 
