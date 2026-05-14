@@ -243,10 +243,7 @@ describe('Filter', () => {
       )
 
       // Act
-      const input = screen.getByPlaceholderText('common.operation.search')
-      const clearButton = input.parentElement?.querySelector('div.cursor-pointer')
-      if (clearButton)
-        fireEvent.click(clearButton)
+      fireEvent.click(screen.getByRole('button', { name: 'common.operation.clear' }))
 
       // Assert
       expect(setQueryParams).toHaveBeenCalledWith({ ...queryParams, keyword: '' })

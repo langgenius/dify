@@ -365,6 +365,14 @@ describe('PromptEditor', () => {
       expect(() => unmount()).not.toThrow()
     })
 
+    it('should rerender without ref-driven update loops', () => {
+      const { rerender } = render(<PromptEditor value="first" />)
+
+      expect(() => {
+        rerender(<PromptEditor value="second" />)
+      }).not.toThrow()
+    })
+
     it('should render hitl block when show=true', () => {
       render(
         <PromptEditor

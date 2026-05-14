@@ -28,7 +28,7 @@ class TestNotionExtractorInitAndPublicMethods:
 
         assert extractor._notion_access_token == "token"
 
-    def test_init_falls_back_to_env_token_when_credential_lookup_fails(self, monkeypatch):
+    def test_init_falls_back_to_env_token_when_credential_lookup_fails(self, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.setattr(
             notion_extractor.NotionExtractor,
             "_get_access_token",
@@ -46,7 +46,7 @@ class TestNotionExtractorInitAndPublicMethods:
 
         assert extractor._notion_access_token == "env-token"
 
-    def test_init_raises_if_no_credential_and_no_env_token(self, monkeypatch):
+    def test_init_raises_if_no_credential_and_no_env_token(self, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.setattr(
             notion_extractor.NotionExtractor,
             "_get_access_token",
@@ -63,7 +63,7 @@ class TestNotionExtractorInitAndPublicMethods:
                 credential_id="cred",
             )
 
-    def test_extract_updates_last_edited_and_loads_documents(self, monkeypatch):
+    def test_extract_updates_last_edited_and_loads_documents(self, monkeypatch: pytest.MonkeyPatch):
         extractor = notion_extractor.NotionExtractor(
             notion_workspace_id="ws",
             notion_obj_id="obj",
@@ -83,7 +83,7 @@ class TestNotionExtractorInitAndPublicMethods:
         load_mock.assert_called_once_with("obj", "page")
         assert len(docs) == 1
 
-    def test_load_data_as_documents_page_database_and_invalid(self, monkeypatch):
+    def test_load_data_as_documents_page_database_and_invalid(self, monkeypatch: pytest.MonkeyPatch):
         extractor = notion_extractor.NotionExtractor(
             notion_workspace_id="ws",
             notion_obj_id="obj",
@@ -394,7 +394,7 @@ class TestNotionMetadataAndCredentialMethods:
 
         assert extractor.update_last_edited_time(None) is None
 
-    def test_update_last_edited_time_updates_document_and_commits(self, monkeypatch):
+    def test_update_last_edited_time_updates_document_and_commits(self, monkeypatch: pytest.MonkeyPatch):
         extractor = notion_extractor.NotionExtractor(
             notion_workspace_id="ws",
             notion_obj_id="obj",
@@ -479,7 +479,7 @@ class TestNotionMetadataAndCredentialMethods:
         with pytest.raises(AssertionError, match="Notion access token is required"):
             extractor.get_notion_last_edited_time()
 
-    def test_get_access_token_success_and_errors(self, monkeypatch):
+    def test_get_access_token_success_and_errors(self, monkeypatch: pytest.MonkeyPatch):
         with pytest.raises(Exception, match="No credential id found"):
             notion_extractor.NotionExtractor._get_access_token("tenant", None)
 

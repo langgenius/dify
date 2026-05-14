@@ -106,6 +106,27 @@ describe('DuplicateAppModal', () => {
     expect(onHide).toHaveBeenCalled()
   })
 
+  it('should call onHide when close button is clicked', async () => {
+    const onHide = vi.fn()
+    const user = userEvent.setup()
+
+    render(
+      <DuplicateAppModal
+        appName="Demo App"
+        icon_type="emoji"
+        icon="🤖"
+        icon_background="#FFEAD5"
+        show
+        onConfirm={vi.fn()}
+        onHide={onHide}
+      />,
+    )
+
+    await user.click(screen.getByRole('button', { name: 'operation.close' }))
+
+    expect(onHide).toHaveBeenCalledTimes(1)
+  })
+
   it('should restore the original image icon when the picker closes without selecting', async () => {
     const onConfirm = vi.fn()
     const user = userEvent.setup()

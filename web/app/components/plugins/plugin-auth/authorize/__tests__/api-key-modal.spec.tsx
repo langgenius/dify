@@ -1,5 +1,6 @@
 import type { ApiKeyModalProps } from '../api-key-modal'
 import type { FormSchema } from '@/app/components/base/form/types'
+import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -52,10 +53,6 @@ vi.mock('../../hooks/use-credential', () => ({
 
 vi.mock('../../../readme-panel/entrance', () => ({
   ReadmeEntrance: () => <div data-testid="readme-entrance" />,
-}))
-
-vi.mock('../../../readme-panel/store', () => ({
-  ReadmeShowType: { modal: 'modal' },
 }))
 
 vi.mock('@/app/components/base/encrypted-bottom', () => ({
@@ -234,7 +231,7 @@ describe('ApiKeyModal', () => {
     const mockOnClose = vi.fn()
     render(<ApiKeyModal pluginPayload={basePayload} onClose={mockOnClose} />)
 
-    fireEvent.click(screen.getByTestId('modal-close'))
+    fireEvent.click(screen.getByRole('button', { name: /Close|operation.close/ }))
     expect(mockOnClose).toHaveBeenCalled()
   })
 
@@ -377,6 +374,29 @@ describe('ApiKeyModal', () => {
     fireEvent.pointerDown(backdrop)
     fireEvent.mouseDown(backdrop)
     fireEvent.click(backdrop)
+
+    await waitFor(() => {
+      expect(screen.getByTestId('modal-open-state')).toHaveTextContent('false')
+    })
+    expect(mockOnClose).toHaveBeenCalled()
+  })
+
+  it('should close on backdrop click when nested inside another dialog', async () => {
+    const mockOnClose = vi.fn()
+    render(
+      <Dialog open>
+        <DialogContent backdropClassName="bg-transparent">
+          <ControlledModalHarness ApiKeyModal={ApiKeyModal} onClose={mockOnClose} />
+        </DialogContent>
+      </Dialog>,
+    )
+
+    const backdrop = document.querySelector('.bg-background-overlay')
+    expect(backdrop).toBeInTheDocument()
+
+    fireEvent.pointerDown(backdrop!)
+    fireEvent.mouseDown(backdrop!)
+    fireEvent.click(backdrop!)
 
     await waitFor(() => {
       expect(screen.getByTestId('modal-open-state')).toHaveTextContent('false')

@@ -41,7 +41,7 @@ class TestAppParameterApi:
     @patch("controllers.service_api.wraps.validate_and_get_api_token")
     @patch("controllers.service_api.wraps.db")
     def test_get_parameters_for_chat_app(
-        self, mock_db, mock_validate_token, mock_current_app, mock_user_logged_in, app, mock_app_model
+        self, mock_db, mock_validate_token, mock_current_app, mock_user_logged_in, app: Flask, mock_app_model
     ):
         """Test retrieving parameters for a chat app."""
         # Arrange
@@ -91,7 +91,7 @@ class TestAppParameterApi:
     @patch("controllers.service_api.wraps.validate_and_get_api_token")
     @patch("controllers.service_api.wraps.db")
     def test_get_parameters_for_workflow_app(
-        self, mock_db, mock_validate_token, mock_current_app, mock_user_logged_in, app, mock_app_model
+        self, mock_db, mock_validate_token, mock_current_app, mock_user_logged_in, app: Flask, mock_app_model
     ):
         """Test retrieving parameters for a workflow app."""
         # Arrange
@@ -136,7 +136,7 @@ class TestAppParameterApi:
     @patch("controllers.service_api.wraps.validate_and_get_api_token")
     @patch("controllers.service_api.wraps.db")
     def test_get_parameters_raises_error_when_chat_config_missing(
-        self, mock_db, mock_validate_token, mock_current_app, mock_user_logged_in, app, mock_app_model
+        self, mock_db, mock_validate_token, mock_current_app, mock_user_logged_in, app: Flask, mock_app_model
     ):
         """Test that AppUnavailableError is raised when chat app has no config."""
         # Arrange
@@ -174,7 +174,7 @@ class TestAppParameterApi:
     @patch("controllers.service_api.wraps.validate_and_get_api_token")
     @patch("controllers.service_api.wraps.db")
     def test_get_parameters_raises_error_when_workflow_missing(
-        self, mock_db, mock_validate_token, mock_current_app, mock_user_logged_in, app, mock_app_model
+        self, mock_db, mock_validate_token, mock_current_app, mock_user_logged_in, app: Flask, mock_app_model
     ):
         """Test that AppUnavailableError is raised when workflow app has no workflow."""
         # Arrange
@@ -234,7 +234,14 @@ class TestAppMetaApi:
     @patch("controllers.service_api.wraps.db")
     @patch("controllers.service_api.app.app.AppService")
     def test_get_app_meta(
-        self, mock_app_service, mock_db, mock_validate_token, mock_current_app, mock_user_logged_in, app, mock_app_model
+        self,
+        mock_app_service,
+        mock_db,
+        mock_validate_token,
+        mock_current_app,
+        mock_user_logged_in,
+        app: Flask,
+        mock_app_model,
     ):
         """Test retrieving app metadata via AppService."""
         # Arrange
@@ -310,7 +317,7 @@ class TestAppInfoApi:
     @patch("controllers.service_api.wraps.validate_and_get_api_token")
     @patch("controllers.service_api.wraps.db")
     def test_get_app_info(
-        self, mock_db, mock_validate_token, mock_current_app, mock_user_logged_in, app, mock_app_model
+        self, mock_db, mock_validate_token, mock_current_app, mock_user_logged_in, app: Flask, mock_app_model
     ):
         """Test retrieving basic app information."""
         mock_current_app.login_manager = Mock()
@@ -402,7 +409,9 @@ class TestAppInfoApi:
     @patch("controllers.service_api.wraps.current_app")
     @patch("controllers.service_api.wraps.validate_and_get_api_token")
     @patch("controllers.service_api.wraps.db")
-    def test_get_app_info_with_no_tags(self, mock_db, mock_validate_token, mock_current_app, mock_user_logged_in, app):
+    def test_get_app_info_with_no_tags(
+        self, mock_db, mock_validate_token, mock_current_app, mock_user_logged_in, app: Flask
+    ):
         """Test retrieving app info when app has no tags."""
         # Arrange
         mock_current_app.login_manager = Mock()
@@ -453,7 +462,7 @@ class TestAppInfoApi:
     @patch("controllers.service_api.wraps.validate_and_get_api_token")
     @patch("controllers.service_api.wraps.db")
     def test_get_app_info_returns_correct_mode(
-        self, mock_db, mock_validate_token, mock_current_app, mock_user_logged_in, app, app_mode
+        self, mock_db, mock_validate_token, mock_current_app, mock_user_logged_in, app: Flask, app_mode
     ):
         """Test that all app modes are correctly returned."""
         # Arrange

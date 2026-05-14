@@ -1,6 +1,6 @@
 # @langgenius/dify-ui
 
-Shared UI primitives, design tokens, Tailwind preset, and the `cn()` utility consumed by Dify's `web/` app.
+Shared UI primitives, design tokens, CSS-first Tailwind styles, and the `cn()` utility consumed by Dify's `web/` app.
 
 The primitives are thin, opinionated wrappers around [Base UI] headless components, styled with `cva` + `cn` and Dify design tokens.
 
@@ -28,6 +28,7 @@ Always import from a **subpath export** — there is no barrel:
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Dialog, DialogContent, DialogTrigger } from '@langgenius/dify-ui/dialog'
+import { Drawer, DrawerPopup, DrawerTrigger } from '@langgenius/dify-ui/drawer'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import '@langgenius/dify-ui/styles.css' // once, in the app root
 ```
@@ -36,22 +37,36 @@ Importing from `@langgenius/dify-ui` (no subpath) is intentionally not supported
 
 ## Primitives
 
-| Category | Subpath                                                                                                            | Notes                                             |
-| -------- | ------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------- |
-| Overlay  | `./alert-dialog`, `./context-menu`, `./dialog`, `./dropdown-menu`, `./popover`, `./select`, `./toast`, `./tooltip` | Portalled. See [Overlay & portal contract] below. |
-| Form     | `./number-field`, `./slider`, `./switch`                                                                           | Controlled / uncontrolled per Base UI defaults.   |
-| Layout   | `./scroll-area`                                                                                                    | Custom-styled scrollbar over the host viewport.   |
-| Media    | `./avatar`, `./button`                                                                                             | Button exposes `cva` variants.                    |
+| Category | Subpath                                                                                                                                                        | Notes                                             |
+| -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------- |
+| Overlay  | `./alert-dialog`, `./autocomplete`, `./combobox`, `./context-menu`, `./dialog`, `./drawer`, `./dropdown-menu`, `./popover`, `./select`, `./toast`, `./tooltip` | Portalled. See [Overlay & portal contract] below. |
+| Form     | `./autocomplete`, `./combobox`, `./number-field`, `./slider`, `./switch`                                                                                       | Controlled / uncontrolled per Base UI defaults.   |
+| Layout   | `./scroll-area`                                                                                                                                                | Custom-styled scrollbar over the host viewport.   |
+| Media    | `./avatar`, `./button`                                                                                                                                         | Button exposes `cva` variants.                    |
 
 Utilities:
 
 - `./cn` — `clsx` + `tailwind-merge` wrapper. Use this for conditional class composition.
-- `./tailwind-preset` — Tailwind v4 preset with Dify tokens. Apps extend it from their own `tailwind.config.ts`.
-- `./styles.css` — the one CSS entry that ships the design tokens, theme variables, and base reset. Import it once from the app root.
+- `./styles.css` — the one CSS entry that ships the design tokens, theme variables, and project utilities/components. Import it once from the app root.
+
+## Tailwind CSS v4 integration
+
+This package uses Tailwind CSS v4's CSS-first configuration model. Consumers should import Tailwind from their own root stylesheet, then import this package's CSS entry:
+
+```css
+@import 'tailwindcss';
+@import '@langgenius/dify-ui/styles.css';
+```
+
+If a consumer uses Dify UI source files through the workspace, add an explicit source so Tailwind can detect utility classes:
+
+```css
+@source '../packages/dify-ui/src';
+```
 
 ## Overlay & portal contract
 
-All overlay primitives (`dialog`, `alert-dialog`, `popover`, `dropdown-menu`, `context-menu`, `select`, `tooltip`, `toast`) render their content inside a [Base UI Portal] attached to `document.body`. This is the Base UI default — see the upstream [Portals][Base UI Portal] docs for the underlying behavior. Consumers **do not** need to wrap anything in a portal manually.
+Overlay primitives render their floating surfaces inside a [Base UI Portal] attached to `document.body`. This is the Base UI default — see the upstream [Portals][Base UI Portal] docs for the underlying behavior. Convenience content components such as `DialogContent`, `PopoverContent`, and `SelectContent` own their portal internally; primitives with explicit portal anatomy such as `Drawer` expose the matching `DrawerPortal` part so consumers can compose the full Base UI structure.
 
 ### Root isolation requirement
 
@@ -69,20 +84,27 @@ Equivalent: any root element with `isolation: isolate` in CSS. Without it, overl
 
 Every overlay primitive uses a single, shared z-index. Do **not** override it at call sites.
 
-| Layer                                                                               | z-index  | Where                                                                      |
-| ----------------------------------------------------------------------------------- | -------- | -------------------------------------------------------------------------- |
-| Overlays (Dialog, AlertDialog, Popover, DropdownMenu, ContextMenu, Select, Tooltip) | `z-1002` | Positioner / Backdrop                                                      |
-| Toast viewport                                                                      | `z-1003` | One layer above overlays so notifications are never hidden under a dialog. |
+| Layer                                                                                                               | z-index | Where                                                                      |
+| ------------------------------------------------------------------------------------------------------------------- | ------- | -------------------------------------------------------------------------- |
+| Overlays (Dialog, AlertDialog, Autocomplete, Combobox, Drawer, Popover, DropdownMenu, ContextMenu, Select, Tooltip) | `z-50`  | Positioner / Backdrop                                                      |
+| Toast viewport                                                                                                      | `z-60`  | One layer above overlays so notifications are never hidden under a dialog. |
 
-Rationale: during Dify's migration from legacy `portal-to-follow-elem` / `base/modal` / `base/dialog` overlays to this package, new and old overlays coexist in the DOM. `z-1002` sits above any common legacy layer, eliminating per-call-site z-index hacks. Among themselves, new primitives share the same z-index and **rely on DOM order** for stacking — the portal mounted later wins.
+Rationale: Dify UI owns the normal application overlay layer. Overlay primitives share `z-50` and **rely on DOM order** for stacking — the portal mounted later wins. Toast owns `z-60` so notifications remain visible above dialogs, popovers, and other portalled surfaces without falling back to `z-9999`.
 
-See `[web/docs/overlay-migration.md](../../web/docs/overlay-migration.md)` for the Dify-web migration history and the remaining legacy allowlist. Once the legacy overlays are gone, the values in this table can drop back to `z-50` / `z-51`.
+See `[web/docs/overlay.md](../../web/docs/overlay.md)` for the web app overlay best practices.
 
 ### Rules
 
-- Never add `z-1003` / `z-9999` / etc. overrides on primitives from this package. If something is getting clipped, the **parent** overlay (typically a legacy one) is the problem and should be migrated.
-- Never portal an overlay manually on top of our primitives — use `DialogTrigger`, `PopoverTrigger`, etc. Base UI handles focus management, scroll-locking, and dismissal.
+- Never add ad hoc `z-*` overrides on primitives from this package. If something is getting clipped, fix the parent overlay structure instead of raising the child primitive.
+- Never create an extra manual portal on top of our primitives — use the exported content / portal parts such as `DialogContent`, `PopoverContent`, and `DrawerPortal`. Base UI handles focus management, scroll-locking, and dismissal.
 - When a primitive needs additional presentation chrome (e.g. a custom backdrop), add it **inside** the exported component, not at call sites.
+
+### Tooltip, infotip, and popover semantics
+
+- Use `Tooltip` only for short, non-interactive visual labels. The trigger must already have visible text or an `aria-label`; the tooltip is not the accessible name and must not contain links, buttons, forms, or structured prose.
+- Use `Popover` for explanatory content, long text, rich layout, or anything users may need to reach on touch or with assistive technology. In `web/`, the `Infotip` wrapper is the preferred pattern for a `?` help glyph backed by `Popover`.
+- Pick a `placement` and let the primitive own spacing. Avoid per-call-site offsets unless the component API explicitly needs a measured layout exception.
+- When passing a Base UI trigger `render` prop, render a real `<button type="button">` for button-like triggers. If a Popover trigger must render a `div`, `span`, or another non-button element, pass `nativeButton={false}`.
 
 ## Development
 

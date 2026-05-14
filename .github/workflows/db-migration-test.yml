@@ -37,7 +37,7 @@ jobs:
       - name: Prepare middleware env
         run: |
           cd docker
-          cp middleware.env.example middleware.env
+          cp envs/middleware.env.example middleware.env
 
       - name: Set up Middlewares
         uses: hoverkraft-tech/compose-action@d2bee4f07e8ca410d6b196d00f90c12e7d48c33a # v2.6.0
@@ -87,7 +87,7 @@ jobs:
       - name: Prepare middleware env for MySQL
         run: |
           cd docker
-          cp middleware.env.example middleware.env
+          cp envs/middleware.env.example middleware.env
           sed -i 's/DB_TYPE=postgresql/DB_TYPE=mysql/' middleware.env
           sed -i 's/DB_HOST=db_postgres/DB_HOST=db_mysql/' middleware.env
           sed -i 's/DB_PORT=5432/DB_PORT=3306/' middleware.env

@@ -82,6 +82,7 @@ const List = ({
         className="sticky bottom-0 z-10 flex h-8 cursor-pointer items-center rounded-b-lg border-[0.5px] border-t border-components-panel-border bg-components-panel-bg-blur px-4 py-1 system-sm-medium text-text-accent-light-mode-only shadow-lg"
         href={getMarketplaceUrl('', { category })}
         target="_blank"
+        rel="noopener noreferrer"
       >
         <span>{t('findMoreInMarketplace', { ns: 'plugin' })}</span>
         <RiArrowRightUpLine className="ml-0.5 h-3 w-3" />
@@ -102,6 +103,7 @@ const List = ({
           <Link
             href={urlWithSearchText}
             target="_blank"
+            rel="noopener noreferrer"
             className="flex items-center text-text-accent-light-mode-only"
             onClick={e => e.stopPropagation()}
           >
@@ -124,6 +126,7 @@ const List = ({
             <Link
               href={urlWithSearchText}
               target="_blank"
+              rel="noopener noreferrer"
               className="flex h-4 shrink-0 items-center system-sm-medium text-text-accent-light-mode-only"
             >
               <RiSearchLine className="mr-0.5 h-3 w-3" />

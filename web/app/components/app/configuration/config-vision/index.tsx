@@ -11,7 +11,7 @@ import { useContext } from 'use-context-selector'
 // import { Resolution } from '@/types/app'
 import { useFeatures, useFeaturesStore } from '@/app/components/base/features/hooks'
 import { Vision } from '@/app/components/base/icons/src/vender/features'
-import Tooltip from '@/app/components/base/tooltip'
+import { Infotip } from '@/app/components/base/infotip'
 import OptionCard from '@/app/components/workflow/nodes/_base/components/option-card'
 import { SupportUploadFileTypes } from '@/app/components/workflow/types'
 // import OptionCard from '@/app/components/workflow/nodes/_base/components/option-card'
@@ -70,13 +70,12 @@ const ConfigVision: FC = () => {
       </div>
       <div className="flex grow items-center">
         <div className="mr-1 system-sm-semibold text-text-secondary">{t('vision.name', { ns: 'appDebug' })}</div>
-        <Tooltip
-          popupContent={(
-            <div className="w-[180px]">
-              {t('vision.description', { ns: 'appDebug' })}
-            </div>
-          )}
-        />
+        <Infotip
+          aria-label={t('vision.description', { ns: 'appDebug' })}
+          popupClassName="w-[180px]"
+        >
+          {t('vision.description', { ns: 'appDebug' })}
+        </Infotip>
       </div>
       <div className="flex shrink-0 items-center">
         {readonly
@@ -84,15 +83,14 @@ const ConfigVision: FC = () => {
               <>
                 <div className="mr-2 flex items-center gap-0.5">
                   <div className="system-xs-medium-uppercase text-text-tertiary">{t('vision.visionSettings.resolution', { ns: 'appDebug' })}</div>
-                  <Tooltip
-                    popupContent={(
-                      <div className="w-[180px]">
-                        {t('vision.visionSettings.resolutionTooltip', { ns: 'appDebug' }).split('\n').map(item => (
-                          <div key={item}>{item}</div>
-                        ))}
-                      </div>
-                    )}
-                  />
+                  <Infotip
+                    aria-label={t('vision.visionSettings.resolutionTooltip', { ns: 'appDebug' })}
+                    popupClassName="w-[180px]"
+                  >
+                    {t('vision.visionSettings.resolutionTooltip', { ns: 'appDebug' }).split('\n').map(item => (
+                      <div key={item}>{item}</div>
+                    ))}
+                  </Infotip>
                 </div>
                 <div className="flex items-center gap-1">
                   <OptionCard

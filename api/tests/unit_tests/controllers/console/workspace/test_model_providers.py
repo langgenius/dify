@@ -1,6 +1,7 @@
 from unittest.mock import MagicMock, patch
 
 import pytest
+from flask import Flask
 from pydantic_core import ValidationError
 from werkzeug.exceptions import Forbidden
 
@@ -26,7 +27,7 @@ def unwrap(func):
 
 
 class TestModelProviderListApi:
-    def test_get_success(self, app):
+    def test_get_success(self, app: Flask):
         api = ModelProviderListApi()
         method = unwrap(api.get)
 
@@ -47,7 +48,7 @@ class TestModelProviderListApi:
 
 
 class TestModelProviderCredentialApi:
-    def test_get_success(self, app):
+    def test_get_success(self, app: Flask):
         api = ModelProviderCredentialApi()
         method = unwrap(api.get)
 
@@ -66,7 +67,7 @@ class TestModelProviderCredentialApi:
 
         assert "credentials" in result
 
-    def test_get_invalid_uuid(self, app):
+    def test_get_invalid_uuid(self, app: Flask):
         api = ModelProviderCredentialApi()
         method = unwrap(api.get)
 
@@ -80,7 +81,7 @@ class TestModelProviderCredentialApi:
             with pytest.raises(ValidationError):
                 method(api, provider="openai")
 
-    def test_post_create_success(self, app):
+    def test_post_create_success(self, app: Flask):
         api = ModelProviderCredentialApi()
         method = unwrap(api.post)
 
@@ -102,7 +103,7 @@ class TestModelProviderCredentialApi:
         assert result["result"] == "success"
         assert status == 201
 
-    def test_post_create_validation_error(self, app):
+    def test_post_create_validation_error(self, app: Flask):
         api = ModelProviderCredentialApi()
         method = unwrap(api.post)
 
@@ -122,7 +123,7 @@ class TestModelProviderCredentialApi:
             with pytest.raises(ValueError):
                 method(api, provider="openai")
 
-    def test_put_update_success(self, app):
+    def test_put_update_success(self, app: Flask):
         api = ModelProviderCredentialApi()
         method = unwrap(api.put)
 
@@ -143,7 +144,7 @@ class TestModelProviderCredentialApi:
 
         assert result["result"] == "success"
 
-    def test_put_invalid_uuid(self, app):
+    def test_put_invalid_uuid(self, app: Flask):
         api = ModelProviderCredentialApi()
         method = unwrap(api.put)
 
@@ -159,7 +160,7 @@ class TestModelProviderCredentialApi:
             with pytest.raises(ValidationError):
                 method(api, provider="openai")
 
-    def test_delete_success(self, app):
+    def test_delete_success(self, app: Flask):
         api = ModelProviderCredentialApi()
         method = unwrap(api.delete)
 
@@ -183,7 +184,7 @@ class TestModelProviderCredentialApi:
 
 
 class TestModelProviderCredentialSwitchApi:
-    def test_switch_success(self, app):
+    def test_switch_success(self, app: Flask):
         api = ModelProviderCredentialSwitchApi()
         method = unwrap(api.post)
 
@@ -204,7 +205,7 @@ class TestModelProviderCredentialSwitchApi:
 
         assert result["result"] == "success"
 
-    def test_switch_invalid_uuid(self, app):
+    def test_switch_invalid_uuid(self, app: Flask):
         api = ModelProviderCredentialSwitchApi()
         method = unwrap(api.post)
 
@@ -222,7 +223,7 @@ class TestModelProviderCredentialSwitchApi:
 
 
 class TestModelProviderValidateApi:
-    def test_validate_success(self, app):
+    def test_validate_success(self, app: Flask):
         api = ModelProviderValidateApi()
         method = unwrap(api.post)
 
@@ -243,7 +244,7 @@ class TestModelProviderValidateApi:
 
         assert result["result"] == "success"
 
-    def test_validate_failure(self, app):
+    def test_validate_failure(self, app: Flask):
         api = ModelProviderValidateApi()
         method = unwrap(api.post)
 
@@ -266,7 +267,7 @@ class TestModelProviderValidateApi:
 
 
 class TestModelProviderIconApi:
-    def test_icon_success(self, app):
+    def test_icon_success(self, app: Flask):
         api = ModelProviderIconApi()
 
         with (
@@ -280,7 +281,7 @@ class TestModelProviderIconApi:
 
         assert response.mimetype == "image/png"
 
-    def test_icon_not_found(self, app):
+    def test_icon_not_found(self, app: Flask):
         api = ModelProviderIconApi()
 
         with (
@@ -295,7 +296,7 @@ class TestModelProviderIconApi:
 
 
 class TestPreferredProviderTypeUpdateApi:
-    def test_update_success(self, app):
+    def test_update_success(self, app: Flask):
         api = PreferredProviderTypeUpdateApi()
         method = unwrap(api.post)
 
@@ -316,7 +317,7 @@ class TestPreferredProviderTypeUpdateApi:
 
         assert result["result"] == "success"
 
-    def test_invalid_enum(self, app):
+    def test_invalid_enum(self, app: Flask):
         api = PreferredProviderTypeUpdateApi()
         method = unwrap(api.post)
 
@@ -334,7 +335,7 @@ class TestPreferredProviderTypeUpdateApi:
 
 
 class TestModelProviderPaymentCheckoutUrlApi:
-    def test_checkout_success(self, app):
+    def test_checkout_success(self, app: Flask):
         api = ModelProviderPaymentCheckoutUrlApi()
         method = unwrap(api.get)
 
@@ -359,7 +360,7 @@ class TestModelProviderPaymentCheckoutUrlApi:
 
         assert "url" in result
 
-    def test_invalid_provider(self, app):
+    def test_invalid_provider(self, app: Flask):
         api = ModelProviderPaymentCheckoutUrlApi()
         method = unwrap(api.get)
 
@@ -367,7 +368,7 @@ class TestModelProviderPaymentCheckoutUrlApi:
             with pytest.raises(ValueError):
                 method(api, provider="openai")
 
-    def test_permission_denied(self, app):
+    def test_permission_denied(self, app: Flask):
         api = ModelProviderPaymentCheckoutUrlApi()
         method = unwrap(api.get)
 

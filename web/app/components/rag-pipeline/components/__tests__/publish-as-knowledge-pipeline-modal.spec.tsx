@@ -17,9 +17,12 @@ vi.mock('@/app/components/workflow/store', () => ({
   }),
 }))
 
-vi.mock('@/app/components/base/modal', () => ({
-  default: ({ children, isShow }: { children: React.ReactNode, isShow: boolean }) =>
-    isShow ? <div data-testid="modal">{children}</div> : null,
+vi.mock('@langgenius/dify-ui/dialog', () => ({
+  Dialog: ({ children, open }: { children: React.ReactNode, open?: boolean }) =>
+    open === false ? null : <>{children}</>,
+  DialogContent: ({ children, className }: { children: React.ReactNode, className?: string }) => (
+    <div data-testid="modal" className={className}>{children}</div>
+  ),
 }))
 
 vi.mock('@langgenius/dify-ui/button', () => ({
@@ -119,7 +122,7 @@ describe('PublishAsKnowledgePipelineModal', () => {
   it('should call onCancel when close button clicked', () => {
     render(<PublishAsKnowledgePipelineModal {...defaultProps} />)
 
-    fireEvent.click(screen.getByTestId('publish-modal-close-btn'))
+    fireEvent.click(screen.getByRole('button', { name: 'common.operation.close' }))
 
     expect(mockOnCancel).toHaveBeenCalled()
   })

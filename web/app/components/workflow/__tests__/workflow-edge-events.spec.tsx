@@ -27,6 +27,12 @@ const reactFlowBridge = vi.hoisted(() => ({
 const collaborationBridge = vi.hoisted(() => ({
   graphImportHandler: null as null | ((payload: { nodes: Node[], edges: Edge[] }) => void),
   historyActionHandler: null as null | ((payload: unknown) => void),
+  restoreIntentHandler: null as null | ((payload: {
+    versionId: string
+    versionName?: string
+    initiatorUserId: string
+    initiatorName: string
+  }) => void),
 }))
 
 const toastInfoMock = vi.hoisted(() => vi.fn())
@@ -180,6 +186,10 @@ vi.mock('../collaboration/core/collaboration-manager', () => ({
       collaborationBridge.historyActionHandler = handler
       return vi.fn()
     },
+    onRestoreIntent: (handler: typeof collaborationBridge.restoreIntentHandler) => {
+      collaborationBridge.restoreIntentHandler = handler
+      return vi.fn()
+    },
   },
 }))
 
@@ -251,17 +261,23 @@ vi.mock('../hooks/use-workflow-comment', () => ({
 vi.mock('../base/confirm', () => ({
   default: ({
     isShow,
+    title,
+    desc,
     onConfirm,
     onCancel,
   }: {
     isShow: boolean
+    title?: string
+    desc?: string
     onConfirm: () => void
     onCancel: () => void
   }) => isShow
     ? (
-        <div data-testid="confirm-dialog">
-          <button type="button" onClick={onConfirm}>confirm</button>
-          <button type="button" onClick={onCancel}>cancel</button>
+        <div role="alertdialog" data-testid="confirm-dialog">
+          {title && <div>{title}</div>}
+          {desc && <div>{desc}</div>}
+          <button type="button" onClick={onConfirm}>common.operation.confirm</button>
+          <button type="button" onClick={onCancel}>common.operation.cancel</button>
         </div>
       )
     : null,
@@ -291,7 +307,7 @@ vi.mock('../edge-contextmenu', () => ({
 }))
 
 vi.mock('../node-contextmenu', () => ({
-  default: () => null,
+  NodeContextmenu: () => null,
 }))
 
 vi.mock('../nodes', () => ({
@@ -336,6 +352,11 @@ vi.mock('../simple-node', () => ({
 
 vi.mock('../syncing-data-modal', () => ({
   default: () => null,
+}))
+
+vi.mock('../shortcuts/use-workflow-hotkeys', () => ({
+  useWorkflowHotkeys: workflowHookMocks.useShortcuts,
+  useWorkflowShortcut: vi.fn(),
 }))
 
 vi.mock('../hooks', () => ({
@@ -390,7 +411,6 @@ vi.mock('../hooks', () => ({
   useWorkflowRefreshDraft: () => ({
     handleRefreshWorkflowDraft: vi.fn(),
   }),
-  useLeaderRestoreListener: vi.fn(),
 }))
 
 vi.mock('../hooks/use-workflow-search', () => ({
@@ -468,6 +488,7 @@ describe('Workflow edge event wiring', () => {
     reactFlowBridge.store = null
     collaborationBridge.graphImportHandler = null
     collaborationBridge.historyActionHandler = null
+    collaborationBridge.restoreIntentHandler = null
     workflowCommentState.comments = []
     workflowCommentState.pendingComment = null
     workflowCommentState.activeComment = null
@@ -612,6 +633,25 @@ describe('Workflow edge event wiring', () => {
     await waitFor(() => {
       expect(screen.getByText('Workflow node node-3')).toBeInTheDocument()
       expect(toastInfoMock).toHaveBeenCalledTimes(1)
+    })
+  })
+
+  it('should show restore intent toast when another collaborator restores a workflow version', async () => {
+    renderSubject()
+
+    act(() => {
+      collaborationBridge.restoreIntentHandler?.({
+        versionId: 'version-1',
+        versionName: 'Version One',
+        initiatorUserId: 'user-1',
+        initiatorName: 'Alice',
+      })
+    })
+
+    await waitFor(() => {
+      expect(toastInfoMock).toHaveBeenCalledWith(
+        'workflow.versionHistory.action.restoreInProgress:{"userName":"Alice","versionName":"Version One"}',
+      )
     })
   })
 

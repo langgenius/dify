@@ -174,9 +174,14 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
             operations={
               !readOnly
                 ? (
-                    <div className="cursor-pointer rounded-md p-1 select-none hover:bg-state-base-hover" onClick={handleAddEmptyVariable} data-testid="add-button">
-                      <span className="i-ri-add-line h-4 w-4 text-text-tertiary" />
-                    </div>
+                    <button
+                      type="button"
+                      aria-label={`${t('operation.add', { ns: 'common' })} ${t('nodes.templateTransform.inputVars', { ns: 'workflow' })}`}
+                      className="cursor-pointer rounded-md border-none bg-transparent p-1 select-none hover:bg-state-base-hover focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
+                      onClick={handleAddEmptyVariable}
+                    >
+                      <span className="i-ri-add-line h-4 w-4 text-text-tertiary" aria-hidden="true" />
+                    </button>
                   )
                 : undefined
             }

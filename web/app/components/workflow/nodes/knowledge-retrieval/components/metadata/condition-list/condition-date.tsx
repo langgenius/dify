@@ -31,41 +31,46 @@ const ConditionDate = ({
   const renderTrigger = useCallback(({
     handleClickTrigger,
   }: TriggerProps) => {
+    const hasValue = Boolean(value)
+    const triggerText = value
+      ? dayjs(value * 1000).tz(timezone).format('MMMM DD YYYY HH:mm A')
+      : t('nodes.knowledgeRetrieval.metadata.panel.datePlaceholder', { ns: 'workflow' })
+
     return (
-      <div className="group flex items-center" onClick={handleClickTrigger}>
-        <div
+      <div className="group flex items-center">
+        <button
+          type="button"
           className={cn(
-            'mr-0.5 flex h-6 grow cursor-pointer items-center px-1 system-sm-regular',
-            value ? 'text-text-secondary' : 'text-text-tertiary',
+            'mr-0.5 flex h-6 grow cursor-pointer items-center border-none bg-transparent px-1 py-0 text-left system-sm-regular focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden',
+            hasValue ? 'text-text-secondary' : 'text-text-tertiary',
           )}
+          onClick={handleClickTrigger}
         >
-          {
-            value
-              ? dayjs(value * 1000).tz(timezone).format('MMMM DD YYYY HH:mm A')
-              : t('nodes.knowledgeRetrieval.metadata.panel.datePlaceholder', { ns: 'workflow' })
-          }
-        </div>
-        {
-          !!value && (
-            <RiCloseCircleFill
-              className={cn(
-                'hidden h-4 w-4 shrink-0 cursor-pointer group-hover:block hover:text-components-input-text-filled',
-                value && 'text-text-quaternary',
-              )}
-              onClick={(e) => {
-                e.stopPropagation()
-                handleDateChange()
-              }}
-            />
-          )
-        }
-        <RiCalendarLine
-          className={cn(
-            'block h-4 w-4 shrink-0',
-            value ? 'text-text-quaternary' : 'text-text-tertiary',
-            value && 'group-hover:hidden',
-          )}
-        />
+          <span className="grow">{triggerText}</span>
+          <RiCalendarLine
+            className={cn(
+              'block h-4 w-4 shrink-0',
+              hasValue ? 'text-text-quaternary' : 'text-text-tertiary',
+              hasValue && 'group-hover:hidden',
+            )}
+            aria-hidden="true"
+          />
+        </button>
+        {hasValue
+          ? (
+              <button
+                type="button"
+                aria-label={t('operation.clear', { ns: 'common' })}
+                className="hidden h-4 w-4 shrink-0 cursor-pointer border-none bg-transparent p-0 text-text-quaternary group-hover:block hover:text-components-input-text-filled focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  handleDateChange()
+                }}
+              >
+                <RiCloseCircleFill className="h-4 w-4" aria-hidden="true" />
+              </button>
+            )
+          : null}
       </div>
     )
   }, [value, handleDateChange, timezone, t])

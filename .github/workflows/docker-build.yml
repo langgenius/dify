@@ -44,10 +44,10 @@ jobs:
             file: "web/Dockerfile"
     steps:
       - name: Set up Depot CLI
-        uses: depot/setup-action@v1
+        uses: depot/setup-action@15c09a5f77a0840ad4bce955686522a257853461 # v1.7.1
 
       - name: Build Docker Image
-        uses: depot/build-push-action@v1
+        uses: depot/build-push-action@5f3b3c2e5a00f0093de47f657aeaefcedff27d18 # v1.17.0
         with:
           project: ${{ vars.DEPOT_PROJECT_ID }}
           push: false
@@ -71,10 +71,10 @@ jobs:
             file: "web/Dockerfile"
     steps:
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@98e3b2c9eab4f4f98a95c0c0a3ea5e5e672fd2a8 # v3.10.0
+        uses: docker/setup-buildx-action@4d04d5d9486b7bd6fa91e7baf45bbb4f8b9deedd # v4.0.0
 
       - name: Build Docker Image
-        uses: docker/build-push-action@5cd29d66b4a8d8e6f4d5dfe2e9329f0b1d446289 # v6.18.0
+        uses: docker/build-push-action@bcafcacb16a39f128d818304e6c9c0c18556b85f # v7.1.0
         with:
           push: false
           context: ${{ matrix.context }}

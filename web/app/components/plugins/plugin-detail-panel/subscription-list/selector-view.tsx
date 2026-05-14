@@ -6,8 +6,9 @@ import * as React from 'react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
-import Tooltip from '@/app/components/base/tooltip'
-import { CreateButtonType, CreateSubscriptionButton } from './create'
+import { Infotip } from '@/app/components/base/infotip'
+import { CreateSubscriptionButton } from './create'
+import { CreateButtonType } from './create/types'
 import { DeleteConfirm } from './delete-confirm'
 import { useSubscriptionList } from './use-subscription-list'
 
@@ -33,7 +34,13 @@ export const SubscriptionSelectorView: React.FC<SubscriptionSelectorProps> = ({
             <span className="system-sm-semibold-uppercase text-text-secondary">
               {t('subscription.listNum', { ns: 'pluginTrigger', num: subscriptionCount })}
             </span>
-            <Tooltip popupContent={t('subscription.list.tip', { ns: 'pluginTrigger' })} />
+            <Infotip
+              aria-label={t('subscription.list.tip', { ns: 'pluginTrigger' })}
+              className="h-3.5 w-3.5"
+              iconClassName="h-full w-full"
+            >
+              {t('subscription.list.tip', { ns: 'pluginTrigger' })}
+            </Infotip>
           </div>
           <CreateSubscriptionButton
             buttonType={CreateButtonType.ICON_BUTTON}

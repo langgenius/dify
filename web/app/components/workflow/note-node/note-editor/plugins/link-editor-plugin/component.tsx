@@ -135,7 +135,7 @@ const LinkEditorComponent = ({
                       className="flex h-6 items-center rounded-md px-2 hover:bg-state-base-hover"
                       href={escape(url)}
                       target="_blank"
-                      rel="noreferrer"
+                      rel="noopener noreferrer"
                     >
                       <RiExternalLinkLine className="mr-1 h-3 w-3" />
                       <div className="mr-1">

@@ -184,7 +184,13 @@ const TextGenerationResultPanel: FC<TextGenerationResultPanelProps> = ({
             <span aria-hidden className="i-ri-error-warning-fill h-4 w-4 text-text-destructive" />
             <div className="system-sm-medium text-text-secondary">{t('generation.batchFailed.info', { ns: 'share', num: allFailedTaskList.length })}</div>
             <div className="h-3.5 w-px bg-divider-regular"></div>
-            <div onClick={handleRetryAllFailedTask} className="cursor-pointer system-sm-semibold-uppercase text-text-accent">{t('generation.batchFailed.retry', { ns: 'share' })}</div>
+            <button
+              type="button"
+              className="inline cursor-pointer border-none bg-transparent p-0 text-left system-sm-semibold-uppercase text-text-accent focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
+              onClick={handleRetryAllFailedTask}
+            >
+              {t('generation.batchFailed.retry', { ns: 'share' })}
+            </button>
           </div>
         )}
       </div>

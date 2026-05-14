@@ -31,7 +31,7 @@ const mockFetchAppDetail = vi.mocked(fetchAppDetail)
 
 const mockTemplateApp: App = {
   app_id: 'template-1',
-  category: 'Assistant',
+  categories: ['Assistant'],
   app: {
     id: 'template-1',
     mode: AppModeEnum.CHAT,

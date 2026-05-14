@@ -1,8 +1,8 @@
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useLatest } from 'ahooks'
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import SimplePieChart from '@/app/components/base/simple-pie-chart'
-import Tooltip from '@/app/components/base/tooltip'
 
 type CooldownTimerProps = {
   secondsRemaining?: number
@@ -54,8 +54,15 @@ const CooldownTimer = ({ secondsRemaining, onFinish }: CooldownTimerProps) => {
 
   return displayTime
     ? (
-        <Tooltip popupContent={t('modelProvider.apiKeyRateLimit', { ns: 'common', seconds: displayTime })}>
-          <SimplePieChart percentage={Math.round(displayTime / 60 * 100)} className="h-3 w-3" />
+        <Tooltip>
+          <TooltipTrigger
+            render={(
+              <SimplePieChart percentage={Math.round(displayTime / 60 * 100)} className="h-3 w-3" />
+            )}
+          />
+          <TooltipContent>
+            {t('modelProvider.apiKeyRateLimit', { ns: 'common', seconds: displayTime })}
+          </TooltipContent>
         </Tooltip>
       )
     : null

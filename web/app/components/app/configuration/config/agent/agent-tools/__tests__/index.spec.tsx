@@ -368,7 +368,7 @@ describe('AgentTools', () => {
 
   it('should remove tool when delete action is clicked', async () => {
     const { getModelConfig } = renderAgentTools()
-    const deleteButton = screen.getByTestId('delete-removed-tool')
+    const deleteButton = screen.getByRole('button', { name: /operation\.delete/i })
     if (!deleteButton)
       throw new Error('Delete button not found')
     await userEvent.click(deleteButton)
