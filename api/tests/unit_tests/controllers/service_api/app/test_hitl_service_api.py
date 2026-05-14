@@ -609,7 +609,7 @@ class TestHitlServiceApi:
             paused_nodes=["node-id"],
         )
 
-        runtime_state = SimpleNamespace(total_tokens=0, node_run_steps=0)
+        runtime_state = SimpleNamespace(total_tokens=0, node_run_steps=0, variable_pool=VariablePool())
         responses = converter.workflow_pause_to_stream_response(
             event=queue_event,
             task_id="task",

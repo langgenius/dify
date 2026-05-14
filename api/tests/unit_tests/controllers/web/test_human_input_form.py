@@ -15,6 +15,8 @@ from werkzeug.exceptions import Forbidden
 import controllers.web.human_input_form as human_input_module
 import controllers.web.site as site_module
 from controllers.web.error import WebFormRateLimitExceededError
+from graphon.nodes.human_input.entities import ParagraphInputConfig, SelectInputConfig, StringListSource
+from graphon.nodes.human_input.enums import ValueSourceType
 from models.human_input import RecipientType
 from services.human_input_service import FormExpiredError
 
@@ -118,7 +120,8 @@ def test_get_form_includes_site(monkeypatch: pytest.MonkeyPatch, app: Flask):
     # Patch service to return fake form.
     service_mock = MagicMock()
     service_mock.get_form_by_token.return_value = form
-    service_mock.resolve_form_inputs.return_value = [{"type": "text", "output_variable_name": "name", "default": None}]
+    resolved_input = ParagraphInputConfig(output_variable_name="name")
+    service_mock.resolve_form_inputs.return_value = [resolved_input]
     monkeypatch.setattr(human_input_module, "HumanInputService", lambda engine: service_mock)
 
     # Patch db session.
@@ -144,7 +147,7 @@ def test_get_form_includes_site(monkeypatch: pytest.MonkeyPatch, app: Flask):
         "expiration_time",
     }
     assert body["form_content"] == "Rendered {{#$output.name#}}"
-    assert body["inputs"] == [{"type": "text", "output_variable_name": "name", "default": None}]
+    assert body["inputs"] == [resolved_input.model_dump(mode="json")]
     assert body["resolved_default_values"] == {"name": "Alice", "age": "30", "meta": '{"k": "v"}'}
     assert body["user_actions"] == [{"id": "approve", "title": "Approve", "button_style": "default"}]
     assert body["expiration_time"] == int(expiration_time.timestamp())
@@ -198,15 +201,14 @@ def test_get_form_uses_runtime_select_options(monkeypatch: pytest.MonkeyPatch, a
         }
     ]
     runtime_inputs = [
-        {
-            "type": "select",
-            "output_variable_name": "decision",
-            "option_source": {
-                "type": "variable",
-                "selector": ["start", "options"],
-                "value": ["approve", "reject"],
-            },
-        }
+        SelectInputConfig(
+            output_variable_name="decision",
+            option_source=StringListSource(
+                type=ValueSourceType.VARIABLE,
+                selector=["start", "options"],
+                value=["approve", "reject"],
+            ),
+        )
     ]
 
     class _FakeDefinition:
@@ -275,7 +277,7 @@ def test_get_form_uses_runtime_select_options(monkeypatch: pytest.MonkeyPatch, a
         response = HumanInputFormApi().get("token-1")
 
     body = json.loads(response.get_data(as_text=True))
-    assert body["inputs"] == runtime_inputs
+    assert body["inputs"] == [input_config.model_dump(mode="json") for input_config in runtime_inputs]
     service_mock.resolve_form_inputs.assert_called_once_with(form)
 
 
