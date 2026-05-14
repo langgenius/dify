@@ -3,7 +3,7 @@ import {
   useRef,
 } from 'react'
 
-export type ObservedNodeSize = {
+type ObservedNodeSize = {
   width: number
   height: number
 }
