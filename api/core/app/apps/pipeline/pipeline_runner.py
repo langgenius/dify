@@ -1,4 +1,3 @@
-from models.enums import IndexingStatus
 import logging
 import time
 from typing import cast
@@ -28,6 +27,7 @@ from graphon.runtime import GraphRuntimeState, VariablePool
 from graphon.variable_loader import VariableLoader
 from graphon.variables.variables import RAGPipelineVariable, RAGPipelineVariableInput
 from models.dataset import Document, Pipeline
+from models.enums import IndexingStatus
 from models.model import EndUser
 from models.workflow import Workflow
 

@@ -68,7 +68,6 @@ class IndexingRunner:
     def run(self, dataset_documents: list[DatasetDocument]):
         """Run the indexing process."""
         for dataset_document in dataset_documents:
-            
             document_id = dataset_document.id
             try:
                 # Re-query the document to ensure it's bound to the current session
@@ -76,7 +75,7 @@ class IndexingRunner:
                 if not requeried_document:
                     logger.warning("Document not found, skipping document id: %s", document_id)
                     continue
-                
+
                 # get dataset
                 dataset = db.session.get(Dataset, requeried_document.dataset_id)
 

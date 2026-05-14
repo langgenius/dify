@@ -1,4 +1,3 @@
-from models.enums import IndexingStatus
 import concurrent.futures
 import datetime
 import logging
@@ -15,6 +14,7 @@ from core.rag.index_processor.index_processor_base import SummaryIndexSettingDic
 from core.workflow.nodes.knowledge_index.exc import KnowledgeIndexNodeError
 from core.workflow.nodes.knowledge_index.protocols import IndexingResultDict, Preview, PreviewItem, QaPreview
 from models.dataset import Dataset, Document, DocumentSegment
+from models.enums import IndexingStatus
 
 from .index_processor_factory import IndexProcessorFactory
 from .processor.paragraph_index_processor import ParagraphIndexProcessor
