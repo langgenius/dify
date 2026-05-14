@@ -278,7 +278,7 @@ class TestFileApiPost:
 
 
 class TestFilePreviewApi:
-    def test_get_preview(self, app, mock_file_service):
+    def test_get_preview(self, app, mock_account_context, mock_file_service):
         api = FilePreviewApi()
         get_method = unwrap(api.get)
         mock_file_service.get_file_preview.return_value = "preview text"
