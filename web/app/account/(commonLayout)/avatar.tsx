@@ -10,7 +10,6 @@ import {
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { resetUser } from '@/app/components/base/amplitude/utils'
-import { LogOut01 } from '@/app/components/base/icons/src/vender/line/general'
 import PremiumBadge from '@/app/components/base/premium-badge'
 import { useProviderContext } from '@/context/provider-context'
 import { useRouter } from '@/next/navigation'
@@ -44,8 +43,8 @@ export default function AppSelector() {
       <DropdownMenuTrigger
         aria-label={userProfile.name}
         className={cn(
-          'inline-flex items-center rounded-[20px] text-sm text-text-primary outline-hidden mobile:px-1',
-          'hover:bg-components-panel-bg-blur focus-visible:bg-components-panel-bg-blur focus-visible:ring-1 focus-visible:ring-components-input-border-hover data-popup-open:bg-components-panel-bg-blur',
+          'inline-flex size-8 items-center justify-center rounded-full border-none bg-transparent p-0 text-sm text-text-primary outline-hidden',
+          'hover:opacity-80 focus-visible:ring-1 focus-visible:ring-components-input-border-hover active:opacity-70 data-popup-open:opacity-80',
         )}
       >
         <Avatar avatar={userProfile.avatar_url} name={userProfile.name} />
@@ -77,7 +76,7 @@ export default function AppSelector() {
             className="h-9 justify-start px-3"
             onClick={handleLogout}
           >
-            <LogOut01 className="mr-1 flex h-4 w-4 text-text-tertiary" />
+            <span aria-hidden="true" className="mr-1 i-custom-vender-line-general-log-out-01 flex size-4 text-text-tertiary" />
             <span className="text-[14px] font-normal text-text-secondary">{t('userProfile.logout', { ns: 'common' })}</span>
           </DropdownMenuItem>
         </div>

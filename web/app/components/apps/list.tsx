@@ -4,8 +4,7 @@ import type { FC } from 'react'
 import type { AppListQuery } from '@/contract/console/apps'
 import { cn } from '@langgenius/dify-ui/cn'
 import { keepPreviousData, useInfiniteQuery, useSuspenseQuery } from '@tanstack/react-query'
-import { useDebounceFn } from 'ahooks'
-import { parseAsStringLiteral, useQueryState } from 'nuqs'
+import { useDebounce } from 'ahooks'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Checkbox from '@/app/components/base/checkbox'
@@ -18,12 +17,13 @@ import { CheckModal } from '@/hooks/use-pay'
 import dynamic from '@/next/dynamic'
 import { consoleQuery } from '@/service/client'
 import { systemFeaturesQueryOptions } from '@/service/system-features'
-import { AppModeEnum, AppModes } from '@/types/app'
+import { AppModeEnum } from '@/types/app'
 import AppCard from './app-card'
 import { AppCardSkeleton } from './app-card-skeleton'
+import { APP_LIST_SEARCH_DEBOUNCE_MS } from './constants'
 import Empty from './empty'
 import Footer from './footer'
-import useAppsQueryStateHook from './hooks/use-apps-query-state'
+import { isAppListCategory, useAppsQueryState } from './hooks/use-apps-query-state'
 import { useDSLDragDrop } from './hooks/use-dsl-drag-drop'
 import { useWorkflowOnlineUsers } from './hooks/use-workflow-online-users'
 import NewAppCard from './new-app-card'
@@ -35,18 +35,6 @@ const CreateFromDSLModal = dynamic(() => import('@/app/components/app/create-fro
   ssr: false,
 })
 
-const APP_LIST_CATEGORY_VALUES = ['all', ...AppModes] as const
-type AppListCategory = typeof APP_LIST_CATEGORY_VALUES[number]
-const appListCategorySet = new Set<string>(APP_LIST_CATEGORY_VALUES)
-
-const isAppListCategory = (value: string): value is AppListCategory => {
-  return appListCategorySet.has(value)
-}
-
-const parseAsAppListCategory = parseAsStringLiteral(APP_LIST_CATEGORY_VALUES)
-  .withDefault('all')
-  .withOptions({ history: 'push' })
-
 type Props = {
   controlRefreshList?: number
 }
@@ -56,28 +44,21 @@ const List: FC<Props> = ({
   const { t } = useTranslation()
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const { isCurrentWorkspaceEditor, isCurrentWorkspaceDatasetOperator, isLoadingCurrentWorkspace } = useAppContext()
-  const [activeTab, setActiveTab] = useQueryState(
-    'category',
-    parseAsAppListCategory,
-  )
 
   // eslint-disable-next-line react/use-state -- custom URL query hook, not React.useState
-  const appsQuery = useAppsQueryStateHook()
-  const { query: { tagIDs = [], keywords = '', isCreatedByMe: queryIsCreatedByMe = false }, setQuery } = appsQuery
-  const [isCreatedByMe, setIsCreatedByMe] = useState(queryIsCreatedByMe)
-  const [tagFilterValue, setTagFilterValue] = useState<string[]>(tagIDs)
-  const [searchKeywords, setSearchKeywords] = useState(keywords)
+  const {
+    query: { category, tagIDs, keywords, isCreatedByMe },
+    setCategory,
+    setKeywords,
+    setTagIDs,
+    setIsCreatedByMe,
+  } = useAppsQueryState()
+  const debouncedKeywords = useDebounce(keywords, { wait: APP_LIST_SEARCH_DEBOUNCE_MS })
   const newAppCardRef = useRef<HTMLDivElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const [showTagManagementModal, setShowTagManagementModal] = useState(false)
   const [showCreateFromDSLModal, setShowCreateFromDSLModal] = useState(false)
   const [droppedDSLFile, setDroppedDSLFile] = useState<File | undefined>()
-  const setKeywords = useCallback((keywords: string) => {
-    setQuery(prev => ({ ...prev, keywords }))
-  }, [setQuery])
-  const setTagIDs = useCallback((tagIDs: string[]) => {
-    setQuery(prev => ({ ...prev, tagIDs }))
-  }, [setQuery])
 
   const handleDSLFileDropped = useCallback((file: File) => {
     setDroppedDSLFile(file)
@@ -93,11 +74,11 @@ const List: FC<Props> = ({
   const appListQuery = useMemo<AppListQuery>(() => ({
     page: 1,
     limit: 30,
-    name: searchKeywords,
+    name: debouncedKeywords,
     ...(tagIDs.length ? { tag_ids: tagIDs } : {}),
     ...(isCreatedByMe ? { is_created_by_me: isCreatedByMe } : {}),
-    ...(activeTab !== 'all' ? { mode: activeTab } : {}),
-  }), [activeTab, isCreatedByMe, searchKeywords, tagIDs])
+    ...(category !== 'all' ? { mode: category } : {}),
+  }), [category, debouncedKeywords, isCreatedByMe, tagIDs])
 
   const {
     data,
@@ -177,27 +158,9 @@ const List: FC<Props> = ({
     return () => observer?.disconnect()
   }, [isLoading, isFetchingNextPage, fetchNextPage, error, hasNextPage, isCurrentWorkspaceDatasetOperator])
 
-  const { run: handleSearch } = useDebounceFn(() => {
-    setSearchKeywords(keywords)
-  }, { wait: 500 })
-  const handleKeywordsChange = (value: string) => {
-    setKeywords(value)
-    handleSearch()
-  }
-
-  const { run: handleTagsUpdate } = useDebounceFn(() => {
-    setTagIDs(tagFilterValue)
-  }, { wait: 500 })
-  const handleTagsChange = (value: string[]) => {
-    setTagFilterValue(value)
-    handleTagsUpdate()
-  }
-
   const handleCreatedByMeChange = useCallback(() => {
-    const newValue = !isCreatedByMe
-    setIsCreatedByMe(newValue)
-    setQuery(prev => ({ ...prev, isCreatedByMe: newValue }))
-  }, [isCreatedByMe, setQuery])
+    setIsCreatedByMe(!isCreatedByMe)
+  }, [isCreatedByMe, setIsCreatedByMe])
 
   const pages = useMemo(() => data?.pages ?? [], [data?.pages])
   const apps = useMemo(() => pages.flatMap(({ data: pageApps }) => pageApps), [pages])
@@ -232,10 +195,10 @@ const List: FC<Props> = ({
 
         <div className="sticky top-0 z-10 flex flex-wrap items-center justify-between gap-y-2 bg-background-body px-12 pt-7 pb-5">
           <TabSliderNew
-            value={activeTab}
+            value={category}
             onChange={(nextValue) => {
               if (isAppListCategory(nextValue))
-                setActiveTab(nextValue)
+                setCategory(nextValue)
             }}
             options={options}
           />
@@ -246,14 +209,14 @@ const List: FC<Props> = ({
                 {t('showMyCreatedAppsOnly', { ns: 'app' })}
               </div>
             </label>
-            <TagFilter type="app" value={tagFilterValue} onChange={handleTagsChange} onOpenTagManagement={() => setShowTagManagementModal(true)} />
+            <TagFilter type="app" value={tagIDs} onChange={setTagIDs} onOpenTagManagement={() => setShowTagManagementModal(true)} />
             <Input
               showLeftIcon
               showClearIcon
               wrapperClassName="w-[200px]"
               value={keywords}
-              onChange={e => handleKeywordsChange(e.target.value)}
-              onClear={() => handleKeywordsChange('')}
+              onChange={e => setKeywords(e.target.value)}
+              onClear={() => setKeywords('')}
             />
           </div>
         </div>
@@ -267,7 +230,7 @@ const List: FC<Props> = ({
               ref={newAppCardRef}
               isLoading={isLoadingCurrentWorkspace}
               onSuccess={refetch}
-              selectedAppType={activeTab}
+              selectedAppType={category}
               className={cn(!hasAnyApp && 'z-10')}
             />
           )}

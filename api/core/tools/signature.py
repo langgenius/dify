@@ -8,6 +8,10 @@ import urllib.parse
 from configs import dify_config
 
 
+def _secret_key() -> bytes:
+    return dify_config.SECRET_KEY.encode()
+
+
 def sign_tool_file(tool_file_id: str, extension: str, for_external: bool = True) -> str:
     """
     sign file to get a temporary url for plugin access
@@ -19,8 +23,7 @@ def sign_tool_file(tool_file_id: str, extension: str, for_external: bool = True)
     timestamp = str(int(time.time()))
     nonce = os.urandom(16).hex()
     data_to_sign = f"file-preview|{tool_file_id}|{timestamp}|{nonce}"
-    secret_key = dify_config.SECRET_KEY.encode() if dify_config.SECRET_KEY else b""
-    sign = hmac.new(secret_key, data_to_sign.encode(), hashlib.sha256).digest()
+    sign = hmac.new(_secret_key(), data_to_sign.encode(), hashlib.sha256).digest()
     encoded_sign = base64.urlsafe_b64encode(sign).decode()
 
     return f"{file_preview_url}?timestamp={timestamp}&nonce={nonce}&sign={encoded_sign}"
@@ -39,8 +42,7 @@ def sign_upload_file_preview_url(upload_file_id: str, extension: str) -> str:
     timestamp = str(int(time.time()))
     nonce = os.urandom(16).hex()
     data_to_sign = f"image-preview|{upload_file_id}|{timestamp}|{nonce}"
-    secret_key = dify_config.SECRET_KEY.encode() if dify_config.SECRET_KEY else b""
-    sign = hmac.new(secret_key, data_to_sign.encode(), hashlib.sha256).digest()
+    sign = hmac.new(_secret_key(), data_to_sign.encode(), hashlib.sha256).digest()
     encoded_sign = base64.urlsafe_b64encode(sign).decode()
 
     return f"{file_preview_url}?timestamp={timestamp}&nonce={nonce}&sign={encoded_sign}"
@@ -51,8 +53,7 @@ def verify_tool_file_signature(file_id: str, timestamp: str, nonce: str, sign: s
     verify signature
     """
     data_to_sign = f"file-preview|{file_id}|{timestamp}|{nonce}"
-    secret_key = dify_config.SECRET_KEY.encode() if dify_config.SECRET_KEY else b""
-    recalculated_sign = hmac.new(secret_key, data_to_sign.encode(), hashlib.sha256).digest()
+    recalculated_sign = hmac.new(_secret_key(), data_to_sign.encode(), hashlib.sha256).digest()
     recalculated_encoded_sign = base64.urlsafe_b64encode(recalculated_sign).decode()
 
     # verify signature
@@ -71,8 +72,7 @@ def get_signed_file_url_for_plugin(filename: str, mimetype: str, tenant_id: str,
     timestamp = str(int(time.time()))
     nonce = os.urandom(16).hex()
     data_to_sign = f"upload|{filename}|{mimetype}|{tenant_id}|{user_id}|{timestamp}|{nonce}"
-    secret_key = dify_config.SECRET_KEY.encode() if dify_config.SECRET_KEY else b""
-    sign = hmac.new(secret_key, data_to_sign.encode(), hashlib.sha256).digest()
+    sign = hmac.new(_secret_key(), data_to_sign.encode(), hashlib.sha256).digest()
     encoded_sign = base64.urlsafe_b64encode(sign).decode()
     query = urllib.parse.urlencode(
         {
@@ -92,8 +92,7 @@ def verify_plugin_file_signature(
     """Verify the signature used by the plugin-facing file upload endpoint."""
 
     data_to_sign = f"upload|{filename}|{mimetype}|{tenant_id}|{user_id}|{timestamp}|{nonce}"
-    secret_key = dify_config.SECRET_KEY.encode() if dify_config.SECRET_KEY else b""
-    recalculated_sign = hmac.new(secret_key, data_to_sign.encode(), hashlib.sha256).digest()
+    recalculated_sign = hmac.new(_secret_key(), data_to_sign.encode(), hashlib.sha256).digest()
     recalculated_encoded_sign = base64.urlsafe_b64encode(recalculated_sign).decode()
 
     if sign != recalculated_encoded_sign:

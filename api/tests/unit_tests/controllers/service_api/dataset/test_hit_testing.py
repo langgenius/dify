@@ -103,7 +103,7 @@ class TestHitTestingApiPost:
         mock_dataset_svc.get_dataset.return_value = mock_dataset
         mock_dataset_svc.check_dataset_permission.return_value = None
 
-        mock_hit_svc.retrieve.return_value = {"query": "test query", "records": []}
+        mock_hit_svc.retrieve.return_value = {"query": {"content": "test query"}, "records": []}
         mock_hit_svc.hit_testing_args_check.return_value = None
         mock_marshal.return_value = []
 
@@ -149,7 +149,7 @@ class TestHitTestingApiPost:
             "score_threshold": 0.8,
         }
 
-        mock_hit_svc.retrieve.return_value = {"query": "complex query", "records": []}
+        mock_hit_svc.retrieve.return_value = {"query": {"content": "complex query"}, "records": []}
         mock_hit_svc.hit_testing_args_check.return_value = None
         mock_marshal.return_value = []
 
@@ -194,7 +194,7 @@ class TestHitTestingApiPost:
 
         mock_dataset_svc.get_dataset.return_value = mock_dataset
         mock_dataset_svc.check_dataset_permission.return_value = None
-        mock_hit_svc.retrieve.return_value = {"query": "filtered query", "records": []}
+        mock_hit_svc.retrieve.return_value = {"query": {"content": "filtered query"}, "records": []}
         mock_hit_svc.hit_testing_args_check.return_value = None
         mock_marshal.return_value = []
 
@@ -232,7 +232,7 @@ class TestHitTestingApiPost:
     @patch("controllers.console.datasets.hit_testing_base.HitTestingService")
     @patch("controllers.console.datasets.hit_testing_base.DatasetService")
     @patch("controllers.console.datasets.hit_testing_base.current_user", new_callable=lambda: Mock(spec=Account))
-    def test_post_normalizes_legacy_query_and_nullable_list_fields(
+    def test_post_prepares_nullable_list_fields(
         self,
         mock_current_user,
         mock_dataset_svc,
@@ -241,7 +241,7 @@ class TestHitTestingApiPost:
         mock_ns,
         app,
     ):
-        """Test service API normalizes legacy query shape and nullable list fields."""
+        """Test service API prepares nullable list fields from marshalled records."""
         dataset_id = str(uuid.uuid4())
         tenant_id = str(uuid.uuid4())
 
