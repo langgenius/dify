@@ -800,9 +800,10 @@ class AppTraceApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def get(self, app_id):
+    @get_app_model
+    def get(self, app_model):
         """Get app trace"""
-        app_trace_config = OpsTraceManager.get_app_tracing_config(app_id=app_id)
+        app_trace_config = OpsTraceManager.get_app_tracing_config(app_id=app_model.id)
 
         return app_trace_config
 
@@ -816,12 +817,13 @@ class AppTraceApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
-    def post(self, app_id):
+    @get_app_model
+    def post(self, app_model):
         # add app trace
         args = AppTracePayload.model_validate(console_ns.payload)
 
         OpsTraceManager.update_app_tracing_config(
-            app_id=app_id,
+            app_id=app_model.id,
             enabled=args.enabled,
             tracing_provider=args.tracing_provider,
         )
