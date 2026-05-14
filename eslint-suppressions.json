@@ -2962,11 +2962,6 @@
       "count": 2
     }
   },
-  "web/app/components/workflow-app/hooks/use-workflow-run.ts": {
-    "ts/no-explicit-any": {
-      "count": 5
-    }
-  },
   "web/app/components/workflow-app/hooks/use-workflow-template.ts": {
     "ts/no-explicit-any": {
       "count": 2

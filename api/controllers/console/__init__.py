@@ -116,7 +116,7 @@ from .explore import (
     saved_message,
     trial,
 )
-from .socketio import workflow as socketio_workflow  # pyright: ignore[reportUnusedImport]
+from .socketio import workflow as socketio_workflow
 
 # Import tag controllers
 from .tag import tags
