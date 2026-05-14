@@ -131,13 +131,13 @@ export function DeployReleaseMenu({ appInstanceId, releaseId, releaseRows }: {
     <DropdownMenu modal={false} open={open} onOpenChange={setOpen}>
       <DropdownMenuTrigger
         className={cn(
-          'inline-flex h-7 items-center gap-1 rounded-md px-2 system-xs-medium',
+          'inline-flex h-7 items-center justify-center gap-1 rounded-md px-2 system-xs-medium whitespace-nowrap',
           'border border-components-button-secondary-border bg-components-button-secondary-bg text-components-button-secondary-accent-text',
           'hover:bg-components-button-secondary-bg-hover',
         )}
       >
         {t('versions.deploy')}
-        <span className="i-ri-arrow-down-s-line size-3.5" />
+        <span aria-hidden className="i-ri-arrow-down-s-line size-3.5" />
       </DropdownMenuTrigger>
       {open && (
         <DropdownMenuContent placement="bottom-end" sideOffset={4} popupClassName="w-60">

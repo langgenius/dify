@@ -257,7 +257,7 @@ function ReleaseHistoryRows({ appInstanceId, releaseRows, deploymentRows, deploy
               <td className={`${RELEASE_TABLE_HEADER_CELL_CLASS_NAME} w-44`}>{t('versions.col.createdAt')}</td>
               <td className={`${RELEASE_TABLE_HEADER_CELL_CLASS_NAME} w-44`}>{t('versions.col.author')}</td>
               <td className={`${RELEASE_TABLE_HEADER_CELL_CLASS_NAME} w-40`}>{t('versions.col.deployedTo')}</td>
-              <td className={`${RELEASE_TABLE_HEADER_CELL_CLASS_NAME} w-20`}>{t('versions.col.action')}</td>
+              <td className={`${RELEASE_TABLE_HEADER_CELL_CLASS_NAME} whitespace-nowrap`}>{t('versions.col.action')}</td>
             </tr>
           </thead>
           <tbody className="text-text-secondary">
@@ -297,7 +297,7 @@ function ReleaseHistoryRows({ appInstanceId, releaseRows, deploymentRows, deploy
                       />
                     </div>
                   </td>
-                  <td className={`${RELEASE_TABLE_CELL_CLASS_NAME} w-20`}>
+                  <td className={`${RELEASE_TABLE_CELL_CLASS_NAME} whitespace-nowrap`}>
                     <DeployReleaseMenu releaseId={release.id} appInstanceId={appInstanceId} releaseRows={releaseRows} />
                   </td>
                 </tr>

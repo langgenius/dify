@@ -34,24 +34,19 @@ function DeploymentEnvironmentListSkeleton() {
     <div className="overflow-hidden border-y border-divider-subtle">
       {DEPLOYMENT_TABLE_ROW_SKELETON_KEYS.map(key => (
         <div key={key} className="border-b border-divider-subtle last:border-b-0">
-          <div className="flex w-full flex-col gap-3 py-3 lg:grid lg:grid-cols-[minmax(0,1fr)_max-content] lg:items-center lg:gap-6">
-            <div className="flex min-w-0 items-start justify-between gap-3">
-              <div className="flex min-w-0 flex-col gap-1.5">
-                <SkeletonRow className="gap-2">
-                  <SkeletonRectangle className="h-3 w-32 animate-pulse" />
-                  <SkeletonRectangle className="my-0 h-4 w-18 animate-pulse rounded-md" />
-                </SkeletonRow>
-                <SkeletonRow className="gap-2">
-                  <SkeletonRectangle className="h-2.5 w-24 animate-pulse" />
-                  <SkeletonRectangle className="h-2.5 w-20 animate-pulse" />
-                </SkeletonRow>
-              </div>
-              <div className="flex shrink-0 items-center gap-1 lg:hidden">
-                <SkeletonRectangle className="my-0 h-7 w-28 animate-pulse rounded-lg" />
-                <SkeletonRectangle className="my-0 size-4 animate-pulse rounded" />
-              </div>
+          <div className="flex w-full flex-col gap-3 py-3 lg:grid lg:grid-cols-[minmax(180px,0.9fr)_minmax(220px,1fr)_max-content] lg:items-center lg:gap-6">
+            <div className="flex min-w-0 flex-col gap-1.5">
+              <SkeletonRectangle className="h-3 w-32 animate-pulse" />
+              <SkeletonRectangle className="my-0 h-4 w-18 animate-pulse rounded-md" />
             </div>
-            <div className="hidden justify-end lg:flex">
+            <div className="flex min-w-0 flex-col gap-1.5">
+              <SkeletonRectangle className="h-2.5 w-24 animate-pulse" />
+              <SkeletonRow className="gap-2">
+                <SkeletonRectangle className="h-3 w-16 animate-pulse" />
+                <SkeletonRectangle className="h-2.5 w-18 animate-pulse" />
+              </SkeletonRow>
+            </div>
+            <div className="flex justify-start lg:justify-end">
               <SkeletonRectangle className="my-0 h-7 w-32 animate-pulse rounded-lg" />
             </div>
           </div>
