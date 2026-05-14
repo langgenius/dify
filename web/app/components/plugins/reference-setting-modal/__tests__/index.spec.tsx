@@ -299,7 +299,7 @@ describe('reference-setting-modal', () => {
         expect(screen.getByTestId('auto-update-strategy'))!.toHaveTextContent('latest')
       })
 
-      it('should use default auto_upgrade when payload.auto_upgrade is undefined', () => {
+      it('should use fix-only auto_upgrade when payload.auto_upgrade is undefined', () => {
         // Arrange
         const payload = {
           permission: createMockPermissions(),
@@ -309,9 +309,8 @@ describe('reference-setting-modal', () => {
         // Act
         render(<ReferenceSettingModal {...defaultProps} payload={payload} />)
 
-        // Assert - should use default value (disabled)
-        // Assert - should use default value (disabled)
-        expect(screen.getByTestId('auto-update-strategy'))!.toHaveTextContent('disabled')
+        // Assert - should use Integrations default value (fix-only)
+        expect(screen.getByTestId('auto-update-strategy'))!.toHaveTextContent('fix_only')
       })
     })
 

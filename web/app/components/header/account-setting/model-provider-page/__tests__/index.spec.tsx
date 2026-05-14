@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import { act, fireEvent, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
@@ -8,8 +9,32 @@ import {
 } from '../declarations'
 import ModelProviderPage from '../index'
 
+type MockReferenceSetting = {
+  permission: Record<string, never>
+  auto_upgrade?: {
+    strategy_setting: string
+    upgrade_time_of_day: number
+    upgrade_mode: string
+    exclude_plugins: string[]
+    include_plugins: string[]
+  }
+}
+
 const { mockSetReferenceSettings } = vi.hoisted(() => ({
   mockSetReferenceSettings: vi.fn(),
+}))
+
+const { mockReferenceSetting } = vi.hoisted(() => ({
+  mockReferenceSetting: {
+    permission: {},
+    auto_upgrade: {
+      strategy_setting: 'latest',
+      upgrade_time_of_day: 0,
+      upgrade_mode: 'all',
+      exclude_plugins: [],
+      include_plugins: [],
+    },
+  } as MockReferenceSetting,
 }))
 
 const mockQuotaConfig = {
@@ -22,10 +47,10 @@ const mockQuotaConfig = {
 }
 
 const renderModelProviderPage = (
-  props: { searchText?: string, enableMarketplace?: boolean } = {},
+  props: { searchText?: string, enableMarketplace?: boolean, stickyToolbar?: boolean } = {},
 ) => {
-  const { searchText = '', enableMarketplace = true } = props
-  return renderWithSystemFeatures(<ModelProviderPage searchText={searchText} />, {
+  const { searchText = '', enableMarketplace = true, stickyToolbar = true } = props
+  return renderWithSystemFeatures(<ModelProviderPage searchText={searchText} stickyToolbar={stickyToolbar} />, {
     systemFeatures: { enable_marketplace: enableMarketplace },
   })
 }
@@ -89,17 +114,17 @@ vi.mock('../system-model-selector', () => ({
 
 vi.mock('@/app/components/plugins/plugin-page/use-reference-setting', () => ({
   default: () => ({
-    referenceSetting: { permission: {}, auto_upgrade: {} },
+    referenceSetting: mockReferenceSetting,
     canSetPermissions: true,
     setReferenceSettings: mockSetReferenceSettings,
   }),
 }))
 
-vi.mock('@/app/components/plugins/reference-setting-modal', () => ({
-  default: ({ onHide }: { onHide: () => void }) => (
-    <div data-testid="reference-setting-modal">
-      <button type="button" onClick={onHide}>close</button>
-    </div>
+vi.mock('@langgenius/dify-ui/popover', () => ({
+  Popover: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+  PopoverTrigger: ({ render }: { render: ReactNode }) => render,
+  PopoverContent: ({ children }: { children: ReactNode }) => (
+    <div data-testid="update-setting-popover">{children}</div>
   ),
 }))
 
@@ -137,6 +162,13 @@ describe('ModelProviderPage', () => {
   beforeEach(() => {
     vi.useFakeTimers()
     vi.clearAllMocks()
+    mockReferenceSetting.auto_upgrade = {
+      strategy_setting: 'latest',
+      upgrade_time_of_day: 0,
+      upgrade_mode: 'all',
+      exclude_plugins: [],
+      include_plugins: [],
+    }
     Object.keys(mockDefaultModels).forEach((key) => {
       mockDefaultModels[key] = { data: null, isLoading: false }
     })
@@ -178,16 +210,56 @@ describe('ModelProviderPage', () => {
 
     expect(container.firstElementChild).toHaveClass('relative')
     expect(container.firstElementChild).not.toHaveClass('-mt-2', 'pt-1')
-    expect(container.firstElementChild?.firstElementChild).toHaveClass('mb-2', 'flex')
+    expect(container.firstElementChild?.firstElementChild).toHaveClass('sticky', 'top-0', 'z-10', '-mx-6', 'mb-2', 'flex', 'bg-components-panel-bg', 'px-6', 'pb-2')
     expect(container.firstElementChild?.firstElementChild).not.toHaveClass('mb-4')
   })
 
-  it('should open plugin reference settings from the update setting button', () => {
+  it('should show the current auto-update strategy on the update setting button', () => {
     renderModelProviderPage()
 
-    fireEvent.click(screen.getByText('common.modelProvider.updateSetting'))
+    expect(screen.getAllByText('plugin.autoUpdate.strategy.latest.name')[0]).toBeInTheDocument()
+    expect(screen.getAllByTestId('update-setting-popover')[0]).toBeInTheDocument()
+    expect(screen.getByText('plugin.autoUpdate.automaticUpdates')).toBeInTheDocument()
+    expect(screen.getByText('plugin.autoUpdate.scope')).toBeInTheDocument()
+    expect(screen.getByRole('radio', { name: 'plugin.autoUpdate.strategy.fixOnly.name' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'set time' })).not.toBeInTheDocument()
+  })
 
-    expect(screen.getByTestId('reference-setting-modal')).toBeInTheDocument()
+  it('should use latest as the model provider default without locking the strategy', () => {
+    mockReferenceSetting.auto_upgrade = undefined
+    renderModelProviderPage()
+
+    expect(screen.getAllByText('plugin.autoUpdate.strategy.latest.name')[0]).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('radio', { name: 'plugin.autoUpdate.strategy.fixOnly.name' }))
+
+    expect(mockSetReferenceSettings).toHaveBeenCalledWith({
+      permission: {},
+      auto_upgrade: {
+        strategy_setting: 'fix_only',
+        upgrade_time_of_day: 0,
+        upgrade_mode: 'all',
+        exclude_plugins: [],
+        include_plugins: [],
+      },
+    })
+  })
+
+  it('should update scope from the popover while keeping the model provider default strategy as latest', () => {
+    renderModelProviderPage()
+
+    fireEvent.click(screen.getByRole('radio', { name: 'plugin.autoUpdate.scopeMode.partial' }))
+
+    expect(mockSetReferenceSettings).toHaveBeenCalledWith({
+      permission: {},
+      auto_upgrade: {
+        strategy_setting: 'latest',
+        upgrade_time_of_day: 0,
+        upgrade_mode: 'partial',
+        exclude_plugins: [],
+        include_plugins: [],
+      },
+    })
   })
 
   it('should render configured and not configured providers sections', () => {

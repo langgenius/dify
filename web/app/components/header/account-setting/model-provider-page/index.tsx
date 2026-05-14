@@ -2,7 +2,6 @@ import type {
   ModelProvider,
 } from './declarations'
 import type { PluginDetail } from '@/app/components/plugins/types'
-import { Button } from '@langgenius/dify-ui/button'
 import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useDebounce } from 'ahooks'
 import { noop } from 'es-toolkit/function'
@@ -11,11 +10,12 @@ import { useTranslation } from 'react-i18next'
 import SearchInput from '@/app/components/base/search-input'
 import { usePluginsWithLatestVersion } from '@/app/components/plugins/hooks'
 import useReferenceSetting from '@/app/components/plugins/plugin-page/use-reference-setting'
-import ReferenceSettingModal from '@/app/components/plugins/reference-setting-modal'
+import { AUTO_UPDATE_STRATEGY } from '@/app/components/plugins/reference-setting-modal/auto-update-setting/types'
 import { IS_CLOUD_EDITION } from '@/config'
 import { useProviderContext } from '@/context/provider-context'
 import { consoleQuery } from '@/service/client'
 import { systemFeaturesQueryOptions } from '@/service/system-features'
+import UpdateSettingPopover from '../update-setting-popover'
 import {
   CustomConfigurationStatusEnum,
   ModelTypeEnum,
@@ -34,6 +34,7 @@ type SystemModelConfigStatus = 'no-provider' | 'none-configured' | 'partially-co
 type Props = {
   onSearchTextChange?: (value: string) => void
   searchText: string
+  stickyToolbar?: boolean
 }
 
 const FixedModelProvider = ['langgenius/openai/openai', 'langgenius/anthropic/anthropic']
@@ -41,6 +42,7 @@ const FixedModelProvider = ['langgenius/openai/openai', 'langgenius/anthropic/an
 const ModelProviderPage = ({
   onSearchTextChange,
   searchText,
+  stickyToolbar,
 }: Props) => {
   const debouncedSearchText = useDebounce(searchText, { wait: 500 })
   const { t } = useTranslation()
@@ -49,7 +51,6 @@ const ModelProviderPage = ({
     canSetPermissions,
     setReferenceSettings,
   } = useReferenceSetting()
-  const [showPluginSettingModal, setShowPluginSettingModal] = useState(false)
   const [warningDismissed, setWarningDismissed] = useState(false)
   const { data: textGenerationDefaultModel, isLoading: isTextGenerationDefaultModelLoading } = useDefaultModel(ModelTypeEnum.textGeneration)
   const { data: embeddingsDefaultModel, isLoading: isEmbeddingsDefaultModelLoading } = useDefaultModel(ModelTypeEnum.textEmbedding)
@@ -144,7 +145,10 @@ const ModelProviderPage = ({
 
   return (
     <div className="relative">
-      <div className="mb-2 flex items-center justify-between gap-3">
+      <div className={stickyToolbar
+        ? 'sticky top-0 z-10 -mx-6 mb-2 flex items-center justify-between gap-3 bg-components-panel-bg px-6 pb-2'
+        : 'mb-2 flex items-center justify-between gap-3'}
+      >
         <SearchInput
           className="w-[200px] shrink-0"
           placeholder={t('modelProvider.searchModels', { ns: 'common' })}
@@ -153,18 +157,11 @@ const ModelProviderPage = ({
         />
         <div className="flex shrink-0 items-center justify-end gap-2">
           {canSetPermissions && referenceSetting && (
-            <Button
-              variant="secondary"
-              className="h-8 gap-0.5 px-3 system-sm-medium"
-              onClick={() => setShowPluginSettingModal(true)}
-            >
-              <span aria-hidden className="i-ri-flashlight-line size-4" />
-              <span className="px-0.5">{t('modelProvider.updateSetting', { ns: 'common' })}</span>
-              <span className="flex min-w-4 items-center justify-center rounded-[5px] border border-divider-deep bg-components-badge-bg-dimm px-1 py-0.5 system-2xs-medium-uppercase text-text-tertiary">
-                {t('autoUpdate.strategy.latest.name', { ns: 'plugin' })}
-              </span>
-              <span aria-hidden className="i-ri-arrow-down-s-line size-4" />
-            </Button>
+            <UpdateSettingPopover
+              defaultStrategy={AUTO_UPDATE_STRATEGY.latest}
+              referenceSetting={referenceSetting}
+              onSave={setReferenceSettings}
+            />
           )}
           <SystemModelSelector
             className="h-8 px-3 system-sm-medium"
@@ -240,13 +237,6 @@ const ModelProviderPage = ({
           />
         )
       }
-      {showPluginSettingModal && referenceSetting && (
-        <ReferenceSettingModal
-          payload={referenceSetting}
-          onHide={() => setShowPluginSettingModal(false)}
-          onSave={setReferenceSettings}
-        />
-      )}
     </div>
   )
 }
