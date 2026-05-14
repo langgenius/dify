@@ -31,7 +31,7 @@ from core.tools.utils.message_transformer import ToolFileMessageTransformer
 from core.workflow.file_reference import build_file_reference
 from extensions.ext_database import db
 from factories import file_factory
-from graphon.file import FileTransferMethod, FileType
+from graphon.file import File, FileTransferMethod, FileType
 from graphon.model_runtime.entities import LLMMode
 from graphon.model_runtime.entities.llm_entities import (
     LLMResult,

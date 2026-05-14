@@ -1,3 +1,5 @@
+from core.app.entities.app_invoke_entities import DifyRunContext
+from core.workflow.node_runtime import DifyFileReferenceFactory
 import json
 import logging
 import time
@@ -991,7 +993,7 @@ class WorkflowService:
             manual_inputs=inputs or {},
             user_id=account.id,
         )
-        node = self._build_human_input_node(
+        node = self._build_human_input_node_for_debugging(
             workflow=draft_workflow,
             account=account,
             node_config=node_config,
@@ -1051,7 +1053,7 @@ class WorkflowService:
             manual_inputs=inputs or {},
             user_id=account.id,
         )
-        node = self._build_human_input_node(
+        node = self._build_human_input_node_for_debugging(
             workflow=draft_workflow,
             account=account,
             node_config=node_config,
@@ -1139,7 +1141,7 @@ class WorkflowService:
             manual_inputs=inputs or {},
             user_id=account.id,
         )
-        node = self._build_human_input_node(
+        node = self._build_human_input_node_for_debugging(
             workflow=draft_workflow,
             account=account,
             node_config=node_config,
@@ -1232,7 +1234,7 @@ class WorkflowService:
                 recipients_data.append(DeliveryTestEmailRecipient(email=email, form_token=recipient.access_token))
         return recipients_data
 
-    def _build_human_input_node(
+    def _build_human_input_node_for_debugging(
         self,
         *,
         workflow: Workflow,
@@ -1265,6 +1267,15 @@ class WorkflowService:
             graph_init_params=graph_init_params,
             graph_runtime_state=graph_runtime_state,
             runtime=DifyHumanInputNodeRuntime(run_context),
+            file_reference_factory=DifyFileReferenceFactory(
+                DifyRunContext(
+                    tenant_id=workflow.tenant_id,
+                    app_id=workflow.app_id,
+                    user_id=account.id,
+                    user_from=UserFrom.ACCOUNT,
+                    invoke_from=InvokeFrom.DEBUGGER,
+                )
+            ),
         )
         return node
 
