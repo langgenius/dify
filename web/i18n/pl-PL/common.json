@@ -101,6 +101,7 @@
   "appModes.completionApp": "Generator tekstu",
   "avatar.deleteDescription": "Czy na pewno chcesz usunąć swoje zdjęcie profilowe? Twoje konto będzie używać domyślnego, początkowego awatara.",
   "avatar.deleteTitle": "Usuń awatar",
+  "avatar.editAction": "Edytuj awatar",
   "chat.citation.characters": "Postacie:",
   "chat.citation.hitCount": "Liczba trafień:",
   "chat.citation.hitScore": "Wynik trafień:",

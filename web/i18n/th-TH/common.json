@@ -101,6 +101,7 @@
   "appModes.completionApp": "เครื่องกําเนิดข้อความ",
   "avatar.deleteDescription": "คุณแน่ใจหรือไม่ว่าต้องการลบรูปโปรไฟล์ของคุณ? บัญชีของคุณจะใช้รูปโปรไฟล์เริ่มต้นตามค่าเริ่มต้น.",
   "avatar.deleteTitle": "ลบอวตาร",
+  "avatar.editAction": "แก้ไขอวตาร",
   "chat.citation.characters": "อักขระ:",
   "chat.citation.hitCount": "จํานวนการดึงข้อมูล:",
   "chat.citation.hitScore": "คะแนนการดึงข้อมูล:",
