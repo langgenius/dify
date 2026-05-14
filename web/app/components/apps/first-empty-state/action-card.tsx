@@ -2,6 +2,7 @@
 
 import type { FC, ReactNode } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
+import CornerLabel from '@/app/components/base/corner-label'
 import Link from '@/next/link'
 
 type BaseProps = {
@@ -26,10 +27,33 @@ type LinkActionCardProps = BaseProps & {
 export type FirstEmptyActionCardProps = ButtonActionCardProps | LinkActionCardProps
 
 const baseCardClassName = 'relative flex flex-col rounded-xl border border-components-panel-border bg-components-panel-on-panel-item-bg text-left shadow-xs transition-colors hover:bg-components-panel-on-panel-item-bg-hover hover:shadow-sm'
-const badgeClassName = {
-  basic: 'bg-util-colors-orange-orange-50 text-util-colors-orange-orange-600',
-  advanced: 'bg-components-dropzone-bg-accent text-components-premium-badge-blue-bg-stop-100',
+const compactBadgeClassName = {
+  basic: {
+    corner: 'text-util-colors-orange-orange-50',
+    label: 'bg-util-colors-orange-orange-50',
+    text: 'text-util-colors-orange-orange-600',
+  },
+  advanced: {
+    corner: 'text-components-dropzone-bg-accent',
+    label: 'bg-components-dropzone-bg-accent',
+    text: 'text-components-premium-badge-blue-bg-stop-100',
+  },
 }
+
+type CompactBadgeProps = {
+  badge: string
+  badgeVariant: 'basic' | 'advanced'
+}
+
+const CompactBadge: FC<CompactBadgeProps> = ({ badge, badgeVariant }) => (
+  <CornerLabel
+    label={badge}
+    className="absolute top-0 right-0 z-5"
+    cornerClassName={compactBadgeClassName[badgeVariant].corner}
+    labelClassName={cn('rounded-tr-xl pr-2', compactBadgeClassName[badgeVariant].label)}
+    textClassName={compactBadgeClassName[badgeVariant].text}
+  />
+)
 
 const ActionCardContent: FC<BaseProps> = ({
   badge,
@@ -40,14 +64,19 @@ const ActionCardContent: FC<BaseProps> = ({
   visualStyle = 'default',
 }) => {
   const isCompact = visualStyle === 'compact'
+  const badgeNode = badge
+    ? isCompact
+      ? <CompactBadge badge={badge} badgeVariant={badgeVariant} />
+      : (
+          <span className="absolute top-4 right-4 flex min-w-[18px] items-center justify-center gap-0.5 rounded-[5px] border border-divider-deep bg-components-badge-bg-dimm px-[5px] py-[3px] system-2xs-medium-uppercase text-text-tertiary">
+            {badge}
+          </span>
+        )
+    : null
 
   return (
     <>
-      {badge && (
-        <span className={`${isCompact ? `top-0 right-0 rounded-bl-[5px] pr-2 pl-3 ${badgeClassName[badgeVariant]}` : 'top-4 right-4 rounded-[5px] border border-divider-deep bg-components-badge-bg-dimm px-[5px] text-text-tertiary'} absolute flex min-w-[18px] items-center justify-center gap-0.5 py-[3px] system-2xs-medium-uppercase`}>
-          {badge}
-        </span>
-      )}
+      {badgeNode}
       <span className={`${isCompact ? 'size-10 rounded-lg border border-divider-regular text-2xl/7' : 'size-12 rounded-xl text-2xl/8'} flex items-center justify-center bg-components-icon-bg-teal-soft text-text-accent`}>
         {icon}
       </span>
