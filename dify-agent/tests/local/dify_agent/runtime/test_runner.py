@@ -42,7 +42,9 @@ from dify_agent.protocol.schemas import (
     CreateRunRequest,
     LayerExitSignals,
     RunComposition,
+    RunEvent,
     RunLayerSpec,
+    RunFailedEvent,
     RunSucceededEvent,
 )
 from dify_agent.runtime.event_sink import InMemoryRunEventSink
@@ -51,7 +53,7 @@ from dify_agent.runtime.runner import AgentRunRunner, AgentRunValidationError
 
 
 class StaticToolsTestLayer(ToolsLayer):
-    type_id: ClassVar[str] = "test.static.tools"
+    type_id: ClassVar[str | None] = "test.static.tools"
 
 
 def _request(
@@ -238,6 +240,19 @@ def _history_messages_from_snapshot(snapshot: CompositorSessionSnapshot) -> list
 
 def _flatten_message_parts(messages: list[ModelMessage]) -> list[object]:
     return [part for message in messages for part in message.parts]
+
+
+class FailingEventSink(InMemoryRunEventSink):
+    failing_event_type: str
+
+    def __init__(self, failing_event_type: str) -> None:
+        super().__init__()
+        self.failing_event_type = failing_event_type
+
+    async def append_event(self, event: RunEvent) -> str:
+        if event.type == self.failing_event_type:
+            raise RuntimeError(f"{self.failing_event_type} unavailable")
+        return await super().append_event(event)
 
 
 def test_runner_emits_terminal_success_and_snapshot(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -765,6 +780,59 @@ def test_runner_failure_with_history_layer_emits_failed_terminal_event_without_s
     assert sink.statuses["run-history-failure"] == "failed"
     assert request.session_snapshot is not None
     assert _history_messages_from_snapshot(request.session_snapshot) == stored_history
+
+
+def test_runner_marks_failed_when_success_event_cannot_be_written(monkeypatch: pytest.MonkeyPatch) -> None:
+    def fake_get_model(_self: DifyPluginLLMLayer, *, http_client: httpx.AsyncClient):
+        assert http_client.is_closed is False
+        return TestModel(custom_output_text="done")  # pyright: ignore[reportReturnType]
+
+    monkeypatch.setattr(DifyPluginLLMLayer, "get_model", fake_get_model)
+    sink = FailingEventSink("run_succeeded")
+
+    async def scenario() -> None:
+        async with httpx.AsyncClient() as client:
+            with pytest.raises(RuntimeError, match="run_succeeded unavailable"):
+                await AgentRunRunner(
+                    sink=sink,
+                    request=_request(),
+                    run_id="run-success-event-failed",
+                    plugin_daemon_http_client=client,
+                ).run()
+
+    asyncio.run(scenario())
+
+    event_types = [event.type for event in sink.events["run-success-event-failed"]]
+    assert event_types[0] == "run_started"
+    assert event_types[-1:] == ["run_failed"]
+    assert "run_succeeded" not in event_types
+    terminal = sink.events["run-success-event-failed"][-1]
+    assert isinstance(terminal, RunFailedEvent)
+    assert terminal.data.reason == "event_sink"
+    assert "failed to emit run_succeeded event" in terminal.data.error
+    assert "run_succeeded unavailable" in terminal.data.error
+    assert sink.statuses["run-success-event-failed"] == "failed"
+    assert sink.errors["run-success-event-failed"] == terminal.data.error
+
+
+def test_runner_marks_failed_when_failure_event_cannot_be_written() -> None:
+    sink = FailingEventSink("run_failed")
+
+    async def scenario() -> None:
+        async with httpx.AsyncClient() as client:
+            with pytest.raises(RuntimeError, match="run_failed unavailable"):
+                await AgentRunRunner(
+                    sink=sink,
+                    request=_request(user=""),
+                    run_id="run-failure-event-failed",
+                    plugin_daemon_http_client=client,
+                ).run()
+
+    asyncio.run(scenario())
+
+    assert [event.type for event in sink.events["run-failure-event-failed"]] == ["run_started"]
+    assert sink.statuses["run-failure-event-failed"] == "failed"
+    assert "must not be empty" in (sink.errors["run-failure-event-failed"] or "")
 
 
 def test_runner_applies_on_exit_overrides_to_success_snapshot(monkeypatch: pytest.MonkeyPatch) -> None:

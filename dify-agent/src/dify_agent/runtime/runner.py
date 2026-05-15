@@ -17,7 +17,10 @@ hooks. Invalid structured outputs therefore trigger Pydantic AI's normal
 output-validation retry behavior before Dify Agent emits ``run_succeeded``.
 Layers still never own the FastAPI lifespan-owned plugin daemon HTTP client.
 Successful terminal events contain both the JSON-safe final output and session
-snapshot; there are no separate output or snapshot events to correlate.
+snapshot; there are no separate output or snapshot events to correlate. If a
+terminal event cannot be written, the persisted run status is still moved out
+of ``running`` so scheduler task failures do not leave clients polling a stale
+in-progress run forever.
 """
 
 from collections.abc import AsyncIterable
@@ -87,7 +90,7 @@ class AgentRunRunner:
         self.layer_providers = layer_providers if layer_providers is not None else create_default_layer_providers()
 
     async def run(self) -> None:
-        """Execute the run and emit the documented event sequence."""
+        """Execute the run and persist a terminal status for observable failures."""
         await self.sink.update_status(self.run_id, "running")
         _ = await emit_run_started(self.sink, run_id=self.run_id)
 
@@ -95,17 +98,33 @@ class AgentRunRunner:
             output, session_snapshot = await self._run_agent()
         except Exception as exc:
             message = str(exc) or type(exc).__name__
-            _ = await emit_run_failed(self.sink, run_id=self.run_id, error=message)
-            await self.sink.update_status(self.run_id, "failed", message)
+            try:
+                await self._mark_failed(message)
+            except Exception as failure_exc:
+                raise failure_exc from exc
             raise
 
-        _ = await emit_run_succeeded(
-            self.sink,
-            run_id=self.run_id,
-            output=output,
-            session_snapshot=session_snapshot,
-        )
+        try:
+            _ = await emit_run_succeeded(
+                self.sink,
+                run_id=self.run_id,
+                output=output,
+                session_snapshot=session_snapshot,
+            )
+        except Exception as exc:
+            message = _event_emit_error_message("run_succeeded", exc)
+            try:
+                await self._mark_failed(message, reason="event_sink")
+            except Exception as failure_exc:
+                raise failure_exc from exc
+            raise
         await self.sink.update_status(self.run_id, "succeeded")
+
+    async def _mark_failed(self, message: str, *, reason: str | None = None) -> None:
+        try:
+            _ = await emit_run_failed(self.sink, run_id=self.run_id, error=message, reason=reason)
+        finally:
+            await self.sink.update_status(self.run_id, "failed", message)
 
     async def _run_agent(self) -> tuple[JsonValue, CompositorSessionSnapshot]:
         """Run pydantic-ai inside an entered Agenton run.
@@ -205,6 +224,11 @@ def _validate_unique_tool_names(tools: list[PydanticAITool[object]]) -> None:
     if duplicate_names:
         names = ", ".join(duplicate_names)
         raise ValueError(f"Agent run requires unique tool names across all layers, got duplicates: {names}.")
+
+
+def _event_emit_error_message(event_type: str, exc: Exception) -> str:
+    error = str(exc) or type(exc).__name__
+    return f"failed to emit {event_type} event: {error}"
 
 
 __all__ = ["AgentRunRunner", "AgentRunValidationError"]
