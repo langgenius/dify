@@ -13,7 +13,10 @@ class FakeScheduler:
 
 
 class FakeStore:
-    pass
+    calls: list[tuple[str, object]]
+
+    def __init__(self) -> None:
+        self.calls = []
 
 
 def test_create_run_rejects_effectively_blank_user_prompt_list() -> None:
@@ -248,3 +251,54 @@ def test_create_run_does_not_map_infrastructure_failure_to_422() -> None:
     )
 
     assert response.status_code == 500
+
+
+def test_get_run_events_rejects_malformed_cursor_before_store_access() -> None:
+    from fastapi import FastAPI
+
+    store = FakeStore()
+    app = FastAPI()
+    app.include_router(
+        create_runs_router(lambda: store, lambda: FakeScheduler())  # pyright: ignore[reportArgumentType]
+    )
+    client = TestClient(app)
+
+    response = client.get("/runs/run-1/events", params={"after": "not-a-stream-id"})
+
+    assert response.status_code == 422
+    assert response.json()["detail"] == "invalid event cursor"
+    assert store.calls == []
+
+
+def test_stream_run_events_rejects_malformed_last_event_id_before_store_access() -> None:
+    from fastapi import FastAPI
+
+    store = FakeStore()
+    app = FastAPI()
+    app.include_router(
+        create_runs_router(lambda: store, lambda: FakeScheduler())  # pyright: ignore[reportArgumentType]
+    )
+    client = TestClient(app)
+
+    response = client.get("/runs/run-1/events/sse", headers={"Last-Event-ID": "bad"})
+
+    assert response.status_code == 422
+    assert response.json()["detail"] == "invalid event cursor"
+    assert store.calls == []
+
+
+def test_stream_run_events_rejects_empty_after_instead_of_falling_back_to_header() -> None:
+    from fastapi import FastAPI
+
+    store = FakeStore()
+    app = FastAPI()
+    app.include_router(
+        create_runs_router(lambda: store, lambda: FakeScheduler())  # pyright: ignore[reportArgumentType]
+    )
+    client = TestClient(app)
+
+    response = client.get("/runs/run-1/events/sse?after=", headers={"Last-Event-ID": "1-0"})
+
+    assert response.status_code == 422
+    assert response.json()["detail"] == "invalid event cursor"
+    assert store.calls == []

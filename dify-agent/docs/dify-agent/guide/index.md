@@ -120,6 +120,10 @@ progress:
   `id` is the event Redis Stream ID. `after` query cursors take precedence over
   `Last-Event-ID` headers.
 
+Event cursors must be Redis Stream IDs in `<time>-<sequence>` form, such as
+`0-0` or a `next_cursor`/SSE `id` value returned by the API. Malformed cursors
+are rejected before Redis access.
+
 Successful runs emit `run_started`, zero or more `pydantic_ai_event`, and
 `run_succeeded`. Failed runs end with `run_failed`. Event envelopes retain `id`,
 `run_id`, `type`, `data`, and `created_at`; `data` is typed per event type,

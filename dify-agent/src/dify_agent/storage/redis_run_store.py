@@ -10,6 +10,7 @@ credentials.
 """
 
 from collections.abc import AsyncIterator
+import re
 from typing import cast
 
 from redis.asyncio import Redis
@@ -20,9 +21,26 @@ from dify_agent.server.schemas import RunRecord, new_run_id
 from dify_agent.server.settings import DEFAULT_RUN_RETENTION_SECONDS
 from dify_agent.storage.redis_keys import run_events_key, run_record_key
 
+_STREAM_CURSOR_PATTERN = re.compile(r"^\d+-\d+$")
+
 
 class RunNotFoundError(LookupError):
     """Raised when a requested run record does not exist."""
+
+
+class InvalidRunCursorError(ValueError):
+    """Raised when a public event cursor is not a Redis stream id."""
+
+
+def validate_run_event_cursor(cursor: str) -> None:
+    """Reject event cursors that Redis stream range/read commands cannot consume.
+
+    Public run event cursors are emitted from Redis streams as ``<time>-<seq>``
+    ids. Validating them before issuing ``XRANGE``/``XREAD`` keeps malformed
+    HTTP inputs from surfacing as Redis command errors.
+    """
+    if _STREAM_CURSOR_PATTERN.fullmatch(cursor) is None:
+        raise InvalidRunCursorError("invalid event cursor")
 
 
 class RedisRunStore(RunEventSink):
@@ -94,6 +112,7 @@ class RedisRunStore(RunEventSink):
 
     async def get_events(self, run_id: str, *, after: str = "0-0", limit: int = 100) -> RunEventsResponse:
         """Read a bounded page of events after ``after`` cursor."""
+        validate_run_event_cursor(after)
         await self.get_run(run_id)
         raw_events = await self.redis.xrange(run_events_key(self.prefix, run_id), min=f"({after}", count=limit)
         events = [self._decode_event(run_id, raw_id, fields) for raw_id, fields in raw_events]
@@ -102,6 +121,7 @@ class RedisRunStore(RunEventSink):
 
     async def iter_events(self, run_id: str, *, after: str = "0-0") -> AsyncIterator[RunEvent]:
         """Yield replayed and future events for SSE clients."""
+        validate_run_event_cursor(after)
         await self.get_run(run_id)
         cursor = after
         while True:
@@ -134,4 +154,10 @@ class RedisRunStore(RunEventSink):
         return event.model_copy(update={"id": event_id, "run_id": run_id})
 
 
-__all__ = ["DEFAULT_RUN_RETENTION_SECONDS", "RedisRunStore", "RunNotFoundError"]
+__all__ = [
+    "DEFAULT_RUN_RETENTION_SECONDS",
+    "InvalidRunCursorError",
+    "RedisRunStore",
+    "RunNotFoundError",
+    "validate_run_event_cursor",
+]

@@ -23,7 +23,12 @@ from dify_agent.protocol.schemas import (
 )
 from dify_agent.runtime.run_scheduler import RunRequestValidationError, RunScheduler, SchedulerStoppingError
 from dify_agent.server.sse import sse_event_stream
-from dify_agent.storage.redis_run_store import RedisRunStore, RunNotFoundError
+from dify_agent.storage.redis_run_store import (
+    InvalidRunCursorError,
+    RedisRunStore,
+    RunNotFoundError,
+    validate_run_event_cursor,
+)
 
 
 def create_runs_router(
@@ -86,7 +91,10 @@ def create_runs_router(
         limit: int = Query(default=100, ge=1, le=500),
     ) -> RunEventsResponse:
         try:
+            validate_run_event_cursor(after)
             return await store.get_events(run_id, after=after, limit=limit)
+        except InvalidRunCursorError as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
         except RunNotFoundError as exc:
             raise HTTPException(status_code=404, detail="run not found") from exc
 
@@ -97,11 +105,14 @@ def create_runs_router(
         last_event_id: Annotated[str | None, Header(alias="Last-Event-ID")] = None,
         after: str | None = Query(default=None),
     ) -> StreamingResponse:
-        cursor = after or last_event_id or "0-0"
+        cursor = after if after is not None else last_event_id if last_event_id is not None else "0-0"
         try:
+            validate_run_event_cursor(cursor)
             _ = await store.get_run(run_id)
             events = store.iter_events(run_id, after=cursor)
             return StreamingResponse(sse_event_stream(events), media_type="text/event-stream")
+        except InvalidRunCursorError as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
         except RunNotFoundError as exc:
             raise HTTPException(status_code=404, detail="run not found") from exc
 

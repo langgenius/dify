@@ -2,12 +2,13 @@ import asyncio
 from collections.abc import Mapping
 from typing import cast
 
+import pytest
 from pydantic import JsonValue
 
 from agenton.compositor import CompositorSessionSnapshot, LayerSessionSnapshot
 from agenton.layers import LifecycleState
 from dify_agent.protocol.schemas import RunStartedEvent, RunSucceededEvent, RunSucceededEventData
-from dify_agent.storage.redis_run_store import DEFAULT_RUN_RETENTION_SECONDS, RedisRunStore
+from dify_agent.storage.redis_run_store import DEFAULT_RUN_RETENTION_SECONDS, InvalidRunCursorError, RedisRunStore
 
 
 class FakeRedis:
@@ -142,3 +143,27 @@ def test_get_events_round_trips_run_succeeded_output_and_session_snapshot() -> N
     assert decoded.id == event_id
     assert decoded.data.output == output
     assert decoded.data.session_snapshot == session_snapshot
+
+
+def test_get_events_rejects_malformed_cursor_before_redis_access() -> None:
+    redis = FakeRedis()
+    store = RedisRunStore(redis, prefix="test")  # pyright: ignore[reportArgumentType]
+
+    with pytest.raises(InvalidRunCursorError, match="invalid event cursor") as exc_info:
+        asyncio.run(store.get_events("run-1", after="not-a-stream-id"))
+
+    assert str(exc_info.value) == "invalid event cursor"
+    assert redis.commands == []
+
+
+def test_iter_events_rejects_malformed_cursor_before_redis_access() -> None:
+    redis = FakeRedis()
+    store = RedisRunStore(redis, prefix="test")  # pyright: ignore[reportArgumentType]
+
+    async def scenario() -> None:
+        with pytest.raises(InvalidRunCursorError, match="invalid event cursor"):
+            _ = await anext(store.iter_events("run-1", after="bad"))
+
+    asyncio.run(scenario())
+
+    assert redis.commands == []
