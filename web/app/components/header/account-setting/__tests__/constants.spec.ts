@@ -7,6 +7,7 @@ import {
 import {
   enableMovedAccountSettingDestinations,
   getMovedAccountSettingDestination,
+  isMovedAccountSettingTab,
   movedAccountSettingDestinations,
 } from '../destinations'
 
@@ -53,6 +54,6 @@ describe('AccountSetting Constants', () => {
     expect(getMovedAccountSettingDestination(ACCOUNT_SETTING_TAB.PROVIDER)).toBe('/integrations/model-provider')
     expect(getMovedAccountSettingDestination(ACCOUNT_SETTING_TAB.DATA_SOURCE)).toBe('/integrations/data-source')
     expect(getMovedAccountSettingDestination(ACCOUNT_SETTING_TAB.API_BASED_EXTENSION)).toBe('/integrations/tools/api-extension')
-    expect(getMovedAccountSettingDestination(ACCOUNT_SETTING_TAB.BILLING)).toBeUndefined()
+    expect(isMovedAccountSettingTab(ACCOUNT_SETTING_TAB.BILLING)).toBe(false)
   })
 })

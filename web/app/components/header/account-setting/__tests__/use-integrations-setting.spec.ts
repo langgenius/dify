@@ -2,20 +2,13 @@ import { act, renderHook } from '@testing-library/react'
 import { ACCOUNT_SETTING_TAB } from '../constants'
 import { useIntegrationsSetting } from '../use-integrations-setting'
 
-const { mockRouterPush, mockSetShowAccountSettingModal } = vi.hoisted(() => ({
+const { mockRouterPush } = vi.hoisted(() => ({
   mockRouterPush: vi.fn(),
-  mockSetShowAccountSettingModal: vi.fn(),
 }))
 
 vi.mock('@/next/navigation', () => ({
   useRouter: () => ({
     push: mockRouterPush,
-  }),
-}))
-
-vi.mock('@/context/modal-context', () => ({
-  useModalContext: () => ({
-    setShowAccountSettingModal: mockSetShowAccountSettingModal,
   }),
 }))
 
@@ -36,19 +29,5 @@ describe('useIntegrationsSetting', () => {
     })
 
     expect(mockRouterPush).toHaveBeenCalledWith(destination)
-    expect(mockSetShowAccountSettingModal).not.toHaveBeenCalled()
-  })
-
-  it('should keep modal behavior for non-migrated tabs', () => {
-    const { result } = renderHook(() => useIntegrationsSetting())
-
-    act(() => {
-      result.current({ payload: ACCOUNT_SETTING_TAB.BILLING })
-    })
-
-    expect(mockSetShowAccountSettingModal).toHaveBeenCalledWith({
-      payload: ACCOUNT_SETTING_TAB.BILLING,
-    })
-    expect(mockRouterPush).not.toHaveBeenCalled()
   })
 })

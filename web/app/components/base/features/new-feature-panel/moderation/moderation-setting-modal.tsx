@@ -40,15 +40,12 @@ const ModerationSettingModal: FC<ModerationSettingModalProps> = ({
   const { t } = useTranslation()
   const docLink = useDocLink()
   const locale = useLocale()
-  const { data: modelProviders, isPending: isLoading, refetch: refetchModelProviders } = useModelProviders()
+  const { data: modelProviders, isPending: isLoading } = useModelProviders()
   const [localeData, setLocaleData] = useState<ModerationConfig>(data)
   const openIntegrationsSetting = useIntegrationsSetting()
   const handleOpenSettingsModal = () => {
     openIntegrationsSetting({
       payload: ACCOUNT_SETTING_TAB.PROVIDER,
-      onCancelCallback: () => {
-        refetchModelProviders()
-      },
     })
   }
   const { data: codeBasedExtensionList } = useCodeBasedExtensions('moderation')
