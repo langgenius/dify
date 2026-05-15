@@ -46,6 +46,7 @@ const InfoModal = ({
             {data?.copyright && (
               <div>
                 Copyright ©
+                {' '}
                 {currentYear}
                 {' '}
                 {data?.copyright}
