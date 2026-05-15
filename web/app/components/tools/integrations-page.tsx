@@ -188,12 +188,10 @@ const NavLinkItem = ({ collapsed, item, section }: NavLinkItemProps) => {
 }
 
 type IntegrationsPageProps = {
-  marketplace?: React.ReactNode
   section?: IntegrationSection
 }
 
 export default function IntegrationsPage({
-  marketplace,
   section: routeSection,
 }: IntegrationsPageProps) {
   const { t } = useTranslation()
@@ -275,10 +273,9 @@ export default function IntegrationsPage({
     },
   ], [t])
   const activeItem = [providerItem, dataSourceItem, ...toolItems, ...secondaryItems].find(item => item.section === section)
-  const isDiscoverSection = section === 'discover'
   const isToolSection = Boolean(toolCategoryBySection[section])
   const isPluginCategorySection = section === 'trigger' || section === 'agent-strategy' || section === 'extension'
-  const useFillLayout = isDiscoverSection || isToolSection || isPluginCategorySection
+  const useFillLayout = isToolSection || isPluginCategorySection
   const headerFrameClassName = cn(
     toolsContentInsetClassNames.compact,
     toolsUnifiedContentFrameClassName,
@@ -408,7 +405,7 @@ export default function IntegrationsPage({
                 triggerLabel={t('installAction', { ns: 'plugin' })}
                 triggerOpenClassName="bg-components-button-primary-bg-hover"
                 popupClassName="w-[240px] rounded-2xl py-2 shadow-xl"
-                onSwitchToMarketplaceTab={() => router.push(buildIntegrationPath('discover'))}
+                onSwitchToMarketplaceTab={() => router.push('/marketplace')}
               />
               {canDebugger && (
                 <div className="size-8 shrink-0">
@@ -538,7 +535,7 @@ export default function IntegrationsPage({
             </div>
           </div>
         )}
-        {!integrationHeader && !isToolSection && !isDiscoverSection && (
+        {!integrationHeader && !isToolSection && (
           <div className="flex min-h-14 shrink-0 items-center justify-between">
             <div className={cn('flex min-w-0 flex-1 items-center justify-between py-2', headerFrameClassName)}>
               <div>
@@ -559,11 +556,10 @@ export default function IntegrationsPage({
         >
           <IntegrationSectionRenderer
             key={section}
-            marketplace={marketplace}
             section={section}
             providerSearchText={providerSearchText}
             onProviderSearchTextChange={setProviderSearchText}
-            onSwitchToMarketplace={() => router.push(buildIntegrationPath('discover'))}
+            onSwitchToMarketplace={() => router.push('/marketplace')}
             pluginCategoryToolbarAction={pluginSettingAction}
           />
         </div>

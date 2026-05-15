@@ -10,17 +10,17 @@ describe('plugin routes', () => {
   })
 
   it.each([
-    [{ tab: 'discover' }, '/integrations/discover'],
-    [{ tab: 'discover', category: 'extension' }, '/integrations/discover?category=extension'],
-    [{ tab: 'discover', q: 'slack', tags: ['a', 'b'] }, '/integrations/discover?q=slack&tags=a&tags=b'],
-    [{ tab: 'all' }, '/integrations/discover?category=all'],
-    [{ tab: 'tool' }, '/integrations/discover?category=tool'],
-    [{ tab: 'model' }, '/integrations/discover?category=model'],
-    [{ tab: 'trigger' }, '/integrations/discover?category=trigger'],
-    [{ tab: 'agent-strategy' }, '/integrations/discover?category=agent-strategy'],
-    [{ tab: 'extension' }, '/integrations/discover?category=extension'],
-    [{ tab: 'datasource' }, '/integrations/discover?category=datasource'],
-    [{ tab: 'bundle' }, '/integrations/discover?category=bundle'],
+    [{ tab: 'discover' }, '/marketplace'],
+    [{ tab: 'discover', category: 'extension' }, '/marketplace?category=extension'],
+    [{ tab: 'discover', q: 'slack', tags: ['a', 'b'] }, '/marketplace?q=slack&tags=a&tags=b'],
+    [{ tab: 'all' }, '/marketplace?category=all'],
+    [{ tab: 'tool' }, '/marketplace?category=tool'],
+    [{ tab: 'model' }, '/marketplace?category=model'],
+    [{ tab: 'trigger' }, '/marketplace?category=trigger'],
+    [{ tab: 'agent-strategy' }, '/marketplace?category=agent-strategy'],
+    [{ tab: 'extension' }, '/marketplace?category=extension'],
+    [{ tab: 'datasource' }, '/marketplace?category=datasource'],
+    [{ tab: 'bundle' }, '/marketplace?category=bundle'],
   ])('redirects marketplace plugin URLs for search params %j', (searchParams, expected) => {
     expect(getLegacyPluginRedirectPath(searchParams)).toBe(expected)
   })

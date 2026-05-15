@@ -1,6 +1,6 @@
 import type { ToolsContentInset } from '../content-inset'
 import type { useMarketplace } from './hooks'
-import { useLocale } from '#i18n'
+import type { SearchParamsFromCollection } from '@/app/components/plugins/marketplace/types'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   RiArrowRightUpLine,
@@ -8,8 +8,10 @@ import {
 } from '@remixicon/react'
 import { useTheme } from 'next-themes'
 import { useTranslation } from 'react-i18next'
+import { useLocale } from '#i18n'
 import Loading from '@/app/components/base/loading'
 import List from '@/app/components/plugins/marketplace/list'
+import { useRouter } from '@/next/navigation'
 import { getMarketplaceUrl } from '@/utils/var'
 import { toolsContentInsetClassNames, toolsUnifiedContentFrameClassName } from '../content-inset'
 
@@ -32,6 +34,7 @@ const Marketplace = ({
   const locale = useLocale()
   const { t } = useTranslation()
   const { theme } = useTheme()
+  const router = useRouter()
   const {
     isLoading,
     marketplaceCollections,
@@ -42,6 +45,18 @@ const Marketplace = ({
   const contentPaddingClassName = toolsContentInsetClassNames[contentInset]
   const marketplaceFrameClassName = cn(contentPaddingClassName, toolsUnifiedContentFrameClassName)
   const cardContainerClassName = 'grid-cols-1 sm:grid-cols-2 md:grid-cols-3'
+  const handleCollectionMoreClick = (searchParams?: SearchParamsFromCollection) => {
+    const params = new URLSearchParams({ category: 'tool' })
+
+    if (searchParams?.query)
+      params.set('q', searchParams.query)
+    if (searchParams?.sort_by)
+      params.set('sort_by', searchParams.sort_by)
+    if (searchParams?.sort_order)
+      params.set('sort_order', searchParams.sort_order)
+
+    router.push(`/marketplace?${params.toString()}`)
+  }
 
   return (
     <>
@@ -114,6 +129,7 @@ const Marketplace = ({
                 plugins={plugins}
                 showInstallButton
                 cardContainerClassName={cardContainerClassName}
+                onCollectionMoreClick={handleCollectionMoreClick}
               />
             </div>
           )

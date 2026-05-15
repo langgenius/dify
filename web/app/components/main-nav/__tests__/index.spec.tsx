@@ -215,7 +215,7 @@ describe('MainNav', () => {
     expect(screen.getByRole('link', { name: /common.menus.apps/ })).toHaveAttribute('href', '/apps')
     expect(screen.getByRole('link', { name: /common.menus.datasets/ })).toHaveAttribute('href', '/datasets')
     expect(screen.getByRole('link', { name: /common.mainNav.integrations/ })).toHaveAttribute('href', '/integrations/model-provider')
-    expect(screen.getByRole('link', { name: /common.mainNav.marketplace/ })).toHaveAttribute('href', '/plugins')
+    expect(screen.getByRole('link', { name: /common.mainNav.marketplace/ })).toHaveAttribute('href', '/marketplace')
   })
 
   it('renders the desktop environment tag from the old header contract', () => {
@@ -277,7 +277,7 @@ describe('MainNav', () => {
     expect(screen.queryByRole('link', { name: /common.menus.apps/ })).not.toBeInTheDocument()
     expect(screen.getByRole('link', { name: /common.menus.datasets/ })).toHaveAttribute('href', '/datasets')
     expect(screen.queryByRole('link', { name: /common.mainNav.integrations/ })).not.toBeInTheDocument()
-    expect(screen.getByRole('link', { name: /common.mainNav.marketplace/ })).toHaveAttribute('href', '/plugins')
+    expect(screen.getByRole('link', { name: /common.mainNav.marketplace/ })).toHaveAttribute('href', '/marketplace')
     expect(screen.queryByRole('button', { name: 'explore.sidebar.webApps' })).not.toBeInTheDocument()
   })
 
@@ -311,6 +311,15 @@ describe('MainNav', () => {
     const datasetsLink = screen.getByRole('link', { name: /common.menus.datasets/ })
     expect(datasetsLink.className).toContain('bg-[linear-gradient(98.077deg')
     expect(datasetsLink).toHaveClass(activeEdgeClassName)
+  })
+
+  it('marks marketplace active on marketplace routes', () => {
+    mockPathname = '/marketplace'
+
+    renderMainNav()
+
+    const marketplaceLink = screen.getByRole('link', { name: /common.mainNav.marketplace/ })
+    expect(marketplaceLink).toHaveClass(activeEdgeClassName)
   })
 
   it('applies the Figma glass active state to the Home route', () => {

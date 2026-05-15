@@ -9,7 +9,6 @@ describe('integration routes', () => {
   it('maps integration sections to canonical paths', () => {
     expect(integrationPathBySection).toEqual({
       'provider': '/integrations/model-provider',
-      'discover': '/integrations/discover',
       'builtin': '/integrations/tools/built-in',
       'custom-tool': '/integrations/tool/api',
       'workflow-tool': '/integrations/tools/workflow',
@@ -27,7 +26,6 @@ describe('integration routes', () => {
     [undefined, { type: 'redirect', destination: '/integrations/model-provider' }],
     [[], { type: 'redirect', destination: '/integrations/model-provider' }],
     [['model-provider'], { type: 'section', section: 'provider' }],
-    [['discover'], { type: 'section', section: 'discover' }],
     [['tools'], { type: 'redirect', destination: '/integrations/tools/built-in' }],
     [['tools', 'built-in'], { type: 'section', section: 'builtin' }],
     [['tool', 'api'], { type: 'section', section: 'custom-tool' }],
@@ -45,6 +43,7 @@ describe('integration routes', () => {
     [['tools', 'trigger'], { type: 'not-found' }],
     [['tools', 'agent-strategy'], { type: 'not-found' }],
     [['tools', 'extension'], { type: 'not-found' }],
+    [['discover'], { type: 'not-found' }],
     [['missing'], { type: 'not-found' }],
   ])('resolves slug %j', (slug, expected) => {
     expect(getIntegrationRouteTargetBySlug(slug)).toEqual(expected)

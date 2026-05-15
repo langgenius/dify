@@ -1,6 +1,5 @@
 export const INTEGRATION_SECTION_VALUES = [
   'provider',
-  'discover',
   'builtin',
   'mcp',
   'custom-tool',
@@ -53,7 +52,6 @@ export const sectionByToolCategory: Record<ToolCategory, IntegrationSection> = {
 
 export const integrationPathBySection: Record<IntegrationSection, string> = {
   'provider': '/integrations/model-provider',
-  'discover': '/integrations/discover',
   'builtin': '/integrations/tools/built-in',
   'custom-tool': '/integrations/tool/api',
   'workflow-tool': '/integrations/tools/workflow',
@@ -110,8 +108,6 @@ export const getIntegrationRouteTargetBySlug = (slug?: string[]): IntegrationRou
       return { type: 'redirect', destination: buildIntegrationPath('provider') }
     case 'model-provider':
       return { type: 'section', section: 'provider' }
-    case 'discover':
-      return { type: 'section', section: 'discover' }
     case 'tools':
       return { type: 'redirect', destination: buildIntegrationPath('builtin') }
     case 'tools/built-in':

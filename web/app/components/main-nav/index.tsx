@@ -69,9 +69,9 @@ const MainNav = ({
         ]
       : []),
     {
-      href: '/plugins',
+      href: '/marketplace',
       label: t('mainNav.marketplace', { ns: 'common' }),
-      active: path => path.startsWith('/plugins'),
+      active: path => path.startsWith('/marketplace') || path.startsWith('/plugins'),
       icon: 'i-custom-vender-main-nav-marketplace',
       activeIcon: 'i-custom-vender-main-nav-marketplace-active',
     },

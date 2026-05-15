@@ -142,7 +142,7 @@ vi.mock('../plugin-category-page', () => ({
 }))
 
 const renderIntegrationsPage = (searchParams?: Record<string, string>, section?: React.ComponentProps<typeof IntegrationsPage>['section']) => {
-  return renderWithNuqs(<IntegrationsPage marketplace={<div data-testid="marketplace-content" />} section={section} />, { searchParams })
+  return renderWithNuqs(<IntegrationsPage section={section} />, { searchParams })
 }
 
 describe('IntegrationsPage', () => {
@@ -187,19 +187,12 @@ describe('IntegrationsPage', () => {
     expect(navText.indexOf('common.settings.dataSource')).toBeLessThan(navText.indexOf('common.menus.tools'))
   })
 
-  it('renders marketplace content from the discover section', () => {
-    renderIntegrationsPage(undefined, 'discover')
-
-    expect(screen.getByTestId('marketplace-content')).toBeInTheDocument()
-    expect(screen.queryByRole('link', { name: 'common.menus.exploreMarketplace' })).not.toBeInTheDocument()
-  })
-
   it('renders the Figma-matched database icon for the data source sidebar item', () => {
     const providerView = renderIntegrationsPage({ section: 'provider' })
 
     expect(screen.getByRole('link', { name: 'common.settings.dataSource' }).querySelector('.i-ri-database-2-line')).toBeInTheDocument()
 
-    providerView.rerender(<IntegrationsPage marketplace={<div data-testid="marketplace-content" />} section="data-source" />)
+    providerView.rerender(<IntegrationsPage section="data-source" />)
 
     expect(screen.getByRole('link', { name: 'common.settings.dataSource' }).querySelector('.i-ri-database-2-fill')).toBeInTheDocument()
   })
@@ -229,7 +222,7 @@ describe('IntegrationsPage', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'empty marketplace' }))
 
-    expect(mockRouterPush).toHaveBeenCalledWith('/integrations/discover')
+    expect(mockRouterPush).toHaveBeenCalledWith('/marketplace')
   })
 
   it('renders migrated legacy setting sections', () => {
@@ -275,7 +268,7 @@ describe('IntegrationsPage', () => {
 
     expect(screen.getByTestId('tool-provider-list')).toHaveAttribute('data-mounted-category', 'builtin')
 
-    view.rerender(<IntegrationsPage marketplace={<div data-testid="marketplace-content" />} section="mcp" />)
+    view.rerender(<IntegrationsPage section="mcp" />)
 
     expect(screen.getByTestId('tool-provider-list')).toHaveAttribute('data-mounted-category', 'mcp')
   })
@@ -379,7 +372,7 @@ describe('IntegrationsPage', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'plugin install' }))
 
-    expect(mockRouterPush).toHaveBeenCalledWith('/integrations/discover')
+    expect(mockRouterPush).toHaveBeenCalledWith('/marketplace')
   })
 
   it('opens the sidebar plugin permissions quick settings and updates permissions', () => {

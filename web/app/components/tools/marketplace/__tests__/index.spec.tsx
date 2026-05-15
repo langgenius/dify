@@ -1,4 +1,5 @@
 import type { useMarketplace } from '../hooks'
+import type { SearchParamsFromCollection } from '@/app/components/plugins/marketplace/types'
 import type { Plugin } from '@/app/components/plugins/types'
 import type { Collection } from '@/app/components/tools/types'
 import { render, screen } from '@testing-library/react'
@@ -10,6 +11,10 @@ import { getMarketplaceUrl } from '@/utils/var'
 
 import Marketplace from '../index'
 
+const { mockRouterPush } = vi.hoisted(() => ({
+  mockRouterPush: vi.fn(),
+}))
+
 const listRenderSpy = vi.fn()
 vi.mock('@/app/components/plugins/marketplace/list', () => ({
   default: (props: {
@@ -18,6 +23,7 @@ vi.mock('@/app/components/plugins/marketplace/list', () => ({
     cardContainerClassName?: string
     plugins?: unknown[]
     showInstallButton?: boolean
+    onCollectionMoreClick?: (searchParams?: SearchParamsFromCollection) => void
   }) => {
     listRenderSpy(props)
     return <div data-testid="marketplace-list" />
@@ -41,6 +47,12 @@ vi.mock('@/utils/var', () => ({
 }))
 
 const mockGetMarketplaceUrl = vi.mocked(getMarketplaceUrl)
+
+vi.mock('@/next/navigation', () => ({
+  useRouter: () => ({
+    push: mockRouterPush,
+  }),
+}))
 
 const _createToolProvider = (overrides: Partial<Collection> = {}): Collection => ({
   id: 'provider-1',
@@ -138,6 +150,7 @@ describe('Marketplace', () => {
       expect(screen.getByTestId('marketplace-list')).toBeInTheDocument()
       expect(listRenderSpy).toHaveBeenCalledWith(expect.objectContaining({
         cardContainerClassName: 'grid-cols-1 sm:grid-cols-2 md:grid-cols-3',
+        onCollectionMoreClick: expect.any(Function),
         showInstallButton: true,
       }))
     })
@@ -195,6 +208,30 @@ describe('Marketplace', () => {
       expect(contentFrames).toHaveLength(2)
       expect(contentFrames[0]).toHaveClass('px-6')
       expect(contentFrames[1]).toHaveClass('px-6')
+    })
+
+    it('should open integrations marketplace when collection more is clicked', () => {
+      const marketplaceContext = createMarketplaceContext()
+      render(
+        <Marketplace
+          searchPluginText=""
+          filterPluginTags={[]}
+          isMarketplaceArrowVisible={false}
+          showMarketplacePanel={vi.fn()}
+          marketplaceContext={marketplaceContext}
+        />,
+      )
+
+      const props = listRenderSpy.mock.calls[0]![0] as {
+        onCollectionMoreClick: (searchParams?: SearchParamsFromCollection) => void
+      }
+      props.onCollectionMoreClick({
+        query: 'featured tools',
+        sort_by: 'install_count',
+        sort_order: 'DESC',
+      })
+
+      expect(mockRouterPush).toHaveBeenCalledWith('/marketplace?category=tool&q=featured+tools&sort_by=install_count&sort_order=DESC')
     })
   })
 })

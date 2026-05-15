@@ -1,6 +1,6 @@
 'use client'
 
-import type { MarketplaceCollection } from '../types'
+import type { MarketplaceCollection, SearchParamsFromCollection } from '../types'
 import type { Plugin } from '@/app/components/plugins/types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { RiArrowRightSLine } from '@remixicon/react'
@@ -15,6 +15,7 @@ type ListWithCollectionProps = {
   showInstallButton?: boolean
   cardContainerClassName?: string
   cardRender?: (plugin: Plugin) => React.JSX.Element | null
+  onCollectionMoreClick?: (searchParams?: SearchParamsFromCollection) => void
 }
 const ListWithCollection = ({
   marketplaceCollections,
@@ -22,10 +23,12 @@ const ListWithCollection = ({
   showInstallButton,
   cardContainerClassName,
   cardRender,
+  onCollectionMoreClick,
 }: ListWithCollectionProps) => {
   const { t } = useTranslation()
   const locale = useLocale()
-  const onMoreClick = useMarketplaceMoreClick()
+  const defaultOnMoreClick = useMarketplaceMoreClick()
+  const handleMoreClick = onCollectionMoreClick ?? defaultOnMoreClick
 
   return (
     <>
@@ -46,7 +49,7 @@ const ListWithCollection = ({
                 collection.searchable && (
                   <div
                     className="flex cursor-pointer items-center system-xs-medium text-text-accent"
-                    onClick={() => onMoreClick(collection.search_params)}
+                    onClick={() => handleMoreClick(collection.search_params)}
                   >
                     {t('marketplace.viewMore', { ns: 'plugin' })}
                     <RiArrowRightSLine className="h-4 w-4" />

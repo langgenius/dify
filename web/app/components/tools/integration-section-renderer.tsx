@@ -11,7 +11,6 @@ import PluginCategoryPage from './plugin-category-page'
 import ToolProviderList from './provider-list'
 
 type IntegrationSectionRendererProps = {
-  marketplace?: ReactNode
   onProviderSearchTextChange: (value: string) => void
   onSwitchToMarketplace?: () => void
   pluginCategoryToolbarAction?: ReactNode
@@ -20,7 +19,6 @@ type IntegrationSectionRendererProps = {
 }
 
 const IntegrationSectionRenderer = ({
-  marketplace,
   onProviderSearchTextChange,
   onSwitchToMarketplace,
   pluginCategoryToolbarAction,
@@ -28,12 +26,6 @@ const IntegrationSectionRenderer = ({
   section,
 }: IntegrationSectionRendererProps) => {
   switch (section) {
-    case 'discover':
-      return (
-        <div className="flex h-full flex-col overflow-y-auto bg-background-body pt-8">
-          {marketplace}
-        </div>
-      )
     case 'provider':
       return (
         <div className={`${toolsContentFrameClassNames.compact} ${toolsContentInsetClassNames.compact} pt-2`}>

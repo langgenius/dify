@@ -39,7 +39,7 @@ const buildMarketplaceRedirectPath = (
     preservedSearchParams.set('category', tab)
 
   const query = preservedSearchParams.toString()
-  return query ? `/integrations/discover?${query}` : '/integrations/discover'
+  return query ? `/marketplace?${query}` : '/marketplace'
 }
 
 export const getLegacyPluginRedirectPath = (

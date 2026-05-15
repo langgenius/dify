@@ -87,6 +87,23 @@ describe('ListWithCollection', () => {
     expect(mockMoreClick).toHaveBeenCalledWith({ query: 'featured' })
   })
 
+  it('uses custom more handler when provided', () => {
+    const onCollectionMoreClick = vi.fn()
+
+    render(
+      <ListWithCollection
+        marketplaceCollections={collections}
+        marketplaceCollectionPluginsMap={pluginsMap}
+        onCollectionMoreClick={onCollectionMoreClick}
+      />,
+    )
+
+    fireEvent.click(screen.getByText('plugin.marketplace.viewMore'))
+
+    expect(onCollectionMoreClick).toHaveBeenCalledWith({ query: 'featured' })
+    expect(mockMoreClick).not.toHaveBeenCalled()
+  })
+
   it('uses custom card renderer when provided', () => {
     render(
       <ListWithCollection
