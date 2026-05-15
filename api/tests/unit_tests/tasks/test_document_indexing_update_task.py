@@ -16,6 +16,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
+from core.indexing_runner import DocumentIsPausedError
 from tasks.document_indexing_update_task import document_indexing_update_task
 
 
@@ -321,6 +322,40 @@ class TestUpdateTaskSummaryGeneration:
         processor = MagicMock()
 
         # Only session1 needed — task returns early after indexing failure
+        _patch_all(
+            monkeypatch,
+            sessions=[_SessionContext(session1)],
+            runner=runner,
+            processor=processor,
+        )
+
+        delay_mock = MagicMock()
+        monkeypatch.setattr(
+            "tasks.document_indexing_update_task.generate_summary_index_task.delay",
+            delay_mock,
+        )
+
+        document_indexing_update_task("ds-1", "doc-1")
+
+        delay_mock.assert_not_called()
+
+    def test_should_not_queue_when_document_is_paused(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """Summary is skipped when IndexingRunner raises DocumentIsPausedError."""
+        from core.indexing_runner import DocumentIsPausedError
+
+        dataset, doc_s1, _ = _make_dataset_and_documents(
+            summary_index_setting={"enable": True},
+        )
+
+        session1 = _session_with_begin()
+        session1.scalar.side_effect = [doc_s1, dataset]
+        session1.scalars.return_value = MagicMock(all=MagicMock(return_value=[]))
+
+        runner = MagicMock()
+        runner.run.side_effect = DocumentIsPausedError("doc-1 is paused")
+        processor = MagicMock()
+
+        # Only session1 needed — task returns early after paused error
         _patch_all(
             monkeypatch,
             sessions=[_SessionContext(session1)],

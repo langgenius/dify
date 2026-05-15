@@ -72,6 +72,7 @@ def document_indexing_update_task(dataset_id: str, document_id: str):
             segment_delete_stmt = delete(DocumentSegment).where(DocumentSegment.document_id == document_id)
             session.execute(segment_delete_stmt)
 
+    has_error = False
     try:
         indexing_runner = IndexingRunner()
         indexing_runner.run([document])
@@ -79,8 +80,12 @@ def document_indexing_update_task(dataset_id: str, document_id: str):
         logger.info(click.style(f"update document: {document.id} latency: {end_at - start_at}", fg="green"))
     except DocumentIsPausedError as ex:
         logger.info(click.style(str(ex), fg="yellow"))
+        has_error = True
     except Exception:
         logger.exception("document_indexing_update_task failed, document_id: %s", document_id)
+        has_error = True
+
+    if has_error:
         return
 
     # Trigger summary index generation for the updated document if enabled.
