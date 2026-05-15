@@ -35,12 +35,6 @@ def _resolve_app_authz_strategy() -> AppAuthzStrategy:
     return MembershipStrategy()
 
 
-# Pipeline currently serves only `/openapi/v1/apps/<id>/run` — an account
-# (dfoa_) surface route. SurfaceCheck runs right after BearerCheck so
-# pipeline-guarded routes get the same wrong_surface 403 + audit emit as
-# the inline `@accept_subjects` decorator on read endpoints. When the
-# external-surface run route lands, swap in an external-pipeline builder
-# that constructs SurfaceCheck(accepted=frozenset({USER_EXT_SSO})).
 OAUTH_BEARER_PIPELINE = Pipeline(
     BearerCheck(),
     SurfaceCheck(accepted=frozenset({SubjectType.ACCOUNT})),

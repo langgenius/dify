@@ -46,9 +46,6 @@ from services.app_service import AppListParams, AppService
 from services.openapi.visibility import apply_openapi_gate, is_openapi_visible
 from services.tag_service import TagService
 
-# method_decorators applies left-to-right innermost-first; flask_restx wraps
-# in order, so the LAST entry is the outermost. Execution flows
-# validate_bearer → accept_subjects → require_scope → handler.
 _APPS_READ_DECORATORS = [
     require_scope(Scope.APPS_READ),
     accept_subjects(SubjectType.ACCOUNT),

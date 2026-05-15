@@ -37,13 +37,6 @@ from services.openapi.visibility import apply_openapi_gate
 
 @openapi_ns.route("/permitted-external-apps")
 class PermittedExternalAppsListApi(Resource):
-    # method_decorators applies left-to-right innermost-first; execution
-    # flows enterprise_only → validate_bearer → accept_subjects →
-    # license_required → require_scope → handler. validate_bearer is
-    # widened to ACCEPT_USER_ANY so accept_subjects can emit the
-    # `openapi.wrong_surface_denied` audit on dfoa_→external misses
-    # instead of validate_bearer rejecting silently with "subject type
-    # not accepted here".
     method_decorators = [
         require_scope(Scope.APPS_READ_PERMITTED_EXTERNAL),
         license_required,
@@ -104,7 +97,6 @@ class PermittedExternalAppsListApi(Resource):
                     workspace_name=tenant.name if tenant else None,
                 )
             )
-        # total/has_more reflect the EE-side allow-list; len(items) may be < limit when local rows are dropped.
         env = PermittedExternalAppsListResponse(
             page=query.page,
             limit=query.limit,

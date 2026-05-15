@@ -1,7 +1,6 @@
 {
   "extends": "@dify/tsconfig/node.json",
   "compilerOptions": {
-    "lib": ["ES2015"],
     "rootDir": "src",
     "types": ["node"],
     "declaration": true,

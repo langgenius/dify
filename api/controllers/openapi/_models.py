@@ -9,9 +9,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 from libs.helper import UUIDStrOrEmpty, uuid_value
 from models.model import AppMode
 
-# Server-side cap on `limit` query param for any /openapi/v1/* list endpoint.
-# Sibling endpoints (`/apps`, `/account/sessions`, future routes) all clamp to
-# this; do not introduce per-endpoint caps without raising the constant.
+# Server-side cap on `limit` query param for /openapi/v1/* list endpoints.
 MAX_PAGE_LIMIT = 200
 
 

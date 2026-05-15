@@ -160,8 +160,6 @@ class CallerMount:
         raise Unauthorized("no caller mounter for subject type")
 
 
-# AuthContext re-export so callers reading `g.auth_ctx` after a pipeline
-# run get a consistent import location next to the step that writes it.
 __all__ = [
     "AppAuthzCheck",
     "AppResolver",
