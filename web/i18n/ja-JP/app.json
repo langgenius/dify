@@ -49,6 +49,7 @@
   "editFailed": "アプリ情報の更新に失敗しました",
   "export": "DSL をエクスポート",
   "exportFailed": "DSL のエクスポートに失敗しました。",
+  "filterEmpty.noApps": "ここにアプリはありません",
   "gotoAnything.actions.accountDesc": "アカウントページに移動する",
   "gotoAnything.actions.communityDesc": "オープンDiscordコミュニティ",
   "gotoAnything.actions.docDesc": "ヘルプドキュメントを開く",

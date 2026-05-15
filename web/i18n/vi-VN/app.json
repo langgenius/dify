@@ -49,6 +49,7 @@
   "editFailed": "Không thể cập nhật thông tin ứng dụng",
   "export": "Xuất DSL",
   "exportFailed": "Xuất DSL thất bại.",
+  "filterEmpty.noApps": "Không có ứng dụng nào ở đây",
   "gotoAnything.actions.accountDesc": "Đi đến trang tài khoản",
   "gotoAnything.actions.communityDesc": "Mở cộng đồng Discord",
   "gotoAnything.actions.docDesc": "Mở tài liệu trợ giúp",

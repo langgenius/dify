@@ -84,6 +84,7 @@
   "externalKnowledgeName": "Имя внешнего базы знаний",
   "externalKnowledgeNamePlaceholder": "Пожалуйста, введите название базы знаний",
   "externalTag": "Внешний",
+  "filterEmpty.noKnowledge": "Здесь нет знаний",
   "firstEmpty.pickHint": "Не знаете, что выбрать? Начните с <highlight>Создать базу знаний</highlight> - позже вы всегда сможете переключиться.",
   "imageUploader.browse": "Просматривать",
   "imageUploader.button": "Перетащите файл или папку, или",

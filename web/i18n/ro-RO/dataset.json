@@ -84,6 +84,7 @@
   "externalKnowledgeName": "Nume cunoștințe externe",
   "externalKnowledgeNamePlaceholder": "Vă rugăm să introduceți numele bazei de cunoștințe",
   "externalTag": "Extern",
+  "filterEmpty.noKnowledge": "Nu există cunoștințe aici",
   "firstEmpty.pickHint": "Nu ești sigur ce să alegi? Începe cu <highlight>Creează cunoștințe</highlight> - poți schimba oricând mai târziu.",
   "imageUploader.browse": "Răsfoiește",
   "imageUploader.button": "Trage și plasează fișierul sau folderul, sau",

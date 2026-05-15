@@ -1,5 +1,6 @@
 'use client'
 
+import type { ReactNode } from 'react'
 import type { useDatasetList } from '@/service/knowledge/use-dataset'
 import { useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -15,6 +16,7 @@ type Props = {
   hasNextPage: ReturnType<typeof useDatasetList>['hasNextPage']
   isFetching: ReturnType<typeof useDatasetList>['isFetching']
   isFetchingNextPage: ReturnType<typeof useDatasetList>['isFetchingNextPage']
+  emptyElement?: ReactNode
   onOpenTagManagement?: () => void
 }
 
@@ -24,6 +26,7 @@ const Datasets = ({
   hasNextPage,
   isFetching,
   isFetchingNextPage,
+  emptyElement,
   onOpenTagManagement = () => {},
 }: Props) => {
   const { t } = useTranslation()
@@ -49,13 +52,16 @@ const Datasets = ({
     return () => observerRef.current?.disconnect()
   }, [anchorRef, hasNextPage, isFetching, fetchNextPage])
 
+  const hasAnyDataset = (datasetList?.pages[0]?.total ?? 0) > 0 || !!datasetList?.pages.some(({ data }) => data.length > 0)
+
   return (
     <>
-      <nav className="grid grow grid-cols-[repeat(auto-fill,minmax(296px,1fr))] content-start gap-3 px-6 pt-2">
-        {isCurrentWorkspaceEditor && <NewDatasetCard />}
+      <nav className="relative grid grow grid-cols-[repeat(auto-fill,minmax(296px,1fr))] content-start gap-3 px-6 pt-2">
+        {isCurrentWorkspaceEditor && hasAnyDataset && <NewDatasetCard />}
         {datasetList?.pages.map(({ data: datasets }) => datasets.map(dataset => (
           <DatasetCard key={dataset.id} dataset={dataset} onSuccess={invalidDatasetList} onOpenTagManagement={onOpenTagManagement} />),
         ))}
+        {!hasAnyDataset && emptyElement}
         {isFetchingNextPage && <Loading />}
         <div ref={anchorRef} className="h-0" />
       </nav>

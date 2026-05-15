@@ -49,6 +49,7 @@
   "editFailed": "Gagal memperbarui info aplikasi",
   "export": "Ekspor DSL",
   "exportFailed": "Ekspor DSL gagal.",
+  "filterEmpty.noApps": "Tidak ada aplikasi di sini",
   "gotoAnything.actions.accountDesc": "Arahkan ke halaman akun",
   "gotoAnything.actions.communityDesc": "Buka komunitas Discord",
   "gotoAnything.actions.docDesc": "Buka dokumentasi bantuan",

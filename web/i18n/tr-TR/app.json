@@ -49,6 +49,7 @@
   "editFailed": "Uygulama bilgileri güncellenemedi",
   "export": "DSL Dışa Aktar",
   "exportFailed": "DSL dışa aktarımı başarısız oldu.",
+  "filterEmpty.noApps": "Burada uygulama yok",
   "gotoAnything.actions.accountDesc": "Hesap sayfasına gidin",
   "gotoAnything.actions.communityDesc": "Açık Discord topluluğu",
   "gotoAnything.actions.docDesc": "Yardım belgelerini aç",

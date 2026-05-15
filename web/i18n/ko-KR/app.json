@@ -49,6 +49,7 @@
   "editFailed": "앱 정보 업데이트 실패",
   "export": "DSL 내보내기",
   "exportFailed": "DSL 내보내기 실패",
+  "filterEmpty.noApps": "여기에 앱이 없습니다",
   "gotoAnything.actions.accountDesc": "계정 페이지로 이동",
   "gotoAnything.actions.communityDesc": "오픈 디스코드 커뮤니티",
   "gotoAnything.actions.docDesc": "도움 문서 열기",

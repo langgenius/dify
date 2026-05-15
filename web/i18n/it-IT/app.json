@@ -49,6 +49,7 @@
   "editFailed": "Aggiornamento delle info dell'app fallito",
   "export": "Esporta DSL",
   "exportFailed": "Esportazione DSL fallita.",
+  "filterEmpty.noApps": "Nessuna app qui",
   "gotoAnything.actions.accountDesc": "Vai alla pagina dell'account",
   "gotoAnything.actions.communityDesc": "Apri la community di Discord",
   "gotoAnything.actions.docDesc": "Apri la documentazione di aiuto",

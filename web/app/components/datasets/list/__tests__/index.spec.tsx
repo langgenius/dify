@@ -1,4 +1,4 @@
-import type { ReactElement } from 'react'
+import type { ReactElement, ReactNode } from 'react'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
@@ -73,9 +73,10 @@ vi.mock('@/service/knowledge/use-dataset', () => ({
 
 // Mock Datasets component
 vi.mock('../datasets', () => ({
-  default: ({ datasetList }: { datasetList?: { pages: Array<{ total?: number }> } }) => (
+  default: ({ datasetList, emptyElement }: { datasetList?: { pages: Array<{ total?: number }> }, emptyElement?: ReactNode }) => (
     <div data-testid="datasets-component">
       <span data-testid="dataset-total">{datasetList?.pages[0]?.total}</span>
+      {emptyElement}
     </div>
   ),
 }))
@@ -326,6 +327,7 @@ describe('List', () => {
       fireEvent.click(screen.getByTestId('include-all-checkbox'))
 
       expect(screen.getByTestId('datasets-component')).toBeInTheDocument()
+      expect(screen.getByText('dataset.filterEmpty.noKnowledge')).toBeInTheDocument()
       expect(screen.queryByText('dataset.firstEmpty.title')).not.toBeInTheDocument()
     })
   })

@@ -247,7 +247,7 @@ const List: FC<Props> = ({
                 !hasAnyApp && 'overflow-hidden',
               )}
               >
-                {(isCurrentWorkspaceEditor || isLoadingCurrentWorkspace) && (
+                {(isCurrentWorkspaceEditor || isLoadingCurrentWorkspace) && hasAnyApp && (
                   <NewAppCard
                     ref={newAppCardRef}
                     isLoading={isLoadingCurrentWorkspace}

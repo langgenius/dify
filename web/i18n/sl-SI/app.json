@@ -49,6 +49,7 @@
   "editFailed": "Posodobitev informacij o aplikaciji ni uspela",
   "export": "Izvozi DSL",
   "exportFailed": "Izvoz DSL ni uspel.",
+  "filterEmpty.noApps": "Tukaj ni aplikacij",
   "gotoAnything.actions.accountDesc": "Pojdite na stran računa",
   "gotoAnything.actions.communityDesc": "Odpri Discord skupnost",
   "gotoAnything.actions.docDesc": "Odprite pomoč dokumentacijo",

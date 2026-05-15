@@ -84,6 +84,7 @@
   "externalKnowledgeName": "Nome do Conhecimento Externo",
   "externalKnowledgeNamePlaceholder": "Insira o nome da base de conhecimento",
   "externalTag": "Externo",
+  "filterEmpty.noKnowledge": "Nenhum conhecimento aqui",
   "firstEmpty.pickHint": "Não sabe qual escolher? Comece com <highlight>Criar Conhecimento</highlight> - você sempre pode trocar depois.",
   "imageUploader.browse": "Navegar",
   "imageUploader.button": "Arraste e solte o arquivo ou pasta, ou",

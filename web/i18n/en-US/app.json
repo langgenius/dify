@@ -49,6 +49,7 @@
   "editFailed": "Failed to update app info",
   "export": "Export DSL",
   "exportFailed": "Export DSL failed.",
+  "filterEmpty.noApps": "No apps here",
   "firstEmpty.blankDescription": "Start with an empty canvas and build your app step by step.",
   "firstEmpty.description": "Turn an idea into a working AI app - start from scratch, a template, or import an existing one.",
   "firstEmpty.importDescription": "Already have a Dify app exported as DSL? Bring it in to continue where you left off.",

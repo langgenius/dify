@@ -84,6 +84,7 @@
   "externalKnowledgeName": "External Knowledge Name",
   "externalKnowledgeNamePlaceholder": "Please enter the name of the knowledge base",
   "externalTag": "External",
+  "filterEmpty.noKnowledge": "No knowledge here",
   "firstEmpty.advancedBadge": "Advanced",
   "firstEmpty.basicBadge": "Basic",
   "firstEmpty.connectDescription": "Already have a Knowledge base? Connect it via API without migrating data.",

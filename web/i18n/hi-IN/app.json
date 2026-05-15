@@ -49,6 +49,7 @@
   "editFailed": "ऐप जानकारी अपडेट करने में विफल",
   "export": "डीएसएल निर्यात करें",
   "exportFailed": "डीएसएल निर्यात विफल हुआ।",
+  "filterEmpty.noApps": "यहाँ कोई ऐप नहीं है",
   "gotoAnything.actions.accountDesc": "खाता पृष्ठ पर जाएं",
   "gotoAnything.actions.communityDesc": "ओपन डिस्कॉर्ड समुदाय",
   "gotoAnything.actions.docDesc": "सहायता दस्तावेज़ खोलें",

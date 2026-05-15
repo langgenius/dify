@@ -49,6 +49,7 @@
   "editFailed": "更新应用信息失败",
   "export": "导出 DSL",
   "exportFailed": "导出 DSL 失败",
+  "filterEmpty.noApps": "这里没有应用",
   "firstEmpty.blankDescription": "从空白画布开始，一步步搭建你的应用。",
   "firstEmpty.description": "把想法变成可运行的 AI 应用，可从空白、模板开始，或导入已有应用。",
   "firstEmpty.importDescription": "已有导出的 Dify DSL 应用？导入后继续编辑。",

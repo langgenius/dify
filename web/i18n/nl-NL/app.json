@@ -49,6 +49,7 @@
   "editFailed": "Failed to update app info",
   "export": "Export DSL",
   "exportFailed": "Export DSL failed.",
+  "filterEmpty.noApps": "Geen apps hier",
   "gotoAnything.actions.accountDesc": "Navigate to account page",
   "gotoAnything.actions.communityDesc": "Open Discord community",
   "gotoAnything.actions.docDesc": "Open help documentation",

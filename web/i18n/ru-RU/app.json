@@ -49,6 +49,7 @@
   "editFailed": "Не удалось обновить информацию о приложении",
   "export": "Экспортировать DSL",
   "exportFailed": "Ошибка экспорта DSL.",
+  "filterEmpty.noApps": "Здесь нет приложений",
   "gotoAnything.actions.accountDesc": "Перейдите на страницу учетной записи",
   "gotoAnything.actions.communityDesc": "Открытое сообщество Discord",
   "gotoAnything.actions.docDesc": "Откройте справочную документацию",

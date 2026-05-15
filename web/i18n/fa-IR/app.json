@@ -49,6 +49,7 @@
   "editFailed": "به‌روزرسانی اطلاعات برنامه ناموفق بود",
   "export": "صادر کردن DSL",
   "exportFailed": "صادر کردن DSL ناموفق بود.",
+  "filterEmpty.noApps": "هیچ برنامه‌ای اینجا نیست",
   "gotoAnything.actions.accountDesc": "به صفحه حساب کاربری بروید",
   "gotoAnything.actions.communityDesc": "جامعه دیسکورد باز",
   "gotoAnything.actions.docDesc": "مستندات کمک را باز کنید",

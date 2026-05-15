@@ -84,6 +84,7 @@
   "externalKnowledgeName": "外部知识库名称",
   "externalKnowledgeNamePlaceholder": "请输入外部知识库名称",
   "externalTag": "外部",
+  "filterEmpty.noKnowledge": "这里没有知识库",
   "firstEmpty.advancedBadge": "进阶",
   "firstEmpty.basicBadge": "基础",
   "firstEmpty.connectDescription": "已有知识库？通过 API 连接，无需迁移数据。",

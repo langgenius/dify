@@ -49,6 +49,7 @@
   "editFailed": "Error al actualizar información de la app",
   "export": "Exportar DSL",
   "exportFailed": "Error al exportar DSL.",
+  "filterEmpty.noApps": "No hay aplicaciones aquí",
   "gotoAnything.actions.accountDesc": "Navegar a la página de cuenta",
   "gotoAnything.actions.communityDesc": "Abrir comunidad de Discord",
   "gotoAnything.actions.docDesc": "Abrir la documentación de ayuda",

@@ -49,6 +49,7 @@
   "editFailed": "Aktualisierung der App-Informationen fehlgeschlagen",
   "export": "DSL exportieren",
   "exportFailed": "Fehler beim Exportieren von DSL.",
+  "filterEmpty.noApps": "Hier gibt es keine Apps",
   "gotoAnything.actions.accountDesc": "Gehe zur Kontoseite",
   "gotoAnything.actions.communityDesc": "Offene Discord-Community",
   "gotoAnything.actions.docDesc": "Öffnen Sie die Hilfedokumentation",

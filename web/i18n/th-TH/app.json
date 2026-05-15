@@ -49,6 +49,7 @@
   "editFailed": "อัปเดตข้อมูลโปรเจกต์ไม่สําเร็จ",
   "export": "ส่งออก DSL",
   "exportFailed": "ส่งออก DSL ล้มเหลว",
+  "filterEmpty.noApps": "ไม่มีแอปที่นี่",
   "gotoAnything.actions.accountDesc": "ไปที่หน้าบัญชี",
   "gotoAnything.actions.communityDesc": "เปิดชุมชน Discord",
   "gotoAnything.actions.docDesc": "เปิดเอกสารช่วยเหลือ",

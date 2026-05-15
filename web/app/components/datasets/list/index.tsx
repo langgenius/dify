@@ -14,6 +14,7 @@ import { useRouter, useSearchParams } from '@/next/navigation'
 import { useDatasetApiBaseUrl, useDatasetList, useInvalidDatasetList } from '@/service/knowledge/use-dataset'
 import { systemFeaturesQueryOptions } from '@/service/system-features'
 // Components
+import FilterEmptyState from '../../base/filter-empty-state'
 import ExternalAPIPanel from '../external-api/external-api-panel'
 import DatasetFooter from './dataset-footer'
 import Datasets from './datasets'
@@ -68,6 +69,7 @@ const List = () => {
   const hasAnyDataset = (pages[0]?.total ?? 0) > 0
   const hasActiveFilters = tagIDs.length > 0 || keywords.trim().length > 0 || searchKeywords.trim().length > 0 || includeAll
   const showEmptyDataList = !hasAnyDataset && isCurrentWorkspaceEditor && (emptyDataList || (hasResolvedFirstPage && !hasActiveFilters))
+  const showFilteredEmptyState = !hasAnyDataset && hasResolvedFirstPage && hasActiveFilters
 
   return (
     <div className="relative flex grow flex-col overflow-y-auto bg-background-body">
@@ -107,6 +109,7 @@ const List = () => {
               />
               <Datasets
                 datasetList={datasetListQuery.data}
+                emptyElement={showFilteredEmptyState ? <FilterEmptyState title={t('filterEmpty.noKnowledge', { ns: 'dataset' })} /> : undefined}
                 fetchNextPage={datasetListQuery.fetchNextPage}
                 hasNextPage={datasetListQuery.hasNextPage}
                 isFetching={datasetListQuery.isFetching}

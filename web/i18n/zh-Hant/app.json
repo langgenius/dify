@@ -49,6 +49,7 @@
   "editFailed": "更新應用資訊失敗",
   "export": "匯出 DSL",
   "exportFailed": "匯出 DSL 失敗",
+  "filterEmpty.noApps": "這裡沒有應用",
   "gotoAnything.actions.accountDesc": "導航到帳戶頁面",
   "gotoAnything.actions.communityDesc": "開放的 Discord 社區",
   "gotoAnything.actions.docDesc": "開啟幫助文件",

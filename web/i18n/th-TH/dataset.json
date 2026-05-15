@@ -84,6 +84,7 @@
   "externalKnowledgeName": "ชื่อความรู้ภายนอก",
   "externalKnowledgeNamePlaceholder": "โปรดป้อนชื่อฐานความรู้",
   "externalTag": "ภายนอก",
+  "filterEmpty.noKnowledge": "ไม่มีความรู้ที่นี่",
   "firstEmpty.pickHint": "ยังไม่แน่ใจว่าจะเลือกอะไร? เริ่มด้วย <highlight>สร้างความรู้</highlight> - คุณสามารถเปลี่ยนได้เสมอภายหลัง",
   "imageUploader.browse": "เรียกดู",
   "imageUploader.button": "ลากและวางไฟล์หรือโฟลเดอร์ หรือ",

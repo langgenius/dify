@@ -84,6 +84,7 @@
   "externalKnowledgeName": "Nama Pengetahuan Eksternal",
   "externalKnowledgeNamePlaceholder": "Silakan masukkan nama basis pengetahuan",
   "externalTag": "Eksternal",
+  "filterEmpty.noKnowledge": "Tidak ada pengetahuan di sini",
   "firstEmpty.pickHint": "Belum yakin memilih yang mana? Mulai dengan <highlight>Buat Pengetahuan</highlight> - Anda selalu bisa beralih nanti.",
   "imageUploader.browse": "Telusuri",
   "imageUploader.button": "Seret dan lepas file atau folder, atau",

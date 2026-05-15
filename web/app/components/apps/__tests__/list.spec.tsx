@@ -392,6 +392,7 @@ describe('List', () => {
 
       expect(screen.getByTestId('empty-state'))!.toBeInTheDocument()
       expect(screen.getByText('app.types.label'))!.toBeInTheDocument()
+      expect(screen.queryByTestId('new-app-card')).not.toBeInTheDocument()
       expect(screen.queryByText('app.firstEmpty.title')).not.toBeInTheDocument()
     })
 

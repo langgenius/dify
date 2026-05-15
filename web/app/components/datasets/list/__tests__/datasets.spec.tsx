@@ -192,6 +192,14 @@ describe('Datasets', () => {
       expect(screen.getByText(/createDataset/)).toBeInTheDocument()
     })
 
+    it('should NOT render NewDatasetCard when there are no datasets', async () => {
+      const { useSelector } = await import('@/context/app-context')
+      vi.mocked(useSelector).mockReturnValue(true)
+
+      render(<Datasets {...defaultProps} datasetList={createDatasetListData([{ data: [], total: 0 }])} />)
+      expect(screen.queryByText(/createDataset/)).not.toBeInTheDocument()
+    })
+
     it('should NOT render NewDatasetCard when user is NOT editor', async () => {
       const { useSelector } = await import('@/context/app-context')
       vi.mocked(useSelector).mockReturnValue(false)
@@ -204,6 +212,18 @@ describe('Datasets', () => {
       render(<Datasets {...defaultProps} />)
       expect(screen.getByText('Dataset 1')).toBeInTheDocument()
       expect(screen.getByText('Dataset 2')).toBeInTheDocument()
+    })
+
+    it('should render empty element when there are no datasets', () => {
+      render(
+        <Datasets
+          {...defaultProps}
+          datasetList={createDatasetListData([{ data: [], total: 0 }])}
+          emptyElement={<div data-testid="filtered-empty">No knowledge here</div>}
+        />,
+      )
+
+      expect(screen.getByTestId('filtered-empty')).toBeInTheDocument()
     })
 
     it('should render anchor div for infinite scroll', () => {
@@ -329,7 +349,7 @@ describe('Datasets', () => {
     it('should have correct grid styling', () => {
       render(<Datasets {...defaultProps} />)
       const nav = screen.getByRole('navigation')
-      expect(nav).toHaveClass('grid', 'grow', 'grid-cols-[repeat(auto-fill,minmax(296px,1fr))]', 'gap-3', 'px-6')
+      expect(nav).toHaveClass('relative', 'grid', 'grow', 'grid-cols-[repeat(auto-fill,minmax(296px,1fr))]', 'gap-3', 'px-6')
     })
   })
 

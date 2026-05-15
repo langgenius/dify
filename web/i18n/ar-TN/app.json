@@ -49,6 +49,7 @@
   "editFailed": "فشل تحديث معلومات التطبيق",
   "export": "تصدير DSL",
   "exportFailed": "فشل تصدير DSL.",
+  "filterEmpty.noApps": "لا توجد تطبيقات هنا",
   "gotoAnything.actions.accountDesc": "الانتقال إلى صفحة الحساب",
   "gotoAnything.actions.communityDesc": "فتح مجتمع Discord",
   "gotoAnything.actions.docDesc": "فتح وثائق المساعدة",
