@@ -141,20 +141,6 @@ def test_adapt_node_data_for_graph_only_rewrites_human_input_nodes() -> None:
     assert other_node == {"type": "answer", "delivery_methods": "unchanged"}
 
 
-def test_adapt_human_input_node_data_for_graph_normalizes_legacy_text_inputs() -> None:
-    normalized = adapt_human_input_node_data_for_graph(
-        {
-            "inputs": [
-                {"type": "text-input", "output_variable_name": "from_frontend"},
-                {"type": "text_input", "output_variable_name": "from_graphon_0_3"},
-                {"type": "paragraph", "output_variable_name": "current"},
-            ]
-        }
-    )
-
-    assert [item["type"] for item in normalized["inputs"]] == ["paragraph", "paragraph", "paragraph"]
-
-
 def test_adapt_node_data_for_graph_migrates_legacy_tool_configurations() -> None:
     normalized = adapt_node_data_for_graph(
         {

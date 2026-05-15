@@ -1,6 +1,6 @@
 from collections.abc import Mapping, Sequence
 from enum import StrEnum
-from typing import Annotated, Any, Literal
+from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, JsonValue
 
@@ -10,18 +10,7 @@ from graphon.entities import WorkflowStartReason
 from graphon.entities.pause_reason import PauseReasonType
 from graphon.enums import WorkflowExecutionStatus, WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
 from graphon.model_runtime.entities.llm_entities import LLMResult, LLMUsage
-from graphon.nodes.human_input.entities import (
-    FileInputConfig,
-    FileListInputConfig,
-    ParagraphInputConfig,
-    SelectInputConfig,
-    UserActionConfig,
-)
-
-HumanInputFormInputConfig = Annotated[
-    ParagraphInputConfig | SelectInputConfig | FileInputConfig | FileListInputConfig,
-    Field(discriminator="type"),
-]
+from graphon.nodes.human_input.entities import FormInputConfig, UserActionConfig
 
 
 class AnnotationReplyAccount(BaseModel):
@@ -295,7 +284,7 @@ class HumanInputRequiredResponse(StreamResponse):
         node_id: str
         node_title: str
         form_content: str
-        inputs: Sequence[HumanInputFormInputConfig] = Field(default_factory=list)
+        inputs: Sequence[FormInputConfig] = Field(default_factory=list)
         actions: Sequence[UserActionConfig] = Field(default_factory=list)
         display_in_ui: bool = False
         form_token: str | None = None
@@ -318,7 +307,7 @@ class HumanInputRequiredPauseReasonPayload(BaseModel):
     node_id: str
     node_title: str
     form_content: str
-    inputs: Sequence[HumanInputFormInputConfig] = Field(default_factory=list)
+    inputs: Sequence[FormInputConfig] = Field(default_factory=list)
     actions: Sequence[UserActionConfig] = Field(default_factory=list)
     display_in_ui: bool = False
     form_token: str | None = None

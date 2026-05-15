@@ -1303,7 +1303,7 @@ export type HumanInputFormDefinition = {
   form_content: string
   form_id: string
   form_token?: string | null
-  inputs?: Array<unknown>
+  inputs?: Array<FormInputConfig>
   node_id: string
   node_title: string
   resolved_default_values?: {
@@ -1349,6 +1349,14 @@ export type UserActionConfig = {
   title: string
 }
 
+export type FormInputConfig =
+  | ParagraphInputConfig
+  | SelectInputConfig
+  | FileInputConfig
+  | FileListInputConfig
+
+export type ButtonStyle = 'accent' | 'default' | 'ghost' | 'primary'
+
 export type ParagraphInputConfig = {
   default?: StringSource
   output_variable_name: string
@@ -1377,8 +1385,6 @@ export type FileListInputConfig = {
   output_variable_name: string
   type?: string
 }
-
-export type ButtonStyle = 'accent' | 'default' | 'ghost' | 'primary'
 
 export type StringSource = {
   selector?: Array<string>

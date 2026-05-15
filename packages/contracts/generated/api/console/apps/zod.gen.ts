@@ -1524,6 +1524,10 @@ export const zWorkflowArchivedLogPaginationResponse = z.object({
   total: z.int(),
 })
 
+export const zFormInputConfig = z.lazy(() =>
+  z.union([zParagraphInputConfig, zSelectInputConfig, zFileInputConfig, zFileListInputConfig]),
+)
+
 /**
  * ButtonStyle
  *
@@ -1552,7 +1556,7 @@ export const zHumanInputFormDefinition = z.object({
   form_content: z.string(),
   form_id: z.string(),
   form_token: z.string().nullish(),
-  inputs: z.array(z.unknown()).optional(),
+  inputs: z.array(zFormInputConfig).optional(),
   node_id: z.string(),
   node_title: z.string(),
   resolved_default_values: z.record(z.string(), z.unknown()).optional(),
