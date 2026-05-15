@@ -141,7 +141,7 @@ const ApiKeyModal = ({
     >
       <DialogContent
         backdropProps={{ forceRender: true }}
-        className="w-[640px]! max-w-[calc(100vw-2rem)]! p-0!"
+        className="w-[640px]! max-w-[calc(100vw-2rem)]! p-0! z-60"
       >
         <div data-testid="modal" className="flex max-h-[80dvh] flex-col">
           <div className="relative shrink-0 p-6 pr-14 pb-3">
