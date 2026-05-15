@@ -1524,10 +1524,6 @@ export const zWorkflowArchivedLogPaginationResponse = z.object({
   total: z.int(),
 })
 
-export const zFormInputConfig = z.lazy(() =>
-  z.union([zParagraphInputConfig, zSelectInputConfig, zFileInputConfig, zFileListInputConfig]),
-)
-
 /**
  * ButtonStyle
  *
@@ -1544,72 +1540,6 @@ export const zUserActionConfig = z.object({
   button_style: zButtonStyle.optional(),
   id: z.string().max(20),
   title: z.string().max(100),
-})
-
-/**
- * HumanInputFormDefinition
- */
-export const zHumanInputFormDefinition = z.object({
-  actions: z.array(zUserActionConfig).optional(),
-  display_in_ui: z.boolean().optional().default(false),
-  expiration_time: z.int(),
-  form_content: z.string(),
-  form_id: z.string(),
-  form_token: z.string().nullish(),
-  inputs: z.array(zFormInputConfig).optional(),
-  node_id: z.string(),
-  node_title: z.string(),
-  resolved_default_values: z.record(z.string(), z.unknown()).optional(),
-})
-
-/**
- * HumanInputContent
- */
-export const zHumanInputContent = z.object({
-  form_definition: zHumanInputFormDefinition.optional(),
-  form_submission_data: zHumanInputFormSubmissionData.optional(),
-  submitted: z.boolean(),
-  type: zExecutionContentType.optional(),
-  workflow_run_id: z.string(),
-})
-
-/**
- * MessageDetailResponse
- */
-export const zMessageDetailResponse = z.object({
-  agent_thoughts: z.array(zAgentThought).optional(),
-  annotation: zConversationAnnotation.optional(),
-  annotation_hit_history: zConversationAnnotationHitHistory.optional(),
-  answer_tokens: z.int().nullish(),
-  conversation_id: z.string(),
-  created_at: z.int().nullish(),
-  error: z.string().nullish(),
-  extra_contents: z.array(zHumanInputContent).optional(),
-  feedbacks: z.array(zFeedback).optional(),
-  from_account_id: z.string().nullish(),
-  from_end_user_id: z.string().nullish(),
-  from_source: z.string(),
-  id: z.string(),
-  inputs: z.record(z.string(), zJsonValue),
-  message: zJsonValue.optional(),
-  message_files: z.array(zMessageFile).optional(),
-  message_metadata_dict: zJsonValue.optional(),
-  message_tokens: z.int().nullish(),
-  parent_message_id: z.string().nullish(),
-  provider_response_latency: z.number().nullish(),
-  query: z.string(),
-  re_sign_file_url_answer: z.string(),
-  status: z.string(),
-  workflow_run_id: z.string().nullish(),
-})
-
-/**
- * MessageInfiniteScrollPaginationResponse
- */
-export const zMessageInfiniteScrollPaginationResponse = z.object({
-  data: z.array(zMessageDetailResponse),
-  has_more: z.boolean(),
-  limit: z.int(),
 })
 
 /**
@@ -1696,6 +1626,79 @@ export const zSelectInputConfig = z.object({
   option_source: zStringListSource,
   output_variable_name: z.string(),
   type: z.string().optional().default('select'),
+})
+
+export const zFormInputConfig = z.union([
+  zParagraphInputConfig,
+  zSelectInputConfig,
+  zFileInputConfig,
+  zFileListInputConfig,
+])
+
+/**
+ * HumanInputFormDefinition
+ */
+export const zHumanInputFormDefinition = z.object({
+  actions: z.array(zUserActionConfig).optional(),
+  display_in_ui: z.boolean().optional().default(false),
+  expiration_time: z.int(),
+  form_content: z.string(),
+  form_id: z.string(),
+  form_token: z.string().nullish(),
+  inputs: z.array(zFormInputConfig).optional(),
+  node_id: z.string(),
+  node_title: z.string(),
+  resolved_default_values: z.record(z.string(), z.unknown()).optional(),
+})
+
+/**
+ * HumanInputContent
+ */
+export const zHumanInputContent = z.object({
+  form_definition: zHumanInputFormDefinition.optional(),
+  form_submission_data: zHumanInputFormSubmissionData.optional(),
+  submitted: z.boolean(),
+  type: zExecutionContentType.optional(),
+  workflow_run_id: z.string(),
+})
+
+/**
+ * MessageDetailResponse
+ */
+export const zMessageDetailResponse = z.object({
+  agent_thoughts: z.array(zAgentThought).optional(),
+  annotation: zConversationAnnotation.optional(),
+  annotation_hit_history: zConversationAnnotationHitHistory.optional(),
+  answer_tokens: z.int().nullish(),
+  conversation_id: z.string(),
+  created_at: z.int().nullish(),
+  error: z.string().nullish(),
+  extra_contents: z.array(zHumanInputContent).optional(),
+  feedbacks: z.array(zFeedback).optional(),
+  from_account_id: z.string().nullish(),
+  from_end_user_id: z.string().nullish(),
+  from_source: z.string(),
+  id: z.string(),
+  inputs: z.record(z.string(), zJsonValue),
+  message: zJsonValue.optional(),
+  message_files: z.array(zMessageFile).optional(),
+  message_metadata_dict: zJsonValue.optional(),
+  message_tokens: z.int().nullish(),
+  parent_message_id: z.string().nullish(),
+  provider_response_latency: z.number().nullish(),
+  query: z.string(),
+  re_sign_file_url_answer: z.string(),
+  status: z.string(),
+  workflow_run_id: z.string().nullish(),
+})
+
+/**
+ * MessageInfiniteScrollPaginationResponse
+ */
+export const zMessageInfiniteScrollPaginationResponse = z.object({
+  data: z.array(zMessageDetailResponse),
+  has_more: z.boolean(),
+  limit: z.int(),
 })
 
 export const zGetAppsQuery = z.object({

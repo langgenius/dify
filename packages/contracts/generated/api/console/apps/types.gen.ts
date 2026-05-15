@@ -1349,11 +1349,11 @@ export type UserActionConfig = {
   title: string
 }
 
-export type FormInputConfig =
-  | ParagraphInputConfig
-  | SelectInputConfig
-  | FileInputConfig
-  | FileListInputConfig
+export type FormInputConfig
+  = | ParagraphInputConfig
+    | SelectInputConfig
+    | FileInputConfig
+    | FileListInputConfig
 
 export type ButtonStyle = 'accent' | 'default' | 'ghost' | 'primary'
 
