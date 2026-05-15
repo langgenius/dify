@@ -57,7 +57,7 @@ const SelectMetadata: FC<Props> = ({
             >
               <div className="flex h-full w-0 grow items-center text-text-secondary">
                 <Icon className="mr-[5px] size-3.5 shrink-0" aria-hidden="true" />
-                <div className="w-0 grow truncate system-sm-medium">{item.name}</div>
+                <div className="w-0 grow truncate system-sm-medium text-text-secondary">{item.name}</div>
               </div>
               <div className="ml-1 shrink-0 system-xs-regular text-text-tertiary">
                 {item.type}
