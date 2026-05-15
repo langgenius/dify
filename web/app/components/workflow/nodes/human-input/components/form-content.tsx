@@ -7,7 +7,7 @@ import type { Node, NodeOutPutVar } from '@/app/components/workflow/types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useBoolean } from 'ahooks'
 import * as React from 'react'
-import { useEffect, useRef } from 'react'
+import { useCallback, useEffect, useMemo, useRef } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import PromptEditor from '@/app/components/base/prompt-editor'
 import { INSERT_HITL_INPUT_BLOCK_COMMAND } from '@/app/components/base/prompt-editor/plugins/hitl-input-block'
@@ -61,7 +61,7 @@ const FormContent: FC<FormContentProps> = ({
     value: string
     formInputs: FormInputItem[]
   } | null>(null)
-  const handleInsertHITLNode = (onInsert: ShortcutPopupInsertHandler) => {
+  const handleInsertHITLNode = useCallback((onInsert: ShortcutPopupInsertHandler) => {
     return (payload: FormInputItem) => {
       if (formInputs.some(input => input.output_variable_name === payload.output_variable_name))
         return
@@ -80,7 +80,14 @@ const FormContent: FC<FormContentProps> = ({
         onFormInputItemRemove,
       })
     }
-  }
+  }, [
+    formInputs,
+    nodeId,
+    onFormInputsChange,
+    onFormInputItemRemove,
+    onFormInputItemRename,
+    value,
+  ])
 
   // avoid update formInputs would overwrite the value just inserted
   useEffect(() => {
@@ -113,6 +120,48 @@ const FormContent: FC<FormContentProps> = ({
     }
     return acc
   }, {})
+  const unavailableVariableNames = useMemo(() => {
+    return formInputs.map(input => input.output_variable_name)
+  }, [formInputs])
+  const addInputFieldConfigRef = useRef({
+    nodeId,
+    unavailableVariableNames,
+    handleInsertHITLNode,
+  })
+  addInputFieldConfigRef.current = {
+    nodeId,
+    unavailableVariableNames,
+    handleInsertHITLNode,
+  }
+  const shortcutPopups = useMemo(() => {
+    if (readonly)
+      return []
+
+    return [{
+      hotkey: ['mod', '/'],
+      // Keep this component type stable while the popup is open; it reads fresh props from a ref.
+      // eslint-disable-next-line react/no-nested-component-definitions
+      Popup: ({ onClose, onInsert }: {
+        onClose: () => void
+        onInsert: ShortcutPopupInsertHandler
+      }) => {
+        const {
+          nodeId,
+          unavailableVariableNames,
+          handleInsertHITLNode,
+        } = addInputFieldConfigRef.current
+
+        return (
+          <AddInputField
+            nodeId={nodeId}
+            unavailableVariableNames={unavailableVariableNames}
+            onSave={handleInsertHITLNode(onInsert)}
+            onCancel={onClose}
+          />
+        )
+      },
+    }]
+  }, [readonly])
 
   return (
     <div
@@ -151,20 +200,7 @@ const FormContent: FC<FormContentProps> = ({
             workflowNodesMap,
           }}
           editable={!readonly}
-          shortcutPopups={readonly
-            ? []
-            : [{
-                hotkey: ['mod', '/'],
-                // eslint-disable-next-line react/component-hook-factories, react/no-nested-component-definitions
-                Popup: ({ onClose, onInsert }) => (
-                  <AddInputField
-                    nodeId={nodeId}
-                    unavailableVariableNames={formInputs.map(input => input.output_variable_name)}
-                    onSave={handleInsertHITLNode(onInsert)}
-                    onCancel={onClose}
-                  />
-                ),
-              }]}
+          shortcutPopups={shortcutPopups}
         />
       </div>
       {isFocus && (
