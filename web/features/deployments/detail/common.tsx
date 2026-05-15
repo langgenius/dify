@@ -22,6 +22,16 @@ export function SectionState({ children }: {
   )
 }
 
+export function DetailListState({ children }: {
+  children: ReactNode
+}) {
+  return (
+    <div className="flex min-h-36 items-center justify-center border-y border-dashed border-divider-subtle px-4 py-12 text-center system-sm-regular text-text-tertiary">
+      {children}
+    </div>
+  )
+}
+
 export function Section({
   title,
   description,

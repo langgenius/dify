@@ -17,6 +17,7 @@ import { environmentId, environmentName } from '../../environment'
 import { releaseDeploymentAction } from '../../release-action'
 import { deploymentStatus, isUndeployedDeploymentRow } from '../../runtime-status'
 import { openDeployDrawerAtom } from '../../store'
+import { DETAIL_LIST_ACTION_TRIGGER_CLASS_NAME } from '../list-styles'
 
 type EnvironmentOption = AppDeployEnvironment & {
   id: string
@@ -130,14 +131,10 @@ export function DeployReleaseMenu({ appInstanceId, releaseId, releaseRows }: {
   return (
     <DropdownMenu modal={false} open={open} onOpenChange={setOpen}>
       <DropdownMenuTrigger
-        className={cn(
-          'inline-flex h-7 items-center justify-center gap-1 rounded-md px-2 system-xs-medium whitespace-nowrap',
-          'border border-components-button-secondary-border bg-components-button-secondary-bg text-components-button-secondary-accent-text',
-          'hover:bg-components-button-secondary-bg-hover',
-        )}
+        aria-label={t('versions.moreActions')}
+        className={DETAIL_LIST_ACTION_TRIGGER_CLASS_NAME}
       >
-        {t('versions.deploy')}
-        <span aria-hidden className="i-ri-arrow-down-s-line size-3.5" />
+        <span aria-hidden className="i-ri-more-fill size-4" />
       </DropdownMenuTrigger>
       {open && (
         <DropdownMenuContent placement="bottom-end" sideOffset={4} popupClassName="w-60">

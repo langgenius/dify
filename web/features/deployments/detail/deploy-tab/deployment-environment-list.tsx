@@ -10,8 +10,13 @@ import {
   AlertDialogDescription,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
-import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@langgenius/dify-ui/dropdown-menu'
 import { useMutation } from '@tanstack/react-query'
 import { useSetAtom } from 'jotai'
 import { useState } from 'react'
@@ -24,25 +29,33 @@ import {
 import { releaseCommit, releaseLabel } from '../../release'
 import { deploymentStatus, isUndeployedDeploymentRow } from '../../runtime-status'
 import { openDeployDrawerAtom } from '../../store'
+import {
+  DETAIL_LIST_ACTION_TRIGGER_CLASS_NAME,
+  DETAIL_LIST_CLASS_NAME,
+  DETAIL_LIST_ROW_CLASS_NAME,
+} from '../list-styles'
 import { DeploymentStatusSummary } from './deployment-status-summary'
 
-const GRID_TEMPLATE = 'lg:grid-cols-[minmax(180px,0.9fr)_minmax(220px,1fr)_max-content]'
+function EnvironmentSummary({ environment }: {
+  environment: EnvironmentDeployment['environment']
+}) {
+  return (
+    <span className="block truncate system-sm-semibold text-text-primary">
+      {environmentName(environment)}
+    </span>
+  )
+}
 
 function CurrentReleaseSummary({ release }: {
   release: EnvironmentDeployment['currentRelease']
 }) {
-  const { t } = useTranslation('deployments')
-
   if (!release?.id && !release?.name)
-    return <div className="hidden lg:block" aria-hidden="true" />
+    return <span className="system-sm-regular text-text-quaternary">—</span>
 
   const commit = releaseCommit(release)
 
   return (
     <div className="flex min-w-0 flex-col gap-1">
-      <span className="system-2xs-medium-uppercase text-text-tertiary">
-        {t('deployTab.col.currentRelease')}
-      </span>
       <div className="flex min-w-0 items-baseline gap-1.5">
         <span className="truncate font-mono system-sm-medium text-text-primary">
           {releaseLabel(release)}
@@ -68,8 +81,19 @@ function DeploymentRowActions({ appInstanceId, envId, row }: {
   const isUndeployed = isUndeployedDeploymentRow(row)
   const status = deploymentStatus(row)
   const [showUndeployConfirm, setShowUndeployConfirm] = useState(false)
-  const secondaryActionDisabled = undeployDeployment.isPending || !envId
+  const [actionsOpen, setActionsOpen] = useState(false)
+  const undeployActionDisabled = undeployDeployment.isPending || !envId
   const isDeploying = status === 'deploying'
+  const deployActionLabel = isUndeployed
+    ? t('deployDrawer.deploy')
+    : status === 'deploy_failed'
+      ? t('deployTab.viewError')
+      : t('deployTab.deployOtherVersion')
+
+  function handleDeployAction() {
+    openDeployDrawer({ appInstanceId, environmentId: envId })
+    setActionsOpen(false)
+  }
 
   function handleUndeploy() {
     if (!envId)
@@ -87,38 +111,52 @@ function DeploymentRowActions({ appInstanceId, envId, row }: {
 
   return (
     <div
-      className="flex shrink-0 items-center gap-2"
+      className="flex shrink-0 items-center"
       onClick={e => e.stopPropagation()}
       onKeyDown={e => e.stopPropagation()}
     >
       {!isDeploying && (
-        <Button
-          size="small"
-          variant="secondary"
-          className="px-2.5"
-          onClick={() => openDeployDrawer({ appInstanceId, environmentId: envId })}
-        >
-          {isUndeployed
-            ? t('deployDrawer.deploy')
-            : status === 'ready'
-              ? t('deployTab.deployOtherVersion')
-              : status === 'deploy_failed'
-                ? t('deployTab.viewError')
-                : t('deployTab.deployOtherVersion')}
-        </Button>
-      )}
-      {!isUndeployed && !isDeploying && (
-        <Button
-          size="small"
-          variant="ghost"
-          tone="destructive"
-          className="px-2.5"
-          disabled={secondaryActionDisabled}
-          loading={undeployDeployment.isPending}
-          onClick={() => setShowUndeployConfirm(true)}
-        >
-          {t('deployTab.undeploy')}
-        </Button>
+        <DropdownMenu modal={false} open={actionsOpen} onOpenChange={setActionsOpen}>
+          <DropdownMenuTrigger
+            aria-label={t('deployTab.moreActions')}
+            className={DETAIL_LIST_ACTION_TRIGGER_CLASS_NAME}
+          >
+            <span aria-hidden className="i-ri-more-fill size-4" />
+          </DropdownMenuTrigger>
+          {actionsOpen && (
+            <DropdownMenuContent placement="bottom-end" sideOffset={4} popupClassName="w-44">
+              <DropdownMenuItem
+                className="gap-2 px-3"
+                onClick={handleDeployAction}
+              >
+                <span aria-hidden className="i-ri-rocket-line size-4 shrink-0 text-text-tertiary" />
+                <span className="system-sm-regular text-text-secondary">{deployActionLabel}</span>
+              </DropdownMenuItem>
+              {!isUndeployed && (
+                <>
+                  <div className="my-1 border-t border-divider-subtle" aria-hidden />
+                  <DropdownMenuItem
+                    disabled={undeployActionDisabled}
+                    aria-disabled={undeployActionDisabled}
+                    className={cn(
+                      'gap-2 px-3 text-util-colors-red-red-600',
+                      undeployActionDisabled && 'cursor-not-allowed opacity-60',
+                    )}
+                    onClick={() => {
+                      if (undeployActionDisabled)
+                        return
+                      setActionsOpen(false)
+                      setShowUndeployConfirm(true)
+                    }}
+                  >
+                    <span aria-hidden className="i-ri-logout-box-line size-4 shrink-0" />
+                    <span className="system-sm-regular">{t('deployTab.undeploy')}</span>
+                  </DropdownMenuItem>
+                </>
+              )}
+            </DropdownMenuContent>
+          )}
+        </DropdownMenu>
       )}
 
       {!isUndeployed && !isDeploying && (
@@ -150,7 +188,25 @@ function DeploymentRowActions({ appInstanceId, envId, row }: {
   )
 }
 
-function DeploymentEnvironmentRow({ appInstanceId, row }: {
+function CurrentReleaseMobileSummary({ release }: {
+  release: EnvironmentDeployment['currentRelease']
+}) {
+  const { t } = useTranslation('deployments')
+
+  if (!release?.id && !release?.name)
+    return null
+
+  return (
+    <div className="flex min-w-0 flex-col gap-1">
+      <span className="system-2xs-medium-uppercase text-text-tertiary">
+        {t('deployTab.col.currentRelease')}
+      </span>
+      <CurrentReleaseSummary release={release} />
+    </div>
+  )
+}
+
+function DeploymentEnvironmentMobileRow({ appInstanceId, row }: {
   appInstanceId: string
   row: EnvironmentDeployment
 }) {
@@ -161,21 +217,13 @@ function DeploymentEnvironmentRow({ appInstanceId, row }: {
 
   return (
     <div className="border-b border-divider-subtle last:border-b-0">
-      <div
-        className={cn(
-          'flex flex-col gap-3 py-3 text-left',
-          'lg:grid lg:items-center lg:gap-6',
-          GRID_TEMPLATE,
-        )}
-      >
+      <div className="flex flex-col gap-3 p-4 text-left">
         <div className="flex min-w-0 flex-col gap-1">
-          <span className="truncate system-sm-semibold text-text-primary">{environmentName(row.environment)}</span>
+          <EnvironmentSummary environment={row.environment} />
           <DeploymentStatusSummary row={row} />
         </div>
-        {isUndeployedDeploymentRow(row)
-          ? <div className="hidden lg:block" aria-hidden="true" />
-          : <CurrentReleaseSummary release={release} />}
-        <div className="flex min-w-0 items-center justify-start gap-2 lg:justify-end">
+        {!isUndeployedDeploymentRow(row) && <CurrentReleaseMobileSummary release={release} />}
+        <div className="flex min-w-0 items-center justify-start gap-2">
           <DeploymentRowActions appInstanceId={appInstanceId} envId={envId} row={row} />
         </div>
       </div>
@@ -189,22 +237,70 @@ function DeploymentEnvironmentRow({ appInstanceId, row }: {
   )
 }
 
+function DeploymentEnvironmentDesktopRows({ appInstanceId, rows }: {
+  appInstanceId: string
+  rows: EnvironmentDeployment[]
+}) {
+  return (
+    <>
+      {rows.map((row, index) => {
+        const envId = environmentId(row.environment)
+        const status = deploymentStatus(row)
+        const showFailureBanner = status === 'deploy_failed' && Boolean(row.status)
+        const isLast = index === rows.length - 1
+
+        return (
+          <div
+            key={envId}
+            className={DETAIL_LIST_ROW_CLASS_NAME}
+          >
+            <div className="grid min-h-12 grid-cols-[minmax(160px,1fr)_minmax(150px,0.75fr)_minmax(180px,1fr)_auto] items-center gap-6 px-4 py-2">
+              <div className="min-w-0">
+                <EnvironmentSummary environment={row.environment} />
+              </div>
+              <div className="min-w-0">
+                <DeploymentStatusSummary row={row} />
+              </div>
+              <div className="min-w-0">
+                <CurrentReleaseSummary release={row.currentRelease} />
+              </div>
+              <div className="flex justify-end">
+                <DeploymentRowActions appInstanceId={appInstanceId} envId={envId} row={row} />
+              </div>
+            </div>
+            {showFailureBanner && (
+              <div className={cn('flex items-center gap-2 border-t border-l-2 border-divider-subtle border-l-util-colors-red-red-500 bg-util-colors-red-red-50 px-4 py-2 system-xs-regular text-util-colors-red-red-700', isLast && 'rounded-b-lg')}>
+                <span aria-hidden className="i-ri-alert-line size-3.5 shrink-0" />
+                <span className="min-w-0 flex-1 truncate">{row.status}</span>
+              </div>
+            )}
+          </div>
+        )
+      })}
+    </>
+  )
+}
+
 export function DeploymentEnvironmentList({ appInstanceId, rows }: {
   appInstanceId: string
   rows: EnvironmentDeployment[]
 }) {
   return (
-    <div className="overflow-visible border-y border-divider-subtle">
-      {rows.map((row) => {
-        const envId = environmentId(row.environment)
-        return (
-          <DeploymentEnvironmentRow
-            key={envId}
+    <>
+      <div className={cn(DETAIL_LIST_CLASS_NAME, 'pc:hidden')}>
+        {rows.map(row => (
+          <DeploymentEnvironmentMobileRow
+            key={environmentId(row.environment)}
             appInstanceId={appInstanceId}
             row={row}
           />
-        )
-      })}
-    </div>
+        ))}
+      </div>
+      <div className="hidden pc:block">
+        <div className={DETAIL_LIST_CLASS_NAME}>
+          <DeploymentEnvironmentDesktopRows appInstanceId={appInstanceId} rows={rows} />
+        </div>
+      </div>
+    </>
   )
 }

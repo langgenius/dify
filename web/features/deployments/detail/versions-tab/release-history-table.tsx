@@ -1,7 +1,6 @@
 'use client'
 
 import type { EnvironmentDeployment, ReleaseRow } from '@dify/contracts/enterprise/types.gen'
-import type { ReactNode } from 'react'
 import type { ReleaseDeployment } from './release-deployments'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { keepPreviousData, useQuery } from '@tanstack/react-query'
@@ -18,16 +17,17 @@ import {
   releaseLabel,
 } from '../../release'
 import { isUndeployedDeploymentRow } from '../../runtime-status'
+import {
+  DetailListState,
+} from '../common'
+import {
+  DETAIL_LIST_CLASS_NAME,
+  DETAIL_LIST_ROW_CLASS_NAME,
+} from '../list-styles'
 import { DeployReleaseMenu } from './deploy-release-menu'
 import { DeployedToBadge } from './deployed-to-badge'
 import { getReleaseDeployments } from './release-deployments'
 
-const RELEASE_TABLE_CLASS_NAME = 'w-full max-w-full min-w-[700px] border-collapse border-0 text-sm'
-const RELEASE_TABLE_HEADER_CLASS_NAME = 'h-8 border-b border-divider-subtle text-xs leading-8 font-medium text-text-tertiary uppercase'
-const RELEASE_TABLE_HEADER_CELL_CLASS_NAME = 'box-border max-w-[200px] py-0 pr-2.5 pl-3'
-const RELEASE_TABLE_CELL_CLASS_NAME = 'box-border max-w-[200px] py-[5px] pr-2.5 pl-3 align-middle'
-const RELEASE_TABLE_ROW_CLASS_NAME = 'h-8 border-b border-divider-subtle hover:bg-background-default-hover last:border-b-0'
-const RELEASE_TABLE_HEADER_SKELETON_KEYS = ['version', 'description', 'author', 'deployments', 'actions']
 const RELEASE_TABLE_ROW_SKELETON_KEYS = ['latest', 'previous', 'older', 'archived', 'initial']
 
 type ReleaseRowWithId = ReleaseRow & {
@@ -38,22 +38,12 @@ function hasReleaseId(row: ReleaseRow): row is ReleaseRowWithId {
   return Boolean(row.id)
 }
 
-function ReleaseHistoryTableState({ children }: {
-  children: ReactNode
-}) {
-  return (
-    <div className="flex min-h-36 items-center justify-center border-y border-dashed border-divider-subtle px-4 py-12 text-center system-sm-regular text-text-tertiary">
-      {children}
-    </div>
-  )
-}
-
 function ReleaseHistoryTableSkeleton() {
   return (
     <>
-      <div className="overflow-hidden border-y border-divider-subtle pc:hidden">
+      <div className={`${DETAIL_LIST_CLASS_NAME} pc:hidden`}>
         {RELEASE_TABLE_ROW_SKELETON_KEYS.map(key => (
-          <div key={key} className="border-b border-divider-subtle last:border-b-0">
+          <div key={key} className={DETAIL_LIST_ROW_CLASS_NAME}>
             <div className="flex flex-col gap-3 p-4">
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
@@ -72,39 +62,30 @@ function ReleaseHistoryTableSkeleton() {
           </div>
         ))}
       </div>
-      <div className="hidden overflow-x-auto pc:block">
-        <table className={RELEASE_TABLE_CLASS_NAME}>
-          <thead className={RELEASE_TABLE_HEADER_CLASS_NAME}>
-            <tr>
-              {RELEASE_TABLE_HEADER_SKELETON_KEYS.map(key => (
-                <td key={key} className={RELEASE_TABLE_HEADER_CELL_CLASS_NAME}>
-                  <SkeletonRectangle className="h-3 w-20 animate-pulse" />
-                </td>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {RELEASE_TABLE_ROW_SKELETON_KEYS.map(key => (
-              <tr key={key} className={RELEASE_TABLE_ROW_CLASS_NAME}>
-                <td className={RELEASE_TABLE_CELL_CLASS_NAME}>
+      <div className="hidden pc:block">
+        <div className={DETAIL_LIST_CLASS_NAME}>
+          {RELEASE_TABLE_ROW_SKELETON_KEYS.map(key => (
+            <div key={key} className={DETAIL_LIST_ROW_CLASS_NAME}>
+              <div className="grid min-h-12 grid-cols-[minmax(150px,1fr)_minmax(130px,0.75fr)_minmax(140px,0.8fr)_minmax(150px,1fr)_auto] items-center gap-6 px-4 py-2">
+                <div className="min-w-0">
                   <SkeletonRectangle className="h-3 w-24 animate-pulse" />
-                </td>
-                <td className={RELEASE_TABLE_CELL_CLASS_NAME}>
-                  <SkeletonRectangle className="h-3 w-32 animate-pulse" />
-                </td>
-                <td className={RELEASE_TABLE_CELL_CLASS_NAME}>
+                </div>
+                <div className="min-w-0">
                   <SkeletonRectangle className="h-3 w-24 animate-pulse" />
-                </td>
-                <td className={RELEASE_TABLE_CELL_CLASS_NAME}>
+                </div>
+                <div className="min-w-0">
+                  <SkeletonRectangle className="h-3 w-24 animate-pulse" />
+                </div>
+                <div className="min-w-0">
                   <ReleaseDeploymentsSkeleton />
-                </td>
-                <td className={RELEASE_TABLE_CELL_CLASS_NAME}>
-                  <SkeletonRectangle className="my-0 h-7 w-8 animate-pulse rounded-lg" />
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+                </div>
+                <div className="flex justify-end">
+                  <SkeletonRectangle className="my-0 size-8 animate-pulse rounded-md" />
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
     </>
   )
@@ -120,14 +101,14 @@ function ReleaseHistoryMobileRows({ appInstanceId, releaseRows, deploymentRows, 
   const { t } = useTranslation('deployments')
 
   return (
-    <div className="overflow-hidden border-y border-divider-subtle pc:hidden">
+    <div className={`${DETAIL_LIST_CLASS_NAME} pc:hidden`}>
       {releaseRows.map((row) => {
         const release = row
         const releaseDeployments = getReleaseDeployments(row, deploymentRows)
         const hasDeployments = releaseDeployments.length > 0 || deployedToLoading || deployedToHasError
 
         return (
-          <div key={release.id} className="border-b border-divider-subtle last:border-b-0">
+          <div key={release.id} className={DETAIL_LIST_ROW_CLASS_NAME}>
             <div className="flex flex-col gap-3 p-4">
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
@@ -249,25 +230,16 @@ function ReleaseHistoryRows({ appInstanceId, releaseRows, deploymentRows, deploy
         deployedToLoading={deployedToLoading}
         deployedToHasError={deployedToHasError}
       />
-      <div className="hidden overflow-x-auto pc:block">
-        <table className={RELEASE_TABLE_CLASS_NAME}>
-          <thead className={RELEASE_TABLE_HEADER_CLASS_NAME}>
-            <tr>
-              <td className={RELEASE_TABLE_HEADER_CELL_CLASS_NAME}>{t('versions.col.release')}</td>
-              <td className={`${RELEASE_TABLE_HEADER_CELL_CLASS_NAME} w-44`}>{t('versions.col.createdAt')}</td>
-              <td className={`${RELEASE_TABLE_HEADER_CELL_CLASS_NAME} w-44`}>{t('versions.col.author')}</td>
-              <td className={`${RELEASE_TABLE_HEADER_CELL_CLASS_NAME} w-40`}>{t('versions.col.deployedTo')}</td>
-              <td className={`${RELEASE_TABLE_HEADER_CELL_CLASS_NAME} whitespace-nowrap`}>{t('versions.col.action')}</td>
-            </tr>
-          </thead>
-          <tbody className="text-text-secondary">
-            {releaseRows.map((row) => {
-              const release = row
-              const releaseDeployments = getReleaseDeployments(row, deploymentRows)
+      <div className="hidden pc:block">
+        <div className={DETAIL_LIST_CLASS_NAME}>
+          {releaseRows.map((row) => {
+            const release = row
+            const releaseDeployments = getReleaseDeployments(row, deploymentRows)
 
-              return (
-                <tr key={release.id} className={RELEASE_TABLE_ROW_CLASS_NAME}>
-                  <td className={RELEASE_TABLE_CELL_CLASS_NAME}>
+            return (
+              <div key={release.id} className={DETAIL_LIST_ROW_CLASS_NAME}>
+                <div className="grid min-h-12 grid-cols-[minmax(150px,1fr)_minmax(130px,0.75fr)_minmax(140px,0.8fr)_minmax(150px,1fr)_auto] items-center gap-6 px-4 py-2">
+                  <div className="min-w-0">
                     <Tooltip>
                       <TooltipTrigger
                         render={(
@@ -280,14 +252,14 @@ function ReleaseHistoryRows({ appInstanceId, releaseRows, deploymentRows, deploy
                         {t('versions.commitTooltip', { commit: releaseCommit(release) })}
                       </TooltipContent>
                     </Tooltip>
-                  </td>
-                  <td className={`${RELEASE_TABLE_CELL_CLASS_NAME} w-44 system-sm-regular text-text-secondary`}>
+                  </div>
+                  <div className="min-w-0 system-sm-regular text-text-secondary">
                     <CreatedAtCell createdAt={release.createdAt} />
-                  </td>
-                  <td className={`${RELEASE_TABLE_CELL_CLASS_NAME} w-44 system-sm-regular text-text-secondary`}>
+                  </div>
+                  <div className="min-w-0 truncate system-sm-regular text-text-secondary">
                     {row.createdBy?.name ?? '—'}
-                  </td>
-                  <td className={`${RELEASE_TABLE_CELL_CLASS_NAME} w-40`}>
+                  </div>
+                  <div className="min-w-0">
                     <div className="flex flex-wrap gap-1">
                       <ReleaseDeploymentsContent
                         items={releaseDeployments}
@@ -296,15 +268,15 @@ function ReleaseHistoryRows({ appInstanceId, releaseRows, deploymentRows, deploy
                         loadFailedLabel={t('common.loadFailed')}
                       />
                     </div>
-                  </td>
-                  <td className={`${RELEASE_TABLE_CELL_CLASS_NAME} whitespace-nowrap`}>
+                  </div>
+                  <div className="flex justify-end">
                     <DeployReleaseMenu releaseId={release.id} appInstanceId={appInstanceId} releaseRows={releaseRows} />
-                  </td>
-                </tr>
-              )
-            })}
-          </tbody>
-        </table>
+                  </div>
+                </div>
+              </div>
+            )
+          })}
+        </div>
       </div>
     </>
   )
@@ -351,17 +323,17 @@ export function ReleaseHistoryTable({ appInstanceId }: {
 
   if (hasError) {
     return (
-      <ReleaseHistoryTableState>
+      <DetailListState>
         {t('common.loadFailed')}
-      </ReleaseHistoryTableState>
+      </DetailListState>
     )
   }
 
   if (releaseRows.length === 0) {
     return (
-      <ReleaseHistoryTableState>
+      <DetailListState>
         {sourceAppUnavailable ? t('versions.emptySourceUnavailable') : t('versions.emptyWithCreate')}
-      </ReleaseHistoryTableState>
+      </DetailListState>
     )
   }
 
