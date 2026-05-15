@@ -516,9 +516,7 @@ class TestSchemaResolverClass:
             return
 
         # Median dampens noise; allow generous slack for laptop power management and background load.
-        performance_ratio = (
-            median_time_with_cache / median_time_no_cache if median_time_no_cache > 0 else 1.0
-        )
+        performance_ratio = median_time_with_cache / median_time_no_cache if median_time_no_cache > 0 else 1.0
         assert performance_ratio <= 5.0, f"Cache performance degraded too much: {performance_ratio}"
 
     def test_fast_path_performance_no_refs(self):

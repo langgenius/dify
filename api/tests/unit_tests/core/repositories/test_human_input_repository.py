@@ -313,20 +313,13 @@ def test_create_email_recipients_from_resolved_dedupes_and_skips_blank(monkeypat
 
 def test_query_workspace_members_by_ids_empty_returns_empty() -> None:
     repo = HumanInputFormRepositoryImpl(tenant_id="tenant")
-    assert (
-        repo._query_workspace_members_by_ids(
-            session=cast(Session, MagicMock()), restrict_to_user_ids=["", ""]
-        )
-        == []
-    )
+    assert repo._query_workspace_members_by_ids(session=cast(Session, MagicMock()), restrict_to_user_ids=["", ""]) == []
 
 
 def test_query_workspace_members_by_ids_maps_rows() -> None:
     session = _FakeSession(execute_rows=[("u1", "a@example.com"), ("u2", "b@example.com")])
     repo = HumanInputFormRepositoryImpl(tenant_id="tenant")
-    rows = repo._query_workspace_members_by_ids(
-        session=cast(Session, session), restrict_to_user_ids=["u1", "u2"]
-    )
+    rows = repo._query_workspace_members_by_ids(session=cast(Session, session), restrict_to_user_ids=["u1", "u2"])
     assert rows == [
         _WorkspaceMemberInfo(user_id="u1", email="a@example.com"),
         _WorkspaceMemberInfo(user_id="u2", email="b@example.com"),
@@ -380,9 +373,7 @@ def test_delivery_method_to_model_email_uses_build_email_recipients(monkeypatch:
             body="b",
         )
     )
-    result = repo._delivery_method_to_model(
-        session=cast(Session, "sess"), form_id="form-1", delivery_method=method
-    )
+    result = repo._delivery_method_to_model(session=cast(Session, "sess"), form_id="form-1", delivery_method=method)
     assert result.recipients == ["r"]
     assert called["delivery_id"] == "del-1"
 
