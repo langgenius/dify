@@ -114,16 +114,13 @@ export const consoleQuery: RouterUtils<typeof consoleClient> = createTanstackQue
       },
       update: {
         mutationOptions: {
-          onSuccess: (_data, variables, _onMutateResult, context) => {
+          onSuccess: (updatedTag, variables, _onMutateResult, context) => {
             context.client.setQueriesData(
               {
                 queryKey: consoleQuery.tags.list.key({ type: 'query' }),
               },
               (oldTags: Tag[] | undefined) => oldTags?.map(tag => tag.id === variables.params.tagId
-                ? {
-                    ...tag,
-                    name: variables.body.name,
-                  }
+                ? updatedTag
                 : tag),
             )
           },

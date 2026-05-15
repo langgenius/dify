@@ -352,6 +352,32 @@ class TestRecommendedAppServiceTrialFeatures:
         assert result["id"] == app_id
         assert result["can_trial"] is has_trial_app
 
+    def test_get_detail_returns_none_when_not_found_and_trial_enabled(
+        self,
+        db_session_with_containers: Session,
+        monkeypatch: pytest.MonkeyPatch,
+    ):
+        """Regression: accessing result['id'] when result is None must not crash."""
+        retrieval_instance = MagicMock()
+        retrieval_instance.get_recommend_app_detail.return_value = None
+        retrieval_factory = MagicMock(return_value=retrieval_instance)
+        monkeypatch.setattr(service_module.dify_config, "HOSTED_FETCH_APP_TEMPLATES_MODE", "remote", raising=False)
+        monkeypatch.setattr(
+            service_module.RecommendAppRetrievalFactory,
+            "get_recommend_app_factory",
+            MagicMock(return_value=retrieval_factory),
+        )
+        monkeypatch.setattr(
+            service_module.FeatureService,
+            "get_system_features",
+            MagicMock(return_value=SimpleNamespace(enable_trial_app=True)),
+        )
+
+        result = RecommendedAppService.get_recommend_app_detail("nonexistent")
+
+        assert result is None
+        retrieval_instance.get_recommend_app_detail.assert_called_once_with("nonexistent")
+
     def test_add_trial_app_record_increments_count_for_existing(self, db_session_with_containers: Session):
         app_id = str(uuid.uuid4())
         account_id = str(uuid.uuid4())
