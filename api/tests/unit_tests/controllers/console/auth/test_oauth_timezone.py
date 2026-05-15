@@ -96,6 +96,7 @@ def test_generate_account_prefers_state_language_over_accept_language(
         open_id="github-123",
         provider="github",
         language="zh-Hans",
+        timezone=None,
     )
     mock_link_account.assert_called_once_with("github", "github-123", account)
 

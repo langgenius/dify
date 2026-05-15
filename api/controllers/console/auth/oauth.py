@@ -252,25 +252,15 @@ def _generate_account(
             raise AccountRegisterError(description=("Invalid email or password"))
         account_name = user_info.name or "Dify"
         interface_language = _preferred_interface_language(language)
-        if timezone:
-            account = RegisterService.register(
-                email=normalized_email,
-                name=account_name,
-                password=None,
-                open_id=user_info.id,
-                provider=provider,
-                language=interface_language,
-                timezone=timezone,
-            )
-        else:
-            account = RegisterService.register(
-                email=normalized_email,
-                name=account_name,
-                password=None,
-                open_id=user_info.id,
-                provider=provider,
-                language=interface_language,
-            )
+        account = RegisterService.register(
+            email=normalized_email,
+            name=account_name,
+            password=None,
+            open_id=user_info.id,
+            provider=provider,
+            language=interface_language,
+            timezone=timezone,
+        )
 
     # Link account
     AccountService.link_account_integrate(provider, user_info.id, account)

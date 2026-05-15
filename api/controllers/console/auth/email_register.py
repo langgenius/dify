@@ -20,7 +20,7 @@ from libs.password import valid_password
 from models import Account
 from services.account_service import AccountService
 from services.billing_service import BillingService
-from services.errors.account import AccountNotFoundError, AccountRegisterError
+from services.errors.account import AccountRegisterError
 
 from ..error import AccountInFreezeError, EmailSendIpLimitError
 from ..wraps import email_password_login_enabled, email_register_enabled, setup_required
@@ -52,7 +52,9 @@ class EmailRegisterResetPayload(BaseModel):
     @field_validator("timezone")
     @classmethod
     def validate_timezone(cls, value: str | None) -> str | None:
-        return validate_timezone_string(value) if value else value
+        if value is None:
+            return None
+        return validate_timezone_string(value)
 
 
 register_schema_models(console_ns, EmailRegisterSendPayload, EmailRegisterValidityPayload, EmailRegisterResetPayload)
@@ -152,20 +154,15 @@ class EmailRegisterResetApi(Resource):
 
         if account:
             raise EmailAlreadyInUseError()
-        else:
-            if args.timezone or args.language:
-                account = self._create_new_account(
-                    normalized_email,
-                    args.password_confirm,
-                    args.timezone,
-                    args.language,
-                )
-            else:
-                account = self._create_new_account(normalized_email, args.password_confirm)
-            if not account:
-                raise AccountNotFoundError()
-            token_pair = AccountService.login(account=account, ip_address=extract_remote_ip(request))
-            AccountService.reset_login_error_rate_limit(normalized_email)
+
+        account = self._create_new_account(
+            email=normalized_email,
+            password=args.password_confirm,
+            timezone=args.timezone,
+            language=args.language,
+        )
+        token_pair = AccountService.login(account=account, ip_address=extract_remote_ip(request))
+        AccountService.reset_login_error_rate_limit(normalized_email)
 
         return {"result": "success", "data": token_pair.model_dump()}
 
@@ -175,11 +172,9 @@ class EmailRegisterResetApi(Resource):
         password: str,
         timezone: str | None = None,
         language: str | None = None,
-    ) -> Account | None:
-        # Create new account if allowed
-        account = None
+    ) -> Account:
         try:
-            account = AccountService.create_account_and_tenant(
+            return AccountService.create_account_and_tenant(
                 email=email,
                 name=email,
                 password=password,
@@ -188,5 +183,3 @@ class EmailRegisterResetApi(Resource):
             )
         except AccountRegisterError:
             raise AccountInFreezeError()
-
-        return account

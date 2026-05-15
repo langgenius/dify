@@ -29,5 +29,5 @@ def test_oauth_state_round_trips_invite_token_timezone_and_language():
     }
 
 
-def test_oauth_state_keeps_legacy_raw_invite_token_compatible():
-    assert decode_oauth_state("legacy-invite-token") == {"invite_token": "legacy-invite-token"}
+def test_oauth_state_returns_empty_payload_for_invalid_state():
+    assert decode_oauth_state("invalid-state") == {}

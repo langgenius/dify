@@ -13,9 +13,10 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from flask import Flask
+from pydantic import ValidationError
 
 from controllers.console.auth.error import EmailCodeError, InvalidEmailError, InvalidTokenError
-from controllers.console.auth.login import EmailCodeLoginApi, EmailCodeLoginSendEmailApi
+from controllers.console.auth.login import EmailCodeLoginApi, EmailCodeLoginPayload, EmailCodeLoginSendEmailApi
 from controllers.console.error import (
     AccountInFreezeError,
     AccountNotFound,
@@ -29,6 +30,18 @@ from services.errors.account import AccountRegisterError
 def encode_code(code: str) -> str:
     """Helper to encode verification code as Base64 for testing."""
     return base64.b64encode(code.encode("utf-8")).decode()
+
+
+def test_email_code_login_payload_rejects_invalid_timezone():
+    with pytest.raises(ValidationError):
+        EmailCodeLoginPayload.model_validate(
+            {
+                "email": "newuser@example.com",
+                "code": "123456",
+                "token": "token-123",
+                "timezone": "",
+            }
+        )
 
 
 class TestEmailCodeLoginSendEmailApi:

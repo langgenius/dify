@@ -1,6 +1,9 @@
 from unittest.mock import MagicMock, patch
 
-from controllers.console.auth.email_register import EmailRegisterResetApi
+import pytest
+from pydantic import ValidationError
+
+from controllers.console.auth.email_register import EmailRegisterResetApi, EmailRegisterResetPayload
 
 
 @patch("controllers.console.auth.email_register.AccountService.create_account_and_tenant")
@@ -23,3 +26,15 @@ def test_create_new_account_uses_requested_language(mock_create_account):
         interface_language="zh-Hans",
         timezone="Asia/Shanghai",
     )
+
+
+def test_reset_payload_rejects_invalid_timezone():
+    with pytest.raises(ValidationError):
+        EmailRegisterResetPayload.model_validate(
+            {
+                "token": "token-123",
+                "new_password": "ValidPass123!",
+                "password_confirm": "ValidPass123!",
+                "timezone": "",
+            }
+        )

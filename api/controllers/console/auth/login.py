@@ -75,7 +75,9 @@ class EmailCodeLoginPayload(BaseModel):
     @field_validator("timezone")
     @classmethod
     def validate_timezone(cls, value: str | None) -> str | None:
-        return validate_timezone_string(value) if value else value
+        if value is None:
+            return None
+        return validate_timezone_string(value)
 
 
 register_schema_models(console_ns, LoginPayload, EmailPayload, EmailCodeLoginPayload)

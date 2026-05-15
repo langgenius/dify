@@ -143,7 +143,12 @@ class TestEmailRegisterResetApi:
                 response = EmailRegisterResetApi().post()
 
         assert response == {"result": "success", "data": {"access_token": "a", "refresh_token": "r"}}
-        mock_create_account.assert_called_once_with("invitee@example.com", "ValidPass123!")
+        mock_create_account.assert_called_once_with(
+            email="invitee@example.com",
+            password="ValidPass123!",
+            timezone=None,
+            language=None,
+        )
         mock_reset_login_rate.assert_called_once_with("invitee@example.com")
         mock_revoke_token.assert_called_once_with("token-123")
         mock_extract_ip.assert_called_once()
@@ -191,7 +196,12 @@ class TestEmailRegisterResetApi:
                 response = EmailRegisterResetApi().post()
 
         assert response == {"result": "success", "data": {"access_token": "a", "refresh_token": "r"}}
-        mock_create_account.assert_called_once_with("invitee@example.com", "ValidPass123!", "Asia/Shanghai", None)
+        mock_create_account.assert_called_once_with(
+            email="invitee@example.com",
+            password="ValidPass123!",
+            timezone="Asia/Shanghai",
+            language=None,
+        )
         mock_reset_login_rate.assert_called_once_with("invitee@example.com")
         mock_revoke_token.assert_called_once_with("token-123")
         mock_extract_ip.assert_called_once()
@@ -239,7 +249,12 @@ class TestEmailRegisterResetApi:
                 response = EmailRegisterResetApi().post()
 
         assert response == {"result": "success", "data": {"access_token": "a", "refresh_token": "r"}}
-        mock_create_account.assert_called_once_with("invitee@example.com", "ValidPass123!", None, "zh-Hans")
+        mock_create_account.assert_called_once_with(
+            email="invitee@example.com",
+            password="ValidPass123!",
+            timezone=None,
+            language="zh-Hans",
+        )
         mock_reset_login_rate.assert_called_once_with("invitee@example.com")
         mock_revoke_token.assert_called_once_with("token-123")
         mock_extract_ip.assert_called_once()

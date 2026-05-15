@@ -543,6 +543,7 @@ class TestAccountGeneration:
                         open_id="123",
                         provider="github",
                         language="en-US",
+                        timezone=None,
                     )
                 else:
                     mock_register_service.register.assert_not_called()
@@ -575,6 +576,7 @@ class TestAccountGeneration:
             open_id="123",
             provider="github",
             language="en-US",
+            timezone=None,
         )
 
     @patch("controllers.console.auth.oauth._get_account_by_openid_or_email", return_value=None)
@@ -636,6 +638,7 @@ class TestAccountGeneration:
             open_id="123",
             provider="github",
             language="zh-Hans",
+            timezone=None,
         )
 
     @patch("controllers.console.auth.oauth._get_account_by_openid_or_email")

@@ -96,7 +96,7 @@ def decode_oauth_state(state: str | None) -> OAuthState:
         raw_state = base64.urlsafe_b64decode(padded_state.encode("ascii")).decode("utf-8")
         return OAUTH_STATE_ADAPTER.validate_python(json.loads(raw_state))
     except (binascii.Error, ValueError, UnicodeDecodeError, json.JSONDecodeError, ValidationError):
-        return {"invite_token": state}
+        return {}
 
 
 def _json_object(response: httpx.Response) -> JsonObject:

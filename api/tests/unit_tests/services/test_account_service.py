@@ -1242,6 +1242,7 @@ class TestRegisterService:
                     interface_language="en-US",
                     password="password123",
                     is_setup=False,
+                    timezone=None,
                 )
                 mock_create_tenant.assert_called_once_with("Test User's Workspace")
                 mock_create_member.assert_called_once_with(mock_tenant, mock_account, role="owner")
