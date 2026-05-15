@@ -294,3 +294,4 @@ project-excludes = [".venv", "migrations/"]
 python-platform = "linux"
 python-version = "3.12.0"
 infer-with-first-use = false
+outputformat = "github"
