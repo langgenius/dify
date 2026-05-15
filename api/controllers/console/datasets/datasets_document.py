@@ -39,6 +39,7 @@ from fields.document_fields import (
 from graphon.model_runtime.entities.model_entities import ModelType
 from graphon.model_runtime.errors.invoke import InvokeAuthorizationError
 from libs.datetime_utils import naive_utc_now
+from libs.helper import to_timestamp
 from libs.login import current_account_with_tenant, login_required
 from models import DatasetProcessRule, Document, DocumentSegment, UploadFile
 from models.dataset import DocumentPipelineExecutionLog
@@ -71,12 +72,6 @@ from ..wraps import (
 logger = logging.getLogger(__name__)
 
 
-def _to_timestamp(value: datetime | int | None) -> int | None:
-    if isinstance(value, datetime):
-        return int(value.timestamp())
-    return value
-
-
 def _normalize_enum(value: Any) -> Any:
     if isinstance(value, str) or value is None:
         return value
@@ -101,7 +96,7 @@ class DatasetResponse(ResponseModel):
     @field_validator("created_at", mode="before")
     @classmethod
     def _normalize_timestamp(cls, value: datetime | int | None) -> int | None:
-        return _to_timestamp(value)
+        return to_timestamp(value)
 
 
 class DocumentMetadataResponse(ResponseModel):
@@ -152,7 +147,7 @@ class DocumentResponse(ResponseModel):
     @field_validator("created_at", "disabled_at", mode="before")
     @classmethod
     def _normalize_timestamp(cls, value: datetime | int | None) -> int | None:
-        return _to_timestamp(value)
+        return to_timestamp(value)
 
 
 class DocumentWithSegmentsResponse(DocumentResponse):

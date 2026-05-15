@@ -5,7 +5,7 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { Dialog, DialogCloseButton, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useBoolean } from 'ahooks'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ReactMultiEmail } from 'react-multi-email'
 import { emailRegex } from '@/config'
@@ -30,16 +30,9 @@ const InviteModal = ({
   const licenseLimit = useProviderContextSelector(s => s.licenseLimit)
   const refreshLicenseLimit = useProviderContextSelector(s => s.refreshLicenseLimit)
   const [emails, setEmails] = useState<string[]>([])
-  const [isLimited, setIsLimited] = useState(false)
-  const [isLimitExceeded, setIsLimitExceeded] = useState(false)
-  const [usedSize, setUsedSize] = useState(licenseLimit.workspace_members.size ?? 0)
-  useEffect(() => {
-    const limited = licenseLimit.workspace_members.limit > 0
-    const used = emails.length + licenseLimit.workspace_members.size
-    setIsLimited(limited)
-    setUsedSize(used)
-    setIsLimitExceeded(limited && (used > licenseLimit.workspace_members.limit))
-  }, [licenseLimit, emails])
+  const isLimited = licenseLimit.workspace_members.limit > 0
+  const usedSize = emails.length + licenseLimit.workspace_members.size
+  const isLimitExceeded = isLimited && (usedSize > licenseLimit.workspace_members.limit)
 
   const locale = useLocale()
   const [role, setRole] = useState<string>('')

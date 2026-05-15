@@ -1481,14 +1481,6 @@
       "count": 1
     }
   },
-  "web/app/components/base/message-log-modal/index.tsx": {
-    "react/set-state-in-effect": {
-      "count": 1
-    },
-    "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
   "web/app/components/base/new-audio-button/index.tsx": {
     "ts/no-explicit-any": {
       "count": 1
@@ -2389,11 +2381,6 @@
   "web/app/components/header/account-setting/key-validator/declarations.ts": {
     "ts/no-explicit-any": {
       "count": 1
-    }
-  },
-  "web/app/components/header/account-setting/members-page/invite-modal/index.tsx": {
-    "react/set-state-in-effect": {
-      "count": 3
     }
   },
   "web/app/components/header/account-setting/members-page/transfer-ownership-modal/index.tsx": {

@@ -16,6 +16,7 @@ from controllers.console.wraps import account_initialization_required, setup_req
 from extensions.ext_database import db
 from fields._value_type_serializer import serialize_value_type
 from fields.base import ResponseModel
+from libs.helper import to_timestamp
 from libs.login import login_required
 from models import ConversationVariable
 from models.model import AppMode
@@ -23,12 +24,6 @@ from models.model import AppMode
 
 class ConversationVariablesQuery(BaseModel):
     conversation_id: str = Field(..., description="Conversation ID to filter variables")
-
-
-def _to_timestamp(value: datetime | int | None) -> int | None:
-    if isinstance(value, datetime):
-        return int(value.timestamp())
-    return value
 
 
 class ConversationVariableResponse(ResponseModel):
@@ -65,7 +60,7 @@ class ConversationVariableResponse(ResponseModel):
     @field_validator("created_at", "updated_at", mode="before")
     @classmethod
     def _normalize_timestamp(cls, value: datetime | int | None) -> int | None:
-        return _to_timestamp(value)
+        return to_timestamp(value)
 
 
 class PaginatedConversationVariableResponse(ResponseModel):

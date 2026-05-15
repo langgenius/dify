@@ -8,7 +8,11 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, DifyRunContext
-from core.app.file_access import DatabaseFileAccessController
+from core.app.file_access import (
+    DatabaseFileAccessController,
+    grant_upload_file_access,
+    is_retriever_segment_access_granted,
+)
 from core.callback_handler.workflow_tool_callback_handler import DifyWorkflowCallbackHandler
 from core.helper.trace_id_helper import ParentTraceContext
 from core.llm_generator.output_parser.errors import OutputParserError
@@ -275,10 +279,23 @@ class DifyPromptMessageSerializer(PromptMessageSerializerProtocol):
 class DifyRetrieverAttachmentLoader(RetrieverAttachmentLoaderProtocol):
     """Resolve retriever attachments through Dify persistence and return graph file references."""
 
-    def __init__(self, *, file_reference_factory: FileReferenceFactoryProtocol) -> None:
+    _segment_access_checker: Callable[[str], bool] | None
+
+    def __init__(
+        self,
+        *,
+        file_reference_factory: FileReferenceFactoryProtocol,
+        segment_access_checker: Callable[[str], bool] | None = None,
+    ) -> None:
         self._file_reference_factory = file_reference_factory
+        self._segment_access_checker = segment_access_checker
 
     def load(self, *, segment_id: str) -> Sequence[File]:
+        if not is_retriever_segment_access_granted(segment_id):
+            return []
+        if self._segment_access_checker is not None and not self._segment_access_checker(segment_id):
+            return []
+
         with Session(db.engine, expire_on_commit=False) as session:
             attachments_with_bindings = session.execute(
                 select(SegmentAttachmentBinding, UploadFile)
@@ -286,6 +303,7 @@ class DifyRetrieverAttachmentLoader(RetrieverAttachmentLoaderProtocol):
                 .where(SegmentAttachmentBinding.segment_id == segment_id)
             ).all()
 
+        grant_upload_file_access(str(upload_file.id) for _, upload_file in attachments_with_bindings)
         return [
             self._file_reference_factory.build_from_mapping(
                 mapping={
