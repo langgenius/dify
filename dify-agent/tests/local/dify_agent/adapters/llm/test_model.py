@@ -401,6 +401,46 @@ class DifyLLMAdapterModelTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(cast(ThinkingPart, response.parts[1]).content, "reasoning")
         self.assertEqual(cast(TextPart, response.parts[2]).content, "after")
 
+    async def test_request_stream_trims_thinking_wrapper_newlines_across_chunks(self) -> None:
+        def handler(_request: httpx.Request) -> httpx.Response:
+            return build_stream_response(
+                LLMResultChunk(
+                    model="demo-model",
+                    delta=LLMResultChunkDelta(
+                        index=0,
+                        message=AssistantPromptMessage(content="before<think>\nline 1\nline 2\n", tool_calls=[]),
+                    ),
+                ),
+                LLMResultChunk(
+                    model="demo-model",
+                    delta=LLMResultChunkDelta(
+                        index=1,
+                        message=AssistantPromptMessage(content="</think>after", tool_calls=[]),
+                    ),
+                ),
+            )
+
+        async with self.mock_daemon_stream(httpx.MockTransport(handler)):
+            adapter = DifyLLMAdapterModel(
+                "demo-model",
+                self.make_provider(),
+                model_provider="openai",
+                credentials={"api_key": "secret"},
+            )
+
+            async with adapter.request_stream(
+                [ModelRequest(parts=[UserPromptPart("hello")])],
+                model_settings=None,
+                model_request_parameters=ModelRequestParameters(),
+            ) as stream:
+                _ = [event async for event in stream]
+                response = stream.get()
+
+        self.assertEqual([part.part_kind for part in response.parts], ["text", "thinking", "text"])
+        self.assertEqual(cast(TextPart, response.parts[0]).content, "before")
+        self.assertEqual(cast(ThinkingPart, response.parts[1]).content, "line 1\nline 2")
+        self.assertEqual(cast(TextPart, response.parts[2]).content, "after")
+
     async def test_request_maps_stream_envelope_rate_limit_error_to_http_error(
         self,
     ) -> None:

@@ -658,6 +658,7 @@ def _parse_assistant_text_parts(content: str) -> list[ModelResponsePart]:
 class _EmbeddedThinkingParser:
     _pending: str = ""
     _inside_thinking: bool = False
+    _strip_leading_thinking_newline: bool = False
 
     def parse(
         self,
@@ -671,13 +672,23 @@ class _EmbeddedThinkingParser:
 
         while buffer:
             if self._inside_thinking:
+                if self._strip_leading_thinking_newline:
+                    if not buffer:
+                        break
+                    if buffer.startswith("\n"):
+                        buffer = buffer[1:]
+                    self._strip_leading_thinking_newline = False
+
                 end_index = buffer.find(_THINK_CLOSE_TAG)
                 if end_index >= 0:
-                    if end_index > 0:
+                    thinking_content = buffer[:end_index]
+                    if thinking_content.endswith("\n"):
+                        thinking_content = thinking_content[:-1]
+                    if thinking_content:
                         events.extend(
                             parts_manager.handle_thinking_delta(
                                 vendor_part_id=None,
-                                content=buffer[:end_index],
+                                content=thinking_content,
                                 provider_name=provider_name,
                             )
                         )
@@ -686,6 +697,8 @@ class _EmbeddedThinkingParser:
                     continue
 
                 safe_content, self._pending = _split_incomplete_tag_suffix(buffer, _THINK_CLOSE_TAG)
+                if safe_content.endswith("\n"):
+                    safe_content, self._pending = safe_content[:-1], "\n" + self._pending
                 if safe_content:
                     events.extend(
                         parts_manager.handle_thinking_delta(
@@ -708,6 +721,7 @@ class _EmbeddedThinkingParser:
                     )
                 buffer = buffer[start_index + len(_THINK_OPEN_TAG) :]
                 self._inside_thinking = True
+                self._strip_leading_thinking_newline = True
                 continue
 
             safe_content, self._pending = _split_incomplete_tag_suffix(buffer, _THINK_OPEN_TAG)
@@ -734,6 +748,11 @@ class _EmbeddedThinkingParser:
         pending = self._pending
         self._pending = ""
         if self._inside_thinking:
+            if self._strip_leading_thinking_newline and pending.startswith("\n"):
+                pending = pending[1:]
+            self._strip_leading_thinking_newline = False
+            if not pending:
+                return []
             return list(
                 parts_manager.handle_thinking_delta(
                     vendor_part_id=None,
