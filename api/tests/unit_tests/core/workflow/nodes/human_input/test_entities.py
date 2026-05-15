@@ -191,11 +191,11 @@ class TestDeliveryMethod:
         assert len(delivery_method.config.recipients.items) == 2
 
 
-class TestFormInput:
+class TestParagraphInputConfig:
     """Test ParagraphInputConfig entity."""
 
-    def test_text_input_with_constant_default(self):
-        """Test text input with constant default value."""
+    def test_paragraph_input_with_constant_default(self):
+        """Test paragraph input with constant default value."""
         default = StringSource(type=ValueSourceType.CONSTANT, value="Enter your response here...")
 
         form_input = ParagraphInputConfig(
@@ -207,8 +207,8 @@ class TestFormInput:
         assert form_input.default.type == ValueSourceType.CONSTANT
         assert form_input.default.value == "Enter your response here..."
 
-    def test_text_input_with_variable_default(self):
-        """Test text input with variable default value."""
+    def test_paragraph_input_with_variable_default(self):
+        """Test paragraph input with variable default value."""
         default = StringSource(type=ValueSourceType.VARIABLE, selector=["node_123", "output_var"])
 
         form_input = ParagraphInputConfig(
