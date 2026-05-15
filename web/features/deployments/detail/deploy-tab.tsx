@@ -5,6 +5,7 @@ import { useSetAtom } from 'jotai'
 import { useTranslation } from 'react-i18next'
 import { SkeletonRectangle, SkeletonRow } from '@/app/components/base/skeleton'
 import { consoleQuery } from '@/service/client'
+import { deploymentStatusPollingInterval } from '../runtime-status'
 import { openDeployDrawerAtom } from '../store'
 import { SectionState } from './common'
 import { DeploymentEnvironmentList } from './deploy-tab/deployment-environment-list'
@@ -64,6 +65,7 @@ export function DeployTab({ appInstanceId }: {
     input: {
       params: { appInstanceId },
     },
+    refetchInterval: query => deploymentStatusPollingInterval(query.state.data),
   }))
   const environmentDeployments = environmentDeploymentsQuery.data
   const rows = environmentDeployments?.data?.filter(row => row.environment?.id) ?? []

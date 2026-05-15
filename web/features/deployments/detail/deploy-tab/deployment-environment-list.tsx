@@ -64,23 +64,12 @@ function DeploymentRowActions({ appInstanceId, envId, row }: {
 }) {
   const { t } = useTranslation('deployments')
   const openDeployDrawer = useSetAtom(openDeployDrawerAtom)
-  const cancelDeployment = useMutation(consoleQuery.enterprise.appDeploymentService.cancelDeployment.mutationOptions())
   const undeployDeployment = useMutation(consoleQuery.enterprise.appDeploymentService.undeployRuntimeInstance.mutationOptions())
   const isUndeployed = isUndeployedDeploymentRow(row)
   const status = deploymentStatus(row)
-  const deploymentId = row.runtime?.currentDeploymentId
   const [showUndeployConfirm, setShowUndeployConfirm] = useState(false)
-  const pendingMutation = cancelDeployment.isPending || undeployDeployment.isPending
-  const secondaryActionDisabled = pendingMutation || (status === 'deploying' ? !deploymentId : !envId)
-
-  function handleCancelDeployment() {
-    if (!envId || !deploymentId)
-      return
-    cancelDeployment.mutate({
-      params: { appInstanceId, environmentId: envId, deploymentId },
-      body: { appInstanceId, environmentId: envId, deploymentId },
-    })
-  }
+  const secondaryActionDisabled = undeployDeployment.isPending || !envId
+  const isDeploying = status === 'deploying'
 
   function handleUndeploy() {
     if (!envId)
@@ -102,53 +91,37 @@ function DeploymentRowActions({ appInstanceId, envId, row }: {
       onClick={e => e.stopPropagation()}
       onKeyDown={e => e.stopPropagation()}
     >
-      <Button
-        size="small"
-        variant="secondary"
-        className="px-2.5"
-        onClick={() => openDeployDrawer({ appInstanceId, environmentId: envId })}
-      >
-        {isUndeployed
-          ? t('deployDrawer.deploy')
-          : status === 'ready'
-            ? t('deployTab.deployOtherVersion')
-            : status === 'deploying'
-              ? t('deployTab.viewProgress')
+      {!isDeploying && (
+        <Button
+          size="small"
+          variant="secondary"
+          className="px-2.5"
+          onClick={() => openDeployDrawer({ appInstanceId, environmentId: envId })}
+        >
+          {isUndeployed
+            ? t('deployDrawer.deploy')
+            : status === 'ready'
+              ? t('deployTab.deployOtherVersion')
               : status === 'deploy_failed'
                 ? t('deployTab.viewError')
                 : t('deployTab.deployOtherVersion')}
-      </Button>
-      {!isUndeployed && (
-        status === 'deploying'
-          ? (
-              <Button
-                size="small"
-                variant="ghost"
-                tone="destructive"
-                className="px-2.5"
-                disabled={secondaryActionDisabled}
-                loading={cancelDeployment.isPending}
-                onClick={handleCancelDeployment}
-              >
-                {t('deployTab.cancelDeployment')}
-              </Button>
-            )
-          : (
-              <Button
-                size="small"
-                variant="ghost"
-                tone="destructive"
-                className="px-2.5"
-                disabled={secondaryActionDisabled}
-                loading={undeployDeployment.isPending}
-                onClick={() => setShowUndeployConfirm(true)}
-              >
-                {t('deployTab.undeploy')}
-              </Button>
-            )
+        </Button>
+      )}
+      {!isUndeployed && !isDeploying && (
+        <Button
+          size="small"
+          variant="ghost"
+          tone="destructive"
+          className="px-2.5"
+          disabled={secondaryActionDisabled}
+          loading={undeployDeployment.isPending}
+          onClick={() => setShowUndeployConfirm(true)}
+        >
+          {t('deployTab.undeploy')}
+        </Button>
       )}
 
-      {!isUndeployed && (
+      {!isUndeployed && !isDeploying && (
         <AlertDialog
           open={showUndeployConfirm}
           onOpenChange={open => !open && setShowUndeployConfirm(false)}

@@ -89,7 +89,7 @@ export function Section({
             </p>
           )}
         </div>
-        {action && (
+        {Boolean(action) && (
           <div className="shrink-0">
             {action}
           </div>

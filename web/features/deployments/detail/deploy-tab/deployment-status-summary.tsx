@@ -24,10 +24,13 @@ export function DeploymentStatusSummary({ row }: {
   const status = deploymentStatus(row)
 
   if (status === 'deploying') {
+    const hasTargetRelease = !!(row.currentRelease?.name || row.currentRelease?.id)
     return (
       <span className="inline-flex items-center gap-1.5 system-sm-medium text-util-colors-blue-blue-700">
         <span className="i-ri-loader-4-line size-3.5 animate-spin" />
-        {t('deployTab.status.deployingRelease', { release: releaseLabel(row.currentRelease) })}
+        {hasTargetRelease
+          ? t('deployTab.status.deployingRelease', { release: releaseLabel(row.currentRelease) })
+          : t('status.deploying')}
       </span>
     )
   }
