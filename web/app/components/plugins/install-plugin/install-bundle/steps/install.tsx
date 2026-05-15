@@ -170,8 +170,8 @@ const Install: FC<Props> = ({
 
   const { canInstallPluginFromMarketplace } = useCanInstallPluginFromMarketplace()
   return (
-    <>
-      <div className="flex min-h-0 flex-1 flex-col items-start justify-center gap-4 self-stretch px-6 py-3">
+    <div className="flex min-h-0 flex-1 flex-col self-stretch overflow-hidden">
+      <div className="flex min-h-0 flex-1 flex-col items-start justify-center gap-4 self-stretch overflow-hidden px-6 py-3">
         <div className="system-md-regular text-text-secondary">
           <p>{t(`${i18nPrefix}.${selectedPluginsNum > 1 ? 'readyToInstallPackages' : 'readyToInstallPackage'}`, { ns: 'plugin', num: selectedPluginsNum })}</p>
         </div>
@@ -218,7 +218,7 @@ const Install: FC<Props> = ({
         </div>
       )}
 
-    </>
+    </div>
   )
 }
 export default React.memo(Install)

@@ -7515,7 +7515,7 @@ Remove one or more tag bindings from a target.
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | tag_id | path |  | Yes | string |
-| payload | body |  | Yes | [TagBasePayload](#tagbasepayload) |
+| payload | body |  | Yes | [TagUpdateRequestPayload](#tagupdaterequestpayload) |
 
 ##### Responses
 
@@ -13455,6 +13455,12 @@ Tag type
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | TagType | string | Tag type |  |
+
+#### TagUpdateRequestPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| name | string | Tag name | Yes |
 
 #### TenantAccountRole
 

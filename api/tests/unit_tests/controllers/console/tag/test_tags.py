@@ -14,6 +14,7 @@ from controllers.console.tag.tags import (
     TagUpdateDeleteApi,
 )
 from models.enums import TagType
+from services.tag_service import UpdateTagPayload
 
 
 def unwrap(func):
@@ -147,7 +148,7 @@ class TestTagUpdateDeleteApi:
         api = TagUpdateDeleteApi()
         method = unwrap(api.patch)
 
-        payload = {"name": "updated", "type": "knowledge"}
+        payload = {"name": "updated"}
 
         with app.test_request_context("/", json=payload):
             with (
@@ -159,7 +160,7 @@ class TestTagUpdateDeleteApi:
                 patch(
                     "controllers.console.tag.tags.TagService.update_tags",
                     return_value=tag,
-                ),
+                ) as update_tags_mock,
                 patch(
                     "controllers.console.tag.tags.TagService.get_tag_binding_count",
                     return_value=3,
@@ -168,6 +169,9 @@ class TestTagUpdateDeleteApi:
                 result, status = method(api, "tag-1")
 
         assert status == 200
+        update_payload, tag_id = update_tags_mock.call_args.args
+        assert update_payload == UpdateTagPayload(name="updated")
+        assert tag_id == "tag-1"
         assert result["binding_count"] == "3"
 
     def test_patch_forbidden(self, app: Flask, readonly_user, payload_patch):
