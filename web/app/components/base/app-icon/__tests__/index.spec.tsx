@@ -26,9 +26,8 @@ describe('AppIcon', () => {
           super()
         }
 
-        // Mock basic functionality
         connectedCallback() {
-          this.innerHTML = '🤖'
+          this.innerHTML = this.getAttribute('id') || '🤖'
         }
       })
     }
@@ -49,6 +48,15 @@ describe('AppIcon', () => {
     const emojiElement = document.querySelector('em-emoji')
     expect(emojiElement).toBeInTheDocument()
     expect(emojiElement?.getAttribute('id')).toBe('smile')
+  })
+
+  it('updates the rendered emoji when icon changes', () => {
+    const { rerender } = render(<AppIcon icon="smile" />)
+    expect(document.querySelector('em-emoji')).toHaveTextContent('smile')
+
+    rerender(<AppIcon icon="robot" />)
+
+    expect(document.querySelector('em-emoji')).toHaveTextContent('robot')
   })
 
   it('renders image when iconType is image and imageUrl is provided', () => {
