@@ -2,11 +2,11 @@
 
 import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
+import Link from '@/next/link'
 import { consoleQuery } from '@/service/client'
 import { SectionState } from './common'
 import { EnvironmentStrip, EnvironmentStripSkeleton } from './overview-tab/environment-strip'
 import { computeOverviewStats } from './overview-tab/overview-drift'
-import { PreviousReleases } from './overview-tab/previous-releases'
 import { ReleaseHero, ReleaseHeroSkeleton } from './overview-tab/release-hero'
 import { useSourceAppAvailability } from './source-app-availability'
 
@@ -41,6 +41,33 @@ function SourceAppDeletedNotice() {
   )
 }
 
+function ReleaseOverviewSection({ appInstanceId, children }: {
+  appInstanceId: string
+  children: React.ReactNode
+}) {
+  const { t } = useTranslation('deployments')
+
+  return (
+    <section className="flex min-w-0 flex-col gap-3">
+      <div className="flex min-w-0 items-baseline justify-between gap-3">
+        <h3 className="system-sm-semibold text-text-primary">
+          {t('overview.recentReleases')}
+        </h3>
+        <Link
+          href={`/deployments/${appInstanceId}/releases`}
+          className="inline-flex shrink-0 items-center gap-1 system-xs-medium text-text-tertiary transition-colors hover:text-text-secondary"
+        >
+          {t('overview.previousReleases.viewAll')}
+          <span aria-hidden className="i-ri-arrow-right-line size-3.5" />
+        </Link>
+      </div>
+      <div className="flex min-w-0 flex-col gap-3">
+        {children}
+      </div>
+    </section>
+  )
+}
+
 export function OverviewTab({ appInstanceId }: {
   appInstanceId: string
 }) {
@@ -60,7 +87,9 @@ export function OverviewTab({ appInstanceId }: {
   if (overviewQuery.isLoading) {
     return (
       <OverviewLayout>
-        <ReleaseHeroSkeleton />
+        <ReleaseOverviewSection appInstanceId={appInstanceId}>
+          <ReleaseHeroSkeleton />
+        </ReleaseOverviewSection>
       </OverviewLayout>
     )
   }
@@ -84,7 +113,10 @@ export function OverviewTab({ appInstanceId }: {
   if (releasesQuery.isLoading) {
     return (
       <OverviewLayout>
-        <ReleaseHeroSkeleton />
+        {sourceAppAvailability.sourceAppUnavailable && <SourceAppDeletedNotice />}
+        <ReleaseOverviewSection appInstanceId={appInstanceId}>
+          <ReleaseHeroSkeleton />
+        </ReleaseOverviewSection>
         <EnvironmentStripSkeleton />
       </OverviewLayout>
     )
@@ -105,25 +137,24 @@ export function OverviewTab({ appInstanceId }: {
 
   return (
     <OverviewLayout>
-      <ReleaseHero
-        appInstanceId={appInstanceId}
-        latestRelease={latestRelease}
-        stats={stats}
-      />
       {sourceAppAvailability.sourceAppUnavailable && <SourceAppDeletedNotice />}
-      <EnvironmentStrip
-        appInstanceId={appInstanceId}
-        rows={runtimeRows}
-        releaseRows={releaseRows}
-        stats={stats}
-        isLoading={runtimeInstancesQuery.isLoading}
-        isError={runtimeInstancesQuery.isError}
-      />
-      <PreviousReleases
-        appInstanceId={appInstanceId}
-        releaseRows={releaseRows}
-        stats={stats}
-      />
+      <div className="grid min-w-0 gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(320px,420px)] xl:items-start">
+        <ReleaseOverviewSection appInstanceId={appInstanceId}>
+          <ReleaseHero
+            appInstanceId={appInstanceId}
+            latestRelease={latestRelease}
+            stats={stats}
+          />
+        </ReleaseOverviewSection>
+        <EnvironmentStrip
+          appInstanceId={appInstanceId}
+          rows={runtimeRows}
+          releaseRows={releaseRows}
+          stats={stats}
+          isLoading={runtimeInstancesQuery.isLoading}
+          isError={runtimeInstancesQuery.isError}
+        />
+      </div>
     </OverviewLayout>
   )
 }
