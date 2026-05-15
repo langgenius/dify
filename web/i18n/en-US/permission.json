@@ -1,0 +1,15 @@
+{
+  "group.app": "Applications",
+  "group.app_acl": "App access permissions",
+  "group.credential": "Credentials",
+  "group.dataset": "Knowledge bases",
+  "group.dataset_acl": "Knowledge base access permissions",
+  "group.plugin": "Plugins",
+  "group.tool_mcp": "Tools and MCP",
+  "group.workspace": "Workspace",
+  "permissionList.clearAll": "Clear all",
+  "permissionList.collapseGroup": "Collapse group",
+  "permissionList.expandGroup": "Expand group",
+  "permissionList.noPermissionsFound": "No permissions found",
+  "permissionList.selectAll": "Select all"
+}

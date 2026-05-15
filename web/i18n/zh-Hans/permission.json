@@ -1,0 +1,15 @@
+{
+  "group.app": "应用",
+  "group.app_acl": "应用访问权限",
+  "group.credential": "凭据",
+  "group.dataset": "知识库",
+  "group.dataset_acl": "知识库访问权限",
+  "group.plugin": "插件",
+  "group.tool_mcp": "工具与MCP",
+  "group.workspace": "工作空间",
+  "permissionList.clearAll": "清除全部",
+  "permissionList.collapseGroup": "折叠分组",
+  "permissionList.expandGroup": "展开分组",
+  "permissionList.noPermissionsFound": "未找到权限",
+  "permissionList.selectAll": "全选"
+}

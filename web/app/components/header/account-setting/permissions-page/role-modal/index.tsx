@@ -81,10 +81,10 @@ const RoleModal = ({
       }}
     >
       <DialogContent
-        className="w-[560px] overflow-visible p-0"
+        className="flex max-h-[85vh] w-140 flex-col overflow-hidden p-0"
         backdropProps={{ forceRender: true }}
       >
-        <div className="relative px-6 pt-6 pb-4">
+        <div className="relative shrink-0 px-6 pt-6 pb-4">
           <DialogCloseButton />
           <div className="pr-8">
             <DialogTitle className="system-xl-semibold text-text-primary">
@@ -96,7 +96,7 @@ const RoleModal = ({
           </div>
         </div>
         <div className="border-t border-divider-subtle" />
-        <div className="flex flex-col gap-5 px-6 py-5">
+        <div className="flex min-h-0 flex-1 flex-col gap-5 overflow-y-hidden px-6 py-5">
           <div className="flex flex-col gap-1">
             <label htmlFor="role-name" className="system-sm-medium text-text-secondary">
               Role name
@@ -128,7 +128,7 @@ const RoleModal = ({
             readonly={readonly}
           />
         </div>
-        <div className="flex items-center justify-between gap-3 border-t border-divider-subtle px-6 py-4">
+        <div className="flex shrink-0 items-center justify-between gap-3 border-t border-divider-subtle px-6 py-4">
           <a
             href="https://docs.dify.ai/"
             target="_blank"

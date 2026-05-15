@@ -1,0 +1,15 @@
+{
+  "group.app": "應用",
+  "group.app_acl": "應用訪問權限",
+  "group.credential": "憑據",
+  "group.dataset": "知識庫",
+  "group.dataset_acl": "知識庫訪問權限",
+  "group.plugin": "插件",
+  "group.tool_mcp": "工具與MCP",
+  "group.workspace": "工作空間",
+  "permissionList.clearAll": "清除全部",
+  "permissionList.collapseGroup": "折疊分組",
+  "permissionList.expandGroup": "展開分組",
+  "permissionList.noPermissionsFound": "未找到權限",
+  "permissionList.selectAll": "全選"
+}

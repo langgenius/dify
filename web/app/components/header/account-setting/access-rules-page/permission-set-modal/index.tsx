@@ -2,7 +2,6 @@
 
 import type { AccessPolicyResourceType } from '@/models/access-control'
 import { Button } from '@langgenius/dify-ui/button'
-import { cn } from '@langgenius/dify-ui/cn'
 import {
   Dialog,
   DialogCloseButton,
@@ -13,7 +12,6 @@ import {
 import { useState } from 'react'
 import Input from '@/app/components/base/input'
 import Textarea from '@/app/components/base/textarea'
-import { usePermissionsGroups } from './hooks'
 import PermissionPicker from './permission-picker'
 
 export type PermissionSetModalMode = 'create' | 'edit'
@@ -64,8 +62,6 @@ const PermissionSetModalBody = ({
   const [description, setDescription] = useState(initialValues?.description ?? '')
   const [permissionKeys, setPermissionKeys] = useState<string[]>(initialValues?.permissionKeys ?? [])
 
-  const { permissionMap } = usePermissionsGroups(resourceType)
-
   const trimmedName = name.trim()
   const canSubmit = trimmedName.length > 0
 
@@ -80,16 +76,12 @@ const PermissionSetModalBody = ({
     onClose()
   }
 
-  const handleRemovePermission = (key: string) => {
-    setPermissionKeys(prev => prev.filter(p => p !== key))
-  }
-
   return (
     <DialogContent
-      className="max-h-[85vh] w-[560px] overflow-visible p-0"
+      className="flex max-h-[85vh] w-140 flex-col overflow-hidden p-0"
       backdropProps={{ forceRender: true }}
     >
-      <div className="relative px-6 pt-6 pb-4">
+      <div className="relative shrink-0 px-6 pt-6 pb-4">
         <DialogCloseButton />
         <div className="pr-8">
           <DialogTitle className="system-xl-semibold text-text-primary">
@@ -103,7 +95,7 @@ const PermissionSetModalBody = ({
 
       <div className="border-t border-divider-subtle" />
 
-      <div className="flex flex-col gap-5 px-6 py-5">
+      <div className="flex min-h-0 flex-1 flex-col gap-5 overflow-y-hidden px-6 py-5">
         <div className="flex flex-col gap-1">
           <label htmlFor="permission-set-name" className="system-sm-medium text-text-secondary">
             permission set name
@@ -132,34 +124,6 @@ const PermissionSetModalBody = ({
 
         <div className="flex flex-col gap-2">
           <div className="system-sm-medium text-text-secondary">Permissions</div>
-          {permissionKeys.length > 0 && (
-            <div className="flex flex-wrap gap-1.5">
-              {permissionKeys.map((key) => {
-                const p = permissionMap[key]
-                if (!p)
-                  return null
-                return (
-                  <span
-                    key={key}
-                    className={cn(
-                      'inline-flex items-center gap-1 rounded-md bg-util-colors-indigo-indigo-50 px-1.5 py-0.5 system-xs-medium text-text-accent',
-                      'border-[0.5px] border-components-panel-border',
-                    )}
-                  >
-                    <span>{p.name}</span>
-                    <button
-                      type="button"
-                      className="flex h-3.5 w-3.5 items-center justify-center rounded hover:bg-state-base-hover"
-                      aria-label={`Remove ${p.name}`}
-                      onClick={() => handleRemovePermission(key)}
-                    >
-                      <span aria-hidden className="i-ri-close-line h-3 w-3" />
-                    </button>
-                  </span>
-                )
-              })}
-            </div>
-          )}
           <PermissionPicker
             resourceType={resourceType}
             value={permissionKeys}
@@ -168,7 +132,7 @@ const PermissionSetModalBody = ({
         </div>
       </div>
 
-      <div className="flex items-center justify-between gap-3 border-t border-divider-subtle px-6 py-4">
+      <div className="flex shrink-0 items-center justify-between gap-3 border-t border-divider-subtle px-6 py-4">
         <a
           href="https://docs.dify.ai/"
           target="_blank"

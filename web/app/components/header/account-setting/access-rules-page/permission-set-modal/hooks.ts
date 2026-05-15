@@ -14,7 +14,7 @@ export const usePermissionsGroups = (resourceType: AccessPolicyResourceType) => 
     return (permissionCatalog?.groups || []).map(group => ({
       ...group,
       group_name: t(`group.${resourceType}_acl`, {
-        ns: 'permissionKeys',
+        ns: 'permission',
         defaultValue: group.group_name,
       }),
       permissions: group.permissions.map(permission => ({

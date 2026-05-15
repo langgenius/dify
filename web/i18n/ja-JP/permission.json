@@ -1,0 +1,15 @@
+{
+  "group.app": "アプリ",
+  "group.app_acl": "アプリアクセス権限",
+  "group.credential": "認証情報",
+  "group.dataset": "ナレッジベース",
+  "group.dataset_acl": "ナレッジベースアクセス権限",
+  "group.plugin": "プラグイン",
+  "group.tool_mcp": "ツールとMCP",
+  "group.workspace": "ワークスペース",
+  "permissionList.clearAll": "すべてクリア",
+  "permissionList.collapseGroup": "グループを折りたたむ",
+  "permissionList.expandGroup": "グループを展開",
+  "permissionList.noPermissionsFound": "権限が見つかりません",
+  "permissionList.selectAll": "すべて選択"
+}
