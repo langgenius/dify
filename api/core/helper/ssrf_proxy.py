@@ -389,4 +389,6 @@ def is_safe_external_url(url: str) -> bool:
         infos = socket.getaddrinfo(host, None)
     except (socket.gaierror, UnicodeError, OSError):
         return False
-    return all(not _is_disallowed_ip(info[4][0]) for info in infos)
+    # sockaddr[0] is the address string for both AF_INET and AF_INET6;
+    # str() keeps the type checker happy about the int | str union.
+    return all(not _is_disallowed_ip(str(info[4][0])) for info in infos)
