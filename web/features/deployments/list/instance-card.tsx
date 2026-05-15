@@ -10,14 +10,26 @@ import {
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
+import { useQuery } from '@tanstack/react-query'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { AppTypeIcon } from '@/app/components/app/type-selector'
 import AppIcon from '@/app/components/base/app-icon'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import Link from '@/next/link'
+import { consoleQuery } from '@/service/client'
 import { toAppMode } from '../app-mode'
+import { environmentName } from '../environment'
+import { deploymentStatus } from '../runtime-status'
 
 const INSTANCE_CARD_MENU_TAB_KEYS = ['deploy', 'releases', 'settings'] satisfies InstanceDetailTabKey[]
+
+type EnvironmentStatusItem = {
+  key: 'failed' | 'deploying' | 'ready'
+  name: string
+  label: string
+  className: string
+}
 
 function getInstanceTabHref(appInstanceId: string, tabKey: InstanceDetailTabKey) {
   return `/deployments/${appInstanceId}/${tabKey}`
@@ -28,11 +40,8 @@ export function InstanceCard({ app }: {
 }) {
   const { t } = useTranslation('deployments')
   const { formatTimeFromNow } = useFormatTimeFromNow()
-
-  if (!app.id)
-    return null
-
-  const appInstanceId = app.id
+  const [isStatusTooltipOpen, setIsStatusTooltipOpen] = useState(false)
+  const appInstanceId = app.id ?? ''
   const appName = app.name ?? appInstanceId
   const appMode = toAppMode(app.mode)
   const detailHref = `/deployments/${appInstanceId}/overview`
@@ -56,6 +65,15 @@ export function InstanceCard({ app }: {
         ? 'deploying'
         : 'ready'
 
+  const environmentDeploymentsQuery = useQuery({
+    ...consoleQuery.enterprise.appDeploymentService.listEnvironmentDeployments.queryOptions({
+      input: {
+        params: { appInstanceId },
+      },
+    }),
+    enabled: isStatusTooltipOpen && primaryStatus !== 'none' && !!appInstanceId,
+  })
+
   const primaryText = primaryStatus === 'none'
     ? t('card.notDeployed')
     : primaryStatus === 'failed'
@@ -70,30 +88,83 @@ export function InstanceCard({ app }: {
   if ((primaryStatus === 'failed' || primaryStatus === 'deploying') && readyCount > 0)
     secondaryParts.push(t('card.ready', { count: readyCount }))
 
-  const statusSummaryLabel = (status?: string) => {
-    if (status === 'failed' || status === 'deploy_failed')
-      return t('status.deployFailed')
-    if (status === 'deploying')
-      return t('status.deploying')
-    if (status === 'ready')
-      return t('status.ready')
-    return status || 'unknown'
-  }
+  const environmentDeployments = environmentDeploymentsQuery.data?.data?.filter(row => row.environment?.id) ?? []
+  const environmentStatusItems = environmentDeployments.flatMap<EnvironmentStatusItem>((row) => {
+    const status = deploymentStatus(row)
+    if (status === 'deploy_failed') {
+      return [{
+        key: 'failed',
+        name: environmentName(row.environment),
+        label: t('status.deployFailed'),
+        className: 'text-util-colors-red-red-700',
+      }]
+    }
+    if (status === 'deploying') {
+      return [{
+        key: 'deploying',
+        name: environmentName(row.environment),
+        label: t('status.deploying'),
+        className: 'text-util-colors-warning-warning-700',
+      }]
+    }
+    if (status === 'ready') {
+      return [{
+        key: 'ready',
+        name: environmentName(row.environment),
+        label: t('status.ready'),
+        className: 'text-util-colors-green-green-700',
+      }]
+    }
+    return []
+  })
 
-  const statusSummaryTooltip = app.statuses?.filter(item => item.count && item.status !== 'undeployed') ?? []
   const statusTooltip = primaryStatus === 'none'
     ? t('card.tooltip.notDeployed')
     : (
         <div className="flex min-w-45 flex-col gap-1">
-          <div className="system-xs-medium text-text-secondary">{t('overview.deploymentStatus')}</div>
-          {statusSummaryTooltip.map(item => (
-            <div key={item.status} className="flex justify-between gap-3">
-              <span className="text-text-tertiary">{statusSummaryLabel(item.status)}</span>
-              <span className="text-text-secondary">{item.count}</span>
+          {environmentStatusItems.map(item => (
+            <div key={`${item.key}-${item.name}`} className="flex min-w-0 justify-between gap-3">
+              <span className="truncate text-text-secondary" title={item.name}>{item.name}</span>
+              <span className={cn('shrink-0', item.className)}>{item.label}</span>
             </div>
           ))}
+          {environmentStatusItems.length === 0 && !environmentDeploymentsQuery.isLoading && !environmentDeploymentsQuery.isError && (
+            <>
+              {failedCount > 0 && (
+                <div className="flex justify-between gap-3">
+                  <span className="text-text-tertiary">{t('status.deployFailed')}</span>
+                  <span className="text-text-secondary">{failedCount}</span>
+                </div>
+              )}
+              {deployingCount > 0 && (
+                <div className="flex justify-between gap-3">
+                  <span className="text-text-tertiary">{t('status.deploying')}</span>
+                  <span className="text-text-secondary">{deployingCount}</span>
+                </div>
+              )}
+              {readyCount > 0 && (
+                <div className="flex justify-between gap-3">
+                  <span className="text-text-tertiary">{t('status.ready')}</span>
+                  <span className="text-text-secondary">{readyCount}</span>
+                </div>
+              )}
+            </>
+          )}
+          {environmentDeploymentsQuery.isLoading && (
+            <div className="text-text-quaternary">
+              {t('common.loading')}
+            </div>
+          )}
+          {environmentDeploymentsQuery.isError && (
+            <div className="text-util-colors-warning-warning-700">
+              {t('common.loadFailed')}
+            </div>
+          )}
         </div>
       )
+
+  if (!app.id)
+    return null
 
   const healthPillClass = primaryStatus === 'none'
     ? 'text-text-tertiary bg-background-section-burn'
@@ -145,7 +216,7 @@ export function InstanceCard({ app }: {
           </div>
         </div>
         <div className="flex grow flex-col gap-2 px-3.5">
-          <Tooltip>
+          <Tooltip open={isStatusTooltipOpen} onOpenChange={setIsStatusTooltipOpen}>
             <TooltipTrigger
               render={(
                 <div className="flex min-w-0 items-center gap-1.5">
