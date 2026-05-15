@@ -5,8 +5,10 @@ from __future__ import annotations
 import dataclasses
 from datetime import datetime
 from types import SimpleNamespace
+from typing import cast
 
 import pytest
+from sqlalchemy.orm import Session
 
 from core.repositories.human_input_repository import (
     HumanInputFormRecord,
@@ -76,7 +78,7 @@ def _stub_selectinload(monkeypatch: pytest.MonkeyPatch) -> None:
 class TestHumanInputFormRepositoryImplHelpers:
     def test_build_email_recipients_with_member_and_external(self, monkeypatch: pytest.MonkeyPatch) -> None:
         repo = _build_repository()
-        session_stub = object()
+        session_stub = cast(Session, object())
         _patch_recipient_factory(monkeypatch)
 
         def fake_query(self, session, restrict_to_user_ids):  # type: ignore[no-untyped-def]
@@ -112,7 +114,7 @@ class TestHumanInputFormRepositoryImplHelpers:
 
     def test_build_email_recipients_skips_unknown_members(self, monkeypatch: pytest.MonkeyPatch) -> None:
         repo = _build_repository()
-        session_stub = object()
+        session_stub = cast(Session, object())
         created = _patch_recipient_factory(monkeypatch)
 
         def fake_query(self, session, restrict_to_user_ids):  # type: ignore[no-untyped-def]
@@ -141,7 +143,7 @@ class TestHumanInputFormRepositoryImplHelpers:
 
     def test_build_email_recipients_whole_workspace_uses_all_members(self, monkeypatch: pytest.MonkeyPatch) -> None:
         repo = _build_repository()
-        session_stub = object()
+        session_stub = cast(Session, object())
         _patch_recipient_factory(monkeypatch)
 
         def fake_query(self, session):  # type: ignore[no-untyped-def]
@@ -169,7 +171,7 @@ class TestHumanInputFormRepositoryImplHelpers:
 
     def test_build_email_recipients_dedupes_external_by_email(self, monkeypatch: pytest.MonkeyPatch) -> None:
         repo = _build_repository()
-        session_stub = object()
+        session_stub = cast(Session, object())
         created = _patch_recipient_factory(monkeypatch)
 
         def fake_query(self, session, restrict_to_user_ids):  # type: ignore[no-untyped-def]
@@ -199,7 +201,7 @@ class TestHumanInputFormRepositoryImplHelpers:
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         repo = _build_repository()
-        session_stub = object()
+        session_stub = cast(Session, object())
         _patch_recipient_factory(monkeypatch)
 
         def fake_query(self, session, restrict_to_user_ids):  # type: ignore[no-untyped-def]
@@ -230,7 +232,7 @@ class TestHumanInputFormRepositoryImplHelpers:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         repo = _build_repository()
-        session_stub = object()
+        session_stub = cast(Session, object())
         _patch_recipient_factory(monkeypatch)
 
         def fake_query(self, session):  # type: ignore[no-untyped-def]

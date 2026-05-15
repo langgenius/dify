@@ -5,10 +5,11 @@ import json
 from collections.abc import Sequence
 from datetime import datetime, timedelta
 from types import SimpleNamespace
-from typing import Any
+from typing import Any, cast
 from unittest.mock import MagicMock
 
 import pytest
+from sqlalchemy.orm import Session
 
 from core.repositories.human_input_repository import (
     FormCreateParams,
@@ -165,13 +166,14 @@ class _FakeSession:
         for obj in self.added:
             if hasattr(obj, "id") and obj.id in (None, ""):
                 obj.id = f"gen-{len(str(self.added))}"
-            if isinstance(obj, HumanInputFormRecipient) and obj.access_token is None:
-                if obj.recipient_type == RecipientType.CONSOLE:
-                    obj.access_token = "token-console"
-                elif obj.recipient_type == RecipientType.BACKSTAGE:
-                    obj.access_token = "token-backstage"
+            if isinstance(obj, HumanInputFormRecipient):
+                recipient: Any = obj
+                if recipient.recipient_type == RecipientType.CONSOLE:
+                    recipient.access_token = "token-console"
+                elif recipient.recipient_type == RecipientType.BACKSTAGE:
+                    recipient.access_token = "token-backstage"
                 else:
-                    obj.access_token = "token-webapp"
+                    recipient.access_token = "token-webapp"
 
     def refresh(self, _obj: Any) -> None:
         return None
@@ -311,13 +313,20 @@ def test_create_email_recipients_from_resolved_dedupes_and_skips_blank(monkeypat
 
 def test_query_workspace_members_by_ids_empty_returns_empty() -> None:
     repo = HumanInputFormRepositoryImpl(tenant_id="tenant")
-    assert repo._query_workspace_members_by_ids(session=MagicMock(), restrict_to_user_ids=["", ""]) == []
+    assert (
+        repo._query_workspace_members_by_ids(
+            session=cast(Session, MagicMock()), restrict_to_user_ids=["", ""]
+        )
+        == []
+    )
 
 
 def test_query_workspace_members_by_ids_maps_rows() -> None:
     session = _FakeSession(execute_rows=[("u1", "a@example.com"), ("u2", "b@example.com")])
     repo = HumanInputFormRepositoryImpl(tenant_id="tenant")
-    rows = repo._query_workspace_members_by_ids(session=session, restrict_to_user_ids=["u1", "u2"])
+    rows = repo._query_workspace_members_by_ids(
+        session=cast(Session, session), restrict_to_user_ids=["u1", "u2"]
+    )
     assert rows == [
         _WorkspaceMemberInfo(user_id="u1", email="a@example.com"),
         _WorkspaceMemberInfo(user_id="u2", email="b@example.com"),
@@ -327,7 +336,7 @@ def test_query_workspace_members_by_ids_maps_rows() -> None:
 def test_query_all_workspace_members_maps_rows() -> None:
     session = _FakeSession(execute_rows=[("u1", "a@example.com")])
     repo = HumanInputFormRepositoryImpl(tenant_id="tenant")
-    rows = repo._query_all_workspace_members(session=session)
+    rows = repo._query_all_workspace_members(cast(Session, session))
     assert rows == [_WorkspaceMemberInfo(user_id="u1", email="a@example.com")]
 
 
@@ -340,7 +349,7 @@ def test_delivery_method_to_model_webapp_creates_delivery_and_recipient(monkeypa
     repo = HumanInputFormRepositoryImpl(tenant_id="tenant")
     monkeypatch.setattr("core.repositories.human_input_repository.uuidv7", lambda: "del-1")
     result = repo._delivery_method_to_model(
-        session=MagicMock(), form_id="form-1", delivery_method=WebAppDeliveryMethod()
+        session=cast(Session, MagicMock()), form_id="form-1", delivery_method=WebAppDeliveryMethod()
     )
     assert result.delivery.id == "del-1"
     assert result.delivery.form_id == "form-1"
@@ -371,7 +380,9 @@ def test_delivery_method_to_model_email_uses_build_email_recipients(monkeypatch:
             body="b",
         )
     )
-    result = repo._delivery_method_to_model(session="sess", form_id="form-1", delivery_method=method)
+    result = repo._delivery_method_to_model(
+        session=cast(Session, "sess"), form_id="form-1", delivery_method=method
+    )
     assert result.recipients == ["r"]
     assert called["delivery_id"] == "del-1"
 
@@ -385,7 +396,7 @@ def test_build_email_recipients_uses_all_members_when_whole_workspace(monkeypatc
     )
     monkeypatch.setattr(repo, "_create_email_recipients_from_resolved", lambda **_: ["ok"])
     recipients = repo._build_email_recipients(
-        session=MagicMock(),
+        session=cast(Session, MagicMock()),
         form_id="f",
         delivery_id="d",
         recipients_config=EmailRecipients(include_bound_group=True, items=[ExternalRecipient(email="e@example.com")]),
@@ -403,7 +414,7 @@ def test_build_email_recipients_uses_selected_members_when_not_whole_workspace(m
     monkeypatch.setattr(repo, "_query_workspace_members_by_ids", fake_query)
     monkeypatch.setattr(repo, "_create_email_recipients_from_resolved", lambda **_: ["ok"])
     recipients = repo._build_email_recipients(
-        session=MagicMock(),
+        session=cast(Session, MagicMock()),
         form_id="f",
         delivery_id="d",
         recipients_config=EmailRecipients(

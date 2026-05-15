@@ -1,3 +1,5 @@
+import os
+import statistics
 import time
 from concurrent.futures import ThreadPoolExecutor
 from unittest.mock import MagicMock, patch
@@ -493,7 +495,7 @@ class TestSchemaResolverClass:
             time_no_cache = time.perf_counter() - start
             results1.append(time_no_cache)
 
-        avg_time_no_cache = sum(results1) / len(results1)
+        median_time_no_cache = statistics.median(results1)
 
         # Second run (with cache) - run multiple times
         # Warm up cache first
@@ -506,14 +508,18 @@ class TestSchemaResolverClass:
             time_with_cache = time.perf_counter() - start
             results2.append(time_with_cache)
 
-        avg_time_with_cache = sum(results2) / len(results2)
+        median_time_with_cache = statistics.median(results2)
 
-        # Cache should make it faster (more lenient check)
         assert result1 == result2
-        # Cache should provide some performance benefit (allow for measurement variance)
-        # We expect cache to be faster, but allow for small timing variations
-        performance_ratio = avg_time_with_cache / avg_time_no_cache if avg_time_no_cache > 0 else 1.0
-        assert performance_ratio <= 2.0, f"Cache performance degraded too much: {performance_ratio}"
+        # Timing is meaningless under pytest-xdist (CPU contention); correctness is still covered above.
+        if os.environ.get("PYTEST_XDIST_WORKER") is not None:
+            return
+
+        # Median dampens noise; allow generous slack for laptop power management and background load.
+        performance_ratio = (
+            median_time_with_cache / median_time_no_cache if median_time_no_cache > 0 else 1.0
+        )
+        assert performance_ratio <= 5.0, f"Cache performance degraded too much: {performance_ratio}"
 
     def test_fast_path_performance_no_refs(self):
         """Test that schemas without $refs use fast path and avoid deep copying"""
