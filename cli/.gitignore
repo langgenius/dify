@@ -5,3 +5,4 @@ oclif.manifest.json
 *.tsbuildinfo
 .vitest-cache/
 docs/specs/
+context/

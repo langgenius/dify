@@ -520,6 +520,15 @@ class HttpConfig(BaseSettings):
     def WEB_API_CORS_ALLOW_ORIGINS(self) -> list[str]:
         return self.inner_WEB_API_CORS_ALLOW_ORIGINS.split(",")
 
+    OPENAPI_ENABLED: bool = Field(
+        description=(
+            "Enable the /openapi/v1/* endpoint group used by difyctl and other "
+            "programmatic clients. Set to true to activate; disabled by default."
+        ),
+        validation_alias=AliasChoices("OPENAPI_ENABLED"),
+        default=False,
+    )
+
     inner_OPENAPI_CORS_ALLOW_ORIGINS: str = Field(
         description=(
             "Comma-separated allowlist for /openapi/v1/* CORS. "

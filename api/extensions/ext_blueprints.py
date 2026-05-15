@@ -44,21 +44,22 @@ def init_app(app: DifyApp):
     )
     app.register_blueprint(service_api_bp)
 
-    # User-scoped programmatic API. Default empty allowlist = same-origin
-    # only; expand via OPENAPI_CORS_ALLOW_ORIGINS for third-party
-    # integrations. supports_credentials so cookie-authed approve/deny
-    # work; cross-origin OPTIONS without an allowed origin will fail
-    # the same as on the console blueprint.
-    _apply_cors_once(
-        openapi_bp,
-        resources={r"/*": {"origins": dify_config.OPENAPI_CORS_ALLOW_ORIGINS}},
-        supports_credentials=True,
-        allow_headers=list(OPENAPI_HEADERS),
-        methods=["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
-        expose_headers=list(EXPOSED_HEADERS),
-        max_age=OPENAPI_MAX_AGE_SECONDS,
-    )
-    app.register_blueprint(openapi_bp)
+    if dify_config.OPENAPI_ENABLED:
+        # User-scoped programmatic API. Default empty allowlist = same-origin
+        # only; expand via OPENAPI_CORS_ALLOW_ORIGINS for third-party
+        # integrations. supports_credentials so cookie-authed approve/deny
+        # work; cross-origin OPTIONS without an allowed origin will fail
+        # the same as on the console blueprint.
+        _apply_cors_once(
+            openapi_bp,
+            resources={r"/*": {"origins": dify_config.OPENAPI_CORS_ALLOW_ORIGINS}},
+            supports_credentials=True,
+            allow_headers=list(OPENAPI_HEADERS),
+            methods=["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
+            expose_headers=list(EXPOSED_HEADERS),
+            max_age=OPENAPI_MAX_AGE_SECONDS,
+        )
+        app.register_blueprint(openapi_bp)
 
     _apply_cors_once(
         web_bp,
