@@ -63,9 +63,13 @@ class DifyModelFactory:
 
 
 def build_dify_model_access(tenant_id: str) -> tuple[CredentialsProvider, ModelFactory]:
+    provider_manager = ProviderManager()
     return (
-        DifyCredentialsProvider(tenant_id=tenant_id),
-        DifyModelFactory(tenant_id=tenant_id),
+        DifyCredentialsProvider(tenant_id=tenant_id, provider_manager=provider_manager),
+        DifyModelFactory(
+            tenant_id=tenant_id,
+            model_manager=ModelManager(enable_credentials_cache=True, provider_manager=provider_manager),
+        ),
     )
 
 
