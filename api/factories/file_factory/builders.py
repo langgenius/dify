@@ -165,15 +165,25 @@ def build_from_mappings(
 def _resolve_file_type(
     *,
     detected_file_type: FileType,
-    specified_type: str | None,
+    specified_type: FileTypeValue | str | None,
     strict_type_validation: bool,
 ) -> FileType:
-    if strict_type_validation and specified_type and detected_file_type.value != specified_type:
+    """Resolve the graph file type from detected metadata and submitted form type.
+
+    ``custom`` is a configured extension bucket rather than a MIME-derived type,
+    so strict validation must leave extension checks to the upload config.
+    """
+    if not specified_type:
+        return detected_file_type
+
+    specified_file_type = FileType(specified_type)
+    if specified_file_type == FileType.CUSTOM:
+        return FileType.CUSTOM
+
+    if strict_type_validation and detected_file_type != specified_file_type:
         raise ValueError("Detected file type does not match the specified type. Please verify the file.")
 
-    if specified_type and specified_type != "custom":
-        return FileType(specified_type)
-    return detected_file_type
+    return specified_file_type
 
 
 def _build_from_local_file(
@@ -205,7 +215,7 @@ def _build_from_local_file(
         detected_file_type = standardize_file_type(extension="." + row.extension, mime_type=row.mime_type)
         file_type = _resolve_file_type(
             detected_file_type=detected_file_type,
-            specified_type=mapping.get("type", "custom"),
+            specified_type=mapping.get("type"),
             strict_type_validation=strict_type_validation,
         )
 

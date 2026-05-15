@@ -4,7 +4,7 @@ from collections.abc import Mapping, Sequence
 from enum import StrEnum
 from typing import Any
 
-from graphon.entities.pause_reason import PauseReasonType
+from graphon.entities.pause_reason import HumanInputRequired, PauseReason, PauseReasonType
 from graphon.nodes.human_input.entities import FormInputConfig, SelectInputConfig
 from graphon.nodes.human_input.enums import ValueSourceType
 from graphon.runtime.graph_runtime_state_protocol import ReadOnlyVariablePool
@@ -119,3 +119,25 @@ def resolve_variable_select_input_options(
             )
         )
     return resolved_inputs
+
+
+def resolve_human_input_pause_reason_inputs(
+    reasons: Sequence[PauseReason],
+    *,
+    variable_pool: ReadOnlyVariablePool | None,
+) -> list[PauseReason]:
+    if variable_pool is None:
+        return list(reasons)
+
+    resolved_reasons: list[PauseReason] = []
+    for reason in reasons:
+        if not isinstance(reason, HumanInputRequired):
+            resolved_reasons.append(reason)
+            continue
+
+        resolved_inputs = resolve_variable_select_input_options(
+            reason.inputs,
+            variable_pool=variable_pool,
+        )
+        resolved_reasons.append(reason.model_copy(update={"inputs": resolved_inputs}))
+    return resolved_reasons

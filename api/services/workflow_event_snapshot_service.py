@@ -27,6 +27,7 @@ from core.workflow.human_input_forms import load_form_tokens_by_form_id
 from core.workflow.human_input_policy import (
     HumanInputSurface,
     enrich_human_input_pause_reasons,
+    resolve_human_input_pause_reason_inputs,
     resolve_variable_select_input_options,
 )
 from graphon.entities import WorkflowStartReason
@@ -473,12 +474,18 @@ def _build_pause_event(
 ) -> dict[str, Any] | None:
     paused_nodes: list[str] = []
     outputs: dict[str, Any] = {}
+    variable_pool: ReadOnlyVariablePool | None = None
     if resumption_context is not None:
         state = GraphRuntimeState.from_snapshot(resumption_context.serialized_graph_runtime_state)
         paused_nodes = state.get_paused_nodes()
         outputs = dict(WorkflowRuntimeTypeConverter().to_json_encodable(state.outputs or {}))
+        variable_pool = state.variable_pool
 
-    reasons = [reason.model_dump(mode="json") for reason in pause_entity.get_pause_reasons()]
+    resolved_pause_reasons = resolve_human_input_pause_reason_inputs(
+        pause_entity.get_pause_reasons(),
+        variable_pool=variable_pool,
+    )
+    reasons = [reason.model_dump(mode="json") for reason in resolved_pause_reasons]
     human_input_form_ids = [
         form_id
         for reason in reasons

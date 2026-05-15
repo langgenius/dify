@@ -20,7 +20,7 @@ from tests.unit_tests.controllers.service_api.conftest import _unwrap
 class TestWorkflowHumanInputFormApi:
     def test_get_success(self, app, monkeypatch: pytest.MonkeyPatch) -> None:
         definition = SimpleNamespace(
-            model_dump=lambda: {
+            model_dump=lambda **_kwargs: {
                 "rendered_content": "Rendered form content",
                 "inputs": [{"output_variable_name": "name"}],
                 "default_values": {"name": "Alice", "age": 30, "meta": {"k": "v"}},
@@ -36,6 +36,9 @@ class TestWorkflowHumanInputFormApi:
         )
         service_mock = Mock()
         service_mock.get_form_by_token.return_value = form
+        service_mock.resolve_form_inputs.return_value = [
+            SimpleNamespace(model_dump=lambda **_kwargs: {"output_variable_name": "name"})
+        ]
         workflow_module = sys.modules["controllers.service_api.app.human_input_form"]
         monkeypatch.setattr(workflow_module, "HumanInputService", lambda _engine: service_mock)
         monkeypatch.setattr(workflow_module, "db", SimpleNamespace(engine=object()))
@@ -56,7 +59,53 @@ class TestWorkflowHumanInputFormApi:
             "expiration_time": int(form.expiration_time.timestamp()),
         }
         service_mock.get_form_by_token.assert_called_once_with("token-1")
+        service_mock.resolve_form_inputs.assert_called_once_with(form)
         service_mock.ensure_form_active.assert_called_once_with(form)
+
+    def test_get_resolves_runtime_select_values(self, app, monkeypatch: pytest.MonkeyPatch) -> None:
+        definition = SimpleNamespace(
+            model_dump=lambda **_kwargs: {
+                "rendered_content": "Rendered form content",
+                "inputs": [
+                    {
+                        "output_variable_name": "decision",
+                        "option_source": {"type": "variable", "selector": ["start", "options"], "value": []},
+                    }
+                ],
+                "default_values": {},
+                "user_actions": [{"id": "approve", "title": "Approve"}],
+            }
+        )
+        form = SimpleNamespace(
+            app_id="app-1",
+            tenant_id="tenant-1",
+            recipient_type=RecipientType.STANDALONE_WEB_APP,
+            expiration_time=datetime(2099, 1, 1, tzinfo=UTC),
+            get_definition=lambda: definition,
+        )
+        resolved_input = SimpleNamespace(
+            model_dump=lambda **_kwargs: {
+                "output_variable_name": "decision",
+                "option_source": {"type": "variable", "selector": ["start", "options"], "value": ["approve", "reject"]},
+            }
+        )
+        service_mock = Mock()
+        service_mock.get_form_by_token.return_value = form
+        service_mock.resolve_form_inputs.return_value = [resolved_input]
+        workflow_module = sys.modules["controllers.service_api.app.human_input_form"]
+        monkeypatch.setattr(workflow_module, "HumanInputService", lambda _engine: service_mock)
+        monkeypatch.setattr(workflow_module, "db", SimpleNamespace(engine=object()))
+
+        api = WorkflowHumanInputFormApi()
+        handler = _unwrap(api.get)
+        app_model = SimpleNamespace(id="app-1", tenant_id="tenant-1")
+
+        with app.test_request_context("/form/human_input/token-1", method="GET"):
+            response = handler(api, app_model=app_model, form_token="token-1")
+
+        payload = json.loads(response.get_data(as_text=True))
+        assert payload["inputs"][0]["option_source"]["value"] == ["approve", "reject"]
+        service_mock.resolve_form_inputs.assert_called_once_with(form)
 
     def test_get_form_not_in_app(self, app, monkeypatch: pytest.MonkeyPatch) -> None:
         form = SimpleNamespace(

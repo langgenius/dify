@@ -260,3 +260,7 @@ def test_queue_workflow_paused_event_resolves_variable_select_options(monkeypatc
     assert isinstance(responses[0], HumanInputRequiredResponse)
     hi_resp = responses[0]
     assert hi_resp.data.inputs[0].option_source.value == ["approve", "reject"]
+
+    assert isinstance(responses[-1], WorkflowPauseStreamResponse)
+    pause_resp = responses[-1]
+    assert pause_resp.data.reasons[0]["inputs"][0]["option_source"]["value"] == ["approve", "reject"]
