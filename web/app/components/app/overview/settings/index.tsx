@@ -251,7 +251,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
   return (
     <>
       <Dialog open={isShow} onOpenChange={open => !open && onHide()}>
-        <DialogContent className="max-h-[calc(100dvh-2rem)] w-[520px] overflow-visible p-0">
+        <DialogContent className="flex max-h-[calc(100dvh-2rem)] w-[520px] flex-col overflow-hidden p-0">
           {/* header */}
           <div className="pt-5 pr-5 pb-3 pl-6">
             <div className="flex items-center gap-1">
@@ -263,7 +263,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
             </div>
           </div>
           {/* form body */}
-          <div className="space-y-5 px-6 py-3">
+          <div className="min-h-0 flex-1 space-y-5 overflow-y-auto px-6 py-3">
             {/* name & icon */}
             <div className="flex gap-4">
               <div className="grow">
