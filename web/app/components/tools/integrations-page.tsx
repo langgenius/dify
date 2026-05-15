@@ -222,12 +222,6 @@ export default function IntegrationsPage({
     activeIcon: 'i-ri-database-2-fill',
     iconClassName: 'size-4',
   }), [t])
-  const discoverItem = useMemo<NavItem>(() => ({
-    section: 'discover',
-    label: t('menus.exploreMarketplace', { ns: 'common' }),
-    icon: 'i-ri-store-2-line',
-    activeIcon: 'i-ri-store-2-fill',
-  }), [t])
   const toolItems = useMemo<NavItem[]>(() => [
     {
       section: 'mcp',
@@ -280,7 +274,7 @@ export default function IntegrationsPage({
       iconClassName: 'h-[13.5px] w-3',
     },
   ], [t])
-  const activeItem = [providerItem, discoverItem, dataSourceItem, ...toolItems, ...secondaryItems].find(item => item.section === section)
+  const activeItem = [providerItem, dataSourceItem, ...toolItems, ...secondaryItems].find(item => item.section === section)
   const isDiscoverSection = section === 'discover'
   const isToolSection = Boolean(toolCategoryBySection[section])
   const isPluginCategorySection = section === 'trigger' || section === 'agent-strategy' || section === 'extension'
@@ -452,7 +446,6 @@ export default function IntegrationsPage({
           )}
           <nav className="mt-6 shrink-0 space-y-0.5">
             <NavLinkItem collapsed={sidebarCollapsed} item={providerItem} section={section} />
-            <NavLinkItem collapsed={sidebarCollapsed} item={discoverItem} section={section} />
             <NavLinkItem collapsed={sidebarCollapsed} item={dataSourceItem} section={section} />
             <div>
               <Link

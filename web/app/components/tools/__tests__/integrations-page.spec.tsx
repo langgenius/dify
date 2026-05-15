@@ -191,8 +191,7 @@ describe('IntegrationsPage', () => {
     renderIntegrationsPage(undefined, 'discover')
 
     expect(screen.getByTestId('marketplace-content')).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'common.menus.exploreMarketplace' })).toHaveClass('bg-state-base-active')
-    expect(screen.getByRole('link', { name: 'common.menus.exploreMarketplace' })).toHaveAttribute('href', '/integrations/discover')
+    expect(screen.queryByRole('link', { name: 'common.menus.exploreMarketplace' })).not.toBeInTheDocument()
   })
 
   it('renders the Figma-matched database icon for the data source sidebar item', () => {
