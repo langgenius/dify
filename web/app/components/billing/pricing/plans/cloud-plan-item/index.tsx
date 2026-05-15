@@ -197,15 +197,9 @@ const CloudPlanItem: FC<CloudPlanItemProps> = ({
         open={showEducationPricingConfirm}
         onOpenChange={setShowEducationPricingConfirm}
       >
-        {showEducationPricingConfirm && (
-          <div
-            className="fixed inset-0 z-[51] bg-black/40"
-            aria-hidden="true"
-          />
-        )}
         <AlertDialogContent
-          className="fixed! top-1/2! bottom-auto! left-1/2! z-[52]! w-[640px] -translate-x-1/2! -translate-y-1/2! overflow-hidden"
-          backdropClassName="hidden"
+          backdropProps={{ forceRender: true }}
+          className="w-[640px] overflow-hidden"
         >
           <button
             type="button"
