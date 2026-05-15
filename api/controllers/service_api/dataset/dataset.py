@@ -31,7 +31,9 @@ from services.tag_service import (
     TagBindingCreatePayload,
     TagBindingDeletePayload,
     TagService,
-    UpdateTagPayload,
+)
+from services.tag_service import (
+    UpdateTagPayload as UpdateTagServicePayload,
 )
 
 register_enum_models(service_api_ns, DatasetPermissionEnum)
@@ -556,7 +558,7 @@ class DatasetTagsApi(DatasetApiResource):
 
         payload = TagUpdatePayload.model_validate(service_api_ns.payload or {})
         tag_id = payload.tag_id
-        tag = TagService.update_tags(UpdateTagPayload(name=payload.name, type=TagType.KNOWLEDGE), tag_id)
+        tag = TagService.update_tags(UpdateTagServicePayload(name=payload.name), tag_id)
 
         binding_count = TagService.get_tag_binding_count(tag_id)
 
