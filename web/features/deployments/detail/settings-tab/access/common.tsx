@@ -57,11 +57,11 @@ type EndpointRowProps = {
 
 export function EndpointRow({ envName, label, value, openLabel }: EndpointRowProps) {
   return (
-    <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
-      <span className="min-w-35 system-xs-regular text-text-tertiary">
+    <div className="grid items-center gap-x-3 gap-y-1.5 sm:grid-cols-[minmax(88px,108px)_minmax(0,1fr)_auto]">
+      <span className="min-w-0 truncate system-xs-regular text-text-tertiary">
         {envName}
       </span>
-      <CopyPill label={label} value={value} className="min-w-65 flex-1" />
+      <CopyPill label={label} value={value} className="min-w-0" />
       {openLabel && (
         <a
           href={value}

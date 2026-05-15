@@ -56,8 +56,8 @@ export function Section({
   if (layout === 'row') {
     return (
       <section className="border-b border-divider-subtle py-4 first:pt-0 last:border-b-0 last:pb-0">
-        <div className="flex flex-col gap-3 sm:flex-row sm:gap-x-1">
-          <div className="flex min-w-0 shrink-0 flex-col sm:w-[180px] sm:pt-1">
+        <div className="flex flex-col gap-3 sm:flex-row sm:gap-x-6">
+          <div className="flex min-w-0 shrink-0 flex-col sm:w-40 sm:pt-1">
             <div className={titleClassName}>
               {title}
             </div>

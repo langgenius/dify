@@ -168,8 +168,8 @@ function DangerSection({ children }: {
 
   return (
     <section className="border-b border-divider-subtle py-4 first:pt-0 last:border-b-0 last:pb-0">
-      <div className="flex flex-col gap-3 sm:flex-row sm:gap-x-1">
-        <div className="flex min-w-0 shrink-0 flex-col sm:w-[180px] sm:pt-1">
+      <div className="flex flex-col gap-3 sm:flex-row sm:gap-x-6">
+        <div className="flex min-w-0 shrink-0 flex-col sm:w-40 sm:pt-1">
           <div className="system-sm-semibold text-util-colors-red-red-700">
             {t('settings.danger')}
           </div>
@@ -403,7 +403,7 @@ export function SettingsTab({ appInstanceId }: {
   appInstanceId: string
 }) {
   return (
-    <div className="mx-auto flex w-full max-w-[960px] min-w-0 flex-col gap-y-4 px-6 py-6 sm:px-20 sm:py-8">
+    <div className="mx-auto flex w-full max-w-[1080px] min-w-0 flex-col gap-y-4 px-6 py-6 sm:py-8">
       <AccessPermissionsSection appInstanceId={appInstanceId} />
       <AccessChannelsSection appInstanceId={appInstanceId} />
       <DeveloperApiSection appInstanceId={appInstanceId} />

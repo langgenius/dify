@@ -81,7 +81,7 @@ function PermissionPicker({ value, disabled, onChange }: {
       <DropdownMenuTrigger
         disabled={disabled}
         className={cn(
-          'inline-flex h-8 min-w-55 items-center gap-2 rounded-lg border border-components-input-border-active bg-components-input-bg-normal px-2.5 system-sm-regular text-text-secondary hover:bg-state-base-hover',
+          'inline-flex h-8 w-full min-w-0 items-center gap-2 rounded-lg border border-components-input-border-active bg-components-input-bg-normal px-2.5 system-sm-regular text-text-secondary hover:bg-state-base-hover',
           disabled && 'opacity-50',
         )}
       >
@@ -244,7 +244,7 @@ function SubjectPicker({
       onInputValueChange={handleInputValueChange}
       onValueChange={handleValueChange}
     >
-      <ComboboxInputGroup className="h-auto min-h-8 max-w-full overflow-hidden py-1 pr-1">
+      <ComboboxInputGroup className="h-auto min-h-8 w-full max-w-full overflow-hidden py-1 pr-1">
         <ComboboxValue>
           {(selectedValue: SelectableAccessSubject[]) => (
             <>
@@ -412,7 +412,7 @@ export function EnvironmentPermissionRow({
   }
 
   return (
-    <div className="grid gap-x-3 gap-y-2 sm:grid-cols-[minmax(96px,112px)_minmax(0,1fr)]">
+    <div className="grid gap-x-3 gap-y-2 sm:grid-cols-[minmax(88px,108px)_minmax(0,1fr)] lg:grid-cols-[minmax(88px,108px)_minmax(160px,180px)_minmax(0,1fr)]">
       <span className="pt-1.5 system-xs-regular text-text-tertiary">
         {environmentName(environment)}
       </span>
@@ -424,7 +424,7 @@ export function EnvironmentPermissionRow({
         />
       </div>
       {permissionKind === 'specific' && (
-        <div className="min-w-0 sm:col-start-2">
+        <div className="min-w-0 sm:col-start-2 lg:col-start-3">
           <SubjectPicker
             selectedSubjects={subjects}
             disabled={controlsDisabled}

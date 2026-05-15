@@ -101,9 +101,9 @@ export function AccessChannelsSection({
           ? <SectionState>{t('common.loadFailed')}</SectionState>
           : runEnabled
             ? (
-                <div className="flex flex-col gap-5">
-                  <div className="flex flex-col gap-3">
-                    <div className="flex flex-col gap-1.5">
+                <div className="flex flex-col gap-4">
+                  <div className="flex flex-col gap-3.5">
+                    <div className="flex flex-col gap-2">
                       <div className="flex items-center gap-2">
                         <div className="system-sm-medium text-text-primary">
                           {t('access.runAccess.webapp')}
@@ -117,7 +117,7 @@ export function AccessChannelsSection({
                       </div>
                       {webappRows.length > 0
                         ? (
-                            <div className="flex flex-col gap-2">
+                            <div className="flex flex-col gap-1.5">
                               {webappRows.map((row) => {
                                 const endpointUrl = webappUrl(row.url)
 
@@ -139,7 +139,7 @@ export function AccessChannelsSection({
                             </SectionState>
                           )}
                     </div>
-                    <div className="flex flex-col gap-1.5 border-t border-divider-subtle pt-3">
+                    <div className="flex flex-col gap-2 border-t border-divider-subtle pt-3.5">
                       <div className="flex items-center gap-2">
                         <div className="system-sm-medium text-text-primary">
                           {t('access.cli.title')}
@@ -157,7 +157,7 @@ export function AccessChannelsSection({
                               <CopyPill
                                 label={t('access.cli.domain')}
                                 value={cliDomain}
-                                className="min-w-65 flex-1"
+                                className="min-w-0 flex-1"
                               />
                               <a
                                 href={cliDocsUrl}

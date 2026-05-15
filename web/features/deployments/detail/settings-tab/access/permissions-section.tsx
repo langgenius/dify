@@ -62,7 +62,7 @@ export function AccessPermissionsSection({
                 </SectionState>
               )
             : (
-                <div className="flex flex-col gap-3">
+                <div className="flex flex-col gap-2.5">
                   {permissionRows.map(row => (
                     <EnvironmentPermissionRow
                       key={row.environment.id}

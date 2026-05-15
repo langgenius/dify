@@ -104,7 +104,7 @@ export function DeployTab({ appInstanceId }: {
   const hasError = environmentDeploymentsQuery.isError
 
   return (
-    <div className="mx-auto flex w-full max-w-[1280px] min-w-0 flex-col gap-4 px-6 py-6 2xl:max-w-[1440px]">
+    <div className="mx-auto flex w-full max-w-[1080px] min-w-0 flex-col gap-4 px-6 py-6">
       <div className="flex items-center justify-between">
         <div className="system-sm-semibold text-text-primary">
           {t('deployTab.envCount')}
