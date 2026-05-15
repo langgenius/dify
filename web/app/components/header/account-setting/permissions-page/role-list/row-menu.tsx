@@ -72,7 +72,6 @@ const RowMenu = ({
         <DropdownMenuItem className="system-sm-semibold text-text-secondary" onClick={handleView}>
           View
         </DropdownMenuItem>
-        )
         {
           hasEditAction && (
             <DropdownMenuItem className="system-sm-semibold text-text-secondary" onClick={handleEdit}>

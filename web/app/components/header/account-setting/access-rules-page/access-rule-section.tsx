@@ -17,7 +17,6 @@ type AccessRuleSectionProps = {
   title: string
   rules: AccessPolicyWithBindings[]
   isLoadingRules: boolean
-  createButtonLabel: string
   onCreate?: () => void
   onEditRule?: (rule: AccessPolicyWithBindings) => void
   onAddRole?: (rule: AccessPolicyWithBindings) => void
@@ -28,7 +27,6 @@ const AccessRuleSection = ({
   title,
   rules,
   isLoadingRules,
-  createButtonLabel,
   onCreate,
   onEditRule,
   onAddRole,
@@ -71,12 +69,13 @@ const AccessRuleSection = ({
         </h3>
         {canManage && (
           <Button
-            variant="secondary"
+            variant="primary"
             size="medium"
             onClick={onCreate}
             disabled={isLoadingRules}
           >
-            {createButtonLabel}
+            <span className="mr-0.5 i-ri-add-line size-4" />
+            <span>New permission set</span>
           </Button>
         )}
       </div>

@@ -27,7 +27,6 @@ const DatasetAccessRuleSection = ({
       title="Knowledge Base Access Rules"
       rules={datasetAccessRules}
       isLoadingRules={isLoading}
-      createButtonLabel="Create KB permission set"
       onCreate={onCreate}
       onEditRule={onEditRule}
       onAddRole={onAddRole}

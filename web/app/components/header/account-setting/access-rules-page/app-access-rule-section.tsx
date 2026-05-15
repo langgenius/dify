@@ -29,7 +29,6 @@ const AppAccessRuleSection = ({
       title="App Access Rules"
       rules={appAccessRules}
       isLoadingRules={isLoading}
-      createButtonLabel="Create App permission set"
       onCreate={onCreate}
       onEditRule={onEditRule}
       onAddRole={onAddRole}
