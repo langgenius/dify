@@ -2,7 +2,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/pop
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
-import { useModalContext } from '@/context/modal-context'
+import { useAccountSetting } from '@/app/components/header/account-setting/hooks'
 import { useApiBasedExtensions } from '@/service/use-common'
 import ApiBasedExtensionModal from './modal'
 
@@ -18,9 +18,7 @@ const ApiBasedExtensionSelector = ({
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
   const [addModalOpen, setAddModalOpen] = useState(false)
-  const {
-    setShowAccountSettingModal,
-  } = useModalContext()
+  const openAccountSetting = useAccountSetting()
   const { data, refetch: mutate } = useApiBasedExtensions()
   const handleSelect = (id: string) => {
     onChange(id)
@@ -87,7 +85,7 @@ const ApiBasedExtensionSelector = ({
                   className="flex cursor-pointer items-center border-none bg-transparent p-0 text-xs text-text-accent"
                   onClick={() => {
                     setOpen(false)
-                    setShowAccountSettingModal({ payload: ACCOUNT_SETTING_TAB.API_BASED_EXTENSION })
+                    openAccountSetting({ payload: ACCOUNT_SETTING_TAB.API_BASED_EXTENSION })
                   }}
                 >
                   {t('apiBasedExtension.selector.manage', { ns: 'common' })}

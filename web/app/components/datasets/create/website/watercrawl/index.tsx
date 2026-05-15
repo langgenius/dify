@@ -6,7 +6,7 @@ import * as React from 'react'
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
-import { useModalContext } from '@/context/modal-context'
+import { useAccountSetting } from '@/app/components/header/account-setting/hooks'
 import { checkWatercrawlTaskStatus, createWatercrawlTask } from '@/service/datasets'
 import { sleep } from '@/utils'
 import CrawledResult from '../base/crawled-result'
@@ -41,12 +41,12 @@ const WaterCrawl: FC<Props> = ({ onPreview, checkedCrawlResult, onCheckedCrawlRe
     if (step !== Step.init)
       setControlFoldOptions(Date.now())
   }, [step])
-  const { setShowAccountSettingModal } = useModalContext()
+  const openAccountSetting = useAccountSetting()
   const handleSetting = useCallback(() => {
-    setShowAccountSettingModal({
+    openAccountSetting({
       payload: ACCOUNT_SETTING_TAB.DATA_SOURCE,
     })
-  }, [setShowAccountSettingModal])
+  }, [openAccountSetting])
   const checkValid = useCallback((url: string) => {
     let errorMsg = ''
     if (!url) {

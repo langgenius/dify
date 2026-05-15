@@ -6,6 +6,17 @@ import { checkJinaReaderTaskStatus, createJinaReaderTask } from '@/service/datas
 import { sleep } from '@/utils'
 import JinaReader from '../index'
 
+const { mockRouterPush, mockSetShowAccountSettingModal } = vi.hoisted(() => ({
+  mockRouterPush: vi.fn(),
+  mockSetShowAccountSettingModal: vi.fn(),
+}))
+
+vi.mock('@/next/navigation', () => ({
+  useRouter: () => ({
+    push: mockRouterPush,
+  }),
+}))
+
 vi.mock('@/service/datasets', () => ({
   createJinaReaderTask: vi.fn(),
   checkJinaReaderTaskStatus: vi.fn(),
@@ -16,7 +27,6 @@ vi.mock('@/utils', () => ({
 }))
 
 // Mock modal context
-const mockSetShowAccountSettingModal = vi.fn()
 vi.mock('@/context/modal-context', () => ({
   useModalContext: () => ({
     setShowAccountSettingModal: mockSetShowAccountSettingModal,
@@ -387,13 +397,15 @@ describe('JinaReader', () => {
       const configButton = screen.getByText('datasetCreation.stepOne.website.configureJinaReader')
       fireEvent.click(configButton)
 
-      expect(mockSetShowAccountSettingModal).toHaveBeenCalledTimes(1)
+      expect(mockRouterPush).toHaveBeenCalledTimes(1)
+      expect(mockSetShowAccountSettingModal).not.toHaveBeenCalled()
 
       // Rerender and click again
       rerender(<JinaReader {...props} />)
       fireEvent.click(configButton)
 
-      expect(mockSetShowAccountSettingModal).toHaveBeenCalledTimes(2)
+      expect(mockRouterPush).toHaveBeenCalledTimes(2)
+      expect(mockSetShowAccountSettingModal).not.toHaveBeenCalled()
     })
 
     it('should memoize checkValid callback based on crawlOptions', async () => {
@@ -429,9 +441,8 @@ describe('JinaReader', () => {
       const configButton = screen.getByText('datasetCreation.stepOne.website.configureJinaReader')
       await userEvent.click(configButton)
 
-      expect(mockSetShowAccountSettingModal).toHaveBeenCalledWith({
-        payload: 'data-source',
-      })
+      expect(mockRouterPush).toHaveBeenCalledWith('/integrations/data-source')
+      expect(mockSetShowAccountSettingModal).not.toHaveBeenCalled()
     })
 
     it('should handle URL input and run button click', async () => {

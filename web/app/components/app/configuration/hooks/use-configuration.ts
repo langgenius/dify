@@ -35,6 +35,7 @@ import {
 import useAdvancedPromptConfig from '@/app/components/app/configuration/hooks/use-advanced-prompt-config'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
+import { useAccountSetting } from '@/app/components/header/account-setting/hooks'
 import { ModelFeatureEnum, ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import {
   useModelListAndDefaultModelAndCurrentProviderAndModel,
@@ -42,7 +43,6 @@ import {
 } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { ANNOTATION_DEFAULT, DATASET_DEFAULT, DEFAULT_AGENT_SETTING, DEFAULT_CHAT_PROMPT_CONFIG, DEFAULT_COMPLETION_PROMPT_CONFIG } from '@/config'
 import { useAppContext } from '@/context/app-context'
-import { useModalContext } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import { PromptMode } from '@/models/debug'
@@ -109,7 +109,7 @@ export type ConfigurationViewModel = {
 export const useConfiguration = (): ConfigurationViewModel => {
   const { t } = useTranslation()
   const { isLoadingCurrentWorkspace, currentWorkspace } = useAppContext()
-  const { setShowAccountSettingModal } = useModalContext()
+  const openAccountSetting = useAccountSetting()
 
   const { appDetail, showAppConfigureFeaturesModal, setAppSidebarExpand, setShowAppConfigureFeaturesModal } = useAppStore(useShallow(state => ({
     appDetail: state.appDetail,
@@ -669,7 +669,7 @@ export const useConfiguration = (): ConfigurationViewModel => {
     onCloseSelectDataSet: hideSelectDataSet,
     onCompletionParamsChange: setCompletionParams,
     onConfirmUseGPT4: () => {
-      setShowAccountSettingModal({ payload: ACCOUNT_SETTING_TAB.PROVIDER })
+      openAccountSetting({ payload: ACCOUNT_SETTING_TAB.PROVIDER })
       setShowUseGPT4Confirm(false)
     },
     onEnableMultipleModelDebug: handleDebugWithMultipleModelChange,
@@ -677,7 +677,7 @@ export const useConfiguration = (): ConfigurationViewModel => {
     onHideDebugPanel: hideDebugPanel,
     onModelChange: setModel,
     onMultipleModelConfigsChange: handleMultipleModelConfigsChange,
-    onOpenAccountSettings: () => setShowAccountSettingModal({ payload: ACCOUNT_SETTING_TAB.PROVIDER }),
+    onOpenAccountSettings: () => openAccountSetting({ payload: ACCOUNT_SETTING_TAB.PROVIDER }),
     onOpenDebugPanel: showDebugPanel,
     onSaveHistory: (data) => {
       setConversationHistoriesRole(data)

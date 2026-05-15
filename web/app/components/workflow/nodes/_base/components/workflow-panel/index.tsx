@@ -28,6 +28,7 @@ import { useStore as useAppStore } from '@/app/components/app/store'
 import { Stop } from '@/app/components/base/icons/src/vender/line/mediaAndDevices'
 import { UserAvatarList } from '@/app/components/base/user-avatar-list'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
+import { useAccountSetting } from '@/app/components/header/account-setting/hooks'
 import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import {
   AuthCategory,
@@ -66,7 +67,6 @@ import {
   isSupportCustomRunForm,
 } from '@/app/components/workflow/utils'
 import { useAppContext } from '@/context/app-context'
-import { useModalContext } from '@/context/modal-context'
 import { useAllBuiltInTools } from '@/service/use-tools'
 import { useAllTriggerPlugins } from '@/service/use-triggers'
 import { FlowType } from '@/types/common'
@@ -354,11 +354,11 @@ const BasePanel: FC<BasePanelProps> = ({
     })
   }, [handleNodeDataUpdateWithSyncDraft, id])
 
-  const { setShowAccountSettingModal } = useModalContext()
+  const openAccountSetting = useAccountSetting()
 
   const handleJumpToDataSourcePage = useCallback(() => {
-    setShowAccountSettingModal({ payload: ACCOUNT_SETTING_TAB.DATA_SOURCE })
-  }, [setShowAccountSettingModal])
+    openAccountSetting({ payload: ACCOUNT_SETTING_TAB.DATA_SOURCE })
+  }, [openAccountSetting])
 
   const {
     appendNodeInspectVars,

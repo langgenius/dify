@@ -11,9 +11,9 @@ import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useShallow } from 'zustand/react/shallow'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
+import { useAccountSetting } from '@/app/components/header/account-setting/hooks'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import { useDocLink } from '@/context/i18n'
-import { useModalContextSelector } from '@/context/modal-context'
 import { CrawlStep } from '@/models/datasets'
 import { DatasourceType } from '@/models/pipeline'
 import { ssePost } from '@/service/base'
@@ -52,7 +52,7 @@ const WebsiteCrawl = ({
   const [crawledNum, setCrawledNum] = useState(0)
   const [crawlErrorMessage, setCrawlErrorMessage] = useState('')
   const pipelineId = useDatasetDetailContextWithSelector(s => s.dataset?.pipeline_id)
-  const setShowAccountSettingModal = useModalContextSelector(s => s.setShowAccountSettingModal)
+  const openAccountSetting = useAccountSetting()
   const {
     crawlResult,
     step,
@@ -142,10 +142,10 @@ const WebsiteCrawl = ({
   }, [handleRun])
 
   const handleSetting = useCallback(() => {
-    setShowAccountSettingModal({
+    openAccountSetting({
       payload: ACCOUNT_SETTING_TAB.DATA_SOURCE,
     })
-  }, [setShowAccountSettingModal])
+  }, [openAccountSetting])
 
   const handleCredentialChange = useCallback((credentialId: string) => {
     setCrawledNum(0)
