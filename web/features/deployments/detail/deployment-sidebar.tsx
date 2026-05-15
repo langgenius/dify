@@ -16,6 +16,7 @@ import Divider from '@/app/components/base/divider'
 import { SkeletonContainer, SkeletonRectangle } from '@/app/components/base/skeleton'
 import { getKeyboardKeyCodeBySystem } from '@/app/components/workflow/utils'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
+import Link from '@/next/link'
 import { consoleQuery } from '@/service/client'
 import { toAppMode } from '../app-mode'
 
@@ -112,6 +113,8 @@ function DeploymentSidebarInstanceInfo({ appInstanceId, expand }: {
   const isUnavailable = !app?.id || overviewQuery.isError
   const instanceName = app?.name ?? appInstanceId
   const appModeLabel = app?.id ? getAppModeLabel(toAppMode(app.mode), tCommon) : ''
+  const sourceAppLink = app?.sourceAppId && app.sourceAppAvailable !== false ? `/app/${app.sourceAppId}/overview` : undefined
+  const sourceAppName = app?.sourceAppName ?? t('detail.sourceApp')
 
   return (
     <div className={cn('shrink-0', expand ? 'p-2' : 'p-1')}>
@@ -163,8 +166,23 @@ function DeploymentSidebarInstanceInfo({ appInstanceId, expand }: {
                           {instanceName}
                         </div>
                       </div>
-                      <div className="system-2xs-medium-uppercase whitespace-nowrap text-text-tertiary">
-                        {appModeLabel}
+                      <div className="flex max-w-full items-center gap-1.5 system-2xs-medium-uppercase text-text-tertiary">
+                        <span className="shrink-0 whitespace-nowrap">{appModeLabel}</span>
+                        {sourceAppLink && (
+                          <>
+                            <span aria-hidden className="shrink-0 text-text-quaternary">·</span>
+                            <Link
+                              href={sourceAppLink}
+                              className="inline-flex min-w-0 items-center gap-0.5 rounded-sm text-text-tertiary transition-colors hover:text-text-secondary"
+                              title={t('detail.openSourceApp', { name: sourceAppName })}
+                            >
+                              <span className="truncate">
+                                {t('detail.sourceAppLink')}
+                              </span>
+                              <span aria-hidden className="i-ri-arrow-right-up-line size-3 shrink-0 text-text-quaternary" />
+                            </Link>
+                          </>
+                        )}
                       </div>
                       {app.description && (
                         <div
