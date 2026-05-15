@@ -1,10 +1,8 @@
 import pytest
-from werkzeug.exceptions import InternalServerError
 
 from controllers.openapi.app_run import (
     _DISPATCH,
     AppRunRequest,
-    _unpack_blocking,
 )
 from models.model import AppMode
 
@@ -12,19 +10,6 @@ from models.model import AppMode
 def test_dispatch_covers_runnable_modes():
     runnable = {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT, AppMode.COMPLETION, AppMode.WORKFLOW}
     assert set(_DISPATCH) == runnable
-
-
-def test_unpack_blocking_passes_through_mapping():
-    assert _unpack_blocking({"a": 1}) == {"a": 1}
-
-
-def test_unpack_blocking_unwraps_tuple():
-    assert _unpack_blocking(({"a": 1}, 200)) == {"a": 1}
-
-
-def test_unpack_blocking_rejects_non_mapping():
-    with pytest.raises(InternalServerError):
-        _unpack_blocking("not a mapping")
 
 
 def test_app_run_request_strips_blank_conversation_id():

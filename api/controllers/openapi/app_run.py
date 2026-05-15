@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import logging
-from collections.abc import Callable, Iterator, Mapping
+from collections.abc import Callable, Iterator
 from contextlib import contextmanager
 from typing import Any
 
@@ -15,12 +15,7 @@ from werkzeug.exceptions import BadRequest, HTTPException, InternalServerError, 
 import services
 from controllers.openapi import openapi_ns
 from controllers.openapi._audit import emit_app_run
-from controllers.openapi._models import (
-    AppRunRequest,
-    ChatMessageResponse,
-    CompletionMessageResponse,
-    WorkflowRunResponse,
-)
+from controllers.openapi._models import AppRunRequest
 from controllers.openapi.auth.composition import OAUTH_BEARER_PIPELINE
 from controllers.service_api.app.error import (
     AppUnavailableError,
@@ -31,12 +26,15 @@ from controllers.service_api.app.error import (
     ProviderQuotaExceededError,
 )
 from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpError
+from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.errors.error import (
     ModelCurrentlyNotSupportError,
     ProviderTokenNotInitError,
     QuotaExceededError,
 )
+from extensions.ext_redis import redis_client
+from graphon.graph_engine.manager import GraphEngineManager
 from graphon.model_runtime.errors.invoke import InvokeError
 from libs import helper
 from libs.oauth_bearer import Scope
@@ -79,14 +77,6 @@ def _translate_service_errors() -> Iterator[None]:
         raise CompletionRequestError(e.description)
 
 
-def _unpack_blocking(response: Any) -> Mapping[str, Any]:
-    if isinstance(response, tuple):
-        response = response[0]
-    if not isinstance(response, Mapping):
-        raise InternalServerError("blocking generate returned non-mapping response")
-    return response
-
-
 def _generate(app: App, caller: Any, args: dict[str, Any], streaming: bool):
     return AppGenerateService.generate(
         app_model=app,
@@ -97,40 +87,31 @@ def _generate(app: App, caller: Any, args: dict[str, Any], streaming: bool):
     )
 
 
-def _run_chat(app: App, caller: Any, payload: AppRunRequest, streaming: bool):
+def _run_chat(app: App, caller: Any, payload: AppRunRequest):
     if not payload.query or not payload.query.strip():
         raise UnprocessableEntity("query_required_for_chat")
     args = payload.model_dump(exclude_none=True)
     with _translate_service_errors():
-        response = _generate(app, caller, args, streaming)
-    if streaming:
-        return response, None
-    return None, ChatMessageResponse.model_validate(_unpack_blocking(response)).model_dump(mode="json")
+        return _generate(app, caller, args, streaming=True)
 
 
-def _run_completion(app: App, caller: Any, payload: AppRunRequest, streaming: bool):
+def _run_completion(app: App, caller: Any, payload: AppRunRequest):
     args = payload.model_dump(exclude_none=True)
     args["auto_generate_name"] = False
     args.setdefault("query", "")
     with _translate_service_errors():
-        response = _generate(app, caller, args, streaming)
-    if streaming:
-        return response, None
-    return None, CompletionMessageResponse.model_validate(_unpack_blocking(response)).model_dump(mode="json")
+        return _generate(app, caller, args, streaming=True)
 
 
-def _run_workflow(app: App, caller: Any, payload: AppRunRequest, streaming: bool):
+def _run_workflow(app: App, caller: Any, payload: AppRunRequest):
     if payload.query is not None:
         raise UnprocessableEntity("query_not_supported_for_workflow")
     args = payload.model_dump(exclude={"query", "conversation_id", "auto_generate_name"}, exclude_none=True)
     with _translate_service_errors():
-        response = _generate(app, caller, args, streaming)
-    if streaming:
-        return response, None
-    return None, WorkflowRunResponse.model_validate(_unpack_blocking(response)).model_dump(mode="json")
+        return _generate(app, caller, args, streaming=True)
 
 
-_DISPATCH: dict[AppMode, Callable[[App, Any, AppRunRequest, bool], tuple[Any, dict[str, Any] | None]]] = {
+_DISPATCH: dict[AppMode, Callable[[App, Any, AppRunRequest], Any]] = {
     AppMode.CHAT: _run_chat,
     AppMode.AGENT_CHAT: _run_chat,
     AppMode.ADVANCED_CHAT: _run_chat,
@@ -142,11 +123,10 @@ _DISPATCH: dict[AppMode, Callable[[App, Any, AppRunRequest, bool], tuple[Any, di
 @openapi_ns.route("/apps/<string:app_id>/run")
 class AppRunApi(Resource):
     @openapi_ns.expect(openapi_ns.models[AppRunRequest.__name__])
-    @openapi_ns.response(200, "Run result")
+    @openapi_ns.response(200, "Run result (SSE stream)")
     @OAUTH_BEARER_PIPELINE.guard(scope=Scope.APPS_RUN)
     def post(self, app_id: str, app_model: App, caller, caller_kind: str):
         body = request.get_json(silent=True) or {}
-        body.pop("user", None)
         try:
             payload = AppRunRequest.model_validate(body)
         except ValidationError as exc:
@@ -156,9 +136,8 @@ class AppRunApi(Resource):
         if handler is None:
             raise UnprocessableEntity("mode_not_runnable")
 
-        streaming = payload.response_mode == "streaming"
         try:
-            stream_obj, blocking_body = handler(app_model, caller, payload, streaming)
+            stream_obj = handler(app_model, caller, payload)
         except HTTPException:
             raise
         except Exception:
@@ -173,6 +152,14 @@ class AppRunApi(Resource):
             surface="apps",
         )
 
-        if streaming:
-            return helper.compact_generate_response(stream_obj)
-        return blocking_body, 200
+        return helper.compact_generate_response(stream_obj)
+
+
+@openapi_ns.route("/apps/<string:app_id>/tasks/<string:task_id>/stop")
+class AppRunTaskStopApi(Resource):
+    @openapi_ns.response(200, "Task stopped")
+    @OAUTH_BEARER_PIPELINE.guard(scope=Scope.APPS_RUN)
+    def post(self, app_id: str, task_id: str, app_model: App, caller, caller_kind: str):
+        AppQueueManager.set_stop_flag_no_user_check(task_id)
+        GraphEngineManager(redis_client).send_stop_command(task_id)
+        return {"result": "success"}

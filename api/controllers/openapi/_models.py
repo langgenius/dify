@@ -272,7 +272,6 @@ class AppRunRequest(BaseModel):
     inputs: dict[str, Any]
     query: str | None = None
     files: list[dict[str, Any]] | None = None
-    response_mode: Literal["blocking", "streaming"] | None = None
     conversation_id: UUIDStrOrEmpty | None = None
     auto_generate_name: bool = True
     workflow_id: str | None = None
