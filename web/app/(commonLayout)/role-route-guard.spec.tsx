@@ -57,7 +57,13 @@ describe('RoleRouteGuard', () => {
     expect(mockReplace).not.toHaveBeenCalled()
   })
 
-  it('should redirect dataset operator on guarded routes', async () => {
+  it.each([
+    '/',
+    '/apps',
+    '/tools',
+    '/integrations/model-provider',
+  ])('should redirect dataset operator on guarded route %s', async (pathname) => {
+    mockPathname = pathname
     setAppContext({
       isCurrentWorkspaceDatasetOperator: true,
     })
