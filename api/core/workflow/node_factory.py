@@ -1,6 +1,6 @@
 import importlib
 import pkgutil
-from collections.abc import Callable, Iterator, Mapping, MutableMapping
+from collections.abc import Callable, Iterator, Mapping, MutableMapping, Sequence
 from dataclasses import dataclass
 from functools import lru_cache
 from typing import TYPE_CHECKING, Any, cast, final, override
@@ -56,6 +56,7 @@ from graphon.nodes.http_request import build_http_request_config
 from graphon.nodes.llm.entities import LLMNodeData
 from graphon.nodes.parameter_extractor.entities import ParameterExtractorNodeData
 from graphon.nodes.question_classifier.entities import QuestionClassifierNodeData
+from graphon.variables.segments import ArrayObjectSegment
 from models.model import Conversation
 
 if TYPE_CHECKING:
@@ -496,12 +497,46 @@ class DifyNodeFactory(NodeFactory):
         if include_prompt_message_serializer:
             node_init_kwargs["prompt_message_serializer"] = self._prompt_message_serializer
         if include_retriever_attachment_loader:
-            node_init_kwargs["retriever_attachment_loader"] = self._retriever_attachment_loader
+            node_init_kwargs["retriever_attachment_loader"] = self._build_retriever_attachment_loader(
+                cast(LLMNodeData, validated_node_data)
+            )
         if include_jinja2_template_renderer:
             node_init_kwargs["jinja2_template_renderer"] = self._jinja2_template_renderer
         if validated_node_data.type == BuiltinNodeTypes.LLM:
             node_init_kwargs["default_query_selector"] = system_variable_selector(SystemVariableKey.QUERY)
         return node_init_kwargs
+
+    def _build_retriever_attachment_loader(self, node_data: LLMNodeData) -> DifyRetrieverAttachmentLoader:
+        return DifyRetrieverAttachmentLoader(
+            file_reference_factory=self._file_reference_factory,
+            segment_access_checker=self._build_retriever_segment_access_checker(
+                node_data.context.variable_selector if node_data.context.enabled else None
+            ),
+        )
+
+    def _build_retriever_segment_access_checker(
+        self,
+        context_variable_selector: Sequence[str] | None,
+    ) -> Callable[[str], bool]:
+        def checker(segment_id: str) -> bool:
+            if not context_variable_selector:
+                return False
+
+            context_value = self.graph_runtime_state.variable_pool.get(context_variable_selector)
+            if not isinstance(context_value, ArrayObjectSegment):
+                return False
+
+            for item in context_value.value:
+                if not isinstance(item, Mapping):
+                    continue
+                metadata = item.get("metadata")
+                if not isinstance(metadata, Mapping):
+                    continue
+                if metadata.get("_source") == "knowledge" and str(metadata.get("segment_id")) == str(segment_id):
+                    return True
+            return False
+
+        return checker
 
     def _build_model_instance_for_llm_node(self, node_data: LLMCompatibleNodeData) -> ModelInstance:
         node_data_model = node_data.model

@@ -8,6 +8,7 @@ from pydantic import Field, field_validator
 
 from controllers.common.schema import register_schema_models
 from fields.base import ResponseModel
+from libs.helper import to_timestamp
 from libs.login import login_required
 
 from .. import console_ns
@@ -17,12 +18,6 @@ from ..wraps import (
     cloud_edition_billing_rate_limit_check,
     setup_required,
 )
-
-
-def _to_timestamp(value: datetime | int | None) -> int | None:
-    if isinstance(value, datetime):
-        return int(value.timestamp())
-    return value
 
 
 class HitTestingDocument(ResponseModel):
@@ -61,7 +56,7 @@ class HitTestingSegment(ResponseModel):
     @field_validator("disabled_at", "created_at", "indexing_at", "completed_at", "stopped_at", mode="before")
     @classmethod
     def _normalize_timestamp(cls, value: datetime | int | None) -> int | None:
-        return _to_timestamp(value)
+        return to_timestamp(value)
 
 
 class HitTestingChildChunk(ResponseModel):

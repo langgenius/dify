@@ -25,6 +25,10 @@ class TagBasePayload(BaseModel):
     type: TagType = Field(description="Tag type")
 
 
+class TagUpdateRequestPayload(BaseModel):
+    name: str = Field(description="Tag name", min_length=1, max_length=50)
+
+
 class TagBindingPayload(BaseModel):
     tag_ids: list[str] = Field(description="Tag IDs to bind")
     target_id: str = Field(description="Target ID to bind tags to")
@@ -68,6 +72,7 @@ class TagResponse(ResponseModel):
 register_schema_models(
     console_ns,
     TagBasePayload,
+    TagUpdateRequestPayload,
     TagBindingPayload,
     TagBindingRemovePayload,
     TagListQueryParam,
@@ -118,7 +123,7 @@ class TagListApi(Resource):
 
 @console_ns.route("/tags/<uuid:tag_id>")
 class TagUpdateDeleteApi(Resource):
-    @console_ns.expect(console_ns.models[TagBasePayload.__name__])
+    @console_ns.expect(console_ns.models[TagUpdateRequestPayload.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -129,8 +134,8 @@ class TagUpdateDeleteApi(Resource):
         if not (current_user.has_edit_permission or current_user.is_dataset_editor):
             raise Forbidden()
 
-        payload = TagBasePayload.model_validate(console_ns.payload or {})
-        tag = TagService.update_tags(UpdateTagPayload(name=payload.name, type=payload.type), tag_id)
+        payload = TagUpdateRequestPayload.model_validate(console_ns.payload or {})
+        tag = TagService.update_tags(UpdateTagPayload(name=payload.name), tag_id)
 
         binding_count = TagService.get_tag_binding_count(tag_id)
 

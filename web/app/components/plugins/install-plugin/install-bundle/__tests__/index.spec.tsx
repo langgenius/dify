@@ -261,6 +261,12 @@ describe('InstallBundle', () => {
       expect(screen.getByText('plugin.installModal.installPlugin')).toBeInTheDocument()
     })
 
+    it('should constrain modal height to the viewport', () => {
+      render(<InstallBundle {...defaultProps} />)
+
+      expect(screen.getByText('plugin.installModal.installPlugin').parentElement?.parentElement).toHaveClass('max-h-[calc(100dvh-48px)]')
+    })
+
     it('should render ReadyToInstall component', () => {
       render(<InstallBundle {...defaultProps} />)
 
