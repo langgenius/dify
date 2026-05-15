@@ -22,7 +22,10 @@ import {
 } from '../common'
 import {
   DETAIL_LIST_CLASS_NAME,
+  DETAIL_LIST_DESKTOP_ROW_CLASS_NAME,
+  DETAIL_LIST_HEADER_ROW_CLASS_NAME,
   DETAIL_LIST_ROW_CLASS_NAME,
+  RELEASE_DETAIL_LIST_GRID_CLASS_NAME,
 } from '../list-styles'
 import { DeployReleaseMenu } from './deploy-release-menu'
 import { DeployedToBadge } from './deployed-to-badge'
@@ -39,6 +42,8 @@ function hasReleaseId(row: ReleaseRow): row is ReleaseRowWithId {
 }
 
 function ReleaseHistoryTableSkeleton() {
+  const { t } = useTranslation('deployments')
+
   return (
     <>
       <div className={`${DETAIL_LIST_CLASS_NAME} pc:hidden`}>
@@ -64,9 +69,16 @@ function ReleaseHistoryTableSkeleton() {
       </div>
       <div className="hidden pc:block">
         <div className={DETAIL_LIST_CLASS_NAME}>
+          <div className={`${DETAIL_LIST_HEADER_ROW_CLASS_NAME} ${RELEASE_DETAIL_LIST_GRID_CLASS_NAME}`}>
+            <div>{t('versions.col.release')}</div>
+            <div>{t('versions.col.createdAt')}</div>
+            <div>{t('versions.col.author')}</div>
+            <div>{t('versions.col.deployedTo')}</div>
+            <div className="text-right">{t('versions.col.action')}</div>
+          </div>
           {RELEASE_TABLE_ROW_SKELETON_KEYS.map(key => (
             <div key={key} className={DETAIL_LIST_ROW_CLASS_NAME}>
-              <div className="grid min-h-12 grid-cols-[minmax(150px,1fr)_minmax(130px,0.75fr)_minmax(140px,0.8fr)_minmax(150px,1fr)_auto] items-center gap-6 px-4 py-2">
+              <div className={`${DETAIL_LIST_DESKTOP_ROW_CLASS_NAME} ${RELEASE_DETAIL_LIST_GRID_CLASS_NAME}`}>
                 <div className="min-w-0">
                   <SkeletonRectangle className="h-3 w-24 animate-pulse" />
                 </div>
@@ -232,13 +244,20 @@ function ReleaseHistoryRows({ appInstanceId, releaseRows, deploymentRows, deploy
       />
       <div className="hidden pc:block">
         <div className={DETAIL_LIST_CLASS_NAME}>
+          <div className={`${DETAIL_LIST_HEADER_ROW_CLASS_NAME} ${RELEASE_DETAIL_LIST_GRID_CLASS_NAME}`}>
+            <div>{t('versions.col.release')}</div>
+            <div>{t('versions.col.createdAt')}</div>
+            <div>{t('versions.col.author')}</div>
+            <div>{t('versions.col.deployedTo')}</div>
+            <div className="text-right">{t('versions.col.action')}</div>
+          </div>
           {releaseRows.map((row) => {
             const release = row
             const releaseDeployments = getReleaseDeployments(row, deploymentRows)
 
             return (
               <div key={release.id} className={DETAIL_LIST_ROW_CLASS_NAME}>
-                <div className="grid min-h-12 grid-cols-[minmax(150px,1fr)_minmax(130px,0.75fr)_minmax(140px,0.8fr)_minmax(150px,1fr)_auto] items-center gap-6 px-4 py-2">
+                <div className={`${DETAIL_LIST_DESKTOP_ROW_CLASS_NAME} ${RELEASE_DETAIL_LIST_GRID_CLASS_NAME}`}>
                   <div className="min-w-0">
                     <Tooltip>
                       <TooltipTrigger

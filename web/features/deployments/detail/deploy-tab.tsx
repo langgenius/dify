@@ -12,7 +12,10 @@ import {
 } from './common'
 import { DeploymentEnvironmentList } from './deploy-tab/deployment-environment-list'
 import {
+  DEPLOYMENT_DETAIL_LIST_GRID_CLASS_NAME,
   DETAIL_LIST_CLASS_NAME,
+  DETAIL_LIST_DESKTOP_ROW_CLASS_NAME,
+  DETAIL_LIST_HEADER_ROW_CLASS_NAME,
   DETAIL_LIST_ROW_CLASS_NAME,
 } from './list-styles'
 
@@ -37,6 +40,8 @@ function NewDeploymentButton({ appInstanceId }: {
 const DEPLOYMENT_TABLE_ROW_SKELETON_KEYS = ['production', 'staging']
 
 function DeploymentEnvironmentListSkeleton() {
+  const { t } = useTranslation('deployments')
+
   return (
     <>
       <div className={`${DETAIL_LIST_CLASS_NAME} pc:hidden`}>
@@ -61,9 +66,15 @@ function DeploymentEnvironmentListSkeleton() {
       </div>
       <div className="hidden pc:block">
         <div className={DETAIL_LIST_CLASS_NAME}>
+          <div className={`${DETAIL_LIST_HEADER_ROW_CLASS_NAME} ${DEPLOYMENT_DETAIL_LIST_GRID_CLASS_NAME}`}>
+            <div>{t('deployTab.col.environment')}</div>
+            <div>{t('deployTab.col.status')}</div>
+            <div>{t('deployTab.col.currentRelease')}</div>
+            <div className="text-right">{t('deployTab.col.actions')}</div>
+          </div>
           {DEPLOYMENT_TABLE_ROW_SKELETON_KEYS.map(key => (
             <div key={key} className={DETAIL_LIST_ROW_CLASS_NAME}>
-              <div className="grid min-h-12 grid-cols-[minmax(160px,1fr)_minmax(150px,0.75fr)_minmax(180px,1fr)_auto] items-center gap-6 px-4 py-2">
+              <div className={`${DETAIL_LIST_DESKTOP_ROW_CLASS_NAME} ${DEPLOYMENT_DETAIL_LIST_GRID_CLASS_NAME}`}>
                 <div className="min-w-0">
                   <SkeletonRectangle className="h-3 w-32 animate-pulse" />
                 </div>

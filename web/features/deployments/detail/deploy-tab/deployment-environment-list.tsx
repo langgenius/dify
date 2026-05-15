@@ -30,8 +30,11 @@ import { releaseCommit, releaseLabel } from '../../release'
 import { deploymentStatus, isUndeployedDeploymentRow } from '../../runtime-status'
 import { openDeployDrawerAtom } from '../../store'
 import {
+  DEPLOYMENT_DETAIL_LIST_GRID_CLASS_NAME,
   DETAIL_LIST_ACTION_TRIGGER_CLASS_NAME,
   DETAIL_LIST_CLASS_NAME,
+  DETAIL_LIST_DESKTOP_ROW_CLASS_NAME,
+  DETAIL_LIST_HEADER_ROW_CLASS_NAME,
   DETAIL_LIST_ROW_CLASS_NAME,
 } from '../list-styles'
 import { DeploymentStatusSummary } from './deployment-status-summary'
@@ -271,7 +274,7 @@ function DeploymentEnvironmentDesktopRows({ appInstanceId, rows }: {
             key={envId}
             className={DETAIL_LIST_ROW_CLASS_NAME}
           >
-            <div className="grid min-h-12 grid-cols-[minmax(160px,1fr)_minmax(150px,0.75fr)_minmax(180px,1fr)_auto] items-center gap-6 px-4 py-2">
+            <div className={`${DETAIL_LIST_DESKTOP_ROW_CLASS_NAME} ${DEPLOYMENT_DETAIL_LIST_GRID_CLASS_NAME}`}>
               <div className="min-w-0">
                 <EnvironmentSummary environment={row.environment} />
               </div>
@@ -302,6 +305,8 @@ export function DeploymentEnvironmentList({ appInstanceId, rows }: {
   appInstanceId: string
   rows: EnvironmentDeployment[]
 }) {
+  const { t } = useTranslation('deployments')
+
   return (
     <>
       <div className={cn(DETAIL_LIST_CLASS_NAME, 'pc:hidden')}>
@@ -315,6 +320,12 @@ export function DeploymentEnvironmentList({ appInstanceId, rows }: {
       </div>
       <div className="hidden pc:block">
         <div className={DETAIL_LIST_CLASS_NAME}>
+          <div className={`${DETAIL_LIST_HEADER_ROW_CLASS_NAME} ${DEPLOYMENT_DETAIL_LIST_GRID_CLASS_NAME}`}>
+            <div>{t('deployTab.col.environment')}</div>
+            <div>{t('deployTab.col.status')}</div>
+            <div>{t('deployTab.col.currentRelease')}</div>
+            <div className="text-right">{t('deployTab.col.actions')}</div>
+          </div>
           <DeploymentEnvironmentDesktopRows appInstanceId={appInstanceId} rows={rows} />
         </div>
       </div>
