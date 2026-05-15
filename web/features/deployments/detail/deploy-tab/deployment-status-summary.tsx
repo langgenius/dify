@@ -51,7 +51,7 @@ export function DeploymentStatusSummary({ row }: {
   if (status === 'deploy_failed') {
     const hasRunningRelease = !!row.currentRelease?.id
     return (
-      <span className="inline-flex items-center gap-1.5 system-sm-medium text-util-colors-warning-warning-700">
+      <span className="inline-flex items-center gap-1.5 system-sm-medium text-util-colors-red-red-700">
         <StatusIconSlot>
           <span className="i-ri-alert-line size-3" />
         </StatusIconSlot>

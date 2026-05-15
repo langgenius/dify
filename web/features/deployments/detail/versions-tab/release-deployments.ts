@@ -19,14 +19,27 @@ function releaseDeploymentState(status?: string): ReleaseDeploymentState {
   return 'active'
 }
 
-function fromDeployedTo(item: DeployedEnvironment): ReleaseDeployment | undefined {
+function runtimeDeploymentByEnvironmentId(deploymentRows: EnvironmentDeployment[]) {
+  return new Map(
+    deploymentRows
+      .map((deployment) => {
+        const envId = environmentId(deployment.environment)
+        return envId ? [envId, deployment] as const : undefined
+      })
+      .filter((entry): entry is readonly [string, EnvironmentDeployment] => !!entry),
+  )
+}
+
+function fromDeployedTo(item: DeployedEnvironment, runtimeDeployments: Map<string, EnvironmentDeployment>): ReleaseDeployment | undefined {
   if (!item.environmentId)
     return undefined
+
+  const runtimeDeployment = runtimeDeployments.get(item.environmentId)
 
   return {
     environmentId: item.environmentId,
     environmentName: item.environmentName || item.environmentId,
-    state: 'active',
+    state: runtimeDeployment ? releaseDeploymentState(deploymentStatus(runtimeDeployment)) : 'active',
   }
 }
 
@@ -41,7 +54,8 @@ export function getReleaseDeployments(row: ReleaseRow, deploymentRows: Environme
   if (!releaseId)
     return []
 
-  const historyItems = row.deployedTo?.map(fromDeployedTo).filter((item): item is ReleaseDeployment => !!item) ?? []
+  const runtimeDeployments = runtimeDeploymentByEnvironmentId(deploymentRows)
+  const historyItems = row.deployedTo?.map(item => fromDeployedTo(item, runtimeDeployments)).filter((item): item is ReleaseDeployment => !!item) ?? []
   const runtimeItems = deploymentRows.flatMap((deployment) => {
     const envId = environmentId(deployment.environment)
     if (!envId)

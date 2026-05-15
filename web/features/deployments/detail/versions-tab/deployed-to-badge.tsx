@@ -8,7 +8,7 @@ import { useTranslation } from 'react-i18next'
 const RELEASE_DEPLOYMENT_STYLES: Record<ReleaseDeploymentState, string> = {
   active: 'border-util-colors-green-green-200 bg-util-colors-green-green-50 text-util-colors-green-green-700',
   deploying: 'border-util-colors-blue-blue-200 bg-util-colors-blue-blue-50 text-util-colors-blue-blue-700',
-  failed: 'border-util-colors-warning-warning-200 bg-util-colors-warning-warning-50 text-util-colors-warning-warning-700',
+  failed: 'border-util-colors-red-red-200 bg-util-colors-red-red-50 text-util-colors-red-red-700',
 }
 
 export function DeployedToBadge({ item }: {
