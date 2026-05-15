@@ -66,6 +66,7 @@ jobs:
               - 'docker/volumes/sandbox/conf/**'
             cli:
               - 'cli/**'
+              - 'packages/tsconfig/**'
               - 'package.json'
               - 'pnpm-lock.yaml'
               - 'pnpm-workspace.yaml'
@@ -73,6 +74,7 @@ jobs:
               - '.npmrc'
               - '.nvmrc'
               - '.github/workflows/cli-tests.yml'
+              - '.github/workflows/cli-docker-build.yml'
               - '.github/actions/setup-web/**'
             web:
               - 'web/**'

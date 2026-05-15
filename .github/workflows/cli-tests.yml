@@ -34,7 +34,7 @@ jobs:
         uses: ./.github/actions/setup-web
 
       - name: CI pipeline (typecheck, lint, coverage, build)
-        run: make ci
+        run: pnpm ci
 
       - name: Report coverage
         if: ${{ env.CODECOV_TOKEN != '' }}

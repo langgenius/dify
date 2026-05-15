@@ -38,7 +38,12 @@
     "lint:fix": "eslint --fix",
     "type-check": "tsc",
     "manifest": "oclif manifest",
-    "pack:tarballs": "oclif pack tarballs --xz --parallel"
+    "pack:tarballs": "oclif pack tarballs --xz --parallel",
+    "ci": "pnpm type-check && pnpm lint && pnpm test:coverage && pnpm build",
+    "clean": "rm -rf dist oclif.manifest.json node_modules/.cache",
+    "version:info": "tsx scripts/print-buildinfo.ts",
+    "docker:build-dev": "scripts/docker-build-dev.sh",
+    "sync-models": "scripts/sync-models.sh"
   },
   "dependencies": {
     "@napi-rs/keyring": "catalog:",
