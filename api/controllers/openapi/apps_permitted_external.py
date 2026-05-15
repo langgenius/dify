@@ -57,7 +57,7 @@ class PermittedExternalAppsListApi(Resource):
     )
     def get(self):
         try:
-            query: PermittedExternalAppsListQuery = PermittedExternalAppsListQuery.model_validate(request.args.to_dict(flat=True))
+            query = PermittedExternalAppsListQuery.model_validate(request.args.to_dict(flat=True))
         except ValidationError as exc:
             raise UnprocessableEntity(exc.json())
 

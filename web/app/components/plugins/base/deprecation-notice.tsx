@@ -1,11 +1,11 @@
 import type { FC } from 'react'
-import { useTranslation } from '#i18n'
 import { cn } from '@langgenius/dify-ui/cn'
 import { RiAlertFill } from '@remixicon/react'
 import { camelCase } from 'es-toolkit/string'
 import * as React from 'react'
 import { useMemo } from 'react'
 import { Trans } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import Link from '@/next/link'
 
 type DeprecationNoticeProps = {

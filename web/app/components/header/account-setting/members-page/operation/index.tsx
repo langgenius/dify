@@ -26,6 +26,9 @@ const roleI18nKeyMap = {
   dataset_operator: { label: 'members.datasetOperator', tip: 'members.datasetOperatorTip' },
 } as const
 type OperationRoleKey = keyof typeof roleI18nKeyMap
+const nonOwnerRoles = ['admin', 'editor', 'normal'] as const
+const isNonOwnerRole = (role: Member['role']) => role !== 'owner'
+
 const Operation = ({ member, operatorRole, onOperate }: IOperationProps) => {
   const [open, setOpen] = useState(false)
   const { t } = useTranslation()
@@ -48,13 +51,13 @@ const Operation = ({ member, operatorRole, onOperate }: IOperationProps) => {
     }
     if (operatorRole === 'admin') {
       return [
-        'editor',
-        'normal',
+        ...nonOwnerRoles,
         ...(datasetOperatorEnabled ? ['dataset_operator'] as const : []),
       ]
     }
     return []
   }, [operatorRole, datasetOperatorEnabled])
+  const canRemoveMember = operatorRole === 'owner' || (operatorRole === 'admin' && isNonOwnerRole(member.role))
   const handleDeleteMemberOrCancelInvitation = async () => {
     setOpen(false)
     try {
@@ -81,7 +84,7 @@ const Operation = ({ member, operatorRole, onOperate }: IOperationProps) => {
   return (
     <DropdownMenu open={open} onOpenChange={setOpen}>
       <DropdownMenuTrigger
-        render={<div className={cn('group flex h-full w-full cursor-pointer items-center justify-between px-3 system-sm-regular text-text-secondary hover:bg-state-base-hover', open && 'bg-state-base-hover')} />}
+        render={<button type="button" className={cn('group flex h-full w-full cursor-pointer items-center justify-between border-none bg-transparent px-3 text-left system-sm-regular text-text-secondary hover:bg-state-base-hover', open && 'bg-state-base-hover')} />}
       >
         {RoleMap[member.role] || RoleMap.normal}
         <span aria-hidden className={cn('i-ri-arrow-down-s-line h-4 w-4 shrink-0 group-hover:block', open ? 'block' : 'hidden')} />
@@ -108,19 +111,23 @@ const Operation = ({ member, operatorRole, onOperate }: IOperationProps) => {
             </DropdownMenuItem>
           ))}
         </div>
-        <DropdownMenuSeparator className="my-0" />
-        <div className="p-1">
-          <DropdownMenuItem
-            className="h-auto items-start gap-2 rounded-lg px-3 py-2"
-            onClick={handleDeleteMemberOrCancelInvitation}
-          >
-            <span aria-hidden className="mt-[2px] h-4 w-4 shrink-0" />
-            <div>
-              <div className="system-sm-semibold whitespace-nowrap text-text-secondary">{t('members.removeFromTeam', { ns: 'common' })}</div>
-              <div className="system-xs-regular whitespace-nowrap text-text-tertiary">{t('members.removeFromTeamTip', { ns: 'common' })}</div>
+        {canRemoveMember && (
+          <>
+            <DropdownMenuSeparator className="my-0" />
+            <div className="p-1">
+              <DropdownMenuItem
+                className="h-auto items-start gap-2 rounded-lg px-3 py-2"
+                onClick={handleDeleteMemberOrCancelInvitation}
+              >
+                <span aria-hidden className="mt-[2px] h-4 w-4 shrink-0" />
+                <div>
+                  <div className="system-sm-semibold whitespace-nowrap text-text-secondary">{t('members.removeFromTeam', { ns: 'common' })}</div>
+                  <div className="system-xs-regular whitespace-nowrap text-text-tertiary">{t('members.removeFromTeamTip', { ns: 'common' })}</div>
+                </div>
+              </DropdownMenuItem>
             </div>
-          </DropdownMenuItem>
-        </div>
+          </>
+        )}
       </DropdownMenuContent>
     </DropdownMenu>
   )

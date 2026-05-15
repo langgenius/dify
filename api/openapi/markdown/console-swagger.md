@@ -340,116 +340,6 @@ Check if activation token is valid
 | ---- | ----------- | ------ |
 | 200 | Success | [ActivationCheckResponse](#activationcheckresponse) |
 
-### /admin/batch_add_notification_accounts
-
-#### POST
-##### Description
-
-Register target accounts for a notification by email address. JSON body: {"notification_id": "...", "user_email": ["a@example.com", ...]}. File upload: multipart/form-data with a 'file' field (CSV or TXT, one email per line) plus a 'notification_id' field. Emails that do not match any account are silently skipped.
-
-##### Responses
-
-| Code | Description |
-| ---- | ----------- |
-| 200 | Accounts added successfully |
-
-### /admin/delete-explore-banner/{banner_id}
-
-#### DELETE
-##### Description
-
-Delete an explore banner
-
-##### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| banner_id | path | Banner ID to delete | Yes | string |
-
-##### Responses
-
-| Code | Description |
-| ---- | ----------- |
-| 204 | Banner deleted successfully |
-
-### /admin/insert-explore-apps
-
-#### POST
-##### Description
-
-Insert or update an app in the explore list
-
-##### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [InsertExploreAppPayload](#insertexploreapppayload) |
-
-##### Responses
-
-| Code | Description |
-| ---- | ----------- |
-| 200 | App updated successfully |
-| 201 | App inserted successfully |
-| 404 | App not found |
-
-### /admin/insert-explore-apps/{app_id}
-
-#### DELETE
-##### Description
-
-Remove an app from the explore list
-
-##### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID to remove | Yes | string |
-
-##### Responses
-
-| Code | Description |
-| ---- | ----------- |
-| 204 | App removed successfully |
-
-### /admin/insert-explore-banner
-
-#### POST
-##### Description
-
-Insert an explore banner
-
-##### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [InsertExploreBannerPayload](#insertexplorebannerpayload) |
-
-##### Responses
-
-| Code | Description |
-| ---- | ----------- |
-| 201 | Banner inserted successfully |
-
-### /admin/upsert_notification
-
-#### POST
-##### Description
-
-Create or update an in-product notification. Supply notification_id to update an existing one; omit it to create a new one. Pass at least one language variant in contents (zh / en / jp).
-
-##### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [UpsertNotificationPayload](#upsertnotificationpayload) |
-
-##### Responses
-
-| Code | Description |
-| ---- | ----------- |
-| 200 | Notification upserted successfully |
-
 ### /all-workspaces
 
 #### GET
@@ -2514,7 +2404,7 @@ Get all comments for a workflow
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Comments retrieved successfully | [WorkflowCommentBasic](#workflowcommentbasic) |
+| 200 | Comments retrieved successfully | [WorkflowCommentBasicList](#workflowcommentbasiclist) |
 
 #### POST
 ##### Summary
@@ -7625,7 +7515,7 @@ Remove one or more tag bindings from a target.
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | tag_id | path |  | Yes | string |
-| payload | body |  | Yes | [TagBasePayload](#tagbasepayload) |
+| payload | body |  | Yes | [TagUpdateRequestPayload](#tagupdaterequestpayload) |
 
 ##### Responses
 
@@ -10731,13 +10621,6 @@ AppMCPServer Status Enum
 | ---- | ---- | ----------- | -------- |
 | text | string | Transcribed text from audio | Yes |
 
-#### BatchAddNotificationAccountsPayload
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| notification_id | string |  | Yes |
-| user_email | [ string ] | List of account email addresses | Yes |
-
 #### BatchImportPayload
 
 | Name | Type | Description | Required |
@@ -12233,33 +12116,6 @@ Form input types.
 | model_type | [ModelType](#modeltype) |  | Yes |
 | provider |  |  | No |
 
-#### InsertExploreAppPayload
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| app_id | string |  | Yes |
-| can_trial | boolean |  | No |
-| category | string |  | Yes |
-| copyright |  |  | No |
-| custom_disclaimer |  |  | No |
-| desc |  |  | No |
-| language | string |  | Yes |
-| position | integer |  | Yes |
-| privacy_policy |  |  | No |
-| trial_limit | integer |  | No |
-
-#### InsertExploreBannerPayload
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| category | string |  | Yes |
-| description | string |  | Yes |
-| img-src | string |  | Yes |
-| language | string |  | No |
-| link | string |  | Yes |
-| sort | integer |  | Yes |
-| title | string |  | Yes |
-
 #### InstallPermission
 
 | Name | Type | Description | Required |
@@ -12369,16 +12225,6 @@ Enum class for large language model mode.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | LLMMode | string | Enum class for large language model mode. |  |
-
-#### LangContentPayload
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| body | string |  | Yes |
-| lang | string | Language tag: 'zh' \| 'en' \| 'jp' | Yes |
-| subtitle |  |  | No |
-| title | string |  | Yes |
-| title_pic_url |  |  | No |
 
 #### LegacyEndpointUpdatePayload
 
@@ -13610,6 +13456,12 @@ Tag type
 | ---- | ---- | ----------- | -------- |
 | TagType | string | Tag type |  |
 
+#### TagUpdateRequestPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| name | string | Tag name | Yes |
+
 #### TenantAccountRole
 
 | Name | Type | Description | Required |
@@ -13786,6 +13638,14 @@ Tag type
 | unit | string |  | No |
 | variable | string |  | No |
 
+#### TrialSimpleAccount
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| email | string |  | No |
+| id | string |  | No |
+| name | string |  | No |
+
 #### TrialSite
 
 | Name | Type | Description | Required |
@@ -13829,7 +13689,7 @@ Tag type
 | ---- | ---- | ----------- | -------- |
 | conversation_variables | [ [TrialConversationVariable](#trialconversationvariable) ] |  | No |
 | created_at | object |  | No |
-| created_by | [SimpleAccount](#simpleaccount) |  | No |
+| created_by | [TrialSimpleAccount](#trialsimpleaccount) |  | No |
 | environment_variables | [ object ] |  | No |
 | features | object |  | No |
 | graph | object |  | No |
@@ -13840,7 +13700,7 @@ Tag type
 | rag_pipeline_variables | [ [TrialPipelineVariable](#trialpipelinevariable) ] |  | No |
 | tool_published | boolean |  | No |
 | updated_at | object |  | No |
-| updated_by | [SimpleAccount](#simpleaccount) |  | No |
+| updated_by | [TrialSimpleAccount](#trialsimpleaccount) |  | No |
 | version | string |  | No |
 
 #### TrialWorkflowPartial
@@ -13928,17 +13788,6 @@ Tag type
 | single_chunk_attachment_limit | integer |  | Yes |
 | video_file_size_limit | integer |  | Yes |
 | workflow_file_upload_limit | integer |  | Yes |
-
-#### UpsertNotificationPayload
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| contents | [ [LangContentPayload](#langcontentpayload) ] |  | Yes |
-| end_time |  | RFC3339, e.g. 2026-03-20T23:59:59Z | No |
-| frequency | string | 'once' \| 'every_page_load' | No |
-| notification_id |  | Omit to create; supply UUID to update | No |
-| start_time |  | RFC3339, e.g. 2026-03-01T00:00:00Z | No |
-| status | string | 'active' \| 'inactive' | No |
 
 #### UserAction
 
@@ -14084,32 +13933,47 @@ User action configuration.
 | trigger_metadata |  |  | No |
 | workflow_run |  |  | No |
 
+#### WorkflowCommentAccount
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| avatar_url |  |  | Yes |
+| email | string |  | Yes |
+| id | string |  | Yes |
+| name | string |  | Yes |
+
 #### WorkflowCommentBasic
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| content | string |  | No |
-| created_at | object |  | No |
-| created_by | string |  | No |
-| created_by_account | [_AnonymousInlineModel_6fec07cd0d85](#_anonymousinlinemodel_6fec07cd0d85) |  | No |
-| id | string |  | No |
-| mention_count | integer |  | No |
-| participants | [ [_AnonymousInlineModel_6fec07cd0d85](#_anonymousinlinemodel_6fec07cd0d85) ] |  | No |
-| position_x | number |  | No |
-| position_y | number |  | No |
-| reply_count | integer |  | No |
-| resolved | boolean |  | No |
-| resolved_at | object |  | No |
-| resolved_by | string |  | No |
-| resolved_by_account | [_AnonymousInlineModel_6fec07cd0d85](#_anonymousinlinemodel_6fec07cd0d85) |  | No |
-| updated_at | object |  | No |
+| content | string |  | Yes |
+| created_at |  |  | No |
+| created_by | string |  | Yes |
+| created_by_account |  |  | No |
+| id | string |  | Yes |
+| mention_count | integer |  | Yes |
+| participants | [ [WorkflowCommentAccount](#workflowcommentaccount) ] |  | Yes |
+| position_x | number |  | Yes |
+| position_y | number |  | Yes |
+| reply_count | integer |  | Yes |
+| resolved | boolean |  | Yes |
+| resolved_at |  |  | No |
+| resolved_by |  |  | No |
+| resolved_by_account |  |  | No |
+| updated_at |  |  | No |
+
+#### WorkflowCommentBasicList
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [WorkflowCommentBasic](#workflowcommentbasic) ] |  | Yes |
 
 #### WorkflowCommentCreate
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| created_at | object |  | No |
-| id | string |  | No |
+| created_at |  |  | No |
+| id | string |  | Yes |
 
 #### WorkflowCommentCreatePayload
 
@@ -14124,20 +13988,28 @@ User action configuration.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| content | string |  | No |
-| created_at | object |  | No |
-| created_by | string |  | No |
-| created_by_account | [_AnonymousInlineModel_6fec07cd0d85](#_anonymousinlinemodel_6fec07cd0d85) |  | No |
-| id | string |  | No |
-| mentions | [ [_AnonymousInlineModel_f7ff64cce858](#_anonymousinlinemodel_f7ff64cce858) ] |  | No |
-| position_x | number |  | No |
-| position_y | number |  | No |
-| replies | [ [_AnonymousInlineModel_55c39c6a4b9e](#_anonymousinlinemodel_55c39c6a4b9e) ] |  | No |
-| resolved | boolean |  | No |
-| resolved_at | object |  | No |
-| resolved_by | string |  | No |
-| resolved_by_account | [_AnonymousInlineModel_6fec07cd0d85](#_anonymousinlinemodel_6fec07cd0d85) |  | No |
-| updated_at | object |  | No |
+| content | string |  | Yes |
+| created_at |  |  | No |
+| created_by | string |  | Yes |
+| created_by_account |  |  | No |
+| id | string |  | Yes |
+| mentions | [ [WorkflowCommentMention](#workflowcommentmention) ] |  | Yes |
+| position_x | number |  | Yes |
+| position_y | number |  | Yes |
+| replies | [ [WorkflowCommentReply](#workflowcommentreply) ] |  | Yes |
+| resolved | boolean |  | Yes |
+| resolved_at |  |  | No |
+| resolved_by |  |  | No |
+| resolved_by_account |  |  | No |
+| updated_at |  |  | No |
+
+#### WorkflowCommentMention
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| mentioned_user_account |  |  | No |
+| mentioned_user_id | string |  | Yes |
+| reply_id |  |  | No |
 
 #### WorkflowCommentMentionUsersPayload
 
@@ -14145,12 +14017,22 @@ User action configuration.
 | ---- | ---- | ----------- | -------- |
 | users | [ [AccountWithRole](#accountwithrole) ] |  | Yes |
 
+#### WorkflowCommentReply
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| content | string |  | Yes |
+| created_at |  |  | No |
+| created_by | string |  | Yes |
+| created_by_account |  |  | No |
+| id | string |  | Yes |
+
 #### WorkflowCommentReplyCreate
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| created_at | object |  | No |
-| id | string |  | No |
+| created_at |  |  | No |
+| id | string |  | Yes |
 
 #### WorkflowCommentReplyPayload
 
@@ -14163,24 +14045,24 @@ User action configuration.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| id | string |  | No |
-| updated_at | object |  | No |
+| id | string |  | Yes |
+| updated_at |  |  | No |
 
 #### WorkflowCommentResolve
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| id | string |  | No |
-| resolved | boolean |  | No |
-| resolved_at | object |  | No |
-| resolved_by | string |  | No |
+| id | string |  | Yes |
+| resolved | boolean |  | Yes |
+| resolved_at |  |  | No |
+| resolved_by |  |  | No |
 
 #### WorkflowCommentUpdate
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| id | string |  | No |
-| updated_at | object |  | No |
+| id | string |  | Yes |
+| updated_at |  |  | No |
 
 #### WorkflowCommentUpdatePayload
 
@@ -14584,25 +14466,6 @@ Workflow tool configuration
 | limit | integer |  | No |
 | page | integer |  | No |
 
-#### _AnonymousInlineModel_55c39c6a4b9e
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| content | string |  | No |
-| created_at | object |  | No |
-| created_by | string |  | No |
-| created_by_account | [_AnonymousInlineModel_6fec07cd0d85](#_anonymousinlinemodel_6fec07cd0d85) |  | No |
-| id | string |  | No |
-
-#### _AnonymousInlineModel_6fec07cd0d85
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| avatar_url | object |  | No |
-| email | string |  | No |
-| id | string |  | No |
-| name | string |  | No |
-
 #### _AnonymousInlineModel_b1954337d565
 
 | Name | Type | Description | Required |
@@ -14611,14 +14474,6 @@ Workflow tool configuration
 | model_name | string |  | No |
 | model_provider_name | string |  | No |
 | summary_prompt | string |  | No |
-
-#### _AnonymousInlineModel_f7ff64cce858
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| mentioned_user_account | [_AnonymousInlineModel_6fec07cd0d85](#_anonymousinlinemodel_6fec07cd0d85) |  | No |
-| mentioned_user_id | string |  | No |
-| reply_id | string |  | No |
 
 ## FastOpenAPI Preview (OpenAPI 3.0)
 

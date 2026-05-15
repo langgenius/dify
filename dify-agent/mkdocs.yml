@@ -1,0 +1,65 @@
+site_name: Dify Agent
+site_description: Agent runtime and Agenton composition framework documentation
+strict: true
+
+repo_name: langgenius/dify
+repo_url: https://github.com/langgenius/dify
+edit_uri: edit/main/dify-agent/docs/
+
+nav:
+  - Home: index.md
+  - Agenton:
+      - Overview: agenton/index.md
+      - Guide: agenton/guide/index.md
+      - API Reference: agenton/api/index.md
+      - Examples: agenton/examples/index.md
+  - Dify Agent:
+      - Overview: dify-agent/index.md
+      - Get Started: dify-agent/get-started/index.md
+      - Operations Guide: dify-agent/guide/index.md
+      - Run API: dify-agent/api/index.md
+      - Examples: dify-agent/examples/index.md
+
+theme:
+  name: material
+  features:
+    - content.code.copy
+    - content.tabs.link
+    - navigation.indexes
+    - navigation.sections
+    - navigation.tracking
+    - toc.follow
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - md_in_html
+  - pymdownx.details
+  - pymdownx.highlight:
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.superfences
+  - pymdownx.tabbed:
+      alternate_style: true
+  - tables
+
+plugins:
+  - search
+  - mkdocstrings:
+      handlers:
+        python:
+          paths:
+            - src
+          options:
+            docstring_style: google
+            members_order: source
+            separate_signature: true
+            show_signature_annotations: true
+            signature_crossrefs: true
+
+watch:
+  - src
+  - examples
+
+hooks:
+  - docs/.hooks/main.py

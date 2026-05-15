@@ -128,7 +128,7 @@ class DifyWorkflowFileRuntime(WorkflowFileRuntimeProtocol):
 
     @staticmethod
     def _secret_key() -> bytes:
-        return dify_config.SECRET_KEY.encode() if dify_config.SECRET_KEY else b""
+        return dify_config.SECRET_KEY.encode()
 
     def _sign_query(self, *, payload: str) -> dict[str, str]:
         timestamp = str(int(time.time()))

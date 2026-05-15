@@ -5,12 +5,7 @@ from datetime import datetime
 from pydantic import field_validator
 
 from fields.base import ResponseModel
-
-
-def _to_timestamp(value: datetime | int | None) -> int | None:
-    if isinstance(value, datetime):
-        return int(value.timestamp())
-    return value
+from libs.helper import to_timestamp
 
 
 class UploadConfig(ResponseModel):
@@ -45,7 +40,7 @@ class FileResponse(ResponseModel):
     @field_validator("created_at", mode="before")
     @classmethod
     def _normalize_created_at(cls, value: datetime | int | None) -> int | None:
-        return _to_timestamp(value)
+        return to_timestamp(value)
 
 
 class RemoteFileInfo(ResponseModel):
@@ -66,7 +61,7 @@ class FileWithSignedUrl(ResponseModel):
     @field_validator("created_at", mode="before")
     @classmethod
     def _normalize_created_at(cls, value: datetime | int | None) -> int | None:
-        return _to_timestamp(value)
+        return to_timestamp(value)
 
 
 __all__ = [
