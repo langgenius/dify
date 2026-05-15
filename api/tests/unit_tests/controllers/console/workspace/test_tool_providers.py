@@ -13,7 +13,7 @@ from flask import Flask
 from flask.views import MethodView
 
 if not hasattr(builtins, "MethodView"):
-    builtins.MethodView = MethodView  # type: ignore[attr-defined]
+    vars(builtins)["MethodView"] = MethodView
 
 
 _CONTROLLER_MODULE: ModuleType | None = None

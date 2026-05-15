@@ -17,7 +17,7 @@ from core.entities.execution_extra_content import HumanInputContent
 
 # Ensure flask_restx.api finds MethodView during import.
 if not hasattr(builtins, "MethodView"):
-    builtins.MethodView = MethodView  # type: ignore[attr-defined]
+    vars(builtins)["MethodView"] = MethodView
 
 
 def _load_controller_module():
