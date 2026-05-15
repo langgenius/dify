@@ -33,10 +33,6 @@ const ICON_MAP = {
   [Plan.team]: <Team />,
 }
 
-type ConfirmType = {
-  type: 'info' | 'warning'
-}
-
 type CloudPlanItemProps = {
   currentPlan: BasicPlan
   plan: BasicPlan
@@ -64,15 +60,12 @@ const CloudPlanItem: FC<CloudPlanItemProps> = ({
   const { enableEducationPlan, isEducationAccount } = useProviderContext()
   const isEducationDiscountMode = enableEducationPlan && isEducationAccount
   const isEducationDiscountSupportedPlan = plan === Plan.professional && isYear
-  const selectedPlanName = t(`${i18nPrefix}.name`, { ns: 'billing' })
-  const selectedBillingPeriod = t(`educationPricingConfirm.billingPeriod.${isYear ? 'yearly' : 'monthly'}`, { ns: 'education' })
   const educationDiscountWarningText = canPay && isEducationDiscountMode && !isFreePlan && !isEducationDiscountSupportedPlan
     ? t('planNotSupportEducationDiscount', { ns: 'education' })
     : undefined
   const openAsyncWindow = useAsyncWindowOpen()
   const { handleEducationDiscount, isEducationDiscountLoading } = useEducationDiscount()
   const [showEducationPricingConfirm, setShowEducationPricingConfirm] = React.useState(false)
-  const educationPricingConfirmInfo: ConfirmType = { type: 'warning' }
 
   const btnText = useMemo(() => {
     if (canPay && isEducationDiscountMode && isEducationDiscountSupportedPlan && !isCurrent)
@@ -139,9 +132,12 @@ const CloudPlanItem: FC<CloudPlanItemProps> = ({
 
     await handlePayCurrentPlan()
   }
-  const handleContinueCurrentPlan = async () => {
-    setShowEducationPricingConfirm(false)
+  const handleSwitchToProfessionalAnnual = async () => {
+    await handleEducationDiscount()
+  }
+  const handleKeepCurrentPlan = async () => {
     await handlePayCurrentPlan()
+    setShowEducationPricingConfirm(false)
   }
   return (
     <div className="flex min-w-0 flex-1 flex-col pb-3">
@@ -201,31 +197,47 @@ const CloudPlanItem: FC<CloudPlanItemProps> = ({
         open={showEducationPricingConfirm}
         onOpenChange={setShowEducationPricingConfirm}
       >
-        <AlertDialogContent>
-          <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
-            <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
+        {showEducationPricingConfirm && (
+          <div
+            className="fixed inset-0 z-[51] bg-black/40"
+            aria-hidden="true"
+          />
+        )}
+        <AlertDialogContent
+          className="fixed! top-1/2! bottom-auto! left-1/2! z-[52]! w-[640px] -translate-x-1/2! -translate-y-1/2! overflow-hidden"
+          backdropClassName="hidden"
+        >
+          <button
+            type="button"
+            className="absolute top-6 right-6 flex size-8 items-center justify-center rounded-lg text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary"
+            aria-label={t('operation.close', { ns: 'common' })}
+            onClick={() => setShowEducationPricingConfirm(false)}
+          >
+            <span className="i-ri-close-line size-5" aria-hidden="true" />
+          </button>
+          <div className="flex flex-col gap-2 px-8 pt-8 pr-16 pb-6">
+            <AlertDialogTitle className="w-full title-2xl-semi-bold text-text-primary">
               {t('educationPricingConfirm.title', { ns: 'education' })}
             </AlertDialogTitle>
-            <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
-              {t('educationPricingConfirm.description', {
-                ns: 'education',
-                planName: selectedPlanName,
-                billingPeriod: selectedBillingPeriod,
-              })}
+            <AlertDialogDescription className="w-full system-md-regular text-text-tertiary">
+              {t('educationPricingConfirm.description', { ns: 'education' })}
             </AlertDialogDescription>
           </div>
-          <AlertDialogActions>
+          <AlertDialogActions className="gap-3 px-8 pt-6 pb-8">
             <AlertDialogCancelButton
-              onClick={() => setShowEducationPricingConfirm(false)}
-              disabled={loading}
+              onClick={handleKeepCurrentPlan}
+              disabled={loading || isEducationDiscountLoading}
+              loading={loading}
+              className="h-11 min-w-[184px] rounded-xl px-6 text-base font-semibold"
             >
               {t('educationPricingConfirm.cancel', { ns: 'education' })}
             </AlertDialogCancelButton>
             <AlertDialogConfirmButton
-              tone={educationPricingConfirmInfo.type !== 'info' ? 'destructive' : 'default'}
-              onClick={handleContinueCurrentPlan}
-              disabled={loading}
-              loading={loading}
+              tone="default"
+              onClick={handleSwitchToProfessionalAnnual}
+              disabled={isEducationDiscountLoading}
+              loading={isEducationDiscountLoading}
+              className="h-11 min-w-[292px] rounded-xl px-6 text-base font-semibold"
             >
               {t('educationPricingConfirm.continue', { ns: 'education' })}
             </AlertDialogConfirmButton>
