@@ -9,7 +9,7 @@ from datetime import datetime
 from threading import Thread
 from typing import Any, Union
 
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.orm import Session, sessionmaker
 
 from constants.tts_auto_play_timeout import TTS_AUTO_PLAY_TIMEOUT, TTS_AUTO_PLAY_YIELD_CPU_TIME
@@ -425,11 +425,7 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         self._workflow_run_id = run_id
 
         with self._database_session() as session:
-            message = self._get_message(session=session)
-            if not message:
-                raise ValueError(f"Message not found: {self._message_id}")
-
-            message.workflow_run_id = run_id
+            session.execute(update(Message).where(Message.id == self._message_id).values(workflow_run_id=run_id))
 
         workflow_start_resp = self._workflow_response_converter.workflow_start_to_stream_response(
             task_id=self._application_generate_entity.task_id,
