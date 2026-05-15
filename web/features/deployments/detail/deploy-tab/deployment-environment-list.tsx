@@ -19,7 +19,7 @@ import {
 } from '@langgenius/dify-ui/dropdown-menu'
 import { useMutation } from '@tanstack/react-query'
 import { useSetAtom } from 'jotai'
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { consoleQuery } from '@/service/client'
 import {
@@ -82,7 +82,10 @@ function DeploymentRowActions({ appInstanceId, envId, row }: {
   const status = deploymentStatus(row)
   const [showUndeployConfirm, setShowUndeployConfirm] = useState(false)
   const [actionsOpen, setActionsOpen] = useState(false)
-  const undeployActionDisabled = undeployDeployment.isPending || !envId
+  const [isUndeploying, setIsUndeploying] = useState(false)
+  const undeployInFlightRef = useRef(false)
+  const isUndeployRequesting = undeployDeployment.isPending || isUndeploying
+  const undeployActionDisabled = isUndeployRequesting || !envId
   const isDeploying = status === 'deploying'
   const deployActionLabel = isUndeployed
     ? t('deployDrawer.deploy')
@@ -96,15 +99,21 @@ function DeploymentRowActions({ appInstanceId, envId, row }: {
   }
 
   function handleUndeploy() {
-    if (!envId)
+    if (!envId || undeployInFlightRef.current)
       return
+    undeployInFlightRef.current = true
+    setIsUndeploying(true)
     undeployDeployment.mutate(
       {
         params: { appInstanceId, environmentId: envId },
         body: { appInstanceId, environmentId: envId },
       },
       {
-        onSettled: () => setShowUndeployConfirm(false),
+        onSettled: () => {
+          undeployInFlightRef.current = false
+          setIsUndeploying(false)
+          setShowUndeployConfirm(false)
+        },
       },
     )
   }
@@ -162,7 +171,11 @@ function DeploymentRowActions({ appInstanceId, envId, row }: {
       {!isUndeployed && !isDeploying && (
         <AlertDialog
           open={showUndeployConfirm}
-          onOpenChange={open => !open && setShowUndeployConfirm(false)}
+          onOpenChange={(open) => {
+            if (isUndeployRequesting)
+              return
+            setShowUndeployConfirm(open)
+          }}
         >
           <AlertDialogContent className="w-130">
             <div className="flex flex-col gap-3 px-6 pt-6 pb-2">
@@ -174,10 +187,14 @@ function DeploymentRowActions({ appInstanceId, envId, row }: {
               </AlertDialogDescription>
             </div>
             <AlertDialogActions>
-              <AlertDialogCancelButton variant="secondary">
+              <AlertDialogCancelButton variant="secondary" disabled={isUndeployRequesting}>
                 {t('deployDrawer.cancel')}
               </AlertDialogCancelButton>
-              <AlertDialogConfirmButton onClick={handleUndeploy}>
+              <AlertDialogConfirmButton
+                loading={isUndeployRequesting}
+                disabled={undeployActionDisabled}
+                onClick={handleUndeploy}
+              >
                 {t('deployTab.confirmUndeploy')}
               </AlertDialogConfirmButton>
             </AlertDialogActions>
@@ -264,7 +281,7 @@ function DeploymentEnvironmentDesktopRows({ appInstanceId, rows }: {
               <div className="min-w-0">
                 <CurrentReleaseSummary release={row.currentRelease} />
               </div>
-              <div className="flex justify-end">
+              <div className="flex w-8 justify-end">
                 <DeploymentRowActions appInstanceId={appInstanceId} envId={envId} row={row} />
               </div>
             </div>
