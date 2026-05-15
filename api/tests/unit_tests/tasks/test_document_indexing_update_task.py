@@ -341,7 +341,6 @@ class TestUpdateTaskSummaryGeneration:
 
     def test_should_not_queue_when_document_is_paused(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """Summary is skipped when IndexingRunner raises DocumentIsPausedError."""
-        from core.indexing_runner import DocumentIsPausedError
 
         dataset, doc_s1, _ = _make_dataset_and_documents(
             summary_index_setting={"enable": True},
@@ -373,9 +372,7 @@ class TestUpdateTaskSummaryGeneration:
 
         delay_mock.assert_not_called()
 
-    def test_should_not_queue_when_dataset_not_found_after_indexing(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    def test_should_not_queue_when_dataset_not_found_after_indexing(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """Summary is skipped when the dataset disappears after indexing."""
         dataset, doc_s1, _ = _make_dataset_and_documents(
             summary_index_setting={"enable": True},
@@ -409,9 +406,7 @@ class TestUpdateTaskSummaryGeneration:
 
         delay_mock.assert_not_called()
 
-    def test_should_not_queue_when_document_not_completed_after_indexing(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    def test_should_not_queue_when_document_not_completed_after_indexing(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """Summary is skipped when document indexing_status is not COMPLETED after indexing."""
         dataset, doc_s1, _ = _make_dataset_and_documents(
             summary_index_setting={"enable": True},
