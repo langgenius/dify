@@ -11903,7 +11903,7 @@ Request payload for bulk downloading documents as a zip archive.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| FormInputConfig | [ParagraphInputConfig](#paragraphinputconfig) \| [SelectInputConfig](#selectinputconfig) \| [FileInputConfig](#fileinputconfig) \| [FileListInputConfig](#filelistinputconfig) |  |  |
+| FormInputConfig |  |  |  |
 
 #### GenerateSummaryPayload
 
@@ -12676,7 +12676,7 @@ Form input definition.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| default | [StringSource](#stringsource) |  | No |
+| default |  |  | No |
 | output_variable_name | string |  | Yes |
 | type | string |  | No |
 
