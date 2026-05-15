@@ -9,6 +9,7 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Input from '@/app/components/base/input'
 import { consoleQuery } from '@/service/client'
+import { useSourceAppAvailability } from '../source-app-availability'
 
 const DESCRIPTION_MAX_LENGTH = 512
 const DESCRIPTION_WARN_THRESHOLD = 460
@@ -27,7 +28,8 @@ export function CreateReleaseControl({ appInstanceId, variant = 'primary', size 
       params: { appInstanceId },
     },
   }))
-  const canCreateRelease = overview ? overview.overview?.appInstance?.sourceAppAvailable !== false : false
+  const sourceAppAvailability = useSourceAppAvailability(overview?.overview?.appInstance)
+  const canCreateRelease = sourceAppAvailability.canCreateRelease
 
   function closeDialog() {
     setIsCreating(false)

@@ -2,6 +2,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { consoleQuery } from '@/service/client'
+import { useSourceAppAvailability } from './source-app-availability'
 import { CreateReleaseControl } from './versions-tab/create-release-control'
 import { ReleaseHistoryTable } from './versions-tab/release-history-table'
 
@@ -14,7 +15,8 @@ function SourceAppUnavailableNotice({ appInstanceId }: {
       params: { appInstanceId },
     },
   }))
-  if (overview?.overview?.appInstance?.sourceAppAvailable !== false)
+  const sourceAppAvailability = useSourceAppAvailability(overview?.overview?.appInstance)
+  if (!sourceAppAvailability.sourceAppUnavailable)
     return null
 
   return (

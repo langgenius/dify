@@ -8,6 +8,7 @@ import { EnvironmentStrip, EnvironmentStripSkeleton } from './overview-tab/envir
 import { computeOverviewStats } from './overview-tab/overview-drift'
 import { PreviousReleases } from './overview-tab/previous-releases'
 import { ReleaseHero, ReleaseHeroSkeleton } from './overview-tab/release-hero'
+import { useSourceAppAvailability } from './source-app-availability'
 
 const OVERVIEW_RELEASE_WINDOW = 20
 
@@ -16,6 +17,27 @@ function OverviewLayout({ children }: { children: React.ReactNode }) {
     <div className="mx-auto flex w-full max-w-[1280px] min-w-0 flex-col gap-6 px-6 py-6 2xl:max-w-[1440px]">
       {children}
     </div>
+  )
+}
+
+function SourceAppDeletedNotice() {
+  const { t } = useTranslation('deployments')
+
+  return (
+    <section
+      role="status"
+      className="flex items-start gap-3 rounded-lg border border-util-colors-warning-warning-200 bg-util-colors-warning-warning-50 px-4 py-3 text-util-colors-warning-warning-700"
+    >
+      <span aria-hidden className="mt-0.5 i-ri-error-warning-fill size-4 shrink-0" />
+      <div className="min-w-0">
+        <div className="system-sm-semibold text-util-colors-warning-warning-700">
+          {t('overview.sourceAppDeletedTitle')}
+        </div>
+        <p className="mt-1 system-sm-regular text-util-colors-warning-warning-700">
+          {t('overview.sourceAppDeletedDescription')}
+        </p>
+      </div>
+    </section>
   )
 }
 
@@ -32,6 +54,8 @@ export function OverviewTab({ appInstanceId }: {
       query: { pageNumber: 1, resultsPerPage: OVERVIEW_RELEASE_WINDOW },
     },
   }))
+  const instance = overviewQuery.data?.overview?.appInstance
+  const sourceAppAvailability = useSourceAppAvailability(instance)
 
   if (overviewQuery.isLoading) {
     return (
@@ -49,7 +73,6 @@ export function OverviewTab({ appInstanceId }: {
     )
   }
 
-  const instance = overviewQuery.data?.overview?.appInstance
   if (!instance?.id) {
     return (
       <OverviewLayout>
@@ -87,6 +110,7 @@ export function OverviewTab({ appInstanceId }: {
         latestRelease={latestRelease}
         stats={stats}
       />
+      {sourceAppAvailability.sourceAppUnavailable && <SourceAppDeletedNotice />}
       <EnvironmentStrip
         appInstanceId={appInstanceId}
         rows={runtimeRows}
