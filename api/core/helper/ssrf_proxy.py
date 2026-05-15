@@ -333,20 +333,12 @@ def _is_disallowed_ip(raw: str) -> bool:
         ip = ipaddress.ip_address(raw)
     except ValueError:
         return True
-    return (
-        ip.is_private
-        or ip.is_loopback
-        or ip.is_link_local
-        or ip.is_multicast
-        or ip.is_reserved
-        or ip.is_unspecified
-    )
+    return ip.is_private or ip.is_loopback or ip.is_link_local or ip.is_multicast or ip.is_reserved or ip.is_unspecified
 
 
 def _ssrf_proxy_configured() -> bool:
     return bool(
-        dify_config.SSRF_PROXY_ALL_URL
-        or (dify_config.SSRF_PROXY_HTTP_URL and dify_config.SSRF_PROXY_HTTPS_URL)
+        dify_config.SSRF_PROXY_ALL_URL or (dify_config.SSRF_PROXY_HTTP_URL and dify_config.SSRF_PROXY_HTTPS_URL)
     )
 
 
