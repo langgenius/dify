@@ -252,21 +252,21 @@ export default function IntegrationsPage({
   const secondaryItems = useMemo<NavItem[]>(() => [
     {
       section: 'trigger',
-      label: t('settings.trigger', { ns: 'common' }),
+      label: t('categorySingle.trigger', { ns: 'plugin' }),
       icon: 'i-custom-vender-integrations-trigger',
       activeIcon: 'i-custom-vender-integrations-trigger-active',
       iconClassName: 'h-[13.5px] w-[13.5px]',
     },
     {
       section: 'agent-strategy',
-      label: t('settings.agentStrategy', { ns: 'common' }),
+      label: t('categorySingle.agent', { ns: 'plugin' }),
       icon: 'i-custom-vender-integrations-agent-strategy',
       activeIcon: 'i-custom-vender-integrations-agent-strategy-active',
       iconClassName: 'h-[14.5px] w-[15.5px]',
     },
     {
       section: 'extension',
-      label: t('settings.extension', { ns: 'common' }),
+      label: t('categorySingle.extension', { ns: 'plugin' }),
       icon: 'i-custom-vender-integrations-extension',
       activeIcon: 'i-custom-vender-integrations-extension-active',
       iconClassName: 'h-[13.5px] w-3',
@@ -318,17 +318,17 @@ export default function IntegrationsPage({
         }
       case 'trigger':
         return {
-          title: t('settings.trigger', { ns: 'common' }),
+          title: t('categorySingle.trigger', { ns: 'plugin' }),
           description: t('triggerPage.description', { ns: 'common' }),
         }
       case 'extension':
         return {
-          title: t('settings.extension', { ns: 'common' }),
+          title: t('categorySingle.extension', { ns: 'plugin' }),
           description: t('extensionPage.description', { ns: 'common' }),
         }
       case 'agent-strategy':
         return {
-          title: t('settings.agentStrategy', { ns: 'common' }),
+          title: t('categorySingle.agent', { ns: 'plugin' }),
           description: t('agentStrategyPage.description', { ns: 'common' }),
         }
       default:
