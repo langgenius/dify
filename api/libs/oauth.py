@@ -69,9 +69,9 @@ class OAuthUserInfo:
 
 
 def encode_oauth_state(
-    invite_token: str | None = None,
-    timezone: str | None = None,
-    language: str | None = None,
+    invite_token: str = "",
+    timezone: str = "",
+    language: str = "",
 ) -> str | None:
     state: OAuthState = {}
     if invite_token:
@@ -119,9 +119,9 @@ class OAuth:
 
     def get_authorization_url(
         self,
-        invite_token: str | None = None,
-        timezone: str | None = None,
-        language: str | None = None,
+        invite_token: str = "",
+        timezone: str = "",
+        language: str = "",
     ) -> str:
         raise NotImplementedError()
 
@@ -147,9 +147,9 @@ class GitHubOAuth(OAuth):
 
     def get_authorization_url(
         self,
-        invite_token: str | None = None,
-        timezone: str | None = None,
-        language: str | None = None,
+        invite_token: str = "",
+        timezone: str = "",
+        language: str = "",
     ) -> str:
         params = {
             "client_id": self.client_id,
@@ -240,9 +240,9 @@ class GoogleOAuth(OAuth):
 
     def get_authorization_url(
         self,
-        invite_token: str | None = None,
-        timezone: str | None = None,
-        language: str | None = None,
+        invite_token: str = "",
+        timezone: str = "",
+        language: str = "",
     ) -> str:
         params = {
             "client_id": self.client_id,
