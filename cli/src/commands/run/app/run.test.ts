@@ -8,6 +8,7 @@ import { startMock } from '../../../../test/fixtures/dify-mock/server.js'
 import { loadAppInfoCache } from '../../../cache/app-info.js'
 import { createClient } from '../../../http/client.js'
 import { bufferStreams } from '../../../io/streams.js'
+import { resumeApp } from './resume/run.js'
 import { runApp } from './run.js'
 
 function bundle(): HostsBundle {
@@ -104,7 +105,7 @@ describe('runApp', () => {
     const io = bufferStreams()
     const cache = await loadAppInfoCache({ configDir: dir })
     await runApp(
-      { appId: 'app-1', message: 'hi', stream: true, streamSetExplicitly: true },
+      { appId: 'app-1', message: 'hi', stream: true },
       { bundle: bundle(), http: createClient({ host: mock.url, bearer: 'dfoa_test' }), host: mock.url, io, cache },
     )
     expect(io.outBuf()).toContain('echo: ')
@@ -116,7 +117,7 @@ describe('runApp', () => {
     const io = bufferStreams()
     const cache = await loadAppInfoCache({ configDir: dir })
     await runApp(
-      { appId: 'app-1', message: 'hi', stream: true, streamSetExplicitly: true, format: 'json' },
+      { appId: 'app-1', message: 'hi', stream: true, format: 'json' },
       { bundle: bundle(), http: createClient({ host: mock.url, bearer: 'dfoa_test' }), host: mock.url, io, cache },
     )
     const parsed = JSON.parse(io.outBuf()) as { mode: string, answer: string, conversation_id: string }
@@ -125,7 +126,7 @@ describe('runApp', () => {
     expect(parsed.conversation_id).toBe('conv-1')
   })
 
-  it('agent-chat forces streaming without --stream', async () => {
+  it('agent-chat without --stream: collects and prints answer', async () => {
     const io = bufferStreams()
     const cache = await loadAppInfoCache({ configDir: dir })
     await runApp(
@@ -133,17 +134,16 @@ describe('runApp', () => {
       { bundle: bundle(), http: createClient({ host: mock.url, bearer: 'dfoa_test' }), host: mock.url, io, cache },
     )
     expect(io.outBuf()).toContain('do research')
-    expect(io.errBuf()).toContain('thought:')
+    expect(io.errBuf()).toContain('--conversation conv-1')
   })
 
-  it('agent-chat with --stream=false explicitly: warns then streams', async () => {
+  it('agent-chat with --stream: live-prints answer and thoughts to stderr', async () => {
     const io = bufferStreams()
     const cache = await loadAppInfoCache({ configDir: dir })
     await runApp(
-      { appId: 'app-4', workspace: 'ws-2', message: 'go', stream: false, streamSetExplicitly: true },
+      { appId: 'app-4', workspace: 'ws-2', message: 'go', stream: true },
       { bundle: bundle(), http: createClient({ host: mock.url, bearer: 'dfoa_test' }), host: mock.url, io, cache },
     )
-    expect(io.errBuf()).toContain('agent apps require streaming')
     expect(io.outBuf()).toContain('go')
     expect(io.errBuf()).toContain('thought:')
   })
@@ -152,7 +152,7 @@ describe('runApp', () => {
     const io = bufferStreams()
     const cache = await loadAppInfoCache({ configDir: dir })
     await runApp(
-      { appId: 'app-2', inputs: { x: '1' }, stream: true, streamSetExplicitly: true, format: 'json' },
+      { appId: 'app-2', inputs: { x: '1' }, stream: true, format: 'json' },
       { bundle: bundle(), http: createClient({ host: mock.url, bearer: 'dfoa_test' }), host: mock.url, io, cache },
     )
     const parsed = JSON.parse(io.outBuf()) as { mode: string, data: { status: string } }
@@ -165,8 +165,118 @@ describe('runApp', () => {
     const io = bufferStreams()
     const cache = await loadAppInfoCache({ configDir: dir })
     await expect(runApp(
-      { appId: 'app-1', message: 'hi', stream: true, streamSetExplicitly: true },
+      { appId: 'app-1', message: 'hi', stream: true },
       { bundle: bundle(), http: createClient({ host: mock.url, bearer: 'dfoa_test', retryAttempts: 0 }), host: mock.url, io, cache },
     )).rejects.toMatchObject({ code: 'server_5xx' })
+  })
+
+  it('--inputs-file: reads inputs from file', async () => {
+    const io = bufferStreams()
+    const cache = await loadAppInfoCache({ configDir: dir })
+    const inputsFile = join(dir, 'inputs.json')
+    const { writeFile } = await import('node:fs/promises')
+    await writeFile(inputsFile, JSON.stringify({ x: 'from-file' }))
+    await runApp(
+      { appId: 'app-2', inputsFile },
+      { bundle: bundle(), http: createClient({ host: mock.url, bearer: 'dfoa_test' }), host: mock.url, io, cache },
+    )
+    const out = JSON.parse(io.outBuf().trim()) as { result: string }
+    expect(out.result).toBe('echo: ')
+  })
+
+  it('--inputs-file: rejects non-object JSON', async () => {
+    const io = bufferStreams()
+    const { writeFile } = await import('node:fs/promises')
+    const inputsFile = join(dir, 'bad.json')
+    await writeFile(inputsFile, JSON.stringify([1, 2, 3]))
+    await expect(runApp(
+      { appId: 'app-2', inputsFile },
+      { bundle: bundle(), http: createClient({ host: mock.url, bearer: 'dfoa_test' }), host: mock.url, io },
+    )).rejects.toThrow(/must be a JSON object/)
+  })
+
+  it('--inputs: accepts JSON object string', async () => {
+    const io = bufferStreams()
+    const cache = await loadAppInfoCache({ configDir: dir })
+    await runApp(
+      { appId: 'app-2', inputsJson: '{"x":"hello"}' },
+      { bundle: bundle(), http: createClient({ host: mock.url, bearer: 'dfoa_test' }), host: mock.url, io, cache },
+    )
+    const out = JSON.parse(io.outBuf().trim()) as { result: string }
+    expect(out.result).toBe('echo: ')
+  })
+
+  it('--inputs and --inputs-file are mutually exclusive', async () => {
+    const io = bufferStreams()
+    const { writeFile } = await import('node:fs/promises')
+    const inputsFile = join(dir, 'f.json')
+    await writeFile(inputsFile, '{}')
+    await expect(runApp(
+      { appId: 'app-2', inputsJson: '{}', inputsFile },
+      { bundle: bundle(), http: createClient({ host: mock.url, bearer: 'dfoa_test' }), host: mock.url, io },
+    )).rejects.toThrow(/mutually exclusive/)
+  })
+
+  it('hitl pause: writes pause JSON to stdout, hint to stderr, exits 2', async () => {
+    mock.setScenario('hitl-pause')
+    const io = bufferStreams()
+    const cache = await loadAppInfoCache({ configDir: dir })
+    let exitCode = -1
+    await expect(runApp(
+      { appId: 'app-2', inputs: {} },
+      {
+        bundle: bundle(),
+        http: createClient({ host: mock.url, bearer: 'dfoa_test' }),
+        host: mock.url,
+        io,
+        cache,
+        exit: (code) => {
+          exitCode = code
+          throw new Error(`exit:${code}`)
+        },
+      },
+    )).rejects.toThrow('exit:2')
+    expect(exitCode).toBe(2)
+    const payload = JSON.parse(io.outBuf()) as { status: string, form_token: string, workflow_run_id: string }
+    expect(payload.status).toBe('paused')
+    expect(payload.form_token).toBe('ft-hitl-1')
+    expect(payload.workflow_run_id).toBe('wf-run-hitl-1')
+    expect(io.errBuf()).toContain('difyctl run app resume')
+  })
+
+  it('resume: withHistory: false completes successfully', async () => {
+    mock.setScenario('hitl-resume')
+    const io = bufferStreams()
+    const cache = await loadAppInfoCache({ configDir: dir })
+    await resumeApp(
+      { appId: 'app-2', formToken: 'ft-hitl-1', workflowRunId: 'wf-run-hitl-1', action: 'submit', inputs: {}, withHistory: false },
+      { bundle: bundle(), http: createClient({ host: mock.url, bearer: 'dfoa_test' }), host: mock.url, io, cache },
+    )
+    const out = JSON.parse(io.outBuf().trim()) as { result: string }
+    expect(out.result).toBe('echo: resumed')
+  })
+
+  it('resume: submits form and streams workflow to completion', async () => {
+    mock.setScenario('hitl-resume')
+    const io = bufferStreams()
+    const cache = await loadAppInfoCache({ configDir: dir })
+    await resumeApp(
+      { appId: 'app-2', formToken: 'ft-hitl-1', workflowRunId: 'wf-run-hitl-1', action: 'submit', inputs: {} },
+      { bundle: bundle(), http: createClient({ host: mock.url, bearer: 'dfoa_test' }), host: mock.url, io, cache },
+    )
+    const out = JSON.parse(io.outBuf().trim()) as { result: string }
+    expect(out.result).toBe('echo: resumed')
+  })
+
+  it('resume --stream: live-prints workflow node progress to stderr', async () => {
+    mock.setScenario('hitl-resume')
+    const io = bufferStreams()
+    const cache = await loadAppInfoCache({ configDir: dir })
+    await resumeApp(
+      { appId: 'app-2', formToken: 'ft-hitl-1', workflowRunId: 'wf-run-hitl-1', action: 'submit', inputs: {}, stream: true },
+      { bundle: bundle(), http: createClient({ host: mock.url, bearer: 'dfoa_test' }), host: mock.url, io, cache },
+    )
+    // stream mode for workflow: node_started → "→ <title>" on stderr
+    expect(io.errBuf()).toContain('After Resume')
   })
 })

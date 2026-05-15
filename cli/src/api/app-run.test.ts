@@ -5,21 +5,21 @@ import { createClient } from '../http/client.js'
 import { AppRunClient, buildRunBody } from './app-run.js'
 
 describe('buildRunBody', () => {
-  it('sets response_mode=blocking by default', () => {
-    expect(buildRunBody({}).response_mode).toBe('blocking')
+  it('does not include response_mode', () => {
+    expect('response_mode' in buildRunBody({})).toBe(false)
   })
 
   it('omits query when message empty', () => {
     expect('query' in buildRunBody({})).toBe(false)
   })
 
-  it('includes query when message present', () => {
+  it('maps message → query', () => {
     expect(buildRunBody({ message: 'hi' }).query).toBe('hi')
   })
 
   it('passes through inputs', () => {
-    const body = buildRunBody({ inputs: { a: '1' } })
-    expect(body.inputs).toEqual({ a: '1' })
+    const body = buildRunBody({ inputs: { a: '1', b: 42 } })
+    expect(body.inputs).toEqual({ a: '1', b: 42 })
   })
 
   it('omits conversation_id when missing/empty', () => {
@@ -29,39 +29,22 @@ describe('buildRunBody', () => {
   it('includes workspace_id when set', () => {
     expect(buildRunBody({ workspaceId: 'ws-1' }).workspace_id).toBe('ws-1')
   })
-})
 
-describe('AppRunClient.runBlocking', () => {
-  let mock: DifyMock
-  beforeEach(async () => {
-    mock = await startMock({ scenario: 'happy' })
-  })
-  afterEach(async () => {
-    await mock.stop()
+  it('includes workflow_id when workflowId provided', () => {
+    expect(buildRunBody({ workflowId: 'wf-abc' }).workflow_id).toBe('wf-abc')
   })
 
-  it('returns chat-shaped envelope for chat app', async () => {
-    const c = new AppRunClient(createClient({ host: mock.url, bearer: 'dfoa_test' }))
-    const out = await c.runBlocking('app-1', buildRunBody({ message: 'hi' }))
-    expect(out.mode).toBe('chat')
-    expect(out.answer).toBe('echo: hi')
+  it('omits workflow_id when workflowId empty', () => {
+    expect('workflow_id' in buildRunBody({ workflowId: '' })).toBe(false)
   })
 
-  it('returns workflow-shaped envelope for workflow app', async () => {
-    const c = new AppRunClient(createClient({ host: mock.url, bearer: 'dfoa_test' }))
-    const out = await c.runBlocking('app-2', buildRunBody({ inputs: { x: '1' } }))
-    expect((out.data as { status: string }).status).toBe('succeeded')
+  it('includes files when provided and non-empty', () => {
+    const files = [{ type: 'image', url: 'http://example.com/img.png' }]
+    expect(buildRunBody({ files }).files).toEqual(files)
   })
 
-  it('404 unknown app surfaces as error', async () => {
-    const c = new AppRunClient(createClient({ host: mock.url, bearer: 'dfoa_test', retryAttempts: 0 }))
-    await expect(c.runBlocking('nope', buildRunBody({}))).rejects.toThrow()
-  })
-})
-
-describe('buildRunBody response_mode override', () => {
-  it('sets response_mode=streaming when requested', () => {
-    expect(buildRunBody({ responseMode: 'streaming' }).response_mode).toBe('streaming')
+  it('omits files when empty array', () => {
+    expect('files' in buildRunBody({ files: [] })).toBe(false)
   })
 })
 
@@ -76,7 +59,7 @@ describe('AppRunClient.runStream', () => {
 
   it('yields events for chat app', async () => {
     const c = new AppRunClient(createClient({ host: mock.url, bearer: 'dfoa_test' }))
-    const iter = await c.runStream('app-1', buildRunBody({ message: 'hi', responseMode: 'streaming' }))
+    const iter = await c.runStream('app-1', buildRunBody({ message: 'hi' }))
     const dec = new TextDecoder()
     const names: string[] = []
     const datas: string[] = []
@@ -93,7 +76,7 @@ describe('AppRunClient.runStream', () => {
     mock.setScenario('server-5xx')
     const c = new AppRunClient(createClient({ host: mock.url, bearer: 'dfoa_test', retryAttempts: 0 }))
     await expect(
-      c.runStream('app-1', buildRunBody({ message: 'hi', responseMode: 'streaming' })),
+      c.runStream('app-1', buildRunBody({ message: 'hi' })),
     ).rejects.toMatchObject({ code: 'server_5xx' })
   })
 
@@ -101,7 +84,7 @@ describe('AppRunClient.runStream', () => {
     expect.assertions(1)
     const c = new AppRunClient(createClient({ host: mock.url, bearer: 'dfoa_test' }))
     const ctrl = new AbortController()
-    const iter = await c.runStream('app-1', buildRunBody({ message: 'hi', responseMode: 'streaming' }), { signal: ctrl.signal })
+    const iter = await c.runStream('app-1', buildRunBody({ message: 'hi' }), { signal: ctrl.signal })
     ctrl.abort()
     try {
       for await (const _ of iter) { /* drain */ }
@@ -113,10 +96,42 @@ describe('AppRunClient.runStream', () => {
 
   it('derives event name from JSON event field when SSE event line absent', async () => {
     const c = new AppRunClient(createClient({ host: mock.url, bearer: 'dfoa_test' }))
-    const iter = await c.runStream('app-2', buildRunBody({ inputs: { x: '1' }, responseMode: 'streaming' }))
+    const iter = await c.runStream('app-2', buildRunBody({ inputs: { x: '1' } }))
     const names: string[] = []
     for await (const ev of iter)
       names.push(ev.name)
     expect(names).toEqual(['workflow_started', 'node_started', 'node_finished', 'workflow_finished'])
+  })
+})
+
+describe('AppRunClient.stopTask', () => {
+  let mock: DifyMock
+  beforeEach(async () => {
+    mock = await startMock({ scenario: 'happy' })
+  })
+  afterEach(async () => {
+    await mock.stop()
+  })
+
+  it('resolves without error for known app and task', async () => {
+    const c = new AppRunClient(createClient({ host: mock.url, bearer: 'dfoa_test' }))
+    await expect(c.stopTask('app-1', 'task-42')).resolves.toBeUndefined()
+  })
+})
+
+describe('AppRunClient.submitHumanInput', () => {
+  let mock: DifyMock
+  beforeEach(async () => {
+    mock = await startMock({ scenario: 'happy' })
+  })
+  afterEach(async () => {
+    await mock.stop()
+  })
+
+  it('resolves without error', async () => {
+    const c = new AppRunClient(createClient({ host: mock.url, bearer: 'dfoa_test' }))
+    await expect(
+      c.submitHumanInput('app-1', 'tok-abc', 'approve', { comment: 'looks good' }),
+    ).resolves.toBeUndefined()
   })
 })

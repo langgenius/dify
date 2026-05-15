@@ -6,24 +6,32 @@ WORKFLOW
 
   2. Run the app:
        difyctl run app <id> "your message"
-       difyctl run app <id> "your message" -o json
+       difyctl run app <id> --inputs '{"key":"value"}' -o json
 
 APP MODES
   chat / advanced-chat   Conversational. Accepts --conversation <id> to
                          resume an existing thread.
   completion             Single-turn. Ignores --conversation.
-  workflow               Multi-step graph. Use --input key=val for each
-                         input variable the workflow declares.
-  agent-chat             Always streams regardless of --stream flag.
+  workflow               Multi-step graph. Pass all input variables as a
+                         JSON object via --inputs.
+  agent-chat             Conversational with autonomous tool use.
 
 FLAGS
-  --input key=val        Pass named inputs. Repeatable. Required for
-                         workflow apps that declare input variables.
-                           --input language=English --input topic="AI safety"
-  --stream               Request SSE streaming. Recommended for runs
-                         exceeding ~30s. Agent apps stream regardless.
+  --inputs '{"k":"v"}'   All input variables as one JSON object.
+                           --inputs '{"language":"English","topic":"AI safety"}'
+  --inputs-file path     Load inputs from a JSON file. Mutually exclusive
+                         with --inputs.
+  --stream               Print output live as tokens/events arrive.
   --conversation <id>    Resume a conversation (chat/advanced-chat only).
   --workspace <id>       Target a specific workspace.
+
+HITL PAUSE (exit code 2)
+  When a workflow pauses for human input, stdout receives a JSON object
+  with status "paused", form_token, workflow_run_id, and resolved_default_values.
+  Resume with:
+    difyctl run app resume <app_id> <form_token> --workflow-run-id <id>
+  You can supply form values by:
+    difyctl run app resume <app_id> <form_token> --workflow-run-id <id> --inputs '{"name":"Alice"}'
 
 ERROR RECOVERY
   not logged in          difyctl auth login

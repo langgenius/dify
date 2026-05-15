@@ -57,39 +57,40 @@ function streamingRunResponse(mode: string, query: string, isAgent: boolean): st
   return sseChunks(events)
 }
 
-function blockingRunResponse(mode: string, query: string, inputs: unknown): Record<string, unknown> {
-  const echo = `echo: ${query}`
-  if (mode === 'workflow') {
-    return {
-      task_id: 'task-1',
-      workflow_run_id: 'wf-run-1',
+function hitlPauseResponse(): string {
+  return sseChunks([
+    { event: 'workflow_started', data: { id: 'wf-run-hitl-1', workflow_id: 'wf-1' } },
+    { event: 'node_started', data: { id: 'n1', title: 'First Node' } },
+    {
+      event: 'human_input_required',
       data: {
-        id: 'wf-run-1',
-        workflow_id: 'wf-1',
-        status: 'succeeded',
-        outputs: { result: echo, inputs },
-        elapsed_time: 0.5,
-        total_tokens: 12,
+        task_id: 'task-hitl-1',
+        workflow_run_id: 'wf-run-hitl-1',
+        form_token: 'ft-hitl-1',
+        form_content: 'Please provide input',
+        inputs: [{ output_variable_name: 'name' }],
+        resolved_default_values: { name: 'Alice' },
+        user_actions: [{ id: 'submit', title: 'Submit' }],
+        expiration_time: 9999999999,
       },
-    }
-  }
-  if (mode === 'completion') {
-    return {
-      message_id: 'msg-1',
-      mode,
-      answer: echo,
-      created_at: 1714000000,
-    }
-  }
-  return {
-    event: 'message',
-    message_id: 'msg-1',
-    conversation_id: 'conv-1',
-    mode,
-    answer: echo,
-    created_at: 1714000000,
-    metadata: {},
-  }
+    },
+    { event: 'workflow_paused', data: { reasons: [] } },
+  ])
+}
+
+function hitlResumedResponse(): string {
+  return sseChunks([
+    { event: 'node_started', data: { id: 'n2', title: 'After Resume' } },
+    { event: 'node_finished', data: { id: 'n2', status: 'succeeded' } },
+    {
+      event: 'workflow_finished',
+      data: {
+        id: 'wf-run-hitl-1',
+        workflow_id: 'wf-1',
+        data: { id: 'wf-run-hitl-1', status: 'succeeded', outputs: { result: 'echo: resumed' } },
+      },
+    },
+  ])
 }
 
 export function buildApp(getScenario: () => Scenario): Hono {
@@ -250,25 +251,34 @@ export function buildApp(getScenario: () => Scenario): Hono {
 
   app.post('/openapi/v1/apps/:id/run', async (c) => {
     const id = c.req.param('id')
-    const body = await c.req.json() as { query?: string, inputs?: unknown, response_mode?: string }
+    const body = await c.req.json() as { query?: string, inputs?: unknown }
     const app = APPS.find(a => a.id === id)
     if (app === undefined)
       return c.json({ error: { code: 'not_found', message: 'app not found' } }, { status: 404 })
-    const isStreaming = body.response_mode === 'streaming'
     const isAgent = app.is_agent === true || app.mode === 'agent-chat'
     const query = body.query ?? ''
-    if (!isStreaming) {
-      if (isAgent)
-        return c.json({ error: { code: 'streaming_required', message: 'agent apps must use streaming' } }, { status: 400 })
-      return c.json(blockingRunResponse(app.mode, query, body.inputs))
-    }
     const scenario = getScenario()
     if (scenario === 'stream-error') {
       const errSse = sseChunks([{ event: 'error', data: { message: 'boom', status: 503 } }])
       return new Response(errSse, { status: 200, headers: { 'content-type': 'text/event-stream' } })
     }
+    if (scenario === 'hitl-pause') {
+      return new Response(hitlPauseResponse(), { status: 200, headers: { 'content-type': 'text/event-stream' } })
+    }
     const sse = streamingRunResponse(app.mode, query, isAgent)
     return new Response(sse, { status: 200, headers: { 'content-type': 'text/event-stream' } })
+  })
+
+  app.post('/openapi/v1/apps/:id/tasks/:taskId/stop', (c) => {
+    return c.json({ result: 'success' })
+  })
+
+  app.post('/openapi/v1/apps/:id/form/human_input/:formToken', (c) => {
+    return c.json({})
+  })
+
+  app.get('/openapi/v1/apps/:id/tasks/:task_id/events', (_c) => {
+    return new Response(hitlResumedResponse(), { status: 200, headers: { 'content-type': 'text/event-stream' } })
   })
 
   app.post('/openapi/v1/oauth/device/code', c =>

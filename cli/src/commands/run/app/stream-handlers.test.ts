@@ -1,7 +1,8 @@
 import type { SseEvent } from '../../../http/sse.js'
 import { Buffer } from 'node:buffer'
-import { PassThrough } from 'node:stream'
+import { PassThrough, Writable } from 'node:stream'
 import { describe, expect, it } from 'vitest'
+import { HitlPauseError } from './sse-collector.js'
 import { streamPrinterFor } from './stream-handlers.js'
 
 const enc = new TextEncoder()
@@ -76,5 +77,48 @@ describe('streamPrinterFor — workflow', () => {
 describe('streamPrinterFor — unknown mode', () => {
   it('throws', () => {
     expect(() => streamPrinterFor('whatever')).toThrow()
+  })
+})
+
+function capture(): { stream: Writable, buf: () => string } {
+  const chunks: Buffer[] = []
+  const stream = new Writable({
+    write(chunk, _enc, cb) {
+      chunks.push(Buffer.from(chunk as ArrayBuffer))
+      cb()
+    },
+  })
+  return { stream, buf: () => Buffer.concat(chunks).toString() }
+}
+
+describe('streamPrinterFor — HITL events', () => {
+  it('throws HitlPauseError on human_input_required', () => {
+    const sp = streamPrinterFor('workflow')
+    const { stream } = capture()
+    const hitl = {
+      task_id: 't-1',
+      workflow_run_id: 'wf-1',
+      form_token: 'ft-1',
+      form_content: 'fill',
+      inputs: [],
+      resolved_default_values: {},
+      user_actions: [],
+      expiration_time: 999,
+    }
+    expect(() => sp.onEvent(stream, stream, ev('human_input_required', hitl))).toThrow(HitlPauseError)
+  })
+})
+
+describe('streamPrinterFor — silent events', () => {
+  it('silently ignores iteration_started', () => {
+    const sp = streamPrinterFor('workflow')
+    const { stream } = capture()
+    expect(() => sp.onEvent(stream, stream, ev('iteration_started', { id: 'i-1' }))).not.toThrow()
+  })
+
+  it('silently ignores node_retry', () => {
+    const sp = streamPrinterFor('chat')
+    const { stream } = capture()
+    expect(() => sp.onEvent(stream, stream, ev('node_retry', { id: 'n1' }))).not.toThrow()
   })
 })

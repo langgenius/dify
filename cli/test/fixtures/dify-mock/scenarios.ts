@@ -8,6 +8,8 @@ export type Scenario
     | 'server-5xx'
     | 'slow-down'
     | 'stream-error'
+    | 'hitl-pause'
+    | 'hitl-resume'
 
 export type AccountFixture = {
   id: string

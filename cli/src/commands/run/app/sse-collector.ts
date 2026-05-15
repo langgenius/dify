@@ -4,6 +4,26 @@ import { newError } from '../../../errors/base.js'
 import { ErrorCode } from '../../../errors/codes.js'
 import { RUN_MODES } from './handlers.js'
 
+export type HitlPausePayload = {
+  task_id: string
+  workflow_run_id: string
+  form_token: string
+  form_content: string
+  inputs: unknown[]
+  resolved_default_values: Record<string, string>
+  user_actions: unknown[]
+  expiration_time: number
+}
+
+export class HitlPauseError extends Error {
+  readonly pausePayload: HitlPausePayload
+  constructor(payload: HitlPausePayload) {
+    super('workflow paused for human input')
+    this.name = 'HitlPauseError'
+    this.pausePayload = payload
+  }
+}
+
 export type Collector = {
   consume: (ev: SseEvent) => void
   finalize: () => Record<string, unknown>
@@ -149,16 +169,32 @@ export function decodeStreamError(data: Uint8Array): BaseError {
   return err
 }
 
+const SILENT_EVENTS = new Set([
+  'node_retry',
+  'iteration_started',
+  'iteration_next',
+  'iteration_completed',
+  'loop_started',
+  'loop_next',
+  'loop_completed',
+])
+
 export async function collect(
   iter: AsyncIterable<SseEvent>,
   mode: string,
 ): Promise<Record<string, unknown>> {
   const c = collectorFor(mode)
   for await (const ev of iter) {
-    if (ev.name === 'ping')
+    if (ev.name === 'ping' || SILENT_EVENTS.has(ev.name))
       continue
     if (ev.name === 'error')
       throw decodeStreamError(ev.data)
+    if (ev.name === 'human_input_required') {
+      throw new HitlPauseError(parseJson(ev.data) as unknown as HitlPausePayload)
+    }
+    if (ev.name === 'workflow_paused') {
+      throw newError(ErrorCode.Unknown, 'workflow paused (non-interactive pause; check server logs)')
+    }
     c.consume(ev)
   }
   return c.finalize()

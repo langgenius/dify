@@ -127,35 +127,34 @@ describe('dify-mock fixture server', () => {
     expect(body.info.id).toBe('app-1')
   })
 
-  it('POST /openapi/v1/apps/:id/run blocking returns chat-shaped envelope', async () => {
+  it('POST /openapi/v1/apps/:id/run returns SSE stream for chat app', async () => {
     const r = await fetch(`${mock.url}/openapi/v1/apps/app-1/run`, {
       method: 'POST',
       headers: {
         'Authorization': 'Bearer dfoa_test',
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ query: 'hi', inputs: {}, response_mode: 'blocking' }),
+      body: JSON.stringify({ query: 'hi', inputs: {} }),
     })
     expect(r.status).toBe(200)
-    const body = await r.json() as { mode: string, answer: string, conversation_id: string }
-    expect(body.mode).toBe('chat')
-    expect(body.answer).toBe('echo: hi')
-    expect(body.conversation_id).toBe('conv-1')
+    expect(r.headers.get('content-type')).toContain('text/event-stream')
+    const text = await r.text()
+    expect(text).toContain('"answer":"echo: "')
   })
 
-  it('POST /openapi/v1/apps/:id/run blocking returns workflow-shaped envelope', async () => {
+  it('POST /openapi/v1/apps/:id/run returns SSE stream for workflow app', async () => {
     const r = await fetch(`${mock.url}/openapi/v1/apps/app-2/run`, {
       method: 'POST',
       headers: {
         'Authorization': 'Bearer dfoa_test',
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ inputs: { x: 1 }, response_mode: 'blocking' }),
+      body: JSON.stringify({ inputs: { x: 1 } }),
     })
     expect(r.status).toBe(200)
-    const body = await r.json() as { data: { status: string, outputs: { result: string } } }
-    expect(body.data.status).toBe('succeeded')
-    expect(body.data.outputs.result).toBe('echo: ')
+    expect(r.headers.get('content-type')).toContain('text/event-stream')
+    const text = await r.text()
+    expect(text).toContain('"workflow_finished"')
   })
 
   it('GET /openapi/v1/apps/:id/describe?fields=info returns slim payload', async () => {

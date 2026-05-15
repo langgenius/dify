@@ -197,52 +197,10 @@ export type AppRunRequest = {
   inputs: Record<string, any>
   /** Query */
   query?: string
-  /** Response Mode */
-  response_mode?: 'blocking' | 'streaming'
   /** Workflow Id */
   workflow_id?: string
   /** Workspace Id */
   workspace_id?: string
-}
-
-/** ChatMessageResponse */
-export type ChatMessageResponse = {
-  /** Answer */
-  answer: string
-  /** Conversation Id */
-  conversation_id: string
-  /** Created At */
-  created_at: number
-  /** Event */
-  event: string
-  /** Id */
-  id: string
-  /** Message Id */
-  message_id: string
-  metadata?: MessageMetadata
-  /** Mode */
-  mode: string
-  /** Task Id */
-  task_id: string
-}
-
-/** CompletionMessageResponse */
-export type CompletionMessageResponse = {
-  /** Answer */
-  answer: string
-  /** Created At */
-  created_at: number
-  /** Event */
-  event: string
-  /** Id */
-  id: string
-  /** Message Id */
-  message_id: string
-  metadata?: MessageMetadata
-  /** Mode */
-  mode: string
-  /** Task Id */
-  task_id: string
 }
 
 /** DeviceCodeRequest */
@@ -305,6 +263,16 @@ export type DevicePollRequest = {
   /** Device Code */
   device_code: string
 }
+
+/** HumanInputFormSubmitPayload */
+export type HumanInputFormSubmitPayload = {
+  /** Action */
+  action: string
+  /** Inputs */
+  inputs: Record<string, JsonValue>
+}
+
+export type JsonValue = any
 
 /** MessageMetadata */
 export type MessageMetadata = {
@@ -438,20 +406,6 @@ export type WorkflowRunData = {
   total_tokens?: number
   /** Workflow Id */
   workflow_id: string
-}
-
-/** WorkflowRunResponse */
-export type WorkflowRunResponse = {
-  data: WorkflowRunData
-  /**
-   * Mode
-   * @default "workflow"
-   */
-  mode?: 'workflow'
-  /** Task Id */
-  task_id: string
-  /** Workflow Run Id */
-  workflow_run_id: string
 }
 
 /** WorkspaceDetailResponse */

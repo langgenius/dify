@@ -16,12 +16,14 @@ import { AppRunPrintFlags } from './print-flags.js'
 export type RunAppOptions = {
   readonly appId: string
   readonly message?: string
-  readonly inputs?: Readonly<Record<string, string>>
+  readonly inputs?: Readonly<Record<string, unknown>>
+  readonly inputsJson?: string
+  readonly inputsFile?: string
   readonly conversationId?: string
+  readonly workflowId?: string
   readonly workspace?: string
   readonly format?: string
   readonly stream?: boolean
-  readonly streamSetExplicitly?: boolean
 }
 
 export type RunAppDeps = {
@@ -31,9 +33,45 @@ export type RunAppDeps = {
   readonly io: IOStreams
   readonly cache?: AppInfoCache
   readonly envLookup?: (k: string) => string | undefined
+  readonly exit?: (code: number) => never
 }
 
 const TEXT_FORMATS = new Set(['', 'text'])
+
+async function resolveInputs(
+  inputsJson: string | undefined,
+  inputsFile: string | undefined,
+  directInputs: Readonly<Record<string, unknown>> | undefined,
+): Promise<Record<string, unknown>> {
+  if (inputsJson !== undefined && inputsFile !== undefined)
+    throw new BaseError({ code: ErrorCode.UsageInvalidFlag, message: '--inputs and --inputs-file are mutually exclusive' })
+  if (inputsJson !== undefined) {
+    let parsed: unknown
+    try {
+      parsed = JSON.parse(inputsJson)
+    }
+    catch {
+      throw new BaseError({ code: ErrorCode.UsageInvalidFlag, message: '--inputs must be valid JSON' })
+    }
+    if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed))
+      throw new BaseError({ code: ErrorCode.UsageInvalidFlag, message: '--inputs must be a JSON object' })
+    return parsed as Record<string, unknown>
+  }
+  if (inputsFile !== undefined) {
+    const { readFile } = await import('node:fs/promises')
+    let parsed: unknown
+    try {
+      parsed = JSON.parse(await readFile(inputsFile, 'utf8'))
+    }
+    catch {
+      throw new BaseError({ code: ErrorCode.UsageInvalidFlag, message: '--inputs-file must contain valid JSON' })
+    }
+    if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed))
+      throw new BaseError({ code: ErrorCode.UsageInvalidFlag, message: '--inputs-file must be a JSON object' })
+    return parsed as Record<string, unknown>
+  }
+  return { ...(directInputs ?? {}) }
+}
 
 export async function runApp(opts: RunAppOptions, deps: RunAppDeps): Promise<void> {
   const env = deps.envLookup ?? ((k: string) => process.env[k])
@@ -49,20 +87,18 @@ export async function runApp(opts: RunAppOptions, deps: RunAppDeps): Promise<voi
     throw new BaseError({
       code: ErrorCode.UsageInvalidFlag,
       message: 'workflow apps do not accept a positional message',
-      hint: 'pass workflow inputs via --input key=value (repeatable)',
+      hint: 'pass workflow inputs via --inputs \'{"key":"value"}\'',
     })
   }
 
-  const isAgent = m.info?.is_agent === true || mode === RUN_MODES.AgentChat
-  const useStream = opts.stream === true || isAgent
-  if (isAgent && opts.streamSetExplicitly === true && opts.stream === false)
-    deps.io.err.write('note: agent apps require streaming; output is collected before printing\n')
-
+  const inputs = await resolveInputs(opts.inputsJson, opts.inputsFile, opts.inputs)
   const format = opts.format ?? ''
   const isText = TEXT_FORMATS.has(format)
+  const livePrint = opts.stream === true
   const runClient = new AppRunClient(deps.http)
   const printFlags = new AppRunPrintFlags()
 
-  const ctx = { opts, deps, mode, isAgent, format, isText, runClient, printFlags }
-  await pickStrategy(useStream, isText).execute(ctx)
+  const exit = deps.exit ?? ((code: number) => process.exit(code) as never)
+  const ctx = { opts: { ...opts, inputs }, deps, mode, format, isText, livePrint, runClient, printFlags, exit }
+  await pickStrategy(isText, livePrint).execute(ctx)
 }

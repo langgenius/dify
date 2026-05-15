@@ -1,8 +1,10 @@
 import type { SseEvent } from '../../../http/sse.js'
 import type { StreamPrinter } from '../../../printers/stream-printer.js'
+import type { HitlPausePayload } from './sse-collector.js'
 import { newError } from '../../../errors/base.js'
 import { ErrorCode } from '../../../errors/codes.js'
 import { RUN_MODES } from './handlers.js'
+import { HitlPauseError } from './sse-collector.js'
 
 const dec = new TextDecoder()
 
@@ -17,9 +19,30 @@ function parseJson(data: Uint8Array): Record<string, unknown> {
   }
 }
 
+const SILENT_EVENTS = new Set([
+  'node_retry',
+  'iteration_started',
+  'iteration_next',
+  'iteration_completed',
+  'loop_started',
+  'loop_next',
+  'loop_completed',
+])
+
+function handleCommonEvents(ev: SseEvent): boolean {
+  if (SILENT_EVENTS.has(ev.name))
+    return true
+  if (ev.name === 'human_input_required') {
+    throw new HitlPauseError(parseJson(ev.data) as unknown as HitlPausePayload)
+  }
+  return false
+}
+
 class ChatStreamPrinter implements StreamPrinter {
   private convoId = ''
   onEvent(out: NodeJS.WritableStream, errOut: NodeJS.WritableStream, ev: SseEvent): void {
+    if (handleCommonEvents(ev))
+      return
     const c = parseJson(ev.data)
     switch (ev.name) {
       case 'message':
@@ -49,6 +72,8 @@ class ChatStreamPrinter implements StreamPrinter {
 
 class CompletionStreamPrinter implements StreamPrinter {
   onEvent(out: NodeJS.WritableStream, _errOut: NodeJS.WritableStream, ev: SseEvent): void {
+    if (handleCommonEvents(ev))
+      return
     if (ev.name !== 'message')
       return
     const c = parseJson(ev.data)
@@ -64,6 +89,8 @@ class CompletionStreamPrinter implements StreamPrinter {
 class WorkflowStreamPrinter implements StreamPrinter {
   private final: Record<string, unknown> | undefined
   onEvent(_out: NodeJS.WritableStream, errOut: NodeJS.WritableStream, ev: SseEvent): void {
+    if (handleCommonEvents(ev))
+      return
     const c = parseJson(ev.data)
     switch (ev.name) {
       case 'node_started': {

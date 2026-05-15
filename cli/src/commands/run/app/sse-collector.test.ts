@@ -1,6 +1,6 @@
 import type { SseEvent } from '../../../http/sse.js'
 import { describe, expect, it } from 'vitest'
-import { collect, collectorFor, decodeStreamError } from './sse-collector.js'
+import { collect, collectorFor, decodeStreamError, HitlPauseError } from './sse-collector.js'
 
 const enc = new TextEncoder()
 function ev(name: string, data: object): SseEvent {
@@ -118,5 +118,75 @@ describe('decodeStreamError', () => {
   it('falls back to default message on empty data', () => {
     const err = decodeStreamError(new Uint8Array())
     expect(err.message).toMatch(/error event/i)
+  })
+})
+
+describe('collect — human_input_required', () => {
+  it('throws HitlPauseError when human_input_required arrives', async () => {
+    const hitlData = {
+      task_id: 'task-1',
+      workflow_run_id: 'wf-run-1',
+      form_token: 'ft-1',
+      form_content: 'Please fill in',
+      inputs: [],
+      resolved_default_values: {},
+      user_actions: [{ id: 'submit', title: 'Submit' }],
+      expiration_time: 9999999999,
+    }
+    await expect(collect(iterOf(
+      ev('workflow_started', {}),
+      ev('human_input_required', hitlData),
+    ), 'workflow')).rejects.toBeInstanceOf(HitlPauseError)
+  })
+
+  it('HitlPauseError carries the pause payload', async () => {
+    const hitlData = {
+      task_id: 'task-1',
+      workflow_run_id: 'wf-run-1',
+      form_token: 'ft-abc',
+      form_content: 'form',
+      inputs: [],
+      resolved_default_values: { name: 'Alice' },
+      user_actions: [],
+      expiration_time: 9999999999,
+    }
+    let caught: HitlPauseError | undefined
+    try {
+      await collect(iterOf(ev('human_input_required', hitlData)), 'workflow')
+    }
+    catch (e) {
+      if (e instanceof HitlPauseError)
+        caught = e
+    }
+    expect(caught).toBeDefined()
+    expect(caught!.pausePayload.form_token).toBe('ft-abc')
+    expect(caught!.pausePayload.resolved_default_values).toEqual({ name: 'Alice' })
+  })
+})
+
+describe('collect — silent events', () => {
+  it('silently ignores iteration_started and loop_started', async () => {
+    const got = await collect(iterOf(
+      ev('iteration_started', { id: 'iter-1' }),
+      ev('loop_started', { id: 'loop-1' }),
+      ev('node_started', {}),
+      ev('message', { answer: 'x' }),
+    ), 'chat')
+    expect(got.answer).toBe('x')
+  })
+
+  it('silently ignores node_retry', async () => {
+    const got = await collect(iterOf(
+      ev('node_retry', { id: 'n1', retry: 1 }),
+      ev('message', { answer: 'ok' }),
+    ), 'chat')
+    expect(got.answer).toBe('ok')
+  })
+
+  it('workflow_paused without prior HITL throws a plain error', async () => {
+    await expect(collect(iterOf(
+      ev('workflow_started', {}),
+      ev('workflow_paused', { reasons: [] }),
+    ), 'workflow')).rejects.toThrow(/paused/)
   })
 })
