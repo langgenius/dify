@@ -3,7 +3,7 @@ import logging
 import flask_login
 from flask import make_response, request
 from flask_restx import Resource
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from werkzeug.exceptions import Unauthorized
 
 import services
@@ -34,6 +34,7 @@ from controllers.console.wraps import (
 )
 from events.tenant_event import tenant_was_created
 from libs.helper import EmailStr, extract_remote_ip
+from libs.helper import timezone as validate_timezone_string
 from libs.login import current_account_with_tenant
 from libs.token import (
     clear_access_token_from_cookie,
@@ -69,6 +70,14 @@ class EmailCodeLoginPayload(BaseModel):
     code: str = Field(...)
     token: str = Field(...)
     language: str | None = Field(default=None)
+    timezone: str | None = Field(default=None)
+
+    @field_validator("timezone")
+    @classmethod
+    def validate_timezone(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        return validate_timezone_string(value)
 
 
 register_schema_models(console_ns, LoginPayload, EmailPayload, EmailCodeLoginPayload)
@@ -288,6 +297,7 @@ class EmailCodeLoginApi(Resource):
                     email=user_email,
                     name=user_email,
                     interface_language=get_valid_language(language),
+                    timezone=args.timezone,
                 )
             except WorkSpaceNotAllowedCreateError:
                 raise NotAllowedCreateWorkspace()

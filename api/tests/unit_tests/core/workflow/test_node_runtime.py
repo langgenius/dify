@@ -1,9 +1,11 @@
 from types import SimpleNamespace
 from unittest.mock import MagicMock, Mock, sentinel
+from uuid import uuid4
 
 import pytest
 
 from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, DifyRunContext, InvokeFrom, UserFrom
+from core.app.file_access import FileAccessScope, bind_file_access_scope, grant_retriever_segment_access
 from core.llm_generator.output_parser.errors import OutputParserError
 from core.workflow import node_runtime
 from core.workflow.file_reference import parse_file_reference
@@ -266,6 +268,114 @@ def test_dify_retriever_attachment_loader_builds_graph_files(monkeypatch: pytest
     assert mapping["transfer_method"] == FileTransferMethod.LOCAL_FILE
     assert mapping["type"] == FileType.IMAGE
     assert parse_file_reference(mapping["reference"]).storage_key is None
+
+
+def test_dify_retriever_attachment_loader_grants_upload_files_for_allowed_segment(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from factories.file_factory import builders as file_builders
+
+    upload_file_id = str(uuid4())
+    segment_id = str(uuid4())
+    upload_file = SimpleNamespace(
+        id=upload_file_id,
+        tenant_id="tenant-id",
+        name="diagram.png",
+        extension="png",
+        mime_type="image/png",
+        source_url="https://example.com/diagram.png",
+        key="storage-key",
+        size=128,
+    )
+    attachment_session = MagicMock()
+    attachment_session.execute.return_value.all.return_value = [(None, upload_file)]
+
+    class _AttachmentSessionContext:
+        def __enter__(self):
+            return attachment_session
+
+        def __exit__(self, exc_type, exc, tb):
+            return False
+
+    upload_session = MagicMock()
+    upload_session.__enter__.return_value = upload_session
+    upload_session.__exit__.return_value = False
+    upload_session.scalar.return_value = upload_file
+
+    monkeypatch.setattr(node_runtime, "db", SimpleNamespace(engine=object()))
+    monkeypatch.setattr(node_runtime, "Session", MagicMock(return_value=_AttachmentSessionContext()))
+    monkeypatch.setattr(file_builders, "session_factory", SimpleNamespace(create_session=lambda: upload_session))
+
+    loader = DifyRetrieverAttachmentLoader(file_reference_factory=DifyFileReferenceFactory(_build_run_context()))
+    scope = FileAccessScope(
+        tenant_id="tenant-id",
+        user_id="end-user-id",
+        user_from=UserFrom.END_USER,
+        invoke_from=InvokeFrom.WEB_APP,
+    )
+
+    with bind_file_access_scope(scope):
+        grant_retriever_segment_access([segment_id])
+        files = loader.load(segment_id=segment_id)
+
+    assert files[0].related_id == upload_file_id
+    stmt = upload_session.scalar.call_args.args[0]
+    whereclause = str(stmt.whereclause)
+    assert "upload_files.tenant_id" in whereclause
+    assert "upload_files.id IN" in whereclause
+
+
+def test_dify_retriever_attachment_loader_skips_ungranted_segment_for_end_user(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    build_from_mapping = MagicMock()
+    session_factory = MagicMock()
+    monkeypatch.setattr(node_runtime, "Session", session_factory)
+    loader = DifyRetrieverAttachmentLoader(
+        file_reference_factory=SimpleNamespace(build_from_mapping=build_from_mapping)
+    )
+    scope = FileAccessScope(
+        tenant_id="tenant-id",
+        user_id="end-user-id",
+        user_from=UserFrom.END_USER,
+        invoke_from=InvokeFrom.WEB_APP,
+    )
+
+    with bind_file_access_scope(scope):
+        files = loader.load(segment_id=str(uuid4()))
+
+    assert files == []
+    session_factory.assert_not_called()
+    build_from_mapping.assert_not_called()
+
+
+def test_dify_retriever_attachment_loader_skips_segment_rejected_by_checker(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    segment_id = str(uuid4())
+    build_from_mapping = MagicMock()
+    session_factory = MagicMock()
+    segment_access_checker = MagicMock(return_value=False)
+    monkeypatch.setattr(node_runtime, "Session", session_factory)
+    loader = DifyRetrieverAttachmentLoader(
+        file_reference_factory=SimpleNamespace(build_from_mapping=build_from_mapping),
+        segment_access_checker=segment_access_checker,
+    )
+    scope = FileAccessScope(
+        tenant_id="tenant-id",
+        user_id="end-user-id",
+        user_from=UserFrom.END_USER,
+        invoke_from=InvokeFrom.WEB_APP,
+    )
+
+    with bind_file_access_scope(scope):
+        grant_retriever_segment_access([segment_id])
+        files = loader.load(segment_id=segment_id)
+
+    assert files == []
+    segment_access_checker.assert_called_once_with(segment_id)
+    session_factory.assert_not_called()
+    build_from_mapping.assert_not_called()
 
 
 def test_dify_tool_file_manager_resolves_conversation_id_for_tool_files(monkeypatch: pytest.MonkeyPatch) -> None:

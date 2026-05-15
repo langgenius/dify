@@ -251,9 +251,9 @@ const SettingsModal: FC<ISettingsModalProps> = ({
   return (
     <>
       <Dialog open={isShow} onOpenChange={open => !open && onHide()}>
-        <DialogContent className="max-h-[calc(100dvh-2rem)] w-[520px] overflow-visible p-0">
+        <DialogContent className="flex max-h-[calc(100dvh-2rem)] w-[520px] flex-col overflow-hidden! p-0!">
           {/* header */}
-          <div className="pt-5 pr-5 pb-3 pl-6">
+          <div className="shrink-0 pt-5 pr-5 pb-3 pl-6">
             <div className="flex items-center gap-1">
               <DialogTitle className="grow title-2xl-semi-bold text-text-primary">{t(`${prefixSettings}.title`, { ns: 'appOverview' })}</DialogTitle>
               <DialogCloseButton className="relative top-auto right-auto shrink-0" />
@@ -263,7 +263,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
             </div>
           </div>
           {/* form body */}
-          <div className="space-y-5 px-6 py-3">
+          <div className="min-h-0 flex-1 space-y-5 overflow-y-auto overscroll-contain px-6 py-3">
             {/* name & icon */}
             <div className="flex gap-4">
               <div className="grow">
@@ -474,7 +474,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
             )}
           </div>
           {/* footer */}
-          <div className="flex justify-end p-6 pt-5">
+          <div className="flex shrink-0 justify-end p-6 pt-5">
             <Button className="mr-2" onClick={onHide}>{t('operation.cancel', { ns: 'common' })}</Button>
             <Button variant="primary" onClick={onClickSave} loading={saveLoading}>{t('operation.save', { ns: 'common' })}</Button>
           </div>
