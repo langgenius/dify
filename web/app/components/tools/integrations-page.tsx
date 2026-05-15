@@ -1,6 +1,6 @@
 'use client'
 
-import type { ComponentType } from 'react'
+import type { ComponentType, CSSProperties } from 'react'
 import type { Permissions, ReferenceSetting } from '@/app/components/plugins/types'
 import type { IntegrationSection } from '@/app/components/tools/integration-routes'
 import { Button } from '@langgenius/dify-ui/button'
@@ -280,6 +280,10 @@ export default function IntegrationsPage({
     toolsContentInsetClassNames.compact,
     toolsUnifiedContentFrameClassName,
   )
+  const sidebarWidthStyle = {
+    '--integrations-sidebar-width': sidebarCollapsed ? '56px' : '200px',
+    '--model-provider-warning-left': `calc(240px + ${sidebarCollapsed ? '56px' : '200px'})`,
+  } as CSSProperties & Record<'--integrations-sidebar-width' | '--model-provider-warning-left', string>
   const integrationHeader = useMemo(() => {
     switch (section) {
       case 'builtin':
@@ -355,7 +359,7 @@ export default function IntegrationsPage({
     : undefined
 
   return (
-    <div className="flex h-full min-h-0 bg-components-panel-bg">
+    <div className="flex h-full min-h-0 bg-components-panel-bg" style={sidebarWidthStyle}>
       <aside className={cn(
         'flex shrink-0 flex-col border-r border-divider-burn bg-components-panel-bg px-2 py-2 transition-[width]',
         sidebarCollapsed ? 'w-14 items-center' : 'w-[200px] items-end',

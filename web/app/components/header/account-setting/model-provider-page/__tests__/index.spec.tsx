@@ -47,12 +47,24 @@ const mockQuotaConfig = {
 }
 
 const renderModelProviderPage = (
-  props: { searchText?: string, enableMarketplace?: boolean, stickyToolbar?: boolean } = {},
+  props: {
+    enableMarketplace?: boolean
+    fixedWarningAlignment?: 'viewport' | 'content-frame'
+    searchText?: string
+    stickyToolbar?: boolean
+  } = {},
 ) => {
-  const { searchText = '', enableMarketplace = true, stickyToolbar = true } = props
-  return renderWithSystemFeatures(<ModelProviderPage searchText={searchText} stickyToolbar={stickyToolbar} />, {
+  const { fixedWarningAlignment, searchText = '', enableMarketplace = true, stickyToolbar = true } = props
+  return renderWithSystemFeatures((
+    <ModelProviderPage
+      fixedWarningAlignment={fixedWarningAlignment}
+      searchText={searchText}
+      stickyToolbar={stickyToolbar}
+    />
+  ), {
     systemFeatures: { enable_marketplace: enableMarketplace },
-  })
+  },
+  )
 }
 
 const mockProviders = [
@@ -314,6 +326,17 @@ describe('ModelProviderPage', () => {
     it('should show none-configured warning when providers exist but no default models set', () => {
       renderModelProviderPage()
       expect(screen.getByText('common.modelProvider.noneConfigured')).toBeInTheDocument()
+    })
+
+    it('should align the fixed warning to the content frame when requested', () => {
+      const { container } = renderModelProviderPage({ fixedWarningAlignment: 'content-frame' })
+      const warning = screen.getByText('common.modelProvider.noneConfigured')
+      const warningContainer = warning.closest('.fixed')
+
+      expect(warningContainer).not.toHaveClass('right-2')
+      expect(warningContainer).toHaveClass('right-0', 'left-[var(--model-provider-warning-left,0px)]')
+      expect(warning.closest('.mx-auto')).toHaveClass('max-w-[1600px]', 'justify-end', 'px-6')
+      expect(container.firstElementChild).toHaveClass('relative')
     })
 
     it('should not show warning when some default models are set', () => {

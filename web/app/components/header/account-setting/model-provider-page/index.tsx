@@ -32,6 +32,7 @@ import { providerToPluginId } from './utils'
 type SystemModelConfigStatus = 'no-provider' | 'none-configured' | 'partially-configured' | 'fully-configured'
 
 type Props = {
+  fixedWarningAlignment?: 'viewport' | 'content-frame'
   onSearchTextChange?: (value: string) => void
   searchText: string
   stickyToolbar?: boolean
@@ -40,6 +41,7 @@ type Props = {
 const FixedModelProvider = ['langgenius/openai/openai', 'langgenius/anthropic/anthropic']
 
 const ModelProviderPage = ({
+  fixedWarningAlignment = 'viewport',
   onSearchTextChange,
   searchText,
   stickyToolbar,
@@ -176,20 +178,28 @@ const ModelProviderPage = ({
         </div>
       </div>
       {showWarning && !warningDismissed && (
-        <div className="fixed top-2 right-2 z-50 p-2">
-          <div className="flex items-center gap-2 rounded-lg border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg px-3 py-2 shadow-xs backdrop-blur-[5px]">
-            <span aria-hidden className="i-ri-alert-fill size-4 shrink-0 text-text-warning-secondary" />
-            <span className="shrink-0 system-xs-medium whitespace-nowrap text-text-primary" title={t(warningTextKey, { ns: 'common' })}>
-              {t(warningTextKey, { ns: 'common' })}
-            </span>
-            <button
-              type="button"
-              className="flex size-4 shrink-0 items-center justify-center text-text-tertiary hover:text-text-secondary"
-              aria-label={t('operation.close', { ns: 'common' })}
-              onClick={() => setWarningDismissed(true)}
-            >
-              <span aria-hidden className="i-ri-close-line size-4" />
-            </button>
+        <div className={fixedWarningAlignment === 'content-frame'
+          ? 'pointer-events-none fixed top-2 right-0 left-[var(--model-provider-warning-left,0px)] z-50'
+          : 'fixed top-2 right-2 z-50 p-2'}
+        >
+          <div className={fixedWarningAlignment === 'content-frame'
+            ? 'mx-auto box-border flex w-full max-w-[1600px] justify-end px-6 py-2'
+            : undefined}
+          >
+            <div className="pointer-events-auto flex items-center gap-2 rounded-lg border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg px-3 py-2 shadow-xs backdrop-blur-[5px]">
+              <span aria-hidden className="i-ri-alert-fill size-4 shrink-0 text-text-warning-secondary" />
+              <span className="shrink-0 system-xs-medium whitespace-nowrap text-text-primary" title={t(warningTextKey, { ns: 'common' })}>
+                {t(warningTextKey, { ns: 'common' })}
+              </span>
+              <button
+                type="button"
+                className="flex size-4 shrink-0 items-center justify-center text-text-tertiary hover:text-text-secondary"
+                aria-label={t('operation.close', { ns: 'common' })}
+                onClick={() => setWarningDismissed(true)}
+              >
+                <span aria-hidden className="i-ri-close-line size-4" />
+              </button>
+            </div>
           </div>
         </div>
       )}

@@ -88,13 +88,15 @@ vi.mock('@/app/components/plugins/plugin-page/install-plugin-dropdown', () => ({
 vi.mock('@/app/components/header/account-setting/model-provider-page', () => ({
   __esModule: true,
   default: ({
+    fixedWarningAlignment,
     onSearchTextChange,
     searchText,
   }: {
+    fixedWarningAlignment?: string
     onSearchTextChange?: (value: string) => void
     searchText: string
   }) => (
-    <div data-testid="model-provider-page">
+    <div data-testid="model-provider-page" data-fixed-warning-alignment={fixedWarningAlignment}>
       <input
         aria-label="search"
         value={searchText}
@@ -170,6 +172,7 @@ describe('IntegrationsPage', () => {
 
     expect(screen.getByTestId('model-provider-page')).toBeInTheDocument()
     expect(screen.getByTestId('model-provider-page').parentElement).toHaveClass('max-w-[1600px]', 'px-6', 'pt-2')
+    expect(screen.getByTestId('model-provider-page')).toHaveAttribute('data-fixed-warning-alignment', 'content-frame')
     expect(screen.getAllByText('common.settings.provider')).toHaveLength(2)
     expect(screen.getByRole('textbox', { name: 'search' })).toBeInTheDocument()
   })
@@ -398,10 +401,17 @@ describe('IntegrationsPage', () => {
   })
 
   it('collapses and expands the integrations sidebar', () => {
-    renderIntegrationsPage({ section: 'provider' })
+    const { container } = renderIntegrationsPage({ section: 'provider' })
+
+    expect(container.firstElementChild).toHaveStyle({
+      '--model-provider-warning-left': 'calc(240px + 200px)',
+    })
 
     fireEvent.click(screen.getByRole('button', { name: 'common.settings.collapse' }))
 
+    expect(container.firstElementChild).toHaveStyle({
+      '--model-provider-warning-left': 'calc(240px + 56px)',
+    })
     expect(screen.queryByText('common.settings.integrations')).not.toBeInTheDocument()
     expect(screen.queryByText('common.settings.swaggerAPIAsTool')).not.toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'MCP' })).toBeInTheDocument()
