@@ -10,8 +10,8 @@ import { useTranslation } from 'react-i18next'
 import Divider from '@/app/components/base/divider'
 import ApiBasedExtensionSelector from '@/app/components/header/account-setting/api-based-extension-page/selector'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
-import { useAccountSetting } from '@/app/components/header/account-setting/hooks'
 import { CustomConfigurationStatusEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import { useIntegrationsSetting } from '@/app/components/header/account-setting/use-integrations-setting'
 import { useDocLink, useLocale } from '@/context/i18n'
 import { LanguagesSupported } from '@/i18n-config/language'
 import { useCodeBasedExtensions, useModelProviders } from '@/service/use-common'
@@ -42,9 +42,9 @@ const ModerationSettingModal: FC<ModerationSettingModalProps> = ({
   const locale = useLocale()
   const { data: modelProviders, isPending: isLoading, refetch: refetchModelProviders } = useModelProviders()
   const [localeData, setLocaleData] = useState<ModerationConfig>(data)
-  const openAccountSetting = useAccountSetting()
+  const openIntegrationsSetting = useIntegrationsSetting()
   const handleOpenSettingsModal = () => {
-    openAccountSetting({
+    openIntegrationsSetting({
       payload: ACCOUNT_SETTING_TAB.PROVIDER,
       onCancelCallback: () => {
         refetchModelProviders()

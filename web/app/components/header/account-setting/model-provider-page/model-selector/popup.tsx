@@ -8,7 +8,7 @@ import { useTheme } from 'next-themes'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
-import { useAccountSetting } from '@/app/components/header/account-setting/hooks'
+import { useIntegrationsSetting } from '@/app/components/header/account-setting/use-integrations-setting'
 import checkTaskStatus from '@/app/components/plugins/install-plugin/base/check-task-status'
 import useRefreshPluginList from '@/app/components/plugins/install-plugin/hooks/use-refresh-plugin-list'
 import { useProviderContext } from '@/context/provider-context'
@@ -50,7 +50,7 @@ function Popup({
   const language = useLanguage()
   const previewCardHandle = useMemo(() => createPreviewCardHandle<ModelSelectorPreviewPayload>(), [])
   const [marketplaceCollapsed, setMarketplaceCollapsed] = useState(false)
-  const openAccountSetting = useAccountSetting()
+  const openIntegrationsSetting = useIntegrationsSetting()
   const { modelProviders } = useProviderContext()
   const {
     plugins: allPlugins,
@@ -155,8 +155,8 @@ function Popup({
 
   const handleOpenSettings = useCallback(() => {
     onHide()
-    openAccountSetting({ payload: ACCOUNT_SETTING_TAB.PROVIDER })
-  }, [onHide, openAccountSetting])
+    openIntegrationsSetting({ payload: ACCOUNT_SETTING_TAB.PROVIDER })
+  }, [onHide, openIntegrationsSetting])
   const handleClosePreviewCard = useCallback(() => {
     previewCardHandle.close()
   }, [previewCardHandle])

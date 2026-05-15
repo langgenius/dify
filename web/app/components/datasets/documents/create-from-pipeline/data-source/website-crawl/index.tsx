@@ -11,7 +11,7 @@ import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useShallow } from 'zustand/react/shallow'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
-import { useAccountSetting } from '@/app/components/header/account-setting/hooks'
+import { useIntegrationsSetting } from '@/app/components/header/account-setting/use-integrations-setting'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import { useDocLink } from '@/context/i18n'
 import { CrawlStep } from '@/models/datasets'
@@ -52,7 +52,7 @@ const WebsiteCrawl = ({
   const [crawledNum, setCrawledNum] = useState(0)
   const [crawlErrorMessage, setCrawlErrorMessage] = useState('')
   const pipelineId = useDatasetDetailContextWithSelector(s => s.dataset?.pipeline_id)
-  const openAccountSetting = useAccountSetting()
+  const openIntegrationsSetting = useIntegrationsSetting()
   const {
     crawlResult,
     step,
@@ -142,10 +142,10 @@ const WebsiteCrawl = ({
   }, [handleRun])
 
   const handleSetting = useCallback(() => {
-    openAccountSetting({
+    openIntegrationsSetting({
       payload: ACCOUNT_SETTING_TAB.DATA_SOURCE,
     })
-  }, [openAccountSetting])
+  }, [openIntegrationsSetting])
 
   const handleCredentialChange = useCallback((credentialId: string) => {
     setCrawledNum(0)

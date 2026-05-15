@@ -17,10 +17,10 @@ import IndexMethod from '@/app/components/datasets/settings/index-method'
 import PermissionSelector from '@/app/components/datasets/settings/permission-selector'
 import { checkShowMultiModalTip } from '@/app/components/datasets/settings/utils'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
-import { useAccountSetting } from '@/app/components/header/account-setting/hooks'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useModelList } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import ModelSelector from '@/app/components/header/account-setting/model-provider-page/model-selector'
+import { useIntegrationsSetting } from '@/app/components/header/account-setting/use-integrations-setting'
 import { useAppContext } from '@/context/app-context'
 import { useDocLink } from '@/context/i18n'
 import { DatasetPermission } from '@/models/datasets'
@@ -53,7 +53,7 @@ const SettingsModal: FC<SettingsModalProps> = ({
   const docLink = useDocLink()
   const ref = useRef(null)
   const isExternal = currentDataset.provider === 'external'
-  const openAccountSetting = useAccountSetting()
+  const openIntegrationsSetting = useIntegrationsSetting()
   const [loading, setLoading] = useState(false)
   const { isCurrentWorkspaceDatasetOperator } = useAppContext()
   const [localeCurrentDataset, setLocaleCurrentDataset] = useState({ ...currentDataset })
@@ -284,7 +284,7 @@ const SettingsModal: FC<SettingsModalProps> = ({
                 <button
                   type="button"
                   className="cursor-pointer border-none bg-transparent p-0 text-left text-text-accent focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
-                  onClick={() => openAccountSetting({ payload: ACCOUNT_SETTING_TAB.PROVIDER })}
+                  onClick={() => openIntegrationsSetting({ payload: ACCOUNT_SETTING_TAB.PROVIDER })}
                 >
                   {t('form.embeddingModelTipLink', { ns: 'datasetSettings' })}
                 </button>

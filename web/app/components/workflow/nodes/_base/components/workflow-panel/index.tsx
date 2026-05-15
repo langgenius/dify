@@ -28,8 +28,8 @@ import { useStore as useAppStore } from '@/app/components/app/store'
 import { Stop } from '@/app/components/base/icons/src/vender/line/mediaAndDevices'
 import { UserAvatarList } from '@/app/components/base/user-avatar-list'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
-import { useAccountSetting } from '@/app/components/header/account-setting/hooks'
 import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
+import { useIntegrationsSetting } from '@/app/components/header/account-setting/use-integrations-setting'
 import {
   AuthCategory,
   AuthorizedInDataSourceNode,
@@ -354,11 +354,11 @@ const BasePanel: FC<BasePanelProps> = ({
     })
   }, [handleNodeDataUpdateWithSyncDraft, id])
 
-  const openAccountSetting = useAccountSetting()
+  const openIntegrationsSetting = useIntegrationsSetting()
 
   const handleJumpToDataSourcePage = useCallback(() => {
-    openAccountSetting({ payload: ACCOUNT_SETTING_TAB.DATA_SOURCE })
-  }, [openAccountSetting])
+    openIntegrationsSetting({ payload: ACCOUNT_SETTING_TAB.DATA_SOURCE })
+  }, [openIntegrationsSetting])
 
   const {
     appendNodeInspectVars,

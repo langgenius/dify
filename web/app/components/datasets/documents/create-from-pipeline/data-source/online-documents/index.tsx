@@ -7,7 +7,7 @@ import { useShallow } from 'zustand/react/shallow'
 import Loading from '@/app/components/base/loading'
 import SearchInput from '@/app/components/base/notion-page-selector/search-input'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
-import { useAccountSetting } from '@/app/components/header/account-setting/hooks'
+import { useIntegrationsSetting } from '@/app/components/header/account-setting/use-integrations-setting'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import { useDocLink } from '@/context/i18n'
 import { DatasourceType } from '@/models/pipeline'
@@ -35,7 +35,7 @@ const OnlineDocuments = ({
 }: OnlineDocumentsProps) => {
   const docLink = useDocLink()
   const pipelineId = useDatasetDetailContextWithSelector(s => s.dataset?.pipeline_id)
-  const openAccountSetting = useAccountSetting()
+  const openIntegrationsSetting = useIntegrationsSetting()
   const {
     documentsData,
     searchValue,
@@ -126,10 +126,10 @@ const OnlineDocuments = ({
   }, [PagesMapAndSelectedPagesId, dataSourceStore])
 
   const handleSetting = useCallback(() => {
-    openAccountSetting({
+    openIntegrationsSetting({
       payload: ACCOUNT_SETTING_TAB.DATA_SOURCE,
     })
-  }, [openAccountSetting])
+  }, [openIntegrationsSetting])
 
   return (
     <div className="flex flex-col gap-y-2">

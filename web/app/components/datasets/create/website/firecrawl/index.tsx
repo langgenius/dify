@@ -6,7 +6,7 @@ import * as React from 'react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
-import { useAccountSetting } from '@/app/components/header/account-setting/hooks'
+import { useIntegrationsSetting } from '@/app/components/header/account-setting/use-integrations-setting'
 import { checkFirecrawlTaskStatus, createFirecrawlTask } from '@/service/datasets'
 import { sleep } from '@/utils'
 import CrawledResult from '../base/crawled-result'
@@ -61,12 +61,12 @@ const FireCrawl: FC<Props> = ({ onPreview, checkedCrawlResult, onCheckedCrawlRes
       isMountedRef.current = false
     }
   }, [])
-  const openAccountSetting = useAccountSetting()
+  const openIntegrationsSetting = useIntegrationsSetting()
   const handleSetting = useCallback(() => {
-    openAccountSetting({
+    openIntegrationsSetting({
       payload: ACCOUNT_SETTING_TAB.DATA_SOURCE,
     })
-  }, [openAccountSetting])
+  }, [openIntegrationsSetting])
   const checkValid = useCallback((url: string) => {
     let errorMsg = ''
     if (!url) {

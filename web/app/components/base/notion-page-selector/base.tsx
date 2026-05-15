@@ -4,7 +4,7 @@ import type { DataSourceNotionPageMap, DataSourceNotionWorkspace, NotionPage } f
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
-import { useAccountSetting } from '@/app/components/header/account-setting/hooks'
+import { useIntegrationsSetting } from '@/app/components/header/account-setting/use-integrations-setting'
 import { useInvalidPreImportNotionPages, usePreImportNotionPages } from '@/service/knowledge/use-import'
 import Header from '../../datasets/create/website/base/header'
 import Loading from '../loading'
@@ -36,7 +36,7 @@ const NotionPageSelector = ({
 }: NotionPageSelectorProps) => {
   const { t } = useTranslation()
   const [searchValue, setSearchValue] = useState('')
-  const openAccountSetting = useAccountSetting()
+  const openIntegrationsSetting = useIntegrationsSetting()
 
   const invalidPreImportNotionPages = useInvalidPreImportNotionPages()
 
@@ -130,8 +130,8 @@ const NotionPageSelector = ({
   }, [pagesMapAndSelectedPagesId, onPreview])
 
   const handleConfigureNotion = useCallback(() => {
-    openAccountSetting({ payload: ACCOUNT_SETTING_TAB.DATA_SOURCE })
-  }, [openAccountSetting])
+    openIntegrationsSetting({ payload: ACCOUNT_SETTING_TAB.DATA_SOURCE })
+  }, [openIntegrationsSetting])
 
   if (isFetchingNotionPagesError) {
     return (

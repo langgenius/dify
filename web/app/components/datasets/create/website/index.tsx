@@ -7,7 +7,7 @@ import * as React from 'react'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
-import { useAccountSetting } from '@/app/components/header/account-setting/hooks'
+import { useIntegrationsSetting } from '@/app/components/header/account-setting/use-integrations-setting'
 import { ENABLE_WEBSITE_FIRECRAWL, ENABLE_WEBSITE_JINAREADER, ENABLE_WEBSITE_WATERCRAWL } from '@/config'
 import { DataSourceProvider } from '@/models/common'
 import Firecrawl from './firecrawl'
@@ -38,7 +38,7 @@ const Website: FC<Props> = ({
   authedDataSourceList,
 }) => {
   const { t } = useTranslation()
-  const openAccountSetting = useAccountSetting()
+  const openIntegrationsSetting = useIntegrationsSetting()
   const [selectedProvider, setSelectedProvider] = useState<DataSourceProvider>(DataSourceProvider.jinaReader)
 
   const availableProviders = useMemo(() => authedDataSourceList.filter((item) => {
@@ -50,10 +50,10 @@ const Website: FC<Props> = ({
   }), [authedDataSourceList])
 
   const handleOnConfig = useCallback(() => {
-    openAccountSetting({
+    openIntegrationsSetting({
       payload: ACCOUNT_SETTING_TAB.DATA_SOURCE,
     })
-  }, [openAccountSetting])
+  }, [openIntegrationsSetting])
 
   const source = availableProviders.find(source => source.provider === selectedProvider)
 

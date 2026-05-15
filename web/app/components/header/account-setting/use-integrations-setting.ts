@@ -7,7 +7,7 @@ import { useModalContext } from '@/context/modal-context'
 import { useRouter } from '@/next/navigation'
 import { getMovedAccountSettingDestination } from './destinations'
 
-export const useAccountSetting = () => {
+export const useIntegrationsSetting = () => {
   const router = useRouter()
   const { setShowAccountSettingModal } = useModalContext()
 

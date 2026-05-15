@@ -8,7 +8,7 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { LinkExternal02 } from '@/app/components/base/icons/src/vender/line/general'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
-import { useAccountSetting } from '@/app/components/header/account-setting/hooks'
+import { useIntegrationsSetting } from '@/app/components/header/account-setting/use-integrations-setting'
 import { IS_CE_EDITION } from '@/config'
 import { useProviderContext } from '@/context/provider-context'
 
@@ -16,7 +16,7 @@ const APIKeyInfoPanel: FC = () => {
   const isCloud = !IS_CE_EDITION
 
   const { isAPIKeySet } = useProviderContext()
-  const openAccountSetting = useAccountSetting()
+  const openIntegrationsSetting = useIntegrationsSetting()
 
   const { t } = useTranslation()
 
@@ -49,7 +49,7 @@ const APIKeyInfoPanel: FC = () => {
       <Button
         variant="primary"
         className="mt-2 space-x-2"
-        onClick={() => openAccountSetting({ payload: ACCOUNT_SETTING_TAB.PROVIDER })}
+        onClick={() => openIntegrationsSetting({ payload: ACCOUNT_SETTING_TAB.PROVIDER })}
       >
         <div className="text-sm font-medium">{t('apiKeyInfo.setAPIBtn', { ns: 'appOverview' })}</div>
         <LinkExternal02 className="h-4 w-4" />

@@ -1,6 +1,6 @@
 import { act, renderHook } from '@testing-library/react'
 import { ACCOUNT_SETTING_TAB } from '../constants'
-import { useAccountSetting } from '../hooks'
+import { useIntegrationsSetting } from '../use-integrations-setting'
 
 const { mockRouterPush, mockSetShowAccountSettingModal } = vi.hoisted(() => ({
   mockRouterPush: vi.fn(),
@@ -19,7 +19,7 @@ vi.mock('@/context/modal-context', () => ({
   }),
 }))
 
-describe('useAccountSetting', () => {
+describe('useIntegrationsSetting', () => {
   beforeEach(() => {
     vi.clearAllMocks()
   })
@@ -29,7 +29,7 @@ describe('useAccountSetting', () => {
     [ACCOUNT_SETTING_TAB.DATA_SOURCE, '/integrations/data-source'],
     [ACCOUNT_SETTING_TAB.API_BASED_EXTENSION, '/integrations/tools/api-extension'],
   ])('should navigate directly for migrated tab %s', (tab, destination) => {
-    const { result } = renderHook(() => useAccountSetting())
+    const { result } = renderHook(() => useIntegrationsSetting())
 
     act(() => {
       result.current({ payload: tab })
@@ -40,7 +40,7 @@ describe('useAccountSetting', () => {
   })
 
   it('should keep modal behavior for non-migrated tabs', () => {
-    const { result } = renderHook(() => useAccountSetting())
+    const { result } = renderHook(() => useIntegrationsSetting())
 
     act(() => {
       result.current({ payload: ACCOUNT_SETTING_TAB.BILLING })
