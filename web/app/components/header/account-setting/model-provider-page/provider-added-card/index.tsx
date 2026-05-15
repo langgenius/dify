@@ -14,9 +14,10 @@ import {
   ManageCustomModelCredentials,
 } from '@/app/components/header/account-setting/model-provider-page/model-auth'
 import { IS_CE_EDITION } from '@/config'
-import { useAppContext } from '@/context/app-context'
+import { useSelector as useAppContextWithSelector } from '@/context/app-context'
 import { useProviderContextSelector } from '@/context/provider-context'
 import { consoleQuery } from '@/service/client'
+import { hasPermission } from '@/utils/permission'
 import { useModelProviderListExpanded, useSetModelProviderListExpanded } from '../atoms'
 import { ConfigurationMethodEnum } from '../declarations'
 import ModelBadge from '../model-badge'
@@ -60,10 +61,12 @@ const ProviderAddedCard: FC<ProviderAddedCardProps> = ({
   }))
   const hasModelList = hasFetchedModelList && !!modelList.length
   const showCollapsedSection = !expanded || !hasFetchedModelList
-  const { isCurrentWorkspaceManager } = useAppContext()
+  const workspacePermissionKeys = useAppContextWithSelector(state => state.workspacePermissionKeys)
   const showModelProvider = systemConfig.enabled && MODEL_PROVIDER_QUOTA_GET_PAID.includes(currentProviderName as ModelProviderQuotaGetPaid) && !IS_CE_EDITION
-  const showCredential = supportsPredefinedModel && isCurrentWorkspaceManager
-  const showCustomModelActions = supportsCustomizableModel && isCurrentWorkspaceManager
+  const canManageModelProviders = hasPermission(workspacePermissionKeys, 'model.manage')
+  const canUseCredentials = hasPermission(workspacePermissionKeys, ['credential.manage', 'credential.use'])
+  const showCredential = supportsPredefinedModel && canUseCredentials
+  const showCustomModelActions = supportsCustomizableModel && canManageModelProviders
 
   const refreshModelList = useCallback((targetProviderName: string) => {
     if (targetProviderName !== currentProviderName)
@@ -123,7 +126,7 @@ const ProviderAddedCard: FC<ProviderAddedCardProps> = ({
       </div>
       {
         showCollapsedSection && (
-          <div className="group flex items-center justify-between border-t border-t-divider-subtle py-1.5 pr-[11px] pl-2 system-xs-medium text-text-tertiary">
+          <div className="group flex items-center justify-between border-t border-t-divider-subtle py-1.5 pr-2.75 pl-2 system-xs-medium text-text-tertiary">
             {(showModelProvider || !notConfigured) && (
               <button
                 type="button"

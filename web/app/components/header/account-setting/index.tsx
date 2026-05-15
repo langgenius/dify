@@ -189,7 +189,7 @@ export default function AccountSetting({
             {
               menuItems.map(menuItem => (
                 <div key={menuItem.key} className="mb-2">
-                  {menuItem.items.length === 0 && (
+                  {menuItem.items.length !== 0 && (
                     <div className="mb-0.5 py-2 pb-1 pl-3 system-xs-medium-uppercase text-text-tertiary">{menuItem.name}</div>
                   )}
                   <div>

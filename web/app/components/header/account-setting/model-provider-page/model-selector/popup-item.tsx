@@ -7,8 +7,10 @@ import { PreviewCardTrigger } from '@langgenius/dify-ui/preview-card'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { CreditsCoin } from '@/app/components/base/icons/src/vender/line/financeAndECommerce'
+import { useSelector as useAppContextWithSelector } from '@/context/app-context'
 import { useModalContext } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
+import { hasPermission } from '@/utils/permission'
 import { ConfigurationMethodEnum, ModelStatusEnum } from '../declarations'
 import { useLanguage, useUpdateModelList, useUpdateModelProviders } from '../hooks'
 import ModelIcon from '../model-icon'
@@ -47,6 +49,8 @@ function PopupItem({
   const updateModelList = useUpdateModelList()
   const updateModelProviders = useUpdateModelProviders()
   const currentProvider = modelProviders.find(provider => provider.provider === model.provider)
+  const workspacePermissionKeys = useAppContextWithSelector(state => state.workspacePermissionKeys)
+  const canUseCredentials = hasPermission(workspacePermissionKeys, ['credential.manage', 'credential.use'])
   const handleOpenModelModal = () => {
     if (!currentProvider)
       return
@@ -101,6 +105,7 @@ function PopupItem({
         </button>
         <Popover open={dropdownOpen} onOpenChange={setDropdownOpen}>
           <PopoverTrigger
+            disabled={!canUseCredentials}
             render={(
               <button type="button" className="flex max-w-[50%] min-w-0 shrink-0 cursor-pointer items-center rounded-md px-1.5 py-1 system-xs-medium text-text-tertiary hover:bg-components-button-ghost-bg-hover">
                 {isUsingCredits
@@ -132,7 +137,7 @@ function PopupItem({
                           <span className="ml-1 truncate text-text-tertiary">{t('modelProvider.selector.configureRequired', { ns: 'common' })}</span>
                         </>
                       )}
-                <span className="i-ri-arrow-down-s-line h-3.5! w-3.5! shrink-0 translate-y-px text-text-tertiary" />
+                {canUseCredentials && <span className="i-ri-arrow-down-s-line h-3.5! w-3.5! shrink-0 translate-y-px text-text-tertiary" />}
               </button>
             )}
           />

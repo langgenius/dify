@@ -3,13 +3,6 @@ import type { FC } from 'react'
 import type { PluginDetail } from '../types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
-import {
-  RiArrowRightUpLine,
-  RiBugLine,
-  RiErrorWarningLine,
-  RiHardDrive3Line,
-  RiLoginCircleLine,
-} from '@remixicon/react'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import * as React from 'react'
 import { useCallback, useMemo } from 'react'
@@ -31,6 +24,7 @@ import OrgInfo from '../card/base/org-info'
 import Title from '../card/base/title'
 import { useCategories } from '../hooks'
 import { usePluginPageContext } from '../plugin-page/context'
+import useReferenceSetting from '../plugin-page/use-reference-setting'
 import { PluginCategoryEnum, PluginSource } from '../types'
 import Action from './action'
 
@@ -48,6 +42,7 @@ const PluginItem: FC<Props> = ({
   const { categoriesMap } = useCategories(true)
   const currentPluginID = usePluginPageContext(v => v.currentPluginID)
   const setCurrentPluginID = usePluginPageContext(v => v.setCurrentPluginID)
+  const { canInstall, canUninstall } = useReferenceSetting()
   const { refreshPluginList } = useRefreshPluginList()
 
   const {
@@ -130,7 +125,7 @@ const PluginItem: FC<Props> = ({
                     aria-label={t('difyVersionNotCompatible', { ns: 'plugin', minimalDifyVersion: declarationMeta.minimum_dify_version })}
                     className="ml-0.5 inline-flex h-4 w-4 shrink-0 border-0 bg-transparent p-0"
                   >
-                    <RiErrorWarningLine color="red" className="h-4 w-4 text-text-accent" />
+                    <span className="i-ri-error-warning-line h-4 w-4 text-text-accent" color="red" />
                   </PopoverTrigger>
                   <PopoverContent popupClassName="px-3 py-2 system-xs-regular text-text-tertiary">
                     {t('difyVersionNotCompatible', { ns: 'plugin', minimalDifyVersion: declarationMeta.minimum_dify_version })}
@@ -152,9 +147,9 @@ const PluginItem: FC<Props> = ({
                   author={author}
                   pluginName={name}
                   usedInApps={5}
-                  isShowFetchNewVersion={source === PluginSource.github}
+                  isShowFetchNewVersion={source === PluginSource.github && canInstall}
                   isShowInfo={source === PluginSource.github}
-                  isShowDelete
+                  isShowDelete={canUninstall}
                   meta={meta}
                   onDelete={handleDelete}
                   category={category}
@@ -176,7 +171,7 @@ const PluginItem: FC<Props> = ({
             <>
               <div className="mx-2 system-xs-regular text-text-quaternary">·</div>
               <div className="flex items-center gap-x-1 overflow-hidden system-xs-regular text-text-tertiary">
-                <RiLoginCircleLine className="size-3 shrink-0" />
+                <span className="i-ri-login-circle-line size-3 shrink-0" />
                 <span
                   className="truncate"
                   title={t('endpointsEnabled', { ns: 'plugin', num: endpoints_active })}
@@ -197,7 +192,7 @@ const PluginItem: FC<Props> = ({
                   <div className="flex items-center space-x-0.5 text-text-secondary">
                     <Github className="h-3 w-3" />
                     <div className="system-2xs-semibold-uppercase">GitHub</div>
-                    <RiArrowRightUpLine className="h-3 w-3" />
+                    <span className="i-ri-arrow-right-up-line h-3 w-3" />
                   </div>
                 </a>
               </>
@@ -211,7 +206,7 @@ const PluginItem: FC<Props> = ({
                     {' '}
                     <span className="text-text-secondary">marketplace</span>
                   </div>
-                  <RiArrowRightUpLine className="h-3 w-3 text-text-secondary" />
+                  <span className="i-ri-arrow-right-up-line h-3 w-3 text-text-secondary" />
                 </a>
               </>
             )}
@@ -219,7 +214,7 @@ const PluginItem: FC<Props> = ({
             && (
               <>
                 <div className="flex items-center gap-1">
-                  <RiHardDrive3Line className="h-3 w-3 text-text-tertiary" />
+                  <span className="i-ri-hard-drive-3-line h-3 w-3 text-text-tertiary" />
                   <div className="system-2xs-medium-uppercase text-text-tertiary">Local Plugin</div>
                 </div>
               </>
@@ -228,7 +223,7 @@ const PluginItem: FC<Props> = ({
             && (
               <>
                 <div className="flex items-center gap-1">
-                  <RiBugLine className="h-3 w-3 text-text-warning" />
+                  <span className="i-ri-bug-line h-3 w-3 text-text-warning" />
                   <div className="system-2xs-medium-uppercase text-text-warning">Debugging Plugin</div>
                 </div>
               </>
@@ -246,7 +241,7 @@ const PluginItem: FC<Props> = ({
       </div>
       {/* BG Effect for Deprecated Plugin */}
       {source === PluginSource.marketplace && enable_marketplace && isDeprecated && (
-        <div className="absolute right-[-45px] bottom-[-71px] z-0 size-40 bg-components-badge-status-light-warning-halo opacity-60 blur-[120px]" />
+        <div className="absolute -right-11.25 -bottom-17.75 z-0 size-40 bg-components-badge-status-light-warning-halo opacity-60 blur-[120px]" />
       )}
     </div>
   )

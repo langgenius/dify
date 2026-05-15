@@ -9,6 +9,7 @@ import Badge from '@/app/components/base/badge'
 import { HeaderModals } from '@/app/components/plugins/plugin-detail-panel/detail-header/components'
 import { useDetailHeaderState, usePluginOperations } from '@/app/components/plugins/plugin-detail-panel/detail-header/hooks'
 import OperationDropdown from '@/app/components/plugins/plugin-detail-panel/operation-dropdown'
+import useReferenceSetting from '@/app/components/plugins/plugin-page/use-reference-setting'
 import { PluginSource } from '@/app/components/plugins/types'
 import PluginVersionPicker from '@/app/components/plugins/update-plugin/plugin-version-picker'
 import { useLocale } from '@/context/i18n'
@@ -24,6 +25,7 @@ const ProviderCardActions: FC<Props> = ({ detail, onUpdate }) => {
   const { t } = useTranslation()
   const { theme } = useTheme()
   const locale = useLocale()
+  const { canInstall } = useReferenceSetting()
 
   const { source, version, latest_version, latest_unique_identifier, meta } = detail
   const author = detail.declaration?.author ?? ''
@@ -77,7 +79,7 @@ const ProviderCardActions: FC<Props> = ({ detail, onUpdate }) => {
     <>
       {!!version && (
         <PluginVersionPicker
-          disabled={!isFromMarketplace}
+          disabled={!isFromMarketplace || !canInstall}
           isShow={versionPicker.isShow}
           onShowChange={versionPicker.setIsShow}
           pluginID={detail.plugin_id}
@@ -103,7 +105,7 @@ const ProviderCardActions: FC<Props> = ({ detail, onUpdate }) => {
         />
       )}
 
-      {(hasNewVersion || isFromGitHub) && (
+      {(hasNewVersion || isFromGitHub) && canInstall && (
         <Tooltip>
           <TooltipTrigger
             delay={300}

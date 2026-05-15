@@ -18,6 +18,10 @@ export const hasEditPermissionForDataset = (userId: string, datasetConfig: Datas
   return false
 }
 
-export const hasPermission = (permissionKeys: readonly PermissionKey[], permissionKey: PermissionKey) => {
-  return !!permissionKeys.includes(permissionKey)
+export const hasPermission = (permissionKeys: readonly PermissionKey[], permissionKeySet: PermissionKey | PermissionKey[]) => {
+  if (Array.isArray(permissionKeySet)) {
+    return permissionKeySet.some(key => permissionKeys.includes(key))
+  }
+  const singlePermissionKey = permissionKeySet
+  return permissionKeys.includes(singlePermissionKey)
 }

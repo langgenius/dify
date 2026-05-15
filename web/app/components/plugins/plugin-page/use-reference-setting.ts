@@ -5,9 +5,10 @@ import { useTranslation } from 'react-i18next'
 import { useAppContext } from '@/context/app-context'
 import { systemFeaturesQueryOptions } from '@/service/system-features'
 import { useInvalidateReferenceSettings, useMutationReferenceSettings, useReferenceSettings } from '@/service/use-plugins'
+import { hasPermission } from '@/utils/permission'
 import { PermissionType } from '../types'
 
-const hasPermission = (permission: PermissionType | undefined, isAdmin: boolean) => {
+const hasPluginPermission = (permission: PermissionType | undefined, isAdmin: boolean) => {
   if (!permission)
     return false
 
@@ -22,9 +23,9 @@ const hasPermission = (permission: PermissionType | undefined, isAdmin: boolean)
 
 const useReferenceSetting = () => {
   const { t } = useTranslation()
-  const { isCurrentWorkspaceManager, isCurrentWorkspaceOwner } = useAppContext()
+  const { isCurrentWorkspaceManager, isCurrentWorkspaceOwner, workspacePermissionKeys } = useAppContext()
   const { data } = useReferenceSettings()
-  // console.log(data)
+
   const { permission: permissions } = data || {}
   const invalidateReferenceSettings = useInvalidateReferenceSettings()
   const { mutate: updateReferenceSetting, isPending: isUpdatePending } = useMutationReferenceSettings({
@@ -35,12 +36,17 @@ const useReferenceSetting = () => {
   })
   const isAdmin = isCurrentWorkspaceManager || isCurrentWorkspaceOwner
 
+  const canInstall = hasPermission(workspacePermissionKeys, ['plugin.install', 'plugin.manage'])
+  const canUninstall = hasPermission(workspacePermissionKeys, ['plugin.uninstall', 'plugin.manage'])
+  const canSetPreferences = hasPermission(workspacePermissionKeys, ['plugin.preference.manage'])
+
   return {
     referenceSetting: data,
     setReferenceSettings: updateReferenceSetting,
-    canManagement: hasPermission(permissions?.install_permission, isAdmin),
-    canDebugger: hasPermission(permissions?.debug_permission, isAdmin),
-    canSetPermissions: isAdmin,
+    canInstall: hasPluginPermission(permissions?.install_permission, canInstall),
+    canUninstall,
+    canDebugger: hasPluginPermission(permissions?.debug_permission, isAdmin),
+    canSetPreferences,
     isUpdatePending,
   }
 }
@@ -50,11 +56,11 @@ export const useCanInstallPluginFromMarketplace = () => {
     ...systemFeaturesQueryOptions(),
     select: s => s.enable_marketplace,
   })
-  const { canManagement } = useReferenceSetting()
+  const { canInstall } = useReferenceSetting()
 
   const canInstallPluginFromMarketplace = useMemo(() => {
-    return enable_marketplace && canManagement
-  }, [enable_marketplace, canManagement])
+    return enable_marketplace && canInstall
+  }, [enable_marketplace, canInstall])
 
   return {
     canInstallPluginFromMarketplace,

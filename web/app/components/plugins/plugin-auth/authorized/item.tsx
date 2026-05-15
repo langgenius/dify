@@ -3,12 +3,6 @@ import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import {
-  RiCheckLine,
-  RiDeleteBinLine,
-  RiEditLine,
-  RiEqualizer2Line,
-} from '@remixicon/react'
-import {
   memo,
   useMemo,
   useState,
@@ -18,11 +12,12 @@ import ActionButton from '@/app/components/base/action-button'
 import Badge from '@/app/components/base/badge'
 import Input from '@/app/components/base/input'
 import Indicator from '@/app/components/header/indicator'
+import { useSelector as useAppContextWithSelector } from '@/context/app-context'
+import { hasPermission } from '@/utils/permission'
 import { CredentialTypeEnum } from '../types'
 
 type ItemProps = {
   credential: Credential
-  disabled?: boolean
   onDelete?: (id: string) => void
   onEdit?: (id: string, values: Record<string, any>) => void
   onSetDefault?: (id: string) => void
@@ -40,7 +35,6 @@ type ItemProps = {
 }
 const Item = ({
   credential,
-  disabled,
   onDelete,
   onEdit,
   onSetDefault,
@@ -56,6 +50,9 @@ const Item = ({
   const { t } = useTranslation()
   const [renaming, setRenaming] = useState(false)
   const [renameValue, setRenameValue] = useState(credential.name)
+  const workspacePermissionKeys = useAppContextWithSelector(s => s.workspacePermissionKeys)
+  const canManageCredential = hasPermission(workspacePermissionKeys, 'credential.manage')
+  const canUseCredential = hasPermission(workspacePermissionKeys, ['credential.use', 'credential.manage'])
   const isOAuth = credential.credential_type === CredentialTypeEnum.OAUTH2
   const showAction = useMemo(() => {
     return !(disableRename && disableEdit && disableDelete && disableSetDefault)
@@ -67,10 +64,10 @@ const Item = ({
       className={cn(
         'group flex h-8 items-center rounded-lg p-1 hover:bg-state-base-hover',
         renaming && 'bg-state-base-hover',
-        (disabled || credential.not_allowed_to_use) && 'cursor-not-allowed opacity-50',
+        (!canUseCredential || credential.not_allowed_to_use) && 'cursor-not-allowed opacity-50',
       )}
       onClick={() => {
-        if (credential.not_allowed_to_use || disabled)
+        if (credential.not_allowed_to_use || !canUseCredential)
           return
         onItemClick?.(credential.id === '__workspace_default__' ? '' : credential.id)
       }}
@@ -120,7 +117,7 @@ const Item = ({
                 <div className="h-4 w-4">
                   {
                     selectedCredentialId === credential.id && (
-                      <RiCheckLine className="h-4 w-4 text-text-accent" />
+                      <span className="i-ri-check-line h-4 w-4 text-text-accent" />
                     )
                   }
                 </div>
@@ -160,7 +157,7 @@ const Item = ({
               !credential.is_default && !disableSetDefault && !credential.not_allowed_to_use && (
                 <Button
                   size="small"
-                  disabled={disabled}
+                  disabled={!canManageCredential}
                   onClick={(e) => {
                     e.stopPropagation()
                     onSetDefault?.(credential.id)
@@ -176,14 +173,14 @@ const Item = ({
                   <TooltipTrigger
                     render={(
                       <ActionButton
-                        disabled={disabled}
+                        disabled={!canManageCredential}
                         onClick={(e) => {
                           e.stopPropagation()
                           setRenaming(true)
                           setRenameValue(credential.name)
                         }}
                       >
-                        <RiEditLine className="h-4 w-4 text-text-tertiary" />
+                        <span className="i-ri-edit-line h-4 w-4 text-text-tertiary" />
                       </ActionButton>
                     )}
                   />
@@ -199,7 +196,7 @@ const Item = ({
                   <TooltipTrigger
                     render={(
                       <ActionButton
-                        disabled={disabled}
+                        disabled={!canManageCredential}
                         onClick={(e) => {
                           e.stopPropagation()
                           onEdit?.(
@@ -212,7 +209,7 @@ const Item = ({
                           )
                         }}
                       >
-                        <RiEqualizer2Line className="h-4 w-4 text-text-tertiary" />
+                        <span className="i-ri-equalizer-2-line h-4 w-4 text-text-tertiary" />
                       </ActionButton>
                     )}
                   />
@@ -229,13 +226,13 @@ const Item = ({
                     render={(
                       <ActionButton
                         className="hover:bg-transparent"
-                        disabled={disabled}
+                        disabled={!canManageCredential}
                         onClick={(e) => {
                           e.stopPropagation()
                           onDelete?.(credential.id)
                         }}
                       >
-                        <RiDeleteBinLine className="h-4 w-4 text-text-tertiary hover:text-text-destructive" />
+                        <span className="i-ri-delete-bin-line h-4 w-4 text-text-tertiary hover:text-text-destructive" />
                       </ActionButton>
                     )}
                   />

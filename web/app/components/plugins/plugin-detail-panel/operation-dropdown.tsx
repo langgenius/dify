@@ -13,6 +13,7 @@ import { useSuspenseQuery } from '@tanstack/react-query'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { systemFeaturesQueryOptions } from '@/service/system-features'
+import useReferenceSetting from '../plugin-page/use-reference-setting'
 import { PluginSource } from '../types'
 
 type Props = {
@@ -44,6 +45,7 @@ const OperationDropdown: FC<Props> = ({
     ...systemFeaturesQueryOptions(),
     select: s => s.enable_marketplace,
   })
+  const { canInstall, canUninstall } = useReferenceSetting()
 
   return (
     <DropdownMenu open={open} onOpenChange={setOpen}>
@@ -63,7 +65,7 @@ const OperationDropdown: FC<Props> = ({
             {t('detailPanel.operation.info', { ns: 'plugin' })}
           </DropdownMenuItem>
         )}
-        {source === PluginSource.github && (
+        {source === PluginSource.github && canInstall && (
           <DropdownMenuItem onClick={onCheckVersion}>
             {t('detailPanel.operation.checkUpdate', { ns: 'plugin' })}
           </DropdownMenuItem>
@@ -77,9 +79,11 @@ const OperationDropdown: FC<Props> = ({
         {(source === PluginSource.marketplace || source === PluginSource.github) && enable_marketplace && (
           <DropdownMenuSeparator />
         )}
-        <DropdownMenuItem variant="destructive" onClick={onRemove}>
-          {t('detailPanel.operation.remove', { ns: 'plugin' })}
-        </DropdownMenuItem>
+        {canUninstall && (
+          <DropdownMenuItem variant="destructive" onClick={onRemove}>
+            {t('detailPanel.operation.remove', { ns: 'plugin' })}
+          </DropdownMenuItem>
+        )}
       </DropdownMenuContent>
     </DropdownMenu>
   )

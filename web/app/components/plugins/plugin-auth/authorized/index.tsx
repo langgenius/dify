@@ -42,7 +42,6 @@ type AuthorizedProps = {
   credentials: Credential[]
   canOAuth?: boolean
   canApiKey?: boolean
-  disabled?: boolean
   renderTrigger?: (open?: boolean) => React.ReactNode
   isOpen?: boolean
   onOpenChange?: (open: boolean) => void
@@ -63,7 +62,6 @@ const Authorized = ({
   credentials,
   canOAuth,
   canApiKey,
-  disabled,
   renderTrigger,
   isOpen,
   onOpenChange,
@@ -332,7 +330,6 @@ const Authorized = ({
                       showDivider={false}
                       canOAuth={canOAuth}
                       canApiKey={canApiKey}
-                      disabled={disabled}
                       onUpdate={onUpdate}
                     />
                   </div>
@@ -366,7 +363,7 @@ const Authorized = ({
             editValues={editValues}
             onClose={() => handleApiKeyModalOpenChange(false)}
             onRemove={handleRemove}
-            disabled={disabled || doingAction}
+            disabled={doingAction}
             onUpdate={onUpdate}
           />
         )

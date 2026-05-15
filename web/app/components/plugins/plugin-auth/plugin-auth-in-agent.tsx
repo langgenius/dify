@@ -33,7 +33,6 @@ const PluginAuthInAgent = ({
     canOAuth,
     canApiKey,
     credentials,
-    disabled,
     invalidPluginCredentialInfo,
     notAllowCustomCredential,
   } = usePluginAuth(pluginPayload, true)
@@ -103,7 +102,6 @@ const PluginAuthInAgent = ({
             pluginPayload={pluginPayload}
             canOAuth={canOAuth}
             canApiKey={canApiKey}
-            disabled={disabled}
             onUpdate={invalidPluginCredentialInfo}
             notAllowCustomCredential={notAllowCustomCredential}
           />
@@ -116,7 +114,6 @@ const PluginAuthInAgent = ({
             credentials={credentials}
             canOAuth={canOAuth}
             canApiKey={canApiKey}
-            disabled={disabled}
             disableSetDefault
             onItemClick={handleAuthorizationItemClick}
             extraAuthorizationItems={extraAuthorizationItems}
