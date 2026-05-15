@@ -22,8 +22,9 @@ RUN apt-get update \
           libmpfr-dev libmpc-dev
 
 # Install Python dependencies (workspace members under providers/vdb/)
-COPY pyproject.toml uv.lock ./
-COPY providers ./providers
+COPY api/pyproject.toml api/uv.lock ./
+COPY api/providers ./providers
+COPY dify-agent ./dify-agent
 RUN uv sync --locked --no-dev
 
 # production stage
@@ -107,10 +108,10 @@ RUN python -c "import tiktoken; tiktoken.encoding_for_model('gpt2')" \
     && chown -R dify:dify ${TIKTOKEN_CACHE_DIR}
 
 # Copy source code
-COPY --chown=dify:dify . /app/api/
+COPY --chown=dify:dify api /app/api/
 
 # Prepare entrypoint script
-COPY --chown=dify:dify --chmod=755 docker/entrypoint.sh /entrypoint.sh
+COPY --chown=dify:dify --chmod=755 api/docker/entrypoint.sh /entrypoint.sh
 
 
 ARG COMMIT_SHA

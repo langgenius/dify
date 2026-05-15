@@ -112,7 +112,7 @@ build-web:
 
 build-api:
 	@echo "Building API Docker image: $(API_IMAGE):$(VERSION)..."
-	docker build -t $(API_IMAGE):$(VERSION) ./api
+	docker build -f api/Dockerfile -t $(API_IMAGE):$(VERSION) .
 	@echo "API Docker image built successfully: $(API_IMAGE):$(VERSION)"
 
 # Push Docker images
