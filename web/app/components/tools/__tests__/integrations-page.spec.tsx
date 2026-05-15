@@ -300,10 +300,10 @@ describe('IntegrationsPage', () => {
     expect(screen.queryByText('common.toolsPage.description')).not.toBeInTheDocument()
   })
 
-  it('renders the swagger API header for the custom tool section', () => {
+  it('renders the custom tool header for the custom tool section', () => {
     renderIntegrationsPage({ section: 'custom-tool' })
 
-    expect(screen.getAllByText('common.settings.swaggerAPIAsTool')).toHaveLength(2)
+    expect(screen.getAllByText('common.settings.customTool')).toHaveLength(2)
     expect(screen.getByText('common.swaggerAPIAsToolPage.description')).toBeInTheDocument()
     expect(screen.queryByText('common.toolsPage.description')).not.toBeInTheDocument()
   })
@@ -413,7 +413,7 @@ describe('IntegrationsPage', () => {
       '--model-provider-warning-left': 'calc(240px + 56px)',
     })
     expect(screen.queryByText('common.settings.integrations')).not.toBeInTheDocument()
-    expect(screen.queryByText('common.settings.swaggerAPIAsTool')).not.toBeInTheDocument()
+    expect(screen.queryByText('common.settings.customTool')).not.toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'MCP' })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'common.settings.trigger' })).toHaveAttribute('href', '/integrations/trigger')
     expect(screen.getByRole('button', { name: 'common.settings.expand' })).toBeInTheDocument()
@@ -421,6 +421,6 @@ describe('IntegrationsPage', () => {
     fireEvent.click(screen.getByRole('button', { name: 'common.settings.expand' }))
 
     expect(screen.getByText('common.settings.integrations')).toBeInTheDocument()
-    expect(screen.getByText('common.settings.swaggerAPIAsTool')).toBeInTheDocument()
+    expect(screen.getByText('common.settings.customTool')).toBeInTheDocument()
   })
 })
