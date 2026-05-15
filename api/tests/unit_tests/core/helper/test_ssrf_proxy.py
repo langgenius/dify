@@ -10,6 +10,7 @@ from core.helper.ssrf_proxy import (
     _get_user_provided_host_header,
     _to_graphon_http_response,
     graphon_ssrf_proxy,
+    is_safe_external_url,
     make_request,
     max_retries_exceeded_error,
     request_error,
@@ -262,3 +263,148 @@ def test_graphon_ssrf_proxy_wraps_module_requests(method_name: str) -> None:
     assert wrapped.status_code == 200
     assert wrapped.url == "https://example.com/resource"
     assert wrapped.content == b"ok"
+
+
+# ---------------------------------------------------------------------------
+# is_safe_external_url — defense-in-depth checks for tenant-supplied URLs
+# (e.g. MCP tool ``server_url``).
+# ---------------------------------------------------------------------------
+
+
+def _no_proxy_config(monkeypatch):
+    monkeypatch.setattr("core.helper.ssrf_proxy.dify_config.SSRF_PROXY_ALL_URL", "")
+    monkeypatch.setattr("core.helper.ssrf_proxy.dify_config.SSRF_PROXY_HTTP_URL", "")
+    monkeypatch.setattr("core.helper.ssrf_proxy.dify_config.SSRF_PROXY_HTTPS_URL", "")
+
+
+@pytest.mark.parametrize(
+    "url",
+    [
+        "",
+        None,
+        "not-a-url",
+        "ftp://example.com",
+        "file:///etc/passwd",
+        "javascript:alert(1)",
+        "http://",
+    ],
+)
+def test_is_safe_external_url_rejects_malformed_or_wrong_scheme(monkeypatch, url):
+    _no_proxy_config(monkeypatch)
+    assert is_safe_external_url(url) is False
+
+
+@pytest.mark.parametrize(
+    "url",
+    [
+        "http://127.0.0.1/path",
+        "http://127.0.0.1:8080/",
+        "https://10.0.0.1/",
+        "https://10.255.255.255/",
+        "https://172.16.0.5/",
+        "https://172.31.255.255/",
+        "https://192.168.1.1/",
+        "http://169.254.169.254/latest/meta-data/",
+        "http://0.0.0.0/",
+        "http://[::1]/",
+        "http://[fe80::1]/",
+        "http://[::ffff:127.0.0.1]/",
+    ],
+)
+def test_is_safe_external_url_rejects_internal_ip_literals(monkeypatch, url):
+    """169.254.169.254 (AWS/GCP metadata), loopback, RFC1918, link-local IPv6
+    and unspecified addresses must all be blocked before the HTTP client is
+    handed a tenant-supplied ``server_url``."""
+    _no_proxy_config(monkeypatch)
+    assert is_safe_external_url(url) is False
+
+
+@pytest.mark.parametrize(
+    "url",
+    [
+        "http://93.184.216.34/",
+        "https://93.184.216.34/path",
+        "http://[2606:2800:220:1:248:1893:25c8:1946]/",
+    ],
+)
+def test_is_safe_external_url_accepts_public_ip_literals(monkeypatch, url):
+    _no_proxy_config(monkeypatch)
+    assert is_safe_external_url(url) is True
+
+
+def test_is_safe_external_url_rejects_hostname_resolving_to_private(monkeypatch):
+    _no_proxy_config(monkeypatch)
+
+    def fake_getaddrinfo(host, *args, **kwargs):
+        return [(0, 0, 0, "", ("127.0.0.1", 0))]
+
+    monkeypatch.setattr("core.helper.ssrf_proxy.socket.getaddrinfo", fake_getaddrinfo)
+    assert is_safe_external_url("https://attacker.example/") is False
+
+
+def test_is_safe_external_url_rejects_hostname_with_any_private_record(monkeypatch):
+    """If a hostname round-robins between public and private addresses, the
+    private record must veto — DNS round-robin must not bypass the guard."""
+    _no_proxy_config(monkeypatch)
+
+    def fake_getaddrinfo(host, *args, **kwargs):
+        return [
+            (0, 0, 0, "", ("93.184.216.34", 0)),
+            (0, 0, 0, "", ("10.0.0.1", 0)),
+        ]
+
+    monkeypatch.setattr("core.helper.ssrf_proxy.socket.getaddrinfo", fake_getaddrinfo)
+    assert is_safe_external_url("https://mixed.example/") is False
+
+
+def test_is_safe_external_url_accepts_public_hostname(monkeypatch):
+    _no_proxy_config(monkeypatch)
+
+    def fake_getaddrinfo(host, *args, **kwargs):
+        return [(0, 0, 0, "", ("93.184.216.34", 0))]
+
+    monkeypatch.setattr("core.helper.ssrf_proxy.socket.getaddrinfo", fake_getaddrinfo)
+    assert is_safe_external_url("https://example.com/") is True
+
+
+def test_is_safe_external_url_skips_resolution_when_proxy_configured(monkeypatch):
+    """With an SSRF egress proxy in front of all outbound traffic, the proxy
+    is the chokepoint that enforces network policy. Skip the DNS round-trip
+    for hostnames so the validation path is fast and never reveals tenant
+    URLs to the public resolver."""
+    monkeypatch.setattr(
+        "core.helper.ssrf_proxy.dify_config.SSRF_PROXY_ALL_URL",
+        "http://squid:3128",
+    )
+
+    def fail_resolve(*args, **kwargs):
+        raise AssertionError("getaddrinfo must not run when proxy is configured")
+
+    monkeypatch.setattr("core.helper.ssrf_proxy.socket.getaddrinfo", fail_resolve)
+    assert is_safe_external_url("https://attacker.example/") is True
+
+
+def test_is_safe_external_url_still_rejects_ip_literals_when_proxy_configured(monkeypatch):
+    """Even with the SSRF proxy in front, a request whose URL already names
+    an internal IP literal should be rejected at the boundary — the proxy
+    would forward the literal as-is."""
+    monkeypatch.setattr(
+        "core.helper.ssrf_proxy.dify_config.SSRF_PROXY_ALL_URL",
+        "http://squid:3128",
+    )
+    assert is_safe_external_url("http://169.254.169.254/latest/meta-data/") is False
+    assert is_safe_external_url("http://127.0.0.1/") is False
+
+
+def test_is_safe_external_url_rejects_unresolvable_hostname(monkeypatch):
+    """``getaddrinfo`` failure is treated as fail-closed — a hostname we
+    cannot resolve cannot be proven safe."""
+    _no_proxy_config(monkeypatch)
+
+    def boom(*args, **kwargs):
+        import socket as _socket
+
+        raise _socket.gaierror("nodename nor servname provided, or not known")
+
+    monkeypatch.setattr("core.helper.ssrf_proxy.socket.getaddrinfo", boom)
+    assert is_safe_external_url("https://nonexistent.invalid/") is False
