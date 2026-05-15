@@ -49,12 +49,14 @@ const matchesSearchQuery = (plugin: PluginDetail & { latest_version: string }, q
 type PluginsPanelProps = {
   contentInset?: PluginPageContentInset
   fixedCategory?: PluginCategoryEnum
+  onSwitchToMarketplace?: () => void
   toolbarAction?: ReactNode
 }
 
 const PluginsPanel = ({
   contentInset = 'default',
   fixedCategory,
+  onSwitchToMarketplace,
   toolbarAction,
 }: PluginsPanelProps) => {
   const { t } = useTranslation()
@@ -156,6 +158,7 @@ const PluginsPanel = ({
             : (
                 <Empty
                   contentInset={contentInset}
+                  onSwitchToMarketplace={onSwitchToMarketplace}
                   variant={emptyVariant}
                 />
               )}

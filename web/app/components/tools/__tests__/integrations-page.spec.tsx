@@ -133,15 +133,16 @@ vi.mock('../provider-list', async () => {
 
 vi.mock('../plugin-category-page', () => ({
   __esModule: true,
-  default: ({ category, toolbarAction }: { category: string, toolbarAction?: React.ReactNode }) => (
+  default: ({ category, onSwitchToMarketplace, toolbarAction }: { category: string, onSwitchToMarketplace?: () => void, toolbarAction?: React.ReactNode }) => (
     <div data-testid={`plugin-category-${category}`}>
+      <button type="button" aria-label="empty marketplace" onClick={onSwitchToMarketplace}>marketplace</button>
       {toolbarAction}
     </div>
   ),
 }))
 
 const renderIntegrationsPage = (searchParams?: Record<string, string>, section?: React.ComponentProps<typeof IntegrationsPage>['section']) => {
-  return renderWithNuqs(<IntegrationsPage section={section} />, { searchParams })
+  return renderWithNuqs(<IntegrationsPage marketplace={<div data-testid="marketplace-content" />} section={section} />, { searchParams })
 }
 
 describe('IntegrationsPage', () => {
@@ -186,12 +187,20 @@ describe('IntegrationsPage', () => {
     expect(navText.indexOf('common.settings.dataSource')).toBeLessThan(navText.indexOf('common.menus.tools'))
   })
 
+  it('renders marketplace content from the discover section', () => {
+    renderIntegrationsPage(undefined, 'discover')
+
+    expect(screen.getByTestId('marketplace-content')).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'common.menus.exploreMarketplace' })).toHaveClass('bg-state-base-active')
+    expect(screen.getByRole('link', { name: 'common.menus.exploreMarketplace' })).toHaveAttribute('href', '/integrations/discover')
+  })
+
   it('renders the Figma-matched database icon for the data source sidebar item', () => {
     const providerView = renderIntegrationsPage({ section: 'provider' })
 
     expect(screen.getByRole('link', { name: 'common.settings.dataSource' }).querySelector('.i-ri-database-2-line')).toBeInTheDocument()
 
-    providerView.rerender(<IntegrationsPage section="data-source" />)
+    providerView.rerender(<IntegrationsPage marketplace={<div data-testid="marketplace-content" />} section="data-source" />)
 
     expect(screen.getByRole('link', { name: 'common.settings.dataSource' }).querySelector('.i-ri-database-2-fill')).toBeInTheDocument()
   })
@@ -201,19 +210,27 @@ describe('IntegrationsPage', () => {
 
     expect(screen.getByTestId('plugin-category-trigger')).toBeInTheDocument()
     expect(screen.getByTestId('plugin-category-trigger').parentElement).toHaveClass('flex', 'flex-col', 'overflow-hidden')
-    expect(screen.getByRole('link', { name: 'common.settings.trigger' })).toHaveAttribute('href', '/integrations/trigger')
+    expect(screen.getByRole('link', { name: 'plugin.categorySingle.trigger' })).toHaveAttribute('href', '/integrations/trigger')
 
     triggerView.unmount()
     const agentStrategyView = renderIntegrationsPage({ section: 'agent-strategy' })
 
     expect(screen.getByTestId('plugin-category-agent-strategy')).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'common.settings.agentStrategy' })).toHaveAttribute('href', '/integrations/agent-strategy')
+    expect(screen.getByRole('link', { name: 'plugin.categorySingle.agent' })).toHaveAttribute('href', '/integrations/agent-strategy')
 
     agentStrategyView.unmount()
     renderIntegrationsPage({ section: 'extension' })
 
     expect(screen.getByTestId('plugin-category-extension')).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'common.settings.extension' })).toHaveAttribute('href', '/integrations/extension')
+    expect(screen.getByRole('link', { name: 'plugin.categorySingle.extension' })).toHaveAttribute('href', '/integrations/extension')
+  })
+
+  it('opens the integrations marketplace path from plugin category empty states', () => {
+    renderIntegrationsPage({ section: 'extension' })
+
+    fireEvent.click(screen.getByRole('button', { name: 'empty marketplace' }))
+
+    expect(mockRouterPush).toHaveBeenCalledWith('/integrations/discover')
   })
 
   it('renders migrated legacy setting sections', () => {
@@ -259,7 +276,7 @@ describe('IntegrationsPage', () => {
 
     expect(screen.getByTestId('tool-provider-list')).toHaveAttribute('data-mounted-category', 'builtin')
 
-    view.rerender(<IntegrationsPage section="mcp" />)
+    view.rerender(<IntegrationsPage marketplace={<div data-testid="marketplace-content" />} section="mcp" />)
 
     expect(screen.getByTestId('tool-provider-list')).toHaveAttribute('data-mounted-category', 'mcp')
   })
@@ -312,9 +329,9 @@ describe('IntegrationsPage', () => {
     ['workflow-tool', 'workflow.common.workflowAsTool', 'common.workflowAsToolPage.description'],
     ['api-based-extension', 'common.settings.apiBasedExtension', 'common.apiBasedExtensionPage.description'],
     ['data-source', 'common.settings.dataSource', 'common.dataSourcePage.description'],
-    ['trigger', 'common.settings.trigger', 'common.triggerPage.description'],
-    ['extension', 'common.settings.extension', 'common.extensionPage.description'],
-    ['agent-strategy', 'common.settings.agentStrategy', 'common.agentStrategyPage.description'],
+    ['trigger', 'plugin.categorySingle.trigger', 'common.triggerPage.description'],
+    ['extension', 'plugin.categorySingle.extension', 'common.extensionPage.description'],
+    ['agent-strategy', 'plugin.categorySingle.agent', 'common.agentStrategyPage.description'],
   ] as const)('renders the %s header', (section, title, description) => {
     renderIntegrationsPage({ section })
 
@@ -358,12 +375,12 @@ describe('IntegrationsPage', () => {
     })
   })
 
-  it('opens the original plugins marketplace path from the install dropdown marketplace action', () => {
+  it('opens the integrations marketplace path from the install dropdown marketplace action', () => {
     renderIntegrationsPage({ section: 'builtin' })
 
     fireEvent.click(screen.getByRole('button', { name: 'plugin install' }))
 
-    expect(mockRouterPush).toHaveBeenCalledWith('/plugins?tab=discover')
+    expect(mockRouterPush).toHaveBeenCalledWith('/integrations/discover')
   })
 
   it('opens the sidebar plugin permissions quick settings and updates permissions', () => {
@@ -415,7 +432,7 @@ describe('IntegrationsPage', () => {
     expect(screen.queryByText('common.settings.integrations')).not.toBeInTheDocument()
     expect(screen.queryByText('common.settings.customTool')).not.toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'MCP' })).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'common.settings.trigger' })).toHaveAttribute('href', '/integrations/trigger')
+    expect(screen.getByRole('link', { name: 'plugin.categorySingle.trigger' })).toHaveAttribute('href', '/integrations/trigger')
     expect(screen.getByRole('button', { name: 'common.settings.expand' })).toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('button', { name: 'common.settings.expand' }))

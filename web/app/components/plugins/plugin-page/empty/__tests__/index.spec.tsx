@@ -371,6 +371,20 @@ describe('Empty Component', () => {
       expect(mockSetActiveTab).toHaveBeenCalledWith('discover')
     })
 
+    it('should use the provided marketplace action when marketplace button is clicked', async () => {
+      // Arrange
+      const onSwitchToMarketplace = vi.fn()
+      render(<Empty onSwitchToMarketplace={onSwitchToMarketplace} variant="integrationsExtension" />)
+      await flushEffects()
+
+      // Act
+      fireEvent.click(screen.getByText('plugin.source.marketplace'))
+
+      // Assert
+      expect(onSwitchToMarketplace).toHaveBeenCalledTimes(1)
+      expect(mockSetActiveTab).not.toHaveBeenCalled()
+    })
+
     it('should open and close GitHub modal correctly', async () => {
       // Arrange
       render(<Empty />)

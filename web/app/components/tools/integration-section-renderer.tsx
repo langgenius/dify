@@ -11,19 +11,29 @@ import PluginCategoryPage from './plugin-category-page'
 import ToolProviderList from './provider-list'
 
 type IntegrationSectionRendererProps = {
+  marketplace?: ReactNode
   onProviderSearchTextChange: (value: string) => void
+  onSwitchToMarketplace?: () => void
   pluginCategoryToolbarAction?: ReactNode
   providerSearchText: string
   section: IntegrationSection
 }
 
 const IntegrationSectionRenderer = ({
+  marketplace,
   onProviderSearchTextChange,
+  onSwitchToMarketplace,
   pluginCategoryToolbarAction,
   providerSearchText,
   section,
 }: IntegrationSectionRendererProps) => {
   switch (section) {
+    case 'discover':
+      return (
+        <div className="flex h-full flex-col overflow-y-auto bg-background-body pt-8">
+          {marketplace}
+        </div>
+      )
     case 'provider':
       return (
         <div className={`${toolsContentFrameClassNames.compact} ${toolsContentInsetClassNames.compact} pt-2`}>
@@ -56,11 +66,11 @@ const IntegrationSectionRenderer = ({
         </div>
       )
     case 'trigger':
-      return <PluginCategoryPage category={PluginCategoryEnum.trigger} toolbarAction={pluginCategoryToolbarAction} />
+      return <PluginCategoryPage category={PluginCategoryEnum.trigger} onSwitchToMarketplace={onSwitchToMarketplace} toolbarAction={pluginCategoryToolbarAction} />
     case 'agent-strategy':
-      return <PluginCategoryPage category={PluginCategoryEnum.agent} toolbarAction={pluginCategoryToolbarAction} />
+      return <PluginCategoryPage category={PluginCategoryEnum.agent} onSwitchToMarketplace={onSwitchToMarketplace} toolbarAction={pluginCategoryToolbarAction} />
     case 'extension':
-      return <PluginCategoryPage category={PluginCategoryEnum.extension} toolbarAction={pluginCategoryToolbarAction} />
+      return <PluginCategoryPage category={PluginCategoryEnum.extension} onSwitchToMarketplace={onSwitchToMarketplace} toolbarAction={pluginCategoryToolbarAction} />
     default:
       return null
   }

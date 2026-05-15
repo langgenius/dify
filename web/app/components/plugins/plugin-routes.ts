@@ -17,6 +17,31 @@ const getFirstSearchParamValue = (value: string | string[] | undefined) => {
   return value
 }
 
+const buildMarketplaceRedirectPath = (
+  searchParams: LegacyPluginsSearchParams,
+  tab: string,
+) => {
+  const preservedSearchParams = new URLSearchParams()
+
+  Object.entries(searchParams).forEach(([key, value]) => {
+    if (key === 'tab' || value === undefined)
+      return
+
+    if (Array.isArray(value)) {
+      value.forEach(item => preservedSearchParams.append(key, item))
+      return
+    }
+
+    preservedSearchParams.set(key, value)
+  })
+
+  if (tab !== MARKETPLACE_TAB && !preservedSearchParams.has('category'))
+    preservedSearchParams.set('category', tab)
+
+  const query = preservedSearchParams.toString()
+  return query ? `/integrations/discover?${query}` : '/integrations/discover'
+}
+
 export const getLegacyPluginRedirectPath = (
   searchParams: LegacyPluginsSearchParams = {},
 ) => {
@@ -26,7 +51,7 @@ export const getLegacyPluginRedirectPath = (
     return '/integrations'
 
   if (marketplacePluginTabs.has(tab))
-    return undefined
+    return buildMarketplaceRedirectPath(searchParams, tab)
 
   return undefined
 }

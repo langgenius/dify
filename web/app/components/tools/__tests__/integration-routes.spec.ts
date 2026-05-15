@@ -9,6 +9,7 @@ describe('integration routes', () => {
   it('maps integration sections to canonical paths', () => {
     expect(integrationPathBySection).toEqual({
       'provider': '/integrations/model-provider',
+      'discover': '/integrations/discover',
       'builtin': '/integrations/tools/built-in',
       'custom-tool': '/integrations/tool/api',
       'workflow-tool': '/integrations/tools/workflow',
@@ -26,6 +27,7 @@ describe('integration routes', () => {
     [undefined, { type: 'redirect', destination: '/integrations/model-provider' }],
     [[], { type: 'redirect', destination: '/integrations/model-provider' }],
     [['model-provider'], { type: 'section', section: 'provider' }],
+    [['discover'], { type: 'section', section: 'discover' }],
     [['tools'], { type: 'redirect', destination: '/integrations/tools/built-in' }],
     [['tools', 'built-in'], { type: 'section', section: 'builtin' }],
     [['tool', 'api'], { type: 'section', section: 'custom-tool' }],

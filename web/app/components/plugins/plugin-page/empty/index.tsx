@@ -47,11 +47,13 @@ const ExtensionEmptyIcon = () => (
 
 type EmptyProps = {
   contentInset?: PluginPageContentInset
+  onSwitchToMarketplace?: () => void
   variant?: 'default' | 'integrationsAgentStrategy' | 'integrationsExtension' | 'integrationsTrigger'
 }
 
 const Empty = ({
   contentInset = 'default',
+  onSwitchToMarketplace,
   variant = 'default',
 }: EmptyProps) => {
   const { t } = useTranslation()
@@ -191,7 +193,7 @@ const Empty = ({
                     if (action === 'local')
                       fileInputRef.current?.click()
                     else if (action === 'marketplace')
-                      setActiveTab('discover')
+                      onSwitchToMarketplace ? onSwitchToMarketplace() : setActiveTab('discover')
                     else
                       setSelectedAction(action)
                   }}

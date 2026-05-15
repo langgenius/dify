@@ -37,8 +37,8 @@ vi.mock('@/app/components/plugins/plugin-page/context', () => ({
 }))
 
 vi.mock('@/app/components/plugins/plugin-page/plugins-panel', () => ({
-  default: ({ fixedCategory }: { fixedCategory: PluginCategoryEnum }) => (
-    <div data-testid="plugins-panel" data-fixed-category={fixedCategory} />
+  default: ({ fixedCategory, onSwitchToMarketplace }: { fixedCategory: PluginCategoryEnum, onSwitchToMarketplace?: () => void }) => (
+    <div data-testid="plugins-panel" data-fixed-category={fixedCategory} data-has-marketplace-action={onSwitchToMarketplace ? 'true' : 'false'} />
   ),
 }))
 
@@ -76,6 +76,14 @@ describe('PluginCategoryPage', () => {
     const { container } = render(<PluginCategoryPage category={PluginCategoryEnum.trigger} />)
 
     expect(container.firstElementChild).toHaveClass('bg-components-panel-bg')
+  })
+
+  it('passes the marketplace action to the plugins panel', () => {
+    const onSwitchToMarketplace = vi.fn()
+
+    render(<PluginCategoryPage category={PluginCategoryEnum.extension} onSwitchToMarketplace={onSwitchToMarketplace} />)
+
+    expect(screen.getByTestId('plugins-panel')).toHaveAttribute('data-has-marketplace-action', 'true')
   })
 
   it('disables drop install when local packages are restricted', () => {

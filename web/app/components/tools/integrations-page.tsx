@@ -188,10 +188,12 @@ const NavLinkItem = ({ collapsed, item, section }: NavLinkItemProps) => {
 }
 
 type IntegrationsPageProps = {
+  marketplace?: React.ReactNode
   section?: IntegrationSection
 }
 
 export default function IntegrationsPage({
+  marketplace,
   section: routeSection,
 }: IntegrationsPageProps) {
   const { t } = useTranslation()
@@ -219,6 +221,12 @@ export default function IntegrationsPage({
     icon: 'i-ri-database-2-line',
     activeIcon: 'i-ri-database-2-fill',
     iconClassName: 'size-4',
+  }), [t])
+  const discoverItem = useMemo<NavItem>(() => ({
+    section: 'discover',
+    label: t('menus.exploreMarketplace', { ns: 'common' }),
+    icon: 'i-ri-store-2-line',
+    activeIcon: 'i-ri-store-2-fill',
   }), [t])
   const toolItems = useMemo<NavItem[]>(() => [
     {
@@ -272,10 +280,11 @@ export default function IntegrationsPage({
       iconClassName: 'h-[13.5px] w-3',
     },
   ], [t])
-  const activeItem = [providerItem, dataSourceItem, ...toolItems, ...secondaryItems].find(item => item.section === section)
+  const activeItem = [providerItem, discoverItem, dataSourceItem, ...toolItems, ...secondaryItems].find(item => item.section === section)
+  const isDiscoverSection = section === 'discover'
   const isToolSection = Boolean(toolCategoryBySection[section])
   const isPluginCategorySection = section === 'trigger' || section === 'agent-strategy' || section === 'extension'
-  const useFillLayout = isToolSection || isPluginCategorySection
+  const useFillLayout = isDiscoverSection || isToolSection || isPluginCategorySection
   const headerFrameClassName = cn(
     toolsContentInsetClassNames.compact,
     toolsUnifiedContentFrameClassName,
@@ -405,7 +414,7 @@ export default function IntegrationsPage({
                 triggerLabel={t('installAction', { ns: 'plugin' })}
                 triggerOpenClassName="bg-components-button-primary-bg-hover"
                 popupClassName="w-[240px] rounded-2xl py-2 shadow-xl"
-                onSwitchToMarketplaceTab={() => router.push('/plugins?tab=discover')}
+                onSwitchToMarketplaceTab={() => router.push(buildIntegrationPath('discover'))}
               />
               {canDebugger && (
                 <div className="size-8 shrink-0">
@@ -443,6 +452,7 @@ export default function IntegrationsPage({
           )}
           <nav className="mt-6 shrink-0 space-y-0.5">
             <NavLinkItem collapsed={sidebarCollapsed} item={providerItem} section={section} />
+            <NavLinkItem collapsed={sidebarCollapsed} item={discoverItem} section={section} />
             <NavLinkItem collapsed={sidebarCollapsed} item={dataSourceItem} section={section} />
             <div>
               <Link
@@ -535,7 +545,7 @@ export default function IntegrationsPage({
             </div>
           </div>
         )}
-        {!integrationHeader && !isToolSection && (
+        {!integrationHeader && !isToolSection && !isDiscoverSection && (
           <div className="flex min-h-14 shrink-0 items-center justify-between">
             <div className={cn('flex min-w-0 flex-1 items-center justify-between py-2', headerFrameClassName)}>
               <div>
@@ -556,9 +566,11 @@ export default function IntegrationsPage({
         >
           <IntegrationSectionRenderer
             key={section}
+            marketplace={marketplace}
             section={section}
             providerSearchText={providerSearchText}
             onProviderSearchTextChange={setProviderSearchText}
+            onSwitchToMarketplace={() => router.push(buildIntegrationPath('discover'))}
             pluginCategoryToolbarAction={pluginSettingAction}
           />
         </div>

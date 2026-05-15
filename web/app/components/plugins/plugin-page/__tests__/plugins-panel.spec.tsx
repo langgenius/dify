@@ -77,8 +77,8 @@ vi.mock('../filter-management', () => ({
 }))
 
 vi.mock('../empty', () => ({
-  default: ({ contentInset, variant }: { contentInset?: string, variant?: string }) => (
-    <div data-testid="empty-state" data-content-inset={contentInset} data-variant={variant}>empty</div>
+  default: ({ contentInset, onSwitchToMarketplace, variant }: { contentInset?: string, onSwitchToMarketplace?: () => void, variant?: string }) => (
+    <div data-testid="empty-state" data-content-inset={contentInset} data-has-marketplace-action={onSwitchToMarketplace ? 'true' : 'false'} data-variant={variant}>empty</div>
   ),
 }))
 
@@ -237,6 +237,14 @@ describe('PluginsPanel', () => {
     expect(screen.getByTestId('filter-management')).toHaveAttribute('data-hide-tag-filter', 'true')
     expect(screen.getByText('update setting')).toBeInTheDocument()
     expect(screen.getByTestId('empty-state')).toHaveAttribute('data-variant', 'integrationsExtension')
+  })
+
+  it('passes the marketplace action to the empty state', () => {
+    const onSwitchToMarketplace = vi.fn()
+
+    render(<PluginsPanel contentInset="compact" fixedCategory={PluginCategoryEnum.extension} onSwitchToMarketplace={onSwitchToMarketplace} />)
+
+    expect(screen.getByTestId('empty-state')).toHaveAttribute('data-has-marketplace-action', 'true')
   })
 
   it('ignores hidden tag filters within the fixed extension integrations category', () => {

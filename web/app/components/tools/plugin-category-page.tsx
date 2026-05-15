@@ -15,6 +15,7 @@ import { systemFeaturesQueryOptions } from '@/service/system-features'
 
 type PluginCategoryPageProps = {
   category: PluginCategoryEnum
+  onSwitchToMarketplace?: () => void
   toolbarAction?: ReactNode
 }
 
@@ -22,6 +23,7 @@ const supportedLocalPackageExtensions = SUPPORT_INSTALL_LOCAL_FILE_EXTENSIONS.sp
 
 const PluginCategoryPageContent = ({
   category,
+  onSwitchToMarketplace,
   toolbarAction,
 }: PluginCategoryPageProps) => {
   const [currentFile, setCurrentFile] = useState<File | null>(null)
@@ -54,7 +56,7 @@ const PluginCategoryPageContent = ({
 
   return (
     <div ref={containerRef} className="relative flex h-0 grow flex-col overflow-hidden bg-components-panel-bg">
-      <PluginsPanel contentInset="compact" fixedCategory={category} toolbarAction={toolbarAction} />
+      <PluginsPanel contentInset="compact" fixedCategory={category} onSwitchToMarketplace={onSwitchToMarketplace} toolbarAction={toolbarAction} />
       {dragging && (
         <div
           className="absolute inset-0 m-0.5 rounded-2xl border-2 border-dashed border-components-dropzone-border-accent
@@ -82,6 +84,7 @@ const PluginCategoryPageContent = ({
 
 const PluginCategoryPage = ({
   category,
+  onSwitchToMarketplace,
   toolbarAction,
 }: PluginCategoryPageProps) => {
   const initialFilters = useMemo(() => ({
@@ -92,7 +95,7 @@ const PluginCategoryPage = ({
 
   return (
     <PluginPageContextProvider key={category} initialFilters={initialFilters}>
-      <PluginCategoryPageContent category={category} toolbarAction={toolbarAction} />
+      <PluginCategoryPageContent category={category} onSwitchToMarketplace={onSwitchToMarketplace} toolbarAction={toolbarAction} />
     </PluginPageContextProvider>
   )
 }
