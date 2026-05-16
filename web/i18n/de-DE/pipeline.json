@@ -15,7 +15,7 @@
   "inputField.manage": "Verwalten",
   "publishToast.desc": "Wenn die Pipeline nicht veröffentlicht wird, können Sie die Chunk-Struktur im Wissensdatenbank-Knoten ändern, und die Pipeline-Orchestrierung und -Änderungen werden automatisch als Entwurf gespeichert.",
   "publishToast.title": "Diese Pipeline wurde noch nicht veröffentlicht",
-  "ragToolSuggestions.noRecommendationPlugins": "Keine empfohlenen Plugins, finde mehr im <CustomLink>Marktplatz</CustomLink>",
+  "ragToolSuggestions.noRecommendationPlugins": "Keine empfohlenen Integrationen, finde mehr im <CustomLink>Marktplatz</CustomLink>",
   "ragToolSuggestions.title": "Vorschläge für die RAG",
   "result.resultPreview.error": "Während der Ausführung ist ein Fehler aufgetreten",
   "result.resultPreview.footerTip": "Im Testlaufmodus bis zu {{count}} Abschnitte anzeigen",

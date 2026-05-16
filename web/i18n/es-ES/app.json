@@ -64,7 +64,7 @@
   "gotoAnything.actions.searchKnowledgeBases": "Buscar en las bases de conocimiento",
   "gotoAnything.actions.searchKnowledgeBasesDesc": "Busque y navegue por sus bases de conocimiento",
   "gotoAnything.actions.searchPlugins": "Buscar complementos",
-  "gotoAnything.actions.searchPluginsDesc": "Busca y navega a tus plugins",
+  "gotoAnything.actions.searchPluginsDesc": "Busca y navega a tus integraciones",
   "gotoAnything.actions.searchWorkflowNodes": "Buscar nodos de flujo de trabajo",
   "gotoAnything.actions.searchWorkflowNodesDesc": "Buscar y saltar a nodos en el flujo de trabajo actual por nombre o tipo",
   "gotoAnything.actions.searchWorkflowNodesHelp": "Esta función solo funciona cuando se visualiza un flujo de trabajo. Primero vaya a un flujo de trabajo.",

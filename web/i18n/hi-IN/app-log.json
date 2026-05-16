@@ -73,7 +73,7 @@
   "title": "लॉग्स",
   "triggerBy.appRun": "वेबएप",
   "triggerBy.debugging": "डिबगिंग",
-  "triggerBy.plugin": "प्लगइन",
+  "triggerBy.plugin": "एकीकरण",
   "triggerBy.ragPipelineDebugging": "RAG डीबगिंग",
   "triggerBy.ragPipelineRun": "RAG पाइपलाइन",
   "triggerBy.schedule": "अनुसूची",

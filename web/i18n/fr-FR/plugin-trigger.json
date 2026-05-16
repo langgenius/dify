@@ -1,6 +1,6 @@
 {
   "events.actionNum": "{{num}} {{event}} INCLUS",
-  "events.description": "Événements auxquels ce plugin de déclenchement peut s'abonner",
+  "events.description": "Événements auxquels ce intégration de déclenchement peut s'abonner",
   "events.empty": "Aucun événement disponible",
   "events.event": "Événement",
   "events.events": "Événements",

@@ -139,7 +139,7 @@
   "plansCommon.title.plans": "Pläne",
   "plansCommon.triggerEvents.professional": "{{count,number}} Auslöseereignisse/Monat",
   "plansCommon.triggerEvents.sandbox": "{{count,number}} Ereignisse auslösen",
-  "plansCommon.triggerEvents.tooltip": "Die Anzahl der Ereignisse, die Workflows automatisch über Plugin-, Zeitplan- oder Webhook-Auslöser starten.",
+  "plansCommon.triggerEvents.tooltip": "Die Anzahl der Ereignisse, die Workflows automatisch über Integration-, Zeitplan- oder Webhook-Auslöser starten.",
   "plansCommon.triggerEvents.unlimited": "Unbegrenzte Auslöser-Ereignisse",
   "plansCommon.unavailable": "Nicht verfügbar",
   "plansCommon.unlimited": "Unbegrenzt",

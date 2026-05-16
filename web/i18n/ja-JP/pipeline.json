@@ -15,7 +15,7 @@
   "inputField.manage": "管理する",
   "publishToast.desc": "パイプラインが公開されていない場合、ナレッジベースノードのチャンク構造を変更することができ、パイプラインオーケストレーションと変更は自動的にドラフトとして保存されます。",
   "publishToast.title": "このパイプラインはまだ公開されていません",
-  "ragToolSuggestions.noRecommendationPlugins": "推奨プラグインがありません。<CustomLink>マーケットプレイス</CustomLink>で詳細をご確認ください",
+  "ragToolSuggestions.noRecommendationPlugins": "推奨インテグレーションがありません。<CustomLink>マーケットプレイス</CustomLink>で詳細をご確認ください",
   "ragToolSuggestions.title": "RAGのための提案",
   "result.resultPreview.error": "実行中にエラーが発生しました",
   "result.resultPreview.footerTip": "テスト実行モードでは、最大{{count}}チャンクまでプレビュー",

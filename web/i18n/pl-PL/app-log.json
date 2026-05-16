@@ -73,7 +73,7 @@
   "title": "Dzienniki",
   "triggerBy.appRun": "Aplikacja internetowa",
   "triggerBy.debugging": "Debugowanie",
-  "triggerBy.plugin": "Wtyczka",
+  "triggerBy.plugin": "Integracja",
   "triggerBy.ragPipelineDebugging": "Debugowanie RAG",
   "triggerBy.ragPipelineRun": "Pipeline RAG",
   "triggerBy.schedule": "Harmonogram",

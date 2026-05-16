@@ -1,6 +1,6 @@
 {
   "events.actionNum": "{{num}} {{event}} 포함",
-  "events.description": "이 트리거 플러그인이 구독할 수 있는 이벤트",
+  "events.description": "이 트리거 통합이 구독할 수 있는 이벤트",
   "events.empty": "이용 가능한 이벤트가 없습니다",
   "events.event": "이벤트",
   "events.events": "이벤트",

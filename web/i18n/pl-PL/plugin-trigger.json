@@ -1,6 +1,6 @@
 {
   "events.actionNum": "{{num}} {{event}} WŁĄCZONE",
-  "events.description": "Zdarzenia, na które ten wtyczka wyzwalacza może się subskrybować",
+  "events.description": "Zdarzenia, na które ten integracja wyzwalacza może się subskrybować",
   "events.empty": "Brak dostępnych wydarzeń",
   "events.event": "Wydarzenie",
   "events.events": "Wydarzenia",

@@ -1,6 +1,6 @@
 {
   "events.actionNum": "{{num}} {{event}} INCLUS",
-  "events.description": "Evenimente la care acest plugin de declanșare se poate abona",
+  "events.description": "Evenimente la care acest integrare de declanșare se poate abona",
   "events.empty": "Nu sunt evenimente disponibile",
   "events.event": "Eveniment",
   "events.events": "Evenimente",

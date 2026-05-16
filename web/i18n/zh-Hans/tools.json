@@ -27,7 +27,7 @@
   "contribute.viewGuide": "查看指南",
   "copyToolName": "复制名称",
   "createCustomTool": "创建自定义工具",
-  "createSwaggerAPIAsTool": "Create a Swagger API as Tool",
+  "createSwaggerAPIAsTool": "创建 Swagger API 作为工具",
   "createTool.authHeaderPrefix.title": "鉴权头部前缀",
   "createTool.authHeaderPrefix.types.basic": "Basic",
   "createTool.authHeaderPrefix.types.bearer": "Bearer",
@@ -195,7 +195,7 @@
   "setBuiltInTools.setting": "设置",
   "setBuiltInTools.string": "字符串",
   "setBuiltInTools.toolDescription": "工具描述",
-  "swaggerAPIAsToolTip": "Learn more about Swagger API as Tool",
+  "swaggerAPIAsToolTip": "了解 Swagger API 作为工具",
   "test.parameters": "参数",
   "test.parametersValue": "参数和值",
   "test.testResult": "测试结果",
@@ -214,9 +214,9 @@
   "type.workflow": "工作流",
   "workflowToolEmpty.description": "如需将工作流作为工具使用，请先在 Studio 中发布。发布后它会显示在这里，并可添加到任意应用。",
   "workflowToolEmpty.goToStudio": "前往 Studio",
-  "workflowToolEmpty.learnMore": "需要帮助？了解如何将工作流发布为工具 →",
+  "workflowToolEmpty.learnMore": "需要帮助？了解如何将工作流作为工具 →",
   "workflowToolEmpty.step1": "在 Studio 中构建工作流",
   "workflowToolEmpty.step2": "在发布菜单中点击“Workflow as Tool”，将它发布为可用工具",
   "workflowToolEmpty.step3": "回到这里管理并复用它",
-  "workflowToolEmpty.title": "还没有发布为工具的工作流"
+  "workflowToolEmpty.title": "还没有可用的工作流工具"
 }

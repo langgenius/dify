@@ -139,7 +139,7 @@
   "plansCommon.title.plans": "planos",
   "plansCommon.triggerEvents.professional": "{{count,number}} Eventos de disparo/mês",
   "plansCommon.triggerEvents.sandbox": "{{count,number}} Acionar Eventos",
-  "plansCommon.triggerEvents.tooltip": "O número de eventos que iniciam automaticamente fluxos de trabalho através de disparadores de Plugin, Agendamento ou Webhook.",
+  "plansCommon.triggerEvents.tooltip": "O número de eventos que iniciam automaticamente fluxos de trabalho através de disparadores de Integração, Agendamento ou Webhook.",
   "plansCommon.triggerEvents.unlimited": "Eventos de Gatilho Ilimitados",
   "plansCommon.unavailable": "Indisponível",
   "plansCommon.unlimited": "Ilimitado",

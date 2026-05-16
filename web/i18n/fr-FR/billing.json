@@ -139,7 +139,7 @@
   "plansCommon.title.plans": "plans",
   "plansCommon.triggerEvents.professional": "{{count,number}} Déclenchements par mois",
   "plansCommon.triggerEvents.sandbox": "{{count,number}} Déclencher des événements",
-  "plansCommon.triggerEvents.tooltip": "Le nombre d'événements qui déclenchent automatiquement des flux de travail via des déclencheurs Plugin, Planification ou Webhook.",
+  "plansCommon.triggerEvents.tooltip": "Le nombre d'événements qui déclenchent automatiquement des flux de travail via des déclencheurs Intégration, Planification ou Webhook.",
   "plansCommon.triggerEvents.unlimited": "Événements Déclencheurs Illimités",
   "plansCommon.unavailable": "Indisponible",
   "plansCommon.unlimited": "Illimité",

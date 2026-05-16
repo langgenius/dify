@@ -139,7 +139,7 @@
   "plansCommon.title.plans": "rencana",
   "plansCommon.triggerEvents.professional": "{{count,number}} Pemicu Peristiwa/bulan",
   "plansCommon.triggerEvents.sandbox": "{{count,number}} Memicu Peristiwa",
-  "plansCommon.triggerEvents.tooltip": "Jumlah peristiwa yang secara otomatis memulai alur kerja melalui pemicu Plugin, Jadwal, atau Webhook.",
+  "plansCommon.triggerEvents.tooltip": "Jumlah peristiwa yang secara otomatis memulai alur kerja melalui pemicu Integrasi, Jadwal, atau Webhook.",
   "plansCommon.triggerEvents.unlimited": "Peristiwa Pemicu Tak Terbatas",
   "plansCommon.unavailable": "Tidak tersedia",
   "plansCommon.unlimited": "Unlimited",

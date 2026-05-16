@@ -1,6 +1,6 @@
 {
   "events.actionNum": "{{num}} {{event}} ВКЛЮЧЕНО",
-  "events.description": "Події, на які цей плагін тригера може підписатися",
+  "events.description": "Події, на які цей інтеграція тригера може підписатися",
   "events.empty": "Події відсутні",
   "events.event": "Подія",
   "events.events": "Події",

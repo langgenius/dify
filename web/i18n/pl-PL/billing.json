@@ -139,7 +139,7 @@
   "plansCommon.title.plans": "plany",
   "plansCommon.triggerEvents.professional": "{{count,number}} Wywołania zdarzeń/miesiąc",
   "plansCommon.triggerEvents.sandbox": "{{count,number}} Wyzwalacze zdarzeń",
-  "plansCommon.triggerEvents.tooltip": "Liczba zdarzeń, które automatycznie uruchamiają przepływy pracy za pomocą wtyczki, harmonogramu lub wyzwalaczy Webhook.",
+  "plansCommon.triggerEvents.tooltip": "Liczba zdarzeń, które automatycznie uruchamiają przepływy pracy za pomocą integracje, harmonogramu lub wyzwalaczy Webhook.",
   "plansCommon.triggerEvents.unlimited": "Nieograniczone zdarzenia wyzwalające",
   "plansCommon.unavailable": "Niedostępne",
   "plansCommon.unlimited": "Nieograniczony",

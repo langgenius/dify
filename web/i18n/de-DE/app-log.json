@@ -73,7 +73,7 @@
   "title": "Protokolle",
   "triggerBy.appRun": "Webanwendung",
   "triggerBy.debugging": "Fehlerbehebung",
-  "triggerBy.plugin": "Plugin",
+  "triggerBy.plugin": "Integration",
   "triggerBy.ragPipelineDebugging": "RAG-Debugging",
   "triggerBy.ragPipelineRun": "RAG-Pipeline",
   "triggerBy.schedule": "Zeitplan",

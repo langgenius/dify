@@ -73,7 +73,7 @@
   "title": "บันทึก",
   "triggerBy.appRun": "เว็บแอป",
   "triggerBy.debugging": "การแก้ไขข้อบกพร่อง",
-  "triggerBy.plugin": "ปลั๊กอิน",
+  "triggerBy.plugin": "การผสานรวม",
   "triggerBy.ragPipelineDebugging": "การดีบัก RAG",
   "triggerBy.ragPipelineRun": "กระบวนการ RAG",
   "triggerBy.schedule": "ตารางเวลา",

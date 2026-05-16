@@ -15,7 +15,7 @@
   "inputField.manage": "Gestiona",
   "publishToast.desc": "Când conducta nu este publicată, puteți modifica structura bucății în nodul bazei de cunoștințe, iar orchestrarea și modificările conductei vor fi salvate automat ca schiță.",
   "publishToast.title": "Această conductă nu a fost încă publicată",
-  "ragToolSuggestions.noRecommendationPlugins": "Nu există pluginuri recomandate, găsiți mai multe în <CustomLink>Marketplace</CustomLink>",
+  "ragToolSuggestions.noRecommendationPlugins": "Nu există integrări recomandate, găsiți mai multe în <CustomLink>Marketplace</CustomLink>",
   "ragToolSuggestions.title": "Sugestii pentru RAG",
   "result.resultPreview.error": "A apărut o eroare în timpul execuției",
   "result.resultPreview.footerTip": "În modul de testare, previzualizați până la {{count}} fragmente",

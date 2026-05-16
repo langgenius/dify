@@ -1,6 +1,6 @@
 {
   "events.actionNum": "{{num}} {{event}} 已包含",
-  "events.description": "此觸發插件可以訂閱的事件",
+  "events.description": "此集成觸發器可以訂閱的事件",
   "events.empty": "沒有可用的活動",
   "events.event": "活動",
   "events.events": "活動",

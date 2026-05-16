@@ -139,7 +139,7 @@
   "plansCommon.title.plans": "planes",
   "plansCommon.triggerEvents.professional": "{{count,number}} Eventos activadores/mes",
   "plansCommon.triggerEvents.sandbox": "{{count,number}} Eventos de activación",
-  "plansCommon.triggerEvents.tooltip": "El número de eventos que inician automáticamente flujos de trabajo mediante desencadenadores de Plugin, Programación o Webhook.",
+  "plansCommon.triggerEvents.tooltip": "El número de eventos que inician automáticamente flujos de trabajo mediante desencadenadores de Integración, Programación o Webhook.",
   "plansCommon.triggerEvents.unlimited": "Eventos de Disparo Ilimitados",
   "plansCommon.unavailable": "No disponible",
   "plansCommon.unlimited": "Ilimitado",

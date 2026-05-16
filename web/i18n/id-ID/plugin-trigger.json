@@ -1,6 +1,6 @@
 {
   "events.actionNum": "{{num}} {{event}} TERMASUK",
-  "events.description": "Peristiwa yang dapat diikuti oleh plugin pemicu ini",
+  "events.description": "Peristiwa yang dapat diikuti oleh integrasi pemicu ini",
   "events.empty": "Tidak ada acara tersedia",
   "events.event": "Acara",
   "events.events": "Acara",

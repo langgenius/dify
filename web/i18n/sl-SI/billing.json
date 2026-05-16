@@ -139,7 +139,7 @@
   "plansCommon.title.plans": "plani",
   "plansCommon.triggerEvents.professional": "{{count,number}} Sprožilni dogodki/mesec",
   "plansCommon.triggerEvents.sandbox": "{{count,number}} Sprožilni dogodki",
-  "plansCommon.triggerEvents.tooltip": "Število dogodkov, ki samodejno sprožijo delovne tokove prek vtičnika, urnika ali sprožilcev spletnih klicev.",
+  "plansCommon.triggerEvents.tooltip": "Število dogodkov, ki samodejno sprožijo delovne tokove prek integracijaa, urnika ali sprožilcev spletnih klicev.",
   "plansCommon.triggerEvents.unlimited": "Neomejeni sprožilni dogodki",
   "plansCommon.unavailable": "Ni na voljo",
   "plansCommon.unlimited": "Neomejeno",
