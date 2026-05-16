@@ -42,7 +42,6 @@ dependencies = [
     "readabilipy>=0.3.0,<1.0.0",
     "resend>=2.27.0,<3.0.0",
     # Emerging: newer and fast-moving, use compatible pins
-    "dify-agent",
     "fastopenapi[flask]~=0.7.0",
     "graphon~=0.3.1",
     "httpx-sse~=0.4.0",
@@ -115,6 +114,7 @@ override-dependencies = [
 ############################################################
 dev = [
     "coverage>=7.13.4",
+    "dify-agent",
     "dotenv-linter>=0.7.0",
     "faker>=40.15.0",
     "lxml-stubs>=0.5.1",

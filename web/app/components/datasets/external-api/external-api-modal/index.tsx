@@ -121,9 +121,9 @@ const AddExternalAPIModal: FC<AddExternalAPIModalProps> = ({ data, onSave, onCan
           onCancel()
       }}
     >
-      <DialogContent className="w-[480px]! max-w-none! overflow-visible! rounded-2xl! border-[0.5px]! border-components-panel-border! bg-components-panel-bg! p-0! shadow-xl!">
-        <div className="relative flex w-full flex-col items-start">
-          <div className="flex flex-col items-start gap-2 self-stretch pt-6 pr-14 pb-3 pl-6">
+      <DialogContent className="flex max-h-[calc(100dvh-2rem)] w-[480px]! max-w-none! flex-col overflow-hidden! rounded-2xl! border-[0.5px]! border-components-panel-border! bg-components-panel-bg! p-0! shadow-xl!">
+        <div className="relative flex min-h-0 w-full flex-1 flex-col items-start">
+          <div className="flex shrink-0 flex-col items-start gap-2 self-stretch pt-6 pr-14 pb-3 pl-6">
             <DialogTitle className="grow self-stretch title-2xl-semi-bold text-text-primary">
               {isEditMode ? t('editExternalAPIFormTitle', { ns: 'dataset' }) : t('createExternalAPI', { ns: 'dataset' })}
             </DialogTitle>
@@ -173,8 +173,8 @@ const AddExternalAPIModal: FC<AddExternalAPIModalProps> = ({ data, onSave, onCan
           <ActionButton className="absolute top-5 right-5" onClick={onCancel}>
             <RiCloseLine className="h-[18px] w-[18px] shrink-0 text-text-tertiary" />
           </ActionButton>
-          <Form value={formData} onChange={handleDataChange} formSchemas={formSchemas} className="flex flex-col items-start justify-center gap-4 self-stretch px-6 py-3" />
-          <div className="flex items-center justify-end gap-2 self-stretch p-6 pt-5">
+          <Form value={formData} onChange={handleDataChange} formSchemas={formSchemas} className="min-h-0 w-full flex-1 overflow-y-auto px-6 py-3" />
+          <div className="flex shrink-0 items-center justify-end gap-2 self-stretch p-6 pt-5">
             <Button type="button" variant="secondary" onClick={onCancel}>
               {t('externalAPIForm.cancel', { ns: 'dataset' })}
             </Button>
@@ -194,7 +194,7 @@ const AddExternalAPIModal: FC<AddExternalAPIModalProps> = ({ data, onSave, onCan
               {t('externalAPIForm.save', { ns: 'dataset' })}
             </Button>
           </div>
-          <div className="flex items-center justify-center gap-1 self-stretch rounded-b-2xl border-t-[0.5px] border-divider-subtle
+          <div className="flex shrink-0 items-center justify-center gap-1 self-stretch rounded-b-2xl border-t-[0.5px] border-divider-subtle
             bg-background-soft px-2 py-3 system-xs-regular text-text-tertiary"
           >
             <RiLock2Fill className="h-3 w-3 text-text-quaternary" />

@@ -2273,11 +2273,6 @@
       "count": 1
     }
   },
-  "web/app/components/header/account-setting/members-page/invite-modal/index.tsx": {
-    "react/set-state-in-effect": {
-      "count": 3
-    }
-  },
   "web/app/components/header/account-setting/members-page/transfer-ownership-modal/index.tsx": {
     "erasable-syntax-only/enums": {
       "count": 1

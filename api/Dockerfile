@@ -24,7 +24,8 @@ RUN apt-get update \
 # Install Python dependencies (workspace members under providers/vdb/)
 COPY pyproject.toml uv.lock ./
 COPY providers ./providers
-RUN uv sync --locked --no-dev
+# Trust the checked-in lock during image builds; dev-only path sources live outside the api/ context.
+RUN uv sync --frozen --no-dev
 
 # production stage
 FROM base AS production

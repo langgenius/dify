@@ -271,6 +271,12 @@ describe('Install Component', () => {
       expect(screen.getByTestId('install-multi').parentElement).toHaveClass('overflow-y-auto')
     })
 
+    it('should constrain the install step so the plugin list can scroll with many items', () => {
+      const { container } = render(<Install {...defaultProps} />)
+
+      expect(container.firstElementChild).toHaveClass('min-h-0', 'flex-1', 'overflow-hidden')
+    })
+
     it('should show singular text when one plugin is selected', async () => {
       render(<Install {...defaultProps} />)
 
