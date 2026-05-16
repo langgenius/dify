@@ -1,17 +1,22 @@
 import json
 import logging
 from collections.abc import Sequence
-from typing import Any
+from datetime import datetime
+from typing import Any, NotRequired, TypedDict
 
 from flask import abort, request
-from flask_restx import Resource, fields, marshal, marshal_with
-from pydantic import BaseModel, Field, ValidationError, field_validator
+from flask_restx import Resource, fields
+from pydantic import AliasChoices, BaseModel, Field, ValidationError, field_validator
 from sqlalchemy.orm import sessionmaker
 from werkzeug.exceptions import BadRequest, Forbidden, InternalServerError, NotFound
 
 import services
 from controllers.common.controller_schemas import DefaultBlockConfigQuery, WorkflowListQuery, WorkflowUpdatePayload
-from controllers.common.schema import register_response_schema_model, register_schema_models
+from controllers.common.schema import (
+    register_response_schema_model,
+    register_response_schema_models,
+    register_schema_models,
+)
 from controllers.console import console_ns
 from controllers.console.app.error import ConversationCompletedError, DraftWorkflowNotExist, DraftWorkflowNotSync
 from controllers.console.app.wraps import get_app_model
@@ -22,6 +27,7 @@ from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.apps.workflow.app_generator import SKIP_PREPARE_USER_INPUTS_KEY
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.app.file_access import DatabaseFileAccessController
+from core.helper import encrypter
 from core.helper.trace_id_helper import get_external_trace_id
 from core.plugin.impl.exc import PluginInvokeError
 from core.trigger.constants import TRIGGER_SCHEDULE_NODE_TYPE
@@ -34,18 +40,18 @@ from core.trigger.debug.event_selectors import (
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from factories import file_factory, variable_factory
-from fields.member_fields import simple_account_fields
-from fields.online_user_fields import online_user_list_fields
-from fields.workflow_fields import workflow_fields, workflow_pagination_fields
+from fields.base import ResponseModel
+from fields.member_fields import SimpleAccount
 from fields.workflow_run_fields import WorkflowRunNodeExecutionResponse
 from graphon.enums import NodeType
 from graphon.file import File
 from graphon.file import helpers as file_helpers
 from graphon.graph_engine.manager import GraphEngineManager
 from graphon.model_runtime.utils.encoders import jsonable_encoder
+from graphon.variables import SecretVariable, SegmentType, VariableBase
 from libs import helper
 from libs.datetime_utils import naive_utc_now
-from libs.helper import TimestampField, uuid_value
+from libs.helper import TimestampField, dump_response, to_timestamp, uuid_value
 from libs.login import current_account_with_tenant, login_required
 from models import App
 from models.model import AppMode
@@ -64,42 +70,15 @@ LISTENING_RETRY_IN = 2000
 RESTORE_SOURCE_WORKFLOW_MUST_BE_PUBLISHED_MESSAGE = "source workflow must be published"
 MAX_WORKFLOW_ONLINE_USERS_REQUEST_IDS = 1000
 WORKFLOW_ONLINE_USERS_REDIS_BATCH_SIZE = 50
+ENVIRONMENT_VARIABLE_SUPPORTED_TYPES = (SegmentType.STRING, SegmentType.NUMBER, SegmentType.SECRET)
 
-# Register models for flask_restx to avoid dict type issues in Swagger
-# Register in dependency order: base models first, then dependent models
 
-# Base models
-simple_account_model = console_ns.model("SimpleAccount", simple_account_fields)
-
-from fields.workflow_fields import pipeline_variable_fields, serialize_value_type
-
-conversation_variable_model = console_ns.model(
-    "ConversationVariable",
-    {
-        "id": fields.String,
-        "name": fields.String,
-        "value_type": fields.String(attribute=serialize_value_type),
-        "value": fields.Raw,
-        "description": fields.String,
-    },
-)
-
-pipeline_variable_model = console_ns.model("PipelineVariable", pipeline_variable_fields)
-
-# Workflow model with nested dependencies
-workflow_fields_copy = workflow_fields.copy()
-workflow_fields_copy["created_by"] = fields.Nested(simple_account_model, attribute="created_by_account")
-workflow_fields_copy["updated_by"] = fields.Nested(
-    simple_account_model, attribute="updated_by_account", allow_null=True
-)
-workflow_fields_copy["conversation_variables"] = fields.List(fields.Nested(conversation_variable_model))
-workflow_fields_copy["rag_pipeline_variables"] = fields.List(fields.Nested(pipeline_variable_model))
-workflow_model = console_ns.model("Workflow", workflow_fields_copy)
-
-# Workflow pagination model
-workflow_pagination_fields_copy = workflow_pagination_fields.copy()
-workflow_pagination_fields_copy["items"] = fields.List(fields.Nested(workflow_model), attribute="items")
-workflow_pagination_model = console_ns.model("WorkflowPagination", workflow_pagination_fields_copy)
+class EnvironmentVariableResponseDict(TypedDict):
+    value_type: str
+    id: NotRequired[str]
+    name: NotRequired[str]
+    value: NotRequired[Any]
+    description: NotRequired[str | None]
 
 
 class SyncDraftWorkflowPayload(BaseModel):
@@ -170,6 +149,110 @@ class WorkflowOnlineUsersPayload(BaseModel):
         return list(dict.fromkeys(app_id.strip() for app_id in app_ids if app_id.strip()))
 
 
+class WorkflowConversationVariableResponse(ResponseModel):
+    id: str
+    name: str
+    value_type: str
+    value: Any = Field(json_schema_extra={"type": "object"})
+    description: str
+
+    @field_validator("value_type", mode="before")
+    @classmethod
+    def _serialize_value_type(cls, value: Any) -> str:
+        if hasattr(value, "exposed_type"):
+            return str(value.exposed_type())
+        return str(value)
+
+
+class PipelineVariableResponse(ResponseModel):
+    label: str
+    variable: str
+    type: str
+    belong_to_node_id: str
+    max_length: int | None = None
+    required: bool
+    unit: str | None = None
+    default_value: Any = Field(default=None, json_schema_extra={"type": "object"})
+    options: list[str] | None = None
+    placeholder: str | None = None
+    tooltips: str | None = None
+    allowed_file_types: list[str] | None = None
+    allowed_file_extensions: list[str] | None = Field(
+        default=None, validation_alias=AliasChoices("allowed_file_extensions", "allow_file_extension")
+    )
+    allowed_file_upload_methods: list[str] | None = Field(
+        default=None, validation_alias=AliasChoices("allowed_file_upload_methods", "allow_file_upload_methods")
+    )
+
+
+class WorkflowEnvironmentVariableResponse(ResponseModel):
+    value_type: str
+    id: str
+    name: str
+    value: Any = Field(json_schema_extra={"type": "object"})
+    description: str
+
+
+class WorkflowResponse(ResponseModel):
+    id: str
+    graph: dict[str, Any] = Field(validation_alias=AliasChoices("graph_dict", "graph"))
+    features: dict[str, Any] = Field(validation_alias=AliasChoices("features_dict", "features"))
+    hash: str = Field(validation_alias=AliasChoices("unique_hash", "hash"))
+    version: str
+    marked_name: str
+    marked_comment: str
+    created_by: SimpleAccount | None = Field(
+        default=None, validation_alias=AliasChoices("created_by_account", "created_by")
+    )
+    created_at: int
+    updated_by: SimpleAccount | None = Field(
+        default=None, validation_alias=AliasChoices("updated_by_account", "updated_by")
+    )
+    updated_at: int
+    tool_published: bool
+    environment_variables: list[WorkflowEnvironmentVariableResponse]
+    conversation_variables: list[WorkflowConversationVariableResponse]
+    rag_pipeline_variables: list[PipelineVariableResponse]
+
+    @field_validator("created_at", "updated_at", mode="before")
+    @classmethod
+    def _normalize_timestamp(cls, value: datetime | int | None) -> int:
+        timestamp = to_timestamp(value)
+        if timestamp is None:
+            raise ValueError("timestamp is required")
+        return timestamp
+
+    @field_validator("environment_variables", mode="before")
+    @classmethod
+    def _serialize_environment_variables(cls, value: Any) -> list[Any]:
+        if value is None:
+            return []
+
+        return [_serialize_environment_variable(item) for item in value]
+
+
+class WorkflowPaginationResponse(ResponseModel):
+    items: list[WorkflowResponse]
+    page: int
+    limit: int
+    has_more: bool
+
+
+class WorkflowOnlineUser(ResponseModel):
+    user_id: str
+    username: str
+    avatar: str | None = None
+
+
+class WorkflowOnlineUsersByApp(ResponseModel):
+    app_id: str
+    users: list[WorkflowOnlineUser]
+
+
+class WorkflowOnlineUsersResponse(ResponseModel):
+    data: list[WorkflowOnlineUsersByApp]
+
+
 class DraftWorkflowTriggerRunPayload(BaseModel):
     node_id: str
 
@@ -197,6 +280,17 @@ register_schema_models(
     DraftWorkflowTriggerRunAllPayload,
 )
 register_response_schema_model(console_ns, WorkflowRunNodeExecutionResponse)
+register_response_schema_models(
+    console_ns,
+    WorkflowConversationVariableResponse,
+    PipelineVariableResponse,
+    WorkflowEnvironmentVariableResponse,
+    WorkflowResponse,
+    WorkflowPaginationResponse,
+    WorkflowOnlineUser,
+    WorkflowOnlineUsersByApp,
+    WorkflowOnlineUsersResponse,
+)
 
 
 # TODO(QuantumGhost): Refactor existing node run API to handle file parameter parsing
@@ -218,18 +312,56 @@ def _parse_file(workflow: Workflow, files: list[dict] | None = None) -> Sequence
     return file_objs
 
 
+def _serialize_environment_variable(value: Any) -> EnvironmentVariableResponseDict | Any:
+    match value:
+        case SecretVariable():
+            return {
+                "id": value.id,
+                "name": value.name,
+                "value": encrypter.full_mask_token(),
+                "value_type": value.value_type.value,
+                "description": value.description,
+            }
+
+        case VariableBase():
+            return {
+                "id": value.id,
+                "name": value.name,
+                "value": value.value,
+                "value_type": str(value.value_type.exposed_type()),
+                "description": value.description,
+            }
+
+        case dict():
+            value_type_str = value.get("value_type")
+            if not isinstance(value_type_str, str):
+                raise TypeError(
+                    f"unexpected type for value_type field, value={value_type_str}, type={type(value_type_str)}"
+                )
+            value_type = SegmentType(value_type_str).exposed_type()
+            if value_type not in ENVIRONMENT_VARIABLE_SUPPORTED_TYPES:
+                raise ValueError(f"Unsupported environment variable value type: {value_type}")
+            return value
+
+        case _:
+            return value
+
+
 @console_ns.route("/apps/<uuid:app_id>/workflows/draft")
 class DraftWorkflowApi(Resource):
     @console_ns.doc("get_draft_workflow")
     @console_ns.doc(description="Get draft workflow for an application")
     @console_ns.doc(params={"app_id": "Application ID"})
-    @console_ns.response(200, "Draft workflow retrieved successfully", workflow_model)
+    @console_ns.response(
+        200,
+        "Draft workflow retrieved successfully",
+        console_ns.models[WorkflowResponse.__name__],
+    )
     @console_ns.response(404, "Draft workflow not found")
     @setup_required
     @login_required
     @account_initialization_required
     @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
-    @marshal_with(workflow_model)
     @edit_permission_required
     def get(self, app_model: App):
         """
@@ -242,8 +374,8 @@ class DraftWorkflowApi(Resource):
         if not workflow:
             raise DraftWorkflowNotExist()
 
-        # return workflow, if not found, return None (initiate graph by frontend)
-        return workflow
+        # return workflow, if not found, return 404
+        return dump_response(WorkflowResponse, workflow)
 
     @setup_required
     @login_required
@@ -817,13 +949,15 @@ class PublishedWorkflowApi(Resource):
     @console_ns.doc("get_published_workflow")
     @console_ns.doc(description="Get published workflow for an application")
     @console_ns.doc(params={"app_id": "Application ID"})
-    @console_ns.response(200, "Published workflow retrieved successfully", workflow_model)
-    @console_ns.response(404, "Published workflow not found")
+    @console_ns.response(
+        200,
+        "Published workflow retrieved successfully, or null if not found",
+        console_ns.models[WorkflowResponse.__name__],
+    )
     @setup_required
     @login_required
     @account_initialization_required
     @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
-    @marshal_with(workflow_model)
     @edit_permission_required
     def get(self, app_model: App):
         """
@@ -834,7 +968,10 @@ class PublishedWorkflowApi(Resource):
         workflow = workflow_service.get_published_workflow(app_model=app_model)
 
         # return workflow, if not found, return None
-        return workflow
+        if workflow is None:
+            return None
+
+        return dump_response(WorkflowResponse, workflow)
 
     @console_ns.expect(console_ns.models[PublishWorkflowPayload.__name__])
     @setup_required
@@ -993,7 +1130,11 @@ class PublishedAllWorkflowApi(Resource):
     @console_ns.doc("get_all_published_workflows")
     @console_ns.doc(description="Get all published workflows for an application")
     @console_ns.doc(params={"app_id": "Application ID"})
-    @console_ns.response(200, "Published workflows retrieved successfully", workflow_pagination_model)
+    @console_ns.response(
+        200,
+        "Published workflows retrieved successfully",
+        console_ns.models[WorkflowPaginationResponse.__name__],
+    )
     @setup_required
     @login_required
     @account_initialization_required
@@ -1025,14 +1166,14 @@ class PublishedAllWorkflowApi(Resource):
                 user_id=user_id,
                 named_only=named_only,
             )
-            serialized_workflows = marshal(workflows, workflow_fields_copy)
-
-            return {
-                "items": serialized_workflows,
-                "page": page,
-                "limit": limit,
-                "has_more": has_more,
-            }
+            return WorkflowPaginationResponse.model_validate(
+                {
+                    "items": workflows,
+                    "page": page,
+                    "limit": limit,
+                    "has_more": has_more,
+                }
+            ).model_dump(mode="json")
 
 
 @console_ns.route("/apps/<uuid:app_id>/workflows/<string:workflow_id>/restore")
@@ -1078,14 +1219,13 @@ class WorkflowByIdApi(Resource):
     @console_ns.doc(description="Update workflow by ID")
     @console_ns.doc(params={"app_id": "Application ID", "workflow_id": "Workflow ID"})
     @console_ns.expect(console_ns.models[WorkflowUpdatePayload.__name__])
-    @console_ns.response(200, "Workflow updated successfully", workflow_model)
+    @console_ns.response(200, "Workflow updated successfully", console_ns.models[WorkflowResponse.__name__])
     @console_ns.response(404, "Workflow not found")
     @console_ns.response(403, "Permission denied")
     @setup_required
     @login_required
     @account_initialization_required
     @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
-    @marshal_with(workflow_model)
     @edit_permission_required
     def patch(self, app_model: App, workflow_id: str):
         """
@@ -1119,7 +1259,7 @@ class WorkflowByIdApi(Resource):
             if not workflow:
                 raise NotFound("Workflow not found")
 
-        return workflow
+        return dump_response(WorkflowResponse, workflow)
 
     @setup_required
     @login_required
@@ -1404,12 +1544,16 @@ class DraftWorkflowTriggerRunAllApi(Resource):
 @console_ns.route("/apps/workflows/online-users")
 class WorkflowOnlineUsersApi(Resource):
     @console_ns.expect(console_ns.models[WorkflowOnlineUsersPayload.__name__])
+    @console_ns.response(
+        200,
+        "Workflow online users retrieved successfully",
+        console_ns.models[WorkflowOnlineUsersResponse.__name__],
+    )
     @console_ns.doc("get_workflow_online_users")
     @console_ns.doc(description="Get workflow online users")
     @setup_required
     @login_required
     @account_initialization_required
-    @marshal_with(online_user_list_fields)
     def post(self):
         args = WorkflowOnlineUsersPayload.model_validate(console_ns.payload or {})
 
@@ -1451,6 +1595,8 @@ class WorkflowOnlineUsersApi(Resource):
 
                 if not isinstance(user_info, dict):
                     continue
+                if "user_id" not in user_info or "username" not in user_info:
+                    continue
 
                 avatar = user_info.get("avatar")
                 if isinstance(avatar, str) and avatar and not avatar.startswith(("http://", "https://")):
@@ -1468,4 +1614,4 @@ class WorkflowOnlineUsersApi(Resource):
                 users.append(user_info)
             results.append({"app_id": app_id, "users": users})
 
-        return {"data": results}
+        return WorkflowOnlineUsersResponse.model_validate({"data": results}).model_dump(mode="json")
