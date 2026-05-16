@@ -1,6 +1,6 @@
 'use client'
 
-import type { ComboboxRootChangeEventDetails, Placement } from '@langgenius/dify-ui/combobox'
+import type { Placement } from '@langgenius/dify-ui/combobox'
 import type { BuiltInMetadataItem, MetadataItem } from '../types'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
@@ -83,9 +83,8 @@ export function DatasetMetadataPicker({
       resetPicker()
   }
 
-  const handleInputValueChange = (inputValue: string, details: ComboboxRootChangeEventDetails) => {
-    if (details.reason !== 'item-press')
-      setQuery(inputValue)
+  const handleInputValueChange = (inputValue: string) => {
+    setQuery(inputValue)
   }
 
   const handleMetadataChange = (metadata: MetadataItem | null) => {
