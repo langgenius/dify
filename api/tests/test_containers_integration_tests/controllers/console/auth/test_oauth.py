@@ -78,9 +78,9 @@ class TestOAuthLogin:
     @pytest.mark.parametrize(
         ("invite_token", "expected_token"),
         [
-            (None, None),
+            (None, ""),
             ("test_invite_token", "test_invite_token"),
-            ("", None),
+            ("", ""),
         ],
     )
     @patch("controllers.console.auth.oauth.get_oauth_providers")
@@ -103,8 +103,8 @@ class TestOAuthLogin:
 
         mock_oauth_provider.get_authorization_url.assert_called_once_with(
             invite_token=expected_token,
-            timezone=None,
-            language=None,
+            timezone="",
+            language="",
         )
         mock_redirect.assert_called_once_with("https://github.com/login/oauth/authorize?...")
 
@@ -124,9 +124,9 @@ class TestOAuthLogin:
             resource.get("github")
 
         mock_oauth_provider.get_authorization_url.assert_called_once_with(
-            invite_token=None,
+            invite_token="",
             timezone="Asia/Shanghai",
-            language=None,
+            language="",
         )
         mock_redirect.assert_called_once_with("https://github.com/login/oauth/authorize?...")
 
@@ -146,8 +146,8 @@ class TestOAuthLogin:
             resource.get("github")
 
         mock_oauth_provider.get_authorization_url.assert_called_once_with(
-            invite_token=None,
-            timezone=None,
+            invite_token="",
+            timezone="",
             language="zh-Hans",
         )
         mock_redirect.assert_called_once_with("https://github.com/login/oauth/authorize?...")

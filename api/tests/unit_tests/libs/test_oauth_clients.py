@@ -39,11 +39,10 @@ class TestGitHubOAuth(BaseOAuthTest):
     @pytest.mark.parametrize(
         ("invite_token", "timezone", "language", "expected_state"),
         [
-            (None, None, None, None),
-            ("test_invite_token", None, None, {"invite_token": "test_invite_token"}),
-            ("", None, None, None),
-            (None, "Asia/Shanghai", None, {"timezone": "Asia/Shanghai"}),
-            (None, None, "zh-Hans", {"language": "zh-Hans"}),
+            ("", "", "", None),
+            ("test_invite_token", "", "", {"invite_token": "test_invite_token"}),
+            ("", "Asia/Shanghai", "", {"timezone": "Asia/Shanghai"}),
+            ("", "", "zh-Hans", {"language": "zh-Hans"}),
             (
                 "test_invite_token",
                 "Asia/Shanghai",
@@ -220,11 +219,10 @@ class TestGoogleOAuth(BaseOAuthTest):
     @pytest.mark.parametrize(
         ("invite_token", "timezone", "language", "expected_state"),
         [
-            (None, None, None, None),
-            ("test_invite_token", None, None, {"invite_token": "test_invite_token"}),
-            ("", None, None, None),
-            (None, "Asia/Shanghai", None, {"timezone": "Asia/Shanghai"}),
-            (None, None, "zh-Hans", {"language": "zh-Hans"}),
+            ("", "", "", None),
+            ("test_invite_token", "", "", {"invite_token": "test_invite_token"}),
+            ("", "Asia/Shanghai", "", {"timezone": "Asia/Shanghai"}),
+            ("", "", "zh-Hans", {"language": "zh-Hans"}),
             (
                 "test_invite_token",
                 "Asia/Shanghai",

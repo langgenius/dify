@@ -277,7 +277,7 @@ def drop_null_values(value: object) -> object:
     return value
 
 
-def sort_openapi_arrays(value: object, *, parent_key: str | None = None) -> object:
+def sort_openapi_arrays(value: object, *, parent_key: str = "") -> object:
     """Sort order-insensitive Swagger arrays so generated Markdown is stable."""
 
     if isinstance(value, dict):
