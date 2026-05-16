@@ -409,7 +409,9 @@ class WorkflowBasedAppRunner:
                     QueueWorkflowPartialSuccessEvent(outputs=event.outputs, exceptions_count=event.exceptions_count)
                 )
             case GraphRunFailedEvent():
-                self._publish_event(QueueWorkflowFailedEvent(error=event.error, exceptions_count=event.exceptions_count))
+                self._publish_event(
+                    QueueWorkflowFailedEvent(error=event.error, exceptions_count=event.exceptions_count)
+                )
             case GraphRunAbortedEvent():
                 self._publish_event(QueueWorkflowFailedEvent(error=event.reason or "Unknown error", exceptions_count=0))
             case GraphRunPausedEvent():
@@ -588,8 +590,8 @@ class WorkflowBasedAppRunner:
                         data=event.data,
                         metadata=event.metadata,
                         node_id=event.node_id,
+                    )
                 )
-            )
             case NodeRunIterationStartedEvent():
                 self._publish_event(
                     QueueIterationStartEvent(

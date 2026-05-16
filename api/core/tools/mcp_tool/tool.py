@@ -81,7 +81,9 @@ class MCPTool(Tool):
                             yield self.create_text_message(resource.text)
                         case BlobResourceContents():
                             mime_type = resource.mimeType or "application/octet-stream"
-                            yield self.create_blob_message(blob=base64.b64decode(resource.blob), meta={"mime_type": mime_type})
+                            yield self.create_blob_message(
+                                blob=base64.b64decode(resource.blob), meta={"mime_type": mime_type}
+                            )
                         case _:
                             raise ToolInvokeError(f"Unsupported embedded resource type: {type(resource)}")
                 case _:
