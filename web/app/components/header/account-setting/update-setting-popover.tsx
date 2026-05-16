@@ -1,18 +1,23 @@
 'use client'
 
+import type { ReactNode } from 'react'
+import type { TriggerParams } from '@/app/components/base/date-and-time-picker/types'
 import type { AutoUpdateConfig } from '@/app/components/plugins/reference-setting-modal/auto-update-setting/types'
 import type { ReferenceSetting } from '@/app/components/plugins/types'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { useCallback, useMemo, useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { Trans, useTranslation } from 'react-i18next'
+import TimePicker from '@/app/components/base/date-and-time-picker/time-picker'
 import { convertTimezoneToOffsetStr } from '@/app/components/base/date-and-time-picker/utils/dayjs'
+import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
 import { defaultValue as defaultAutoUpdateValue } from '@/app/components/plugins/reference-setting-modal/auto-update-setting/config'
 import PluginsPicker from '@/app/components/plugins/reference-setting-modal/auto-update-setting/plugins-picker'
 import { AUTO_UPDATE_MODE, AUTO_UPDATE_STRATEGY } from '@/app/components/plugins/reference-setting-modal/auto-update-setting/types'
-import { convertUTCDaySecondsToLocalSeconds, timeOfDayToDayjs } from '@/app/components/plugins/reference-setting-modal/auto-update-setting/utils'
+import { convertLocalSecondsToUTCDaySeconds, convertUTCDaySecondsToLocalSeconds, dayjsToTimeOfDay, timeOfDayToDayjs } from '@/app/components/plugins/reference-setting-modal/auto-update-setting/utils'
 import { useAppContext } from '@/context/app-context'
+import { useModalContextSelector } from '@/context/modal-context'
 
 type Props = {
   defaultStrategy?: AUTO_UPDATE_STRATEGY
@@ -28,6 +33,20 @@ type SegmentedOption<T extends string> = {
 const updateSettingFormClassName = 'flex flex-col items-start gap-1 pb-1 pt-0.5'
 const updateSettingFormInputSetClassName = 'flex flex-col items-start gap-0.5 px-4 py-1'
 const updateSettingFormLabelClassName = 'flex min-h-6 items-center system-sm-semibold text-text-secondary'
+
+function SettingTimeZone({ children }: { children?: ReactNode }) {
+  const setShowAccountSettingModal = useModalContextSelector(s => s.setShowAccountSettingModal)
+
+  return (
+    <button
+      type="button"
+      className="cursor-pointer border-none bg-transparent p-0 text-left body-xs-regular text-text-accent focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
+      onClick={() => setShowAccountSettingModal({ payload: ACCOUNT_SETTING_TAB.LANGUAGE })}
+    >
+      {children}
+    </button>
+  )
+}
 
 const getAutoUpgrade = (
   referenceSetting: ReferenceSetting,
@@ -85,7 +104,6 @@ const UpdateSettingPopover = ({
   const { userProfile } = useAppContext()
   const timezone = userProfile.timezone || 'UTC'
   const [autoUpgrade, setAutoUpgrade] = useState(() => getAutoUpgrade(referenceSetting, defaultStrategy))
-  const localUpdateTime = timeOfDayToDayjs(convertUTCDaySecondsToLocalSeconds(autoUpgrade.upgrade_time_of_day, timezone))
   const getStrategyLabel = useCallback((strategy: AUTO_UPDATE_STRATEGY) => {
     switch (strategy) {
       case AUTO_UPDATE_STRATEGY.disabled:
@@ -109,6 +127,10 @@ const UpdateSettingPopover = ({
         return []
     }
   }, [autoUpgrade.exclude_plugins, autoUpgrade.include_plugins, autoUpgrade.upgrade_mode])
+  const updateTimeValue = useMemo(() => {
+    const localSeconds = convertUTCDaySecondsToLocalSeconds(autoUpgrade.upgrade_time_of_day, timezone)
+    return timeOfDayToDayjs(localSeconds).format('HH:mm')
+  }, [autoUpgrade.upgrade_time_of_day, timezone])
   const strategyOptions = useMemo<Array<SegmentedOption<AUTO_UPDATE_STRATEGY>>>(() => [
     {
       value: AUTO_UPDATE_STRATEGY.disabled,
@@ -162,6 +184,38 @@ const UpdateSettingPopover = ({
       })
     }
   }, [autoUpgrade.upgrade_mode, updateAutoUpgrade])
+  const minuteFilter = useCallback((minutes: string[]) => {
+    return minutes.filter((m) => {
+      const time = Number.parseInt(m, 10)
+      return time % 15 === 0
+    })
+  }, [])
+  const handleUpdateTimeChange = useCallback((value: Parameters<typeof dayjsToTimeOfDay>[0]) => {
+    updateAutoUpgrade({
+      upgrade_time_of_day: convertLocalSecondsToUTCDaySeconds(dayjsToTimeOfDay(value), timezone),
+    })
+  }, [timezone, updateAutoUpgrade])
+  const renderTimePickerTrigger = useCallback(({ inputElem, onClick, isOpen }: TriggerParams) => {
+    return (
+      <button
+        type="button"
+        className="group flex h-8 w-[160px] cursor-pointer items-center justify-between rounded-lg border-none bg-components-input-bg-normal px-2 text-left hover:bg-state-base-hover-alt focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
+        onClick={onClick}
+      >
+        <div className="flex w-0 grow items-center gap-1">
+          <span
+            aria-hidden
+            className={cn(
+              'i-ri-time-line size-4 shrink-0 text-text-tertiary',
+              isOpen ? 'text-text-secondary' : 'group-hover:text-text-secondary',
+            )}
+          />
+          {inputElem}
+        </div>
+        <div className="system-sm-regular text-text-tertiary">{convertTimezoneToOffsetStr(timezone)}</div>
+      </button>
+    )
+  }, [timezone])
 
   return (
     <Popover>
@@ -183,7 +237,7 @@ const UpdateSettingPopover = ({
       <PopoverContent
         placement="bottom-end"
         sideOffset={4}
-        popupClassName="w-[240px] overflow-hidden rounded-2xl border-t border-components-panel-border bg-components-panel-bg p-0 shadow-xl"
+        popupClassName="w-[320px] overflow-hidden rounded-2xl border-t border-components-panel-border bg-components-panel-bg p-0 shadow-xl"
       >
         <div className="border-b-[0.5px] border-black/5 py-2">
           <div className={cn(updateSettingFormClassName, 'w-full')}>
@@ -206,13 +260,28 @@ const UpdateSettingPopover = ({
                   <div className={updateSettingFormLabelClassName}>
                     {t('autoUpdate.updateTime', { ns: 'plugin' })}
                   </div>
-                  <div className="flex w-fit cursor-default items-center justify-center gap-0.5 rounded-lg bg-[#f5f4ee] px-3 py-2 shadow-xs backdrop-blur-[5px]">
-                    <span aria-hidden className="i-ri-time-line size-4 shrink-0 text-components-button-secondary-text" />
-                    <span className="px-0.5 system-sm-medium text-components-button-secondary-text">
-                      {localUpdateTime.format('hh:mm A')}
-                      {' '}
-                      {convertTimezoneToOffsetStr(timezone)}
-                    </span>
+                  <div className="flex flex-col items-start">
+                    <TimePicker
+                      value={updateTimeValue}
+                      timezone={timezone}
+                      onChange={handleUpdateTimeChange}
+                      onClear={() => updateAutoUpgrade({
+                        upgrade_time_of_day: convertLocalSecondsToUTCDaySeconds(0, timezone),
+                      })}
+                      title={t('autoUpdate.updateTime', { ns: 'plugin' })}
+                      minuteFilter={minuteFilter}
+                      renderTrigger={renderTimePickerTrigger}
+                      placement="bottom-end"
+                    />
+                    <div className="mt-1 body-xs-regular text-text-tertiary">
+                      <Trans
+                        i18nKey="autoUpdate.changeTimezone"
+                        ns="plugin"
+                        components={{
+                          setTimezone: <SettingTimeZone />,
+                        }}
+                      />
+                    </div>
                   </div>
                 </div>
               </div>

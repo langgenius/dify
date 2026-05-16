@@ -20,7 +20,8 @@ type MockReferenceSetting = {
   }
 }
 
-const { mockSetReferenceSettings } = vi.hoisted(() => ({
+const { mockSetAccountSettingModal, mockSetReferenceSettings } = vi.hoisted(() => ({
+  mockSetAccountSettingModal: vi.fn(),
   mockSetReferenceSettings: vi.fn(),
 }))
 
@@ -140,6 +141,44 @@ vi.mock('@langgenius/dify-ui/popover', () => ({
   ),
 }))
 
+vi.mock('@/context/modal-context', () => ({
+  useModalContextSelector: (selector: (state: { setShowAccountSettingModal: typeof mockSetAccountSettingModal }) => unknown) =>
+    selector({ setShowAccountSettingModal: mockSetAccountSettingModal }),
+}))
+
+vi.mock('@/app/components/base/date-and-time-picker/time-picker', () => ({
+  default: ({
+    value,
+    onChange,
+    renderTrigger,
+  }: {
+    value?: string | { format: (format: string) => string }
+    onChange: (value: { hour: () => number, minute: () => number }) => void
+    renderTrigger: (params: { inputElem: ReactNode, onClick: () => void, isOpen: boolean }) => ReactNode
+  }) => {
+    const displayValue = typeof value === 'string' ? value : value?.format('HH:mm')
+
+    return (
+      <div data-testid="update-time-picker">
+        {renderTrigger({
+          inputElem: <span data-testid="update-time-value">{displayValue}</span>,
+          onClick: vi.fn(),
+          isOpen: false,
+        })}
+        <button
+          type="button"
+          onClick={() => onChange({
+            hour: () => 1,
+            minute: () => 15,
+          })}
+        >
+          set update time
+        </button>
+      </div>
+    )
+  },
+}))
+
 vi.mock('@/service/client', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/client')>()
   const originalPlugins = actual.consoleQuery.plugins as unknown as Record<string, unknown>
@@ -233,8 +272,10 @@ describe('ModelProviderPage', () => {
     expect(screen.getAllByTestId('update-setting-popover')[0]).toBeInTheDocument()
     expect(screen.getByText('plugin.autoUpdate.automaticUpdates')).toBeInTheDocument()
     expect(screen.getByText('plugin.autoUpdate.scope')).toBeInTheDocument()
+    expect(screen.getByText('plugin.autoUpdate.updateTime')).toBeInTheDocument()
+    expect(screen.getByTestId('update-time-picker')).toBeInTheDocument()
+    expect(screen.getByText('autoUpdate.changeTimezone')).toBeInTheDocument()
     expect(screen.getByRole('radio', { name: 'plugin.autoUpdate.strategy.fixOnly.name' })).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'set time' })).not.toBeInTheDocument()
   })
 
   it('should use latest as the model provider default without locking the strategy', () => {
@@ -268,6 +309,27 @@ describe('ModelProviderPage', () => {
         strategy_setting: 'latest',
         upgrade_time_of_day: 0,
         upgrade_mode: 'partial',
+        exclude_plugins: [],
+        include_plugins: [],
+      },
+    })
+  })
+
+  it('should update time from the popover while keeping the model provider default strategy as latest', () => {
+    renderModelProviderPage()
+
+    expect(screen.getByTestId('update-time-value')).toHaveTextContent('00:00')
+
+    fireEvent.click(screen.getByRole('button', { name: 'set update time' }))
+
+    expect(screen.getByTestId('update-time-value')).toHaveTextContent('01:15')
+
+    expect(mockSetReferenceSettings).toHaveBeenCalledWith({
+      permission: {},
+      auto_upgrade: {
+        strategy_setting: 'latest',
+        upgrade_time_of_day: 4500,
+        upgrade_mode: 'all',
         exclude_plugins: [],
         include_plugins: [],
       },
