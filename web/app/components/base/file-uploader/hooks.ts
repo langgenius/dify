@@ -301,9 +301,14 @@ export const useFile = (fileConfig: FileUpload, noNeedToCheckEnable = true) => {
     const text = e.clipboardData?.getData('text/plain')
     if (file && !text) {
       e.preventDefault()
+      const currentFiles = fileStore.getState().files
+      if (fileConfig.number_limits && currentFiles.length >= fileConfig.number_limits) {
+        toast.error(t('fileUploader.numberLimitExceeded', { ns: 'common', limit: fileConfig.number_limits }))
+        return
+      }
       handleLocalFileUpload(file)
     }
-  }, [handleLocalFileUpload])
+  }, [handleLocalFileUpload, fileStore, fileConfig.number_limits, t])
 
   const [isDragActive, setIsDragActive] = useState(false)
   const handleDragFileEnter = useCallback((e: React.DragEvent<HTMLElement>) => {
@@ -330,9 +335,15 @@ export const useFile = (fileConfig: FileUpload, noNeedToCheckEnable = true) => {
 
     const file = e.dataTransfer.files[0]
 
-    if (file)
+    if (file) {
+      const currentFiles = fileStore.getState().files
+      if (fileConfig.number_limits && currentFiles.length >= fileConfig.number_limits) {
+        toast.error(t('fileUploader.numberLimitExceeded', { ns: 'common', limit: fileConfig.number_limits }))
+        return
+      }
       handleLocalFileUpload(file)
-  }, [handleLocalFileUpload])
+    }
+  }, [handleLocalFileUpload, fileStore, fileConfig.number_limits, t])
 
   return {
     handleAddFile,

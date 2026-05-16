@@ -191,6 +191,7 @@
   "fileUploader.uploadFromComputerLimit": "上传 {{type}} 不能超过 {{size}}",
   "fileUploader.uploadFromComputerReadError": "文件读取失败，请重新选择。",
   "fileUploader.uploadFromComputerUploadError": "文件上传失败，请重新上传。",
+  "fileUploader.numberLimitExceeded": "无法上传超过 {{limit}} 个文件",
   "imageInput.browse": "浏览",
   "imageInput.dropImageHere": "将图片拖放到此处，或",
   "imageInput.supportedFormats": "支持 PNG、JPG、JPEG、WEBP 和 GIF 格式",
