@@ -7,10 +7,11 @@ import os
 import re
 from abc import ABC, abstractmethod
 from collections.abc import Mapping
-from typing import TYPE_CHECKING, Any, NotRequired, TypedDict
+from typing import TYPE_CHECKING, Any
 from urllib.parse import unquote, urlparse
 
 import httpx
+from pydantic import BaseModel
 from sqlalchemy import select
 
 from configs import dify_config
@@ -37,11 +38,11 @@ if TYPE_CHECKING:
     from core.model_manager import ModelInstance
 
 
-class SummaryIndexSettingDict(TypedDict):
+class SummaryIndexSettingDict(BaseModel):
     enable: bool
-    model_name: NotRequired[str]
-    model_provider_name: NotRequired[str]
-    summary_prompt: NotRequired[str]
+    model_name: str | None = None
+    model_provider_name: str | None = None
+    summary_prompt: str | None = None
 
 
 class BaseIndexProcessor(ABC):
