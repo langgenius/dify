@@ -1,11 +1,11 @@
 """Stateless compositor graph plans and run construction.
 
 ``Compositor`` stores only reusable graph nodes and optional aggregation
-transformers. Each ``enter(...)`` call validates node-name keyed configs before
-any provider factory runs, optionally validates and hydrates a session snapshot,
-creates fresh layer instances, binds direct dependencies, and returns a new
-``CompositorRun`` for that invocation only. Dependency targets must point to
-preceding graph nodes so resource scopes can nest in dependency order.
+transformers. Each ``enter(...)`` call validates node-name keyed configs and
+session snapshot runtime state before any provider factory runs, creates fresh
+layer instances, binds direct dependencies, and returns a new ``CompositorRun``
+for that invocation only. Dependency targets must point to preceding graph nodes
+so resource scopes can nest in dependency order.
 
 ``Compositor.from_config(...)`` resolves serializable provider type ids rather
 than import paths. Named ``node_providers`` override type-id providers for the
@@ -20,7 +20,7 @@ from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from typing import Any, Generic, cast
 
-from pydantic import JsonValue
+from pydantic import BaseModel, JsonValue
 
 from agenton.layers.base import Layer, LayerConfig, LifecycleState
 
@@ -186,8 +186,10 @@ class Compositor(Generic[PromptT, ToolT, LayerPromptT, LayerToolT, UserPromptT, 
 
         Configs are keyed by layer node name and validated before factories run.
         The optional session snapshot is validated and hydrated before any hook
-        runs. Layers exit in reverse graph order, and ``run.session_snapshot``
-        is populated after exit with the next non-active lifecycle states.
+        runs. Snapshot runtime state and enterable lifecycle states are checked
+        before provider factories run. Layers exit in reverse graph order, and
+        ``run.session_snapshot`` is populated after exit with the next non-active
+        lifecycle states.
         """
         run = self._create_run(configs=configs, session_snapshot=session_snapshot)
         await run._enter_layers()
@@ -209,6 +211,7 @@ class Compositor(Generic[PromptT, ToolT, LayerPromptT, LayerToolT, UserPromptT, 
         config_by_name = self._validate_run_configs(configs)
         typed_config_by_name = self._validate_layer_configs(config_by_name)
         snapshot = self._validate_session_snapshot(session_snapshot) if session_snapshot is not None else None
+        hydrated_runtime_state_by_name = self._validate_snapshot_runtime_states(snapshot) if snapshot else {}
         layer_by_name = self._create_layers(typed_config_by_name)
 
         snapshot_by_name = (
@@ -221,7 +224,7 @@ class Compositor(Generic[PromptT, ToolT, LayerPromptT, LayerToolT, UserPromptT, 
             if layer_snapshot is None:
                 lifecycle_by_name[node.name] = LifecycleState.NEW
                 continue
-            layer.runtime_state = cast(Any, layer.runtime_state_type.model_validate(layer_snapshot.runtime_state))
+            layer.runtime_state = cast(Any, hydrated_runtime_state_by_name[node.name])
             lifecycle_by_name[node.name] = layer_snapshot.lifecycle_state
 
         self._bind_deps(layer_by_name)
@@ -316,6 +319,20 @@ class Compositor(Generic[PromptT, ToolT, LayerPromptT, LayerToolT, UserPromptT, 
                 f"Expected [{expected}], got [{actual}]."
             )
         return resolved_snapshot
+
+    def _validate_snapshot_runtime_states(
+        self,
+        snapshot: CompositorSessionSnapshot,
+    ) -> dict[str, BaseModel]:
+        """Validate hydrated runtime state before any provider factory is invoked."""
+        runtime_state_by_name: dict[str, BaseModel] = {}
+        for node, layer_snapshot in zip(self._nodes, snapshot.layers, strict=True):
+            if layer_snapshot.lifecycle_state is LifecycleState.CLOSED:
+                raise RuntimeError(f"Layer '{node.name}' is closed; CLOSED snapshots cannot be entered.")
+            runtime_state_by_name[node.name] = node.provider.layer_type.runtime_state_type.model_validate(
+                layer_snapshot.runtime_state
+            )
+        return runtime_state_by_name
 
 
 def _build_provider_type_map(providers: Sequence[LayerProviderInput]) -> dict[str, LayerProvider[Any]]:

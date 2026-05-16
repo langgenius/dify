@@ -369,6 +369,27 @@ def test_active_snapshot_input_is_rejected_before_factories_run() -> None:
     assert calls == 0
 
 
+def test_bad_snapshot_runtime_state_is_rejected_before_factories_run() -> None:
+    calls = 0
+
+    def create_layer(config: EmptyLayerConfig) -> RuntimeStateLayer:
+        nonlocal calls
+        calls += 1
+        return RuntimeStateLayer()
+
+    compositor = Compositor(
+        [LayerNode("state", LayerProvider.from_factory(layer_type=RuntimeStateLayer, create=create_layer))]
+    )
+    bad_snapshot = {
+        "layers": [{"name": "state", "lifecycle_state": "suspended", "runtime_state": {"wrong": "field"}}]
+    }
+
+    with pytest.raises(ValidationError):
+        asyncio.run(_enter_once(compositor, session_snapshot=bad_snapshot))
+
+    assert calls == 0
+
+
 def test_closed_snapshot_enter_is_rejected_before_hooks_run() -> None:
     created_layers: list[TraceLayer] = []
 
@@ -385,8 +406,7 @@ def test_closed_snapshot_enter_is_rejected_before_hooks_run() -> None:
     with pytest.raises(RuntimeError, match="CLOSED snapshots cannot be entered"):
         asyncio.run(_enter_once(compositor, session_snapshot=closed_snapshot))
 
-    assert len(created_layers) == 1
-    assert created_layers[0].events == []
+    assert created_layers == []
 
 
 class ResourceState(BaseModel):
