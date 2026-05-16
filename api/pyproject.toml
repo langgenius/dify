@@ -97,6 +97,7 @@ dify-trace-mlflow = { workspace = true }
 dify-trace-opik = { workspace = true }
 dify-trace-tencent = { workspace = true }
 dify-trace-weave = { workspace = true }
+graphon = { git = "https://github.com/langgenius/graphon.git", rev = "853bd461c42489a3fcf26cf36f2831ba03c444a6" }
 
 [tool.uv]
 default-groups = ["storage", "tools", "vdb-all", "trace-all"]

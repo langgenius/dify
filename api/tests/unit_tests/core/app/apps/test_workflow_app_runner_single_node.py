@@ -53,6 +53,7 @@ def test_run_uses_single_node_execution_branch(
     app_generate_entity.trace_manager = None
     app_generate_entity.single_iteration_run = single_iteration_run
     app_generate_entity.single_loop_run = single_loop_run
+    app_generate_entity.stream = False
 
     workflow = MagicMock(spec=Workflow)
     workflow.tenant_id = "tenant"

@@ -100,6 +100,7 @@ class TestAdvancedChatAppRunnerConversationVariables:
         mock_app_generate_entity.single_iteration_run = None
         mock_app_generate_entity.single_loop_run = None
         mock_app_generate_entity.trace_manager = None
+        mock_app_generate_entity.stream = False
 
         # Create runner
         runner = AdvancedChatAppRunner(
@@ -245,6 +246,7 @@ class TestAdvancedChatAppRunnerConversationVariables:
         mock_app_generate_entity.single_iteration_run = None
         mock_app_generate_entity.single_loop_run = None
         mock_app_generate_entity.trace_manager = None
+        mock_app_generate_entity.stream = False
 
         # Create runner
         runner = AdvancedChatAppRunner(
@@ -405,6 +407,7 @@ class TestAdvancedChatAppRunnerConversationVariables:
         mock_app_generate_entity.single_iteration_run = None
         mock_app_generate_entity.single_loop_run = None
         mock_app_generate_entity.trace_manager = None
+        mock_app_generate_entity.stream = False
 
         # Create runner
         runner = AdvancedChatAppRunner(

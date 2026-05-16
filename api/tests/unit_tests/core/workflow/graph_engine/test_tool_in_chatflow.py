@@ -1,3 +1,4 @@
+from graphon.filters import GraphEventFilterContext, ResponseStreamFilter, filter_graph_events
 from graphon.graph_engine import GraphEngine, GraphEngineConfig
 from graphon.graph_engine.command_channels import InMemoryChannel
 from graphon.graph_events import (
@@ -31,7 +32,13 @@ def test_tool_in_chatflow():
         config=GraphEngineConfig(),
     )
 
-    events = list(engine.run())
+    events = list(
+        filter_graph_events(
+            engine.run(),
+            context=GraphEventFilterContext.from_engine(engine),
+            filters=[ResponseStreamFilter()],
+        )
+    )
 
     # Check for successful completion
     success_events = [e for e in events if isinstance(e, GraphRunSucceededEvent)]
