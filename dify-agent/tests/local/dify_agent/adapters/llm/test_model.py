@@ -378,6 +378,282 @@ class DifyLLMAdapterModelTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(response.parts[2].part_kind, "text")
         self.assertEqual(cast(TextPart, response.parts[2]).content, "world")
 
+    async def test_request_stream_merges_tool_call_argument_deltas(self) -> None:
+        def handler(_request: httpx.Request) -> httpx.Response:
+            return build_stream_response(
+                LLMResultChunk(
+                    model="demo-model",
+                    delta=LLMResultChunkDelta(
+                        index=0,
+                        message=AssistantPromptMessage(
+                            content="",
+                            tool_calls=[
+                                AssistantPromptMessage.ToolCall(
+                                    id="call-1",
+                                    type="function",
+                                    function=AssistantPromptMessage.ToolCall.ToolCallFunction(
+                                        name="weather",
+                                        arguments='{"city":',
+                                    ),
+                                )
+                            ],
+                        ),
+                    ),
+                ),
+                LLMResultChunk(
+                    model="demo-model",
+                    delta=LLMResultChunkDelta(
+                        index=1,
+                        message=AssistantPromptMessage(
+                            content="",
+                            tool_calls=[
+                                AssistantPromptMessage.ToolCall(
+                                    id="call-1",
+                                    type="function",
+                                    function=AssistantPromptMessage.ToolCall.ToolCallFunction(
+                                        name="weather",
+                                        arguments='"Paris"}',
+                                    ),
+                                )
+                            ],
+                        ),
+                    ),
+                ),
+            )
+
+        async with self.mock_daemon_stream(httpx.MockTransport(handler)):
+            adapter = DifyLLMAdapterModel(
+                "demo-model",
+                self.make_provider(),
+                model_provider="openai",
+                credentials={"api_key": "secret"},
+            )
+
+            async with adapter.request_stream(
+                [ModelRequest(parts=[UserPromptPart("hello")])],
+                model_settings=None,
+                model_request_parameters=ModelRequestParameters(),
+            ) as stream:
+                _ = [event async for event in stream]
+                response = stream.get()
+
+        self.assertEqual(len(response.parts), 1)
+        tool_call = cast(ToolCallPart, response.parts[0])
+        self.assertEqual(tool_call.tool_name, "weather")
+        self.assertEqual(tool_call.tool_call_id, "call-1")
+        self.assertEqual(tool_call.args_as_json_str(), '{"city":"Paris"}')
+
+    async def test_request_stream_merges_tool_call_argument_deltas_without_call_id(self) -> None:
+        def handler(_request: httpx.Request) -> httpx.Response:
+            return build_stream_response(
+                LLMResultChunk(
+                    model="demo-model",
+                    delta=LLMResultChunkDelta(
+                        index=0,
+                        message=AssistantPromptMessage(
+                            content="",
+                            tool_calls=[
+                                AssistantPromptMessage.ToolCall(
+                                    id="",
+                                    type="function",
+                                    function=AssistantPromptMessage.ToolCall.ToolCallFunction(
+                                        name="weather",
+                                        arguments='{"city":',
+                                    ),
+                                )
+                            ],
+                        ),
+                    ),
+                ),
+                LLMResultChunk(
+                    model="demo-model",
+                    delta=LLMResultChunkDelta(
+                        index=1,
+                        message=AssistantPromptMessage(
+                            content="",
+                            tool_calls=[
+                                AssistantPromptMessage.ToolCall(
+                                    id="",
+                                    type="function",
+                                    function=AssistantPromptMessage.ToolCall.ToolCallFunction(
+                                        name="weather",
+                                        arguments='"Paris"}',
+                                    ),
+                                )
+                            ],
+                        ),
+                    ),
+                ),
+            )
+
+        async with self.mock_daemon_stream(httpx.MockTransport(handler)):
+            adapter = DifyLLMAdapterModel(
+                "demo-model",
+                self.make_provider(),
+                model_provider="openai",
+                credentials={"api_key": "secret"},
+            )
+
+            async with adapter.request_stream(
+                [ModelRequest(parts=[UserPromptPart("hello")])],
+                model_settings=None,
+                model_request_parameters=ModelRequestParameters(),
+            ) as stream:
+                _ = [event async for event in stream]
+                response = stream.get()
+
+        self.assertEqual(len(response.parts), 1)
+        tool_call = cast(ToolCallPart, response.parts[0])
+        self.assertEqual(tool_call.tool_name, "weather")
+        self.assertEqual(tool_call.args_as_json_str(), '{"city":"Paris"}')
+
+    async def test_request_stream_keeps_tool_call_index_stable_when_id_arrives_late(self) -> None:
+        def handler(_request: httpx.Request) -> httpx.Response:
+            return build_stream_response(
+                LLMResultChunk(
+                    model="demo-model",
+                    delta=LLMResultChunkDelta(
+                        index=0,
+                        message=AssistantPromptMessage(
+                            content="",
+                            tool_calls=[
+                                AssistantPromptMessage.ToolCall(
+                                    id="",
+                                    type="function",
+                                    function=AssistantPromptMessage.ToolCall.ToolCallFunction(
+                                        name="weather",
+                                        arguments='{"city":',
+                                    ),
+                                )
+                            ],
+                        ),
+                    ),
+                ),
+                LLMResultChunk(
+                    model="demo-model",
+                    delta=LLMResultChunkDelta(
+                        index=1,
+                        message=AssistantPromptMessage(
+                            content="",
+                            tool_calls=[
+                                AssistantPromptMessage.ToolCall(
+                                    id="call-1",
+                                    type="function",
+                                    function=AssistantPromptMessage.ToolCall.ToolCallFunction(
+                                        name="weather",
+                                        arguments='"Paris"}',
+                                    ),
+                                )
+                            ],
+                        ),
+                    ),
+                ),
+            )
+
+        async with self.mock_daemon_stream(httpx.MockTransport(handler)):
+            adapter = DifyLLMAdapterModel(
+                "demo-model",
+                self.make_provider(),
+                model_provider="openai",
+                credentials={"api_key": "secret"},
+            )
+
+            async with adapter.request_stream(
+                [ModelRequest(parts=[UserPromptPart("hello")])],
+                model_settings=None,
+                model_request_parameters=ModelRequestParameters(),
+            ) as stream:
+                _ = [event async for event in stream]
+                response = stream.get()
+
+        self.assertEqual(len(response.parts), 1)
+        tool_call = cast(ToolCallPart, response.parts[0])
+        self.assertEqual(tool_call.tool_call_id, "call-1")
+        self.assertEqual(tool_call.args_as_json_str(), '{"city":"Paris"}')
+
+    async def test_request_stream_merges_multiple_tool_call_argument_deltas(self) -> None:
+        def handler(_request: httpx.Request) -> httpx.Response:
+            return build_stream_response(
+                LLMResultChunk(
+                    model="demo-model",
+                    delta=LLMResultChunkDelta(
+                        index=0,
+                        message=AssistantPromptMessage(
+                            content="",
+                            tool_calls=[
+                                AssistantPromptMessage.ToolCall(
+                                    id="call-1",
+                                    type="function",
+                                    function=AssistantPromptMessage.ToolCall.ToolCallFunction(
+                                        name="weather",
+                                        arguments='{"city":',
+                                    ),
+                                ),
+                                AssistantPromptMessage.ToolCall(
+                                    id="call-2",
+                                    type="function",
+                                    function=AssistantPromptMessage.ToolCall.ToolCallFunction(
+                                        name="lookup",
+                                        arguments='{"id":',
+                                    ),
+                                ),
+                            ],
+                        ),
+                    ),
+                ),
+                LLMResultChunk(
+                    model="demo-model",
+                    delta=LLMResultChunkDelta(
+                        index=1,
+                        message=AssistantPromptMessage(
+                            content="",
+                            tool_calls=[
+                                AssistantPromptMessage.ToolCall(
+                                    id="call-1",
+                                    type="function",
+                                    function=AssistantPromptMessage.ToolCall.ToolCallFunction(
+                                        name="weather",
+                                        arguments='"Paris"}',
+                                    ),
+                                ),
+                                AssistantPromptMessage.ToolCall(
+                                    id="call-2",
+                                    type="function",
+                                    function=AssistantPromptMessage.ToolCall.ToolCallFunction(
+                                        name="lookup",
+                                        arguments='"abc"}',
+                                    ),
+                                ),
+                            ],
+                        ),
+                    ),
+                ),
+            )
+
+        async with self.mock_daemon_stream(httpx.MockTransport(handler)):
+            adapter = DifyLLMAdapterModel(
+                "demo-model",
+                self.make_provider(),
+                model_provider="openai",
+                credentials={"api_key": "secret"},
+            )
+
+            async with adapter.request_stream(
+                [ModelRequest(parts=[UserPromptPart("hello")])],
+                model_settings=None,
+                model_request_parameters=ModelRequestParameters(),
+            ) as stream:
+                _ = [event async for event in stream]
+                response = stream.get()
+
+        self.assertEqual(len(response.parts), 2)
+        first_call = cast(ToolCallPart, response.parts[0])
+        second_call = cast(ToolCallPart, response.parts[1])
+        self.assertEqual(first_call.tool_name, "weather")
+        self.assertEqual(first_call.args_as_json_str(), '{"city":"Paris"}')
+        self.assertEqual(second_call.tool_name, "lookup")
+        self.assertEqual(second_call.args_as_json_str(), '{"id":"abc"}')
+
     async def test_request_splits_embedded_thinking_tags_into_parts(self) -> None:
         def handler(_request: httpx.Request) -> httpx.Response:
             return build_stream_response(*single_text_chunk("before<think>reasoning</think>after"))

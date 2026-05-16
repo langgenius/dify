@@ -205,6 +205,8 @@ class DifyStreamedResponse(StreamedResponse):
     provider_name_value: str
     _timestamp: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     _embedded_thinking_parser: "_EmbeddedThinkingParser" = field(default_factory=lambda: _EmbeddedThinkingParser())
+    _streaming_tool_call_vendor_ids: set[str] = field(default_factory=set)
+    _streaming_tool_call_index_vendor_ids: dict[int, str] = field(default_factory=dict)
 
     @override
     async def _get_event_iterator(self) -> AsyncIterator[ModelResponseStreamEvent]:
@@ -219,6 +221,8 @@ class DifyStreamedResponse(StreamedResponse):
                 chunk,
                 self.provider_name_value,
                 self._embedded_thinking_parser,
+                self._streaming_tool_call_vendor_ids,
+                self._streaming_tool_call_index_vendor_ids,
             ):
                 yield event
 
@@ -555,6 +559,8 @@ def _chunk_to_stream_events(
     chunk: LLMResultChunk,
     provider_name: str,
     embedded_thinking_parser: "_EmbeddedThinkingParser",
+    streaming_tool_call_vendor_ids: set[str],
+    streaming_tool_call_index_vendor_ids: dict[int, str],
 ) -> list[ModelResponseStreamEvent]:
     events: list[ModelResponseStreamEvent] = []
     message = chunk.delta.message
@@ -576,7 +582,20 @@ def _chunk_to_stream_events(
                 events.append(parts_manager.handle_part(vendor_part_id=None, part=part))
 
     for index, tool_call in enumerate(message.tool_calls):
-        vendor_id = tool_call.id or f"chunk-{chunk.delta.index}-tool-{index}"
+        vendor_id = _get_streaming_tool_call_vendor_id(tool_call.id, index, streaming_tool_call_index_vendor_ids)
+        if vendor_id in streaming_tool_call_vendor_ids:
+            # Daemon streams tool-call arguments as deltas, while some providers repeat the full tool name.
+            event = parts_manager.handle_tool_call_delta(
+                vendor_part_id=vendor_id,
+                args=tool_call.function.arguments,
+                tool_call_id=tool_call.id,
+                provider_name=provider_name,
+            )
+            if event is not None:
+                events.append(event)
+            continue
+
+        streaming_tool_call_vendor_ids.add(vendor_id)
         events.append(
             parts_manager.handle_tool_call_part(
                 vendor_part_id=vendor_id,
@@ -588,6 +607,18 @@ def _chunk_to_stream_events(
         )
 
     return events
+
+
+def _get_streaming_tool_call_vendor_id(
+    tool_call_id: str | None,
+    index: int,
+    tool_call_index_vendor_ids: dict[int, str],
+) -> str:
+    vendor_id = tool_call_index_vendor_ids.get(index)
+    if vendor_id is None:
+        vendor_id = tool_call_id or f"tool-{index}"
+        tool_call_index_vendor_ids[index] = vendor_id
+    return vendor_id
 
 
 def _map_assistant_content_to_response_parts(

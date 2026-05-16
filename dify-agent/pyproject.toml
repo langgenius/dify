@@ -6,7 +6,7 @@ readme = "README.md"
 requires-python = ">=3.12,<4.0"
 dependencies = [
     "httpx==0.28.1",
-    "pydantic>=2.12.5,<2.13",
+    "pydantic>=2.13.3,<2.14",
     "pydantic-ai-slim>=1.85.1,<2.0.0",
     "typing-extensions>=4.12.2,<5.0.0",
 ]

@@ -222,7 +222,7 @@ def _resolve_snippet_path(path: str, relative_path_root: Path) -> Path:
 
 
 def _default_title(file_path: Path, original_range: LineRange, has_fragment: bool) -> str:
-    relative_path = file_path.relative_to(REPO_ROOT)
+    relative_path = file_path.relative_to(REPO_ROOT).as_posix()
     if not has_fragment:
-        return str(relative_path)
+        return relative_path
     return f"{relative_path} (L{original_range.start_line + 1}-L{original_range.end_line})"
