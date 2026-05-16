@@ -183,6 +183,7 @@
   "feedback.title": "提供反馈",
   "fileUploader.fileExtensionBlocked": "出于安全考虑，该文件类型已被禁止上传",
   "fileUploader.fileExtensionNotSupport": "文件类型不支持",
+  "fileUploader.numberLimitExceeded": "最多只能上传 {{limit}} 个文件",
   "fileUploader.pasteFileLink": "粘贴文件链接",
   "fileUploader.pasteFileLinkInputPlaceholder": "输入文件链接",
   "fileUploader.pasteFileLinkInvalid": "文件链接无效",

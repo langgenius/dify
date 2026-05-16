@@ -183,6 +183,7 @@
   "feedback.title": "Provide Feedback",
   "fileUploader.fileExtensionBlocked": "This file type is blocked for security reasons",
   "fileUploader.fileExtensionNotSupport": "File extension not supported",
+  "fileUploader.numberLimitExceeded": "Cannot upload more than {{limit}} files",
   "fileUploader.pasteFileLink": "Paste file link",
   "fileUploader.pasteFileLinkInputPlaceholder": "Enter URL...",
   "fileUploader.pasteFileLinkInvalid": "Invalid file link",

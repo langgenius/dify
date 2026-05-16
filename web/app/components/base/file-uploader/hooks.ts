@@ -242,6 +242,14 @@ export const useFile = (fileConfig: FileUpload, noNeedToCheckEnable = true) => {
       toast.error(t('fileUploader.uploadDisabled', { ns: 'common' }))
       return
     }
+    // Check file count limit
+    const {
+      files,
+    } = fileStore.getState()
+    if (fileConfig.number_limits && files.length >= fileConfig.number_limits) {
+      toast.error(t('fileUploader.numberLimitExceeded', { ns: 'common', limit: fileConfig.number_limits }))
+      return
+    }
     if (!isAllowedFileExtension(file.name, file.type, fileConfig.allowed_file_types || [], fileConfig.allowed_file_extensions || [])) {
       toast.error(`${t('fileUploader.fileExtensionNotSupport', { ns: 'common' })} ${file.type}`)
       return
