@@ -186,9 +186,10 @@ describe('ShortcutsPopupPlugin', () => {
     render(<MinimalEditor withContainer={false} />)
     focusAndTriggerHotkey('/')
     const portalContent = await screen.findByText(SHORTCUTS_EMPTY_CONTENT)
-    const floatingDiv = portalContent.closest('div')
+    const floatingDiv = screen.getByTestId('shortcuts-popup')
     expect(document.body).toContainElement(portalContent)
     expect(floatingDiv).toHaveStyle({ zIndex: '50' })
+    expect(floatingDiv).toHaveStyle({ overflow: 'visible' })
   })
 
   // ─── matchHotkey: string hotkey ───
@@ -433,8 +434,8 @@ describe('ShortcutsPopupPlugin', () => {
   it('applies custom className to floating popup', async () => {
     render(<MinimalEditor className="custom-popup-class" />)
     focusAndTriggerHotkey('/')
-    const content = await screen.findByText(SHORTCUTS_EMPTY_CONTENT)
-    const floatingDiv = content.closest('div')
+    await screen.findByText(SHORTCUTS_EMPTY_CONTENT)
+    const floatingDiv = screen.getByTestId('shortcuts-popup')
     expect(floatingDiv).toHaveClass('custom-popup-class')
   })
 

@@ -205,147 +205,148 @@ const InputField: React.FC<InputFieldProps> = ({
   }, [handleSave])
 
   return (
-    <div className="w-[372px]
-     rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-3 shadow-lg backdrop-blur-[5px]"
-    >
-      <div className="system-md-semibold text-text-primary">{t(`${i18nPrefix}.title`, { ns: 'workflow' })}</div>
-      <div className="mt-3">
-        <div className="system-xs-medium text-text-secondary">
-          {t(`${i18nPrefix}.fieldType`, { ns: 'workflow' })}
+    <div className="flex max-h-[540px] w-[372px] flex-col rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-[5px]">
+      <div className="min-h-0 flex-1 overflow-y-auto p-3 pb-0">
+        <div className="system-md-semibold text-text-primary">{t(`${i18nPrefix}.title`, { ns: 'workflow' })}</div>
+        <div className="mt-3">
+          <div className="system-xs-medium text-text-secondary">
+            {t(`${i18nPrefix}.fieldType`, { ns: 'workflow' })}
+          </div>
+          <div className="mt-1.5">
+            <TypeSelector
+              value={tempPayload.type}
+              items={fieldTypeItems}
+              onSelect={handleTypeChange}
+            />
+          </div>
         </div>
-        <div className="mt-1.5">
-          <TypeSelector
-            value={tempPayload.type}
-            items={fieldTypeItems}
-            onSelect={handleTypeChange}
+        <div className="mt-3">
+          <div className="system-xs-medium text-text-secondary">
+            {t(`${i18nPrefix}.saveResponseAs`, { ns: 'workflow' })}
+            <span className="relative system-xs-regular text-text-destructive-secondary">*</span>
+          </div>
+          <Input
+            className="mt-1.5"
+            placeholder={t(`${i18nPrefix}.saveResponseAsPlaceholder`, { ns: 'workflow' })}
+            value={tempPayload.output_variable_name}
+            onChange={(e) => {
+              setTempPayload(prev => ({ ...prev, output_variable_name: e.target.value }))
+            }}
+            autoFocus
           />
+          {tempPayload.output_variable_name && variableNameError && (
+            <div className="mt-1 px-1 system-xs-regular text-text-destructive-secondary">
+              {t(`${i18nPrefix}.${variableNameError}`, { ns: 'workflow' })}
+            </div>
+          )}
         </div>
-      </div>
-      <div className="mt-3">
-        <div className="system-xs-medium text-text-secondary">
-          {t(`${i18nPrefix}.saveResponseAs`, { ns: 'workflow' })}
-          <span className="relative system-xs-regular text-text-destructive-secondary">*</span>
-        </div>
-        <Input
-          className="mt-1.5"
-          placeholder={t(`${i18nPrefix}.saveResponseAsPlaceholder`, { ns: 'workflow' })}
-          value={tempPayload.output_variable_name}
-          onChange={(e) => {
-            setTempPayload(prev => ({ ...prev, output_variable_name: e.target.value }))
-          }}
-          autoFocus
-        />
-        {tempPayload.output_variable_name && variableNameError && (
-          <div className="mt-1 px-1 system-xs-regular text-text-destructive-secondary">
-            {t(`${i18nPrefix}.${variableNameError}`, { ns: 'workflow' })}
+        {isParagraphFormInput(tempPayload) && (
+          <div className="mt-4">
+            <div className="mb-1.5 system-xs-medium text-text-secondary">
+              {t(`${i18nPrefix}.prePopulateField`, { ns: 'workflow' })}
+            </div>
+            <PrePopulate
+              isVariable={paragraphPayload.default.type === 'variable'}
+              onIsVariableChange={(isVariable) => {
+                handleDefaultValueChange('type')(isVariable ? 'variable' : 'constant')
+              }}
+              nodeId={nodeId}
+              valueSelector={paragraphPayload.default.selector}
+              onValueSelectorChange={handleDefaultValueChange('selector')}
+              value={paragraphPayload.default.value}
+              onValueChange={handleDefaultValueChange('value')}
+            />
+          </div>
+        )}
+        {isSelectFormInput(tempPayload) && (
+          <div className="mt-4">
+            <div className="mb-1.5 system-xs-medium text-text-secondary">
+              {t(`${i18nPrefix}.options`, { ns: 'workflow' })}
+            </div>
+            {tempPayload.option_source.type === 'variable'
+              ? (
+                  <div className="relative min-h-[80px] rounded-lg border border-transparent bg-components-input-bg-normal px-3 pt-2 pb-8">
+                    <VarReferencePicker
+                      nodeId={nodeId}
+                      value={tempPayload.option_source.selector}
+                      onChange={handleSelectOptionSourceSelectorChange}
+                      readonly={false}
+                      isJustShowValue
+                      filterVar={varPayload => varPayload.type === VarType.arrayString}
+                    />
+                    <TypeSwitch
+                      className="absolute bottom-1 left-1.5"
+                      isVariable
+                      onIsVariableChange={handleSelectOptionSourceTypeChange}
+                    />
+                  </div>
+                )
+              : (
+                  <div className={cn('rounded-lg border border-transparent bg-components-input-bg-normal p-2')}>
+                    <ConfigSelect
+                      options={tempPayload.option_source.value}
+                      onChange={handleSelectOptionsChange}
+                    />
+                    <TypeSwitch
+                      className="mt-2"
+                      isVariable={false}
+                      onIsVariableChange={handleSelectOptionSourceTypeChange}
+                    />
+                  </div>
+                )}
+          </div>
+        )}
+        {isFileFormInput(tempPayload) && (
+          <div className="mt-4">
+            <FileUploadSetting
+              payload={{
+                ...tempPayload,
+                max_length: 1,
+              }}
+              isMultiple={false}
+              onChange={handleFilePayloadChange}
+            />
+          </div>
+        )}
+        {isFileListFormInput(tempPayload) && (
+          <div className="mt-4">
+            <FileUploadSetting
+              payload={{
+                ...tempPayload,
+                max_length: tempPayload.number_limits || 5,
+              }}
+              isMultiple
+              onChange={handleFileListPayloadChange}
+            />
           </div>
         )}
       </div>
-      {isParagraphFormInput(tempPayload) && (
-        <div className="mt-4">
-          <div className="mb-1.5 system-xs-medium text-text-secondary">
-            {t(`${i18nPrefix}.prePopulateField`, { ns: 'workflow' })}
-          </div>
-          <PrePopulate
-            isVariable={paragraphPayload.default.type === 'variable'}
-            onIsVariableChange={(isVariable) => {
-              handleDefaultValueChange('type')(isVariable ? 'variable' : 'constant')
-            }}
-            nodeId={nodeId}
-            valueSelector={paragraphPayload.default.selector}
-            onValueSelectorChange={handleDefaultValueChange('selector')}
-            value={paragraphPayload.default.value}
-            onValueChange={handleDefaultValueChange('value')}
-          />
-        </div>
-      )}
-      {isSelectFormInput(tempPayload) && (
-        <div className="mt-4">
-          <div className="mb-1.5 system-xs-medium text-text-secondary">
-            {t(`${i18nPrefix}.options`, { ns: 'workflow' })}
-          </div>
-          {tempPayload.option_source.type === 'variable'
+      <div className="shrink-0 p-3">
+        <div className="flex justify-end space-x-2">
+          <Button onClick={onCancel}>{t('operation.cancel', { ns: 'common' })}</Button>
+          {isEdit
             ? (
-                <div className="relative min-h-[80px] rounded-lg border border-transparent bg-components-input-bg-normal px-3 pt-2 pb-8">
-                  <VarReferencePicker
-                    nodeId={nodeId}
-                    value={tempPayload.option_source.selector}
-                    onChange={handleSelectOptionSourceSelectorChange}
-                    readonly={false}
-                    isJustShowValue
-                    filterVar={varPayload => varPayload.type === VarType.arrayString}
-                  />
-                  <TypeSwitch
-                    className="absolute bottom-1 left-1.5"
-                    isVariable
-                    onIsVariableChange={handleSelectOptionSourceTypeChange}
-                  />
-                </div>
+                <Button
+                  variant="primary"
+                  onClick={handleSave}
+                  disabled={!nameValid}
+                >
+                  {t('operation.save', { ns: 'common' })}
+                </Button>
               )
             : (
-                <div className={cn('rounded-lg border border-transparent bg-components-input-bg-normal p-2')}>
-                  <ConfigSelect
-                    options={tempPayload.option_source.value}
-                    onChange={handleSelectOptionsChange}
-                  />
-                  <TypeSwitch
-                    className="mt-2"
-                    isVariable={false}
-                    onIsVariableChange={handleSelectOptionSourceTypeChange}
-                  />
-                </div>
+                <Button
+                  className="flex"
+                  variant="primary"
+                  disabled={!nameValid}
+                  onClick={handleSave}
+                >
+                  <span className="mr-1">{t(`${i18nPrefix}.insert`, { ns: 'workflow' })}</span>
+                  <span className="mr-0.5 flex h-4 items-center rounded-sm bg-components-kbd-bg-white px-1 system-kbd">{getKeyboardKeyNameBySystem('ctrl')}</span>
+                  <span className="flex h-4 items-center rounded-sm bg-components-kbd-bg-white px-1 system-kbd">↩︎</span>
+                </Button>
               )}
         </div>
-      )}
-      {isFileFormInput(tempPayload) && (
-        <div className="mt-4">
-          <FileUploadSetting
-            payload={{
-              ...tempPayload,
-              max_length: 1,
-            }}
-            isMultiple={false}
-            onChange={handleFilePayloadChange}
-          />
-        </div>
-      )}
-      {isFileListFormInput(tempPayload) && (
-        <div className="mt-4">
-          <FileUploadSetting
-            payload={{
-              ...tempPayload,
-              max_length: tempPayload.number_limits || 5,
-            }}
-            isMultiple
-            onChange={handleFileListPayloadChange}
-          />
-        </div>
-      )}
-      <div className="mt-4 flex justify-end space-x-2">
-        <Button onClick={onCancel}>{t('operation.cancel', { ns: 'common' })}</Button>
-        {isEdit
-          ? (
-              <Button
-                variant="primary"
-                onClick={handleSave}
-                disabled={!nameValid}
-              >
-                {t('operation.save', { ns: 'common' })}
-              </Button>
-            )
-          : (
-              <Button
-                className="flex"
-                variant="primary"
-                disabled={!nameValid}
-                onClick={handleSave}
-              >
-                <span className="mr-1">{t(`${i18nPrefix}.insert`, { ns: 'workflow' })}</span>
-                <span className="mr-0.5 flex h-4 items-center rounded-sm bg-components-kbd-bg-white px-1 system-kbd">{getKeyboardKeyNameBySystem('ctrl')}</span>
-                <span className="flex h-4 items-center rounded-sm bg-components-kbd-bg-white px-1 system-kbd">↩︎</span>
-              </Button>
-            )}
-
       </div>
     </div>
   )

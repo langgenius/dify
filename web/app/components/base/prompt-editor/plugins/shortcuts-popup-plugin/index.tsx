@@ -158,9 +158,9 @@ export default function ShortcutsPopupPlugin({
       size({
         apply({ availableWidth, availableHeight, elements }) {
           Object.assign(elements.floating.style, {
-            maxWidth: `${Math.min(400, availableWidth)}px`,
-            maxHeight: `${Math.max(0, availableHeight)}px`,
-            overflow: 'visible',
+            '--shortcut-popup-max-width': `${Math.min(400, availableWidth)}px`,
+            '--shortcut-popup-max-height': `${Math.max(0, availableHeight)}px`,
+            'overflow': 'visible',
           })
         },
         padding: 8,
@@ -294,6 +294,7 @@ export default function ShortcutsPopupPlugin({
 
   return createPortal(
     <div
+      data-testid="shortcuts-popup"
       ref={(node) => {
         portalRef.current = node
         refs.setFloating(node)
@@ -309,7 +310,9 @@ export default function ShortcutsPopupPlugin({
         visibility: isPositioned ? 'visible' : 'hidden',
       }}
     >
-      {typeof children === 'function' ? children(closePortal, handleInsert) : (children ?? SHORTCUTS_EMPTY_CONTENT)}
+      <div className="max-h-(--shortcut-popup-max-height) max-w-(--shortcut-popup-max-width) overflow-x-hidden overflow-y-auto rounded-xl">
+        {typeof children === 'function' ? children(closePortal, handleInsert) : (children ?? SHORTCUTS_EMPTY_CONTENT)}
+      </div>
     </div>,
     containerEl,
   )
