@@ -32,7 +32,7 @@ import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Infotip } from '@/app/components/base/infotip'
 import Input from '@/app/components/base/input'
-import CreateModal from '@/app/components/datasets/metadata/metadata-dataset/create-metadata-modal'
+import { CreateMetadataModal } from '@/app/components/datasets/metadata/metadata-dataset/create-metadata-modal'
 import { getIcon } from '../utils/get-icon'
 import Field from './field'
 
@@ -222,7 +222,7 @@ const DatasetMetadataDrawer: FC<Props> = ({
               </div>
               <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-6">
                 <div className="system-sm-regular text-text-tertiary">{t(`${i18nPrefix}.description`, { ns: 'dataset' })}</div>
-                <CreateModal
+                <CreateMetadataModal
                   open={open}
                   setOpen={setOpen}
                   trigger={(

@@ -1,7 +1,7 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import { DataType } from '../../types'
-import CreateMetadataModal from '../create-metadata-modal'
+import { CreateMetadataModal } from '../create-metadata-modal'
 
 type PopoverProps = {
   children: React.ReactNode
@@ -60,7 +60,7 @@ vi.mock('@langgenius/dify-ui/popover', async () => {
 
 // Mock CreateContent component
 vi.mock('../create-content', () => ({
-  default: ({ onSave, onClose, onBack, hasBack }: CreateContentProps) => (
+  CreateContent: ({ onSave, onClose, onBack, hasBack }: CreateContentProps) => (
     <div data-testid="create-content">
       <span data-testid="has-back">{String(hasBack)}</span>
       <button data-testid="save-btn" onClick={() => onSave({ type: DataType.string, name: 'test' })}>Save</button>

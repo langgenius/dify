@@ -4,11 +4,10 @@ import { describe, expect, it, vi } from 'vitest'
 import { DataType } from '../../types'
 import InfoGroup from '../info-group'
 
-type SelectModalProps = {
-  trigger: React.ReactNode
-  onSelect: (item: MetadataItemWithValue) => void
-  onSave: (data: { name: string, type: DataType }) => void
-  onManage: () => void
+type DatasetMetadataPickerProps = {
+  onSelectMetadata: (item: MetadataItemWithValue) => void
+  onCreateMetadata: (data: { name: string, type: DataType }) => void
+  onOpenMetadataManagement: () => void
 }
 
 type FieldProps = {
@@ -39,11 +38,6 @@ vi.mock('@/hooks/use-timestamp', () => ({
   }),
 }))
 
-// Mock AddMetadataButton
-vi.mock('../../add-metadata-button', () => ({
-  default: () => <button>Add Metadata</button>,
-}))
-
 // Mock InputCombined
 vi.mock('../../edit-metadata-batch/input-combined', () => ({
   default: ({ value, onChange, type }: InputCombinedProps) => (
@@ -56,14 +50,13 @@ vi.mock('../../edit-metadata-batch/input-combined', () => ({
   ),
 }))
 
-// Mock SelectMetadataModal
-vi.mock('../../metadata-dataset/select-metadata-modal', () => ({
-  default: ({ trigger, onSelect, onSave, onManage }: SelectModalProps) => (
-    <div data-testid="select-metadata-modal">
-      {trigger}
-      <button onClick={() => onSelect({ id: '1', name: 'test', type: DataType.string, value: null })}>Select</button>
-      <button onClick={() => onSave({ name: 'new_field', type: DataType.string })}>Save</button>
-      <button onClick={onManage}>Manage</button>
+// Mock DatasetMetadataPicker
+vi.mock('../../metadata-dataset/dataset-metadata-picker', () => ({
+  DatasetMetadataPicker: ({ onSelectMetadata, onCreateMetadata, onOpenMetadataManagement }: DatasetMetadataPickerProps) => (
+    <div data-testid="dataset-metadata-picker">
+      <button onClick={() => onSelectMetadata({ id: '1', name: 'test', type: DataType.string, value: null })}>Select</button>
+      <button onClick={() => onCreateMetadata({ name: 'new_field', type: DataType.string })}>Save</button>
+      <button onClick={onOpenMetadataManagement}>Manage</button>
     </div>
   ),
 }))
@@ -141,18 +134,18 @@ describe('InfoGroup', () => {
   })
 
   describe('Edit Mode', () => {
-    it('should render add metadata button when isEdit is true', () => {
+    it('should render dataset metadata picker when isEdit is true', () => {
       render(
         <InfoGroup dataSetId="ds-1" list={mockList} isEdit />,
       )
-      expect(screen.getByRole('button', { name: 'Add Metadata' }))!.toBeInTheDocument()
+      expect(screen.getByTestId('dataset-metadata-picker'))!.toBeInTheDocument()
     })
 
-    it('should not render add metadata button when isEdit is false', () => {
+    it('should not render dataset metadata picker when isEdit is false', () => {
       render(
         <InfoGroup dataSetId="ds-1" list={mockList} isEdit={false} />,
       )
-      expect(screen.queryByRole('button', { name: 'Add Metadata' })).not.toBeInTheDocument()
+      expect(screen.queryByTestId('dataset-metadata-picker')).not.toBeInTheDocument()
     })
 
     it('should render input combined for each item in edit mode', () => {

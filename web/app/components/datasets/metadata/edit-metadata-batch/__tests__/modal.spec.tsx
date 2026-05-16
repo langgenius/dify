@@ -56,11 +56,10 @@ type AddRowProps = {
   onRemove: () => void
 }
 
-type SelectModalProps = {
-  trigger: React.ReactNode
-  onSelect: (item: MetadataItemInBatchEdit) => void
-  onSave: (data: { name: string, type: DataType }) => Promise<void>
-  onManage: () => void
+type DatasetMetadataPickerProps = {
+  onSelectMetadata: (item: MetadataItemInBatchEdit) => void
+  onCreateMetadata: (data: { name: string, type: DataType }) => Promise<void>
+  onOpenMetadataManagement: () => void
 }
 
 // Mock child components with callback exposure
@@ -85,13 +84,12 @@ vi.mock('../add-row', () => ({
   ),
 }))
 
-vi.mock('../../metadata-dataset/select-metadata-modal', () => ({
-  default: ({ trigger, onSelect, onSave, onManage }: SelectModalProps) => (
-    <div data-testid="select-modal">
-      {trigger}
-      <button data-testid="select-metadata" onClick={() => onSelect({ id: 'new-1', name: 'new_field', type: DataType.string, value: null, isMultipleValue: false })}>Select</button>
-      <button data-testid="save-metadata" onClick={() => onSave({ name: 'created_field', type: DataType.string }).catch(() => { })}>Save</button>
-      <button data-testid="manage-metadata" onClick={onManage}>Manage</button>
+vi.mock('../../metadata-dataset/dataset-metadata-picker', () => ({
+  DatasetMetadataPicker: ({ onSelectMetadata, onCreateMetadata, onOpenMetadataManagement }: DatasetMetadataPickerProps) => (
+    <div data-testid="dataset-metadata-picker">
+      <button data-testid="select-metadata" onClick={() => onSelectMetadata({ id: 'new-1', name: 'new_field', type: DataType.string, value: null, isMultipleValue: false })}>Select</button>
+      <button data-testid="save-metadata" onClick={() => onCreateMetadata({ name: 'created_field', type: DataType.string }).catch(() => { })}>Save</button>
+      <button data-testid="manage-metadata" onClick={onOpenMetadataManagement}>Manage</button>
     </div>
   ),
 }))
@@ -155,10 +153,10 @@ describe('EditMetadataBatchModal', () => {
       })
     })
 
-    it('should render select metadata modal', async () => {
+    it('should render dataset metadata picker', async () => {
       render(<EditMetadataBatchModal {...defaultProps} />)
       await waitFor(() => {
-        expect(screen.getByTestId('select-modal'))!.toBeInTheDocument()
+        expect(screen.getByTestId('dataset-metadata-picker'))!.toBeInTheDocument()
       })
     })
   })
@@ -186,7 +184,7 @@ describe('EditMetadataBatchModal', () => {
         expect(screen.getByRole('dialog'))!.toBeInTheDocument()
       })
 
-      // Find the primary save button (not the one in SelectMetadataModal)
+      // Find the primary save button (not the one in DatasetMetadataPicker)
       fireEvent.click(screen.getByRole('button', { name: 'common.operation.save' }))
 
       expect(onSave).toHaveBeenCalled()

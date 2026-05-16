@@ -45,7 +45,7 @@ type CreateModalProps = {
 
 // Mock CreateModal to expose callbacks
 vi.mock('@/app/components/datasets/metadata/metadata-dataset/create-metadata-modal', () => ({
-  default: ({ open, setOpen, trigger, onSave }: CreateModalProps) => (
+  CreateMetadataModal: ({ open, setOpen, trigger, onSave }: CreateModalProps) => (
     <div data-testid="create-modal-wrapper">
       <div data-testid="create-trigger" onClick={() => setOpen(true)}>{trigger}</div>
       {open && (

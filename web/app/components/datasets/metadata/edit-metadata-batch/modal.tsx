@@ -12,9 +12,8 @@ import Divider from '@/app/components/base/divider'
 import { useCreateMetaData } from '@/service/knowledge/use-metadata'
 import Checkbox from '../../../base/checkbox'
 import { Infotip } from '../../../base/infotip'
-import AddMetadataButton from '../add-metadata-button'
 import useCheckMetadataName from '../hooks/use-check-metadata-name'
-import SelectMetadataModal from '../metadata-dataset/select-metadata-modal'
+import { DatasetMetadataPicker } from '../metadata-dataset/dataset-metadata-picker'
 import { UpdateType } from '../types'
 import AddedMetadataItem from './add-row'
 import EditMetadataBatchItem from './edit-row'
@@ -117,7 +116,15 @@ const EditMetadataBatchModal: FC<Props> = ({ datasetId, documentNum, list, onSav
               {addedList.map((item, i) => (<AddedMetadataItem key={i} payload={item} onChange={handleAddedListChange} onRemove={handleAddedItemRemove(i)} />))}
             </div>
             <div className="mt-3">
-              <SelectMetadataModal datasetId={datasetId} popupPlacement="top-start" popupOffset={{ mainAxis: 4, crossAxis: 0 }} trigger={<AddMetadataButton />} onSave={handleAddMetaData} onSelect={data => setAddedList([...addedList, data as MetadataItemWithEdit])} onManage={onShowManage} />
+              <DatasetMetadataPicker
+                datasetId={datasetId}
+                placement="top-start"
+                sideOffset={4}
+                alignOffset={0}
+                onCreateMetadata={handleAddMetaData}
+                onSelectMetadata={data => setAddedList([...addedList, data as MetadataItemWithEdit])}
+                onOpenMetadataManagement={onShowManage}
+              />
             </div>
           </div>
         </div>
