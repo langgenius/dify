@@ -1,6 +1,6 @@
 'use client'
 
-import type { Dependency, Plugin, PluginManifestInMarket } from '../../types'
+import type { Dependency, Plugin, PluginCategoryEnum, PluginManifestInMarket } from '../../types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Dialog, DialogCloseButton, DialogContent } from '@langgenius/dify-ui/dialog'
 import * as React from 'react'
@@ -20,6 +20,7 @@ type InstallFromMarketplaceProps = {
   manifest: PluginManifestInMarket | Plugin
   isBundle?: boolean
   dependencies?: Dependency[]
+  installContextCategory?: PluginCategoryEnum
   onSuccess: () => void
   onClose: () => void
 }
@@ -29,6 +30,7 @@ const InstallFromMarketplace: React.FC<InstallFromMarketplaceProps> = ({
   manifest,
   isBundle,
   dependencies,
+  installContextCategory,
   onSuccess,
   onClose,
 }) => {
@@ -119,6 +121,7 @@ const InstallFromMarketplace: React.FC<InstallFromMarketplaceProps> = ({
                         isMarketPayload
                         isFailed={step === InstallStep.installFailed}
                         errMsg={errorMsg}
+                        installContextCategory={installContextCategory}
                         onCancel={onSuccess}
                       />
                     )

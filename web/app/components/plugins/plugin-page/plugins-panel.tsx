@@ -47,6 +47,7 @@ const matchesSearchQuery = (plugin: PluginDetail & { latest_version: string }, q
 }
 
 type PluginsPanelProps = {
+  canInstall?: boolean
   contentInset?: PluginPageContentInset
   fixedCategory?: PluginCategoryEnum
   onSwitchToMarketplace?: () => void
@@ -54,6 +55,7 @@ type PluginsPanelProps = {
 }
 
 const PluginsPanel = ({
+  canInstall = true,
   contentInset = 'default',
   fixedCategory,
   onSwitchToMarketplace,
@@ -63,15 +65,19 @@ const PluginsPanel = ({
   const locale = useGetLanguage()
   const filters = usePluginPageContext(v => v.filters) as FilterState
   const setFilters = usePluginPageContext(v => v.setFilters)
-  const { data: pluginList, isLoading: isPluginListLoading, isFetching, isLastPage, loadNextPage } = useInstalledPluginList()
-  const pluginListWithLatestVersion = usePluginsWithLatestVersion(pluginList?.plugins)
-  const invalidateInstalledPluginList = useInvalidateInstalledPluginList()
-  const currentPluginID = usePluginPageContext(v => v.currentPluginID)
-  const setCurrentPluginID = usePluginPageContext(v => v.setCurrentPluginID)
   const isTriggerIntegrationPage = fixedCategory === PluginCategoryEnum.trigger
   const isAgentStrategyIntegrationPage = fixedCategory === PluginCategoryEnum.agent
   const isExtensionIntegrationPage = fixedCategory === PluginCategoryEnum.extension
   const isIntegrationCategoryPage = isTriggerIntegrationPage || isAgentStrategyIntegrationPage || isExtensionIntegrationPage
+  const { data: pluginList, isLoading: isPluginListLoading, isFetching, isLastPage, loadNextPage } = useInstalledPluginList(
+    undefined,
+    100,
+    isIntegrationCategoryPage ? { refetchOnMount: 'always' } : undefined,
+  )
+  const pluginListWithLatestVersion = usePluginsWithLatestVersion(pluginList?.plugins)
+  const invalidateInstalledPluginList = useInvalidateInstalledPluginList()
+  const currentPluginID = usePluginPageContext(v => v.currentPluginID)
+  const setCurrentPluginID = usePluginPageContext(v => v.setCurrentPluginID)
 
   const { run: handleFilterChange } = useDebounceFn((filters: FilterState) => {
     setFilters(filters)
@@ -157,8 +163,10 @@ const PluginsPanel = ({
               )
             : (
                 <Empty
+                  canInstall={canInstall}
                   contentInset={contentInset}
                   onSwitchToMarketplace={onSwitchToMarketplace}
+                  installContextCategory={fixedCategory}
                   variant={emptyVariant}
                 />
               )}

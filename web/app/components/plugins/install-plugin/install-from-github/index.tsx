@@ -1,6 +1,6 @@
 'use client'
 
-import type { PluginDeclaration, UpdateFromGitHubPayload } from '../../types'
+import type { PluginCategoryEnum, PluginDeclaration, UpdateFromGitHubPayload } from '../../types'
 import type { InstallState } from '@/app/components/plugins/types'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -28,11 +28,12 @@ type SelectOption = {
 
 type InstallFromGitHubProps = {
   updatePayload?: UpdateFromGitHubPayload
+  installContextCategory?: PluginCategoryEnum
   onClose: () => void
   onSuccess: () => void
 }
 
-const InstallFromGitHub: React.FC<InstallFromGitHubProps> = ({ updatePayload, onClose, onSuccess }) => {
+const InstallFromGitHub: React.FC<InstallFromGitHubProps> = ({ updatePayload, installContextCategory, onClose, onSuccess }) => {
   const { t } = useTranslation()
   const { getIconUrl } = useGetIcon()
   const { refreshPluginList } = useRefreshPluginList()
@@ -188,6 +189,7 @@ const InstallFromGitHub: React.FC<InstallFromGitHubProps> = ({ updatePayload, on
                 payload={manifest}
                 isFailed={[InstallStepFromGitHub.uploadFailed, InstallStepFromGitHub.installFailed].includes(state.step)}
                 errMsg={errorMsg}
+                installContextCategory={installContextCategory}
                 onCancel={onClose}
               />
             )

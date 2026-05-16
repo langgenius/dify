@@ -1,5 +1,6 @@
 'use client'
 import type { PluginPageContentInset } from '../content-inset'
+import type { PluginCategoryEnum } from '@/app/components/plugins/types'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useSuspenseQuery } from '@tanstack/react-query'
@@ -46,13 +47,17 @@ const ExtensionEmptyIcon = () => (
 )
 
 type EmptyProps = {
+  canInstall?: boolean
   contentInset?: PluginPageContentInset
+  installContextCategory?: PluginCategoryEnum
   onSwitchToMarketplace?: () => void
   variant?: 'default' | 'integrationsAgentStrategy' | 'integrationsExtension' | 'integrationsTrigger'
 }
 
 const Empty = ({
+  canInstall = true,
   contentInset = 'default',
+  installContextCategory,
   onSwitchToMarketplace,
   variant = 'default',
 }: EmptyProps) => {
@@ -71,6 +76,12 @@ const Empty = ({
   const setActiveTab = usePluginPageContext(v => v.setActiveTab)
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (!canInstall) {
+      setSelectedFile(null)
+      setSelectedAction(null)
+      return
+    }
+
     const file = event.target.files?.[0]
     if (file) {
       setSelectedFile(file)
@@ -88,6 +99,9 @@ const Empty = ({
   }, [pluginList?.plugins.length, t, filters.categories.length, filters.tags.length, filters.searchQuery])
 
   const installMethods = useMemo<InstallMethod[]>(() => {
+    if (!canInstall)
+      return []
+
     const methods: InstallMethod[] = []
     if (enable_marketplace)
       methods.push({ icon: MagicBox, integrationIcon: MarketplaceInstallSourceIcon, text: t('source.marketplace', { ns: 'plugin' }), action: 'marketplace' })
@@ -98,9 +112,9 @@ const Empty = ({
     methods.push({ icon: Github, integrationIcon: GithubInstallSourceIcon, text: t('source.github', { ns: 'plugin' }), action: 'github' })
     methods.push({ icon: FileZip, integrationIcon: LocalPackageInstallSourceIcon, text: t('source.local', { ns: 'plugin' }), action: 'local' })
     return methods
-  }, [plugin_installation_permission, enable_marketplace, t])
+  }, [canInstall, plugin_installation_permission, enable_marketplace, t])
   const contentPaddingClassName = pluginPageContentInsetClassNames[contentInset]
-  const canInstallLocalPackage = !plugin_installation_permission.restrict_to_marketplace_only
+  const canInstallLocalPackage = canInstall && !plugin_installation_permission.restrict_to_marketplace_only
   const isIntegrationsTrigger = variant === 'integrationsTrigger'
   const isIntegrationsAgentStrategy = variant === 'integrationsAgentStrategy'
   const isIntegrationsExtension = variant === 'integrationsExtension'
@@ -215,6 +229,7 @@ const Empty = ({
         </div>
         {selectedAction === 'github' && (
           <InstallFromGitHub
+            installContextCategory={installContextCategory}
             onSuccess={noop}
             onClose={() => setSelectedAction(null)}
           />
@@ -223,6 +238,7 @@ const Empty = ({
           && (
             <InstallFromLocalPackage
               file={selectedFile}
+              installContextCategory={installContextCategory}
               onClose={() => setSelectedAction(null)}
               onSuccess={noop}
             />

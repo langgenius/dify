@@ -7,11 +7,13 @@ const { mockRouterPush } = vi.hoisted(() => ({
 }))
 
 const {
+  mockCanManagement,
   mockCanDebugger,
   mockCanSetPermissions,
   mockReferenceSetting,
   mockSetReferenceSettings,
 } = vi.hoisted(() => ({
+  mockCanManagement: vi.fn(() => true),
   mockCanDebugger: vi.fn(() => true),
   mockCanSetPermissions: vi.fn(() => true),
   mockReferenceSetting: vi.fn(() => ({
@@ -33,6 +35,7 @@ vi.mock('@/next/navigation', () => ({
 vi.mock('@/app/components/plugins/plugin-page/use-reference-setting', () => ({
   default: () => ({
     referenceSetting: mockReferenceSetting(),
+    canManagement: mockCanManagement(),
     canDebugger: mockCanDebugger(),
     canSetPermissions: mockCanSetPermissions(),
     setReferenceSettings: mockSetReferenceSettings,
@@ -133,8 +136,8 @@ vi.mock('../provider-list', async () => {
 
 vi.mock('../plugin-category-page', () => ({
   __esModule: true,
-  default: ({ category, onSwitchToMarketplace, toolbarAction }: { category: string, onSwitchToMarketplace?: () => void, toolbarAction?: React.ReactNode }) => (
-    <div data-testid={`plugin-category-${category}`}>
+  default: ({ canInstall, category, onSwitchToMarketplace, toolbarAction }: { canInstall?: boolean, category: string, onSwitchToMarketplace?: () => void, toolbarAction?: React.ReactNode }) => (
+    <div data-can-install={canInstall ? 'true' : 'false'} data-testid={`plugin-category-${category}`}>
       <button type="button" aria-label="empty marketplace" onClick={onSwitchToMarketplace}>marketplace</button>
       {toolbarAction}
     </div>
@@ -148,6 +151,7 @@ const renderIntegrationsPage = (searchParams?: Record<string, string>, section?:
 describe('IntegrationsPage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockCanManagement.mockReturnValue(true)
     mockCanDebugger.mockReturnValue(true)
     mockCanSetPermissions.mockReturnValue(true)
     mockReferenceSetting.mockReturnValue({
@@ -373,6 +377,15 @@ describe('IntegrationsPage', () => {
     fireEvent.click(screen.getByRole('button', { name: 'plugin install' }))
 
     expect(mockRouterPush).toHaveBeenCalledWith('/marketplace')
+  })
+
+  it('hides the install action and disables category installs when install permission is unavailable', () => {
+    mockCanManagement.mockReturnValue(false)
+
+    renderIntegrationsPage({ section: 'trigger' })
+
+    expect(screen.queryByRole('button', { name: 'plugin install' })).not.toBeInTheDocument()
+    expect(screen.getByTestId('plugin-category-trigger')).toHaveAttribute('data-can-install', 'false')
   })
 
   it('opens the sidebar plugin permissions quick settings and updates permissions', () => {

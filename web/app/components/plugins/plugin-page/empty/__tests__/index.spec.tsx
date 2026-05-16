@@ -355,6 +355,19 @@ describe('Empty Component', () => {
       const buttons = screen.queryAllByRole('button')
       expect(buttons).toHaveLength(0)
     })
+
+    it('should render no install methods or drop hint when install permission is unavailable', async () => {
+      // Act
+      render(<Empty canInstall={false} contentInset="compact" variant="integrationsTrigger" />)
+      await flushEffects()
+
+      // Assert
+      expect(screen.queryAllByRole('button')).toHaveLength(0)
+      expect(screen.queryByText('plugin.source.marketplace')).not.toBeInTheDocument()
+      expect(screen.queryByText('plugin.source.github')).not.toBeInTheDocument()
+      expect(screen.queryByText('plugin.source.local')).not.toBeInTheDocument()
+      expect(screen.queryByText('plugin.installModal.dropIntegrationToInstall')).not.toBeInTheDocument()
+    })
   })
 
   // ==================== User Interactions Tests ====================
@@ -453,6 +466,20 @@ describe('Empty Component', () => {
 
       // Act - trigger change with empty files
       Object.defineProperty(fileInput, 'files', { value: [], writable: true })
+      fireEvent.change(fileInput)
+
+      // Assert
+      expect(screen.queryByTestId('install-from-local-modal')).not.toBeInTheDocument()
+    })
+
+    it('should ignore selected files when install permission is unavailable', async () => {
+      // Arrange
+      render(<Empty canInstall={false} />)
+      await flushEffects()
+      const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement
+
+      // Act
+      Object.defineProperty(fileInput, 'files', { value: [createMockFile('blocked-plugin.difypkg')], writable: true })
       fireEvent.change(fileInput)
 
       // Assert

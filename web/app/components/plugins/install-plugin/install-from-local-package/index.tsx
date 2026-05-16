@@ -1,6 +1,6 @@
 'use client'
 
-import type { Dependency, PluginDeclaration } from '../../types'
+import type { Dependency, PluginCategoryEnum, PluginDeclaration } from '../../types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Dialog, DialogCloseButton, DialogContent } from '@langgenius/dify-ui/dialog'
 import * as React from 'react'
@@ -17,12 +17,14 @@ const i18nPrefix = 'installModal'
 
 type InstallFromLocalPackageProps = {
   file: File
+  installContextCategory?: PluginCategoryEnum
   onSuccess: () => void
   onClose: () => void
 }
 
 const InstallFromLocalPackage: React.FC<InstallFromLocalPackageProps> = ({
   file,
+  installContextCategory,
   onClose,
 }) => {
   const { t } = useTranslation()
@@ -132,6 +134,7 @@ const InstallFromLocalPackage: React.FC<InstallFromLocalPackageProps> = ({
                 uniqueIdentifier={uniqueIdentifier}
                 manifest={manifest}
                 errorMsg={errorMsg}
+                installContextCategory={installContextCategory}
                 onError={setErrorMsg}
               />
             )}

@@ -128,7 +128,11 @@ export const useFeaturedTriggersRecommendations = (enabled: boolean, limit = 15)
   }
 }
 
-export const useInstalledPluginList = (disable?: boolean, pageSize = 100) => {
+type UseInstalledPluginListOptions = {
+  refetchOnMount?: boolean | 'always'
+}
+
+export const useInstalledPluginList = (disable?: boolean, pageSize = 100, options?: UseInstalledPluginListOptions) => {
   const fetchPlugins = async ({ pageParam = 1 }) => {
     const response = await get<InstalledPluginListWithTotalResponse>(
       `/workspaces/current/plugin/list?page=${pageParam}&page_size=${pageSize}`,
@@ -159,6 +163,7 @@ export const useInstalledPluginList = (disable?: boolean, pageSize = 100) => {
       return currentPage + 1
     },
     initialPageParam: 1,
+    refetchOnMount: options?.refetchOnMount,
   })
 
   const plugins = data?.pages.flatMap(page => page.plugins) ?? []

@@ -29,7 +29,7 @@ vi.mock('@/i18n-config', () => ({
 }))
 
 vi.mock('@/service/use-plugins', () => ({
-  useInstalledPluginList: () => mockUseInstalledPluginList(),
+  useInstalledPluginList: (...args: unknown[]) => mockUseInstalledPluginList(...args),
   useInvalidateInstalledPluginList: () => mockInvalidateInstalledPluginList,
 }))
 
@@ -77,8 +77,8 @@ vi.mock('../filter-management', () => ({
 }))
 
 vi.mock('../empty', () => ({
-  default: ({ contentInset, onSwitchToMarketplace, variant }: { contentInset?: string, onSwitchToMarketplace?: () => void, variant?: string }) => (
-    <div data-testid="empty-state" data-content-inset={contentInset} data-has-marketplace-action={onSwitchToMarketplace ? 'true' : 'false'} data-variant={variant}>empty</div>
+  default: ({ canInstall, contentInset, onSwitchToMarketplace, variant }: { canInstall?: boolean, contentInset?: string, onSwitchToMarketplace?: () => void, variant?: string }) => (
+    <div data-can-install={canInstall ? 'true' : 'false'} data-content-inset={contentInset} data-has-marketplace-action={onSwitchToMarketplace ? 'true' : 'false'} data-testid="empty-state" data-variant={variant}>empty</div>
   ),
 }))
 
@@ -192,6 +192,12 @@ describe('PluginsPanel', () => {
     expect(screen.getByTestId('plugin-list')).not.toHaveTextContent('tool-plugin')
   })
 
+  it('refetches installed plugins whenever an integrations category panel mounts', () => {
+    render(<PluginsPanel contentInset="compact" fixedCategory={PluginCategoryEnum.trigger} />)
+
+    expect(mockUseInstalledPluginList).toHaveBeenCalledWith(undefined, 100, { refetchOnMount: 'always' })
+  })
+
   it('uses the Figma trigger toolbar frame and renders the toolbar action', () => {
     render(
       <PluginsPanel
@@ -221,6 +227,12 @@ describe('PluginsPanel', () => {
     expect(screen.getByTestId('filter-management')).toHaveAttribute('data-hide-tag-filter', 'true')
     expect(screen.getByText('update setting')).toBeInTheDocument()
     expect(screen.getByTestId('empty-state')).toHaveAttribute('data-variant', 'integrationsAgentStrategy')
+  })
+
+  it('passes install permission to the integration category empty state', () => {
+    render(<PluginsPanel canInstall={false} contentInset="compact" fixedCategory={PluginCategoryEnum.trigger} />)
+
+    expect(screen.getByTestId('empty-state')).toHaveAttribute('data-can-install', 'false')
   })
 
   it('uses the Figma extension toolbar frame and renders the extension empty state', () => {

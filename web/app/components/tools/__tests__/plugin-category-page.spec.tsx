@@ -37,8 +37,8 @@ vi.mock('@/app/components/plugins/plugin-page/context', () => ({
 }))
 
 vi.mock('@/app/components/plugins/plugin-page/plugins-panel', () => ({
-  default: ({ fixedCategory, onSwitchToMarketplace }: { fixedCategory: PluginCategoryEnum, onSwitchToMarketplace?: () => void }) => (
-    <div data-testid="plugins-panel" data-fixed-category={fixedCategory} data-has-marketplace-action={onSwitchToMarketplace ? 'true' : 'false'} />
+  default: ({ canInstall, fixedCategory, onSwitchToMarketplace }: { canInstall?: boolean, fixedCategory: PluginCategoryEnum, onSwitchToMarketplace?: () => void }) => (
+    <div data-can-install={canInstall ? 'true' : 'false'} data-fixed-category={fixedCategory} data-has-marketplace-action={onSwitchToMarketplace ? 'true' : 'false'} data-testid="plugins-panel" />
   ),
 }))
 
@@ -47,7 +47,13 @@ vi.mock('@/app/components/plugins/plugin-page/use-uploader', () => ({
 }))
 
 vi.mock('@/app/components/plugins/install-plugin/install-from-local-package', () => ({
-  default: ({ file }: { file: File }) => <div data-testid="install-from-local-package" data-file-name={file.name} />,
+  default: ({ file, installContextCategory }: { file: File, installContextCategory?: PluginCategoryEnum }) => (
+    <div
+      data-testid="install-from-local-package"
+      data-file-name={file.name}
+      data-install-context-category={installContextCategory}
+    />
+  ),
 }))
 
 type UploaderOptions = {
@@ -96,6 +102,15 @@ describe('PluginCategoryPage', () => {
     }))
   })
 
+  it('disables panel and drop installs when install permission is unavailable', () => {
+    render(<PluginCategoryPage canInstall={false} category={PluginCategoryEnum.agent} />)
+
+    expect(screen.getByTestId('plugins-panel')).toHaveAttribute('data-can-install', 'false')
+    expect(mockUseUploader).toHaveBeenCalledWith(expect.objectContaining({
+      enabled: false,
+    }))
+  })
+
   it('opens the local package installer for supported dropped files', () => {
     render(<PluginCategoryPage category={PluginCategoryEnum.agent} />)
 
@@ -105,5 +120,17 @@ describe('PluginCategoryPage', () => {
     })
 
     expect(screen.getByTestId('install-from-local-package')).toHaveAttribute('data-file-name', 'agent.difybndl')
+    expect(screen.getByTestId('install-from-local-package')).toHaveAttribute('data-install-context-category', PluginCategoryEnum.agent)
+  })
+
+  it('ignores dropped files when install permission is unavailable', () => {
+    render(<PluginCategoryPage canInstall={false} category={PluginCategoryEnum.agent} />)
+
+    const uploaderOptions = mockUseUploader.mock.calls[0]![0] as UploaderOptions
+    act(() => {
+      uploaderOptions.onFileChange(new File(['test'], 'agent.difybndl'))
+    })
+
+    expect(screen.queryByTestId('install-from-local-package')).not.toBeInTheDocument()
   })
 })

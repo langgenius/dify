@@ -1,6 +1,7 @@
 'use client'
 
 import type { ButtonProps } from '@langgenius/dify-ui/button'
+import type { PluginCategoryEnum } from '@/app/components/plugins/types'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
@@ -32,6 +33,7 @@ type Props = {
   triggerLabel?: string
   triggerOpenClassName?: string
   triggerVariant?: ButtonProps['variant']
+  installContextCategory?: PluginCategoryEnum
 }
 
 type InstallMethod = {
@@ -48,6 +50,7 @@ const InstallPluginDropdown = ({
   triggerLabel,
   triggerOpenClassName = 'bg-state-base-hover',
   triggerVariant,
+  installContextCategory,
 }: Props) => {
   const { t } = useTranslation()
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -179,6 +182,7 @@ const InstallPluginDropdown = ({
       </div>
       {selectedAction === 'github' && (
         <InstallFromGitHub
+          installContextCategory={installContextCategory}
           onSuccess={noop}
           onClose={() => setSelectedAction(null)}
         />
@@ -187,6 +191,7 @@ const InstallPluginDropdown = ({
         && (
           <InstallFromLocalPackage
             file={selectedFile}
+            installContextCategory={installContextCategory}
             onClose={handleCloseLocalInstaller}
             onSuccess={noop}
           />

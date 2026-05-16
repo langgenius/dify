@@ -14,7 +14,7 @@ import UpdateSettingPopover from '@/app/components/header/account-setting/update
 import DebugInfo from '@/app/components/plugins/plugin-page/debug-info'
 import InstallPluginDropdown from '@/app/components/plugins/plugin-page/install-plugin-dropdown'
 import useReferenceSetting from '@/app/components/plugins/plugin-page/use-reference-setting'
-import { PermissionType } from '@/app/components/plugins/types'
+import { PermissionType, PluginCategoryEnum } from '@/app/components/plugins/types'
 import {
   buildIntegrationPath,
   INTEGRATION_SECTION_VALUES,
@@ -128,6 +128,15 @@ const buildSectionHref = (section: IntegrationSection) => {
   return buildIntegrationPath(section)
 }
 
+const getPluginCategoryBySection = (section: IntegrationSection) => {
+  if (section === 'trigger')
+    return PluginCategoryEnum.trigger
+  if (section === 'agent-strategy')
+    return PluginCategoryEnum.agent
+  if (section === 'extension')
+    return PluginCategoryEnum.extension
+}
+
 type NavLinkItemProps = {
   collapsed?: boolean
   item: NavItem
@@ -198,6 +207,7 @@ export default function IntegrationsPage({
   const router = useRouter()
   const {
     referenceSetting,
+    canManagement,
     canDebugger,
     canSetPermissions,
     setReferenceSettings,
@@ -398,15 +408,18 @@ export default function IntegrationsPage({
           </div>
           {!sidebarCollapsed && (
             <div className="mt-6 flex shrink-0 items-center gap-1">
-              <InstallPluginDropdown
-                rootClassName="min-w-0 flex-1"
-                triggerVariant="primary"
-                triggerClassName="h-8 min-w-0 gap-0.5 p-2 system-sm-medium"
-                triggerLabel={t('installAction', { ns: 'plugin' })}
-                triggerOpenClassName="bg-components-button-primary-bg-hover"
-                popupClassName="w-[240px] rounded-2xl py-2 shadow-xl"
-                onSwitchToMarketplaceTab={() => router.push('/marketplace')}
-              />
+              {canManagement && (
+                <InstallPluginDropdown
+                  rootClassName="min-w-0 flex-1"
+                  triggerVariant="primary"
+                  triggerClassName="h-8 min-w-0 gap-0.5 p-2 system-sm-medium"
+                  triggerLabel={t('installAction', { ns: 'plugin' })}
+                  triggerOpenClassName="bg-components-button-primary-bg-hover"
+                  popupClassName="w-[240px] rounded-2xl py-2 shadow-xl"
+                  installContextCategory={getPluginCategoryBySection(section)}
+                  onSwitchToMarketplaceTab={() => router.push('/marketplace')}
+                />
+              )}
               {canDebugger && (
                 <div className="size-8 shrink-0">
                   <DebugInfo />
@@ -560,6 +573,7 @@ export default function IntegrationsPage({
             providerSearchText={providerSearchText}
             onProviderSearchTextChange={setProviderSearchText}
             onSwitchToMarketplace={() => router.push('/marketplace')}
+            canInstallPlugin={canManagement}
             pluginCategoryToolbarAction={pluginSettingAction}
           />
         </div>

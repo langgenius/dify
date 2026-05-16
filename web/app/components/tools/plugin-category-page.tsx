@@ -14,6 +14,7 @@ import { SUPPORT_INSTALL_LOCAL_FILE_EXTENSIONS } from '@/config'
 import { systemFeaturesQueryOptions } from '@/service/system-features'
 
 type PluginCategoryPageProps = {
+  canInstall?: boolean
   category: PluginCategoryEnum
   onSwitchToMarketplace?: () => void
   toolbarAction?: ReactNode
@@ -22,6 +23,7 @@ type PluginCategoryPageProps = {
 const supportedLocalPackageExtensions = SUPPORT_INSTALL_LOCAL_FILE_EXTENSIONS.split(',')
 
 const PluginCategoryPageContent = ({
+  canInstall = true,
   category,
   onSwitchToMarketplace,
   toolbarAction,
@@ -33,9 +35,14 @@ const PluginCategoryPageContent = ({
     select: s => s.plugin_installation_permission,
   })
   const supportsDropInstall = category === PluginCategoryEnum.trigger || category === PluginCategoryEnum.agent || category === PluginCategoryEnum.extension
-  const canDropLocalPackage = supportsDropInstall && !pluginInstallationPermission.restrict_to_marketplace_only
+  const canDropLocalPackage = canInstall && supportsDropInstall && !pluginInstallationPermission.restrict_to_marketplace_only
 
   const handleFileChange = (file: File | null) => {
+    if (!canInstall) {
+      setCurrentFile(null)
+      return
+    }
+
     if (!file || !supportedLocalPackageExtensions.some(extension => file.name.endsWith(extension))) {
       setCurrentFile(null)
       return
@@ -56,7 +63,7 @@ const PluginCategoryPageContent = ({
 
   return (
     <div ref={containerRef} className="relative flex h-0 grow flex-col overflow-hidden bg-components-panel-bg">
-      <PluginsPanel contentInset="compact" fixedCategory={category} onSwitchToMarketplace={onSwitchToMarketplace} toolbarAction={toolbarAction} />
+      <PluginsPanel canInstall={canInstall} contentInset="compact" fixedCategory={category} onSwitchToMarketplace={onSwitchToMarketplace} toolbarAction={toolbarAction} />
       {dragging && (
         <div
           className="absolute inset-0 m-0.5 rounded-2xl border-2 border-dashed border-components-dropzone-border-accent
@@ -66,6 +73,7 @@ const PluginCategoryPageContent = ({
       {currentFile && (
         <InstallFromLocalPackage
           file={currentFile}
+          installContextCategory={category}
           onClose={removeFile ?? noop}
           onSuccess={noop}
         />
@@ -83,6 +91,7 @@ const PluginCategoryPageContent = ({
 }
 
 const PluginCategoryPage = ({
+  canInstall = true,
   category,
   onSwitchToMarketplace,
   toolbarAction,
@@ -95,7 +104,7 @@ const PluginCategoryPage = ({
 
   return (
     <PluginPageContextProvider key={category} initialFilters={initialFilters}>
-      <PluginCategoryPageContent category={category} onSwitchToMarketplace={onSwitchToMarketplace} toolbarAction={toolbarAction} />
+      <PluginCategoryPageContent canInstall={canInstall} category={category} onSwitchToMarketplace={onSwitchToMarketplace} toolbarAction={toolbarAction} />
     </PluginPageContextProvider>
   )
 }
