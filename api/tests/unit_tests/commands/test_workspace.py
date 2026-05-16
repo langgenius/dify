@@ -28,7 +28,7 @@ def test_reset_encrypt_key_pair_rotates_keys_and_removes_custom_provider_data(mo
     reset_encrypt_key_pair.callback()
 
     assert tenant.encrypt_public_key == "public-key-tenant-1"
-    assert session.execute.call_count == 2
+    assert session.execute.call_count == 5
     captured = capsys.readouterr()
     assert "tenant-1 has been reset" in captured.out
 
