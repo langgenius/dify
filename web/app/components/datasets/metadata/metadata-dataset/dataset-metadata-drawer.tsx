@@ -33,7 +33,7 @@ import { useTranslation } from 'react-i18next'
 import { Infotip } from '@/app/components/base/infotip'
 import Input from '@/app/components/base/input'
 import { CreateMetadataModal } from '@/app/components/datasets/metadata/metadata-dataset/create-metadata-modal'
-import { getIcon } from '../utils/get-icon'
+import { getIconClassName } from '../utils/get-icon'
 import Field from './field'
 
 const i18nPrefix = 'metadata.datasetMetadata'
@@ -64,7 +64,7 @@ const Item: FC<ItemProps> = ({
   onDelete,
 }) => {
   const { t } = useTranslation()
-  const Icon = getIcon(payload.type)
+  const iconClassName = getIconClassName(payload.type)
 
   const handleRename = useCallback(() => {
     onRename?.()
@@ -97,7 +97,7 @@ const Item: FC<ItemProps> = ({
         )}
       >
         <div className="flex h-full items-center space-x-1 text-text-tertiary">
-          <Icon className="size-4 shrink-0" />
+          <span className={cn(iconClassName, 'size-4 shrink-0')} aria-hidden="true" />
           <div className="max-w-[250px] truncate system-sm-medium text-text-primary">{payload.name}</div>
           <div className="shrink-0 system-xs-regular">{payload.type}</div>
         </div>

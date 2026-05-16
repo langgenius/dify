@@ -45,17 +45,17 @@ describe('DatasetMetadataPicker', () => {
   })
 
   describe('Rendering', () => {
-    it('should render an add metadata combobox trigger', () => {
+    it('should render an add metadata picker trigger', () => {
       renderDatasetMetadataPicker()
 
-      expect(screen.getByRole('combobox', { name: 'dataset.metadata.addMetadata' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'dataset.metadata.addMetadata' })).toBeInTheDocument()
     })
 
     it('should show metadata options when opened', async () => {
       const user = userEvent.setup()
       renderDatasetMetadataPicker()
 
-      await user.click(screen.getByRole('combobox', { name: 'dataset.metadata.addMetadata' }))
+      await user.click(screen.getByRole('button', { name: 'dataset.metadata.addMetadata' }))
 
       expect(await screen.findByRole('option', { name: /field_one/ })).toBeInTheDocument()
       expect(screen.getByRole('option', { name: /field_two/ })).toBeInTheDocument()
@@ -68,7 +68,7 @@ describe('DatasetMetadataPicker', () => {
       const user = userEvent.setup()
       renderDatasetMetadataPicker()
 
-      await user.click(screen.getByRole('combobox', { name: 'dataset.metadata.addMetadata' }))
+      await user.click(screen.getByRole('button', { name: 'dataset.metadata.addMetadata' }))
       await user.type(screen.getByPlaceholderText('dataset.metadata.selectMetadata.search'), 'two')
 
       expect(screen.getByRole('option', { name: /field_two/ })).toBeInTheDocument()
@@ -80,7 +80,7 @@ describe('DatasetMetadataPicker', () => {
       const user = userEvent.setup()
       renderDatasetMetadataPicker()
 
-      await user.click(screen.getByRole('combobox', { name: 'dataset.metadata.addMetadata' }))
+      await user.click(screen.getByRole('button', { name: 'dataset.metadata.addMetadata' }))
       await user.type(screen.getByPlaceholderText('dataset.metadata.selectMetadata.search'), 'missing')
 
       expect(await screen.findByRole('status')).toHaveTextContent('common.noData')
@@ -93,7 +93,7 @@ describe('DatasetMetadataPicker', () => {
       const onSelectMetadata = vi.fn()
       renderDatasetMetadataPicker({ onSelectMetadata })
 
-      await user.click(screen.getByRole('combobox', { name: 'dataset.metadata.addMetadata' }))
+      await user.click(screen.getByRole('button', { name: 'dataset.metadata.addMetadata' }))
       await user.click(await screen.findByRole('option', { name: /field_two/ }))
 
       expect(onSelectMetadata).toHaveBeenCalledWith({
@@ -102,7 +102,7 @@ describe('DatasetMetadataPicker', () => {
         type: DataType.number,
       })
       await waitFor(() => {
-        expect(screen.getByRole('combobox', { name: 'dataset.metadata.addMetadata' })).toHaveAttribute('aria-expanded', 'false')
+        expect(screen.getByRole('button', { name: 'dataset.metadata.addMetadata' })).toHaveAttribute('aria-expanded', 'false')
       })
     })
   })
@@ -113,7 +113,7 @@ describe('DatasetMetadataPicker', () => {
       const onCreateMetadata = vi.fn().mockResolvedValue(undefined)
       renderDatasetMetadataPicker({ onCreateMetadata })
 
-      await user.click(screen.getByRole('combobox', { name: 'dataset.metadata.addMetadata' }))
+      await user.click(screen.getByRole('button', { name: 'dataset.metadata.addMetadata' }))
       await user.click(screen.getByRole('button', { name: 'dataset.metadata.selectMetadata.newAction' }))
       await user.type(screen.getByPlaceholderText('dataset.metadata.createMetadata.namePlaceholder'), 'new_field')
       await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
@@ -131,12 +131,12 @@ describe('DatasetMetadataPicker', () => {
       const user = userEvent.setup()
       renderDatasetMetadataPicker()
 
-      await user.click(screen.getByRole('combobox', { name: 'dataset.metadata.addMetadata' }))
+      await user.click(screen.getByRole('button', { name: 'dataset.metadata.addMetadata' }))
       await user.click(screen.getByRole('button', { name: 'dataset.metadata.selectMetadata.newAction' }))
       await user.click(screen.getByRole('button', { name: 'dataset.metadata.createMetadata.back' }))
 
       expect(screen.getByPlaceholderText('dataset.metadata.selectMetadata.search')).toBeInTheDocument()
-      expect(screen.getByRole('combobox', { name: 'dataset.metadata.addMetadata' })).toHaveAttribute('aria-expanded', 'true')
+      expect(screen.getByRole('button', { name: 'dataset.metadata.addMetadata' })).toHaveAttribute('aria-expanded', 'true')
     })
 
     it('should open metadata management and close the picker', async () => {
@@ -144,12 +144,12 @@ describe('DatasetMetadataPicker', () => {
       const onOpenMetadataManagement = vi.fn()
       renderDatasetMetadataPicker({ onOpenMetadataManagement })
 
-      await user.click(screen.getByRole('combobox', { name: 'dataset.metadata.addMetadata' }))
+      await user.click(screen.getByRole('button', { name: 'dataset.metadata.addMetadata' }))
       await user.click(screen.getByRole('button', { name: 'dataset.metadata.selectMetadata.manageAction' }))
 
       expect(onOpenMetadataManagement).toHaveBeenCalled()
       await waitFor(() => {
-        expect(screen.getByRole('combobox', { name: 'dataset.metadata.addMetadata' })).toHaveAttribute('aria-expanded', 'false')
+        expect(screen.getByRole('button', { name: 'dataset.metadata.addMetadata' })).toHaveAttribute('aria-expanded', 'false')
       })
     })
   })
@@ -165,7 +165,7 @@ describe('DatasetMetadataPicker', () => {
 
       renderDatasetMetadataPicker()
 
-      await user.click(screen.getByRole('combobox', { name: 'dataset.metadata.addMetadata' }))
+      await user.click(screen.getByRole('button', { name: 'dataset.metadata.addMetadata' }))
 
       expect(await screen.findByRole('status')).toHaveTextContent('common.noData')
       expect(screen.getByRole('button', { name: 'dataset.metadata.selectMetadata.newAction' })).toBeInTheDocument()

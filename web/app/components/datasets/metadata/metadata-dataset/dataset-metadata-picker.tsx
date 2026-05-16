@@ -6,7 +6,6 @@ import { cn } from '@langgenius/dify-ui/cn'
 import {
   Combobox,
   ComboboxClear,
-  ComboboxContent,
   ComboboxEmpty,
   ComboboxInput,
   ComboboxInputGroup,
@@ -14,13 +13,12 @@ import {
   ComboboxItemText,
   ComboboxList,
   ComboboxSeparator,
-  ComboboxTrigger,
 } from '@langgenius/dify-ui/combobox'
-import { RiAddLine, RiArrowRightUpLine } from '@remixicon/react'
+import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useDatasetMetaData } from '@/service/knowledge/use-metadata'
-import { getIcon } from '../utils/get-icon'
+import { getIconClassName } from '../utils/get-icon'
 import { CreateContent } from './create-content'
 
 const i18nPrefix = 'metadata.selectMetadata'
@@ -115,31 +113,26 @@ export function DatasetMetadataPicker({
   }
 
   return (
-    <Combobox<MetadataItem>
+    <Popover
       open={open}
-      value={null}
-      items={metadataItems}
-      inputValue={query}
       onOpenChange={handleOpenChange}
-      onInputValueChange={handleInputValueChange}
-      onValueChange={handleMetadataChange}
-      itemToStringLabel={getMetadataLabel}
-      itemToStringValue={getMetadataValue}
-      isItemEqualToValue={isSameMetadata}
-      filter={metadataFilter}
     >
-      <ComboboxTrigger
-        aria-label={t('metadata.addMetadata', { ns: 'dataset' })}
-        icon={false}
-        size="small"
-        className="h-6 w-full justify-center rounded-md border-0 bg-components-button-tertiary-bg px-2 py-0 text-xs font-medium text-components-button-tertiary-text hover:bg-components-button-tertiary-bg-hover focus-visible:bg-components-button-tertiary-bg-hover data-open:bg-components-button-tertiary-bg-hover"
-      >
-        <span className="flex min-w-0 items-center justify-center gap-1">
-          <RiAddLine className="size-3.5 shrink-0 text-components-button-tertiary-text" aria-hidden="true" />
-          <span className="truncate text-components-button-tertiary-text">{t('metadata.addMetadata', { ns: 'dataset' })}</span>
-        </span>
-      </ComboboxTrigger>
-      <ComboboxContent
+      <PopoverTrigger
+        render={(
+          <button
+            type="button"
+            aria-label={t('metadata.addMetadata', { ns: 'dataset' })}
+            aria-expanded={open}
+            className="flex h-6 w-full cursor-pointer items-center justify-center rounded-md border-0 bg-components-button-tertiary-bg px-2 py-0 text-xs font-medium text-components-button-tertiary-text hover:bg-components-button-tertiary-bg-hover focus-visible:bg-components-button-tertiary-bg-hover"
+          >
+            <span className="flex min-w-0 items-center justify-center gap-1">
+              <span className="i-ri-add-line size-3.5 shrink-0 text-components-button-tertiary-text" aria-hidden="true" />
+              <span className="truncate text-components-button-tertiary-text">{t('metadata.addMetadata', { ns: 'dataset' })}</span>
+            </span>
+          </button>
+        )}
+      />
+      <PopoverContent
         placement={placement}
         sideOffset={sideOffset}
         alignOffset={alignOffset}
@@ -147,14 +140,26 @@ export function DatasetMetadataPicker({
       >
         {view === PickerView.select
           ? (
-              <MetadataPickerSelectPanel
-                query={query}
-                onNewMetadata={() => {
-                  setView(PickerView.create)
-                  setQuery('')
-                }}
-                onOpenMetadataManagement={handleOpenManagement}
-              />
+              <Combobox<MetadataItem>
+                value={null}
+                items={metadataItems}
+                inputValue={query}
+                onInputValueChange={handleInputValueChange}
+                onValueChange={handleMetadataChange}
+                itemToStringLabel={getMetadataLabel}
+                itemToStringValue={getMetadataValue}
+                isItemEqualToValue={isSameMetadata}
+                filter={metadataFilter}
+              >
+                <MetadataPickerSelectPanel
+                  query={query}
+                  onNewMetadata={() => {
+                    setView(PickerView.create)
+                    setQuery('')
+                  }}
+                  onOpenMetadataManagement={handleOpenManagement}
+                />
+              </Combobox>
             )
           : (
               <CreateContent
@@ -164,8 +169,8 @@ export function DatasetMetadataPicker({
                 onClose={resetPicker}
               />
             )}
-      </ComboboxContent>
-    </Combobox>
+      </PopoverContent>
+    </Popover>
   )
 }
 
@@ -219,12 +224,12 @@ function MetadataOption({
 }: {
   metadata: MetadataItem
 }) {
-  const Icon = getIcon(metadata.type)
+  const iconClassName = getIconClassName(metadata.type)
 
   return (
     <ComboboxItem value={metadata}>
       <ComboboxItemText className="flex items-center gap-1.5 px-0">
-        <Icon className="size-3.5 shrink-0" aria-hidden="true" />
+        <span className={cn(iconClassName, 'size-3.5 shrink-0')} aria-hidden="true" />
         <span className="min-w-0 grow truncate">{metadata.name}</span>
       </ComboboxItemText>
       <span className="shrink-0 system-xs-regular text-text-tertiary">
@@ -253,7 +258,7 @@ function MetadataPickerActions({
         )}
         onClick={onNewMetadata}
       >
-        <RiAddLine className="size-4 shrink-0 text-text-tertiary" aria-hidden="true" />
+        <span className="i-ri-add-line size-4 shrink-0 text-text-tertiary" aria-hidden="true" />
         <span className="truncate system-sm-medium">{t(`${i18nPrefix}.newAction`, { ns: 'dataset' })}</span>
       </button>
       <div className="flex h-8 shrink-0 items-center text-text-secondary">
@@ -267,7 +272,7 @@ function MetadataPickerActions({
           onClick={onOpenMetadataManagement}
         >
           <span className="system-sm-medium">{t(`${i18nPrefix}.manageAction`, { ns: 'dataset' })}</span>
-          <RiArrowRightUpLine className="size-4 shrink-0 text-text-tertiary" aria-hidden="true" />
+          <span className="i-ri-arrow-right-up-line size-4 shrink-0 text-text-tertiary" aria-hidden="true" />
         </button>
       </div>
     </div>
