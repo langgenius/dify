@@ -57,7 +57,6 @@ const PluginPage = ({
 }: PluginPageProps) => {
   const { t } = useTranslation()
   const docLink = useDocLink()
-  useDocumentTitle(t('metadata.title', { ns: 'plugin' }))
 
   // Use nuqs hook for installation state
   const [{ packageId, bundleInfo }, setInstallState] = usePluginInstallation()
@@ -132,6 +131,9 @@ const PluginPage = ({
     const values = Object.values(PLUGIN_TYPE_SEARCH_MAP)
     return activeTab === PLUGIN_PAGE_TABS_MAP.marketplace || values.includes(activeTab)
   }, [activeTab])
+  useDocumentTitle(isExploringMarketplace
+    ? t('mainNav.marketplace', { ns: 'common' })
+    : t('metadata.title', { ns: 'plugin' }))
 
   const handleFileChange = (file: File | null) => {
     if (!file || !file.name.endsWith('.difypkg')) {

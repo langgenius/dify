@@ -5,6 +5,7 @@ import { useQueryState } from 'nuqs'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
+import useDocumentTitle from '@/hooks/use-document-title'
 import { usePluginInstallation } from '@/hooks/use-query-params'
 // Import mocked modules for assertions
 import { fetchBundleInfoFromMarketPlace, fetchManifestFromMarketPlace } from '@/service/plugins'
@@ -182,6 +183,20 @@ describe('PluginPage Component', () => {
       expect(container).toBeInTheDocument()
       // Check that marketplace-specific links are shown
       expect(screen.getByText(/requestAPlugin/i)).toBeInTheDocument()
+    })
+
+    it('should use plugins as document title on plugins tab', () => {
+      vi.mocked(useQueryState).mockReturnValue(['plugins', vi.fn()])
+
+      render(<PluginPageWithContext {...createDefaultProps()} />)
+      expect(useDocumentTitle).toHaveBeenCalledWith('plugin.metadata.title')
+    })
+
+    it('should use marketplace as document title when exploring marketplace', () => {
+      vi.mocked(useQueryState).mockReturnValue(['discover', vi.fn()])
+
+      render(<PluginPageWithContext {...createDefaultProps()} />)
+      expect(useDocumentTitle).toHaveBeenCalledWith('common.mainNav.marketplace')
     })
 
     it('should render TabSlider', () => {

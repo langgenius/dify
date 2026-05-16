@@ -1,13 +1,14 @@
 'use client'
 import type { CustomCollectionBackend } from '../types'
 import { toast } from '@langgenius/dify-ui/toast'
-import { useMemo, useState } from 'react'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import EditCustomToolModal from '@/app/components/tools/edit-custom-collection-modal'
 import { useAppContext } from '@/context/app-context'
-import { useDocLink } from '@/context/i18n'
 import { createCustomCollection } from '@/service/tools'
 import CreateEntryCard from './create-entry-card'
+
+const CUSTOM_TOOL_DOC_URL = 'https://docs.dify.ai/en/use-dify/workspace/tools#custom-tool'
 
 type Props = {
   onRefreshData: () => void
@@ -15,10 +16,8 @@ type Props = {
 
 const Contribute = ({ onRefreshData }: Props) => {
   const { t } = useTranslation()
-  const docLink = useDocLink()
   const { isCurrentWorkspaceManager } = useAppContext()
 
-  const linkUrl = useMemo(() => docLink('/use-dify/nodes/tools'), [docLink])
   const [isShowEditCollectionToolModal, setIsShowEditCustomCollectionModal] = useState(false)
   const doCreateCustomToolCollection = async (data: CustomCollectionBackend) => {
     await createCustomCollection(data)
@@ -33,7 +32,7 @@ const Contribute = ({ onRefreshData }: Props) => {
         <CreateEntryCard
           title={t('createSwaggerAPIAsTool', { ns: 'tools' })}
           linkText={t('swaggerAPIAsToolTip', { ns: 'tools' })}
-          linkUrl={linkUrl}
+          linkUrl={CUSTOM_TOOL_DOC_URL}
           onCreate={() => setIsShowEditCustomCollectionModal(true)}
         />
       )}
