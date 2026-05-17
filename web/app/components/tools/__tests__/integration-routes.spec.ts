@@ -1,8 +1,10 @@
 import {
   buildIntegrationPath,
+  buildMarketplacePathByIntegrationSection,
   getIntegrationRedirectPathByLegacyToolsSearchParams,
   getIntegrationRouteTargetBySlug,
   integrationPathBySection,
+  marketplaceCategoryByIntegrationSection,
 } from '../integration-routes'
 
 describe('integration routes', () => {
@@ -20,6 +22,24 @@ describe('integration routes', () => {
       'extension': '/integrations/extension',
     })
     expect(buildIntegrationPath('custom-tool')).toBe('/integrations/tool/api')
+  })
+
+  it('maps integration sections to marketplace category paths', () => {
+    expect(marketplaceCategoryByIntegrationSection).toEqual({
+      'provider': 'model',
+      'builtin': 'tool',
+      'mcp': 'tool',
+      'custom-tool': 'tool',
+      'workflow-tool': 'tool',
+      'data-source': 'datasource',
+      'api-based-extension': 'extension',
+      'trigger': 'trigger',
+      'agent-strategy': 'agent-strategy',
+      'extension': 'extension',
+    })
+    expect(buildMarketplacePathByIntegrationSection('provider')).toBe('/marketplace?category=model')
+    expect(buildMarketplacePathByIntegrationSection('custom-tool')).toBe('/marketplace?category=tool')
+    expect(buildMarketplacePathByIntegrationSection('extension')).toBe('/marketplace?category=extension')
   })
 
   it.each([

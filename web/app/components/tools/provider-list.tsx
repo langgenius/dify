@@ -5,8 +5,7 @@ import type { Plugin } from '@/app/components/plugins/types'
 import type { ToolCategory } from '@/app/components/tools/integration-routes'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useSuspenseQuery } from '@tanstack/react-query'
-import { parseAsStringLiteral, useQueryState } from 'nuqs'
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Input from '@/app/components/base/input'
 import TabSliderNew from '@/app/components/base/tab-slider-new'
@@ -17,7 +16,6 @@ import { useTags } from '@/app/components/plugins/hooks'
 import Empty from '@/app/components/plugins/marketplace/empty'
 import PluginDetailPanel from '@/app/components/plugins/plugin-detail-panel'
 import useReferenceSetting from '@/app/components/plugins/plugin-page/use-reference-setting'
-import { TOOL_CATEGORY_VALUES } from '@/app/components/tools/integration-routes'
 import LabelFilter from '@/app/components/tools/labels/filter'
 import CustomCreateCard from '@/app/components/tools/provider/custom-create-card'
 import ProviderDetail from '@/app/components/tools/provider/detail'
@@ -26,19 +24,11 @@ import { systemFeaturesQueryOptions } from '@/service/system-features'
 import { useCheckInstalled, useInvalidateInstalledPluginList } from '@/service/use-plugins'
 import { useAllToolProviders } from '@/service/use-tools'
 import { toolsContentInsetClassNames, toolsUnifiedContentFrameClassName } from './content-inset'
+import { useToolMarketplacePanel } from './hooks/use-tool-marketplace-panel'
+import { useToolProviderCategory } from './hooks/use-tool-provider-category'
 import Marketplace from './marketplace'
-import { useMarketplace } from './marketplace/hooks'
 import MCPList from './mcp'
 import { getToolType } from './utils'
-
-const toolProviderCategorySet = new Set<string>(TOOL_CATEGORY_VALUES)
-
-const isToolProviderCategory = (value: string): value is ToolCategory => {
-  return toolProviderCategorySet.has(value)
-}
-
-const parseAsToolProviderCategory = parseAsStringLiteral(TOOL_CATEGORY_VALUES)
-  .withDefault('builtin')
 
 type ProviderListProps = {
   category?: ToolCategory
@@ -62,11 +52,7 @@ const ProviderList = ({
     ...systemFeaturesQueryOptions(),
     select: s => s.enable_marketplace,
   })
-  const containerRef = useRef<HTMLDivElement>(null)
-
-  const [categoryParam, setCategoryParam] = useQueryState('category', parseAsToolProviderCategory)
-  const activeTab = category ?? categoryParam
-  const isRouteCategory = !!category
+  const { activeTab, handleCategoryChange, isRouteCategory } = useToolProviderCategory(category)
   const contentPaddingClassName = toolsContentInsetClassNames[contentInset]
   const toolListFrameClassName = cn(contentPaddingClassName, toolsUnifiedContentFrameClassName)
   const showToolsUpdateSetting = activeTab === 'builtin' && canSetPermissions && !!referenceSetting
@@ -111,40 +97,16 @@ const ProviderList = ({
     return checkedInstalledData?.plugins?.[0]
   }, [checkedInstalledData])
 
-  const toolListTailRef = useRef<HTMLDivElement>(null)
-  const showMarketplacePanel = useCallback(() => {
-    containerRef.current?.scrollTo({
-      top: toolListTailRef.current
-        ? toolListTailRef.current?.offsetTop - 80
-        : 0,
-      behavior: 'smooth',
-    })
-  }, [toolListTailRef])
-
-  const marketplaceContext = useMarketplace(keywords, tagFilterValue)
   const {
-    handleScroll,
-  } = marketplaceContext
-
-  const [isMarketplaceArrowVisible, setIsMarketplaceArrowVisible] = useState(true)
-  const onContainerScroll = useMemo(() => {
-    return (e: Event) => {
-      handleScroll(e)
-      if (containerRef.current && toolListTailRef.current)
-        setIsMarketplaceArrowVisible(containerRef.current.scrollTop < (toolListTailRef.current?.offsetTop - 80))
-    }
-  }, [handleScroll, containerRef, toolListTailRef, setIsMarketplaceArrowVisible])
-
-  useEffect(() => {
-    const container = containerRef.current
-    if (container)
-      container.addEventListener('scroll', onContainerScroll)
-
-    return () => {
-      if (container)
-        container.removeEventListener('scroll', onContainerScroll)
-    }
-  }, [onContainerScroll])
+    containerRef,
+    isMarketplaceArrowVisible,
+    marketplaceContext,
+    showMarketplacePanel,
+    toolListTailRef,
+  } = useToolMarketplacePanel({
+    keywords,
+    tagFilterValue,
+  })
 
   return (
     <>
@@ -163,14 +125,7 @@ const ProviderList = ({
             {!isRouteCategory && (
               <TabSliderNew
                 value={activeTab}
-                onChange={(state) => {
-                  if (!isToolProviderCategory(state))
-                    return
-                  setCategoryParam(state)
-
-                  if (state !== activeTab)
-                    setCurrentProviderId(undefined)
-                }}
+                onChange={state => handleCategoryChange(state, () => setCurrentProviderId(undefined))}
                 options={options}
               />
             )}

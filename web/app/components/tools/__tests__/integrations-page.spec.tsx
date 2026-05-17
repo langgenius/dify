@@ -226,7 +226,7 @@ describe('IntegrationsPage', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'empty marketplace' }))
 
-    expect(mockRouterPush).toHaveBeenCalledWith('/marketplace')
+    expect(mockRouterPush).toHaveBeenCalledWith('/marketplace?category=extension')
   })
 
   it('renders migrated legacy setting sections', () => {
@@ -376,7 +376,7 @@ describe('IntegrationsPage', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'plugin install' }))
 
-    expect(mockRouterPush).toHaveBeenCalledWith('/marketplace')
+    expect(mockRouterPush).toHaveBeenCalledWith('/marketplace?category=tool')
   })
 
   it('hides the install action and disables category installs when install permission is unavailable', () => {

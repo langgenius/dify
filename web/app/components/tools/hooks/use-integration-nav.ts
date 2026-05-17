@@ -1,0 +1,149 @@
+import type { IntegrationSection } from '@/app/components/tools/integration-routes'
+import type { IntegrationSidebarNavItemData } from '@/app/components/tools/integration-sidebar-nav-item'
+import { useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
+import { PluginCategoryEnum } from '@/app/components/plugins/types'
+
+export type IntegrationHeader = {
+  description: string
+  title: string
+}
+
+export const getPluginCategoryBySection = (section: IntegrationSection) => {
+  if (section === 'trigger')
+    return PluginCategoryEnum.trigger
+  if (section === 'agent-strategy')
+    return PluginCategoryEnum.agent
+  if (section === 'extension')
+    return PluginCategoryEnum.extension
+}
+
+export function useIntegrationNav(section: IntegrationSection) {
+  const { t } = useTranslation()
+  const providerItem = useMemo<IntegrationSidebarNavItemData>(() => ({
+    section: 'provider',
+    label: t('settings.provider', { ns: 'common' }),
+    icon: 'i-ri-brain-2-line',
+    activeIcon: 'i-ri-brain-2-fill',
+  }), [t])
+  const dataSourceItem = useMemo<IntegrationSidebarNavItemData>(() => ({
+    section: 'data-source',
+    label: t('settings.dataSource', { ns: 'common' }),
+    icon: 'i-ri-database-2-line',
+    activeIcon: 'i-ri-database-2-fill',
+    iconClassName: 'size-4',
+  }), [t])
+  const toolItems = useMemo<IntegrationSidebarNavItemData[]>(() => [
+    {
+      section: 'mcp',
+      label: 'MCP',
+      icon: 'i-custom-vender-integrations-mcp',
+      iconClassName: 'h-[14.5px] w-[13.5px]',
+    },
+    {
+      section: 'custom-tool',
+      label: t('settings.customTool', { ns: 'common' }),
+      icon: 'i-custom-vender-integrations-custom-tool',
+      activeIcon: 'i-custom-vender-integrations-custom-tool-active',
+      iconClassName: 'h-[14.5px] w-[12.5px]',
+    },
+    {
+      section: 'workflow-tool',
+      label: t('common.workflowAsTool', { ns: 'workflow' }),
+      icon: 'i-custom-vender-integrations-workflow-as-tool',
+      activeIcon: 'i-custom-vender-integrations-workflow-as-tool-active',
+      iconClassName: 'h-3 w-[12.5px]',
+    },
+    {
+      section: 'api-based-extension',
+      label: t('settings.apiBasedExtension', { ns: 'common' }),
+      icon: 'i-custom-vender-integrations-api-extension',
+      activeIcon: 'i-custom-vender-integrations-api-extension-active',
+      iconClassName: 'h-[13px] w-3.5',
+    },
+  ], [t])
+  const secondaryItems = useMemo<IntegrationSidebarNavItemData[]>(() => [
+    {
+      section: 'trigger',
+      label: t('categorySingle.trigger', { ns: 'plugin' }),
+      icon: 'i-custom-vender-integrations-trigger',
+      activeIcon: 'i-custom-vender-integrations-trigger-active',
+      iconClassName: 'h-[13.5px] w-[13.5px]',
+    },
+    {
+      section: 'agent-strategy',
+      label: t('categorySingle.agent', { ns: 'plugin' }),
+      icon: 'i-custom-vender-integrations-agent-strategy',
+      activeIcon: 'i-custom-vender-integrations-agent-strategy-active',
+      iconClassName: 'h-[14.5px] w-[15.5px]',
+    },
+    {
+      section: 'extension',
+      label: t('categorySingle.extension', { ns: 'plugin' }),
+      icon: 'i-custom-vender-integrations-extension',
+      activeIcon: 'i-custom-vender-integrations-extension-active',
+      iconClassName: 'h-[13.5px] w-3',
+    },
+  ], [t])
+  const activeItem = [providerItem, dataSourceItem, ...toolItems, ...secondaryItems].find(item => item.section === section)
+  const integrationHeader = useMemo<IntegrationHeader | null>(() => {
+    switch (section) {
+      case 'builtin':
+        return {
+          title: t('menus.tools', { ns: 'common' }),
+          description: t('toolsPage.description', { ns: 'common' }),
+        }
+      case 'mcp':
+        return {
+          title: 'MCP',
+          description: t('mcpPage.description', { ns: 'common' }),
+        }
+      case 'custom-tool':
+        return {
+          title: t('settings.customTool', { ns: 'common' }),
+          description: t('swaggerAPIAsToolPage.description', { ns: 'common' }),
+        }
+      case 'workflow-tool':
+        return {
+          title: t('common.workflowAsTool', { ns: 'workflow' }),
+          description: t('workflowAsToolPage.description', { ns: 'common' }),
+        }
+      case 'api-based-extension':
+        return {
+          title: t('settings.apiBasedExtension', { ns: 'common' }),
+          description: t('apiBasedExtensionPage.description', { ns: 'common' }),
+        }
+      case 'data-source':
+        return {
+          title: t('settings.dataSource', { ns: 'common' }),
+          description: t('dataSourcePage.description', { ns: 'common' }),
+        }
+      case 'trigger':
+        return {
+          title: t('categorySingle.trigger', { ns: 'plugin' }),
+          description: t('triggerPage.description', { ns: 'common' }),
+        }
+      case 'extension':
+        return {
+          title: t('categorySingle.extension', { ns: 'plugin' }),
+          description: t('extensionPage.description', { ns: 'common' }),
+        }
+      case 'agent-strategy':
+        return {
+          title: t('categorySingle.agent', { ns: 'plugin' }),
+          description: t('agentStrategyPage.description', { ns: 'common' }),
+        }
+      default:
+        return null
+    }
+  }, [section, t])
+
+  return {
+    activeItem,
+    dataSourceItem,
+    integrationHeader,
+    providerItem,
+    secondaryItems,
+    toolItems,
+  }
+}
