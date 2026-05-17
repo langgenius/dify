@@ -5,6 +5,7 @@ import DocumentSettings from '../document-settings'
 
 const mockPush = vi.fn()
 const mockBack = vi.fn()
+const mockOpenIntegrationsSetting = vi.fn()
 vi.mock('@/next/navigation', () => ({
   useRouter: () => ({
     push: mockPush,
@@ -99,13 +100,8 @@ vi.mock('@/app/components/datasets/create/step-two', () => ({
   ),
 }))
 
-vi.mock('@/app/components/header/account-setting', () => ({
-  default: ({ activeTab, onCancelAction }: { activeTab?: string, onCancelAction?: () => void }) => (
-    <div data-testid="account-setting">
-      <span data-testid="active-tab">{activeTab}</span>
-      <button onClick={onCancelAction} data-testid="close-setting">Close</button>
-    </div>
-  ),
+vi.mock('@/app/components/header/account-setting/use-integrations-setting', () => ({
+  useIntegrationsSetting: () => mockOpenIntegrationsSetting,
 }))
 
 describe('DocumentSettings', () => {
@@ -203,22 +199,12 @@ describe('DocumentSettings', () => {
       expect(mockPush).toHaveBeenCalledWith('/datasets/dataset-1/documents/document-1')
     })
 
-    it('should show AccountSetting modal when setting button is clicked', () => {
+    it('should open model provider integrations settings when setting button is clicked', () => {
       render(<DocumentSettings {...defaultProps} />)
 
       fireEvent.click(screen.getByTestId('setting-btn'))
 
-      expect(screen.getByTestId('account-setting')).toBeInTheDocument()
-    })
-
-    it('should hide AccountSetting modal when close is clicked', async () => {
-      render(<DocumentSettings {...defaultProps} />)
-      fireEvent.click(screen.getByTestId('setting-btn'))
-      expect(screen.getByTestId('account-setting')).toBeInTheDocument()
-
-      fireEvent.click(screen.getByTestId('close-setting'))
-
-      expect(screen.queryByTestId('account-setting')).not.toBeInTheDocument()
+      expect(mockOpenIntegrationsSetting).toHaveBeenCalledWith({ payload: 'provider' })
     })
   })
 

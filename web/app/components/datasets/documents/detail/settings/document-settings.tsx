@@ -1,4 +1,3 @@
-import type { AccountSettingTab } from '@/app/components/header/account-setting/constants'
 import type { DataSourceProvider, NotionPage } from '@/models/common'
 import type {
   CrawlOptions,
@@ -11,18 +10,16 @@ import type {
   UploadFileIdInfo,
   WebsiteCrawlInfo,
 } from '@/models/datasets'
-import { useBoolean } from 'ahooks'
-import * as React from 'react'
-import { useMemo } from 'react'
+import { useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
 import AppUnavailable from '@/app/components/base/app-unavailable'
 import Loading from '@/app/components/base/loading'
 import StepTwo from '@/app/components/datasets/create/step-two'
-import AccountSetting from '@/app/components/header/account-setting'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useDefaultModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
+import { useIntegrationsSetting } from '@/app/components/header/account-setting/use-integrations-setting'
 import DatasetDetailContext from '@/context/dataset-detail'
 import { useRouter } from '@/next/navigation'
 import { useDocumentDetail, useInvalidDocumentDetail, useInvalidDocumentList } from '@/service/knowledge/use-document'
@@ -35,14 +32,12 @@ type DocumentSettingsProps = {
 const DocumentSettings = ({ datasetId, documentId }: DocumentSettingsProps) => {
   const { t } = useTranslation()
   const router = useRouter()
-  const [isShowSetAPIKey, { setTrue: showSetAPIKey, setFalse: hideSetAPIkey }] = useBoolean()
-  const [accountSettingTab, setAccountSettingTab] = React.useState<AccountSettingTab>(ACCOUNT_SETTING_TAB.PROVIDER)
+  const openIntegrationsSetting = useIntegrationsSetting()
   const { indexingTechnique, dataset } = useContext(DatasetDetailContext)
   const { data: embeddingsDefaultModel } = useDefaultModel(ModelTypeEnum.textEmbedding)
-  const handleOpenAccountSetting = React.useCallback(() => {
-    setAccountSettingTab(ACCOUNT_SETTING_TAB.PROVIDER)
-    showSetAPIKey()
-  }, [showSetAPIKey])
+  const handleOpenAccountSetting = useCallback(() => {
+    openIntegrationsSetting({ payload: ACCOUNT_SETTING_TAB.PROVIDER })
+  }, [openIntegrationsSetting])
 
   const invalidDocumentList = useInvalidDocumentList(datasetId)
   const invalidDocumentDetail = useInvalidDocumentDetail()
@@ -180,15 +175,6 @@ const DocumentSettings = ({ datasetId, documentId }: DocumentSettingsProps) => {
           />
         )}
       </div>
-      {isShowSetAPIKey && (
-        <AccountSetting
-          activeTab={accountSettingTab}
-          onTabChangeAction={setAccountSettingTab}
-          onCancelAction={async () => {
-            hideSetAPIkey()
-          }}
-        />
-      )}
     </div>
   )
 }
