@@ -160,3 +160,36 @@ export async function enableAppSiteAndGetURL(appId: string): Promise<string> {
     await ctx.dispose()
   }
 }
+
+export type DatasetSeed = {
+  id: string
+  name: string
+}
+
+export async function createTestDataset(name: string): Promise<DatasetSeed> {
+  const ctx = await createApiContext()
+  try {
+    const response = await ctx.post('/console/api/datasets', {
+      data: {
+        name,
+        indexing_technique: 'high_quality',
+        permission: 'all_team_members',
+      },
+    })
+    const body = (await response.json()) as DatasetSeed
+    return body
+  }
+  finally {
+    await ctx.dispose()
+  }
+}
+
+export async function deleteTestDataset(id: string): Promise<void> {
+  const ctx = await createApiContext()
+  try {
+    await ctx.delete(`/console/api/datasets/${id}`)
+  }
+  finally {
+    await ctx.dispose()
+  }
+}

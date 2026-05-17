@@ -16,6 +16,8 @@ export class DifyWorld extends World {
   createdAppIds: string[] = []
   capturedDownloads: Download[] = []
   shareURL: string | undefined
+  lastCreatedDatasetName: string | undefined
+  createdDatasetIds: string[] = []
 
   constructor(options: IWorldOptions) {
     super(options)
@@ -29,6 +31,8 @@ export class DifyWorld extends World {
     this.createdAppIds = []
     this.capturedDownloads = []
     this.shareURL = undefined
+    this.lastCreatedDatasetName = undefined
+    this.createdDatasetIds = []
   }
 
   async startSession(browser: Browser, authenticated: boolean) {
