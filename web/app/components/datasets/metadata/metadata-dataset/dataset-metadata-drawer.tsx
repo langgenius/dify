@@ -283,6 +283,7 @@ const DatasetMetadataDrawer: FC<Props> = ({
 
                       <Field label={t(`${i18nPrefix}.name`, { ns: 'dataset' })} className="mt-4">
                         <Input
+                          aria-label={t(`${i18nPrefix}.name`, { ns: 'dataset' })}
                           value={templeName}
                           onChange={e => setTempleName(e.target.value)}
                           placeholder={t(`${i18nPrefix}.namePlaceholder`, { ns: 'dataset' })}

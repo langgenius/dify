@@ -102,8 +102,13 @@ export function DatasetMetadataPicker({
   }
 
   const handleCreateMetadata = async (metadata: BuiltInMetadataItem) => {
-    await onCreateMetadata(metadata)
-    resetPicker()
+    try {
+      await onCreateMetadata(metadata)
+      resetPicker()
+    }
+    catch {
+      // Keep the create view open so callers can surface validation feedback and the user can correct the input.
+    }
   }
 
   const handleOpenManagement = () => {

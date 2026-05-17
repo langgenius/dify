@@ -92,6 +92,7 @@ export function CreateContent({
           </Field>
           <Field label={t(`${i18nPrefix}.name`, { ns: 'dataset' })}>
             <Input
+              aria-label={t(`${i18nPrefix}.name`, { ns: 'dataset' })}
               value={name}
               onChange={handleNameChange}
               placeholder={t(`${i18nPrefix}.namePlaceholder`, { ns: 'dataset' })}

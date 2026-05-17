@@ -1,19 +1,8 @@
 import type { MetadataItemWithValue } from '../../types'
 import { fireEvent, render, screen } from '@testing-library/react'
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { DataType } from '../../types'
 import InfoGroup from '../info-group'
-
-type DatasetMetadataPickerProps = {
-  onSelectMetadata: (item: MetadataItemWithValue) => void
-  onCreateMetadata: (data: { name: string, type: DataType }) => void
-  onOpenMetadataManagement: () => void
-}
-
-type FieldProps = {
-  label: string
-  children: React.ReactNode
-}
 
 type InputCombinedProps = {
   value: string | number | null
@@ -21,9 +10,23 @@ type InputCombinedProps = {
   type: DataType
 }
 
+const { mockRouterPush } = vi.hoisted(() => ({
+  mockRouterPush: vi.fn(),
+}))
+
 vi.mock('@/next/navigation', () => ({
   useRouter: () => ({
-    push: vi.fn(),
+    push: mockRouterPush,
+  }),
+}))
+
+vi.mock('@/service/knowledge/use-metadata', () => ({
+  useDatasetMetaData: () => ({
+    data: {
+      doc_metadata: [
+        { id: '1', name: 'test', type: DataType.string },
+      ],
+    },
   }),
 }))
 
@@ -42,32 +45,11 @@ vi.mock('@/hooks/use-timestamp', () => ({
 vi.mock('../../edit-metadata-batch/input-combined', () => ({
   default: ({ value, onChange, type }: InputCombinedProps) => (
     <input
-      data-testid="input-combined"
+      aria-label={`Metadata ${type} value`}
       data-type={type}
       value={value || ''}
       onChange={e => onChange(e.target.value)}
     />
-  ),
-}))
-
-// Mock DatasetMetadataPicker
-vi.mock('../../metadata-dataset/dataset-metadata-picker', () => ({
-  DatasetMetadataPicker: ({ onSelectMetadata, onCreateMetadata, onOpenMetadataManagement }: DatasetMetadataPickerProps) => (
-    <div data-testid="dataset-metadata-picker">
-      <button onClick={() => onSelectMetadata({ id: '1', name: 'test', type: DataType.string, value: null })}>Select</button>
-      <button onClick={() => onCreateMetadata({ name: 'new_field', type: DataType.string })}>Save</button>
-      <button onClick={onOpenMetadataManagement}>Manage</button>
-    </div>
-  ),
-}))
-
-// Mock Field
-vi.mock('../field', () => ({
-  default: ({ label, children }: FieldProps) => (
-    <div data-testid="field">
-      <span data-testid="field-label">{label}</span>
-      <div data-testid="field-content">{children}</div>
-    </div>
   ),
 }))
 
@@ -77,6 +59,10 @@ describe('InfoGroup', () => {
     { id: '2', name: 'field_two', type: DataType.number, value: 42 },
     { id: '3', name: 'built-in', type: DataType.time, value: 1609459200 },
   ]
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
 
   describe('Rendering', () => {
     it('should render without crashing', () => {
@@ -104,8 +90,9 @@ describe('InfoGroup', () => {
       render(
         <InfoGroup dataSetId="ds-1" list={mockList} />,
       )
-      const fields = screen.getAllByTestId('field')
-      expect(fields).toHaveLength(3)
+      expect(screen.getByText('field_one'))!.toBeInTheDocument()
+      expect(screen.getByText('field_two'))!.toBeInTheDocument()
+      expect(screen.getByText('built-in'))!.toBeInTheDocument()
     })
 
     it('should render tooltip when titleTooltip is provided', () => {
@@ -126,10 +113,10 @@ describe('InfoGroup', () => {
           dataSetId="ds-1"
           list={mockList}
           title="Test"
-          headerRight={<button data-testid="header-right-btn">Action</button>}
+          headerRight={<button>Action</button>}
         />,
       )
-      expect(screen.getByTestId('header-right-btn'))!.toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Action' }))!.toBeInTheDocument()
     })
   })
 
@@ -138,21 +125,21 @@ describe('InfoGroup', () => {
       render(
         <InfoGroup dataSetId="ds-1" list={mockList} isEdit />,
       )
-      expect(screen.getByTestId('dataset-metadata-picker'))!.toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'dataset.metadata.addMetadata' }))!.toBeInTheDocument()
     })
 
     it('should not render dataset metadata picker when isEdit is false', () => {
       render(
         <InfoGroup dataSetId="ds-1" list={mockList} isEdit={false} />,
       )
-      expect(screen.queryByTestId('dataset-metadata-picker')).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'dataset.metadata.addMetadata' })).not.toBeInTheDocument()
     })
 
     it('should render input combined for each item in edit mode', () => {
       render(
         <InfoGroup dataSetId="ds-1" list={mockList} isEdit />,
       )
-      const inputs = screen.getAllByTestId('input-combined')
+      const inputs = screen.getAllByRole('textbox')
       expect(inputs).toHaveLength(3)
     })
 
@@ -171,7 +158,7 @@ describe('InfoGroup', () => {
         <InfoGroup dataSetId="ds-1" list={mockList} isEdit onChange={handleChange} />,
       )
 
-      const inputs = screen.getAllByTestId('input-combined')
+      const inputs = screen.getAllByRole('textbox')
       fireEvent.change(inputs[0]!, { target: { value: 'New Value' } })
 
       expect(handleChange).toHaveBeenCalled()
@@ -188,29 +175,34 @@ describe('InfoGroup', () => {
       expect(handleDelete).toHaveBeenCalled()
     })
 
-    it('should call onSelect when metadata is selected', () => {
+    it('should call onSelect when metadata is selected', async () => {
       const handleSelect = vi.fn()
       render(
         <InfoGroup dataSetId="ds-1" list={mockList} isEdit onSelect={handleSelect} />,
       )
 
-      fireEvent.click(screen.getByRole('button', { name: 'Select' }))
+      fireEvent.click(screen.getByRole('button', { name: 'dataset.metadata.addMetadata' }))
+      fireEvent.click(await screen.findByRole('option', { name: /test/ }))
 
       expect(handleSelect).toHaveBeenCalledWith({
         id: '1',
         name: 'test',
         type: DataType.string,
-        value: null,
       })
     })
 
-    it('should call onAdd when new metadata is saved', () => {
+    it('should call onAdd when new metadata is saved', async () => {
       const handleAdd = vi.fn()
       render(
         <InfoGroup dataSetId="ds-1" list={mockList} isEdit onAdd={handleAdd} />,
       )
 
-      fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+      fireEvent.click(screen.getByRole('button', { name: 'dataset.metadata.addMetadata' }))
+      fireEvent.click(await screen.findByRole('button', { name: 'dataset.metadata.selectMetadata.newAction' }))
+      fireEvent.change(screen.getByRole('textbox', { name: 'dataset.metadata.createMetadata.name' }), {
+        target: { value: 'new_field' },
+      })
+      fireEvent.click(screen.getByRole('button', { name: 'common.operation.save' }))
 
       expect(handleAdd).toHaveBeenCalledWith({
         name: 'new_field',
@@ -218,14 +210,15 @@ describe('InfoGroup', () => {
       })
     })
 
-    it('should navigate to documents page when manage is clicked', () => {
+    it('should navigate to documents page when manage is clicked', async () => {
       render(
         <InfoGroup dataSetId="ds-1" list={mockList} isEdit />,
       )
 
-      fireEvent.click(screen.getByRole('button', { name: 'Manage' }))
+      fireEvent.click(screen.getByRole('button', { name: 'dataset.metadata.addMetadata' }))
+      fireEvent.click(await screen.findByRole('button', { name: 'dataset.metadata.selectMetadata.manageAction' }))
 
-      expect(screen.getByRole('button', { name: 'Manage' }))!.toBeInTheDocument()
+      expect(mockRouterPush).toHaveBeenCalledWith('/datasets/ds-1/documents')
     })
   })
 
@@ -292,7 +285,7 @@ describe('InfoGroup', () => {
       )
       // The mock formatTime returns formatted date
       // The mock formatTime returns formatted date
-      expect(screen.getByTestId('field-content'))!.toBeInTheDocument()
+      expect(screen.getByText('field'))!.toBeInTheDocument()
     })
   })
 
@@ -311,7 +304,7 @@ describe('InfoGroup', () => {
       render(
         <InfoGroup dataSetId="ds-1" list={nullList} />,
       )
-      expect(screen.getByTestId('field'))!.toBeInTheDocument()
+      expect(screen.getByText('field'))!.toBeInTheDocument()
     })
 
     it('should handle items with built-in id', () => {
@@ -321,7 +314,7 @@ describe('InfoGroup', () => {
       render(
         <InfoGroup dataSetId="ds-1" list={builtInList} />,
       )
-      expect(screen.getByTestId('field'))!.toBeInTheDocument()
+      expect(screen.getByText('field'))!.toBeInTheDocument()
     })
   })
 })
