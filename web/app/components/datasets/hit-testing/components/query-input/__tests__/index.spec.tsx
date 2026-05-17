@@ -382,7 +382,18 @@ describe('QueryInput', () => {
         return response
       })
 
-      render(<QueryInput {...defaultProps} isExternal={true} externalKnowledgeBaseHitTestingMutation={mockExternalMutation} />)
+      render(
+        <QueryInput
+          {...defaultProps}
+          isExternal={true}
+          externalKnowledgeBaseHitTestingMutation={mockExternalMutation}
+          externalRetrievalModel={{
+            top_k: 7,
+            score_threshold: 0.85,
+            score_threshold_enabled: true,
+          }}
+        />,
+      )
 
       fireEvent.click(screen.getByRole('button', { name: /input\.testing/ }))
 
@@ -391,9 +402,9 @@ describe('QueryInput', () => {
           expect.objectContaining({
             query: 'test query',
             external_retrieval_model: expect.objectContaining({
-              top_k: 4,
-              score_threshold: 0.5,
-              score_threshold_enabled: false,
+              top_k: 7,
+              score_threshold: 0.85,
+              score_threshold_enabled: true,
             }),
           }),
           expect.objectContaining({ onSuccess: expect.any(Function) }),

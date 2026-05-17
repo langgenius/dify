@@ -140,6 +140,7 @@ const HitTestingPage: FC<Props> = ({ datasetId }: Props) => {
           onClickRetrievalMethod={() => setIsShowModifyRetrievalModal(true)}
           retrievalConfig={retrievalConfig}
           isEconomy={currentDataset?.indexing_technique === 'economy'}
+          externalRetrievalModel={currentDataset?.external_retrieval_model}
           hitTestingMutation={hitTestingMutation}
           externalKnowledgeBaseHitTestingMutation={externalKnowledgeBaseHitTestingMutation}
         />

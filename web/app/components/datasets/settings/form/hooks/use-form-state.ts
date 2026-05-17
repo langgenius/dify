@@ -2,7 +2,7 @@
 import type { AppIconSelection } from '@/app/components/base/app-icon-picker'
 import type { DefaultModel } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { Member } from '@/models/common'
-import type { IconInfo, SummaryIndexSetting as SummaryIndexSettingType } from '@/models/datasets'
+import type { DataSet, IconInfo, SummaryIndexSetting as SummaryIndexSettingType } from '@/models/datasets'
 import type { RetrievalConfig } from '@/types/app'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useCallback, useMemo, useRef, useState } from 'react'
@@ -25,11 +25,20 @@ const DEFAULT_APP_ICON: IconInfo = {
   icon_url: '',
 }
 
+type DatasetSettingsUpdateBody = Parameters<typeof updateDatasetSetting>[0]['body'] & {
+  keyword_number?: number
+  summary_index_setting?: SummaryIndexSettingType
+  external_knowledge_id?: string
+  external_knowledge_api_id?: string
+  external_retrieval_model?: DataSet['external_retrieval_model']
+}
+
 export const useFormState = () => {
   const { t } = useTranslation()
   const isCurrentWorkspaceDatasetOperator = useAppContextWithSelector(state => state.isCurrentWorkspaceDatasetOperator)
   const currentDataset = useDatasetDetailContextWithSelector(state => state.dataset)
   const mutateDatasets = useDatasetDetailContextWithSelector(state => state.mutateDatasetRes)
+  const isExternalProvider = currentDataset?.provider === 'external'
 
   // Basic form state
   const [loading, setLoading] = useState(false)
@@ -46,9 +55,9 @@ export const useFormState = () => {
   const [selectedMemberIDs, setSelectedMemberIDs] = useState<string[]>(currentDataset?.partial_member_list || [])
 
   // External retrieval state
-  const [topK, setTopK] = useState(currentDataset?.external_retrieval_model.top_k ?? 2)
-  const [scoreThreshold, setScoreThreshold] = useState(currentDataset?.external_retrieval_model.score_threshold ?? 0.5)
-  const [scoreThresholdEnabled, setScoreThresholdEnabled] = useState(currentDataset?.external_retrieval_model.score_threshold_enabled ?? false)
+  const [topK, setTopK] = useState(currentDataset?.external_retrieval_model?.top_k ?? 2)
+  const [scoreThreshold, setScoreThreshold] = useState(currentDataset?.external_retrieval_model?.score_threshold ?? 0.5)
+  const [scoreThresholdEnabled, setScoreThresholdEnabled] = useState(currentDataset?.external_retrieval_model?.score_threshold_enabled ?? false)
 
   // Indexing and retrieval state
   const [indexMethod, setIndexMethod] = useState(currentDataset?.indexing_technique)
@@ -127,36 +136,39 @@ export const useFormState = () => {
       return
     }
 
-    if (!isReRankModelSelected({ rerankModelList, retrievalConfig, indexMethod })) {
+    if (!isExternalProvider && !isReRankModelSelected({ rerankModelList, retrievalConfig, indexMethod })) {
       toast.error(t('datasetConfig.rerankModelRequired', { ns: 'appDebug' }))
       return
     }
 
-    if (retrievalConfig.weights) {
+    if (retrievalConfig?.weights) {
       retrievalConfig.weights.vector_setting.embedding_provider_name = embeddingModel.provider || ''
       retrievalConfig.weights.vector_setting.embedding_model_name = embeddingModel.model || ''
     }
 
     try {
       setLoading(true)
-      const body: Record<string, unknown> = {
+      const body: DatasetSettingsUpdateBody = {
         name,
         icon_info: iconInfo,
         doc_form: currentDataset?.doc_form,
         description,
         permission,
-        indexing_technique: indexMethod,
-        retrieval_model: {
-          ...retrievalConfig,
-          score_threshold: retrievalConfig.score_threshold_enabled ? retrievalConfig.score_threshold : 0,
-        },
-        embedding_model: embeddingModel.model,
-        embedding_model_provider: embeddingModel.provider,
-        keyword_number: keywordNumber,
         summary_index_setting: summaryIndexSetting,
       }
 
-      if (currentDataset!.provider === 'external') {
+      if (!isExternalProvider) {
+        body.indexing_technique = indexMethod
+        body.retrieval_model = {
+          ...retrievalConfig,
+          score_threshold: retrievalConfig.score_threshold_enabled ? retrievalConfig.score_threshold : 0,
+        }
+        body.embedding_model = embeddingModel.model
+        body.embedding_model_provider = embeddingModel.provider
+        body.keyword_number = keywordNumber
+      }
+
+      if (isExternalProvider) {
         body.external_knowledge_id = currentDataset!.external_knowledge_info.external_knowledge_id
         body.external_knowledge_api_id = currentDataset!.external_knowledge_info.external_knowledge_api_id
         body.external_retrieval_model = {
@@ -193,6 +205,9 @@ export const useFormState = () => {
 
   // Computed values
   const showMultiModalTip = useMemo(() => {
+    if (isExternalProvider || !retrievalConfig?.reranking_model)
+      return false
+
     return checkShowMultiModalTip({
       embeddingModel,
       rerankingEnable: retrievalConfig.reranking_enable,
@@ -204,7 +219,7 @@ export const useFormState = () => {
       embeddingModelList,
       rerankModelList,
     })
-  }, [embeddingModel, rerankModelList, retrievalConfig.reranking_enable, retrievalConfig.reranking_model, embeddingModelList, indexMethod])
+  }, [embeddingModel, rerankModelList, retrievalConfig?.reranking_enable, retrievalConfig?.reranking_model, embeddingModelList, indexMethod, isExternalProvider])
 
   return {
     // Context values

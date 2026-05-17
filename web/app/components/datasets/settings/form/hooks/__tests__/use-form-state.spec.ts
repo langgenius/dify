@@ -753,5 +753,33 @@ describe('useFormState', () => {
         }),
       })
     })
+
+    it('should save external settings without internal retrieval config', async () => {
+      mockDataset = {
+        ...mockDataset,
+        retrieval_model: undefined as DataSet['retrieval_model'],
+        retrieval_model_dict: undefined as DataSet['retrieval_model_dict'],
+      }
+      const { updateDatasetSetting } = await import('@/service/datasets')
+      const { result } = renderHook(() => useFormState())
+
+      await act(async () => {
+        await result.current.handleSave()
+      })
+
+      expect(result.current.showMultiModalTip).toBe(false)
+      expect(updateDatasetSetting).toHaveBeenCalledWith({
+        datasetId: 'dataset-1',
+        body: expect.objectContaining({
+          external_knowledge_id: 'ext-123',
+          external_knowledge_api_id: 'api-456',
+          external_retrieval_model: {
+            top_k: 5,
+            score_threshold: 0.8,
+            score_threshold_enabled: true,
+          },
+        }),
+      })
+    })
   })
 })
