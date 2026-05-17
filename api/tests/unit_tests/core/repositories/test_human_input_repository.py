@@ -168,12 +168,13 @@ class _FakeSession:
                 obj.id = f"gen-{len(str(self.added))}"
             if isinstance(obj, HumanInputFormRecipient):
                 recipient: Any = obj
-                if recipient.recipient_type == RecipientType.CONSOLE:
-                    recipient.access_token = "token-console"
-                elif recipient.recipient_type == RecipientType.BACKSTAGE:
-                    recipient.access_token = "token-backstage"
-                else:
-                    recipient.access_token = "token-webapp"
+                if recipient.access_token is None:
+                    if recipient.recipient_type == RecipientType.CONSOLE:
+                        recipient.access_token = "token-console"
+                    elif recipient.recipient_type == RecipientType.BACKSTAGE:
+                        recipient.access_token = "token-backstage"
+                    else:
+                        recipient.access_token = "token-webapp"
 
     def refresh(self, _obj: Any) -> None:
         return None
@@ -485,9 +486,17 @@ def test_create_form_adds_console_and_backstage_recipients(monkeypatch: pytest.M
     entity = repo.create_form(params)
     assert entity.id == "form-id"
     assert entity.expiration_time == fixed_now + timedelta(hours=form_config.timeout)
-    # Console token should take precedence when console recipient is present.
-    assert entity.submission_token == "token-console"
     assert len(entity.recipients) == 3
+
+    added_recipients = [obj for obj in session.added if isinstance(obj, HumanInputFormRecipient)]
+    assert {r.recipient_type for r in added_recipients} == {
+        RecipientType.STANDALONE_WEB_APP,
+        RecipientType.CONSOLE,
+        RecipientType.BACKSTAGE,
+    }
+    console_recipient = next(r for r in added_recipients if r.recipient_type == RecipientType.CONSOLE)
+    # Console token should take precedence when a console recipient is present.
+    assert entity.submission_token == console_recipient.access_token
 
 
 def test_submission_get_by_token_returns_none_when_missing_or_form_missing(monkeypatch: pytest.MonkeyPatch) -> None:

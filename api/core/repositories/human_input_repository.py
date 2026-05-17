@@ -451,7 +451,6 @@ class HumanInputFormRepositoryImpl:
             )
             form_model.id = form_id
             form_model.created_at = start_time
-            form_model.updated_at = start_time
             session.add(form_model)
             recipient_models: list[HumanInputFormRecipient] = []
             for delivery in params.delivery_methods:

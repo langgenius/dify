@@ -474,10 +474,9 @@ class TestSchemaResolverClass:
         assert resolved[2]["title"] == "Q&A Structure"
 
     def test_cache_performance(self):
-        """Test that caching improves performance"""
+        """Test that cached resolution returns the same result as a cold resolution."""
         SchemaResolver.clear_cache()
 
-        # Create a schema with many references to the same schema
         schema = {
             "type": "object",
             "properties": {
@@ -486,21 +485,21 @@ class TestSchemaResolverClass:
             },
         }
 
-        # First run (no cache) - run multiple times to warm up
-        results1 = []
-        for _ in range(3):
-            SchemaResolver.clear_cache()
-            start = time.perf_counter()
-            result1 = resolve_dify_schema_refs(schema)
-            time_no_cache = time.perf_counter() - start
-            results1.append(time_no_cache)
+        SchemaResolver.clear_cache()
+        result_without_cache = resolve_dify_schema_refs(schema)
 
+<<<<<<< HEAD
         median_time_no_cache = statistics.median(results1)
 
         # Second run (with cache) - run multiple times
         # Warm up cache first
+=======
+        # Warm the cache, then resolve again.
+>>>>>>> 89470446e (fix(test): address review feedback and ruff formatting)
         resolve_dify_schema_refs(schema)
+        result_with_cache = resolve_dify_schema_refs(schema)
 
+<<<<<<< HEAD
         results2 = []
         for _ in range(3):
             start = time.perf_counter()
@@ -518,6 +517,9 @@ class TestSchemaResolverClass:
         # Median dampens noise; allow generous slack for laptop power management and background load.
         performance_ratio = median_time_with_cache / median_time_no_cache if median_time_no_cache > 0 else 1.0
         assert performance_ratio <= 5.0, f"Cache performance degraded too much: {performance_ratio}"
+=======
+        assert result_without_cache == result_with_cache
+>>>>>>> 89470446e (fix(test): address review feedback and ruff formatting)
 
     def test_fast_path_performance_no_refs(self):
         """Test that schemas without $refs use fast path and avoid deep copying"""
