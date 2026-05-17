@@ -4,9 +4,9 @@ Context: the desktop MainNav rewrite moved several workspace, account, tools, an
 
 Current status:
 
-- Open: account-setting modal navigation API, Marketplace install/error status parity, default account language entry, Integrations plugin install permission gating.
+- Open: account-setting modal navigation API naming, Marketplace/Integrations install task status parity, account language/timezone access parity.
 - Partially resolved: Apps/Datasets quick-switch/create parity.
-- Resolved: Integrations sidebar placeholder state, branding-gated Help trigger, workspace plan billing access.
+- Resolved: Integrations sidebar placeholder state, branding-gated Help trigger, workspace plan billing access, Integrations plugin install permission gating.
 
 ## 1. Account-setting modal naming and moved destinations
 
@@ -17,6 +17,7 @@ Current branch behavior:
 - `setShowAccountSettingModal(PROVIDER)` routes to `/integrations/model-provider`.
 - `setShowAccountSettingModal(DATA_SOURCE)` routes to `/integrations/data-source`.
 - `setShowAccountSettingModal(API_BASED_EXTENSION)` routes to `/integrations/tools/api-extension`.
+- Document Settings no longer directly renders the old Account Settings modal for Provider; it uses the Integrations destination helper.
 
 Old behavior: these calls opened the account-setting modal and switched to the matching tab.
 
@@ -27,7 +28,7 @@ Question:
 Follow-up decision needed:
 
 - Either keep the compatibility shim but document that these payloads are now route destinations, or introduce a clearer navigation API for integration destinations and update call sites intentionally.
-- Re-check call sites launched from workflows, datasets, and app configuration. Some contexts may expect an in-place modal instead of leaving the current page.
+- Re-check call sites launched from workflows, datasets, and app configuration when new entry points are added. The known Document Settings provider entry has been migrated.
 
 ## 2. Integrations sidebar disabled entries
 
@@ -60,13 +61,16 @@ Old header behavior:
 Current MainNav behavior:
 
 - MainNav has a Marketplace link, but it does not surface plugin installing/error state.
+- Integrations has install entry points, but it does not surface the old `PluginTasks` install-task status entry near the Integrations install action.
+- Marketplace is the product discovery surface for uninstalled integrations; `PluginTasks` is only the transient install-task status inbox for running/succeeded/failed installs.
 
 Follow-up decision needed:
 
 - Decide whether MainNav Marketplace should preserve the old plugin task status indicator.
+- Decide whether Integrations should expose `PluginTasks` near the install action so users can inspect failed/running install tasks without returning to the old `/plugins` shell.
 - If yes, reuse the existing `usePluginTaskStatus` behavior instead of creating a parallel status source.
 
-## 4. Mobile/default account language entry
+## 4. Account language and timezone access
 
 Status: Open.
 
@@ -74,17 +78,21 @@ Current branch behavior:
 
 - Desktop MainNav account menu includes Language and Timezone submenus.
 - The main app layout now uses MainNav across breakpoints.
-- The default account dropdown does not expose the Language settings entry.
+- The default account dropdown does not expose a direct Language/Timezone settings entry.
 - The default account dropdown still exists in non-MainNav account/header surfaces such as the account layout.
+- Language and Timezone still belong to Account Settings, not Integrations.
+- `UpdateSettingPopover` still links the timezone hint to `ACCOUNT_SETTING_TAB.LANGUAGE`.
+- The legacy `ReferenceSettingModal` auto-update timezone hint also still links to `ACCOUNT_SETTING_TAB.LANGUAGE`.
 
 Decision:
 
 - Preserve the old language-access contract across breakpoints.
-- The desktop MainNav path is acceptable; the missing case is default account-dropdown parity wherever that path remains active.
+- The desktop MainNav path is acceptable; the remaining question is default account-dropdown parity wherever that path remains active, plus whether hidden Account Settings Language entry points should remain acceptable.
 
 Follow-up decision needed:
 
-- Add an equivalent language entry to the default account path, or otherwise ensure users in those surfaces can still reach language settings.
+- Add an equivalent language/timezone entry to the default account path, or otherwise ensure users in those surfaces can still reach language settings.
+- Decide whether the Update Setting timezone hint should keep opening the hidden Account Settings Language page, or whether Account Settings should surface Language in its visible menu.
 - Keep this as gate-contract parity, not a visual requirement to recreate the old Account Settings sidebar.
 
 ## 5. Apps and Datasets quick-switch/create parity
@@ -156,24 +164,26 @@ Resolution:
 
 ## 8. Integrations plugin install permission gating
 
-Status: Open.
+Status: Resolved.
 
 Old `/plugins` behavior:
 
 - `InstallPluginDropdown` is shown only when `canManagement` is true.
 - The plugins page drag-and-drop install uploader is enabled only when the plugins tab is active and `canManagement` is true.
 
-Current Integrations behavior:
+Previous Integrations behavior:
 
 - The Integrations sidebar install dropdown remains visible.
 - Trigger and Agent Strategy empty states show Marketplace, GitHub, and Local Package File install entry points according to marketplace/local-package feature gates.
 - Trigger and Agent Strategy drag-and-drop package install is gated by `restrict_to_marketplace_only`, not by `canManagement`.
 
-Question:
+Current Integrations behavior:
 
-- Should `canManagement` hide all Integrations install entry points, including Marketplace, GitHub, Local Package File, and drag-and-drop install, or should some Marketplace browsing/entry affordances remain visible for users without plugin management permission?
+- The Integrations sidebar install dropdown is shown only when `canManagement` is true.
+- Trigger, Agent Strategy, and Extension empty-state install methods are hidden when `canInstall` is false.
+- Trigger, Agent Strategy, and Extension drag-and-drop package install is gated by both `canInstall` and `restrict_to_marketplace_only`.
+- Installed-package success can redirect to the actual installed integration category when the install context differs.
 
-Follow-up decision needed:
+Resolution:
 
-- If Integrations should match strict old `/plugins` install permission behavior, apply `canManagement` to every install path, not only drag-and-drop.
-- If Marketplace should remain visible as a read-only discovery path, separate browse affordances from install actions so users without `canManagement` cannot trigger installation flows.
+- Current implementation follows strict old `/plugins` install permission behavior for installation entry points while keeping Marketplace as a separate navigation surface.
