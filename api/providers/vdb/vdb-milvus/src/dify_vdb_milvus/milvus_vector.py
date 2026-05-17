@@ -42,6 +42,9 @@ class MilvusConfig(BaseModel):
     database: str = "default"  # Database name
     enable_hybrid_search: bool = False  # Flag to enable hybrid search
     analyzer_params: str | None = None  # Analyzer params
+    secure: bool = False  # Enable one-way TLS to Milvus
+    server_pem_path: str | None = None  # Path to server certificate (PEM) for TLS verification
+    server_name: str | None = None  # Server name to verify against the certificate (SNI / CN)
 
     @model_validator(mode="before")
     @classmethod
@@ -388,16 +391,19 @@ class MilvusVector(BaseVector):
         """
         Initialize and return a Milvus client.
         """
+        kwargs: dict[str, Any] = {"uri": config.uri, "db_name": config.database}
         if config.token:
-            client = MilvusClient(uri=config.uri, token=config.token, db_name=config.database)
+            kwargs["token"] = config.token
         else:
-            client = MilvusClient(
-                uri=config.uri,
-                user=config.user or "",
-                password=config.password or "",
-                db_name=config.database,
-            )
-        return client
+            kwargs["user"] = config.user or ""
+            kwargs["password"] = config.password or ""
+        if config.secure:
+            kwargs["secure"] = True
+            if config.server_pem_path:
+                kwargs["server_pem_path"] = config.server_pem_path
+            if config.server_name:
+                kwargs["server_name"] = config.server_name
+        return MilvusClient(**kwargs)
 
 
 class MilvusVectorFactory(AbstractVectorFactory):
@@ -427,5 +433,8 @@ class MilvusVectorFactory(AbstractVectorFactory):
                 database=dify_config.MILVUS_DATABASE or "",
                 enable_hybrid_search=dify_config.MILVUS_ENABLE_HYBRID_SEARCH or False,
                 analyzer_params=dify_config.MILVUS_ANALYZER_PARAMS or "",
+                secure=dify_config.MILVUS_SECURE,
+                server_pem_path=dify_config.MILVUS_SERVER_PEM_PATH,
+                server_name=dify_config.MILVUS_SERVER_NAME,
             ),
         )
