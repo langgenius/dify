@@ -6,7 +6,6 @@ import {
   PreviewCardContent,
   PreviewCardTrigger,
 } from '@langgenius/dify-ui/preview-card'
-import { groupBy } from 'es-toolkit/compat'
 import {
   memo,
   useCallback,
@@ -29,6 +28,37 @@ type BlocksProps = {
 type BlockPreviewPayload = {
   block: NodeDefault
 }
+
+type RenderedBlockClassification = typeof BLOCK_CLASSIFICATIONS[number]
+type BlockGroups = Record<RenderedBlockClassification, NodeDefault[]>
+
+const [
+  DEFAULT_BLOCK_CLASSIFICATION,
+  QUESTION_UNDERSTAND_BLOCK_CLASSIFICATION,
+  LOGIC_BLOCK_CLASSIFICATION,
+  TRANSFORM_BLOCK_CLASSIFICATION,
+  UTILITIES_BLOCK_CLASSIFICATION,
+] = BLOCK_CLASSIFICATIONS
+
+const HIDDEN_BLOCK_TYPES: ReadonlySet<BlockEnum> = new Set([
+  BlockEnum.TriggerWebhook,
+  BlockEnum.TriggerSchedule,
+  BlockEnum.TriggerPlugin,
+])
+
+const BLOCK_CLASSIFICATION_SET: ReadonlySet<BlockClassificationEnum> = new Set<BlockClassificationEnum>(BLOCK_CLASSIFICATIONS)
+
+const isRenderedBlockClassification = (classification: BlockClassificationEnum): classification is RenderedBlockClassification => {
+  return BLOCK_CLASSIFICATION_SET.has(classification)
+}
+
+const createEmptyBlockGroups = (): BlockGroups => ({
+  [DEFAULT_BLOCK_CLASSIFICATION]: [],
+  [QUESTION_UNDERSTAND_BLOCK_CLASSIFICATION]: [],
+  [LOGIC_BLOCK_CLASSIFICATION]: [],
+  [TRANSFORM_BLOCK_CLASSIFICATION]: [],
+  [UTILITIES_BLOCK_CLASSIFICATION]: [],
+})
 
 const Blocks = ({
   searchText,
@@ -56,38 +86,44 @@ const Blocks = ({
     checkValid: () => ({ isValid: true }),
   }) as NodeDefault)
 
+  const hasKnowledgeBaseNode = store.getState().getNodes().some(node => node.data.type === BlockEnum.KnowledgeBase)
+
   const groups = useMemo(() => {
-    return BLOCK_CLASSIFICATIONS.reduce((acc, classification) => {
-      const grouped = groupBy(blocks, 'metaData.classification')
-      const list = (grouped[classification] || []).filter((block) => {
-        // Filter out trigger types from Blocks tab
-        if (block.metaData.type === BlockEnum.TriggerWebhook
-          || block.metaData.type === BlockEnum.TriggerSchedule
-          || block.metaData.type === BlockEnum.TriggerPlugin) {
-          return false
-        }
+    const normalizedSearchText = searchText.toLowerCase()
+    const availableBlockTypes = new Set(availableBlocksTypes)
+    const nextGroups = createEmptyBlockGroups()
 
-        return block.metaData.title.toLowerCase().includes(searchText.toLowerCase()) && availableBlocksTypes.includes(block.metaData.type)
-      })
+    blocks.forEach((block) => {
+      const { classification, title, type } = block.metaData
 
-      return {
-        ...acc,
-        [classification]: list,
-      }
-    }, {} as Record<string, typeof blocks>)
-  }, [blocks, searchText, availableBlocksTypes])
+      if (!isRenderedBlockClassification(classification))
+        return
+
+      if (HIDDEN_BLOCK_TYPES.has(type))
+        return
+
+      if (hasKnowledgeBaseNode && type === BlockEnum.KnowledgeBase)
+        return
+
+      if (!availableBlockTypes.has(type))
+        return
+
+      if (!title.toLowerCase().includes(normalizedSearchText))
+        return
+
+      nextGroups[classification].push(block)
+    })
+
+    BLOCK_CLASSIFICATIONS.forEach((classification) => {
+      nextGroups[classification].sort((a, b) => (a.metaData.sort || 0) - (b.metaData.sort || 0))
+    })
+
+    return nextGroups
+  }, [blocks, searchText, availableBlocksTypes, hasKnowledgeBaseNode])
   const isEmpty = Object.values(groups).every(list => !list.length)
 
-  const renderGroup = useCallback((classification: BlockClassificationEnum) => {
-    const list = groups[classification]!.sort((a, b) => (a.metaData.sort || 0) - (b.metaData.sort || 0))
-    const { getNodes } = store.getState()
-    const nodes = getNodes()
-    const hasKnowledgeBaseNode = nodes.some(node => node.data.type === BlockEnum.KnowledgeBase)
-    const filteredList = list.filter((block) => {
-      if (hasKnowledgeBaseNode)
-        return block.metaData.type !== BlockEnum.KnowledgeBase
-      return true
-    })
+  const renderGroup = useCallback((classification: RenderedBlockClassification) => {
+    const list = groups[classification]
 
     return (
       <div
@@ -95,7 +131,7 @@ const Blocks = ({
         className="mb-1 last-of-type:mb-0"
       >
         {
-          classification !== '-' && !!filteredList.length && (
+          classification !== DEFAULT_BLOCK_CLASSIFICATION && !!list.length && (
             <div className="flex h-[22px] items-start px-3 text-xs font-medium text-text-tertiary">
               {t(`tabs.${classification}`, { ns: 'workflow' })}
             </div>
@@ -106,7 +142,7 @@ const Blocks = ({
           // from the node that gets added on click (inspector + canvas), so
           // hover/focus-only activation is a11y-safe. See
           // packages/dify-ui/AGENTS.md → Overlay Primitive Selection.
-          filteredList.map(block => (
+          list.map(block => (
             <PreviewCardTrigger
               key={block.metaData.type}
               delay={150}
@@ -138,7 +174,7 @@ const Blocks = ({
         }
       </div>
     )
-  }, [groups, onSelect, previewCardHandle, t, store])
+  }, [groups, onSelect, previewCardHandle, t])
 
   return (
     <div className="max-h-[480px] max-w-[500px] overflow-y-auto p-1">

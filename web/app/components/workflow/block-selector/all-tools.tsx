@@ -87,8 +87,8 @@ const AllTools = ({
   const hasSearchText = trimmedSearchText.length > 0
   const hasTags = tags.length > 0
   const hasFilter = hasSearchText || hasTags
-  const isMatchingKeywords = (text: string, keywords: string) => {
-    return text.toLowerCase().includes(keywords.toLowerCase())
+  const isMatchingKeywords = (text: string, normalizedKeywords: string) => {
+    return text.toLowerCase().includes(normalizedKeywords)
   }
   const allProviders = useMemo(() => [...buildInTools, ...customTools, ...workflowTools, ...mcpTools], [buildInTools, customTools, workflowTools, mcpTools])
   const providerMap = useMemo(() => {

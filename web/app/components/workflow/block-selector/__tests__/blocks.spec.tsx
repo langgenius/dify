@@ -17,10 +17,15 @@ vi.mock('reactflow', () => ({
   }),
 }))
 
-const createBlock = (type: BlockEnum, title: string, classification = BlockClassificationEnum.Default): NodeDefault => ({
+const createBlock = (
+  type: BlockEnum,
+  title: string,
+  classification = BlockClassificationEnum.Default,
+  sort = 0,
+): NodeDefault => ({
   metaData: {
     classification,
-    sort: 0,
+    sort,
     type,
     title,
     author: 'Dify',
@@ -75,5 +80,24 @@ describe('Blocks', () => {
     )
 
     expect(screen.getByText('workflow.tabs.noResult')).toBeInTheDocument()
+  })
+
+  it('sorts matching blocks without mutating the provided block list', () => {
+    const blocks = [
+      createBlock(BlockEnum.Code, 'Code', BlockClassificationEnum.Transform, 2),
+      createBlock(BlockEnum.TemplateTransform, 'Template', BlockClassificationEnum.Transform, 1),
+    ]
+
+    render(
+      <Blocks
+        searchText=""
+        onSelect={vi.fn()}
+        availableBlocksTypes={[BlockEnum.Code, BlockEnum.TemplateTransform]}
+        blocks={blocks}
+      />,
+    )
+
+    expect(screen.getByText('Template').compareDocumentPosition(screen.getByText('Code')) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(blocks.map(block => block.metaData.type)).toEqual([BlockEnum.Code, BlockEnum.TemplateTransform])
   })
 })
