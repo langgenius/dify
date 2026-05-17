@@ -6,11 +6,11 @@ from functools import lru_cache
 from typing import TYPE_CHECKING, Any, cast, final, override
 
 from sqlalchemy import select
-from sqlalchemy.orm import Session
 
 from configs import dify_config
 from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, DifyRunContext
 from core.app.llm.model_access import build_dify_model_access, fetch_model_config
+from core.db.session_factory import session_factory
 from core.helper.code_executor.code_executor import (
     CodeExecutionError,
     CodeExecutor,
@@ -39,7 +39,6 @@ from core.workflow.nodes.agent.plugin_strategy_adapter import (
 from core.workflow.nodes.agent.runtime_support import AgentRuntimeSupport
 from core.workflow.system_variables import SystemVariableKey, get_system_text, system_variable_selector
 from core.workflow.template_rendering import CodeExecutorJinja2TemplateRenderer
-from extensions.ext_database import db
 from graphon.entities.base_node_data import BaseNodeData
 from graphon.entities.graph_config import NodeConfigDict, NodeConfigDictAdapter
 from graphon.enums import BuiltinNodeTypes, NodeType
@@ -229,10 +228,14 @@ def fetch_memory(
     node_data_memory: MemoryConfig | None,
     model_instance: ModelInstance,
 ) -> TokenBufferMemory | None:
+    """Build prompt memory for node construction without requiring Flask-local state."""
     if not node_data_memory or not conversation_id:
         return None
 
-    with Session(db.engine, expire_on_commit=False) as session:
+    # Node construction can happen in graph initialization paths where Flask's
+    # app context is not active. Use the app-configured session factory instead
+    # of resolving db.engine through Flask-SQLAlchemy's current_app proxy.
+    with session_factory.create_session() as session:
         stmt = select(Conversation).where(Conversation.app_id == app_id, Conversation.id == conversation_id)
         conversation = session.scalar(stmt)
         if not conversation:

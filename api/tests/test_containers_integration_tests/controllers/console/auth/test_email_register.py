@@ -143,7 +143,118 @@ class TestEmailRegisterResetApi:
                 response = EmailRegisterResetApi().post()
 
         assert response == {"result": "success", "data": {"access_token": "a", "refresh_token": "r"}}
-        mock_create_account.assert_called_once_with("invitee@example.com", "ValidPass123!")
+        mock_create_account.assert_called_once_with(
+            email="invitee@example.com",
+            password="ValidPass123!",
+            timezone=None,
+            language=None,
+        )
+        mock_reset_login_rate.assert_called_once_with("invitee@example.com")
+        mock_revoke_token.assert_called_once_with("token-123")
+        mock_extract_ip.assert_called_once()
+
+    @patch("controllers.console.auth.email_register.AccountService.reset_login_error_rate_limit")
+    @patch("controllers.console.auth.email_register.AccountService.login")
+    @patch("controllers.console.auth.email_register.EmailRegisterResetApi._create_new_account")
+    @patch("controllers.console.auth.email_register.AccountService.get_account_by_email_with_case_fallback")
+    @patch("controllers.console.auth.email_register.AccountService.revoke_email_register_token")
+    @patch("controllers.console.auth.email_register.AccountService.get_email_register_data")
+    @patch("controllers.console.auth.email_register.extract_remote_ip", return_value="127.0.0.1")
+    def test_reset_passes_timezone_to_new_account(
+        self,
+        mock_extract_ip,
+        mock_get_data,
+        mock_revoke_token,
+        mock_get_account,
+        mock_create_account,
+        mock_login,
+        mock_reset_login_rate,
+        app: Flask,
+    ):
+        mock_get_data.return_value = {"phase": "register", "email": "Invitee@Example.com"}
+        mock_create_account.return_value = MagicMock()
+        token_pair = MagicMock()
+        token_pair.model_dump.return_value = {"access_token": "a", "refresh_token": "r"}
+        mock_login.return_value = token_pair
+        mock_get_account.return_value = None
+
+        feature_flags = SimpleNamespace(enable_email_password_login=True, is_allow_register=True)
+        with (
+            patch("controllers.console.wraps.dify_config", SimpleNamespace(EDITION="CLOUD")),
+            patch("controllers.console.wraps.FeatureService.get_system_features", return_value=feature_flags),
+        ):
+            with app.test_request_context(
+                "/email-register",
+                method="POST",
+                json={
+                    "token": "token-123",
+                    "new_password": "ValidPass123!",
+                    "password_confirm": "ValidPass123!",
+                    "timezone": "Asia/Shanghai",
+                },
+            ):
+                response = EmailRegisterResetApi().post()
+
+        assert response == {"result": "success", "data": {"access_token": "a", "refresh_token": "r"}}
+        mock_create_account.assert_called_once_with(
+            email="invitee@example.com",
+            password="ValidPass123!",
+            timezone="Asia/Shanghai",
+            language=None,
+        )
+        mock_reset_login_rate.assert_called_once_with("invitee@example.com")
+        mock_revoke_token.assert_called_once_with("token-123")
+        mock_extract_ip.assert_called_once()
+
+    @patch("controllers.console.auth.email_register.AccountService.reset_login_error_rate_limit")
+    @patch("controllers.console.auth.email_register.AccountService.login")
+    @patch("controllers.console.auth.email_register.EmailRegisterResetApi._create_new_account")
+    @patch("controllers.console.auth.email_register.AccountService.get_account_by_email_with_case_fallback")
+    @patch("controllers.console.auth.email_register.AccountService.revoke_email_register_token")
+    @patch("controllers.console.auth.email_register.AccountService.get_email_register_data")
+    @patch("controllers.console.auth.email_register.extract_remote_ip", return_value="127.0.0.1")
+    def test_reset_passes_language_to_new_account(
+        self,
+        mock_extract_ip,
+        mock_get_data,
+        mock_revoke_token,
+        mock_get_account,
+        mock_create_account,
+        mock_login,
+        mock_reset_login_rate,
+        app: Flask,
+    ):
+        mock_get_data.return_value = {"phase": "register", "email": "Invitee@Example.com"}
+        mock_create_account.return_value = MagicMock()
+        token_pair = MagicMock()
+        token_pair.model_dump.return_value = {"access_token": "a", "refresh_token": "r"}
+        mock_login.return_value = token_pair
+        mock_get_account.return_value = None
+
+        feature_flags = SimpleNamespace(enable_email_password_login=True, is_allow_register=True)
+        with (
+            patch("controllers.console.wraps.dify_config", SimpleNamespace(EDITION="CLOUD")),
+            patch("controllers.console.wraps.FeatureService.get_system_features", return_value=feature_flags),
+        ):
+            with app.test_request_context(
+                "/email-register",
+                method="POST",
+                json={
+                    "token": "token-123",
+                    "new_password": "ValidPass123!",
+                    "password_confirm": "ValidPass123!",
+                    "language": "zh-Hans",
+                },
+            ):
+                response = EmailRegisterResetApi().post()
+
+        assert response == {"result": "success", "data": {"access_token": "a", "refresh_token": "r"}}
+        mock_create_account.assert_called_once_with(
+            email="invitee@example.com",
+            password="ValidPass123!",
+            timezone=None,
+            language="zh-Hans",
+        )
         mock_reset_login_rate.assert_called_once_with("invitee@example.com")
         mock_revoke_token.assert_called_once_with("token-123")
         mock_extract_ip.assert_called_once()

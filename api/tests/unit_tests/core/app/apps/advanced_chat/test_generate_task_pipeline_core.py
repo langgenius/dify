@@ -234,9 +234,19 @@ class TestAdvancedChatGenerateTaskPipeline:
         )
         pipeline._workflow_response_converter.workflow_start_to_stream_response = lambda **kwargs: "started"
 
+        # Track database operations for verification
+        executed_statements = []
+
         @contextmanager
         def _fake_session():
-            yield SimpleNamespace()
+            sess = SimpleNamespace()
+
+            def _execute(stmt):
+                executed_statements.append(stmt)
+                return SimpleNamespace()
+
+            sess.execute = _execute
+            yield sess
 
         monkeypatch.setattr(pipeline, "_database_session", _fake_session)
         monkeypatch.setattr(pipeline, "_get_message", lambda **kwargs: SimpleNamespace())
@@ -245,6 +255,14 @@ class TestAdvancedChatGenerateTaskPipeline:
 
         assert pipeline._workflow_run_id == "run-id"
         assert responses == ["started"]
+
+        # Verify database operation was executed
+        assert len(executed_statements) == 1
+        # Verify the UPDATE statement targets the correct message and sets workflow_run_id
+        update_stmt = executed_statements[0]
+        stmt_str = str(update_stmt)
+        assert "UPDATE messages" in stmt_str
+        assert "WHERE messages.id" in stmt_str
 
     def test_message_end_to_stream_response_strips_annotation_reply(self):
         pipeline = _make_pipeline()

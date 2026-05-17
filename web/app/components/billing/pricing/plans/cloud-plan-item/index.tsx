@@ -198,7 +198,7 @@ const CloudPlanItem: FC<CloudPlanItemProps> = ({
       >
         <DialogContent
           backdropProps={{ forceRender: true }}
-          className="w-[520px] overflow-visible"
+          className="w-[520px]"
         >
           <DialogCloseButton
             aria-label={t('operation.close', { ns: 'common' })}

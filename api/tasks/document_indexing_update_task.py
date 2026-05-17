@@ -7,10 +7,12 @@ from sqlalchemy import delete, select
 
 from core.db.session_factory import session_factory
 from core.indexing_runner import DocumentIsPausedError, IndexingRunner
+from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
 from core.rag.index_processor.index_processor_factory import IndexProcessorFactory
 from libs.datetime_utils import naive_utc_now
 from models.dataset import Dataset, Document, DocumentSegment
 from models.enums import IndexingStatus
+from tasks.generate_summary_index_task import generate_summary_index_task
 
 logger = logging.getLogger(__name__)
 
@@ -70,6 +72,7 @@ def document_indexing_update_task(dataset_id: str, document_id: str):
             segment_delete_stmt = delete(DocumentSegment).where(DocumentSegment.document_id == document_id)
             session.execute(segment_delete_stmt)
 
+    has_error = False
     try:
         indexing_runner = IndexingRunner()
         indexing_runner.run([document])
@@ -77,5 +80,45 @@ def document_indexing_update_task(dataset_id: str, document_id: str):
         logger.info(click.style(f"update document: {document.id} latency: {end_at - start_at}", fg="green"))
     except DocumentIsPausedError as ex:
         logger.info(click.style(str(ex), fg="yellow"))
+        has_error = True
     except Exception:
         logger.exception("document_indexing_update_task failed, document_id: %s", document_id)
+        has_error = True
+
+    if has_error:
+        return
+
+    # Trigger summary index generation for the updated document if enabled.
+    # Only generate for high_quality indexing technique and when summary_index_setting is enabled.
+    with session_factory.create_session() as session:
+        dataset = session.scalar(select(Dataset).where(Dataset.id == dataset_id).limit(1))
+        if not dataset:
+            logger.warning("Dataset %s not found after update indexing", dataset_id)
+            return
+
+        if dataset.indexing_technique == IndexTechniqueType.HIGH_QUALITY:
+            summary_index_setting = dataset.summary_index_setting
+            if summary_index_setting and summary_index_setting.get("enable"):
+                session.expire_all()
+                document = session.scalar(
+                    select(Document).where(Document.id == document_id, Document.dataset_id == dataset_id).limit(1)
+                )
+                if (
+                    document
+                    and document.indexing_status == IndexingStatus.COMPLETED
+                    and document.doc_form != IndexStructureType.QA_INDEX
+                    and document.need_summary is True
+                ):
+                    try:
+                        generate_summary_index_task.delay(dataset.id, document.id, None)
+                        logger.info(
+                            "Queued summary index generation task for document %s in dataset %s "
+                            "after update indexing completed",
+                            document.id,
+                            dataset.id,
+                        )
+                    except Exception:
+                        logger.exception(
+                            "Failed to queue summary index generation task for document %s after update",
+                            document.id,
+                        )
