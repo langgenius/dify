@@ -39,6 +39,7 @@ class _TokenData(TypedDict, total=False):
     token_type: str
     code: str
     old_email: str
+    phase: str
 
 
 _token_data_adapter: TypeAdapter[_TokenData] = TypeAdapter(_TokenData)
