@@ -36,8 +36,7 @@ describe('Checkbox', () => {
     await expect.element(checkbox).toHaveAttribute('aria-checked', 'mixed')
     await expect.element(checkbox).toHaveAttribute('data-indeterminate', '')
     expect(screen.container.querySelector('.i-ri-check-line')).not.toBeInTheDocument()
-    expect(screen.container.querySelector('span span.h-\\[1\\.5px\\]')).toBeInTheDocument()
-    expect(screen.container.querySelector('span span.w-\\[7px\\]')).toBeInTheDocument()
+    expect(screen.container.querySelector('span span.rounded-full.bg-current')).toBeInTheDocument()
   })
 
   it('should call onCheckedChange with the next checked value', async () => {
