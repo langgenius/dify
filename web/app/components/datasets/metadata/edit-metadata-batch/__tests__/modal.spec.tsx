@@ -62,10 +62,20 @@ vi.mock('../edit-row', () => ({
     <div role="group" aria-label={`Edit metadata ${payload.name}`}>
       <span>{payload.name}</span>
       <button type="button" onClick={() => onChange({ ...payload, value: 'changed', isUpdated: true, updateType: UpdateType.changeValue })}>
-        Change {payload.name}
+        Change
+        {' '}
+        {payload.name}
       </button>
-      <button type="button" onClick={() => onRemove(payload.id)}>Remove {payload.name}</button>
-      <button type="button" onClick={() => onReset(payload.id)}>Reset {payload.name}</button>
+      <button type="button" onClick={() => onRemove(payload.id)}>
+        Remove
+        {' '}
+        {payload.name}
+      </button>
+      <button type="button" onClick={() => onReset(payload.id)}>
+        Reset
+        {' '}
+        {payload.name}
+      </button>
     </div>
   ),
 }))
@@ -74,8 +84,16 @@ vi.mock('../add-row', () => ({
   default: ({ payload, onChange, onRemove }: AddRowProps) => (
     <div role="group" aria-label={`Added metadata ${payload.name}`}>
       <span>{payload.name}</span>
-      <button type="button" onClick={() => onChange({ ...payload, value: 'new_value' })}>Change {payload.name}</button>
-      <button type="button" onClick={onRemove}>Remove {payload.name}</button>
+      <button type="button" onClick={() => onChange({ ...payload, value: 'new_value' })}>
+        Change
+        {' '}
+        {payload.name}
+      </button>
+      <button type="button" onClick={onRemove}>
+        Remove
+        {' '}
+        {payload.name}
+      </button>
     </div>
   ),
 }))
