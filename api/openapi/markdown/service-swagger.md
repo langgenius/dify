@@ -2136,11 +2136,11 @@ Returns a list of available models for the specified model type.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| content |  |  | No |
-| created_at |  |  | No |
-| hit_count |  |  | No |
+| content | string |  | No |
+| created_at | integer |  | No |
+| hit_count | integer |  | No |
 | id | string |  | Yes |
-| question |  |  | No |
+| question | string |  | No |
 
 #### AnnotationCreatePayload
 
@@ -2172,13 +2172,13 @@ Returns a list of available models for the specified model type.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | auto_generate_name | boolean | Auto generate conversation name | No |
-| conversation_id |  | Conversation UUID | No |
-| files |  |  | No |
+| conversation_id | string | Conversation UUID | No |
+| files | [ object ] |  | No |
 | inputs | object |  | Yes |
 | query | string |  | Yes |
-| response_mode |  |  | No |
+| response_mode | string | *Enum:* `"blocking"`, `"streaming"` | No |
 | retriever_from | string |  | No |
-| workflow_id |  | Workflow ID for advanced chat | No |
+| workflow_id | string | Workflow ID for advanced chat | No |
 
 #### ChildChunkCreatePayload
 
@@ -2190,7 +2190,7 @@ Returns a list of available models for the specified model type.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| keyword |  |  | No |
+| keyword | string |  | No |
 | limit | integer |  | No |
 | page | integer |  | No |
 
@@ -2204,10 +2204,10 @@ Returns a list of available models for the specified model type.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| files |  |  | No |
+| files | [ object ] |  | No |
 | inputs | object |  | Yes |
 | query | string |  | No |
-| response_mode |  |  | No |
+| response_mode | string | *Enum:* `"blocking"`, `"streaming"` | No |
 | retriever_from | string |  | No |
 
 #### Condition
@@ -2224,7 +2224,7 @@ Condition detail
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| last_id |  | Last conversation ID for pagination | No |
+| last_id | string | Last conversation ID for pagination | No |
 | limit | integer | Number of conversations to return | No |
 | sort_by | string | Sort order for conversations<br>*Enum:* `"-created_at"`, `"-updated_at"`, `"created_at"`, `"updated_at"` | No |
 
@@ -2233,7 +2233,7 @@ Condition detail
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | auto_generate | boolean |  | No |
-| name |  |  | No |
+| name | string |  | No |
 
 #### ConversationVariableInfiniteScrollPaginationResponse
 
@@ -2247,12 +2247,12 @@ Condition detail
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| created_at |  |  | No |
-| description |  |  | No |
+| created_at | integer |  | No |
+| description | string |  | No |
 | id | string |  | Yes |
 | name | string |  | Yes |
-| updated_at |  |  | No |
-| value |  |  | No |
+| updated_at | integer |  | No |
+| value | string |  | No |
 | value_type | string |  | Yes |
 
 #### ConversationVariableUpdatePayload
@@ -2265,15 +2265,15 @@ Condition detail
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| last_id |  | Last variable ID for pagination | No |
+| last_id | string | Last variable ID for pagination | No |
 | limit | integer | Number of variables to return | No |
-| variable_name |  | Filter variables by name | No |
+| variable_name | string | Filter variables by name | No |
 
 #### DataSetTag
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| binding_count |  |  | No |
+| binding_count | string |  | No |
 | id | string |  | Yes |
 | name | string |  | Yes |
 | type | string |  | Yes |
@@ -2283,23 +2283,23 @@ Condition detail
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | description | string | Dataset description (max 400 chars) | No |
-| embedding_model |  |  | No |
-| embedding_model_provider |  |  | No |
-| external_knowledge_api_id |  |  | No |
-| external_knowledge_id |  |  | No |
-| indexing_technique |  |  | No |
+| embedding_model | string |  | No |
+| embedding_model_provider | string |  | No |
+| external_knowledge_api_id | string |  | No |
+| external_knowledge_id | string |  | No |
+| indexing_technique | string | *Enum:* `"economy"`, `"high_quality"` | No |
 | name | string |  | Yes |
-| permission |  |  | No |
+| permission | [DatasetPermissionEnum](#datasetpermissionenum) |  | No |
 | provider | string |  | No |
-| retrieval_model |  |  | No |
-| summary_index_setting |  |  | No |
+| retrieval_model | [RetrievalModel](#retrievalmodel) |  | No |
+| summary_index_setting | object |  | No |
 
 #### DatasetListQuery
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | include_all | boolean | Include all datasets | No |
-| keyword |  | Search keyword | No |
+| keyword | string | Search keyword | No |
 | limit | integer | Number of items per page | No |
 | page | integer | Page number | No |
 | tag_ids | [ string ] | Filter by tag IDs | No |
@@ -2314,23 +2314,23 @@ Condition detail
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| description |  | Dataset description (max 400 chars) | No |
-| embedding_model |  |  | No |
-| embedding_model_provider |  |  | No |
-| external_knowledge_api_id |  |  | No |
-| external_knowledge_id |  |  | No |
-| external_retrieval_model |  |  | No |
-| indexing_technique |  |  | No |
-| name |  |  | No |
-| partial_member_list |  |  | No |
-| permission |  |  | No |
-| retrieval_model |  |  | No |
+| description | string | Dataset description (max 400 chars) | No |
+| embedding_model | string |  | No |
+| embedding_model_provider | string |  | No |
+| external_knowledge_api_id | string |  | No |
+| external_knowledge_id | string |  | No |
+| external_retrieval_model | object |  | No |
+| indexing_technique | string | *Enum:* `"economy"`, `"high_quality"` | No |
+| name | string |  | No |
+| partial_member_list | [ object ] |  | No |
+| permission | [DatasetPermissionEnum](#datasetpermissionenum) |  | No |
+| retrieval_model | [RetrievalModel](#retrievalmodel) |  | No |
 
 #### DatasourceNodeRunPayload
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| credential_id |  |  | No |
+| credential_id | string |  | No |
 | datasource_type | string |  | Yes |
 | inputs | object |  | Yes |
 | is_published | boolean |  | Yes |
@@ -2347,10 +2347,10 @@ Request payload for bulk downloading documents as a zip archive.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| keyword |  | Search keyword | No |
+| keyword | string | Search keyword | No |
 | limit | integer | Number of items per page | No |
 | page | integer | Page number | No |
-| status |  | Document status filter | No |
+| status | string | Document status filter | No |
 
 #### DocumentMetadataOperation
 
@@ -2366,13 +2366,13 @@ Request payload for bulk downloading documents as a zip archive.
 | ---- | ---- | ----------- | -------- |
 | doc_form | string |  | No |
 | doc_language | string |  | No |
-| embedding_model |  |  | No |
-| embedding_model_provider |  |  | No |
-| indexing_technique |  |  | No |
+| embedding_model | string |  | No |
+| embedding_model_provider | string |  | No |
+| indexing_technique | string |  | No |
 | name | string |  | Yes |
-| original_document_id |  |  | No |
-| process_rule |  |  | No |
-| retrieval_model |  |  | No |
+| original_document_id | string |  | No |
+| process_rule | [ProcessRule](#processrule) |  | No |
+| retrieval_model | [RetrievalModel](#retrievalmodel) |  | No |
 | text | string |  | Yes |
 
 #### DocumentTextUpdate
@@ -2381,10 +2381,10 @@ Request payload for bulk downloading documents as a zip archive.
 | ---- | ---- | ----------- | -------- |
 | doc_form | string |  | No |
 | doc_language | string |  | No |
-| name |  |  | No |
-| process_rule |  |  | No |
-| retrieval_model |  |  | No |
-| text |  |  | No |
+| name | string |  | No |
+| process_rule | [ProcessRule](#processrule) |  | No |
+| retrieval_model | [RetrievalModel](#retrievalmodel) |  | No |
+| text | string |  | No |
 
 #### FeedbackListQuery
 
@@ -2403,29 +2403,29 @@ Request payload for bulk downloading documents as a zip archive.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| conversation_id |  |  | No |
-| created_at |  |  | No |
-| created_by |  |  | No |
-| extension |  |  | No |
-| file_key |  |  | No |
+| conversation_id | string |  | No |
+| created_at | integer |  | No |
+| created_by | string |  | No |
+| extension | string |  | No |
+| file_key | string |  | No |
 | id | string |  | Yes |
-| mime_type |  |  | No |
+| mime_type | string |  | No |
 | name | string |  | Yes |
-| original_url |  |  | No |
-| preview_url |  |  | No |
+| original_url | string |  | No |
+| preview_url | string |  | No |
 | size | integer |  | Yes |
-| source_url |  |  | No |
-| tenant_id |  |  | No |
-| user_id |  |  | No |
+| source_url | string |  | No |
+| tenant_id | string |  | No |
+| user_id | string |  | No |
 
 #### HitTestingPayload
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| attachment_ids |  |  | No |
-| external_retrieval_model |  |  | No |
+| attachment_ids | [ string ] |  | No |
+| external_retrieval_model | object |  | No |
 | query | string |  | Yes |
-| retrieval_model |  |  | No |
+| retrieval_model | [RetrievalModel](#retrievalmodel) |  | No |
 
 #### HumanInputFormSubmitPayload
 
@@ -2444,15 +2444,15 @@ Request payload for bulk downloading documents as a zip archive.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| content |  |  | No |
-| rating |  |  | No |
+| content | string |  | No |
+| rating | string | *Enum:* `"dislike"`, `"like"` | No |
 
 #### MessageListQuery
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | conversation_id | string | Conversation UUID | Yes |
-| first_id |  | First message ID for pagination | No |
+| first_id | string | First message ID for pagination | No |
 | limit | integer | Number of messages to return (1-100) | No |
 
 #### MetadataArgs
@@ -2476,8 +2476,8 @@ Metadata Filtering Condition.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| conditions |  |  | No |
-| logical_operator |  |  | No |
+| conditions | [ [Condition](#condition) ] |  | No |
+| logical_operator | string | *Enum:* `"and"`, `"or"` | No |
 
 #### MetadataOperationData
 
@@ -2516,14 +2516,14 @@ Metadata operation data
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | mode | string | *Enum:* `"automatic"`, `"custom"`, `"hierarchical"` | Yes |
-| rules |  |  | No |
+| rules | [Rule](#rule) |  | No |
 
 #### RerankingModel
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| reranking_model_name |  |  | No |
-| reranking_provider_name |  |  | No |
+| reranking_model_name | string |  | No |
+| reranking_provider_name | string |  | No |
 
 #### RetrievalMethod
 
@@ -2535,49 +2535,49 @@ Metadata operation data
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| metadata_filtering_conditions |  |  | No |
+| metadata_filtering_conditions | [MetadataFilteringCondition](#metadatafilteringcondition) |  | No |
 | reranking_enable | boolean |  | Yes |
-| reranking_mode |  |  | No |
-| reranking_model |  |  | No |
-| score_threshold |  |  | No |
+| reranking_mode | string |  | No |
+| reranking_model | [RerankingModel](#rerankingmodel) |  | No |
+| score_threshold | number |  | No |
 | score_threshold_enabled | boolean |  | Yes |
 | search_method | [RetrievalMethod](#retrievalmethod) |  | Yes |
 | top_k | integer |  | Yes |
-| weights |  |  | No |
+| weights | [WeightModel](#weightmodel) |  | No |
 
 #### Rule
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| parent_mode |  |  | No |
-| pre_processing_rules |  |  | No |
-| segmentation |  |  | No |
-| subchunk_segmentation |  |  | No |
+| parent_mode | string | *Enum:* `"full-doc"`, `"paragraph"` | No |
+| pre_processing_rules | [ [PreProcessingRule](#preprocessingrule) ] |  | No |
+| segmentation | [Segmentation](#segmentation) |  | No |
+| subchunk_segmentation | [Segmentation](#segmentation) |  | No |
 
 #### SegmentCreatePayload
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| segments |  |  | No |
+| segments | [ object ] |  | No |
 
 #### SegmentListQuery
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| keyword |  |  | No |
+| keyword | string |  | No |
 | status | [ string ] |  | No |
 
 #### SegmentUpdateArgs
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| answer |  |  | No |
-| attachment_ids |  |  | No |
-| content |  |  | No |
-| enabled |  |  | No |
-| keywords |  |  | No |
+| answer | string |  | No |
+| attachment_ids | [ string ] |  | No |
+| content | string |  | No |
+| enabled | boolean |  | No |
+| keywords | [ string ] |  | No |
 | regenerate_child_chunks | boolean |  | No |
-| summary |  |  | No |
+| summary | string |  | No |
 
 #### SegmentUpdatePayload
 
@@ -2607,7 +2607,7 @@ Metadata operation data
 | ---- | ---- | ----------- | -------- |
 | id | string |  | Yes |
 | is_anonymous | boolean |  | Yes |
-| session_id |  |  | No |
+| session_id | string |  | No |
 | type | string |  | Yes |
 
 #### TagBindingPayload
@@ -2635,7 +2635,7 @@ Accept the legacy single-tag Service API payload while exposing a normalized tag
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| tag_id |  |  | No |
+| tag_id | string |  | No |
 | tag_ids | [ string ] |  | No |
 | target_id | string |  | Yes |
 
@@ -2650,10 +2650,10 @@ Accept the legacy single-tag Service API payload while exposing a normalized tag
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| message_id |  | Message ID | No |
-| streaming |  | Enable streaming response | No |
-| text |  | Text to convert to audio | No |
-| voice |  | Voice to use for TTS | No |
+| message_id | string | Message ID | No |
+| streaming | boolean | Enable streaming response | No |
+| text | string | Text to convert to audio | No |
+| voice | string | Voice to use for TTS | No |
 
 #### WeightKeywordSetting
 
@@ -2665,9 +2665,9 @@ Accept the legacy single-tag Service API payload while exposing a normalized tag
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| keyword_setting |  |  | No |
-| vector_setting |  |  | No |
-| weight_type |  |  | No |
+| keyword_setting | [WeightKeywordSetting](#weightkeywordsetting) |  | No |
+| vector_setting | [WeightVectorSetting](#weightvectorsetting) |  | No |
+| weight_type | string | *Enum:* `"customized"`, `"keyword_first"`, `"semantic_first"` | No |
 
 #### WeightVectorSetting
 
@@ -2691,64 +2691,64 @@ Accept the legacy single-tag Service API payload while exposing a normalized tag
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| created_at |  |  | No |
-| created_by_account |  |  | No |
-| created_by_end_user |  |  | No |
-| created_by_role |  |  | No |
-| created_from |  |  | No |
+| created_at | integer |  | No |
+| created_by_account | [SimpleAccount](#simpleaccount) |  | No |
+| created_by_end_user | [SimpleEndUser](#simpleenduser) |  | No |
+| created_by_role | string |  | No |
+| created_from | string |  | No |
 | details |  |  | No |
 | id | string |  | Yes |
-| workflow_run |  |  | No |
+| workflow_run | [WorkflowRunForLogResponse](#workflowrunforlogresponse) |  | No |
 
 #### WorkflowLogQuery
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| created_at__after |  |  | No |
-| created_at__before |  |  | No |
-| created_by_account |  |  | No |
-| created_by_end_user_session_id |  |  | No |
-| keyword |  |  | No |
+| created_at__after | string |  | No |
+| created_at__before | string |  | No |
+| created_by_account | string |  | No |
+| created_by_end_user_session_id | string |  | No |
+| keyword | string |  | No |
 | limit | integer |  | No |
 | page | integer |  | No |
-| status |  |  | No |
+| status | string | *Enum:* `"failed"`, `"stopped"`, `"succeeded"` | No |
 
 #### WorkflowRunForLogResponse
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| created_at |  |  | No |
+| created_at | integer |  | No |
 | elapsed_time |  |  | No |
-| error |  |  | No |
-| exceptions_count |  |  | No |
-| finished_at |  |  | No |
+| error | string |  | No |
+| exceptions_count | integer |  | No |
+| finished_at | integer |  | No |
 | id | string |  | Yes |
-| status |  |  | No |
-| total_steps |  |  | No |
-| total_tokens |  |  | No |
-| triggered_from |  |  | No |
-| version |  |  | No |
+| status | string |  | No |
+| total_steps | integer |  | No |
+| total_tokens | integer |  | No |
+| triggered_from | string |  | No |
+| version | string |  | No |
 
 #### WorkflowRunPayload
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| files |  |  | No |
+| files | [ object ] |  | No |
 | inputs | object |  | Yes |
-| response_mode |  |  | No |
+| response_mode | string | *Enum:* `"blocking"`, `"streaming"` | No |
 
 #### WorkflowRunResponse
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| created_at |  |  | No |
+| created_at | integer |  | No |
 | elapsed_time |  |  | No |
-| error |  |  | No |
-| finished_at |  |  | No |
+| error | string |  | No |
+| finished_at | integer |  | No |
 | id | string |  | Yes |
 | inputs |  |  | No |
 | outputs | object |  | No |
 | status | string |  | Yes |
-| total_steps |  |  | No |
-| total_tokens |  |  | No |
+| total_steps | integer |  | No |
+| total_tokens | integer |  | No |
 | workflow_id | string |  | Yes |
