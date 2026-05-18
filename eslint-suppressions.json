@@ -1151,7 +1151,7 @@
   },
   "web/app/components/base/icons/src/vender/line/general/index.ts": {
     "no-barrel-files/no-barrel-files": {
-      "count": 12
+      "count": 11
     }
   },
   "web/app/components/base/icons/src/vender/line/images/index.ts": {
@@ -1416,14 +1416,6 @@
   },
   "web/app/components/base/message-log-modal/index.stories.tsx": {
     "no-console": {
-      "count": 1
-    },
-    "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
-  "web/app/components/base/message-log-modal/index.tsx": {
-    "react/set-state-in-effect": {
       "count": 1
     },
     "ts/no-explicit-any": {
@@ -2108,16 +2100,6 @@
       "count": 2
     }
   },
-  "web/app/components/datasets/metadata/metadata-dataset/dataset-metadata-drawer.tsx": {
-    "react/static-components": {
-      "count": 2
-    }
-  },
-  "web/app/components/datasets/metadata/metadata-dataset/select-metadata.tsx": {
-    "react/static-components": {
-      "count": 2
-    }
-  },
   "web/app/components/datasets/metadata/types.ts": {
     "erasable-syntax-only/enums": {
       "count": 2
@@ -2279,11 +2261,6 @@
   "web/app/components/header/account-setting/key-validator/declarations.ts": {
     "ts/no-explicit-any": {
       "count": 1
-    }
-  },
-  "web/app/components/header/account-setting/members-page/invite-modal/index.tsx": {
-    "react/set-state-in-effect": {
-      "count": 3
     }
   },
   "web/app/components/header/account-setting/members-page/transfer-ownership-modal/index.tsx": {
@@ -2960,11 +2937,6 @@
   "web/app/components/workflow-app/hooks/use-workflow-refresh-draft.ts": {
     "ts/no-explicit-any": {
       "count": 2
-    }
-  },
-  "web/app/components/workflow-app/hooks/use-workflow-run.ts": {
-    "ts/no-explicit-any": {
-      "count": 5
     }
   },
   "web/app/components/workflow-app/hooks/use-workflow-template.ts": {

@@ -30,7 +30,7 @@ from core.workflow.human_input_adapter import (
     WebAppDeliveryMethod,
     _WebAppDeliveryConfig,
 )
-from core.workflow.node_runtime import DifyHumanInputNodeRuntime
+from core.workflow.node_runtime import DifyFileReferenceFactory, DifyHumanInputNodeRuntime
 from core.workflow.system_variables import build_system_variables
 from graphon.entities import GraphInitParams
 from graphon.file import File, FileTransferMethod, FileType
@@ -176,8 +176,8 @@ def _build_human_input_node(
         data=typed_node_data,
         graph_init_params=graph_init_params,
         graph_runtime_state=graph_runtime_state,
+        file_reference_factory=DifyFileReferenceFactory(graph_init_params.run_context),
         runtime=runtime,
-        file_reference_factory=_TestFileReferenceFactory(),
     )
 
 
@@ -215,11 +215,11 @@ class TestDeliveryMethod:
         assert len(delivery_method.config.recipients.items) == 2
 
 
-class TestFormInput:
-    """Test FormInput entity."""
+class TestParagraphInputConfig:
+    """Test ParagraphInputConfig entity."""
 
-    def test_text_input_with_constant_default(self):
-        """Test text input with constant default value."""
+    def test_paragraph_input_with_constant_default(self):
+        """Test paragraph input with constant default value."""
         default = StringSource(type=ValueSourceType.CONSTANT, value="Enter your response here...")
 
         form_input = ParagraphInputConfig(output_variable_name="user_input", default=default)
@@ -230,8 +230,8 @@ class TestFormInput:
         assert form_input.default.type == ValueSourceType.CONSTANT
         assert form_input.default.value == "Enter your response here..."
 
-    def test_text_input_with_variable_default(self):
-        """Test text input with variable default value."""
+    def test_paragraph_input_with_variable_default(self):
+        """Test paragraph input with variable default value."""
         default = StringSource(type=ValueSourceType.VARIABLE, selector=["node_123", "output_var"])
 
         form_input = ParagraphInputConfig(output_variable_name="user_input", default=default)
@@ -250,7 +250,7 @@ class TestFormInput:
 
 
 class TestUserAction:
-    """Test UserAction entity."""
+    """Test UserActionConfig entity."""
 
     def test_user_action_creation(self):
         """Test user action creation."""

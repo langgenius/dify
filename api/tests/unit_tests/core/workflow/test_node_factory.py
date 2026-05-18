@@ -13,7 +13,8 @@ from graphon.enums import BuiltinNodeTypes, NodeType
 from graphon.nodes.code.entities import CodeLanguage
 from graphon.nodes.llm.entities import LLMNodeData
 from graphon.nodes.llm.node import LLMNode
-from graphon.variables.segments import StringSegment
+from graphon.nodes.parameter_extractor.entities import ParameterExtractorNodeData
+from graphon.variables.segments import ArrayObjectSegment, StringSegment
 
 
 def _assert_constructor_node_data(data, *, node_id: str, node_type: NodeType, version: str = "1") -> None:
@@ -108,9 +109,8 @@ class TestFetchMemory:
             def scalar(self, _stmt):
                 return None
 
-        monkeypatch.setattr(node_factory, "db", SimpleNamespace(engine=sentinel.engine))
+        monkeypatch.setattr(node_factory, "session_factory", SimpleNamespace(create_session=FakeSession))
         monkeypatch.setattr(node_factory, "select", MagicMock(return_value=FakeSelect()))
-        monkeypatch.setattr(node_factory, "Session", FakeSession)
 
         result = node_factory.fetch_memory(
             conversation_id="conversation-id",
@@ -143,9 +143,8 @@ class TestFetchMemory:
                 return conversation
 
         token_buffer_memory = MagicMock(return_value=memory)
-        monkeypatch.setattr(node_factory, "db", SimpleNamespace(engine=sentinel.engine))
+        monkeypatch.setattr(node_factory, "session_factory", SimpleNamespace(create_session=FakeSession))
         monkeypatch.setattr(node_factory, "select", MagicMock(return_value=FakeSelect()))
-        monkeypatch.setattr(node_factory, "Session", FakeSession)
         monkeypatch.setattr(node_factory, "TokenBufferMemory", token_buffer_memory)
 
         result = node_factory.fetch_memory(
@@ -160,6 +159,41 @@ class TestFetchMemory:
             conversation=conversation,
             model_instance=sentinel.model_instance,
         )
+
+    def test_uses_configured_session_factory_without_flask_app_context(self, monkeypatch: pytest.MonkeyPatch):
+        class FakeSelect:
+            def where(self, *_args):
+                return self
+
+        class FakeSession:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *_args):
+                return False
+
+            def scalar(self, _stmt):
+                return sentinel.conversation
+
+        class RaisingDB:
+            @property
+            def engine(self):
+                raise RuntimeError("Working outside of application context.")
+
+        token_buffer_memory = MagicMock(return_value=sentinel.memory)
+        monkeypatch.setattr(node_factory, "db", RaisingDB(), raising=False)
+        monkeypatch.setattr(node_factory, "session_factory", SimpleNamespace(create_session=FakeSession))
+        monkeypatch.setattr(node_factory, "select", MagicMock(return_value=FakeSelect()))
+        monkeypatch.setattr(node_factory, "TokenBufferMemory", token_buffer_memory)
+
+        result = node_factory.fetch_memory(
+            conversation_id="conversation-id",
+            app_id="app-id",
+            node_data_memory=object(),
+            model_instance=sentinel.model_instance,
+        )
+
+        assert result is sentinel.memory
 
 
 class TestDifyGraphInitContext:
@@ -418,7 +452,7 @@ class TestDifyNodeFactoryCreateNode:
         factory._jinja2_template_renderer = sentinel.jinja2_template_renderer
         factory._template_transform_max_output_length = 2048
         factory._http_request_http_client = sentinel.http_client
-        factory._bound_tool_file_manager_factory = sentinel.tool_file_manager_factory
+        factory._bound_tool_file_manager_factory = MagicMock(return_value=sentinel.tool_file_manager)
         factory._file_reference_factory = sentinel.file_reference_factory
         factory._prompt_message_serializer = sentinel.prompt_message_serializer
         factory._retriever_attachment_loader = sentinel.retriever_attachment_loader
@@ -430,6 +464,7 @@ class TestDifyNodeFactoryCreateNode:
         factory._http_request_config = sentinel.http_request_config
         factory._llm_credentials_provider = sentinel.credentials_provider
         factory._llm_model_factory = sentinel.model_factory
+        factory._build_retriever_attachment_loader = MagicMock(return_value=sentinel.retriever_attachment_loader)
         return factory
 
     def test_rejects_unknown_node_type(self, factory):
@@ -505,6 +540,7 @@ class TestDifyNodeFactoryCreateNode:
             (BuiltinNodeTypes.TEMPLATE_TRANSFORM, "TemplateTransformNode"),
             (BuiltinNodeTypes.HTTP_REQUEST, "HttpRequestNode"),
             (BuiltinNodeTypes.HUMAN_INPUT, "HumanInputNode"),
+            (BuiltinNodeTypes.TOOL, "ToolNode"),
             (KNOWLEDGE_INDEX_NODE_TYPE, "KnowledgeIndexNode"),
             (BuiltinNodeTypes.DATASOURCE, "DatasourceNode"),
             (BuiltinNodeTypes.KNOWLEDGE_RETRIEVAL, "KnowledgeRetrievalNode"),
@@ -545,14 +581,20 @@ class TestDifyNodeFactoryCreateNode:
         elif constructor_name == "HttpRequestNode":
             assert kwargs["http_request_config"] is sentinel.http_request_config
             assert kwargs["http_client"] is sentinel.http_client
-            assert kwargs["tool_file_manager_factory"] is sentinel.tool_file_manager_factory
+            assert kwargs["tool_file_manager_factory"] is factory._bound_tool_file_manager_factory
             assert kwargs["file_manager"] is sentinel.file_manager
             assert kwargs["file_reference_factory"] is sentinel.file_reference_factory
+            factory._bound_tool_file_manager_factory.assert_not_called()
         elif constructor_name == "HumanInputNode":
             assert kwargs["form_repository"] is form_repository
+            assert kwargs["file_reference_factory"] is sentinel.file_reference_factory
             assert kwargs["runtime"] is factory._human_input_runtime
             assert kwargs["file_reference_factory"] is sentinel.file_reference_factory
             factory._human_input_runtime.build_form_repository.assert_called_once_with()
+        elif constructor_name == "ToolNode":
+            assert kwargs["tool_file_manager"] is sentinel.tool_file_manager
+            assert kwargs["runtime"] is sentinel.tool_runtime
+            factory._bound_tool_file_manager_factory.assert_called_once_with()
         elif constructor_name == "DocumentExtractorNode":
             assert kwargs["unstructured_api_config"] is sentinel.unstructured_api_config
             assert kwargs["http_client"] is sentinel.http_client
@@ -814,6 +856,128 @@ class TestDifyNodeFactoryCreateNode:
         assert constructor_kwargs["memory"] is sentinel.memory
         for key, value in expected_extra_kwargs.items():
             assert constructor_kwargs[key] is value
+
+    def test_parameter_extractor_init_does_not_require_retriever_context(self, factory):
+        node_data = ParameterExtractorNodeData.model_validate(
+            {
+                "type": BuiltinNodeTypes.PARAMETER_EXTRACTOR,
+                "title": "Parameter Extractor",
+                "model": {"provider": "provider", "name": "model", "mode": "chat", "completion_params": {}},
+                "query": ["sys", "query"],
+                "parameters": [
+                    {
+                        "name": "topic",
+                        "type": "string",
+                        "description": "Topic",
+                        "required": True,
+                    }
+                ],
+                "reasoning_mode": "prompt",
+            }
+        )
+        factory._build_model_instance_for_llm_node = MagicMock(return_value=sentinel.model_instance)
+        factory._build_memory_for_llm_node = MagicMock(return_value=sentinel.memory)
+        factory._build_retriever_attachment_loader = MagicMock(side_effect=AssertionError("unexpected loader build"))
+
+        kwargs = factory._build_llm_compatible_node_init_kwargs(
+            node_class=sentinel.node_class,
+            node_data=node_data,
+            wrap_model_instance=True,
+            include_http_client=False,
+            include_llm_file_saver=False,
+            include_prompt_message_serializer=True,
+            include_retriever_attachment_loader=False,
+            include_jinja2_template_renderer=False,
+        )
+
+        assert "retriever_attachment_loader" not in kwargs
+        assert kwargs["prompt_message_serializer"] is sentinel.prompt_message_serializer
+        factory._build_retriever_attachment_loader.assert_not_called()
+
+
+class TestDifyNodeFactoryRetrieverAttachmentAccess:
+    @pytest.fixture
+    def factory(self):
+        factory = object.__new__(node_factory.DifyNodeFactory)
+        factory.graph_runtime_state = SimpleNamespace(variable_pool=MagicMock())
+        return factory
+
+    def test_retriever_attachment_loader_is_typed_for_llm_node_data_only(self):
+        annotations = node_factory.DifyNodeFactory._build_retriever_attachment_loader.__annotations__
+
+        assert annotations["node_data"] is LLMNodeData
+
+    def test_build_retriever_attachment_loader_uses_llm_context_selector(self, factory):
+        factory._file_reference_factory = sentinel.file_reference_factory
+        factory.graph_runtime_state.variable_pool.get.return_value = ArrayObjectSegment(
+            value=[
+                {
+                    "metadata": {
+                        "_source": "knowledge",
+                        "segment_id": "allowed-segment",
+                    }
+                }
+            ]
+        )
+        node_data = LLMNodeData.model_validate(
+            {
+                "type": BuiltinNodeTypes.LLM,
+                "title": "LLM",
+                "model": {"provider": "provider", "name": "model", "mode": "chat", "completion_params": {}},
+                "prompt_template": [{"role": "system", "text": "x"}],
+                "context": {"enabled": True, "variable_selector": ["knowledge-node", "result"]},
+                "vision": {"enabled": False},
+            }
+        )
+
+        loader = factory._build_retriever_attachment_loader(node_data)
+
+        assert loader._segment_access_checker is not None
+        assert loader._segment_access_checker("allowed-segment") is True
+        factory.graph_runtime_state.variable_pool.get.assert_called_once_with(["knowledge-node", "result"])
+
+    def test_checker_rejects_missing_context_selector_without_reading_variable_pool(self, factory):
+        checker = factory._build_retriever_segment_access_checker(None)
+
+        assert checker("segment-id") is False
+        factory.graph_runtime_state.variable_pool.get.assert_not_called()
+
+    def test_checker_rejects_non_knowledge_context_items(self, factory):
+        factory.graph_runtime_state.variable_pool.get.return_value = ArrayObjectSegment.model_construct(
+            value=[
+                "plain-text",
+                {"metadata": "not-a-mapping"},
+            ]
+        )
+
+        checker = factory._build_retriever_segment_access_checker(["knowledge-node", "result"])
+
+        assert checker("segment-id") is False
+
+    def test_checker_rejects_non_array_context_value(self, factory):
+        factory.graph_runtime_state.variable_pool.get.return_value = StringSegment(value="not knowledge context")
+
+        checker = factory._build_retriever_segment_access_checker(["knowledge-node", "result"])
+
+        assert checker("segment-id") is False
+
+    def test_checker_allows_only_segments_from_selected_knowledge_context(self, factory):
+        factory.graph_runtime_state.variable_pool.get.return_value = ArrayObjectSegment(
+            value=[
+                {
+                    "metadata": {
+                        "_source": "knowledge",
+                        "segment_id": "allowed-segment",
+                    }
+                }
+            ]
+        )
+
+        checker = factory._build_retriever_segment_access_checker(["knowledge-node", "result"])
+
+        assert checker("allowed-segment") is True
+        assert checker("other-segment") is False
+        factory.graph_runtime_state.variable_pool.get.assert_any_call(["knowledge-node", "result"])
 
 
 class TestDifyNodeFactoryModelInstance:

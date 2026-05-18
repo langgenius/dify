@@ -145,50 +145,51 @@ class WorkflowAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         """
         human_input_responses: list[HumanInputRequiredResponse] = []
         for stream_response in generator:
-            if isinstance(stream_response, ErrorStreamResponse):
-                raise stream_response.err
-            elif isinstance(stream_response, HumanInputRequiredResponse):
-                human_input_responses.append(stream_response)
-            elif isinstance(stream_response, WorkflowPauseStreamResponse):
-                return WorkflowAppPausedBlockingResponse(
-                    task_id=self._application_generate_entity.task_id,
-                    workflow_run_id=stream_response.data.workflow_run_id,
-                    data=WorkflowAppPausedBlockingResponse.Data(
-                        id=stream_response.data.workflow_run_id,
-                        workflow_id=self._workflow.id,
-                        status=stream_response.data.status,
-                        outputs=stream_response.data.outputs or {},
-                        error=None,
-                        elapsed_time=stream_response.data.elapsed_time,
-                        total_tokens=stream_response.data.total_tokens,
-                        total_steps=stream_response.data.total_steps,
-                        created_at=stream_response.data.created_at,
-                        finished_at=None,
-                        paused_nodes=stream_response.data.paused_nodes,
-                        reasons=stream_response.data.reasons,
-                    ),
-                )
-
-            elif isinstance(stream_response, WorkflowFinishStreamResponse):
-                return WorkflowAppBlockingResponse(
-                    task_id=self._application_generate_entity.task_id,
-                    workflow_run_id=stream_response.data.id,
-                    data=WorkflowAppBlockingResponse.Data(
-                        id=stream_response.data.id,
-                        workflow_id=stream_response.data.workflow_id,
-                        status=stream_response.data.status,
-                        outputs=stream_response.data.outputs,
-                        error=stream_response.data.error,
-                        elapsed_time=stream_response.data.elapsed_time,
-                        total_tokens=stream_response.data.total_tokens,
-                        total_steps=stream_response.data.total_steps,
-                        created_at=int(stream_response.data.created_at),
-                        finished_at=int(stream_response.data.finished_at) if stream_response.data.finished_at else None,
-                    ),
-                )
-
-            else:
-                continue
+            match stream_response:
+                case ErrorStreamResponse():
+                    raise stream_response.err
+                case HumanInputRequiredResponse():
+                    human_input_responses.append(stream_response)
+                case WorkflowPauseStreamResponse():
+                    return WorkflowAppPausedBlockingResponse(
+                        task_id=self._application_generate_entity.task_id,
+                        workflow_run_id=stream_response.data.workflow_run_id,
+                        data=WorkflowAppPausedBlockingResponse.Data(
+                            id=stream_response.data.workflow_run_id,
+                            workflow_id=self._workflow.id,
+                            status=stream_response.data.status,
+                            outputs=stream_response.data.outputs or {},
+                            error=None,
+                            elapsed_time=stream_response.data.elapsed_time,
+                            total_tokens=stream_response.data.total_tokens,
+                            total_steps=stream_response.data.total_steps,
+                            created_at=stream_response.data.created_at,
+                            finished_at=None,
+                            paused_nodes=stream_response.data.paused_nodes,
+                            reasons=stream_response.data.reasons,
+                        ),
+                    )
+                case WorkflowFinishStreamResponse():
+                    return WorkflowAppBlockingResponse(
+                        task_id=self._application_generate_entity.task_id,
+                        workflow_run_id=stream_response.data.id,
+                        data=WorkflowAppBlockingResponse.Data(
+                            id=stream_response.data.id,
+                            workflow_id=stream_response.data.workflow_id,
+                            status=stream_response.data.status,
+                            outputs=stream_response.data.outputs,
+                            error=stream_response.data.error,
+                            elapsed_time=stream_response.data.elapsed_time,
+                            total_tokens=stream_response.data.total_tokens,
+                            total_steps=stream_response.data.total_steps,
+                            created_at=int(stream_response.data.created_at),
+                            finished_at=int(stream_response.data.finished_at)
+                            if stream_response.data.finished_at
+                            else None,
+                        ),
+                    )
+                case _:
+                    continue
 
         if human_input_responses:
             return self._build_paused_blocking_response_from_human_input(human_input_responses)

@@ -39,8 +39,8 @@ export type PatchDataSourceIntegratesResponse
 export type GetDataSourceIntegratesByBindingIdByActionData = {
   body?: never
   path: {
-    binding_id: string
     action: string
+    binding_id: string
   }
   query?: never
   url: '/data-source/integrates/{binding_id}/{action}'
@@ -58,8 +58,8 @@ export type GetDataSourceIntegratesByBindingIdByActionResponse
 export type PatchDataSourceIntegratesByBindingIdByActionData = {
   body?: never
   path: {
-    binding_id: string
     action: string
+    binding_id: string
   }
   query?: never
   url: '/data-source/integrates/{binding_id}/{action}'

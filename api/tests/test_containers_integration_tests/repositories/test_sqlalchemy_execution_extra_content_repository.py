@@ -451,7 +451,7 @@ class TestGetByMessageIds:
                     "allowed_file_upload_methods": ["remote_url"],
                 },
                 {
-                    "type": "file_list",
+                    "type": "file-list",
                     "output_variable_name": "attachments",
                     "allowed_file_types": ["document"],
                     "allowed_file_upload_methods": ["remote_url"],

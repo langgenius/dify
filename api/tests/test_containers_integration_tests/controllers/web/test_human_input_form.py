@@ -30,7 +30,7 @@ from models.human_input import (
 )
 from models.model import App, AppMode, CustomizeTokenStrategy, Site
 from models.workflow import WorkflowRun, WorkflowType
-from repositories.sqlalchemy_api_workflow_run_repository import DifyAPIWorkflowRunRepository
+from repositories.sqlalchemy_api_workflow_run_repository import DifyAPISQLAlchemyWorkflowRunRepository
 
 
 def _create_app_with_site(session: Session) -> tuple[App, Account]:
@@ -203,7 +203,9 @@ def test_get_human_input_form_resolves_runtime_select_options(
     )
     engine = db_session_with_containers.get_bind()
     assert isinstance(engine, Engine)
-    workflow_run_repo = DifyAPIWorkflowRunRepository(session_maker=sessionmaker(bind=engine, expire_on_commit=False))
+    workflow_run_repo = DifyAPISQLAlchemyWorkflowRunRepository(
+        session_maker=sessionmaker(bind=engine, expire_on_commit=False)
+    )
     workflow_run_repo.create_workflow_pause(
         workflow_run_id=workflow_run.id,
         state_owner_user_id=account.id,

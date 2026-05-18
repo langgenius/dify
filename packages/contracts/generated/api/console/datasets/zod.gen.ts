@@ -38,8 +38,6 @@ export const zExternalDatasetCreatePayload = z.object({
   name: z.string().min(1).max(100),
 })
 
-export const zDatasetDetail = z.record(z.string(), z.unknown())
-
 /**
  * ExternalKnowledgeApiPayload
  */
@@ -151,7 +149,7 @@ export const zExternalHitTestingPayload = z.object({
  */
 export const zMetadataArgs = z.object({
   name: z.string(),
-  type: z.enum(['string', 'number', 'time']),
+  type: z.enum(['number', 'string', 'time']),
 })
 
 /**
@@ -160,10 +158,6 @@ export const zMetadataArgs = z.object({
 export const zMetadataUpdatePayload = z.object({
   name: z.string(),
 })
-
-export const zDatasetQueryDetail = z.record(z.string(), z.unknown())
-
-export const zRelatedAppList = z.record(z.string(), z.unknown())
 
 /**
  * DocumentRetryPayload
@@ -175,7 +169,7 @@ export const zDocumentRetryPayload = z.object({
 /**
  * DatasetPermissionEnum
  */
-export const zDatasetPermissionEnum = z.enum(['only_me', 'all_team_members', 'partial_members'])
+export const zDatasetPermissionEnum = z.enum(['all_team_members', 'only_me', 'partial_members'])
 
 /**
  * DatasetCreatePayload
@@ -208,6 +202,48 @@ export const zDatasetUpdatePayload = z.object({
   permission: zDatasetPermissionEnum.optional(),
   retrieval_model: z.record(z.string(), z.unknown()).nullish(),
   summary_index_setting: z.record(z.string(), z.unknown()).nullish(),
+})
+
+export const zDatasetDocMetadata = z.object({
+  id: z.string().optional(),
+  name: z.string().optional(),
+  type: z.string().optional(),
+})
+
+export const zExternalKnowledgeInfo = z.object({
+  external_knowledge_api_endpoint: z.string().optional(),
+  external_knowledge_api_id: z.string().optional(),
+  external_knowledge_api_name: z.string().optional(),
+  external_knowledge_id: z.string().optional(),
+})
+
+export const zExternalRetrievalModel = z.object({
+  score_threshold: z.number().optional(),
+  score_threshold_enabled: z.boolean().optional(),
+  top_k: z.int().optional(),
+})
+
+export const zDatasetIconInfo = z.object({
+  icon: z.string().optional(),
+  icon_background: z.string().optional(),
+  icon_type: z.string().optional(),
+  icon_url: z.string().optional(),
+})
+
+export const zAnonymousInlineModelB1954337D565 = z.object({
+  enable: z.boolean().optional(),
+  model_name: z.string().optional(),
+  model_provider_name: z.string().optional(),
+  summary_prompt: z.string().optional(),
+})
+
+/**
+ * Tag
+ */
+export const zTag = z.object({
+  id: z.string(),
+  name: z.string(),
+  type: z.string(),
 })
 
 /**
@@ -273,6 +309,27 @@ export const zDatasetAndDocumentResponse = z.object({
   documents: z.array(zDocumentResponse),
 })
 
+export const zAppDetailKernel = z.object({
+  description: z.string().optional(),
+  icon: z.string().optional(),
+  icon_background: z.string().optional(),
+  icon_type: z.string().optional(),
+  icon_url: z.record(z.string(), z.unknown()).optional(),
+  id: z.string().optional(),
+  mode: z.string().optional(),
+  name: z.string().optional(),
+})
+
+export const zRelatedAppList = z.object({
+  data: z.array(zAppDetailKernel).optional(),
+  total: z.int().optional(),
+})
+
+export const zDatasetRerankingModel = z.object({
+  reranking_model_name: z.string().optional(),
+  reranking_provider_name: z.string().optional(),
+})
+
 /**
  * RerankingModel
  */
@@ -285,10 +342,10 @@ export const zRerankingModel = z.object({
  * RetrievalMethod
  */
 export const zRetrievalMethod = z.enum([
-  'semantic_search',
   'full_text_search',
   'hybrid_search',
   'keyword_search',
+  'semantic_search',
 ])
 
 /**
@@ -338,6 +395,96 @@ export const zHitTestingFile = z.object({
   name: z.string().nullish(),
   size: z.int().nullish(),
   source_url: z.string().nullish(),
+})
+
+export const zDatasetFileInfo = z.object({
+  extension: z.string().optional(),
+  id: z.string().optional(),
+  mime_type: z.string().optional(),
+  name: z.string().optional(),
+  size: z.int().optional(),
+  source_url: z.string().optional(),
+})
+
+export const zDatasetContent = z.object({
+  content: z.string().optional(),
+  content_type: z.string().optional(),
+  file_info: zDatasetFileInfo.optional(),
+})
+
+export const zDatasetQueryDetail = z.object({
+  created_at: z.record(z.string(), z.unknown()).optional(),
+  created_by: z.string().optional(),
+  created_by_role: z.string().optional(),
+  id: z.string().optional(),
+  queries: zDatasetContent.optional(),
+  source: z.string().optional(),
+  source_app_id: z.string().optional(),
+})
+
+export const zDatasetKeywordSetting = z.object({
+  keyword_weight: z.number().optional(),
+})
+
+export const zDatasetVectorSetting = z.object({
+  embedding_model_name: z.string().optional(),
+  embedding_provider_name: z.string().optional(),
+  vector_weight: z.number().optional(),
+})
+
+export const zDatasetWeightedScore = z.object({
+  keyword_setting: zDatasetKeywordSetting.optional(),
+  vector_setting: zDatasetVectorSetting.optional(),
+  weight_type: z.string().optional(),
+})
+
+export const zDatasetRetrievalModel = z.object({
+  reranking_enable: z.boolean().optional(),
+  reranking_mode: z.string().optional(),
+  reranking_model: zDatasetRerankingModel.optional(),
+  score_threshold: z.number().optional(),
+  score_threshold_enabled: z.boolean().optional(),
+  search_method: z.string().optional(),
+  top_k: z.int().optional(),
+  weights: zDatasetWeightedScore.optional(),
+})
+
+export const zDatasetDetail = z.object({
+  app_count: z.int().optional(),
+  author_name: z.string().optional(),
+  built_in_field_enabled: z.boolean().optional(),
+  chunk_structure: z.string().optional(),
+  created_at: z.record(z.string(), z.unknown()).optional(),
+  created_by: z.string().optional(),
+  data_source_type: z.string().optional(),
+  description: z.string().optional(),
+  doc_form: z.string().optional(),
+  doc_metadata: z.array(zDatasetDocMetadata).optional(),
+  document_count: z.int().optional(),
+  embedding_available: z.boolean().optional(),
+  embedding_model: z.string().optional(),
+  embedding_model_provider: z.string().optional(),
+  enable_api: z.boolean().optional(),
+  external_knowledge_info: zExternalKnowledgeInfo.optional(),
+  external_retrieval_model: zExternalRetrievalModel.optional(),
+  icon_info: zDatasetIconInfo.optional(),
+  id: z.string().optional(),
+  indexing_technique: z.string().optional(),
+  is_multimodal: z.boolean().optional(),
+  is_published: z.boolean().optional(),
+  name: z.string().optional(),
+  permission: z.string().optional(),
+  pipeline_id: z.string().optional(),
+  provider: z.string().optional(),
+  retrieval_model_dict: zDatasetRetrievalModel.optional(),
+  runtime_mode: z.string().optional(),
+  summary_index_setting: zAnonymousInlineModelB1954337D565.optional(),
+  tags: z.array(zTag).optional(),
+  total_available_documents: z.int().optional(),
+  total_documents: z.int().optional(),
+  updated_at: z.record(z.string(), z.unknown()).optional(),
+  updated_by: z.string().optional(),
+  word_count: z.int().optional(),
 })
 
 /**
@@ -399,24 +546,24 @@ export const zProcessRule = z.object({
  */
 export const zCondition = z.object({
   comparison_operator: z.enum([
+    '<',
+    '=',
+    '>',
+    'after',
+    'before',
     'contains',
-    'not contains',
-    'start with',
+    'empty',
     'end with',
+    'in',
     'is',
     'is not',
-    'empty',
+    'not contains',
     'not empty',
-    'in',
     'not in',
-    '=',
+    'start with',
     '≠',
-    '>',
-    '<',
-    '≥',
     '≤',
-    'before',
-    'after',
+    '≥',
   ]),
   name: z.string(),
   value: z.unknown().optional(),
@@ -454,7 +601,7 @@ export const zWeightVectorSetting = z.object({
 export const zWeightModel = z.object({
   keyword_setting: zWeightKeywordSetting.optional(),
   vector_setting: zWeightVectorSetting.optional(),
-  weight_type: z.enum(['semantic_first', 'keyword_first', 'customized']).nullish(),
+  weight_type: z.enum(['customized', 'keyword_first', 'semantic_first']).nullish(),
 })
 
 /**
@@ -574,7 +721,7 @@ export const zNotionInfo = z.object({
  * InfoList
  */
 export const zInfoList = z.object({
-  data_source_type: z.enum(['upload_file', 'notion_import', 'website_crawl']),
+  data_source_type: z.enum(['notion_import', 'upload_file', 'website_crawl']),
   file_info_list: zFileInfo.optional(),
   notion_info_list: z.array(zNotionInfo).nullish(),
   website_info_list: zWebsiteInfo.optional(),
@@ -597,7 +744,7 @@ export const zKnowledgeConfig = z.object({
   duplicate: z.boolean().optional().default(true),
   embedding_model: z.string().nullish(),
   embedding_model_provider: z.string().nullish(),
-  indexing_technique: z.enum(['high_quality', 'economy']),
+  indexing_technique: z.enum(['economy', 'high_quality']),
   is_multimodal: z.boolean().optional().default(false),
   name: z.string().nullish(),
   original_document_id: z.string().nullish(),
@@ -607,12 +754,12 @@ export const zKnowledgeConfig = z.object({
 })
 
 export const zGetDatasetsQuery = z.object({
-  page: z.string().optional(),
-  limit: z.string().optional(),
   ids: z.string().optional(),
-  keyword: z.string().optional(),
-  tag_ids: z.string().optional(),
   include_all: z.string().optional(),
+  keyword: z.string().optional(),
+  limit: z.string().optional(),
+  page: z.string().optional(),
+  tag_ids: z.string().optional(),
 })
 
 /**
@@ -679,9 +826,9 @@ export const zPostDatasetsExternalBody = zExternalDatasetCreatePayload
 export const zPostDatasetsExternalResponse = zDatasetDetail
 
 export const zGetDatasetsExternalKnowledgeApiQuery = z.object({
-  page: z.string().optional(),
-  limit: z.string().optional(),
   keyword: z.string().optional(),
+  limit: z.string().optional(),
+  page: z.string().optional(),
 })
 
 /**
@@ -850,8 +997,8 @@ export const zGetDatasetsByDatasetIdAutoDisableLogsPath = z.object({
 export const zGetDatasetsByDatasetIdAutoDisableLogsResponse = z.record(z.string(), z.unknown())
 
 export const zGetDatasetsByDatasetIdBatchByBatchIndexingEstimatePath = z.object({
-  dataset_id: z.string(),
   batch: z.string(),
+  dataset_id: z.string(),
 })
 
 /**
@@ -863,8 +1010,8 @@ export const zGetDatasetsByDatasetIdBatchByBatchIndexingEstimateResponse = z.rec
 )
 
 export const zGetDatasetsByDatasetIdBatchByBatchIndexingStatusPath = z.object({
-  dataset_id: z.string(),
   batch: z.string(),
+  dataset_id: z.string(),
 })
 
 /**
@@ -889,11 +1036,11 @@ export const zGetDatasetsByDatasetIdDocumentsPath = z.object({
 })
 
 export const zGetDatasetsByDatasetIdDocumentsQuery = z.object({
-  page: z.string().optional(),
-  limit: z.string().optional(),
-  keyword: z.string().optional(),
-  sort: z.string().optional(),
   fetch: z.string().optional(),
+  keyword: z.string().optional(),
+  limit: z.string().optional(),
+  page: z.string().optional(),
+  sort: z.string().optional(),
   status: z.string().optional(),
 })
 
@@ -953,8 +1100,8 @@ export const zPostDatasetsByDatasetIdDocumentsMetadataPath = z.object({
 export const zPostDatasetsByDatasetIdDocumentsMetadataResponse = z.record(z.string(), z.unknown())
 
 export const zPatchDatasetsByDatasetIdDocumentsStatusByActionBatchPath = z.object({
-  dataset_id: z.string(),
   action: z.string(),
+  dataset_id: z.string(),
 })
 
 /**
@@ -966,8 +1113,8 @@ export const zPatchDatasetsByDatasetIdDocumentsStatusByActionBatchResponse = z.r
 )
 
 export const zDeleteDatasetsByDatasetIdDocumentsByDocumentIdPath = z.object({
-  document_id: z.string(),
   dataset_id: z.string(),
+  document_id: z.string(),
 })
 
 /**
@@ -1103,9 +1250,9 @@ export const zPatchDatasetsByDatasetIdDocumentsByDocumentIdProcessingResumeRespo
 )
 
 export const zPatchDatasetsByDatasetIdDocumentsByDocumentIdProcessingByActionPath = z.object({
+  action: z.string(),
   dataset_id: z.string(),
   document_id: z.string(),
-  action: z.string(),
 })
 
 /**
@@ -1144,9 +1291,9 @@ export const zPostDatasetsByDatasetIdDocumentsByDocumentIdSegmentResponse = z.re
 )
 
 export const zPatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentByActionPath = z.object({
+  action: z.string(),
   dataset_id: z.string(),
   document_id: z.string(),
-  action: z.string(),
 })
 
 /**
@@ -1287,10 +1434,10 @@ export const zPostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChi
 
 export const zDeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdPath
   = z.object({
+    child_chunk_id: z.string(),
     dataset_id: z.string(),
     document_id: z.string(),
     segment_id: z.string(),
-    child_chunk_id: z.string(),
   })
 
 /**
@@ -1304,10 +1451,10 @@ export const zPatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdCh
 
 export const zPatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdPath
   = z.object({
+    child_chunk_id: z.string(),
     dataset_id: z.string(),
     document_id: z.string(),
     segment_id: z.string(),
-    child_chunk_id: z.string(),
   })
 
 /**
@@ -1403,8 +1550,8 @@ export const zPostDatasetsByDatasetIdMetadataPath = z.object({
 export const zPostDatasetsByDatasetIdMetadataResponse = z.record(z.string(), z.unknown())
 
 export const zPostDatasetsByDatasetIdMetadataBuiltInByActionPath = z.object({
-  dataset_id: z.string(),
   action: z.string(),
+  dataset_id: z.string(),
 })
 
 /**
@@ -1518,8 +1665,8 @@ export const zPostDatasetsByResourceIdApiKeysPath = z.object({
 export const zPostDatasetsByResourceIdApiKeysResponse = zApiKeyItem
 
 export const zDeleteDatasetsByResourceIdApiKeysByApiKeyIdPath = z.object({
-  resource_id: z.string(),
   api_key_id: z.string(),
+  resource_id: z.string(),
 })
 
 /**

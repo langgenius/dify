@@ -132,6 +132,7 @@ def create_human_input_message_fixture(db_session) -> HumanInputMessageFixture:
         status=HumanInputFormStatus.SUBMITTED,
         expiration_time=naive_utc_now() + timedelta(days=1),
         selected_action_id=action_id,
+        submitted_data='{"name": "Alice"}',
     )
     db_session.add(form)
     db_session.flush()

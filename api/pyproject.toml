@@ -58,6 +58,7 @@ members = ["providers/vdb/*", "providers/trace/*"]
 exclude = ["providers/vdb/__pycache__", "providers/trace/__pycache__"]
 
 [tool.uv.sources]
+dify-agent = { path = "../dify-agent" }
 dify-vdb-alibabacloud-mysql = { workspace = true }
 dify-vdb-analyticdb = { workspace = true }
 dify-vdb-baidu = { workspace = true }
@@ -110,10 +111,10 @@ override-dependencies = ["litellm>=1.83.7", "pyarrow>=18.0.0"]
 ############################################################
 dev = [
     "coverage>=7.13.4",
+    "dify-agent",
     "dotenv-linter>=0.7.0",
     "faker>=40.15.0",
     "lxml-stubs>=0.5.1",
-    "basedpyright>=1.39.3",
     "ruff>=0.15.12",
     "pytest>=9.0.3",
     "pytest-benchmark>=5.2.3",
@@ -170,7 +171,7 @@ dev = [
     # "locust>=2.40.4",  # Temporarily removed due to compatibility issues. Uncomment when resolved.
     "pytest-timeout>=2.4.0",
     "pytest-xdist>=3.8.0",
-    "pyrefly>=0.64.0",
+    "pyrefly>=1.0.0",
     "xinference-client>=2.7.0",
 ]
 

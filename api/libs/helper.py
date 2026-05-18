@@ -10,7 +10,7 @@ import uuid
 from collections.abc import Callable, Generator, Mapping
 from datetime import datetime
 from hashlib import sha256
-from typing import TYPE_CHECKING, Annotated, Any, Protocol, cast
+from typing import TYPE_CHECKING, Annotated, Any, Protocol, cast, overload
 from uuid import UUID
 from zoneinfo import available_timezones
 
@@ -39,6 +39,7 @@ class _TokenData(TypedDict, total=False):
     token_type: str
     code: str
     old_email: str
+    phase: str
 
 
 _token_data_adapter: TypeAdapter[_TokenData] = TypeAdapter(_TokenData)
@@ -136,6 +137,14 @@ def build_icon_url(icon_type: Any, icon: str | None) -> str | None:
     return file_helpers.get_signed_file_url(icon)
 
 
+def build_avatar_url(avatar: str | None) -> str | None:
+    if avatar is None:
+        return None
+    if avatar.startswith(("http://", "https://")):
+        return avatar
+    return file_helpers.get_signed_file_url(avatar)
+
+
 class AvatarUrlField(fields.Raw):
     def output(self, key, obj, **kwargs):
         if obj is None:
@@ -144,9 +153,7 @@ class AvatarUrlField(fields.Raw):
         from models import Account
 
         if isinstance(obj, Account) and obj.avatar is not None:
-            if obj.avatar.startswith(("http://", "https://")):
-                return obj.avatar
-            return file_helpers.get_signed_file_url(obj.avatar)
+            return build_avatar_url(obj.avatar)
         return None
 
 
@@ -160,6 +167,35 @@ class OptionalTimestampField(fields.Raw):
         if value is None:
             return None
         return int(value.timestamp())
+
+
+@overload
+def to_timestamp(value: datetime) -> int: ...
+
+
+@overload
+def to_timestamp(value: int) -> int: ...
+
+
+@overload
+def to_timestamp(value: None) -> None: ...
+
+
+def to_timestamp(value: datetime | int | None) -> int | None:
+    """Normalize API response timestamp values to epoch seconds."""
+    if isinstance(value, datetime):
+        return int(value.timestamp())
+    return value
+
+
+def dump_response(model: type[BaseModel], data: Any) -> dict[str, Any]:
+    """Serialize a Pydantic response model to JSON-compatible dict output."""
+    return model.model_validate(data, from_attributes=True).model_dump(mode="json")
+
+
+def current_timestamp() -> int:
+    """Return the current Unix timestamp in seconds."""
+    return int(time.time())
 
 
 def email(email):

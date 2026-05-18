@@ -5,7 +5,9 @@ export type ClientOptions = {
 }
 
 export type FeatureResponse = {
-  [key: string]: unknown
+  features?: {
+    [key: string]: unknown
+  }
 }
 
 export type GetFeaturesData = {
