@@ -394,8 +394,8 @@ describe('BaseField', () => {
       fireEvent.click(screen.getByText('Feature B'))
     })
 
-    const checkboxB = screen.getByTestId('checkbox-b')
-    expect(checkboxB).toBeChecked()
+    const checkboxB = screen.getByRole('checkbox', { name: 'Feature B' })
+    expect(checkboxB).toHaveAttribute('aria-checked', 'true')
   })
 
   it('should handle dynamic select error state', () => {
