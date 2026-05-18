@@ -25,9 +25,9 @@ export const zActivationResponse = z.object({
  * ActivationCheckData
  */
 export const zActivationCheckData = z.object({
-  email: z.string().nullish(),
-  workspace_id: z.string().nullish(),
-  workspace_name: z.string().nullish(),
+  email: z.string().nullable(),
+  workspace_id: z.string().nullable(),
+  workspace_name: z.string().nullable(),
 })
 
 /**

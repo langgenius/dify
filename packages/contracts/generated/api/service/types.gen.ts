@@ -32,11 +32,11 @@ export type AnnotationReplyActionPayload = {
 }
 
 export type AppInfoResponse = {
-  author_name?: string | null
-  description?: string | null
+  author_name: string | null
+  description: string | null
   mode: string
   name: string
-  tags?: Array<string>
+  tags: Array<string>
 }
 
 export type ChatRequestPayload = {

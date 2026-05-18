@@ -1,8 +1,6 @@
 from typing import Any, cast
 
 from flask_restx import Resource
-from pydantic import Field
-
 from controllers.common.fields import Parameters
 from controllers.common.schema import register_response_schema_models
 from controllers.service_api import service_api_ns
@@ -16,10 +14,10 @@ from services.app_service import AppService
 
 class AppInfoResponse(ResponseModel):
     name: str
-    description: str | None = None
-    tags: list[str] = Field(default_factory=list)
+    description: str | None
+    tags: list[str]
     mode: str
-    author_name: str | None = None
+    author_name: str | None
 
 
 register_response_schema_models(service_api_ns, AppInfoResponse)

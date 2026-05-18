@@ -43,9 +43,9 @@ class ActivationResponse(BaseModel):
 
 
 class ActivationCheckData(BaseModel):
-    workspace_name: str | None = None
-    workspace_id: str | None = None
-    email: str | None = None
+    workspace_name: str | None
+    workspace_id: str | None
+    email: str | None
 
 
 class ActivationCheckResponse(BaseModel):

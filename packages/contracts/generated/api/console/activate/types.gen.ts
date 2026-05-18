@@ -23,9 +23,9 @@ export type ActivationCheckResponse = {
 }
 
 export type ActivationCheckData = {
-  email?: string | null
-  workspace_id?: string | null
-  workspace_name?: string | null
+  email: string | null
+  workspace_id: string | null
+  workspace_name: string | null
 }
 
 export type PostActivateData = {

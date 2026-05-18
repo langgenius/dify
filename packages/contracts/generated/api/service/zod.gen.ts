@@ -45,11 +45,11 @@ export const zAnnotationReplyActionPayload = z.object({
  * AppInfoResponse
  */
 export const zAppInfoResponse = z.object({
-  author_name: z.string().nullish(),
-  description: z.string().nullish(),
+  author_name: z.string().nullable(),
+  description: z.string().nullable(),
   mode: z.string(),
   name: z.string(),
-  tags: z.array(z.string()).optional(),
+  tags: z.array(z.string()),
 })
 
 /**
