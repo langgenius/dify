@@ -381,7 +381,7 @@ class TestMessageService:
 
 
 class TestMessageListApi:
-    def test_not_chat_app(self, app) -> None:
+    def test_not_chat_app(self, app: Flask) -> None:
         api = MessageListApi()
         handler = _unwrap(api.get)
         app_model = SimpleNamespace(mode=AppMode.COMPLETION.value)
@@ -467,7 +467,7 @@ class TestAppGetFeedbacksApi:
 
 
 class TestMessageSuggestedApi:
-    def test_not_chat(self, app) -> None:
+    def test_not_chat(self, app: Flask) -> None:
         api = MessageSuggestedApi()
         handler = _unwrap(api.get)
         app_model = SimpleNamespace(mode=AppMode.COMPLETION.value)

@@ -54,7 +54,7 @@ class TestIndexApi:
         assert isinstance(response["server_version"], str)
 
     @pytest.mark.parametrize("version", ["0.0.1", "1.0.0", "2.0.0-beta", "1.11.4"])
-    def test_get_returns_correct_version(self, app, version):
+    def test_get_returns_correct_version(self, app: Flask, version):
         """Test that server_version matches config version."""
         # Arrange
         mock_config = MagicMock()
