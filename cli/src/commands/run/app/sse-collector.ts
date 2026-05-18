@@ -157,9 +157,10 @@ export function decodeStreamError(data: Uint8Array): BaseError {
     }
     catch {}
   }
-  const message = env.message !== undefined && env.message !== ''
+  const rawMessage = env.message !== undefined && env.message !== ''
     ? env.message
     : 'stream terminated by error event'
+  const message = unwrapInvokeErrorMessage(rawMessage)
   const code = env.status !== undefined && env.status > 0 && env.status < 500
     ? ErrorCode.Server4xxOther
     : ErrorCode.Server5xx
@@ -167,6 +168,25 @@ export function decodeStreamError(data: Uint8Array): BaseError {
   if (env.status !== undefined && env.status > 0)
     err = err.withHttpStatus(env.status)
   return err
+}
+
+function unwrapInvokeErrorMessage(raw: string): string {
+  if (!raw.startsWith('{'))
+    return raw
+  type InvokeErrorEnv = {
+    error_type?: string
+    args?: { description?: string }
+    message?: string
+  }
+  try {
+    const inner = JSON.parse(raw) as InvokeErrorEnv
+    if (inner.error_type === undefined)
+      return raw
+    return inner.args?.description ?? inner.message ?? raw
+  }
+  catch {
+    return raw
+  }
 }
 
 const SILENT_EVENTS = new Set([

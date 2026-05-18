@@ -1,5 +1,5 @@
 import type { CommandOutput } from './output.js'
-import type { ArgDefinition, OptionalArgValueType, FlagDefinition, ICommand, InferArgs, InferFlags } from './types.js'
+import type { ArgDefinition, FlagDefinition, ICommand, InferArgs, InferFlags, OptionalArgValueType } from './types.js'
 import { parseArgv } from './flags.js'
 
 export type CommandConstructor = {
