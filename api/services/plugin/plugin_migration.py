@@ -545,6 +545,11 @@ class PluginMigration:
         """
         Install plugins for a tenant.
         """
+        if plugin_identifiers_map and not dify_config.MARKETPLACE_ENABLED:
+            raise ValueError(
+                "Marketplace disabled in offline mode; cannot bulk-install plugins. "
+                "Pre-upload plugin packages via Console first."
+            )
         manager = PluginInstaller()
 
         # download all the plugins and upload
