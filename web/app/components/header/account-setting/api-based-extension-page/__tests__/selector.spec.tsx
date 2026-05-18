@@ -1,9 +1,10 @@
 import type { UseQueryResult } from '@tanstack/react-query'
 import type { ModalContextState } from '@/context/modal-context'
 import type { ApiBasedExtension } from '@/models/common'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
 import { useModalContext } from '@/context/modal-context'
+import { addApiBasedExtension } from '@/service/common'
 import { useApiBasedExtensions } from '@/service/use-common'
 import ApiBasedExtensionSelector from '../selector'
 
@@ -15,12 +16,15 @@ vi.mock('@/service/use-common', () => ({
   useApiBasedExtensions: vi.fn(),
 }))
 
+vi.mock('@/service/common', () => ({
+  addApiBasedExtension: vi.fn(),
+}))
+
 vi.mock('@langgenius/dify-ui/popover', async () => await import('@/__mocks__/base-ui-popover'))
 
 describe('ApiBasedExtensionSelector', () => {
   const mockOnChange = vi.fn()
   const mockSetShowAccountSettingModal = vi.fn()
-  const mockSetShowApiBasedExtensionModal = vi.fn()
   const mockRefetch = vi.fn()
 
   const mockData: ApiBasedExtension[] = [
@@ -32,7 +36,6 @@ describe('ApiBasedExtensionSelector', () => {
     vi.clearAllMocks()
     vi.mocked(useModalContext).mockReturnValue({
       setShowAccountSettingModal: mockSetShowAccountSettingModal,
-      setShowApiBasedExtensionModal: mockSetShowApiBasedExtensionModal,
     } as unknown as ModalContextState)
     vi.mocked(useApiBasedExtensions).mockReturnValue({
       data: mockData,
@@ -103,26 +106,24 @@ describe('ApiBasedExtensionSelector', () => {
     })
 
     it('should open add modal when clicking add button and refetches on save', async () => {
+      // Arrange
+      vi.mocked(addApiBasedExtension).mockResolvedValue({ id: 'new-id' })
+
       // Act
       render(<ApiBasedExtensionSelector value="" onChange={mockOnChange} />)
       fireEvent.click(screen.getByText('common.apiBasedExtension.selector.placeholder'))
 
       const addButton = await screen.findByText('common.operation.add')
       fireEvent.click(addButton)
+      fireEvent.change(screen.getByPlaceholderText('common.apiBasedExtension.modal.name.placeholder'), { target: { value: 'New Ext' } })
+      fireEvent.change(screen.getByPlaceholderText('common.apiBasedExtension.modal.apiEndpoint.placeholder'), { target: { value: 'https://api.test' } })
+      fireEvent.change(screen.getByPlaceholderText('common.apiBasedExtension.modal.apiKey.placeholder'), { target: { value: 'secret-key' } })
+      fireEvent.click(screen.getByText('common.operation.save'))
 
       // Assert
-      expect(mockSetShowApiBasedExtensionModal).toHaveBeenCalledWith(expect.objectContaining({
-        payload: {},
-      }))
-
-      // Trigger callback
-      const lastCall = mockSetShowApiBasedExtensionModal.mock.calls[0]![0]
-      if (typeof lastCall === 'object' && lastCall !== null && 'onSaveCallback' in lastCall) {
-        if (lastCall.onSaveCallback) {
-          lastCall.onSaveCallback()
-          expect(mockRefetch).toHaveBeenCalled()
-        }
-      }
+      await waitFor(() => {
+        expect(mockRefetch).toHaveBeenCalled()
+      })
     })
   })
 })

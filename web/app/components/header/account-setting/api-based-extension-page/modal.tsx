@@ -58,7 +58,10 @@ const ApiBasedExtensionModal = ({ open, extension, onOpenChange, onSave }: ApiBa
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange} disablePointerDismissal>
-      <DialogContent className="w-160 border-none p-8 pb-6 text-left">
+      <DialogContent
+        backdropProps={{ forceRender: true }}
+        className="w-160 border-none p-8 pb-6 text-left"
+      >
         <DialogCloseButton />
 
         <DialogTitle className="mb-2 pr-8 text-xl font-semibold text-text-primary">

@@ -1,8 +1,5 @@
-import type { SetStateAction } from 'react'
-import type { ModalContextState, ModalState } from '@/context/modal-context'
-import type { ApiBasedExtension } from '@/models/common'
-import { fireEvent, render, screen } from '@testing-library/react'
-import { useModalContext } from '@/context/modal-context'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { addApiBasedExtension, updateApiBasedExtension } from '@/service/common'
 import { useApiBasedExtensions } from '@/service/use-common'
 import ApiBasedExtensionPage from '../index'
 
@@ -10,19 +7,16 @@ vi.mock('@/service/use-common', () => ({
   useApiBasedExtensions: vi.fn(),
 }))
 
-vi.mock('@/context/modal-context', () => ({
-  useModalContext: vi.fn(),
+vi.mock('@/service/common', () => ({
+  addApiBasedExtension: vi.fn(),
+  updateApiBasedExtension: vi.fn(),
 }))
 
 describe('ApiBasedExtensionPage', () => {
   const mockRefetch = vi.fn<() => void>()
-  const mockSetShowApiBasedExtensionModal = vi.fn<(value: SetStateAction<ModalState<ApiBasedExtension> | null>) => void>()
 
   beforeEach(() => {
     vi.clearAllMocks()
-    vi.mocked(useModalContext).mockReturnValue({
-      setShowApiBasedExtensionModal: mockSetShowApiBasedExtensionModal,
-    } as unknown as ModalContextState)
   })
 
   describe('Rendering', () => {
@@ -128,13 +122,12 @@ describe('ApiBasedExtensionPage', () => {
       fireEvent.click(screen.getByText('common.apiBasedExtension.add'))
 
       // Assert
-      expect(mockSetShowApiBasedExtensionModal).toHaveBeenCalledWith(expect.objectContaining({
-        payload: {},
-      }))
+      expect(screen.getByRole('dialog', { name: 'common.apiBasedExtension.modal.title' })).toBeInTheDocument()
     })
 
-    it('should call refetch when onSaveCallback is executed from the modal', () => {
+    it('should call refetch when add modal saves successfully', async () => {
       // Arrange
+      vi.mocked(addApiBasedExtension).mockResolvedValue({ id: 'new-id' })
       vi.mocked(useApiBasedExtensions).mockReturnValue({
         data: [],
         isPending: false,
@@ -144,21 +137,21 @@ describe('ApiBasedExtensionPage', () => {
       // Act
       render(<ApiBasedExtensionPage />)
       fireEvent.click(screen.getByText('common.apiBasedExtension.add'))
+      fireEvent.change(screen.getByPlaceholderText('common.apiBasedExtension.modal.name.placeholder'), { target: { value: 'New Ext' } })
+      fireEvent.change(screen.getByPlaceholderText('common.apiBasedExtension.modal.apiEndpoint.placeholder'), { target: { value: 'https://api.test' } })
+      fireEvent.change(screen.getByPlaceholderText('common.apiBasedExtension.modal.apiKey.placeholder'), { target: { value: 'secret-key' } })
+      fireEvent.click(screen.getByText('common.operation.save'))
 
-      // Trigger callback manually from the mock call
-      const callArgs = mockSetShowApiBasedExtensionModal.mock.calls[0]![0]
-      if (typeof callArgs === 'object' && callArgs !== null && 'onSaveCallback' in callArgs) {
-        if (callArgs.onSaveCallback) {
-          callArgs.onSaveCallback()
-          // Assert
-          expect(mockRefetch).toHaveBeenCalled()
-        }
-      }
+      // Assert
+      await waitFor(() => {
+        expect(mockRefetch).toHaveBeenCalled()
+      })
     })
 
-    it('should call refetch when an item is updated', () => {
+    it('should call refetch when an item is updated', async () => {
       // Arrange
-      const mockData = [{ id: '1', name: 'Extension 1', api_endpoint: 'url1' }]
+      const mockData = [{ id: '1', name: 'Extension 1', api_endpoint: 'url1', api_key: 'long-api-key' }]
+      vi.mocked(updateApiBasedExtension).mockResolvedValue({ ...mockData[0], name: 'Updated' })
       vi.mocked(useApiBasedExtensions).mockReturnValue({
         data: mockData,
         isPending: false,
@@ -169,16 +162,12 @@ describe('ApiBasedExtensionPage', () => {
 
       // Act - Click edit on the rendered item
       fireEvent.click(screen.getByText('common.operation.edit'))
-
-      // Retrieve the onSaveCallback from the modal call and execute it
-      const callArgs = mockSetShowApiBasedExtensionModal.mock.calls[0]![0]
-      if (typeof callArgs === 'object' && callArgs !== null && 'onSaveCallback' in callArgs) {
-        if (callArgs.onSaveCallback)
-          callArgs.onSaveCallback()
-      }
+      fireEvent.click(screen.getByText('common.operation.save'))
 
       // Assert
-      expect(mockRefetch).toHaveBeenCalled()
+      await waitFor(() => {
+        expect(mockRefetch).toHaveBeenCalled()
+      })
     })
   })
 })

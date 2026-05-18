@@ -10,26 +10,23 @@ import {
 import { Button } from '@langgenius/dify-ui/button'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useModalContext } from '@/context/modal-context'
 import { deleteApiBasedExtension } from '@/service/common'
 
 type ItemProps = {
   data: ApiBasedExtension
+  onEdit: (extension: ApiBasedExtension) => void
   onUpdate: () => void
 }
 const Item = ({
   data,
+  onEdit,
   onUpdate,
 }: ItemProps) => {
   const { t } = useTranslation()
-  const { setShowApiBasedExtensionModal } = useModalContext()
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
 
   const handleOpenApiBasedExtensionModal = () => {
-    setShowApiBasedExtensionModal({
-      payload: data,
-      onSaveCallback: () => onUpdate(),
-    })
+    onEdit(data)
   }
   const handleDeleteApiBasedExtension = async () => {
     await deleteApiBasedExtension(`/api-based-extension/${data.id}`)
