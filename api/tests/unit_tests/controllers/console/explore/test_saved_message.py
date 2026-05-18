@@ -82,7 +82,7 @@ class TestSavedMessageListApi:
             with pytest.raises(NotCompletionAppError):
                 method(installed_app)
 
-    def test_post_success(self, app, payload_patch):
+    def test_post_success(self, app: Flask, payload_patch):
         api = module.SavedMessageListApi()
         method = unwrap(api.post)
 
@@ -102,7 +102,7 @@ class TestSavedMessageListApi:
         save_mock.assert_called_once()
         assert result == {"result": "success"}
 
-    def test_post_message_not_exists(self, app, payload_patch):
+    def test_post_message_not_exists(self, app: Flask, payload_patch):
         api = module.SavedMessageListApi()
         method = unwrap(api.post)
 
