@@ -5415,23 +5415,6 @@ Delete an API key for a dataset
 | ---- | ----------- |
 | 200 | Success |
 
-### /features
-
-#### GET
-##### Summary
-
-Get feature configuration for current tenant
-
-##### Description
-
-Get feature configuration for current tenant
-
-##### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Success | [FeatureResponse](#featureresponse) |
-
 ### /files/support-type
 
 #### GET
@@ -7411,29 +7394,6 @@ Used for frontend component type mapping
 | Code | Description |
 | ---- | ----------- |
 | 200 | Success |
-
-### /system-features
-
-#### GET
-##### Summary
-
-Get system-wide feature configuration
-
-##### Description
-
-Get system-wide feature configuration
-NOTE: This endpoint is unauthenticated by design, as it provides system features
-data required for dashboard initialization.
-
-Authentication would create circular dependency (can't login without dashboard loading).
-
-Only non-sensitive configuration data should be returned by this endpoint.
-
-##### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Success | [SystemFeatureResponse](#systemfeatureresponse) |
 
 ### /tag-bindings
 
@@ -11759,12 +11719,6 @@ Request payload for bulk downloading documents as a zip archive.
 | score_threshold_enabled | boolean |  | No |
 | top_k | integer |  | No |
 
-#### FeatureResponse
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| features | object | Feature configuration object | No |
-
 #### Feedback
 
 | Name | Type | Description | Required |
@@ -13431,12 +13385,6 @@ Default configuration for form inputs.
 | result | string |  | No |
 | updated_at | string |  | No |
 
-#### SystemFeatureResponse
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| features | object | System feature configuration object | No |
-
 #### Tag
 
 | Name | Type | Description | Required |
@@ -14570,6 +14518,15 @@ FastOpenAPI proof of concept for Dify API
 
 ---
 
+##### [GET] /console/api/features
+**Get feature configuration for current tenant.**
+
+###### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | OK | **application/json**: [FeatureModel](#featuremodel)<br> |
+
 ##### [GET] /console/api/init
 **Get initialization validation status.**
 
@@ -14640,6 +14597,23 @@ FastOpenAPI proof of concept for Dify API
 | ---- | ----------- | ------ |
 | 201 | Created | **application/json**: [SetupResponse](#setupresponse)<br> |
 
+##### [GET] /console/api/system-features
+**Get system-wide feature configuration.
+
+    This endpoint is unauthenticated by design, as it provides system features
+    data required for dashboard initialization.
+
+    Authentication would create circular dependency (can't login without dashboard loading).
+
+    Only non-sensitive configuration data should be returned by this endpoint.
+    **
+
+###### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | OK | **application/json**: [SystemFeatureModel](#systemfeaturemodel)<br> |
+
 ##### [GET] /console/api/version
 **Check for application version updates.**
 
@@ -14658,11 +14632,60 @@ FastOpenAPI proof of concept for Dify API
 ---
 ##### Schemas
 
+###### BillingModel
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| enabled | boolean |  | No |
+| subscription | [SubscriptionModel](#subscriptionmodel) |  | No |
+
+###### BrandingModel
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| application_title | string |  | No |
+| enabled | boolean |  | No |
+| favicon | string |  | No |
+| login_page_logo | string |  | No |
+| workspace_logo | string |  | No |
+
+###### EducationModel
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| activated | boolean |  | No |
+| enabled | boolean |  | No |
+
 ###### ErrorSchema
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | error | { **"details"**: string, **"message"**: string, **"status"**: integer, **"type"**: string } |  | Yes |
+
+###### FeatureModel
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| annotation_quota_limit | [LimitationModel](#limitationmodel) |  | No |
+| api_rate_limit | [Quota](#quota) |  | No |
+| apps | [LimitationModel](#limitationmodel) |  | No |
+| billing | [BillingModel](#billingmodel) |  | No |
+| can_replace_logo | boolean |  | No |
+| dataset_operator_enabled | boolean |  | No |
+| docs_processing | string, <br>**Default:** standard |  | No |
+| documents_upload_quota | [LimitationModel](#limitationmodel) |  | No |
+| education | [EducationModel](#educationmodel) |  | No |
+| human_input_email_delivery_enabled | boolean |  | No |
+| is_allow_transfer_workspace | boolean, <br>**Default:** true |  | No |
+| knowledge_pipeline | [KnowledgePipeline](#knowledgepipeline) |  | No |
+| knowledge_rate_limit | integer, <br>**Default:** 10 |  | No |
+| members | [LimitationModel](#limitationmodel) |  | No |
+| model_load_balancing_enabled | boolean |  | No |
+| next_credit_reset_date | integer |  | No |
+| trigger_event | [Quota](#quota) |  | No |
+| vector_space | [LimitationModel](#limitationmodel) |  | No |
+| webapp_copyright_enabled | boolean |  | No |
+| workspace_members | [LicenseLimitationModel](#licenselimitationmodel) |  | No |
 
 ###### InitStatusResponse
 
@@ -14682,11 +14705,77 @@ FastOpenAPI proof of concept for Dify API
 | ---- | ---- | ----------- | -------- |
 | result | string | Operation result | Yes |
 
+###### KnowledgePipeline
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| publish_enabled | boolean |  | No |
+
+###### LicenseLimitationModel
+
+- enabled: whether this limit is enforced
+- size: current usage count
+- limit: maximum allowed count; 0 means unlimited
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| enabled | boolean | Whether this limit is currently active | No |
+| limit | integer | Maximum number of resources allowed; 0 means no limit | No |
+| size | integer | Number of resources already consumed | No |
+
+###### LicenseModel
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| expired_at | string |  | No |
+| status | [LicenseStatus](#licensestatus) |  | No |
+| workspaces | [LicenseLimitationModel](#licenselimitationmodel) |  | No |
+
+###### LicenseStatus
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| LicenseStatus | string |  |  |
+
+###### LimitationModel
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| limit | integer |  | No |
+| size | integer |  | No |
+
 ###### PingResponse
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | result | string | Health check result | Yes |
+
+###### PluginInstallationPermissionModel
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| plugin_installation_scope | [PluginInstallationScope](#plugininstallationscope) |  | No |
+| restrict_to_marketplace_only | boolean |  | No |
+
+###### PluginInstallationScope
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| PluginInstallationScope | string |  |  |
+
+###### PluginManagerModel
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| enabled | boolean |  | No |
+
+###### Quota
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| limit | integer |  | No |
+| reset_date | integer, <br>**Default:** -1 |  | No |
+| usage | integer |  | No |
 
 ###### SetupRequestPayload
 
@@ -14710,6 +14799,40 @@ FastOpenAPI proof of concept for Dify API
 | setup_at |  | Setup completion time (ISO format) | No |
 | step | string, <br>**Available values:** "finished", "not_started" | Setup step status<br>*Enum:* `"finished"`, `"not_started"` | Yes |
 
+###### SubscriptionModel
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| interval | string |  | No |
+| plan | string, <br>**Default:** sandbox |  | No |
+
+###### SystemFeatureModel
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| app_dsl_version | string |  | No |
+| branding | [BrandingModel](#brandingmodel) |  | No |
+| enable_change_email | boolean, <br>**Default:** true |  | No |
+| enable_collaboration_mode | boolean, <br>**Default:** true |  | No |
+| enable_creators_platform | boolean |  | No |
+| enable_email_code_login | boolean |  | No |
+| enable_email_password_login | boolean, <br>**Default:** true |  | No |
+| enable_explore_banner | boolean |  | No |
+| enable_marketplace | boolean |  | No |
+| enable_social_oauth_login | boolean |  | No |
+| enable_trial_app | boolean |  | No |
+| is_allow_create_workspace | boolean |  | No |
+| is_allow_register | boolean |  | No |
+| is_email_setup | boolean |  | No |
+| license | [LicenseModel](#licensemodel) |  | No |
+| max_plugin_package_size | integer, <br>**Default:** 15728640 |  | No |
+| plugin_installation_permission | [PluginInstallationPermissionModel](#plugininstallationpermissionmodel) |  | No |
+| plugin_manager | [PluginManagerModel](#pluginmanagermodel) |  | No |
+| sso_enforced_for_signin | boolean |  | No |
+| sso_enforced_for_signin_protocol | string |  | No |
+| trial_models | [ string ], <br>**Default:**  |  | No |
+| webapp_auth | [WebAppAuthModel](#webappauthmodel) |  | No |
+
 ###### VersionFeatures
 
 | Name | Type | Description | Required |
@@ -14726,3 +14849,19 @@ FastOpenAPI proof of concept for Dify API
 | release_date | string | Release date of latest version | Yes |
 | release_notes | string | Release notes for latest version | Yes |
 | version | string | Latest version number | Yes |
+
+###### WebAppAuthModel
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| allow_email_code_login | boolean |  | No |
+| allow_email_password_login | boolean |  | No |
+| allow_sso | boolean |  | No |
+| enabled | boolean |  | No |
+| sso_config | [WebAppAuthSSOModel](#webappauthssomodel) |  | No |
+
+###### WebAppAuthSSOModel
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| protocol | string |  | No |

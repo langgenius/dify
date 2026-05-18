@@ -16,7 +16,6 @@ import { datasets } from './datasets/orpc.gen'
 import { emailCodeLogin } from './email-code-login/orpc.gen'
 import { emailRegister } from './email-register/orpc.gen'
 import { explore } from './explore/orpc.gen'
-import { features } from './features/orpc.gen'
 import { files } from './files/orpc.gen'
 import { forgotPassword } from './forgot-password/orpc.gen'
 import { form } from './form/orpc.gen'
@@ -37,7 +36,6 @@ import { ruleCodeGenerate } from './rule-code-generate/orpc.gen'
 import { ruleGenerate } from './rule-generate/orpc.gen'
 import { ruleStructuredOutputGenerate } from './rule-structured-output-generate/orpc.gen'
 import { spec } from './spec/orpc.gen'
-import { systemFeatures } from './system-features/orpc.gen'
 import { tagBindings } from './tag-bindings/orpc.gen'
 import { tags } from './tags/orpc.gen'
 import { test } from './test/orpc.gen'
@@ -63,7 +61,6 @@ export const contract = {
   emailCodeLogin,
   emailRegister,
   explore,
-  features,
   files,
   forgotPassword,
   form,
@@ -84,7 +81,6 @@ export const contract = {
   ruleGenerate,
   ruleStructuredOutputGenerate,
   spec,
-  systemFeatures,
   tagBindings,
   tags,
   test,
