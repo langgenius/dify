@@ -91,6 +91,37 @@ def test_assembling_request_auth_header_assembly():
     assert tool.assembling_request(parameters={}) == {}
 
 
+def test_assembling_request_does_not_mutate_runtime_credentials_and_avoids_double_prefix():
+    tool = _build_tool()
+
+    tool.runtime.credentials = {
+        "auth_type": "api_key_header",
+        "api_key_header_prefix": "bearer",
+        "api_key_value": "abc",
+    }
+    headers1 = tool.assembling_request(parameters={})
+    headers2 = tool.assembling_request(parameters={})
+    assert headers1["Authorization"] == "Bearer abc"
+    assert headers2["Authorization"] == "Bearer abc"
+    assert tool.runtime.credentials["api_key_value"] == "abc"
+
+    tool.runtime.credentials = {
+        "auth_type": "api_key_header",
+        "api_key_header_prefix": "bearer",
+        "api_key_value": "Bearer already-prefixed",
+    }
+    headers = tool.assembling_request(parameters={})
+    assert headers["Authorization"] == "Bearer already-prefixed"
+
+    tool.runtime.credentials = {
+        "auth_type": "api_key_header",
+        "api_key_header_prefix": "basic",
+        "api_key_value": "Basic already-prefixed",
+    }
+    headers = tool.assembling_request(parameters={})
+    assert headers["Authorization"] == "Basic already-prefixed"
+
+
 def test_assembling_request_runtime_auth_errors():
     tool = _build_tool()
 

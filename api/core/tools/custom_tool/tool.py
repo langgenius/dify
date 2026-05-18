@@ -100,16 +100,27 @@ class ApiTool(Tool):
             elif not isinstance(credentials["api_key_value"], str):
                 raise ToolProviderCredentialValidationError("api_key_value must be a string")
 
+            # NOTE: `ToolRuntime` can be shared across repeated tool invocations (multi-step agents, retries, parallel
+            # calls). Do not mutate `runtime.credentials` when assembling request headers.
+            api_key_value = credentials["api_key_value"]
             if "api_key_header_prefix" in credentials:
                 api_key_header_prefix = credentials["api_key_header_prefix"]
-                if api_key_header_prefix == "basic" and credentials["api_key_value"]:
-                    credentials["api_key_value"] = f"Basic {credentials['api_key_value']}"
-                elif api_key_header_prefix == "bearer" and credentials["api_key_value"]:
-                    credentials["api_key_value"] = f"Bearer {credentials['api_key_value']}"
+                if (
+                    api_key_header_prefix == "basic"
+                    and api_key_value
+                    and not api_key_value.lower().startswith("basic ")
+                ):
+                    api_key_value = f"Basic {api_key_value}"
+                elif (
+                    api_key_header_prefix == "bearer"
+                    and api_key_value
+                    and not api_key_value.lower().startswith("bearer ")
+                ):
+                    api_key_value = f"Bearer {api_key_value}"
                 elif api_key_header_prefix == "custom":
                     pass
 
-            headers[api_key_header] = credentials["api_key_value"]
+            headers[api_key_header] = api_key_value
 
         elif credentials["auth_type"] == "api_key_query":
             # For query parameter authentication, we don't add anything to headers
