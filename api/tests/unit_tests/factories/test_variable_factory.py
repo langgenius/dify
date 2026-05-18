@@ -45,7 +45,7 @@ def test_string_variable():
 
 
 def test_integer_variable():
-    test_data = {"value_type": "number", "name": "test_int", "value": 42}
+    test_data = {"value_type": "integer", "name": "test_int", "value": 42}
     result = variable_factory.build_conversation_variable_from_mapping(test_data)
     assert isinstance(result, IntegerVariable)
 
@@ -54,6 +54,23 @@ def test_float_variable():
     test_data = {"value_type": "number", "name": "test_float", "value": 3.14}
     result = variable_factory.build_conversation_variable_from_mapping(test_data)
     assert isinstance(result, FloatVariable)
+
+
+def test_number_variable_with_int_value():
+    """When value_type is 'number' and value is int, should create FloatVariable to avoid
+    narrowing the type to 'integer' which breaks subsequent turns (#36346)."""
+    test_data = {"value_type": "number", "name": "test_number_int", "value": 42}
+    result = variable_factory.build_conversation_variable_from_mapping(test_data)
+    assert isinstance(result, FloatVariable)
+    assert result.value == 42.0
+
+
+def test_number_variable_with_zero():
+    """value_type='number' with value=0 should not fail and should create FloatVariable (#36346)."""
+    test_data = {"value_type": "number", "name": "test_zero", "value": 0}
+    result = variable_factory.build_conversation_variable_from_mapping(test_data)
+    assert isinstance(result, FloatVariable)
+    assert result.value == 0.0
 
 
 def test_secret_variable():

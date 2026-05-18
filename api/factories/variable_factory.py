@@ -82,10 +82,19 @@ def _build_variable_from_mapping(*, mapping: Mapping[str, Any], selector: Sequen
             result = StringVariable.model_validate(mapping)
         case SegmentType.SECRET:
             result = SecretVariable.model_validate(mapping)
-        case SegmentType.NUMBER | SegmentType.INTEGER if isinstance(value, int):
-            mapping = dict(mapping)
-            mapping["value_type"] = SegmentType.INTEGER
-            result = IntegerVariable.model_validate(mapping)
+        case SegmentType.NUMBER | SegmentType.INTEGER if isinstance(value, int) and not isinstance(value, bool):
+            if value_type == SegmentType.NUMBER:
+                # When value_type is "number", always use float to avoid
+                # narrowing the type to "integer" which breaks subsequent
+                # turns when a code node outputs a float value (#36346)
+                mapping = dict(mapping)
+                mapping["value_type"] = SegmentType.FLOAT
+                mapping["value"] = float(value)
+                result = FloatVariable.model_validate(mapping)
+            else:
+                mapping = dict(mapping)
+                mapping["value_type"] = SegmentType.INTEGER
+                result = IntegerVariable.model_validate(mapping)
         case SegmentType.NUMBER | SegmentType.FLOAT if isinstance(value, float):
             mapping = dict(mapping)
             mapping["value_type"] = SegmentType.FLOAT
