@@ -16,6 +16,7 @@ from pydantic import TypeAdapter
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from configs import dify_config
 from core.agent.entities import AgentToolEntity
 from core.helper import marketplace
 from core.plugin.entities.plugin import PluginInstallationSource
@@ -310,6 +311,8 @@ class PluginMigration:
         """
         Fetch plugin unique identifier using plugin id.
         """
+        if not dify_config.MARKETPLACE_ENABLED:
+            return None
         plugin_manifest = marketplace.batch_fetch_plugin_manifests([plugin_id])
         if not plugin_manifest:
             return None
