@@ -43,6 +43,34 @@ export const TextField: Story = {
   ),
 }
 
+export const MultipleFields: Story = {
+  render: () => (
+    <form className="grid w-96 gap-4">
+      <FieldRoot name="name">
+        <FieldLabel>Name</FieldLabel>
+        <FieldControl required placeholder="Production API" />
+        <FieldError match="valueMissing">Name is required.</FieldError>
+      </FieldRoot>
+      <FieldRoot name="endpoint">
+        <FieldLabel>Endpoint</FieldLabel>
+        <FieldControl type="url" required placeholder="https://api.example.com" />
+        <FieldDescription>Used as the base URL for extension requests.</FieldDescription>
+        <FieldError match="valueMissing">Endpoint is required.</FieldError>
+        <FieldError match="typeMismatch">Enter a valid URL.</FieldError>
+      </FieldRoot>
+      <FieldRoot name="apiKey">
+        <FieldLabel>API key</FieldLabel>
+        <FieldControl required placeholder="sk-..." />
+        <FieldDescription>Stored with the extension configuration.</FieldDescription>
+        <FieldError match="valueMissing">API key is required.</FieldError>
+      </FieldRoot>
+      <div className="flex justify-end">
+        <Button type="submit" variant="primary">Save</Button>
+      </div>
+    </form>
+  ),
+}
+
 export const ExternalInvalidState: Story = {
   render: () => (
     <FieldRoot name="apiKey" invalid className="w-96">
