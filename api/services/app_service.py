@@ -91,7 +91,7 @@ class AppService:
                 return None
 
         app_models = db.paginate(
-            sa.select(App).where(*filters).order_by(App.created_at.desc()),
+            sa.select(App).where(*filters).order_by(App.updated_at.desc()),
             page=params.page,
             per_page=params.limit,
             error_out=False,

@@ -5400,6 +5400,21 @@ Delete an API key for a dataset
 | ---- | ----------- | ------ |
 | 200 | Success | [RecommendedAppListResponse](#recommendedapplistresponse) |
 
+### /explore/apps/learn-dify
+
+#### GET
+##### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| language | query | Language code for recommended app localization | No | string |
+
+##### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | [LearnDifyAppListResponse](#learndifyapplistresponse) |
+
 ### /explore/apps/{app_id}
 
 #### GET
@@ -12233,6 +12248,12 @@ Enum class for large language model mode.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | LLMMode | string | Enum class for large language model mode. |  |
+
+#### LearnDifyAppListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| recommended_apps | [ [RecommendedAppResponse](#recommendedappresponse) ] |  | Yes |
 
 #### LegacyEndpointUpdatePayload
 
