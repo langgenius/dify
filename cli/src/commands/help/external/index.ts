@@ -9,8 +9,8 @@ export default class HelpExternal extends DifyCommand {
     '<%= config.bin %> help external',
   ]
 
-  async run() {
-    await this.parse(HelpExternal)
+  async run(argv: string[]) {
+    await this.parse(HelpExternal, argv)
     return raw(runHelpExternal())
   }
 }

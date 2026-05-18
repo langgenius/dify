@@ -19,8 +19,8 @@ export default class Status extends DifyCommand {
     json: Flags.boolean({ description: 'emit JSON', default: false }),
   }
 
-  async run(): Promise<void> {
-    const { flags } = await this.parse(Status)
+  async run(argv: string[]): Promise<void> {
+    const { flags } = await this.parse(Status, argv)
     const configDir = resolveConfigDir()
     const bundle = await loadHosts(configDir)
     await runStatus({ io: realStreams(), bundle, verbose: flags.verbose, json: flags.json })

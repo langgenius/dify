@@ -15,7 +15,7 @@ function metaInfoOnly(): AppMeta {
       mode: 'chat',
       author: 'tester',
       tags: [],
-      updated_at: null,
+      updated_at: undefined,
       service_api_enabled: false,
       is_agent: false,
     },

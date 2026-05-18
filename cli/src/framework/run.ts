@@ -41,8 +41,7 @@ export async function run(tree: CommandTree, argv: string[]): Promise<void> {
   try {
     const Ctor = resolved.command
     const cmd = new Ctor()
-    cmd._setArgv(argv.slice(resolved.path.length))
-    const output = await cmd.run()
+    const output = await cmd.run(argv.slice(resolved.path.length))
     if (output !== undefined)
       process.stdout.write(stringifyOutput(output))
   }

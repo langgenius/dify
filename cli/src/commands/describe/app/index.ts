@@ -24,8 +24,8 @@ export default class DescribeApp extends DifyCommand {
     'refresh': Flags.boolean({ description: 'bypass app-info cache and fetch fresh', default: false }),
   }
 
-  async run() {
-    const { args, flags } = await this.parse(DescribeApp)
+  async run(argv: string[]) {
+    const { args, flags } = await this.parse(DescribeApp, argv)
     const format = flags.output
     const ctx = await this.authedCtx({ retryFlag: flags['http-retry'], withCache: true, format })
     return formatted({

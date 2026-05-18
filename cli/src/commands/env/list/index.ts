@@ -15,8 +15,8 @@ export default class EnvList extends DifyCommand {
     json: Flags.boolean({ description: 'emit JSON', default: false }),
   }
 
-  async run() {
-    const { flags } = await this.parse(EnvList)
+  async run(argv: string[]) {
+    const { flags } = await this.parse(EnvList, argv)
     return raw(runEnvList({ json: flags.json }))
   }
 }

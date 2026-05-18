@@ -29,8 +29,8 @@ export default class RunAppResume extends DifyCommand {
     'http-retry': httpRetryFlag,
   }
 
-  async run(): Promise<void> {
-    const { args, flags } = await this.parse(RunAppResume)
+  async run(argv: string[]): Promise<void> {
+    const { args, flags } = await this.parse(RunAppResume, argv)
     const format = flags.output
     const ctx = await this.authedCtx({ retryFlag: flags['http-retry'], withCache: true, format })
 

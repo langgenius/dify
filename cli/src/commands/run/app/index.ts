@@ -33,8 +33,8 @@ export default class RunApp extends DifyCommand {
     'output': Flags.string({ char: 'o', description: 'Output format (json|yaml|text)', default: '' }),
   }
 
-  async run(): Promise<void> {
-    const { args, flags } = await this.parse(RunApp)
+  async run(argv: string[]): Promise<void> {
+    const { args, flags } = await this.parse(RunApp, argv)
     const format = flags.output
     const ctx = await this.authedCtx({ retryFlag: flags['http-retry'], withCache: true, format })
     await runApp(

@@ -9,8 +9,8 @@ export default class HelpAccount extends DifyCommand {
     '<%= config.bin %> help account',
   ]
 
-  async run() {
-    await this.parse(HelpAccount)
+  async run(argv: string[]) {
+    await this.parse(HelpAccount, argv)
     return raw(runHelpAccount())
   }
 }

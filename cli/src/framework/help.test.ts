@@ -17,7 +17,11 @@ function makeCmd(opts: {
     static examples = opts.examples ?? []
     static agentGuide = opts.agentGuide
 
-    async run() {}
+    async run(_argv: string[]) {}
+
+    agentGuide(): string {
+      return opts.agentGuide ?? ''
+    }
   }
   return Cmd as unknown as CommandConstructor
 }

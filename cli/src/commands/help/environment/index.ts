@@ -9,8 +9,8 @@ export default class HelpEnvironment extends DifyCommand {
     '<%= config.bin %> help environment',
   ]
 
-  async run() {
-    await this.parse(HelpEnvironment)
+  async run(argv: string[]) {
+    await this.parse(HelpEnvironment, argv)
     return raw(runHelpEnvironment())
   }
 }

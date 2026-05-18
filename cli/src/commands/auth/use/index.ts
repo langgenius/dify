@@ -16,8 +16,8 @@ export default class Use extends DifyCommand {
     workspaceId: Args.string({ description: 'workspace id to activate', required: true }),
   }
 
-  async run(): Promise<void> {
-    const { args } = await this.parse(Use)
+  async run(argv: string[]): Promise<void> {
+    const { args } = await this.parse(Use, argv)
     const configDir = resolveConfigDir()
     const bundle = await loadHosts(configDir)
     await runUse({ configDir, io: realStreams(), bundle, workspaceId: args.workspaceId })

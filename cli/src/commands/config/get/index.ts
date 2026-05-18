@@ -15,8 +15,8 @@ export default class ConfigGet extends DifyCommand {
     key: Args.string({ description: 'config key', required: true }),
   }
 
-  async run() {
-    const { args } = await this.parse(ConfigGet)
+  async run(argv: string[]) {
+    const { args } = await this.parse(ConfigGet, argv)
     return raw(await runConfigGet({ dir: resolveConfigDir(), key: args.key }))
   }
 }

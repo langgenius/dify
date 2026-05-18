@@ -4,16 +4,16 @@ import { Command } from './command.js'
 import { findSuggestions, resolveCommand } from './registry.js'
 
 class FooCmd extends Command {
-  async run() {}
+  async run(_argv: string[]) {}
 }
 class FooBarCmd extends Command {
-  async run() {}
+  async run(_argv: string[]) {}
 }
 class FooBazCmd extends Command {
-  async run() {}
+  async run(_argv: string[]) {}
 }
 class TopLevelCmd extends Command {
-  async run() {}
+  async run(_argv: string[]) {}
 }
 
 const tree: CommandTree = {

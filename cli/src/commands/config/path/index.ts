@@ -10,8 +10,8 @@ export default class ConfigPath extends DifyCommand {
     '<%= config.bin %> config path',
   ]
 
-  async run() {
-    await this.parse(ConfigPath)
+  async run(argv: string[]) {
+    await this.parse(ConfigPath, argv)
     return raw(runConfigPath({ dir: resolveConfigDir() }))
   }
 }

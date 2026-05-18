@@ -34,5 +34,5 @@ export type CommandMeta = {
 }
 
 export type ICommand = {
-  readonly run: () => Promise<CommandOutput | void>
+  readonly run: (argv: string[]) => Promise<CommandOutput | void>
 }

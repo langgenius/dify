@@ -1,7 +1,6 @@
 import type { TableCell } from '../../../framework/output.js'
-import type { TableColumn, TableHandler, TableRow } from '../../../printers/format-table.js'
+import type { TableColumn } from '../../../printers/format-table.js'
 import type { AppListResponse, AppListRow, TagItem } from '../../../types/data-contracts.js'
-import { isPayloadShape } from './payload-shape.js'
 
 export const APP_MODE_KEY = 'app'
 

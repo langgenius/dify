@@ -3,18 +3,18 @@ import RunApp from './index.js'
 
 describe('run app agentGuide', () => {
   it('exposes non-empty agentGuide string', () => {
-    const guide = (RunApp as unknown as { agentGuide?: string }).agentGuide
+    const guide = new RunApp().agentGuide()
     expect(typeof guide).toBe('string')
-    expect(guide!.length).toBeGreaterThan(0)
+    expect(guide.length).toBeGreaterThan(0)
   })
 
   it('agentGuide mentions WORKFLOW section', () => {
-    const guide = (RunApp as unknown as { agentGuide?: string }).agentGuide!
+    const guide = new RunApp().agentGuide()
     expect(guide).toContain('WORKFLOW')
   })
 
   it('agentGuide mentions ERROR RECOVERY section', () => {
-    const guide = (RunApp as unknown as { agentGuide?: string }).agentGuide!
+    const guide = new RunApp().agentGuide()
     expect(guide).toContain('ERROR RECOVERY')
   })
 })

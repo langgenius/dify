@@ -17,8 +17,8 @@ export default class ConfigSet extends DifyCommand {
     value: Args.string({ description: 'config value', required: true }),
   }
 
-  async run() {
-    const { args } = await this.parse(ConfigSet)
+  async run(argv: string[]) {
+    const { args } = await this.parse(ConfigSet, argv)
     return raw(await runConfigSet({ dir: resolveConfigDir(), key: args.key, value: args.value }))
   }
 }

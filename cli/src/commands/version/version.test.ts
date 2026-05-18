@@ -7,7 +7,7 @@ describe('Version command', () => {
     const orig = info.versionInfo.channel
     Object.assign(info.versionInfo, { channel: 'stable' })
     try {
-      const output = await Version.run([])
+      const output = await new Version().run([])
       expect(output?.kind).toBe('raw')
       if (output?.kind !== 'raw')
         throw new Error('expected raw output')
@@ -27,7 +27,7 @@ describe('Version command', () => {
     const orig = info.versionInfo.channel
     Object.assign(info.versionInfo, { channel: 'rc' })
     try {
-      const output = await Version.run([])
+      const output = await new Version().run([])
       expect(output?.kind).toBe('raw')
       if (output?.kind !== 'raw')
         throw new Error('expected raw output')
@@ -42,7 +42,7 @@ describe('Version command', () => {
   })
 
   it('emits JSON when --json flag passed', async () => {
-    const output = await Version.run(['--json'])
+    const output = await new Version().run(['--json'])
     expect(output?.kind).toBe('raw')
     if (output?.kind !== 'raw')
       throw new Error('expected raw output')

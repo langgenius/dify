@@ -22,8 +22,8 @@ export default class DevicesRevoke extends DifyCommand {
     'yes': Flags.boolean({ description: 'skip confirmation prompt', default: false }),
   }
 
-  async run(): Promise<void> {
-    const { args, flags } = await this.parse(DevicesRevoke)
+  async run(argv: string[]): Promise<void> {
+    const { args, flags } = await this.parse(DevicesRevoke, argv)
     const ctx = await this.authedCtx({ retryFlag: flags['http-retry'] })
     const { store } = await selectStore({ configDir: ctx.configDir })
     await runDevicesRevoke({

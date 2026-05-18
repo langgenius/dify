@@ -21,27 +21,15 @@ export abstract class Command implements ICommand {
   static args: Record<string, ArgDefinition<string | undefined>> = {}
   static examples: string[] = []
 
-  private _argv: readonly string[] = []
+  abstract run(argv: string[]): Promise<CommandOutput | void>
 
-  _setArgv(argv: readonly string[]): void {
-    this._argv = argv
-  }
-
-  abstract run(): Promise<CommandOutput | void>
-
-  static async run(argv: string[] = []): Promise<CommandOutput | void> {
-    const cmd = new (this as unknown as { new(): Command })()
-    cmd._setArgv(argv)
-    return cmd.run()
-  }
-
-  protected parse<C extends CommandConstructor>(ctor: C): ParseResult<C> {
+  protected parse<C extends CommandConstructor>(ctor: C, argv: string[]): ParseResult<C> {
     const meta = {
       flags: ctor.flags ?? {},
       args: ctor.args ?? {},
     }
 
-    return parseArgv(this._argv, meta) as ParseResult<C>
+    return parseArgv(argv, meta) as ParseResult<C>
   }
 
   error(message: string, opts?: { exit?: number }): never {

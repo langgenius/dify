@@ -18,8 +18,8 @@ export default class GetWorkspace extends DifyCommand {
     'output': Flags.string({ char: 'o', description: 'output format (json|yaml|name|wide)', default: '' }),
   }
 
-  async run() {
-    const { flags } = await this.parse(GetWorkspace)
+  async run(argv: string[]) {
+    const { flags } = await this.parse(GetWorkspace, argv)
     const format = flags.output
     const ctx = await this.authedCtx({ retryFlag: flags['http-retry'], format })
     const result = await runGetWorkspace({ format }, { bundle: ctx.bundle, http: ctx.http, io: ctx.io })
