@@ -1,5 +1,8 @@
+import type {
+  ApiBasedExtensionPayload,
+  ApiBasedExtensionResponse,
+} from '@dify/contracts/api/console/api-based-extension/types.gen'
 import type { FC } from 'react'
-import type { ApiBasedExtension } from '@/models/common'
 import { Button } from '@langgenius/dify-ui/button'
 import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
 import { toast } from '@langgenius/dify-ui/toast'
@@ -9,15 +12,10 @@ import { BookOpen01 } from '@/app/components/base/icons/src/vender/line/educatio
 import { useDocLink } from '@/context/i18n'
 import { addApiBasedExtension, updateApiBasedExtension } from '@/service/common'
 
-export type ApiBasedExtensionData = {
-  name?: string
-  apiEndpoint?: string
-  apiKey?: string
-}
 type ApiBasedExtensionModalProps = {
-  data: ApiBasedExtension
+  data: Partial<ApiBasedExtensionResponse>
   onCancel: () => void
-  onSave?: (newData: ApiBasedExtension) => void
+  onSave?: (newData: ApiBasedExtensionResponse) => void
 }
 const ApiBasedExtensionModal: FC<ApiBasedExtensionModalProps> = ({ data, onCancel, onSave }) => {
   const { t } = useTranslation()
@@ -35,11 +33,11 @@ const ApiBasedExtensionModal: FC<ApiBasedExtensionModalProps> = ({ data, onCance
       return
     }
     try {
-      let res: ApiBasedExtension = {}
+      let res = {} as ApiBasedExtensionResponse
       if (!data.id) {
         res = await addApiBasedExtension({
           url: '/api-based-extension',
-          body: localeData,
+          body: localeData as ApiBasedExtensionPayload,
         })
       }
       else {
@@ -48,7 +46,7 @@ const ApiBasedExtensionModal: FC<ApiBasedExtensionModalProps> = ({ data, onCance
           body: {
             ...localeData,
             api_key: data.api_key === localeData.api_key ? '[__HIDDEN__]' : localeData.api_key,
-          },
+          } as ApiBasedExtensionPayload,
         })
         toast.success(t('actionMsg.modifiedSuccessfully', { ns: 'common' }))
       }
