@@ -2,6 +2,7 @@ import type { ReactNode } from 'react'
 import type { Mock } from 'vitest'
 import type { CreateAppModalProps } from '@/app/components/explore/create-app-modal'
 import type { App } from '@/models/explore'
+import type { App as WorkspaceApp } from '@/types/app'
 import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import { createSystemFeaturesWrapper } from '@/__tests__/utils/mock-system-features'
 import { useAppContext } from '@/context/app-context'
@@ -13,6 +14,7 @@ import { LEARN_DIFY_HIDDEN_STORAGE_KEY } from '../../learn-dify/storage'
 import AppList from '../index'
 
 let mockExploreData: { categories: string[], allList: App[] } | undefined = { categories: [], allList: [] }
+let mockWorkspaceApps: WorkspaceApp[] = []
 let mockIsLoading = false
 let mockIsError = false
 const mockHandleImportDSL = vi.fn()
@@ -30,6 +32,36 @@ vi.mock('@/service/use-explore', () => ({
 vi.mock('@/service/explore', () => ({
   fetchAppDetail: vi.fn(),
   fetchAppList: vi.fn(),
+}))
+
+vi.mock('@/service/client', () => ({
+  consoleClient: {
+    systemFeatures: () => Promise.resolve({}),
+  },
+  consoleQuery: {
+    systemFeatures: {
+      queryKey: () => ['console', 'systemFeatures'],
+    },
+    apps: {
+      list: {
+        queryOptions: (options: { input?: { query?: { limit?: number } } }) => {
+          const limit = options.input?.query?.limit ?? mockWorkspaceApps.length
+          const response = {
+            data: mockWorkspaceApps.slice(0, limit),
+            has_more: false,
+            limit,
+            page: 1,
+            total: mockWorkspaceApps.length,
+          }
+          return {
+            queryKey: ['console', 'apps', 'list', options],
+            queryFn: () => Promise.resolve(response),
+            initialData: response,
+          }
+        },
+      },
+    },
+  },
 }))
 
 vi.mock('@/context/app-context', () => ({
@@ -132,9 +164,36 @@ const createApp = (overrides: Partial<App> = {}): App => ({
   is_agent: overrides.is_agent ?? false,
 })
 
+const createWorkspaceApp = (overrides: Partial<WorkspaceApp> = {}): WorkspaceApp => ({
+  id: overrides.id ?? 'workspace-app-1',
+  name: overrides.name ?? 'Workspace App',
+  description: overrides.description ?? 'Workspace app description',
+  author_name: overrides.author_name ?? 'Evan',
+  icon_type: overrides.icon_type ?? 'emoji',
+  icon: overrides.icon ?? '😀',
+  icon_background: overrides.icon_background ?? '#fff',
+  icon_url: overrides.icon_url ?? null,
+  use_icon_as_answer_icon: overrides.use_icon_as_answer_icon ?? false,
+  mode: overrides.mode ?? AppModeEnum.CHAT,
+  created_at: overrides.created_at ?? 1704067200,
+  updated_at: overrides.updated_at ?? 1704153600,
+  enable_site: overrides.enable_site ?? false,
+  enable_api: overrides.enable_api ?? false,
+  api_rpm: overrides.api_rpm ?? 60,
+  api_rph: overrides.api_rph ?? 3600,
+  is_demo: overrides.is_demo ?? false,
+  model_config: overrides.model_config,
+  app_model_config: overrides.app_model_config,
+  site: overrides.site,
+  api_base_url: overrides.api_base_url ?? '',
+  tags: overrides.tags ?? [],
+  access_mode: overrides.access_mode,
+} as WorkspaceApp)
+
 const mockMemberRole = (hasEditPermission: boolean) => {
   ;(useAppContext as Mock).mockReturnValue({
     userProfile: { id: 'user-1' },
+    isCurrentWorkspaceEditor: hasEditPermission,
   })
   ;(useMembers as Mock).mockReturnValue({
     data: {
@@ -173,6 +232,7 @@ describe('AppList', () => {
     vi.clearAllMocks()
     localStorage.clear()
     mockExploreData = { categories: [], allList: [] }
+    mockWorkspaceApps = []
     mockIsLoading = false
     mockIsError = false
   })
@@ -204,20 +264,43 @@ describe('AppList', () => {
       expect(screen.getByText('explore.apps.description')).toBeInTheDocument()
     })
 
-    it('should render continue work placeholders', () => {
+    it('should render continue work with the first four workspace apps', () => {
       mockExploreData = {
         categories: ['Writing'],
         allList: [createApp()],
       }
+      mockWorkspaceApps = [
+        createWorkspaceApp({ id: 'app-1', name: 'Email Reply', author_name: 'Evan' }),
+        createWorkspaceApp({ id: 'app-2', name: 'Feature Copilot', author_name: 'Maggie' }),
+        createWorkspaceApp({ id: 'app-3', name: 'Book Translation', author_name: 'Alex' }),
+        createWorkspaceApp({ id: 'app-4', name: 'Logo Design', author_name: 'Taylor' }),
+        createWorkspaceApp({ id: 'app-5', name: 'Hidden Fifth App', author_name: 'Robin' }),
+      ]
 
       renderAppList()
 
       expect(screen.getByRole('heading', { name: 'explore.continueWork.title' })).toBeInTheDocument()
-      expect(screen.getByText('Automated Email Reply')).toBeInTheDocument()
-      expect(screen.getByText('Customer Feedback Summary')).toBeInTheDocument()
-      expect(screen.getAllByText('Evan')).toHaveLength(5)
-      expect(screen.getAllByText('explore.continueWork.editedAt:{"time":"3 minutes ago"}')).toHaveLength(5)
+      expect(screen.getByText('Email Reply')).toBeInTheDocument()
+      expect(screen.getByText('Feature Copilot')).toBeInTheDocument()
+      expect(screen.getByText('Book Translation')).toBeInTheDocument()
+      expect(screen.getByText('Logo Design')).toBeInTheDocument()
+      expect(screen.queryByText('Hidden Fifth App')).not.toBeInTheDocument()
+      expect(screen.getByText('Maggie')).toBeInTheDocument()
+      expect(screen.getAllByText('explore.continueWork.editedAt:{"time":"3 minutes ago"}')).toHaveLength(4)
+      expect(screen.getByRole('link', { name: /Email Reply/ })).toHaveAttribute('href', '/app/app-1/overview')
       expect(screen.getByRole('link', { name: 'explore.continueWork.exploreStudio' })).toHaveAttribute('href', '/apps')
+    })
+
+    it('should hide continue work when there are no workspace apps', () => {
+      mockExploreData = {
+        categories: ['Writing'],
+        allList: [createApp()],
+      }
+      mockWorkspaceApps = []
+
+      renderAppList()
+
+      expect(screen.queryByRole('heading', { name: 'explore.continueWork.title' })).not.toBeInTheDocument()
     })
 
     it('should render learn dify templates without badges or template metadata', () => {

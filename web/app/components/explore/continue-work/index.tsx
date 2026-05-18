@@ -1,10 +1,11 @@
 'use client'
 
 import { cn } from '@langgenius/dify-ui/cn'
+import { useQuery } from '@tanstack/react-query'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import Link from '@/next/link'
-import { continueWorkItems } from './data'
+import { consoleQuery } from '@/service/client'
 import ContinueWorkItem from './item'
 
 type ContinueWorkProps = {
@@ -15,6 +16,21 @@ const ContinueWork = ({
   className,
 }: ContinueWorkProps) => {
   const { t } = useTranslation()
+  const { data } = useQuery(consoleQuery.apps.list.queryOptions({
+    input: {
+      query: {
+        page: 1,
+        limit: 4,
+        name: '',
+      },
+    },
+    staleTime: 0,
+    gcTime: 0,
+  }))
+  const apps = data?.data ?? []
+
+  if (apps.length === 0)
+    return null
 
   return (
     <section className={cn('px-12 pb-6', className)} aria-labelledby="continue-work-title">
@@ -30,8 +46,8 @@ const ContinueWork = ({
         </Link>
       </div>
       <div className="grid grid-cols-1 gap-3 pt-2 sm:grid-cols-2 xl:grid-cols-4">
-        {continueWorkItems.map(item => (
-          <ContinueWorkItem key={item.id} item={item} />
+        {apps.map(app => (
+          <ContinueWorkItem key={app.id} app={app} />
         ))}
       </div>
     </section>
