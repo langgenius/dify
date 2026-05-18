@@ -10145,9 +10145,9 @@ Get banner list
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| email | string |  | No |
-| workspace_id | string |  | No |
-| workspace_name | string |  | No |
+| email | string |  | Yes |
+| workspace_id | string |  | Yes |
+| workspace_name | string |  | Yes |
 
 #### ActivationCheckResponse
 
@@ -13172,7 +13172,7 @@ Form input definition.
 | ---- | ---- | ----------- | -------- |
 | host | string |  | Yes |
 | key | string |  | Yes |
-| port |  |  | Yes |
+| port | integer |  | Yes |
 
 #### PluginDependency
 

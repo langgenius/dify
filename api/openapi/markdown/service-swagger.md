@@ -2171,11 +2171,11 @@ Returns a list of available models for the specified model type.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| author_name | string |  | No |
-| description | string |  | No |
+| author_name | string |  | Yes |
+| description | string |  | Yes |
 | mode | string |  | Yes |
 | name | string |  | Yes |
-| tags | [ string ] |  | No |
+| tags | [ string ] |  | Yes |
 
 #### ChatRequestPayload
 
