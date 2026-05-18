@@ -111,6 +111,9 @@ class _FakeQuery:
     def filter(self, *args, **kwargs):
         return self
 
+    def where(self, *args, **kwargs):
+        return self
+
     def first(self):
         return self._result
 
