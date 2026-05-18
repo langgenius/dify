@@ -103,6 +103,15 @@ export type ForgotPasswordSendPayload = {
   language?: string | null
 }
 
+export type HumanInputRemoteFileUploadPayload = {
+  url: string
+}
+
+export type HumanInputUploadTokenResponse = {
+  expires_at: number
+  upload_token: string
+}
+
 export type LoginPayload = {
   email: string
   password: string
@@ -718,6 +727,38 @@ export type PostForgotPasswordValidityResponses = {
 export type PostForgotPasswordValidityResponse
   = PostForgotPasswordValidityResponses[keyof PostForgotPasswordValidityResponses]
 
+export type PostFormHumanInputFilesRemoteUploadData = {
+  body?: never
+  path?: never
+  query?: never
+  url: '/form/human_input/files/remote-upload'
+}
+
+export type PostFormHumanInputFilesRemoteUploadResponses = {
+  200: {
+    [key: string]: unknown
+  }
+}
+
+export type PostFormHumanInputFilesRemoteUploadResponse
+  = PostFormHumanInputFilesRemoteUploadResponses[keyof PostFormHumanInputFilesRemoteUploadResponses]
+
+export type PostFormHumanInputFilesUploadData = {
+  body?: never
+  path?: never
+  query?: never
+  url: '/form/human_input/files/upload'
+}
+
+export type PostFormHumanInputFilesUploadResponses = {
+  200: {
+    [key: string]: unknown
+  }
+}
+
+export type PostFormHumanInputFilesUploadResponse
+  = PostFormHumanInputFilesUploadResponses[keyof PostFormHumanInputFilesUploadResponses]
+
 export type GetFormHumanInputByFormTokenData = {
   body?: never
   path: {
@@ -753,6 +794,24 @@ export type PostFormHumanInputByFormTokenResponses = {
 
 export type PostFormHumanInputByFormTokenResponse
   = PostFormHumanInputByFormTokenResponses[keyof PostFormHumanInputByFormTokenResponses]
+
+export type PostFormHumanInputByFormTokenUploadTokenData = {
+  body?: never
+  path: {
+    form_token: string
+  }
+  query?: never
+  url: '/form/human_input/{form_token}/upload-token'
+}
+
+export type PostFormHumanInputByFormTokenUploadTokenResponses = {
+  200: {
+    [key: string]: unknown
+  }
+}
+
+export type PostFormHumanInputByFormTokenUploadTokenResponse
+  = PostFormHumanInputByFormTokenUploadTokenResponses[keyof PostFormHumanInputByFormTokenUploadTokenResponses]
 
 export type PostLoginData = {
   body: LoginPayload

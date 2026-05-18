@@ -133,6 +133,21 @@ export const zForgotPasswordSendPayload = z.object({
 })
 
 /**
+ * HumanInputRemoteFileUploadPayload
+ */
+export const zHumanInputRemoteFileUploadPayload = z.object({
+  url: z.url().min(1).max(2083),
+})
+
+/**
+ * HumanInputUploadTokenResponse
+ */
+export const zHumanInputUploadTokenResponse = z.object({
+  expires_at: z.int(),
+  upload_token: z.string(),
+})
+
+/**
  * LoginPayload
  */
 export const zLoginPayload = z.object({
@@ -345,6 +360,16 @@ export const zPostForgotPasswordValidityBody = zForgotPasswordCheckPayload
  */
 export const zPostForgotPasswordValidityResponse = z.record(z.string(), z.unknown())
 
+/**
+ * Success
+ */
+export const zPostFormHumanInputFilesRemoteUploadResponse = z.record(z.string(), z.unknown())
+
+/**
+ * Success
+ */
+export const zPostFormHumanInputFilesUploadResponse = z.record(z.string(), z.unknown())
+
 export const zGetFormHumanInputByFormTokenPath = z.object({
   form_token: z.string(),
 })
@@ -362,6 +387,15 @@ export const zPostFormHumanInputByFormTokenPath = z.object({
  * Success
  */
 export const zPostFormHumanInputByFormTokenResponse = z.record(z.string(), z.unknown())
+
+export const zPostFormHumanInputByFormTokenUploadTokenPath = z.object({
+  form_token: z.string(),
+})
+
+/**
+ * Success
+ */
+export const zPostFormHumanInputByFormTokenUploadTokenResponse = z.record(z.string(), z.unknown())
 
 export const zPostLoginBody = zLoginPayload
 

@@ -409,6 +409,32 @@ Verify password reset token validity
 | 400 | Bad request - invalid token format |
 | 401 | Invalid or expired token |
 
+### /form/human_input/files/remote-upload
+
+#### POST
+##### Summary
+
+Upload one remote URL file for a HITL human input form
+
+##### Responses
+
+| Code | Description |
+| ---- | ----------- |
+| 200 | Success |
+
+### /form/human_input/files/upload
+
+#### POST
+##### Summary
+
+Upload one local file for a HITL human input form
+
+##### Responses
+
+| Code | Description |
+| ---- | ----------- |
+| 200 | Success |
+
 ### /form/human_input/{form_token}
 
 #### GET
@@ -448,6 +474,29 @@ Request body:
     },
     "action": "Approve"
 }
+
+##### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| form_token | path |  | Yes | string |
+
+##### Responses
+
+| Code | Description |
+| ---- | ----------- |
+| 200 | Success |
+
+### /form/human_input/{form_token}/upload-token
+
+#### POST
+##### Summary
+
+Issue an upload token for a human input form
+
+##### Description
+
+POST /api/form/human_input/<form_token>/upload-token
 
 ##### Parameters
 
@@ -1152,6 +1201,19 @@ Returns Server-Sent Events stream.
 | ---- | ---- | ----------- | -------- |
 | email | string |  | Yes |
 | language | string |  | No |
+
+#### HumanInputRemoteFileUploadPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| url | string (uri) | Remote file URL | Yes |
+
+#### HumanInputUploadTokenResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| expires_at | integer |  | Yes |
+| upload_token | string |  | Yes |
 
 #### LoginPayload
 

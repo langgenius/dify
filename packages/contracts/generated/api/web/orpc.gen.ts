@@ -64,6 +64,10 @@ import {
   zPostForgotPasswordValidityResponse,
   zPostFormHumanInputByFormTokenPath,
   zPostFormHumanInputByFormTokenResponse,
+  zPostFormHumanInputByFormTokenUploadTokenPath,
+  zPostFormHumanInputByFormTokenUploadTokenResponse,
+  zPostFormHumanInputFilesRemoteUploadResponse,
+  zPostFormHumanInputFilesUploadResponse,
   zPostLoginBody,
   zPostLoginResponse,
   zPostLogoutResponse,
@@ -440,6 +444,69 @@ export const forgotPassword = {
 }
 
 /**
+ * Upload one remote URL file for a HITL human input form
+ */
+export const post13 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postFormHumanInputFilesRemoteUpload',
+    path: '/form/human_input/files/remote-upload',
+    summary: 'Upload one remote URL file for a HITL human input form',
+    tags: ['web'],
+  })
+  .output(zPostFormHumanInputFilesRemoteUploadResponse)
+
+export const remoteUpload = {
+  post: post13,
+}
+
+/**
+ * Upload one local file for a HITL human input form
+ */
+export const post14 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postFormHumanInputFilesUpload',
+    path: '/form/human_input/files/upload',
+    summary: 'Upload one local file for a HITL human input form',
+    tags: ['web'],
+  })
+  .output(zPostFormHumanInputFilesUploadResponse)
+
+export const upload2 = {
+  post: post14,
+}
+
+export const files2 = {
+  remoteUpload,
+  upload: upload2,
+}
+
+/**
+ * Issue an upload token for a human input form
+ *
+ * POST /api/form/human_input/<form_token>/upload-token
+ */
+export const post15 = oc
+  .route({
+    description: 'POST /api/form/human_input/<form_token>/upload-token',
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postFormHumanInputByFormTokenUploadToken',
+    path: '/form/human_input/{form_token}/upload-token',
+    summary: 'Issue an upload token for a human input form',
+    tags: ['web'],
+  })
+  .input(z.object({ params: zPostFormHumanInputByFormTokenUploadTokenPath }))
+  .output(zPostFormHumanInputByFormTokenUploadTokenResponse)
+
+export const uploadToken = {
+  post: post15,
+}
+
+/**
  * Get human input form definition by token
  *
  * GET /api/form/human_input/<form_token>
@@ -470,7 +537,7 @@ export const get2 = oc
  * "action": "Approve"
  * }
  */
-export const post13 = oc
+export const post16 = oc
   .route({
     description:
       'POST /api/form/human_input/<form_token>\n\nRequest body:\n{\n    "inputs": {\n        "content": "User input content"\n    },\n    "action": "Approve"\n}',
@@ -486,10 +553,12 @@ export const post13 = oc
 
 export const byFormToken = {
   get: get2,
-  post: post13,
+  post: post16,
+  uploadToken,
 }
 
 export const humanInput = {
+  files: files2,
   byFormToken,
 }
 
@@ -520,7 +589,7 @@ export const status = {
  *
  * Authenticate user for web application access
  */
-export const post14 = oc
+export const post17 = oc
   .route({
     description: 'Authenticate user for web application access',
     inputStructure: 'detailed',
@@ -534,14 +603,14 @@ export const post14 = oc
   .output(zPostLoginResponse)
 
 export const login = {
-  post: post14,
+  post: post17,
   status,
 }
 
 /**
  * Logout user from web application
  */
-export const post15 = oc
+export const post18 = oc
   .route({
     description: 'Logout user from web application',
     inputStructure: 'detailed',
@@ -553,13 +622,13 @@ export const post15 = oc
   .output(zPostLogoutResponse)
 
 export const logout = {
-  post: post15,
+  post: post18,
 }
 
 /**
  * Submit feedback (like/dislike) for a specific message.
  */
-export const post16 = oc
+export const post19 = oc
   .route({
     description: 'Submit feedback (like/dislike) for a specific message.',
     inputStructure: 'detailed',
@@ -577,7 +646,7 @@ export const post16 = oc
   .output(zPostMessagesByMessageIdFeedbacksResponse)
 
 export const feedbacks = {
-  post: post16,
+  post: post19,
 }
 
 /**
@@ -732,7 +801,7 @@ export const passport = {
  * FileTooLargeError: File exceeds size limit
  * UnsupportedFileTypeError: File type not supported
  */
-export const post17 = oc
+export const post20 = oc
   .route({
     description:
       'Upload a file from a remote URL\nDownloads a file from the provided remote URL and uploads it\nto the platform storage for use in web applications.\n\nArgs:\n    app_model: The associated application model\n    end_user: The end user making the request\n\nJSON Parameters:\n    url: The remote URL to download the file from (required)\n\nReturns:\n    dict: File information including ID, signed URL, and metadata\n    int: HTTP status code 201 for success\n\nRaises:\n    RemoteFileUploadError: Failed to fetch file from remote URL\n    FileTooLargeError: File exceeds size limit\n    UnsupportedFileTypeError: File type not supported',
@@ -746,8 +815,8 @@ export const post17 = oc
   })
   .output(zPostRemoteFilesUploadResponse)
 
-export const upload2 = {
-  post: post17,
+export const upload3 = {
+  post: post20,
 }
 
 /**
@@ -787,7 +856,7 @@ export const byUrl = {
 }
 
 export const remoteFiles = {
-  upload: upload2,
+  upload: upload3,
   byUrl,
 }
 
@@ -829,7 +898,7 @@ export const get11 = oc
 /**
  * Save a specific message for later reference.
  */
-export const post18 = oc
+export const post21 = oc
   .route({
     description: 'Save a specific message for later reference.',
     inputStructure: 'detailed',
@@ -843,7 +912,7 @@ export const post18 = oc
 
 export const savedMessages = {
   get: get11,
-  post: post18,
+  post: post21,
   byMessageId: byMessageId2,
 }
 
@@ -910,7 +979,7 @@ export const systemFeatures = {
  *
  * Convert text to audio using text-to-speech service.
  */
-export const post19 = oc
+export const post22 = oc
   .route({
     description: 'Convert text to audio using text-to-speech service.',
     inputStructure: 'detailed',
@@ -924,7 +993,7 @@ export const post19 = oc
   .output(zPostTextToAudioResponse)
 
 export const textToAudio = {
-  post: post19,
+  post: post22,
 }
 
 /**
@@ -1007,7 +1076,7 @@ export const workflow = {
  *
  * Execute a workflow with provided inputs and files.
  */
-export const post20 = oc
+export const post23 = oc
   .route({
     description: 'Execute a workflow with provided inputs and files.',
     inputStructure: 'detailed',
@@ -1021,7 +1090,7 @@ export const post20 = oc
   .output(zPostWorkflowsRunResponse)
 
 export const run = {
-  post: post20,
+  post: post23,
 }
 
 /**
@@ -1029,7 +1098,7 @@ export const run = {
  *
  * Stop a running workflow task.
  */
-export const post21 = oc
+export const post24 = oc
   .route({
     description: 'Stop a running workflow task.',
     inputStructure: 'detailed',
@@ -1043,7 +1112,7 @@ export const post21 = oc
   .output(zPostWorkflowsTasksByTaskIdStopResponse)
 
 export const stop3 = {
-  post: post21,
+  post: post24,
 }
 
 export const byTaskId4 = {
