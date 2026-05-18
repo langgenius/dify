@@ -1,3 +1,4 @@
+import { raw } from '../../../framework/output.js'
 import { DifyCommand } from '../../_shared/dify-command.js'
 import { runHelpExternal } from './external.js'
 
@@ -8,8 +9,8 @@ export default class HelpExternal extends DifyCommand {
     '<%= config.bin %> help external',
   ]
 
-  async run(): Promise<void> {
+  async run() {
     await this.parse(HelpExternal)
-    process.stdout.write(runHelpExternal())
+    return raw(runHelpExternal())
   }
 }

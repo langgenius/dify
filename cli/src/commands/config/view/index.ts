@@ -1,5 +1,6 @@
 import { resolveConfigDir } from '../../../config/dir.js'
 import { Flags } from '../../../framework/flags.js'
+import { raw } from '../../../framework/output.js'
 import { DifyCommand } from '../../_shared/dify-command.js'
 import { runConfigView } from './run.js'
 
@@ -15,8 +16,8 @@ export default class ConfigView extends DifyCommand {
     json: Flags.boolean({ description: 'emit JSON', default: false }),
   }
 
-  async run(): Promise<void> {
+  async run() {
     const { flags } = await this.parse(ConfigView)
-    process.stdout.write(await runConfigView({ dir: resolveConfigDir(), json: flags.json }))
+    return raw(await runConfigView({ dir: resolveConfigDir(), json: flags.json }))
   }
 }

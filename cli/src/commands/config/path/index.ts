@@ -1,4 +1,5 @@
 import { resolveConfigDir } from '../../../config/dir.js'
+import { raw } from '../../../framework/output.js'
 import { DifyCommand } from '../../_shared/dify-command.js'
 import { runConfigPath } from './run.js'
 
@@ -9,8 +10,8 @@ export default class ConfigPath extends DifyCommand {
     '<%= config.bin %> config path',
   ]
 
-  async run(): Promise<void> {
+  async run() {
     await this.parse(ConfigPath)
-    process.stdout.write(runConfigPath({ dir: resolveConfigDir() }))
+    return raw(runConfigPath({ dir: resolveConfigDir() }))
   }
 }

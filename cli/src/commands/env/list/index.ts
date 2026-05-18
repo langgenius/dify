@@ -1,4 +1,5 @@
 import { Flags } from '../../../framework/flags.js'
+import { raw } from '../../../framework/output.js'
 import { DifyCommand } from '../../_shared/dify-command.js'
 import { runEnvList } from './run-list.js'
 
@@ -14,8 +15,8 @@ export default class EnvList extends DifyCommand {
     json: Flags.boolean({ description: 'emit JSON', default: false }),
   }
 
-  async run(): Promise<void> {
+  async run() {
     const { flags } = await this.parse(EnvList)
-    process.stdout.write(runEnvList({ json: flags.json }))
+    return raw(runEnvList({ json: flags.json }))
   }
 }

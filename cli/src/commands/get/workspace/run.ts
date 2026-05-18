@@ -4,8 +4,7 @@ import type { IOStreams } from '../../../io/streams.js'
 import { WorkspacesClient } from '../../../api/workspaces.js'
 import { runWithSpinner } from '../../../io/spinner.js'
 import { nullStreams } from '../../../io/streams.js'
-import { newWorkspaceObject } from './handlers.js'
-import { WorkspacePrintFlags } from './print-flags.js'
+import { WorkspaceListOutput, WorkspaceRow } from './handlers.js'
 
 export const EMPTY_WORKSPACES_MESSAGE
   = 'No workspaces visible to this bearer (external-SSO subjects see empty data).\n'
@@ -21,17 +20,28 @@ export type GetWorkspaceDeps = {
   readonly workspacesFactory?: (http: KyInstance) => WorkspacesClient
 }
 
-export async function runGetWorkspace(opts: GetWorkspaceOptions, deps: GetWorkspaceDeps): Promise<string> {
+export type GetWorkspaceResult
+  = | { readonly kind: 'empty', readonly message: string }
+    | { readonly kind: 'output', readonly data: WorkspaceListOutput }
+
+export async function runGetWorkspace(opts: GetWorkspaceOptions, deps: GetWorkspaceDeps): Promise<GetWorkspaceResult> {
   const wsFactory = deps.workspacesFactory ?? ((h: KyInstance) => new WorkspacesClient(h))
-  const format = opts.format ?? ''
   const io = deps.io ?? nullStreams()
   const env = await runWithSpinner(
     { io, label: 'Fetching workspaces' },
     () => wsFactory(deps.http).list(),
   )
   if (env.workspaces.length === 0)
-    return EMPTY_WORKSPACES_MESSAGE
+    return { kind: 'empty', message: EMPTY_WORKSPACES_MESSAGE }
   const currentId = deps.bundle.workspace?.id ?? ''
-  const printer = new WorkspacePrintFlags(currentId).toPrinter(format)
-  return printer.print(newWorkspaceObject(env))
+  return {
+    kind: 'output',
+    data: new WorkspaceListOutput(env.workspaces.map(w => new WorkspaceRow(
+      w.id,
+      w.name,
+      w.role,
+      w.status,
+      w.current || (currentId !== '' && w.id === currentId),
+    )), env),
+  }
 }

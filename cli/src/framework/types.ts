@@ -1,3 +1,5 @@
+import type { CommandOutput } from './output.js'
+
 export type FlagDefinition<T extends string | boolean | number | undefined = string | boolean | number | undefined> = {
   readonly type: 'string' | 'boolean' | 'integer'
   readonly description: string
@@ -32,5 +34,5 @@ export type CommandMeta = {
 }
 
 export type ICommand = {
-  readonly run: () => Promise<void>
+  readonly run: () => Promise<CommandOutput | void>
 }

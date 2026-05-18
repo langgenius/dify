@@ -1,5 +1,6 @@
 import type { CommandTree } from './registry.js'
 import { formatHelp } from './help.js'
+import { stringifyOutput } from './output.js'
 import { findSuggestions, resolveCommand } from './registry.js'
 
 export async function run(tree: CommandTree, argv: string[]): Promise<void> {
@@ -41,7 +42,9 @@ export async function run(tree: CommandTree, argv: string[]): Promise<void> {
     const Ctor = resolved.command
     const cmd = new Ctor()
     cmd._setArgv(argv.slice(resolved.path.length))
-    await cmd.run()
+    const output = await cmd.run()
+    if (output !== undefined)
+      process.stdout.write(stringifyOutput(output))
   }
   catch (err) {
     if (err instanceof Error) {

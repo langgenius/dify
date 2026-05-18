@@ -1,6 +1,6 @@
 import type { WorkspaceListResponse } from '../../../types/data-contracts.js'
 import { describe, expect, it } from 'vitest'
-import { newWorkspaceObject, WORKSPACE_MODE_KEY, workspaceNameHandler, workspaceTableHandler } from './handlers.js'
+import { newWorkspaceObject, WORKSPACE_MODE_KEY, WorkspaceListOutput, workspaceNameHandler, WorkspaceRow, workspaceTableHandler } from './handlers.js'
 
 function env(): WorkspaceListResponse {
   return {
@@ -43,5 +43,21 @@ describe('get/workspace handlers', () => {
 
   it('workspaceNameHandler returns ids joined by newline', () => {
     expect(workspaceNameHandler.id(env())).toBe('ws-1\nws-2')
+  })
+
+  it('WorkspaceRow defines table, name, and json print shapes', () => {
+    const row = new WorkspaceRow('ws-1', 'Default', 'owner', 'normal', true)
+    expect(row.tableRow()).toEqual(['ws-1', 'Default', 'owner', 'normal', '*'])
+    expect(row.name()).toBe('ws-1')
+    expect(row.json()).toEqual({ id: 'ws-1', name: 'Default', role: 'owner', status: 'normal', current: true })
+  })
+
+  it('WorkspaceListOutput defines cohesive print behavior', () => {
+    const row = new WorkspaceRow('ws-1', 'Default', 'owner', 'normal', true)
+    const output = new WorkspaceListOutput([row], env())
+    expect(output.tableColumns().map(column => column.name)).toEqual(['ID', 'NAME', 'ROLE', 'STATUS', 'CURRENT'])
+    expect(output.tableRows()).toEqual([['ws-1', 'Default', 'owner', 'normal', '*']])
+    expect(output.name()).toBe('ws-1')
+    expect(output.json().workspaces).toHaveLength(2)
   })
 })

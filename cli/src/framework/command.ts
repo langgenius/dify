@@ -1,3 +1,4 @@
+import type { CommandOutput } from './output.js'
 import type { ArgDefinition, FlagDefinition, ICommand, InferArgs, InferFlags } from './types.js'
 import { parseArgv } from './flags.js'
 
@@ -26,7 +27,13 @@ export abstract class Command implements ICommand {
     this._argv = argv
   }
 
-  abstract run(): Promise<void>
+  abstract run(): Promise<CommandOutput | void>
+
+  static async run(argv: string[] = []): Promise<CommandOutput | void> {
+    const cmd = new (this as unknown as { new(): Command })()
+    cmd._setArgv(argv)
+    return cmd.run()
+  }
 
   protected parse<C extends CommandConstructor>(ctor: C): ParseResult<C> {
     const meta = {
@@ -35,10 +42,6 @@ export abstract class Command implements ICommand {
     }
 
     return parseArgv(this._argv, meta) as ParseResult<C>
-  }
-
-  protected log(message: string): void {
-    process.stdout.write(`${message}\n`)
   }
 
   error(message: string, opts?: { exit?: number }): never {

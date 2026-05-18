@@ -1,4 +1,5 @@
 import { Args, Flags } from '../../../framework/flags.js'
+import { table } from '../../../framework/output.js'
 import { DifyCommand } from '../../_shared/dify-command.js'
 import { httpRetryFlag } from '../../_shared/global-flags.js'
 import { runGetApp } from './run.js'
@@ -33,11 +34,11 @@ export default class GetApp extends DifyCommand {
     'output': Flags.string({ char: 'o', description: 'output format (json|yaml|name|wide)', default: '' }),
   }
 
-  async run(): Promise<void> {
+  async run() {
     const { args, flags } = await this.parse(GetApp)
     const format = flags.output
     const ctx = await this.authedCtx({ retryFlag: flags['http-retry'], format })
-    process.stdout.write(await runGetApp({
+    const result = await runGetApp({
       appId: args.id,
       workspace: flags.workspace,
       allWorkspaces: flags['all-workspaces'],
@@ -47,6 +48,10 @@ export default class GetApp extends DifyCommand {
       name: flags.name,
       tag: flags.tag,
       format,
-    }, { bundle: ctx.bundle, http: ctx.http, io: ctx.io }))
+    }, { bundle: ctx.bundle, http: ctx.http, io: ctx.io })
+    return table({
+      format,
+      data: result.data,
+    })
   }
 }

@@ -1,5 +1,6 @@
 import pc from 'picocolors'
 import { Flags } from '../../framework/flags.js'
+import { raw } from '../../framework/output.js'
 import { compatString, difyCompat } from '../../version/compat.js'
 import { versionInfo } from '../../version/info.js'
 import { DifyCommand } from '../_shared/dify-command.js'
@@ -17,31 +18,35 @@ export default class Version extends DifyCommand {
     json: Flags.boolean({ description: 'emit JSON' }),
   }
 
-  async run(): Promise<void> {
+  async run() {
     const { flags } = await this.parse(Version)
     const { version, commit, buildDate, channel } = versionInfo
 
     if (flags.json) {
-      this.log(JSON.stringify({
+      const payload = JSON.stringify({
         version,
         commit,
         buildDate,
         channel,
         compat: { minDify: difyCompat.minDify, maxDify: difyCompat.maxDify },
-      }))
-      return
+      })
+      return raw(`${payload}\n`)
     }
 
-    this.log(`difyctl ${version}`)
-    this.log(`  channel: ${channel}`)
-    this.log(`  built:   ${buildDate} (commit ${commit.slice(0, 7)})`)
-    this.log(`  compat:  ${compatString()}`)
+    const lines = [
+      `difyctl ${version}`,
+      `  channel: ${channel}`,
+      `  built:   ${buildDate} (commit ${commit.slice(0, 7)})`,
+      `  compat:  ${compatString()}`,
+    ]
 
     if (channel === 'rc') {
-      this.log('')
+      lines.push('')
       const colour = process.stdout.isTTY ? pc.yellow : (s: string) => s
       for (const line of RC_WARNING_LINES)
-        this.log(colour(line))
+        lines.push(colour(line))
     }
+
+    return raw(`${lines.join('\n')}\n`)
   }
 }

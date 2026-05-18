@@ -1,3 +1,4 @@
+import { raw } from '../../../framework/output.js'
 import { DifyCommand } from '../../_shared/dify-command.js'
 import { runHelpAccount } from './account.js'
 
@@ -8,8 +9,8 @@ export default class HelpAccount extends DifyCommand {
     '<%= config.bin %> help account',
   ]
 
-  async run(): Promise<void> {
+  async run() {
     await this.parse(HelpAccount)
-    process.stdout.write(runHelpAccount())
+    return raw(runHelpAccount())
   }
 }
