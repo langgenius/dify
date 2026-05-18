@@ -96,7 +96,7 @@ const ApiBasedExtensionSelector: FC<ApiBasedExtensionSelectorProps> = ({
                   <div
                     key={item.id}
                     className="w-full cursor-pointer rounded-md px-3 py-1.5 text-left hover:stroke-state-base-hover"
-                    onClick={() => handleSelect(item.id!)}
+                    onClick={() => handleSelect(item.id)}
                   >
                     <div className="text-sm text-text-primary">{item.name}</div>
                     <div className="text-xs text-text-tertiary">{item.api_endpoint}</div>

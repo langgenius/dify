@@ -1327,7 +1327,7 @@ describe('useDatasourceActions', () => {
     const { result } = renderHook(() => useDatasourceActions(params))
 
     act(() => {
-      result.current.handleSelectAll()
+      result.current.handleSelectAll(true)
     })
 
     // Verify the callback was executed (no error thrown)
@@ -1351,7 +1351,7 @@ describe('useDatasourceActions', () => {
     const { result } = renderHook(() => useDatasourceActions(params))
 
     act(() => {
-      result.current.handleSelectAll()
+      result.current.handleSelectAll(true)
     })
 
     expect(true).toBe(true)
@@ -1961,7 +1961,7 @@ describe('useDatasourceActions - Async Functions', () => {
     const { result } = renderHook(() => useDatasourceActions(params))
 
     act(() => {
-      result.current.handleSelectAll()
+      result.current.handleSelectAll(false)
     })
 
     // Should deselect all since documents.length >= allIds.length
@@ -2002,7 +2002,7 @@ describe('useDatasourceActions - Async Functions', () => {
     const { result } = renderHook(() => useDatasourceActions(params))
 
     act(() => {
-      result.current.handleSelectAll()
+      result.current.handleSelectAll(false)
     })
 
     // Should deselect all since selectedFileIds.length >= allKeys.length
@@ -2531,7 +2531,7 @@ describe('useDatasourceActions - Edge Case Branches', () => {
     const { result } = renderHook(() => useDatasourceActions(params))
 
     act(() => {
-      result.current.handleSelectAll()
+      result.current.handleSelectAll(false)
     })
 
     // Should use empty array when currentWorkspacePages is undefined

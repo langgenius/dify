@@ -1,5 +1,6 @@
 import type { FC } from 'react'
 import type { Label } from '@/app/components/tools/labels/constant'
+import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   Popover,
@@ -7,10 +8,8 @@ import {
   PopoverTrigger,
 } from '@langgenius/dify-ui/popover'
 import { useDebounceFn } from 'ahooks'
-import { noop } from 'es-toolkit/function'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Checkbox from '@/app/components/base/checkbox'
 import { Tag03 } from '@/app/components/base/icons/src/vender/line/financeAndECommerce'
 import Input from '@/app/components/base/input'
 import { useTags } from '@/app/components/plugins/hooks'
@@ -89,18 +88,17 @@ const LabelSelector: FC<LabelSelectorProps> = ({
             </div>
             <div className="max-h-[264px] overflow-y-auto p-1">
               {filteredLabelList.map(label => (
-                <div
+                <label
                   key={label.name}
                   className="flex cursor-pointer items-center gap-2 rounded-lg py-[6px] pr-2 pl-3 hover:bg-components-panel-on-panel-item-bg-hover"
-                  onClick={() => selectLabel(label)}
                 >
                   <Checkbox
                     className="shrink-0"
                     checked={value.includes(label.name)}
-                    onCheck={noop}
+                    onCheckedChange={() => selectLabel(label)}
                   />
                   <div title={label.label} className="grow truncate text-sm leading-5 text-text-secondary">{label.label}</div>
-                </div>
+                </label>
               ))}
               {!filteredLabelList.length && (
                 <div className="flex flex-col items-center gap-1 p-3">
