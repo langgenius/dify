@@ -226,7 +226,6 @@ services:
   # API service
   api:
     <<: *shared-api-worker-config
-    image: langgenius/dify-api:1.14.1
     build:
       context: ../api
       dockerfile: Dockerfile

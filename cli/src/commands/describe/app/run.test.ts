@@ -6,6 +6,7 @@ import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { startMock } from '../../../../test/fixtures/dify-mock/server.js'
 import { loadAppInfoCache } from '../../../cache/app-info.js'
+import { formatted, stringifyOutput } from '../../../framework/output.js'
 import { createClient } from '../../../http/client.js'
 import { runDescribeApp } from './run.js'
 
@@ -35,12 +36,17 @@ describe('runDescribeApp', () => {
     await rm(dir, { recursive: true, force: true })
   })
 
-  it('text: renders kubectl-describe-style for chat app', async () => {
+  async function render(opts: Parameters<typeof runDescribeApp>[0]): Promise<string> {
     const cache = await loadAppInfoCache({ configDir: dir })
-    const out = await runDescribeApp(
-      { appId: 'app-1' },
+    const data = await runDescribeApp(
+      opts,
       { bundle: bundle(), http: createClient({ host: mock.url, bearer: 'dfoa_test' }), host: mock.url, cache },
     )
+    return stringifyOutput(formatted({ format: opts.format ?? '', data }))
+  }
+
+  it('text: renders kubectl-describe-style for chat app', async () => {
+    const out = await render({ appId: 'app-1' })
     expect(out).toContain('Name:')
     expect(out).toContain('Greeter')
     expect(out).toContain('ID:')
@@ -55,32 +61,20 @@ describe('runDescribeApp', () => {
   })
 
   it('text: agent app shows Agent: true', async () => {
-    const cache = await loadAppInfoCache({ configDir: dir })
-    const out = await runDescribeApp(
-      { appId: 'app-4', workspace: 'ws-2' },
-      { bundle: bundle(), http: createClient({ host: mock.url, bearer: 'dfoa_test' }), host: mock.url, cache },
-    )
+    const out = await render({ appId: 'app-4', workspace: 'ws-2' })
     expect(out).toContain('Agent:')
     expect(out).toContain('true')
   })
 
   it('json: passes through DescribeResponse-shaped meta', async () => {
-    const cache = await loadAppInfoCache({ configDir: dir })
-    const out = await runDescribeApp(
-      { appId: 'app-1', format: 'json' },
-      { bundle: bundle(), http: createClient({ host: mock.url, bearer: 'dfoa_test' }), host: mock.url, cache },
-    )
+    const out = await render({ appId: 'app-1', format: 'json' })
     const parsed = JSON.parse(out) as { info: { id: string }, parameters: unknown }
     expect(parsed.info.id).toBe('app-1')
     expect(parsed.parameters).toBeDefined()
   })
 
   it('yaml: renders YAML', async () => {
-    const cache = await loadAppInfoCache({ configDir: dir })
-    const out = await runDescribeApp(
-      { appId: 'app-1', format: 'yaml' },
-      { bundle: bundle(), http: createClient({ host: mock.url, bearer: 'dfoa_test' }), host: mock.url, cache },
-    )
+    const out = await render({ appId: 'app-1', format: 'yaml' })
     expect(out).toContain('info:')
     expect(out).toContain('id: app-1')
   })
@@ -102,10 +96,7 @@ describe('runDescribeApp', () => {
   })
 
   it('rejects unknown format', async () => {
-    await expect(runDescribeApp(
-      { appId: 'app-1', format: 'bogus' },
-      { bundle: bundle(), http: createClient({ host: mock.url, bearer: 'dfoa_test' }), host: mock.url },
-    )).rejects.toThrow(/not supported/)
+    await expect(render({ appId: 'app-1', format: 'bogus' })).rejects.toThrow(/not supported/)
   })
 
   it('unknown app id surfaces as error', async () => {

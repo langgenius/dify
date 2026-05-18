@@ -1,5 +1,6 @@
-import { Args } from '@oclif/core'
 import { resolveConfigDir } from '../../../config/dir.js'
+import { Args } from '../../../framework/flags.js'
+import { raw } from '../../../framework/output.js'
 import { DifyCommand } from '../../_shared/dify-command.js'
 import { runConfigGet } from './run.js'
 
@@ -14,8 +15,8 @@ export default class ConfigGet extends DifyCommand {
     key: Args.string({ description: 'config key', required: true }),
   }
 
-  async run(): Promise<void> {
-    const { args } = await this.parse(ConfigGet)
-    process.stdout.write(await runConfigGet({ dir: resolveConfigDir(), key: args.key }))
+  async run(argv: string[]) {
+    const { args } = this.parse(ConfigGet, argv)
+    return raw(await runConfigGet({ dir: resolveConfigDir(), key: args.key }))
   }
 }

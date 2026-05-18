@@ -76,7 +76,7 @@ All commands extend `DifyCommand`, not `Command`.
 ```typescript
 export default class MyCommand extends DifyCommand {
   async run(): Promise<void> {
-    const { args, flags } = await this.parse(MyCommand)
+    const { args, flags } = this.parse(MyCommand, argv)
 
     // Authed: authedCtx() sets outputFormat + builds context
     const ctx = await this.authedCtx({ retryFlag: flags['http-retry'], format: flags.output })

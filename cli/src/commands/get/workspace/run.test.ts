@@ -2,7 +2,9 @@ import type { DifyMock } from '../../../../test/fixtures/dify-mock/server.js'
 import type { HostsBundle } from '../../../auth/hosts.js'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { startMock } from '../../../../test/fixtures/dify-mock/server.js'
+import { stringifyOutput, table } from '../../../framework/output.js'
 import { createClient } from '../../../http/client.js'
+import { WorkspaceListOutput } from './handlers.js'
 import { EMPTY_WORKSPACES_MESSAGE, runGetWorkspace } from './run.js'
 
 const baseBundle: HostsBundle = {
@@ -33,8 +35,18 @@ describe('runGetWorkspace', () => {
     return createClient({ host: mock.url, bearer: 'dfoa_test' })
   }
 
+  async function render(format = '', bundle = baseBundle): Promise<string> {
+    const result = await runGetWorkspace({ format }, { bundle, http: http() })
+    if (result.kind === 'empty')
+      return result.message
+    return stringifyOutput(table({
+      format,
+      data: result.data,
+    }))
+  }
+
   it('default format renders ID NAME ROLE STATUS CURRENT table', async () => {
-    const out = await runGetWorkspace({}, { bundle: baseBundle, http: http() })
+    const out = await render()
     expect(out).toMatch(/^ID\s+NAME\s+ROLE\s+STATUS\s+CURRENT/)
     expect(out).toContain('ws-1')
     expect(out).toContain('ws-2')
@@ -43,8 +55,18 @@ describe('runGetWorkspace', () => {
     expect(out).toContain('normal')
   })
 
+  it('defines table headers on the output class', () => {
+    expect(WorkspaceListOutput.tableColumns().map(column => column.name)).toEqual([
+      'ID',
+      'NAME',
+      'ROLE',
+      'STATUS',
+      'CURRENT',
+    ])
+  })
+
   it('marks the current workspace with *', async () => {
-    const out = await runGetWorkspace({}, { bundle: baseBundle, http: http() })
+    const out = await render()
     for (const line of out.split('\n')) {
       if (line.includes('ws-1'))
         expect(line).toContain('*')
@@ -55,7 +77,7 @@ describe('runGetWorkspace', () => {
 
   it('falls back to bundle workspace.id when server current=false', async () => {
     const overridden: HostsBundle = { ...baseBundle, workspace: { id: 'ws-2', name: 'Other', role: 'normal' } }
-    const out = await runGetWorkspace({}, { bundle: overridden, http: http() })
+    const out = await render('', overridden)
     for (const line of out.split('\n')) {
       if (line.includes('ws-2'))
         expect(line).toContain('*')
@@ -63,7 +85,7 @@ describe('runGetWorkspace', () => {
   })
 
   it('-o json emits a parseable workspaces envelope', async () => {
-    const out = await runGetWorkspace({ format: 'json' }, { bundle: baseBundle, http: http() })
+    const out = await render('json')
     const parsed = JSON.parse(out) as { workspaces: Array<{ id: string, status: string, current: boolean }> }
     expect(parsed.workspaces).toHaveLength(2)
     expect(parsed.workspaces.map(w => w.id).sort()).toEqual(['ws-1', 'ws-2'])
@@ -72,26 +94,26 @@ describe('runGetWorkspace', () => {
   })
 
   it('-o yaml emits "workspaces:" header', async () => {
-    const out = await runGetWorkspace({ format: 'yaml' }, { bundle: baseBundle, http: http() })
+    const out = await render('yaml')
     expect(out).toContain('workspaces:')
     expect(out).toContain('ws-1')
   })
 
   it('-o name emits ids joined by newline', async () => {
-    const out = await runGetWorkspace({ format: 'name' }, { bundle: baseBundle, http: http() })
+    const out = await render('name')
     expect(out.trim().split('\n').sort()).toEqual(['ws-1', 'ws-2'])
   })
 
   it('empty workspaces (sso scenario) prints external-SSO message regardless of format', async () => {
     mock.setScenario('sso')
-    const out = await runGetWorkspace({}, { bundle: baseBundle, http: http() })
+    const out = await render()
     expect(out).toBe(EMPTY_WORKSPACES_MESSAGE)
-    const jsonOut = await runGetWorkspace({ format: 'json' }, { bundle: baseBundle, http: http() })
+    const jsonOut = await render('json')
     expect(jsonOut).toBe(EMPTY_WORKSPACES_MESSAGE)
   })
 
   it('rejects unknown -o format', async () => {
-    await expect(runGetWorkspace({ format: 'csv' }, { bundle: baseBundle, http: http() }))
+    await expect(render('csv'))
       .rejects
       .toThrow(/csv|not supported|format/i)
   })

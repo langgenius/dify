@@ -5,7 +5,7 @@ const buildInfo = resolveBuildInfo()
 
 export default defineConfig({
   pack: {
-    entry: ['src/index.ts', 'src/help-class.ts', 'src/commands/**/*.ts', 'src/hooks/*.ts'],
+    entry: ['src/index.ts', 'src/commands/**/*.ts', 'src/framework/**/*.ts'],
     format: ['esm'],
     dts: true,
     clean: true,

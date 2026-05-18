@@ -16,8 +16,8 @@ export default class Logout extends DifyCommand {
     '<%= config.bin %> auth logout',
   ]
 
-  async run(): Promise<void> {
-    await this.parse(Logout)
+  async run(argv: string[]): Promise<void> {
+    this.parse(Logout, argv)
     const configDir = resolveConfigDir()
     const bundle = await loadHosts(configDir)
     const { store } = await selectStore({ configDir })

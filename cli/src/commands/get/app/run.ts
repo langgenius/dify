@@ -8,8 +8,7 @@ import { runWithSpinner } from '../../../io/spinner.js'
 import { nullStreams } from '../../../io/streams.js'
 import { LIMIT_DEFAULT, parseLimit } from '../../../limit/limit.js'
 import { resolveWorkspaceId } from '../../../workspace/resolver.js'
-import { newAppObject } from './handlers.js'
-import { AppPrintFlags } from './print-flags.js'
+import { AppListOutput, AppRow } from './handlers.js'
 
 export type GetAppOptions = {
   readonly appId?: string
@@ -34,7 +33,11 @@ export type GetAppDeps = {
 
 const ALL_WORKSPACES_CONCURRENCY = 4
 
-export async function runGetApp(opts: GetAppOptions, deps: GetAppDeps): Promise<string> {
+export type GetAppResult = {
+  readonly data: AppListOutput
+}
+
+export async function runGetApp(opts: GetAppOptions, deps: GetAppDeps): Promise<GetAppResult> {
   const env = deps.envLookup ?? ((k: string) => process.env[k])
   const appsFactory = deps.appsFactory ?? ((h: KyInstance) => new AppsClient(h))
   const wsFactory = deps.workspacesFactory ?? ((h: KyInstance) => new WorkspacesClient(h))
@@ -42,7 +45,6 @@ export async function runGetApp(opts: GetAppOptions, deps: GetAppDeps): Promise<
   const apps = appsFactory(deps.http)
   const pageSize = resolveLimit(opts.limitRaw, env)
   const page = opts.page === undefined || opts.page <= 0 ? 1 : opts.page
-  const format = opts.format ?? ''
   const label = opts.appId !== undefined && opts.appId !== '' ? 'Fetching app' : 'Fetching apps'
   const io = deps.io ?? nullStreams()
 
@@ -71,8 +73,9 @@ export async function runGetApp(opts: GetAppOptions, deps: GetAppDeps): Promise<
     },
   )
 
-  const printer = new AppPrintFlags().toPrinter(format)
-  return printer.print(newAppObject(envelope))
+  return {
+    data: new AppListOutput(envelope.data.map(row => new AppRow(row)), envelope),
+  }
 }
 
 function resolveLimit(raw: string | undefined, env: (k: string) => string | undefined): number {

@@ -1,3 +1,4 @@
+import { raw } from '../../../framework/output.js'
 import { DifyCommand } from '../../_shared/dify-command.js'
 import { runHelpEnvironment } from './environment.js'
 
@@ -8,8 +9,8 @@ export default class HelpEnvironment extends DifyCommand {
     '<%= config.bin %> help environment',
   ]
 
-  async run(): Promise<void> {
-    await this.parse(HelpEnvironment)
-    process.stdout.write(runHelpEnvironment())
+  async run(argv: string[]) {
+    this.parse(HelpEnvironment, argv)
+    return raw(runHelpEnvironment())
   }
 }

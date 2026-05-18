@@ -1,4 +1,4 @@
-import { Flags } from '@oclif/core'
+import { Flags } from '../../../../framework/flags.js'
 import { DifyCommand } from '../../../_shared/dify-command.js'
 import { httpRetryFlag } from '../../../_shared/global-flags.js'
 import { runDevicesList } from '../_shared/devices.js'
@@ -16,8 +16,8 @@ export default class DevicesList extends DifyCommand {
     'json': Flags.boolean({ description: 'emit JSON', default: false }),
   }
 
-  async run(): Promise<void> {
-    const { flags } = await this.parse(DevicesList)
+  async run(argv: string[]): Promise<void> {
+    const { flags } = this.parse(DevicesList, argv)
     const format = flags.json ? 'json' : ''
     const ctx = await this.authedCtx({ retryFlag: flags['http-retry'], format })
     await runDevicesList({ io: ctx.io, bundle: ctx.bundle, http: ctx.http, json: flags.json })

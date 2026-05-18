@@ -1,5 +1,5 @@
-import { Args, Flags } from '@oclif/core'
 import { selectStore } from '../../../../auth/store.js'
+import { Args, Flags } from '../../../../framework/flags.js'
 import { DifyCommand } from '../../../_shared/dify-command.js'
 import { httpRetryFlag } from '../../../_shared/global-flags.js'
 import { runDevicesRevoke } from '../_shared/devices.js'
@@ -22,8 +22,8 @@ export default class DevicesRevoke extends DifyCommand {
     'yes': Flags.boolean({ description: 'skip confirmation prompt', default: false }),
   }
 
-  async run(): Promise<void> {
-    const { args, flags } = await this.parse(DevicesRevoke)
+  async run(argv: string[]): Promise<void> {
+    const { args, flags } = this.parse(DevicesRevoke, argv)
     const ctx = await this.authedCtx({ retryFlag: flags['http-retry'] })
     const { store } = await selectStore({ configDir: ctx.configDir })
     await runDevicesRevoke({

@@ -8,8 +8,7 @@ import { runWithSpinner } from '../../../io/spinner.js'
 import { nullStreams } from '../../../io/streams.js'
 import { FieldInfo, FieldInputSchema, FieldParameters } from '../../../types/app-meta.js'
 import { resolveWorkspaceId } from '../../../workspace/resolver.js'
-import { newAppDescribeObject } from './handlers.js'
-import { AppDescribePrintFlags } from './print-flags.js'
+import { AppDescribeOutput } from './handlers.js'
 
 export type DescribeAppOptions = {
   readonly appId: string
@@ -27,12 +26,11 @@ export type DescribeAppDeps = {
   readonly envLookup?: (k: string) => string | undefined
 }
 
-export async function runDescribeApp(opts: DescribeAppOptions, deps: DescribeAppDeps): Promise<string> {
+export async function runDescribeApp(opts: DescribeAppOptions, deps: DescribeAppDeps): Promise<AppDescribeOutput> {
   const env = deps.envLookup ?? ((k: string) => process.env[k])
   const wsId = resolveWorkspaceId({ flag: opts.workspace, env: env('DIFY_WORKSPACE_ID'), bundle: deps.bundle })
   const apps = new AppsClient(deps.http)
   const meta = new AppMetaClient({ apps, host: deps.host, cache: deps.cache })
-  const format = opts.format ?? ''
   const io = deps.io ?? nullStreams()
   const result = await runWithSpinner(
     { io, label: 'Fetching app details' },
@@ -42,6 +40,5 @@ export async function runDescribeApp(opts: DescribeAppOptions, deps: DescribeApp
       return meta.get(opts.appId, wsId, [FieldInfo, FieldParameters, FieldInputSchema])
     },
   )
-  const printer = new AppDescribePrintFlags().toPrinter(format)
-  return printer.print(newAppDescribeObject(result))
+  return new AppDescribeOutput(result)
 }

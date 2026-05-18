@@ -1,4 +1,5 @@
-import { Args, Flags } from '@oclif/core'
+import { Args, Flags } from '../../../framework/flags.js'
+import { formatted } from '../../../framework/output.js'
 import { DifyCommand } from '../../_shared/dify-command.js'
 import { httpRetryFlag } from '../../_shared/global-flags.js'
 import { runDescribeApp } from './run.js'
@@ -23,13 +24,16 @@ export default class DescribeApp extends DifyCommand {
     'refresh': Flags.boolean({ description: 'bypass app-info cache and fetch fresh', default: false }),
   }
 
-  async run(): Promise<void> {
-    const { args, flags } = await this.parse(DescribeApp)
+  async run(argv: string[]) {
+    const { args, flags } = this.parse(DescribeApp, argv)
     const format = flags.output
     const ctx = await this.authedCtx({ retryFlag: flags['http-retry'], withCache: true, format })
-    process.stdout.write(await runDescribeApp(
-      { appId: args.id, workspace: flags.workspace, format, refresh: flags.refresh },
-      { bundle: ctx.bundle, http: ctx.http, host: ctx.host, io: ctx.io, cache: ctx.cache },
-    ))
+    return formatted({
+      format,
+      data: await runDescribeApp(
+        { appId: args.id, workspace: flags.workspace, format, refresh: flags.refresh },
+        { bundle: ctx.bundle, http: ctx.http, host: ctx.host, io: ctx.io, cache: ctx.cache },
+      ),
+    })
   }
 }

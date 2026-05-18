@@ -1,5 +1,5 @@
-import { Flags } from '@oclif/core'
 import { resolveConfigDir } from '../../../config/dir.js'
+import { Flags } from '../../../framework/flags.js'
 import { realStreams } from '../../../io/streams.js'
 import { DifyCommand } from '../../_shared/dify-command.js'
 import { runLogin } from './login.js'
@@ -28,8 +28,8 @@ export default class Login extends DifyCommand {
     }),
   }
 
-  async run(): Promise<void> {
-    const { flags } = await this.parse(Login)
+  async run(argv: string[]): Promise<void> {
+    const { flags } = this.parse(Login, argv)
     await runLogin({
       configDir: resolveConfigDir(),
       io: realStreams(),

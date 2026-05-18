@@ -1,4 +1,5 @@
-import { Flags } from '@oclif/core'
+import { Flags } from '../../../framework/flags.js'
+import { raw, table } from '../../../framework/output.js'
 import { DifyCommand } from '../../_shared/dify-command.js'
 import { httpRetryFlag } from '../../_shared/global-flags.js'
 import { runGetWorkspace } from './run.js'
@@ -17,10 +18,16 @@ export default class GetWorkspace extends DifyCommand {
     'output': Flags.string({ char: 'o', description: 'output format (json|yaml|name|wide)', default: '' }),
   }
 
-  async run(): Promise<void> {
-    const { flags } = await this.parse(GetWorkspace)
+  async run(argv: string[]) {
+    const { flags } = this.parse(GetWorkspace, argv)
     const format = flags.output
     const ctx = await this.authedCtx({ retryFlag: flags['http-retry'], format })
-    process.stdout.write(await runGetWorkspace({ format }, { bundle: ctx.bundle, http: ctx.http, io: ctx.io }))
+    const result = await runGetWorkspace({ format }, { bundle: ctx.bundle, http: ctx.http, io: ctx.io })
+    if (result.kind === 'empty')
+      return raw(result.message)
+    return table({
+      format,
+      data: result.data,
+    })
   }
 }
