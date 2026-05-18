@@ -2,11 +2,116 @@
 
 import * as z from 'zod'
 
-export const zSystemFeatureResponse = z.object({
-  features: z.record(z.string(), z.unknown()).optional(),
+/**
+ * BrandingModel
+ */
+export const zBrandingModel = z.object({
+  application_title: z.string().optional().default(''),
+  enabled: z.boolean().optional().default(false),
+  favicon: z.string().optional().default(''),
+  login_page_logo: z.string().optional().default(''),
+  workspace_logo: z.string().optional().default(''),
+})
+
+/**
+ * PluginManagerModel
+ */
+export const zPluginManagerModel = z.object({
+  enabled: z.boolean().optional().default(false),
+})
+
+/**
+ * LicenseStatus
+ */
+export const zLicenseStatus = z.enum(['active', 'expired', 'expiring', 'inactive', 'lost', 'none'])
+
+/**
+ * LicenseLimitationModel
+ *
+ * - enabled: whether this limit is enforced
+ * - size: current usage count
+ * - limit: maximum allowed count; 0 means unlimited
+ */
+export const zLicenseLimitationModel = z.object({
+  enabled: z.boolean().optional().default(false),
+  limit: z.int().optional().default(0),
+  size: z.int().optional().default(0),
+})
+
+/**
+ * LicenseModel
+ */
+export const zLicenseModel = z.object({
+  expired_at: z.string().optional().default(''),
+  status: zLicenseStatus.optional(),
+  workspaces: zLicenseLimitationModel.optional(),
+})
+
+/**
+ * PluginInstallationScope
+ */
+export const zPluginInstallationScope = z.enum([
+  'all',
+  'none',
+  'official_and_specific_partners',
+  'official_only',
+])
+
+/**
+ * PluginInstallationPermissionModel
+ */
+export const zPluginInstallationPermissionModel = z.object({
+  plugin_installation_scope: zPluginInstallationScope.optional(),
+  restrict_to_marketplace_only: z.boolean().optional().default(false),
+})
+
+/**
+ * WebAppAuthSSOModel
+ */
+export const zWebAppAuthSsoModel = z.object({
+  protocol: z.string().optional().default(''),
+})
+
+/**
+ * WebAppAuthModel
+ */
+export const zWebAppAuthModel = z.object({
+  allow_email_code_login: z.boolean().optional().default(false),
+  allow_email_password_login: z.boolean().optional().default(false),
+  allow_sso: z.boolean().optional().default(false),
+  enabled: z.boolean().optional().default(false),
+  sso_config: zWebAppAuthSsoModel.optional(),
+})
+
+/**
+ * SystemFeatureModel
+ */
+export const zSystemFeatureModel = z.object({
+  app_dsl_version: z.string().optional().default(''),
+  branding: zBrandingModel.optional(),
+  enable_change_email: z.boolean().optional().default(true),
+  enable_collaboration_mode: z.boolean().optional().default(true),
+  enable_creators_platform: z.boolean().optional().default(false),
+  enable_email_code_login: z.boolean().optional().default(false),
+  enable_email_password_login: z.boolean().optional().default(true),
+  enable_explore_banner: z.boolean().optional().default(false),
+  enable_marketplace: z.boolean().optional().default(false),
+  enable_social_oauth_login: z.boolean().optional().default(false),
+  enable_trial_app: z.boolean().optional().default(false),
+  is_allow_create_workspace: z.boolean().optional().default(false),
+  is_allow_register: z.boolean().optional().default(false),
+  is_email_setup: z.boolean().optional().default(false),
+  license: zLicenseModel.optional(),
+  max_plugin_package_size: z.int().optional().default(15728640),
+  plugin_installation_permission: zPluginInstallationPermissionModel.optional(),
+  plugin_manager: zPluginManagerModel.optional(),
+  sso_enforced_for_signin: z.boolean().optional().default(false),
+  sso_enforced_for_signin_protocol: z.string().optional().default(''),
+  trial_models: z.array(z.string()).optional().default([]),
+  webapp_auth: zWebAppAuthModel.optional(),
 })
 
 /**
  * Success
  */
-export const zGetSystemFeaturesResponse = zSystemFeatureResponse
+export const zGetSystemFeaturesResponse = zSystemFeatureModel

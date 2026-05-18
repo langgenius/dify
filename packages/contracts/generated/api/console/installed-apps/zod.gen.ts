@@ -17,6 +17,13 @@ export const zChatMessagePayload = z.object({
 })
 
 /**
+ * SimpleResultResponse
+ */
+export const zSimpleResultResponse = z.object({
+  result: z.string(),
+})
+
+/**
  * CompletionMessageExplorePayload
  */
 export const zCompletionMessageExplorePayload = z.object({
@@ -164,10 +171,8 @@ export const zPostInstalledAppsByInstalledAppIdChatMessagesByTaskIdStopPath = z.
 /**
  * Success
  */
-export const zPostInstalledAppsByInstalledAppIdChatMessagesByTaskIdStopResponse = z.record(
-  z.string(),
-  z.unknown(),
-)
+export const zPostInstalledAppsByInstalledAppIdChatMessagesByTaskIdStopResponse
+  = zSimpleResultResponse
 
 export const zPostInstalledAppsByInstalledAppIdCompletionMessagesBody
   = zCompletionMessageExplorePayload
@@ -192,10 +197,8 @@ export const zPostInstalledAppsByInstalledAppIdCompletionMessagesByTaskIdStopPat
 /**
  * Success
  */
-export const zPostInstalledAppsByInstalledAppIdCompletionMessagesByTaskIdStopResponse = z.record(
-  z.string(),
-  z.unknown(),
-)
+export const zPostInstalledAppsByInstalledAppIdCompletionMessagesByTaskIdStopResponse
+  = zSimpleResultResponse
 
 export const zGetInstalledAppsByInstalledAppIdConversationsPath = z.object({
   installed_app_id: z.string(),
@@ -427,7 +430,5 @@ export const zPostInstalledAppsByInstalledAppIdWorkflowsTasksByTaskIdStopPath = 
 /**
  * Success
  */
-export const zPostInstalledAppsByInstalledAppIdWorkflowsTasksByTaskIdStopResponse = z.record(
-  z.string(),
-  z.unknown(),
-)
+export const zPostInstalledAppsByInstalledAppIdWorkflowsTasksByTaskIdStopResponse
+  = zSimpleResultResponse

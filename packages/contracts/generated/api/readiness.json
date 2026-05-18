@@ -1,15 +1,15 @@
 {
   "surfaces": {
     "console": {
-      "notReady": 475,
+      "notReady": 407,
       "total": 570
     },
     "service": {
-      "notReady": 72,
+      "notReady": 63,
       "total": 88
     },
     "web": {
-      "notReady": 36,
+      "notReady": 22,
       "total": 41
     }
   },

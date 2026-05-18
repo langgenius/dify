@@ -4,7 +4,8 @@ from pydantic import BaseModel, Field, field_validator
 
 from configs import dify_config
 from constants.languages import get_valid_language, languages
-from controllers.common.schema import register_schema_models
+from controllers.common.fields import SimpleResultDataResponse, VerificationTokenResponse
+from controllers.common.schema import register_response_schema_models, register_schema_models
 from controllers.console import console_ns
 from controllers.console.auth.error import (
     EmailAlreadyInUseError,
@@ -58,6 +59,7 @@ class EmailRegisterResetPayload(BaseModel):
 
 
 register_schema_models(console_ns, EmailRegisterSendPayload, EmailRegisterValidityPayload, EmailRegisterResetPayload)
+register_response_schema_models(console_ns, SimpleResultDataResponse, VerificationTokenResponse)
 
 
 @console_ns.route("/email-register/send-email")
@@ -65,6 +67,7 @@ class EmailRegisterSendEmailApi(Resource):
     @setup_required
     @email_password_login_enabled
     @email_register_enabled
+    @console_ns.response(200, "Success", console_ns.models[SimpleResultDataResponse.__name__])
     def post(self):
         args = EmailRegisterSendPayload.model_validate(console_ns.payload)
         normalized_email = args.email.lower()
@@ -89,6 +92,7 @@ class EmailRegisterCheckApi(Resource):
     @setup_required
     @email_password_login_enabled
     @email_register_enabled
+    @console_ns.response(200, "Success", console_ns.models[VerificationTokenResponse.__name__])
     def post(self):
         args = EmailRegisterValidityPayload.model_validate(console_ns.payload)
 

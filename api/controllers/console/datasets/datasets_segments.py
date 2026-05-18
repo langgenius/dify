@@ -10,7 +10,8 @@ from werkzeug.exceptions import Forbidden, NotFound
 import services
 from configs import dify_config
 from controllers.common.controller_schemas import ChildChunkCreatePayload, ChildChunkUpdatePayload
-from controllers.common.schema import register_schema_models
+from controllers.common.fields import SimpleResultResponse
+from controllers.common.schema import register_response_schema_models, register_schema_models
 from controllers.console import console_ns
 from controllers.console.app.error import ProviderNotInitializeError
 from controllers.console.datasets.error import (
@@ -98,6 +99,7 @@ register_schema_models(
     ChildChunkBatchUpdatePayload,
     ChildChunkUpdateArgs,
 )
+register_response_schema_models(console_ns, SimpleResultResponse)
 
 
 @console_ns.route("/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/segments")
@@ -217,6 +219,7 @@ class DatasetDocumentSegmentListApi(Resource):
     @login_required
     @account_initialization_required
     @cloud_edition_billing_rate_limit_check("knowledge")
+    @console_ns.response(204, "Segments deleted successfully")
     def delete(self, dataset_id, document_id):
         current_user, _ = current_account_with_tenant()
 
@@ -252,6 +255,7 @@ class DatasetDocumentSegmentApi(Resource):
     @account_initialization_required
     @cloud_edition_billing_resource_check("vector_space")
     @cloud_edition_billing_rate_limit_check("knowledge")
+    @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
     def patch(self, dataset_id, document_id, action):
         current_user, current_tenant_id = current_account_with_tenant()
 
@@ -424,6 +428,7 @@ class DatasetDocumentSegmentUpdateApi(Resource):
     @login_required
     @account_initialization_required
     @cloud_edition_billing_rate_limit_check("knowledge")
+    @console_ns.response(204, "Segment deleted successfully")
     def delete(self, dataset_id, document_id, segment_id):
         current_user, current_tenant_id = current_account_with_tenant()
 
@@ -691,6 +696,7 @@ class ChildChunkUpdateApi(Resource):
     @login_required
     @account_initialization_required
     @cloud_edition_billing_rate_limit_check("knowledge")
+    @console_ns.response(204, "Child chunk deleted successfully")
     def delete(self, dataset_id, document_id, segment_id, child_chunk_id):
         current_user, current_tenant_id = current_account_with_tenant()
 

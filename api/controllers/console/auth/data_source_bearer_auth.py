@@ -70,6 +70,7 @@ class ApiKeyAuthDataSourceBindingDelete(Resource):
     @login_required
     @account_initialization_required
     @is_admin_or_owner_required
+    @console_ns.response(204, "Binding deleted successfully")
     def delete(self, binding_id):
         # The role of the current user in the table must be admin or owner
         _, current_tenant_id = current_account_with_tenant()

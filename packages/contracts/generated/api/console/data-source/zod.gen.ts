@@ -3,6 +3,13 @@
 import * as z from 'zod'
 
 /**
+ * SimpleResultResponse
+ */
+export const zSimpleResultResponse = z.object({
+  result: z.string(),
+})
+
+/**
  * Success
  */
 export const zGetDataSourceIntegratesResponse = z.record(z.string(), z.unknown())
@@ -10,7 +17,7 @@ export const zGetDataSourceIntegratesResponse = z.record(z.string(), z.unknown()
 /**
  * Success
  */
-export const zPatchDataSourceIntegratesResponse = z.record(z.string(), z.unknown())
+export const zPatchDataSourceIntegratesResponse = zSimpleResultResponse
 
 export const zGetDataSourceIntegratesByBindingIdByActionPath = z.object({
   action: z.string(),
@@ -30,7 +37,4 @@ export const zPatchDataSourceIntegratesByBindingIdByActionPath = z.object({
 /**
  * Success
  */
-export const zPatchDataSourceIntegratesByBindingIdByActionResponse = z.record(
-  z.string(),
-  z.unknown(),
-)
+export const zPatchDataSourceIntegratesByBindingIdByActionResponse = zSimpleResultResponse

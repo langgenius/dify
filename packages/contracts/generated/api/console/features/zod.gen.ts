@@ -2,11 +2,94 @@
 
 import * as z from 'zod'
 
-export const zFeatureResponse = z.object({
-  features: z.record(z.string(), z.unknown()).optional(),
+/**
+ * LimitationModel
+ */
+export const zLimitationModel = z.object({
+  limit: z.int().optional().default(0),
+  size: z.int().optional().default(0),
+})
+
+/**
+ * Quota
+ */
+export const zQuota = z.object({
+  limit: z.int().optional().default(0),
+  reset_date: z.int().optional().default(-1),
+  usage: z.int().optional().default(0),
+})
+
+/**
+ * EducationModel
+ */
+export const zEducationModel = z.object({
+  activated: z.boolean().optional().default(false),
+  enabled: z.boolean().optional().default(false),
+})
+
+/**
+ * KnowledgePipeline
+ */
+export const zKnowledgePipeline = z.object({
+  publish_enabled: z.boolean().optional().default(false),
+})
+
+/**
+ * LicenseLimitationModel
+ *
+ * - enabled: whether this limit is enforced
+ * - size: current usage count
+ * - limit: maximum allowed count; 0 means unlimited
+ */
+export const zLicenseLimitationModel = z.object({
+  enabled: z.boolean().optional().default(false),
+  limit: z.int().optional().default(0),
+  size: z.int().optional().default(0),
+})
+
+/**
+ * SubscriptionModel
+ */
+export const zSubscriptionModel = z.object({
+  interval: z.string().optional().default(''),
+  plan: z.string().optional().default('sandbox'),
+})
+
+/**
+ * BillingModel
+ */
+export const zBillingModel = z.object({
+  enabled: z.boolean().optional().default(false),
+  subscription: zSubscriptionModel.optional(),
+})
+
+/**
+ * FeatureModel
+ */
+export const zFeatureModel = z.object({
+  annotation_quota_limit: zLimitationModel.optional(),
+  api_rate_limit: zQuota.optional(),
+  apps: zLimitationModel.optional(),
+  billing: zBillingModel.optional(),
+  can_replace_logo: z.boolean().optional().default(false),
+  dataset_operator_enabled: z.boolean().optional().default(false),
+  docs_processing: z.string().optional().default('standard'),
+  documents_upload_quota: zLimitationModel.optional(),
+  education: zEducationModel.optional(),
+  human_input_email_delivery_enabled: z.boolean().optional().default(false),
+  is_allow_transfer_workspace: z.boolean().optional().default(true),
+  knowledge_pipeline: zKnowledgePipeline.optional(),
+  knowledge_rate_limit: z.int().optional().default(10),
+  members: zLimitationModel.optional(),
+  model_load_balancing_enabled: z.boolean().optional().default(false),
+  next_credit_reset_date: z.int().optional().default(0),
+  trigger_event: zQuota.optional(),
+  vector_space: zLimitationModel.optional(),
+  webapp_copyright_enabled: z.boolean().optional().default(false),
+  workspace_members: zLicenseLimitationModel.optional(),
 })
 
 /**
  * Success
  */
-export const zGetFeaturesResponse = zFeatureResponse
+export const zGetFeaturesResponse = zFeatureModel

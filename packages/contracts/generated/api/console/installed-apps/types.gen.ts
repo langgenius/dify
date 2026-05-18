@@ -23,6 +23,10 @@ export type ChatMessagePayload = {
   retriever_from?: string
 }
 
+export type SimpleResultResponse = {
+  result: string
+}
+
 export type CompletionMessageExplorePayload = {
   files?: Array<{
     [key: string]: unknown
@@ -197,9 +201,7 @@ export type PostInstalledAppsByInstalledAppIdChatMessagesByTaskIdStopData = {
 }
 
 export type PostInstalledAppsByInstalledAppIdChatMessagesByTaskIdStopResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: SimpleResultResponse
 }
 
 export type PostInstalledAppsByInstalledAppIdChatMessagesByTaskIdStopResponse
@@ -234,9 +236,7 @@ export type PostInstalledAppsByInstalledAppIdCompletionMessagesByTaskIdStopData 
 }
 
 export type PostInstalledAppsByInstalledAppIdCompletionMessagesByTaskIdStopResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: SimpleResultResponse
 }
 
 export type PostInstalledAppsByInstalledAppIdCompletionMessagesByTaskIdStopResponse
@@ -562,9 +562,7 @@ export type PostInstalledAppsByInstalledAppIdWorkflowsTasksByTaskIdStopData = {
 }
 
 export type PostInstalledAppsByInstalledAppIdWorkflowsTasksByTaskIdStopResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: SimpleResultResponse
 }
 
 export type PostInstalledAppsByInstalledAppIdWorkflowsTasksByTaskIdStopResponse
