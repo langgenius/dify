@@ -28,7 +28,7 @@ type StepOneContentProps = {
   nextBtnDisabled: boolean
   onSelectDataSource: (dataSource: Datasource) => void
   onCredentialChange: (credentialId: string) => void
-  onSelectAll: () => void
+  onSelectAll: (checked: boolean) => void
   onNextStep: () => void
 }
 

@@ -114,7 +114,7 @@ class TestAccountUpdateApis:
             (AccountTimezoneApi, {"timezone": "UTC"}),
         ],
     )
-    def test_update_success(self, app, api_cls, payload):
+    def test_update_success(self, app: Flask, api_cls, payload):
         api = api_cls()
         method = unwrap(api.post)
 

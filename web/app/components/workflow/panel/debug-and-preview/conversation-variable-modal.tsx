@@ -76,7 +76,7 @@ const ConversationVariableModal = ({
 
   return (
     <Dialog open>
-      <DialogContent className={cn('max-h-none w-full overflow-hidden! border-none text-left align-middle', cn('h-[640px] w-[920px] max-w-[920px] p-0'))}>
+      <DialogContent className={cn('w-full overflow-hidden! border-none text-left align-middle', cn('h-[min(640px,calc(100dvh-2rem))] max-h-none! w-[920px] max-w-[calc(100vw-2rem)] p-0'))}>
 
         <button
           type="button"

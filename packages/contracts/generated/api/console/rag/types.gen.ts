@@ -57,6 +57,35 @@ export type WorkflowRunNodeExecutionListResponse = {
   data: Array<WorkflowRunNodeExecutionResponse>
 }
 
+export type WorkflowPaginationResponse = {
+  has_more: boolean
+  items: Array<WorkflowResponse>
+  limit: number
+  page: number
+}
+
+export type WorkflowResponse = {
+  conversation_variables: Array<WorkflowConversationVariableResponse>
+  created_at: number
+  created_by?: SimpleAccount
+  environment_variables: Array<WorkflowEnvironmentVariableResponse>
+  features: {
+    [key: string]: unknown
+  }
+  graph: {
+    [key: string]: unknown
+  }
+  hash: string
+  id: string
+  marked_comment: string
+  marked_name: string
+  rag_pipeline_variables: Array<PipelineVariableResponse>
+  tool_published: boolean
+  updated_at: number
+  updated_by?: SimpleAccount
+  version: string
+}
+
 export type DatasourceNodeRunPayload = {
   credential_id?: string | null
   datasource_type: string
@@ -169,6 +198,45 @@ export type SimpleEndUser = {
   is_anonymous: boolean
   session_id?: string | null
   type: string
+}
+
+export type WorkflowConversationVariableResponse = {
+  description: string
+  id: string
+  name: string
+  value: {
+    [key: string]: unknown
+  }
+  value_type: string
+}
+
+export type WorkflowEnvironmentVariableResponse = {
+  description: string
+  id: string
+  name: string
+  value: {
+    [key: string]: unknown
+  }
+  value_type: string
+}
+
+export type PipelineVariableResponse = {
+  allowed_file_extensions?: Array<string> | null
+  allowed_file_types?: Array<string> | null
+  allowed_file_upload_methods?: Array<string> | null
+  belong_to_node_id: string
+  default_value?: {
+    [key: string]: unknown
+  }
+  label: string
+  max_length?: number | null
+  options?: Array<string> | null
+  placeholder?: string | null
+  required: boolean
+  tooltips?: string | null
+  type: string
+  unit?: string | null
+  variable: string
 }
 
 export type DeleteRagPipelineCustomizedTemplatesByTemplateIdData = {
@@ -507,10 +575,17 @@ export type GetRagPipelinesByPipelineIdWorkflowsData = {
   url: '/rag/pipelines/{pipeline_id}/workflows'
 }
 
-export type GetRagPipelinesByPipelineIdWorkflowsResponses = {
-  200: {
+export type GetRagPipelinesByPipelineIdWorkflowsErrors = {
+  403: {
     [key: string]: unknown
   }
+}
+
+export type GetRagPipelinesByPipelineIdWorkflowsError
+  = GetRagPipelinesByPipelineIdWorkflowsErrors[keyof GetRagPipelinesByPipelineIdWorkflowsErrors]
+
+export type GetRagPipelinesByPipelineIdWorkflowsResponses = {
+  200: WorkflowPaginationResponse
 }
 
 export type GetRagPipelinesByPipelineIdWorkflowsResponse
@@ -562,10 +637,17 @@ export type GetRagPipelinesByPipelineIdWorkflowsDraftData = {
   url: '/rag/pipelines/{pipeline_id}/workflows/draft'
 }
 
-export type GetRagPipelinesByPipelineIdWorkflowsDraftResponses = {
-  200: {
+export type GetRagPipelinesByPipelineIdWorkflowsDraftErrors = {
+  404: {
     [key: string]: unknown
   }
+}
+
+export type GetRagPipelinesByPipelineIdWorkflowsDraftError
+  = GetRagPipelinesByPipelineIdWorkflowsDraftErrors[keyof GetRagPipelinesByPipelineIdWorkflowsDraftErrors]
+
+export type GetRagPipelinesByPipelineIdWorkflowsDraftResponses = {
+  200: WorkflowResponse
 }
 
 export type GetRagPipelinesByPipelineIdWorkflowsDraftResponse
@@ -946,9 +1028,7 @@ export type GetRagPipelinesByPipelineIdWorkflowsPublishData = {
 }
 
 export type GetRagPipelinesByPipelineIdWorkflowsPublishResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: WorkflowResponse
 }
 
 export type GetRagPipelinesByPipelineIdWorkflowsPublishResponse
@@ -1094,10 +1174,23 @@ export type PatchRagPipelinesByPipelineIdWorkflowsByWorkflowIdData = {
   url: '/rag/pipelines/{pipeline_id}/workflows/{workflow_id}'
 }
 
-export type PatchRagPipelinesByPipelineIdWorkflowsByWorkflowIdResponses = {
-  200: {
+export type PatchRagPipelinesByPipelineIdWorkflowsByWorkflowIdErrors = {
+  400: {
     [key: string]: unknown
   }
+  403: {
+    [key: string]: unknown
+  }
+  404: {
+    [key: string]: unknown
+  }
+}
+
+export type PatchRagPipelinesByPipelineIdWorkflowsByWorkflowIdError
+  = PatchRagPipelinesByPipelineIdWorkflowsByWorkflowIdErrors[keyof PatchRagPipelinesByPipelineIdWorkflowsByWorkflowIdErrors]
+
+export type PatchRagPipelinesByPipelineIdWorkflowsByWorkflowIdResponses = {
+  200: WorkflowResponse
 }
 
 export type PatchRagPipelinesByPipelineIdWorkflowsByWorkflowIdResponse

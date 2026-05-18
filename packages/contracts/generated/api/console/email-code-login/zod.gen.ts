@@ -17,6 +17,7 @@ export const zEmailCodeLoginPayload = z.object({
   code: z.string(),
   email: z.string(),
   language: z.string().nullish(),
+  timezone: z.string().nullish(),
   token: z.string(),
 })
 

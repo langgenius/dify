@@ -43,7 +43,7 @@ export const zDeleteApiBasedExtensionByIdPath = z.object({
 /**
  * Extension deleted successfully
  */
-export const zDeleteApiBasedExtensionByIdResponse = z.record(z.string(), z.unknown())
+export const zDeleteApiBasedExtensionByIdResponse = z.record(z.string(), z.never())
 
 export const zGetApiBasedExtensionByIdPath = z.object({
   id: z.string(),

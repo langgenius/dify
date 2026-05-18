@@ -184,7 +184,7 @@ describe('Document Management Flow', () => {
   })
 
   describe('Document Selection Integration', () => {
-    it('should manage selection state externally', () => {
+    it('should keep checkbox selection state owned outside the hook', () => {
       const docs = [
         createDoc({ id: 'doc-1' }),
         createDoc({ id: 'doc-2' }),
@@ -198,62 +198,9 @@ describe('Document Management Flow', () => {
         onSelectedIdChange,
       }))
 
-      expect(result.current.isAllSelected).toBe(false)
-      expect(result.current.isSomeSelected).toBe(false)
-    })
-
-    it('should select all documents', () => {
-      const docs = [
-        createDoc({ id: 'doc-1' }),
-        createDoc({ id: 'doc-2' }),
-      ]
-      const onSelectedIdChange = vi.fn()
-
-      const { result } = renderHook(() => useDocumentSelection({
-        documents: docs,
-        selectedIds: [],
-        onSelectedIdChange,
-      }))
-
-      act(() => {
-        result.current.onSelectAll()
-      })
-
-      expect(onSelectedIdChange).toHaveBeenCalledWith(
-        expect.arrayContaining(['doc-1', 'doc-2']),
-      )
-    })
-
-    it('should detect all-selected state', () => {
-      const docs = [
-        createDoc({ id: 'doc-1' }),
-        createDoc({ id: 'doc-2' }),
-      ]
-
-      const { result } = renderHook(() => useDocumentSelection({
-        documents: docs,
-        selectedIds: ['doc-1', 'doc-2'],
-        onSelectedIdChange: vi.fn(),
-      }))
-
-      expect(result.current.isAllSelected).toBe(true)
-    })
-
-    it('should detect partial selection', () => {
-      const docs = [
-        createDoc({ id: 'doc-1' }),
-        createDoc({ id: 'doc-2' }),
-        createDoc({ id: 'doc-3' }),
-      ]
-
-      const { result } = renderHook(() => useDocumentSelection({
-        documents: docs,
-        selectedIds: ['doc-1'],
-        onSelectedIdChange: vi.fn(),
-      }))
-
-      expect(result.current.isSomeSelected).toBe(true)
-      expect(result.current.isAllSelected).toBe(false)
+      expect(result.current.downloadableSelectedIds).toEqual([])
+      expect(result.current.hasErrorDocumentsSelected).toBe(false)
+      expect(onSelectedIdChange).not.toHaveBeenCalled()
     })
 
     it('should identify downloadable selected documents (FILE type only)', () => {
@@ -311,8 +258,9 @@ describe('Document Management Flow', () => {
       expect(sortResult.current.sortField).toBe('created_at')
       expect(sortResult.current.sortOrder).toBe('desc')
 
-      // Selection starts empty
-      expect(selResult.current.isAllSelected).toBe(false)
+      // Selection-derived batch metadata starts empty.
+      expect(selResult.current.downloadableSelectedIds).toEqual([])
+      expect(selResult.current.hasErrorDocumentsSelected).toBe(false)
     })
   })
 })

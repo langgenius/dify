@@ -2,6 +2,7 @@
 import type { FC } from 'react'
 import type { AnnotationItemBasic } from '../type'
 import { Button } from '@langgenius/dify-ui/button'
+import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import {
   Drawer,
   DrawerBackdrop,
@@ -16,7 +17,6 @@ import { toast } from '@langgenius/dify-ui/toast'
 import * as React from 'react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Checkbox from '@/app/components/base/checkbox'
 import AnnotationFull from '@/app/components/billing/annotation-full'
 import { useProviderContext } from '@/context/provider-context'
 import EditItem, { EditItemType } from './edit-item'
@@ -128,10 +128,10 @@ const AddAnnotationModal: FC<Props> = ({
                     </div>
                   )}
                   <div className="flex h-16 items-center justify-between rounded-br-xl rounded-bl-xl border-t border-divider-subtle bg-background-section-burn px-4 system-sm-medium text-text-tertiary">
-                    <div className="flex items-center space-x-2">
-                      <Checkbox id="create-next-checkbox" checked={isCreateNext} onCheck={() => setIsCreateNext(!isCreateNext)} />
-                      <div>{t('addModal.createNext', { ns: 'appAnnotation' })}</div>
-                    </div>
+                    <label className="flex items-center space-x-2">
+                      <Checkbox checked={isCreateNext} onCheckedChange={setIsCreateNext} />
+                      <span>{t('addModal.createNext', { ns: 'appAnnotation' })}</span>
+                    </label>
                     <div className="mt-2 flex space-x-2">
                       <Button className="h-7 text-xs" onClick={onHide}>{t('operation.cancel', { ns: 'common' })}</Button>
                       <Button className="h-7 text-xs" variant="primary" onClick={handleSave} loading={isSaving} disabled={isAnnotationFull}>{t('operation.add', { ns: 'common' })}</Button>
