@@ -717,3 +717,61 @@ def test_get_files_in_folder_recurses_and_collects(generator):
     )
 
     assert {f["id"] for f in all_files} == {"f1", "f2"}
+
+
+def test_get_files_in_folder_skips_empty_results(generator):
+    class Result:
+        def __init__(self, result):
+            self.result = result
+
+    class Runtime:
+        def datasource_provider_type(self):
+            return DatasourceProviderType.ONLINE_DRIVE
+
+        def online_drive_browse_files(self, user_id, request, provider_type):
+            return iter([Result([])])
+
+    all_files = []
+
+    generator._get_files_in_folder(
+        datasource_runtime=Runtime(),
+        prefix="root",
+        bucket="b",
+        user_id="user",
+        all_files=all_files,
+        datasource_info={},
+    )
+
+    assert all_files == []
+
+
+def test_get_files_in_folder_skips_empty_buckets(generator):
+    class FilesPage:
+        def __init__(self, files, is_truncated=False, next_page_parameters=None):
+            self.files = files
+            self.is_truncated = is_truncated
+            self.next_page_parameters = next_page_parameters
+
+    class Result:
+        def __init__(self, result):
+            self.result = result
+
+    class Runtime:
+        def datasource_provider_type(self):
+            return DatasourceProviderType.ONLINE_DRIVE
+
+        def online_drive_browse_files(self, user_id, request, provider_type):
+            return iter([Result([FilesPage([])])])
+
+    all_files = []
+
+    generator._get_files_in_folder(
+        datasource_runtime=Runtime(),
+        prefix="root",
+        bucket="b",
+        user_id="user",
+        all_files=all_files,
+        datasource_info={},
+    )
+
+    assert all_files == []

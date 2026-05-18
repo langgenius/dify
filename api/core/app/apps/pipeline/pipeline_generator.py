@@ -791,7 +791,7 @@ class PipelineGenerator(BaseAppGenerator):
         all_files: list,
         datasource_info: Mapping[str, Any],
         next_page_parameters: dict[str, Any] | None = None,
-    ):
+    ) -> None:
         """
         Get files in a folder.
         """
@@ -830,7 +830,7 @@ class PipelineGenerator(BaseAppGenerator):
                 is_truncated = files.is_truncated
                 next_page_parameters = files.next_page_parameters
 
-        if is_truncated:
+        if is_truncated and next_page_parameters:
             self._get_files_in_folder(
                 datasource_runtime, prefix, bucket, user_id, all_files, datasource_info, next_page_parameters
             )
