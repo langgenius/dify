@@ -39,6 +39,8 @@
     "type-check": "tsc",
     "manifest": "oclif manifest",
     "pack:tarballs": "oclif pack tarballs --xz --parallel",
+    "install:local": "pnpm pack:tarballs && scripts/install-local.sh",
+    "uninstall:local": "scripts/uninstall-local.sh",
     "ci": "pnpm type-check && pnpm lint && pnpm test:coverage && pnpm build",
     "clean": "rm -rf dist oclif.manifest.json node_modules/.cache",
     "version:info": "tsx scripts/print-buildinfo.ts",

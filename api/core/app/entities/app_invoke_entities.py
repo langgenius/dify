@@ -43,6 +43,7 @@ class InvokeFrom(StrEnum):
             InvokeFrom.EXPLORE: "explore_app",
             InvokeFrom.TRIGGER: "trigger",
             InvokeFrom.SERVICE_API: "api",
+            InvokeFrom.OPENAPI: "openapi",
         }
         return source_mapping.get(self, "dev")
 
