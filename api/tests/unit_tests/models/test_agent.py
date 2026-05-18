@@ -112,7 +112,9 @@ def test_agent_config_version_stores_agent_soul_snapshot_as_long_text_json():
         config_snapshot=json.dumps(config_snapshot),
     )
 
-    assert isinstance(AgentConfigVersion.__table__.c.config_snapshot.type, LongText)
+    config_snapshot_column = AgentConfigVersion.__table__.c.config_snapshot
+    assert isinstance(config_snapshot_column.type, LongText)
+    assert config_snapshot_column.server_default is None
     assert version.config_snapshot_dict == config_snapshot
     assert version.config_snapshot_dict["env"]["secret_refs"][0]["provider_credential_id"] == "cred-1"
 
@@ -136,6 +138,18 @@ def test_workflow_binding_stores_node_job_config_separately_from_agent_soul():
         node_job_config=json.dumps(node_job_config),
     )
 
-    assert isinstance(WorkflowAgentNodeBinding.__table__.c.node_job_config.type, LongText)
+    node_job_config_column = WorkflowAgentNodeBinding.__table__.c.node_job_config
+    assert isinstance(node_job_config_column.type, LongText)
+    assert node_job_config_column.server_default is None
     assert binding.node_job_config_dict == node_job_config
     assert "prompt" not in binding.node_job_config_dict
+
+
+def test_long_text_columns_do_not_use_mysql_incompatible_server_defaults():
+    for column in (
+        Agent.__table__.c.description,
+        AgentConfigVersion.__table__.c.config_snapshot,
+        WorkflowAgentNodeBinding.__table__.c.node_job_config,
+    ):
+        assert isinstance(column.type, LongText)
+        assert column.server_default is None
