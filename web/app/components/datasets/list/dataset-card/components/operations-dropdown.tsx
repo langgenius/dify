@@ -6,6 +6,8 @@ import {
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
 import * as React from 'react'
+import { useSelector as useAppContextWithSelector } from '@/context/app-context'
+import { hasPermission } from '@/utils/permission'
 import Operations from '../operations'
 
 type OperationsDropdownProps = {
@@ -26,6 +28,8 @@ const OperationsDropdown = ({
   openAccessConfig,
 }: OperationsDropdownProps) => {
   const [open, setOpen] = React.useState(false)
+  const workspacePermissionKeys = useAppContextWithSelector(state => state.workspacePermissionKeys)
+  const canManageAccessConfig = hasPermission(workspacePermissionKeys, 'dataset.access_config')
 
   return (
     <div
@@ -57,6 +61,7 @@ const OperationsDropdown = ({
           <Operations
             showDelete={!isCurrentWorkspaceDatasetOperator}
             showExportPipeline={dataset.runtime_mode === 'rag_pipeline'}
+            showAccessConfig={canManageAccessConfig}
             openRenameModal={openRenameModal}
             handleExportPipeline={handleExportPipeline}
             detectIsUsedByApp={detectIsUsedByApp}

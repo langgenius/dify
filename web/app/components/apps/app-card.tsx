@@ -37,7 +37,7 @@ import AppIcon from '@/app/components/base/app-icon'
 import Input from '@/app/components/base/input'
 import { UserAvatarList } from '@/app/components/base/user-avatar-list'
 import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
-import { useAppContext } from '@/context/app-context'
+import { useAppContext, useSelector } from '@/context/app-context'
 import { useProviderContext } from '@/context/provider-context'
 import { AppCardTags } from '@/features/tag-management/components/app-card-tags'
 import { useAsyncWindowOpen } from '@/hooks/use-async-window-open'
@@ -53,6 +53,7 @@ import { fetchWorkflowDraft } from '@/service/workflow'
 import { AppModeEnum } from '@/types/app'
 import { getRedirection } from '@/utils/app-redirection'
 import { downloadBlob } from '@/utils/download'
+import { hasPermission } from '@/utils/permission'
 import { formatTime } from '@/utils/time'
 import { basePath } from '@/utils/var'
 
@@ -107,6 +108,8 @@ const AppCardOperationsMenu: React.FC<AppCardOperationsMenuProps> = ({
   const { t } = useTranslation()
   const openAsyncWindow = useAsyncWindowOpen()
   const { push } = useRouter()
+  const workspacePermissionKeys = useSelector(state => state.workspacePermissionKeys)
+  const canManageAccessConfig = hasPermission(workspacePermissionKeys, 'app.access_config')
 
   const handleMenuAction = useCallback((e: React.MouseEvent<HTMLElement>, action: () => void) => {
     e.stopPropagation()
@@ -177,9 +180,11 @@ const AppCardOperationsMenu: React.FC<AppCardOperationsMenuProps> = ({
           <DropdownMenuSeparator />
         </>
       )}
-      <DropdownMenuItem className="gap-2 px-3" onClick={handleOpenAccessConfig}>
-        <span className="text-sm leading-5 text-text-secondary">Access Config</span>
-      </DropdownMenuItem>
+      {canManageAccessConfig && (
+        <DropdownMenuItem className="gap-2 px-3" onClick={handleOpenAccessConfig}>
+          <span className="text-sm leading-5 text-text-secondary">Access Config</span>
+        </DropdownMenuItem>
+      )}
       <DropdownMenuSeparator />
       <DropdownMenuItem
         variant="destructive"
@@ -435,9 +440,9 @@ const AppCard = ({ app, onlineUsers = [], onRefresh, onOpenTagManagement = () =>
           e.preventDefault()
           getRedirection(isCurrentWorkspaceEditor, app, push)
         }}
-        className="group relative col-span-1 inline-flex h-[160px] cursor-pointer flex-col rounded-xl border border-solid border-components-card-border bg-components-card-bg shadow-sm transition-shadow duration-200 ease-in-out hover:shadow-lg"
+        className="group relative col-span-1 inline-flex h-40 cursor-pointer flex-col rounded-xl border border-solid border-components-card-border bg-components-card-bg shadow-sm transition-shadow duration-200 ease-in-out hover:shadow-lg"
       >
-        <div className="flex h-[66px] shrink-0 grow-0 items-center gap-3 px-[14px] pt-[14px] pb-3">
+        <div className="flex h-16.5 shrink-0 grow-0 items-center gap-3 px-3.5 pt-3.5 pb-3">
           <div className="relative shrink-0">
             <AppIcon
               size="large"
@@ -452,7 +457,7 @@ const AppCard = ({ app, onlineUsers = [], onRefresh, onOpenTagManagement = () =>
             <div className="flex items-center text-sm leading-5 font-semibold text-text-secondary">
               <div className="truncate" title={app.name}>{app.name}</div>
             </div>
-            <div className="flex items-center gap-1 text-[10px] leading-[18px] font-medium text-text-tertiary">
+            <div className="flex items-center gap-1 text-2xs leading-4.5 font-medium text-text-tertiary">
               <div className="truncate" title={app.author_name}>{app.author_name}</div>
               <div>·</div>
               <div className="truncate" title={EditTimeText}>{EditTimeText}</div>
@@ -502,7 +507,7 @@ const AppCard = ({ app, onlineUsers = [], onRefresh, onOpenTagManagement = () =>
             </div>
           </div>
         </div>
-        <div className="h-[90px] px-[14px] text-xs leading-normal text-text-tertiary">
+        <div className="h-22.5 px-3.5 text-xs leading-normal text-text-tertiary">
           <div
             className="line-clamp-2"
             title={app.description}
@@ -510,88 +515,86 @@ const AppCard = ({ app, onlineUsers = [], onRefresh, onOpenTagManagement = () =>
             {app.description}
           </div>
         </div>
-        <div className="absolute right-0 bottom-1 left-0 flex h-[42px] shrink-0 items-center pt-1 pr-[6px] pb-[6px] pl-[14px]">
+        <div className="absolute right-0 bottom-1 left-0 flex h-10.5 shrink-0 items-center pt-1 pr-1.5 pb-1.5 pl-3.5">
+          <div
+            className={cn('flex w-0 grow items-center gap-1')}
+            onClick={(e) => {
+              e.stopPropagation()
+              e.preventDefault()
+            }}
+          >
+            <div className="mr-10.25 min-w-0 grow overflow-hidden">
+              <AppCardTags
+                appId={app.id}
+                tags={app.tags}
+                onOpenTagManagement={onOpenTagManagement}
+                onTagsChange={onRefresh}
+              />
+            </div>
+          </div>
           {isCurrentWorkspaceEditor && (
-            <>
-              <div
-                className={cn('flex w-0 grow items-center gap-1')}
-                onClick={(e) => {
-                  e.stopPropagation()
-                  e.preventDefault()
-                }}
-              >
-                <div className="mr-[41px] min-w-0 grow overflow-hidden">
-                  <AppCardTags
-                    appId={app.id}
-                    tags={app.tags}
-                    onOpenTagManagement={onOpenTagManagement}
-                    onTagsChange={onRefresh}
-                  />
-                </div>
-              </div>
-              <div
-                className={cn(
-                  'absolute top-1/2 right-[6px] flex -translate-y-1/2 items-center transition-opacity',
-                  isOperationsMenuOpen
-                    ? 'pointer-events-auto opacity-100'
-                    : 'pointer-events-none opacity-0 group-focus-within:pointer-events-auto group-focus-within:opacity-100 group-hover:pointer-events-auto group-hover:opacity-100',
-                )}
-              >
-                <div className="mx-1 h-[14px] w-px shrink-0 bg-divider-regular" />
-                <DropdownMenu modal={false} open={isOperationsMenuOpen} onOpenChange={setIsOperationsMenuOpen}>
-                  <DropdownMenuTrigger
-                    aria-label={t('operation.more', { ns: 'common' })}
-                    className={cn(
-                      isOperationsMenuOpen ? 'bg-state-base-hover shadow-none' : 'bg-transparent',
-                      'flex h-8 w-8 items-center justify-center rounded-md border-none p-2 hover:bg-state-base-hover focus-visible:bg-state-base-hover focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:ring-inset',
-                    )}
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      e.preventDefault()
-                    }}
-                  >
-                    <div className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-md">
-                      <span className="sr-only">{t('operation.more', { ns: 'common' })}</span>
-                      <span aria-hidden className="i-ri-more-fill h-4 w-4 text-text-tertiary" />
-                    </div>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent
-                    placement="bottom-end"
-                    sideOffset={4}
-                    popupClassName={operationsMenuWidthClassName}
-                  >
-                    {systemFeatures.webapp_auth.enabled
-                      ? (
-                          <AppCardOperationsMenuContent
-                            app={app}
-                            shouldShowSwitchOption={shouldShowSwitchOption}
-                            shouldShowAccessControlOption={shouldShowAccessControlOption}
-                            onEdit={handleShowEditModal}
-                            onDuplicate={handleShowDuplicateModal}
-                            onExport={exportCheck}
-                            onSwitch={handleShowSwitchModal}
-                            onDelete={handleShowDeleteConfirm}
-                            onAccessControl={handleShowAccessControl}
-                          />
-                        )
-                      : (
-                          <AppCardOperationsMenu
-                            app={app}
-                            shouldShowSwitchOption={shouldShowSwitchOption}
-                            shouldShowOpenInExploreOption={!app.has_draft_trigger}
-                            shouldShowAccessControlOption={shouldShowAccessControlOption}
-                            onEdit={handleShowEditModal}
-                            onDuplicate={handleShowDuplicateModal}
-                            onExport={exportCheck}
-                            onSwitch={handleShowSwitchModal}
-                            onDelete={handleShowDeleteConfirm}
-                            onAccessControl={handleShowAccessControl}
-                          />
-                        )}
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </div>
-            </>
+            <div
+              className={cn(
+                'absolute top-1/2 right-1.5 flex -translate-y-1/2 items-center transition-opacity',
+                isOperationsMenuOpen
+                  ? 'pointer-events-auto opacity-100'
+                  : 'pointer-events-none opacity-0 group-focus-within:pointer-events-auto group-focus-within:opacity-100 group-hover:pointer-events-auto group-hover:opacity-100',
+              )}
+            >
+              <div className="mx-1 h-3.5 w-px shrink-0 bg-divider-regular" />
+              <DropdownMenu modal={false} open={isOperationsMenuOpen} onOpenChange={setIsOperationsMenuOpen}>
+                <DropdownMenuTrigger
+                  aria-label={t('operation.more', { ns: 'common' })}
+                  className={cn(
+                    isOperationsMenuOpen ? 'bg-state-base-hover shadow-none' : 'bg-transparent',
+                    'flex h-8 w-8 items-center justify-center rounded-md border-none p-2 hover:bg-state-base-hover focus-visible:bg-state-base-hover focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:ring-inset',
+                  )}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    e.preventDefault()
+                  }}
+                >
+                  <div className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-md">
+                    <span className="sr-only">{t('operation.more', { ns: 'common' })}</span>
+                    <span aria-hidden className="i-ri-more-fill h-4 w-4 text-text-tertiary" />
+                  </div>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent
+                  placement="bottom-end"
+                  sideOffset={4}
+                  popupClassName={operationsMenuWidthClassName}
+                >
+                  {systemFeatures.webapp_auth.enabled
+                    ? (
+                        <AppCardOperationsMenuContent
+                          app={app}
+                          shouldShowSwitchOption={shouldShowSwitchOption}
+                          shouldShowAccessControlOption={shouldShowAccessControlOption}
+                          onEdit={handleShowEditModal}
+                          onDuplicate={handleShowDuplicateModal}
+                          onExport={exportCheck}
+                          onSwitch={handleShowSwitchModal}
+                          onDelete={handleShowDeleteConfirm}
+                          onAccessControl={handleShowAccessControl}
+                        />
+                      )
+                    : (
+                        <AppCardOperationsMenu
+                          app={app}
+                          shouldShowSwitchOption={shouldShowSwitchOption}
+                          shouldShowOpenInExploreOption={!app.has_draft_trigger}
+                          shouldShowAccessControlOption={shouldShowAccessControlOption}
+                          onEdit={handleShowEditModal}
+                          onDuplicate={handleShowDuplicateModal}
+                          onExport={exportCheck}
+                          onSwitch={handleShowSwitchModal}
+                          onDelete={handleShowDeleteConfirm}
+                          onAccessControl={handleShowAccessControl}
+                        />
+                      )}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
           )}
         </div>
       </div>

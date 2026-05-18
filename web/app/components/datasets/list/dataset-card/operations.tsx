@@ -8,6 +8,7 @@ import { useTranslation } from 'react-i18next'
 type OperationsProps = {
   showDelete: boolean
   showExportPipeline: boolean
+  showAccessConfig?: boolean
   openRenameModal: () => void
   handleExportPipeline: () => void
   detectIsUsedByApp: () => void
@@ -18,6 +19,7 @@ type OperationsProps = {
 const Operations = ({
   showDelete,
   showExportPipeline,
+  showAccessConfig = false,
   openRenameModal,
   handleExportPipeline,
   detectIsUsedByApp,
@@ -58,10 +60,12 @@ const Operations = ({
           {t('operations.exportPipeline', { ns: 'datasetPipeline' })}
         </DropdownMenuItem>
       )}
-      <DropdownMenuItem onClick={handleAccessConfig}>
-        <span aria-hidden className="mr-1 i-ri-user-settings-line size-4 text-text-tertiary" />
-        Access Config
-      </DropdownMenuItem>
+      {showAccessConfig && (
+        <DropdownMenuItem onClick={handleAccessConfig}>
+          <span aria-hidden className="mr-1 i-ri-user-settings-line size-4 text-text-tertiary" />
+          Access Config
+        </DropdownMenuItem>
+      )}
       {showDelete && (
         <>
           <DropdownMenuSeparator />

@@ -18,6 +18,7 @@ import dynamic from '@/next/dynamic'
 import { consoleQuery } from '@/service/client'
 import { systemFeaturesQueryOptions } from '@/service/system-features'
 import { AppModeEnum } from '@/types/app'
+import { hasPermission } from '@/utils/permission'
 import AppCard from './app-card'
 import { AppCardSkeleton } from './app-card-skeleton'
 import { APP_LIST_SEARCH_DEBOUNCE_MS } from './constants'
@@ -43,7 +44,9 @@ const List: FC<Props> = ({
 }) => {
   const { t } = useTranslation()
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
-  const { isCurrentWorkspaceEditor, isCurrentWorkspaceDatasetOperator, isLoadingCurrentWorkspace } = useAppContext()
+  const { isLoadingCurrentWorkspace, workspacePermissionKeys } = useAppContext()
+  const canCreateApp = hasPermission(workspacePermissionKeys, 'app.create')
+  const canAccessAppList = hasPermission(workspacePermissionKeys, 'app_library.access')
 
   // eslint-disable-next-line react/use-state -- custom URL query hook, not React.useState
   const {
@@ -68,7 +71,7 @@ const List: FC<Props> = ({
   const { dragging } = useDSLDragDrop({
     onDSLFileDropped: handleDSLFileDropped,
     containerRef,
-    enabled: isCurrentWorkspaceEditor,
+    enabled: canCreateApp,
   })
 
   const appListQuery = useMemo<AppListQuery>(() => ({
@@ -101,7 +104,7 @@ const List: FC<Props> = ({
       initialPageParam: 1,
       placeholderData: keepPreviousData,
     }),
-    enabled: !isCurrentWorkspaceDatasetOperator,
+    enabled: canAccessAppList,
     refetchInterval: systemFeatures.enable_collaboration_mode ? 10000 : false,
   })
 
@@ -113,12 +116,12 @@ const List: FC<Props> = ({
 
   const anchorRef = useRef<HTMLDivElement>(null)
   const options = [
-    { value: 'all', text: t('types.all', { ns: 'app' }), icon: <span className="mr-1 i-ri-apps-2-line h-[14px] w-[14px]" /> },
-    { value: AppModeEnum.WORKFLOW, text: t('types.workflow', { ns: 'app' }), icon: <span className="mr-1 i-ri-exchange-2-line h-[14px] w-[14px]" /> },
-    { value: AppModeEnum.ADVANCED_CHAT, text: t('types.advanced', { ns: 'app' }), icon: <span className="mr-1 i-ri-message-3-line h-[14px] w-[14px]" /> },
-    { value: AppModeEnum.CHAT, text: t('types.chatbot', { ns: 'app' }), icon: <span className="mr-1 i-ri-message-3-line h-[14px] w-[14px]" /> },
-    { value: AppModeEnum.AGENT_CHAT, text: t('types.agent', { ns: 'app' }), icon: <span className="mr-1 i-ri-robot-3-line h-[14px] w-[14px]" /> },
-    { value: AppModeEnum.COMPLETION, text: t('types.completion', { ns: 'app' }), icon: <span className="mr-1 i-ri-file-4-line h-[14px] w-[14px]" /> },
+    { value: 'all', text: t('types.all', { ns: 'app' }), icon: <span className="mr-1 i-ri-apps-2-line size-3.5" /> },
+    { value: AppModeEnum.WORKFLOW, text: t('types.workflow', { ns: 'app' }), icon: <span className="mr-1 i-ri-exchange-2-line size-3.5" /> },
+    { value: AppModeEnum.ADVANCED_CHAT, text: t('types.advanced', { ns: 'app' }), icon: <span className="mr-1 i-ri-message-3-line size-3.5" /> },
+    { value: AppModeEnum.CHAT, text: t('types.chatbot', { ns: 'app' }), icon: <span className="mr-1 i-ri-message-3-line size-3.5" /> },
+    { value: AppModeEnum.AGENT_CHAT, text: t('types.agent', { ns: 'app' }), icon: <span className="mr-1 i-ri-robot-3-line size-3.5" /> },
+    { value: AppModeEnum.COMPLETION, text: t('types.completion', { ns: 'app' }), icon: <span className="mr-1 i-ri-file-4-line size-3.5" /> },
   ]
 
   useEffect(() => {
@@ -129,7 +132,7 @@ const List: FC<Props> = ({
   }, [refetch])
 
   useEffect(() => {
-    if (isCurrentWorkspaceDatasetOperator)
+    if (!canAccessAppList)
       return
     const hasMore = hasNextPage ?? true
     let observer: IntersectionObserver | undefined
@@ -156,7 +159,7 @@ const List: FC<Props> = ({
       observer.observe(anchorRef.current)
     }
     return () => observer?.disconnect()
-  }, [isLoading, isFetchingNextPage, fetchNextPage, error, hasNextPage, isCurrentWorkspaceDatasetOperator])
+  }, [isLoading, isFetchingNextPage, fetchNextPage, error, hasNextPage, canAccessAppList])
 
   const handleCreatedByMeChange = useCallback(() => {
     setIsCreatedByMe(!isCreatedByMe)
@@ -225,7 +228,7 @@ const List: FC<Props> = ({
           !hasAnyApp && 'overflow-hidden',
         )}
         >
-          {(isCurrentWorkspaceEditor || isLoadingCurrentWorkspace) && (
+          {(canCreateApp || isLoadingCurrentWorkspace) && (
             <NewAppCard
               ref={newAppCardRef}
               isLoading={isLoadingCurrentWorkspace}
@@ -252,7 +255,7 @@ const List: FC<Props> = ({
           )}
         </div>
 
-        {isCurrentWorkspaceEditor && (
+        {canCreateApp && (
           <div
             className={`flex items-center justify-center gap-2 py-4 ${dragging ? 'text-text-accent' : 'text-text-quaternary'}`}
             role="region"

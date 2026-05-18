@@ -16,11 +16,14 @@ import LabelFilter from '@/app/components/tools/labels/filter'
 import CustomCreateCard from '@/app/components/tools/provider/custom-create-card'
 import ProviderDetail from '@/app/components/tools/provider/detail'
 import WorkflowToolEmpty from '@/app/components/tools/provider/empty'
+import { useSelector as useAppContextWithSelector } from '@/context/app-context'
 import { systemFeaturesQueryOptions } from '@/service/system-features'
 import { useCheckInstalled, useInvalidateInstalledPluginList } from '@/service/use-plugins'
 import { useAllToolProviders } from '@/service/use-tools'
+import { hasPermission } from '@/utils/permission'
 import Marketplace from './marketplace'
 import { useMarketplace } from './marketplace/hooks'
+
 import MCPList from './mcp'
 import { getToolType } from './utils'
 
@@ -44,14 +47,21 @@ const ProviderList = () => {
     ...systemFeaturesQueryOptions(),
     select: s => s.enable_marketplace,
   })
+  const workspacePermissionKeys = useAppContextWithSelector(state => state.workspacePermissionKeys)
   const containerRef = useRef<HTMLDivElement>(null)
 
   const [activeTab, setActiveTab] = useQueryState('category', parseAsToolProviderCategory)
+  const canManageCustomAndWorkflow = hasPermission(workspacePermissionKeys, 'tool.manage')
+  const canManageMCP = hasPermission(workspacePermissionKeys, 'mcp.manage')
   const options = [
     { value: 'builtin', text: t('type.builtIn', { ns: 'tools' }) },
-    { value: 'api', text: t('type.custom', { ns: 'tools' }) },
-    { value: 'workflow', text: t('type.workflow', { ns: 'tools' }) },
-    { value: 'mcp', text: 'MCP' },
+    ...(canManageCustomAndWorkflow
+      ? [
+          { value: 'api', text: t('type.custom', { ns: 'tools' }) },
+          { value: 'workflow', text: t('type.workflow', { ns: 'tools' }) },
+        ]
+      : []),
+    ...(canManageMCP ? [{ value: 'mcp', text: 'MCP' }] : []),
   ]
   const [tagFilterValue, setTagFilterValue] = useState<string[]>([])
   const handleTagsChange = (value: string[]) => {
@@ -130,7 +140,7 @@ const ProviderList = () => {
           className="relative flex grow flex-col overflow-y-auto bg-background-body"
         >
           <div className={cn(
-            'sticky top-0 z-10 flex flex-wrap items-center justify-between gap-y-2 bg-background-body px-12 pt-4 pb-2 leading-[56px]',
+            'sticky top-0 z-10 flex flex-wrap items-center justify-between gap-y-2 bg-background-body px-12 pt-4 pb-2 leading-14',
             currentProviderId && 'pr-6',
           )}
           >

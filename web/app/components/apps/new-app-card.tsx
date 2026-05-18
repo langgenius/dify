@@ -6,7 +6,6 @@ import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContextSelector } from 'use-context-selector'
 import { CreateFromDSLModalTab } from '@/app/components/app/create-from-dsl-modal'
-import { FileArrow01, FilePlus01, FilePlus02 } from '@/app/components/base/icons/src/vender/line/files'
 import AppListContext from '@/context/app-list-context'
 import { useProviderContext } from '@/context/provider-context'
 import dynamic from '@/next/dynamic'
@@ -60,7 +59,6 @@ const CreateAppCard = ({
   const controlHideCreateFromTemplatePanel = useContextSelector(AppListContext, ctx => ctx.controlHideCreateFromTemplatePanel)
   useEffect(() => {
     if (controlHideCreateFromTemplatePanel > 0)
-      // eslint-disable-next-line react-hooks-extra/no-direct-set-state-in-use-effect
       setShowNewAppTemplateDialog(false)
   }, [controlHideCreateFromTemplatePanel])
 
@@ -68,27 +66,27 @@ const CreateAppCard = ({
     <div
       ref={ref}
       className={cn(
-        'relative col-span-1 inline-flex h-[160px] flex-col justify-between rounded-xl border-[0.5px] border-components-card-border bg-components-card-bg transition-opacity',
+        'relative col-span-1 inline-flex h-40 flex-col justify-between rounded-xl border-[0.5px] border-components-card-border bg-components-card-bg transition-opacity',
         isLoading && 'pointer-events-none opacity-50',
         className,
       )}
     >
       <div className="grow rounded-t-xl p-2">
-        <div className="px-6 pt-2 pb-1 text-xs leading-[18px] font-medium text-text-tertiary">{t('createApp', { ns: 'app' })}</div>
-        <button type="button" className="mb-1 flex w-full cursor-pointer items-center rounded-lg px-6 py-[7px] text-[13px] leading-[18px] font-medium text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary" onClick={() => setShowNewAppModal(true)}>
-          <FilePlus01 className="mr-2 h-4 w-4 shrink-0" />
+        <div className="px-6 pt-2 pb-1 text-xs leading-4.5 font-medium text-text-tertiary">{t('createApp', { ns: 'app' })}</div>
+        <button type="button" className="mb-1 flex w-full cursor-pointer items-center rounded-lg px-6 py-1.75 text-[13px] leading-4.5 font-medium text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary" onClick={() => setShowNewAppModal(true)}>
+          <span className="mr-2 i-custom-vender-line-files-file-plus-01 h-4 w-4 shrink-0" />
           {t('newApp.startFromBlank', { ns: 'app' })}
         </button>
-        <button type="button" className="flex w-full cursor-pointer items-center rounded-lg px-6 py-[7px] text-[13px] leading-[18px] font-medium text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary" onClick={() => setShowNewAppTemplateDialog(true)}>
-          <FilePlus02 className="mr-2 h-4 w-4 shrink-0" />
+        <button type="button" className="flex w-full cursor-pointer items-center rounded-lg px-6 py-1.75 text-[13px] leading-4.5 font-medium text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary" onClick={() => setShowNewAppTemplateDialog(true)}>
+          <span className="mr-2 i-custom-vender-line-files-file-plus-02 h-4 w-4 shrink-0" />
           {t('newApp.startFromTemplate', { ns: 'app' })}
         </button>
         <button
           type="button"
           onClick={() => setShowCreateFromDSLModal(true)}
-          className="flex w-full cursor-pointer items-center rounded-lg px-6 py-[7px] text-[13px] leading-[18px] font-medium text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary"
+          className="flex w-full cursor-pointer items-center rounded-lg px-6 py-1.75 text-[13px] leading-4.5 font-medium text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary"
         >
-          <FileArrow01 className="mr-2 h-4 w-4 shrink-0" />
+          <span className="mr-2 i-custom-vender-line-files-file-arrow-01 h-4 w-4 shrink-0" />
           {t('importDSL', { ns: 'app' })}
         </button>
       </div>

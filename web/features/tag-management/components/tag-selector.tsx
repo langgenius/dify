@@ -8,7 +8,9 @@ import { toast } from '@langgenius/dify-ui/toast'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useSelector as useAppContextWithSelector } from '@/context/app-context'
 import { consoleQuery } from '@/service/client'
+import { hasPermission } from '@/utils/permission'
 import { useApplyTagBindingsMutation } from '../hooks/use-tag-mutations'
 import { isCreateTagOption } from './tag-combobox-item'
 import { TagPanel } from './tag-panel'
@@ -66,6 +68,8 @@ export const TagSelector = ({
   const [open, setOpen] = useState(false)
   const [draftTags, setDraftTags] = useState<Tag[]>(value)
   const [inputValue, setInputValue] = useState('')
+  const workspacePermissionKeys = useAppContextWithSelector(state => state.workspacePermissionKeys)
+  const canManageTags = type === 'app' ? hasPermission(workspacePermissionKeys, 'app.tag.manage') : hasPermission(workspacePermissionKeys, 'dataset.tag.manage')
   const applyTagBindingsMutation = useApplyTagBindingsMutation()
   const {
     isPending: isCreatingTag,
@@ -212,6 +216,7 @@ export const TagSelector = ({
       isItemEqualToValue={isSameTag}
     >
       <ComboboxTrigger
+        disabled={!canManageTags}
         aria-label={triggerLabel}
         className={cn(
           open ? 'bg-state-base-hover' : 'bg-transparent',

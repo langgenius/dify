@@ -3,7 +3,6 @@
 import { useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
-import { useSelector as useAppContextWithSelector } from '@/context/app-context'
 import { useDatasetList, useInvalidDatasetList } from '@/service/knowledge/use-dataset'
 import DatasetCard from './dataset-card'
 import NewDatasetCard from './new-dataset-card'
@@ -22,7 +21,6 @@ const Datasets = ({
   onOpenTagManagement = () => {},
 }: Props) => {
   const { t } = useTranslation()
-  const isCurrentWorkspaceEditor = useAppContextWithSelector(state => state.isCurrentWorkspaceEditor)
   const {
     data: datasetList,
     fetchNextPage,
@@ -60,7 +58,7 @@ const Datasets = ({
   return (
     <>
       <nav className="grid grow grid-cols-1 content-start gap-3 px-12 pt-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
-        {isCurrentWorkspaceEditor && <NewDatasetCard />}
+        <NewDatasetCard />
         {datasetList?.pages.map(({ data: datasets }) => datasets.map(dataset => (
           <DatasetCard key={dataset.id} dataset={dataset} onSuccess={invalidDatasetList} onOpenTagManagement={onOpenTagManagement} />),
         ))}

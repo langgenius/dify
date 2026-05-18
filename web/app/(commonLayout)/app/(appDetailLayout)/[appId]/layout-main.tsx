@@ -31,6 +31,7 @@ import useDocumentTitle from '@/hooks/use-document-title'
 import { usePathname, useRouter } from '@/next/navigation'
 import { fetchAppDetailDirect } from '@/service/apps'
 import { AppModeEnum } from '@/types/app'
+import { hasPermission } from '@/utils/permission'
 import s from './style.module.css'
 
 type IAppDetailLayoutProps = {
@@ -48,7 +49,7 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
   const pathname = usePathname()
   const media = useBreakpoints()
   const isMobile = media === MediaType.mobile
-  const { isCurrentWorkspaceEditor, isLoadingCurrentWorkspace, currentWorkspace } = useAppContext()
+  const { isCurrentWorkspaceEditor, isLoadingCurrentWorkspace, currentWorkspace, workspacePermissionKeys } = useAppContext()
   const appInfoActions = useAppInfoActions({ resetKey: appId })
   const { appDetail, setAppDetail, setAppSidebarExpand } = useStore(useShallow(state => ({
     appDetail: state.appDetail,
@@ -63,6 +64,9 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
     icon: NavIcon
     selectedIcon: NavIcon
   }>>([])
+
+  const canAccessMonitor = hasPermission(workspacePermissionKeys, 'app.monitor.access')
+  const canAccessLog = hasPermission(workspacePermissionKeys, 'app.log.access')
 
   const getNavigationConfig = useCallback((appId: string, isCurrentWorkspaceEditor: boolean, mode: AppModeEnum) => {
     const navConfig = [
@@ -81,7 +85,7 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
         icon: RiTerminalBoxLine,
         selectedIcon: RiTerminalBoxFill,
       },
-      ...(isCurrentWorkspaceEditor
+      ...(canAccessLog
         ? [{
             name: mode !== AppModeEnum.WORKFLOW
               ? t('appMenus.logAndAnn', { ns: 'common' })
@@ -92,12 +96,14 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
           }]
         : []
       ),
-      {
-        name: t('appMenus.overview', { ns: 'common' }),
-        href: `/app/${appId}/overview`,
-        icon: RiDashboard2Line,
-        selectedIcon: RiDashboard2Fill,
-      },
+      ...(canAccessMonitor
+        ? [{
+            name: t('appMenus.overview', { ns: 'common' }),
+            href: `/app/${appId}/overview`,
+            icon: RiDashboard2Line,
+            selectedIcon: RiDashboard2Fill,
+          }]
+        : []),
       ...(isCurrentWorkspaceEditor
         ? [{
             name: 'Access Config',
