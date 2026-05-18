@@ -1,6 +1,6 @@
+import type { ApiBasedExtensionResponse } from '@dify/contracts/api/console/api-based-extension/types.gen'
 import type { TFunction } from 'i18next'
 import type { ModalContextState } from '@/context/modal-context'
-import type { ApiBasedExtension } from '@/models/common'
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import * as reactI18next from 'react-i18next'
 import { useModalContext } from '@/context/modal-context'
@@ -17,7 +17,7 @@ vi.mock('@/service/common', () => ({
 }))
 
 describe('Item Component', () => {
-  const mockData: ApiBasedExtension = {
+  const mockData: ApiBasedExtensionResponse = {
     id: '1',
     name: 'Test Extension',
     api_endpoint: 'https://api.example.com',
@@ -46,7 +46,12 @@ describe('Item Component', () => {
 
     it('should render with minimal extension data', () => {
       // Arrange
-      const minimalData: ApiBasedExtension = { id: '2' }
+      const minimalData: ApiBasedExtensionResponse = {
+        id: '2',
+        name: '',
+        api_endpoint: '',
+        api_key: '',
+      }
 
       // Act
       render(<Item data={minimalData} onUpdate={mockOnUpdate} />)

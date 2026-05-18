@@ -1,5 +1,6 @@
 'use client'
 
+import type { ApiBasedExtensionResponse } from '@dify/contracts/api/console/api-based-extension/types.gen'
 import type { Dispatch, SetStateAction } from 'react'
 import type { TriggerEventsLimitModalPayload } from './hooks/use-trigger-events-limit-modal'
 import type { OpeningStatement } from '@/app/components/base/features/types'
@@ -18,7 +19,6 @@ import type { UpdatePluginPayload } from '@/app/components/plugins/types'
 import type { InputVar } from '@/app/components/workflow/types'
 import type { ExpireNoticeModalPayloadProps } from '@/app/education-apply/expire-notice-modal'
 import type {
-  ApiBasedExtension,
   ExternalDataTool,
 } from '@/models/common'
 import type { ModerationConfig, PromptVariable } from '@/models/debug'
@@ -48,7 +48,7 @@ export type ModelModalType = {
 
 export type ModalContextState = {
   setShowAccountSettingModal: Dispatch<SetStateAction<ModalState<AccountSettingTab> | null>>
-  setShowApiBasedExtensionModal: Dispatch<SetStateAction<ModalState<ApiBasedExtension> | null>>
+  setShowApiBasedExtensionModal: Dispatch<SetStateAction<ModalState<Partial<ApiBasedExtensionResponse>> | null>>
   setShowModerationSettingModal: Dispatch<SetStateAction<ModalState<ModerationConfig> | null>>
   setShowExternalDataToolModal: Dispatch<SetStateAction<ModalState<ExternalDataTool> | null>>
   setShowPricingModal: () => void

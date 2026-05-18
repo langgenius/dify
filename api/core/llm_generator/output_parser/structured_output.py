@@ -288,11 +288,13 @@ def _parse_structured_output(result_text: str) -> Mapping[str, Any]:
     except ValidationError:
         # if the result_text is not a valid json, try to repair it
         temp_parsed = json_repair.loads(result_text)
-        if not isinstance(temp_parsed, dict):
-            # handle reasoning model like deepseek-r1 got '<think>\n\n</think>\n' prefix
-            if isinstance(temp_parsed, list):
+        match temp_parsed:
+            case dict():
+                pass
+            case list():
+                # handle reasoning model like deepseek-r1 got '<think>\n\n</think>\n' prefix
                 temp_parsed = next((item for item in temp_parsed if isinstance(item, dict)), {})
-            else:
+            case _:
                 raise OutputParserError(f"Failed to parse structured output: {result_text}")
         structured_output = cast(dict, temp_parsed)
     return structured_output
@@ -341,12 +343,13 @@ def remove_additional_properties(schema: dict[str, Any]) -> None:
 
     # Process nested structures recursively
     for value in schema.values():
-        if isinstance(value, dict):
-            remove_additional_properties(value)
-        elif isinstance(value, list):
-            for item in value:
-                if isinstance(item, dict):
-                    remove_additional_properties(item)
+        match value:
+            case dict():
+                remove_additional_properties(value)
+            case list():
+                for item in value:
+                    if isinstance(item, dict):
+                        remove_additional_properties(item)
 
 
 def convert_boolean_to_string(schema: dict[str, Any]) -> None:
@@ -364,9 +367,10 @@ def convert_boolean_to_string(schema: dict[str, Any]) -> None:
 
     # Process nested dictionaries and lists recursively
     for value in schema.values():
-        if isinstance(value, dict):
-            convert_boolean_to_string(value)
-        elif isinstance(value, list):
-            for item in value:
-                if isinstance(item, dict):
-                    convert_boolean_to_string(item)
+        match value:
+            case dict():
+                convert_boolean_to_string(value)
+            case list():
+                for item in value:
+                    if isinstance(item, dict):
+                        convert_boolean_to_string(item)

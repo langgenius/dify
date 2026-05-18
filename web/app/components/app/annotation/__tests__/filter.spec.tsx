@@ -1,7 +1,7 @@
+import type { AnnotationCountResponse } from '@dify/contracts/api/console/apps/types.gen'
 import type { UseQueryResult } from '@tanstack/react-query'
 import type { Mock } from 'vitest'
 import type { QueryParam } from '../filter'
-import type { AnnotationsCountResponse } from '@/models/log'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { fireEvent, render, screen } from '@testing-library/react'
 import * as React from 'react'
@@ -69,7 +69,7 @@ describe('Filter', () => {
     it('should render nothing when data is loading', () => {
       // Arrange
       mockUseAnnotationsCount.mockReturnValue(
-        createMockQueryResult<AnnotationsCountResponse>({ isLoading: true }),
+        createMockQueryResult<AnnotationCountResponse>({ isLoading: true }),
       )
 
       // Act
@@ -90,7 +90,7 @@ describe('Filter', () => {
     it('should render nothing when data is undefined', () => {
       // Arrange
       mockUseAnnotationsCount.mockReturnValue(
-        createMockQueryResult<AnnotationsCountResponse>({ data: undefined, isLoading: false }),
+        createMockQueryResult<AnnotationCountResponse>({ data: undefined, isLoading: false }),
       )
 
       // Act
@@ -111,7 +111,7 @@ describe('Filter', () => {
     it('should render filter and children when data is available', () => {
       // Arrange
       mockUseAnnotationsCount.mockReturnValue(
-        createMockQueryResult<AnnotationsCountResponse>({
+        createMockQueryResult<AnnotationCountResponse>({
           data: { count: 20 },
           isLoading: false,
         }),
@@ -141,7 +141,7 @@ describe('Filter', () => {
     it('should call useAnnotationsCount with appId', () => {
       // Arrange
       mockUseAnnotationsCount.mockReturnValue(
-        createMockQueryResult<AnnotationsCountResponse>({
+        createMockQueryResult<AnnotationCountResponse>({
           data: { count: 10 },
           isLoading: false,
         }),
@@ -165,7 +165,7 @@ describe('Filter', () => {
     it('should display keyword value in input', () => {
       // Arrange
       mockUseAnnotationsCount.mockReturnValue(
-        createMockQueryResult<AnnotationsCountResponse>({
+        createMockQueryResult<AnnotationCountResponse>({
           data: { count: 10 },
           isLoading: false,
         }),
@@ -195,7 +195,7 @@ describe('Filter', () => {
     it('should call setQueryParams when typing in search input', () => {
       // Arrange
       mockUseAnnotationsCount.mockReturnValue(
-        createMockQueryResult<AnnotationsCountResponse>({
+        createMockQueryResult<AnnotationCountResponse>({
           data: { count: 20 },
           isLoading: false,
         }),
@@ -224,7 +224,7 @@ describe('Filter', () => {
     it('should call setQueryParams with empty keyword when clearing input', () => {
       // Arrange
       mockUseAnnotationsCount.mockReturnValue(
-        createMockQueryResult<AnnotationsCountResponse>({
+        createMockQueryResult<AnnotationCountResponse>({
           data: { count: 20 },
           isLoading: false,
         }),
@@ -257,7 +257,7 @@ describe('Filter', () => {
     it('should handle empty keyword in queryParams', () => {
       // Arrange
       mockUseAnnotationsCount.mockReturnValue(
-        createMockQueryResult<AnnotationsCountResponse>({
+        createMockQueryResult<AnnotationCountResponse>({
           data: { count: 5 },
           isLoading: false,
         }),
@@ -281,7 +281,7 @@ describe('Filter', () => {
     it('should handle undefined keyword in queryParams', () => {
       // Arrange
       mockUseAnnotationsCount.mockReturnValue(
-        createMockQueryResult<AnnotationsCountResponse>({
+        createMockQueryResult<AnnotationCountResponse>({
           data: { count: 5 },
           isLoading: false,
         }),
@@ -305,7 +305,7 @@ describe('Filter', () => {
     it('should handle zero count', () => {
       // Arrange
       mockUseAnnotationsCount.mockReturnValue(
-        createMockQueryResult<AnnotationsCountResponse>({
+        createMockQueryResult<AnnotationCountResponse>({
           data: { count: 0 },
           isLoading: false,
         }),
