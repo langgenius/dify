@@ -14,7 +14,7 @@ const meta = {
     layout: 'centered',
     docs: {
       description: {
-        component: 'Fieldset primitives built on Base UI Fieldset. Use FieldsetRoot and FieldsetLegend when one field is represented by a group of related controls such as checkbox groups, radio groups, or multi-thumb sliders.',
+        component: 'Fieldset primitives built on Base UI Fieldset. Use FieldsetRoot and FieldsetLegend when one field is represented by a group of related controls such as checkbox groups, radio groups, or multi-thumb sliders. Fieldset provides group semantics and labeling; pass interactive state such as disabled and value to the actual group primitive.',
       },
     },
   },

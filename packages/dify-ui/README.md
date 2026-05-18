@@ -75,6 +75,8 @@ Use `FieldsetRoot` and `FieldsetLegend` when one field is represented by a group
 </FieldRoot>
 ```
 
+`FieldsetRoot` provides the group semantics and legend relationship. It does not own the interactive state of the grouped control. Pass `disabled`, `value`, `defaultValue`, and change handlers to the actual group primitive (`CheckboxGroup`, radio group, slider root, etc.) instead of relying on the fieldset wrapper to manage them.
+
 For complex business forms, keep state ownership outside these primitives. TanStack Form, zod, server validation, dialog reset behavior, and schema-driven rendering belong to the feature layer in `web/`; they should pass `name`, `invalid`, `dirty`, `touched`, `value`, `onValueChange`, and errors into these primitives rather than replacing the field semantics.
 
 Migration rule for `web/`: if a UI has a save/submit action, do not leave it as unrelated `Input` and `Button` pieces. Give it a real submit boundary with `Form` or a native `<form>`, attach visible field names through `FieldLabel`, expose helper/error text through `FieldDescription` / `FieldError`, and keep non-submit buttons as `type="button"`.

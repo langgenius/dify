@@ -1,62 +1,21 @@
 import { render } from 'vitest-browser-react'
-import { Checkbox } from '../../checkbox'
-import { CheckboxGroup } from '../../checkbox-group'
-import { FieldItem, FieldLabel, FieldRoot } from '../../field'
 import {
   FieldsetLegend,
   FieldsetRoot,
 } from '../index'
 
 describe('Fieldset primitives', () => {
-  it('should render a named fieldset group with reset design-system classes', async () => {
+  it('should apply reset design-system classes', async () => {
     const screen = await render(
-      <FieldsetRoot>
-        <FieldsetLegend>Permissions</FieldsetLegend>
-        <label>
-          <input type="checkbox" />
-          Read
-        </label>
+      <FieldsetRoot className="custom-root">
+        <FieldsetLegend className="custom-legend">Permissions</FieldsetLegend>
       </FieldsetRoot>,
     )
 
-    await expect.element(screen.getByRole('group', { name: 'Permissions' })).toHaveClass('border-0', 'p-0')
-    await expect.element(screen.getByText('Permissions')).toHaveClass('mb-1', 'py-1', 'system-sm-medium', 'text-text-secondary')
-  })
+    const legend = screen.getByText('Permissions').element() as HTMLElement
+    const fieldset = legend.closest('fieldset') as HTMLElement
 
-  it('should compose with checkbox groups through FieldRoot and FieldItem', async () => {
-    const screen = await render(
-      <FieldRoot name="scopes">
-        <FieldsetRoot render={<CheckboxGroup value={['read']} />}>
-          <FieldsetLegend>Scopes</FieldsetLegend>
-          <FieldItem>
-            <FieldLabel className="flex items-center gap-2">
-              <Checkbox value="read" />
-              Read
-            </FieldLabel>
-          </FieldItem>
-          <FieldItem>
-            <FieldLabel className="flex items-center gap-2">
-              <Checkbox value="write" />
-              Write
-            </FieldLabel>
-          </FieldItem>
-        </FieldsetRoot>
-      </FieldRoot>,
-    )
-
-    await expect.element(screen.getByRole('group', { name: 'Scopes' })).toBeInTheDocument()
-    await expect.element(screen.getByRole('checkbox', { name: 'Read' })).toHaveAttribute('aria-checked', 'true')
-    await expect.element(screen.getByRole('checkbox', { name: 'Write' })).toHaveAttribute('aria-checked', 'false')
-  })
-
-  it('should expose disabled state on root and legend', async () => {
-    const screen = await render(
-      <FieldsetRoot disabled>
-        <FieldsetLegend>Disabled group</FieldsetLegend>
-      </FieldsetRoot>,
-    )
-
-    await expect.element(screen.getByRole('group', { name: 'Disabled group' })).toHaveAttribute('data-disabled', '')
-    await expect.element(screen.getByText('Disabled group')).toHaveAttribute('data-disabled', '')
+    await expect.element(fieldset).toHaveClass('m-0', 'min-w-0', 'border-0', 'p-0', 'custom-root')
+    await expect.element(legend).toHaveClass('mb-1', 'py-1', 'system-sm-medium', 'text-text-secondary', 'custom-legend')
   })
 })

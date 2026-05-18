@@ -3,7 +3,7 @@ import { Button } from '@langgenius/dify-ui/button'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { CheckboxGroup } from '@langgenius/dify-ui/checkbox-group'
 import { cn } from '@langgenius/dify-ui/cn'
-import { FieldDescription, FieldRoot } from '@langgenius/dify-ui/field'
+import { FieldDescription, FieldItem, FieldLabel, FieldRoot } from '@langgenius/dify-ui/field'
 import { FieldsetLegend, FieldsetRoot } from '@langgenius/dify-ui/fieldset'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -97,13 +97,15 @@ export const CheckboxList = ({
           {(showSelectAll || title || showSearch) && (
             <div className="relative flex items-center gap-2 border-b border-divider-subtle px-3 py-2">
               {!searchQuery && showSelectAll && (
-                <label className={cn('flex shrink-0 items-center', !disabled && 'cursor-pointer')}>
-                  <Checkbox
-                    parent
-                    disabled={disabled}
-                  />
-                  <span className="sr-only">{t('operation.selectAll', { ns: 'common' })}</span>
-                </label>
+                <FieldItem disabled={disabled} className="shrink-0 gap-0">
+                  <FieldLabel className={cn('flex items-center p-0', !disabled && 'cursor-pointer')}>
+                    <Checkbox
+                      parent
+                      disabled={disabled}
+                    />
+                    <span className="sr-only">{t('operation.selectAll', { ns: 'common' })}</span>
+                  </FieldLabel>
+                </FieldItem>
               )}
               {!searchQuery
                 ? (
@@ -161,25 +163,30 @@ export const CheckboxList = ({
                 )
               : (
                   filteredOptions.map(option => (
-                    <label
+                    <FieldItem
                       key={option.value}
-                      data-testid="option-item"
-                      className={cn(
-                        'flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 transition-colors hover:bg-state-base-hover',
-                        (option.disabled || disabled) && 'cursor-not-allowed opacity-50',
-                      )}
+                      disabled={option.disabled || disabled}
+                      className="gap-0"
                     >
-                      <Checkbox
-                        value={option.value}
-                        disabled={option.disabled || disabled}
-                      />
-                      <span
-                        className="flex-1 truncate system-sm-medium text-text-secondary"
-                        title={option.label}
+                      <FieldLabel
+                        data-testid="option-item"
+                        className={cn(
+                          'flex w-full cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 transition-colors hover:bg-state-base-hover',
+                          (option.disabled || disabled) && 'cursor-not-allowed opacity-50',
+                        )}
                       >
-                        {option.label}
-                      </span>
-                    </label>
+                        <Checkbox
+                          value={option.value}
+                          disabled={option.disabled || disabled}
+                        />
+                        <span
+                          className="flex-1 truncate system-sm-medium text-text-secondary"
+                          title={option.label}
+                        >
+                          {option.label}
+                        </span>
+                      </FieldLabel>
+                    </FieldItem>
                   ))
                 )}
           </div>
