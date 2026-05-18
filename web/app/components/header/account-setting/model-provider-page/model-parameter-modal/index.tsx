@@ -76,10 +76,9 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
   const settingsIconRef = useRef<HTMLDivElement>(null)
   const {
     data: parameterRulesData,
-    isPending,
     isLoading,
   } = useModelParameterRules(provider, modelId)
-  const isRulesLoading = isPending || isLoading
+  const isRulesLoading = !!provider && !!modelId && isLoading
   const {
     currentProvider,
     currentModel,
