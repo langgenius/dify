@@ -1,31 +1,18 @@
 name: CLI Release
 
 on:
-  release:
-    types: [published]
   workflow_dispatch:
-    inputs:
-      dify_release_tag:
-        description: "dify release tag to attach cli artifacts to (e.g. 1.14.0). Bare semver — dify tags are NOT v-prefixed."
-        type: string
-        required: true
 
 concurrency:
-  group: cli-release-${{ github.event.release.tag_name || inputs.dify_release_tag }}
+  group: cli-release-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
   release:
     runs-on: depot-ubuntu-24.04
-    if: >-
-      github.repository == 'langgenius/dify' &&
-      (github.event_name == 'workflow_dispatch' ||
-       (vars.CLI_AUTO_RELEASE == 'true' && !github.event.release.prerelease))
-    env:
-      DIFY_TAG: ${{ github.event.release.tag_name || inputs.dify_release_tag }}
+    if: github.repository == 'langgenius/dify'
     permissions:
-      contents: write
-      id-token: write
+      contents: read
     defaults:
       run:
         shell: bash
@@ -40,12 +27,6 @@ jobs:
 
       - name: Setup web environment
         uses: ./.github/actions/setup-web
-
-      - name: Setup Node registry auth
-        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
-        with:
-          node-version-file: .nvmrc
-          registry-url: 'https://registry.npmjs.org'
 
       - name: Read cli/package.json
         id: manifest
@@ -64,19 +45,6 @@ jobs:
       - name: Validate manifest
         run: scripts/release-validate-manifest.sh
 
-      - name: Bump guard (auto-path only)
-        if: github.event_name == 'release'
-        run: scripts/release-bump-guard.sh
-        env:
-          NEW_VERSION:  ${{ steps.manifest.outputs.version }}
-          NEW_MIN_DIFY: ${{ steps.manifest.outputs.minDify }}
-          NEW_MAX_DIFY: ${{ steps.manifest.outputs.maxDify }}
-
-      - name: Verify target dify release exists
-        run: gh release view "$DIFY_TAG" --repo langgenius/dify > /dev/null
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
       - name: Build cli
         run: |
           DIFYCTL_VERSION="${{ steps.manifest.outputs.version }}" \
@@ -88,44 +56,19 @@ jobs:
           pnpm build
 
       - name: Pack tarballs
-        run: pnpm pack:tarballs
-
-      - name: Publish to npm (idempotent)
-        run: scripts/release-npm-publish.sh
-        env:
-          CHANNEL:         ${{ steps.manifest.outputs.channel }}
-          NEW_VERSION:     ${{ steps.manifest.outputs.version }}
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: CLI_VERSION=${{ steps.manifest.outputs.version }} pnpm pack:tarballs
 
       - name: Generate sha256 checksum file
         run: scripts/release-write-checksums.sh
         env:
           CLI_VERSION: ${{ steps.manifest.outputs.version }}
 
-      - name: Install cosign
-        uses: sigstore/cosign-installer@3454372f43399081ed03b604cb2d021dabca52bb # v3.8.2
-
-      - name: Keyless-sign tarballs + checksum file (Sigstore)
-        run: scripts/release-cosign-sign.sh
-        env:
-          CLI_VERSION:         ${{ steps.manifest.outputs.version }}
-          COSIGN_EXPERIMENTAL: '1'
-
-      - name: Snapshot tarballs + checksum + signatures as workflow artifact
-        if: always()
+      - name: Upload tarballs + checksum as workflow artifact
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: difyctl-${{ steps.manifest.outputs.version }}-${{ env.DIFY_TAG }}
+          name: difyctl-${{ steps.manifest.outputs.version }}
           path: |
             cli/dist/difyctl-v*.tar.xz
             cli/dist/difyctl-v*-checksums.txt
-            cli/dist/difyctl-v*.sig
-            cli/dist/difyctl-v*.pem
           retention-days: 90
           if-no-files-found: error
-
-      - name: Upload tarballs + checksum + signatures to dify GH release (idempotent)
-        run: scripts/release-upload-tarballs.sh
-        env:
-          CLI_VERSION: ${{ steps.manifest.outputs.version }}
-          GH_TOKEN:    ${{ secrets.GITHUB_TOKEN }}

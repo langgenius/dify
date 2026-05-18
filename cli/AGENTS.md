@@ -64,7 +64,7 @@ pnpm build                                     # production bundle + oclif manif
 pnpm manifest                                  # regenerate oclif.manifest.json only
 ```
 
-`make` covers `build` / `test` / `release` / `ci` as no-arg targets. Dev runs use `pnpm dev` directly.
+Release tarballs are produced by `pnpm pack:tarballs` (called from `.github/workflows/cli-release.yml`).
 
 ## Tests
 

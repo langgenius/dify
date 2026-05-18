@@ -40,7 +40,8 @@
     "clean": "rm -rf dist node_modules/.cache",
     "version:info": "tsx scripts/print-buildinfo.ts",
     "docker:build-dev": "scripts/docker-build-dev.sh",
-    "sync-models": "scripts/sync-models.sh"
+    "sync-models": "scripts/sync-models.sh",
+    "pack:tarballs": "scripts/release-pack-tarballs.sh"
   },
   "dependencies": {
     "@napi-rs/keyring": "catalog:",
