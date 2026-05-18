@@ -12,6 +12,7 @@ import { cn } from '@/utils/classnames'
 import { getIconFromMarketPlace } from '@/utils/get-icon'
 import { formatUsedCount } from '@/utils/template'
 import { getMarketplaceUrl } from '@/utils/var'
+import Partner from '../../base/badges/partner'
 import { buildSearchParamsString, getTemplateIconUrl } from '../utils'
 
 type TemplateCardProps = {
@@ -31,9 +32,10 @@ const TemplateCardComponent = ({
   const locale = useLocale()
   const { t } = useTranslation()
   const { theme } = useTheme()
-  const { id, template_name, overview, icon, publisher_handle, publisher_type, usage_count, icon_background, deps_plugins } = template
+  const { id, template_name, overview, icon, publisher_handle, publisher_type, usage_count, icon_background, deps_plugins, badges = [] } = template
   // const isSandbox = kind === 'sandboxed'
   const iconUrl = getTemplateIconUrl(template)
+  const isPartner = badges.includes('partner')
 
   const href = useMemo(() => {
     const queryParams = {
@@ -75,12 +77,15 @@ const TemplateCardComponent = ({
         />
         {/* Title */}
         <div className="flex min-w-0 flex-1 flex-col justify-center gap-0.5">
-          <a
-            href={href}
-            className="truncate text-text-primary system-md-medium after:absolute after:inset-0"
-          >
-            {template_name}
-          </a>
+          <div className="flex items-center">
+            <a
+              href={href}
+              className="truncate text-text-primary system-md-medium after:absolute after:inset-0"
+            >
+              {template_name}
+            </a>
+            {isPartner && <Partner className="relative z-[1] ml-0.5 h-4 w-4 shrink-0" text={t('marketplace.partnerTip', { ns: 'plugin' })} />}
+          </div>
           <div className="flex items-center gap-2 text-text-tertiary system-xs-regular">
             <span className="relative z-[1] flex shrink-0 items-center gap-1">
               <span className="shrink-0">{t('marketplace.templateCard.by', { ns: 'plugin' })}</span>

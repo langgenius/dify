@@ -92,6 +92,7 @@ export type Template = {
   usage_count: number
   created_at: string
   updated_at: string
+  badges?: string[]
 }
 
 export type CreateTemplateCollectionRequest = {
