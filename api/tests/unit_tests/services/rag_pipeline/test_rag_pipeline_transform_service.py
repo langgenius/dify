@@ -522,16 +522,12 @@ def _make_service():
     return RagPipelineTransformService.__new__(RagPipelineTransformService)
 
 
-def test_deal_dependencies_skips_marketplace_when_disabled(
-    mocker: MockerFixture, caplog
-) -> None:
+def test_deal_dependencies_skips_marketplace_when_disabled(mocker: MockerFixture, caplog) -> None:
     mocker.patch(
         "services.rag_pipeline.rag_pipeline_transform_service.dify_config.MARKETPLACE_ENABLED",
         False,
     )
-    installer = mocker.patch(
-        "services.rag_pipeline.rag_pipeline_transform_service.PluginInstaller"
-    ).return_value
+    installer = mocker.patch("services.rag_pipeline.rag_pipeline_transform_service.PluginInstaller").return_value
     installer.list_plugins.return_value = []
     mocker.patch("services.rag_pipeline.rag_pipeline_transform_service.PluginMigration")
     install_call = mocker.patch(
@@ -560,13 +556,9 @@ def test_deal_dependencies_installs_when_enabled(mocker: MockerFixture) -> None:
         "services.rag_pipeline.rag_pipeline_transform_service.dify_config.MARKETPLACE_ENABLED",
         True,
     )
-    installer = mocker.patch(
-        "services.rag_pipeline.rag_pipeline_transform_service.PluginInstaller"
-    ).return_value
+    installer = mocker.patch("services.rag_pipeline.rag_pipeline_transform_service.PluginInstaller").return_value
     installer.list_plugins.return_value = []
-    migration = mocker.patch(
-        "services.rag_pipeline.rag_pipeline_transform_service.PluginMigration"
-    ).return_value
+    migration = mocker.patch("services.rag_pipeline.rag_pipeline_transform_service.PluginMigration").return_value
     migration._fetch_plugin_unique_identifier.return_value = "langgenius/openai:1.0.0@abc"
     install_call = mocker.patch(
         "services.rag_pipeline.rag_pipeline_transform_service.PluginService.install_from_marketplace_pkg"

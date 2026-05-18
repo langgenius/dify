@@ -11,9 +11,7 @@ def test_fetch_recommended_plugin_manifests_returns_empty_when_disabled(
     mocker: MockerFixture,
 ) -> None:
     mocker.patch("services.rag_pipeline.rag_pipeline.dify_config.MARKETPLACE_ENABLED", False)
-    batch_fetch = mocker.patch(
-        "services.rag_pipeline.rag_pipeline.marketplace.batch_fetch_plugin_by_ids"
-    )
+    batch_fetch = mocker.patch("services.rag_pipeline.rag_pipeline.marketplace.batch_fetch_plugin_by_ids")
 
     service = _make_service()
     result = service._fetch_recommended_plugin_manifests(["langgenius/openai"])
