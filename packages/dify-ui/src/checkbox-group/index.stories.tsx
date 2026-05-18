@@ -6,7 +6,7 @@ import { CheckboxGroup } from '.'
 import { Checkbox } from '../checkbox'
 
 const meta = {
-  title: 'Base/UI/CheckboxGroup',
+  title: 'Base/Form/CheckboxGroup',
   component: CheckboxGroup,
   parameters: {
     layout: 'centered',
