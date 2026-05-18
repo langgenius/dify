@@ -131,7 +131,7 @@ def test_create_run_request_accepts_dto_first_public_composition_and_normalizes_
                     config=output_config,
                 ),
             ]
-        )
+        ),
     )
 
     graph_config, layer_configs = normalize_composition(request.composition)
