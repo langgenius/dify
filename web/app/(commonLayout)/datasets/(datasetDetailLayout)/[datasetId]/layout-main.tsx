@@ -27,6 +27,7 @@ import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { usePathname, useRouter } from '@/next/navigation'
 import { useDatasetDetail, useDatasetRelatedApps } from '@/service/knowledge/use-dataset'
+import { getDatasetACLCapabilities } from '@/utils/permission'
 
 type IAppDetailLayoutProps = {
   children: React.ReactNode
@@ -71,6 +72,10 @@ const DatasetDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
 
   const { data: datasetRes, error, refetch: mutateDatasetRes } = useDatasetDetail(datasetId)
   const shouldRedirect = shouldRedirectToDatasetList(error)
+  const datasetACLCapabilities = useMemo(
+    () => getDatasetACLCapabilities(datasetRes?.permission_keys),
+    [datasetRes?.permission_keys],
+  )
 
   const { data: relatedApps } = useDatasetRelatedApps(datasetId, { enabled: !!datasetRes && !shouldRedirect })
 
@@ -92,6 +97,7 @@ const DatasetDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
         icon: RiFocus2Line,
         selectedIcon: RiFocus2Fill,
         disabled: isButtonDisabledWithPipeline,
+        visible: datasetACLCapabilities.canRetrievalRecall,
       },
       {
         name: t('datasetMenus.settings', { ns: 'common' }),
@@ -99,6 +105,7 @@ const DatasetDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
         icon: RiEqualizer2Line,
         selectedIcon: RiEqualizer2Fill,
         disabled: false,
+        visible: datasetACLCapabilities.canReadonly || datasetACLCapabilities.canEdit,
       },
       {
         name: 'Access Config',
@@ -106,6 +113,7 @@ const DatasetDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
         icon: RiUserSettingsLine,
         selectedIcon: RiUserSettingsFill,
         disabled: false,
+        visible: datasetACLCapabilities.canAccessConfig,
       },
     ]
 
@@ -116,6 +124,7 @@ const DatasetDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
         icon: PipelineLine as RemixiconComponentType,
         selectedIcon: PipelineFill as RemixiconComponentType,
         disabled: false,
+        visible: datasetACLCapabilities.canReadonly || datasetACLCapabilities.canEdit,
       })
       baseNavigation.unshift({
         name: t('datasetMenus.documents', { ns: 'common' }),
@@ -123,11 +132,24 @@ const DatasetDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
         icon: RiFileTextLine,
         selectedIcon: RiFileTextFill,
         disabled: isButtonDisabledWithPipeline,
+        visible: datasetACLCapabilities.canReadonly || datasetACLCapabilities.canEdit || datasetACLCapabilities.canUse,
       })
     }
 
-    return baseNavigation
-  }, [t, datasetId, isButtonDisabledWithPipeline, datasetRes?.provider])
+    return baseNavigation.filter(item => item.visible).map(({ visible, ...item }) => item)
+  }, [t, datasetId, isButtonDisabledWithPipeline, datasetRes?.provider, datasetACLCapabilities])
+
+  const fallbackPath = useMemo(() => {
+    if (datasetRes?.provider !== 'external' && (datasetACLCapabilities.canReadonly || datasetACLCapabilities.canEdit || datasetACLCapabilities.canUse))
+      return `/datasets/${datasetId}/documents`
+    if (datasetACLCapabilities.canRetrievalRecall)
+      return `/datasets/${datasetId}/hitTesting`
+    if (datasetACLCapabilities.canReadonly || datasetACLCapabilities.canEdit)
+      return `/datasets/${datasetId}/settings`
+    if (datasetACLCapabilities.canAccessConfig)
+      return `/datasets/${datasetId}/access-config`
+    return '/datasets'
+  }, [datasetACLCapabilities, datasetId, datasetRes?.provider])
 
   useDocumentTitle(datasetRes?.name || t('menus.datasets', { ns: 'common' }))
 
@@ -143,6 +165,30 @@ const DatasetDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
     if (shouldRedirect)
       router.replace('/datasets')
   }, [router, shouldRedirect])
+
+  useEffect(() => {
+    if (!datasetRes || shouldRedirect)
+      return
+
+    if (!datasetACLCapabilities.canRetrievalRecall && pathname.endsWith('/hitTesting')) {
+      router.replace(fallbackPath)
+      return
+    }
+    if (!(datasetACLCapabilities.canReadonly || datasetACLCapabilities.canEdit) && pathname.endsWith('/settings')) {
+      router.replace(fallbackPath)
+      return
+    }
+    if (!(datasetACLCapabilities.canReadonly || datasetACLCapabilities.canEdit) && pathname.endsWith('/pipeline')) {
+      router.replace(fallbackPath)
+      return
+    }
+    if (!datasetACLCapabilities.canUse && (pathname.endsWith('/documents/create') || pathname.endsWith('/documents/create-from-pipeline'))) {
+      router.replace(fallbackPath)
+      return
+    }
+    if (!datasetACLCapabilities.canAccessConfig && pathname.endsWith('/access-config'))
+      router.replace(fallbackPath)
+  }, [datasetACLCapabilities, datasetRes, fallbackPath, pathname, router, shouldRedirect])
 
   if (!datasetRes && !error)
     return <Loading type="app" />

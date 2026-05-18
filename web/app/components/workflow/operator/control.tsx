@@ -20,9 +20,11 @@ import {
   useWorkflowMoveMode,
   useWorkflowOrganize,
 } from '../hooks'
+import { useHooksStore } from '../hooks-store'
 import { useStore } from '../store'
 import {
   ControlMode,
+  WorkflowRunningStatus,
 } from '../types'
 import AddBlock from './add-block'
 import { useOperator } from './hooks'
@@ -43,12 +45,22 @@ const Control = () => {
   const { handleAddNote } = useOperator()
   const {
     nodesReadOnly,
-    getNodesReadOnly,
   } = useNodesReadOnly()
+  const canComment = useHooksStore(s => s.accessControl.canComment)
+  const workflowRunningData = useStore(s => s.workflowRunningData)
+  const historyWorkflowData = useStore(s => s.historyWorkflowData)
+  const isRestoring = useStore(s => s.isRestoring)
   const { handleToggleMaximizeCanvas } = useWorkflowCanvasMaximize()
+  const commentsReadOnly = !!(
+    !canComment
+    || workflowRunningData?.result.status === WorkflowRunningStatus.Running
+    || workflowRunningData?.result.status === WorkflowRunningStatus.Paused
+    || historyWorkflowData
+    || isRestoring
+  )
 
   const addNote = (e: MouseEvent<HTMLButtonElement>) => {
-    if (getNodesReadOnly())
+    if (commentsReadOnly)
       return
 
     e.stopPropagation()
@@ -62,10 +74,10 @@ const Control = () => {
         <button
           type="button"
           aria-label={t('nodes.note.addNote', { ns: 'workflow' })}
-          disabled={nodesReadOnly}
+          disabled={commentsReadOnly}
           className={cn(
             'ml-px flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg hover:bg-state-base-hover hover:text-text-secondary',
-            `${nodesReadOnly && 'cursor-not-allowed text-text-disabled hover:bg-transparent hover:text-text-disabled'}`,
+            `${commentsReadOnly && 'cursor-not-allowed text-text-disabled hover:bg-transparent hover:text-text-disabled'}`,
           )}
           onClick={addNote}
         >
@@ -108,11 +120,11 @@ const Control = () => {
           <button
             type="button"
             aria-label={t('common.commentMode', { ns: 'workflow' })}
-            disabled={nodesReadOnly}
+            disabled={commentsReadOnly}
             className={cn(
               'ml-[1px] flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg',
               controlMode === ControlMode.Comment ? 'bg-state-accent-active text-text-accent' : 'hover:bg-state-base-hover hover:text-text-secondary',
-              `${nodesReadOnly && 'cursor-not-allowed text-text-disabled hover:bg-transparent hover:text-text-disabled'}`,
+              `${commentsReadOnly && 'cursor-not-allowed text-text-disabled hover:bg-transparent hover:text-text-disabled'}`,
             )}
             onClick={handleModeComment}
           >

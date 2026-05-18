@@ -31,7 +31,7 @@ import useDocumentTitle from '@/hooks/use-document-title'
 import { usePathname, useRouter } from '@/next/navigation'
 import { fetchAppDetailDirect } from '@/service/apps'
 import { AppModeEnum } from '@/types/app'
-import { hasPermission } from '@/utils/permission'
+import { getAppACLCapabilities, hasPermission } from '@/utils/permission'
 import s from './style.module.css'
 
 type IAppDetailLayoutProps = {
@@ -49,7 +49,7 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
   const pathname = usePathname()
   const media = useBreakpoints()
   const isMobile = media === MediaType.mobile
-  const { isCurrentWorkspaceEditor, isLoadingCurrentWorkspace, currentWorkspace, workspacePermissionKeys } = useAppContext()
+  const { isLoadingCurrentWorkspace, currentWorkspace, workspacePermissionKeys } = useAppContext()
   const appInfoActions = useAppInfoActions({ resetKey: appId })
   const { appDetail, setAppDetail, setAppSidebarExpand } = useStore(useShallow(state => ({
     appDetail: state.appDetail,
@@ -65,12 +65,16 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
     selectedIcon: NavIcon
   }>>([])
 
-  const canAccessMonitor = hasPermission(workspacePermissionKeys, 'app.monitor.access')
-  const canAccessLog = hasPermission(workspacePermissionKeys, 'app.log.access')
+  const appACLCapabilities = React.useMemo(
+    () => getAppACLCapabilities(appDetailRes?.permission_keys),
+    [appDetailRes?.permission_keys],
+  )
+  const canAccessMonitor = appACLCapabilities.canMonitor || hasPermission(workspacePermissionKeys, 'app.monitor.access')
+  const canAccessLog = appACLCapabilities.canMonitor || hasPermission(workspacePermissionKeys, 'app.log.access')
 
-  const getNavigationConfig = useCallback((appId: string, isCurrentWorkspaceEditor: boolean, mode: AppModeEnum) => {
+  const getNavigationConfig = useCallback((appId: string, mode: AppModeEnum) => {
     const navConfig = [
-      ...(isCurrentWorkspaceEditor
+      ...(appACLCapabilities.canViewLayout || appACLCapabilities.canEdit
         ? [{
             name: t('appMenus.promptEng', { ns: 'common' }),
             href: `/app/${appId}/${(mode === AppModeEnum.WORKFLOW || mode === AppModeEnum.ADVANCED_CHAT) ? 'workflow' : 'configuration'}`,
@@ -104,7 +108,7 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
             selectedIcon: RiDashboard2Fill,
           }]
         : []),
-      ...(isCurrentWorkspaceEditor
+      ...(appACLCapabilities.canAccessConfig
         ? [{
             name: 'Access Config',
             href: `/app/${appId}/access-config`,
@@ -115,7 +119,7 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
       ),
     ]
     return navConfig
-  }, [t])
+  }, [appACLCapabilities, canAccessLog, canAccessMonitor, t])
 
   useDocumentTitle(appDetail?.name || t('menus.appDetail', { ns: 'common' }))
 
@@ -148,8 +152,16 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
       return
     const res = appDetailRes
     // redirection
-    const canIEditApp = isCurrentWorkspaceEditor
-    if (!canIEditApp && (pathname.endsWith('configuration') || pathname.endsWith('workflow') || pathname.endsWith('logs'))) {
+    const canAccessLayout = appACLCapabilities.canViewLayout || appACLCapabilities.canEdit
+    if (!canAccessLayout && (pathname.endsWith('configuration') || pathname.endsWith('workflow'))) {
+      router.replace(`/app/${appId}/overview`)
+      return
+    }
+    if (!canAccessLog && pathname.endsWith('logs')) {
+      router.replace(`/app/${appId}/overview`)
+      return
+    }
+    if (!appACLCapabilities.canAccessConfig && pathname.endsWith('access-config')) {
       router.replace(`/app/${appId}/overview`)
       return
     }
@@ -161,9 +173,9 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
     }
     else {
       setAppDetail({ ...res, enable_sso: false })
-      setNavigation(getNavigationConfig(appId, isCurrentWorkspaceEditor, res.mode))
+      setNavigation(getNavigationConfig(appId, res.mode))
     }
-  }, [appDetailRes, isCurrentWorkspaceEditor, isLoadingAppDetail, isLoadingCurrentWorkspace])
+  }, [appDetailRes, appACLCapabilities, appId, canAccessLog, currentWorkspace.id, getNavigationConfig, isLoadingAppDetail, isLoadingCurrentWorkspace, pathname, router, setAppDetail])
 
   useUnmount(() => {
     setAppDetail()

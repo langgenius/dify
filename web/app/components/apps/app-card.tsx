@@ -37,7 +37,6 @@ import AppIcon from '@/app/components/base/app-icon'
 import Input from '@/app/components/base/input'
 import { UserAvatarList } from '@/app/components/base/user-avatar-list'
 import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
-import { useAppContext, useSelector } from '@/context/app-context'
 import { useProviderContext } from '@/context/provider-context'
 import { AppCardTags } from '@/features/tag-management/components/app-card-tags'
 import { useAsyncWindowOpen } from '@/hooks/use-async-window-open'
@@ -53,7 +52,7 @@ import { fetchWorkflowDraft } from '@/service/workflow'
 import { AppModeEnum } from '@/types/app'
 import { getRedirection } from '@/utils/app-redirection'
 import { downloadBlob } from '@/utils/download'
-import { hasPermission } from '@/utils/permission'
+import { getAppACLCapabilities } from '@/utils/permission'
 import { formatTime } from '@/utils/time'
 import { basePath } from '@/utils/var'
 
@@ -108,8 +107,7 @@ const AppCardOperationsMenu: React.FC<AppCardOperationsMenuProps> = ({
   const { t } = useTranslation()
   const openAsyncWindow = useAsyncWindowOpen()
   const { push } = useRouter()
-  const workspacePermissionKeys = useSelector(state => state.workspacePermissionKeys)
-  const canManageAccessConfig = hasPermission(workspacePermissionKeys, 'app.access_config')
+  const appACLCapabilities = useMemo(() => getAppACLCapabilities(app.permission_keys), [app.permission_keys])
 
   const handleMenuAction = useCallback((e: React.MouseEvent<HTMLElement>, action: () => void) => {
     e.stopPropagation()
@@ -145,17 +143,23 @@ const AppCardOperationsMenu: React.FC<AppCardOperationsMenuProps> = ({
 
   return (
     <>
-      <DropdownMenuItem className="gap-2 px-3" onClick={e => handleMenuAction(e, onEdit)}>
-        <span className="system-sm-regular text-text-secondary">{t('editApp', { ns: 'app' })}</span>
-      </DropdownMenuItem>
-      <DropdownMenuSeparator />
+      {appACLCapabilities.canEdit && (
+        <>
+          <DropdownMenuItem className="gap-2 px-3" onClick={e => handleMenuAction(e, onEdit)}>
+            <span className="system-sm-regular text-text-secondary">{t('editApp', { ns: 'app' })}</span>
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
+        </>
+      )}
       <DropdownMenuItem className="gap-2 px-3" onClick={e => handleMenuAction(e, onDuplicate)}>
         <span className="system-sm-regular text-text-secondary">{t('duplicate', { ns: 'app' })}</span>
       </DropdownMenuItem>
-      <DropdownMenuItem className="gap-2 px-3" onClick={e => handleMenuAction(e, onExport)}>
-        <span className="system-sm-regular text-text-secondary">{t('export', { ns: 'app' })}</span>
-      </DropdownMenuItem>
-      {shouldShowSwitchOption && (
+      {appACLCapabilities.canImportExportDSL && (
+        <DropdownMenuItem className="gap-2 px-3" onClick={e => handleMenuAction(e, onExport)}>
+          <span className="system-sm-regular text-text-secondary">{t('export', { ns: 'app' })}</span>
+        </DropdownMenuItem>
+      )}
+      {appACLCapabilities.canEdit && shouldShowSwitchOption && (
         <>
           <DropdownMenuSeparator />
           <DropdownMenuItem className="gap-2 px-3" onClick={e => handleMenuAction(e, onSwitch)}>
@@ -163,7 +167,7 @@ const AppCardOperationsMenu: React.FC<AppCardOperationsMenuProps> = ({
           </DropdownMenuItem>
         </>
       )}
-      {shouldShowOpenInExploreOption && (
+      {appACLCapabilities.canTestAndRun && shouldShowOpenInExploreOption && (
         <>
           <DropdownMenuSeparator />
           <DropdownMenuItem className="gap-2 px-3" onClick={handleOpenInstalledApp}>
@@ -180,21 +184,25 @@ const AppCardOperationsMenu: React.FC<AppCardOperationsMenuProps> = ({
           <DropdownMenuSeparator />
         </>
       )}
-      {canManageAccessConfig && (
+      {appACLCapabilities.canAccessConfig && (
         <DropdownMenuItem className="gap-2 px-3" onClick={handleOpenAccessConfig}>
           <span className="text-sm leading-5 text-text-secondary">Access Config</span>
         </DropdownMenuItem>
       )}
-      <DropdownMenuSeparator />
-      <DropdownMenuItem
-        variant="destructive"
-        className="gap-2 px-3"
-        onClick={e => handleMenuAction(e, onDelete)}
-      >
-        <span className="system-sm-regular">
-          {t('operation.delete', { ns: 'common' })}
-        </span>
-      </DropdownMenuItem>
+      {appACLCapabilities.canDelete && (
+        <>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem
+            variant="destructive"
+            className="gap-2 px-3"
+            onClick={e => handleMenuAction(e, onDelete)}
+          >
+            <span className="system-sm-regular">
+              {t('operation.delete', { ns: 'common' })}
+            </span>
+          </DropdownMenuItem>
+        </>
+      )}
     </>
   )
 }
@@ -226,7 +234,13 @@ const AppCard = ({ app, onlineUsers = [], onRefresh, onOpenTagManagement = () =>
   const { t } = useTranslation()
   const deleteAppNameInputId = useId()
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
-  const { isCurrentWorkspaceEditor } = useAppContext()
+  const appACLCapabilities = useMemo(() => getAppACLCapabilities(app.permission_keys), [app.permission_keys])
+  const canOpenAppLayout = appACLCapabilities.canViewLayout || appACLCapabilities.canEdit
+  const canShowOperations = appACLCapabilities.canEdit
+    || appACLCapabilities.canImportExportDSL
+    || appACLCapabilities.canDelete
+    || appACLCapabilities.canAccessConfig
+    || appACLCapabilities.canTestAndRun
   const { onPlanInfoChanged } = useProviderContext()
   const { push } = useRouter()
 
@@ -354,7 +368,7 @@ const AppCard = ({ app, onlineUsers = [], onRefresh, onOpenTagManagement = () =>
       if (onRefresh)
         onRefresh()
       onPlanInfoChanged()
-      getRedirection(isCurrentWorkspaceEditor, newApp, push)
+      getRedirection(true, newApp, push)
     }
     catch {
       toast.error(t('newApp.appCreateFailed', { ns: 'app' }))
@@ -408,7 +422,7 @@ const AppCard = ({ app, onlineUsers = [], onRefresh, onOpenTagManagement = () =>
   }, [onRefresh, setShowAccessControl])
 
   const shouldShowSwitchOption = app.mode === AppModeEnum.COMPLETION || app.mode === AppModeEnum.CHAT
-  const shouldShowAccessControlOption = systemFeatures.webapp_auth.enabled && isCurrentWorkspaceEditor
+  const shouldShowAccessControlOption = systemFeatures.webapp_auth.enabled && appACLCapabilities.canAccessConfig
   const operationsMenuWidthClassName = shouldShowSwitchOption ? 'w-[256px]' : 'w-[216px]'
 
   const EditTimeText = useMemo(() => {
@@ -438,7 +452,7 @@ const AppCard = ({ app, onlineUsers = [], onRefresh, onOpenTagManagement = () =>
       <div
         onClick={(e) => {
           e.preventDefault()
-          getRedirection(isCurrentWorkspaceEditor, app, push)
+          getRedirection(canOpenAppLayout, app, push)
         }}
         className="group relative col-span-1 inline-flex h-40 cursor-pointer flex-col rounded-xl border border-solid border-components-card-border bg-components-card-bg shadow-sm transition-shadow duration-200 ease-in-out hover:shadow-lg"
       >
@@ -532,7 +546,7 @@ const AppCard = ({ app, onlineUsers = [], onRefresh, onOpenTagManagement = () =>
               />
             </div>
           </div>
-          {isCurrentWorkspaceEditor && (
+          {canShowOperations && (
             <div
               className={cn(
                 'absolute top-1/2 right-1.5 flex -translate-y-1/2 items-center transition-opacity',

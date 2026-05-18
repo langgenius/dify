@@ -9,6 +9,7 @@ import { useRouter } from '@/next/navigation'
 import { useDocumentList, useInvalidDocumentDetail, useInvalidDocumentList } from '@/service/knowledge/use-document'
 import { useChildSegmentListKey, useSegmentListKey } from '@/service/knowledge/use-segment'
 import { useInvalid } from '@/service/use-base'
+import { getDatasetACLCapabilities } from '@/utils/permission'
 import useEditDocumentMetadata from '../metadata/hooks/use-edit-dataset-metadata'
 import DocumentsHeader from './components/documents-header'
 import EmptyElement from './components/empty-element'
@@ -30,6 +31,7 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
 
   const dataset = useDatasetDetailContextWithSelector(s => s.dataset)
   const embeddingAvailable = !!dataset?.embedding_available
+  const datasetACLCapabilities = getDatasetACLCapabilities(dataset?.permission_keys)
 
   // Use custom hook for page state management
   const {
@@ -106,12 +108,14 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
 
   // Route to document creation page
   const routeToDocCreate = useCallback(() => {
+    if (!datasetACLCapabilities.canUse)
+      return
     if (dataset?.runtime_mode === 'rag_pipeline') {
       router.push(`/datasets/${datasetId}/documents/create-from-pipeline`)
       return
     }
     router.push(`/datasets/${datasetId}/documents/create`)
-  }, [dataset?.runtime_mode, datasetId, router])
+  }, [dataset?.runtime_mode, datasetACLCapabilities.canUse, datasetId, router])
 
   const total = documentsRes?.total || 0
   const documentsList = documentsRes?.data
@@ -147,7 +151,7 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
     const isDataSourceNotion = dataset?.data_source_type === DataSourceType.NOTION
     return (
       <EmptyElement
-        canAdd={embeddingAvailable}
+        canAdd={embeddingAvailable && datasetACLCapabilities.canUse}
         onClick={routeToDocCreate}
         type={isDataSourceNotion ? 'sync' : 'upload'}
       />
@@ -160,6 +164,8 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
         datasetId={datasetId}
         dataSourceType={dataset?.data_source_type}
         embeddingAvailable={embeddingAvailable}
+        canManageMetadata={datasetACLCapabilities.canEdit}
+        canAddDocument={datasetACLCapabilities.canUse}
         isFreePlan={isFreePlan}
         statusFilterValue={statusFilterValue}
         sortValue={sortValue}

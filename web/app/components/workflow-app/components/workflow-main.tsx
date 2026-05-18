@@ -11,6 +11,7 @@ import {
   useRef,
 } from 'react'
 import { useReactFlow } from 'reactflow'
+import { useStore as useAppStore } from '@/app/components/app/store'
 import { useFeaturesStore } from '@/app/components/base/features/hooks'
 import { FILE_EXTS } from '@/app/components/base/prompt-editor/constants'
 import { WorkflowWithInnerContext } from '@/app/components/workflow'
@@ -20,6 +21,7 @@ import { useWorkflowUpdate } from '@/app/components/workflow/hooks/use-workflow-
 import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
 import { SupportUploadFileTypes } from '@/app/components/workflow/types'
 import { fetchWorkflowDraft } from '@/service/workflow'
+import { getAppACLCapabilities } from '@/utils/permission'
 import {
   useAvailableNodesMetaData,
   useConfigsMap,
@@ -44,6 +46,7 @@ const WorkflowMain = ({
   const featuresStore = useFeaturesStore()
   const workflowStore = useWorkflowStore()
   const appId = useStore(s => s.appId)
+  const appDetail = useAppStore(s => s.appDetail)
   const containerRef = useRef<HTMLDivElement>(null)
   const reactFlow = useReactFlow()
 
@@ -219,6 +222,10 @@ const WorkflowMain = ({
   } = useDSL()
 
   const configsMap = useConfigsMap()
+  const appACLCapabilities = useMemo(
+    () => getAppACLCapabilities(appDetail?.permission_keys),
+    [appDetail?.permission_keys],
+  )
 
   const { fetchInspectVars } = useSetWorkflowVarsWithValue({
     ...configsMap,
@@ -276,6 +283,13 @@ const WorkflowMain = ({
       invalidateSysVarValues,
       resetConversationVar,
       invalidateConversationVarValues,
+      accessControl: {
+        canEdit: appACLCapabilities.canEdit,
+        canComment: appACLCapabilities.canViewLayout || appACLCapabilities.canEdit,
+        canRun: appACLCapabilities.canTestAndRun,
+        canImportExportDSL: appACLCapabilities.canImportExportDSL,
+        canReleaseAndVersion: appACLCapabilities.canReleaseAndVersion,
+      },
       configsMap,
     }
   }, [
@@ -313,6 +327,7 @@ const WorkflowMain = ({
     invalidateSysVarValues,
     resetConversationVar,
     invalidateConversationVarValues,
+    appACLCapabilities,
     configsMap,
   ])
 

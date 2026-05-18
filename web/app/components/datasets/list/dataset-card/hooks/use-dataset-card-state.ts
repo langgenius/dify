@@ -10,6 +10,7 @@ import { downloadBlob } from '@/utils/download'
 type ModalState = {
   showRenameModal: boolean
   showConfirmDelete: boolean
+  showAccessConfig: boolean
   confirmMessage: string
 }
 
@@ -26,6 +27,7 @@ export const useDatasetCardState = ({ dataset, onSuccess }: UseDatasetCardStateO
   const [modalState, setModalState] = useState<ModalState>({
     showRenameModal: false,
     showConfirmDelete: false,
+    showAccessConfig: false,
     confirmMessage: '',
   })
 

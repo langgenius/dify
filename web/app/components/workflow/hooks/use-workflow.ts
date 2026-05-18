@@ -26,6 +26,7 @@ import { useNodesMetaData } from '.'
 import {
   SUPPORT_OUTPUT_VARS_NODE,
 } from '../constants'
+import { useHooksStore } from '../hooks-store'
 import { findUsedVarNodes, getNodeOutputVars, updateNodeVars } from '../nodes/_base/components/variable/utils'
 
 import { CUSTOM_NOTE_NODE } from '../note-node/constants'
@@ -430,6 +431,7 @@ export const useWorkflowReadOnly = () => {
 
 export const useNodesReadOnly = () => {
   const workflowStore = useWorkflowStore()
+  const canEdit = useHooksStore(s => s.accessControl.canEdit)
   const workflowRunningData = useStore(s => s.workflowRunningData)
   const historyWorkflowData = useStore(s => s.historyWorkflowData)
   const isRestoring = useStore(s => s.isRestoring)
@@ -442,16 +444,18 @@ export const useNodesReadOnly = () => {
     } = workflowStore.getState()
 
     return !!(
-      workflowRunningData?.result.status === WorkflowRunningStatus.Running
+      !canEdit
+      || workflowRunningData?.result.status === WorkflowRunningStatus.Running
       || workflowRunningData?.result.status === WorkflowRunningStatus.Paused
       || historyWorkflowData
       || isRestoring
     )
-  }, [workflowStore])
+  }, [workflowStore, canEdit])
 
   return {
     nodesReadOnly: !!(
-      workflowRunningData?.result.status === WorkflowRunningStatus.Running
+      !canEdit
+      || workflowRunningData?.result.status === WorkflowRunningStatus.Running
       || workflowRunningData?.result.status === WorkflowRunningStatus.Paused
       || historyWorkflowData
       || isRestoring

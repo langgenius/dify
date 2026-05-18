@@ -9,6 +9,7 @@ import {
   useNodesReadOnly,
   useNodesSyncDraft,
 } from '@/app/components/workflow/hooks'
+import { useHooksStore } from '@/app/components/workflow/hooks-store'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { canRunBySingle } from '@/app/components/workflow/utils'
 import { useAllWorkflowTools } from '@/service/use-tools'
@@ -37,11 +38,12 @@ export function useNodeActionsMenuModel({
   const { handleNodeDataUpdate } = useNodeDataUpdate()
   const { handleSyncWorkflowDraft } = useNodesSyncDraft()
   const { nodesReadOnly } = useNodesReadOnly()
+  const canRunWorkflow = useHooksStore(s => s.accessControl.canRun)
   const nodeMetaData = useNodeMetaData({ id, data } as Node)
   const { data: workflowTools } = useAllWorkflowTools()
 
   const isChildNode = !!(data.isInIteration || data.isInLoop)
-  const canRun = canRunBySingle(data.type, isChildNode)
+  const canRun = canRunWorkflow && canRunBySingle(data.type, isChildNode)
   const canChangeBlock = !nodeMetaData.isTypeFixed && !nodeMetaData.isUndeletable && !nodesReadOnly
   const sourceHandle = useMemo(() => {
     return edges.find(edge => edge.target === id)?.sourceHandle || 'source'

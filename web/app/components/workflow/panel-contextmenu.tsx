@@ -20,10 +20,12 @@ import {
   useWorkflowMoveMode,
   useWorkflowStartRun,
 } from './hooks'
+import { useHooksStore } from './hooks-store'
 import AddBlock from './operator/add-block'
 import { useOperator } from './operator/hooks'
 import { ShortcutKbd } from './shortcuts/shortcut-kbd'
 import { useStore } from './store'
+import { WorkflowRunningStatus } from './types'
 
 const PanelContextmenu = () => {
   const { t } = useTranslation()
@@ -33,6 +35,9 @@ const PanelContextmenu = () => {
   const pendingComment = useStore(s => s.pendingComment)
   const setCommentPlacing = useStore(s => s.setCommentPlacing)
   const setCommentQuickAdd = useStore(s => s.setCommentQuickAdd)
+  const workflowRunningData = useStore(s => s.workflowRunningData)
+  const historyWorkflowData = useStore(s => s.historyWorkflowData)
+  const isRestoring = useStore(s => s.isRestoring)
   const { handleNodesPaste } = useNodesInteractions()
   const { handlePaneContextmenuCancel } = usePanelInteractions()
   const {
@@ -42,7 +47,16 @@ const PanelContextmenu = () => {
   const { handleAddNote } = useOperator()
   const { isCommentModeAvailable } = useWorkflowMoveMode()
   const { exportCheck } = useDSL()
+  const accessControl = useHooksStore(s => s.accessControl)
   const isChatMode = useIsChatMode()
+  const workflowOperationReadOnly = !!(
+    workflowRunningData?.result.status === WorkflowRunningStatus.Running
+    || workflowRunningData?.result.status === WorkflowRunningStatus.Paused
+    || historyWorkflowData
+    || isRestoring
+  )
+  const canEditWorkflow = accessControl.canEdit && !workflowOperationReadOnly
+  const canCommentWorkflow = accessControl.canComment && !workflowOperationReadOnly
   const panelMenuClientX = panelMenu?.clientX
   const panelMenuClientY = panelMenu?.clientY
 
@@ -96,24 +110,28 @@ const PanelContextmenu = () => {
         popupClassName="w-[200px] rounded-lg"
       >
         <ContextMenuGroup>
-          <AddBlock
-            renderTrigger={renderAddBlockTrigger}
-            offset={{
-              mainAxis: -36,
-              crossAxis: -4,
-            }}
-          />
-          <ContextMenuItem
-            className="justify-between gap-4 px-3 text-text-secondary"
-            onClick={(e) => {
-              e.stopPropagation()
-              handleAddNote()
-              handlePaneContextmenuCancel()
-            }}
-          >
-            {t('nodes.note.addNote', { ns: 'workflow' })}
-          </ContextMenuItem>
-          {isCommentModeAvailable && (
+          {canEditWorkflow && (
+            <AddBlock
+              renderTrigger={renderAddBlockTrigger}
+              offset={{
+                mainAxis: -36,
+                crossAxis: -4,
+              }}
+            />
+          )}
+          {canCommentWorkflow && (
+            <ContextMenuItem
+              className="justify-between gap-4 px-3 text-text-secondary"
+              onClick={(e) => {
+                e.stopPropagation()
+                handleAddNote()
+                handlePaneContextmenuCancel()
+              }}
+            >
+              {t('nodes.note.addNote', { ns: 'workflow' })}
+            </ContextMenuItem>
+          )}
+          {canCommentWorkflow && isCommentModeAvailable && (
             <ContextMenuItem
               disabled={!!pendingComment}
               className={cn(
@@ -132,48 +150,58 @@ const PanelContextmenu = () => {
               {t('comments.actions.addComment', { ns: 'workflow' })}
             </ContextMenuItem>
           )}
-          <ContextMenuItem
-            className="justify-between gap-4 px-3 text-text-secondary"
-            onClick={handleRunAction}
-          >
-            {isChatMode ? t('common.debugAndPreview', { ns: 'workflow' }) : t('common.run', { ns: 'workflow' })}
-            {!isChatMode && <ShortcutKbd shortcut="workflow.open-test-run-menu" />}
-          </ContextMenuItem>
+          {accessControl.canRun && (
+            <ContextMenuItem
+              className="justify-between gap-4 px-3 text-text-secondary"
+              onClick={handleRunAction}
+            >
+              {isChatMode ? t('common.debugAndPreview', { ns: 'workflow' }) : t('common.run', { ns: 'workflow' })}
+              {!isChatMode && <ShortcutKbd shortcut="workflow.open-test-run-menu" />}
+            </ContextMenuItem>
+          )}
         </ContextMenuGroup>
-        <ContextMenuSeparator />
-        <ContextMenuGroup>
-          <ContextMenuItem
-            disabled={!clipboardElements.length}
-            className={cn(
-              'justify-between gap-4 px-3 text-text-secondary',
-              !clipboardElements.length && 'cursor-not-allowed opacity-50',
-            )}
-            onClick={() => {
-              if (clipboardElements.length) {
-                handleNodesPaste()
-                handlePaneContextmenuCancel()
-              }
-            }}
-          >
-            {t('common.pasteHere', { ns: 'workflow' })}
-            <ShortcutKbd shortcut="workflow.paste" />
-          </ContextMenuItem>
-        </ContextMenuGroup>
-        <ContextMenuSeparator />
-        <ContextMenuGroup>
-          <ContextMenuItem
-            className="justify-between gap-4 px-3 text-text-secondary"
-            onClick={() => exportCheck?.()}
-          >
-            {t('export', { ns: 'app' })}
-          </ContextMenuItem>
-          <ContextMenuItem
-            className="justify-between gap-4 px-3 text-text-secondary"
-            onClick={() => setShowImportDSLModal(true)}
-          >
-            {t('importApp', { ns: 'app' })}
-          </ContextMenuItem>
-        </ContextMenuGroup>
+        {canEditWorkflow && (
+          <>
+            <ContextMenuSeparator />
+            <ContextMenuGroup>
+              <ContextMenuItem
+                disabled={!clipboardElements.length}
+                className={cn(
+                  'justify-between gap-4 px-3 text-text-secondary',
+                  !clipboardElements.length && 'cursor-not-allowed opacity-50',
+                )}
+                onClick={() => {
+                  if (clipboardElements.length) {
+                    handleNodesPaste()
+                    handlePaneContextmenuCancel()
+                  }
+                }}
+              >
+                {t('common.pasteHere', { ns: 'workflow' })}
+                <ShortcutKbd shortcut="workflow.paste" />
+              </ContextMenuItem>
+            </ContextMenuGroup>
+          </>
+        )}
+        {accessControl.canImportExportDSL && (
+          <>
+            <ContextMenuSeparator />
+            <ContextMenuGroup>
+              <ContextMenuItem
+                className="justify-between gap-4 px-3 text-text-secondary"
+                onClick={() => exportCheck?.()}
+              >
+                {t('export', { ns: 'app' })}
+              </ContextMenuItem>
+              <ContextMenuItem
+                className="justify-between gap-4 px-3 text-text-secondary"
+                onClick={() => setShowImportDSLModal(true)}
+              >
+                {t('importApp', { ns: 'app' })}
+              </ContextMenuItem>
+            </ContextMenuGroup>
+          </>
+        )}
       </ContextMenuContent>
     </ContextMenu>
   )

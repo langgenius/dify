@@ -6,8 +6,7 @@ import {
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
 import * as React from 'react'
-import { useSelector as useAppContextWithSelector } from '@/context/app-context'
-import { hasPermission } from '@/utils/permission'
+import { getDatasetACLCapabilities } from '@/utils/permission'
 import Operations from '../operations'
 
 type OperationsDropdownProps = {
@@ -28,8 +27,14 @@ const OperationsDropdown = ({
   openAccessConfig,
 }: OperationsDropdownProps) => {
   const [open, setOpen] = React.useState(false)
-  const workspacePermissionKeys = useAppContextWithSelector(state => state.workspacePermissionKeys)
-  const canManageAccessConfig = hasPermission(workspacePermissionKeys, 'dataset.access_config')
+  const datasetACLCapabilities = React.useMemo(() => getDatasetACLCapabilities(dataset.permission_keys), [dataset.permission_keys])
+  const canShowOperations = datasetACLCapabilities.canEdit
+    || datasetACLCapabilities.canImportExportDSL
+    || datasetACLCapabilities.canAccessConfig
+    || datasetACLCapabilities.canDelete
+
+  if (!canShowOperations)
+    return null
 
   return (
     <div
@@ -59,9 +64,10 @@ const OperationsDropdown = ({
           popupClassName="min-w-[186px]"
         >
           <Operations
-            showDelete={!isCurrentWorkspaceDatasetOperator}
-            showExportPipeline={dataset.runtime_mode === 'rag_pipeline'}
-            showAccessConfig={canManageAccessConfig}
+            showEdit={datasetACLCapabilities.canEdit}
+            showDelete={!isCurrentWorkspaceDatasetOperator && datasetACLCapabilities.canDelete}
+            showExportPipeline={dataset.runtime_mode === 'rag_pipeline' && datasetACLCapabilities.canImportExportDSL}
+            showAccessConfig={datasetACLCapabilities.canAccessConfig}
             openRenameModal={openRenameModal}
             handleExportPipeline={handleExportPipeline}
             detectIsUsedByApp={detectIsUsedByApp}

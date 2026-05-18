@@ -7,6 +7,7 @@ import { useTranslation } from 'react-i18next'
 import { trackEvent } from '@/app/components/base/amplitude'
 import { StopCircle } from '@/app/components/base/icons/src/vender/line/mediaAndDevices'
 import { useWorkflowRun, useWorkflowRunValidation, useWorkflowStartRun } from '@/app/components/workflow/hooks'
+import { useHooksStore } from '@/app/components/workflow/hooks-store'
 import { ShortcutKbd } from '@/app/components/workflow/shortcuts/shortcut-kbd'
 import { useWorkflowShortcut } from '@/app/components/workflow/shortcuts/use-workflow-hotkeys'
 import { useStore } from '@/app/components/workflow/store/workflow'
@@ -35,6 +36,7 @@ const RunMode = ({
   const { warningNodes } = useWorkflowRunValidation()
   const workflowRunningData = useStore(s => s.workflowRunningData)
   const isListening = useStore(s => s.isListening)
+  const canRun = useHooksStore(s => s.accessControl.canRun)
 
   const status = workflowRunningData?.result.status
   const isRunning = status === WorkflowRunningStatus.Running || isListening
@@ -99,6 +101,9 @@ const RunMode = ({
     if (v.type === EVENT_WORKFLOW_STOP)
       handleStop()
   })
+
+  if (!canRun)
+    return null
 
   return (
     <div className="flex items-center gap-x-px">

@@ -27,11 +27,13 @@ import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Divider from '@/app/components/base/divider'
 import { IS_CE_EDITION } from '@/config'
+import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import { DataSourceType, DocumentActionType } from '@/models/datasets'
 import { useRouter } from '@/next/navigation'
 import { useDocumentArchive, useDocumentDelete, useDocumentDisable, useDocumentDownload, useDocumentEnable, useDocumentPause, useDocumentResume, useDocumentSummary, useDocumentUnArchive, useSyncDocument, useSyncWebsite } from '@/service/knowledge/use-document'
 import { asyncRunSafe } from '@/utils'
 import { downloadUrl } from '@/utils/download'
+import { getDatasetACLCapabilities } from '@/utils/permission'
 import s from '../style.module.css'
 import RenameModal from './rename-modal'
 
@@ -71,6 +73,13 @@ const Operations = ({ embeddingAvailable, datasetId, detail, selectedIds, onSele
   const { mutateAsync: generateSummary } = useDocumentSummary()
   const { mutateAsync: pauseDocument } = useDocumentPause()
   const { mutateAsync: resumeDocument } = useDocumentResume()
+  const datasetPermissionKeys = useDatasetDetailContextWithSelector(s => s.dataset?.permission_keys)
+  const datasetACLCapabilities = React.useMemo(() => getDatasetACLCapabilities(datasetPermissionKeys), [datasetPermissionKeys])
+  const canViewDocumentSettings = datasetACLCapabilities.canReadonly || datasetACLCapabilities.canEdit
+  const canEditDocument = datasetACLCapabilities.canEdit
+  const canDownloadDocument = datasetACLCapabilities.canDocumentDownload
+  const canDeleteDocument = datasetACLCapabilities.canDeleteFile
+  const canShowOperations = canEditDocument || canDownloadDocument || canDeleteDocument
   const isListScene = scene === 'list'
   const onOperate = useCallback(async (operationName: OperationName) => {
     let opApi
@@ -204,7 +213,7 @@ const Operations = ({ embeddingAvailable, datasetId, detail, selectedIds, onSele
   return (
     <div className="flex items-center" onClick={e => e.stopPropagation()}>
       {isListScene && !embeddingAvailable && (<Switch checked={false} onCheckedChange={noop} disabled={true} size="md" />)}
-      {isListScene && embeddingAvailable && (
+      {isListScene && embeddingAvailable && canEditDocument && (
         <>
           {archived
             ? (
@@ -221,118 +230,126 @@ const Operations = ({ embeddingAvailable, datasetId, detail, selectedIds, onSele
       )}
       {embeddingAvailable && (
         <>
-          <Tooltip>
-            <TooltipTrigger
-              render={(
-                <button
-                  type="button"
-                  aria-label={t('list.action.settings', { ns: 'datasetDocuments' })}
-                  className={cn('mr-2 cursor-pointer rounded-lg', !isListScene
-                    ? 'border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg p-2 shadow-xs shadow-shadow-shadow-3 backdrop-blur-[5px] hover:border-components-button-secondary-border-hover hover:bg-components-button-secondary-bg-hover'
-                    : 'border-none bg-transparent p-0.5 hover:bg-state-base-hover')}
-                  onClick={() => router.push(`/datasets/${datasetId}/documents/${detail.id}/settings`)}
-                >
-                  <span aria-hidden className="i-ri-equalizer-2-line h-4 w-4 text-components-button-secondary-text" />
-                </button>
-              )}
-            />
-            <TooltipContent className="system-xs-medium text-text-secondary">
-              {t('list.action.settings', { ns: 'datasetDocuments' })}
-            </TooltipContent>
-          </Tooltip>
-          <DropdownMenu open={isOperationsMenuOpen} onOpenChange={setIsOperationsMenuOpen}>
-            <DropdownMenuTrigger
-              aria-label={t('operation.more', { ns: 'common' })}
-              className={cn(
-                isListScene ? s.actionIconWrapperList : s.actionIconWrapperDetail,
-                'inline-flex items-center justify-center',
-                !isListScene && '!h-8 !w-8 rounded-lg backdrop-blur-[5px]',
-                isOperationsMenuOpen
-                  ? '!shadow-none hover:!bg-state-base-hover'
-                  : isListScene && '!bg-transparent',
-              )}
-              onClick={(e) => {
-                e.stopPropagation()
-                e.preventDefault()
-              }}
-            >
-              <div className={cn(s.commonIcon)}>
-                <span aria-hidden className="i-ri-more-fill h-4 w-4 text-components-button-secondary-text" />
-              </div>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent
-              placement="bottom-end"
-              sideOffset={4}
-              popupClassName={cn('w-[200px] py-0', className)}
-            >
-              <div className="w-full py-1">
-                {!archived && (
-                  <>
-                    <button type="button" className={cn(menuActionClassName, 'text-left')} onClick={handleShowRename}>
-                      <span aria-hidden className="i-ri-edit-line h-4 w-4 text-text-tertiary" />
-                      <span className={s.actionName}>{t('list.table.rename', { ns: 'datasetDocuments' })}</span>
-                    </button>
-                    {data_source_type === DataSourceType.FILE && (
+          {canViewDocumentSettings && (
+            <Tooltip>
+              <TooltipTrigger
+                render={(
+                  <button
+                    type="button"
+                    aria-label={t('list.action.settings', { ns: 'datasetDocuments' })}
+                    className={cn('mr-2 cursor-pointer rounded-lg', !isListScene
+                      ? 'border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg p-2 shadow-xs shadow-shadow-shadow-3 backdrop-blur-[5px] hover:border-components-button-secondary-border-hover hover:bg-components-button-secondary-bg-hover'
+                      : 'border-none bg-transparent p-0.5 hover:bg-state-base-hover')}
+                    onClick={() => router.push(`/datasets/${datasetId}/documents/${detail.id}/settings`)}
+                  >
+                    <span aria-hidden className="i-ri-equalizer-2-line h-4 w-4 text-components-button-secondary-text" />
+                  </button>
+                )}
+              />
+              <TooltipContent className="system-xs-medium text-text-secondary">
+                {t('list.action.settings', { ns: 'datasetDocuments' })}
+              </TooltipContent>
+            </Tooltip>
+          )}
+          {canShowOperations && (
+            <DropdownMenu open={isOperationsMenuOpen} onOpenChange={setIsOperationsMenuOpen}>
+              <DropdownMenuTrigger
+                aria-label={t('operation.more', { ns: 'common' })}
+                className={cn(
+                  isListScene ? s.actionIconWrapperList : s.actionIconWrapperDetail,
+                  'inline-flex items-center justify-center',
+                  !isListScene && '!h-8 !w-8 rounded-lg backdrop-blur-[5px]',
+                  isOperationsMenuOpen
+                    ? '!shadow-none hover:!bg-state-base-hover'
+                    : isListScene && '!bg-transparent',
+                )}
+                onClick={(e) => {
+                  e.stopPropagation()
+                  e.preventDefault()
+                }}
+              >
+                <div className={cn(s.commonIcon)}>
+                  <span aria-hidden className="i-ri-more-fill h-4 w-4 text-components-button-secondary-text" />
+                </div>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent
+                placement="bottom-end"
+                sideOffset={4}
+                popupClassName={cn('w-[200px] py-0', className)}
+              >
+                <div className="w-full py-1">
+                  {!archived && (
+                    <>
+                      {canEditDocument && (
+                        <button type="button" className={cn(menuActionClassName, 'text-left')} onClick={handleShowRename}>
+                          <span aria-hidden className="i-ri-edit-line h-4 w-4 text-text-tertiary" />
+                          <span className={s.actionName}>{t('list.table.rename', { ns: 'datasetDocuments' })}</span>
+                        </button>
+                      )}
+                      {canDownloadDocument && data_source_type === DataSourceType.FILE && (
+                        <button type="button" className={cn(menuActionClassName, 'text-left')} onClick={handleDownloadClick}>
+                          <span aria-hidden className="i-ri-download-2-line h-4 w-4 text-text-tertiary" />
+                          <span className={s.actionName}>{t('list.action.download', { ns: 'datasetDocuments' })}</span>
+                        </button>
+                      )}
+                      {canEditDocument && ['notion_import', DataSourceType.WEB].includes(data_source_type) && (
+                        <button type="button" className={cn(menuActionClassName, 'text-left')} onClick={() => handleMenuOperation('sync')}>
+                          <span aria-hidden className="i-ri-loop-left-line h-4 w-4 text-text-tertiary" />
+                          <span className={s.actionName}>{t('list.action.sync', { ns: 'datasetDocuments' })}</span>
+                        </button>
+                      )}
+                      {canEditDocument && IS_CE_EDITION && (
+                        <button type="button" className={cn(menuActionClassName, 'text-left')} onClick={() => handleMenuOperation('summary')}>
+                          <span aria-hidden className="i-custom-vender-knowledge-search-lines-sparkle h-4 w-4 text-text-tertiary" />
+                          <span className={s.actionName}>{t('list.action.summary', { ns: 'datasetDocuments' })}</span>
+                        </button>
+                      )}
+                      <Divider className="my-1" />
+                    </>
+                  )}
+                  {canDownloadDocument && archived && data_source_type === DataSourceType.FILE && (
+                    <>
                       <button type="button" className={cn(menuActionClassName, 'text-left')} onClick={handleDownloadClick}>
                         <span aria-hidden className="i-ri-download-2-line h-4 w-4 text-text-tertiary" />
                         <span className={s.actionName}>{t('list.action.download', { ns: 'datasetDocuments' })}</span>
                       </button>
-                    )}
-                    {['notion_import', DataSourceType.WEB].includes(data_source_type) && (
-                      <button type="button" className={cn(menuActionClassName, 'text-left')} onClick={() => handleMenuOperation('sync')}>
-                        <span aria-hidden className="i-ri-loop-left-line h-4 w-4 text-text-tertiary" />
-                        <span className={s.actionName}>{t('list.action.sync', { ns: 'datasetDocuments' })}</span>
-                      </button>
-                    )}
-                    {IS_CE_EDITION && (
-                      <button type="button" className={cn(menuActionClassName, 'text-left')} onClick={() => handleMenuOperation('summary')}>
-                        <span aria-hidden className="i-custom-vender-knowledge-search-lines-sparkle h-4 w-4 text-text-tertiary" />
-                        <span className={s.actionName}>{t('list.action.summary', { ns: 'datasetDocuments' })}</span>
-                      </button>
-                    )}
-                    <Divider className="my-1" />
-                  </>
-                )}
-                {archived && data_source_type === DataSourceType.FILE && (
-                  <>
-                    <button type="button" className={cn(menuActionClassName, 'text-left')} onClick={handleDownloadClick}>
-                      <span aria-hidden className="i-ri-download-2-line h-4 w-4 text-text-tertiary" />
-                      <span className={s.actionName}>{t('list.action.download', { ns: 'datasetDocuments' })}</span>
+                      <Divider className="my-1" />
+                    </>
+                  )}
+                  {canEditDocument && !archived && display_status?.toLowerCase() === 'indexing' && (
+                    <button type="button" className={cn(menuActionClassName, 'text-left')} onClick={() => handleMenuOperation('pause')}>
+                      <span aria-hidden className="i-ri-pause-circle-line h-4 w-4 text-text-tertiary" />
+                      <span className={s.actionName}>{t('list.action.pause', { ns: 'datasetDocuments' })}</span>
                     </button>
-                    <Divider className="my-1" />
-                  </>
-                )}
-                {!archived && display_status?.toLowerCase() === 'indexing' && (
-                  <button type="button" className={cn(menuActionClassName, 'text-left')} onClick={() => handleMenuOperation('pause')}>
-                    <span aria-hidden className="i-ri-pause-circle-line h-4 w-4 text-text-tertiary" />
-                    <span className={s.actionName}>{t('list.action.pause', { ns: 'datasetDocuments' })}</span>
-                  </button>
-                )}
-                {!archived && display_status?.toLowerCase() === 'paused' && (
-                  <button type="button" className={cn(menuActionClassName, 'text-left')} onClick={() => handleMenuOperation('resume')}>
-                    <span aria-hidden className="i-ri-play-circle-line h-4 w-4 text-text-tertiary" />
-                    <span className={s.actionName}>{t('list.action.resume', { ns: 'datasetDocuments' })}</span>
-                  </button>
-                )}
-                {!archived && (
-                  <button type="button" className={cn(menuActionClassName, 'text-left')} onClick={() => handleMenuOperation('archive')}>
-                    <span aria-hidden className="i-ri-archive-2-line h-4 w-4 text-text-tertiary" />
-                    <span className={s.actionName}>{t('list.action.archive', { ns: 'datasetDocuments' })}</span>
-                  </button>
-                )}
-                {archived && (
-                  <button type="button" className={cn(menuActionClassName, 'text-left')} onClick={() => handleMenuOperation('un_archive')}>
-                    <span aria-hidden className="i-ri-archive-2-line h-4 w-4 text-text-tertiary" />
-                    <span className={s.actionName}>{t('list.action.unarchive', { ns: 'datasetDocuments' })}</span>
-                  </button>
-                )}
-                <button type="button" className={cn(menuDeleteActionClassName, 'text-left')} onClick={handleDeleteClick}>
-                  <span aria-hidden className="i-ri-delete-bin-line h-4 w-4 text-text-tertiary group-hover:text-text-destructive" />
-                  <span className={cn(s.actionName, 'group-hover:text-text-destructive')}>{t('list.action.delete', { ns: 'datasetDocuments' })}</span>
-                </button>
-              </div>
-            </DropdownMenuContent>
-          </DropdownMenu>
+                  )}
+                  {canEditDocument && !archived && display_status?.toLowerCase() === 'paused' && (
+                    <button type="button" className={cn(menuActionClassName, 'text-left')} onClick={() => handleMenuOperation('resume')}>
+                      <span aria-hidden className="i-ri-play-circle-line h-4 w-4 text-text-tertiary" />
+                      <span className={s.actionName}>{t('list.action.resume', { ns: 'datasetDocuments' })}</span>
+                    </button>
+                  )}
+                  {canEditDocument && !archived && (
+                    <button type="button" className={cn(menuActionClassName, 'text-left')} onClick={() => handleMenuOperation('archive')}>
+                      <span aria-hidden className="i-ri-archive-2-line h-4 w-4 text-text-tertiary" />
+                      <span className={s.actionName}>{t('list.action.archive', { ns: 'datasetDocuments' })}</span>
+                    </button>
+                  )}
+                  {canEditDocument && archived && (
+                    <button type="button" className={cn(menuActionClassName, 'text-left')} onClick={() => handleMenuOperation('un_archive')}>
+                      <span aria-hidden className="i-ri-archive-2-line h-4 w-4 text-text-tertiary" />
+                      <span className={s.actionName}>{t('list.action.unarchive', { ns: 'datasetDocuments' })}</span>
+                    </button>
+                  )}
+                  {canDeleteDocument && (
+                    <button type="button" className={cn(menuDeleteActionClassName, 'text-left')} onClick={handleDeleteClick}>
+                      <span aria-hidden className="i-ri-delete-bin-line h-4 w-4 text-text-tertiary group-hover:text-text-destructive" />
+                      <span className={cn(s.actionName, 'group-hover:text-text-destructive')}>{t('list.action.delete', { ns: 'datasetDocuments' })}</span>
+                    </button>
+                  )}
+                </div>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
         </>
       )}
       <AlertDialog open={showModal} onOpenChange={open => !open && setShowModal(false)}>

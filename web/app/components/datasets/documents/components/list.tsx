@@ -12,6 +12,7 @@ import EditMetadataBatchModal from '@/app/components/datasets/metadata/edit-meta
 import useBatchEditDocumentMetadata from '@/app/components/datasets/metadata/hooks/use-batch-edit-document-metadata'
 import { useDatasetDetailContextWithSelector as useDatasetDetailContext } from '@/context/dataset-detail'
 import { ChunkingMode, DocumentActionType } from '@/models/datasets'
+import { getDatasetACLCapabilities } from '@/utils/permission'
 import BatchAction from '../detail/completed/common/batch-action'
 import s from '../style.module.css'
 import { DocumentTableRow, SortHeader } from './document-list/components'
@@ -50,6 +51,7 @@ const DocumentList: FC<DocumentListProps> = ({
 }) => {
   const { t } = useTranslation()
   const datasetConfig = useDatasetDetailContext(s => s.dataset)
+  const datasetACLCapabilities = React.useMemo(() => getDatasetACLCapabilities(datasetConfig?.permission_keys), [datasetConfig?.permission_keys])
   const chunkingMode = datasetConfig?.doc_form
   const isGeneralMode = chunkingMode !== ChunkingMode.parentChild
   const isQAMode = chunkingMode === ChunkingMode.qa
@@ -186,14 +188,14 @@ const DocumentList: FC<DocumentListProps> = ({
         <BatchAction
           className="absolute bottom-16 left-0 z-20"
           selectedIds={selectedIds}
-          onArchive={handleAction(DocumentActionType.archive)}
-          onBatchSummary={handleAction(DocumentActionType.summary)}
-          onBatchEnable={handleAction(DocumentActionType.enable)}
-          onBatchDisable={handleAction(DocumentActionType.disable)}
-          onBatchDownload={downloadableSelectedIds.length > 0 ? handleBatchDownload : undefined}
-          onBatchDelete={handleAction(DocumentActionType.delete)}
-          onEditMetadata={showEditModal}
-          onBatchReIndex={hasErrorDocumentsSelected ? handleBatchReIndex : undefined}
+          onArchive={datasetACLCapabilities.canEdit ? handleAction(DocumentActionType.archive) : undefined}
+          onBatchSummary={datasetACLCapabilities.canEdit ? handleAction(DocumentActionType.summary) : undefined}
+          onBatchEnable={datasetACLCapabilities.canEdit ? handleAction(DocumentActionType.enable) : undefined}
+          onBatchDisable={datasetACLCapabilities.canEdit ? handleAction(DocumentActionType.disable) : undefined}
+          onBatchDownload={datasetACLCapabilities.canDocumentDownload && downloadableSelectedIds.length > 0 ? handleBatchDownload : undefined}
+          onBatchDelete={datasetACLCapabilities.canDeleteFile ? handleAction(DocumentActionType.delete) : undefined}
+          onEditMetadata={datasetACLCapabilities.canEdit ? showEditModal : undefined}
+          onBatchReIndex={datasetACLCapabilities.canEdit && hasErrorDocumentsSelected ? handleBatchReIndex : undefined}
           onCancel={clearSelection}
         />
       )}

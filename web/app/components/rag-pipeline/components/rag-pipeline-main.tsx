@@ -6,6 +6,8 @@ import {
 import { WorkflowWithInnerContext } from '@/app/components/workflow'
 import { useSetWorkflowVarsWithValue } from '@/app/components/workflow/hooks/use-fetch-workflow-inspect-vars'
 import { useWorkflowStore } from '@/app/components/workflow/store'
+import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
+import { getDatasetACLCapabilities } from '@/utils/permission'
 import {
   useAvailableNodesMetaData,
   useDSL,
@@ -26,6 +28,7 @@ const RagPipelineMain = ({
   viewport,
 }: RagPipelineMainProps) => {
   const workflowStore = useWorkflowStore()
+  const datasetPermissionKeys = useDatasetDetailContextWithSelector(s => s.dataset?.permission_keys)
 
   const handleWorkflowDataUpdate = useCallback((payload: any) => {
     const {
@@ -66,6 +69,10 @@ const RagPipelineMain = ({
   } = useDSL()
 
   const configsMap = useConfigsMap()
+  const datasetACLCapabilities = useMemo(
+    () => getDatasetACLCapabilities(datasetPermissionKeys),
+    [datasetPermissionKeys],
+  )
   const { fetchInspectVars } = useSetWorkflowVarsWithValue({
     ...configsMap,
   })
@@ -117,6 +124,13 @@ const RagPipelineMain = ({
       invalidateSysVarValues,
       resetConversationVar,
       invalidateConversationVarValues,
+      accessControl: {
+        canEdit: datasetACLCapabilities.canEdit,
+        canComment: datasetACLCapabilities.canEdit,
+        canRun: datasetACLCapabilities.canPipelineTest,
+        canImportExportDSL: datasetACLCapabilities.canImportExportDSL,
+        canReleaseAndVersion: datasetACLCapabilities.canPipelineRelease,
+      },
       configsMap,
     }
   }, [
@@ -149,6 +163,7 @@ const RagPipelineMain = ({
     invalidateSysVarValues,
     resetConversationVar,
     invalidateConversationVarValues,
+    datasetACLCapabilities,
     configsMap,
   ])
 

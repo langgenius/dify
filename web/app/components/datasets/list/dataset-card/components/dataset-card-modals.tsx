@@ -15,6 +15,7 @@ import RenameDatasetModal from '../../../rename-modal'
 type ModalState = {
   showRenameModal: boolean
   showConfirmDelete: boolean
+  showAccessConfig: boolean
   confirmMessage: string
 }
 

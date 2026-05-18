@@ -29,6 +29,7 @@ import {
   useNodesSyncDraft,
   // useWorkflowRunValidation,
 } from '@/app/components/workflow/hooks'
+import { useHooksStore } from '@/app/components/workflow/hooks-store'
 import {
   useStore,
   useWorkflowStore,
@@ -54,6 +55,7 @@ const FeaturesTrigger = () => {
   const appID = appDetail?.id
   const setAppDetail = useAppStore(s => s.setAppDetail)
   const { nodesReadOnly, getNodesReadOnly } = useNodesReadOnly()
+  const canReleaseAndVersion = useHooksStore(s => s.accessControl.canReleaseAndVersion)
   const { plan, isFetchedPlan } = useProviderContext()
   const publishedAt = useStore(s => s.publishedAt)
   const draftUpdatedAt = useStore(s => s.draftUpdatedAt)
@@ -205,7 +207,7 @@ const FeaturesTrigger = () => {
         {...{
           publishedAt,
           draftUpdatedAt,
-          disabled: nodesReadOnly || !hasWorkflowNodes,
+          disabled: nodesReadOnly || !hasWorkflowNodes || !canReleaseAndVersion,
           toolPublished,
           inputs: variables,
           outputs: endVariables,
@@ -217,7 +219,7 @@ const FeaturesTrigger = () => {
           missingStartNode: !startNode,
           hasTriggerNode,
           startNodeLimitExceeded,
-          publishDisabled: !hasWorkflowNodes || startNodeLimitExceeded,
+          publishDisabled: !hasWorkflowNodes || startNodeLimitExceeded || !canReleaseAndVersion,
           hasHumanInputNode,
         }}
       />

@@ -8,6 +8,7 @@ import { useBoolean } from 'ahooks'
 import * as React from 'react'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useStore as useAppStore } from '@/app/components/app/store'
 import Divider from '@/app/components/base/divider'
 import {
   AliyunIcon,
@@ -26,7 +27,7 @@ import Indicator from '@/app/components/header/indicator'
 import { useSelector as useAppContextWithSelector } from '@/context/app-context'
 import { usePathname } from '@/next/navigation'
 import { fetchTracingConfig as doFetchTracingConfig, fetchTracingStatus, updateTracingStatus } from '@/service/apps'
-import { hasPermission } from '@/utils/permission'
+import { getAppACLCapabilities, hasPermission } from '@/utils/permission'
 import ConfigButton from './config-button'
 import TracingIcon from './tracing-icon'
 import { TracingProvider } from './type'
@@ -39,7 +40,9 @@ const Panel: FC = () => {
   const matched = /\/app\/([^/]+)/.exec(pathname)
   const appId = (matched?.length && matched[1]) ? matched[1] : ''
   const workspacePermissionKeys = useAppContextWithSelector(state => state.workspacePermissionKeys)
-  const canConfigTracing = hasPermission(workspacePermissionKeys, 'app.monitor.tracking_config')
+  const appPermissionKeys = useAppStore(s => s.appDetail?.permission_keys)
+  const appACLCapabilities = React.useMemo(() => getAppACLCapabilities(appPermissionKeys), [appPermissionKeys])
+  const canConfigTracing = appACLCapabilities.canMonitor || hasPermission(workspacePermissionKeys, 'app.monitor.tracking_config')
   const readOnly = !canConfigTracing
 
   const [isLoaded, {

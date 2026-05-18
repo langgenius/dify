@@ -26,6 +26,7 @@ import { datasetDetailQueryKeyPrefix, useInvalidDatasetList } from '@/service/kn
 import { useInvalid } from '@/service/use-base'
 import { useExportPipelineDSL } from '@/service/use-pipeline'
 import { downloadBlob } from '@/utils/download'
+import { getDatasetACLCapabilities } from '@/utils/permission'
 import ActionButton from '../../base/action-button'
 import RenameDatasetModal from '../../datasets/rename-modal'
 import Menu from './menu'
@@ -65,6 +66,10 @@ const DropDown = ({
 
   const isCurrentWorkspaceDatasetOperator = useAppContextWithSelector(state => state.isCurrentWorkspaceDatasetOperator)
   const dataset = useDatasetDetailContextWithSelector(state => state.dataset) as DataSet
+  const datasetACLCapabilities = React.useMemo(() => getDatasetACLCapabilities(dataset?.permission_keys), [dataset?.permission_keys])
+  const canShowOperations = datasetACLCapabilities.canEdit
+    || datasetACLCapabilities.canImportExportDSL
+    || datasetACLCapabilities.canDelete
 
   const invalidDatasetList = useInvalidDatasetList()
   const invalidDatasetDetail = useInvalid([...datasetDetailQueryKeyPrefix, dataset.id])
@@ -125,6 +130,9 @@ const DropDown = ({
     }
   }, [dataset.id, replace, invalidDatasetList, t])
 
+  if (!canShowOperations)
+    return null
+
   return (
     <DropdownMenu
       open={open}
@@ -146,7 +154,9 @@ const DropDown = ({
         popupClassName="border-0 bg-transparent p-0 shadow-none backdrop-blur-none"
       >
         <Menu
-          showDelete={!isCurrentWorkspaceDatasetOperator}
+          showEdit={datasetACLCapabilities.canEdit}
+          showDelete={!isCurrentWorkspaceDatasetOperator && datasetACLCapabilities.canDelete}
+          showExportPipeline={datasetACLCapabilities.canImportExportDSL}
           openRenameModal={openRenameModal}
           handleExportPipeline={handleExportPipeline}
           detectIsUsedByApp={detectIsUsedByApp}

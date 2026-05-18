@@ -6,6 +6,7 @@ import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 
 type OperationsProps = {
+  showEdit?: boolean
   showDelete: boolean
   showExportPipeline: boolean
   showAccessConfig?: boolean
@@ -17,6 +18,7 @@ type OperationsProps = {
 }
 
 const Operations = ({
+  showEdit = true,
   showDelete,
   showExportPipeline,
   showAccessConfig = false,
@@ -50,10 +52,12 @@ const Operations = ({
 
   return (
     <>
-      <DropdownMenuItem onClick={handleRename}>
-        <span aria-hidden className="mr-1 i-ri-edit-line size-4 text-text-tertiary" />
-        {t('operation.edit', { ns: 'common' })}
-      </DropdownMenuItem>
+      {showEdit && (
+        <DropdownMenuItem onClick={handleRename}>
+          <span aria-hidden className="mr-1 i-ri-edit-line size-4 text-text-tertiary" />
+          {t('operation.edit', { ns: 'common' })}
+        </DropdownMenuItem>
+      )}
       {showExportPipeline && (
         <DropdownMenuItem onClick={handleExport}>
           <span aria-hidden className="mr-1 i-ri-file-download-line size-4 text-text-tertiary" />

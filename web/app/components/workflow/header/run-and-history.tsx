@@ -9,6 +9,7 @@ import {
   useNodesReadOnly,
   useWorkflowStartRun,
 } from '../hooks'
+import { useHooksStore } from '../hooks-store'
 import Checklist from './checklist'
 import RunMode from './run-mode'
 import ViewHistory from './view-history'
@@ -16,6 +17,10 @@ import ViewHistory from './view-history'
 const PreviewMode = memo(() => {
   const { t } = useTranslation()
   const { handleWorkflowStartRunInChatflow } = useWorkflowStartRun()
+  const canRun = useHooksStore(s => s.accessControl.canRun)
+
+  if (!canRun)
+    return null
 
   return (
     <div
@@ -53,17 +58,18 @@ const RunAndHistory = ({
   components,
 }: RunAndHistoryProps) => {
   const { nodesReadOnly } = useNodesReadOnly()
+  const canRun = useHooksStore(s => s.accessControl.canRun)
   const { RunMode: CustomRunMode } = components || {}
 
   return (
     <div className="flex h-8 items-center rounded-lg border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg px-0.5 shadow-xs">
       {
-        showRunButton && (
+        showRunButton && canRun && (
           CustomRunMode ? <CustomRunMode text={runButtonText} /> : <RunMode text={runButtonText} />
         )
       }
       {
-        showPreviewButton && <PreviewMode />
+        showPreviewButton && canRun && <PreviewMode />
       }
       <div className="mx-0.5 h-3.5 w-px bg-divider-regular"></div>
       <ViewHistory {...viewHistoryProps} />

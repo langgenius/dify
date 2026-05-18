@@ -22,10 +22,10 @@ const i18nPrefix = 'batchAction'
 type IBatchActionProps = {
   className?: string
   selectedIds: string[]
-  onBatchEnable: () => void
-  onBatchDisable: () => void
+  onBatchEnable?: () => void
+  onBatchDisable?: () => void
   onBatchDownload?: () => void
-  onBatchDelete: () => Promise<void>
+  onBatchDelete?: () => Promise<void>
   onBatchSummary?: () => void
   onArchive?: () => void
   onEditMetadata?: () => void
@@ -56,6 +56,9 @@ const BatchAction: FC<IBatchActionProps> = ({
   }] = useBoolean(false)
 
   const handleBatchDelete = async () => {
+    if (!onBatchDelete)
+      return
+
     setIsDeleting()
     await onBatchDelete()
     hideDeleteConfirm()
@@ -70,22 +73,26 @@ const BatchAction: FC<IBatchActionProps> = ({
           <span className="system-sm-semibold text-text-accent">{t(`${i18nPrefix}.selected`, { ns: 'dataset' })}</span>
         </div>
         <Divider type="vertical" className="mx-0.5 h-3.5 bg-divider-regular" />
-        <Button
-          variant="ghost"
-          className="gap-x-0.5 px-3"
-          onClick={onBatchEnable}
-        >
-          <RiCheckboxCircleLine className="size-4" />
-          <span className="px-0.5">{t(`${i18nPrefix}.enable`, { ns: 'dataset' })}</span>
-        </Button>
-        <Button
-          variant="ghost"
-          className="gap-x-0.5 px-3"
-          onClick={onBatchDisable}
-        >
-          <RiCloseCircleLine className="size-4" />
-          <span className="px-0.5">{t(`${i18nPrefix}.disable`, { ns: 'dataset' })}</span>
-        </Button>
+        {onBatchEnable && (
+          <Button
+            variant="ghost"
+            className="gap-x-0.5 px-3"
+            onClick={onBatchEnable}
+          >
+            <RiCheckboxCircleLine className="size-4" />
+            <span className="px-0.5">{t(`${i18nPrefix}.enable`, { ns: 'dataset' })}</span>
+          </Button>
+        )}
+        {onBatchDisable && (
+          <Button
+            variant="ghost"
+            className="gap-x-0.5 px-3"
+            onClick={onBatchDisable}
+          >
+            <RiCloseCircleLine className="size-4" />
+            <span className="px-0.5">{t(`${i18nPrefix}.disable`, { ns: 'dataset' })}</span>
+          </Button>
+        )}
         {onEditMetadata && (
           <Button
             variant="ghost"
@@ -136,15 +143,17 @@ const BatchAction: FC<IBatchActionProps> = ({
             <span className="px-0.5">{t(`${i18nPrefix}.download`, { ns: 'dataset' })}</span>
           </Button>
         )}
-        <Button
-          variant="ghost"
-          tone="destructive"
-          className="gap-x-0.5 px-3"
-          onClick={showDeleteConfirm}
-        >
-          <RiDeleteBinLine className="size-4" />
-          <span className="px-0.5">{t(`${i18nPrefix}.delete`, { ns: 'dataset' })}</span>
-        </Button>
+        {onBatchDelete && (
+          <Button
+            variant="ghost"
+            tone="destructive"
+            className="gap-x-0.5 px-3"
+            onClick={showDeleteConfirm}
+          >
+            <RiDeleteBinLine className="size-4" />
+            <span className="px-0.5">{t(`${i18nPrefix}.delete`, { ns: 'dataset' })}</span>
+          </Button>
+        )}
 
         <Divider type="vertical" className="mx-0.5 h-3.5 bg-divider-regular" />
         <Button
@@ -155,24 +164,26 @@ const BatchAction: FC<IBatchActionProps> = ({
           <span className="px-0.5">{t(`${i18nPrefix}.cancel`, { ns: 'dataset' })}</span>
         </Button>
       </div>
-      <AlertDialog open={isShowDeleteConfirm} onOpenChange={open => !open && hideDeleteConfirm()}>
-        <AlertDialogContent>
-          <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
-            <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
-              {t('list.delete.title', { ns: 'datasetDocuments' })}
-            </AlertDialogTitle>
-            <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
-              {t('list.delete.content', { ns: 'datasetDocuments' })}
-            </AlertDialogDescription>
-          </div>
-          <AlertDialogActions>
-            <AlertDialogCancelButton>{t('operation.cancel', { ns: 'common' })}</AlertDialogCancelButton>
-            <AlertDialogConfirmButton loading={isDeleting} disabled={isDeleting} onClick={handleBatchDelete}>
-              {t('operation.sure', { ns: 'common' })}
-            </AlertDialogConfirmButton>
-          </AlertDialogActions>
-        </AlertDialogContent>
-      </AlertDialog>
+      {onBatchDelete && (
+        <AlertDialog open={isShowDeleteConfirm} onOpenChange={open => !open && hideDeleteConfirm()}>
+          <AlertDialogContent>
+            <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
+              <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
+                {t('list.delete.title', { ns: 'datasetDocuments' })}
+              </AlertDialogTitle>
+              <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
+                {t('list.delete.content', { ns: 'datasetDocuments' })}
+              </AlertDialogDescription>
+            </div>
+            <AlertDialogActions>
+              <AlertDialogCancelButton>{t('operation.cancel', { ns: 'common' })}</AlertDialogCancelButton>
+              <AlertDialogConfirmButton loading={isDeleting} disabled={isDeleting} onClick={handleBatchDelete}>
+                {t('operation.sure', { ns: 'common' })}
+              </AlertDialogConfirmButton>
+            </AlertDialogActions>
+          </AlertDialogContent>
+        </AlertDialog>
+      )}
     </div>
   )
 }

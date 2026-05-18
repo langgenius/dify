@@ -28,6 +28,8 @@ type DocumentsHeaderProps = {
   datasetId: string
   dataSourceType?: DataSourceType
   embeddingAvailable: boolean
+  canManageMetadata?: boolean
+  canAddDocument?: boolean
   isFreePlan: boolean
 
   // Filter & sort
@@ -59,6 +61,8 @@ const DocumentsHeader: FC<DocumentsHeaderProps> = ({
   datasetId,
   dataSourceType,
   embeddingAvailable,
+  canManageMetadata = true,
+  canAddDocument = true,
   isFreePlan,
   statusFilterValue,
   sortValue,
@@ -172,7 +176,7 @@ const DocumentsHeader: FC<DocumentsHeaderProps> = ({
               description={t('embeddingModelNotAvailable', { ns: 'dataset' })}
             />
           )}
-          {embeddingAvailable && (
+          {embeddingAvailable && canManageMetadata && (
             <Button variant="secondary" className="shrink-0" onClick={showEditMetadataModal}>
               <RiDraftLine className="mr-1 size-4" />
               {t('metadata.metadata', { ns: 'dataset' })}
@@ -190,7 +194,7 @@ const DocumentsHeader: FC<DocumentsHeaderProps> = ({
               onIsBuiltInEnabledChange={onBuiltInEnabledChange}
             />
           )}
-          {embeddingAvailable && (
+          {embeddingAvailable && canAddDocument && (
             <Button variant="primary" onClick={onAddDocument} className="shrink-0">
               <PlusIcon className="mr-2 h-4 w-4 stroke-current" />
               {addButtonText}
