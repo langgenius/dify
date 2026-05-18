@@ -62,7 +62,8 @@ export function formatHelp(ctor: CommandConstructor, path: string): string {
     lines.push('')
   }
 
-  const guide = (ctor as unknown as Record<string, unknown>).agentGuide
+  const C = ctor
+  const guide = ((new C())).agentGuide()
 
   if (typeof guide === 'string' && guide.length > 0)
     lines.push(guide)

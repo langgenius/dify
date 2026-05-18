@@ -48,4 +48,8 @@ export abstract class Command implements ICommand {
     process.stderr.write(`${message}\n`)
     process.exit(opts?.exit ?? 1)
   }
+
+  agentGuide(): string {
+    return ''
+  }
 }

@@ -6,7 +6,6 @@ import { runApp } from './run.js'
 
 export default class RunApp extends DifyCommand {
   static override description = 'Run an app and print the response'
-  static agentGuide = agentGuide
 
   static override examples = [
     '<%= config.bin %> run app app-1 "hello"',
@@ -53,5 +52,9 @@ export default class RunApp extends DifyCommand {
       },
       { bundle: ctx.bundle, http: ctx.http, host: ctx.host, io: ctx.io, cache: ctx.cache },
     )
+  }
+
+  override agentGuide(): string {
+    return agentGuide
   }
 }
