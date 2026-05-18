@@ -1,0 +1,50 @@
+import type { KyInstance } from 'ky'
+import type { HostsBundle } from '../../../auth/hosts.js'
+import type { IOStreams } from '../../../io/streams.js'
+import { MembersClient } from '../../../api/members.js'
+import { runWithSpinner } from '../../../io/spinner.js'
+import { nullStreams } from '../../../io/streams.js'
+import { resolveWorkspaceId } from '../../../workspace/resolver.js'
+import { MemberListOutput, MemberRow } from './handlers.js'
+
+export type GetMemberOptions = {
+  readonly workspace?: string
+  readonly format?: string
+}
+
+export type GetMemberDeps = {
+  readonly bundle: HostsBundle
+  readonly http: KyInstance
+  readonly io?: IOStreams
+  readonly envLookup?: (k: string) => string | undefined
+  readonly membersFactory?: (http: KyInstance) => MembersClient
+}
+
+export type GetMemberResult = {
+  readonly data: MemberListOutput
+  readonly workspaceId: string
+}
+
+export async function runGetMember(
+  opts: GetMemberOptions,
+  deps: GetMemberDeps,
+): Promise<GetMemberResult> {
+  const env = deps.envLookup ?? ((k: string) => process.env[k])
+  const factory = deps.membersFactory ?? ((h: KyInstance) => new MembersClient(h))
+  const io = deps.io ?? nullStreams()
+
+  const wsId = resolveWorkspaceId({
+    flag: opts.workspace,
+    env: env('DIFY_WORKSPACE_ID'),
+    bundle: deps.bundle,
+  })
+
+  const envelope = await runWithSpinner(
+    { io, label: 'Fetching members' },
+    () => factory(deps.http).list(wsId),
+  )
+
+  const callerId = deps.bundle.account?.id ?? ''
+  const rows = envelope.members.map(m => new MemberRow(m, callerId !== '' && m.id === callerId))
+  return { data: new MemberListOutput(rows, envelope), workspaceId: wsId }
+}

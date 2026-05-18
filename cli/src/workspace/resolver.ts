@@ -25,7 +25,7 @@ export function resolveWorkspaceId(inputs: WorkspaceResolveInputs): string {
   throw new BaseError({
     code: ErrorCode.UsageMissingArg,
     message: 'no workspace selected',
-    hint: 'pass --workspace, set DIFY_WORKSPACE_ID, or run \'difyctl auth use\'',
+    hint: 'pass --workspace, set DIFY_WORKSPACE_ID, or run \'difyctl use workspace <id>\'',
   })
 }
 
