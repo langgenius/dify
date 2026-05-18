@@ -8,7 +8,7 @@ import type { ToolWithProvider, ValueSelector, Var } from '@/app/components/work
 import { cn } from '@langgenius/dify-ui/cn'
 import { Select, SelectContent, SelectItem, SelectItemIndicator, SelectItemText, SelectTrigger } from '@langgenius/dify-ui/select'
 import { useEffect, useMemo, useState } from 'react'
-import CheckboxList from '@/app/components/base/checkbox-list'
+import { CheckboxList } from '@/app/components/base/checkbox-list'
 import Input from '@/app/components/base/input'
 import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { AppSelector } from '@/app/components/plugins/plugin-detail-panel/app-selector'

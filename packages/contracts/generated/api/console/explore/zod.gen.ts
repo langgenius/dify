@@ -21,7 +21,7 @@ export const zRecommendedAppResponse = z.object({
   app: zRecommendedAppInfoResponse.optional(),
   app_id: z.string(),
   can_trial: z.boolean().nullish(),
-  category: z.string().nullish(),
+  categories: z.array(z.string()).optional(),
   copyright: z.string().nullish(),
   custom_disclaimer: z.string().nullish(),
   description: z.string().nullish(),
@@ -39,7 +39,7 @@ export const zRecommendedAppListResponse = z.object({
 })
 
 export const zGetExploreAppsQuery = z.object({
-  language: z.string().nullish(),
+  language: z.string().optional(),
 })
 
 /**

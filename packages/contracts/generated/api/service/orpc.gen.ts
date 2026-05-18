@@ -703,11 +703,11 @@ export const binding = {
 }
 
 /**
- * Unbind a tag from a dataset
+ * Unbind tags from a dataset
  */
 export const post11 = oc
   .route({
-    description: 'Unbind a tag from a dataset',
+    description: 'Unbind tags from a dataset',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postDatasetsTagsUnbinding',

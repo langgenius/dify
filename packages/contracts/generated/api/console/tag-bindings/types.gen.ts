@@ -11,17 +11,12 @@ export type TagBindingPayload = {
 }
 
 export type TagBindingRemovePayload = {
-  tag_id: string
+  tag_ids: Array<string>
   target_id: string
   type: TagType
 }
 
-export type TagBindingItemDeletePayload = {
-  target_id: string
-  type: TagType
-}
-
-export type TagType = 'knowledge' | 'app'
+export type TagType = 'app' | 'knowledge'
 
 export type PostTagBindingsData = {
   body: TagBindingPayload
@@ -38,22 +33,6 @@ export type PostTagBindingsResponses = {
 
 export type PostTagBindingsResponse = PostTagBindingsResponses[keyof PostTagBindingsResponses]
 
-export type PostTagBindingsCreateData = {
-  body: TagBindingPayload
-  path?: never
-  query?: never
-  url: '/tag-bindings/create'
-}
-
-export type PostTagBindingsCreateResponses = {
-  200: {
-    [key: string]: unknown
-  }
-}
-
-export type PostTagBindingsCreateResponse
-  = PostTagBindingsCreateResponses[keyof PostTagBindingsCreateResponses]
-
 export type PostTagBindingsRemoveData = {
   body: TagBindingRemovePayload
   path?: never
@@ -69,21 +48,3 @@ export type PostTagBindingsRemoveResponses = {
 
 export type PostTagBindingsRemoveResponse
   = PostTagBindingsRemoveResponses[keyof PostTagBindingsRemoveResponses]
-
-export type DeleteTagBindingsByIdData = {
-  body: TagBindingItemDeletePayload
-  path: {
-    id: string
-  }
-  query?: never
-  url: '/tag-bindings/{id}'
-}
-
-export type DeleteTagBindingsByIdResponses = {
-  200: {
-    [key: string]: unknown
-  }
-}
-
-export type DeleteTagBindingsByIdResponse
-  = DeleteTagBindingsByIdResponses[keyof DeleteTagBindingsByIdResponses]

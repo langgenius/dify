@@ -4,6 +4,11 @@ export type ClientOptions = {
   baseUrl: `${string}://${string}/api` | (string & {})
 }
 
+export type AppAccessModeQuery = {
+  appCode?: string | null
+  appId?: string | null
+}
+
 export type ChatMessagePayload = {
   conversation_id?: string | null
   files?: Array<{
@@ -28,6 +33,18 @@ export type CompletionMessagePayload = {
   query?: string
   response_mode?: 'blocking' | 'streaming' | null
   retriever_from?: string
+}
+
+export type ConversationListQuery = {
+  last_id?: string | null
+  limit?: number
+  pinned?: boolean | null
+  sort_by?: '-created_at' | '-updated_at' | 'created_at' | 'updated_at'
+}
+
+export type ConversationRenamePayload = {
+  auto_generate?: boolean
+  name?: string | null
 }
 
 export type EmailCodeLoginSendPayload = {
@@ -91,6 +108,17 @@ export type LoginPayload = {
   password: string
 }
 
+export type MessageFeedbackPayload = {
+  content?: string | null
+  rating?: 'dislike' | 'like' | null
+}
+
+export type MessageListQuery = {
+  conversation_id: string
+  first_id?: string | null
+  limit?: number
+}
+
 export type MessageMoreLikeThisQuery = {
   response_mode: 'blocking' | 'streaming'
 }
@@ -98,6 +126,19 @@ export type MessageMoreLikeThisQuery = {
 export type RemoteFileInfo = {
   file_length: number
   file_type: string
+}
+
+export type RemoteFileUploadPayload = {
+  url: string
+}
+
+export type SavedMessageCreatePayload = {
+  message_id: string
+}
+
+export type SavedMessageListQuery = {
+  last_id?: string | null
+  limit?: number
 }
 
 export type TextToAudioPayload = {
@@ -310,8 +351,8 @@ export type GetConversationsData = {
   query?: {
     last_id?: string
     limit?: number
-    pinned?: 'true' | 'false'
-    sort_by?: 'created_at' | '-created_at' | 'updated_at' | '-updated_at'
+    pinned?: 'false' | 'true'
+    sort_by?: '-created_at' | '-updated_at' | 'created_at' | 'updated_at'
   }
   url: '/conversations'
 }
@@ -389,8 +430,8 @@ export type PostConversationsByCIdNameData = {
     c_id: string
   }
   query?: {
-    name?: string
     auto_generate?: boolean
+    name?: string
   }
   url: '/conversations/{c_id}/name'
 }
@@ -828,8 +869,8 @@ export type PostMessagesByMessageIdFeedbacksData = {
     message_id: string
   }
   query?: {
-    rating?: 'like' | 'dislike'
     content?: string
+    rating?: 'dislike' | 'like'
   }
   url: '/messages/{message_id}/feedbacks'
 }
@@ -1310,8 +1351,8 @@ export type GetWebappAccessModeData = {
   body?: never
   path?: never
   query?: {
-    appId?: string
     appCode?: string
+    appId?: string
   }
   url: '/webapp/access-mode'
 }
