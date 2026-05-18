@@ -3,11 +3,11 @@ import type { FC } from 'react'
 import type { Dependency, InstallStatus, InstallStatusResponse, Plugin, VersionInfo } from '../../../types'
 import type { ExposeRefs } from './install-multi'
 import { Button } from '@langgenius/dify-ui/button'
+import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { RiLoader2Line } from '@remixicon/react'
 import * as React from 'react'
 import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Checkbox from '@/app/components/base/checkbox'
 import { useCanInstallPluginFromMarketplace } from '@/app/components/plugins/plugin-page/use-reference-setting'
 import { useMittContextSelector } from '@/context/mitt-context'
 import { useInstallOrUpdate, usePluginTaskList } from '@/service/use-plugins'
@@ -193,10 +193,10 @@ const Install: FC<Props> = ({
         <div className="flex items-center justify-between gap-2 self-stretch p-6 pt-5">
           <div className="px-2">
             {canInstall && (
-              <div className="flex items-center gap-x-2" onClick={handleClickSelectAll}>
-                <Checkbox checked={isSelectAll} indeterminate={isIndeterminate} />
-                <p className="cursor-pointer system-sm-medium text-text-secondary">{isSelectAll ? t('operation.deSelectAll', { ns: 'common' }) : t('operation.selectAll', { ns: 'common' })}</p>
-              </div>
+              <label className="flex cursor-pointer items-center gap-x-2">
+                <Checkbox checked={isSelectAll} indeterminate={isIndeterminate} onCheckedChange={() => handleClickSelectAll()} />
+                <span className="system-sm-medium text-text-secondary">{isSelectAll ? t('operation.deSelectAll', { ns: 'common' }) : t('operation.selectAll', { ns: 'common' })}</span>
+              </label>
             )}
           </div>
           <div className="flex items-center justify-end gap-2 self-stretch">
