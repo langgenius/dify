@@ -1298,7 +1298,7 @@ requires-dist = [
     { name = "pydantic", specifier = ">=2.12.5,<2.13" },
     { name = "pydantic-ai-slim", specifier = ">=1.85.1" },
     { name = "pydantic-ai-slim", extras = ["anthropic", "google", "openai"], marker = "extra == 'server'", specifier = ">=1.85.1" },
-    { name = "pydantic-settings", marker = "extra == 'server'", specifier = ">=2.14.1" },
+    { name = "pydantic-settings", marker = "extra == 'server'", specifier = ">=2.12.0" },
     { name = "redis", marker = "extra == 'server'", specifier = ">=5" },
     { name = "typing-extensions", specifier = ">=4.12.2" },
     { name = "uvicorn", extras = ["standard"], marker = "extra == 'server'", specifier = ">=0.38.0" },
