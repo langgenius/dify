@@ -1,3 +1,4 @@
+import type { ApiBasedExtensionResponse } from '@dify/contracts/api/console/api-based-extension/types.gen'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { addApiBasedExtension, updateApiBasedExtension } from '@/service/common'
 import { useApiBasedExtensions } from '@/service/use-common'
@@ -38,9 +39,9 @@ describe('ApiBasedExtensionPage', () => {
 
     it('should render list of extensions when data exists', () => {
       // Arrange
-      const mockData = [
-        { id: '1', name: 'Extension 1', api_endpoint: 'url1' },
-        { id: '2', name: 'Extension 2', api_endpoint: 'url2' },
+      const mockData: ApiBasedExtensionResponse[] = [
+        { id: '1', name: 'Extension 1', api_endpoint: 'url1', api_key: 'key1' },
+        { id: '2', name: 'Extension 2', api_endpoint: 'url2', api_key: 'key2' },
       ]
 
       vi.mocked(useApiBasedExtensions).mockReturnValue({
@@ -127,7 +128,12 @@ describe('ApiBasedExtensionPage', () => {
 
     it('should call refetch when add modal saves successfully', async () => {
       // Arrange
-      vi.mocked(addApiBasedExtension).mockResolvedValue({ id: 'new-id' })
+      vi.mocked(addApiBasedExtension).mockResolvedValue({
+        id: 'new-id',
+        name: 'New Ext',
+        api_endpoint: 'https://api.test',
+        api_key: 'secret-key',
+      })
       vi.mocked(useApiBasedExtensions).mockReturnValue({
         data: [],
         isPending: false,
@@ -150,10 +156,10 @@ describe('ApiBasedExtensionPage', () => {
 
     it('should call refetch when an item is updated', async () => {
       // Arrange
-      const mockData = [{ id: '1', name: 'Extension 1', api_endpoint: 'url1', api_key: 'long-api-key' }]
-      vi.mocked(updateApiBasedExtension).mockResolvedValue({ ...mockData[0], name: 'Updated' })
+      const extension: ApiBasedExtensionResponse = { id: '1', name: 'Extension 1', api_endpoint: 'url1', api_key: 'long-api-key' }
+      vi.mocked(updateApiBasedExtension).mockResolvedValue({ ...extension, name: 'Updated' })
       vi.mocked(useApiBasedExtensions).mockReturnValue({
-        data: mockData,
+        data: [extension],
         isPending: false,
         refetch: mockRefetch,
       } as unknown as ReturnType<typeof useApiBasedExtensions>)

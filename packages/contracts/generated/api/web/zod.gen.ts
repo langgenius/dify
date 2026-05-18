@@ -271,7 +271,7 @@ export const zDeleteConversationsByCIdPath = z.object({
 /**
  * Conversation deleted successfully
  */
-export const zDeleteConversationsByCIdResponse = z.record(z.string(), z.unknown())
+export const zDeleteConversationsByCIdResponse = z.record(z.string(), z.never())
 
 export const zPostConversationsByCIdNamePath = z.object({
   c_id: z.string(),
@@ -482,7 +482,7 @@ export const zDeleteSavedMessagesByMessageIdPath = z.object({
 /**
  * Message removed successfully
  */
-export const zDeleteSavedMessagesByMessageIdResponse = z.record(z.string(), z.unknown())
+export const zDeleteSavedMessagesByMessageIdResponse = z.record(z.string(), z.never())
 
 /**
  * Success

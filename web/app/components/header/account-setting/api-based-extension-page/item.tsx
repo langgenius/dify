@@ -1,4 +1,4 @@
-import type { ApiBasedExtension } from '@/models/common'
+import type { ApiBasedExtensionResponse } from '@dify/contracts/api/console/api-based-extension/types.gen'
 import {
   AlertDialog,
   AlertDialogActions,
@@ -13,8 +13,8 @@ import { useTranslation } from 'react-i18next'
 import { deleteApiBasedExtension } from '@/service/common'
 
 type ItemProps = {
-  data: ApiBasedExtension
-  onEdit: (extension: ApiBasedExtension) => void
+  data: ApiBasedExtensionResponse
+  onEdit: (extension: ApiBasedExtensionResponse) => void
   onUpdate: () => void
 }
 const Item = ({

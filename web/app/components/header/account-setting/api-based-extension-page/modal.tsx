@@ -1,4 +1,7 @@
-import type { ApiBasedExtension } from '@/models/common'
+import type {
+  ApiBasedExtensionPayload,
+  ApiBasedExtensionResponse,
+} from '@dify/contracts/api/console/api-based-extension/types.gen'
 import { Button } from '@langgenius/dify-ui/button'
 import { Dialog, DialogCloseButton, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
 import { toast } from '@langgenius/dify-ui/toast'
@@ -11,9 +14,9 @@ type ApiBasedExtensionField = 'name' | 'api_endpoint' | 'api_key'
 
 type ApiBasedExtensionModalProps = {
   open: boolean
-  extension: ApiBasedExtension
+  extension: Partial<ApiBasedExtensionResponse>
   onOpenChange: (open: boolean) => void
-  onSave?: (newData: ApiBasedExtension) => void
+  onSave?: (newData: ApiBasedExtensionResponse) => void
 }
 const ApiBasedExtensionModal = ({ open, extension, onOpenChange, onSave }: ApiBasedExtensionModalProps) => {
   const { t } = useTranslation()
@@ -31,19 +34,24 @@ const ApiBasedExtensionModal = ({ open, extension, onOpenChange, onSave }: ApiBa
       return
     }
     try {
-      let res: ApiBasedExtension = {}
+      const payload: ApiBasedExtensionPayload = {
+        name: localData.name || '',
+        api_endpoint: localData.api_endpoint || '',
+        api_key: localData.api_key || '',
+      }
+      let res = {} as ApiBasedExtensionResponse
       if (!extension.id) {
         res = await addApiBasedExtension({
           url: '/api-based-extension',
-          body: localData,
+          body: payload,
         })
       }
       else {
         res = await updateApiBasedExtension({
           url: `/api-based-extension/${extension.id}`,
           body: {
-            ...localData,
-            api_key: extension.api_key === localData.api_key ? '[__HIDDEN__]' : localData.api_key,
+            ...payload,
+            api_key: extension.api_key === localData.api_key ? '[__HIDDEN__]' : payload.api_key,
           },
         })
         toast.success(t('actionMsg.modifiedSuccessfully', { ns: 'common' }))

@@ -1,6 +1,6 @@
+import type { ApiBasedExtensionResponse } from '@dify/contracts/api/console/api-based-extension/types.gen'
 import type { UseQueryResult } from '@tanstack/react-query'
 import type { ModalContextState } from '@/context/modal-context'
-import type { ApiBasedExtension } from '@/models/common'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
 import { useModalContext } from '@/context/modal-context'
@@ -27,9 +27,9 @@ describe('ApiBasedExtensionSelector', () => {
   const mockSetShowAccountSettingModal = vi.fn()
   const mockRefetch = vi.fn()
 
-  const mockData: ApiBasedExtension[] = [
-    { id: '1', name: 'Extension 1', api_endpoint: 'https://api1.test' },
-    { id: '2', name: 'Extension 2', api_endpoint: 'https://api2.test' },
+  const mockData: ApiBasedExtensionResponse[] = [
+    { id: '1', name: 'Extension 1', api_endpoint: 'https://api1.test', api_key: 'key1' },
+    { id: '2', name: 'Extension 2', api_endpoint: 'https://api2.test', api_key: 'key2' },
   ]
 
   beforeEach(() => {
@@ -42,7 +42,7 @@ describe('ApiBasedExtensionSelector', () => {
       refetch: mockRefetch,
       isPending: false,
       isError: false,
-    } as unknown as UseQueryResult<ApiBasedExtension[], Error>)
+    } as unknown as UseQueryResult<ApiBasedExtensionResponse[], Error>)
   })
 
   describe('Rendering', () => {
@@ -107,7 +107,12 @@ describe('ApiBasedExtensionSelector', () => {
 
     it('should open add modal when clicking add button and refetches on save', async () => {
       // Arrange
-      vi.mocked(addApiBasedExtension).mockResolvedValue({ id: 'new-id' })
+      vi.mocked(addApiBasedExtension).mockResolvedValue({
+        id: 'new-id',
+        name: 'New Ext',
+        api_endpoint: 'https://api.test',
+        api_key: 'secret-key',
+      })
 
       // Act
       render(<ApiBasedExtensionSelector value="" onChange={mockOnChange} />)

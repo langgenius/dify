@@ -1,3 +1,4 @@
+import type { ApiBasedExtensionResponse } from '@dify/contracts/api/console/api-based-extension/types.gen'
 import type { TFunction } from 'i18next'
 import type { ComponentProps, ReactElement } from 'react'
 import { fireEvent, render as RTLRender, screen, waitFor } from '@testing-library/react'
@@ -36,6 +37,13 @@ describe('ApiBasedExtensionModal', () => {
   const mockOnOpenChange = vi.fn()
   const mockOnSave = vi.fn()
   const mockDocLink = vi.fn((path?: string) => `https://docs.dify.ai${path || ''}`)
+  const mockExtension = (overrides: Partial<ApiBasedExtensionResponse> = {}): ApiBasedExtensionResponse => ({
+    id: '1',
+    name: 'Existing',
+    api_endpoint: 'url',
+    api_key: 'key',
+    ...overrides,
+  })
 
   const render = (ui: ReactElement) => RTLRender(ui)
   const renderModal = (props: Partial<ComponentProps<typeof ApiBasedExtensionModal>> = {}) => render(
@@ -72,7 +80,7 @@ describe('ApiBasedExtensionModal', () => {
 
     it('should render correctly for editing an existing extension', () => {
       // Arrange
-      const data = { id: '1', name: 'Existing', api_endpoint: 'url', api_key: 'key' }
+      const data = mockExtension()
 
       // Act
       renderModal({ extension: data })
@@ -96,7 +104,13 @@ describe('ApiBasedExtensionModal', () => {
   describe('Form Submissions', () => {
     it('should call addApiBasedExtension on save for new extension', async () => {
       // Arrange
-      vi.mocked(addApiBasedExtension).mockResolvedValue({ id: 'new-id' })
+      const newExtension = mockExtension({
+        id: 'new-id',
+        name: 'New Ext',
+        api_endpoint: 'https://api.test',
+        api_key: 'secret-key',
+      })
+      vi.mocked(addApiBasedExtension).mockResolvedValue(newExtension)
       renderModal()
 
       // Act
@@ -115,13 +129,13 @@ describe('ApiBasedExtensionModal', () => {
             api_key: 'secret-key',
           },
         })
-        expect(mockOnSave).toHaveBeenCalledWith({ id: 'new-id' })
+        expect(mockOnSave).toHaveBeenCalledWith(newExtension)
       })
     })
 
     it('should call updateApiBasedExtension on save for existing extension', async () => {
       // Arrange
-      const data = { id: '1', name: 'Existing', api_endpoint: 'url', api_key: 'long-secret-key' }
+      const data = mockExtension({ api_key: 'long-secret-key' })
       vi.mocked(updateApiBasedExtension).mockResolvedValue({ ...data, name: 'Updated' })
       renderModal({ extension: data })
 
@@ -133,12 +147,11 @@ describe('ApiBasedExtensionModal', () => {
       await waitFor(() => {
         expect(updateApiBasedExtension).toHaveBeenCalledWith({
           url: '/api-based-extension/1',
-          body: expect.objectContaining({
-            id: '1',
+          body: {
             name: 'Updated',
             api_endpoint: 'url',
             api_key: '[__HIDDEN__]',
-          }),
+          },
         })
         expect(mockToast.success).toHaveBeenCalledWith('common.actionMsg.modifiedSuccessfully')
         expect(mockOnSave).toHaveBeenCalled()
@@ -147,7 +160,7 @@ describe('ApiBasedExtensionModal', () => {
 
     it('should call updateApiBasedExtension with new api_key when key is changed', async () => {
       // Arrange
-      const data = { id: '1', name: 'Existing', api_endpoint: 'url', api_key: 'old-key' }
+      const data = mockExtension({ api_key: 'old-key' })
       vi.mocked(updateApiBasedExtension).mockResolvedValue({ ...data, api_key: 'new-longer-key' })
       renderModal({ extension: data })
 
@@ -159,9 +172,11 @@ describe('ApiBasedExtensionModal', () => {
       await waitFor(() => {
         expect(updateApiBasedExtension).toHaveBeenCalledWith({
           url: '/api-based-extension/1',
-          body: expect.objectContaining({
+          body: {
+            name: 'Existing',
+            api_endpoint: 'url',
             api_key: 'new-longer-key',
-          }),
+          },
         })
       })
     })
@@ -187,7 +202,7 @@ describe('ApiBasedExtensionModal', () => {
   describe('Interactions', () => {
     it('should work when onSave is not provided', async () => {
       // Arrange
-      vi.mocked(addApiBasedExtension).mockResolvedValue({ id: 'new-id' })
+      vi.mocked(addApiBasedExtension).mockResolvedValue(mockExtension({ id: 'new-id' }))
       renderModal({ onSave: undefined })
 
       // Act

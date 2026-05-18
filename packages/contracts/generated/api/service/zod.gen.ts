@@ -768,7 +768,7 @@ export const zDeleteAppsAnnotationsByAnnotationIdPath = z.object({
 /**
  * Annotation deleted successfully
  */
-export const zDeleteAppsAnnotationsByAnnotationIdResponse = z.record(z.string(), z.unknown())
+export const zDeleteAppsAnnotationsByAnnotationIdResponse = z.record(z.string(), z.never())
 
 export const zPutAppsAnnotationsByAnnotationIdBody = zAnnotationCreatePayload
 
@@ -839,7 +839,7 @@ export const zDeleteConversationsByCIdPath = z.object({
 /**
  * Conversation deleted successfully
  */
-export const zDeleteConversationsByCIdResponse = z.record(z.string(), z.unknown())
+export const zDeleteConversationsByCIdResponse = z.record(z.string(), z.never())
 
 export const zPostConversationsByCIdNameBody = zConversationRenamePayload
 
@@ -902,7 +902,7 @@ export const zDeleteDatasetsTagsBody = zTagDeletePayload
 /**
  * Tag deleted successfully
  */
-export const zDeleteDatasetsTagsResponse = z.record(z.string(), z.unknown())
+export const zDeleteDatasetsTagsResponse = z.record(z.string(), z.never())
 
 /**
  * Tags retrieved successfully
@@ -928,14 +928,14 @@ export const zPostDatasetsTagsBindingBody = zTagBindingPayload
 /**
  * Tags bound successfully
  */
-export const zPostDatasetsTagsBindingResponse = z.record(z.string(), z.unknown())
+export const zPostDatasetsTagsBindingResponse = z.record(z.string(), z.never())
 
 export const zPostDatasetsTagsUnbindingBody = zTagUnbindingPayload
 
 /**
  * Tags unbound successfully
  */
-export const zPostDatasetsTagsUnbindingResponse = z.record(z.string(), z.unknown())
+export const zPostDatasetsTagsUnbindingResponse = z.record(z.string(), z.never())
 
 export const zDeleteDatasetsByDatasetIdPath = z.object({
   dataset_id: z.string(),
@@ -944,7 +944,7 @@ export const zDeleteDatasetsByDatasetIdPath = z.object({
 /**
  * Dataset deleted successfully
  */
-export const zDeleteDatasetsByDatasetIdResponse = z.record(z.string(), z.unknown())
+export const zDeleteDatasetsByDatasetIdResponse = z.record(z.string(), z.never())
 
 export const zGetDatasetsByDatasetIdPath = z.object({
   dataset_id: z.string(),
@@ -1088,7 +1088,7 @@ export const zDeleteDatasetsByDatasetIdDocumentsByDocumentIdPath = z.object({
  */
 export const zDeleteDatasetsByDatasetIdDocumentsByDocumentIdResponse = z.record(
   z.string(),
-  z.unknown(),
+  z.never(),
 )
 
 export const zGetDatasetsByDatasetIdDocumentsByDocumentIdPath = z.object({
@@ -1174,7 +1174,7 @@ export const zDeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdP
  */
 export const zDeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdResponse = z.record(
   z.string(),
-  z.unknown(),
+  z.never(),
 )
 
 export const zGetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdPath = z.object({
@@ -1256,7 +1256,7 @@ export const zDeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdC
  * Child chunk deleted successfully
  */
 export const zDeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdResponse
-  = z.record(z.string(), z.unknown())
+  = z.record(z.string(), z.never())
 
 export const zPatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdBody
   = zChildChunkUpdatePayload
@@ -1394,7 +1394,7 @@ export const zDeleteDatasetsByDatasetIdMetadataByMetadataIdPath = z.object({
  */
 export const zDeleteDatasetsByDatasetIdMetadataByMetadataIdResponse = z.record(
   z.string(),
-  z.unknown(),
+  z.never(),
 )
 
 export const zPatchDatasetsByDatasetIdMetadataByMetadataIdBody = zMetadataUpdatePayload

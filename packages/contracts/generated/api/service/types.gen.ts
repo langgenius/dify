@@ -694,7 +694,7 @@ export type DeleteAppsAnnotationsByAnnotationIdError
 
 export type DeleteAppsAnnotationsByAnnotationIdResponses = {
   204: {
-    [key: string]: unknown
+    [key: string]: never
   }
 }
 
@@ -949,7 +949,7 @@ export type DeleteConversationsByCIdError
 
 export type DeleteConversationsByCIdResponses = {
   204: {
-    [key: string]: unknown
+    [key: string]: never
   }
 }
 
@@ -1153,7 +1153,7 @@ export type DeleteDatasetsTagsError = DeleteDatasetsTagsErrors[keyof DeleteDatas
 
 export type DeleteDatasetsTagsResponses = {
   204: {
-    [key: string]: unknown
+    [key: string]: never
   }
 }
 
@@ -1256,7 +1256,7 @@ export type PostDatasetsTagsBindingError
 
 export type PostDatasetsTagsBindingResponses = {
   204: {
-    [key: string]: unknown
+    [key: string]: never
   }
 }
 
@@ -1284,7 +1284,7 @@ export type PostDatasetsTagsUnbindingError
 
 export type PostDatasetsTagsUnbindingResponses = {
   204: {
-    [key: string]: unknown
+    [key: string]: never
   }
 }
 
@@ -1317,7 +1317,7 @@ export type DeleteDatasetsByDatasetIdError
 
 export type DeleteDatasetsByDatasetIdResponses = {
   204: {
-    [key: string]: unknown
+    [key: string]: never
   }
 }
 
@@ -1698,7 +1698,7 @@ export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdError
 
 export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdResponses = {
   204: {
-    [key: string]: unknown
+    [key: string]: never
   }
 }
 
@@ -1897,7 +1897,7 @@ export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdErr
 
 export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdResponses = {
   204: {
-    [key: string]: unknown
+    [key: string]: never
   }
 }
 
@@ -2065,7 +2065,7 @@ export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChi
 export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdResponses
   = {
     204: {
-      [key: string]: unknown
+      [key: string]: never
     }
   }
 
@@ -2404,7 +2404,7 @@ export type DeleteDatasetsByDatasetIdMetadataByMetadataIdError
 
 export type DeleteDatasetsByDatasetIdMetadataByMetadataIdResponses = {
   204: {
-    [key: string]: unknown
+    [key: string]: never
   }
 }
 

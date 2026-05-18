@@ -1,4 +1,4 @@
-import type { ApiBasedExtension } from '@/models/common'
+import type { ApiBasedExtensionResponse } from '@dify/contracts/api/console/api-based-extension/types.gen'
 import { Button } from '@langgenius/dify-ui/button'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -8,7 +8,7 @@ import Item from './item'
 import ApiBasedExtensionModal from './modal'
 
 type ApiBasedExtensionDialogState = {
-  extension: ApiBasedExtension
+  extension: Partial<ApiBasedExtensionResponse>
   onSave: () => void
 } | null
 
@@ -23,7 +23,7 @@ const ApiBasedExtensionPage = () => {
       onSave: () => mutate(),
     })
   }
-  const handleEditApiBasedExtension = (extension: ApiBasedExtension) => {
+  const handleEditApiBasedExtension = (extension: ApiBasedExtensionResponse) => {
     setDialogState({
       extension,
       onSave: () => mutate(),
