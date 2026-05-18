@@ -5,6 +5,7 @@ import type { InstallState } from '@/app/components/plugins/types'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Dialog, DialogCloseButton, DialogContent } from '@langgenius/dify-ui/dialog'
+import { FieldControl, FieldLabel, FieldRoot } from '@langgenius/dify-ui/field'
 import { toast } from '@langgenius/dify-ui/toast'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
@@ -195,22 +196,19 @@ const InstallFromGitHub: React.FC<InstallFromGitHubProps> = ({ updatePayload, on
               <div className={`flex min-h-0 flex-1 flex-col items-start justify-center self-stretch overflow-y-auto px-6 py-3 ${state.step === InstallStepFromGitHub.installed ? 'gap-2' : 'gap-4'}`}>
                 {state.step === InstallStepFromGitHub.setUrl && (
                   <>
-                    <label
-                      htmlFor="repoUrl"
-                      className="flex flex-col items-start justify-center self-stretch text-text-secondary"
-                    >
-                      <span className="system-sm-semibold">{t('installFromGitHub.gitHubRepo', { ns: 'plugin' })}</span>
-                    </label>
-                    <input
-                      autoFocus
-                      type="url"
-                      id="repoUrl"
-                      name="repoUrl"
-                      value={state.repoUrl}
-                      onChange={e => setState(prevState => ({ ...prevState, repoUrl: e.target.value }))}
-                      className="flex grow items-center gap-0.5 self-stretch overflow-hidden rounded-lg border border-components-input-border-active bg-components-input-bg-active p-2 system-sm-regular text-ellipsis text-components-input-text-filled outline-hidden"
-                      placeholder="Please enter GitHub repo URL"
-                    />
+                    <FieldRoot name="repoUrl" className="gap-4 self-stretch">
+                      <FieldLabel className="flex w-full flex-col items-start justify-center p-0 text-text-secondary">
+                        <span className="system-sm-semibold">{t('installFromGitHub.gitHubRepo', { ns: 'plugin' })}</span>
+                      </FieldLabel>
+                      <FieldControl
+                        autoFocus
+                        type="url"
+                        value={state.repoUrl}
+                        onValueChange={value => setState(prevState => ({ ...prevState, repoUrl: value }))}
+                        className="flex grow items-center gap-0.5 self-stretch overflow-hidden rounded-lg border-components-input-border-active bg-components-input-bg-active p-2 text-ellipsis"
+                        placeholder="Please enter GitHub repo URL"
+                      />
+                    </FieldRoot>
                     <div className="mt-4 flex items-center justify-end gap-2 self-stretch">
                       <Button
                         variant="secondary"
