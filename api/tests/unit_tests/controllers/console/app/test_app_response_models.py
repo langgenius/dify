@@ -346,6 +346,7 @@ def test_app_detail_with_site_includes_nested_serialization(app_models):
         updated_at=timestamp,
         access_mode="public",
         tags=[SimpleNamespace(id="tag-2", name="Prod", type="app")],
+        permission_keys=["app.acl.view_layout", "app.acl.edit"],
         api_base_url="https://api.example.com/v1",
         max_active_requests=5,
         deleted_tools=[{"type": "api", "tool_name": "search", "provider_id": "prov"}],
@@ -359,6 +360,7 @@ def test_app_detail_with_site_includes_nested_serialization(app_models):
     assert serialized["deleted_tools"][0]["tool_name"] == "search"
     assert serialized["site"]["icon_url"] == "signed:site-icon"
     assert serialized["site"]["created_at"] == int(timestamp.timestamp())
+    assert serialized["permission_keys"] == ["app.acl.view_layout", "app.acl.edit"]
 
 
 def test_app_pagination_aliases_per_page_and_has_next(app_models):
@@ -449,3 +451,53 @@ def test_app_list_api_attaches_permission_keys(app, app_module):
     assert status == 200
     assert app_obj.permission_keys == ["app.acl.view_layout", "app.acl.edit"]
     assert resp["data"][0]["permission_keys"] == ["app.acl.view_layout", "app.acl.edit"]
+
+
+def test_app_detail_api_attaches_permission_keys_from_access_matrix(app, app_module):
+    method = app_module.AppApi.get
+    while hasattr(method, "__wrapped__"):
+        method = method.__wrapped__
+
+    app_obj = SimpleNamespace(
+        id="app-1",
+        name="Detail App",
+        description="Summary",
+        mode_compatible_with_agent="chat",
+        enable_site=True,
+        enable_api=True,
+        permission_keys=[],
+    )
+
+    with app.test_request_context("/apps/app-1"):
+        with pytest.MonkeyPatch.context() as monkeypatch:
+            monkeypatch.setattr(dify_config, "RBAC_ENABLED", True)
+            monkeypatch.setattr(
+                app_module,
+                "current_account_with_tenant",
+                lambda: (SimpleNamespace(id="acct-1"), "tenant-1"),
+            )
+            monkeypatch.setattr(app_module, "AppService", lambda: SimpleNamespace(get_app=lambda app_model: app_obj))
+            monkeypatch.setattr(
+                app_module.FeatureService,
+                "get_system_features",
+                lambda: SimpleNamespace(webapp_auth=SimpleNamespace(enabled=False)),
+            )
+            monkeypatch.setattr(
+                app_module.enterprise_rbac_service.RBACService.AppAccess,
+                "matrix",
+                lambda tenant_id, account_id, app_id: SimpleNamespace(
+                    items=[
+                        SimpleNamespace(
+                            policy=SimpleNamespace(permission_keys=["app.acl.view_layout", "app.acl.edit"])
+                        ),
+                        SimpleNamespace(
+                            policy=SimpleNamespace(permission_keys=["app.acl.edit", "app.log.access"])
+                        ),
+                    ]
+                ),
+            )
+
+            resp = method(app_module.AppApi(), app_model=app_obj)
+
+    assert app_obj.permission_keys == ["app.acl.view_layout", "app.acl.edit", "app.log.access"]
+    assert resp["permission_keys"] == ["app.acl.view_layout", "app.acl.edit", "app.log.access"]

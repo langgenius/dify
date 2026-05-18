@@ -383,6 +383,7 @@ class AppDetail(ResponseModel):
     updated_at: int | None = None
     access_mode: str | None = None
     tags: list[Tag] = Field(default_factory=list)
+    permission_keys: list[str] = Field(default_factory=list)
 
     @field_validator("created_at", "updated_at", mode="before")
     @classmethod
@@ -413,6 +414,22 @@ class AppPagination(ResponseModel):
 
 class AppExportResponse(ResponseModel):
     data: str
+
+
+def _collect_app_access_permission_keys(access_matrix: enterprise_rbac_service.AppAccessMatrix) -> list[str]:
+    permission_keys: list[str] = []
+    seen_permission_keys: set[str] = set()
+
+    for item in access_matrix.items:
+        if not item.policy:
+            continue
+        for permission_key in item.policy.permission_keys:
+            if permission_key in seen_permission_keys:
+                continue
+            seen_permission_keys.add(permission_key)
+            permission_keys.append(permission_key)
+
+    return permission_keys
 
 
 register_enum_models(console_ns, RetrievalMethod, WorkflowExecutionStatus, DatasetPermissionEnum)
@@ -591,6 +608,7 @@ class AppApi(Resource):
     @get_app_model(mode=None)
     def get(self, app_model):
         """Get app detail"""
+        current_user, current_tenant_id = current_account_with_tenant()
         app_service = AppService()
 
         app_model = app_service.get_app(app_model)
@@ -598,6 +616,16 @@ class AppApi(Resource):
         if FeatureService.get_system_features().webapp_auth.enabled:
             app_setting = EnterpriseService.WebAppAuth.get_app_access_mode_by_id(app_id=str(app_model.id))
             app_model.access_mode = app_setting.access_mode
+
+        if dify_config.RBAC_ENABLED:
+            app_access_matrix = enterprise_rbac_service.RBACService.AppAccess.matrix(
+                str(current_tenant_id),
+                current_user.id,
+                str(app_model.id),
+            )
+            app_model.permission_keys = _collect_app_access_permission_keys(app_access_matrix)
+        else:
+            app_model.permission_keys = []
 
         response_model = AppDetailWithSite.model_validate(app_model, from_attributes=True)
         return response_model.model_dump(mode="json")
