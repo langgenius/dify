@@ -307,7 +307,7 @@ describe('useDocToc', () => {
 
     it('should update activeSection when scrolling past a section', async () => {
       vi.useFakeTimers()
-      // innerHeight/2 = 384 in jsdom (default 768), so top <= 384 means "scrolled past"
+      // innerHeight/2 = 384 with the default test viewport height (768), so top <= 384 means "scrolled past"
       const { scrollContainer, cleanup } = setupScrollDOM([
         { id: 'intro', text: 'Intro', top: 100 },
         { id: 'details', text: 'Details', top: 600 },

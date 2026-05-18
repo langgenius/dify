@@ -1,8 +1,8 @@
 'use client'
 import type { FC } from 'react'
+import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
 import { useProviderContext } from '@/context/provider-context'
-import { cn } from '@/utils/classnames'
 import { Plan } from '../type'
 import UpgradeBtn from '../upgrade-btn'
 
@@ -48,8 +48,8 @@ const HeaderBillingBtn: FC<Props> = ({
     <div
       onClick={handleClick}
       className={cn(
+        'flex h-[22px] items-center rounded-md border border-divider-regular px-2 text-xs font-semibold uppercase',
         classNames,
-        'flex h-[22px] items-center rounded-md border px-2 text-xs font-semibold uppercase',
         isDisplayOnly ? 'cursor-default' : 'cursor-pointer',
       )}
     >

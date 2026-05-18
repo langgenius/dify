@@ -1,43 +1,25 @@
-import type { NotionPageTreeItem, NotionPageTreeMap } from '../index'
+import type { NotionPageTreeItem, NotionPageTreeMap } from '@/app/components/base/notion-page-selector/page-selector/types'
 import type { DataSourceNotionPage, DataSourceNotionPageMap } from '@/models/common'
 import { fireEvent, render, screen } from '@testing-library/react'
 import * as React from 'react'
+import { recursivePushInParentDescendants } from '@/app/components/base/notion-page-selector/page-selector/utils'
 import PageSelector from '../index'
-import { recursivePushInParentDescendants } from '../utils'
 
-// Mock react-window FixedSizeList - renders items directly for testing
-vi.mock('react-window', () => ({
-  FixedSizeList: ({ children: ItemComponent, itemCount, itemData, itemKey }: { children: React.ComponentType<{ index: number, style: React.CSSProperties, data: unknown }>, itemCount: number, itemData: unknown, itemKey?: (index: number, data: unknown) => string | number }) => (
-    <div data-testid="virtual-list">
-      {Array.from({ length: itemCount }).map((_, index) => (
-        <ItemComponent
-          key={itemKey?.(index, itemData) || index}
-          index={index}
-          style={{ top: index * 28, left: 0, right: 0, width: '100%', position: 'absolute' as const }}
-          data={itemData}
-        />
-      ))}
-    </div>
-  ),
-  areEqual: (prevProps: Record<string, unknown>, nextProps: Record<string, unknown>) => prevProps === nextProps,
-}))
+vi.mock('@tanstack/react-virtual')
 
 // Note: NotionIcon from @/app/components/base/ is NOT mocked - using real component per testing guidelines
 
-// Helper Functions for Base Components
-// Get checkbox element (uses data-testid pattern from base Checkbox component)
-const getCheckbox = () => document.querySelector('[data-testid^="checkbox-"]') as HTMLElement
-const getAllCheckboxes = () => document.querySelectorAll('[data-testid^="checkbox-"]')
+const getCheckbox = (name = 'Test Page') => screen.getByRole('checkbox', { name })
+const queryCheckbox = (name = 'Test Page') => screen.queryByRole('checkbox', { name })
+const getAllCheckboxes = () => screen.getAllByRole('checkbox')
 
 // Get radio element (uses size-4 rounded-full class pattern from base Radio component)
 const getRadio = () => document.querySelector('.size-4.rounded-full') as HTMLElement
 const getAllRadios = () => document.querySelectorAll('.size-4.rounded-full')
 
-// Check if checkbox is checked by looking for check icon
-const isCheckboxChecked = (checkbox: Element) => checkbox.querySelector('[data-testid^="check-icon-"]') !== null
+const isCheckboxChecked = (checkbox: Element) => checkbox.getAttribute('aria-checked') === 'true'
 
-// Check if checkbox is disabled by looking for disabled class
-const isCheckboxDisabled = (checkbox: Element) => checkbox.classList.contains('cursor-not-allowed')
+const isCheckboxDisabled = (checkbox: Element) => checkbox.hasAttribute('data-disabled') || checkbox.getAttribute('aria-disabled') === 'true'
 
 const createMockPage = (overrides?: Partial<DataSourceNotionPage>): DataSourceNotionPage => ({
   page_id: 'page-1',
@@ -70,7 +52,6 @@ const createDefaultProps = (overrides?: Partial<PageSelectorProps>): PageSelecto
     canPreview: true,
     onPreview: vi.fn(),
     isMultipleChoice: true,
-    currentCredentialId: 'cred-1',
     ...overrides,
   }
 }
@@ -99,7 +80,7 @@ describe('PageSelector', () => {
 
       render(<PageSelector {...props} />)
 
-      expect(screen.getByTestId('virtual-list')).toBeInTheDocument()
+      expect(screen.getByTestId('virtual-list'))!.toBeInTheDocument()
     })
 
     it('should render empty state when list is empty', () => {
@@ -110,11 +91,11 @@ describe('PageSelector', () => {
 
       render(<PageSelector {...props} />)
 
-      expect(screen.getByText('common.dataSource.notion.selector.noSearchResult')).toBeInTheDocument()
+      expect(screen.getByText('common.dataSource.notion.selector.noSearchResult'))!.toBeInTheDocument()
       expect(screen.queryByTestId('virtual-list')).not.toBeInTheDocument()
     })
 
-    it('should render items using FixedSizeList', () => {
+    it('should render items using VirtualList', () => {
       const pages = [
         createMockPage({ page_id: 'page-1', page_name: 'Page 1' }),
         createMockPage({ page_id: 'page-2', page_name: 'Page 2' }),
@@ -126,8 +107,8 @@ describe('PageSelector', () => {
 
       render(<PageSelector {...props} />)
 
-      expect(screen.getByText('Page 1')).toBeInTheDocument()
-      expect(screen.getByText('Page 2')).toBeInTheDocument()
+      expect(screen.getByText('Page 1'))!.toBeInTheDocument()
+      expect(screen.getByText('Page 2'))!.toBeInTheDocument()
     })
 
     it('should render checkboxes when isMultipleChoice is true', () => {
@@ -135,7 +116,7 @@ describe('PageSelector', () => {
 
       render(<PageSelector {...props} />)
 
-      expect(getCheckbox()).toBeInTheDocument()
+      expect(getCheckbox())!.toBeInTheDocument()
     })
 
     it('should render radio buttons when isMultipleChoice is false', () => {
@@ -143,7 +124,7 @@ describe('PageSelector', () => {
 
       render(<PageSelector {...props} />)
 
-      expect(getRadio()).toBeInTheDocument()
+      expect(getRadio())!.toBeInTheDocument()
     })
 
     it('should render preview button when canPreview is true', () => {
@@ -151,7 +132,7 @@ describe('PageSelector', () => {
 
       render(<PageSelector {...props} />)
 
-      expect(screen.getByText('common.dataSource.notion.selector.preview')).toBeInTheDocument()
+      expect(screen.getByText('common.dataSource.notion.selector.preview'))!.toBeInTheDocument()
     })
 
     it('should not render preview button when canPreview is false', () => {
@@ -169,7 +150,7 @@ describe('PageSelector', () => {
 
       // Assert - NotionIcon renders svg when page_icon is null
       const notionIcon = document.querySelector('.h-5.w-5')
-      expect(notionIcon).toBeInTheDocument()
+      expect(notionIcon)!.toBeInTheDocument()
     })
 
     it('should render page name', () => {
@@ -180,7 +161,7 @@ describe('PageSelector', () => {
 
       render(<PageSelector {...props} />)
 
-      expect(screen.getByText('My Custom Page')).toBeInTheDocument()
+      expect(screen.getByText('My Custom Page'))!.toBeInTheDocument()
     })
   })
 
@@ -197,7 +178,7 @@ describe('PageSelector', () => {
         render(<PageSelector {...props} />)
 
         const checkbox = getCheckbox()
-        expect(checkbox).toBeInTheDocument()
+        expect(checkbox)!.toBeInTheDocument()
         expect(isCheckboxChecked(checkbox)).toBe(true)
       })
 
@@ -212,7 +193,7 @@ describe('PageSelector', () => {
         render(<PageSelector {...props} />)
 
         const checkbox = getCheckbox()
-        expect(checkbox).toBeInTheDocument()
+        expect(checkbox)!.toBeInTheDocument()
         expect(isCheckboxChecked(checkbox)).toBe(false)
       })
 
@@ -222,7 +203,7 @@ describe('PageSelector', () => {
         render(<PageSelector {...props} />)
 
         const checkbox = getCheckbox()
-        expect(checkbox).toBeInTheDocument()
+        expect(checkbox)!.toBeInTheDocument()
         expect(isCheckboxChecked(checkbox)).toBe(false)
       })
 
@@ -241,9 +222,9 @@ describe('PageSelector', () => {
         render(<PageSelector {...props} />)
 
         const checkboxes = getAllCheckboxes()
-        expect(isCheckboxChecked(checkboxes[0])).toBe(true)
-        expect(isCheckboxChecked(checkboxes[1])).toBe(false)
-        expect(isCheckboxChecked(checkboxes[2])).toBe(true)
+        expect(isCheckboxChecked(checkboxes[0]!)).toBe(true)
+        expect(isCheckboxChecked(checkboxes[1]!)).toBe(false)
+        expect(isCheckboxChecked(checkboxes[2]!)).toBe(true)
       })
     })
 
@@ -259,7 +240,7 @@ describe('PageSelector', () => {
         render(<PageSelector {...props} />)
 
         const checkbox = getCheckbox()
-        expect(checkbox).toBeInTheDocument()
+        expect(checkbox)!.toBeInTheDocument()
         expect(isCheckboxDisabled(checkbox)).toBe(true)
       })
 
@@ -274,7 +255,7 @@ describe('PageSelector', () => {
         render(<PageSelector {...props} />)
 
         const checkbox = getCheckbox()
-        expect(checkbox).toBeInTheDocument()
+        expect(checkbox)!.toBeInTheDocument()
         expect(isCheckboxDisabled(checkbox)).toBe(false)
       })
 
@@ -292,8 +273,8 @@ describe('PageSelector', () => {
         render(<PageSelector {...props} />)
 
         const checkboxes = getAllCheckboxes()
-        expect(isCheckboxDisabled(checkboxes[0])).toBe(true)
-        expect(isCheckboxDisabled(checkboxes[1])).toBe(false)
+        expect(isCheckboxDisabled(checkboxes[0]!)).toBe(true)
+        expect(isCheckboxDisabled(checkboxes[1]!)).toBe(false)
       })
     })
 
@@ -317,6 +298,37 @@ describe('PageSelector', () => {
         expect(screen.getAllByText('Apple Page').length).toBeGreaterThan(0)
         expect(screen.getAllByText('Apple Pie').length).toBeGreaterThan(0)
         // Banana Page is filtered out because it doesn't contain "Apple"
+        // Banana Page is filtered out because it doesn't contain "Apple"
+        // Banana Page is filtered out because it doesn't contain "Apple"
+        // Banana Page is filtered out because it doesn't contain "Apple"
+        // Banana Page is filtered out because it doesn't contain "Apple"
+        // Banana Page is filtered out because it doesn't contain "Apple"
+        // Banana Page is filtered out because it doesn't contain "Apple"
+        // Banana Page is filtered out because it doesn't contain "Apple"
+        // Banana Page is filtered out because it doesn't contain "Apple"
+        // Banana Page is filtered out because it doesn't contain "Apple"
+        // Banana Page is filtered out because it doesn't contain "Apple"
+        // Banana Page is filtered out because it doesn't contain "Apple"
+        // Banana Page is filtered out because it doesn't contain "Apple"
+        // Banana Page is filtered out because it doesn't contain "Apple"
+        // Banana Page is filtered out because it doesn't contain "Apple"
+        // Banana Page is filtered out because it doesn't contain "Apple"
+        // Banana Page is filtered out because it doesn't contain "Apple"
+        // Banana Page is filtered out because it doesn't contain "Apple"
+        // Banana Page is filtered out because it doesn't contain "Apple"
+        // Banana Page is filtered out because it doesn't contain "Apple"
+        // Banana Page is filtered out because it doesn't contain "Apple"
+        // Banana Page is filtered out because it doesn't contain "Apple"
+        // Banana Page is filtered out because it doesn't contain "Apple"
+        // Banana Page is filtered out because it doesn't contain "Apple"
+        // Banana Page is filtered out because it doesn't contain "Apple"
+        // Banana Page is filtered out because it doesn't contain "Apple"
+        // Banana Page is filtered out because it doesn't contain "Apple"
+        // Banana Page is filtered out because it doesn't contain "Apple"
+        // Banana Page is filtered out because it doesn't contain "Apple"
+        // Banana Page is filtered out because it doesn't contain "Apple"
+        // Banana Page is filtered out because it doesn't contain "Apple"
+        // Banana Page is filtered out because it doesn't contain "Apple"
         expect(screen.queryByText('Banana Page')).not.toBeInTheDocument()
       })
 
@@ -330,7 +342,7 @@ describe('PageSelector', () => {
 
         render(<PageSelector {...props} />)
 
-        expect(screen.getByText('common.dataSource.notion.selector.noSearchResult')).toBeInTheDocument()
+        expect(screen.getByText('common.dataSource.notion.selector.noSearchResult'))!.toBeInTheDocument()
       })
 
       it('should show all pages when searchValue is empty', () => {
@@ -346,8 +358,8 @@ describe('PageSelector', () => {
 
         render(<PageSelector {...props} />)
 
-        expect(screen.getByText('Page 1')).toBeInTheDocument()
-        expect(screen.getByText('Page 2')).toBeInTheDocument()
+        expect(screen.getByText('Page 1'))!.toBeInTheDocument()
+        expect(screen.getByText('Page 2'))!.toBeInTheDocument()
       })
 
       it('should show breadcrumbs when searchValue is present', () => {
@@ -361,7 +373,8 @@ describe('PageSelector', () => {
         render(<PageSelector {...props} />)
 
         // Assert - page name should be visible
-        expect(screen.getByText('Grandchild 1')).toBeInTheDocument()
+        // Assert - page name should be visible
+        expect(screen.getByText('Grandchild 1'))!.toBeInTheDocument()
       })
 
       it('should perform case-sensitive search', () => {
@@ -390,7 +403,7 @@ describe('PageSelector', () => {
 
         render(<PageSelector {...props} />)
 
-        expect(screen.getByText('common.dataSource.notion.selector.preview')).toBeInTheDocument()
+        expect(screen.getByText('common.dataSource.notion.selector.preview'))!.toBeInTheDocument()
       })
 
       it('should hide preview button when canPreview is false', () => {
@@ -407,7 +420,7 @@ describe('PageSelector', () => {
 
         render(<PageSelector {...props} />)
 
-        expect(screen.getByText('common.dataSource.notion.selector.preview')).toBeInTheDocument()
+        expect(screen.getByText('common.dataSource.notion.selector.preview'))!.toBeInTheDocument()
       })
     })
 
@@ -417,7 +430,7 @@ describe('PageSelector', () => {
 
         render(<PageSelector {...props} />)
 
-        expect(getCheckbox()).toBeInTheDocument()
+        expect(getCheckbox())!.toBeInTheDocument()
         expect(getRadio()).not.toBeInTheDocument()
       })
 
@@ -426,8 +439,8 @@ describe('PageSelector', () => {
 
         render(<PageSelector {...props} />)
 
-        expect(getRadio()).toBeInTheDocument()
-        expect(getCheckbox()).not.toBeInTheDocument()
+        expect(getRadio())!.toBeInTheDocument()
+        expect(queryCheckbox()).not.toBeInTheDocument()
       })
 
       it('should use default value true when isMultipleChoice is not provided', () => {
@@ -436,7 +449,7 @@ describe('PageSelector', () => {
 
         render(<PageSelector {...props} />)
 
-        expect(getCheckbox()).toBeInTheDocument()
+        expect(getCheckbox())!.toBeInTheDocument()
       })
     })
 
@@ -465,7 +478,7 @@ describe('PageSelector', () => {
         render(<PageSelector {...props} />)
         fireEvent.click(getCheckbox())
 
-        const calledSet = mockOnSelect.mock.calls[0][0] as Set<string>
+        const calledSet = mockOnSelect.mock.calls[0]![0] as Set<string>
         expect(calledSet.has('page-1')).toBe(true)
       })
     })
@@ -514,13 +527,15 @@ describe('PageSelector', () => {
         const { rerender } = render(<PageSelector {...props} />)
 
         // Assert - Initial render
-        expect(screen.getByText('Page 1')).toBeInTheDocument()
+        // Assert - Initial render
+        expect(screen.getByText('Page 1'))!.toBeInTheDocument()
 
         // Rerender with new credential
         rerender(<PageSelector {...props} currentCredentialId="cred-2" />)
 
         // Assert - Should still show pages (reset and rebuild)
-        expect(screen.getByText('Page 1')).toBeInTheDocument()
+        // Assert - Should still show pages (reset and rebuild)
+        expect(screen.getByText('Page 1'))!.toBeInTheDocument()
       })
     })
   })
@@ -537,7 +552,39 @@ describe('PageSelector', () => {
       render(<PageSelector {...props} />)
 
       // Assert - Only root level page should be visible initially
-      expect(screen.getByText(rootPage.page_name)).toBeInTheDocument()
+      // Assert - Only root level page should be visible initially
+      expect(screen.getByText(rootPage.page_name))!.toBeInTheDocument()
+      // Child pages should not be visible until expanded
+      // Child pages should not be visible until expanded
+      // Child pages should not be visible until expanded
+      // Child pages should not be visible until expanded
+      // Child pages should not be visible until expanded
+      // Child pages should not be visible until expanded
+      // Child pages should not be visible until expanded
+      // Child pages should not be visible until expanded
+      // Child pages should not be visible until expanded
+      // Child pages should not be visible until expanded
+      // Child pages should not be visible until expanded
+      // Child pages should not be visible until expanded
+      // Child pages should not be visible until expanded
+      // Child pages should not be visible until expanded
+      // Child pages should not be visible until expanded
+      // Child pages should not be visible until expanded
+      // Child pages should not be visible until expanded
+      // Child pages should not be visible until expanded
+      // Child pages should not be visible until expanded
+      // Child pages should not be visible until expanded
+      // Child pages should not be visible until expanded
+      // Child pages should not be visible until expanded
+      // Child pages should not be visible until expanded
+      // Child pages should not be visible until expanded
+      // Child pages should not be visible until expanded
+      // Child pages should not be visible until expanded
+      // Child pages should not be visible until expanded
+      // Child pages should not be visible until expanded
+      // Child pages should not be visible until expanded
+      // Child pages should not be visible until expanded
+      // Child pages should not be visible until expanded
       // Child pages should not be visible until expanded
       expect(screen.queryByText(childPage1.page_name)).not.toBeInTheDocument()
     })
@@ -556,9 +603,9 @@ describe('PageSelector', () => {
       if (arrowButton)
         fireEvent.click(arrowButton)
 
-      expect(screen.getByText(rootPage.page_name)).toBeInTheDocument()
-      expect(screen.getByText(childPage1.page_name)).toBeInTheDocument()
-      expect(screen.getByText(childPage2.page_name)).toBeInTheDocument()
+      expect(screen.getByText(rootPage.page_name))!.toBeInTheDocument()
+      expect(screen.getByText(childPage1.page_name))!.toBeInTheDocument()
+      expect(screen.getByText(childPage2.page_name))!.toBeInTheDocument()
     })
 
     it('should maintain currentPreviewPageId state', () => {
@@ -576,7 +623,7 @@ describe('PageSelector', () => {
 
       render(<PageSelector {...props} />)
       const previewButtons = screen.getAllByText('common.dataSource.notion.selector.preview')
-      fireEvent.click(previewButtons[0])
+      fireEvent.click(previewButtons[0]!)
 
       expect(mockOnPreview).toHaveBeenCalledWith('page-1')
     })
@@ -612,13 +659,14 @@ describe('PageSelector', () => {
       })
 
       const { rerender } = render(<PageSelector {...props} />)
-      expect(screen.getByText('Page 1')).toBeInTheDocument()
+      expect(screen.getByText('Page 1'))!.toBeInTheDocument()
 
       // Change credential
       rerender(<PageSelector {...props} currentCredentialId="cred-2" />)
 
       // Assert - Component should still render correctly
-      expect(screen.getByText('Page 1')).toBeInTheDocument()
+      // Assert - Component should still render correctly
+      expect(screen.getByText('Page 1'))!.toBeInTheDocument()
     })
 
     it('should filter root pages correctly on initialization', () => {
@@ -631,7 +679,8 @@ describe('PageSelector', () => {
       render(<PageSelector {...props} />)
 
       // Assert - Only root level pages visible
-      expect(screen.getByText(rootPage.page_name)).toBeInTheDocument()
+      // Assert - Only root level pages visible
+      expect(screen.getByText(rootPage.page_name))!.toBeInTheDocument()
       expect(screen.queryByText(childPage1.page_name)).not.toBeInTheDocument()
     })
 
@@ -649,7 +698,8 @@ describe('PageSelector', () => {
       render(<PageSelector {...props} />)
 
       // Assert - Orphan page should be visible at root level
-      expect(screen.getByText('Orphan Page')).toBeInTheDocument()
+      // Assert - Orphan page should be visible at root level
+      expect(screen.getByText('Orphan Page'))!.toBeInTheDocument()
     })
   })
 
@@ -670,8 +720,9 @@ describe('PageSelector', () => {
         fireEvent.click(expandArrow)
 
       // Assert - Children should be visible
-      expect(screen.getByText(childPage1.page_name)).toBeInTheDocument()
-      expect(screen.getByText(childPage2.page_name)).toBeInTheDocument()
+      // Assert - Children should be visible
+      expect(screen.getByText(childPage1.page_name))!.toBeInTheDocument()
+      expect(screen.getByText(childPage2.page_name))!.toBeInTheDocument()
     })
 
     it('should have stable handleToggle that collapses descendants', () => {
@@ -692,6 +743,37 @@ describe('PageSelector', () => {
       }
 
       // Assert - Children should be hidden again
+      // Assert - Children should be hidden again
+      // Assert - Children should be hidden again
+      // Assert - Children should be hidden again
+      // Assert - Children should be hidden again
+      // Assert - Children should be hidden again
+      // Assert - Children should be hidden again
+      // Assert - Children should be hidden again
+      // Assert - Children should be hidden again
+      // Assert - Children should be hidden again
+      // Assert - Children should be hidden again
+      // Assert - Children should be hidden again
+      // Assert - Children should be hidden again
+      // Assert - Children should be hidden again
+      // Assert - Children should be hidden again
+      // Assert - Children should be hidden again
+      // Assert - Children should be hidden again
+      // Assert - Children should be hidden again
+      // Assert - Children should be hidden again
+      // Assert - Children should be hidden again
+      // Assert - Children should be hidden again
+      // Assert - Children should be hidden again
+      // Assert - Children should be hidden again
+      // Assert - Children should be hidden again
+      // Assert - Children should be hidden again
+      // Assert - Children should be hidden again
+      // Assert - Children should be hidden again
+      // Assert - Children should be hidden again
+      // Assert - Children should be hidden again
+      // Assert - Children should be hidden again
+      // Assert - Children should be hidden again
+      // Assert - Children should be hidden again
       expect(screen.queryByText(childPage1.page_name)).not.toBeInTheDocument()
       expect(screen.queryByText(childPage2.page_name)).not.toBeInTheDocument()
     })
@@ -710,11 +792,11 @@ describe('PageSelector', () => {
       render(<PageSelector {...props} />)
 
       // Check the root page
-      fireEvent.click(getCheckbox())
+      fireEvent.click(getCheckbox('Root Page'))
 
       // Assert - onSelect should be called with the page and its descendants
       expect(mockOnSelect).toHaveBeenCalled()
-      const selectedSet = mockOnSelect.mock.calls[0][0] as Set<string>
+      const selectedSet = mockOnSelect.mock.calls[0]![0] as Set<string>
       expect(selectedSet.has('root-page')).toBe(true)
     })
 
@@ -732,7 +814,7 @@ describe('PageSelector', () => {
       render(<PageSelector {...props} />)
 
       // Uncheck the root page
-      fireEvent.click(getCheckbox())
+      fireEvent.click(getCheckbox('Root Page'))
 
       // Assert - onSelect should be called with empty/reduced set
       expect(mockOnSelect).toHaveBeenCalled()
@@ -768,7 +850,7 @@ describe('PageSelector', () => {
 
       // Assert - Tree structure should be built (verified by expand functionality)
       const expandArrow = document.querySelector('[class*="hover:bg-components-button-ghost-bg-hover"]')
-      expect(expandArrow).toBeInTheDocument() // Root page has children
+      expect(expandArrow)!.toBeInTheDocument() // Root page has children
     })
 
     it('should recompute listMapWithChildrenAndDescendants when list changes', () => {
@@ -779,7 +861,7 @@ describe('PageSelector', () => {
       })
 
       const { rerender } = render(<PageSelector {...props} />)
-      expect(screen.getByText('Page 1')).toBeInTheDocument()
+      expect(screen.getByText('Page 1'))!.toBeInTheDocument()
 
       // Update with new list
       const newList = [
@@ -788,7 +870,7 @@ describe('PageSelector', () => {
       ]
       rerender(<PageSelector {...props} list={newList} pagesMap={createMockPagesMap(newList)} />)
 
-      expect(screen.getByText('Page 1')).toBeInTheDocument()
+      expect(screen.getByText('Page 1'))!.toBeInTheDocument()
       // Page 2 won't show because dataList state hasn't updated (only resets on credentialId change)
     })
 
@@ -809,7 +891,8 @@ describe('PageSelector', () => {
       rerender(<PageSelector {...props} pagesMap={newPagesMap} />)
 
       // Assert - Should not throw
-      expect(screen.getByText('Page 1')).toBeInTheDocument()
+      // Assert - Should not throw
+      expect(screen.getByText('Page 1'))!.toBeInTheDocument()
     })
 
     it('should handle empty list in memoization', () => {
@@ -820,7 +903,7 @@ describe('PageSelector', () => {
 
       render(<PageSelector {...props} />)
 
-      expect(screen.getByText('common.dataSource.notion.selector.noSearchResult')).toBeInTheDocument()
+      expect(screen.getByText('common.dataSource.notion.selector.noSearchResult'))!.toBeInTheDocument()
     })
   })
 
@@ -836,6 +919,37 @@ describe('PageSelector', () => {
       render(<PageSelector {...props} />)
 
       // Initially children are hidden
+      // Initially children are hidden
+      // Initially children are hidden
+      // Initially children are hidden
+      // Initially children are hidden
+      // Initially children are hidden
+      // Initially children are hidden
+      // Initially children are hidden
+      // Initially children are hidden
+      // Initially children are hidden
+      // Initially children are hidden
+      // Initially children are hidden
+      // Initially children are hidden
+      // Initially children are hidden
+      // Initially children are hidden
+      // Initially children are hidden
+      // Initially children are hidden
+      // Initially children are hidden
+      // Initially children are hidden
+      // Initially children are hidden
+      // Initially children are hidden
+      // Initially children are hidden
+      // Initially children are hidden
+      // Initially children are hidden
+      // Initially children are hidden
+      // Initially children are hidden
+      // Initially children are hidden
+      // Initially children are hidden
+      // Initially children are hidden
+      // Initially children are hidden
+      // Initially children are hidden
+      // Initially children are hidden
       expect(screen.queryByText(childPage1.page_name)).not.toBeInTheDocument()
 
       const expandArrow = document.querySelector('[class*="hover:bg-components-button-ghost-bg-hover"]')
@@ -843,7 +957,8 @@ describe('PageSelector', () => {
         fireEvent.click(expandArrow)
 
       // Children become visible
-      expect(screen.getByText(childPage1.page_name)).toBeInTheDocument()
+      // Children become visible
+      expect(screen.getByText(childPage1.page_name))!.toBeInTheDocument()
     })
 
     it('should check/uncheck page when clicking checkbox', () => {
@@ -889,11 +1004,11 @@ describe('PageSelector', () => {
 
       render(<PageSelector {...props} />)
       const radios = getAllRadios()
-      fireEvent.click(radios[1]) // Click on page-2
+      fireEvent.click(radios[1]!) // Click on page-2
 
       // Assert - Should clear page-1 and select page-2
       expect(mockOnSelect).toHaveBeenCalled()
-      const selectedSet = mockOnSelect.mock.calls[0][0] as Set<string>
+      const selectedSet = mockOnSelect.mock.calls[0]![0] as Set<string>
       expect(selectedSet.has('page-2')).toBe(true)
       expect(selectedSet.has('page-1')).toBe(false)
     })
@@ -924,11 +1039,11 @@ describe('PageSelector', () => {
       })
 
       render(<PageSelector {...props} />)
-      fireEvent.click(getCheckbox())
+      fireEvent.click(getCheckbox('Root Page'))
 
       // Assert - Only the clicked page should be selected (no descendants)
       expect(mockOnSelect).toHaveBeenCalled()
-      const selectedSet = mockOnSelect.mock.calls[0][0] as Set<string>
+      const selectedSet = mockOnSelect.mock.calls[0]![0] as Set<string>
       expect(selectedSet.size).toBe(1)
       expect(selectedSet.has('root-page')).toBe(true)
     })
@@ -943,7 +1058,7 @@ describe('PageSelector', () => {
 
       render(<PageSelector {...props} />)
 
-      expect(screen.getByText('common.dataSource.notion.selector.noSearchResult')).toBeInTheDocument()
+      expect(screen.getByText('common.dataSource.notion.selector.noSearchResult'))!.toBeInTheDocument()
     })
 
     it('should handle null page_icon', () => {
@@ -957,7 +1072,7 @@ describe('PageSelector', () => {
 
       // Assert - NotionIcon renders svg (RiFileTextLine) when page_icon is null
       const notionIcon = document.querySelector('.h-5.w-5')
-      expect(notionIcon).toBeInTheDocument()
+      expect(notionIcon)!.toBeInTheDocument()
     })
 
     it('should handle page_icon with all properties', () => {
@@ -972,7 +1087,8 @@ describe('PageSelector', () => {
       render(<PageSelector {...props} />)
 
       // Assert - NotionIcon renders the emoji
-      expect(screen.getByText('📄')).toBeInTheDocument()
+      // Assert - NotionIcon renders the emoji
+      expect(screen.getByText('📄'))!.toBeInTheDocument()
     })
 
     it('should handle empty searchValue correctly', () => {
@@ -980,7 +1096,7 @@ describe('PageSelector', () => {
 
       render(<PageSelector {...props} />)
 
-      expect(screen.getByTestId('virtual-list')).toBeInTheDocument()
+      expect(screen.getByTestId('virtual-list'))!.toBeInTheDocument()
     })
 
     it('should handle special characters in page name', () => {
@@ -992,7 +1108,7 @@ describe('PageSelector', () => {
 
       render(<PageSelector {...props} />)
 
-      expect(screen.getByText('Test <script>alert("xss")</script>')).toBeInTheDocument()
+      expect(screen.getByText('Test <script>alert("xss")</script>'))!.toBeInTheDocument()
     })
 
     it('should handle unicode characters in page name', () => {
@@ -1004,7 +1120,7 @@ describe('PageSelector', () => {
 
       render(<PageSelector {...props} />)
 
-      expect(screen.getByText('测试页面 🔍 привет')).toBeInTheDocument()
+      expect(screen.getByText('测试页面 🔍 привет'))!.toBeInTheDocument()
     })
 
     it('should handle very long page names', () => {
@@ -1017,7 +1133,7 @@ describe('PageSelector', () => {
 
       render(<PageSelector {...props} />)
 
-      expect(screen.getByText(longName)).toBeInTheDocument()
+      expect(screen.getByText(longName))!.toBeInTheDocument()
     })
 
     it('should handle deeply nested hierarchy', () => {
@@ -1043,7 +1159,8 @@ describe('PageSelector', () => {
       render(<PageSelector {...props} />)
 
       // Assert - Only root level visible
-      expect(screen.getByText('Level 0')).toBeInTheDocument()
+      // Assert - Only root level visible
+      expect(screen.getByText('Level 0'))!.toBeInTheDocument()
       expect(screen.queryByText('Level 1')).not.toBeInTheDocument()
     })
 
@@ -1064,7 +1181,8 @@ describe('PageSelector', () => {
       render(<PageSelector {...props} />)
 
       // Assert - Should render the orphan page at root level
-      expect(screen.getByText('Orphan Page')).toBeInTheDocument()
+      // Assert - Should render the orphan page at root level
+      expect(screen.getByText('Orphan Page'))!.toBeInTheDocument()
     })
 
     it('should handle empty checkedIds Set', () => {
@@ -1073,7 +1191,7 @@ describe('PageSelector', () => {
       render(<PageSelector {...props} />)
 
       const checkbox = getCheckbox()
-      expect(checkbox).toBeInTheDocument()
+      expect(checkbox)!.toBeInTheDocument()
       expect(isCheckboxChecked(checkbox)).toBe(false)
     })
 
@@ -1083,7 +1201,7 @@ describe('PageSelector', () => {
       render(<PageSelector {...props} />)
 
       const checkbox = getCheckbox()
-      expect(checkbox).toBeInTheDocument()
+      expect(checkbox)!.toBeInTheDocument()
       expect(isCheckboxDisabled(checkbox)).toBe(false)
     })
 
@@ -1128,16 +1246,16 @@ describe('PageSelector', () => {
 
       render(<PageSelector {...props} />)
 
-      expect(screen.getByTestId('virtual-list')).toBeInTheDocument()
+      expect(screen.getByTestId('virtual-list'))!.toBeInTheDocument()
       if (propVariation.canPreview)
-        expect(screen.getByText('common.dataSource.notion.selector.preview')).toBeInTheDocument()
+        expect(screen.getByText('common.dataSource.notion.selector.preview'))!.toBeInTheDocument()
       else
         expect(screen.queryByText('common.dataSource.notion.selector.preview')).not.toBeInTheDocument()
 
       if (propVariation.isMultipleChoice)
-        expect(getCheckbox()).toBeInTheDocument()
+        expect(getCheckbox())!.toBeInTheDocument()
       else
-        expect(getRadio()).toBeInTheDocument()
+        expect(getRadio())!.toBeInTheDocument()
     })
 
     it('should handle all default prop values', () => {
@@ -1156,8 +1274,9 @@ describe('PageSelector', () => {
       render(<PageSelector {...minimalProps} />)
 
       // Assert - Defaults should be applied
-      expect(getCheckbox()).toBeInTheDocument()
-      expect(screen.getByText('common.dataSource.notion.selector.preview')).toBeInTheDocument()
+      // Assert - Defaults should be applied
+      expect(getCheckbox())!.toBeInTheDocument()
+      expect(screen.getByText('common.dataSource.notion.selector.preview'))!.toBeInTheDocument()
     })
   })
 
@@ -1182,8 +1301,8 @@ describe('PageSelector', () => {
       recursivePushInParentDescendants(pagesMap, listTreeMap, childEntry, childEntry)
 
       expect(listTreeMap.parent).toBeDefined()
-      expect(listTreeMap.parent.children.has('child')).toBe(true)
-      expect(listTreeMap.parent.descendants.has('child')).toBe(true)
+      expect(listTreeMap.parent!.children.has('child')).toBe(true)
+      expect(listTreeMap.parent!.descendants.has('child')).toBe(true)
       expect(childEntry.depth).toBe(1)
       expect(childEntry.ancestors).toContain('Parent')
     })
@@ -1290,8 +1409,8 @@ describe('PageSelector', () => {
 
       expect(l2Entry.depth).toBe(2)
       expect(l2Entry.ancestors).toEqual(['Level 0', 'Level 1'])
-      expect(listTreeMap.l1.children.has('l2')).toBe(true)
-      expect(listTreeMap.l0.descendants.has('l2')).toBe(true)
+      expect(listTreeMap.l1!.children.has('l2')).toBe(true)
+      expect(listTreeMap.l0!.descendants.has('l2')).toBe(true)
     })
 
     it('should update existing parent entry', () => {
@@ -1345,7 +1464,7 @@ describe('PageSelector', () => {
 
       // Assert - Item should have preview styling class
       const itemContainer = screen.getByText('Test Page').closest('[class*="group"]')
-      expect(itemContainer).toHaveClass('bg-state-base-hover')
+      expect(itemContainer)!.toHaveClass('bg-state-base-hover')
     })
 
     it('should show arrow for pages with children', () => {
@@ -1359,7 +1478,7 @@ describe('PageSelector', () => {
 
       // Assert - Root page should have expand arrow
       const arrowContainer = document.querySelector('[class*="hover:bg-components-button-ghost-bg-hover"]')
-      expect(arrowContainer).toBeInTheDocument()
+      expect(arrowContainer)!.toBeInTheDocument()
     })
 
     it('should not show arrow for leaf pages', () => {

@@ -3,17 +3,18 @@ import type { FC } from 'react'
 import type { Tool as ToolType } from '../../../tools/types'
 import type { ToolWithProvider } from '../../types'
 import type { ToolDefaultValue, ToolValue } from '../types'
+import type { ToolActionPreviewCardHandle } from './action-item'
+import { cn } from '@langgenius/dify-ui/cn'
 import { RiArrowDownSLine, RiArrowRightSLine } from '@remixicon/react'
 import { useHover } from 'ahooks'
 import * as React from 'react'
-import { useCallback, useEffect, useMemo, useRef } from 'react'
+import { useCallback, useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Mcp } from '@/app/components/base/icons/src/vender/other'
 import { useMCPToolAvailability } from '@/app/components/workflow/nodes/_base/components/mcp-tool-availability'
 import { useGetLanguage } from '@/context/i18n'
 import useTheme from '@/hooks/use-theme'
 import { Theme } from '@/types/app'
-import { cn } from '@/utils/classnames'
 import { basePath } from '@/utils/var'
 import { CollectionType } from '../../../tools/types'
 import BlockIcon from '../../block-icon'
@@ -24,7 +25,7 @@ import ActionItem from './action-item'
 
 const normalizeProviderIcon = (icon?: ToolWithProvider['icon']) => {
   if (!icon)
-    return icon
+    return icon!
   if (typeof icon === 'string' && basePath && icon.startsWith('/') && !icon.startsWith(`${basePath}/`))
     return `${basePath}${icon}`
   return icon
@@ -33,6 +34,7 @@ const normalizeProviderIcon = (icon?: ToolWithProvider['icon']) => {
 type Props = {
   className?: string
   payload: ToolWithProvider
+  previewCardHandle: ToolActionPreviewCardHandle
   viewType: ViewType
   hasSearchText: boolean
   onSelect: (type: BlockEnum, tool: ToolDefaultValue) => void
@@ -45,6 +47,7 @@ type Props = {
 const Tool: FC<Props> = ({
   className,
   payload,
+  previewCardHandle,
   viewType,
   hasSearchText,
   onSelect,
@@ -59,7 +62,8 @@ const Tool: FC<Props> = ({
   const notShowProvider = payload.type === CollectionType.workflow
   const actions = payload.tools
   const hasAction = !notShowProvider
-  const [isFold, setFold] = React.useState<boolean>(true)
+  const [isFold, setIsFold] = React.useState<boolean>(true)
+  const [isFoldHasSearchText, setIsFoldHasSearchText] = React.useState(hasSearchText)
   const ref = useRef(null)
   const isHovering = useHover(ref)
   const isMCPTool = payload.type === CollectionType.mcp
@@ -70,7 +74,7 @@ const Tool: FC<Props> = ({
   }, [payload.icon])
   const normalizedIconDark = useMemo(() => {
     if (!payload.icon_dark)
-      return undefined
+      return undefined!
     return normalizeProviderIcon(payload.icon_dark) ?? payload.icon_dark
   }, [payload.icon_dark])
   const providerIcon = useMemo<ToolWithProvider['icon']>(() => {
@@ -114,14 +118,14 @@ const Tool: FC<Props> = ({
                 provider_id: payload.id,
                 provider_type: payload.type,
                 provider_name: payload.name,
-                plugin_id: payload.plugin_id,
-                plugin_unique_identifier: payload.plugin_unique_identifier,
+                plugin_id: payload.plugin_id!,
+                plugin_unique_identifier: payload.plugin_unique_identifier!,
                 provider_icon: normalizedIcon,
                 provider_icon_dark: normalizedIconDark,
                 tool_name: tool.name,
-                tool_label: tool.label[language],
+                tool_label: tool.label[language]!,
                 tool_description: tool.description[language],
-                title: tool.label[language],
+                title: tool.label[language]!,
                 is_team_authorization: payload.is_team_authorization,
                 paramSchemas: tool.parameters,
                 params,
@@ -146,14 +150,10 @@ const Tool: FC<Props> = ({
     )
   }, [actions, getIsDisabled, isAllSelected, isHovering, language, onSelectMultiple, payload.id, payload.is_team_authorization, payload.name, payload.type, selectedToolsNum, t, totalToolsNum])
 
-  useEffect(() => {
-    if (hasSearchText && isFold) {
-      setFold(false)
-      return
-    }
-    if (!hasSearchText && !isFold)
-      setFold(true)
-  }, [hasSearchText])
+  if (isFoldHasSearchText !== hasSearchText) {
+    setIsFoldHasSearchText(hasSearchText)
+    setIsFold(!hasSearchText)
+  }
 
   const FoldIcon = isFold ? RiArrowRightSLine : RiArrowDownSLine
 
@@ -178,17 +178,17 @@ const Tool: FC<Props> = ({
     >
       <div className={cn(className)}>
         <div
-          className="group/item flex w-full cursor-pointer select-none items-center justify-between rounded-lg pl-3 pr-1 hover:bg-state-base-hover"
+          className="group/item flex w-full cursor-pointer items-center justify-between rounded-lg pr-1 pl-3 select-none hover:bg-state-base-hover"
           onClick={() => {
             if (hasAction) {
-              setFold(!isFold)
+              setIsFold(!isFold)
               return
             }
 
             const tool = actions[0]
             const params: Record<string, string> = {}
-            if (tool.parameters) {
-              tool.parameters.forEach((item) => {
+            if (tool!.parameters) {
+              tool!.parameters.forEach((item) => {
                 params[item.name] = ''
               })
             }
@@ -200,12 +200,12 @@ const Tool: FC<Props> = ({
               plugin_unique_identifier: payload.plugin_unique_identifier,
               provider_icon: normalizedIcon,
               provider_icon_dark: normalizedIconDark,
-              tool_name: tool.name,
-              tool_label: tool.label[language],
-              tool_description: tool.description[language],
-              title: tool.label[language],
+              tool_name: tool!.name,
+              tool_label: tool!.label[language]!,
+              tool_description: tool!.description[language],
+              title: tool!.label[language]!,
               is_team_authorization: payload.is_team_authorization,
-              paramSchemas: tool.parameters,
+              paramSchemas: tool!.parameters,
               params,
             })
           }}
@@ -219,7 +219,7 @@ const Tool: FC<Props> = ({
             <div className="ml-2 flex w-0 grow items-center text-sm text-text-primary">
               <span className="max-w-[250px] truncate">{notShowProvider ? actions[0]?.label[language] : payload.label[language]}</span>
               {isFlatView && groupName && (
-                <span className="system-xs-regular ml-2 shrink-0 text-text-quaternary">{groupName}</span>
+                <span className="ml-2 shrink-0 system-xs-regular text-text-quaternary">{groupName}</span>
               )}
               {isMCPTool && <Mcp className="ml-2 size-3.5 shrink-0 text-text-quaternary" />}
             </div>
@@ -240,6 +240,7 @@ const Tool: FC<Props> = ({
               key={action.name}
               provider={payload}
               payload={action}
+              previewCardHandle={previewCardHandle}
               onSelect={onSelect}
               disabled={getIsDisabled(action) || isShowCanNotChooseMCPTip}
               isAdded={getIsDisabled(action)}

@@ -33,8 +33,6 @@ from services.account_service import AccountService, RegisterService, TenantServ
 from services.errors.account import AccountAlreadyInTenantError
 from services.feature_service import FeatureService
 
-DEFAULT_REF_TEMPLATE_SWAGGER_2_0 = "#/definitions/{model}"
-
 
 class MemberInvitePayload(BaseModel):
     emails: list[str] = Field(default_factory=list)
@@ -59,17 +57,23 @@ class OwnerTransferPayload(BaseModel):
     token: str
 
 
-def reg(cls: type[BaseModel]):
-    console_ns.schema_model(cls.__name__, cls.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0))
-
-
-reg(MemberInvitePayload)
-reg(MemberRoleUpdatePayload)
-reg(OwnerTransferEmailPayload)
-reg(OwnerTransferCheckPayload)
-reg(OwnerTransferPayload)
 register_enum_models(console_ns, TenantAccountRole)
-register_schema_models(console_ns, AccountWithRole, AccountWithRoleList)
+register_schema_models(
+    console_ns,
+    AccountWithRole,
+    AccountWithRoleList,
+    MemberInvitePayload,
+    MemberRoleUpdatePayload,
+    OwnerTransferEmailPayload,
+    OwnerTransferCheckPayload,
+    OwnerTransferPayload,
+)
+
+
+def _is_role_enabled(role: TenantAccountRole | str, tenant_id: str) -> bool:
+    if role != TenantAccountRole.DATASET_OPERATOR:
+        return True
+    return FeatureService.get_features(tenant_id=tenant_id).dataset_operator_enabled
 
 
 @console_ns.route("/workspaces/current/members")
@@ -112,6 +116,8 @@ class MemberInviteEmailApi(Resource):
         inviter = current_user
         if not inviter.current_tenant:
             raise ValueError("No current tenant")
+        if not _is_role_enabled(invitee_role, inviter.current_tenant.id):
+            return {"code": "invalid-role", "message": "Invalid role"}, 400
 
         # Check workspace permission for member invitations
         from libs.workspace_permission import check_workspace_member_invite_permission
@@ -171,7 +177,7 @@ class MemberCancelInviteApi(Resource):
         current_user, _ = current_account_with_tenant()
         if not current_user.current_tenant:
             raise ValueError("No current tenant")
-        member = db.session.query(Account).where(Account.id == str(member_id)).first()
+        member = db.session.get(Account, str(member_id))
         if member is None:
             abort(404)
         else:
@@ -210,6 +216,8 @@ class MemberUpdateRoleApi(Resource):
         current_user, _ = current_account_with_tenant()
         if not current_user.current_tenant:
             raise ValueError("No current tenant")
+        if not _is_role_enabled(new_role, current_user.current_tenant.id):
+            return {"code": "invalid-role", "message": "Invalid role"}, 400
         member = db.session.get(Account, str(member_id))
         if not member:
             abort(404)
@@ -217,10 +225,16 @@ class MemberUpdateRoleApi(Resource):
         try:
             assert member is not None, "Member not found"
             TenantService.update_member_role(current_user.current_tenant, member, new_role, current_user)
+        except services.errors.account.CannotOperateSelfError as e:
+            return {"code": "cannot-operate-self", "message": str(e)}, 400
+        except services.errors.account.NoPermissionError as e:
+            return {"code": "forbidden", "message": str(e)}, 403
+        except services.errors.account.MemberNotInTenantError as e:
+            return {"code": "member-not-found", "message": str(e)}, 404
+        except services.errors.account.RoleAlreadyAssignedError as e:
+            return {"code": "role-already-assigned", "message": str(e)}, 400
         except Exception as e:
             raise ValueError(str(e))
-
-        # todo: 403
 
         return {"result": "success"}
 

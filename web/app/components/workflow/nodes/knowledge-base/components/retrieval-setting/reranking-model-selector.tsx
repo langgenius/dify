@@ -22,12 +22,12 @@ const RerankingModelSelector = ({
     modelList: rerankModelList,
   } = useModelListAndDefaultModel(ModelTypeEnum.rerank)
   const rerankModel = useMemo(() => {
-    if (!rerankingModel)
+    if (!rerankingModel?.reranking_provider_name || !rerankingModel?.reranking_model_name)
       return undefined
 
     return {
-      providerName: rerankingModel.reranking_provider_name,
-      modelName: rerankingModel.reranking_model_name,
+      provider: rerankingModel.reranking_provider_name,
+      model: rerankingModel.reranking_model_name,
     }
   }, [rerankingModel])
 
@@ -40,7 +40,7 @@ const RerankingModelSelector = ({
 
   return (
     <ModelSelector
-      defaultModel={rerankModel && { provider: rerankModel.providerName, model: rerankModel.modelName }}
+      defaultModel={rerankModel}
       modelList={rerankModelList}
       onSelect={handleRerankingModelChange}
       readonly={readonly}

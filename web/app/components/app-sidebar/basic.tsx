@@ -4,10 +4,10 @@ import {
   ApiAggregate,
   WindowCursor,
 } from '@/app/components/base/icons/src/vender/workflow'
-import Tooltip from '@/app/components/base/tooltip'
+import { Infotip } from '@/app/components/base/infotip'
 import AppIcon from '../base/app-icon'
 
-export type IAppBasicProps = {
+type IAppBasicProps = {
   iconType?: 'app' | 'api' | 'dataset' | 'webapp' | 'notion'
   icon?: string
   icon_background?: string | null
@@ -43,19 +43,19 @@ const NotionSvg = (
 )
 
 const ICON_MAP = {
-  app: <AppIcon className="border !border-[rgba(0,0,0,0.05)]" />,
+  app: <AppIcon className="border border-[rgba(0,0,0,0.05)]!" />,
   api: (
     <div className="rounded-lg border-[0.5px] border-divider-subtle bg-util-colors-blue-brand-blue-brand-500 p-1 shadow-md">
       <ApiAggregate className="h-4 w-4 text-text-primary-on-surface" />
     </div>
   ),
-  dataset: <AppIcon innerIcon={DatasetSvg} className="!border-[0.5px] !border-indigo-100 !bg-indigo-25" />,
+  dataset: <AppIcon innerIcon={DatasetSvg} className="border-[0.5px]! border-indigo-100! bg-indigo-25!" />,
   webapp: (
     <div className="rounded-lg border-[0.5px] border-divider-subtle bg-util-colors-blue-brand-blue-brand-500 p-1 shadow-md">
       <WindowCursor className="h-4 w-4 text-text-primary-on-surface" />
     </div>
   ),
-  notion: <AppIcon innerIcon={NotionSvg} className="!border-[0.5px] !border-indigo-100 !bg-white" />,
+  notion: <AppIcon innerIcon={NotionSvg} className="border-[0.5px]! border-indigo-100! bg-white!" />,
 }
 
 export default function AppBasic({ icon, icon_background, name, isExternal, type, hoverTip, textStyle, isExtraInLine, mode = 'expand', iconType = 'app', hideType }: IAppBasicProps) {
@@ -76,29 +76,22 @@ export default function AppBasic({ icon, icon_background, name, isExternal, type
         )}
       {mode === 'expand' && (
         <div className="group w-full">
-          <div className={`flex flex-row items-center text-text-secondary system-md-semibold group-hover:text-text-primary ${textStyle?.main ?? ''}`}>
-            <div className="min-w-0 overflow-hidden text-ellipsis break-normal">
+          <div className={`flex flex-row items-center system-md-semibold text-text-secondary group-hover:text-text-primary ${textStyle?.main ?? ''}`}>
+            <div className="min-w-0 overflow-hidden break-normal text-ellipsis">
               {name}
             </div>
             {hoverTip
               && (
-                <Tooltip
-                  popupContent={(
-                    <div className="w-[240px]">
-                      {hoverTip}
-                    </div>
-                  )}
-                  popupClassName="ml-1"
-                  triggerClassName="w-4 h-4 ml-1"
-                  position="top"
-                />
+                <Infotip aria-label={hoverTip} className="ml-1" popupClassName="w-[240px]">
+                  {hoverTip}
+                </Infotip>
               )}
           </div>
           {!hideType && isExtraInLine && (
-            <div className="flex text-text-tertiary system-2xs-medium-uppercase">{type}</div>
+            <div className="flex system-2xs-medium-uppercase text-text-tertiary">{type}</div>
           )}
           {!hideType && !isExtraInLine && (
-            <div className="text-text-tertiary system-2xs-medium-uppercase">{isExternal ? t('externalTag', { ns: 'dataset' }) : type}</div>
+            <div className="system-2xs-medium-uppercase text-text-tertiary">{isExternal ? t('externalTag', { ns: 'dataset' }) : type}</div>
           )}
         </div>
       )}

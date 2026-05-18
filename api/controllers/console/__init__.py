@@ -33,7 +33,6 @@ for module_name in RESOURCE_MODULES:
 # Ensure resource modules are imported so route decorators are evaluated.
 # Import other controllers
 from . import (
-    admin,
     apikey,
     extension,
     feature,
@@ -65,6 +64,7 @@ from .app import (
     statistic,
     workflow,
     workflow_app_log,
+    workflow_comment,
     workflow_draft_variable,
     workflow_run,
     workflow_statistic,
@@ -116,6 +116,7 @@ from .explore import (
     saved_message,
     trial,
 )
+from .socketio import workflow as socketio_workflow
 
 # Import tag controllers
 from .tag import tags
@@ -140,7 +141,6 @@ api.add_namespace(console_ns)
 __all__ = [
     "account",
     "activate",
-    "admin",
     "advanced_prompt_template",
     "agent",
     "agent_providers",
@@ -201,6 +201,7 @@ __all__ = [
     "saved_message",
     "setup",
     "site",
+    "socketio_workflow",
     "spec",
     "statistic",
     "tags",
@@ -211,6 +212,7 @@ __all__ = [
     "website",
     "workflow",
     "workflow_app_log",
+    "workflow_comment",
     "workflow_draft_variable",
     "workflow_run",
     "workflow_statistic",

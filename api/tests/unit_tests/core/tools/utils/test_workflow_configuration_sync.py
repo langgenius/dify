@@ -3,7 +3,7 @@ import pytest
 from core.tools.entities.tool_entities import ToolParameter, WorkflowToolParameterConfiguration
 from core.tools.errors import WorkflowToolHumanInputNotSupportedError
 from core.tools.utils.workflow_configuration_sync import WorkflowToolConfigurationUtils
-from dify_graph.variables.input_entities import VariableEntity, VariableEntityType
+from graphon.variables.input_entities import VariableEntity, VariableEntityType
 
 
 def test_ensure_no_human_input_nodes_passes_for_non_human_input():

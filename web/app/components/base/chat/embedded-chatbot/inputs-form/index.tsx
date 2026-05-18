@@ -1,10 +1,10 @@
+import { Button } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
 import InputsFormContent from '@/app/components/base/chat/embedded-chatbot/inputs-form/content'
 import Divider from '@/app/components/base/divider'
 import { AppSourceType } from '@/service/share'
-import { cn } from '@/utils/classnames'
 import { useEmbeddedChatbotContext } from '../context'
 
 type Props = {
@@ -49,25 +49,23 @@ const InputsFormNode = ({
         )}
         >
           <div className="i-custom-public-other-message-3-fill h-6 w-6 shrink-0" />
-          <div className="grow text-text-secondary system-xl-semibold">{t('chat.chatSettingsTitle', { ns: 'share' })}</div>
+          <div className="grow system-xl-semibold text-text-secondary">{t('chat.chatSettingsTitle', { ns: 'share' })}</div>
           {collapsed && (
             <Button
-              className="uppercase text-text-tertiary"
+              className="text-text-tertiary uppercase"
               size="small"
               variant="ghost"
               onClick={() => setCollapsed(false)}
-              data-testid="inputs-form-edit-button"
             >
               {t('operation.edit', { ns: 'common' })}
             </Button>
           )}
           {!collapsed && currentConversationId && (
             <Button
-              className="uppercase text-text-tertiary"
+              className="text-text-tertiary uppercase"
               size="small"
               variant="ghost"
               onClick={() => setCollapsed(true)}
-              data-testid="inputs-form-close-button"
             >
               {t('operation.close', { ns: 'common' })}
             </Button>
@@ -84,7 +82,6 @@ const InputsFormNode = ({
               variant="primary"
               className="w-full"
               onClick={() => handleStartChat(() => setCollapsed(true))}
-              data-testid="inputs-form-start-chat-button"
               style={
                 themeBuilder?.theme
                   ? {

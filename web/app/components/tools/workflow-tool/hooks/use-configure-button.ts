@@ -1,10 +1,9 @@
 import type { Emoji, WorkflowToolProviderOutputParameter, WorkflowToolProviderParameter, WorkflowToolProviderRequest, WorkflowToolProviderResponse } from '@/app/components/tools/types'
 import type { InputVar, Variable } from '@/app/components/workflow/types'
 import type { PublishWorkflowParams } from '@/types/workflow'
-import { useRouter } from 'next/navigation'
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { toast } from '@langgenius/dify-ui/toast'
+import { useEffect, useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
-import Toast from '@/app/components/base/toast'
 import { useAppContext } from '@/context/app-context'
 import { createWorkflowToolProvider, saveWorkflowToolProvider } from '@/service/tools'
 import { useInvalidateAllWorkflowTools, useInvalidateWorkflowToolDetailByAppID, useWorkflowToolDetailByAppID } from '@/service/use-tools'
@@ -89,6 +88,7 @@ function buildExistingOutputParameters(
 // endregion
 
 type UseConfigureButtonOptions = {
+  enabled: boolean
   published: boolean
   detailNeedUpdate: boolean
   workflowAppId: string
@@ -99,10 +99,12 @@ type UseConfigureButtonOptions = {
   outputs?: Variable[]
   handlePublish: (params?: PublishWorkflowParams) => Promise<void>
   onRefreshData?: () => void
+  onConfigured?: () => void
 }
 
 export function useConfigureButton(options: UseConfigureButtonOptions) {
   const {
+    enabled,
     published,
     detailNeedUpdate,
     workflowAppId,
@@ -113,16 +115,14 @@ export function useConfigureButton(options: UseConfigureButtonOptions) {
     outputs,
     handlePublish,
     onRefreshData,
+    onConfigured,
   } = options
 
   const { t } = useTranslation()
-  const router = useRouter()
   const { isCurrentWorkspaceManager } = useAppContext()
 
-  const [showModal, setShowModal] = useState(false)
-
   // Data fetching via React Query
-  const { data: detail, isLoading } = useWorkflowToolDetailByAppID(workflowAppId, published)
+  const { data: detail, isLoading } = useWorkflowToolDetailByAppID(workflowAppId, enabled && published)
 
   // Invalidation functions (store in ref for stable effect dependency)
   const invalidateDetail = useInvalidateWorkflowToolDetailByAppID()
@@ -133,9 +133,9 @@ export function useConfigureButton(options: UseConfigureButtonOptions) {
 
   // Refetch when detailNeedUpdate becomes true
   useEffect(() => {
-    if (detailNeedUpdate)
+    if (enabled && detailNeedUpdate)
       invalidateDetailRef.current(workflowAppId)
-  }, [detailNeedUpdate, workflowAppId])
+  }, [detailNeedUpdate, enabled, workflowAppId])
 
   // Computed values
   const outdated = useMemo(
@@ -173,14 +173,6 @@ export function useConfigureButton(options: UseConfigureButtonOptions) {
     }
   }, [detail, published, workflowAppId, icon, name, description, inputs, outputs])
 
-  // Modal controls (stable callbacks)
-  const openModal = useCallback(() => setShowModal(true), [])
-  const closeModal = useCallback(() => setShowModal(false), [])
-  const navigateToTools = useCallback(
-    () => router.push('/tools?category=workflow'),
-    [router],
-  )
-
   // Mutation handlers (not memoized — only used in conditionally-rendered modal)
   const handleCreate = async (data: WorkflowToolProviderRequest & { workflow_app_id: string }) => {
     try {
@@ -188,14 +180,11 @@ export function useConfigureButton(options: UseConfigureButtonOptions) {
       invalidateAllWorkflowTools()
       onRefreshData?.()
       invalidateDetail(workflowAppId)
-      Toast.notify({
-        type: 'success',
-        message: t('api.actionSuccess', { ns: 'common' }),
-      })
-      setShowModal(false)
+      toast.success(t('api.actionSuccess', { ns: 'common' }))
+      onConfigured?.()
     }
     catch (e) {
-      Toast.notify({ type: 'error', message: (e as Error).message })
+      toast.error((e as Error).message)
     }
   }
 
@@ -209,27 +198,19 @@ export function useConfigureButton(options: UseConfigureButtonOptions) {
       onRefreshData?.()
       invalidateAllWorkflowTools()
       invalidateDetail(workflowAppId)
-      Toast.notify({
-        type: 'success',
-        message: t('api.actionSuccess', { ns: 'common' }),
-      })
-      setShowModal(false)
+      onConfigured?.()
     }
     catch (e) {
-      Toast.notify({ type: 'error', message: (e as Error).message })
+      toast.error((e as Error).message)
     }
   }
 
   return {
-    showModal,
     isLoading,
     outdated,
     payload,
     isCurrentWorkspaceManager,
-    openModal,
-    closeModal,
     handleCreate,
     handleUpdate,
-    navigateToTools,
   }
 }

@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import calendar
 import math
+from datetime import date
 from types import SimpleNamespace
 
 import pytest
@@ -25,8 +27,8 @@ from core.tools.builtin_tool.tool import BuiltinTool
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_entities import ToolEntity, ToolIdentity, ToolInvokeMessage
 from core.tools.errors import ToolInvokeError
-from dify_graph.file.enums import FileType
-from dify_graph.model_runtime.entities.model_entities import ModelPropertyKey
+from graphon.file import FileType
+from graphon.model_runtime.entities.model_entities import ModelPropertyKey
 
 
 def _build_builtin_tool(tool_cls: type[BuiltinTool]) -> BuiltinTool:
@@ -98,7 +100,13 @@ def test_timezone_conversion_tool():
 def test_weekday_tool():
     weekday_tool = _build_builtin_tool(WeekdayTool)
     valid = list(weekday_tool.invoke(user_id="u", tool_parameters={"year": 2024, "month": 1, "day": 1}))[0].message.text
-    assert "January 1, 2024" in valid
+    expected_date = date(2024, 1, 1)
+    expected_message = (
+        f"{calendar.month_name[expected_date.month]} "
+        f"{expected_date.day}, {expected_date.year} "
+        f"is {calendar.day_name[expected_date.weekday()]}."
+    )
+    assert valid == expected_message
     invalid = list(weekday_tool.invoke(user_id="u", tool_parameters={"year": 2024, "month": 2, "day": 31}))[
         0
     ].message.text
@@ -107,7 +115,7 @@ def test_weekday_tool():
         list(weekday_tool.invoke(user_id="u", tool_parameters={"year": 2024, "day": 1}))
 
 
-def test_simple_code_valid_execution(monkeypatch):
+def test_simple_code_valid_execution(monkeypatch: pytest.MonkeyPatch):
     simple_code = _build_builtin_tool(SimpleCode)
 
     monkeypatch.setattr(
@@ -130,7 +138,7 @@ def test_simple_code_invalid_language():
         list(simple_code.invoke(user_id="u", tool_parameters={"language": "go", "code": "fmt.Println(1)"}))
 
 
-def test_simple_code_execution_error(monkeypatch):
+def test_simple_code_execution_error(monkeypatch: pytest.MonkeyPatch):
     simple_code = _build_builtin_tool(SimpleCode)
 
     monkeypatch.setattr(
@@ -147,14 +155,14 @@ def test_webscraper_empty_url():
     assert empty == "Please input url"
 
 
-def test_webscraper_fetch(monkeypatch):
+def test_webscraper_fetch(monkeypatch: pytest.MonkeyPatch):
     webscraper = _build_builtin_tool(WebscraperTool)
     monkeypatch.setattr("core.tools.builtin_tool.providers.webscraper.tools.webscraper.get_url", lambda *a, **k: "page")
     full = list(webscraper.invoke(user_id="u", tool_parameters={"url": "https://example.com"}))[0].message.text
     assert full == "page"
 
 
-def test_webscraper_summary(monkeypatch):
+def test_webscraper_summary(monkeypatch: pytest.MonkeyPatch):
     webscraper = _build_builtin_tool(WebscraperTool)
     monkeypatch.setattr("core.tools.builtin_tool.providers.webscraper.tools.webscraper.get_url", lambda *a, **k: "page")
     monkeypatch.setattr(webscraper, "summary", lambda user_id, content: "summary")
@@ -167,7 +175,7 @@ def test_webscraper_summary(monkeypatch):
     assert summarized == "summary"
 
 
-def test_webscraper_fetch_error(monkeypatch):
+def test_webscraper_fetch_error(monkeypatch: pytest.MonkeyPatch):
     webscraper = _build_builtin_tool(WebscraperTool)
     monkeypatch.setattr(
         "core.tools.builtin_tool.providers.webscraper.tools.webscraper.get_url",
@@ -184,18 +192,24 @@ def test_asr_invalid_file():
     assert "not a valid audio file" in invalid_file
 
 
-def test_asr_valid_file_invocation(monkeypatch):
+def test_asr_valid_file_invocation(monkeypatch: pytest.MonkeyPatch):
     asr = _build_builtin_tool(ASRTool)
-    model_instance = type("M", (), {"invoke_speech2text": lambda self, file, user: "transcript"})()
+    model_instance = type("M", (), {"invoke_speech2text": lambda self, file: "transcript"})()
     model_manager = type("Mgr", (), {"get_model_instance": lambda *a, **k: model_instance})()
     monkeypatch.setattr("core.tools.builtin_tool.providers.audio.tools.asr.download", lambda file: b"audio-bytes")
-    monkeypatch.setattr("core.tools.builtin_tool.providers.audio.tools.asr.ModelManager", lambda: model_manager)
+    captured_manager_kwargs = {}
+
+    monkeypatch.setattr(
+        "core.tools.builtin_tool.providers.audio.tools.asr.ModelManager.for_tenant",
+        lambda **kwargs: captured_manager_kwargs.update(kwargs) or model_manager,
+    )
     audio_file = SimpleNamespace(type=FileType.AUDIO)
     ok = list(asr.invoke(user_id="u", tool_parameters={"audio_file": audio_file, "model": "p#m"}))[0].message.text
     assert ok == "transcript"
+    assert captured_manager_kwargs == {"tenant_id": "tenant-1", "user_id": "u"}
 
 
-def test_asr_available_models_and_runtime_parameters(monkeypatch):
+def test_asr_available_models_and_runtime_parameters(monkeypatch: pytest.MonkeyPatch):
     asr = _build_builtin_tool(ASRTool)
     provider_model = type("PM", (), {"provider": "p", "models": [type("Model", (), {"model": "m"})()]})()
     monkeypatch.setattr(
@@ -206,8 +220,9 @@ def test_asr_available_models_and_runtime_parameters(monkeypatch):
     assert asr.get_runtime_parameters()[0].name == "model"
 
 
-def test_tts_invoke_returns_messages(monkeypatch):
+def test_tts_invoke_returns_messages(monkeypatch: pytest.MonkeyPatch):
     tts = _build_builtin_tool(TTSTool)
+    captured_manager_kwargs = {}
     voices_model_instance = type(
         "TTSM",
         (),
@@ -217,11 +232,15 @@ def test_tts_invoke_returns_messages(monkeypatch):
         },
     )()
     monkeypatch.setattr(
-        "core.tools.builtin_tool.providers.audio.tools.tts.ModelManager",
-        lambda: type("M", (), {"get_model_instance": lambda *a, **k: voices_model_instance})(),
+        "core.tools.builtin_tool.providers.audio.tools.tts.ModelManager.for_tenant",
+        lambda **kwargs: (
+            captured_manager_kwargs.update(kwargs)
+            or type("M", (), {"get_model_instance": lambda *a, **k: voices_model_instance})()
+        ),
     )
     messages = list(tts.invoke(user_id="u", tool_parameters={"model": "p#m", "text": "hello"}))
     assert [m.type for m in messages] == [ToolInvokeMessage.MessageType.TEXT, ToolInvokeMessage.MessageType.BLOB]
+    assert captured_manager_kwargs == {"tenant_id": "tenant-1", "user_id": "u"}
 
 
 def test_tts_get_available_models_requires_runtime():
@@ -254,14 +273,14 @@ def test_tts_tool_raises_when_voice_unavailable(monkeypatch, voices):
         },
     )()
     monkeypatch.setattr(
-        "core.tools.builtin_tool.providers.audio.tools.tts.ModelManager",
-        lambda: type("Manager", (), {"get_model_instance": lambda *args, **kwargs: model_without_voice})(),
+        "core.tools.builtin_tool.providers.audio.tools.tts.ModelManager.for_tenant",
+        lambda **_: type("Manager", (), {"get_model_instance": lambda *args, **kwargs: model_without_voice})(),
     )
     with pytest.raises(ValueError, match="no voice available"):
         list(tts.invoke(user_id="u", tool_parameters={"model": "p#m", "text": "hello"}))
 
 
-def test_tts_tool_get_available_models_and_runtime_parameters(monkeypatch):
+def test_tts_tool_get_available_models_and_runtime_parameters(monkeypatch: pytest.MonkeyPatch):
     tts = _build_builtin_tool(TTSTool)
 
     model_1 = SimpleNamespace(
@@ -288,7 +307,7 @@ def test_tts_tool_get_available_models_and_runtime_parameters(monkeypatch):
     assert runtime_parameters[1].name == "voice#provider-a#model-a"
 
 
-def test_provider_classes_and_builtin_sort(monkeypatch):
+def test_provider_classes_and_builtin_sort(monkeypatch: pytest.MonkeyPatch):
     # Use object.__new__ to avoid YAML-loading __init__; only pass-through validation is exercised.
     # Ensure pass-through _validate_credentials methods are executed.
     AudioToolProvider._validate_credentials(object.__new__(AudioToolProvider), "u", {})

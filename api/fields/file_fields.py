@@ -2,23 +2,10 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict, field_validator
+from pydantic import field_validator
 
-
-class ResponseModel(BaseModel):
-    model_config = ConfigDict(
-        from_attributes=True,
-        extra="ignore",
-        populate_by_name=True,
-        serialize_by_alias=True,
-        protected_namespaces=(),
-    )
-
-
-def _to_timestamp(value: datetime | int | None) -> int | None:
-    if isinstance(value, datetime):
-        return int(value.timestamp())
-    return value
+from fields.base import ResponseModel
+from libs.helper import to_timestamp
 
 
 class UploadConfig(ResponseModel):
@@ -53,7 +40,7 @@ class FileResponse(ResponseModel):
     @field_validator("created_at", mode="before")
     @classmethod
     def _normalize_created_at(cls, value: datetime | int | None) -> int | None:
-        return _to_timestamp(value)
+        return to_timestamp(value)
 
 
 class RemoteFileInfo(ResponseModel):
@@ -74,7 +61,7 @@ class FileWithSignedUrl(ResponseModel):
     @field_validator("created_at", mode="before")
     @classmethod
     def _normalize_created_at(cls, value: datetime | int | None) -> int | None:
-        return _to_timestamp(value)
+        return to_timestamp(value)
 
 
 __all__ = [

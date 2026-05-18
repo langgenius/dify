@@ -10,10 +10,10 @@ from flask import Flask
 from controllers.console import wraps as console_wraps
 from controllers.console.app import workflow_run as workflow_run_module
 from controllers.web.error import NotFoundError
-from dify_graph.entities.pause_reason import HumanInputRequired
-from dify_graph.enums import WorkflowExecutionStatus
-from dify_graph.nodes.human_input.entities import FormInput, UserAction
-from dify_graph.nodes.human_input.enums import FormInputType
+from graphon.entities.pause_reason import HumanInputRequired
+from graphon.enums import WorkflowExecutionStatus
+from graphon.nodes.human_input.entities import ParagraphInputConfig, UserActionConfig
+from graphon.nodes.human_input.enums import FormInputType
 from libs import login as login_lib
 from models.account import Account, AccountStatus, TenantAccountRole
 from models.workflow import WorkflowRun
@@ -63,11 +63,10 @@ def test_pause_details_returns_backstage_input_url(app: Flask, monkeypatch: pyte
     reason = HumanInputRequired(
         form_id="form-1",
         form_content="content",
-        inputs=[FormInput(type=FormInputType.TEXT_INPUT, output_variable_name="name")],
-        actions=[UserAction(id="approve", title="Approve")],
+        inputs=[ParagraphInputConfig(type=FormInputType.PARAGRAPH, output_variable_name="name")],
+        actions=[UserActionConfig(id="approve", title="Approve")],
         node_id="node-1",
         node_title="Ask Name",
-        form_token="backstage-token",
     )
     pause_entity = _PauseEntity(paused_at=datetime(2024, 1, 1, 12, 0, 0), reasons=[reason])
 
@@ -77,6 +76,11 @@ def test_pause_details_returns_backstage_input_url(app: Flask, monkeypatch: pyte
         workflow_run_module.DifyAPIRepositoryFactory,
         "create_api_workflow_run_repository",
         lambda *_, **__: repo,
+    )
+    monkeypatch.setattr(
+        workflow_run_module,
+        "_load_form_tokens_by_form_id",
+        lambda _form_ids: {"form-1": "backstage-token"},
     )
 
     with app.test_request_context("/console/api/workflow/run-1/pause-details", method="GET"):
@@ -108,3 +112,24 @@ def test_pause_details_tenant_isolation(app: Flask, monkeypatch: pytest.MonkeyPa
     with pytest.raises(NotFoundError):
         with app.test_request_context("/console/api/workflow/run-1/pause-details", method="GET"):
             response, status = workflow_run_module.ConsoleWorkflowPauseDetailsApi().get(workflow_run_id="run-1")
+
+
+def test_pause_details_returns_empty_response_for_non_paused_run(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+    account = _make_account()
+    _patch_console_guards(monkeypatch, account)
+
+    workflow_run = Mock(spec=WorkflowRun)
+    workflow_run.tenant_id = "tenant-123"
+    workflow_run.status = WorkflowExecutionStatus.RUNNING
+    fake_db = SimpleNamespace(engine=Mock(), session=SimpleNamespace(get=lambda *_: workflow_run))
+    monkeypatch.setattr(workflow_run_module, "db", fake_db)
+
+    with app.test_request_context("/console/api/workflow/run-1/pause-details", method="GET"):
+        response, status = workflow_run_module.ConsoleWorkflowPauseDetailsApi().get(workflow_run_id="run-1")
+
+    assert status == 200
+    assert response == {"paused_at": None, "paused_nodes": []}
+
+
+def test_pause_details_response_schema_is_registered() -> None:
+    assert workflow_run_module.WorkflowPauseDetailsResponse.__name__ in workflow_run_module.console_ns.models

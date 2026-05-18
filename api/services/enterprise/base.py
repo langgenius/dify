@@ -6,6 +6,13 @@ from typing import Any
 import httpx
 
 from core.helper.trace_id_helper import generate_traceparent_header
+from services.errors.enterprise import (
+    EnterpriseAPIBadRequestError,
+    EnterpriseAPIError,
+    EnterpriseAPIForbiddenError,
+    EnterpriseAPINotFoundError,
+    EnterpriseAPIUnauthorizedError,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -64,9 +71,50 @@ class BaseRequest:
                 request_kwargs["timeout"] = timeout
 
             response = client.request(method, url, **request_kwargs)
-            if raise_for_status:
-                response.raise_for_status()
+
+            # Validate HTTP status and raise domain-specific errors
+            if not response.is_success:
+                cls._handle_error_response(response)
         return response.json()
+
+    @classmethod
+    def _handle_error_response(cls, response: httpx.Response) -> None:
+        """
+        Handle non-2xx HTTP responses by raising appropriate domain errors.
+
+        Attempts to extract error message from JSON response body,
+        falls back to status text if parsing fails.
+        """
+        error_message = f"Enterprise API request failed: {response.status_code} {response.reason_phrase}"
+
+        # Try to extract error message from JSON response
+        try:
+            error_data = response.json()
+            if isinstance(error_data, dict):
+                # Common error response formats:
+                # {"error": "...", "message": "..."}
+                # {"message": "..."}
+                # {"detail": "..."}
+                error_message = (
+                    error_data.get("message") or error_data.get("error") or error_data.get("detail") or error_message
+                )
+        except Exception:
+            # If JSON parsing fails, use the default message
+            logger.debug(
+                "Failed to parse error response from enterprise API (status=%s)", response.status_code, exc_info=True
+            )
+
+        # Raise specific error based on status code
+        if response.status_code == 400:
+            raise EnterpriseAPIBadRequestError(error_message)
+        elif response.status_code == 401:
+            raise EnterpriseAPIUnauthorizedError(error_message)
+        elif response.status_code == 403:
+            raise EnterpriseAPIForbiddenError(error_message)
+        elif response.status_code == 404:
+            raise EnterpriseAPINotFoundError(error_message)
+        else:
+            raise EnterpriseAPIError(error_message, status_code=response.status_code)
 
 
 class EnterpriseRequest(BaseRequest):

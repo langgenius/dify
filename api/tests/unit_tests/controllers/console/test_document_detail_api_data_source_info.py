@@ -6,7 +6,7 @@ and data_source_detail_dict for all data_source_type values, including "local_fi
 """
 
 import json
-from typing import Generic, Literal, NotRequired, TypedDict, TypeVar, Union
+from typing import Literal, NotRequired, TypedDict
 
 from models.dataset import Document
 
@@ -31,12 +31,10 @@ class WebsiteCrawlInfo(TypedDict):
     job_id: str
 
 
-RawInfo = Union[LocalFileInfo, UploadFileInfo, NotionImportInfo, WebsiteCrawlInfo]
-T_type = TypeVar("T_type", bound=str)
-T_info = TypeVar("T_info", bound=Union[LocalFileInfo, UploadFileInfo, NotionImportInfo, WebsiteCrawlInfo])
+type RawInfo = LocalFileInfo | UploadFileInfo | NotionImportInfo | WebsiteCrawlInfo
 
 
-class Case(TypedDict, Generic[T_type, T_info]):
+class Case[T_type: str, T_info: RawInfo](TypedDict):
     data_source_type: T_type
     data_source_info: str
     expected_raw: T_info
@@ -47,7 +45,7 @@ UploadFileCase = Case[Literal["upload_file"], UploadFileInfo]
 NotionImportCase = Case[Literal["notion_import"], NotionImportInfo]
 WebsiteCrawlCase = Case[Literal["website_crawl"], WebsiteCrawlInfo]
 
-AnyCase = Union[LocalFileCase, UploadFileCase, NotionImportCase, WebsiteCrawlCase]
+type AnyCase = LocalFileCase | UploadFileCase | NotionImportCase | WebsiteCrawlCase
 
 
 case_1: LocalFileCase = {

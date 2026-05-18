@@ -48,7 +48,7 @@ vi.mock('js-cookie', () => {
     remove,
   }
 })
-vi.mock('next/navigation', () => ({
+vi.mock('@/next/navigation', () => ({
   useSearchParams: () => ({
     get: (key: string) => searchParamsValues[key] ?? null,
   }),

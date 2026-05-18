@@ -258,7 +258,7 @@ const SearchFiltersDemo = () => {
               <div className="text-sm font-medium">{item.title}</div>
               <div className="mt-1 flex gap-1">
                 {item.tags.map(tag => (
-                  <span key={tag} className="rounded bg-blue-100 px-2 py-0.5 text-xs text-blue-700">
+                  <span key={tag} className="rounded-sm bg-blue-100 px-2 py-0.5 text-xs text-blue-700">
                     {tag}
                   </span>
                 ))}
@@ -389,7 +389,7 @@ const TagsWithSuggestionsDemo = () => {
             .map(suggestion => (
               <button
                 key={suggestion}
-                className="cursor-pointer rounded bg-gray-100 px-2 py-1 text-xs text-gray-700 hover:bg-gray-200"
+                className="cursor-pointer rounded-sm bg-gray-100 px-2 py-1 text-xs text-gray-700 hover:bg-gray-200"
                 onClick={() => setTags([...tags, suggestion])}
               >
                 +
@@ -486,7 +486,7 @@ const MultiLanguageTagsDemo = () => {
       </div>
       <div className="mt-4 grid grid-cols-2 gap-2">
         {tags.map((tag, index) => (
-          <div key={index} className="rounded bg-gray-50 p-2 text-sm">
+          <div key={index} className="rounded-sm bg-gray-50 p-2 text-sm">
             <span className="font-mono">{tag}</span>
           </div>
         ))}

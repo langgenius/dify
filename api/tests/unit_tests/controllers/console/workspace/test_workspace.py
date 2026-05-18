@@ -1,8 +1,8 @@
-from datetime import datetime
 from io import BytesIO
 from unittest.mock import MagicMock, patch
 
 import pytest
+from flask import Flask
 from werkzeug.datastructures import FileStorage
 from werkzeug.exceptions import Unauthorized
 
@@ -19,6 +19,7 @@ from controllers.console.workspace.workspace import (
     CustomConfigWorkspaceApi,
     SwitchWorkspaceApi,
     TenantApi,
+    TenantInfoResponse,
     TenantListApi,
     WebappLogoWorkspaceApi,
     WorkspaceInfoApi,
@@ -26,6 +27,7 @@ from controllers.console.workspace.workspace import (
     WorkspacePermissionApi,
 )
 from enums.cloud_plan import CloudPlan
+from libs.datetime_utils import naive_utc_now
 from models.account import TenantStatus
 
 
@@ -36,7 +38,7 @@ def unwrap(func):
 
 
 class TestTenantListApi:
-    def test_get_success(self, app):
+    def test_get_success_saas_path(self, app: Flask):
         api = TenantListApi()
         method = unwrap(api.get)
 
@@ -44,18 +46,14 @@ class TestTenantListApi:
             id="t1",
             name="Tenant 1",
             status="active",
-            created_at=datetime.utcnow(),
+            created_at=naive_utc_now(),
         )
         tenant2 = MagicMock(
             id="t2",
             name="Tenant 2",
             status="active",
-            created_at=datetime.utcnow(),
+            created_at=naive_utc_now(),
         )
-
-        features = MagicMock()
-        features.billing.enabled = True
-        features.billing.subscription.plan = CloudPlan.SANDBOX
 
         with (
             app.test_request_context("/workspaces"),
@@ -66,15 +64,141 @@ class TestTenantListApi:
                 "controllers.console.workspace.workspace.TenantService.get_join_tenants",
                 return_value=[tenant1, tenant2],
             ),
-            patch("controllers.console.workspace.workspace.FeatureService.get_features", return_value=features),
+            patch("controllers.console.workspace.workspace.dify_config.ENTERPRISE_ENABLED", False),
+            patch("controllers.console.workspace.workspace.dify_config.BILLING_ENABLED", True),
+            patch("controllers.console.workspace.workspace.dify_config.EDITION", "CLOUD"),
+            patch(
+                "controllers.console.workspace.workspace.BillingService.get_plan_bulk",
+                return_value={
+                    "t1": {"plan": CloudPlan.TEAM, "expiration_date": 0},
+                    "t2": {"plan": CloudPlan.PROFESSIONAL, "expiration_date": 0},
+                },
+            ) as get_plan_bulk_mock,
+            patch("controllers.console.workspace.workspace.FeatureService.get_features") as get_features_mock,
         ):
             result, status = method(api)
 
         assert status == 200
         assert len(result["workspaces"]) == 2
         assert result["workspaces"][0]["current"] is True
+        assert result["workspaces"][0]["plan"] == CloudPlan.TEAM
+        assert result["workspaces"][1]["plan"] == CloudPlan.PROFESSIONAL
+        get_plan_bulk_mock.assert_called_once_with(["t1", "t2"])
+        get_features_mock.assert_not_called()
 
-    def test_get_billing_disabled(self, app):
+    def test_get_saas_path_partial_fallback_does_not_gate_plan_on_billing_enabled(self, app: Flask):
+        """Bulk omits a tenant: resolve plan via subscription.plan only; billing.enabled is not used.
+
+        billing.enabled is mocked False to prove the endpoint does not gate on it for this path
+        (SaaS contract treats enabled as on; display follows subscription.plan).
+        """
+        api = TenantListApi()
+        method = unwrap(api.get)
+
+        tenant1 = MagicMock(
+            id="t1",
+            name="Tenant 1",
+            status="active",
+            created_at=naive_utc_now(),
+        )
+        tenant2 = MagicMock(
+            id="t2",
+            name="Tenant 2",
+            status="active",
+            created_at=naive_utc_now(),
+        )
+
+        features_t2 = MagicMock()
+        features_t2.billing.enabled = False
+        features_t2.billing.subscription.plan = CloudPlan.PROFESSIONAL
+
+        with (
+            app.test_request_context("/workspaces"),
+            patch(
+                "controllers.console.workspace.workspace.current_account_with_tenant", return_value=(MagicMock(), "t1")
+            ),
+            patch(
+                "controllers.console.workspace.workspace.TenantService.get_join_tenants",
+                return_value=[tenant1, tenant2],
+            ),
+            patch("controllers.console.workspace.workspace.dify_config.ENTERPRISE_ENABLED", False),
+            patch("controllers.console.workspace.workspace.dify_config.BILLING_ENABLED", True),
+            patch("controllers.console.workspace.workspace.dify_config.EDITION", "CLOUD"),
+            patch(
+                "controllers.console.workspace.workspace.BillingService.get_plan_bulk",
+                return_value={"t1": {"plan": CloudPlan.TEAM, "expiration_date": 0}},
+            ) as get_plan_bulk_mock,
+            patch(
+                "controllers.console.workspace.workspace.FeatureService.get_features",
+                return_value=features_t2,
+            ) as get_features_mock,
+        ):
+            result, status = method(api)
+
+        assert status == 200
+        assert result["workspaces"][0]["plan"] == CloudPlan.TEAM
+        assert result["workspaces"][1]["plan"] == CloudPlan.PROFESSIONAL
+        get_plan_bulk_mock.assert_called_once_with(["t1", "t2"])
+        get_features_mock.assert_called_once_with("t2")
+
+    def test_get_saas_path_falls_back_to_legacy_feature_path_on_bulk_error(self, app: Flask):
+        """Test fallback to FeatureService when bulk billing returns empty result.
+
+        BillingService.get_plan_bulk catches exceptions internally and returns empty dict,
+        so we simulate the real failure mode by returning empty dict for non-empty input.
+        """
+        api = TenantListApi()
+        method = unwrap(api.get)
+
+        tenant1 = MagicMock(
+            id="t1",
+            name="Tenant 1",
+            status="active",
+            created_at=naive_utc_now(),
+        )
+        tenant2 = MagicMock(
+            id="t2",
+            name="Tenant 2",
+            status="active",
+            created_at=naive_utc_now(),
+        )
+
+        features = MagicMock()
+        features.billing.enabled = False
+        features.billing.subscription.plan = CloudPlan.TEAM
+
+        with (
+            app.test_request_context("/workspaces"),
+            patch(
+                "controllers.console.workspace.workspace.current_account_with_tenant", return_value=(MagicMock(), "t2")
+            ),
+            patch(
+                "controllers.console.workspace.workspace.TenantService.get_join_tenants",
+                return_value=[tenant1, tenant2],
+            ),
+            patch("controllers.console.workspace.workspace.dify_config.ENTERPRISE_ENABLED", False),
+            patch("controllers.console.workspace.workspace.dify_config.BILLING_ENABLED", True),
+            patch("controllers.console.workspace.workspace.dify_config.EDITION", "CLOUD"),
+            patch(
+                "controllers.console.workspace.workspace.BillingService.get_plan_bulk",
+                return_value={},  # Simulates real failure: empty result for non-empty input
+            ) as get_plan_bulk_mock,
+            patch(
+                "controllers.console.workspace.workspace.FeatureService.get_features",
+                return_value=features,
+            ) as get_features_mock,
+            patch("controllers.console.workspace.workspace.logger.warning") as logger_warning_mock,
+        ):
+            result, status = method(api)
+
+        assert status == 200
+        assert result["workspaces"][0]["plan"] == CloudPlan.TEAM
+        assert result["workspaces"][1]["plan"] == CloudPlan.TEAM
+        get_plan_bulk_mock.assert_called_once_with(["t1", "t2"])
+        assert get_features_mock.call_count == 2
+        logger_warning_mock.assert_called_once()
+
+    def test_get_billing_disabled_community_path(self, app: Flask):
         api = TenantListApi()
         method = unwrap(api.get)
 
@@ -82,11 +206,12 @@ class TestTenantListApi:
             id="t1",
             name="Tenant",
             status="active",
-            created_at=datetime.utcnow(),
+            created_at=naive_utc_now(),
         )
 
         features = MagicMock()
         features.billing.enabled = False
+        features.billing.subscription.plan = CloudPlan.SANDBOX
 
         with (
             app.test_request_context("/workspaces"),
@@ -98,29 +223,92 @@ class TestTenantListApi:
                 "controllers.console.workspace.workspace.TenantService.get_join_tenants",
                 return_value=[tenant],
             ),
+            patch("controllers.console.workspace.workspace.dify_config.ENTERPRISE_ENABLED", False),
+            patch("controllers.console.workspace.workspace.dify_config.BILLING_ENABLED", False),
+            patch("controllers.console.workspace.workspace.dify_config.EDITION", "SELF_HOSTED"),
             patch(
                 "controllers.console.workspace.workspace.FeatureService.get_features",
                 return_value=features,
-            ),
+            ) as get_features_mock,
         ):
             result, status = method(api)
 
         assert status == 200
         assert result["workspaces"][0]["plan"] == CloudPlan.SANDBOX
+        get_features_mock.assert_called_once_with("t1")
+
+    def test_get_enterprise_only_skips_feature_service(self, app: Flask):
+        api = TenantListApi()
+        method = unwrap(api.get)
+
+        tenant1 = MagicMock(
+            id="t1",
+            name="Tenant 1",
+            status="active",
+            created_at=naive_utc_now(),
+        )
+        tenant2 = MagicMock(
+            id="t2",
+            name="Tenant 2",
+            status="active",
+            created_at=naive_utc_now(),
+        )
+
+        with (
+            app.test_request_context("/workspaces"),
+            patch(
+                "controllers.console.workspace.workspace.current_account_with_tenant", return_value=(MagicMock(), "t2")
+            ),
+            patch(
+                "controllers.console.workspace.workspace.TenantService.get_join_tenants",
+                return_value=[tenant1, tenant2],
+            ),
+            patch("controllers.console.workspace.workspace.dify_config.ENTERPRISE_ENABLED", True),
+            patch("controllers.console.workspace.workspace.dify_config.BILLING_ENABLED", False),
+            patch("controllers.console.workspace.workspace.dify_config.EDITION", "SELF_HOSTED"),
+            patch("controllers.console.workspace.workspace.FeatureService.get_features") as get_features_mock,
+        ):
+            result, status = method(api)
+
+        assert status == 200
+        assert result["workspaces"][0]["plan"] == CloudPlan.SANDBOX
+        assert result["workspaces"][1]["plan"] == CloudPlan.SANDBOX
+        assert result["workspaces"][0]["current"] is False
+        assert result["workspaces"][1]["current"] is True
+        get_features_mock.assert_not_called()
+
+    def test_get_enterprise_only_with_empty_tenants(self, app: Flask):
+        api = TenantListApi()
+        method = unwrap(api.get)
+
+        with (
+            app.test_request_context("/workspaces"),
+            patch(
+                "controllers.console.workspace.workspace.current_account_with_tenant", return_value=(MagicMock(), None)
+            ),
+            patch(
+                "controllers.console.workspace.workspace.TenantService.get_join_tenants",
+                return_value=[],
+            ),
+            patch("controllers.console.workspace.workspace.dify_config.ENTERPRISE_ENABLED", True),
+            patch("controllers.console.workspace.workspace.dify_config.BILLING_ENABLED", False),
+            patch("controllers.console.workspace.workspace.dify_config.EDITION", "SELF_HOSTED"),
+            patch("controllers.console.workspace.workspace.FeatureService.get_features") as get_features_mock,
+        ):
+            result, status = method(api)
+
+        assert status == 200
+        assert result["workspaces"] == []
+        get_features_mock.assert_not_called()
 
 
 class TestWorkspaceListApi:
-    def test_get_success(self, app):
+    def test_get_success(self, app: Flask):
         api = WorkspaceListApi()
         method = unwrap(api.get)
 
-        tenant = MagicMock(id="t1", name="T", status="active", created_at=datetime.utcnow())
-
-        paginate_result = MagicMock(
-            items=[tenant],
-            has_next=False,
-            total=1,
-        )
+        tenant = MagicMock(id="t1", name="T", status="active", created_at=naive_utc_now())
+        paginate_result = MagicMock(items=[tenant], has_next=False, total=1)
 
         with (
             app.test_request_context("/all-workspaces", query_string={"page": 1, "limit": 20}),
@@ -132,29 +320,16 @@ class TestWorkspaceListApi:
         assert result["total"] == 1
         assert result["has_more"] is False
 
-    def test_get_has_next_true(self, app):
+    def test_get_has_next_true(self, app: Flask):
         api = WorkspaceListApi()
         method = unwrap(api.get)
 
-        tenant = MagicMock(
-            id="t1",
-            name="T",
-            status="active",
-            created_at=datetime.utcnow(),
-        )
-
-        paginate_result = MagicMock(
-            items=[tenant],
-            has_next=True,
-            total=10,
-        )
+        tenant = MagicMock(id="t1", name="T", status="active", created_at=naive_utc_now())
+        paginate_result = MagicMock(items=[tenant], has_next=True, total=10)
 
         with (
             app.test_request_context("/all-workspaces", query_string={"page": 1, "limit": 1}),
-            patch(
-                "controllers.console.workspace.workspace.db.paginate",
-                return_value=paginate_result,
-            ),
+            patch("controllers.console.workspace.workspace.db.paginate", return_value=paginate_result),
         ):
             result, status = method(api)
 
@@ -163,7 +338,7 @@ class TestWorkspaceListApi:
 
 
 class TestTenantApi:
-    def test_post_active_tenant(self, app):
+    def test_post_active_tenant(self, app: Flask):
         api = TenantApi()
         method = unwrap(api.post)
 
@@ -183,7 +358,7 @@ class TestTenantApi:
         assert status == 200
         assert result["id"] == "t1"
 
-    def test_post_archived_with_switch(self, app):
+    def test_post_archived_with_switch(self, app: Flask):
         api = TenantApi()
         method = unwrap(api.post)
 
@@ -205,7 +380,7 @@ class TestTenantApi:
 
         assert result["id"] == "new"
 
-    def test_post_archived_no_tenant(self, app):
+    def test_post_archived_no_tenant(self, app: Flask):
         api = TenantApi()
         method = unwrap(api.post)
 
@@ -219,7 +394,7 @@ class TestTenantApi:
             with pytest.raises(Unauthorized):
                 method(api)
 
-    def test_post_info_path(self, app):
+    def test_post_info_path(self, app: Flask):
         api = TenantApi()
         method = unwrap(api.post)
 
@@ -244,8 +419,25 @@ class TestTenantApi:
         assert status == 200
 
 
+class TestTenantInfoResponse:
+    def test_tenant_info_response_normalizes_enum_and_datetime(self):
+        created_at = naive_utc_now()
+        payload = TenantInfoResponse.model_validate(
+            {
+                "id": "t1",
+                "status": TenantStatus.NORMAL,
+                "plan": CloudPlan.TEAM,
+                "created_at": created_at,
+            }
+        ).model_dump(mode="json")
+
+        assert payload["status"] == "normal"
+        assert payload["plan"] == "team"
+        assert payload["created_at"] == int(created_at.timestamp())
+
+
 class TestSwitchWorkspaceApi:
-    def test_switch_success(self, app):
+    def test_switch_success(self, app: Flask):
         api = SwitchWorkspaceApi()
         method = unwrap(api.post)
 
@@ -258,17 +450,17 @@ class TestSwitchWorkspaceApi:
                 "controllers.console.workspace.workspace.current_account_with_tenant", return_value=(MagicMock(), "t1")
             ),
             patch("controllers.console.workspace.workspace.TenantService.switch_tenant"),
-            patch("controllers.console.workspace.workspace.db.session.query") as query_mock,
+            patch("controllers.console.workspace.workspace.db.session.get") as get_mock,
             patch(
                 "controllers.console.workspace.workspace.WorkspaceService.get_tenant_info", return_value={"id": "t2"}
             ),
         ):
-            query_mock.return_value.get.return_value = tenant
+            get_mock.return_value = tenant
             result = method(api)
 
         assert result["result"] == "success"
 
-    def test_switch_not_linked(self, app):
+    def test_switch_not_linked(self, app: Flask):
         api = SwitchWorkspaceApi()
         method = unwrap(api.post)
 
@@ -284,7 +476,7 @@ class TestSwitchWorkspaceApi:
             with pytest.raises(AccountNotLinkTenantError):
                 method(api)
 
-    def test_switch_tenant_not_found(self, app):
+    def test_switch_tenant_not_found(self, app: Flask):
         api = SwitchWorkspaceApi()
         method = unwrap(api.post)
 
@@ -297,16 +489,16 @@ class TestSwitchWorkspaceApi:
                 return_value=(MagicMock(), "t1"),
             ),
             patch("controllers.console.workspace.workspace.TenantService.switch_tenant"),
-            patch("controllers.console.workspace.workspace.db.session.query") as query_mock,
+            patch("controllers.console.workspace.workspace.db.session.get") as get_mock,
         ):
-            query_mock.return_value.get.return_value = None
+            get_mock.return_value = None
 
             with pytest.raises(ValueError):
                 method(api)
 
 
 class TestCustomConfigWorkspaceApi:
-    def test_post_success(self, app):
+    def test_post_success(self, app: Flask):
         api = CustomConfigWorkspaceApi()
         method = unwrap(api.post)
 
@@ -329,7 +521,7 @@ class TestCustomConfigWorkspaceApi:
 
         assert result["result"] == "success"
 
-    def test_logo_fallback(self, app):
+    def test_logo_fallback(self, app: Flask):
         api = CustomConfigWorkspaceApi()
         method = unwrap(api.post)
 
@@ -360,7 +552,7 @@ class TestCustomConfigWorkspaceApi:
 
 
 class TestWebappLogoWorkspaceApi:
-    def test_no_file(self, app):
+    def test_no_file(self, app: Flask):
         api = WebappLogoWorkspaceApi()
         method = unwrap(api.post)
 
@@ -373,7 +565,7 @@ class TestWebappLogoWorkspaceApi:
             with pytest.raises(NoFileUploadedError):
                 method(api)
 
-    def test_too_many_files(self, app):
+    def test_too_many_files(self, app: Flask):
         api = WebappLogoWorkspaceApi()
         method = unwrap(api.post)
 
@@ -392,7 +584,7 @@ class TestWebappLogoWorkspaceApi:
             with pytest.raises(TooManyFilesError):
                 method(api)
 
-    def test_invalid_extension(self, app):
+    def test_invalid_extension(self, app: Flask):
         api = WebappLogoWorkspaceApi()
         method = unwrap(api.post)
 
@@ -407,7 +599,7 @@ class TestWebappLogoWorkspaceApi:
             with pytest.raises(UnsupportedFileTypeError):
                 method(api)
 
-    def test_upload_success(self, app):
+    def test_upload_success(self, app: Flask):
         api = WebappLogoWorkspaceApi()
         method = unwrap(api.post)
 
@@ -439,7 +631,7 @@ class TestWebappLogoWorkspaceApi:
         assert status == 201
         assert result["id"] == "file1"
 
-    def test_filename_missing(self, app):
+    def test_filename_missing(self, app: Flask):
         api = WebappLogoWorkspaceApi()
         method = unwrap(api.post)
 
@@ -463,7 +655,7 @@ class TestWebappLogoWorkspaceApi:
             with pytest.raises(FilenameNotExistsError):
                 method(api)
 
-    def test_file_too_large(self, app):
+    def test_file_too_large(self, app: Flask):
         api = WebappLogoWorkspaceApi()
         method = unwrap(api.post)
 
@@ -492,7 +684,7 @@ class TestWebappLogoWorkspaceApi:
             with pytest.raises(FileTooLargeError):
                 method(api)
 
-    def test_service_unsupported_file(self, app):
+    def test_service_unsupported_file(self, app: Flask):
         api = WebappLogoWorkspaceApi()
         method = unwrap(api.post)
 
@@ -523,7 +715,7 @@ class TestWebappLogoWorkspaceApi:
 
 
 class TestWorkspaceInfoApi:
-    def test_post_success(self, app):
+    def test_post_success(self, app: Flask):
         api = WorkspaceInfoApi()
         method = unwrap(api.post)
 
@@ -547,7 +739,7 @@ class TestWorkspaceInfoApi:
 
         assert result["result"] == "success"
 
-    def test_no_current_tenant(self, app):
+    def test_no_current_tenant(self, app: Flask):
         api = WorkspaceInfoApi()
         method = unwrap(api.post)
 
@@ -565,7 +757,7 @@ class TestWorkspaceInfoApi:
 
 
 class TestWorkspacePermissionApi:
-    def test_get_success(self, app):
+    def test_get_success(self, app: Flask):
         api = WorkspacePermissionApi()
         method = unwrap(api.get)
 
@@ -590,7 +782,7 @@ class TestWorkspacePermissionApi:
         assert status == 200
         assert result["workspace_id"] == "t1"
 
-    def test_no_current_tenant(self, app):
+    def test_no_current_tenant(self, app: Flask):
         api = WorkspacePermissionApi()
         method = unwrap(api.get)
 

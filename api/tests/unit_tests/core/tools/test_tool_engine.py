@@ -260,6 +260,28 @@ def test_agent_invoke_engine_meta_error():
     assert error_meta.error == "meta failure"
 
 
+def test_convert_tool_response_excludes_variable_messages():
+    """Regression test for issue #34723.
+
+    WorkflowTool._invoke yields VARIABLE, TEXT, and suppressed-JSON messages.
+    _convert_tool_response_to_str must skip VARIABLE messages so that the
+    returned string contains only the TEXT representation and not a
+    duplicated, garbled Pydantic repr of the same data.
+    """
+    tool = _build_tool()
+    outputs = {"reports": "hello"}
+    messages = [
+        tool.create_variable_message(variable_name="reports", variable_value="hello"),
+        tool.create_text_message('{"reports": "hello"}'),
+        tool.create_json_message(outputs, suppress_output=True),
+    ]
+
+    result = ToolEngine._convert_tool_response_to_str(messages)
+
+    assert result == '{"reports": "hello"}'
+    assert "variable_name" not in result
+
+
 def test_agent_invoke_tool_invoke_error():
     tool = _build_tool(with_llm_parameter=True)
     callback = Mock()

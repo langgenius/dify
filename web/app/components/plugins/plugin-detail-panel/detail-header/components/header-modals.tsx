@@ -3,8 +3,16 @@
 import type { FC } from 'react'
 import type { PluginDetail } from '../../../types'
 import type { ModalStates, VersionTarget } from '../hooks'
+import {
+  AlertDialog,
+  AlertDialogActions,
+  AlertDialogCancelButton,
+  AlertDialogConfirmButton,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogTitle,
+} from '@langgenius/dify-ui/alert-dialog'
 import { useTranslation } from 'react-i18next'
-import Confirm from '@/app/components/base/confirm'
 import PluginInfo from '@/app/components/plugins/plugin-page/plugin-info'
 import UpdateFromMarketplace from '@/app/components/plugins/update-plugin/from-market-place'
 import { useGetLanguage } from '@/context/i18n'
@@ -50,7 +58,6 @@ const HeaderModals: FC<HeaderModalsProps> = ({
 
   return (
     <>
-      {/* Plugin Info Modal */}
       {isShowPluginInfo && (
         <PluginInfo
           repository={isFromGitHub ? meta?.repo : ''}
@@ -60,27 +67,35 @@ const HeaderModals: FC<HeaderModalsProps> = ({
         />
       )}
 
-      {/* Delete Confirm Modal */}
-      {isShowDeleteConfirm && (
-        <Confirm
-          isShow
-          title={t(`${i18nPrefix}.delete`, { ns: 'plugin' })}
-          content={(
-            <div>
+      <AlertDialog
+        open={isShowDeleteConfirm}
+        onOpenChange={(open) => {
+          if (!open)
+            hideDeleteConfirm()
+        }}
+      >
+        <AlertDialogContent backdropProps={{ forceRender: true }}>
+          <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
+            <AlertDialogTitle className="title-2xl-semi-bold text-text-primary">
+              {t(`${i18nPrefix}.delete`, { ns: 'plugin' })}
+            </AlertDialogTitle>
+            <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
               {t(`${i18nPrefix}.deleteContentLeft`, { ns: 'plugin' })}
-              <span className="system-md-semibold">{label[locale]}</span>
+              <span className="system-md-semibold text-text-secondary">{label[locale]}</span>
               {t(`${i18nPrefix}.deleteContentRight`, { ns: 'plugin' })}
-              <br />
-            </div>
-          )}
-          onCancel={hideDeleteConfirm}
-          onConfirm={onDelete}
-          isLoading={deleting}
-          isDisabled={deleting}
-        />
-      )}
+            </AlertDialogDescription>
+          </div>
+          <AlertDialogActions>
+            <AlertDialogCancelButton disabled={deleting}>
+              {t('operation.cancel', { ns: 'common' })}
+            </AlertDialogCancelButton>
+            <AlertDialogConfirmButton loading={deleting} disabled={deleting} onClick={onDelete}>
+              {t('operation.confirm', { ns: 'common' })}
+            </AlertDialogConfirmButton>
+          </AlertDialogActions>
+        </AlertDialogContent>
+      </AlertDialog>
 
-      {/* Update from Marketplace Modal */}
       {isShowUpdateModal && (
         <UpdateFromMarketplace
           pluginId={detail.plugin_id}

@@ -266,7 +266,7 @@ describe('ExternalKnowledgeSection', () => {
       expect(infoDisplays.length).toBeGreaterThan(0)
     })
 
-    it('should apply rounded corners to info displays', () => {
+    it('should apply rounded-sm corners to info displays', () => {
       const { container } = render(<ExternalKnowledgeSection {...defaultProps} />)
 
       const roundedElements = container.querySelectorAll('.rounded-lg')

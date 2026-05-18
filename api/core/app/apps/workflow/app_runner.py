@@ -8,17 +8,18 @@ from core.app.apps.workflow.app_config_manager import WorkflowAppConfig
 from core.app.apps.workflow_app_runner import WorkflowBasedAppRunner
 from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerateEntity
 from core.app.workflow.layers.persistence import PersistenceWorkflowInfo, WorkflowPersistenceLayer
+from core.repositories.factory import WorkflowExecutionRepository, WorkflowNodeExecutionRepository
+from core.workflow.node_factory import get_default_root_node_id
+from core.workflow.system_variables import build_bootstrap_variables, build_system_variables
+from core.workflow.variable_pool_initializer import add_node_inputs_to_pool, add_variables_to_pool
 from core.workflow.workflow_entry import WorkflowEntry
-from dify_graph.enums import WorkflowType
-from dify_graph.graph_engine.command_channels.redis_channel import RedisChannel
-from dify_graph.graph_engine.layers.base import GraphEngineLayer
-from dify_graph.repositories.workflow_execution_repository import WorkflowExecutionRepository
-from dify_graph.repositories.workflow_node_execution_repository import WorkflowNodeExecutionRepository
-from dify_graph.runtime import GraphRuntimeState, VariablePool
-from dify_graph.system_variable import SystemVariable
-from dify_graph.variable_loader import VariableLoader
 from extensions.ext_redis import redis_client
 from extensions.otel import WorkflowAppRunnerHandler, trace_span
+from graphon.enums import WorkflowType
+from graphon.graph_engine.command_channels import RedisChannel
+from graphon.graph_engine.layers import GraphEngineLayer
+from graphon.runtime import GraphRuntimeState, VariablePool
+from graphon.variable_loader import VariableLoader
 from libs.datetime_utils import naive_utc_now
 from models.workflow import Workflow
 
@@ -91,12 +92,13 @@ class WorkflowAppRunner(WorkflowBasedAppRunner):
                 workflow=self._workflow,
                 single_iteration_run=self.application_generate_entity.single_iteration_run,
                 single_loop_run=self.application_generate_entity.single_loop_run,
+                user_id=self.application_generate_entity.user_id,
             )
         else:
             inputs = self.application_generate_entity.inputs
 
             # Create a variable pool.
-            system_inputs = SystemVariable(
+            system_inputs = build_system_variables(
                 files=self.application_generate_entity.files,
                 user_id=self._sys_user_id,
                 app_id=app_config.app_id,
@@ -104,12 +106,16 @@ class WorkflowAppRunner(WorkflowBasedAppRunner):
                 workflow_id=app_config.workflow_id,
                 workflow_execution_id=self.application_generate_entity.workflow_execution_id,
             )
-            variable_pool = VariablePool(
-                system_variables=system_inputs,
-                user_inputs=inputs,
-                environment_variables=self._workflow.environment_variables,
-                conversation_variables=[],
+            variable_pool = VariablePool()
+            add_variables_to_pool(
+                variable_pool,
+                build_bootstrap_variables(
+                    system_variables=system_inputs,
+                    environment_variables=self._workflow.environment_variables,
+                ),
             )
+            root_node_id = self._root_node_id or get_default_root_node_id(self._workflow.graph_dict)
+            add_node_inputs_to_pool(variable_pool, node_id=root_node_id, inputs=inputs)
 
             graph_runtime_state = GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter())
             graph = self._init_graph(
@@ -120,7 +126,7 @@ class WorkflowAppRunner(WorkflowBasedAppRunner):
                 user_id=self.application_generate_entity.user_id,
                 user_from=user_from,
                 invoke_from=invoke_from,
-                root_node_id=self._root_node_id,
+                root_node_id=root_node_id,
             )
 
         # RUN WORKFLOW

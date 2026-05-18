@@ -19,6 +19,10 @@ import { RETRIEVE_METHOD } from '@/types/app'
 
 // --- Mocks ---
 
+const { mockToastError } = vi.hoisted(() => ({
+  mockToastError: vi.fn(),
+}))
+
 const mockMutateDatasets = vi.fn()
 const mockInvalidDatasetList = vi.fn()
 const mockUpdateDatasetSetting = vi.fn().mockResolvedValue({})
@@ -55,8 +59,11 @@ vi.mock('@/app/components/datasets/common/check-rerank-model', () => ({
   isReRankModelSelected: () => true,
 }))
 
-vi.mock('@/app/components/base/toast', () => ({
-  default: { notify: vi.fn() },
+vi.mock('@langgenius/dify-ui/toast', () => ({
+  toast: {
+    error: mockToastError,
+    success: vi.fn(),
+  },
 }))
 
 // --- Dataset factory ---
@@ -304,14 +311,14 @@ describe('Dataset Settings Flow - Cross-Module Configuration Cascade', () => {
         await result.current.handleSave()
       })
 
-      const savedBody = mockUpdateDatasetSetting.mock.calls[0][0].body as Record<string, unknown>
+      const savedBody = mockUpdateDatasetSetting.mock.calls[0]![0].body as Record<string, unknown>
       expect(savedBody).not.toHaveProperty('partial_member_list')
     })
   })
 
   describe('Form Submission Validation → All Fields Together', () => {
     it('should reject empty name on save', async () => {
-      const Toast = await import('@/app/components/base/toast')
+      const { toast } = await import('@langgenius/dify-ui/toast')
       const { result } = renderHook(() => useFormState())
 
       act(() => {
@@ -322,10 +329,7 @@ describe('Dataset Settings Flow - Cross-Module Configuration Cascade', () => {
         await result.current.handleSave()
       })
 
-      expect(Toast.default.notify).toHaveBeenCalledWith({
-        type: 'error',
-        message: expect.any(String),
-      })
+      expect(toast.error).toHaveBeenCalledWith(expect.any(String))
       expect(mockUpdateDatasetSetting).not.toHaveBeenCalled()
     })
 

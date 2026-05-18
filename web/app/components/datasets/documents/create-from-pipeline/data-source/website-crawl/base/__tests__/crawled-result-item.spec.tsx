@@ -3,15 +3,9 @@ import { render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import CrawledResultItem from '../crawled-result-item'
 
-vi.mock('@/app/components/base/button', () => ({
-  default: ({ children, onClick }: { children: React.ReactNode, onClick: () => void }) => (
+vi.mock('@langgenius/dify-ui/button', () => ({
+  Button: ({ children, onClick }: { children: React.ReactNode, onClick: () => void }) => (
     <button data-testid="preview-button" onClick={onClick}>{children}</button>
-  ),
-}))
-
-vi.mock('@/app/components/base/checkbox', () => ({
-  default: ({ checked, onCheck }: { checked: boolean, onCheck: () => void }) => (
-    <input type="checkbox" data-testid="checkbox" checked={checked} onChange={onCheck} />
   ),
 }))
 
@@ -49,7 +43,7 @@ describe('CrawledResultItem', () => {
 
   it('should render checkbox in multiple choice mode', () => {
     render(<CrawledResultItem {...defaultProps} />)
-    expect(screen.getByTestId('checkbox')).toBeInTheDocument()
+    expect(screen.getByRole('checkbox', { name: /Test Page/ })).toBeInTheDocument()
   })
 
   it('should render radio in single choice mode', () => {

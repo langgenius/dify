@@ -4,25 +4,13 @@ import userEvent from '@testing-library/user-event'
 import * as ReactI18next from 'react-i18next'
 import RenameModal from '../rename-modal'
 
-vi.mock('@/app/components/base/modal', () => ({
-  default: ({
-    title,
-    isShow,
-    children,
-  }: {
-    title: ReactNode
-    isShow: boolean
-    children: ReactNode
-  }) => {
-    if (!isShow)
-      return null
-    return (
-      <div role="dialog">
-        <h2>{title}</h2>
-        {children}
-      </div>
-    )
-  },
+vi.mock('@langgenius/dify-ui/dialog', () => ({
+  Dialog: ({ children, open }: { children: ReactNode, open?: boolean }) =>
+    open === false ? null : <>{children}</>,
+  DialogContent: ({ children }: { children: ReactNode }) => (
+    <div role="dialog">{children}</div>
+  ),
+  DialogTitle: ({ children }: { children: ReactNode }) => <h2>{children}</h2>,
 }))
 
 describe('RenameModal', () => {
@@ -83,12 +71,18 @@ describe('RenameModal', () => {
 
   it('shows loading state when saveLoading is true', () => {
     render(<RenameModal {...defaultProps} saveLoading />)
-    expect(screen.getByRole('status')).toBeInTheDocument()
+    const saveButton = screen.getByRole('button', { name: 'common.operation.save' })
+    expect(saveButton).toBeDisabled()
+    expect(saveButton).toHaveAttribute('aria-busy', 'true')
+    expect(saveButton.querySelector('.animate-spin')).toBeInTheDocument()
   })
 
   it('hides loading state when saveLoading is false', () => {
     render(<RenameModal {...defaultProps} saveLoading={false} />)
-    expect(screen.queryByRole('status')).not.toBeInTheDocument()
+    const saveButton = screen.getByRole('button', { name: 'common.operation.save' })
+    expect(saveButton).not.toBeDisabled()
+    expect(saveButton).not.toHaveAttribute('aria-busy')
+    expect(saveButton.querySelector('.animate-spin')).not.toBeInTheDocument()
   })
 
   it('keeps edited name when parent rerenders with different name prop', async () => {

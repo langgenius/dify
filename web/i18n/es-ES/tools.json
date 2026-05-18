@@ -126,6 +126,8 @@
   "mcp.modal.headerValuePlaceholder": "por ejemplo, token de portador123",
   "mcp.modal.headers": "Encabezados",
   "mcp.modal.headersTip": "Encabezados HTTP adicionales para enviar con las solicitudes del servidor MCP",
+  "mcp.modal.invalidServerIdentifier": "Por favor, introduce un identificador de servidor válido",
+  "mcp.modal.invalidServerUrl": "Por favor, introduce una URL de servidor válida",
   "mcp.modal.maskedHeadersTip": "Los valores del encabezado están enmascarados por seguridad. Los cambios actualizarán los valores reales.",
   "mcp.modal.name": "Nombre e Icono",
   "mcp.modal.namePlaceholder": "Nombre de su servidor MCP",

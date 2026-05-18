@@ -1,3 +1,4 @@
+import type { ModelAndParameter } from '@/app/components/app/configuration/debug/types'
 import type { EndNodeType } from '@/app/components/workflow/nodes/end/types'
 import type { StartNodeType } from '@/app/components/workflow/nodes/start/types'
 import type {
@@ -5,6 +6,9 @@ import type {
   Node,
 } from '@/app/components/workflow/types'
 import type { PublishWorkflowParams } from '@/types/workflow'
+import { Button } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
+import { toast } from '@langgenius/dify-ui/toast'
 import { RiApps2AddLine } from '@remixicon/react'
 import {
   memo,
@@ -15,9 +19,7 @@ import { useTranslation } from 'react-i18next'
 import { useEdges } from 'reactflow'
 import AppPublisher from '@/app/components/app/app-publisher'
 import { useStore as useAppStore } from '@/app/components/app/store'
-import Button from '@/app/components/base/button'
 import { useFeatures } from '@/app/components/base/features/hooks'
-import { useToastContext } from '@/app/components/base/toast/context'
 import { Plan } from '@/app/components/billing/type'
 import {
   useChecklist,
@@ -42,7 +44,6 @@ import useTheme from '@/hooks/use-theme'
 import { fetchAppDetail } from '@/service/apps'
 import { useInvalidateAppTriggers } from '@/service/use-tools'
 import { useInvalidateAppWorkflow, usePublishWorkflow, useResetWorkflowVersionHistory } from '@/service/use-workflow'
-import { cn } from '@/utils/classnames'
 
 const FeaturesTrigger = () => {
   const { t } = useTranslation()
@@ -87,7 +88,6 @@ const FeaturesTrigger = () => {
 
   const { handleCheckBeforePublish } = useChecklistBeforePublish()
   const { handleSyncWorkflowDraft } = useNodesSyncDraft()
-  const { notify } = useToastContext()
   const startNodeIds = useMemo(
     () => nodes.filter(node => node.data.type === BlockEnum.Start).map(node => node.id),
     [nodes],
@@ -144,13 +144,14 @@ const FeaturesTrigger = () => {
   const needWarningNodes = useChecklist(nodes, edges)
 
   const updatePublishedWorkflow = useInvalidateAppWorkflow()
-  const onPublish = useCallback(async (params?: PublishWorkflowParams) => {
+  const onPublish = useCallback(async (params?: ModelAndParameter | PublishWorkflowParams) => {
+    const publishParams = params && 'title' in params ? params : undefined
     // First check if there are any items in the checklist
     // if (!validateBeforeRun())
     //   throw new Error('Checklist has unresolved items')
 
     if (needWarningNodes.length > 0) {
-      notify({ type: 'error', message: t('panel.checklistTip', { ns: 'workflow' }) })
+      toast.error(t('panel.checklistTip', { ns: 'workflow' }))
       throw new Error('Checklist has unresolved items')
     }
 
@@ -158,12 +159,11 @@ const FeaturesTrigger = () => {
     if (await handleCheckBeforePublish()) {
       const res = await publishWorkflow({
         url: `/apps/${appID}/workflows/publish`,
-        title: params?.title || '',
-        releaseNotes: params?.releaseNotes || '',
+        title: publishParams?.title || '',
+        releaseNotes: publishParams?.releaseNotes || '',
       })
-
       if (res) {
-        notify({ type: 'success', message: t('api.actionSuccess', { ns: 'common' }) })
+        toast.success(t('api.actionSuccess', { ns: 'common' }))
         updatePublishedWorkflow(appID!)
         updateAppDetail()
         invalidateAppTriggers(appID!)
@@ -175,7 +175,7 @@ const FeaturesTrigger = () => {
     else {
       throw new Error('Checklist failed')
     }
-  }, [needWarningNodes, handleCheckBeforePublish, publishWorkflow, notify, appID, t, updatePublishedWorkflow, updateAppDetail, workflowStore, resetWorkflowVersionHistory, invalidateAppTriggers, hasUserInputNode])
+  }, [needWarningNodes, handleCheckBeforePublish, publishWorkflow, appID, t, updatePublishedWorkflow, updateAppDetail, workflowStore, resetWorkflowVersionHistory, invalidateAppTriggers, hasUserInputNode])
 
   const onPublisherToggle = useCallback((state: boolean) => {
     if (state)
@@ -193,7 +193,7 @@ const FeaturesTrigger = () => {
         <Button
           className={cn(
             'rounded-lg border border-transparent text-components-button-secondary-text',
-            theme === 'dark' && 'border-black/5 bg-white/10 backdrop-blur-sm',
+            theme === 'dark' && 'border-black/5 bg-white/10 backdrop-blur-xs',
           )}
           onClick={handleShowFeatures}
         >

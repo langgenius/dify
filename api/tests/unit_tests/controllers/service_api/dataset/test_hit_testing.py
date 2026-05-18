@@ -39,14 +39,21 @@ class TestHitTestingPayload:
 
     def test_payload_with_all_fields(self):
         """Test payload with all optional fields."""
+        retrieval_model_data = {
+            "search_method": "semantic_search",
+            "reranking_enable": False,
+            "score_threshold_enabled": False,
+            "top_k": 5,
+        }
         payload = HitTestingPayload(
             query="test query",
-            retrieval_model={"top_k": 5},
+            retrieval_model=retrieval_model_data,
             external_retrieval_model={"provider": "openai"},
             attachment_ids=["att_1", "att_2"],
         )
         assert payload.query == "test query"
-        assert payload.retrieval_model == {"top_k": 5}
+        assert payload.retrieval_model is not None
+        assert payload.retrieval_model.top_k == 5
         assert payload.external_retrieval_model == {"provider": "openai"}
         assert payload.attachment_ids == ["att_1", "att_2"]
 
@@ -96,7 +103,7 @@ class TestHitTestingApiPost:
         mock_dataset_svc.get_dataset.return_value = mock_dataset
         mock_dataset_svc.check_dataset_permission.return_value = None
 
-        mock_hit_svc.retrieve.return_value = {"query": "test query", "records": []}
+        mock_hit_svc.retrieve.return_value = {"query": {"content": "test query"}, "records": []}
         mock_hit_svc.hit_testing_args_check.return_value = None
         mock_marshal.return_value = []
 
@@ -134,9 +141,15 @@ class TestHitTestingApiPost:
         mock_dataset_svc.get_dataset.return_value = mock_dataset
         mock_dataset_svc.check_dataset_permission.return_value = None
 
-        retrieval_model = {"search_method": "semantic", "top_k": 10, "score_threshold": 0.8}
+        retrieval_model = {
+            "search_method": "semantic_search",
+            "reranking_enable": False,
+            "score_threshold_enabled": True,
+            "top_k": 10,
+            "score_threshold": 0.8,
+        }
 
-        mock_hit_svc.retrieve.return_value = {"query": "complex query", "records": []}
+        mock_hit_svc.retrieve.return_value = {"query": {"content": "complex query"}, "records": []}
         mock_hit_svc.hit_testing_args_check.return_value = None
         mock_marshal.return_value = []
 
@@ -152,7 +165,118 @@ class TestHitTestingApiPost:
 
         assert response["query"] == "complex query"
         call_kwargs = mock_hit_svc.retrieve.call_args
-        assert call_kwargs.kwargs.get("retrieval_model") == retrieval_model
+        # retrieval_model is serialized via model_dump, verify key fields
+        passed_retrieval_model = call_kwargs.kwargs.get("retrieval_model")
+        assert passed_retrieval_model is not None
+        assert passed_retrieval_model["search_method"] == "semantic_search"
+        assert passed_retrieval_model["top_k"] == 10
+
+    @patch("controllers.service_api.dataset.hit_testing.service_api_ns")
+    @patch("controllers.console.datasets.hit_testing_base.marshal")
+    @patch("controllers.console.datasets.hit_testing_base.HitTestingService")
+    @patch("controllers.console.datasets.hit_testing_base.DatasetService")
+    @patch("controllers.console.datasets.hit_testing_base.current_user", new_callable=lambda: Mock(spec=Account))
+    def test_post_preserves_retrieval_model_metadata_filtering_conditions(
+        self,
+        mock_current_user,
+        mock_dataset_svc,
+        mock_hit_svc,
+        mock_marshal,
+        mock_ns,
+        app,
+    ):
+        """Service API retrieval payload should not drop metadata filters."""
+        dataset_id = str(uuid.uuid4())
+        tenant_id = str(uuid.uuid4())
+
+        mock_dataset = Mock()
+        mock_dataset.id = dataset_id
+
+        mock_dataset_svc.get_dataset.return_value = mock_dataset
+        mock_dataset_svc.check_dataset_permission.return_value = None
+        mock_hit_svc.retrieve.return_value = {"query": {"content": "filtered query"}, "records": []}
+        mock_hit_svc.hit_testing_args_check.return_value = None
+        mock_marshal.return_value = []
+
+        metadata_filtering_conditions = {
+            "logical_operator": "and",
+            "conditions": [
+                {
+                    "name": "category",
+                    "comparison_operator": "is",
+                    "value": "finance",
+                }
+            ],
+        }
+        mock_ns.payload = {
+            "query": "filtered query",
+            "retrieval_model": {
+                "search_method": "semantic_search",
+                "reranking_enable": False,
+                "score_threshold_enabled": False,
+                "top_k": 4,
+                "metadata_filtering_conditions": metadata_filtering_conditions,
+            },
+        }
+
+        with app.test_request_context():
+            api = HitTestingApi()
+            HitTestingApi.post.__wrapped__(api, tenant_id, dataset_id)
+
+        passed_retrieval_model = mock_hit_svc.retrieve.call_args.kwargs.get("retrieval_model")
+        assert passed_retrieval_model is not None
+        assert passed_retrieval_model["metadata_filtering_conditions"] == metadata_filtering_conditions
+
+    @patch("controllers.service_api.dataset.hit_testing.service_api_ns")
+    @patch("controllers.console.datasets.hit_testing_base.marshal")
+    @patch("controllers.console.datasets.hit_testing_base.HitTestingService")
+    @patch("controllers.console.datasets.hit_testing_base.DatasetService")
+    @patch("controllers.console.datasets.hit_testing_base.current_user", new_callable=lambda: Mock(spec=Account))
+    def test_post_prepares_nullable_list_fields(
+        self,
+        mock_current_user,
+        mock_dataset_svc,
+        mock_hit_svc,
+        mock_marshal,
+        mock_ns,
+        app,
+    ):
+        """Test service API prepares nullable list fields from marshalled records."""
+        dataset_id = str(uuid.uuid4())
+        tenant_id = str(uuid.uuid4())
+
+        mock_dataset = Mock()
+        mock_dataset.id = dataset_id
+
+        mock_dataset_svc.get_dataset.return_value = mock_dataset
+        mock_dataset_svc.check_dataset_permission.return_value = None
+
+        mock_hit_svc.retrieve.return_value = {"query": {"content": "legacy query"}, "records": ["placeholder"]}
+        mock_hit_svc.hit_testing_args_check.return_value = None
+        mock_marshal.return_value = [
+            {
+                "segment": {"id": "segment-1", "keywords": None},
+                "child_chunks": None,
+                "files": None,
+                "score": 0.9,
+            }
+        ]
+
+        mock_ns.payload = {"query": "legacy query"}
+
+        with app.test_request_context():
+            api = HitTestingApi()
+            response = HitTestingApi.post.__wrapped__(api, tenant_id, dataset_id)
+
+        assert response["query"] == "legacy query"
+        assert response["records"] == [
+            {
+                "segment": {"id": "segment-1", "keywords": []},
+                "child_chunks": [],
+                "files": [],
+                "score": 0.9,
+            }
+        ]
 
     @patch("controllers.service_api.dataset.hit_testing.service_api_ns")
     @patch("controllers.console.datasets.hit_testing_base.DatasetService")

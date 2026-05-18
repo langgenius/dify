@@ -2,6 +2,7 @@ from unittest.mock import MagicMock, PropertyMock, patch
 from uuid import uuid4
 
 import pytest
+from flask import Flask
 from werkzeug.exceptions import NotFound
 
 import controllers.console.explore.saved_message as module
@@ -42,7 +43,7 @@ def payload_patch():
 
 
 class TestSavedMessageListApi:
-    def test_get_success(self, app):
+    def test_get_success(self, app: Flask):
         api = module.SavedMessageListApi()
         method = unwrap(api.get)
 

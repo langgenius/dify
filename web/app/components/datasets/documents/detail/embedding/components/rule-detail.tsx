@@ -1,7 +1,6 @@
 import type { FC } from 'react'
 import type { ProcessRuleResponse } from '@/models/datasets'
 import type { RETRIEVE_METHOD } from '@/types/app'
-import Image from 'next/image'
 import * as React from 'react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -101,7 +100,7 @@ const RuleDetail: FC<RuleDetailProps> = React.memo(({
         label={t('stepTwo.indexMode', { ns: 'datasetCreation' })}
         displayedValue={t(`stepTwo.${isEconomical ? 'economical' : 'qualified'}`, { ns: 'datasetCreation' }) as string}
         valueIcon={(
-          <Image
+          <img
             className="size-4"
             src={isEconomical ? indexMethodIcon.economical : indexMethodIcon.high_quality}
             alt=""
@@ -112,7 +111,7 @@ const RuleDetail: FC<RuleDetailProps> = React.memo(({
         label={t('form.retrievalSetting.title', { ns: 'datasetSettings' })}
         displayedValue={t(`retrieval.${isEconomical ? 'keyword_search' : retrievalMethod ?? 'semantic_search'}.title`, { ns: 'dataset' })}
         valueIcon={(
-          <Image
+          <img
             className="size-4"
             src={getRetrievalIcon(retrievalMethod)}
             alt=""

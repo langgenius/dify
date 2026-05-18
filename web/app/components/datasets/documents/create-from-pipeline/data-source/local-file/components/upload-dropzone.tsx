@@ -1,7 +1,7 @@
 import type { ChangeEvent, RefObject } from 'react'
-import { RiUploadCloud2Line } from '@remixicon/react'
+import { cn } from '@langgenius/dify-ui/cn'
 import { useTranslation } from 'react-i18next'
-import { cn } from '@/utils/classnames'
+import { useProviderContextSelector } from '@/context/provider-context'
 
 type FileUploadConfig = {
   file_size_limit: number
@@ -37,6 +37,7 @@ const UploadDropzone = ({
   allowedExtensions,
 }: UploadDropzoneProps) => {
   const { t } = useTranslation()
+  const enableBilling = useProviderContextSelector(state => state.enableBilling)
 
   return (
     <>
@@ -57,7 +58,7 @@ const UploadDropzone = ({
         )}
       >
         <div className="flex min-h-5 items-center justify-center text-sm leading-4 text-text-secondary">
-          <RiUploadCloud2Line className="mr-2 size-5" />
+          <span className="mr-2 i-ri-upload-cloud-2-line size-5" />
           <span>
             {supportBatchUpload ? t('stepOne.uploader.button', { ns: 'datasetCreation' }) : t('stepOne.uploader.buttonSingleFile', { ns: 'datasetCreation' })}
             {allowedExtensions.length > 0 && (
@@ -66,15 +67,22 @@ const UploadDropzone = ({
           </span>
         </div>
         <div>
-          {t('stepOne.uploader.tip', {
-            ns: 'datasetCreation',
-            size: fileUploadConfig.file_size_limit,
-            supportTypes: supportTypesShowNames,
-            batchCount: fileUploadConfig.batch_count_limit,
-            totalCount: fileUploadConfig.file_upload_limit,
-          })}
+          {enableBilling
+            ? t('stepOne.uploader.tipWithTotalLimit', {
+                ns: 'datasetCreation',
+                size: fileUploadConfig.file_size_limit,
+                supportTypes: supportTypesShowNames,
+                batchCount: fileUploadConfig.batch_count_limit,
+                totalCount: fileUploadConfig.file_upload_limit,
+              })
+            : t('stepOne.uploader.tip', {
+                ns: 'datasetCreation',
+                size: fileUploadConfig.file_size_limit,
+                supportTypes: supportTypesShowNames,
+                batchCount: fileUploadConfig.batch_count_limit,
+              })}
         </div>
-        {dragging && <div ref={dragRef} className="absolute left-0 top-0 h-full w-full" />}
+        {dragging && <div ref={dragRef} className="absolute top-0 left-0 h-full w-full" />}
       </div>
     </>
   )

@@ -11,6 +11,7 @@ from core.app.apps.advanced_chat.app_generator import AdvancedChatAppGenerator
 from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, InvokeFrom
 from core.app.task_pipeline import message_cycle_manager
 from core.app.task_pipeline.message_cycle_manager import MessageCycleManager
+from models.enums import ConversationFromSource
 from models.model import AppMode, Conversation, Message
 
 
@@ -44,7 +45,7 @@ def _make_generate_entity(app_config: WorkflowUIBasedAppConfig) -> AdvancedChatA
 
 
 @pytest.fixture(autouse=True)
-def _mock_db_session(monkeypatch):
+def _mock_db_session(monkeypatch: pytest.MonkeyPatch):
     session = MagicMock()
 
     def refresh_side_effect(obj):
@@ -92,7 +93,7 @@ def test_init_generate_records_marks_existing_conversation():
         system_instruction_tokens=0,
         status="normal",
         invoke_from=InvokeFrom.WEB_APP.value,
-        from_source="api",
+        from_source=ConversationFromSource.API,
         from_end_user_id="user-id",
         from_account_id=None,
     )
@@ -107,7 +108,7 @@ def test_init_generate_records_marks_existing_conversation():
     assert entity.is_new_conversation is False
 
 
-def test_message_cycle_manager_uses_new_conversation_flag(monkeypatch):
+def test_message_cycle_manager_uses_new_conversation_flag(monkeypatch: pytest.MonkeyPatch):
     app_config = _make_app_config()
     entity = _make_generate_entity(app_config)
     entity.conversation_id = "existing-conversation-id"

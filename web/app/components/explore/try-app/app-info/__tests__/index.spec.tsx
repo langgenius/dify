@@ -1,4 +1,3 @@
-import type { ImgHTMLAttributes } from 'react'
 import type { TryAppInfo } from '@/service/try-app'
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import * as React from 'react'
@@ -9,21 +8,6 @@ const mockUseGetRequirements = vi.fn()
 
 vi.mock('../use-get-requirements', () => ({
   default: (...args: unknown[]) => mockUseGetRequirements(...args),
-}))
-
-vi.mock('next/image', () => ({
-  default: ({
-    src,
-    alt,
-    unoptimized: _unoptimized,
-    ...rest
-  }: {
-    src: string
-    alt: string
-    unoptimized?: boolean
-  } & ImgHTMLAttributes<HTMLImageElement>) => (
-    React.createElement('img', { src, alt, ...rest })
-  ),
 }))
 
 const createMockAppDetail = (mode: string, overrides: Partial<TryAppInfo> = {}): TryAppInfo => ({
@@ -251,8 +235,8 @@ describe('AppInfo', () => {
     })
   })
 
-  describe('category', () => {
-    it('renders category when provided', () => {
+  describe('categories', () => {
+    it('renders categories when provided', () => {
       const appDetail = createMockAppDetail('chat')
       const mockOnCreate = vi.fn()
 
@@ -260,16 +244,17 @@ describe('AppInfo', () => {
         <AppInfo
           appId="test-app-id"
           appDetail={appDetail}
-          category="AI Assistant"
+          categories={['AI Assistant', 'Workflow']}
           onCreate={mockOnCreate}
         />,
       )
 
       expect(screen.getByText('explore.tryApp.category')).toBeInTheDocument()
       expect(screen.getByText('AI Assistant')).toBeInTheDocument()
+      expect(screen.getByText('Workflow')).toBeInTheDocument()
     })
 
-    it('does not render category section when not provided', () => {
+    it('does not render categories section when not provided', () => {
       const appDetail = createMockAppDetail('chat')
       const mockOnCreate = vi.fn()
 

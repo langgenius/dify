@@ -9,12 +9,20 @@ import type {
   Query,
 } from '@/models/datasets'
 import type { RetrievalConfig } from '@/types/app'
+import { cn } from '@langgenius/dify-ui/cn'
+import {
+  Drawer,
+  DrawerBackdrop,
+  DrawerContent,
+  DrawerPopup,
+  DrawerPortal,
+  DrawerViewport,
+} from '@langgenius/dify-ui/drawer'
 import { useBoolean } from 'ahooks'
 import * as React from 'react'
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
-import Drawer from '@/app/components/base/drawer'
 import FloatRightContainer from '@/app/components/base/float-right-container'
 import Loading from '@/app/components/base/loading'
 import Pagination from '@/app/components/base/pagination'
@@ -26,7 +34,6 @@ import {
   useExternalKnowledgeBaseHitTesting,
   useHitTesting,
 } from '@/service/knowledge/use-hit-testing'
-import { cn } from '@/utils/classnames'
 import { CardSkelton } from '../documents/detail/completed/skeleton/general-list-skeleton'
 import EmptyRecords from './components/empty-records'
 import QueryInput from './components/query-input'
@@ -74,7 +81,7 @@ const HitTestingPage: FC<Props> = ({ datasetId }: Props) => {
 
   const renderHitResults = (results: HitTesting[] | ExternalKnowledgeBaseHitTesting[]) => (
     <div className="flex h-full flex-col rounded-tl-2xl bg-background-body px-4 py-3">
-      <div className="mb-2 shrink-0 pl-2 font-semibold leading-6 text-text-primary">
+      <div className="mb-2 shrink-0 pl-2 leading-6 font-semibold text-text-primary">
         {t('hit.title', { ns: 'datasetHitTesting', num: results.length })}
       </div>
       <div className="grow space-y-2 overflow-y-auto">
@@ -97,7 +104,7 @@ const HitTestingPage: FC<Props> = ({ datasetId }: Props) => {
 
   const renderEmptyState = () => (
     <div className="flex h-full flex-col items-center justify-center rounded-tl-2xl bg-background-body px-4 py-3">
-      <div className={cn(docStyle.commonIcon, docStyle.targetIcon, '!h-14 !w-14 !bg-text-quaternary')} />
+      <div className={cn(docStyle.commonIcon, docStyle.targetIcon, 'h-14! w-14! bg-text-quaternary!')} />
       <div className="mt-3 text-[13px] text-text-quaternary">
         {t('hit.emptyTip', { ns: 'datasetHitTesting' })}
       </div>
@@ -118,7 +125,7 @@ const HitTestingPage: FC<Props> = ({ datasetId }: Props) => {
       <div className="flex min-w-0 flex-1 flex-col py-3">
         <div className="mb-4 flex flex-col justify-center">
           <h1 className="text-base font-semibold text-text-primary">{t('title', { ns: 'datasetHitTesting' })}</h1>
-          <p className="mt-0.5 text-[13px] font-normal leading-4 text-text-tertiary">{t('desc', { ns: 'datasetHitTesting' })}</p>
+          <p className="mt-0.5 text-[13px] leading-4 font-normal text-text-tertiary">{t('desc', { ns: 'datasetHitTesting' })}</p>
         </div>
         <QueryInput
           key={queryInputKey}
@@ -136,7 +143,7 @@ const HitTestingPage: FC<Props> = ({ datasetId }: Props) => {
           hitTestingMutation={hitTestingMutation}
           externalKnowledgeBaseHitTestingMutation={externalKnowledgeBaseHitTestingMutation}
         />
-        <div className="mb-3 mt-6 text-base font-semibold text-text-primary">{t('records', { ns: 'datasetHitTesting' })}</div>
+        <div className="mt-6 mb-3 text-base font-semibold text-text-primary">{t('records', { ns: 'datasetHitTesting' })}</div>
         {isRecordsLoading && (
           <div className="flex-1"><Loading type="app" /></div>
         )}
@@ -153,12 +160,11 @@ const HitTestingPage: FC<Props> = ({ datasetId }: Props) => {
         )}
       </div>
       <FloatRightContainer
-        panelClassName="!justify-start !overflow-y-auto"
+        panelClassName="justify-start! overflow-y-auto!"
         showClose
         isMobile={isMobile}
         isOpen={isShowRightPanel}
         onClose={hideRightPanel}
-        footer={null}
       >
         <div className="flex min-w-0 flex-1 flex-col pt-3">
           {isRetrievalLoading
@@ -181,23 +187,33 @@ const HitTestingPage: FC<Props> = ({ datasetId }: Props) => {
         </div>
       </FloatRightContainer>
       <Drawer
-        unmount={true}
-        isOpen={isShowModifyRetrievalModal}
-        onClose={() => setIsShowModifyRetrievalModal(false)}
-        footer={null}
-        mask={isMobile}
-        panelClassName="mt-16 mx-2 sm:mr-2 mb-3 !p-0 !max-w-[640px] rounded-xl"
-      >
-        <ModifyRetrievalModal
-          indexMethod={currentDataset?.indexing_technique || ''}
-          value={retrievalConfig}
-          isShow={isShowModifyRetrievalModal}
-          onHide={() => setIsShowModifyRetrievalModal(false)}
-          onSave={(value) => {
-            setRetrievalConfig(value)
+        open={isShowModifyRetrievalModal}
+        modal
+        swipeDirection="right"
+        onOpenChange={(open) => {
+          if (!open)
             setIsShowModifyRetrievalModal(false)
-          }}
-        />
+        }}
+      >
+        <DrawerPortal>
+          <DrawerBackdrop className={cn(!isMobile && 'bg-transparent')} />
+          <DrawerViewport>
+            <DrawerPopup className="p-0! data-[swipe-direction=right]:top-16 data-[swipe-direction=right]:right-2 data-[swipe-direction=right]:bottom-3 data-[swipe-direction=right]:h-auto data-[swipe-direction=right]:w-full data-[swipe-direction=right]:max-w-[640px] data-[swipe-direction=right]:rounded-xl">
+              <DrawerContent className="flex min-h-0 flex-1 flex-col p-0 pb-0">
+                <ModifyRetrievalModal
+                  indexMethod={currentDataset?.indexing_technique || ''}
+                  value={retrievalConfig}
+                  isShow={isShowModifyRetrievalModal}
+                  onHide={() => setIsShowModifyRetrievalModal(false)}
+                  onSave={(value) => {
+                    setRetrievalConfig(value)
+                    setIsShowModifyRetrievalModal(false)
+                  }}
+                />
+              </DrawerContent>
+            </DrawerPopup>
+          </DrawerViewport>
+        </DrawerPortal>
       </Drawer>
     </div>
   )

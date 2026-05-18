@@ -60,12 +60,12 @@ describe('Tag Component', () => {
   describe('Boolean Props', () => {
     it('should apply border when bordered is true', () => {
       const { container } = render(<Tag bordered>Test</Tag>)
-      expect(container.firstChild).toHaveClass('border-[1px]')
+      expect(container.firstChild).toHaveClass('border')
     })
 
     it('should not apply border by default', () => {
       const { container } = render(<Tag>Test</Tag>)
-      expect(container.firstChild).not.toHaveClass('border-[1px]')
+      expect(container.firstChild).not.toHaveClass('border')
     })
 
     it('should hide background when hideBg is true', () => {
@@ -75,7 +75,7 @@ describe('Tag Component', () => {
 
     it('should apply both bordered and hideBg together', () => {
       const { container } = render(<Tag bordered hideBg>Test</Tag>)
-      expect(container.firstChild).toHaveClass('border-[1px]', 'bg-transparent')
+      expect(container.firstChild).toHaveClass('border', 'bg-transparent')
     })
 
     it('should override color background with hideBg', () => {

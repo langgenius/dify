@@ -3,6 +3,7 @@ import time
 
 import click
 from celery import shared_task
+from sqlalchemy import select, update
 
 from core.db.session_factory import session_factory
 from core.rag.index_processor.index_processor_factory import IndexProcessorFactory
@@ -10,6 +11,7 @@ from core.rag.models.document import Document
 from extensions.ext_redis import redis_client
 from libs.datetime_utils import naive_utc_now
 from models.dataset import DocumentSegment
+from models.enums import IndexingStatus, SegmentStatus
 
 logger = logging.getLogger(__name__)
 
@@ -26,23 +28,22 @@ def create_segment_to_index_task(segment_id: str, keywords: list[str] | None = N
     start_at = time.perf_counter()
 
     with session_factory.create_session() as session:
-        segment = session.query(DocumentSegment).where(DocumentSegment.id == segment_id).first()
+        segment = session.scalar(select(DocumentSegment).where(DocumentSegment.id == segment_id).limit(1))
         if not segment:
             logger.info(click.style(f"Segment not found: {segment_id}", fg="red"))
             return
 
-        if segment.status != "waiting":
+        if segment.status != SegmentStatus.WAITING:
             return
 
         indexing_cache_key = f"segment_{segment.id}_indexing"
 
         try:
             # update segment status to indexing
-            session.query(DocumentSegment).filter_by(id=segment.id).update(
-                {
-                    DocumentSegment.status: "indexing",
-                    DocumentSegment.indexing_at: naive_utc_now(),
-                }
+            session.execute(
+                update(DocumentSegment)
+                .where(DocumentSegment.id == segment.id)
+                .values(status=SegmentStatus.INDEXING, indexing_at=naive_utc_now())
             )
             session.commit()
             document = Document(
@@ -70,7 +71,7 @@ def create_segment_to_index_task(segment_id: str, keywords: list[str] | None = N
             if (
                 not dataset_document.enabled
                 or dataset_document.archived
-                or dataset_document.indexing_status != "completed"
+                or dataset_document.indexing_status != IndexingStatus.COMPLETED
             ):
                 logger.info(click.style(f"Segment {segment.id} document status is invalid, pass.", fg="cyan"))
                 return
@@ -80,11 +81,10 @@ def create_segment_to_index_task(segment_id: str, keywords: list[str] | None = N
             index_processor.load(dataset, [document])
 
             # update segment to completed
-            session.query(DocumentSegment).filter_by(id=segment.id).update(
-                {
-                    DocumentSegment.status: "completed",
-                    DocumentSegment.completed_at: naive_utc_now(),
-                }
+            session.execute(
+                update(DocumentSegment)
+                .where(DocumentSegment.id == segment.id)
+                .values(status=SegmentStatus.COMPLETED, completed_at=naive_utc_now())
             )
             session.commit()
 
@@ -94,7 +94,7 @@ def create_segment_to_index_task(segment_id: str, keywords: list[str] | None = N
             logger.exception("create segment to index failed")
             segment.enabled = False
             segment.disabled_at = naive_utc_now()
-            segment.status = "error"
+            segment.status = SegmentStatus.ERROR
             segment.error = str(e)
             session.commit()
         finally:

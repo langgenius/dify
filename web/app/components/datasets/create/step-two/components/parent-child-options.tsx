@@ -3,11 +3,10 @@
 import type { FC } from 'react'
 import type { ParentChildConfig } from '../hooks'
 import type { ParentMode, PreProcessingRule, SummaryIndexSetting as SummaryIndexSettingType } from '@/models/datasets'
+import { Button } from '@langgenius/dify-ui/button'
+import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { RiSearchEyeLine } from '@remixicon/react'
-import Image from 'next/image'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
-import Checkbox from '@/app/components/base/checkbox'
 import Divider from '@/app/components/base/divider'
 import { ParentChildChunk } from '@/app/components/base/icons/src/vender/knowledge'
 import RadioCard from '@/app/components/base/radio-card'
@@ -118,7 +117,7 @@ export const ParentChildOptions: FC<ParentChildOptionsProps> = ({
           </div>
           <RadioCard
             className="mt-1"
-            icon={<Image src={Note} alt="" />}
+            icon={<img src={Note.src} alt="" />}
             title={t('stepTwo.paragraph', { ns: 'datasetCreation' })}
             description={t('stepTwo.paragraphTip', { ns: 'datasetCreation' })}
             isChosen={parentChildConfig.chunkForContext === 'paragraph'}
@@ -140,7 +139,7 @@ export const ParentChildOptions: FC<ParentChildOptionsProps> = ({
           />
           <RadioCard
             className="mt-2"
-            icon={<Image src={FileList} alt="" />}
+            icon={<img src={FileList.src} alt="" />}
             title={t('stepTwo.fullDoc', { ns: 'datasetCreation' })}
             description={t('stepTwo.fullDocTip', { ns: 'datasetCreation' })}
             onChosen={() => onChunkForContextChange('full-doc')}
@@ -180,16 +179,18 @@ export const ParentChildOptions: FC<ParentChildOptionsProps> = ({
           </div>
           <div className="mt-1">
             {rules.map(rule => (
-              <div
+              <label
                 key={rule.id}
-                className={s.ruleItem}
-                onClick={() => onRuleToggle(rule.id)}
+                className={`${s.ruleItem} cursor-pointer`}
               >
-                <Checkbox checked={rule.enabled} />
-                <label className="system-sm-regular ml-2 cursor-pointer text-text-secondary">
+                <Checkbox
+                  checked={rule.enabled}
+                  onCheckedChange={() => onRuleToggle(rule.id)}
+                />
+                <span className="ml-2 system-sm-regular text-text-secondary">
                   {getRuleName(rule.id)}
-                </label>
-              </div>
+                </span>
+              </label>
             ))}
             {
               showSummaryIndexSetting && IS_CE_EDITION && (

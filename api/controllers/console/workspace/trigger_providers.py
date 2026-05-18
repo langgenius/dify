@@ -4,7 +4,7 @@ from typing import Any
 from flask import make_response, redirect, request
 from flask_restx import Resource
 from pydantic import BaseModel, model_validator
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import sessionmaker
 from werkzeug.exceptions import BadRequest, Forbidden
 
 from configs import dify_config
@@ -14,8 +14,8 @@ from core.plugin.entities.plugin_daemon import CredentialType
 from core.plugin.impl.oauth import OAuthHandler
 from core.trigger.entities.entities import SubscriptionBuilderUpdater
 from core.trigger.trigger_manager import TriggerManager
-from dify_graph.model_runtime.utils.encoders import jsonable_encoder
 from extensions.ext_database import db
+from graphon.model_runtime.utils.encoders import jsonable_encoder
 from libs.login import current_user, login_required
 from models.account import Account
 from models.provider_ids import TriggerProviderID
@@ -375,7 +375,7 @@ class TriggerSubscriptionDeleteApi(Resource):
         assert user.current_tenant_id is not None
 
         try:
-            with Session(db.engine) as session:
+            with sessionmaker(db.engine).begin() as session:
                 # Delete trigger provider subscription
                 TriggerProviderService.delete_trigger_provider(
                     session=session,
@@ -388,7 +388,6 @@ class TriggerSubscriptionDeleteApi(Resource):
                     tenant_id=user.current_tenant_id,
                     subscription_id=subscription_id,
                 )
-                session.commit()
             return {"result": "success"}
         except ValueError as e:
             raise BadRequest(str(e))
@@ -499,9 +498,9 @@ class TriggerOAuthCallbackApi(Resource):
         provider_id = TriggerProviderID(provider)
         plugin_id = provider_id.plugin_id
         provider_name = provider_id.provider_name
-        user_id = context.get("user_id")
-        tenant_id = context.get("tenant_id")
-        subscription_builder_id = context.get("subscription_builder_id")
+        user_id: str = context["user_id"]
+        tenant_id: str = context["tenant_id"]
+        subscription_builder_id: str = context["subscription_builder_id"]
 
         # Get OAuth client configuration
         oauth_client_params = TriggerProviderService.get_oauth_client(

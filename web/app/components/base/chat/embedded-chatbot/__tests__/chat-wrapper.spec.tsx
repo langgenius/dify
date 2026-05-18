@@ -327,7 +327,7 @@ describe('EmbeddedChatbot chat-wrapper', () => {
       expect(screen.getByRole('button', { name: 'send message' })).toBeDisabled()
     })
 
-    it('should show the user name when avatar data is provided', () => {
+    it('should show the user avatar fallback when avatar data is provided', () => {
       vi.mocked(useEmbeddedChatbotContext).mockReturnValue(createContextValue({
         initUserVariables: {
           avatar_url: 'https://example.com/avatar.png',
@@ -337,7 +337,7 @@ describe('EmbeddedChatbot chat-wrapper', () => {
 
       render(<ChatWrapper />)
 
-      expect(screen.getByRole('img', { name: 'Alice' })).toBeInTheDocument()
+      expect(screen.getByText('A')).toBeInTheDocument()
     })
   })
 

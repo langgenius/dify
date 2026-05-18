@@ -6,7 +6,6 @@ back to the database.
 """
 
 import io
-import json
 import logging
 import time
 import zipfile
@@ -14,11 +13,25 @@ from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any, cast
+from typing import Any, TypedDict, cast
 
 import click
+from pydantic import TypeAdapter
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.engine import CursorResult
+
+
+class _TableInfo(TypedDict, total=False):
+    row_count: int
+
+
+class ArchiveManifest(TypedDict, total=False):
+    tables: dict[str, _TableInfo]
+    schema_version: str
+
+
+_manifest_adapter: TypeAdapter[ArchiveManifest] = TypeAdapter(ArchiveManifest)
+
 from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
 
 from extensions.ext_database import db
@@ -239,12 +252,12 @@ class WorkflowRunRestore:
         return self.workflow_run_repo
 
     @staticmethod
-    def _load_manifest_from_zip(archive: zipfile.ZipFile) -> dict[str, Any]:
+    def _load_manifest_from_zip(archive: zipfile.ZipFile) -> ArchiveManifest:
         try:
             data = archive.read("manifest.json")
         except KeyError as e:
             raise ValueError("manifest.json missing from archive bundle") from e
-        return json.loads(data.decode("utf-8"))
+        return _manifest_adapter.validate_json(data)
 
     def _restore_table_records(
         self,
@@ -332,7 +345,7 @@ class WorkflowRunRestore:
 
         return result
 
-    def _get_schema_version(self, manifest: dict[str, Any]) -> str:
+    def _get_schema_version(self, manifest: ArchiveManifest) -> str:
         schema_version = manifest.get("schema_version")
         if not schema_version:
             logger.warning("Manifest missing schema_version; defaulting to 1.0")
@@ -358,21 +371,19 @@ class WorkflowRunRestore:
         self,
         model: type[DeclarativeBase] | Any,
     ) -> tuple[set[str], set[str], set[str]]:
-        columns = list(model.__table__.columns)
+        table = model.__table__
+        columns = list(table.columns)
+        autoincrement_column = getattr(table, "autoincrement_column", None)
+
+        def has_insert_default(column: Any) -> bool:
+            # SQLAlchemy may set column.autoincrement to "auto" on non-PK columns.
+            # Only treat the resolved autoincrement column as DB-generated.
+            return column.default is not None or column.server_default is not None or column is autoincrement_column
+
         column_names = {column.key for column in columns}
-        required_columns = {
-            column.key
-            for column in columns
-            if not column.nullable
-            and column.default is None
-            and column.server_default is None
-            and not column.autoincrement
-        }
+        required_columns = {column.key for column in columns if not column.nullable and not has_insert_default(column)}
         non_nullable_with_default = {
-            column.key
-            for column in columns
-            if not column.nullable
-            and (column.default is not None or column.server_default is not None or column.autoincrement)
+            column.key for column in columns if not column.nullable and has_insert_default(column)
         }
         return column_names, required_columns, non_nullable_with_default
 
