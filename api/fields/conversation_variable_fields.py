@@ -8,7 +8,7 @@ from pydantic import field_validator
 
 from fields.base import ResponseModel
 from graphon.variables.types import SegmentType
-from libs.helper import TimestampField
+from libs.helper import TimestampField, to_timestamp
 
 from ._value_type_serializer import serialize_value_type
 
@@ -35,12 +35,6 @@ conversation_variable_infinite_scroll_pagination_fields = {
     "has_more": fields.Boolean,
     "data": fields.List(fields.Nested(conversation_variable_fields)),
 }
-
-
-def _to_timestamp(value: datetime | int | None) -> int | None:
-    if isinstance(value, datetime):
-        return int(value.timestamp())
-    return value
 
 
 class ConversationVariableResponse(ResponseModel):
@@ -88,7 +82,7 @@ class ConversationVariableResponse(ResponseModel):
     @field_validator("created_at", "updated_at", mode="before")
     @classmethod
     def _normalize_timestamp(cls, value: datetime | int | None) -> int | None:
-        return _to_timestamp(value)
+        return to_timestamp(value)
 
 
 class PaginatedConversationVariableResponse(ResponseModel):

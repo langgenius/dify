@@ -39,6 +39,7 @@ from graphon.enums import WorkflowExecutionStatus
 from graphon.graph_engine.manager import GraphEngineManager
 from graphon.model_runtime.errors.invoke import InvokeError
 from libs import helper
+from libs.helper import to_timestamp
 from models.model import App, AppMode, EndUser
 from models.workflow import WorkflowRun
 from repositories.factory import DifyAPIRepositoryFactory
@@ -66,12 +67,6 @@ class WorkflowLogQuery(BaseModel):
 
 
 register_schema_models(service_api_ns, WorkflowRunPayload, WorkflowLogQuery)
-
-
-def _to_timestamp(value: datetime | int | None) -> int | None:
-    if isinstance(value, datetime):
-        return int(value.timestamp())
-    return value
 
 
 def _enum_value(value):
@@ -109,7 +104,7 @@ class WorkflowRunResponse(ResponseModel):
     @field_validator("created_at", "finished_at", mode="before")
     @classmethod
     def _normalize_timestamp(cls, value: datetime | int | None) -> int | None:
-        return _to_timestamp(value)
+        return to_timestamp(value)
 
 
 class WorkflowRunForLogResponse(ResponseModel):
@@ -133,7 +128,7 @@ class WorkflowRunForLogResponse(ResponseModel):
     @field_validator("created_at", "finished_at", mode="before")
     @classmethod
     def _normalize_timestamp(cls, value: datetime | int | None) -> int | None:
-        return _to_timestamp(value)
+        return to_timestamp(value)
 
 
 class WorkflowAppLogPartialResponse(ResponseModel):
@@ -154,7 +149,7 @@ class WorkflowAppLogPartialResponse(ResponseModel):
     @field_validator("created_at", mode="before")
     @classmethod
     def _normalize_timestamp(cls, value: datetime | int | None) -> int | None:
-        return _to_timestamp(value)
+        return to_timestamp(value)
 
 
 class WorkflowAppLogPaginationResponse(ResponseModel):

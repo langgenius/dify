@@ -30,7 +30,6 @@ export const TagItemEditor = ({ tag, onTagsChange }: TagItemEditorProps) => {
   const updateTagMutation = useMutation(consoleQuery.tags.update.mutationOptions())
   const deleteTagMutation = useMutation(consoleQuery.tags.delete.mutationOptions())
   const [isEditing, setIsEditing] = useState(false)
-  const [name, setName] = useState(tag.name)
   const editTag = (tagId: string, name: string) => {
     if (name === tag.name) {
       setIsEditing(false)
@@ -38,7 +37,6 @@ export const TagItemEditor = ({ tag, onTagsChange }: TagItemEditorProps) => {
     }
     if (!name) {
       toast.error('tag name is empty')
-      setName(tag.name)
       setIsEditing(false)
       return
     }
@@ -53,13 +51,11 @@ export const TagItemEditor = ({ tag, onTagsChange }: TagItemEditorProps) => {
     }, {
       onSuccess: () => {
         toast.success(t('actionMsg.modifiedSuccessfully', { ns: 'common' }))
-        setName(name)
         setIsEditing(false)
         onTagsChange?.()
       },
       onError: () => {
         toast.error(t('actionMsg.modifiedUnsuccessfully', { ns: 'common' }))
-        setName(tag.name)
         setIsEditing(false)
       },
     })
@@ -123,7 +119,22 @@ export const TagItemEditor = ({ tag, onTagsChange }: TagItemEditorProps) => {
             </button>
           </>
         )}
-        {isEditing && (<input aria-label={`${t('operation.rename', { ns: 'common' })} ${tag.name}`} className="shrink-0 appearance-none caret-primary-600 outline-hidden placeholder:text-text-quaternary" autoFocus value={name} onChange={e => setName(e.target.value)} onKeyDown={e => e.key === 'Enter' && editTag(tag.id, name)} onBlur={() => editTag(tag.id, name)} />)}
+        {isEditing && (
+          <input
+            aria-label={`${t('operation.rename', { ns: 'common' })} ${tag.name}`}
+            className="shrink-0 appearance-none caret-primary-600 outline-hidden placeholder:text-text-quaternary"
+            autoFocus
+            defaultValue={tag.name}
+            onKeyDown={(e) => {
+              if (e.key !== 'Enter' || e.nativeEvent.isComposing)
+                return
+
+              e.preventDefault()
+              e.currentTarget.blur()
+            }}
+            onBlur={e => editTag(tag.id, e.currentTarget.value)}
+          />
+        )}
       </div>
       <AlertDialog open={showRemoveModal} onOpenChange={open => !open && setShowRemoveModal(false)}>
         <AlertDialogContent>

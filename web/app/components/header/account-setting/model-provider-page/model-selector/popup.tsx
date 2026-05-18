@@ -1,6 +1,8 @@
-import type { DefaultModel, Model, ModelFeatureEnum } from '../declarations'
+import type { DefaultModel, Model } from '../declarations'
+import type { ModelSelectorPreviewPayload } from './popup-item'
 import type { ModelProviderQuotaGetPaid } from '@/types/model-provider'
 import { ComboboxList } from '@langgenius/dify-ui/combobox'
+import { createPreviewCardHandle, PreviewCard, PreviewCardContent } from '@langgenius/dify-ui/preview-card'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useTheme } from 'next-themes'
 import { useCallback, useMemo, useState } from 'react'
@@ -12,12 +14,15 @@ import { useModalContext } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
 import { systemFeaturesQueryOptions } from '@/service/system-features'
 import { useInstallPackageFromMarketPlace } from '@/service/use-plugins'
-import { CustomConfigurationStatusEnum, ModelStatusEnum } from '../declarations'
+import { CustomConfigurationStatusEnum, ModelFeatureEnum, ModelStatusEnum, ModelTypeEnum } from '../declarations'
 import { useLanguage, useMarketplaceAllPlugins } from '../hooks'
+import ModelBadge from '../model-badge'
+import ModelIcon from '../model-icon'
 import CreditsExhaustedAlert from '../provider-added-card/model-auth-dropdown/credits-exhausted-alert'
 import { useTrialCredits } from '../provider-added-card/use-trial-credits'
 import { providerSupportsCredits } from '../supports-credits'
-import { MODEL_PROVIDER_QUOTA_GET_PAID, providerKeyToPluginId } from '../utils'
+import { MODEL_PROVIDER_QUOTA_GET_PAID, modelTypeFormat, providerKeyToPluginId, sizeFormat } from '../utils'
+import FeatureIcon from './feature-icon'
 import MarketplaceSection from './marketplace-section'
 import { createModelSelectorSearchIndex, filterModelSelectorModels } from './model-search'
 import ModelSelectorEmptyState from './popup-empty-state'
@@ -43,6 +48,7 @@ function Popup({
   const { t } = useTranslation()
   const { theme } = useTheme()
   const language = useLanguage()
+  const previewCardHandle = useMemo(() => createPreviewCardHandle<ModelSelectorPreviewPayload>(), [])
   const [marketplaceCollapsed, setMarketplaceCollapsed] = useState(false)
   const { setShowAccountSettingModal } = useModalContext()
   const { modelProviders } = useProviderContext()
@@ -151,6 +157,9 @@ function Popup({
     onHide()
     setShowAccountSettingModal({ payload: ACCOUNT_SETTING_TAB.PROVIDER })
   }, [onHide, setShowAccountSettingModal])
+  const handleClosePreviewCard = useCallback(() => {
+    previewCardHandle.close()
+  }, [previewCardHandle])
 
   return (
     <ModelSelectorPopupFrame>
@@ -170,6 +179,8 @@ function Popup({
                   key={model.provider}
                   defaultModel={defaultModel}
                   model={model}
+                  previewCardHandle={previewCardHandle}
+                  onPreviewCardClose={handleClosePreviewCard}
                   onHide={onHide}
                 />
               ))
@@ -201,8 +212,85 @@ function Popup({
           />
         </div>
       </ModelSelectorScrollBody>
+      <PreviewCard handle={previewCardHandle}>
+        {({ payload }) => (
+          <ModelSelectorPreviewCard
+            capabilitiesLabel={t('model.capabilities', { ns: 'common' })}
+            language={language}
+            payload={payload as ModelSelectorPreviewPayload | undefined}
+          />
+        )}
+      </PreviewCard>
       <ModelProviderSettingsFooter onOpenSettings={handleOpenSettings} />
     </ModelSelectorPopupFrame>
+  )
+}
+
+type ModelSelectorPreviewCardProps = {
+  capabilitiesLabel: string
+  language: string
+  payload?: ModelSelectorPreviewPayload
+}
+
+function ModelSelectorPreviewCard({
+  capabilitiesLabel,
+  language,
+  payload,
+}: ModelSelectorPreviewCardProps) {
+  if (!payload)
+    return null
+
+  const { provider, modelItem } = payload
+
+  return (
+    <PreviewCardContent
+      placement="right"
+      popupClassName="w-[206px] bg-components-panel-bg-blur p-3 shadow-none backdrop-blur-xs"
+    >
+      <div className="flex flex-col gap-1">
+        <div className="flex flex-col items-start gap-2">
+          <ModelIcon
+            className="h-5 w-5 shrink-0"
+            provider={provider}
+            modelName={modelItem.model}
+          />
+          <div className="system-md-medium text-wrap wrap-break-word text-text-primary">{modelItem.label[language] || modelItem.label.en_US}</div>
+        </div>
+        <div className="flex flex-wrap gap-1">
+          {!!modelItem.model_type && (
+            <ModelBadge>
+              {modelTypeFormat(modelItem.model_type)}
+            </ModelBadge>
+          )}
+          {!!modelItem.model_properties.mode && (
+            <ModelBadge>
+              {(modelItem.model_properties.mode as string).toLocaleUpperCase()}
+            </ModelBadge>
+          )}
+          {!!modelItem.model_properties.context_size && (
+            <ModelBadge>
+              {sizeFormat(modelItem.model_properties.context_size as number)}
+            </ModelBadge>
+          )}
+        </div>
+        {[ModelTypeEnum.textGeneration, ModelTypeEnum.textEmbedding, ModelTypeEnum.rerank].includes(modelItem.model_type as ModelTypeEnum)
+          && modelItem.features?.some(feature => [ModelFeatureEnum.vision, ModelFeatureEnum.audio, ModelFeatureEnum.video, ModelFeatureEnum.document].includes(feature))
+          && (
+            <div className="pt-2">
+              <div className="mb-1 system-2xs-medium-uppercase text-text-tertiary">{capabilitiesLabel}</div>
+              <div className="flex flex-wrap gap-1">
+                {modelItem.features?.map(feature => (
+                  <FeatureIcon
+                    key={feature}
+                    feature={feature}
+                    showFeaturesLabel
+                  />
+                ))}
+              </div>
+            </div>
+          )}
+      </div>
+    </PreviewCardContent>
   )
 }
 

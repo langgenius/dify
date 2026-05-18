@@ -19,6 +19,7 @@ from core.app.app_config.entities import (
     ModelConfig,
 )
 from core.app.entities.app_invoke_entities import InvokeFrom, ModelConfigWithCredentialsEntity
+from core.app.file_access import grant_retriever_segment_access, grant_upload_file_access
 from core.callback_handler.index_tool_callback_handler import DatasetIndexToolCallbackHandler
 from core.db.session_factory import session_factory
 from core.entities.agent_entities import PlanningStrategy
@@ -326,6 +327,7 @@ class DatasetRetrieval:
                         if record.summary:
                             source.summary = record.summary
 
+                        grant_retriever_segment_access([str(segment.id)])
                         retrieval_resource_list.append(source)
 
         if retrieval_resource_list:
@@ -515,6 +517,9 @@ class DatasetRetrieval:
                             )
                         ).all()
                         if attachments_with_bindings:
+                            grant_upload_file_access(
+                                str(upload_file.id) for _, upload_file in attachments_with_bindings
+                            )
                             for _, upload_file in attachments_with_bindings:
                                 attachment_info = File(
                                     file_id=upload_file.id,

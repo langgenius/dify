@@ -319,12 +319,12 @@ const Embedded = ({ siteInfo, isShow, onClose, appBaseUrl, accessToken, hiddenIn
         onClose()
       }}
     >
-      <DialogContent className={cn('max-h-[calc(100dvh-2rem)] w-[640px] overflow-visible', className)}>
-        <DialogTitle className="title-2xl-semi-bold text-text-primary">
+      <DialogContent className={cn('flex max-h-[calc(100dvh-2rem)] w-[640px] flex-col overflow-hidden!', className)}>
+        <DialogTitle className="shrink-0 title-2xl-semi-bold text-text-primary">
           {t(`${prefixEmbedded}.title`, { ns: 'appOverview' })}
         </DialogTitle>
         <DialogCloseButton />
-        <div className="max-h-[calc(90vh-88px)] overflow-y-auto">
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
           {isShow && (
             <EmbeddedContent
               key={`${appBaseUrl ?? ''}:${accessToken ?? ''}:${JSON.stringify(hiddenInputs ?? [])}`}
