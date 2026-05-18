@@ -74,3 +74,47 @@ Then('the dataset should no longer appear on the datasets page', async function 
     timeout: 10_000,
   })
 })
+
+When('I enter a new dataset name', async function (this: DifyWorld) {
+  const newName = `E2E Dataset Renamed ${Date.now()}`
+  this.lastCreatedDatasetName = newName
+  const dialog = this.getPage().getByRole('dialog')
+  await expect(dialog).toBeVisible()
+  await dialog.getByRole('textbox').fill(newName)
+})
+
+When('I confirm the dataset rename', async function (this: DifyWorld) {
+  const dialog = this.getPage().getByRole('dialog')
+  await dialog.getByRole('button', { name: 'Save' }).click()
+})
+
+Then('the dataset should display the new name on the datasets page', async function (this: DifyWorld) {
+  const datasetName = this.lastCreatedDatasetName
+  if (!datasetName) {
+    throw new Error(
+      'No dataset name stored. Run "I enter a new dataset name" first.',
+    )
+  }
+
+  await expect(this.getPage().getByTitle(datasetName)).toBeVisible({
+    timeout: 10_000,
+  })
+})
+
+Then('I should see the dataset in the list', async function (this: DifyWorld) {
+  const datasetName = this.lastCreatedDatasetName
+  if (!datasetName) {
+    throw new Error(
+      'No dataset name stored. Run "there is an existing E2E dataset available for testing" first.',
+    )
+  }
+
+  await expect(this.getPage().getByTitle(datasetName)).toBeVisible({
+    timeout: 10_000,
+  })
+})
+
+Then('the dataset count should be at least {int}', async function (this: DifyWorld, minCount: number) {
+  const datasetCards = this.getPage().locator('div[title^="E2E Dataset"]')
+  await expect(datasetCards).toHaveCount(minCount, { timeout: 10_000 })
+})
