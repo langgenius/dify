@@ -7,7 +7,6 @@ import type {
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type {
   AccountIntegrate,
-  ApiBasedExtension,
   CodeBasedExtension,
   CommonResponse,
   FileUploadConfigResponse,
@@ -24,6 +23,7 @@ import type { RETRIEVE_METHOD } from '@/types/app'
 import { queryOptions, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { IS_DEV } from '@/config'
 import { get, post } from './base'
+import { consoleClient } from './client'
 
 /**
  * True iff `err` is a 401 Response thrown by `service/base.ts`.
@@ -178,7 +178,13 @@ export type MailRegisterResponse = { result: string, data: {} }
 export const useMailRegister = () => {
   return useMutation({
     mutationKey: [NAME_SPACE, 'mail-register'],
-    mutationFn: (body: { token: string, new_password: string, password_confirm: string }) => {
+    mutationFn: (body: {
+      token: string
+      new_password: string
+      password_confirm: string
+      language?: string
+      timezone?: string
+    }) => {
       return post<MailRegisterResponse>('/email-register', { body })
     },
   })
@@ -314,9 +320,9 @@ export const useCodeBasedExtensions = (module: string) => {
 }
 
 export const useApiBasedExtensions = () => {
-  return useQuery<ApiBasedExtension[]>({
+  return useQuery({
     queryKey: commonQueryKeys.apiBasedExtensions,
-    queryFn: () => get<ApiBasedExtension[]>('/api-based-extension'),
+    queryFn: () => consoleClient.apiBasedExtension.get(),
   })
 }
 

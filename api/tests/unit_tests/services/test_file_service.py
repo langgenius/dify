@@ -221,7 +221,7 @@ class TestFileService:
             mock_extract.return_value = "Extracted text content"
 
             # Execute
-            result = file_service.get_file_preview("file_id")
+            result = file_service.get_file_preview("file_id", "tenant_id")
 
             # Assert
             assert result == "Extracted text content"
@@ -229,7 +229,7 @@ class TestFileService:
     def test_get_file_preview_not_found(self, file_service, mock_db_session):
         mock_db_session.scalar.return_value = None
         with pytest.raises(NotFound, match="File not found"):
-            file_service.get_file_preview("non_existent")
+            file_service.get_file_preview("non_existent", "tenant_id")
 
     def test_get_file_preview_unsupported_type(self, file_service, mock_db_session):
         upload_file = MagicMock(spec=UploadFile)
@@ -237,7 +237,7 @@ class TestFileService:
         upload_file.extension = "exe"
         mock_db_session.scalar.return_value = upload_file
         with pytest.raises(UnsupportedFileTypeError):
-            file_service.get_file_preview("file_id")
+            file_service.get_file_preview("file_id", "tenant_id")
 
     def test_get_image_preview_success(self, file_service, mock_db_session):
         # Setup

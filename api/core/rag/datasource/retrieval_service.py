@@ -9,6 +9,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session, load_only
 
 from configs import dify_config
+from core.app.file_access import grant_upload_file_access
 from core.db.session_factory import session_factory
 from core.model_manager import ModelManager
 from core.rag.data_post_processor.data_post_processor import DataPostProcessor, RerankingModelDict, WeightsDict
@@ -890,6 +891,7 @@ class RetrievalService:
                 .limit(1)
             )
             if attachment_binding:
+                grant_upload_file_access([str(upload_file.id)])
                 attachment_info: AttachmentInfoDict = {
                     "id": upload_file.id,
                     "name": upload_file.name,
@@ -906,6 +908,7 @@ class RetrievalService:
         cls, attachment_ids: list[str], session: Session
     ) -> list[SegmentAttachmentInfoResult]:
         attachment_infos: list[SegmentAttachmentInfoResult] = []
+        granted_upload_file_ids: list[str] = []
         upload_files = session.scalars(select(UploadFile).where(UploadFile.id.in_(attachment_ids))).all()
         if upload_files:
             upload_file_ids = [upload_file.id for upload_file in upload_files]
@@ -926,6 +929,7 @@ class RetrievalService:
                         "size": upload_file.size,
                     }
                     if attachment_binding:
+                        granted_upload_file_ids.append(str(upload_file.id))
                         attachment_infos.append(
                             {
                                 "attachment_id": attachment_binding.attachment_id,
@@ -933,4 +937,5 @@ class RetrievalService:
                                 "segment_id": attachment_binding.segment_id,
                             }
                         )
+        grant_upload_file_access(granted_upload_file_ids)
         return attachment_infos

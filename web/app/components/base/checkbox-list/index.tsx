@@ -1,11 +1,11 @@
 'use client'
-import type { FC } from 'react'
 import { Button } from '@langgenius/dify-ui/button'
+import { Checkbox } from '@langgenius/dify-ui/checkbox'
+import { CheckboxGroup } from '@langgenius/dify-ui/checkbox-group'
 import { cn } from '@langgenius/dify-ui/cn'
-import { useCallback, useMemo, useState } from 'react'
+import { useId, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Badge from '@/app/components/base/badge'
-import Checkbox from '@/app/components/base/checkbox'
 import SearchInput from '@/app/components/base/search-input'
 import SearchMenu from '@/assets/search-menu.svg'
 
@@ -30,7 +30,7 @@ type CheckboxListProps = {
   maxHeight?: string | number
 }
 
-const CheckboxList: FC<CheckboxListProps> = ({
+export const CheckboxList = ({
   title = '',
   label,
   description,
@@ -43,8 +43,9 @@ const CheckboxList: FC<CheckboxListProps> = ({
   showCount = true,
   showSearch = true,
   maxHeight,
-}) => {
+}: CheckboxListProps) => {
   const { t } = useTranslation()
+  const groupLabelId = useId()
   const [searchQuery, setSearchQuery] = useState('')
 
   const filteredOptions = useMemo(() => {
@@ -59,48 +60,15 @@ const CheckboxList: FC<CheckboxListProps> = ({
 
   const selectedCount = value.length
 
-  const isAllSelected = useMemo(() => {
-    const selectableOptions = options.filter(option => !option.disabled)
-    return selectableOptions.length > 0 && selectableOptions.every(option => value.includes(option.value))
-  }, [options, value])
-
-  const isIndeterminate = useMemo(() => {
-    const selectableOptions = options.filter(option => !option.disabled)
-    const selectedCount = selectableOptions.filter(option => value.includes(option.value)).length
-    return selectedCount > 0 && selectedCount < selectableOptions.length
-  }, [options, value])
-
-  const handleSelectAll = useCallback(() => {
-    if (disabled)
-      return
-
-    if (isAllSelected) {
-      // Deselect all
-      onChange?.([])
-    }
-    else {
-      // Select all non-disabled options
-      const allValues = options
-        .filter(option => !option.disabled)
-        .map(option => option.value)
-      onChange?.(allValues)
-    }
-  }, [isAllSelected, options, onChange, disabled])
-
-  const handleToggleOption = useCallback((optionValue: string) => {
-    if (disabled)
-      return
-
-    const newValue = value.includes(optionValue)
-      ? value.filter(v => v !== optionValue)
-      : [...value, optionValue]
-    onChange?.(newValue)
-  }, [value, onChange, disabled])
+  const selectableOptionValues = useMemo(
+    () => options.filter(option => !option.disabled).map(option => option.value),
+    [options],
+  )
 
   return (
     <div className={cn('flex w-full flex-col gap-1', containerClassName)}>
       {label && (
-        <div className="system-sm-medium text-text-secondary">
+        <div id={groupLabelId} className="system-sm-medium text-text-secondary">
           {label}
         </div>
       )}
@@ -110,17 +78,24 @@ const CheckboxList: FC<CheckboxListProps> = ({
         </div>
       )}
 
-      <div className="rounded-lg border border-components-panel-border bg-components-panel-bg">
+      <CheckboxGroup
+        aria-labelledby={label ? groupLabelId : undefined}
+        value={value}
+        onValueChange={nextValue => onChange?.(nextValue)}
+        allValues={selectableOptionValues}
+        disabled={disabled}
+        className="rounded-lg border border-components-panel-border bg-components-panel-bg"
+      >
         {(showSelectAll || title || showSearch) && (
           <div className="relative flex items-center gap-2 border-b border-divider-subtle px-3 py-2">
             {!searchQuery && showSelectAll && (
-              <Checkbox
-                checked={isAllSelected}
-                indeterminate={isIndeterminate}
-                onCheck={handleSelectAll}
-                disabled={disabled}
-                id="selectAll"
-              />
+              <label className={cn('flex shrink-0 items-center', !disabled && 'cursor-pointer')}>
+                <Checkbox
+                  parent
+                  disabled={disabled}
+                />
+                <span className="sr-only">{t('operation.selectAll', { ns: 'common' })}</span>
+              </label>
             )}
             {!searchQuery
               ? (
@@ -177,45 +152,30 @@ const CheckboxList: FC<CheckboxListProps> = ({
                 </div>
               )
             : (
-                filteredOptions.map((option) => {
-                  const selected = value.includes(option.value)
-
-                  return (
-                    <div
-                      key={option.value}
-                      data-testid="option-item"
-                      className={cn(
-                        'flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 transition-colors hover:bg-state-base-hover',
-                        option.disabled && 'cursor-not-allowed opacity-50',
-                      )}
-                      onClick={() => {
-                        if (!option.disabled && !disabled)
-                          handleToggleOption(option.value)
-                      }}
+                filteredOptions.map(option => (
+                  <label
+                    key={option.value}
+                    data-testid="option-item"
+                    className={cn(
+                      'flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 transition-colors hover:bg-state-base-hover',
+                      (option.disabled || disabled) && 'cursor-not-allowed opacity-50',
+                    )}
+                  >
+                    <Checkbox
+                      value={option.value}
+                      disabled={option.disabled || disabled}
+                    />
+                    <span
+                      className="flex-1 truncate system-sm-medium text-text-secondary"
+                      title={option.label}
                     >
-                      <Checkbox
-                        checked={selected}
-                        onCheck={() => {
-                          if (!option.disabled && !disabled)
-                            handleToggleOption(option.value)
-                        }}
-                        disabled={option.disabled || disabled}
-                        id={option.value}
-                      />
-                      <div
-                        className="flex-1 truncate system-sm-medium text-text-secondary"
-                        title={option.label}
-                      >
-                        {option.label}
-                      </div>
-                    </div>
-                  )
-                })
+                      {option.label}
+                    </span>
+                  </label>
+                ))
               )}
         </div>
-      </div>
+      </CheckboxGroup>
     </div>
   )
 }
-
-export default CheckboxList

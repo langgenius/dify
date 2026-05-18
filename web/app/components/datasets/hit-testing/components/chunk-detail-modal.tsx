@@ -59,7 +59,7 @@ const ChunkDetailModal = ({
           onHide()
       }}
     >
-      <DialogContent className={cn('max-h-none overflow-hidden! border-none p-6 text-left align-middle', isParentChildRetrieval ? 'w-[1200px] max-w-none! min-w-[1200px]!' : 'w-[800px] max-w-none! min-w-[800px]!')}>
+      <DialogContent className={cn('max-h-[calc(100dvh-2rem)] overflow-y-auto! border-none p-6 text-left align-middle', isParentChildRetrieval ? 'w-[1200px] max-w-none! min-w-[1200px]!' : 'w-[800px] max-w-none! min-w-[800px]!')}>
         <DialogCloseButton
           onClick={(e) => {
             e.stopPropagation()
