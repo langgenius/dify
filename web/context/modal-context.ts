@@ -1,6 +1,5 @@
 'use client'
 
-import type { ApiBasedExtensionResponse } from '@dify/contracts/api/console/api-based-extension/types.gen'
 import type { Dispatch, SetStateAction } from 'react'
 import type { TriggerEventsLimitModalPayload } from './hooks/use-trigger-events-limit-modal'
 import type { OpeningStatement } from '@/app/components/base/features/types'
@@ -48,7 +47,6 @@ export type ModelModalType = {
 
 export type ModalContextState = {
   setShowAccountSettingModal: Dispatch<SetStateAction<ModalState<AccountSettingTab> | null>>
-  setShowApiBasedExtensionModal: Dispatch<SetStateAction<ModalState<Partial<ApiBasedExtensionResponse>> | null>>
   setShowModerationSettingModal: Dispatch<SetStateAction<ModalState<ModerationConfig> | null>>
   setShowExternalDataToolModal: Dispatch<SetStateAction<ModalState<ExternalDataTool> | null>>
   setShowPricingModal: () => void
@@ -68,7 +66,6 @@ export type ModalContextState = {
 
 export const ModalContext = createContext<ModalContextState>({
   setShowAccountSettingModal: noop,
-  setShowApiBasedExtensionModal: noop,
   setShowModerationSettingModal: noop,
   setShowExternalDataToolModal: noop,
   setShowPricingModal: noop,
