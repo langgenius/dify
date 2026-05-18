@@ -7,63 +7,64 @@ import { Dialog, DialogCloseButton, DialogContent, DialogTitle } from '@langgeni
 import { FieldControl, FieldDescription, FieldError, FieldLabel, FieldRoot } from '@langgenius/dify-ui/field'
 import { Form } from '@langgenius/dify-ui/form'
 import { toast } from '@langgenius/dify-ui/toast'
-import { useState } from 'react'
+import { useMutation } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { useDocLink } from '@/context/i18n'
-import { addApiBasedExtension, updateApiBasedExtension } from '@/service/common'
+import { consoleQuery } from '@/service/client'
 
 type ApiBasedExtensionModalProps = {
   open: boolean
-  extension?: ApiBasedExtensionResponse
   onOpenChange: (open: boolean) => void
-  onSave: (newData: ApiBasedExtensionResponse) => void
-}
+  onSaved: () => void
+} & ({
+  mode: 'create'
+} | {
+  mode: 'edit'
+  apiBasedExtension: ApiBasedExtensionResponse
+})
 
-const ApiBasedExtensionModal = ({
-  open,
-  extension,
-  onOpenChange,
-  onSave,
-}: ApiBasedExtensionModalProps) => {
+const ApiBasedExtensionModal = (props: ApiBasedExtensionModalProps) => {
+  const { open, mode, onOpenChange, onSaved } = props
   const { t } = useTranslation()
   const docLink = useDocLink()
-  const [loading, setLoading] = useState(false)
-  const isEditing = !!extension
+  const createApiBasedExtensionMutation = useMutation(consoleQuery.apiBasedExtension.post.mutationOptions())
+  const updateApiBasedExtensionMutation = useMutation(consoleQuery.apiBasedExtension.byId.post.mutationOptions())
+  const editingApiBasedExtension = mode === 'edit' ? props.apiBasedExtension : null
+  const isSaving = createApiBasedExtensionMutation.isPending || updateApiBasedExtensionMutation.isPending
   const nameLabel = t('apiBasedExtension.modal.name.title', { ns: 'common' })
   const apiEndpointLabel = t('apiBasedExtension.modal.apiEndpoint.title', { ns: 'common' })
   const apiKeyLabel = t('apiBasedExtension.modal.apiKey.title', { ns: 'common' })
 
-  const handleSubmit = async (formValues: ApiBasedExtensionPayload) => {
-    setLoading(true)
-
-    try {
-      const payload: ApiBasedExtensionPayload = {
-        name: formValues.name,
-        api_endpoint: formValues.api_endpoint,
-        api_key: formValues.api_key,
-      }
-
-      const res = extension
-        ? await updateApiBasedExtension({
-            url: `/api-based-extension/${extension.id}`,
-            body: {
-              ...payload,
-              api_key: extension.api_key === payload.api_key ? '[__HIDDEN__]' : payload.api_key,
-            },
-          })
-        : await addApiBasedExtension({
-            url: '/api-based-extension',
-            body: payload,
-          })
-
-      if (extension)
-        toast.success(t('actionMsg.modifiedSuccessfully', { ns: 'common' }))
-
-      onSave(res)
+  const handleSubmit = (formValues: ApiBasedExtensionPayload) => {
+    const body: ApiBasedExtensionPayload = {
+      name: formValues.name,
+      api_endpoint: formValues.api_endpoint,
+      api_key: formValues.api_key,
     }
-    finally {
-      setLoading(false)
+
+    if (editingApiBasedExtension) {
+      updateApiBasedExtensionMutation.mutate({
+        params: {
+          id: editingApiBasedExtension.id,
+        },
+        body: {
+          ...body,
+          api_key: editingApiBasedExtension.api_key === body.api_key ? '[__HIDDEN__]' : body.api_key,
+        },
+      }, {
+        onSuccess: () => {
+          toast.success(t('actionMsg.modifiedSuccessfully', { ns: 'common' }))
+          onSaved()
+        },
+      })
+      return
     }
+
+    createApiBasedExtensionMutation.mutate({
+      body,
+    }, {
+      onSuccess: onSaved,
+    })
   }
 
   return (
@@ -75,7 +76,7 @@ const ApiBasedExtensionModal = ({
         <DialogCloseButton />
 
         <DialogTitle className="mb-2 pr-8 text-xl font-semibold text-text-primary">
-          {isEditing
+          {mode === 'edit'
             ? t('apiBasedExtension.modal.editTitle', { ns: 'common' })
             : t('apiBasedExtension.modal.title', { ns: 'common' })}
         </DialogTitle>
@@ -84,7 +85,7 @@ const ApiBasedExtensionModal = ({
             <FieldLabel>{nameLabel}</FieldLabel>
             <FieldControl
               required
-              defaultValue={extension?.name || ''}
+              defaultValue={editingApiBasedExtension?.name || ''}
               placeholder={t('apiBasedExtension.modal.name.placeholder', { ns: 'common' }) || ''}
             />
             <FieldError match="valueMissing">{t('errorMsg.fieldRequired', { ns: 'common', field: nameLabel })}</FieldError>
@@ -94,7 +95,7 @@ const ApiBasedExtensionModal = ({
             <FieldLabel>{apiEndpointLabel}</FieldLabel>
             <FieldControl
               required
-              defaultValue={extension?.api_endpoint || ''}
+              defaultValue={editingApiBasedExtension?.api_endpoint || ''}
               placeholder={t('apiBasedExtension.modal.apiEndpoint.placeholder', { ns: 'common' }) || ''}
             />
             <FieldDescription>
@@ -123,7 +124,7 @@ const ApiBasedExtensionModal = ({
             <FieldLabel>{apiKeyLabel}</FieldLabel>
             <FieldControl
               required
-              defaultValue={extension?.api_key || ''}
+              defaultValue={editingApiBasedExtension?.api_key || ''}
               placeholder={t('apiBasedExtension.modal.apiKey.placeholder', { ns: 'common' }) || ''}
             />
             <FieldError match="valueMissing">{t('errorMsg.fieldRequired', { ns: 'common', field: apiKeyLabel })}</FieldError>
@@ -134,7 +135,7 @@ const ApiBasedExtensionModal = ({
             <Button type="button" onClick={() => onOpenChange(false)}>
               {t('operation.cancel', { ns: 'common' })}
             </Button>
-            <Button type="submit" variant="primary" disabled={loading}>
+            <Button type="submit" variant="primary" disabled={isSaving}>
               {t('operation.save', { ns: 'common' })}
             </Button>
           </div>
