@@ -228,7 +228,7 @@ export type WorkspacePermissionResponse = {
 export type PluginDebuggingKeyResponse = {
   host: string
   key: string
-  port: unknown
+  port: number
 }
 
 export type ParserGithubInstall = {

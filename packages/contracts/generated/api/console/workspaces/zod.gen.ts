@@ -215,7 +215,7 @@ export const zWorkspacePermissionResponse = z.object({
 export const zPluginDebuggingKeyResponse = z.object({
   host: z.string(),
   key: z.string(),
-  port: z.unknown(),
+  port: z.int(),
 })
 
 /**

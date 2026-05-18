@@ -142,7 +142,7 @@ class ParserReadme(BaseModel):
 class PluginDebuggingKeyResponse(ResponseModel):
     key: str
     host: str
-    port: int | str
+    port: int
 
 
 register_schema_models(
