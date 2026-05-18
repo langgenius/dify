@@ -1,9 +1,9 @@
 from __future__ import annotations
-from flask import Flask
 
 from unittest.mock import patch
 from uuid import uuid4
 
+from flask import Flask
 from sqlalchemy.orm import Session
 
 from models.model import App, RecommendedApp, Site
@@ -96,7 +96,9 @@ class TestDatabaseRecommendAppRetrieval:
 
 
 class TestFetchRecommendedAppsFromDb:
-    def test_returns_apps_and_sorted_categories(self, flask_app_with_containers: Flask, db_session_with_containers: Session):
+    def test_returns_apps_and_sorted_categories(
+        self, flask_app_with_containers: Flask, db_session_with_containers: Session
+    ):
         tenant_id = str(uuid4())
         app1 = _create_app(db_session_with_containers, tenant_id=tenant_id)
         _create_site(db_session_with_containers, app_id=app1.id)
@@ -210,7 +212,9 @@ class TestFetchRecommendedAppDetailFromDb:
 
         assert result is None
 
-    def test_returns_none_when_app_not_public(self, flask_app_with_containers: Flask, db_session_with_containers: Session):
+    def test_returns_none_when_app_not_public(
+        self, flask_app_with_containers: Flask, db_session_with_containers: Session
+    ):
         tenant_id = str(uuid4())
         app1 = _create_app(db_session_with_containers, tenant_id=tenant_id, is_public=False)
         _create_recommended_app(db_session_with_containers, app_id=app1.id)
@@ -222,7 +226,9 @@ class TestFetchRecommendedAppDetailFromDb:
         assert result is None
 
     @patch("services.recommend_app.database.database_retrieval.AppDslService")
-    def test_returns_detail_on_success(self, mock_dsl, flask_app_with_containers: Flask, db_session_with_containers: Session):
+    def test_returns_detail_on_success(
+        self, mock_dsl, flask_app_with_containers: Flask, db_session_with_containers: Session
+    ):
         tenant_id = str(uuid4())
         app1 = _create_app(db_session_with_containers, tenant_id=tenant_id)
         _create_site(db_session_with_containers, app_id=app1.id)

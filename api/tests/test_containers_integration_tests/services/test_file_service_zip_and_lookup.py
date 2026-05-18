@@ -7,7 +7,6 @@ Covers:
 """
 
 from __future__ import annotations
-from sqlalchemy.orm import Session
 
 from datetime import UTC, datetime
 from types import SimpleNamespace
@@ -16,6 +15,7 @@ from uuid import uuid4
 from zipfile import ZipFile
 
 import pytest
+from sqlalchemy.orm import Session
 
 import services.file_service as file_service_module
 from extensions.storage.storage_type import StorageType

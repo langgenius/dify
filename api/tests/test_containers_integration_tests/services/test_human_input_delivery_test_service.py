@@ -1,11 +1,11 @@
 from __future__ import annotations
-from flask import Flask
 
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 from uuid import uuid4
 
 import pytest
+from flask import Flask
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session
 
@@ -284,7 +284,9 @@ class TestEmailDeliveryTestHandler:
         )
         assert handler._resolve_recipients(tenant_id=tenant_id, method=method) == ["member@example.com"]
 
-    def test_resolve_recipients_whole_workspace(self, flask_app_with_containers: Flask, db_session_with_containers: Session):
+    def test_resolve_recipients_whole_workspace(
+        self, flask_app_with_containers: Flask, db_session_with_containers: Session
+    ):
         tenant_id = str(uuid4())
         account1 = Account(name="User 1", email=f"u1-{uuid4()}@example.com")
         account2 = Account(name="User 2", email=f"u2-{uuid4()}@example.com")

@@ -130,7 +130,9 @@ class TestFilePreviewApi:
 
             assert "not owned by requesting app" in str(exc_info.value)
 
-    def test_validate_file_ownership_upload_file_not_found(self, file_preview_api: FilePreviewApi, mock_message_file, mock_message):
+    def test_validate_file_ownership_upload_file_not_found(
+        self, file_preview_api: FilePreviewApi, mock_message_file, mock_message
+    ):
         """Test file ownership validation when UploadFile not found"""
         file_id = str(uuid.uuid4())
         app_id = str(uuid.uuid4())
@@ -253,7 +255,14 @@ class TestFilePreviewApi:
 
     @patch("controllers.service_api.app.file_preview.storage")
     def test_get_method_integration(
-        self, mock_storage, file_preview_api: FilePreviewApi, mock_app, mock_end_user, mock_upload_file, mock_message_file, mock_message
+        self,
+        mock_storage,
+        file_preview_api: FilePreviewApi,
+        mock_app,
+        mock_end_user,
+        mock_upload_file,
+        mock_message_file,
+        mock_message,
     ):
         """Test the full GET method integration (without decorator)"""
         file_id = str(uuid.uuid4())
@@ -295,7 +304,13 @@ class TestFilePreviewApi:
 
     @patch("controllers.service_api.app.file_preview.storage")
     def test_storage_error_handling(
-        self, mock_storage, file_preview_api: FilePreviewApi, mock_app, mock_upload_file, mock_message_file, mock_message
+        self,
+        mock_storage,
+        file_preview_api: FilePreviewApi,
+        mock_app,
+        mock_upload_file,
+        mock_message_file,
+        mock_message,
     ):
         """Test storage error handling in the core logic"""
         file_id = str(uuid.uuid4())

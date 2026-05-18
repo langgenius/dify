@@ -5,8 +5,6 @@ This module contains comprehensive integration tests for the DatasetService clas
 specifically focusing on update and delete operations for datasets backed by Testcontainers.
 """
 
-from models import TenantStatus
-from models import AccountStatus
 import datetime
 from unittest.mock import patch
 from uuid import uuid4
@@ -16,7 +14,7 @@ from sqlalchemy.orm import Session
 from werkzeug.exceptions import NotFound
 
 from core.rag.index_processor.constant.index_type import IndexTechniqueType
-from models import Account, Tenant, TenantAccountJoin, TenantAccountRole
+from models import Account, AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole, TenantStatus
 from models.dataset import AppDatasetJoin, Dataset, DatasetPermissionEnum
 from models.enums import DataSourceType
 from models.model import App

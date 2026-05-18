@@ -5,13 +5,13 @@ HIDDEN_VALUE replacement, and error handling for missing records.
 """
 
 from __future__ import annotations
-from flask import Flask
 
 import json
 from unittest.mock import MagicMock, patch
 from uuid import uuid4
 
 import pytest
+from flask import Flask
 
 from core.plugin.entities.plugin_daemon import CredentialType
 from models.tools import BuiltinToolProvider

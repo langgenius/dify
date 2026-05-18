@@ -1,10 +1,10 @@
 from __future__ import annotations
-from flask import Flask
 
 from unittest.mock import Mock, patch
 from uuid import uuid4
 
 import pytest
+from flask import Flask
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -32,7 +32,9 @@ def _create_dataset(db_session: Session, *, tenant_id: str, built_in_field_enabl
     return dataset
 
 
-def _create_document(db_session: Session, *, dataset_id: str, tenant_id: str, doc_metadata: dict | None = None) -> Document:
+def _create_document(
+    db_session: Session, *, dataset_id: str, tenant_id: str, doc_metadata: dict | None = None
+) -> Document:
     document = Document(
         tenant_id=tenant_id,
         dataset_id=dataset_id,
@@ -67,7 +69,11 @@ class TestMetadataPartialUpdate:
             yield account
 
     def test_partial_update_merges_metadata(
-        self, flask_app_with_containers: Flask, db_session_with_containers: Session, tenant_id: str, mock_current_account
+        self,
+        flask_app_with_containers: Flask,
+        db_session_with_containers: Session,
+        tenant_id: str,
+        mock_current_account,
     ):
         dataset = _create_dataset(db_session_with_containers, tenant_id=tenant_id)
         document = _create_document(
@@ -94,7 +100,11 @@ class TestMetadataPartialUpdate:
         assert updated_doc.doc_metadata["new_key"] == "new_value"
 
     def test_full_update_replaces_metadata(
-        self, flask_app_with_containers: Flask, db_session_with_containers: Session, tenant_id: str, mock_current_account
+        self,
+        flask_app_with_containers: Flask,
+        db_session_with_containers: Session,
+        tenant_id: str,
+        mock_current_account,
     ):
         dataset = _create_dataset(db_session_with_containers, tenant_id=tenant_id)
         document = _create_document(
@@ -121,7 +131,12 @@ class TestMetadataPartialUpdate:
         assert "existing_key" not in updated_doc.doc_metadata
 
     def test_partial_update_skips_existing_binding(
-        self, flask_app_with_containers: Flask, db_session_with_containers: Session, tenant_id, user_id, mock_current_account
+        self,
+        flask_app_with_containers: Flask,
+        db_session_with_containers: Session,
+        tenant_id,
+        user_id,
+        mock_current_account,
     ):
         dataset = _create_dataset(db_session_with_containers, tenant_id=tenant_id)
         document = _create_document(
@@ -161,7 +176,11 @@ class TestMetadataPartialUpdate:
         assert len(bindings) == 1
 
     def test_rollback_called_on_commit_failure(
-        self, flask_app_with_containers: Flask, db_session_with_containers: Session, tenant_id: str, mock_current_account
+        self,
+        flask_app_with_containers: Flask,
+        db_session_with_containers: Session,
+        tenant_id: str,
+        mock_current_account,
     ):
         dataset = _create_dataset(db_session_with_containers, tenant_id=tenant_id)
         document = _create_document(

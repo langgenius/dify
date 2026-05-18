@@ -158,7 +158,9 @@ class TestDatasetDocumentListApi:
 
         assert resp["data"]
 
-    def test_get_with_search_status_and_created_at_sort(self, app: Flask, patch_tenant, patch_dataset, patch_permission):
+    def test_get_with_search_status_and_created_at_sort(
+        self, app: Flask, patch_tenant, patch_dataset, patch_permission
+    ):
         api = DatasetDocumentListApi()
         method = unwrap(api.get)
 

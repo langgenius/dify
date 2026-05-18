@@ -1,8 +1,7 @@
-from flask import Flask
 from unittest.mock import MagicMock, patch
 
 import pytest
-from flask import Response
+from flask import Flask, Response
 
 from controllers.console import console_ns
 from controllers.console.app.error import DraftWorkflowNotExist

@@ -5,12 +5,12 @@ Redis queuing, error handling, and community vs enterprise behavior.
 """
 
 from __future__ import annotations
-from flask import Flask
 
 from unittest.mock import patch
 from uuid import uuid4
 
 import pytest
+from flask import Flask
 from redis import RedisError
 from sqlalchemy.orm import Session
 

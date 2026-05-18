@@ -1,7 +1,7 @@
-from flask import Flask
 from unittest.mock import MagicMock, PropertyMock, patch
 
 import pytest
+from flask import Flask
 from werkzeug.exceptions import InternalServerError
 
 import controllers.console.explore.completion as completion_module

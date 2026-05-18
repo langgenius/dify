@@ -1,11 +1,11 @@
 from __future__ import annotations
-from flask import Flask
 
 import json
 from unittest.mock import Mock, patch
 from uuid import uuid4
 
 import pytest
+from flask import Flask
 from sqlalchemy.orm import Session
 
 from models.source import DataSourceApiKeyAuthBinding

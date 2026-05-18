@@ -1,11 +1,11 @@
 """Integration tests for console API key endpoints using testcontainers."""
 
 from __future__ import annotations
-from flask import Flask
 
 from unittest.mock import MagicMock, patch
 
 import pytest
+from flask import Flask
 from flask.testing import FlaskClient
 from sqlalchemy import delete
 from sqlalchemy.orm import Session

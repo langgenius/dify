@@ -12,12 +12,12 @@ Note: API endpoint tests for annotation controllers are complex due to:
 - These are better covered by integration tests
 """
 
-from flask import Flask
 import uuid
 from types import SimpleNamespace
 from unittest.mock import Mock
 
 import pytest
+from flask import Flask
 from flask_restx.api import HTTPStatus
 
 from controllers.service_api.app.annotation import (

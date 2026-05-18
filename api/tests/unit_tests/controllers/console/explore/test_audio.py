@@ -1,8 +1,8 @@
-from flask import Flask
 from io import BytesIO
 from unittest.mock import MagicMock, patch
 
 import pytest
+from flask import Flask
 from werkzeug.exceptions import InternalServerError
 
 import controllers.console.explore.audio as audio_module

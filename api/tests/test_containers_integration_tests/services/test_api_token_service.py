@@ -1,11 +1,11 @@
 from __future__ import annotations
-from flask import Flask
 
 from datetime import datetime
 from unittest.mock import MagicMock, patch
 from uuid import uuid4
 
 import pytest
+from flask import Flask
 from werkzeug.exceptions import Unauthorized
 
 import services.api_token_service as api_token_service_module

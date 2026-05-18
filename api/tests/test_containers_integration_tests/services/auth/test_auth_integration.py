@@ -3,7 +3,6 @@ API Key Authentication System Integration Tests
 """
 
 from __future__ import annotations
-from flask import Flask
 
 from concurrent.futures import ThreadPoolExecutor
 from unittest.mock import Mock, patch
@@ -11,6 +10,7 @@ from uuid import uuid4
 
 import httpx
 import pytest
+from flask import Flask
 from sqlalchemy.orm import Session
 
 from models.source import DataSourceApiKeyAuthBinding

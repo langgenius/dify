@@ -6,18 +6,18 @@ verification, marketplace upgrade flows, and uninstall with credential cleanup.
 """
 
 from __future__ import annotations
-from models import ProviderType
-from sqlalchemy.orm import Session
-from flask import Flask
 
 from unittest.mock import MagicMock, patch
 from uuid import uuid4
 
 import pytest
+from flask import Flask
 from sqlalchemy import select
+from sqlalchemy.orm import Session
 
 from core.plugin.entities.plugin import PluginInstallationSource
 from core.plugin.entities.plugin_daemon import PluginVerification
+from models import ProviderType
 from models.provider import Provider, ProviderCredential, TenantPreferredModelProvider
 from services.errors.plugin import PluginInstallationForbiddenError
 from services.feature_service import PluginInstallationScope

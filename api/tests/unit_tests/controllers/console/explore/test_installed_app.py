@@ -1,8 +1,8 @@
-from flask import Flask
 from datetime import datetime
 from unittest.mock import MagicMock, PropertyMock, patch
 
 import pytest
+from flask import Flask
 from werkzeug.exceptions import BadRequest, Forbidden, NotFound
 
 import controllers.console.explore.installed_app as module
