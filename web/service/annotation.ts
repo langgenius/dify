@@ -7,7 +7,7 @@ export const fetchAnnotationConfig = (appId: string) => {
 }
 export const updateAnnotationStatus = (appId: string, action: AnnotationEnableStatus, embeddingModel?: EmbeddingModelConfig, score?: number) => {
   let body: any = {
-    score_threshold: score || ANNOTATION_DEFAULT.score_threshold,
+    score_threshold: score ?? ANNOTATION_DEFAULT.score_threshold,
   }
   if (embeddingModel) {
     body = {

@@ -100,7 +100,7 @@ const AnnotationReply = ({
                 <div className="flex items-center gap-4 pt-0.5">
                   <div className="">
                     <div className="mb-0.5 text-text-tertiary system-2xs-medium-uppercase">{t('feature.annotation.scoreThreshold.title', { ns: 'appDebug' })}</div>
-                    <div className="text-text-secondary system-xs-regular">{annotationReply.score_threshold || '-'}</div>
+                    <div className="text-text-secondary system-xs-regular">{annotationReply.score_threshold ?? '-'}</div>
                   </div>
                   <div className="h-[27px] w-px rotate-12 bg-divider-subtle"></div>
                   <div className="">
