@@ -53,7 +53,7 @@ const useAnnotationConfig = ({
     setAnnotationConfig(produce(annotationConfig, (draft: AnnotationReplyConfig) => {
       draft.enabled = true
       draft.embedding_model = embeddingModel
-      if (!draft.score_threshold)
+      if (draft.score_threshold === undefined || draft.score_threshold === null)
         draft.score_threshold = ANNOTATION_DEFAULT.score_threshold
     }))
   }
