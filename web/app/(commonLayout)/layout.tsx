@@ -2,6 +2,7 @@ import type { ReactNode } from 'react'
 import * as React from 'react'
 import { AppInitializer } from '@/app/components/app-initializer'
 import InSiteMessageNotification from '@/app/components/app/in-site-message/notification'
+import AmplitudeProvider from '@/app/components/base/amplitude'
 import GA, { GaType } from '@/app/components/base/ga'
 import Zendesk from '@/app/components/base/zendesk'
 import { GotoAnything } from '@/app/components/goto-anything'
@@ -19,6 +20,7 @@ const Layout = ({ children }: { children: ReactNode }) => {
   return (
     <>
       <GA gaType={GaType.admin} />
+      <AmplitudeProvider />
       <AppInitializer>
         <AppContextProvider>
           <EventEmitterContextProvider>

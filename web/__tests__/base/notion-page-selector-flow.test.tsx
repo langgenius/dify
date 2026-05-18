@@ -100,7 +100,7 @@ describe('Base Notion Page Selector Flow', () => {
       />,
     )
 
-    await user.click(screen.getByTestId('checkbox-notion-page-checkbox-root-1'))
+    await user.click(screen.getByRole('checkbox', { name: 'Root 1' }))
 
     expect(onSelect).toHaveBeenLastCalledWith(expect.arrayContaining([
       expect.objectContaining({ page_id: 'root-1', workspace_id: 'w1' }),

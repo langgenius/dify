@@ -1,8 +1,9 @@
 'use client'
 import type { FC } from 'react'
+import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Select, SelectContent, SelectItem, SelectItemIndicator, SelectItemText, SelectTrigger } from '@langgenius/dify-ui/select'
-import Checkbox from '@/app/components/base/checkbox'
+import { useTranslation } from 'react-i18next'
 import Divider from '@/app/components/base/divider'
 import Input from '@/app/components/base/input'
 import DisplayToggle from '../display-toggle'
@@ -43,6 +44,7 @@ const MenuBar: FC<MenuBarProps> = ({
   isCollapsed,
   toggleCollapsed,
 }) => {
+  const { t } = useTranslation()
   const selectedStatus = statusList.find(item => item.value === selectDefaultValue) ?? null
 
   return (
@@ -51,7 +53,8 @@ const MenuBar: FC<MenuBarProps> = ({
         className="shrink-0"
         checked={isAllSelected}
         indeterminate={!isAllSelected && isSomeSelected}
-        onCheck={onSelectedAll}
+        aria-label={t('operation.selectAll', { ns: 'common' })}
+        onCheckedChange={() => onSelectedAll()}
         disabled={isLoading}
       />
       <div className="flex-1 pl-5 system-sm-semibold-uppercase text-text-secondary">{totalText}</div>

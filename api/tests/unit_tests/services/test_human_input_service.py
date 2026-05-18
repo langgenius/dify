@@ -12,8 +12,8 @@ from core.repositories.human_input_repository import (
 )
 from graphon.nodes.human_input.entities import (
     FormDefinition,
-    FormInput,
-    UserAction,
+    ParagraphInputConfig,
+    UserActionConfig,
 )
 from graphon.nodes.human_input.enums import FormInputType, HumanInputFormKind, HumanInputFormStatus
 from libs.datetime_utils import naive_utc_now
@@ -51,7 +51,7 @@ def sample_form_record():
         definition=FormDefinition(
             form_content="hello",
             inputs=[],
-            user_actions=[UserAction(id="submit", title="Submit")],
+            user_actions=[UserActionConfig(id="submit", title="Submit")],
             rendered_content="<p>hello</p>",
             expiration_time=naive_utc_now() + timedelta(hours=1),
         ),
@@ -280,7 +280,7 @@ def test_submit_form_by_token_missing_inputs(sample_form_record, mock_session_fa
 
     definition_with_input = FormDefinition(
         form_content="hello",
-        inputs=[FormInput(type=FormInputType.TEXT_INPUT, output_variable_name="content")],
+        inputs=[ParagraphInputConfig(type=FormInputType.PARAGRAPH, output_variable_name="content")],
         user_actions=sample_form_record.definition.user_actions,
         rendered_content="<p>hello</p>",
         expiration_time=sample_form_record.expiration_time,

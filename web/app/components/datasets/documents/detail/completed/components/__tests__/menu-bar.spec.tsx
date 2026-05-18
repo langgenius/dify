@@ -44,9 +44,9 @@ describe('MenuBar', () => {
   })
 
   it('should render checkbox', () => {
-    const { container } = render(<MenuBar {...defaultProps} />)
-    const checkbox = container.querySelector('[class*="shrink-0"]')
-    expect(checkbox).toBeInTheDocument()
+    render(<MenuBar {...defaultProps} />)
+
+    expect(screen.getByRole('checkbox', { name: 'common.operation.selectAll' })).toBeInTheDocument()
   })
 
   it('should call onInputChange when input changes', () => {

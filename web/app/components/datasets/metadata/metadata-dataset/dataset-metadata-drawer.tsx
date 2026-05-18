@@ -32,8 +32,8 @@ import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Infotip } from '@/app/components/base/infotip'
 import Input from '@/app/components/base/input'
-import CreateModal from '@/app/components/datasets/metadata/metadata-dataset/create-metadata-modal'
-import { getIcon } from '../utils/get-icon'
+import { CreateMetadataModal } from '@/app/components/datasets/metadata/metadata-dataset/create-metadata-modal'
+import { getIconClassName } from '../utils/get-icon'
 import Field from './field'
 
 const i18nPrefix = 'metadata.datasetMetadata'
@@ -64,7 +64,7 @@ const Item: FC<ItemProps> = ({
   onDelete,
 }) => {
   const { t } = useTranslation()
-  const Icon = getIcon(payload.type)
+  const iconClassName = getIconClassName(payload.type)
 
   const handleRename = useCallback(() => {
     onRename?.()
@@ -97,7 +97,7 @@ const Item: FC<ItemProps> = ({
         )}
       >
         <div className="flex h-full items-center space-x-1 text-text-tertiary">
-          <Icon className="size-4 shrink-0" />
+          <span className={cn(iconClassName, 'size-4 shrink-0')} aria-hidden="true" />
           <div className="max-w-[250px] truncate system-sm-medium text-text-primary">{payload.name}</div>
           <div className="shrink-0 system-xs-regular">{payload.type}</div>
         </div>
@@ -222,7 +222,7 @@ const DatasetMetadataDrawer: FC<Props> = ({
               </div>
               <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-6">
                 <div className="system-sm-regular text-text-tertiary">{t(`${i18nPrefix}.description`, { ns: 'dataset' })}</div>
-                <CreateModal
+                <CreateMetadataModal
                   open={open}
                   setOpen={setOpen}
                   trigger={(
@@ -283,6 +283,7 @@ const DatasetMetadataDrawer: FC<Props> = ({
 
                       <Field label={t(`${i18nPrefix}.name`, { ns: 'dataset' })} className="mt-4">
                         <Input
+                          aria-label={t(`${i18nPrefix}.name`, { ns: 'dataset' })}
                           value={templeName}
                           onChange={e => setTempleName(e.target.value)}
                           placeholder={t(`${i18nPrefix}.namePlaceholder`, { ns: 'dataset' })}

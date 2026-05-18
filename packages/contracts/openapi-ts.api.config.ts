@@ -563,16 +563,6 @@ const createApiConfig = (job: ApiJob): UserConfig => ({
       suffix: '.gen',
     },
     path: job.outputPath,
-    postProcess: [
-      {
-        args: ['fmt', '{{path}}'],
-        command: 'vp',
-      },
-      {
-        args: ['--fix', '{{path}}/*.ts'],
-        command: 'eslint',
-      },
-    ],
   },
   plugins: [
     {

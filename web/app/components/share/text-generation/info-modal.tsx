@@ -16,6 +16,8 @@ const InfoModal = ({
   onClose,
   data,
 }: Props) => {
+  const [currentYear] = React.useState(() => new Date().getFullYear())
+
   return (
     <Dialog
       open={isShow}
@@ -24,7 +26,7 @@ const InfoModal = ({
           onClose()
       }}
     >
-      <DialogContent className="w-full max-w-[400px] min-w-[400px] overflow-hidden! border-none p-0! text-left align-middle">
+      <DialogContent className="w-full max-w-100 min-w-100 overflow-hidden! border-none p-0! text-left align-middle">
         <DialogCloseButton />
 
         <div className={cn('flex flex-col items-center gap-4 px-4 pt-10 pb-8')}>
@@ -35,15 +37,20 @@ const InfoModal = ({
             background={data?.icon_background || appDefaultIconBackground}
             imageUrl={data?.icon_url}
           />
-          <div className="system-xl-semibold text-text-secondary">{data?.title}</div>
+          <div className="w-full text-center">
+            <div className="system-xl-semibold text-text-secondary">{data?.title}</div>
+            <div className="mt-1 system-xl-medium text-text-tertiary">{data?.description}</div>
+          </div>
           <div className="system-xs-regular text-text-tertiary">
             {/* copyright */}
             {data?.copyright && (
               <div>
-                ©
-                {(new Date()).getFullYear()}
+                Copyright ©
+                {' '}
+                {currentYear}
                 {' '}
                 {data?.copyright}
+                . All Rights Reserved.
               </div>
             )}
             {data?.custom_disclaimer && (
