@@ -189,11 +189,9 @@ describe('DocumentList', () => {
       }
       render(<DocumentList {...props} />, { wrapper: createWrapper() })
 
-      // When checked, checkbox should have a check icon (svg) inside
-      props.selectedIds.forEach((id) => {
-        const checkIcon = screen.getByTestId(`check-icon-doc-row-${id}`)
-        expect(checkIcon)!.toBeInTheDocument()
-      })
+      expect(screen.getByRole('checkbox', { name: 'Document 1.txt' })).toHaveAttribute('aria-checked', 'true')
+      expect(screen.getByRole('checkbox', { name: 'Document 2.txt' })).toHaveAttribute('aria-checked', 'true')
+      expect(screen.getByRole('checkbox', { name: 'Document 3.txt' })).toHaveAttribute('aria-checked', 'true')
     })
 
     it('should show indeterminate state when some are selected', () => {
