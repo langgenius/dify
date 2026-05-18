@@ -28,15 +28,15 @@ describe('CrawledResultItem', () => {
   })
 
   it('should call onCheckChange with true when unchecked checkbox is clicked', () => {
-    render(<CrawledResultItem {...defaultProps} isChecked={false} testId="crawl-item" />)
-    const checkbox = screen.getByTestId('checkbox-crawl-item')
+    render(<CrawledResultItem {...defaultProps} isChecked={false} />)
+    const checkbox = screen.getByRole('checkbox', { name: 'Example Page https://example.com/page' })
     fireEvent.click(checkbox)
     expect(defaultProps.onCheckChange).toHaveBeenCalledWith(true)
   })
 
   it('should call onCheckChange with false when checked checkbox is clicked', () => {
-    render(<CrawledResultItem {...defaultProps} isChecked={true} testId="crawl-item" />)
-    const checkbox = screen.getByTestId('checkbox-crawl-item')
+    render(<CrawledResultItem {...defaultProps} isChecked={true} />)
+    const checkbox = screen.getByRole('checkbox', { name: 'Example Page https://example.com/page' })
     fireEvent.click(checkbox)
     expect(defaultProps.onCheckChange).toHaveBeenCalledWith(false)
   })

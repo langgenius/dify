@@ -19,8 +19,6 @@ const createAnnotation = (overrides: Partial<AnnotationItem> = {}): AnnotationIt
   hit_count: overrides.hit_count ?? 2,
 })
 
-const getCheckboxes = (container: HTMLElement) => container.querySelectorAll('[data-testid^="checkbox"]')
-
 describe('List', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -51,7 +49,7 @@ describe('List', () => {
   it('should toggle single and bulk selection states', () => {
     const list = [createAnnotation({ id: 'a', question: 'A' }), createAnnotation({ id: 'b', question: 'B' })]
     const onSelectedIdsChange = vi.fn()
-    const { container, rerender } = render(
+    const { rerender } = render(
       <List
         list={list}
         onView={vi.fn()}
@@ -63,8 +61,7 @@ describe('List', () => {
       />,
     )
 
-    const checkboxes = getCheckboxes(container)
-    fireEvent.click(checkboxes[1]!)
+    fireEvent.click(screen.getByRole('checkbox', { name: 'A' }))
     expect(onSelectedIdsChange).toHaveBeenCalledWith(['a'])
 
     rerender(
@@ -78,11 +75,10 @@ describe('List', () => {
         onCancel={vi.fn()}
       />,
     )
-    const updatedCheckboxes = getCheckboxes(container)
-    fireEvent.click(updatedCheckboxes[1]!)
+    fireEvent.click(screen.getByRole('checkbox', { name: 'A' }))
     expect(onSelectedIdsChange).toHaveBeenCalledWith([])
 
-    fireEvent.click(updatedCheckboxes[0]!)
+    fireEvent.click(screen.getByRole('checkbox', { name: 'common.operation.selectAll' }))
     expect(onSelectedIdsChange).toHaveBeenCalledWith(['a', 'b'])
   })
 
