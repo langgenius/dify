@@ -1,5 +1,5 @@
+import type { ApiBasedExtensionResponse } from '@dify/contracts/api/console/api-based-extension/types.gen'
 import type { FC } from 'react'
-import type { ApiBasedExtension } from '@/models/common'
 import {
   AlertDialog,
   AlertDialogActions,
@@ -19,7 +19,7 @@ import { useModalContext } from '@/context/modal-context'
 import { deleteApiBasedExtension } from '@/service/common'
 
 type ItemProps = {
-  data: ApiBasedExtension
+  data: ApiBasedExtensionResponse
   onUpdate: () => void
 }
 const Item: FC<ItemProps> = ({

@@ -1,5 +1,6 @@
 'use client'
 
+import type { ApiBasedExtensionResponse } from '@dify/contracts/api/console/api-based-extension/types.gen'
 import type { ReactNode, SetStateAction } from 'react'
 import type { ModalState, ModelModalType } from './modal-context'
 import type { OpeningStatement } from '@/app/components/base/features/types'
@@ -9,7 +10,7 @@ import type { ModelLoadBalancingModalProps } from '@/app/components/header/accou
 import type { UpdatePluginPayload } from '@/app/components/plugins/types'
 import type { InputVar } from '@/app/components/workflow/types'
 import type { ExpireNoticeModalPayloadProps } from '@/app/education-apply/expire-notice-modal'
-import type { ApiBasedExtension, ExternalDataTool } from '@/models/common'
+import type { ExternalDataTool } from '@/models/common'
 import type { ModerationConfig, PromptVariable } from '@/models/debug'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import {
@@ -89,7 +90,7 @@ export const ModalContextProvider = ({
         ? urlAccountModalState.payload
         : DEFAULT_ACCOUNT_SETTING_TAB)
     : null
-  const [showApiBasedExtensionModal, setShowApiBasedExtensionModal] = useState<ModalState<ApiBasedExtension> | null>(null)
+  const [showApiBasedExtensionModal, setShowApiBasedExtensionModal] = useState<ModalState<Partial<ApiBasedExtensionResponse>> | null>(null)
   const [showModerationSettingModal, setShowModerationSettingModal] = useState<ModalState<ModerationConfig> | null>(null)
   const [showExternalDataToolModal, setShowExternalDataToolModal] = useState<ModalState<ExternalDataTool> | null>(null)
   const [showModelModal, setShowModelModal] = useState<ModalState<ModelModalType> | null>(null)
@@ -205,7 +206,7 @@ export const ModalContextProvider = ({
       showOpeningModal.onCancelCallback()
   }, [showOpeningModal])
 
-  const handleSaveApiBasedExtension = (newApiBasedExtension: ApiBasedExtension) => {
+  const handleSaveApiBasedExtension = (newApiBasedExtension: ApiBasedExtensionResponse) => {
     if (showApiBasedExtensionModal?.onSaveCallback)
       showApiBasedExtensionModal.onSaveCallback(newApiBasedExtension)
     setShowApiBasedExtensionModal(null)
