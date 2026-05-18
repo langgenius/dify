@@ -73,33 +73,6 @@ export class AppListOutput {
   }
 }
 
-export const appTableHandler: TableHandler = {
-  columns: () => APP_COLUMNS,
-  rows: (raw): readonly TableRow[] => {
-    if (!isPayloadShape<AppListResponse>(raw, 'data'))
-      throw new Error('get/app table: unexpected payload shape')
-    return raw.data.map(r => [
-      r.name,
-      r.id,
-      r.mode,
-      joinTags(r.tags ?? []),
-      r.updated_at ?? '',
-      r.created_by_name ?? '',
-      r.workspace_name ?? '',
-    ])
-  },
-}
-
-export const appNameHandler = {
-  id(raw: unknown): string {
-    if (!isPayloadShape<AppListResponse>(raw, 'data'))
-      throw new Error('get/app name: unexpected payload shape')
-    if (raw.data.length === 0)
-      return ''
-    return raw.data.map(r => r.id).join('\n')
-  },
-}
-
 function joinTags(tags: readonly TagItem[]): string {
   return tags.map(t => t.name).join(',')
 }
