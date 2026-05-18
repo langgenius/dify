@@ -88,7 +88,7 @@ class TestWorkflowHumanInputFormApi:
         ],
     )
     def test_get_rejects_non_service_api_recipient_types(
-        self, app, monkeypatch: pytest.MonkeyPatch, recipient_type: RecipientType
+        self, app: Flask, monkeypatch: pytest.MonkeyPatch, recipient_type: RecipientType
     ) -> None:
         form = SimpleNamespace(
             app_id="app-1",
@@ -156,7 +156,7 @@ class TestWorkflowHumanInputFormApi:
         ],
     )
     def test_post_rejects_non_service_api_recipient_types(
-        self, app, monkeypatch: pytest.MonkeyPatch, recipient_type: RecipientType
+        self, app: Flask, monkeypatch: pytest.MonkeyPatch, recipient_type: RecipientType
     ) -> None:
         form = SimpleNamespace(
             app_id="app-1",
