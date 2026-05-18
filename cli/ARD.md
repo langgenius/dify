@@ -103,7 +103,7 @@ import { ErrorCode } from '../../errors/codes.js'
 throw new BaseError({
   code: ErrorCode.UsageMissingArg,
   message: 'workspace id required',
-  hint: 'pass --workspace or run \'difyctl auth use <id>\'',
+  hint: 'pass --workspace or run \'difyctl use workspace <id>\'',
 })
 ```
 
