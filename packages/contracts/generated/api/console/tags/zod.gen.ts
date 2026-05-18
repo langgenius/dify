@@ -13,6 +13,13 @@ export const zTagResponse = z.object({
 })
 
 /**
+ * TagUpdateRequestPayload
+ */
+export const zTagUpdateRequestPayload = z.object({
+  name: z.string().min(1).max(50),
+})
+
+/**
  * TagType
  *
  * Tag type
@@ -53,7 +60,7 @@ export const zDeleteTagsByTagIdPath = z.object({
  */
 export const zDeleteTagsByTagIdResponse = z.record(z.string(), z.unknown())
 
-export const zPatchTagsByTagIdBody = zTagBasePayload
+export const zPatchTagsByTagIdBody = zTagUpdateRequestPayload
 
 export const zPatchTagsByTagIdPath = z.object({
   tag_id: z.string(),
