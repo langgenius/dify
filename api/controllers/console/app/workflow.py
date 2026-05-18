@@ -1595,13 +1595,19 @@ class WorkflowOnlineUsersApi(Resource):
 
                 if not isinstance(user_info, dict):
                     continue
-                if "user_id" not in user_info or "username" not in user_info:
+
+                user_id = user_info.get("user_id")
+                username = user_info.get("username")
+                if not isinstance(user_id, str) or not isinstance(username, str):
                     continue
 
                 avatar = user_info.get("avatar")
+                if avatar is not None and not isinstance(avatar, str):
+                    avatar = None
+
                 if isinstance(avatar, str) and avatar and not avatar.startswith(("http://", "https://")):
                     try:
-                        user_info["avatar"] = file_helpers.get_signed_file_url(avatar)
+                        avatar = file_helpers.get_signed_file_url(avatar)
                     except Exception as exc:
                         logger.warning(
                             "Failed to sign workflow online user avatar; using original value. "
@@ -1611,7 +1617,7 @@ class WorkflowOnlineUsersApi(Resource):
                             exc,
                         )
 
-                users.append(user_info)
+                users.append({"user_id": user_id, "username": username, "avatar": avatar})
             results.append({"app_id": app_id, "users": users})
 
         return WorkflowOnlineUsersResponse.model_validate({"data": results}).model_dump(mode="json")

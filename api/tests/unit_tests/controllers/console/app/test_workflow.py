@@ -575,6 +575,27 @@ def test_workflow_online_users_filters_inaccessible_workflow(app, monkeypatch: p
                 }
             ),
             b"sid-malformed": json.dumps({"avatar": "avatar-file-id", "sid": "sid-malformed"}),
+            b"sid-invalid-avatar": json.dumps(
+                {
+                    "user_id": "u-2",
+                    "username": "Bob",
+                    "avatar": {"file_id": "avatar-file-id"},
+                }
+            ),
+            b"sid-invalid-user-id": json.dumps(
+                {
+                    "user_id": 42,
+                    "username": "Carol",
+                    "avatar": "avatar-file-id",
+                }
+            ),
+            b"sid-invalid-username": json.dumps(
+                {
+                    "user_id": "u-4",
+                    "username": ["Dave"],
+                    "avatar": "avatar-file-id",
+                }
+            ),
         }
     ]
     redis_pipeline_factory = Mock(return_value=redis_pipeline)
@@ -599,7 +620,12 @@ def test_workflow_online_users_filters_inaccessible_workflow(app, monkeypatch: p
                         "user_id": "u-1",
                         "username": "Alice",
                         "avatar": signed_avatar_url,
-                    }
+                    },
+                    {
+                        "user_id": "u-2",
+                        "username": "Bob",
+                        "avatar": None,
+                    },
                 ],
             }
         ]
