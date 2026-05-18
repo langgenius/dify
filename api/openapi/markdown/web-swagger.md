@@ -1074,11 +1074,11 @@ Returns Server-Sent Events stream.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| application_title | string |  | No |
-| enabled | boolean |  | No |
-| favicon | string |  | No |
-| login_page_logo | string |  | No |
-| workspace_logo | string |  | No |
+| application_title | string |  | Yes |
+| enabled | boolean |  | Yes |
+| favicon | string |  | Yes |
+| login_page_logo | string |  | Yes |
+| workspace_logo | string |  | Yes |
 
 #### ChatMessagePayload
 
@@ -1156,14 +1156,14 @@ Returns Server-Sent Events stream.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| created_at | integer |  | No |
-| created_by | string |  | No |
-| extension | string |  | No |
+| created_at | integer |  | Yes |
+| created_by | string |  | Yes |
+| extension | string |  | Yes |
 | id | string |  | Yes |
-| mime_type | string |  | No |
+| mime_type | string |  | Yes |
 | name | string |  | Yes |
 | size | integer |  | Yes |
-| url | string |  | No |
+| url | string |  | Yes |
 
 #### ForgotPasswordCheckPayload
 
@@ -1196,17 +1196,17 @@ Returns Server-Sent Events stream.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| enabled | boolean | Whether this limit is currently active | No |
-| limit | integer | Maximum number of resources allowed; 0 means no limit | No |
-| size | integer | Number of resources already consumed | No |
+| enabled | boolean | Whether this limit is currently active | Yes |
+| limit | integer | Maximum number of resources allowed; 0 means no limit | Yes |
+| size | integer | Number of resources already consumed | Yes |
 
 #### LicenseModel
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| expired_at | string |  | No |
-| status | [LicenseStatus](#licensestatus) |  | No |
-| workspaces | [LicenseLimitationModel](#licenselimitationmodel) |  | No |
+| expired_at | string |  | Yes |
+| status | [LicenseStatus](#licensestatus) |  | Yes |
+| workspaces | [LicenseLimitationModel](#licenselimitationmodel) |  | Yes |
 
 #### LicenseStatus
 
@@ -1253,8 +1253,8 @@ Returns Server-Sent Events stream.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| plugin_installation_scope | [PluginInstallationScope](#plugininstallationscope) |  | No |
-| restrict_to_marketplace_only | boolean |  | No |
+| plugin_installation_scope | [PluginInstallationScope](#plugininstallationscope) |  | Yes |
+| restrict_to_marketplace_only | boolean |  | Yes |
 
 #### PluginInstallationScope
 
@@ -1266,7 +1266,7 @@ Returns Server-Sent Events stream.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| enabled | boolean |  | No |
+| enabled | boolean |  | Yes |
 
 #### RemoteFileInfo
 
@@ -1323,28 +1323,28 @@ Returns Server-Sent Events stream.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| app_dsl_version | string |  | No |
-| branding | [BrandingModel](#brandingmodel) |  | No |
-| enable_change_email | boolean |  | No |
-| enable_collaboration_mode | boolean |  | No |
-| enable_creators_platform | boolean |  | No |
-| enable_email_code_login | boolean |  | No |
-| enable_email_password_login | boolean |  | No |
-| enable_explore_banner | boolean |  | No |
-| enable_marketplace | boolean |  | No |
-| enable_social_oauth_login | boolean |  | No |
-| enable_trial_app | boolean |  | No |
-| is_allow_create_workspace | boolean |  | No |
-| is_allow_register | boolean |  | No |
-| is_email_setup | boolean |  | No |
-| license | [LicenseModel](#licensemodel) |  | No |
-| max_plugin_package_size | integer |  | No |
-| plugin_installation_permission | [PluginInstallationPermissionModel](#plugininstallationpermissionmodel) |  | No |
-| plugin_manager | [PluginManagerModel](#pluginmanagermodel) |  | No |
-| sso_enforced_for_signin | boolean |  | No |
-| sso_enforced_for_signin_protocol | string |  | No |
-| trial_models | [ string ] |  | No |
-| webapp_auth | [WebAppAuthModel](#webappauthmodel) |  | No |
+| app_dsl_version | string |  | Yes |
+| branding | [BrandingModel](#brandingmodel) |  | Yes |
+| enable_change_email | boolean |  | Yes |
+| enable_collaboration_mode | boolean |  | Yes |
+| enable_creators_platform | boolean |  | Yes |
+| enable_email_code_login | boolean |  | Yes |
+| enable_email_password_login | boolean |  | Yes |
+| enable_explore_banner | boolean |  | Yes |
+| enable_marketplace | boolean |  | Yes |
+| enable_social_oauth_login | boolean |  | Yes |
+| enable_trial_app | boolean |  | Yes |
+| is_allow_create_workspace | boolean |  | Yes |
+| is_allow_register | boolean |  | Yes |
+| is_email_setup | boolean |  | Yes |
+| license | [LicenseModel](#licensemodel) |  | Yes |
+| max_plugin_package_size | integer |  | Yes |
+| plugin_installation_permission | [PluginInstallationPermissionModel](#plugininstallationpermissionmodel) |  | Yes |
+| plugin_manager | [PluginManagerModel](#pluginmanagermodel) |  | Yes |
+| sso_enforced_for_signin | boolean |  | Yes |
+| sso_enforced_for_signin_protocol | string |  | Yes |
+| trial_models | [ string ] |  | Yes |
+| webapp_auth | [WebAppAuthModel](#webappauthmodel) |  | Yes |
 
 #### TextToAudioPayload
 
@@ -1367,17 +1367,17 @@ Returns Server-Sent Events stream.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| allow_email_code_login | boolean |  | No |
-| allow_email_password_login | boolean |  | No |
-| allow_sso | boolean |  | No |
-| enabled | boolean |  | No |
-| sso_config | [WebAppAuthSSOModel](#webappauthssomodel) |  | No |
+| allow_email_code_login | boolean |  | Yes |
+| allow_email_password_login | boolean |  | Yes |
+| allow_sso | boolean |  | Yes |
+| enabled | boolean |  | Yes |
+| sso_config | [WebAppAuthSSOModel](#webappauthssomodel) |  | Yes |
 
 #### WebAppAuthSSOModel
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| protocol | string |  | No |
+| protocol | string |  | Yes |
 
 #### WorkflowRunPayload
 

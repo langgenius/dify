@@ -10701,18 +10701,18 @@ Retrieval settings for Amazon Bedrock knowledge base queries.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| enabled | boolean |  | No |
-| subscription | [SubscriptionModel](#subscriptionmodel) |  | No |
+| enabled | boolean |  | Yes |
+| subscription | [SubscriptionModel](#subscriptionmodel) |  | Yes |
 
 #### BrandingModel
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| application_title | string |  | No |
-| enabled | boolean |  | No |
-| favicon | string |  | No |
-| login_page_logo | string |  | No |
-| workspace_logo | string |  | No |
+| application_title | string |  | Yes |
+| enabled | boolean |  | Yes |
+| favicon | string |  | Yes |
+| login_page_logo | string |  | Yes |
+| workspace_logo | string |  | Yes |
 
 #### BuiltinProviderDefaultCredentialPayload
 
@@ -11638,8 +11638,8 @@ Request payload for bulk downloading documents as a zip archive.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| activated | boolean |  | No |
-| enabled | boolean |  | No |
+| activated | boolean |  | Yes |
+| enabled | boolean |  | Yes |
 
 #### EducationStatusResponse
 
@@ -11836,26 +11836,26 @@ Request payload for bulk downloading documents as a zip archive.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| annotation_quota_limit | [LimitationModel](#limitationmodel) |  | No |
-| api_rate_limit | [Quota](#quota) |  | No |
-| apps | [LimitationModel](#limitationmodel) |  | No |
-| billing | [BillingModel](#billingmodel) |  | No |
-| can_replace_logo | boolean |  | No |
-| dataset_operator_enabled | boolean |  | No |
-| docs_processing | string |  | No |
-| documents_upload_quota | [LimitationModel](#limitationmodel) |  | No |
-| education | [EducationModel](#educationmodel) |  | No |
-| human_input_email_delivery_enabled | boolean |  | No |
-| is_allow_transfer_workspace | boolean |  | No |
-| knowledge_pipeline | [KnowledgePipeline](#knowledgepipeline) |  | No |
-| knowledge_rate_limit | integer |  | No |
-| members | [LimitationModel](#limitationmodel) |  | No |
-| model_load_balancing_enabled | boolean |  | No |
-| next_credit_reset_date | integer |  | No |
-| trigger_event | [Quota](#quota) |  | No |
-| vector_space | [LimitationModel](#limitationmodel) |  | No |
-| webapp_copyright_enabled | boolean |  | No |
-| workspace_members | [LicenseLimitationModel](#licenselimitationmodel) |  | No |
+| annotation_quota_limit | [LimitationModel](#limitationmodel) |  | Yes |
+| api_rate_limit | [Quota](#quota) |  | Yes |
+| apps | [LimitationModel](#limitationmodel) |  | Yes |
+| billing | [BillingModel](#billingmodel) |  | Yes |
+| can_replace_logo | boolean |  | Yes |
+| dataset_operator_enabled | boolean |  | Yes |
+| docs_processing | string |  | Yes |
+| documents_upload_quota | [LimitationModel](#limitationmodel) |  | Yes |
+| education | [EducationModel](#educationmodel) |  | Yes |
+| human_input_email_delivery_enabled | boolean |  | Yes |
+| is_allow_transfer_workspace | boolean |  | Yes |
+| knowledge_pipeline | [KnowledgePipeline](#knowledgepipeline) |  | Yes |
+| knowledge_rate_limit | integer |  | Yes |
+| members | [LimitationModel](#limitationmodel) |  | Yes |
+| model_load_balancing_enabled | boolean |  | Yes |
+| next_credit_reset_date | integer |  | Yes |
+| trigger_event | [Quota](#quota) |  | Yes |
+| vector_space | [LimitationModel](#limitationmodel) |  | Yes |
+| webapp_copyright_enabled | boolean |  | Yes |
+| workspace_members | [LicenseLimitationModel](#licenselimitationmodel) |  | Yes |
 
 #### Feedback
 
@@ -11947,14 +11947,14 @@ Request payload for bulk downloading documents as a zip archive.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| created_at | integer |  | No |
-| created_by | string |  | No |
-| extension | string |  | No |
+| created_at | integer |  | Yes |
+| created_by | string |  | Yes |
+| extension | string |  | Yes |
 | id | string |  | Yes |
-| mime_type | string |  | No |
+| mime_type | string |  | Yes |
 | name | string |  | Yes |
 | size | integer |  | Yes |
-| url | string |  | No |
+| url | string |  | Yes |
 
 #### ForgotPasswordCheckPayload
 
@@ -12335,7 +12335,7 @@ Request payload for bulk downloading documents as a zip archive.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| publish_enabled | boolean |  | No |
+| publish_enabled | boolean |  | Yes |
 
 #### LLMMode
 
@@ -12361,17 +12361,17 @@ Enum class for large language model mode.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| enabled | boolean | Whether this limit is currently active | No |
-| limit | integer | Maximum number of resources allowed; 0 means no limit | No |
-| size | integer | Number of resources already consumed | No |
+| enabled | boolean | Whether this limit is currently active | Yes |
+| limit | integer | Maximum number of resources allowed; 0 means no limit | Yes |
+| size | integer | Number of resources already consumed | Yes |
 
 #### LicenseModel
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| expired_at | string |  | No |
-| status | [LicenseStatus](#licensestatus) |  | No |
-| workspaces | [LicenseLimitationModel](#licenselimitationmodel) |  | No |
+| expired_at | string |  | Yes |
+| status | [LicenseStatus](#licensestatus) |  | Yes |
+| workspaces | [LicenseLimitationModel](#licenselimitationmodel) |  | Yes |
 
 #### LicenseStatus
 
@@ -12383,8 +12383,8 @@ Enum class for large language model mode.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| limit | integer |  | No |
-| size | integer |  | No |
+| limit | integer |  | Yes |
+| size | integer |  | Yes |
 
 #### LoadBalancingCredentialPayload
 
@@ -13192,8 +13192,8 @@ Form input definition.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| plugin_installation_scope | [PluginInstallationScope](#plugininstallationscope) |  | No |
-| restrict_to_marketplace_only | boolean |  | No |
+| plugin_installation_scope | [PluginInstallationScope](#plugininstallationscope) |  | Yes |
+| restrict_to_marketplace_only | boolean |  | Yes |
 
 #### PluginInstallationScope
 
@@ -13205,7 +13205,7 @@ Form input definition.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| enabled | boolean |  | No |
+| enabled | boolean |  | Yes |
 
 #### PluginPermissionSettingsPayload
 
@@ -13251,9 +13251,9 @@ Form input definition.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| limit | integer |  | No |
-| reset_date | integer |  | No |
-| usage | integer |  | No |
+| limit | integer |  | Yes |
+| reset_date | integer |  | Yes |
+| usage | integer |  | Yes |
 
 #### RagPipelineDatasetImportPayload
 
@@ -13663,8 +13663,8 @@ Default configuration for form inputs.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| interval | string |  | No |
-| plan | string |  | No |
+| interval | string |  | Yes |
+| plan | string |  | Yes |
 
 #### SubscriptionQuery
 
@@ -13713,28 +13713,28 @@ Default configuration for form inputs.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| app_dsl_version | string |  | No |
-| branding | [BrandingModel](#brandingmodel) |  | No |
-| enable_change_email | boolean |  | No |
-| enable_collaboration_mode | boolean |  | No |
-| enable_creators_platform | boolean |  | No |
-| enable_email_code_login | boolean |  | No |
-| enable_email_password_login | boolean |  | No |
-| enable_explore_banner | boolean |  | No |
-| enable_marketplace | boolean |  | No |
-| enable_social_oauth_login | boolean |  | No |
-| enable_trial_app | boolean |  | No |
-| is_allow_create_workspace | boolean |  | No |
-| is_allow_register | boolean |  | No |
-| is_email_setup | boolean |  | No |
-| license | [LicenseModel](#licensemodel) |  | No |
-| max_plugin_package_size | integer |  | No |
-| plugin_installation_permission | [PluginInstallationPermissionModel](#plugininstallationpermissionmodel) |  | No |
-| plugin_manager | [PluginManagerModel](#pluginmanagermodel) |  | No |
-| sso_enforced_for_signin | boolean |  | No |
-| sso_enforced_for_signin_protocol | string |  | No |
-| trial_models | [ string ] |  | No |
-| webapp_auth | [WebAppAuthModel](#webappauthmodel) |  | No |
+| app_dsl_version | string |  | Yes |
+| branding | [BrandingModel](#brandingmodel) |  | Yes |
+| enable_change_email | boolean |  | Yes |
+| enable_collaboration_mode | boolean |  | Yes |
+| enable_creators_platform | boolean |  | Yes |
+| enable_email_code_login | boolean |  | Yes |
+| enable_email_password_login | boolean |  | Yes |
+| enable_explore_banner | boolean |  | Yes |
+| enable_marketplace | boolean |  | Yes |
+| enable_social_oauth_login | boolean |  | Yes |
+| enable_trial_app | boolean |  | Yes |
+| is_allow_create_workspace | boolean |  | Yes |
+| is_allow_register | boolean |  | Yes |
+| is_email_setup | boolean |  | Yes |
+| license | [LicenseModel](#licensemodel) |  | Yes |
+| max_plugin_package_size | integer |  | Yes |
+| plugin_installation_permission | [PluginInstallationPermissionModel](#plugininstallationpermissionmodel) |  | Yes |
+| plugin_manager | [PluginManagerModel](#pluginmanagermodel) |  | Yes |
+| sso_enforced_for_signin | boolean |  | Yes |
+| sso_enforced_for_signin_protocol | string |  | Yes |
+| trial_models | [ string ] |  | Yes |
+| webapp_auth | [WebAppAuthModel](#webappauthmodel) |  | Yes |
 
 #### Tag
 
@@ -14180,17 +14180,17 @@ in form definiton, or a variable while the workflow is running.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| allow_email_code_login | boolean |  | No |
-| allow_email_password_login | boolean |  | No |
-| allow_sso | boolean |  | No |
-| enabled | boolean |  | No |
-| sso_config | [WebAppAuthSSOModel](#webappauthssomodel) |  | No |
+| allow_email_code_login | boolean |  | Yes |
+| allow_email_password_login | boolean |  | Yes |
+| allow_sso | boolean |  | Yes |
+| enabled | boolean |  | Yes |
+| sso_config | [WebAppAuthSSOModel](#webappauthssomodel) |  | Yes |
 
 #### WebAppAuthSSOModel
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| protocol | string |  | No |
+| protocol | string |  | Yes |
 
 #### WebhookTriggerResponse
 
