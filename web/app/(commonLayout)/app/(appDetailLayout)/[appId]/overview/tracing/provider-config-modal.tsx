@@ -311,7 +311,7 @@ const ProviderConfigModal: FC<Props> = ({
               onOpenChange={setIsConfigDialogOpen}
               onOpenChangeComplete={handleConfigDialogOpenChangeComplete}
             >
-              <DialogContent className="max-h-[calc(100dvh-1rem)] w-auto max-w-[calc(100vw-1rem)] overflow-hidden border-none bg-transparent p-0 shadow-none">
+              <DialogContent className="max-h-[calc(100dvh-1rem)] w-auto max-w-[calc(100vw-1rem)] overflow-visible border-none bg-transparent p-0 shadow-none">
                 <div className="flex items-center justify-center">
                   <div className="mx-2 max-h-[calc(100vh-120px)] w-[640px] overflow-y-auto rounded-2xl bg-components-panel-bg shadow-xl">
                     <div className="px-8 pt-8">
