@@ -11,6 +11,7 @@ const mockImportDSLConfirm = vi.fn()
 const mockTrackCreateApp = vi.fn()
 const mockHandleCheckPluginDependencies = vi.fn()
 const mockGetRedirection = vi.fn()
+const mockInvalidateAppList = vi.hoisted(() => vi.fn())
 const toastMocks = vi.hoisted(() => ({
   call: vi.fn(),
   success: vi.fn(),
@@ -51,6 +52,9 @@ vi.mock('@/utils/create-app-tracking', () => ({
 vi.mock('@/service/apps', () => ({
   importDSL: (...args: unknown[]) => mockImportDSL(...args),
   importDSLConfirm: (...args: unknown[]) => mockImportDSLConfirm(...args),
+}))
+vi.mock('@/service/use-apps', () => ({
+  useInvalidateAppList: () => mockInvalidateAppList,
 }))
 
 vi.mock('@/app/components/workflow/plugin-dependency/hooks', () => ({
@@ -201,6 +205,7 @@ describe('CreateFromDSLModal', () => {
     expect(handleSuccess).toHaveBeenCalledTimes(1)
     expect(handleClose).toHaveBeenCalledTimes(1)
     expect(localStorage.getItem(NEED_REFRESH_APP_LIST_KEY)).toBe('1')
+    expect(mockInvalidateAppList).toHaveBeenCalledTimes(1)
     expect(mockHandleCheckPluginDependencies).toHaveBeenCalledWith('app-1')
     expect(mockGetRedirection).toHaveBeenCalledWith(true, { id: 'app-1', mode: 'chat' }, mockPush)
   })
@@ -305,6 +310,7 @@ describe('CreateFromDSLModal', () => {
       import_id: 'import-3',
     })
     expect(mockTrackCreateApp).toHaveBeenCalledWith({ appMode: AppModeEnum.WORKFLOW })
+    expect(mockInvalidateAppList).toHaveBeenCalledTimes(1)
   })
 
   it('should close the DSL mismatch modal when dialog requests close', async () => {
