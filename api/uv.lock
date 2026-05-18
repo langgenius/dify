@@ -1332,7 +1332,6 @@ dependencies = [
     { name = "boto3" },
     { name = "celery" },
     { name = "croniter" },
-    { name = "dify-agent" },
     { name = "fastopenapi", extra = ["flask"] },
     { name = "flask" },
     { name = "flask-compress" },
@@ -1373,6 +1372,7 @@ dev = [
     { name = "boto3-stubs" },
     { name = "celery-types" },
     { name = "coverage" },
+    { name = "dify-agent" },
     { name = "dotenv-linter" },
     { name = "faker" },
     { name = "hypothesis" },
@@ -1615,7 +1615,6 @@ requires-dist = [
     { name = "boto3", specifier = ">=1.43.6" },
     { name = "celery", specifier = ">=5.6.3" },
     { name = "croniter", specifier = ">=6.2.2" },
-    { name = "dify-agent", directory = "../dify-agent" },
     { name = "fastopenapi", extras = ["flask"], specifier = "~=0.7.0" },
     { name = "flask", specifier = ">=3.1.3,<4.0.0" },
     { name = "flask-compress", specifier = ">=1.24,<2.0.0" },
@@ -1629,7 +1628,7 @@ requires-dist = [
     { name = "gmpy2", specifier = ">=2.3.0" },
     { name = "google-api-python-client", specifier = ">=2.196.0" },
     { name = "google-cloud-aiplatform", specifier = ">=1.151.0,<2.0.0" },
-    { name = "graphon", specifier = "~=0.3.1" },
+    { name = "graphon", specifier = "~=0.4.0" },
     { name = "gunicorn", specifier = ">=26.0.0" },
     { name = "httpx", extras = ["socks"], specifier = ">=0.28.1,<1.0.0" },
     { name = "httpx-sse", specifier = "~=0.4.0" },
@@ -1656,6 +1655,7 @@ dev = [
     { name = "boto3-stubs", specifier = ">=1.43.2" },
     { name = "celery-types", specifier = ">=0.23.0" },
     { name = "coverage", specifier = ">=7.13.4" },
+    { name = "dify-agent", directory = "../dify-agent" },
     { name = "dotenv-linter", specifier = ">=0.7.0" },
     { name = "faker", specifier = ">=40.15.0" },
     { name = "hypothesis", specifier = ">=6.152.4" },
@@ -2984,7 +2984,7 @@ httpx = [
 
 [[package]]
 name = "graphon"
-version = "0.3.1"
+version = "0.4.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "charset-normalizer" },
@@ -3005,9 +3005,9 @@ dependencies = [
     { name = "unstructured", extra = ["docx", "epub", "md", "ppt", "pptx"] },
     { name = "webvtt-py" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/5a/ef/43217842e84160acca64a95858f1689389a50e04a53fc94f2aa836b4eaf7/graphon-0.3.1.tar.gz", hash = "sha256:49971baed1eb16c8e1983f755e659902e4f117a68dc62fad19e91472950b937d", size = 242210, upload-time = "2026-05-07T06:58:21.879Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/76/24/eb1e7983404dcac84816b76ea450e1bb97023e55e00c699d609340bc361e/graphon-0.4.0.tar.gz", hash = "sha256:afb0c7a58f89e09cfa585296429b4d08cd0df80b9ac54d550f88e7d76ec48ee0", size = 261812, upload-time = "2026-05-13T11:48:39.198Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/62/37/bef16ed3d6da7446b36769fa388f4dc79f95337ffa16d6dfc3177152507e/graphon-0.3.1-py3-none-any.whl", hash = "sha256:e6422c7e3f1ce7d2185979c17e08201816ca25d46d400ebdd035c95d501c04fe", size = 349368, upload-time = "2026-05-07T06:58:20.217Z" },
+    { url = "https://files.pythonhosted.org/packages/b7/de/bad6b3fd1e4b4defc16e6ea106e55c44725a159f1d191a99877bce1c9931/graphon-0.4.0-py3-none-any.whl", hash = "sha256:b33f95886da823d5b1b53d663a4f5f8fa383c37740f3bd19297b8d140fcb804c", size = 372711, upload-time = "2026-05-13T11:48:37.712Z" },
 ]
 
 [[package]]

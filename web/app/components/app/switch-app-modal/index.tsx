@@ -11,6 +11,7 @@ import {
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
+import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
 import { toast } from '@langgenius/dify-ui/toast'
@@ -19,7 +20,6 @@ import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import AppIcon from '@/app/components/base/app-icon'
-import Checkbox from '@/app/components/base/checkbox'
 import { AlertTriangle } from '@/app/components/base/icons/src/vender/solid/alertsAndFeedback'
 import Input from '@/app/components/base/input'
 import AppsFull from '@/app/components/billing/apps-full-in-dialog'
@@ -165,14 +165,12 @@ const SwitchAppModal = ({ show, appDetail, inAppDetail = false, onSuccess, onClo
           {isAppsFull && <AppsFull loc="app-switch" />}
           <div className="flex items-center justify-between pt-6">
             <div className="flex items-center">
-              <Checkbox className="shrink-0" checked={removeOriginal} onCheck={() => setRemoveOriginal(!removeOriginal)} />
-              <button
-                type="button"
-                className="ml-2 cursor-pointer border-none bg-transparent p-0 text-left text-sm leading-5 text-text-secondary focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
-                onClick={() => setRemoveOriginal(!removeOriginal)}
-              >
-                {t('removeOriginal', { ns: 'app' })}
-              </button>
+              <label className="flex cursor-pointer items-center">
+                <Checkbox className="shrink-0" checked={removeOriginal} onCheckedChange={setRemoveOriginal} />
+                <span className="ml-2 text-left text-sm leading-5 text-text-secondary">
+                  {t('removeOriginal', { ns: 'app' })}
+                </span>
+              </label>
             </div>
             <div className="flex items-center">
               <Button className="mr-2" onClick={onClose}>{t('newApp.Cancel', { ns: 'app' })}</Button>

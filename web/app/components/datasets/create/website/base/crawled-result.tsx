@@ -65,7 +65,6 @@ const CrawledResult: FC<Props> = ({
           onChange={handleCheckedAll}
           label={isCheckAll ? t(`${I18N_PREFIX}.resetAll`, { ns: 'datasetCreation' }) : t(`${I18N_PREFIX}.selectAll`, { ns: 'datasetCreation' })}
           labelClassName="system-[13px] leading-[16px] font-medium text-text-secondary"
-          testId="select-all"
         />
         <div className="text-xs text-text-tertiary">
           {t(`${I18N_PREFIX}.scrapTimeInfo`, {
@@ -84,7 +83,6 @@ const CrawledResult: FC<Props> = ({
             payload={item}
             isChecked={checkedList.some(checkedItem => checkedItem.source_url === item.source_url)}
             onCheckChange={handleItemCheckChange(item)}
-            testId={`item-${index}`}
           />
         ))}
       </div>

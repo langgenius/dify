@@ -29,7 +29,11 @@ from core.workflow.node_factory import (
     get_node_type_classes_mapping,
     is_start_node_type,
 )
-from core.workflow.node_runtime import DifyHumanInputNodeRuntime, apply_dify_debug_email_recipient
+from core.workflow.node_runtime import (
+    DifyFileReferenceFactory,
+    DifyHumanInputNodeRuntime,
+    apply_dify_debug_email_recipient,
+)
 from core.workflow.system_variables import build_bootstrap_variables, build_system_variables, default_system_variables
 from core.workflow.variable_pool_initializer import add_node_inputs_to_pool, add_variables_to_pool
 from core.workflow.workflow_entry import WorkflowEntry
@@ -1259,6 +1263,7 @@ class WorkflowService:
             data=node_data,
             graph_init_params=graph_init_params,
             graph_runtime_state=graph_runtime_state,
+            file_reference_factory=DifyFileReferenceFactory(graph_init_params.run_context),
             runtime=DifyHumanInputNodeRuntime(run_context),
         )
         return node
