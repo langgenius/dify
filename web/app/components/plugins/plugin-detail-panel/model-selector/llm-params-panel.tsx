@@ -29,7 +29,8 @@ const LLMParamsPanel = ({
   onCompletionParamsChange,
 }: Props) => {
   const { t } = useTranslation()
-  const { data: parameterRulesData, isPending: isLoading } = useModelParameterRules(provider, modelId)
+  const { data: parameterRulesData, isLoading } = useModelParameterRules(provider, modelId)
+  const isRulesLoading = !!provider && !!modelId && isLoading
 
   const parameterRules: ModelParameterRule[] = useMemo(() => {
     return parameterRulesData?.data || []
@@ -65,7 +66,7 @@ const LLMParamsPanel = ({
     }
   }
 
-  if (isLoading) {
+  if (isRulesLoading) {
     return (
       <div className="mt-5"><Loading /></div>
     )

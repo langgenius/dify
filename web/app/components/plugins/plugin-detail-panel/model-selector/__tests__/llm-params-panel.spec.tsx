@@ -148,10 +148,12 @@ const createDefaultProps = (overrides: Partial<{
 const setupModelParameterRulesMock = (config: {
   data?: ModelParameterRule[]
   isPending?: boolean
+  isLoading?: boolean
 } = {}) => {
   mockUseModelParameterRules.mockReturnValue({
     data: config.data ? { data: config.data } : undefined,
     isPending: config.isPending ?? false,
+    isLoading: config.isLoading ?? config.isPending ?? false,
   })
 }
 
@@ -186,6 +188,19 @@ describe('LLMParamsPanel', () => {
 
       // Assert - Loading component uses aria-label instead of visible text
       expect(screen.getByRole('status')).toBeInTheDocument()
+    })
+
+    it('should not render loading state when model is not configured and parameter rules query is pending but disabled', () => {
+      // Arrange
+      setupModelParameterRulesMock({ isPending: true, isLoading: false })
+      const props = createDefaultProps({ provider: '', modelId: '' })
+
+      // Act
+      render(<LLMParamsPanel {...props} />)
+
+      // Assert
+      expect(screen.queryByRole('status')).not.toBeInTheDocument()
+      expect(screen.getByText('common.modelProvider.parameters')).toBeInTheDocument()
     })
 
     it('should render parameters header', () => {
