@@ -52,3 +52,32 @@ export const ExternalInvalidState: Story = {
     </FieldRoot>
   ),
 }
+
+export const Sizes: Story = {
+  render: () => (
+    <div className="grid w-96 gap-4">
+      <FieldRoot name="smallEndpoint">
+        <FieldLabel>Small</FieldLabel>
+        <FieldControl size="small" placeholder="Small input" />
+      </FieldRoot>
+      <FieldRoot name="regularEndpoint">
+        <FieldLabel>Regular</FieldLabel>
+        <FieldControl placeholder="Regular input" />
+      </FieldRoot>
+      <FieldRoot name="largeEndpoint">
+        <FieldLabel>Large</FieldLabel>
+        <FieldControl size="large" placeholder="Large input" />
+      </FieldRoot>
+    </div>
+  ),
+}
+
+export const ReadOnly: Story = {
+  render: () => (
+    <FieldRoot name="readonlyEndpoint" className="w-96">
+      <FieldLabel>Endpoint</FieldLabel>
+      <FieldControl readOnly defaultValue="https://api.example.com" />
+      <FieldDescription>This value is managed by the workspace owner.</FieldDescription>
+    </FieldRoot>
+  ),
+}

@@ -20,7 +20,7 @@ describe('Fieldset primitives', () => {
     )
 
     await expect.element(screen.getByRole('group', { name: 'Permissions' })).toHaveClass('border-0', 'p-0')
-    await expect.element(screen.getByText('Permissions')).toHaveClass('system-sm-medium', 'text-text-secondary')
+    await expect.element(screen.getByText('Permissions')).toHaveClass('mb-1', 'py-1', 'system-sm-medium', 'text-text-secondary')
   })
 
   it('should compose with checkbox groups through FieldRoot and FieldItem', async () => {
