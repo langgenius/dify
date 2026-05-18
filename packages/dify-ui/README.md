@@ -29,6 +29,8 @@ import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Dialog, DialogContent, DialogTrigger } from '@langgenius/dify-ui/dialog'
 import { Drawer, DrawerPopup, DrawerTrigger } from '@langgenius/dify-ui/drawer'
+import { FieldControl, FieldLabel, FieldRoot } from '@langgenius/dify-ui/field'
+import { Form } from '@langgenius/dify-ui/form'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import '@langgenius/dify-ui/styles.css' // once, in the app root
 ```
@@ -37,12 +39,12 @@ Importing from `@langgenius/dify-ui` (no subpath) is intentionally not supported
 
 ## Primitives
 
-| Category | Subpath                                                                                                                                                        | Notes                                             |
-| -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------- |
-| Overlay  | `./alert-dialog`, `./autocomplete`, `./combobox`, `./context-menu`, `./dialog`, `./drawer`, `./dropdown-menu`, `./popover`, `./select`, `./toast`, `./tooltip` | Portalled. See [Overlay & portal contract] below. |
-| Form     | `./autocomplete`, `./combobox`, `./number-field`, `./slider`, `./switch`                                                                                       | Controlled / uncontrolled per Base UI defaults.   |
-| Layout   | `./scroll-area`                                                                                                                                                | Custom-styled scrollbar over the host viewport.   |
-| Media    | `./avatar`, `./button`                                                                                                                                         | Button exposes `cva` variants.                    |
+| Category | Subpath                                                                                                                                                        | Notes                                                |
+| -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------- |
+| Overlay  | `./alert-dialog`, `./autocomplete`, `./combobox`, `./context-menu`, `./dialog`, `./drawer`, `./dropdown-menu`, `./popover`, `./select`, `./toast`, `./tooltip` | Portalled. See [Overlay & portal contract] below.    |
+| Form     | `./form`, `./field`, `./fieldset`, `./checkbox`, `./checkbox-group`, `./number-field`, `./select`, `./slider`, `./switch`                                      | Native form boundary, field semantics, and controls. |
+| Layout   | `./scroll-area`                                                                                                                                                | Custom-styled scrollbar over the host viewport.      |
+| Media    | `./avatar`, `./button`                                                                                                                                         | Button exposes `cva` variants.                       |
 
 Utilities:
 
