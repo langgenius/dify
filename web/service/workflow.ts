@@ -43,7 +43,7 @@ export const getLoopSingleNodeRunUrl = (flowType: FlowType, isChatFlow: boolean,
 }
 
 export const fetchPublishedWorkflow = (url: string) => {
-  return get<FetchWorkflowDraftResponse>(url)
+  return get<FetchWorkflowDraftResponse | null>(url)
 }
 
 export const stopWorkflowRun = (url: string) => {

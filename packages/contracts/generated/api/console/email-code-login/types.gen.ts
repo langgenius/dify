@@ -13,6 +13,7 @@ export type EmailCodeLoginPayload = {
   code: string
   email: string
   language?: string | null
+  timezone?: string | null
   token: string
 }
 

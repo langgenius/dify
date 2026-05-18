@@ -112,7 +112,7 @@ const AppIconPicker: FC<AppIconPickerProps> = ({
 
   return (
     <Dialog open>
-      <DialogContent className={cn('max-h-none w-full overflow-hidden! border-none text-left align-middle', s.container, 'h-[462px]! w-[362px]! p-0!')}>
+      <DialogContent className={cn('w-full overflow-hidden! border-none text-left align-middle', s.container, 'h-[min(462px,calc(100dvh-2rem))]! max-h-none! w-[362px]! p-0!')}>
 
         {!DISABLE_UPLOAD_IMAGE_AS_ICON && (
           <div className="w-full p-2 pb-0">

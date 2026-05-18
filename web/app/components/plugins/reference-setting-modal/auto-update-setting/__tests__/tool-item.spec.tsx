@@ -19,20 +19,6 @@ vi.mock('@/app/components/plugins/card/base/card-icon', () => ({
   default: ({ src }: { src: string }) => <div data-testid="plugin-icon">{src}</div>,
 }))
 
-vi.mock('@/app/components/base/checkbox', () => ({
-  default: ({
-    checked,
-    onCheck,
-  }: {
-    checked?: boolean
-    onCheck: () => void
-  }) => (
-    <button data-testid="checkbox" onClick={onCheck}>
-      {String(checked)}
-    </button>
-  ),
-}))
-
 const payload = {
   plugin_id: 'dify/plugin-1',
   declaration: {
@@ -51,14 +37,14 @@ describe('ToolItem', () => {
     expect(screen.getByText('Plugin One')).toBeInTheDocument()
     expect(screen.getByText('Dify')).toBeInTheDocument()
     expect(screen.getByText('https://marketplace.example.com/plugins/dify/plugin-1/icon')).toBeInTheDocument()
-    expect(screen.getByText('true')).toBeInTheDocument()
+    expect(screen.getByRole('checkbox', { name: 'Plugin One' })).toHaveAttribute('aria-checked', 'true')
   })
 
   it('calls onCheckChange when checkbox is clicked', () => {
     const onCheckChange = vi.fn()
     render(<ToolItem payload={payload} onCheckChange={onCheckChange} />)
 
-    fireEvent.click(screen.getByTestId('checkbox'))
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Plugin One' }))
 
     expect(onCheckChange).toHaveBeenCalledTimes(1)
   })

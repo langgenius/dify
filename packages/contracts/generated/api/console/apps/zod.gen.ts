@@ -373,9 +373,12 @@ export const zWorkflowCommentCreatePayload = z.object({
   position_y: z.number(),
 })
 
+/**
+ * WorkflowCommentCreate
+ */
 export const zWorkflowCommentCreate = z.object({
-  created_at: z.record(z.string(), z.unknown()).optional(),
-  id: z.string().optional(),
+  created_at: z.int().nullish(),
+  id: z.string(),
 })
 
 /**
@@ -388,9 +391,12 @@ export const zWorkflowCommentUpdatePayload = z.object({
   position_y: z.number().nullish(),
 })
 
+/**
+ * WorkflowCommentUpdate
+ */
 export const zWorkflowCommentUpdate = z.object({
-  id: z.string().optional(),
-  updated_at: z.record(z.string(), z.unknown()).optional(),
+  id: z.string(),
+  updated_at: z.int().nullish(),
 })
 
 /**
@@ -401,21 +407,30 @@ export const zWorkflowCommentReplyPayload = z.object({
   mentioned_user_ids: z.array(z.string()).optional(),
 })
 
+/**
+ * WorkflowCommentReplyCreate
+ */
 export const zWorkflowCommentReplyCreate = z.object({
-  created_at: z.record(z.string(), z.unknown()).optional(),
-  id: z.string().optional(),
+  created_at: z.int().nullish(),
+  id: z.string(),
 })
 
+/**
+ * WorkflowCommentReplyUpdate
+ */
 export const zWorkflowCommentReplyUpdate = z.object({
-  id: z.string().optional(),
-  updated_at: z.record(z.string(), z.unknown()).optional(),
+  id: z.string(),
+  updated_at: z.int().nullish(),
 })
 
+/**
+ * WorkflowCommentResolve
+ */
 export const zWorkflowCommentResolve = z.object({
-  id: z.string().optional(),
-  resolved: z.boolean().optional(),
-  resolved_at: z.record(z.string(), z.unknown()).optional(),
-  resolved_by: z.string().optional(),
+  id: z.string(),
+  resolved: z.boolean(),
+  resolved_at: z.int().nullish(),
+  resolved_by: z.string().nullish(),
 })
 
 /**
@@ -993,31 +1008,6 @@ export const zWorkflowRunNodeExecutionListResponse = z.object({
   data: z.array(zWorkflowRunNodeExecutionResponse),
 })
 
-export const zAnonymousInlineModel6Fec07Cd0D85 = z.object({
-  avatar_url: z.record(z.string(), z.unknown()).optional(),
-  email: z.string().optional(),
-  id: z.string().optional(),
-  name: z.string().optional(),
-})
-
-export const zWorkflowCommentBasic = z.object({
-  content: z.string().optional(),
-  created_at: z.record(z.string(), z.unknown()).optional(),
-  created_by: z.string().optional(),
-  created_by_account: zAnonymousInlineModel6Fec07Cd0D85.optional(),
-  id: z.string().optional(),
-  mention_count: z.int().optional(),
-  participants: z.array(zAnonymousInlineModel6Fec07Cd0D85).optional(),
-  position_x: z.number().optional(),
-  position_y: z.number().optional(),
-  reply_count: z.int().optional(),
-  resolved: z.boolean().optional(),
-  resolved_at: z.record(z.string(), z.unknown()).optional(),
-  resolved_by: z.string().optional(),
-  resolved_by_account: zAnonymousInlineModel6Fec07Cd0D85.optional(),
-  updated_at: z.record(z.string(), z.unknown()).optional(),
-})
-
 /**
  * AccountWithRole
  */
@@ -1040,85 +1030,155 @@ export const zWorkflowCommentMentionUsersPayload = z.object({
   users: z.array(zAccountWithRole),
 })
 
-export const zAnonymousInlineModelF7Ff64Cce858 = z.object({
-  mentioned_user_account: zAnonymousInlineModel6Fec07Cd0D85.optional(),
-  mentioned_user_id: z.string().optional(),
-  reply_id: z.string().optional(),
+/**
+ * WorkflowCommentAccount
+ */
+export const zWorkflowCommentAccount = z.object({
+  avatar_url: z.string().readonly().nullable(),
+  email: z.string(),
+  id: z.string(),
+  name: z.string(),
 })
 
-export const zAnonymousInlineModel55C39C6A4B9e = z.object({
-  content: z.string().optional(),
-  created_at: z.record(z.string(), z.unknown()).optional(),
-  created_by: z.string().optional(),
-  created_by_account: zAnonymousInlineModel6Fec07Cd0D85.optional(),
-  id: z.string().optional(),
+/**
+ * WorkflowCommentBasic
+ */
+export const zWorkflowCommentBasic = z.object({
+  content: z.string(),
+  created_at: z.int().nullish(),
+  created_by: z.string(),
+  created_by_account: zWorkflowCommentAccount.optional(),
+  id: z.string(),
+  mention_count: z.int(),
+  participants: z.array(zWorkflowCommentAccount),
+  position_x: z.number(),
+  position_y: z.number(),
+  reply_count: z.int(),
+  resolved: z.boolean(),
+  resolved_at: z.int().nullish(),
+  resolved_by: z.string().nullish(),
+  resolved_by_account: zWorkflowCommentAccount.optional(),
+  updated_at: z.int().nullish(),
 })
 
+/**
+ * WorkflowCommentBasicList
+ */
+export const zWorkflowCommentBasicList = z.object({
+  data: z.array(zWorkflowCommentBasic),
+})
+
+/**
+ * WorkflowCommentMention
+ */
+export const zWorkflowCommentMention = z.object({
+  mentioned_user_account: zWorkflowCommentAccount.optional(),
+  mentioned_user_id: z.string(),
+  reply_id: z.string().nullish(),
+})
+
+/**
+ * WorkflowCommentReply
+ */
+export const zWorkflowCommentReply = z.object({
+  content: z.string(),
+  created_at: z.int().nullish(),
+  created_by: z.string(),
+  created_by_account: zWorkflowCommentAccount.optional(),
+  id: z.string(),
+})
+
+/**
+ * WorkflowCommentDetail
+ */
 export const zWorkflowCommentDetail = z.object({
-  content: z.string().optional(),
-  created_at: z.record(z.string(), z.unknown()).optional(),
-  created_by: z.string().optional(),
-  created_by_account: zAnonymousInlineModel6Fec07Cd0D85.optional(),
-  id: z.string().optional(),
-  mentions: z.array(zAnonymousInlineModelF7Ff64Cce858).optional(),
-  position_x: z.number().optional(),
-  position_y: z.number().optional(),
-  replies: z.array(zAnonymousInlineModel55C39C6A4B9e).optional(),
-  resolved: z.boolean().optional(),
-  resolved_at: z.record(z.string(), z.unknown()).optional(),
-  resolved_by: z.string().optional(),
-  resolved_by_account: zAnonymousInlineModel6Fec07Cd0D85.optional(),
-  updated_at: z.record(z.string(), z.unknown()).optional(),
+  content: z.string(),
+  created_at: z.int().nullish(),
+  created_by: z.string(),
+  created_by_account: zWorkflowCommentAccount.optional(),
+  id: z.string(),
+  mentions: z.array(zWorkflowCommentMention),
+  position_x: z.number(),
+  position_y: z.number(),
+  replies: z.array(zWorkflowCommentReply),
+  resolved: z.boolean(),
+  resolved_at: z.int().nullish(),
+  resolved_by: z.string().nullish(),
+  resolved_by_account: zWorkflowCommentAccount.optional(),
+  updated_at: z.int().nullish(),
 })
 
-export const zConversationVariable = z.object({
-  description: z.string().optional(),
-  id: z.string().optional(),
-  name: z.string().optional(),
-  value: z.record(z.string(), z.unknown()).optional(),
-  value_type: z.string().optional(),
+/**
+ * WorkflowConversationVariableResponse
+ */
+export const zWorkflowConversationVariableResponse = z.object({
+  description: z.string(),
+  id: z.string(),
+  name: z.string(),
+  value: z.record(z.string(), z.unknown()),
+  value_type: z.string(),
 })
 
-export const zPipelineVariable = z.object({
-  allow_file_extension: z.array(z.string()).optional(),
-  allow_file_upload_methods: z.array(z.string()).optional(),
-  allowed_file_types: z.array(z.string()).optional(),
-  belong_to_node_id: z.string().optional(),
+/**
+ * WorkflowEnvironmentVariableResponse
+ */
+export const zWorkflowEnvironmentVariableResponse = z.object({
+  description: z.string(),
+  id: z.string(),
+  name: z.string(),
+  value: z.record(z.string(), z.unknown()),
+  value_type: z.string(),
+})
+
+/**
+ * PipelineVariableResponse
+ */
+export const zPipelineVariableResponse = z.object({
+  allowed_file_extensions: z.array(z.string()).nullish(),
+  allowed_file_types: z.array(z.string()).nullish(),
+  allowed_file_upload_methods: z.array(z.string()).nullish(),
+  belong_to_node_id: z.string(),
   default_value: z.record(z.string(), z.unknown()).optional(),
-  label: z.string().optional(),
-  max_length: z.int().optional(),
-  options: z.array(z.string()).optional(),
-  placeholder: z.string().optional(),
-  required: z.boolean().optional(),
-  tooltips: z.string().optional(),
-  type: z.string().optional(),
-  unit: z.string().optional(),
-  variable: z.string().optional(),
+  label: z.string(),
+  max_length: z.int().nullish(),
+  options: z.array(z.string()).nullish(),
+  placeholder: z.string().nullish(),
+  required: z.boolean(),
+  tooltips: z.string().nullish(),
+  type: z.string(),
+  unit: z.string().nullish(),
+  variable: z.string(),
 })
 
-export const zWorkflow = z.object({
-  conversation_variables: z.array(zConversationVariable).optional(),
-  created_at: z.record(z.string(), z.unknown()).optional(),
+/**
+ * WorkflowResponse
+ */
+export const zWorkflowResponse = z.object({
+  conversation_variables: z.array(zWorkflowConversationVariableResponse),
+  created_at: z.int(),
   created_by: zSimpleAccount.optional(),
-  environment_variables: z.array(z.record(z.string(), z.unknown())).optional(),
-  features: z.record(z.string(), z.unknown()).optional(),
-  graph: z.record(z.string(), z.unknown()).optional(),
-  hash: z.string().optional(),
-  id: z.string().optional(),
-  marked_comment: z.string().optional(),
-  marked_name: z.string().optional(),
-  rag_pipeline_variables: z.array(zPipelineVariable).optional(),
-  tool_published: z.boolean().optional(),
-  updated_at: z.record(z.string(), z.unknown()).optional(),
+  environment_variables: z.array(zWorkflowEnvironmentVariableResponse),
+  features: z.record(z.string(), z.unknown()),
+  graph: z.record(z.string(), z.unknown()),
+  hash: z.string(),
+  id: z.string(),
+  marked_comment: z.string(),
+  marked_name: z.string(),
+  rag_pipeline_variables: z.array(zPipelineVariableResponse),
+  tool_published: z.boolean(),
+  updated_at: z.int(),
   updated_by: zSimpleAccount.optional(),
-  version: z.string().optional(),
+  version: z.string(),
 })
 
-export const zWorkflowPagination = z.object({
-  has_more: z.boolean().optional(),
-  items: z.array(zWorkflow).optional(),
-  limit: z.int().optional(),
-  page: z.int().optional(),
+/**
+ * WorkflowPaginationResponse
+ */
+export const zWorkflowPaginationResponse = z.object({
+  has_more: z.boolean(),
+  items: z.array(zWorkflowResponse),
+  limit: z.int(),
+  page: z.int(),
 })
 
 export const zWorkflowDraftVariableWithoutValue = z.object({
@@ -1338,6 +1398,30 @@ export const zPackage = z.object({
 })
 
 /**
+ * WorkflowOnlineUser
+ */
+export const zWorkflowOnlineUser = z.object({
+  avatar: z.string().nullish(),
+  user_id: z.string(),
+  username: z.string(),
+})
+
+/**
+ * WorkflowOnlineUsersByApp
+ */
+export const zWorkflowOnlineUsersByApp = z.object({
+  app_id: z.string(),
+  users: z.array(zWorkflowOnlineUser),
+})
+
+/**
+ * WorkflowOnlineUsersResponse
+ */
+export const zWorkflowOnlineUsersResponse = z.object({
+  data: z.array(zWorkflowOnlineUsersByApp),
+})
+
+/**
  * SimpleModelConfig
  */
 export const zSimpleModelConfig = z.object({
@@ -1524,6 +1608,8 @@ export const zWorkflowArchivedLogPaginationResponse = z.object({
   total: z.int(),
 })
 
+export const zFormInputConfig = z.unknown()
+
 /**
  * ButtonStyle
  *
@@ -1540,6 +1626,72 @@ export const zUserActionConfig = z.object({
   button_style: zButtonStyle.optional(),
   id: z.string().max(20),
   title: z.string().max(100),
+})
+
+/**
+ * HumanInputFormDefinition
+ */
+export const zHumanInputFormDefinition = z.object({
+  actions: z.array(zUserActionConfig).optional(),
+  display_in_ui: z.boolean().optional().default(false),
+  expiration_time: z.int(),
+  form_content: z.string(),
+  form_id: z.string(),
+  form_token: z.string().nullish(),
+  inputs: z.array(zFormInputConfig).optional(),
+  node_id: z.string(),
+  node_title: z.string(),
+  resolved_default_values: z.record(z.string(), z.unknown()).optional(),
+})
+
+/**
+ * HumanInputContent
+ */
+export const zHumanInputContent = z.object({
+  form_definition: zHumanInputFormDefinition.optional(),
+  form_submission_data: zHumanInputFormSubmissionData.optional(),
+  submitted: z.boolean(),
+  type: zExecutionContentType.optional(),
+  workflow_run_id: z.string(),
+})
+
+/**
+ * MessageDetailResponse
+ */
+export const zMessageDetailResponse = z.object({
+  agent_thoughts: z.array(zAgentThought).optional(),
+  annotation: zConversationAnnotation.optional(),
+  annotation_hit_history: zConversationAnnotationHitHistory.optional(),
+  answer_tokens: z.int().nullish(),
+  conversation_id: z.string(),
+  created_at: z.int().nullish(),
+  error: z.string().nullish(),
+  extra_contents: z.array(zHumanInputContent).optional(),
+  feedbacks: z.array(zFeedback).optional(),
+  from_account_id: z.string().nullish(),
+  from_end_user_id: z.string().nullish(),
+  from_source: z.string(),
+  id: z.string(),
+  inputs: z.record(z.string(), zJsonValue),
+  message: zJsonValue.optional(),
+  message_files: z.array(zMessageFile).optional(),
+  message_metadata_dict: zJsonValue.optional(),
+  message_tokens: z.int().nullish(),
+  parent_message_id: z.string().nullish(),
+  provider_response_latency: z.number().nullish(),
+  query: z.string(),
+  re_sign_file_url_answer: z.string(),
+  status: z.string(),
+  workflow_run_id: z.string().nullish(),
+})
+
+/**
+ * MessageInfiniteScrollPaginationResponse
+ */
+export const zMessageInfiniteScrollPaginationResponse = z.object({
+  data: z.array(zMessageDetailResponse),
+  has_more: z.boolean(),
+  limit: z.int(),
 })
 
 /**
@@ -1628,77 +1780,81 @@ export const zSelectInputConfig = z.object({
   type: z.string().optional().default('select'),
 })
 
-export const zFormInputConfig = z.union([
-  zParagraphInputConfig,
-  zSelectInputConfig,
-  zFileInputConfig,
-  zFileListInputConfig,
-])
-
 /**
- * HumanInputFormDefinition
+ * WorkflowCommentAccount
  */
-export const zHumanInputFormDefinition = z.object({
-  actions: z.array(zUserActionConfig).optional(),
-  display_in_ui: z.boolean().optional().default(false),
-  expiration_time: z.int(),
-  form_content: z.string(),
-  form_id: z.string(),
-  form_token: z.string().nullish(),
-  inputs: z.array(zFormInputConfig).optional(),
-  node_id: z.string(),
-  node_title: z.string(),
-  resolved_default_values: z.record(z.string(), z.unknown()).optional(),
-})
-
-/**
- * HumanInputContent
- */
-export const zHumanInputContent = z.object({
-  form_definition: zHumanInputFormDefinition.optional(),
-  form_submission_data: zHumanInputFormSubmissionData.optional(),
-  submitted: z.boolean(),
-  type: zExecutionContentType.optional(),
-  workflow_run_id: z.string(),
-})
-
-/**
- * MessageDetailResponse
- */
-export const zMessageDetailResponse = z.object({
-  agent_thoughts: z.array(zAgentThought).optional(),
-  annotation: zConversationAnnotation.optional(),
-  annotation_hit_history: zConversationAnnotationHitHistory.optional(),
-  answer_tokens: z.int().nullish(),
-  conversation_id: z.string(),
-  created_at: z.int().nullish(),
-  error: z.string().nullish(),
-  extra_contents: z.array(zHumanInputContent).optional(),
-  feedbacks: z.array(zFeedback).optional(),
-  from_account_id: z.string().nullish(),
-  from_end_user_id: z.string().nullish(),
-  from_source: z.string(),
+export const zWorkflowCommentAccountWritable = z.object({
+  email: z.string(),
   id: z.string(),
-  inputs: z.record(z.string(), zJsonValue),
-  message: zJsonValue.optional(),
-  message_files: z.array(zMessageFile).optional(),
-  message_metadata_dict: zJsonValue.optional(),
-  message_tokens: z.int().nullish(),
-  parent_message_id: z.string().nullish(),
-  provider_response_latency: z.number().nullish(),
-  query: z.string(),
-  re_sign_file_url_answer: z.string(),
-  status: z.string(),
-  workflow_run_id: z.string().nullish(),
+  name: z.string(),
 })
 
 /**
- * MessageInfiniteScrollPaginationResponse
+ * WorkflowCommentBasic
  */
-export const zMessageInfiniteScrollPaginationResponse = z.object({
-  data: z.array(zMessageDetailResponse),
-  has_more: z.boolean(),
-  limit: z.int(),
+export const zWorkflowCommentBasicWritable = z.object({
+  content: z.string(),
+  created_at: z.int().nullish(),
+  created_by: z.string(),
+  created_by_account: zWorkflowCommentAccountWritable.optional(),
+  id: z.string(),
+  mention_count: z.int(),
+  participants: z.array(zWorkflowCommentAccountWritable),
+  position_x: z.number(),
+  position_y: z.number(),
+  reply_count: z.int(),
+  resolved: z.boolean(),
+  resolved_at: z.int().nullish(),
+  resolved_by: z.string().nullish(),
+  resolved_by_account: zWorkflowCommentAccountWritable.optional(),
+  updated_at: z.int().nullish(),
+})
+
+/**
+ * WorkflowCommentBasicList
+ */
+export const zWorkflowCommentBasicListWritable = z.object({
+  data: z.array(zWorkflowCommentBasicWritable),
+})
+
+/**
+ * WorkflowCommentMention
+ */
+export const zWorkflowCommentMentionWritable = z.object({
+  mentioned_user_account: zWorkflowCommentAccountWritable.optional(),
+  mentioned_user_id: z.string(),
+  reply_id: z.string().nullish(),
+})
+
+/**
+ * WorkflowCommentReply
+ */
+export const zWorkflowCommentReplyWritable = z.object({
+  content: z.string(),
+  created_at: z.int().nullish(),
+  created_by: z.string(),
+  created_by_account: zWorkflowCommentAccountWritable.optional(),
+  id: z.string(),
+})
+
+/**
+ * WorkflowCommentDetail
+ */
+export const zWorkflowCommentDetailWritable = z.object({
+  content: z.string(),
+  created_at: z.int().nullish(),
+  created_by: z.string(),
+  created_by_account: zWorkflowCommentAccountWritable.optional(),
+  id: z.string(),
+  mentions: z.array(zWorkflowCommentMentionWritable),
+  position_x: z.number(),
+  position_y: z.number(),
+  replies: z.array(zWorkflowCommentReplyWritable),
+  resolved: z.boolean(),
+  resolved_at: z.int().nullish(),
+  resolved_by: z.string().nullish(),
+  resolved_by_account: zWorkflowCommentAccountWritable.optional(),
+  updated_at: z.int().nullish(),
 })
 
 export const zGetAppsQuery = z.object({
@@ -1753,9 +1909,9 @@ export const zPostAppsImportsByImportIdConfirmResponse = zImport
 export const zPostAppsWorkflowsOnlineUsersBody = zWorkflowOnlineUsersPayload
 
 /**
- * Success
+ * Workflow online users retrieved successfully
  */
-export const zPostAppsWorkflowsOnlineUsersResponse = z.record(z.string(), z.unknown())
+export const zPostAppsWorkflowsOnlineUsersResponse = zWorkflowOnlineUsersResponse
 
 export const zDeleteAppsByAppIdPath = z.object({
   app_id: z.string(),
@@ -2793,7 +2949,7 @@ export const zGetAppsByAppIdWorkflowCommentsPath = z.object({
 /**
  * Comments retrieved successfully
  */
-export const zGetAppsByAppIdWorkflowCommentsResponse = zWorkflowCommentBasic
+export const zGetAppsByAppIdWorkflowCommentsResponse = zWorkflowCommentBasicList
 
 export const zPostAppsByAppIdWorkflowCommentsBody = zWorkflowCommentCreatePayload
 
@@ -2982,7 +3138,7 @@ export const zGetAppsByAppIdWorkflowsQuery = z.object({
 /**
  * Published workflows retrieved successfully
  */
-export const zGetAppsByAppIdWorkflowsResponse = zWorkflowPagination
+export const zGetAppsByAppIdWorkflowsResponse = zWorkflowPaginationResponse
 
 export const zGetAppsByAppIdWorkflowsDefaultWorkflowBlockConfigsPath = z.object({
   app_id: z.string(),
@@ -3020,7 +3176,7 @@ export const zGetAppsByAppIdWorkflowsDraftPath = z.object({
 /**
  * Draft workflow retrieved successfully
  */
-export const zGetAppsByAppIdWorkflowsDraftResponse = zWorkflow
+export const zGetAppsByAppIdWorkflowsDraftResponse = zWorkflowResponse
 
 export const zPostAppsByAppIdWorkflowsDraftBody = zSyncDraftWorkflowPayload
 
@@ -3350,9 +3506,9 @@ export const zGetAppsByAppIdWorkflowsPublishPath = z.object({
 })
 
 /**
- * Published workflow retrieved successfully
+ * Published workflow retrieved successfully, or null if not found
  */
-export const zGetAppsByAppIdWorkflowsPublishResponse = zWorkflow
+export const zGetAppsByAppIdWorkflowsPublishResponse = zWorkflowResponse
 
 export const zPostAppsByAppIdWorkflowsPublishBody = zPublishWorkflowPayload
 
@@ -3400,7 +3556,7 @@ export const zPatchAppsByAppIdWorkflowsByWorkflowIdPath = z.object({
 /**
  * Workflow updated successfully
  */
-export const zPatchAppsByAppIdWorkflowsByWorkflowIdResponse = zWorkflow
+export const zPatchAppsByAppIdWorkflowsByWorkflowIdResponse = zWorkflowResponse
 
 export const zPostAppsByAppIdWorkflowsByWorkflowIdRestorePath = z.object({
   app_id: z.string(),
