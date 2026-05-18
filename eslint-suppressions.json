@@ -2417,7 +2417,7 @@
   },
   "web/app/components/plugins/install-plugin/install-from-github/index.tsx": {
     "ts/no-explicit-any": {
-      "count": 3
+      "count": 2
     }
   },
   "web/app/components/plugins/install-plugin/install-from-github/steps/selectPackage.tsx": {
