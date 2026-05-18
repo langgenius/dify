@@ -6,7 +6,7 @@ from pydantic import BaseModel, Field, TypeAdapter
 from werkzeug.exceptions import InternalServerError, NotFound
 
 from controllers.common.controller_schemas import MessageFeedbackPayload, MessageListQuery
-from controllers.common.schema import register_schema_models
+from controllers.common.schema import register_response_schema_models, register_schema_models
 from controllers.web import web_ns
 from controllers.web.error import (
     AppMoreLikeThisDisabledError,
@@ -47,6 +47,7 @@ class MessageMoreLikeThisQuery(BaseModel):
 
 
 register_schema_models(web_ns, MessageListQuery, MessageFeedbackPayload, MessageMoreLikeThisQuery)
+register_response_schema_models(web_ns, ResultResponse)
 
 
 @web_ns.route("/messages")
@@ -130,6 +131,7 @@ class MessageFeedbackApi(WebApiResource):
             500: "Internal Server Error",
         }
     )
+    @web_ns.response(200, "Feedback submitted successfully", web_ns.models[ResultResponse.__name__])
     def post(self, app_model, end_user, message_id):
         message_id = str(message_id)
 

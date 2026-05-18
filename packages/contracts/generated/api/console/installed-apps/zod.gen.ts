@@ -3,6 +3,14 @@
 import * as z from 'zod'
 
 /**
+ * SimpleResultMessageResponse
+ */
+export const zSimpleResultMessageResponse = z.object({
+  message: z.string(),
+  result: z.string(),
+})
+
+/**
  * ChatMessagePayload
  */
 export const zChatMessagePayload = z.object({
@@ -40,6 +48,13 @@ export const zCompletionMessageExplorePayload = z.object({
 export const zConversationRenamePayload = z.object({
   auto_generate: z.boolean().optional().default(false),
   name: z.string().nullish(),
+})
+
+/**
+ * ResultResponse
+ */
+export const zResultResponse = z.object({
+  result: z.string(),
 })
 
 /**
@@ -124,9 +139,9 @@ export const zDeleteInstalledAppsByInstalledAppIdPath = z.object({
 })
 
 /**
- * Success
+ * App uninstalled successfully
  */
-export const zDeleteInstalledAppsByInstalledAppIdResponse = z.record(z.string(), z.unknown())
+export const zDeleteInstalledAppsByInstalledAppIdResponse = z.record(z.string(), z.never())
 
 export const zPatchInstalledAppsByInstalledAppIdPath = z.object({
   installed_app_id: z.string(),
@@ -135,7 +150,7 @@ export const zPatchInstalledAppsByInstalledAppIdPath = z.object({
 /**
  * Success
  */
-export const zPatchInstalledAppsByInstalledAppIdResponse = z.record(z.string(), z.unknown())
+export const zPatchInstalledAppsByInstalledAppIdResponse = zSimpleResultMessageResponse
 
 export const zPostInstalledAppsByInstalledAppIdAudioToTextPath = z.object({
   installed_app_id: z.string(),
@@ -224,11 +239,11 @@ export const zDeleteInstalledAppsByInstalledAppIdConversationsByCIdPath = z.obje
 })
 
 /**
- * Success
+ * Conversation deleted successfully
  */
 export const zDeleteInstalledAppsByInstalledAppIdConversationsByCIdResponse = z.record(
   z.string(),
-  z.unknown(),
+  z.never(),
 )
 
 export const zPostInstalledAppsByInstalledAppIdConversationsByCIdNameBody
@@ -255,10 +270,7 @@ export const zPatchInstalledAppsByInstalledAppIdConversationsByCIdPinPath = z.ob
 /**
  * Success
  */
-export const zPatchInstalledAppsByInstalledAppIdConversationsByCIdPinResponse = z.record(
-  z.string(),
-  z.unknown(),
-)
+export const zPatchInstalledAppsByInstalledAppIdConversationsByCIdPinResponse = zResultResponse
 
 export const zPatchInstalledAppsByInstalledAppIdConversationsByCIdUnpinPath = z.object({
   c_id: z.string(),
@@ -268,10 +280,7 @@ export const zPatchInstalledAppsByInstalledAppIdConversationsByCIdUnpinPath = z.
 /**
  * Success
  */
-export const zPatchInstalledAppsByInstalledAppIdConversationsByCIdUnpinResponse = z.record(
-  z.string(),
-  z.unknown(),
-)
+export const zPatchInstalledAppsByInstalledAppIdConversationsByCIdUnpinResponse = zResultResponse
 
 export const zGetInstalledAppsByInstalledAppIdMessagesPath = z.object({
   installed_app_id: z.string(),
@@ -297,12 +306,10 @@ export const zPostInstalledAppsByInstalledAppIdMessagesByMessageIdFeedbacksPath 
 })
 
 /**
- * Success
+ * Feedback submitted successfully
  */
-export const zPostInstalledAppsByInstalledAppIdMessagesByMessageIdFeedbacksResponse = z.record(
-  z.string(),
-  z.unknown(),
-)
+export const zPostInstalledAppsByInstalledAppIdMessagesByMessageIdFeedbacksResponse
+  = zResultResponse
 
 export const zGetInstalledAppsByInstalledAppIdMessagesByMessageIdMoreLikeThisPath = z.object({
   installed_app_id: z.string(),
@@ -376,10 +383,7 @@ export const zPostInstalledAppsByInstalledAppIdSavedMessagesPath = z.object({
 /**
  * Success
  */
-export const zPostInstalledAppsByInstalledAppIdSavedMessagesResponse = z.record(
-  z.string(),
-  z.unknown(),
-)
+export const zPostInstalledAppsByInstalledAppIdSavedMessagesResponse = zResultResponse
 
 export const zDeleteInstalledAppsByInstalledAppIdSavedMessagesByMessageIdPath = z.object({
   installed_app_id: z.string(),
@@ -387,11 +391,11 @@ export const zDeleteInstalledAppsByInstalledAppIdSavedMessagesByMessageIdPath = 
 })
 
 /**
- * Success
+ * Saved message deleted successfully
  */
 export const zDeleteInstalledAppsByInstalledAppIdSavedMessagesByMessageIdResponse = z.record(
   z.string(),
-  z.unknown(),
+  z.never(),
 )
 
 export const zPostInstalledAppsByInstalledAppIdTextToAudioBody = zTextToAudioPayload

@@ -29,6 +29,10 @@ export type ParserPostDefault = {
   model_settings: Array<Inner>
 }
 
+export type SimpleResultResponse = {
+  result: string
+}
+
 export type EndpointCreatePayload = {
   name: string
   plugin_unique_identifier: string
@@ -101,6 +105,11 @@ export type OwnerTransferCheckPayload = {
 
 export type OwnerTransferEmailPayload = {
   language?: string | null
+}
+
+export type SimpleResultDataResponse = {
+  data: string
+  result: string
 }
 
 export type OwnerTransferPayload = {
@@ -634,9 +643,7 @@ export type PostWorkspacesCurrentDefaultModelData = {
 }
 
 export type PostWorkspacesCurrentDefaultModelResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: SimpleResultResponse
 }
 
 export type PostWorkspacesCurrentDefaultModelResponse
@@ -919,9 +926,7 @@ export type PostWorkspacesCurrentMembersSendOwnerTransferConfirmEmailData = {
 }
 
 export type PostWorkspacesCurrentMembersSendOwnerTransferConfirmEmailResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: SimpleResultDataResponse
 }
 
 export type PostWorkspacesCurrentMembersSendOwnerTransferConfirmEmailResponse
@@ -1027,8 +1032,8 @@ export type DeleteWorkspacesCurrentModelProvidersByProviderCredentialsData = {
 }
 
 export type DeleteWorkspacesCurrentModelProvidersByProviderCredentialsResponses = {
-  200: {
-    [key: string]: unknown
+  204: {
+    [key: string]: never
   }
 }
 
@@ -1101,9 +1106,7 @@ export type PostWorkspacesCurrentModelProvidersByProviderCredentialsSwitchData =
 }
 
 export type PostWorkspacesCurrentModelProvidersByProviderCredentialsSwitchResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: SimpleResultResponse
 }
 
 export type PostWorkspacesCurrentModelProvidersByProviderCredentialsSwitchResponse
@@ -1137,8 +1140,8 @@ export type DeleteWorkspacesCurrentModelProvidersByProviderModelsData = {
 }
 
 export type DeleteWorkspacesCurrentModelProvidersByProviderModelsResponses = {
-  200: {
-    [key: string]: unknown
+  204: {
+    [key: string]: never
   }
 }
 
@@ -1191,8 +1194,8 @@ export type DeleteWorkspacesCurrentModelProvidersByProviderModelsCredentialsData
 }
 
 export type DeleteWorkspacesCurrentModelProvidersByProviderModelsCredentialsResponses = {
-  200: {
-    [key: string]: unknown
+  204: {
+    [key: string]: never
   }
 }
 
@@ -1268,9 +1271,7 @@ export type PostWorkspacesCurrentModelProvidersByProviderModelsCredentialsSwitch
 }
 
 export type PostWorkspacesCurrentModelProvidersByProviderModelsCredentialsSwitchResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: SimpleResultResponse
 }
 
 export type PostWorkspacesCurrentModelProvidersByProviderModelsCredentialsSwitchResponse
@@ -1304,9 +1305,7 @@ export type PatchWorkspacesCurrentModelProvidersByProviderModelsDisableData = {
 }
 
 export type PatchWorkspacesCurrentModelProvidersByProviderModelsDisableResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: SimpleResultResponse
 }
 
 export type PatchWorkspacesCurrentModelProvidersByProviderModelsDisableResponse
@@ -1322,9 +1321,7 @@ export type PatchWorkspacesCurrentModelProvidersByProviderModelsEnableData = {
 }
 
 export type PatchWorkspacesCurrentModelProvidersByProviderModelsEnableResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: SimpleResultResponse
 }
 
 export type PatchWorkspacesCurrentModelProvidersByProviderModelsEnableResponse
@@ -1401,9 +1398,7 @@ export type PostWorkspacesCurrentModelProvidersByProviderPreferredProviderTypeDa
 }
 
 export type PostWorkspacesCurrentModelProvidersByProviderPreferredProviderTypeResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: SimpleResultResponse
 }
 
 export type PostWorkspacesCurrentModelProvidersByProviderPreferredProviderTypeResponse
@@ -2363,9 +2358,7 @@ export type DeleteWorkspacesCurrentToolProviderMcpData = {
 }
 
 export type DeleteWorkspacesCurrentToolProviderMcpResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: SimpleResultResponse
 }
 
 export type DeleteWorkspacesCurrentToolProviderMcpResponse
@@ -2895,9 +2888,7 @@ export type PostWorkspacesCurrentTriggerProviderBySubscriptionIdSubscriptionsDel
 }
 
 export type PostWorkspacesCurrentTriggerProviderBySubscriptionIdSubscriptionsDeleteResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: SimpleResultResponse
 }
 
 export type PostWorkspacesCurrentTriggerProviderBySubscriptionIdSubscriptionsDeleteResponse

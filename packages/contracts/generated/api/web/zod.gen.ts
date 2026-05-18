@@ -280,6 +280,13 @@ export const zRemoteFileUploadPayload = z.object({
 })
 
 /**
+ * ResultResponse
+ */
+export const zResultResponse = z.object({
+  result: z.string(),
+})
+
+/**
  * SavedMessageCreatePayload
  */
 export const zSavedMessageCreatePayload = z.object({
@@ -464,7 +471,7 @@ export const zPatchConversationsByCIdPinPath = z.object({
 /**
  * Conversation pinned successfully
  */
-export const zPatchConversationsByCIdPinResponse = z.record(z.string(), z.unknown())
+export const zPatchConversationsByCIdPinResponse = zResultResponse
 
 export const zPatchConversationsByCIdUnpinPath = z.object({
   c_id: z.string(),
@@ -473,7 +480,7 @@ export const zPatchConversationsByCIdUnpinPath = z.object({
 /**
  * Conversation unpinned successfully
  */
-export const zPatchConversationsByCIdUnpinResponse = z.record(z.string(), z.unknown())
+export const zPatchConversationsByCIdUnpinResponse = zResultResponse
 
 export const zPostEmailCodeLoginBody = zEmailCodeLoginSendPayload
 
@@ -573,7 +580,7 @@ export const zPostMessagesByMessageIdFeedbacksQuery = z.object({
 /**
  * Feedback submitted successfully
  */
-export const zPostMessagesByMessageIdFeedbacksResponse = z.record(z.string(), z.unknown())
+export const zPostMessagesByMessageIdFeedbacksResponse = zResultResponse
 
 export const zGetMessagesByMessageIdMoreLikeThisPath = z.object({
   message_id: z.string(),
@@ -643,7 +650,7 @@ export const zPostSavedMessagesQuery = z.object({
 /**
  * Message saved successfully
  */
-export const zPostSavedMessagesResponse = z.record(z.string(), z.unknown())
+export const zPostSavedMessagesResponse = zResultResponse
 
 export const zDeleteSavedMessagesByMessageIdPath = z.object({
   message_id: z.string(),

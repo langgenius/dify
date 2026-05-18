@@ -34,6 +34,13 @@ export const zPayload = z.object({
 })
 
 /**
+ * SimpleResultResponse
+ */
+export const zSimpleResultResponse = z.object({
+  result: z.string(),
+})
+
+/**
  * DatasourceNodeRunPayload
  */
 export const zDatasourceNodeRunPayload = z.object({
@@ -423,12 +430,10 @@ export const zPostRagPipelinesByPipelineIdWorkflowRunsTasksByTaskIdStopPath = z.
 })
 
 /**
- * Success
+ * Task stopped successfully
  */
-export const zPostRagPipelinesByPipelineIdWorkflowRunsTasksByTaskIdStopResponse = z.record(
-  z.string(),
-  z.unknown(),
-)
+export const zPostRagPipelinesByPipelineIdWorkflowRunsTasksByTaskIdStopResponse
+  = zSimpleResultResponse
 
 export const zGetRagPipelinesByPipelineIdWorkflowRunsByRunIdPath = z.object({
   pipeline_id: z.string(),
@@ -838,11 +843,11 @@ export const zDeleteRagPipelinesByPipelineIdWorkflowsByWorkflowIdPath = z.object
 })
 
 /**
- * Success
+ * Workflow deleted successfully
  */
 export const zDeleteRagPipelinesByPipelineIdWorkflowsByWorkflowIdResponse = z.record(
   z.string(),
-  z.unknown(),
+  z.never(),
 )
 
 export const zPatchRagPipelinesByPipelineIdWorkflowsByWorkflowIdPath = z.object({

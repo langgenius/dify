@@ -1047,16 +1047,11 @@ export const metadata = {
  * NotFound: If the dataset with the given ID does not exist.
  * Forbidden: If the user does not have permission.
  * InvalidActionError: If the action is invalid or cannot be performed.
- *
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
  */
 export const patch2 = oc
   .route({
-    deprecated: true,
     description:
-      'Batch update document status\nArgs:\n    tenant_id: tenant id\n    dataset_id: dataset id\n    action: action to perform (Literal["enable", "disable", "archive", "un_archive"])\n\nReturns:\n    dict: A dictionary with a key \'result\' and a value \'success\'\n    int: HTTP status code 200 indicating that the operation was successful.\n\nRaises:\n    NotFound: If the dataset with the given ID does not exist.\n    Forbidden: If the user does not have permission.\n    InvalidActionError: If the action is invalid or cannot be performed.\n\nGenerated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
+      'Batch update document status\nArgs:\n    tenant_id: tenant id\n    dataset_id: dataset id\n    action: action to perform (Literal["enable", "disable", "archive", "un_archive"])\n\nReturns:\n    dict: A dictionary with a key \'result\' and a value \'success\'\n    int: HTTP status code 200 indicating that the operation was successful.\n\nRaises:\n    NotFound: If the dataset with the given ID does not exist.\n    Forbidden: If the user does not have permission.\n    InvalidActionError: If the action is invalid or cannot be performed.',
     inputStructure: 'detailed',
     method: 'PATCH',
     operationId: 'patchDatasetsByDatasetIdDocumentsStatusByAction',
@@ -2273,16 +2268,11 @@ export const info = {
  *
  * Submit feedback for a message
  * Allows users to rate messages as like/dislike and provide optional feedback content.
- *
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
  */
 export const post35 = oc
   .route({
-    deprecated: true,
     description:
-      'Submit feedback for a message\nAllows users to rate messages as like/dislike and provide optional feedback content.\n\nGenerated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
+      'Submit feedback for a message\nAllows users to rate messages as like/dislike and provide optional feedback content.',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postMessagesByMessageIdFeedbacks',
@@ -2307,16 +2297,11 @@ export const feedbacks2 = {
  *
  * Get suggested follow-up questions for a message
  * Returns AI-generated follow-up questions based on the message content.
- *
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
  */
 export const get25 = oc
   .route({
-    deprecated: true,
     description:
-      'Get suggested follow-up questions for a message\nReturns AI-generated follow-up questions based on the message content.\n\nGenerated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
+      'Get suggested follow-up questions for a message\nReturns AI-generated follow-up questions based on the message content.',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getMessagesByMessageIdSuggested',

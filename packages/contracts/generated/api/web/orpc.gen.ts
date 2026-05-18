@@ -238,16 +238,10 @@ export const name = {
 
 /**
  * Pin a specific conversation to keep it at the top of the list.
- *
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
  */
 export const patch = oc
   .route({
-    deprecated: true,
-    description:
-      'Pin a specific conversation to keep it at the top of the list.\n\nGenerated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
+    description: 'Pin a specific conversation to keep it at the top of the list.',
     inputStructure: 'detailed',
     method: 'PATCH',
     operationId: 'patchConversationsByCIdPin',
@@ -263,16 +257,10 @@ export const pin = {
 
 /**
  * Unpin a specific conversation to remove it from the top of the list.
- *
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
  */
 export const patch2 = oc
   .route({
-    deprecated: true,
-    description:
-      'Unpin a specific conversation to remove it from the top of the list.\n\nGenerated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
+    description: 'Unpin a specific conversation to remove it from the top of the list.',
     inputStructure: 'detailed',
     method: 'PATCH',
     operationId: 'patchConversationsByCIdUnpin',
@@ -611,16 +599,10 @@ export const logout = {
 
 /**
  * Submit feedback (like/dislike) for a specific message.
- *
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
  */
 export const post16 = oc
   .route({
-    deprecated: true,
-    description:
-      'Submit feedback (like/dislike) for a specific message.\n\nGenerated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
+    description: 'Submit feedback (like/dislike) for a specific message.',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postMessagesByMessageIdFeedbacks',
@@ -929,16 +911,10 @@ export const get11 = oc
 
 /**
  * Save a specific message for later reference.
- *
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
  */
 export const post18 = oc
   .route({
-    deprecated: true,
-    description:
-      'Save a specific message for later reference.\n\nGenerated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
+    description: 'Save a specific message for later reference.',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postSavedMessages',

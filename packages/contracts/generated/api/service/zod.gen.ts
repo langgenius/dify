@@ -395,6 +395,13 @@ export const zRerankingModel = z.object({
 })
 
 /**
+ * ResultResponse
+ */
+export const zResultResponse = z.object({
+  result: z.string(),
+})
+
+/**
  * RetrievalMethod
  */
 export const zRetrievalMethod = z.enum([
@@ -489,6 +496,14 @@ export const zSimpleEndUser = z.object({
  * SimpleResultResponse
  */
 export const zSimpleResultResponse = z.object({
+  result: z.string(),
+})
+
+/**
+ * SimpleResultStringListResponse
+ */
+export const zSimpleResultStringListResponse = z.object({
+  data: z.array(z.string()),
   result: z.string(),
 })
 
@@ -1133,10 +1148,7 @@ export const zPatchDatasetsByDatasetIdDocumentsStatusByActionPath = z.object({
 /**
  * Document status updated successfully
  */
-export const zPatchDatasetsByDatasetIdDocumentsStatusByActionResponse = z.record(
-  z.string(),
-  z.unknown(),
-)
+export const zPatchDatasetsByDatasetIdDocumentsStatusByActionResponse = zSimpleResultResponse
 
 export const zGetDatasetsByDatasetIdDocumentsByBatchIndexingStatusPath = z.object({
   batch: z.string(),
@@ -1609,7 +1621,7 @@ export const zPostMessagesByMessageIdFeedbacksPath = z.object({
 /**
  * Feedback submitted successfully
  */
-export const zPostMessagesByMessageIdFeedbacksResponse = z.record(z.string(), z.unknown())
+export const zPostMessagesByMessageIdFeedbacksResponse = zResultResponse
 
 export const zGetMessagesByMessageIdSuggestedPath = z.object({
   message_id: z.string(),
@@ -1618,7 +1630,7 @@ export const zGetMessagesByMessageIdSuggestedPath = z.object({
 /**
  * Suggested questions retrieved successfully
  */
-export const zGetMessagesByMessageIdSuggestedResponse = z.record(z.string(), z.unknown())
+export const zGetMessagesByMessageIdSuggestedResponse = zSimpleResultStringListResponse
 
 /**
  * Metadata retrieved successfully

@@ -34,6 +34,11 @@ class SimpleResultDataResponse(ResponseModel):
     data: str
 
 
+class SimpleResultStringListResponse(ResponseModel):
+    result: str
+    data: list[str]
+
+
 class SimpleResultOptionalDataResponse(ResponseModel):
     result: str
     data: str | None = None

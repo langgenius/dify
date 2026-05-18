@@ -191,6 +191,10 @@ export type RemoteFileUploadPayload = {
   url: string
 }
 
+export type ResultResponse = {
+  result: string
+}
+
 export type SavedMessageCreatePayload = {
   message_id: string
 }
@@ -604,9 +608,7 @@ export type PatchConversationsByCIdPinError
   = PatchConversationsByCIdPinErrors[keyof PatchConversationsByCIdPinErrors]
 
 export type PatchConversationsByCIdPinResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: ResultResponse
 }
 
 export type PatchConversationsByCIdPinResponse
@@ -643,9 +645,7 @@ export type PatchConversationsByCIdUnpinError
   = PatchConversationsByCIdUnpinErrors[keyof PatchConversationsByCIdUnpinErrors]
 
 export type PatchConversationsByCIdUnpinResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: ResultResponse
 }
 
 export type PatchConversationsByCIdUnpinResponse
@@ -988,9 +988,7 @@ export type PostMessagesByMessageIdFeedbacksError
   = PostMessagesByMessageIdFeedbacksErrors[keyof PostMessagesByMessageIdFeedbacksErrors]
 
 export type PostMessagesByMessageIdFeedbacksResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: ResultResponse
 }
 
 export type PostMessagesByMessageIdFeedbacksResponse
@@ -1302,9 +1300,7 @@ export type PostSavedMessagesErrors = {
 export type PostSavedMessagesError = PostSavedMessagesErrors[keyof PostSavedMessagesErrors]
 
 export type PostSavedMessagesResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: ResultResponse
 }
 
 export type PostSavedMessagesResponse = PostSavedMessagesResponses[keyof PostSavedMessagesResponses]

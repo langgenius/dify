@@ -34,6 +34,10 @@ export type WorkflowRunPaginationResponse = {
   limit: number
 }
 
+export type SimpleResultResponse = {
+  result: string
+}
+
 export type WorkflowRunDetailResponse = {
   created_at?: number | null
   created_by_account?: SimpleAccount
@@ -524,9 +528,7 @@ export type PostRagPipelinesByPipelineIdWorkflowRunsTasksByTaskIdStopData = {
 }
 
 export type PostRagPipelinesByPipelineIdWorkflowRunsTasksByTaskIdStopResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: SimpleResultResponse
 }
 
 export type PostRagPipelinesByPipelineIdWorkflowRunsTasksByTaskIdStopResponse
@@ -1156,8 +1158,8 @@ export type DeleteRagPipelinesByPipelineIdWorkflowsByWorkflowIdData = {
 }
 
 export type DeleteRagPipelinesByPipelineIdWorkflowsByWorkflowIdResponses = {
-  200: {
-    [key: string]: unknown
+  204: {
+    [key: string]: never
   }
 }
 

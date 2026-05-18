@@ -10,6 +10,7 @@ from werkzeug.exceptions import BadRequest, Forbidden, InternalServerError, NotF
 
 import services
 from controllers.common.controller_schemas import DefaultBlockConfigQuery, WorkflowListQuery, WorkflowUpdatePayload
+from controllers.common.fields import SimpleResultResponse
 from controllers.common.schema import register_response_schema_models, register_schema_models
 from controllers.console import console_ns
 from controllers.console.app.error import (
@@ -133,6 +134,7 @@ register_schema_models(
 )
 register_response_schema_models(
     console_ns,
+    SimpleResultResponse,
     WorkflowRunDetailResponse,
     WorkflowRunNodeExecutionListResponse,
     WorkflowRunNodeExecutionResponse,
@@ -462,6 +464,7 @@ class RagPipelineDraftNodeRunApi(Resource):
 
 @console_ns.route("/rag/pipelines/<uuid:pipeline_id>/workflow-runs/tasks/<string:task_id>/stop")
 class RagPipelineTaskStopApi(Resource):
+    @console_ns.response(200, "Task stopped successfully", console_ns.models[SimpleResultResponse.__name__])
     @setup_required
     @login_required
     @edit_permission_required
@@ -699,6 +702,7 @@ class RagPipelineByIdApi(Resource):
 
             return dump_response(WorkflowResponse, workflow)
 
+    @console_ns.response(204, "Workflow deleted successfully")
     @setup_required
     @login_required
     @account_initialization_required

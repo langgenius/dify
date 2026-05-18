@@ -353,6 +353,10 @@ export type RerankingModel = {
   reranking_provider_name?: string | null
 }
 
+export type ResultResponse = {
+  result: string
+}
+
 export type RetrievalMethod
   = | 'full_text_search'
     | 'hybrid_search'
@@ -423,6 +427,11 @@ export type SimpleEndUser = {
 }
 
 export type SimpleResultResponse = {
+  result: string
+}
+
+export type SimpleResultStringListResponse = {
+  data: Array<string>
   result: string
 }
 
@@ -1679,9 +1688,7 @@ export type PatchDatasetsByDatasetIdDocumentsStatusByActionError
   = PatchDatasetsByDatasetIdDocumentsStatusByActionErrors[keyof PatchDatasetsByDatasetIdDocumentsStatusByActionErrors]
 
 export type PatchDatasetsByDatasetIdDocumentsStatusByActionResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: SimpleResultResponse
 }
 
 export type PatchDatasetsByDatasetIdDocumentsStatusByActionResponse
@@ -2866,9 +2873,7 @@ export type PostMessagesByMessageIdFeedbacksError
   = PostMessagesByMessageIdFeedbacksErrors[keyof PostMessagesByMessageIdFeedbacksErrors]
 
 export type PostMessagesByMessageIdFeedbacksResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: ResultResponse
 }
 
 export type PostMessagesByMessageIdFeedbacksResponse
@@ -2902,9 +2907,7 @@ export type GetMessagesByMessageIdSuggestedError
   = GetMessagesByMessageIdSuggestedErrors[keyof GetMessagesByMessageIdSuggestedErrors]
 
 export type GetMessagesByMessageIdSuggestedResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: SimpleResultStringListResponse
 }
 
 export type GetMessagesByMessageIdSuggestedResponse
