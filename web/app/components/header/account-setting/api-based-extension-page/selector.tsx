@@ -5,17 +5,17 @@ import { useTranslation } from 'react-i18next'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
 import { useModalContext } from '@/context/modal-context'
 import { consoleQuery } from '@/service/client'
-import ApiBasedExtensionModal from './modal'
+import { ApiBasedExtensionModal } from './modal'
 
 type ApiBasedExtensionSelectorProps = {
   value: string
   onChange: (value: string) => void
 }
 
-const ApiBasedExtensionSelector = ({
+export function ApiBasedExtensionSelector({
   value,
   onChange,
-}: ApiBasedExtensionSelectorProps) => {
+}: ApiBasedExtensionSelectorProps) {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
   const [addModalOpen, setAddModalOpen] = useState(false)
@@ -140,5 +140,3 @@ const ApiBasedExtensionSelector = ({
     </>
   )
 }
-
-export default ApiBasedExtensionSelector

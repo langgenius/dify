@@ -23,7 +23,7 @@ type ApiBasedExtensionModalProps = {
   apiBasedExtension: ApiBasedExtensionResponse
 })
 
-const ApiBasedExtensionModal = (props: ApiBasedExtensionModalProps) => {
+export function ApiBasedExtensionModal(props: ApiBasedExtensionModalProps) {
   const { open, mode, onOpenChange, onSaved } = props
   const { t } = useTranslation()
   const docLink = useDocLink()
@@ -144,4 +144,3 @@ const ApiBasedExtensionModal = (props: ApiBasedExtensionModalProps) => {
     </Dialog>
   )
 }
-export default ApiBasedExtensionModal

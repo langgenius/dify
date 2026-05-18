@@ -2,7 +2,7 @@ import type { ApiBasedExtensionResponse } from '@dify/contracts/api/console/api-
 import type { TFunction } from 'i18next'
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import * as reactI18next from 'react-i18next'
-import Item from '../item'
+import { Item } from '../item'
 
 const { mockDeleteApiBasedExtension } = vi.hoisted(() => ({
   mockDeleteApiBasedExtension: vi.fn(),

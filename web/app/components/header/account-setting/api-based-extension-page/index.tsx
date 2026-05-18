@@ -4,9 +4,9 @@ import { useQuery } from '@tanstack/react-query'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { consoleQuery } from '@/service/client'
-import Empty from './empty'
-import Item from './item'
-import ApiBasedExtensionModal from './modal'
+import { Empty } from './empty'
+import { Item } from './item'
+import { ApiBasedExtensionModal } from './modal'
 
 type ApiBasedExtensionDialogState = {
   mode: 'create'
@@ -15,7 +15,7 @@ type ApiBasedExtensionDialogState = {
   apiBasedExtension: ApiBasedExtensionResponse
 } | null
 
-const ApiBasedExtensionPage = () => {
+export function ApiBasedExtensionPage() {
   const { t } = useTranslation()
   const { data: apiBasedExtensions = [], isPending: isLoading } = useQuery(consoleQuery.apiBasedExtension.get.queryOptions())
   const [dialogState, setDialogState] = useState<ApiBasedExtensionDialogState>(null)
@@ -89,5 +89,3 @@ const ApiBasedExtensionPage = () => {
     </div>
   )
 }
-
-export default ApiBasedExtensionPage

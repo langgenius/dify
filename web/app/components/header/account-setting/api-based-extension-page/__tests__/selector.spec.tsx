@@ -3,7 +3,7 @@ import type { ModalContextState } from '@/context/modal-context'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
 import { useModalContext } from '@/context/modal-context'
-import ApiBasedExtensionSelector from '../selector'
+import { ApiBasedExtensionSelector } from '../selector'
 
 const {
   mockApiBasedExtensionsQuery,

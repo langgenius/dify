@@ -17,10 +17,10 @@ type ItemProps = {
   apiBasedExtension: ApiBasedExtensionResponse
   onEdit: (apiBasedExtension: ApiBasedExtensionResponse) => void
 }
-const Item = ({
+export function Item({
   apiBasedExtension,
   onEdit,
-}: ItemProps) => {
+}: ItemProps) {
   const { t } = useTranslation()
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const deleteApiBasedExtensionMutation = useMutation(consoleQuery.apiBasedExtension.byId.delete.mutationOptions())
@@ -81,5 +81,3 @@ const Item = ({
     </div>
   )
 }
-
-export default Item

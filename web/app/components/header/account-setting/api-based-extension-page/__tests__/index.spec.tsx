@@ -1,6 +1,6 @@
 import type { ApiBasedExtensionResponse } from '@dify/contracts/api/console/api-based-extension/types.gen'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import ApiBasedExtensionPage from '../index'
+import { ApiBasedExtensionPage } from '../index'
 
 const {
   mockApiBasedExtensionsQuery,

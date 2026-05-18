@@ -53,7 +53,7 @@ vi.mock('@/app/components/header/account-setting/constants', () => ({
 }))
 
 vi.mock('@/app/components/header/account-setting/api-based-extension-page/selector', () => ({
-  default: ({ onChange }: { value: string, onChange: (v: string) => void }) => (
+  ApiBasedExtensionSelector: ({ onChange }: { value: string, onChange: (v: string) => void }) => (
     <div data-testid="api-selector">
       <button data-testid="select-api" onClick={() => onChange('api-ext-1')}>Select API</button>
     </div>

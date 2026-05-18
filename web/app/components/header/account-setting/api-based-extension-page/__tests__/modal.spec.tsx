@@ -4,7 +4,7 @@ import type { ReactElement } from 'react'
 import { fireEvent, render as RTLRender, screen, waitFor } from '@testing-library/react'
 import * as reactI18next from 'react-i18next'
 import { useDocLink } from '@/context/i18n'
-import ApiBasedExtensionModal from '../modal'
+import { ApiBasedExtensionModal } from '../modal'
 
 const { mockCreateApiBasedExtension, mockUpdateApiBasedExtension, mockToast } = vi.hoisted(() => {
   const mockCreateApiBasedExtension = vi.fn()
