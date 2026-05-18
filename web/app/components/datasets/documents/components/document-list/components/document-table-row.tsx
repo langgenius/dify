@@ -1,4 +1,3 @@
-import type { FC } from 'react'
 import type { SimpleDocumentDetail } from '@/models/datasets'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
@@ -23,12 +22,10 @@ type DocumentTableRowProps = {
   doc: LocalDoc
   index: number
   datasetId: string
-  isSelected: boolean
   isGeneralMode: boolean
   isQAMode: boolean
   embeddingAvailable: boolean
   selectedIds: string[]
-  onSelectOne: (docId: string) => void
   onSelectedIdChange: (ids: string[]) => void
   onShowRenameModal: (doc: LocalDoc) => void
   onUpdate: () => void
@@ -44,24 +41,23 @@ const renderCount = (count: number | undefined) => {
   return `${formatNumber((count / 1000).toFixed(1))}k`
 }
 
-const DocumentTableRow: FC<DocumentTableRowProps> = React.memo(({
+const DocumentTableRow = React.memo(({
   doc,
   index,
   datasetId,
-  isSelected,
   isGeneralMode,
   isQAMode,
   embeddingAvailable,
   selectedIds,
-  onSelectOne,
   onSelectedIdChange,
   onShowRenameModal,
   onUpdate,
-}) => {
+}: DocumentTableRowProps) => {
   const { t } = useTranslation()
   const { formatTime } = useTimestamp()
   const router = useRouter()
   const searchParams = useSearchParams()
+  const documentNameId = React.useId()
 
   const isFile = doc.data_source_type === DataSourceType.FILE
   const fileType = isFile ? doc.data_source_detail_dict?.upload_file?.extension : ''
@@ -89,9 +85,8 @@ const DocumentTableRow: FC<DocumentTableRowProps> = React.memo(({
         <div className="flex items-center" onClick={handleCheckboxClick}>
           <Checkbox
             className="mr-2 shrink-0"
-            checked={isSelected}
-            aria-label={doc.name}
-            onCheckedChange={() => onSelectOne(doc.id)}
+            value={doc.id}
+            aria-labelledby={documentNameId}
           />
           {index + 1}
         </div>
@@ -104,7 +99,7 @@ const DocumentTableRow: FC<DocumentTableRowProps> = React.memo(({
           <Tooltip>
             <TooltipTrigger
               render={(
-                <span className="grow truncate text-sm">{doc.name}</span>
+                <span id={documentNameId} className="grow truncate text-sm">{doc.name}</span>
               )}
             />
             <TooltipContent>

@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import type { SimpleDocumentDetail } from '@/models/datasets'
+import { CheckboxGroup } from '@langgenius/dify-ui/checkbox-group'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -23,15 +24,21 @@ const createTestQueryClient = () => new QueryClient({
   },
 })
 
-const createWrapper = () => {
+const createWrapper = (value: string[] = [], onValueChange = vi.fn()) => {
   const queryClient = createTestQueryClient()
   return ({ children }: { children: ReactNode }) => (
     <QueryClientProvider client={queryClient}>
-      <table>
-        <tbody>
-          {children}
-        </tbody>
-      </table>
+      <CheckboxGroup
+        value={value}
+        onValueChange={nextValue => onValueChange(nextValue)}
+        allValues={['doc-1']}
+      >
+        <table>
+          <tbody>
+            {children}
+          </tbody>
+        </table>
+      </CheckboxGroup>
     </QueryClientProvider>
   )
 }
@@ -81,12 +88,10 @@ describe('DocumentTableRow', () => {
     doc: createMockDoc(),
     index: 0,
     datasetId: 'dataset-1',
-    isSelected: false,
     isGeneralMode: true,
     isQAMode: false,
     embeddingAvailable: true,
     selectedIds: [],
-    onSelectOne: vi.fn(),
     onSelectedIdChange: vi.fn(),
     onShowRenameModal: vi.fn(),
     onUpdate: vi.fn(),
@@ -120,22 +125,22 @@ describe('DocumentTableRow', () => {
   })
 
   describe('Selection', () => {
-    it('should show check icon when isSelected is true', () => {
-      render(<DocumentTableRow {...defaultProps} isSelected />, { wrapper: createWrapper() })
+    it('should show check icon when document id is selected by CheckboxGroup', () => {
+      render(<DocumentTableRow {...defaultProps} />, { wrapper: createWrapper(['doc-1']) })
       expect(getRowCheckbox()).toHaveAttribute('aria-checked', 'true')
     })
 
-    it('should not show check icon when isSelected is false', () => {
-      render(<DocumentTableRow {...defaultProps} isSelected={false} />, { wrapper: createWrapper() })
+    it('should not show check icon when document id is not selected by CheckboxGroup', () => {
+      render(<DocumentTableRow {...defaultProps} />, { wrapper: createWrapper() })
       expect(getRowCheckbox()).toHaveAttribute('aria-checked', 'false')
     })
 
-    it('should call onSelectOne when checkbox is clicked', () => {
-      const onSelectOne = vi.fn()
-      render(<DocumentTableRow {...defaultProps} onSelectOne={onSelectOne} />, { wrapper: createWrapper() })
+    it('should call CheckboxGroup onValueChange when checkbox is clicked', () => {
+      const onValueChange = vi.fn()
+      render(<DocumentTableRow {...defaultProps} />, { wrapper: createWrapper([], onValueChange) })
 
       fireEvent.click(getRowCheckbox())
-      expect(onSelectOne).toHaveBeenCalledWith('doc-1')
+      expect(onValueChange).toHaveBeenCalledWith(['doc-1'])
     })
 
     it('should stop propagation when checkbox container is clicked', () => {
