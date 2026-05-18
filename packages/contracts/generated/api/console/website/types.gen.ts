@@ -8,7 +8,7 @@ export type WebsiteCrawlPayload = {
   options: {
     [key: string]: unknown
   }
-  provider: 'firecrawl' | 'watercrawl' | 'jinareader'
+  provider: 'firecrawl' | 'jinareader' | 'watercrawl'
   url: string
 }
 
@@ -41,7 +41,7 @@ export type GetWebsiteCrawlStatusByJobIdData = {
     job_id: string
   }
   query: {
-    provider: 'firecrawl' | 'watercrawl' | 'jinareader'
+    provider: 'firecrawl' | 'jinareader' | 'watercrawl'
   }
   url: '/website/crawl/status/{job_id}'
 }

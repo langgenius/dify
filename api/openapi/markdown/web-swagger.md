@@ -1042,38 +1042,38 @@ Returns Server-Sent Events stream.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| appCode |  | Application code | No |
-| appId |  | Application ID | No |
+| appCode | string | Application code | No |
+| appId | string | Application ID | No |
 
 #### ChatMessagePayload
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| conversation_id |  | Conversation ID | No |
-| files |  | Files to be processed | No |
+| conversation_id | string | Conversation ID | No |
+| files | [ object ] | Files to be processed | No |
 | inputs | object | Input variables for the chat | Yes |
-| parent_message_id |  | Parent message ID | No |
+| parent_message_id | string | Parent message ID | No |
 | query | string | User query/message | Yes |
-| response_mode |  | Response mode: blocking or streaming | No |
+| response_mode | string | Response mode: blocking or streaming<br>*Enum:* `"blocking"`, `"streaming"` | No |
 | retriever_from | string | Source of retriever | No |
 
 #### CompletionMessagePayload
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| files |  | Files to be processed | No |
+| files | [ object ] | Files to be processed | No |
 | inputs | object | Input variables for the completion | Yes |
 | query | string | Query text for completion | No |
-| response_mode |  | Response mode: blocking or streaming | No |
+| response_mode | string | Response mode: blocking or streaming<br>*Enum:* `"blocking"`, `"streaming"` | No |
 | retriever_from | string | Source of retriever | No |
 
 #### ConversationListQuery
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| last_id |  |  | No |
+| last_id | string |  | No |
 | limit | integer |  | No |
-| pinned |  |  | No |
+| pinned | boolean |  | No |
 | sort_by | string | *Enum:* `"-created_at"`, `"-updated_at"`, `"created_at"`, `"updated_at"` | No |
 
 #### ConversationRenamePayload
@@ -1081,14 +1081,14 @@ Returns Server-Sent Events stream.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | auto_generate | boolean |  | No |
-| name |  |  | No |
+| name | string |  | No |
 
 #### EmailCodeLoginSendPayload
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | email | string |  | Yes |
-| language |  |  | No |
+| language | string |  | No |
 
 #### EmailCodeLoginVerifyPayload
 
@@ -1102,33 +1102,33 @@ Returns Server-Sent Events stream.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| conversation_id |  |  | No |
-| created_at |  |  | No |
-| created_by |  |  | No |
-| extension |  |  | No |
-| file_key |  |  | No |
+| conversation_id | string |  | No |
+| created_at | integer |  | No |
+| created_by | string |  | No |
+| extension | string |  | No |
+| file_key | string |  | No |
 | id | string |  | Yes |
-| mime_type |  |  | No |
+| mime_type | string |  | No |
 | name | string |  | Yes |
-| original_url |  |  | No |
-| preview_url |  |  | No |
+| original_url | string |  | No |
+| preview_url | string |  | No |
 | size | integer |  | Yes |
-| source_url |  |  | No |
-| tenant_id |  |  | No |
-| user_id |  |  | No |
+| source_url | string |  | No |
+| tenant_id | string |  | No |
+| user_id | string |  | No |
 
 #### FileWithSignedUrl
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| created_at |  |  | No |
-| created_by |  |  | No |
-| extension |  |  | No |
+| created_at | integer |  | No |
+| created_by | string |  | No |
+| extension | string |  | No |
 | id | string |  | Yes |
-| mime_type |  |  | No |
+| mime_type | string |  | No |
 | name | string |  | Yes |
 | size | integer |  | Yes |
-| url |  |  | No |
+| url | string |  | No |
 
 #### ForgotPasswordCheckPayload
 
@@ -1151,7 +1151,7 @@ Returns Server-Sent Events stream.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | email | string |  | Yes |
-| language |  |  | No |
+| language | string |  | No |
 
 #### LoginPayload
 
@@ -1164,15 +1164,15 @@ Returns Server-Sent Events stream.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| content |  |  | No |
-| rating |  |  | No |
+| content | string |  | No |
+| rating | string | *Enum:* `"dislike"`, `"like"` | No |
 
 #### MessageListQuery
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | conversation_id | string | Conversation UUID | Yes |
-| first_id |  | First message ID for pagination | No |
+| first_id | string | First message ID for pagination | No |
 | limit | integer | Number of messages to return (1-100) | No |
 
 #### MessageMoreLikeThisQuery
@@ -1204,21 +1204,21 @@ Returns Server-Sent Events stream.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| last_id |  |  | No |
+| last_id | string |  | No |
 | limit | integer |  | No |
 
 #### TextToAudioPayload
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| message_id |  | Message ID | No |
-| streaming |  | Enable streaming response | No |
-| text |  | Text to convert to audio | No |
-| voice |  | Voice to use for TTS | No |
+| message_id | string | Message ID | No |
+| streaming | boolean | Enable streaming response | No |
+| text | string | Text to convert to audio | No |
+| voice | string | Voice to use for TTS | No |
 
 #### WorkflowRunPayload
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| files |  |  | No |
+| files | [ object ] |  | No |
 | inputs | object |  | Yes |

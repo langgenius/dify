@@ -101,6 +101,7 @@
   "appModes.completionApp": "Textgenerator",
   "avatar.deleteDescription": "Bist du sicher, dass du dein Profilbild entfernen möchtest? Dein Konto wird das standardmäßige Anfangs-Avatar verwenden.",
   "avatar.deleteTitle": "Avatar entfernen",
+  "avatar.editAction": "Avatar bearbeiten",
   "chat.citation.characters": "Zeichen:",
   "chat.citation.hitCount": "Abrufanzahl:",
   "chat.citation.hitScore": "Abrufwertung:",

@@ -187,15 +187,20 @@ describe('consoleQuery tag mutation defaults', () => {
     queryClient.setQueryData(appListKey, [targetTag, otherTag])
     queryClient.setQueryData(knowledgeListKey, [knowledgeTag])
 
+    const updatedTag = createTag({
+      ...targetTag,
+      name: 'After',
+      binding_count: 5,
+    })
     const mutationOptions = consoleQuery.tags.update.mutationOptions()
     await mutationOptions.onSuccess?.(
-      undefined,
+      updatedTag,
       {
         params: {
           tagId: targetTag.id,
         },
         body: {
-          name: 'After',
+          name: 'Ignored Client Name',
         },
       },
       undefined,
@@ -203,10 +208,7 @@ describe('consoleQuery tag mutation defaults', () => {
     )
 
     expect(queryClient.getQueryData(appListKey)).toEqual([
-      {
-        ...targetTag,
-        name: 'After',
-      },
+      updatedTag,
       otherTag,
     ])
     expect(queryClient.getQueryData(knowledgeListKey)).toEqual([knowledgeTag])

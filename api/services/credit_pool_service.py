@@ -1,9 +1,10 @@
 import logging
 
 from sqlalchemy import select
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.orm import Session
 
 from configs import dify_config
+from core.db.session_factory import session_factory
 from core.errors.error import QuotaExceededError
 from extensions.ext_database import db
 from models import TenantCreditPool
@@ -41,7 +42,7 @@ class CreditPoolService:
     @classmethod
     def get_pool(cls, tenant_id: str, pool_type: str = "trial") -> TenantCreditPool | None:
         """get tenant credit pool"""
-        with sessionmaker(db.engine, expire_on_commit=False).begin() as session:
+        with session_factory.get_session_maker().begin() as session:
             return session.scalar(
                 select(TenantCreditPool)
                 .where(
@@ -76,7 +77,7 @@ class CreditPoolService:
             return 0
 
         try:
-            with sessionmaker(db.engine, expire_on_commit=False).begin() as session:
+            with session_factory.get_session_maker().begin() as session:
                 pool = cls._get_locked_pool(session=session, tenant_id=tenant_id, pool_type=pool_type)
                 if not pool:
                     raise QuotaExceededError("Credit pool not found")
@@ -108,7 +109,7 @@ class CreditPoolService:
             return 0
 
         try:
-            with sessionmaker(db.engine, expire_on_commit=False).begin() as session:
+            with session_factory.get_session_maker().begin() as session:
                 pool = cls._get_locked_pool(session=session, tenant_id=tenant_id, pool_type=pool_type)
                 if not pool:
                     logger.warning("Credit pool not found, tenant_id=%s, pool_type=%s", tenant_id, pool_type)

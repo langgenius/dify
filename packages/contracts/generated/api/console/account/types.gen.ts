@@ -92,7 +92,7 @@ export type AccountInterfaceLanguagePayload = {
 }
 
 export type AccountInterfaceThemePayload = {
-  interface_theme: 'light' | 'dark'
+  interface_theme: 'dark' | 'light'
 }
 
 export type AccountNamePayload = {
