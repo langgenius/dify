@@ -63,6 +63,11 @@ export const marketplaceRouterContract = {
 
 export type MarketPlaceInputs = InferContractRouterInputs<typeof marketplaceRouterContract>
 
+// Hand-written console contracts below are temporary overrides for gaps in the
+// generated community contract. Prefer fixing backend OpenAPI annotations so
+// generated contracts include accurate method, path, input, and output types;
+// once generated contracts are correct, the matching hand-written contracts
+// should be removed instead of kept in parallel.
 export const consoleRouterContract = {
   enterprise: enterpriseContract,
   ...communityContract,
