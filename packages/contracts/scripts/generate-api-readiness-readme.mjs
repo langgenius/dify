@@ -65,7 +65,7 @@ Readiness here means the generated contract operation is not marked with:
 
 Operations marked with that warning should not be migrated to blindly. Prefer fixing backend OpenAPI annotations first so the generated contract has accurate request and response types, then migrate callers endpoint by endpoint.
 
-The current heuristic marks an operation as not ready when a request body or success response that should have a body contains a loose object type, or when an operation has no documented 2xx response. 204, 205, and 304 responses are treated as bodyless when the request type is otherwise accurate.
+The current heuristic marks an operation as not ready when a request body or success response that should have a body contains a loose object type, when a mutating controller reads a JSON body that is not documented as a request body, or when an operation has no documented 2xx response. 204, 205, and 304 responses are treated as bodyless when the request type is otherwise accurate.
 
 ${readinessEndMarker}
 `

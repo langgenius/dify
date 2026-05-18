@@ -6,10 +6,16 @@ import { zGetNotificationResponse, zPostNotificationDismissResponse } from './zo
 
 /**
  * Mark a notification as dismissed for the current user.
+ *
+ * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
+ *
+ * @deprecated
  */
 export const post = oc
   .route({
-    description: 'Mark a notification as dismissed for the current user.',
+    deprecated: true,
+    description:
+      'Mark a notification as dismissed for the current user.\n\nGenerated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postNotificationDismiss',
