@@ -1,10 +1,7 @@
 'use client'
-import type { FC } from 'react'
 import type { BuiltInMetadataItem } from '../types'
 import { Button } from '@langgenius/dify-ui/button'
-import { PopoverTitle } from '@langgenius/dify-ui/popover'
 import { noop } from 'es-toolkit/function'
-import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Input from '@/app/components/base/input'
@@ -21,12 +18,12 @@ export type Props = {
   onBack?: () => void
 }
 
-const CreateContent: FC<Props> = ({
+export function CreateContent({
   onClose = noop,
   hasBack,
   onBack,
   onSave,
-}) => {
+}: Props) {
   const { t } = useTranslation()
   const [type, setType] = useState(DataType.string)
 
@@ -46,7 +43,7 @@ const CreateContent: FC<Props> = ({
   }, [onSave, type, name])
 
   return (
-    <div className="w-[320px] rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg px-3 pt-3.5 pb-4 shadow-xl">
+    <div className="px-3 pt-3.5 pb-4">
       {hasBack && (
         <button
           type="button"
@@ -58,9 +55,9 @@ const CreateContent: FC<Props> = ({
         </button>
       )}
       <div className="mb-1 flex h-6 items-center justify-between">
-        <PopoverTitle className="system-xl-semibold text-text-primary">
+        <div className="system-xl-semibold text-text-primary">
           {t(`${i18nPrefix}.title`, { ns: 'dataset' })}
-        </PopoverTitle>
+        </div>
         {!hasBack && (
           <button
             type="button"
@@ -95,6 +92,7 @@ const CreateContent: FC<Props> = ({
           </Field>
           <Field label={t(`${i18nPrefix}.name`, { ns: 'dataset' })}>
             <Input
+              aria-label={t(`${i18nPrefix}.name`, { ns: 'dataset' })}
               value={name}
               onChange={handleNameChange}
               placeholder={t(`${i18nPrefix}.namePlaceholder`, { ns: 'dataset' })}
@@ -119,4 +117,3 @@ const CreateContent: FC<Props> = ({
     </div>
   )
 }
-export default React.memo(CreateContent)

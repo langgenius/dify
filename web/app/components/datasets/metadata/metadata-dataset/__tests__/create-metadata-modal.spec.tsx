@@ -1,77 +1,10 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import { DataType } from '../../types'
-import CreateMetadataModal from '../create-metadata-modal'
-
-type PopoverProps = {
-  children: React.ReactNode
-  open: boolean
-  onOpenChange?: (open: boolean) => void
-}
-
-type TriggerProps = {
-  children?: React.ReactNode
-  render?: React.ReactNode
-}
-
-type ContentProps = {
-  children: React.ReactNode
-  className?: string
-}
-
-type CreateContentProps = {
-  onSave: (data: { type: DataType, name: string }) => void
-  onClose?: () => void
-  onBack?: () => void
-  hasBack?: boolean
-}
-
-vi.mock('@langgenius/dify-ui/popover', async () => {
-  const React = await import('react')
-  const PopoverContext = React.createContext<{ open: boolean, onOpenChange?: (open: boolean) => void } | null>(null)
-
-  return {
-    Popover: ({ children, open, onOpenChange }: PopoverProps) => (
-      <PopoverContext.Provider value={{ open, onOpenChange }}>
-        <div data-testid="popover-root" data-open={String(open)}>{children}</div>
-      </PopoverContext.Provider>
-    ),
-    PopoverTrigger: ({ children, render }: TriggerProps) => {
-      const context = React.useContext(PopoverContext)
-      const content = render ?? children
-      const handleClick = () => context?.onOpenChange?.(!context.open)
-
-      if (React.isValidElement(content)) {
-        const element = content as React.ReactElement<{ onClick?: () => void }>
-        return React.cloneElement(element, { onClick: handleClick })
-      }
-
-      return <button type="button" data-testid="popover-trigger" onClick={handleClick}>{content}</button>
-    },
-    PopoverContent: ({ children, className }: ContentProps) => {
-      const context = React.useContext(PopoverContext)
-      if (!context?.open)
-        return null
-
-      return <div data-testid="popover-content" className={className}>{children}</div>
-    },
-  }
-})
-
-// Mock CreateContent component
-vi.mock('../create-content', () => ({
-  default: ({ onSave, onClose, onBack, hasBack }: CreateContentProps) => (
-    <div data-testid="create-content">
-      <span data-testid="has-back">{String(hasBack)}</span>
-      <button data-testid="save-btn" onClick={() => onSave({ type: DataType.string, name: 'test' })}>Save</button>
-      <button data-testid="close-btn" onClick={onClose}>Close</button>
-      {hasBack && <button data-testid="back-btn" onClick={onBack}>Back</button>}
-    </div>
-  ),
-}))
+import { CreateMetadataModal } from '../create-metadata-modal'
 
 describe('CreateMetadataModal', () => {
-  const mockTrigger = <button data-testid="trigger-button">Open Modal</button>
+  const mockTrigger = <button>Open Modal</button>
 
   describe('Rendering', () => {
     it('should render trigger when closed', () => {
@@ -83,8 +16,8 @@ describe('CreateMetadataModal', () => {
           onSave={vi.fn()}
         />,
       )
-      expect(screen.getByTestId('popover-root')).toBeInTheDocument()
-      expect(screen.getByTestId('popover-root')).toHaveAttribute('data-open', 'false')
+      expect(screen.getByRole('button', { name: 'Open Modal' })).toBeInTheDocument()
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
     })
 
     it('should render content when open', () => {
@@ -96,8 +29,8 @@ describe('CreateMetadataModal', () => {
           onSave={vi.fn()}
         />,
       )
-      expect(screen.getByTestId('popover-root')).toBeInTheDocument()
-      expect(screen.getByTestId('create-content')).toBeInTheDocument()
+      expect(screen.getByRole('dialog')).toBeInTheDocument()
+      expect(screen.getByRole('textbox', { name: 'dataset.metadata.createMetadata.name' })).toBeInTheDocument()
     })
 
     it('should render trigger element', () => {
@@ -109,7 +42,7 @@ describe('CreateMetadataModal', () => {
           onSave={vi.fn()}
         />,
       )
-      expect(screen.getByTestId('trigger-button')).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Open Modal' })).toBeInTheDocument()
     })
   })
 
@@ -124,7 +57,7 @@ describe('CreateMetadataModal', () => {
           hasBack
         />,
       )
-      expect(screen.getByTestId('has-back')).toHaveTextContent('true')
+      expect(screen.getByRole('button', { name: 'dataset.metadata.createMetadata.back' })).toBeInTheDocument()
     })
 
     it('should pass hasBack=undefined when not provided', () => {
@@ -136,7 +69,7 @@ describe('CreateMetadataModal', () => {
           onSave={vi.fn()}
         />,
       )
-      expect(screen.getByTestId('has-back')).toHaveTextContent('undefined')
+      expect(screen.queryByRole('button', { name: 'dataset.metadata.createMetadata.back' })).not.toBeInTheDocument()
     })
 
     it('should accept custom popupLeft', () => {
@@ -149,7 +82,7 @@ describe('CreateMetadataModal', () => {
           popupLeft={50}
         />,
       )
-      expect(screen.getByTestId('popover-root')).toBeInTheDocument()
+      expect(screen.getByRole('dialog')).toBeInTheDocument()
     })
   })
 
@@ -165,9 +98,9 @@ describe('CreateMetadataModal', () => {
         />,
       )
 
-      fireEvent.click(screen.getByTestId('trigger-button'))
+      fireEvent.click(screen.getByRole('button', { name: 'Open Modal' }))
 
-      expect(setOpen).toHaveBeenCalledWith(true)
+      expect(setOpen).toHaveBeenCalledWith(true, expect.any(Object))
     })
 
     it('should call onSave when save button is clicked', () => {
@@ -181,7 +114,10 @@ describe('CreateMetadataModal', () => {
         />,
       )
 
-      fireEvent.click(screen.getByTestId('save-btn'))
+      fireEvent.change(screen.getByRole('textbox', { name: 'dataset.metadata.createMetadata.name' }), {
+        target: { value: 'test' },
+      })
+      fireEvent.click(screen.getByRole('button', { name: 'common.operation.save' }))
 
       expect(handleSave).toHaveBeenCalledWith({
         type: DataType.string,
@@ -200,7 +136,7 @@ describe('CreateMetadataModal', () => {
         />,
       )
 
-      fireEvent.click(screen.getByTestId('close-btn'))
+      fireEvent.click(screen.getByRole('button', { name: 'common.operation.close' }))
 
       expect(setOpen).toHaveBeenCalledWith(false)
     })
@@ -217,7 +153,7 @@ describe('CreateMetadataModal', () => {
         />,
       )
 
-      fireEvent.click(screen.getByTestId('back-btn'))
+      fireEvent.click(screen.getByRole('button', { name: 'dataset.metadata.createMetadata.back' }))
 
       expect(setOpen).toHaveBeenCalledWith(false)
     })
@@ -234,7 +170,7 @@ describe('CreateMetadataModal', () => {
         />,
       )
 
-      expect(screen.getByTestId('popover-root')).toHaveAttribute('data-open', 'false')
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
 
       rerender(
         <CreateMetadataModal
@@ -245,11 +181,11 @@ describe('CreateMetadataModal', () => {
         />,
       )
 
-      expect(screen.getByTestId('popover-root')).toHaveAttribute('data-open', 'true')
+      expect(screen.getByRole('dialog')).toBeInTheDocument()
     })
 
     it('should handle different trigger elements', () => {
-      const customTrigger = <div data-testid="custom-trigger">Custom</div>
+      const customTrigger = <button>Custom</button>
       render(
         <CreateMetadataModal
           open={false}
@@ -259,7 +195,7 @@ describe('CreateMetadataModal', () => {
         />,
       )
 
-      expect(screen.getByTestId('custom-trigger')).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Custom' })).toBeInTheDocument()
     })
   })
 })

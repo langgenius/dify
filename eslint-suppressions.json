@@ -2100,16 +2100,6 @@
       "count": 2
     }
   },
-  "web/app/components/datasets/metadata/metadata-dataset/dataset-metadata-drawer.tsx": {
-    "react/static-components": {
-      "count": 2
-    }
-  },
-  "web/app/components/datasets/metadata/metadata-dataset/select-metadata.tsx": {
-    "react/static-components": {
-      "count": 2
-    }
-  },
   "web/app/components/datasets/metadata/types.ts": {
     "erasable-syntax-only/enums": {
       "count": 2

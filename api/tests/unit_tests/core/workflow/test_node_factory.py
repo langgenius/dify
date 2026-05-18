@@ -109,9 +109,8 @@ class TestFetchMemory:
             def scalar(self, _stmt):
                 return None
 
-        monkeypatch.setattr(node_factory, "db", SimpleNamespace(engine=sentinel.engine))
+        monkeypatch.setattr(node_factory, "session_factory", SimpleNamespace(create_session=FakeSession))
         monkeypatch.setattr(node_factory, "select", MagicMock(return_value=FakeSelect()))
-        monkeypatch.setattr(node_factory, "Session", FakeSession)
 
         result = node_factory.fetch_memory(
             conversation_id="conversation-id",
@@ -144,9 +143,8 @@ class TestFetchMemory:
                 return conversation
 
         token_buffer_memory = MagicMock(return_value=memory)
-        monkeypatch.setattr(node_factory, "db", SimpleNamespace(engine=sentinel.engine))
+        monkeypatch.setattr(node_factory, "session_factory", SimpleNamespace(create_session=FakeSession))
         monkeypatch.setattr(node_factory, "select", MagicMock(return_value=FakeSelect()))
-        monkeypatch.setattr(node_factory, "Session", FakeSession)
         monkeypatch.setattr(node_factory, "TokenBufferMemory", token_buffer_memory)
 
         result = node_factory.fetch_memory(
@@ -161,6 +159,41 @@ class TestFetchMemory:
             conversation=conversation,
             model_instance=sentinel.model_instance,
         )
+
+    def test_uses_configured_session_factory_without_flask_app_context(self, monkeypatch: pytest.MonkeyPatch):
+        class FakeSelect:
+            def where(self, *_args):
+                return self
+
+        class FakeSession:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *_args):
+                return False
+
+            def scalar(self, _stmt):
+                return sentinel.conversation
+
+        class RaisingDB:
+            @property
+            def engine(self):
+                raise RuntimeError("Working outside of application context.")
+
+        token_buffer_memory = MagicMock(return_value=sentinel.memory)
+        monkeypatch.setattr(node_factory, "db", RaisingDB(), raising=False)
+        monkeypatch.setattr(node_factory, "session_factory", SimpleNamespace(create_session=FakeSession))
+        monkeypatch.setattr(node_factory, "select", MagicMock(return_value=FakeSelect()))
+        monkeypatch.setattr(node_factory, "TokenBufferMemory", token_buffer_memory)
+
+        result = node_factory.fetch_memory(
+            conversation_id="conversation-id",
+            app_id="app-id",
+            node_data_memory=object(),
+            model_instance=sentinel.model_instance,
+        )
+
+        assert result is sentinel.memory
 
 
 class TestDifyGraphInitContext:
