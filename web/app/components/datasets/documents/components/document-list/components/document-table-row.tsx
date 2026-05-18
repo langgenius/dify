@@ -90,6 +90,7 @@ const DocumentTableRow: FC<DocumentTableRowProps> = React.memo(({
           <Checkbox
             className="mr-2 shrink-0"
             checked={isSelected}
+            aria-label={doc.name}
             onCheckedChange={() => onSelectOne(doc.id)}
           />
           {index + 1}

@@ -49,16 +49,16 @@ const Actions = ({
     <div className="flex items-center gap-x-2 overflow-hidden">
       {showSelect && (
         <>
-          <div className="flex shrink-0 items-center gap-x-2 py-[3px] pr-2 pl-4">
+          <label className="flex shrink-0 cursor-pointer items-center gap-x-2 py-[3px] pr-2 pl-4">
             <Checkbox
-              onCheckedChange={onSelectAll}
+              onCheckedChange={() => onSelectAll?.()}
               indeterminate={indeterminate}
               checked={checked}
             />
             <span className="system-sm-medium text-text-accent">
               {t('operation.selectAll', { ns: 'common' })}
             </span>
-          </div>
+          </label>
           {tip && (
             <div title={tip} className="max-w-full truncate system-xs-regular text-text-tertiary">
               {tip}

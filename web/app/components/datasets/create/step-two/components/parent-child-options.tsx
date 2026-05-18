@@ -4,9 +4,9 @@ import type { FC } from 'react'
 import type { ParentChildConfig } from '../hooks'
 import type { ParentMode, PreProcessingRule, SummaryIndexSetting as SummaryIndexSettingType } from '@/models/datasets'
 import { Button } from '@langgenius/dify-ui/button'
+import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { RiSearchEyeLine } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
-import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import Divider from '@/app/components/base/divider'
 import { ParentChildChunk } from '@/app/components/base/icons/src/vender/knowledge'
 import RadioCard from '@/app/components/base/radio-card'
@@ -179,16 +179,18 @@ export const ParentChildOptions: FC<ParentChildOptionsProps> = ({
           </div>
           <div className="mt-1">
             {rules.map(rule => (
-              <div
+              <label
                 key={rule.id}
-                className={s.ruleItem}
-                onClick={() => onRuleToggle(rule.id)}
+                className={`${s.ruleItem} cursor-pointer`}
               >
-                <Checkbox checked={rule.enabled} />
-                <label className="ml-2 cursor-pointer system-sm-regular text-text-secondary">
+                <Checkbox
+                  checked={rule.enabled}
+                  onCheckedChange={() => onRuleToggle(rule.id)}
+                />
+                <span className="ml-2 system-sm-regular text-text-secondary">
                   {getRuleName(rule.id)}
-                </label>
-              </div>
+                </span>
+              </label>
             ))}
             {
               showSummaryIndexSetting && IS_CE_EDITION && (

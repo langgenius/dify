@@ -2,11 +2,11 @@
 import type { FC } from 'react'
 import type { Props as PaginationProps } from '@/app/components/base/pagination'
 import type { SimpleDocumentDetail } from '@/models/datasets'
+import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { useBoolean } from 'ahooks'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import Pagination from '@/app/components/base/pagination'
 import EditMetadataBatchModal from '@/app/components/datasets/metadata/edit-metadata-batch/modal'
 import useBatchEditDocumentMetadata from '@/app/components/datasets/metadata/hooks/use-batch-edit-document-metadata'
@@ -127,7 +127,8 @@ const DocumentList: FC<DocumentListProps> = ({
                       className="mr-2 shrink-0"
                       checked={isAllSelected}
                       indeterminate={!isAllSelected && isSomeSelected}
-                      onCheckedChange={onSelectAll}
+                      aria-label={t('operation.selectAll', { ns: 'common' })}
+                      onCheckedChange={() => onSelectAll()}
                     />
                   )}
                   #

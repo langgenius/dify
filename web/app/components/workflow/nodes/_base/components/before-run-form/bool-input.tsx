@@ -1,9 +1,9 @@
 'use client'
 import type { FC } from 'react'
+import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import * as React from 'react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Checkbox } from '@langgenius/dify-ui/checkbox'
 
 type Props = {
   name: string
@@ -21,11 +21,11 @@ const BoolInput: FC<Props> = ({
   readonly,
 }) => {
   const { t } = useTranslation()
-  const handleChange = useCallback(() => {
-    onChange(!value)
-  }, [value, onChange])
+  const handleChange = useCallback((checked: boolean) => {
+    onChange(checked)
+  }, [onChange])
   return (
-    <div className="flex h-6 items-center gap-2">
+    <label className="flex h-6 items-center gap-2">
       <Checkbox
         className="h-4! w-4!"
         checked={!!value}
@@ -36,7 +36,7 @@ const BoolInput: FC<Props> = ({
         {name}
         {!required && <span className="system-xs-regular text-text-tertiary">{t('panel.optional', { ns: 'workflow' })}</span>}
       </div>
-    </div>
+    </label>
   )
 }
 export default React.memo(BoolInput)

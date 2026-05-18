@@ -291,7 +291,7 @@ describe('MarkdownForm', () => {
 
       render(<MarkdownForm node={node} />)
 
-      await user.click(screen.getByTestId('checkbox-acceptTerms'))
+      await user.click(screen.getByRole('checkbox', { name: 'Accept terms' }))
       await user.click(screen.getByRole('button', { name: 'Submit' }))
 
       await waitFor(() => {
@@ -689,7 +689,7 @@ describe('MarkdownForm', () => {
 
       render(<MarkdownForm node={node} />)
 
-      expect(screen.getByTestId('checkbox-agree'))!.toBeInTheDocument()
+      expect(screen.getByRole('checkbox', { name: 'agree' }))!.toBeInTheDocument()
     })
 
     it('should render select with no options when dataOptions is missing', () => {

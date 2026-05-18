@@ -2,12 +2,6 @@ import { render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import CheckboxWithLabel from '../checkbox-with-label'
 
-vi.mock('@langgenius/dify-ui/checkbox', () => ({
-  Checkbox: ({ checked, onCheckedChange }: { checked: boolean, onCheckedChange: (checked: boolean) => void }) => (
-    <input type="checkbox" data-testid="checkbox" checked={checked} onChange={event => onCheckedChange(event.target.checked)} />
-  ),
-}))
-
 describe('CheckboxWithLabel', () => {
   const defaultProps = {
     isChecked: false,
@@ -26,7 +20,7 @@ describe('CheckboxWithLabel', () => {
 
   it('should render checkbox', () => {
     render(<CheckboxWithLabel {...defaultProps} />)
-    expect(screen.getByTestId('checkbox')).toBeInTheDocument()
+    expect(screen.getByRole('checkbox', { name: 'Test Label' })).toBeInTheDocument()
   })
 
   it('should render tooltip when provided', () => {

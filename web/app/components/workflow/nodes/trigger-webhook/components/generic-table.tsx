@@ -170,6 +170,7 @@ const renderSwitchCell = (
     <div className="flex h-7 items-center">
       <Checkbox
         checked={Boolean(value)}
+        aria-label={column.title}
         onCheckedChange={handleChange}
         disabled={readonly}
       />

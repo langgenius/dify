@@ -58,12 +58,12 @@ vi.mock('../completed/common/action-buttons', () => ({
 }))
 
 vi.mock('../completed/common/add-another', () => ({
-  default: ({ isChecked, onCheck, className }: { isChecked: boolean, onCheck: () => void, className?: string }) => (
+  default: ({ checked, onCheckedChange, className }: { checked: boolean, onCheckedChange: (checked: boolean) => void, className?: string }) => (
     <div data-testid="add-another" className={className}>
       <input
         type="checkbox"
-        checked={isChecked}
-        onChange={onCheck}
+        checked={checked}
+        onChange={event => onCheckedChange(event.currentTarget.checked)}
         data-testid="add-another-checkbox"
       />
     </div>

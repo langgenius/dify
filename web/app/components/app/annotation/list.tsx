@@ -65,6 +65,7 @@ const List: FC<Props> = ({
                   className="mr-2"
                   checked={isAllSelected}
                   indeterminate={!isAllSelected && isSomeSelected}
+                  aria-label={t('operation.selectAll', { ns: 'common' })}
                   onCheckedChange={handleSelectAll}
                 />
               </td>
@@ -90,6 +91,7 @@ const List: FC<Props> = ({
                   <Checkbox
                     className="mr-2"
                     checked={selectedIds.includes(item.id)}
+                    aria-label={item.question}
                     onCheckedChange={(checked) => {
                       if (checked)
                         onSelectedIdsChange([...selectedIds, item.id])

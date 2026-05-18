@@ -74,10 +74,7 @@ const createMockDoc = (overrides: Record<string, unknown> = {}): LocalDoc => ({
   ...overrides,
 }) as unknown as LocalDoc
 
-// Helper to find the custom checkbox div (Checkbox component renders as a div, not a native checkbox)
-const findCheckbox = (container: HTMLElement): HTMLElement | null => {
-  return container.querySelector('[class*="shadow-xs"]')
-}
+const getRowCheckbox = () => screen.getByRole('checkbox', { name: 'test-document.txt' })
 
 describe('DocumentTableRow', () => {
   const defaultProps = {
@@ -117,36 +114,28 @@ describe('DocumentTableRow', () => {
     })
 
     it('should render checkbox element', () => {
-      const { container } = render(<DocumentTableRow {...defaultProps} />, { wrapper: createWrapper() })
-      const checkbox = findCheckbox(container)
-      expect(checkbox)!.toBeInTheDocument()
+      render(<DocumentTableRow {...defaultProps} />, { wrapper: createWrapper() })
+      expect(getRowCheckbox())!.toBeInTheDocument()
     })
   })
 
   describe('Selection', () => {
     it('should show check icon when isSelected is true', () => {
-      const { container } = render(<DocumentTableRow {...defaultProps} isSelected />, { wrapper: createWrapper() })
-      const checkbox = findCheckbox(container)
-      expect(checkbox)!.toBeInTheDocument()
-      expect(screen.getByTestId('check-icon-doc-row-doc-1'))!.toBeInTheDocument()
+      render(<DocumentTableRow {...defaultProps} isSelected />, { wrapper: createWrapper() })
+      expect(getRowCheckbox()).toHaveAttribute('aria-checked', 'true')
     })
 
     it('should not show check icon when isSelected is false', () => {
-      const { container } = render(<DocumentTableRow {...defaultProps} isSelected={false} />, { wrapper: createWrapper() })
-      const checkbox = findCheckbox(container)
-      expect(checkbox)!.toBeInTheDocument()
-      expect(screen.queryByTestId('check-icon-doc-row-doc-1')).not.toBeInTheDocument()
+      render(<DocumentTableRow {...defaultProps} isSelected={false} />, { wrapper: createWrapper() })
+      expect(getRowCheckbox()).toHaveAttribute('aria-checked', 'false')
     })
 
     it('should call onSelectOne when checkbox is clicked', () => {
       const onSelectOne = vi.fn()
-      const { container } = render(<DocumentTableRow {...defaultProps} onSelectOne={onSelectOne} />, { wrapper: createWrapper() })
+      render(<DocumentTableRow {...defaultProps} onSelectOne={onSelectOne} />, { wrapper: createWrapper() })
 
-      const checkbox = findCheckbox(container)
-      if (checkbox) {
-        fireEvent.click(checkbox)
-        expect(onSelectOne).toHaveBeenCalledWith('doc-1')
-      }
+      fireEvent.click(getRowCheckbox())
+      expect(onSelectOne).toHaveBeenCalledWith('doc-1')
     })
 
     it('should stop propagation when checkbox container is clicked', () => {

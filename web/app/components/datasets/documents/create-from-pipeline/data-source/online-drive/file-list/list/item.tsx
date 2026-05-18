@@ -1,9 +1,9 @@
 import type { OnlineDriveFile } from '@/models/pipeline'
+import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import * as React from 'react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import Radio from '@/app/components/base/radio/ui'
 import { formatFileSize } from '@/utils/format'
 import FileIcon from './file-icon'
@@ -26,7 +26,7 @@ const Item = ({
   onOpen,
 }: ItemProps) => {
   const { t } = useTranslation()
-  const { id, name, type, size } = file
+  const { name, type, size } = file
 
   const isBucket = type === 'bucket'
   const isFolder = type === 'folder'
@@ -38,8 +38,7 @@ const Item = ({
     onSelect(file)
   }, [file, onSelect])
 
-  const handleCheckboxSelect = useCallback((_: boolean, eventDetails: { event: Event }) => {
-    eventDetails.event.stopPropagation()
+  const handleCheckboxSelect = useCallback(() => {
     onSelect(file)
   }, [file, onSelect])
 
@@ -60,12 +59,15 @@ const Item = ({
       onClick={handleClickItem}
     >
       {!isBucket && isMultipleChoice && (
-        <Checkbox
-          className="shrink-0"
-          disabled={disabled}
-          checked={isSelected}
-          onCheckedChange={handleCheckboxSelect}
-        />
+        <span onClick={event => event.stopPropagation()}>
+          <Checkbox
+            className="shrink-0"
+            disabled={disabled}
+            checked={isSelected}
+            aria-label={name}
+            onCheckedChange={() => handleCheckboxSelect()}
+          />
+        </span>
       )}
       {!isBucket && !isMultipleChoice && (
         <Radio

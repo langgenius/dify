@@ -10,7 +10,6 @@ type Props = {
   label: string
   labelClassName?: string
   tooltip?: string
-  testId?: string
 }
 
 export default function CheckboxWithLabel({
@@ -20,7 +19,6 @@ export default function CheckboxWithLabel({
   label,
   labelClassName,
   tooltip,
-  testId,
 }: Props) {
   return (
     <div className={cn(className, 'flex h-7 items-center')}>
@@ -28,7 +26,6 @@ export default function CheckboxWithLabel({
         <Checkbox
           checked={isChecked}
           onCheckedChange={checked => onChange(checked)}
-          data-testid={testId ? `checkbox-${testId}` : undefined}
         />
         <span className={cn('ml-2 min-w-0 text-left text-sm font-normal text-text-secondary', labelClassName)}>
           {label}

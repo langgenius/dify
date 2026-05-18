@@ -179,23 +179,6 @@ vi.mock('@/app/components/plugins/marketplace/search-box', () => ({
   ),
 }))
 
-// Mock Checkbox component
-vi.mock('@langgenius/dify-ui/checkbox', () => ({
-  Checkbox: ({ checked, onCheckedChange, className }: {
-    checked?: boolean
-    onCheckedChange: () => void
-    className?: string
-  }) => (
-    <input
-      type="checkbox"
-      checked={checked}
-      onChange={onCheckedChange}
-      className={className}
-      data-testid="checkbox"
-    />
-  ),
-}))
-
 // Mock Icon component
 vi.mock('@/app/components/plugins/card/base/card-icon', () => ({
   default: ({ size, src }: { size: string, src: string }) => (
@@ -739,7 +722,7 @@ describe('auto-update-setting', () => {
         render(<ToolItem {...defaultProps} isChecked={false} />)
 
         // Assert
-        expect(screen.getByTestId('checkbox')).not.toBeChecked()
+        expect(screen.getByRole('checkbox')).not.toBeChecked()
       })
 
       it('should render checkbox checked when isChecked is true', () => {
@@ -747,7 +730,7 @@ describe('auto-update-setting', () => {
         render(<ToolItem {...defaultProps} isChecked={true} />)
 
         // Assert
-        expect(screen.getByTestId('checkbox')).toBeChecked()
+        expect(screen.getByRole('checkbox')).toBeChecked()
       })
     })
 
@@ -758,7 +741,7 @@ describe('auto-update-setting', () => {
 
         // Act
         render(<ToolItem {...defaultProps} onCheckChange={onCheckChange} />)
-        fireEvent.click(screen.getByTestId('checkbox'))
+        fireEvent.click(screen.getByRole('checkbox'))
 
         // Assert
         expect(onCheckChange).toHaveBeenCalledTimes(1)
@@ -1008,7 +991,7 @@ describe('auto-update-setting', () => {
 
         // Act
         renderWithQueryClient(<ToolPicker {...defaultProps} isShow={true} onChange={onChange} />)
-        fireEvent.click(screen.getByTestId('checkbox'))
+        fireEvent.click(screen.getByRole('checkbox'))
 
         // Assert
         expect(onChange).toHaveBeenCalledWith(['test-plugin'])
@@ -1029,7 +1012,7 @@ describe('auto-update-setting', () => {
         renderWithQueryClient(
           <ToolPicker {...defaultProps} isShow={true} value={['test-plugin']} onChange={onChange} />,
         )
-        fireEvent.click(screen.getByTestId('checkbox'))
+        fireEvent.click(screen.getByRole('checkbox'))
 
         // Assert
         expect(onChange).toHaveBeenCalledWith([])
@@ -1054,7 +1037,7 @@ describe('auto-update-setting', () => {
         )
 
         // Click to select
-        fireEvent.click(screen.getByTestId('checkbox'))
+        fireEvent.click(screen.getByRole('checkbox'))
         expect(onChange).toHaveBeenCalledWith(['plugin-1'])
 
         // Rerender with new value
@@ -1066,7 +1049,7 @@ describe('auto-update-setting', () => {
         )
 
         // Click to unselect
-        fireEvent.click(screen.getByTestId('checkbox'))
+        fireEvent.click(screen.getByRole('checkbox'))
         expect(onChange).toHaveBeenCalledWith([])
       })
     })

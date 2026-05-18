@@ -2,10 +2,10 @@
 import type { FC } from 'react'
 import type { CrawlResultItem as CrawlResultItemType } from '@/models/datasets'
 import { Button } from '@langgenius/dify-ui/button'
+import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import { Checkbox } from '@langgenius/dify-ui/checkbox'
 
 type Props = {
   payload: CrawlResultItemType
@@ -13,7 +13,6 @@ type Props = {
   isPreview: boolean
   onCheckChange: (checked: boolean) => void
   onPreview: () => void
-  testId?: string
 }
 
 const CrawledResultItem: FC<Props> = ({
@@ -22,34 +21,34 @@ const CrawledResultItem: FC<Props> = ({
   isChecked,
   onCheckChange,
   onPreview,
-  testId,
 }) => {
   const { t } = useTranslation()
   return (
-    <div className={cn(isPreview ? 'bg-state-base-active' : 'group hover:bg-state-base-hover', 'cursor-pointer rounded-lg p-2')}>
+    <div className={cn(isPreview ? 'bg-state-base-active' : 'group hover:bg-state-base-hover', 'rounded-lg p-2')}>
       <div className="relative flex">
-        <div className="flex h-5 items-center">
-          <Checkbox
-            className="mr-2 shrink-0"
-            checked={isChecked}
-            onCheckedChange={checked => onCheckChange(checked)}
-            data-testid={testId ? `checkbox-${testId}` : undefined}
-          />
-        </div>
-        <div className="flex min-w-0 grow flex-col">
-          <div
-            className="truncate text-sm font-medium text-text-secondary"
-            title={payload.title}
-          >
-            {payload.title}
+        <label className="flex min-w-0 grow cursor-pointer">
+          <div className="flex h-5 items-center">
+            <Checkbox
+              className="mr-2 shrink-0"
+              checked={isChecked}
+              onCheckedChange={checked => onCheckChange(checked)}
+            />
           </div>
-          <div
-            className="mt-0.5 truncate text-xs text-text-tertiary"
-            title={payload.source_url}
-          >
-            {payload.source_url}
+          <div className="flex min-w-0 grow flex-col">
+            <div
+              className="truncate text-sm font-medium text-text-secondary"
+              title={payload.title}
+            >
+              {payload.title}
+            </div>
+            <div
+              className="mt-0.5 truncate text-xs text-text-tertiary"
+              title={payload.source_url}
+            >
+              {payload.source_url}
+            </div>
           </div>
-        </div>
+        </label>
         <Button
           onClick={onPreview}
           className="top-0 right-0 hidden h-6 px-1.5 text-xs font-medium uppercase group-hover:absolute group-hover:block"

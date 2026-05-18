@@ -1,11 +1,11 @@
 import type { ButtonProps } from '@langgenius/dify-ui/button'
 import type { Dayjs } from 'dayjs'
 import { Button } from '@langgenius/dify-ui/button'
+import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { Select, SelectContent, SelectItem, SelectItemIndicator, SelectItemText, SelectTrigger, SelectValue } from '@langgenius/dify-ui/select'
 import * as React from 'react'
 import { useCallback, useMemo, useState } from 'react'
 import { useChatContext } from '@/app/components/base/chat/chat/context'
-import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import DatePicker from '@/app/components/base/date-and-time-picker/date-picker'
 import TimePicker from '@/app/components/base/date-and-time-picker/time-picker'
 import { formatDateForOutput, toDayjs } from '@/app/components/base/date-and-time-picker/utils/dayjs'
@@ -281,13 +281,15 @@ const MarkdownForm = ({ node }: { node: HastElement }) => {
             )
           }
           if (type === SUPPORTED_TYPES.CHECKBOX) {
+            const label = str(child.properties.dataTip || child.properties['data-tip'])
             return (
               <label className="mt-2 flex h-6 items-center space-x-2" key={key}>
                 <Checkbox
                   checked={!!formValues[name]}
+                  aria-label={label ? undefined : name}
                   onCheckedChange={checked => updateValue(name, checked)}
                 />
-                <span>{str(child.properties.dataTip || child.properties['data-tip'])}</span>
+                {label && <span>{label}</span>}
               </label>
             )
           }

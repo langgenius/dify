@@ -233,14 +233,22 @@ const ConfigModalFormFields: FC<ConfigModalFormFieldsProps> = ({
       )}
 
       <label className="mt-5! flex h-6 items-center space-x-2">
-        <Checkbox checked={tempPayload.required} disabled={!isFileInput && tempPayload.hide} onCheckedChange={onPayloadChange('required')} />
+        <Checkbox
+          checked={tempPayload.required}
+          disabled={!isFileInput && tempPayload.hide}
+          onCheckedChange={checked => onPayloadChange('required')(checked)}
+        />
         <span className="system-sm-semibold text-text-secondary">{t('variableConfig.required', { ns: 'appDebug' })}</span>
       </label>
 
       {!isFileInput && (
         <div className="mt-5! flex h-6 items-center gap-2">
           <label className="flex items-center gap-2">
-            <Checkbox checked={tempPayload.hide} disabled={tempPayload.required} onCheckedChange={onPayloadChange('hide')} />
+            <Checkbox
+              checked={tempPayload.hide}
+              disabled={tempPayload.required}
+              onCheckedChange={checked => onPayloadChange('hide')(checked)}
+            />
             <span className="system-sm-semibold text-text-secondary">{t('variableConfig.hidden', { ns: 'appDebug' })}</span>
           </label>
           <div className="flex items-center gap-1">
