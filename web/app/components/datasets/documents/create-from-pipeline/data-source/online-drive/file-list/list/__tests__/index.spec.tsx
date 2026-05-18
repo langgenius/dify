@@ -1286,8 +1286,8 @@ describe('Item', () => {
     ...overrides,
   })
 
-  // Helper to find custom checkbox element (div-based implementation)
-  const findCheckbox = (container: HTMLElement) => container.querySelector('[data-testid^="checkbox-"]')
+  const queryCheckbox = () => screen.queryByRole('checkbox')
+  const getCheckbox = () => screen.getByRole('checkbox')
   const getRadio = () => screen.getByRole('radio')
 
   beforeEach(() => {
@@ -1330,8 +1330,8 @@ describe('Item', () => {
         isMultipleChoice: true,
         file: createMockOnlineDriveFile({ type: OnlineDriveFileType.file }),
       })
-      const { container } = render(<ActualItem {...props} />)
-      expect(findCheckbox(container)).toBeInTheDocument()
+      render(<ActualItem {...props} />)
+      expect(getCheckbox()).toBeInTheDocument()
     })
 
     it('should render radio in single choice mode for file', () => {
@@ -1348,8 +1348,8 @@ describe('Item', () => {
         file: createMockOnlineDriveFile({ type: OnlineDriveFileType.bucket, name: 'my-bucket' }),
         isMultipleChoice: true,
       })
-      const { container } = render(<ActualItem {...props} />)
-      expect(findCheckbox(container)).not.toBeInTheDocument()
+      render(<ActualItem {...props} />)
+      expect(queryCheckbox()).not.toBeInTheDocument()
       expect(screen.queryByRole('radio')).not.toBeInTheDocument()
     })
 
@@ -1366,18 +1366,14 @@ describe('Item', () => {
     describe('isSelected prop', () => {
       it('should show checkbox as checked when isSelected is true', () => {
         const props = createItemProps({ isSelected: true, isMultipleChoice: true })
-        const { container } = render(<ActualItem {...props} />)
-        const checkbox = findCheckbox(container)
-        // Checked checkbox shows check icon
-        expect(checkbox?.querySelector('[data-testid^="check-icon-"]')).toBeInTheDocument()
+        render(<ActualItem {...props} />)
+        expect(getCheckbox()).toHaveAttribute('aria-checked', 'true')
       })
 
       it('should show checkbox as unchecked when isSelected is false', () => {
         const props = createItemProps({ isSelected: false, isMultipleChoice: true })
-        const { container } = render(<ActualItem {...props} />)
-        const checkbox = findCheckbox(container)
-        // Unchecked checkbox has no check icon
-        expect(checkbox?.querySelector('[data-testid^="check-icon-"]')).not.toBeInTheDocument()
+        render(<ActualItem {...props} />)
+        expect(getCheckbox()).toHaveAttribute('aria-checked', 'false')
       })
 
       it('should show radio as checked when isSelected is true', () => {
@@ -1392,9 +1388,8 @@ describe('Item', () => {
       it('should not call onSelect when clicking disabled checkbox', () => {
         const onSelect = vi.fn()
         const props = createItemProps({ disabled: true, isMultipleChoice: true, onSelect })
-        const { container } = render(<ActualItem {...props} />)
-        const checkbox = findCheckbox(container)
-        fireEvent.click(checkbox!)
+        render(<ActualItem {...props} />)
+        fireEvent.click(getCheckbox())
         expect(onSelect).not.toHaveBeenCalled()
       })
 
@@ -1412,22 +1407,22 @@ describe('Item', () => {
       it('should default to true', () => {
         const props = createItemProps()
         delete (props as Partial<ItemProps>).isMultipleChoice
-        const { container } = render(<ActualItem {...props} />)
-        expect(findCheckbox(container)).toBeInTheDocument()
+        render(<ActualItem {...props} />)
+        expect(getCheckbox()).toBeInTheDocument()
       })
 
       it('should render checkbox when true', () => {
         const props = createItemProps({ isMultipleChoice: true })
-        const { container } = render(<ActualItem {...props} />)
-        expect(findCheckbox(container)).toBeInTheDocument()
+        render(<ActualItem {...props} />)
+        expect(getCheckbox()).toBeInTheDocument()
         expect(screen.queryByRole('radio')).not.toBeInTheDocument()
       })
 
       it('should render radio when false', () => {
         const props = createItemProps({ isMultipleChoice: false })
-        const { container } = render(<ActualItem {...props} />)
+        render(<ActualItem {...props} />)
         expect(getRadio()).toBeInTheDocument()
-        expect(findCheckbox(container)).not.toBeInTheDocument()
+        expect(queryCheckbox()).not.toBeInTheDocument()
       })
     })
   })
@@ -1477,9 +1472,8 @@ describe('Item', () => {
         const onSelect = vi.fn()
         const file = createMockOnlineDriveFile()
         const props = createItemProps({ file, onSelect, isMultipleChoice: true })
-        const { container } = render(<ActualItem {...props} />)
-        const checkbox = findCheckbox(container)
-        fireEvent.click(checkbox!)
+        render(<ActualItem {...props} />)
+        fireEvent.click(getCheckbox())
         expect(onSelect).toHaveBeenCalledWith(file)
       })
 
@@ -1497,9 +1491,8 @@ describe('Item', () => {
         const onSelect = vi.fn()
         const file = createMockOnlineDriveFile()
         const props = createItemProps({ file, onSelect, isMultipleChoice: true })
-        const { container } = render(<ActualItem {...props} />)
-        const checkbox = findCheckbox(container)
-        fireEvent.click(checkbox!)
+        render(<ActualItem {...props} />)
+        fireEvent.click(getCheckbox())
         expect(onSelect).toHaveBeenCalledTimes(1)
       })
     })

@@ -2,6 +2,7 @@
 
 import type { PluginDeclaration, UpdateFromGitHubPayload } from '../../types'
 import type { InstallState } from '@/app/components/plugins/types'
+import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Dialog, DialogCloseButton, DialogContent } from '@langgenius/dify-ui/dialog'
 import { toast } from '@langgenius/dify-ui/toast'
@@ -17,7 +18,6 @@ import useRefreshPluginList from '../hooks/use-refresh-plugin-list'
 import { convertRepoToUrl, parseGitHubUrl } from '../utils'
 import Loaded from './steps/loaded'
 import SelectPackage from './steps/selectPackage'
-import SetURL from './steps/setURL'
 
 const i18nPrefix = 'installFromGitHub'
 
@@ -167,12 +167,12 @@ const InstallFromGitHub: React.FC<InstallFromGitHubProps> = ({ updatePayload, on
           foldAnimInto()
       }}
     >
-      <DialogContent className={cn('w-[560px] max-w-none! overflow-hidden! text-left align-middle', cn(modalClassName, `shadows-shadow-xl flex min-w-[560px] flex-col items-start rounded-2xl border-[0.5px]
+      <DialogContent className={cn('w-[560px] max-w-none! overflow-hidden! text-left align-middle', cn(modalClassName, `shadows-shadow-xl flex max-h-[calc(100dvh-48px)] min-w-[560px] flex-col items-start rounded-2xl border-[0.5px]
         border-components-panel-border bg-components-panel-bg p-0`))}
       >
         <DialogCloseButton />
 
-        <div className="flex items-start gap-2 self-stretch pt-6 pr-14 pb-3 pl-6">
+        <div className="flex shrink-0 items-start gap-2 self-stretch pt-6 pr-14 pb-3 pl-6">
           <div className="flex grow flex-col items-start gap-1">
             <div className="self-stretch title-2xl-semi-bold text-text-primary">
               {getTitle()}
@@ -192,14 +192,43 @@ const InstallFromGitHub: React.FC<InstallFromGitHubProps> = ({ updatePayload, on
               />
             )
           : (
-              <div className={`flex flex-col items-start justify-center self-stretch px-6 py-3 ${state.step === InstallStepFromGitHub.installed ? 'gap-2' : 'gap-4'}`}>
+              <div className={`flex min-h-0 flex-1 flex-col items-start justify-center self-stretch overflow-y-auto px-6 py-3 ${state.step === InstallStepFromGitHub.installed ? 'gap-2' : 'gap-4'}`}>
                 {state.step === InstallStepFromGitHub.setUrl && (
-                  <SetURL
-                    repoUrl={state.repoUrl}
-                    onChange={value => setState(prevState => ({ ...prevState, repoUrl: value }))}
-                    onNext={handleUrlSubmit}
-                    onCancel={onClose}
-                  />
+                  <>
+                    <label
+                      htmlFor="repoUrl"
+                      className="flex flex-col items-start justify-center self-stretch text-text-secondary"
+                    >
+                      <span className="system-sm-semibold">{t('installFromGitHub.gitHubRepo', { ns: 'plugin' })}</span>
+                    </label>
+                    <input
+                      autoFocus
+                      type="url"
+                      id="repoUrl"
+                      name="repoUrl"
+                      value={state.repoUrl}
+                      onChange={e => setState(prevState => ({ ...prevState, repoUrl: e.target.value }))}
+                      className="flex grow items-center gap-0.5 self-stretch overflow-hidden rounded-lg border border-components-input-border-active bg-components-input-bg-active p-2 system-sm-regular text-ellipsis text-components-input-text-filled outline-hidden"
+                      placeholder="Please enter GitHub repo URL"
+                    />
+                    <div className="mt-4 flex items-center justify-end gap-2 self-stretch">
+                      <Button
+                        variant="secondary"
+                        className="min-w-18"
+                        onClick={onClose}
+                      >
+                        {t('installModal.cancel', { ns: 'plugin' })}
+                      </Button>
+                      <Button
+                        variant="primary"
+                        className="min-w-18"
+                        onClick={handleUrlSubmit}
+                        disabled={!state.repoUrl.trim()}
+                      >
+                        {t('installModal.next', { ns: 'plugin' })}
+                      </Button>
+                    </div>
+                  </>
                 )}
                 {state.step === InstallStepFromGitHub.selectPackage && (
                   <SelectPackage
@@ -216,11 +245,11 @@ const InstallFromGitHub: React.FC<InstallFromGitHubProps> = ({ updatePayload, on
                     onBack={handleBack}
                   />
                 )}
-                {state.step === InstallStepFromGitHub.readyToInstall && (
+                {state.step === InstallStepFromGitHub.readyToInstall && manifest && uniqueIdentifier && (
                   <Loaded
                     updatePayload={updatePayload!}
-                    uniqueIdentifier={uniqueIdentifier!}
-                    payload={manifest as any}
+                    uniqueIdentifier={uniqueIdentifier}
+                    payload={manifest}
                     repoUrl={state.repoUrl}
                     selectedVersion={state.selectedVersion}
                     selectedPackage={state.selectedPackage}
