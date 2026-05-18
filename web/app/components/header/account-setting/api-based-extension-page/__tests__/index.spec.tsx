@@ -1,6 +1,6 @@
+import type { ApiBasedExtensionResponse } from '@dify/contracts/api/console/api-based-extension/types.gen'
 import type { SetStateAction } from 'react'
 import type { ModalContextState, ModalState } from '@/context/modal-context'
-import type { ApiBasedExtension } from '@/models/common'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { useModalContext } from '@/context/modal-context'
 import { useApiBasedExtensions } from '@/service/use-common'
@@ -16,7 +16,7 @@ vi.mock('@/context/modal-context', () => ({
 
 describe('ApiBasedExtensionPage', () => {
   const mockRefetch = vi.fn<() => void>()
-  const mockSetShowApiBasedExtensionModal = vi.fn<(value: SetStateAction<ModalState<ApiBasedExtension> | null>) => void>()
+  const mockSetShowApiBasedExtensionModal = vi.fn<(value: SetStateAction<ModalState<Partial<ApiBasedExtensionResponse>> | null>) => void>()
 
   beforeEach(() => {
     vi.clearAllMocks()
@@ -44,9 +44,9 @@ describe('ApiBasedExtensionPage', () => {
 
     it('should render list of extensions when data exists', () => {
       // Arrange
-      const mockData = [
-        { id: '1', name: 'Extension 1', api_endpoint: 'url1' },
-        { id: '2', name: 'Extension 2', api_endpoint: 'url2' },
+      const mockData: ApiBasedExtensionResponse[] = [
+        { id: '1', name: 'Extension 1', api_endpoint: 'url1', api_key: 'key1' },
+        { id: '2', name: 'Extension 2', api_endpoint: 'url2', api_key: 'key2' },
       ]
 
       vi.mocked(useApiBasedExtensions).mockReturnValue({
@@ -158,7 +158,9 @@ describe('ApiBasedExtensionPage', () => {
 
     it('should call refetch when an item is updated', () => {
       // Arrange
-      const mockData = [{ id: '1', name: 'Extension 1', api_endpoint: 'url1' }]
+      const mockData: ApiBasedExtensionResponse[] = [
+        { id: '1', name: 'Extension 1', api_endpoint: 'url1', api_key: 'key1' },
+      ]
       vi.mocked(useApiBasedExtensions).mockReturnValue({
         data: mockData,
         isPending: false,
