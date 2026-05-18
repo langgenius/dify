@@ -6,6 +6,8 @@ verification, marketplace upgrade flows, and uninstall with credential cleanup.
 """
 
 from __future__ import annotations
+from sqlalchemy.orm import Session
+from flask import Flask
 
 from unittest.mock import MagicMock, patch
 from uuid import uuid4
@@ -346,7 +348,7 @@ class TestUninstall:
 
     @patch("services.plugin.plugin_service.PluginInstaller")
     def test_cleans_credentials_when_plugin_found(
-        self, mock_installer_cls, flask_app_with_containers, db_session_with_containers
+        self, mock_installer_cls, flask_app_with_containers: Flask, db_session_with_containers: Session
     ):
         tenant_id = str(uuid4())
         plugin_id = "org/myplugin"

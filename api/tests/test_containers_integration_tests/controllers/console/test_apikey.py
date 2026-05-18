@@ -1,6 +1,7 @@
 """Integration tests for console API key endpoints using testcontainers."""
 
 from __future__ import annotations
+from flask import Flask
 
 from unittest.mock import MagicMock, patch
 
@@ -126,7 +127,7 @@ class TestAppApiKeyResource:
 
     def test_delete_forbidden_for_non_admin(
         self,
-        flask_app_with_containers,
+        flask_app_with_containers: Flask,
     ) -> None:
         """A non-admin member cannot delete API keys via the controller permission check."""
         from werkzeug.exceptions import Forbidden

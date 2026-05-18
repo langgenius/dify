@@ -1,4 +1,5 @@
 from __future__ import annotations
+from flask import Flask
 
 from datetime import datetime
 from unittest.mock import MagicMock, patch
@@ -14,7 +15,7 @@ from services.api_token_service import ApiTokenCache, CachedApiToken
 
 class TestQueryTokenFromDb:
     def test_should_return_api_token_and_cache_when_token_exists(
-        self, flask_app_with_containers, db_session_with_containers
+        self, flask_app_with_containers: Flask, db_session_with_containers
     ):
         tenant_id = str(uuid4())
         app_id = str(uuid4())
@@ -41,7 +42,7 @@ class TestQueryTokenFromDb:
         mock_record_usage.assert_called_once_with(token_value, "app")
 
     def test_should_cache_null_and_raise_unauthorized_when_token_not_found(
-        self, flask_app_with_containers, db_session_with_containers
+        self, flask_app_with_containers: Flask, db_session_with_containers
     ):
         with (
             patch.object(api_token_service_module.ApiTokenCache, "set") as mock_cache_set,
