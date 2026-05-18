@@ -2,6 +2,8 @@ import type { SseEvent } from '../../../../http/sse.js'
 import type { HitlPausePayload } from '../sse-collector.js'
 import type { RunContext, RunStrategy } from './index.js'
 import { buildRunBody } from '../../../../api/app-run.js'
+import { startSpinner } from '../../../../io/spinner.js'
+import { extractThinkBlocks, stripThinkBlocks } from '../../../../io/think-filter.js'
 import { chatConversationHint, newAppRunObject, RUN_MODES } from '../handlers.js'
 import { collect, HitlPauseError } from '../sse-collector.js'
 
@@ -63,8 +65,11 @@ export class StreamingStructuredStrategy implements RunStrategy {
       workflowId: opts.workflowId,
     })
 
+    const spinner = startSpinner({ io: deps.io, label: 'running', enabled: !ctx.livePrint })
+
     let taskId: string | undefined
     const cleanup = () => {
+      spinner.stop()
       if (taskId !== undefined)
         void ctx.runClient.stopTask(opts.appId, taskId).catch(() => {})
       ctrl.abort()
@@ -90,12 +95,26 @@ export class StreamingStructuredStrategy implements RunStrategy {
       throw err
     }
     finally {
+      spinner.stop()
       process.off('SIGINT', cleanup)
     }
-    const respMode = typeof resp.mode === 'string' && resp.mode !== '' ? resp.mode : mode
-    deps.io.out.write(printFlags.toPrinter(format).print(newAppRunObject(respMode, resp)))
+    let processedResp = resp
+    if (typeof processedResp.answer === 'string') {
+      if (ctx.think) {
+        const { clean, thinking } = extractThinkBlocks(processedResp.answer)
+        if (thinking !== '')
+          deps.io.err.write(`${thinking}\n`)
+        processedResp = { ...processedResp, answer: clean }
+      }
+      else {
+        processedResp = { ...processedResp, answer: stripThinkBlocks(processedResp.answer) }
+      }
+    }
+
+    const respMode = typeof processedResp.mode === 'string' && processedResp.mode !== '' ? processedResp.mode : mode
+    deps.io.out.write(printFlags.toPrinter(format).print(newAppRunObject(respMode, processedResp)))
     if (isText && CHAT_MODES.has(respMode)) {
-      const hint = chatConversationHint(resp)
+      const hint = chatConversationHint(processedResp)
       if (hint !== undefined)
         deps.io.err.write(hint)
     }

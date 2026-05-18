@@ -24,6 +24,7 @@ export default class RunAppResume extends DifyCommand {
     'workspace': Flags.string({ description: 'workspace id override' }),
     'with-history': Flags.boolean({ description: 'Replay executed-node history before attaching to live stream.', default: false }),
     'stream': Flags.boolean({ description: 'Print output live as tokens/events arrive. Default: collect and print at end.', default: false }),
+    'think': Flags.boolean({ description: 'Show model thinking/reasoning when available. Strips <think>...</think> blocks silently by default; with --think, thinking is printed to stderr.', default: false }),
     'output': Flags.string({ char: 'o', description: 'output format (json|yaml|text)', default: '' }),
     'http-retry': httpRetryFlag,
   }
@@ -45,6 +46,7 @@ export default class RunAppResume extends DifyCommand {
         workspace: flags.workspace,
         withHistory: flags['with-history'],
         stream: flags.stream,
+        think: flags.think,
       },
       { bundle: ctx.bundle, http: ctx.http, host: ctx.host, io: ctx.io, cache: ctx.cache },
     )

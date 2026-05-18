@@ -122,3 +122,61 @@ describe('streamPrinterFor — silent events', () => {
     expect(() => sp.onEvent(stream, stream, ev('node_retry', { id: 'n1' }))).not.toThrow()
   })
 })
+
+describe('streamPrinterFor — think: false strips think blocks from streamed answer', () => {
+  it('chat: strips think block from live answer chunk', () => {
+    const sp = streamPrinterFor('chat', false)
+    const cap = captures()
+    sp.onEvent(cap.out, cap.err, ev('message', { conversation_id: 'c1', answer: '<think>reasoning</think>\nhello' }))
+    sp.onEnd(cap.out, cap.err)
+    expect(cap.outBuf()).toBe('hello\n')
+    expect(cap.errBuf()).not.toContain('reasoning')
+  })
+
+  it('chat: strips think block split across two events', () => {
+    const sp = streamPrinterFor('chat', false)
+    const cap = captures()
+    sp.onEvent(cap.out, cap.err, ev('message', { answer: '<think>sec' }))
+    sp.onEvent(cap.out, cap.err, ev('message', { answer: 'ret</think>\nfinal' }))
+    sp.onEnd(cap.out, cap.err)
+    expect(cap.outBuf()).toBe('final\n')
+  })
+
+  it('completion: strips think block', () => {
+    const sp = streamPrinterFor('completion', false)
+    const cap = captures()
+    sp.onEvent(cap.out, cap.err, ev('message', { answer: '<think>hidden</think>\nresult' }))
+    sp.onEnd(cap.out, cap.err)
+    expect(cap.outBuf()).toBe('result\n')
+  })
+})
+
+describe('streamPrinterFor — think: true routes thinking to stderr', () => {
+  it('chat: routes think block to stderr', () => {
+    const sp = streamPrinterFor('chat', true)
+    const cap = captures()
+    sp.onEvent(cap.out, cap.err, ev('message', { answer: '<think>my reasoning</think>\nanswer text' }))
+    sp.onEnd(cap.out, cap.err)
+    expect(cap.outBuf()).toBe('answer text\n')
+    expect(cap.errBuf()).toContain('my reasoning')
+  })
+
+  it('completion: routes think block to stderr', () => {
+    const sp = streamPrinterFor('completion', true)
+    const cap = captures()
+    sp.onEvent(cap.out, cap.err, ev('message', { answer: '<think>thought</think>\nout' }))
+    sp.onEnd(cap.out, cap.err)
+    expect(cap.outBuf()).toBe('out\n')
+    expect(cap.errBuf()).toContain('thought')
+  })
+})
+
+describe('streamPrinterFor — no-think param = backward compat (strips by default)', () => {
+  it('existing call without think param still strips', () => {
+    const sp = streamPrinterFor('chat')
+    const cap = captures()
+    sp.onEvent(cap.out, cap.err, ev('message', { answer: '<think>x</think>\nok' }))
+    sp.onEnd(cap.out, cap.err)
+    expect(cap.outBuf()).toBe('ok\n')
+  })
+})

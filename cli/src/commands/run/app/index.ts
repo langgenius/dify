@@ -29,6 +29,7 @@ export default class RunApp extends DifyCommand {
     'workflow-id': Flags.string({ description: 'Pin to a specific published workflow version' }),
     'workspace': Flags.string({ description: 'Workspace id (overrides DIFY_WORKSPACE_ID and stored default)' }),
     'stream': Flags.boolean({ description: 'Print output live as tokens/events arrive (default: collect and print at end)', default: false }),
+    'think': Flags.boolean({ description: 'Show model thinking/reasoning when available. Strips <think>...</think> blocks silently by default; with --think, thinking is printed to stderr.', default: false }),
     'http-retry': httpRetryFlag,
     'output': Flags.string({ char: 'o', description: 'Output format (json|yaml|text)', default: '' }),
   }
@@ -48,6 +49,7 @@ export default class RunApp extends DifyCommand {
         workspace: flags.workspace,
         format,
         stream: flags.stream,
+        think: flags.think,
       },
       { bundle: ctx.bundle, http: ctx.http, host: ctx.host, io: ctx.io, cache: ctx.cache },
     )

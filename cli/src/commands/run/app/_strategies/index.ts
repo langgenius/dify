@@ -14,6 +14,7 @@ export type RunContext = {
   readonly runClient: AppRunClient
   readonly printFlags: AppRunPrintFlags
   readonly exit: (code: number) => never
+  readonly think: boolean
 }
 
 export type RunStrategy = {

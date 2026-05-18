@@ -52,7 +52,7 @@ export class StreamingTextStrategy implements RunStrategy {
 
     try {
       const events = await ctx.runClient.runStream(opts.appId, body, { signal: ctrl.signal })
-      const sp = printFlags.toStreamPrinter(mode)
+      const sp = printFlags.toStreamPrinter(mode, ctx.think)
       const dec = new TextDecoder()
       for await (const ev of events) {
         if (ev.name === 'ping')

@@ -3,6 +3,7 @@ import type { StreamPrinter } from '../../../printers/stream-printer.js'
 import type { HitlPausePayload } from './sse-collector.js'
 import { newError } from '../../../errors/base.js'
 import { ErrorCode } from '../../../errors/codes.js'
+import { ThinkChunkFilter } from '../../../io/think-filter.js'
 import { RUN_MODES } from './handlers.js'
 import { HitlPauseError } from './sse-collector.js'
 
@@ -40,6 +41,11 @@ function handleCommonEvents(ev: SseEvent): boolean {
 
 class ChatStreamPrinter implements StreamPrinter {
   private convoId = ''
+  private readonly filter: ThinkChunkFilter
+  constructor(think: boolean) {
+    this.filter = new ThinkChunkFilter(think)
+  }
+
   onEvent(out: NodeJS.WritableStream, errOut: NodeJS.WritableStream, ev: SseEvent): void {
     if (handleCommonEvents(ev))
       return
@@ -48,7 +54,7 @@ class ChatStreamPrinter implements StreamPrinter {
       case 'message':
       case 'agent_message': {
         if (typeof c.answer === 'string')
-          out.write(c.answer)
+          this.filter.push(c.answer, out, errOut)
         if (typeof c.conversation_id === 'string' && c.conversation_id !== '')
           this.convoId = c.conversation_id
         return
@@ -64,6 +70,7 @@ class ChatStreamPrinter implements StreamPrinter {
   }
 
   onEnd(out: NodeJS.WritableStream, errOut: NodeJS.WritableStream): void {
+    this.filter.flush(out, errOut)
     out.write('\n')
     if (this.convoId !== '')
       errOut.write(`hint: continue this conversation with --conversation ${this.convoId}\n`)
@@ -71,17 +78,23 @@ class ChatStreamPrinter implements StreamPrinter {
 }
 
 class CompletionStreamPrinter implements StreamPrinter {
-  onEvent(out: NodeJS.WritableStream, _errOut: NodeJS.WritableStream, ev: SseEvent): void {
+  private readonly filter: ThinkChunkFilter
+  constructor(think: boolean) {
+    this.filter = new ThinkChunkFilter(think)
+  }
+
+  onEvent(out: NodeJS.WritableStream, errOut: NodeJS.WritableStream, ev: SseEvent): void {
     if (handleCommonEvents(ev))
       return
     if (ev.name !== 'message')
       return
     const c = parseJson(ev.data)
     if (typeof c.answer === 'string')
-      out.write(c.answer)
+      this.filter.push(c.answer, out, errOut)
   }
 
-  onEnd(out: NodeJS.WritableStream): void {
+  onEnd(out: NodeJS.WritableStream, errOut: NodeJS.WritableStream): void {
+    this.filter.flush(out, errOut)
     out.write('\n')
   }
 }
@@ -126,17 +139,17 @@ class WorkflowStreamPrinter implements StreamPrinter {
   }
 }
 
-const FACTORIES: Record<string, () => StreamPrinter> = {
-  [RUN_MODES.Chat]: () => new ChatStreamPrinter(),
-  [RUN_MODES.AdvancedChat]: () => new ChatStreamPrinter(),
-  [RUN_MODES.AgentChat]: () => new ChatStreamPrinter(),
-  [RUN_MODES.Completion]: () => new CompletionStreamPrinter(),
-  [RUN_MODES.Workflow]: () => new WorkflowStreamPrinter(),
+const FACTORIES: Record<string, (think: boolean) => StreamPrinter> = {
+  [RUN_MODES.Chat]: think => new ChatStreamPrinter(think),
+  [RUN_MODES.AdvancedChat]: think => new ChatStreamPrinter(think),
+  [RUN_MODES.AgentChat]: think => new ChatStreamPrinter(think),
+  [RUN_MODES.Completion]: think => new CompletionStreamPrinter(think),
+  [RUN_MODES.Workflow]: _think => new WorkflowStreamPrinter(),
 }
 
-export function streamPrinterFor(mode: string): StreamPrinter {
+export function streamPrinterFor(mode: string, think = false): StreamPrinter {
   const f = FACTORIES[mode]
   if (f === undefined)
     throw newError(ErrorCode.Unknown, `unsupported streaming mode "${mode}"`)
-  return f()
+  return f(think)
 }

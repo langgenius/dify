@@ -24,6 +24,7 @@ export type RunAppOptions = {
   readonly workspace?: string
   readonly format?: string
   readonly stream?: boolean
+  readonly think?: boolean
 }
 
 export type RunAppDeps = {
@@ -99,6 +100,6 @@ export async function runApp(opts: RunAppOptions, deps: RunAppDeps): Promise<voi
   const printFlags = new AppRunPrintFlags()
 
   const exit = deps.exit ?? ((code: number) => process.exit(code) as never)
-  const ctx = { opts: { ...opts, inputs }, deps, mode, format, isText, livePrint, runClient, printFlags, exit }
+  const ctx = { opts: { ...opts, inputs }, deps, mode, format, isText, livePrint, runClient, printFlags, exit, think: opts.think ?? false }
   await pickStrategy(isText, livePrint).execute(ctx)
 }

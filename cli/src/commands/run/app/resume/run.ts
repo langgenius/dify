@@ -24,6 +24,7 @@ export type ResumeAppOptions = {
   readonly workspace?: string
   readonly withHistory?: boolean
   readonly stream?: boolean
+  readonly think?: boolean
 }
 
 export type ResumeAppDeps = {
@@ -129,6 +130,7 @@ export async function resumeApp(opts: ResumeAppOptions, deps: ResumeAppDeps): Pr
       workspace: opts.workspace,
       format,
       stream: opts.stream,
+      think: opts.think,
     },
     deps,
     mode,
@@ -138,6 +140,7 @@ export async function resumeApp(opts: ResumeAppOptions, deps: ResumeAppDeps): Pr
     runClient: adaptedRunClient as unknown as AppRunClient,
     printFlags,
     exit,
+    think: opts.think ?? false,
   }
 
   await pickStrategy(isText, livePrint).execute(runCtx)
