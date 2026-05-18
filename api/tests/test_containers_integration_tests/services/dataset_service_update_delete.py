@@ -14,7 +14,7 @@ from sqlalchemy.orm import Session
 from werkzeug.exceptions import NotFound
 
 from core.rag.index_processor.constant.index_type import IndexTechniqueType
-from models import Account, Tenant, TenantAccountJoin, TenantAccountRole
+from models import Account, AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole, TenantStatus
 from models.dataset import AppDatasetJoin, Dataset, DatasetPermissionEnum
 from models.enums import DataSourceType
 from models.model import App
@@ -38,13 +38,13 @@ class DatasetUpdateDeleteTestDataFactory:
             email=f"{uuid4()}@example.com",
             name=f"user-{uuid4()}",
             interface_language="en-US",
-            status="active",
+            status=AccountStatus.ACTIVE,
         )
         db_session_with_containers.add(account)
         db_session_with_containers.commit()
 
         if tenant is None:
-            tenant = Tenant(name=f"tenant-{uuid4()}", status="normal")
+            tenant = Tenant(name=f"tenant-{uuid4()}", status=TenantStatus.NORMAL)
             db_session_with_containers.add(tenant)
             db_session_with_containers.commit()
 

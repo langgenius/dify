@@ -3,6 +3,14 @@
 import * as z from 'zod'
 
 /**
+ * AppAccessModeQuery
+ */
+export const zAppAccessModeQuery = z.object({
+  appCode: z.string().nullish(),
+  appId: z.string().nullish(),
+})
+
+/**
  * ChatMessagePayload
  */
 export const zChatMessagePayload = z.object({
@@ -24,6 +32,27 @@ export const zCompletionMessagePayload = z.object({
   query: z.string().optional().default(''),
   response_mode: z.enum(['blocking', 'streaming']).nullish(),
   retriever_from: z.string().optional().default('web_app'),
+})
+
+/**
+ * ConversationListQuery
+ */
+export const zConversationListQuery = z.object({
+  last_id: z.string().nullish(),
+  limit: z.int().gte(1).lte(100).optional().default(20),
+  pinned: z.boolean().nullish(),
+  sort_by: z
+    .enum(['-created_at', '-updated_at', 'created_at', 'updated_at'])
+    .optional()
+    .default('-updated_at'),
+})
+
+/**
+ * ConversationRenamePayload
+ */
+export const zConversationRenamePayload = z.object({
+  auto_generate: z.boolean().optional().default(false),
+  name: z.string().nullish(),
 })
 
 /**
@@ -112,6 +141,23 @@ export const zLoginPayload = z.object({
 })
 
 /**
+ * MessageFeedbackPayload
+ */
+export const zMessageFeedbackPayload = z.object({
+  content: z.string().nullish(),
+  rating: z.enum(['dislike', 'like']).nullish(),
+})
+
+/**
+ * MessageListQuery
+ */
+export const zMessageListQuery = z.object({
+  conversation_id: z.string(),
+  first_id: z.string().nullish(),
+  limit: z.int().gte(1).lte(100).optional().default(20),
+})
+
+/**
  * MessageMoreLikeThisQuery
  */
 export const zMessageMoreLikeThisQuery = z.object({
@@ -124,6 +170,28 @@ export const zMessageMoreLikeThisQuery = z.object({
 export const zRemoteFileInfo = z.object({
   file_length: z.int(),
   file_type: z.string(),
+})
+
+/**
+ * RemoteFileUploadPayload
+ */
+export const zRemoteFileUploadPayload = z.object({
+  url: z.url().min(1).max(2083),
+})
+
+/**
+ * SavedMessageCreatePayload
+ */
+export const zSavedMessageCreatePayload = z.object({
+  message_id: z.string(),
+})
+
+/**
+ * SavedMessageListQuery
+ */
+export const zSavedMessageListQuery = z.object({
+  last_id: z.string().nullish(),
+  limit: z.int().gte(1).lte(100).optional().default(20),
 })
 
 /**
@@ -184,9 +252,9 @@ export const zPostCompletionMessagesByTaskIdStopResponse = z.record(z.string(), 
 export const zGetConversationsQuery = z.object({
   last_id: z.string().optional(),
   limit: z.int().optional().default(20),
-  pinned: z.enum(['true', 'false']).optional(),
+  pinned: z.enum(['false', 'true']).optional(),
   sort_by: z
-    .enum(['created_at', '-created_at', 'updated_at', '-updated_at'])
+    .enum(['-created_at', '-updated_at', 'created_at', 'updated_at'])
     .optional()
     .default('-updated_at'),
 })
@@ -203,15 +271,15 @@ export const zDeleteConversationsByCIdPath = z.object({
 /**
  * Conversation deleted successfully
  */
-export const zDeleteConversationsByCIdResponse = z.record(z.string(), z.unknown())
+export const zDeleteConversationsByCIdResponse = z.record(z.string(), z.never())
 
 export const zPostConversationsByCIdNamePath = z.object({
   c_id: z.string(),
 })
 
 export const zPostConversationsByCIdNameQuery = z.object({
-  name: z.string().optional(),
   auto_generate: z.boolean().optional().default(false),
+  name: z.string().optional(),
 })
 
 /**
@@ -328,8 +396,8 @@ export const zPostMessagesByMessageIdFeedbacksPath = z.object({
 })
 
 export const zPostMessagesByMessageIdFeedbacksQuery = z.object({
-  rating: z.enum(['like', 'dislike']).optional(),
   content: z.string().optional(),
+  rating: z.enum(['dislike', 'like']).optional(),
 })
 
 /**
@@ -414,7 +482,7 @@ export const zDeleteSavedMessagesByMessageIdPath = z.object({
 /**
  * Message removed successfully
  */
-export const zDeleteSavedMessagesByMessageIdResponse = z.record(z.string(), z.unknown())
+export const zDeleteSavedMessagesByMessageIdResponse = z.record(z.string(), z.never())
 
 /**
  * Success
@@ -434,8 +502,8 @@ export const zPostTextToAudioBody = zTextToAudioPayload
 export const zPostTextToAudioResponse = z.record(z.string(), z.unknown())
 
 export const zGetWebappAccessModeQuery = z.object({
-  appId: z.string().optional(),
   appCode: z.string().optional(),
+  appId: z.string().optional(),
 })
 
 /**

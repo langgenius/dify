@@ -607,9 +607,9 @@ Get workflow online users
 
 ##### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Workflow online users retrieved successfully | [WorkflowOnlineUsersResponse](#workflowonlineusersresponse) |
 
 ### /apps/{app_id}
 
@@ -2720,7 +2720,7 @@ Get all published workflows for an application
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Published workflows retrieved successfully | [WorkflowPagination](#workflowpagination) |
+| 200 | Published workflows retrieved successfully | [WorkflowPaginationResponse](#workflowpaginationresponse) |
 
 ### /apps/{app_id}/workflows/default-workflow-block-configs
 
@@ -2792,7 +2792,7 @@ Get draft workflow for an application
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Draft workflow retrieved successfully | [Workflow](#workflow) |
+| 200 | Draft workflow retrieved successfully | [WorkflowResponse](#workflowresponse) |
 | 404 | Draft workflow not found |  |
 
 #### POST
@@ -3403,8 +3403,7 @@ Get published workflow for an application
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Published workflow retrieved successfully | [Workflow](#workflow) |
-| 404 | Published workflow not found |  |
+| 200 | Published workflow retrieved successfully, or null if not found | [WorkflowResponse](#workflowresponse) |
 
 #### POST
 ##### Summary
@@ -3485,7 +3484,7 @@ Update workflow by ID
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Workflow updated successfully | [Workflow](#workflow) |
+| 200 | Workflow updated successfully | [WorkflowResponse](#workflowresponse) |
 | 403 | Permission denied |  |
 | 404 | Workflow not found |  |
 
@@ -6685,9 +6684,10 @@ Get published workflows
 
 ##### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Published workflows retrieved successfully | [WorkflowPaginationResponse](#workflowpaginationresponse) |
+| 403 | Permission denied |  |
 
 ### /rag/pipelines/{pipeline_id}/workflows/default-workflow-block-configs
 
@@ -6743,9 +6743,10 @@ Get draft rag pipeline's workflow
 
 ##### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Draft workflow retrieved successfully | [WorkflowResponse](#workflowresponse) |
+| 404 | Draft workflow not found |  |
 
 #### POST
 ##### Summary
@@ -7105,9 +7106,9 @@ Get published pipeline
 
 ##### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Published workflow retrieved successfully, or null if not exist | [WorkflowResponse](#workflowresponse) |
 
 #### POST
 ##### Summary
@@ -7260,9 +7261,12 @@ Update workflow attributes
 
 ##### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Workflow updated successfully | [WorkflowResponse](#workflowresponse) |
+| 400 | No valid fields to update |  |
+| 403 | Permission denied |  |
+| 404 | Workflow not found |  |
 
 ### /rag/pipelines/{pipeline_id}/workflows/{workflow_id}/restore
 
@@ -10955,16 +10959,6 @@ Condition detail
 | auto_generate | boolean |  | No |
 | name | string |  | No |
 
-#### ConversationVariable
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| description | string |  | No |
-| id | string |  | No |
-| name | string |  | No |
-| value | object |  | No |
-| value_type | string |  | No |
-
 #### ConversationVariableResponse
 
 | Name | Type | Description | Required |
@@ -11805,6 +11799,27 @@ Request payload for bulk downloading documents as a zip archive.
 | ---- | ---- | ----------- | -------- |
 | file_ids | [ string ] |  | Yes |
 
+#### FileInputConfig
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| allowed_file_extensions | [ string ] |  | No |
+| allowed_file_types | [ [FileType](#filetype) ] |  | No |
+| allowed_file_upload_methods | [ [FileTransferMethod](#filetransfermethod) ] |  | No |
+| output_variable_name | string |  | Yes |
+| type | string |  | No |
+
+#### FileListInputConfig
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| allowed_file_extensions | [ string ] |  | No |
+| allowed_file_types | [ [FileType](#filetype) ] |  | No |
+| allowed_file_upload_methods | [ [FileTransferMethod](#filetransfermethod) ] |  | No |
+| number_limits | integer |  | No |
+| output_variable_name | string |  | Yes |
+| type | string |  | No |
+
 #### FileResponse
 
 | Name | Type | Description | Required |
@@ -11823,6 +11838,18 @@ Request payload for bulk downloading documents as a zip archive.
 | source_url | string |  | No |
 | tenant_id | string |  | No |
 | user_id | string |  | No |
+
+#### FileTransferMethod
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| FileTransferMethod | string |  |  |
+
+#### FileType
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| FileType | string |  |  |
 
 #### ForgotPasswordCheckPayload
 
@@ -11869,33 +11896,11 @@ Request payload for bulk downloading documents as a zip archive.
 | email | string |  | Yes |
 | language | string |  | No |
 
-#### FormInput
-
-Form input definition.
+#### FormInputConfig
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| default | [FormInputDefault](#forminputdefault) |  | No |
-| output_variable_name | string |  | Yes |
-| type | [FormInputType](#forminputtype) |  | Yes |
-
-#### FormInputDefault
-
-Default configuration for form inputs.
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| selector | [ string ] |  | No |
-| type | [PlaceholderType](#placeholdertype) |  | Yes |
-| value | string |  | No |
-
-#### FormInputType
-
-Form input types.
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| FormInputType | string | Form input types. |  |
+| FormInputConfig | [ParagraphInputConfig](#paragraphinputconfig)<br>[SelectInputConfig](#selectinputconfig)<br>[FileInputConfig](#fileinputconfig)<br>[FileListInputConfig](#filelistinputconfig) |  |  |
 
 #### GenerateSummaryPayload
 
@@ -12018,13 +12023,13 @@ Form input types.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| actions | [ [UserAction](#useraction) ] |  | No |
+| actions | [ [UserActionConfig](#useractionconfig) ] |  | No |
 | display_in_ui | boolean |  | No |
 | expiration_time | integer |  | Yes |
 | form_content | string |  | Yes |
 | form_id | string |  | Yes |
 | form_token | string |  | No |
-| inputs | [ [FormInput](#forminput) ] |  | No |
+| inputs | [ [FormInputConfig](#forminputconfig) ] |  | No |
 | node_id | string |  | Yes |
 | node_title | string |  | Yes |
 | resolved_default_values | object |  | No |
@@ -12662,6 +12667,16 @@ Enum class for model type.
 | page | integer |  | Yes |
 | total | integer |  | Yes |
 
+#### ParagraphInputConfig
+
+Form input definition.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| default | [StringSource](#stringsource) |  | No |
+| output_variable_name | string |  | Yes |
+| type | string |  | No |
+
 #### Parser
 
 | Name | Type | Description | Required |
@@ -12972,32 +12987,24 @@ Enum class for model type.
 | icon_info | object |  | No |
 | name | string |  | Yes |
 
-#### PipelineVariable
+#### PipelineVariableResponse
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| allow_file_extension | [ string ] |  | No |
-| allow_file_upload_methods | [ string ] |  | No |
+| allowed_file_extensions | [ string ] |  | No |
 | allowed_file_types | [ string ] |  | No |
-| belong_to_node_id | string |  | No |
+| allowed_file_upload_methods | [ string ] |  | No |
+| belong_to_node_id | string |  | Yes |
 | default_value | object |  | No |
-| label | string |  | No |
+| label | string |  | Yes |
 | max_length | integer |  | No |
 | options | [ string ] |  | No |
 | placeholder | string |  | No |
-| required | boolean |  | No |
+| required | boolean |  | Yes |
 | tooltips | string |  | No |
-| type | string |  | No |
+| type | string |  | Yes |
 | unit | string |  | No |
-| variable | string |  | No |
-
-#### PlaceholderType
-
-Default value types for form inputs.
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| PlaceholderType | string | Default value types for form inputs. |  |
+| variable | string |  | Yes |
 
 #### PluginAutoUpgradeSettingsPayload
 
@@ -13279,6 +13286,14 @@ Default value types for form inputs.
 | max_tokens | integer |  | Yes |
 | separator | string |  | No |
 
+#### SelectInputConfig
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| option_source | [StringListSource](#stringlistsource) |  | Yes |
+| output_variable_name | string |  | Yes |
+| type | string |  | No |
+
 #### SimpleAccount
 
 | Name | Type | Description | Required |
@@ -13360,6 +13375,24 @@ Default value types for form inputs.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | StrategySetting | string |  |  |
+
+#### StringListSource
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| selector | [ string ] |  | No |
+| type | [ValueSourceType](#valuesourcetype) |  | Yes |
+| value | [ string ] |  | No |
+
+#### StringSource
+
+Default configuration for form inputs.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| selector | [ string ] |  | No |
+| type | [ValueSourceType](#valuesourcetype) |  | Yes |
+| value | string |  | No |
 
 #### SubscriptionQuery
 
@@ -13792,7 +13825,7 @@ Tag type
 | video_file_size_limit | integer |  | Yes |
 | workflow_file_upload_limit | integer |  | Yes |
 
-#### UserAction
+#### UserActionConfig
 
 User action configuration.
 
@@ -13801,6 +13834,15 @@ User action configuration.
 | button_style | [ButtonStyle](#buttonstyle) |  | No |
 | id | string |  | Yes |
 | title | string |  | Yes |
+
+#### ValueSourceType
+
+ValueSourceType records whether the value comes from a static setting
+in form definiton, or a variable while the workflow is running.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ValueSourceType | string | ValueSourceType records whether the value comes from a static setting in form definiton, or a variable while the workflow is running. |  |
 
 #### WebhookTriggerResponse
 
@@ -13857,26 +13899,6 @@ User action configuration.
 | embedding_model_name | string |  | Yes |
 | embedding_provider_name | string |  | Yes |
 | vector_weight | number |  | Yes |
-
-#### Workflow
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| conversation_variables | [ [ConversationVariable](#conversationvariable) ] |  | No |
-| created_at | object |  | No |
-| created_by | [SimpleAccount](#simpleaccount) |  | No |
-| environment_variables | [ object ] |  | No |
-| features | object |  | No |
-| graph | object |  | No |
-| hash | string |  | No |
-| id | string |  | No |
-| marked_comment | string |  | No |
-| marked_name | string |  | No |
-| rag_pipeline_variables | [ [PipelineVariable](#pipelinevariable) ] |  | No |
-| tool_published | boolean |  | No |
-| updated_at | object |  | No |
-| updated_by | [SimpleAccount](#simpleaccount) |  | No |
-| version | string |  | No |
 
 #### WorkflowAppLogPaginationResponse
 
@@ -14076,6 +14098,16 @@ User action configuration.
 | position_x | number | Comment X position | No |
 | position_y | number | Comment Y position | No |
 
+#### WorkflowConversationVariableResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| description | string |  | Yes |
+| id | string |  | Yes |
+| name | string |  | Yes |
+| value | object |  | Yes |
+| value_type | string |  | Yes |
+
 #### WorkflowDraftEnvVariable
 
 | Name | Type | Description | Required |
@@ -14159,6 +14191,16 @@ User action configuration.
 | value_type | string |  | No |
 | visible | boolean |  | No |
 
+#### WorkflowEnvironmentVariableResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| description | string |  | Yes |
+| id | string |  | Yes |
+| name | string |  | Yes |
+| value | object |  | Yes |
+| value_type | string |  | Yes |
+
 #### WorkflowExecutionStatus
 
 | Name | Type | Description | Required |
@@ -14180,20 +14222,41 @@ User action configuration.
 | page | integer |  | No |
 | user_id | string |  | No |
 
+#### WorkflowOnlineUser
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| avatar | string |  | No |
+| user_id | string |  | Yes |
+| username | string |  | Yes |
+
+#### WorkflowOnlineUsersByApp
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| app_id | string |  | Yes |
+| users | [ [WorkflowOnlineUser](#workflowonlineuser) ] |  | Yes |
+
 #### WorkflowOnlineUsersPayload
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | app_ids | [ string ] | App IDs | No |
 
-#### WorkflowPagination
+#### WorkflowOnlineUsersResponse
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| has_more | boolean |  | No |
-| items | [ [Workflow](#workflow) ] |  | No |
-| limit | integer |  | No |
-| page | integer |  | No |
+| data | [ [WorkflowOnlineUsersByApp](#workflowonlineusersbyapp) ] |  | Yes |
+
+#### WorkflowPaginationResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| has_more | boolean |  | Yes |
+| items | [ [WorkflowResponse](#workflowresponse) ] |  | Yes |
+| limit | integer |  | Yes |
+| page | integer |  | Yes |
 
 #### WorkflowPartial
 
@@ -14211,6 +14274,26 @@ User action configuration.
 | ---- | ---- | ----------- | -------- |
 | paused_at | string |  | No |
 | paused_nodes | [ [PausedNodeResponse](#pausednoderesponse) ] |  | Yes |
+
+#### WorkflowResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| conversation_variables | [ [WorkflowConversationVariableResponse](#workflowconversationvariableresponse) ] |  | Yes |
+| created_at | integer |  | Yes |
+| created_by | [SimpleAccount](#simpleaccount) |  | No |
+| environment_variables | [ [WorkflowEnvironmentVariableResponse](#workflowenvironmentvariableresponse) ] |  | Yes |
+| features | object |  | Yes |
+| graph | object |  | Yes |
+| hash | string |  | Yes |
+| id | string |  | Yes |
+| marked_comment | string |  | Yes |
+| marked_name | string |  | Yes |
+| rag_pipeline_variables | [ [PipelineVariableResponse](#pipelinevariableresponse) ] |  | Yes |
+| tool_published | boolean |  | Yes |
+| updated_at | integer |  | Yes |
+| updated_by | [SimpleAccount](#simpleaccount) |  | No |
+| version | string |  | Yes |
 
 #### WorkflowRunCountQuery
 

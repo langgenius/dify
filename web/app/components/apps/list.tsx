@@ -2,12 +2,12 @@
 
 import type { FC } from 'react'
 import type { AppListQuery } from '@/contract/console/apps'
+import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { cn } from '@langgenius/dify-ui/cn'
 import { keepPreviousData, useInfiniteQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useDebounce } from 'ahooks'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Checkbox from '@/app/components/base/checkbox'
 import Input from '@/app/components/base/input'
 import TabSliderNew from '@/app/components/base/tab-slider-new'
 import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
@@ -158,9 +158,9 @@ const List: FC<Props> = ({
     return () => observer?.disconnect()
   }, [isLoading, isFetchingNextPage, fetchNextPage, error, hasNextPage, isCurrentWorkspaceDatasetOperator])
 
-  const handleCreatedByMeChange = useCallback(() => {
-    setIsCreatedByMe(!isCreatedByMe)
-  }, [isCreatedByMe, setIsCreatedByMe])
+  const handleCreatedByMeChange = useCallback((checked: boolean) => {
+    setIsCreatedByMe(checked)
+  }, [setIsCreatedByMe])
 
   const pages = useMemo(() => data?.pages ?? [], [data?.pages])
   const apps = useMemo(() => pages.flatMap(({ data: pageApps }) => pageApps), [pages])
@@ -204,7 +204,7 @@ const List: FC<Props> = ({
           />
           <div className="flex items-center gap-2">
             <label className="mr-2 flex h-7 items-center space-x-2">
-              <Checkbox checked={isCreatedByMe} onCheck={handleCreatedByMeChange} />
+              <Checkbox checked={isCreatedByMe} onCheckedChange={handleCreatedByMeChange} />
               <div className="text-sm font-normal text-text-secondary">
                 {t('showMyCreatedAppsOnly', { ns: 'app' })}
               </div>

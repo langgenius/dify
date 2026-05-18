@@ -131,7 +131,7 @@ export const zAccountInterfaceLanguagePayload = z.object({
  * AccountInterfaceThemePayload
  */
 export const zAccountInterfaceThemePayload = z.object({
-  interface_theme: z.enum(['light', 'dark']),
+  interface_theme: z.enum(['dark', 'light']),
 })
 
 /**
