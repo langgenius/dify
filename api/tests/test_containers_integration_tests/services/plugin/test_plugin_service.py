@@ -6,6 +6,7 @@ verification, marketplace upgrade flows, and uninstall with credential cleanup.
 """
 
 from __future__ import annotations
+from models import ProviderType
 from sqlalchemy.orm import Session
 from flask import Flask
 
@@ -376,7 +377,7 @@ class TestUninstall:
         pref = TenantPreferredModelProvider(
             tenant_id=tenant_id,
             provider_name=provider_name,
-            preferred_provider_type="custom",
+            preferred_provider_type=ProviderType.CUSTOM,
         )
         db_session_with_containers.add(pref)
         db_session_with_containers.commit()

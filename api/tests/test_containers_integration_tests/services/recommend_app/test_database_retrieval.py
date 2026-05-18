@@ -11,7 +11,7 @@ from services.recommend_app.database.database_retrieval import DatabaseRecommend
 from services.recommend_app.recommend_app_type import RecommendAppType
 
 
-def _create_app(db_session, *, tenant_id: str, is_public: bool = True) -> App:
+def _create_app(db_session: Session, *, tenant_id: str, is_public: bool = True) -> App:
     app = App(
         tenant_id=tenant_id,
         name=f"app-{uuid4()}",
@@ -26,7 +26,7 @@ def _create_app(db_session, *, tenant_id: str, is_public: bool = True) -> App:
     return app
 
 
-def _create_site(db_session, *, app_id: str) -> Site:
+def _create_site(db_session: Session, *, app_id: str) -> Site:
     site = Site(
         app_id=app_id,
         title=f"site-{uuid4()}",

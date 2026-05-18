@@ -5,6 +5,8 @@ This module contains comprehensive integration tests for the DatasetService clas
 specifically focusing on update and delete operations for datasets backed by Testcontainers.
 """
 
+from models import TenantStatus
+from models import AccountStatus
 import datetime
 from unittest.mock import patch
 from uuid import uuid4
@@ -38,13 +40,13 @@ class DatasetUpdateDeleteTestDataFactory:
             email=f"{uuid4()}@example.com",
             name=f"user-{uuid4()}",
             interface_language="en-US",
-            status="active",
+            status=AccountStatus.ACTIVE,
         )
         db_session_with_containers.add(account)
         db_session_with_containers.commit()
 
         if tenant is None:
-            tenant = Tenant(name=f"tenant-{uuid4()}", status="normal")
+            tenant = Tenant(name=f"tenant-{uuid4()}", status=TenantStatus.NORMAL)
             db_session_with_containers.add(tenant)
             db_session_with_containers.commit()
 
