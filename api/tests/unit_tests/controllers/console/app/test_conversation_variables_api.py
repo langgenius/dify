@@ -1,4 +1,5 @@
 from __future__ import annotations
+from flask import Flask
 
 from contextlib import nullcontext
 from datetime import UTC, datetime
@@ -20,7 +21,7 @@ def _unwrap(func):
     return func
 
 
-def test_get_conversation_variables_returns_paginated_response(app, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_get_conversation_variables_returns_paginated_response(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
     api = conversation_variables_module.ConversationVariablesApi()
     method = _unwrap(api.get)
 
@@ -63,7 +64,7 @@ def test_get_conversation_variables_returns_paginated_response(app, monkeypatch:
     assert response["data"][0]["updated_at"] == int(updated_at.timestamp())
 
 
-def test_get_conversation_variables_normalizes_value_type_and_value(app, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_get_conversation_variables_normalizes_value_type_and_value(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
     api = conversation_variables_module.ConversationVariablesApi()
     method = _unwrap(api.get)
 
