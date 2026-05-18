@@ -49,7 +49,6 @@ describe('ApiBasedExtensionModal', () => {
   const renderModal = (props: Partial<ComponentProps<typeof ApiBasedExtensionModal>> = {}) => render(
     <ApiBasedExtensionModal
       open
-      extension={{}}
       onOpenChange={mockOnOpenChange}
       onSave={mockOnSave}
       {...props}
@@ -204,23 +203,6 @@ describe('ApiBasedExtensionModal', () => {
   })
 
   describe('Interactions', () => {
-    it('should work when onSave is not provided', async () => {
-      // Arrange
-      vi.mocked(addApiBasedExtension).mockResolvedValue(mockExtension({ id: 'new-id' }))
-      renderModal({ onSave: undefined })
-
-      // Act
-      fireEvent.change(screen.getByPlaceholderText('common.apiBasedExtension.modal.name.placeholder'), { target: { value: 'New Ext' } })
-      fireEvent.change(screen.getByPlaceholderText('common.apiBasedExtension.modal.apiEndpoint.placeholder'), { target: { value: 'https://api.test' } })
-      fireEvent.change(screen.getByPlaceholderText('common.apiBasedExtension.modal.apiKey.placeholder'), { target: { value: 'secret-key' } })
-      fireEvent.click(screen.getByText('common.operation.save'))
-
-      // Assert
-      await waitFor(() => {
-        expect(addApiBasedExtension).toHaveBeenCalled()
-      })
-    })
-
     it('should request closing when clicking cancel button', () => {
       // Arrange
       renderModal()
@@ -298,7 +280,7 @@ describe('ApiBasedExtensionModal', () => {
       } as unknown as ReturnType<typeof reactI18next.useTranslation>)
 
       // Act
-      const { container } = renderModal({ onSave: undefined })
+      const { container } = renderModal()
 
       // Assert
       const inputs = container.querySelectorAll('input')

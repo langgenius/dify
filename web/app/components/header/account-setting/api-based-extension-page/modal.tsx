@@ -14,10 +14,9 @@ import { addApiBasedExtension, updateApiBasedExtension } from '@/service/common'
 
 type ApiBasedExtensionModalProps = {
   open: boolean
-  extension: Partial<ApiBasedExtensionResponse>
+  extension?: ApiBasedExtensionResponse
   onOpenChange: (open: boolean) => void
-  onSave?: (newData: ApiBasedExtensionResponse) => void
-  disablePointerDismissal?: boolean
+  onSave: (newData: ApiBasedExtensionResponse) => void
 }
 
 const ApiBasedExtensionModal = ({
@@ -25,11 +24,11 @@ const ApiBasedExtensionModal = ({
   extension,
   onOpenChange,
   onSave,
-  disablePointerDismissal = true,
 }: ApiBasedExtensionModalProps) => {
   const { t } = useTranslation()
   const docLink = useDocLink()
   const [loading, setLoading] = useState(false)
+  const isEditing = !!extension
   const nameLabel = t('apiBasedExtension.modal.name.title', { ns: 'common' })
   const apiEndpointLabel = t('apiBasedExtension.modal.apiEndpoint.title', { ns: 'common' })
   const apiKeyLabel = t('apiBasedExtension.modal.apiKey.title', { ns: 'common' })
@@ -44,7 +43,7 @@ const ApiBasedExtensionModal = ({
         api_key: formValues.api_key,
       }
 
-      const res = extension.id
+      const res = extension
         ? await updateApiBasedExtension({
             url: `/api-based-extension/${extension.id}`,
             body: {
@@ -57,11 +56,10 @@ const ApiBasedExtensionModal = ({
             body: payload,
           })
 
-      if (extension.id)
+      if (extension)
         toast.success(t('actionMsg.modifiedSuccessfully', { ns: 'common' }))
 
-      if (onSave)
-        onSave(res)
+      onSave(res)
     }
     finally {
       setLoading(false)
@@ -69,7 +67,7 @@ const ApiBasedExtensionModal = ({
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange} disablePointerDismissal={disablePointerDismissal}>
+    <Dialog open={open} onOpenChange={onOpenChange} disablePointerDismissal>
       <DialogContent
         backdropProps={{ forceRender: true }}
         className="w-160 border-none p-8 pb-6 text-left"
@@ -77,7 +75,7 @@ const ApiBasedExtensionModal = ({
         <DialogCloseButton />
 
         <DialogTitle className="mb-2 pr-8 text-xl font-semibold text-text-primary">
-          {extension.name
+          {isEditing
             ? t('apiBasedExtension.modal.editTitle', { ns: 'common' })
             : t('apiBasedExtension.modal.title', { ns: 'common' })}
         </DialogTitle>
@@ -86,7 +84,7 @@ const ApiBasedExtensionModal = ({
             <FieldLabel>{nameLabel}</FieldLabel>
             <FieldControl
               required
-              defaultValue={extension.name || ''}
+              defaultValue={extension?.name || ''}
               placeholder={t('apiBasedExtension.modal.name.placeholder', { ns: 'common' }) || ''}
             />
             <FieldError match="valueMissing">{t('errorMsg.fieldRequired', { ns: 'common', field: nameLabel })}</FieldError>
@@ -96,7 +94,7 @@ const ApiBasedExtensionModal = ({
             <FieldLabel>{apiEndpointLabel}</FieldLabel>
             <FieldControl
               required
-              defaultValue={extension.api_endpoint || ''}
+              defaultValue={extension?.api_endpoint || ''}
               placeholder={t('apiBasedExtension.modal.apiEndpoint.placeholder', { ns: 'common' }) || ''}
             />
             <FieldDescription>
@@ -125,7 +123,7 @@ const ApiBasedExtensionModal = ({
             <FieldLabel>{apiKeyLabel}</FieldLabel>
             <FieldControl
               required
-              defaultValue={extension.api_key || ''}
+              defaultValue={extension?.api_key || ''}
               placeholder={t('apiBasedExtension.modal.apiKey.placeholder', { ns: 'common' }) || ''}
             />
             <FieldError match="valueMissing">{t('errorMsg.fieldRequired', { ns: 'common', field: apiKeyLabel })}</FieldError>

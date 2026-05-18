@@ -8,7 +8,7 @@ import Item from './item'
 import ApiBasedExtensionModal from './modal'
 
 type ApiBasedExtensionDialogState = {
-  extension: Partial<ApiBasedExtensionResponse>
+  extension?: ApiBasedExtensionResponse
   onSave: () => void
 } | null
 
@@ -19,7 +19,6 @@ const ApiBasedExtensionPage = () => {
 
   const handleOpenApiBasedExtensionModal = () => {
     setDialogState({
-      extension: {},
       onSave: () => mutate(),
     })
   }

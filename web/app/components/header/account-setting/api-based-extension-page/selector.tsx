@@ -131,7 +131,6 @@ const ApiBasedExtensionSelector = ({
         addModalOpen && (
           <ApiBasedExtensionModal
             open
-            extension={{}}
             onOpenChange={handleAddModalOpenChange}
             onSave={handleSaveApiBasedExtension}
           />
