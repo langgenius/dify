@@ -87,6 +87,10 @@ function getTextContent(node: HastElement): string {
   return textChild?.value ?? ''
 }
 
+function getLabelTarget(node: HastElement): string {
+  return str(node.properties.htmlFor || node.properties.for || node.properties.name)
+}
+
 function str(val: unknown): string {
   if (val == null)
     return ''
@@ -243,7 +247,7 @@ const MarkdownForm = ({ node }: { node: HastElement }) => {
           return (
             <label
               key={key}
-              htmlFor={str(child.properties.htmlFor || child.properties.name)}
+              htmlFor={getLabelTarget(child)}
               className="my-2 system-md-semibold text-text-secondary"
               data-testid="label-field"
             >
@@ -282,15 +286,20 @@ const MarkdownForm = ({ node }: { node: HastElement }) => {
           }
           if (type === SUPPORTED_TYPES.CHECKBOX) {
             const label = str(child.properties.dataTip || child.properties['data-tip'])
+            const hasExternalLabel = elementChildren.some(node =>
+              node.tagName === SUPPORTED_TAGS.LABEL && getLabelTarget(node) === name,
+            )
+            const checkboxAriaLabel = label || (hasExternalLabel ? undefined : name)
             return (
-              <label className="mt-2 flex h-6 items-center space-x-2" key={key}>
+              <div className="mt-2 flex h-6 items-center space-x-2" key={key}>
                 <Checkbox
+                  id={name}
                   checked={!!formValues[name]}
-                  aria-label={label ? undefined : name}
+                  aria-label={checkboxAriaLabel}
                   onCheckedChange={checked => updateValue(name, checked)}
                 />
                 {label && <span>{label}</span>}
-              </label>
+              </div>
             )
           }
           if (type === SUPPORTED_TYPES.SELECT) {

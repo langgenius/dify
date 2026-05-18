@@ -185,6 +185,7 @@ describe('Actions', () => {
       await user.click(screen.getByText('common.operation.selectAll'))
 
       expect(onSelectAll).toHaveBeenCalledTimes(1)
+      expect(onSelectAll).toHaveBeenCalledWith(true)
     })
   })
 

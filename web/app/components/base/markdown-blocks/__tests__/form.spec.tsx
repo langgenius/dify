@@ -298,6 +298,24 @@ describe('MarkdownForm', () => {
         expect(mockOnSend).toHaveBeenCalledWith('acceptTerms: true')
       })
     })
+
+    it('should toggle checkbox when external label is clicked', async () => {
+      const user = userEvent.setup()
+      const node = createRootNode([
+        createElementNode('label', { htmlFor: 'acceptTerms' }, [createTextNode('Accept terms')]),
+        createElementNode('input', { type: 'checkbox', name: 'acceptTerms', value: false }),
+        createElementNode('button', {}, [createTextNode('Submit')]),
+      ])
+
+      render(<MarkdownForm node={node} />)
+
+      await user.click(screen.getByText('Accept terms'))
+      await user.click(screen.getByRole('button', { name: 'Submit' }))
+
+      await waitFor(() => {
+        expect(mockOnSend).toHaveBeenCalledWith('acceptTerms: true')
+      })
+    })
   })
 
   // Native submit event is intentionally blocked at form level.
