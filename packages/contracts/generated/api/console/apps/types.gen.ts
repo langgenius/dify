@@ -1575,7 +1575,7 @@ export type DeleteAppsByAppIdError = DeleteAppsByAppIdErrors[keyof DeleteAppsByA
 
 export type DeleteAppsByAppIdResponses = {
   204: {
-    [key: string]: unknown
+    [key: string]: never
   }
 }
 
@@ -2155,7 +2155,7 @@ export type PostAppsByAppIdAnnotationsByAnnotationIdError
 export type PostAppsByAppIdAnnotationsByAnnotationIdResponses = {
   200: Annotation
   204: {
-    [key: string]: unknown
+    [key: string]: never
   }
 }
 
@@ -2301,7 +2301,7 @@ export type DeleteAppsByAppIdChatConversationsByConversationIdError
 
 export type DeleteAppsByAppIdChatConversationsByConversationIdResponses = {
   204: {
-    [key: string]: unknown
+    [key: string]: never
   }
 }
 
@@ -2467,7 +2467,7 @@ export type DeleteAppsByAppIdCompletionConversationsByConversationIdError
 
 export type DeleteAppsByAppIdCompletionConversationsByConversationIdResponses = {
   204: {
-    [key: string]: unknown
+    [key: string]: never
   }
 }
 
@@ -3270,7 +3270,7 @@ export type DeleteAppsByAppIdTraceConfigError
 
 export type DeleteAppsByAppIdTraceConfigResponses = {
   204: {
-    [key: string]: unknown
+    [key: string]: never
   }
 }
 
@@ -3645,7 +3645,7 @@ export type DeleteAppsByAppIdWorkflowCommentsByCommentIdData = {
 
 export type DeleteAppsByAppIdWorkflowCommentsByCommentIdResponses = {
   204: {
-    [key: string]: unknown
+    [key: string]: never
   }
 }
 
@@ -3716,7 +3716,7 @@ export type DeleteAppsByAppIdWorkflowCommentsByCommentIdRepliesByReplyIdData = {
 
 export type DeleteAppsByAppIdWorkflowCommentsByCommentIdRepliesByReplyIdResponses = {
   204: {
-    [key: string]: unknown
+    [key: string]: never
   }
 }
 
@@ -4290,7 +4290,7 @@ export type DeleteAppsByAppIdWorkflowsDraftNodesByNodeIdVariablesData = {
 
 export type DeleteAppsByAppIdWorkflowsDraftNodesByNodeIdVariablesResponses = {
   204: {
-    [key: string]: unknown
+    [key: string]: never
   }
 }
 
@@ -4428,7 +4428,7 @@ export type DeleteAppsByAppIdWorkflowsDraftVariablesData = {
 
 export type DeleteAppsByAppIdWorkflowsDraftVariablesResponses = {
   204: {
-    [key: string]: unknown
+    [key: string]: never
   }
 }
 
@@ -4475,7 +4475,7 @@ export type DeleteAppsByAppIdWorkflowsDraftVariablesByVariableIdError
 
 export type DeleteAppsByAppIdWorkflowsDraftVariablesByVariableIdResponses = {
   204: {
-    [key: string]: unknown
+    [key: string]: never
   }
 }
 
@@ -4556,7 +4556,7 @@ export type PutAppsByAppIdWorkflowsDraftVariablesByVariableIdResetError
 export type PutAppsByAppIdWorkflowsDraftVariablesByVariableIdResetResponses = {
   200: WorkflowDraftVariable
   204: {
-    [key: string]: unknown
+    [key: string]: never
   }
 }
 
@@ -4758,7 +4758,7 @@ export type DeleteAppsByResourceIdApiKeysByApiKeyIdData = {
 
 export type DeleteAppsByResourceIdApiKeysByApiKeyIdResponses = {
   204: {
-    [key: string]: unknown
+    [key: string]: never
   }
 }
 

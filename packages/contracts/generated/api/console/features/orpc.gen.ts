@@ -8,10 +8,16 @@ import { zGetFeaturesResponse } from './zod.gen'
  * Get feature configuration for current tenant
  *
  * Get feature configuration for current tenant
+ *
+ * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
+ *
+ * @deprecated
  */
 export const get = oc
   .route({
-    description: 'Get feature configuration for current tenant',
+    deprecated: true,
+    description:
+      'Get feature configuration for current tenant\n\nGenerated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getFeatures',

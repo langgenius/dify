@@ -796,7 +796,7 @@ export const zDeleteDatasetsApiKeysByApiKeyIdPath = z.object({
 /**
  * API key deleted successfully
  */
-export const zDeleteDatasetsApiKeysByApiKeyIdResponse = z.record(z.string(), z.unknown())
+export const zDeleteDatasetsApiKeysByApiKeyIdResponse = z.record(z.string(), z.never())
 
 export const zGetDatasetsBatchImportStatusByJobIdPath = z.object({
   job_id: z.string(),
@@ -1672,7 +1672,4 @@ export const zDeleteDatasetsByResourceIdApiKeysByApiKeyIdPath = z.object({
 /**
  * API key deleted successfully
  */
-export const zDeleteDatasetsByResourceIdApiKeysByApiKeyIdResponse = z.record(
-  z.string(),
-  z.unknown(),
-)
+export const zDeleteDatasetsByResourceIdApiKeysByApiKeyIdResponse = z.record(z.string(), z.never())
