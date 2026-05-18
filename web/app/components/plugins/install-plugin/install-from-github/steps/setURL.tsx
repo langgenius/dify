@@ -42,7 +42,7 @@ const SetURL: React.FC<SetURLProps> = ({ repoUrl, onChange, onNext, onCancel }) 
         onChange={e => onChange(e.target.value)}
         className="shadows-shadow-xs flex grow items-center gap-[2px] self-stretch
           overflow-hidden rounded-lg border border-components-input-border-active bg-components-input-bg-active p-2
-          system-sm-regular text-ellipsis text-components-input-text-filled"
+          system-sm-regular text-ellipsis text-components-input-text-filled outline-hidden"
         placeholder="Please enter GitHub repo URL"
       />
       <div className="mt-4 flex items-center justify-end gap-2 self-stretch">
