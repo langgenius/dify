@@ -20,8 +20,11 @@ from dify_agent.client import (
     DifyAgentValidationError,
 )
 from dify_agent.protocol.schemas import (
+    CancelRunRequest,
+    CancelRunResponse,
     CreateRunRequest,
     RUN_EVENT_ADAPTER,
+    RunCancelledEvent,
     RunEvent,
     RunEventsResponse,
     RunStartedEvent,
@@ -97,6 +100,10 @@ def test_sync_methods_parse_protocol_dtos_and_send_create_request_dto() -> None:
                     "next_cursor": "1-0",
                 },
             )
+        if request.method == "POST" and request.url.path == "/runs/run-1/cancel":
+            payload = cast(dict[str, object], json.loads(request.content))
+            assert payload == {"reason": "user_cancelled", "message": None}
+            return httpx.Response(202, json={"run_id": "run-1", "status": "cancelled"})
         raise AssertionError(f"unexpected request: {request.method} {request.url}")
 
     http_client = httpx.Client(transport=httpx.MockTransport(handler))
@@ -105,11 +112,14 @@ def test_sync_methods_parse_protocol_dtos_and_send_create_request_dto() -> None:
     created = client.create_run_sync(CreateRunRequest.model_validate(_create_run_payload()))
     status = client.get_run_sync(created.run_id)
     events = client.get_events_sync(created.run_id, after="0-0", limit=10)
+    cancelled = client.cancel_run_sync(created.run_id, CancelRunRequest(reason="user_cancelled"))
 
     assert created.status == "running"
     assert status.status == "running"
     assert isinstance(events, RunEventsResponse)
     assert [event.type for event in events.events] == ["run_started"]
+    assert isinstance(cancelled, CancelRunResponse)
+    assert cancelled.status == "cancelled"
 
 
 def test_async_methods_and_wait_run_parse_protocol_dtos() -> None:
@@ -248,6 +258,31 @@ def test_stream_events_stops_after_terminal_event() -> None:
     events = list(client.stream_events_sync("run-1", reconnect_delay_seconds=0))
 
     assert [event.type for event in events] == ["run_started", "run_succeeded"]
+    assert calls == 1
+
+
+def test_stream_events_stops_after_cancelled_terminal_event() -> None:
+    calls = 0
+    body = "".join(
+        [
+            _event_frame(RunStartedEvent(id="1-0", run_id="run-1")),
+            _event_frame(RunCancelledEvent(id="2-0", run_id="run-1")),
+        ]
+    )
+
+    def handler(_request: httpx.Request) -> httpx.Response:
+        nonlocal calls
+        calls += 1
+        return httpx.Response(200, content=body)
+
+    client = Client(
+        base_url="http://testserver",
+        sync_http_client=httpx.Client(transport=httpx.MockTransport(handler)),
+    )
+
+    events = list(client.stream_events_sync("run-1", reconnect_delay_seconds=0))
+
+    assert [event.type for event in events] == ["run_started", "run_cancelled"]
     assert calls == 1
 
 

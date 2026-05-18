@@ -23,6 +23,8 @@ import httpx
 from pydantic import BaseModel, ValidationError
 
 from dify_agent.protocol.schemas import (
+    CancelRunRequest,
+    CancelRunResponse,
     CreateRunRequest,
     CreateRunResponse,
     RUN_EVENT_ADAPTER,
@@ -32,8 +34,8 @@ from dify_agent.protocol.schemas import (
 )
 
 _ResponseModelT = TypeVar("_ResponseModelT", bound=BaseModel)
-_TERMINAL_EVENT_TYPES = {"run_succeeded", "run_failed"}
-_TERMINAL_RUN_STATUSES = {"succeeded", "failed"}
+_TERMINAL_EVENT_TYPES = {"run_succeeded", "run_failed", "run_cancelled"}
+_TERMINAL_RUN_STATUSES = {"succeeded", "failed", "cancelled"}
 
 
 class DifyAgentClientError(RuntimeError):
@@ -278,6 +280,42 @@ class Client:
         except httpx.RequestError as exc:
             raise DifyAgentClientError(f"create_run_sync request failed: {exc}") from exc
         return _parse_model_response(response, CreateRunResponse)
+
+    async def cancel_run(self, run_id: str, request: CancelRunRequest | None = None) -> CancelRunResponse:
+        """Request explicit cancellation for ``run_id``.
+
+        The server may accept cancellation only for active runs; unsupported
+        deployments return an HTTP error rather than overloading ``run_failed``.
+        """
+        request_model = request or CancelRunRequest()
+        try:
+            response = await self._get_async_http_client().post(
+                self._url(f"/runs/{quote(run_id, safe='')}/cancel"),
+                content=request_model.model_dump_json(),
+                headers=self._merged_headers({"Content-Type": "application/json"}),
+                timeout=self._timeout,
+            )
+        except httpx.TimeoutException as exc:
+            raise DifyAgentTimeoutError("cancel_run timed out") from exc
+        except httpx.RequestError as exc:
+            raise DifyAgentClientError(f"cancel_run request failed: {exc}") from exc
+        return _parse_model_response(response, CancelRunResponse)
+
+    def cancel_run_sync(self, run_id: str, request: CancelRunRequest | None = None) -> CancelRunResponse:
+        """Synchronous variant of ``cancel_run``."""
+        request_model = request or CancelRunRequest()
+        try:
+            response = self._get_sync_http_client().post(
+                self._url(f"/runs/{quote(run_id, safe='')}/cancel"),
+                content=request_model.model_dump_json(),
+                headers=self._merged_headers({"Content-Type": "application/json"}),
+                timeout=self._timeout,
+            )
+        except httpx.TimeoutException as exc:
+            raise DifyAgentTimeoutError("cancel_run_sync timed out") from exc
+        except httpx.RequestError as exc:
+            raise DifyAgentClientError(f"cancel_run_sync request failed: {exc}") from exc
+        return _parse_model_response(response, CancelRunResponse)
 
     async def get_run(self, run_id: str) -> RunStatusResponse:
         """Return the current status for ``run_id`` or raise a mapped client error."""
