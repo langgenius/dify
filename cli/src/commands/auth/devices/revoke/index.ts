@@ -23,7 +23,7 @@ export default class DevicesRevoke extends DifyCommand {
   }
 
   async run(argv: string[]): Promise<void> {
-    const { args, flags } = await this.parse(DevicesRevoke, argv)
+    const { args, flags } = this.parse(DevicesRevoke, argv)
     const ctx = await this.authedCtx({ retryFlag: flags['http-retry'] })
     const { store } = await selectStore({ configDir: ctx.configDir })
     await runDevicesRevoke({

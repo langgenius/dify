@@ -10,7 +10,7 @@ export default class HelpExternal extends DifyCommand {
   ]
 
   async run(argv: string[]) {
-    await this.parse(HelpExternal, argv)
+    this.parse(HelpExternal, argv)
     return raw(runHelpExternal())
   }
 }

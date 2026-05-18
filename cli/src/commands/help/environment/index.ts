@@ -10,7 +10,7 @@ export default class HelpEnvironment extends DifyCommand {
   ]
 
   async run(argv: string[]) {
-    await this.parse(HelpEnvironment, argv)
+    this.parse(HelpEnvironment, argv)
     return raw(runHelpEnvironment())
   }
 }

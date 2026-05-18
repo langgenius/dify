@@ -35,7 +35,7 @@ export default class GetApp extends DifyCommand {
   }
 
   async run(argv: string[]) {
-    const { args, flags } = await this.parse(GetApp, argv)
+    const { args, flags } = this.parse(GetApp, argv)
     const format = flags.output
     const ctx = await this.authedCtx({ retryFlag: flags['http-retry'], format })
     const result = await runGetApp({

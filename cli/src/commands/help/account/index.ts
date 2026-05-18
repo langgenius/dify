@@ -10,7 +10,7 @@ export default class HelpAccount extends DifyCommand {
   ]
 
   async run(argv: string[]) {
-    await this.parse(HelpAccount, argv)
+    this.parse(HelpAccount, argv)
     return raw(runHelpAccount())
   }
 }

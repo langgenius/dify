@@ -17,7 +17,7 @@ export default class Use extends DifyCommand {
   }
 
   async run(argv: string[]): Promise<void> {
-    const { args } = await this.parse(Use, argv)
+    const { args } = this.parse(Use, argv)
     const configDir = resolveConfigDir()
     const bundle = await loadHosts(configDir)
     await runUse({ configDir, io: realStreams(), bundle, workspaceId: args.workspaceId })

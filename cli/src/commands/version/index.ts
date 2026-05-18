@@ -19,7 +19,7 @@ export default class Version extends DifyCommand {
   }
 
   async run(argv: string[]) {
-    const { flags } = await this.parse(Version, argv)
+    const { flags } = this.parse(Version, argv)
     const { version, commit, buildDate, channel } = versionInfo
 
     if (flags.json) {

@@ -29,7 +29,7 @@ export default class Login extends DifyCommand {
   }
 
   async run(argv: string[]): Promise<void> {
-    const { flags } = await this.parse(Login, argv)
+    const { flags } = this.parse(Login, argv)
     await runLogin({
       configDir: resolveConfigDir(),
       io: realStreams(),

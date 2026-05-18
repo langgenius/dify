@@ -25,7 +25,7 @@ export default class DescribeApp extends DifyCommand {
   }
 
   async run(argv: string[]) {
-    const { args, flags } = await this.parse(DescribeApp, argv)
+    const { args, flags } = this.parse(DescribeApp, argv)
     const format = flags.output
     const ctx = await this.authedCtx({ retryFlag: flags['http-retry'], withCache: true, format })
     return formatted({

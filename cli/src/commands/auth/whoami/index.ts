@@ -18,7 +18,7 @@ export default class Whoami extends DifyCommand {
   }
 
   async run(argv: string[]): Promise<void> {
-    const { flags } = await this.parse(Whoami, argv)
+    const { flags } = this.parse(Whoami, argv)
     const configDir = resolveConfigDir()
     const bundle = await loadHosts(configDir)
     await runWhoami({ io: realStreams(), bundle, json: flags.json })

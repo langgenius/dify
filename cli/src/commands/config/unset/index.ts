@@ -16,7 +16,7 @@ export default class ConfigUnset extends DifyCommand {
   }
 
   async run(argv: string[]) {
-    const { args } = await this.parse(ConfigUnset, argv)
+    const { args } = this.parse(ConfigUnset, argv)
     return raw(await runConfigUnset({ dir: resolveConfigDir(), key: args.key }))
   }
 }
