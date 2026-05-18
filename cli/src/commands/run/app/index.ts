@@ -24,7 +24,7 @@ export default class RunApp extends DifyCommand {
   static override flags = {
     'inputs': Flags.string({ description: 'Input variables as a JSON object, e.g. --inputs \'{"key":"value"}\'. Mutually exclusive with --inputs-file.' }),
     'inputs-file': Flags.string({ description: 'Path to a JSON file containing the inputs object. Mutually exclusive with --inputs.' }),
-    'file': Flags.string({ description: 'Named file input (--file key=@path, repeatable)', multiple: true, default: [] }),
+    'file': Flags.stringArray({ description: 'Named file input (--file key=@path, repeatable)', default: [] }),
     'conversation': Flags.string({ description: 'Resume a chat conversation by id' }),
     'workflow-id': Flags.string({ description: 'Pin to a specific published workflow version' }),
     'workspace': Flags.string({ description: 'Workspace id (overrides DIFY_WORKSPACE_ID and stored default)' }),

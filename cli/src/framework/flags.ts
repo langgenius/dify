@@ -2,8 +2,22 @@ import type { ArgDefinition, CommandMeta, FlagDefinition, ParsedArgs, ParsedFlag
 
 function stringFlag<const Opts extends { description: string, char?: string, default?: string, multiple?: boolean, helpGroup?: string }>(
   opts: Opts,
-): FlagDefinition<Opts extends { default: string } ? string : string | undefined> {
-  return { type: 'string', ...opts } as FlagDefinition<Opts extends { default: string } ? string : string | undefined>
+): FlagDefinition<string> {
+  return {
+    type: 'string',
+    multiple: false,
+    ...opts,
+  }
+}
+
+function stringRepeatedFlag<const Opts extends { description: string, char?: string, default?: string[], multiple?: boolean, helpGroup?: string }>(
+  opts: Opts,
+): FlagDefinition<string[]> {
+  return {
+    type: 'string',
+    multiple: true,
+    ...opts,
+  }
 }
 
 function booleanFlag(opts: { description: string, char?: string, default?: boolean, helpGroup?: string }): FlagDefinition<boolean> {
@@ -18,6 +32,7 @@ function integerFlag<const Opts extends { description: string, char?: string, de
 
 export const Flags = {
   string: stringFlag,
+  stringArray: stringRepeatedFlag,
   boolean: booleanFlag,
   integer: integerFlag,
 }
@@ -52,6 +67,16 @@ function coerceFlagValue(raw: string, def: FlagDefinition): string | boolean | n
     }
     default:
       return raw
+  }
+}
+
+function accumulateFlagValue(flags: ParsedFlags, name: string, value: string | boolean | number, def: FlagDefinition): void {
+  if (def.multiple === true) {
+    const existing = flags[name]
+    flags[name] = Array.isArray(existing) ? [...existing, String(value)] : [String(value)]
+  }
+  else {
+    flags[name] = value
   }
 }
 
@@ -102,7 +127,7 @@ export function parseArgv(argv: readonly string[], meta: CommandMeta): { args: P
         flags[name] = rawValue === undefined ? true : coerceFlagValue(rawValue, def)
       }
       else if (rawValue !== undefined) {
-        flags[name] = coerceFlagValue(rawValue, def)
+        accumulateFlagValue(flags, name, coerceFlagValue(rawValue, def), def)
       }
       else {
         i++
@@ -110,7 +135,7 @@ export function parseArgv(argv: readonly string[], meta: CommandMeta): { args: P
         if (next === undefined || next.startsWith('-'))
           throw new Error(`flag --${name} expects a value`)
 
-        flags[name] = coerceFlagValue(next, def)
+        accumulateFlagValue(flags, name, coerceFlagValue(next, def), def)
       }
     }
     else if (!pastDoubleDash && token.startsWith('-') && token.length === 2 && token[1] !== undefined) {
@@ -129,7 +154,7 @@ export function parseArgv(argv: readonly string[], meta: CommandMeta): { args: P
         if (next === undefined || next.startsWith('-'))
           throw new Error(`flag -${char} expects a value`)
 
-        flags[flagName] = coerceFlagValue(next, def)
+        accumulateFlagValue(flags, flagName, coerceFlagValue(next, def), def)
       }
     }
     else {

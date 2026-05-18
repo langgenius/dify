@@ -1,5 +1,4 @@
 import type { TableCell } from '../../../framework/output.js'
-import type { NameHandler } from '../../../printers/format-name.js'
 import type { TableColumn, TableHandler, TableRow } from '../../../printers/format-table.js'
 import type { WorkspaceListResponse } from '../../../types/data-contracts.js'
 import { isPayloadShape } from '../app/payload-shape.js'

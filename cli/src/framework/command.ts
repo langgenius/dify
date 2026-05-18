@@ -5,19 +5,19 @@ import { parseArgv } from './flags.js'
 export type CommandConstructor = {
   new(): Command
   description?: string
-  flags?: Record<string, FlagDefinition<string | boolean | number | undefined>>
+  flags?: Record<string, FlagDefinition<string | boolean | number | string[] | undefined>>
   args?: Record<string, ArgDefinition<string | undefined>>
   examples?: string[]
 }
 
 type ParseResult<C extends CommandConstructor> = {
   args: C['args'] extends Record<string, ArgDefinition<string | undefined>> ? InferArgs<C['args']> : Record<string, string | undefined>
-  flags: C['flags'] extends Record<string, FlagDefinition<string | boolean | number | undefined>> ? InferFlags<C['flags']> : Record<string, string | boolean | number | undefined>
+  flags: C['flags'] extends Record<string, FlagDefinition<string | boolean | number | string[] | undefined>> ? InferFlags<C['flags']> : Record<string, string | boolean | number | string[] | undefined>
 }
 
 export abstract class Command implements ICommand {
   static description?: string
-  static flags: Record<string, FlagDefinition<string | boolean | number | undefined>> = {}
+  static flags: Record<string, FlagDefinition<string | boolean | number | string[] | undefined>> = {}
   static args: Record<string, ArgDefinition<string | undefined>> = {}
   static examples: string[] = []
 

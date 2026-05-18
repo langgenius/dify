@@ -112,6 +112,50 @@ describe('parseArgv', () => {
     })
   })
 
+  describe('multiple: true', () => {
+    const multipleMeta = {
+      flags: {
+        label: Flags.stringArray({ description: 'labels' }),
+        output: Flags.string({ description: 'output', char: 'o' }),
+      },
+      args: {},
+    }
+
+    it('collects repeated long flags into an array', () => {
+      const { flags } = parseArgv(['--label', 'foo', '--label', 'bar'], multipleMeta)
+      expect(flags.label).toEqual(['foo', 'bar'])
+    })
+
+    it('collects repeated long flags with = separator', () => {
+      const { flags } = parseArgv(['--label=foo', '--label=bar', '--label=baz'], multipleMeta)
+      expect(flags.label).toEqual(['foo', 'bar', 'baz'])
+    })
+
+    it('collects repeated short flags into an array', () => {
+      const multipleShortMeta = {
+        flags: { label: Flags.string({ description: 'labels', multiple: true, char: 'l' }) },
+        args: {},
+      }
+      const { flags } = parseArgv(['-l', 'foo', '-l', 'bar'], multipleShortMeta)
+      expect(flags.label).toEqual(['foo', 'bar'])
+    })
+
+    it('single occurrence still produces array with one element', () => {
+      const { flags } = parseArgv(['--label', 'only'], multipleMeta)
+      expect(flags.label).toEqual(['only'])
+    })
+
+    it('absent multiple flag is undefined', () => {
+      const { flags } = parseArgv([], multipleMeta)
+      expect(flags.label).toBeUndefined()
+    })
+
+    it('non-multiple flag is not affected', () => {
+      const { flags } = parseArgv(['--output', 'json'], multipleMeta)
+      expect(flags.output).toBe('json')
+    })
+  })
+
   describe('double-dash (--) separator', () => {
     it('treats tokens after -- as positional args', () => {
       const { args, flags } = parseArgv(['alice', '--', '--output', 'json'], meta)

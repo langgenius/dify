@@ -1,10 +1,10 @@
 import type { CommandOutput } from './output.js'
 
-export type FlagDefinition<T extends string | boolean | number | undefined = string | boolean | number | undefined> = {
+export type FlagDefinition<T extends string | boolean | number | string[] | undefined = string | boolean | number | string[] | undefined> = {
   readonly type: 'string' | 'boolean' | 'integer'
   readonly description: string
   readonly char?: string
-  readonly default?: string | boolean | number
+  readonly default?: string | boolean | number | string[]
   readonly multiple?: boolean
   readonly helpGroup?: string
   readonly _flagValue?: T
@@ -20,7 +20,7 @@ export type InferArgs<TArgs extends Record<string, ArgDefinition<string | undefi
   readonly [K in keyof TArgs]: TArgs[K] extends ArgDefinition<infer V> ? V : never
 }
 
-export type InferFlags<TFlags extends Record<string, FlagDefinition<string | boolean | number | undefined>>> = {
+export type InferFlags<TFlags extends Record<string, FlagDefinition<string | boolean | number | string[] | undefined>>> = {
   readonly [K in keyof TFlags]: TFlags[K] extends FlagDefinition<infer V> ? V : never
 }
 
