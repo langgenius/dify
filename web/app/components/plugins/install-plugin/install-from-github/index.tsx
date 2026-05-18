@@ -167,12 +167,12 @@ const InstallFromGitHub: React.FC<InstallFromGitHubProps> = ({ updatePayload, on
           foldAnimInto()
       }}
     >
-      <DialogContent className={cn('w-[560px] max-w-none! overflow-hidden! text-left align-middle', cn(modalClassName, `shadows-shadow-xl flex min-w-[560px] flex-col items-start rounded-2xl border-[0.5px]
+      <DialogContent className={cn('w-[560px] max-w-none! overflow-hidden! text-left align-middle', cn(modalClassName, `shadows-shadow-xl flex max-h-[calc(100dvh-48px)] min-w-[560px] flex-col items-start rounded-2xl border-[0.5px]
         border-components-panel-border bg-components-panel-bg p-0`))}
       >
         <DialogCloseButton />
 
-        <div className="flex items-start gap-2 self-stretch pt-6 pr-14 pb-3 pl-6">
+        <div className="flex shrink-0 items-start gap-2 self-stretch pt-6 pr-14 pb-3 pl-6">
           <div className="flex grow flex-col items-start gap-1">
             <div className="self-stretch title-2xl-semi-bold text-text-primary">
               {getTitle()}
@@ -192,7 +192,7 @@ const InstallFromGitHub: React.FC<InstallFromGitHubProps> = ({ updatePayload, on
               />
             )
           : (
-              <div className={`flex flex-col items-start justify-center self-stretch px-6 py-3 ${state.step === InstallStepFromGitHub.installed ? 'gap-2' : 'gap-4'}`}>
+              <div className={`flex min-h-0 flex-1 flex-col items-start justify-center self-stretch overflow-y-auto px-6 py-3 ${state.step === InstallStepFromGitHub.installed ? 'gap-2' : 'gap-4'}`}>
                 {state.step === InstallStepFromGitHub.setUrl && (
                   <SetURL
                     repoUrl={state.repoUrl}
