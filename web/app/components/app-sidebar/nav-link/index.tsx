@@ -21,6 +21,7 @@ export type NavLinkProps = {
   }
   mode?: string
   disabled?: boolean
+  pathname?: string
 }
 
 const NavLink = ({
@@ -29,10 +30,11 @@ const NavLink = ({
   iconMap,
   mode = 'expand',
   disabled = false,
+  pathname,
 }: NavLinkProps) => {
   const segment = useSelectedLayoutSegment()
   const formattedSegment = (() => {
-    let res = segment?.toLowerCase()
+    let res = pathname ? pathname.toLowerCase().split('/').filter(Boolean).pop() : segment?.toLowerCase()
     // logs and annotations use the same nav
     if (res === 'annotations')
       res = 'logs'

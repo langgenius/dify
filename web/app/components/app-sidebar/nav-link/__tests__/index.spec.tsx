@@ -206,6 +206,19 @@ describe('NavLink Animation and Layout Issues', () => {
       expect(linkElement).toHaveClass('bg-components-menu-item-bg-active')
       expect(linkElement).toHaveClass('text-text-accent-light-mode-only')
     })
+
+    it('should use pathname when rendered outside the app detail route segment', () => {
+      render(
+        <NavLink
+          {...mockProps}
+          href="/app/123/logs"
+          pathname="/app/123/annotations"
+        />,
+      )
+
+      const linkElement = screen.getByTestId('nav-link')
+      expect(linkElement).toHaveClass('bg-components-menu-item-bg-active')
+    })
   })
 
   describe('Text Animation Classes', () => {

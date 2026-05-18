@@ -75,6 +75,14 @@ vi.mock('@/app/components/header/github-star', () => ({
   default: ({ className }: { className?: string }) => <span className={className}>1,234</span>,
 }))
 
+vi.mock('@/app/components/app-sidebar/app-detail-section', () => ({
+  default: () => <div data-testid="app-detail-section" />,
+}))
+
+vi.mock('@/app/components/app-sidebar/app-detail-top', () => ({
+  default: () => <div data-testid="app-detail-top" />,
+}))
+
 vi.mock('@/context/i18n', () => ({
   useLocale: () => 'en-US',
   useDocLink: () => (path: string) => `https://docs.dify.ai${path}`,
@@ -311,6 +319,20 @@ describe('MainNav', () => {
     const datasetsLink = screen.getByRole('link', { name: /common.menus.datasets/ })
     expect(datasetsLink.className).toContain('bg-[linear-gradient(98.077deg')
     expect(datasetsLink).toHaveClass(activeEdgeClassName)
+  })
+
+  it('replaces global navigation with app detail navigation on app routes', () => {
+    mockPathname = '/app/app-1/overview'
+
+    renderMainNav()
+
+    expect(screen.getByTestId('app-detail-top')).toBeInTheDocument()
+    expect(screen.getByTestId('app-detail-section')).toBeInTheDocument()
+    expect(screen.getByRole('complementary')).toHaveClass('bg-components-panel-bg-blur')
+    expect(screen.queryByRole('button', { name: 'common.mainNav.workspace.openMenu' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: /common.mainNav.home/ })).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: /common.menus.apps/ })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'explore.sidebar.webApps' })).not.toBeInTheDocument()
   })
 
   it('marks marketplace active on marketplace routes', () => {

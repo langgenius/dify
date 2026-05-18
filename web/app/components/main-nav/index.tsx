@@ -5,6 +5,8 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
+import AppDetailSection from '@/app/components/app-sidebar/app-detail-section'
+import AppDetailTop from '@/app/components/app-sidebar/app-detail-top'
 import DifyLogo from '@/app/components/base/logo/dify-logo'
 import EnvNav from '@/app/components/header/env-nav'
 import { buildIntegrationPath } from '@/app/components/tools/integration-routes'
@@ -27,6 +29,7 @@ const MainNav = ({
   const { langGeniusVersionInfo, isCurrentWorkspaceDatasetOperator, isCurrentWorkspaceEditor } = useAppContext()
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const showEnvTag = langGeniusVersionInfo.current_env === 'TESTING' || langGeniusVersionInfo.current_env === 'DEVELOPMENT'
+  const showAppDetailNavigation = !isCurrentWorkspaceDatasetOperator && pathname.startsWith('/app/')
   const navItems = useMemo<MainNavItem[]>(() => [
     ...(!isCurrentWorkspaceDatasetOperator
       ? [
@@ -95,21 +98,39 @@ const MainNav = ({
   )
 
   return (
-    <aside className={cn('flex h-full w-[240px] shrink-0 flex-col bg-background-body', className)}>
+    <aside
+      className={cn(
+        'flex h-full w-[240px] shrink-0 flex-col',
+        showAppDetailNavigation ? 'bg-components-panel-bg-blur' : 'bg-background-body',
+        className,
+      )}
+    >
       <div className="flex min-h-0 flex-1 flex-col">
-        <div className="flex items-center justify-between px-2 pt-4 pb-2">
-          {renderLogo()}
-          <MainNavSearchButton />
-        </div>
-        <div className="p-2">
-          <WorkspaceCard />
-        </div>
-        <nav className="space-y-1 p-2">
-          {navItems.map(item => (
-            <MainNavLink key={item.href} item={item} pathname={pathname} />
-          ))}
-        </nav>
-        {!isCurrentWorkspaceDatasetOperator && <WebAppsSection />}
+        {showAppDetailNavigation
+          ? <AppDetailTop />
+          : (
+              <>
+                <div className="flex items-center justify-between px-2 pt-4 pb-2">
+                  {renderLogo()}
+                  <MainNavSearchButton />
+                </div>
+                <div className="p-2">
+                  <WorkspaceCard />
+                </div>
+              </>
+            )}
+        {showAppDetailNavigation
+          ? <AppDetailSection />
+          : (
+              <>
+                <nav className="space-y-1 p-2">
+                  {navItems.map(item => (
+                    <MainNavLink key={item.href} item={item} pathname={pathname} />
+                  ))}
+                </nav>
+                {!isCurrentWorkspaceDatasetOperator && <WebAppsSection />}
+              </>
+            )}
         {showEnvTag && (
           <div className="relative z-30 px-3 pb-2">
             <EnvNav />
