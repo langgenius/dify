@@ -1719,7 +1719,7 @@ def test_ensure_root_span_ignores_unsampled_ambient_otel_parent():
     provider = trace_sdk.TracerProvider()
     provider.add_span_processor(SimpleSpanProcessor(exporter))
     trace_instance = ArizePhoenixDataTrace.__new__(ArizePhoenixDataTrace)
-    trace_instance.tracer = provider.get_tracer("test-phoenix-root-span")
+    trace_instance.tracer = cast(Tracer, provider.get_tracer("test-phoenix-root-span"))
     trace_instance.propagator = TraceContextTextMapPropagator()
     trace_instance.project = "p"
     trace_instance.dify_trace_ids = set()
@@ -1740,6 +1740,7 @@ def test_ensure_root_span_ignores_unsampled_ambient_otel_parent():
     assert len(exporter.spans) == 1
     root_span = exporter.spans[0]
     root_span_context = root_span.get_span_context()
+    assert root_span_context is not None
     assert root_span.parent is None
     assert root_span_context.trace_id != ambient_span_context.trace_id
     assert carrier["traceparent"].split("-")[1] == f"{root_span_context.trace_id:032x}"
