@@ -121,7 +121,7 @@ export function parseArgv(argv: readonly string[], meta: CommandMeta): { args: P
 
       const def = meta.flags[name]
       if (!def)
-        continue
+        throw new Error(`unknown flag: --${name}`)
 
       if (def.type === 'boolean') {
         flags[name] = rawValue === undefined ? true : coerceFlagValue(rawValue, def)
@@ -142,7 +142,7 @@ export function parseArgv(argv: readonly string[], meta: CommandMeta): { args: P
       const char = token[1]
       const resolved = resolveByChar(char, meta)
       if (!resolved)
-        continue
+        throw new Error(`unknown flag: -${char}`)
 
       const [flagName, def] = resolved
       if (def.type === 'boolean') {

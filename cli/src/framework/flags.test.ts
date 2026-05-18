@@ -85,9 +85,8 @@ describe('parseArgv', () => {
       expect(() => parseArgv(['alice', '--output'], meta)).toThrow('flag --output expects a value')
     })
 
-    it('ignores unknown flags', () => {
-      const { flags } = parseArgv(['alice', '--unknown', 'x'], meta)
-      expect(flags.unknown).toBeUndefined()
+    it('throws on unknown long flag', () => {
+      expect(() => parseArgv(['alice', '--unknown', 'x'], meta)).toThrow('unknown flag: --unknown')
     })
   })
 
@@ -106,9 +105,8 @@ describe('parseArgv', () => {
       expect(() => parseArgv(['alice', '-o'], meta)).toThrow('flag -o expects a value')
     })
 
-    it('ignores unknown short flags', () => {
-      const { flags } = parseArgv(['alice', '-z'], meta)
-      expect(flags.z).toBeUndefined()
+    it('throws on unknown short flag', () => {
+      expect(() => parseArgv(['alice', '-z'], meta)).toThrow('unknown flag: -z')
     })
   })
 
