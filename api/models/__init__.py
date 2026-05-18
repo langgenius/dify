@@ -8,6 +8,16 @@ from .account import (
     TenantAccountRole,
     TenantStatus,
 )
+from .agent import (
+    Agent,
+    AgentConfigVersion,
+    AgentKind,
+    AgentScope,
+    AgentSource,
+    AgentStatus,
+    WorkflowAgentBindingType,
+    WorkflowAgentNodeBinding,
+)
 from .api_based_extension import APIBasedExtension, APIBasedExtensionPoint
 from .comment import (
     WorkflowComment,
@@ -125,6 +135,12 @@ __all__ = [
     "AccountIntegrate",
     "AccountStatus",
     "AccountTrialAppRecord",
+    "Agent",
+    "AgentConfigVersion",
+    "AgentKind",
+    "AgentScope",
+    "AgentSource",
+    "AgentStatus",
     "ApiRequest",
     "ApiToken",
     "ApiToolProvider",
@@ -210,6 +226,8 @@ __all__ = [
     "UploadFile",
     "Whitelist",
     "Workflow",
+    "WorkflowAgentBindingType",
+    "WorkflowAgentNodeBinding",
     "WorkflowAppLog",
     "WorkflowAppLogCreatedFrom",
     "WorkflowArchiveLog",
