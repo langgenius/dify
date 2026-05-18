@@ -27,11 +27,11 @@ export type BooleanResultResponse = {
 }
 
 export type BrandingModel = {
-  application_title?: string
-  enabled?: boolean
-  favicon?: string
-  login_page_logo?: string
-  workspace_logo?: string
+  application_title: string
+  enabled: boolean
+  favicon: string
+  login_page_logo: string
+  workspace_logo: string
 }
 
 export type ChatMessagePayload = {
@@ -101,14 +101,14 @@ export type FileResponse = {
 }
 
 export type FileWithSignedUrl = {
-  created_at?: number | null
-  created_by?: string | null
-  extension?: string | null
+  created_at: number | null
+  created_by: string | null
+  extension: string | null
   id: string
-  mime_type?: string | null
+  mime_type: string | null
   name: string
   size: number
-  url?: string | null
+  url: string | null
 }
 
 export type ForgotPasswordCheckPayload = {
@@ -129,15 +129,15 @@ export type ForgotPasswordSendPayload = {
 }
 
 export type LicenseLimitationModel = {
-  enabled?: boolean
-  limit?: number
-  size?: number
+  enabled: boolean
+  limit: number
+  size: number
 }
 
 export type LicenseModel = {
-  expired_at?: string
-  status?: LicenseStatus
-  workspaces?: LicenseLimitationModel
+  expired_at: string
+  status: LicenseStatus
+  workspaces: LicenseLimitationModel
 }
 
 export type LicenseStatus = 'active' | 'expired' | 'expiring' | 'inactive' | 'lost' | 'none'
@@ -168,8 +168,8 @@ export type MessageMoreLikeThisQuery = {
 }
 
 export type PluginInstallationPermissionModel = {
-  plugin_installation_scope?: PluginInstallationScope
-  restrict_to_marketplace_only?: boolean
+  plugin_installation_scope: PluginInstallationScope
+  restrict_to_marketplace_only: boolean
 }
 
 export type PluginInstallationScope
@@ -179,7 +179,7 @@ export type PluginInstallationScope
     | 'official_only'
 
 export type PluginManagerModel = {
-  enabled?: boolean
+  enabled: boolean
 }
 
 export type RemoteFileInfo = {
@@ -218,28 +218,28 @@ export type SuggestedQuestionsResponse = {
 }
 
 export type SystemFeatureModel = {
-  app_dsl_version?: string
-  branding?: BrandingModel
-  enable_change_email?: boolean
-  enable_collaboration_mode?: boolean
-  enable_creators_platform?: boolean
-  enable_email_code_login?: boolean
-  enable_email_password_login?: boolean
-  enable_explore_banner?: boolean
-  enable_marketplace?: boolean
-  enable_social_oauth_login?: boolean
-  enable_trial_app?: boolean
-  is_allow_create_workspace?: boolean
-  is_allow_register?: boolean
-  is_email_setup?: boolean
-  license?: LicenseModel
-  max_plugin_package_size?: number
-  plugin_installation_permission?: PluginInstallationPermissionModel
-  plugin_manager?: PluginManagerModel
-  sso_enforced_for_signin?: boolean
-  sso_enforced_for_signin_protocol?: string
-  trial_models?: Array<string>
-  webapp_auth?: WebAppAuthModel
+  app_dsl_version: string
+  branding: BrandingModel
+  enable_change_email: boolean
+  enable_collaboration_mode: boolean
+  enable_creators_platform: boolean
+  enable_email_code_login: boolean
+  enable_email_password_login: boolean
+  enable_explore_banner: boolean
+  enable_marketplace: boolean
+  enable_social_oauth_login: boolean
+  enable_trial_app: boolean
+  is_allow_create_workspace: boolean
+  is_allow_register: boolean
+  is_email_setup: boolean
+  license: LicenseModel
+  max_plugin_package_size: number
+  plugin_installation_permission: PluginInstallationPermissionModel
+  plugin_manager: PluginManagerModel
+  sso_enforced_for_signin: boolean
+  sso_enforced_for_signin_protocol: string
+  trial_models: Array<string>
+  webapp_auth: WebAppAuthModel
 }
 
 export type TextToAudioPayload = {
@@ -256,15 +256,15 @@ export type VerificationTokenResponse = {
 }
 
 export type WebAppAuthModel = {
-  allow_email_code_login?: boolean
-  allow_email_password_login?: boolean
-  allow_sso?: boolean
-  enabled?: boolean
-  sso_config?: WebAppAuthSsoModel
+  allow_email_code_login: boolean
+  allow_email_password_login: boolean
+  allow_sso: boolean
+  enabled: boolean
+  sso_config: WebAppAuthSsoModel
 }
 
 export type WebAppAuthSsoModel = {
-  protocol?: string
+  protocol: string
 }
 
 export type WorkflowRunPayload = {

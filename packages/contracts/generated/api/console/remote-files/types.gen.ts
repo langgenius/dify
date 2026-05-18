@@ -9,14 +9,14 @@ export type RemoteFileUploadPayload = {
 }
 
 export type FileWithSignedUrl = {
-  created_at?: number | null
-  created_by?: string | null
-  extension?: string | null
+  created_at: number | null
+  created_by: string | null
+  extension: string | null
   id: string
-  mime_type?: string | null
+  mime_type: string | null
   name: string
   size: number
-  url?: string | null
+  url: string | null
 }
 
 export type RemoteFileInfo = {

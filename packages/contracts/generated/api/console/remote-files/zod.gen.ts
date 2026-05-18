@@ -13,14 +13,14 @@ export const zRemoteFileUploadPayload = z.object({
  * FileWithSignedUrl
  */
 export const zFileWithSignedUrl = z.object({
-  created_at: z.int().nullish(),
-  created_by: z.string().nullish(),
-  extension: z.string().nullish(),
+  created_at: z.int().nullable(),
+  created_by: z.string().nullable(),
+  extension: z.string().nullable(),
   id: z.string(),
-  mime_type: z.string().nullish(),
+  mime_type: z.string().nullable(),
   name: z.string(),
   size: z.int(),
-  url: z.string().nullish(),
+  url: z.string().nullable(),
 })
 
 /**

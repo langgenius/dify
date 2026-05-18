@@ -5,62 +5,62 @@ export type ClientOptions = {
 }
 
 export type FeatureModel = {
-  annotation_quota_limit?: LimitationModel
-  api_rate_limit?: Quota
-  apps?: LimitationModel
-  billing?: BillingModel
-  can_replace_logo?: boolean
-  dataset_operator_enabled?: boolean
-  docs_processing?: string
-  documents_upload_quota?: LimitationModel
-  education?: EducationModel
-  human_input_email_delivery_enabled?: boolean
-  is_allow_transfer_workspace?: boolean
-  knowledge_pipeline?: KnowledgePipeline
-  knowledge_rate_limit?: number
-  members?: LimitationModel
-  model_load_balancing_enabled?: boolean
-  next_credit_reset_date?: number
-  trigger_event?: Quota
-  vector_space?: LimitationModel
-  webapp_copyright_enabled?: boolean
-  workspace_members?: LicenseLimitationModel
+  annotation_quota_limit: LimitationModel
+  api_rate_limit: Quota
+  apps: LimitationModel
+  billing: BillingModel
+  can_replace_logo: boolean
+  dataset_operator_enabled: boolean
+  docs_processing: string
+  documents_upload_quota: LimitationModel
+  education: EducationModel
+  human_input_email_delivery_enabled: boolean
+  is_allow_transfer_workspace: boolean
+  knowledge_pipeline: KnowledgePipeline
+  knowledge_rate_limit: number
+  members: LimitationModel
+  model_load_balancing_enabled: boolean
+  next_credit_reset_date: number
+  trigger_event: Quota
+  vector_space: LimitationModel
+  webapp_copyright_enabled: boolean
+  workspace_members: LicenseLimitationModel
 }
 
 export type LimitationModel = {
-  limit?: number
-  size?: number
+  limit: number
+  size: number
 }
 
 export type Quota = {
-  limit?: number
-  reset_date?: number
-  usage?: number
+  limit: number
+  reset_date: number
+  usage: number
 }
 
 export type BillingModel = {
-  enabled?: boolean
-  subscription?: SubscriptionModel
+  enabled: boolean
+  subscription: SubscriptionModel
 }
 
 export type EducationModel = {
-  activated?: boolean
-  enabled?: boolean
+  activated: boolean
+  enabled: boolean
 }
 
 export type KnowledgePipeline = {
-  publish_enabled?: boolean
+  publish_enabled: boolean
 }
 
 export type LicenseLimitationModel = {
-  enabled?: boolean
-  limit?: number
-  size?: number
+  enabled: boolean
+  limit: number
+  size: number
 }
 
 export type SubscriptionModel = {
-  interval?: string
-  plan?: string
+  interval: string
+  plan: string
 }
 
 export type GetFeaturesData = {
