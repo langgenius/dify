@@ -124,7 +124,7 @@ jobs:
 
       - name: Generate frontend contracts
         if: github.event_name != 'merge_group' && steps.api-changes.outputs.any_changed == 'true'
-        run: pnpm --dir packages/contracts gen-api-contract-from-openapi
+        run: vp run @dify/contracts#gen-api-contract-from-openapi
 
       - name: ESLint autofix
         if: github.event_name != 'merge_group' && steps.web-changes.outputs.any_changed == 'true'
