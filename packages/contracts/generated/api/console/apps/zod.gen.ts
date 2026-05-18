@@ -1920,7 +1920,7 @@ export const zDeleteAppsByAppIdPath = z.object({
 /**
  * App deleted successfully
  */
-export const zDeleteAppsByAppIdResponse = z.record(z.string(), z.unknown())
+export const zDeleteAppsByAppIdResponse = z.record(z.string(), z.never())
 
 export const zGetAppsByAppIdPath = z.object({
   app_id: z.string(),
@@ -2209,7 +2209,7 @@ export const zPostAppsByAppIdAnnotationsByAnnotationIdPath = z.object({
 
 export const zPostAppsByAppIdAnnotationsByAnnotationIdResponse = z.union([
   zAnnotation,
-  z.record(z.string(), z.unknown()),
+  z.record(z.string(), z.never()),
 ])
 
 export const zGetAppsByAppIdAnnotationsByAnnotationIdHitHistoriesPath = z.object({
@@ -2280,7 +2280,7 @@ export const zDeleteAppsByAppIdChatConversationsByConversationIdPath = z.object(
  */
 export const zDeleteAppsByAppIdChatConversationsByConversationIdResponse = z.record(
   z.string(),
-  z.unknown(),
+  z.never(),
 )
 
 export const zGetAppsByAppIdChatConversationsByConversationIdPath = z.object({
@@ -2357,7 +2357,7 @@ export const zDeleteAppsByAppIdCompletionConversationsByConversationIdPath = z.o
  */
 export const zDeleteAppsByAppIdCompletionConversationsByConversationIdResponse = z.record(
   z.string(),
-  z.unknown(),
+  z.never(),
 )
 
 export const zGetAppsByAppIdCompletionConversationsByConversationIdPath = z.object({
@@ -2768,7 +2768,7 @@ export const zDeleteAppsByAppIdTraceConfigPath = z.object({
 /**
  * Tracing configuration deleted successfully
  */
-export const zDeleteAppsByAppIdTraceConfigResponse = z.record(z.string(), z.unknown())
+export const zDeleteAppsByAppIdTraceConfigResponse = z.record(z.string(), z.never())
 
 export const zGetAppsByAppIdTraceConfigPath = z.object({
   app_id: z.string(),
@@ -2980,10 +2980,7 @@ export const zDeleteAppsByAppIdWorkflowCommentsByCommentIdPath = z.object({
 /**
  * Comment deleted successfully
  */
-export const zDeleteAppsByAppIdWorkflowCommentsByCommentIdResponse = z.record(
-  z.string(),
-  z.unknown(),
-)
+export const zDeleteAppsByAppIdWorkflowCommentsByCommentIdResponse = z.record(z.string(), z.never())
 
 export const zGetAppsByAppIdWorkflowCommentsByCommentIdPath = z.object({
   app_id: z.string(),
@@ -3031,7 +3028,7 @@ export const zDeleteAppsByAppIdWorkflowCommentsByCommentIdRepliesByReplyIdPath =
  */
 export const zDeleteAppsByAppIdWorkflowCommentsByCommentIdRepliesByReplyIdResponse = z.record(
   z.string(),
-  z.unknown(),
+  z.never(),
 )
 
 export const zPutAppsByAppIdWorkflowCommentsByCommentIdRepliesByReplyIdBody
@@ -3376,7 +3373,7 @@ export const zDeleteAppsByAppIdWorkflowsDraftNodesByNodeIdVariablesPath = z.obje
  */
 export const zDeleteAppsByAppIdWorkflowsDraftNodesByNodeIdVariablesResponse = z.record(
   z.string(),
-  z.unknown(),
+  z.never(),
 )
 
 export const zGetAppsByAppIdWorkflowsDraftNodesByNodeIdVariablesPath = z.object({
@@ -3439,7 +3436,7 @@ export const zDeleteAppsByAppIdWorkflowsDraftVariablesPath = z.object({
 /**
  * Workflow variables deleted successfully
  */
-export const zDeleteAppsByAppIdWorkflowsDraftVariablesResponse = z.record(z.string(), z.unknown())
+export const zDeleteAppsByAppIdWorkflowsDraftVariablesResponse = z.record(z.string(), z.never())
 
 export const zGetAppsByAppIdWorkflowsDraftVariablesPath = z.object({
   app_id: z.string(),
@@ -3465,7 +3462,7 @@ export const zDeleteAppsByAppIdWorkflowsDraftVariablesByVariableIdPath = z.objec
  */
 export const zDeleteAppsByAppIdWorkflowsDraftVariablesByVariableIdResponse = z.record(
   z.string(),
-  z.unknown(),
+  z.never(),
 )
 
 export const zGetAppsByAppIdWorkflowsDraftVariablesByVariableIdPath = z.object({
@@ -3498,7 +3495,7 @@ export const zPutAppsByAppIdWorkflowsDraftVariablesByVariableIdResetPath = z.obj
 
 export const zPutAppsByAppIdWorkflowsDraftVariablesByVariableIdResetResponse = z.union([
   zWorkflowDraftVariable,
-  z.record(z.string(), z.unknown()),
+  z.record(z.string(), z.never()),
 ])
 
 export const zGetAppsByAppIdWorkflowsPublishPath = z.object({
@@ -3597,7 +3594,7 @@ export const zDeleteAppsByResourceIdApiKeysByApiKeyIdPath = z.object({
 /**
  * API key deleted successfully
  */
-export const zDeleteAppsByResourceIdApiKeysByApiKeyIdResponse = z.record(z.string(), z.unknown())
+export const zDeleteAppsByResourceIdApiKeysByApiKeyIdResponse = z.record(z.string(), z.never())
 
 export const zGetAppsByServerIdServerRefreshPath = z.object({
   server_id: z.string(),

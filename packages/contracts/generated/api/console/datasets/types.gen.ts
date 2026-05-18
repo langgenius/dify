@@ -720,7 +720,7 @@ export type DeleteDatasetsApiKeysByApiKeyIdData = {
 
 export type DeleteDatasetsApiKeysByApiKeyIdResponses = {
   204: {
-    [key: string]: unknown
+    [key: string]: never
   }
 }
 
@@ -2303,7 +2303,7 @@ export type DeleteDatasetsByResourceIdApiKeysByApiKeyIdData = {
 
 export type DeleteDatasetsByResourceIdApiKeysByApiKeyIdResponses = {
   204: {
-    [key: string]: unknown
+    [key: string]: never
   }
 }
 
