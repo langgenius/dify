@@ -63,7 +63,7 @@ class AccountApi(Resource):
             ).model_dump(mode="json")
 
         account = (
-            db.session.query(Account).filter(Account.id == ctx.account_id).one_or_none() if ctx.account_id else None
+            db.session.query(Account).where(Account.id == ctx.account_id).one_or_none() if ctx.account_id else None
         )
         memberships = _load_memberships(ctx.account_id) if ctx.account_id else []
         default_ws_id = _pick_default_workspace(memberships)
