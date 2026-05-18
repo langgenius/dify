@@ -7,8 +7,8 @@ from datetime import datetime, timedelta
 import pytest
 
 from graphon.nodes.human_input.entities import (
-    FormInput,
-    UserAction,
+    ParagraphInputConfig,
+    UserActionConfig,
 )
 from graphon.nodes.human_input.enums import (
     FormInputType,
@@ -32,8 +32,8 @@ class TestHumanInputForm:
             "tenant_id": "tenant-abc",
             "app_id": "app-def",
             "form_content": "# Test Form\n\nInput: {{#$output.input#}}",
-            "inputs": [FormInput(type=FormInputType.TEXT_INPUT, output_variable_name="input", default=None)],
-            "user_actions": [UserAction(id="submit", title="Submit")],
+            "inputs": [ParagraphInputConfig(type=FormInputType.PARAGRAPH, output_variable_name="input", default=None)],
+            "user_actions": [UserActionConfig(id="submit", title="Submit")],
             "timeout": 2,
             "timeout_unit": TimeoutUnit.HOUR,
             "form_token": "token-xyz",
@@ -132,7 +132,7 @@ class TestHumanInputForm:
         assert "site" not in response
         assert response["form_content"] == "# Test Form\n\nInput: {{#$output.input#}}"
         assert len(response["inputs"]) == 1
-        assert response["inputs"][0]["type"] == "text-input"
+        assert response["inputs"][0]["type"] == "paragraph"
         assert response["inputs"][0]["output_variable_name"] == "input"
 
     def test_form_to_response_dict_with_site_info(self, sample_form_data):

@@ -9,12 +9,6 @@ vi.mock('@langgenius/dify-ui/button', () => ({
   ),
 }))
 
-vi.mock('@/app/components/base/checkbox', () => ({
-  default: ({ checked, onCheck }: { checked: boolean, onCheck: () => void }) => (
-    <input type="checkbox" data-testid="checkbox" checked={checked} onChange={onCheck} />
-  ),
-}))
-
 vi.mock('@/app/components/base/radio/ui', () => ({
   default: ({ isChecked, onCheck }: { isChecked: boolean, onCheck: () => void }) => (
     <input type="radio" data-testid="radio" checked={isChecked} onChange={onCheck} />
@@ -49,7 +43,7 @@ describe('CrawledResultItem', () => {
 
   it('should render checkbox in multiple choice mode', () => {
     render(<CrawledResultItem {...defaultProps} />)
-    expect(screen.getByTestId('checkbox')).toBeInTheDocument()
+    expect(screen.getByRole('checkbox', { name: /Test Page/ })).toBeInTheDocument()
   })
 
   it('should render radio in single choice mode', () => {

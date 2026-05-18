@@ -13,11 +13,18 @@ export const zTagResponse = z.object({
 })
 
 /**
+ * TagUpdateRequestPayload
+ */
+export const zTagUpdateRequestPayload = z.object({
+  name: z.string().min(1).max(50),
+})
+
+/**
  * TagType
  *
  * Tag type
  */
-export const zTagType = z.enum(['knowledge', 'app'])
+export const zTagType = z.enum(['app', 'knowledge'])
 
 /**
  * TagBasePayload
@@ -28,8 +35,8 @@ export const zTagBasePayload = z.object({
 })
 
 export const zGetTagsQuery = z.object({
-  type: z.string().optional(),
   keyword: z.string().optional(),
+  type: z.string().optional(),
 })
 
 /**
@@ -53,7 +60,7 @@ export const zDeleteTagsByTagIdPath = z.object({
  */
 export const zDeleteTagsByTagIdResponse = z.record(z.string(), z.unknown())
 
-export const zPatchTagsByTagIdBody = zTagBasePayload
+export const zPatchTagsByTagIdBody = zTagUpdateRequestPayload
 
 export const zPatchTagsByTagIdPath = z.object({
   tag_id: z.string(),

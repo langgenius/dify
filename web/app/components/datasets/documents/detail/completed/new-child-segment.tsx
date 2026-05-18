@@ -100,7 +100,7 @@ const NewChildSegmentModal: FC<NewChildSegmentModalProps> = ({
         <div className="flex items-center">
           {fullScreen && (
             <>
-              <AddAnother className="mr-3" isChecked={addAnother} onCheck={() => setAddAnother(!addAnother)} />
+              <AddAnother className="mr-3" checked={addAnother} onCheckedChange={setAddAnother} />
               <ActionButtons
                 handleCancel={handleCancel.bind(null, 'esc')}
                 handleSave={handleSave}
@@ -141,7 +141,7 @@ const NewChildSegmentModal: FC<NewChildSegmentModalProps> = ({
       </div>
       {!fullScreen && (
         <div className="flex items-center justify-between border-t border-t-divider-subtle p-4 pt-3">
-          <AddAnother isChecked={addAnother} onCheck={() => setAddAnother(!addAnother)} />
+          <AddAnother checked={addAnother} onCheckedChange={setAddAnother} />
           <ActionButtons
             handleCancel={handleCancel.bind(null, 'esc')}
             handleSave={handleSave}

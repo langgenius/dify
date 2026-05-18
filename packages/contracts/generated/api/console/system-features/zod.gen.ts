@@ -2,7 +2,9 @@
 
 import * as z from 'zod'
 
-export const zSystemFeatureResponse = z.record(z.string(), z.unknown())
+export const zSystemFeatureResponse = z.object({
+  features: z.record(z.string(), z.unknown()).optional(),
+})
 
 /**
  * Success

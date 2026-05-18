@@ -11799,6 +11799,27 @@ Request payload for bulk downloading documents as a zip archive.
 | ---- | ---- | ----------- | -------- |
 | file_ids | [ string ] |  | Yes |
 
+#### FileInputConfig
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| allowed_file_extensions | [ string ] |  | No |
+| allowed_file_types | [ [FileType](#filetype) ] |  | No |
+| allowed_file_upload_methods | [ [FileTransferMethod](#filetransfermethod) ] |  | No |
+| output_variable_name | string |  | Yes |
+| type | string |  | No |
+
+#### FileListInputConfig
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| allowed_file_extensions | [ string ] |  | No |
+| allowed_file_types | [ [FileType](#filetype) ] |  | No |
+| allowed_file_upload_methods | [ [FileTransferMethod](#filetransfermethod) ] |  | No |
+| number_limits | integer |  | No |
+| output_variable_name | string |  | Yes |
+| type | string |  | No |
+
 #### FileResponse
 
 | Name | Type | Description | Required |
@@ -11817,6 +11838,18 @@ Request payload for bulk downloading documents as a zip archive.
 | source_url | string |  | No |
 | tenant_id | string |  | No |
 | user_id | string |  | No |
+
+#### FileTransferMethod
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| FileTransferMethod | string |  |  |
+
+#### FileType
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| FileType | string |  |  |
 
 #### ForgotPasswordCheckPayload
 
@@ -11863,33 +11896,11 @@ Request payload for bulk downloading documents as a zip archive.
 | email | string |  | Yes |
 | language | string |  | No |
 
-#### FormInput
-
-Form input definition.
+#### FormInputConfig
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| default | [FormInputDefault](#forminputdefault) |  | No |
-| output_variable_name | string |  | Yes |
-| type | [FormInputType](#forminputtype) |  | Yes |
-
-#### FormInputDefault
-
-Default configuration for form inputs.
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| selector | [ string ] |  | No |
-| type | [PlaceholderType](#placeholdertype) |  | Yes |
-| value | string |  | No |
-
-#### FormInputType
-
-Form input types.
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| FormInputType | string | Form input types. |  |
+| FormInputConfig | [ParagraphInputConfig](#paragraphinputconfig)<br>[SelectInputConfig](#selectinputconfig)<br>[FileInputConfig](#fileinputconfig)<br>[FileListInputConfig](#filelistinputconfig) |  |  |
 
 #### GenerateSummaryPayload
 
@@ -12012,13 +12023,13 @@ Form input types.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| actions | [ [UserAction](#useraction) ] |  | No |
+| actions | [ [UserActionConfig](#useractionconfig) ] |  | No |
 | display_in_ui | boolean |  | No |
 | expiration_time | integer |  | Yes |
 | form_content | string |  | Yes |
 | form_id | string |  | Yes |
 | form_token | string |  | No |
-| inputs | [ [FormInput](#forminput) ] |  | No |
+| inputs | [ [FormInputConfig](#forminputconfig) ] |  | No |
 | node_id | string |  | Yes |
 | node_title | string |  | Yes |
 | resolved_default_values | object |  | No |
@@ -12656,6 +12667,16 @@ Enum class for model type.
 | page | integer |  | Yes |
 | total | integer |  | Yes |
 
+#### ParagraphInputConfig
+
+Form input definition.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| default | [StringSource](#stringsource) |  | No |
+| output_variable_name | string |  | Yes |
+| type | string |  | No |
+
 #### Parser
 
 | Name | Type | Description | Required |
@@ -12985,14 +13006,6 @@ Enum class for model type.
 | unit | string |  | No |
 | variable | string |  | Yes |
 
-#### PlaceholderType
-
-Default value types for form inputs.
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| PlaceholderType | string | Default value types for form inputs. |  |
-
 #### PluginAutoUpgradeSettingsPayload
 
 | Name | Type | Description | Required |
@@ -13273,6 +13286,14 @@ Default value types for form inputs.
 | max_tokens | integer |  | Yes |
 | separator | string |  | No |
 
+#### SelectInputConfig
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| option_source | [StringListSource](#stringlistsource) |  | Yes |
+| output_variable_name | string |  | Yes |
+| type | string |  | No |
+
 #### SimpleAccount
 
 | Name | Type | Description | Required |
@@ -13354,6 +13375,24 @@ Default value types for form inputs.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | StrategySetting | string |  |  |
+
+#### StringListSource
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| selector | [ string ] |  | No |
+| type | [ValueSourceType](#valuesourcetype) |  | Yes |
+| value | [ string ] |  | No |
+
+#### StringSource
+
+Default configuration for form inputs.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| selector | [ string ] |  | No |
+| type | [ValueSourceType](#valuesourcetype) |  | Yes |
+| value | string |  | No |
 
 #### SubscriptionQuery
 
@@ -13786,7 +13825,7 @@ Tag type
 | video_file_size_limit | integer |  | Yes |
 | workflow_file_upload_limit | integer |  | Yes |
 
-#### UserAction
+#### UserActionConfig
 
 User action configuration.
 
@@ -13795,6 +13834,15 @@ User action configuration.
 | button_style | [ButtonStyle](#buttonstyle) |  | No |
 | id | string |  | Yes |
 | title | string |  | Yes |
+
+#### ValueSourceType
+
+ValueSourceType records whether the value comes from a static setting
+in form definiton, or a variable while the workflow is running.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ValueSourceType | string | ValueSourceType records whether the value comes from a static setting in form definiton, or a variable while the workflow is running. |  |
 
 #### WebhookTriggerResponse
 

@@ -13,8 +13,8 @@ export const zGetDataSourceIntegratesResponse = z.record(z.string(), z.unknown()
 export const zPatchDataSourceIntegratesResponse = z.record(z.string(), z.unknown())
 
 export const zGetDataSourceIntegratesByBindingIdByActionPath = z.object({
-  binding_id: z.string(),
   action: z.string(),
+  binding_id: z.string(),
 })
 
 /**
@@ -23,8 +23,8 @@ export const zGetDataSourceIntegratesByBindingIdByActionPath = z.object({
 export const zGetDataSourceIntegratesByBindingIdByActionResponse = z.record(z.string(), z.unknown())
 
 export const zPatchDataSourceIntegratesByBindingIdByActionPath = z.object({
-  binding_id: z.string(),
   action: z.string(),
+  binding_id: z.string(),
 })
 
 /**
