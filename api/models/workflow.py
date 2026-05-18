@@ -545,7 +545,9 @@ class Workflow(Base):  # bug
         ) -> StringVariable | IntegerVariable | FloatVariable | SecretVariable:
             match var:
                 case SecretVariable():
-                    return var.model_copy(update={"value": encrypter.decrypt_token(tenant_id=tenant_id, token=var.value)})
+                    return var.model_copy(
+                        update={"value": encrypter.decrypt_token(tenant_id=tenant_id, token=var.value)}
+                    )
                 case StringVariable() | IntegerVariable() | FloatVariable():
                     return var
                 case _:

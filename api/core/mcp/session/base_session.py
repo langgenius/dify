@@ -333,7 +333,9 @@ class BaseSession[
                                     )
                                 )
                         else:
-                            self._handle_incoming(RuntimeError(f"Received response with an unknown request ID: {message}"))
+                            self._handle_incoming(
+                                RuntimeError(f"Received response with an unknown request ID: {message}")
+                            )
                     case Exception():
                         self._handle_incoming(message)
                     case SessionMessage(message=JSONRPCMessage(root=JSONRPCRequest())):
@@ -370,7 +372,9 @@ class BaseSession[
                                 self._handle_incoming(notification)  # type: ignore[arg-type]
                         except Exception as e:
                             # For other validation errors, log and continue
-                            logger.warning("Failed to validate notification: %s. Message was: %s", e, message.message.root)
+                            logger.warning(
+                                "Failed to validate notification: %s. Message was: %s", e, message.message.root
+                            )
                     case _:  # Response or error
                         response_queue = self._response_streams.get(message.message.root.id)
                         if response_queue is not None:
