@@ -73,9 +73,9 @@ describe('ApiBasedExtensionModal', () => {
       // Assert
       expect(screen.getByRole('dialog', { name: 'common.apiBasedExtension.modal.title' })).toBeInTheDocument()
       expect(screen.getByText('common.apiBasedExtension.modal.title')).toBeInTheDocument()
-      expect(screen.getByPlaceholderText('common.apiBasedExtension.modal.name.placeholder')).toBeInTheDocument()
-      expect(screen.getByPlaceholderText('common.apiBasedExtension.modal.apiEndpoint.placeholder')).toBeInTheDocument()
-      expect(screen.getByPlaceholderText('common.apiBasedExtension.modal.apiKey.placeholder')).toBeInTheDocument()
+      expect(screen.getByRole('textbox', { name: 'common.apiBasedExtension.modal.name.title' })).toHaveAttribute('required')
+      expect(screen.getByRole('textbox', { name: 'common.apiBasedExtension.modal.apiEndpoint.title' })).toHaveAccessibleDescription('common.apiBasedExtension.link')
+      expect(screen.getByRole('textbox', { name: 'common.apiBasedExtension.modal.apiKey.title' })).toHaveAttribute('required')
     })
 
     it('should render correctly for editing an existing extension', () => {
@@ -194,7 +194,11 @@ describe('ApiBasedExtensionModal', () => {
       fireEvent.click(screen.getByText('common.operation.save'))
 
       // Assert
-      expect(mockToast.error).toHaveBeenCalledWith('common.apiBasedExtension.modal.apiKey.lengthError')
+      await waitFor(() => {
+        expect(screen.getByText('common.apiBasedExtension.modal.apiKey.lengthError')).toBeInTheDocument()
+        expect(screen.getByRole('textbox', { name: 'common.apiBasedExtension.modal.apiKey.title' })).toHaveAttribute('aria-invalid', 'true')
+      })
+      expect(mockToast.error).not.toHaveBeenCalled()
       expect(addApiBasedExtension).not.toHaveBeenCalled()
     })
   })
