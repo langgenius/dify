@@ -556,28 +556,8 @@ export type WorkflowRunNodeExecutionListResponse = {
   data: Array<WorkflowRunNodeExecutionResponse>
 }
 
-export type WorkflowCommentBasic = {
-  content?: string
-  created_at?: {
-    [key: string]: unknown
-  }
-  created_by?: string
-  created_by_account?: AnonymousInlineModel6Fec07Cd0D85
-  id?: string
-  mention_count?: number
-  participants?: Array<AnonymousInlineModel6Fec07Cd0D85>
-  position_x?: number
-  position_y?: number
-  reply_count?: number
-  resolved?: boolean
-  resolved_at?: {
-    [key: string]: unknown
-  }
-  resolved_by?: string
-  resolved_by_account?: AnonymousInlineModel6Fec07Cd0D85
-  updated_at?: {
-    [key: string]: unknown
-  }
+export type WorkflowCommentBasicList = {
+  data: Array<WorkflowCommentBasic>
 }
 
 export type WorkflowCommentCreatePayload = {
@@ -588,10 +568,8 @@ export type WorkflowCommentCreatePayload = {
 }
 
 export type WorkflowCommentCreate = {
-  created_at?: {
-    [key: string]: unknown
-  }
-  id?: string
+  created_at?: number | null
+  id: string
 }
 
 export type WorkflowCommentMentionUsersPayload = {
@@ -599,26 +577,20 @@ export type WorkflowCommentMentionUsersPayload = {
 }
 
 export type WorkflowCommentDetail = {
-  content?: string
-  created_at?: {
-    [key: string]: unknown
-  }
-  created_by?: string
-  created_by_account?: AnonymousInlineModel6Fec07Cd0D85
-  id?: string
-  mentions?: Array<AnonymousInlineModelF7Ff64Cce858>
-  position_x?: number
-  position_y?: number
-  replies?: Array<AnonymousInlineModel55C39C6A4B9e>
-  resolved?: boolean
-  resolved_at?: {
-    [key: string]: unknown
-  }
-  resolved_by?: string
-  resolved_by_account?: AnonymousInlineModel6Fec07Cd0D85
-  updated_at?: {
-    [key: string]: unknown
-  }
+  content: string
+  created_at?: number | null
+  created_by: string
+  created_by_account?: WorkflowCommentAccount
+  id: string
+  mentions: Array<WorkflowCommentMention>
+  position_x: number
+  position_y: number
+  replies: Array<WorkflowCommentReply>
+  resolved: boolean
+  resolved_at?: number | null
+  resolved_by?: string | null
+  resolved_by_account?: WorkflowCommentAccount
+  updated_at?: number | null
 }
 
 export type WorkflowCommentUpdatePayload = {
@@ -629,10 +601,8 @@ export type WorkflowCommentUpdatePayload = {
 }
 
 export type WorkflowCommentUpdate = {
-  id?: string
-  updated_at?: {
-    [key: string]: unknown
-  }
+  id: string
+  updated_at?: number | null
 }
 
 export type WorkflowCommentReplyPayload = {
@@ -641,26 +611,20 @@ export type WorkflowCommentReplyPayload = {
 }
 
 export type WorkflowCommentReplyCreate = {
-  created_at?: {
-    [key: string]: unknown
-  }
-  id?: string
+  created_at?: number | null
+  id: string
 }
 
 export type WorkflowCommentReplyUpdate = {
-  id?: string
-  updated_at?: {
-    [key: string]: unknown
-  }
+  id: string
+  updated_at?: number | null
 }
 
 export type WorkflowCommentResolve = {
-  id?: string
-  resolved?: boolean
-  resolved_at?: {
-    [key: string]: unknown
-  }
-  resolved_by?: string
+  id: string
+  resolved: boolean
+  resolved_at?: number | null
+  resolved_by?: string | null
 }
 
 export type WorkflowPagination = {
@@ -1167,13 +1131,22 @@ export type SimpleEndUser = {
   type: string
 }
 
-export type AnonymousInlineModel6Fec07Cd0D85 = {
-  avatar_url?: {
-    [key: string]: unknown
-  }
-  email?: string
-  id?: string
-  name?: string
+export type WorkflowCommentBasic = {
+  content: string
+  created_at?: number | null
+  created_by: string
+  created_by_account?: WorkflowCommentAccount
+  id: string
+  mention_count: number
+  participants: Array<WorkflowCommentAccount>
+  position_x: number
+  position_y: number
+  reply_count: number
+  resolved: boolean
+  resolved_at?: number | null
+  resolved_by?: string | null
+  resolved_by_account?: WorkflowCommentAccount
+  updated_at?: number | null
 }
 
 export type AccountWithRole = {
@@ -1188,20 +1161,25 @@ export type AccountWithRole = {
   status: string
 }
 
-export type AnonymousInlineModelF7Ff64Cce858 = {
-  mentioned_user_account?: AnonymousInlineModel6Fec07Cd0D85
-  mentioned_user_id?: string
-  reply_id?: string
+export type WorkflowCommentAccount = {
+  readonly avatar_url: string | null
+  email: string
+  id: string
+  name: string
 }
 
-export type AnonymousInlineModel55C39C6A4B9e = {
-  content?: string
-  created_at?: {
-    [key: string]: unknown
-  }
-  created_by?: string
-  created_by_account?: AnonymousInlineModel6Fec07Cd0D85
-  id?: string
+export type WorkflowCommentMention = {
+  mentioned_user_account?: WorkflowCommentAccount
+  mentioned_user_id: string
+  reply_id?: string | null
+}
+
+export type WorkflowCommentReply = {
+  content: string
+  created_at?: number | null
+  created_by: string
+  created_by_account?: WorkflowCommentAccount
+  id: string
 }
 
 export type ConversationVariable = {
@@ -1349,11 +1327,7 @@ export type UserActionConfig = {
   title: string
 }
 
-export type FormInputConfig
-  = | ParagraphInputConfig
-    | SelectInputConfig
-    | FileInputConfig
-    | FileListInputConfig
+export type FormInputConfig = unknown
 
 export type ButtonStyle = 'accent' | 'default' | 'ghost' | 'primary'
 
@@ -1403,6 +1377,65 @@ export type FileType = 'audio' | 'custom' | 'document' | 'image' | 'video'
 export type FileTransferMethod = 'datasource_file' | 'local_file' | 'remote_url' | 'tool_file'
 
 export type ValueSourceType = 'constant' | 'variable'
+
+export type WorkflowCommentBasicListWritable = {
+  data: Array<WorkflowCommentBasicWritable>
+}
+
+export type WorkflowCommentDetailWritable = {
+  content: string
+  created_at?: number | null
+  created_by: string
+  created_by_account?: WorkflowCommentAccountWritable
+  id: string
+  mentions: Array<WorkflowCommentMentionWritable>
+  position_x: number
+  position_y: number
+  replies: Array<WorkflowCommentReplyWritable>
+  resolved: boolean
+  resolved_at?: number | null
+  resolved_by?: string | null
+  resolved_by_account?: WorkflowCommentAccountWritable
+  updated_at?: number | null
+}
+
+export type WorkflowCommentBasicWritable = {
+  content: string
+  created_at?: number | null
+  created_by: string
+  created_by_account?: WorkflowCommentAccountWritable
+  id: string
+  mention_count: number
+  participants: Array<WorkflowCommentAccountWritable>
+  position_x: number
+  position_y: number
+  reply_count: number
+  resolved: boolean
+  resolved_at?: number | null
+  resolved_by?: string | null
+  resolved_by_account?: WorkflowCommentAccountWritable
+  updated_at?: number | null
+}
+
+export type WorkflowCommentAccountWritable = {
+  email: string
+  id: string
+  name: string
+}
+
+export type WorkflowCommentMentionWritable = {
+  mentioned_user_account?: WorkflowCommentAccountWritable
+  mentioned_user_id: string
+  reply_id?: string | null
+}
+
+export type WorkflowCommentReplyWritable = {
+  content: string
+  created_at?: number | null
+  created_by: string
+  created_by_account?: WorkflowCommentAccountWritable
+  id: string
+}
 
 export type GetAppsData = {
   body?: never
@@ -3562,7 +3595,7 @@ export type GetAppsByAppIdWorkflowCommentsData = {
 }
 
 export type GetAppsByAppIdWorkflowCommentsResponses = {
-  200: WorkflowCommentBasic
+  200: WorkflowCommentBasicList
 }
 
 export type GetAppsByAppIdWorkflowCommentsResponse
