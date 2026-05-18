@@ -1,5 +1,5 @@
 import * as React from 'react'
-import Checkbox from '@/app/components/base/checkbox'
+import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import Divider from '@/app/components/base/divider'
 import {
   SkeletonContainer,

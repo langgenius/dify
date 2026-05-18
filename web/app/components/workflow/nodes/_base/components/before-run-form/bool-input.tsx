@@ -3,7 +3,7 @@ import type { FC } from 'react'
 import * as React from 'react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import Checkbox from '@/app/components/base/checkbox'
+import { Checkbox } from '@langgenius/dify-ui/checkbox'
 
 type Props = {
   name: string
@@ -29,7 +29,7 @@ const BoolInput: FC<Props> = ({
       <Checkbox
         className="h-4! w-4!"
         checked={!!value}
-        onCheck={handleChange}
+        onCheckedChange={handleChange}
         disabled={readonly}
       />
       <div className="flex items-center gap-1 system-sm-medium text-text-secondary">

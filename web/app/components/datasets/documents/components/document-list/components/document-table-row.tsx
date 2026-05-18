@@ -1,11 +1,11 @@
 import type { FC } from 'react'
 import type { SimpleDocumentDetail } from '@/models/datasets'
+import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { pick } from 'es-toolkit/object'
 import * as React from 'react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import Checkbox from '@/app/components/base/checkbox'
 import ChunkingModeLabel from '@/app/components/datasets/common/chunking-mode-label'
 import Operations from '@/app/components/datasets/documents/components/operations'
 import SummaryStatus from '@/app/components/datasets/documents/detail/completed/common/summary-status'
@@ -90,8 +90,7 @@ const DocumentTableRow: FC<DocumentTableRowProps> = React.memo(({
           <Checkbox
             className="mr-2 shrink-0"
             checked={isSelected}
-            onCheck={() => onSelectOne(doc.id)}
-            id={`doc-row-${doc.id}`}
+            onCheckedChange={() => onSelectOne(doc.id)}
           />
           {index + 1}
         </div>

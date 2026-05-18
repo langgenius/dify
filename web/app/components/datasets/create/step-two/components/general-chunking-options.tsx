@@ -8,7 +8,7 @@ import {
   RiSearchEyeLine,
 } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
-import Checkbox from '@/app/components/base/checkbox'
+import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import Divider from '@/app/components/base/divider'
 import { Infotip } from '@/app/components/base/infotip'
 import SummaryIndexSetting from '@/app/components/datasets/settings/summary-index-setting'

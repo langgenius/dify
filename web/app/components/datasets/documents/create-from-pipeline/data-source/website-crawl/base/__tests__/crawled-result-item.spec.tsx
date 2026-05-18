@@ -9,9 +9,9 @@ vi.mock('@langgenius/dify-ui/button', () => ({
   ),
 }))
 
-vi.mock('@/app/components/base/checkbox', () => ({
-  default: ({ checked, onCheck }: { checked: boolean, onCheck: () => void }) => (
-    <input type="checkbox" data-testid="checkbox" checked={checked} onChange={onCheck} />
+vi.mock('@langgenius/dify-ui/checkbox', () => ({
+  Checkbox: ({ checked, onCheckedChange }: { checked: boolean, onCheckedChange: (checked: boolean) => void }) => (
+    <input type="checkbox" data-testid="checkbox" checked={checked} onChange={event => onCheckedChange(event.target.checked)} />
   ),
 }))
 

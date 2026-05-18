@@ -2,7 +2,7 @@
 import type { FC } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Select, SelectContent, SelectItem, SelectItemIndicator, SelectItemText, SelectTrigger } from '@langgenius/dify-ui/select'
-import Checkbox from '@/app/components/base/checkbox'
+import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import Divider from '@/app/components/base/divider'
 import Input from '@/app/components/base/input'
 import DisplayToggle from '../display-toggle'
@@ -51,7 +51,7 @@ const MenuBar: FC<MenuBarProps> = ({
         className="shrink-0"
         checked={isAllSelected}
         indeterminate={!isAllSelected && isSomeSelected}
-        onCheck={onSelectedAll}
+        onCheckedChange={onSelectedAll}
         disabled={isLoading}
       />
       <div className="flex-1 pl-5 system-sm-semibold-uppercase text-text-secondary">{totalText}</div>

@@ -2,7 +2,7 @@ import type { FC } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import Checkbox from '@/app/components/base/checkbox'
+import { Checkbox } from '@langgenius/dify-ui/checkbox'
 
 type AddAnotherProps = {
   className?: string
@@ -23,7 +23,7 @@ const AddAnother: FC<AddAnotherProps> = ({
         key="add-another-checkbox"
         className="shrink-0"
         checked={isChecked}
-        onCheck={onCheck}
+        onCheckedChange={onCheck}
       />
       <span className="system-xs-medium text-text-tertiary">{t('segment.addAnother', { ns: 'datasetDocuments' })}</span>
     </div>

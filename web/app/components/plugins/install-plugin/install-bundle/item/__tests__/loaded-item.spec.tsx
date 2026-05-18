@@ -14,14 +14,14 @@ vi.mock('@/config', () => ({
   MARKETPLACE_API_PREFIX: 'https://marketplace.example.com',
 }))
 
-vi.mock('@/app/components/base/checkbox', () => ({
-  default: (props: { checked: boolean, disabled: boolean, onCheck: () => void }) => {
+vi.mock('@langgenius/dify-ui/checkbox', () => ({
+  Checkbox: (props: { checked: boolean, disabled: boolean, onCheckedChange: () => void }) => {
     mockCheckbox(props)
     return (
       <button
         data-testid="checkbox"
         disabled={props.disabled}
-        onClick={props.onCheck}
+        onClick={props.onCheckedChange}
       >
         {String(props.checked)}
       </button>

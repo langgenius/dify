@@ -70,9 +70,9 @@ vi.mock('@/app/components/workflow/nodes/_base/components/editor/code-editor', (
   ),
 }))
 
-vi.mock('@/app/components/base/checkbox', () => ({
-  default: ({ onCheck, checked }: { onCheck: () => void, checked: boolean }) => (
-    <button type="button" onClick={onCheck}>{checked ? 'checked' : 'unchecked'}</button>
+vi.mock('@langgenius/dify-ui/checkbox', () => ({
+  Checkbox: ({ onCheckedChange, checked }: { onCheckedChange: (checked: boolean) => void, checked: boolean }) => (
+    <button type="button" onClick={() => onCheckedChange(!checked)}>{checked ? 'checked' : 'unchecked'}</button>
   ),
 }))
 

@@ -19,15 +19,15 @@ vi.mock('@/app/components/plugins/card/base/card-icon', () => ({
   default: ({ src }: { src: string }) => <div data-testid="plugin-icon">{src}</div>,
 }))
 
-vi.mock('@/app/components/base/checkbox', () => ({
-  default: ({
+vi.mock('@langgenius/dify-ui/checkbox', () => ({
+  Checkbox: ({
     checked,
-    onCheck,
+    onCheckedChange,
   }: {
     checked?: boolean
-    onCheck: () => void
+    onCheckedChange: () => void
   }) => (
-    <button data-testid="checkbox" onClick={onCheck}>
+    <button data-testid="checkbox" onClick={onCheckedChange}>
       {String(checked)}
     </button>
   ),

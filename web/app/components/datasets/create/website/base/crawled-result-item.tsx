@@ -4,9 +4,8 @@ import type { CrawlResultItem as CrawlResultItemType } from '@/models/datasets'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
-import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import Checkbox from '@/app/components/base/checkbox'
+import { Checkbox } from '@langgenius/dify-ui/checkbox'
 
 type Props = {
   payload: CrawlResultItemType
@@ -26,15 +25,16 @@ const CrawledResultItem: FC<Props> = ({
   testId,
 }) => {
   const { t } = useTranslation()
-
-  const handleCheckChange = useCallback(() => {
-    onCheckChange(!isChecked)
-  }, [isChecked, onCheckChange])
   return (
     <div className={cn(isPreview ? 'bg-state-base-active' : 'group hover:bg-state-base-hover', 'cursor-pointer rounded-lg p-2')}>
       <div className="relative flex">
         <div className="flex h-5 items-center">
-          <Checkbox className="mr-2 shrink-0" checked={isChecked} onCheck={handleCheckChange} id={testId} />
+          <Checkbox
+            className="mr-2 shrink-0"
+            checked={isChecked}
+            onCheckedChange={checked => onCheckChange(checked)}
+            data-testid={testId ? `checkbox-${testId}` : undefined}
+          />
         </div>
         <div className="flex min-w-0 grow flex-col">
           <div

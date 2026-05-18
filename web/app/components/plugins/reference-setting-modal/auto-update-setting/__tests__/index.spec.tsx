@@ -180,16 +180,16 @@ vi.mock('@/app/components/plugins/marketplace/search-box', () => ({
 }))
 
 // Mock Checkbox component
-vi.mock('@/app/components/base/checkbox', () => ({
-  default: ({ checked, onCheck, className }: {
+vi.mock('@langgenius/dify-ui/checkbox', () => ({
+  Checkbox: ({ checked, onCheckedChange, className }: {
     checked?: boolean
-    onCheck: () => void
+    onCheckedChange: () => void
     className?: string
   }) => (
     <input
       type="checkbox"
       checked={checked}
-      onChange={onCheck}
+      onChange={onCheckedChange}
       className={className}
       data-testid="checkbox"
     />

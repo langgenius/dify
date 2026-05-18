@@ -10,7 +10,7 @@ import { useDebounceFn } from 'ahooks'
 import { noop } from 'es-toolkit/function'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Checkbox from '@/app/components/base/checkbox'
+import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { Tag03 } from '@/app/components/base/icons/src/vender/line/financeAndECommerce'
 import Input from '@/app/components/base/input'
 import { useTags } from '@/app/components/plugins/hooks'
@@ -97,7 +97,7 @@ const LabelSelector: FC<LabelSelectorProps> = ({
                   <Checkbox
                     className="shrink-0"
                     checked={value.includes(label.name)}
-                    onCheck={noop}
+                    onCheckedChange={noop}
                   />
                   <div title={label.label} className="grow truncate text-sm leading-5 text-text-secondary">{label.label}</div>
                 </div>

@@ -2,7 +2,7 @@
 import type { FC } from 'react'
 import type { Plugin, VersionProps } from '../../../types'
 import * as React from 'react'
-import Checkbox from '@/app/components/base/checkbox'
+import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { MARKETPLACE_API_PREFIX } from '@/config'
 import Card from '../../../card'
 import useGetIcon from '../../base/use-get-icon'
@@ -36,7 +36,7 @@ const LoadedItem: FC<Props> = ({
         disabled={!canInstall}
         className="shrink-0"
         checked={checked}
-        onCheck={() => onCheckedChange(payload)}
+        onCheckedChange={() => onCheckedChange(payload)}
       />
       <Card
         className="grow"

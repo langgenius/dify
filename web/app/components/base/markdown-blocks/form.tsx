@@ -5,7 +5,7 @@ import { Select, SelectContent, SelectItem, SelectItemIndicator, SelectItemText,
 import * as React from 'react'
 import { useCallback, useMemo, useState } from 'react'
 import { useChatContext } from '@/app/components/base/chat/chat/context'
-import Checkbox from '@/app/components/base/checkbox'
+import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import DatePicker from '@/app/components/base/date-and-time-picker/date-picker'
 import TimePicker from '@/app/components/base/date-and-time-picker/time-picker'
 import { formatDateForOutput, toDayjs } from '@/app/components/base/date-and-time-picker/utils/dayjs'
@@ -282,14 +282,13 @@ const MarkdownForm = ({ node }: { node: HastElement }) => {
           }
           if (type === SUPPORTED_TYPES.CHECKBOX) {
             return (
-              <div className="mt-2 flex h-6 items-center space-x-2" key={key}>
+              <label className="mt-2 flex h-6 items-center space-x-2" key={key}>
                 <Checkbox
                   checked={!!formValues[name]}
-                  onCheck={() => updateValue(name, !formValues[name])}
-                  id={name}
+                  onCheckedChange={checked => updateValue(name, checked)}
                 />
                 <span>{str(child.properties.dataTip || child.properties['data-tip'])}</span>
-              </div>
+              </label>
             )
           }
           if (type === SUPPORTED_TYPES.SELECT) {

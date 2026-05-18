@@ -2,7 +2,7 @@
 import type { FC } from 'react'
 import type { PluginDetail } from '@/app/components/plugins/types'
 import * as React from 'react'
-import Checkbox from '@/app/components/base/checkbox'
+import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import Icon from '@/app/components/plugins/card/base/card-icon'
 import { MARKETPLACE_API_PREFIX } from '@/config'
 import { useGetLanguage } from '@/context/i18n'
@@ -35,7 +35,7 @@ const ToolItem: FC<Props> = ({
         </div>
         <Checkbox
           checked={isChecked}
-          onCheck={onCheckChange}
+          onCheckedChange={onCheckChange}
           className="shrink-0"
         />
       </div>

@@ -3,7 +3,7 @@ import type { FC } from 'react'
 import { RiCloseLine } from '@remixicon/react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import Checkbox from '@/app/components/base/checkbox'
+import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { LoadingPlaceholder } from '@/app/components/plugins/card/base/placeholder'
 import { Group } from '../../../base/icons/src/vender/other'
 

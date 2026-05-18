@@ -5,7 +5,7 @@ import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import Checkbox from '@/app/components/base/checkbox'
+import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import Radio from '@/app/components/base/radio/ui'
 
 type CrawledResultItemProps = {
@@ -45,7 +45,7 @@ const CrawledResultItem = ({
               <Checkbox
                 className="shrink-0"
                 checked={isChecked}
-                onCheck={handleCheckChange}
+                onCheckedChange={onCheckChange}
               />
             )
           : (

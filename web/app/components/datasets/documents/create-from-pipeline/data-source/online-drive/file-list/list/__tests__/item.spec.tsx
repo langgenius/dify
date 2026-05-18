@@ -3,9 +3,9 @@ import { fireEvent, render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import Item from '../item'
 
-vi.mock('@/app/components/base/checkbox', () => ({
-  default: ({ checked, onCheck, disabled }: { checked: boolean, onCheck: () => void, disabled?: boolean }) => (
-    <input type="checkbox" data-testid="checkbox" checked={checked} onChange={onCheck} disabled={disabled} />
+vi.mock('@langgenius/dify-ui/checkbox', () => ({
+  Checkbox: ({ checked, onCheckedChange, disabled }: { checked: boolean, onCheckedChange: (checked: boolean, eventDetails: { event: Event }) => void, disabled?: boolean }) => (
+    <input type="checkbox" data-testid="checkbox" checked={checked} onChange={event => onCheckedChange(event.target.checked, { event: event.nativeEvent })} disabled={disabled} />
   ),
 }))
 

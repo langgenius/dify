@@ -7,7 +7,7 @@ import {
 } from '@langgenius/dify-ui/popover'
 import { useState } from 'react'
 import { useTranslation } from '#i18n'
-import Checkbox from '@/app/components/base/checkbox'
+import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import Input from '@/app/components/base/input'
 import { useTags } from '@/app/components/plugins/hooks'
 import MarketplaceTrigger from './trigger/marketplace'

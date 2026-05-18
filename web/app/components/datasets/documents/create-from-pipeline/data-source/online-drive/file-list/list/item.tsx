@@ -3,7 +3,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/pop
 import * as React from 'react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import Checkbox from '@/app/components/base/checkbox'
+import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import Radio from '@/app/components/base/radio/ui'
 import { formatFileSize } from '@/utils/format'
 import FileIcon from './file-icon'
@@ -38,6 +38,11 @@ const Item = ({
     onSelect(file)
   }, [file, onSelect])
 
+  const handleCheckboxSelect = useCallback((_: boolean, eventDetails: { event: Event }) => {
+    eventDetails.event.stopPropagation()
+    onSelect(file)
+  }, [file, onSelect])
+
   const handleClickItem = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
     e.stopPropagation()
     if (disabled)
@@ -58,9 +63,8 @@ const Item = ({
         <Checkbox
           className="shrink-0"
           disabled={disabled}
-          id={id}
           checked={isSelected}
-          onCheck={handleSelect}
+          onCheckedChange={handleCheckboxSelect}
         />
       )}
       {!isBucket && !isMultipleChoice && (

@@ -1,6 +1,6 @@
 'use client'
 import * as React from 'react'
-import Checkbox from '@/app/components/base/checkbox'
+import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import Placeholder from '../../card/base/placeholder'
 
 const Loading = () => {

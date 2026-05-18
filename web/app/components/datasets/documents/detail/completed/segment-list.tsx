@@ -1,7 +1,7 @@
 import type { ChildChunkDetail, SegmentDetailModel } from '@/models/datasets'
 import * as React from 'react'
 import { useMemo } from 'react'
-import Checkbox from '@/app/components/base/checkbox'
+import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import Divider from '@/app/components/base/divider'
 import { ChunkingMode } from '@/models/datasets'
 import { useDocumentContext } from '../context'
@@ -83,7 +83,7 @@ const SegmentList = (
                 key={`${segItem.id}-checkbox`}
                 className="mt-3.5 shrink-0"
                 checked={selectedSegmentIds.includes(segItem.id)}
-                onCheck={() => onSelected(segItem.id)}
+                onCheckedChange={() => onSelected(segItem.id)}
               />
               <div className="min-w-0 grow">
                 <SegmentCard
