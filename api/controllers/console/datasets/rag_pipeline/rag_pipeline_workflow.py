@@ -5,7 +5,7 @@ from typing import Any, Literal, cast
 from flask import abort, request
 from flask_restx import Resource
 from pydantic import BaseModel, Field, ValidationError
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import Session
 from werkzeug.exceptions import BadRequest, Forbidden, InternalServerError, NotFound
 
 import services
@@ -608,7 +608,7 @@ class PublishedAllRagPipelineApi(Resource):
                 raise Forbidden()
 
         rag_pipeline_service = RagPipelineService()
-        with sessionmaker(db.engine).begin() as session:
+        with Session(db.engine, expire_on_commit=False) as session:
             workflows, has_more = rag_pipeline_service.get_all_published_workflow(
                 session=session,
                 pipeline=pipeline,
@@ -685,7 +685,7 @@ class RagPipelineByIdApi(Resource):
         rag_pipeline_service = RagPipelineService()
 
         # Create a session and manage the transaction
-        with sessionmaker(db.engine, expire_on_commit=False).begin() as session:
+        with Session(db.engine, expire_on_commit=False) as session:
             workflow = rag_pipeline_service.update_workflow(
                 session=session,
                 workflow_id=workflow_id,
@@ -713,7 +713,7 @@ class RagPipelineByIdApi(Resource):
 
         workflow_service = WorkflowService()
 
-        with sessionmaker(db.engine).begin() as session:
+        with Session(db.engine, expire_on_commit=False) as session:
             try:
                 workflow_service.delete_workflow(
                     session=session,
