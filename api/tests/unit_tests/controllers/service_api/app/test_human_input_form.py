@@ -9,6 +9,7 @@ from types import SimpleNamespace
 from unittest.mock import Mock
 
 import pytest
+from flask import Flask
 from werkzeug.exceptions import NotFound
 
 from controllers.service_api.app.human_input_form import WorkflowHumanInputFormApi
@@ -17,7 +18,7 @@ from tests.unit_tests.controllers.service_api.conftest import _unwrap
 
 
 class TestWorkflowHumanInputFormApi:
-    def test_get_success(self, app, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_get_success(self, app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
         definition = SimpleNamespace(
             model_dump=lambda: {
                 "rendered_content": "Rendered form content",
@@ -57,7 +58,7 @@ class TestWorkflowHumanInputFormApi:
         service_mock.get_form_by_token.assert_called_once_with("token-1")
         service_mock.ensure_form_active.assert_called_once_with(form)
 
-    def test_get_form_not_in_app(self, app, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_get_form_not_in_app(self, app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
         form = SimpleNamespace(
             app_id="another-app",
             tenant_id="tenant-1",
@@ -87,7 +88,7 @@ class TestWorkflowHumanInputFormApi:
         ],
     )
     def test_get_rejects_non_service_api_recipient_types(
-        self, app, monkeypatch: pytest.MonkeyPatch, recipient_type: RecipientType
+        self, app: Flask, monkeypatch: pytest.MonkeyPatch, recipient_type: RecipientType
     ) -> None:
         form = SimpleNamespace(
             app_id="app-1",
@@ -111,7 +112,7 @@ class TestWorkflowHumanInputFormApi:
 
         service_mock.ensure_form_active.assert_not_called()
 
-    def test_post_success(self, app, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_post_success(self, app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
         form = SimpleNamespace(
             app_id="app-1",
             tenant_id="tenant-1",
@@ -155,7 +156,7 @@ class TestWorkflowHumanInputFormApi:
         ],
     )
     def test_post_rejects_non_service_api_recipient_types(
-        self, app, monkeypatch: pytest.MonkeyPatch, recipient_type: RecipientType
+        self, app: Flask, monkeypatch: pytest.MonkeyPatch, recipient_type: RecipientType
     ) -> None:
         form = SimpleNamespace(
             app_id="app-1",

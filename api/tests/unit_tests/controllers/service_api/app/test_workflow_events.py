@@ -32,7 +32,7 @@ def _mock_repo_for_run(monkeypatch: pytest.MonkeyPatch, workflow_run):
 
 
 class TestWorkflowEventsApi:
-    def test_wrong_app_mode(self, app) -> None:
+    def test_wrong_app_mode(self, app: Flask) -> None:
         api = WorkflowEventsApi()
         handler = _unwrap(api.get)
         app_model = SimpleNamespace(mode=AppMode.CHAT.value)

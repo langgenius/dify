@@ -575,7 +575,7 @@ class TestTriggerSubscriptionVerifyApi:
             assert method(api, "github", "s1") == {"ok": True}
 
     @pytest.mark.parametrize("raised_exception", [ValueError("bad"), Exception("boom")])
-    def test_verify_errors(self, app, raised_exception):
+    def test_verify_errors(self, app: Flask, raised_exception):
         api = TriggerSubscriptionVerifyApi()
         method = unwrap(api.post)
 
