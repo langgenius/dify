@@ -15,11 +15,11 @@ Focus on:
 - API endpoint business logic and error handling
 """
 
-from flask import Flask
 import uuid
 from unittest.mock import Mock, patch
 
 import pytest
+from flask import Flask
 from werkzeug.exceptions import Forbidden, NotFound
 
 from controllers.service_api.dataset.document import (
@@ -648,7 +648,9 @@ class TestDocumentApiGet:
 
     @patch("controllers.service_api.dataset.document.DatasetService")
     @patch("controllers.service_api.dataset.document.DocumentService")
-    def test_get_document_metadata_without(self, mock_doc_svc, mock_dataset_svc, app: Flask, mock_tenant, mock_doc_detail):
+    def test_get_document_metadata_without(
+        self, mock_doc_svc, mock_dataset_svc, app: Flask, mock_tenant, mock_doc_detail
+    ):
         """Test document retrieval with metadata='without'."""
         # Arrange
         dataset_id = str(uuid.uuid4())
@@ -859,7 +861,9 @@ class TestDocumentIndexingStatusApi:
     @patch("controllers.service_api.dataset.document.marshal")
     @patch("controllers.service_api.dataset.document.DocumentService")
     @patch("controllers.service_api.dataset.document.db")
-    def test_get_indexing_status_success(self, mock_db, mock_doc_svc, mock_marshal, app: Flask, mock_tenant, mock_dataset):
+    def test_get_indexing_status_success(
+        self, mock_db, mock_doc_svc, mock_marshal, app: Flask, mock_tenant, mock_dataset
+    ):
         """Test successful indexing status retrieval."""
         # Arrange
         batch_id = "batch_123"
@@ -912,7 +916,9 @@ class TestDocumentIndexingStatusApi:
 
     @patch("controllers.service_api.dataset.document.DocumentService")
     @patch("controllers.service_api.dataset.document.db")
-    def test_get_indexing_status_documents_not_found(self, mock_db, mock_doc_svc, app: Flask, mock_tenant, mock_dataset):
+    def test_get_indexing_status_documents_not_found(
+        self, mock_db, mock_doc_svc, app: Flask, mock_tenant, mock_dataset
+    ):
         """Test 404 when no documents found for batch."""
         # Arrange
         batch_id = "batch_empty"

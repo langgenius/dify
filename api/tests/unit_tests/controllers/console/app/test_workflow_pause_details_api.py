@@ -20,10 +20,8 @@ from models.workflow import WorkflowRun
 
 
 def _make_account() -> Account:
-    account = Account(name="tester", email="tester@example.com"
-    
-    ,status = AccountStatus.ACTIVE
-    ,role = TenantAccountRole.OWNER
+    account = Account(
+        name="tester", email="tester@example.com", status=AccountStatus.ACTIVE, role=TenantAccountRole.OWNER
     )
     account.id = "account-123"  # type: ignore[assignment]
     account._current_tenant = SimpleNamespace(id="tenant-123")  # type: ignore[attr-defined]

@@ -14,11 +14,11 @@ Strategy:
   patch it there.
 """
 
-from flask import Flask
 import uuid
 from unittest.mock import Mock, patch
 
 import pytest
+from flask import Flask
 from werkzeug.exceptions import Forbidden, NotFound
 
 import services
