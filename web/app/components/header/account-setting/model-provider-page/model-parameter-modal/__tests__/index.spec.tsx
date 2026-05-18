@@ -92,9 +92,21 @@ vi.mock('../../model-selector', () => ({
 }))
 
 vi.mock('../presets-parameter', () => ({
-  default: ({ onSelect }: { onSelect: (id: number) => void }) => (
-    <button onClick={() => onSelect(1)}>Preset 1</button>
-  ),
+  default: ({ onSelect, supportedParameterNames }: { onSelect: (id: number) => void, supportedParameterNames?: string[] }) => {
+    if (supportedParameterNames && !supportedParameterNames.includes('temperature'))
+      return null
+
+    return <button onClick={() => onSelect(1)}>Preset 1</button>
+  },
+}))
+
+vi.mock('../presets-parameter-utils', () => ({
+  getSupportedPresetConfig: (_toneId: number, supportedParameterNames?: string[]) => {
+    if (supportedParameterNames && !supportedParameterNames.includes('temperature'))
+      return {}
+
+    return { temperature: 0.8 }
+  },
 }))
 
 vi.mock('../trigger', () => ({
@@ -194,7 +206,28 @@ describe('ModelParameterModal', () => {
     render(<ModelParameterModal {...defaultProps} />)
     fireEvent.click(screen.getByText('Open Settings'))
     fireEvent.click(screen.getByText('Preset 1'))
-    expect(defaultProps.onCompletionParamsChange).toHaveBeenCalled()
+    expect(defaultProps.onCompletionParamsChange).toHaveBeenCalledWith({
+      ...defaultProps.completionParams,
+      temperature: 0.8,
+    })
+  })
+
+  it('should not render preset control when visible parameters do not support preset keys', () => {
+    parameterRules = [
+      {
+        name: 'max_tokens',
+        label: { en_US: 'Max Tokens' },
+        type: 'int',
+        default: 256,
+        min: 1,
+        max: 4096,
+      },
+    ]
+
+    render(<ModelParameterModal {...defaultProps} />)
+    fireEvent.click(screen.getByText('Open Settings'))
+
+    expect(screen.queryByText('Preset 1')).not.toBeInTheDocument()
   })
 
   it('should call setModel when model selector picks another model', () => {
