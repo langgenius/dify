@@ -1,7 +1,7 @@
-import type { Command } from '@oclif/core'
 import type { KyInstance } from 'ky'
 import type { HostsBundle } from '../../auth/hosts.js'
 import type { AppInfoCache } from '../../cache/app-info.js'
+import type { Command } from '../../framework/command.js'
 import type { IOStreams } from '../../io/streams.js'
 import { loadHosts } from '../../auth/hosts.js'
 import { loadAppInfoCache } from '../../cache/app-info.js'

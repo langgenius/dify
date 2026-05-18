@@ -1,5 +1,5 @@
-import { Flags } from '@oclif/core'
 import pc from 'picocolors'
+import { Flags } from '../../framework/flags.js'
 import { compatString, difyCompat } from '../../version/compat.js'
 import { versionInfo } from '../../version/info.js'
 import { DifyCommand } from '../_shared/dify-command.js'

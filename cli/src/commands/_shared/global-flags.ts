@@ -1,6 +1,6 @@
-import { Flags } from '@oclif/core'
 import { newError } from '../../errors/base.js'
 import { ErrorCode } from '../../errors/codes.js'
+import { Flags } from '../../framework/flags.js'
 
 export const HTTP_RETRY_DEFAULT = 3
 

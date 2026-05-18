@@ -1,6 +1,6 @@
-import { Flags } from '@oclif/core'
 import { loadHosts } from '../../../auth/hosts.js'
 import { resolveConfigDir } from '../../../config/dir.js'
+import { Flags } from '../../../framework/flags.js'
 import { realStreams } from '../../../io/streams.js'
 import { DifyCommand } from '../../_shared/dify-command.js'
 import { runStatus } from './status.js'

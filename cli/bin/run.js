@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 
-import { execute } from '@oclif/core'
+import { commandTree } from '../dist/commands/tree.js'
+import { run } from '../dist/framework/run.js'
 
-await execute({ dir: import.meta.url })
+await run(commandTree, process.argv.slice(2))

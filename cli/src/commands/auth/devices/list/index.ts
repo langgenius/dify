@@ -1,4 +1,4 @@
-import { Flags } from '@oclif/core'
+import { Flags } from '../../../../framework/flags.js'
 import { DifyCommand } from '../../../_shared/dify-command.js'
 import { httpRetryFlag } from '../../../_shared/global-flags.js'
 import { runDevicesList } from '../_shared/devices.js'

@@ -1,4 +1,4 @@
-import { Flags } from '@oclif/core'
+import { Flags } from '../../../framework/flags.js'
 import { DifyCommand } from '../../_shared/dify-command.js'
 import { runEnvList } from './run-list.js'
 

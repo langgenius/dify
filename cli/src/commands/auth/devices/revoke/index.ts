@@ -1,5 +1,5 @@
-import { Args, Flags } from '@oclif/core'
 import { selectStore } from '../../../../auth/store.js'
+import { Args, Flags } from '../../../../framework/flags.js'
 import { DifyCommand } from '../../../_shared/dify-command.js'
 import { httpRetryFlag } from '../../../_shared/global-flags.js'
 import { runDevicesRevoke } from '../_shared/devices.js'

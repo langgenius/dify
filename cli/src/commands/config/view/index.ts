@@ -1,5 +1,5 @@
-import { Flags } from '@oclif/core'
 import { resolveConfigDir } from '../../../config/dir.js'
+import { Flags } from '../../../framework/flags.js'
 import { DifyCommand } from '../../_shared/dify-command.js'
 import { runConfigView } from './run.js'
 
