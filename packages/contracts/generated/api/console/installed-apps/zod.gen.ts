@@ -41,7 +41,7 @@ export const zConversationRenamePayload = z.object({
 export const zMessageFeedbackPayload = z.object({
   content: z.string().nullish(),
   message_id: z.string(),
-  rating: z.enum(['like', 'dislike']).nullish(),
+  rating: z.enum(['dislike', 'like']).nullish(),
 })
 
 /**
@@ -216,8 +216,8 @@ export const zGetInstalledAppsByInstalledAppIdConversationsResponse = z.record(
 )
 
 export const zDeleteInstalledAppsByInstalledAppIdConversationsByCIdPath = z.object({
-  installed_app_id: z.string(),
   c_id: z.string(),
+  installed_app_id: z.string(),
 })
 
 /**
@@ -232,8 +232,8 @@ export const zPostInstalledAppsByInstalledAppIdConversationsByCIdNameBody
   = zConversationRenamePayload
 
 export const zPostInstalledAppsByInstalledAppIdConversationsByCIdNamePath = z.object({
-  installed_app_id: z.string(),
   c_id: z.string(),
+  installed_app_id: z.string(),
 })
 
 /**
@@ -245,8 +245,8 @@ export const zPostInstalledAppsByInstalledAppIdConversationsByCIdNameResponse = 
 )
 
 export const zPatchInstalledAppsByInstalledAppIdConversationsByCIdPinPath = z.object({
-  installed_app_id: z.string(),
   c_id: z.string(),
+  installed_app_id: z.string(),
 })
 
 /**
@@ -258,8 +258,8 @@ export const zPatchInstalledAppsByInstalledAppIdConversationsByCIdPinResponse = 
 )
 
 export const zPatchInstalledAppsByInstalledAppIdConversationsByCIdUnpinPath = z.object({
-  installed_app_id: z.string(),
   c_id: z.string(),
+  installed_app_id: z.string(),
 })
 
 /**

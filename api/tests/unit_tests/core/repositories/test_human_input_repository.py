@@ -29,7 +29,7 @@ from core.workflow.human_input_adapter import (
     MemberRecipient,
     WebAppDeliveryMethod,
 )
-from graphon.nodes.human_input.entities import HumanInputNodeData, UserAction
+from graphon.nodes.human_input.entities import HumanInputNodeData, UserActionConfig
 from graphon.nodes.human_input.enums import HumanInputFormKind, HumanInputFormStatus
 from libs.datetime_utils import naive_utc_now
 from models.human_input import HumanInputFormRecipient, RecipientType
@@ -467,7 +467,7 @@ def test_create_form_adds_console_and_backstage_recipients(monkeypatch: pytest.M
         delivery_methods=[],
         form_content="hello",
         inputs=[],
-        user_actions=[UserAction(id="submit", title="Submit")],
+        user_actions=[UserActionConfig(id="submit", title="Submit")],
     )
     params = FormCreateParams(
         workflow_execution_id=None,

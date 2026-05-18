@@ -32,7 +32,7 @@ from core.workflow.system_variables import build_system_variables
 from graphon.entities import WorkflowStartReason
 from graphon.entities.pause_reason import HumanInputRequired, PauseReasonType
 from graphon.enums import WorkflowExecutionStatus, WorkflowNodeExecutionStatus
-from graphon.nodes.human_input.entities import FormInput, UserAction
+from graphon.nodes.human_input.entities import ParagraphInputConfig, UserActionConfig
 from graphon.nodes.human_input.enums import FormInputType
 from graphon.runtime import GraphRuntimeState, VariablePool
 from models.account import Account
@@ -450,7 +450,7 @@ class TestHitlServiceApi:
                     node_title="Approval",
                     form_content="Need approval",
                     inputs=[],
-                    actions=[UserAction(id="approve", title="Approve")],
+                    actions=[UserActionConfig(id="approve", title="Approve")],
                     display_in_ui=True,
                     form_token="token-1",
                     resolved_default_values={},
@@ -591,9 +591,9 @@ class TestHitlServiceApi:
             form_id="form-1",
             form_content="Rendered",
             inputs=[
-                FormInput(type=FormInputType.TEXT_INPUT, output_variable_name="field", default=None),
+                ParagraphInputConfig(type=FormInputType.PARAGRAPH, output_variable_name="field", default=None),
             ],
-            actions=[UserAction(id="approve", title="Approve")],
+            actions=[UserActionConfig(id="approve", title="Approve")],
             display_in_ui=True,
             node_id="node-id",
             node_title="Human Step",
