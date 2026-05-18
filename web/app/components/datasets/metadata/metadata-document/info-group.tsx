@@ -9,9 +9,8 @@ import Divider from '@/app/components/base/divider'
 import { Infotip } from '@/app/components/base/infotip'
 import useTimestamp from '@/hooks/use-timestamp'
 import { useRouter } from '@/next/navigation'
-import AddMetadataButton from '../add-metadata-button'
 import InputCombined from '../edit-metadata-batch/input-combined'
-import SelectMetadataModal from '../metadata-dataset/select-metadata-modal'
+import { DatasetMetadataPicker } from '../metadata-dataset/dataset-metadata-picker'
 import { DataType, isShowManageMetadataLocalStorageKey } from '../types'
 import Field from './field'
 
@@ -76,14 +75,11 @@ const InfoGroup: FC<Props> = ({
       <div className={cn('mt-3 space-y-1', contentClassName)}>
         {isEdit && (
           <div>
-            <SelectMetadataModal
+            <DatasetMetadataPicker
               datasetId={dataSetId}
-              trigger={
-                <AddMetadataButton />
-              }
-              onSelect={data => onSelect?.(data as MetadataItemWithValue)}
-              onSave={data => onAdd?.(data)}
-              onManage={handleMangeMetadata}
+              onSelectMetadata={data => onSelect?.(data as MetadataItemWithValue)}
+              onCreateMetadata={data => onAdd?.(data)}
+              onOpenMetadataManagement={handleMangeMetadata}
             />
             {list.length > 0 && <Divider className="my-3" bgStyle="gradient" />}
           </div>

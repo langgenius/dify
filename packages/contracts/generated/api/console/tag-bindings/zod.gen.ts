@@ -7,7 +7,7 @@ import * as z from 'zod'
  *
  * Tag type
  */
-export const zTagType = z.enum(['knowledge', 'app'])
+export const zTagType = z.enum(['app', 'knowledge'])
 
 /**
  * TagBindingPayload
@@ -22,15 +22,7 @@ export const zTagBindingPayload = z.object({
  * TagBindingRemovePayload
  */
 export const zTagBindingRemovePayload = z.object({
-  tag_id: z.string(),
-  target_id: z.string(),
-  type: zTagType,
-})
-
-/**
- * TagBindingItemDeletePayload
- */
-export const zTagBindingItemDeletePayload = z.object({
+  tag_ids: z.array(z.string()).min(1),
   target_id: z.string(),
   type: zTagType,
 })
@@ -42,27 +34,9 @@ export const zPostTagBindingsBody = zTagBindingPayload
  */
 export const zPostTagBindingsResponse = z.record(z.string(), z.unknown())
 
-export const zPostTagBindingsCreateBody = zTagBindingPayload
-
-/**
- * Success
- */
-export const zPostTagBindingsCreateResponse = z.record(z.string(), z.unknown())
-
 export const zPostTagBindingsRemoveBody = zTagBindingRemovePayload
 
 /**
  * Success
  */
 export const zPostTagBindingsRemoveResponse = z.record(z.string(), z.unknown())
-
-export const zDeleteTagBindingsByIdBody = zTagBindingItemDeletePayload
-
-export const zDeleteTagBindingsByIdPath = z.object({
-  id: z.string(),
-})
-
-/**
- * Success
- */
-export const zDeleteTagBindingsByIdResponse = z.record(z.string(), z.unknown())

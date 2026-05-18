@@ -17,7 +17,7 @@ from core.workflow.human_input_adapter import (
     MemberRecipient,
     WebAppDeliveryMethod,
 )
-from graphon.nodes.human_input.entities import FormDefinition, HumanInputNodeData, UserAction
+from graphon.nodes.human_input.entities import FormDefinition, HumanInputNodeData, UserActionConfig
 from models.account import (
     Account,
     AccountStatus,
@@ -69,7 +69,7 @@ def _build_form_params(delivery_methods: list[DeliveryChannelConfig]) -> FormCre
         title="Human Approval",
         delivery_methods=delivery_methods,
         form_content="<p>Approve?</p>",
-        user_actions=[UserAction(id="approve", title="Approve")],
+        user_actions=[UserActionConfig(id="approve", title="Approve")],
     )
     return FormCreateParams(
         workflow_execution_id=str(uuid4()),
@@ -185,7 +185,7 @@ class TestHumanInputFormRepositoryImplWithContainers:
                 title="Human Approval",
                 form_content="<p>Approve?</p>",
                 inputs=[],
-                user_actions=[UserAction(id="approve", title="Approve")],
+                user_actions=[UserActionConfig(id="approve", title="Approve")],
             ),
             rendered_content="<p>Approve?</p>",
             delivery_methods=[],
@@ -220,7 +220,7 @@ class TestHumanInputFormRepositoryImplWithContainers:
                 title="Human Approval",
                 form_content="<p>Approve?</p>",
                 inputs=[],
-                user_actions=[UserAction(id="approve", title="Approve")],
+                user_actions=[UserActionConfig(id="approve", title="Approve")],
                 delivery_methods=[WebAppDeliveryMethod()],
             ),
             rendered_content="<p>Approve?</p>",
