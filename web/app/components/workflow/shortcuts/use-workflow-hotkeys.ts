@@ -147,6 +147,9 @@ export const useWorkflowHotkeys = (): void => {
     ...toHotkeyDefinitions(WORKFLOW_SHORTCUTS['workflow.duplicate'], () => {
       handleNodesDuplicate()
     }),
+    ...toHotkeyDefinitions(WORKFLOW_SHORTCUTS['workflow.save'], () => {
+      handleSyncWorkflowDraft(true)
+    }),
     ...toHotkeyDefinitions(WORKFLOW_SHORTCUTS['workflow.undo'], () => {
       handleHistoryBack()
     }, {

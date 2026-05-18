@@ -5,6 +5,9 @@ export type WorkflowShortcutId
     | 'workflow.copy'
     | 'workflow.paste'
     | 'workflow.duplicate'
+    | 'workflow.save'
+    | 'workflow.run'
+    | 'workflow.stop-run'
     | 'workflow.open-test-run-menu'
     | 'workflow.undo'
     | 'workflow.redo'
@@ -63,6 +66,24 @@ export const WORKFLOW_SHORTCUTS: Record<WorkflowShortcutId, WorkflowShortcutDefi
     hotkeys: ['Mod+D'],
     name: 'Duplicate',
     description: 'Duplicate selected workflow nodes',
+  },
+  'workflow.save': {
+    id: 'workflow.save',
+    hotkeys: ['Mod+S'],
+    name: 'Save workflow',
+    description: 'Save the current workflow draft',
+  },
+  'workflow.run': {
+    id: 'workflow.run',
+    hotkeys: ['Mod+Enter'],
+    name: 'Run workflow',
+    description: 'Run the current workflow',
+  },
+  'workflow.stop-run': {
+    id: 'workflow.stop-run',
+    hotkeys: ['Escape'],
+    name: 'Stop workflow run',
+    description: 'Stop the current workflow run',
   },
   'workflow.open-test-run-menu': {
     id: 'workflow.open-test-run-menu',
