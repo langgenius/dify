@@ -94,14 +94,34 @@ describe('resolveCommand', () => {
 })
 
 describe('findSuggestions', () => {
-  it('suggests top-level commands for completely unknown input', () => {
+  it('returns empty for token with edit distance > 1 to all commands', () => {
     const suggestions = findSuggestions(tree, ['xyz'])
-    expect(suggestions).toEqual(expect.arrayContaining(['foo', 'top', 'nested']))
+    expect(suggestions).toHaveLength(0)
   })
 
-  it('suggests subcommands when parent matches', () => {
-    const suggestions = findSuggestions(tree, ['foo', 'unknown'])
+  it('suggests softly matched top-level command', () => {
+    const suggestions = findSuggestions(tree, ['tpp'])
+    expect(suggestions).toEqual(['top'])
+  })
+
+  it('suggests softly matched subcommand under exact parent', () => {
+    const suggestions = findSuggestions(tree, ['foo', 'br'])
+    expect(suggestions).toEqual(['foo bar'])
+  })
+
+  it('returns all subcommands when multiple soft-match at the same level', () => {
+    const suggestions = findSuggestions(tree, ['foo', 'bax'])
     expect(suggestions).toEqual(expect.arrayContaining(['foo bar', 'foo baz']))
+  })
+
+  it('collects leaf command when trailing positional args remain', () => {
+    const suggestions = findSuggestions(tree, ['foo', 'br', 'some-arg'])
+    expect(suggestions).toEqual(['foo bar'])
+  })
+
+  it('returns empty when subcommand token has edit distance > 1', () => {
+    const suggestions = findSuggestions(tree, ['foo', 'unknown'])
+    expect(suggestions).toHaveLength(0)
   })
 
   it('returns available subcommands when given valid parent with no further tokens', () => {
@@ -109,9 +129,9 @@ describe('findSuggestions', () => {
     expect(suggestions).toEqual(expect.arrayContaining(['foo bar', 'foo baz']))
   })
 
-  it('returns empty array for deeply unknown path', () => {
+  it('collects exact-matched leaf with trailing tokens as positional args', () => {
     const suggestions = findSuggestions(tree, ['top', 'sub', 'unknown'])
-    expect(suggestions).toHaveLength(0)
+    expect(suggestions).toEqual(['top'])
   })
 
   it('stops at flag token', () => {

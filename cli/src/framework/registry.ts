@@ -42,67 +42,52 @@ export function resolveCommand(
   return lastMatch
 }
 
-export function findSuggestions(tree: CommandTree, argv: string[]): string[] {
-  const suggestions: string[] = []
-  const path: string[] = []
-  let node: CommandNode | undefined
-
-  for (let i = 0; i < argv.length; i++) {
-    const token = argv[i]
-    if (token === undefined || token.startsWith('-'))
-      break
-
-    if (path.length === 0) {
-      node = tree[token]
+function editDistance(a: string, b: string): number {
+  const m = a.length
+  const n = b.length
+  let prev = Array.from({ length: n + 1 }, (_, j) => j)
+  for (let i = 1; i <= m; i++) {
+    const curr: number[] = [i]
+    for (let j = 1; j <= n; j++) {
+      curr[j] = a[i - 1] === b[j - 1]
+        ? (prev[j - 1] ?? 0)
+        : 1 + Math.min(prev[j] ?? 0, curr[j - 1] ?? 0, prev[j - 1] ?? 0)
     }
-    else {
-      node = node?.subcommands[token]
-    }
-
-    if (!node) {
-      const parent = path.length === 0 ? tree : resolveParent(tree, path)
-      if (parent) {
-        for (const key of Object.keys(parent)) {
-          suggestions.push(buildPath([...path, key]))
-        }
-      }
-
-      return suggestions
-    }
-
-    path.push(token)
+    prev = curr
   }
-
-  if (node) {
-    for (const key of Object.keys(node.subcommands)) {
-      suggestions.push(buildPath([...path, key]))
-    }
-  }
-
-  return suggestions
+  return prev[n] ?? 0
 }
 
-function resolveParent(tree: CommandTree, path: string[]): Record<string, CommandNode> | undefined {
-  if (path.length === 0)
-    return tree
+export function findSuggestions(tree: CommandTree, argv: string[]): string[] {
+  const results: string[] = []
 
-  let node: CommandNode | undefined
-
-  for (let i = 0; i < path.length; i++) {
-    const token = path[i]
-    if (token === undefined)
-      return undefined
-
-    if (i === 0) {
-      node = tree[token]
-    }
-    else {
-      node = node?.subcommands[token]
-    }
-
-    if (!node)
-      return undefined
+  function collectAll(node: CommandNode, path: string[]): void {
+    if (node.command)
+      results.push(buildPath(path))
+    for (const [key, child] of Object.entries(node.subcommands))
+      collectAll(child, [...path, key])
   }
 
-  return node?.subcommands
+  function traverse(nodes: Record<string, CommandNode>, tokens: string[], path: string[]): void {
+    const token = tokens[0]
+    if (token === undefined || token.startsWith('-'))
+      return
+
+    const rest = tokens.slice(1)
+    const nextToken = rest.at(0)
+    for (const [key, node] of Object.entries(nodes)) {
+      if (editDistance(token, key) <= 1) {
+        const newPath = [...path, key]
+        if (nextToken === undefined || nextToken.startsWith('-') || Object.keys(node.subcommands).length === 0) {
+          collectAll(node, newPath)
+        }
+        else {
+          traverse(node.subcommands, rest, newPath)
+        }
+      }
+    }
+  }
+
+  traverse(tree, argv, [])
+  return results
 }
