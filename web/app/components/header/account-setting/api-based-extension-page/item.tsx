@@ -1,4 +1,3 @@
-import type { FC } from 'react'
 import type { ApiBasedExtension } from '@/models/common'
 import {
   AlertDialog,
@@ -9,10 +8,6 @@ import {
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
-import {
-  RiDeleteBinLine,
-  RiEditLine,
-} from '@remixicon/react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useModalContext } from '@/context/modal-context'
@@ -22,10 +17,10 @@ type ItemProps = {
   data: ApiBasedExtension
   onUpdate: () => void
 }
-const Item: FC<ItemProps> = ({
+const Item = ({
   data,
   onUpdate,
-}) => {
+}: ItemProps) => {
   const { t } = useTranslation()
   const { setShowApiBasedExtensionModal } = useModalContext()
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
@@ -49,23 +44,22 @@ const Item: FC<ItemProps> = ({
         <div className="mb-0.5 text-[13px] font-medium text-text-secondary">{data.name}</div>
         <div className="text-xs text-text-tertiary">{data.api_endpoint}</div>
       </div>
-      <div className="hidden items-center group-hover:flex">
+      <div className="hidden items-center gap-1 group-hover:flex">
         <Button
-          className="mr-1"
           onClick={handleOpenApiBasedExtensionModal}
         >
-          <RiEditLine className="mr-1 h-4 w-4" />
+          <span className="mr-1 i-ri-edit-line h-4 w-4" aria-hidden="true" />
           {t('operation.edit', { ns: 'common' })}
         </Button>
         <Button
           onClick={() => setShowDeleteConfirm(true)}
         >
-          <RiDeleteBinLine className="mr-1 h-4 w-4" />
+          <span className="mr-1 i-ri-delete-bin-line h-4 w-4" aria-hidden="true" />
           {t('operation.delete', { ns: 'common' })}
         </Button>
       </div>
       <AlertDialog open={showDeleteConfirm} onOpenChange={open => !open && setShowDeleteConfirm(false)}>
-        <AlertDialogContent>
+        <AlertDialogContent backdropProps={{ forceRender: true }}>
           <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
             <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
               {`${t('operation.delete', { ns: 'common' })} \u201C${data.name}\u201D?`}

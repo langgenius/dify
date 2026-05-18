@@ -275,8 +275,12 @@ export const ModalContextProvider = ({
         {
           !!showApiBasedExtensionModal && (
             <ApiBasedExtensionModal
-              data={showApiBasedExtensionModal.payload}
-              onCancel={() => setShowApiBasedExtensionModal(null)}
+              open={!!showApiBasedExtensionModal}
+              extension={showApiBasedExtensionModal.payload}
+              onOpenChange={(open) => {
+                if (!open)
+                  setShowApiBasedExtensionModal(null)
+              }}
               onSave={handleSaveApiBasedExtension}
             />
           )

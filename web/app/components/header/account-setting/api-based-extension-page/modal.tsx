@@ -1,53 +1,49 @@
-import type { FC } from 'react'
 import type { ApiBasedExtension } from '@/models/common'
 import { Button } from '@langgenius/dify-ui/button'
-import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
+import { Dialog, DialogCloseButton, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { BookOpen01 } from '@/app/components/base/icons/src/vender/line/education'
 import { useDocLink } from '@/context/i18n'
 import { addApiBasedExtension, updateApiBasedExtension } from '@/service/common'
 
-export type ApiBasedExtensionData = {
-  name?: string
-  apiEndpoint?: string
-  apiKey?: string
-}
+type ApiBasedExtensionField = 'name' | 'api_endpoint' | 'api_key'
+
 type ApiBasedExtensionModalProps = {
-  data: ApiBasedExtension
-  onCancel: () => void
+  open: boolean
+  extension: ApiBasedExtension
+  onOpenChange: (open: boolean) => void
   onSave?: (newData: ApiBasedExtension) => void
 }
-const ApiBasedExtensionModal: FC<ApiBasedExtensionModalProps> = ({ data, onCancel, onSave }) => {
+const ApiBasedExtensionModal = ({ open, extension, onOpenChange, onSave }: ApiBasedExtensionModalProps) => {
   const { t } = useTranslation()
   const docLink = useDocLink()
-  const [localeData, setLocaleData] = useState(data)
+  const [localData, setLocalData] = useState(extension)
   const [loading, setLoading] = useState(false)
-  const handleDataChange = (type: string, value: string) => {
-    setLocaleData({ ...localeData, [type]: value })
+  const handleDataChange = (field: ApiBasedExtensionField, value: string) => {
+    setLocalData({ ...localData, [field]: value })
   }
   const handleSave = async () => {
     setLoading(true)
-    if (localeData && localeData.api_key && localeData.api_key?.length < 5) {
+    if (localData.api_key && localData.api_key.length < 5) {
       toast.error(t('apiBasedExtension.modal.apiKey.lengthError', { ns: 'common' }))
       setLoading(false)
       return
     }
     try {
       let res: ApiBasedExtension = {}
-      if (!data.id) {
+      if (!extension.id) {
         res = await addApiBasedExtension({
           url: '/api-based-extension',
-          body: localeData,
+          body: localData,
         })
       }
       else {
         res = await updateApiBasedExtension({
-          url: `/api-based-extension/${data.id}`,
+          url: `/api-based-extension/${extension.id}`,
           body: {
-            ...localeData,
-            api_key: data.api_key === localeData.api_key ? '[__HIDDEN__]' : localeData.api_key,
+            ...localData,
+            api_key: extension.api_key === localData.api_key ? '[__HIDDEN__]' : localData.api_key,
           },
         })
         toast.success(t('actionMsg.modifiedSuccessfully', { ns: 'common' }))
@@ -59,44 +55,44 @@ const ApiBasedExtensionModal: FC<ApiBasedExtensionModalProps> = ({ data, onCance
       setLoading(false)
     }
   }
-  return (
-    <Dialog open>
-      <DialogContent className="w-[640px]! max-w-none! border-none p-8! pb-6! text-left align-middle">
 
-        <div className="mb-2 text-xl font-semibold text-text-primary">
-          {data.name
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange} disablePointerDismissal>
+      <DialogContent className="w-160 border-none p-8 pb-6 text-left">
+        <DialogCloseButton />
+
+        <DialogTitle className="mb-2 pr-8 text-xl font-semibold text-text-primary">
+          {extension.name
             ? t('apiBasedExtension.modal.editTitle', { ns: 'common' })
             : t('apiBasedExtension.modal.title', { ns: 'common' })}
-        </div>
+        </DialogTitle>
         <div className="py-2">
           <div className="text-sm leading-9 font-medium text-text-primary">
             {t('apiBasedExtension.modal.name.title', { ns: 'common' })}
           </div>
-          <input value={localeData.name || ''} onChange={e => handleDataChange('name', e.target.value)} className="block h-9 w-full appearance-none rounded-lg bg-components-input-bg-normal px-3 text-sm text-text-primary outline-hidden" placeholder={t('apiBasedExtension.modal.name.placeholder', { ns: 'common' }) || ''} />
+          <input value={localData.name || ''} onChange={e => handleDataChange('name', e.target.value)} className="block h-9 w-full appearance-none rounded-lg bg-components-input-bg-normal px-3 text-sm text-text-primary outline-hidden" placeholder={t('apiBasedExtension.modal.name.placeholder', { ns: 'common' }) || ''} />
         </div>
         <div className="py-2">
           <div className="flex h-9 items-center justify-between text-sm font-medium text-text-primary">
             {t('apiBasedExtension.modal.apiEndpoint.title', { ns: 'common' })}
-            <a href={docLink('/use-dify/workspace/api-extension/api-extension')} target="_blank" rel="noopener noreferrer" className="group flex items-center text-xs font-normal text-text-accent">
-              <BookOpen01 className="mr-1 h-3 w-3" />
+            <a href={docLink('/use-dify/workspace/api-extension/api-extension')} target="_blank" rel="noopener noreferrer" className="flex items-center text-xs font-normal text-text-accent">
+              <span className="mr-1 i-custom-vender-line-education-book-open-01 h-3 w-3" aria-hidden="true" />
               {t('apiBasedExtension.link', { ns: 'common' })}
             </a>
           </div>
-          <input value={localeData.api_endpoint || ''} onChange={e => handleDataChange('api_endpoint', e.target.value)} className="block h-9 w-full appearance-none rounded-lg bg-components-input-bg-normal px-3 text-sm text-text-primary outline-hidden" placeholder={t('apiBasedExtension.modal.apiEndpoint.placeholder', { ns: 'common' }) || ''} />
+          <input value={localData.api_endpoint || ''} onChange={e => handleDataChange('api_endpoint', e.target.value)} className="block h-9 w-full appearance-none rounded-lg bg-components-input-bg-normal px-3 text-sm text-text-primary outline-hidden" placeholder={t('apiBasedExtension.modal.apiEndpoint.placeholder', { ns: 'common' }) || ''} />
         </div>
         <div className="py-2">
           <div className="text-sm leading-9 font-medium text-text-primary">
             {t('apiBasedExtension.modal.apiKey.title', { ns: 'common' })}
           </div>
-          <div className="flex items-center">
-            <input value={localeData.api_key || ''} onChange={e => handleDataChange('api_key', e.target.value)} className="mr-2 block h-9 grow appearance-none rounded-lg bg-components-input-bg-normal px-3 text-sm text-text-primary outline-hidden" placeholder={t('apiBasedExtension.modal.apiKey.placeholder', { ns: 'common' }) || ''} />
-          </div>
+          <input value={localData.api_key || ''} onChange={e => handleDataChange('api_key', e.target.value)} className="block h-9 w-full appearance-none rounded-lg bg-components-input-bg-normal px-3 text-sm text-text-primary outline-hidden" placeholder={t('apiBasedExtension.modal.apiKey.placeholder', { ns: 'common' }) || ''} />
         </div>
-        <div className="mt-6 flex items-center justify-end">
-          <Button onClick={onCancel} className="mr-2">
+        <div className="mt-6 flex items-center justify-end gap-2">
+          <Button onClick={() => onOpenChange(false)}>
             {t('operation.cancel', { ns: 'common' })}
           </Button>
-          <Button variant="primary" disabled={!localeData.name || !localeData.api_endpoint || !localeData.api_key || loading} onClick={handleSave}>
+          <Button variant="primary" disabled={!localData.name || !localData.api_endpoint || !localData.api_key || loading} onClick={handleSave}>
             {t('operation.save', { ns: 'common' })}
           </Button>
         </div>
