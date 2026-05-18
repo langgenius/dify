@@ -119,11 +119,3 @@ export function workspaceTableHandler(currentId: string): TableHandler {
     },
   }
 }
-
-export const workspaceNameHandler: NameHandler = {
-  id(raw: unknown): string {
-    if (!isPayloadShape<WorkspaceListResponse>(raw, 'workspaces'))
-      throw new Error('get/workspace name: unexpected payload shape')
-    return raw.workspaces.map(w => w.id).join('\n')
-  },
-}

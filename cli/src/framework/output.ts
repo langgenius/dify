@@ -18,6 +18,11 @@ export type TablePrintable = {
   readonly json: () => unknown
 }
 
+export type FormattedPrintable = {
+  readonly text: () => string
+  readonly json: () => unknown
+}
+
 export type NamePrintable = {
   readonly name: () => string
 }
@@ -32,7 +37,13 @@ export type TableOutput<TRow extends TablePrintable> = {
   readonly data: TRow
 }
 
-export type CommandOutput = RawOutput | TableOutput<TablePrintable>
+export type FormattedOutput<TData extends FormattedPrintable> = {
+  readonly kind: 'formatted'
+  readonly format: string
+  readonly data: TData
+}
+
+export type CommandOutput = RawOutput | TableOutput<TablePrintable> | FormattedOutput<FormattedPrintable>
 
 export function raw(data: string): RawOutput {
   return { kind: 'raw', data }
@@ -45,12 +56,37 @@ export function table<TRow extends TablePrintable>(opts: {
   return { kind: 'table', ...opts }
 }
 
+export function formatted<TData extends FormattedPrintable>(opts: {
+  readonly format: string
+  readonly data: TData
+}): FormattedOutput<TData> {
+  return { kind: 'formatted', ...opts }
+}
+
 export function stringifyOutput(output: CommandOutput): string {
   switch (output.kind) {
     case 'raw':
       return output.data
     case 'table':
       return stringifyTableOutput(output)
+    case 'formatted':
+      return stringifyFormattedOutput(output)
+  }
+}
+
+function stringifyFormattedOutput(output: FormattedOutput<FormattedPrintable>): string {
+  switch (output.format) {
+    case '':
+    case 'text':
+      return output.data.text()
+    case 'json':
+      return `${JSON.stringify(output.data.json(), null, 2)}\n`
+    case 'yaml':
+      return yaml.dump(output.data.json(), { indent: 2, lineWidth: -1 })
+    case 'name':
+      return `${toName(output.data)}\n`
+    default:
+      throw new Error(`output format ${JSON.stringify(output.format)} not supported, allowed: json, name, text, yaml`)
   }
 }
 
@@ -120,12 +156,12 @@ function formatTable(rows: readonly (readonly string[])[]): string {
   return `${lines.join('\n')}\n`
 }
 
-function toName(data: TablePrintable): string {
+function toName(data: TablePrintable | FormattedPrintable): string {
   if (!isNamePrintable(data))
     throw new Error('name output requires data.name()')
   return data.name()
 }
 
-function isNamePrintable(data: TablePrintable): data is TablePrintable & NamePrintable {
+function isNamePrintable(data: TablePrintable | FormattedPrintable): data is (TablePrintable | FormattedPrintable) & NamePrintable {
   return typeof (data as { name?: unknown }).name === 'function'
 }

@@ -1,4 +1,3 @@
-import type { TextHandler } from '../../../printers/format-text.js'
 import type { AppMeta } from '../../../types/app-meta.js'
 import type { AppDescribeInfo, TagItem } from '../../../types/data-contracts.js'
 
@@ -10,29 +9,21 @@ export type AppDescribePayload = {
   input_schema: unknown
 }
 
-export type AppDescribeObject = {
-  mode: () => string
-  raw: () => AppDescribePayload
-}
+export class AppDescribeOutput {
+  readonly payload: AppDescribePayload
 
-export function newAppDescribeObject(meta: AppMeta): AppDescribeObject {
-  const payload: AppDescribePayload = {
-    info: meta.info,
-    parameters: meta.parameters,
-    input_schema: meta.inputSchema,
+  constructor(meta: AppMeta) {
+    this.payload = {
+      info: meta.info,
+      parameters: meta.parameters,
+      input_schema: meta.inputSchema,
+    }
   }
-  return {
-    mode: () => APP_DESCRIBE_MODE_KEY,
-    raw: () => payload,
-  }
-}
 
-export const appDescribeTextHandler: TextHandler = {
-  render(raw): string {
-    const payload = raw as AppDescribePayload
+  text(): string {
     const lines: string[] = []
-    if (payload.info !== null && payload.info !== undefined) {
-      const info = payload.info
+    if (this.payload.info !== null && this.payload.info !== undefined) {
+      const info = this.payload.info
       const rows: [string, string][] = [
         ['Name', info.name],
         ['ID', info.id],
@@ -48,16 +39,20 @@ export const appDescribeTextHandler: TextHandler = {
         rows.push(['Agent', 'true'])
       lines.push(...alignedRows(rows))
     }
-    if (payload.parameters !== null && payload.parameters !== undefined) {
+    if (this.payload.parameters !== null && this.payload.parameters !== undefined) {
       lines.push('Parameters:')
-      const indented = JSON.stringify(payload.parameters, null, 2)
+      const indented = JSON.stringify(this.payload.parameters, null, 2)
         .split('\n')
         .map(l => `  ${l}`)
         .join('\n')
       lines.push(indented)
     }
     return `${lines.join('\n')}\n`
-  },
+  }
+
+  json(): AppDescribePayload {
+    return this.payload
+  }
 }
 
 function joinTags(tags: readonly TagItem[]): string {
