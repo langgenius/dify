@@ -83,6 +83,14 @@ vi.mock('@/app/components/app-sidebar/app-detail-top', () => ({
   default: () => <div data-testid="app-detail-top" />,
 }))
 
+vi.mock('@/app/components/app-sidebar/dataset-detail-section', () => ({
+  default: () => <div data-testid="dataset-detail-section" />,
+}))
+
+vi.mock('@/app/components/app-sidebar/dataset-detail-top', () => ({
+  default: () => <div data-testid="dataset-detail-top" />,
+}))
+
 vi.mock('@/context/i18n', () => ({
   useLocale: () => 'en-US',
   useDocLink: () => (path: string) => `https://docs.dify.ai${path}`,
@@ -333,6 +341,19 @@ describe('MainNav', () => {
     expect(screen.queryByRole('link', { name: /common.mainNav.home/ })).not.toBeInTheDocument()
     expect(screen.queryByRole('link', { name: /common.menus.apps/ })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'explore.sidebar.webApps' })).not.toBeInTheDocument()
+  })
+
+  it('replaces global navigation with dataset detail navigation on dataset routes', () => {
+    mockPathname = '/datasets/dataset-1/documents'
+
+    renderMainNav()
+
+    expect(screen.getByTestId('dataset-detail-top')).toBeInTheDocument()
+    expect(screen.getByTestId('dataset-detail-section')).toBeInTheDocument()
+    expect(screen.getByRole('complementary')).toHaveClass('bg-components-panel-bg-blur')
+    expect(screen.queryByRole('button', { name: 'common.mainNav.workspace.openMenu' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: /common.mainNav.home/ })).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: /common.menus.datasets/ })).not.toBeInTheDocument()
   })
 
   it('marks marketplace active on marketplace routes', () => {

@@ -7,6 +7,8 @@ import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppDetailSection from '@/app/components/app-sidebar/app-detail-section'
 import AppDetailTop from '@/app/components/app-sidebar/app-detail-top'
+import DatasetDetailSection from '@/app/components/app-sidebar/dataset-detail-section'
+import DatasetDetailTop from '@/app/components/app-sidebar/dataset-detail-top'
 import DifyLogo from '@/app/components/base/logo/dify-logo'
 import EnvNav from '@/app/components/header/env-nav'
 import { buildIntegrationPath } from '@/app/components/tools/integration-routes'
@@ -30,6 +32,8 @@ const MainNav = ({
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const showEnvTag = langGeniusVersionInfo.current_env === 'TESTING' || langGeniusVersionInfo.current_env === 'DEVELOPMENT'
   const showAppDetailNavigation = !isCurrentWorkspaceDatasetOperator && pathname.startsWith('/app/')
+  const showDatasetDetailNavigation = pathname.startsWith('/datasets/')
+  const showDetailNavigation = showAppDetailNavigation || showDatasetDetailNavigation
   const navItems = useMemo<MainNavItem[]>(() => [
     ...(!isCurrentWorkspaceDatasetOperator
       ? [
@@ -101,13 +105,13 @@ const MainNav = ({
     <aside
       className={cn(
         'flex h-full w-[240px] shrink-0 flex-col',
-        showAppDetailNavigation ? 'bg-components-panel-bg-blur' : 'bg-background-body',
+        showDetailNavigation ? 'bg-components-panel-bg-blur' : 'bg-background-body',
         className,
       )}
     >
       <div className="flex min-h-0 flex-1 flex-col">
-        {showAppDetailNavigation
-          ? <AppDetailTop />
+        {showDetailNavigation
+          ? showAppDetailNavigation ? <AppDetailTop /> : <DatasetDetailTop />
           : (
               <>
                 <div className="flex items-center justify-between px-2 pt-4 pb-2">
@@ -119,8 +123,8 @@ const MainNav = ({
                 </div>
               </>
             )}
-        {showAppDetailNavigation
-          ? <AppDetailSection />
+        {showDetailNavigation
+          ? showAppDetailNavigation ? <AppDetailSection /> : <DatasetDetailSection />
           : (
               <>
                 <nav className="space-y-1 p-2">

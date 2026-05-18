@@ -1,10 +1,9 @@
 import { render, screen, waitFor } from '@testing-library/react'
 import { usePathname, useRouter } from '@/next/navigation'
-import { useDatasetDetail, useDatasetRelatedApps } from '@/service/knowledge/use-dataset'
+import { useDatasetDetail } from '@/service/knowledge/use-dataset'
 import DatasetDetailLayout from '../layout-main'
 
 const mockReplace = vi.fn()
-const mockSetAppSidebarExpand = vi.fn()
 
 vi.mock('@/next/navigation', () => ({
   usePathname: vi.fn(),
@@ -13,13 +12,6 @@ vi.mock('@/next/navigation', () => ({
 
 vi.mock('@/service/knowledge/use-dataset', () => ({
   useDatasetDetail: vi.fn(),
-  useDatasetRelatedApps: vi.fn(),
-}))
-
-vi.mock('@/app/components/app/store', () => ({
-  useStore: (selector: (state: { setAppSidebarExpand: typeof mockSetAppSidebarExpand }) => unknown) => selector({
-    setAppSidebarExpand: mockSetAppSidebarExpand,
-  }),
 }))
 
 vi.mock('@/context/app-context', () => ({
@@ -34,29 +26,13 @@ vi.mock('@/context/event-emitter', () => ({
   }),
 }))
 
-vi.mock('@/hooks/use-breakpoints', () => ({
-  default: () => 'desktop',
-  MediaType: {
-    mobile: 'mobile',
-  },
-}))
-
 vi.mock('@/hooks/use-document-title', () => ({
   default: vi.fn(),
-}))
-
-vi.mock('@/app/components/app-sidebar', () => ({
-  default: () => <aside aria-label="dataset navigation" />,
-}))
-
-vi.mock('@/app/components/datasets/extra-info', () => ({
-  default: () => <div />,
 }))
 
 const mockUsePathname = vi.mocked(usePathname)
 const mockUseRouter = vi.mocked(useRouter)
 const mockUseDatasetDetail = vi.mocked(useDatasetDetail)
-const mockUseDatasetRelatedApps = vi.mocked(useDatasetRelatedApps)
 
 describe('DatasetDetailLayout', () => {
   beforeEach(() => {
@@ -70,7 +46,6 @@ describe('DatasetDetailLayout', () => {
       replace: mockReplace,
       prefetch: vi.fn(),
     })
-    mockUseDatasetRelatedApps.mockReturnValue({ data: undefined } as ReturnType<typeof useDatasetRelatedApps>)
   })
 
   describe('Access Errors', () => {
@@ -93,7 +68,6 @@ describe('DatasetDetailLayout', () => {
       await waitFor(() => {
         expect(mockReplace).toHaveBeenCalledWith('/datasets')
       })
-      expect(mockUseDatasetRelatedApps).toHaveBeenCalledWith('dataset-1', { enabled: false })
       expect(screen.queryByText('Pipeline content')).not.toBeInTheDocument()
     })
 
@@ -144,7 +118,6 @@ describe('DatasetDetailLayout', () => {
 
       // Assert
       expect(screen.getByText('Pipeline content')).toBeInTheDocument()
-      expect(mockUseDatasetRelatedApps).toHaveBeenCalledWith('dataset-1', { enabled: true })
       expect(mockReplace).not.toHaveBeenCalled()
     })
   })
