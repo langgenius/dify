@@ -1,6 +1,7 @@
 from typing import Any, cast
 
 from flask_restx import Resource
+
 from controllers.common.fields import Parameters
 from controllers.common.schema import register_response_schema_models
 from controllers.service_api import service_api_ns
