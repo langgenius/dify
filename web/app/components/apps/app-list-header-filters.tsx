@@ -3,12 +3,12 @@
 import type { FC, ReactNode } from 'react'
 import type { AppListCategory } from './hooks/use-apps-query-state'
 import { Button } from '@langgenius/dify-ui/button'
+import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { cn } from '@langgenius/dify-ui/cn'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@langgenius/dify-ui/dropdown-menu'
 import { Select, SelectContent, SelectItem, SelectItemIndicator, SelectItemText, SelectTrigger } from '@langgenius/dify-ui/select'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import Checkbox from '@/app/components/base/checkbox'
 import Input from '@/app/components/base/input'
 import { TagFilter } from '@/features/tag-management/components/tag-filter'
 import { AppModeEnum } from '@/types/app'
@@ -27,7 +27,7 @@ type AppListHeaderFiltersProps = {
   onCategoryChange: (nextValue: string | null) => void
   onTagIDsChange: (tagIDs: string[]) => void
   onKeywordsChange: (keywords: string) => void
-  onCreatedByMeChange: () => void
+  onCreatedByMeChange: (checked: boolean) => void
   onCreateBlank: () => void
   onCreateTemplate: () => void
   onImportDSL: () => void
@@ -102,7 +102,7 @@ const AppListHeaderFilters: FC<AppListHeaderFiltersProps> = ({
       </div>
       <div className="flex items-center gap-2">
         <label className="flex h-8 items-center gap-2 rounded-lg bg-components-input-bg-normal px-2 text-text-secondary">
-          <Checkbox checked={isCreatedByMe} onCheck={onCreatedByMeChange} />
+          <Checkbox checked={isCreatedByMe} onCheckedChange={onCreatedByMeChange} />
           <span className="system-sm-regular whitespace-nowrap">
             {t('showMyCreatedAppsOnly', { ns: 'app' })}
           </span>

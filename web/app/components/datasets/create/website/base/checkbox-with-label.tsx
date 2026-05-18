@@ -9,6 +9,7 @@ type Props = {
   onChange: (isChecked: boolean) => void
   label: string
   labelClassName?: string
+  testId?: string
   tooltip?: string
 }
 
@@ -18,10 +19,11 @@ export default function CheckboxWithLabel({
   onChange,
   label,
   labelClassName,
+  testId,
   tooltip,
 }: Props) {
   return (
-    <div className={cn(className, 'flex h-7 items-center')}>
+    <div className={cn(className, 'flex h-7 items-center')} data-testid={testId}>
       <label className="flex min-w-0 cursor-pointer items-center">
         <Checkbox
           checked={isChecked}

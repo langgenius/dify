@@ -158,9 +158,9 @@ const List: FC<Props> = ({
     return () => observer?.disconnect()
   }, [isLoading, isFetchingNextPage, fetchNextPage, error, hasNextPage, isCurrentWorkspaceDatasetOperator])
 
-  const handleCreatedByMeChange = useCallback(() => {
-    setIsCreatedByMe(!isCreatedByMe)
-  }, [isCreatedByMe, setIsCreatedByMe])
+  const handleCreatedByMeChange = useCallback((checked: boolean) => {
+    setIsCreatedByMe(checked)
+  }, [setIsCreatedByMe])
 
   const categoryRef = useRef(category)
   useEffect(() => {

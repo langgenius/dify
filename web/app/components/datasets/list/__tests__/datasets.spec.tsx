@@ -1,4 +1,4 @@
-import type { DataSet } from '@/models/datasets'
+import type { DataSet, DataSetListResponse } from '@/models/datasets'
 import type { useDatasetList } from '@/service/knowledge/use-dataset'
 import { render, screen, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -144,7 +144,7 @@ class MockIntersectionObserver {
 
 describe('Datasets', () => {
   const createDatasetListData = (
-    pages = [
+    pages: Array<Pick<DataSetListResponse, 'data'> & Partial<Omit<DataSetListResponse, 'data'>>> = [
       {
         data: [
           createMockDataset({ id: 'dataset-1', name: 'Dataset 1' }),
@@ -153,7 +153,13 @@ describe('Datasets', () => {
       },
     ],
   ) => ({
-    pages,
+    pages: pages.map((page, index) => ({
+      has_more: false,
+      limit: page.data.length,
+      page: index + 1,
+      total: page.data.length,
+      ...page,
+    })),
     pageParams: pages.map((_, index) => index + 1),
   }) as unknown as ReturnType<typeof useDatasetList>['data']
 
