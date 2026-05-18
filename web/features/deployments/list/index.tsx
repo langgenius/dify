@@ -10,9 +10,9 @@ import Input from '@/app/components/base/input'
 import { SkeletonRectangle } from '@/app/components/base/skeleton'
 import { consoleQuery } from '@/service/client'
 import { getNextPageParamFromPagination, SOURCE_APPS_PAGE_SIZE } from '../data'
+import { CreateDeploymentButton } from './create-deployment-button'
 import { EnvironmentFilter } from './environment-filter'
 import { InstanceCard } from './instance-card'
-import { NewInstanceCard } from './new-instance-card'
 import { envFilterQueryState, keywordsQueryState } from './query-state'
 
 const INSTANCE_CARD_SKELETON_KEYS = ['first', 'second', 'third', 'fourth', 'fifth', 'sixth']
@@ -114,7 +114,8 @@ function DeploymentsSearchInput() {
 
 function DeploymentsListControls() {
   return (
-    <div className="sticky top-0 z-10 flex flex-wrap items-center justify-end gap-y-2 bg-background-body px-12 pt-7 pb-5">
+    <div className="sticky top-0 z-10 flex flex-wrap items-center justify-between gap-3 bg-background-body px-12 pt-7 pb-5">
+      <CreateDeploymentButton />
       <div className="flex items-center gap-2">
         <EnvironmentFilter />
         <DeploymentsSearchInput />
@@ -190,7 +191,6 @@ export function DeploymentsList() {
         showEmptyState && 'overflow-hidden',
       )}
       >
-        <NewInstanceCard />
         {showSkeleton
           ? <DeploymentsListSkeleton />
           : isError
