@@ -122,6 +122,10 @@ export function buildApp(getScenario: () => Scenario, state?: MockState): Hono {
       await next()
       return
     }
+    if (c.req.path === '/openapi/v1/_version') {
+      await next()
+      return
+    }
     const auth = c.req.header('Authorization') ?? ''
     if (!TOKEN_RE.test(auth))
       return unauthorized()
@@ -129,6 +133,15 @@ export function buildApp(getScenario: () => Scenario, state?: MockState): Hono {
     if (scenario === 'auth-expired')
       return unauthorized()
     await next()
+  })
+
+  app.get('/openapi/v1/_version', (c) => {
+    const scenario = getScenario()
+    if (scenario === 'server-version-empty')
+      return c.json({ version: '', edition: 'SELF_HOSTED' })
+    if (scenario === 'server-version-unsupported')
+      return c.json({ version: '99.0.0', edition: 'SELF_HOSTED' })
+    return c.json({ version: '1.6.4', edition: 'CLOUD' })
   })
 
   app.use('*', async (c, next) => {

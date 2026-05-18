@@ -216,6 +216,13 @@ class DeviceMutateResponse(BaseModel):
     status: str
 
 
+class ServerVersionResponse(BaseModel):
+    """Meta endpoint payload for `GET /openapi/v1/_version` — no auth required."""
+
+    version: str
+    edition: Literal["SELF_HOSTED", "CLOUD"]
+
+
 class AppDescribeQuery(BaseModel):
     """`?fields=` allow-list for GET /apps/<id>/describe.
 

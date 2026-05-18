@@ -4,6 +4,9 @@ import { resolveBuildInfo } from '../../scripts/lib/resolve-buildinfo.js'
 const FIXED_DATE = new Date('2026-05-09T12:00:00.000Z')
 const fixedNow = () => FIXED_DATE
 const noGit = () => null
+// Stub the package.json reader so tests exercise the "no sources" path
+// without coupling to the live cli/package.json#difyctl.compat values.
+const noPkg = () => ({})
 
 describe('resolveBuildInfo', () => {
   it('uses env values when fully populated', () => {
@@ -16,6 +19,7 @@ describe('resolveBuildInfo', () => {
       },
       git: () => 'should-not-be-called',
       now: fixedNow,
+      pkg: noPkg,
     })
     expect(info).toStrictEqual({
       version: '1.2.3',
@@ -37,7 +41,7 @@ describe('resolveBuildInfo', () => {
         return '1234567890abcdef'
       return null
     }
-    const info = resolveBuildInfo({ env: {}, git, now: fixedNow })
+    const info = resolveBuildInfo({ env: {}, git, now: fixedNow, pkg: noPkg })
     expect(info).toStrictEqual({
       version: 'v1.0.0-5-gabc1234-dirty',
       commit: '1234567890abcdef',
@@ -52,8 +56,8 @@ describe('resolveBuildInfo', () => {
     ])
   })
 
-  it('uses string defaults when env unset and git unavailable', () => {
-    const info = resolveBuildInfo({ env: {}, git: noGit, now: fixedNow })
+  it('uses string defaults when env unset, git unavailable, and package.json empty', () => {
+    const info = resolveBuildInfo({ env: {}, git: noGit, now: fixedNow, pkg: noPkg })
     expect(info).toStrictEqual({
       version: '0.0.0-dev',
       commit: 'none',
@@ -66,13 +70,13 @@ describe('resolveBuildInfo', () => {
 
   it('throws on invalid channel', () => {
     expect(() =>
-      resolveBuildInfo({ env: { DIFYCTL_CHANNEL: 'beta' }, git: noGit, now: fixedNow }),
+      resolveBuildInfo({ env: { DIFYCTL_CHANNEL: 'beta' }, git: noGit, now: fixedNow, pkg: noPkg }),
     ).toThrow(/invalid DIFYCTL_CHANNEL: beta/)
   })
 
   it('throws on removed nightly channel', () => {
     expect(() =>
-      resolveBuildInfo({ env: { DIFYCTL_CHANNEL: 'nightly' }, git: noGit, now: fixedNow }),
+      resolveBuildInfo({ env: { DIFYCTL_CHANNEL: 'nightly' }, git: noGit, now: fixedNow, pkg: noPkg }),
     ).toThrow(/invalid DIFYCTL_CHANNEL: nightly/)
   })
 
@@ -86,6 +90,7 @@ describe('resolveBuildInfo', () => {
       },
       git: noGit,
       now: fixedNow,
+      pkg: noPkg,
     })
     expect(info.channel).toBe('rc')
   })
@@ -96,6 +101,7 @@ describe('resolveBuildInfo', () => {
       env: { DIFYCTL_COMMIT: 'pinned-sha' },
       git,
       now: fixedNow,
+      pkg: noPkg,
     })
     expect(info.version).toBe('v9.9.9')
     expect(info.commit).toBe('pinned-sha')
@@ -114,14 +120,40 @@ describe('resolveBuildInfo', () => {
       },
       git: noGit,
       now: fixedNow,
+      pkg: noPkg,
     })
     expect(info.minDify).toBe('1.6.0')
     expect(info.maxDify).toBe('1.7.0')
   })
 
-  it('defaults minDify and maxDify to 0.0.0 when env unset', () => {
-    const info = resolveBuildInfo({ env: {}, git: noGit, now: fixedNow })
+  it('defaults minDify and maxDify to 0.0.0 when env and package.json are unset', () => {
+    const info = resolveBuildInfo({ env: {}, git: noGit, now: fixedNow, pkg: noPkg })
     expect(info.minDify).toBe('0.0.0')
     expect(info.maxDify).toBe('0.0.0')
+  })
+
+  it('falls back to package.json#difyctl.compat when env unset', () => {
+    const pkg = () => ({ difyctl: { compat: { minDify: '1.6.0', maxDify: '1.7.0' }, channel: 'rc' } })
+    const info = resolveBuildInfo({ env: {}, git: noGit, now: fixedNow, pkg })
+    expect(info.minDify).toBe('1.6.0')
+    expect(info.maxDify).toBe('1.7.0')
+    expect(info.channel).toBe('rc')
+  })
+
+  it('env wins over package.json for compat range and channel', () => {
+    const pkg = () => ({ difyctl: { compat: { minDify: '1.6.0', maxDify: '1.7.0' }, channel: 'rc' } })
+    const info = resolveBuildInfo({
+      env: {
+        DIFYCTL_MIN_DIFY: '2.0.0',
+        DIFYCTL_MAX_DIFY: '2.1.0',
+        DIFYCTL_CHANNEL: 'stable',
+      },
+      git: noGit,
+      now: fixedNow,
+      pkg,
+    })
+    expect(info.minDify).toBe('2.0.0')
+    expect(info.maxDify).toBe('2.1.0')
+    expect(info.channel).toBe('stable')
   })
 })

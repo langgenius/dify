@@ -10,6 +10,8 @@ export type Scenario
     | 'stream-error'
     | 'hitl-pause'
     | 'hitl-resume'
+    | 'server-version-empty'
+    | 'server-version-unsupported'
 
 export type AccountFixture = {
   id: string
