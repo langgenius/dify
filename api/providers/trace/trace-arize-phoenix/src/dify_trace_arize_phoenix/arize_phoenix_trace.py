@@ -147,11 +147,11 @@ def _app_uses_phoenix_provider(app_tracing_config: Mapping[str, Any] | None) -> 
 
 
 def _parent_workflow_can_publish_span_context(parent_workflow_run_id: str) -> bool:
-    parent_run = db.session.query(WorkflowRun).filter(WorkflowRun.id == parent_workflow_run_id).first()
+    parent_run = db.session.query(WorkflowRun).where(WorkflowRun.id == parent_workflow_run_id).first()
     if parent_run is None:
         return True
 
-    parent_app = db.session.query(App).filter(App.id == parent_run.app_id).first()
+    parent_app = db.session.query(App).where(App.id == parent_run.app_id).first()
     if parent_app is None or not parent_app.tracing:
         return False
 
