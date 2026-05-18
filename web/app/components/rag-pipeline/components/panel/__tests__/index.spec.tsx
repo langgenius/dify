@@ -56,7 +56,7 @@ const { dynamicMocks, mockInputFieldEditorProps } = vi.hoisted(() => {
   return { dynamicMocks: { createMockComponent }, mockInputFieldEditorProps }
 })
 
-vi.mock('next/dynamic', () => ({
+vi.mock('@/next/dynamic', () => ({
   default: (_loader: () => Promise<{ default: React.ComponentType }>, _options?: Record<string, unknown>) => {
     return dynamicMocks.createMockComponent()
   },

@@ -7,7 +7,7 @@ import { useMarketplaceAllPlugins } from '../hooks'
 import InstallFromMarketplace from '../install-from-marketplace'
 
 // Mock dependencies
-vi.mock('next/link', () => ({
+vi.mock('@/next/link', () => ({
   default: ({ children, href }: { children: React.ReactNode, href: string }) => <a href={href}>{children}</a>,
 }))
 
@@ -61,8 +61,15 @@ describe('InstallFromMarketplace', () => {
 
   it('should collapse when clicked', () => {
     render(<InstallFromMarketplace providers={mockProviders} searchText="" />)
-    fireEvent.click(screen.getByText('common.modelProvider.installProvider'))
+    const toggle = screen.getByRole('button', { name: /common\.modelProvider\.installProvider/ })
+
+    fireEvent.click(toggle)
     expect(screen.queryByTestId('plugin-list')).not.toBeInTheDocument()
+    expect(toggle).toHaveAttribute('aria-expanded', 'false')
+
+    fireEvent.click(toggle)
+    expect(toggle).toHaveAttribute('aria-expanded', 'true')
+    expect(screen.getByTestId('plugin-list')).toBeInTheDocument()
   })
 
   it('should show loading state', () => {

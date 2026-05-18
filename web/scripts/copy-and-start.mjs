@@ -8,21 +8,6 @@ import { spawn } from 'node:child_process'
 import { cp, mkdir, stat } from 'node:fs/promises'
 import path from 'node:path'
 
-// Configuration for directories to copy
-const DIRS_TO_COPY = [
-  {
-    src: path.join('.next', 'static'),
-    dest: path.join('.next', 'standalone', '.next', 'static'),
-  },
-  {
-    src: 'public',
-    dest: path.join('.next', 'standalone', 'public'),
-  },
-]
-
-// Path to the server script
-const SERVER_SCRIPT_PATH = path.join('.next', 'standalone', 'server.js')
-
 // Function to check if a path exists
 const pathExists = async (path) => {
   try {
@@ -40,6 +25,23 @@ const pathExists = async (path) => {
   }
 }
 
+const STANDALONE_ROOT_CANDIDATES = [
+  path.join('.next', 'standalone', 'web'),
+  path.join('.next', 'standalone'),
+]
+
+const getStandaloneRoot = async () => {
+  for (const standaloneRoot of STANDALONE_ROOT_CANDIDATES) {
+    const serverScriptPath = path.join(standaloneRoot, 'server.js')
+    if (await pathExists(serverScriptPath))
+      return standaloneRoot
+  }
+
+  throw new Error(
+    `Unable to find Next standalone server entry. Checked: ${STANDALONE_ROOT_CANDIDATES.join(', ')}`,
+  )
+}
+
 // Function to recursively copy directories
 const copyDir = async (src, dest) => {
   console.debug(`Copying directory from ${src} to ${dest}`)
@@ -48,9 +50,20 @@ const copyDir = async (src, dest) => {
 }
 
 // Process each directory copy operation
-const copyAllDirs = async () => {
+const copyAllDirs = async (standaloneRoot) => {
+  const dirsToCopy = [
+    {
+      src: path.join('.next', 'static'),
+      dest: path.join(standaloneRoot, '.next', 'static'),
+    },
+    {
+      src: 'public',
+      dest: path.join(standaloneRoot, 'public'),
+    },
+  ]
+
   console.debug('Starting directory copy operations')
-  for (const { src, dest } of DIRS_TO_COPY) {
+  for (const { src, dest } of dirsToCopy) {
     try {
       // Instead of pre-creating destination directory, we ensure parent directory exists
       const destParent = path.dirname(dest)
@@ -75,19 +88,22 @@ const copyAllDirs = async () => {
 // Run copy operations and start server
 const main = async () => {
   console.debug('Starting copy-and-start script')
-  await copyAllDirs()
+  const standaloneRoot = await getStandaloneRoot()
+  const serverScriptPath = path.join(standaloneRoot, 'server.js')
+
+  await copyAllDirs(standaloneRoot)
 
   // Start server
   const port = process.env.npm_config_port || process.env.PORT || '3000'
   const host = process.env.npm_config_host || process.env.HOSTNAME || '0.0.0.0'
 
   console.info(`Starting server on ${host}:${port}`)
-  console.debug(`Server script path: ${SERVER_SCRIPT_PATH}`)
+  console.debug(`Server script path: ${serverScriptPath}`)
   console.debug(`Environment variables - PORT: ${port}, HOSTNAME: ${host}`)
 
   const server = spawn(
     process.execPath,
-    [SERVER_SCRIPT_PATH],
+    [serverScriptPath],
     {
       env: {
         ...process.env,

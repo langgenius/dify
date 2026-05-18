@@ -1,12 +1,13 @@
 import type { FileEntity } from '../types'
+import { Button } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
-import Button from '@/app/components/base/button'
 import AudioPreview from '@/app/components/base/file-uploader/audio-preview'
 import PdfPreview from '@/app/components/base/file-uploader/dynamic-pdf-preview'
 import VideoPreview from '@/app/components/base/file-uploader/video-preview'
 import ProgressCircle from '@/app/components/base/progress-bar/progress-circle'
-import { cn } from '@/utils/classnames'
 import { downloadUrl } from '@/utils/download'
 import { formatFileSize } from '@/utils/format'
 import FileTypeIcon from '../file-type-icon'
@@ -32,10 +33,12 @@ const FileItem = ({
   onReUpload,
   canPreview,
 }: FileItemProps) => {
+  const { t } = useTranslation()
   const { id, name, type, progress, url, base64Url, isRemote } = file
   const [previewUrl, setPreviewUrl] = useState('')
   const ext = getFileExtension(name, type, isRemote)
   const uploadError = progress === -1
+  const [typeCategory = '', typeSubtype = ''] = type?.split('/') ?? []
 
   let tmp_preview_url = url || base64Url
   if (!tmp_preview_url && file?.originalFile)
@@ -55,23 +58,23 @@ const FileItem = ({
         {
           showDeleteAction && (
             <Button
-              className="absolute -right-1.5 -top-1.5 z-[11] hidden h-5 w-5 rounded-full p-0 group-hover/file-item:flex"
+              aria-label={t('operation.remove', { ns: 'common' })}
+              className="absolute -top-1.5 -right-1.5 z-11 hidden h-5 w-5 rounded-full p-0 group-hover/file-item:flex"
               onClick={() => onRemove?.(id)}
-              data-testid="delete-button"
             >
-              <span className="i-ri-close-line h-4 w-4 text-components-button-secondary-text" />
+              <span className="i-ri-close-line h-4 w-4 text-components-button-secondary-text" aria-hidden="true" />
             </Button>
           )
         }
         <div
-          className="mb-1 line-clamp-2 h-8 cursor-pointer break-all text-text-tertiary system-xs-medium"
+          className="mb-1 line-clamp-2 h-8 cursor-pointer system-xs-medium break-all text-text-tertiary"
           title={name}
           onClick={() => canPreview && setPreviewUrl(tmp_preview_url || '')}
         >
           {name}
         </div>
         <div className="relative flex items-center justify-between">
-          <div className="flex items-center text-text-tertiary system-2xs-medium-uppercase">
+          <div className="flex items-center system-2xs-medium-uppercase text-text-tertiary">
             <FileTypeIcon
               size="sm"
               type={getFileAppearanceType(name, type)}
@@ -92,15 +95,15 @@ const FileItem = ({
           {
             showDownloadAction && download_url && (
               <ActionButton
+                aria-label={t('operation.download', { ns: 'common' })}
                 size="m"
-                className="absolute -right-1 -top-1 hidden group-hover/file-item:flex"
+                className="absolute -top-1 -right-1 hidden group-hover/file-item:flex"
                 onClick={(e) => {
                   e.stopPropagation()
                   downloadUrl({ url: download_url || '', fileName: name, target: '_blank' })
                 }}
-                data-testid="download-button"
               >
-                <span className="i-ri-download-line h-3.5 w-3.5 text-text-tertiary" />
+                <span className="i-ri-download-line h-3.5 w-3.5 text-text-tertiary" aria-hidden="true" />
               </ActionButton>
             )
           }
@@ -115,13 +118,20 @@ const FileItem = ({
           }
           {
             uploadError && (
-              <span className="i-custom-vender-other-replay-line h-4 w-4 cursor-pointer text-text-tertiary" onClick={() => onReUpload?.(id)} data-testid="replay-icon" role="button" tabIndex={0} />
+              <button
+                type="button"
+                aria-label={t('operation.retry', { ns: 'common' })}
+                className="h-4 w-4 cursor-pointer border-none bg-transparent p-0 text-text-tertiary focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
+                onClick={() => onReUpload?.(id)}
+              >
+                <span className="i-custom-vender-other-replay-line block h-4 w-4" aria-hidden="true" />
+              </button>
             )
           }
         </div>
       </div>
       {
-        type.split('/')[0] === 'audio' && canPreview && previewUrl && (
+        typeCategory === 'audio' && canPreview && previewUrl && (
           <AudioPreview
             title={name}
             url={previewUrl}
@@ -130,7 +140,7 @@ const FileItem = ({
         )
       }
       {
-        type.split('/')[0] === 'video' && canPreview && previewUrl && (
+        typeCategory === 'video' && canPreview && previewUrl && (
           <VideoPreview
             title={name}
             url={previewUrl}
@@ -139,7 +149,7 @@ const FileItem = ({
         )
       }
       {
-        type.split('/')[1] === 'pdf' && canPreview && previewUrl && (
+        typeSubtype === 'pdf' && canPreview && previewUrl && (
           <PdfPreview url={previewUrl} onCancel={() => { setPreviewUrl('') }} />
         )
       }

@@ -2,7 +2,7 @@ from flask_restx import Resource
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
-from controllers.common.schema import register_schema_models
+from controllers.common.schema import register_enum_models, register_schema_models
 from controllers.console.app.wraps import get_app_model
 from controllers.console.wraps import (
     account_initialization_required,
@@ -11,16 +11,14 @@ from controllers.console.wraps import (
     setup_required,
 )
 from extensions.ext_database import db
-from fields.app_fields import AppImport, AppImportCheckDependencies, LeakedDependency
 from libs.login import current_account_with_tenant, login_required
 from models.model import App
-from services.app_dsl_service import AppDslService, ImportStatus
+from services.app_dsl_service import AppDslService, Import
 from services.enterprise.enterprise_service import EnterpriseService
+from services.entities.dsl_entities import CheckDependenciesResult, ImportStatus
 from services.feature_service import FeatureService
 
 from .. import console_ns
-
-DEFAULT_REF_TEMPLATE_SWAGGER_2_0 = "#/definitions/{model}"
 
 
 class AppImportPayload(BaseModel):
@@ -35,20 +33,16 @@ class AppImportPayload(BaseModel):
     app_id: str | None = Field(None)
 
 
-console_ns.schema_model(
-    AppImportPayload.__name__, AppImportPayload.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0)
-)
-register_schema_models(
-    console_ns,
-    AppImport,
-    AppImportCheckDependencies,
-    LeakedDependency,
-)
+register_enum_models(console_ns, ImportStatus)
+register_schema_models(console_ns, AppImportPayload, Import, CheckDependenciesResult)
 
 
 @console_ns.route("/apps/imports")
 class AppImportApi(Resource):
     @console_ns.expect(console_ns.models[AppImportPayload.__name__])
+    @console_ns.response(200, "Import completed", console_ns.models[Import.__name__])
+    @console_ns.response(202, "Import pending confirmation", console_ns.models[Import.__name__])
+    @console_ns.response(400, "Import failed", console_ns.models[Import.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -59,8 +53,9 @@ class AppImportApi(Resource):
         current_user, _ = current_account_with_tenant()
         args = AppImportPayload.model_validate(console_ns.payload)
 
-        # Create service with session
-        with Session(db.engine) as session:
+        # AppDslService performs internal commits for some creation paths, so use a plain
+        # Session here instead of nesting it inside sessionmaker(...).begin().
+        with Session(db.engine, expire_on_commit=False) as session:
             import_service = AppDslService(session)
             # Import app
             account = current_user
@@ -76,21 +71,28 @@ class AppImportApi(Resource):
                 icon_background=args.icon_background,
                 app_id=args.app_id,
             )
-            session.commit()
+            if result.status == ImportStatus.FAILED:
+                session.rollback()
+            else:
+                session.commit()
         if result.app_id and FeatureService.get_system_features().webapp_auth.enabled:
             # update web app setting as private
             EnterpriseService.WebAppAuth.update_app_access_mode(result.app_id, "private")
         # Return appropriate status code based on result
         status = result.status
-        if status == ImportStatus.FAILED:
-            return result.model_dump(mode="json"), 400
-        elif status == ImportStatus.PENDING:
-            return result.model_dump(mode="json"), 202
-        return result.model_dump(mode="json"), 200
+        match status:
+            case ImportStatus.FAILED:
+                return result.model_dump(mode="json"), 400
+            case ImportStatus.PENDING:
+                return result.model_dump(mode="json"), 202
+            case ImportStatus.COMPLETED | ImportStatus.COMPLETED_WITH_WARNINGS:
+                return result.model_dump(mode="json"), 200
 
 
 @console_ns.route("/apps/imports/<string:import_id>/confirm")
 class AppImportConfirmApi(Resource):
+    @console_ns.response(200, "Import confirmed", console_ns.models[Import.__name__])
+    @console_ns.response(400, "Import failed", console_ns.models[Import.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -99,13 +101,15 @@ class AppImportConfirmApi(Resource):
         # Check user role first
         current_user, _ = current_account_with_tenant()
 
-        # Create service with session
-        with Session(db.engine) as session:
+        with Session(db.engine, expire_on_commit=False) as session:
             import_service = AppDslService(session)
             # Confirm import
             account = current_user
             result = import_service.confirm_import(import_id=import_id, account=account)
-            session.commit()
+            if result.status == ImportStatus.FAILED:
+                session.rollback()
+            else:
+                session.commit()
 
         # Return appropriate status code based on result
         if result.status == ImportStatus.FAILED:
@@ -115,13 +119,14 @@ class AppImportConfirmApi(Resource):
 
 @console_ns.route("/apps/imports/<string:app_id>/check-dependencies")
 class AppImportCheckDependenciesApi(Resource):
+    @console_ns.response(200, "Dependencies checked", console_ns.models[CheckDependenciesResult.__name__])
     @setup_required
     @login_required
     @get_app_model(mode=None)
     @account_initialization_required
     @edit_permission_required
     def get(self, app_model: App):
-        with Session(db.engine) as session:
+        with Session(db.engine, expire_on_commit=False) as session:
             import_service = AppDslService(session)
             result = import_service.check_dependencies(app_model=app_model)
 

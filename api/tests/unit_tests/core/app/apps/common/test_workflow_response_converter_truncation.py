@@ -5,6 +5,7 @@ Unit tests for WorkflowResponseConverter focusing on process_data truncation fun
 import uuid
 from collections.abc import Mapping
 from dataclasses import dataclass
+from datetime import UTC, datetime
 from typing import Any
 from unittest.mock import Mock
 
@@ -23,9 +24,9 @@ from core.app.entities.queue_entities import (
     QueueNodeStartedEvent,
     QueueNodeSucceededEvent,
 )
-from dify_graph.entities.workflow_start_reason import WorkflowStartReason
-from dify_graph.enums import BuiltinNodeTypes
-from dify_graph.system_variable import SystemVariable
+from core.workflow.system_variables import build_system_variables
+from graphon.entities import WorkflowStartReason
+from graphon.enums import BuiltinNodeTypes
 from libs.datetime_utils import naive_utc_now
 from models import Account
 from models.model import AppMode
@@ -53,7 +54,7 @@ class TestWorkflowResponseConverter:
         mock_user.name = "Test User"
         mock_user.email = "test@example.com"
 
-        system_variables = SystemVariable(workflow_id="wf-id", workflow_execution_id="initial-run-id")
+        system_variables = build_system_variables(workflow_id="wf-id", workflow_execution_id="initial-run-id")
         return WorkflowResponseConverter(
             application_generate_entity=mock_entity,
             user=mock_user,
@@ -234,6 +235,50 @@ class TestWorkflowResponseConverter:
         assert response.data.process_data == {}
         assert response.data.process_data_truncated is False
 
+    def test_workflow_node_finish_response_prefers_event_finished_at(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Finished timestamps should come from the event, not delayed queue processing time."""
+        converter = self.create_workflow_response_converter()
+        start_at = datetime(2024, 1, 1, 0, 0, 0, tzinfo=UTC).replace(tzinfo=None)
+        finished_at = datetime(2024, 1, 1, 0, 0, 2, tzinfo=UTC).replace(tzinfo=None)
+        delayed_processing_time = datetime(2024, 1, 1, 0, 0, 10, tzinfo=UTC).replace(tzinfo=None)
+
+        monkeypatch.setattr(
+            "core.app.apps.common.workflow_response_converter.naive_utc_now",
+            lambda: delayed_processing_time,
+        )
+        converter.workflow_start_to_stream_response(
+            task_id="bootstrap",
+            workflow_run_id="run-id",
+            workflow_id="wf-id",
+            reason=WorkflowStartReason.INITIAL,
+        )
+
+        event = QueueNodeSucceededEvent(
+            node_id="test-node-id",
+            node_type=BuiltinNodeTypes.CODE,
+            node_execution_id="node-exec-1",
+            start_at=start_at,
+            finished_at=finished_at,
+            in_iteration_id=None,
+            in_loop_id=None,
+            inputs={},
+            process_data={},
+            outputs={},
+            execution_metadata={},
+        )
+
+        response = converter.workflow_node_finish_to_stream_response(
+            event=event,
+            task_id="test-task-id",
+        )
+
+        assert response is not None
+        assert response.data.elapsed_time == 2.0
+        assert response.data.finished_at == int(finished_at.timestamp())
+
     def test_workflow_node_retry_response_uses_truncated_process_data(self):
         """Test that node retry response uses get_response_process_data()."""
         converter = self.create_workflow_response_converter()
@@ -406,9 +451,9 @@ class TestWorkflowResponseConverterServiceApiTruncation:
         account.id = "test_user_id"
         return account
 
-    def create_test_system_variables(self) -> SystemVariable:
+    def create_test_system_variables(self):
         """Create test system variables."""
-        return SystemVariable()
+        return build_system_variables()
 
     def create_test_converter(self, invoke_from: InvokeFrom) -> WorkflowResponseConverter:
         """Create WorkflowResponseConverter with specified invoke_from."""

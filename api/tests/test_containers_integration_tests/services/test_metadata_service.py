@@ -5,6 +5,7 @@ from faker import Faker
 from sqlalchemy.orm import Session
 
 from core.rag.index_processor.constant.built_in_field import BuiltInField
+from core.rag.index_processor.constant.index_type import IndexStructureType
 from models import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.dataset import Dataset, DatasetMetadata, DatasetMetadataBinding, Document
 from models.enums import DatasetMetadataType, DataSourceType, DocumentCreatedFrom
@@ -139,7 +140,7 @@ class TestMetadataService:
             name=fake.file_name(),
             created_from=DocumentCreatedFrom.WEB,
             created_by=account.id,
-            doc_form="text",
+            doc_form=IndexStructureType.PARAGRAPH_INDEX,
             doc_language="en",
         )
 

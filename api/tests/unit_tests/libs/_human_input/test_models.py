@@ -6,14 +6,15 @@ from datetime import datetime, timedelta
 
 import pytest
 
-from dify_graph.nodes.human_input.entities import (
-    FormInput,
-    UserAction,
+from graphon.nodes.human_input.entities import (
+    ParagraphInputConfig,
+    UserActionConfig,
 )
-from dify_graph.nodes.human_input.enums import (
+from graphon.nodes.human_input.enums import (
     FormInputType,
     TimeoutUnit,
 )
+from libs.datetime_utils import naive_utc_now
 
 from .support import FormSubmissionData, FormSubmissionRequest, HumanInputForm
 
@@ -31,8 +32,8 @@ class TestHumanInputForm:
             "tenant_id": "tenant-abc",
             "app_id": "app-def",
             "form_content": "# Test Form\n\nInput: {{#$output.input#}}",
-            "inputs": [FormInput(type=FormInputType.TEXT_INPUT, output_variable_name="input", default=None)],
-            "user_actions": [UserAction(id="submit", title="Submit")],
+            "inputs": [ParagraphInputConfig(type=FormInputType.PARAGRAPH, output_variable_name="input", default=None)],
+            "user_actions": [UserActionConfig(id="submit", title="Submit")],
             "timeout": 2,
             "timeout_unit": TimeoutUnit.HOUR,
             "form_token": "token-xyz",
@@ -83,7 +84,7 @@ class TestHumanInputForm:
     def test_form_expiry_property_expired(self, sample_form_data):
         """Test is_expired property for expired form."""
         # Create form with past expiry
-        past_time = datetime.utcnow() - timedelta(hours=1)
+        past_time = naive_utc_now() - timedelta(hours=1)
         sample_form_data["created_at"] = past_time
 
         form = HumanInputForm(**sample_form_data)
@@ -111,9 +112,9 @@ class TestHumanInputForm:
         """Test form submit method."""
         form = HumanInputForm(**sample_form_data)
 
-        submission_time_before = datetime.utcnow()
+        submission_time_before = naive_utc_now()
         form.submit({"input": "test value"}, "submit")
-        submission_time_after = datetime.utcnow()
+        submission_time_after = naive_utc_now()
 
         assert form.is_submitted
         assert form.submitted_data == {"input": "test value"}
@@ -131,7 +132,7 @@ class TestHumanInputForm:
         assert "site" not in response
         assert response["form_content"] == "# Test Form\n\nInput: {{#$output.input#}}"
         assert len(response["inputs"]) == 1
-        assert response["inputs"][0]["type"] == "text-input"
+        assert response["inputs"][0]["type"] == "paragraph"
         assert response["inputs"][0]["output_variable_name"] == "input"
 
     def test_form_to_response_dict_with_site_info(self, sample_form_data):
@@ -213,11 +214,11 @@ class TestFormSubmissionData:
 
     def test_submission_data_timestamps(self):
         """Test submission data timestamp handling."""
-        before_time = datetime.utcnow()
+        before_time = naive_utc_now()
 
         submission_data = FormSubmissionData(form_id="form-123", inputs={"test": "value"}, action="submit")
 
-        after_time = datetime.utcnow()
+        after_time = naive_utc_now()
 
         assert before_time <= submission_data.submitted_at <= after_time
 

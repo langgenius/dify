@@ -1,10 +1,10 @@
 import { act, render, screen } from '@testing-library/react'
-import { usePathname } from 'next/navigation'
 import { vi } from 'vitest'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
+import { usePathname } from '@/next/navigation'
 import HeaderWrapper from '../header-wrapper'
 
-vi.mock('next/navigation', () => ({
+vi.mock('@/next/navigation', () => ({
   usePathname: vi.fn(),
 }))
 

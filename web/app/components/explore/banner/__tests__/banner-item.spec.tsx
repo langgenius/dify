@@ -1,3 +1,4 @@
+import type { ComponentProps } from 'react'
 import type { Banner } from '@/models/app'
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -5,6 +6,11 @@ import { BannerItem } from '../banner-item'
 
 const mockScrollTo = vi.fn()
 const mockSlideNodes = vi.fn()
+const mockTrackEvent = vi.fn()
+
+vi.mock('@/app/components/base/amplitude', () => ({
+  trackEvent: (...args: unknown[]) => mockTrackEvent(...args),
+}))
 
 vi.mock('@/app/components/base/carousel', () => ({
   useCarousel: () => ({
@@ -48,19 +54,34 @@ class MockResizeObserver {
   }
 }
 
+const renderBannerItem = (
+  banner: Banner = createMockBanner(),
+  props: Partial<ComponentProps<typeof BannerItem>> = {},
+) => {
+  return render(
+    <BannerItem
+      banner={banner}
+      autoplayDelay={5000}
+      sort={1}
+      language="en-US"
+      {...props}
+    />,
+  )
+}
+
 describe('BannerItem', () => {
   let mockWindowOpen: ReturnType<typeof vi.spyOn>
 
   beforeEach(() => {
     mockWindowOpen = vi.spyOn(window, 'open').mockImplementation(() => null)
-    mockSlideNodes.mockReturnValue([{}, {}, {}]) // 3 slides
+    mockSlideNodes.mockReturnValue([{}, {}, {}])
 
     vi.stubGlobal('ResizeObserver', MockResizeObserver)
 
     Object.defineProperty(window, 'innerWidth', {
       writable: true,
       configurable: true,
-      value: 1400, // Above RESPONSIVE_BREAKPOINT (1200)
+      value: 1400,
     })
   })
 
@@ -73,81 +94,51 @@ describe('BannerItem', () => {
 
   describe('basic rendering', () => {
     it('renders banner category', () => {
-      const banner = createMockBanner()
-      render(
-        <BannerItem
-          banner={banner}
-          autoplayDelay={5000}
-        />,
-      )
-
+      renderBannerItem()
       expect(screen.getByText('Featured')).toBeInTheDocument()
     })
 
     it('renders banner title', () => {
-      const banner = createMockBanner()
-      render(
-        <BannerItem
-          banner={banner}
-          autoplayDelay={5000}
-        />,
-      )
-
+      renderBannerItem()
       expect(screen.getByText('Test Banner Title')).toBeInTheDocument()
     })
 
     it('renders banner description', () => {
-      const banner = createMockBanner()
-      render(
-        <BannerItem
-          banner={banner}
-          autoplayDelay={5000}
-        />,
-      )
-
+      renderBannerItem()
       expect(screen.getByText('Test banner description text')).toBeInTheDocument()
     })
 
     it('renders banner image with correct src and alt', () => {
-      const banner = createMockBanner()
-      render(
-        <BannerItem
-          banner={banner}
-          autoplayDelay={5000}
-        />,
-      )
-
+      renderBannerItem()
       const image = screen.getByRole('img')
       expect(image).toHaveAttribute('src', 'https://example.com/image.png')
       expect(image).toHaveAttribute('alt', 'Test Banner Title')
     })
 
     it('renders view more text', () => {
-      const banner = createMockBanner()
-      render(
-        <BannerItem
-          banner={banner}
-          autoplayDelay={5000}
-        />,
-      )
-
+      renderBannerItem()
       expect(screen.getByText('explore.banner.viewMore')).toBeInTheDocument()
     })
   })
 
   describe('click handling', () => {
-    it('opens banner link in new tab when clicked', () => {
+    it('opens banner link in new tab and tracks click when clicked', () => {
       const banner = createMockBanner({ link: 'https://test-link.com' })
-      render(
-        <BannerItem
-          banner={banner}
-          autoplayDelay={5000}
-        />,
-      )
+      renderBannerItem(banner, { sort: 2, language: 'zh-Hans', accountId: 'account-123' })
 
       const bannerElement = screen.getByText('Test Banner Title').closest('div[class*="cursor-pointer"]')
       fireEvent.click(bannerElement!)
 
+      expect(mockTrackEvent).toHaveBeenCalledWith('explore_banner_click', expect.objectContaining({
+        banner_id: 'banner-1',
+        title: 'Test Banner Title',
+        sort: 2,
+        link: 'https://test-link.com',
+        page: 'explore',
+        language: 'zh-Hans',
+        account_id: 'account-123',
+        event_time: expect.any(Number),
+      }))
       expect(mockWindowOpen).toHaveBeenCalledWith(
         'https://test-link.com',
         '_blank',
@@ -155,18 +146,16 @@ describe('BannerItem', () => {
       )
     })
 
-    it('does not open window when banner has no link', () => {
+    it('tracks click even when banner has no link', () => {
       const banner = createMockBanner({ link: '' })
-      render(
-        <BannerItem
-          banner={banner}
-          autoplayDelay={5000}
-        />,
-      )
+      renderBannerItem(banner)
 
       const bannerElement = screen.getByText('Test Banner Title').closest('div[class*="cursor-pointer"]')
       fireEvent.click(bannerElement!)
 
+      expect(mockTrackEvent).toHaveBeenCalledWith('explore_banner_click', expect.objectContaining({
+        link: '',
+      }))
       expect(mockWindowOpen).not.toHaveBeenCalled()
     })
   })
@@ -174,28 +163,13 @@ describe('BannerItem', () => {
   describe('slide indicators', () => {
     it('renders correct number of indicator buttons', () => {
       mockSlideNodes.mockReturnValue([{}, {}, {}])
-      const banner = createMockBanner()
-      render(
-        <BannerItem
-          banner={banner}
-          autoplayDelay={5000}
-        />,
-      )
-
-      const buttons = screen.getAllByRole('button')
-      expect(buttons).toHaveLength(3)
+      renderBannerItem()
+      expect(screen.getAllByRole('button')).toHaveLength(3)
     })
 
     it('renders indicator buttons with correct numbers', () => {
       mockSlideNodes.mockReturnValue([{}, {}, {}])
-      const banner = createMockBanner()
-      render(
-        <BannerItem
-          banner={banner}
-          autoplayDelay={5000}
-        />,
-      )
-
+      renderBannerItem()
       expect(screen.getByText('01')).toBeInTheDocument()
       expect(screen.getByText('02')).toBeInTheDocument()
       expect(screen.getByText('03')).toBeInTheDocument()
@@ -203,13 +177,7 @@ describe('BannerItem', () => {
 
     it('calls scrollTo when indicator is clicked', () => {
       mockSlideNodes.mockReturnValue([{}, {}, {}])
-      const banner = createMockBanner()
-      render(
-        <BannerItem
-          banner={banner}
-          autoplayDelay={5000}
-        />,
-      )
+      renderBannerItem()
 
       const secondIndicator = screen.getByText('02').closest('button')
       fireEvent.click(secondIndicator!)
@@ -219,81 +187,39 @@ describe('BannerItem', () => {
 
     it('renders no indicators when no slides', () => {
       mockSlideNodes.mockReturnValue([])
-      const banner = createMockBanner()
-      render(
-        <BannerItem
-          banner={banner}
-          autoplayDelay={5000}
-        />,
-      )
-
+      renderBannerItem()
       expect(screen.queryByRole('button')).not.toBeInTheDocument()
     })
   })
 
   describe('isPaused prop', () => {
     it('defaults isPaused to false', () => {
-      const banner = createMockBanner()
-      render(
-        <BannerItem
-          banner={banner}
-          autoplayDelay={5000}
-        />,
-      )
-
+      renderBannerItem()
       expect(screen.getByText('Test Banner Title')).toBeInTheDocument()
     })
 
     it('accepts isPaused prop', () => {
-      const banner = createMockBanner()
-      render(
-        <BannerItem
-          banner={banner}
-          autoplayDelay={5000}
-          isPaused={true}
-        />,
-      )
-
+      renderBannerItem(createMockBanner(), { isPaused: true })
       expect(screen.getByText('Test Banner Title')).toBeInTheDocument()
     })
   })
 
   describe('responsive behavior', () => {
     it('sets up ResizeObserver on mount', () => {
-      const banner = createMockBanner()
-      render(
-        <BannerItem
-          banner={banner}
-          autoplayDelay={5000}
-        />,
-      )
-
+      renderBannerItem()
       expect(mockResizeObserverObserve).toHaveBeenCalled()
     })
 
     it('adds resize event listener on mount', () => {
       const addEventListenerSpy = vi.spyOn(window, 'addEventListener')
-      const banner = createMockBanner()
-      render(
-        <BannerItem
-          banner={banner}
-          autoplayDelay={5000}
-        />,
-      )
-
+      renderBannerItem()
       expect(addEventListenerSpy).toHaveBeenCalledWith('resize', expect.any(Function))
       addEventListenerSpy.mockRestore()
     })
 
     it('removes resize event listener on unmount', () => {
       const removeEventListenerSpy = vi.spyOn(window, 'removeEventListener')
-      const banner = createMockBanner()
-      const { unmount } = render(
-        <BannerItem
-          banner={banner}
-          autoplayDelay={5000}
-        />,
-      )
+      const { unmount } = renderBannerItem()
 
       unmount()
 
@@ -308,14 +234,7 @@ describe('BannerItem', () => {
         value: 1000,
       })
 
-      const banner = createMockBanner()
-      render(
-        <BannerItem
-          banner={banner}
-          autoplayDelay={5000}
-        />,
-      )
-
+      renderBannerItem()
       expect(screen.getByText('Test Banner Title')).toBeInTheDocument()
     })
 
@@ -326,14 +245,7 @@ describe('BannerItem', () => {
         value: 800,
       })
 
-      const banner = createMockBanner()
-      render(
-        <BannerItem
-          banner={banner}
-          autoplayDelay={5000}
-        />,
-      )
-
+      renderBannerItem()
       expect(screen.getByText('explore.banner.viewMore')).toBeInTheDocument()
     })
   })
@@ -348,13 +260,8 @@ describe('BannerItem', () => {
           'img-src': 'https://example.com/img.png',
         },
       } as Partial<Banner>)
-      render(
-        <BannerItem
-          banner={banner}
-          autoplayDelay={5000}
-        />,
-      )
 
+      renderBannerItem(banner)
       expect(screen.getByText('Very Long Category Name')).toBeInTheDocument()
     })
 
@@ -367,13 +274,8 @@ describe('BannerItem', () => {
           'img-src': 'https://example.com/img.png',
         },
       } as Partial<Banner>)
-      render(
-        <BannerItem
-          banner={banner}
-          autoplayDelay={5000}
-        />,
-      )
 
+      renderBannerItem(banner)
       const titleElement = screen.getByText('A Very Long Title That Should Be Truncated Eventually')
       expect(titleElement).toHaveClass('line-clamp-2')
     })
@@ -387,13 +289,8 @@ describe('BannerItem', () => {
           'img-src': 'https://example.com/img.png',
         },
       } as Partial<Banner>)
-      render(
-        <BannerItem
-          banner={banner}
-          autoplayDelay={5000}
-        />,
-      )
 
+      renderBannerItem(banner)
       const descriptionElement = screen.getByText(/A very long description/)
       expect(descriptionElement).toHaveClass('line-clamp-4')
     })
@@ -402,56 +299,26 @@ describe('BannerItem', () => {
   describe('slide calculation', () => {
     it('calculates next index correctly for first slide', () => {
       mockSlideNodes.mockReturnValue([{}, {}, {}])
-      const banner = createMockBanner()
-      render(
-        <BannerItem
-          banner={banner}
-          autoplayDelay={5000}
-        />,
-      )
-
-      const buttons = screen.getAllByRole('button')
-      expect(buttons).toHaveLength(3)
+      renderBannerItem()
+      expect(screen.getAllByRole('button')).toHaveLength(3)
     })
 
     it('handles single slide case', () => {
       mockSlideNodes.mockReturnValue([{}])
-      const banner = createMockBanner()
-      render(
-        <BannerItem
-          banner={banner}
-          autoplayDelay={5000}
-        />,
-      )
-
-      const buttons = screen.getAllByRole('button')
-      expect(buttons).toHaveLength(1)
+      renderBannerItem()
+      expect(screen.getAllByRole('button')).toHaveLength(1)
     })
   })
 
   describe('wrapper styling', () => {
     it('has cursor-pointer class', () => {
-      const banner = createMockBanner()
-      const { container } = render(
-        <BannerItem
-          banner={banner}
-          autoplayDelay={5000}
-        />,
-      )
-
+      const { container } = renderBannerItem()
       const wrapper = container.firstChild as HTMLElement
       expect(wrapper).toHaveClass('cursor-pointer')
     })
 
     it('has rounded-2xl class', () => {
-      const banner = createMockBanner()
-      const { container } = render(
-        <BannerItem
-          banner={banner}
-          autoplayDelay={5000}
-        />,
-      )
-
+      const { container } = renderBannerItem()
       const wrapper = container.firstChild as HTMLElement
       expect(wrapper).toHaveClass('rounded-2xl')
     })

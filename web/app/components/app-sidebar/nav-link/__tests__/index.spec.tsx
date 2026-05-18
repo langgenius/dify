@@ -4,12 +4,12 @@ import * as React from 'react'
 import NavLink from '..'
 
 // Mock Next.js navigation
-vi.mock('next/navigation', () => ({
+vi.mock('@/next/navigation', () => ({
   useSelectedLayoutSegment: () => 'overview',
 }))
 
 // Mock Next.js Link component
-vi.mock('next/link', () => ({
+vi.mock('@/next/link', () => ({
   default: function MockLink({ children, href, className, title }: { children: React.ReactNode, href: string, className?: string, title?: string }) {
     return (
       <a href={href} className={className} title={title} data-testid="nav-link">

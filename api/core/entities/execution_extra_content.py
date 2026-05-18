@@ -5,7 +5,7 @@ from typing import Any, TypeAlias
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from dify_graph.nodes.human_input.entities import FormInput, UserAction
+from graphon.nodes.human_input.entities import FormInputConfig, UserActionConfig
 from models.execution_extra_content import ExecutionContentType
 
 
@@ -16,8 +16,8 @@ class HumanInputFormDefinition(BaseModel):
     node_id: str
     node_title: str
     form_content: str
-    inputs: Sequence[FormInput] = Field(default_factory=list)
-    actions: Sequence[UserAction] = Field(default_factory=list)
+    inputs: Sequence[FormInputConfig] = Field(default_factory=list)
+    actions: Sequence[UserActionConfig] = Field(default_factory=list)
     display_in_ui: bool = False
     form_token: str | None = None
     resolved_default_values: Mapping[str, Any] = Field(default_factory=dict)
@@ -44,7 +44,8 @@ class HumanInputContent(BaseModel):
     type: ExecutionContentType = Field(default=ExecutionContentType.HUMAN_INPUT)
 
 
-ExecutionExtraContentDomainModel: TypeAlias = HumanInputContent
+# Keep a runtime alias here: callers and tests expect identity with HumanInputContent.
+ExecutionExtraContentDomainModel: TypeAlias = HumanInputContent  # noqa: UP040
 
 __all__ = [
     "ExecutionExtraContentDomainModel",

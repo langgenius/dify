@@ -1,5 +1,11 @@
 import type { NodeDefault } from '../types'
 import type { BlockClassificationEnum } from './types'
+import {
+  createPreviewCardHandle,
+  PreviewCard,
+  PreviewCardContent,
+  PreviewCardTrigger,
+} from '@langgenius/dify-ui/preview-card'
 import { groupBy } from 'es-toolkit/compat'
 import {
   memo,
@@ -9,7 +15,6 @@ import {
 import { useTranslation } from 'react-i18next'
 import { useStoreApi } from 'reactflow'
 import Badge from '@/app/components/base/badge'
-import Tooltip from '@/app/components/base/tooltip'
 import BlockIcon from '../block-icon'
 import { BlockEnum } from '../types'
 import { BLOCK_CLASSIFICATIONS } from './constants'
@@ -21,6 +26,10 @@ type BlocksProps = {
   availableBlocksTypes?: BlockEnum[]
   blocks?: NodeDefault[]
 }
+type BlockPreviewPayload = {
+  block: NodeDefault
+}
+
 const Blocks = ({
   searchText,
   onSelect,
@@ -30,6 +39,7 @@ const Blocks = ({
   const { t } = useTranslation()
   const store = useStoreApi()
   const blocksFromHooks = useBlocks()
+  const previewCardHandle = useMemo(() => createPreviewCardHandle<BlockPreviewPayload>(), [])
 
   // Use external blocks if provided, otherwise fallback to hook-based blocks
   const blocks = blocksFromProps || blocksFromHooks.map(block => ({
@@ -69,7 +79,7 @@ const Blocks = ({
   const isEmpty = Object.values(groups).every(list => !list.length)
 
   const renderGroup = useCallback((classification: BlockClassificationEnum) => {
-    const list = groups[classification].sort((a, b) => (a.metaData.sort || 0) - (b.metaData.sort || 0))
+    const list = groups[classification]!.sort((a, b) => (a.metaData.sort || 0) - (b.metaData.sort || 0))
     const { getNodes } = store.getState()
     const nodes = getNodes()
     const hasKnowledgeBaseNode = nodes.some(node => node.data.type === BlockEnum.KnowledgeBase)
@@ -92,49 +102,43 @@ const Blocks = ({
           )
         }
         {
+          // Preview is supplementary: icon/title/description are all reachable
+          // from the node that gets added on click (inspector + canvas), so
+          // hover/focus-only activation is a11y-safe. See
+          // packages/dify-ui/AGENTS.md → Overlay Primitive Selection.
           filteredList.map(block => (
-            <Tooltip
+            <PreviewCardTrigger
               key={block.metaData.type}
-              position="right"
-              popupClassName="w-[200px] rounded-xl"
-              needsDelay={false}
-              popupContent={(
-                <div>
+              delay={150}
+              closeDelay={150}
+              handle={previewCardHandle}
+              payload={{ block }}
+              render={(
+                <div
+                  className="flex h-8 w-full cursor-pointer items-center rounded-lg px-3 hover:bg-state-base-hover"
+                  onClick={() => onSelect(block.metaData.type)}
+                >
                   <BlockIcon
-                    size="md"
-                    className="mb-2"
+                    className="mr-2 shrink-0"
                     type={block.metaData.type}
                   />
-                  <div className="system-md-medium mb-1 text-text-primary">{block.metaData.title}</div>
-                  <div className="system-xs-regular text-text-tertiary">{block.metaData.description}</div>
+                  <div className="grow text-sm text-text-secondary">{block.metaData.title}</div>
+                  {
+                    block.metaData.type === BlockEnum.LoopEnd && (
+                      <Badge
+                        text={t('nodes.loop.loopNode', { ns: 'workflow' })}
+                        className="ml-2 shrink-0"
+                      />
+                    )
+                  }
                 </div>
               )}
-            >
-              <div
-                key={block.metaData.type}
-                className="flex h-8 w-full cursor-pointer items-center rounded-lg px-3 hover:bg-state-base-hover"
-                onClick={() => onSelect(block.metaData.type)}
-              >
-                <BlockIcon
-                  className="mr-2 shrink-0"
-                  type={block.metaData.type}
-                />
-                <div className="grow text-sm text-text-secondary">{block.metaData.title}</div>
-                {
-                  block.metaData.type === BlockEnum.LoopEnd && (
-                    <Badge
-                      text={t('nodes.loop.loopNode', { ns: 'workflow' })}
-                      className="ml-2 shrink-0"
-                    />
-                  )
-                }
-              </div>
-            </Tooltip>
+            />
           ))
         }
       </div>
     )
-  }, [groups, onSelect, t, store])
+  }, [groups, onSelect, previewCardHandle, t, store])
 
   return (
     <div className="max-h-[480px] max-w-[500px] overflow-y-auto p-1">
@@ -146,7 +150,42 @@ const Blocks = ({
       {
         !isEmpty && BLOCK_CLASSIFICATIONS.map(renderGroup)
       }
+      <PreviewCard handle={previewCardHandle}>
+        {({ payload }) => (
+          <BlockPreviewCard payload={payload as BlockPreviewPayload | undefined} />
+        )}
+      </PreviewCard>
     </div>
+  )
+}
+
+type BlockPreviewCardProps = {
+  payload?: BlockPreviewPayload
+}
+
+function BlockPreviewCard({
+  payload,
+}: BlockPreviewCardProps) {
+  if (!payload)
+    return null
+
+  const { block } = payload
+
+  return (
+    <PreviewCardContent
+      placement="right"
+      popupClassName="w-[200px] border-none px-3 py-2"
+    >
+      <div>
+        <BlockIcon
+          size="md"
+          className="mb-2"
+          type={block.metaData.type}
+        />
+        <div className="mb-1 system-md-medium text-text-primary">{block.metaData.title}</div>
+        <div className="system-xs-regular wrap-break-word text-text-tertiary">{block.metaData.description}</div>
+      </div>
+    </PreviewCardContent>
   )
 }
 

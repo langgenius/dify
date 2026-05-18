@@ -1,10 +1,10 @@
 import { render, screen } from '@testing-library/react'
 import * as React from 'react'
-import { useContext } from 'react'
+import { use } from 'react'
 import { FeaturesContext, FeaturesProvider } from '../context'
 
 const TestConsumer = () => {
-  const store = useContext(FeaturesContext)
+  const store = use(FeaturesContext)
   if (!store)
     return <div>no store</div>
 
@@ -34,10 +34,10 @@ describe('FeaturesProvider', () => {
   })
 
   it('should maintain the same store reference across re-renders', () => {
-    const storeRefs: Array<ReturnType<typeof useContext>> = []
+    const storeRefs: Array<React.ContextType<typeof FeaturesContext>> = []
 
     const StoreRefCollector = () => {
-      const store = useContext(FeaturesContext)
+      const store = use(FeaturesContext)
       storeRefs.push(store)
       return null
     }

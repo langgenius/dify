@@ -7,6 +7,7 @@ import {
   size,
   useFloating,
 } from '@floating-ui/react'
+import { cn } from '@langgenius/dify-ui/cn'
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
 import {
   $getSelection,
@@ -20,9 +21,9 @@ import {
   useState,
 } from 'react'
 import { createPortal } from 'react-dom'
-import { cn } from '@/utils/classnames'
 
 export const SHORTCUTS_EMPTY_CONTENT = 'shortcuts_empty_content'
+export type ShortcutPopupInsertHandler = <Payload>(command: LexicalCommand<Payload>, params: Payload) => void
 
 // Hotkey can be:
 // - string: 'mod+/'
@@ -33,7 +34,7 @@ export type Hotkey = string | string[] | string[][] | ((e: KeyboardEvent) => boo
 
 type ShortcutPopupPluginProps = {
   hotkey?: Hotkey
-  children?: React.ReactNode | ((close: () => void, onInsert: (command: LexicalCommand<unknown>, params: any[]) => void) => React.ReactNode)
+  children?: React.ReactNode | ((close: () => void, onInsert: ShortcutPopupInsertHandler) => React.ReactNode)
   className?: string
   container?: Element | null
   onOpen?: () => void
@@ -141,7 +142,7 @@ export default function ShortcutsPopupPlugin({
   const portalRef = useRef<HTMLDivElement | null>(null)
   const lastSelectionRef = useRef<Range | null>(null)
 
-  /* v8 ignore next -- defensive non-browser fallback; this client-only plugin runs where document exists (browser/jsdom). @preserve */
+  /* v8 ignore next -- defensive non-browser fallback; this client-only plugin runs where document exists (browser/test DOM runtime). @preserve */
   const containerEl = useMemo(() => container ?? (typeof document !== 'undefined' ? document.body : null), [container])
   const useContainer = !!containerEl && containerEl !== document.body
 
@@ -158,8 +159,9 @@ export default function ShortcutsPopupPlugin({
         apply({ availableWidth, availableHeight, elements }) {
           Object.assign(elements.floating.style, {
             maxWidth: `${Math.min(400, availableWidth)}px`,
-            maxHeight: `${Math.min(300, availableHeight)}px`,
-            overflow: 'auto',
+            maxHeight: `${Math.max(0, availableHeight)}px`,
+            overflowX: 'hidden',
+            overflowY: 'auto',
           })
         },
         padding: 8,
@@ -203,14 +205,14 @@ export default function ShortcutsPopupPlugin({
       let rect: DOMRect | null = null
 
       if (rects && rects.length)
-        rect = rects[rects.length - 1]
+        rect = rects[rects.length - 1]!
 
       else
         rect = range.getBoundingClientRect()
 
       if (rect.width === 0 && rect.height === 0) {
         const root = editor.getRootElement()
-        /* v8 ignore next 10 -- zero-size rect recovery depends on browser layout/selection geometry; deterministic reproduction in jsdom is unreliable. @preserve */
+        /* v8 ignore next 10 -- zero-size rect recovery depends on browser layout/selection geometry; deterministic reproduction in the test DOM runtime is unreliable. @preserve */
         if (root) {
           const sc = range.startContainer
           const node = sc.nodeType === Node.ELEMENT_NODE
@@ -236,7 +238,7 @@ export default function ShortcutsPopupPlugin({
 
     setOpen(true)
     onOpen?.()
-  }, [onOpen])
+  }, [editor, onOpen, refs])
 
   const closePortal = useCallback(() => {
     setOpen(false)
@@ -280,7 +282,7 @@ export default function ShortcutsPopupPlugin({
     return () => document.removeEventListener('mousedown', onMouseDown, false)
   }, [open, closePortal])
 
-  const handleInsert = useCallback((command: LexicalCommand<unknown>, params: any) => {
+  const handleInsert = useCallback(<Payload,>(command: LexicalCommand<Payload>, params: Payload) => {
     editor.dispatchCommand(command, params)
     closePortal()
   }, [editor, closePortal])
@@ -295,7 +297,7 @@ export default function ShortcutsPopupPlugin({
         refs.setFloating(node)
       }}
       className={cn(
-        useContainer ? '' : 'z-[999999]',
+        useContainer ? '' : 'z-999999',
         'absolute rounded-xl bg-components-panel-bg-blur shadow-lg',
         className,
       )}

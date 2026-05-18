@@ -1,8 +1,8 @@
 import { useBoolean } from 'ahooks'
 import Cookies from 'js-cookie'
-import { useSearchParams } from 'next/navigation'
 import { useCallback } from 'react'
 import { PARTNER_STACK_CONFIG } from '@/config'
+import { useSearchParams } from '@/next/navigation'
 import { useBindPartnerStackInfo } from '@/service/use-billing'
 
 const usePSInfo = () => {
@@ -24,7 +24,7 @@ const usePSInfo = () => {
   }] = useBoolean(false)
   const { mutateAsync } = useBindPartnerStackInfo()
   // Save to top domain. cloud.dify.ai => .dify.ai
-  const domain = globalThis.location.hostname.replace('cloud', '')
+  const domain = globalThis.location?.hostname.replace('cloud', '')
 
   const saveOrUpdate = useCallback(() => {
     if (!psPartnerKey || !psClickId)
@@ -39,7 +39,7 @@ const usePSInfo = () => {
       path: '/',
       domain,
     })
-  }, [psPartnerKey, psClickId, isPSChanged])
+  }, [psPartnerKey, psClickId, isPSChanged, domain])
 
   const bind = useCallback(async () => {
     if (psPartnerKey && psClickId && !hasBind) {
@@ -59,7 +59,7 @@ const usePSInfo = () => {
         Cookies.remove(PARTNER_STACK_CONFIG.cookieName, { path: '/', domain })
       setBind()
     }
-  }, [psPartnerKey, psClickId, mutateAsync, hasBind, setBind])
+  }, [psPartnerKey, psClickId, hasBind, domain, setBind, mutateAsync])
   return {
     psPartnerKey,
     psClickId,

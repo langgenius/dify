@@ -104,10 +104,11 @@ class TestFirecrawlApp:
 
     def test_map_known_error(self, mocker: MockerFixture):
         app = FirecrawlApp(api_key="fc-key", base_url="https://custom.firecrawl.dev")
-        mock_handle = mocker.patch.object(app, "_handle_error")
+        mock_handle = mocker.patch.object(app, "_handle_error", side_effect=Exception("map error"))
         mocker.patch("httpx.post", return_value=_response(409, {"error": "conflict"}))
 
-        assert app.map("https://example.com") == {}
+        with pytest.raises(Exception, match="map error"):
+            app.map("https://example.com")
         mock_handle.assert_called_once()
 
     def test_map_unknown_error_raises(self, mocker: MockerFixture):
@@ -163,6 +164,13 @@ class TestFirecrawlApp:
         with pytest.raises(Exception, match="No page found"):
             app.check_crawl_status("job-1")
 
+    def test_check_crawl_status_completed_with_null_total_raises(self, mocker: MockerFixture):
+        app = FirecrawlApp(api_key="fc-key", base_url="https://custom.firecrawl.dev")
+        mocker.patch("httpx.get", return_value=_response(200, {"status": "completed", "total": None, "data": []}))
+
+        with pytest.raises(Exception, match="No page found"):
+            app.check_crawl_status("job-1")
+
     def test_check_crawl_status_non_completed(self, mocker: MockerFixture):
         app = FirecrawlApp(api_key="fc-key", base_url="https://custom.firecrawl.dev")
         payload = {"status": "processing", "total": 5, "completed": 1, "data": []}
@@ -177,10 +185,11 @@ class TestFirecrawlApp:
 
     def test_check_crawl_status_non_200_uses_error_handler(self, mocker: MockerFixture):
         app = FirecrawlApp(api_key="fc-key", base_url="https://custom.firecrawl.dev")
-        mock_handle = mocker.patch.object(app, "_handle_error")
+        mock_handle = mocker.patch.object(app, "_handle_error", side_effect=Exception("crawl error"))
         mocker.patch("httpx.get", return_value=_response(500, {"error": "server"}))
 
-        assert app.check_crawl_status("job-1") == {}
+        with pytest.raises(Exception, match="crawl error"):
+            app.check_crawl_status("job-1")
         mock_handle.assert_called_once()
 
     def test_check_crawl_status_save_failure_raises(self, mocker: MockerFixture):
@@ -200,6 +209,77 @@ class TestFirecrawlApp:
 
         with pytest.raises(Exception, match="Error saving crawl data"):
             app.check_crawl_status("job-err")
+
+    def test_check_crawl_status_follows_pagination(self, mocker: MockerFixture):
+        """When status is completed and next is present, follow pagination to collect all pages."""
+        app = FirecrawlApp(api_key="fc-key", base_url="https://custom.firecrawl.dev")
+        page1 = {
+            "status": "completed",
+            "total": 3,
+            "completed": 3,
+            "next": "https://custom.firecrawl.dev/v2/crawl/job-42?skip=1",
+            "data": [{"metadata": {"title": "p1", "description": "", "sourceURL": "https://p1"}, "markdown": "m1"}],
+        }
+        page2 = {
+            "status": "completed",
+            "total": 3,
+            "completed": 3,
+            "next": "https://custom.firecrawl.dev/v2/crawl/job-42?skip=2",
+            "data": [{"metadata": {"title": "p2", "description": "", "sourceURL": "https://p2"}, "markdown": "m2"}],
+        }
+        page3 = {
+            "status": "completed",
+            "total": 3,
+            "completed": 3,
+            "data": [{"metadata": {"title": "p3", "description": "", "sourceURL": "https://p3"}, "markdown": "m3"}],
+        }
+        mocker.patch("httpx.get", side_effect=[_response(200, page1), _response(200, page2), _response(200, page3)])
+        mock_storage = MagicMock()
+        mock_storage.exists.return_value = False
+        mocker.patch.object(firecrawl_module, "storage", mock_storage)
+
+        result = app.check_crawl_status("job-42")
+
+        assert result["status"] == "completed"
+        assert result["total"] == 3
+        assert len(result["data"]) == 3
+        assert [d["title"] for d in result["data"]] == ["p1", "p2", "p3"]
+
+    def test_check_crawl_status_pagination_error_raises(self, mocker: MockerFixture):
+        """An error while fetching a paginated page raises an exception; no partial data is returned."""
+        app = FirecrawlApp(api_key="fc-key", base_url="https://custom.firecrawl.dev")
+        page1 = {
+            "status": "completed",
+            "total": 2,
+            "completed": 2,
+            "next": "https://custom.firecrawl.dev/v2/crawl/job-99?skip=1",
+            "data": [{"metadata": {"title": "p1", "description": "", "sourceURL": "https://p1"}, "markdown": "m1"}],
+        }
+        mocker.patch("httpx.get", side_effect=[_response(200, page1), _response(500, {"error": "server error"})])
+
+        with pytest.raises(Exception, match="fetch next crawl page"):
+            app.check_crawl_status("job-99")
+
+    def test_check_crawl_status_pagination_capped_at_total(self, mocker: MockerFixture):
+        """Pagination stops once pages_processed reaches total, even if next is present."""
+        app = FirecrawlApp(api_key="fc-key", base_url="https://custom.firecrawl.dev")
+        # total=1: only the first page should be processed; next must not be followed
+        page1 = {
+            "status": "completed",
+            "total": 1,
+            "completed": 1,
+            "next": "https://custom.firecrawl.dev/v2/crawl/job-cap?skip=1",
+            "data": [{"metadata": {"title": "p1", "description": "", "sourceURL": "https://p1"}, "markdown": "m1"}],
+        }
+        mock_get = mocker.patch("httpx.get", return_value=_response(200, page1))
+        mock_storage = MagicMock()
+        mock_storage.exists.return_value = False
+        mocker.patch.object(firecrawl_module, "storage", mock_storage)
+
+        result = app.check_crawl_status("job-cap")
+
+        assert len(result["data"]) == 1
+        mock_get.assert_called_once()  # initial fetch only; next URL is not followed due to cap
 
     def test_extract_common_fields_and_status_formatter(self):
         app = FirecrawlApp(api_key="fc-key", base_url="https://custom.firecrawl.dev")
@@ -272,9 +352,10 @@ class TestFirecrawlApp:
 
     def test_search_known_http_error(self, mocker: MockerFixture):
         app = FirecrawlApp(api_key="fc-key", base_url="https://custom.firecrawl.dev")
-        mock_handle = mocker.patch.object(app, "_handle_error")
+        mock_handle = mocker.patch.object(app, "_handle_error", side_effect=Exception("search error"))
         mocker.patch("httpx.post", return_value=_response(408, {"error": "timeout"}))
-        assert app.search("python") == {}
+        with pytest.raises(Exception, match="search error"):
+            app.search("python")
         mock_handle.assert_called_once()
 
     def test_search_unknown_http_error(self, mocker: MockerFixture):

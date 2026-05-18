@@ -19,7 +19,7 @@ def encrypt_token(tenant_id: str, token: str):
     from extensions.ext_database import db
     from models.account import Tenant
 
-    if not (tenant := db.session.query(Tenant).where(Tenant.id == tenant_id).first()):
+    if not (tenant := db.session.get(Tenant, tenant_id)):
         raise ValueError(f"Tenant with id {tenant_id} not found")
     assert tenant.encrypt_public_key is not None
     encrypted_token = rsa.encrypt(token, tenant.encrypt_public_key)

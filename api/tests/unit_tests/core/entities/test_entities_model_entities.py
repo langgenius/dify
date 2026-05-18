@@ -16,9 +16,9 @@ from core.entities.model_entities import (
     ProviderModelWithStatusEntity,
     SimpleModelProviderEntity,
 )
-from dify_graph.model_runtime.entities.common_entities import I18nObject
-from dify_graph.model_runtime.entities.model_entities import FetchFrom, ModelType
-from dify_graph.model_runtime.entities.provider_entities import ConfigurateMethod, ProviderEntity
+from graphon.model_runtime.entities.common_entities import I18nObject
+from graphon.model_runtime.entities.model_entities import FetchFrom, ModelType
+from graphon.model_runtime.entities.provider_entities import ConfigurateMethod, ProviderEntity
 
 
 def _build_model_with_status(status: ModelStatus) -> ProviderModelWithStatusEntity:
@@ -46,7 +46,7 @@ def test_simple_model_provider_entity_maps_from_provider_entity() -> None:
 
     # Assert
     assert simple_provider.provider == "openai"
-    assert simple_provider.label.en_US == "OpenAI"
+    assert simple_provider.label.en_us == "OpenAI"
     assert simple_provider.supported_model_types == [ModelType.LLM]
 
 

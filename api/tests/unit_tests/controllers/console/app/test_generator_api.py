@@ -73,8 +73,7 @@ def test_instruction_generate_app_not_found(app, monkeypatch: pytest.MonkeyPatch
 
     monkeypatch.setattr(generator_module, "current_account_with_tenant", lambda: (None, "t1"))
 
-    query = SimpleNamespace(where=lambda *_args, **_kwargs: query, first=lambda: None)
-    monkeypatch.setattr(generator_module.db, "session", SimpleNamespace(query=lambda *_args, **_kwargs: query))
+    monkeypatch.setattr(generator_module.db, "session", SimpleNamespace(get=lambda *_args, **_kwargs: None))
 
     with app.test_request_context(
         "/console/api/instruction-generate",
@@ -99,8 +98,7 @@ def test_instruction_generate_workflow_not_found(app, monkeypatch: pytest.Monkey
     monkeypatch.setattr(generator_module, "current_account_with_tenant", lambda: (None, "t1"))
 
     app_model = SimpleNamespace(id="app-1")
-    query = SimpleNamespace(where=lambda *_args, **_kwargs: query, first=lambda: app_model)
-    monkeypatch.setattr(generator_module.db, "session", SimpleNamespace(query=lambda *_args, **_kwargs: query))
+    monkeypatch.setattr(generator_module.db, "session", SimpleNamespace(get=lambda *_args, **_kwargs: app_model))
     _install_workflow_service(monkeypatch, workflow=None)
 
     with app.test_request_context(
@@ -126,8 +124,7 @@ def test_instruction_generate_node_missing(app, monkeypatch: pytest.MonkeyPatch)
     monkeypatch.setattr(generator_module, "current_account_with_tenant", lambda: (None, "t1"))
 
     app_model = SimpleNamespace(id="app-1")
-    query = SimpleNamespace(where=lambda *_args, **_kwargs: query, first=lambda: app_model)
-    monkeypatch.setattr(generator_module.db, "session", SimpleNamespace(query=lambda *_args, **_kwargs: query))
+    monkeypatch.setattr(generator_module.db, "session", SimpleNamespace(get=lambda *_args, **_kwargs: app_model))
 
     workflow = SimpleNamespace(graph_dict={"nodes": []})
     _install_workflow_service(monkeypatch, workflow=workflow)
@@ -155,8 +152,7 @@ def test_instruction_generate_code_node(app, monkeypatch: pytest.MonkeyPatch) ->
     monkeypatch.setattr(generator_module, "current_account_with_tenant", lambda: (None, "t1"))
 
     app_model = SimpleNamespace(id="app-1")
-    query = SimpleNamespace(where=lambda *_args, **_kwargs: query, first=lambda: app_model)
-    monkeypatch.setattr(generator_module.db, "session", SimpleNamespace(query=lambda *_args, **_kwargs: query))
+    monkeypatch.setattr(generator_module.db, "session", SimpleNamespace(get=lambda *_args, **_kwargs: app_model))
 
     workflow = SimpleNamespace(
         graph_dict={

@@ -1,5 +1,6 @@
 import type { CollectionsAndPluginsSearchParams, MarketplaceCollection, PluginsSearchParams } from '@/app/components/plugins/marketplace/types'
 import type { Plugin, PluginsFromMarketplaceResponse } from '@/app/components/plugins/types'
+import type { MarketplaceTemplate } from '@/types/marketplace-template'
 import { type } from '@orpc/contract'
 import { base } from './base'
 
@@ -54,3 +55,15 @@ export const searchAdvancedContract = base
     body: Omit<PluginsSearchParams, 'type'>
   }>())
   .output(type<{ data: PluginsFromMarketplaceResponse }>())
+
+export const templateDetailContract = base
+  .route({
+    path: '/templates/{templateId}',
+    method: 'GET',
+  })
+  .input(type<{
+    params: {
+      templateId: string
+    }
+  }>())
+  .output(type<{ data: MarketplaceTemplate }>())

@@ -44,9 +44,9 @@ describe('MenuBar', () => {
   })
 
   it('should render checkbox', () => {
-    const { container } = render(<MenuBar {...defaultProps} />)
-    const checkbox = container.querySelector('[class*="shrink-0"]')
-    expect(checkbox).toBeInTheDocument()
+    render(<MenuBar {...defaultProps} />)
+
+    expect(screen.getByRole('checkbox', { name: 'common.operation.selectAll' })).toBeInTheDocument()
   })
 
   it('should call onInputChange when input changes', () => {
@@ -69,7 +69,7 @@ describe('MenuBar', () => {
 
   it('should call onInputChange with empty string when input is cleared', () => {
     render(<MenuBar {...defaultProps} inputValue="some text" />)
-    const clearButton = screen.getByTestId('input-clear')
+    const clearButton = screen.getByRole('button', { name: 'common.operation.clear' })
     fireEvent.click(clearButton)
     expect(defaultProps.onInputChange).toHaveBeenCalledWith('')
   })
@@ -82,7 +82,7 @@ describe('MenuBar', () => {
   it('should call renderOption for each item when dropdown is opened', async () => {
     render(<MenuBar {...defaultProps} />)
 
-    const selectButton = screen.getByRole('button', { name: /All/i })
+    const selectButton = screen.getByRole('combobox')
     fireEvent.click(selectButton)
 
     // After opening, renderOption is called for each item, rendering the mocked StatusItem

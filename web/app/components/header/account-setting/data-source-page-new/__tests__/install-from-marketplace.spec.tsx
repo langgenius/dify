@@ -16,7 +16,7 @@ vi.mock('next-themes', () => ({
   useTheme: vi.fn(),
 }))
 
-vi.mock('next/link', () => ({
+vi.mock('@/next/link', () => ({
   default: ({ children, href }: { children: React.ReactNode, href: string }) => (
     <a href={href} data-testid="mock-link">{children}</a>
   ),

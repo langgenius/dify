@@ -32,7 +32,7 @@ describe('RadioCard', () => {
       />,
     )
 
-    await user.click(screen.getByText('Clickable'))
+    await user.click(screen.getByRole('button', { name: /Clickable/ }))
     expect(onChosen).toHaveBeenCalledTimes(1)
   })
 
@@ -117,7 +117,7 @@ describe('RadioCard', () => {
     )
 
     // click title should trigger onChosen
-    await user.click(screen.getByText('ClickNoRadio'))
+    await user.click(screen.getByRole('button', { name: /ClickNoRadio/ }))
     expect(onChosen).toHaveBeenCalledTimes(1)
 
     // radio area should be absent

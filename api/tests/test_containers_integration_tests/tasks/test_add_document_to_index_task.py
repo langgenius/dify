@@ -2,9 +2,10 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from faker import Faker
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from core.rag.index_processor.constant.index_type import IndexStructureType
+from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
 from extensions.ext_redis import redis_client
 from models import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.dataset import Dataset, DatasetAutoDisableLog, Document, DocumentSegment
@@ -81,7 +82,7 @@ class TestAddDocumentToIndexTask:
             name=fake.company(),
             description=fake.text(max_nb_chars=100),
             data_source_type=DataSourceType.UPLOAD_FILE,
-            indexing_technique="high_quality",
+            indexing_technique=IndexTechniqueType.HIGH_QUALITY,
             created_by=account.id,
         )
         db_session_with_containers.add(dataset)
@@ -127,7 +128,6 @@ class TestAddDocumentToIndexTask:
 
         for i in range(3):
             segment = DocumentSegment(
-                id=fake.uuid4(),
                 tenant_id=document.tenant_id,
                 dataset_id=dataset.id,
                 document_id=document.id,
@@ -450,7 +450,6 @@ class TestAddDocumentToIndexTask:
         segments = []
         for i in range(3):
             segment = DocumentSegment(
-                id=fake.uuid4(),
                 tenant_id=document.tenant_id,
                 dataset_id=dataset.id,
                 document_id=document.id,
@@ -530,22 +529,18 @@ class TestAddDocumentToIndexTask:
         redis_client.set(indexing_cache_key, "processing", ex=300)
 
         # Verify logs exist before processing
-        existing_logs = (
-            db_session_with_containers.query(DatasetAutoDisableLog)
-            .where(DatasetAutoDisableLog.document_id == document.id)
-            .all()
-        )
+        existing_logs = db_session_with_containers.scalars(
+            select(DatasetAutoDisableLog).where(DatasetAutoDisableLog.document_id == document.id)
+        ).all()
         assert len(existing_logs) == 2
 
         # Act: Execute the task
         add_document_to_index_task(document.id)
 
         # Assert: Verify auto disable logs were deleted
-        remaining_logs = (
-            db_session_with_containers.query(DatasetAutoDisableLog)
-            .where(DatasetAutoDisableLog.document_id == document.id)
-            .all()
-        )
+        remaining_logs = db_session_with_containers.scalars(
+            select(DatasetAutoDisableLog).where(DatasetAutoDisableLog.document_id == document.id)
+        ).all()
         assert len(remaining_logs) == 0
 
         # Verify index processing occurred normally
@@ -633,7 +628,6 @@ class TestAddDocumentToIndexTask:
 
         # Segment 1: Should be processed (enabled=False, status=SegmentStatus.COMPLETED)
         segment1 = DocumentSegment(
-            id=fake.uuid4(),
             tenant_id=document.tenant_id,
             dataset_id=dataset.id,
             document_id=document.id,
@@ -653,7 +647,6 @@ class TestAddDocumentToIndexTask:
         # Segment 2: Should be processed (enabled=True, status=SegmentStatus.COMPLETED)
         # Note: Implementation doesn't filter by enabled status, only by status=SegmentStatus.COMPLETED
         segment2 = DocumentSegment(
-            id=fake.uuid4(),
             tenant_id=document.tenant_id,
             dataset_id=dataset.id,
             document_id=document.id,
@@ -672,7 +665,6 @@ class TestAddDocumentToIndexTask:
 
         # Segment 3: Should NOT be processed (enabled=False, status="processing")
         segment3 = DocumentSegment(
-            id=fake.uuid4(),
             tenant_id=document.tenant_id,
             dataset_id=dataset.id,
             document_id=document.id,
@@ -691,7 +683,6 @@ class TestAddDocumentToIndexTask:
 
         # Segment 4: Should be processed (enabled=False, status=SegmentStatus.COMPLETED)
         segment4 = DocumentSegment(
-            id=fake.uuid4(),
             tenant_id=document.tenant_id,
             dataset_id=dataset.id,
             document_id=document.id,

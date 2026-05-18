@@ -1,9 +1,11 @@
 'use client'
 import type { FC } from 'react'
+import type { TriggerPluginActionPreviewCardHandle } from './action-item'
 import type { TriggerDefaultValue, TriggerWithProvider } from '@/app/components/workflow/block-selector/types'
+import { cn } from '@langgenius/dify-ui/cn'
 import { RiArrowDownSLine, RiArrowRightSLine } from '@remixicon/react'
 import * as React from 'react'
-import { useEffect, useMemo, useRef } from 'react'
+import { useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { CollectionType } from '@/app/components/tools/types'
 import BlockIcon from '@/app/components/workflow/block-icon'
@@ -11,7 +13,6 @@ import { BlockEnum } from '@/app/components/workflow/types'
 import { useGetLanguage } from '@/context/i18n'
 import useTheme from '@/hooks/use-theme'
 import { Theme } from '@/types/app'
-import { cn } from '@/utils/classnames'
 import { basePath } from '@/utils/var'
 import TriggerPluginActionItem from './action-item'
 
@@ -27,6 +28,7 @@ type Props = {
   className?: string
   payload: TriggerWithProvider
   hasSearchText: boolean
+  previewCardHandle: TriggerPluginActionPreviewCardHandle
   onSelect: (type: BlockEnum, trigger?: TriggerDefaultValue) => void
 }
 
@@ -34,6 +36,7 @@ const TriggerPluginItem: FC<Props> = ({
   className,
   payload,
   hasSearchText,
+  previewCardHandle,
   onSelect,
 }) => {
   const { t } = useTranslation()
@@ -42,17 +45,14 @@ const TriggerPluginItem: FC<Props> = ({
   const notShowProvider = payload.type === CollectionType.workflow
   const actions = payload.events
   const hasAction = !notShowProvider
-  const [isFold, setFold] = React.useState<boolean>(true)
+  const [isFold, setIsFold] = React.useState<boolean>(true)
+  const [isFoldHasSearchText, setIsFoldHasSearchText] = React.useState(hasSearchText)
   const ref = useRef(null)
 
-  useEffect(() => {
-    if (hasSearchText && isFold) {
-      setFold(false)
-      return
-    }
-    if (!hasSearchText && !isFold)
-      setFold(true)
-  }, [hasSearchText])
+  if (isFoldHasSearchText !== hasSearchText) {
+    setIsFoldHasSearchText(hasSearchText)
+    setIsFold(!hasSearchText)
+  }
 
   const FoldIcon = isFold ? RiArrowRightSLine : RiArrowDownSLine
 
@@ -94,17 +94,17 @@ const TriggerPluginItem: FC<Props> = ({
     >
       <div className={cn(className)}>
         <div
-          className="group/item flex w-full cursor-pointer select-none items-center justify-between rounded-lg pl-3 pr-1 hover:bg-state-base-hover"
+          className="group/item flex w-full cursor-pointer items-center justify-between rounded-lg pr-1 pl-3 select-none hover:bg-state-base-hover"
           onClick={() => {
             if (hasAction) {
-              setFold(!isFold)
+              setIsFold(!isFold)
               return
             }
 
             const event = actions[0]
             const params: Record<string, string> = {}
-            if (event.parameters) {
-              event.parameters.forEach((item: any) => {
+            if (event!.parameters) {
+              event!.parameters.forEach((item) => {
                 params[item.name] = ''
               })
             }
@@ -113,14 +113,14 @@ const TriggerPluginItem: FC<Props> = ({
               provider_id: payload.name,
               provider_type: payload.type,
               provider_name: payload.name,
-              event_name: event.name,
-              event_label: event.label[language],
-              event_description: event.description[language],
-              title: event.label[language],
+              event_name: event!.name,
+              event_label: event!.label[language]!,
+              event_description: event!.description[language]!,
+              title: event!.label[language]!,
               plugin_unique_identifier: payload.plugin_unique_identifier,
               is_team_authorization: payload.is_team_authorization,
-              output_schema: event.output_schema || {},
-              paramSchemas: event.parameters,
+              output_schema: event!.output_schema || {},
+              paramSchemas: event!.parameters,
               params,
             })
           }}
@@ -133,7 +133,7 @@ const TriggerPluginItem: FC<Props> = ({
             />
             <div className="ml-2 flex min-w-0 flex-1 items-center text-sm text-text-primary">
               <span className="max-w-[200px] truncate">{notShowProvider ? actions[0]?.label[language] : payload.label[language]}</span>
-              <span className="system-xs-regular ml-2 truncate text-text-quaternary">{groupName}</span>
+              <span className="ml-2 truncate system-xs-regular text-text-quaternary">{groupName}</span>
             </div>
           </div>
 
@@ -150,6 +150,7 @@ const TriggerPluginItem: FC<Props> = ({
               key={action.name}
               provider={providerWithResolvedIcon}
               payload={action}
+              previewCardHandle={previewCardHandle}
               onSelect={onSelect}
               disabled={false}
               isAdded={false}

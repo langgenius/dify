@@ -1,18 +1,22 @@
 import logging
 from abc import ABC, abstractmethod
 from collections.abc import Generator, Mapping
-from typing import Any, Union
+from typing import Any, Union, cast
+
+from pydantic import JsonValue
 
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.app.entities.task_entities import AppBlockingResponse, AppStreamResponse
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
-from dify_graph.model_runtime.errors.invoke import InvokeError
+from graphon.model_runtime.errors.invoke import InvokeError
 
 logger = logging.getLogger(__name__)
 
 
-class AppGenerateResponseConverter(ABC):
-    _blocking_response_type: type[AppBlockingResponse]
+class AppGenerateResponseConverter[TBlockingResponse: AppBlockingResponse](ABC):
+    @classmethod
+    def _cast_blocking_response(cls, response: AppBlockingResponse) -> TBlockingResponse:
+        return cast(TBlockingResponse, response)
 
     @classmethod
     def convert(
@@ -20,45 +24,45 @@ class AppGenerateResponseConverter(ABC):
     ) -> Mapping[str, Any] | Generator[str | Mapping[str, Any], Any, None]:
         if invoke_from in {InvokeFrom.DEBUGGER, InvokeFrom.SERVICE_API}:
             if isinstance(response, AppBlockingResponse):
-                return cls.convert_blocking_full_response(response)
+                return cls.convert_blocking_full_response(cls._cast_blocking_response(response))
             else:
 
-                def _generate_full_response() -> Generator[dict | str, Any, None]:
+                def _generate_full_response() -> Generator[dict[str, Any] | str, Any, None]:
                     yield from cls.convert_stream_full_response(response)
 
                 return _generate_full_response()
         else:
             if isinstance(response, AppBlockingResponse):
-                return cls.convert_blocking_simple_response(response)
+                return cls.convert_blocking_simple_response(cls._cast_blocking_response(response))
             else:
 
-                def _generate_simple_response() -> Generator[dict | str, Any, None]:
+                def _generate_simple_response() -> Generator[dict[str, Any] | str, Any, None]:
                     yield from cls.convert_stream_simple_response(response)
 
                 return _generate_simple_response()
 
     @classmethod
     @abstractmethod
-    def convert_blocking_full_response(cls, blocking_response: AppBlockingResponse) -> dict[str, Any]:
+    def convert_blocking_full_response(cls, blocking_response: TBlockingResponse) -> dict[str, Any]:
         raise NotImplementedError
 
     @classmethod
     @abstractmethod
-    def convert_blocking_simple_response(cls, blocking_response: AppBlockingResponse) -> dict[str, Any]:
+    def convert_blocking_simple_response(cls, blocking_response: TBlockingResponse) -> dict[str, Any]:
         raise NotImplementedError
 
     @classmethod
     @abstractmethod
     def convert_stream_full_response(
         cls, stream_response: Generator[AppStreamResponse, None, None]
-    ) -> Generator[dict | str, None, None]:
+    ) -> Generator[dict[str, Any] | str, None, None]:
         raise NotImplementedError
 
     @classmethod
     @abstractmethod
     def convert_stream_simple_response(
         cls, stream_response: Generator[AppStreamResponse, None, None]
-    ) -> Generator[dict | str, None, None]:
+    ) -> Generator[dict[str, Any] | str, None, None]:
         raise NotImplementedError
 
     @classmethod
@@ -74,11 +78,22 @@ class AppGenerateResponseConverter(ABC):
             for resource in metadata["retriever_resources"]:
                 updated_resources.append(
                     {
+                        "dataset_id": resource.get("dataset_id"),
+                        "dataset_name": resource.get("dataset_name"),
+                        "document_id": resource.get("document_id"),
                         "segment_id": resource.get("segment_id", ""),
                         "position": resource["position"],
+                        "data_source_type": resource.get("data_source_type"),
                         "document_name": resource["document_name"],
                         "score": resource["score"],
+                        "hit_count": resource.get("hit_count"),
+                        "word_count": resource.get("word_count"),
+                        "segment_position": resource.get("segment_position"),
+                        "index_node_hash": resource.get("index_node_hash"),
                         "content": resource["content"],
+                        "page": resource.get("page"),
+                        "title": resource.get("title"),
+                        "files": resource.get("files"),
                         "summary": resource.get("summary"),
                     }
                 )
@@ -95,13 +110,13 @@ class AppGenerateResponseConverter(ABC):
         return metadata
 
     @classmethod
-    def _error_to_stream_response(cls, e: Exception):
+    def _error_to_stream_response(cls, e: Exception) -> dict[str, JsonValue]:
         """
         Error to stream response.
         :param e: exception
         :return:
         """
-        error_responses = {
+        error_responses: dict[type[Exception], dict[str, JsonValue]] = {
             ValueError: {"code": "invalid_param", "status": 400},
             ProviderTokenNotInitError: {"code": "provider_not_initialize", "status": 400},
             QuotaExceededError: {
@@ -115,7 +130,7 @@ class AppGenerateResponseConverter(ABC):
         }
 
         # Determine the response based on the type of exception
-        data = None
+        data: dict[str, JsonValue] | None = None
         for k, v in error_responses.items():
             if isinstance(e, k):
                 data = v

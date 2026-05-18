@@ -10,14 +10,14 @@ import { RETRIEVE_METHOD } from '@/types/app'
 import EmbeddingProcess from '../index'
 
 const mockPush = vi.fn()
-vi.mock('next/navigation', () => ({
+vi.mock('@/next/navigation', () => ({
   useRouter: () => ({
     push: mockPush,
   }),
 }))
 
 // Mock next/link
-vi.mock('next/link', () => ({
+vi.mock('@/next/link', () => ({
   default: function MockLink({ children, href, ...props }: { children: React.ReactNode, href: string }) {
     return <a href={href} {...props}>{children}</a>
   },

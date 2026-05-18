@@ -1,11 +1,8 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, waitFor } from '@testing-library/react'
-import nock from 'nock'
-import * as React from 'react'
 import GithubStar from '../index'
 
-const GITHUB_HOST = 'https://api.github.com'
-const GITHUB_PATH = '/repos/langgenius/dify'
+const GITHUB_STAR_URL = 'https://ungh.cc/repos/langgenius/dify'
 
 const renderWithQueryClient = () => {
   const queryClient = new QueryClient({
@@ -18,40 +15,66 @@ const renderWithQueryClient = () => {
   )
 }
 
-const mockGithubStar = (status: number, body: Record<string, unknown>, delayMs = 0) => {
-  return nock(GITHUB_HOST).get(GITHUB_PATH).delay(delayMs).reply(status, body)
+const createJsonResponse = (body: Record<string, unknown>, status = 200) => {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { 'Content-Type': 'application/json' },
+  })
+}
+
+const createDeferred = <T,>() => {
+  let resolve!: (value: T | PromiseLike<T>) => void
+  let reject!: (reason?: unknown) => void
+  const promise = new Promise<T>((res, rej) => {
+    resolve = res
+    reject = rej
+  })
+
+  return { promise, resolve, reject }
 }
 
 describe('GithubStar', () => {
   beforeEach(() => {
-    nock.cleanAll()
+    vi.restoreAllMocks()
+    vi.clearAllMocks()
   })
 
-  // Shows fetched star count when request succeeds
+  // Covers the fetched star count shown after a successful request.
   it('should render fetched star count', async () => {
-    mockGithubStar(200, { stargazers_count: 123456 })
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      createJsonResponse({ repo: { stars: 123456 } }),
+    )
 
     renderWithQueryClient()
 
     expect(await screen.findByText('123,456')).toBeInTheDocument()
+    expect(fetchSpy).toHaveBeenCalledWith(GITHUB_STAR_URL)
   })
 
-  // Falls back to default star count when request fails
+  // Covers the fallback star count shown when the request fails.
   it('should render default star count on error', async () => {
-    mockGithubStar(500, {})
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      createJsonResponse({}, 500),
+    )
 
     renderWithQueryClient()
 
     expect(await screen.findByText('110,918')).toBeInTheDocument()
   })
 
-  // Renders loader while fetching data
+  // Covers the loading indicator while the fetch promise is still pending.
   it('should show loader while fetching', async () => {
-    mockGithubStar(200, { stargazers_count: 222222 }, 50)
+    const deferred = createDeferred<Response>()
+    vi.spyOn(globalThis, 'fetch').mockReturnValueOnce(deferred.promise)
 
     const { container } = renderWithQueryClient()
 
     expect(container.querySelector('.animate-spin')).toBeInTheDocument()
-    await waitFor(() => expect(screen.getByText('222,222')).toBeInTheDocument())
+
+    deferred.resolve(createJsonResponse({ repo: { stars: 222222 } }))
+
+    await waitFor(() => {
+      expect(screen.getByText('222,222')).toBeInTheDocument()
+    })
   })
 })

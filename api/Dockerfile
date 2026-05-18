@@ -21,9 +21,11 @@ RUN apt-get update \
           # for building gmpy2
           libmpfr-dev libmpc-dev
 
-# Install Python dependencies
+# Install Python dependencies (workspace members under providers/vdb/)
 COPY pyproject.toml uv.lock ./
-RUN uv sync --locked --no-dev
+COPY providers ./providers
+# Trust the checked-in lock during image builds; dev-only path sources live outside the api/ context.
+RUN uv sync --frozen --no-dev
 
 # production stage
 FROM base AS production

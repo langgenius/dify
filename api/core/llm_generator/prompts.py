@@ -1,5 +1,4 @@
 # Written by YORKI MINAKO🤡, Edited by Xiaoyi, Edited by yasu-oh
-import os
 
 CONVERSATION_TITLE_PROMPT = """You are asked to generate a concise chat title by decomposing the user’s input into two parts: “Intention” and “Subject”.
 
@@ -96,23 +95,14 @@ JAVASCRIPT_CODE_GENERATOR_PROMPT_TEMPLATE = (
 )
 
 
-# Default prompt for suggested questions (can be overridden by environment variable)
-_DEFAULT_SUGGESTED_QUESTIONS_AFTER_ANSWER_PROMPT = (
+# Default prompt and model parameters for suggested questions.
+DEFAULT_SUGGESTED_QUESTIONS_AFTER_ANSWER_INSTRUCTION_PROMPT = (
     "Please help me predict the three most likely questions that human would ask, "
     "and keep each question under 20 characters.\n"
     "MAKE SURE your output is the SAME language as the Assistant's latest response. "
     "The output must be an array in JSON format following the specified schema:\n"
     '["question1","question2","question3"]\n'
 )
-
-# Environment variable override for suggested questions prompt
-SUGGESTED_QUESTIONS_AFTER_ANSWER_INSTRUCTION_PROMPT = os.getenv(
-    "SUGGESTED_QUESTIONS_PROMPT", _DEFAULT_SUGGESTED_QUESTIONS_AFTER_ANSWER_PROMPT
-)
-
-# Configurable LLM parameters for suggested questions (can be overridden by environment variables)
-SUGGESTED_QUESTIONS_MAX_TOKENS = int(os.getenv("SUGGESTED_QUESTIONS_MAX_TOKENS", "256"))
-SUGGESTED_QUESTIONS_TEMPERATURE = float(os.getenv("SUGGESTED_QUESTIONS_TEMPERATURE", "0"))
 
 GENERATOR_QA_PROMPT = (
     "<Task> The user will send a long text. Generate a Question and Answer pairs only using the knowledge"

@@ -1,13 +1,13 @@
 'use client'
 import type { InputProps } from '../input'
-import { useClipboard } from 'foxact/use-clipboard'
+import { cn } from '@langgenius/dify-ui/cn'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import { cn } from '@/utils/classnames'
+import { useClipboard } from '@/hooks/use-clipboard'
 import ActionButton from '../action-button'
-import Tooltip from '../tooltip'
 
-export type InputWithCopyProps = {
+type InputWithCopyProps = {
   showCopyButton?: boolean
   copyValue?: string // Value to copy, defaults to input value
   onCopy?: (value: string) => void // Callback when copy is triggered
@@ -49,8 +49,8 @@ const InputWithCopy = React.forwardRef<HTMLInputElement, InputWithCopyProps>((
       <input
         ref={ref}
         className={cn(
-          'w-full appearance-none border border-transparent bg-components-input-bg-normal py-[7px] text-components-input-text-filled caret-primary-600 outline-none placeholder:text-components-input-text-placeholder hover:border-components-input-border-hover hover:bg-components-input-bg-hover focus:border-components-input-border-active focus:bg-components-input-bg-active focus:shadow-xs',
-          'px-3 system-sm-regular radius-md',
+          'w-full appearance-none border border-transparent bg-components-input-bg-normal py-[7px] text-components-input-text-filled caret-primary-600 outline-hidden placeholder:text-components-input-text-placeholder hover:border-components-input-border-hover hover:bg-components-input-bg-hover focus:border-components-input-border-active focus:bg-components-input-bg-active focus:shadow-xs',
+          'rounded-lg px-3 system-sm-regular',
           showCopyButton && 'pr-8',
           inputProps.disabled && 'cursor-not-allowed border-transparent bg-components-input-bg-disabled text-components-input-text-filled-disabled hover:border-transparent hover:bg-components-input-bg-disabled',
           inputProps.className,
@@ -60,22 +60,27 @@ const InputWithCopy = React.forwardRef<HTMLInputElement, InputWithCopyProps>((
       />
       {showCopyButton && (
         <div
-          className="absolute right-2 top-1/2 -translate-y-1/2"
-          onMouseLeave={reset}
-          data-testid="copy-button-wrapper"
+          className="absolute top-1/2 right-2 -translate-y-1/2"
         >
-          <Tooltip
-            popupContent={safeTooltipText}
-          >
-            <ActionButton
-              size="xs"
-              onClick={handleCopy}
-              className="hover:bg-components-button-ghost-bg-hover"
-            >
-              {copied
-                ? (<span className="i-ri-clipboard-fill h-3.5 w-3.5 text-text-tertiary" data-testid="copied-icon" />)
-                : (<span className="i-ri-clipboard-line h-3.5 w-3.5 text-text-tertiary" data-testid="copy-icon" />)}
-            </ActionButton>
+          <Tooltip>
+            <TooltipTrigger
+              render={(
+                <ActionButton
+                  size="xs"
+                  aria-label={safeTooltipText}
+                  onClick={handleCopy}
+                  onMouseLeave={reset}
+                  className="hover:bg-components-button-ghost-bg-hover"
+                >
+                  {copied
+                    ? (<span className="i-ri-clipboard-fill h-3.5 w-3.5 text-text-tertiary" aria-hidden="true" />)
+                    : (<span className="i-ri-clipboard-line h-3.5 w-3.5 text-text-tertiary" aria-hidden="true" />)}
+                </ActionButton>
+              )}
+            />
+            <TooltipContent>
+              {safeTooltipText}
+            </TooltipContent>
           </Tooltip>
         </div>
       )}

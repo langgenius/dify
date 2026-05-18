@@ -1,14 +1,14 @@
 from dataclasses import dataclass
-from typing import Annotated, Literal, Self, TypeAlias
+from typing import Annotated, Literal, Self
 
 from pydantic import BaseModel, Field
 from sqlalchemy import Engine
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, WorkflowAppGenerateEntity
-from dify_graph.graph_engine.layers.base import GraphEngineLayer
-from dify_graph.graph_events.base import GraphEngineEvent
-from dify_graph.graph_events.graph import GraphRunPausedEvent
+from core.workflow.system_variables import SystemVariableKey, get_system_text
+from graphon.graph_engine.layers import GraphEngineLayer
+from graphon.graph_events import GraphEngineEvent, GraphRunPausedEvent
 from models.model import AppMode
 from repositories.api_workflow_run_repository import APIWorkflowRunRepository
 from repositories.factory import DifyAPIRepositoryFactory
@@ -27,7 +27,7 @@ class _AdvancedChatAppGenerateEntityWrapper(BaseModel):
     entity: AdvancedChatAppGenerateEntity
 
 
-_GenerateEntityUnion: TypeAlias = Annotated[
+type _GenerateEntityUnion = Annotated[
     _WorkflowGenerateEntityWrapper | _AdvancedChatAppGenerateEntityWrapper,
     Field(discriminator="type"),
 ]
@@ -119,7 +119,10 @@ class PauseStatePersistenceLayer(GraphEngineLayer):
             generate_entity=entity_wrapper,
         )
 
-        workflow_run_id: str | None = self.graph_runtime_state.system_variable.workflow_execution_id
+        workflow_run_id = get_system_text(
+            self.graph_runtime_state.variable_pool,
+            SystemVariableKey.WORKFLOW_EXECUTION_ID,
+        )
         assert workflow_run_id is not None
         repo = self._get_repo()
         repo.create_workflow_pause(

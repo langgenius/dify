@@ -42,6 +42,8 @@ export const AMPLITUDE_API_KEY = getStringConfig(
   '',
 )
 
+export const isAmplitudeEnabled = IS_CLOUD_EDITION && !!AMPLITUDE_API_KEY
+
 export const IS_DEV = process.env.NODE_ENV === 'development'
 export const IS_PROD = process.env.NODE_ENV === 'production'
 
@@ -113,6 +115,10 @@ export const LOCALE_COOKIE_NAME = 'locale'
 const COOKIE_DOMAIN = getStringConfig(
   env.NEXT_PUBLIC_COOKIE_DOMAIN,
   '',
+).trim()
+export const SOCKET_URL = getStringConfig(
+  env.NEXT_PUBLIC_SOCKET_URL,
+  'ws://localhost:5001',
 ).trim()
 
 export const BATCH_CONCURRENCY = env.NEXT_PUBLIC_BATCH_CONCURRENCY
@@ -281,8 +287,7 @@ Thought: {{agent_scratchpad}}
   `,
 }
 
-export const VAR_REGEX
-  = /\{\{(#[\w-]{1,50}(\.\d+)?(\.[a-z_]\w{0,29}){1,10}#)\}\}/gi
+export const VAR_REGEX = /\{\{(#[\w-]{1,50}(\.\d+)?(\.[a-z_]\w{0,29}){1,10}#)\}\}/gi
 
 export const resetReg = () => (VAR_REGEX.lastIndex = 0)
 
@@ -290,9 +295,6 @@ export const HITL_INPUT_REG = /\{\{(#\$output\.(?:[a-z_]\w{0,29}){1,10}#)\}\}/gi
 export const resetHITLInputReg = () => HITL_INPUT_REG.lastIndex = 0
 
 export const DISABLE_UPLOAD_IMAGE_AS_ICON = env.NEXT_PUBLIC_DISABLE_UPLOAD_IMAGE_AS_ICON
-
-export const GITHUB_ACCESS_TOKEN
-  = env.NEXT_PUBLIC_GITHUB_ACCESS_TOKEN
 
 export const SUPPORT_INSTALL_LOCAL_FILE_EXTENSIONS = '.difypkg,.difybndl'
 export const FULL_DOC_PREVIEW_LENGTH = 50
@@ -306,6 +308,7 @@ export const LOOP_NODE_MAX_COUNT = env.NEXT_PUBLIC_LOOP_NODE_MAX_COUNT
 export const MAX_ITERATIONS_NUM = env.NEXT_PUBLIC_MAX_ITERATIONS_NUM
 export const MAX_TREE_DEPTH = env.NEXT_PUBLIC_MAX_TREE_DEPTH
 
+export const ALLOW_INLINE_STYLES = env.NEXT_PUBLIC_ALLOW_INLINE_STYLES
 export const ALLOW_UNSAFE_DATA_SCHEME = env.NEXT_PUBLIC_ALLOW_UNSAFE_DATA_SCHEME
 export const ENABLE_WEBSITE_JINAREADER = env.NEXT_PUBLIC_ENABLE_WEBSITE_JINAREADER
 export const ENABLE_WEBSITE_FIRECRAWL = env.NEXT_PUBLIC_ENABLE_WEBSITE_FIRECRAWL

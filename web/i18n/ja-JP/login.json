@@ -35,6 +35,8 @@
   "error.emailEmpty": "メールアドレスは必須です",
   "error.emailInValid": "有効なメールアドレスを入力してください",
   "error.invalidEmailOrPassword": "無効なメールアドレスまたはパスワードです。",
+  "error.invalidRedirectUrlOrAppCode": "無効なリダイレクトURLまたはアプリコード",
+  "error.invalidSSOProtocol": "無効なSSOプロトコル",
   "error.nameEmpty": "名前は必須です",
   "error.passwordEmpty": "パスワードは必須です",
   "error.passwordInvalid": "パスワードは文字と数字を含み、長さは 8 以上である必要があります",

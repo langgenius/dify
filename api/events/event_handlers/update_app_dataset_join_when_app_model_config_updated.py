@@ -1,6 +1,6 @@
 from typing import Any, cast
 
-from sqlalchemy import select
+from sqlalchemy import delete, select
 
 from events.app_event import app_model_config_was_updated
 from extensions.ext_database import db
@@ -31,9 +31,9 @@ def handle(sender, **kwargs):
 
     if removed_dataset_ids:
         for dataset_id in removed_dataset_ids:
-            db.session.query(AppDatasetJoin).where(
-                AppDatasetJoin.app_id == app.id, AppDatasetJoin.dataset_id == dataset_id
-            ).delete()
+            db.session.execute(
+                delete(AppDatasetJoin).where(AppDatasetJoin.app_id == app.id, AppDatasetJoin.dataset_id == dataset_id)
+            )
 
     if added_dataset_ids:
         for dataset_id in added_dataset_ids:

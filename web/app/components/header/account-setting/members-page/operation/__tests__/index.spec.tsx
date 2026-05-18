@@ -2,15 +2,14 @@ import type { Member } from '@/models/common'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { vi } from 'vitest'
-import { ToastContext } from '@/app/components/base/toast/context'
 import Operation from '../index'
 
 const mockUpdateMemberRole = vi.fn()
 const mockDeleteMemberOrCancelInvitation = vi.fn()
 
 vi.mock('@/service/common', () => ({
-  deleteMemberOrCancelInvitation: () => mockDeleteMemberOrCancelInvitation(),
-  updateMemberRole: () => mockUpdateMemberRole(),
+  deleteMemberOrCancelInvitation: (args: unknown) => mockDeleteMemberOrCancelInvitation(args),
+  updateMemberRole: (args: unknown) => mockUpdateMemberRole(args),
 }))
 
 const mockUseProviderContext = vi.fn(() => ({
@@ -37,9 +36,9 @@ const defaultMember: Member = {
 const renderOperation = (propsOverride: Partial<Member> = {}, operatorRole = 'owner', onOperate?: () => void) => {
   const mergedMember = { ...defaultMember, ...propsOverride }
   return render(
-    <ToastContext.Provider value={{ notify: vi.fn(), close: vi.fn() }}>
+    <>
       <Operation member={mergedMember} operatorRole={operatorRole} onOperate={onOperate ?? vi.fn()} />
-    </ToastContext.Provider>,
+    </>,
   )
 }
 
@@ -66,18 +65,21 @@ describe('Operation', () => {
     expect(await screen.findByText('common.members.datasetOperator')).toBeInTheDocument()
   })
 
-  it('should show owner-allowed role options when operator role is admin', async () => {
+  it('should show admin-allowed role options when operator role is admin', async () => {
     const user = userEvent.setup()
 
     renderOperation({}, 'admin')
 
     await user.click(screen.getByText('common.members.editor'))
 
-    expect(screen.queryByText('common.members.admin')).not.toBeInTheDocument()
+    expect(screen.getByText('common.members.admin')).toBeInTheDocument()
+    expect(screen.getAllByText('common.members.editor')).toHaveLength(2)
     expect(screen.getByText('common.members.normal')).toBeInTheDocument()
+    expect(screen.queryByText('common.members.datasetOperator')).not.toBeInTheDocument()
+    expect(screen.getByText('common.members.removeFromTeam')).toBeInTheDocument()
   })
 
-  it('should not show role options when operator role is unsupported', async () => {
+  it('should not show role options or remove action when operator role is unsupported', async () => {
     const user = userEvent.setup()
 
     renderOperation({}, 'normal')
@@ -85,7 +87,7 @@ describe('Operation', () => {
     await user.click(screen.getByText('common.members.editor'))
 
     expect(screen.queryByText('common.members.normal')).not.toBeInTheDocument()
-    expect(screen.getByText('common.members.removeFromTeam')).toBeInTheDocument()
+    expect(screen.queryByText('common.members.removeFromTeam')).not.toBeInTheDocument()
   })
 
   it('should call updateMemberRole and onOperate when selecting another role', async () => {
@@ -97,7 +99,10 @@ describe('Operation', () => {
     await user.click(await screen.findByText('common.members.normal'))
 
     await waitFor(() => {
-      expect(mockUpdateMemberRole).toHaveBeenCalled()
+      expect(mockUpdateMemberRole).toHaveBeenCalledWith({
+        url: '/workspaces/current/members/member-id/update-role',
+        body: { role: 'normal' },
+      })
       expect(onOperate).toHaveBeenCalled()
     })
   })
@@ -110,7 +115,7 @@ describe('Operation', () => {
     await user.click(screen.getByText('common.members.editor'))
 
     expect(await screen.findByText('common.members.datasetOperator')).toBeInTheDocument()
-    expect(screen.queryByText('common.members.admin')).not.toBeInTheDocument()
+    expect(screen.getByText('common.members.admin')).toBeInTheDocument()
   })
 
   it('should fall back to normal role label when member role is unknown', () => {
@@ -128,7 +133,9 @@ describe('Operation', () => {
     await user.click(await screen.findByText('common.members.removeFromTeam'))
 
     await waitFor(() => {
-      expect(mockDeleteMemberOrCancelInvitation).toHaveBeenCalled()
+      expect(mockDeleteMemberOrCancelInvitation).toHaveBeenCalledWith({
+        url: '/workspaces/current/members/member-id',
+      })
       expect(onOperate).toHaveBeenCalled()
     })
   })

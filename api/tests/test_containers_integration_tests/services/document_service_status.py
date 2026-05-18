@@ -12,7 +12,10 @@ from unittest.mock import create_autospec, patch
 from uuid import uuid4
 
 import pytest
+from sqlalchemy.orm import Session
 
+from core.rag.index_processor.constant.index_type import IndexStructureType
+from extensions.storage.storage_type import StorageType
 from models import Account
 from models.dataset import Dataset, Document
 from models.enums import CreatorUserRole, DataSourceType, DocumentCreatedFrom, IndexingStatus
@@ -90,7 +93,7 @@ class DocumentStatusTestDataFactory:
             name=name,
             created_from=DocumentCreatedFrom.WEB,
             created_by=created_by,
-            doc_form="text_model",
+            doc_form=IndexStructureType.PARAGRAPH_INDEX,
         )
         document.id = document_id
         document.indexing_status = indexing_status
@@ -198,7 +201,7 @@ class DocumentStatusTestDataFactory:
         """
         upload_file = UploadFile(
             tenant_id=tenant_id,
-            storage_type="local",
+            storage_type=StorageType.LOCAL,
             key=f"uploads/{uuid4()}",
             name=name,
             size=128,
@@ -271,7 +274,9 @@ class TestDocumentServicePauseDocument:
                 "user_id": user_id,
             }
 
-    def test_pause_document_waiting_state_success(self, db_session_with_containers, mock_document_service_dependencies):
+    def test_pause_document_waiting_state_success(
+        self, db_session_with_containers: Session, mock_document_service_dependencies
+    ):
         """
         Test successful pause of document in waiting state.
 
@@ -308,7 +313,7 @@ class TestDocumentServicePauseDocument:
         mock_document_service_dependencies["redis_client"].setnx.assert_called_once_with(expected_cache_key, "True")
 
     def test_pause_document_indexing_state_success(
-        self, db_session_with_containers, mock_document_service_dependencies
+        self, db_session_with_containers: Session, mock_document_service_dependencies
     ):
         """
         Test successful pause of document in indexing state.
@@ -338,7 +343,9 @@ class TestDocumentServicePauseDocument:
         assert document.is_paused is True
         assert document.paused_by == mock_document_service_dependencies["user_id"]
 
-    def test_pause_document_parsing_state_success(self, db_session_with_containers, mock_document_service_dependencies):
+    def test_pause_document_parsing_state_success(
+        self, db_session_with_containers: Session, mock_document_service_dependencies
+    ):
         """
         Test successful pause of document in parsing state.
 
@@ -365,7 +372,9 @@ class TestDocumentServicePauseDocument:
         db_session_with_containers.refresh(document)
         assert document.is_paused is True
 
-    def test_pause_document_completed_state_error(self, db_session_with_containers, mock_document_service_dependencies):
+    def test_pause_document_completed_state_error(
+        self, db_session_with_containers: Session, mock_document_service_dependencies
+    ):
         """
         Test error when trying to pause completed document.
 
@@ -394,7 +403,9 @@ class TestDocumentServicePauseDocument:
         db_session_with_containers.refresh(document)
         assert document.is_paused is False
 
-    def test_pause_document_error_state_error(self, db_session_with_containers, mock_document_service_dependencies):
+    def test_pause_document_error_state_error(
+        self, db_session_with_containers: Session, mock_document_service_dependencies
+    ):
         """
         Test error when trying to pause document in error state.
 
@@ -465,7 +476,9 @@ class TestDocumentServiceRecoverDocument:
                 "recover_task": mock_task,
             }
 
-    def test_recover_document_paused_success(self, db_session_with_containers, mock_document_service_dependencies):
+    def test_recover_document_paused_success(
+        self, db_session_with_containers: Session, mock_document_service_dependencies
+    ):
         """
         Test successful recovery of paused document.
 
@@ -508,7 +521,9 @@ class TestDocumentServiceRecoverDocument:
             document.dataset_id, document.id
         )
 
-    def test_recover_document_not_paused_error(self, db_session_with_containers, mock_document_service_dependencies):
+    def test_recover_document_not_paused_error(
+        self, db_session_with_containers: Session, mock_document_service_dependencies
+    ):
         """
         Test error when trying to recover non-paused document.
 
@@ -588,7 +603,9 @@ class TestDocumentServiceRetryDocument:
                 "user_id": user_id,
             }
 
-    def test_retry_document_single_success(self, db_session_with_containers, mock_document_service_dependencies):
+    def test_retry_document_single_success(
+        self, db_session_with_containers: Session, mock_document_service_dependencies
+    ):
         """
         Test successful retry of single document.
 
@@ -627,7 +644,9 @@ class TestDocumentServiceRetryDocument:
             dataset.id, [document.id], mock_document_service_dependencies["user_id"]
         )
 
-    def test_retry_document_multiple_success(self, db_session_with_containers, mock_document_service_dependencies):
+    def test_retry_document_multiple_success(
+        self, db_session_with_containers: Session, mock_document_service_dependencies
+    ):
         """
         Test successful retry of multiple documents.
 
@@ -673,7 +692,7 @@ class TestDocumentServiceRetryDocument:
         )
 
     def test_retry_document_concurrent_retry_error(
-        self, db_session_with_containers, mock_document_service_dependencies
+        self, db_session_with_containers: Session, mock_document_service_dependencies
     ):
         """
         Test error when document is already being retried.
@@ -706,7 +725,7 @@ class TestDocumentServiceRetryDocument:
         assert document.indexing_status == IndexingStatus.ERROR
 
     def test_retry_document_missing_current_user_error(
-        self, db_session_with_containers, mock_document_service_dependencies
+        self, db_session_with_containers: Session, mock_document_service_dependencies
     ):
         """
         Test error when current_user is missing.
@@ -792,7 +811,7 @@ class TestDocumentServiceBatchUpdateDocumentStatus:
             }
 
     def test_batch_update_document_status_enable_success(
-        self, db_session_with_containers, mock_document_service_dependencies
+        self, db_session_with_containers: Session, mock_document_service_dependencies
     ):
         """
         Test successful batch enabling of documents.
@@ -842,7 +861,7 @@ class TestDocumentServiceBatchUpdateDocumentStatus:
         assert mock_document_service_dependencies["add_task"].delay.call_count == 2
 
     def test_batch_update_document_status_disable_success(
-        self, db_session_with_containers, mock_document_service_dependencies
+        self, db_session_with_containers: Session, mock_document_service_dependencies
     ):
         """
         Test successful batch disabling of documents.
@@ -884,7 +903,7 @@ class TestDocumentServiceBatchUpdateDocumentStatus:
         mock_document_service_dependencies["remove_task"].delay.assert_called_once_with(document.id)
 
     def test_batch_update_document_status_archive_success(
-        self, db_session_with_containers, mock_document_service_dependencies
+        self, db_session_with_containers: Session, mock_document_service_dependencies
     ):
         """
         Test successful batch archiving of documents.
@@ -926,7 +945,7 @@ class TestDocumentServiceBatchUpdateDocumentStatus:
         mock_document_service_dependencies["remove_task"].delay.assert_called_once_with(document.id)
 
     def test_batch_update_document_status_unarchive_success(
-        self, db_session_with_containers, mock_document_service_dependencies
+        self, db_session_with_containers: Session, mock_document_service_dependencies
     ):
         """
         Test successful batch unarchiving of documents.
@@ -968,7 +987,7 @@ class TestDocumentServiceBatchUpdateDocumentStatus:
         mock_document_service_dependencies["add_task"].delay.assert_called_once_with(document.id)
 
     def test_batch_update_document_status_empty_list(
-        self, db_session_with_containers, mock_document_service_dependencies
+        self, db_session_with_containers: Session, mock_document_service_dependencies
     ):
         """
         Test handling of empty document list.
@@ -994,7 +1013,7 @@ class TestDocumentServiceBatchUpdateDocumentStatus:
         mock_document_service_dependencies["remove_task"].delay.assert_not_called()
 
     def test_batch_update_document_status_document_indexing_error(
-        self, db_session_with_containers, mock_document_service_dependencies
+        self, db_session_with_containers: Session, mock_document_service_dependencies
     ):
         """
         Test error when document is being indexed.
@@ -1071,7 +1090,7 @@ class TestDocumentServiceRenameDocument:
                 "current_user": mock_current_user,
             }
 
-    def test_rename_document_success(self, db_session_with_containers, mock_document_service_dependencies):
+    def test_rename_document_success(self, db_session_with_containers: Session, mock_document_service_dependencies):
         """
         Test successful document renaming.
 
@@ -1109,7 +1128,9 @@ class TestDocumentServiceRenameDocument:
         assert result == document
         assert document.name == new_name
 
-    def test_rename_document_with_built_in_fields(self, db_session_with_containers, mock_document_service_dependencies):
+    def test_rename_document_with_built_in_fields(
+        self, db_session_with_containers: Session, mock_document_service_dependencies
+    ):
         """
         Test document renaming with built-in fields enabled.
 
@@ -1152,7 +1173,9 @@ class TestDocumentServiceRenameDocument:
         assert document.doc_metadata["document_name"] == new_name
         assert document.doc_metadata["existing_key"] == "existing_value"
 
-    def test_rename_document_with_upload_file(self, db_session_with_containers, mock_document_service_dependencies):
+    def test_rename_document_with_upload_file(
+        self, db_session_with_containers: Session, mock_document_service_dependencies
+    ):
         """
         Test document renaming with associated upload file.
 
@@ -1200,7 +1223,7 @@ class TestDocumentServiceRenameDocument:
         assert upload_file.name == new_name
 
     def test_rename_document_dataset_not_found_error(
-        self, db_session_with_containers, mock_document_service_dependencies
+        self, db_session_with_containers: Session, mock_document_service_dependencies
     ):
         """
         Test error when dataset is not found.
@@ -1222,7 +1245,9 @@ class TestDocumentServiceRenameDocument:
         with pytest.raises(ValueError, match="Dataset not found"):
             DocumentService.rename_document(dataset_id, document_id, new_name)
 
-    def test_rename_document_not_found_error(self, db_session_with_containers, mock_document_service_dependencies):
+    def test_rename_document_not_found_error(
+        self, db_session_with_containers: Session, mock_document_service_dependencies
+    ):
         """
         Test error when document is not found.
 
@@ -1249,7 +1274,9 @@ class TestDocumentServiceRenameDocument:
         with pytest.raises(ValueError, match="Document not found"):
             DocumentService.rename_document(dataset.id, document_id, new_name)
 
-    def test_rename_document_permission_error(self, db_session_with_containers, mock_document_service_dependencies):
+    def test_rename_document_permission_error(
+        self, db_session_with_containers: Session, mock_document_service_dependencies
+    ):
         """
         Test error when user lacks permission.
 

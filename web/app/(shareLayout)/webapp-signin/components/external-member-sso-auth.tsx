@@ -1,26 +1,24 @@
 'use client'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { toast } from '@langgenius/dify-ui/toast'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import * as React from 'react'
 import { useCallback, useEffect } from 'react'
 import AppUnavailable from '@/app/components/base/app-unavailable'
 import Loading from '@/app/components/base/loading'
-import Toast from '@/app/components/base/toast'
-import { useGlobalPublicStore } from '@/context/global-public-context'
+import { useRouter, useSearchParams } from '@/next/navigation'
 import { fetchWebOAuth2SSOUrl, fetchWebOIDCSSOUrl, fetchWebSAMLSSOUrl } from '@/service/share'
+import { systemFeaturesQueryOptions } from '@/service/system-features'
 import { SSOProtocol } from '@/types/feature'
 
 const ExternalMemberSSOAuth = () => {
-  const systemFeatures = useGlobalPublicStore(s => s.systemFeatures)
+  const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const searchParams = useSearchParams()
   const router = useRouter()
 
   const redirectUrl = searchParams.get('redirect_url')
 
   const showErrorToast = (message: string) => {
-    Toast.notify({
-      type: 'error',
-      message,
-    })
+    toast.error(message)
   }
 
   const getAppCodeFromRedirectUrl = useCallback(() => {

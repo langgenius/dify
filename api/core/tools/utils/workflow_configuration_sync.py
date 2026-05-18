@@ -3,9 +3,9 @@ from typing import Any
 
 from core.tools.entities.tool_entities import WorkflowToolParameterConfiguration
 from core.tools.errors import WorkflowToolHumanInputNotSupportedError
-from dify_graph.enums import BuiltinNodeTypes
-from dify_graph.nodes.base.entities import OutputVariableEntity
-from dify_graph.variables.input_entities import VariableEntity
+from graphon.enums import BuiltinNodeTypes
+from graphon.nodes.base.entities import OutputVariableEntity
+from graphon.variables.input_entities import VariableEntity
 
 
 class WorkflowToolConfigurationUtils:
@@ -16,10 +16,8 @@ class WorkflowToolConfigurationUtils:
         """
         nodes = graph.get("nodes", [])
         start_node = next(filter(lambda x: x.get("data", {}).get("type") == "start", nodes), None)
-
         if not start_node:
             return []
-
         return [VariableEntity.model_validate(variable) for variable in start_node.get("data", {}).get("variables", [])]
 
     @classmethod

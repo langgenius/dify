@@ -6,26 +6,29 @@ from typing import Any, cast
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from core.app.file_access import DatabaseFileAccessController
 from core.tools.entities.tool_entities import ToolInvokeMessage
 from core.tools.utils.message_transformer import ToolFileMessageTransformer
-from dify_graph.enums import BuiltinNodeTypes, NodeType, WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
-from dify_graph.file import File, FileTransferMethod
-from dify_graph.model_runtime.entities.llm_entities import LLMUsage, LLMUsageMetadata
-from dify_graph.model_runtime.utils.encoders import jsonable_encoder
-from dify_graph.node_events import (
+from extensions.ext_database import db
+from factories import file_factory
+from graphon.enums import BuiltinNodeTypes, NodeType, WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
+from graphon.file import File, FileTransferMethod, get_file_type_by_mime_type
+from graphon.model_runtime.entities.llm_entities import LLMUsage, LLMUsageMetadata
+from graphon.model_runtime.utils.encoders import jsonable_encoder
+from graphon.node_events import (
     AgentLogEvent,
     NodeEventBase,
     NodeRunResult,
     StreamChunkEvent,
     StreamCompletedEvent,
 )
-from dify_graph.variables.segments import ArrayFileSegment
-from extensions.ext_database import db
-from factories import file_factory
+from graphon.variables.segments import ArrayFileSegment
 from models import ToolFile
 from services.tools.builtin_tools_manage_service import BuiltinToolManageService
 
 from .exceptions import AgentNodeError, AgentVariableTypeError, ToolFileNotFoundError
+
+_file_access_controller = DatabaseFileAccessController()
 
 
 class AgentMessageTransformer:
@@ -37,6 +40,7 @@ class AgentMessageTransformer:
         parameters_for_log: dict[str, Any],
         user_id: str,
         tenant_id: str,
+        conversation_id: str | None,
         node_type: NodeType,
         node_id: str,
         node_execution_id: str,
@@ -47,7 +51,7 @@ class AgentMessageTransformer:
             messages=messages,
             user_id=user_id,
             tenant_id=tenant_id,
-            conversation_id=None,
+            conversation_id=conversation_id,
         )
 
         text = ""
@@ -70,10 +74,12 @@ class AgentMessageTransformer:
                 url = message.message.text
                 if message.meta:
                     transfer_method = message.meta.get("transfer_method", FileTransferMethod.TOOL_FILE)
+                    tool_file_id = message.meta.get("tool_file_id")
                 else:
                     transfer_method = FileTransferMethod.TOOL_FILE
-
-                tool_file_id = str(url).split("/")[-1].split(".")[0]
+                    tool_file_id = None
+                if not isinstance(tool_file_id, str) or not tool_file_id:
+                    raise ToolFileNotFoundError("missing tool_file_id metadata")
 
                 with Session(db.engine) as session:
                     stmt = select(ToolFile).where(ToolFile.id == tool_file_id)
@@ -83,20 +89,23 @@ class AgentMessageTransformer:
 
                 mapping = {
                     "tool_file_id": tool_file_id,
-                    "type": file_factory.get_file_type_by_mime_type(tool_file.mimetype),
+                    "type": get_file_type_by_mime_type(tool_file.mimetype),
                     "transfer_method": transfer_method,
                     "url": url,
                 }
                 file = file_factory.build_from_mapping(
                     mapping=mapping,
                     tenant_id=tenant_id,
+                    access_controller=_file_access_controller,
                 )
                 files.append(file)
             elif message.type == ToolInvokeMessage.MessageType.BLOB:
                 assert isinstance(message.message, ToolInvokeMessage.TextMessage)
                 assert message.meta
 
-                tool_file_id = message.message.text.split("/")[-1].split(".")[0]
+                tool_file_id = message.meta.get("tool_file_id")
+                if not isinstance(tool_file_id, str) or not tool_file_id:
+                    raise ToolFileNotFoundError("missing tool_file_id metadata")
                 with Session(db.engine) as session:
                     stmt = select(ToolFile).where(ToolFile.id == tool_file_id)
                     tool_file = session.scalar(stmt)
@@ -111,6 +120,7 @@ class AgentMessageTransformer:
                     file_factory.build_from_mapping(
                         mapping=mapping,
                         tenant_id=tenant_id,
+                        access_controller=_file_access_controller,
                     )
                 )
             elif message.type == ToolInvokeMessage.MessageType.TEXT:

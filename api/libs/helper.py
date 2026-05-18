@@ -10,26 +10,39 @@ import uuid
 from collections.abc import Callable, Generator, Mapping
 from datetime import datetime
 from hashlib import sha256
-from typing import TYPE_CHECKING, Annotated, Any, Optional, Protocol, Union, cast
+from typing import TYPE_CHECKING, Annotated, Any, Protocol, cast, overload
 from uuid import UUID
 from zoneinfo import available_timezones
 
 from flask import Response, stream_with_context
 from flask_restx import fields
-from pydantic import BaseModel
+from pydantic import BaseModel, TypeAdapter
 from pydantic.functional_validators import AfterValidator
+from typing_extensions import TypedDict
 
 from configs import dify_config
 from core.app.features.rate_limiting.rate_limit import RateLimitGenerator
-from dify_graph.file import helpers as file_helpers
-from dify_graph.model_runtime.utils.encoders import jsonable_encoder
 from extensions.ext_redis import redis_client
+from graphon.file import helpers as file_helpers
+from graphon.model_runtime.utils.encoders import jsonable_encoder
 
 if TYPE_CHECKING:
     from models import Account
     from models.model import EndUser
 
 logger = logging.getLogger(__name__)
+
+
+class _TokenData(TypedDict, total=False):
+    account_id: str | None
+    email: str
+    token_type: str
+    code: str
+    old_email: str
+    phase: str
+
+
+_token_data_adapter: TypeAdapter[_TokenData] = TypeAdapter(_TokenData)
 
 
 def _stream_with_request_context(response: object) -> Any:
@@ -69,7 +82,7 @@ def escape_like_pattern(pattern: str) -> str:
     return pattern.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
 
 
-def extract_tenant_id(user: Union["Account", "EndUser"]) -> str | None:
+def extract_tenant_id(user: "Account | EndUser") -> str | None:
     """
     Extract tenant_id from Account or EndUser object.
 
@@ -85,12 +98,13 @@ def extract_tenant_id(user: Union["Account", "EndUser"]) -> str | None:
     from models import Account
     from models.model import EndUser
 
-    if isinstance(user, Account):
-        return user.current_tenant_id
-    elif isinstance(user, EndUser):
-        return user.tenant_id
-    else:
-        raise ValueError(f"Invalid user type: {type(user)}. Expected Account or EndUser.")
+    match user:
+        case Account():
+            return user.current_tenant_id
+        case EndUser():
+            return user.tenant_id
+        case _:
+            raise ValueError(f"Invalid user type: {type(user)}. Expected Account or EndUser.")
 
 
 def run(script):
@@ -108,8 +122,28 @@ class AppIconUrlField(fields.Raw):
             obj = obj["app"]
 
         if isinstance(obj, App | Site) and obj.icon_type == IconType.IMAGE:
-            return file_helpers.get_signed_file_url(obj.icon)
+            return build_icon_url(obj.icon_type, obj.icon)
         return None
+
+
+def build_icon_url(icon_type: Any, icon: str | None) -> str | None:
+    if icon is None or icon_type is None:
+        return None
+
+    from models.model import IconType
+
+    icon_type_value = icon_type.value if isinstance(icon_type, IconType) else str(icon_type)
+    if icon_type_value.lower() != IconType.IMAGE:
+        return None
+    return file_helpers.get_signed_file_url(icon)
+
+
+def build_avatar_url(avatar: str | None) -> str | None:
+    if avatar is None:
+        return None
+    if avatar.startswith(("http://", "https://")):
+        return avatar
+    return file_helpers.get_signed_file_url(avatar)
 
 
 class AvatarUrlField(fields.Raw):
@@ -120,9 +154,7 @@ class AvatarUrlField(fields.Raw):
         from models import Account
 
         if isinstance(obj, Account) and obj.avatar is not None:
-            if obj.avatar.startswith(("http://", "https://")):
-                return obj.avatar
-            return file_helpers.get_signed_file_url(obj.avatar)
+            return build_avatar_url(obj.avatar)
         return None
 
 
@@ -136,6 +168,35 @@ class OptionalTimestampField(fields.Raw):
         if value is None:
             return None
         return int(value.timestamp())
+
+
+@overload
+def to_timestamp(value: datetime) -> int: ...
+
+
+@overload
+def to_timestamp(value: int) -> int: ...
+
+
+@overload
+def to_timestamp(value: None) -> None: ...
+
+
+def to_timestamp(value: datetime | int | None) -> int | None:
+    """Normalize API response timestamp values to epoch seconds."""
+    if isinstance(value, datetime):
+        return int(value.timestamp())
+    return value
+
+
+def dump_response(model: type[BaseModel], data: Any) -> dict[str, Any]:
+    """Serialize a Pydantic response model to JSON-compatible dict output."""
+    return model.model_validate(data, from_attributes=True).model_dump(mode="json")
+
+
+def current_timestamp() -> int:
+    """Return the current Unix timestamp in seconds."""
+    return int(time.time())
 
 
 def email(email):
@@ -152,7 +213,10 @@ def email(email):
 EmailStr = Annotated[str, AfterValidator(email)]
 
 
-def uuid_value(value: Any) -> str:
+def uuid_value(value: str | UUID) -> str:
+    if isinstance(value, UUID):
+        return str(value)
+
     if value == "":
         return str(value)
 
@@ -172,6 +236,18 @@ def normalize_uuid(value: str | UUID) -> str:
         return uuid_value(value)
     except ValueError as exc:
         raise ValueError("must be a valid UUID") from exc
+
+
+def parse_uuid_str_or_none(value: str | None) -> str | None:
+    """
+    Return None for missing/empty UUID-like values.
+
+    Keep non-empty values unchanged to avoid changing behavior in paths that
+    currently pass placeholder IDs in tests/mocks.
+    """
+    if value is None or not str(value).strip():
+        return None
+    return str(value)
 
 
 UUIDStrOrEmpty = Annotated[str, AfterValidator(normalize_uuid)]
@@ -347,18 +423,19 @@ def length_prefixed_response(
         # | Magic Number 1byte | Reserved 1byte | Header Length 2bytes | Data Length 4bytes | Reserved 6bytes | Data
         return struct.pack("<BBHI", magic_number, 0, header_length, data_length) + b"\x00" * 6 + response
 
-    if isinstance(response, Mapping):
-        return Response(
-            response=pack_response_with_length_prefix(json.dumps(jsonable_encoder(response)).encode("utf-8")),
-            status=200,
-            mimetype="application/json",
-        )
-    elif isinstance(response, BaseModel):
-        return Response(
-            response=pack_response_with_length_prefix(response.model_dump_json().encode("utf-8")),
-            status=200,
-            mimetype="application/json",
-        )
+    match response:
+        case Mapping():
+            return Response(
+                response=pack_response_with_length_prefix(json.dumps(jsonable_encoder(response)).encode("utf-8")),
+                status=200,
+                mimetype="application/json",
+            )
+        case BaseModel():
+            return Response(
+                response=pack_response_with_length_prefix(response.model_dump_json().encode("utf-8")),
+                status=200,
+                mimetype="application/json",
+            )
 
     stream_response = response
 
@@ -381,9 +458,9 @@ class TokenManager:
     def generate_token(
         cls,
         token_type: str,
-        account: Optional["Account"] = None,
+        account: "Account | None" = None,
         email: str | None = None,
-        additional_data: dict | None = None,
+        additional_data: dict[str, Any] | None = None,
     ) -> str:
         if account is None and email is None:
             raise ValueError("Account or email must be provided")
@@ -431,7 +508,7 @@ class TokenManager:
         if token_data_json is None:
             logger.warning("%s token %s not found with key %s", token_type, token, key)
             return None
-        token_data: dict[str, Any] | None = json.loads(token_data_json)
+        token_data = dict(_token_data_adapter.validate_json(token_data_json))
         return token_data
 
     @classmethod
@@ -441,9 +518,7 @@ class TokenManager:
         return current_token
 
     @classmethod
-    def _set_current_token_for_account(
-        cls, account_id: str, token: str, token_type: str, expiry_minutes: Union[int, float]
-    ):
+    def _set_current_token_for_account(cls, account_id: str, token: str, token_type: str, expiry_minutes: int | float):
         key = cls._get_account_token_key(account_id, token_type)
         expiry_seconds = int(expiry_minutes * 60)
         redis_client.setex(key, expiry_seconds, token)

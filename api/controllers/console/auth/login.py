@@ -1,13 +1,15 @@
-from typing import Any
+import logging
 
 import flask_login
 from flask import make_response, request
 from flask_restx import Resource
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
+from werkzeug.exceptions import Unauthorized
 
 import services
 from configs import dify_config
 from constants.languages import get_valid_language
+from controllers.common.schema import register_schema_models
 from controllers.console import console_ns
 from controllers.console.auth.error import (
     AuthenticationFailedError,
@@ -32,6 +34,7 @@ from controllers.console.wraps import (
 )
 from events.tenant_event import tenant_was_created
 from libs.helper import EmailStr, extract_remote_ip
+from libs.helper import timezone as validate_timezone_string
 from libs.login import current_account_with_tenant
 from libs.token import (
     clear_access_token_from_cookie,
@@ -42,18 +45,17 @@ from libs.token import (
     set_csrf_token_to_cookie,
     set_refresh_token_to_cookie,
 )
-from services.account_service import AccountService, RegisterService, TenantService
+from services.account_service import AccountService, InvitationDetailDict, RegisterService, TenantService
 from services.billing_service import BillingService
+from services.entities.auth_entities import LoginFailureReason, LoginPayloadBase
 from services.errors.account import AccountRegisterError
 from services.errors.workspace import WorkSpaceNotAllowedCreateError, WorkspacesLimitExceededError
 from services.feature_service import FeatureService
 
-DEFAULT_REF_TEMPLATE_SWAGGER_2_0 = "#/definitions/{model}"
+logger = logging.getLogger(__name__)
 
 
-class LoginPayload(BaseModel):
-    email: EmailStr = Field(..., description="Email address")
-    password: str = Field(..., description="Password")
+class LoginPayload(LoginPayloadBase):
     remember_me: bool = Field(default=False, description="Remember me flag")
     invite_token: str | None = Field(default=None, description="Invitation token")
 
@@ -68,15 +70,17 @@ class EmailCodeLoginPayload(BaseModel):
     code: str = Field(...)
     token: str = Field(...)
     language: str | None = Field(default=None)
+    timezone: str | None = Field(default=None)
+
+    @field_validator("timezone")
+    @classmethod
+    def validate_timezone(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        return validate_timezone_string(value)
 
 
-def reg(cls: type[BaseModel]):
-    console_ns.schema_model(cls.__name__, cls.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0))
-
-
-reg(LoginPayload)
-reg(EmailPayload)
-reg(EmailCodeLoginPayload)
+register_schema_models(console_ns, LoginPayload, EmailPayload, EmailCodeLoginPayload)
 
 
 @console_ns.route("/login")
@@ -94,14 +98,16 @@ class LoginApi(Resource):
         normalized_email = request_email.lower()
 
         if dify_config.BILLING_ENABLED and BillingService.is_email_in_freeze(normalized_email):
+            _log_console_login_failure(email=normalized_email, reason=LoginFailureReason.ACCOUNT_IN_FREEZE)
             raise AccountInFreezeError()
 
         is_login_error_rate_limit = AccountService.is_login_error_rate_limit(normalized_email)
         if is_login_error_rate_limit:
+            _log_console_login_failure(email=normalized_email, reason=LoginFailureReason.LOGIN_RATE_LIMITED)
             raise EmailPasswordLoginLimitError()
 
         invite_token = args.invite_token
-        invitation_data: dict[str, Any] | None = None
+        invitation_data: InvitationDetailDict | None = None
         if invite_token:
             invitation_data = RegisterService.get_invitation_with_case_fallback(None, request_email, invite_token)
             if invitation_data is None:
@@ -113,14 +119,20 @@ class LoginApi(Resource):
                 invitee_email = data.get("email") if data else None
                 invitee_email_normalized = invitee_email.lower() if isinstance(invitee_email, str) else invitee_email
                 if invitee_email_normalized != normalized_email:
+                    _log_console_login_failure(
+                        email=normalized_email,
+                        reason=LoginFailureReason.INVALID_INVITATION_EMAIL,
+                    )
                     raise InvalidEmailError()
             account = _authenticate_account_with_case_fallback(
                 request_email, normalized_email, args.password, invite_token
             )
         except services.errors.account.AccountLoginError:
+            _log_console_login_failure(email=normalized_email, reason=LoginFailureReason.ACCOUNT_BANNED)
             raise AccountBannedError()
         except services.errors.account.AccountPasswordError as exc:
             AccountService.add_login_error_rate_limit(normalized_email)
+            _log_console_login_failure(email=normalized_email, reason=LoginFailureReason.INVALID_CREDENTIALS)
             raise AuthenticationFailedError() from exc
         # SELF_HOSTED only have one workspace
         tenants = TenantService.get_join_tenants(account)
@@ -243,20 +255,27 @@ class EmailCodeLoginApi(Resource):
 
         token_data = AccountService.get_email_code_login_data(args.token)
         if token_data is None:
+            _log_console_login_failure(email=user_email, reason=LoginFailureReason.INVALID_EMAIL_CODE_TOKEN)
             raise InvalidTokenError()
 
         token_email = token_data.get("email")
         normalized_token_email = token_email.lower() if isinstance(token_email, str) else token_email
         if normalized_token_email != user_email:
+            _log_console_login_failure(email=user_email, reason=LoginFailureReason.EMAIL_CODE_EMAIL_MISMATCH)
             raise InvalidEmailError()
 
         if token_data["code"] != args.code:
+            _log_console_login_failure(email=user_email, reason=LoginFailureReason.INVALID_EMAIL_CODE)
             raise EmailCodeError()
 
         AccountService.revoke_email_code_login_token(args.token)
         try:
             account = _get_account_with_case_fallback(original_email)
+        except Unauthorized as exc:
+            _log_console_login_failure(email=user_email, reason=LoginFailureReason.ACCOUNT_BANNED)
+            raise AccountBannedError() from exc
         except AccountRegisterError:
+            _log_console_login_failure(email=user_email, reason=LoginFailureReason.ACCOUNT_IN_FREEZE)
             raise AccountInFreezeError()
         if account:
             tenants = TenantService.get_join_tenants(account)
@@ -278,10 +297,12 @@ class EmailCodeLoginApi(Resource):
                     email=user_email,
                     name=user_email,
                     interface_language=get_valid_language(language),
+                    timezone=args.timezone,
                 )
             except WorkSpaceNotAllowedCreateError:
                 raise NotAllowedCreateWorkspace()
             except AccountRegisterError:
+                _log_console_login_failure(email=user_email, reason=LoginFailureReason.ACCOUNT_IN_FREEZE)
                 raise AccountInFreezeError()
             except WorkspacesLimitExceededError:
                 raise WorkspacesLimitExceeded()
@@ -339,3 +360,12 @@ def _authenticate_account_with_case_fallback(
         if original_email == normalized_email:
             raise
         return AccountService.authenticate(normalized_email, password, invite_token)
+
+
+def _log_console_login_failure(*, email: str, reason: LoginFailureReason) -> None:
+    logger.warning(
+        "Console login failed: email=%s reason=%s ip_address=%s",
+        email,
+        reason,
+        extract_remote_ip(request),
+    )

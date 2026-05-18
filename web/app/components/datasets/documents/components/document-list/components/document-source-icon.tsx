@@ -39,7 +39,7 @@ const getFileExtension = (fileName: string): string => {
   const parts = fileName.split('.')
   if (parts.length <= 1 || (parts[0] === '' && parts.length === 2))
     return ''
-  return parts[parts.length - 1].toLowerCase()
+  return parts[parts.length - 1]!.toLowerCase()
 }
 
 const DocumentSourceIcon: FC<DocumentSourceIconProps> = React.memo(({

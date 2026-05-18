@@ -1,6 +1,6 @@
 import type { AnnotationReplyConfig } from '@/models/debug'
 import { act, renderHook } from '@testing-library/react'
-import { queryAnnotationJobStatus } from '@/service/annotation'
+import { queryAnnotationJobStatus, updateAnnotationStatus } from '@/service/annotation'
 import { sleep } from '@/utils'
 import useAnnotationConfig from '../use-annotation-config'
 
@@ -101,7 +101,7 @@ describe('useAnnotationConfig', () => {
     })
 
     expect(setAnnotationConfig).toHaveBeenCalled()
-    const updatedConfig = setAnnotationConfig.mock.calls[0][0]
+    const updatedConfig = setAnnotationConfig.mock.calls[0]![0]
     expect(updatedConfig.enabled).toBe(true)
     expect(updatedConfig.embedding_model.embedding_model_name).toBe('text-embedding-3-small')
   })
@@ -123,7 +123,7 @@ describe('useAnnotationConfig', () => {
     })
 
     expect(setAnnotationConfig).toHaveBeenCalled()
-    const updatedConfig = setAnnotationConfig.mock.calls[0][0]
+    const updatedConfig = setAnnotationConfig.mock.calls[0]![0]
     expect(updatedConfig.enabled).toBe(false)
   })
 
@@ -158,8 +158,37 @@ describe('useAnnotationConfig', () => {
     })
 
     expect(setAnnotationConfig).toHaveBeenCalled()
-    const updatedConfig = setAnnotationConfig.mock.calls[0][0]
+    const updatedConfig = setAnnotationConfig.mock.calls[0]![0]
     expect(updatedConfig.score_threshold).toBe(0.85)
+  })
+
+  it('should preserve zero score threshold when enabling annotation', async () => {
+    const zeroScoreConfig = { ...defaultConfig, score_threshold: 0 }
+    const setAnnotationConfig = vi.fn()
+    const { result } = renderHook(() => useAnnotationConfig({
+      appId: 'test-app',
+      annotationConfig: zeroScoreConfig,
+      setAnnotationConfig,
+    }))
+
+    await act(async () => {
+      await result.current.handleEnableAnnotation({
+        embedding_provider_name: 'openai',
+        embedding_model_name: 'text-embedding-3-small',
+      }, 0)
+    })
+
+    expect(updateAnnotationStatus).toHaveBeenCalledWith(
+      'test-app',
+      'enable',
+      {
+        embedding_provider_name: 'openai',
+        embedding_model_name: 'text-embedding-3-small',
+      },
+      0,
+    )
+    const updatedConfig = setAnnotationConfig.mock.calls[0]![0]
+    expect(updatedConfig.score_threshold).toBe(0)
   })
 
   it('should set score and embedding model together', () => {
@@ -178,7 +207,7 @@ describe('useAnnotationConfig', () => {
     })
 
     expect(setAnnotationConfig).toHaveBeenCalled()
-    const updatedConfig = setAnnotationConfig.mock.calls[0][0]
+    const updatedConfig = setAnnotationConfig.mock.calls[0]![0]
     expect(updatedConfig.score_threshold).toBe(0.95)
     expect(updatedConfig.embedding_model.embedding_provider_name).toBe('cohere')
   })
@@ -236,7 +265,7 @@ describe('useAnnotationConfig', () => {
     })
 
     expect(setAnnotationConfig).toHaveBeenCalled()
-    const updatedConfig = setAnnotationConfig.mock.calls[0][0]
+    const updatedConfig = setAnnotationConfig.mock.calls[0]![0]
     expect(updatedConfig.enabled).toBe(true)
     expect(updatedConfig.score_threshold).toBeDefined()
   })

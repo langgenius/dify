@@ -6,8 +6,8 @@ import * as React from 'react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useFeatures, useFeaturesStore } from '@/app/components/base/features/hooks'
+import { Infotip } from '@/app/components/base/infotip'
 import ParamItem from '@/app/components/base/param-item'
-import Tooltip from '@/app/components/base/tooltip'
 import OptionCard from '@/app/components/workflow/nodes/_base/components/option-card'
 import { Resolution, TransferMethod } from '@/types/app'
 
@@ -42,20 +42,19 @@ const ParamConfigContent: FC = () => {
 
   return (
     <div>
-      <div className="text-base font-semibold leading-6 text-text-primary">{t('vision.visionSettings.title', { ns: 'appDebug' })}</div>
+      <div className="text-base leading-6 font-semibold text-text-primary">{t('vision.visionSettings.title', { ns: 'appDebug' })}</div>
       <div className="space-y-6 pt-3">
         <div>
-          <div className="mb-2 flex items-center  space-x-1">
-            <div className="text-[13px] font-semibold leading-[18px] text-text-secondary">{t('vision.visionSettings.resolution', { ns: 'appDebug' })}</div>
-            <Tooltip
-              popupContent={(
-                <div className="w-[180px]">
-                  {t('vision.visionSettings.resolutionTooltip', { ns: 'appDebug' }).split('\n').map(item => (
-                    <div key={item}>{item}</div>
-                  ))}
-                </div>
-              )}
-            />
+          <div className="mb-2 flex items-center space-x-1">
+            <div className="text-[13px] leading-[18px] font-semibold text-text-secondary">{t('vision.visionSettings.resolution', { ns: 'appDebug' })}</div>
+            <Infotip
+              aria-label={t('vision.visionSettings.resolutionTooltip', { ns: 'appDebug' })}
+              popupClassName="w-[180px]"
+            >
+              {t('vision.visionSettings.resolutionTooltip', { ns: 'appDebug' }).split('\n').map(item => (
+                <div key={item}>{item}</div>
+              ))}
+            </Infotip>
           </div>
           <div className="flex items-center gap-1">
             <OptionCard
@@ -79,7 +78,7 @@ const ParamConfigContent: FC = () => {
           </div>
         </div>
         <div>
-          <div className="mb-2 text-[13px] font-semibold leading-[18px] text-text-secondary">{t('vision.visionSettings.uploadMethod', { ns: 'appDebug' })}</div>
+          <div className="mb-2 text-[13px] leading-[18px] font-semibold text-text-secondary">{t('vision.visionSettings.uploadMethod', { ns: 'appDebug' })}</div>
           <div className="flex items-center gap-1">
             <OptionCard
               className="grow"

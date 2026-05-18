@@ -120,7 +120,10 @@ describe('HITLInputBlock', () => {
       })
 
       await waitFor(() => {
-        expect(onWorkflowMapUpdate).toHaveBeenCalledWith(workflowNodesMap)
+        expect(onWorkflowMapUpdate).toHaveBeenCalledWith({
+          workflowNodesMap,
+          availableVariables: [],
+        })
       })
     })
   })

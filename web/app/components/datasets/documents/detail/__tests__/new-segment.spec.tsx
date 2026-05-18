@@ -1,4 +1,4 @@
-import type * as React from 'react'
+import { toast, ToastHost } from '@langgenius/dify-ui/toast'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { ChunkingMode } from '@/models/datasets'
@@ -6,21 +6,15 @@ import { IndexingType } from '../../../create/step-two'
 
 import NewSegmentModal from '../new-segment'
 
-vi.mock('next/navigation', () => ({
+vi.mock('@/next/navigation', () => ({
   useParams: () => ({
     datasetId: 'test-dataset-id',
     documentId: 'test-document-id',
   }),
 }))
 
-const mockNotify = vi.fn()
-vi.mock('use-context-selector', async (importOriginal) => {
-  const actual = await importOriginal() as Record<string, unknown>
-  return {
-    ...actual,
-    useContext: () => ({ notify: mockNotify }),
-  }
-})
+const toastErrorSpy = vi.spyOn(toast, 'error')
+const toastSuccessSpy = vi.spyOn(toast, 'success')
 
 // Mock dataset detail context
 let mockIndexingTechnique = IndexingType.QUALIFIED
@@ -51,11 +45,6 @@ vi.mock('@/service/knowledge/use-segment', () => ({
   }),
 }))
 
-// Mock app store
-vi.mock('@/app/components/app/store', () => ({
-  useStore: () => ({ appSidebarExpand: 'expand' }),
-}))
-
 vi.mock('../completed/common/action-buttons', () => ({
   default: ({ handleCancel, handleSave, loading, actionType }: { handleCancel: () => void, handleSave: () => void, loading: boolean, actionType: string }) => (
     <div data-testid="action-buttons">
@@ -69,15 +58,15 @@ vi.mock('../completed/common/action-buttons', () => ({
 }))
 
 vi.mock('../completed/common/add-another', () => ({
-  default: ({ isChecked, onCheck, className }: { isChecked: boolean, onCheck: () => void, className?: string }) => (
-    <div data-testid="add-another" className={className}>
+  default: ({ checked, onCheckedChange, className }: { checked: boolean, onCheckedChange: (checked: boolean) => void, className?: string }) => (
+    <label className={className}>
       <input
         type="checkbox"
-        checked={isChecked}
-        onChange={onCheck}
-        data-testid="add-another-checkbox"
+        checked={checked}
+        onChange={event => onCheckedChange(event.currentTarget.checked)}
       />
-    </div>
+      datasetDocuments.segment.addAnother
+    </label>
   ),
 }))
 
@@ -139,6 +128,8 @@ vi.mock('@/app/components/datasets/common/image-uploader/image-uploader-in-chunk
 describe('NewSegmentModal', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    vi.useRealTimers()
+    toast.dismiss()
     mockFullScreen = false
     mockIndexingTechnique = IndexingType.QUALIFIED
   })
@@ -154,37 +145,37 @@ describe('NewSegmentModal', () => {
     it('should render without crashing', () => {
       const { container } = render(<NewSegmentModal {...defaultProps} />)
 
-      expect(container.firstChild).toBeInTheDocument()
+      expect(container.firstChild)!.toBeInTheDocument()
     })
 
     it('should render title text', () => {
       render(<NewSegmentModal {...defaultProps} />)
 
-      expect(screen.getByText(/segment\.addChunk/i)).toBeInTheDocument()
+      expect(screen.getByText(/segment\.addChunk/i))!.toBeInTheDocument()
     })
 
     it('should render chunk content component', () => {
       render(<NewSegmentModal {...defaultProps} />)
 
-      expect(screen.getByTestId('chunk-content')).toBeInTheDocument()
+      expect(screen.getByTestId('chunk-content'))!.toBeInTheDocument()
     })
 
     it('should render image uploader', () => {
       render(<NewSegmentModal {...defaultProps} />)
 
-      expect(screen.getByTestId('image-uploader')).toBeInTheDocument()
+      expect(screen.getByTestId('image-uploader'))!.toBeInTheDocument()
     })
 
     it('should render segment index tag', () => {
       render(<NewSegmentModal {...defaultProps} />)
 
-      expect(screen.getByTestId('segment-index-tag')).toBeInTheDocument()
+      expect(screen.getByTestId('segment-index-tag'))!.toBeInTheDocument()
     })
 
     it('should render dot separator', () => {
       render(<NewSegmentModal {...defaultProps} />)
 
-      expect(screen.getByTestId('dot')).toBeInTheDocument()
+      expect(screen.getByTestId('dot'))!.toBeInTheDocument()
     })
   })
 
@@ -195,7 +186,7 @@ describe('NewSegmentModal', () => {
 
       render(<NewSegmentModal {...defaultProps} />)
 
-      expect(screen.getByTestId('keywords')).toBeInTheDocument()
+      expect(screen.getByTestId('keywords'))!.toBeInTheDocument()
     })
 
     it('should not show keywords when indexing is QUALIFIED', () => {
@@ -210,13 +201,9 @@ describe('NewSegmentModal', () => {
   describe('User Interactions', () => {
     it('should call onCancel when close button is clicked', () => {
       const mockOnCancel = vi.fn()
-      const { container } = render(<NewSegmentModal {...defaultProps} onCancel={mockOnCancel} />)
+      render(<NewSegmentModal {...defaultProps} onCancel={mockOnCancel} />)
 
-      // Act - find and click close button (RiCloseLine icon wrapper)
-      const closeButtons = container.querySelectorAll('.cursor-pointer')
-      // The close button is the second cursor-pointer element
-      if (closeButtons.length > 1)
-        fireEvent.click(closeButtons[1])
+      fireEvent.click(screen.getByRole('button', { name: 'common.operation.close' }))
 
       expect(mockOnCancel).toHaveBeenCalled()
     })
@@ -227,7 +214,7 @@ describe('NewSegmentModal', () => {
 
       fireEvent.change(questionInput, { target: { value: 'New question content' } })
 
-      expect(questionInput).toHaveValue('New question content')
+      expect(questionInput)!.toHaveValue('New question content')
     })
 
     it('should update answer when docForm is QA and typing', () => {
@@ -236,17 +223,16 @@ describe('NewSegmentModal', () => {
 
       fireEvent.change(answerInput, { target: { value: 'New answer content' } })
 
-      expect(answerInput).toHaveValue('New answer content')
+      expect(answerInput)!.toHaveValue('New answer content')
     })
 
     it('should toggle add another checkbox', () => {
       render(<NewSegmentModal {...defaultProps} />)
-      const checkbox = screen.getByTestId('add-another-checkbox')
+      const checkbox = screen.getByRole('checkbox', { name: 'datasetDocuments.segment.addAnother' })
 
       fireEvent.click(checkbox)
 
-      // Assert - checkbox state should toggle
-      expect(checkbox).toBeInTheDocument()
+      expect(checkbox)!.toBeInTheDocument()
     })
   })
 
@@ -258,11 +244,7 @@ describe('NewSegmentModal', () => {
       fireEvent.click(screen.getByTestId('save-btn'))
 
       await waitFor(() => {
-        expect(mockNotify).toHaveBeenCalledWith(
-          expect.objectContaining({
-            type: 'error',
-          }),
-        )
+        expect(toastErrorSpy).toHaveBeenCalledTimes(1)
       })
     })
 
@@ -272,11 +254,7 @@ describe('NewSegmentModal', () => {
       fireEvent.click(screen.getByTestId('save-btn'))
 
       await waitFor(() => {
-        expect(mockNotify).toHaveBeenCalledWith(
-          expect.objectContaining({
-            type: 'error',
-          }),
-        )
+        expect(toastErrorSpy).toHaveBeenCalledTimes(1)
       })
     })
 
@@ -287,11 +265,7 @@ describe('NewSegmentModal', () => {
       fireEvent.click(screen.getByTestId('save-btn'))
 
       await waitFor(() => {
-        expect(mockNotify).toHaveBeenCalledWith(
-          expect.objectContaining({
-            type: 'error',
-          }),
-        )
+        expect(toastErrorSpy).toHaveBeenCalledTimes(1)
       })
     })
   })
@@ -337,11 +311,7 @@ describe('NewSegmentModal', () => {
       fireEvent.click(screen.getByTestId('save-btn'))
 
       await waitFor(() => {
-        expect(mockNotify).toHaveBeenCalledWith(
-          expect.objectContaining({
-            type: 'success',
-          }),
-        )
+        expect(toastSuccessSpy).toHaveBeenCalledTimes(1)
       })
     })
   })
@@ -354,7 +324,7 @@ describe('NewSegmentModal', () => {
       const { container } = render(<NewSegmentModal {...defaultProps} />)
 
       const header = container.querySelector('.border-divider-subtle')
-      expect(header).toBeInTheDocument()
+      expect(header)!.toBeInTheDocument()
     })
 
     it('should show action buttons in header when fullScreen', () => {
@@ -362,7 +332,7 @@ describe('NewSegmentModal', () => {
 
       render(<NewSegmentModal {...defaultProps} />)
 
-      expect(screen.getByTestId('action-buttons')).toBeInTheDocument()
+      expect(screen.getByTestId('action-buttons'))!.toBeInTheDocument()
     })
 
     it('should show add another in header when fullScreen', () => {
@@ -370,16 +340,13 @@ describe('NewSegmentModal', () => {
 
       render(<NewSegmentModal {...defaultProps} />)
 
-      expect(screen.getByTestId('add-another')).toBeInTheDocument()
+      expect(screen.getByRole('checkbox', { name: 'datasetDocuments.segment.addAnother' }))!.toBeInTheDocument()
     })
 
     it('should call toggleFullScreen when expand button is clicked', () => {
-      const { container } = render(<NewSegmentModal {...defaultProps} />)
+      render(<NewSegmentModal {...defaultProps} />)
 
-      // Act - click the expand button (first cursor-pointer)
-      const expandButtons = container.querySelectorAll('.cursor-pointer')
-      if (expandButtons.length > 0)
-        fireEvent.click(expandButtons[0])
+      fireEvent.click(screen.getByRole('button', { name: 'common.operation.zoomIn' }))
 
       expect(mockToggleFullScreen).toHaveBeenCalled()
     })
@@ -390,13 +357,13 @@ describe('NewSegmentModal', () => {
     it('should pass actionType add to ActionButtons', () => {
       render(<NewSegmentModal {...defaultProps} />)
 
-      expect(screen.getByTestId('action-type')).toHaveTextContent('add')
+      expect(screen.getByTestId('action-type'))!.toHaveTextContent('add')
     })
 
     it('should pass isEditMode true to ChunkContent', () => {
       render(<NewSegmentModal {...defaultProps} />)
 
-      expect(screen.getByTestId('edit-mode')).toHaveTextContent('editing')
+      expect(screen.getByTestId('edit-mode'))!.toHaveTextContent('editing')
     })
   })
 
@@ -409,7 +376,7 @@ describe('NewSegmentModal', () => {
         target: { value: 'keyword1,keyword2' },
       })
 
-      expect(screen.getByTestId('keywords-input')).toHaveValue('keyword1,keyword2')
+      expect(screen.getByTestId('keywords-input'))!.toHaveValue('keyword1,keyword2')
     })
 
     it('should handle image upload', () => {
@@ -418,7 +385,8 @@ describe('NewSegmentModal', () => {
       fireEvent.click(screen.getByTestId('upload-image-btn'))
 
       // Assert - image uploader should be rendered
-      expect(screen.getByTestId('image-uploader')).toBeInTheDocument()
+      // Assert - image uploader should be rendered
+      expect(screen.getByTestId('image-uploader'))!.toBeInTheDocument()
     })
 
     it('should maintain structure when rerendered with different docForm', () => {
@@ -426,14 +394,13 @@ describe('NewSegmentModal', () => {
 
       rerender(<NewSegmentModal {...defaultProps} docForm={ChunkingMode.qa} />)
 
-      expect(screen.getByTestId('answer-input')).toBeInTheDocument()
+      expect(screen.getByTestId('answer-input'))!.toBeInTheDocument()
     })
   })
 
-  describe('CustomButton in success notification', () => {
-    it('should call viewNewlyAddedChunk when custom button is clicked', async () => {
+  describe('Action button in success notification', () => {
+    it('should call viewNewlyAddedChunk when the toast action is clicked', async () => {
       const mockViewNewlyAddedChunk = vi.fn()
-      mockNotify.mockImplementation(() => {})
 
       mockAddSegment.mockImplementation((_params: unknown, options: { onSuccess: () => void, onSettled: () => void }) => {
         options.onSuccess()
@@ -442,37 +409,25 @@ describe('NewSegmentModal', () => {
       })
 
       render(
-        <NewSegmentModal
-          {...defaultProps}
-          docForm={ChunkingMode.text}
-          viewNewlyAddedChunk={mockViewNewlyAddedChunk}
-        />,
+        <>
+          <ToastHost timeout={0} />
+          <NewSegmentModal
+            {...defaultProps}
+            docForm={ChunkingMode.text}
+            viewNewlyAddedChunk={mockViewNewlyAddedChunk}
+          />
+        </>,
       )
 
-      // Enter content and save
       fireEvent.change(screen.getByTestId('question-input'), { target: { value: 'Test content' } })
       fireEvent.click(screen.getByTestId('save-btn'))
 
+      const actionButton = await screen.findByRole('button', { name: 'common.operation.view' })
+      fireEvent.click(actionButton)
+
       await waitFor(() => {
-        expect(mockNotify).toHaveBeenCalledWith(
-          expect.objectContaining({
-            type: 'success',
-            customComponent: expect.anything(),
-          }),
-        )
+        expect(mockViewNewlyAddedChunk).toHaveBeenCalledTimes(1)
       })
-
-      // Extract customComponent from the notify call args
-      const notifyCallArgs = mockNotify.mock.calls[0][0] as { customComponent?: React.ReactElement }
-      expect(notifyCallArgs.customComponent).toBeDefined()
-      const customComponent = notifyCallArgs.customComponent!
-      const { container: btnContainer } = render(customComponent)
-      const viewButton = btnContainer.querySelector('.system-xs-semibold.text-text-accent') as HTMLElement
-      expect(viewButton).toBeInTheDocument()
-      fireEvent.click(viewButton)
-
-      // Assert that viewNewlyAddedChunk was called via the onClick handler (lines 66-67)
-      expect(mockViewNewlyAddedChunk).toHaveBeenCalled()
     })
   })
 
@@ -584,8 +539,7 @@ describe('NewSegmentModal', () => {
 
       render(<NewSegmentModal {...defaultProps} onCancel={mockOnCancel} docForm={ChunkingMode.text} />)
 
-      // Uncheck "add another"
-      const checkbox = screen.getByTestId('add-another-checkbox')
+      const checkbox = screen.getByRole('checkbox', { name: 'datasetDocuments.segment.addAnother' })
       fireEvent.click(checkbox)
 
       // Enter content and save
@@ -599,9 +553,8 @@ describe('NewSegmentModal', () => {
     })
   })
 
-  describe('onSave delayed call', () => {
-    it('should call onSave after timeout in success handler', async () => {
-      vi.useFakeTimers()
+  describe('onSave after success', () => {
+    it('should call onSave immediately after save succeeds', async () => {
       const mockOnSave = vi.fn()
       mockAddSegment.mockImplementation((_params: unknown, options: { onSuccess: () => void, onSettled: () => void }) => {
         options.onSuccess()
@@ -611,15 +564,12 @@ describe('NewSegmentModal', () => {
 
       render(<NewSegmentModal {...defaultProps} onSave={mockOnSave} docForm={ChunkingMode.text} />)
 
-      // Enter content and save
       fireEvent.change(screen.getByTestId('question-input'), { target: { value: 'Test content' } })
       fireEvent.click(screen.getByTestId('save-btn'))
 
-      // Fast-forward timer
-      vi.advanceTimersByTime(3000)
-
-      expect(mockOnSave).toHaveBeenCalled()
-      vi.useRealTimers()
+      await waitFor(() => {
+        expect(mockOnSave).toHaveBeenCalledTimes(1)
+      })
     })
   })
 
@@ -633,7 +583,9 @@ describe('NewSegmentModal', () => {
 
       // Assert - should show count of 5 (3 + 2)
       // The component uses formatNumber and shows "X characters"
-      expect(screen.getByText(/5/)).toBeInTheDocument()
+      // Assert - should show count of 5 (3 + 2)
+      // The component uses formatNumber and shows "X characters"
+      expect(screen.getByText(/5/))!.toBeInTheDocument()
     })
   })
 
@@ -643,9 +595,8 @@ describe('NewSegmentModal', () => {
 
       render(<NewSegmentModal {...defaultProps} />)
 
-      // Assert - footer should have both AddAnother and ActionButtons
-      expect(screen.getByTestId('add-another')).toBeInTheDocument()
-      expect(screen.getByTestId('action-buttons')).toBeInTheDocument()
+      expect(screen.getByRole('checkbox', { name: 'datasetDocuments.segment.addAnother' }))!.toBeInTheDocument()
+      expect(screen.getByTestId('action-buttons'))!.toBeInTheDocument()
     })
   })
 })
