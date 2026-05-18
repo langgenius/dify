@@ -21,7 +21,9 @@ from models.workflow import WorkflowRun
 
 def _make_account() -> Account:
     account = Account(
-        name="tester", email="tester@example.com", status=AccountStatus.ACTIVE, 
+        name="tester",
+        email="tester@example.com",
+        status=AccountStatus.ACTIVE,
     )
     account.role = TenantAccountRole.OWNER
     account.id = "account-123"  # type: ignore[assignment]
