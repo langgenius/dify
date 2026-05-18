@@ -63,6 +63,7 @@ from services.errors.account import (
 )
 from services.errors.workspace import WorkSpaceNotAllowedCreateError, WorkspacesLimitExceededError
 from services.feature_service import FeatureService
+from services.plugin.plugin_auto_upgrade_service import PluginAutoUpgradeService
 from tasks.delete_account_task import delete_account_task
 from tasks.mail_account_deletion_task import send_account_deletion_verification_code
 from tasks.mail_change_mail_task import (
@@ -1078,15 +1079,17 @@ class TenantService:
         db.session.add(tenant)
         db.session.commit()
 
-        plugin_upgrade_strategy = TenantPluginAutoUpgradeStrategy(
-            tenant_id=tenant.id,
-            strategy_setting=TenantPluginAutoUpgradeStrategy.StrategySetting.FIX_ONLY,
-            upgrade_time_of_day=0,
-            upgrade_mode=TenantPluginAutoUpgradeStrategy.UpgradeMode.EXCLUDE,
-            exclude_plugins=[],
-            include_plugins=[],
-        )
-        db.session.add(plugin_upgrade_strategy)
+        for category in TenantPluginAutoUpgradeStrategy.PluginCategory:
+            plugin_upgrade_strategy = TenantPluginAutoUpgradeStrategy(
+                tenant_id=tenant.id,
+                category=category,
+                strategy_setting=PluginAutoUpgradeService.default_strategy_setting_for_category(category),
+                upgrade_time_of_day=PluginAutoUpgradeService.default_upgrade_time_of_day(tenant.id),
+                upgrade_mode=TenantPluginAutoUpgradeStrategy.UpgradeMode.EXCLUDE,
+                exclude_plugins=[],
+                include_plugins=[],
+            )
+            db.session.add(plugin_upgrade_strategy)
         db.session.commit()
 
         tenant.encrypt_public_key = generate_key_pair(tenant.id)

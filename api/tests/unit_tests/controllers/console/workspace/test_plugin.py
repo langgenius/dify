@@ -9,12 +9,13 @@ from werkzeug.exceptions import Forbidden
 from controllers.console.workspace.plugin import (
     PluginAssetApi,
     PluginAutoUpgradeExcludePluginApi,
+    PluginChangeAutoUpgradeApi,
     PluginChangePermissionApi,
-    PluginChangePreferencesApi,
     PluginDebuggingKeyApi,
     PluginDeleteAllInstallTaskItemsApi,
     PluginDeleteInstallTaskApi,
     PluginDeleteInstallTaskItemApi,
+    PluginFetchAutoUpgradeApi,
     PluginFetchDynamicSelectOptionsApi,
     PluginFetchDynamicSelectOptionsWithCredentialsApi,
     PluginFetchInstallTaskApi,
@@ -22,7 +23,6 @@ from controllers.console.workspace.plugin import (
     PluginFetchManifestApi,
     PluginFetchMarketplacePkgApi,
     PluginFetchPermissionApi,
-    PluginFetchPreferencesApi,
     PluginIconApi,
     PluginInstallFromGithubApi,
     PluginInstallFromMarketplaceApi,
@@ -901,18 +901,15 @@ class TestPluginFetchDynamicSelectOptionsWithCredentialsApi:
             assert result == ({"code": "plugin_error", "message": "error"}, 400)
 
 
-class TestPluginChangePreferencesApi:
+class TestPluginChangeAutoUpgradeApi:
     def test_success(self, app: Flask):
-        api = PluginChangePreferencesApi()
+        api = PluginChangeAutoUpgradeApi()
         method = unwrap(api.post)
 
         user = MagicMock(is_admin_or_owner=True)
 
         payload = {
-            "permission": {
-                "install_permission": TenantPluginPermission.InstallPermission.EVERYONE,
-                "debug_permission": TenantPluginPermission.DebugPermission.EVERYONE,
-            },
+            "category": TenantPluginAutoUpgradeStrategy.PluginCategory.TOOL.value,
             "auto_upgrade": {
                 "strategy_setting": TenantPluginAutoUpgradeStrategy.StrategySetting.FIX_ONLY,
                 "upgrade_time_of_day": 0,
@@ -925,24 +922,53 @@ class TestPluginChangePreferencesApi:
         with (
             app.test_request_context("/", json=payload),
             patch("controllers.console.workspace.plugin.current_account_with_tenant", return_value=(user, "t1")),
-            patch("controllers.console.workspace.plugin.PluginPermissionService.change_permission", return_value=True),
-            patch("controllers.console.workspace.plugin.PluginAutoUpgradeService.change_strategy", return_value=True),
+            patch(
+                "controllers.console.workspace.plugin.PluginAutoUpgradeService.change_strategy", return_value=True
+            ) as change,
         ):
             result = method(api)
 
         assert result["success"] is True
+        change.assert_called_once()
 
-    def test_permission_fail(self, app: Flask):
-        api = PluginChangePreferencesApi()
+    def test_success_with_model_category_auto_upgrade(self, app: Flask):
+        api = PluginChangeAutoUpgradeApi()
         method = unwrap(api.post)
 
         user = MagicMock(is_admin_or_owner=True)
 
         payload = {
-            "permission": {
-                "install_permission": TenantPluginPermission.InstallPermission.EVERYONE,
-                "debug_permission": TenantPluginPermission.DebugPermission.EVERYONE,
+            "category": TenantPluginAutoUpgradeStrategy.PluginCategory.MODEL.value,
+            "auto_upgrade": {
+                "strategy_setting": TenantPluginAutoUpgradeStrategy.StrategySetting.LATEST,
+                "upgrade_time_of_day": 3600,
+                "upgrade_mode": TenantPluginAutoUpgradeStrategy.UpgradeMode.ALL,
+                "exclude_plugins": [],
+                "include_plugins": [],
             },
+        }
+
+        with (
+            app.test_request_context("/", json=payload),
+            patch("controllers.console.workspace.plugin.current_account_with_tenant", return_value=(user, "t1")),
+            patch(
+                "controllers.console.workspace.plugin.PluginAutoUpgradeService.change_strategy", return_value=True
+            ) as change,
+        ):
+            result = method(api)
+
+        assert result["success"] is True
+        change.assert_called_once()
+        assert change.call_args.kwargs["category"] == TenantPluginAutoUpgradeStrategy.PluginCategory.MODEL
+
+    def test_auto_upgrade_fail(self, app: Flask):
+        api = PluginChangeAutoUpgradeApi()
+        method = unwrap(api.post)
+
+        user = MagicMock(is_admin_or_owner=True)
+
+        payload = {
+            "category": TenantPluginAutoUpgradeStrategy.PluginCategory.TOOL.value,
             "auto_upgrade": {
                 "strategy_setting": TenantPluginAutoUpgradeStrategy.StrategySetting.FIX_ONLY,
                 "upgrade_time_of_day": 0,
@@ -955,24 +981,20 @@ class TestPluginChangePreferencesApi:
         with (
             app.test_request_context("/", json=payload),
             patch("controllers.console.workspace.plugin.current_account_with_tenant", return_value=(user, "t1")),
-            patch("controllers.console.workspace.plugin.PluginPermissionService.change_permission", return_value=False),
+            patch("controllers.console.workspace.plugin.PluginAutoUpgradeService.change_strategy", return_value=False),
         ):
             result = method(api)
 
         assert result["success"] is False
 
 
-class TestPluginFetchPreferencesApi:
+class TestPluginFetchAutoUpgradeApi:
     def test_success(self, app: Flask):
-        api = PluginFetchPreferencesApi()
+        api = PluginFetchAutoUpgradeApi()
         method = unwrap(api.get)
 
-        permission = MagicMock(
-            install_permission=TenantPluginPermission.InstallPermission.EVERYONE,
-            debug_permission=TenantPluginPermission.DebugPermission.EVERYONE,
-        )
-
         auto_upgrade = MagicMock(
+            category=TenantPluginAutoUpgradeStrategy.PluginCategory.TOOL,
             strategy_setting=TenantPluginAutoUpgradeStrategy.StrategySetting.FIX_ONLY,
             upgrade_time_of_day=1,
             upgrade_mode=TenantPluginAutoUpgradeStrategy.UpgradeMode.EXCLUDE,
@@ -981,19 +1003,19 @@ class TestPluginFetchPreferencesApi:
         )
 
         with (
-            app.test_request_context("/"),
+            app.test_request_context(
+                f"/?category={TenantPluginAutoUpgradeStrategy.PluginCategory.TOOL.value}"
+            ),
             patch("controllers.console.workspace.plugin.current_account_with_tenant", return_value=(None, "t1")),
             patch(
-                "controllers.console.workspace.plugin.PluginPermissionService.get_permission", return_value=permission
-            ),
-            patch(
-                "controllers.console.workspace.plugin.PluginAutoUpgradeService.get_strategy", return_value=auto_upgrade
+                "controllers.console.workspace.plugin.PluginAutoUpgradeService.get_strategy",
+                return_value=auto_upgrade,
             ),
         ):
             result = method(api)
 
-        assert "permission" in result
-        assert "auto_upgrade" in result
+        assert result["category"] == TenantPluginAutoUpgradeStrategy.PluginCategory.TOOL
+        assert result["auto_upgrade"]["upgrade_time_of_day"] == 1
 
 
 class TestPluginAutoUpgradeExcludePluginApi:
@@ -1001,7 +1023,7 @@ class TestPluginAutoUpgradeExcludePluginApi:
         api = PluginAutoUpgradeExcludePluginApi()
         method = unwrap(api.post)
 
-        payload = {"plugin_id": "p"}
+        payload = {"plugin_id": "p", "category": TenantPluginAutoUpgradeStrategy.PluginCategory.TOOL.value}
 
         with (
             app.test_request_context("/", json=payload),
@@ -1016,7 +1038,7 @@ class TestPluginAutoUpgradeExcludePluginApi:
         api = PluginAutoUpgradeExcludePluginApi()
         method = unwrap(api.post)
 
-        payload = {"plugin_id": "p"}
+        payload = {"plugin_id": "p", "category": TenantPluginAutoUpgradeStrategy.PluginCategory.TOOL.value}
 
         with (
             app.test_request_context("/", json=payload),
