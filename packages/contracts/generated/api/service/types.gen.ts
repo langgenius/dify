@@ -240,6 +240,19 @@ export type DocumentTextUpdate = {
   text?: string | null
 }
 
+export type EndUserDetail = {
+  app_id?: string | null
+  created_at: string
+  external_user_id?: string | null
+  id: string
+  is_anonymous: boolean
+  name?: string | null
+  session_id: string
+  tenant_id: string
+  type: string
+  updated_at: string
+}
+
 export type FeedbackListQuery = {
   limit?: number
   page?: number
@@ -2655,9 +2668,7 @@ export type GetEndUsersByEndUserIdError
   = GetEndUsersByEndUserIdErrors[keyof GetEndUsersByEndUserIdErrors]
 
 export type GetEndUsersByEndUserIdResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: EndUserDetail
 }
 
 export type GetEndUsersByEndUserIdResponse

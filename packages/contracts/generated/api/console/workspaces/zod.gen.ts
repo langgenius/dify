@@ -118,6 +118,15 @@ export const zOwnerTransferCheckPayload = z.object({
 })
 
 /**
+ * VerificationTokenResponse
+ */
+export const zVerificationTokenResponse = z.object({
+  email: z.string(),
+  is_valid: z.boolean(),
+  token: z.string(),
+})
+
+/**
  * OwnerTransferEmailPayload
  */
 export const zOwnerTransferEmailPayload = z.object({
@@ -192,6 +201,24 @@ export const zParserPreferredProviderType = z.object({
 })
 
 /**
+ * WorkspacePermissionResponse
+ */
+export const zWorkspacePermissionResponse = z.object({
+  allow_member_invite: z.boolean(),
+  allow_owner_transfer: z.boolean(),
+  workspace_id: z.string(),
+})
+
+/**
+ * PluginDebuggingKeyResponse
+ */
+export const zPluginDebuggingKeyResponse = z.object({
+  host: z.string(),
+  key: z.string(),
+  port: z.unknown(),
+})
+
+/**
  * ParserGithubInstall
  */
 export const zParserGithubInstall = z.object({
@@ -225,6 +252,13 @@ export const zParserDynamicOptionsWithCredentials = z.object({
   parameter: z.string(),
   plugin_id: z.string(),
   provider: z.string(),
+})
+
+/**
+ * SuccessResponse
+ */
+export const zSuccessResponse = z.object({
+  success: z.boolean(),
 })
 
 /**
@@ -887,10 +921,7 @@ export const zPostWorkspacesCurrentMembersOwnerTransferCheckBody = zOwnerTransfe
 /**
  * Success
  */
-export const zPostWorkspacesCurrentMembersOwnerTransferCheckResponse = z.record(
-  z.string(),
-  z.unknown(),
-)
+export const zPostWorkspacesCurrentMembersOwnerTransferCheckResponse = zVerificationTokenResponse
 
 export const zPostWorkspacesCurrentMembersSendOwnerTransferConfirmEmailBody
   = zOwnerTransferEmailPayload
@@ -1275,7 +1306,7 @@ export const zGetWorkspacesCurrentModelsModelTypesByModelTypeResponse = z.record
 /**
  * Success
  */
-export const zGetWorkspacesCurrentPermissionResponse = z.record(z.string(), z.unknown())
+export const zGetWorkspacesCurrentPermissionResponse = zWorkspacePermissionResponse
 
 export const zGetWorkspacesCurrentPluginAssetQuery = z.object({
   file_name: z.string(),
@@ -1290,7 +1321,7 @@ export const zGetWorkspacesCurrentPluginAssetResponse = z.record(z.string(), z.u
 /**
  * Success
  */
-export const zGetWorkspacesCurrentPluginDebuggingKeyResponse = z.record(z.string(), z.unknown())
+export const zGetWorkspacesCurrentPluginDebuggingKeyResponse = zPluginDebuggingKeyResponse
 
 export const zGetWorkspacesCurrentPluginFetchManifestQuery = z.object({
   plugin_unique_identifier: z.string(),
@@ -1407,10 +1438,7 @@ export const zPostWorkspacesCurrentPluginPermissionChangeBody = zParserPermissio
 /**
  * Success
  */
-export const zPostWorkspacesCurrentPluginPermissionChangeResponse = z.record(
-  z.string(),
-  z.unknown(),
-)
+export const zPostWorkspacesCurrentPluginPermissionChangeResponse = zSuccessResponse
 
 /**
  * Success
@@ -1465,7 +1493,7 @@ export const zGetWorkspacesCurrentPluginTasksResponse = z.record(z.string(), z.u
 /**
  * Success
  */
-export const zPostWorkspacesCurrentPluginTasksDeleteAllResponse = z.record(z.string(), z.unknown())
+export const zPostWorkspacesCurrentPluginTasksDeleteAllResponse = zSuccessResponse
 
 export const zGetWorkspacesCurrentPluginTasksByTaskIdPath = z.object({
   task_id: z.string(),
@@ -1483,10 +1511,7 @@ export const zPostWorkspacesCurrentPluginTasksByTaskIdDeletePath = z.object({
 /**
  * Success
  */
-export const zPostWorkspacesCurrentPluginTasksByTaskIdDeleteResponse = z.record(
-  z.string(),
-  z.unknown(),
-)
+export const zPostWorkspacesCurrentPluginTasksByTaskIdDeleteResponse = zSuccessResponse
 
 export const zPostWorkspacesCurrentPluginTasksByTaskIdDeleteByIdentifierPath = z.object({
   identifier: z.string(),
@@ -1496,17 +1521,14 @@ export const zPostWorkspacesCurrentPluginTasksByTaskIdDeleteByIdentifierPath = z
 /**
  * Success
  */
-export const zPostWorkspacesCurrentPluginTasksByTaskIdDeleteByIdentifierResponse = z.record(
-  z.string(),
-  z.unknown(),
-)
+export const zPostWorkspacesCurrentPluginTasksByTaskIdDeleteByIdentifierResponse = zSuccessResponse
 
 export const zPostWorkspacesCurrentPluginUninstallBody = zParserUninstall
 
 /**
  * Success
  */
-export const zPostWorkspacesCurrentPluginUninstallResponse = z.record(z.string(), z.unknown())
+export const zPostWorkspacesCurrentPluginUninstallResponse = zSuccessResponse
 
 export const zPostWorkspacesCurrentPluginUpgradeGithubBody = zParserGithubUpgrade
 

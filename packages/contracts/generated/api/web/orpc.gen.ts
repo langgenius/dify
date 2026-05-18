@@ -653,16 +653,10 @@ export const moreLikeThis = {
 
 /**
  * Get suggested follow-up questions after a message (chat apps only).
- *
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
  */
 export const get5 = oc
   .route({
-    deprecated: true,
-    description:
-      'Get suggested follow-up questions after a message (chat apps only).\n\nGenerated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
+    description: 'Get suggested follow-up questions after a message (chat apps only).',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getMessagesByMessageIdSuggestedQuestions',

@@ -49,7 +49,7 @@ class MoreLikeThisQuery(BaseModel):
 
 
 register_schema_models(console_ns, MessageListQuery, MessageFeedbackPayload, MoreLikeThisQuery)
-register_response_schema_models(console_ns, ResultResponse)
+register_response_schema_models(console_ns, ResultResponse, SuggestedQuestionsResponse)
 
 
 @console_ns.route(
@@ -168,6 +168,7 @@ class MessageMoreLikeThisApi(InstalledAppResource):
     endpoint="installed_app_suggested_question",
 )
 class MessageSuggestedQuestionApi(InstalledAppResource):
+    @console_ns.response(200, "Success", console_ns.models[SuggestedQuestionsResponse.__name__])
     def get(self, installed_app, message_id):
         current_user, _ = current_account_with_tenant()
         app_model = installed_app.app

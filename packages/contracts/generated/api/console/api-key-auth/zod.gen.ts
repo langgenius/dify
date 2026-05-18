@@ -12,9 +12,28 @@ export const zApiKeyAuthBindingPayload = z.object({
 })
 
 /**
+ * ApiKeyAuthDataSourceItem
+ */
+export const zApiKeyAuthDataSourceItem = z.object({
+  category: z.string(),
+  created_at: z.int(),
+  disabled: z.boolean(),
+  id: z.string(),
+  provider: z.string(),
+  updated_at: z.int(),
+})
+
+/**
+ * ApiKeyAuthDataSourceListResponse
+ */
+export const zApiKeyAuthDataSourceListResponse = z.object({
+  sources: z.array(zApiKeyAuthDataSourceItem),
+})
+
+/**
  * Success
  */
-export const zGetApiKeyAuthDataSourceResponse = z.record(z.string(), z.unknown())
+export const zGetApiKeyAuthDataSourceResponse = zApiKeyAuthDataSourceListResponse
 
 export const zPostApiKeyAuthDataSourceBindingBody = zApiKeyAuthBindingPayload
 

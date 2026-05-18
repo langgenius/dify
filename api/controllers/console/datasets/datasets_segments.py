@@ -31,6 +31,7 @@ from core.model_manager import ModelManager
 from core.rag.index_processor.constant.index_type import IndexTechniqueType
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
+from fields.base import ResponseModel
 from fields.segment_fields import child_chunk_fields, segment_fields
 from graphon.model_runtime.entities.model_entities import ModelType
 from libs.helper import escape_like_pattern
@@ -84,6 +85,11 @@ class BatchImportPayload(BaseModel):
     upload_file_id: str
 
 
+class SegmentBatchImportStatusResponse(ResponseModel):
+    job_id: str
+    job_status: str
+
+
 class ChildChunkBatchUpdatePayload(BaseModel):
     chunks: list[ChildChunkUpdateArgs]
 
@@ -99,7 +105,7 @@ register_schema_models(
     ChildChunkBatchUpdatePayload,
     ChildChunkUpdateArgs,
 )
-register_response_schema_models(console_ns, SimpleResultResponse)
+register_response_schema_models(console_ns, SegmentBatchImportStatusResponse, SimpleResultResponse)
 
 
 @console_ns.route("/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/segments")
@@ -469,6 +475,7 @@ class DatasetDocumentSegmentUpdateApi(Resource):
     "/datasets/batch_import_status/<uuid:job_id>",
 )
 class DatasetDocumentSegmentBatchImportApi(Resource):
+    @console_ns.response(200, "Batch import started", console_ns.models[SegmentBatchImportStatusResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -519,6 +526,7 @@ class DatasetDocumentSegmentBatchImportApi(Resource):
             return {"error": str(e)}, 500
         return {"job_id": job_id, "job_status": "waiting"}, 200
 
+    @console_ns.response(200, "Batch import status", console_ns.models[SegmentBatchImportStatusResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required

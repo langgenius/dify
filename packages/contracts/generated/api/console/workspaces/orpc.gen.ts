@@ -661,16 +661,8 @@ export const inviteEmail = {
   post: post8,
 }
 
-/**
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
- */
 export const post9 = oc
   .route({
-    deprecated: true,
-    description:
-      'Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postWorkspacesCurrentMembersOwnerTransferCheck',
@@ -1411,16 +1403,11 @@ export const models2 = {
  * Get workspace permission settings
  *
  * Returns permission flags that control workspace features like member invitations and owner transfer.
- *
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
  */
 export const get15 = oc
   .route({
-    deprecated: true,
     description:
-      'Returns permission flags that control workspace features like member invitations and owner transfer.\n\nGenerated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
+      'Returns permission flags that control workspace features like member invitations and owner transfer.',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getWorkspacesCurrentPermission',
@@ -1457,16 +1444,8 @@ export const asset = {
   get: get16,
 }
 
-/**
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
- */
 export const get17 = oc
   .route({
-    deprecated: true,
-    description:
-      'Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getWorkspacesCurrentPluginDebuggingKey',
@@ -1758,16 +1737,8 @@ export const parameters = {
   dynamicOptionsWithCredentials,
 }
 
-/**
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
- */
 export const post28 = oc
   .route({
-    deprecated: true,
-    description:
-      'Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postWorkspacesCurrentPluginPermissionChange',
@@ -1909,16 +1880,8 @@ export const readme = {
   get: get25,
 }
 
-/**
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
- */
 export const post31 = oc
   .route({
-    deprecated: true,
-    description:
-      'Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postWorkspacesCurrentPluginTasksDeleteAll',
@@ -1931,16 +1894,8 @@ export const deleteAll = {
   post: post31,
 }
 
-/**
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
- */
 export const post32 = oc
   .route({
-    deprecated: true,
-    description:
-      'Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postWorkspacesCurrentPluginTasksByTaskIdDeleteByIdentifier',
@@ -1954,16 +1909,8 @@ export const byIdentifier = {
   post: post32,
 }
 
-/**
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
- */
 export const post33 = oc
   .route({
-    deprecated: true,
-    description:
-      'Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postWorkspacesCurrentPluginTasksByTaskIdDelete',
@@ -2027,16 +1974,8 @@ export const tasks = {
   byTaskId,
 }
 
-/**
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
- */
 export const post34 = oc
   .route({
-    deprecated: true,
-    description:
-      'Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postWorkspacesCurrentPluginUninstall',

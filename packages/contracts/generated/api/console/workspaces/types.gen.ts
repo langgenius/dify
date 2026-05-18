@@ -103,6 +103,12 @@ export type OwnerTransferCheckPayload = {
   token: string
 }
 
+export type VerificationTokenResponse = {
+  email: string
+  is_valid: boolean
+  token: string
+}
+
 export type OwnerTransferEmailPayload = {
   language?: string | null
 }
@@ -213,6 +219,18 @@ export type ParserPreferredProviderType = {
   preferred_provider_type: 'custom' | 'system'
 }
 
+export type WorkspacePermissionResponse = {
+  allow_member_invite: boolean
+  allow_owner_transfer: boolean
+  workspace_id: string
+}
+
+export type PluginDebuggingKeyResponse = {
+  host: string
+  key: string
+  port: unknown
+}
+
 export type ParserGithubInstall = {
   package: string
   plugin_unique_identifier: string
@@ -242,6 +260,10 @@ export type ParserDynamicOptionsWithCredentials = {
 export type ParserPermissionChange = {
   debug_permission: DebugPermission
   install_permission: InstallPermission
+}
+
+export type SuccessResponse = {
+  success: boolean
 }
 
 export type ParserExcludePlugin = {
@@ -910,9 +932,7 @@ export type PostWorkspacesCurrentMembersOwnerTransferCheckData = {
 }
 
 export type PostWorkspacesCurrentMembersOwnerTransferCheckResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: VerificationTokenResponse
 }
 
 export type PostWorkspacesCurrentMembersOwnerTransferCheckResponse
@@ -1430,9 +1450,7 @@ export type GetWorkspacesCurrentPermissionData = {
 }
 
 export type GetWorkspacesCurrentPermissionResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: WorkspacePermissionResponse
 }
 
 export type GetWorkspacesCurrentPermissionResponse
@@ -1465,9 +1483,7 @@ export type GetWorkspacesCurrentPluginDebuggingKeyData = {
 }
 
 export type GetWorkspacesCurrentPluginDebuggingKeyResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: PluginDebuggingKeyResponse
 }
 
 export type GetWorkspacesCurrentPluginDebuggingKeyResponse
@@ -1674,9 +1690,7 @@ export type PostWorkspacesCurrentPluginPermissionChangeData = {
 }
 
 export type PostWorkspacesCurrentPluginPermissionChangeResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: SuccessResponse
 }
 
 export type PostWorkspacesCurrentPluginPermissionChangeResponse
@@ -1792,9 +1806,7 @@ export type PostWorkspacesCurrentPluginTasksDeleteAllData = {
 }
 
 export type PostWorkspacesCurrentPluginTasksDeleteAllResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: SuccessResponse
 }
 
 export type PostWorkspacesCurrentPluginTasksDeleteAllResponse
@@ -1828,9 +1840,7 @@ export type PostWorkspacesCurrentPluginTasksByTaskIdDeleteData = {
 }
 
 export type PostWorkspacesCurrentPluginTasksByTaskIdDeleteResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: SuccessResponse
 }
 
 export type PostWorkspacesCurrentPluginTasksByTaskIdDeleteResponse
@@ -1847,9 +1857,7 @@ export type PostWorkspacesCurrentPluginTasksByTaskIdDeleteByIdentifierData = {
 }
 
 export type PostWorkspacesCurrentPluginTasksByTaskIdDeleteByIdentifierResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: SuccessResponse
 }
 
 export type PostWorkspacesCurrentPluginTasksByTaskIdDeleteByIdentifierResponse
@@ -1863,9 +1871,7 @@ export type PostWorkspacesCurrentPluginUninstallData = {
 }
 
 export type PostWorkspacesCurrentPluginUninstallResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: SuccessResponse
 }
 
 export type PostWorkspacesCurrentPluginUninstallResponse

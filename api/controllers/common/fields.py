@@ -29,6 +29,14 @@ class SimpleResultMessageResponse(ResponseModel):
     message: str
 
 
+class SimpleMessageResponse(ResponseModel):
+    message: str
+
+
+class SimpleDataResponse(ResponseModel):
+    data: str
+
+
 class SimpleResultDataResponse(ResponseModel):
     result: str
     data: str
@@ -70,6 +78,10 @@ class AccessModeResponse(ResponseModel):
 
 class BooleanResultResponse(ResponseModel):
     result: bool
+
+
+class SuccessResponse(ResponseModel):
+    success: bool
 
 
 class UsageCheckResponse(ResponseModel):

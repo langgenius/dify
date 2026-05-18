@@ -253,16 +253,8 @@ export const apiKeys = {
   byApiKeyId,
 }
 
-/**
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
- */
 export const get3 = oc
   .route({
-    deprecated: true,
-    description:
-      'Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getDatasetsBatchImportStatusByJobId',
@@ -272,16 +264,8 @@ export const get3 = oc
   .input(z.object({ params: zGetDatasetsBatchImportStatusByJobIdPath }))
   .output(zGetDatasetsBatchImportStatusByJobIdResponse)
 
-/**
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
- */
 export const post2 = oc
   .route({
-    deprecated: true,
-    description:
-      'Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postDatasetsBatchImportStatusByJobId',
@@ -1116,16 +1100,8 @@ export const segment = {
   byAction: byAction3,
 }
 
-/**
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
- */
 export const get20 = oc
   .route({
-    deprecated: true,
-    description:
-      'Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBatchImport',
@@ -1135,16 +1111,8 @@ export const get20 = oc
   .input(z.object({ params: zGetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBatchImportPath }))
   .output(zGetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBatchImportResponse)
 
-/**
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
- */
 export const post14 = oc
   .route({
-    deprecated: true,
-    description:
-      'Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBatchImport',

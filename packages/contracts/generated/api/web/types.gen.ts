@@ -213,6 +213,10 @@ export type SimpleResultResponse = {
   result: string
 }
 
+export type SuggestedQuestionsResponse = {
+  data: Array<string>
+}
+
 export type SystemFeatureModel = {
   app_dsl_version?: string
   branding?: BrandingModel
@@ -1066,9 +1070,7 @@ export type GetMessagesByMessageIdSuggestedQuestionsError
   = GetMessagesByMessageIdSuggestedQuestionsErrors[keyof GetMessagesByMessageIdSuggestedQuestionsErrors]
 
 export type GetMessagesByMessageIdSuggestedQuestionsResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: SuggestedQuestionsResponse
 }
 
 export type GetMessagesByMessageIdSuggestedQuestionsResponse

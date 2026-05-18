@@ -4,6 +4,10 @@ export type ClientOptions = {
   baseUrl: `${string}://${string}/console/api` | (string & {})
 }
 
+export type SimpleDataResponse = {
+  data: string
+}
+
 export type RagPipelineDatasetImportPayload = {
   yaml_content: string
 }
@@ -90,6 +94,12 @@ export type WorkflowResponse = {
   version: string
 }
 
+export type RagPipelineWorkflowSyncResponse = {
+  hash: string
+  result: string
+  updated_at: number
+}
+
 export type DatasourceNodeRunPayload = {
   credential_id?: string | null
   datasource_type: string
@@ -153,6 +163,11 @@ export type DraftWorkflowRunPayload = {
     [key: string]: unknown
   }
   start_node_id: string
+}
+
+export type RagPipelineWorkflowPublishResponse = {
+  created_at: number
+  result: string
 }
 
 export type Parser = {
@@ -289,9 +304,7 @@ export type PostRagPipelineCustomizedTemplatesByTemplateIdData = {
 }
 
 export type PostRagPipelineCustomizedTemplatesByTemplateIdResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: SimpleDataResponse
 }
 
 export type PostRagPipelineCustomizedTemplatesByTemplateIdResponse
@@ -665,9 +678,7 @@ export type PostRagPipelinesByPipelineIdWorkflowsDraftData = {
 }
 
 export type PostRagPipelinesByPipelineIdWorkflowsDraftResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: RagPipelineWorkflowSyncResponse
 }
 
 export type PostRagPipelinesByPipelineIdWorkflowsDraftResponse
@@ -1046,9 +1057,7 @@ export type PostRagPipelinesByPipelineIdWorkflowsPublishData = {
 }
 
 export type PostRagPipelinesByPipelineIdWorkflowsPublishResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: RagPipelineWorkflowPublishResponse
 }
 
 export type PostRagPipelinesByPipelineIdWorkflowsPublishResponse
@@ -1209,9 +1218,7 @@ export type PostRagPipelinesByPipelineIdWorkflowsByWorkflowIdRestoreData = {
 }
 
 export type PostRagPipelinesByPipelineIdWorkflowsByWorkflowIdRestoreResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: RagPipelineWorkflowSyncResponse
 }
 
 export type PostRagPipelinesByPipelineIdWorkflowsByWorkflowIdRestoreResponse

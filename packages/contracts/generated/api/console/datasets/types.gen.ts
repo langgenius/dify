@@ -30,6 +30,11 @@ export type ApiKeyItem = {
   type: string
 }
 
+export type SegmentBatchImportStatusResponse = {
+  job_id: string
+  job_status: string
+}
+
 export type BatchImportPayload = {
   upload_file_id: string
 }
@@ -765,9 +770,7 @@ export type GetDatasetsBatchImportStatusByJobIdData = {
 }
 
 export type GetDatasetsBatchImportStatusByJobIdResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: SegmentBatchImportStatusResponse
 }
 
 export type GetDatasetsBatchImportStatusByJobIdResponse
@@ -783,9 +786,7 @@ export type PostDatasetsBatchImportStatusByJobIdData = {
 }
 
 export type PostDatasetsBatchImportStatusByJobIdResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: SegmentBatchImportStatusResponse
 }
 
 export type PostDatasetsBatchImportStatusByJobIdResponse
@@ -1724,9 +1725,7 @@ export type GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBatchImportData =
 }
 
 export type GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBatchImportResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: SegmentBatchImportStatusResponse
 }
 
 export type GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBatchImportResponse
@@ -1743,9 +1742,7 @@ export type PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBatchImportData 
 }
 
 export type PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBatchImportResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: SegmentBatchImportStatusResponse
 }
 
 export type PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBatchImportResponse

@@ -8,6 +8,10 @@ export type InstalledAppListResponse = {
   installed_apps: Array<InstalledAppResponse>
 }
 
+export type SimpleMessageResponse = {
+  message: string
+}
+
 export type SimpleResultMessageResponse = {
   message: string
   result: string
@@ -57,6 +61,10 @@ export type MessageFeedbackPayload = {
   content?: string | null
   message_id: string
   rating?: 'dislike' | 'like' | null
+}
+
+export type SuggestedQuestionsResponse = {
+  data: Array<string>
 }
 
 export type SavedMessageCreatePayload = {
@@ -120,9 +128,7 @@ export type PostInstalledAppsData = {
 }
 
 export type PostInstalledAppsResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: SimpleMessageResponse
 }
 
 export type PostInstalledAppsResponse = PostInstalledAppsResponses[keyof PostInstalledAppsResponses]
@@ -414,9 +420,7 @@ export type GetInstalledAppsByInstalledAppIdMessagesByMessageIdSuggestedQuestion
 }
 
 export type GetInstalledAppsByInstalledAppIdMessagesByMessageIdSuggestedQuestionsResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: SuggestedQuestionsResponse
 }
 
 export type GetInstalledAppsByInstalledAppIdMessagesByMessageIdSuggestedQuestionsResponse

@@ -317,6 +317,13 @@ export const zSimpleResultResponse = z.object({
 })
 
 /**
+ * SuggestedQuestionsResponse
+ */
+export const zSuggestedQuestionsResponse = z.object({
+  data: z.array(z.string()),
+})
+
+/**
  * TextToAudioPayload
  */
 export const zTextToAudioPayload = z.object({
@@ -602,7 +609,7 @@ export const zGetMessagesByMessageIdSuggestedQuestionsPath = z.object({
 /**
  * Success
  */
-export const zGetMessagesByMessageIdSuggestedQuestionsResponse = z.record(z.string(), z.unknown())
+export const zGetMessagesByMessageIdSuggestedQuestionsResponse = zSuggestedQuestionsResponse
 
 /**
  * Success

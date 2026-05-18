@@ -8,7 +8,7 @@ from pydantic import BaseModel, Field, computed_field, field_validator
 from sqlalchemy import and_, select
 from werkzeug.exceptions import BadRequest, Forbidden, NotFound
 
-from controllers.common.fields import SimpleResultMessageResponse
+from controllers.common.fields import SimpleMessageResponse, SimpleResultMessageResponse
 from controllers.common.schema import register_response_schema_models, register_schema_models
 from controllers.console import console_ns
 from controllers.console.explore.wraps import InstalledAppResource
@@ -123,7 +123,7 @@ register_schema_models(
     InstalledAppResponse,
     InstalledAppListResponse,
 )
-register_response_schema_models(console_ns, SimpleResultMessageResponse)
+register_response_schema_models(console_ns, SimpleMessageResponse, SimpleResultMessageResponse)
 
 
 @console_ns.route("/installed-apps")
@@ -211,6 +211,7 @@ class InstalledAppsListApi(Resource):
     @login_required
     @account_initialization_required
     @cloud_edition_billing_resource_check("apps")
+    @console_ns.response(200, "Success", console_ns.models[SimpleMessageResponse.__name__])
     def post(self):
         payload = InstalledAppCreatePayload.model_validate(console_ns.payload or {})
 

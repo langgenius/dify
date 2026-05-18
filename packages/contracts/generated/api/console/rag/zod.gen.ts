@@ -3,6 +3,13 @@
 import * as z from 'zod'
 
 /**
+ * SimpleDataResponse
+ */
+export const zSimpleDataResponse = z.object({
+  data: z.string(),
+})
+
+/**
  * RagPipelineDatasetImportPayload
  */
 export const zRagPipelineDatasetImportPayload = z.object({
@@ -38,6 +45,15 @@ export const zPayload = z.object({
  */
 export const zSimpleResultResponse = z.object({
   result: z.string(),
+})
+
+/**
+ * RagPipelineWorkflowSyncResponse
+ */
+export const zRagPipelineWorkflowSyncResponse = z.object({
+  hash: z.string(),
+  result: z.string(),
+  updated_at: z.int(),
 })
 
 /**
@@ -81,6 +97,14 @@ export const zDraftWorkflowRunPayload = z.object({
   datasource_type: z.string(),
   inputs: z.record(z.string(), z.unknown()),
   start_node_id: z.string(),
+})
+
+/**
+ * RagPipelineWorkflowPublishResponse
+ */
+export const zRagPipelineWorkflowPublishResponse = z.object({
+  created_at: z.int(),
+  result: z.string(),
 })
 
 /**
@@ -311,10 +335,7 @@ export const zPostRagPipelineCustomizedTemplatesByTemplateIdPath = z.object({
 /**
  * Success
  */
-export const zPostRagPipelineCustomizedTemplatesByTemplateIdResponse = z.record(
-  z.string(),
-  z.unknown(),
-)
+export const zPostRagPipelineCustomizedTemplatesByTemplateIdResponse = zSimpleDataResponse
 
 export const zPostRagPipelineDatasetBody = zRagPipelineDatasetImportPayload
 
@@ -505,7 +526,7 @@ export const zPostRagPipelinesByPipelineIdWorkflowsDraftPath = z.object({
 /**
  * Success
  */
-export const zPostRagPipelinesByPipelineIdWorkflowsDraftResponse = z.record(z.string(), z.unknown())
+export const zPostRagPipelinesByPipelineIdWorkflowsDraftResponse = zRagPipelineWorkflowSyncResponse
 
 export const zPostRagPipelinesByPipelineIdWorkflowsDraftDatasourceNodesByNodeIdRunBody
   = zDatasourceNodeRunPayload
@@ -766,10 +787,8 @@ export const zPostRagPipelinesByPipelineIdWorkflowsPublishPath = z.object({
 /**
  * Success
  */
-export const zPostRagPipelinesByPipelineIdWorkflowsPublishResponse = z.record(
-  z.string(),
-  z.unknown(),
-)
+export const zPostRagPipelinesByPipelineIdWorkflowsPublishResponse
+  = zRagPipelineWorkflowPublishResponse
 
 export const zPostRagPipelinesByPipelineIdWorkflowsPublishedDatasourceNodesByNodeIdPreviewBody
   = zParser
@@ -868,7 +887,5 @@ export const zPostRagPipelinesByPipelineIdWorkflowsByWorkflowIdRestorePath = z.o
 /**
  * Success
  */
-export const zPostRagPipelinesByPipelineIdWorkflowsByWorkflowIdRestoreResponse = z.record(
-  z.string(),
-  z.unknown(),
-)
+export const zPostRagPipelinesByPipelineIdWorkflowsByWorkflowIdRestoreResponse
+  = zRagPipelineWorkflowSyncResponse

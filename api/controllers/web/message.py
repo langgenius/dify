@@ -47,7 +47,7 @@ class MessageMoreLikeThisQuery(BaseModel):
 
 
 register_schema_models(web_ns, MessageListQuery, MessageFeedbackPayload, MessageMoreLikeThisQuery)
-register_response_schema_models(web_ns, ResultResponse)
+register_response_schema_models(web_ns, ResultResponse, SuggestedQuestionsResponse)
 
 
 @web_ns.route("/messages")
@@ -208,6 +208,7 @@ class MessageMoreLikeThisApi(WebApiResource):
 
 @web_ns.route("/messages/<uuid:message_id>/suggested-questions")
 class MessageSuggestedQuestionApi(WebApiResource):
+    @web_ns.response(200, "Success", web_ns.models[SuggestedQuestionsResponse.__name__])
     @web_ns.doc("Get Suggested Questions")
     @web_ns.doc(description="Get suggested follow-up questions after a message (chat apps only).")
     @web_ns.doc(params={"message_id": {"description": "Message UUID", "type": "string", "required": True}})

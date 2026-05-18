@@ -2084,16 +2084,11 @@ export const datasets = {
  * Get an end user by ID
  * This endpoint is scoped to the current app token's tenant/app to prevent
  * cross-tenant/app access when an end-user ID is known.
- *
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
  */
 export const get21 = oc
   .route({
-    deprecated: true,
     description:
-      'Get an end user by ID\nThis endpoint is scoped to the current app token\'s tenant/app to prevent\ncross-tenant/app access when an end-user ID is known.\n\nGenerated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
+      'Get an end user by ID\nThis endpoint is scoped to the current app token\'s tenant/app to prevent\ncross-tenant/app access when an end-user ID is known.',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getEndUsersByEndUserId',

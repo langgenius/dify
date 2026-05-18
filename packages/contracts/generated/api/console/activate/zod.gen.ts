@@ -22,10 +22,19 @@ export const zActivationResponse = z.object({
 })
 
 /**
+ * ActivationCheckData
+ */
+export const zActivationCheckData = z.object({
+  email: z.string().nullish(),
+  workspace_id: z.string().nullish(),
+  workspace_name: z.string().nullish(),
+})
+
+/**
  * ActivationCheckResponse
  */
 export const zActivationCheckResponse = z.object({
-  data: z.record(z.string(), z.unknown()).nullish(),
+  data: zActivationCheckData.optional(),
   is_valid: z.boolean(),
 })
 

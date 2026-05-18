@@ -28,6 +28,14 @@ export const zApiKeyList = z.object({
 })
 
 /**
+ * SegmentBatchImportStatusResponse
+ */
+export const zSegmentBatchImportStatusResponse = z.object({
+  job_id: z.string(),
+  job_status: z.string(),
+})
+
+/**
  * BatchImportPayload
  */
 export const zBatchImportPayload = z.object({
@@ -854,9 +862,9 @@ export const zGetDatasetsBatchImportStatusByJobIdPath = z.object({
 })
 
 /**
- * Success
+ * Batch import status
  */
-export const zGetDatasetsBatchImportStatusByJobIdResponse = z.record(z.string(), z.unknown())
+export const zGetDatasetsBatchImportStatusByJobIdResponse = zSegmentBatchImportStatusResponse
 
 export const zPostDatasetsBatchImportStatusByJobIdBody = zBatchImportPayload
 
@@ -865,9 +873,9 @@ export const zPostDatasetsBatchImportStatusByJobIdPath = z.object({
 })
 
 /**
- * Success
+ * Batch import started
  */
-export const zPostDatasetsBatchImportStatusByJobIdResponse = z.record(z.string(), z.unknown())
+export const zPostDatasetsBatchImportStatusByJobIdResponse = zSegmentBatchImportStatusResponse
 
 export const zPostDatasetsExternalBody = zExternalDatasetCreatePayload
 
@@ -1367,12 +1375,10 @@ export const zGetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBatchImportPath
 })
 
 /**
- * Success
+ * Batch import status
  */
-export const zGetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBatchImportResponse = z.record(
-  z.string(),
-  z.unknown(),
-)
+export const zGetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBatchImportResponse
+  = zSegmentBatchImportStatusResponse
 
 export const zPostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBatchImportBody
   = zBatchImportPayload
@@ -1383,12 +1389,10 @@ export const zPostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBatchImportPat
 })
 
 /**
- * Success
+ * Batch import started
  */
-export const zPostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBatchImportResponse = z.record(
-  z.string(),
-  z.unknown(),
-)
+export const zPostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBatchImportResponse
+  = zSegmentBatchImportStatusResponse
 
 export const zDeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdPath = z.object({
   dataset_id: z.string(),
