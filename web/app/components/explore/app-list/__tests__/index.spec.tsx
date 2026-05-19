@@ -289,7 +289,7 @@ describe('AppList', () => {
       expect(screen.getByText('explore.apps.description')).toBeInTheDocument()
     })
 
-    it('should render continue work with the first four workspace apps', () => {
+    it('should render continue work with the first eight workspace apps', () => {
       mockExploreData = {
         categories: ['Writing'],
         allList: [createApp()],
@@ -299,7 +299,11 @@ describe('AppList', () => {
         createWorkspaceApp({ id: 'app-2', name: 'Feature Copilot', author_name: 'Maggie' }),
         createWorkspaceApp({ id: 'app-3', name: 'Book Translation', author_name: 'Alex' }),
         createWorkspaceApp({ id: 'app-4', name: 'Logo Design', author_name: 'Taylor' }),
-        createWorkspaceApp({ id: 'app-5', name: 'Hidden Fifth App', author_name: 'Robin' }),
+        createWorkspaceApp({ id: 'app-5', name: 'Data Summarizer', author_name: 'Robin' }),
+        createWorkspaceApp({ id: 'app-6', name: 'Meeting Notes', author_name: 'Casey' }),
+        createWorkspaceApp({ id: 'app-7', name: 'Research Helper', author_name: 'Jordan' }),
+        createWorkspaceApp({ id: 'app-8', name: 'Support Draft', author_name: 'Morgan' }),
+        createWorkspaceApp({ id: 'app-9', name: 'Hidden Ninth App', author_name: 'Riley' }),
       ]
 
       renderAppList()
@@ -309,9 +313,13 @@ describe('AppList', () => {
       expect(screen.getByText('Feature Copilot')).toBeInTheDocument()
       expect(screen.getByText('Book Translation')).toBeInTheDocument()
       expect(screen.getByText('Logo Design')).toBeInTheDocument()
-      expect(screen.queryByText('Hidden Fifth App')).not.toBeInTheDocument()
+      expect(screen.getByText('Data Summarizer')).toBeInTheDocument()
+      expect(screen.getByText('Meeting Notes')).toBeInTheDocument()
+      expect(screen.getByText('Research Helper')).toBeInTheDocument()
+      expect(screen.getByText('Support Draft')).toBeInTheDocument()
+      expect(screen.queryByText('Hidden Ninth App')).not.toBeInTheDocument()
       expect(screen.getByText('Maggie')).toBeInTheDocument()
-      expect(screen.getAllByText('explore.continueWork.editedAt:{"time":"3 minutes ago"}')).toHaveLength(4)
+      expect(screen.getAllByText('explore.continueWork.editedAt:{"time":"3 minutes ago"}')).toHaveLength(8)
       expect(screen.getByRole('link', { name: /Email Reply/ })).toHaveAttribute('href', '/app/app-1/overview')
       expect(screen.getByRole('link', { name: 'explore.continueWork.exploreStudio' })).toHaveAttribute('href', '/apps')
     })
@@ -446,8 +454,8 @@ describe('AppList', () => {
         allList: [createApp()],
       };
       (fetchAppDetail as unknown as Mock).mockResolvedValue({ export_data: 'yaml-content', mode: AppModeEnum.CHAT })
-      mockHandleImportDSL.mockImplementation(async (_payload: unknown, options: { onSuccess?: () => void }) => {
-        options.onSuccess?.()
+      mockHandleImportDSL.mockImplementation(async (_payload: unknown, options: { onSuccess?: (payload: { app_mode: AppModeEnum }) => void }) => {
+        options.onSuccess?.({ app_mode: AppModeEnum.CHAT })
       })
 
       renderAppList(true)

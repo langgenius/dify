@@ -20,7 +20,7 @@ const ContinueWork = ({
     input: {
       query: {
         page: 1,
-        limit: 4,
+        limit: 8,
         name: '',
       },
     },
