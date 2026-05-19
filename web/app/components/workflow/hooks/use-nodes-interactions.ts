@@ -440,16 +440,12 @@ export const useNodesInteractions = () => {
       if (initShowLastRunTab)
         workflowStore.setState({ initShowLastRunTab: true })
       const { nodes, setNodes, edges, setEdges } = collaborativeWorkflow.getState()
-      const selectedNode = nodes.find(node => node.data.selected)
-
-      if (!cancelSelection && selectedNode?.id === nodeId)
-        return
 
       const newNodes = produce(nodes, (draft) => {
         draft.forEach((node) => {
-          if (node.id === nodeId)
-            node.data.selected = !cancelSelection
-          else node.data.selected = false
+          const selected = node.id === nodeId && !cancelSelection
+          node.selected = selected
+          node.data.selected = selected
         })
       })
       setNodes(newNodes, false)
