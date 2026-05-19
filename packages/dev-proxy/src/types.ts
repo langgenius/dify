@@ -11,8 +11,15 @@ export type DevProxyCorsConfig = {
 
 export type CookieNameMatcher = string | RegExp
 
+export type CookieRewriteLocalScope = 'target-origin'
+
 export type CookieRewriteOptions = {
   hostPrefixCookies?: readonly CookieNameMatcher[]
+  localCookieScope?: CookieRewriteLocalScope
+  csrfHeader?: {
+    cookieName: string
+    headerName: string
+  }
 }
 
 export type DevProxyRoute = {
