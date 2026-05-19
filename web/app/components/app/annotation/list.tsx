@@ -16,7 +16,6 @@ type Props = {
   selectedIds: string[]
   onSelectedIdsChange: (selectedIds: string[]) => void
   onBatchDelete: () => Promise<void>
-  onCancel: () => void
 }
 
 type AnnotationTableRowProps = {
@@ -87,7 +86,6 @@ export function List({
   selectedIds,
   onSelectedIdsChange,
   onBatchDelete,
-  onCancel,
 }: Props) {
   const { t } = useTranslation()
   const { formatTime } = useTimestamp()
@@ -152,7 +150,7 @@ export function List({
           className="absolute bottom-20 left-0 z-20"
           selectedIds={selectedIds}
           onBatchDelete={onBatchDelete}
-          onCancel={onCancel}
+          onSelectedIdsChange={onSelectedIdsChange}
         />
       )}
     </>

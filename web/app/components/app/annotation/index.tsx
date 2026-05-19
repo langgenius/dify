@@ -210,7 +210,6 @@ const Annotation: FC<Props> = (props) => {
                   selectedIds={selectedIds}
                   onSelectedIdsChange={setSelectedIds}
                   onBatchDelete={handleBatchDelete}
-                  onCancel={() => setSelectedIds([])}
                 />
               )
             : <div className="flex h-full grow items-center justify-center"><EmptyElement /></div>}

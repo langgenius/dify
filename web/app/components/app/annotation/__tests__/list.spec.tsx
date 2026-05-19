@@ -36,7 +36,6 @@ describe('List', () => {
         selectedIds={[]}
         onSelectedIdsChange={vi.fn()}
         onBatchDelete={vi.fn()}
-        onCancel={vi.fn()}
       />,
     )
 
@@ -57,7 +56,6 @@ describe('List', () => {
         selectedIds={[]}
         onSelectedIdsChange={onSelectedIdsChange}
         onBatchDelete={vi.fn()}
-        onCancel={vi.fn()}
       />,
     )
 
@@ -72,7 +70,6 @@ describe('List', () => {
         selectedIds={['a']}
         onSelectedIdsChange={onSelectedIdsChange}
         onBatchDelete={vi.fn()}
-        onCancel={vi.fn()}
       />,
     )
     fireEvent.click(screen.getByRole('checkbox', { name: 'A' }))
@@ -93,7 +90,6 @@ describe('List', () => {
         selectedIds={[item.id]}
         onSelectedIdsChange={vi.fn()}
         onBatchDelete={vi.fn()}
-        onCancel={vi.fn()}
       />,
     )
 

@@ -440,7 +440,7 @@ describe('Annotation', () => {
       latestListProps.onSelectedIdsChange([annotation.id])
     })
     await act(async () => {
-      latestListProps.onCancel()
+      latestListProps.onSelectedIdsChange([])
     })
 
     expect(latestListProps.selectedIds).toEqual([])
