@@ -7,7 +7,7 @@ import { useStoreApi } from 'reactflow'
 import { useFeaturesStore } from '@/app/components/base/features/hooks'
 import { collaborationManager } from '@/app/components/workflow/collaboration/core/collaboration-manager'
 import { useSerialAsyncCallback } from '@/app/components/workflow/hooks/use-serial-async-callback'
-import { useNodesReadOnly } from '@/app/components/workflow/hooks/use-workflow'
+import { useNodesReadOnly, useNodesReadOnlyByCanEdit } from '@/app/components/workflow/hooks/use-workflow'
 import { useWorkflowStore } from '@/app/components/workflow/store'
 import { API_PREFIX } from '@/config'
 import { postWithKeepalive } from '@/service/fetch'
@@ -15,11 +15,10 @@ import { systemFeaturesQueryOptions } from '@/service/system-features'
 import { syncWorkflowDraft } from '@/service/workflow'
 import { useWorkflowRefreshDraft } from '.'
 
-export const useNodesSyncDraft = () => {
+const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
   const store = useStoreApi()
   const workflowStore = useWorkflowStore()
   const featuresStore = useFeaturesStore()
-  const { getNodesReadOnly } = useNodesReadOnly()
   const { handleRefreshWorkflowDraft } = useWorkflowRefreshDraft()
   const { data: isCollaborationEnabled } = useSuspenseQuery({
     ...systemFeaturesQueryOptions(),
@@ -173,4 +172,16 @@ export const useNodesSyncDraft = () => {
     doSyncWorkflowDraft,
     syncWorkflowDraftWhenPageClose,
   }
+}
+
+export const useNodesSyncDraftByCanEdit = (canEdit: boolean) => {
+  const { getNodesReadOnly } = useNodesReadOnlyByCanEdit(canEdit)
+
+  return useNodesSyncDraftBase(getNodesReadOnly)
+}
+
+export const useNodesSyncDraft = () => {
+  const { getNodesReadOnly } = useNodesReadOnly()
+
+  return useNodesSyncDraftBase(getNodesReadOnly)
 }

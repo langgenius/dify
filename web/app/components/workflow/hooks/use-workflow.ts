@@ -429,9 +429,8 @@ export const useWorkflowReadOnly = () => {
   }
 }
 
-export const useNodesReadOnly = () => {
+const useNodesReadOnlyBase = (canEdit: boolean) => {
   const workflowStore = useWorkflowStore()
-  const canEdit = useHooksStore(s => s.accessControl.canEdit)
   const workflowRunningData = useStore(s => s.workflowRunningData)
   const historyWorkflowData = useStore(s => s.historyWorkflowData)
   const isRestoring = useStore(s => s.isRestoring)
@@ -462,6 +461,16 @@ export const useNodesReadOnly = () => {
     ),
     getNodesReadOnly,
   }
+}
+
+export const useNodesReadOnlyByCanEdit = (canEdit: boolean) => {
+  return useNodesReadOnlyBase(canEdit)
+}
+
+export const useNodesReadOnly = () => {
+  const canEdit = useHooksStore(s => s.accessControl.canEdit)
+
+  return useNodesReadOnlyBase(canEdit)
 }
 
 export const useIsNodeInIteration = (iterationId: string) => {

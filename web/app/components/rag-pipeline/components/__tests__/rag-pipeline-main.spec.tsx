@@ -10,10 +10,18 @@ vi.mock('../../hooks', () => ({
     exportCheck: vi.fn(),
     handleExportDSL: vi.fn(),
   }),
+  useDSLByCanEdit: () => ({
+    exportCheck: vi.fn(),
+    handleExportDSL: vi.fn(),
+  }),
   useGetRunAndTraceUrl: () => ({
     getWorkflowRunAndTraceUrl: vi.fn(),
   }),
   useNodesSyncDraft: () => ({
+    doSyncWorkflowDraft: vi.fn(),
+    syncWorkflowDraftWhenPageClose: vi.fn(),
+  }),
+  useNodesSyncDraftByCanEdit: () => ({
     doSyncWorkflowDraft: vi.fn(),
     syncWorkflowDraftWhenPageClose: vi.fn(),
   }),
@@ -27,7 +35,18 @@ vi.mock('../../hooks', () => ({
     handleRun: vi.fn(),
     handleStopRun: vi.fn(),
   }),
+  usePipelineRunByCanEdit: () => ({
+    handleBackupDraft: vi.fn(),
+    handleLoadBackupDraft: vi.fn(),
+    handleRestoreFromPublishedWorkflow: vi.fn(),
+    handleRun: vi.fn(),
+    handleStopRun: vi.fn(),
+  }),
   usePipelineStartRun: () => ({
+    handleStartWorkflowRun: vi.fn(),
+    handleWorkflowStartRunInWorkflow: vi.fn(),
+  }),
+  usePipelineStartRunByCanEdit: () => ({
     handleStartWorkflowRun: vi.fn(),
     handleWorkflowStartRunInWorkflow: vi.fn(),
   }),

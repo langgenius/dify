@@ -25,14 +25,14 @@ import { getAppACLCapabilities } from '@/utils/permission'
 import {
   useAvailableNodesMetaData,
   useConfigsMap,
-  useDSL,
+  useDSLByCanEdit,
   useGetRunAndTraceUrl,
   useInspectVarsCrud,
-  useNodesSyncDraft,
+  useNodesSyncDraftByCanEdit,
   useSetWorkflowVarsWithValue,
   useWorkflowRefreshDraft,
-  useWorkflowRun,
-  useWorkflowStartRun,
+  useWorkflowRunByCanEdit,
+  useWorkflowStartRunByCanEdit,
 } from '../hooks'
 import WorkflowChildren from './workflow-children'
 
@@ -73,6 +73,10 @@ const WorkflowMain = ({
 
   const filteredCursors = Object.fromEntries(
     Object.entries(cursors).filter(([userId]) => userId !== myUserId),
+  )
+  const appACLCapabilities = useMemo(
+    () => getAppACLCapabilities(appDetail?.permission_keys),
+    [appDetail?.permission_keys],
   )
 
   useEffect(() => {
@@ -137,7 +141,7 @@ const WorkflowMain = ({
   const {
     doSyncWorkflowDraft,
     syncWorkflowDraftWhenPageClose,
-  } = useNodesSyncDraft()
+  } = useNodesSyncDraftByCanEdit(appACLCapabilities.canEdit)
   const { handleRefreshWorkflowDraft } = useWorkflowRefreshDraft()
   const { handleUpdateWorkflowCanvas } = useWorkflowUpdate()
   const {
@@ -146,7 +150,7 @@ const WorkflowMain = ({
     handleRestoreFromPublishedWorkflow,
     handleRun,
     handleStopRun,
-  } = useWorkflowRun()
+  } = useWorkflowRunByCanEdit(appACLCapabilities.canEdit)
 
   useEffect(() => {
     if (!appId || !isCollaborationEnabled)
@@ -213,19 +217,15 @@ const WorkflowMain = ({
     handleWorkflowTriggerWebhookRunInWorkflow,
     handleWorkflowTriggerPluginRunInWorkflow,
     handleWorkflowRunAllTriggersInWorkflow,
-  } = useWorkflowStartRun()
+  } = useWorkflowStartRunByCanEdit(appACLCapabilities.canEdit)
   const availableNodesMetaData = useAvailableNodesMetaData()
   const { getWorkflowRunAndTraceUrl } = useGetRunAndTraceUrl()
   const {
     exportCheck,
     handleExportDSL,
-  } = useDSL()
+  } = useDSLByCanEdit(appACLCapabilities.canEdit)
 
   const configsMap = useConfigsMap()
-  const appACLCapabilities = useMemo(
-    () => getAppACLCapabilities(appDetail?.permission_keys),
-    [appDetail?.permission_keys],
-  )
 
   const { fetchInspectVars } = useSetWorkflowVarsWithValue({
     ...configsMap,

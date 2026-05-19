@@ -217,6 +217,7 @@ vi.mock('@/app/components/workflow-app/hooks', () => ({
   useAvailableNodesMetaData: () => ({ nodes: [{ id: 'start' }], nodesMap: { start: { id: 'start' } } }),
   useConfigsMap: () => ({ flowId: 'app-1', flowType: 'app-flow', fileSettings: { enabled: true } }),
   useDSL: () => ({ exportCheck: hookFns.exportCheck, handleExportDSL: hookFns.handleExportDSL }),
+  useDSLByCanEdit: () => ({ exportCheck: hookFns.exportCheck, handleExportDSL: hookFns.handleExportDSL }),
   useGetRunAndTraceUrl: () => ({ getWorkflowRunAndTraceUrl: hookFns.getWorkflowRunAndTraceUrl }),
   useInspectVarsCrud: () => ({
     hasNodeInspectVars: hookFns.hasNodeInspectVars,
@@ -238,6 +239,10 @@ vi.mock('@/app/components/workflow-app/hooks', () => ({
     doSyncWorkflowDraft: hookFns.doSyncWorkflowDraft,
     syncWorkflowDraftWhenPageClose: hookFns.syncWorkflowDraftWhenPageClose,
   }),
+  useNodesSyncDraftByCanEdit: () => ({
+    doSyncWorkflowDraft: hookFns.doSyncWorkflowDraft,
+    syncWorkflowDraftWhenPageClose: hookFns.syncWorkflowDraftWhenPageClose,
+  }),
   useSetWorkflowVarsWithValue: () => ({
     fetchInspectVars: hookFns.fetchInspectVars,
   }),
@@ -249,7 +254,23 @@ vi.mock('@/app/components/workflow-app/hooks', () => ({
     handleRun: hookFns.handleRun,
     handleStopRun: hookFns.handleStopRun,
   }),
+  useWorkflowRunByCanEdit: () => ({
+    handleBackupDraft: hookFns.handleBackupDraft,
+    handleLoadBackupDraft: hookFns.handleLoadBackupDraft,
+    handleRestoreFromPublishedWorkflow: hookFns.handleRestoreFromPublishedWorkflow,
+    handleRun: hookFns.handleRun,
+    handleStopRun: hookFns.handleStopRun,
+  }),
   useWorkflowStartRun: () => ({
+    handleStartWorkflowRun: hookFns.handleStartWorkflowRun,
+    handleWorkflowStartRunInChatflow: hookFns.handleWorkflowStartRunInChatflow,
+    handleWorkflowStartRunInWorkflow: hookFns.handleWorkflowStartRunInWorkflow,
+    handleWorkflowTriggerScheduleRunInWorkflow: hookFns.handleWorkflowTriggerScheduleRunInWorkflow,
+    handleWorkflowTriggerWebhookRunInWorkflow: hookFns.handleWorkflowTriggerWebhookRunInWorkflow,
+    handleWorkflowTriggerPluginRunInWorkflow: hookFns.handleWorkflowTriggerPluginRunInWorkflow,
+    handleWorkflowRunAllTriggersInWorkflow: hookFns.handleWorkflowRunAllTriggersInWorkflow,
+  }),
+  useWorkflowStartRunByCanEdit: () => ({
     handleStartWorkflowRun: hookFns.handleStartWorkflowRun,
     handleWorkflowStartRunInChatflow: hookFns.handleWorkflowStartRunInChatflow,
     handleWorkflowStartRunInWorkflow: hookFns.handleWorkflowStartRunInWorkflow,

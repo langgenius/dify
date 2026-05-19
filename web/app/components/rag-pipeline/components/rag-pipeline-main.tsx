@@ -10,12 +10,12 @@ import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import { getDatasetACLCapabilities } from '@/utils/permission'
 import {
   useAvailableNodesMetaData,
-  useDSL,
+  useDSLByCanEdit,
   useGetRunAndTraceUrl,
-  useNodesSyncDraft,
+  useNodesSyncDraftByCanEdit,
   usePipelineRefreshDraft,
-  usePipelineRun,
-  usePipelineStartRun,
+  usePipelineRunByCanEdit,
+  usePipelineStartRunByCanEdit,
 } from '../hooks'
 import { useConfigsMap } from '../hooks/use-configs-map'
 import { useInspectVarsCrud } from '../hooks/use-inspect-vars-crud'
@@ -29,6 +29,10 @@ const RagPipelineMain = ({
 }: RagPipelineMainProps) => {
   const workflowStore = useWorkflowStore()
   const datasetPermissionKeys = useDatasetDetailContextWithSelector(s => s.dataset?.permission_keys)
+  const datasetACLCapabilities = useMemo(
+    () => getDatasetACLCapabilities(datasetPermissionKeys),
+    [datasetPermissionKeys],
+  )
 
   const handleWorkflowDataUpdate = useCallback((payload: any) => {
     const {
@@ -48,7 +52,7 @@ const RagPipelineMain = ({
   const {
     doSyncWorkflowDraft,
     syncWorkflowDraftWhenPageClose,
-  } = useNodesSyncDraft()
+  } = useNodesSyncDraftByCanEdit(datasetACLCapabilities.canEdit)
   const { handleRefreshWorkflowDraft } = usePipelineRefreshDraft()
   const {
     handleBackupDraft,
@@ -56,23 +60,19 @@ const RagPipelineMain = ({
     handleRestoreFromPublishedWorkflow,
     handleRun,
     handleStopRun,
-  } = usePipelineRun()
+  } = usePipelineRunByCanEdit(datasetACLCapabilities.canEdit)
   const {
     handleStartWorkflowRun,
     handleWorkflowStartRunInWorkflow,
-  } = usePipelineStartRun()
+  } = usePipelineStartRunByCanEdit(datasetACLCapabilities.canEdit)
   const availableNodesMetaData = useAvailableNodesMetaData()
   const { getWorkflowRunAndTraceUrl } = useGetRunAndTraceUrl()
   const {
     exportCheck,
     handleExportDSL,
-  } = useDSL()
+  } = useDSLByCanEdit(datasetACLCapabilities.canEdit)
 
   const configsMap = useConfigsMap()
-  const datasetACLCapabilities = useMemo(
-    () => getDatasetACLCapabilities(datasetPermissionKeys),
-    [datasetPermissionKeys],
-  )
   const { fetchInspectVars } = useSetWorkflowVarsWithValue({
     ...configsMap,
   })

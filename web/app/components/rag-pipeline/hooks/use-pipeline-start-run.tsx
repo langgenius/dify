@@ -7,12 +7,14 @@ import {
 import {
   useInputFieldPanel,
   useNodesSyncDraft,
+  useNodesSyncDraftByCanEdit,
 } from '.'
 
-export const usePipelineStartRun = () => {
+type DoSyncWorkflowDraft = ReturnType<typeof useNodesSyncDraft>['doSyncWorkflowDraft']
+
+const usePipelineStartRunBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
   const workflowStore = useWorkflowStore()
   const { handleCancelDebugAndPreviewPanel } = useWorkflowInteractions()
-  const { doSyncWorkflowDraft } = useNodesSyncDraft()
   const { closeAllInputFieldPanels } = useInputFieldPanel()
 
   const handleWorkflowStartRunInWorkflow = useCallback(async () => {
@@ -61,4 +63,16 @@ export const usePipelineStartRun = () => {
     handleStartWorkflowRun,
     handleWorkflowStartRunInWorkflow,
   }
+}
+
+export const usePipelineStartRunByCanEdit = (canEdit: boolean) => {
+  const { doSyncWorkflowDraft } = useNodesSyncDraftByCanEdit(canEdit)
+
+  return usePipelineStartRunBase(doSyncWorkflowDraft)
+}
+
+export const usePipelineStartRun = () => {
+  const { doSyncWorkflowDraft } = useNodesSyncDraft()
+
+  return usePipelineStartRunBase(doSyncWorkflowDraft)
 }
