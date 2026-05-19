@@ -15,11 +15,11 @@ from __future__ import annotations
 from itertools import starmap
 from urllib import parse
 
-from flask import g, request
+from flask import g, jsonify, make_response, request
 from flask_restx import Resource
 from pydantic import BaseModel, ValidationError
 from sqlalchemy import select
-from werkzeug.exceptions import BadRequest, NotFound
+from werkzeug.exceptions import BadRequest, Forbidden, NotFound
 
 from configs import dify_config
 from controllers.openapi import openapi_ns
@@ -54,6 +54,7 @@ from services.errors.account import (
     NoPermissionError,
     RoleAlreadyAssignedError,
 )
+from services.feature_service import FeatureService
 
 
 def _validate_body[M: BaseModel](model: type[M]) -> M:
@@ -97,6 +98,53 @@ def _load_account(account_id: object) -> Account:
     if account is None:
         raise RuntimeError("authenticated account_id has no Account row")
     return account
+
+
+def _quota_error(*, code: str, message: str, hint: str) -> Forbidden:
+    """Build a 403 with envelope ``{code, message, hint}``.
+
+    CLI ``error-mapper`` reads ``message`` and ``hint`` off the wire body
+    verbatim — the structured envelope lets it surface remediation guidance
+    (e.g. "upgrade your plan") without the CLI needing to know edition
+    semantics.
+    """
+    err = Forbidden(message)
+    err.response = make_response(
+        jsonify({"code": code, "message": message, "hint": hint}),
+        403,
+    )
+    return err
+
+
+def _check_member_invite_quota(tenant_id: str) -> None:
+    """Edition-aware member-count gate for invite.
+
+    Both branches self-disable on CE because ``FeatureService.get_features``
+    leaves ``billing.enabled`` and ``workspace_members.enabled`` False by
+    default; SaaS billing API and EE license activation are what flip them on.
+
+    Mirrors the two checks the console invite path performs (decorator at
+    ``console/wraps.py:106`` for billing + inline at
+    ``console/workspace/members.py:130`` for license).
+    """
+    features = FeatureService.get_features(tenant_id)
+
+    if features.billing.enabled:
+        members = features.members
+        if 0 < members.limit <= members.size:
+            raise _quota_error(
+                code="members.limit_exceeded",
+                message="Subscription member limit reached.",
+                hint="Upgrade your plan to invite more members or remove an existing member first.",
+            )
+
+    if features.workspace_members.enabled:
+        if not features.workspace_members.is_available(1):
+            raise _quota_error(
+                code="workspace_members.license_exceeded",
+                message="Workspace member license capacity reached.",
+                hint="Contact your workspace administrator to expand the license seat count.",
+            )
 
 
 @openapi_ns.route("/workspaces")
@@ -196,6 +244,8 @@ class WorkspaceMembersApi(Resource):
         ctx = g.auth_ctx
         inviter = _load_account(ctx.account_id)
         tenant = _load_tenant(workspace_id)
+
+        _check_member_invite_quota(str(tenant.id))
 
         try:
             token = RegisterService.invite_new_member(
