@@ -1,10 +1,11 @@
+from typing import cast
+
 import pytest
 from pydantic import BaseModel
 from sqlalchemy.dialects import mysql, postgresql, sqlite
 from sqlalchemy.dialects.mysql import LONGTEXT
 from sqlalchemy.sql.sqltypes import TEXT
 
-import models.types as model_types
 from models.types import JSONModelColumn
 
 
@@ -39,18 +40,16 @@ def test_json_model_column_deserializes_empty_and_json_values():
     )
 
 
-def test_json_model_column_resolves_model_class_from_import_path():
-    column = JSONModelColumn("tests.unit_tests.models.test_types.JsonColumnSample")
+def test_json_model_column_keeps_model_class_directly():
+    column = JSONModelColumn(JsonColumnSample)
 
-    assert column.process_bind_param({"name": "path", "count": 6}, sqlite.dialect()) == '{"count":6,"name":"path"}'
+    assert column.process_bind_param({"name": "class", "count": 6}, sqlite.dialect()) == '{"count":6,"name":"class"}'
     assert column._model_class is JsonColumnSample
 
 
-def test_json_model_column_rejects_import_path_that_is_not_pydantic_model():
-    column = JSONModelColumn("tests.unit_tests.models.test_types.NotPydanticModel")
-
+def test_json_model_column_rejects_non_pydantic_model_class():
     with pytest.raises(TypeError, match="must be a Pydantic BaseModel subclass"):
-        column.process_bind_param({"name": "bad"}, sqlite.dialect())
+        JSONModelColumn(cast(type[BaseModel], NotPydanticModel))
 
 
 def test_json_model_column_uses_long_text_compatible_dialect_types():
@@ -61,24 +60,6 @@ def test_json_model_column_uses_long_text_compatible_dialect_types():
     assert isinstance(column.load_dialect_impl(mysql.dialect()), LONGTEXT)
 
 
-def test_json_model_column_accepts_late_bound_type_objects():
-    column = JSONModelColumn(JsonColumnSample)
-    column._model_class = None
-    column._model_class_or_path = JsonColumnSample
-
-    assert column._resolve_model_class() is JsonColumnSample
-
-
-def test_json_model_column_uses_importlib_for_string_model_paths(monkeypatch):
-    imported = {}
-    real_import_module = model_types.importlib.import_module
-
-    def capture_import(module_path: str):
-        imported["module_path"] = module_path
-        return real_import_module(module_path)
-
-    monkeypatch.setattr(model_types.importlib, "import_module", capture_import)
-    column = JSONModelColumn("tests.unit_tests.models.test_types.JsonColumnSample")
-
-    assert column._resolve_model_class() is JsonColumnSample
-    assert imported["module_path"] == "tests.unit_tests.models.test_types"
+def test_json_model_column_rejects_string_model_paths():
+    with pytest.raises(TypeError):
+        JSONModelColumn(cast(type[BaseModel], "tests.unit_tests.models.test_types.JsonColumnSample"))

@@ -1,15 +1,14 @@
 import pytest
 
+from models.agent_config_entities import AgentKnowledgeQueryMode, DeclaredOutputType
 from services.agent.composer_service import AgentComposerService
 from services.agent.composer_validator import ComposerConfigValidator
 from services.agent.errors import AgentSoulLockedError, PlaintextSecretNotAllowedError
 from services.entities.agent_entities import (
-    AgentKnowledgeQueryMode,
     AgentSoulConfig,
     ComposerSavePayload,
     ComposerSaveStrategy,
     ComposerVariant,
-    DeclaredOutputType,
     WorkflowNodeJobConfig,
 )
 

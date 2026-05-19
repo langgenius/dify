@@ -1,5 +1,4 @@
 import enum
-import importlib
 import json
 import uuid
 from typing import Any, cast
@@ -70,27 +69,13 @@ class JSONModelColumn[T: BaseModel](TypeDecorator[T | None]):
     impl = TEXT
     cache_ok = True
 
-    _model_class_or_path: type[T] | str
-    _model_class: type[T] | None
+    _model_class: type[T]
 
-    def __init__(self, model_class: type[T] | str):
-        self._model_class_or_path = model_class
-        self._model_class = model_class if isinstance(model_class, type) else None
-        super().__init__()
-
-    def _resolve_model_class(self) -> type[T]:
-        if self._model_class is not None:
-            return self._model_class
-        if not isinstance(self._model_class_or_path, str):
-            self._model_class = self._model_class_or_path
-            return self._model_class
-        module_path, class_name = self._model_class_or_path.rsplit(".", 1)
-        model_class = cast(type[BaseModel], getattr(importlib.import_module(module_path), class_name))
+    def __init__(self, model_class: type[T]):
         if not issubclass(model_class, BaseModel):
-            raise TypeError(f"{self._model_class_or_path} must be a Pydantic BaseModel subclass")
-        resolved_model_class = cast(type[T], model_class)
-        self._model_class = resolved_model_class
-        return resolved_model_class
+            raise TypeError(f"{model_class.__module__}.{model_class.__name__} must be a Pydantic BaseModel subclass")
+        self._model_class = model_class
+        super().__init__()
 
     def load_dialect_impl(self, dialect: Dialect) -> TypeEngine[Any]:
         if dialect.name == "postgresql":
@@ -103,19 +88,18 @@ class JSONModelColumn[T: BaseModel](TypeDecorator[T | None]):
     def process_bind_param(self, value: T | dict[str, Any] | str | None, dialect: Dialect) -> str | None:
         if value is None:
             return None
-        model_class = self._resolve_model_class()
-        if isinstance(value, model_class):
+        if isinstance(value, self._model_class):
             model = value
         elif isinstance(value, str):
-            model = model_class.model_validate_json(value)
+            model = self._model_class.model_validate_json(value)
         else:
-            model = model_class.model_validate(value)
+            model = self._model_class.model_validate(value)
         return json.dumps(model.model_dump(mode="json"), ensure_ascii=False, sort_keys=True, separators=(",", ":"))
 
     def process_result_value(self, value: str | None, dialect: Dialect) -> T | None:
         if value is None or value == "":
             return None
-        return self._resolve_model_class().model_validate_json(value)
+        return self._model_class.model_validate_json(value)
 
 
 class BinaryData(TypeDecorator[bytes | None]):

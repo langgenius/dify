@@ -10,6 +10,7 @@ from sqlalchemy.orm import Mapped, mapped_column
 from libs.datetime_utils import naive_utc_now
 from libs.uuid_utils import uuidv7
 
+from .agent_config_entities import AgentSoulConfig, WorkflowNodeJobConfig
 from .base import Base, DefaultFieldsMixin
 from .types import EnumText, JSONModelColumn, LongText, StringUUID
 
@@ -157,9 +158,7 @@ class AgentConfigSnapshot(DefaultFieldsMixin, Base):
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     agent_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     version: Mapped[int] = mapped_column(sa.Integer, nullable=False)
-    config_snapshot: Mapped[Any] = mapped_column(
-        JSONModelColumn("services.entities.agent_entities.AgentSoulConfig"), nullable=False
-    )
+    config_snapshot: Mapped[Any] = mapped_column(JSONModelColumn(AgentSoulConfig), nullable=False)
     summary: Mapped[str | None] = mapped_column(LongText, nullable=True)
     version_note: Mapped[str | None] = mapped_column(LongText, nullable=True)
     created_by: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
@@ -249,9 +248,7 @@ class WorkflowAgentNodeBinding(DefaultFieldsMixin, Base):
     )
     agent_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
     current_snapshot_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
-    node_job_config: Mapped[Any] = mapped_column(
-        JSONModelColumn("services.entities.agent_entities.WorkflowNodeJobConfig"), nullable=False
-    )
+    node_job_config: Mapped[Any] = mapped_column(JSONModelColumn(WorkflowNodeJobConfig), nullable=False)
     created_by: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
     updated_by: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
 

@@ -18,8 +18,8 @@ from models.agent import (
     WorkflowAgentBindingType,
     WorkflowAgentNodeBinding,
 )
+from models.agent_config_entities import AgentSoulConfig
 from models.types import JSONModelColumn, LongText
-from services.entities.agent_entities import AgentSoulConfig
 
 
 def test_agent_enums_match_prd_boundaries():
