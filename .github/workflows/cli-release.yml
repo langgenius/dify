@@ -13,7 +13,7 @@ jobs:
     runs-on: depot-ubuntu-24.04
     if: github.repository == 'langgenius/dify'
     permissions:
-      contents: read
+      contents: write
     defaults:
       run:
         shell: bash
@@ -73,11 +73,30 @@ jobs:
           CLI_VERSION: ${{ steps.manifest.outputs.version }}
         run: scripts/release-write-checksums.sh
 
-      - name: Upload release artifact
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-        with:
-          name: difyctl-${{ steps.manifest.outputs.version }}
-          path: |
-            cli/dist/bin/difyctl-v*
-          retention-days: 21
-          if-no-files-found: error
+      - name: Publish GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          TAG: difyctl-v${{ steps.manifest.outputs.version }}
+          VERSION: ${{ steps.manifest.outputs.version }}
+          CHANNEL: ${{ steps.manifest.outputs.channel }}
+        working-directory: ./cli/dist/bin
+        run: |
+          prerelease_flag=""
+          if [ "$CHANNEL" != "stable" ]; then
+              prerelease_flag="--prerelease"
+          fi
+
+          if gh release view "$TAG" --repo "$REPO" >/dev/null 2>&1; then
+              echo "Release $TAG exists — replacing assets"
+              gh release upload "$TAG" --repo "$REPO" --clobber difyctl-v*
+          else
+              echo "Creating release $TAG"
+              gh release create "$TAG" \
+                  --repo "$REPO" \
+                  --target "$GITHUB_SHA" \
+                  --title "difyctl $VERSION" \
+                  --notes "Automated release built by \`cli-release.yml\` (commit ${GITHUB_SHA:0:7})." \
+                  $prerelease_flag \
+                  difyctl-v*
+          fi

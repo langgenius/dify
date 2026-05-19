@@ -6,8 +6,8 @@
   "difyctl": {
     "channel": "rc",
     "compat": {
-      "minDify": "1.6.0",
-      "maxDify": "1.7.0"
+      "minDify": "1.14.0",
+      "maxDify": "1.15.0"
     }
   },
   "license": "Apache-2.0",
