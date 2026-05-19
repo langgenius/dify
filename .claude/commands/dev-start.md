@@ -58,7 +58,7 @@ docker compose \
 ```bash
 echo "Waiting for API to be ready..."
 for i in $(seq 1 30); do
-  if curl -s -o /dev/null -w "%{http_code}" http://localhost/api/health 2>/dev/null | grep -q "200"; then
+  if curl -s -o /dev/null -w "%{http_code}" http://localhost/apps 2>/dev/null | grep -q "200"; then
     echo "API is ready ✅"
     break
   fi
