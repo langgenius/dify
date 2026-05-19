@@ -3,6 +3,7 @@ import secrets
 
 from flask import request
 from flask_restx import Resource
+from flask_restx import fields as restx_fields
 
 from controllers.common.schema import register_schema_models
 from controllers.console.auth.error import (

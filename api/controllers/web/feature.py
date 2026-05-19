@@ -1,14 +1,20 @@
-from flask_restx import Resource
+from flask_restx import Resource, fields
 
 from controllers.web import web_ns
 from services.feature_service import FeatureService
+
+system_feature_response_model = web_ns.model(
+    "SystemFeatureResponse",
+    {"features": fields.Raw(description="System feature configuration object")},
+)
 
 
 @web_ns.route("/system-features")
 class SystemFeatureApi(Resource):
     @web_ns.doc("get_system_features")
     @web_ns.doc(description="Get system feature flags and configuration")
-    @web_ns.doc(responses={200: "System features retrieved successfully", 500: "Internal server error"})
+    @web_ns.response(200, "System features retrieved successfully", system_feature_response_model)
+    @web_ns.response(500, "Internal server error")
     def get(self):
         """Get system feature flags and configuration.
 
