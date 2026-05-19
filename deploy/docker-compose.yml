@@ -1,6 +1,6 @@
 services:
   api:
-    image: langgenius/dify-api:1.14.1
+    image: ${ECR_REGISTRY}/nexoraa/dify-api:latest
     restart: always
     env_file:
       - .env
@@ -13,7 +13,7 @@ services:
       - ./volumes/app/storage:/app/api/storage
 
   worker:
-    image: langgenius/dify-api:1.14.1
+    image: ${ECR_REGISTRY}/nexoraa/dify-api:latest
     restart: always
     env_file:
       - .env
@@ -26,7 +26,7 @@ services:
       - ./volumes/app/storage:/app/api/storage
 
   web:
-    image: langgenius/dify-web:1.14.1
+    image: ${ECR_REGISTRY}/nexoraa/dify-web:latest
     restart: always
     environment:
       CONSOLE_API_URL: ''
