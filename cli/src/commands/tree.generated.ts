@@ -21,8 +21,8 @@ import GetWorkspace from './get/workspace/index.js'
 import HelpAccount from './help/account/index.js'
 import HelpEnvironment from './help/environment/index.js'
 import HelpExternal from './help/external/index.js'
+import ResumeApp from './resume/app/index.js'
 import RunApp from './run/app/index.js'
-import RunAppResume from './run/app/resume/index.js'
 import Version from './version/index.js'
 
 export const commandTree: CommandTree = {
@@ -73,14 +73,14 @@ export const commandTree: CommandTree = {
       external: { command: HelpExternal, subcommands: {} },
     },
   },
+  resume: {
+    subcommands: {
+      app: { command: ResumeApp, subcommands: {} },
+    },
+  },
   run: {
     subcommands: {
-      app: {
-        command: RunApp,
-        subcommands: {
-          resume: { command: RunAppResume, subcommands: {} },
-        },
-      },
+      app: { command: RunApp, subcommands: {} },
     },
   },
   version: { command: Version, subcommands: {} },

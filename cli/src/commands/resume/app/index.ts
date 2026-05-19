@@ -1,14 +1,14 @@
-import { Args, Flags } from '../../../../framework/flags.js'
-import { DifyCommand } from '../../../_shared/dify-command.js'
-import { httpRetryFlag } from '../../../_shared/global-flags.js'
+import { Args, Flags } from '../../../framework/flags.js'
+import { DifyCommand } from '../../_shared/dify-command.js'
+import { httpRetryFlag } from '../../_shared/global-flags.js'
 import { resumeApp } from './run.js'
 
-export default class RunAppResume extends DifyCommand {
+export default class ResumeApp extends DifyCommand {
   static override description = 'Resume a paused workflow app after submitting a human input form'
 
   static override examples = [
-    '<%= config.bin %> run app resume app-1 ft-abc --workflow-run-id wf-run-1 --action submit --inputs \'{"name":"Alice"}\'',
-    '<%= config.bin %> run app resume app-1 ft-abc --workflow-run-id wf-run-1 --inputs-file form.json',
+    '<%= config.bin %> resume app app-1 ft-abc --workflow-run-id wf-run-1 --action submit --inputs \'{"name":"Alice"}\'',
+    '<%= config.bin %> resume app app-1 ft-abc --workflow-run-id wf-run-1 --inputs-file form.json',
   ]
 
   static override args = {
@@ -30,7 +30,7 @@ export default class RunAppResume extends DifyCommand {
   }
 
   async run(argv: string[]): Promise<void> {
-    const { args, flags } = this.parse(RunAppResume, argv)
+    const { args, flags } = this.parse(ResumeApp, argv)
     const format = flags.output
     const ctx = await this.authedCtx({ retryFlag: flags['http-retry'], withCache: true, format })
 

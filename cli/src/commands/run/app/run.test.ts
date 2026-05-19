@@ -8,7 +8,7 @@ import { startMock } from '../../../../test/fixtures/dify-mock/server.js'
 import { loadAppInfoCache } from '../../../cache/app-info.js'
 import { createClient } from '../../../http/client.js'
 import { bufferStreams } from '../../../io/streams.js'
-import { resumeApp } from './resume/run.js'
+import { resumeApp } from '../../resume/app/run.js'
 import { runApp } from './run.js'
 
 function bundle(): HostsBundle {
@@ -217,7 +217,7 @@ describe('runApp', () => {
     )).rejects.toThrow(/mutually exclusive/)
   })
 
-  it('hitl pause: writes pause JSON to stdout, hint to stderr, exits 2', async () => {
+  it('hitl pause (text): writes readable block to stdout, hint to stderr, exits 0', async () => {
     mock.setScenario('hitl-pause')
     const io = bufferStreams()
     const cache = await loadAppInfoCache({ configDir: dir })
@@ -235,13 +235,41 @@ describe('runApp', () => {
           throw new Error(`exit:${code}`)
         },
       },
-    )).rejects.toThrow('exit:2')
-    expect(exitCode).toBe(2)
+    )).rejects.toThrow('exit:0')
+    expect(exitCode).toBe(0)
+    const out = io.outBuf()
+    expect(out).toContain('Workflow paused')
+    expect(out).toContain('First Node')
+    expect(out).toContain('Please provide input')
+    expect(out).toContain('[submit]')
+    expect(io.errBuf()).toContain('difyctl resume app')
+    expect(io.errBuf()).toContain('ft-hitl-1')
+  })
+
+  it('hitl pause (json): writes JSON envelope to stdout, exits 0', async () => {
+    mock.setScenario('hitl-pause')
+    const io = bufferStreams()
+    const cache = await loadAppInfoCache({ configDir: dir })
+    let exitCode = -1
+    await expect(runApp(
+      { appId: 'app-2', inputs: {}, format: 'json' },
+      {
+        bundle: bundle(),
+        http: createClient({ host: mock.url, bearer: 'dfoa_test' }),
+        host: mock.url,
+        io,
+        cache,
+        exit: (code) => {
+          exitCode = code
+          throw new Error(`exit:${code}`)
+        },
+      },
+    )).rejects.toThrow('exit:0')
+    expect(exitCode).toBe(0)
     const payload = JSON.parse(io.outBuf()) as { status: string, form_token: string, workflow_run_id: string }
     expect(payload.status).toBe('paused')
     expect(payload.form_token).toBe('ft-hitl-1')
     expect(payload.workflow_run_id).toBe('wf-run-hitl-1')
-    expect(io.errBuf()).toContain('difyctl run app resume')
   })
 
   it('resume: withHistory: false completes successfully', async () => {

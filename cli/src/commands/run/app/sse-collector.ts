@@ -4,15 +4,24 @@ import { newError } from '../../../errors/base.js'
 import { ErrorCode } from '../../../errors/codes.js'
 import { RUN_MODES } from './handlers.js'
 
-export type HitlPausePayload = {
-  task_id: string
-  workflow_run_id: string
-  form_token: string
+export type HitlPauseData = {
+  form_id: string
+  node_id: string
+  node_title: string
   form_content: string
   inputs: unknown[]
+  actions: unknown[]
+  display_in_ui: boolean
+  form_token: string | null
   resolved_default_values: Record<string, string>
-  user_actions: unknown[]
   expiration_time: number
+}
+
+export type HitlPausePayload = {
+  event: 'human_input_required'
+  task_id: string
+  workflow_run_id: string
+  data: HitlPauseData
 }
 
 export class HitlPauseError extends Error {

@@ -165,12 +165,18 @@ describe('collect — human_input_required', () => {
     const hitlData = {
       task_id: 'task-1',
       workflow_run_id: 'wf-run-1',
-      form_token: 'ft-1',
-      form_content: 'Please fill in',
-      inputs: [],
-      resolved_default_values: {},
-      user_actions: [{ id: 'submit', title: 'Submit' }],
-      expiration_time: 9999999999,
+      data: {
+        form_id: 'form-1',
+        node_id: 'n1',
+        node_title: 'First',
+        form_content: 'Please fill in',
+        inputs: [],
+        actions: [{ id: 'submit', title: 'Submit' }],
+        display_in_ui: false,
+        form_token: 'ft-1',
+        resolved_default_values: {},
+        expiration_time: 9999999999,
+      },
     }
     await expect(collect(iterOf(
       ev('workflow_started', {}),
@@ -182,12 +188,18 @@ describe('collect — human_input_required', () => {
     const hitlData = {
       task_id: 'task-1',
       workflow_run_id: 'wf-run-1',
-      form_token: 'ft-abc',
-      form_content: 'form',
-      inputs: [],
-      resolved_default_values: { name: 'Alice' },
-      user_actions: [],
-      expiration_time: 9999999999,
+      data: {
+        form_id: 'form-1',
+        node_id: 'n1',
+        node_title: 'First',
+        form_content: 'form',
+        inputs: [],
+        actions: [],
+        display_in_ui: false,
+        form_token: 'ft-abc',
+        resolved_default_values: { name: 'Alice' },
+        expiration_time: 9999999999,
+      },
     }
     let caught: HitlPauseError | undefined
     try {
@@ -198,8 +210,8 @@ describe('collect — human_input_required', () => {
         caught = e
     }
     expect(caught).toBeDefined()
-    expect(caught!.pausePayload.form_token).toBe('ft-abc')
-    expect(caught!.pausePayload.resolved_default_values).toEqual({ name: 'Alice' })
+    expect(caught!.pausePayload.data.form_token).toBe('ft-abc')
+    expect(caught!.pausePayload.data.resolved_default_values).toEqual({ name: 'Alice' })
   })
 })
 

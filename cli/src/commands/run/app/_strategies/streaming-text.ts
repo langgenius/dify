@@ -1,33 +1,7 @@
-import type { HitlPausePayload } from '../sse-collector.js'
 import type { RunContext, RunStrategy } from './index.js'
 import { buildRunBody } from '../../../../api/app-run.js'
+import { renderHitlHint, renderHitlOutput } from '../hitl-render.js'
 import { decodeStreamError, HitlPauseError } from '../sse-collector.js'
-
-function buildHitlExitJson(appId: string, payload: HitlPausePayload): string {
-  return JSON.stringify({
-    status: 'paused',
-    app_id: appId,
-    task_id: payload.task_id,
-    workflow_run_id: payload.workflow_run_id,
-    form_token: payload.form_token,
-    form_content: payload.form_content,
-    inputs: payload.inputs,
-    resolved_default_values: payload.resolved_default_values,
-    user_actions: payload.user_actions,
-    expiration_time: payload.expiration_time,
-  })
-}
-
-function hitlResumeHint(appId: string, payload: HitlPausePayload): string {
-  let hint = `hint: workflow paused — resume with: difyctl run app resume ${appId} ${payload.form_token} --workflow-run-id ${payload.workflow_run_id}`
-  const actions = payload.user_actions as { id: string }[]
-  if (actions.length > 1) {
-    const firstAction = actions[0]?.id
-    if (firstAction !== undefined)
-      hint += ` --action ${firstAction}`
-  }
-  return `${hint}\n`
-}
 
 export class StreamingTextStrategy implements RunStrategy {
   async execute(ctx: RunContext): Promise<void> {
@@ -72,9 +46,9 @@ export class StreamingTextStrategy implements RunStrategy {
         }
         catch (err) {
           if (err instanceof HitlPauseError) {
-            deps.io.out.write(`${buildHitlExitJson(opts.appId, err.pausePayload)}\n`)
-            deps.io.err.write(hitlResumeHint(opts.appId, err.pausePayload))
-            exit(2)
+            deps.io.out.write(renderHitlOutput(opts.appId, err.pausePayload, ctx.isText, deps.io.isOutTTY))
+            deps.io.err.write(renderHitlHint(opts.appId, err.pausePayload, deps.io.isErrTTY))
+            exit(0)
           }
           throw err
         }
