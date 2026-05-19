@@ -9,7 +9,6 @@ import utc from 'dayjs/plugin/utc'
 import * as React from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { PluginCategoryEnum, PluginSource } from '../../../types'
-import { defaultValue } from '../config'
 import AutoUpdateSetting from '../index'
 import NoDataPlaceholder from '../no-data-placeholder'
 import NoPluginSelected from '../no-plugin-selected'
@@ -348,39 +347,6 @@ describe('auto-update-setting', () => {
       it('should contain exactly 3 modes', () => {
         const values = Object.values(AUTO_UPDATE_MODE)
         expect(values).toHaveLength(3)
-      })
-    })
-  })
-
-  describe('config.ts', () => {
-    describe('defaultValue', () => {
-      it('should have disabled strategy by default', () => {
-        expect(defaultValue.strategy_setting).toBe(AUTO_UPDATE_STRATEGY.disabled)
-      })
-
-      it('should have upgrade_time_of_day as 0', () => {
-        expect(defaultValue.upgrade_time_of_day).toBe(0)
-      })
-
-      it('should have update_all mode by default', () => {
-        expect(defaultValue.upgrade_mode).toBe(AUTO_UPDATE_MODE.update_all)
-      })
-
-      it('should have empty exclude_plugins array', () => {
-        expect(defaultValue.exclude_plugins).toEqual([])
-      })
-
-      it('should have empty include_plugins array', () => {
-        expect(defaultValue.include_plugins).toEqual([])
-      })
-
-      it('should be a complete AutoUpdateConfig object', () => {
-        const keys = Object.keys(defaultValue)
-        expect(keys).toContain('strategy_setting')
-        expect(keys).toContain('upgrade_time_of_day')
-        expect(keys).toContain('upgrade_mode')
-        expect(keys).toContain('exclude_plugins')
-        expect(keys).toContain('include_plugins')
       })
     })
   })

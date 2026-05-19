@@ -10,6 +10,10 @@ import { useInvalidateAllBuiltInTools, useInvalidateAllToolProviders, useInvalid
 import { useInvalidateAllTriggerPlugins } from '@/service/use-triggers'
 import { PluginCategoryEnum } from '../../types'
 
+type PluginCategoryPayload = {
+  category: PluginCategoryEnum | string
+}
+
 const useRefreshPluginList = () => {
   const invalidateInstalledPluginList = useInvalidateInstalledPluginList()
   const { mutate: refetchLLMModelList } = useModelList(ModelTypeEnum.textGeneration)
@@ -29,7 +33,7 @@ const useRefreshPluginList = () => {
 
   const invalidateRAGRecommendedPlugins = useInvalidateRAGRecommendedPlugins()
   return {
-    refreshPluginList: (manifest?: PluginManifestInMarket | Plugin | PluginDeclaration | null, refreshAllType?: boolean) => {
+    refreshPluginList: (manifest?: PluginManifestInMarket | Plugin | PluginDeclaration | PluginCategoryPayload | null, refreshAllType?: boolean) => {
       // installed list
       invalidateInstalledPluginList()
 

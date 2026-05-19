@@ -12,23 +12,9 @@ import { PermissionType } from '@/app/components/plugins/types'
 import OptionCard from '@/app/components/workflow/nodes/_base/components/option-card'
 import { systemFeaturesQueryOptions } from '@/service/system-features'
 import AutoUpdateSetting from './auto-update-setting'
-import { defaultValue as autoUpdateDefaultValue } from './auto-update-setting/config'
-import { AUTO_UPDATE_STRATEGY } from './auto-update-setting/types'
 import Label from './label'
 
 const i18nPrefix = 'privilege'
-const defaultAutoUpdateConfig: AutoUpdateConfig = {
-  ...autoUpdateDefaultValue,
-  strategy_setting: AUTO_UPDATE_STRATEGY.fixOnly,
-}
-
-const getInitialAutoUpdateConfig = (autoUpdateConfig?: AutoUpdateConfig): AutoUpdateConfig => ({
-  ...defaultAutoUpdateConfig,
-  ...autoUpdateConfig,
-  strategy_setting: autoUpdateConfig?.strategy_setting ?? defaultAutoUpdateConfig.strategy_setting,
-  exclude_plugins: autoUpdateConfig?.exclude_plugins ?? defaultAutoUpdateConfig.exclude_plugins,
-  include_plugins: autoUpdateConfig?.include_plugins ?? defaultAutoUpdateConfig.include_plugins,
-})
 
 type Props = {
   payload: ReferenceSetting
@@ -42,9 +28,9 @@ const PluginSettingModal: FC<Props> = ({
   onSave,
 }) => {
   const { t } = useTranslation()
-  const { auto_upgrade: autoUpdateConfig, permission: privilege } = payload || {}
+  const { auto_upgrade: autoUpdateConfig, permission: privilege } = payload
   const [tempPrivilege, setTempPrivilege] = useState<Permissions>(privilege)
-  const [tempAutoUpdateConfig, setTempAutoUpdateConfig] = useState<AutoUpdateConfig>(() => getInitialAutoUpdateConfig(autoUpdateConfig))
+  const [tempAutoUpdateConfig, setTempAutoUpdateConfig] = useState<AutoUpdateConfig>(autoUpdateConfig)
   const { data: enable_marketplace } = useSuspenseQuery({
     ...systemFeaturesQueryOptions(),
     select: s => s.enable_marketplace,

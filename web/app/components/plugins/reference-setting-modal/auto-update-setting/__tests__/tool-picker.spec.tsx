@@ -1,7 +1,7 @@
 import type { PluginDetail } from '@/app/components/plugins/types'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { PluginSource } from '@/app/components/plugins/types'
+import { PluginCategoryEnum, PluginSource } from '@/app/components/plugins/types'
 import ToolPicker from '../tool-picker'
 
 const mockInstalledPluginList = vi.hoisted(() => ({
@@ -224,6 +224,35 @@ describe('ToolPicker', () => {
     fireEvent.click(screen.getByTestId('set-query'))
     expect(screen.getAllByTestId('tool-item')).toHaveLength(1)
     expect(screen.getByTestId('search-state')).toHaveTextContent('tool-rag')
+  })
+
+  it('limits selectable integrations to the provided integration category', () => {
+    mockInstalledPluginList.data = {
+      plugins: [
+        createPlugin('model-openai', PluginSource.marketplace, 'model', ['llm']),
+        createPlugin('tool-rag', PluginSource.marketplace, 'tool', ['rag']),
+        createPlugin('datasource-notion', PluginSource.marketplace, 'datasource', ['docs']),
+      ],
+    }
+
+    render(
+      <ToolPicker
+        trigger={<span>trigger</span>}
+        value={[]}
+        onChange={vi.fn()}
+        isShow
+        onShowChange={vi.fn()}
+        integrationCategory={PluginCategoryEnum.model}
+      />,
+    )
+
+    expect(screen.getByText('plugin.category.models')).toBeInTheDocument()
+    expect(screen.queryByText('plugin.category.all')).not.toBeInTheDocument()
+    expect(screen.queryByText('plugin.category.tools')).not.toBeInTheDocument()
+    expect(screen.getAllByTestId('tool-item')).toHaveLength(1)
+    expect(screen.getByText('model-openai')).toBeInTheDocument()
+    expect(screen.queryByText('tool-rag')).not.toBeInTheDocument()
+    expect(screen.queryByText('datasource-notion')).not.toBeInTheDocument()
   })
 
   it('adds and removes plugin ids from the selection', () => {
