@@ -61,6 +61,15 @@ flowchart TD
         ENG35["ENG-35\nSOC 2 Type I + DR runbook\n👤 Narayana"]
     end
 
+    subgraph CROSS["Cross-Cutting — Security & Compliance Hardening"]
+        ENG36["ENG-36\nmTLS service mesh + cert rotation\n👤 Nithilesh"]
+        ENG37["ENG-37\nStripe webhook signature verification\n👤 Dinesh"]
+        ENG38["ENG-38\nbilling=false guard + sandbox filtering\n👤 Narayana"]
+        ENG39["ENG-39\nPII scrubbing middleware (log sanitization)\n👤 Saahithi"]
+        ENG40["ENG-40\nRollover policy engine (expire/rollover/capped)\n👤 Saahithi"]
+        ENG41["ENG-41\nASC 606 revenue recognition + deferred ledger\n👤 Narayana"]
+    end
+
     END([✅ DONE — Credits Platform Live])
 
     %% ── Week 1 internal ──
@@ -143,6 +152,19 @@ flowchart TD
     %% ── Phase 3 → Done ──
     ENG35 --> END
 
+    %% ── Cross-cutting dependencies ──
+    ENG7  --> ENG36
+    ENG36 --> ENG33
+    ENG33 --> ENG37
+    ENG12 --> ENG38
+    ENG38 --> ENG23
+    ENG6  --> ENG39
+    ENG39 --> ENG26
+    ENG9  --> ENG40
+    ENG40 --> ENG20
+    ENG15 --> ENG41
+    ENG41 --> ENG35
+
     %% ── Styles ──
     classDef saahithi fill:#dbeafe,stroke:#2563eb,color:#1e3a8a
     classDef nithilesh fill:#dcfce7,stroke:#16a34a,color:#14532d
@@ -152,10 +174,10 @@ flowchart TD
     classDef epic fill:#1e1b4b,stroke:#4338ca,color:#e0e7ff
     classDef startend fill:#022c22,stroke:#059669,color:#d1fae5
 
-    class ENG4,ENG5,ENG9,ENG10,ENG19,ENG20,ENG26,ENG30,ENG31 saahithi
-    class ENG6,ENG11,ENG16,ENG21,ENG28,ENG33,ENG34 nithilesh
-    class ENG7,ENG8,ENG12,ENG13,ENG17,ENG18,ENG22,ENG25,ENG29,ENG32 dinesh
-    class ENG14,ENG15,ENG23,ENG24,ENG27,ENG35 narayana
+    class ENG4,ENG5,ENG9,ENG10,ENG19,ENG20,ENG26,ENG30,ENG31,ENG39,ENG40 saahithi
+    class ENG6,ENG11,ENG16,ENG21,ENG28,ENG33,ENG34,ENG36 nithilesh
+    class ENG7,ENG8,ENG12,ENG13,ENG17,ENG18,ENG22,ENG25,ENG29,ENG32,ENG37 dinesh
+    class ENG14,ENG15,ENG23,ENG24,ENG27,ENG35,ENG38,ENG41 narayana
     class GATE1,GATE2 gate
     class START,END startend
 ```
