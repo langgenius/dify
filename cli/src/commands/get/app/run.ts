@@ -1,7 +1,7 @@
+import type { AppDescribeResponse, AppListResponse, AppMode } from '@dify/contracts/api/openapi/types.gen'
 import type { KyInstance } from 'ky'
 import type { HostsBundle } from '../../../auth/hosts.js'
 import type { IOStreams } from '../../../io/streams.js'
-import type { AppDescribeResponse, AppListResponse, AppMode } from '../../../types/data-contracts.js'
 import { AppsClient } from '../../../api/apps.js'
 import { WorkspacesClient } from '../../../api/workspaces.js'
 import { runWithSpinner } from '../../../io/spinner.js'

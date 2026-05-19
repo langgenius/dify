@@ -4,6 +4,10 @@
       "notReady": 474,
       "total": 570
     },
+    "openapi": {
+      "notReady": 8,
+      "total": 20
+    },
     "service": {
       "notReady": 72,
       "total": 88

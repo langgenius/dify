@@ -1,4 +1,4 @@
-import type { AppDescribeInfo, AppDescribeResponse } from './data-contracts.js'
+import type { AppDescribeInfo, AppDescribeResponse } from '@dify/contracts/api/openapi/types.gen'
 
 export const FieldInfo = 'info'
 export const FieldParameters = 'parameters'

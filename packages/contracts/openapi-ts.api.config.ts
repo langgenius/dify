@@ -91,6 +91,7 @@ const apiSpecs: ApiSpec[] = [
   { filename: 'console-swagger.json', name: 'console' },
   { filename: 'web-swagger.json', name: 'web' },
   { filename: 'service-swagger.json', name: 'service' },
+  { filename: 'openapi-swagger.json', name: 'openapi' },
 ]
 
 const inaccurateGeneratedContractDescription = 'Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.'

@@ -1,6 +1,6 @@
+import type { AppListResponse, AppListRow, TagItem } from '@dify/contracts/api/openapi/types.gen'
 import type { TableCell } from '../../../framework/output.js'
 import type { TableColumn } from '../../../printers/format-table.js'
-import type { AppListResponse, AppListRow, TagItem } from '../../../types/data-contracts.js'
 
 export const APP_MODE_KEY = 'app'
 

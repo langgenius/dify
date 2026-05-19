@@ -1,9 +1,19 @@
+import type { AppMode } from '@dify/contracts/api/openapi/types.gen'
 import { Args, Flags } from '../../../framework/flags.js'
 import { table } from '../../../framework/output.js'
-import { AppMode } from '../../../types/data-contracts.js'
 import { DifyCommand } from '../../_shared/dify-command.js'
 import { httpRetryFlag } from '../../_shared/global-flags.js'
 import { runGetApp } from './run.js'
+
+const APP_MODE_VALUES: readonly AppMode[] = [
+  'advanced-chat',
+  'agent-chat',
+  'channel',
+  'chat',
+  'completion',
+  'rag-pipeline',
+  'workflow',
+]
 
 export default class GetApp extends DifyCommand {
   static override description = 'List apps or describe one app\'s basic info'
@@ -28,7 +38,7 @@ export default class GetApp extends DifyCommand {
     }),
     'page': Flags.integer({ description: 'page number', default: 1 }),
     'limit': Flags.string({ description: 'page size [1..200]' }),
-    'mode': Flags.string({ description: 'filter by app mode', options: Object.values(AppMode) }),
+    'mode': Flags.string({ description: 'filter by app mode', options: APP_MODE_VALUES }),
     'name': Flags.string({ description: 'filter by app name (server-side substring)' }),
     'tag': Flags.string({ description: 'filter by tag name (server-side exact match)' }),
     'http-retry': httpRetryFlag,
