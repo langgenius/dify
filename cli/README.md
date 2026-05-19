@@ -4,32 +4,23 @@ CLI client for [Dify] platform. Browser device-flow signin, list/inspect apps, r
 
 ## Install
 
-### npm
+Builds are standalone binaries (Bun-compiled) published as **GitHub Actions workflow artifacts** — no npm, no GitHub Release assets. The installer fetches the latest successful `cli-release.yml` run on `main`, verifies sha256, and copies the binary into `$HOME/.local/bin/difyctl`.
 
 ```sh
-npm install -g @langgenius/difyctl
+# GH_TOKEN with `actions:read` scope is required — workflow artifact downloads
+# need auth even on public repos.
+export GH_TOKEN=<your-pat>
+curl -fsSL https://raw.githubusercontent.com/langgenius/dify/main/cli/scripts/install-cli.sh | sh
 ```
 
-### Tarball
+| Env              | Default           | Purpose                                               |
+| ---------------- | ----------------- | ----------------------------------------------------- |
+| `GH_TOKEN`       | —                 | GitHub PAT (or `GITHUB_TOKEN`) with `actions:read`.   |
+| `DIFYCTL_PREFIX` | `$HOME/.local`    | Install root. Binary lands at `<prefix>/bin/difyctl`. |
+| `DIFYCTL_REPO`   | `langgenius/dify` | Source repo.                                          |
+| `DIFYCTL_BRANCH` | `main`            | Branch to pick the latest successful run from.        |
 
-```sh
-# macOS arm64
-curl -fsSL https://github.com/langgenius/dify/releases/latest/download/difyctl-darwin-arm64.tar.xz | tar xJ -C /usr/local
-ln -sf /usr/local/difyctl/bin/difyctl /usr/local/bin/difyctl
-
-# Linux x64
-curl -fsSL https://github.com/langgenius/dify/releases/latest/download/difyctl-linux-x64.tar.xz | tar xJ -C /opt
-ln -sf /opt/difyctl/bin/difyctl /usr/local/bin/difyctl
-```
-
-Other targets: `darwin-x64`, `linux-arm64`, `win32-x64`.
-
-### Container
-
-```sh
-docker run --rm -it -v "$HOME/.config/difyctl:/root/.config/difyctl" \
-  ghcr.io/langgenius/difyctl:latest version
-```
+Supported targets: `darwin-arm64`, `darwin-x64`, `linux-arm64`, `linux-x64`, `windows-x64.exe`. The shell installer covers Linux + macOS; Windows users can download the `.exe` directly from the same artifact.
 
 ## Quickstart
 
@@ -46,17 +37,7 @@ Background docs: `difyctl help account`, `difyctl help external`, `difyctl help 
 
 ## Commands
 
-| Group      | Commands                                                                                           |
-| ---------- | -------------------------------------------------------------------------------------------------- |
-| `auth`     | `login`, `logout`, `status`, `whoami`, `use <workspace>`, `devices list/revoke`                    |
-| `get`      | `get app [<id>] [-A] [--mode] [--name] [--tag] [-o json\|yaml\|name\|wide]`, `get workspace`       |
-| `describe` | `describe app <id> [--refresh] [-o json\|yaml]`                                                    |
-| `run`      | `run app <id> [<message>] [--input k=v]... [--conversation <id>] [--stream] [-o json\|yaml\|text]` |
-| `config`   | `view`, `get <key>`, `set <key> <value>`, `unset <key>`, `path`                                    |
-| `env`      | `list`                                                                                             |
-| `help`     | `account`, `external`, `environment`                                                               |
-| `version`  | `version [--json]`                                                                                 |
-
+Run `difyctl --help` for the full list of commands.
 Run `difyctl <cmd> --help` for per-command reference.
 
 ## Output formats

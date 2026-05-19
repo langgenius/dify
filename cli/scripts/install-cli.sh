@@ -1,27 +1,35 @@
 #!/bin/sh
-# install-cli.sh — one-line difyctl installer for Linux and macOS.
+# install-cli.sh — one-line difyctl installer from the latest GitHub Actions build.
 #
 # usage:
-#   curl -fsSL https://raw.githubusercontent.com/langgenius/dify/main/cli/scripts/install-cli.sh | sh
+#   GH_TOKEN=<pat> curl -fsSL https://raw.githubusercontent.com/langgenius/dify/main/cli/scripts/install-cli.sh | sh
 #
-# env: DIFYCTL_VERSION (default latest), DIFYCTL_PREFIX (default $HOME/.local),
-#      DIFYCTL_REPO (default langgenius/dify).
-# requires: curl, tar (xz), uname, jq, sha256sum or shasum.
+# env: DIFYCTL_PREFIX (default $HOME/.local), DIFYCTL_REPO (default langgenius/dify),
+#      DIFYCTL_BRANCH (default main),
+#      GH_TOKEN/GITHUB_TOKEN (required — workflow artifact zip downloads need
+#                             auth even on public repos; minimum scope: actions:read).
+# requires: curl, uname, jq, unzip, sha256sum or shasum.
 
 set -eu
 
 REPO="${DIFYCTL_REPO:-langgenius/dify}"
-VERSION="${DIFYCTL_VERSION:-latest}"
+BRANCH="${DIFYCTL_BRANCH:-main}"
 PREFIX="${DIFYCTL_PREFIX:-${HOME}/.local}"
+WORKFLOW_FILE="cli-release.yml"
+TOKEN="${GH_TOKEN:-${GITHUB_TOKEN:-}}"
 
 err() { printf '%s\n' "install-cli: $*" >&2; }
 die() { err "$*"; exit 1; }
 need() { command -v "$1" >/dev/null 2>&1 || die "$1 is required"; }
 
 need curl
-need tar
 need uname
 need jq
+need unzip
+
+[ -n "$TOKEN" ] || die "GH_TOKEN (or GITHUB_TOKEN) is required — workflow artifact downloads need auth"
+
+gh_curl() { curl -fsSL -H "Authorization: Bearer ${TOKEN}" -H "Accept: application/vnd.github.v3+json" "$@"; }
 
 if command -v sha256sum >/dev/null 2>&1; then
     HASH="sha256sum"
@@ -34,7 +42,7 @@ fi
 case "$(uname -s)" in
     Linux*)  os=linux ;;
     Darwin*) os=darwin ;;
-    *)       die "unsupported OS: $(uname -s)" ;;
+    *)       die "unsupported OS: $(uname -s) (use the Windows .exe directly)" ;;
 esac
 
 case "$(uname -m)" in
@@ -45,85 +53,63 @@ esac
 
 target="${os}-${arch}"
 
-if [ "$VERSION" = "latest" ]; then
-    api="https://api.github.com/repos/${REPO}/releases/latest"
-else
-    api="https://api.github.com/repos/${REPO}/releases/tags/${VERSION}"
+# 1. Find the latest successful workflow run on the branch
+api_url="https://api.github.com/repos/${REPO}/actions/workflows/${WORKFLOW_FILE}/runs?branch=${BRANCH}&status=success&per_page=1"
+run_id=$(gh_curl "$api_url" | jq -r '.workflow_runs[0].id')
+
+if [ -z "$run_id" ] || [ "$run_id" = "null" ]; then
+    die "could not find a successful workflow run for ${WORKFLOW_FILE} on branch ${BRANCH}"
 fi
 
-release=$(curl -fsSL "$api") || die "could not fetch release metadata from ${api}"
-tag=$(printf '%s' "$release" | jq -r '.tag_name')
-[ -n "$tag" ] && [ "$tag" != "null" ] || die "release has no tag_name"
+# 2. Find the artifact from that run
+artifacts_url="https://api.github.com/repos/${REPO}/actions/runs/${run_id}/artifacts"
+artifact_info=$(gh_curl "$artifacts_url" | jq '.artifacts[0]')
+artifact_id=$(printf '%s' "$artifact_info" | jq -r '.id')
+artifact_name=$(printf '%s' "$artifact_info" | jq -r '.name')
 
-matches=$(printf '%s' "$release" \
-    | jq -r --arg t "$target" '.assets[].name | select(test("^difyctl-v[0-9]+\\.[0-9]+\\.[0-9]+(-[0-9A-Za-z.-]+)?-\($t)\\.tar\\.xz$"))')
-count=$(printf '%s' "$matches" | grep -c . || true)
-case "$count" in
-    0) die "no difyctl asset for ${target} on ${tag}" ;;
-    1) asset="$matches" ;;
-    *) die "expected exactly 1 difyctl asset for ${target} on ${tag}, found ${count}: ${matches}" ;;
-esac
+if [ -z "$artifact_id" ] || [ "$artifact_id" = "null" ]; then
+    die "could not find any artifacts for workflow run ${run_id}"
+fi
 
-no_target="${asset%-${target}.tar.xz}"
-cli_v="${no_target#difyctl-}"
-checksums="difyctl-${cli_v}-checksums.txt"
-
-printf '%s' "$release" | jq -e --arg c "$checksums" '.assets[] | select(.name == $c)' >/dev/null \
-    || die "checksum file ${checksums} missing on ${tag}; refusing to install unverified binary"
-
-url="https://github.com/${REPO}/releases/download/${tag}/${asset}"
-sums_url="https://github.com/${REPO}/releases/download/${tag}/${checksums}"
-
+# 3. Download and unzip the artifact (one zip with all platform binaries + checksums)
 tmp=$(mktemp -d 2>/dev/null || mktemp -d -t difyctl-install)
 trap 'rm -rf "$tmp"' EXIT INT TERM
 
-printf 'downloading %s\n  from %s\n' "$asset" "$url"
-curl -fsSL --retry 3 "$url"      -o "${tmp}/${asset}"
-curl -fsSL --retry 3 "$sums_url" -o "${tmp}/${checksums}"
+download_url="https://api.github.com/repos/${REPO}/actions/artifacts/${artifact_id}/zip"
+printf 'downloading artifact %s (run %s)...\n' "$artifact_name" "$run_id"
+gh_curl -L "$download_url" -o "${tmp}/artifact.zip"
+unzip -q "${tmp}/artifact.zip" -d "${tmp}/artifact"
 
+# 4. Locate the binary for this host + the checksum manifest
+asset_path=$(ls "${tmp}/artifact"/difyctl-v*-"${target}" 2>/dev/null | head -1)
+[ -n "$asset_path" ] || die "no binary matching target ${target} in artifact"
+asset=$(basename "$asset_path")
+cli_version=${asset#difyctl-v}
+cli_version=${cli_version%-${target}}
+checksums="difyctl-v${cli_version}-checksums.txt"
+
+[ -f "${tmp}/artifact/${checksums}" ] || die "checksum file ${checksums} not found in artifact"
+
+# 5. Verify checksum
 (
-    cd "$tmp"
+    cd "${tmp}/artifact"
     grep " ${asset}\$" "$checksums" | $HASH -c -
 ) || die "checksum mismatch for ${asset}"
 
-if command -v cosign >/dev/null 2>&1; then
-    sig_url="${url}.sig"
-    pem_url="${url}.pem"
-    curl -fsSL --retry 3 "$sig_url" -o "${tmp}/${asset}.sig" \
-        || die "tarball signature missing on ${tag}; refusing to install (cosign present)"
-    curl -fsSL --retry 3 "$pem_url" -o "${tmp}/${asset}.pem" \
-        || die "tarball cert missing on ${tag}; refusing to install (cosign present)"
-    COSIGN_EXPERIMENTAL=1 cosign verify-blob \
-        --certificate "${tmp}/${asset}.pem" \
-        --signature   "${tmp}/${asset}.sig" \
-        --certificate-identity-regexp '^https://github.com/langgenius/dify/' \
-        --certificate-oidc-issuer     'https://token.actions.githubusercontent.com' \
-        "${tmp}/${asset}" \
-        || die "cosign verification failed for ${asset}"
-    printf 'cosign: verified %s\n' "$asset"
-else
-    printf 'note: cosign not installed; skipping signature verification (sha256 still enforced)\n' >&2
-fi
-
-share_dir="${PREFIX}/share/difyctl"
+# 6. Install: copy binary to <prefix>/bin/difyctl and chmod +x
 bin_dir="${PREFIX}/bin"
-mkdir -p "$share_dir" "$bin_dir"
+mkdir -p "$bin_dir"
+target_bin="${bin_dir}/difyctl"
+cp "${tmp}/artifact/${asset}" "$target_bin"
+chmod +x "$target_bin"
 
-printf 'extracting to %s\n' "$share_dir"
-tar -xJf "${tmp}/${asset}" -C "$share_dir" --strip-components=1
-
-target_bin="${share_dir}/bin/difyctl"
-[ -x "$target_bin" ] || die "expected binary at ${target_bin} after extract"
-
-ln -sf "$target_bin" "${bin_dir}/difyctl"
-
-printf '\ndifyctl %s installed: %s/difyctl\n' "$cli_v" "$bin_dir"
+printf '\ndifyctl v%s installed: %s\n' "$cli_version" "$target_bin"
 
 case ":${PATH}:" in
     *":${bin_dir}:"*)
-        "${bin_dir}/difyctl" version >/dev/null 2>&1 \
+        "$target_bin" version >/dev/null 2>&1 \
             && printf 'verify: run "difyctl version"\n' \
-            || err "binary present but failed to execute; check ${bin_dir}/difyctl"
+            || err "binary present but failed to execute; check ${target_bin}"
         ;;
     *)
         printf '\n%s is not on your PATH. Add this to your shell profile:\n' "$bin_dir"

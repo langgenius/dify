@@ -1,6 +1,6 @@
 # AGENTS.md — difyctl (TypeScript CLI)
 
-TypeScript port of difyctl. Stack: oclif 4.x, Node 22+, ESM, ky for HTTP, vitest, eslint via @antfu/eslint-config.
+TypeScript port of difyctl. Stack: custom CLI framework (`src/framework/`), Node 22+, ESM, ky for HTTP, vitest, eslint via @antfu/eslint-config.
 
 > Architecture patterns, scaffolding recipe, printer chain, strategy pattern, testing conventions, anti-patterns: see **[`ARD.md`]**.
 
@@ -24,8 +24,8 @@ TypeScript port of difyctl. Stack: oclif 4.x, Node 22+, ESM, ky for HTTP, vitest
 
 | Layer     | Path                             | Role                                                                                                                                  |
 | --------- | -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
-| commands  | `src/commands/`                  | oclif command shells. Only place oclif imports run.                                                                                   |
-| domain    | `src/run/`, `src/get/`, etc.     | Plain TS modules. Take typed deps via options. Testable without oclif.                                                                |
+| commands  | `src/commands/`                  | Command class shells (extend `DifyCommand`). Only place framework imports run.                                                        |
+| domain    | `src/run/`, `src/get/`, etc.     | Plain TS modules. Take typed deps via options. Testable without the framework.                                                        |
 | api       | `src/api/`                       | One typed client per resource. Each takes `KyInstance`.                                                                               |
 | http      | `src/http/`                      | `createClient` + middleware (auth, retry, logging, error mapping). Only place ky runs.                                                |
 | io        | `src/io/`                        | Streams + spinner. Fence between data-out and progress UI.                                                                            |
@@ -45,7 +45,7 @@ Scaffold recipe + checklist: see `ARD.md §New command scaffold`. Full folder co
 Layer rules:
 
 - Commands thin shells. Use `this.authedCtx(opts)` for bearer context; delegate to domain function.
-- Domain receives deps via options; never imports oclif.
+- Domain receives deps via options; never imports `src/framework/`.
 - Only `src/http/client.ts` and `src/api/*` import ky at runtime; elsewhere use `import type { KyInstance }`.
 - `process.*` lives in `src/io/`, `src/config/dir.ts`, `src/util/browser.ts`. Nowhere else.
 - No circular imports. `types/` pure leaf.
@@ -60,11 +60,12 @@ pnpm test:coverage                             # with coverage
 pnpm type-check                                # tsc, no emit
 pnpm lint                                      # eslint
 pnpm lint:fix                                  # eslint --fix
-pnpm build                                     # production bundle + oclif manifest
-pnpm manifest                                  # regenerate oclif.manifest.json only
+pnpm build                                     # production bundle (vp pack)
+pnpm tree:gen                                  # regenerate src/commands/tree.ts (registry)
+pnpm tree:check                                # verify tree.ts is up-to-date with the fs
 ```
 
-`make` covers `build` / `test` / `release` / `ci` as no-arg targets. Dev runs use `pnpm dev` directly.
+Release binaries (5 platform targets, Bun-compiled) are produced by `pnpm build:bin` (called from `.github/workflows/cli-release.yml`).
 
 ## Tests
 

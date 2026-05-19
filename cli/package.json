@@ -6,8 +6,8 @@
   "difyctl": {
     "channel": "rc",
     "compat": {
-      "minDify": "1.6.0",
-      "maxDify": "1.7.0"
+      "minDify": "1.14.0",
+      "maxDify": "1.15.0"
     }
   },
   "license": "Apache-2.0",
@@ -16,9 +16,6 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
     }
-  },
-  "bin": {
-    "difyctl": "./bin/run.js"
   },
   "files": [
     "README.md",
@@ -30,22 +27,23 @@
   },
   "scripts": {
     "build": "vp pack",
-    "dev": "tsx bin/dev.js",
+    "dev": "bun bin/dev.js",
     "test": "vp test",
     "test:coverage": "vp test --coverage",
     "lint": "eslint",
     "lint:fix": "eslint --fix",
     "type-check": "tsc",
-    "tree:gen": "tsx scripts/generate-command-tree.ts",
-    "tree:check": "tsx scripts/generate-command-tree.ts --check",
+    "tree:gen": "bun scripts/generate-command-tree.ts",
+    "tree:check": "bun scripts/generate-command-tree.ts --check",
     "prebuild": "pnpm tree:gen",
     "predev": "pnpm tree:gen",
     "pretest": "pnpm tree:gen",
     "ci": "pnpm tree:check && pnpm type-check && pnpm lint && pnpm test:coverage && pnpm build",
     "clean": "rm -rf dist node_modules/.cache",
-    "version:info": "tsx scripts/print-buildinfo.ts",
+    "version:info": "bun scripts/print-buildinfo.ts",
     "docker:build-dev": "scripts/docker-build-dev.sh",
-    "sync-models": "scripts/sync-models.sh"
+    "sync-models": "scripts/sync-models.sh",
+    "build:bin": "scripts/release-build.sh"
   },
   "dependencies": {
     "@napi-rs/keyring": "catalog:",
@@ -67,7 +65,6 @@
     "@vitest/coverage-v8": "catalog:",
     "eslint": "catalog:",
     "hono": "catalog:",
-    "tsx": "catalog:",
     "typescript": "catalog:",
     "vite": "catalog:",
     "vite-plus": "catalog:",

@@ -1,31 +1,19 @@
 name: CLI Release
 
 on:
-  release:
-    types: [published]
   workflow_dispatch:
-    inputs:
-      dify_release_tag:
-        description: "dify release tag to attach cli artifacts to (e.g. 1.14.0). Bare semver — dify tags are NOT v-prefixed."
-        type: string
-        required: true
 
 concurrency:
-  group: cli-release-${{ github.event.release.tag_name || inputs.dify_release_tag }}
+  group: cli-release-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
   release:
+    name: build standalone binaries (all targets)
     runs-on: depot-ubuntu-24.04
-    if: >-
-      github.repository == 'langgenius/dify' &&
-      (github.event_name == 'workflow_dispatch' ||
-       (vars.CLI_AUTO_RELEASE == 'true' && !github.event.release.prerelease))
-    env:
-      DIFY_TAG: ${{ github.event.release.tag_name || inputs.dify_release_tag }}
+    if: github.repository == 'langgenius/dify'
     permissions:
       contents: write
-      id-token: write
     defaults:
       run:
         shell: bash
@@ -41,11 +29,10 @@ jobs:
       - name: Setup web environment
         uses: ./.github/actions/setup-web
 
-      - name: Setup Node registry auth
-        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@4bc047ad259df6fc24a6c9b0f9a0cb08cf17fbe5 # v2.0.2
         with:
-          node-version-file: .nvmrc
-          registry-url: 'https://registry.npmjs.org'
+          bun-version: latest
 
       - name: Read cli/package.json
         id: manifest
@@ -64,68 +51,52 @@ jobs:
       - name: Validate manifest
         run: scripts/release-validate-manifest.sh
 
-      - name: Bump guard (auto-path only)
-        if: github.event_name == 'release'
-        run: scripts/release-bump-guard.sh
-        env:
-          NEW_VERSION:  ${{ steps.manifest.outputs.version }}
-          NEW_MIN_DIFY: ${{ steps.manifest.outputs.minDify }}
-          NEW_MAX_DIFY: ${{ steps.manifest.outputs.maxDify }}
+      - name: Install cross-arch native prebuilds
+        # Re-installs node_modules with every @napi-rs/keyring platform variant
+        # so `bun build --compile` can embed the right .node into each target.
+        working-directory: ./
+        run: NPM_CONFIG_USERCONFIG="$PWD/cli/scripts/cross-arch.npmrc" pnpm install --frozen-lockfile
 
-      - name: Verify target dify release exists
-        run: gh release view "$DIFY_TAG" --repo langgenius/dify > /dev/null
+      - name: Compile standalone binaries (all targets)
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Build cli
+          CLI_VERSION: ${{ steps.manifest.outputs.version }}
+          DIFYCTL_CHANNEL: ${{ steps.manifest.outputs.channel }}
+          DIFYCTL_MIN_DIFY: ${{ steps.manifest.outputs.minDify }}
+          DIFYCTL_MAX_DIFY: ${{ steps.manifest.outputs.maxDify }}
         run: |
-          DIFYCTL_VERSION="${{ steps.manifest.outputs.version }}" \
-          DIFYCTL_CHANNEL="${{ steps.manifest.outputs.channel }}" \
-          DIFYCTL_MIN_DIFY="${{ steps.manifest.outputs.minDify }}" \
-          DIFYCTL_MAX_DIFY="${{ steps.manifest.outputs.maxDify }}" \
           DIFYCTL_COMMIT="$(git rev-parse HEAD)" \
           DIFYCTL_BUILD_DATE="$(git log -1 --format=%cI HEAD)" \
-          pnpm build
-
-      - name: Pack tarballs
-        run: pnpm pack:tarballs
-
-      - name: Publish to npm (idempotent)
-        run: scripts/release-npm-publish.sh
-        env:
-          CHANNEL:         ${{ steps.manifest.outputs.channel }}
-          NEW_VERSION:     ${{ steps.manifest.outputs.version }}
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+            pnpm build:bin
 
       - name: Generate sha256 checksum file
+        env:
+          CLI_VERSION: ${{ steps.manifest.outputs.version }}
         run: scripts/release-write-checksums.sh
+
+      - name: Publish GitHub Release
         env:
-          CLI_VERSION: ${{ steps.manifest.outputs.version }}
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          TAG: difyctl-v${{ steps.manifest.outputs.version }}
+          VERSION: ${{ steps.manifest.outputs.version }}
+          CHANNEL: ${{ steps.manifest.outputs.channel }}
+        working-directory: ./cli/dist/bin
+        run: |
+          prerelease_flag=""
+          if [ "$CHANNEL" != "stable" ]; then
+              prerelease_flag="--prerelease"
+          fi
 
-      - name: Install cosign
-        uses: sigstore/cosign-installer@3454372f43399081ed03b604cb2d021dabca52bb # v3.8.2
-
-      - name: Keyless-sign tarballs + checksum file (Sigstore)
-        run: scripts/release-cosign-sign.sh
-        env:
-          CLI_VERSION:         ${{ steps.manifest.outputs.version }}
-          COSIGN_EXPERIMENTAL: '1'
-
-      - name: Snapshot tarballs + checksum + signatures as workflow artifact
-        if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-        with:
-          name: difyctl-${{ steps.manifest.outputs.version }}-${{ env.DIFY_TAG }}
-          path: |
-            cli/dist/difyctl-v*.tar.xz
-            cli/dist/difyctl-v*-checksums.txt
-            cli/dist/difyctl-v*.sig
-            cli/dist/difyctl-v*.pem
-          retention-days: 90
-          if-no-files-found: error
-
-      - name: Upload tarballs + checksum + signatures to dify GH release (idempotent)
-        run: scripts/release-upload-tarballs.sh
-        env:
-          CLI_VERSION: ${{ steps.manifest.outputs.version }}
-          GH_TOKEN:    ${{ secrets.GITHUB_TOKEN }}
+          if gh release view "$TAG" --repo "$REPO" >/dev/null 2>&1; then
+              echo "Release $TAG exists — replacing assets"
+              gh release upload "$TAG" --repo "$REPO" --clobber difyctl-v*
+          else
+              echo "Creating release $TAG"
+              gh release create "$TAG" \
+                  --repo "$REPO" \
+                  --target "$GITHUB_SHA" \
+                  --title "difyctl $VERSION" \
+                  --notes "Automated release built by \`cli-release.yml\` (commit ${GITHUB_SHA:0:7})." \
+                  $prerelease_flag \
+                  difyctl-v*
+          fi

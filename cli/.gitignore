@@ -1,7 +1,6 @@
 dist/
 coverage/
 node_modules/
-oclif.manifest.json
 *.tsbuildinfo
 .vitest-cache/
 docs/specs/

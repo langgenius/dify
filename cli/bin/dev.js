@@ -1,4 +1,4 @@
-#!/usr/bin/env -S node --import tsx
+#!/usr/bin/env -S bun
 
 globalThis.__DIFYCTL_VERSION__ = process.env.DIFYCTL_VERSION ?? '0.0.0-dev'
 globalThis.__DIFYCTL_COMMIT__ = process.env.DIFYCTL_COMMIT ?? 'HEAD'

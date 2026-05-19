@@ -19,12 +19,13 @@ case "$(uname -m)" in
   *)             echo "unsupported arch: $(uname -m)" >&2; exit 1 ;;
 esac
 
-SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-DIST_DIR="${SCRIPT_DIR}/../dist"
-TARBALL="$(ls "${DIST_DIR}"/difyctl-*-${os}-${arch}.tar.xz 2>/dev/null | head -1)"
+# Accept an optional directory path as the first argument.
+# Default to the cli/dist directory if not provided.
+ARTIFACT_DIR="${1:-$(cd "$(dirname "$0")/../dist" && pwd)}"
+TARBALL="$(ls "${ARTIFACT_DIR}"/difyctl-*-${os}-${arch}.tar.xz 2>/dev/null | head -1)"
 
 if [ -z "$TARBALL" ]; then
-  echo "no tarball found for ${os}-${arch} in ${DIST_DIR}" >&2
+  echo "no tarball found for ${os}-${arch} in ${ARTIFACT_DIR}" >&2
   echo "run: pnpm pack:tarballs" >&2
   exit 1
 fi
