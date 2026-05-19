@@ -22,7 +22,7 @@ from graphon.variables.variables import StringVariable
 def _mock_ssrf_head(monkeypatch: pytest.MonkeyPatch):
     """Avoid any real network requests during tests.
 
-    factories.file_factory.remote.get_remote_file_info() uses ssrf_proxy.head
+    factories.file_factory.remote.get_remote_file_info() uses remote_fetcher.head
     to inspect
     remote files. We stub it to return a minimal response object with
     headers so filename/mime/size can be derived deterministically.
@@ -46,7 +46,7 @@ def _mock_ssrf_head(monkeypatch: pytest.MonkeyPatch):
         }
         return SimpleNamespace(status_code=200, headers=headers)
 
-    monkeypatch.setattr("core.helper.ssrf_proxy.head", fake_head)
+    monkeypatch.setattr("factories.file_factory.remote.remote_fetcher.head", fake_head)
 
 
 class TestWorkflowEntry:

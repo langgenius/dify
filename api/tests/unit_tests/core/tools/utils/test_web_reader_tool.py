@@ -58,7 +58,7 @@ def test_get_url_unsupported_content_type(monkeypatch: pytest.MonkeyPatch, stub_
             headers={"Content-Type": "image/png"},  # not supported
         )
 
-    monkeypatch.setattr(stub_support_types.ssrf_proxy, "head", fake_head)
+    monkeypatch.setattr(stub_support_types.remote_fetcher, "head", fake_head)
 
     result = get_url("https://x.test/file.png")
     assert result == "Unsupported content-type [image/png] of URL."
@@ -82,7 +82,7 @@ def test_get_url_supported_binary_type_uses_extract_processor(monkeypatch: pytes
         assert return_text is True
         return "PDF extracted text"
 
-    monkeypatch.setattr(stub_support_types.ssrf_proxy, "head", fake_head)
+    monkeypatch.setattr(stub_support_types.remote_fetcher, "head", fake_head)
     monkeypatch.setattr(stub_support_types.ExtractProcessor, "load_from_url", staticmethod(fake_load_from_url))
 
     result = get_url("https://x.test/doc.pdf")
@@ -103,8 +103,8 @@ def test_get_url_html_flow_with_chardet_and_readability(monkeypatch: pytest.Monk
     # chardet.detect returns utf-8
     import core.tools.utils.web_reader_tool as mod
 
-    monkeypatch.setattr(mod.ssrf_proxy, "head", fake_head)
-    monkeypatch.setattr(mod.ssrf_proxy, "get", fake_get)
+    monkeypatch.setattr(mod.remote_fetcher, "head", fake_head)
+    monkeypatch.setattr(mod.remote_fetcher, "get", fake_get)
 
     mock_best = SimpleNamespace(encoding="utf-8")
     mock_from_bytes = SimpleNamespace(best=lambda: mock_best)
@@ -137,8 +137,8 @@ def test_get_url_html_flow_empty_article_text_returns_empty(monkeypatch: pytest.
 
     import core.tools.utils.web_reader_tool as mod
 
-    monkeypatch.setattr(mod.ssrf_proxy, "head", fake_head)
-    monkeypatch.setattr(mod.ssrf_proxy, "get", fake_get)
+    monkeypatch.setattr(mod.remote_fetcher, "head", fake_head)
+    monkeypatch.setattr(mod.remote_fetcher, "get", fake_get)
     mock_best = SimpleNamespace(encoding="utf-8")
     mock_from_bytes = SimpleNamespace(best=lambda: mock_best)
     monkeypatch.setattr(mod.charset_normalizer, "from_bytes", lambda _: mock_from_bytes)
@@ -150,7 +150,7 @@ def test_get_url_html_flow_empty_article_text_returns_empty(monkeypatch: pytest.
 
 
 def test_get_url_403_cloudscraper_fallback(monkeypatch: pytest.MonkeyPatch, stub_support_types):
-    """HEAD 403 → use cloudscraper.get via ssrf_proxy.make_request, then proceed."""
+    """HEAD 403 → use cloudscraper.get via remote_fetcher.make_request, then proceed."""
 
     def fake_head(url, headers=None, follow_redirects=True, timeout=None):
         return FakeResponse(status_code=403, headers={})
@@ -167,7 +167,7 @@ def test_get_url_403_cloudscraper_fallback(monkeypatch: pytest.MonkeyPatch, stub
 
     import core.tools.utils.web_reader_tool as mod
 
-    monkeypatch.setattr(mod.ssrf_proxy, "head", fake_head)
+    monkeypatch.setattr(mod.remote_fetcher, "head", fake_head)
     monkeypatch.setattr(mod.cloudscraper, "create_scraper", lambda: FakeScraper())
     mock_best = SimpleNamespace(encoding="utf-8")
     mock_from_bytes = SimpleNamespace(best=lambda: mock_best)
@@ -192,7 +192,7 @@ def test_get_url_head_non_200_returns_status(monkeypatch: pytest.MonkeyPatch, st
 
     import core.tools.utils.web_reader_tool as mod
 
-    monkeypatch.setattr(mod.ssrf_proxy, "head", fake_head)
+    monkeypatch.setattr(mod.remote_fetcher, "head", fake_head)
 
     out = get_url("https://x.test/fail")
     assert out == "URL returned status code 500."
@@ -214,7 +214,7 @@ def test_get_url_content_disposition_filename_detection(monkeypatch: pytest.Monk
 
     import core.tools.utils.web_reader_tool as mod
 
-    monkeypatch.setattr(mod.ssrf_proxy, "head", fake_head)
+    monkeypatch.setattr(mod.remote_fetcher, "head", fake_head)
     monkeypatch.setattr(mod.ExtractProcessor, "load_from_url", staticmethod(fake_load_from_url))
 
     out = get_url("https://x.test/fname")
@@ -241,8 +241,8 @@ def test_get_url_html_encoding_fallback_when_decode_fails(monkeypatch: pytest.Mo
 
     import core.tools.utils.web_reader_tool as mod
 
-    monkeypatch.setattr(mod.ssrf_proxy, "head", fake_head)
-    monkeypatch.setattr(mod.ssrf_proxy, "get", fake_get)
+    monkeypatch.setattr(mod.remote_fetcher, "head", fake_head)
+    monkeypatch.setattr(mod.remote_fetcher, "get", fake_get)
 
     mock_best = SimpleNamespace(encoding="utf-8")
     mock_from_bytes = SimpleNamespace(best=lambda: mock_best)

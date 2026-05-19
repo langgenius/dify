@@ -18,7 +18,7 @@ def _mock_head(monkeypatch: pytest.MonkeyPatch, headers: dict[str, str], status_
     def _fake_head(url: str, follow_redirects: bool = True):
         return _FakeResponse(status_code=status_code, headers=headers)
 
-    monkeypatch.setattr("factories.file_factory.remote.ssrf_proxy.head", _fake_head)
+    monkeypatch.setattr("factories.file_factory.remote.remote_fetcher.head", _fake_head)
 
 
 class TestGetRemoteFileInfo:

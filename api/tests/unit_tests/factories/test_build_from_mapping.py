@@ -99,7 +99,7 @@ def mock_http_head():
             },
         )
 
-    with patch("factories.file_factory.remote.ssrf_proxy.head", autospec=True) as mock_head:
+    with patch("factories.file_factory.remote.remote_fetcher.head", autospec=True) as mock_head:
         mock_head.return_value = _mock_response("remote_test.jpg", 2048, "image/jpeg")
         yield mock_head
 

@@ -15,7 +15,7 @@ from sqlalchemy import select
 
 from configs import dify_config
 from core.entities.knowledge_entities import PreviewDetail
-from core.helper import ssrf_proxy
+from core.file import remote_fetcher
 from core.rag.data_post_processor.data_post_processor import RerankingModelDict
 from core.rag.extractor.entity.extract_setting import ExtractSetting
 from core.rag.index_processor.constant.doc_type import DocType
@@ -243,7 +243,7 @@ class BaseIndexProcessor(ABC):
 
         try:
             # Download with timeout
-            response = ssrf_proxy.get(image_url, timeout=DOWNLOAD_TIMEOUT)
+            response = remote_fetcher.get(image_url, timeout=DOWNLOAD_TIMEOUT)
             response.raise_for_status()
 
             # Check Content-Length header if available

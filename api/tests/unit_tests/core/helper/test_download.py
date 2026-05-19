@@ -17,7 +17,7 @@ class _StubResponse:
 
 def test_download_with_size_limit_returns_content(mocker: MockerFixture) -> None:
     response = _StubResponse(status_code=200, chunks=[b"ab", b"cd", b"ef"])
-    mock_get = mocker.patch("core.helper.download.ssrf_proxy.get", return_value=response)
+    mock_get = mocker.patch("core.helper.download.remote_fetcher.get", return_value=response)
 
     content = download_with_size_limit("https://example.com/a.txt", max_download_size=6, timeout=10)
 
@@ -26,7 +26,7 @@ def test_download_with_size_limit_returns_content(mocker: MockerFixture) -> None
 
 
 def test_download_with_size_limit_raises_for_404(mocker: MockerFixture) -> None:
-    mocker.patch("core.helper.download.ssrf_proxy.get", return_value=_StubResponse(status_code=404, chunks=[]))
+    mocker.patch("core.helper.download.remote_fetcher.get", return_value=_StubResponse(status_code=404, chunks=[]))
 
     with pytest.raises(ValueError, match="file not found"):
         download_with_size_limit("https://example.com/missing.txt", max_download_size=10)
@@ -36,7 +36,7 @@ def test_download_with_size_limit_raises_when_size_exceeds_limit(
     mocker: MockerFixture,
 ) -> None:
     response = _StubResponse(status_code=200, chunks=[b"abc", b"de"])
-    mocker.patch("core.helper.download.ssrf_proxy.get", return_value=response)
+    mocker.patch("core.helper.download.remote_fetcher.get", return_value=response)
 
     with pytest.raises(ValueError, match="Max file size reached"):
         download_with_size_limit("https://example.com/large.bin", max_download_size=4)
@@ -46,7 +46,7 @@ def test_download_with_size_limit_accepts_content_equal_to_limit(
     mocker: MockerFixture,
 ) -> None:
     response = _StubResponse(status_code=200, chunks=[b"ab", b"cd"])
-    mocker.patch("core.helper.download.ssrf_proxy.get", return_value=response)
+    mocker.patch("core.helper.download.remote_fetcher.get", return_value=response)
 
     content = download_with_size_limit("https://example.com/exact.bin", max_download_size=4)
 

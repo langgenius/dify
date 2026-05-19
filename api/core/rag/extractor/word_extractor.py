@@ -1,6 +1,6 @@
 """Word (.docx) document extractor used for RAG ingestion.
 
-Supports local file paths and remote URLs (downloaded via `core.helper.ssrf_proxy`).
+Supports local file paths and remote URLs downloaded through the unified remote-file fetcher.
 """
 
 import inspect
@@ -17,7 +17,7 @@ from docx.oxml.ns import qn
 from docx.text.run import Run
 
 from configs import dify_config
-from core.helper import ssrf_proxy
+from core.file import remote_fetcher
 from core.rag.extractor.extractor_base import BaseExtractor
 from core.rag.models.document import Document
 from extensions.ext_database import db
@@ -51,7 +51,7 @@ class WordExtractor(BaseExtractor):
 
         # If the file is a web path, download it to a temporary file, and use that
         if not os.path.isfile(self.file_path) and self._is_valid_url(self.file_path):
-            response = ssrf_proxy.get(self.file_path)
+            response = remote_fetcher.get(self.file_path)
 
             if response.status_code != 200:
                 response.close()
@@ -120,7 +120,7 @@ class WordExtractor(BaseExtractor):
                     if not self._is_valid_url(url):
                         continue
                     try:
-                        response = ssrf_proxy.get(url)
+                        response = remote_fetcher.get(url)
                     except Exception as e:
                         logger.warning("Failed to download image from URL: %s: %s", url, str(e))
                         continue

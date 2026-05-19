@@ -100,8 +100,8 @@ def test_get_remote_file_info_uses_head_when_successful(app, monkeypatch: pytest
     )
     head_mock = MagicMock(return_value=head_resp)
     get_mock = MagicMock()
-    monkeypatch.setattr(remote_files_module.ssrf_proxy, "head", head_mock)
-    monkeypatch.setattr(remote_files_module.ssrf_proxy, "get", get_mock)
+    monkeypatch.setattr(remote_files_module.remote_fetcher, "head", head_mock)
+    monkeypatch.setattr(remote_files_module.remote_fetcher, "get", get_mock)
 
     with app.test_request_context(method="GET"):
         payload = handler(api, url=encoded_url)
@@ -123,8 +123,8 @@ def test_get_remote_file_info_preserves_unencoded_target_query(app, monkeypatch:
         method="HEAD",
     )
     head_mock = MagicMock(return_value=head_resp)
-    monkeypatch.setattr(remote_files_module.ssrf_proxy, "head", head_mock)
-    monkeypatch.setattr(remote_files_module.ssrf_proxy, "get", MagicMock())
+    monkeypatch.setattr(remote_files_module.remote_fetcher, "head", head_mock)
+    monkeypatch.setattr(remote_files_module.remote_fetcher, "get", MagicMock())
 
     with app.test_request_context(f"/remote-files/{target_url}?{query}", method="GET"):
         payload = handler(api, url=target_url)
@@ -139,9 +139,13 @@ def test_get_remote_file_info_falls_back_to_get_and_uses_default_headers(app, mo
     decoded_url = "https://example.com/test.txt"
     encoded_url = urllib.parse.quote(decoded_url, safe="")
 
-    monkeypatch.setattr(remote_files_module.ssrf_proxy, "head", MagicMock(return_value=_FakeResponse(status_code=503)))
+    monkeypatch.setattr(
+        remote_files_module.remote_fetcher,
+        "head",
+        MagicMock(return_value=_FakeResponse(status_code=503)),
+    )
     get_mock = MagicMock(return_value=_FakeResponse(status_code=200, headers={}, method="GET"))
-    monkeypatch.setattr(remote_files_module.ssrf_proxy, "get", get_mock)
+    monkeypatch.setattr(remote_files_module.remote_fetcher, "get", get_mock)
 
     with app.test_request_context(method="GET"):
         payload = handler(api, url=encoded_url)
@@ -155,10 +159,14 @@ def test_remote_file_upload_success_when_fetch_falls_back_to_get(app, monkeypatc
     handler = _unwrap(api.post)
     url = "https://example.com/report.txt"
 
-    monkeypatch.setattr(remote_files_module.ssrf_proxy, "head", MagicMock(return_value=_FakeResponse(status_code=404)))
+    monkeypatch.setattr(
+        remote_files_module.remote_fetcher,
+        "head",
+        MagicMock(return_value=_FakeResponse(status_code=404)),
+    )
     get_resp = _FakeResponse(status_code=200, method="GET", content=b"fallback-content")
     get_mock = MagicMock(return_value=get_resp)
-    monkeypatch.setattr(remote_files_module.ssrf_proxy, "get", get_mock)
+    monkeypatch.setattr(remote_files_module.remote_fetcher, "get", get_mock)
 
     file_service_cls, current_user = _mock_upload_dependencies(monkeypatch)
     upload_file = SimpleNamespace(
@@ -196,13 +204,13 @@ def test_remote_file_upload_fetches_content_with_second_get_when_head_succeeds(
     url = "https://example.com/photo.jpg"
 
     monkeypatch.setattr(
-        remote_files_module.ssrf_proxy,
+        remote_files_module.remote_fetcher,
         "head",
         MagicMock(return_value=_FakeResponse(status_code=200, method="HEAD", content=b"head-content")),
     )
     extra_get_resp = _FakeResponse(status_code=200, method="GET", content=b"downloaded-content")
     get_mock = MagicMock(return_value=extra_get_resp)
-    monkeypatch.setattr(remote_files_module.ssrf_proxy, "get", get_mock)
+    monkeypatch.setattr(remote_files_module.remote_fetcher, "get", get_mock)
 
     file_service_cls, current_user = _mock_upload_dependencies(monkeypatch)
     upload_file = SimpleNamespace(
@@ -230,9 +238,13 @@ def test_remote_file_upload_raises_when_fallback_get_still_not_ok(app, monkeypat
     handler = _unwrap(api.post)
     url = "https://example.com/fail.txt"
 
-    monkeypatch.setattr(remote_files_module.ssrf_proxy, "head", MagicMock(return_value=_FakeResponse(status_code=500)))
     monkeypatch.setattr(
-        remote_files_module.ssrf_proxy,
+        remote_files_module.remote_fetcher,
+        "head",
+        MagicMock(return_value=_FakeResponse(status_code=500)),
+    )
+    monkeypatch.setattr(
+        remote_files_module.remote_fetcher,
         "get",
         MagicMock(return_value=_FakeResponse(status_code=502, text="bad gateway")),
     )
@@ -249,7 +261,7 @@ def test_remote_file_upload_raises_on_httpx_request_error(app, monkeypatch: pyte
 
     request = httpx.Request("HEAD", url)
     monkeypatch.setattr(
-        remote_files_module.ssrf_proxy,
+        remote_files_module.remote_fetcher,
         "head",
         MagicMock(side_effect=httpx.RequestError("network down", request=request)),
     )
@@ -265,11 +277,11 @@ def test_remote_file_upload_rejects_oversized_file(app, monkeypatch: pytest.Monk
     url = "https://example.com/large.bin"
 
     monkeypatch.setattr(
-        remote_files_module.ssrf_proxy,
+        remote_files_module.remote_fetcher,
         "head",
         MagicMock(return_value=_FakeResponse(status_code=200, method="GET", content=b"payload")),
     )
-    monkeypatch.setattr(remote_files_module.ssrf_proxy, "get", MagicMock())
+    monkeypatch.setattr(remote_files_module.remote_fetcher, "get", MagicMock())
 
     _, current_user = _mock_upload_dependencies(monkeypatch, file_size_within_limit=False)
 
@@ -284,11 +296,11 @@ def test_remote_file_upload_translates_service_file_too_large_error(app, monkeyp
     url = "https://example.com/large.bin"
 
     monkeypatch.setattr(
-        remote_files_module.ssrf_proxy,
+        remote_files_module.remote_fetcher,
         "head",
         MagicMock(return_value=_FakeResponse(status_code=200, method="GET", content=b"payload")),
     )
-    monkeypatch.setattr(remote_files_module.ssrf_proxy, "get", MagicMock())
+    monkeypatch.setattr(remote_files_module.remote_fetcher, "get", MagicMock())
     file_service_cls, current_user = _mock_upload_dependencies(monkeypatch)
     file_service_cls.return_value.upload_file.side_effect = ServiceFileTooLargeError("size exceeded")
 
@@ -303,11 +315,11 @@ def test_remote_file_upload_translates_service_unsupported_type_error(app, monke
     url = "https://example.com/file.exe"
 
     monkeypatch.setattr(
-        remote_files_module.ssrf_proxy,
+        remote_files_module.remote_fetcher,
         "head",
         MagicMock(return_value=_FakeResponse(status_code=200, method="GET", content=b"payload")),
     )
-    monkeypatch.setattr(remote_files_module.ssrf_proxy, "get", MagicMock())
+    monkeypatch.setattr(remote_files_module.remote_fetcher, "get", MagicMock())
     file_service_cls, current_user = _mock_upload_dependencies(monkeypatch)
     file_service_cls.return_value.upload_file.side_effect = ServiceUnsupportedFileTypeError()
 

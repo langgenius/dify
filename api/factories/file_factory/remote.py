@@ -16,7 +16,7 @@ import uuid
 import httpx
 from werkzeug.http import parse_options_header
 
-from core.helper import ssrf_proxy
+from core.file import remote_fetcher
 
 
 def extract_filename(url_or_path: str, content_disposition: str | None) -> str | None:
@@ -81,7 +81,7 @@ def get_remote_file_info(url: str) -> tuple[str, str, int]:
     filename = os.path.basename(url_path)
     mime_type = _guess_mime_type(filename)
 
-    resp = ssrf_proxy.head(url, follow_redirects=True)
+    resp = remote_fetcher.head(url, follow_redirects=True)
     if resp.status_code == httpx.codes.OK:
         content_disposition = resp.headers.get("Content-Disposition")
         extracted_filename = extract_filename(url_path, content_disposition)

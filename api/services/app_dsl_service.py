@@ -17,7 +17,7 @@ from sqlalchemy.orm import Session
 
 from configs import dify_config
 from constants.dsl_version import CURRENT_APP_DSL_VERSION
-from core.helper import ssrf_proxy
+from core.file import remote_fetcher
 from core.plugin.entities.plugin import PluginDependency
 from core.trigger.constants import (
     TRIGGER_PLUGIN_NODE_TYPE,
@@ -126,7 +126,7 @@ class AppDslService:
                 ):
                     yaml_url = yaml_url.replace("https://github.com", "https://raw.githubusercontent.com")
                     yaml_url = yaml_url.replace("/blob/", "/")
-                response = ssrf_proxy.get(yaml_url.strip(), follow_redirects=True, timeout=(10, 10))
+                response = remote_fetcher.get(yaml_url.strip(), follow_redirects=True, timeout=(10, 10))
                 response.raise_for_status()
                 content = response.content.decode()
 
