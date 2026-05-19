@@ -1,5 +1,5 @@
 import type { VersionReport } from './probe.js'
-import { describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { renderVersionText } from './render.js'
 
 function baseClient(overrides: Partial<VersionReport['client']> = {}): VersionReport['client'] {
@@ -22,6 +22,10 @@ function compatible(): VersionReport['compat'] {
     detail: 'server 1.6.4 in [1.6.0, 1.7.0]',
   }
 }
+
+// Regex matching the ANSI CSI introducer (ESC `[`).
+// eslint-disable-next-line no-control-regex
+const ANSI_RE = /\[/
 
 describe('renderVersionText', () => {
   it('renders all three blocks for a reachable, compatible server', () => {
@@ -85,13 +89,9 @@ describe('renderVersionText', () => {
     expect(text).toContain('Version:   (unreachable)')
   })
 
-  it('always contains the verdict line on unsupported, regardless of color toggle', () => {
-    // picocolors no-ops escape sequences when stdout is not a TTY, which is
-    // the case under vitest, so the colored output may not actually include
-    // ANSI codes. We only assert that the rendered text is well-formed in
-    // both modes — the color path running without error is the real test.
+  it('color=false produces no ANSI escape sequences regardless of TTY state', () => {
     const report: VersionReport = {
-      client: baseClient(),
+      client: baseClient({ channel: 'rc' }),
       server: { endpoint: 'https://cloud.dify.ai', reachable: true, version: '99.0.0', edition: 'SELF_HOSTED' },
       compat: {
         minDify: '1.6.0',
@@ -100,13 +100,56 @@ describe('renderVersionText', () => {
         detail: 'server 99.0.0 outside [1.6.0, 1.7.0]',
       },
     }
-    const colored = renderVersionText(report, { color: true })
     const plain = renderVersionText(report, { color: false })
+    // Negative-side proof: every code path that could colorize (verdict +
+    // RC warning) ran, yet the output is byte-clean.
+    expect(plain).not.toMatch(ANSI_RE)
+    expect(plain).toContain('Compatibility: incompatible')
+    expect(plain).toContain('WARNING: This build is a release candidate')
+  })
 
-    for (const out of [colored, plain]) {
-      expect(out).toContain('Compatibility: incompatible')
-      expect(out).toContain('outside [1.6.0, 1.7.0]')
-    }
+  describe('with picocolors stubbed to always emit ANSI', () => {
+    // picocolors caches its capability detection at module load, so vitest
+    // env-var tricks don't change its behavior at runtime. Instead, stub the
+    // module to return real ANSI-wrapped strings — this proves the color=true
+    // path actually routes through the colorizer (otherwise the marker is absent).
+    beforeEach(() => {
+      vi.resetModules()
+      vi.doMock('picocolors', () => ({
+        default: {
+          yellow: (s: string) => `[33m${s}[39m`,
+          dim: (s: string) => `[2m${s}[22m`,
+          green: (s: string) => `[32m${s}[39m`,
+          red: (s: string) => `[31m${s}[39m`,
+          bold: (s: string) => `[1m${s}[22m`,
+          cyan: (s: string) => `[36m${s}[39m`,
+          magenta: (s: string) => `[35m${s}[39m`,
+        },
+      }))
+    })
+    afterEach(() => {
+      vi.doUnmock('picocolors')
+      vi.resetModules()
+    })
+
+    it('color=true emits ANSI sequences for verdict and RC warning lines', async () => {
+      const { renderVersionText: render } = await import('./render.js')
+      const report: VersionReport = {
+        client: baseClient({ channel: 'rc' }),
+        server: { endpoint: 'https://cloud.dify.ai', reachable: true, version: '99.0.0', edition: 'SELF_HOSTED' },
+        compat: {
+          minDify: '1.6.0',
+          maxDify: '1.7.0',
+          status: 'unsupported',
+          detail: 'server 99.0.0 outside [1.6.0, 1.7.0]',
+        },
+      }
+      const colored = render(report, { color: true })
+      expect(colored).toMatch(ANSI_RE)
+      expect(colored).toContain('Compatibility: incompatible')
+      // RC warning lines also routed through yellow.
+      expect(colored).toContain('release candidate')
+    })
   })
 
   it('terminates output with a trailing newline', () => {

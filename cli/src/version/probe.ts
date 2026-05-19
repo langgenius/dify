@@ -2,7 +2,7 @@ import type { ServerVersionResponse } from '@dify/contracts/api/openapi/types.ge
 import type { HostsBundle } from '../auth/hosts.js'
 import type { CompatVerdict } from './compat.js'
 import type { Channel } from './info.js'
-import { MetaClient } from '../api/meta.js'
+import { META_PROBE_TIMEOUT_MS, MetaClient } from '../api/meta.js'
 import { loadHosts } from '../auth/hosts.js'
 import { resolveConfigDir } from '../config/dir.js'
 import { createClient } from '../http/client.js'
@@ -37,7 +37,9 @@ export type VersionReport = {
   readonly compat: CompatBlock
 }
 
-export type MetaProbe = (endpoint: string, bearer: string | undefined) => Promise<ServerVersionResponse>
+// /openapi/v1/_version is intentionally unauthenticated, so the probe does not
+// take a bearer. Same signature shape as the auto-nudge probe — easy to swap.
+export type MetaProbe = (endpoint: string) => Promise<ServerVersionResponse>
 
 export type RunVersionProbeOptions = {
   readonly skipServer: boolean
@@ -47,8 +49,8 @@ export type RunVersionProbeOptions = {
 
 const defaultLoadBundle = async (): Promise<HostsBundle | undefined> => loadHosts(resolveConfigDir())
 
-const defaultProbe: MetaProbe = async (endpoint, bearer) => {
-  const http = createClient({ host: endpoint, bearer })
+const defaultProbe: MetaProbe = async (endpoint) => {
+  const http = createClient({ host: endpoint, timeoutMs: META_PROBE_TIMEOUT_MS, retryAttempts: 0 })
   return new MetaClient(http).serverVersion()
 }
 
@@ -91,27 +93,28 @@ export async function runVersionProbe(opts: RunVersionProbeOptions): Promise<Ver
   const probe = opts.probe ?? defaultProbe
 
   let bundle: HostsBundle | undefined
+  let loadFailed = false
   try {
     bundle = await loadBundle()
   }
   catch {
-    bundle = undefined
+    loadFailed = true
   }
 
   if (bundle === undefined || bundle.current_host === '') {
+    const detail = loadFailed ? 'hosts file unreadable' : 'no host configured'
     return {
       client,
       server: { endpoint: '', reachable: false },
-      compat: compatBlock({ status: 'unknown', detail: 'no host configured' }),
+      compat: compatBlock({ status: 'unknown', detail }),
     }
   }
 
   const endpoint = hostWithScheme(bundle.current_host, bundle.scheme)
-  const bearer = bundle.tokens?.bearer
 
   let serverInfo: ServerVersionResponse | undefined
   try {
-    serverInfo = await probe(endpoint, bearer)
+    serverInfo = await probe(endpoint)
   }
   catch {
     serverInfo = undefined

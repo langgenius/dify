@@ -1,10 +1,5 @@
 import { compatString } from './compat.js'
 
-declare const __DIFYCTL_VERSION__: string
-declare const __DIFYCTL_COMMIT__: string
-declare const __DIFYCTL_BUILD_DATE__: string
-declare const __DIFYCTL_CHANNEL__: string
-
 export type Channel = 'dev' | 'rc' | 'stable'
 
 export type VersionInfo = {

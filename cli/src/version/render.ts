@@ -1,5 +1,5 @@
 import type { VersionReport } from './probe.js'
-import pc from 'picocolors'
+import { colorScheme } from '../io/color.js'
 
 const RC_WARNING_LINES = [
   'WARNING: This build is a release candidate. It is in beta test, not stable,',
@@ -10,7 +10,7 @@ export type RenderOptions = {
   readonly color?: boolean
 }
 
-const COMPAT_GLYPH: Record<VersionReport['compat']['status'], string> = {
+const COMPAT_LABEL: Record<VersionReport['compat']['status'], string> = {
   compatible: 'ok',
   unsupported: 'incompatible',
   unknown: 'unknown',
@@ -20,15 +20,8 @@ function shortCommit(commit: string): string {
   return commit.length > 7 ? commit.slice(0, 7) : commit
 }
 
-function colorize(useColor: boolean, fn: (s: string) => string): (s: string) => string {
-  return useColor ? fn : (s: string) => s
-}
-
 export function renderVersionText(report: VersionReport, opts: RenderOptions = {}): string {
-  const useColor = opts.color === true
-  const yellow = colorize(useColor, pc.yellow)
-  const dim = colorize(useColor, pc.dim)
-
+  const c = colorScheme(opts.color === true)
   const lines: string[] = []
 
   const { client, server, compat } = report
@@ -41,11 +34,11 @@ export function renderVersionText(report: VersionReport, opts: RenderOptions = {
 
   lines.push('Server:')
   if (server.endpoint === '') {
-    lines.push(`  ${dim('(skipped — no host configured or --client passed)')}`)
+    lines.push(`  ${c.dim('(skipped — no host configured or --client passed)')}`)
   }
   else if (!server.reachable) {
     lines.push(`  Endpoint:  ${server.endpoint}`)
-    lines.push(`  Version:   ${dim('(unreachable)')}`)
+    lines.push(`  Version:   ${c.dim('(unreachable)')}`)
   }
   else {
     lines.push(`  Endpoint:  ${server.endpoint}`)
@@ -53,16 +46,13 @@ export function renderVersionText(report: VersionReport, opts: RenderOptions = {
   }
   lines.push('')
 
-  const verdictText = `Compatibility: ${COMPAT_GLYPH[compat.status]} — ${compat.detail}`
-  if (compat.status === 'unsupported')
-    lines.push(yellow(verdictText))
-  else
-    lines.push(verdictText)
+  const verdictText = `Compatibility: ${COMPAT_LABEL[compat.status]} — ${compat.detail}`
+  lines.push(compat.status === 'unsupported' ? c.yellow(verdictText) : verdictText)
 
   if (client.channel === 'rc') {
     lines.push('')
     for (const line of RC_WARNING_LINES)
-      lines.push(yellow(line))
+      lines.push(c.yellow(line))
   }
 
   return `${lines.join('\n')}\n`

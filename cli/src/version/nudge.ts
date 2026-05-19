@@ -1,107 +1,68 @@
 import type { ServerVersionResponse } from '@dify/contracts/api/openapi/types.gen'
-import type { CompatSnapshot, CompatSnapshotStore } from '../cache/compat-snapshot.js'
-import pc from 'picocolors'
+import type { NudgeStore } from '../cache/nudge-store.js'
+import { colorScheme } from '../io/color.js'
 import { difyCompat, evaluateCompat } from './compat.js'
-import { versionInfo } from './info.js'
 
+// Formats whose stdout is structured data (json/yaml) or a single name token —
+// any stderr banner from us would pollute machine parsing. Default text format
+// (the empty string) intentionally falls through and is allowed to warn.
 const SUPPRESSED_FORMATS: ReadonlySet<string> = new Set(['json', 'yaml', 'name'])
 
 export type NudgeDeps = {
-  readonly store: CompatSnapshotStore
-  // /openapi/v1/_version is intentionally unauthenticated (mirrors _health), so
-  // the probe does not need a bearer.
+  readonly store: NudgeStore
+  // /openapi/v1/_version is intentionally unauthenticated (mirrors _health),
+  // so the probe does not need a bearer.
   readonly probe: (host: string) => Promise<ServerVersionResponse>
   readonly emit: (line: string) => void
   readonly isTty: boolean
   readonly format: string
+  readonly clientVersion: string
   readonly color?: boolean
   readonly now?: () => Date
 }
 
-// Public guarantee: never throws. Every internal failure is silenced so that
-// the calling authed command continues regardless of probe / disk / parse
-// errors.
-export async function maybeNudgeCompat(
-  host: string,
-  deps: NudgeDeps,
-): Promise<void> {
+// Public guarantee: never throws. Every internal failure is silenced so the
+// calling authed command continues regardless of probe / disk errors.
+//
+// Order matters: cheap suppression checks (format, TTY, throttle window) run
+// before any I/O so the happy path costs nothing in steady state.
+export async function maybeNudgeCompat(host: string, deps: NudgeDeps): Promise<void> {
   try {
-    const snapshot = await ensureSnapshot(host, deps)
-    if (snapshot === undefined)
+    if (!deps.isTty)
       return
-    if (!shouldBanner(snapshot, deps))
+    if (SUPPRESSED_FORMATS.has(deps.format))
       return
-    deps.emit(formatBanner(snapshot, deps.color === true))
-    await deps.store.markWarned(host, deps.now?.())
+    if (!deps.store.canWarn(host, deps.now?.()))
+      return
+
+    let server: ServerVersionResponse
+    try {
+      server = await deps.probe(host)
+    }
+    catch {
+      return
+    }
+
+    const verdict = evaluateCompat(server.version)
+    if (verdict.status !== 'unsupported')
+      return
+
+    deps.emit(formatBanner(deps.clientVersion, server.version, deps.color === true))
+    await deps.store.markWarned(host, deps.now?.()).catch(() => {
+      // disk failure must not propagate; the user already saw the banner.
+    })
   }
   catch {
-    // swallow: the nudge must never affect the business command
+    // belt-and-braces: any unexpected throw must not affect the business command
   }
 }
 
-async function ensureSnapshot(
-  host: string,
-  deps: NudgeDeps,
-): Promise<CompatSnapshot | undefined> {
-  const existing = deps.store.get(host)
-  if (existing !== undefined && deps.store.isFresh(existing, deps.now?.()))
-    return existing
-
-  // stale or missing → try a refresh
-  let server: ServerVersionResponse
-  try {
-    server = await deps.probe(host)
-  }
-  catch {
-    return existing // may be undefined; that signals "first-time-quiet"
-  }
-
-  const verdict = evaluateCompat(server.version)
-  const fresh: CompatSnapshot = {
-    host,
-    fetchedAt: (deps.now?.() ?? new Date()).toISOString(),
-    lastWarnedAt: existing?.lastWarnedAt,
-    server,
-    compat: {
-      status: verdict.status,
-      detail: verdict.detail,
-      minDify: difyCompat.minDify,
-      maxDify: difyCompat.maxDify,
-    },
-  }
-  try {
-    await deps.store.set(fresh)
-  }
-  catch {
-    // disk failure shouldn't block warn decision
-  }
-
-  // First-time quiet: cold cache only persists; never warns on the very
-  // first command after install.
-  if (existing === undefined)
-    return undefined
-
-  return fresh
-}
-
-function shouldBanner(snapshot: CompatSnapshot, deps: NudgeDeps): boolean {
-  if (snapshot.compat.status !== 'unsupported')
-    return false
-  if (!deps.isTty)
-    return false
-  if (SUPPRESSED_FORMATS.has(deps.format))
-    return false
-  if (!deps.store.canWarn(snapshot, deps.now?.()))
-    return false
-  return true
-}
-
-function formatBanner(snapshot: CompatSnapshot, color: boolean): string {
-  const paint = color ? pc.yellow : (s: string) => s
-  const { minDify, maxDify } = snapshot.compat
+function formatBanner(clientVersion: string, serverVersion: string, color: boolean): string {
+  const { yellow } = colorScheme(color)
+  const { minDify, maxDify } = difyCompat
   const line
-    = `warning: difyctl ${versionInfo.version} may be incompatible with server `
-      + `${snapshot.server.version} (tested: ${minDify}..${maxDify}). `
+    = `warning: difyctl ${clientVersion} may be incompatible with server `
+      + `${serverVersion} (tested: ${minDify}..${maxDify}). `
       + 'Run `difyctl version` for details.'
-  return `${paint(line)}\n`
+  return `${yellow(line)}\n`
 }

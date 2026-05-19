@@ -66,6 +66,19 @@ describe('Version command', () => {
     expect(payload.server.reachable).toBe(true)
   })
 
+  it('threads -o yaml through formatted output (envelope, not text)', async () => {
+    const output = await new Version().run(['-o', 'yaml'])
+    expect(output?.kind).toBe('formatted')
+    if (output?.kind !== 'formatted')
+      throw new Error('expected formatted output')
+    expect(output.format).toBe('yaml')
+    // The same envelope drives json + yaml — assert the shape via the json
+    // facet (stringifyOutput uses js-yaml.dump on this object).
+    const payload = output.data.json() as probe.VersionReport
+    expect(payload.compat.status).toBe('compatible')
+    expect(payload.server.version).toBe('1.6.4')
+  })
+
   it('--short returns a raw single-line semver output', async () => {
     const orig = info.versionInfo.version
     Object.assign(info.versionInfo, { version: '0.2.0' })
@@ -105,10 +118,28 @@ describe('Version command', () => {
     expect(stderrSpy).toHaveBeenCalled()
   })
 
+  it('--check-compat -o json emits the JSON envelope on stdout before exiting', async () => {
+    vi.spyOn(probe, 'runVersionProbe').mockResolvedValue(fakeReport({ status: 'unsupported' }))
+    const exitSpy = stubProcessExit()
+    const stdoutSpy = vi.spyOn(process.stdout, 'write').mockImplementation(() => true)
+    vi.spyOn(process.stderr, 'write').mockImplementation(() => true)
+
+    await expect(new Version().run(['--check-compat', '-o', 'json'])).rejects.toThrow('__exit__')
+
+    // stdout must receive a parseable JSON envelope so pipelines like
+    //   `difyctl version -o json --check-compat | jq` still work on failure.
+    expect(stdoutSpy).toHaveBeenCalled()
+    const written = stdoutSpy.mock.calls.map(c => String(c[0])).join('')
+    const parsed = JSON.parse(written) as { compat: { status: string } }
+    expect(parsed.compat.status).toBe('unsupported')
+    expect(exitSpy).toHaveBeenCalledWith(COMPAT_FAIL_EXIT_CODE)
+  })
+
   it('--check-compat exits 64 when compat is unknown (no server)', async () => {
     vi.spyOn(probe, 'runVersionProbe').mockResolvedValue(fakeReport({ reachable: false, status: 'unknown' }))
     const exitSpy = stubProcessExit()
     vi.spyOn(process.stderr, 'write').mockImplementation(() => true)
+    vi.spyOn(process.stdout, 'write').mockImplementation(() => true)
 
     await expect(new Version().run(['--check-compat'])).rejects.toThrow('__exit__')
     expect(exitSpy).toHaveBeenCalledWith(COMPAT_FAIL_EXIT_CODE)

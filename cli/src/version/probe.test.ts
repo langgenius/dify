@@ -1,6 +1,12 @@
 import type { ServerVersionResponse } from '@dify/contracts/api/openapi/types.gen'
 import type { HostsBundle } from '../auth/hosts.js'
+import { mkdtemp, rm } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
+import { startMock } from '../../test/fixtures/dify-mock/server.js'
+import { saveHosts } from '../auth/hosts.js'
+import { ENV_CONFIG_DIR } from '../config/dir.js'
 import { runVersionProbe } from './probe.js'
 
 function bundle(overrides: Partial<HostsBundle> = {}): HostsBundle {
@@ -27,6 +33,21 @@ describe('runVersionProbe', () => {
     expect(report.compat.detail).toContain('skipped')
   })
 
+  it('passes only the endpoint to probe (no bearer; /_version is unauth)', async () => {
+    let observed: string | undefined
+    const report = await runVersionProbe({
+      skipServer: false,
+      loadBundle: async () => bundle({ tokens: { bearer: 'should-not-be-used' } as HostsBundle['tokens'] }),
+      probe: async (endpoint) => {
+        observed = endpoint
+        return { version: '1.6.4', edition: 'CLOUD' }
+      },
+    })
+
+    expect(observed).toBe('https://cloud.dify.ai')
+    expect(report.compat.status).toBe('compatible')
+  })
+
   it('returns no-host + unknown compat when bundle is missing', async () => {
     const report = await runVersionProbe({
       skipServer: false,
@@ -50,15 +71,23 @@ describe('runVersionProbe', () => {
     expect(report.compat.status).toBe('unknown')
   })
 
-  it('treats loadBundle throwing as no-host', async () => {
-    const report = await runVersionProbe({
+  it('distinguishes loadBundle disk failure from no-host configured in the detail', async () => {
+    const errReport = await runVersionProbe({
       skipServer: false,
       loadBundle: async () => { throw new Error('disk-explode') },
       probe: async () => ({ version: '1.6.4', edition: 'CLOUD' }),
     })
+    expect(errReport.server.reachable).toBe(false)
+    expect(errReport.server.endpoint).toBe('')
+    expect(errReport.compat.detail).toContain('unreadable')
 
-    expect(report.server.reachable).toBe(false)
-    expect(report.server.endpoint).toBe('')
+    const noHostReport = await runVersionProbe({
+      skipServer: false,
+      loadBundle: async () => undefined,
+      probe: async () => ({ version: '1.6.4', edition: 'CLOUD' }),
+    })
+    expect(noHostReport.compat.detail).toContain('no host')
+    expect(noHostReport.compat.detail).not.toContain('unreadable')
   })
 
   it('returns compatible report when server is reachable and in range', async () => {
@@ -119,6 +148,41 @@ describe('runVersionProbe', () => {
     })
 
     expect(report.server.endpoint).toBe('http://localhost:5001')
+  })
+
+  it('default DI: reads hosts file + probes a real /_version end-to-end', async () => {
+    // Integration sanity — no DI overrides. Resolves config dir from the
+    // DIFY_CONFIG_DIR override, reads a real hosts.yml from disk, builds a
+    // real ky client, and hits the dify-mock /openapi/v1/_version endpoint.
+    const mock = await startMock()
+    const configDir = await mkdtemp(join(tmpdir(), 'difyctl-probe-'))
+    const url = new URL(mock.url)
+    const prevConfig = process.env[ENV_CONFIG_DIR]
+    try {
+      await saveHosts(configDir, {
+        current_host: url.host,
+        scheme: url.protocol.replace(':', ''),
+        token_storage: 'file',
+        tokens: { bearer: 'dfoa_test' },
+      })
+      process.env[ENV_CONFIG_DIR] = configDir
+
+      const report = await runVersionProbe({ skipServer: false })
+
+      expect(report.server.reachable).toBe(true)
+      expect(report.server.endpoint).toBe(mock.url)
+      expect(report.server.version).toBe('1.6.4')
+      expect(report.server.edition).toBe('CLOUD')
+      expect(report.compat.status).toBe('compatible')
+    }
+    finally {
+      if (prevConfig === undefined)
+        delete process.env[ENV_CONFIG_DIR]
+      else
+        process.env[ENV_CONFIG_DIR] = prevConfig
+      await mock.stop()
+      await rm(configDir, { recursive: true, force: true })
+    }
   })
 
   it('always includes client metadata in the report', async () => {

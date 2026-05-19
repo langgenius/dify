@@ -1,8 +1,5 @@
 import { parseRange, satisfies, tryParse } from 'std-semver'
 
-declare const __DIFYCTL_MIN_DIFY__: string
-declare const __DIFYCTL_MAX_DIFY__: string
-
 export type DifyCompat = {
   readonly minDify: string
   readonly maxDify: string
@@ -24,6 +21,12 @@ export type CompatVerdict = {
   readonly detail: string
 }
 
+const DETAIL_MAX_LEN = 80
+
+function clamp(s: string): string {
+  return s.length > DETAIL_MAX_LEN ? `${s.slice(0, DETAIL_MAX_LEN)}…` : s
+}
+
 export function evaluateCompat(
   serverVersion: string | undefined,
   range: DifyCompat = difyCompat,
@@ -33,7 +36,7 @@ export function evaluateCompat(
 
   const parsedServer = tryParse(serverVersion)
   if (parsedServer === undefined)
-    return { status: 'unknown', detail: `server version ${JSON.stringify(serverVersion)} is not valid semver` }
+    return { status: 'unknown', detail: `server version ${JSON.stringify(clamp(serverVersion))} is not valid semver` }
 
   // The compat range is inclusive at both ends, exactly the format compatString prints.
   const expr = `>=${range.minDify} <=${range.maxDify}`

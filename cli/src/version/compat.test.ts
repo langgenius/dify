@@ -53,6 +53,16 @@ describe('evaluateCompat', () => {
     expect(v.detail).toContain('not valid semver')
   })
 
+  it('clamps malformed server versions to 80 chars in the detail string', () => {
+    const malicious = 'x'.repeat(10_000)
+    const v = evaluateCompat(malicious, range)
+    expect(v.status).toBe('unknown')
+    // detail = `server version "<=80 chars + ellipsis>" is not valid semver`;
+    // a bit of leeway for the surrounding text, but nowhere near 10k.
+    expect(v.detail.length).toBeLessThan(150)
+    expect(v.detail).toContain('…')
+  })
+
   it('returns unknown when compat range itself is not valid semver', () => {
     const v = evaluateCompat('1.6.4', { minDify: 'foo', maxDify: 'bar' })
     expect(v.status).toBe('unknown')
