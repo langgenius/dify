@@ -1,5 +1,6 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
+import { setPostLoginRedirect } from '@/app/signin/utils/post-login-redirect'
 import Chooser from '../chooser'
 
 const mockPush = vi.fn()
@@ -28,9 +29,10 @@ describe('Chooser', () => {
     expect(screen.getByRole('button', { name: /Sign in with SSO/i })).toBeInTheDocument()
   })
 
-  it('navigates to /signin on account button click', () => {
+  it('sets post-login redirect and navigates to /signin on account button click', () => {
     render(<Chooser userCode="ABCD-3456" ssoAvailable={false} />)
     fireEvent.click(screen.getByRole('button', { name: /Sign in with Dify account/i }))
+    expect(vi.mocked(setPostLoginRedirect)).toHaveBeenCalledWith('/device?user_code=ABCD-3456')
     expect(mockPush).toHaveBeenCalledWith('/signin')
   })
 })
