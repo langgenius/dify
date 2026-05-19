@@ -74,6 +74,7 @@ function LabelSelector({
               />
             </div>
             <CheckboxGroup
+              aria-label={t('createTool.toolInput.labelPlaceholder', { ns: 'tools' })}
               value={value}
               onValueChange={nextValue => onChange(nextValue)}
               className="max-h-[264px] overflow-y-auto p-1"

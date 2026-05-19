@@ -101,6 +101,7 @@ const CategoriesFilter = ({
             />
           </div>
           <CheckboxGroup
+            aria-label={t('allCategories', { ns: 'plugin' })}
             value={value}
             onValueChange={nextValue => onChange(nextValue)}
             className="max-h-[448px] overflow-y-auto p-1"

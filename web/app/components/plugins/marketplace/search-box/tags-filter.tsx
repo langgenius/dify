@@ -81,6 +81,7 @@ const TagsFilter = ({
             />
           </div>
           <CheckboxGroup
+            aria-label={t('allTags', { ns: 'pluginTags' })}
             value={tags}
             onValueChange={nextTags => onTagsChange(nextTags)}
             className="max-h-[448px] overflow-y-auto p-1"

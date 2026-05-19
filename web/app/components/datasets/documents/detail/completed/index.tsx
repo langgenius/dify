@@ -4,6 +4,7 @@ import type { SegmentListContextValue } from './segment-list-context'
 import type { SegmentImportStatus } from '@/types/dataset'
 import { CheckboxGroup } from '@langgenius/dify-ui/checkbox-group'
 import { useCallback, useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import Divider from '@/app/components/base/divider'
 import Pagination from '@/app/components/base/pagination'
 import {
@@ -51,6 +52,7 @@ const Completed: FC<ICompletedProps> = ({
   importStatus,
   archived,
 }) => {
+  const { t } = useTranslation()
   const docForm = useDocumentContext(s => s.docForm)
 
   // Pagination state
@@ -185,6 +187,7 @@ const Completed: FC<ICompletedProps> = ({
           )
         : (
             <CheckboxGroup
+              aria-label={t('segment.chunk', { ns: 'datasetDocuments' })}
               value={currentPageSelectedSegmentIds}
               onValueChange={nextSegmentIds => handleCurrentPageSelectedSegmentIdsChange(nextSegmentIds)}
               allValues={segmentIds}
