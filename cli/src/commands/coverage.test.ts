@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { isExcludedCommandPath } from '../framework/command-fs.js'
 
 const INDEX_MODULES = import.meta.glob<{ default?: unknown }>(
   './**/index.ts',
@@ -6,7 +7,7 @@ const INDEX_MODULES = import.meta.glob<{ default?: unknown }>(
 )
 
 const COMMAND_MODULES = Object.fromEntries(
-  Object.entries(INDEX_MODULES).filter(([path]) => !path.includes('/_')),
+  Object.entries(INDEX_MODULES).filter(([path]) => !isExcludedCommandPath(path)),
 )
 
 describe('command folder coverage', () => {

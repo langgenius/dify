@@ -8,6 +8,8 @@ export type CommandConstructor = {
   flags?: Record<string, FlagDefinition<OptionalArgValueType>>
   args?: Record<string, ArgDefinition<string | undefined>>
   examples?: string[]
+  hidden?: boolean
+  deprecated?: string
 }
 
 type InferCommandArgs<C extends CommandConstructor> = C['args'] extends Record<string, ArgDefinition<string | undefined>>

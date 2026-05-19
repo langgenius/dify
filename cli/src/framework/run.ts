@@ -42,6 +42,8 @@ export async function run(tree: CommandTree, argv: string[]): Promise<void> {
 
   try {
     const Ctor = resolved.command
+    if (typeof Ctor.deprecated === 'string' && Ctor.deprecated.length > 0)
+      process.stderr.write(`deprecated: ${Ctor.deprecated}\n`)
     const cmd = new Ctor()
     const output = await cmd.run(argv.slice(resolved.path.length))
     if (output !== undefined)
@@ -91,9 +93,11 @@ function printTopLevelHelp(tree: CommandTree): void {
   process.stdout.write('COMMANDS\n')
 
   for (const [topic, node] of Object.entries(tree)) {
+    if (node.command?.hidden === true)
+      continue
+
     if (node.command) {
       const desc = node.command.description ?? ''
-
       process.stdout.write(`  ${topic}  ${desc}\n`)
     }
     else {
@@ -101,8 +105,9 @@ function printTopLevelHelp(tree: CommandTree): void {
     }
 
     for (const [verb, sub] of Object.entries(node.subcommands)) {
+      if (sub.command?.hidden === true)
+        continue
       const desc = sub.command?.description ?? ''
-
       process.stdout.write(`    ${verb}  ${desc}\n`)
     }
   }

@@ -263,3 +263,91 @@ describe('run() catch routing', () => {
     expect(result.exit).toBe(ExitCode.Generic)
   })
 })
+
+describe('hidden commands', () => {
+  it('omits a hidden top-level command from printTopLevelHelp', async () => {
+    class Visible extends Command {
+      static override description = 'visible cmd'
+      async run() {}
+    }
+    class Hidden extends Command {
+      static override description = 'hidden cmd'
+      static hidden = true
+      async run() {}
+    }
+    const tree: CommandTree = {
+      'visible': { command: Visible, subcommands: {} },
+      'secret-debug': { command: Hidden, subcommands: {} },
+    }
+    const result = await captureRun(tree, [])
+    expect(result.stdout).toContain('visible')
+    expect(result.stdout).not.toContain('secret-debug')
+  })
+
+  it('omits a hidden subcommand from its topic listing', async () => {
+    class Public extends Command {
+      static override description = 'visible sub'
+      async run() {}
+    }
+    class HiddenSub extends Command {
+      static override description = 'hidden sub'
+      static hidden = true
+      async run() {}
+    }
+    const tree: CommandTree = {
+      topic: {
+        subcommands: {
+          'public': { command: Public, subcommands: {} },
+          'debug-only': { command: HiddenSub, subcommands: {} },
+        },
+      },
+    }
+    const result = await captureRun(tree, [])
+    expect(result.stdout).toContain('public')
+    expect(result.stdout).not.toContain('debug-only')
+  })
+
+  it('still resolves and executes a hidden command when invoked directly', async () => {
+    let ran = false
+    class Hidden extends Command {
+      static hidden = true
+      async run() { ran = true }
+    }
+    const tree: CommandTree = {
+      'secret-debug': { command: Hidden, subcommands: {} },
+    }
+    await captureRun(tree, ['secret-debug'])
+    expect(ran).toBe(true)
+  })
+})
+
+describe('deprecated commands', () => {
+  it('prints a deprecation warning to stderr before running', async () => {
+    class Old extends Command {
+      static deprecated = 'use `difyctl run app` instead; removal in 2.0'
+      async run() {
+        process.stdout.write('old-ran\n')
+      }
+    }
+    const tree: CommandTree = {
+      old: { command: Old, subcommands: {} },
+    }
+    const result = await captureRun(tree, ['old'])
+    expect(result.stderr).toBe(
+      'deprecated: use `difyctl run app` instead; removal in 2.0\n',
+    )
+    expect(result.stdout).toBe('old-ran\n')
+    expect(result.exit).toBeUndefined()
+  })
+
+  it('does not print a warning when deprecated is unset', async () => {
+    class Fresh extends Command {
+      async run() {}
+    }
+    const tree: CommandTree = {
+      fresh: { command: Fresh, subcommands: {} },
+    }
+    const result = await captureRun(tree, ['fresh'])
+    expect(result.stderr).toBe('')
+  })
+})
