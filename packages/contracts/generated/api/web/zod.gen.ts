@@ -173,6 +173,21 @@ export const zForgotPasswordSendPayload = z.object({
 })
 
 /**
+ * HumanInputRemoteFileUploadPayload
+ */
+export const zHumanInputRemoteFileUploadPayload = z.object({
+  url: z.url().min(1).max(2083),
+})
+
+/**
+ * HumanInputUploadTokenResponse
+ */
+export const zHumanInputUploadTokenResponse = z.object({
+  expires_at: z.int(),
+  upload_token: z.string(),
+})
+
+/**
  * LicenseLimitationModel
  *
  * - enabled: whether this limit is enforced

@@ -128,6 +128,15 @@ export type ForgotPasswordSendPayload = {
   language?: string | null
 }
 
+export type HumanInputRemoteFileUploadPayload = {
+  url: string
+}
+
+export type HumanInputUploadTokenResponse = {
+  expires_at: number
+  upload_token: string
+}
+
 export type LicenseLimitationModel = {
   enabled: boolean
   limit: number

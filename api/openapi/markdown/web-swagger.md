@@ -1237,6 +1237,19 @@ Returns Server-Sent Events stream.
 | email | string |  | Yes |
 | language | string |  | No |
 
+#### HumanInputRemoteFileUploadPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| url | string (uri) | Remote file URL | Yes |
+
+#### HumanInputUploadTokenResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| expires_at | integer |  | Yes |
+| upload_token | string |  | Yes |
+
 #### LicenseLimitationModel
 
 - enabled: whether this limit is enforced
