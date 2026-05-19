@@ -64,6 +64,7 @@ def build_runner():
     gen.single_iteration_run = None
     gen.single_loop_run = None
     gen.trace_manager = None
+    gen.stream = False
 
     runner = AdvancedChatAppRunner(
         application_generate_entity=gen,

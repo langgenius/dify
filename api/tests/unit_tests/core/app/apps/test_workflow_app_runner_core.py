@@ -234,6 +234,39 @@ class TestWorkflowBasedAppRunner:
         assert graph is not None
         assert variable_pool.get(["sys", "conversation_id"]).value == "conv-1"
 
+    @pytest.mark.parametrize("stream", [False, True])
+    def test_iter_workflow_events_filters_response_stream(self, stream: bool):
+        runner = WorkflowBasedAppRunner(queue_manager=SimpleNamespace(), app_id="app")
+        graph_runtime_state = GraphRuntimeState(
+            variable_pool=VariablePool.from_bootstrap(system_variables=default_system_variables()),
+            start_at=0.0,
+        )
+        workflow_entry = SimpleNamespace(
+            graph_engine=SimpleNamespace(
+                graph=SimpleNamespace(nodes={}),
+                graph_runtime_state=graph_runtime_state,
+            )
+        )
+
+        events = iter(
+            [
+                GraphRunStartedEvent(),
+                NodeRunStreamChunkEvent(
+                    id="exec",
+                    node_id="llm",
+                    node_type=BuiltinNodeTypes.LLM,
+                    selector=["llm", "text"],
+                    chunk="raw",
+                    is_final=False,
+                ),
+                GraphRunSucceededEvent(outputs={"answer": "done"}),
+            ]
+        )
+
+        filtered_events = list(runner._iter_workflow_events(workflow_entry, events, stream=stream))
+
+        assert [type(event) for event in filtered_events] == [GraphRunStartedEvent, GraphRunSucceededEvent]
+
     def test_handle_graph_run_events_and_pause_notifications(self, monkeypatch: pytest.MonkeyPatch):
         published: list[object] = []
 

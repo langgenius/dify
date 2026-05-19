@@ -169,7 +169,11 @@ class WorkflowAppRunner(WorkflowBasedAppRunner):
         for layer in self._graph_engine_layers:
             workflow_entry.graph_engine.layer(layer)
 
-        generator = workflow_entry.run()
+        generator = self._iter_workflow_events(
+            workflow_entry,
+            workflow_entry.run(),
+            stream=self.application_generate_entity.stream,
+        )
 
         for event in generator:
             self._handle_event(workflow_entry, event)

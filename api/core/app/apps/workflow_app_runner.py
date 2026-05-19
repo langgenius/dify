@@ -1,6 +1,6 @@
 import logging
 import time
-from collections.abc import Mapping, Sequence
+from collections.abc import Iterable, Mapping, Sequence
 from typing import Any, cast
 
 from pydantic import ValidationError
@@ -51,6 +51,7 @@ from core.workflow.workflow_entry import WorkflowEntry
 from core.workflow.workflow_run_outputs import project_node_outputs_for_workflow_run
 from graphon.entities.graph_config import NodeConfigDictAdapter
 from graphon.entities.pause_reason import HumanInputRequired
+from graphon.filters import GraphEventFilterContext, ResponseStreamFilter, filter_graph_events
 from graphon.graph import Graph
 from graphon.graph_engine.layers import GraphEngineLayer
 from graphon.graph_events import (
@@ -380,6 +381,21 @@ class WorkflowBasedAppRunner:
             raise ValueError("graph not found in workflow")
 
         return graph, variable_pool
+
+    @staticmethod
+    def _iter_workflow_events(
+        workflow_entry: WorkflowEntry,
+        events: Iterable[GraphEngineEvent],
+        *,
+        stream: bool,
+    ) -> Iterable[GraphEngineEvent]:
+        _ = stream
+
+        return filter_graph_events(
+            events,
+            context=GraphEventFilterContext.from_engine(workflow_entry.graph_engine),
+            filters=[ResponseStreamFilter()],
+        )
 
     @staticmethod
     def _build_agent_strategy_info(event: NodeRunStartedEvent) -> AgentStrategyInfo | None:
