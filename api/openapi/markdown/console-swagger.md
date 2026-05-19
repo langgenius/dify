@@ -13715,6 +13715,7 @@ Default configuration for form inputs.
 | ---- | ---- | ----------- | -------- |
 | app_dsl_version | string |  | Yes |
 | branding | [BrandingModel](#brandingmodel) |  | Yes |
+| enable_app_deploy | boolean |  | Yes |
 | enable_change_email | boolean |  | Yes |
 | enable_collaboration_mode | boolean |  | Yes |
 | enable_creators_platform | boolean |  | Yes |
