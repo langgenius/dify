@@ -1,0 +1,34 @@
+name: Deploy to EC2
+
+on:
+  workflow_run:
+    workflows: ["Build and Push Images"]
+    types: [completed]
+    branches: [main]
+  push:
+    branches: [main]
+    paths:
+      - 'deploy/**'
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'success' || github.event_name == 'push' }}
+    steps:
+      - name: Deploy to EC2
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            cd ~/dify
+            git pull origin main
+            aws ecr get-login-password --region ap-south-1 | \
+              docker login --username AWS --password-stdin \
+              $(grep ECR_REGISTRY deploy/.env | cut -d= -f2)
+            docker compose -f deploy/docker-compose.yml --env-file deploy/.env pull api web worker
+            docker compose -f deploy/docker-compose.yml --env-file deploy/.env up -d
+            docker compose -f deploy/docker-compose.yml --env-file deploy/.env exec -T api flask db upgrade
+            docker compose -f deploy/docker-compose.yml --env-file deploy/.env restart nginx
+            docker compose -f deploy/docker-compose.yml --env-file deploy/.env ps
