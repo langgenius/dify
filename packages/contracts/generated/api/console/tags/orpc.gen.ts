@@ -15,8 +15,16 @@ import {
   zPostTagsResponse,
 } from './zod.gen'
 
+/**
+ * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
+ *
+ * @deprecated
+ */
 export const delete_ = oc
   .route({
+    deprecated: true,
+    description:
+      'Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
     inputStructure: 'detailed',
     method: 'DELETE',
     operationId: 'deleteTagsByTagId',
@@ -26,8 +34,16 @@ export const delete_ = oc
   .input(z.object({ params: zDeleteTagsByTagIdPath }))
   .output(zDeleteTagsByTagIdResponse)
 
+/**
+ * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
+ *
+ * @deprecated
+ */
 export const patch = oc
   .route({
+    deprecated: true,
+    description:
+      'Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
     inputStructure: 'detailed',
     method: 'PATCH',
     operationId: 'patchTagsByTagId',
@@ -53,8 +69,16 @@ export const get = oc
   .input(z.object({ query: zGetTagsQuery.optional() }))
   .output(zGetTagsResponse)
 
+/**
+ * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
+ *
+ * @deprecated
+ */
 export const post = oc
   .route({
+    deprecated: true,
+    description:
+      'Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postTags',

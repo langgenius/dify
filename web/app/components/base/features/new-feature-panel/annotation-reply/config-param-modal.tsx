@@ -75,7 +75,7 @@ const ConfigParamModal: FC<Props> = ({ isShow, onHide: doHide, onSave, isInit, a
           <Item title={t('feature.annotation.scoreThreshold.title', { ns: 'appDebug' })} tooltip={t('feature.annotation.scoreThreshold.description', { ns: 'appDebug' })}>
             <ScoreSlider
               className="mt-1"
-              value={(annotationConfig.score_threshold || ANNOTATION_DEFAULT.score_threshold) * 100}
+              value={(annotationConfig.score_threshold ?? ANNOTATION_DEFAULT.score_threshold) * 100}
               onChange={(val) => {
                 setAnnotationConfig({
                   ...annotationConfig,

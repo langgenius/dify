@@ -16,6 +16,7 @@ from pydantic import TypeAdapter
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from configs import dify_config
 from core.agent.entities import AgentToolEntity
 from core.helper import marketplace
 from core.plugin.entities.plugin import PluginInstallationSource
@@ -310,6 +311,8 @@ class PluginMigration:
         """
         Fetch plugin unique identifier using plugin id.
         """
+        if not dify_config.MARKETPLACE_ENABLED:
+            return None
         plugin_manifest = marketplace.batch_fetch_plugin_manifests([plugin_id])
         if not plugin_manifest:
             return None
@@ -542,6 +545,11 @@ class PluginMigration:
         """
         Install plugins for a tenant.
         """
+        if plugin_identifiers_map and not dify_config.MARKETPLACE_ENABLED:
+            raise ValueError(
+                "Marketplace disabled in offline mode; cannot bulk-install plugins. "
+                "Pre-upload plugin packages via Console first."
+            )
         manager = PluginInstaller()
 
         # download all the plugins and upload
