@@ -9,8 +9,8 @@ import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import SearchInput from '@/app/components/base/search-input'
 import { usePluginsWithLatestVersion } from '@/app/components/plugins/hooks'
-import useReferenceSetting from '@/app/components/plugins/plugin-page/use-reference-setting'
-import { AUTO_UPDATE_STRATEGY } from '@/app/components/plugins/reference-setting-modal/auto-update-setting/types'
+import { useCanSetPluginSettings } from '@/app/components/plugins/plugin-page/use-reference-setting'
+import { PluginCategoryEnum } from '@/app/components/plugins/types'
 import { IS_CLOUD_EDITION } from '@/config'
 import { useProviderContext } from '@/context/provider-context'
 import { consoleQuery } from '@/service/client'
@@ -49,10 +49,8 @@ const ModelProviderPage = ({
   const debouncedSearchText = useDebounce(searchText, { wait: 500 })
   const { t } = useTranslation()
   const {
-    referenceSetting,
     canSetPermissions,
-    setReferenceSettings,
-  } = useReferenceSetting()
+  } = useCanSetPluginSettings()
   const [warningDismissed, setWarningDismissed] = useState(false)
   const { data: textGenerationDefaultModel, isLoading: isTextGenerationDefaultModelLoading } = useDefaultModel(ModelTypeEnum.textGeneration)
   const { data: embeddingsDefaultModel, isLoading: isEmbeddingsDefaultModelLoading } = useDefaultModel(ModelTypeEnum.textEmbedding)
@@ -158,11 +156,9 @@ const ModelProviderPage = ({
           onChange={onSearchTextChange ?? noop}
         />
         <div className="flex shrink-0 items-center justify-end gap-2">
-          {canSetPermissions && referenceSetting && (
+          {canSetPermissions && (
             <UpdateSettingPopover
-              defaultStrategy={AUTO_UPDATE_STRATEGY.latest}
-              referenceSetting={referenceSetting}
-              onSave={setReferenceSettings}
+              category={PluginCategoryEnum.model}
             />
           )}
           <SystemModelSelector

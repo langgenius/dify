@@ -115,12 +115,24 @@ const {
       install_permission: 'everyone',
       debug_permission: 'admins',
     },
-    auto_upgrade: {},
+    auto_upgrade: {
+      strategy_setting: 'fix_only',
+      upgrade_time_of_day: 0,
+      upgrade_mode: 'all',
+      exclude_plugins: [],
+      include_plugins: [],
+    },
   })),
   mockSetReferenceSettings: vi.fn(),
 }))
 
 vi.mock('@/app/components/plugins/plugin-page/use-reference-setting', () => ({
+  useCanSetPluginSettings: () => ({
+    canSetPermissions: mockCanSetPermissions(),
+  }),
+  usePluginSettingsAccess: () => ({
+    canSetPermissions: mockCanSetPermissions(),
+  }),
   default: () => ({
     referenceSetting: mockReferenceSetting(),
     canSetPermissions: mockCanSetPermissions(),
@@ -130,31 +142,9 @@ vi.mock('@/app/components/plugins/plugin-page/use-reference-setting', () => ({
 
 vi.mock('@/app/components/header/account-setting/update-setting-popover', () => ({
   __esModule: true,
-  default: ({ referenceSetting, onSave }: {
-    referenceSetting: {
-      auto_upgrade?: {
-        strategy_setting?: string
-      }
-      permission?: Record<string, string>
-    }
-    onSave: (payload: {
-      auto_upgrade?: {
-        strategy_setting?: string
-      }
-      permission?: Record<string, string>
-    }) => void
-  }) => (
+  default: () => (
     <div data-testid="update-setting-popover">
-      <button
-        type="button"
-        onClick={() => onSave({
-          ...referenceSetting,
-          auto_upgrade: {
-            ...referenceSetting.auto_upgrade,
-            strategy_setting: 'fix_only',
-          },
-        })}
-      >
+      <button type="button">
         common.modelProvider.updateSetting
         <span>plugin.autoUpdate.strategy.fixOnly.name</span>
       </button>
@@ -291,7 +281,13 @@ describe('ProviderList', () => {
         install_permission: 'everyone',
         debug_permission: 'admins',
       },
-      auto_upgrade: {},
+      auto_upgrade: {
+        strategy_setting: 'fix_only',
+        upgrade_time_of_day: 0,
+        upgrade_mode: 'all',
+        exclude_plugins: [],
+        include_plugins: [],
+      },
     })
     Element.prototype.scrollTo = vi.fn()
   })
@@ -475,18 +471,6 @@ describe('ProviderList', () => {
       expect(screen.getByText('common.modelProvider.updateSetting')).toBeInTheDocument()
       expect(screen.getByText('plugin.autoUpdate.strategy.fixOnly.name')).toBeInTheDocument()
       expect(screen.getByTestId('update-setting-popover')).toBeInTheDocument()
-
-      fireEvent.click(screen.getByText('common.modelProvider.updateSetting'))
-
-      expect(mockSetReferenceSettings).toHaveBeenCalledWith({
-        permission: {
-          install_permission: 'everyone',
-          debug_permission: 'admins',
-        },
-        auto_upgrade: {
-          strategy_setting: 'fix_only',
-        },
-      })
     })
 
     it.each([

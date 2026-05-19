@@ -60,9 +60,46 @@ vi.mock('../install-from-marketplace', () => ({
 }))
 
 vi.mock('@/app/components/plugins/plugin-page/use-reference-setting', () => ({
+  useCanSetPluginSettings: () => ({
+    canSetPermissions: true,
+  }),
+  usePluginSettingsAccess: () => ({
+    canSetPermissions: true,
+  }),
   default: () => ({
-    referenceSetting: { permission: {}, auto_upgrade: {} },
+    referenceSetting: {
+      permission: {},
+      auto_upgrade: {
+        strategy_setting: 'latest',
+        upgrade_time_of_day: 0,
+        upgrade_mode: 'all',
+        exclude_plugins: [],
+        include_plugins: [],
+      },
+    },
     setReferenceSettings: vi.fn(),
+  }),
+}))
+
+vi.mock('@/service/use-plugins', () => ({
+  usePluginAutoUpgradeSettings: () => ({
+    data: {
+      category: 'model',
+      auto_upgrade: {
+        strategy_setting: 'latest',
+        upgrade_time_of_day: 0,
+        upgrade_mode: 'all',
+        exclude_plugins: [],
+        include_plugins: [],
+      },
+    },
+    error: undefined,
+    isFetching: false,
+    isLoading: false,
+  }),
+  useMutationPluginAutoUpgradeSettings: () => ({
+    mutate: vi.fn(),
+    isPending: false,
   }),
 }))
 

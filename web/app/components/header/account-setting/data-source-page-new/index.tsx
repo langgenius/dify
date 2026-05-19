@@ -3,7 +3,7 @@ import { memo, useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import SearchInput from '@/app/components/base/search-input'
 import { usePluginsWithLatestVersion } from '@/app/components/plugins/hooks'
-import useReferenceSetting from '@/app/components/plugins/plugin-page/use-reference-setting'
+import { useCanSetPluginSettings } from '@/app/components/plugins/plugin-page/use-reference-setting'
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
 import { useRenderI18nObject } from '@/hooks/use-i18n'
 import { systemFeaturesQueryOptions } from '@/service/system-features'
@@ -25,10 +25,8 @@ const DataSourcePage = ({
   const renderI18nObject = useRenderI18nObject()
   const [searchText, setSearchText] = useState('')
   const {
-    referenceSetting,
     canSetPermissions,
-    setReferenceSettings,
-  } = useReferenceSetting()
+  } = useCanSetPluginSettings()
   const { data: enable_marketplace } = useSuspenseQuery({
     ...systemFeaturesQueryOptions(),
     select: s => s.enable_marketplace,
@@ -39,7 +37,7 @@ const DataSourcePage = ({
   const invalidateInstalledPluginList = useInvalidateInstalledPluginList()
   const invalidateDataSourceListAuth = useInvalidDataSourceListAuth()
   const invalidateDataSourceList = useInvalidDataSourceList()
-  const dataSources = data?.result || []
+  const dataSources = useMemo(() => data?.result ?? [], [data?.result])
   const dataSourcePluginDetails = useMemo(() => {
     return pluginListWithLatestVersion.filter(plugin => plugin.declaration.category === PluginCategoryEnum.datasource)
   }, [pluginListWithLatestVersion])
@@ -78,10 +76,9 @@ const DataSourcePage = ({
           value={searchText}
           onChange={setSearchText}
         />
-        {canSetPermissions && referenceSetting && (
+        {canSetPermissions && (
           <UpdateSettingPopover
-            referenceSetting={referenceSetting}
-            onSave={setReferenceSettings}
+            category={PluginCategoryEnum.datasource}
           />
         )}
       </div>

@@ -15,7 +15,8 @@ import CardMoreInfo from '@/app/components/plugins/card/card-more-info'
 import { useTags } from '@/app/components/plugins/hooks'
 import Empty from '@/app/components/plugins/marketplace/empty'
 import PluginDetailPanel from '@/app/components/plugins/plugin-detail-panel'
-import useReferenceSetting from '@/app/components/plugins/plugin-page/use-reference-setting'
+import { useCanSetPluginSettings } from '@/app/components/plugins/plugin-page/use-reference-setting'
+import { PluginCategoryEnum } from '@/app/components/plugins/types'
 import LabelFilter from '@/app/components/tools/labels/filter'
 import CustomCreateCard from '@/app/components/tools/provider/custom-create-card'
 import ProviderDetail from '@/app/components/tools/provider/detail'
@@ -44,10 +45,8 @@ const ProviderList = ({
   const { t } = useTranslation()
   const { getTagLabel } = useTags()
   const {
-    referenceSetting,
     canSetPermissions,
-    setReferenceSettings,
-  } = useReferenceSetting()
+  } = useCanSetPluginSettings()
   const { data: enable_marketplace } = useSuspenseQuery({
     ...systemFeaturesQueryOptions(),
     select: s => s.enable_marketplace,
@@ -55,7 +54,7 @@ const ProviderList = ({
   const { activeTab, handleCategoryChange, isRouteCategory } = useToolProviderCategory(category)
   const contentPaddingClassName = toolsContentInsetClassNames[contentInset]
   const toolListFrameClassName = cn(contentPaddingClassName, toolsUnifiedContentFrameClassName)
-  const showToolsUpdateSetting = activeTab === 'builtin' && canSetPermissions && !!referenceSetting
+  const showToolsUpdateSetting = activeTab === 'builtin' && canSetPermissions
   const showLabelFilter = activeTab === 'builtin'
   const options = [
     { value: 'builtin', text: t('type.builtIn', { ns: 'tools' }) },
@@ -145,8 +144,7 @@ const ProviderList = ({
               </div>
               {showToolsUpdateSetting && (
                 <UpdateSettingPopover
-                  referenceSetting={referenceSetting}
-                  onSave={setReferenceSettings}
+                  category={PluginCategoryEnum.tool}
                 />
               )}
             </div>

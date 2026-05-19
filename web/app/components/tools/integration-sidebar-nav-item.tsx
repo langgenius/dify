@@ -34,12 +34,14 @@ const renderIcon = (icon: IconComponent | string, className = 'size-4') => {
 type IntegrationSidebarNavItemProps = {
   collapsed?: boolean
   item: IntegrationSidebarNavItemData
+  onSelect?: (section: IntegrationSection) => void
   section: IntegrationSection
 }
 
 export function IntegrationSidebarNavItem({
   collapsed,
   item,
+  onSelect,
   section,
 }: IntegrationSidebarNavItemProps) {
   const isActive = item.section === section
@@ -71,6 +73,29 @@ export function IntegrationSidebarNavItem({
     )
   }
 
+  const content = (
+    <>
+      <span aria-hidden className="flex size-5 shrink-0 items-center justify-center">
+        {renderIcon(icon, item.iconClassName)}
+      </span>
+      {!collapsed && <span className="min-w-0 truncate">{item.label}</span>}
+    </>
+  )
+
+  if (onSelect) {
+    return (
+      <button
+        type="button"
+        title={item.label}
+        aria-label={item.label}
+        className={cn(className, 'border-none bg-transparent')}
+        onClick={() => onSelect(item.section!)}
+      >
+        {content}
+      </button>
+    )
+  }
+
   return (
     <Link
       href={buildIntegrationPath(item.section)}
@@ -78,10 +103,7 @@ export function IntegrationSidebarNavItem({
       aria-label={item.label}
       className={className}
     >
-      <span aria-hidden className="flex size-5 shrink-0 items-center justify-center">
-        {renderIcon(icon, item.iconClassName)}
-      </span>
-      {!collapsed && <span className="min-w-0 truncate">{item.label}</span>}
+      {content}
     </Link>
   )
 }

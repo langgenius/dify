@@ -38,22 +38,25 @@ const buildSectionHref = (section: IntegrationSection) => {
 }
 
 type IntegrationsPageProps = {
+  onSectionChange?: (section: IntegrationSection) => void
+  onSwitchToMarketplace?: (path: string) => void
   section?: IntegrationSection
 }
 
 export default function IntegrationsPage({
+  onSectionChange,
+  onSwitchToMarketplace,
   section: routeSection,
 }: IntegrationsPageProps) {
   const { t } = useTranslation()
   const router = useRouter()
   const section = useIntegrationSection(routeSection)
   const {
-    referenceSetting,
     canManagement,
     canDebugger,
     handlePermissionChange,
     isPluginCategory,
-    setReferenceSettings,
+    permission,
     showPermissionQuickPanel,
     showPluginCategorySetting,
   } = useIntegrationPermissions(section)
@@ -77,15 +80,42 @@ export default function IntegrationsPage({
     '--integrations-sidebar-width': sidebarCollapsed ? '56px' : '200px',
     '--model-provider-warning-left': `calc(240px + ${sidebarCollapsed ? '56px' : '200px'})`,
   } as CSSProperties & Record<'--integrations-sidebar-width' | '--model-provider-warning-left', string>
-  const pluginSettingAction = showPluginCategorySetting && referenceSetting
+  const pluginSettingCategory = getPluginCategoryBySection(section)
+  const pluginSettingAction = showPluginCategorySetting && pluginSettingCategory
     ? (
         <UpdateSettingPopover
-          referenceSetting={referenceSetting}
-          onSave={setReferenceSettings}
+          category={pluginSettingCategory}
         />
       )
     : undefined
   const marketplacePath = buildMarketplacePathByIntegrationSection(section)
+  const handleSwitchToMarketplace = () => {
+    if (onSwitchToMarketplace) {
+      onSwitchToMarketplace(marketplacePath)
+      return
+    }
+
+    router.push(marketplacePath)
+  }
+  const toolsNavItemClassName = cn(
+    integrationSidebarNavItemClassName,
+    sidebarCollapsed && 'justify-center px-0',
+    section === 'builtin' ? integrationSidebarActiveNavItemClassName : integrationSidebarInactiveNavItemClassName,
+  )
+  const toolsNavItemContent = (
+    <>
+      <span aria-hidden className="flex size-5 shrink-0 items-center justify-center">
+        <span className={cn(
+          'h-3.5 w-[12.5px]',
+          section === 'builtin' ? 'i-custom-vender-integrations-tools-active' : 'i-custom-vender-integrations-tools',
+        )}
+        />
+      </span>
+      {!sidebarCollapsed && (
+        <span className="min-w-0 flex-1 truncate">{t('menus.tools', { ns: 'common' })}</span>
+      )}
+    </>
+  )
 
   return (
     <div className="flex h-full min-h-0 bg-components-panel-bg" style={sidebarWidthStyle}>
@@ -127,23 +157,34 @@ export default function IntegrationsPage({
           </div>
           {!sidebarCollapsed && (
             <div className="mt-6 flex shrink-0 items-center gap-1">
-              {canManagement && (
-                <InstallPluginDropdown
-                  rootClassName="min-w-0 flex-1"
-                  triggerVariant="primary"
-                  triggerClassName="h-8 min-w-0 gap-0.5 p-2 system-sm-medium"
-                  triggerLabel={t('installAction', { ns: 'plugin' })}
-                  triggerOpenClassName="bg-components-button-primary-bg-hover"
-                  popupClassName="w-[240px] rounded-2xl py-2 shadow-xl"
-                  installContextCategory={getPluginCategoryBySection(section)}
-                  onSwitchToMarketplaceTab={() => router.push(marketplacePath)}
-                />
-              )}
-              {canDebugger && (
-                <div className="size-8 shrink-0">
-                  <DebugInfo />
-                </div>
-              )}
+              <InstallPluginDropdown
+                disabled={!canManagement}
+                rootClassName="min-w-0 flex-1"
+                triggerVariant="primary"
+                triggerClassName="h-8 min-w-0 gap-0.5 p-2 system-sm-medium"
+                triggerLabel={t('installAction', { ns: 'plugin' })}
+                triggerOpenClassName="bg-components-button-primary-bg-hover"
+                popupClassName="w-[240px] rounded-2xl py-2 shadow-xl"
+                installContextCategory={getPluginCategoryBySection(section)}
+                onSwitchToMarketplaceTab={handleSwitchToMarketplace}
+              />
+              <div className="size-8 shrink-0">
+                {canDebugger
+                  ? (
+                      <DebugInfo />
+                    )
+                  : (
+                      <Button
+                        variant="secondary"
+                        disabled
+                        className="h-full w-full p-0"
+                        aria-label={t('debugInfo.title', { ns: 'plugin' })}
+                        title={t('debugInfo.title', { ns: 'plugin' })}
+                      >
+                        <span aria-hidden className="i-ri-bug-line size-4" />
+                      </Button>
+                    )}
+              </div>
               <Popover>
                 <PopoverTrigger
                   render={(
@@ -158,14 +199,14 @@ export default function IntegrationsPage({
                     </Button>
                   )}
                 />
-                {showPermissionQuickPanel && referenceSetting && (
+                {showPermissionQuickPanel && permission && (
                   <PopoverContent
                     placement="bottom-start"
                     sideOffset={4}
                     popupClassName="border-0 bg-transparent p-0 shadow-none"
                   >
                     <PermissionQuickPanel
-                      permission={referenceSetting.permission}
+                      permission={permission}
                       onChange={handlePermissionChange}
                     />
                   </PopoverContent>
@@ -174,38 +215,38 @@ export default function IntegrationsPage({
             </div>
           )}
           <nav className="mt-6 shrink-0 space-y-0.5">
-            <IntegrationSidebarNavItem collapsed={sidebarCollapsed} item={providerItem} section={section} />
-            <IntegrationSidebarNavItem collapsed={sidebarCollapsed} item={dataSourceItem} section={section} />
+            <IntegrationSidebarNavItem collapsed={sidebarCollapsed} item={providerItem} onSelect={onSectionChange} section={section} />
+            <IntegrationSidebarNavItem collapsed={sidebarCollapsed} item={dataSourceItem} onSelect={onSectionChange} section={section} />
             <div>
-              <Link
-                href={buildSectionHref('builtin')}
-                title={t('menus.tools', { ns: 'common' })}
-                aria-label={t('menus.tools', { ns: 'common' })}
-                className={cn(
-                  integrationSidebarNavItemClassName,
-                  sidebarCollapsed && 'justify-center px-0',
-                  section === 'builtin' ? integrationSidebarActiveNavItemClassName : integrationSidebarInactiveNavItemClassName,
-                )}
-              >
-                <span aria-hidden className="flex size-5 shrink-0 items-center justify-center">
-                  <span className={cn(
-                    'h-3.5 w-[12.5px]',
-                    section === 'builtin' ? 'i-custom-vender-integrations-tools-active' : 'i-custom-vender-integrations-tools',
+              {onSectionChange
+                ? (
+                    <button
+                      type="button"
+                      title={t('menus.tools', { ns: 'common' })}
+                      aria-label={t('menus.tools', { ns: 'common' })}
+                      className={cn(toolsNavItemClassName, 'border-none bg-transparent')}
+                      onClick={() => onSectionChange('builtin')}
+                    >
+                      {toolsNavItemContent}
+                    </button>
+                  )
+                : (
+                    <Link
+                      href={buildSectionHref('builtin')}
+                      title={t('menus.tools', { ns: 'common' })}
+                      aria-label={t('menus.tools', { ns: 'common' })}
+                      className={toolsNavItemClassName}
+                    >
+                      {toolsNavItemContent}
+                    </Link>
                   )}
-                  />
-                </span>
-                {!sidebarCollapsed && (
-                  <>
-                    <span className="min-w-0 flex-1 truncate">{t('menus.tools', { ns: 'common' })}</span>
-                  </>
-                )}
-              </Link>
               <div className={cn('space-y-0.5', !sidebarCollapsed && 'pl-6')}>
                 {toolItems.map(item => (
                   <IntegrationSidebarNavItem
                     collapsed={sidebarCollapsed}
                     key={item.label}
                     item={item}
+                    onSelect={onSectionChange}
                     section={section}
                   />
                 ))}
@@ -216,6 +257,7 @@ export default function IntegrationsPage({
                 collapsed={sidebarCollapsed}
                 key={item.label}
                 item={item}
+                onSelect={onSectionChange}
                 section={section}
               />
             ))}
@@ -279,7 +321,7 @@ export default function IntegrationsPage({
             section={section}
             providerSearchText={providerSearchText}
             onProviderSearchTextChange={setProviderSearchText}
-            onSwitchToMarketplace={() => router.push(marketplacePath)}
+            onSwitchToMarketplace={handleSwitchToMarketplace}
             canInstallPlugin={canManagement}
             pluginCategoryToolbarAction={pluginSettingAction}
           />

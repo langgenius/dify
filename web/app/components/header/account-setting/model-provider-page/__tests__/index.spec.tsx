@@ -20,9 +20,9 @@ type MockReferenceSetting = {
   }
 }
 
-const { mockSetAccountSettingModal, mockSetReferenceSettings } = vi.hoisted(() => ({
+const { mockSetAccountSettingModal, mockSaveAutoUpgrade } = vi.hoisted(() => ({
   mockSetAccountSettingModal: vi.fn(),
-  mockSetReferenceSettings: vi.fn(),
+  mockSaveAutoUpgrade: vi.fn(),
 }))
 
 const { mockReferenceSetting } = vi.hoisted(() => ({
@@ -66,6 +66,10 @@ const renderModelProviderPage = (
     systemFeatures: { enable_marketplace: enableMarketplace },
   },
   )
+}
+
+const saveUpdateSettings = () => {
+  fireEvent.click(screen.getByRole('button', { name: 'common.operation.save' }))
 }
 
 const mockProviders = [
@@ -126,10 +130,36 @@ vi.mock('../system-model-selector', () => ({
 }))
 
 vi.mock('@/app/components/plugins/plugin-page/use-reference-setting', () => ({
+  useCanSetPluginSettings: () => ({
+    canSetPermissions: true,
+  }),
+  usePluginSettingsAccess: () => ({
+    canSetPermissions: true,
+  }),
   default: () => ({
     referenceSetting: mockReferenceSetting,
     canSetPermissions: true,
-    setReferenceSettings: mockSetReferenceSettings,
+  }),
+}))
+
+vi.mock('@/service/use-plugins', () => ({
+  useInstalledPluginList: () => ({
+    data: { plugins: [] },
+  }),
+  usePluginAutoUpgradeSettings: () => ({
+    data: mockReferenceSetting.auto_upgrade
+      ? {
+          category: 'model',
+          auto_upgrade: mockReferenceSetting.auto_upgrade,
+        }
+      : undefined,
+    error: undefined,
+    isFetching: false,
+    isLoading: !mockReferenceSetting.auto_upgrade,
+  }),
+  useMutationPluginAutoUpgradeSettings: () => ({
+    mutate: mockSaveAutoUpgrade,
+    isPending: false,
   }),
 }))
 
@@ -275,43 +305,35 @@ describe('ModelProviderPage', () => {
     expect(screen.getByText('plugin.autoUpdate.updateTime')).toBeInTheDocument()
     expect(screen.getByTestId('update-time-picker')).toBeInTheDocument()
     expect(screen.getByText('autoUpdate.changeTimezone')).toBeInTheDocument()
-    expect(screen.getByRole('radio', { name: 'plugin.autoUpdate.strategy.fixOnly.name' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'plugin.autoUpdate.strategy.fixOnly.name' })).toBeInTheDocument()
   })
 
-  it('should use latest as the model provider default without locking the strategy', () => {
+  it('should not expose editable update settings while backend auto-upgrade data is loading', () => {
     mockReferenceSetting.auto_upgrade = undefined
+
     renderModelProviderPage()
 
-    expect(screen.getAllByText('plugin.autoUpdate.strategy.latest.name')[0]).toBeInTheDocument()
-
-    fireEvent.click(screen.getByRole('radio', { name: 'plugin.autoUpdate.strategy.fixOnly.name' }))
-
-    expect(mockSetReferenceSettings).toHaveBeenCalledWith({
-      permission: {},
-      auto_upgrade: {
-        strategy_setting: 'fix_only',
-        upgrade_time_of_day: 0,
-        upgrade_mode: 'all',
-        exclude_plugins: [],
-        include_plugins: [],
-      },
-    })
+    const updateSettingButton = screen.getByText('common.modelProvider.updateSetting').closest('button')
+    expect(updateSettingButton).not.toBeDisabled()
+    expect(screen.queryByText('plugin.autoUpdate.strategy.latest.name')).not.toBeInTheDocument()
+    expect(screen.getByRole('status')).toHaveTextContent('common.loading')
+    expect(screen.queryByRole('button', { name: 'common.operation.save' })).not.toBeInTheDocument()
+    expect(mockSaveAutoUpgrade).not.toHaveBeenCalled()
+    expect(screen.getByTestId('update-setting-popover')).toBeInTheDocument()
   })
 
-  it('should update scope from the popover while keeping the model provider default strategy as latest', () => {
+  it('should update scope from the popover while keeping the backend returned strategy', () => {
     renderModelProviderPage()
 
-    fireEvent.click(screen.getByRole('radio', { name: 'plugin.autoUpdate.scopeMode.partial' }))
+    fireEvent.click(screen.getByRole('button', { name: 'plugin.autoUpdate.scopeMode.partial' }))
+    saveUpdateSettings()
 
-    expect(mockSetReferenceSettings).toHaveBeenCalledWith({
-      permission: {},
-      auto_upgrade: {
-        strategy_setting: 'latest',
-        upgrade_time_of_day: 0,
-        upgrade_mode: 'partial',
-        exclude_plugins: [],
-        include_plugins: [],
-      },
+    expect(mockSaveAutoUpgrade).toHaveBeenCalledWith({
+      strategy_setting: 'latest',
+      upgrade_time_of_day: 0,
+      upgrade_mode: 'partial',
+      exclude_plugins: [],
+      include_plugins: [],
     })
   })
 
@@ -324,15 +346,14 @@ describe('ModelProviderPage', () => {
 
     expect(screen.getByTestId('update-time-value')).toHaveTextContent('01:15')
 
-    expect(mockSetReferenceSettings).toHaveBeenCalledWith({
-      permission: {},
-      auto_upgrade: {
-        strategy_setting: 'latest',
-        upgrade_time_of_day: 4500,
-        upgrade_mode: 'all',
-        exclude_plugins: [],
-        include_plugins: [],
-      },
+    saveUpdateSettings()
+
+    expect(mockSaveAutoUpgrade).toHaveBeenCalledWith({
+      strategy_setting: 'latest',
+      upgrade_time_of_day: 4500,
+      upgrade_mode: 'all',
+      exclude_plugins: [],
+      include_plugins: [],
     })
   })
 

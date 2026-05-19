@@ -21,7 +21,13 @@ const {
       install_permission: 'everyone',
       debug_permission: 'admins',
     },
-    auto_upgrade: {},
+    auto_upgrade: {
+      strategy_setting: 'fix_only',
+      upgrade_time_of_day: 0,
+      upgrade_mode: 'all',
+      exclude_plugins: [],
+      include_plugins: [],
+    },
   })),
   mockSetReferenceSettings: vi.fn(),
 }))
@@ -33,6 +39,13 @@ vi.mock('@/next/navigation', () => ({
 }))
 
 vi.mock('@/app/components/plugins/plugin-page/use-reference-setting', () => ({
+  usePluginSettingsAccess: () => ({
+    permission: mockReferenceSetting().permission,
+    canManagement: mockCanManagement(),
+    canDebugger: mockCanDebugger(),
+    canSetPermissions: mockCanSetPermissions(),
+    setPluginPermissionSettings: mockSetReferenceSettings,
+  }),
   default: () => ({
     referenceSetting: mockReferenceSetting(),
     canManagement: mockCanManagement(),
@@ -58,31 +71,21 @@ vi.mock('@/app/components/plugins/reference-setting-modal', () => ({
 
 vi.mock('@/app/components/header/account-setting/update-setting-popover', () => ({
   __esModule: true,
-  default: ({ defaultStrategy = 'fix_only', onSave, referenceSetting }: {
-    defaultStrategy?: string
-    onSave: (payload: Record<string, unknown>) => void
-    referenceSetting: Record<string, unknown>
-  }) => (
+  default: () => (
     <button
       type="button"
       data-testid="update-setting-popover"
-      onClick={() => onSave({
-        ...referenceSetting,
-        auto_upgrade: {
-          strategy_setting: defaultStrategy,
-        },
-      })}
     >
       common.modelProvider.updateSetting
-      <span>{defaultStrategy === 'latest' ? 'plugin.autoUpdate.strategy.latest.name' : 'plugin.autoUpdate.strategy.fixOnly.name'}</span>
+      <span>plugin.autoUpdate.strategy.fixOnly.name</span>
     </button>
   ),
 }))
 
 vi.mock('@/app/components/plugins/plugin-page/install-plugin-dropdown', () => ({
   __esModule: true,
-  default: ({ onSwitchToMarketplaceTab }: { onSwitchToMarketplaceTab: () => void }) => (
-    <button type="button" aria-label="plugin install" onClick={onSwitchToMarketplaceTab}>
+  default: ({ disabled, onSwitchToMarketplaceTab }: { disabled?: boolean, onSwitchToMarketplaceTab: () => void }) => (
+    <button type="button" aria-label="plugin install" disabled={disabled} onClick={onSwitchToMarketplaceTab}>
       install dropdown
     </button>
   ),
@@ -159,7 +162,13 @@ describe('IntegrationsPage', () => {
         install_permission: 'everyone',
         debug_permission: 'admins',
       },
-      auto_upgrade: {},
+      auto_upgrade: {
+        strategy_setting: 'fix_only',
+        upgrade_time_of_day: 0,
+        upgrade_mode: 'all',
+        exclude_plugins: [],
+        include_plugins: [],
+      },
     })
   })
 
@@ -242,12 +251,12 @@ describe('IntegrationsPage', () => {
     expect(screen.queryByText('common.modelProvider.updateSetting')).not.toBeInTheDocument()
   })
 
-  it('hides the plugin debug action when debug permission is unavailable', () => {
+  it('disables the plugin debug action when debug permission is unavailable', () => {
     mockCanDebugger.mockReturnValue(false)
 
     renderIntegrationsPage({ section: 'data-source' })
 
-    expect(screen.queryByRole('button', { name: 'plugin debug' })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'plugin.debugInfo.title' })).toBeDisabled()
   })
 
   it('renders existing pages from route sections', () => {
@@ -357,18 +366,6 @@ describe('IntegrationsPage', () => {
 
     expect(screen.getByText('common.modelProvider.updateSetting')).toBeInTheDocument()
     expect(screen.getByText('plugin.autoUpdate.strategy.fixOnly.name')).toBeInTheDocument()
-
-    fireEvent.click(screen.getByText('common.modelProvider.updateSetting'))
-
-    expect(mockSetReferenceSettings).toHaveBeenCalledWith({
-      permission: {
-        install_permission: 'everyone',
-        debug_permission: 'admins',
-      },
-      auto_upgrade: {
-        strategy_setting: 'fix_only',
-      },
-    })
   })
 
   it('opens the integrations marketplace path from the install dropdown marketplace action', () => {
@@ -379,13 +376,21 @@ describe('IntegrationsPage', () => {
     expect(mockRouterPush).toHaveBeenCalledWith('/marketplace?category=tool')
   })
 
-  it('hides the install action and disables category installs when install permission is unavailable', () => {
+  it('disables the install action and category installs when install permission is unavailable', () => {
     mockCanManagement.mockReturnValue(false)
 
     renderIntegrationsPage({ section: 'trigger' })
 
-    expect(screen.queryByRole('button', { name: 'plugin install' })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'plugin install' })).toBeDisabled()
     expect(screen.getByTestId('plugin-category-trigger')).toHaveAttribute('data-can-install', 'false')
+  })
+
+  it('hides plugin update settings action when permission management is unavailable', () => {
+    mockCanSetPermissions.mockReturnValue(false)
+
+    renderIntegrationsPage({ section: 'trigger' })
+
+    expect(screen.queryByTestId('update-setting-popover')).not.toBeInTheDocument()
   })
 
   it('opens the sidebar plugin permissions quick settings and updates permissions', () => {
@@ -400,11 +405,8 @@ describe('IntegrationsPage', () => {
     fireEvent.click(screen.getByRole('button', { name: 'plugin.privilege.quickWhoCanInstall: plugin.privilege.noone' }))
 
     expect(mockSetReferenceSettings).toHaveBeenCalledWith({
-      permission: {
-        install_permission: 'noone',
-        debug_permission: 'admins',
-      },
-      auto_upgrade: {},
+      install_permission: 'noone',
+      debug_permission: 'admins',
     })
   })
 

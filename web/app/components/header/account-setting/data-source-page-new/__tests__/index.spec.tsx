@@ -13,10 +13,6 @@ import { useInstalledPluginList, useInvalidateInstalledPluginList } from '@/serv
 import { useDataSourceAuthUpdate, useMarketplaceAllPlugins } from '../hooks'
 import DataSourcePage from '../index'
 
-const { mockSetReferenceSettings } = vi.hoisted(() => ({
-  mockSetReferenceSettings: vi.fn(),
-}))
-
 /**
  * DataSourcePage Component Tests
  * Using Unit approach to focus on page-level layout and conditional rendering.
@@ -66,14 +62,25 @@ vi.mock('@/app/components/plugins/plugin-auth', () => ({
 }))
 
 vi.mock('@/app/components/plugins/plugin-page/use-reference-setting', () => ({
-  default: () => ({
-    referenceSetting: {
-      permission: {},
-      auto_upgrade: {},
-    },
+  useCanSetPluginSettings: () => ({
     canSetPermissions: true,
-    setReferenceSettings: mockSetReferenceSettings,
   }),
+  usePluginSettingsAccess: () => ({
+    canSetPermissions: true,
+  }),
+  default: () => ({
+    canSetPermissions: true,
+  }),
+}))
+
+vi.mock('@/app/components/header/account-setting/update-setting-popover', () => ({
+  __esModule: true,
+  default: () => (
+    <button type="button">
+      common.modelProvider.updateSetting
+      <span>plugin.autoUpdate.strategy.fixOnly.name</span>
+    </button>
+  ),
 }))
 
 describe('DataSourcePage Component', () => {
