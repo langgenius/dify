@@ -47,9 +47,15 @@ const mockUseQuery = vi.mocked(useQuery)
 
 const VALID_CODE = 'ABCD-3456'
 
-beforeEach(() => {
+// Typed reference to the mocked DeviceFlowError — same module reference as classifyLookupError uses
+type MockDeviceFlowErrorCtor = new (code: string, status: number) => Error
+let MockDeviceFlowError: MockDeviceFlowErrorCtor
+
+beforeEach(async () => {
   vi.clearAllMocks()
   mockUseQuery.mockReturnValue({ data: undefined, isError: false } as ReturnType<typeof useQuery>)
+  const mod = await import('@/service/device-flow') as { DeviceFlowError: MockDeviceFlowErrorCtor }
+  MockDeviceFlowError = mod.DeviceFlowError
 })
 
 async function reachTerminal(rejectWith: unknown) {
@@ -71,35 +77,36 @@ describe('error_expired terminal state', () => {
     await screen.findByText('Code no longer valid')
     fireEvent.click(screen.getByRole('button', { name: /Try a different code/i }))
     expect(screen.getByRole('textbox')).toBeInTheDocument()
+    expect(screen.queryByText('Code no longer valid')).not.toBeInTheDocument()
   })
 })
 
 describe('error_rate_limited terminal state', () => {
   it('shows "Too many attempts" heading', async () => {
-    const { DeviceFlowError } = await import('@/service/device-flow') as {
-      DeviceFlowError: new (code: string, status: number) => Error
-    }
-    await reachTerminal(new DeviceFlowError('rate_limited', 429))
+    await reachTerminal(new MockDeviceFlowError('rate_limited', 429))
     await screen.findByText('Too many attempts')
   })
 
   it('ghost button resets to code_entry', async () => {
-    const { DeviceFlowError } = await import('@/service/device-flow') as {
-      DeviceFlowError: new (code: string, status: number) => Error
-    }
-    await reachTerminal(new DeviceFlowError('rate_limited', 429))
+    await reachTerminal(new MockDeviceFlowError('rate_limited', 429))
     await screen.findByText('Too many attempts')
     fireEvent.click(screen.getByRole('button', { name: /Try again/i }))
     expect(screen.getByRole('textbox')).toBeInTheDocument()
+    expect(screen.queryByText('Too many attempts')).not.toBeInTheDocument()
   })
 })
 
 describe('error_lookup_failed terminal state', () => {
   it('shows "Could not verify the code" heading', async () => {
-    const { DeviceFlowError } = await import('@/service/device-flow') as {
-      DeviceFlowError: new (code: string, status: number) => Error
-    }
-    await reachTerminal(new DeviceFlowError('server_error', 500))
+    await reachTerminal(new MockDeviceFlowError('server_error', 500))
     await screen.findByText('Could not verify the code')
+  })
+
+  it('ghost button resets to code_entry', async () => {
+    await reachTerminal(new MockDeviceFlowError('server_error', 500))
+    await screen.findByText('Could not verify the code')
+    fireEvent.click(screen.getByRole('button', { name: /Try again/i }))
+    expect(screen.getByRole('textbox')).toBeInTheDocument()
+    expect(screen.queryByText('Could not verify the code')).not.toBeInTheDocument()
   })
 })
