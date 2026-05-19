@@ -236,7 +236,7 @@ const AgentTools: FC = () => {
                           render={(
                             <button
                               type="button"
-                              className="ml-0.5 hidden h-4 w-4 items-center justify-center rounded-sm outline-hidden group-hover:inline-flex hover:bg-state-base-hover focus-visible:inline-flex focus-visible:ring-1 focus-visible:ring-components-input-border-hover"
+                              className="ml-0.5 inline-flex h-4 w-4 items-center justify-center rounded-sm opacity-0 outline-hidden group-hover:opacity-100 hover:bg-state-base-hover focus-visible:opacity-100 focus-visible:ring-1 focus-visible:ring-components-input-border-hover"
                               data-testid="tool-info-tooltip"
                             >
                               <RiInformation2Line className="h-4 w-4 text-text-tertiary" />
@@ -244,8 +244,10 @@ const AgentTools: FC = () => {
                           )}
                         />
                       </span>
-                      <PopoverContent popupClassName="w-[180px] px-3 py-2 system-xs-regular">
-                        <div className="w-[180px]">
+                      <PopoverContent
+                        popupClassName="w-[220px] px-3 py-2 system-xs-regular"
+                      >
+                        <div>
                           <div className="mb-1.5 text-text-secondary">{item.tool_name}</div>
                           <div className="mb-1.5 text-text-tertiary">{t('toolNameUsageTip', { ns: 'tools' })}</div>
                           <button
