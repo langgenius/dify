@@ -34,8 +34,16 @@ if [[ -f "$EXCLUDES_FILE" ]]; then
 fi
 
 tmp_output="$(mktemp)"
+pyrefly_command=(
+  uv run --directory api --dev pyrefly check
+  "${pyrefly_args[@]}"
+)
+if (( ${#target_paths[@]} > 0 )); then
+  pyrefly_command+=("${target_paths[@]}")
+fi
+
 set +e
-uv run --directory api --dev pyrefly check "${pyrefly_args[@]}" "${target_paths[@]}" >"$tmp_output" 2>&1
+"${pyrefly_command[@]}" >"$tmp_output" 2>&1
 pyrefly_status=$?
 set -e
 
