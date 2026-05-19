@@ -10,9 +10,15 @@
 #     `NPM_CONFIG_USERCONFIG=cli/scripts/cross-arch.npmrc pnpm install --force`
 #     to populate them.
 #
-# Required env: CLI_VERSION, DIFYCTL_CHANNEL, DIFYCTL_MIN_DIFY, DIFYCTL_MAX_DIFY,
-#               DIFYCTL_COMMIT, DIFYCTL_BUILD_DATE.
-# Output:        dist/bin/difyctl-v<CLI_VERSION>-<target>[.exe]
+# Env (all optional; defaults derived from cli/package.json + git):
+#   CLI_VERSION        — package.json `version`
+#   DIFYCTL_CHANNEL    — package.json `difyctl.channel`
+#   DIFYCTL_MIN_DIFY   — package.json `difyctl.compat.minDify`
+#   DIFYCTL_MAX_DIFY   — package.json `difyctl.compat.maxDify`
+#   DIFYCTL_COMMIT     — `git rev-parse HEAD` (or "unknown")
+#   DIFYCTL_BUILD_DATE — current UTC time
+#
+# Output: dist/bin/difyctl-v<CLI_VERSION>-<target>[.exe]
 
 set -euo pipefail
 
@@ -22,16 +28,20 @@ source "${_dir}/lib/common.sh"
 
 require bun
 
-: "${CLI_VERSION:?CLI_VERSION is required}"
-: "${DIFYCTL_CHANNEL:?DIFYCTL_CHANNEL is required}"
-: "${DIFYCTL_MIN_DIFY:?DIFYCTL_MIN_DIFY is required}"
-: "${DIFYCTL_MAX_DIFY:?DIFYCTL_MAX_DIFY is required}"
-: "${DIFYCTL_COMMIT:?DIFYCTL_COMMIT is required}"
-: "${DIFYCTL_BUILD_DATE:?DIFYCTL_BUILD_DATE is required}"
-
 cli_root="$(cli::root)"
 entry="${cli_root}/bin/run.ts"
 out_dir="${cli_root}/dist/bin"
+
+read_pkg() { node -p "require('${cli_root}/package.json').$1" 2>/dev/null; }
+
+CLI_VERSION="${CLI_VERSION:-$(read_pkg version)}"
+DIFYCTL_CHANNEL="${DIFYCTL_CHANNEL:-$(read_pkg difyctl.channel)}"
+DIFYCTL_MIN_DIFY="${DIFYCTL_MIN_DIFY:-$(read_pkg difyctl.compat.minDify)}"
+DIFYCTL_MAX_DIFY="${DIFYCTL_MAX_DIFY:-$(read_pkg difyctl.compat.maxDify)}"
+DIFYCTL_COMMIT="${DIFYCTL_COMMIT:-$(git -C "$cli_root" rev-parse HEAD 2>/dev/null || echo unknown)}"
+DIFYCTL_BUILD_DATE="${DIFYCTL_BUILD_DATE:-$(date -u +%Y-%m-%dT%H:%M:%SZ)}"
+
+[[ "$CLI_VERSION" != "undefined" ]] || die "CLI_VERSION could not be derived from package.json"
 
 [[ -f "$entry" ]] || die "entry not found: $entry"
 
@@ -72,6 +82,7 @@ for spec in "${targets[@]}"; do
     bun build "$entry" \
         --target="$bun_target" \
         --compile \
+        --minify \
         "${defines[@]}" \
         --outfile="$out" >/dev/null
 done

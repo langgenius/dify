@@ -17,9 +17,6 @@
       "import": "./dist/index.js"
     }
   },
-  "bin": {
-    "difyctl": "./bin/run.js"
-  },
   "files": [
     "README.md",
     "bin",
