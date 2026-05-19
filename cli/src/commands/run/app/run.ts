@@ -5,11 +5,13 @@ import type { IOStreams } from '../../../io/streams.js'
 import { AppMetaClient } from '../../../api/app-meta.js'
 import { AppRunClient } from '../../../api/app-run.js'
 import { AppsClient } from '../../../api/apps.js'
+import { FileUploadClient } from '../../../api/file-upload.js'
 import { BaseError } from '../../../errors/base.js'
 import { ErrorCode } from '../../../errors/codes.js'
 import { FieldInfo } from '../../../types/app-meta.js'
 import { resolveWorkspaceId } from '../../../workspace/resolver.js'
 import { pickStrategy } from './_strategies/index.js'
+import { resolveFileInputs } from './file-flags.js'
 import { RUN_MODES } from './handlers.js'
 import { AppRunPrintFlags } from './print-flags.js'
 
@@ -19,6 +21,7 @@ export type RunAppOptions = {
   readonly inputs?: Readonly<Record<string, unknown>>
   readonly inputsJson?: string
   readonly inputsFile?: string
+  readonly files?: readonly string[]
   readonly conversationId?: string
   readonly workflowId?: string
   readonly workspace?: string
@@ -93,6 +96,15 @@ export async function runApp(opts: RunAppOptions, deps: RunAppDeps): Promise<voi
   }
 
   const inputs = await resolveInputs(opts.inputsJson, opts.inputsFile, opts.inputs)
+  if (opts.files !== undefined && opts.files.length > 0) {
+    const uploadClient = new FileUploadClient(deps.http)
+    const fileInputs = await resolveFileInputs(
+      opts.appId,
+      opts.files,
+      (appId, path) => uploadClient.upload(appId, path),
+    )
+    Object.assign(inputs, fileInputs)
+  }
   const format = opts.format ?? ''
   const isText = TEXT_FORMATS.has(format)
   const livePrint = opts.stream === true

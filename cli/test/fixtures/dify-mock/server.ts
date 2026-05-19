@@ -15,6 +15,10 @@ export type DifyMock = {
   scenario: Scenario
   setScenario: (s: Scenario) => void
   stop: () => Promise<void>
+  /** Body of the most recent POST to /apps/:id/run */
+  lastRunBody: Record<string, unknown> | null
+  /** Number of times POST /apps/:id/files/upload was called */
+  uploadCallCount: number
 }
 
 const TOKEN_RE = /^Bearer\s+dfo[ae]_[\w-]+$/
@@ -99,7 +103,12 @@ function hitlResumedResponse(): string {
   ])
 }
 
-export function buildApp(getScenario: () => Scenario): Hono {
+export type MockState = {
+  lastRunBody: Record<string, unknown> | null
+  uploadCallCount: number
+}
+
+export function buildApp(getScenario: () => Scenario, state?: MockState): Hono {
   const app = new Hono()
 
   app.get('/healthz', c => c.json({ ok: true }))
@@ -258,6 +267,8 @@ export function buildApp(getScenario: () => Scenario): Hono {
   app.post('/openapi/v1/apps/:id/run', async (c) => {
     const id = c.req.param('id')
     const body = await c.req.json() as { query?: string, inputs?: unknown }
+    if (state !== undefined)
+      state.lastRunBody = body as Record<string, unknown>
     const app = APPS.find(a => a.id === id)
     if (app === undefined)
       return c.json({ error: { code: 'not_found', message: 'app not found' } }, { status: 404 })
@@ -273,6 +284,27 @@ export function buildApp(getScenario: () => Scenario): Hono {
     }
     const sse = streamingRunResponse(app.mode, query, isAgent)
     return new Response(sse, { status: 200, headers: { 'content-type': 'text/event-stream' } })
+  })
+
+  app.post('/openapi/v1/apps/:id/files/upload', async (c) => {
+    if (state !== undefined)
+      state.uploadCallCount++
+    const form = await c.req.formData()
+    const file = form.get('file')
+    if (!(file instanceof File))
+      return Response.json({ message: 'No file uploaded' }, { status: 400 })
+    const ext = file.name.split('.').pop() ?? null
+    return Response.json(
+      {
+        id: 'upload-file-1',
+        name: file.name,
+        size: file.size,
+        extension: ext,
+        mime_type: file.type || null,
+        created_by: 'acct-1',
+      },
+      { status: 201 },
+    )
   })
 
   app.post('/openapi/v1/apps/:id/tasks/:taskId/stop', (c) => {
@@ -329,7 +361,8 @@ export function buildApp(getScenario: () => Scenario): Hono {
 
 export function startMock(opts: DifyMockOptions = {}): Promise<DifyMock> {
   let scenario: Scenario = opts.scenario ?? 'happy'
-  const app = buildApp(() => scenario)
+  const state: MockState = { lastRunBody: null, uploadCallCount: 0 }
+  const app = buildApp(() => scenario, state)
   return new Promise((resolve, reject) => {
     const server = serve({
       fetch: app.fetch,
@@ -349,6 +382,8 @@ export function startMock(opts: DifyMockOptions = {}): Promise<DifyMock> {
             server.close(err => err ? rej(err) : res())
           })
         },
+        get lastRunBody() { return state.lastRunBody },
+        get uploadCallCount() { return state.uploadCallCount },
       })
     })
     server.on('error', reject)

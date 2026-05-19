@@ -13,6 +13,8 @@ export default class RunApp extends DifyCommand {
     '<%= config.bin %> run app app-1 --inputs-file inputs.json',
     '<%= config.bin %> run app app-1 --stream',
     '<%= config.bin %> run app app-1 -o json',
+    '<%= config.bin %> run app app-1 --file doc=@./report.pdf',
+    '<%= config.bin %> run app app-1 --file img=https://cdn.example.com/logo.png',
   ]
 
   static override args = {
@@ -43,6 +45,7 @@ export default class RunApp extends DifyCommand {
         message: args.message,
         inputsJson: flags.inputs,
         inputsFile: flags['inputs-file'],
+        files: flags.file,
         conversationId: flags.conversation,
         workflowId: flags['workflow-id'],
         workspace: flags.workspace,

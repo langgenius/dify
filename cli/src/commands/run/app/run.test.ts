@@ -302,4 +302,57 @@ describe('runApp', () => {
     // stream mode for workflow: node_started → "→ <title>" on stderr
     expect(io.errBuf()).toContain('After Resume')
   })
+
+  it('workflow: --file remote URL is passed as remote_url input variable', async () => {
+    const io = bufferStreams()
+    const cache = await loadAppInfoCache({ configDir: dir })
+    await runApp(
+      { appId: 'app-2', files: ['doc=https://example.com/report.pdf'] },
+      { bundle: bundle(), http: createClient({ host: mock.url, bearer: 'dfoa_test' }), host: mock.url, io, cache },
+    )
+    expect(io.outBuf()).toBe('echo: \n')
+    expect(mock.uploadCallCount).toBe(0)
+    const runInputs = mock.lastRunBody?.inputs as Record<string, unknown>
+    expect(runInputs).toBeDefined()
+    expect(runInputs.doc).toMatchObject({
+      type: 'document',
+      transfer_method: 'remote_url',
+      url: 'https://example.com/report.pdf',
+    })
+  })
+
+  it('workflow: --file @path uploads file and passes local_file input variable', async () => {
+    const { writeFile } = await import('node:fs/promises')
+    const io = bufferStreams()
+    const cache = await loadAppInfoCache({ configDir: dir })
+    const filePath = join(dir, 'test.pdf')
+    await writeFile(filePath, 'fake pdf content')
+    await runApp(
+      { appId: 'app-2', files: [`doc=@${filePath}`] },
+      { bundle: bundle(), http: createClient({ host: mock.url, bearer: 'dfoa_test' }), host: mock.url, io, cache },
+    )
+    expect(io.outBuf()).toBe('echo: \n')
+    expect(mock.uploadCallCount).toBe(1)
+    const runInputs = mock.lastRunBody?.inputs as Record<string, unknown>
+    expect(runInputs).toBeDefined()
+    expect(runInputs.doc).toMatchObject({
+      transfer_method: 'local_file',
+      upload_file_id: 'upload-file-1',
+    })
+  })
+
+  it('workflow: --file overrides same-named key from --inputs (file wins)', async () => {
+    const io = bufferStreams()
+    const cache = await loadAppInfoCache({ configDir: dir })
+    await runApp(
+      { appId: 'app-2', inputs: { doc: 'old-value' }, files: ['doc=https://example.com/override.pdf'] },
+      { bundle: bundle(), http: createClient({ host: mock.url, bearer: 'dfoa_test' }), host: mock.url, io, cache },
+    )
+    expect(io.outBuf()).toBe('echo: \n')
+    const runInputs = mock.lastRunBody?.inputs as Record<string, unknown>
+    expect(runInputs).toBeDefined()
+    const docInput = runInputs.doc as Record<string, unknown>
+    expect(docInput.transfer_method).toBe('remote_url')
+    expect(docInput.url).toBe('https://example.com/override.pdf')
+  })
 })

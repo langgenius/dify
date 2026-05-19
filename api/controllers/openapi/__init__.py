@@ -51,6 +51,7 @@ from controllers.openapi._models import (
     WorkspacePayload,
     WorkspaceSummaryResponse,
 )
+from fields.file_fields import FileResponse
 
 register_schema_models(
     openapi_ns,
@@ -87,6 +88,7 @@ register_response_schema_models(
     DeviceCodeResponse,
     DeviceLookupResponse,
     DeviceMutateResponse,
+    FileResponse,
 )
 
 from . import (
@@ -94,6 +96,7 @@ from . import (
     app_run,
     apps,
     apps_permitted_external,
+    files,
     human_input_form,
     index,
     oauth_device,
@@ -109,6 +112,7 @@ __all__ = [
     "app_run",
     "apps",
     "apps_permitted_external",
+    "files",
     "human_input_form",
     "index",
     "oauth_device",
