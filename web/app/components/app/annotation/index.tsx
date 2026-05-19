@@ -176,7 +176,7 @@ const Annotation: FC<Props> = (props) => {
                   >
                   </Switch>
                   {annotationConfig?.enabled && (
-                    <div className="flex items-center pl-1.5">
+                    <div className="flex items-center pr-1 pl-1.5">
                       <div className="mr-1 h-3.5 w-px shrink-0 bg-divider-subtle"></div>
                       <ActionButton onClick={() => setIsShowEdit(true)}>
                         <RiEqualizer2Line className="h-4 w-4 text-text-tertiary" />
