@@ -53,7 +53,17 @@ docker compose \
   up -d
 ```
 
-### 5. Wait for API to be healthy (max 60 seconds)
+### 5. Run DB migrations
+
+```bash
+docker compose \
+  -f /Users/narayana-nexoraa/Developer/HSD/dify/deploy/docker-compose.yml \
+  -f /Users/narayana-nexoraa/Developer/HSD/dify/deploy/docker-compose.local.yml \
+  --env-file /Users/narayana-nexoraa/Developer/HSD/dify/deploy/.env.local \
+  exec -T api flask db upgrade
+```
+
+### 6. Wait for setup endpoint to be healthy (max 60 seconds)
 
 ```bash
 echo "Waiting for API to be ready..."
