@@ -644,6 +644,9 @@ importers:
 
   cli:
     dependencies:
+      '@dify/contracts':
+        specifier: workspace:*
+        version: link:../packages/contracts
       '@napi-rs/keyring':
         specifier: 'catalog:'
         version: 1.1.6

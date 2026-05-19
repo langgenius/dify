@@ -1,5 +1,5 @@
+import type { WorkspaceListResponse } from '@dify/contracts/api/openapi/types.gen'
 import type { KyInstance } from 'ky'
-import type { WorkspaceListResponse } from '../types/data-contracts.js'
 
 export class WorkspacesClient {
   private readonly http: KyInstance

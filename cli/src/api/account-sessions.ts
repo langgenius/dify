@@ -1,5 +1,5 @@
+import type { SessionListResponse } from '@dify/contracts/api/openapi/types.gen'
 import type { KyInstance } from 'ky'
-import type { SessionListResponse } from '../types/data-contracts.js'
 
 export class AccountSessionsClient {
   private readonly http: KyInstance

@@ -1,5 +1,5 @@
+import type { AccountResponse } from '@dify/contracts/api/openapi/types.gen'
 import type { KyInstance } from 'ky'
-import type { AccountResponse } from '../types/data-contracts.js'
 
 export class AccountClient {
   private readonly http: KyInstance

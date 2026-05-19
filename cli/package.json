@@ -46,6 +46,7 @@
     "build:bin": "scripts/release-build.sh"
   },
   "dependencies": {
+    "@dify/contracts": "workspace:*",
     "@napi-rs/keyring": "catalog:",
     "cli-table3": "catalog:",
     "eventsource-parser": "catalog:",

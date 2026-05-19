@@ -1,5 +1,5 @@
+import type { AppDescribeResponse, AppListResponse } from '@dify/contracts/api/openapi/types.gen'
 import type { KyInstance } from 'ky'
-import type { AppDescribeResponse, AppListResponse } from '../types/data-contracts.js'
 
 export type ListQuery = {
   readonly workspaceId: string

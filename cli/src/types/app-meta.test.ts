@@ -1,4 +1,4 @@
-import type { AppDescribeResponse } from './data-contracts.js'
+import type { AppDescribeResponse } from '@dify/contracts/api/openapi/types.gen'
 import { describe, expect, it } from 'vitest'
 import { covers, FieldInfo, FieldInputSchema, FieldParameters, fromDescribe, mergeMeta } from './app-meta.js'
 
