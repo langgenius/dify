@@ -3,7 +3,6 @@ from typing import Any, cast
 
 from flask import request
 from flask_restx import Resource
-from flask_restx import fields as restx_fields
 from pydantic import BaseModel, ConfigDict, Field
 from werkzeug.exceptions import Unauthorized
 
@@ -35,15 +34,16 @@ class AppAccessModeQuery(BaseModel):
 
 register_schema_models(web_ns, AppAccessModeQuery)
 
-access_mode_response_model = web_ns.model(
-    "AppAccessModeResponse",
-    {"accessMode": restx_fields.String(description="Application access mode (public or restricted)")},
-)
 
-permission_response_model = web_ns.model(
-    "AppPermissionResponse",
-    {"result": restx_fields.Boolean(description="Whether user has permission to access the app")},
-)
+class AppAccessModeResponse(BaseModel):
+    accessMode: str = Field(description="Application access mode (public or restricted)")
+
+
+class AppPermissionResponse(BaseModel):
+    result: bool = Field(description="Whether user has permission to access the app")
+
+
+register_schema_models(web_ns, AppAccessModeResponse, AppPermissionResponse)
 
 
 @web_ns.route("/parameters")
@@ -113,7 +113,7 @@ class AppAccessMode(Resource):
             "appCode": {"description": "Application code", "type": "string", "required": False},
         }
     )
-    @web_ns.response(200, "Access mode retrieved successfully", access_mode_response_model)
+    @web_ns.response(200, "Access mode retrieved successfully", web_ns.models[AppAccessModeResponse.__name__])
     @web_ns.response(400, "Bad Request")
     @web_ns.response(500, "Internal Server Error")
     def get(self):
@@ -141,7 +141,7 @@ class AppWebAuthPermission(Resource):
     @web_ns.doc("Check App Permission")
     @web_ns.doc(description="Check if user has permission to access a web application.")
     @web_ns.doc(params={"appId": {"description": "Application ID", "type": "string", "required": True}})
-    @web_ns.response(200, "Permission check completed", permission_response_model)
+    @web_ns.response(200, "Permission check completed", web_ns.models[AppPermissionResponse.__name__])
     @web_ns.response(400, "Bad Request")
     @web_ns.response(401, "Unauthorized")
     @web_ns.response(500, "Internal Server Error")

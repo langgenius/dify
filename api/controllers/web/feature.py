@@ -1,19 +1,25 @@
-from flask_restx import Resource, fields
+from typing import Any
 
+from flask_restx import Resource
+from pydantic import BaseModel, Field
+
+from controllers.common.schema import register_schema_models
 from controllers.web import web_ns
 from services.feature_service import FeatureService
 
-system_feature_response_model = web_ns.model(
-    "SystemFeatureResponse",
-    {"features": fields.Raw(description="System feature configuration object")},
-)
+
+class SystemFeatureResponse(BaseModel):
+    features: dict[str, Any] = Field(description="System feature configuration object")
+
+
+register_schema_models(web_ns, SystemFeatureResponse)
 
 
 @web_ns.route("/system-features")
 class SystemFeatureApi(Resource):
     @web_ns.doc("get_system_features")
     @web_ns.doc(description="Get system feature flags and configuration")
-    @web_ns.response(200, "System features retrieved successfully", system_feature_response_model)
+    @web_ns.response(200, "System features retrieved successfully", web_ns.models[SystemFeatureResponse.__name__])
     @web_ns.response(500, "Internal server error")
     def get(self):
         """Get system feature flags and configuration.
