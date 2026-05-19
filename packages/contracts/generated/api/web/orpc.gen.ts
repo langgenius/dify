@@ -529,9 +529,16 @@ export const forgotPassword = {
 
 /**
  * Upload one remote URL file for a HITL human input form
+ *
+ * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
+ *
+ * @deprecated
  */
 export const post13 = oc
   .route({
+    deprecated: true,
+    description:
+      'Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postFormHumanInputFilesRemoteUpload',
@@ -547,9 +554,16 @@ export const remoteUpload = {
 
 /**
  * Upload one local file for a HITL human input form
+ *
+ * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
+ *
+ * @deprecated
  */
 export const post14 = oc
   .route({
+    deprecated: true,
+    description:
+      'Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postFormHumanInputFilesUpload',
@@ -572,10 +586,16 @@ export const files2 = {
  * Issue an upload token for a human input form
  *
  * POST /api/form/human_input/<form_token>/upload-token
+ *
+ * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
+ *
+ * @deprecated
  */
 export const post15 = oc
   .route({
-    description: 'POST /api/form/human_input/<form_token>/upload-token',
+    deprecated: true,
+    description:
+      'POST /api/form/human_input/<form_token>/upload-token\n\nGenerated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postFormHumanInputByFormTokenUploadToken',

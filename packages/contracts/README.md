@@ -14,8 +14,8 @@ Are we OpenAPI ready? **No.** Current generated API contracts are **16.7% ready*
 | --------- | ------: | --------: | ------: | --------: |
 | console   |      96 |       474 |     570 |     16.8% |
 | service   |      16 |        72 |      88 |     18.2% |
-| web       |       5 |        36 |      41 |     12.2% |
-| **total** | **117** |   **582** | **699** | **16.7%** |
+| web       |       5 |        39 |      44 |     11.4% |
+| **total** | **117** |   **585** | **702** | **16.7%** |
 
 Readiness here means the generated contract operation is not marked with:
 
