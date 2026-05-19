@@ -1,5 +1,5 @@
 {
-  "extends": "@dify/tsconfig/nextjs.json",
+  "extends": "../packages/tsconfig/nextjs.json",
   "compilerOptions": {
     "incremental": true,
     "paths": {
@@ -11,10 +11,6 @@
       ]
     },
     "resolveJsonModule": true,
-    "types": [
-      "vitest/globals",
-      "node"
-    ],
     "allowImportingTsExtensions": true,
     "allowJs": true
   },
