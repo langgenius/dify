@@ -10,7 +10,12 @@ from werkzeug.exceptions import Forbidden
 
 from configs import dify_config
 from controllers.common.fields import SuccessResponse
-from controllers.common.schema import query_params_from_model,register_enum_models, register_response_schema_models, register_schema_models
+from controllers.common.schema import (
+    query_params_from_model,
+    register_enum_models,
+    register_response_schema_models,
+    register_schema_models,
+)
 from controllers.console import console_ns
 from controllers.console.workspace import plugin_permission_required
 from controllers.console.wraps import account_initialization_required, is_admin_or_owner_required, setup_required
