@@ -153,6 +153,10 @@ api/.idea
 api/.env
 api/storage/*
 
+# Local dev Docker volumes (runtime data, never commit)
+deploy/volumes/
+deploy/.env
+
 docker-legacy/volumes/app/storage/*
 docker-legacy/volumes/db/data/*
 docker-legacy/volumes/redis/data/*
