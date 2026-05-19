@@ -70,6 +70,15 @@ docker network create ttri-network
 - `dify`
 - `dify_plugin`
 
+若 PostgreSQL 使用者不是 superuser，請先用 DB admin 建好 plugin daemon 專用 database，並把 owner 指給 Dify 使用者：
+
+```sql
+CREATE USER dify WITH PASSWORD 'o*Xx3aPQ';
+CREATE DATABASE dify_plugin OWNER dify;
+```
+
+`plugin_daemon` 啟動時會連到 `.env` 的 `DB_PLUGIN_DATABASE`，預設是 `dify_plugin`。如果 database 不存在，而且 `DB_USERNAME` 沒有 `CREATE DATABASE` 權限，`plugin_daemon` 會直接啟動失敗並進入 restart loop。
+
 3. 準備外部 Redis。
 
 Redis 需要讓 Dify containers 可連線，且 `CELERY_BROKER_URL` 必須和 Redis 帳密、DB index 對齊。
@@ -119,8 +128,11 @@ cp .env.example .env
 - `WEAVIATE_API_KEY`
 - `PLUGIN_DAEMON_KEY`
 - `PLUGIN_DIFY_INNER_API_KEY`
+- `CODE_EXECUTION_API_KEY`
 - `SANDBOX_API_KEY`
 - `NEXT_PUBLIC_SOCKET_URL`
+
+`./sandbox/conf/config.yaml` 已提供 baseline 設定，預設 `app.key=dify-sandbox`。若調整 `.env` 的 `SANDBOX_API_KEY` 或 `CODE_EXECUTION_API_KEY`，請同步更新 `config.yaml` 的 `app.key`，三者必須一致。
 
 啟動：
 
@@ -135,10 +147,84 @@ docker compose ps
 docker compose logs -f api worker worker_beat web nginx plugin_daemon
 ```
 
+啟動後至少確認：
+
+```bash
+docker compose exec -T api printenv PLUGIN_DAEMON_URL
+docker compose exec -T api getent hosts plugin_daemon
+docker compose logs --tail=120 plugin_daemon sandbox
+```
+
+正常狀態下：
+
+- `PLUGIN_DAEMON_URL` 應為 `http://plugin_daemon:5002`
+- `getent hosts plugin_daemon` 應回傳 Docker network 內的 IP
+- `plugin_daemon` 與 `sandbox` 不應停在 `Restarting`
+
 停止：
 
 ```bash
 docker compose down
+```
+
+## 常見啟動故障
+
+### `plugin_daemon` 解析不到或外掛初始化失敗
+
+API log 若出現：
+
+```text
+httpx.ConnectError: [Errno -3] Temporary failure in name resolution
+```
+
+第一層含義是 API container 解析不到 `plugin_daemon`。不要先查 plugin 安裝包，先查 daemon 是否真的存活：
+
+```bash
+docker compose ps plugin_daemon
+docker compose logs --tail=120 plugin_daemon
+docker compose exec -T api getent hosts plugin_daemon
+```
+
+若 `plugin_daemon` log 出現：
+
+```text
+FATAL: database "dify_plugin" does not exist
+ERROR: permission denied to create database
+panic: failed to init dify plugin db
+```
+
+代表外部 PostgreSQL 上缺少 `dify_plugin` database，且 `.env` 的 `DB_USERNAME` 沒有建立 database 權限。用 DB admin 建立：
+
+```sql
+CREATE DATABASE dify_plugin OWNER dify;
+```
+
+再重啟：
+
+```bash
+docker compose restart plugin_daemon
+```
+
+### `sandbox` 一直重啟
+
+若 sandbox log 出現：
+
+```text
+failed to init config: open conf/config.yaml: no such file or directory
+```
+
+代表 host bind mount 的 `./sandbox/conf` 裡沒有 `config.yaml`。本部署包已提供 baseline 檔案，遠端部署目錄應該要有：
+
+```text
+/home/ttri/dify/sandbox/conf/config.yaml
+```
+
+然後確認 `config.yaml` 的 `app.key`、`.env` 的 `SANDBOX_API_KEY`、`.env` 的 `CODE_EXECUTION_API_KEY` 一致。若 `.env` 使用預設值，三者都應是 `dify-sandbox`。
+
+最後重啟：
+
+```bash
+docker compose restart sandbox
 ```
 
 ## Runtime 資料
