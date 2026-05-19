@@ -107,20 +107,24 @@ class DifyAgentBackendRunClient:
 
 def _normalize_dify_agent_error(exc: Exception) -> AgentBackendError:
     """Map public ``dify-agent`` client errors to API-side integration errors."""
-    if isinstance(exc, DifyAgentValidationError):
-        return AgentBackendValidationError("Agent backend request or response validation failed", detail=exc.detail)
-    if isinstance(exc, DifyAgentHTTPError):
-        return AgentBackendHTTPError(
-            f"Agent backend HTTP {exc.status_code}",
-            status_code=exc.status_code,
-            detail=exc.detail,
-        )
-    if isinstance(exc, DifyAgentTimeoutError):
-        return AgentBackendTransportError(str(exc))
-    if isinstance(exc, DifyAgentStreamError):
-        return AgentBackendStreamError(str(exc))
-    if isinstance(exc, DifyAgentClientError):
-        return AgentBackendTransportError(str(exc))
-    if isinstance(exc, AgentBackendError):
-        return exc
-    return AgentBackendTransportError(str(exc) or type(exc).__name__)
+    match exc:
+        case DifyAgentValidationError() as error:
+            return AgentBackendValidationError(
+                "Agent backend request or response validation failed", detail=error.detail
+            )
+        case DifyAgentHTTPError() as error:
+            return AgentBackendHTTPError(
+                f"Agent backend HTTP {error.status_code}",
+                status_code=error.status_code,
+                detail=error.detail,
+            )
+        case DifyAgentTimeoutError() as error:
+            return AgentBackendTransportError(str(error))
+        case DifyAgentStreamError() as error:
+            return AgentBackendStreamError(str(error))
+        case DifyAgentClientError() as error:
+            return AgentBackendTransportError(str(error))
+        case AgentBackendError() as error:
+            return error
+        case _:
+            return AgentBackendTransportError(str(exc) or type(exc).__name__)
