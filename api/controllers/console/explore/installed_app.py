@@ -8,7 +8,8 @@ from pydantic import BaseModel, Field, computed_field, field_validator
 from sqlalchemy import and_, select
 from werkzeug.exceptions import BadRequest, Forbidden, NotFound
 
-from controllers.common.schema import register_schema_models
+from controllers.common.fields import SimpleMessageResponse, SimpleResultMessageResponse
+from controllers.common.schema import register_response_schema_models, register_schema_models
 from controllers.console import console_ns
 from controllers.console.explore.wraps import InstalledAppResource
 from controllers.console.wraps import account_initialization_required, cloud_edition_billing_resource_check
@@ -122,6 +123,7 @@ register_schema_models(
     InstalledAppResponse,
     InstalledAppListResponse,
 )
+register_response_schema_models(console_ns, SimpleMessageResponse, SimpleResultMessageResponse)
 
 
 @console_ns.route("/installed-apps")
@@ -209,6 +211,7 @@ class InstalledAppsListApi(Resource):
     @login_required
     @account_initialization_required
     @cloud_edition_billing_resource_check("apps")
+    @console_ns.response(200, "Success", console_ns.models[SimpleMessageResponse.__name__])
     def post(self):
         payload = InstalledAppCreatePayload.model_validate(console_ns.payload or {})
 
@@ -258,6 +261,7 @@ class InstalledAppApi(InstalledAppResource):
     use InstalledAppResource to apply default decorators and get installed_app
     """
 
+    @console_ns.response(204, "App uninstalled successfully")
     def delete(self, installed_app):
         _, current_tenant_id = current_account_with_tenant()
         if installed_app.app_owner_tenant_id == current_tenant_id:
@@ -268,6 +272,7 @@ class InstalledAppApi(InstalledAppResource):
 
         return {"result": "success", "message": "App uninstalled successfully"}, 204
 
+    @console_ns.response(200, "Success", console_ns.models[SimpleResultMessageResponse.__name__])
     def patch(self, installed_app):
         payload = InstalledAppUpdatePayload.model_validate(console_ns.payload or {})
 

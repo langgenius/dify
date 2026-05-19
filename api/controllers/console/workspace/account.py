@@ -12,7 +12,13 @@ from werkzeug.exceptions import NotFound
 
 from configs import dify_config
 from constants.languages import supported_language
-from controllers.common.schema import register_schema_models
+from controllers.common.fields import (
+    AvatarUrlResponse,
+    SimpleResultDataResponse,
+    SimpleResultResponse,
+    VerificationTokenResponse,
+)
+from controllers.common.schema import register_response_schema_models, register_schema_models
 from controllers.console import console_ns
 from controllers.console.auth.error import (
     EmailAlreadyInUseError,
@@ -231,11 +237,19 @@ register_schema_models(
     EducationStatusResponse,
     EducationAutocompleteResponse,
 )
+register_response_schema_models(
+    console_ns,
+    AvatarUrlResponse,
+    SimpleResultDataResponse,
+    SimpleResultResponse,
+    VerificationTokenResponse,
+)
 
 
 @console_ns.route("/account/init")
 class AccountInitApi(Resource):
     @console_ns.expect(console_ns.models[AccountInitPayload.__name__])
+    @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
     @setup_required
     @login_required
     def post(self):
@@ -312,6 +326,7 @@ class AccountAvatarApi(Resource):
     @console_ns.expect(console_ns.models[AccountAvatarQuery.__name__])
     @console_ns.doc("get_account_avatar")
     @console_ns.doc(description="Get account avatar url")
+    @console_ns.response(200, "Success", console_ns.models[AvatarUrlResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -473,6 +488,7 @@ class AccountDeleteVerifyApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @console_ns.response(200, "Success", console_ns.models[SimpleResultDataResponse.__name__])
     def get(self):
         account, _ = current_account_with_tenant()
 
@@ -485,6 +501,7 @@ class AccountDeleteVerifyApi(Resource):
 @console_ns.route("/account/delete")
 class AccountDeleteApi(Resource):
     @console_ns.expect(console_ns.models[AccountDeletePayload.__name__])
+    @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -505,6 +522,7 @@ class AccountDeleteApi(Resource):
 @console_ns.route("/account/delete/feedback")
 class AccountDeleteUpdateFeedbackApi(Resource):
     @console_ns.expect(console_ns.models[AccountDeletionFeedbackPayload.__name__])
+    @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
     @setup_required
     def post(self):
         payload = console_ns.payload or {}
@@ -584,6 +602,7 @@ class EducationAutoCompleteApi(Resource):
 @console_ns.route("/account/change-email")
 class ChangeEmailSendEmailApi(Resource):
     @console_ns.expect(console_ns.models[ChangeEmailSendPayload.__name__])
+    @console_ns.response(200, "Success", console_ns.models[SimpleResultDataResponse.__name__])
     @enable_change_email
     @setup_required
     @login_required
@@ -649,6 +668,7 @@ class ChangeEmailSendEmailApi(Resource):
 @console_ns.route("/account/change-email/validity")
 class ChangeEmailCheckApi(Resource):
     @console_ns.expect(console_ns.models[ChangeEmailValidityPayload.__name__])
+    @console_ns.response(200, "Success", console_ns.models[VerificationTokenResponse.__name__])
     @enable_change_email
     @setup_required
     @login_required
@@ -765,6 +785,7 @@ class ChangeEmailResetApi(Resource):
 @console_ns.route("/account/change-email/check-email-unique")
 class CheckEmailUnique(Resource):
     @console_ns.expect(console_ns.models[CheckEmailUniquePayload.__name__])
+    @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
     @setup_required
     def post(self):
         payload = console_ns.payload or {}

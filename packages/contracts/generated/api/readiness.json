@@ -1,16 +1,16 @@
 {
   "surfaces": {
     "console": {
-      "notReady": 474,
+      "notReady": 365,
       "total": 570
     },
     "service": {
-      "notReady": 72,
+      "notReady": 60,
       "total": 88
     },
     "web": {
-      "notReady": 39,
-      "total": 44
+      "notReady": 20,
+      "total": 41
     }
   },
   "warning": "Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate."

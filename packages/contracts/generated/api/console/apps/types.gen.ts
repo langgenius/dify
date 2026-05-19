@@ -262,6 +262,10 @@ export type SuggestedQuestionsResponse = {
   data: Array<string>
 }
 
+export type SimpleResultResponse = {
+  result: string
+}
+
 export type ConversationPagination = {
   has_next: boolean
   items: Array<Conversation>
@@ -307,6 +311,10 @@ export type ConvertToWorkflowPayload = {
   icon_background?: string | null
   icon_type?: string | null
   name?: string | null
+}
+
+export type NewAppResponse = {
+  new_app_id: string
 }
 
 export type CopyAppPayload = {
@@ -395,6 +403,10 @@ export type ModelConfigRequest = {
 
 export type AppNamePayload = {
   name: string
+}
+
+export type RedirectUrlResponse = {
+  redirect_url: string
 }
 
 export type AppMcpServerResponse = {
@@ -2425,9 +2437,7 @@ export type PostAppsByAppIdChatMessagesByTaskIdStopData = {
 }
 
 export type PostAppsByAppIdChatMessagesByTaskIdStopResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: SimpleResultResponse
 }
 
 export type PostAppsByAppIdChatMessagesByTaskIdStopResponse
@@ -2566,9 +2576,7 @@ export type PostAppsByAppIdCompletionMessagesByTaskIdStopData = {
 }
 
 export type PostAppsByAppIdCompletionMessagesByTaskIdStopResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: SimpleResultResponse
 }
 
 export type PostAppsByAppIdCompletionMessagesByTaskIdStopResponse
@@ -2614,9 +2622,7 @@ export type PostAppsByAppIdConvertToWorkflowError
   = PostAppsByAppIdConvertToWorkflowErrors[keyof PostAppsByAppIdConvertToWorkflowErrors]
 
 export type PostAppsByAppIdConvertToWorkflowResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: NewAppResponse
 }
 
 export type PostAppsByAppIdConvertToWorkflowResponse
@@ -2695,9 +2701,7 @@ export type PostAppsByAppIdFeedbacksError
   = PostAppsByAppIdFeedbacksErrors[keyof PostAppsByAppIdFeedbacksErrors]
 
 export type PostAppsByAppIdFeedbacksResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: SimpleResultResponse
 }
 
 export type PostAppsByAppIdFeedbacksResponse
@@ -2848,9 +2852,7 @@ export type PostAppsByAppIdPublishToCreatorsPlatformData = {
 }
 
 export type PostAppsByAppIdPublishToCreatorsPlatformResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: RedirectUrlResponse
 }
 
 export type PostAppsByAppIdPublishToCreatorsPlatformResponse
@@ -3264,9 +3266,7 @@ export type PostAppsByAppIdTraceErrors = {
 export type PostAppsByAppIdTraceError = PostAppsByAppIdTraceErrors[keyof PostAppsByAppIdTraceErrors]
 
 export type PostAppsByAppIdTraceResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: SimpleResultResponse
 }
 
 export type PostAppsByAppIdTraceResponse
@@ -3530,9 +3530,7 @@ export type PostAppsByAppIdWorkflowRunsTasksByTaskIdStopError
   = PostAppsByAppIdWorkflowRunsTasksByTaskIdStopErrors[keyof PostAppsByAppIdWorkflowRunsTasksByTaskIdStopErrors]
 
 export type PostAppsByAppIdWorkflowRunsTasksByTaskIdStopResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: SimpleResultResponse
 }
 
 export type PostAppsByAppIdWorkflowRunsTasksByTaskIdStopResponse
@@ -4084,9 +4082,7 @@ export type PostAppsByAppIdWorkflowsDraftFeaturesData = {
 }
 
 export type PostAppsByAppIdWorkflowsDraftFeaturesResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: SimpleResultResponse
 }
 
 export type PostAppsByAppIdWorkflowsDraftFeaturesResponse

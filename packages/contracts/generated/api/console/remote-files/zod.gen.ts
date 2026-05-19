@@ -3,9 +3,40 @@
 import * as z from 'zod'
 
 /**
- * Success
+ * RemoteFileUploadPayload
  */
-export const zPostRemoteFilesUploadResponse = z.record(z.string(), z.unknown())
+export const zRemoteFileUploadPayload = z.object({
+  url: z.string(),
+})
+
+/**
+ * FileWithSignedUrl
+ */
+export const zFileWithSignedUrl = z.object({
+  created_at: z.int().nullable(),
+  created_by: z.string().nullable(),
+  extension: z.string().nullable(),
+  id: z.string(),
+  mime_type: z.string().nullable(),
+  name: z.string(),
+  size: z.int(),
+  url: z.string().nullable(),
+})
+
+/**
+ * RemoteFileInfo
+ */
+export const zRemoteFileInfo = z.object({
+  file_length: z.int(),
+  file_type: z.string(),
+})
+
+export const zPostRemoteFilesUploadBody = zRemoteFileUploadPayload
+
+/**
+ * File uploaded successfully
+ */
+export const zPostRemoteFilesUploadResponse = zFileWithSignedUrl
 
 export const zGetRemoteFilesByUrlPath = z.object({
   url: z.string(),
@@ -14,4 +45,4 @@ export const zGetRemoteFilesByUrlPath = z.object({
 /**
  * Success
  */
-export const zGetRemoteFilesByUrlResponse = z.record(z.string(), z.unknown())
+export const zGetRemoteFilesByUrlResponse = zRemoteFileInfo

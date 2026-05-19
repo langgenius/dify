@@ -187,6 +187,22 @@ export default defineDevProxyConfig({
 
 Set `cookieRewrite: false` to disable cookie rewriting for a route.
 
+When one local proxy can point to multiple online targets, use `localCookieScope: 'target-origin'`
+for auth cookies. The proxy stores configured cookies under target-specific local names,
+forwards only the active target's cookies upstream, and can override a stale frontend CSRF
+header from the active scoped cookie:
+
+```ts
+const cookieRewrite: CookieRewriteOptions = {
+  hostPrefixCookies: ['access_token', 'csrf_token', 'refresh_token'],
+  localCookieScope: 'target-origin',
+  csrfHeader: {
+    cookieName: 'csrf_token',
+    headerName: 'X-CSRF-Token',
+  },
+}
+```
+
 ## Behavior
 
 - The proxy preserves the matched path prefix when forwarding requests.

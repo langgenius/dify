@@ -4,7 +4,8 @@ from flask_restx import Resource, marshal_with
 from werkzeug.exceptions import NotFound
 
 from controllers.common.controller_schemas import MetadataUpdatePayload
-from controllers.common.schema import register_schema_models
+from controllers.common.fields import SimpleResultResponse
+from controllers.common.schema import register_response_schema_models, register_schema_models
 from controllers.console import console_ns
 from controllers.console.wraps import account_initialization_required, enterprise_license_required, setup_required
 from fields.dataset_fields import dataset_metadata_fields
@@ -21,6 +22,7 @@ from services.metadata_service import MetadataService
 register_schema_models(
     console_ns, MetadataArgs, MetadataOperationData, MetadataUpdatePayload, DocumentMetadataOperation, MetadataDetail
 )
+register_response_schema_models(console_ns, SimpleResultResponse)
 
 
 @console_ns.route("/datasets/<uuid:dataset_id>/metadata")
@@ -83,6 +85,7 @@ class DatasetMetadataApi(Resource):
     @login_required
     @account_initialization_required
     @enterprise_license_required
+    @console_ns.response(204, "Metadata deleted successfully")
     def delete(self, dataset_id, metadata_id):
         current_user, _ = current_account_with_tenant()
         dataset_id_str = str(dataset_id)
@@ -113,6 +116,7 @@ class DatasetMetadataBuiltInFieldActionApi(Resource):
     @login_required
     @account_initialization_required
     @enterprise_license_required
+    @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
     def post(self, dataset_id, action: Literal["enable", "disable"]):
         current_user, _ = current_account_with_tenant()
         dataset_id_str = str(dataset_id)
@@ -136,6 +140,7 @@ class DocumentMetadataEditApi(Resource):
     @account_initialization_required
     @enterprise_license_required
     @console_ns.expect(console_ns.models[MetadataOperationData.__name__])
+    @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
     def post(self, dataset_id):
         current_user, _ = current_account_with_tenant()
         dataset_id_str = str(dataset_id)

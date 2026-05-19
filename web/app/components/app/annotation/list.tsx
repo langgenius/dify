@@ -1,11 +1,8 @@
 'use client'
-import type { FC } from 'react'
 import type { AnnotationItem } from './type'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
-import { cn } from '@langgenius/dify-ui/cn'
-import { RiDeleteBinLine, RiEditLine } from '@remixicon/react'
+import { CheckboxGroup } from '@langgenius/dify-ui/checkbox-group'
 import * as React from 'react'
-import { useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
 import useTimestamp from '@/hooks/use-timestamp'
@@ -19,121 +16,126 @@ type Props = {
   selectedIds: string[]
   onSelectedIdsChange: (selectedIds: string[]) => void
   onBatchDelete: () => Promise<void>
-  onCancel: () => void
 }
 
-const List: FC<Props> = ({
+type AnnotationTableRowProps = {
+  item: AnnotationItem
+  formattedCreatedAt: string
+  onView: (item: AnnotationItem) => void
+  onRemoveClick: (id: string) => void
+}
+
+function AnnotationTableRow({
+  item,
+  formattedCreatedAt,
+  onView,
+  onRemoveClick,
+}: AnnotationTableRowProps) {
+  const { t } = useTranslation()
+  const questionId = React.useId()
+
+  return (
+    <tr
+      className="cursor-pointer border-b border-divider-subtle hover:bg-background-default-hover"
+      onClick={() => onView(item)}
+    >
+      <td className="w-12 px-2 align-middle" onClick={e => e.stopPropagation()}>
+        <div className="flex items-center">
+          <Checkbox
+            className="shrink-0"
+            value={item.id}
+            aria-labelledby={questionId}
+          />
+        </div>
+      </td>
+      <td
+        className="max-w-62.5 overflow-hidden p-3 pr-2 text-ellipsis whitespace-nowrap"
+        title={item.question}
+      >
+        <span id={questionId}>{item.question}</span>
+      </td>
+      <td
+        className="max-w-62.5 overflow-hidden p-3 pr-2 text-ellipsis whitespace-nowrap"
+        title={item.answer}
+      >
+        {item.answer}
+      </td>
+      <td className="p-3 pr-2">{formattedCreatedAt}</td>
+      <td className="p-3 pr-2">{item.hit_count}</td>
+      <td className="w-24 p-3 pr-2" onClick={e => e.stopPropagation()}>
+        <div className="flex space-x-1 text-text-tertiary">
+          <ActionButton aria-label={t('feature.annotation.edit', { ns: 'appDebug' })} onClick={() => onView(item)}>
+            <span aria-hidden className="i-ri-edit-line h-4 w-4" />
+          </ActionButton>
+          <ActionButton
+            aria-label={t('feature.annotation.remove', { ns: 'appDebug' })}
+            onClick={() => onRemoveClick(item.id)}
+          >
+            <span aria-hidden className="i-ri-delete-bin-line h-4 w-4" />
+          </ActionButton>
+        </div>
+      </td>
+    </tr>
+  )
+}
+
+export function List({
   list,
   onView,
   onRemove,
   selectedIds,
   onSelectedIdsChange,
   onBatchDelete,
-  onCancel,
-}) => {
+}: Props) {
   const { t } = useTranslation()
   const { formatTime } = useTimestamp()
   const [currId, setCurrId] = React.useState<string | null>(null)
   const [showConfirmDelete, setShowConfirmDelete] = React.useState(false)
-
-  const isAllSelected = useMemo(() => {
-    return list.length > 0 && list.every(item => selectedIds.includes(item.id))
-  }, [list, selectedIds])
-
-  const isSomeSelected = useMemo(() => {
-    return list.some(item => selectedIds.includes(item.id))
-  }, [list, selectedIds])
-
-  const handleSelectAll = useCallback((checked: boolean) => {
-    const currentPageIds = list.map(item => item.id)
-    const otherPageIds = selectedIds.filter(id => !currentPageIds.includes(id))
-
-    if (checked)
-      onSelectedIdsChange([...otherPageIds, ...currentPageIds])
-    else
-      onSelectedIdsChange(otherPageIds)
-  }, [list, selectedIds, onSelectedIdsChange])
+  const annotationIds = list.map(item => item.id)
 
   return (
     <>
       <div className="relative mt-2 grow overflow-x-auto">
-        <table className={cn('w-full min-w-[440px] border-collapse border-0')}>
-          <thead className="system-xs-medium-uppercase text-text-tertiary">
-            <tr>
-              <td className="w-12 rounded-l-lg bg-background-section-burn px-2 whitespace-nowrap">
-                <Checkbox
-                  className="mr-2"
-                  checked={isAllSelected}
-                  indeterminate={!isAllSelected && isSomeSelected}
-                  aria-label={t('operation.selectAll', { ns: 'common' })}
-                  onCheckedChange={handleSelectAll}
-                />
-              </td>
-              <td className="w-5 bg-background-section-burn pr-1 pl-2 whitespace-nowrap">{t('table.header.question', { ns: 'appAnnotation' })}</td>
-              <td className="bg-background-section-burn py-1.5 pl-3 whitespace-nowrap">{t('table.header.answer', { ns: 'appAnnotation' })}</td>
-              <td className="bg-background-section-burn py-1.5 pl-3 whitespace-nowrap">{t('table.header.createdAt', { ns: 'appAnnotation' })}</td>
-              <td className="bg-background-section-burn py-1.5 pl-3 whitespace-nowrap">{t('table.header.hits', { ns: 'appAnnotation' })}</td>
-              <td className="w-[96px] rounded-r-lg bg-background-section-burn py-1.5 pl-3 whitespace-nowrap">{t('table.header.actions', { ns: 'appAnnotation' })}</td>
-            </tr>
-          </thead>
-          <tbody className="system-sm-regular text-text-secondary">
-            {list.map(item => (
-              <tr
-                key={item.id}
-                className="cursor-pointer border-b border-divider-subtle hover:bg-background-default-hover"
-                onClick={
-                  () => {
-                    onView(item)
-                  }
-                }
-              >
-                <td className="w-12 px-2" onClick={e => e.stopPropagation()}>
-                  <Checkbox
-                    className="mr-2"
-                    checked={selectedIds.includes(item.id)}
-                    aria-label={item.question}
-                    onCheckedChange={(checked) => {
-                      if (checked)
-                        onSelectedIdsChange([...selectedIds, item.id])
-                      else
-                        onSelectedIdsChange(selectedIds.filter(id => id !== item.id))
-                    }}
-                  />
-                </td>
-                <td
-                  className="max-w-[250px] overflow-hidden p-3 pr-2 text-ellipsis whitespace-nowrap"
-                  title={item.question}
-                >
-                  {item.question}
-                </td>
-                <td
-                  className="max-w-[250px] overflow-hidden p-3 pr-2 text-ellipsis whitespace-nowrap"
-                  title={item.answer}
-                >
-                  {item.answer}
-                </td>
-                <td className="p-3 pr-2">{formatTime(item.created_at, t('dateTimeFormat', { ns: 'appLog' }) as string)}</td>
-                <td className="p-3 pr-2">{item.hit_count}</td>
-                <td className="w-[96px] p-3 pr-2" onClick={e => e.stopPropagation()}>
-                  {/* Actions */}
-                  <div className="flex space-x-1 text-text-tertiary">
-                    <ActionButton onClick={() => onView(item)}>
-                      <RiEditLine className="h-4 w-4" />
-                    </ActionButton>
-                    <ActionButton
-                      onClick={() => {
-                        setCurrId(item.id)
-                        setShowConfirmDelete(true)
-                      }}
-                    >
-                      <RiDeleteBinLine className="h-4 w-4" />
-                    </ActionButton>
+        <CheckboxGroup
+          value={selectedIds}
+          onValueChange={onSelectedIdsChange}
+          allValues={annotationIds}
+        >
+          <table className="w-full min-w-110 border-collapse border-0">
+            <thead className="system-xs-medium-uppercase text-text-tertiary">
+              <tr>
+                <td className="w-12 rounded-l-lg bg-background-section-burn px-2 align-middle whitespace-nowrap">
+                  <div className="flex items-center">
+                    <Checkbox
+                      className="shrink-0"
+                      parent
+                      aria-label={t('operation.selectAll', { ns: 'common' })}
+                    />
                   </div>
                 </td>
+                <td className="w-5 bg-background-section-burn pr-1 pl-2 whitespace-nowrap">{t('table.header.question', { ns: 'appAnnotation' })}</td>
+                <td className="bg-background-section-burn py-1.5 pl-3 whitespace-nowrap">{t('table.header.answer', { ns: 'appAnnotation' })}</td>
+                <td className="bg-background-section-burn py-1.5 pl-3 whitespace-nowrap">{t('table.header.createdAt', { ns: 'appAnnotation' })}</td>
+                <td className="bg-background-section-burn py-1.5 pl-3 whitespace-nowrap">{t('table.header.hits', { ns: 'appAnnotation' })}</td>
+                <td className="w-24 rounded-r-lg bg-background-section-burn py-1.5 pl-3 whitespace-nowrap">{t('table.header.actions', { ns: 'appAnnotation' })}</td>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody className="system-sm-regular text-text-secondary">
+              {list.map(item => (
+                <AnnotationTableRow
+                  key={item.id}
+                  item={item}
+                  formattedCreatedAt={formatTime(item.created_at, t('dateTimeFormat', { ns: 'appLog' }) as string)}
+                  onView={onView}
+                  onRemoveClick={(id) => {
+                    setCurrId(id)
+                    setShowConfirmDelete(true)
+                  }}
+                />
+              ))}
+            </tbody>
+          </table>
+        </CheckboxGroup>
         <RemoveAnnotationConfirmModal
           isShow={showConfirmDelete}
           onHide={() => setShowConfirmDelete(false)}
@@ -148,10 +150,9 @@ const List: FC<Props> = ({
           className="absolute bottom-20 left-0 z-20"
           selectedIds={selectedIds}
           onBatchDelete={onBatchDelete}
-          onCancel={onCancel}
+          onSelectedIdsChange={onSelectedIdsChange}
         />
       )}
     </>
   )
 }
-export default React.memo(List)

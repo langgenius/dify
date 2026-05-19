@@ -9,7 +9,8 @@ from sqlalchemy import exists, func, select
 from werkzeug.exceptions import InternalServerError, NotFound
 
 from controllers.common.controller_schemas import MessageFeedbackPayload as _MessageFeedbackPayloadBase
-from controllers.common.schema import register_schema_models
+from controllers.common.fields import SimpleResultResponse
+from controllers.common.schema import register_response_schema_models, register_schema_models
 from controllers.console import console_ns
 from controllers.console.app.error import (
     CompletionRequestError,
@@ -162,6 +163,7 @@ register_schema_models(
     MessageDetailResponse,
     MessageInfiniteScrollPaginationResponse,
 )
+register_response_schema_models(console_ns, SimpleResultResponse)
 
 
 @console_ns.route("/apps/<uuid:app_id>/chat-messages")
@@ -247,7 +249,7 @@ class MessageFeedbackApi(Resource):
     @console_ns.doc(description="Create or update message feedback (like/dislike)")
     @console_ns.doc(params={"app_id": "Application ID"})
     @console_ns.expect(console_ns.models[MessageFeedbackPayload.__name__])
-    @console_ns.response(200, "Feedback updated successfully")
+    @console_ns.response(200, "Feedback updated successfully", console_ns.models[SimpleResultResponse.__name__])
     @console_ns.response(404, "Message not found")
     @console_ns.response(403, "Insufficient permissions")
     @get_app_model

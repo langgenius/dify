@@ -2,7 +2,12 @@
  * @vitest-environment node
  */
 import { describe, expect, it } from 'vitest'
-import { rewriteCookieHeaderForUpstream, rewriteSetCookieHeadersForLocal } from './cookies'
+import {
+  getCookieHeaderValue,
+  rewriteCookieHeaderForUpstream,
+  rewriteSetCookieHeadersForLocal,
+  toScopedLocalCookieName,
+} from './cookies'
 
 describe('dev proxy cookies', () => {
   // Scenario: cookie names should only receive secure host prefixes when configured.
@@ -40,5 +45,58 @@ describe('dev proxy cookies', () => {
     expect(cookies).toEqual([
       'access_token=abc; Path=/; SameSite=Lax',
     ])
+  })
+
+  // Scenario: target-scoped cookies should isolate authentication state between upstream targets.
+  it('should only forward auth cookies from the active local scope', () => {
+    // Arrange
+    const activeAccessTokenName = toScopedLocalCookieName('access_token', 'active')
+    const otherAccessTokenName = toScopedLocalCookieName('access_token', 'other')
+
+    // Act
+    const cookieHeader = rewriteCookieHeaderForUpstream([
+      `${activeAccessTokenName}=active-token`,
+      'access_token=legacy-token',
+      `${otherAccessTokenName}=other-token`,
+      'theme=dark',
+    ].join('; '), {
+      hostPrefixCookies: ['access_token'],
+      localScopeKey: 'active',
+      useHostPrefix: true,
+    })
+
+    // Assert
+    expect(cookieHeader).toBe('__Host-access_token=active-token; theme=dark')
+  })
+
+  // Scenario: upstream auth set-cookie headers should be stored under scoped local names.
+  it('should rewrite upstream set-cookie headers into target-scoped local cookies', () => {
+    // Arrange
+    const scopedAccessTokenName = toScopedLocalCookieName('access_token', 'cloud')
+
+    // Act
+    const cookies = rewriteSetCookieHeadersForLocal([
+      '__Host-access_token=abc; Path=/console/api; Domain=cloud.example.com; Secure; SameSite=None; Partitioned',
+    ], {
+      hostPrefixCookies: ['access_token'],
+      localScopeKey: 'cloud',
+    })
+
+    // Assert
+    expect(cookies).toEqual([
+      `${scopedAccessTokenName}=abc; Path=/; SameSite=Lax`,
+    ])
+  })
+
+  // Scenario: request header helpers should read scoped CSRF cookies without exposing scope logic to callers.
+  it('should read scoped cookie values from cookie headers', () => {
+    // Arrange
+    const scopedCsrfCookieName = toScopedLocalCookieName('csrf_token', 'cloud')
+
+    // Act
+    const csrfToken = getCookieHeaderValue(`${scopedCsrfCookieName}=csrf; csrf_token=legacy`, scopedCsrfCookieName)
+
+    // Assert
+    expect(csrfToken).toBe('csrf')
   })
 })
