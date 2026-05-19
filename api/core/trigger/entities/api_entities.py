@@ -43,8 +43,8 @@ class TriggerProviderApiEntity(BaseModel):
     icon_dark: str | None = Field(default=None, description="The dark icon of the trigger provider")
     tags: list[str] = Field(default_factory=list, description="The tags of the trigger provider")
 
-    plugin_id: str | None = Field(default="", description="The plugin id of the tool")
-    plugin_unique_identifier: str | None = Field(default="", description="The unique identifier of the tool")
+    plugin_id: str = Field(default="", description="The plugin id of the tool")
+    plugin_unique_identifier: str = Field(default="", description="The unique identifier of the tool")
 
     supported_creation_methods: list[TriggerCreationMethod] = Field(
         default_factory=list,

@@ -459,7 +459,7 @@ class AppTrigger(TypeBase):
     )
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     app_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
-    node_id: Mapped[str | None] = mapped_column(String(64), nullable=False)
+    node_id: Mapped[str] = mapped_column(String(64), nullable=False)
     trigger_type: Mapped[str] = mapped_column(EnumText(AppTriggerType, length=50), nullable=False)
     title: Mapped[str] = mapped_column(String(255), nullable=False)
     provider_name: Mapped[str | None] = mapped_column(String(255), nullable=True, server_default="", default="")

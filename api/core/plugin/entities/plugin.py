@@ -28,25 +28,25 @@ class PluginResourceRequirements(BaseModel):
 
     class Permission(BaseModel):
         class Tool(BaseModel):
-            enabled: bool | None = Field(default=False)
+            enabled: bool = Field(default=False)
 
         class Model(BaseModel):
-            enabled: bool | None = Field(default=False)
-            llm: bool | None = Field(default=False)
-            text_embedding: bool | None = Field(default=False)
-            rerank: bool | None = Field(default=False)
-            tts: bool | None = Field(default=False)
-            speech2text: bool | None = Field(default=False)
-            moderation: bool | None = Field(default=False)
+            enabled: bool = Field(default=False)
+            llm: bool = Field(default=False)
+            text_embedding: bool = Field(default=False)
+            rerank: bool = Field(default=False)
+            tts: bool = Field(default=False)
+            speech2text: bool = Field(default=False)
+            moderation: bool = Field(default=False)
 
         class Node(BaseModel):
-            enabled: bool | None = Field(default=False)
+            enabled: bool = Field(default=False)
 
         class Endpoint(BaseModel):
-            enabled: bool | None = Field(default=False)
+            enabled: bool = Field(default=False)
 
         class Storage(BaseModel):
-            enabled: bool | None = Field(default=False)
+            enabled: bool = Field(default=False)
             size: int = Field(ge=1024, le=1073741824, default=1048576)
 
         tool: Tool | None = Field(default=None)
