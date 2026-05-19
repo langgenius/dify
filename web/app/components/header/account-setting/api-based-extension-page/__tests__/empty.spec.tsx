@@ -1,5 +1,5 @@
 import { render, screen } from '@testing-library/react'
-import Empty from '../empty'
+import { Empty } from '../empty'
 
 describe('Empty State', () => {
   describe('Rendering', () => {

@@ -53,6 +53,18 @@
       "types": "./src/dropdown-menu/index.tsx",
       "import": "./src/dropdown-menu/index.tsx"
     },
+    "./field": {
+      "types": "./src/field/index.tsx",
+      "import": "./src/field/index.tsx"
+    },
+    "./fieldset": {
+      "types": "./src/fieldset/index.tsx",
+      "import": "./src/fieldset/index.tsx"
+    },
+    "./form": {
+      "types": "./src/form/index.tsx",
+      "import": "./src/form/index.tsx"
+    },
     "./meter": {
       "types": "./src/meter/index.tsx",
       "import": "./src/meter/index.tsx"
