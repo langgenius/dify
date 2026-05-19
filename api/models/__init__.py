@@ -11,6 +11,8 @@ from .account import (
 from .agent import (
     Agent,
     AgentConfigVersion,
+    AgentConfigVersionOperation,
+    AgentConfigVersionRevision,
     AgentKind,
     AgentScope,
     AgentSource,
@@ -137,6 +139,8 @@ __all__ = [
     "AccountTrialAppRecord",
     "Agent",
     "AgentConfigVersion",
+    "AgentConfigVersionOperation",
+    "AgentConfigVersionRevision",
     "AgentKind",
     "AgentScope",
     "AgentSource",

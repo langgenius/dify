@@ -35,6 +35,14 @@ class AgentStatus(StrEnum):
     ARCHIVED = "archived"
 
 
+class AgentConfigVersionOperation(StrEnum):
+    CREATE_VERSION = "create_version"
+    SAVE_CURRENT_VERSION = "save_current_version"
+    SAVE_NEW_VERSION = "save_new_version"
+    SAVE_NEW_AGENT = "save_new_agent"
+    SAVE_TO_ROSTER = "save_to_roster"
+
+
 class WorkflowAgentBindingType(StrEnum):
     ROSTER_AGENT = "roster_agent"
     INLINE_AGENT = "inline_agent"
@@ -116,6 +124,61 @@ class AgentConfigVersion(Base):
     @property
     def config_snapshot_dict(self) -> dict[str, Any]:
         return json.loads(self.config_snapshot) if self.config_snapshot else {}
+
+
+class AgentConfigVersionRevision(Base):
+    """Audit snapshot for every Agent Soul save operation.
+
+    ``AgentConfigVersion`` represents a semantic version that workflow bindings
+    can reference. Revisions record mutable saves against that semantic version,
+    especially ``Save to Current Version`` where the version id must stay stable.
+    JSON fields are stored as ``LongText`` and must not use DB server defaults.
+    """
+
+    __tablename__ = "agent_config_version_revisions"
+    __table_args__ = (
+        sa.PrimaryKeyConstraint("id", name="agent_config_version_revision_pkey"),
+        UniqueConstraint(
+            "agent_config_version_id",
+            "revision",
+            name="agent_config_version_revision_version_revision_unique",
+        ),
+        Index("agent_config_version_revision_tenant_agent_created_at_idx", "tenant_id", "agent_id", "created_at"),
+        Index(
+            "agent_config_version_revision_tenant_version_created_at_idx",
+            "tenant_id",
+            "agent_config_version_id",
+            "created_at",
+        ),
+    )
+
+    id: Mapped[str] = mapped_column(StringUUID, primary_key=True, default=lambda: str(uuidv7()))
+    tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    agent_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    agent_config_version_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    revision: Mapped[int] = mapped_column(sa.Integer, nullable=False)
+    operation: Mapped[AgentConfigVersionOperation] = mapped_column(
+        EnumText(AgentConfigVersionOperation, length=64), nullable=False
+    )
+    config_snapshot: Mapped[str] = mapped_column(LongText, nullable=False)
+    previous_config_snapshot: Mapped[str | None] = mapped_column(LongText, nullable=True)
+    summary: Mapped[str | None] = mapped_column(LongText, nullable=True)
+    version_note: Mapped[str | None] = mapped_column(LongText, nullable=True)
+    created_by: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        nullable=False,
+        default=naive_utc_now,
+        server_default=func.current_timestamp(),
+    )
+
+    @property
+    def config_snapshot_dict(self) -> dict[str, Any]:
+        return json.loads(self.config_snapshot) if self.config_snapshot else {}
+
+    @property
+    def previous_config_snapshot_dict(self) -> dict[str, Any] | None:
+        return json.loads(self.previous_config_snapshot) if self.previous_config_snapshot else None
 
 
 class WorkflowAgentNodeBinding(DefaultFieldsMixin, Base):

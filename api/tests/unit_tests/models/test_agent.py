@@ -7,6 +7,8 @@ from sqlalchemy.exc import IntegrityError
 from models.agent import (
     Agent,
     AgentConfigVersion,
+    AgentConfigVersionOperation,
+    AgentConfigVersionRevision,
     AgentKind,
     AgentScope,
     AgentSource,
@@ -25,6 +27,7 @@ def test_agent_enums_match_prd_boundaries():
     assert AgentSource.WORKFLOW.value == "workflow"
     assert AgentStatus.ACTIVE.value == "active"
     assert AgentStatus.ARCHIVED.value == "archived"
+    assert AgentConfigVersionOperation.SAVE_CURRENT_VERSION.value == "save_current_version"
     assert WorkflowAgentBindingType.ROSTER_AGENT.value == "roster_agent"
     assert WorkflowAgentBindingType.INLINE_AGENT.value == "inline_agent"
 
@@ -149,7 +152,36 @@ def test_long_text_columns_do_not_use_mysql_incompatible_server_defaults():
     for column in (
         Agent.__table__.c.description,
         AgentConfigVersion.__table__.c.config_snapshot,
+        AgentConfigVersionRevision.__table__.c.config_snapshot,
+        AgentConfigVersionRevision.__table__.c.previous_config_snapshot,
         WorkflowAgentNodeBinding.__table__.c.node_job_config,
     ):
         assert isinstance(column.type, LongText)
         assert column.server_default is None
+
+
+def test_agent_config_version_revision_records_audit_snapshot():
+    snapshot = {"schema_version": 1, "prompt": {"system_prompt": "new"}}
+    previous_snapshot = {"schema_version": 1, "prompt": {"system_prompt": "old"}}
+    revision = AgentConfigVersionRevision(
+        tenant_id="tenant-1",
+        agent_id="agent-1",
+        agent_config_version_id="version-1",
+        revision=2,
+        operation=AgentConfigVersionOperation.SAVE_CURRENT_VERSION,
+        config_snapshot=json.dumps(snapshot),
+        previous_config_snapshot=json.dumps(previous_snapshot),
+    )
+
+    unique_constraints = {
+        constraint.name: tuple(column.name for column in constraint.columns)
+        for constraint in AgentConfigVersionRevision.__table__.constraints
+        if constraint.__class__.__name__ == "UniqueConstraint"
+    }
+
+    assert unique_constraints["agent_config_version_revision_version_revision_unique"] == (
+        "agent_config_version_id",
+        "revision",
+    )
+    assert revision.config_snapshot_dict == snapshot
+    assert revision.previous_config_snapshot_dict == previous_snapshot
