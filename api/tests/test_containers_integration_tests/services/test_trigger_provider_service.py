@@ -92,6 +92,7 @@ class TestTriggerProviderService:
         credential_type,
         credentials,
         mock_external_service_dependencies,
+        name: str | None = None,
     ):
         """
         Helper method to create a test trigger subscription.
@@ -104,6 +105,7 @@ class TestTriggerProviderService:
             credential_type: Credential type
             credentials: Credentials dict
             mock_external_service_dependencies: Mock dependencies
+            name: Optional subscription name. Pass a deterministic value when a test depends on name uniqueness.
 
         Returns:
             TriggerSubscription: Created subscription instance
@@ -123,7 +125,7 @@ class TestTriggerProviderService:
         )
 
         subscription = TriggerSubscription(
-            name=fake.word(),
+            name=name or fake.word(),
             tenant_id=tenant_id,
             user_id=user_id,
             provider_id=str(provider_id),
@@ -527,6 +529,7 @@ class TestTriggerProviderService:
             credential_type,
             {"api_key": "key1"},
             mock_external_service_dependencies,
+            name="subscription-1",
         )
 
         # Create second subscription with different name
@@ -538,6 +541,7 @@ class TestTriggerProviderService:
             credential_type,
             {"api_key": "key2"},
             mock_external_service_dependencies,
+            name="subscription-2",
         )
 
         new_subscription_entity = TriggerSubscriptionEntity(
