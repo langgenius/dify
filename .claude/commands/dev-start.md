@@ -63,12 +63,13 @@ docker compose \
   exec -T api flask db upgrade
 ```
 
-### 6. Wait for setup endpoint to be healthy (max 60 seconds)
+### 6. Wait for API to be healthy (max 60 seconds)
 
 ```bash
 echo "Waiting for API to be ready..."
 for i in $(seq 1 30); do
-  if curl -s -o /dev/null -w "%{http_code}" http://localhost/apps 2>/dev/null | grep -q "200"; then
+  STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost/console/api/setup 2>/dev/null)
+  if [ "$STATUS" = "200" ]; then
     echo "API is ready ✅"
     break
   fi
@@ -76,7 +77,30 @@ for i in $(seq 1 30); do
 done
 ```
 
-### 6. Show final status
+### 7. Auto-create admin account (skips the /install page)
+
+Read `SETUP_ADMIN_EMAIL`, `SETUP_ADMIN_PASSWORD`, `SETUP_ADMIN_NAME` from `deploy/.env.local`. Check if setup is already done; if not, create the admin account automatically.
+
+```bash
+ENV_FILE=/Users/narayana-nexoraa/Developer/HSD/dify/deploy/.env.local
+ADMIN_EMAIL=$(grep '^SETUP_ADMIN_EMAIL=' "$ENV_FILE" | cut -d= -f2)
+ADMIN_PASSWORD=$(grep '^SETUP_ADMIN_PASSWORD=' "$ENV_FILE" | cut -d= -f2)
+ADMIN_NAME=$(grep '^SETUP_ADMIN_NAME=' "$ENV_FILE" | cut -d= -f2)
+
+SETUP_STEP=$(curl -s http://localhost/console/api/setup | python3 -c "import sys,json; print(json.load(sys.stdin).get('step',''))" 2>/dev/null)
+
+if [ "$SETUP_STEP" = "not_started" ]; then
+  echo "Creating admin account ($ADMIN_EMAIL)..."
+  RESULT=$(curl -s -X POST http://localhost/console/api/setup \
+    -H "Content-Type: application/json" \
+    -d "{\"email\":\"$ADMIN_EMAIL\",\"name\":\"$ADMIN_NAME\",\"password\":\"$ADMIN_PASSWORD\"}")
+  echo "$RESULT" | grep -q "success" && echo "Admin account created ✅" || echo "Setup response: $RESULT"
+else
+  echo "Admin account already exists ✅"
+fi
+```
+
+### 9. Show final status
 
 ```bash
 docker compose \
@@ -91,8 +115,10 @@ Then print:
 ```
 ✅ Nexoraa Dify is running locally!
 
-  App:     http://localhost
-  Console: http://localhost/apps
+  App:     http://localhost/apps
+  Login:   admin@nexoraa.local / nexoraa123  (or check SETUP_ADMIN_* in deploy/.env.local)
+
+  Sessions last 30 days — log in once and stay logged in.
 
 To stop:      /dev-stop
 To view logs: docker compose -f deploy/docker-compose.yml -f deploy/docker-compose.local.yml --env-file deploy/.env.local logs -f api

@@ -132,11 +132,32 @@ deploy-plugin_daemon-1   langgenius/dify-plugin-daemon Up
 deploy-nginx-1           nginx:latest                 Up
 ```
 
+### Step 7b — Auto-create admin account (skips the /install page)
+
+> Required on first run only. Safe to run again — it's a no-op if setup is already done.
+
+```bash
+# Wait for API to be ready first
+curl -s http://localhost/console/api/setup
+
+# Create admin (uses credentials from .env.local)
+ADMIN_EMAIL=$(grep '^SETUP_ADMIN_EMAIL=' deploy/.env.local | cut -d= -f2)
+ADMIN_PASSWORD=$(grep '^SETUP_ADMIN_PASSWORD=' deploy/.env.local | cut -d= -f2)
+ADMIN_NAME=$(grep '^SETUP_ADMIN_NAME=' deploy/.env.local | cut -d= -f2)
+
+curl -s -X POST http://localhost/console/api/setup \
+  -H "Content-Type: application/json" \
+  -d "{\"email\":\"$ADMIN_EMAIL\",\"name\":\"$ADMIN_NAME\",\"password\":\"$ADMIN_PASSWORD\"}"
+```
+
 ### Step 8 — Open in browser
 
-Go to: **http://localhost/install**
+Go to: **http://localhost/apps** and log in with:
 
-Create your admin account on the first visit. After that, log in at **http://localhost/apps**.
+- **Email:** `admin@nexoraa.local` (or whatever you set in `SETUP_ADMIN_EMAIL`)
+- **Password:** `nexoraa123` (or whatever you set in `SETUP_ADMIN_PASSWORD`)
+
+Sessions last **30 days** — log in once and you won't need to again.
 
 ---
 

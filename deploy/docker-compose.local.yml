@@ -7,6 +7,8 @@ services:
     pull_policy: never
     env_file:
       - .env.local
+    environment:
+      ACCESS_TOKEN_EXPIRE_MINUTES: ${ACCESS_TOKEN_EXPIRE_MINUTES:-43200}
 
   worker:
     build:
@@ -16,6 +18,8 @@ services:
     pull_policy: never
     env_file:
       - .env.local
+    environment:
+      ACCESS_TOKEN_EXPIRE_MINUTES: ${ACCESS_TOKEN_EXPIRE_MINUTES:-43200}
 
   web:
     build:
