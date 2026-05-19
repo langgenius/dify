@@ -16,7 +16,7 @@ from controllers.common.errors import (
     TooManyFilesError,
     UnsupportedFileTypeError,
 )
-from controllers.common.schema import register_schema_models
+from controllers.common.schema import register_response_schema_models, register_schema_models
 from controllers.console import console_ns
 from controllers.console.admin import admin_required
 from controllers.console.error import AccountNotLinkTenantError
@@ -89,6 +89,12 @@ class TenantInfoResponse(ResponseModel):
         return to_timestamp(value)
 
 
+class WorkspacePermissionResponse(ResponseModel):
+    workspace_id: str
+    allow_member_invite: bool
+    allow_owner_transfer: bool
+
+
 register_schema_models(
     console_ns,
     WorkspaceListQuery,
@@ -97,6 +103,7 @@ register_schema_models(
     WorkspaceInfoPayload,
     TenantInfoResponse,
 )
+register_response_schema_models(console_ns, WorkspacePermissionResponse)
 
 provider_fields = {
     "provider_name": fields.String,
@@ -357,6 +364,7 @@ class WorkspaceInfoApi(Resource):
 class WorkspacePermissionApi(Resource):
     """Get workspace permissions for the current workspace."""
 
+    @console_ns.response(200, "Success", console_ns.models[WorkspacePermissionResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required

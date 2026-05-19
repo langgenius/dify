@@ -12,8 +12,9 @@ from sqlalchemy.orm import Session
 from werkzeug.datastructures import MultiDict
 from werkzeug.exceptions import BadRequest
 
+from controllers.common.fields import RedirectUrlResponse, SimpleResultResponse
 from controllers.common.helpers import FileInfo
-from controllers.common.schema import register_enum_models, register_schema_models
+from controllers.common.schema import register_enum_models, register_response_schema_models, register_schema_models
 from controllers.console import console_ns
 from controllers.console.app.wraps import get_app_model
 from controllers.console.workspace.models import LoadBalancingPayload
@@ -413,6 +414,7 @@ class AppExportResponse(ResponseModel):
 
 
 register_enum_models(console_ns, RetrievalMethod, WorkflowExecutionStatus, DatasetPermissionEnum)
+register_response_schema_models(console_ns, RedirectUrlResponse, SimpleResultResponse)
 
 register_schema_models(
     console_ns,
@@ -724,6 +726,7 @@ class AppExportApi(Resource):
 
 @console_ns.route("/apps/<uuid:app_id>/publish-to-creators-platform")
 class AppPublishToCreatorsPlatformApi(Resource):
+    @console_ns.response(200, "Success", console_ns.models[RedirectUrlResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -861,7 +864,11 @@ class AppTraceApi(Resource):
     @console_ns.doc(description="Update app tracing configuration")
     @console_ns.doc(params={"app_id": "Application ID"})
     @console_ns.expect(console_ns.models[AppTracePayload.__name__])
-    @console_ns.response(200, "Trace configuration updated successfully")
+    @console_ns.response(
+        200,
+        "Trace configuration updated successfully",
+        console_ns.models[SimpleResultResponse.__name__],
+    )
     @console_ns.response(403, "Insufficient permissions")
     @setup_required
     @login_required

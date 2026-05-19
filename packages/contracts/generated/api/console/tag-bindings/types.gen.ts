@@ -10,6 +10,10 @@ export type TagBindingPayload = {
   type: TagType
 }
 
+export type SimpleResultResponse = {
+  result: string
+}
+
 export type TagBindingRemovePayload = {
   tag_ids: Array<string>
   target_id: string
@@ -26,9 +30,7 @@ export type PostTagBindingsData = {
 }
 
 export type PostTagBindingsResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: SimpleResultResponse
 }
 
 export type PostTagBindingsResponse = PostTagBindingsResponses[keyof PostTagBindingsResponses]
@@ -41,9 +43,7 @@ export type PostTagBindingsRemoveData = {
 }
 
 export type PostTagBindingsRemoveResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: SimpleResultResponse
 }
 
 export type PostTagBindingsRemoveResponse

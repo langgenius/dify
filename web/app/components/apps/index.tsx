@@ -1,6 +1,7 @@
 'use client'
 import type { CreateAppModalProps } from '../explore/create-app-modal'
 import type { TryAppSelection } from '@/types/try-app'
+import type { TrackCreateAppParams } from '@/utils/create-app-tracking'
 import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useEducationInit } from '@/app/education-apply/hooks'
@@ -31,6 +32,7 @@ const Apps = () => {
 
   const [currentTryAppParams, setCurrentTryAppParams] = useState<TryAppSelection | undefined>(undefined)
   const currentCreateAppModeRef = useRef<TryAppSelection['app']['app']['mode'] | null>(null)
+  const currentCreateAppTrackingRef = useRef<Pick<TrackCreateAppParams, 'source' | 'templateId'> | null>(null)
   const currApp = currentTryAppParams?.app
   const [isShowTryAppPanel, setIsShowTryAppPanel] = useState(false)
   const hideTryAppPanel = useCallback(() => {
@@ -46,13 +48,24 @@ const Apps = () => {
   const [isShowCreateModal, setIsShowCreateModal] = useState(false)
 
   const handleShowFromTryApp = useCallback(() => {
+    currentCreateAppTrackingRef.current = {
+      source: 'studio_template_preview',
+      templateId: currentTryAppParams?.appId || currentTryAppParams?.app.app_id,
+    }
     setIsShowCreateModal(true)
-  }, [])
-  const trackCurrentCreateApp = useCallback(() => {
-    if (!currentCreateAppModeRef.current)
+  }, [currentTryAppParams?.app.app_id, currentTryAppParams?.appId])
+  const trackCurrentCreateApp = useCallback((appMode?: TryAppSelection['app']['app']['mode'] | null) => {
+    const currentCreateAppTracking = currentCreateAppTrackingRef.current
+    const resolvedAppMode = appMode ?? currentCreateAppModeRef.current
+    if (!resolvedAppMode || !currentCreateAppTracking)
       return
 
-    trackCreateApp({ appMode: currentCreateAppModeRef.current })
+    trackCreateApp({
+      ...currentCreateAppTracking,
+      appMode: resolvedAppMode,
+    })
+    currentCreateAppTrackingRef.current = null
+    currentCreateAppModeRef.current = null
   }, [])
 
   const [controlRefreshList, setControlRefreshList] = useState(0)
@@ -81,19 +94,25 @@ const Apps = () => {
 
   const onConfirmDSL = useCallback(async () => {
     await handleImportDSLConfirm({
-      onSuccess: () => {
-        trackCurrentCreateApp()
+      onSuccess: (response) => {
+        trackCurrentCreateApp(response.app_mode)
         onSuccess()
       },
     })
   }, [handleImportDSLConfirm, onSuccess, trackCurrentCreateApp])
 
   const handleMarketplaceTemplateConfirm = useCallback(async (dslContent: string) => {
+    currentCreateAppModeRef.current = null
+    currentCreateAppTrackingRef.current = {
+      source: 'external',
+      templateId: templateId || undefined,
+    }
     await handleImportDSL({
       mode: DSLImportMode.YAML_CONTENT,
       yaml_content: dslContent,
     }, {
-      onSuccess: () => {
+      onSuccess: (response) => {
+        trackCurrentCreateApp(response.app_mode)
         handleCloseTemplateModal()
         onSuccess()
       },
@@ -102,7 +121,7 @@ const Apps = () => {
         setShowDSLConfirmModal(true)
       },
     })
-  }, [handleImportDSL, handleCloseTemplateModal, onSuccess])
+  }, [handleImportDSL, handleCloseTemplateModal, onSuccess, templateId, trackCurrentCreateApp])
 
   const onCreate: CreateAppModalProps['onConfirm'] = useCallback(async ({
     name,
@@ -127,8 +146,8 @@ const Apps = () => {
       description,
     }
     await handleImportDSL(payload, {
-      onSuccess: () => {
-        trackCurrentCreateApp()
+      onSuccess: (response) => {
+        trackCurrentCreateApp(response.app_mode)
         setIsShowCreateModal(false)
       },
       onPending: () => {
