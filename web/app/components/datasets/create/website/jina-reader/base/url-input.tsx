@@ -1,9 +1,9 @@
 'use client'
 import type { FC } from 'react'
+import { Button } from '@langgenius/dify-ui/button'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
 import { useDocLink } from '@/context/i18n'
 import Input from '../../base/input'
 
@@ -42,7 +42,7 @@ const UrlInput: FC<Props> = ({
         onClick={handleOnRun}
         className="ml-2"
         loading={isRunning}
-        data-testid="url-input-run-button"
+        aria-label={t(`${I18N_PREFIX}.run`, { ns: 'datasetCreation' })}
       >
         {!isRunning ? t(`${I18N_PREFIX}.run`, { ns: 'datasetCreation' }) : ''}
       </Button>

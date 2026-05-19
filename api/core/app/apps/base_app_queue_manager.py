@@ -2,7 +2,7 @@ import logging
 import queue
 import threading
 import time
-from abc import abstractmethod
+from abc import ABC, abstractmethod
 from enum import IntEnum, auto
 from typing import Any
 
@@ -20,8 +20,8 @@ from core.app.entities.queue_entities import (
     QueueStopEvent,
     WorkflowQueueMessage,
 )
-from core.workflow.runtime import GraphRuntimeState
 from extensions.ext_redis import redis_client
+from graphon.runtime import GraphRuntimeState
 
 logger = logging.getLogger(__name__)
 
@@ -31,7 +31,7 @@ class PublishFrom(IntEnum):
     TASK_PIPELINE = auto()
 
 
-class AppQueueManager:
+class AppQueueManager(ABC):
     def __init__(self, task_id: str, user_id: str, invoke_from: InvokeFrom):
         if not user_id:
             raise ValueError("user is required")
@@ -61,27 +61,30 @@ class AppQueueManager:
         listen_timeout = dify_config.APP_MAX_EXECUTION_TIME
         start_time = time.time()
         last_ping_time: int | float = 0
-        while True:
-            try:
-                message = self._q.get(timeout=1)
-                if message is None:
-                    break
+        try:
+            while True:
+                try:
+                    message = self._q.get(timeout=1)
+                    if message is None:
+                        break
 
-                yield message
-            except queue.Empty:
-                continue
-            finally:
-                elapsed_time = time.time() - start_time
-                if elapsed_time >= listen_timeout or self._is_stopped():
-                    # publish two messages to make sure the client can receive the stop signal
-                    # and stop listening after the stop signal processed
-                    self.publish(
-                        QueueStopEvent(stopped_by=QueueStopEvent.StopBy.USER_MANUAL), PublishFrom.TASK_PIPELINE
-                    )
+                    yield message
+                except queue.Empty:
+                    continue
+                finally:
+                    elapsed_time = time.time() - start_time
+                    if elapsed_time >= listen_timeout or self._is_stopped():
+                        # publish two messages to make sure the client can receive the stop signal
+                        # and stop listening after the stop signal processed
+                        self.publish(
+                            QueueStopEvent(stopped_by=QueueStopEvent.StopBy.USER_MANUAL), PublishFrom.TASK_PIPELINE
+                        )
 
-                if elapsed_time // 10 > last_ping_time:
-                    self.publish(QueuePingEvent(), PublishFrom.TASK_PIPELINE)
-                    last_ping_time = elapsed_time // 10
+                    if elapsed_time // 10 > last_ping_time:
+                        self.publish(QueuePingEvent(), PublishFrom.TASK_PIPELINE)
+                        last_ping_time = elapsed_time // 10
+        finally:
+            self._graph_runtime_state = None  # Release reference once consumers finish or close the generator.
 
     def stop_listen(self):
         """
@@ -90,7 +93,6 @@ class AppQueueManager:
         """
         self._clear_task_belong_cache()
         self._q.put(None)
-        self._graph_runtime_state = None  # Release reference to allow GC to reclaim memory
 
     def _clear_task_belong_cache(self) -> None:
         """
@@ -122,7 +124,7 @@ class AppQueueManager:
         """Attach the live graph runtime state reference for downstream consumers."""
         self._graph_runtime_state = graph_runtime_state
 
-    def publish(self, event: AppQueueEvent, pub_from: PublishFrom):
+    def publish(self, event: AppQueueEvent, pub_from: PublishFrom) -> None:
         """
         Publish event to queue
         :param event:
@@ -133,7 +135,7 @@ class AppQueueManager:
         self._publish(event, pub_from)
 
     @abstractmethod
-    def _publish(self, event: AppQueueEvent, pub_from: PublishFrom):
+    def _publish(self, event: AppQueueEvent, pub_from: PublishFrom) -> None:
         """
         Publish event to queue
         :param event:

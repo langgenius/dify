@@ -4,25 +4,23 @@ import enum
 from collections.abc import Mapping, Sequence
 from datetime import datetime
 from enum import StrEnum
-from typing import Any, Generic, TypeVar
+from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
 
 from core.agent.plugin_entities import AgentProviderEntityWithPlugin
 from core.datasource.entities.datasource_entities import DatasourceProviderEntityWithPlugin
-from core.model_runtime.entities.model_entities import AIModelEntity
-from core.model_runtime.entities.provider_entities import ProviderEntity
 from core.plugin.entities.base import BasePluginEntity
 from core.plugin.entities.parameters import PluginParameterOption
 from core.plugin.entities.plugin import PluginDeclaration, PluginEntity
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_entities import ToolProviderEntityWithPlugin
 from core.trigger.entities.entities import TriggerProviderEntity
+from graphon.model_runtime.entities.model_entities import AIModelEntity
+from graphon.model_runtime.entities.provider_entities import ProviderEntity
 
-T = TypeVar("T", bound=(BaseModel | dict | list | bool | str))
 
-
-class PluginDaemonBasicResponse(BaseModel, Generic[T]):
+class PluginDaemonBasicResponse[T: BaseModel | dict | list | bool | str](BaseModel):
     """
     Basic response from plugin daemon.
     """
@@ -75,7 +73,7 @@ class PluginBasicBooleanResponse(BaseModel):
     """
 
     result: bool
-    credentials: dict | None = None
+    credentials: dict[str, Any] | None = None
 
 
 class PluginModelSchemaEntity(BaseModel):
@@ -157,6 +155,7 @@ class PluginInstallTaskPluginStatus(BaseModel):
     message: str = Field(description="The message of the install task.")
     icon: str = Field(description="The icon of the plugin.")
     labels: I18nObject = Field(description="The labels of the plugin.")
+    source: str | None = Field(default=None, description="The installation source of the plugin")
 
 
 class PluginInstallTask(BasePluginEntity):

@@ -35,6 +35,8 @@
   "error.emailEmpty": "E-Mail-Adresse wird benötigt",
   "error.emailInValid": "Bitte gib eine gültige E-Mail-Adresse ein",
   "error.invalidEmailOrPassword": "Ungültige E-Mail oder Passwort.",
+  "error.invalidRedirectUrlOrAppCode": "Ungültige Weiterleitungs-URL oder App-Code",
+  "error.invalidSSOProtocol": "Ungültiges SSO-Protokoll",
   "error.nameEmpty": "Name wird benötigt",
   "error.passwordEmpty": "Passwort wird benötigt",
   "error.passwordInvalid": "Das Passwort muss Buchstaben und Zahlen enthalten und länger als 8 Zeichen sein",

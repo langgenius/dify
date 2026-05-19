@@ -1,0 +1,16 @@
+name: Setup Web Environment
+description: Set up Node.js, Vite+, pnpm, and web dependencies
+
+runs:
+  using: composite
+  steps:
+    - name: Setup pnpm
+      uses: pnpm/action-setup@8912a9102ac27614460f54aedde9e1e7f9aec20d # v6.0.5
+      with:
+        run_install: false
+    - name: Setup Vite+
+      uses: voidzero-dev/setup-vp@4f5aa3e38c781f1b01e78fb9255527cee8a6efa6 # v1.8.0
+      with:
+        node-version-file: .nvmrc
+        cache: true
+        run-install: true

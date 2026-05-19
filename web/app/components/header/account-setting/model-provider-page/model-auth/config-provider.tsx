@@ -3,6 +3,10 @@ import type {
   ModelProvider,
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import {
+  Button,
+} from '@langgenius/dify-ui/button'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
+import {
   RiEqualizer2Line,
 } from '@remixicon/react'
 import {
@@ -10,10 +14,6 @@ import {
   useCallback,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import {
-  Button,
-} from '@/app/components/base/button'
-import Tooltip from '@/app/components/base/tooltip'
 import { ConfigurationMethodEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import Authorized from './authorized'
 import { useCredentialStatus } from './hooks'
@@ -53,11 +53,11 @@ const ConfigProvider = ({
     )
     if (notAllowCustomCredential && !hasCredential) {
       return (
-        <Tooltip
-          asChild
-          popupContent={t('auth.credentialUnavailable', { ns: 'plugin' })}
-        >
-          {Item}
+        <Tooltip>
+          <TooltipTrigger render={Item} />
+          <TooltipContent>
+            {t('auth.credentialUnavailable', { ns: 'plugin' })}
+          </TooltipContent>
         </Tooltip>
       )
     }

@@ -4,20 +4,14 @@ import copy
 import logging
 import re
 from abc import ABC, abstractmethod
-from collections.abc import Callable, Collection, Iterable, Sequence, Set
+from collections.abc import Callable, Iterable, Sequence
+from collections.abc import Set as AbstractSet
 from dataclasses import dataclass
-from typing import (
-    Any,
-    Literal,
-    TypeVar,
-    Union,
-)
+from typing import Any, Literal
 
 from core.rag.models.document import BaseDocumentTransformer, Document
 
 logger = logging.getLogger(__name__)
-
-TS = TypeVar("TS", bound="TextSplitter")
 
 
 def _split_text_with_regex(text: str, separator: str, keep_separator: bool) -> list[str]:
@@ -70,7 +64,7 @@ class TextSplitter(BaseDocumentTransformer, ABC):
     def split_text(self, text: str) -> list[str]:
         """Split text into multiple components."""
 
-    def create_documents(self, texts: list[str], metadatas: list[dict] | None = None) -> list[Document]:
+    def create_documents(self, texts: list[str], metadatas: list[dict[str, Any]] | None = None) -> list[Document]:
         """Create documents from a list of texts."""
         _metadatas = metadatas or [{}] * len(texts)
         documents = []
@@ -194,8 +188,8 @@ class TokenTextSplitter(TextSplitter):
         self,
         encoding_name: str = "gpt2",
         model_name: str | None = None,
-        allowed_special: Union[Literal["all"], Set[str]] = set(),
-        disallowed_special: Union[Literal["all"], Collection[str]] = "all",
+        allowed_special: Literal["all"] | AbstractSet[str] = frozenset(),
+        disallowed_special: Literal["all"] | AbstractSet[str] = "all",
         **kwargs: Any,
     ):
         """Create a new TextSplitter."""
@@ -214,8 +208,8 @@ class TokenTextSplitter(TextSplitter):
         else:
             enc = tiktoken.get_encoding(encoding_name)
         self._tokenizer = enc
-        self._allowed_special = allowed_special
-        self._disallowed_special = disallowed_special
+        self._allowed_special: Literal["all"] | AbstractSet[str] = allowed_special
+        self._disallowed_special: Literal["all"] | AbstractSet[str] = disallowed_special
 
     def split_text(self, text: str) -> list[str]:
         def _encode(_text: str) -> list[int]:

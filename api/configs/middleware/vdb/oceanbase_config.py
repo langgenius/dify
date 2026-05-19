@@ -1,3 +1,5 @@
+from typing import Literal
+
 from pydantic import Field, PositiveInt
 from pydantic_settings import BaseSettings
 
@@ -48,4 +50,44 @@ class OceanBaseVectorConfig(BaseSettings):
             "'thai_ftparser' (Thai tokenizer). Default is 'ik'"
         ),
         default="ik",
+    )
+
+    OCEANBASE_VECTOR_BATCH_SIZE: PositiveInt = Field(
+        description="Number of documents to insert per batch",
+        default=100,
+    )
+
+    OCEANBASE_VECTOR_METRIC_TYPE: Literal["l2", "cosine", "inner_product"] = Field(
+        description="Distance metric type for vector index: l2, cosine, or inner_product",
+        default="l2",
+    )
+
+    OCEANBASE_HNSW_M: PositiveInt = Field(
+        description="HNSW M parameter (max number of connections per node)",
+        default=16,
+    )
+
+    OCEANBASE_HNSW_EF_CONSTRUCTION: PositiveInt = Field(
+        description="HNSW efConstruction parameter (index build-time search width)",
+        default=256,
+    )
+
+    OCEANBASE_HNSW_EF_SEARCH: int = Field(
+        description="HNSW efSearch parameter (query-time search width, -1 uses server default)",
+        default=-1,
+    )
+
+    OCEANBASE_VECTOR_POOL_SIZE: PositiveInt = Field(
+        description="SQLAlchemy connection pool size",
+        default=5,
+    )
+
+    OCEANBASE_VECTOR_MAX_OVERFLOW: int = Field(
+        description="SQLAlchemy connection pool max overflow connections",
+        default=10,
+    )
+
+    OCEANBASE_HNSW_REFRESH_THRESHOLD: int = Field(
+        description="Minimum number of inserted documents to trigger an automatic HNSW index refresh (0 to disable)",
+        default=1000,
     )

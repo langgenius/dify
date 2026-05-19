@@ -153,7 +153,7 @@ const UserListSearchDemo = () => {
                       <div className="text-sm font-medium">{user.name}</div>
                       <div className="text-xs text-gray-500">{user.email}</div>
                     </div>
-                    <span className="rounded bg-blue-100 px-2 py-1 text-xs text-blue-700">
+                    <span className="rounded-sm bg-blue-100 px-2 py-1 text-xs text-blue-700">
                       {user.role}
                     </span>
                   </div>
@@ -274,7 +274,7 @@ const DocumentationSearchDemo = () => {
         onChange={setSearchQuery}
         placeholder="Search documentation..."
         white
-        className="!h-10"
+        className="h-10!"
       />
       <div className="mt-4 space-y-3">
         {filteredDocs.length > 0
@@ -286,7 +286,7 @@ const DocumentationSearchDemo = () => {
                 >
                   <div className="mb-2 flex items-start justify-between">
                     <h4 className="text-base font-semibold">{doc.title}</h4>
-                    <span className="rounded bg-gray-100 px-2 py-1 text-xs text-gray-600">
+                    <span className="rounded-sm bg-gray-100 px-2 py-1 text-xs text-gray-600">
                       {doc.category}
                     </span>
                   </div>
@@ -340,7 +340,7 @@ const CommandPaletteDemo = () => {
           onChange={setSearchQuery}
           placeholder="Type a command or search..."
           white
-          className="!h-10"
+          className="h-10!"
         />
       </div>
       <div className="max-h-[400px] overflow-y-auto">
@@ -355,7 +355,7 @@ const CommandPaletteDemo = () => {
                     <span className="text-xl">{cmd.icon}</span>
                     <span className="text-sm">{cmd.name}</span>
                   </div>
-                  <kbd className="rounded bg-gray-200 px-2 py-1 font-mono text-xs">
+                  <kbd className="rounded-sm bg-gray-200 px-2 py-1 font-mono text-xs">
                     {cmd.shortcut}
                   </kbd>
                 </div>
@@ -452,7 +452,7 @@ const SizeVariationsDemo = () => {
           value={value2}
           onChange={setValue2}
           placeholder="Search..."
-          className="!h-10"
+          className="h-10!"
         />
       </div>
       <div>
@@ -461,7 +461,7 @@ const SizeVariationsDemo = () => {
           value={value3}
           onChange={setValue3}
           placeholder="Search..."
-          className="!h-12"
+          className="h-12!"
         />
       </div>
     </div>

@@ -140,7 +140,7 @@ export class ComponentAnalyzer {
 
       maxMessages.forEach((msg) => {
         if (msg.ruleId === 'sonarjs/cognitive-complexity') {
-          const match = msg.message.match(complexityPattern)
+          const match = complexityPattern.exec(msg.message)
           if (match && match[1])
             max = Math.max(max, Number.parseInt(match[1], 10))
         }
@@ -206,10 +206,10 @@ export class ComponentAnalyzer {
 
       const escapedName = ComponentAnalyzer.escapeRegExp(searchName)
       const patterns = [
-        new RegExp(`from\\s+['\"][^'\"]*(?:/|^)${escapedName}(?:['\"/]|$)`),
-        new RegExp(`import\\s*\\(\\s*['\"][^'\"]*(?:/|^)${escapedName}(?:['\"/]|$)`),
-        new RegExp(`export\\s+(?:\\*|{[^}]*})\\s*from\\s+['\"][^'\"]*(?:/|^)${escapedName}(?:['\"/]|$)`),
-        new RegExp(`require\\(\\s*['\"][^'\"]*(?:/|^)${escapedName}(?:['\"/]|$)`),
+        new RegExp(`from\\s+['"][^'"]*(?:/|^)${escapedName}(?:['"/]|$)`),
+        new RegExp(`import\\s*\\(\\s*['"][^'"]*(?:/|^)${escapedName}(?:['"/]|$)`),
+        new RegExp(`export\\s+(?:\\*|{[^}]*})\\s*from\\s+['"][^'"]*(?:/|^)${escapedName}(?:['"/]|$)`),
+        new RegExp(`require\\s*\\(\\s*['"][^'"]*(?:/|^)${escapedName}(?:['"/]|$)`),
       ]
 
       const visited = new Set()

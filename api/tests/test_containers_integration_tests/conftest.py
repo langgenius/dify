@@ -10,8 +10,11 @@ more reliable and realistic test scenarios.
 import logging
 import os
 from collections.abc import Generator
+from contextlib import contextmanager
 from pathlib import Path
+from typing import Protocol
 
+import psycopg2
 import pytest
 from flask import Flask
 from flask.testing import FlaskClient
@@ -19,7 +22,7 @@ from sqlalchemy import Engine, text
 from sqlalchemy.orm import Session
 from testcontainers.core.container import DockerContainer
 from testcontainers.core.network import Network
-from testcontainers.core.waiting_utils import wait_for_logs
+from testcontainers.core.wait_strategies import LogMessageWaitStrategy
 from testcontainers.postgres import PostgresContainer
 from testcontainers.redis import RedisContainer
 
@@ -29,6 +32,30 @@ from extensions.ext_database import db
 # Configure logging for test containers
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
+_TEST_SANDBOX_IMAGE = os.getenv("TEST_SANDBOX_IMAGE", "langgenius/dify-sandbox:0.2.12")
+
+DEFAULT_SANDBOX_TEST_IMAGE = "langgenius/dify-sandbox:0.2.14"
+SANDBOX_TEST_IMAGE_ENV = "DIFY_SANDBOX_TEST_IMAGE"
+
+
+class _CloserProtocol(Protocol):
+    """_Closer is any type which implement the close() method."""
+
+    def close(self):
+        """close the current object, release any external resouece (file, transaction, connection etc.)
+        associated with it.
+        """
+        pass
+
+
+@contextmanager
+def _auto_close[T: _CloserProtocol](closer: T) -> Generator[T, None, None]:
+    yield closer
+    closer.close()
+
+
+def _wait_for_log_message(message: str, timeout: int) -> LogMessageWaitStrategy:
+    return LogMessageWaitStrategy(message).with_startup_timeout(timeout)
 
 
 class DifyTestContainers:
@@ -76,6 +103,7 @@ class DifyTestContainers:
         self.postgres = PostgresContainer(
             image="postgres:14-alpine",
         ).with_network(self.network)
+        self.postgres.waiting_for(_wait_for_log_message("is ready to accept connections", 30))
         self.postgres.start()
         db_host = self.postgres.get_container_host_ip()
         db_port = self.postgres.get_exposed_port(5432)
@@ -92,50 +120,30 @@ class DifyTestContainers:
             self.postgres.dbname,
         )
 
-        # Wait for PostgreSQL to be ready
-        logger.info("Waiting for PostgreSQL to be ready to accept connections...")
-        wait_for_logs(self.postgres, "is ready to accept connections", timeout=30)
         logger.info("PostgreSQL container is ready and accepting connections")
 
-        # Install uuid-ossp extension for UUID generation
-        logger.info("Installing uuid-ossp extension...")
-        try:
-            import psycopg2
-
-            conn = psycopg2.connect(
-                host=db_host,
-                port=db_port,
-                user=self.postgres.username,
-                password=self.postgres.password,
-                database=self.postgres.dbname,
-            )
-            conn.autocommit = True
-            cursor = conn.cursor()
-            cursor.execute('CREATE EXTENSION IF NOT EXISTS "uuid-ossp";')
-            cursor.close()
-            conn.close()
+        conn = psycopg2.connect(
+            host=db_host,
+            port=db_port,
+            user=self.postgres.username,
+            password=self.postgres.password,
+            database=self.postgres.dbname,
+        )
+        conn.autocommit = True
+        with _auto_close(conn):
+            with conn.cursor() as cursor:
+                # Install uuid-ossp extension for UUID generation
+                logger.info("Installing uuid-ossp extension...")
+                cursor.execute('CREATE EXTENSION IF NOT EXISTS "uuid-ossp";')
             logger.info("uuid-ossp extension installed successfully")
-        except Exception as e:
-            logger.warning("Failed to install uuid-ossp extension: %s", e)
 
-        # Create plugin database for dify-plugin-daemon
-        logger.info("Creating plugin database...")
-        try:
-            conn = psycopg2.connect(
-                host=db_host,
-                port=db_port,
-                user=self.postgres.username,
-                password=self.postgres.password,
-                database=self.postgres.dbname,
-            )
-            conn.autocommit = True
-            cursor = conn.cursor()
-            cursor.execute("CREATE DATABASE dify_plugin;")
-            cursor.close()
-            conn.close()
+            # NOTE: We cannot use `with conn.cursor() as cursor:` as it will wrap the statement
+            # inside a transaction. However, the `CREATE DATABASE` statement cannot run inside a transaction block.
+            with _auto_close(conn.cursor()) as cursor:
+                # Create plugin database for dify-plugin-daemon
+                logger.info("Creating plugin database...")
+                cursor.execute("CREATE DATABASE dify_plugin;")
             logger.info("Plugin database created successfully")
-        except Exception as e:
-            logger.warning("Failed to create plugin database: %s", e)
 
         # Set up storage environment variables
         os.environ.setdefault("STORAGE_TYPE", "opendal")
@@ -146,6 +154,7 @@ class DifyTestContainers:
         # Redis is used for storing session data, cache entries, and temporary data
         logger.info("Initializing Redis container...")
         self.redis = RedisContainer(image="redis:6-alpine", port=6379).with_network(self.network)
+        self.redis.waiting_for(_wait_for_log_message("Ready to accept connections", 30))
         self.redis.start()
         redis_host = self.redis.get_container_host_ip()
         redis_port = self.redis.get_exposed_port(6379)
@@ -153,16 +162,15 @@ class DifyTestContainers:
         os.environ["REDIS_PORT"] = str(redis_port)
         logger.info("Redis container started successfully - Host: %s, Port: %s", redis_host, redis_port)
 
-        # Wait for Redis to be ready
-        logger.info("Waiting for Redis to be ready to accept connections...")
-        wait_for_logs(self.redis, "Ready to accept connections", timeout=30)
         logger.info("Redis container is ready and accepting connections")
 
-        # Start Dify Sandbox container for code execution environment
-        # Dify Sandbox provides a secure environment for executing user code
+        # Start Dify Sandbox container for code execution environment.
+        # Default to the production-pinned image while allowing local overrides for debugging.
         logger.info("Initializing Dify Sandbox container...")
-        self.dify_sandbox = DockerContainer(image="langgenius/dify-sandbox:latest").with_network(self.network)
+        sandbox_image = os.getenv(SANDBOX_TEST_IMAGE_ENV, DEFAULT_SANDBOX_TEST_IMAGE)
+        self.dify_sandbox = DockerContainer(image=sandbox_image).with_network(self.network)
         self.dify_sandbox.with_exposed_ports(8194)
+        self.dify_sandbox.waiting_for(_wait_for_log_message("config init success", 60))
         self.dify_sandbox.env = {
             "API_KEY": "test_api_key",
         }
@@ -171,20 +179,23 @@ class DifyTestContainers:
         sandbox_port = self.dify_sandbox.get_exposed_port(8194)
         os.environ["CODE_EXECUTION_ENDPOINT"] = f"http://{sandbox_host}:{sandbox_port}"
         os.environ["CODE_EXECUTION_API_KEY"] = "test_api_key"
-        logger.info("Dify Sandbox container started successfully - Host: %s, Port: %s", sandbox_host, sandbox_port)
+        logger.info(
+            "Dify Sandbox container started successfully - Image: %s Host: %s, Port: %s",
+            sandbox_image,
+            sandbox_host,
+            sandbox_port,
+        )
 
-        # Wait for Dify Sandbox to be ready
-        logger.info("Waiting for Dify Sandbox to be ready to accept connections...")
-        wait_for_logs(self.dify_sandbox, "config init success", timeout=60)
         logger.info("Dify Sandbox container is ready and accepting connections")
 
         # Start Dify Plugin Daemon container for plugin management
         # Dify Plugin Daemon provides plugin lifecycle management and execution
         logger.info("Initializing Dify Plugin Daemon container...")
-        self.dify_plugin_daemon = DockerContainer(image="langgenius/dify-plugin-daemon:0.3.0-local").with_network(
+        self.dify_plugin_daemon = DockerContainer(image="langgenius/dify-plugin-daemon:0.5.3-local").with_network(
             self.network
         )
         self.dify_plugin_daemon.with_exposed_ports(5002)
+        self.dify_plugin_daemon.waiting_for(_wait_for_log_message("start plugin manager daemon", 60))
         # Get container internal network addresses
         postgres_container_name = self.postgres.get_wrapped_container().name
         redis_container_name = self.redis.get_wrapped_container().name
@@ -231,9 +242,6 @@ class DifyTestContainers:
                 plugin_daemon_port,
             )
 
-            # Wait for Dify Plugin Daemon to be ready
-            logger.info("Waiting for Dify Plugin Daemon to be ready to accept connections...")
-            wait_for_logs(self.dify_plugin_daemon, "start plugin manager daemon", timeout=60)
             logger.info("Dify Plugin Daemon container is ready and accepting connections")
         except Exception as e:
             logger.warning("Failed to start Dify Plugin Daemon container: %s", e)
@@ -258,23 +266,16 @@ class DifyTestContainers:
         containers = [self.redis, self.postgres, self.dify_sandbox, self.dify_plugin_daemon]
         for container in containers:
             if container:
-                try:
-                    container_name = container.image
-                    logger.info("Stopping container: %s", container_name)
-                    container.stop()
-                    logger.info("Successfully stopped container: %s", container_name)
-                except Exception as e:
-                    # Log error but don't fail the test cleanup
-                    logger.warning("Failed to stop container %s: %s", container, e)
+                container_name = container.image
+                logger.info("Stopping container: %s", container_name)
+                container.stop()
+                logger.info("Successfully stopped container: %s", container_name)
 
         # Stop and remove the network
         if self.network:
-            try:
-                logger.info("Removing Docker network...")
-                self.network.remove()
-                logger.info("Successfully removed Docker network")
-            except Exception as e:
-                logger.warning("Failed to remove Docker network: %s", e)
+            logger.info("Removing Docker network...")
+            self.network.remove()
+            logger.info("Successfully removed Docker network")
 
         self._containers_started = False
         logger.info("All test containers stopped and cleaned up successfully")
@@ -364,7 +365,7 @@ def _create_app_with_containers() -> Flask:
 
     # Create and configure the Flask application
     logger.info("Initializing Flask application...")
-    app = create_app()
+    sio_app, app = create_app()
     logger.info("Flask application created successfully")
 
     # Initialize database schema
@@ -428,7 +429,7 @@ def flask_app_with_containers(set_up_containers_and_env) -> Flask:
 
 
 @pytest.fixture
-def flask_req_ctx_with_containers(flask_app_with_containers) -> Generator[None, None, None]:
+def flask_req_ctx_with_containers(flask_app_with_containers: Flask) -> Generator[None, None, None]:
     """
     Request context fixture for containerized Flask application.
 
@@ -449,7 +450,7 @@ def flask_req_ctx_with_containers(flask_app_with_containers) -> Generator[None, 
 
 
 @pytest.fixture
-def test_client_with_containers(flask_app_with_containers) -> Generator[FlaskClient, None, None]:
+def test_client_with_containers(flask_app_with_containers: Flask) -> Generator[FlaskClient, None, None]:
     """
     Test client fixture for containerized Flask application.
 
@@ -470,7 +471,7 @@ def test_client_with_containers(flask_app_with_containers) -> Generator[FlaskCli
 
 
 @pytest.fixture
-def db_session_with_containers(flask_app_with_containers) -> Generator[Session, None, None]:
+def db_session_with_containers(flask_app_with_containers: Flask) -> Generator[Session, None, None]:
     """
     Database session fixture for containerized testing.
 
@@ -493,6 +494,51 @@ def db_session_with_containers(flask_app_with_containers) -> Generator[Session, 
         finally:
             session.close()
             logger.debug("Database session closed")
+
+
+def _truncate_container_database(app: Flask) -> None:
+    """
+    Reset application tables after a container integration test.
+
+    Tests in this package share one PostgreSQL container for performance, while
+    application code may commit through db.session, Session(db.engine), or
+    session_factory-created sessions. Truncating after each test gives the suite
+    a central DB isolation contract that does not depend on which session a test used.
+    This only covers SQLAlchemy application tables in db.metadata for now;
+    Redis, object storage, and custom ad hoc metadata still need their own cleanup.
+    """
+    with app.app_context():
+        db.session.remove()
+
+        tables = db.metadata.sorted_tables
+        if not tables:
+            return
+
+        preparer = db.engine.dialect.identifier_preparer
+        table_names = ", ".join(preparer.format_table(table) for table in tables)
+
+        with db.engine.begin() as conn:
+            conn.execute(text("SET LOCAL lock_timeout = '5s'"))
+            conn.execute(text(f"TRUNCATE TABLE {table_names} RESTART IDENTITY CASCADE"))
+
+        db.session.remove()
+
+
+@pytest.fixture(autouse=True)
+def isolate_container_database(request: pytest.FixtureRequest) -> Generator[None, None, None]:
+    """
+    Clean DB state after tests that use the containerized Flask app.
+
+    This fixture intentionally does not depend on flask_app_with_containers so
+    non-DB tests under this package do not start the full app/container stack.
+    """
+    yield
+
+    if "flask_app_with_containers" not in request.fixturenames:
+        return
+
+    app = request.getfixturevalue("flask_app_with_containers")
+    _truncate_container_database(app)
 
 
 @pytest.fixture(scope="package", autouse=True)

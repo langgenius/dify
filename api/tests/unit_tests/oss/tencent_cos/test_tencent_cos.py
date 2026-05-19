@@ -8,14 +8,15 @@ from tests.unit_tests.oss.__mock.base import (
     BaseStorageTest,
     get_example_bucket,
 )
-from tests.unit_tests.oss.__mock.tencent_cos import setup_tencent_cos_mock
+
+pytest_plugins = ("tests.unit_tests.oss.__mock.tencent_cos",)
 
 
 class TestTencentCos(BaseStorageTest):
     @pytest.fixture(autouse=True)
     def setup_method(self, setup_tencent_cos_mock):
         """Executed before each test method."""
-        with patch.object(CosConfig, "__init__", return_value=None):
+        with patch.object(CosConfig, "__init__", return_value=None, autospec=True):
             self.storage = TencentCosStorage()
         self.storage.bucket_name = get_example_bucket()
 
@@ -39,9 +40,9 @@ class TestTencentCosConfiguration:
         with (
             patch("extensions.storage.tencent_cos_storage.dify_config", mock_dify_config),
             patch(
-                "extensions.storage.tencent_cos_storage.CosConfig", return_value=mock_config_instance
+                "extensions.storage.tencent_cos_storage.CosConfig", return_value=mock_config_instance, autospec=True
             ) as mock_cos_config,
-            patch("extensions.storage.tencent_cos_storage.CosS3Client", return_value=mock_client),
+            patch("extensions.storage.tencent_cos_storage.CosS3Client", return_value=mock_client, autospec=True),
         ):
             TencentCosStorage()
 
@@ -72,9 +73,9 @@ class TestTencentCosConfiguration:
         with (
             patch("extensions.storage.tencent_cos_storage.dify_config", mock_dify_config),
             patch(
-                "extensions.storage.tencent_cos_storage.CosConfig", return_value=mock_config_instance
+                "extensions.storage.tencent_cos_storage.CosConfig", return_value=mock_config_instance, autospec=True
             ) as mock_cos_config,
-            patch("extensions.storage.tencent_cos_storage.CosS3Client", return_value=mock_client),
+            patch("extensions.storage.tencent_cos_storage.CosS3Client", return_value=mock_client, autospec=True),
         ):
             TencentCosStorage()
 

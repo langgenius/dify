@@ -3,13 +3,15 @@ from collections.abc import Mapping, Sequence
 from mimetypes import guess_type
 
 from pydantic import BaseModel
-from sqlalchemy import select
+from sqlalchemy import delete, select, update
+from sqlalchemy.orm import Session
 from yarl import URL
 
 from configs import dify_config
 from core.helper import marketplace
 from core.helper.download import download_with_size_limit
 from core.helper.marketplace import download_plugin_pkg
+from core.helper.model_provider_cache import ProviderCredentialsCache, ProviderCredentialsCacheType
 from core.plugin.entities.bundle import PluginBundleDependency
 from core.plugin.entities.plugin import (
     PluginDeclaration,
@@ -28,8 +30,12 @@ from core.plugin.impl.debugging import PluginDebuggingClient
 from core.plugin.impl.plugin import PluginInstaller
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
-from models.provider import ProviderCredential
+from models.provider import Provider, ProviderCredential, TenantPreferredModelProvider
 from models.provider_ids import GenericProviderID
+from services.enterprise.plugin_manager_service import (
+    PluginManagerService,
+    PreUninstallPluginRequest,
+)
 from services.errors.plugin import PluginInstallationForbiddenError
 from services.feature_service import FeatureService, PluginInstallationScope
 
@@ -67,35 +73,43 @@ class PluginService:
                     cache_not_exists.append(plugin_id)
 
             if cache_not_exists:
-                manifests = {
-                    manifest.plugin_id: manifest
-                    for manifest in marketplace.batch_fetch_plugin_manifests(cache_not_exists)
-                }
-
-                for plugin_id, manifest in manifests.items():
-                    latest_plugin = PluginService.LatestPluginCache(
-                        plugin_id=plugin_id,
-                        version=manifest.latest_version,
-                        unique_identifier=manifest.latest_package_identifier,
-                        status=manifest.status,
-                        deprecated_reason=manifest.deprecated_reason,
-                        alternative_plugin_id=manifest.alternative_plugin_id,
+                if not dify_config.MARKETPLACE_ENABLED:
+                    logger.info(
+                        "Marketplace disabled; skipping latest-plugins metadata fetch for %d ids",
+                        len(cache_not_exists),
                     )
+                    for plugin_id in cache_not_exists:
+                        result[plugin_id] = None
+                else:
+                    manifests = {
+                        manifest.plugin_id: manifest
+                        for manifest in marketplace.batch_fetch_plugin_manifests(cache_not_exists)
+                    }
 
-                    # Store in Redis
-                    redis_client.setex(
-                        f"{PluginService.REDIS_KEY_PREFIX}{plugin_id}",
-                        PluginService.REDIS_TTL,
-                        latest_plugin.model_dump_json(),
-                    )
+                    for plugin_id, manifest in manifests.items():
+                        latest_plugin = PluginService.LatestPluginCache(
+                            plugin_id=plugin_id,
+                            version=manifest.latest_version,
+                            unique_identifier=manifest.latest_package_identifier,
+                            status=manifest.status,
+                            deprecated_reason=manifest.deprecated_reason,
+                            alternative_plugin_id=manifest.alternative_plugin_id,
+                        )
 
-                    result[plugin_id] = latest_plugin
+                        # Store in Redis
+                        redis_client.setex(
+                            f"{PluginService.REDIS_KEY_PREFIX}{plugin_id}",
+                            PluginService.REDIS_TTL,
+                            latest_plugin.model_dump_json(),
+                        )
 
-                    # pop plugin_id from cache_not_exists
-                    cache_not_exists.remove(plugin_id)
+                        result[plugin_id] = latest_plugin
 
-                for plugin_id in cache_not_exists:
-                    result[plugin_id] = None
+                        # pop plugin_id from cache_not_exists
+                        cache_not_exists.remove(plugin_id)
+
+                    for plugin_id in cache_not_exists:
+                        result[plugin_id] = None
 
             return result
         except Exception:
@@ -511,30 +525,69 @@ class PluginService:
         manager = PluginInstaller()
 
         # Get plugin info before uninstalling to delete associated credentials
-        try:
-            plugins = manager.list_plugins(tenant_id)
-            plugin = next((p for p in plugins if p.installation_id == plugin_installation_id), None)
+        plugins = manager.list_plugins(tenant_id)
+        plugin = next((p for p in plugins if p.installation_id == plugin_installation_id), None)
 
-            if plugin:
-                plugin_id = plugin.plugin_id
-                logger.info("Deleting credentials for plugin: %s", plugin_id)
+        if not plugin:
+            return manager.uninstall(tenant_id, plugin_installation_id)
 
-                # Delete provider credentials that match this plugin
-                credentials = db.session.scalars(
-                    select(ProviderCredential).where(
-                        ProviderCredential.tenant_id == tenant_id,
-                        ProviderCredential.provider_name.like(f"{plugin_id}/%"),
-                    )
-                ).all()
+        if dify_config.ENTERPRISE_ENABLED:
+            PluginManagerService.try_pre_uninstall_plugin(
+                PreUninstallPluginRequest(
+                    tenant_id=tenant_id,
+                    plugin_unique_identifier=plugin.plugin_unique_identifier,
+                )
+            )
+        with Session(db.engine) as session, session.begin():
+            plugin_id = plugin.plugin_id
+            logger.info("Deleting credentials for plugin: %s", plugin_id)
 
-                for cred in credentials:
-                    db.session.delete(cred)
+            session.execute(
+                delete(TenantPreferredModelProvider).where(
+                    TenantPreferredModelProvider.tenant_id == tenant_id,
+                    TenantPreferredModelProvider.provider_name.like(f"{plugin_id}/%"),
+                )
+            )
 
-                db.session.commit()
-                logger.info("Deleted %d credentials for plugin: %s", len(credentials), plugin_id)
-        except Exception as e:
-            logger.warning("Failed to delete credentials: %s", e)
-            # Continue with uninstall even if credential deletion fails
+            # Delete provider credentials that match this plugin
+            credential_ids = session.scalars(
+                select(ProviderCredential.id).where(
+                    ProviderCredential.tenant_id == tenant_id,
+                    ProviderCredential.provider_name.like(f"{plugin_id}/%"),
+                )
+            ).all()
+
+            if not credential_ids:
+                logger.info("No credentials found for plugin: %s", plugin_id)
+                return manager.uninstall(tenant_id, plugin_installation_id)
+
+            provider_ids = session.scalars(
+                select(Provider.id).where(
+                    Provider.tenant_id == tenant_id,
+                    Provider.provider_name.like(f"{plugin_id}/%"),
+                    Provider.credential_id.in_(credential_ids),
+                )
+            ).all()
+
+            session.execute(update(Provider).where(Provider.id.in_(provider_ids)).values(credential_id=None))
+
+            for provider_id in provider_ids:
+                ProviderCredentialsCache(
+                    tenant_id=tenant_id,
+                    identity_id=provider_id,
+                    cache_type=ProviderCredentialsCacheType.PROVIDER,
+                ).delete()
+
+            session.execute(
+                delete(ProviderCredential).where(
+                    ProviderCredential.id.in_(credential_ids),
+                )
+            )
+
+            logger.info(
+                "Completed deleting credentials and cleaning provider associations for plugin: %s",
+                plugin_id,
+            )
 
         return manager.uninstall(tenant_id, plugin_installation_id)
 

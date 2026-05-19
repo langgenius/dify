@@ -1,17 +1,16 @@
-import type { NamespaceCamelCase, Resources } from '../i18n-config/resources'
+import type { Namespace, Resources } from '../i18n-config/resources'
 import 'i18next'
 
 declare module 'i18next' {
   // eslint-disable-next-line ts/consistent-type-definitions
   interface CustomTypeOptions {
-    defaultNS: 'common'
     resources: Resources
     keySeparator: false
   }
 }
 
 export type I18nKeysByPrefix<
-  NS extends NamespaceCamelCase,
+  NS extends Namespace,
   Prefix extends string = '',
 > = Prefix extends ''
   ? keyof Resources[NS]
@@ -22,7 +21,7 @@ export type I18nKeysByPrefix<
     : never
 
 export type I18nKeysWithPrefix<
-  NS extends NamespaceCamelCase,
+  NS extends Namespace,
   Prefix extends string = '',
 > = Prefix extends ''
   ? keyof Resources[NS]

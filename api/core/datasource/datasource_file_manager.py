@@ -15,6 +15,7 @@ from configs import dify_config
 from core.helper import ssrf_proxy
 from extensions.ext_database import db
 from extensions.ext_storage import storage
+from extensions.storage.storage_type import StorageType
 from models.enums import CreatorUserRole
 from models.model import MessageFile, UploadFile
 from models.tools import ToolFile
@@ -34,8 +35,11 @@ class DatasourceFileManager:
         timestamp = str(int(time.time()))
         nonce = os.urandom(16).hex()
         data_to_sign = f"file-preview|{datasource_file_id}|{timestamp}|{nonce}"
-        secret_key = dify_config.SECRET_KEY.encode() if dify_config.SECRET_KEY else b""
-        sign = hmac.new(secret_key, data_to_sign.encode(), hashlib.sha256).digest()
+        sign = hmac.new(
+            dify_config.SECRET_KEY.encode(),
+            data_to_sign.encode(),
+            hashlib.sha256,
+        ).digest()
         encoded_sign = base64.urlsafe_b64encode(sign).decode()
 
         return f"{file_preview_url}?timestamp={timestamp}&nonce={nonce}&sign={encoded_sign}"
@@ -46,8 +50,11 @@ class DatasourceFileManager:
         verify signature
         """
         data_to_sign = f"file-preview|{datasource_file_id}|{timestamp}|{nonce}"
-        secret_key = dify_config.SECRET_KEY.encode() if dify_config.SECRET_KEY else b""
-        recalculated_sign = hmac.new(secret_key, data_to_sign.encode(), hashlib.sha256).digest()
+        recalculated_sign = hmac.new(
+            dify_config.SECRET_KEY.encode(),
+            data_to_sign.encode(),
+            hashlib.sha256,
+        ).digest()
         recalculated_encoded_sign = base64.urlsafe_b64encode(recalculated_sign).decode()
 
         # verify signature
@@ -81,7 +88,7 @@ class DatasourceFileManager:
 
         upload_file = UploadFile(
             tenant_id=tenant_id,
-            storage_type=dify_config.STORAGE_TYPE,
+            storage_type=StorageType(dify_config.STORAGE_TYPE),
             key=filepath,
             name=present_filename,
             size=len(file_binary),
@@ -152,7 +159,7 @@ class DatasourceFileManager:
 
         :return: the binary of the file, mime type
         """
-        upload_file: UploadFile | None = db.session.query(UploadFile).where(UploadFile.id == id).first()
+        upload_file: UploadFile | None = db.session.get(UploadFile, id)
 
         if not upload_file:
             return None
@@ -170,7 +177,7 @@ class DatasourceFileManager:
 
         :return: the binary of the file, mime type
         """
-        message_file: MessageFile | None = db.session.query(MessageFile).where(MessageFile.id == id).first()
+        message_file: MessageFile | None = db.session.get(MessageFile, id)
 
         # Check if message_file is not None
         if message_file is not None:
@@ -184,7 +191,7 @@ class DatasourceFileManager:
         else:
             tool_file_id = None
 
-        tool_file: ToolFile | None = db.session.query(ToolFile).where(ToolFile.id == tool_file_id).first()
+        tool_file: ToolFile | None = db.session.get(ToolFile, tool_file_id)
 
         if not tool_file:
             return None
@@ -202,7 +209,7 @@ class DatasourceFileManager:
 
         :return: the binary of the file, mime type
         """
-        upload_file: UploadFile | None = db.session.query(UploadFile).where(UploadFile.id == upload_file_id).first()
+        upload_file: UploadFile | None = db.session.get(UploadFile, upload_file_id)
 
         if not upload_file:
             return None, None
@@ -213,6 +220,6 @@ class DatasourceFileManager:
 
 
 # init tool_file_parser
-# from core.file.datasource_file_parser import datasource_file_manager
+# from graphon.file.datasource_file_parser import datasource_file_manager
 #
 # datasource_file_manager["manager"] = DatasourceFileManager

@@ -2,14 +2,14 @@ import io
 from collections.abc import Generator
 from typing import Any
 
-from core.file.enums import FileType
-from core.file.file_manager import download
 from core.model_manager import ModelManager
-from core.model_runtime.entities.model_entities import ModelType
 from core.plugin.entities.parameters import PluginParameterOption
 from core.tools.builtin_tool.tool import BuiltinTool
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_entities import ToolInvokeMessage, ToolParameter
+from graphon.file import FileType
+from graphon.file.file_manager import download
+from graphon.model_runtime.entities.model_entities import ModelType
 from services.model_provider_service import ModelProviderService
 
 
@@ -22,6 +22,9 @@ class ASRTool(BuiltinTool):
         app_id: str | None = None,
         message_id: str | None = None,
     ) -> Generator[ToolInvokeMessage, None, None]:
+        if not self.runtime:
+            raise ValueError("Runtime is required")
+        runtime = self.runtime
         file = tool_parameters.get("audio_file")
         if file.type != FileType.AUDIO:  # type: ignore
             yield self.create_text_message("not a valid audio file")
@@ -29,20 +32,19 @@ class ASRTool(BuiltinTool):
         audio_binary = io.BytesIO(download(file))  # type: ignore
         audio_binary.name = "temp.mp3"
         provider, model = tool_parameters.get("model").split("#")  # type: ignore
-        model_manager = ModelManager()
+        model_manager = ModelManager.for_tenant(tenant_id=runtime.tenant_id, user_id=user_id)
         model_instance = model_manager.get_model_instance(
-            tenant_id=self.runtime.tenant_id,
+            tenant_id=runtime.tenant_id,
             provider=provider,
             model_type=ModelType.SPEECH2TEXT,
             model=model,
         )
-        text = model_instance.invoke_speech2text(
-            file=audio_binary,
-            user=user_id,
-        )
+        text = model_instance.invoke_speech2text(file=audio_binary)
         yield self.create_text_message(text)
 
     def get_available_models(self) -> list[tuple[str, str]]:
+        if not self.runtime:
+            raise ValueError("Runtime is required")
         model_provider_service = ModelProviderService()
         models = model_provider_service.get_models_by_model_type(
             tenant_id=self.runtime.tenant_id, model_type="speech2text"

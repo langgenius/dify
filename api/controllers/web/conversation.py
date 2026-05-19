@@ -1,11 +1,12 @@
 from typing import Literal
 
 from flask import request
-from pydantic import BaseModel, Field, TypeAdapter, field_validator, model_validator
-from sqlalchemy.orm import Session
+from pydantic import BaseModel, Field, TypeAdapter, field_validator
+from sqlalchemy.orm import sessionmaker
 from werkzeug.exceptions import NotFound
 
-from controllers.common.schema import register_schema_models
+from controllers.common.controller_schemas import ConversationRenamePayload
+from controllers.common.schema import register_response_schema_models, register_schema_models
 from controllers.web import web_ns
 from controllers.web.error import NotChatAppError
 from controllers.web.wraps import WebApiResource
@@ -37,19 +38,8 @@ class ConversationListQuery(BaseModel):
         return uuid_value(value)
 
 
-class ConversationRenamePayload(BaseModel):
-    name: str | None = None
-    auto_generate: bool = False
-
-    @model_validator(mode="after")
-    def validate_name_requirement(self):
-        if not self.auto_generate:
-            if self.name is None or not self.name.strip():
-                raise ValueError("name is required when auto_generate is false")
-        return self
-
-
 register_schema_models(web_ns, ConversationListQuery, ConversationRenamePayload)
+register_response_schema_models(web_ns, ResultResponse)
 
 
 @web_ns.route("/conversations")
@@ -99,7 +89,7 @@ class ConversationListApi(WebApiResource):
         query = ConversationListQuery.model_validate(raw_args)
 
         try:
-            with Session(db.engine) as session:
+            with sessionmaker(db.engine).begin() as session:
                 pagination = WebConversationService.pagination_by_last_id(
                     session=session,
                     app_model=app_model,
@@ -212,6 +202,7 @@ class ConversationPinApi(WebApiResource):
             500: "Internal Server Error",
         }
     )
+    @web_ns.response(200, "Conversation pinned successfully", web_ns.models[ResultResponse.__name__])
     def patch(self, app_model, end_user, c_id):
         app_mode = AppMode.value_of(app_model.mode)
         if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:
@@ -242,6 +233,7 @@ class ConversationUnPinApi(WebApiResource):
             500: "Internal Server Error",
         }
     )
+    @web_ns.response(200, "Conversation unpinned successfully", web_ns.models[ResultResponse.__name__])
     def patch(self, app_model, end_user, c_id):
         app_mode = AppMode.value_of(app_model.mode)
         if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:

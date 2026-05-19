@@ -1,14 +1,14 @@
 from flask_restx import Resource
 from pydantic import BaseModel, Field
 
+from controllers.common.schema import register_response_schema_models, register_schema_models
+from fields.base import ResponseModel
 from libs.login import current_account_with_tenant, login_required
 from services.auth.api_key_auth_service import ApiKeyAuthService
 
 from .. import console_ns
 from ..auth.error import ApiKeyAuthFailedError
 from ..wraps import account_initialization_required, is_admin_or_owner_required, setup_required
-
-DEFAULT_REF_TEMPLATE_SWAGGER_2_0 = "#/definitions/{model}"
 
 
 class ApiKeyAuthBindingPayload(BaseModel):
@@ -17,14 +17,26 @@ class ApiKeyAuthBindingPayload(BaseModel):
     credentials: dict = Field(...)
 
 
-console_ns.schema_model(
-    ApiKeyAuthBindingPayload.__name__,
-    ApiKeyAuthBindingPayload.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0),
-)
+class ApiKeyAuthDataSourceItem(ResponseModel):
+    id: str
+    category: str
+    provider: str
+    disabled: bool
+    created_at: int
+    updated_at: int
+
+
+class ApiKeyAuthDataSourceListResponse(ResponseModel):
+    sources: list[ApiKeyAuthDataSourceItem]
+
+
+register_schema_models(console_ns, ApiKeyAuthBindingPayload)
+register_response_schema_models(console_ns, ApiKeyAuthDataSourceItem, ApiKeyAuthDataSourceListResponse)
 
 
 @console_ns.route("/api-key-auth/data-source")
 class ApiKeyAuthDataSource(Resource):
+    @console_ns.response(200, "Success", console_ns.models[ApiKeyAuthDataSourceListResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -74,6 +86,7 @@ class ApiKeyAuthDataSourceBindingDelete(Resource):
     @login_required
     @account_initialization_required
     @is_admin_or_owner_required
+    @console_ns.response(204, "Binding deleted successfully")
     def delete(self, binding_id):
         # The role of the current user in the table must be admin or owner
         _, current_tenant_id = current_account_with_tenant()

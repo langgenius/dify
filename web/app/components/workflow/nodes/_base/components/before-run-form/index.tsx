@@ -3,18 +3,25 @@ import type { FC } from 'react'
 import type { Props as FormProps } from './form'
 import type { Emoji } from '@/app/components/tools/types'
 import type { SpecialResultPanelProps } from '@/app/components/workflow/run/special-result-panel'
-import type { BlockEnum, NodeRunningStatus } from '@/app/components/workflow/types'
+import type { NodeRunningStatus } from '@/app/components/workflow/types'
+import type { HumanInputFormData } from '@/types/workflow'
+import { Button } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
+import { toast } from '@langgenius/dify-ui/toast'
 import * as React from 'react'
 import { useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
-import { getProcessedFiles } from '@/app/components/base/file-uploader/utils'
-import Toast from '@/app/components/base/toast'
 import Split from '@/app/components/workflow/nodes/_base/components/split'
-import { InputVarType } from '@/app/components/workflow/types'
-import { TransferMethod } from '@/types/app'
-import { cn } from '@/utils/classnames'
+import SingleRunForm from '@/app/components/workflow/nodes/human-input/components/single-run-form'
+import { BlockEnum } from '@/app/components/workflow/types'
 import Form from './form'
+import {
+  buildSubmitData,
+  getFormErrorMessage,
+  isFilesLoaded,
+  shouldAutoRunBeforeRunForm,
+  shouldAutoShowGeneratedForm,
+} from './helpers'
 import PanelWrap from './panel-wrap'
 
 const i18nPrefix = 'singleRun'
@@ -31,123 +38,73 @@ export type BeforeRunFormProps = {
   showSpecialResultPanel?: boolean
   existVarValuesInForms: Record<string, any>[]
   filteredExistVarForms: FormProps[]
+  showGeneratedForm?: boolean
+  handleShowGeneratedForm?: (data: Record<string, any>) => void
+  handleHideGeneratedForm?: () => void
+  formData?: HumanInputFormData
+  handleSubmitHumanInputForm?: (data: any) => Promise<void>
+  handleAfterHumanInputStepRun?: () => void
 } & Partial<SpecialResultPanelProps>
 
-function formatValue(value: string | any, type: InputVarType) {
-  if (type === InputVarType.checkbox)
-    return !!value
-  if (value === undefined || value === null)
-    return value
-  if (type === InputVarType.number)
-    return Number.parseFloat(value)
-  if (type === InputVarType.json)
-    return JSON.parse(value)
-  if (type === InputVarType.contexts) {
-    return value.map((item: any) => {
-      return JSON.parse(item)
-    })
-  }
-  if (type === InputVarType.multiFiles)
-    return getProcessedFiles(value)
-
-  if (type === InputVarType.singleFile) {
-    if (Array.isArray(value))
-      return getProcessedFiles(value)
-    if (!value)
-      return undefined
-    return getProcessedFiles([value])[0]
-  }
-
-  return value
-}
 const BeforeRunForm: FC<BeforeRunFormProps> = ({
   nodeName,
+  nodeType,
   onHide,
   onRun,
   forms,
   filteredExistVarForms,
   existVarValuesInForms,
+  showGeneratedForm = false,
+  handleShowGeneratedForm,
+  handleHideGeneratedForm,
+  formData,
+  handleSubmitHumanInputForm,
+  handleAfterHumanInputStepRun,
 }) => {
   const { t } = useTranslation()
 
-  const isFileLoaded = (() => {
-    if (!forms || forms.length === 0)
-      return true
-    // system files
-    const filesForm = forms.find(item => !!item.values['#files#'])
-    if (!filesForm)
-      return true
+  const isHumanInput = nodeType === BlockEnum.HumanInput
+  const showBackButton = filteredExistVarForms.length > 0
 
-    const files = filesForm.values['#files#'] as any
-    if (files?.some((item: any) => item.transfer_method === TransferMethod.local_file && !item.upload_file_id))
-      return false
+  const isFileLoaded = isFilesLoaded(forms)
 
-    return true
-  })()
-  const handleRun = () => {
-    let errMsg = ''
-    forms.forEach((form, i) => {
-      const existVarValuesInForm = existVarValuesInForms[i]
-
-      form.inputs.forEach((input) => {
-        const value = form.values[input.variable] as any
-        if (!errMsg && input.required && (input.type !== InputVarType.checkbox) && !(input.variable in existVarValuesInForm) && (value === '' || value === undefined || value === null || (input.type === InputVarType.files && value.length === 0)))
-          errMsg = t('errorMsg.fieldRequired', { ns: 'workflow', field: typeof input.label === 'object' ? input.label.variable : input.label })
-
-        if (!errMsg && (input.type === InputVarType.singleFile || input.type === InputVarType.multiFiles) && value) {
-          let fileIsUploading = false
-          if (Array.isArray(value))
-            fileIsUploading = value.find(item => item.transferMethod === TransferMethod.local_file && !item.uploadedId)
-          else
-            fileIsUploading = value.transferMethod === TransferMethod.local_file && !value.uploadedId
-
-          if (fileIsUploading)
-            errMsg = t('errorMessage.waitForFileUpload', { ns: 'appDebug' })
-        }
-      })
-    })
+  const handleRunOrGenerateForm = () => {
+    const errMsg = getFormErrorMessage(forms, existVarValuesInForms, t)
     if (errMsg) {
-      Toast.notify({
-        message: errMsg,
-        type: 'error',
-      })
+      toast.error(errMsg)
       return
     }
 
-    const submitData: Record<string, any> = {}
-    let parseErrorJsonField = ''
-    forms.forEach((form) => {
-      form.inputs.forEach((input) => {
-        try {
-          const value = formatValue(form.values[input.variable], input.type)
-          submitData[input.variable] = value
-        }
-        catch {
-          parseErrorJsonField = input.variable
-        }
-      })
-    })
+    const { submitData, parseErrorJsonField } = buildSubmitData(forms)
     if (parseErrorJsonField) {
-      Toast.notify({
-        message: t('errorMsg.invalidJson', { ns: 'workflow', field: parseErrorJsonField }),
-        type: 'error',
-      })
+      toast.error(t('errorMsg.invalidJson', { ns: 'workflow', field: parseErrorJsonField }))
       return
     }
 
-    onRun(submitData)
+    if (isHumanInput)
+      handleShowGeneratedForm?.(submitData)
+    else
+      onRun(submitData)
   }
+
+  const handleHumanInputFormSubmit = async (data: any) => {
+    await handleSubmitHumanInputForm?.(data)
+    handleAfterHumanInputStepRun?.()
+  }
+
   const hasRun = useRef(false)
   useEffect(() => {
     // React 18 run twice in dev mode
     if (hasRun.current)
       return
     hasRun.current = true
-    if (filteredExistVarForms.length === 0)
+    if (shouldAutoRunBeforeRunForm(filteredExistVarForms, isHumanInput))
       onRun({})
-  }, [filteredExistVarForms, onRun])
+    if (shouldAutoShowGeneratedForm(filteredExistVarForms, isHumanInput))
+      handleShowGeneratedForm?.({})
+  }, [filteredExistVarForms, handleShowGeneratedForm, isHumanInput, onRun])
 
-  if (filteredExistVarForms.length === 0)
+  if (shouldAutoRunBeforeRunForm(filteredExistVarForms, isHumanInput))
     return null
 
   return (
@@ -156,23 +113,43 @@ const BeforeRunForm: FC<BeforeRunFormProps> = ({
       onHide={onHide}
     >
       <div className="h-0 grow overflow-y-auto pb-4">
-        <div className="mt-3 space-y-4 px-4">
-          {filteredExistVarForms.map((form, index) => (
-            <div key={index}>
-              <Form
-                key={index}
-                className={cn(index < forms.length - 1 && 'mb-4')}
-                {...form}
-              />
-              {index < forms.length - 1 && <Split />}
-            </div>
-          ))}
-        </div>
-        <div className="mt-4 flex justify-between space-x-2 px-4">
-          <Button disabled={!isFileLoaded} variant="primary" className="w-0 grow space-x-2" onClick={handleRun}>
-            <div>{t(`${i18nPrefix}.startRun`, { ns: 'workflow' })}</div>
-          </Button>
-        </div>
+        {!showGeneratedForm && (
+          <div className="mt-3 space-y-4 px-4">
+            {filteredExistVarForms.map((form, index) => (
+              <div key={index}>
+                <Form
+                  key={index}
+                  className={cn(index < forms.length - 1 && 'mb-4')}
+                  {...form}
+                />
+                {index < forms.length - 1 && <Split />}
+              </div>
+            ))}
+          </div>
+        )}
+        {showGeneratedForm && formData && (
+          <SingleRunForm
+            nodeName={nodeName}
+            showBackButton={showBackButton}
+            handleBack={handleHideGeneratedForm}
+            data={formData}
+            onSubmit={handleHumanInputFormSubmit}
+          />
+        )}
+        {!showGeneratedForm && (
+          <div className="mt-4 flex justify-between space-x-2 px-4">
+            {!isHumanInput && (
+              <Button disabled={!isFileLoaded} variant="primary" className="w-0 grow space-x-2" onClick={handleRunOrGenerateForm}>
+                <div>{t(`${i18nPrefix}.startRun`, { ns: 'workflow' })}</div>
+              </Button>
+            )}
+            {isHumanInput && (
+              <Button disabled={!isFileLoaded} variant="primary" className="w-0 grow space-x-2" onClick={handleRunOrGenerateForm}>
+                <div>{t('nodes.humanInput.singleRun.button', { ns: 'workflow' })}</div>
+              </Button>
+            )}
+          </div>
+        )}
       </div>
     </PanelWrap>
   )

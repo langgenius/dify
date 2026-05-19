@@ -3,6 +3,7 @@ import time
 
 import click
 from celery import shared_task
+from sqlalchemy import select
 
 from core.db.session_factory import session_factory
 from core.rag.index_processor.constant.doc_type import DocType
@@ -12,6 +13,7 @@ from core.rag.models.document import AttachmentDocument, ChildDocument, Document
 from extensions.ext_redis import redis_client
 from libs.datetime_utils import naive_utc_now
 from models.dataset import DocumentSegment
+from models.enums import IndexingStatus, SegmentStatus
 
 logger = logging.getLogger(__name__)
 
@@ -28,12 +30,12 @@ def enable_segment_to_index_task(segment_id: str):
     start_at = time.perf_counter()
 
     with session_factory.create_session() as session:
-        segment = session.query(DocumentSegment).where(DocumentSegment.id == segment_id).first()
+        segment = session.scalar(select(DocumentSegment).where(DocumentSegment.id == segment_id).limit(1))
         if not segment:
             logger.info(click.style(f"Segment not found: {segment_id}", fg="red"))
             return
 
-        if segment.status != "completed":
+        if segment.status != SegmentStatus.COMPLETED:
             logger.info(click.style(f"Segment is not completed, enable is not allowed: {segment_id}", fg="red"))
             return
 
@@ -65,7 +67,7 @@ def enable_segment_to_index_task(segment_id: str):
             if (
                 not dataset_document.enabled
                 or dataset_document.archived
-                or dataset_document.indexing_status != "completed"
+                or dataset_document.indexing_status != IndexingStatus.COMPLETED
             ):
                 logger.info(click.style(f"Segment {segment.id} document status is invalid, pass.", fg="cyan"))
                 return
@@ -123,7 +125,7 @@ def enable_segment_to_index_task(segment_id: str):
             logger.exception("enable segment to index failed")
             segment.enabled = False
             segment.disabled_at = naive_utc_now()
-            segment.status = "error"
+            segment.status = SegmentStatus.ERROR
             segment.error = str(e)
             session.commit()
         finally:

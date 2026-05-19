@@ -58,5 +58,15 @@
   "generation.tabs.create": "Uruchom raz",
   "generation.tabs.saved": "Zapisane",
   "generation.title": "Uzupełnianie AI",
+  "humanInput.completed": "Wygląda na to, że to żądanie zostało obsłużone gdzie indziej.",
+  "humanInput.expirationTimeNowOrFuture": "Ta akcja wygaśnie {{relativeTime}}.",
+  "humanInput.expired": "Wygląda na to, że to żądanie wygasło.",
+  "humanInput.expiredTip": "Ta akcja wygasła.",
+  "humanInput.formNotFound": "Formularz nie został znaleziony.",
+  "humanInput.rateLimitExceeded": "Zbyt wiele żądań, spróbuj ponownie później.",
+  "humanInput.recorded": "Twój wpis został zapisany.",
+  "humanInput.sorry": "Przepraszamy!",
+  "humanInput.submissionID": "submission_id: {{id}}",
+  "humanInput.thanks": "Dziękujemy!",
   "login.backToHome": "Powrót do strony głównej"
 }

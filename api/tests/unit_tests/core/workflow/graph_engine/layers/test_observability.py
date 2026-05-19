@@ -16,7 +16,7 @@ import pytest
 from opentelemetry.trace import StatusCode
 
 from core.app.workflow.layers.observability import ObservabilityLayer
-from core.workflow.enums import NodeType
+from graphon.enums import BuiltinNodeTypes
 
 
 class TestObservabilityLayerInitialization:
@@ -29,7 +29,7 @@ class TestObservabilityLayerInitialization:
         layer = ObservabilityLayer()
         assert not layer._is_disabled
         assert layer._tracer is not None
-        assert NodeType.TOOL in layer._parsers
+        assert BuiltinNodeTypes.TOOL in layer._parsers
         assert layer._default_parser is not None
 
     @patch("core.app.workflow.layers.observability.dify_config.ENABLE_OTEL", False)
@@ -39,7 +39,7 @@ class TestObservabilityLayerInitialization:
         layer = ObservabilityLayer()
         assert not layer._is_disabled
         assert layer._tracer is not None
-        assert NodeType.TOOL in layer._parsers
+        assert BuiltinNodeTypes.TOOL in layer._parsers
         assert layer._default_parser is not None
 
 
@@ -117,7 +117,7 @@ class TestObservabilityLayerParserIntegration:
         attrs = spans[0].attributes
         assert attrs["node.id"] == mock_start_node.id
         assert attrs["node.execution_id"] == mock_start_node.execution_id
-        assert attrs["node.type"] == mock_start_node.node_type.value
+        assert attrs["node.type"] == mock_start_node.node_type
 
     @patch("core.app.workflow.layers.observability.dify_config.ENABLE_OTEL", True)
     @pytest.mark.usefixtures("mock_is_instrument_flag_enabled_false")
@@ -144,7 +144,7 @@ class TestObservabilityLayerParserIntegration:
         self, tracer_provider_with_memory_exporter, memory_span_exporter, mock_llm_node, mock_result_event
     ):
         """Test that LLM parser is used for LLM nodes and extracts LLM-specific attributes."""
-        from core.workflow.node_events.base import NodeRunResult
+        from graphon.node_events import NodeRunResult
 
         mock_result_event.node_run_result = NodeRunResult(
             inputs={},
@@ -182,7 +182,7 @@ class TestObservabilityLayerParserIntegration:
         self, tracer_provider_with_memory_exporter, memory_span_exporter, mock_retrieval_node, mock_result_event
     ):
         """Test that retrieval parser is used for retrieval nodes and extracts retrieval-specific attributes."""
-        from core.workflow.node_events.base import NodeRunResult
+        from graphon.node_events import NodeRunResult
 
         mock_result_event.node_run_result = NodeRunResult(
             inputs={"query": "test query"},
@@ -210,7 +210,7 @@ class TestObservabilityLayerParserIntegration:
         self, tracer_provider_with_memory_exporter, memory_span_exporter, mock_start_node, mock_result_event
     ):
         """Test that result_event parameter allows parsers to extract inputs and outputs."""
-        from core.workflow.node_events.base import NodeRunResult
+        from graphon.node_events import NodeRunResult
 
         mock_result_event.node_run_result = NodeRunResult(
             inputs={"input_key": "input_value"},

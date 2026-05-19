@@ -1,6 +1,15 @@
 'use client'
 import type { FC } from 'react'
 import type { DataSet } from '@/models/datasets'
+import { cn } from '@langgenius/dify-ui/cn'
+import {
+  Drawer,
+  DrawerBackdrop,
+  DrawerContent,
+  DrawerPopup,
+  DrawerPortal,
+  DrawerViewport,
+} from '@langgenius/dify-ui/drawer'
 import {
   RiDeleteBinLine,
   RiEditLine,
@@ -11,10 +20,8 @@ import { useTranslation } from 'react-i18next'
 import ActionButton, { ActionButtonState } from '@/app/components/base/action-button'
 import AppIcon from '@/app/components/base/app-icon'
 import Badge from '@/app/components/base/badge'
-import Drawer from '@/app/components/base/drawer'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import { useKnowledge } from '@/hooks/use-knowledge'
-import { cn } from '@/utils/classnames'
 import SettingsModal from '../settings-modal'
 
 type ItemProps = {
@@ -68,7 +75,7 @@ const Item: FC<ItemProps> = ({
           background={iconInfo.icon_type === 'image' ? undefined : iconInfo.icon_background}
           imageUrl={iconInfo.icon_type === 'image' ? iconInfo.icon_url : undefined}
         />
-        <div className="system-sm-medium w-0 grow truncate text-text-secondary" title={config.name}>{config.name}</div>
+        <div className="w-0 grow truncate system-sm-medium text-text-secondary" title={config.name}>{config.name}</div>
       </div>
       <div className="ml-2 hidden shrink-0 items-center space-x-1 group-hover:flex">
         {
@@ -112,14 +119,31 @@ const Item: FC<ItemProps> = ({
           />
         )
       }
-      <Drawer isOpen={showSettingsModal} onClose={() => setShowSettingsModal(false)} footer={null} mask={isMobile} panelClassName="mt-16 mx-2 sm:mr-2 mb-3 !p-0 !max-w-[640px] rounded-xl">
-        {showSettingsModal && (
-          <SettingsModal
-            currentDataset={config}
-            onCancel={() => setShowSettingsModal(false)}
-            onSave={handleSave}
-          />
-        )}
+      <Drawer
+        open={showSettingsModal}
+        modal
+        swipeDirection="right"
+        onOpenChange={(open) => {
+          if (!open)
+            setShowSettingsModal(false)
+        }}
+      >
+        <DrawerPortal>
+          <DrawerBackdrop className={cn(!isMobile && 'bg-transparent')} />
+          <DrawerViewport>
+            <DrawerPopup className="p-0! data-[swipe-direction=right]:top-16 data-[swipe-direction=right]:right-2 data-[swipe-direction=right]:bottom-3 data-[swipe-direction=right]:h-auto data-[swipe-direction=right]:w-full data-[swipe-direction=right]:max-w-[640px] data-[swipe-direction=right]:rounded-xl">
+              <DrawerContent className="flex min-h-0 flex-1 flex-col p-0 pb-0">
+                {showSettingsModal && (
+                  <SettingsModal
+                    currentDataset={config}
+                    onCancel={() => setShowSettingsModal(false)}
+                    onSave={handleSave}
+                  />
+                )}
+              </DrawerContent>
+            </DrawerPopup>
+          </DrawerViewport>
+        </DrawerPortal>
       </Drawer>
     </div>
   )

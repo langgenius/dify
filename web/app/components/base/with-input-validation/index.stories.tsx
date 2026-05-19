@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
-import { z } from 'zod'
+import * as z from 'zod'
 import withValidation from '.'
 
 // Sample components to wrap with validation
@@ -65,7 +65,7 @@ const ProductCard = ({ name, price, category, inStock }: ProductCardProps) => {
 // Create validated versions
 const userSchema = z.object({
   name: z.string().min(1, 'Name is required'),
-  email: z.string().email('Invalid email'),
+  email: z.email('Invalid email'),
   age: z.number().min(0).max(150),
 })
 
@@ -371,7 +371,7 @@ export const ConfigurationValidation: Story = {
     )
 
     const configSchema = z.object({
-      apiUrl: z.string().url('Must be valid URL'),
+      apiUrl: z.url('Must be valid URL'),
       timeout: z.number().min(0).max(30000),
       retries: z.number().min(0).max(5),
       debug: z.boolean(),
@@ -430,7 +430,7 @@ export const UsageDocumentation: Story = {
         <div>
           <h4 className="mb-2 text-sm font-semibold text-gray-900">Usage Example</h4>
           <pre className="overflow-x-auto rounded-lg bg-gray-900 p-4 text-xs text-gray-100">
-            {`import { z } from 'zod'
+            {`import * as z from 'zod'
 import withValidation from './withValidation'
 
 // Define your component

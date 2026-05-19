@@ -36,7 +36,7 @@ Use this checklist when generating or reviewing tests for Dify frontend componen
 
 ### Integration vs Mocking
 
-- [ ] **DO NOT mock base components** (`Loading`, `Button`, `Tooltip`, etc.)
+- [ ] **DO NOT mock base components or dify-ui primitives** (base `Loading`, `Input`, `Badge`; dify-ui `Button`, `Tooltip`, `Dialog`, etc.)
 - [ ] Import real project components instead of mocking
 - [ ] Only mock: API calls, complex context providers, third-party libs with side effects
 - [ ] Prefer integration testing when using single spec file
@@ -73,13 +73,16 @@ Use this checklist when generating or reviewing tests for Dify frontend componen
 
 ### Mocks
 
-- [ ] **DO NOT mock base components** (`@/app/components/base/*`)
+- [ ] **DO NOT mock base components or dify-ui primitives** (`@/app/components/base/*` or `@langgenius/dify-ui/*`)
 - [ ] `vi.clearAllMocks()` in `beforeEach` (not `afterEach`)
 - [ ] Shared mock state reset in `beforeEach`
 - [ ] i18n uses global mock (auto-loaded in `web/vitest.setup.ts`); only override locally for custom translations
 - [ ] Router mocks match actual Next.js API
 - [ ] Mocks reflect actual component conditional behavior
 - [ ] Only mock: API services, complex context providers, third-party libs
+- [ ] For `nuqs` URL-state tests, wrap with `NuqsTestingAdapter` (prefer `web/test/nuqs-testing.tsx`)
+- [ ] For `nuqs` URL-state tests, assert `onUrlUpdate` payload (`searchParams`, `options.history`)
+- [ ] If custom `nuqs` parser exists, add round-trip tests for encoded edge cases (`%2F`, `%25`, spaces, legacy encoded values)
 
 ### Queries
 
@@ -124,7 +127,7 @@ For the current file being tested:
 - [ ] Run full directory test: `pnpm test path/to/directory/`
 - [ ] Check coverage report: `pnpm test:coverage`
 - [ ] Run `pnpm lint:fix` on all test files
-- [ ] Run `pnpm type-check:tsgo`
+- [ ] Run `pnpm type-check`
 
 ## Common Issues to Watch
 

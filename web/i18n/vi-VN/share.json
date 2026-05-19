@@ -58,5 +58,15 @@
   "generation.tabs.create": "Tạo đơn lẻ",
   "generation.tabs.saved": "Đã lưu",
   "generation.title": "Hoàn thiện AI",
+  "humanInput.completed": "Có vẻ như yêu cầu này đã được xử lý ở nơi khác.",
+  "humanInput.expirationTimeNowOrFuture": "Hành động này sẽ hết hạn {{relativeTime}}.",
+  "humanInput.expired": "Có vẻ như yêu cầu này đã hết hạn.",
+  "humanInput.expiredTip": "Hành động này đã hết hạn.",
+  "humanInput.formNotFound": "Không tìm thấy biểu mẫu.",
+  "humanInput.rateLimitExceeded": "Quá nhiều yêu cầu, vui lòng thử lại sau.",
+  "humanInput.recorded": "Đầu vào của bạn đã được ghi lại.",
+  "humanInput.sorry": "Xin lỗi!",
+  "humanInput.submissionID": "submission_id: {{id}}",
+  "humanInput.thanks": "Cảm ơn!",
   "login.backToHome": "Trở về Trang Chủ"
 }

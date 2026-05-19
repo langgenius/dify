@@ -8,28 +8,24 @@ import type {
   ModelLoadBalancingConfigEntry,
   ModelProvider,
 } from '../declarations'
-import {
-  RiIndeterminateCircleLine,
-} from '@remixicon/react'
+import { cn } from '@langgenius/dify-ui/cn'
+import { Switch } from '@langgenius/dify-ui/switch'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import Badge from '@/app/components/base/badge/index'
 import GridMask from '@/app/components/base/grid-mask'
-import { Balance } from '@/app/components/base/icons/src/vender/line/financeAndECommerce'
-import { AlertTriangle } from '@/app/components/base/icons/src/vender/solid/alertsAndFeedback'
-import Switch from '@/app/components/base/switch'
-import Tooltip from '@/app/components/base/tooltip'
+import { Infotip } from '@/app/components/base/infotip'
 import UpgradeBtn from '@/app/components/billing/upgrade-btn'
 import s from '@/app/components/custom/style.module.css'
 import { AddCredentialInLoadBalancing } from '@/app/components/header/account-setting/model-provider-page/model-auth'
 import { IS_CE_EDITION } from '@/config'
 import { useProviderContextSelector } from '@/context/provider-context'
-import { cn } from '@/utils/classnames'
 import Indicator from '../../../indicator'
 import { ConfigurationMethodEnum } from '../declarations'
 import CooldownTimer from './cooldown-timer'
 
-export type ModelLoadBalancingConfigsProps = {
+type ModelLoadBalancingConfigsProps = {
   draftConfig?: ModelLoadBalancingConfig
   setDraftConfig: Dispatch<SetStateAction<ModelLoadBalancingConfig | undefined>>
   provider: ModelProvider
@@ -69,7 +65,7 @@ const ModelLoadBalancingConfigs = ({
         if (!prev)
           return prev
         const newConfigs = [...prev.configs]
-        const modifiedConfig = modifier(newConfigs[index])
+        const modifiedConfig = modifier(newConfigs[index]!)
         if (modifiedConfig)
           newConfigs[index] = modifiedConfig
         else
@@ -135,7 +131,7 @@ const ModelLoadBalancingConfigs = ({
 
   const handleRemove = useCallback((credentialId: string) => {
     const index = draftConfig?.configs.findIndex(item => item.credential_id === credentialId && item.name !== '__inherit__')
-    if (index && index > -1)
+    if (typeof index === 'number' && index > -1)
       updateConfigEntry(index, () => undefined)
     onRemove?.(credentialId)
   }, [draftConfig?.configs, updateConfigEntry, onRemove])
@@ -148,30 +144,35 @@ const ModelLoadBalancingConfigs = ({
       <div
         className={cn('min-h-16 rounded-xl border bg-components-panel-bg transition-colors', (withSwitch || !draftConfig.enabled) ? 'border-components-panel-border' : 'border-util-colors-blue-blue-600', (withSwitch || draftConfig.enabled) ? 'cursor-default' : 'cursor-pointer', className)}
         onClick={(!withSwitch && !draftConfig.enabled) ? () => toggleModalBalancing(true) : undefined}
+        data-testid="load-balancing-main-panel"
       >
-        <div className="flex select-none items-center gap-2 px-[15px] py-3">
+        <div className="flex items-center gap-2 px-[15px] py-3 select-none">
           <div className="flex h-8 w-8 shrink-0 grow-0 items-center justify-center rounded-lg border border-util-colors-indigo-indigo-100 bg-util-colors-indigo-indigo-50 text-util-colors-blue-blue-600">
-            <Balance className="h-4 w-4" />
+            <div className="i-custom-vender-line-financeandecommerce-balance h-4 w-4" />
           </div>
           <div className="grow">
             <div className="flex items-center gap-1 text-sm text-text-primary">
               {t('modelProvider.loadBalancing', { ns: 'common' })}
-              <Tooltip
-                popupContent={t('modelProvider.loadBalancingInfo', { ns: 'common' })}
+              <Infotip
+                aria-label={t('modelProvider.loadBalancingInfo', { ns: 'common' })}
+                className="h-3 w-3"
+                iconClassName="h-full w-full"
                 popupClassName="max-w-[300px]"
-                triggerClassName="w-3 h-3"
-              />
+              >
+                {t('modelProvider.loadBalancingInfo', { ns: 'common' })}
+              </Infotip>
             </div>
             <div className="text-xs text-text-tertiary">{t('modelProvider.loadBalancingDescription', { ns: 'common' })}</div>
           </div>
           {
             withSwitch && (
               <Switch
-                defaultValue={Boolean(draftConfig.enabled)}
-                size="l"
+                checked={Boolean(draftConfig.enabled)}
+                size="lg"
                 className="ml-3 justify-self-end"
                 disabled={!modelLoadBalancingEnabled && !draftConfig.enabled}
-                onChange={value => toggleModalBalancing(value)}
+                onCheckedChange={value => toggleModalBalancing(value)}
+                data-testid="load-balancing-switch-main"
               />
             )
           }
@@ -190,8 +191,15 @@ const ModelLoadBalancingConfigs = ({
                             <CooldownTimer secondsRemaining={config.ttl} onFinish={() => clearCountdown(index)} />
                           )
                         : (
-                            <Tooltip popupContent={t('modelProvider.apiKeyStatusNormal', { ns: 'common' })}>
-                              <Indicator color={credential?.not_allowed_to_use ? 'gray' : 'green'} />
+                            <Tooltip>
+                              <TooltipTrigger
+                                render={(
+                                  <Indicator color={credential?.not_allowed_to_use ? 'gray' : 'green'} />
+                                )}
+                              />
+                              <TooltipContent>
+                                {t('modelProvider.apiKeyStatusNormal', { ns: 'common' })}
+                              </TooltipContent>
                             </Tooltip>
                           )}
                     </div>
@@ -211,13 +219,21 @@ const ModelLoadBalancingConfigs = ({
                     {!isProviderManaged && (
                       <>
                         <div className="flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
-                          <Tooltip popupContent={t('operation.remove', { ns: 'common' })}>
-                            <span
-                              className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg bg-components-button-secondary-bg text-text-tertiary transition-colors hover:bg-components-button-secondary-bg-hover"
-                              onClick={() => updateConfigEntry(index, () => undefined)}
-                            >
-                              <RiIndeterminateCircleLine className="h-4 w-4" />
-                            </span>
+                          <Tooltip>
+                            <TooltipTrigger
+                              render={(
+                                <span
+                                  className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg bg-components-button-secondary-bg text-text-tertiary transition-colors hover:bg-components-button-secondary-bg-hover"
+                                  onClick={() => updateConfigEntry(index, () => undefined)}
+                                  data-testid={`load-balancing-remove-${config.id || index}`}
+                                >
+                                  <div className="i-ri-indeterminate-circle-line h-4 w-4" />
+                                </span>
+                              )}
+                            />
+                            <TooltipContent>
+                              {t('operation.remove', { ns: 'common' })}
+                            </TooltipContent>
                           </Tooltip>
                         </div>
                       </>
@@ -227,11 +243,12 @@ const ModelLoadBalancingConfigs = ({
                         <>
                           <span className="mr-2 h-3 border-r border-r-divider-subtle" />
                           <Switch
-                            defaultValue={credential?.not_allowed_to_use ? false : Boolean(config.enabled)}
+                            checked={credential?.not_allowed_to_use ? false : Boolean(config.enabled)}
                             size="md"
                             className="justify-self-end"
-                            onChange={value => toggleConfigEntryEnabled(index, value)}
+                            onCheckedChange={value => toggleConfigEntryEnabled(index, value)}
                             disabled={credential?.not_allowed_to_use}
+                            data-testid={`load-balancing-switch-${config.id || index}`}
                           />
                         </>
                       )
@@ -254,7 +271,7 @@ const ModelLoadBalancingConfigs = ({
         {
           draftConfig.enabled && validDraftConfigList.length < 2 && (
             <div className="flex h-[34px] items-center rounded-b-xl border-t border-t-divider-subtle bg-components-panel-bg px-6 text-xs text-text-secondary">
-              <AlertTriangle className="mr-1 h-3 w-3 text-[#f79009]" />
+              <div className="i-custom-vender-solid-alertsandfeedback-alert-triangle mr-1 h-3 w-3 text-[#f79009]" />
               {t('modelProvider.loadBalancingLeastKeyWarning', { ns: 'common' })}
             </div>
           )
@@ -262,10 +279,10 @@ const ModelLoadBalancingConfigs = ({
       </div>
 
       {!modelLoadBalancingEnabled && !IS_CE_EDITION && (
-        <GridMask canvasClassName="!rounded-xl">
+        <GridMask canvasClassName="rounded-xl!">
           <div className="mt-2 flex h-14 items-center justify-between rounded-xl border-[0.5px] border-components-panel-border px-4 shadow-md">
             <div
-              className={cn('text-gradient text-sm font-semibold leading-tight', s.textGradient)}
+              className={cn('text-gradient text-sm leading-tight font-semibold', s.textGradient)}
             >
               {t('modelProvider.upgradeForLoadBalancing', { ns: 'common' })}
             </div>

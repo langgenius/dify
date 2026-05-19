@@ -1,6 +1,6 @@
 'use client'
 import type { ActivePluginType } from './constants'
-import { useTranslation } from '#i18n'
+import { cn } from '@langgenius/dify-ui/cn'
 import {
   RiArchive2Line,
   RiBrain2Line,
@@ -10,8 +10,8 @@ import {
   RiSpeakAiLine,
 } from '@remixicon/react'
 import { useSetAtom } from 'jotai'
+import { useTranslation } from '#i18n'
 import { Trigger as TriggerIcon } from '@/app/components/base/icons/src/vender/plugin'
-import { cn } from '@/utils/classnames'
 import { searchModeAtom, useActivePluginType } from './atoms'
 import { PLUGIN_CATEGORY_WITH_COLLECTIONS, PLUGIN_TYPE_SEARCH_MAP } from './constants'
 
@@ -83,8 +83,8 @@ const PluginTypeSwitch = ({
           <div
             key={option.value}
             className={cn(
-              'system-md-medium flex h-8 cursor-pointer items-center rounded-xl border border-transparent px-3 text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary',
-              activePluginType === option.value && 'border-components-main-nav-nav-button-border !bg-components-main-nav-nav-button-bg-active !text-components-main-nav-nav-button-text-active shadow-xs',
+              'flex h-8 cursor-pointer items-center rounded-xl border border-transparent px-3 system-md-medium text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary',
+              activePluginType === option.value && 'border-components-main-nav-nav-button-border bg-components-main-nav-nav-button-bg-active! text-components-main-nav-nav-button-text-active! shadow-xs',
             )}
             onClick={() => {
               handleActivePluginTypeChange(option.value)

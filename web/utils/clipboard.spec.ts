@@ -8,10 +8,28 @@
  * The implementation ensures clipboard operations work across all supported browsers
  * while gracefully handling permissions and API availability.
  */
+import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
+
 import { writeTextToClipboard } from './clipboard'
 
 describe('Clipboard Utilities', () => {
   describe('writeTextToClipboard', () => {
+    /**
+     * Setup global mocks required for the clipboard utility tests.
+     * We need to mock 'isSecureContext' because the modern Clipboard API
+     * is only available in secure contexts. We also provide a default mock
+     * for 'execCommand' to prevent 'is not a function' errors in fallback tests.
+     */
+    beforeAll(() => {
+      Object.defineProperty(window, 'isSecureContext', {
+        value: true,
+        writable: true,
+      })
+
+      // Provide a default mock for document.execCommand for JSDOM
+      document.execCommand = vi.fn().mockReturnValue(true)
+    })
+
     afterEach(() => {
       vi.restoreAllMocks()
     })

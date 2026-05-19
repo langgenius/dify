@@ -3,29 +3,21 @@
     "compounds": [
         {
             "name": "Launch Flask and Celery",
-            "configurations": ["Python: Flask", "Python: Celery"]
+            "configurations": ["Python: API (gevent)", "Python: Celery"]
         }
     ],
     "configurations": [
         {
-            "name": "Python: Flask",
-            "consoleName": "Flask",
+            "name": "Python: API (gevent)",
+            "consoleName": "API",
             "type": "debugpy",
             "request": "launch",
             "python": "${workspaceFolder}/.venv/bin/python",
             "cwd": "${workspaceFolder}",
             "envFile": ".env",
-            "module": "flask",
+            "program": "${workspaceFolder}/app.py",
             "justMyCode": true,
-            "jinja": true,
-            "env": {
-                "FLASK_APP": "app.py",
-                "GEVENT_SUPPORT": "True"
-            },
-            "args": [
-                "run",
-                "--port=5001"
-            ]
+            "jinja": true
         },
         {
             "name": "Python: Celery",
@@ -54,7 +46,7 @@
                 "--loglevel",
                 "DEBUG",
                 "-Q",
-                "dataset,priority_pipeline,pipeline,mail,ops_trace,app_deletion,plugin,workflow_storage,conversation,workflow,schedule_poller,schedule_executor,triggered_workflow_dispatcher,trigger_refresh_executor"
+                "dataset,priority_pipeline,pipeline,mail,ops_trace,app_deletion,plugin,workflow_storage,conversation,workflow,workflow_based_app_execution,schedule_poller,schedule_executor,triggered_workflow_dispatcher,trigger_refresh_executor"
             ]
         }
     ]

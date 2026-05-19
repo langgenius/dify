@@ -6,10 +6,11 @@ from flask import request
 from flask_restx import Resource, fields, marshal_with
 from pydantic import BaseModel, Field
 from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import sessionmaker
 from werkzeug.exceptions import NotFound
 
-from controllers.common.schema import get_or_create_model, register_schema_model
+from controllers.common.fields import SimpleResultResponse, TextContentResponse
+from controllers.common.schema import get_or_create_model, register_response_schema_models, register_schema_model
 from core.datasource.entities.datasource_entities import DatasourceProviderType, OnlineDocumentPagesMessage
 from core.datasource.online_document.online_document_plugin import OnlineDocumentDatasourcePlugin
 from core.indexing_runner import IndexingRunner
@@ -54,6 +55,7 @@ class DataSourceNotionPreviewQuery(BaseModel):
 
 
 register_schema_model(console_ns, NotionEstimatePayload)
+register_response_schema_models(console_ns, SimpleResultResponse, TextContentResponse)
 
 
 integrate_icon_model = get_or_create_model("DataSourceIntegrateIcon", integrate_icon_fields)
@@ -157,11 +159,15 @@ class DataSourceApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
     def patch(self, binding_id, action: Literal["enable", "disable"]):
+        _, current_tenant_id = current_account_with_tenant()
         binding_id = str(binding_id)
-        with Session(db.engine) as session:
+        with sessionmaker(db.engine, expire_on_commit=False).begin() as session:
             data_source_binding = session.execute(
-                select(DataSourceOauthBinding).filter_by(id=binding_id)
+                select(DataSourceOauthBinding).where(
+                    DataSourceOauthBinding.id == binding_id, DataSourceOauthBinding.tenant_id == current_tenant_id
+                )
             ).scalar_one_or_none()
         if data_source_binding is None:
             raise NotFound("Data source binding not found.")
@@ -211,7 +217,7 @@ class DataSourceNotionListApi(Resource):
         if not credential:
             raise NotFound("Credential not found.")
         exist_page_ids = []
-        with Session(db.engine) as session:
+        with sessionmaker(db.engine).begin() as session:
             # import notion in the exist dataset
             if query.dataset_id:
                 dataset = DatasetService.get_dataset(query.dataset_id)
@@ -221,11 +227,11 @@ class DataSourceNotionListApi(Resource):
                     raise ValueError("Dataset is not notion type.")
 
                 documents = session.scalars(
-                    select(Document).filter_by(
-                        dataset_id=query.dataset_id,
-                        tenant_id=current_tenant_id,
-                        data_source_type="notion_import",
-                        enabled=True,
+                    select(Document).where(
+                        Document.dataset_id == query.dataset_id,
+                        Document.tenant_id == current_tenant_id,
+                        Document.data_source_type == "notion_import",
+                        Document.enabled.is_(True),
                     )
                 ).all()
                 if documents:
@@ -286,6 +292,7 @@ class DataSourceNotionApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @console_ns.response(200, "Success", console_ns.models[TextContentResponse.__name__])
     def get(self, page_id, page_type):
         _, current_tenant_id = current_account_with_tenant()
 
@@ -359,6 +366,7 @@ class DataSourceNotionDatasetSyncApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
     def get(self, dataset_id):
         dataset_id_str = str(dataset_id)
         dataset = DatasetService.get_dataset(dataset_id_str)
@@ -376,6 +384,7 @@ class DataSourceNotionDocumentSyncApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
     def get(self, dataset_id, document_id):
         dataset_id_str = str(dataset_id)
         document_id_str = str(document_id)

@@ -55,10 +55,10 @@
   "copied": "Kopyalandı",
   "copy": "Kopyala",
   "develop.noContent": "İçerik yok",
-  "develop.pathParams": "Path Params",
-  "develop.query": "Query",
-  "develop.requestBody": "Request Body",
-  "develop.toc": "Içeriği",
+  "develop.pathParams": "Yol Parametreleri",
+  "develop.query": "Sorgu",
+  "develop.requestBody": "İstek Gövdesi",
+  "develop.toc": "İçindekiler",
   "disabled": "Devre Dışı",
   "loading": "Yükleniyor",
   "merMaid.rerender": "Yeniden İşleme",
@@ -67,6 +67,6 @@
   "pause": "Duraklat",
   "play": "Oynat",
   "playing": "Oynatılıyor",
-  "regenerate": "Yenilemek",
+  "regenerate": "Yeniden Oluştur",
   "status": "Durum"
 }

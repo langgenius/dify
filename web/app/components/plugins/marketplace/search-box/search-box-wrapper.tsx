@@ -11,7 +11,7 @@ const SearchBoxWrapper = () => {
 
   return (
     <SearchBox
-      wrapperClassName="z-[11] mx-auto w-[640px] shrink-0"
+      wrapperClassName="z-11 mx-auto w-[640px] shrink-0"
       inputClassName="w-full"
       search={searchPluginText}
       onSearchChange={handleSearchPluginTextChange}

@@ -72,9 +72,6 @@ export enum ModelFeatureEnum {
 }
 
 export enum ModelFeatureTextEnum {
-  toolCall = 'Tool Call',
-  multiToolCall = 'Multi Tool Call',
-  agentThought = 'Agent Thought',
   vision = 'Vision',
   video = 'Video',
   document = 'Document',
@@ -90,27 +87,12 @@ export enum ModelStatusEnum {
   credentialRemoved = 'credential-removed',
 }
 
-export const MODEL_STATUS_TEXT: { [k: string]: TypeWithI18N } = {
-  'no-configure': {
-    en_US: 'No Configure',
-    zh_Hans: '未配置凭据',
-  },
-  'quota-exceeded': {
-    en_US: 'Quota Exceeded',
-    zh_Hans: '额度不足',
-  },
-  'no-permission': {
-    en_US: 'No Permission',
-    zh_Hans: '无使用权限',
-  },
-}
-
 export enum CustomConfigurationStatusEnum {
   active = 'active',
   noConfigure = 'no-configure',
 }
 
-export type FormShowOnObject = {
+type FormShowOnObject = {
   variable: string
   value: string
 }
@@ -171,11 +153,9 @@ export enum CurrentSystemQuotaTypeEnum {
 
 export enum QuotaUnitEnum {
   times = 'times',
-  tokens = 'tokens',
-  credits = 'credits',
 }
 
-export type QuotaConfiguration = {
+type QuotaConfiguration = {
   quota_type: CurrentSystemQuotaTypeEnum
   quota_unit: QuotaUnitEnum
   quota_limit: number
@@ -201,11 +181,6 @@ export type CustomModelCredential = CustomModel & {
   available_model_credentials?: Credential[]
   current_credential_id?: string
   current_credential_name?: string
-}
-
-export type CredentialWithModel = Credential & {
-  model: string
-  model_type: ModelTypeEnum
 }
 
 export type ModelProvider = {

@@ -39,7 +39,5 @@ export enum AnnotationEnableStatus {
 }
 
 export enum JobStatus {
-  waiting = 'waiting',
-  processing = 'processing',
   completed = 'completed',
 }

@@ -10,12 +10,12 @@ from core.app.entities.app_invoke_entities import (
     CompletionAppGenerateEntity,
 )
 from core.callback_handler.index_tool_callback_handler import DatasetIndexToolCallbackHandler
-from core.file import File
 from core.model_manager import ModelInstance
-from core.model_runtime.entities.message_entities import ImagePromptMessageContent
 from core.moderation.base import ModerationError
 from core.rag.retrieval.dataset_retrieval import DatasetRetrieval
 from extensions.ext_database import db
+from graphon.file import File
+from graphon.model_runtime.entities.message_entities import ImagePromptMessageContent
 from models.model import App, Message
 
 logger = logging.getLogger(__name__)
@@ -132,8 +132,10 @@ class CompletionAppRunner(AppRunner):
                 hit_callback=hit_callback,
                 message_id=message.id,
                 inputs=inputs,
-                vision_enabled=application_generate_entity.app_config.app_model_config_dict.get("file_upload", {}).get(
-                    "enabled", False
+                vision_enabled=bool(
+                    application_generate_entity.app_config.app_model_config_dict.get("file_upload", {})
+                    .get("image", {})
+                    .get("enabled", False)
                 ),
             )
             context_files = retrieved_files or []
@@ -179,7 +181,6 @@ class CompletionAppRunner(AppRunner):
             model_parameters=application_generate_entity.model_conf.parameters,
             stop=stop,
             stream=application_generate_entity.stream,
-            user=application_generate_entity.user_id,
         )
 
         # handle invoke result

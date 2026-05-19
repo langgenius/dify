@@ -13,6 +13,7 @@ export const baseProviderContextValue: ProviderContextState = {
   isAPIKeySet: true,
   plan: defaultPlan,
   isFetchedPlan: false,
+  isFetchedPlanInfo: false,
   enableBilling: false,
   onPlanInfoChanged: noop,
   enableReplaceWebAppLogo: false,
@@ -35,6 +36,7 @@ export const baseProviderContextValue: ProviderContextState = {
   refreshLicenseLimit: noop,
   isAllowTransferWorkspace: false,
   isAllowPublishAsCustomKnowledgePipelineTemplate: false,
+  humanInputEmailDeliveryEnabled: false,
 }
 
 export const createMockProviderContextValue = (overrides: Partial<ProviderContextState> = {}): ProviderContextState => {

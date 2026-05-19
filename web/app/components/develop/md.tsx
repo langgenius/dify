@@ -1,6 +1,6 @@
 'use client'
 import type { PropsWithChildren } from 'react'
-import { cn } from '@/utils/classnames'
+import { cn } from '@langgenius/dify-ui/cn'
 
 type IChildrenProps = {
   children: React.ReactNode
@@ -45,7 +45,7 @@ export const Heading = function H2({
     <>
       <span id={name?.replace(/^#/, '')} className="relative -top-28" />
       <div className="flex items-center gap-x-3">
-        <span className={`rounded-lg px-1.5 font-mono text-[0.625rem] font-semibold leading-6 ring-1 ring-inset ${style}`}>{method}</span>
+        <span className={`rounded-lg px-1.5 font-mono text-[0.625rem] leading-6 font-semibold ring-1 ring-inset ${style}`}>{method}</span>
         {/* <span className="h-0.5 w-0.5 rounded-full bg-zinc-300 dark:bg-zinc-600"></span> */}
         <span className="font-mono text-xs text-zinc-400">{url}</span>
       </div>
@@ -59,7 +59,7 @@ export const Heading = function H2({
 
 export function Row({ children }: IChildrenProps) {
   return (
-    <div className="grid grid-cols-1 items-start gap-x-16 gap-y-10 xl:!max-w-none xl:grid-cols-2">
+    <div className="grid grid-cols-1 items-start gap-x-16 gap-y-10 xl:max-w-none! xl:grid-cols-2">
       {children}
     </div>
   )
@@ -71,7 +71,7 @@ type IColProps = IChildrenProps & {
 export function Col({ children, sticky = false }: IColProps) {
   return (
     <div
-      className={cn('[&>:first-child]:mt-0 [&>:last-child]:mb-0', sticky && 'xl:sticky xl:top-24')}
+      className={cn('*:first:mt-0 *:last:mb-0', sticky && 'xl:sticky xl:top-24')}
     >
       {children}
     </div>
@@ -83,7 +83,7 @@ export function Properties({ children }: IChildrenProps) {
     <div className="my-6">
       <ul
         role="list"
-        className="m-0 max-w-[calc(theme(maxWidth.lg)-theme(spacing.8))] list-none divide-y divide-zinc-900/5 p-0 dark:divide-white/5"
+        className="m-0 max-w-[calc(var(--container-lg)-(--spacing(8)))] list-none divide-y divide-zinc-900/5 p-0 dark:divide-white/5"
       >
         {children}
       </ul>
@@ -108,7 +108,7 @@ export function Property({ name, type, children }: IProperty) {
           {type}
         </dd>
         <dt className="sr-only">Description</dt>
-        <dd className="w-full flex-none [&>:first-child]:mt-0 [&>:last-child]:mb-0">
+        <dd className="w-full flex-none *:first:mt-0 *:last:mb-0">
           {children}
         </dd>
       </dl>
@@ -133,7 +133,7 @@ export function SubProperty({ name, type, children }: ISubProperty) {
           {type}
         </dd>
         <dt className="sr-only">Description</dt>
-        <dd className="w-full flex-none [&>:first-child]:mt-0 [&>:last-child]:mb-0">
+        <dd className="w-full flex-none *:first:mt-0 *:last:mb-0">
           {children}
         </dd>
       </dl>

@@ -1,11 +1,12 @@
 from typing import Any
 
 from flask import request
-from pydantic import BaseModel, Field, TypeAdapter, model_validator
-from sqlalchemy.orm import Session
+from pydantic import BaseModel, Field, TypeAdapter
+from sqlalchemy.orm import sessionmaker
 from werkzeug.exceptions import NotFound
 
-from controllers.common.schema import register_schema_models
+from controllers.common.controller_schemas import ConversationRenamePayload
+from controllers.common.schema import register_response_schema_models, register_schema_models
 from controllers.console.explore.error import NotChatAppError
 from controllers.console.explore.wraps import InstalledAppResource
 from core.app.entities.app_invoke_entities import InvokeFrom
@@ -32,19 +33,8 @@ class ConversationListQuery(BaseModel):
     pinned: bool | None = None
 
 
-class ConversationRenamePayload(BaseModel):
-    name: str | None = None
-    auto_generate: bool = False
-
-    @model_validator(mode="after")
-    def validate_name_requirement(self):
-        if not self.auto_generate:
-            if self.name is None or not self.name.strip():
-                raise ValueError("name is required when auto_generate is false")
-        return self
-
-
 register_schema_models(console_ns, ConversationListQuery, ConversationRenamePayload)
+register_response_schema_models(console_ns, ResultResponse)
 
 
 @console_ns.route(
@@ -74,7 +64,7 @@ class ConversationListApi(InstalledAppResource):
         try:
             if not isinstance(current_user, Account):
                 raise ValueError("current_user must be an Account instance")
-            with Session(db.engine) as session:
+            with sessionmaker(db.engine).begin() as session:
                 pagination = WebConversationService.pagination_by_last_id(
                     session=session,
                     app_model=app_model,
@@ -100,6 +90,7 @@ class ConversationListApi(InstalledAppResource):
     endpoint="installed_app_conversation",
 )
 class ConversationApi(InstalledAppResource):
+    @console_ns.response(204, "Conversation deleted successfully")
     def delete(self, installed_app, c_id):
         app_model = installed_app.app
         app_mode = AppMode.value_of(app_model.mode)
@@ -153,6 +144,7 @@ class ConversationRenameApi(InstalledAppResource):
     endpoint="installed_app_conversation_pin",
 )
 class ConversationPinApi(InstalledAppResource):
+    @console_ns.response(200, "Success", console_ns.models[ResultResponse.__name__])
     def patch(self, installed_app, c_id):
         app_model = installed_app.app
         app_mode = AppMode.value_of(app_model.mode)
@@ -176,6 +168,7 @@ class ConversationPinApi(InstalledAppResource):
     endpoint="installed_app_conversation_unpin",
 )
 class ConversationUnPinApi(InstalledAppResource):
+    @console_ns.response(200, "Success", console_ns.models[ResultResponse.__name__])
     def patch(self, installed_app, c_id):
         app_model = installed_app.app
         app_mode = AppMode.value_of(app_model.mode)

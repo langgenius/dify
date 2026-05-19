@@ -1,10 +1,10 @@
 import type { RelatedAppResponse } from '@/models/datasets'
+import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { RiInformation2Line } from '@remixicon/react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import Divider from '@/app/components/base/divider'
 import LinkedAppsPanel from '@/app/components/base/linked-apps-panel'
-import Tooltip from '@/app/components/base/tooltip'
 import NoLinkedAppsPanel from '../no-linked-apps-panel'
 
 type StatisticsProps = {
@@ -25,7 +25,7 @@ const Statistics = ({
 
   return (
     <div className="flex items-center gap-x-0.5 p-2 pb-0">
-      <div className="flex grow flex-col px-2 pb-1.5 pt-1">
+      <div className="flex grow flex-col px-2 pt-1 pb-1.5">
         <div className="system-md-semibold-uppercase text-text-secondary">
           {documentCount ?? '--'}
         </div>
@@ -33,33 +33,41 @@ const Statistics = ({
           {t('datasetMenus.documents', { ns: 'common' })}
         </div>
       </div>
-      <div className="py-2 pl-0.5 pr-1.5">
+      <div className="py-2 pr-1.5 pl-0.5">
         <Divider className="text-test-divider-regular h-full w-fit" />
       </div>
-      <div className="flex grow flex-col px-2 pb-1.5 pt-1">
+      <div className="flex grow flex-col px-2 pt-1 pb-1.5">
         <div className="system-md-semibold-uppercase text-text-secondary">
           {relatedAppsTotal ?? '--'}
         </div>
-        <Tooltip
-          position="top-start"
-          noDecoration
-          needsDelay
-          popupContent={
-            hasRelatedApps
+        <Popover>
+          <PopoverTrigger
+            openOnHover
+            aria-label={t('datasetMenus.relatedApp', { ns: 'common' })}
+            render={(
+              <button
+                type="button"
+                className="flex cursor-pointer items-center gap-x-0.5 rounded-sm system-2xs-medium-uppercase text-text-tertiary outline-hidden hover:text-text-secondary focus-visible:ring-1 focus-visible:ring-components-input-border-hover"
+              >
+                <span>{t('datasetMenus.relatedApp', { ns: 'common' })}</span>
+                <RiInformation2Line className="size-3" />
+              </button>
+            )}
+          />
+          <PopoverContent
+            placement="top-start"
+            popupClassName="border-0 bg-transparent p-0 shadow-none"
+          >
+            {hasRelatedApps
               ? (
                   <LinkedAppsPanel
                     relatedApps={relatedApps.data}
                     isMobile={!expand}
                   />
                 )
-              : <NoLinkedAppsPanel />
-          }
-        >
-          <div className="system-2xs-medium-uppercase flex cursor-pointer items-center gap-x-0.5 text-text-tertiary">
-            <span>{t('datasetMenus.relatedApp', { ns: 'common' })}</span>
-            <RiInformation2Line className="size-3" />
-          </div>
-        </Tooltip>
+              : <NoLinkedAppsPanel />}
+          </PopoverContent>
+        </Popover>
       </div>
     </div>
   )

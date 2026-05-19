@@ -35,6 +35,8 @@
   "error.emailEmpty": "Se requiere una dirección de correo electrónico",
   "error.emailInValid": "Por favor, ingresa una dirección de correo electrónico válida",
   "error.invalidEmailOrPassword": "Correo electrónico o contraseña inválidos.",
+  "error.invalidRedirectUrlOrAppCode": "URL de redirección o código de aplicación inválido",
+  "error.invalidSSOProtocol": "Protocolo SSO inválido",
   "error.nameEmpty": "Se requiere un nombre",
   "error.passwordEmpty": "Se requiere una contraseña",
   "error.passwordInvalid": "La contraseña debe contener letras y números, y tener una longitud mayor a 8",

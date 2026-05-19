@@ -4,7 +4,8 @@ from pydantic import BaseModel, Field
 from werkzeug.exceptions import Forbidden, InternalServerError, NotFound
 
 import services
-from controllers.common.schema import get_or_create_model, register_schema_models
+from controllers.common.fields import UsageCountResponse
+from controllers.common.schema import get_or_create_model, register_response_schema_models, register_schema_models
 from controllers.console import console_ns
 from controllers.console.datasets.error import DatasetNameDuplicateError
 from controllers.console.wraps import account_initialization_required, edit_permission_required, setup_required
@@ -25,7 +26,9 @@ from libs.login import current_account_with_tenant, login_required
 from services.dataset_service import DatasetService
 from services.external_knowledge_service import ExternalDatasetService
 from services.hit_testing_service import HitTestingService
-from services.knowledge_service import ExternalDatasetTestService
+from services.knowledge_service import BedrockRetrievalSetting, ExternalDatasetTestService
+
+register_response_schema_models(console_ns, UsageCountResponse)
 
 
 def _build_dataset_detail_model():
@@ -86,7 +89,7 @@ class ExternalHitTestingPayload(BaseModel):
 
 
 class BedrockRetrievalPayload(BaseModel):
-    retrieval_setting: dict[str, object]
+    retrieval_setting: "BedrockRetrievalSetting"
     query: str
     knowledge_id: str
 
@@ -173,8 +176,11 @@ class ExternalApiTemplateApi(Resource):
     @login_required
     @account_initialization_required
     def get(self, external_knowledge_api_id):
+        _, current_tenant_id = current_account_with_tenant()
         external_knowledge_api_id = str(external_knowledge_api_id)
-        external_knowledge_api = ExternalDatasetService.get_external_knowledge_api(external_knowledge_api_id)
+        external_knowledge_api = ExternalDatasetService.get_external_knowledge_api(
+            external_knowledge_api_id, current_tenant_id
+        )
         if external_knowledge_api is None:
             raise NotFound("API template not found.")
 
@@ -203,6 +209,7 @@ class ExternalApiTemplateApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @console_ns.response(204, "External knowledge API deleted successfully")
     def delete(self, external_knowledge_api_id):
         current_user, current_tenant_id = current_account_with_tenant()
         external_knowledge_api_id = str(external_knowledge_api_id)
@@ -219,15 +226,16 @@ class ExternalApiUseCheckApi(Resource):
     @console_ns.doc("check_external_api_usage")
     @console_ns.doc(description="Check if external knowledge API is being used")
     @console_ns.doc(params={"external_knowledge_api_id": "External knowledge API ID"})
-    @console_ns.response(200, "Usage check completed successfully")
+    @console_ns.response(200, "Usage check completed successfully", console_ns.models[UsageCountResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
     def get(self, external_knowledge_api_id):
+        _, current_tenant_id = current_account_with_tenant()
         external_knowledge_api_id = str(external_knowledge_api_id)
 
         external_knowledge_api_is_using, count = ExternalDatasetService.external_knowledge_api_use_check(
-            external_knowledge_api_id
+            external_knowledge_api_id, current_tenant_id
         )
         return {"is_using": external_knowledge_api_is_using, "count": count}, 200
 

@@ -2,10 +2,11 @@ import logging
 from typing import Literal
 
 from flask import request
-from pydantic import BaseModel, Field, TypeAdapter
+from pydantic import BaseModel, TypeAdapter
 from werkzeug.exceptions import InternalServerError, NotFound
 
-from controllers.common.schema import register_schema_models
+from controllers.common.controller_schemas import MessageFeedbackPayload, MessageListQuery
+from controllers.common.schema import register_response_schema_models, register_schema_models
 from controllers.console.app.error import (
     AppMoreLikeThisDisabledError,
     CompletionRequestError,
@@ -21,12 +22,12 @@ from controllers.console.explore.error import (
 from controllers.console.explore.wraps import InstalledAppResource
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
-from core.model_runtime.errors.invoke import InvokeError
 from fields.conversation_fields import ResultResponse
 from fields.message_fields import MessageInfiniteScrollPagination, MessageListItem, SuggestedQuestionsResponse
+from graphon.model_runtime.errors.invoke import InvokeError
 from libs import helper
-from libs.helper import UUIDStrOrEmpty
 from libs.login import current_account_with_tenant
+from models.enums import FeedbackRating
 from models.model import AppMode
 from services.app_generate_service import AppGenerateService
 from services.errors.app import MoreLikeThisDisabledError
@@ -43,22 +44,12 @@ from .. import console_ns
 logger = logging.getLogger(__name__)
 
 
-class MessageListQuery(BaseModel):
-    conversation_id: UUIDStrOrEmpty
-    first_id: UUIDStrOrEmpty | None = None
-    limit: int = Field(default=20, ge=1, le=100)
-
-
-class MessageFeedbackPayload(BaseModel):
-    rating: Literal["like", "dislike"] | None = None
-    content: str | None = None
-
-
 class MoreLikeThisQuery(BaseModel):
     response_mode: Literal["blocking", "streaming"]
 
 
 register_schema_models(console_ns, MessageListQuery, MessageFeedbackPayload, MoreLikeThisQuery)
+register_response_schema_models(console_ns, ResultResponse, SuggestedQuestionsResponse)
 
 
 @console_ns.route(
@@ -103,6 +94,7 @@ class MessageListApi(InstalledAppResource):
 )
 class MessageFeedbackApi(InstalledAppResource):
     @console_ns.expect(console_ns.models[MessageFeedbackPayload.__name__])
+    @console_ns.response(200, "Feedback submitted successfully", console_ns.models[ResultResponse.__name__])
     def post(self, installed_app, message_id):
         current_user, _ = current_account_with_tenant()
         app_model = installed_app.app
@@ -116,7 +108,7 @@ class MessageFeedbackApi(InstalledAppResource):
                 app_model=app_model,
                 message_id=message_id,
                 user=current_user,
-                rating=payload.rating,
+                rating=FeedbackRating(payload.rating) if payload.rating else None,
                 content=payload.content,
             )
         except MessageNotExistsError:
@@ -176,6 +168,7 @@ class MessageMoreLikeThisApi(InstalledAppResource):
     endpoint="installed_app_suggested_question",
 )
 class MessageSuggestedQuestionApi(InstalledAppResource):
+    @console_ns.response(200, "Success", console_ns.models[SuggestedQuestionsResponse.__name__])
     def get(self, installed_app, message_id):
         current_user, _ = current_account_with_tenant()
         app_model = installed_app.app

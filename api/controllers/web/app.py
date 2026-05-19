@@ -1,4 +1,5 @@
 import logging
+from typing import Any, cast
 
 from flask import request
 from flask_restx import Resource
@@ -7,7 +8,7 @@ from werkzeug.exceptions import Unauthorized
 
 from constants import HEADER_NAME_APP_CODE
 from controllers.common import fields
-from controllers.common.schema import register_schema_models
+from controllers.common.schema import register_response_schema_models, register_schema_models
 from core.app.app_config.common.parameters_mapping import get_parameters_from_feature_dict
 from libs.passport import PassportService
 from libs.token import extract_webapp_passport
@@ -32,6 +33,11 @@ class AppAccessModeQuery(BaseModel):
 
 
 register_schema_models(web_ns, AppAccessModeQuery)
+register_response_schema_models(
+    web_ns,
+    fields.AccessModeResponse,
+    fields.BooleanResultResponse,
+)
 
 
 @web_ns.route("/parameters")
@@ -57,14 +63,14 @@ class AppParameterApi(WebApiResource):
             if workflow is None:
                 raise AppUnavailableError()
 
-            features_dict = workflow.features_dict
+            features_dict: dict[str, Any] = workflow.features_dict
             user_input_form = workflow.user_input_form(to_old_structure=True)
         else:
             app_model_config = app_model.app_model_config
             if app_model_config is None:
                 raise AppUnavailableError()
 
-            features_dict = app_model_config.to_dict()
+            features_dict = cast(dict[str, Any], app_model_config.to_dict())
 
             user_input_form = features_dict.get("user_input_form", [])
 
@@ -108,6 +114,7 @@ class AppAccessMode(Resource):
             500: "Internal Server Error",
         }
     )
+    @web_ns.response(200, "Success", web_ns.models[fields.AccessModeResponse.__name__])
     def get(self):
         raw_args = request.args.to_dict()
         args = AppAccessModeQuery.model_validate(raw_args)
@@ -141,6 +148,7 @@ class AppWebAuthPermission(Resource):
             500: "Internal Server Error",
         }
     )
+    @web_ns.response(200, "Success", web_ns.models[fields.BooleanResultResponse.__name__])
     def get(self):
         user_id = "visitor"
         app_code = request.headers.get(HEADER_NAME_APP_CODE)

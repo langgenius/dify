@@ -1,4 +1,4 @@
-from core.workflow.nodes.base.exc import BaseNodeError
+from graphon.entities.exc import BaseNodeError
 
 
 class WebhookNodeError(BaseNodeError):

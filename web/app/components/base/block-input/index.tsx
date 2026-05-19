@@ -1,13 +1,13 @@
 'use client'
 
 import type { ChangeEvent, FC } from 'react'
+import { cn } from '@langgenius/dify-ui/cn'
+import { toast } from '@langgenius/dify-ui/toast'
 import * as React from 'react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { cn } from '@/utils/classnames'
 import { checkKeys } from '@/utils/var'
 import VarHighlight from '../../app/configuration/base/var-highlight'
-import Toast from '../toast'
 
 // regex to match the {{}} and replace it with a span
 const regex = /\{\{([^}]+)\}\}/g
@@ -29,7 +29,7 @@ export const getInputKeys = (value: string) => {
   return res
 }
 
-export type IBlockInputProps = {
+type IBlockInputProps = {
   value: string
   className?: string // wrapper class
   highLightClassName?: string // class for the highlighted text default is text-blue-500
@@ -63,19 +63,19 @@ const BlockInput: FC<IBlockInputProps> = ({
   }, [isEditing])
 
   const style = cn({
-    'block px-4 py-2 w-full h-full text-sm text-gray-900 outline-0 border-0 break-all': true,
+    'block h-full w-full border-0 px-4 py-2 text-sm break-all text-gray-900 outline-0': true,
     'block-input--editing': isEditing,
   })
 
   const renderSafeContent = (value: string) => {
     const parts = value.split(/(\{\{[^}]+\}\}|\n)/g)
     return parts.map((part, index) => {
-      const variableMatch = part.match(/^\{\{([^}]+)\}\}$/)
+      const variableMatch = /^\{\{([^}]+)\}\}$/.exec(part)
       if (variableMatch) {
         return (
           <VarHighlight
             key={`var-${index}`}
-            name={variableMatch[1]}
+            name={variableMatch[1]!}
           />
         )
       }
@@ -92,10 +92,7 @@ const BlockInput: FC<IBlockInputProps> = ({
       const keys = getInputKeys(value)
       const result = checkKeys(keys)
       if (!result.isValid) {
-        Toast.notify({
-          type: 'error',
-          message: t(`varKeyError.${result.errorMessageKey}`, { ns: 'appDebug', key: result.errorKey }),
-        })
+        toast.error(t(`varKeyError.${result.errorMessageKey}`, { ns: 'appDebug', key: result.errorKey }))
         return
       }
       onConfirm(value, keys)
@@ -111,17 +108,17 @@ const BlockInput: FC<IBlockInputProps> = ({
   // Prevent rerendering caused cursor to jump to the start of the contentEditable element
   const TextAreaContentView = () => {
     return (
-      <div className={cn(style, className)}>
+      <div className={cn(style, className)} data-testid="block-input-content">
         {renderSafeContent(currentValue || '')}
       </div>
     )
   }
 
   const placeholder = ''
-  const editAreaClassName = 'focus:outline-none bg-transparent text-sm'
+  const editAreaClassName = 'focus:outline-hidden bg-transparent text-sm'
 
   const textAreaContent = (
-    <div className={cn(readonly ? 'max-h-[180px] pb-5' : 'h-[180px]', ' overflow-y-auto')} onClick={() => !readonly && setIsEditing(true)}>
+    <div className={cn(readonly ? 'max-h-[180px] pb-5' : 'h-[180px]', 'overflow-y-auto')} onClick={() => !readonly && setIsEditing(true)}>
       {isEditing
         ? (
             <div className="h-full px-4 py-2">
@@ -134,10 +131,10 @@ const BlockInput: FC<IBlockInputProps> = ({
                 onBlur={() => {
                   blur()
                   setIsEditing(false)
-                  // click confirm also make blur. Then outer value is change. So below code has problem.
-                  // setTimeout(() => {
-                  //   handleCancel()
-                  // }, 1000)
+                // click confirm also make blur. Then outer value is change. So below code has problem.
+                // setTimeout(() => {
+                //   handleCancel()
+                // }, 1000)
                 }}
               />
             </div>
@@ -147,7 +144,7 @@ const BlockInput: FC<IBlockInputProps> = ({
   )
 
   return (
-    <div className={cn('block-input w-full overflow-y-auto rounded-xl border-none bg-white')}>
+    <div className={cn('block-input w-full overflow-y-auto rounded-xl border-none bg-white')} data-testid="block-input">
       {textAreaContent}
       {/* footer */}
       {!readonly && (

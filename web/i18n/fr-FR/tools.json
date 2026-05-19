@@ -126,6 +126,8 @@
   "mcp.modal.headerValuePlaceholder": "par exemple, Jeton d'accès123",
   "mcp.modal.headers": "En-têtes",
   "mcp.modal.headersTip": "En-têtes HTTP supplémentaires à envoyer avec les requêtes au serveur MCP",
+  "mcp.modal.invalidServerIdentifier": "Veuillez saisir un identifiant de serveur valide",
+  "mcp.modal.invalidServerUrl": "Veuillez saisir une URL de serveur valide",
   "mcp.modal.maskedHeadersTip": "Les valeurs d'en-tête sont masquées pour des raisons de sécurité. Les modifications mettront à jour les valeurs réelles.",
   "mcp.modal.name": "Nom & Icône",
   "mcp.modal.namePlaceholder": "Nommez votre serveur MCP",

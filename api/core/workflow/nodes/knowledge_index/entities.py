@@ -1,62 +1,13 @@
-from typing import Literal, Union
+from typing import Union
 
 from pydantic import BaseModel
 
+from core.rag.entities import RerankingModelConfig, WeightedScoreConfig
+from core.rag.index_processor.index_processor_base import SummaryIndexSettingDict
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
-from core.workflow.nodes.base import BaseNodeData
-
-
-class RerankingModelConfig(BaseModel):
-    """
-    Reranking Model Config.
-    """
-
-    reranking_provider_name: str
-    reranking_model_name: str
-
-
-class VectorSetting(BaseModel):
-    """
-    Vector Setting.
-    """
-
-    vector_weight: float
-    embedding_provider_name: str
-    embedding_model_name: str
-
-
-class KeywordSetting(BaseModel):
-    """
-    Keyword Setting.
-    """
-
-    keyword_weight: float
-
-
-class WeightedScoreConfig(BaseModel):
-    """
-    Weighted score Config.
-    """
-
-    vector_setting: VectorSetting
-    keyword_setting: KeywordSetting
-
-
-class EmbeddingSetting(BaseModel):
-    """
-    Embedding Setting.
-    """
-
-    embedding_provider_name: str
-    embedding_model_name: str
-
-
-class EconomySetting(BaseModel):
-    """
-    Economy Setting.
-    """
-
-    keyword_number: int
+from core.workflow.nodes.knowledge_index import KNOWLEDGE_INDEX_NODE_TYPE
+from graphon.entities.base_node_data import BaseNodeData
+from graphon.enums import NodeType
 
 
 class RetrievalSetting(BaseModel):
@@ -72,16 +23,6 @@ class RetrievalSetting(BaseModel):
     reranking_enable: bool = True
     reranking_model: RerankingModelConfig | None = None
     weights: WeightedScoreConfig | None = None
-
-
-class IndexMethod(BaseModel):
-    """
-    Knowledge Index Setting.
-    """
-
-    indexing_technique: Literal["high_quality", "economy"]
-    embedding_setting: EmbeddingSetting
-    economy_setting: EconomySetting
 
 
 class FileInfo(BaseModel):
@@ -155,8 +96,8 @@ class KnowledgeIndexNodeData(BaseNodeData):
     Knowledge index Node Data.
     """
 
-    type: str = "knowledge-index"
+    type: NodeType = KNOWLEDGE_INDEX_NODE_TYPE
     chunk_structure: str
     index_chunk_variable_selector: list[str]
     indexing_technique: str | None = None
-    summary_index_setting: dict | None = None
+    summary_index_setting: SummaryIndexSettingDict | None = None

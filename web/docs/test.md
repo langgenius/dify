@@ -4,24 +4,19 @@ This document is the complete testing specification for the Dify frontend projec
 Goal: Readable, change-friendly, reusable, and debuggable tests.
 When I ask you to write/refactor/fix tests, follow these rules by default.
 
-## Tech Stack
-
-- **Framework**: Next.js 15 + React 19 + TypeScript
-- **Testing Tools**: Vitest 4.0.16 + React Testing Library 16.0
-- **Test Environment**: jsdom
-- **File Naming**: `ComponentName.spec.tsx` (same directory as component)
-
 ## Running Tests
+
+Run these commands from `web/`. From the repository root, prefix them with `pnpm -C web`.
 
 ```bash
 # Run all tests
 pnpm test
 
 # Watch mode
-pnpm test:watch
+pnpm test --watch
 
 # Generate coverage report
-pnpm test:coverage
+pnpm test --coverage
 
 # Run specific file
 pnpm test path/to/file.spec.tsx
@@ -29,8 +24,10 @@ pnpm test path/to/file.spec.tsx
 
 ## Project Test Setup
 
-- **Configuration**: `vitest.config.ts` sets the `jsdom` environment, loads the Testing Library presets, and respects our path aliases (`@/...`). Check this file before adding new transformers or module name mappers.
-- **Global setup**: `vitest.setup.ts` already imports `@testing-library/jest-dom`, runs `cleanup()` after every test, and defines shared mocks (for example `react-i18next`, `next/image`). Add any environment-level mocks (for example `ResizeObserver`, `matchMedia`, `IntersectionObserver`, `TextEncoder`, `crypto`) here so they are shared consistently.
+- **Configuration**: `vite.config.ts` sets the `happy-dom` environment, loads the Testing Library presets, and respects our path aliases (`@/...`). Check this file before adding new transformers or module name mappers.
+- **File naming**: `ComponentName.spec.tsx` inside a same-level `__tests__/` directory.
+- **Placement rule**: Component, hook, and utility tests must live in a sibling `__tests__/` folder at the same level as the source under test. For example, `foo/index.tsx` maps to `foo/__tests__/index.spec.tsx`, and `foo/bar.ts` maps to `foo/__tests__/bar.spec.ts`.
+- **Global setup**: `vitest.setup.ts` already imports `@testing-library/jest-dom`, runs `cleanup()` after every test, and defines shared mocks (for example `react-i18next`). Add any environment-level mocks (for example `ResizeObserver`, `matchMedia`, `IntersectionObserver`, `TextEncoder`, `crypto`) here so they are shared consistently.
 - **Reusable mocks**: Place shared mock factories inside `web/__mocks__/` and use `vi.mock('module-name')` to point to them rather than redefining mocks in every spec.
 - **Mocking behavior**: Modules are not mocked automatically. Use `vi.mock(...)` in tests, or place global mocks in `vitest.setup.ts`.
 - **Script utilities**: `web/scripts/analyze-component.js` analyzes component complexity and generates test prompts for AI assistants. Commands:
@@ -44,6 +41,8 @@ pnpm test path/to/file.spec.tsx
 
 - **Single behavior per test**: Each test verifies one user-observable behavior.
 - **Black-box first**: Assert external behavior and observable outputs, avoid internal implementation details. Prefer role-based queries (`getByRole`) and pattern matching (`/text/i`) over hardcoded string assertions.
+- **Accessibility selectors first**: Prefer `getByRole` with accessible `name`, then `getByLabelText`, `getByPlaceholderText`, `getByText`, and scoped `within(...)` queries. Avoid `getByTestId` unless the target has no user-observable semantics, such as a mocked non-visual integration boundary, virtualized/canvas output, or a third-party widget shim.
+- **Fix markup before selectors**: If a test cannot find a control by role, name, label, landmark, or dialog scope, treat that as a component accessibility problem first. Add semantic HTML, an accessible name, or an associated label instead of adding `data-testid`.
 - **Semantic naming**: Use `should <behavior> when <condition>` and group related cases with `describe(<subject or scenario>)`.
 - **AAA / Given–When–Then**: Separate Arrange, Act, and Assert clearly with code blocks or comments.
 - **Minimal but sufficient assertions**: Keep only the expectations that express the essence of the behavior.
@@ -82,19 +81,29 @@ Use `pnpm analyze-component <path>` to analyze component complexity and adopt di
 - ✅ TypeScript: No `any` types
 - ✅ **Cleanup**: `vi.clearAllMocks()` should be in `beforeEach()`, not `afterEach()`. This ensures mock call history is reset before each test, preventing test pollution when using assertions like `toHaveBeenCalledWith()` or `toHaveBeenCalledTimes()`.
 
+### Test ID Policy
+
+`data-testid` is a last resort because users and assistive technology cannot perceive it. It can hide broken semantics, such as a clickable `div` that should have been a button or an input without a label.
+
+- Prefer `screen.getByRole('button', { name: /save/i })`, `screen.getByRole('textbox', { name: /email/i })`, and scoped queries like `within(screen.getByRole('dialog', { name: /settings/i }))`.
+- Prefer `userEvent` for interactions that should match real user behavior.
+- Remove production `data-testid` attributes when they exist only to support tests and a semantic selector is available.
+- Keep `data-testid` only for justified boundaries that cannot expose stable semantics in the test environment: mocked non-visual children, browser/editor shims such as Monaco, canvas/chart output, or third-party widgets. In those cases, keep assertions focused on the boundary contract rather than internal DOM shape.
+- Do not assert decorative icons by test id. If the icon conveys meaning, give the control an accessible name and assert the control. If the icon is decorative, keep it `aria-hidden`.
+
 **⚠️ Mock components must accurately reflect actual component behavior**, especially conditional rendering based on props or state.
 
 **Rules**:
 
 1. **Match actual conditional rendering**: If the real component returns `null` or doesn't render under certain conditions, the mock must do the same. Always check the actual component implementation before creating mocks.
-1. **Use shared state variables when needed**: When mocking components that depend on shared context or state (e.g., `PortalToFollowElem` with `PortalToFollowElemContent`), use module-level variables to track state and reset them in `beforeEach`.
+1. **Use shared state variables when needed**: When mocking components that depend on shared context or state (for example, a parent overlay mock with a separate content component), use module-level variables to track state and reset them in `beforeEach`.
 1. **Always reset shared mock state in beforeEach**: Module-level variables used in mocks must be reset in `beforeEach` to ensure test isolation, even if you set default values elsewhere.
 1. **Use fake timers only when needed**: Only use `vi.useFakeTimers()` if:
    - Testing components that use real `setTimeout`/`setInterval` (not mocked)
    - Testing time-based behavior (delays, animations)
    - If you mock all time-dependent functions, fake timers are unnecessary
 1. **Prefer importing over mocking project components**: When tests need other components from the project, import them directly instead of mocking them. Only mock external dependencies, APIs, or complex context providers that are difficult to set up.
-1. **DO NOT mock base components**: Never mock components from `@/app/components/base/` (e.g., `Loading`, `Button`, `Tooltip`, `Modal`). Base components will have their own dedicated tests. Use real components to test actual integration behavior.
+1. **DO NOT mock base components or dify-ui primitives**: Never mock components from `@/app/components/base/` (e.g., `Loading`, `Input`, `Badge`, `Tag`) or from `@langgenius/dify-ui/*` (e.g., `Button`, `Tooltip`, `Dialog`, `Select`, `Popover`). They have their own dedicated tests. Use real components to test actual integration behavior.
 
 **Why this matters**: Mocks that don't match actual behavior can lead to:
 
@@ -118,13 +127,11 @@ When assigned to test a **directory/path** (not just a single file), follow thes
 Choose based on directory complexity:
 
 1. **Single spec file (Integration approach)** - Preferred for related components
-
    - Minimize mocking - use real project components
    - Test actual integration between components
    - Only mock: API calls, complex context providers, third-party libs
 
 1. **Multiple spec files (Unit approach)** - For complex directories
-
    - One spec file per component/hook/utility
    - More isolated testing
    - Useful when components are independent
@@ -135,10 +142,10 @@ When using a single spec file:
 
 - ✅ **Import real project components** directly (including base components and siblings)
 - ✅ **Only mock**: API services (`@/service/*`), `next/navigation`, complex context providers
-- ❌ **DO NOT mock** base components (`@/app/components/base/*`)
+- ❌ **DO NOT mock** base components (`@/app/components/base/*`) or dify-ui primitives (`@langgenius/dify-ui/*`)
 - ❌ **DO NOT mock** sibling/child components in the same directory
 
-> See [Example Structure](#example-structure) for correct import/mock patterns.
+> See [Example Structure] for correct import/mock patterns.
 
 ## Testing Components with Dedicated Dependencies
 
@@ -184,8 +191,8 @@ Treat component state as part of the public behavior: confirm the initial render
 - ✅ When creating lightweight provider stubs, mirror the real default values and surface helper builders (for example `createMockWorkflowContext`).
 - ✅ Reset shared stores (React context, Zustand, TanStack Query cache) between tests to avoid leaking state. Prefer helper factory functions over module-level singletons in specs.
 - ✅ For hooks that read from context, use `renderHook` with a custom wrapper that supplies required providers.
-- ✅ **Use factory functions for mock data**: Import actual types and create factory functions with complete defaults (see [Test Data Builders](#9-test-data-builders-anti-hardcoding) section).
-- ✅ If it's need to mock some common context provider used across many components (for example, `ProviderContext`), put it in __mocks__/context(for example, `__mocks__/context/provider-context`). To dynamically control the mock behavior (for example, toggling plan type), use module-level variables to track state and change them(for example, `context/provider-context-mock.spec.tsx`).
+- ✅ **Use factory functions for mock data**: Import actual types and create factory functions with complete defaults (see [Test Data Builders] section).
+- ✅ If it's need to mock some common context provider used across many components (for example, `ProviderContext`), put it in **mocks**/context(for example, `__mocks__/context/provider-context`). To dynamically control the mock behavior (for example, toggling plan type), use module-level variables to track state and change them(for example, `context/provider-context-mock.spec.tsx`).
 - ✅ Use factory functions to create mock data with TypeScript types. This ensures type safety and makes tests more maintainable.
 
 **Rules**:
@@ -217,13 +224,45 @@ Simulate the interactions that matter to users—primary clicks, change events, 
 
 **Guidelines**:
 
-- Prefer spying on `global.fetch`/`axios`/`ky` and returning deterministic responses over reaching out to the network.
-- Use MSW (`msw` is already installed) when you need declarative request handlers across multiple specs.
+- Prefer mocking `@/service/*` modules or spying on `global.fetch` / `ky` clients with deterministic responses over reaching out to the network.
+- Do not introduce an HTTP interception dependency such as MSW unless it is already declared in the workspace or adding it is part of the task.
 - Keep async assertions inside `await waitFor(...)` blocks or the async `findBy*` queries to avoid race conditions.
 
 ### 7. Next.js Routing
 
 Mock the specific Next.js navigation hooks your component consumes (`useRouter`, `usePathname`, `useSearchParams`) and drive realistic routing flows—query parameters, redirects, guarded routes, URL updates—while asserting the rendered outcome or navigation side effects.
+
+#### 7.1 `nuqs` Query State Testing
+
+When testing code that uses `useQueryState` or `useQueryStates`, treat `nuqs` as the source of truth for URL synchronization.
+
+- ✅ In runtime, keep `NuqsAdapter` in app layout (already wired in `app/layout.tsx`).
+- ✅ In tests, wrap with `NuqsTestingAdapter` (prefer helper utilities from `@/test/nuqs-testing`).
+- ✅ Assert URL behavior via `onUrlUpdate` events (`searchParams`, `options.history`) instead of only asserting router mocks.
+- ✅ For custom parsers created with `createParser`, keep `parse` and `serialize` bijective (round-trip safe). Add edge-case coverage for values like `%2F`, `%25`, spaces, and legacy encoded URLs.
+- ✅ Assert default-clearing behavior explicitly (`clearOnDefault` semantics remove params when value equals default).
+- ⚠️ Only mock `nuqs` directly when URL behavior is intentionally out of scope for the test. For ESM-safe partial mocks, use async `vi.mock` with `importOriginal`.
+
+Example:
+
+```tsx
+import { renderHookWithNuqs } from '@/test/nuqs-testing'
+
+it('should update query with push history', async () => {
+  const { result, onUrlUpdate } = renderHookWithNuqs(() => useMyQueryState(), {
+    searchParams: '?page=1',
+  })
+
+  act(() => {
+    result.current.setQuery({ page: 2 })
+  })
+
+  await waitFor(() => expect(onUrlUpdate).toHaveBeenCalled())
+  const update = onUrlUpdate.mock.calls.at(-1)![0]
+  expect(update.options.history).toBe('push')
+  expect(update.searchParams.get('page')).toBe('2')
+})
+```
 
 ### 8. Edge Cases (REQUIRED - All Components)
 
@@ -250,17 +289,7 @@ For complex inputs/entities, use Builders with solid defaults and chainable over
 
 Reserve snapshots for static, deterministic fragments (icons, badges, layout chrome). Keep them tight, prefer explicit assertions for behavior, and review any snapshot updates deliberately instead of accepting them wholesale.
 
-**Note**: Dify is a desktop application. **No need for** responsive/mobile testing.
-
-### 12. Mock API
-
-Use Nock to mock API calls. Example:
-
-```ts
-const mockGithubStar = (status: number, body: Record<string, unknown>, delayMs = 0) => {
-  return nock(GITHUB_HOST).get(GITHUB_PATH).delay(delayMs).reply(status, body)
-}
-```
+**Note**: Dify primarily targets desktop workflows, but the supported browsers list includes mobile browsers. Do not add responsive/mobile assertions to ordinary unit tests unless the component has responsive behavior, mobile-specific behavior, or accessibility behavior that must be covered.
 
 ## Code Style
 
@@ -330,7 +359,6 @@ describe('ComponentName', () => {
 1. **i18n**: Uses global mock in `web/vitest.setup.ts` (auto-loaded by Vitest setup)
 
    The global mock provides:
-
    - `useTranslation` - returns translation keys with namespace prefix
    - `Trans` component - renders i18nKey and components
    - `useMixedTranslation` (from `@/app/components/plugins/marketplace/hooks`)
@@ -357,16 +385,16 @@ describe('ComponentName', () => {
 
 ```tsx
 // ✅ CORRECT: Matches actual component behavior
-let mockPortalOpenState = false
+let mockOverlayOpenState = false
 
-vi.mock('@/app/components/base/portal-to-follow-elem', () => ({
-  PortalToFollowElem: ({ children, open, ...props }) => {
-    mockPortalOpenState = open || false // Update shared state
+vi.mock('external-overlay-library', () => ({
+  OverlayRoot: ({ children, open, ...props }) => {
+    mockOverlayOpenState = open || false // Update shared state
     return <div data-open={open}>{children}</div>
   },
-  PortalToFollowElemContent: ({ children }) => {
+  OverlayContent: ({ children }) => {
     // ✅ Matches actual: returns null when open is false
-    if (!mockPortalOpenState)
+    if (!mockOverlayOpenState)
       return null
     return <div>{children}</div>
   },
@@ -375,7 +403,7 @@ vi.mock('@/app/components/base/portal-to-follow-elem', () => ({
 describe('Component', () => {
   beforeEach(() => {
     vi.clearAllMocks() // ✅ Reset mock call history
-    mockPortalOpenState = false // ✅ Reset shared state
+    mockOverlayOpenState = false // ✅ Reset shared state
   })
 })
 ```
@@ -500,16 +528,23 @@ const element = await screen.findByText('Async Content')
 
 Test examples in the project:
 
-- [classnames.spec.ts](../utils/classnames.spec.ts) - Utility function tests
-- [index.spec.tsx](../app/components/base/button/index.spec.tsx) - Component tests
+- [index.spec.tsx] - Component tests
 
 ## Resources
 
-- [Vitest Documentation](https://vitest.dev/guide/)
-- [React Testing Library Documentation](https://testing-library.com/docs/react-testing-library/intro/)
-- [Testing Library Best Practices](https://kentcdodds.com/blog/common-mistakes-with-react-testing-library)
-- [Vitest Mocking Guide](https://vitest.dev/guide/mocking.html)
+- [Vitest Documentation]
+- [React Testing Library Documentation]
+- [Testing Library Best Practices]
+- [Vitest Mocking Guide]
 
-______________________________________________________________________
+---
 
 **Remember**: Writing tests is not just about coverage, but ensuring code quality and maintainability. Good tests should be clear, concise, and meaningful.
+
+[Example Structure]: #example-structure
+[React Testing Library Documentation]: https://testing-library.com/docs/react-testing-library/intro
+[Test Data Builders]: #9-test-data-builders-anti-hardcoding
+[Testing Library Best Practices]: https://kentcdodds.com/blog/common-mistakes-with-react-testing-library
+[Vitest Documentation]: https://vitest.dev/guide
+[Vitest Mocking Guide]: https://vitest.dev/guide/mocking.html
+[index.spec.tsx]: ../app/components/base/radio/__tests__/index.spec.tsx

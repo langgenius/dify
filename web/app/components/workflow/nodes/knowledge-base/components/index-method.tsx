@@ -1,4 +1,5 @@
-import { RiQuestionLine } from '@remixicon/react'
+import { cn } from '@langgenius/dify-ui/cn'
+import { Slider } from '@langgenius/dify-ui/slider'
 import {
   memo,
   useCallback,
@@ -8,11 +9,9 @@ import {
   Economic,
   HighQuality,
 } from '@/app/components/base/icons/src/vender/knowledge'
+import { Infotip } from '@/app/components/base/infotip'
 import Input from '@/app/components/base/input'
-import Slider from '@/app/components/base/slider'
-import Tooltip from '@/app/components/base/tooltip'
 import { Field } from '@/app/components/workflow/nodes/_base/components/layout'
-import { cn } from '@/utils/classnames'
 import {
   ChunkStructureEnum,
   IndexMethodEnum,
@@ -94,20 +93,22 @@ const IndexMethod = ({
             >
               <div className="flex items-center">
                 <div className="flex grow items-center">
-                  <div className="system-xs-medium truncate text-text-secondary">
+                  <div className="truncate system-xs-medium text-text-secondary">
                     {t('form.numberOfKeywords', { ns: 'datasetSettings' })}
                   </div>
-                  <Tooltip
-                    popupContent="number of keywords"
+                  <Infotip
+                    aria-label={t('form.numberOfKeywords', { ns: 'datasetSettings' })}
+                    className="ml-0.5 h-3.5 w-3.5"
                   >
-                    <RiQuestionLine className="ml-0.5 h-3.5 w-3.5 text-text-quaternary" />
-                  </Tooltip>
+                    {t('form.numberOfKeywords', { ns: 'datasetSettings' })}
+                  </Infotip>
                 </div>
                 <Slider
                   disabled={readonly}
                   className="mr-3 w-24 shrink-0"
                   value={keywordNumber}
-                  onChange={onKeywordNumberChange}
+                  onValueChange={onKeywordNumberChange}
+                  aria-label={t('form.numberOfKeywords', { ns: 'datasetSettings' })}
                 />
                 <Input
                   disabled={readonly}

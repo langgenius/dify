@@ -22,7 +22,7 @@ const MenuItem = ({
       }}
     >
       <Icon className="size-4 text-text-tertiary" />
-      <span className="system-md-regular px-1 text-text-secondary">{name}</span>
+      <span className="px-1 system-md-regular text-text-secondary">{name}</span>
     </div>
   )
 }

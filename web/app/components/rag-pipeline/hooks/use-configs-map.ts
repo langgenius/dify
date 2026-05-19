@@ -20,5 +20,5 @@ export const useConfigsMap = () => {
         fileUploadConfig,
       },
     }
-  }, [pipelineId])
+  }, [fileUploadConfig, pipelineId])
 }

@@ -35,6 +35,7 @@
   "details.structureTooltip": "Chunk Structure xác định cách các tài liệu được phân tách và lập chỉ mục — cung cấp các chế độ General, Parent-Child và Q&A — và là duy nhất cho mỗi cơ sở tri thức.",
   "documentSettings.title": "Cài đặt tài liệu",
   "editPipelineInfo": "Chỉnh sửa thông tin quy trình",
+  "editPipelineInfoNameRequired": "Vui lòng nhập tên cho Cơ sở Kiến thức.",
   "exportDSL.errorTip": "Không thể xuất DSL đường ống",
   "exportDSL.successTip": "Xuất DSL quy trình thành công",
   "inputField": "Trường đầu vào",

@@ -27,7 +27,7 @@ class TestTraceparentPropagation:
     @pytest.fixture
     def mock_httpx_client(self):
         """Mock httpx.Client for testing."""
-        with patch("services.enterprise.base.httpx.Client") as mock_client_class:
+        with patch("services.enterprise.base.httpx.Client", autospec=True) as mock_client_class:
             mock_client = MagicMock()
             mock_client_class.return_value.__enter__.return_value = mock_client
             mock_client_class.return_value.__exit__.return_value = None
@@ -44,7 +44,9 @@ class TestTraceparentPropagation:
         # Arrange
         expected_traceparent = "00-5b8aa5a2d2c872e8321cf37308d69df2-051581bf3bb55c45-01"
 
-        with patch("services.enterprise.base.generate_traceparent_header", return_value=expected_traceparent):
+        with patch(
+            "services.enterprise.base.generate_traceparent_header", return_value=expected_traceparent, autospec=True
+        ):
             # Act
             EnterpriseRequest.send_request("GET", "/test")
 

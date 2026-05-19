@@ -5,11 +5,12 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from core.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk
-from core.rag.entities.citation_metadata import RetrievalSourceMetadata
-from core.workflow.entities import AgentNodeStrategyInit
-from core.workflow.enums import WorkflowNodeExecutionMetadataKey
-from core.workflow.nodes import NodeType
+from core.app.entities.agent_strategy import AgentStrategyInfo
+from core.rag.entities import RetrievalSourceMetadata
+from graphon.entities import WorkflowStartReason
+from graphon.entities.pause_reason import PauseReason
+from graphon.enums import NodeType, WorkflowNodeExecutionMetadataKey
+from graphon.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk
 
 
 class QueueEvent(StrEnum):
@@ -46,6 +47,9 @@ class QueueEvent(StrEnum):
     PING = "ping"
     STOP = "stop"
     RETRY = "retry"
+    PAUSE = "pause"
+    HUMAN_INPUT_FORM_FILLED = "human_input_form_filled"
+    HUMAN_INPUT_FORM_TIMEOUT = "human_input_form_timeout"
 
 
 class AppQueueEvent(BaseModel):
@@ -261,6 +265,8 @@ class QueueWorkflowStartedEvent(AppQueueEvent):
     """QueueWorkflowStartedEvent entity."""
 
     event: QueueEvent = QueueEvent.WORKFLOW_STARTED
+    # Always present; mirrors GraphRunStartedEvent.reason for downstream consumers.
+    reason: WorkflowStartReason = WorkflowStartReason.INITIAL
 
 
 class QueueWorkflowSucceededEvent(AppQueueEvent):
@@ -307,7 +313,7 @@ class QueueNodeStartedEvent(AppQueueEvent):
     in_iteration_id: str | None = None
     in_loop_id: str | None = None
     start_at: datetime
-    agent_strategy: AgentNodeStrategyInit | None = None
+    agent_strategy: AgentStrategyInfo | None = None
 
     # FIXME(-LAN-): only for ToolNode, need to refactor
     provider_type: str  # should be a core.tools.entities.tool_entities.ToolProviderType
@@ -329,6 +335,7 @@ class QueueNodeSucceededEvent(AppQueueEvent):
     in_loop_id: str | None = None
     """loop id if node is in loop"""
     start_at: datetime
+    finished_at: datetime | None = None
 
     inputs: Mapping[str, object] = Field(default_factory=dict)
     process_data: Mapping[str, object] = Field(default_factory=dict)
@@ -384,6 +391,7 @@ class QueueNodeExceptionEvent(AppQueueEvent):
     in_loop_id: str | None = None
     """loop id if node is in loop"""
     start_at: datetime
+    finished_at: datetime | None = None
 
     inputs: Mapping[str, object] = Field(default_factory=dict)
     process_data: Mapping[str, object] = Field(default_factory=dict)
@@ -408,6 +416,7 @@ class QueueNodeFailedEvent(AppQueueEvent):
     in_loop_id: str | None = None
     """loop id if node is in loop"""
     start_at: datetime
+    finished_at: datetime | None = None
 
     inputs: Mapping[str, object] = Field(default_factory=dict)
     process_data: Mapping[str, object] = Field(default_factory=dict)
@@ -484,6 +493,35 @@ class QueueStopEvent(AppQueueEvent):
         return reason_mapping.get(self.stopped_by, "Stopped by unknown reason.")
 
 
+class QueueHumanInputFormFilledEvent(AppQueueEvent):
+    """
+    QueueHumanInputFormFilledEvent entity
+    """
+
+    event: QueueEvent = QueueEvent.HUMAN_INPUT_FORM_FILLED
+
+    node_execution_id: str
+    node_id: str
+    node_type: NodeType
+    node_title: str
+    rendered_content: str
+    action_id: str
+    action_text: str
+
+
+class QueueHumanInputFormTimeoutEvent(AppQueueEvent):
+    """
+    QueueHumanInputFormTimeoutEvent entity
+    """
+
+    event: QueueEvent = QueueEvent.HUMAN_INPUT_FORM_TIMEOUT
+
+    node_id: str
+    node_type: NodeType
+    node_title: str
+    expiration_time: datetime
+
+
 class QueueMessage(BaseModel):
     """
     QueueMessage abstract entity
@@ -509,3 +547,14 @@ class WorkflowQueueMessage(QueueMessage):
     """
 
     pass
+
+
+class QueueWorkflowPausedEvent(AppQueueEvent):
+    """
+    QueueWorkflowPausedEvent entity
+    """
+
+    event: QueueEvent = QueueEvent.PAUSE
+    reasons: Sequence[PauseReason] = Field(default_factory=list)
+    outputs: Mapping[str, object] = Field(default_factory=dict)
+    paused_nodes: Sequence[str] = Field(default_factory=list)

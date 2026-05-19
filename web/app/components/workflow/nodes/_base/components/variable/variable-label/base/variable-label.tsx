@@ -1,12 +1,9 @@
 import type { VariablePayload } from '../types'
-import {
-  RiErrorWarningFill,
-  RiMoreLine,
-} from '@remixicon/react'
+import { cn } from '@langgenius/dify-ui/cn'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { capitalize } from 'es-toolkit/string'
 import { memo } from 'react'
-import Tooltip from '@/app/components/base/tooltip'
-import { cn } from '@/utils/classnames'
+import { Warning } from '@/app/components/base/icons/src/vender/line/alertsAndFeedback'
 import { isConversationVar, isENV, isGlobalVar, isRagVariableVar } from '../../utils'
 import { useVarColor } from '../hooks'
 import VariableIcon from './variable-icon'
@@ -27,8 +24,9 @@ const VariableLabel = ({
   rightSlot,
 }: VariablePayload) => {
   const varColorClassName = useVarColor(variables, isExceptionVariable)
-  const isHideNodeLabel = !(isENV(variables) || isConversationVar(variables) || isGlobalVar(variables) || isRagVariableVar(variables))
-  return (
+  const isShowNodeLabel = !(isENV(variables) || isConversationVar(variables) || isGlobalVar(variables) || isRagVariableVar(variables))
+
+  const badge = (
     <div
       className={cn(
         'inline-flex h-6 max-w-full items-center space-x-0.5 rounded-md border-[0.5px] border-components-panel-border-subtle bg-components-badge-white-to-dark px-1.5 shadow-xs',
@@ -36,8 +34,9 @@ const VariableLabel = ({
       )}
       onClick={onClick}
       ref={ref}
+      {...(isExceptionVariable ? { 'data-testid': 'exception-variable' } : {})}
     >
-      { isHideNodeLabel && (
+      {isShowNodeLabel && (
         <VariableNodeLabel
           nodeType={nodeType}
           nodeTitle={nodeTitle}
@@ -46,8 +45,8 @@ const VariableLabel = ({
       {
         notShowFullPath && (
           <>
-            <RiMoreLine className="h-3 w-3 shrink-0 text-text-secondary" />
-            <div className="system-xs-regular shrink-0 text-divider-deep">/</div>
+            <span className="i-ri-more-line h-3 w-3 shrink-0 text-text-secondary" />
+            <div className="shrink-0 system-xs-regular text-divider-deep">/</div>
           </>
         )
       }
@@ -62,25 +61,30 @@ const VariableLabel = ({
       />
       {
         !!variableType && (
-          <div className="system-xs-regular shrink-0 text-text-tertiary">
+          <div className="shrink-0 system-xs-regular text-text-tertiary">
             {capitalize(variableType)}
           </div>
         )
       }
       {
         !!errorMsg && (
-          <Tooltip
-            popupContent={errorMsg}
-            asChild
-          >
-            <RiErrorWarningFill className="h-3 w-3 shrink-0 text-text-destructive" />
-          </Tooltip>
+          <Warning className="h-3 w-3 shrink-0 text-text-warning" />
         )
       }
       {
         rightSlot
       }
     </div>
+  )
+
+  if (!errorMsg)
+    return badge
+
+  return (
+    <Tooltip>
+      <TooltipTrigger render={badge} />
+      <TooltipContent>{errorMsg}</TooltipContent>
+    </Tooltip>
   )
 }
 

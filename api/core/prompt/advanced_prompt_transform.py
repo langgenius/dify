@@ -2,11 +2,14 @@ from collections.abc import Mapping, Sequence
 from typing import cast
 
 from core.app.entities.app_invoke_entities import ModelConfigWithCredentialsEntity
-from core.file import file_manager
-from core.file.models import File
 from core.helper.code_executor.jinja2.jinja2_formatter import Jinja2Formatter
 from core.memory.token_buffer_memory import TokenBufferMemory
-from core.model_runtime.entities import (
+from core.model_manager import ModelInstance
+from core.prompt.entities.advanced_prompt_entities import ChatModelMessage, CompletionModelPromptTemplate, MemoryConfig
+from core.prompt.prompt_transform import PromptTransform
+from core.prompt.utils.prompt_template_parser import PromptTemplateParser
+from graphon.file import File, file_manager
+from graphon.model_runtime.entities import (
     AssistantPromptMessage,
     PromptMessage,
     PromptMessageRole,
@@ -14,11 +17,8 @@ from core.model_runtime.entities import (
     TextPromptMessageContent,
     UserPromptMessage,
 )
-from core.model_runtime.entities.message_entities import ImagePromptMessageContent, PromptMessageContentUnionTypes
-from core.prompt.entities.advanced_prompt_entities import ChatModelMessage, CompletionModelPromptTemplate, MemoryConfig
-from core.prompt.prompt_transform import PromptTransform
-from core.prompt.utils.prompt_template_parser import PromptTemplateParser
-from core.workflow.runtime import VariablePool
+from graphon.model_runtime.entities.message_entities import ImagePromptMessageContent, PromptMessageContentUnionTypes
+from graphon.runtime import VariablePool
 
 
 class AdvancedPromptTransform(PromptTransform):
@@ -44,7 +44,8 @@ class AdvancedPromptTransform(PromptTransform):
         context: str | None,
         memory_config: MemoryConfig | None,
         memory: TokenBufferMemory | None,
-        model_config: ModelConfigWithCredentialsEntity,
+        model_config: ModelConfigWithCredentialsEntity | None = None,
+        model_instance: ModelInstance | None = None,
         image_detail_config: ImagePromptMessageContent.DETAIL | None = None,
     ) -> list[PromptMessage]:
         prompt_messages = []
@@ -59,6 +60,7 @@ class AdvancedPromptTransform(PromptTransform):
                 memory_config=memory_config,
                 memory=memory,
                 model_config=model_config,
+                model_instance=model_instance,
                 image_detail_config=image_detail_config,
             )
         elif isinstance(prompt_template, list) and all(isinstance(item, ChatModelMessage) for item in prompt_template):
@@ -71,6 +73,7 @@ class AdvancedPromptTransform(PromptTransform):
                 memory_config=memory_config,
                 memory=memory,
                 model_config=model_config,
+                model_instance=model_instance,
                 image_detail_config=image_detail_config,
             )
 
@@ -85,7 +88,8 @@ class AdvancedPromptTransform(PromptTransform):
         context: str | None,
         memory_config: MemoryConfig | None,
         memory: TokenBufferMemory | None,
-        model_config: ModelConfigWithCredentialsEntity,
+        model_config: ModelConfigWithCredentialsEntity | None = None,
+        model_instance: ModelInstance | None = None,
         image_detail_config: ImagePromptMessageContent.DETAIL | None = None,
     ) -> list[PromptMessage]:
         """
@@ -111,6 +115,7 @@ class AdvancedPromptTransform(PromptTransform):
                     parser=parser,
                     prompt_inputs=prompt_inputs,
                     model_config=model_config,
+                    model_instance=model_instance,
                 )
 
             if query:
@@ -146,7 +151,8 @@ class AdvancedPromptTransform(PromptTransform):
         context: str | None,
         memory_config: MemoryConfig | None,
         memory: TokenBufferMemory | None,
-        model_config: ModelConfigWithCredentialsEntity,
+        model_config: ModelConfigWithCredentialsEntity | None = None,
+        model_instance: ModelInstance | None = None,
         image_detail_config: ImagePromptMessageContent.DETAIL | None = None,
     ) -> list[PromptMessage]:
         """
@@ -155,35 +161,39 @@ class AdvancedPromptTransform(PromptTransform):
         prompt_messages: list[PromptMessage] = []
         for prompt_item in prompt_template:
             raw_prompt = prompt_item.text
-
-            if prompt_item.edition_type == "basic" or not prompt_item.edition_type:
-                if self.with_variable_tmpl:
-                    vp = VariablePool.empty()
-                    for k, v in inputs.items():
-                        if k.startswith("#"):
-                            vp.add(k[1:-1].split("."), v)
-                    raw_prompt = raw_prompt.replace("{{#context#}}", context or "")
-                    prompt = vp.convert_template(raw_prompt).text
-                else:
-                    parser = PromptTemplateParser(template=raw_prompt, with_variable_tmpl=self.with_variable_tmpl)
-                    prompt_inputs: Mapping[str, str] = {k: inputs[k] for k in parser.variable_keys if k in inputs}
-                    prompt_inputs = self._set_context_variable(
-                        context=context, parser=parser, prompt_inputs=prompt_inputs
-                    )
-                    prompt = parser.format(prompt_inputs)
-            elif prompt_item.edition_type == "jinja2":
-                prompt = raw_prompt
-                prompt_inputs = inputs
-                prompt = Jinja2Formatter.format(template=prompt, inputs=prompt_inputs)
-            else:
-                raise ValueError(f"Invalid edition type: {prompt_item.edition_type}")
-
-            if prompt_item.role == PromptMessageRole.USER:
-                prompt_messages.append(UserPromptMessage(content=prompt))
-            elif prompt_item.role == PromptMessageRole.SYSTEM and prompt:
-                prompt_messages.append(SystemPromptMessage(content=prompt))
-            elif prompt_item.role == PromptMessageRole.ASSISTANT:
-                prompt_messages.append(AssistantPromptMessage(content=prompt))
+            edition_type = prompt_item.edition_type or "basic"
+            match edition_type:
+                case "basic":
+                    if self.with_variable_tmpl:
+                        vp = VariablePool.empty()
+                        for k, v in inputs.items():
+                            if k.startswith("#"):
+                                vp.add(k[1:-1].split("."), v)
+                        raw_prompt = raw_prompt.replace("{{#context#}}", context or "")
+                        prompt = vp.convert_template(raw_prompt).text
+                    else:
+                        parser = PromptTemplateParser(template=raw_prompt, with_variable_tmpl=self.with_variable_tmpl)
+                        prompt_inputs: Mapping[str, str] = {k: inputs[k] for k in parser.variable_keys if k in inputs}
+                        prompt_inputs = self._set_context_variable(
+                            context=context, parser=parser, prompt_inputs=prompt_inputs
+                        )
+                        prompt = parser.format(prompt_inputs)
+                case "jinja2":
+                    prompt = raw_prompt
+                    prompt_inputs = inputs
+                    prompt = Jinja2Formatter.format(template=prompt, inputs=prompt_inputs)
+                case _:
+                    raise ValueError(f"Invalid edition type: {prompt_item.edition_type}")
+            match prompt_item.role:
+                case PromptMessageRole.USER:
+                    prompt_messages.append(UserPromptMessage(content=prompt))
+                case PromptMessageRole.SYSTEM:
+                    if prompt:
+                        prompt_messages.append(SystemPromptMessage(content=prompt))
+                case PromptMessageRole.ASSISTANT:
+                    prompt_messages.append(AssistantPromptMessage(content=prompt))
+                case PromptMessageRole.TOOL:
+                    pass
 
         if query and memory_config and memory_config.query_prompt_template:
             parser = PromptTemplateParser(
@@ -198,8 +208,13 @@ class AdvancedPromptTransform(PromptTransform):
 
         prompt_message_contents: list[PromptMessageContentUnionTypes] = []
         if memory and memory_config:
-            prompt_messages = self._append_chat_histories(memory, memory_config, prompt_messages, model_config)
-
+            prompt_messages = self._append_chat_histories(
+                memory,
+                memory_config,
+                prompt_messages,
+                model_config=model_config,
+                model_instance=model_instance,
+            )
             if files and query is not None:
                 for file in files:
                     prompt_message_contents.append(
@@ -276,7 +291,8 @@ class AdvancedPromptTransform(PromptTransform):
         role_prefix: MemoryConfig.RolePrefix,
         parser: PromptTemplateParser,
         prompt_inputs: Mapping[str, str],
-        model_config: ModelConfigWithCredentialsEntity,
+        model_config: ModelConfigWithCredentialsEntity | None = None,
+        model_instance: ModelInstance | None = None,
     ) -> Mapping[str, str]:
         prompt_inputs = dict(prompt_inputs)
         if "#histories#" in parser.variable_keys:
@@ -286,7 +302,11 @@ class AdvancedPromptTransform(PromptTransform):
                 prompt_inputs = {k: inputs[k] for k in parser.variable_keys if k in inputs}
                 tmp_human_message = UserPromptMessage(content=parser.format(prompt_inputs))
 
-                rest_tokens = self._calculate_rest_token([tmp_human_message], model_config)
+                rest_tokens = self._calculate_rest_token(
+                    [tmp_human_message],
+                    model_config=model_config,
+                    model_instance=model_instance,
+                )
 
                 histories = self._get_history_messages_from_memory(
                     memory=memory,

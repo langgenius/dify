@@ -111,12 +111,13 @@ export const convertTimezoneToOffsetStr = (timezone?: string) => {
     return DEFAULT_OFFSET_STR
   // Extract offset from name format like "-11:00 Niue Time" or "+05:30 India Time"
   // Name format is always "{offset}:{minutes} {timezone name}"
-  const offsetMatch = tzItem.name.match(/^([+-]?\d{1,2}):(\d{2})/)
+  const offsetMatch = /^([+-]?\d{1,2}):(\d{2})/.exec(tzItem.name)
+  /* v8 ignore next 2 -- timezone.json entries are normalized to "{offset} {name}"; this protects against malformed data only. */
   if (!offsetMatch)
     return DEFAULT_OFFSET_STR
   // Parse hours and minutes separately
-  const hours = Number.parseInt(offsetMatch[1], 10)
-  const minutes = Number.parseInt(offsetMatch[2], 10)
+  const hours = Number.parseInt(offsetMatch[1]!, 10)
+  const minutes = Number.parseInt(offsetMatch[2]!, 10)
   const sign = hours >= 0 ? '+' : ''
   // If minutes are non-zero, include them in the output (e.g., "UTC+5:30")
   // Otherwise, only show hours (e.g., "UTC+8")
@@ -125,7 +126,7 @@ export const convertTimezoneToOffsetStr = (timezone?: string) => {
 
 export const isDayjsObject = (value: unknown): value is Dayjs => dayjs.isDayjs(value)
 
-export type ToDayjsOptions = {
+type ToDayjsOptions = {
   timezone?: string
   format?: string
   formats?: string[]
@@ -141,6 +142,7 @@ const normalizeMillisecond = (value: string | undefined) => {
     return 0
   if (value.length === 3)
     return Number(value)
+  /* v8 ignore next 2 -- TIME_ONLY_REGEX allows at most 3 fractional digits, so >3 can only occur after future regex changes. */
   if (value.length > 3)
     return Number(value.slice(0, 3))
   return Number(value.padEnd(3, '0'))
