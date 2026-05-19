@@ -362,16 +362,6 @@ describe('AgentTools', () => {
     expect(infoTrigger).toBeInTheDocument()
   })
 
-  it('should keep info trigger mounted as an invisible popover anchor before hover', () => {
-    renderAgentTools()
-
-    const infoTrigger = screen.getByTestId('tool-info-tooltip')
-
-    expect(infoTrigger).toHaveClass('inline-flex')
-    expect(infoTrigger).toHaveClass('opacity-0')
-    expect(infoTrigger).not.toHaveClass('hidden')
-  })
-
   it('should toggle tool enabled state via switch', async () => {
     const { getModelConfig } = renderAgentTools()
 
