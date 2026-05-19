@@ -465,7 +465,7 @@
   "modelProvider.speechToTextModel.tip": "संवाद में भाषण-से-पाठ इनपुट के लिए डिफ़ॉल्ट मॉडल सेट करें।",
   "modelProvider.systemModelSettings": "सिस्टम मॉडल सेटिंग्स",
   "modelProvider.systemReasoningModel.key": "सिस्टम तर्क मॉडल",
-  "modelProvider.systemReasoningModel.tip": "ऐप्लिकेशन बनाने के लिए उपयोग किए जाने वाले डिफ़ॉल्ट अनुमान मॉडल को सेट करें, साथ ही संवाद नाम पीढ़ी और अगले प्रश्न सुझाव जैसी सुविधाएँ भी डिफ़ॉल्ट अनुमान मॉडल का उपयोग करेंगी।",
+  "modelProvider.systemReasoningModel.tip": "एप्लिकेशन बनाने के लिए डिफ़ॉल्ट रीजनिंग मॉडल सेट करें। यह मॉडल बातचीत के नाम बनाने और अगले प्रश्नों के सुझाव जैसी सुविधाओं में भी उपयोग किया जाता है।",
   "modelProvider.toBeConfigured": "कॉन्फ़िगर किया जाना है",
   "modelProvider.ttsModel.key": "पाठ-से-भाषण मॉडल",
   "modelProvider.ttsModel.tip": "संवाद में पाठ-से-भाषण इनपुट के लिए डिफ़ॉल्ट मॉडल सेट करें।",
