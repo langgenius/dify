@@ -21,9 +21,9 @@ Service operations
 #### GET
 ##### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | [IndexInfoResponse](#indexinforesponse) |
 
 ### /app/feedbacks
 
@@ -264,11 +264,11 @@ Stop a running chat message generation
 
 ##### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Task stopped successfully |
-| 401 | Unauthorized - invalid API token |
-| 404 | Task not found |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Task stopped successfully | [SimpleResultResponse](#simpleresultresponse) |
+| 401 | Unauthorized - invalid API token |  |
+| 404 | Task not found |  |
 
 ### /completion-messages
 
@@ -318,11 +318,11 @@ Stop a running completion task
 
 ##### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Task stopped successfully |
-| 401 | Unauthorized - invalid API token |
-| 404 | Task not found |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Task stopped successfully | [SimpleResultResponse](#simpleresultresponse) |
+| 401 | Unauthorized - invalid API token |  |
+| 404 | Task not found |  |
 
 ### /conversations
 
@@ -875,11 +875,11 @@ Update metadata for multiple documents
 
 ##### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Documents metadata updated successfully |
-| 401 | Unauthorized - invalid API token |
-| 404 | Dataset not found |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Documents metadata updated successfully | [SimpleResultResponse](#simpleresultresponse) |
+| 401 | Unauthorized - invalid API token |  |
+| 404 | Dataset not found |  |
 
 ### /datasets/{dataset_id}/documents/status/{action}
 
@@ -914,13 +914,13 @@ Raises:
 
 ##### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Document status updated successfully |
-| 400 | Bad request - invalid action |
-| 401 | Unauthorized - invalid API token |
-| 403 | Forbidden - insufficient permissions |
-| 404 | Dataset not found |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Document status updated successfully | [SimpleResultResponse](#simpleresultresponse) |
+| 400 | Bad request - invalid action |  |
+| 401 | Unauthorized - invalid API token |  |
+| 403 | Forbidden - insufficient permissions |  |
+| 404 | Dataset not found |  |
 
 ### /datasets/{dataset_id}/documents/{batch}/indexing-status
 
@@ -1028,12 +1028,12 @@ Get a signed download URL for a document's original uploaded file
 
 ##### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Download URL generated successfully |
-| 401 | Unauthorized - invalid API token |
-| 403 | Forbidden - insufficient permissions |
-| 404 | Document or upload file not found |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Download URL generated successfully | [UrlResponse](#urlresponse) |
+| 401 | Unauthorized - invalid API token |  |
+| 403 | Forbidden - insufficient permissions |  |
+| 404 | Document or upload file not found |  |
 
 ### /datasets/{dataset_id}/documents/{document_id}/segments
 
@@ -1452,11 +1452,11 @@ Enable or disable built-in metadata field
 
 ##### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Action completed successfully |
-| 401 | Unauthorized - invalid API token |
-| 404 | Dataset not found |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Action completed successfully | [SimpleResultResponse](#simpleresultresponse) |
+| 401 | Unauthorized - invalid API token |  |
+| 404 | Dataset not found |  |
 
 ### /datasets/{dataset_id}/metadata/{metadata_id}
 
@@ -1655,11 +1655,11 @@ cross-tenant/app access when an end-user ID is known.
 
 ##### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | End user retrieved successfully |
-| 401 | Unauthorized - invalid API token |
-| 404 | End user not found |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | End user retrieved successfully | [EndUserDetail](#enduserdetail) |
+| 401 | Unauthorized - invalid API token |  |
+| 404 | End user not found |  |
 
 ### /files/upload
 
@@ -1770,11 +1770,11 @@ Returns basic information about the application including name, description, tag
 
 ##### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Application info retrieved successfully |
-| 401 | Unauthorized - invalid API token |
-| 404 | Application not found |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Application info retrieved successfully | [AppInfoResponse](#appinforesponse) |
+| 401 | Unauthorized - invalid API token |  |
+| 404 | Application not found |  |
 
 ### /messages
 
@@ -1823,11 +1823,11 @@ Allows users to rate messages as like/dislike and provide optional feedback cont
 
 ##### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Feedback submitted successfully |
-| 401 | Unauthorized - invalid API token |
-| 404 | Message not found |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Feedback submitted successfully | [ResultResponse](#resultresponse) |
+| 401 | Unauthorized - invalid API token |  |
+| 404 | Message not found |  |
 
 ### /messages/{message_id}/suggested
 
@@ -1849,13 +1849,13 @@ Returns AI-generated follow-up questions based on the message content.
 
 ##### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Suggested questions retrieved successfully |
-| 400 | Suggested questions feature is disabled |
-| 401 | Unauthorized - invalid API token |
-| 404 | Message not found |
-| 500 | Internal server error |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Suggested questions retrieved successfully | [SimpleResultStringListResponse](#simpleresultstringlistresponse) |
+| 400 | Suggested questions feature is disabled |  |
+| 401 | Unauthorized - invalid API token |  |
+| 404 | Message not found |  |
+| 500 | Internal server error |  |
 
 ### /meta
 
@@ -1911,11 +1911,11 @@ Returns the site configuration for the application including theme, icons, and t
 
 ##### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Site configuration retrieved successfully |
-| 401 | Unauthorized - invalid API token |
-| 403 | Forbidden - site not found or tenant archived |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Site configuration retrieved successfully | [Site](#site) |
+| 401 | Unauthorized - invalid API token |  |
+| 403 | Forbidden - site not found or tenant archived |  |
 
 ### /text-to-audio
 
@@ -2068,11 +2068,11 @@ Stop a running workflow task
 
 ##### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Task stopped successfully |
-| 401 | Unauthorized - invalid API token |
-| 404 | Task not found |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Task stopped successfully | [SimpleResultResponse](#simpleresultresponse) |
+| 401 | Unauthorized - invalid API token |  |
+| 404 | Task not found |  |
 
 ### /workflows/{workflow_id}/run
 
@@ -2166,6 +2166,16 @@ Returns a list of available models for the specified model type.
 | embedding_model_name | string | Embedding model name | Yes |
 | embedding_provider_name | string | Embedding provider name | Yes |
 | score_threshold | number | Score threshold for annotation matching | Yes |
+
+#### AppInfoResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| author_name | string |  | Yes |
+| description | string |  | Yes |
+| mode | string |  | Yes |
+| name | string |  | Yes |
+| tags | [ string ] |  | Yes |
 
 #### ChatRequestPayload
 
@@ -2386,6 +2396,27 @@ Request payload for bulk downloading documents as a zip archive.
 | retrieval_model | [RetrievalModel](#retrievalmodel) |  | No |
 | text | string |  | No |
 
+#### EndUserDetail
+
+Full EndUser record for API responses.
+
+Note: The SQLAlchemy model defines an `is_anonymous` property for Flask-Login semantics
+(always False). The database column is exposed as `_is_anonymous`, so this DTO maps
+`is_anonymous` from `_is_anonymous` to return the stored value.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| app_id | string |  | No |
+| created_at | dateTime |  | Yes |
+| external_user_id | string |  | No |
+| id | string |  | Yes |
+| is_anonymous | boolean |  | Yes |
+| name | string |  | No |
+| session_id | string |  | Yes |
+| tenant_id | string |  | Yes |
+| type | string |  | Yes |
+| updated_at | dateTime |  | Yes |
+
 #### FeedbackListQuery
 
 | Name | Type | Description | Required |
@@ -2433,6 +2464,14 @@ Request payload for bulk downloading documents as a zip archive.
 | ---- | ---- | ----------- | -------- |
 | action | string |  | Yes |
 | inputs | object |  | Yes |
+
+#### IndexInfoResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| api_version | string |  | Yes |
+| server_version | string |  | Yes |
+| welcome | string |  | Yes |
 
 #### JsonValue
 
@@ -2525,6 +2564,12 @@ Metadata operation data
 | reranking_model_name | string |  | No |
 | reranking_provider_name | string |  | No |
 
+#### ResultResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| result | string |  | Yes |
+
 #### RetrievalMethod
 
 | Name | Type | Description | Required |
@@ -2610,6 +2655,38 @@ Metadata operation data
 | session_id | string |  | No |
 | type | string |  | Yes |
 
+#### SimpleResultResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| result | string |  | Yes |
+
+#### SimpleResultStringListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ string ] |  | Yes |
+| result | string |  | Yes |
+
+#### Site
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| chat_color_theme | string |  | No |
+| chat_color_theme_inverted | boolean |  | Yes |
+| copyright | string |  | No |
+| custom_disclaimer | string |  | No |
+| default_language | string |  | Yes |
+| description | string |  | No |
+| icon | string |  | No |
+| icon_background | string |  | No |
+| icon_type | string |  | No |
+| icon_url | string |  | Yes |
+| privacy_policy | string |  | No |
+| show_workflow_steps | boolean |  | Yes |
+| title | string |  | Yes |
+| use_icon_as_answer_icon | boolean |  | Yes |
+
 #### TagBindingPayload
 
 | Name | Type | Description | Required |
@@ -2654,6 +2731,12 @@ Accept the legacy single-tag Service API payload while exposing a normalized tag
 | streaming | boolean | Enable streaming response | No |
 | text | string | Text to convert to audio | No |
 | voice | string | Voice to use for TTS | No |
+
+#### UrlResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| url | string |  | Yes |
 
 #### WeightKeywordSetting
 

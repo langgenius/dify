@@ -6,7 +6,7 @@ from sqlalchemy.orm import sessionmaker
 from werkzeug.exceptions import NotFound
 
 from controllers.common.controller_schemas import ConversationRenamePayload
-from controllers.common.schema import register_schema_models
+from controllers.common.schema import register_response_schema_models, register_schema_models
 from controllers.console.explore.error import NotChatAppError
 from controllers.console.explore.wraps import InstalledAppResource
 from core.app.entities.app_invoke_entities import InvokeFrom
@@ -34,6 +34,7 @@ class ConversationListQuery(BaseModel):
 
 
 register_schema_models(console_ns, ConversationListQuery, ConversationRenamePayload)
+register_response_schema_models(console_ns, ResultResponse)
 
 
 @console_ns.route(
@@ -89,6 +90,7 @@ class ConversationListApi(InstalledAppResource):
     endpoint="installed_app_conversation",
 )
 class ConversationApi(InstalledAppResource):
+    @console_ns.response(204, "Conversation deleted successfully")
     def delete(self, installed_app, c_id):
         app_model = installed_app.app
         app_mode = AppMode.value_of(app_model.mode)
@@ -142,6 +144,7 @@ class ConversationRenameApi(InstalledAppResource):
     endpoint="installed_app_conversation_pin",
 )
 class ConversationPinApi(InstalledAppResource):
+    @console_ns.response(200, "Success", console_ns.models[ResultResponse.__name__])
     def patch(self, installed_app, c_id):
         app_model = installed_app.app
         app_mode = AppMode.value_of(app_model.mode)
@@ -165,6 +168,7 @@ class ConversationPinApi(InstalledAppResource):
     endpoint="installed_app_conversation_unpin",
 )
 class ConversationUnPinApi(InstalledAppResource):
+    @console_ns.response(200, "Success", console_ns.models[ResultResponse.__name__])
     def patch(self, installed_app, c_id):
         app_model = installed_app.app
         app_mode = AppMode.value_of(app_model.mode)
