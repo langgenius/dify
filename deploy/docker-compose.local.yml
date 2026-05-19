@@ -1,0 +1,18 @@
+services:
+  api:
+    build:
+      context: ../api
+      dockerfile: Dockerfile
+    image: nexoraa/dify-api:local
+
+  worker:
+    build:
+      context: ../api
+      dockerfile: Dockerfile
+    image: nexoraa/dify-api:local
+
+  web:
+    build:
+      context: ../web
+      dockerfile: Dockerfile
+    image: nexoraa/dify-web:local
