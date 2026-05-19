@@ -27,7 +27,7 @@ const FormStatusCard = ({
           </div>
           <div className="grow">
             <div className="title-4xl-semi-bold text-text-primary">{title}</div>
-            {subtitle && (
+            {subtitle ? subtitle : (
               <div className="title-4xl-semi-bold text-text-primary">{subtitle}</div>
             )}
           </div>
