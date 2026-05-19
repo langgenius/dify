@@ -162,8 +162,8 @@ function Popup({
   const handleClosePreviewCard = useCallback(() => {
     previewCardHandle.close()
   }, [previewCardHandle])
-  const isProviderSettingsCurrentPage = searchParams.get('action') === ACCOUNT_SETTING_MODAL_ACTION
-    && searchParams.get('tab') === ACCOUNT_SETTING_TAB.PROVIDER
+  const isProviderSettingsCurrentPage = searchParams?.get('action') === ACCOUNT_SETTING_MODAL_ACTION
+    && searchParams?.get('tab') === ACCOUNT_SETTING_TAB.PROVIDER
 
   return (
     <ModelSelectorPopupFrame>
