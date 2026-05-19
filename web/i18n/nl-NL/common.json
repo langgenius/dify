@@ -161,6 +161,7 @@
   "dataSourcePage.description": "Verbind externe databronnen voor gebruik in je Knowledge base of Knowledge Pipeline — haal content op uit Google Drive, Notion, GitHub en meer.",
   "dataSourcePage.installFirst": "Installeer eerst een gegevensbron.",
   "dataSourcePage.notSetUp": "niet ingesteld",
+  "dataSourcePage.notSetUpTitle": "<highlight>Data Source</highlight> niet ingesteld",
   "datasetMenus.documents": "Documents",
   "datasetMenus.emptyTip": "This Knowledge has not been integrated within any application. Please refer to the document for guidance.",
   "datasetMenus.hitTesting": "Retrieval Testing",

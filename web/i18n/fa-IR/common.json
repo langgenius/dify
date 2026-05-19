@@ -161,6 +161,7 @@
   "dataSourcePage.description": "منابع داده خارجی را برای استفاده در Knowledge base یا Knowledge Pipeline وصل کنید — محتوا را از Google Drive، Notion، GitHub و موارد دیگر وارد کنید.",
   "dataSourcePage.installFirst": "لطفاً ابتدا یک منبع داده نصب کنید.",
   "dataSourcePage.notSetUp": "راه‌اندازی نشده است",
+  "dataSourcePage.notSetUpTitle": "<highlight>منبع داده</highlight> راه‌اندازی نشده است",
   "datasetMenus.documents": "اسناد",
   "datasetMenus.emptyTip": "دانش مرتبط نشده است، لطفاً به برنامه یا افزونه بروید تا ارتباط را کامل کنید.",
   "datasetMenus.hitTesting": "آزمایش بازیابی",

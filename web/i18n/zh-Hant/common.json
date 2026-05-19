@@ -161,6 +161,7 @@
   "dataSourcePage.description": "連接外部資料來源，用於知識庫或知識管線，從 Google Drive、Notion、GitHub 等來源擷取內容。",
   "dataSourcePage.installFirst": "請先安裝一個資料來源。",
   "dataSourcePage.notSetUp": "尚未設定",
+  "dataSourcePage.notSetUpTitle": "尚未設定<highlight>資料來源</highlight>",
   "datasetMenus.documents": "文件",
   "datasetMenus.emptyTip": " 知識庫尚未關聯，請前往應用程式或外掛完成關聯。",
   "datasetMenus.hitTesting": "檢索測試",

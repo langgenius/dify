@@ -161,6 +161,7 @@
   "dataSourcePage.description": "Knowledge base veya Knowledge Pipeline içinde kullanmak için harici veri kaynakları bağlayın — Google Drive, Notion, GitHub ve daha fazlasından içerik alın.",
   "dataSourcePage.installFirst": "Önce bir Veri Kaynağı yükleyin.",
   "dataSourcePage.notSetUp": "kurulmadı",
+  "dataSourcePage.notSetUpTitle": "<highlight>Veri Kaynağı</highlight> kurulmadı",
   "datasetMenus.documents": "Belgeler",
   "datasetMenus.emptyTip": "Bilgi ilişkilendirilmemiş, ilişkilendirme işlemini tamamlamak için uygulama veya eklentiye gidin.",
   "datasetMenus.hitTesting": "Geri Alım Testi",

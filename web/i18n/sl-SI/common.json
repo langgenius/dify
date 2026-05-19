@@ -161,6 +161,7 @@
   "dataSourcePage.description": "Povežite zunanje vire podatkov za uporabo v Knowledge base ali Knowledge Pipeline — uvozite vsebino iz Google Drive, Notion, GitHub in drugih virov.",
   "dataSourcePage.installFirst": "Najprej namestite vir podatkov.",
   "dataSourcePage.notSetUp": "ni nastavljen",
+  "dataSourcePage.notSetUpTitle": "<highlight>Vir podatkov</highlight> ni nastavljen",
   "datasetMenus.documents": "Dokumentov",
   "datasetMenus.emptyTip": "Znanje ni bilo povezano, prosimo, pojdite na aplikacijo ali vtičnik, da dokončate združenje.",
   "datasetMenus.hitTesting": "Testiranje pridobivanja",

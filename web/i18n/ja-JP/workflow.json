@@ -259,7 +259,7 @@
   "common.viewRunHistory": "実行履歴を表示",
   "common.webhookDebugFailed": "Webhookデバッグに失敗しました",
   "common.webhookDebugRequestFailed": "Webhookデバッグリクエストに失敗しました",
-  "common.workflowAsTool": "ワークフローをツールとして公開する",
+  "common.workflowAsTool": "ワークフローをツールとして利用",
   "common.workflowAsToolDisabledHint": "最新のワークフローを公開し、接続済みの User Input ノードを用意してからツールとして設定してください。",
   "common.workflowAsToolTip": "ワークフロー更新後はツールの再設定が必要です",
   "common.workflowProcess": "ワークフロー処理",

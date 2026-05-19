@@ -161,6 +161,7 @@
   "dataSourcePage.description": "Conectează surse de date externe pentru Knowledge base sau Knowledge Pipeline — adu conținut din Google Drive, Notion, GitHub și altele.",
   "dataSourcePage.installFirst": "Instalați mai întâi o sursă de date.",
   "dataSourcePage.notSetUp": "nu este configurată",
+  "dataSourcePage.notSetUpTitle": "<highlight>Sursă de date</highlight> nu este configurată",
   "datasetMenus.documents": "Documente",
   "datasetMenus.emptyTip": "Cunoștințele nu au fost asociate, vă rugăm să mergeți la aplicație sau la plug-in pentru a finaliza asocierea.",
   "datasetMenus.hitTesting": "Testare recuperare",

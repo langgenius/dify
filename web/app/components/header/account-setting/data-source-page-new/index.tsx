@@ -1,6 +1,6 @@
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { memo, useCallback, useMemo, useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { Trans, useTranslation } from 'react-i18next'
 import SearchInput from '@/app/components/base/search-input'
 import { usePluginsWithLatestVersion } from '@/app/components/plugins/hooks'
 import { useCanSetPluginSettings } from '@/app/components/plugins/plugin-page/use-reference-setting'
@@ -88,9 +88,13 @@ const DataSourcePage = ({
             <span className="i-ri-database-2-line h-5 w-5 text-text-primary" />
           </div>
           <div className="mt-2 system-sm-medium text-text-secondary">
-            <span className="text-text-primary">{t('settings.dataSource', { ns: 'common' })}</span>
-            {' '}
-            {t('dataSourcePage.notSetUp', { ns: 'common' })}
+            <Trans
+              i18nKey="dataSourcePage.notSetUpTitle"
+              ns="common"
+              components={{
+                highlight: <span className="text-text-primary" />,
+              }}
+            />
           </div>
           <div className="mt-1 system-xs-regular text-text-tertiary">
             {t('dataSourcePage.installFirst', { ns: 'common' })}

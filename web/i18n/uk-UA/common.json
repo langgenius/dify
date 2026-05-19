@@ -161,6 +161,7 @@
   "dataSourcePage.description": "Підключайте зовнішні джерела даних для Knowledge base або Knowledge Pipeline — імпортуйте вміст із Google Drive, Notion, GitHub тощо.",
   "dataSourcePage.installFirst": "Спочатку встановіть джерело даних.",
   "dataSourcePage.notSetUp": "не налаштовано",
+  "dataSourcePage.notSetUpTitle": "<highlight>Джерело даних</highlight> не налаштовано",
   "datasetMenus.documents": "Документи",
   "datasetMenus.emptyTip": "Знання не пов’язані, будь ласка, перейдіть до програми або плагіна, щоб завершити зв’язок.",
   "datasetMenus.hitTesting": "Тестування пошуку",

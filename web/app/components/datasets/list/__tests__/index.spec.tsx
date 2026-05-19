@@ -180,6 +180,7 @@ describe('List', () => {
       render(<List />)
 
       expect(screen.getByText('dataset.firstEmpty.title')).toBeInTheDocument()
+      expect(screen.getByText('dataset.studioDescription')).toBeInTheDocument()
       expect(screen.getByText('dataset.firstEmpty.description')).toBeInTheDocument()
       expect(screen.getByText('dataset.createDataset')).toBeInTheDocument()
       expect(screen.getByText('dataset.createFromPipeline')).toBeInTheDocument()

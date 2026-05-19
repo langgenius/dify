@@ -51,7 +51,7 @@ const DatasetListHeader = ({
       <div className="flex items-start justify-between gap-4 pt-2">
         <DatasetListPageTitle
           title={t('knowledge', { ns: 'dataset' })}
-          description={t('studioDescription', { ns: 'app' })}
+          description={t('studioDescription', { ns: 'dataset' })}
         />
         <div className="flex h-[42px] shrink-0 items-end">
           <Button

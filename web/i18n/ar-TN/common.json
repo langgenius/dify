@@ -161,6 +161,7 @@
   "dataSourcePage.description": "اربط مصادر بيانات خارجية لاستخدامها في قاعدة المعرفة أو Knowledge Pipeline — واجلب المحتوى من Google Drive وNotion وGitHub والمزيد.",
   "dataSourcePage.installFirst": "يرجى تثبيت مصدر بيانات أولاً.",
   "dataSourcePage.notSetUp": "غير معدّ",
+  "dataSourcePage.notSetUpTitle": "<highlight>مصدر البيانات</highlight> غير معدّ",
   "datasetMenus.documents": "المستندات",
   "datasetMenus.emptyTip": "لم يتم دمج هذه المعرفة في أي تطبيق. يرجى الرجوع إلى المستند للحصول على إرشادات.",
   "datasetMenus.hitTesting": "اختبار الاسترجاع",

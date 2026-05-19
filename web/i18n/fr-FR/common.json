@@ -161,6 +161,7 @@
   "dataSourcePage.description": "Connectez des sources de données externes à utiliser dans votre base de connaissances ou Knowledge Pipeline — importez du contenu depuis Google Drive, Notion, GitHub, etc.",
   "dataSourcePage.installFirst": "Veuillez d’abord installer une source de données.",
   "dataSourcePage.notSetUp": "non configurée",
+  "dataSourcePage.notSetUpTitle": "<highlight>Source de Données</highlight> non configurée",
   "datasetMenus.documents": "Documents",
   "datasetMenus.emptyTip": "La Connaissance n'a pas été associée, veuillez aller à l'application ou au plug-in pour compléter l'association.",
   "datasetMenus.hitTesting": "Test de Récupération",

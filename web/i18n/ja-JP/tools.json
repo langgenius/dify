@@ -213,10 +213,10 @@
   "type.custom": "カスタム",
   "type.workflow": "ワークフロー",
   "workflowToolEmpty.description": "ワークフローをツールとして使うには、まず Studio から公開してください。公開後ここに表示され、任意のアプリに追加できます。",
-  "workflowToolEmpty.goToStudio": "Studio へ移動",
-  "workflowToolEmpty.learnMore": "ヘルプが必要ですか？ワークフローをツールとして公開する方法を見る →",
-  "workflowToolEmpty.step1": "Studio でワークフローを作成する",
-  "workflowToolEmpty.step2": "公開メニューで「Workflow as Tool」をクリックし、ツールとして利用可能にする",
-  "workflowToolEmpty.step3": "ここに戻って管理し、再利用する",
+  "workflowToolEmpty.goToStudio": "スタジオへ移動",
+  "workflowToolEmpty.learnMore": "お困りですか？ワークフローをツールとして公開する方法を確認しましょう →",
+  "workflowToolEmpty.step1": "スタジオでワークフローを構築",
+  "workflowToolEmpty.step2": "公開メニューの「ワークフローをツールとして公開」をクリックすると、ツールとして利用できます",
+  "workflowToolEmpty.step3": "このページに戻って管理・再利用できます",
   "workflowToolEmpty.title": "ツールとして公開されたワークフローはまだありません"
 }

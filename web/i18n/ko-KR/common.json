@@ -161,6 +161,7 @@
   "dataSourcePage.description": "Knowledge base 또는 Knowledge Pipeline에서 사용할 외부 데이터 소스를 연결하고 Google Drive, Notion, GitHub 등에서 콘텐츠를 가져오세요.",
   "dataSourcePage.installFirst": "먼저 데이터 소스를 설치하세요.",
   "dataSourcePage.notSetUp": "설정되지 않음",
+  "dataSourcePage.notSetUpTitle": "<highlight>데이터 소스</highlight> 설정되지 않음",
   "datasetMenus.documents": "문서",
   "datasetMenus.emptyTip": "연결된 지식이 없습니다. 애플리케이션 또는 플러그인으로 이동하여 연결을 완료하세요.",
   "datasetMenus.hitTesting": "검색 테스트",

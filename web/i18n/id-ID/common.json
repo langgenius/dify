@@ -161,6 +161,7 @@
   "dataSourcePage.description": "Hubungkan sumber data eksternal untuk digunakan di Knowledge base atau Knowledge Pipeline — ambil konten dari Google Drive, Notion, GitHub, dan lainnya.",
   "dataSourcePage.installFirst": "Instal Sumber Data terlebih dahulu.",
   "dataSourcePage.notSetUp": "belum disiapkan",
+  "dataSourcePage.notSetUpTitle": "<highlight>Sumber Data</highlight> belum disiapkan",
   "datasetMenus.documents": "Dokumen",
   "datasetMenus.emptyTip": "Pengetahuan ini belum terintegrasi dalam aplikasi apa pun. Silakan lihat dokumen untuk panduan.",
   "datasetMenus.hitTesting": "Pengujian Pengambilan",

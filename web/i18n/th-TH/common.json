@@ -161,6 +161,7 @@
   "dataSourcePage.description": "เชื่อมต่อแหล่งข้อมูลภายนอกเพื่อใช้ใน Knowledge base หรือ Knowledge Pipeline — ดึงเนื้อหาจาก Google Drive, Notion, GitHub และอื่น ๆ",
   "dataSourcePage.installFirst": "โปรดติดตั้งแหล่งข้อมูลก่อน",
   "dataSourcePage.notSetUp": "ยังไม่ได้ตั้งค่า",
+  "dataSourcePage.notSetUpTitle": "<highlight>แหล่งข้อมูล</highlight> ยังไม่ได้ตั้งค่า",
   "datasetMenus.documents": "เอกสาร",
   "datasetMenus.emptyTip": "ความรู้ยังไม่ได้เชื่อมโยง โปรดไปที่แอปพลิเคชันหรือปลั๊กอินเพื่อเชื่อมโยงให้เสร็จสมบูรณ์",
   "datasetMenus.hitTesting": "การทดสอบการดึงข้อมูล",

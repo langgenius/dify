@@ -213,10 +213,10 @@
   "type.custom": "自定义",
   "type.workflow": "工作流",
   "workflowToolEmpty.description": "如需将工作流作为工具使用，请先在 Studio 中发布。发布后它会显示在这里，并可添加到任意应用。",
-  "workflowToolEmpty.goToStudio": "前往 Studio",
-  "workflowToolEmpty.learnMore": "需要帮助？了解如何将工作流作为工具 →",
-  "workflowToolEmpty.step1": "在 Studio 中构建工作流",
-  "workflowToolEmpty.step2": "在发布菜单中点击“Workflow as Tool”，将它发布为可用工具",
-  "workflowToolEmpty.step3": "回到这里管理并复用它",
-  "workflowToolEmpty.title": "还没有可用的工作流工具"
+  "workflowToolEmpty.goToStudio": "前往工作室",
+  "workflowToolEmpty.learnMore": "需要帮助？了解如何将工作流发布为工具 →",
+  "workflowToolEmpty.step1": "在工作室中构建工作流",
+  "workflowToolEmpty.step2": "在发布菜单中点击\"发布工作流作为工具\"",
+  "workflowToolEmpty.step3": "回到此页面进行管理与复用",
+  "workflowToolEmpty.title": "暂无已发布为工具的工作流"
 }

@@ -80,7 +80,7 @@ const List = () => {
                 <div className="flex min-h-14 items-start pt-2">
                   <DatasetListPageTitle
                     title={t('knowledge', { ns: 'dataset' })}
-                    description={t('firstEmpty.headerDescription', { ns: 'dataset' })}
+                    description={t('studioDescription', { ns: 'dataset' })}
                     titleClassName="text-dify-logo-black"
                   />
                 </div>
