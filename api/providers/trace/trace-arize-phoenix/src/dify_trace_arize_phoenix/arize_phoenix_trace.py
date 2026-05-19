@@ -579,7 +579,7 @@ def _resolve_wrapper_group_key(
     return None
 
 
-def _build_wrapper_groups(node_executions: Sequence[_NodeExecutionLike]) -> dict[_WrapperGroupKey, _WrapperGroup]:
+def _build_wrapper_groups(node_executions: Sequence[_NodeExecutionIdentityLike]) -> dict[_WrapperGroupKey, _WrapperGroup]:
     """Group repeated loop/iteration body executions behind synthetic Phoenix spans."""
     execution_id_by_node_id = _build_execution_id_by_node_id(node_executions)
     groups: dict[_WrapperGroupKey, _WrapperGroup] = {}
@@ -974,6 +974,8 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
                     workflow_span=workflow_span,
                 )
                 workflow_span_context = set_span_in_context(parent_span)
+                loop_index = node_metadata.get("loop_index")
+                iteration_index = node_metadata.get("iteration_index")
                 node_span = self.tracer.start_span(
                     name=_resolve_workflow_node_span_name(node_execution, node_title_by_id),
                     attributes={
@@ -985,14 +987,12 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
                         SpanAttributes.METADATA: safe_json_dumps(node_metadata),
                         SpanAttributes.SESSION_ID: workflow_session_id or "",
                         "dify.node.execution_id": execution_id,
-                        "dify.node.loop_id": node_metadata.get("loop_id") or "",
-                        "dify.node.loop_index": node_metadata.get("loop_index")
-                        if node_metadata.get("loop_index") is not None
-                        else "",
-                        "dify.node.iteration_id": node_metadata.get("iteration_id") or "",
-                        "dify.node.iteration_index": node_metadata.get("iteration_index")
-                        if node_metadata.get("iteration_index") is not None
-                        else "",
+                        "dify.node.loop_id": cast(AttributeValue, node_metadata.get("loop_id") or ""),
+                        "dify.node.loop_index": cast(AttributeValue, loop_index if loop_index is not None else ""),
+                        "dify.node.iteration_id": cast(AttributeValue, node_metadata.get("iteration_id") or ""),
+                        "dify.node.iteration_index": cast(
+                            AttributeValue, iteration_index if iteration_index is not None else ""
+                        ),
                     },
                     start_time=datetime_to_nanos(created_at),
                     context=workflow_span_context,
