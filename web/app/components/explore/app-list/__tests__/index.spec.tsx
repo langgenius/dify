@@ -413,8 +413,8 @@ describe('AppList', () => {
       mockHandleImportDSL.mockImplementation(async (_payload: unknown, options: { onSuccess?: () => void, onPending?: () => void }) => {
         options.onPending?.()
       })
-      mockHandleImportDSLConfirm.mockImplementation(async (options: { onSuccess?: () => void }) => {
-        options.onSuccess?.()
+      mockHandleImportDSLConfirm.mockImplementation(async (options: { onSuccess?: (payload: { app_mode: AppModeEnum }) => void }) => {
+        options.onSuccess?.({ app_mode: AppModeEnum.CHAT })
       })
 
       renderAppList(true, onSuccess)
@@ -431,7 +431,9 @@ describe('AppList', () => {
       await waitFor(() => {
         expect(mockHandleImportDSLConfirm).toHaveBeenCalledTimes(1)
         expect(mockTrackCreateApp).toHaveBeenCalledWith({
+          source: 'explore_template_list',
           appMode: AppModeEnum.CHAT,
+          templateId: 'app-1',
         })
         expect(onSuccess).toHaveBeenCalledTimes(1)
       })
@@ -525,8 +527,8 @@ describe('AppList', () => {
         allList: [createApp()],
       };
       (fetchAppDetail as unknown as Mock).mockResolvedValue({ export_data: 'yaml', mode: AppModeEnum.CHAT })
-      mockHandleImportDSL.mockImplementation(async (_payload: unknown, options: { onSuccess?: () => void }) => {
-        options.onSuccess?.()
+      mockHandleImportDSL.mockImplementation(async (_payload: unknown, options: { onSuccess?: (payload: { app_mode: AppModeEnum }) => void }) => {
+        options.onSuccess?.({ app_mode: AppModeEnum.CHAT })
       })
 
       renderAppList(true)
@@ -591,8 +593,8 @@ describe('AppList', () => {
         allList: [createApp()],
       };
       (fetchAppDetail as unknown as Mock).mockResolvedValue({ export_data: 'yaml', mode: AppModeEnum.CHAT })
-      mockHandleImportDSL.mockImplementation(async (_payload: unknown, options: { onSuccess?: () => void }) => {
-        options.onSuccess?.()
+      mockHandleImportDSL.mockImplementation(async (_payload: unknown, options: { onSuccess?: (payload: { app_mode: AppModeEnum }) => void }) => {
+        options.onSuccess?.({ app_mode: AppModeEnum.CHAT })
       })
 
       renderAppList(true)
@@ -603,7 +605,9 @@ describe('AppList', () => {
 
       await waitFor(() => {
         expect(mockTrackCreateApp).toHaveBeenCalledWith({
+          source: 'explore_template_preview',
           appMode: AppModeEnum.CHAT,
+          templateId: 'app-1',
         })
       })
     })

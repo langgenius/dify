@@ -84,7 +84,7 @@ vi.mock('@/app/components/base/features/new-feature-panel/moderation/form-genera
 }))
 
 vi.mock('@/app/components/header/account-setting/api-based-extension-page/selector', () => ({
-  default: ({
+  ApiBasedExtensionSelector: ({
     onChange,
     value,
   }: {

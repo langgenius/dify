@@ -2,7 +2,7 @@
 
 import type { ReactNode } from 'react'
 import type { IntegrationSection } from './integration-routes'
-import ApiBasedExtensionPage from '@/app/components/header/account-setting/api-based-extension-page'
+import { ApiBasedExtensionPage } from '@/app/components/header/account-setting/api-based-extension-page'
 import DataSourcePage from '@/app/components/header/account-setting/data-source-page-new'
 import ModelProviderPage from '@/app/components/header/account-setting/model-provider-page'
 import { PluginCategoryEnum } from '@/app/components/plugins/types'

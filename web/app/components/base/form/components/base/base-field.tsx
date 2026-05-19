@@ -305,6 +305,7 @@ const BaseField = ({
           {
             formItemType === FormTypeEnum.checkbox /* && multiple */ && (
               <CheckboxList
+                name={field.name}
                 title={name}
                 value={value}
                 onChange={v => field.handleChange(v)}

@@ -7,7 +7,7 @@ import {
 } from '.'
 
 const meta = {
-  title: 'Base/UI/Checkbox',
+  title: 'Base/Form/Checkbox',
   component: Checkbox,
   parameters: {
     layout: 'centered',

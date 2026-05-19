@@ -81,7 +81,7 @@ function CreateApp({ onClose, onSuccess, onCreateFromTemplate, defaultAppMode }:
         mode: appMode,
       })
 
-      trackCreateApp({ appMode: app.mode })
+      trackCreateApp({ source: 'studio_blank', appMode: app.mode })
 
       toast.success(t('newApp.appCreated', { ns: 'app' }))
       onSuccess()
