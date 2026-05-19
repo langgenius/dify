@@ -21,7 +21,7 @@ type SearchParamReader = {
 
 type OriginalCreateAppMode = 'workflow' | 'chatflow' | 'agent'
 
-export type CreateAppSource
+type CreateAppSource
   = | 'external'
     | 'explore_template_list'
     | 'explore_template_preview'
