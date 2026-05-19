@@ -3,6 +3,7 @@ import {
   ACCOUNT_SETTING_TAB,
   DEFAULT_ACCOUNT_SETTING_TAB,
   isValidAccountSettingTab,
+  isValidSettingsTab,
 } from '../constants'
 import {
   enableMovedAccountSettingDestinations,
@@ -44,6 +45,15 @@ describe('AccountSetting Constants', () => {
     expect(isValidAccountSettingTab(null)).toBe(false)
     expect(isValidAccountSettingTab('')).toBe(false)
     expect(isValidAccountSettingTab('invalid')).toBe(false)
+  })
+
+  it('isValidSettingsTab should include integrations tabs', () => {
+    expect(isValidSettingsTab('billing')).toBe(true)
+    expect(isValidSettingsTab('language')).toBe(true)
+    expect(isValidSettingsTab('provider')).toBe(true)
+    expect(isValidSettingsTab('mcp')).toBe(true)
+    expect(isValidSettingsTab('agent-strategy')).toBe(true)
+    expect(isValidSettingsTab('invalid')).toBe(false)
   })
 
   it('should map migrated setting tabs to integrations sections', () => {

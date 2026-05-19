@@ -1,20 +1,25 @@
 'use client'
 
 import type { MovedAccountSettingTab } from './destinations'
+import type { IntegrationSection } from '@/app/components/tools/integration-routes'
 import { useCallback } from 'react'
-import { useRouter } from '@/next/navigation'
-import { getMovedAccountSettingDestination } from './destinations'
+import { useModalContext } from '@/context/modal-context'
+import { integrationSectionByMovedAccountSettingTab } from './destinations'
 
-type IntegrationsSettingState = {
-  payload: MovedAccountSettingTab
-}
+type IntegrationsSettingState
+  = | { payload: MovedAccountSettingTab }
+    | { section: IntegrationSection }
 
 export const useIntegrationsSetting = () => {
-  const router = useRouter()
+  const { setShowAccountSettingModal } = useModalContext()
 
   return useCallback((state: IntegrationsSettingState) => {
-    const movedDestination = getMovedAccountSettingDestination(state.payload)
-    if (movedDestination)
-      router.push(movedDestination)
-  }, [router])
+    const section
+      = 'section' in state
+        ? state.section
+        : integrationSectionByMovedAccountSettingTab[state.payload]
+
+    if (section)
+      setShowAccountSettingModal({ payload: section })
+  }, [setShowAccountSettingModal])
 }

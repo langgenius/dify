@@ -13,7 +13,7 @@
  * - Use shallow routing to avoid unnecessary re-renders
  */
 
-import type { AccountSettingTab } from '@/app/components/header/account-setting/constants'
+import type { SettingsTab } from '@/app/components/header/account-setting/constants'
 import {
   createParser,
   parseAsStringEnum,
@@ -24,7 +24,7 @@ import {
 import { useCallback } from 'react'
 import {
   ACCOUNT_SETTING_MODAL_ACTION,
-  ACCOUNT_SETTING_TAB,
+  SETTINGS_TAB_VALUES,
 } from '@/app/components/header/account-setting/constants'
 import { isServer } from '@/utils/client'
 
@@ -57,9 +57,9 @@ export function usePricingModal() {
   )
 }
 
-const accountSettingTabValues = Object.values(ACCOUNT_SETTING_TAB) as AccountSettingTab[]
+const settingsTabValues = [...SETTINGS_TAB_VALUES] as SettingsTab[]
 const parseAsAccountSettingAction = parseAsStringLiteral([ACCOUNT_SETTING_MODAL_ACTION] as const)
-const parseAsAccountSettingTab = parseAsStringEnum<AccountSettingTab>(accountSettingTabValues)
+const parseAsSettingsTab = parseAsStringEnum<SettingsTab>(settingsTabValues)
 
 /**
  * Hook to manage account setting modal state via URL
@@ -74,7 +74,7 @@ export function useAccountSettingModal() {
   const [accountState, setAccountState] = useQueryStates(
     {
       action: parseAsAccountSettingAction,
-      tab: parseAsAccountSettingTab,
+      tab: parseAsSettingsTab,
     },
     {
       history: 'replace',
@@ -82,7 +82,7 @@ export function useAccountSettingModal() {
   )
 
   const setState = useCallback(
-    (state: { payload: AccountSettingTab } | null) => {
+    (state: { payload: SettingsTab } | null) => {
       if (!state) {
         setAccountState({ action: null, tab: null }, { history: 'replace' })
         return

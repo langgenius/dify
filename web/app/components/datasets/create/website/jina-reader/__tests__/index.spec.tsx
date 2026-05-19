@@ -397,15 +397,15 @@ describe('JinaReader', () => {
       const configButton = screen.getByText('datasetCreation.stepOne.website.configureJinaReader')
       fireEvent.click(configButton)
 
-      expect(mockRouterPush).toHaveBeenCalledTimes(1)
-      expect(mockSetShowAccountSettingModal).not.toHaveBeenCalled()
+      expect(mockSetShowAccountSettingModal).toHaveBeenCalledTimes(1)
+      expect(mockRouterPush).not.toHaveBeenCalled()
 
       // Rerender and click again
       rerender(<JinaReader {...props} />)
       fireEvent.click(configButton)
 
-      expect(mockRouterPush).toHaveBeenCalledTimes(2)
-      expect(mockSetShowAccountSettingModal).not.toHaveBeenCalled()
+      expect(mockSetShowAccountSettingModal).toHaveBeenCalledTimes(2)
+      expect(mockRouterPush).not.toHaveBeenCalled()
     })
 
     it('should memoize checkValid callback based on crawlOptions', async () => {
@@ -441,8 +441,8 @@ describe('JinaReader', () => {
       const configButton = screen.getByText('datasetCreation.stepOne.website.configureJinaReader')
       await userEvent.click(configButton)
 
-      expect(mockRouterPush).toHaveBeenCalledWith('/integrations/data-source')
-      expect(mockSetShowAccountSettingModal).not.toHaveBeenCalled()
+      expect(mockSetShowAccountSettingModal).toHaveBeenCalledWith({ payload: 'data-source' })
+      expect(mockRouterPush).not.toHaveBeenCalled()
     })
 
     it('should handle URL input and run button click', async () => {

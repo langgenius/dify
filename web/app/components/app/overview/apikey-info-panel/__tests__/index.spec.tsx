@@ -93,8 +93,8 @@ describe('APIKeyInfoPanel - Community Edition', () => {
 
       interactions.clickMainButton()
 
-      expect(mockRouterPush).toHaveBeenCalledWith('/integrations/model-provider')
-      expect(mockSetShowAccountSettingModal).not.toHaveBeenCalled()
+      expect(mockSetShowAccountSettingModal).toHaveBeenCalledWith({ payload: 'provider' })
+      expect(mockRouterPush).not.toHaveBeenCalled()
     })
 
     it('should hide panel when close button is clicked', () => {

@@ -261,8 +261,8 @@ describe('Website', () => {
       const configButton = screen.getByTestId('no-data-config-button')
       fireEvent.click(configButton)
 
-      expect(mockRouterPush).toHaveBeenCalledWith('/integrations/data-source')
-      expect(mockSetShowAccountSettingModal).not.toHaveBeenCalled()
+      expect(mockSetShowAccountSettingModal).toHaveBeenCalledWith({ payload: 'data-source' })
+      expect(mockRouterPush).not.toHaveBeenCalled()
     })
   })
 

@@ -4,8 +4,7 @@ import type { ReactNode, SetStateAction } from 'react'
 import type { ModalState, ModelModalType } from './modal-context'
 import type { OpeningStatement } from '@/app/components/base/features/types'
 import type { CreateExternalAPIReq } from '@/app/components/datasets/external-api/declarations'
-import type { AccountSettingTab } from '@/app/components/header/account-setting/constants'
-import type { NonMovedAccountSettingTab } from '@/app/components/header/account-setting/destinations'
+import type { SettingsTab } from '@/app/components/header/account-setting/constants'
 import type { ModelLoadBalancingModalProps } from '@/app/components/header/account-setting/model-provider-page/provider-added-card/model-load-balancing-modal'
 import type { UpdatePluginPayload } from '@/app/components/plugins/types'
 import type { InputVar } from '@/app/components/workflow/types'
@@ -15,9 +14,11 @@ import type { ModerationConfig, PromptVariable } from '@/models/debug'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import {
   DEFAULT_ACCOUNT_SETTING_TAB,
-  isValidAccountSettingTab,
+  isIntegrationSettingTab,
+  isUserSettingTab,
+  isValidSettingsTab,
+  isWorkspaceSettingTab,
 } from '@/app/components/header/account-setting/constants'
-import { getMovedAccountSettingDestination, isMovedAccountSettingTab } from '@/app/components/header/account-setting/destinations'
 import {
   EDUCATION_VERIFYING_LOCALSTORAGE_ITEM,
 } from '@/app/education-apply/constants'
@@ -28,13 +29,18 @@ import {
   usePricingModal,
 } from '@/hooks/use-query-params'
 import dynamic from '@/next/dynamic'
-import { useRouter } from '@/next/navigation'
 import { useTriggerEventsLimitModal } from './hooks/use-trigger-events-limit-modal'
 import {
   ModalContext,
 } from './modal-context'
 
 const AccountSetting = dynamic(() => import('@/app/components/header/account-setting'), {
+  ssr: false,
+})
+const LanguageSettingModal = dynamic(() => import('@/app/components/header/account-setting/language-setting-modal'), {
+  ssr: false,
+})
+const IntegrationsSettingModal = dynamic(() => import('@/app/components/tools/integrations-setting-modal'), {
   ssr: false,
 })
 const ModerationSettingModal = dynamic(() => import('@/app/components/base/features/new-feature-panel/moderation/moderation-setting-modal'), {
@@ -81,17 +87,16 @@ export const ModalContextProvider = ({
   // Use nuqs hooks for URL-based modal state management
   const [showPricingModal, setPricingModalOpen] = usePricingModal()
   const [urlAccountModalState, setUrlAccountModalState] = useAccountSettingModal()
-  const router = useRouter()
 
-  const accountSettingCallbacksRef = useRef<Omit<ModalState<NonMovedAccountSettingTab>, 'payload'> | null>(null)
-  const accountSettingTab = urlAccountModalState.isOpen
-    ? (isValidAccountSettingTab(urlAccountModalState.payload)
+  const accountSettingCallbacksRef = useRef<Omit<ModalState<SettingsTab>, 'payload'> | null>(null)
+  const settingsTab = urlAccountModalState.isOpen
+    ? (isValidSettingsTab(urlAccountModalState.payload)
         ? urlAccountModalState.payload
         : DEFAULT_ACCOUNT_SETTING_TAB)
     : null
-  const accountSettingModalTab = accountSettingTab && !isMovedAccountSettingTab(accountSettingTab)
-    ? accountSettingTab
-    : null
+  const accountSettingModalTab = isWorkspaceSettingTab(settingsTab) ? settingsTab : null
+  const languageSettingModalTab = isUserSettingTab(settingsTab) ? settingsTab : null
+  const integrationSettingModalSection = isIntegrationSettingTab(settingsTab) ? settingsTab : null
   const [showModerationSettingModal, setShowModerationSettingModal] = useState<ModalState<ModerationConfig> | null>(null)
   const [showExternalDataToolModal, setShowExternalDataToolModal] = useState<ModalState<ExternalDataTool> | null>(null)
   const [showModelModal, setShowModelModal] = useState<ModalState<ModelModalType> | null>(null)
@@ -118,13 +123,13 @@ export const ModalContextProvider = ({
     setUrlAccountModalState(null)
   }
 
-  const handleAccountSettingTabChange = useCallback((tab: AccountSettingTab) => {
+  const handleAccountSettingTabChange = useCallback((tab: SettingsTab) => {
     setUrlAccountModalState({ payload: tab })
   }, [setUrlAccountModalState])
 
-  const setShowAccountSettingModal = useCallback((next: SetStateAction<ModalState<NonMovedAccountSettingTab> | null>) => {
-    const currentState = accountSettingModalTab
-      ? { payload: accountSettingModalTab, ...accountSettingCallbacksRef.current }
+  const setShowAccountSettingModal = useCallback((next: SetStateAction<ModalState<SettingsTab> | null>) => {
+    const currentState = settingsTab
+      ? { payload: settingsTab, ...accountSettingCallbacksRef.current }
       : null
     const resolvedState = typeof next === 'function' ? next(currentState) : next
     if (!resolvedState) {
@@ -135,28 +140,12 @@ export const ModalContextProvider = ({
     const { payload, ...callbacks } = resolvedState
     accountSettingCallbacksRef.current = callbacks
     setUrlAccountModalState({ payload })
-  }, [accountSettingModalTab, setUrlAccountModalState])
+  }, [settingsTab, setUrlAccountModalState])
 
   useEffect(() => {
     if (!urlAccountModalState.isOpen)
       accountSettingCallbacksRef.current = null
   }, [urlAccountModalState.isOpen])
-
-  useEffect(() => {
-    if (!accountSettingTab)
-      return
-
-    if (!isMovedAccountSettingTab(accountSettingTab))
-      return
-
-    const movedDestination = getMovedAccountSettingDestination(accountSettingTab)
-    if (!movedDestination)
-      return
-
-    accountSettingCallbacksRef.current = null
-    setUrlAccountModalState(null)
-    router.push(movedDestination)
-  }, [accountSettingTab, router, setUrlAccountModalState])
 
   const { plan, isFetchedPlan } = useProviderContext()
   const {
@@ -279,6 +268,22 @@ export const ModalContextProvider = ({
               activeTab={accountSettingModalTab}
               onCancelAction={handleCancelAccountSettingModal}
               onTabChangeAction={handleAccountSettingTabChange}
+            />
+          )
+        }
+        {
+          languageSettingModalTab && (
+            <LanguageSettingModal
+              onCancel={handleCancelAccountSettingModal}
+            />
+          )
+        }
+        {
+          integrationSettingModalSection && (
+            <IntegrationsSettingModal
+              section={integrationSettingModalSection}
+              onCancel={handleCancelAccountSettingModal}
+              onSectionChange={section => setUrlAccountModalState({ payload: section })}
             />
           )
         }

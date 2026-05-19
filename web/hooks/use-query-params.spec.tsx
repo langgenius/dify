@@ -179,6 +179,21 @@ describe('useQueryParams hooks', () => {
       expect(state.payload).toBe('billing')
     })
 
+    it('should accept integrations tabs with the shared settings action', () => {
+      // Arrange
+      const { result } = renderWithAdapter(
+        () => useAccountSettingModal(),
+        `?action=${ACCOUNT_SETTING_MODAL_ACTION}&tab=mcp`,
+      )
+
+      // Act
+      const [state] = result.current
+
+      // Assert
+      expect(state.isOpen).toBe(true)
+      expect(state.payload).toBe('mcp')
+    })
+
     it('should return closed state when action does not match', () => {
       // Arrange
       const { result } = renderWithAdapter(
@@ -208,6 +223,22 @@ describe('useQueryParams hooks', () => {
       const update = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1]![0]
       expect(update.searchParams.get('action')).toBe(ACCOUNT_SETTING_MODAL_ACTION)
       expect(update.searchParams.get('tab')).toBe('members')
+    })
+
+    it('should set an integrations tab with the shared settings action', async () => {
+      // Arrange
+      const { result, onUrlUpdate } = renderWithAdapter(() => useAccountSettingModal())
+
+      // Act
+      act(() => {
+        result.current[1]({ payload: 'data-source' })
+      })
+
+      // Assert
+      await waitFor(() => expect(onUrlUpdate).toHaveBeenCalled())
+      const update = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1]![0]
+      expect(update.searchParams.get('action')).toBe(ACCOUNT_SETTING_MODAL_ACTION)
+      expect(update.searchParams.get('tab')).toBe('data-source')
     })
 
     it('should use push history when opening from closed state', async () => {

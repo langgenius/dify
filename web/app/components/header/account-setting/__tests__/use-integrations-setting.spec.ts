@@ -2,13 +2,13 @@ import { act, renderHook } from '@testing-library/react'
 import { ACCOUNT_SETTING_TAB } from '../constants'
 import { useIntegrationsSetting } from '../use-integrations-setting'
 
-const { mockRouterPush } = vi.hoisted(() => ({
-  mockRouterPush: vi.fn(),
+const { mockSetShowAccountSettingModal } = vi.hoisted(() => ({
+  mockSetShowAccountSettingModal: vi.fn(),
 }))
 
-vi.mock('@/next/navigation', () => ({
-  useRouter: () => ({
-    push: mockRouterPush,
+vi.mock('@/context/modal-context', () => ({
+  useModalContext: () => ({
+    setShowAccountSettingModal: mockSetShowAccountSettingModal,
   }),
 }))
 
@@ -18,16 +18,26 @@ describe('useIntegrationsSetting', () => {
   })
 
   it.each([
-    [ACCOUNT_SETTING_TAB.PROVIDER, '/integrations/model-provider'],
-    [ACCOUNT_SETTING_TAB.DATA_SOURCE, '/integrations/data-source'],
-    [ACCOUNT_SETTING_TAB.API_BASED_EXTENSION, '/integrations/tools/api-extension'],
-  ])('should navigate directly for migrated tab %s', (tab, destination) => {
+    [ACCOUNT_SETTING_TAB.PROVIDER, 'provider'],
+    [ACCOUNT_SETTING_TAB.DATA_SOURCE, 'data-source'],
+    [ACCOUNT_SETTING_TAB.API_BASED_EXTENSION, 'api-based-extension'],
+  ])('should open integrations settings for migrated tab %s', (tab, section) => {
     const { result } = renderHook(() => useIntegrationsSetting())
 
     act(() => {
       result.current({ payload: tab })
     })
 
-    expect(mockRouterPush).toHaveBeenCalledWith(destination)
+    expect(mockSetShowAccountSettingModal).toHaveBeenCalledWith({ payload: section })
+  })
+
+  it('should open integrations settings from a direct section', () => {
+    const { result } = renderHook(() => useIntegrationsSetting())
+
+    act(() => {
+      result.current({ section: 'mcp' })
+    })
+
+    expect(mockSetShowAccountSettingModal).toHaveBeenCalledWith({ payload: 'mcp' })
   })
 })
