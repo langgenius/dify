@@ -46,8 +46,14 @@ export const workflowTextHandler: TextHandler = {
     const data = resp.data
     if (data !== null && typeof data === 'object' && 'outputs' in data) {
       const { outputs } = data as { outputs: unknown }
-      if (outputs !== undefined)
+      if (outputs !== undefined) {
+        if (typeof outputs === 'object' && outputs !== null) {
+          const entries = Object.entries(outputs as Record<string, unknown>)
+          if (entries.length === 1 && typeof entries[0]![1] === 'string')
+            return `${entries[0]![1]}\n`
+        }
         return `${JSON.stringify(outputs)}\n`
+      }
     }
     return `${JSON.stringify(resp)}\n`
   },

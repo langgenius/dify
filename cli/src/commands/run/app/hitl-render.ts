@@ -52,7 +52,7 @@ export function renderHitlBlock(_appId: string, payload: HitlPausePayload, isTTY
   lines.push(`${cs.warningIcon()} ${cs.bold('Workflow paused')} ${cs.dim('— input required')}`)
   lines.push('')
   lines.push(`  ${cs.dim('Node:')}    ${d.node_title}`)
-  lines.push(`  ${cs.dim('Prompt:')}  ${d.form_content}`)
+  lines.push(`  ${cs.dim('Message:')} ${d.form_content}`)
 
   const actions = (Array.isArray(d.actions) ? d.actions : []) as ActionRecord[]
   if (actions.length > 0) {

@@ -133,6 +133,26 @@ describe('stringifyOutput — table', () => {
     expect(stringifyOutput(narrow)).not.toContain('EXTRA')
   })
 
+  it('aligns columns correctly when cells contain CJK double-width characters', () => {
+    const data = makeTable({
+      columns: [
+        { name: 'NAME', priority: 0 },
+        { name: 'ID', priority: 0 },
+      ],
+      rows: [
+        ['hello', 'aaa'],
+        ['猜谜', 'bbb'], // 猜谜 = 2 CJK chars, display width 4
+      ],
+    })
+    const result = stringifyOutput(table({ format: '', data }))
+    const lines = result.split('\n').filter(l => l.length > 0)
+    // 'hello' display width 5, '猜谜' display width 4 — column width=5
+    // padding after 'hello': 5-5+2=2 spaces → 'hello  aaa'
+    // padding after '猜谜':  5-4+2=3 spaces → '猜谜   bbb'
+    expect(lines[1]).toBe('hello  aaa')
+    expect(lines[2]).toBe('猜谜   bbb')
+  })
+
   it('json: serializes data.json() + newline', () => {
     const out = table({ format: 'json', data: makeTable({ json: [{ id: 1 }] }) })
     expect(stringifyOutput(out)).toBe(`${JSON.stringify([{ id: 1 }], null, 2)}\n`)

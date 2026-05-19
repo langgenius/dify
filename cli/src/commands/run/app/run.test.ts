@@ -57,15 +57,14 @@ describe('runApp', () => {
     )).rejects.toMatchObject({ code: 'usage_invalid_flag' })
   })
 
-  it('workflow: prints outputs JSON', async () => {
+  it('workflow: prints single-string output as plain text', async () => {
     const io = bufferStreams()
     const cache = await loadAppInfoCache({ configDir: dir })
     await runApp(
       { appId: 'app-2', inputs: { x: '1' } },
       { bundle: bundle(), http: createClient({ host: mock.url, bearer: 'dfoa_test' }), host: mock.url, io, cache },
     )
-    const out = JSON.parse(io.outBuf().trim()) as { result: string }
-    expect(out.result).toBe('echo: ')
+    expect(io.outBuf()).toBe('echo: \n')
   })
 
   it('json: passes through full envelope', async () => {
@@ -180,8 +179,7 @@ describe('runApp', () => {
       { appId: 'app-2', inputsFile },
       { bundle: bundle(), http: createClient({ host: mock.url, bearer: 'dfoa_test' }), host: mock.url, io, cache },
     )
-    const out = JSON.parse(io.outBuf().trim()) as { result: string }
-    expect(out.result).toBe('echo: ')
+    expect(io.outBuf()).toBe('echo: \n')
   })
 
   it('--inputs-file: rejects non-object JSON', async () => {
@@ -202,8 +200,7 @@ describe('runApp', () => {
       { appId: 'app-2', inputsJson: '{"x":"hello"}' },
       { bundle: bundle(), http: createClient({ host: mock.url, bearer: 'dfoa_test' }), host: mock.url, io, cache },
     )
-    const out = JSON.parse(io.outBuf().trim()) as { result: string }
-    expect(out.result).toBe('echo: ')
+    expect(io.outBuf()).toBe('echo: \n')
   })
 
   it('--inputs and --inputs-file are mutually exclusive', async () => {
@@ -280,8 +277,7 @@ describe('runApp', () => {
       { appId: 'app-2', formToken: 'ft-hitl-1', workflowRunId: 'wf-run-hitl-1', action: 'submit', inputs: {}, withHistory: false },
       { bundle: bundle(), http: createClient({ host: mock.url, bearer: 'dfoa_test' }), host: mock.url, io, cache },
     )
-    const out = JSON.parse(io.outBuf().trim()) as { result: string }
-    expect(out.result).toBe('echo: resumed')
+    expect(io.outBuf()).toBe('echo: resumed\n')
   })
 
   it('resume: submits form and streams workflow to completion', async () => {
@@ -292,8 +288,7 @@ describe('runApp', () => {
       { appId: 'app-2', formToken: 'ft-hitl-1', workflowRunId: 'wf-run-hitl-1', action: 'submit', inputs: {} },
       { bundle: bundle(), http: createClient({ host: mock.url, bearer: 'dfoa_test' }), host: mock.url, io, cache },
     )
-    const out = JSON.parse(io.outBuf().trim()) as { result: string }
-    expect(out.result).toBe('echo: resumed')
+    expect(io.outBuf()).toBe('echo: resumed\n')
   })
 
   it('resume --stream: live-prints workflow node progress to stderr', async () => {

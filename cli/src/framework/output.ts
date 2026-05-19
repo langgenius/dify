@@ -126,6 +126,33 @@ function renderTable(output: TableOutput<TablePrintable>): string {
   return formatTable(rows)
 }
 
+function isWideCodePoint(cp: number): boolean {
+  return (
+    (cp >= 0x1100 && cp <= 0x115F)
+    || cp === 0x2329 || cp === 0x232A
+    || (cp >= 0x2E80 && cp <= 0x3247)
+    || (cp >= 0x3250 && cp <= 0x4DBF)
+    || (cp >= 0x4E00 && cp <= 0xA4C6)
+    || (cp >= 0xA960 && cp <= 0xA97C)
+    || (cp >= 0xAC00 && cp <= 0xD7A3)
+    || (cp >= 0xF900 && cp <= 0xFAFF)
+    || (cp >= 0xFE10 && cp <= 0xFE19)
+    || (cp >= 0xFE30 && cp <= 0xFE6B)
+    || (cp >= 0xFF01 && cp <= 0xFF60)
+    || (cp >= 0xFFE0 && cp <= 0xFFE6)
+    || (cp >= 0x1B000 && cp <= 0x1B001)
+    || (cp >= 0x1F200 && cp <= 0x1F251)
+    || (cp >= 0x20000 && cp <= 0x3FFFD)
+  )
+}
+
+function displayWidth(s: string): number {
+  let w = 0
+  for (const ch of s)
+    w += isWideCodePoint(ch.codePointAt(0) ?? 0) ? 2 : 1
+  return w
+}
+
 function formatTable(rows: readonly (readonly string[])[]): string {
   if (rows.length === 0)
     return ''
@@ -134,8 +161,9 @@ function formatTable(rows: readonly (readonly string[])[]): string {
   for (const row of rows) {
     for (let i = 0; i < colCount; i++) {
       const cell = row[i] ?? ''
-      if (cell.length > (widths[i] ?? 0))
-        widths[i] = cell.length
+      const w = displayWidth(cell)
+      if (w > (widths[i] ?? 0))
+        widths[i] = w
     }
   }
   const lines = rows.map((row) => {
@@ -147,7 +175,7 @@ function formatTable(rows: readonly (readonly string[])[]): string {
         cells.push(cell)
       }
       else {
-        const pad = (widths[i] ?? 0) - cell.length + 2
+        const pad = (widths[i] ?? 0) - displayWidth(cell) + 2
         cells.push(cell + ' '.repeat(pad))
       }
     }
