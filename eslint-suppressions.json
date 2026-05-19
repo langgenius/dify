@@ -4877,11 +4877,6 @@
       "count": 3
     }
   },
-  "web/service/client.spec.ts": {
-    "next/no-assign-module-variable": {
-      "count": 1
-    }
-  },
   "web/service/common.ts": {
     "ts/no-explicit-any": {
       "count": 29

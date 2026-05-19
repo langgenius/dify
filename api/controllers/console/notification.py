@@ -5,6 +5,8 @@ from flask import request
 from flask_restx import Resource
 from pydantic import BaseModel, Field
 
+from controllers.common.fields import SimpleResultResponse
+from controllers.common.schema import register_response_schema_models
 from controllers.console import console_ns
 from controllers.console.wraps import account_initialization_required, only_edition_cloud, setup_required
 from libs.login import current_account_with_tenant, login_required
@@ -46,6 +48,9 @@ def _pick_lang_content(contents: Mapping[str, NotificationLangContent], lang: st
 
 class DismissNotificationPayload(BaseModel):
     notification_id: str = Field(...)
+
+
+register_response_schema_models(console_ns, SimpleResultResponse)
 
 
 @console_ns.route("/notification")
@@ -110,6 +115,7 @@ class NotificationDismissApi(Resource):
     @login_required
     @account_initialization_required
     @only_edition_cloud
+    @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
     def post(self):
         current_user, _ = current_account_with_tenant()
         payload = DismissNotificationPayload.model_validate(request.get_json())

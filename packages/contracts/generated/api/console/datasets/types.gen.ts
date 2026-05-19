@@ -14,6 +14,10 @@ export type DatasetCreatePayload = {
   provider?: string
 }
 
+export type ApiBaseUrlResponse = {
+  api_base_url: string
+}
+
 export type ApiKeyList = {
   data: Array<ApiKeyItem>
 }
@@ -24,6 +28,11 @@ export type ApiKeyItem = {
   last_used_at?: number | null
   token: string
   type: string
+}
+
+export type SegmentBatchImportStatusResponse = {
+  job_id: string
+  job_status: string
 }
 
 export type BatchImportPayload = {
@@ -89,6 +98,11 @@ export type ExternalKnowledgeApiPayload = {
   }
 }
 
+export type UsageCountResponse = {
+  count: number
+  is_using: boolean
+}
+
 export type IndexingEstimatePayload = {
   dataset_id?: string | null
   doc_form?: string
@@ -124,6 +138,10 @@ export type DatasetAndDocumentResponse = {
   batch: string
   dataset: DatasetResponse
   documents: Array<DocumentResponse>
+}
+
+export type TextContentResponse = {
+  content: string
 }
 
 export type NotionEstimatePayload = {
@@ -164,6 +182,10 @@ export type DatasetUpdatePayload = {
   } | null
 }
 
+export type SimpleResultResponse = {
+  result: string
+}
+
 export type DocumentBatchDownloadZipPayload = {
   document_ids: Array<string>
 }
@@ -176,9 +198,18 @@ export type MetadataOperationData = {
   operation_data: Array<DocumentMetadataOperation>
 }
 
+export type UrlResponse = {
+  url: string
+}
+
 export type DocumentMetadataUpdatePayload = {
   doc_metadata?: unknown
   doc_type?: string | null
+}
+
+export type SimpleResultMessageResponse = {
+  message: string
+  result: string
 }
 
 export type DocumentRenamePayload = {
@@ -288,6 +319,10 @@ export type RelatedAppList = {
 
 export type DocumentRetryPayload = {
   document_ids: Array<string>
+}
+
+export type UsageCheckResponse = {
+  is_using: boolean
 }
 
 export type DatasetPermissionEnum = 'all_team_members' | 'only_me' | 'partial_members'
@@ -665,9 +700,7 @@ export type GetDatasetsApiBaseInfoData = {
 }
 
 export type GetDatasetsApiBaseInfoResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: ApiBaseUrlResponse
 }
 
 export type GetDatasetsApiBaseInfoResponse
@@ -737,9 +770,7 @@ export type GetDatasetsBatchImportStatusByJobIdData = {
 }
 
 export type GetDatasetsBatchImportStatusByJobIdResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: SegmentBatchImportStatusResponse
 }
 
 export type GetDatasetsBatchImportStatusByJobIdResponse
@@ -755,9 +786,7 @@ export type PostDatasetsBatchImportStatusByJobIdData = {
 }
 
 export type PostDatasetsBatchImportStatusByJobIdResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: SegmentBatchImportStatusResponse
 }
 
 export type PostDatasetsBatchImportStatusByJobIdResponse
@@ -834,8 +863,8 @@ export type DeleteDatasetsExternalKnowledgeApiByExternalKnowledgeApiIdData = {
 }
 
 export type DeleteDatasetsExternalKnowledgeApiByExternalKnowledgeApiIdResponses = {
-  200: {
-    [key: string]: unknown
+  204: {
+    [key: string]: never
   }
 }
 
@@ -897,9 +926,7 @@ export type GetDatasetsExternalKnowledgeApiByExternalKnowledgeApiIdUseCheckData 
 }
 
 export type GetDatasetsExternalKnowledgeApiByExternalKnowledgeApiIdUseCheckResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: UsageCountResponse
 }
 
 export type GetDatasetsExternalKnowledgeApiByExternalKnowledgeApiIdUseCheckResponse
@@ -966,9 +993,7 @@ export type GetDatasetsNotionIndexingEstimateData = {
 }
 
 export type GetDatasetsNotionIndexingEstimateResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: TextContentResponse
 }
 
 export type GetDatasetsNotionIndexingEstimateResponse
@@ -1052,8 +1077,8 @@ export type DeleteDatasetsByDatasetIdData = {
 }
 
 export type DeleteDatasetsByDatasetIdResponses = {
-  200: {
-    [key: string]: unknown
+  204: {
+    [key: string]: never
   }
 }
 
@@ -1127,9 +1152,7 @@ export type PostDatasetsByDatasetIdApiKeysByStatusData = {
 }
 
 export type PostDatasetsByDatasetIdApiKeysByStatusResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: SimpleResultResponse
 }
 
 export type PostDatasetsByDatasetIdApiKeysByStatusResponse
@@ -1210,8 +1233,8 @@ export type DeleteDatasetsByDatasetIdDocumentsData = {
 }
 
 export type DeleteDatasetsByDatasetIdDocumentsResponses = {
-  200: {
-    [key: string]: unknown
+  204: {
+    [key: string]: never
   }
 }
 
@@ -1302,9 +1325,7 @@ export type PostDatasetsByDatasetIdDocumentsGenerateSummaryError
   = PostDatasetsByDatasetIdDocumentsGenerateSummaryErrors[keyof PostDatasetsByDatasetIdDocumentsGenerateSummaryErrors]
 
 export type PostDatasetsByDatasetIdDocumentsGenerateSummaryResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: SimpleResultResponse
 }
 
 export type PostDatasetsByDatasetIdDocumentsGenerateSummaryResponse
@@ -1320,9 +1341,7 @@ export type PostDatasetsByDatasetIdDocumentsMetadataData = {
 }
 
 export type PostDatasetsByDatasetIdDocumentsMetadataResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: SimpleResultResponse
 }
 
 export type PostDatasetsByDatasetIdDocumentsMetadataResponse
@@ -1339,9 +1358,7 @@ export type PatchDatasetsByDatasetIdDocumentsStatusByActionBatchData = {
 }
 
 export type PatchDatasetsByDatasetIdDocumentsStatusByActionBatchResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: SimpleResultResponse
 }
 
 export type PatchDatasetsByDatasetIdDocumentsStatusByActionBatchResponse
@@ -1358,8 +1375,8 @@ export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdData = {
 }
 
 export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdResponses = {
-  200: {
-    [key: string]: unknown
+  204: {
+    [key: string]: never
   }
 }
 
@@ -1407,9 +1424,7 @@ export type GetDatasetsByDatasetIdDocumentsByDocumentIdDownloadData = {
 }
 
 export type GetDatasetsByDatasetIdDocumentsByDocumentIdDownloadResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: UrlResponse
 }
 
 export type GetDatasetsByDatasetIdDocumentsByDocumentIdDownloadResponse
@@ -1497,9 +1512,7 @@ export type PutDatasetsByDatasetIdDocumentsByDocumentIdMetadataError
   = PutDatasetsByDatasetIdDocumentsByDocumentIdMetadataErrors[keyof PutDatasetsByDatasetIdDocumentsByDocumentIdMetadataErrors]
 
 export type PutDatasetsByDatasetIdDocumentsByDocumentIdMetadataResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: SimpleResultMessageResponse
 }
 
 export type PutDatasetsByDatasetIdDocumentsByDocumentIdMetadataResponse
@@ -1516,9 +1529,7 @@ export type GetDatasetsByDatasetIdDocumentsByDocumentIdNotionSyncData = {
 }
 
 export type GetDatasetsByDatasetIdDocumentsByDocumentIdNotionSyncResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: SimpleResultResponse
 }
 
 export type GetDatasetsByDatasetIdDocumentsByDocumentIdNotionSyncResponse
@@ -1554,8 +1565,8 @@ export type PatchDatasetsByDatasetIdDocumentsByDocumentIdProcessingPauseData = {
 }
 
 export type PatchDatasetsByDatasetIdDocumentsByDocumentIdProcessingPauseResponses = {
-  200: {
-    [key: string]: unknown
+  204: {
+    [key: string]: never
   }
 }
 
@@ -1573,8 +1584,8 @@ export type PatchDatasetsByDatasetIdDocumentsByDocumentIdProcessingResumeData = 
 }
 
 export type PatchDatasetsByDatasetIdDocumentsByDocumentIdProcessingResumeResponses = {
-  200: {
-    [key: string]: unknown
+  204: {
+    [key: string]: never
   }
 }
 
@@ -1605,9 +1616,7 @@ export type PatchDatasetsByDatasetIdDocumentsByDocumentIdProcessingByActionError
   = PatchDatasetsByDatasetIdDocumentsByDocumentIdProcessingByActionErrors[keyof PatchDatasetsByDatasetIdDocumentsByDocumentIdProcessingByActionErrors]
 
 export type PatchDatasetsByDatasetIdDocumentsByDocumentIdProcessingByActionResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: SimpleResultResponse
 }
 
 export type PatchDatasetsByDatasetIdDocumentsByDocumentIdProcessingByActionResponse
@@ -1661,9 +1670,7 @@ export type PatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentByActionData = {
 }
 
 export type PatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentByActionResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: SimpleResultResponse
 }
 
 export type PatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentByActionResponse
@@ -1680,8 +1687,8 @@ export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsData = {
 }
 
 export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsResponses = {
-  200: {
-    [key: string]: unknown
+  204: {
+    [key: string]: never
   }
 }
 
@@ -1718,9 +1725,7 @@ export type GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBatchImportData =
 }
 
 export type GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBatchImportResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: SegmentBatchImportStatusResponse
 }
 
 export type GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBatchImportResponse
@@ -1737,9 +1742,7 @@ export type PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBatchImportData 
 }
 
 export type PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBatchImportResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: SegmentBatchImportStatusResponse
 }
 
 export type PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBatchImportResponse
@@ -1757,8 +1760,8 @@ export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdDat
 }
 
 export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdResponses = {
-  200: {
-    [key: string]: unknown
+  204: {
+    [key: string]: never
   }
 }
 
@@ -1860,8 +1863,8 @@ export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChi
 
 export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdResponses
   = {
-    200: {
-      [key: string]: unknown
+    204: {
+      [key: string]: never
     }
   }
 
@@ -1930,9 +1933,7 @@ export type GetDatasetsByDatasetIdDocumentsByDocumentIdWebsiteSyncData = {
 }
 
 export type GetDatasetsByDatasetIdDocumentsByDocumentIdWebsiteSyncResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: SimpleResultResponse
 }
 
 export type GetDatasetsByDatasetIdDocumentsByDocumentIdWebsiteSyncResponse
@@ -2088,9 +2089,7 @@ export type PostDatasetsByDatasetIdMetadataBuiltInByActionData = {
 }
 
 export type PostDatasetsByDatasetIdMetadataBuiltInByActionResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: SimpleResultResponse
 }
 
 export type PostDatasetsByDatasetIdMetadataBuiltInByActionResponse
@@ -2107,8 +2106,8 @@ export type DeleteDatasetsByDatasetIdMetadataByMetadataIdData = {
 }
 
 export type DeleteDatasetsByDatasetIdMetadataByMetadataIdResponses = {
-  200: {
-    [key: string]: unknown
+  204: {
+    [key: string]: never
   }
 }
 
@@ -2144,9 +2143,7 @@ export type GetDatasetsByDatasetIdNotionSyncData = {
 }
 
 export type GetDatasetsByDatasetIdNotionSyncResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: SimpleResultResponse
 }
 
 export type GetDatasetsByDatasetIdNotionSyncResponse
@@ -2224,8 +2221,8 @@ export type PostDatasetsByDatasetIdRetryData = {
 }
 
 export type PostDatasetsByDatasetIdRetryResponses = {
-  200: {
-    [key: string]: unknown
+  204: {
+    [key: string]: never
   }
 }
 
@@ -2242,9 +2239,7 @@ export type GetDatasetsByDatasetIdUseCheckData = {
 }
 
 export type GetDatasetsByDatasetIdUseCheckResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: UsageCheckResponse
 }
 
 export type GetDatasetsByDatasetIdUseCheckResponse
