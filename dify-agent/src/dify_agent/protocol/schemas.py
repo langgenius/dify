@@ -43,12 +43,16 @@ from agenton.layers import ExitIntent
 
 DIFY_AGENT_MODEL_LAYER_ID: Final[str] = "llm"
 DIFY_AGENT_OUTPUT_LAYER_ID: Final[str] = "output"
-RunStatus = Literal["running", "succeeded", "failed"]
+RunStatus = Literal["running", "paused", "succeeded", "failed", "cancelled"]
+RunPurpose = Literal["workflow_node", "single_step", "agent_app", "babysit", "fasten_preview"]
+InvokeFrom = Literal["workflow_run", "single_step", "agent_app", "babysit", "fasten"]
 RunEventType = Literal[
     "run_started",
     "pydantic_ai_event",
+    "run_paused",
     "run_succeeded",
     "run_failed",
+    "run_cancelled",
 ]
 
 
@@ -100,6 +104,29 @@ class RunComposition(BaseModel):
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
 
 
+class ExecutionContext(BaseModel):
+    """Dify-owned execution identifiers attached to one Agent backend run.
+
+    The Agent backend stores and replays this context for observability and
+    product correlation only. It must not use these identifiers as authorization
+    proof; API backend remains responsible for tenant and user access checks.
+    """
+
+    tenant_id: str
+    app_id: str | None = None
+    workflow_id: str | None = None
+    workflow_run_id: str | None = None
+    node_id: str | None = None
+    node_execution_id: str | None = None
+    conversation_id: str | None = None
+    agent_id: str | None = None
+    agent_config_version_id: str | None = None
+    invoke_from: InvokeFrom
+    trace_id: str | None = None
+
+    model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
+
+
 class CreateRunRequest(BaseModel):
     """Request body for creating one async agent run.
 
@@ -115,8 +142,26 @@ class CreateRunRequest(BaseModel):
     """
 
     composition: RunComposition
+    execution_context: ExecutionContext | None = None
+    purpose: RunPurpose = "workflow_node"
+    idempotency_key: str | None = None
+    metadata: dict[str, JsonValue] = Field(default_factory=dict)
     session_snapshot: CompositorSessionSnapshot | None = None
     on_exit: LayerExitSignals = Field(default_factory=LayerExitSignals)
+
+    model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
+
+
+class CancelRunRequest(BaseModel):
+    """Request body for cancelling a run.
+
+    Runtime cancellation is intentionally a separate protocol operation from
+    failed execution so API callers can distinguish user/operator cancellation
+    from model, tool, or infrastructure failures.
+    """
+
+    reason: str | None = None
+    message: str | None = None
 
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
 
@@ -159,6 +204,15 @@ class CreateRunResponse(BaseModel):
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
 
 
+class CancelRunResponse(BaseModel):
+    """Response returned after a cancel request is accepted."""
+
+    run_id: str
+    status: Literal["cancelled"]
+
+    model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
+
+
 class RunStatusResponse(BaseModel):
     """Current server-side status for one run."""
 
@@ -191,6 +245,25 @@ class RunFailedEventData(BaseModel):
 
     error: str
     reason: str | None = None
+
+    model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
+
+
+class RunPausedEventData(BaseModel):
+    """Pause payload used for human handoff or other resumable waits."""
+
+    reason: str
+    message: str | None = None
+    session_snapshot: CompositorSessionSnapshot | None = None
+
+    model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
+
+
+class RunCancelledEventData(BaseModel):
+    """Terminal cancellation payload for explicit user/operator cancellation."""
+
+    reason: str | None = None
+    message: str | None = None
 
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
 
@@ -233,8 +306,27 @@ class RunFailedEvent(BaseRunEvent):
     data: RunFailedEventData
 
 
+class RunPausedEvent(BaseRunEvent):
+    """Resumable pause event emitted when a run waits for outside input."""
+
+    type: Literal["run_paused"] = "run_paused"
+    data: RunPausedEventData
+
+
+class RunCancelledEvent(BaseRunEvent):
+    """Terminal cancellation event emitted after an explicit cancel request."""
+
+    type: Literal["run_cancelled"] = "run_cancelled"
+    data: RunCancelledEventData = Field(default_factory=RunCancelledEventData)
+
+
 RunEvent: TypeAlias = Annotated[
-    RunStartedEvent | PydanticAIStreamRunEvent | RunSucceededEvent | RunFailedEvent,
+    RunStartedEvent
+    | PydanticAIStreamRunEvent
+    | RunPausedEvent
+    | RunSucceededEvent
+    | RunFailedEvent
+    | RunCancelledEvent,
     Field(discriminator="type"),
 ]
 RUN_EVENT_ADAPTER: TypeAdapter[RunEvent] = TypeAdapter(RunEvent)
@@ -252,20 +344,29 @@ class RunEventsResponse(BaseModel):
 
 __all__ = [
     "BaseRunEvent",
+    "CancelRunRequest",
+    "CancelRunResponse",
     "CreateRunRequest",
     "CreateRunResponse",
     "DIFY_AGENT_MODEL_LAYER_ID",
     "DIFY_AGENT_OUTPUT_LAYER_ID",
     "EmptyRunEventData",
+    "ExecutionContext",
+    "InvokeFrom",
     "LayerExitSignals",
     "PydanticAIStreamRunEvent",
     "RUN_EVENT_ADAPTER",
+    "RunCancelledEvent",
+    "RunCancelledEventData",
     "RunComposition",
     "RunEvent",
     "RunEventType",
     "RunEventsResponse",
     "RunFailedEvent",
     "RunFailedEventData",
+    "RunPausedEvent",
+    "RunPausedEventData",
+    "RunPurpose",
     "RunStartedEvent",
     "RunStatus",
     "RunStatusResponse",
