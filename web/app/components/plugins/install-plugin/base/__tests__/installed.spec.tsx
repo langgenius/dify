@@ -91,12 +91,13 @@ describe('Installed', () => {
     } as never
     render(<Installed payload={payload} installContextCategory={PluginCategoryEnum.trigger} isFailed={false} onCancel={mockOnCancel} />)
 
-    expect(screen.getByText('plugin.installModal.installedSuccessfullyWithPageDesc:{"categoryName":"common.settings.extension"}')).toBeInTheDocument()
+    expect(screen.getByText('installModal.installedSuccessfullyWithPageDesc')).toBeInTheDocument()
 
     fireEvent.click(screen.getByText('plugin.installModal.goToCategory:{"categoryName":"common.settings.extension"}'))
 
     expect(mockOnCancel).toHaveBeenCalled()
     expect(screen.getByText('plugin.installModal.goToCategory:{"categoryName":"common.settings.extension"}').closest('a')).toHaveAttribute('href', '/integrations/extension')
+    expect(document.querySelector('.i-ri-arrow-right-up-line')).toBeInTheDocument()
   })
 
   it('should show version badge in card', () => {

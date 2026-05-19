@@ -47,7 +47,7 @@ const InstallFromLocalPackage: React.FC<InstallFromLocalPackageProps> = ({
     if (step === InstallStep.uploadFailed)
       return t(`${i18nPrefix}.uploadFailed`, { ns: 'plugin' })
     if (isBundle && step === InstallStep.installed)
-      return t(`${i18nPrefix}.installComplete`, { ns: 'plugin' })
+      return t(`${i18nPrefix}.installedSuccessfully`, { ns: 'plugin' })
     if (step === InstallStep.installed)
       return t(`${i18nPrefix}.installedSuccessfully`, { ns: 'plugin' })
     if (step === InstallStep.installFailed)
@@ -95,7 +95,10 @@ const InstallFromLocalPackage: React.FC<InstallFromLocalPackageProps> = ({
           foldAnimInto()
       }}
     >
-      <DialogContent className={cn('w-[560px] max-w-none! overflow-hidden! text-left align-middle', cn(modalClassName, 'shadows-shadow-xl flex max-h-[calc(100dvh-48px)] min-w-[560px] flex-col items-start rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg p-0'))}>
+      <DialogContent
+        backdropProps={{ forceRender: true }}
+        className={cn('w-[560px] max-w-none! overflow-hidden! text-left align-middle', cn(modalClassName, 'shadows-shadow-xl flex max-h-[calc(100dvh-48px)] min-w-[560px] flex-col items-start rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg p-0'))}
+      >
         <DialogCloseButton />
 
         <div className="flex items-start gap-2 self-stretch pt-6 pr-14 pb-3 pl-6">

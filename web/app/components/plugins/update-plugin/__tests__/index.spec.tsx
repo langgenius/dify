@@ -793,6 +793,7 @@ describe('update-plugin', () => {
         await waitFor(() => {
           expect(mockMutateAsync).toHaveBeenCalledWith({
             plugin_id: 'test-plugin-id',
+            category: PluginCategoryEnum.tool,
           })
         })
         await waitFor(() => {

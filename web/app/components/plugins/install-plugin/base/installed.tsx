@@ -3,7 +3,7 @@ import type { FC } from 'react'
 import type { Plugin, PluginDeclaration, PluginManifestInMarket } from '../../types'
 import { Button } from '@langgenius/dify-ui/button'
 import * as React from 'react'
-import { useTranslation } from 'react-i18next'
+import { Trans, useTranslation } from 'react-i18next'
 import Badge, { BadgeState } from '@/app/components/base/badge/index'
 import { buildIntegrationPath } from '@/app/components/tools/integration-routes'
 import Link from '@/next/link'
@@ -60,7 +60,7 @@ const Installed: FC<Props> = ({
   installContextCategory,
   onCancel,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation('plugin')
   const installedCategory = payload?.category
   const categoryTarget = !isFailed && installContextCategory && installedCategory !== installContextCategory
     ? categoryTargetMap[installedCategory as PluginCategoryEnum]
@@ -77,7 +77,17 @@ const Installed: FC<Props> = ({
           {(isFailed && errMsg)
             ? errMsg
             : categoryTarget
-              ? t('installModal.installedSuccessfullyWithPageDesc', { ns: 'plugin', categoryName })
+              ? (
+                  <Trans
+                    t={t}
+                    i18nKey="installModal.installedSuccessfullyWithPageDesc"
+                    ns="plugin"
+                    components={{
+                      categoryName: <span className="system-sm-semibold text-text-secondary" />,
+                    }}
+                    values={{ categoryName }}
+                  />
+                )
               : t(`installModal.${isFailed ? 'installFailedDesc' : 'installedSuccessfullyDesc'}`, { ns: 'plugin' })}
         </p>
         {payload && (
@@ -88,6 +98,7 @@ const Installed: FC<Props> = ({
               installed={!isFailed}
               installFailed={isFailed}
               titleLeft={<Badge className="mx-1" size="s" state={BadgeState.Default}>{(payload as PluginDeclaration).version || (payload as PluginManifestInMarket).latest_version}</Badge>}
+              compact
             />
           </div>
         )}
@@ -101,7 +112,12 @@ const Installed: FC<Props> = ({
           onClick={handleClose}
         >
           {categoryTarget
-            ? t('installModal.goToCategory', { ns: 'plugin', categoryName })
+            ? (
+                <>
+                  <span>{t('installModal.goToCategory', { ns: 'plugin', categoryName })}</span>
+                  <span className="i-ri-arrow-right-up-line size-4 shrink-0" aria-hidden="true" />
+                </>
+              )
             : t('operation.close', { ns: 'common' })}
         </Button>
       </div>

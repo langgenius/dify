@@ -34,6 +34,7 @@ type Props = {
   isLoading?: boolean
   loadingFileName?: string
   limitedInstall?: boolean
+  compact?: boolean
 }
 
 const Card = ({
@@ -43,11 +44,12 @@ const Card = ({
   installed,
   installFailed,
   hideCornerMark,
-  descriptionLineRows = 2,
+  descriptionLineRows,
   footer,
   isLoading = false,
   loadingFileName,
   limitedInstall = false,
+  compact = false,
 }: Props) => {
   const locale = useGetLanguage()
   const { t } = useTranslation()
@@ -63,6 +65,7 @@ const Card = ({
   const getLocalizedText = (obj: Record<string, string> | undefined) =>
     obj ? renderI18nObject(obj, locale) : ''
   const isPartner = badges.includes('partner')
+  const effectiveDescriptionLineRows = descriptionLineRows ?? (compact ? 1 : 2)
 
   const wrapClassName = cn('hover-bg-components-panel-on-panel-item-bg relative overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg shadow-xs', className)
   if (isLoading) {
@@ -76,7 +79,7 @@ const Card = ({
 
   return (
     <div className={wrapClassName}>
-      <div className={cn('p-4 pb-3', limitedInstall && 'pb-1')}>
+      <div className={cn(compact ? 'p-3 pb-2' : 'p-4 pb-3', limitedInstall && 'pb-1')}>
         {!hideCornerMark && <CornerMark text={categoriesMap[type === 'bundle' ? type : category]?.label!} />}
         {/* Header */}
         <div className="flex">
@@ -98,9 +101,9 @@ const Card = ({
           </div>
         </div>
         <Description
-          className="mt-3"
+          className={compact ? 'mt-1' : 'mt-3'}
           text={getLocalizedText(brief)}
-          descriptionLineRows={descriptionLineRows}
+          descriptionLineRows={effectiveDescriptionLineRows}
         />
         {!!footer && <div>{footer}</div>}
       </div>

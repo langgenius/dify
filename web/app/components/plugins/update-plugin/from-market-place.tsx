@@ -18,7 +18,7 @@ import Card from '@/app/components/plugins/card'
 import checkTaskStatus from '@/app/components/plugins/install-plugin/base/check-task-status'
 import { pluginManifestToCardPluginProps } from '@/app/components/plugins/install-plugin/utils'
 import { updateFromMarketPlace } from '@/service/plugins'
-import { useInvalidateReferenceSettings, usePluginTaskList, useRemoveAutoUpgrade } from '@/service/use-plugins'
+import { usePluginTaskList, useRemoveAutoUpgrade } from '@/service/use-plugins'
 import useGetIcon from '../install-plugin/base/use-get-icon'
 import { TaskStatus } from '../types'
 import DowngradeWarningModal from './downgrade-warning'
@@ -138,14 +138,13 @@ const UpdatePluginModal: FC<Props> = ({
   }, [onSave, uploadStep, check, originalPackageInfo.id, handleRefetch, t, targetPackageInfo.id])
 
   const { mutateAsync } = useRemoveAutoUpgrade()
-  const invalidateReferenceSettings = useInvalidateReferenceSettings()
   const handleExcludeAndDownload = async () => {
     if (pluginId) {
       await mutateAsync({
         plugin_id: pluginId,
+        category: payload.category,
       })
     }
-    invalidateReferenceSettings()
     handleConfirm()
   }
   const doShowDowngradeWarningModal = isShowDowngradeWarningModal && uploadStep === UploadStep.notStarted

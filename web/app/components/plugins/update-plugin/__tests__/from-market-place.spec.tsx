@@ -218,7 +218,7 @@ describe('UpdateFromMarketplace', () => {
     fireEvent.click(screen.getByText('exclude and downgrade'))
 
     await waitFor(() => {
-      expect(mockRemoveAutoUpgrade).toHaveBeenCalledWith({ plugin_id: 'plugin-1' })
+      expect(mockRemoveAutoUpgrade).toHaveBeenCalledWith({ plugin_id: 'plugin-1', category: PluginCategoryEnum.tool })
       expect(mockInvalidateReferenceSettings).toHaveBeenCalled()
       expect(mockUpdateFromMarketPlace).toHaveBeenCalled()
     })

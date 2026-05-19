@@ -26,6 +26,7 @@ import {
 } from './install-source-icons'
 
 type Props = {
+  disabled?: boolean
   onSwitchToMarketplaceTab: () => void
   popupClassName?: string
   rootClassName?: string
@@ -43,6 +44,7 @@ type InstallMethod = {
 }
 
 const InstallPluginDropdown = ({
+  disabled = false,
   onSwitchToMarketplaceTab,
   popupClassName,
   rootClassName,
@@ -69,6 +71,9 @@ const InstallPluginDropdown = ({
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0] ?? null
     event.target.value = ''
+    if (disabled)
+      return
+
     if (file) {
       setSelectedFile(file)
       setSelectedAction('local')
@@ -113,6 +118,9 @@ const InstallPluginDropdown = ({
   }, [plugin_installation_permission, enable_marketplace, t])
 
   const handleInstallMethodSelect = (action: string) => {
+    if (disabled)
+      return
+
     if (action === 'local') {
       fileInputRef.current?.click()
       return
@@ -129,11 +137,12 @@ const InstallPluginDropdown = ({
   }
 
   return (
-    <DropdownMenu open={isMenuOpen} onOpenChange={setIsMenuOpen} modal={false}>
+    <DropdownMenu open={!disabled && isMenuOpen} onOpenChange={open => setIsMenuOpen(disabled ? false : open)} modal={false}>
       <div className={cn('relative', rootClassName)}>
         <input
           type="file"
           ref={fileInputRef}
+          disabled={disabled}
           style={{ display: 'none' }}
           onChange={handleFileChange}
           accept={SUPPORT_INSTALL_LOCAL_FILE_EXTENSIONS}
@@ -142,10 +151,11 @@ const InstallPluginDropdown = ({
           render={(
             <Button
               variant={triggerVariant}
+              disabled={disabled}
               className={cn(
                 'h-full w-full p-2',
                 triggerClassName,
-                isMenuOpen && triggerOpenClassName,
+                !disabled && isMenuOpen && triggerOpenClassName,
               )}
             />
           )}

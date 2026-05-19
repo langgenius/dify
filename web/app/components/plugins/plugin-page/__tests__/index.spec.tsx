@@ -46,12 +46,34 @@ vi.mock('@/context/app-context', () => ({
 }))
 
 vi.mock('@/service/use-plugins', () => ({
+  hasPluginPermission: (permission: string | undefined, isAdmin: boolean) => {
+    if (!permission)
+      return false
+    if (permission === 'noone')
+      return false
+    if (permission === 'everyone')
+      return true
+    return isAdmin
+  },
   useReferenceSettings: () => ({
     data: {
       permission: {
         install_permission: 'everyone',
         debug_permission: 'admins',
       },
+      auto_upgrade: {
+        strategy_setting: 'fix_only',
+        upgrade_time_of_day: 0,
+        upgrade_mode: 'all',
+        exclude_plugins: [],
+        include_plugins: [],
+      },
+    },
+  }),
+  usePluginPermissionSettings: () => ({
+    data: {
+      install_permission: 'everyone',
+      debug_permission: 'admins',
     },
   }),
   useMutationReferenceSettings: () => ({
@@ -289,12 +311,34 @@ describe('PluginPage Component', () => {
     it('should use noop for file handlers when canManagement is false', () => {
       // Override mock to disable management permission
       vi.doMock('@/service/use-plugins', () => ({
+        hasPluginPermission: (permission: string | undefined, isAdmin: boolean) => {
+          if (!permission)
+            return false
+          if (permission === 'noone')
+            return false
+          if (permission === 'everyone')
+            return true
+          return isAdmin
+        },
         useReferenceSettings: () => ({
           data: {
             permission: {
               install_permission: 'noone',
               debug_permission: 'noone',
             },
+            auto_upgrade: {
+              strategy_setting: 'fix_only',
+              upgrade_time_of_day: 0,
+              upgrade_mode: 'all',
+              exclude_plugins: [],
+              include_plugins: [],
+            },
+          },
+        }),
+        usePluginPermissionSettings: () => ({
+          data: {
+            install_permission: 'noone',
+            debug_permission: 'noone',
           },
         }),
         useMutationReferenceSettings: () => ({

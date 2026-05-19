@@ -202,6 +202,26 @@ describe('InstallPluginDropdown', () => {
     expect(screen.getByTestId('dropdown-content')).toHaveClass('custom-popup')
   })
 
+  it('keeps the trigger visible but disabled when install is unavailable', () => {
+    const onSwitchToMarketplaceTab = vi.fn()
+    const { container } = render(<InstallPluginDropdown disabled onSwitchToMarketplaceTab={onSwitchToMarketplaceTab} />)
+
+    const trigger = screen.getByTestId('dropdown-trigger')
+
+    expect(trigger).toBeDisabled()
+
+    fireEvent.click(trigger)
+    fireEvent.change(container.querySelector('input[type="file"]')!, {
+      target: {
+        files: [new File(['content'], 'plugin.difypkg')],
+      },
+    })
+
+    expect(screen.queryByTestId('dropdown-content')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('local-modal')).not.toBeInTheDocument()
+    expect(onSwitchToMarketplaceTab).not.toHaveBeenCalled()
+  })
+
   it('shows only marketplace when installation is restricted', () => {
     mockSystemFeatures.plugin_installation_permission.restrict_to_marketplace_only = true
 

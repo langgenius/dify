@@ -499,6 +499,16 @@ describe('Install Component', () => {
       await waitFor(() => {
         expect(defaultProps.onInstalled).toHaveBeenCalled()
       })
+      expect(defaultProps.onInstalled).toHaveBeenCalledWith(
+        expect.any(Array),
+        expect.any(Array),
+        expect.arrayContaining([
+          expect.objectContaining({
+            hasInstalled: false,
+            toInstallVersion: '1.0.0',
+          }),
+        ]),
+      )
     })
 
     it('should refresh plugin list on successful installation', async () => {

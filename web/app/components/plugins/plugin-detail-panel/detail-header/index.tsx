@@ -76,7 +76,8 @@ const DetailHeader = ({
   const { theme } = useTheme()
   const locale = useGetLanguage()
   const currentLocale = useLocale()
-  const { referenceSetting } = useReferenceSetting()
+  const detailCategory = detail.declaration?.category ?? PluginCategoryEnum.tool
+  const { referenceSetting } = useReferenceSetting(detailCategory)
 
   const {
     source,
