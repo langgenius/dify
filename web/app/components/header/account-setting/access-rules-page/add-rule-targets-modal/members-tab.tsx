@@ -5,7 +5,7 @@ import { Avatar } from '@langgenius/dify-ui/avatar'
 import { cn } from '@langgenius/dify-ui/cn'
 import { ScrollArea } from '@langgenius/dify-ui/scroll-area'
 import { useMemo, useState } from 'react'
-import Checkbox from '@/app/components/base/checkbox'
+import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import Input from '@/app/components/base/input'
 import { useMembers } from '@/service/use-common'
 

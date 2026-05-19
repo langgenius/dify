@@ -3,7 +3,7 @@
 import { cn } from '@langgenius/dify-ui/cn'
 import { ScrollArea } from '@langgenius/dify-ui/scroll-area'
 import { useEffect, useMemo, useRef, useState } from 'react'
-import Checkbox from '@/app/components/base/checkbox'
+import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import Input from '@/app/components/base/input'
 import { useWorkspaceRoleList } from '@/service/access-control/use-workspace-roles'
 

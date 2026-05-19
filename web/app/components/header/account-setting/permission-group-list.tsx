@@ -5,7 +5,7 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { ScrollArea } from '@langgenius/dify-ui/scroll-area'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Checkbox from '@/app/components/base/checkbox'
+import { Checkbox } from '@langgenius/dify-ui/checkbox'
 
 type PermissionGroupListProps = {
   groups: PermissionGroup[]
@@ -167,9 +167,7 @@ const PermissionGroupList = ({
                                   checked={checked}
                                   disabled={readonly}
                                   className="shrink-0"
-                                  ariaLabel={permission.name}
-                                  onCheck={(event) => {
-                                    event.stopPropagation()
+                                  onCheckedChange={() => {
                                     togglePermission(permission.key)
                                   }}
                                 />
