@@ -1,0 +1,49 @@
+name: Build and Push Images
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'api/**'
+      - 'web/**'
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS credentials via OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/github-actions-dify-build
+          aws-region: ap-south-1
+
+      - name: Log in to ECR
+        run: |
+          aws ecr get-login-password --region ap-south-1 | \
+            docker login --username AWS --password-stdin \
+            ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.ap-south-1.amazonaws.com
+
+      - name: Build and push API image
+        run: |
+          ECR=${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.ap-south-1.amazonaws.com
+          docker build -t $ECR/nexoraa/dify-api:latest \
+                       -t $ECR/nexoraa/dify-api:${{ github.sha }} \
+                       api/
+          docker push $ECR/nexoraa/dify-api:latest
+          docker push $ECR/nexoraa/dify-api:${{ github.sha }}
+
+      - name: Build and push Web image
+        run: |
+          ECR=${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.ap-south-1.amazonaws.com
+          docker build -t $ECR/nexoraa/dify-web:latest \
+                       -t $ECR/nexoraa/dify-web:${{ github.sha }} \
+                       web/
+          docker push $ECR/nexoraa/dify-web:latest
+          docker push $ECR/nexoraa/dify-web:${{ github.sha }}
