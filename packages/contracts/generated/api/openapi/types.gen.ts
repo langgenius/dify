@@ -180,7 +180,7 @@ export type MemberInvitePayload = {
 
 export type MemberInviteResponse = {
   email: string
-  invite_url?: string | null
+  invite_url: string
   member_id: string
   result?: string
   role: string

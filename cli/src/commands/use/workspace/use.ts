@@ -63,7 +63,7 @@ export async function runUseWorkspace(
 
   const next: HostsBundle = {
     ...deps.bundle,
-    workspace: pickWorkspace(matched),
+    workspace: { id: matched.id, name: matched.name, role: matched.role },
     available_workspaces: list.workspaces.map<Workspace>(w => ({
       id: w.id,
       name: w.name,
@@ -73,8 +73,4 @@ export async function runUseWorkspace(
   await saveHosts(deps.configDir, next)
   deps.io.out.write(`${cs.successIcon()} Switched to ${matched.name} (${matched.id})\n`)
   return next
-}
-
-function pickWorkspace(w: { id: string, name: string, role: string }): Workspace {
-  return { id: w.id, name: w.name, role: w.role }
 }

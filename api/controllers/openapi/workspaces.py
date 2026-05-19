@@ -71,13 +71,12 @@ def _validate_body[M: BaseModel](model: type[M]) -> M:
 
 
 def _member_response(account: Account) -> MemberResponse:
-    role = getattr(account, "role", None)
     return MemberResponse(
         id=str(account.id),
         name=account.name,
         email=account.email,
-        role=str(role) if role else "",
-        status=str(account.status) if account.status else "",
+        role=str(account.role),
+        status=str(account.status),
         avatar=account.avatar,
     )
 
