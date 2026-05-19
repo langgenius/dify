@@ -50,31 +50,36 @@ export function renderHitlBlock(_appId: string, payload: HitlPausePayload, isTTY
   const cs = colorScheme(colorEnabled(isTTY))
   const lines: string[] = []
   lines.push(`${cs.warningIcon()} ${cs.bold('Workflow paused')} ${cs.dim('— input required')}`)
-  lines.push('')
   lines.push(`  ${cs.dim('Node:')}    ${d.node_title}`)
-  lines.push(`  ${cs.dim('Message:')} ${d.form_content}`)
+  const msgLines = d.form_content.split('\n')
+  if (msgLines.length === 1) {
+    lines.push(`  ${cs.dim('Message:')} ${d.form_content}`)
+  }
+  else {
+    lines.push(`  ${cs.dim('Message:')}`)
+    for (const ml of msgLines)
+      lines.push(`    ${ml}`)
+  }
 
   const actions = (Array.isArray(d.actions) ? d.actions : []) as ActionRecord[]
   if (actions.length > 0) {
-    lines.push('')
-    lines.push(`  ${cs.dim('Actions:')}`)
-    for (const a of actions) {
+    const inline = actions.map((a) => {
       const title = a.title ?? ''
       const style = typeof a.button_style === 'string' && a.button_style !== '' ? ` ${cs.dim(`(${a.button_style})`)}` : ''
-      lines.push(`    ${cs.cyan(`[${a.id}]`)}  ${title}${style}`)
-    }
+      return `${cs.cyan(`[${a.id}]`)} ${title}${style}`
+    }).join('  ')
+    lines.push(`  ${cs.dim('Actions:')} ${inline}`)
   }
 
   const inputs = (Array.isArray(d.inputs) ? d.inputs : []) as InputRecord[]
   if (inputs.length > 0) {
-    lines.push('')
-    lines.push(`  ${cs.dim('Inputs (pass via --inputs):')}`)
-    for (const inp of inputs) {
+    const inline = inputs.map((inp) => {
       const name = inp.output_variable_name ?? '?'
       const label = typeof inp.label === 'string' && inp.label !== '' ? ` ${cs.dim(`— ${inp.label}`)}` : ''
       const req = inp.required === true ? ` ${cs.yellow('*')}` : ''
-      lines.push(`    - ${cs.cyan(name)}${req}${label}`)
-    }
+      return `- ${cs.cyan(name)}${req}${label}`
+    }).join('  ')
+    lines.push(`  ${cs.dim('Inputs:')}   ${inline}`)
   }
 
   lines.push('')

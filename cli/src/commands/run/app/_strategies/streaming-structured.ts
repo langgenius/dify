@@ -62,6 +62,7 @@ export class StreamingStructuredStrategy implements RunStrategy {
     catch (err) {
       ctrl.abort()
       if (err instanceof HitlPauseError) {
+        spinner.stop()
         deps.io.out.write(renderHitlOutput(opts.appId, err.pausePayload, isText, deps.io.isOutTTY))
         deps.io.err.write(renderHitlHint(opts.appId, err.pausePayload, deps.io.isErrTTY))
         exit(0)

@@ -6,6 +6,7 @@ import type { RunContext } from '../../run/app/_strategies/index.js'
 import { AppMetaClient } from '../../../api/app-meta.js'
 import { AppRunClient } from '../../../api/app-run.js'
 import { AppsClient } from '../../../api/apps.js'
+import { colorEnabled, colorScheme } from '../../../io/color.js'
 import { FieldInfo } from '../../../types/app-meta.js'
 import { resolveWorkspaceId } from '../../../workspace/resolver.js'
 import { pickStrategy } from '../../run/app/_strategies/index.js'
@@ -107,6 +108,12 @@ export async function resumeApp(opts: ResumeAppOptions, deps: ResumeAppDeps): Pr
 
   const format = opts.format ?? ''
   const isText = TEXT_FORMATS.has(format)
+
+  if (isText) {
+    const cs = colorScheme(colorEnabled(deps.io.isErrTTY))
+    deps.io.err.write(`${cs.successIcon()} ${cs.bold('form submitted')}\n`)
+    deps.io.err.write(`  ${cs.dim('workflow execution resumed')}\n`)
+  }
   const livePrint = opts.stream === true
   const printFlags = new AppRunPrintFlags()
 
@@ -144,4 +151,9 @@ export async function resumeApp(opts: ResumeAppOptions, deps: ResumeAppDeps): Pr
   }
 
   await pickStrategy(isText, livePrint).execute(runCtx)
+
+  if (isText) {
+    const cs = colorScheme(colorEnabled(deps.io.isErrTTY))
+    deps.io.err.write(`${cs.successIcon()} ${cs.bold('workflow finished')}\n`)
+  }
 }
