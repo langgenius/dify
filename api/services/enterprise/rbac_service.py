@@ -1193,7 +1193,7 @@ class RBACService:
                 f"{_INNER_PREFIX}/members/rbac-roles/batch",
                 tenant_id=tenant_id,
                 account_id=account_id,
-                json={"account_ids": member_account_ids},
+                json={"member_ids": member_account_ids},
             )
             items = []
             if isinstance(data, dict):

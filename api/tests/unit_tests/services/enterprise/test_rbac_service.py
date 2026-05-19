@@ -500,7 +500,7 @@ class TestMemberRoles:
         call = _call_args(mock_send)
         assert call.method == "POST"
         assert call.endpoint == "/rbac/members/rbac-roles/batch"
-        assert call.json == {"account_ids": ["acct-2", "acct-3"]}
+        assert call.json == {"member_ids": ["acct-2", "acct-3"]}
         assert out[0].account_id == "acct-2"
         assert len(out[0].roles) == 2
         assert out[1].account_id == "acct-3"
