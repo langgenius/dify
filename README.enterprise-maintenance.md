@@ -102,6 +102,24 @@ git switch -c codex/enterprise-candidate-1.15.0-20260626 1.15.0
 
 如果工作树已经存在，应先确认目录内容，不得删除未知文件。当前候选已从 `refs/tags/1.15.0` 创建。
 
+## 本机升级工作区与运行数据继承规则
+
+在同一台开发电脑上做新官方版本、新候选分支升级时，目标是“代码和 compose 运行面干净，业务验证数据尽量继承”。除非官方 release notes 明确存在破坏性升级、数据结构不兼容，或用户明确要求重置环境，否则不要让用户重新初始化账号、空间、工作流、插件、知识库、智慧广场等验证数据。
+
+硬规则：
+
+- 新版本必须使用新的工作目录、新候选分支和当前目录下的 compose 文件启动，不得复用旧工作目录里的 compose 运行面。
+- 新工作区启动 compose 前，应优先从上一稳定企业工作区平移 `docker/.env`，再按官方新版 `docker/envs/**` 与 `.env.example` 补齐新增配置。
+- 新工作区启动 compose 前，应优先从上一稳定企业工作区平移 `docker/volumes/**`，用于保留本机开发验证所需的数据库、上传文件、Redis、插件、向量库和 sandbox 依赖。
+- 平移运行数据前，先停止相关 compose 服务；如果新目录已经误初始化过，先把新目录的临时 `docker/volumes` 和 `docker/.env` 备份到本机备份目录，再用旧稳定数据覆盖新目录。
+- PostgreSQL `pgdata` 可能因权限无法由普通用户复制。可使用临时 `busybox`/`alpine` 容器以 root 身份同时挂载旧、新 `docker/volumes` 目录完成复制；复制命令不得写入旧目录。
+- 启动新环境时必须显式传入 `DIFY_ENTERPRISE_VERSION=<new-version>-enterprise` 和需要的 `COMPOSE_PROFILES`，不要只依赖旧 `.env` 里的 profile 或镜像配置。
+- 启动后必须检查所有 Dify 相关容器的 `image`、image ID、compose project 和 bind mount 路径，确认 API/Web/worker 使用新版本企业镜像，且 `db`、`redis`、`plugin_daemon`、`weaviate`、`sandbox`、`ssrf_proxy` 等服务全部挂载到新工作目录。
+- 不允许只重建 API/Web，而让 `weaviate`、`sandbox`、`ssrf_proxy`、`plugin_daemon` 等依赖服务继续挂载旧工作目录。
+- 旧企业镜像可以保留为本机缓存，但运行容器不得引用旧企业版本 tag。
+
+迁移完成后，应通过只读检查确认旧数据已经接管新环境，例如账户、空间、应用、知识库、已安装插件、智慧广场资产数量，以及 `alembic_version` 是否到达当前企业迁移 head。浏览器访问 `/apps` 应进入登录页或已登录工作台，不应进入初始化页。
+
 ## 官方版本与企业镜像版本
 
 每次从官方稳定 tag/tree 创建候选后，按下面顺序确定企业版本：

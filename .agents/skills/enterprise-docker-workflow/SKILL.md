@@ -20,10 +20,24 @@ description: Enterprise Docker development, validation, image rebuild, offline p
 - Keep official `docker/docker-compose.yaml` intact; put enterprise behavior in the overlay.
 - Validate enterprise changes against rebuilt images from the current source tree, not against already-running old containers.
 - Never treat local tests alone as release validation after runtime code changed.
-- Never copy populated `docker/volumes/**` to a fresh offline Linux deployment.
+- For same-machine upgrade validation, migrate the previous stable worktree's `docker/.env` and `docker/volumes/**` into the new worktree unless the official upgrade is destructive or the user asks for a reset.
+- Never copy populated `docker/volumes/**` to a fresh offline Linux deployment or release package.
 - Final offline packaging must use `Mode=reuse` and export the same image IDs that passed compose runtime validation.
 - For `1.15.0`, run `flask db upgrade` and then the mandatory `flask backfill-plugin-auto-upgrade`.
 - For plugin offline installs, reuse official plugin daemon `PIP_MIRROR_AUTO_DETECT` / `PIP_MIRROR_URL` env support and preserve the official CVE-2026-41948 path traversal fix.
+
+## Local Upgrade Preflight
+
+Before compose validation for a new official version candidate:
+
+- Confirm compose commands are run from the new worktree, not the previous version directory.
+- Copy the previous stable `docker/.env` and `docker/volumes/**` into the new worktree for local validation, after stopping compose services and backing up any accidental new initialization data.
+- Use a temporary root container to copy protected PostgreSQL `pgdata` when host permissions block normal copying; mount the old worktree read-only.
+- Export `DIFY_ENTERPRISE_VERSION=<version>-enterprise` and `COMPOSE_PROFILES=weaviate,postgresql` explicitly for compose commands.
+- Run `docker compose ... config --images` and verify it resolves the new enterprise API/Web images, not official `langgenius/dify-api` or `langgenius/dify-web`.
+- After `up --force-recreate`, inspect API, Web, worker, plugin daemon, database, Redis, vector store, sandbox, and ssrf proxy containers. All bind mounts must point to the new worktree.
+- Do not leave `weaviate`, `sandbox`, `ssrf_proxy`, `plugin_daemon`, or database services running from an old worktree while validating a new candidate.
+- Verify migrated data with read-only checks before asking the user to log in: accounts, tenants, apps/workflows, datasets, installed plugins, enterprise marketplace assets, and `alembic_version`.
 
 ## Rebuild Decisions
 

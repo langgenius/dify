@@ -105,6 +105,48 @@ Vector store note: `VECTOR_STORE=weaviate` requires the `weaviate` compose profi
 `COMPOSE_PROFILES` inside `docker/.env` alone for CLI profile activation; export `COMPOSE_PROFILES=weaviate,postgresql`
 in the shell or include the `weaviate` service explicitly in `docker compose up` commands.
 
+## Local upgrade data migration
+
+For same-machine enterprise upgrades, use the new source worktree and new enterprise images, but inherit the previous stable runtime data whenever possible. This keeps local validation close to a real deployment upgrade and avoids re-initializing accounts, workspaces, workflows, datasets, plugins, and enterprise marketplace data on every candidate.
+
+Recommended order:
+
+1. Stop compose services for the old and new worktrees before copying runtime data.
+2. If the new worktree was already initialized, back up its temporary `docker/.env` and `docker/volumes/**` outside the source diff.
+3. Copy the previous stable worktree's `docker/.env` into the new worktree, then review it against the new `docker/envs/**/*.env.example` layout and add any new required settings.
+4. Copy the previous stable worktree's `docker/volumes/**` into the new worktree, preserving ownership and permissions.
+5. Start compose only from the new worktree with explicit shell values for `DIFY_ENTERPRISE_VERSION` and `COMPOSE_PROFILES`.
+
+Example Linux startup after migration:
+
+```bash
+export DIFY_ENTERPRISE_VERSION=1.15.0-enterprise
+export COMPOSE_PROFILES=weaviate,postgresql
+docker compose -f docker/docker-compose.yaml -f docker/docker-compose.enterprise.yaml config --images | sort -u
+docker compose -f docker/docker-compose.yaml -f docker/docker-compose.enterprise.yaml up -d --force-recreate --pull never
+```
+
+If PostgreSQL `pgdata` cannot be copied by the host user, use a temporary container to copy as root without writing to the old worktree:
+
+```bash
+docker run --rm \
+  -v /path/to/old-dify/docker/volumes:/old:ro \
+  -v /path/to/new-dify/docker/volumes:/new \
+  busybox:latest \
+  sh -c 'rm -rf /new/db && mkdir -p /new && cp -a /old/db /new/db'
+```
+
+After startup, verify the runtime surface before browser validation:
+
+```bash
+docker compose -f docker/docker-compose.yaml -f docker/docker-compose.enterprise.yaml ps
+docker inspect docker-api-1 docker-web-1 docker-worker-1 docker-worker_beat-1 docker-plugin_daemon-1 docker-db_postgres-1 docker-redis-1 docker-weaviate-1 docker-sandbox-1 docker-ssrf_proxy-1 \
+  --format '{{.Name}} image={{.Config.Image}} id={{.Image}} mounts={{range .Mounts}}{{.Source}}=>{{.Destination}};{{end}}'
+docker exec docker-db_postgres-1 psql -U postgres -d dify -c 'select version_num from alembic_version;'
+```
+
+The expected result is that API/Web/worker containers use the current enterprise image tag and image IDs, every bind mount points to the new worktree, and the migrated database reaches the current enterprise Alembic head. Old enterprise images may remain on disk as cache, but no running container may reference an old enterprise tag or old worktree mount.
+
 ## Final packaging commands
 
 After source checks, rebuilt-image compose validation, browser-click validation, and log inspection pass, export the exact verified images:
@@ -178,3 +220,5 @@ Exclude all local runtime and build artifacts:
 Do not delete active runtime data under `docker/volumes/**` as part of routine development, image rebuilds, or compose recreates. These directories can hold the local database, uploaded files, Redis state, plugin state, and vector-store state.
 
 Only remove them when the user explicitly asks to reset the environment, or after proposing the deletion and getting approval.
+
+Runtime data may be copied between local enterprise worktrees for same-machine upgrade validation, but it must never be included in source commits, image build contexts, offline image bundles, or minimal configuration packages.

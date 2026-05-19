@@ -44,6 +44,8 @@ Agents must not use the old `1.13.3` candidate or dirty enterprise history as im
 - Re-apply enterprise patches by capability area, not by copying the old tree.
 - After each replay group, run the closest build/test/runtime check before moving on.
 - Do not import local runtime artifacts, build caches, `node_modules`, Docker volumes, or old test-only drift.
+- For local upgrade validation on the same development machine, migrate the previous stable enterprise `docker/.env` and `docker/volumes/**` into the new worktree before compose validation unless the official upgrade is explicitly destructive or the user asks for a reset.
+- Treat copied local runtime data as validation input only; never commit it, package it, or use it as a source-tree patch source.
 - Treat old route-2 performance work as optional historical guidance, not mandatory enterprise behavior.
 - Prefer deleting stale assumptions over adapting the new candidate to old dirty-branch quirks.
 
@@ -205,8 +207,11 @@ Before this candidate becomes the new `enterprise/main`:
 1. Remove local runtime-data deletions and other machine artifacts from the Git diff.
 2. Commit only source, config, documentation, tests, migrations, and release scripts.
 3. Confirm `api/pyproject.toml` and `web/package.json` both report `1.15.0`.
-4. Rebuild enterprise `api` and `web` images as `1.15.0-enterprise`.
-5. Force recreate `api`, `worker`, `worker_beat`, `web`, and `nginx` as required by changed runtime surfaces.
-6. Repeat the verified runtime flows and inspect logs for new 500s, tracebacks, and Next error boundaries.
-7. Export the offline image bundle with `Mode=reuse` from the same validated image IDs.
-8. Protect the previous `enterprise/main` and promote this candidate by fork-internal PR, merge, or an explicitly approved branch reset. Never promote through an upstream `langgenius/dify` PR.
+4. For local upgrade validation, stop compose, migrate the previous stable enterprise `docker/.env` and `docker/volumes/**` into the new worktree, update version-bearing `.env` values such as `DIFY_ENTERPRISE_VERSION`, then start compose from the new worktree only.
+5. Confirm all running compose services use the new worktree bind mounts and the new enterprise API/Web image IDs; no service may keep an old worktree mount.
+6. Rebuild enterprise `api` and `web` images as `1.15.0-enterprise`.
+7. Force recreate `api`, `worker`, `worker_beat`, `web`, `plugin_daemon`, vector store, sandbox, ssrf proxy, and `nginx` as required by changed runtime surfaces and data-migration checks.
+8. Verify migrated data is present, including accounts, workspaces, apps/workflows, datasets, installed plugins, and enterprise marketplace assets when available.
+9. Repeat the verified runtime flows and inspect logs for new 500s, tracebacks, and Next error boundaries.
+10. Export the offline image bundle with `Mode=reuse` from the same validated image IDs.
+11. Protect the previous `enterprise/main` and promote this candidate by fork-internal PR, merge, or an explicitly approved branch reset. Never promote through an upstream `langgenius/dify` PR.
