@@ -1,6 +1,6 @@
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import AuthorizeSSO from '../authorize-sso'
 
 const mockCtx = {
@@ -11,8 +11,8 @@ const mockCtx = {
   expires_at: '2099-01-01T00:00:00Z',
 }
 
-const mockFetchApprovalContext = vi.fn().mockResolvedValue(mockCtx)
-const mockApproveExternal = vi.fn().mockResolvedValue(undefined)
+const mockFetchApprovalContext = vi.fn()
+const mockApproveExternal = vi.fn()
 
 vi.mock('@/service/device-flow', () => ({
   fetchApprovalContext: () => mockFetchApprovalContext(),
@@ -29,6 +29,12 @@ vi.mock('@/service/device-flow', () => ({
 }))
 
 describe('AuthorizeSSO', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mockFetchApprovalContext.mockResolvedValue(mockCtx)
+    mockApproveExternal.mockResolvedValue(undefined)
+  })
+
   it('renders subject_email and issuer after context loads', async () => {
     render(<AuthorizeSSO onApproved={vi.fn()} onError={vi.fn()} />)
     await screen.findByText('gareth@company.com')
@@ -41,11 +47,33 @@ describe('AuthorizeSSO', () => {
     expect(screen.queryByRole('button', { name: /Cancel/i })).not.toBeInTheDocument()
   })
 
-  it('calls approveExternal on Authorize click then calls onApproved', async () => {
+  it('calls approveExternal with ctx and user_code on Authorize click', async () => {
+    render(<AuthorizeSSO onApproved={vi.fn()} onError={vi.fn()} />)
+    await screen.findByRole('button', { name: /Authorize/i })
+    await userEvent.click(screen.getByRole('button', { name: /Authorize/i }))
+    await waitFor(() => expect(mockApproveExternal).toHaveBeenCalledWith(mockCtx, mockCtx.user_code))
+  })
+
+  it('calls onApproved after successful approve', async () => {
     const onApproved = vi.fn()
     render(<AuthorizeSSO onApproved={onApproved} onError={vi.fn()} />)
     await screen.findByRole('button', { name: /Authorize/i })
     await userEvent.click(screen.getByRole('button', { name: /Authorize/i }))
     await waitFor(() => expect(onApproved).toHaveBeenCalled())
+  })
+
+  it('shows loadErr fallback when fetchApprovalContext rejects', async () => {
+    mockFetchApprovalContext.mockRejectedValue(new Error('network'))
+    render(<AuthorizeSSO onApproved={vi.fn()} onError={vi.fn()} />)
+    await screen.findByText('This session is no longer valid')
+  })
+
+  it('calls onError when approveExternal throws', async () => {
+    mockApproveExternal.mockRejectedValue(new Error('unexpected'))
+    const onError = vi.fn()
+    render(<AuthorizeSSO onApproved={vi.fn()} onError={onError} />)
+    await screen.findByRole('button', { name: /Authorize/i })
+    await userEvent.click(screen.getByRole('button', { name: /Authorize/i }))
+    await waitFor(() => expect(onError).toHaveBeenCalledWith(expect.any(String)))
   })
 })
