@@ -125,7 +125,7 @@ describe('SubmittedContentItem', () => {
       <SubmittedContentItem
         content="{{#$output.attachment#}}"
         formInputFields={fields}
-        values={{ attachment: null }}
+        values={{}}
       />,
     )
 
