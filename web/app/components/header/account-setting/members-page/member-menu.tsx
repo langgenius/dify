@@ -36,7 +36,7 @@ const MemberMenu = ({
   const [assignModalOpen, setAssignModalOpen] = useState(false)
 
   const isOwner = member.role === 'owner'
-  const canAssignRoles = !isOwner
+  const canAssignRoles = !isOwner && !isCurrentUser
   const canRemove = !isOwner && !isCurrentUser
   const showTransferOwnership = isOwner && canTransferOwnership
 

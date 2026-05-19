@@ -47,7 +47,7 @@ const Header = () => {
 
   const canAccessExplorePage = hasPermission(workspacePermissionKeys, 'page.explore.access')
   const canAccessAppsPage = hasPermission(workspacePermissionKeys, 'app_library.access')
-  const canAccessDatasetsPage = hasPermission(workspacePermissionKeys, 'dataset.access_config')
+  const canAccessDatasetsPage = hasPermission(workspacePermissionKeys, ['dataset.create', 'dataset.tag.manage', 'dataset.external.connect'])
   const canAccessToolsPage = hasPermission(workspacePermissionKeys, 'page.tool.access')
 
   const renderLogo = () => (
