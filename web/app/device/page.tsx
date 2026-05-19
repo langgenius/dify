@@ -1,29 +1,31 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import { usePathname, useRouter, useSearchParams } from '@/next/navigation'
+import type { ICurrentWorkspace } from '@/models/common'
+import { Button } from '@langgenius/dify-ui/button'
 import { useQuery } from '@tanstack/react-query'
+import { useEffect, useState } from 'react'
+import Divider from '@/app/components/base/divider'
+import { usePathname, useRouter, useSearchParams } from '@/next/navigation'
+import { post } from '@/service/base'
+import { deviceLookup } from '@/service/device-flow'
 import { systemFeaturesQueryOptions } from '@/service/system-features'
 import { commonQueryKeys, userProfileQueryOptions } from '@/service/use-common'
-import { post } from '@/service/base'
-import type { ICurrentWorkspace } from '@/models/common'
-import { deviceLookup } from '@/service/device-flow'
-import CodeInput from './components/code-input'
-import Chooser from './components/chooser'
 import AuthorizeAccount from './components/authorize-account'
 import AuthorizeSSO from './components/authorize-sso'
-import { isValidUserCode } from './utils/user-code'
+import Chooser from './components/chooser'
+import CodeInput from './components/code-input'
 import { classifyLookupError } from './utils/error-copy'
+import { isValidUserCode } from './utils/user-code'
 
-type View =
-  | { kind: 'code_entry' }
-  | { kind: 'chooser'; userCode: string }
-  | { kind: 'authorize_account'; userCode: string }
-  | { kind: 'authorize_sso' }
-  | { kind: 'success' }
-  | { kind: 'error_expired' }
-  | { kind: 'error_rate_limited' }
-  | { kind: 'error_lookup_failed' }
+type View
+  = | { kind: 'code_entry' }
+    | { kind: 'chooser', userCode: string }
+    | { kind: 'authorize_account', userCode: string }
+    | { kind: 'authorize_sso' }
+    | { kind: 'success' }
+    | { kind: 'error_expired' }
+    | { kind: 'error_rate_limited' }
+    | { kind: 'error_lookup_failed' }
 
 export default function DevicePage() {
   const searchParams = useSearchParams()
@@ -69,24 +71,25 @@ export default function DevicePage() {
   // After consuming the params, scrub them from the URL so they don't
   // leak via history / Referer / server logs (RFC 8628 §5.4).
   useEffect(() => {
-    if (view.kind !== 'code_entry' && view.kind !== 'chooser') return
+    if (view.kind !== 'code_entry' && view.kind !== 'chooser')
+      return
     // Post-login bounce: chooser holds the typed code, account just loaded.
     // The URL was already scrubbed on the first effect run, so urlUserCode
     // is empty here — advance using the userCode stashed in view state.
     if (view.kind === 'chooser' && account) {
-      setView({ kind: 'authorize_account', userCode: view.userCode })
+      setView({ kind: 'authorize_account', userCode: view.userCode }) // eslint-disable-line react/set-state-in-effect
       return
     }
     let consumed = false
     if (ssoVerified) {
-      setView({ kind: 'authorize_sso' })
+      setView({ kind: 'authorize_sso' }) // eslint-disable-line react/set-state-in-effect
       consumed = true
     }
     else if (urlUserCode && isValidUserCode(urlUserCode)) {
       if (account)
-        setView({ kind: 'authorize_account', userCode: urlUserCode })
+        setView({ kind: 'authorize_account', userCode: urlUserCode }) // eslint-disable-line react/set-state-in-effect
       else
-        setView({ kind: 'chooser', userCode: urlUserCode })
+        setView({ kind: 'chooser', userCode: urlUserCode }) // eslint-disable-line react/set-state-in-effect
       consumed = true
     }
     if (consumed && (urlUserCode || ssoVerified))
@@ -94,7 +97,8 @@ export default function DevicePage() {
   }, [urlUserCode, ssoVerified, account, view, router, pathname])
 
   const onContinue = async () => {
-    if (!isValidUserCode(typed)) return
+    if (!isValidUserCode(typed))
+      return
     try {
       const reply = await deviceLookup(typed)
       if (!reply.valid) {
@@ -112,104 +116,138 @@ export default function DevicePage() {
         setView({ kind: 'error_expired' })
       return
     }
-    if (account) setView({ kind: 'authorize_account', userCode: typed })
+    if (account)
+      setView({ kind: 'authorize_account', userCode: typed })
     else setView({ kind: 'chooser', userCode: typed })
   }
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-lg flex-col items-center justify-center px-6 py-10">
-      <div className="w-full rounded-xl border border-components-panel-border bg-components-panel-bg p-8 shadow-sm">
-        {view.kind === 'code_entry' && (
-          <div className="flex flex-col gap-5">
-            <div>
-              <h1 className="text-2xl font-semibold text-text-primary">Authorize Dify CLI</h1>
-              <p className="mt-2 text-sm text-text-secondary">
-                Enter the code shown in your terminal.
-              </p>
-            </div>
-            <CodeInput value={typed} onChange={setTyped} autoFocus />
-            <button
-              onClick={onContinue}
-              disabled={!isValidUserCode(typed)}
-              className="rounded-lg bg-components-button-primary-bg px-4 py-3 text-components-button-primary-text font-medium hover:bg-components-button-primary-bg-hover disabled:opacity-50"
-            >
-              Continue
-            </button>
-          </div>
-        )}
-
-        {view.kind === 'chooser' && (
-          <div className="flex flex-col gap-5">
-            <div>
-              <h1 className="text-2xl font-semibold text-text-primary">Sign in to authorize</h1>
-              <p className="mt-2 text-sm text-text-secondary">
-                Code <span className="font-mono">{view.userCode}</span> is valid. Choose how to sign in.
-              </p>
-            </div>
-            <Chooser userCode={view.userCode} ssoAvailable={ssoAvailable} />
-          </div>
-        )}
-
-        {view.kind === 'authorize_account' && (
-          <AuthorizeAccount
-            userCode={view.userCode}
-            accountEmail={account?.email}
-            defaultWorkspace={currentWorkspace?.name}
-            onApproved={() => setView({ kind: 'success' })}
-            onDenied={() => setView({ kind: 'error_expired' })}
-            onError={e => setErrMsg(e)}
-          />
-        )}
-
-        {view.kind === 'authorize_sso' && (
-          <AuthorizeSSO
-            onApproved={() => setView({ kind: 'success' })}
-            onError={e => setErrMsg(e)}
-          />
-        )}
-
-        {view.kind === 'success' && (
+    <>
+      {view.kind === 'code_entry' && (
+        <div className="flex flex-col gap-5">
           <div>
-            <h1 className="text-2xl font-semibold text-text-primary">You&apos;re signed in</h1>
-            <p className="mt-2 text-sm text-text-secondary">Return to your terminal to continue.</p>
-          </div>
-        )}
-
-        {view.kind === 'error_expired' && (
-          <div>
-            <h1 className="text-2xl font-semibold text-text-primary">This code is no longer valid</h1>
+            <h1 className="text-2xl font-semibold text-text-primary">Authorize Dify CLI</h1>
             <p className="mt-2 text-sm text-text-secondary">
-              The code may have expired or already been used. Run
+              Enter the code shown in your terminal.
+            </p>
+          </div>
+          <CodeInput value={typed} onChange={setTyped} autoFocus />
+          <Button
+            variant="primary"
+            size="large"
+            className="w-full"
+            onClick={onContinue}
+            disabled={!isValidUserCode(typed)}
+          >
+            Continue
+          </Button>
+        </div>
+      )}
+
+      {view.kind === 'chooser' && (
+        <div className="flex flex-col gap-5">
+          <div>
+            <h1 className="text-2xl font-semibold text-text-primary">Sign in to authorize</h1>
+            <p className="mt-2 text-sm text-text-secondary">
+              Code
               {' '}
-              <code className="rounded bg-components-panel-bg px-1">difyctl auth login</code>
+              <code className="rounded bg-components-input-bg-normal px-1 font-mono">{view.userCode}</code>
               {' '}
-              again to get a new one.
+              is valid. Choose how to sign in.
             </p>
           </div>
-        )}
+          <Chooser userCode={view.userCode} ssoAvailable={ssoAvailable} />
+        </div>
+      )}
 
-        {view.kind === 'error_rate_limited' && (
-          <div>
-            <h1 className="text-2xl font-semibold text-text-primary">Too many attempts</h1>
-            <p className="mt-2 text-sm text-text-secondary">
-              We&apos;ve received too many requests for this code. Wait a moment and try again.
-            </p>
+      {view.kind === 'authorize_account' && (
+        <AuthorizeAccount
+          userCode={view.userCode}
+          accountEmail={account?.email}
+          // @ts-expect-error -- props added in Task 4
+          accountName={account?.name}
+          accountAvatarUrl={account?.avatar_url ?? null}
+          defaultWorkspace={currentWorkspace?.name}
+          onApproved={() => setView({ kind: 'success' })}
+          onDenied={() => setView({ kind: 'error_expired' })}
+          onError={e => setErrMsg(e)}
+        />
+      )}
+
+      {view.kind === 'authorize_sso' && (
+        <AuthorizeSSO
+          onApproved={() => setView({ kind: 'success' })}
+          onError={e => setErrMsg(e)}
+        />
+      )}
+
+      {view.kind === 'success' && (
+        <div className="flex flex-col gap-1">
+          <div className="mb-2.5 flex h-[38px] w-[38px] items-center justify-center rounded-full bg-state-success-hover">
+            <span className="i-ri-checkbox-circle-line h-[18px] w-[18px] text-util-colors-green-green-600" />
           </div>
-        )}
+          <h1 className="text-xl font-semibold text-text-primary">You&apos;re signed in</h1>
+          <p className="text-sm text-text-secondary">Return to your terminal to continue.</p>
+          <Divider className="my-3" />
+          <Button variant="ghost" className="w-full" onClick={() => router.push('/apps')}>
+            Go to Dify console →
+          </Button>
+        </div>
+      )}
 
-        {view.kind === 'error_lookup_failed' && (
-          <div>
-            <h1 className="text-2xl font-semibold text-text-primary">Could not verify the code</h1>
-            <p className="mt-2 text-sm text-text-secondary">
-              Something went wrong on our side. Try again in a moment.
-            </p>
+      {view.kind === 'error_expired' && (
+        <div className="flex flex-col gap-1">
+          <div className="mb-2.5 flex h-[38px] w-[38px] items-center justify-center rounded-full bg-state-warning-hover">
+            <span className="i-ri-error-warning-line h-[18px] w-[18px] text-util-colors-yellow-yellow-600" />
           </div>
-        )}
+          <h1 className="text-xl font-semibold text-text-primary">Code no longer valid</h1>
+          <p className="text-sm text-text-secondary">
+            Expired or already used. Run
+            {' '}
+            <code className="rounded bg-components-input-bg-normal px-1 font-mono">difyctl auth login</code>
+            {' '}
+            to get a new code.
+          </p>
+          <Divider className="my-3" />
+          <Button variant="ghost" className="w-full" onClick={() => setView({ kind: 'code_entry' })}>
+            ← Try a different code
+          </Button>
+        </div>
+      )}
 
-        {errMsg && (
-          <p className="mt-4 text-sm text-text-destructive">{errMsg}</p>
-        )}
-      </div>
-    </main>
+      {view.kind === 'error_rate_limited' && (
+        <div className="flex flex-col gap-1">
+          <div className="mb-2.5 flex h-[38px] w-[38px] items-center justify-center rounded-full bg-state-warning-hover">
+            <span className="i-ri-error-warning-line h-[18px] w-[18px] text-util-colors-yellow-yellow-600" />
+          </div>
+          <h1 className="text-xl font-semibold text-text-primary">Too many attempts</h1>
+          <p className="text-sm text-text-secondary">Wait a moment and try again.</p>
+          <Divider className="my-3" />
+          <Button variant="ghost" className="w-full" onClick={() => setView({ kind: 'code_entry' })}>
+            ← Try again
+          </Button>
+        </div>
+      )}
+
+      {view.kind === 'error_lookup_failed' && (
+        <div className="flex flex-col gap-1">
+          <div className="mb-2.5 flex h-[38px] w-[38px] items-center justify-center rounded-full bg-state-destructive-hover">
+            <span className="i-ri-close-circle-line h-[18px] w-[18px] text-util-colors-red-red-600" />
+          </div>
+          <h1 className="text-xl font-semibold text-text-primary">Could not verify the code</h1>
+          <p className="text-sm text-text-secondary">
+            Something went wrong on our side. Try again in a moment.
+          </p>
+          <Divider className="my-3" />
+          <Button variant="ghost" className="w-full" onClick={() => setView({ kind: 'code_entry' })}>
+            ← Try again
+          </Button>
+        </div>
+      )}
+
+      {errMsg && (
+        <p className="mt-4 text-sm text-text-destructive">{errMsg}</p>
+      )}
+    </>
   )
 }
