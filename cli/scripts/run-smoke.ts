@@ -1,4 +1,4 @@
-#!/usr/bin/env -S node --import tsx
+#!/usr/bin/env -S bun
 import { execSync } from 'node:child_process'
 
 type Check = { name: string, run: () => void }
@@ -13,7 +13,7 @@ if (!baseUrl) {
 const env = { ...process.env, DIFY_BASE_URL: baseUrl }
 
 function cli(args: string): string {
-  return execSync(`pnpm exec tsx bin/dev.js ${args}`, { env, encoding: 'utf8' })
+  return execSync(`bun bin/dev.js ${args}`, { env, encoding: 'utf8' })
 }
 
 const checks: Check[] = [

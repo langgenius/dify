@@ -619,7 +619,7 @@ importers:
     devDependencies:
       '@antfu/eslint-config':
         specifier: 'catalog:'
-        version: 9.0.0(@eslint-react/eslint-plugin@5.7.7(eslint@10.3.0(jiti@2.7.0))(typescript@6.0.3))(@next/eslint-plugin-next@16.2.6)(@types/node@25.7.0)(@typescript-eslint/typescript-estree@8.59.3(typescript@6.0.3))(@typescript-eslint/utils@8.59.3(eslint@10.3.0(jiti@2.7.0))(typescript@6.0.3))(@vitest/coverage-v8@4.1.6(@voidzero-dev/vite-plus-test@0.1.20))(@voidzero-dev/vite-plus-core@0.1.20(@types/node@25.7.0)(esbuild@0.27.2)(jiti@2.7.0)(tsx@4.21.0)(typescript@6.0.3)(yaml@2.8.3))(esbuild@0.27.2)(eslint-plugin-react-refresh@0.5.2(eslint@10.3.0(jiti@2.7.0)))(eslint@10.3.0(jiti@2.7.0))(happy-dom@20.9.0)(jiti@2.7.0)(oxlint@1.61.0(oxlint-tsgolint@0.22.0))(tsx@4.21.0)(typescript@6.0.3)(yaml@2.8.3)
+        version: 9.0.0(@eslint-react/eslint-plugin@5.7.7(eslint@10.3.0(jiti@2.7.0))(typescript@6.0.3))(@next/eslint-plugin-next@16.2.6)(@types/node@25.7.0)(@typescript-eslint/typescript-estree@8.59.3(typescript@6.0.3))(@typescript-eslint/utils@8.59.3(eslint@10.3.0(jiti@2.7.0))(typescript@6.0.3))(@voidzero-dev/vite-plus-core@0.1.20(@types/node@25.7.0)(esbuild@0.27.2)(jiti@2.7.0)(tsx@4.21.0)(typescript@6.0.3)(yaml@2.8.3))(esbuild@0.27.2)(eslint-plugin-react-refresh@0.5.2(eslint@10.3.0(jiti@2.7.0)))(eslint@10.3.0(jiti@2.7.0))(happy-dom@20.9.0)(jiti@2.7.0)(oxlint@1.61.0(oxlint-tsgolint@0.22.0))(tsx@4.21.0)(typescript@6.0.3)(yaml@2.8.3)
       concurrently:
         specifier: 'catalog:'
         version: 9.2.1
@@ -640,7 +640,7 @@ importers:
         version: '@voidzero-dev/vite-plus-core@0.1.20(@types/node@25.7.0)(esbuild@0.27.2)(jiti@2.7.0)(tsx@4.21.0)(typescript@6.0.3)(yaml@2.8.3)'
       vite-plus:
         specifier: 'catalog:'
-        version: 0.1.20(@types/node@25.7.0)(@vitest/coverage-v8@4.1.6(@voidzero-dev/vite-plus-test@0.1.20))(@voidzero-dev/vite-plus-core@0.1.20(@types/node@25.7.0)(esbuild@0.27.2)(jiti@2.7.0)(tsx@4.21.0)(typescript@6.0.3)(yaml@2.8.3))(esbuild@0.27.2)(happy-dom@20.9.0)(jiti@2.7.0)(tsx@4.21.0)(typescript@6.0.3)(yaml@2.8.3)
+        version: 0.1.20(@types/node@25.7.0)(@vitest/coverage-v8@4.1.6)(@voidzero-dev/vite-plus-core@0.1.20(@types/node@25.7.0)(esbuild@0.27.2)(jiti@2.7.0)(tsx@4.21.0)(typescript@6.0.3)(yaml@2.8.3))(esbuild@0.27.2)(happy-dom@20.9.0)(jiti@2.7.0)(tsx@4.21.0)(typescript@6.0.3)(yaml@2.8.3)
 
   cli:
     dependencies:
@@ -696,9 +696,6 @@ importers:
       hono:
         specifier: 'catalog:'
         version: 4.12.18
-      tsx:
-        specifier: 'catalog:'
-        version: 4.21.0
       typescript:
         specifier: 'catalog:'
         version: 6.0.3
@@ -740,7 +737,7 @@ importers:
         version: '@voidzero-dev/vite-plus-core@0.1.20(@types/node@25.7.0)(esbuild@0.27.2)(jiti@2.7.0)(tsx@4.21.0)(typescript@6.0.3)(yaml@2.8.3)'
       vite-plus:
         specifier: 'catalog:'
-        version: 0.1.20(@types/node@25.7.0)(@vitest/coverage-v8@4.1.6(@voidzero-dev/vite-plus-test@0.1.20))(@voidzero-dev/vite-plus-core@0.1.20(@types/node@25.7.0)(esbuild@0.27.2)(jiti@2.7.0)(tsx@4.21.0)(typescript@6.0.3)(yaml@2.8.3))(esbuild@0.27.2)(happy-dom@20.9.0)(jiti@2.7.0)(tsx@4.21.0)(typescript@6.0.3)(yaml@2.8.3)
+        version: 0.1.20(@types/node@25.7.0)(@vitest/coverage-v8@4.1.6)(@voidzero-dev/vite-plus-core@0.1.20(@types/node@25.7.0)(esbuild@0.27.2)(jiti@2.7.0)(tsx@4.21.0)(typescript@6.0.3)(yaml@2.8.3))(esbuild@0.27.2)(happy-dom@20.9.0)(jiti@2.7.0)(tsx@4.21.0)(typescript@6.0.3)(yaml@2.8.3)
 
   packages/contracts:
     dependencies:
@@ -777,7 +774,7 @@ importers:
         version: 6.0.3
       vite-plus:
         specifier: 'catalog:'
-        version: 0.1.20(@types/node@25.7.0)(@vitest/coverage-v8@4.1.6(@voidzero-dev/vite-plus-test@0.1.20))(@voidzero-dev/vite-plus-core@0.1.20(@types/node@25.7.0)(esbuild@0.27.2)(jiti@2.7.0)(tsx@4.21.0)(typescript@6.0.3)(yaml@2.8.3))(esbuild@0.27.2)(happy-dom@20.9.0)(jiti@2.7.0)(tsx@4.21.0)(typescript@6.0.3)(yaml@2.8.3)
+        version: 0.1.20(@types/node@25.7.0)(@vitest/coverage-v8@4.1.6)(@voidzero-dev/vite-plus-core@0.1.20(@types/node@25.7.0)(esbuild@0.27.2)(jiti@2.7.0)(tsx@4.21.0)(typescript@6.0.3)(yaml@2.8.3))(esbuild@0.27.2)(happy-dom@20.9.0)(jiti@2.7.0)(tsx@4.21.0)(typescript@6.0.3)(yaml@2.8.3)
 
   packages/dev-proxy:
     dependencies:
@@ -805,10 +802,10 @@ importers:
         version: '@voidzero-dev/vite-plus-core@0.1.20(@types/node@25.7.0)(esbuild@0.27.2)(jiti@2.7.0)(tsx@4.21.0)(typescript@6.0.3)(yaml@2.8.3)'
       vite-plus:
         specifier: 'catalog:'
-        version: 0.1.20(@types/node@25.7.0)(@vitest/coverage-v8@4.1.6(@voidzero-dev/vite-plus-test@0.1.20))(@voidzero-dev/vite-plus-core@0.1.20(@types/node@25.7.0)(esbuild@0.27.2)(jiti@2.7.0)(tsx@4.21.0)(typescript@6.0.3)(yaml@2.8.3))(esbuild@0.27.2)(happy-dom@20.9.0)(jiti@2.7.0)(tsx@4.21.0)(typescript@6.0.3)(yaml@2.8.3)
+        version: 0.1.20(@types/node@25.7.0)(@vitest/coverage-v8@4.1.6)(@voidzero-dev/vite-plus-core@0.1.20(@types/node@25.7.0)(esbuild@0.27.2)(jiti@2.7.0)(tsx@4.21.0)(typescript@6.0.3)(yaml@2.8.3))(esbuild@0.27.2)(happy-dom@20.9.0)(jiti@2.7.0)(tsx@4.21.0)(typescript@6.0.3)(yaml@2.8.3)
       vitest:
         specifier: npm:@voidzero-dev/vite-plus-test@0.1.20
-        version: '@voidzero-dev/vite-plus-test@0.1.20(@types/node@25.7.0)(@vitest/coverage-v8@4.1.6(@voidzero-dev/vite-plus-test@0.1.20))(@voidzero-dev/vite-plus-core@0.1.20(@types/node@25.7.0)(esbuild@0.27.2)(jiti@2.7.0)(tsx@4.21.0)(typescript@6.0.3)(yaml@2.8.3))(esbuild@0.27.2)(happy-dom@20.9.0)(jiti@2.7.0)(tsx@4.21.0)(typescript@6.0.3)(yaml@2.8.3)'
+        version: '@voidzero-dev/vite-plus-test@0.1.20(@types/node@25.7.0)(@vitest/coverage-v8@4.1.6)(@voidzero-dev/vite-plus-core@0.1.20(@types/node@25.7.0)(esbuild@0.27.2)(jiti@2.7.0)(tsx@4.21.0)(typescript@6.0.3)(yaml@2.8.3))(esbuild@0.27.2)(happy-dom@20.9.0)(jiti@2.7.0)(tsx@4.21.0)(typescript@6.0.3)(yaml@2.8.3)'
 
   packages/dify-ui:
     dependencies:
@@ -824,7 +821,7 @@ importers:
         version: 1.4.1(@types/react@19.2.14)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
       '@chromatic-com/storybook':
         specifier: 'catalog:'
-        version: 5.1.2(storybook@10.3.6(@testing-library/dom@10.4.1)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(vite-plus@0.1.20(@types/node@25.7.0)(@vitest/coverage-v8@4.1.6(@voidzero-dev/vite-plus-test@0.1.20))(@voidzero-dev/vite-plus-core@0.1.20(@types/node@25.7.0)(esbuild@0.27.2)(jiti@2.7.0)(tsx@4.21.0)(typescript@6.0.3)(yaml@2.8.3))(esbuild@0.27.2)(happy-dom@20.9.0)(jiti@2.7.0)(tsx@4.21.0)(typescript@6.0.3)(yaml@2.8.3)))
+        version: 5.1.2(storybook@10.3.6(@testing-library/dom@10.4.1)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(vite-plus@0.1.20(@types/node@25.7.0)(@vitest/coverage-v8@4.1.6)(@voidzero-dev/vite-plus-core@0.1.20(@types/node@25.7.0)(esbuild@0.27.2)(jiti@2.7.0)(tsx@4.21.0)(typescript@6.0.3)(yaml@2.8.3))(esbuild@0.27.2)(happy-dom@20.9.0)(jiti@2.7.0)(tsx@4.21.0)(typescript@6.0.3)(yaml@2.8.3)))
       '@dify/tsconfig':
         specifier: workspace:*
         version: link:../tsconfig
@@ -836,16 +833,16 @@ importers:
         version: 1.2.10
       '@storybook/addon-docs':
         specifier: 'catalog:'
-        version: 10.3.6(@types/react@19.2.14)(@voidzero-dev/vite-plus-core@0.1.20(@types/node@25.7.0)(esbuild@0.27.2)(jiti@2.7.0)(tsx@4.21.0)(typescript@6.0.3)(yaml@2.8.3))(esbuild@0.27.2)(storybook@10.3.6(@testing-library/dom@10.4.1)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(vite-plus@0.1.20(@types/node@25.7.0)(@vitest/coverage-v8@4.1.6(@voidzero-dev/vite-plus-test@0.1.20))(@voidzero-dev/vite-plus-core@0.1.20(@types/node@25.7.0)(esbuild@0.27.2)(jiti@2.7.0)(tsx@4.21.0)(typescript@6.0.3)(yaml@2.8.3))(esbuild@0.27.2)(happy-dom@20.9.0)(jiti@2.7.0)(tsx@4.21.0)(typescript@6.0.3)(yaml@2.8.3)))
+        version: 10.3.6(@types/react@19.2.14)(@voidzero-dev/vite-plus-core@0.1.20(@types/node@25.7.0)(esbuild@0.27.2)(jiti@2.7.0)(tsx@4.21.0)(typescript@6.0.3)(yaml@2.8.3))(esbuild@0.27.2)(storybook@10.3.6(@testing-library/dom@10.4.1)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(vite-plus@0.1.20(@types/node@25.7.0)(@vitest/coverage-v8@4.1.6)(@voidzero-dev/vite-plus-core@0.1.20(@types/node@25.7.0)(esbuild@0.27.2)(jiti@2.7.0)(tsx@4.21.0)(typescript@6.0.3)(yaml@2.8.3))(esbuild@0.27.2)(happy-dom@20.9.0)(jiti@2.7.0)(tsx@4.21.0)(typescript@6.0.3)(yaml@2.8.3)))
       '@storybook/addon-links':
         specifier: 'catalog:'
-        version: 10.3.6(react@19.2.6)(storybook@10.3.6(@testing-library/dom@10.4.1)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(vite-plus@0.1.20(@types/node@25.7.0)(@vitest/coverage-v8@4.1.6(@voidzero-dev/vite-plus-test@0.1.20))(@voidzero-dev/vite-plus-core@0.1.20(@types/node@25.7.0)(esbuild@0.27.2)(jiti@2.7.0)(tsx@4.21.0)(typescript@6.0.3)(yaml@2.8.3))(esbuild@0.27.2)(happy-dom@20.9.0)(jiti@2.7.0)(tsx@4.21.0)(typescript@6.0.3)(yaml@2.8.3)))
+        version: 10.3.6(react@19.2.6)(storybook@10.3.6(@testing-library/dom@10.4.1)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(vite-plus@0.1.20(@types/node@25.7.0)(@vitest/coverage-v8@4.1.6)(@voidzero-dev/vite-plus-core@0.1.20(@types/node@25.7.0)(esbuild@0.27.2)(jiti@2.7.0)(tsx@4.21.0)(typescript@6.0.3)(yaml@2.8.3))(esbuild@0.27.2)(happy-dom@20.9.0)(jiti@2.7.0)(tsx@4.21.0)(typescript@6.0.3)(yaml@2.8.3)))
       '@storybook/addon-themes':
         specifier: 'catalog:'
-        version: 10.3.6(storybook@10.3.6(@testing-library/dom@10.4.1)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(vite-plus@0.1.20(@types/node@25.7.0)(@vitest/coverage-v8@4.1.6(@voidzero-dev/vite-plus-test@0.1.20))(@voidzero-dev/vite-plus-core@0.1.20(@types/node@25.7.0)(esbuild@0.27.2)(jiti@2.7.0)(tsx@4.21.0)(typescript@6.0.3)(yaml@2.8.3))(esbuild@0.27.2)(happy-dom@20.9.0)(jiti@2.7.0)(tsx@4.21.0)(typescript@6.0.3)(yaml@2.8.3)))
+        version: 10.3.6(storybook@10.3.6(@testing-library/dom@10.4.1)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(vite-plus@0.1.20(@types/node@25.7.0)(@vitest/coverage-v8@4.1.6)(@voidzero-dev/vite-plus-core@0.1.20(@types/node@25.7.0)(esbuild@0.27.2)(jiti@2.7.0)(tsx@4.21.0)(typescript@6.0.3)(yaml@2.8.3))(esbuild@0.27.2)(happy-dom@20.9.0)(jiti@2.7.0)(tsx@4.21.0)(typescript@6.0.3)(yaml@2.8.3)))
       '@storybook/react-vite':
         specifier: 'catalog:'
-        version: 10.3.6(@voidzero-dev/vite-plus-core@0.1.20(@types/node@25.7.0)(esbuild@0.27.2)(jiti@2.7.0)(tsx@4.21.0)(typescript@6.0.3)(yaml@2.8.3))(esbuild@0.27.2)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(storybook@10.3.6(@testing-library/dom@10.4.1)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(vite-plus@0.1.20(@types/node@25.7.0)(@vitest/coverage-v8@4.1.6(@voidzero-dev/vite-plus-test@0.1.20))(@voidzero-dev/vite-plus-core@0.1.20(@types/node@25.7.0)(esbuild@0.27.2)(jiti@2.7.0)(tsx@4.21.0)(typescript@6.0.3)(yaml@2.8.3))(esbuild@0.27.2)(happy-dom@20.9.0)(jiti@2.7.0)(tsx@4.21.0)(typescript@6.0.3)(yaml@2.8.3)))(typescript@6.0.3)
+        version: 10.3.6(@voidzero-dev/vite-plus-core@0.1.20(@types/node@25.7.0)(esbuild@0.27.2)(jiti@2.7.0)(tsx@4.21.0)(typescript@6.0.3)(yaml@2.8.3))(esbuild@0.27.2)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(storybook@10.3.6(@testing-library/dom@10.4.1)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(vite-plus@0.1.20(@types/node@25.7.0)(@vitest/coverage-v8@4.1.6)(@voidzero-dev/vite-plus-core@0.1.20(@types/node@25.7.0)(esbuild@0.27.2)(jiti@2.7.0)(tsx@4.21.0)(typescript@6.0.3)(yaml@2.8.3))(esbuild@0.27.2)(happy-dom@20.9.0)(jiti@2.7.0)(tsx@4.21.0)(typescript@6.0.3)(yaml@2.8.3)))(typescript@6.0.3)
       '@tailwindcss/vite':
         specifier: 'catalog:'
         version: 4.3.0(@voidzero-dev/vite-plus-core@0.1.20(@types/node@25.7.0)(esbuild@0.27.2)(jiti@2.7.0)(tsx@4.21.0)(typescript@6.0.3)(yaml@2.8.3))
@@ -881,7 +878,7 @@ importers:
         version: 19.2.6(react@19.2.6)
       storybook:
         specifier: 'catalog:'
-        version: 10.3.6(@testing-library/dom@10.4.1)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(vite-plus@0.1.20(@types/node@25.7.0)(@vitest/coverage-v8@4.1.6(@voidzero-dev/vite-plus-test@0.1.20))(@voidzero-dev/vite-plus-core@0.1.20(@types/node@25.7.0)(esbuild@0.27.2)(jiti@2.7.0)(tsx@4.21.0)(typescript@6.0.3)(yaml@2.8.3))(esbuild@0.27.2)(happy-dom@20.9.0)(jiti@2.7.0)(tsx@4.21.0)(typescript@6.0.3)(yaml@2.8.3))
+        version: 10.3.6(@testing-library/dom@10.4.1)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(vite-plus@0.1.20(@types/node@25.7.0)(@vitest/coverage-v8@4.1.6)(@voidzero-dev/vite-plus-core@0.1.20(@types/node@25.7.0)(esbuild@0.27.2)(jiti@2.7.0)(tsx@4.21.0)(typescript@6.0.3)(yaml@2.8.3))(esbuild@0.27.2)(happy-dom@20.9.0)(jiti@2.7.0)(tsx@4.21.0)(typescript@6.0.3)(yaml@2.8.3))
       tailwindcss:
         specifier: 'catalog:'
         version: 4.3.0
@@ -893,7 +890,7 @@ importers:
         version: '@voidzero-dev/vite-plus-core@0.1.20(@types/node@25.7.0)(esbuild@0.27.2)(jiti@2.7.0)(tsx@4.21.0)(typescript@6.0.3)(yaml@2.8.3)'
       vite-plus:
         specifier: 'catalog:'
-        version: 0.1.20(@types/node@25.7.0)(@vitest/coverage-v8@4.1.6(@voidzero-dev/vite-plus-test@0.1.20))(@voidzero-dev/vite-plus-core@0.1.20(@types/node@25.7.0)(esbuild@0.27.2)(jiti@2.7.0)(tsx@4.21.0)(typescript@6.0.3)(yaml@2.8.3))(esbuild@0.27.2)(happy-dom@20.9.0)(jiti@2.7.0)(tsx@4.21.0)(typescript@6.0.3)(yaml@2.8.3)
+        version: 0.1.20(@types/node@25.7.0)(@vitest/coverage-v8@4.1.6)(@voidzero-dev/vite-plus-core@0.1.20(@types/node@25.7.0)(esbuild@0.27.2)(jiti@2.7.0)(tsx@4.21.0)(typescript@6.0.3)(yaml@2.8.3))(esbuild@0.27.2)(happy-dom@20.9.0)(jiti@2.7.0)(tsx@4.21.0)(typescript@6.0.3)(yaml@2.8.3)
       vitest-browser-react:
         specifier: 'catalog:'
         version: 2.2.0(@types/node@25.7.0)(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(@vitest/coverage-v8@4.1.6)(@voidzero-dev/vite-plus-core@0.1.20(@types/node@25.7.0)(esbuild@0.27.2)(jiti@2.7.0)(tsx@4.21.0)(typescript@6.0.3)(yaml@2.8.3))(esbuild@0.27.2)(happy-dom@20.9.0)(jiti@2.7.0)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(tsx@4.21.0)(typescript@6.0.3)(yaml@2.8.3)
@@ -927,7 +924,7 @@ importers:
         version: '@voidzero-dev/vite-plus-core@0.1.20(@types/node@25.7.0)(esbuild@0.27.2)(jiti@2.7.0)(tsx@4.21.0)(typescript@6.0.3)(yaml@2.8.3)'
       vite-plus:
         specifier: 'catalog:'
-        version: 0.1.20(@types/node@25.7.0)(@vitest/coverage-v8@4.1.6(@voidzero-dev/vite-plus-test@0.1.20))(@voidzero-dev/vite-plus-core@0.1.20(@types/node@25.7.0)(esbuild@0.27.2)(jiti@2.7.0)(tsx@4.21.0)(typescript@6.0.3)(yaml@2.8.3))(esbuild@0.27.2)(happy-dom@20.9.0)(jiti@2.7.0)(tsx@4.21.0)(typescript@6.0.3)(yaml@2.8.3)
+        version: 0.1.20(@types/node@25.7.0)(@vitest/coverage-v8@4.1.6)(@voidzero-dev/vite-plus-core@0.1.20(@types/node@25.7.0)(esbuild@0.27.2)(jiti@2.7.0)(tsx@4.21.0)(typescript@6.0.3)(yaml@2.8.3))(esbuild@0.27.2)(happy-dom@20.9.0)(jiti@2.7.0)(tsx@4.21.0)(typescript@6.0.3)(yaml@2.8.3)
 
   packages/tsconfig: {}
 
@@ -9025,6 +9022,87 @@ snapshots:
       - vite
       - yaml
 
+  '@antfu/eslint-config@9.0.0(@eslint-react/eslint-plugin@5.7.7(eslint@10.3.0(jiti@2.7.0))(typescript@6.0.3))(@next/eslint-plugin-next@16.2.6)(@types/node@25.7.0)(@typescript-eslint/typescript-estree@8.59.3(typescript@6.0.3))(@typescript-eslint/utils@8.59.3(eslint@10.3.0(jiti@2.7.0))(typescript@6.0.3))(@voidzero-dev/vite-plus-core@0.1.20(@types/node@25.7.0)(esbuild@0.27.2)(jiti@2.7.0)(tsx@4.21.0)(typescript@6.0.3)(yaml@2.8.3))(esbuild@0.27.2)(eslint-plugin-react-refresh@0.5.2(eslint@10.3.0(jiti@2.7.0)))(eslint@10.3.0(jiti@2.7.0))(happy-dom@20.9.0)(jiti@2.7.0)(oxlint@1.61.0(oxlint-tsgolint@0.22.0))(tsx@4.21.0)(typescript@6.0.3)(yaml@2.8.3)':
+    dependencies:
+      '@antfu/install-pkg': 1.1.0
+      '@clack/prompts': 1.4.0
+      '@e18e/eslint-plugin': 0.4.1(eslint@10.3.0(jiti@2.7.0))(oxlint@1.61.0(oxlint-tsgolint@0.22.0))
+      '@eslint-community/eslint-plugin-eslint-comments': 4.7.1(eslint@10.3.0(jiti@2.7.0))
+      '@eslint/markdown': 8.0.1
+      '@stylistic/eslint-plugin': 5.10.0(eslint@10.3.0(jiti@2.7.0))
+      '@typescript-eslint/eslint-plugin': 8.59.2(@typescript-eslint/parser@8.59.2(eslint@10.3.0(jiti@2.7.0))(typescript@6.0.3))(eslint@10.3.0(jiti@2.7.0))(typescript@6.0.3)
+      '@typescript-eslint/parser': 8.59.2(eslint@10.3.0(jiti@2.7.0))(typescript@6.0.3)
+      '@vitest/eslint-plugin': 1.6.17(@types/node@25.7.0)(@typescript-eslint/eslint-plugin@8.59.2(@typescript-eslint/parser@8.59.2(eslint@10.3.0(jiti@2.7.0))(typescript@6.0.3))(eslint@10.3.0(jiti@2.7.0))(typescript@6.0.3))(@voidzero-dev/vite-plus-core@0.1.20(@types/node@25.7.0)(esbuild@0.27.2)(jiti@2.7.0)(tsx@4.21.0)(typescript@6.0.3)(yaml@2.8.3))(esbuild@0.27.2)(eslint@10.3.0(jiti@2.7.0))(happy-dom@20.9.0)(jiti@2.7.0)(tsx@4.21.0)(typescript@6.0.3)(yaml@2.8.3)
+      ansis: 4.2.0
+      cac: 7.0.0
+      eslint: 10.3.0(jiti@2.7.0)
+      eslint-config-flat-gitignore: 2.3.0(eslint@10.3.0(jiti@2.7.0))
+      eslint-flat-config-utils: 3.2.0
+      eslint-merge-processors: 2.0.0(eslint@10.3.0(jiti@2.7.0))
+      eslint-plugin-antfu: 3.2.3(eslint@10.3.0(jiti@2.7.0))
+      eslint-plugin-command: 3.5.2(@typescript-eslint/typescript-estree@8.59.3(typescript@6.0.3))(@typescript-eslint/utils@8.59.3(eslint@10.3.0(jiti@2.7.0))(typescript@6.0.3))(eslint@10.3.0(jiti@2.7.0))
+      eslint-plugin-import-lite: 0.6.0(eslint@10.3.0(jiti@2.7.0))
+      eslint-plugin-jsdoc: 62.9.0(eslint@10.3.0(jiti@2.7.0))
+      eslint-plugin-jsonc: 3.1.2(eslint@10.3.0(jiti@2.7.0))
+      eslint-plugin-n: 18.0.1(eslint@10.3.0(jiti@2.7.0))(typescript@6.0.3)
+      eslint-plugin-no-only-tests: 3.4.0
+      eslint-plugin-perfectionist: 5.9.0(eslint@10.3.0(jiti@2.7.0))(typescript@6.0.3)
+      eslint-plugin-pnpm: 1.6.0(eslint@10.3.0(jiti@2.7.0))
+      eslint-plugin-regexp: 3.1.0(eslint@10.3.0(jiti@2.7.0))
+      eslint-plugin-toml: 1.3.1(eslint@10.3.0(jiti@2.7.0))
+      eslint-plugin-unicorn: 64.0.0(eslint@10.3.0(jiti@2.7.0))
+      eslint-plugin-unused-imports: 4.4.1(@typescript-eslint/eslint-plugin@8.59.2(@typescript-eslint/parser@8.59.2(eslint@10.3.0(jiti@2.7.0))(typescript@6.0.3))(eslint@10.3.0(jiti@2.7.0))(typescript@6.0.3))(eslint@10.3.0(jiti@2.7.0))
+      eslint-plugin-vue: 10.9.1(@stylistic/eslint-plugin@5.10.0(eslint@10.3.0(jiti@2.7.0)))(@typescript-eslint/parser@8.59.2(eslint@10.3.0(jiti@2.7.0))(typescript@6.0.3))(eslint@10.3.0(jiti@2.7.0))(vue-eslint-parser@10.4.0(eslint@10.3.0(jiti@2.7.0)))
+      eslint-plugin-yml: 3.3.2(eslint@10.3.0(jiti@2.7.0))
+      eslint-processor-vue-blocks: 2.0.0(eslint@10.3.0(jiti@2.7.0))
+      globals: 17.6.0
+      local-pkg: 1.1.2
+      parse-gitignore: 2.0.0
+      toml-eslint-parser: 1.0.3
+      vue-eslint-parser: 10.4.0(eslint@10.3.0(jiti@2.7.0))
+      yaml-eslint-parser: 2.0.0
+    optionalDependencies:
+      '@eslint-react/eslint-plugin': 5.7.7(eslint@10.3.0(jiti@2.7.0))(typescript@6.0.3)
+      '@next/eslint-plugin-next': 16.2.6
+      eslint-plugin-react-refresh: 0.5.2(eslint@10.3.0(jiti@2.7.0))
+    transitivePeerDependencies:
+      - '@arethetypeswrong/core'
+      - '@edge-runtime/vm'
+      - '@eslint/json'
+      - '@opentelemetry/api'
+      - '@tsdown/css'
+      - '@tsdown/exe'
+      - '@types/node'
+      - '@typescript-eslint/rule-tester'
+      - '@typescript-eslint/typescript-estree'
+      - '@typescript-eslint/utils'
+      - '@vitejs/devtools'
+      - '@vitest/coverage-istanbul'
+      - '@vitest/coverage-v8'
+      - '@vitest/ui'
+      - '@vue/compiler-sfc'
+      - bufferutil
+      - esbuild
+      - happy-dom
+      - jiti
+      - jsdom
+      - less
+      - oxlint
+      - publint
+      - sass
+      - sass-embedded
+      - stylus
+      - sugarss
+      - supports-color
+      - terser
+      - ts-declaration-location
+      - tsx
+      - typescript
+      - unplugin-unused
+      - utf-8-validate
+      - vite
+      - yaml
+
   '@antfu/install-pkg@1.1.0':
     dependencies:
       package-manager-detector: 1.6.0
@@ -9185,6 +9263,18 @@ snapshots:
       filesize: 10.1.6
       jsonfile: 6.2.0
       storybook: 10.3.6(@testing-library/dom@10.4.1)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(vite-plus@0.1.20(@types/node@25.7.0)(@vitest/coverage-v8@4.1.6(@voidzero-dev/vite-plus-test@0.1.20))(@voidzero-dev/vite-plus-core@0.1.20(@types/node@25.7.0)(esbuild@0.27.2)(jiti@2.7.0)(tsx@4.21.0)(typescript@6.0.3)(yaml@2.8.3))(esbuild@0.27.2)(happy-dom@20.9.0)(jiti@2.7.0)(tsx@4.21.0)(typescript@6.0.3)(yaml@2.8.3))
+      strip-ansi: 7.2.0
+    transitivePeerDependencies:
+      - '@chromatic-com/cypress'
+      - '@chromatic-com/playwright'
+
+  '@chromatic-com/storybook@5.1.2(storybook@10.3.6(@testing-library/dom@10.4.1)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(vite-plus@0.1.20(@types/node@25.7.0)(@vitest/coverage-v8@4.1.6)(@voidzero-dev/vite-plus-core@0.1.20(@types/node@25.7.0)(esbuild@0.27.2)(jiti@2.7.0)(tsx@4.21.0)(typescript@6.0.3)(yaml@2.8.3))(esbuild@0.27.2)(happy-dom@20.9.0)(jiti@2.7.0)(tsx@4.21.0)(typescript@6.0.3)(yaml@2.8.3)))':
+    dependencies:
+      '@neoconfetti/react': 1.0.0
+      chromatic: 13.3.5
+      filesize: 10.1.6
+      jsonfile: 6.2.0
+      storybook: 10.3.6(@testing-library/dom@10.4.1)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(vite-plus@0.1.20(@types/node@25.7.0)(@vitest/coverage-v8@4.1.6)(@voidzero-dev/vite-plus-core@0.1.20(@types/node@25.7.0)(esbuild@0.27.2)(jiti@2.7.0)(tsx@4.21.0)(typescript@6.0.3)(yaml@2.8.3))(esbuild@0.27.2)(happy-dom@20.9.0)(jiti@2.7.0)(tsx@4.21.0)(typescript@6.0.3)(yaml@2.8.3))
       strip-ansi: 7.2.0
     transitivePeerDependencies:
       - '@chromatic-com/cypress'
@@ -11014,10 +11104,34 @@ snapshots:
       - vite
       - webpack
 
+  '@storybook/addon-docs@10.3.6(@types/react@19.2.14)(@voidzero-dev/vite-plus-core@0.1.20(@types/node@25.7.0)(esbuild@0.27.2)(jiti@2.7.0)(tsx@4.21.0)(typescript@6.0.3)(yaml@2.8.3))(esbuild@0.27.2)(storybook@10.3.6(@testing-library/dom@10.4.1)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(vite-plus@0.1.20(@types/node@25.7.0)(@vitest/coverage-v8@4.1.6)(@voidzero-dev/vite-plus-core@0.1.20(@types/node@25.7.0)(esbuild@0.27.2)(jiti@2.7.0)(tsx@4.21.0)(typescript@6.0.3)(yaml@2.8.3))(esbuild@0.27.2)(happy-dom@20.9.0)(jiti@2.7.0)(tsx@4.21.0)(typescript@6.0.3)(yaml@2.8.3)))':
+    dependencies:
+      '@mdx-js/react': 3.1.1(@types/react@19.2.14)(react@19.2.6)
+      '@storybook/csf-plugin': 10.3.6(@voidzero-dev/vite-plus-core@0.1.20(@types/node@25.7.0)(esbuild@0.27.2)(jiti@2.7.0)(tsx@4.21.0)(typescript@6.0.3)(yaml@2.8.3))(esbuild@0.27.2)(storybook@10.3.6(@testing-library/dom@10.4.1)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(vite-plus@0.1.20(@types/node@25.7.0)(@vitest/coverage-v8@4.1.6)(@voidzero-dev/vite-plus-core@0.1.20(@types/node@25.7.0)(esbuild@0.27.2)(jiti@2.7.0)(tsx@4.21.0)(typescript@6.0.3)(yaml@2.8.3))(esbuild@0.27.2)(happy-dom@20.9.0)(jiti@2.7.0)(tsx@4.21.0)(typescript@6.0.3)(yaml@2.8.3)))
+      '@storybook/icons': 2.0.1(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
+      '@storybook/react-dom-shim': 10.3.6(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(storybook@10.3.6(@testing-library/dom@10.4.1)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(vite-plus@0.1.20(@types/node@25.7.0)(@vitest/coverage-v8@4.1.6)(@voidzero-dev/vite-plus-core@0.1.20(@types/node@25.7.0)(esbuild@0.27.2)(jiti@2.7.0)(tsx@4.21.0)(typescript@6.0.3)(yaml@2.8.3))(esbuild@0.27.2)(happy-dom@20.9.0)(jiti@2.7.0)(tsx@4.21.0)(typescript@6.0.3)(yaml@2.8.3)))
+      react: 19.2.6
+      react-dom: 19.2.6(react@19.2.6)
+      storybook: 10.3.6(@testing-library/dom@10.4.1)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(vite-plus@0.1.20(@types/node@25.7.0)(@vitest/coverage-v8@4.1.6)(@voidzero-dev/vite-plus-core@0.1.20(@types/node@25.7.0)(esbuild@0.27.2)(jiti@2.7.0)(tsx@4.21.0)(typescript@6.0.3)(yaml@2.8.3))(esbuild@0.27.2)(happy-dom@20.9.0)(jiti@2.7.0)(tsx@4.21.0)(typescript@6.0.3)(yaml@2.8.3))
+      ts-dedent: 2.2.0
+    transitivePeerDependencies:
+      - '@types/react'
+      - esbuild
+      - rollup
+      - vite
+      - webpack
+
   '@storybook/addon-links@10.3.6(react@19.2.6)(storybook@10.3.6(@testing-library/dom@10.4.1)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(vite-plus@0.1.20(@types/node@25.7.0)(@vitest/coverage-v8@4.1.6(@voidzero-dev/vite-plus-test@0.1.20))(@voidzero-dev/vite-plus-core@0.1.20(@types/node@25.7.0)(esbuild@0.27.2)(jiti@2.7.0)(tsx@4.21.0)(typescript@6.0.3)(yaml@2.8.3))(esbuild@0.27.2)(happy-dom@20.9.0)(jiti@2.7.0)(tsx@4.21.0)(typescript@6.0.3)(yaml@2.8.3)))':
     dependencies:
       '@storybook/global': 5.0.0
       storybook: 10.3.6(@testing-library/dom@10.4.1)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(vite-plus@0.1.20(@types/node@25.7.0)(@vitest/coverage-v8@4.1.6(@voidzero-dev/vite-plus-test@0.1.20))(@voidzero-dev/vite-plus-core@0.1.20(@types/node@25.7.0)(esbuild@0.27.2)(jiti@2.7.0)(tsx@4.21.0)(typescript@6.0.3)(yaml@2.8.3))(esbuild@0.27.2)(happy-dom@20.9.0)(jiti@2.7.0)(tsx@4.21.0)(typescript@6.0.3)(yaml@2.8.3))
+    optionalDependencies:
+      react: 19.2.6
+
+  '@storybook/addon-links@10.3.6(react@19.2.6)(storybook@10.3.6(@testing-library/dom@10.4.1)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(vite-plus@0.1.20(@types/node@25.7.0)(@vitest/coverage-v8@4.1.6)(@voidzero-dev/vite-plus-core@0.1.20(@types/node@25.7.0)(esbuild@0.27.2)(jiti@2.7.0)(tsx@4.21.0)(typescript@6.0.3)(yaml@2.8.3))(esbuild@0.27.2)(happy-dom@20.9.0)(jiti@2.7.0)(tsx@4.21.0)(typescript@6.0.3)(yaml@2.8.3)))':
+    dependencies:
+      '@storybook/global': 5.0.0
+      storybook: 10.3.6(@testing-library/dom@10.4.1)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(vite-plus@0.1.20(@types/node@25.7.0)(@vitest/coverage-v8@4.1.6)(@voidzero-dev/vite-plus-core@0.1.20(@types/node@25.7.0)(esbuild@0.27.2)(jiti@2.7.0)(tsx@4.21.0)(typescript@6.0.3)(yaml@2.8.3))(esbuild@0.27.2)(happy-dom@20.9.0)(jiti@2.7.0)(tsx@4.21.0)(typescript@6.0.3)(yaml@2.8.3))
     optionalDependencies:
       react: 19.2.6
 
@@ -11028,6 +11142,11 @@ snapshots:
   '@storybook/addon-themes@10.3.6(storybook@10.3.6(@testing-library/dom@10.4.1)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(vite-plus@0.1.20(@types/node@25.7.0)(@vitest/coverage-v8@4.1.6(@voidzero-dev/vite-plus-test@0.1.20))(@voidzero-dev/vite-plus-core@0.1.20(@types/node@25.7.0)(esbuild@0.27.2)(jiti@2.7.0)(tsx@4.21.0)(typescript@6.0.3)(yaml@2.8.3))(esbuild@0.27.2)(happy-dom@20.9.0)(jiti@2.7.0)(tsx@4.21.0)(typescript@6.0.3)(yaml@2.8.3)))':
     dependencies:
       storybook: 10.3.6(@testing-library/dom@10.4.1)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(vite-plus@0.1.20(@types/node@25.7.0)(@vitest/coverage-v8@4.1.6(@voidzero-dev/vite-plus-test@0.1.20))(@voidzero-dev/vite-plus-core@0.1.20(@types/node@25.7.0)(esbuild@0.27.2)(jiti@2.7.0)(tsx@4.21.0)(typescript@6.0.3)(yaml@2.8.3))(esbuild@0.27.2)(happy-dom@20.9.0)(jiti@2.7.0)(tsx@4.21.0)(typescript@6.0.3)(yaml@2.8.3))
+      ts-dedent: 2.2.0
+
+  '@storybook/addon-themes@10.3.6(storybook@10.3.6(@testing-library/dom@10.4.1)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(vite-plus@0.1.20(@types/node@25.7.0)(@vitest/coverage-v8@4.1.6)(@voidzero-dev/vite-plus-core@0.1.20(@types/node@25.7.0)(esbuild@0.27.2)(jiti@2.7.0)(tsx@4.21.0)(typescript@6.0.3)(yaml@2.8.3))(esbuild@0.27.2)(happy-dom@20.9.0)(jiti@2.7.0)(tsx@4.21.0)(typescript@6.0.3)(yaml@2.8.3)))':
+    dependencies:
+      storybook: 10.3.6(@testing-library/dom@10.4.1)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(vite-plus@0.1.20(@types/node@25.7.0)(@vitest/coverage-v8@4.1.6)(@voidzero-dev/vite-plus-core@0.1.20(@types/node@25.7.0)(esbuild@0.27.2)(jiti@2.7.0)(tsx@4.21.0)(typescript@6.0.3)(yaml@2.8.3))(esbuild@0.27.2)(happy-dom@20.9.0)(jiti@2.7.0)(tsx@4.21.0)(typescript@6.0.3)(yaml@2.8.3))
       ts-dedent: 2.2.0
 
   '@storybook/builder-vite@10.3.6(@voidzero-dev/vite-plus-core@0.1.20(@types/node@25.7.0)(esbuild@0.27.2)(jiti@2.7.0)(tsx@4.21.0)(typescript@6.0.3)(yaml@2.8.3))(esbuild@0.27.2)(storybook@10.3.6(@testing-library/dom@10.4.1)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(vite-plus@0.1.20(@types/node@25.7.0)(@vitest/coverage-v8@4.1.6(@voidzero-dev/vite-plus-test@0.1.20))(@voidzero-dev/vite-plus-core@0.1.20(@types/node@25.7.0)(esbuild@0.27.2)(jiti@2.7.0)(tsx@4.21.0)(typescript@6.0.3)(yaml@2.8.3))(esbuild@0.27.2)(happy-dom@20.9.0)(jiti@2.7.0)(tsx@4.21.0)(typescript@6.0.3)(yaml@2.8.3)))':
@@ -11041,9 +11160,28 @@ snapshots:
       - rollup
       - webpack
 
+  '@storybook/builder-vite@10.3.6(@voidzero-dev/vite-plus-core@0.1.20(@types/node@25.7.0)(esbuild@0.27.2)(jiti@2.7.0)(tsx@4.21.0)(typescript@6.0.3)(yaml@2.8.3))(esbuild@0.27.2)(storybook@10.3.6(@testing-library/dom@10.4.1)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(vite-plus@0.1.20(@types/node@25.7.0)(@vitest/coverage-v8@4.1.6)(@voidzero-dev/vite-plus-core@0.1.20(@types/node@25.7.0)(esbuild@0.27.2)(jiti@2.7.0)(tsx@4.21.0)(typescript@6.0.3)(yaml@2.8.3))(esbuild@0.27.2)(happy-dom@20.9.0)(jiti@2.7.0)(tsx@4.21.0)(typescript@6.0.3)(yaml@2.8.3)))':
+    dependencies:
+      '@storybook/csf-plugin': 10.3.6(@voidzero-dev/vite-plus-core@0.1.20(@types/node@25.7.0)(esbuild@0.27.2)(jiti@2.7.0)(tsx@4.21.0)(typescript@6.0.3)(yaml@2.8.3))(esbuild@0.27.2)(storybook@10.3.6(@testing-library/dom@10.4.1)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(vite-plus@0.1.20(@types/node@25.7.0)(@vitest/coverage-v8@4.1.6)(@voidzero-dev/vite-plus-core@0.1.20(@types/node@25.7.0)(esbuild@0.27.2)(jiti@2.7.0)(tsx@4.21.0)(typescript@6.0.3)(yaml@2.8.3))(esbuild@0.27.2)(happy-dom@20.9.0)(jiti@2.7.0)(tsx@4.21.0)(typescript@6.0.3)(yaml@2.8.3)))
+      storybook: 10.3.6(@testing-library/dom@10.4.1)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(vite-plus@0.1.20(@types/node@25.7.0)(@vitest/coverage-v8@4.1.6)(@voidzero-dev/vite-plus-core@0.1.20(@types/node@25.7.0)(esbuild@0.27.2)(jiti@2.7.0)(tsx@4.21.0)(typescript@6.0.3)(yaml@2.8.3))(esbuild@0.27.2)(happy-dom@20.9.0)(jiti@2.7.0)(tsx@4.21.0)(typescript@6.0.3)(yaml@2.8.3))
+      ts-dedent: 2.2.0
+      vite: '@voidzero-dev/vite-plus-core@0.1.20(@types/node@25.7.0)(esbuild@0.27.2)(jiti@2.7.0)(tsx@4.21.0)(typescript@6.0.3)(yaml@2.8.3)'
+    transitivePeerDependencies:
+      - esbuild
+      - rollup
+      - webpack
+
   '@storybook/csf-plugin@10.3.6(@voidzero-dev/vite-plus-core@0.1.20(@types/node@25.7.0)(esbuild@0.27.2)(jiti@2.7.0)(tsx@4.21.0)(typescript@6.0.3)(yaml@2.8.3))(esbuild@0.27.2)(storybook@10.3.6(@testing-library/dom@10.4.1)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(vite-plus@0.1.20(@types/node@25.7.0)(@vitest/coverage-v8@4.1.6(@voidzero-dev/vite-plus-test@0.1.20))(@voidzero-dev/vite-plus-core@0.1.20(@types/node@25.7.0)(esbuild@0.27.2)(jiti@2.7.0)(tsx@4.21.0)(typescript@6.0.3)(yaml@2.8.3))(esbuild@0.27.2)(happy-dom@20.9.0)(jiti@2.7.0)(tsx@4.21.0)(typescript@6.0.3)(yaml@2.8.3)))':
     dependencies:
       storybook: 10.3.6(@testing-library/dom@10.4.1)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(vite-plus@0.1.20(@types/node@25.7.0)(@vitest/coverage-v8@4.1.6(@voidzero-dev/vite-plus-test@0.1.20))(@voidzero-dev/vite-plus-core@0.1.20(@types/node@25.7.0)(esbuild@0.27.2)(jiti@2.7.0)(tsx@4.21.0)(typescript@6.0.3)(yaml@2.8.3))(esbuild@0.27.2)(happy-dom@20.9.0)(jiti@2.7.0)(tsx@4.21.0)(typescript@6.0.3)(yaml@2.8.3))
+      unplugin: 2.3.11
+    optionalDependencies:
+      esbuild: 0.27.2
+      vite: '@voidzero-dev/vite-plus-core@0.1.20(@types/node@25.7.0)(esbuild@0.27.2)(jiti@2.7.0)(tsx@4.21.0)(typescript@6.0.3)(yaml@2.8.3)'
+
+  '@storybook/csf-plugin@10.3.6(@voidzero-dev/vite-plus-core@0.1.20(@types/node@25.7.0)(esbuild@0.27.2)(jiti@2.7.0)(tsx@4.21.0)(typescript@6.0.3)(yaml@2.8.3))(esbuild@0.27.2)(storybook@10.3.6(@testing-library/dom@10.4.1)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(vite-plus@0.1.20(@types/node@25.7.0)(@vitest/coverage-v8@4.1.6)(@voidzero-dev/vite-plus-core@0.1.20(@types/node@25.7.0)(esbuild@0.27.2)(jiti@2.7.0)(tsx@4.21.0)(typescript@6.0.3)(yaml@2.8.3))(esbuild@0.27.2)(happy-dom@20.9.0)(jiti@2.7.0)(tsx@4.21.0)(typescript@6.0.3)(yaml@2.8.3)))':
+    dependencies:
+      storybook: 10.3.6(@testing-library/dom@10.4.1)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(vite-plus@0.1.20(@types/node@25.7.0)(@vitest/coverage-v8@4.1.6)(@voidzero-dev/vite-plus-core@0.1.20(@types/node@25.7.0)(esbuild@0.27.2)(jiti@2.7.0)(tsx@4.21.0)(typescript@6.0.3)(yaml@2.8.3))(esbuild@0.27.2)(happy-dom@20.9.0)(jiti@2.7.0)(tsx@4.21.0)(typescript@6.0.3)(yaml@2.8.3))
       unplugin: 2.3.11
     optionalDependencies:
       esbuild: 0.27.2
@@ -11084,6 +11222,12 @@ snapshots:
       react-dom: 19.2.6(react@19.2.6)
       storybook: 10.3.6(@testing-library/dom@10.4.1)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(vite-plus@0.1.20(@types/node@25.7.0)(@vitest/coverage-v8@4.1.6(@voidzero-dev/vite-plus-test@0.1.20))(@voidzero-dev/vite-plus-core@0.1.20(@types/node@25.7.0)(esbuild@0.27.2)(jiti@2.7.0)(tsx@4.21.0)(typescript@6.0.3)(yaml@2.8.3))(esbuild@0.27.2)(happy-dom@20.9.0)(jiti@2.7.0)(tsx@4.21.0)(typescript@6.0.3)(yaml@2.8.3))
 
+  '@storybook/react-dom-shim@10.3.6(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(storybook@10.3.6(@testing-library/dom@10.4.1)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(vite-plus@0.1.20(@types/node@25.7.0)(@vitest/coverage-v8@4.1.6)(@voidzero-dev/vite-plus-core@0.1.20(@types/node@25.7.0)(esbuild@0.27.2)(jiti@2.7.0)(tsx@4.21.0)(typescript@6.0.3)(yaml@2.8.3))(esbuild@0.27.2)(happy-dom@20.9.0)(jiti@2.7.0)(tsx@4.21.0)(typescript@6.0.3)(yaml@2.8.3)))':
+    dependencies:
+      react: 19.2.6
+      react-dom: 19.2.6(react@19.2.6)
+      storybook: 10.3.6(@testing-library/dom@10.4.1)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(vite-plus@0.1.20(@types/node@25.7.0)(@vitest/coverage-v8@4.1.6)(@voidzero-dev/vite-plus-core@0.1.20(@types/node@25.7.0)(esbuild@0.27.2)(jiti@2.7.0)(tsx@4.21.0)(typescript@6.0.3)(yaml@2.8.3))(esbuild@0.27.2)(happy-dom@20.9.0)(jiti@2.7.0)(tsx@4.21.0)(typescript@6.0.3)(yaml@2.8.3))
+
   '@storybook/react-vite@10.3.6(@voidzero-dev/vite-plus-core@0.1.20(@types/node@25.7.0)(esbuild@0.27.2)(jiti@2.7.0)(tsx@4.21.0)(typescript@6.0.3)(yaml@2.8.3))(esbuild@0.27.2)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(storybook@10.3.6(@testing-library/dom@10.4.1)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(vite-plus@0.1.20(@types/node@25.7.0)(@vitest/coverage-v8@4.1.6(@voidzero-dev/vite-plus-test@0.1.20))(@voidzero-dev/vite-plus-core@0.1.20(@types/node@25.7.0)(esbuild@0.27.2)(jiti@2.7.0)(tsx@4.21.0)(typescript@6.0.3)(yaml@2.8.3))(esbuild@0.27.2)(happy-dom@20.9.0)(jiti@2.7.0)(tsx@4.21.0)(typescript@6.0.3)(yaml@2.8.3)))(typescript@6.0.3)':
     dependencies:
       '@joshwooding/vite-plugin-react-docgen-typescript': 0.7.0(@voidzero-dev/vite-plus-core@0.1.20(@types/node@25.7.0)(esbuild@0.27.2)(jiti@2.7.0)(tsx@4.21.0)(typescript@6.0.3)(yaml@2.8.3))(typescript@6.0.3)
@@ -11106,6 +11250,28 @@ snapshots:
       - typescript
       - webpack
 
+  '@storybook/react-vite@10.3.6(@voidzero-dev/vite-plus-core@0.1.20(@types/node@25.7.0)(esbuild@0.27.2)(jiti@2.7.0)(tsx@4.21.0)(typescript@6.0.3)(yaml@2.8.3))(esbuild@0.27.2)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(storybook@10.3.6(@testing-library/dom@10.4.1)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(vite-plus@0.1.20(@types/node@25.7.0)(@vitest/coverage-v8@4.1.6)(@voidzero-dev/vite-plus-core@0.1.20(@types/node@25.7.0)(esbuild@0.27.2)(jiti@2.7.0)(tsx@4.21.0)(typescript@6.0.3)(yaml@2.8.3))(esbuild@0.27.2)(happy-dom@20.9.0)(jiti@2.7.0)(tsx@4.21.0)(typescript@6.0.3)(yaml@2.8.3)))(typescript@6.0.3)':
+    dependencies:
+      '@joshwooding/vite-plugin-react-docgen-typescript': 0.7.0(@voidzero-dev/vite-plus-core@0.1.20(@types/node@25.7.0)(esbuild@0.27.2)(jiti@2.7.0)(tsx@4.21.0)(typescript@6.0.3)(yaml@2.8.3))(typescript@6.0.3)
+      '@rollup/pluginutils': 5.3.0
+      '@storybook/builder-vite': 10.3.6(@voidzero-dev/vite-plus-core@0.1.20(@types/node@25.7.0)(esbuild@0.27.2)(jiti@2.7.0)(tsx@4.21.0)(typescript@6.0.3)(yaml@2.8.3))(esbuild@0.27.2)(storybook@10.3.6(@testing-library/dom@10.4.1)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(vite-plus@0.1.20(@types/node@25.7.0)(@vitest/coverage-v8@4.1.6)(@voidzero-dev/vite-plus-core@0.1.20(@types/node@25.7.0)(esbuild@0.27.2)(jiti@2.7.0)(tsx@4.21.0)(typescript@6.0.3)(yaml@2.8.3))(esbuild@0.27.2)(happy-dom@20.9.0)(jiti@2.7.0)(tsx@4.21.0)(typescript@6.0.3)(yaml@2.8.3)))
+      '@storybook/react': 10.3.6(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(storybook@10.3.6(@testing-library/dom@10.4.1)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(vite-plus@0.1.20(@types/node@25.7.0)(@vitest/coverage-v8@4.1.6)(@voidzero-dev/vite-plus-core@0.1.20(@types/node@25.7.0)(esbuild@0.27.2)(jiti@2.7.0)(tsx@4.21.0)(typescript@6.0.3)(yaml@2.8.3))(esbuild@0.27.2)(happy-dom@20.9.0)(jiti@2.7.0)(tsx@4.21.0)(typescript@6.0.3)(yaml@2.8.3)))(typescript@6.0.3)
+      empathic: 2.0.0
+      magic-string: 0.30.21
+      react: 19.2.6
+      react-docgen: 8.0.3
+      react-dom: 19.2.6(react@19.2.6)
+      resolve: 1.22.11
+      storybook: 10.3.6(@testing-library/dom@10.4.1)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(vite-plus@0.1.20(@types/node@25.7.0)(@vitest/coverage-v8@4.1.6)(@voidzero-dev/vite-plus-core@0.1.20(@types/node@25.7.0)(esbuild@0.27.2)(jiti@2.7.0)(tsx@4.21.0)(typescript@6.0.3)(yaml@2.8.3))(esbuild@0.27.2)(happy-dom@20.9.0)(jiti@2.7.0)(tsx@4.21.0)(typescript@6.0.3)(yaml@2.8.3))
+      tsconfig-paths: 4.2.0
+      vite: '@voidzero-dev/vite-plus-core@0.1.20(@types/node@25.7.0)(esbuild@0.27.2)(jiti@2.7.0)(tsx@4.21.0)(typescript@6.0.3)(yaml@2.8.3)'
+    transitivePeerDependencies:
+      - esbuild
+      - rollup
+      - supports-color
+      - typescript
+      - webpack
+
   '@storybook/react@10.3.6(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(storybook@10.3.6(@testing-library/dom@10.4.1)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(vite-plus@0.1.20(@types/node@25.7.0)(@vitest/coverage-v8@4.1.6(@voidzero-dev/vite-plus-test@0.1.20))(@voidzero-dev/vite-plus-core@0.1.20(@types/node@25.7.0)(esbuild@0.27.2)(jiti@2.7.0)(tsx@4.21.0)(typescript@6.0.3)(yaml@2.8.3))(esbuild@0.27.2)(happy-dom@20.9.0)(jiti@2.7.0)(tsx@4.21.0)(typescript@6.0.3)(yaml@2.8.3)))(typescript@6.0.3)':
     dependencies:
       '@storybook/global': 5.0.0
@@ -11115,6 +11281,20 @@ snapshots:
       react-docgen-typescript: 2.4.0(typescript@6.0.3)
       react-dom: 19.2.6(react@19.2.6)
       storybook: 10.3.6(@testing-library/dom@10.4.1)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(vite-plus@0.1.20(@types/node@25.7.0)(@vitest/coverage-v8@4.1.6(@voidzero-dev/vite-plus-test@0.1.20))(@voidzero-dev/vite-plus-core@0.1.20(@types/node@25.7.0)(esbuild@0.27.2)(jiti@2.7.0)(tsx@4.21.0)(typescript@6.0.3)(yaml@2.8.3))(esbuild@0.27.2)(happy-dom@20.9.0)(jiti@2.7.0)(tsx@4.21.0)(typescript@6.0.3)(yaml@2.8.3))
+    optionalDependencies:
+      typescript: 6.0.3
+    transitivePeerDependencies:
+      - supports-color
+
+  '@storybook/react@10.3.6(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(storybook@10.3.6(@testing-library/dom@10.4.1)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(vite-plus@0.1.20(@types/node@25.7.0)(@vitest/coverage-v8@4.1.6)(@voidzero-dev/vite-plus-core@0.1.20(@types/node@25.7.0)(esbuild@0.27.2)(jiti@2.7.0)(tsx@4.21.0)(typescript@6.0.3)(yaml@2.8.3))(esbuild@0.27.2)(happy-dom@20.9.0)(jiti@2.7.0)(tsx@4.21.0)(typescript@6.0.3)(yaml@2.8.3)))(typescript@6.0.3)':
+    dependencies:
+      '@storybook/global': 5.0.0
+      '@storybook/react-dom-shim': 10.3.6(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(storybook@10.3.6(@testing-library/dom@10.4.1)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(vite-plus@0.1.20(@types/node@25.7.0)(@vitest/coverage-v8@4.1.6)(@voidzero-dev/vite-plus-core@0.1.20(@types/node@25.7.0)(esbuild@0.27.2)(jiti@2.7.0)(tsx@4.21.0)(typescript@6.0.3)(yaml@2.8.3))(esbuild@0.27.2)(happy-dom@20.9.0)(jiti@2.7.0)(tsx@4.21.0)(typescript@6.0.3)(yaml@2.8.3)))
+      react: 19.2.6
+      react-docgen: 8.0.3
+      react-docgen-typescript: 2.4.0(typescript@6.0.3)
+      react-dom: 19.2.6(react@19.2.6)
+      storybook: 10.3.6(@testing-library/dom@10.4.1)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(vite-plus@0.1.20(@types/node@25.7.0)(@vitest/coverage-v8@4.1.6)(@voidzero-dev/vite-plus-core@0.1.20(@types/node@25.7.0)(esbuild@0.27.2)(jiti@2.7.0)(tsx@4.21.0)(typescript@6.0.3)(yaml@2.8.3))(esbuild@0.27.2)(happy-dom@20.9.0)(jiti@2.7.0)(tsx@4.21.0)(typescript@6.0.3)(yaml@2.8.3))
     optionalDependencies:
       typescript: 6.0.3
     transitivePeerDependencies:
@@ -12047,6 +12227,45 @@ snapshots:
       - vite
       - yaml
 
+  '@vitest/eslint-plugin@1.6.17(@types/node@25.7.0)(@typescript-eslint/eslint-plugin@8.59.2(@typescript-eslint/parser@8.59.2(eslint@10.3.0(jiti@2.7.0))(typescript@6.0.3))(eslint@10.3.0(jiti@2.7.0))(typescript@6.0.3))(@voidzero-dev/vite-plus-core@0.1.20(@types/node@25.7.0)(esbuild@0.27.2)(jiti@2.7.0)(tsx@4.21.0)(typescript@6.0.3)(yaml@2.8.3))(esbuild@0.27.2)(eslint@10.3.0(jiti@2.7.0))(happy-dom@20.9.0)(jiti@2.7.0)(tsx@4.21.0)(typescript@6.0.3)(yaml@2.8.3)':
+    dependencies:
+      '@typescript-eslint/scope-manager': 8.59.2
+      '@typescript-eslint/utils': 8.59.2(eslint@10.3.0(jiti@2.7.0))(typescript@6.0.3)
+      eslint: 10.3.0(jiti@2.7.0)
+      vitest: '@voidzero-dev/vite-plus-test@0.1.20(@types/node@25.7.0)(@vitest/coverage-v8@4.1.6)(@voidzero-dev/vite-plus-core@0.1.20(@types/node@25.7.0)(esbuild@0.27.2)(jiti@2.7.0)(tsx@4.21.0)(typescript@6.0.3)(yaml@2.8.3))(esbuild@0.27.2)(happy-dom@20.9.0)(jiti@2.7.0)(tsx@4.21.0)(typescript@6.0.3)(yaml@2.8.3)'
+    optionalDependencies:
+      '@typescript-eslint/eslint-plugin': 8.59.2(@typescript-eslint/parser@8.59.2(eslint@10.3.0(jiti@2.7.0))(typescript@6.0.3))(eslint@10.3.0(jiti@2.7.0))(typescript@6.0.3)
+      typescript: 6.0.3
+    transitivePeerDependencies:
+      - '@arethetypeswrong/core'
+      - '@edge-runtime/vm'
+      - '@opentelemetry/api'
+      - '@tsdown/css'
+      - '@tsdown/exe'
+      - '@types/node'
+      - '@vitejs/devtools'
+      - '@vitest/coverage-istanbul'
+      - '@vitest/coverage-v8'
+      - '@vitest/ui'
+      - bufferutil
+      - esbuild
+      - happy-dom
+      - jiti
+      - jsdom
+      - less
+      - publint
+      - sass
+      - sass-embedded
+      - stylus
+      - sugarss
+      - supports-color
+      - terser
+      - tsx
+      - unplugin-unused
+      - utf-8-validate
+      - vite
+      - yaml
+
   '@vitest/expect@3.2.4':
     dependencies:
       '@types/chai': 5.2.3
@@ -12113,6 +12332,47 @@ snapshots:
     optional: true
 
   '@voidzero-dev/vite-plus-test@0.1.20(@types/node@25.7.0)(@vitest/coverage-v8@4.1.6(@voidzero-dev/vite-plus-test@0.1.20))(@voidzero-dev/vite-plus-core@0.1.20(@types/node@25.7.0)(esbuild@0.27.2)(jiti@2.7.0)(tsx@4.21.0)(typescript@6.0.3)(yaml@2.8.3))(esbuild@0.27.2)(happy-dom@20.9.0)(jiti@2.7.0)(tsx@4.21.0)(typescript@6.0.3)(yaml@2.8.3)':
+    dependencies:
+      '@standard-schema/spec': 1.1.0
+      '@types/chai': 5.2.3
+      '@voidzero-dev/vite-plus-core': 0.1.20(@types/node@25.7.0)(esbuild@0.27.2)(jiti@2.7.0)(tsx@4.21.0)(typescript@6.0.3)(yaml@2.8.3)
+      es-module-lexer: 1.7.0
+      obug: 2.1.1
+      pixelmatch: 7.1.0
+      pngjs: 7.0.0
+      sirv: 3.0.2
+      std-env: 4.0.0
+      tinybench: 2.9.0
+      tinyexec: 1.0.4
+      tinyglobby: 0.2.16
+      vite: '@voidzero-dev/vite-plus-core@0.1.20(@types/node@25.7.0)(esbuild@0.27.2)(jiti@2.7.0)(tsx@4.21.0)(typescript@6.0.3)(yaml@2.8.3)'
+      ws: 8.20.0
+    optionalDependencies:
+      '@types/node': 25.7.0
+      '@vitest/coverage-v8': 4.1.6(@voidzero-dev/vite-plus-test@0.1.20)
+      happy-dom: 20.9.0
+    transitivePeerDependencies:
+      - '@arethetypeswrong/core'
+      - '@tsdown/css'
+      - '@tsdown/exe'
+      - '@vitejs/devtools'
+      - bufferutil
+      - esbuild
+      - jiti
+      - less
+      - publint
+      - sass
+      - sass-embedded
+      - stylus
+      - sugarss
+      - terser
+      - tsx
+      - typescript
+      - unplugin-unused
+      - utf-8-validate
+      - yaml
+
+  '@voidzero-dev/vite-plus-test@0.1.20(@types/node@25.7.0)(@vitest/coverage-v8@4.1.6)(@voidzero-dev/vite-plus-core@0.1.20(@types/node@25.7.0)(esbuild@0.27.2)(jiti@2.7.0)(tsx@4.21.0)(typescript@6.0.3)(yaml@2.8.3))(esbuild@0.27.2)(happy-dom@20.9.0)(jiti@2.7.0)(tsx@4.21.0)(typescript@6.0.3)(yaml@2.8.3)':
     dependencies:
       '@standard-schema/spec': 1.1.0
       '@types/chai': 5.2.3
@@ -16051,6 +16311,30 @@ snapshots:
       - react-dom
       - utf-8-validate
 
+  storybook@10.3.6(@testing-library/dom@10.4.1)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(vite-plus@0.1.20(@types/node@25.7.0)(@vitest/coverage-v8@4.1.6)(@voidzero-dev/vite-plus-core@0.1.20(@types/node@25.7.0)(esbuild@0.27.2)(jiti@2.7.0)(tsx@4.21.0)(typescript@6.0.3)(yaml@2.8.3))(esbuild@0.27.2)(happy-dom@20.9.0)(jiti@2.7.0)(tsx@4.21.0)(typescript@6.0.3)(yaml@2.8.3)):
+    dependencies:
+      '@storybook/global': 5.0.0
+      '@storybook/icons': 2.0.1(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
+      '@testing-library/jest-dom': 6.9.1
+      '@testing-library/user-event': 14.6.1(@testing-library/dom@10.4.1)
+      '@vitest/expect': 3.2.4
+      '@vitest/spy': 3.2.4
+      '@webcontainer/env': 1.1.1
+      esbuild: 0.27.2
+      open: 10.2.0
+      recast: 0.23.11
+      semver: 7.7.4
+      use-sync-external-store: 1.6.0(react@19.2.6)
+      ws: 8.20.0
+    optionalDependencies:
+      vite-plus: 0.1.20(@types/node@25.7.0)(@vitest/coverage-v8@4.1.6)(@voidzero-dev/vite-plus-core@0.1.20(@types/node@25.7.0)(esbuild@0.27.2)(jiti@2.7.0)(tsx@4.21.0)(typescript@6.0.3)(yaml@2.8.3))(esbuild@0.27.2)(happy-dom@20.9.0)(jiti@2.7.0)(tsx@4.21.0)(typescript@6.0.3)(yaml@2.8.3)
+    transitivePeerDependencies:
+      - '@testing-library/dom'
+      - bufferutil
+      - react
+      - react-dom
+      - utf-8-validate
+
   streamdown@2.5.0(react-dom@19.2.6(react@19.2.6))(react@19.2.6):
     dependencies:
       clsx: 2.1.1
@@ -16618,6 +16902,53 @@ snapshots:
       - vite
       - yaml
 
+  vite-plus@0.1.20(@types/node@25.7.0)(@vitest/coverage-v8@4.1.6)(@voidzero-dev/vite-plus-core@0.1.20(@types/node@25.7.0)(esbuild@0.27.2)(jiti@2.7.0)(tsx@4.21.0)(typescript@6.0.3)(yaml@2.8.3))(esbuild@0.27.2)(happy-dom@20.9.0)(jiti@2.7.0)(tsx@4.21.0)(typescript@6.0.3)(yaml@2.8.3):
+    dependencies:
+      '@oxc-project/types': 0.127.0
+      '@voidzero-dev/vite-plus-core': 0.1.20(@types/node@25.7.0)(esbuild@0.27.2)(jiti@2.7.0)(tsx@4.21.0)(typescript@6.0.3)(yaml@2.8.3)
+      '@voidzero-dev/vite-plus-test': 0.1.20(@types/node@25.7.0)(@vitest/coverage-v8@4.1.6)(@voidzero-dev/vite-plus-core@0.1.20(@types/node@25.7.0)(esbuild@0.27.2)(jiti@2.7.0)(tsx@4.21.0)(typescript@6.0.3)(yaml@2.8.3))(esbuild@0.27.2)(happy-dom@20.9.0)(jiti@2.7.0)(tsx@4.21.0)(typescript@6.0.3)(yaml@2.8.3)
+      oxfmt: 0.46.0
+      oxlint: 1.61.0(oxlint-tsgolint@0.22.0)
+      oxlint-tsgolint: 0.22.0
+    optionalDependencies:
+      '@voidzero-dev/vite-plus-darwin-arm64': 0.1.20
+      '@voidzero-dev/vite-plus-darwin-x64': 0.1.20
+      '@voidzero-dev/vite-plus-linux-arm64-gnu': 0.1.20
+      '@voidzero-dev/vite-plus-linux-arm64-musl': 0.1.20
+      '@voidzero-dev/vite-plus-linux-x64-gnu': 0.1.20
+      '@voidzero-dev/vite-plus-linux-x64-musl': 0.1.20
+      '@voidzero-dev/vite-plus-win32-arm64-msvc': 0.1.20
+      '@voidzero-dev/vite-plus-win32-x64-msvc': 0.1.20
+    transitivePeerDependencies:
+      - '@arethetypeswrong/core'
+      - '@edge-runtime/vm'
+      - '@opentelemetry/api'
+      - '@tsdown/css'
+      - '@tsdown/exe'
+      - '@types/node'
+      - '@vitejs/devtools'
+      - '@vitest/coverage-istanbul'
+      - '@vitest/coverage-v8'
+      - '@vitest/ui'
+      - bufferutil
+      - esbuild
+      - happy-dom
+      - jiti
+      - jsdom
+      - less
+      - publint
+      - sass
+      - sass-embedded
+      - stylus
+      - sugarss
+      - terser
+      - tsx
+      - typescript
+      - unplugin-unused
+      - utf-8-validate
+      - vite
+      - yaml
+
   vite-tsconfig-paths@5.1.4(@voidzero-dev/vite-plus-core@0.1.20(@types/node@25.7.0)(esbuild@0.27.2)(jiti@2.7.0)(tsx@4.21.0)(typescript@6.0.3)(yaml@2.8.3))(typescript@6.0.3):
     dependencies:
       debug: 4.4.3(supports-color@8.1.1)
@@ -16647,7 +16978,7 @@ snapshots:
     dependencies:
       react: 19.2.6
       react-dom: 19.2.6(react@19.2.6)
-      vitest: '@voidzero-dev/vite-plus-test@0.1.20(@types/node@25.7.0)(@vitest/coverage-v8@4.1.6(@voidzero-dev/vite-plus-test@0.1.20))(@voidzero-dev/vite-plus-core@0.1.20(@types/node@25.7.0)(esbuild@0.27.2)(jiti@2.7.0)(tsx@4.21.0)(typescript@6.0.3)(yaml@2.8.3))(esbuild@0.27.2)(happy-dom@20.9.0)(jiti@2.7.0)(tsx@4.21.0)(typescript@6.0.3)(yaml@2.8.3)'
+      vitest: '@voidzero-dev/vite-plus-test@0.1.20(@types/node@25.7.0)(@vitest/coverage-v8@4.1.6)(@voidzero-dev/vite-plus-core@0.1.20(@types/node@25.7.0)(esbuild@0.27.2)(jiti@2.7.0)(tsx@4.21.0)(typescript@6.0.3)(yaml@2.8.3))(esbuild@0.27.2)(happy-dom@20.9.0)(jiti@2.7.0)(tsx@4.21.0)(typescript@6.0.3)(yaml@2.8.3)'
     optionalDependencies:
       '@types/react': 19.2.14
       '@types/react-dom': 19.2.3(@types/react@19.2.14)
