@@ -1,8 +1,10 @@
 'use client'
 
 import type { FC } from 'react'
-import { useEffect, useState } from 'react'
 import type { ApprovalContext } from '@/service/device-flow'
+import { Avatar } from '@langgenius/dify-ui/avatar'
+import { Button } from '@langgenius/dify-ui/button'
+import { useEffect, useState } from 'react'
 import { approveExternal, fetchApprovalContext } from '@/service/device-flow'
 import { approveErrorCopy } from '../utils/error-copy'
 
@@ -30,16 +32,22 @@ const AuthorizeSSO: FC<Props> = ({ onApproved, onError }) => {
   useEffect(() => {
     let cancelled = false
     fetchApprovalContext()
-      .then((c) => { if (!cancelled) setCtx(c) })
+      .then((c) => {
+        if (!cancelled)
+          setCtx(c)
+      })
       .catch((e) => {
         if (!cancelled)
           setLoadErr(approveErrorCopy(e))
       })
-    return () => { cancelled = true }
+    return () => {
+      cancelled = true
+    }
   }, [])
 
   const approve = async () => {
-    if (!ctx) return
+    if (!ctx)
+      return
     setBusy(true)
     try {
       await approveExternal(ctx, ctx.user_code)
@@ -53,12 +61,19 @@ const AuthorizeSSO: FC<Props> = ({ onApproved, onError }) => {
     }
   }
 
+  // loadErr and loading states render without the icon-circle pattern intentionally —
+  // they occur before the SSO identity is established, so there is no terminal
+  // state to decorate. The page.tsx error_* states cover post-lookup failures.
   if (loadErr) {
     return (
       <div>
         <h2 className="text-2xl font-semibold text-text-primary">This session is no longer valid</h2>
         <p className="mt-2 text-sm text-text-secondary">
-          Run <code className="rounded bg-components-panel-bg px-1">difyctl auth login</code> again to start a new sign-in.
+          Run
+          {' '}
+          <code className="rounded bg-components-input-bg-normal px-1 font-mono">difyctl auth login</code>
+          {' '}
+          again to start a new sign-in.
         </p>
       </div>
     )
@@ -68,29 +83,40 @@ const AuthorizeSSO: FC<Props> = ({ onApproved, onError }) => {
   }
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-5">
       <div>
         <h2 className="text-2xl font-semibold text-text-primary">Authorize Dify CLI</h2>
         <p className="mt-2 text-sm text-text-secondary">
-          Dify CLI (difyctl) is requesting access via SSO. If you did not start
-          this from your terminal, close this tab.
+          difyctl is requesting access via SSO. If you didn&apos;t start this from your terminal, close this tab.
         </p>
       </div>
-      <div className="rounded-lg border border-components-panel-border bg-components-panel-bg px-4 py-3">
-        <p className="text-sm text-text-secondary">
-          Signed in as <span className="font-medium text-text-primary">{ctx.subject_email}</span>
-        </p>
-        <p className="mt-1 text-sm text-text-secondary">
-          Issuer: <span className="font-medium text-text-primary">{ctx.subject_issuer}</span>
-        </p>
+      <div className="flex items-center gap-2.5 rounded-lg bg-background-section-burn px-3 py-2.5">
+        <Avatar
+          size="md"
+          avatar={null}
+          name={ctx.subject_email}
+        />
+        <div>
+          <p className="text-sm font-semibold text-text-primary">{ctx.subject_email}</p>
+          <p className="text-xs text-text-secondary">via SSO</p>
+        </div>
       </div>
-      <button
+      {ctx.subject_issuer && (
+        <div className="rounded-lg bg-background-section-burn px-3 py-2 text-sm text-text-secondary">
+          Identity provider:
+          {' '}
+          <span className="font-semibold text-text-primary">{ctx.subject_issuer}</span>
+        </div>
+      )}
+      <Button
+        variant="primary"
+        size="large"
+        className="w-full"
         onClick={approve}
         disabled={busy}
-        className="rounded-lg bg-components-button-primary-bg px-4 py-3 text-components-button-primary-text font-medium hover:bg-components-button-primary-bg-hover disabled:opacity-50"
       >
         Authorize
-      </button>
+      </Button>
     </div>
   )
 }
