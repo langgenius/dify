@@ -348,9 +348,7 @@ class WorkflowResponseConverter:
                 form_token_by_form_id = load_form_tokens_by_form_id(
                     human_input_form_ids,
                     session=session,
-                    surface=_INVOKE_FROM_TO_HITL_SURFACE.get(
-                        self._application_generate_entity.invoke_from
-                    ),
+                    surface=_INVOKE_FROM_TO_HITL_SURFACE.get(self._application_generate_entity.invoke_from),
                 )
 
         # Reconnect paths must preserve the same pause-reason contract as live streams;
