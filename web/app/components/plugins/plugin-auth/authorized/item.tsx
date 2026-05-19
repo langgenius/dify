@@ -19,6 +19,7 @@ import Input from '@/app/components/base/input'
 // eslint-disable-next-line no-restricted-imports -- legacy tooltip, migration tracked in #32767
 import Tooltip from '@/app/components/base/tooltip'
 import Indicator from '@/app/components/header/indicator'
+import { useSelector as useAppContextWithSelector } from '@/context/app-context'
 import { CredentialTypeEnum } from '../types'
 
 type ItemProps = {
@@ -59,6 +60,13 @@ const Item = ({
   const [renameValue, setRenameValue] = useState(credential.name)
   const isOAuth = credential.credential_type === CredentialTypeEnum.OAUTH2
   const isPersonal = credential.visibility === 'only_me'
+  const userProfile = useAppContextWithSelector(state => state.userProfile)
+  // The selected credential, if configured by another member, may not be
+  // re-selectable after switching away. Surface a warning on that row only.
+  const isSelected = showSelectedIcon && selectedCredentialId === credential.id
+  const isConfiguredByOther
+    = !!credential.created_by && !!userProfile?.id && credential.created_by !== userProfile.id
+  const showSwitchAwayHint = isSelected && isConfiguredByOther
   const showAction = useMemo(() => {
     return !(disableRename && disableEdit && disableDelete && disableSetDefault)
   }, [disableRename, disableEdit, disableDelete, disableSetDefault])
@@ -149,26 +157,34 @@ const Item = ({
         )
       }
       {
-        credential.from_enterprise
+        showSwitchAwayHint
           ? (
-            <Badge className="shrink-0">
-              {t('auth.enterprise', { ns: 'plugin' })}
-            </Badge>
+            <Tooltip popupContent={t('auth.onlyAtCreationHintTooltip', { ns: 'plugin' })}>
+              <div className="ml-2 shrink-0 cursor-help system-xs-regular text-text-tertiary">
+                {t('auth.onlyAtCreationHint', { ns: 'plugin' })}
+              </div>
+            </Tooltip>
           )
-          : (
-            <Badge
-              className={cn(
-                'shrink-0',
-                isPersonal
-                  ? 'border-components-badge-bg-gray-soft bg-components-badge-bg-gray-soft text-text-tertiary'
-                  : 'border-components-badge-bg-blue-soft bg-components-badge-bg-blue-soft text-text-accent',
-              )}
-            >
-              {isPersonal
-                ? t('auth.personal', { ns: 'plugin' })
-                : t('auth.shared', { ns: 'plugin' })}
-            </Badge>
-          )
+          : credential.from_enterprise
+            ? (
+              <Badge className="shrink-0">
+                {t('auth.enterprise', { ns: 'plugin' })}
+              </Badge>
+            )
+            : (
+              <Badge
+                className={cn(
+                  'shrink-0',
+                  isPersonal
+                    ? 'border-components-badge-bg-gray-soft bg-components-badge-bg-gray-soft text-text-tertiary'
+                    : 'border-components-badge-bg-blue-soft bg-components-badge-bg-blue-soft text-text-accent',
+                )}
+              >
+                {isPersonal
+                  ? t('auth.personal', { ns: 'plugin' })
+                  : t('auth.shared', { ns: 'plugin' })}
+              </Badge>
+            )
       }
       {
         showAction && !renaming && (

@@ -4,7 +4,6 @@ import type {
   FormSchema,
 } from '@/app/components/base/form/types'
 import { toast } from '@langgenius/dify-ui/toast'
-import { RiInformationLine } from '@remixicon/react'
 import {
   memo,
   useCallback,
@@ -20,8 +19,6 @@ import Loading from '@/app/components/base/loading'
 // eslint-disable-next-line no-restricted-imports -- legacy modal, migration tracked in #32767
 import Modal from '@/app/components/base/modal/modal'
 import PermissionSelector from '@/app/components/base/permission-selector'
-// eslint-disable-next-line no-restricted-imports -- legacy tooltip, migration tracked in #32767
-import Tooltip from '@/app/components/base/tooltip'
 import { PermissionLevel } from '@/models/permission'
 import { useMembers } from '@/service/use-common'
 import { ReadmeEntrance } from '../../readme-panel/entrance'
@@ -200,15 +197,6 @@ const ApiKeyModal = ({
             onChange={v => setPermission(v)}
             onMemberSelect={setSelectedMemberIDs}
           />
-          <Tooltip
-            popupContent={t('auth.onlyAtCreationHintTooltip', { ns: 'plugin' })}
-            popupClassName="max-w-[280px]"
-          >
-            <div className="mt-1 inline-flex items-center gap-1 system-xs-regular text-text-tertiary">
-              {t('auth.onlyAtCreationHint', { ns: 'plugin' })}
-              <RiInformationLine className="h-3.5 w-3.5 shrink-0 text-text-quaternary" />
-            </div>
-          </Tooltip>
         </div>
       )}
     </Modal>
