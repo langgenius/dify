@@ -506,6 +506,54 @@ describe('useFile', () => {
       expect(mockSetFiles).not.toHaveBeenCalled()
     })
 
+    it('should reject file when number_limits is reached', () => {
+      mockStoreFiles = [
+        { id: '1', name: 'a.txt' },
+        { id: '2', name: 'b.txt' },
+        { id: '3', name: 'c.txt' },
+        { id: '4', name: 'd.txt' },
+        { id: '5', name: 'e.txt' },
+      ] as FileEntity[]
+      const file = new File(['content'], 'test.txt', { type: 'text/plain' })
+
+      const { result } = renderHook(() => useFile(defaultFileConfig))
+      result.current.handleLocalFileUpload(file)
+
+      expect(mockNotify).toHaveBeenCalledWith(expect.objectContaining({ type: 'error', message: expect.stringContaining('5') }))
+      expect(mockSetFiles).not.toHaveBeenCalled()
+    })
+
+    it('should allow file when number_limits is not yet reached', () => {
+      mockStoreFiles = [
+        { id: '1', name: 'a.txt' },
+        { id: '2', name: 'b.txt' },
+      ] as FileEntity[]
+      const file = new File(['content'], 'test.txt', { type: 'text/plain' })
+
+      const { result } = renderHook(() => useFile(defaultFileConfig))
+      result.current.handleLocalFileUpload(file)
+
+      expect(mockNotify).not.toHaveBeenCalled()
+      expect(mockSetFiles).toHaveBeenCalled()
+    })
+
+    it('should not check number_limits when it is not set', () => {
+      mockStoreFiles = [
+        { id: '1', name: 'a.txt' },
+        { id: '2', name: 'b.txt' },
+        { id: '3', name: 'c.txt' },
+        { id: '4', name: 'd.txt' },
+        { id: '5', name: 'e.txt' },
+      ] as FileEntity[]
+      const configNoLimits = { ...defaultFileConfig, number_limits: 0 } as FileUpload
+      const file = new File(['content'], 'test.txt', { type: 'text/plain' })
+
+      const { result } = renderHook(() => useFile(configNoLimits))
+      result.current.handleLocalFileUpload(file)
+
+      expect(mockSetFiles).toHaveBeenCalled()
+    })
+
     it('should use empty arrays when allowed_file_types and allowed_file_extensions are undefined', () => {
       mockIsAllowedFileExtension.mockReturnValue(false)
       const file = new File(['content'], 'test.xyz', { type: 'application/xyz' })

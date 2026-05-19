@@ -246,6 +246,12 @@ export const useFile = (fileConfig: FileUpload, noNeedToCheckEnable = true) => {
       toast.error(`${t('fileUploader.fileExtensionNotSupport', { ns: 'common' })} ${file.type}`)
       return
     }
+    // Check file count limit
+    const { files: currentFiles } = fileStore.getState()
+    if (fileConfig.number_limits && currentFiles.length >= fileConfig.number_limits) {
+      toast.error(t('fileUploader.fileCountLimit', { ns: 'common', count: fileConfig.number_limits }))
+      return
+    }
     const allowedFileTypes = fileConfig.allowed_file_types
     const fileType = getSupportFileType(file.name, file.type, allowedFileTypes?.includes(SupportUploadFileTypes.custom))
     if (!checkSizeLimit(fileType, file.size))
@@ -294,7 +300,7 @@ export const useFile = (fileConfig: FileUpload, noNeedToCheckEnable = true) => {
       false,
     )
     reader.readAsDataURL(file)
-  }, [noNeedToCheckEnable, checkSizeLimit, t, handleAddFile, handleUpdateFile, params.token, fileConfig?.allowed_file_types, fileConfig?.allowed_file_extensions, fileConfig?.enabled])
+  }, [noNeedToCheckEnable, checkSizeLimit, t, handleAddFile, handleUpdateFile, params.token, fileConfig?.allowed_file_types, fileConfig?.allowed_file_extensions, fileConfig?.enabled, fileConfig?.number_limits, fileStore])
 
   const handleClipboardPasteFile = useCallback((e: ClipboardEvent<HTMLTextAreaElement>) => {
     const file = e.clipboardData?.files[0]
