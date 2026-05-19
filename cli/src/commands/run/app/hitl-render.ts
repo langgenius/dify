@@ -65,8 +65,7 @@ export function renderHitlBlock(_appId: string, payload: HitlPausePayload, isTTY
   if (actions.length > 0) {
     const inline = actions.map((a) => {
       const title = a.title ?? ''
-      const style = typeof a.button_style === 'string' && a.button_style !== '' ? ` ${cs.dim(`(${a.button_style})`)}` : ''
-      return `${cs.cyan(`[${a.id}]`)} ${title}${style}`
+      return `${cs.cyan(`[${a.id}]`)} ${title}`
     }).join('  ')
     lines.push(`  ${cs.dim('Actions:')} ${inline}`)
   }
