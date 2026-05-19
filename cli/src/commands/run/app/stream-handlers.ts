@@ -3,6 +3,7 @@ import type { StreamPrinter } from '../../../printers/stream-printer.js'
 import type { HitlPausePayload } from './sse-collector.js'
 import { newError } from '../../../errors/base.js'
 import { ErrorCode } from '../../../errors/codes.js'
+import { colorEnabled, colorScheme } from '../../../io/color.js'
 import { ThinkChunkFilter } from '../../../io/think-filter.js'
 import { RUN_MODES } from './handlers.js'
 import { HitlPauseError } from './sse-collector.js'
@@ -42,8 +43,10 @@ function handleCommonEvents(ev: SseEvent): boolean {
 class ChatStreamPrinter implements StreamPrinter {
   private convoId = ''
   private readonly filter: ThinkChunkFilter
-  constructor(think: boolean) {
+  private readonly isTTY: boolean
+  constructor(think: boolean, isTTY = false) {
     this.filter = new ThinkChunkFilter(think)
+    this.isTTY = isTTY
   }
 
   onEvent(out: NodeJS.WritableStream, errOut: NodeJS.WritableStream, ev: SseEvent): void {
@@ -72,8 +75,10 @@ class ChatStreamPrinter implements StreamPrinter {
   onEnd(out: NodeJS.WritableStream, errOut: NodeJS.WritableStream): void {
     this.filter.flush(out, errOut)
     out.write('\n')
-    if (this.convoId !== '')
-      errOut.write(`hint: continue this conversation with --conversation ${this.convoId}\n`)
+    if (this.convoId !== '') {
+      const cs = colorScheme(colorEnabled(this.isTTY))
+      errOut.write(`${cs.magenta('hint:')} continue this conversation with --conversation ${cs.cyan(this.convoId)}\n`)
+    }
   }
 }
 
@@ -139,17 +144,17 @@ class WorkflowStreamPrinter implements StreamPrinter {
   }
 }
 
-const FACTORIES: Record<string, (think: boolean) => StreamPrinter> = {
-  [RUN_MODES.Chat]: think => new ChatStreamPrinter(think),
-  [RUN_MODES.AdvancedChat]: think => new ChatStreamPrinter(think),
-  [RUN_MODES.AgentChat]: think => new ChatStreamPrinter(think),
-  [RUN_MODES.Completion]: think => new CompletionStreamPrinter(think),
-  [RUN_MODES.Workflow]: _think => new WorkflowStreamPrinter(),
+const FACTORIES: Record<string, (think: boolean, isTTY: boolean) => StreamPrinter> = {
+  [RUN_MODES.Chat]: (think, isTTY) => new ChatStreamPrinter(think, isTTY),
+  [RUN_MODES.AdvancedChat]: (think, isTTY) => new ChatStreamPrinter(think, isTTY),
+  [RUN_MODES.AgentChat]: (think, isTTY) => new ChatStreamPrinter(think, isTTY),
+  [RUN_MODES.Completion]: (think, _isTTY) => new CompletionStreamPrinter(think),
+  [RUN_MODES.Workflow]: (_think, _isTTY) => new WorkflowStreamPrinter(),
 }
 
-export function streamPrinterFor(mode: string, think = false): StreamPrinter {
+export function streamPrinterFor(mode: string, think = false, isTTY = false): StreamPrinter {
   const f = FACTORIES[mode]
   if (f === undefined)
     throw newError(ErrorCode.Unknown, `unsupported streaming mode "${mode}"`)
-  return f(think)
+  return f(think, isTTY)
 }

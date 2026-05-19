@@ -62,8 +62,8 @@ describe('difyFileType', () => {
     expect(difyFileType('notes.md')).toBe('document')
   })
 
-  it('returns custom for unknown extension', () => {
-    expect(difyFileType('data.xyz')).toBe('custom')
+  it('returns document for unknown extension', () => {
+    expect(difyFileType('data.xyz')).toBe('document')
   })
 
   it('returns custom for no extension', () => {

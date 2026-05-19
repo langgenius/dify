@@ -1,3 +1,4 @@
+import type { ColorScheme } from '../../../io/color.js'
 import type { TextHandler } from '../../../printers/format-text.js'
 
 export const RUN_MODES = {
@@ -59,11 +60,11 @@ export const workflowTextHandler: TextHandler = {
   },
 }
 
-export function chatConversationHint(resp: Record<string, unknown>): string | undefined {
+export function chatConversationHint(resp: Record<string, unknown>, cs: ColorScheme): string | undefined {
   const cid = pickString(resp, 'conversation_id')
   if (cid === undefined || cid === '')
     return undefined
-  return `hint: continue this conversation with --conversation ${cid}\n`
+  return `${cs.magenta('hint:')} continue this conversation with --conversation ${cs.cyan(cid)}\n`
 }
 
 function pickString(o: Record<string, unknown>, key: string): string | undefined {

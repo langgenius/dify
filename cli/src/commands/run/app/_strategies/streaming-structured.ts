@@ -1,6 +1,7 @@
 import type { SseEvent } from '../../../../http/sse.js'
 import type { RunContext, RunStrategy } from './index.js'
 import { buildRunBody } from '../../../../api/app-run.js'
+import { colorEnabled, colorScheme } from '../../../../io/color.js'
 import { startSpinner } from '../../../../io/spinner.js'
 import { extractThinkBlocks, stripThinkBlocks } from '../../../../io/think-filter.js'
 import { chatConversationHint, newAppRunObject, RUN_MODES } from '../handlers.js'
@@ -89,7 +90,8 @@ export class StreamingStructuredStrategy implements RunStrategy {
     const respMode = typeof processedResp.mode === 'string' && processedResp.mode !== '' ? processedResp.mode : mode
     deps.io.out.write(printFlags.toPrinter(format).print(newAppRunObject(respMode, processedResp)))
     if (isText && CHAT_MODES.has(respMode)) {
-      const hint = chatConversationHint(processedResp)
+      const cs = colorScheme(colorEnabled(deps.io.isErrTTY))
+      const hint = chatConversationHint(processedResp, cs)
       if (hint !== undefined)
         deps.io.err.write(hint)
     }

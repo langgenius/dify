@@ -21,7 +21,7 @@ export class AppRunPrintFlags extends CompositePrintFlags {
     return [this.jsonYaml, this.text]
   }
 
-  toStreamPrinter(mode: string, think = false): StreamPrinter {
-    return streamPrinterFor(mode, think)
+  toStreamPrinter(mode: string, think = false, isTTY = false): StreamPrinter {
+    return streamPrinterFor(mode, think, isTTY)
   }
 }
