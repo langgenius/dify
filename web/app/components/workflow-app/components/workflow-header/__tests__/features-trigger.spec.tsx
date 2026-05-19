@@ -127,8 +127,8 @@ vi.mock('@/app/components/app/app-publisher', () => ({
         <button type="button" onClick={() => { Promise.resolve(props.onPublish?.({ url: '/apps/app-1/workflows/publish', title: 'Test title', releaseNotes: 'Test notes' })).catch(() => undefined) }}>
           publisher-publish-with-params
         </button>
-        <button type="button" onClick={() => { Promise.resolve(props.onPublish?.({ url: '/apps/app-id/workflows/publish/evaluation', title: 'Evaluation title', releaseNotes: 'Evaluation notes' })).catch(() => undefined) }}>
-          publisher-publish-evaluation
+        <button type="button" onClick={() => { Promise.resolve(props.onPublish?.({ url: '/apps/app-id/workflows/publish/custom', title: 'Custom title', releaseNotes: 'Custom notes' })).catch(() => undefined) }}>
+          publisher-publish-custom
         </button>
       </div>
     )
@@ -466,14 +466,14 @@ describe('FeaturesTrigger', () => {
       renderWithToast(<FeaturesTrigger />)
 
       // Act
-      await user.click(screen.getByRole('button', { name: 'publisher-publish-evaluation' }))
+      await user.click(screen.getByRole('button', { name: 'publisher-publish-custom' }))
 
       // Assert
       await waitFor(() => {
         expect(mockPublishWorkflow).toHaveBeenCalledWith({
-          url: '/apps/app-id/workflows/publish/evaluation',
-          title: 'Evaluation title',
-          releaseNotes: 'Evaluation notes',
+          url: '/apps/app-id/workflows/publish/custom',
+          title: 'Custom title',
+          releaseNotes: 'Custom notes',
         })
       })
     })

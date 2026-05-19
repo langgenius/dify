@@ -1,6 +1,7 @@
 'use client'
 
 import type { FC } from 'react'
+import type { StudioPageType } from '.'
 import type { AppListQuery } from '@/contract/console/apps'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -37,9 +38,11 @@ const CreateFromDSLModal = dynamic(() => import('@/app/components/app/create-fro
 
 type Props = {
   controlRefreshList?: number
+  pageType?: StudioPageType
 }
 const List: FC<Props> = ({
   controlRefreshList = 0,
+  pageType = 'apps',
 }) => {
   const { t } = useTranslation()
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
@@ -246,7 +249,7 @@ const List: FC<Props> = ({
                     onOpenTagManagement={() => setShowTagManagementModal(true)}
                   />
                 ))
-              : <Empty />}
+              : <Empty message={pageType === 'snippets' ? t('tabs.noSnippetsFound', { ns: 'workflow' }) : undefined} />}
           {isFetchingNextPage && (
             <AppCardSkeleton count={3} />
           )}

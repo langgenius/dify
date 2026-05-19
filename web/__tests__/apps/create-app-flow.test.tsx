@@ -59,8 +59,8 @@ vi.mock('@/context/provider-context', () => ({
   }),
 }))
 
-vi.mock('@/hooks/use-snippet-and-evaluation-plan-access', () => ({
-  useSnippetAndEvaluationPlanAccess: () => ({
+vi.mock('@/hooks/use-snippet-plan-access', () => ({
+  useSnippetPlanAccess: () => ({
     canAccess: true,
     isReady: true,
   }),

@@ -118,7 +118,7 @@ export const parseCurrentPlan = (data: CurrentPlanInfoBackend) => {
   }
 }
 
-export const canAccessSnippetsAndEvaluation = ({
+export const canAccessSnippets = ({
   enableBilling,
   isFetchedPlan,
   planType,

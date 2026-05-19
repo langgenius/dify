@@ -1,7 +1,6 @@
 import type { NodeDefault } from '../../types'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { AppTypeEnum } from '@/types/app'
 import { BlockEnum } from '../../types'
 import Blocks from '../blocks'
 import { BlockClassificationEnum } from '../types'
@@ -43,27 +42,8 @@ const createBlock = (type: BlockEnum, title: string, classification = BlockClass
 describe('Blocks', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    runtimeState.appType = AppTypeEnum.WORKFLOW
+    runtimeState.appType = 'workflow'
     runtimeState.nodes = []
-  })
-
-  it('should hide human input blocks when the app is an evaluation workflow', () => {
-    runtimeState.appType = AppTypeEnum.EVALUATION
-
-    render(
-      <Blocks
-        searchText=""
-        onSelect={vi.fn()}
-        availableBlocksTypes={[BlockEnum.HumanInput, BlockEnum.LLM]}
-        blocks={[
-          createBlock(BlockEnum.HumanInput, 'Human Input'),
-          createBlock(BlockEnum.LLM, 'LLM'),
-        ]}
-      />,
-    )
-
-    expect(screen.queryByText('Human Input')).not.toBeInTheDocument()
-    expect(screen.getByText('LLM')).toBeInTheDocument()
   })
 
   it('should render grouped blocks, filter duplicate knowledge-base nodes, and select a block', async () => {

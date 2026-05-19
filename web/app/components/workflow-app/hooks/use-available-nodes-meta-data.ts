@@ -2,7 +2,6 @@ import type { AvailableNodesMetaData } from '@/app/components/workflow/hooks-sto
 import type { DocPathWithoutLang } from '@/types/doc-paths'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useStore as useAppStore } from '@/app/components/app/store'
 import { WORKFLOW_COMMON_NODES } from '@/app/components/workflow/constants/node'
 import AnswerDefault from '@/app/components/workflow/nodes/answer/default'
 import EndDefault from '@/app/components/workflow/nodes/end/default'
@@ -11,16 +10,13 @@ import TriggerPluginDefault from '@/app/components/workflow/nodes/trigger-plugin
 import TriggerScheduleDefault from '@/app/components/workflow/nodes/trigger-schedule/default'
 import TriggerWebhookDefault from '@/app/components/workflow/nodes/trigger-webhook/default'
 import { BlockEnum } from '@/app/components/workflow/types'
-import { isEvaluationWorkflow, isEvaluationWorkflowRestrictedNodeType } from '@/app/components/workflow/utils/evaluation-workflow'
 import { useDocLink } from '@/context/i18n'
 import { useIsChatMode } from './use-is-chat-mode'
 
 export const useAvailableNodesMetaData = () => {
   const { t } = useTranslation()
   const isChatMode = useIsChatMode()
-  const appType = useAppStore(s => s.appDetail?.workflow_kind)
   const docLink = useDocLink()
-  const isEvaluationWorkflowType = isEvaluationWorkflow(appType)
 
   const startNodeMetaData = useMemo(() => ({
     ...StartDefault,
@@ -31,7 +27,7 @@ export const useAvailableNodesMetaData = () => {
   }), [isChatMode])
 
   const mergedNodesMetaData = useMemo(() => {
-    const nodes = [
+    return [
       ...WORKFLOW_COMMON_NODES,
       startNodeMetaData,
       ...(
@@ -45,12 +41,7 @@ export const useAvailableNodesMetaData = () => {
             ]
       ),
     ]
-
-    if (!isEvaluationWorkflowType)
-      return nodes
-
-    return nodes.filter(node => !isEvaluationWorkflowRestrictedNodeType(node.metaData.type))
-  }, [isChatMode, isEvaluationWorkflowType, startNodeMetaData])
+  }, [isChatMode, startNodeMetaData])
 
   const availableNodesMetaData = useMemo(() => mergedNodesMetaData.map((node) => {
     const { metaData } = node

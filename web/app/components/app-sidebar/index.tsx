@@ -37,12 +37,16 @@ type IAppDetailNavProps = {
     disabled?: boolean
   }>
   extraInfo?: (modeState: string) => React.ReactNode
+  renderHeader?: (modeState: string) => React.ReactNode
+  renderNavigation?: (modeState: string) => React.ReactNode
   appInfoActions?: AppInfoActions
 }
 
 const AppDetailNav = ({
   navigation,
   extraInfo,
+  renderHeader,
+  renderNavigation,
   iconType = 'app',
   appInfoActions,
 }: IAppDetailNavProps) => {
@@ -122,18 +126,20 @@ const AppDetailNav = ({
           expand ? 'p-2' : 'p-1',
         )}
       >
-        {iconType === 'app' && (
-          appInfoActions
-            ? (
-                <AppInfoView
-                  expand={expand}
-                  actions={appInfoActions}
-                  renderDetail={false}
-                />
-              )
-            : <AppInfo expand={expand} />
-        )}
-        {iconType !== 'app' && (
+        {renderHeader
+          ? renderHeader(appSidebarExpand)
+          : iconType === 'app' && (
+            appInfoActions
+              ? (
+                  <AppInfoView
+                    expand={expand}
+                    actions={appInfoActions}
+                    renderDetail={false}
+                  />
+                )
+              : <AppInfo expand={expand} />
+          )}
+        {!renderHeader && iconType !== 'app' && (
           <DatasetInfo expand={expand} />
         )}
       </div>
@@ -162,18 +168,20 @@ const AppDetailNav = ({
           expand ? 'px-3 py-2' : 'p-3',
         )}
       >
-        {navigation.map((item, index) => {
-          return (
-            <NavLink
-              key={index}
-              mode={appSidebarExpand}
-              iconMap={{ selected: item.selectedIcon, normal: item.icon }}
-              name={item.name}
-              href={item.href}
-              disabled={!!item.disabled}
-            />
-          )
-        })}
+        {renderNavigation
+          ? renderNavigation(appSidebarExpand)
+          : navigation.map((item, index) => {
+              return (
+                <NavLink
+                  key={index}
+                  mode={appSidebarExpand}
+                  iconMap={{ selected: item.selectedIcon, normal: item.icon }}
+                  name={item.name}
+                  href={item.href}
+                  disabled={!!item.disabled}
+                />
+              )
+            })}
       </nav>
       {iconType !== 'app' && extraInfo && extraInfo(appSidebarExpand)}
     </div>

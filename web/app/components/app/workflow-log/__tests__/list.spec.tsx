@@ -146,7 +146,6 @@ const createMockWorkflowLog = (overrides: Partial<WorkflowAppLogDetail> = {}): W
     email: 'test@example.com',
   },
   created_at: Date.now(),
-  evaluation: [],
   ...overrides,
 })
 
@@ -217,7 +216,6 @@ describe('WorkflowAppLogList', () => {
       expect(screen.getByText('appLog.table.header.runtime'))!.toBeInTheDocument()
       expect(screen.getByText('appLog.table.header.tokens'))!.toBeInTheDocument()
       expect(screen.getByText('appLog.table.header.user'))!.toBeInTheDocument()
-      expect(screen.getByText('appLog.table.header.evaluation'))!.toBeInTheDocument()
     })
 
     it('should render trigger column for workflow apps', () => {
@@ -525,34 +523,6 @@ describe('WorkflowAppLogList', () => {
       // The row should have the selected class
       // The row should have the selected class
       expect(dataRow)!.toHaveClass('bg-background-default-hover')
-    })
-
-    it('should open evaluation popover without opening drawer when clicking evaluation trigger', async () => {
-      const user = userEvent.setup()
-      const logs = createMockLogsResponse([
-        createMockWorkflowLog({
-          evaluation: [{
-            name: 'Faithfulness',
-            value: 0.98,
-            nodeInfo: {
-              node_id: 'node-1',
-              title: 'Knowledge Retrieval',
-              type: 'knowledge-retrieval',
-            },
-          }],
-        }),
-      ])
-
-      render(
-        <WorkflowAppLogList logs={logs} appDetail={createMockApp()} onRefresh={defaultOnRefresh} />,
-      )
-
-      await user.click(screen.getByRole('button', { name: 'appLog.table.header.evaluation' }))
-
-      expect(await screen.findByTestId('workflow-log-evaluation-popover')).toBeInTheDocument()
-      expect(screen.getByText('Faithfulness')).toBeInTheDocument()
-      expect(screen.getByText('Knowledge Retrieval')).toBeInTheDocument()
-      expect(screen.queryByRole('heading', { name: 'appLog.runDetail.workflowTitle' })).not.toBeInTheDocument()
     })
   })
 

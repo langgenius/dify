@@ -1,3 +1,4 @@
+/* eslint-disable react/static-components -- Mirrors the existing TanStack withForm factory pattern for input-field forms. */
 import type { FormData, InputFieldFormProps } from '@/app/components/rag-pipeline/components/panel/input-field/editor/form/types'
 import type { MoreInfo } from '@/app/components/workflow/types'
 import { Button } from '@langgenius/dify-ui/button'
@@ -28,6 +29,8 @@ const SnippetInputFieldForm = ({ initialData, supportFile = false, onCancel, onS
         if (!result.success) {
           const issues = result.error.issues
           const firstIssue = issues[0]
+          if (!firstIssue)
+            return t('errorMsg.fieldRequired', { ns: 'common' })
           const errorMessage = `"${firstIssue.path.join('.')}" ${firstIssue.message}`
           toast.error(errorMessage)
           return errorMessage

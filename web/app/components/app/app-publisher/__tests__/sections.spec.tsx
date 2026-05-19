@@ -69,14 +69,12 @@ describe('app-publisher sections', () => {
         handleRestore={handleRestore}
         isChatApp
         multipleModelConfigs={[]}
-        onWorkflowTypeSwitch={vi.fn()}
         publishDisabled={false}
         published={false}
         publishedAt={Date.now()}
         publishShortcut={['ctrl', '⇧', 'P']}
         startNodeLimitExceeded={false}
         upgradeHighlightStyle={{}}
-        workflowTypeSwitchDisabled={false}
       />,
     )
 
@@ -109,14 +107,12 @@ describe('app-publisher sections', () => {
         handleRestore={vi.fn()}
         isChatApp={false}
         multipleModelConfigs={[]}
-        onWorkflowTypeSwitch={vi.fn()}
         publishDisabled={false}
         published={false}
         publishedAt={undefined}
         publishShortcut={['ctrl', '⇧', 'P']}
         startNodeLimitExceeded={false}
         upgradeHighlightStyle={{}}
-        workflowTypeSwitchDisabled={false}
       />,
     )
 
@@ -135,14 +131,12 @@ describe('app-publisher sections', () => {
         handleRestore={vi.fn()}
         isChatApp={false}
         multipleModelConfigs={[{ id: '1' } as any]}
-        onWorkflowTypeSwitch={vi.fn()}
         publishDisabled={false}
         published={false}
         publishedAt={undefined}
         publishShortcut={['ctrl', '⇧', 'P']}
         startNodeLimitExceeded={false}
         upgradeHighlightStyle={{}}
-        workflowTypeSwitchDisabled={false}
       />,
     )
 
@@ -161,83 +155,16 @@ describe('app-publisher sections', () => {
         handleRestore={vi.fn()}
         isChatApp={false}
         multipleModelConfigs={[]}
-        onWorkflowTypeSwitch={vi.fn()}
         publishDisabled={false}
         published={false}
         publishedAt={undefined}
         publishShortcut={['ctrl', '⇧', 'P']}
         startNodeLimitExceeded
         upgradeHighlightStyle={{}}
-        workflowTypeSwitchDisabled={false}
       />,
     )
 
     expect(screen.getByText('publishLimit.startNodeDesc')).toBeInTheDocument()
-  })
-
-  it('should render workflow type switch action and call switch handler', () => {
-    const onWorkflowTypeSwitch = vi.fn()
-
-    render(
-      <PublisherSummarySection
-        debugWithMultipleModel={false}
-        draftUpdatedAt={Date.now()}
-        formatTimeFromNow={() => '1 minute ago'}
-        handlePublish={vi.fn()}
-        handleRestore={vi.fn()}
-        isChatApp={false}
-        multipleModelConfigs={[]}
-        onWorkflowTypeSwitch={onWorkflowTypeSwitch}
-        publishDisabled={false}
-        published={false}
-        publishedAt={undefined}
-        publishShortcut={['ctrl', '⇧', 'P']}
-        startNodeLimitExceeded={false}
-        upgradeHighlightStyle={{}}
-        workflowTypeSwitchConfig={{
-          targetType: 'evaluation',
-          publishLabelKey: 'common.publishAsEvaluationWorkflow',
-          switchLabelKey: 'common.switchToEvaluationWorkflow',
-          tipKey: 'common.switchToEvaluationWorkflowTip',
-        }}
-        workflowTypeSwitchDisabled={false}
-      />,
-    )
-
-    fireEvent.click(screen.getByText('common.publishAsEvaluationWorkflow'))
-
-    expect(onWorkflowTypeSwitch).toHaveBeenCalledTimes(1)
-  })
-
-  it('should disable workflow type switch when a disabled reason is provided', () => {
-    render(
-      <PublisherSummarySection
-        debugWithMultipleModel={false}
-        draftUpdatedAt={Date.now()}
-        formatTimeFromNow={() => '1 minute ago'}
-        handlePublish={vi.fn()}
-        handleRestore={vi.fn()}
-        isChatApp={false}
-        multipleModelConfigs={[]}
-        onWorkflowTypeSwitch={vi.fn()}
-        publishDisabled={false}
-        published={false}
-        publishedAt={undefined}
-        publishShortcut={['ctrl', '⇧', 'P']}
-        startNodeLimitExceeded={false}
-        upgradeHighlightStyle={{}}
-        workflowTypeSwitchConfig={{
-          targetType: 'evaluation',
-          publishLabelKey: 'common.publishAsEvaluationWorkflow',
-          switchLabelKey: 'common.switchToEvaluationWorkflow',
-          tipKey: 'common.switchToEvaluationWorkflowTip',
-        }}
-        workflowTypeSwitchDisabled
-        workflowTypeSwitchDisabledReason="common.switchToEvaluationWorkflowDisabledTip"
-      />,
-    )
-
-    expect(screen.getByRole('button', { name: /common\.publishAsEvaluationWorkflow/i })).toBeDisabled()
   })
 
   it('should render loading access state and access mode labels when enabled', () => {

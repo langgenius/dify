@@ -32,22 +32,9 @@ const OrchestrateSelectedIcon = ({ className }: { className?: string }) => {
   return <SidebarCssIcon iconClassName="i-ri-terminal-window-fill" className={className} />
 }
 
-const EvaluationIcon = ({ className }: { className?: string }) => {
-  return <SidebarCssIcon iconClassName="i-custom-vender-line-others-evaluation" className={className} />
-}
-
-const EvaluationSelectedIcon = ({ className }: { className?: string }) => {
-  return <SidebarCssIcon iconClassName="i-custom-vender-line-others-evaluation" className={className} />
-}
-
 const ORCHESTRATE_ICONS: { normal: NavIcon, selected: NavIcon } = {
   normal: OrchestrateIcon,
   selected: OrchestrateSelectedIcon,
-}
-
-const EVALUATION_ICONS: { normal: NavIcon, selected: NavIcon } = {
-  normal: EvaluationIcon,
-  selected: EvaluationSelectedIcon,
 }
 
 const SnippetLayout = ({
@@ -82,14 +69,6 @@ const SnippetLayout = ({
               iconMap={ORCHESTRATE_ICONS}
               href={`/snippets/${snippetId}/orchestrate`}
               active={section === 'orchestrate'}
-            />
-            <NavLink
-              mode={mode}
-              name={t('sectionEvaluation')}
-              iconMap={EVALUATION_ICONS}
-              href={`/snippets/${snippetId}/evaluation`}
-              active={section === 'evaluation'}
-              disabled={!snippet.is_published}
             />
           </>
         )}

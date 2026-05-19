@@ -102,30 +102,14 @@ describe('SnippetLayout', () => {
         <SnippetLayout
           snippetId="snippet-1"
           snippet={createSnippet()}
-          section="evaluation"
-        >
-          <div>content</div>
-        </SnippetLayout>,
-      )
-
-      expect(screen.getByRole('link', { name: 'snippet.sectionOrchestrate' })).toHaveAttribute('href', '/snippets/snippet-1/orchestrate')
-      expect(screen.getByRole('link', { name: 'snippet.sectionEvaluation' })).toHaveAttribute('href', '/snippets/snippet-1/evaluation')
-      expect(screen.getByRole('link', { name: 'snippet.sectionEvaluation' })).toHaveAttribute('aria-current', 'page')
-    })
-
-    it('should disable the evaluation menu when the snippet is unpublished', () => {
-      render(
-        <SnippetLayout
-          snippetId="snippet-1"
-          snippet={createSnippet({ is_published: false })}
           section="orchestrate"
         >
           <div>content</div>
         </SnippetLayout>,
       )
 
-      expect(screen.getByRole('button', { name: 'snippet.sectionEvaluation' })).toBeDisabled()
-      expect(screen.queryByRole('link', { name: 'snippet.sectionEvaluation' })).not.toBeInTheDocument()
+      expect(screen.getByRole('link', { name: 'snippet.sectionOrchestrate' })).toHaveAttribute('href', '/snippets/snippet-1/orchestrate')
+      expect(screen.getByRole('link', { name: 'snippet.sectionOrchestrate' })).toHaveAttribute('aria-current', 'page')
     })
   })
 })

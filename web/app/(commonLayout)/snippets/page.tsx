@@ -1,11 +1,11 @@
 import Apps from '@/app/components/apps'
-import SnippetAndEvaluationPlanGuard from '@/app/components/billing/snippet-and-evaluation-plan-guard'
+import SnippetPlanGuard from '@/app/components/billing/snippet-plan-guard'
 
 const SnippetsPage = () => {
   return (
-    <SnippetAndEvaluationPlanGuard fallbackHref="/apps">
+    <SnippetPlanGuard fallbackHref="/apps">
       <Apps pageType="snippets" />
-    </SnippetAndEvaluationPlanGuard>
+    </SnippetPlanGuard>
   )
 }
 

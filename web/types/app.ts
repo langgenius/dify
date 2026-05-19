@@ -68,13 +68,11 @@ export type AppTypeEnum
     | 'chat'
     | 'rag-pipeline'
     | 'snippet'
-    | 'evaluation'
 export const AppTypeEnum = {
   WORKFLOW: 'workflow' as AppTypeEnum,
   CHAT: 'chat' as AppTypeEnum,
   RAG_PIPELINE: 'rag-pipeline' as AppTypeEnum,
   SNIPPET: 'snippet' as AppTypeEnum,
-  EVALUATION: 'evaluation' as AppTypeEnum,
 } as const
 
 /**

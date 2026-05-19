@@ -3,12 +3,10 @@ import type { FC } from 'react'
 import type { PluginDefaultValue } from '@/app/components/workflow/block-selector/types'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useStore as useAppStore } from '@/app/components/app/store'
 import { Home, TriggerAll } from '@/app/components/base/icons/src/vender/workflow'
 import NodeSelector from '@/app/components/workflow/block-selector'
 import { TabsEnum } from '@/app/components/workflow/block-selector/types'
 import { BlockEnum } from '@/app/components/workflow/types'
-import { isEvaluationWorkflow } from '@/app/components/workflow/utils/evaluation-workflow'
 import StartNodeOption from './start-node-option'
 
 type StartNodeSelectionPanelProps = {
@@ -21,9 +19,7 @@ const StartNodeSelectionPanel: FC<StartNodeSelectionPanelProps> = ({
   onSelectTrigger,
 }) => {
   const { t } = useTranslation()
-  const appType = useAppStore(s => s.appDetail?.workflow_kind)
   const [showTriggerSelector, setShowTriggerSelector] = useState(false)
-  const isEvaluationWorkflowType = isEvaluationWorkflow(appType)
 
   const handleTriggerSelect = useCallback((nodeType: BlockEnum, toolConfig?: PluginDefaultValue) => {
     setShowTriggerSelector(false)
@@ -43,36 +39,34 @@ const StartNodeSelectionPanel: FC<StartNodeSelectionPanelProps> = ({
         onClick={onSelectUserInput}
       />
 
-      {!isEvaluationWorkflowType && (
-        <NodeSelector
-          open={showTriggerSelector}
-          onOpenChange={setShowTriggerSelector}
-          onSelect={handleTriggerSelect}
-          placement="right"
-          offset={-200}
-          noBlocks={true}
-          showStartTab={true}
-          defaultActiveTab={TabsEnum.Start}
-          forceShowStartContent={true}
-          availableBlocksTypes={[
-            BlockEnum.TriggerSchedule,
-            BlockEnum.TriggerWebhook,
-            BlockEnum.TriggerPlugin,
-          ]}
-          trigger={() => (
-            <StartNodeOption
-              icon={(
-                <div className="radius-lg flex h-9 w-9 items-center justify-center border-[0.5px] border-transparent bg-util-colors-blue-brand-blue-brand-500 p-2">
-                  <TriggerAll className="h-5 w-5 text-white" />
-                </div>
-              )}
-              title={t('onboarding.trigger', { ns: 'workflow' })}
-              description={t('onboarding.triggerDescription', { ns: 'workflow' })}
-              onClick={() => setShowTriggerSelector(true)}
-            />
-          )}
-        />
-      )}
+      <NodeSelector
+        open={showTriggerSelector}
+        onOpenChange={setShowTriggerSelector}
+        onSelect={handleTriggerSelect}
+        placement="right"
+        offset={-200}
+        noBlocks={true}
+        showStartTab={true}
+        defaultActiveTab={TabsEnum.Start}
+        forceShowStartContent={true}
+        availableBlocksTypes={[
+          BlockEnum.TriggerSchedule,
+          BlockEnum.TriggerWebhook,
+          BlockEnum.TriggerPlugin,
+        ]}
+        trigger={() => (
+          <StartNodeOption
+            icon={(
+              <div className="radius-lg flex h-9 w-9 items-center justify-center border-[0.5px] border-transparent bg-util-colors-blue-brand-blue-brand-500 p-2">
+                <TriggerAll className="h-5 w-5 text-white" />
+              </div>
+            )}
+            title={t('onboarding.trigger', { ns: 'workflow' })}
+            description={t('onboarding.triggerDescription', { ns: 'workflow' })}
+            onClick={() => setShowTriggerSelector(true)}
+          />
+        )}
+      />
     </div>
   )
 }

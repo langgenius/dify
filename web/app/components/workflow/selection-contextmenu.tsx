@@ -21,7 +21,7 @@ import {
 import { useTranslation } from 'react-i18next'
 import { getNodesBounds, useStore as useReactFlowStore, useStoreApi } from 'reactflow'
 import { useCollaborativeWorkflow } from '@/app/components/workflow/hooks/use-collaborative-workflow'
-import { useSnippetAndEvaluationPlanAccess } from '@/hooks/use-snippet-and-evaluation-plan-access'
+import { useSnippetPlanAccess } from '@/hooks/use-snippet-plan-access'
 import { useRouter } from '@/next/navigation'
 import { consoleClient } from '@/service/client'
 import { useCreateSnippetMutation } from '@/service/use-snippets'
@@ -338,7 +338,7 @@ const getSelectedSnippetGraph = (
 const SelectionContextmenu = () => {
   const { t } = useTranslation()
   const { push } = useRouter()
-  const { canAccess: canAccessSnippetsAndEvaluation } = useSnippetAndEvaluationPlanAccess()
+  const { canAccess: canAccessSnippets } = useSnippetPlanAccess()
   const createSnippetMutation = useCreateSnippetMutation()
   const { getNodesReadOnly } = useNodesReadOnly()
   const { handleNodesCopy, handleNodesDelete, handleNodesDuplicate } = useNodesInteractions()
@@ -391,7 +391,7 @@ const SelectionContextmenu = () => {
   }, [selectedNodes])
 
   const handleOpenCreateSnippetDialog = useCallback(() => {
-    if (!canAccessSnippetsAndEvaluation || isAddToSnippetDisabled)
+    if (!canAccessSnippets || isAddToSnippetDisabled)
       return
 
     const nodes = store.getState().getNodes()
@@ -407,7 +407,7 @@ const SelectionContextmenu = () => {
     }))
     setIsCreateSnippetDialogOpen(true)
     handleSelectionContextmenuCancel()
-  }, [canAccessSnippetsAndEvaluation, handleSelectionContextmenuCancel, isAddToSnippetDisabled, selectedNodes, store, workflowStore])
+  }, [canAccessSnippets, handleSelectionContextmenuCancel, isAddToSnippetDisabled, selectedNodes, store, workflowStore])
 
   const handleCloseCreateSnippetDialog = useCallback(() => {
     setIsCreateSnippetDialogOpen(false)
@@ -456,7 +456,7 @@ const SelectionContextmenu = () => {
   const menuActions = useMemo<ActionMenuItem[]>(() => {
     const nextActions: ActionMenuItem[] = []
 
-    if (canAccessSnippetsAndEvaluation) {
+    if (canAccessSnippets) {
       nextActions.push({
         action: 'createSnippet',
         disabled: isAddToSnippetDisabled,
@@ -486,7 +486,7 @@ const SelectionContextmenu = () => {
     )
 
     return nextActions
-  }, [canAccessSnippetsAndEvaluation, isAddToSnippetDisabled])
+  }, [canAccessSnippets, isAddToSnippetDisabled])
 
   const getActionLabel = useCallback((translationKey: string) => {
     if (translationKey === 'operation.delete')

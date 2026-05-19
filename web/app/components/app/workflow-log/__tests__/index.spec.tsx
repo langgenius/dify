@@ -215,7 +215,6 @@ const createMockWorkflowLog = (overrides: Partial<WorkflowAppLogDetail> = {}): W
   },
   created_at: Date.now(),
   ...overrides,
-  evaluation: overrides.evaluation ?? [],
 })
 
 const createMockLogsResponse = (

@@ -144,7 +144,7 @@ const SnippetInfoDropdown = ({ snippet }: SnippetInfoDropdownProps) => {
           <DropdownMenuSeparator className="!my-1 bg-divider-subtle" />
           <DropdownMenuItem
             className="mx-0 gap-2"
-            destructive
+            variant="destructive"
             onClick={() => {
               setOpen(false)
               setIsDeleteDialogOpen(true)

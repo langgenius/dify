@@ -1,6 +1,7 @@
 'use client'
 
 import { Avatar } from '@langgenius/dify-ui/avatar'
+import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   DropdownMenu,
@@ -9,7 +10,6 @@ import {
 } from '@langgenius/dify-ui/dropdown-menu'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Checkbox from '@/app/components/base/checkbox'
 import Input from '@/app/components/base/input'
 import { useAppContext } from '@/context/app-context'
 import { useMembers } from '@/service/use-common'
@@ -190,7 +190,6 @@ const CreatorsFilter = ({
                 <Checkbox
                   id={creator.id}
                   checked={checked}
-                  onCheck={() => undefined}
                   className="shrink-0"
                 />
                 <div className="flex min-w-0 grow items-center gap-2 px-1">

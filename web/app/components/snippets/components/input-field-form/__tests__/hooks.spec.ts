@@ -34,7 +34,7 @@ describe('useSnippetInputFieldConfigurations', () => {
       supportFile: true,
     }))
 
-    expect(result.current[0].required).toBe(false)
-    expect(result.current[1].required).toBe(true)
+    expect(result.current[0]!.required).toBe(false)
+    expect(result.current[1]!.required).toBe(true)
   })
 })

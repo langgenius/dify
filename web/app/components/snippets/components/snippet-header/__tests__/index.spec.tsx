@@ -83,7 +83,7 @@ describe('SnippetHeader', () => {
 
       expect(mockToggleInputPanel).toHaveBeenCalledTimes(1)
       expect(mockPublishMenuOpenChange).toHaveBeenCalledTimes(1)
-      expect(mockPublishMenuOpenChange.mock.calls[0][0]).toBe(true)
+      expect(mockPublishMenuOpenChange.mock.calls[0]![0]).toBe(true)
     })
   })
 })

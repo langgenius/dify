@@ -82,10 +82,6 @@ vi.mock('@/app/components/app-sidebar/snippet-info', () => ({
   default: () => <div data-testid="snippet-info" />,
 }))
 
-vi.mock('@/app/components/evaluation', () => ({
-  default: ({ resourceId }: { resourceId: string }) => <div data-testid="evaluation">{resourceId}</div>,
-}))
-
 const mockSnippetDetail: SnippetDetailPayload = {
   snippet: {
     id: 'snippet-1',

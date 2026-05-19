@@ -3,20 +3,20 @@
 import type { ReactNode } from 'react'
 import { useEffect } from 'react'
 import Loading from '@/app/components/base/loading'
-import { useSnippetAndEvaluationPlanAccess } from '@/hooks/use-snippet-and-evaluation-plan-access'
+import { useSnippetPlanAccess } from '@/hooks/use-snippet-plan-access'
 import { useRouter } from '@/next/navigation'
 
-type SnippetAndEvaluationPlanGuardProps = {
+type SnippetPlanGuardProps = {
   children: ReactNode
   fallbackHref: string
 }
 
-const SnippetAndEvaluationPlanGuard = ({
+const SnippetPlanGuard = ({
   children,
   fallbackHref,
-}: SnippetAndEvaluationPlanGuardProps) => {
+}: SnippetPlanGuardProps) => {
   const router = useRouter()
-  const { canAccess, isReady } = useSnippetAndEvaluationPlanAccess()
+  const { canAccess, isReady } = useSnippetPlanAccess()
 
   useEffect(() => {
     if (isReady && !canAccess)
@@ -37,4 +37,4 @@ const SnippetAndEvaluationPlanGuard = ({
   return <>{children}</>
 }
 
-export default SnippetAndEvaluationPlanGuard
+export default SnippetPlanGuard
