@@ -2932,6 +2932,11 @@ class DocumentService:
 
     @classmethod
     def estimate_args_validate(cls, args: dict[str, Any]):
+        process_rule = args.get("process_rule", {})
+        if isinstance(process_rule, dict):
+            sis = process_rule.get("summary_index_setting")
+            if isinstance(sis, dict) and sis.get("enable") is None:
+                process_rule.pop("summary_index_setting", None)
         try:
             validated = _EstimateArgs.model_validate(args)
         except ValidationError as e:

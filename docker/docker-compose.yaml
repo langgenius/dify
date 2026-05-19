@@ -496,6 +496,10 @@ services:
   sandbox:
     image: langgenius/dify-sandbox:0.2.15
     restart: always
+    deploy:
+      resources:
+        limits:
+          memory: 8G
     env_file:
       - path: ./envs/core-services/sandbox.env
         required: false
