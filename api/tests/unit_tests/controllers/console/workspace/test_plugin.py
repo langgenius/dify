@@ -1003,9 +1003,7 @@ class TestPluginFetchAutoUpgradeApi:
         )
 
         with (
-            app.test_request_context(
-                f"/?category={TenantPluginAutoUpgradeStrategy.PluginCategory.TOOL.value}"
-            ),
+            app.test_request_context(f"/?category={TenantPluginAutoUpgradeStrategy.PluginCategory.TOOL.value}"),
             patch("controllers.console.workspace.plugin.current_account_with_tenant", return_value=(None, "t1")),
             patch(
                 "controllers.console.workspace.plugin.PluginAutoUpgradeService.get_strategy",
