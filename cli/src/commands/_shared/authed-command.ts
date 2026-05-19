@@ -41,7 +41,7 @@ export async function buildAuthedContext(
       message: 'not logged in',
       hint: 'run \'difyctl auth login\'',
     })
-    cmd.error(formatErrorForCli(err, { format: opts.format }), { exit: err.exit() })
+    cmd.error(formatErrorForCli(err, { format: opts.format, isErrTTY: process.stderr.isTTY }), { exit: err.exit() })
   }
 
   const host = hostWithScheme(bundle.current_host, bundle.scheme)

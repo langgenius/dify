@@ -54,7 +54,7 @@ export async function run(tree: CommandTree, argv: string[]): Promise<void> {
       process.exit(0)
     if (err instanceof BaseError) {
       const format = sniffOutputFormat(argv)
-      process.stderr.write(`${formatErrorForCli(err, { format })}\n`)
+      process.stderr.write(`${formatErrorForCli(err, { format, isErrTTY: process.stderr.isTTY })}\n`)
       process.exit(err.exit())
       return
     }
