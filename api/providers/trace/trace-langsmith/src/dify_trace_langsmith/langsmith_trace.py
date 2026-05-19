@@ -70,9 +70,7 @@ class LangSmithDataTrace(BaseTraceInstance):
         content = trace_info.query or workflow_inputs.get("query") or workflow_inputs.get("sys.query") or ""
         inputs: dict[str, Any] = {"messages": [{"role": "user", "content": str(content)}]}
         user_workflow_inputs = {
-            key: value
-            for key, value in workflow_inputs.items()
-            if not key.startswith("sys.") and key != "query"
+            key: value for key, value in workflow_inputs.items() if not key.startswith("sys.") and key != "query"
         }
         if user_workflow_inputs:
             inputs["workflow_inputs"] = user_workflow_inputs
