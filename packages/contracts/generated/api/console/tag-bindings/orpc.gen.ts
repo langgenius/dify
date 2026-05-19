@@ -4,48 +4,24 @@ import { oc } from '@orpc/contract'
 import * as z from 'zod'
 
 import {
-  zDeleteTagBindingsByIdBody,
-  zDeleteTagBindingsByIdPath,
-  zDeleteTagBindingsByIdResponse,
   zPostTagBindingsBody,
-  zPostTagBindingsCreateBody,
-  zPostTagBindingsCreateResponse,
   zPostTagBindingsRemoveBody,
   zPostTagBindingsRemoveResponse,
   zPostTagBindingsResponse,
 } from './zod.gen'
 
 /**
- * Deprecated legacy alias. Use POST /tag-bindings instead.
+ * Remove one or more tag bindings from a target.
+ *
+ * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
  *
  * @deprecated
  */
 export const post = oc
   .route({
     deprecated: true,
-    description: 'Deprecated legacy alias. Use POST /tag-bindings instead.',
-    inputStructure: 'detailed',
-    method: 'POST',
-    operationId: 'postTagBindingsCreate',
-    path: '/tag-bindings/create',
-    tags: ['console'],
-  })
-  .input(z.object({ body: zPostTagBindingsCreateBody }))
-  .output(zPostTagBindingsCreateResponse)
-
-export const create = {
-  post,
-}
-
-/**
- * Deprecated legacy alias. Use DELETE /tag-bindings/{id} instead.
- *
- * @deprecated
- */
-export const post2 = oc
-  .route({
-    deprecated: true,
-    description: 'Deprecated legacy alias. Use DELETE /tag-bindings/{id} instead.',
+    description:
+      'Remove one or more tag bindings from a target.\n\nGenerated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postTagBindingsRemove',
@@ -56,26 +32,19 @@ export const post2 = oc
   .output(zPostTagBindingsRemoveResponse)
 
 export const remove = {
-  post: post2,
+  post,
 }
 
-export const delete_ = oc
+/**
+ * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
+ *
+ * @deprecated
+ */
+export const post2 = oc
   .route({
-    inputStructure: 'detailed',
-    method: 'DELETE',
-    operationId: 'deleteTagBindingsById',
-    path: '/tag-bindings/{id}',
-    tags: ['console'],
-  })
-  .input(z.object({ body: zDeleteTagBindingsByIdBody, params: zDeleteTagBindingsByIdPath }))
-  .output(zDeleteTagBindingsByIdResponse)
-
-export const byId = {
-  delete: delete_,
-}
-
-export const post3 = oc
-  .route({
+    deprecated: true,
+    description:
+      'Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postTagBindings',
@@ -86,10 +55,8 @@ export const post3 = oc
   .output(zPostTagBindingsResponse)
 
 export const tagBindings = {
-  post: post3,
-  create,
+  post: post2,
   remove,
-  byId,
 }
 
 export const contract = {

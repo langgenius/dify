@@ -8,6 +8,7 @@ OpenAPI output early.
 from __future__ import annotations
 
 import argparse
+import json
 import logging
 import subprocess
 import sys
@@ -26,6 +27,125 @@ logger = logging.getLogger(__name__)
 SWAGGER_MARKDOWN_PACKAGE = "swagger-markdown@3.0.0"
 CONSOLE_SWAGGER_FILENAME = "console-swagger.json"
 STALE_COMBINED_MARKDOWN_FILENAME = "api-reference.md"
+
+
+def _definition_ref_name(schema: object) -> str | None:
+    if not isinstance(schema, dict):
+        return None
+
+    ref = schema.get("$ref")
+    if not isinstance(ref, str) or not ref.startswith("#/definitions/"):
+        return None
+
+    return ref.removeprefix("#/definitions/")
+
+
+def _markdown_anchor(name: str) -> str:
+    return name.lower()
+
+
+def _schema_markdown_type(schema: object) -> str:
+    if not isinstance(schema, dict):
+        return ""
+
+    ref_name = _definition_ref_name(schema)
+    if ref_name is not None:
+        return f"[{ref_name}](#{_markdown_anchor(ref_name)})"
+
+    for union_key in ("oneOf", "anyOf"):
+        variants = schema.get(union_key)
+        if not isinstance(variants, list):
+            continue
+
+        variant_types = [
+            variant_type
+            for variant in variants
+            if not (isinstance(variant, dict) and variant.get("type") == "null")
+            for variant_type in [_schema_markdown_type(variant)]
+            if variant_type
+        ]
+        if len(variant_types) == 1:
+            return variant_types[0]
+        if variant_types:
+            return "<br>".join(variant_types)
+
+    schema_type = schema.get("type")
+    if schema_type == "array":
+        item_type = _schema_markdown_type(schema.get("items"))
+        return f"[ {item_type or 'object'} ]"
+    if isinstance(schema_type, str):
+        return schema_type
+
+    return ""
+
+
+def _replace_schema_table_type(markdown: str, definition_name: str, row_name: str, type_markdown: str) -> str:
+    if not type_markdown:
+        return markdown
+
+    lines = markdown.splitlines()
+    section_header = f"#### {definition_name}"
+    in_section = False
+
+    for index, line in enumerate(lines):
+        if line == section_header:
+            in_section = True
+            continue
+        if in_section and line.startswith("#### "):
+            break
+        if not in_section or not line.startswith(f"| {row_name} |"):
+            continue
+
+        cells = line.split("|")
+        if len(cells) < 5:
+            continue
+        cells[2] = f" {type_markdown} "
+        lines[index] = "|".join(cells)
+        break
+
+    return "\n".join(lines)
+
+
+def _patch_union_schema_markdown(markdown: str, spec_path: Path) -> str:
+    """Fill Swagger Markdown table cells that `swagger-markdown` leaves blank for union schemas."""
+
+    spec = json.loads(spec_path.read_text(encoding="utf-8"))
+    definitions = spec.get("definitions")
+    if not isinstance(definitions, dict):
+        return markdown
+
+    for definition_name, schema in definitions.items():
+        if not isinstance(definition_name, str) or not isinstance(schema, dict):
+            continue
+        one_of = schema.get("oneOf")
+        if not isinstance(one_of, list):
+            continue
+
+        markdown = _replace_schema_table_type(
+            markdown,
+            definition_name,
+            definition_name,
+            _schema_markdown_type(schema),
+        )
+
+        for variant in one_of:
+            variant_name = _definition_ref_name(variant)
+            variant_schema = definitions.get(variant_name) if variant_name is not None else None
+            if not isinstance(variant_name, str) or not isinstance(variant_schema, dict):
+                continue
+            properties = variant_schema.get("properties")
+            if not isinstance(properties, dict):
+                continue
+            for property_name, property_schema in properties.items():
+                if isinstance(property_name, str):
+                    markdown = _replace_schema_table_type(
+                        markdown,
+                        variant_name,
+                        property_name,
+                        _schema_markdown_type(property_schema),
+                    )
+
+    return markdown
 
 
 def _convert_spec_to_markdown(spec_path: Path, markdown_path: Path) -> None:
@@ -57,7 +177,10 @@ def _convert_spec_to_markdown(spec_path: Path, markdown_path: Path) -> None:
             converter_output = "\n".join(item for item in (result.stdout, result.stderr) if item).strip()
             raise RuntimeError(f"swagger-markdown did not write {markdown_path}: {converter_output}")
 
-        converted_markdown = temp_markdown_path.read_text(encoding="utf-8")
+        converted_markdown = _patch_union_schema_markdown(
+            temp_markdown_path.read_text(encoding="utf-8"),
+            spec_path,
+        )
         if not converted_markdown.strip():
             raise RuntimeError(f"swagger-markdown wrote an empty document for {markdown_path}")
 

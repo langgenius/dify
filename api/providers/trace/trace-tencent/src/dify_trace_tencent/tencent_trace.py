@@ -58,20 +58,21 @@ class TencentDataTrace(BaseTraceInstance):
 
     def trace(self, trace_info: BaseTraceInfo) -> None:
         """Main tracing entry point - coordinates different trace types."""
-        if isinstance(trace_info, WorkflowTraceInfo):
-            self.workflow_trace(trace_info)
-        elif isinstance(trace_info, MessageTraceInfo):
-            self.message_trace(trace_info)
-        elif isinstance(trace_info, ModerationTraceInfo):
-            pass
-        elif isinstance(trace_info, SuggestedQuestionTraceInfo):
-            self.suggested_question_trace(trace_info)
-        elif isinstance(trace_info, DatasetRetrievalTraceInfo):
-            self.dataset_retrieval_trace(trace_info)
-        elif isinstance(trace_info, ToolTraceInfo):
-            self.tool_trace(trace_info)
-        elif isinstance(trace_info, GenerateNameTraceInfo):
-            pass
+        match trace_info:
+            case WorkflowTraceInfo():
+                self.workflow_trace(trace_info)
+            case MessageTraceInfo():
+                self.message_trace(trace_info)
+            case ModerationTraceInfo():
+                pass
+            case SuggestedQuestionTraceInfo():
+                self.suggested_question_trace(trace_info)
+            case DatasetRetrievalTraceInfo():
+                self.dataset_retrieval_trace(trace_info)
+            case ToolTraceInfo():
+                self.tool_trace(trace_info)
+            case GenerateNameTraceInfo():
+                pass
 
     def api_check(self) -> bool:
         return self.trace_client.api_check()

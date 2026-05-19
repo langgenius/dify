@@ -874,6 +874,7 @@ class ToolBuiltinProviderSetDefaultApi(Resource):
     @console_ns.expect(console_ns.models[BuiltinProviderDefaultCredentialPayload.__name__])
     @setup_required
     @login_required
+    @is_admin_or_owner_required
     @account_initialization_required
     def post(self, provider):
         _, current_tenant_id = current_account_with_tenant()

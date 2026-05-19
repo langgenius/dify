@@ -43,7 +43,7 @@ export type ConversationRenamePayload = {
 export type MessageFeedbackPayload = {
   content?: string | null
   message_id: string
-  rating?: 'like' | 'dislike' | null
+  rating?: 'dislike' | 'like' | null
 }
 
 export type SavedMessageCreatePayload = {
@@ -267,8 +267,8 @@ export type GetInstalledAppsByInstalledAppIdConversationsResponse
 export type DeleteInstalledAppsByInstalledAppIdConversationsByCIdData = {
   body?: never
   path: {
-    installed_app_id: string
     c_id: string
+    installed_app_id: string
   }
   query?: never
   url: '/installed-apps/{installed_app_id}/conversations/{c_id}'
@@ -286,8 +286,8 @@ export type DeleteInstalledAppsByInstalledAppIdConversationsByCIdResponse
 export type PostInstalledAppsByInstalledAppIdConversationsByCIdNameData = {
   body: ConversationRenamePayload
   path: {
-    installed_app_id: string
     c_id: string
+    installed_app_id: string
   }
   query?: never
   url: '/installed-apps/{installed_app_id}/conversations/{c_id}/name'
@@ -305,8 +305,8 @@ export type PostInstalledAppsByInstalledAppIdConversationsByCIdNameResponse
 export type PatchInstalledAppsByInstalledAppIdConversationsByCIdPinData = {
   body?: never
   path: {
-    installed_app_id: string
     c_id: string
+    installed_app_id: string
   }
   query?: never
   url: '/installed-apps/{installed_app_id}/conversations/{c_id}/pin'
@@ -324,8 +324,8 @@ export type PatchInstalledAppsByInstalledAppIdConversationsByCIdPinResponse
 export type PatchInstalledAppsByInstalledAppIdConversationsByCIdUnpinData = {
   body?: never
   path: {
-    installed_app_id: string
     c_id: string
+    installed_app_id: string
   }
   query?: never
   url: '/installed-apps/{installed_app_id}/conversations/{c_id}/unpin'

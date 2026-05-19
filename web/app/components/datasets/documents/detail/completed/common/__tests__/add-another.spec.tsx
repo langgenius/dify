@@ -1,4 +1,5 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import AddAnother from '../add-another'
 
@@ -7,27 +8,27 @@ describe('AddAnother', () => {
     vi.clearAllMocks()
   })
 
+  const getCheckbox = () => screen.getByRole('checkbox', { name: /segment\.addAnother/i })
+
   describe('Rendering', () => {
     it('should render without crashing', () => {
       const { container } = render(
-        <AddAnother isChecked={false} onCheck={vi.fn()} />,
+        <AddAnother checked={false} onCheckedChange={vi.fn()} />,
       )
 
       expect(container.firstChild).toBeInTheDocument()
     })
 
     it('should render the checkbox', () => {
-      const { container } = render(
-        <AddAnother isChecked={false} onCheck={vi.fn()} />,
+      render(
+        <AddAnother checked={false} onCheckedChange={vi.fn()} />,
       )
 
-      // Assert - Checkbox component renders with shrink-0 class
-      const checkbox = container.querySelector('.shrink-0')
-      expect(checkbox).toBeInTheDocument()
+      expect(getCheckbox()).toBeInTheDocument()
     })
 
     it('should render the add another text', () => {
-      render(<AddAnother isChecked={false} onCheck={vi.fn()} />)
+      render(<AddAnother checked={false} onCheckedChange={vi.fn()} />)
 
       // Assert - i18n key format
       expect(screen.getByText(/segment\.addAnother/i)).toBeInTheDocument()
@@ -35,7 +36,7 @@ describe('AddAnother', () => {
 
     it('should render with correct base styling classes', () => {
       const { container } = render(
-        <AddAnother isChecked={false} onCheck={vi.fn()} />,
+        <AddAnother checked={false} onCheckedChange={vi.fn()} />,
       )
 
       const wrapper = container.firstChild as HTMLElement
@@ -47,31 +48,27 @@ describe('AddAnother', () => {
   })
 
   describe('Props', () => {
-    it('should render unchecked state when isChecked is false', () => {
-      const { container } = render(
-        <AddAnother isChecked={false} onCheck={vi.fn()} />,
+    it('should render unchecked state when checked is false', () => {
+      render(
+        <AddAnother checked={false} onCheckedChange={vi.fn()} />,
       )
 
-      // Assert - unchecked checkbox has border class
-      const checkbox = container.querySelector('.border-components-checkbox-border')
-      expect(checkbox).toBeInTheDocument()
+      expect(getCheckbox()).toHaveAttribute('aria-checked', 'false')
     })
 
-    it('should render checked state when isChecked is true', () => {
-      const { container } = render(
-        <AddAnother isChecked={true} onCheck={vi.fn()} />,
+    it('should render checked state when checked is true', () => {
+      render(
+        <AddAnother checked={true} onCheckedChange={vi.fn()} />,
       )
 
-      // Assert - checked checkbox has bg-components-checkbox-bg class
-      const checkbox = container.querySelector('.bg-components-checkbox-bg')
-      expect(checkbox).toBeInTheDocument()
+      expect(getCheckbox()).toHaveAttribute('aria-checked', 'true')
     })
 
     it('should apply custom className', () => {
       const { container } = render(
         <AddAnother
-          isChecked={false}
-          onCheck={vi.fn()}
+          checked={false}
+          onCheckedChange={vi.fn()}
           className="custom-class"
         />,
       )
@@ -82,42 +79,37 @@ describe('AddAnother', () => {
   })
 
   describe('User Interactions', () => {
-    it('should call onCheck when checkbox is clicked', () => {
-      const mockOnCheck = vi.fn()
-      const { container } = render(
-        <AddAnother isChecked={false} onCheck={mockOnCheck} />,
+    it('should call mockOnCheckedChange when checkbox is clicked', async () => {
+      const mockOnCheckedChange = vi.fn()
+      const user = userEvent.setup()
+      render(
+        <AddAnother checked={false} onCheckedChange={mockOnCheckedChange} />,
       )
 
-      // Act - click on the checkbox element
-      const checkbox = container.querySelector('.shrink-0')
-      if (checkbox)
-        fireEvent.click(checkbox)
+      await user.click(screen.getByText(/segment\.addAnother/i))
 
-      expect(mockOnCheck).toHaveBeenCalledTimes(1)
+      expect(mockOnCheckedChange).toHaveBeenCalledTimes(1)
     })
 
-    it('should toggle checked state on multiple clicks', () => {
-      const mockOnCheck = vi.fn()
-      const { container, rerender } = render(
-        <AddAnother isChecked={false} onCheck={mockOnCheck} />,
+    it('should toggle checked state on multiple clicks', async () => {
+      const mockOnCheckedChange = vi.fn()
+      const user = userEvent.setup()
+      const { rerender } = render(
+        <AddAnother checked={false} onCheckedChange={mockOnCheckedChange} />,
       )
 
-      // Act - first click
-      const checkbox = container.querySelector('.shrink-0')
-      if (checkbox) {
-        fireEvent.click(checkbox)
-        rerender(<AddAnother isChecked={true} onCheck={mockOnCheck} />)
-        fireEvent.click(checkbox)
-      }
+      await user.click(screen.getByText(/segment\.addAnother/i))
+      rerender(<AddAnother checked={true} onCheckedChange={mockOnCheckedChange} />)
+      await user.click(screen.getByText(/segment\.addAnother/i))
 
-      expect(mockOnCheck).toHaveBeenCalledTimes(2)
+      expect(mockOnCheckedChange).toHaveBeenCalledTimes(2)
     })
   })
 
   describe('Structure', () => {
     it('should render text with tertiary text color', () => {
       const { container } = render(
-        <AddAnother isChecked={false} onCheck={vi.fn()} />,
+        <AddAnother checked={false} onCheckedChange={vi.fn()} />,
       )
 
       const textElement = container.querySelector('.text-text-tertiary')
@@ -126,7 +118,7 @@ describe('AddAnother', () => {
 
     it('should render text with xs medium font styling', () => {
       const { container } = render(
-        <AddAnother isChecked={false} onCheck={vi.fn()} />,
+        <AddAnother checked={false} onCheckedChange={vi.fn()} />,
       )
 
       const textElement = container.querySelector('.system-xs-medium')
@@ -136,30 +128,27 @@ describe('AddAnother', () => {
 
   describe('Edge Cases', () => {
     it('should maintain structure when rerendered', () => {
-      const mockOnCheck = vi.fn()
-      const { rerender, container } = render(
-        <AddAnother isChecked={false} onCheck={mockOnCheck} />,
+      const mockOnCheckedChange = vi.fn()
+      const { rerender } = render(
+        <AddAnother checked={false} onCheckedChange={mockOnCheckedChange} />,
       )
 
-      rerender(<AddAnother isChecked={true} onCheck={mockOnCheck} />)
+      rerender(<AddAnother checked={true} onCheckedChange={mockOnCheckedChange} />)
 
-      const checkbox = container.querySelector('.shrink-0')
-      expect(checkbox).toBeInTheDocument()
+      expect(getCheckbox()).toBeInTheDocument()
     })
 
-    it('should handle rapid state changes', () => {
-      const mockOnCheck = vi.fn()
-      const { container } = render(
-        <AddAnother isChecked={false} onCheck={mockOnCheck} />,
+    it('should handle rapid state changes', async () => {
+      const mockOnCheckedChange = vi.fn()
+      const user = userEvent.setup()
+      render(
+        <AddAnother checked={false} onCheckedChange={mockOnCheckedChange} />,
       )
 
-      const checkbox = container.querySelector('.shrink-0')
-      if (checkbox) {
-        for (let i = 0; i < 5; i++)
-          fireEvent.click(checkbox)
-      }
+      for (let i = 0; i < 5; i++)
+        await user.click(screen.getByText(/segment\.addAnother/i))
 
-      expect(mockOnCheck).toHaveBeenCalledTimes(5)
+      expect(mockOnCheckedChange).toHaveBeenCalledTimes(5)
     })
   })
 })

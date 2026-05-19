@@ -12,10 +12,16 @@ import {
 
 /**
  * Check if activation token is valid
+ *
+ * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
+ *
+ * @deprecated
  */
 export const get = oc
   .route({
-    description: 'Check if activation token is valid',
+    deprecated: true,
+    description:
+      'Check if activation token is valid\n\nGenerated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getActivateCheck',

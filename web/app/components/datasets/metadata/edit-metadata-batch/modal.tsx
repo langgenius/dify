@@ -2,6 +2,7 @@
 import type { FC } from 'react'
 import type { BuiltInMetadataItem, MetadataItemInBatchEdit, MetadataItemWithEdit } from '../types'
 import { Button } from '@langgenius/dify-ui/button'
+import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { Dialog, DialogCloseButton, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
 import { toast } from '@langgenius/dify-ui/toast'
 import { produce } from 'immer'
@@ -10,11 +11,9 @@ import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Divider from '@/app/components/base/divider'
 import { useCreateMetaData } from '@/service/knowledge/use-metadata'
-import Checkbox from '../../../base/checkbox'
 import { Infotip } from '../../../base/infotip'
-import AddMetadataButton from '../add-metadata-button'
 import useCheckMetadataName from '../hooks/use-check-metadata-name'
-import SelectMetadataModal from '../metadata-dataset/select-metadata-modal'
+import { DatasetMetadataPicker } from '../metadata-dataset/dataset-metadata-picker'
 import { UpdateType } from '../types'
 import AddedMetadataItem from './add-row'
 import EditMetadataBatchItem from './edit-row'
@@ -117,15 +116,30 @@ const EditMetadataBatchModal: FC<Props> = ({ datasetId, documentNum, list, onSav
               {addedList.map((item, i) => (<AddedMetadataItem key={i} payload={item} onChange={handleAddedListChange} onRemove={handleAddedItemRemove(i)} />))}
             </div>
             <div className="mt-3">
-              <SelectMetadataModal datasetId={datasetId} popupPlacement="top-start" popupOffset={{ mainAxis: 4, crossAxis: 0 }} trigger={<AddMetadataButton />} onSave={handleAddMetaData} onSelect={data => setAddedList([...addedList, data as MetadataItemWithEdit])} onManage={onShowManage} />
+              <DatasetMetadataPicker
+                datasetId={datasetId}
+                placement="top-start"
+                sideOffset={4}
+                alignOffset={0}
+                onCreateMetadata={handleAddMetaData}
+                onSelectMetadata={data => setAddedList([...addedList, data as MetadataItemWithEdit])}
+                onOpenMetadataManagement={onShowManage}
+              />
             </div>
           </div>
         </div>
 
         <div className="mt-4 flex items-center justify-between">
           <div className="flex items-center select-none">
-            <Checkbox checked={isApplyToAllSelectDocument} onCheck={() => setIsApplyToAllSelectDocument(!isApplyToAllSelectDocument)} id="apply-to-all" />
-            <div className="mr-1 ml-2 system-xs-medium text-text-secondary">{t(`${i18nPrefix}.applyToAllSelectDocument`, { ns: 'dataset' })}</div>
+            <label className="flex cursor-pointer items-center">
+              <Checkbox
+                checked={isApplyToAllSelectDocument}
+                onCheckedChange={setIsApplyToAllSelectDocument}
+              />
+              <span className="mr-1 ml-2 system-xs-medium text-text-secondary">
+                {t(`${i18nPrefix}.applyToAllSelectDocument`, { ns: 'dataset' })}
+              </span>
+            </label>
             <Infotip
               aria-label={t(`${i18nPrefix}.applyToAllSelectDocumentTip`, { ns: 'dataset' })}
               className="p-px"

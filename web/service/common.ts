@@ -1,4 +1,9 @@
 import type {
+  ApiBasedExtensionListResponse,
+  ApiBasedExtensionPayload,
+  ApiBasedExtensionResponse,
+} from '@dify/contracts/api/console/api-based-extension/types.gen'
+import type {
   DefaultModelResponse,
   Model,
   ModelItem,
@@ -13,7 +18,6 @@ import type {
 } from '@/models/app'
 import type {
   AccountIntegrate,
-  ApiBasedExtension,
   CodeBasedExtension,
   CommonResponse,
   DataSourceNotion,
@@ -271,20 +275,20 @@ export const fetchDataSourceNotionBinding = (url: string): Promise<{ result: str
   return get<{ result: string }>(url)
 }
 
-export const fetchApiBasedExtensionList = (url: string): Promise<ApiBasedExtension[]> => {
-  return get<ApiBasedExtension[]>(url)
+export const fetchApiBasedExtensionList = (url: string): Promise<ApiBasedExtensionListResponse> => {
+  return get<ApiBasedExtensionListResponse>(url)
 }
 
-export const fetchApiBasedExtensionDetail = (url: string): Promise<ApiBasedExtension> => {
-  return get<ApiBasedExtension>(url)
+export const fetchApiBasedExtensionDetail = (url: string): Promise<ApiBasedExtensionResponse> => {
+  return get<ApiBasedExtensionResponse>(url)
 }
 
-export const addApiBasedExtension = ({ url, body }: { url: string, body: ApiBasedExtension }): Promise<ApiBasedExtension> => {
-  return post<ApiBasedExtension>(url, { body })
+export const addApiBasedExtension = ({ url, body }: { url: string, body: ApiBasedExtensionPayload }): Promise<ApiBasedExtensionResponse> => {
+  return post<ApiBasedExtensionResponse>(url, { body })
 }
 
-export const updateApiBasedExtension = ({ url, body }: { url: string, body: ApiBasedExtension }): Promise<ApiBasedExtension> => {
-  return post<ApiBasedExtension>(url, { body })
+export const updateApiBasedExtension = ({ url, body }: { url: string, body: ApiBasedExtensionPayload }): Promise<ApiBasedExtensionResponse> => {
+  return post<ApiBasedExtensionResponse>(url, { body })
 }
 
 export const deleteApiBasedExtension = (url: string): Promise<{ result: string }> => {
@@ -339,7 +343,13 @@ export const uploadRemoteFileInfo = (url: string, isPublic?: boolean, silent?: b
 export const sendEMailLoginCode = (email: string, language = 'en-US'): Promise<CommonResponse & { data: string }> =>
   post<CommonResponse & { data: string }>('/email-code-login', { body: { email, language } })
 
-export const emailLoginWithCode = (data: { email: string, code: string, token: string, language: string }): Promise<LoginResponse> =>
+export const emailLoginWithCode = (data: {
+  email: string
+  code: string
+  token: string
+  language: string
+  timezone?: string
+}): Promise<LoginResponse> =>
   post<LoginResponse>('/email-code-login/validity', { body: data })
 
 export const sendResetPasswordCode = (email: string, language = 'en-US'): Promise<CommonResponse & { data: string, message?: string, code?: string }> =>

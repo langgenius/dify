@@ -1,5 +1,6 @@
 'use client'
 
+import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   Popover,
@@ -12,7 +13,6 @@ import {
 } from '@remixicon/react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Checkbox from '@/app/components/base/checkbox'
 import Input from '@/app/components/base/input'
 import { useCategories } from '../../hooks'
 
@@ -108,19 +108,19 @@ const CategoriesFilter = ({
           <div className="max-h-[448px] overflow-y-auto p-1">
             {
               filteredOptions.map(option => (
-                <div
+                <label
                   key={option.name}
                   className="flex h-7 cursor-pointer items-center rounded-lg px-2 py-1.5 hover:bg-state-base-hover"
-                  onClick={() => handleCheck(option.name)}
                 >
                   <Checkbox
                     className="mr-1"
                     checked={value.includes(option.name)}
+                    onCheckedChange={() => handleCheck(option.name)}
                   />
                   <div className="px-1 system-sm-medium text-text-secondary">
                     {option.label}
                   </div>
-                </div>
+                </label>
               ))
             }
           </div>

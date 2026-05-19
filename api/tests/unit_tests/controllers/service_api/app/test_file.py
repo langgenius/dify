@@ -238,7 +238,7 @@ class TestFileApiPost:
         self,
         mock_db,
         mock_file_svc_cls,
-        app,
+        app: Flask,
         mock_app_model,
         mock_end_user,
     ):
@@ -342,7 +342,7 @@ class TestFileApiPost:
         self,
         mock_db,
         mock_file_svc_cls,
-        app,
+        app: Flask,
         mock_app_model,
         mock_end_user,
     ):
@@ -374,7 +374,7 @@ class TestFileApiPost:
         self,
         mock_db,
         mock_file_svc_cls,
-        app,
+        app: Flask,
         mock_app_model,
         mock_end_user,
     ):

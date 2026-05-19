@@ -750,7 +750,7 @@ class DatasetService:
                             knowledge_index_node_data["embedding_model_provider"] = dataset.embedding_model_provider
                             knowledge_index_node_data["retrieval_model"] = dataset.retrieval_model
                             knowledge_index_node_data["chunk_structure"] = dataset.chunk_structure
-                            knowledge_index_node_data["indexing_technique"] = dataset.indexing_technique  # pyright: ignore[reportAttributeAccessIssue]
+                            knowledge_index_node_data["indexing_technique"] = dataset.indexing_technique
                             knowledge_index_node_data["keyword_number"] = dataset.keyword_number
                             knowledge_index_node_data["summary_index_setting"] = dataset.summary_index_setting
                             node["data"] = knowledge_index_node_data

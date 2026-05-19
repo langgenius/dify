@@ -42,7 +42,7 @@ from fields.base import ResponseModel
 from fields.member_fields import Account as AccountResponse
 from graphon.file import helpers as file_helpers
 from libs.datetime_utils import naive_utc_now
-from libs.helper import EmailStr, extract_remote_ip, timezone
+from libs.helper import EmailStr, extract_remote_ip, timezone, to_timestamp
 from libs.login import current_account_with_tenant, login_required
 from models import AccountIntegrate, InvitationCode
 from models.account import AccountStatus, InvitationCodeStatus
@@ -185,12 +185,6 @@ def _serialize_account(account) -> dict[str, Any]:
     return AccountResponse.model_validate(account, from_attributes=True).model_dump(mode="json")
 
 
-def _to_timestamp(value: datetime | int | None) -> int | None:
-    if isinstance(value, datetime):
-        return int(value.timestamp())
-    return value
-
-
 class AccountIntegrateResponse(ResponseModel):
     provider: str
     created_at: int | None = None
@@ -200,7 +194,7 @@ class AccountIntegrateResponse(ResponseModel):
     @field_validator("created_at", mode="before")
     @classmethod
     def _normalize_created_at(cls, value: datetime | int | None) -> int | None:
-        return _to_timestamp(value)
+        return to_timestamp(value)
 
 
 class AccountIntegrateListResponse(ResponseModel):
@@ -220,7 +214,7 @@ class EducationStatusResponse(ResponseModel):
     @field_validator("expire_at", mode="before")
     @classmethod
     def _normalize_expire_at(cls, value: datetime | int | None) -> int | None:
-        return _to_timestamp(value)
+        return to_timestamp(value)
 
 
 class EducationAutocompleteResponse(ResponseModel):

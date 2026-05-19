@@ -8,7 +8,11 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, DifyRunContext
-from core.app.file_access import DatabaseFileAccessController
+from core.app.file_access import (
+    DatabaseFileAccessController,
+    grant_upload_file_access,
+    is_retriever_segment_access_granted,
+)
 from core.callback_handler.workflow_tool_callback_handler import DifyWorkflowCallbackHandler
 from core.helper.trace_id_helper import ParentTraceContext
 from core.llm_generator.output_parser.errors import OutputParserError
@@ -45,7 +49,7 @@ from graphon.model_runtime.entities.model_entities import AIModelEntity
 from graphon.model_runtime.model_providers.base.large_language_model import LargeLanguageModel
 from graphon.nodes.human_input.entities import HumanInputNodeData
 from graphon.nodes.llm.runtime_protocols import (
-    PreparedLLMProtocol,
+    LLMProtocol,
     PromptMessageSerializerProtocol,
     RetrieverAttachmentLoaderProtocol,
 )
@@ -136,7 +140,7 @@ class DifyFileReferenceFactory(FileReferenceFactoryProtocol):
         )
 
 
-class DifyPreparedLLM(PreparedLLMProtocol):
+class DifyPreparedLLM(LLMProtocol):
     """Workflow-layer adapter that hides the full `ModelInstance` API from `graphon` nodes."""
 
     def __init__(self, model_instance: ModelInstance) -> None:
@@ -275,10 +279,23 @@ class DifyPromptMessageSerializer(PromptMessageSerializerProtocol):
 class DifyRetrieverAttachmentLoader(RetrieverAttachmentLoaderProtocol):
     """Resolve retriever attachments through Dify persistence and return graph file references."""
 
-    def __init__(self, *, file_reference_factory: FileReferenceFactoryProtocol) -> None:
+    _segment_access_checker: Callable[[str], bool] | None
+
+    def __init__(
+        self,
+        *,
+        file_reference_factory: FileReferenceFactoryProtocol,
+        segment_access_checker: Callable[[str], bool] | None = None,
+    ) -> None:
         self._file_reference_factory = file_reference_factory
+        self._segment_access_checker = segment_access_checker
 
     def load(self, *, segment_id: str) -> Sequence[File]:
+        if not is_retriever_segment_access_granted(segment_id):
+            return []
+        if self._segment_access_checker is not None and not self._segment_access_checker(segment_id):
+            return []
+
         with Session(db.engine, expire_on_commit=False) as session:
             attachments_with_bindings = session.execute(
                 select(SegmentAttachmentBinding, UploadFile)
@@ -286,6 +303,7 @@ class DifyRetrieverAttachmentLoader(RetrieverAttachmentLoaderProtocol):
                 .where(SegmentAttachmentBinding.segment_id == segment_id)
             ).all()
 
+        grant_upload_file_access(str(upload_file.id) for _, upload_file in attachments_with_bindings)
         return [
             self._file_reference_factory.build_from_mapping(
                 mapping={
@@ -590,64 +608,67 @@ class DifyToolNodeRuntime(ToolNodeRuntimeProtocol):
 
         from core.tools.entities.tool_entities import ToolInvokeMessage as CoreToolInvokeMessage
 
-        if isinstance(message, CoreToolInvokeMessage.TextMessage):
-            return ToolRuntimeMessage.TextMessage(text=message.text)
-        if isinstance(message, CoreToolInvokeMessage.JsonMessage):
-            return ToolRuntimeMessage.JsonMessage(
-                json_object=message.json_object,
-                suppress_output=message.suppress_output,
-            )
-        if isinstance(message, CoreToolInvokeMessage.BlobMessage):
-            return ToolRuntimeMessage.BlobMessage(blob=message.blob)
-        if isinstance(message, CoreToolInvokeMessage.BlobChunkMessage):
-            return ToolRuntimeMessage.BlobChunkMessage(
-                id=message.id,
-                sequence=message.sequence,
-                total_length=message.total_length,
-                blob=message.blob,
-                end=message.end,
-            )
-        if isinstance(message, CoreToolInvokeMessage.FileMessage):
-            return ToolRuntimeMessage.FileMessage(file_marker=message.file_marker)
-        if isinstance(message, CoreToolInvokeMessage.VariableMessage):
-            return ToolRuntimeMessage.VariableMessage(
-                variable_name=message.variable_name,
-                variable_value=message.variable_value,
-                stream=message.stream,
-            )
-        if isinstance(message, CoreToolInvokeMessage.LogMessage):
-            return ToolRuntimeMessage.LogMessage(
-                id=message.id,
-                label=message.label,
-                parent_id=message.parent_id,
-                error=message.error,
-                status=ToolRuntimeMessage.LogMessage.LogStatus(message.status.value),
-                data=dict(message.data),
-                metadata=dict(message.metadata),
-            )
-        if isinstance(message, CoreToolInvokeMessage.RetrieverResourceMessage):
-            retriever_resources = [
-                resource.model_dump() if hasattr(resource, "model_dump") else dict(resource)
-                for resource in message.retriever_resources
-            ]
-            return ToolRuntimeMessage.RetrieverResourceMessage(
-                retriever_resources=retriever_resources,
-                context=message.context,
-            )
-
-        raise TypeError(f"unsupported tool message payload: {type(message).__name__}")
+        match message:
+            case CoreToolInvokeMessage.TextMessage():
+                return ToolRuntimeMessage.TextMessage(text=message.text)
+            case CoreToolInvokeMessage.JsonMessage():
+                return ToolRuntimeMessage.JsonMessage(
+                    json_object=message.json_object,
+                    suppress_output=message.suppress_output,
+                )
+            case CoreToolInvokeMessage.BlobMessage():
+                return ToolRuntimeMessage.BlobMessage(blob=message.blob)
+            case CoreToolInvokeMessage.BlobChunkMessage():
+                return ToolRuntimeMessage.BlobChunkMessage(
+                    id=message.id,
+                    sequence=message.sequence,
+                    total_length=message.total_length,
+                    blob=message.blob,
+                    end=message.end,
+                )
+            case CoreToolInvokeMessage.FileMessage():
+                return ToolRuntimeMessage.FileMessage(file_marker=message.file_marker)
+            case CoreToolInvokeMessage.VariableMessage():
+                return ToolRuntimeMessage.VariableMessage(
+                    variable_name=message.variable_name,
+                    variable_value=message.variable_value,
+                    stream=message.stream,
+                )
+            case CoreToolInvokeMessage.LogMessage():
+                return ToolRuntimeMessage.LogMessage(
+                    id=message.id,
+                    label=message.label,
+                    parent_id=message.parent_id,
+                    error=message.error,
+                    status=ToolRuntimeMessage.LogMessage.LogStatus(message.status.value),
+                    data=dict(message.data),
+                    metadata=dict(message.metadata),
+                )
+            case CoreToolInvokeMessage.RetrieverResourceMessage():
+                retriever_resources = [
+                    resource.model_dump() if hasattr(resource, "model_dump") else dict(resource)
+                    for resource in message.retriever_resources
+                ]
+                return ToolRuntimeMessage.RetrieverResourceMessage(
+                    retriever_resources=retriever_resources,
+                    context=message.context,
+                )
+            case _:
+                raise TypeError(f"unsupported tool message payload: {type(message).__name__}")
 
     @staticmethod
     def _map_invocation_exception(exc: Exception, *, provider_name: str) -> ToolNodeError:
-        if isinstance(exc, ToolNodeError):
-            return exc
-        if isinstance(exc, PluginInvokeError):
-            return ToolRuntimeInvocationError(exc.to_user_friendly_error(plugin_name=provider_name))
-        if isinstance(exc, PluginDaemonClientSideError):
-            return ToolRuntimeInvocationError(f"Failed to invoke tool, error: {exc.description}")
-        if isinstance(exc, ToolInvokeError):
-            return ToolRuntimeInvocationError(f"Failed to invoke tool {provider_name}: {exc}")
-        return ToolRuntimeInvocationError(str(exc))
+        match exc:
+            case ToolNodeError():
+                return exc
+            case PluginInvokeError():
+                return ToolRuntimeInvocationError(exc.to_user_friendly_error(plugin_name=provider_name))
+            case PluginDaemonClientSideError():
+                return ToolRuntimeInvocationError(f"Failed to invoke tool, error: {exc.description}")
+            case ToolInvokeError():
+                return ToolRuntimeInvocationError(f"Failed to invoke tool {provider_name}: {exc}")
+            case _:
+                return ToolRuntimeInvocationError(str(exc))
 
 
 class DifyHumanInputNodeRuntime(HumanInputNodeRuntimeProtocol):
