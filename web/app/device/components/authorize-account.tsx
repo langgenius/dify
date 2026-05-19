@@ -1,6 +1,8 @@
 'use client'
 
 import type { FC } from 'react'
+import { Avatar } from '@langgenius/dify-ui/avatar'
+import { Button } from '@langgenius/dify-ui/button'
 import { useState } from 'react'
 import { deviceApproveAccount, deviceDenyAccount } from '@/service/device-flow'
 import { approveErrorCopy } from '../utils/error-copy'
@@ -8,6 +10,8 @@ import { approveErrorCopy } from '../utils/error-copy'
 type Props = {
   userCode: string
   accountEmail?: string
+  accountName?: string
+  accountAvatarUrl?: string | null
   defaultWorkspace?: string
   onApproved: () => void
   onDenied: () => void
@@ -21,7 +25,14 @@ type Props = {
  * the dfoa_ token server-side.
  */
 const AuthorizeAccount: FC<Props> = ({
-  userCode, accountEmail, defaultWorkspace, onApproved, onDenied, onError,
+  userCode,
+  accountEmail,
+  accountName,
+  accountAvatarUrl,
+  defaultWorkspace,
+  onApproved,
+  onDenied,
+  onError,
 }) => {
   const [busy, setBusy] = useState(false)
 
@@ -54,41 +65,54 @@ const AuthorizeAccount: FC<Props> = ({
   }
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-5">
       <div>
         <h2 className="text-2xl font-semibold text-text-primary">Authorize Dify CLI</h2>
         <p className="mt-2 text-sm text-text-secondary">
-          Dify CLI (difyctl) is requesting access to your account.
-          {' '}If you did not start this from your terminal, click Cancel.
+          difyctl is requesting access. If you didn&apos;t start this from your terminal, click Cancel.
         </p>
       </div>
-      <div className="rounded-lg border border-components-panel-border bg-components-panel-bg px-4 py-3">
-        {accountEmail && (
-          <p className="text-sm text-text-secondary">
-            Signed in as <span className="font-medium text-text-primary">{accountEmail}</span>
-          </p>
-        )}
-        {defaultWorkspace && (
-          <p className="mt-1 text-sm text-text-secondary">
-            Default workspace: <span className="font-medium text-text-primary">{defaultWorkspace}</span>
-          </p>
-        )}
+      <div className="flex items-center gap-2.5 rounded-lg bg-background-section-burn px-3 py-2.5">
+        <Avatar
+          size="md"
+          avatar={accountAvatarUrl ?? null}
+          name={accountName || accountEmail || ''}
+        />
+        <div>
+          {accountName && (
+            <p className="text-sm font-semibold text-text-primary">{accountName}</p>
+          )}
+          {accountEmail && (
+            <p className="text-xs text-text-secondary">{accountEmail}</p>
+          )}
+        </div>
       </div>
+      {defaultWorkspace && (
+        <div className="rounded-lg bg-background-section-burn px-3 py-2 text-sm text-text-secondary">
+          Workspace:
+          {' '}
+          <span className="font-semibold text-text-primary">{defaultWorkspace}</span>
+        </div>
+      )}
       <div className="flex gap-3">
-        <button
+        <Button
+          variant="primary"
+          size="large"
+          className="flex-1"
           onClick={approve}
           disabled={busy}
-          className="flex-1 rounded-lg bg-components-button-primary-bg px-4 py-3 text-components-button-primary-text font-medium hover:bg-components-button-primary-bg-hover disabled:opacity-50"
         >
           Authorize
-        </button>
-        <button
+        </Button>
+        <Button
+          variant="secondary"
+          size="large"
+          className="flex-1"
           onClick={deny}
           disabled={busy}
-          className="flex-1 rounded-lg border border-components-button-secondary-border bg-components-button-secondary-bg px-4 py-3 text-components-button-secondary-text font-medium hover:bg-components-button-secondary-bg-hover disabled:opacity-50"
         >
           Cancel
-        </button>
+        </Button>
       </div>
     </div>
   )

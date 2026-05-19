@@ -164,7 +164,6 @@ export default function DevicePage() {
         <AuthorizeAccount
           userCode={view.userCode}
           accountEmail={account?.email}
-          // @ts-expect-error -- props added in Task 4
           accountName={account?.name}
           accountAvatarUrl={account?.avatar_url ?? null}
           defaultWorkspace={currentWorkspace?.name}
