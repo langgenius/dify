@@ -127,10 +127,7 @@ def test_invalid_signature_delegates_to_ssrf_proxy(monkeypatch):
     proxy_response = httpx.Response(403, request=httpx.Request("GET", "http://localhost:5001/bad"))
     ssrf_get = MagicMock(return_value=proxy_response)
     monkeypatch.setattr(remote_fetcher.ssrf_proxy, "get", ssrf_get)
-    url = (
-        f"http://localhost:5001/files/{UPLOAD_FILE_ID}/file-preview"
-        "?timestamp=1700000000&nonce=nonce&sign=bad"
-    )
+    url = f"http://localhost:5001/files/{UPLOAD_FILE_ID}/file-preview?timestamp=1700000000&nonce=nonce&sign=bad"
 
     response = remote_fetcher.get(url, timeout=3)
 
