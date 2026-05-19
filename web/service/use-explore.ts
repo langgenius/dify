@@ -4,7 +4,17 @@ import { useLocale } from '@/context/i18n'
 import { AccessMode } from '@/models/access-control'
 import { systemFeaturesQueryOptions } from '@/service/system-features'
 import { consoleQuery } from './client'
-import { fetchAppList, fetchBanners, fetchInstalledAppList, fetchInstalledAppMeta, fetchInstalledAppParams, getAppAccessModeByAppId, uninstallApp, updatePinStatus } from './explore'
+import {
+  fetchAppList,
+  fetchBanners,
+  fetchInstalledAppList,
+  fetchInstalledAppMeta,
+  fetchInstalledAppParams,
+  fetchLearnDifyAppList,
+  getAppAccessModeByAppId,
+  uninstallApp,
+  updatePinStatus,
+} from './explore'
 
 type ExploreAppListData = {
   categories: AppCategory[]
@@ -26,6 +36,22 @@ export const useExploreAppList = () => {
         categories,
         allList: [...recommended_apps].sort((a, b) => a.position - b.position),
       }
+    },
+  })
+}
+
+export const useLearnDifyAppList = () => {
+  const locale = useLocale()
+  const learnDifyAppsInput = locale
+    ? { query: { language: locale } }
+    : {}
+  const learnDifyAppsLanguage = learnDifyAppsInput?.query?.language
+
+  return useQuery({
+    queryKey: [...consoleQuery.explore.learnDifyApps.queryKey({ input: learnDifyAppsInput }), learnDifyAppsLanguage],
+    queryFn: async () => {
+      const { recommended_apps } = await fetchLearnDifyAppList(learnDifyAppsLanguage)
+      return [...recommended_apps].sort((a, b) => a.position - b.position)
     },
   })
 }

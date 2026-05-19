@@ -14,6 +14,7 @@ import {
   exploreInstalledAppPinContract,
   exploreInstalledAppsContract,
   exploreInstalledAppUninstallContract,
+  learnDifyAppsContract,
 } from './console/explore'
 import { changePreferredProviderTypeContract, modelProvidersModelsContract } from './console/model-providers'
 import { notificationContract, notificationDismissContract } from './console/notification'
@@ -85,6 +86,7 @@ export const consoleRouterContract = {
   explore: {
     ...communityContract.explore,
     apps: exploreAppsContract,
+    learnDifyApps: learnDifyAppsContract,
     appDetail: exploreAppDetailContract,
     installedApps: exploreInstalledAppsContract,
     uninstallInstalledApp: exploreInstalledAppUninstallContract,

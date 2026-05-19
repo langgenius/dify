@@ -224,6 +224,10 @@ vi.mock('../empty', () => ({
   },
 }))
 
+vi.mock('@/app/components/explore/learn-dify', () => ({
+  default: ({ title }: { title?: string }) => React.createElement('section', null, title),
+}))
+
 vi.mock('../footer', () => ({
   default: () => {
     return React.createElement('footer', { 'data-testid': 'footer', 'role': 'contentinfo' }, 'Footer')

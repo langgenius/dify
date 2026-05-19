@@ -14,6 +14,7 @@ import { LEARN_DIFY_HIDDEN_STORAGE_KEY } from '../../learn-dify/storage'
 import AppList from '../index'
 
 let mockExploreData: { categories: string[], allList: App[] } | undefined = { categories: [], allList: [] }
+let mockLearnDifyApps: App[] = []
 let mockWorkspaceApps: WorkspaceApp[] = []
 let mockIsLoading = false
 let mockIsError = false
@@ -26,6 +27,11 @@ vi.mock('@/service/use-explore', () => ({
     data: mockExploreData,
     isLoading: mockIsLoading,
     isError: mockIsError,
+  }),
+  useLearnDifyAppList: () => ({
+    data: mockLearnDifyApps,
+    isLoading: false,
+    isError: false,
   }),
 }))
 
@@ -232,6 +238,20 @@ describe('AppList', () => {
     vi.clearAllMocks()
     localStorage.clear()
     mockExploreData = { categories: [], allList: [] }
+    mockLearnDifyApps = [
+      createApp({
+        app_id: 'learn-1',
+        app: { ...createApp().app, id: 'learn-basic-1', name: 'Learn Workflow Basics' },
+        description: 'Build your first workflow from a template.',
+        position: 1,
+      }),
+      createApp({
+        app_id: 'learn-2',
+        app: { ...createApp().app, id: 'learn-basic-2', name: 'Learn Agent Basics' },
+        description: 'Connect agent reasoning with tools.',
+        position: 2,
+      }),
+    ]
     mockWorkspaceApps = []
     mockIsLoading = false
     mockIsError = false
@@ -312,8 +332,8 @@ describe('AppList', () => {
       renderAppList()
 
       expect(screen.getByRole('heading', { name: 'explore.learnDify.title' })).toBeInTheDocument()
-      expect(screen.getByText('Your first Workflow - say hello to AI')).toBeInTheDocument()
-      expect(screen.getByText('Build a working Agent with Workflow')).toBeInTheDocument()
+      expect(screen.getByText('Learn Workflow Basics')).toBeInTheDocument()
+      expect(screen.getByText('Learn Agent Basics')).toBeInTheDocument()
       expect(screen.queryByRole('link', { name: 'explore.learnDify.moreTemplates' })).not.toBeInTheDocument()
       expect(screen.queryByText('Run this first')).not.toBeInTheDocument()
       expect(screen.queryByText('Then try this')).not.toBeInTheDocument()

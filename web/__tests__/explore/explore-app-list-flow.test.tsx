@@ -52,6 +52,11 @@ vi.mock('@/service/use-explore', () => ({
     isLoading: mockIsLoading,
     isError: false,
   }),
+  useLearnDifyAppList: () => ({
+    data: [],
+    isLoading: false,
+    isError: false,
+  }),
 }))
 
 vi.mock('@/service/explore', () => ({

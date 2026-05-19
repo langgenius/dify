@@ -4,7 +4,7 @@ import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { learnDifyItems } from './data'
+import { useLearnDifyAppList } from '@/service/use-explore'
 import LearnDifyItem from './item'
 import { useLearnDifyHiddenState } from './storage'
 
@@ -29,6 +29,7 @@ const LearnDify = ({
   const [collapseTransform, setCollapseTransform] = useState<string>()
   const hideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const sectionRef = useRef<HTMLElement>(null)
+  const { data: learnDifyItems = [] } = useLearnDifyAppList()
 
   useEffect(() => {
     return () => {
@@ -62,6 +63,8 @@ const LearnDify = ({
   const visibleItems = itemLimit ? learnDifyItems.slice(0, itemLimit) : learnDifyItems
 
   if (dismissible && hidden)
+    return null
+  if (visibleItems.length === 0)
     return null
 
   return (
@@ -98,7 +101,7 @@ const LearnDify = ({
       </div>
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
         {visibleItems.map(item => (
-          <LearnDifyItem key={item.id} item={item} />
+          <LearnDifyItem key={item.app_id} item={item} />
         ))}
       </div>
     </section>
