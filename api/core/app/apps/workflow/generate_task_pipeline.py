@@ -65,7 +65,6 @@ from graphon.entities import WorkflowStartReason
 from graphon.enums import WorkflowExecutionStatus
 from graphon.runtime import GraphRuntimeState
 from libs.datetime_utils import naive_utc_now
-from libs.helper import extract_tenant_id
 from models import Account
 from models.enums import CreatorUserRole
 from models.model import EndUser
@@ -104,7 +103,7 @@ class WorkflowAppGenerateTaskPipeline(GraphRuntimeStateSupport):
             self._created_by_role = CreatorUserRole.ACCOUNT
 
         self._application_generate_entity = application_generate_entity
-        self._tenant_id = extract_tenant_id(user)
+        self._tenant_id = application_generate_entity.app_config.tenant_id
         self._workflow_features_dict = workflow.features_dict
         self._workflow_execution_id = ""
         self._invoke_from = queue_manager.invoke_from
@@ -588,8 +587,14 @@ class WorkflowAppGenerateTaskPipeline(GraphRuntimeStateSupport):
             status = WorkflowExecutionStatus.STOPPED
             error = event.get_stop_reason()
             exceptions_count = 0
-            with self._database_session() as session:
-                self._persist_workflow_run_terminal_state(session=session, status=status, error=error)
+            try:
+                with self._database_session() as session:
+                    self._persist_workflow_run_terminal_state(session=session, status=status, error=error)
+            except Exception:
+                logger.exception(
+                    "Failed to persist workflow stop status, workflow_run_id=%s",
+                    self._workflow_execution_id,
+                )
         workflow_finish_resp = self._workflow_response_converter.workflow_finish_to_stream_response(
             task_id=self._application_generate_entity.task_id,
             workflow_id=self._workflow.id,

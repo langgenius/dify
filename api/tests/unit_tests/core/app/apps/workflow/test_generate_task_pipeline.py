@@ -125,3 +125,19 @@ def test_stop_event_persists_workflow_run_status() -> None:
     assert workflow_run.error is not None
     assert workflow_run.finished_at is not None
     session.add.assert_called_once_with(workflow_run)
+
+
+def test_stop_event_still_yields_finish_when_persistence_fails() -> None:
+    run_id = "run-stop-persistence-fails"
+    pipeline = _build_pipeline(run_id)
+
+    started_event = QueueWorkflowStartedEvent(reason=WorkflowStartReason.RESUMPTION)
+    list(pipeline._handle_workflow_started_event(started_event))
+    pipeline._database_session = MagicMock(side_effect=RuntimeError("db unavailable"))  # type: ignore[method-assign]
+    pipeline._workflow_response_converter.workflow_finish_to_stream_response = MagicMock(return_value="finish")
+
+    stop_event = QueueStopEvent(stopped_by=QueueStopEvent.StopBy.USER_MANUAL)
+    responses = list(pipeline._handle_workflow_failed_and_stop_events(stop_event))
+
+    assert responses == ["finish"]
+    pipeline._workflow_response_converter.workflow_finish_to_stream_response.assert_called_once()
