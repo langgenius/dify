@@ -8,14 +8,14 @@
 
 Snapshot generated from `packages/contracts/generated/api/readiness.json` after running `pnpm -C packages/contracts gen-api-contract-from-openapi`.
 
-Are we OpenAPI ready? **No.** Current generated API contracts are **16.7% ready**.
+Are we OpenAPI ready? **No.** Current generated API contracts are **16.3% ready**.
 
 | Surface   |   Ready | Not ready |   Total |   Ready % |
 | --------- | ------: | --------: | ------: | --------: |
-| console   |      96 |       474 |     570 |     16.8% |
+| console   |      96 |       492 |     588 |     16.3% |
 | service   |      16 |        72 |      88 |     18.2% |
 | web       |       5 |        36 |      41 |     12.2% |
-| **total** | **117** |   **582** | **699** | **16.7%** |
+| **total** | **117** |   **600** | **717** | **16.3%** |
 
 Readiness here means the generated contract operation is not marked with:
 
