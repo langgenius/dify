@@ -426,7 +426,7 @@ export type DeleteConversationsByCIdError
 
 export type DeleteConversationsByCIdResponses = {
   204: {
-    [key: string]: unknown
+    [key: string]: never
   }
 }
 
@@ -1309,7 +1309,7 @@ export type DeleteSavedMessagesByMessageIdError
 
 export type DeleteSavedMessagesByMessageIdResponses = {
   204: {
-    [key: string]: unknown
+    [key: string]: never
   }
 }
 

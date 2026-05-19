@@ -2,6 +2,7 @@ from datetime import datetime
 from unittest.mock import MagicMock, PropertyMock, patch
 
 import pytest
+from flask import Flask
 from werkzeug.exceptions import BadRequest, Forbidden, NotFound
 
 import controllers.console.explore.installed_app as module
@@ -51,7 +52,7 @@ def payload_patch():
 
 
 class TestInstalledAppsListApi:
-    def test_get_installed_apps(self, app, current_user, tenant_id, installed_app):
+    def test_get_installed_apps(self, app: Flask, current_user, tenant_id, installed_app):
         api = module.InstalledAppsListApi()
         method = unwrap(api.get)
 
@@ -75,7 +76,7 @@ class TestInstalledAppsListApi:
         assert result["installed_apps"][0]["editable"] is True
         assert result["installed_apps"][0]["uninstallable"] is False
 
-    def test_get_installed_apps_with_app_id_filter(self, app, current_user, tenant_id):
+    def test_get_installed_apps_with_app_id_filter(self, app: Flask, current_user, tenant_id):
         api = module.InstalledAppsListApi()
         method = unwrap(api.get)
 
@@ -97,7 +98,7 @@ class TestInstalledAppsListApi:
 
         assert result == {"installed_apps": []}
 
-    def test_get_installed_apps_with_webapp_auth_enabled(self, app, current_user, tenant_id, installed_app):
+    def test_get_installed_apps_with_webapp_auth_enabled(self, app: Flask, current_user, tenant_id, installed_app):
         """Test filtering when webapp_auth is enabled."""
         api = module.InstalledAppsListApi()
         method = unwrap(api.get)
@@ -133,7 +134,7 @@ class TestInstalledAppsListApi:
 
         assert len(result["installed_apps"]) == 1
 
-    def test_get_installed_apps_with_webapp_auth_user_denied(self, app, current_user, tenant_id, installed_app):
+    def test_get_installed_apps_with_webapp_auth_user_denied(self, app: Flask, current_user, tenant_id, installed_app):
         """Test filtering when user doesn't have access."""
         api = module.InstalledAppsListApi()
         method = unwrap(api.get)
@@ -169,7 +170,7 @@ class TestInstalledAppsListApi:
 
         assert result["installed_apps"] == []
 
-    def test_get_installed_apps_with_sso_verified_access(self, app, current_user, tenant_id, installed_app):
+    def test_get_installed_apps_with_sso_verified_access(self, app: Flask, current_user, tenant_id, installed_app):
         """Test that sso_verified access mode apps are skipped in filtering."""
         api = module.InstalledAppsListApi()
         method = unwrap(api.get)
@@ -200,7 +201,7 @@ class TestInstalledAppsListApi:
 
         assert len(result["installed_apps"]) == 0
 
-    def test_get_installed_apps_filters_null_apps(self, app, current_user, tenant_id):
+    def test_get_installed_apps_filters_null_apps(self, app: Flask, current_user, tenant_id):
         """Test that installed apps with null app are filtered out."""
         api = module.InstalledAppsListApi()
         method = unwrap(api.get)
@@ -226,7 +227,7 @@ class TestInstalledAppsListApi:
 
         assert result["installed_apps"] == []
 
-    def test_get_installed_apps_current_tenant_none(self, app, tenant_id, installed_app):
+    def test_get_installed_apps_current_tenant_none(self, app: Flask, tenant_id, installed_app):
         """Test error when current_user.current_tenant is None."""
         api = module.InstalledAppsListApi()
         method = unwrap(api.get)
@@ -247,7 +248,7 @@ class TestInstalledAppsListApi:
 
 
 class TestInstalledAppsCreateApi:
-    def test_post_success(self, app, tenant_id, payload_patch):
+    def test_post_success(self, app: Flask, tenant_id, payload_patch):
         api = module.InstalledAppsListApi()
         method = unwrap(api.post)
 
@@ -276,7 +277,7 @@ class TestInstalledAppsCreateApi:
         assert result == {"message": "App installed successfully"}
         assert recommended.install_count == 1
 
-    def test_post_recommended_not_found(self, app, payload_patch):
+    def test_post_recommended_not_found(self, app: Flask, payload_patch):
         api = module.InstalledAppsListApi()
         method = unwrap(api.post)
 
@@ -291,7 +292,7 @@ class TestInstalledAppsCreateApi:
             with pytest.raises(NotFound):
                 method(api)
 
-    def test_post_app_not_public(self, app, tenant_id, payload_patch):
+    def test_post_app_not_public(self, app: Flask, tenant_id, payload_patch):
         api = module.InstalledAppsListApi()
         method = unwrap(api.post)
 
@@ -315,7 +316,7 @@ class TestInstalledAppsCreateApi:
 
 
 class TestInstalledAppApi:
-    def test_delete_success(self, tenant_id, installed_app):
+    def test_delete_success(self, tenant_id: str, installed_app):
         api = module.InstalledAppApi()
         method = unwrap(api.delete)
 
@@ -328,7 +329,7 @@ class TestInstalledAppApi:
         assert status == 204
         assert resp["result"] == "success"
 
-    def test_delete_owned_by_current_tenant(self, tenant_id):
+    def test_delete_owned_by_current_tenant(self, tenant_id: str):
         api = module.InstalledAppApi()
         method = unwrap(api.delete)
 
@@ -338,7 +339,7 @@ class TestInstalledAppApi:
             with pytest.raises(BadRequest):
                 method(installed_app)
 
-    def test_patch_update_pin(self, app, payload_patch, installed_app):
+    def test_patch_update_pin(self, app: Flask, payload_patch, installed_app):
         api = module.InstalledAppApi()
         method = unwrap(api.patch)
 
@@ -352,7 +353,7 @@ class TestInstalledAppApi:
         assert installed_app.is_pinned is True
         assert result["result"] == "success"
 
-    def test_patch_no_change(self, app, payload_patch, installed_app):
+    def test_patch_no_change(self, app: Flask, payload_patch, installed_app):
         api = module.InstalledAppApi()
         method = unwrap(api.patch)
 
