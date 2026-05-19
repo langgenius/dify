@@ -1,8 +1,9 @@
 'use client'
 
 import type { FC } from 'react'
-import { useRouter } from '@/next/navigation'
+import { Button } from '@langgenius/dify-ui/button'
 import { setPostLoginRedirect } from '@/app/signin/utils/post-login-redirect'
+import { useRouter } from '@/next/navigation'
 
 type Props = {
   userCode: string
@@ -31,27 +32,30 @@ const Chooser: FC<Props> = ({ userCode, ssoAvailable }) => {
   }
 
   const onSSO = () => {
-    // Full-page navigation, not router.push — /openapi/v1/oauth/device/sso-initiate
-    // issues a 302 to the IdP. Next's client router can't follow cross-
-    // origin redirects; a plain window.location assignment handles it.
     window.location.href = `/openapi/v1/oauth/device/sso-initiate?user_code=${encodeURIComponent(userCode)}`
   }
 
   return (
     <div className="flex flex-col gap-3">
-      <button
+      <Button
+        variant="primary"
+        size="large"
+        className="w-full gap-2"
         onClick={onAccount}
-        className="rounded-lg bg-components-button-primary-bg px-4 py-3 text-components-button-primary-text font-medium hover:bg-components-button-primary-bg-hover"
       >
+        <span className="i-ri-user-3-line h-4 w-4" />
         Sign in with Dify account
-      </button>
+      </Button>
       {ssoAvailable && (
-        <button
+        <Button
+          variant="secondary"
+          size="large"
+          className="w-full gap-2"
           onClick={onSSO}
-          className="rounded-lg border border-components-button-secondary-border bg-components-button-secondary-bg px-4 py-3 text-components-button-secondary-text font-medium hover:bg-components-button-secondary-bg-hover"
         >
+          <span className="i-ri-shield-line h-4 w-4" />
           Sign in with SSO
-        </button>
+        </Button>
       )}
     </div>
   )
