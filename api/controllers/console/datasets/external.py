@@ -4,7 +4,8 @@ from pydantic import BaseModel, Field
 from werkzeug.exceptions import Forbidden, InternalServerError, NotFound
 
 import services
-from controllers.common.schema import get_or_create_model, register_schema_models
+from controllers.common.fields import UsageCountResponse
+from controllers.common.schema import get_or_create_model, register_response_schema_models, register_schema_models
 from controllers.console import console_ns
 from controllers.console.datasets.error import DatasetNameDuplicateError
 from controllers.console.wraps import account_initialization_required, edit_permission_required, setup_required
@@ -26,6 +27,8 @@ from services.dataset_service import DatasetService
 from services.external_knowledge_service import ExternalDatasetService
 from services.hit_testing_service import HitTestingService
 from services.knowledge_service import BedrockRetrievalSetting, ExternalDatasetTestService
+
+register_response_schema_models(console_ns, UsageCountResponse)
 
 
 def _build_dataset_detail_model():
@@ -206,6 +209,7 @@ class ExternalApiTemplateApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @console_ns.response(204, "External knowledge API deleted successfully")
     def delete(self, external_knowledge_api_id):
         current_user, current_tenant_id = current_account_with_tenant()
         external_knowledge_api_id = str(external_knowledge_api_id)
@@ -222,7 +226,7 @@ class ExternalApiUseCheckApi(Resource):
     @console_ns.doc("check_external_api_usage")
     @console_ns.doc(description="Check if external knowledge API is being used")
     @console_ns.doc(params={"external_knowledge_api_id": "External knowledge API ID"})
-    @console_ns.response(200, "Usage check completed successfully")
+    @console_ns.response(200, "Usage check completed successfully", console_ns.models[UsageCountResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required

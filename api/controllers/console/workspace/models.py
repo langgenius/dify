@@ -5,7 +5,8 @@ from flask import request
 from flask_restx import Resource
 from pydantic import BaseModel, Field, field_validator
 
-from controllers.common.schema import register_enum_models, register_schema_models
+from controllers.common.fields import SimpleResultResponse
+from controllers.common.schema import register_enum_models, register_response_schema_models, register_schema_models
 from controllers.console import console_ns
 from controllers.console.wraps import account_initialization_required, is_admin_or_owner_required, setup_required
 from graphon.model_runtime.entities.model_entities import ModelType
@@ -126,6 +127,7 @@ register_schema_models(
     Inner,
     ParserSwitch,
 )
+register_response_schema_models(console_ns, SimpleResultResponse)
 
 register_enum_models(console_ns, ModelType)
 
@@ -149,6 +151,7 @@ class DefaultModelApi(Resource):
         return jsonable_encoder({"data": default_model_entity})
 
     @console_ns.expect(console_ns.models[ParserPostDefault.__name__])
+    @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
     @setup_required
     @login_required
     @is_admin_or_owner_required
@@ -241,6 +244,7 @@ class ModelProviderModelApi(Resource):
         return {"result": "success"}, 200
 
     @console_ns.expect(console_ns.models[ParserDeleteModels.__name__])
+    @console_ns.response(204, "Model deleted successfully")
     @setup_required
     @login_required
     @is_admin_or_owner_required
@@ -373,6 +377,7 @@ class ModelProviderModelCredentialApi(Resource):
         return {"result": "success"}
 
     @console_ns.expect(console_ns.models[ParserDeleteCredential.__name__])
+    @console_ns.response(204, "Credential deleted successfully")
     @setup_required
     @login_required
     @is_admin_or_owner_required
@@ -396,6 +401,7 @@ class ModelProviderModelCredentialApi(Resource):
 @console_ns.route("/workspaces/current/model-providers/<path:provider>/models/credentials/switch")
 class ModelProviderModelCredentialSwitchApi(Resource):
     @console_ns.expect(console_ns.models[ParserSwitch.__name__])
+    @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
     @setup_required
     @login_required
     @is_admin_or_owner_required
@@ -420,6 +426,7 @@ class ModelProviderModelCredentialSwitchApi(Resource):
 )
 class ModelProviderModelEnableApi(Resource):
     @console_ns.expect(console_ns.models[ParserDeleteModels.__name__])
+    @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -441,6 +448,7 @@ class ModelProviderModelEnableApi(Resource):
 )
 class ModelProviderModelDisableApi(Resource):
     @console_ns.expect(console_ns.models[ParserDeleteModels.__name__])
+    @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required

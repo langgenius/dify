@@ -10,6 +10,7 @@ from werkzeug.exceptions import BadRequest, Forbidden, InternalServerError, NotF
 
 import services
 from controllers.common.controller_schemas import DefaultBlockConfigQuery, WorkflowListQuery, WorkflowUpdatePayload
+from controllers.common.fields import SimpleResultResponse
 from controllers.common.schema import register_response_schema_models, register_schema_models
 from controllers.console import console_ns
 from controllers.console.app.error import (
@@ -34,6 +35,7 @@ from core.app.apps.pipeline.pipeline_generator import PipelineGenerator
 from core.app.entities.app_invoke_entities import InvokeFrom
 from extensions.ext_database import db
 from factories import variable_factory
+from fields.base import ResponseModel
 from fields.workflow_run_fields import (
     WorkflowRunDetailResponse,
     WorkflowRunNodeExecutionListResponse,
@@ -115,6 +117,17 @@ class RagPipelineRecommendedPluginQuery(BaseModel):
     type: str = "all"
 
 
+class RagPipelineWorkflowSyncResponse(ResponseModel):
+    result: str
+    hash: str
+    updated_at: int
+
+
+class RagPipelineWorkflowPublishResponse(ResponseModel):
+    result: str
+    created_at: int
+
+
 register_schema_models(
     console_ns,
     DraftWorkflowSyncPayload,
@@ -133,6 +146,9 @@ register_schema_models(
 )
 register_response_schema_models(
     console_ns,
+    RagPipelineWorkflowPublishResponse,
+    RagPipelineWorkflowSyncResponse,
+    SimpleResultResponse,
     WorkflowRunDetailResponse,
     WorkflowRunNodeExecutionListResponse,
     WorkflowRunNodeExecutionResponse,
@@ -172,6 +188,7 @@ class DraftRagPipelineApi(Resource):
     @account_initialization_required
     @get_rag_pipeline
     @edit_permission_required
+    @console_ns.response(200, "Success", console_ns.models[RagPipelineWorkflowSyncResponse.__name__])
     def post(self, pipeline: Pipeline):
         """
         Sync draft workflow
@@ -462,6 +479,7 @@ class RagPipelineDraftNodeRunApi(Resource):
 
 @console_ns.route("/rag/pipelines/<uuid:pipeline_id>/workflow-runs/tasks/<string:task_id>/stop")
 class RagPipelineTaskStopApi(Resource):
+    @console_ns.response(200, "Task stopped successfully", console_ns.models[SimpleResultResponse.__name__])
     @setup_required
     @login_required
     @edit_permission_required
@@ -508,6 +526,7 @@ class PublishedRagPipelineApi(Resource):
 
         return dump_response(WorkflowResponse, workflow)
 
+    @console_ns.response(200, "Success", console_ns.models[RagPipelineWorkflowPublishResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -630,6 +649,7 @@ class PublishedAllRagPipelineApi(Resource):
 
 @console_ns.route("/rag/pipelines/<uuid:pipeline_id>/workflows/<string:workflow_id>/restore")
 class RagPipelineDraftWorkflowRestoreApi(Resource):
+    @console_ns.response(200, "Success", console_ns.models[RagPipelineWorkflowSyncResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -699,6 +719,7 @@ class RagPipelineByIdApi(Resource):
 
             return dump_response(WorkflowResponse, workflow)
 
+    @console_ns.response(204, "Workflow deleted successfully")
     @setup_required
     @login_required
     @account_initialization_required

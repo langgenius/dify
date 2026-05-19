@@ -8,7 +8,8 @@ from werkzeug.exceptions import Forbidden, NotFound
 
 import services
 from configs import dify_config
-from controllers.common.schema import get_or_create_model, register_schema_models
+from controllers.common.fields import ApiBaseUrlResponse, SimpleResultResponse, UsageCheckResponse
+from controllers.common.schema import get_or_create_model, register_response_schema_models, register_schema_models
 from controllers.console import console_ns
 from controllers.console.apikey import ApiKeyItem, ApiKeyList
 from controllers.console.app.error import ProviderNotInitializeError
@@ -57,6 +58,8 @@ from models.enums import ApiTokenType, SegmentStatus
 from models.provider_ids import ModelProviderID
 from services.api_token_service import ApiTokenCache
 from services.dataset_service import DatasetPermissionService, DatasetService, DocumentService
+
+register_response_schema_models(console_ns, ApiBaseUrlResponse, SimpleResultResponse, UsageCheckResponse)
 
 # Register models for flask_restx to avoid dict type issues in Swagger
 dataset_base_model = get_or_create_model("DatasetBase", dataset_fields)
@@ -521,6 +524,7 @@ class DatasetApi(Resource):
     @login_required
     @account_initialization_required
     @cloud_edition_billing_rate_limit_check("knowledge")
+    @console_ns.response(204, "Dataset deleted successfully")
     def delete(self, dataset_id):
         dataset_id_str = str(dataset_id)
         current_user, _ = current_account_with_tenant()
@@ -543,7 +547,11 @@ class DatasetUseCheckApi(Resource):
     @console_ns.doc("check_dataset_use")
     @console_ns.doc(description="Check if dataset is in use")
     @console_ns.doc(params={"dataset_id": "Dataset ID"})
-    @console_ns.response(200, "Dataset use status retrieved successfully")
+    @console_ns.response(
+        200,
+        "Dataset use status retrieved successfully",
+        console_ns.models[UsageCheckResponse.__name__],
+    )
     @setup_required
     @login_required
     @account_initialization_required
@@ -873,6 +881,7 @@ class DatasetEnableApiApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
     def post(self, dataset_id, status):
         dataset_id_str = str(dataset_id)
 
@@ -885,7 +894,7 @@ class DatasetEnableApiApi(Resource):
 class DatasetApiBaseUrlApi(Resource):
     @console_ns.doc("get_dataset_api_base_info")
     @console_ns.doc(description="Get dataset API base information")
-    @console_ns.response(200, "API base info retrieved successfully")
+    @console_ns.response(200, "API base info retrieved successfully", console_ns.models[ApiBaseUrlResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
