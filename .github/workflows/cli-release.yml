@@ -2,12 +2,6 @@ name: CLI Release
 
 on:
   workflow_dispatch:
-  # TEMP: remove before merging — lets the PR exercise the release pipeline.
-  pull_request:
-    branches: [feat/cli]
-    paths:
-      - 'cli/**'
-      - '.github/workflows/cli-release.yml'
 
 concurrency:
   group: cli-release-${{ github.ref }}
