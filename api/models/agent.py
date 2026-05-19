@@ -47,6 +47,17 @@ class AgentSource(StrEnum):
     SYSTEM = "system"
 
 
+class AgentIconType(StrEnum):
+    """Supported icon storage formats for Agent roster entries."""
+
+    # ``icon`` stores an uploaded image reference.
+    IMAGE = "image"
+    # ``icon`` stores an emoji character.
+    EMOJI = "emoji"
+    # ``icon`` stores an external image URL.
+    LINK = "link"
+
+
 class AgentStatus(StrEnum):
     """Soft lifecycle state for Agent records."""
 
@@ -86,9 +97,9 @@ class Agent(DefaultFieldsMixin, Base):
     __tablename__ = "agents"
     __table_args__ = (
         sa.PrimaryKeyConstraint("id", name="agent_pkey"),
-        UniqueConstraint("tenant_id", "roster_unique_name", name="agent_tenant_roster_name_unique"),
-        Index("agent_tenant_status_updated_at_idx", "tenant_id", "status", "updated_at"),
-        Index("agent_tenant_scope_status_idx", "tenant_id", "scope", "status"),
+        UniqueConstraint("tenant_id", "roster_unique_name"),
+        Index("agent_tenant_updated_at_idx", "tenant_id", "updated_at"),
+        Index("agent_tenant_scope_idx", "tenant_id", "scope"),
         Index("agent_tenant_workflow_id_idx", "tenant_id", "workflow_id"),
         Index("agent_tenant_app_id_idx", "tenant_id", "app_id"),
         Index("agent_active_config_version_id_idx", "active_config_version_id"),
@@ -97,8 +108,12 @@ class Agent(DefaultFieldsMixin, Base):
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     description: Mapped[str] = mapped_column(LongText, nullable=False, default="")
-    icon_type: Mapped[str | None] = mapped_column(String(255), nullable=True)
-    icon: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    icon_type: Mapped[AgentIconType | None] = mapped_column(EnumText(AgentIconType, length=32), nullable=True)
+    icon: Mapped[str | None] = mapped_column(
+        String(255),
+        nullable=True,
+        comment="Icon payload interpreted by icon_type: emoji character, image file id, or external URL.",
+    )
     icon_background: Mapped[str | None] = mapped_column(String(255), nullable=True)
     agent_kind: Mapped[AgentKind] = mapped_column(
         EnumText(AgentKind, length=32), nullable=False, default=AgentKind.DIFY_AGENT
@@ -123,7 +138,7 @@ class Agent(DefaultFieldsMixin, Base):
     archived_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
 
-class AgentConfigVersion(Base):
+class AgentConfigVersion(DefaultFieldsMixin, Base):
     """Immutable Agent Soul snapshot version.
 
     ``config_snapshot`` is a JSON string stored as ``LongText``. It may contain
@@ -138,20 +153,14 @@ class AgentConfigVersion(Base):
         Index("agent_config_version_tenant_created_at_idx", "tenant_id", "created_at"),
     )
 
-    id: Mapped[str] = mapped_column(StringUUID, primary_key=True, default=lambda: str(uuidv7()))
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     agent_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     version: Mapped[int] = mapped_column(sa.Integer, nullable=False)
+    # Serialized services.entities.agent_entities.AgentSoulConfig JSON.
     config_snapshot: Mapped[str] = mapped_column(LongText, nullable=False, default="{}")
     summary: Mapped[str | None] = mapped_column(LongText, nullable=True)
     version_note: Mapped[str | None] = mapped_column(LongText, nullable=True)
     created_by: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime,
-        nullable=False,
-        default=naive_utc_now,
-        server_default=func.current_timestamp(),
-    )
 
     @property
     def config_snapshot_dict(self) -> dict[str, Any]:
@@ -192,6 +201,7 @@ class AgentConfigVersionRevision(Base):
     operation: Mapped[AgentConfigVersionOperation] = mapped_column(
         EnumText(AgentConfigVersionOperation, length=64), nullable=False
     )
+    # Serialized services.entities.agent_entities.AgentSoulConfig JSON at this revision.
     config_snapshot: Mapped[str] = mapped_column(LongText, nullable=False)
     previous_config_snapshot: Mapped[str | None] = mapped_column(LongText, nullable=True)
     summary: Mapped[str | None] = mapped_column(LongText, nullable=True)

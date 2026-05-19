@@ -39,7 +39,7 @@ class AgentRosterService:
             "id": agent.id,
             "name": agent.name,
             "description": agent.description,
-            "icon_type": agent.icon_type,
+            "icon_type": agent.icon_type.value if agent.icon_type else None,
             "icon": agent.icon,
             "icon_background": agent.icon_background,
             "agent_kind": agent.agent_kind.value,

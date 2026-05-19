@@ -36,8 +36,13 @@ def upgrade():
         sa.Column("tenant_id", models.types.StringUUID(), nullable=False),
         sa.Column("name", sa.String(length=255), nullable=False),
         sa.Column("description", models.types.LongText(), nullable=False),
-        sa.Column("icon_type", sa.String(length=255), nullable=True),
-        sa.Column("icon", sa.String(length=255), nullable=True),
+        sa.Column("icon_type", sa.String(length=32), nullable=True),
+        sa.Column(
+            "icon",
+            sa.String(length=255),
+            nullable=True,
+            comment="Icon payload interpreted by icon_type: emoji character, image file id, or external URL.",
+        ),
         sa.Column("icon_background", sa.String(length=255), nullable=True),
         sa.Column("agent_kind", sa.String(length=32), server_default=sa.text("'dify_agent'"), nullable=False),
         sa.Column("scope", sa.String(length=32), nullable=False),
@@ -60,10 +65,10 @@ def upgrade():
         sa.Column("created_at", sa.DateTime(), server_default=sa.func.current_timestamp(), nullable=False),
         sa.Column("updated_at", sa.DateTime(), server_default=sa.func.current_timestamp(), nullable=False),
         sa.PrimaryKeyConstraint("id", name=op.f("agent_pkey")),
-        sa.UniqueConstraint("tenant_id", "roster_unique_name", name=op.f("agent_tenant_roster_name_unique")),
+        sa.UniqueConstraint("tenant_id", "roster_unique_name", name=op.f("agents_tenant_id_key")),
     )
-    op.create_index("agent_tenant_status_updated_at_idx", "agents", ["tenant_id", "status", "updated_at"])
-    op.create_index("agent_tenant_scope_status_idx", "agents", ["tenant_id", "scope", "status"])
+    op.create_index("agent_tenant_updated_at_idx", "agents", ["tenant_id", "updated_at"])
+    op.create_index("agent_tenant_scope_idx", "agents", ["tenant_id", "scope"])
     op.create_index("agent_tenant_workflow_id_idx", "agents", ["tenant_id", "workflow_id"])
     op.create_index("agent_tenant_app_id_idx", "agents", ["tenant_id", "app_id"])
     op.create_index("agent_active_config_version_id_idx", "agents", ["active_config_version_id"])
@@ -74,11 +79,17 @@ def upgrade():
         sa.Column("tenant_id", models.types.StringUUID(), nullable=False),
         sa.Column("agent_id", models.types.StringUUID(), nullable=False),
         sa.Column("version", sa.Integer(), nullable=False),
-        sa.Column("config_snapshot", models.types.LongText(), nullable=False),
+        sa.Column(
+            "config_snapshot",
+            models.types.LongText(),
+            nullable=False,
+            comment="Serialized services.entities.agent_entities.AgentSoulConfig JSON.",
+        ),
         sa.Column("summary", models.types.LongText(), nullable=True),
         sa.Column("version_note", models.types.LongText(), nullable=True),
         sa.Column("created_by", models.types.StringUUID(), nullable=True),
         sa.Column("created_at", sa.DateTime(), server_default=sa.func.current_timestamp(), nullable=False),
+        sa.Column("updated_at", sa.DateTime(), server_default=sa.func.current_timestamp(), nullable=False),
         sa.PrimaryKeyConstraint("id", name=op.f("agent_config_version_pkey")),
         sa.UniqueConstraint("agent_id", "version", name=op.f("agent_config_version_agent_version_unique")),
     )
@@ -154,6 +165,6 @@ def downgrade():
     op.drop_index("agent_active_config_version_id_idx", table_name="agents")
     op.drop_index("agent_tenant_app_id_idx", table_name="agents")
     op.drop_index("agent_tenant_workflow_id_idx", table_name="agents")
-    op.drop_index("agent_tenant_scope_status_idx", table_name="agents")
-    op.drop_index("agent_tenant_status_updated_at_idx", table_name="agents")
+    op.drop_index("agent_tenant_scope_idx", table_name="agents")
+    op.drop_index("agent_tenant_updated_at_idx", table_name="agents")
     op.drop_table("agents")

@@ -38,7 +38,12 @@ def upgrade():
         sa.Column("agent_config_version_id", models.types.StringUUID(), nullable=False),
         sa.Column("revision", sa.Integer(), nullable=False),
         sa.Column("operation", sa.String(length=64), nullable=False),
-        sa.Column("config_snapshot", models.types.LongText(), nullable=False),
+        sa.Column(
+            "config_snapshot",
+            models.types.LongText(),
+            nullable=False,
+            comment="Serialized services.entities.agent_entities.AgentSoulConfig JSON at this revision.",
+        ),
         sa.Column("previous_config_snapshot", models.types.LongText(), nullable=True),
         sa.Column("summary", models.types.LongText(), nullable=True),
         sa.Column("version_note", models.types.LongText(), nullable=True),

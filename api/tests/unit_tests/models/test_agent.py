@@ -1,4 +1,5 @@
 import json
+from typing import cast
 
 import pytest
 import sqlalchemy as sa
@@ -9,6 +10,7 @@ from models.agent import (
     AgentConfigVersion,
     AgentConfigVersionOperation,
     AgentConfigVersionRevision,
+    AgentIconType,
     AgentKind,
     AgentScope,
     AgentSource,
@@ -21,6 +23,7 @@ from models.types import LongText
 
 def test_agent_enums_match_prd_boundaries():
     assert AgentKind.DIFY_AGENT.value == "dify_agent"
+    assert AgentIconType.EMOJI.value == "emoji"
     assert AgentScope.ROSTER.value == "roster"
     assert AgentScope.WORKFLOW_ONLY.value == "workflow_only"
     assert AgentSource.AGENT_APP.value == "agent_app"
@@ -33,25 +36,31 @@ def test_agent_enums_match_prd_boundaries():
 
 
 def test_agent_table_uses_db_unique_constraint_for_active_roster_names():
+    agent_table = cast(sa.Table, Agent.__table__)
     unique_constraints = {
-        constraint.name: tuple(column.name for column in constraint.columns)
-        for constraint in Agent.__table__.constraints
-        if constraint.__class__.__name__ == "UniqueConstraint"
+        str(constraint.name): tuple(column.name for column in constraint.columns)
+        for constraint in agent_table.constraints
+        if isinstance(constraint, sa.UniqueConstraint)
     }
 
-    assert unique_constraints["agent_tenant_roster_name_unique"] == ("tenant_id", "roster_unique_name")
+    assert unique_constraints["agents_tenant_id_key"] == ("tenant_id", "roster_unique_name")
 
-    roster_unique_name = Agent.__table__.c.roster_unique_name
+    roster_unique_name = agent_table.c.roster_unique_name
     assert roster_unique_name.computed is not None
     computed_sql = str(roster_unique_name.computed.sqltext)
     assert "scope = 'roster'" in computed_sql
     assert "status = 'active'" in computed_sql
 
+    indexes = {str(index.name): tuple(column.name for column in index.columns) for index in agent_table.indexes}
+    assert indexes["agent_tenant_updated_at_idx"] == ("tenant_id", "updated_at")
+    assert indexes["agent_tenant_scope_idx"] == ("tenant_id", "scope")
+
 
 def test_active_roster_agent_name_unique_constraint_allows_archived_and_workflow_only_duplicates():
     engine = sa.create_engine("sqlite:///:memory:")
-    Agent.__table__.create(engine)
-    insert_agent = Agent.__table__.insert()
+    agent_table = cast(sa.Table, Agent.__table__)
+    agent_table.create(engine)
+    insert_agent = agent_table.insert()
 
     with engine.begin() as conn:
         conn.execute(
@@ -173,10 +182,11 @@ def test_agent_config_version_revision_records_audit_snapshot():
         previous_config_snapshot=json.dumps(previous_snapshot),
     )
 
+    revision_table = cast(sa.Table, AgentConfigVersionRevision.__table__)
     unique_constraints = {
-        constraint.name: tuple(column.name for column in constraint.columns)
-        for constraint in AgentConfigVersionRevision.__table__.constraints
-        if constraint.__class__.__name__ == "UniqueConstraint"
+        str(constraint.name): tuple(column.name for column in constraint.columns)
+        for constraint in revision_table.constraints
+        if isinstance(constraint, sa.UniqueConstraint)
     }
 
     assert unique_constraints["agent_config_version_revision_version_revision_unique"] == (

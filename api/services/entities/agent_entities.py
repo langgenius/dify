@@ -3,6 +3,8 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
+from models.agent import AgentIconType
+
 
 class ComposerVariant(StrEnum):
     WORKFLOW = "workflow"
@@ -190,7 +192,7 @@ class ComposerSavePayload(BaseModel):
 class RosterAgentCreatePayload(BaseModel):
     name: str = Field(min_length=1, max_length=255)
     description: str = ""
-    icon_type: str | None = Field(default=None, max_length=255)
+    icon_type: AgentIconType | None = None
     icon: str | None = Field(default=None, max_length=255)
     icon_background: str | None = Field(default=None, max_length=255)
     agent_soul: AgentSoulConfig = Field(default_factory=AgentSoulConfig)
@@ -200,7 +202,7 @@ class RosterAgentCreatePayload(BaseModel):
 class RosterAgentUpdatePayload(BaseModel):
     name: str | None = Field(default=None, min_length=1, max_length=255)
     description: str | None = None
-    icon_type: str | None = Field(default=None, max_length=255)
+    icon_type: AgentIconType | None = None
     icon: str | None = Field(default=None, max_length=255)
     icon_background: str | None = Field(default=None, max_length=255)
 
