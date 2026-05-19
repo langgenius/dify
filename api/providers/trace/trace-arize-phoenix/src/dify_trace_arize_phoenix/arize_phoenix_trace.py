@@ -579,7 +579,9 @@ def _resolve_wrapper_group_key(
     return None
 
 
-def _build_wrapper_groups(node_executions: Sequence[_NodeExecutionIdentityLike]) -> dict[_WrapperGroupKey, _WrapperGroup]:
+def _build_wrapper_groups(
+    node_executions: Sequence[_NodeExecutionIdentityLike],
+) -> dict[_WrapperGroupKey, _WrapperGroup]:
     """Group repeated loop/iteration body executions behind synthetic Phoenix spans."""
     execution_id_by_node_id = _build_execution_id_by_node_id(node_executions)
     groups: dict[_WrapperGroupKey, _WrapperGroup] = {}
