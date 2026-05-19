@@ -1,6 +1,6 @@
 import type { ArgDefinition, CommandMeta, FlagDefinition, ParsedArgs, ParsedFlags } from './types.js'
 
-function stringFlag<const Opts extends { description: string, char?: string, default?: string, multiple?: boolean, helpGroup?: string }>(
+function stringFlag<const Opts extends { description: string, char?: string, default?: string, multiple?: boolean, helpGroup?: string, options?: readonly string[] }>(
   opts: Opts,
 ): FlagDefinition<string> {
   return {
@@ -89,6 +89,11 @@ function resolveByChar(char: string, meta: CommandMeta): [name: string, def: Fla
   return undefined
 }
 
+function validateFlagOptions(name: string, raw: string, def: FlagDefinition): void {
+  if (def.options !== undefined && !def.options.includes(raw))
+    throw new Error(`--${name} must be one of: ${def.options.join(', ')}`)
+}
+
 export function parseArgv(argv: readonly string[], meta: CommandMeta): { args: ParsedArgs, flags: ParsedFlags } {
   const flags: ParsedFlags = {}
   const positional: string[] = []
@@ -127,6 +132,7 @@ export function parseArgv(argv: readonly string[], meta: CommandMeta): { args: P
         flags[name] = rawValue === undefined ? true : coerceFlagValue(rawValue, def)
       }
       else if (rawValue !== undefined) {
+        validateFlagOptions(name, rawValue, def)
         accumulateFlagValue(flags, name, coerceFlagValue(rawValue, def), def)
       }
       else {
@@ -135,6 +141,7 @@ export function parseArgv(argv: readonly string[], meta: CommandMeta): { args: P
         if (next === undefined || next.startsWith('-'))
           throw new Error(`flag --${name} expects a value`)
 
+        validateFlagOptions(name, next, def)
         accumulateFlagValue(flags, name, coerceFlagValue(next, def), def)
       }
     }

@@ -300,11 +300,11 @@ async function main(): Promise<void> {
   const result = await generate({ commandsDir, mode: checkMode ? 'check' : 'write' })
 
   if (result.mode === 'write') {
-    process.stdout.write(`tree:gen wrote ${result.path}\n`)
+    process.stderr.write(`tree:gen wrote ${result.path}\n`)
     return
   }
   if (result.ok) {
-    process.stdout.write(`tree:check ok\n`)
+    process.stderr.write(`tree:check ok\n`)
     return
   }
   process.stderr.write(`tree:check FAILED — tree.generated.ts is stale.\nDiff (first 40 lines):\n${result.diff}\n\nRun \`pnpm tree:gen\` and commit.\n`)

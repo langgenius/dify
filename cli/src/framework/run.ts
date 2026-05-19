@@ -50,6 +50,8 @@ export async function run(tree: CommandTree, argv: string[]): Promise<void> {
       process.stdout.write(stringifyOutput(output))
   }
   catch (err) {
+    if ((err as NodeJS.ErrnoException).code === 'EPIPE')
+      process.exit(0)
     if (err instanceof BaseError) {
       const format = sniffOutputFormat(argv)
       process.stderr.write(`${formatErrorForCli(err, { format })}\n`)

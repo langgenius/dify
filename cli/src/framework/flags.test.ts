@@ -175,6 +175,32 @@ describe('parseArgv', () => {
     })
   })
 
+  describe('options validation', () => {
+    const metaWithOptions = {
+      flags: {
+        mode: Flags.string({ description: 'app mode', options: ['chat', 'workflow', 'completion'] }),
+      },
+      args: {},
+    }
+
+    it('accepts a valid option value', () => {
+      const { flags } = parseArgv(['--mode', 'chat'], metaWithOptions)
+      expect(flags.mode).toBe('chat')
+    })
+
+    it('rejects an invalid option value (space form)', () => {
+      expect(() => parseArgv(['--mode', 'chatbot'], metaWithOptions)).toThrow(
+        '--mode must be one of: chat, workflow, completion',
+      )
+    })
+
+    it('rejects an invalid option value (= form)', () => {
+      expect(() => parseArgv(['--mode=chatbot'], metaWithOptions)).toThrow(
+        '--mode must be one of: chat, workflow, completion',
+      )
+    })
+  })
+
   describe('Flags and Args factory', () => {
     it('Flags.string produces string type definition', () => {
       const def = Flags.string({ description: 'test' })

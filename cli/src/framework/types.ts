@@ -10,6 +10,7 @@ export type FlagDefinition<T extends OptionalArgValueType = OptionalArgValueType
   readonly default?: ArgValueType
   readonly multiple?: boolean
   readonly helpGroup?: string
+  readonly options?: readonly string[]
   readonly _flagValue?: T
 }
 

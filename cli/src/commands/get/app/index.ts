@@ -1,5 +1,6 @@
 import { Args, Flags } from '../../../framework/flags.js'
 import { table } from '../../../framework/output.js'
+import { AppMode } from '../../../types/data-contracts.js'
 import { DifyCommand } from '../../_shared/dify-command.js'
 import { httpRetryFlag } from '../../_shared/global-flags.js'
 import { runGetApp } from './run.js'
@@ -27,7 +28,7 @@ export default class GetApp extends DifyCommand {
     }),
     'page': Flags.integer({ description: 'page number', default: 1 }),
     'limit': Flags.string({ description: 'page size [1..200]' }),
-    'mode': Flags.string({ description: 'filter by app mode (chat|completion|workflow|agent-chat|advanced-chat)' }),
+    'mode': Flags.string({ description: 'filter by app mode', options: Object.values(AppMode) }),
     'name': Flags.string({ description: 'filter by app name (server-side substring)' }),
     'tag': Flags.string({ description: 'filter by tag name (server-side exact match)' }),
     'http-retry': httpRetryFlag,
