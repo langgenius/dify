@@ -465,4 +465,90 @@ describe('AgentTools', () => {
       expect((getModelConfig().agentConfig.tools[0] as { isDeleted: boolean }).isDeleted).toBe(false)
     })
   })
+
+  it('should show out-of-sync warning when attached operations are a subset of available', () => {
+    // Provider has 2 tools available (search + translate)
+    builtInTools = [
+      createCollection({
+        id: 'multi-op-provider',
+        name: 'vendor/multi-op-provider',
+        tools: [
+          createToolDefinition({ name: 'op_a' }),
+          createToolDefinition({ name: 'op_b' }),
+        ],
+      }),
+    ]
+
+    // But the app only attaches op_a
+    renderAgentTools([
+      createAgentTool({
+        provider_id: 'multi-op-provider',
+        provider_name: 'vendor/multi-op-provider',
+        tool_name: 'op_a',
+        tool_label: 'Operation A',
+      }),
+    ])
+
+    const warningIcon = screen.getByTestId('tool-ops-out-of-sync')
+    expect(warningIcon).toBeInTheDocument()
+  })
+
+  it('should not show out-of-sync warning when all operations are attached', () => {
+    // Provider has 2 tools available
+    builtInTools = [
+      createCollection({
+        id: 'full-provider',
+        name: 'vendor/full-provider',
+        tools: [
+          createToolDefinition({ name: 'op_a' }),
+          createToolDefinition({ name: 'op_b' }),
+        ],
+      }),
+    ]
+
+    // App attaches both operations
+    renderAgentTools([
+      createAgentTool({
+        provider_id: 'full-provider',
+        provider_name: 'vendor/full-provider',
+        tool_name: 'op_a',
+        tool_label: 'Operation A',
+      }),
+      createAgentTool({
+        provider_id: 'full-provider',
+        provider_name: 'vendor/full-provider',
+        tool_name: 'op_b',
+        tool_label: 'Operation B',
+      }),
+    ])
+
+    const warningIcon = screen.queryByTestId('tool-ops-out-of-sync')
+    expect(warningIcon).not.toBeInTheDocument()
+  })
+
+  it('should not show out-of-sync warning when provider has only one operation', () => {
+    // Provider has exactly 1 tool
+    builtInTools = [
+      createCollection({
+        id: 'single-op-provider',
+        name: 'vendor/single-op-provider',
+        tools: [
+          createToolDefinition({ name: 'only_op' }),
+        ],
+      }),
+    ]
+
+    // App attaches that single operation
+    renderAgentTools([
+      createAgentTool({
+        provider_id: 'single-op-provider',
+        provider_name: 'vendor/single-op-provider',
+        tool_name: 'only_op',
+        tool_label: 'Only Operation',
+      }),
+    ])
+
+    const warningIcon = screen.queryByTestId('tool-ops-out-of-sync')
+    expect(warningIcon).not.toBeInTheDocument()
+  })
 })
