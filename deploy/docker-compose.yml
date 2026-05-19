@@ -1,0 +1,94 @@
+services:
+  api:
+    image: langgenius/dify-api:1.14.1
+    restart: always
+    env_file:
+      - .env
+    environment:
+      MODE: api
+    depends_on:
+      - db
+      - redis
+    volumes:
+      - ./volumes/app/storage:/app/api/storage
+
+  worker:
+    image: langgenius/dify-api:1.14.1
+    restart: always
+    env_file:
+      - .env
+    environment:
+      MODE: worker
+    depends_on:
+      - db
+      - redis
+    volumes:
+      - ./volumes/app/storage:/app/api/storage
+
+  web:
+    image: langgenius/dify-web:1.14.1
+    restart: always
+    environment:
+      CONSOLE_API_URL: ''
+      APP_API_URL: ''
+
+  db:
+    image: pgvector/pgvector:pg15
+    restart: always
+    environment:
+      POSTGRES_PASSWORD: difyai123456
+      POSTGRES_DB: dify
+      PGDATA: /var/lib/postgresql/data/pgdata
+    volumes:
+      - ./volumes/db/data:/var/lib/postgresql/data
+
+  redis:
+    image: redis:6-alpine
+    restart: always
+    command: redis-server --requirepass difyai123456
+    volumes:
+      - ./volumes/redis/data:/data
+
+  plugin_daemon:
+    image: langgenius/dify-plugin-daemon:0.6.0-local
+    restart: always
+    env_file:
+      - .env
+    environment:
+      DB_DATABASE: dify_plugin
+      SERVER_PORT: 5002
+      SERVER_KEY: lYkiYYT6owG+71oLerGzA7GXCgOT++6ovaezWAjpCjf+Sjc3ZtU+qUEi
+      DIFY_INNER_API_URL: http://api:5001
+      DIFY_INNER_API_KEY: QaHbTe77CtuXmsfyhR7+vRjI/+XbV1AaFy691iy+kGDv2Jvy0/eAh8Y1
+      REDIS_PORT: 6379
+      PLUGIN_REMOTE_INSTALLING_HOST: 0.0.0.0
+      PLUGIN_REMOTE_INSTALLING_PORT: 5003
+      PLUGIN_WORKING_PATH: /app/storage
+    volumes:
+      - ./volumes/plugin_daemon:/app/storage
+    depends_on:
+      - db
+      - redis
+
+  sandbox:
+    image: langgenius/dify-sandbox:0.2.10
+    restart: always
+    environment:
+      API_KEY: ${SANDBOX_API_KEY}
+      GIN_MODE: release
+      WORKER_TIMEOUT: 15
+      ENABLE_NETWORK: true
+      SANDBOX_PORT: 8194
+
+  nginx:
+    image: nginx:latest
+    restart: always
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf
+    depends_on:
+      - api
+      - web
+      - plugin_daemon
+      - sandbox
