@@ -219,7 +219,7 @@ describe('InputFieldPanel', () => {
     it('should render close button', () => {
       render(<InputFieldPanel />)
 
-      const closeButton = screen.getByRole('button', { name: '' })
+      const closeButton = screen.getByRole('button', { name: 'common.operation.close' })
       expect(closeButton)!.toBeInTheDocument()
     })
 

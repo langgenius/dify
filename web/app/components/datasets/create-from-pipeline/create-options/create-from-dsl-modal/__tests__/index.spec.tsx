@@ -1352,7 +1352,7 @@ describe('Uploader', () => {
       )
 
       expect(screen.getByText('app.dslUploader.button'))!.toBeInTheDocument()
-      expect(screen.getByText('app.dslUploader.browse'))!.toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'app.dslUploader.browse' }))!.toBeInTheDocument()
     })
 
     it('should render file info when file is selected', () => {
@@ -1436,7 +1436,7 @@ describe('Uploader', () => {
         />,
       )
 
-      const browseLink = screen.getByText('app.dslUploader.browse')
+      const browseLink = screen.getByRole('button', { name: 'app.dslUploader.browse' })
       const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement
 
       // Mock click on input
@@ -1659,7 +1659,7 @@ describe('Uploader', () => {
         // After click, oncancel should be set
       })
 
-      const browseLink = screen.getByText('app.dslUploader.browse')
+      const browseLink = screen.getByRole('button', { name: 'app.dslUploader.browse' })
       fireEvent.click(browseLink)
 
       // selectHandle should have triggered click on input

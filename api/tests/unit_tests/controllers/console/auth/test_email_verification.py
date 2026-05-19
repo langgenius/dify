@@ -13,9 +13,10 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from flask import Flask
+from pydantic import ValidationError
 
 from controllers.console.auth.error import EmailCodeError, InvalidEmailError, InvalidTokenError
-from controllers.console.auth.login import EmailCodeLoginApi, EmailCodeLoginSendEmailApi
+from controllers.console.auth.login import EmailCodeLoginApi, EmailCodeLoginPayload, EmailCodeLoginSendEmailApi
 from controllers.console.error import (
     AccountInFreezeError,
     AccountNotFound,
@@ -29,6 +30,18 @@ from services.errors.account import AccountRegisterError
 def encode_code(code: str) -> str:
     """Helper to encode verification code as Base64 for testing."""
     return base64.b64encode(code.encode("utf-8")).decode()
+
+
+def test_email_code_login_payload_rejects_invalid_timezone():
+    with pytest.raises(ValidationError):
+        EmailCodeLoginPayload.model_validate(
+            {
+                "email": "newuser@example.com",
+                "code": "123456",
+                "token": "token-123",
+                "timezone": "",
+            }
+        )
 
 
 class TestEmailCodeLoginSendEmailApi:
@@ -195,7 +208,7 @@ class TestEmailCodeLoginSendEmailApi:
         mock_get_user,
         mock_is_ip_limit,
         mock_db,
-        app,
+        app: Flask,
         mock_account,
         language_input,
         expected_language,
@@ -267,7 +280,7 @@ class TestEmailCodeLoginApi:
         mock_revoke_token,
         mock_get_data,
         mock_db,
-        app,
+        app: Flask,
         mock_account,
         mock_token_pair,
     ):
@@ -315,7 +328,7 @@ class TestEmailCodeLoginApi:
         mock_revoke_token,
         mock_get_data,
         mock_db,
-        app,
+        app: Flask,
         mock_account,
         mock_token_pair,
     ):
@@ -342,6 +355,7 @@ class TestEmailCodeLoginApi:
                 "code": encode_code("123456"),
                 "token": "valid_token",
                 "language": "en-US",
+                "timezone": "Asia/Shanghai",
             },
         ):
             api = EmailCodeLoginApi()
@@ -349,7 +363,12 @@ class TestEmailCodeLoginApi:
 
         # Assert
         assert response.json["result"] == "success"
-        mock_create_account.assert_called_once()
+        mock_create_account.assert_called_once_with(
+            email="newuser@example.com",
+            name="newuser@example.com",
+            interface_language="en-US",
+            timezone="Asia/Shanghai",
+        )
 
     @patch("controllers.console.wraps.db")
     @patch("controllers.console.auth.login.AccountService.get_email_code_login_data")
@@ -431,7 +450,7 @@ class TestEmailCodeLoginApi:
         mock_revoke_token,
         mock_get_data,
         mock_db,
-        app,
+        app: Flask,
         mock_account,
     ):
         """
@@ -474,7 +493,7 @@ class TestEmailCodeLoginApi:
         mock_revoke_token,
         mock_get_data,
         mock_db,
-        app,
+        app: Flask,
         mock_account,
     ):
         """
@@ -515,7 +534,7 @@ class TestEmailCodeLoginApi:
         mock_revoke_token,
         mock_get_data,
         mock_db,
-        app,
+        app: Flask,
         mock_account,
     ):
         """

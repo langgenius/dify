@@ -133,7 +133,7 @@ describe('DocumentTypeDisplay', () => {
       const onClick = vi.fn()
       render(<DocumentTypeDisplay displayType="book" showChangeLink={true} onChangeClick={onClick} />)
 
-      fireEvent.click(screen.getByText(/operation\.change/))
+      fireEvent.click(screen.getByRole('button', { name: /operation\.change/ }))
 
       expect(onClick).toHaveBeenCalled()
     })

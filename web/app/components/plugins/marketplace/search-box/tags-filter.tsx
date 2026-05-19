@@ -1,13 +1,13 @@
 'use client'
 
-import { useTranslation } from '#i18n'
+import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from '@langgenius/dify-ui/popover'
 import { useState } from 'react'
-import Checkbox from '@/app/components/base/checkbox'
+import { useTranslation } from '#i18n'
 import Input from '@/app/components/base/input'
 import { useTags } from '@/app/components/plugins/hooks'
 import MarketplaceTrigger from './trigger/marketplace'
@@ -88,19 +88,19 @@ const TagsFilter = ({
           <div className="max-h-[448px] overflow-y-auto p-1">
             {
               filteredOptions.map(option => (
-                <div
+                <label
                   key={option.name}
                   className="flex h-7 cursor-pointer items-center rounded-lg px-2 py-1.5 select-none hover:bg-state-base-hover"
-                  onClick={() => handleCheck(option.name)}
                 >
                   <Checkbox
                     className="mr-1"
                     checked={tags.includes(option.name)}
+                    onCheckedChange={() => handleCheck(option.name)}
                   />
                   <div className="px-1 system-sm-medium text-text-secondary">
                     {option.label}
                   </div>
-                </div>
+                </label>
               ))
             }
           </div>

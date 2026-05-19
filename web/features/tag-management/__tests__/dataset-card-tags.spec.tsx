@@ -8,9 +8,9 @@ vi.mock('@/features/tag-management/components/tag-selector', () => ({
     value: Tag[]
     onOpenTagManagement?: () => void
   }) => (
-    <div data-testid="tag-selector">
-      <div data-testid="tag-values">{value.map(tag => tag.id).join(',')}</div>
-      <div data-testid="selected-count">
+    <div role="group" aria-label="Tag selector mock">
+      <div>{value.map(tag => tag.id).join(',')}</div>
+      <div>
         {value.length}
         {' '}
         tags
@@ -42,29 +42,29 @@ describe('DatasetCardTags', () => {
   describe('Rendering', () => {
     it('should render without crashing', () => {
       render(<DatasetCardTags {...defaultProps} />)
-      expect(screen.getByTestId('tag-selector')).toBeInTheDocument()
+      expect(screen.getByRole('group', { name: 'Tag selector mock' })).toBeInTheDocument()
     })
 
     it('should render TagSelector with correct value', () => {
       render(<DatasetCardTags {...defaultProps} />)
-      expect(screen.getByTestId('tag-values')).toHaveTextContent('tag-1,tag-2')
+      expect(screen.getByText('tag-1,tag-2')).toBeInTheDocument()
     })
 
     it('should display selected tags count', () => {
       render(<DatasetCardTags {...defaultProps} />)
-      expect(screen.getByTestId('selected-count')).toHaveTextContent('2 tags')
+      expect(screen.getByText('2 tags')).toBeInTheDocument()
     })
   })
 
   describe('Props', () => {
     it('should pass dataset id to TagSelector', () => {
       render(<DatasetCardTags {...defaultProps} datasetId="custom-dataset-id" />)
-      expect(screen.getByTestId('tag-selector')).toBeInTheDocument()
+      expect(screen.getByRole('group', { name: 'Tag selector mock' })).toBeInTheDocument()
     })
 
     it('should render with empty tags', () => {
       render(<DatasetCardTags {...defaultProps} tags={[]} />)
-      expect(screen.getByTestId('selected-count')).toHaveTextContent('0 tags')
+      expect(screen.getByText('0 tags')).toBeInTheDocument()
     })
   })
 
@@ -119,7 +119,7 @@ describe('DatasetCardTags', () => {
 
     it('should keep TagSelector visible when tags are empty', () => {
       const { container } = render(<DatasetCardTags {...defaultProps} tags={[]} />)
-      const tagSelectorWrapper = screen.getByTestId('tag-selector').parentElement
+      const tagSelectorWrapper = screen.getByRole('group', { name: 'Tag selector mock' }).parentElement
 
       expect(tagSelectorWrapper).toBeInTheDocument()
       expect(tagSelectorWrapper).toHaveClass('w-full')
@@ -129,7 +129,7 @@ describe('DatasetCardTags', () => {
 
     it('should keep TagSelector visible when tags exist', () => {
       const { container } = render(<DatasetCardTags {...defaultProps} />)
-      const tagSelectorWrapper = screen.getByTestId('tag-selector').parentElement
+      const tagSelectorWrapper = screen.getByRole('group', { name: 'Tag selector mock' }).parentElement
 
       expect(tagSelectorWrapper).toBeInTheDocument()
       expect(tagSelectorWrapper).toHaveClass('w-full')
@@ -151,7 +151,7 @@ describe('DatasetCardTags', () => {
         binding_count: 0,
       }))
       render(<DatasetCardTags {...defaultProps} tags={manyTags} />)
-      expect(screen.getByTestId('selected-count')).toHaveTextContent('20 tags')
+      expect(screen.getByText('20 tags')).toBeInTheDocument()
     })
   })
 })

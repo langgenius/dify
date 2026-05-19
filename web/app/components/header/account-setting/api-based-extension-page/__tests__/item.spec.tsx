@@ -1,42 +1,51 @@
+import type { ApiBasedExtensionResponse } from '@dify/contracts/api/console/api-based-extension/types.gen'
 import type { TFunction } from 'i18next'
-import type { ModalContextState } from '@/context/modal-context'
-import type { ApiBasedExtension } from '@/models/common'
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import * as reactI18next from 'react-i18next'
-import { useModalContext } from '@/context/modal-context'
-import { deleteApiBasedExtension } from '@/service/common'
-import Item from '../item'
+import { Item } from '../item'
 
-// Mock dependencies
-vi.mock('@/context/modal-context', () => ({
-  useModalContext: vi.fn(),
+const { mockDeleteApiBasedExtension } = vi.hoisted(() => ({
+  mockDeleteApiBasedExtension: vi.fn(),
 }))
 
-vi.mock('@/service/common', () => ({
-  deleteApiBasedExtension: vi.fn(),
+vi.mock('@/service/client', () => ({
+  consoleQuery: {
+    apiBasedExtension: {
+      byId: {
+        delete: {
+          mutationOptions: () => ({ mutationFn: mockDeleteApiBasedExtension }),
+        },
+      },
+    },
+  },
+}))
+
+vi.mock('@tanstack/react-query', () => ({
+  useMutation: vi.fn((options: { mutationFn: (variables: unknown) => Promise<unknown> }) => ({
+    isPending: false,
+    mutate: (variables: unknown, mutationOptions?: { onSuccess?: (data: unknown) => void }) => {
+      options.mutationFn(variables).then(data => mutationOptions?.onSuccess?.(data))
+    },
+  })),
 }))
 
 describe('Item Component', () => {
-  const mockData: ApiBasedExtension = {
+  const mockData: ApiBasedExtensionResponse = {
     id: '1',
     name: 'Test Extension',
     api_endpoint: 'https://api.example.com',
     api_key: 'test-api-key',
   }
-  const mockOnUpdate = vi.fn()
-  const mockSetShowApiBasedExtensionModal = vi.fn()
+  const mockOnEdit = vi.fn()
 
   beforeEach(() => {
     vi.clearAllMocks()
-    vi.mocked(useModalContext).mockReturnValue({
-      setShowApiBasedExtensionModal: mockSetShowApiBasedExtensionModal,
-    } as unknown as ModalContextState)
   })
 
   describe('Rendering', () => {
     it('should render extension data correctly', () => {
       // Act
-      render(<Item data={mockData} onUpdate={mockOnUpdate} />)
+      render(<Item apiBasedExtension={mockData} onEdit={mockOnEdit} />)
 
       // Assert
       // Assert
@@ -46,10 +55,15 @@ describe('Item Component', () => {
 
     it('should render with minimal extension data', () => {
       // Arrange
-      const minimalData: ApiBasedExtension = { id: '2' }
+      const minimalData: ApiBasedExtensionResponse = {
+        id: '2',
+        name: '',
+        api_endpoint: '',
+        api_key: '',
+      }
 
       // Act
-      render(<Item data={minimalData} onUpdate={mockOnUpdate} />)
+      render(<Item apiBasedExtension={minimalData} onEdit={mockOnEdit} />)
 
       // Assert
       // Assert
@@ -59,41 +73,20 @@ describe('Item Component', () => {
   })
 
   describe('Modal Interactions', () => {
-    it('should open edit modal with correct payload when clicking edit button', () => {
+    it('should request editing with the current extension when clicking edit button', () => {
       // Act
-      render(<Item data={mockData} onUpdate={mockOnUpdate} />)
+      render(<Item apiBasedExtension={mockData} onEdit={mockOnEdit} />)
       fireEvent.click(screen.getByText('common.operation.edit'))
 
       // Assert
-      expect(mockSetShowApiBasedExtensionModal).toHaveBeenCalledWith(expect.objectContaining({
-        payload: mockData,
-      }))
-      const lastCall = mockSetShowApiBasedExtensionModal.mock.calls[0]![0]
-      if (typeof lastCall === 'object' && lastCall !== null && 'onSaveCallback' in lastCall)
-        expect(lastCall.onSaveCallback).toBeInstanceOf(Function)
-    })
-
-    it('should execute onUpdate callback when edit modal save callback is invoked', () => {
-      // Act
-      render(<Item data={mockData} onUpdate={mockOnUpdate} />)
-      fireEvent.click(screen.getByText('common.operation.edit'))
-
-      // Assert
-      const modalCallArg = mockSetShowApiBasedExtensionModal.mock.calls[0]![0]
-      if (typeof modalCallArg === 'object' && modalCallArg !== null && 'onSaveCallback' in modalCallArg) {
-        const onSaveCallback = modalCallArg.onSaveCallback
-        if (onSaveCallback) {
-          onSaveCallback()
-          expect(mockOnUpdate).toHaveBeenCalledTimes(1)
-        }
-      }
+      expect(mockOnEdit).toHaveBeenCalledWith(mockData)
     })
   })
 
   describe('Deletion', () => {
     it('should show delete confirmation dialog when clicking delete button', () => {
       // Act
-      render(<Item data={mockData} onUpdate={mockOnUpdate} />)
+      render(<Item apiBasedExtension={mockData} onEdit={mockOnEdit} />)
       fireEvent.click(screen.getByText('common.operation.delete'))
 
       // Assert
@@ -101,10 +94,10 @@ describe('Item Component', () => {
       expect(screen.getByText(/common\.operation\.delete.*Test Extension.*\?/i))!.toBeInTheDocument()
     })
 
-    it('should call delete API and triggers onUpdate when confirming deletion', async () => {
+    it('should call delete mutation when confirming deletion', async () => {
       // Arrange
-      vi.mocked(deleteApiBasedExtension).mockResolvedValue({ result: 'success' })
-      render(<Item data={mockData} onUpdate={mockOnUpdate} />)
+      mockDeleteApiBasedExtension.mockResolvedValue({})
+      render(<Item apiBasedExtension={mockData} onEdit={mockOnEdit} />)
 
       // Act
       fireEvent.click(screen.getByText('common.operation.delete'))
@@ -116,15 +109,18 @@ describe('Item Component', () => {
 
       // Assert
       await waitFor(() => {
-        expect(deleteApiBasedExtension).toHaveBeenCalledWith('/api-based-extension/1')
-        expect(mockOnUpdate).toHaveBeenCalledTimes(1)
+        expect(mockDeleteApiBasedExtension).toHaveBeenCalledWith({
+          params: {
+            id: '1',
+          },
+        })
       })
     })
 
     it('should hide delete confirmation dialog after successful deletion', async () => {
       // Arrange
-      vi.mocked(deleteApiBasedExtension).mockResolvedValue({ result: 'success' })
-      render(<Item data={mockData} onUpdate={mockOnUpdate} />)
+      mockDeleteApiBasedExtension.mockResolvedValue({})
+      render(<Item apiBasedExtension={mockData} onEdit={mockOnEdit} />)
 
       // Act
       fireEvent.click(screen.getByText('common.operation.delete'))
@@ -142,7 +138,7 @@ describe('Item Component', () => {
 
     it('should close delete confirmation when clicking cancel button', async () => {
       // Act
-      render(<Item data={mockData} onUpdate={mockOnUpdate} />)
+      render(<Item apiBasedExtension={mockData} onEdit={mockOnEdit} />)
       fireEvent.click(screen.getByText('common.operation.delete'))
       fireEvent.click(screen.getByText('common.operation.cancel'))
 
@@ -154,13 +150,12 @@ describe('Item Component', () => {
 
     it('should not call delete API when canceling deletion', () => {
       // Act
-      render(<Item data={mockData} onUpdate={mockOnUpdate} />)
+      render(<Item apiBasedExtension={mockData} onEdit={mockOnEdit} />)
       fireEvent.click(screen.getByText('common.operation.delete'))
       fireEvent.click(screen.getByText('common.operation.cancel'))
 
       // Assert
-      expect(deleteApiBasedExtension).not.toHaveBeenCalled()
-      expect(mockOnUpdate).not.toHaveBeenCalled()
+      expect(mockDeleteApiBasedExtension).not.toHaveBeenCalled()
     })
   })
 
@@ -183,7 +178,7 @@ describe('Item Component', () => {
       } as unknown as ReturnType<typeof reactI18next.useTranslation>)
 
       // Act
-      render(<Item data={mockData} onUpdate={mockOnUpdate} />)
+      render(<Item apiBasedExtension={mockData} onEdit={mockOnEdit} />)
       const allButtons = screen.getAllByRole('button')
       const editBtn = screen.getByText('operation.edit')
       const deleteBtn = allButtons.find(btn => btn !== editBtn)

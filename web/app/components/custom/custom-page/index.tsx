@@ -20,7 +20,13 @@ const CustomPage = () => {
             <div className="title-xl-semi-bold">{t('upgradeTip.title', { ns: 'custom' })}</div>
             <div className="system-sm-regular">{t('upgradeTip.des', { ns: 'custom' })}</div>
           </div>
-          <div className="flex h-10 w-[120px] cursor-pointer items-center justify-center rounded-3xl bg-white system-md-semibold text-text-accent shadow-xs hover:opacity-95" onClick={() => setShowPricingModal()}>{t('upgradeBtn.encourageShort', { ns: 'billing' })}</div>
+          <button
+            type="button"
+            className="flex h-10 w-[120px] cursor-pointer items-center justify-center rounded-3xl border-none bg-white p-0 system-md-semibold text-text-accent shadow-xs hover:opacity-95"
+            onClick={() => setShowPricingModal()}
+          >
+            {t('upgradeBtn.encourageShort', { ns: 'billing' })}
+          </button>
         </div>
       )}
       <CustomWebAppBrand />

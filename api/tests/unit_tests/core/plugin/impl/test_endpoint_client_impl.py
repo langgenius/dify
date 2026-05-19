@@ -1,11 +1,12 @@
 import pytest
+from pytest_mock import MockerFixture
 
 from core.plugin.impl.endpoint import PluginEndpointClient
 from core.plugin.impl.exc import PluginDaemonInternalServerError
 
 
 class TestPluginEndpointClientImpl:
-    def test_create_endpoint(self, mocker):
+    def test_create_endpoint(self, mocker: MockerFixture):
         client = PluginEndpointClient()
         request_mock = mocker.patch.object(client, "_request_with_plugin_daemon_response", return_value=True)
 
@@ -18,7 +19,7 @@ class TestPluginEndpointClientImpl:
         assert args[:3] == ("POST", "plugin/tenant-1/endpoint/setup", bool)
         assert kwargs["data"]["plugin_unique_identifier"] == "org/plugin:1"
 
-    def test_list_endpoints(self, mocker):
+    def test_list_endpoints(self, mocker: MockerFixture):
         client = PluginEndpointClient()
         request_mock = mocker.patch.object(client, "_request_with_plugin_daemon_response", return_value=["endpoint"])
 
@@ -28,7 +29,7 @@ class TestPluginEndpointClientImpl:
         assert request_mock.call_args.args[1] == "plugin/tenant-1/endpoint/list"
         assert request_mock.call_args.kwargs["params"] == {"page": 2, "page_size": 20}
 
-    def test_list_endpoints_for_single_plugin(self, mocker):
+    def test_list_endpoints_for_single_plugin(self, mocker: MockerFixture):
         client = PluginEndpointClient()
         request_mock = mocker.patch.object(client, "_request_with_plugin_daemon_response", return_value=["endpoint"])
 
@@ -38,7 +39,7 @@ class TestPluginEndpointClientImpl:
         assert request_mock.call_args.args[1] == "plugin/tenant-1/endpoint/list/plugin"
         assert request_mock.call_args.kwargs["params"] == {"plugin_id": "org/plugin", "page": 1, "page_size": 10}
 
-    def test_update_endpoint(self, mocker):
+    def test_update_endpoint(self, mocker: MockerFixture):
         client = PluginEndpointClient()
         request_mock = mocker.patch.object(client, "_request_with_plugin_daemon_response", return_value=True)
 
@@ -47,7 +48,7 @@ class TestPluginEndpointClientImpl:
         assert result is True
         assert request_mock.call_args.args[:3] == ("POST", "plugin/tenant-1/endpoint/update", bool)
 
-    def test_enable_and_disable_endpoint(self, mocker):
+    def test_enable_and_disable_endpoint(self, mocker: MockerFixture):
         client = PluginEndpointClient()
         request_mock = mocker.patch.object(client, "_request_with_plugin_daemon_response", return_value=True)
 
@@ -58,7 +59,7 @@ class TestPluginEndpointClientImpl:
         assert calls[0].args[1] == "plugin/tenant-1/endpoint/enable"
         assert calls[1].args[1] == "plugin/tenant-1/endpoint/disable"
 
-    def test_delete_endpoint_idempotent_and_re_raise(self, mocker):
+    def test_delete_endpoint_idempotent_and_re_raise(self, mocker: MockerFixture):
         client = PluginEndpointClient()
         request_mock = mocker.patch.object(client, "_request_with_plugin_daemon_response")
 

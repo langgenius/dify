@@ -222,7 +222,7 @@ function ToastViewport() {
     <BaseToast.Viewport
       aria-label={toastViewportLabel}
       className={cn(
-        'group/toast-viewport pointer-events-none fixed inset-0 z-1003 overflow-visible',
+        'group/toast-viewport pointer-events-none fixed inset-0 z-60 overflow-visible',
       )}
     >
       <div

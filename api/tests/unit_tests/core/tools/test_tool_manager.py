@@ -648,7 +648,7 @@ def test_list_default_builtin_providers_for_postgres_and_mysql():
         assert providers == provider_records
 
 
-def test_list_providers_from_api_covers_builtin_api_workflow_and_mcp(monkeypatch):
+def test_list_providers_from_api_covers_builtin_api_workflow_and_mcp(monkeypatch: pytest.MonkeyPatch):
     hardcoded_controller = SimpleNamespace(entity=SimpleNamespace(identity=SimpleNamespace(name="hardcoded")))
     plugin_controller = object.__new__(PluginToolProviderController)
     plugin_controller.entity = SimpleNamespace(identity=SimpleNamespace(name="plugin-provider"))

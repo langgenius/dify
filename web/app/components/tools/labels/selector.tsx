@@ -1,17 +1,15 @@
 import type { FC } from 'react'
 import type { Label } from '@/app/components/tools/labels/constant'
+import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from '@langgenius/dify-ui/popover'
-import { RiArrowDownSLine } from '@remixicon/react'
 import { useDebounceFn } from 'ahooks'
-import { noop } from 'es-toolkit/function'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Checkbox from '@/app/components/base/checkbox'
 import { Tag03 } from '@/app/components/base/icons/src/vender/line/financeAndECommerce'
 import Input from '@/app/components/base/input'
 import { useTags } from '@/app/components/plugins/hooks'
@@ -60,22 +58,19 @@ const LabelSelector: FC<LabelSelectorProps> = ({
     <Popover open={open} onOpenChange={setOpen}>
       <div className="relative">
         <PopoverTrigger
-          render={(
-            <div className={cn(
-              'flex h-10 cursor-pointer items-center gap-1 rounded-lg border-[0.5px] border-transparent bg-components-input-bg-normal px-3 hover:bg-components-input-bg-hover',
-              open && '!hover:bg-components-input-bg-hover hover:bg-components-input-bg-hover',
-            )}
-            >
-              <div title={value.length > 0 ? selectedLabels : ''} className={cn('grow truncate text-[13px] leading-[18px] text-text-secondary', !value.length && 'text-text-quaternary!')}>
-                {!value.length && t('createTool.toolInput.labelPlaceholder', { ns: 'tools' })}
-                {!!value.length && selectedLabels}
-              </div>
-              <div className="ml-1 shrink-0 text-text-secondary opacity-60">
-                <RiArrowDownSLine className="h-4 w-4" />
-              </div>
-            </div>
+          className={cn(
+            'flex h-10 cursor-pointer items-center gap-1 rounded-lg border-[0.5px] border-transparent bg-components-input-bg-normal px-3 text-left hover:bg-components-input-bg-hover',
+            open && 'bg-components-input-bg-hover hover:bg-components-input-bg-hover',
           )}
-        />
+        >
+          <div title={value.length > 0 ? selectedLabels : ''} className={cn('grow truncate text-[13px] leading-4.5 text-text-secondary', !value.length && 'text-text-quaternary!')}>
+            {!value.length && t('createTool.toolInput.labelPlaceholder', { ns: 'tools' })}
+            {!!value.length && selectedLabels}
+          </div>
+          <div className="ml-1 shrink-0 text-text-secondary opacity-60">
+            <span className="i-ri-arrow-down-s-line h-4 w-4" />
+          </div>
+        </PopoverTrigger>
         <PopoverContent
           placement="bottom-start"
           sideOffset={4}
@@ -93,18 +88,17 @@ const LabelSelector: FC<LabelSelectorProps> = ({
             </div>
             <div className="max-h-[264px] overflow-y-auto p-1">
               {filteredLabelList.map(label => (
-                <div
+                <label
                   key={label.name}
                   className="flex cursor-pointer items-center gap-2 rounded-lg py-[6px] pr-2 pl-3 hover:bg-components-panel-on-panel-item-bg-hover"
-                  onClick={() => selectLabel(label)}
                 >
                   <Checkbox
                     className="shrink-0"
                     checked={value.includes(label.name)}
-                    onCheck={noop}
+                    onCheckedChange={() => selectLabel(label)}
                   />
                   <div title={label.label} className="grow truncate text-sm leading-5 text-text-secondary">{label.label}</div>
-                </div>
+                </label>
               ))}
               {!filteredLabelList.length && (
                 <div className="flex flex-col items-center gap-1 p-3">

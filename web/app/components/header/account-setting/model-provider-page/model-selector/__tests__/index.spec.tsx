@@ -118,6 +118,23 @@ describe('ModelSelector', () => {
     expect(triggerButton).toHaveAttribute('aria-expanded', 'false')
   })
 
+  it('should use the default model settings popup width when the trigger is narrow', () => {
+    renderWithQueryClient(
+      <div className="w-[355px]">
+        <ModelSelector modelList={[makeModel()]} />
+      </div>,
+    )
+
+    fireEvent.click(screen.getByRole('combobox'))
+
+    expect(
+      Array.from(document.body.querySelectorAll('[class]')).some(element =>
+        element.className.includes('w-[432px]')
+        && element.className.includes('max-w-[432px]'),
+      ),
+    ).toBe(true)
+  })
+
   it('should not open popup when readonly', () => {
     renderWithQueryClient(<ModelSelector modelList={[makeModel()]} readonly />)
 

@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
+import json
 from datetime import datetime
+from types import SimpleNamespace
+from typing import TypedDict, Unpack
 from unittest.mock import MagicMock, patch
 from uuid import uuid4
 
@@ -34,8 +37,53 @@ from controllers.console.datasets.rag_pipeline.rag_pipeline_workflow import (
 )
 from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpError
 from libs.datetime_utils import naive_utc_now
+from models.account import Account
+from models.workflow import Workflow
 from services.errors.app import IsDraftWorkflowError, WorkflowHashNotEqualError, WorkflowNotFoundError
 from services.errors.llm import InvokeRateLimitError
+
+DEFAULT_WORKFLOW_TENANT_ID = "00000000-0000-0000-0000-000000000001"
+DEFAULT_WORKFLOW_APP_ID = "00000000-0000-0000-0000-000000000002"
+DEFAULT_WORKFLOW_CREATED_BY = "00000000-0000-0000-0000-000000000003"
+type WorkflowVariablePayload = dict[str, object]
+
+
+class WorkflowFactoryPayload(TypedDict):
+    id: str
+    tenant_id: str
+    app_id: str
+    type: str
+    version: str
+    marked_name: str
+    marked_comment: str
+    graph: str
+    features: str
+    created_by: str
+    created_at: datetime
+    updated_by: str | None
+    updated_at: datetime
+    environment_variables: list[WorkflowVariablePayload]
+    conversation_variables: list[WorkflowVariablePayload]
+    rag_pipeline_variables: list[WorkflowVariablePayload]
+
+
+class WorkflowFactoryOverrides(TypedDict, total=False):
+    id: str
+    tenant_id: str
+    app_id: str
+    type: str
+    version: str
+    marked_name: str
+    marked_comment: str
+    graph: str
+    features: str
+    created_by: str
+    created_at: datetime
+    updated_by: str | None
+    updated_at: datetime
+    environment_variables: list[WorkflowVariablePayload]
+    conversation_variables: list[WorkflowVariablePayload]
+    rag_pipeline_variables: list[WorkflowVariablePayload]
 
 
 def unwrap(func):
@@ -44,17 +92,81 @@ def unwrap(func):
     return func
 
 
+def make_node_execution(**overrides):
+    payload = {
+        "id": "node-exec-1",
+        "index": 1,
+        "predecessor_node_id": None,
+        "node_id": "node1",
+        "node_type": "start",
+        "title": "Start",
+        "inputs_dict": {"query": "hello"},
+        "process_data_dict": {},
+        "outputs_dict": {"answer": "world"},
+        "status": "succeeded",
+        "error": None,
+        "elapsed_time": 1.0,
+        "execution_metadata_dict": {},
+        "extras": {},
+        "created_at": datetime(2026, 1, 1, 0, 0, 0),
+        "created_by_role": "account",
+        "created_by_account": None,
+        "created_by_end_user": None,
+        "finished_at": datetime(2026, 1, 1, 0, 0, 1),
+        "inputs_truncated": False,
+        "outputs_truncated": False,
+        "process_data_truncated": False,
+    }
+    payload.update(overrides)
+    return SimpleNamespace(**payload)
+
+
+def default_workflow_payload() -> WorkflowFactoryPayload:
+    return {
+        "id": "workflow-1",
+        "tenant_id": DEFAULT_WORKFLOW_TENANT_ID,
+        "app_id": DEFAULT_WORKFLOW_APP_ID,
+        "type": "workflow",
+        "version": "1",
+        "marked_name": "Release 1",
+        "marked_comment": "Initial release",
+        "graph": json.dumps({"nodes": [], "edges": []}),
+        "features": json.dumps({"file_upload": {"enabled": False}}),
+        "created_by": DEFAULT_WORKFLOW_CREATED_BY,
+        "created_at": datetime(2024, 1, 1, 12, 0, 0),
+        "updated_by": None,
+        "updated_at": datetime(2024, 1, 1, 12, 1, 0),
+        "environment_variables": [],
+        "conversation_variables": [],
+        "rag_pipeline_variables": [],
+    }
+
+
+def make_workflow(**overrides: Unpack[WorkflowFactoryOverrides]) -> Workflow:
+    payload = default_workflow_payload()
+    payload.update(overrides)
+    return Workflow(**payload)
+
+
+@pytest.fixture
+def workflow_author(db_session_with_containers: Session) -> Account:
+    account = Account(name="Alice", email=f"alice-{uuid4()}@example.com")
+    db_session_with_containers.add(account)
+    db_session_with_containers.commit()
+    return account
+
+
 class TestDraftWorkflowApi:
     @pytest.fixture
     def app(self, flask_app_with_containers: Flask):
         return flask_app_with_containers
 
-    def test_get_draft_success(self, app: Flask):
+    def test_get_draft_success(self, app: Flask, workflow_author: Account):
         api = DraftRagPipelineApi()
         method = unwrap(api.get)
 
         pipeline = MagicMock()
-        workflow = MagicMock()
+        workflow = make_workflow(created_by=workflow_author.id)
 
         service = MagicMock()
         service.get_draft_workflow.return_value = workflow
@@ -67,7 +179,17 @@ class TestDraftWorkflowApi:
             ),
         ):
             result = method(api, pipeline)
-            assert result == workflow
+
+        assert result["id"] == "workflow-1"
+        assert result["graph"] == {"nodes": [], "edges": []}
+        assert result["features"] == {"file_upload": {"enabled": False}}
+        assert result["hash"] == workflow.unique_hash
+        assert result["created_by"] == {
+            "id": workflow_author.id,
+            "name": workflow_author.name,
+            "email": workflow_author.email,
+        }
+        assert result["updated_by"] is None
 
     def test_get_draft_not_exist(self, app: Flask):
         api = DraftRagPipelineApi()
@@ -391,7 +513,7 @@ class TestPublishedPipelineApis:
     def app(self, flask_app_with_containers: Flask):
         return flask_app_with_containers
 
-    def test_publish_success(self, app, db_session_with_containers: Session):
+    def test_publish_success(self, app: Flask, db_session_with_containers: Session):
         from models.dataset import Pipeline
 
         api = PublishedRagPipelineApi()
@@ -612,7 +734,7 @@ class TestPublishedAllRagPipelineApi:
         user = MagicMock(id="u1")
 
         service = MagicMock()
-        service.get_all_published_workflow.return_value = ([{"id": "w1"}], False)
+        service.get_all_published_workflow.return_value = ([make_workflow(id="w1")], False)
 
         with (
             app.test_request_context("/"),
@@ -627,7 +749,8 @@ class TestPublishedAllRagPipelineApi:
         ):
             result = method(api, pipeline)
 
-        assert result["items"] == [{"id": "w1"}]
+        assert result["items"][0]["id"] == "w1"
+        assert result["items"][0]["graph"] == {"nodes": [], "edges": []}
         assert result["has_more"] is False
 
     def test_get_published_workflows_forbidden(self, app: Flask):
@@ -660,7 +783,7 @@ class TestRagPipelineByIdApi:
         pipeline = MagicMock(tenant_id="t1")
         user = MagicMock(id="u1")
 
-        workflow = MagicMock()
+        workflow = make_workflow(id="w1", marked_name="test")
 
         service = MagicMock()
         service.update_workflow.return_value = workflow
@@ -681,7 +804,9 @@ class TestRagPipelineByIdApi:
         ):
             result = method(api, pipeline, "w1")
 
-        assert result == workflow
+        assert result["id"] == "w1"
+        assert result["marked_name"] == "test"
+        assert result["hash"] == workflow.unique_hash
 
     def test_patch_no_fields(self, app: Flask):
         api = RagPipelineByIdApi()
@@ -743,7 +868,7 @@ class TestRagPipelineWorkflowLastRunApi:
 
         pipeline = MagicMock()
         workflow = MagicMock()
-        node_exec = MagicMock()
+        node_exec = make_node_execution()
 
         service = MagicMock()
         service.get_draft_workflow.return_value = workflow
@@ -757,7 +882,9 @@ class TestRagPipelineWorkflowLastRunApi:
             ),
         ):
             result = method(api, pipeline, "node1")
-            assert result == node_exec
+            assert result["id"] == "node-exec-1"
+            assert result["inputs"] == {"query": "hello"}
+            assert result["outputs"] == {"answer": "world"}
 
     def test_last_run_not_found(self, app: Flask):
         api = RagPipelineWorkflowLastRunApi()
@@ -799,7 +926,7 @@ class TestRagPipelineDatasourceVariableApi:
         }
 
         service = MagicMock()
-        service.set_datasource_variables.return_value = MagicMock()
+        service.set_datasource_variables.return_value = make_node_execution(node_id="n1")
 
         with (
             app.test_request_context("/", json=payload),
@@ -814,4 +941,5 @@ class TestRagPipelineDatasourceVariableApi:
             ),
         ):
             result = method(api, pipeline)
-            assert result is not None
+            assert result["node_id"] == "n1"
+            assert result["process_data"] == {}

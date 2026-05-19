@@ -12,6 +12,7 @@ import Label from '../../label'
 import { useInputTypeOptions } from './hooks'
 import Option from './option'
 import Trigger from './trigger'
+import { InputTypeEnum } from './types'
 
 type InputTypeSelectFieldProps = {
   label: string
@@ -32,6 +33,12 @@ const InputTypeSelectField = ({
   const inputTypeOptions = useInputTypeOptions(supportFile)
   const selected = inputTypeOptions.find(option => option.value === field.state.value)
 
+  const handleInputTypeChange = (next: string | null) => {
+    const inputType = InputTypeEnum.safeParse(next)
+    if (inputType.success)
+      field.handleChange(inputType.data)
+  }
+
   return (
     <div className={cn('flex flex-col gap-y-0.5', className)}>
       <Label
@@ -43,11 +50,7 @@ const InputTypeSelectField = ({
         items={inputTypeOptions}
         value={field.state.value ?? null}
         disabled={disabled}
-        onValueChange={(next) => {
-          if (next == null)
-            return
-          field.handleChange(next as InputType)
-        }}
+        onValueChange={handleInputTypeChange}
       >
         <SelectTrigger id={field.name} className="gap-x-0.5 px-2">
           <Trigger option={selected} />

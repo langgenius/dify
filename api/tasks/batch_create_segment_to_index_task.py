@@ -19,6 +19,7 @@ from graphon.model_runtime.entities.model_entities import ModelType
 from libs import helper
 from libs.datetime_utils import naive_utc_now
 from models.dataset import Dataset, Document, DocumentSegment
+from models.enums import SegmentStatus
 from models.model import UploadFile
 from services.vector_service import VectorService
 
@@ -156,7 +157,7 @@ def batch_create_segment_to_index_task(
                 tokens=tokens,
                 created_by=user_id,
                 indexing_at=naive_utc_now(),
-                status="completed",
+                status=SegmentStatus.COMPLETED,
                 completed_at=naive_utc_now(),
             )
             if document_config["doc_form"] == IndexStructureType.QA_INDEX:

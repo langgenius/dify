@@ -759,7 +759,7 @@ class TestTagService:
         tag = TagService.save_tags(tag_args)
 
         # Update args
-        update_args = UpdateTagPayload(name="updated_name", type="knowledge")
+        update_args = UpdateTagPayload(name="updated_name")
 
         # Act: Execute the method under test
         result = TagService.update_tags(update_args, tag.id)
@@ -799,7 +799,7 @@ class TestTagService:
 
         non_existent_tag_id = str(uuid.uuid4())
 
-        update_args = UpdateTagPayload(name="updated_name", type="knowledge")
+        update_args = UpdateTagPayload(name="updated_name")
 
         # Act & Assert: Verify proper error handling
         with pytest.raises(NotFound) as exc_info:
@@ -830,7 +830,7 @@ class TestTagService:
         tag2 = TagService.save_tags(tag2_args)
 
         # Try to update second tag with first tag's name
-        update_args = UpdateTagPayload(name="first_tag", type="app")
+        update_args = UpdateTagPayload(name="first_tag")
 
         # Act & Assert: Verify proper error handling
         with pytest.raises(ValueError) as exc_info:

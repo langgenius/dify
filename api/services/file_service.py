@@ -107,14 +107,13 @@ class FileService:
             hash=hashlib.sha3_256(content).hexdigest(),
             source_url=source_url,
         )
-        # The `UploadFile` ID is generated within its constructor, so flushing to retrieve the ID is unnecessary.
-        # We can directly generate the `source_url` here before committing.
-        if not upload_file.source_url:
-            upload_file.source_url = file_helpers.get_signed_file_url(upload_file_id=upload_file.id)
 
         with self._session_maker(expire_on_commit=False) as session:
             session.add(upload_file)
             session.commit()
+
+        if not upload_file.source_url:
+            upload_file.source_url = file_helpers.get_signed_file_url(upload_file_id=upload_file.id)
 
         return upload_file
 
@@ -132,12 +131,13 @@ class FileService:
         return file_size <= file_size_limit
 
     def get_file_base64(self, file_id: str) -> str:
-        upload_file = self._session_maker(expire_on_commit=False).scalar(
-            select(UploadFile).where(UploadFile.id == file_id).limit(1)
-        )
-        if not upload_file:
-            raise NotFound("File not found")
-        blob = storage.load_once(upload_file.key)
+        with self._session_maker(expire_on_commit=False) as session:
+            upload_file = session.scalar(select(UploadFile).where(UploadFile.id == file_id).limit(1))
+            if not upload_file:
+                raise NotFound("File not found")
+            upload_file_key = upload_file.key
+
+        blob = storage.load_once(upload_file_key)
         return base64.b64encode(blob).decode()
 
     def upload_text(self, text: str, text_name: str, user_id: str, tenant_id: str) -> UploadFile:
@@ -173,12 +173,14 @@ class FileService:
 
         return upload_file
 
-    def get_file_preview(self, file_id: str):
+    def get_file_preview(self, file_id: str, tenant_id: str):
         """
         Return a short text preview extracted from a document file.
         """
         with self._session_maker(expire_on_commit=False) as session:
-            upload_file = session.scalar(select(UploadFile).where(UploadFile.id == file_id).limit(1))
+            upload_file = session.scalar(
+                select(UploadFile).where(UploadFile.id == file_id, UploadFile.tenant_id == tenant_id).limit(1)
+            )
 
         if not upload_file:
             raise NotFound("File not found")

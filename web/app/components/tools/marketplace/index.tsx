@@ -1,11 +1,11 @@
 import type { useMarketplace } from './hooks'
-import { useLocale } from '#i18n'
 import {
   RiArrowRightUpLine,
   RiArrowUpDoubleLine,
 } from '@remixicon/react'
 import { useTheme } from 'next-themes'
 import { useTranslation } from 'react-i18next'
+import { useLocale } from '#i18n'
 import Loading from '@/app/components/base/loading'
 import List from '@/app/components/plugins/marketplace/list'
 import { getMarketplaceUrl } from '@/utils/var'

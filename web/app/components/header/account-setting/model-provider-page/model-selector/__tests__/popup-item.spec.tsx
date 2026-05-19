@@ -1,6 +1,7 @@
 import type { ReactElement, ReactNode } from 'react'
 import type { DefaultModel, Model, ModelItem } from '../../declarations'
 import { Combobox } from '@langgenius/dify-ui/combobox'
+import { createPreviewCardHandle } from '@langgenius/dify-ui/preview-card'
 import { fireEvent, render, screen } from '@testing-library/react'
 import {
   ConfigurationMethodEnum,
@@ -40,10 +41,6 @@ vi.mock('../../model-name', () => ({
 
 vi.mock('../feature-icon', () => ({
   default: ({ feature }: { feature: string }) => <span data-testid="feature-icon">{feature}</span>,
-}))
-
-vi.mock('@/app/components/base/tooltip', () => ({
-  default: ({ children }: { children: ReactNode }) => <div>{children}</div>,
 }))
 
 const mockCredentialPanelState = vi.hoisted(() => vi.fn())
@@ -110,6 +107,11 @@ const makeProvider = (overrides: Record<string, unknown> = {}) => ({
   ...overrides,
 })
 
+const previewCardProps = () => ({
+  previewCardHandle: createPreviewCardHandle(),
+  onPreviewCardClose: vi.fn(),
+})
+
 const createComboboxNode = (
   node: ReactElement,
   onValueChange = vi.fn(),
@@ -156,7 +158,7 @@ describe('PopupItem', () => {
     })
 
     const { container } = renderWithCombobox(
-      <PopupItem model={makeModel()} onHide={vi.fn()} />,
+      <PopupItem {...previewCardProps()} model={makeModel()} onHide={vi.fn()} />,
     )
 
     expect(container.textContent).toBe('')
@@ -164,7 +166,7 @@ describe('PopupItem', () => {
 
   it('should select the combobox value when clicking an active model', () => {
     const onValueChange = vi.fn()
-    renderWithCombobox(<PopupItem model={makeModel()} onHide={vi.fn()} />, onValueChange)
+    renderWithCombobox(<PopupItem {...previewCardProps()} model={makeModel()} onHide={vi.fn()} />, onValueChange)
 
     fireEvent.click(screen.getByText('GPT-4'))
 
@@ -174,10 +176,27 @@ describe('PopupItem', () => {
     )
   })
 
+  it('should close the shared preview before pressing an active model', () => {
+    const onPreviewCardClose = vi.fn()
+    renderWithCombobox(
+      <PopupItem
+        previewCardHandle={createPreviewCardHandle()}
+        onPreviewCardClose={onPreviewCardClose}
+        model={makeModel()}
+        onHide={vi.fn()}
+      />,
+    )
+
+    fireEvent.pointerDown(screen.getByText('GPT-4'))
+
+    expect(onPreviewCardClose).toHaveBeenCalledTimes(1)
+  })
+
   it('should not select the combobox value when model is not active', () => {
     const onValueChange = vi.fn()
     renderWithCombobox(
       <PopupItem
+        {...previewCardProps()}
         model={makeModel({ models: [makeModelItem({ status: ModelStatusEnum.disabled })] })}
         onHide={vi.fn()}
       />,
@@ -192,7 +211,7 @@ describe('PopupItem', () => {
   it('should open model modal when clicking add on unconfigured model', () => {
     const onValueChange = vi.fn()
     const { rerender } = renderWithCombobox(
-      <PopupItem model={makeModel({ models: [makeModelItem({ status: ModelStatusEnum.noConfigure })] })} onHide={vi.fn()} />,
+      <PopupItem {...previewCardProps()} model={makeModel({ models: [makeModelItem({ status: ModelStatusEnum.noConfigure })] })} onHide={vi.fn()} />,
       onValueChange,
     )
 
@@ -210,6 +229,7 @@ describe('PopupItem', () => {
 
     rerender(createComboboxNode(
       <PopupItem
+        {...previewCardProps()}
         model={makeModel({
           models: [makeModelItem({ status: ModelStatusEnum.noConfigure, model_type: undefined as unknown as ModelTypeEnum })],
         })}
@@ -229,6 +249,7 @@ describe('PopupItem', () => {
     const defaultModel: DefaultModel = { provider: 'openai', model: 'gpt-4' }
     renderWithCombobox(
       <PopupItem
+        {...previewCardProps()}
         defaultModel={defaultModel}
         model={makeModel()}
         onHide={vi.fn()}
@@ -243,6 +264,7 @@ describe('PopupItem', () => {
 
     renderWithCombobox(
       <PopupItem
+        {...previewCardProps()}
         model={makeModel({
           label: { en_US: 'OpenAI only' } as Model['label'],
           models: [makeModelItem({ label: { en_US: 'GPT-4 only' } as ModelItem['label'] })],
@@ -256,7 +278,7 @@ describe('PopupItem', () => {
   })
 
   it('should toggle collapsed state when clicking provider header', () => {
-    renderWithCombobox(<PopupItem model={makeModel()} onHide={vi.fn()} />)
+    renderWithCombobox(<PopupItem {...previewCardProps()} model={makeModel()} onHide={vi.fn()} />)
 
     expect(screen.getByText('GPT-4'))!.toBeInTheDocument()
 
@@ -270,7 +292,7 @@ describe('PopupItem', () => {
   })
 
   it('should show credential name when using custom provider', () => {
-    renderWithCombobox(<PopupItem model={makeModel()} onHide={vi.fn()} />)
+    renderWithCombobox(<PopupItem {...previewCardProps()} model={makeModel()} onHide={vi.fn()} />)
 
     expect(screen.getByText('my-api-key'))!.toBeInTheDocument()
   })
@@ -287,7 +309,7 @@ describe('PopupItem', () => {
       credits: 200,
     })
 
-    renderWithCombobox(<PopupItem model={makeModel()} onHide={vi.fn()} />)
+    renderWithCombobox(<PopupItem {...previewCardProps()} model={makeModel()} onHide={vi.fn()} />)
 
     expect(screen.getByText('stale-key'))!.toBeInTheDocument()
     expect(document.querySelector('.bg-components-badge-status-light-error-bg')).not.toBeNull()
@@ -313,7 +335,7 @@ describe('PopupItem', () => {
       credits: 0,
     })
 
-    renderWithCombobox(<PopupItem model={makeModel()} onHide={vi.fn()} />)
+    renderWithCombobox(<PopupItem {...previewCardProps()} model={makeModel()} onHide={vi.fn()} />)
 
     expect(screen.getByText(/modelProvider\.selector\.configureRequired/))!.toBeInTheDocument()
   })
@@ -335,7 +357,7 @@ describe('PopupItem', () => {
       credits: 200,
     })
 
-    renderWithCombobox(<PopupItem model={makeModel()} onHide={vi.fn()} />)
+    renderWithCombobox(<PopupItem {...previewCardProps()} model={makeModel()} onHide={vi.fn()} />)
 
     expect(screen.getByText(/modelProvider\.selector\.aiCredits/))!.toBeInTheDocument()
   })
@@ -360,7 +382,7 @@ describe('PopupItem', () => {
       credits: 0,
     })
 
-    renderWithCombobox(<PopupItem model={makeModel()} onHide={vi.fn()} />)
+    renderWithCombobox(<PopupItem {...previewCardProps()} model={makeModel()} onHide={vi.fn()} />)
 
     expect(screen.getByText(/modelProvider\.selector\.creditsExhausted/))!.toBeInTheDocument()
   })
@@ -368,7 +390,7 @@ describe('PopupItem', () => {
   it('should close the dropdown through dropdown content callbacks', () => {
     const onHide = vi.fn()
 
-    renderWithCombobox(<PopupItem model={makeModel()} onHide={onHide} />)
+    renderWithCombobox(<PopupItem {...previewCardProps()} model={makeModel()} onHide={onHide} />)
 
     fireEvent.click(screen.getByRole('button', { name: /my-api-key/ }))
     fireEvent.click(screen.getByRole('button', { name: 'close dropdown' }))

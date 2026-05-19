@@ -1,9 +1,6 @@
 import { Switch } from '@langgenius/dify-ui/switch'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
-import {
-  RiQuestionLine,
-} from '@remixicon/react'
 import * as React from 'react'
+import { Infotip } from '@/app/components/base/infotip'
 
 type Props = {
   icon: any
@@ -41,16 +38,12 @@ const FeatureCard = ({
         <div className="flex grow items-center system-sm-semibold text-text-secondary">
           {title}
           {tooltip && (
-            <Tooltip>
-              <TooltipTrigger
-                render={(
-                  <div className="ml-0.5 p-px"><RiQuestionLine className="h-3.5 w-3.5 text-text-quaternary" /></div>
-                )}
-              />
-              <TooltipContent>
-                {tooltip}
-              </TooltipContent>
-            </Tooltip>
+            <Infotip
+              aria-label={typeof tooltip === 'string' ? tooltip : String(title)}
+              className="ml-0.5 h-3.5 w-3.5"
+            >
+              {tooltip}
+            </Infotip>
           )}
         </div>
         <Switch disabled={disabled} className="shrink-0" onCheckedChange={state => onChange?.(state)} checked={value} />

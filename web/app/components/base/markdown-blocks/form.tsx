@@ -1,39 +1,43 @@
 import type { ButtonProps } from '@langgenius/dify-ui/button'
 import type { Dayjs } from 'dayjs'
 import { Button } from '@langgenius/dify-ui/button'
+import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { Select, SelectContent, SelectItem, SelectItemIndicator, SelectItemText, SelectTrigger, SelectValue } from '@langgenius/dify-ui/select'
 import * as React from 'react'
 import { useCallback, useMemo, useState } from 'react'
 import { useChatContext } from '@/app/components/base/chat/chat/context'
-import Checkbox from '@/app/components/base/checkbox'
 import DatePicker from '@/app/components/base/date-and-time-picker/date-picker'
 import TimePicker from '@/app/components/base/date-and-time-picker/time-picker'
 import { formatDateForOutput, toDayjs } from '@/app/components/base/date-and-time-picker/utils/dayjs'
 import Input from '@/app/components/base/input'
 import Textarea from '@/app/components/base/textarea'
 
-enum DATA_FORMAT {
-  TEXT = 'text',
-  JSON = 'json',
-}
-enum SUPPORTED_TAGS {
-  LABEL = 'label',
-  INPUT = 'input',
-  TEXTAREA = 'textarea',
-  BUTTON = 'button',
-}
-enum SUPPORTED_TYPES {
-  TEXT = 'text',
-  PASSWORD = 'password',
-  EMAIL = 'email',
-  NUMBER = 'number',
-  DATE = 'date',
-  TIME = 'time',
-  DATETIME = 'datetime',
-  CHECKBOX = 'checkbox',
-  SELECT = 'select',
-  HIDDEN = 'hidden',
-}
+const DATA_FORMAT = {
+  TEXT: 'text',
+  JSON: 'json',
+} as const
+
+const SUPPORTED_TAGS = {
+  LABEL: 'label',
+  INPUT: 'input',
+  TEXTAREA: 'textarea',
+  BUTTON: 'button',
+} as const
+
+const SUPPORTED_TYPES = {
+  TEXT: 'text',
+  PASSWORD: 'password',
+  EMAIL: 'email',
+  NUMBER: 'number',
+  DATE: 'date',
+  TIME: 'time',
+  DATETIME: 'datetime',
+  CHECKBOX: 'checkbox',
+  SELECT: 'select',
+  HIDDEN: 'hidden',
+} as const
+
+type SupportedType = typeof SUPPORTED_TYPES[keyof typeof SUPPORTED_TYPES]
 
 const SUPPORTED_TYPES_SET = new Set<string>(Object.values(SUPPORTED_TYPES))
 
@@ -81,6 +85,10 @@ type EditState = {
 function getTextContent(node: HastElement): string {
   const textChild = node.children.find((c): c is HastText => c.type === 'text')
   return textChild?.value ?? ''
+}
+
+function getLabelTarget(node: HastElement): string {
+  return str(node.properties.htmlFor || node.properties.for || node.properties.name)
 }
 
 function str(val: unknown): string {
@@ -239,7 +247,7 @@ const MarkdownForm = ({ node }: { node: HastElement }) => {
           return (
             <label
               key={key}
-              htmlFor={str(child.properties.htmlFor || child.properties.name)}
+              htmlFor={getLabelTarget(child)}
               className="my-2 system-md-semibold text-text-secondary"
               data-testid="label-field"
             >
@@ -253,7 +261,7 @@ const MarkdownForm = ({ node }: { node: HastElement }) => {
           if (!isSafeName(name))
             return null
 
-          const type = str(child.properties.type) as SUPPORTED_TYPES
+          const type = str(child.properties.type) as SupportedType
 
           if (type === SUPPORTED_TYPES.DATE || type === SUPPORTED_TYPES.DATETIME) {
             return (
@@ -277,14 +285,20 @@ const MarkdownForm = ({ node }: { node: HastElement }) => {
             )
           }
           if (type === SUPPORTED_TYPES.CHECKBOX) {
+            const label = str(child.properties.dataTip || child.properties['data-tip'])
+            const hasExternalLabel = elementChildren.some(node =>
+              node.tagName === SUPPORTED_TAGS.LABEL && getLabelTarget(node) === name,
+            )
+            const checkboxAriaLabel = label || (hasExternalLabel ? undefined : name)
             return (
               <div className="mt-2 flex h-6 items-center space-x-2" key={key}>
                 <Checkbox
-                  checked={!!formValues[name]}
-                  onCheck={() => updateValue(name, !formValues[name])}
                   id={name}
+                  checked={!!formValues[name]}
+                  aria-label={checkboxAriaLabel}
+                  onCheckedChange={checked => updateValue(name, checked)}
                 />
-                <span>{str(child.properties.dataTip || child.properties['data-tip'])}</span>
+                {label && <span>{label}</span>}
               </div>
             )
           }
@@ -309,7 +323,10 @@ const MarkdownForm = ({ node }: { node: HastElement }) => {
               <Select
                 key={key}
                 defaultValue={formValues[name] as string | undefined}
-                onValueChange={val => updateValue(name, val as string)}
+                onValueChange={(val) => {
+                  if (val != null)
+                    updateValue(name, val)
+                }}
               >
                 <SelectTrigger className="w-full">
                   <SelectValue />

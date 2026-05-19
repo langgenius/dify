@@ -9,6 +9,7 @@ Shared design tokens, the `cn()` utility, CSS-first Tailwind styles, and headles
 - No imports from `web/`. No dependencies on next / i18next / ky / jotai / zustand.
 - One component per folder: `src/<name>/index.tsx`, optional `index.stories.tsx` and `__tests__/index.spec.tsx`. Add a matching `./<name>` subpath to `package.json#exports`.
 - Props pattern: `Omit<BaseXxx.Root.Props, 'className' | ...> & VariantProps<typeof xxxVariants> & { /* custom */ }`.
+- Use plain `Omit<...>` only for non-union Base UI props. When a prop changes the valid shape of related props (for example `value` / `defaultValue`, `multiple` / `value`, or `clearable` / `onChange`), model that relationship with an explicit discriminated union or a distributive helper instead of flattening the props.
 - When a component accepts a prop typed from a shared internal module, `export type` it from that component so consumers import it from the component subpath.
 
 ## Overlay Primitive Selection: Tooltip vs PreviewCard vs Popover
@@ -75,7 +76,7 @@ Composition rules:
 
 - Keep Base UI primitive semantics visible in the public API. Export compound parts such as `ComboboxInputGroup`, `ComboboxInput`, `ComboboxContent`, `ComboboxList`, `ComboboxItem`, and `ComboboxItemIndicator` instead of wrapping them into one business component.
 - For `Combobox` multiple selection, follow the official chips pattern: `ComboboxInputGroup` contains `ComboboxChips`, `ComboboxValue` renders `ComboboxChip` items, and `ComboboxInput` remains inside the chips row. Chips should wrap and let the input group grow vertically instead of forcing horizontal overflow.
-- Content primitives must own their Base UI `Portal` and use `z-1002` on `Positioner`, matching the overlay contract in `README.md`.
+- Content primitives must own their Base UI `Portal` and use `z-50` on `Positioner`, matching the overlay contract in `README.md`. Toast owns `z-60`.
 - Use `w-(--anchor-width)` with viewport-aware max-width for `Autocomplete` and `Combobox` popups. Do not add `min-w-(--anchor-width)` when it would defeat available-width clamping.
 
 [Autocomplete docs]: https://base-ui.com/react/components/autocomplete.md#usage-guidelines

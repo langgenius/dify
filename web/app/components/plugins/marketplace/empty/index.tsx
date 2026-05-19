@@ -1,6 +1,6 @@
 'use client'
-import { useTranslation } from '#i18n'
 import { cn } from '@langgenius/dify-ui/cn'
+import { useTranslation } from '#i18n'
 import { Group } from '@/app/components/base/icons/src/vender/other'
 import Line from './line'
 

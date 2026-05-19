@@ -201,7 +201,7 @@ export type LoadBalancingCredentialPayload = {
 }
 
 export type ParserPreferredProviderType = {
-  preferred_provider_type: 'system' | 'custom'
+  preferred_provider_type: 'custom' | 'system'
 }
 
 export type ParserGithubInstall = {
@@ -487,9 +487,9 @@ export type Inner = {
   provider?: string | null
 }
 
-export type TenantAccountRole = 'owner' | 'admin' | 'editor' | 'normal' | 'dataset_operator'
+export type TenantAccountRole = 'admin' | 'dataset_operator' | 'editor' | 'normal' | 'owner'
 
-export type ModelType = 'llm' | 'text-embedding' | 'rerank' | 'speech2text' | 'moderation' | 'tts'
+export type ModelType = 'llm' | 'moderation' | 'rerank' | 'speech2text' | 'text-embedding' | 'tts'
 
 export type LoadBalancingPayload = {
   configs?: Array<{
@@ -498,9 +498,9 @@ export type LoadBalancingPayload = {
   enabled?: boolean | null
 }
 
-export type DebugPermission = 'everyone' | 'admins' | 'noone'
+export type DebugPermission = 'admins' | 'everyone' | 'noone'
 
-export type InstallPermission = 'everyone' | 'admins' | 'noone'
+export type InstallPermission = 'admins' | 'everyone' | 'noone'
 
 export type PluginAutoUpgradeSettingsPayload = {
   exclude_plugins?: Array<string>
@@ -515,7 +515,7 @@ export type PluginPermissionSettingsPayload = {
   install_permission?: InstallPermission
 }
 
-export type ApiProviderSchemaType = 'openapi' | 'swagger' | 'openai_plugin' | 'openai_actions'
+export type ApiProviderSchemaType = 'openai_actions' | 'openai_plugin' | 'openapi' | 'swagger'
 
 export type CredentialType = 'api-key' | 'oauth2' | 'unauthorized'
 
@@ -527,9 +527,9 @@ export type WorkflowToolParameterConfiguration = {
 
 export type StrategySetting = 'disabled' | 'fix_only' | 'latest'
 
-export type UpgradeMode = 'all' | 'partial' | 'exclude'
+export type UpgradeMode = 'all' | 'exclude' | 'partial'
 
-export type ToolParameterForm = 'schema' | 'form' | 'llm'
+export type ToolParameterForm = 'form' | 'llm' | 'schema'
 
 export type GetWorkspacesData = {
   body?: never
@@ -1354,8 +1354,8 @@ export type PostWorkspacesCurrentModelProvidersByProviderModelsLoadBalancingConf
   = {
     body: LoadBalancingCredentialPayload
     path: {
-      provider: string
       config_id: string
+      provider: string
     }
     query?: never
     url: '/workspaces/current/model-providers/{provider}/models/load-balancing-configs/{config_id}/credentials-validate'
@@ -1844,8 +1844,8 @@ export type PostWorkspacesCurrentPluginTasksByTaskIdDeleteResponse
 export type PostWorkspacesCurrentPluginTasksByTaskIdDeleteByIdentifierData = {
   body?: never
   path: {
-    task_id: string
     identifier: string
+    task_id: string
   }
   query?: never
   url: '/workspaces/current/plugin/tasks/{task_id}/delete/{identifier}'
@@ -2140,8 +2140,8 @@ export type GetWorkspacesCurrentToolProviderBuiltinByProviderCredentialSchemaByC
   = {
     body?: never
     path: {
-      provider: string
       credential_type: string
+      provider: string
     }
     query?: never
     url: '/workspaces/current/tool-provider/builtin/{provider}/credential/schema/{credential_type}'
@@ -3004,10 +3004,10 @@ export type PostWorkspacesSwitchResponse
 export type GetWorkspacesByTenantIdModelProvidersByProviderByIconTypeByLangData = {
   body?: never
   path: {
-    tenant_id: string
-    provider: string
     icon_type: string
     lang: string
+    provider: string
+    tenant_id: string
   }
   query?: never
   url: '/workspaces/{tenant_id}/model-providers/{provider}/{icon_type}/{lang}'

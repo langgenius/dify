@@ -2,6 +2,8 @@ import time
 import uuid
 from unittest.mock import MagicMock, patch
 
+import pytest
+
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
 from core.tools.utils.configuration import ToolParameterConfigurationManager
 from core.workflow.node_factory import DifyNodeFactory
@@ -41,7 +43,7 @@ def init_tool_node(config: dict):
     )
 
     # construct variable pool
-    variable_pool = VariablePool(
+    variable_pool = VariablePool.from_bootstrap(
         system_variables=build_system_variables(user_id="aaa", files=[]),
         user_inputs={},
         environment_variables=[],
@@ -58,20 +60,20 @@ def init_tool_node(config: dict):
 
     graph = Graph.init(graph_config=graph_config, node_factory=node_factory, root_node_id="start")
 
-    tool_file_manager_factory = MagicMock(spec=ToolFileManagerProtocol)
+    tool_file_manager = MagicMock(spec=ToolFileManagerProtocol)
 
     node = ToolNode(
         node_id=str(uuid.uuid4()),
-        config=ToolNodeData.model_validate(config["data"]),
+        data=ToolNodeData.model_validate(config["data"]),
         graph_init_params=init_params,
         graph_runtime_state=graph_runtime_state,
-        tool_file_manager_factory=tool_file_manager_factory,
+        tool_file_manager=tool_file_manager,
         runtime=DifyToolNodeRuntime(init_params.run_context),
     )
     return node
 
 
-def test_tool_variable_invoke(monkeypatch):
+def test_tool_variable_invoke(monkeypatch: pytest.MonkeyPatch):
     node = init_tool_node(
         config={
             "id": "1",
@@ -106,7 +108,7 @@ def test_tool_variable_invoke(monkeypatch):
                 assert item.node_run_result.outputs.get("text") is not None
 
 
-def test_tool_mixed_invoke(monkeypatch):
+def test_tool_mixed_invoke(monkeypatch: pytest.MonkeyPatch):
     node = init_tool_node(
         config={
             "id": "1",

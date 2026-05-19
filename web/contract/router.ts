@@ -1,4 +1,5 @@
 import type { InferContractRouterInputs } from '@orpc/contract'
+import { contract as communityContract } from '@dify/contracts/api/console/orpc.gen'
 import { contract as enterpriseContract } from '@dify/contracts/enterprise/orpc.gen'
 import { accountAvatarContract } from './console/account'
 import { appDeleteContract, appListContract, workflowOnlineUsersContract } from './console/apps'
@@ -62,18 +63,27 @@ export const marketplaceRouterContract = {
 
 export type MarketPlaceInputs = InferContractRouterInputs<typeof marketplaceRouterContract>
 
+// Hand-written console contracts below are temporary overrides for gaps in the
+// generated community contract. Prefer fixing backend OpenAPI annotations so
+// generated contracts include accurate method, path, input, and output types;
+// once generated contracts are correct, the matching hand-written contracts
+// should be removed instead of kept in parallel.
 export const consoleRouterContract = {
   enterprise: enterpriseContract,
+  ...communityContract,
   account: {
+    ...communityContract.account,
     avatar: accountAvatarContract,
   },
   systemFeatures: systemFeaturesContract,
   apps: {
+    ...communityContract.apps,
     list: appListContract,
     deleteApp: appDeleteContract,
     workflowOnlineUsers: workflowOnlineUsersContract,
   },
   explore: {
+    ...communityContract.explore,
     apps: exploreAppsContract,
     appDetail: exploreAppDetailContract,
     installedApps: exploreInstalledAppsContract,
@@ -85,6 +95,7 @@ export const consoleRouterContract = {
     banners: exploreBannersContract,
   },
   trialApps: {
+    ...communityContract.trialApps,
     info: trialAppInfoContract,
     datasets: trialAppDatasetsContract,
     parameters: trialAppParametersContract,
@@ -99,6 +110,7 @@ export const consoleRouterContract = {
     latestVersions: pluginLatestVersionsContract,
   },
   billing: {
+    ...communityContract.billing,
     invoices: invoicesContract,
     bindPartnerStack: bindPartnerStackContract,
   },
@@ -112,6 +124,7 @@ export const consoleRouterContract = {
   notification: notificationContract,
   notificationDismiss: notificationDismissContract,
   tags: {
+    ...communityContract.tags,
     list: tagListContract,
     create: tagCreateContract,
     update: tagUpdateContract,

@@ -10,7 +10,7 @@ import {
 import { useTranslation } from 'react-i18next'
 import { Plan } from '@/app/components/billing/type'
 import { WorkplaceSelectorContent } from '@/app/components/header/account-dropdown/workplace-selector'
-import PlanBadge from '@/app/components/header/plan-badge'
+import { PlanBadge } from '@/app/components/header/plan-badge'
 
 type AppliedEducationContentProps = {
   workspaces: IWorkspace[]

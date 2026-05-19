@@ -1,12 +1,14 @@
 import type { FC } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuTrigger,
+} from '@langgenius/dify-ui/dropdown-menu'
 import { RiArrowDownSLine, RiCheckLine, RiCloseCircleFill, RiFilter3Line } from '@remixicon/react'
 import { useMemo, useState } from 'react'
-import {
-  PortalToFollowElem,
-  PortalToFollowElemContent,
-  PortalToFollowElemTrigger,
-} from '@/app/components/base/portal-to-follow-elem'
 
 export type Item = {
   value: number | string
@@ -40,16 +42,14 @@ const Chip: FC<Props> = ({
   }, [items, value])
 
   return (
-    <PortalToFollowElem
+    <DropdownMenu
       open={open}
       onOpenChange={setOpen}
-      placement="bottom-start"
-      offset={4}
     >
       <div className="relative">
-        <PortalToFollowElemTrigger
-          onClick={() => setOpen(v => !v)}
-          className="block"
+        <DropdownMenuTrigger
+          nativeButton={false}
+          render={<div className="block" />}
         >
           <div className={cn(
             'flex min-h-8 cursor-pointer items-center rounded-lg border-[0.5px] border-transparent bg-components-input-bg-normal px-2 py-1 hover:bg-state-base-hover-alt',
@@ -84,28 +84,36 @@ const Chip: FC<Props> = ({
               </div>
             )}
           </div>
-        </PortalToFollowElemTrigger>
-        <PortalToFollowElemContent className="z-1002">
-          <div className={cn('relative w-[240px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg', panelClassName)}>
-            <div className="max-h-72 overflow-auto p-1">
-              {items.map(item => (
-                <div
-                  key={item.value}
-                  className="flex cursor-pointer items-center gap-2 rounded-lg px-2 py-[6px] pl-3 hover:bg-state-base-hover"
-                  onClick={() => {
-                    onSelect(item)
-                    setOpen(false)
-                  }}
-                >
-                  <div title={item.name} className="grow truncate system-sm-medium text-text-secondary">{item.name}</div>
-                  {value === item.value && <RiCheckLine className="h-4 w-4 shrink-0 text-util-colors-blue-light-blue-light-600" />}
-                </div>
-              ))}
-            </div>
-          </div>
-        </PortalToFollowElemContent>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent
+          placement="bottom-start"
+          sideOffset={4}
+          popupClassName={cn('relative w-[240px] rounded-xl border-[0.5px] bg-components-panel-bg-blur p-0', panelClassName)}
+        >
+          <DropdownMenuRadioGroup
+            value={value}
+            onValueChange={(nextValue) => {
+              const selected = items.find(item => item.value === nextValue)
+              if (selected)
+                onSelect(selected)
+            }}
+            className="max-h-72 overflow-auto p-1"
+          >
+            {items.map(item => (
+              <DropdownMenuRadioItem
+                key={item.value}
+                value={item.value}
+                closeOnClick
+                className="gap-2 rounded-lg px-2 py-[6px] pl-3"
+              >
+                <div title={item.name} className="grow truncate system-sm-medium text-text-secondary">{item.name}</div>
+                {value === item.value && <RiCheckLine className="h-4 w-4 shrink-0 text-util-colors-blue-light-blue-light-600" />}
+              </DropdownMenuRadioItem>
+            ))}
+          </DropdownMenuRadioGroup>
+        </DropdownMenuContent>
       </div>
-    </PortalToFollowElem>
+    </DropdownMenu>
 
   )
 }

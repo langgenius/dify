@@ -42,7 +42,7 @@ from fields.base import ResponseModel
 from fields.member_fields import Account as AccountResponse
 from graphon.file import helpers as file_helpers
 from libs.datetime_utils import naive_utc_now
-from libs.helper import EmailStr, extract_remote_ip, timezone
+from libs.helper import EmailStr, extract_remote_ip, timezone, to_timestamp
 from libs.login import current_account_with_tenant, login_required
 from models import AccountIntegrate, InvitationCode
 from models.account import AccountStatus, InvitationCodeStatus
@@ -51,8 +51,6 @@ from models.model import UploadFile
 from services.account_service import AccountService
 from services.billing_service import BillingService
 from services.errors.account import CurrentPasswordIncorrectError as ServiceCurrentPasswordIncorrectError
-
-DEFAULT_REF_TEMPLATE_SWAGGER_2_0 = "#/definitions/{model}"
 
 
 class AccountInitPayload(BaseModel):
@@ -161,37 +159,30 @@ class CheckEmailUniquePayload(BaseModel):
     email: EmailStr
 
 
-def reg(cls: type[BaseModel]):
-    console_ns.schema_model(cls.__name__, cls.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0))
-
-
-reg(AccountInitPayload)
-reg(AccountNamePayload)
-reg(AccountAvatarPayload)
-reg(AccountAvatarQuery)
-reg(AccountInterfaceLanguagePayload)
-reg(AccountInterfaceThemePayload)
-reg(AccountTimezonePayload)
-reg(AccountPasswordPayload)
-reg(AccountDeletePayload)
-reg(AccountDeletionFeedbackPayload)
-reg(EducationActivatePayload)
-reg(EducationAutocompleteQuery)
-reg(ChangeEmailSendPayload)
-reg(ChangeEmailValidityPayload)
-reg(ChangeEmailResetPayload)
-reg(CheckEmailUniquePayload)
-register_schema_models(console_ns, AccountResponse)
+register_schema_models(
+    console_ns,
+    AccountResponse,
+    AccountInitPayload,
+    AccountNamePayload,
+    AccountAvatarPayload,
+    AccountAvatarQuery,
+    AccountInterfaceLanguagePayload,
+    AccountInterfaceThemePayload,
+    AccountTimezonePayload,
+    AccountPasswordPayload,
+    AccountDeletePayload,
+    AccountDeletionFeedbackPayload,
+    EducationActivatePayload,
+    EducationAutocompleteQuery,
+    ChangeEmailSendPayload,
+    ChangeEmailValidityPayload,
+    ChangeEmailResetPayload,
+    CheckEmailUniquePayload,
+)
 
 
 def _serialize_account(account) -> dict[str, Any]:
     return AccountResponse.model_validate(account, from_attributes=True).model_dump(mode="json")
-
-
-def _to_timestamp(value: datetime | int | None) -> int | None:
-    if isinstance(value, datetime):
-        return int(value.timestamp())
-    return value
 
 
 class AccountIntegrateResponse(ResponseModel):
@@ -203,7 +194,7 @@ class AccountIntegrateResponse(ResponseModel):
     @field_validator("created_at", mode="before")
     @classmethod
     def _normalize_created_at(cls, value: datetime | int | None) -> int | None:
-        return _to_timestamp(value)
+        return to_timestamp(value)
 
 
 class AccountIntegrateListResponse(ResponseModel):
@@ -223,7 +214,7 @@ class EducationStatusResponse(ResponseModel):
     @field_validator("expire_at", mode="before")
     @classmethod
     def _normalize_expire_at(cls, value: datetime | int | None) -> int | None:
-        return _to_timestamp(value)
+        return to_timestamp(value)
 
 
 class EducationAutocompleteResponse(ResponseModel):
@@ -326,7 +317,7 @@ class AccountAvatarApi(Resource):
     @account_initialization_required
     def get(self):
         current_user, current_tenant_id = current_account_with_tenant()
-        args = AccountAvatarQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
+        args = AccountAvatarQuery.model_validate(request.args.to_dict(flat=True))
         avatar = args.avatar
 
         if avatar.startswith(("http://", "https://")):

@@ -11,10 +11,13 @@ from unittest.mock import MagicMock, patch
 from uuid import uuid4
 
 import pytest
+from flask import Flask
 from sqlalchemy import select
+from sqlalchemy.orm import Session
 
 from core.plugin.entities.plugin import PluginInstallationSource
 from core.plugin.entities.plugin_daemon import PluginVerification
+from models import ProviderType
 from models.provider import Provider, ProviderCredential, TenantPreferredModelProvider
 from services.errors.plugin import PluginInstallationForbiddenError
 from services.feature_service import PluginInstallationScope
@@ -346,7 +349,7 @@ class TestUninstall:
 
     @patch("services.plugin.plugin_service.PluginInstaller")
     def test_cleans_credentials_when_plugin_found(
-        self, mock_installer_cls, flask_app_with_containers, db_session_with_containers
+        self, mock_installer_cls, flask_app_with_containers: Flask, db_session_with_containers: Session
     ):
         tenant_id = str(uuid4())
         plugin_id = "org/myplugin"
@@ -374,7 +377,7 @@ class TestUninstall:
         pref = TenantPreferredModelProvider(
             tenant_id=tenant_id,
             provider_name=provider_name,
-            preferred_provider_type="custom",
+            preferred_provider_type=ProviderType.CUSTOM,
         )
         db_session_with_containers.add(pref)
         db_session_with_containers.commit()

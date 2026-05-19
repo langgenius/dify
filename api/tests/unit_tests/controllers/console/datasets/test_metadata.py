@@ -3,6 +3,7 @@ from unittest.mock import MagicMock, PropertyMock, patch
 
 import pytest
 from flask import Flask
+from pytest_mock import MockerFixture
 from werkzeug.exceptions import NotFound
 
 from controllers.console import console_ns
@@ -60,7 +61,7 @@ def metadata_id():
 
 
 @pytest.fixture(autouse=True)
-def bypass_decorators(mocker):
+def bypass_decorators(mocker: MockerFixture):
     """Bypass setup/login/license decorators."""
     mocker.patch(
         "controllers.console.datasets.metadata.setup_required",
@@ -81,7 +82,7 @@ def bypass_decorators(mocker):
 
 
 class TestDatasetMetadataCreateApi:
-    def test_create_metadata_success(self, app, current_user, dataset, dataset_id):
+    def test_create_metadata_success(self, app: Flask, current_user, dataset, dataset_id):
         api = DatasetMetadataCreateApi()
         method = unwrap(api.post)
 
@@ -124,7 +125,7 @@ class TestDatasetMetadataCreateApi:
         assert status == 201
         assert result["name"] == "author"
 
-    def test_create_metadata_dataset_not_found(self, app, current_user, dataset_id):
+    def test_create_metadata_dataset_not_found(self, app: Flask, current_user, dataset_id):
         api = DatasetMetadataCreateApi()
         method = unwrap(api.post)
 
@@ -161,7 +162,7 @@ class TestDatasetMetadataCreateApi:
 
 
 class TestDatasetMetadataGetApi:
-    def test_get_metadata_success(self, app, dataset, dataset_id):
+    def test_get_metadata_success(self, app: Flask, dataset, dataset_id):
         api = DatasetMetadataCreateApi()
         method = unwrap(api.get)
 
@@ -183,7 +184,7 @@ class TestDatasetMetadataGetApi:
         assert status == 200
         assert isinstance(result, list)
 
-    def test_get_metadata_dataset_not_found(self, app, dataset_id):
+    def test_get_metadata_dataset_not_found(self, app: Flask, dataset_id):
         api = DatasetMetadataCreateApi()
         method = unwrap(api.get)
 
@@ -200,7 +201,7 @@ class TestDatasetMetadataGetApi:
 
 
 class TestDatasetMetadataApi:
-    def test_update_metadata_success(self, app, current_user, dataset, dataset_id, metadata_id):
+    def test_update_metadata_success(self, app: Flask, current_user, dataset, dataset_id, metadata_id):
         api = DatasetMetadataApi()
         method = unwrap(api.patch)
 
@@ -238,7 +239,7 @@ class TestDatasetMetadataApi:
         assert status == 200
         assert result["name"] == "updated-name"
 
-    def test_delete_metadata_success(self, app, current_user, dataset, dataset_id, metadata_id):
+    def test_delete_metadata_success(self, app: Flask, current_user, dataset, dataset_id, metadata_id):
         api = DatasetMetadataApi()
         method = unwrap(api.delete)
 
@@ -269,7 +270,7 @@ class TestDatasetMetadataApi:
 
 
 class TestDatasetMetadataBuiltInFieldApi:
-    def test_get_built_in_fields(self, app):
+    def test_get_built_in_fields(self, app: Flask):
         api = DatasetMetadataBuiltInFieldApi()
         method = unwrap(api.get)
 
@@ -288,7 +289,7 @@ class TestDatasetMetadataBuiltInFieldApi:
 
 
 class TestDatasetMetadataBuiltInFieldActionApi:
-    def test_enable_built_in_field(self, app, current_user, dataset, dataset_id):
+    def test_enable_built_in_field(self, app: Flask, current_user, dataset, dataset_id):
         api = DatasetMetadataBuiltInFieldActionApi()
         method = unwrap(api.post)
 
@@ -319,7 +320,7 @@ class TestDatasetMetadataBuiltInFieldActionApi:
 
 
 class TestDocumentMetadataEditApi:
-    def test_update_document_metadata_success(self, app, current_user, dataset, dataset_id):
+    def test_update_document_metadata_success(self, app: Flask, current_user, dataset, dataset_id):
         api = DocumentMetadataEditApi()
         method = unwrap(api.post)
 

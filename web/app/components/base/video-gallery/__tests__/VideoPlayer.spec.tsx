@@ -21,6 +21,11 @@ describe('VideoPlayer', () => {
     } as DOMRect)
   }
 
+  const getPlayButton = () => screen.getByRole('button', { name: 'common.operation.play' })
+  const getPauseButton = () => screen.getByRole('button', { name: 'common.operation.pause' })
+  const getMuteButton = () => screen.getByRole('button', { name: 'common.operation.toggleMute' })
+  const getFullscreenButton = () => screen.getByRole('button', { name: 'common.operation.toggleFullscreen' })
+
   beforeEach(() => {
     vi.clearAllMocks()
     vi.useRealTimers()
@@ -98,12 +103,12 @@ describe('VideoPlayer', () => {
     it('should toggle play/pause on button click', async () => {
       const user = userEvent.setup()
       render(<VideoPlayer src={mockSrc} />)
-      const playPauseBtn = screen.getByTestId('video-play-pause-button')
+      const playPauseBtn = getPlayButton()
 
       await user.click(playPauseBtn)
       expect(window.HTMLVideoElement.prototype.play).toHaveBeenCalled()
 
-      await user.click(playPauseBtn)
+      await user.click(getPauseButton())
       expect(window.HTMLVideoElement.prototype.pause).toHaveBeenCalled()
     })
 
@@ -111,7 +116,7 @@ describe('VideoPlayer', () => {
       const user = userEvent.setup()
       render(<VideoPlayer src={mockSrc} />)
       const video = screen.getByTestId('video-element') as HTMLVideoElement
-      const muteBtn = screen.getByTestId('video-mute-button')
+      const muteBtn = getMuteButton()
 
       // Ensure volume is positive before muting
       video.volume = 0.7
@@ -132,7 +137,7 @@ describe('VideoPlayer', () => {
     it('should toggle fullscreen on button click', async () => {
       const user = userEvent.setup()
       render(<VideoPlayer src={mockSrc} />)
-      const fullscreenBtn = screen.getByTestId('video-fullscreen-button')
+      const fullscreenBtn = getFullscreenButton()
 
       await user.click(fullscreenBtn)
       expect(window.HTMLVideoElement.prototype.requestFullscreen).toHaveBeenCalled()
@@ -166,12 +171,12 @@ describe('VideoPlayer', () => {
       const user = userEvent.setup()
       render(<VideoPlayer src={mockSrc} />)
       const video = screen.getByTestId('video-element')
-      const playPauseBtn = screen.getByTestId('video-play-pause-button')
+      const playPauseBtn = getPlayButton()
 
       await user.click(playPauseBtn)
       fireEvent(video, new Event('ended'))
 
-      expect(playPauseBtn)!.toBeInTheDocument()
+      expect(getPlayButton())!.toBeInTheDocument()
     })
 
     it('should show/hide controls on mouse move and timeout', () => {
@@ -273,7 +278,7 @@ describe('VideoPlayer', () => {
 
       try {
         render(<VideoPlayer src={mockSrc} />)
-        const playPauseBtn = screen.getByTestId('video-play-pause-button')
+        const playPauseBtn = getPlayButton()
 
         await user.click(playPauseBtn)
 
@@ -290,7 +295,7 @@ describe('VideoPlayer', () => {
       const user = userEvent.setup()
       render(<VideoPlayer src={mockSrc} />)
       const video = screen.getByTestId('video-element') as HTMLVideoElement
-      const muteBtn = screen.getByTestId('video-mute-button')
+      const muteBtn = getMuteButton()
 
       // First click mutes — this sets volume to 0 and muted to true
       await user.click(muteBtn)

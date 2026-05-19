@@ -133,7 +133,7 @@ describe('CustomPage', () => {
       expect(screen.getByText('custom.upgradeTip.title')).toBeInTheDocument()
       expect(screen.queryByText('custom.customize.contactUs')).not.toBeInTheDocument()
 
-      await user.click(screen.getByText('billing.upgradeBtn.encourageShort'))
+      await user.click(screen.getByRole('button', { name: 'billing.upgradeBtn.encourageShort' }))
 
       expect(setShowPricingModal).toHaveBeenCalledTimes(1)
     })

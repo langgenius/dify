@@ -2,13 +2,7 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import TypeSelector from '../type-select'
 
-vi.mock('@/app/components/base/portal-to-follow-elem', () => ({
-  PortalToFollowElem: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-  PortalToFollowElemTrigger: ({ children, onClick }: { children: React.ReactNode, onClick?: () => void }) => (
-    <button type="button" onClick={onClick}>{children}</button>
-  ),
-  PortalToFollowElemContent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-}))
+vi.mock('@langgenius/dify-ui/select', () => import('@/__mocks__/base-ui-select'))
 
 vi.mock('@/app/components/workflow/nodes/_base/components/input-var-type-icon', () => ({
   default: ({ type }: { type: string }) => <span>{type}</span>,
