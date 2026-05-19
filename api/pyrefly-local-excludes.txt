@@ -8,6 +8,10 @@ core/app/task_pipeline/easy_ui_based_generate_task_pipeline.py
 core/llm_generator/llm_generator.py
 providers/trace/trace-mlflow/src/dify_trace_mlflow/mlflow_trace.py
 core/ops/ops_trace_manager.py
+core/prompt/utils/prompt_message_util.py
+core/rag/retrieval/dataset_retrieval.py
+core/tools/tool_manager.py
+extensions/ext_celery.py
 providers/vdb/vdb-alibabacloud-mysql/tests/unit_tests/test_alibabacloud_mysql_factory.py
 providers/vdb/vdb-alibabacloud-mysql/tests/unit_tests/test_alibabacloud_mysql_vector.py
 providers/vdb/vdb-analyticdb/src/dify_vdb_analyticdb/analyticdb_vector_openapi.py
@@ -24,6 +28,7 @@ providers/vdb/vdb-elasticsearch/src/dify_vdb_elasticsearch/elasticsearch_vector.
 providers/vdb/vdb-elasticsearch/tests/unit_tests/test_elasticsearch_ja_vector.py
 providers/vdb/vdb-elasticsearch/tests/unit_tests/test_elasticsearch_vector.py
 providers/vdb/vdb-hologres/tests/unit_tests/test_hologres_vector.py
+providers/vdb/vdb-hologres/tests/integration_tests/conftest.py
 providers/vdb/vdb-huawei-cloud/tests/unit_tests/test_huawei_cloud_vector.py
 providers/vdb/vdb-iris/tests/unit_tests/test_iris_vector.py
 providers/vdb/vdb-lindorm/src/dify_vdb_lindorm/lindorm_vector.py
@@ -42,6 +47,7 @@ providers/vdb/vdb-opensearch/tests/unit_tests/test_opensearch_vector.py
 providers/vdb/vdb-oracle/src/dify_vdb_oracle/oraclevector.py
 providers/vdb/vdb-oracle/tests/unit_tests/test_oraclevector.py
 providers/vdb/vdb-pgvecto-rs/tests/unit_tests/test_pgvecto_rs.py
+providers/vdb/vdb-pgvecto-rs/src/dify_vdb_pgvecto_rs/pgvecto_rs.py
 providers/vdb/vdb-pgvector/tests/unit_tests/test_pgvector.py
 providers/vdb/vdb-qdrant/tests/unit_tests/test_qdrant_vector.py
 providers/vdb/vdb-relyt/tests/unit_tests/test_relyt_vector.py
@@ -77,6 +83,7 @@ services/account_service.py
 services/audio_service.py
 services/conversation_service.py
 services/dataset_service.py
+services/app_service.py
 services/document_indexing_proxy/document_indexing_task_proxy.py
 services/document_indexing_proxy/duplicate_document_indexing_task_proxy.py
 services/plugin/plugin_migration.py
