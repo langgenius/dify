@@ -5,13 +5,14 @@ import type { App } from '@/types/app'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { toast } from '@langgenius/dify-ui/toast'
-import { keepPreviousData, useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { useState } from 'react'
+import { keepPreviousData, useInfiniteQuery, useMutation, useQuery } from '@tanstack/react-query'
+import { useLayoutEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
 import Input from '@/app/components/base/input'
 import { SkeletonRectangle, SkeletonRow } from '@/app/components/base/skeleton'
 import Link from '@/next/link'
+import { useRouter } from '@/next/navigation'
 import { consoleQuery } from '@/service/client'
 import { toAppMode } from '../app-mode'
 import { SOURCE_APPS_PAGE_SIZE } from '../data'
@@ -29,8 +30,13 @@ type BindingSelectOption = {
 
 const guideSteps: GuideStep[] = ['method', 'source', 'release', 'target', 'review']
 const sourceAppSkeletonKeys = ['first-source-app', 'second-source-app', 'third-source-app']
+const targetEnvironmentSkeletonKeys = ['first-target-environment', 'second-target-environment']
+const targetBindingSkeletonKeys = ['first-target-binding', 'second-target-binding']
+const maxGuideCardHeight = 640
+const minGuideCardHeight = 320
+const guideCardVerticalMargin = 144
 
-const plannedEnvironments: EnvironmentOption[] = [
+const dslPreviewDeployTargetEnvironments: EnvironmentOption[] = [
   {
     id: 'env-prod',
     name: 'Production',
@@ -47,7 +53,7 @@ const plannedEnvironments: EnvironmentOption[] = [
   },
 ]
 
-const plannedBindingSlots: DeploymentBindingSlot[] = [
+const dslPreviewBindingSlots: DeploymentBindingSlot[] = [
   {
     slot: 'openai-model',
     kind: 'model',
@@ -146,9 +152,9 @@ function StepShell({ title, description, children }: {
   children: React.ReactNode
 }) {
   return (
-    <section className="flex min-w-0 flex-col gap-6">
+    <section className="flex min-w-0 flex-col gap-5">
       <div className="flex min-w-0 flex-col gap-1">
-        <h2 className="title-2xl-semi-bold text-text-primary">{title}</h2>
+        <h2 className="title-xl-semi-bold text-text-primary">{title}</h2>
         <p className="system-sm-regular text-text-tertiary">{description}</p>
       </div>
       {children}
@@ -160,28 +166,28 @@ function StepList({ activeStep }: {
   activeStep: GuideStep
 }) {
   const { t } = useTranslation('deployments')
-  const activeIndex = guideSteps.indexOf(activeStep)
+  const activeIndex = activeStep === 'done' ? guideSteps.length : guideSteps.indexOf(activeStep)
 
   return (
-    <ol className="flex flex-col gap-2">
+    <ol className="flex flex-col gap-3">
       {guideSteps.map((step, index) => {
         const isActive = step === activeStep
         const isDone = activeIndex > index || activeStep === 'done'
         return (
-          <li key={step} className="flex items-center gap-2">
-            <span
-              className={cn(
-                'flex size-5 shrink-0 items-center justify-center rounded-full border system-2xs-medium',
-                isActive
-                  ? 'border-primary-600 bg-primary-600 text-text-primary-on-surface'
-                  : isDone
-                    ? 'border-util-colors-green-green-600 bg-util-colors-green-green-600 text-text-primary-on-surface'
-                    : 'border-divider-regular bg-background-default text-text-tertiary',
-              )}
-            >
-              {isDone ? <span className="i-ri-check-line size-3.5" aria-hidden="true" /> : index + 1}
+          <li key={step} className="flex min-w-0 items-center gap-2" aria-current={isActive ? 'step' : undefined}>
+            <span className="flex size-4 shrink-0 items-center justify-center" aria-hidden="true">
+              <span
+                className={cn(
+                  'rounded-full',
+                  isActive
+                    ? 'size-2 bg-primary-600'
+                    : isDone
+                      ? 'size-1.5 bg-text-quaternary'
+                      : 'size-1.5 border border-divider-regular bg-transparent',
+                )}
+              />
             </span>
-            <span className={cn('system-sm-medium', isActive ? 'text-text-primary' : 'text-text-tertiary')}>
+            <span className={cn('truncate', isActive ? 'system-sm-medium text-text-primary' : 'system-sm-regular text-text-tertiary')}>
               {t(`createGuide.steps.${step}`)}
             </span>
           </li>
@@ -204,23 +210,177 @@ function MethodCard({ icon, title, description, badge, selected, onClick }: {
       type="button"
       onClick={onClick}
       className={cn(
-        'flex min-h-30 min-w-0 flex-col gap-3 rounded-xl border p-4 text-left transition-colors',
+        'group flex min-h-16 min-w-0 items-center gap-3 rounded-lg border p-3 text-left transition-colors',
         selected
-          ? 'border-primary-600 bg-primary-50 shadow-xs'
-          : 'border-components-card-border bg-components-card-bg hover:border-divider-regular hover:bg-background-default-hover',
+          ? 'border-primary-600 bg-primary-50'
+          : 'border-divider-subtle bg-background-default hover:border-divider-regular hover:bg-background-default-hover',
       )}
     >
-      <span className={cn('size-5 text-text-tertiary', icon)} aria-hidden="true" />
-      <span className="flex min-w-0 items-center gap-2">
-        <span className="truncate system-md-semibold text-text-primary">{title}</span>
-        {badge && (
-          <span className="rounded-md bg-background-default px-1.5 py-0.5 system-2xs-medium-uppercase text-text-tertiary">
-            {badge}
-          </span>
-        )}
+      <span className="flex size-8 shrink-0 items-center justify-center rounded-lg border border-divider-subtle bg-background-default-subtle">
+        <span className={cn('size-4 text-text-tertiary', icon)} aria-hidden="true" />
       </span>
-      <span className="system-sm-regular text-text-tertiary">{description}</span>
+      <span className="flex min-w-0 grow flex-col gap-1">
+        <span className="flex min-w-0 items-center gap-2">
+          <span className="truncate system-sm-semibold text-text-primary">{title}</span>
+          {badge && (
+            <span className="rounded-md bg-background-default-subtle px-1.5 py-0.5 system-2xs-medium-uppercase text-text-tertiary">
+              {badge}
+            </span>
+          )}
+        </span>
+        <span className="line-clamp-2 system-xs-regular text-text-tertiary">{description}</span>
+      </span>
+      <span
+        className={cn(
+          'i-ri-arrow-right-line size-4 shrink-0 text-text-quaternary transition-colors group-hover:text-text-secondary',
+          selected && 'text-primary-600',
+        )}
+        aria-hidden="true"
+      />
     </button>
+  )
+}
+
+function GuideCard({ children, actions }: {
+  children: React.ReactNode
+  actions: React.ReactNode
+}) {
+  const cardRef = useRef<HTMLDivElement>(null)
+  const scrollerRef = useRef<HTMLDivElement>(null)
+  const contentRef = useRef<HTMLDivElement>(null)
+  const actionsRef = useRef<HTMLDivElement>(null)
+
+  useLayoutEffect(() => {
+    let animationFrame = 0
+    let restoreScrollTimeout = 0
+
+    function restoreScroll() {
+      if (scrollerRef.current)
+        scrollerRef.current.style.overflowY = ''
+    }
+
+    function hideScroll() {
+      if (scrollerRef.current)
+        scrollerRef.current.style.overflowY = 'hidden'
+    }
+
+    function updateHeight() {
+      const cardElement = cardRef.current
+      const contentElement = contentRef.current
+      if (!cardElement || !contentElement)
+        return
+
+      const actionsElement = actionsRef.current
+      const measuredHeight = Math.ceil(
+        contentElement.getBoundingClientRect().height
+        + (actionsElement?.getBoundingClientRect().height ?? 0)
+        + 2,
+      )
+      const availableHeight = Math.max(
+        minGuideCardHeight,
+        Math.min(maxGuideCardHeight, window.innerHeight - guideCardVerticalMargin),
+      )
+      const nextHeight = Math.min(measuredHeight, availableHeight)
+      const currentHeight = Math.ceil(cardElement.getBoundingClientRect().height)
+      if (currentHeight !== nextHeight && scrollerRef.current) {
+        hideScroll()
+        window.clearTimeout(restoreScrollTimeout)
+        restoreScrollTimeout = window.setTimeout(restoreScroll, 240)
+      }
+      cardElement.style.height = `${nextHeight}px`
+    }
+
+    function scheduleHeightUpdate() {
+      cancelAnimationFrame(animationFrame)
+      animationFrame = requestAnimationFrame(updateHeight)
+    }
+
+    function handleTransitionStart(event: TransitionEvent) {
+      if (event.target === cardRef.current && event.propertyName === 'height') {
+        hideScroll()
+        window.clearTimeout(restoreScrollTimeout)
+      }
+    }
+
+    function handleTransitionEnd(event: TransitionEvent) {
+      if (event.target === cardRef.current && event.propertyName === 'height')
+        restoreScroll()
+    }
+
+    scheduleHeightUpdate()
+
+    const resizeObserver = new ResizeObserver(scheduleHeightUpdate)
+    const transitionElement = cardRef.current
+    if (contentRef.current)
+      resizeObserver.observe(contentRef.current)
+    if (actionsRef.current)
+      resizeObserver.observe(actionsRef.current)
+    if (transitionElement)
+      transitionElement.addEventListener('transitionend', handleTransitionEnd)
+    if (transitionElement)
+      transitionElement.addEventListener('transitionstart', handleTransitionStart)
+    if (transitionElement)
+      transitionElement.addEventListener('transitioncancel', handleTransitionEnd)
+    window.addEventListener('resize', scheduleHeightUpdate)
+
+    return () => {
+      cancelAnimationFrame(animationFrame)
+      window.clearTimeout(restoreScrollTimeout)
+      resizeObserver.disconnect()
+      if (transitionElement) {
+        transitionElement.removeEventListener('transitionend', handleTransitionEnd)
+        transitionElement.removeEventListener('transitionstart', handleTransitionStart)
+        transitionElement.removeEventListener('transitioncancel', handleTransitionEnd)
+      }
+      window.removeEventListener('resize', scheduleHeightUpdate)
+    }
+  }, [])
+
+  return (
+    <div
+      ref={cardRef}
+      className="mx-auto flex max-h-[40rem] w-full max-w-xl flex-col overflow-hidden rounded-xl border border-components-card-border bg-components-card-bg shadow-xs transition-[height] duration-200 ease-out motion-reduce:transition-none"
+    >
+      <div ref={scrollerRef} className="min-h-0 flex-1 overflow-y-auto">
+        <div ref={contentRef} className="p-6">
+          {children}
+        </div>
+      </div>
+      <div ref={actionsRef} className="shrink-0">
+        {actions}
+      </div>
+    </div>
+  )
+}
+
+function GuideFrame({ activeStep, children }: {
+  activeStep: GuideStep
+  children: React.ReactNode
+}) {
+  const { t } = useTranslation('deployments')
+
+  return (
+    <div className="min-h-0 flex-1 overflow-y-auto">
+      <div className="mx-auto grid min-h-full w-full max-w-6xl grid-cols-1 gap-5 px-4 py-5 md:grid-cols-[9rem_minmax(0,36rem)_10rem] md:justify-center md:px-6 md:py-8 lg:grid-cols-[10rem_minmax(0,36rem)_11rem] xl:grid-cols-[11rem_minmax(0,36rem)_13rem] xl:gap-6">
+        <div className="hidden pt-3 md:block">
+          <div className="sticky top-8 flex flex-col gap-3">
+            <Link href="/deployments" className="inline-flex items-center gap-1 system-sm-medium text-text-tertiary hover:text-text-secondary">
+              <span className="i-ri-arrow-left-line size-4" aria-hidden="true" />
+              {t('createGuide.nav.back')}
+            </Link>
+            <h1 className="title-md-semi-bold text-text-primary">{t('createGuide.title')}</h1>
+          </div>
+        </div>
+        <div className="min-w-0">
+          {children}
+        </div>
+        <aside className="hidden pt-3 md:block">
+          <div className="sticky top-8">
+            <StepList activeStep={activeStep} />
+          </div>
+        </aside>
+      </div>
+    </div>
   )
 }
 
@@ -232,7 +392,7 @@ function MethodStep({ method, onSelect }: {
 
   return (
     <StepShell title={t('createGuide.steps.method')} description={t('createGuide.method.description')}>
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+      <div className="flex flex-col gap-2">
         <MethodCard
           icon="i-ri-stack-line"
           title={t('createGuide.methods.bindApp.title')}
@@ -255,11 +415,11 @@ function MethodStep({ method, onSelect }: {
 
 function SourceAppSkeleton() {
   return (
-    <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+    <div className="divide-y divide-divider-subtle">
       {sourceAppSkeletonKeys.map(key => (
-        <SkeletonRow key={key} className="h-18 rounded-xl border border-components-card-border p-3">
-          <SkeletonRectangle className="my-0 size-10 animate-pulse rounded-lg" />
-          <div className="flex grow flex-col gap-1.5">
+        <SkeletonRow key={key} className="h-14 px-3 py-2">
+          <SkeletonRectangle className="my-0 size-7 animate-pulse rounded-lg" />
+          <div className="flex min-w-0 grow flex-col gap-1">
             <SkeletonRectangle className="my-0 h-3.5 w-2/3 animate-pulse" />
             <SkeletonRectangle className="my-0 h-2.5 w-1/3 animate-pulse" />
           </div>
@@ -280,10 +440,10 @@ function SourceAppOption({ app, selected, onSelect }: {
   return (
     <label
       className={cn(
-        'flex min-h-18 cursor-pointer items-center gap-3 rounded-xl border p-3',
+        'group flex min-h-14 cursor-pointer items-center gap-3 border-b border-divider-subtle px-3 py-2 transition-colors last:border-b-0 hover:bg-state-base-hover',
         selected
-          ? 'border-primary-600 bg-primary-50'
-          : 'border-components-card-border bg-components-card-bg hover:bg-background-default-hover',
+          ? 'bg-state-base-hover'
+          : 'bg-background-default',
       )}
     >
       <AppIcon
@@ -294,17 +454,26 @@ function SourceAppOption({ app, selected, onSelect }: {
         background={app.icon_background}
         imageUrl={app.icon_url}
       />
-      <span className="flex min-w-0 grow flex-col gap-1">
-        <span className="truncate system-sm-semibold text-text-primary">{app.name}</span>
-        <span className="system-xs-regular text-text-tertiary">{t(`appMode.${mode}`)}</span>
+      <span className="flex min-w-0 grow flex-col gap-0.5">
+        <span className="truncate system-sm-medium text-text-primary">{app.name}</span>
+        <span className="truncate system-xs-regular text-text-tertiary">{t(`appMode.${mode}`)}</span>
       </span>
       <input
         type="radio"
         name="source-app"
         checked={selected}
         onChange={onSelect}
-        className="size-4 shrink-0 accent-primary-600"
+        className="sr-only"
       />
+      <span
+        className={cn(
+          'flex size-5 shrink-0 items-center justify-center rounded-full',
+          selected ? 'text-text-accent' : 'text-transparent',
+        )}
+        aria-hidden="true"
+      >
+        <span className="i-ri-check-line size-4" />
+      </span>
     </label>
   )
 }
@@ -333,39 +502,39 @@ function SourceStep({
   return (
     <StepShell title={t('createGuide.source.title')} description={t('createGuide.source.description')}>
       <div className="flex flex-col gap-3">
-        <label className="system-xs-medium-uppercase text-text-tertiary" htmlFor="create-guide-source-search">
-          {t('createGuide.source.sourceApp')}
-        </label>
         <Input
           id="create-guide-source-search"
+          aria-label={t('createGuide.source.sourceApp')}
           value={searchText}
           onChange={event => onSearchTextChange(event.target.value)}
           placeholder={t('createGuide.source.searchPlaceholder')}
           showLeftIcon
           showClearIcon
           onClear={() => onSearchTextChange('')}
-          className="h-8"
+          className="h-9"
         />
-        {isLoading
-          ? <SourceAppSkeleton />
-          : filteredApps.length === 0
-            ? (
-                <div className="rounded-xl border border-dashed border-components-panel-border bg-components-panel-bg-blur px-4 py-10 text-center system-sm-regular text-text-tertiary">
-                  {t('createGuide.source.empty')}
-                </div>
-              )
-            : (
-                <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
-                  {filteredApps.map(app => (
-                    <SourceAppOption
-                      key={app.id}
-                      app={app}
-                      selected={effectiveSelectedAppId === app.id}
-                      onSelect={() => onSelectApp(app)}
-                    />
-                  ))}
-                </div>
-              )}
+        <div className="overflow-hidden rounded-lg border border-divider-subtle bg-background-default">
+          {isLoading
+            ? <SourceAppSkeleton />
+            : filteredApps.length === 0
+              ? (
+                  <div className="px-4 py-10 text-center system-sm-regular text-text-tertiary">
+                    {t('createGuide.source.empty')}
+                  </div>
+                )
+              : (
+                  <div>
+                    {filteredApps.map(app => (
+                      <SourceAppOption
+                        key={app.id}
+                        app={app}
+                        selected={effectiveSelectedAppId === app.id}
+                        onSelect={() => onSelectApp(app)}
+                      />
+                    ))}
+                  </div>
+                )}
+        </div>
       </div>
     </StepShell>
   )
@@ -394,16 +563,20 @@ function DslStep() {
 
 function ReleaseStep({
   instanceName,
+  instanceDescription,
   releaseName,
   releaseDescription,
   onInstanceNameChange,
+  onInstanceDescriptionChange,
   onReleaseNameChange,
   onReleaseDescriptionChange,
 }: {
   instanceName: string
+  instanceDescription: string
   releaseName: string
   releaseDescription: string
   onInstanceNameChange: (value: string) => void
+  onInstanceDescriptionChange: (value: string) => void
   onReleaseNameChange: (value: string) => void
   onReleaseDescriptionChange: (value: string) => void
 }) {
@@ -411,41 +584,56 @@ function ReleaseStep({
 
   return (
     <StepShell title={t('createGuide.release.title')} description={t('createGuide.release.description')}>
-      <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
-        <div className="flex flex-col gap-2">
-          <label className="system-xs-medium-uppercase text-text-tertiary" htmlFor="create-guide-instance-name">
-            {t('createGuide.release.instanceName')}
-          </label>
-          <Input
-            id="create-guide-instance-name"
-            value={instanceName}
-            onChange={event => onInstanceNameChange(event.target.value)}
-            required
-            className="h-9"
-          />
+      <div className="flex flex-col gap-5">
+        <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
+          <div className="flex flex-col gap-2">
+            <label className="system-xs-medium-uppercase text-text-tertiary" htmlFor="create-guide-instance-name">
+              {t('createGuide.release.instanceName')}
+            </label>
+            <Input
+              id="create-guide-instance-name"
+              value={instanceName}
+              onChange={event => onInstanceNameChange(event.target.value)}
+              required
+              className="h-9"
+            />
+          </div>
+          <div className="flex flex-col gap-2">
+            <label className="system-xs-medium-uppercase text-text-tertiary" htmlFor="create-guide-instance-description">
+              {t('createGuide.release.instanceDescription')}
+            </label>
+            <textarea
+              id="create-guide-instance-description"
+              value={instanceDescription}
+              onChange={event => onInstanceDescriptionChange(event.target.value)}
+              className="min-h-20 w-full resize-none appearance-none rounded-md border border-transparent bg-components-input-bg-normal p-2 px-3 system-sm-regular text-components-input-text-filled caret-primary-600 outline-hidden placeholder:text-components-input-text-placeholder hover:border-components-input-border-hover hover:bg-components-input-bg-hover focus:border-components-input-border-active focus:bg-components-input-bg-active focus:shadow-xs"
+            />
+          </div>
         </div>
-        <div className="flex flex-col gap-2">
-          <label className="system-xs-medium-uppercase text-text-tertiary" htmlFor="create-guide-release-name">
-            {t('createGuide.release.releaseName')}
-          </label>
-          <Input
-            id="create-guide-release-name"
-            value={releaseName}
-            onChange={event => onReleaseNameChange(event.target.value)}
-            required
-            className="h-9"
-          />
-        </div>
-        <div className="flex flex-col gap-2 lg:col-span-2">
-          <label className="system-xs-medium-uppercase text-text-tertiary" htmlFor="create-guide-release-note">
-            {t('createGuide.release.releaseNote')}
-          </label>
-          <textarea
-            id="create-guide-release-note"
-            value={releaseDescription}
-            onChange={event => onReleaseDescriptionChange(event.target.value)}
-            className="min-h-24 w-full resize-none appearance-none rounded-md border border-transparent bg-components-input-bg-normal p-2 px-3 system-sm-regular text-components-input-text-filled caret-primary-600 outline-hidden placeholder:text-components-input-text-placeholder hover:border-components-input-border-hover hover:bg-components-input-bg-hover focus:border-components-input-border-active focus:bg-components-input-bg-active focus:shadow-xs"
-          />
+        <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
+          <div className="flex flex-col gap-2">
+            <label className="system-xs-medium-uppercase text-text-tertiary" htmlFor="create-guide-release-name">
+              {t('createGuide.release.releaseName')}
+            </label>
+            <Input
+              id="create-guide-release-name"
+              value={releaseName}
+              onChange={event => onReleaseNameChange(event.target.value)}
+              required
+              className="h-9"
+            />
+          </div>
+          <div className="flex flex-col gap-2">
+            <label className="system-xs-medium-uppercase text-text-tertiary" htmlFor="create-guide-release-description">
+              {t('createGuide.release.releaseDescription')}
+            </label>
+            <textarea
+              id="create-guide-release-description"
+              value={releaseDescription}
+              onChange={event => onReleaseDescriptionChange(event.target.value)}
+              className="min-h-20 w-full resize-none appearance-none rounded-md border border-transparent bg-components-input-bg-normal p-2 px-3 system-sm-regular text-components-input-text-filled caret-primary-600 outline-hidden placeholder:text-components-input-text-placeholder hover:border-components-input-border-hover hover:bg-components-input-bg-hover focus:border-components-input-border-active focus:bg-components-input-bg-active focus:shadow-xs"
+            />
+          </div>
         </div>
       </div>
     </StepShell>
@@ -547,11 +735,47 @@ function BindingSlotRow({ slot, selectedValue, onChange }: {
   )
 }
 
+function TargetEnvironmentSkeleton() {
+  return (
+    <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+      {targetEnvironmentSkeletonKeys.map(key => (
+        <SkeletonRow key={key} className="h-17 rounded-xl border border-divider-subtle px-3 py-3">
+          <SkeletonRectangle className="my-0 size-4 animate-pulse rounded-full" />
+          <div className="flex min-w-0 grow flex-col gap-1.5">
+            <SkeletonRectangle className="my-0 h-3.5 w-1/2 animate-pulse" />
+            <SkeletonRectangle className="my-0 h-3 w-2/3 animate-pulse" />
+          </div>
+        </SkeletonRow>
+      ))}
+    </div>
+  )
+}
+
+function TargetBindingSkeleton() {
+  return (
+    <div className="border-t border-divider-subtle">
+      {targetBindingSkeletonKeys.map(key => (
+        <SkeletonRow key={key} className="h-15 px-3 py-3">
+          <div className="flex min-w-0 grow flex-col gap-1.5">
+            <SkeletonRectangle className="my-0 h-3.5 w-1/3 animate-pulse" />
+            <SkeletonRectangle className="my-0 h-3 w-1/2 animate-pulse" />
+          </div>
+          <SkeletonRectangle className="my-0 h-8 w-48 animate-pulse rounded-lg" />
+        </SkeletonRow>
+      ))}
+    </div>
+  )
+}
+
 function TargetStep({
   environments,
   bindingSlots,
   selectedEnvironmentId,
   bindingSelections,
+  isEnvironmentLoading,
+  isEnvironmentError,
+  isBindingLoading,
+  isBindingError,
   onSelectEnvironment,
   onSelectBinding,
 }: {
@@ -559,46 +783,71 @@ function TargetStep({
   bindingSlots: DeploymentBindingSlot[]
   selectedEnvironmentId: string
   bindingSelections: BindingSelections
+  isEnvironmentLoading: boolean
+  isEnvironmentError: boolean
+  isBindingLoading: boolean
+  isBindingError: boolean
   onSelectEnvironment: (environmentId: string) => void
   onSelectBinding: (slot: string, value: string) => void
 }) {
   const { t } = useTranslation('deployments')
+  const hasEnvironmentOptions = environments.length > 0
 
   return (
     <StepShell title={t('createGuide.target.title')} description={t('createGuide.target.description')}>
       <div className="flex flex-col gap-6">
         <div className="flex flex-col gap-3">
           <div className="system-xs-medium-uppercase text-text-tertiary">{t('createGuide.target.environment')}</div>
-          <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
-            {environments.map(environment => (
-              <EnvironmentOptionRow
-                key={environment.id}
-                environment={environment}
-                selected={selectedEnvironmentId === environment.id}
-                onSelect={() => onSelectEnvironment(environment.id)}
-              />
-            ))}
-          </div>
+          {hasEnvironmentOptions
+            ? (
+                <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+                  {environments.map(environment => (
+                    <EnvironmentOptionRow
+                      key={environment.id}
+                      environment={environment}
+                      selected={selectedEnvironmentId === environment.id}
+                      onSelect={() => onSelectEnvironment(environment.id)}
+                    />
+                  ))}
+                </div>
+              )
+            : isEnvironmentLoading
+              ? <TargetEnvironmentSkeleton />
+              : (
+                  <div className="rounded-lg border border-divider-subtle bg-background-default-subtle px-3 py-3 system-sm-regular text-text-quaternary">
+                    {isEnvironmentError
+                      ? t('createGuide.target.loadEnvironmentsFailed')
+                      : t('createGuide.target.noEnvironmentOptions')}
+                  </div>
+                )}
         </div>
         <div className="overflow-hidden rounded-xl border border-divider-subtle bg-background-default-subtle">
           <div className="flex min-w-0 flex-col gap-0.5 px-3 py-2.5">
             <div className="system-xs-medium-uppercase text-text-tertiary">{t('createGuide.target.bindings')}</div>
             <span className="system-xs-regular text-text-quaternary">{t('createGuide.target.bindingHint')}</span>
           </div>
-          {bindingSlots.length === 0
-            ? (
-                <div className="border-t border-divider-subtle px-3 py-3 system-sm-regular text-text-quaternary">
-                  {t('createGuide.target.noBindingRequired')}
-                </div>
-              )
-            : bindingSlots.map(slot => (
-                <BindingSlotRow
-                  key={bindingSlotKey(slot)}
-                  slot={slot}
-                  selectedValue={bindingSelections[bindingSlotKey(slot)] ?? ''}
-                  onChange={value => onSelectBinding(bindingSlotKey(slot), value)}
-                />
-              ))}
+          {isBindingLoading
+            ? <TargetBindingSkeleton />
+            : isBindingError
+              ? (
+                  <div className="border-t border-divider-subtle px-3 py-3 system-sm-regular text-text-quaternary">
+                    {t('createGuide.target.loadBindingsFailed')}
+                  </div>
+                )
+              : bindingSlots.length === 0
+                ? (
+                    <div className="border-t border-divider-subtle px-3 py-3 system-sm-regular text-text-quaternary">
+                      {t('createGuide.target.noBindingRequired')}
+                    </div>
+                  )
+                : bindingSlots.map(slot => (
+                    <BindingSlotRow
+                      key={bindingSlotKey(slot)}
+                      slot={slot}
+                      selectedValue={bindingSelections[bindingSlotKey(slot)] ?? ''}
+                      onChange={value => onSelectBinding(bindingSlotKey(slot), value)}
+                    />
+                  ))}
         </div>
       </div>
     </StepShell>
@@ -610,7 +859,7 @@ function ReviewStep({
   instanceName,
   releaseName,
   releaseDescription,
-  environment,
+  targetEnvironmentName,
   bindingSlots,
   bindingSelections,
 }: {
@@ -618,12 +867,12 @@ function ReviewStep({
   instanceName: string
   releaseName: string
   releaseDescription: string
-  environment?: EnvironmentOption
+  targetEnvironmentName: string
   bindingSlots: DeploymentBindingSlot[]
   bindingSelections: BindingSelections
 }) {
   const { t } = useTranslation('deployments')
-  const environmentDisplayName = environmentName(environment)
+  const environmentDisplayName = targetEnvironmentName || '—'
   const summaryRows = [
     [t('createGuide.review.source'), sourceName],
     [t('createGuide.review.instance'), instanceName],
@@ -639,9 +888,9 @@ function ReviewStep({
 
   return (
     <StepShell title={t('createGuide.review.title')} description={t('createGuide.review.description')}>
-      <div className="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(280px,360px)]">
-        <section aria-label={t('createGuide.review.summary')} className="rounded-xl border border-components-card-border bg-components-card-bg p-4">
-          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4">
+        <section aria-label={t('createGuide.review.summary')} className="rounded-lg bg-background-default-subtle p-3">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             {summaryRows.map(([label, value]) => (
               <div key={label} className="flex min-w-0 flex-col gap-1">
                 <div className="system-xs-medium-uppercase text-text-tertiary">{label}</div>
@@ -650,7 +899,7 @@ function ReviewStep({
             ))}
           </div>
         </section>
-        <section className="rounded-xl border border-components-card-border bg-components-card-bg p-4">
+        <section className="rounded-lg bg-background-default-subtle p-3">
           <div className="system-xs-medium-uppercase text-text-tertiary">{t('createGuide.review.planTitle')}</div>
           <ol className="mt-3 flex flex-col gap-2">
             {planRows.map((row, index) => (
@@ -663,9 +912,9 @@ function ReviewStep({
             ))}
           </ol>
         </section>
-        <section className="rounded-xl border border-components-card-border bg-components-card-bg p-4 xl:col-span-2">
+        <section className="rounded-lg bg-background-default-subtle p-3">
           <div className="system-xs-medium-uppercase text-text-tertiary">{t('createGuide.review.bindings')}</div>
-          <div className="mt-3 grid grid-cols-1 gap-2 lg:grid-cols-2">
+          <div className="mt-3 flex flex-col gap-2">
             {bindingSlots.length === 0
               ? (
                   <div className="system-sm-regular text-text-tertiary">{t('createGuide.target.noBindingRequired')}</div>
@@ -674,15 +923,15 @@ function ReviewStep({
                   const selectedValue = bindingSelections[bindingSlotKey(slot)] ?? ''
                   const selectedCandidate = bindingCandidateOptions(slot).find(candidate => candidate.value === selectedValue)
                   return (
-                    <div key={bindingSlotKey(slot)} className="flex min-w-0 items-center justify-between gap-3 rounded-lg bg-background-default px-3 py-2">
+                    <div key={bindingSlotKey(slot)} className="grid min-w-0 gap-1 rounded-lg bg-background-default px-3 py-2 sm:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] sm:items-center">
                       <span className="truncate system-sm-medium text-text-secondary">{slot.name || bindingSlotKey(slot)}</span>
-                      <span className="truncate system-sm-regular text-text-tertiary">{selectedCandidate?.label || '—'}</span>
+                      <span className="truncate system-sm-regular text-text-tertiary sm:text-right">{selectedCandidate?.label || '—'}</span>
                     </div>
                   )
                 })}
           </div>
         </section>
-        <section className="rounded-xl border border-components-card-border bg-components-card-bg p-4 xl:col-span-2">
+        <section className="rounded-lg bg-background-default-subtle p-3">
           <div className="system-xs-medium-uppercase text-text-tertiary">{t('createGuide.review.releaseNote')}</div>
           <div className="mt-2 system-sm-regular whitespace-pre-wrap text-text-secondary">{releaseDescription || '—'}</div>
         </section>
@@ -698,7 +947,7 @@ function DoneStep({ environmentName }: {
 
   return (
     <StepShell title={t('createGuide.done.title')} description={t('createGuide.done.description', { environment: environmentName })}>
-      <div className="flex flex-col gap-4 rounded-xl border border-components-card-border bg-components-card-bg p-6">
+      <div className="flex flex-col gap-4 rounded-lg bg-background-default-subtle p-4">
         <div className="flex items-center gap-3">
           <span className="flex size-10 items-center justify-center rounded-full bg-util-colors-green-green-600 text-text-primary-on-surface">
             <span className="i-ri-check-line size-5" aria-hidden="true" />
@@ -736,37 +985,29 @@ function GuideActions({
 }) {
   const { t } = useTranslation('deployments')
   const primaryLabel = step === 'review'
-    ? isDeploying ? t('createGuide.actions.deploying') : t('createGuide.actions.createAndDeploy')
-    : t('createGuide.actions.continue')
+    ? isDeploying ? t('createGuide.actions.deploying') : t('createGuide.actions.deploy')
+    : step === 'release' && isDeploying
+      ? t('createGuide.actions.creating')
+      : t('createGuide.actions.next')
 
-  if (step === 'done')
+  if (step === 'method' || step === 'done')
     return null
 
   return (
-    <div className="flex items-center justify-between gap-3 border-t border-divider-subtle bg-background-default-subtle px-6 py-4">
-      <Link
-        href="/deployments"
-        className="inline-flex h-8 items-center rounded-lg px-3 system-sm-medium text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary"
-      >
-        {t('createGuide.actions.cancel')}
-      </Link>
-      <div className="flex items-center gap-2">
-        {step !== 'method' && (
-          <Button type="button" variant="secondary" onClick={onBack} disabled={isDeploying}>
-            {t('createGuide.actions.back')}
-          </Button>
-        )}
-        <Button type="button" variant="primary" disabled={!canContinue || isDeploying} onClick={onPrimaryAction}>
-          {primaryLabel}
-        </Button>
-      </div>
+    <div className="flex items-center justify-between gap-3 border-t border-divider-subtle bg-background-default-subtle px-5 py-3">
+      <Button type="button" variant="secondary" onClick={onBack} disabled={isDeploying}>
+        {t('createGuide.actions.back')}
+      </Button>
+      <Button type="button" variant="primary" disabled={!canContinue || isDeploying} onClick={onPrimaryAction}>
+        {primaryLabel}
+      </Button>
     </div>
   )
 }
 
 export function CreateDeploymentGuide() {
   const { t } = useTranslation('deployments')
-  const queryClient = useQueryClient()
+  const router = useRouter()
   const createInstance = useMutation(consoleQuery.enterprise.appInstanceService.createAppInstance.mutationOptions())
   const createRelease = useMutation(consoleQuery.enterprise.appReleaseService.createRelease.mutationOptions())
   const createDeployment = useMutation(consoleQuery.enterprise.appDeploymentService.createDeployment.mutationOptions())
@@ -776,6 +1017,7 @@ export function CreateDeploymentGuide() {
   const [sourceSearchText, setSourceSearchText] = useState('')
   const [selectedApp, setSelectedApp] = useState<App>()
   const [instanceName, setInstanceName] = useState('')
+  const [instanceDescription, setInstanceDescription] = useState('')
   const [releaseName, setReleaseName] = useState('')
   const [releaseDescription, setReleaseDescription] = useState('')
   const [selectedEnvironmentId, setSelectedEnvironmentId] = useState('')
@@ -802,6 +1044,7 @@ export function CreateDeploymentGuide() {
   const effectiveSelectedApp = selectedApp ?? sourceApps[0]
   const defaultReleaseNote = t('createGuide.release.defaultNote')
   const hasCreatedReleaseArtifacts = Boolean(createdAppInstanceId && createdRelease?.id)
+  const shouldLoadDeploymentTarget = method === 'bindApp' && hasCreatedReleaseArtifacts
 
   const environmentDeploymentsQuery = useQuery(consoleQuery.enterprise.appDeploymentService.listEnvironmentDeployments.queryOptions({
     input: {
@@ -809,7 +1052,7 @@ export function CreateDeploymentGuide() {
         appInstanceId: createdAppInstanceId,
       },
     },
-    enabled: method === 'bindApp' && hasCreatedReleaseArtifacts,
+    enabled: shouldLoadDeploymentTarget,
   }))
   const deploymentPlanQuery = useQuery(consoleQuery.enterprise.appDeploymentService.getDeploymentPlan.queryOptions({
     input: {
@@ -818,26 +1061,22 @@ export function CreateDeploymentGuide() {
         releaseId: createdRelease?.id ?? '',
       },
     },
-    enabled: method === 'bindApp' && hasCreatedReleaseArtifacts,
+    enabled: shouldLoadDeploymentTarget,
   }))
 
   const environments = method === 'bindApp'
-    ? hasCreatedReleaseArtifacts
-      ? environmentsFromDeployments(environmentDeploymentsQuery.data?.data)
-      : plannedEnvironments
-    : plannedEnvironments
+    ? shouldLoadDeploymentTarget ? environmentsFromDeployments(environmentDeploymentsQuery.data?.data) : []
+    : dslPreviewDeployTargetEnvironments
   const bindingSlots = method === 'bindApp'
-    ? hasCreatedReleaseArtifacts
-      ? deploymentPlanQuery.data?.plan?.slots?.filter(slot => bindingSlotKey(slot)) ?? []
-      : plannedBindingSlots
-    : plannedBindingSlots
+    ? shouldLoadDeploymentTarget ? deploymentPlanQuery.data?.plan?.slots?.filter(slot => bindingSlotKey(slot)) ?? [] : []
+    : dslPreviewBindingSlots
   const effectiveSelectedEnvironmentId = selectedEnvironmentId || environments[0]?.id || ''
   const selectedEnvironment = environments.find(env => env.id === effectiveSelectedEnvironmentId) ?? environments[0]
+  const selectedTargetEnvironmentName = selectedEnvironment ? environmentName(selectedEnvironment) : ''
   const bindingSelections = selectedBindingSelections(bindingSlots, manualBindingSelections)
   const requiredBindingsReady = bindingSlots.every(slot => !hasMissingRequiredBinding(slot, bindingSelections[bindingSlotKey(slot)]))
-  const hasTargetData = method === 'importDsl'
-    ? true
-    : !hasCreatedReleaseArtifacts || Boolean(environmentDeploymentsQuery.data && deploymentPlanQuery.data)
+  const isEnvironmentLoading = shouldLoadDeploymentTarget && (environmentDeploymentsQuery.isLoading || (environmentDeploymentsQuery.isFetching && !environmentDeploymentsQuery.data))
+  const isBindingLoading = shouldLoadDeploymentTarget && (deploymentPlanQuery.isLoading || (deploymentPlanQuery.isFetching && !deploymentPlanQuery.data))
   const isDeploying = createInstance.isPending || createRelease.isPending || createDeployment.isPending
 
   function resetCreatedArtifacts() {
@@ -849,7 +1088,13 @@ export function CreateDeploymentGuide() {
   function selectMethod(nextMethod: GuideMethod) {
     setMethod(nextMethod)
     resetCreatedArtifacts()
+    setSelectedEnvironmentId('')
     setManualBindingSelections({})
+  }
+
+  function handleSelectMethod(nextMethod: GuideMethod) {
+    selectMethod(nextMethod)
+    setStep('source')
   }
 
   function ensureReleaseDefaults() {
@@ -872,12 +1117,16 @@ export function CreateDeploymentGuide() {
     if (step === 'release')
       return Boolean(instanceName.trim() && releaseName.trim())
     if (step === 'target') {
+      const deploymentTargetReady = method === 'importDsl'
+        || (shouldLoadDeploymentTarget
+          && !isEnvironmentLoading
+          && !environmentDeploymentsQuery.isError
+          && !isBindingLoading
+          && !deploymentPlanQuery.isError)
       return Boolean(
-        selectedEnvironment
-        && requiredBindingsReady
-        && hasTargetData
-        && !environmentDeploymentsQuery.isError
-        && !deploymentPlanQuery.isError,
+        selectedEnvironment?.id
+        && deploymentTargetReady
+        && requiredBindingsReady,
       )
     }
     if (step === 'review')
@@ -898,25 +1147,30 @@ export function CreateDeploymentGuide() {
       setStep('target')
   }
 
-  async function handleDeploy() {
+  async function createReleaseArtifactsAndContinue() {
     if (method === 'importDsl') {
-      setDeployedEnvironmentName(selectedEnvironment ? environmentName(selectedEnvironment) : '')
-      setStep('done')
+      setStep('target')
       return
     }
 
     if (!effectiveSelectedApp?.id || isDeploying)
       return
 
+    if (createdAppInstanceId && createdRelease?.id) {
+      setStep('target')
+      return
+    }
+
     try {
       const trimmedInstanceName = instanceName.trim()
+      const trimmedInstanceDescription = instanceDescription.trim()
       const trimmedReleaseName = releaseName.trim()
       const trimmedReleaseDescription = releaseDescription.trim()
       const createdInstance = await createInstance.mutateAsync({
         body: {
           sourceAppId: effectiveSelectedApp.id,
           name: trimmedInstanceName,
-          description: undefined,
+          description: trimmedInstanceDescription || undefined,
         },
       })
 
@@ -937,54 +1191,49 @@ export function CreateDeploymentGuide() {
       if (!release?.id)
         throw new Error('Create release did not return a release id.')
 
-      const environmentDeployments = await queryClient.fetchQuery(consoleQuery.enterprise.appDeploymentService.listEnvironmentDeployments.queryOptions({
-        input: {
-          params: {
-            appInstanceId: createdInstance.appInstanceId,
-          },
-        },
-      }))
-      const realEnvironments = environmentsFromDeployments(environmentDeployments.data)
-      const selectedPlannedEnvironmentName = selectedEnvironment ? environmentName(selectedEnvironment) : ''
-      const targetEnvironment = realEnvironments.find(env => env.id === effectiveSelectedEnvironmentId)
-        ?? realEnvironments.find(env => environmentName(env) === selectedPlannedEnvironmentName)
-        ?? realEnvironments[0]
+      setCreatedAppInstanceId(createdInstance.appInstanceId)
+      setCreatedRelease(release)
+      setSelectedEnvironmentId('')
+      setManualBindingSelections({})
+      setDeployedEnvironmentName('')
+      setStep('target')
+    }
+    catch {
+      toast.error(t('createGuide.errors.createReleaseFailed'))
+    }
+  }
 
-      if (!targetEnvironment?.id)
-        throw new Error('No deployable environment found.')
+  async function handleDeploy() {
+    if (method === 'importDsl') {
+      setDeployedEnvironmentName(selectedTargetEnvironmentName)
+      setStep('done')
+      return
+    }
 
-      const deploymentPlan = await queryClient.fetchQuery(consoleQuery.enterprise.appDeploymentService.getDeploymentPlan.queryOptions({
-        input: {
-          params: {
-            appInstanceId: createdInstance.appInstanceId,
-            releaseId: release.id,
-          },
-        },
-      }))
-      const realBindingSlots = deploymentPlan.plan?.slots?.filter(slot => bindingSlotKey(slot)) ?? []
-      const realBindingSelections = selectedBindingSelections(realBindingSlots, manualBindingSelections)
-      const missingRequiredBinding = realBindingSlots.some(slot => hasMissingRequiredBinding(slot, realBindingSelections[bindingSlotKey(slot)]))
+    if (!createdAppInstanceId || !createdRelease?.id || !selectedEnvironment?.id || isDeploying)
+      return
+
+    try {
+      const missingRequiredBinding = bindingSlots.some(slot => hasMissingRequiredBinding(slot, bindingSelections[bindingSlotKey(slot)]))
       if (missingRequiredBinding)
         throw new Error('Missing required deployment binding.')
 
       await createDeployment.mutateAsync({
         params: {
-          appInstanceId: createdInstance.appInstanceId,
-          environmentId: targetEnvironment.id,
+          appInstanceId: createdAppInstanceId,
+          environmentId: selectedEnvironment.id,
         },
         body: {
-          appInstanceId: createdInstance.appInstanceId,
-          environmentId: targetEnvironment.id,
-          releaseId: release.id,
-          bindings: selectedDeploymentBindings(realBindingSlots, realBindingSelections),
+          appInstanceId: createdAppInstanceId,
+          environmentId: selectedEnvironment.id,
+          releaseId: createdRelease.id,
+          bindings: selectedDeploymentBindings(bindingSlots, bindingSelections),
         },
       })
 
-      setCreatedAppInstanceId(createdInstance.appInstanceId)
-      setCreatedRelease(release)
-      setSelectedEnvironmentId(targetEnvironment.id)
-      setDeployedEnvironmentName(environmentName(targetEnvironment))
-      setStep('done')
+      setSelectedEnvironmentId(selectedEnvironment.id)
+      setDeployedEnvironmentName(environmentName(selectedEnvironment))
+      router.push(`/deployments/${createdAppInstanceId}/overview`)
     }
     catch {
       toast.error(t('createGuide.errors.deployFailed'))
@@ -996,7 +1245,7 @@ export function CreateDeploymentGuide() {
       return
 
     if (step === 'method') {
-      setStep(method === 'importDsl' ? 'source' : 'source')
+      setStep('source')
       return
     }
     if (step === 'source') {
@@ -1007,8 +1256,7 @@ export function CreateDeploymentGuide() {
       return
     }
     if (step === 'release') {
-      resetCreatedArtifacts()
-      setStep('target')
+      void createReleaseArtifactsAndContinue()
       return
     }
     if (step === 'target') {
@@ -1024,106 +1272,107 @@ export function CreateDeploymentGuide() {
     : effectiveSelectedApp?.name ?? ''
   const displayedInstanceName = instanceName.trim() || sourceName
   const displayedReleaseName = createdRelease?.name || releaseName.trim()
+  const guideContent = (
+    <>
+      {step === 'method' && (
+        <MethodStep method={method} onSelect={handleSelectMethod} />
+      )}
+      {step === 'source' && method === 'bindApp' && (
+        <SourceStep
+          apps={sourceApps}
+          selectedApp={effectiveSelectedApp}
+          searchText={sourceSearchText}
+          isLoading={sourceAppsQuery.isLoading || (sourceAppsQuery.isFetching && sourceApps.length === 0)}
+          onSearchTextChange={setSourceSearchText}
+          onSelectApp={(app) => {
+            setSelectedApp(app)
+            resetCreatedArtifacts()
+          }}
+        />
+      )}
+      {step === 'source' && method === 'importDsl' && <DslStep />}
+      {step === 'release' && (
+        <ReleaseStep
+          instanceName={instanceName}
+          instanceDescription={instanceDescription}
+          releaseName={releaseName}
+          releaseDescription={releaseDescription}
+          onInstanceNameChange={(value) => {
+            setInstanceName(value)
+            resetCreatedArtifacts()
+          }}
+          onInstanceDescriptionChange={(value) => {
+            setInstanceDescription(value)
+            resetCreatedArtifacts()
+          }}
+          onReleaseNameChange={(value) => {
+            setReleaseName(value)
+            resetCreatedArtifacts()
+          }}
+          onReleaseDescriptionChange={(value) => {
+            setReleaseDescription(value)
+            resetCreatedArtifacts()
+          }}
+        />
+      )}
+      {step === 'target' && (
+        <TargetStep
+          environments={environments}
+          bindingSlots={bindingSlots}
+          selectedEnvironmentId={effectiveSelectedEnvironmentId}
+          bindingSelections={bindingSelections}
+          isEnvironmentLoading={isEnvironmentLoading}
+          isEnvironmentError={environmentDeploymentsQuery.isError}
+          isBindingLoading={isBindingLoading}
+          isBindingError={deploymentPlanQuery.isError}
+          onSelectEnvironment={setSelectedEnvironmentId}
+          onSelectBinding={(slot, value) => {
+            setManualBindingSelections(prev => ({ ...prev, [slot]: value }))
+          }}
+        />
+      )}
+      {step === 'review' && (
+        <ReviewStep
+          sourceName={sourceName}
+          instanceName={displayedInstanceName}
+          releaseName={displayedReleaseName}
+          releaseDescription={releaseDescription}
+          targetEnvironmentName={selectedTargetEnvironmentName}
+          bindingSlots={bindingSlots}
+          bindingSelections={bindingSelections}
+        />
+      )}
+      {step === 'done' && (
+        <DoneStep environmentName={deployedEnvironmentName || selectedTargetEnvironmentName} />
+      )}
+    </>
+  )
 
   return (
     <div className="flex h-full min-h-0 bg-background-body">
-      <aside className="hidden w-64 shrink-0 border-r border-divider-subtle bg-background-default-subtle px-6 py-8 lg:flex lg:flex-col lg:gap-8">
-        <div className="flex flex-col gap-1">
-          <Link href="/deployments" className="inline-flex items-center gap-1 system-sm-medium text-text-tertiary hover:text-text-secondary">
-            <span className="i-ri-arrow-left-line size-4" aria-hidden="true" />
-            {t('createGuide.nav.back')}
-          </Link>
-          <h1 className="mt-3 title-xl-semi-bold text-text-primary">{t('createGuide.title')}</h1>
-          <p className="system-sm-regular text-text-tertiary">{t('createGuide.description')}</p>
-        </div>
-        <StepList activeStep={step} />
-      </aside>
-
       <main className="flex min-w-0 grow flex-col overflow-hidden">
-        <div className="border-b border-divider-subtle px-6 py-4 lg:hidden">
+        <div className="border-b border-divider-subtle px-6 py-4 md:hidden">
           <Link href="/deployments" className="inline-flex items-center gap-1 system-sm-medium text-text-tertiary hover:text-text-secondary">
             <span className="i-ri-arrow-left-line size-4" aria-hidden="true" />
             {t('createGuide.nav.back')}
           </Link>
           <h1 className="mt-2 title-xl-semi-bold text-text-primary">{t('createGuide.title')}</h1>
         </div>
-        <div className="min-h-0 flex-1 overflow-y-auto px-6 py-8">
-          <div className="mx-auto max-w-5xl">
-            {step === 'method' && (
-              <MethodStep method={method} onSelect={selectMethod} />
-            )}
-            {step === 'source' && method === 'bindApp' && (
-              <SourceStep
-                apps={sourceApps}
-                selectedApp={effectiveSelectedApp}
-                searchText={sourceSearchText}
-                isLoading={sourceAppsQuery.isLoading || (sourceAppsQuery.isFetching && sourceApps.length === 0)}
-                onSearchTextChange={setSourceSearchText}
-                onSelectApp={(app) => {
-                  setSelectedApp(app)
-                  resetCreatedArtifacts()
-                }}
+        <GuideFrame activeStep={step}>
+          <GuideCard
+            actions={(
+              <GuideActions
+                canContinue={canContinueCurrentStep()}
+                isDeploying={isDeploying}
+                step={step}
+                onBack={handleBack}
+                onPrimaryAction={handlePrimaryAction}
               />
             )}
-            {step === 'source' && method === 'importDsl' && <DslStep />}
-            {step === 'release' && (
-              <ReleaseStep
-                instanceName={instanceName}
-                releaseName={releaseName}
-                releaseDescription={releaseDescription}
-                onInstanceNameChange={(value) => {
-                  setInstanceName(value)
-                  resetCreatedArtifacts()
-                }}
-                onReleaseNameChange={(value) => {
-                  setReleaseName(value)
-                  resetCreatedArtifacts()
-                }}
-                onReleaseDescriptionChange={(value) => {
-                  setReleaseDescription(value)
-                  resetCreatedArtifacts()
-                }}
-              />
-            )}
-            {step === 'target' && (
-              <TargetStep
-                environments={environments}
-                bindingSlots={bindingSlots}
-                selectedEnvironmentId={effectiveSelectedEnvironmentId}
-                bindingSelections={bindingSelections}
-                onSelectEnvironment={(environmentId) => {
-                  setSelectedEnvironmentId(environmentId)
-                  resetCreatedArtifacts()
-                }}
-                onSelectBinding={(slot, value) => {
-                  setManualBindingSelections(prev => ({ ...prev, [slot]: value }))
-                  resetCreatedArtifacts()
-                }}
-              />
-            )}
-            {step === 'review' && (
-              <ReviewStep
-                sourceName={sourceName}
-                instanceName={displayedInstanceName}
-                releaseName={displayedReleaseName}
-                releaseDescription={releaseDescription}
-                environment={selectedEnvironment}
-                bindingSlots={bindingSlots}
-                bindingSelections={bindingSelections}
-              />
-            )}
-            {step === 'done' && (
-              <DoneStep environmentName={deployedEnvironmentName || (selectedEnvironment ? environmentName(selectedEnvironment) : '')} />
-            )}
-          </div>
-        </div>
-        <GuideActions
-          canContinue={canContinueCurrentStep()}
-          isDeploying={isDeploying}
-          step={step}
-          onBack={handleBack}
-          onPrimaryAction={handlePrimaryAction}
-        />
+          >
+            {guideContent}
+          </GuideCard>
+        </GuideFrame>
       </main>
     </div>
   )

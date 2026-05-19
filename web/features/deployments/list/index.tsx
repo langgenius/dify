@@ -115,11 +115,11 @@ function DeploymentsSearchInput() {
 function DeploymentsListControls() {
   return (
     <div className="sticky top-0 z-10 flex flex-wrap items-center justify-between gap-3 bg-background-body px-12 pt-7 pb-5">
-      <CreateDeploymentButton />
       <div className="flex items-center gap-2">
         <EnvironmentFilter />
         <DeploymentsSearchInput />
       </div>
+      <CreateDeploymentButton />
     </div>
   )
 }
