@@ -122,6 +122,107 @@ def test_head_signed_upload_file_url_returns_metadata_without_storage_content(mo
     ssrf_head.assert_not_called()
 
 
+def test_make_request_get_signed_upload_file_url_reads_storage_without_ssrf(monkeypatch):
+    _patch_file_fetcher_config(monkeypatch)
+    _patch_session(monkeypatch)
+    upload_file = SimpleNamespace(
+        id=UPLOAD_FILE_ID,
+        key="upload_files/tenant/hello.txt",
+        name="hello.txt",
+        mime_type="text/plain",
+        size=5,
+        extension="txt",
+    )
+    monkeypatch.setattr(remote_fetcher._file_access_controller, "get_upload_file", MagicMock(return_value=upload_file))
+    monkeypatch.setattr(remote_fetcher.storage, "load_once", MagicMock(return_value=b"hello"))
+    ssrf_make_request = MagicMock()
+    monkeypatch.setattr(remote_fetcher.ssrf_proxy, "make_request", ssrf_make_request)
+    url = _signed_url(
+        base_url="http://localhost:5001",
+        path=f"/files/{UPLOAD_FILE_ID}/file-preview",
+        payload=f"file-preview|{UPLOAD_FILE_ID}",
+    )
+
+    response = remote_fetcher.make_request("GET", url)
+
+    assert response.status_code == 200
+    assert response.content == b"hello"
+    assert response.request.method == "GET"
+    remote_fetcher.storage.load_once.assert_called_once_with("upload_files/tenant/hello.txt")
+    ssrf_make_request.assert_not_called()
+
+
+def test_make_request_post_signed_upload_file_url_delegates_to_ssrf_proxy(monkeypatch):
+    _patch_file_fetcher_config(monkeypatch)
+    get_upload_file = MagicMock()
+    monkeypatch.setattr(remote_fetcher._file_access_controller, "get_upload_file", get_upload_file)
+    proxy_response = httpx.Response(201, request=httpx.Request("POST", f"http://localhost:5001/files/{UPLOAD_FILE_ID}"))
+    ssrf_make_request = MagicMock(return_value=proxy_response)
+    monkeypatch.setattr(remote_fetcher.ssrf_proxy, "make_request", ssrf_make_request)
+    url = _signed_url(
+        base_url="http://localhost:5001",
+        path=f"/files/{UPLOAD_FILE_ID}/file-preview",
+        payload=f"file-preview|{UPLOAD_FILE_ID}",
+    )
+
+    response = remote_fetcher.make_request("POST", url, json={"name": "ignored"})
+
+    assert response is proxy_response
+    get_upload_file.assert_not_called()
+    ssrf_make_request.assert_called_once_with(
+        method="POST",
+        url=url,
+        max_retries=remote_fetcher.SSRF_DEFAULT_MAX_RETRIES,
+        json={"name": "ignored"},
+    )
+
+
+def test_get_signed_image_preview_url_uses_image_preview_signature(monkeypatch):
+    _patch_file_fetcher_config(monkeypatch)
+    _patch_session(monkeypatch)
+    upload_file = SimpleNamespace(
+        id=UPLOAD_FILE_ID,
+        key="upload_files/tenant/image.png",
+        name="image.png",
+        mime_type="image/png",
+        size=6,
+        extension="png",
+    )
+    monkeypatch.setattr(remote_fetcher._file_access_controller, "get_upload_file", MagicMock(return_value=upload_file))
+    monkeypatch.setattr(remote_fetcher.storage, "load_once", MagicMock(return_value=b"image!"))
+    ssrf_get = MagicMock()
+    monkeypatch.setattr(remote_fetcher.ssrf_proxy, "get", ssrf_get)
+    url = _signed_url(
+        base_url="http://localhost:5001",
+        path=f"/files/{UPLOAD_FILE_ID}/image-preview",
+        payload=f"image-preview|{UPLOAD_FILE_ID}",
+    )
+
+    response = remote_fetcher.get(url)
+
+    assert response.status_code == 200
+    assert response.content == b"image!"
+    assert response.headers["Content-Type"] == "image/png"
+    ssrf_get.assert_not_called()
+
+
+def test_image_preview_url_with_file_preview_signature_delegates_to_ssrf_proxy(monkeypatch):
+    _patch_file_fetcher_config(monkeypatch)
+    proxy_response = httpx.Response(403, request=httpx.Request("GET", "http://localhost:5001/bad"))
+    ssrf_get = MagicMock(return_value=proxy_response)
+    monkeypatch.setattr(remote_fetcher.ssrf_proxy, "get", ssrf_get)
+    url = _signed_url(
+        base_url="http://localhost:5001",
+        path=f"/files/{UPLOAD_FILE_ID}/image-preview",
+        payload=f"file-preview|{UPLOAD_FILE_ID}",
+    )
+
+    response = remote_fetcher.get(url)
+
+    assert response is proxy_response
+    ssrf_get.assert_called_once_with(url=url, max_retries=remote_fetcher.SSRF_DEFAULT_MAX_RETRIES)
+
+
 def test_invalid_signature_delegates_to_ssrf_proxy(monkeypatch):
     _patch_file_fetcher_config(monkeypatch)
     proxy_response = httpx.Response(403, request=httpx.Request("GET", "http://localhost:5001/bad"))
