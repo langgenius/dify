@@ -5,6 +5,8 @@ from flask import request, send_file
 from flask_restx import Resource
 from pydantic import BaseModel, Field, field_validator
 
+from controllers.common.fields import SimpleResultResponse
+from controllers.common.schema import register_response_schema_models, register_schema_models
 from controllers.console import console_ns
 from controllers.console.wraps import account_initialization_required, is_admin_or_owner_required, setup_required
 from graphon.model_runtime.entities.model_entities import ModelType
@@ -14,8 +16,6 @@ from libs.helper import uuid_value
 from libs.login import current_account_with_tenant, login_required
 from services.billing_service import BillingService
 from services.model_provider_service import ModelProviderService
-
-DEFAULT_REF_TEMPLATE_SWAGGER_2_0 = "#/definitions/{model}"
 
 
 class ParserModelList(BaseModel):
@@ -75,18 +75,18 @@ class ParserPreferredProviderType(BaseModel):
     preferred_provider_type: Literal["system", "custom"]
 
 
-def reg(cls: type[BaseModel]):
-    console_ns.schema_model(cls.__name__, cls.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0))
-
-
-reg(ParserModelList)
-reg(ParserCredentialId)
-reg(ParserCredentialCreate)
-reg(ParserCredentialUpdate)
-reg(ParserCredentialDelete)
-reg(ParserCredentialSwitch)
-reg(ParserCredentialValidate)
-reg(ParserPreferredProviderType)
+register_schema_models(
+    console_ns,
+    ParserModelList,
+    ParserCredentialId,
+    ParserCredentialCreate,
+    ParserCredentialUpdate,
+    ParserCredentialDelete,
+    ParserCredentialSwitch,
+    ParserCredentialValidate,
+    ParserPreferredProviderType,
+)
+register_response_schema_models(console_ns, SimpleResultResponse)
 
 
 @console_ns.route("/workspaces/current/model-providers")
@@ -179,6 +179,7 @@ class ModelProviderCredentialApi(Resource):
         return {"result": "success"}
 
     @console_ns.expect(console_ns.models[ParserCredentialDelete.__name__])
+    @console_ns.response(204, "Credential deleted successfully")
     @setup_required
     @login_required
     @is_admin_or_owner_required
@@ -199,6 +200,7 @@ class ModelProviderCredentialApi(Resource):
 @console_ns.route("/workspaces/current/model-providers/<path:provider>/credentials/switch")
 class ModelProviderCredentialSwitchApi(Resource):
     @console_ns.expect(console_ns.models[ParserCredentialSwitch.__name__])
+    @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
     @setup_required
     @login_required
     @is_admin_or_owner_required
@@ -273,6 +275,7 @@ class ModelProviderIconApi(Resource):
 @console_ns.route("/workspaces/current/model-providers/<path:provider>/preferred-provider-type")
 class PreferredProviderTypeUpdateApi(Resource):
     @console_ns.expect(console_ns.models[ParserPreferredProviderType.__name__])
+    @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
     @setup_required
     @login_required
     @is_admin_or_owner_required

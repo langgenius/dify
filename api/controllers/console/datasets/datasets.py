@@ -8,7 +8,8 @@ from werkzeug.exceptions import Forbidden, NotFound
 
 import services
 from configs import dify_config
-from controllers.common.schema import get_or_create_model, register_schema_models
+from controllers.common.fields import ApiBaseUrlResponse, SimpleResultResponse, UsageCheckResponse
+from controllers.common.schema import get_or_create_model, register_response_schema_models, register_schema_models
 from controllers.console import console_ns
 from controllers.console.apikey import ApiKeyItem, ApiKeyList
 from controllers.console.app.error import ProviderNotInitializeError
@@ -57,6 +58,8 @@ from models.enums import ApiTokenType, SegmentStatus
 from models.provider_ids import ModelProviderID
 from services.api_token_service import ApiTokenCache
 from services.dataset_service import DatasetPermissionService, DatasetService, DocumentService
+
+register_response_schema_models(console_ns, ApiBaseUrlResponse, SimpleResultResponse, UsageCheckResponse)
 
 # Register models for flask_restx to avoid dict type issues in Swagger
 dataset_base_model = get_or_create_model("DatasetBase", dataset_fields)
@@ -521,6 +524,7 @@ class DatasetApi(Resource):
     @login_required
     @account_initialization_required
     @cloud_edition_billing_rate_limit_check("knowledge")
+    @console_ns.response(204, "Dataset deleted successfully")
     def delete(self, dataset_id):
         dataset_id_str = str(dataset_id)
         current_user, _ = current_account_with_tenant()
@@ -543,7 +547,11 @@ class DatasetUseCheckApi(Resource):
     @console_ns.doc("check_dataset_use")
     @console_ns.doc(description="Check if dataset is in use")
     @console_ns.doc(params={"dataset_id": "Dataset ID"})
-    @console_ns.response(200, "Dataset use status retrieved successfully")
+    @console_ns.response(
+        200,
+        "Dataset use status retrieved successfully",
+        console_ns.models[UsageCheckResponse.__name__],
+    )
     @setup_required
     @login_required
     @account_initialization_required
@@ -606,63 +614,63 @@ class DatasetIndexingEstimateApi(Resource):
         # validate args
         DocumentService.estimate_args_validate(args)
         extract_settings = []
-        if args["info_list"]["data_source_type"] == "upload_file":
-            file_ids = args["info_list"]["file_info_list"]["file_ids"]
-            file_details = db.session.scalars(
-                select(UploadFile).where(UploadFile.tenant_id == current_tenant_id, UploadFile.id.in_(file_ids))
-            ).all()
+        match args["info_list"]["data_source_type"]:
+            case "upload_file":
+                file_ids = args["info_list"]["file_info_list"]["file_ids"]
+                file_details = db.session.scalars(
+                    select(UploadFile).where(UploadFile.tenant_id == current_tenant_id, UploadFile.id.in_(file_ids))
+                ).all()
+                if file_details is None:
+                    raise NotFound("File not found.")
 
-            if file_details is None:
-                raise NotFound("File not found.")
-
-            if file_details:
-                for file_detail in file_details:
+                if file_details:
+                    for file_detail in file_details:
+                        extract_setting = ExtractSetting(
+                            datasource_type=DatasourceType.FILE,
+                            upload_file=file_detail,
+                            document_model=args["doc_form"],
+                        )
+                        extract_settings.append(extract_setting)
+            case "notion_import":
+                notion_info_list = args["info_list"]["notion_info_list"]
+                for notion_info in notion_info_list:
+                    workspace_id = notion_info["workspace_id"]
+                    credential_id = notion_info.get("credential_id")
+                    for page in notion_info["pages"]:
+                        extract_setting = ExtractSetting(
+                            datasource_type=DatasourceType.NOTION,
+                            notion_info=NotionInfo.model_validate(
+                                {
+                                    "credential_id": credential_id,
+                                    "notion_workspace_id": workspace_id,
+                                    "notion_obj_id": page["page_id"],
+                                    "notion_page_type": page["type"],
+                                    "tenant_id": current_tenant_id,
+                                }
+                            ),
+                            document_model=args["doc_form"],
+                        )
+                        extract_settings.append(extract_setting)
+            case "website_crawl":
+                website_info_list = args["info_list"]["website_info_list"]
+                for url in website_info_list["urls"]:
                     extract_setting = ExtractSetting(
-                        datasource_type=DatasourceType.FILE,
-                        upload_file=file_detail,
-                        document_model=args["doc_form"],
-                    )
-                    extract_settings.append(extract_setting)
-        elif args["info_list"]["data_source_type"] == "notion_import":
-            notion_info_list = args["info_list"]["notion_info_list"]
-            for notion_info in notion_info_list:
-                workspace_id = notion_info["workspace_id"]
-                credential_id = notion_info.get("credential_id")
-                for page in notion_info["pages"]:
-                    extract_setting = ExtractSetting(
-                        datasource_type=DatasourceType.NOTION,
-                        notion_info=NotionInfo.model_validate(
+                        datasource_type=DatasourceType.WEBSITE,
+                        website_info=WebsiteInfo.model_validate(
                             {
-                                "credential_id": credential_id,
-                                "notion_workspace_id": workspace_id,
-                                "notion_obj_id": page["page_id"],
-                                "notion_page_type": page["type"],
+                                "provider": website_info_list["provider"],
+                                "job_id": website_info_list["job_id"],
+                                "url": url,
                                 "tenant_id": current_tenant_id,
+                                "mode": "crawl",
+                                "only_main_content": website_info_list["only_main_content"],
                             }
                         ),
                         document_model=args["doc_form"],
                     )
                     extract_settings.append(extract_setting)
-        elif args["info_list"]["data_source_type"] == "website_crawl":
-            website_info_list = args["info_list"]["website_info_list"]
-            for url in website_info_list["urls"]:
-                extract_setting = ExtractSetting(
-                    datasource_type=DatasourceType.WEBSITE,
-                    website_info=WebsiteInfo.model_validate(
-                        {
-                            "provider": website_info_list["provider"],
-                            "job_id": website_info_list["job_id"],
-                            "url": url,
-                            "tenant_id": current_tenant_id,
-                            "mode": "crawl",
-                            "only_main_content": website_info_list["only_main_content"],
-                        }
-                    ),
-                    document_model=args["doc_form"],
-                )
-                extract_settings.append(extract_setting)
-        else:
-            raise ValueError("Data source type not support")
+            case _:
+                raise ValueError("Data source type not support")
         indexing_runner = IndexingRunner()
         try:
             response = indexing_runner.indexing_estimate(
@@ -873,6 +881,7 @@ class DatasetEnableApiApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
     def post(self, dataset_id, status):
         dataset_id_str = str(dataset_id)
 
@@ -885,7 +894,7 @@ class DatasetEnableApiApi(Resource):
 class DatasetApiBaseUrlApi(Resource):
     @console_ns.doc("get_dataset_api_base_info")
     @console_ns.doc(description="Get dataset API base information")
-    @console_ns.response(200, "API base info retrieved successfully")
+    @console_ns.response(200, "API base info retrieved successfully", console_ns.models[ApiBaseUrlResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required

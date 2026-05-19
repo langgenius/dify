@@ -337,6 +337,8 @@
   "variableConfig.file.image.name": "تصویر",
   "variableConfig.file.supportFileTypes": "انواع فایل های پشتیبانی",
   "variableConfig.file.video.name": "ویدئو",
+  "variableConfig.hidden": "پنهان و پیش‌پر شده",
+  "variableConfig.hiddenDescription": "این فیلد را از کاربران نهایی پنهان کنید و مقدار آن را خودتان تأمین کنید. با اجباری به صورت متقابل انحصاری است. <docLink>بیشتر بدانید</docLink>",
   "variableConfig.hide": "مخفی کردن",
   "variableConfig.inputPlaceholder": "لطفا وارد کنید",
   "variableConfig.json": "کد JSON",

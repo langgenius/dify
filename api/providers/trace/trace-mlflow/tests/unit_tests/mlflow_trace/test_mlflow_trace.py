@@ -614,7 +614,7 @@ class TestMessageTrace:
         span.set_status.assert_called_once()
         span.add_event.assert_called_once()
 
-    def test_message_trace_with_file_data(self, trace_instance, mock_tracing, mock_db, monkeypatch):
+    def test_message_trace_with_file_data(self, trace_instance, mock_tracing, mock_db, monkeypatch: pytest.MonkeyPatch):
         span = MagicMock()
         mock_tracing["start"].return_value = span
         mock_tracing["set"].return_value = "token"

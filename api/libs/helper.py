@@ -10,7 +10,7 @@ import uuid
 from collections.abc import Callable, Generator, Mapping
 from datetime import datetime
 from hashlib import sha256
-from typing import TYPE_CHECKING, Annotated, Any, Protocol, cast
+from typing import TYPE_CHECKING, Annotated, Any, Protocol, cast, overload
 from uuid import UUID
 from zoneinfo import available_timezones
 
@@ -39,6 +39,7 @@ class _TokenData(TypedDict, total=False):
     token_type: str
     code: str
     old_email: str
+    phase: str
 
 
 _token_data_adapter: TypeAdapter[_TokenData] = TypeAdapter(_TokenData)
@@ -97,12 +98,13 @@ def extract_tenant_id(user: "Account | EndUser") -> str | None:
     from models import Account
     from models.model import EndUser
 
-    if isinstance(user, Account):
-        return user.current_tenant_id
-    elif isinstance(user, EndUser):
-        return user.tenant_id
-    else:
-        raise ValueError(f"Invalid user type: {type(user)}. Expected Account or EndUser.")
+    match user:
+        case Account():
+            return user.current_tenant_id
+        case EndUser():
+            return user.tenant_id
+        case _:
+            raise ValueError(f"Invalid user type: {type(user)}. Expected Account or EndUser.")
 
 
 def run(script):
@@ -136,6 +138,14 @@ def build_icon_url(icon_type: Any, icon: str | None) -> str | None:
     return file_helpers.get_signed_file_url(icon)
 
 
+def build_avatar_url(avatar: str | None) -> str | None:
+    if avatar is None:
+        return None
+    if avatar.startswith(("http://", "https://")):
+        return avatar
+    return file_helpers.get_signed_file_url(avatar)
+
+
 class AvatarUrlField(fields.Raw):
     def output(self, key, obj, **kwargs):
         if obj is None:
@@ -144,9 +154,7 @@ class AvatarUrlField(fields.Raw):
         from models import Account
 
         if isinstance(obj, Account) and obj.avatar is not None:
-            if obj.avatar.startswith(("http://", "https://")):
-                return obj.avatar
-            return file_helpers.get_signed_file_url(obj.avatar)
+            return build_avatar_url(obj.avatar)
         return None
 
 
@@ -160,6 +168,35 @@ class OptionalTimestampField(fields.Raw):
         if value is None:
             return None
         return int(value.timestamp())
+
+
+@overload
+def to_timestamp(value: datetime) -> int: ...
+
+
+@overload
+def to_timestamp(value: int) -> int: ...
+
+
+@overload
+def to_timestamp(value: None) -> None: ...
+
+
+def to_timestamp(value: datetime | int | None) -> int | None:
+    """Normalize API response timestamp values to epoch seconds."""
+    if isinstance(value, datetime):
+        return int(value.timestamp())
+    return value
+
+
+def dump_response(model: type[BaseModel], data: Any) -> dict[str, Any]:
+    """Serialize a Pydantic response model to JSON-compatible dict output."""
+    return model.model_validate(data, from_attributes=True).model_dump(mode="json")
+
+
+def current_timestamp() -> int:
+    """Return the current Unix timestamp in seconds."""
+    return int(time.time())
 
 
 def email(email):
@@ -386,18 +423,19 @@ def length_prefixed_response(
         # | Magic Number 1byte | Reserved 1byte | Header Length 2bytes | Data Length 4bytes | Reserved 6bytes | Data
         return struct.pack("<BBHI", magic_number, 0, header_length, data_length) + b"\x00" * 6 + response
 
-    if isinstance(response, Mapping):
-        return Response(
-            response=pack_response_with_length_prefix(json.dumps(jsonable_encoder(response)).encode("utf-8")),
-            status=200,
-            mimetype="application/json",
-        )
-    elif isinstance(response, BaseModel):
-        return Response(
-            response=pack_response_with_length_prefix(response.model_dump_json().encode("utf-8")),
-            status=200,
-            mimetype="application/json",
-        )
+    match response:
+        case Mapping():
+            return Response(
+                response=pack_response_with_length_prefix(json.dumps(jsonable_encoder(response)).encode("utf-8")),
+                status=200,
+                mimetype="application/json",
+            )
+        case BaseModel():
+            return Response(
+                response=pack_response_with_length_prefix(response.model_dump_json().encode("utf-8")),
+                status=200,
+                mimetype="application/json",
+            )
 
     stream_response = response
 

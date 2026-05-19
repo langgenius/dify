@@ -3,6 +3,11 @@ import type { SimpleSubscription } from '@/app/components/plugins/plugin-detail-
 import type { Node } from '@/app/components/workflow/types'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@langgenius/dify-ui/tooltip'
+import {
   RiCloseLine,
   RiPlayLargeLine,
 } from '@remixicon/react'
@@ -21,7 +26,6 @@ import { useTranslation } from 'react-i18next'
 import { useShallow } from 'zustand/react/shallow'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { Stop } from '@/app/components/base/icons/src/vender/line/mediaAndDevices'
-import Tooltip from '@/app/components/base/tooltip'
 import { UserAvatarList } from '@/app/components/base/user-avatar-list'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
 import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
@@ -49,6 +53,7 @@ import {
 } from '@/app/components/workflow/hooks'
 import { useHooksStore } from '@/app/components/workflow/hooks-store'
 import useInspectVarsCrud from '@/app/components/workflow/hooks/use-inspect-vars-crud'
+import { NodeActionsDropdown } from '@/app/components/workflow/node-actions-menu'
 import Split from '@/app/components/workflow/nodes/_base/components/split'
 import { useLogs } from '@/app/components/workflow/run/hooks'
 import SpecialResultPanel from '@/app/components/workflow/run/special-result-panel'
@@ -71,7 +76,6 @@ import PanelWrap from '../before-run-form/panel-wrap'
 import ErrorHandleOnPanel from '../error-handle/error-handle-on-panel'
 import HelpLink from '../help-link'
 import NextStep from '../next-step'
-import PanelOperator from '../panel-operator'
 import RetryOnPanel from '../retry/retry-on-panel'
 import { DescriptionInput, TitleInput } from '../title-description-input'
 import {
@@ -469,6 +473,11 @@ const BasePanel: FC<BasePanelProps> = ({
     )
   }
 
+  const runThisStepLabel = t('panel.runThisStep', { ns: 'workflow' })
+  const singleRunActionLabel = isSingleRunning
+    ? t('debug.variableInspect.trigger.stop', { ns: 'workflow' })
+    : runThisStepLabel
+
   return (
     <div
       className={cn(
@@ -516,31 +525,36 @@ const BasePanel: FC<BasePanelProps> = ({
             <div className="flex shrink-0 items-center text-text-tertiary">
               {
                 isSupportSingleRun && !nodesReadOnly && (
-                  <Tooltip
-                    popupContent={t('panel.runThisStep', { ns: 'workflow' })}
-                    popupClassName="mr-1"
-                    disabled={isSingleRunning}
-                  >
-                    <div
-                      className="mr-1 flex h-6 w-6 cursor-pointer items-center justify-center rounded-md hover:bg-state-base-hover"
-                      onClick={() => {
-                        if (isSingleRunning)
-                          handleStop()
-                        else
-                          handleSingleRun()
-                      }}
-                    >
-                      {
-                        isSingleRunning
-                          ? <Stop className="h-4 w-4 text-text-tertiary" />
-                          : <RiPlayLargeLine className="h-4 w-4 text-text-tertiary" />
-                      }
-                    </div>
+                  <Tooltip disabled={isSingleRunning}>
+                    <TooltipTrigger
+                      render={(
+                        <button
+                          type="button"
+                          aria-label={singleRunActionLabel}
+                          className="mr-1 flex h-6 w-6 cursor-pointer items-center justify-center rounded-md border-0 bg-transparent p-0 hover:bg-state-base-hover focus-visible:ring-1 focus-visible:ring-components-input-border-hover focus-visible:outline-hidden"
+                          onClick={() => {
+                            if (isSingleRunning)
+                              handleStop()
+                            else
+                              handleSingleRun()
+                          }}
+                        >
+                          {
+                            isSingleRunning
+                              ? <Stop aria-hidden className="h-4 w-4 text-text-tertiary" />
+                              : <RiPlayLargeLine aria-hidden className="h-4 w-4 text-text-tertiary" />
+                          }
+                        </button>
+                      )}
+                    />
+                    <TooltipContent className="mr-1">
+                      {runThisStepLabel}
+                    </TooltipContent>
                   </Tooltip>
                 )
               }
               <HelpLink nodeType={data.type} />
-              <PanelOperator id={id} data={data} showHelpLink={false} />
+              <NodeActionsDropdown id={id} data={data} showHelpLink={false} />
               <div className="mx-3 h-3.5 w-px bg-divider-regular" />
               <div
                 className="flex h-6 w-6 cursor-pointer items-center justify-center"

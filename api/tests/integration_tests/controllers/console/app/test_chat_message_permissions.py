@@ -13,7 +13,7 @@ from controllers.console.app import wraps
 from libs.datetime_utils import naive_utc_now
 from models import App, Tenant
 from models.account import Account, TenantAccountJoin, TenantAccountRole
-from models.enums import ConversationFromSource
+from models.enums import AppStatus, ConversationFromSource
 from models.model import AppMode
 from services.app_generate_service import AppGenerateService
 
@@ -28,7 +28,7 @@ class TestChatMessageApiPermissions:
         app.id = str(uuid.uuid4())
         app.mode = AppMode.CHAT
         app.tenant_id = str(uuid.uuid4())
-        app.status = "normal"
+        app.status = AppStatus.NORMAL
         return app
 
     @pytest.fixture
@@ -78,7 +78,7 @@ class TestChatMessageApiPermissions:
         self,
         test_client: FlaskClient,
         auth_header,
-        monkeypatch,
+        monkeypatch: pytest.MonkeyPatch,
         mock_app_model,
         mock_account,
         role: TenantAccountRole,
@@ -130,7 +130,7 @@ class TestChatMessageApiPermissions:
         self,
         test_client: FlaskClient,
         auth_header,
-        monkeypatch,
+        monkeypatch: pytest.MonkeyPatch,
         mock_app_model,
         mock_account,
         role: TenantAccountRole,

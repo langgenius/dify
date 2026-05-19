@@ -13,6 +13,7 @@ import { useLocale } from '@/context/i18n'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { emailLoginWithCode, sendEMailLoginCode } from '@/service/common'
 import { encryptVerificationCode } from '@/utils/encryption'
+import { getBrowserTimezone } from '@/utils/timezone'
 import { resolvePostLoginRedirect } from '../utils/post-login-redirect'
 
 export default function CheckCode() {
@@ -39,7 +40,13 @@ export default function CheckCode() {
         return
       }
       setIsLoading(true)
-      const ret = await emailLoginWithCode({ email, code: encryptVerificationCode(code), token, language })
+      const ret = await emailLoginWithCode({
+        email,
+        code: encryptVerificationCode(code),
+        token,
+        language,
+        timezone: getBrowserTimezone(),
+      })
       if (ret.result === 'success') {
         // Track login success event
         trackEvent('user_login_success', {

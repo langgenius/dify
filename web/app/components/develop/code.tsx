@@ -1,7 +1,12 @@
 'use client'
 import type { PropsWithChildren, ReactElement, ReactNode } from 'react'
-import { Tab, TabGroup, TabList, TabPanel, TabPanels } from '@headlessui/react'
 import { cn } from '@langgenius/dify-ui/cn'
+import {
+  Tabs,
+  TabsList,
+  TabsPanel,
+  TabsTab,
+} from '@langgenius/dify-ui/tabs'
 import {
   Children,
   createContext,
@@ -103,6 +108,11 @@ type CodeExample = {
   code: string
 }
 
+type CodeTab = {
+  title: string
+  value: string
+}
+
 type ICodePanelProps = {
   children?: React.ReactNode
   tag?: string
@@ -142,12 +152,11 @@ function CodePanel({ tag, label, children, targetCode }: ICodePanelProps) {
 
 type CodeGroupHeaderProps = {
   title?: string
-  tabTitles?: string[]
-  selectedIndex?: number
+  tabs?: CodeTab[]
 }
 
-function CodeGroupHeader({ title, tabTitles, selectedIndex }: CodeGroupHeaderProps) {
-  const hasTabs = (tabTitles?.length ?? 0) > 1
+function CodeGroupHeader({ title, tabs }: CodeGroupHeaderProps) {
+  const hasTabs = (tabs?.length ?? 0) > 1
 
   return (
     <div className="flex min-h-[calc(--spacing(12)+1px)] flex-wrap items-start gap-x-4 border-b border-zinc-700 bg-zinc-800 px-4 dark:border-zinc-800 dark:bg-transparent">
@@ -157,18 +166,19 @@ function CodeGroupHeader({ title, tabTitles, selectedIndex }: CodeGroupHeaderPro
         </h3>
       )}
       {hasTabs && (
-        <TabList className="-mb-px flex gap-4 text-xs font-medium">
-          {tabTitles!.map((tabTitle, tabIndex) => (
-            <Tab
-              key={tabIndex}
-              className={cn('border-b py-3 transition focus:not-focus-visible:outline-hidden', tabIndex === selectedIndex
-                ? 'border-emerald-500 text-emerald-400'
-                : 'border-transparent text-zinc-400 hover:text-zinc-300')}
+        <TabsList
+          className="-mb-px flex gap-4 rounded-none bg-transparent p-0 text-xs font-medium"
+        >
+          {tabs!.map(tab => (
+            <TabsTab
+              key={tab.value}
+              value={tab.value}
+              className="h-auto rounded-none border-0 border-b border-transparent bg-transparent px-0 py-3 text-xs font-medium text-zinc-400 shadow-none transition hover:bg-transparent hover:text-zinc-300 focus:not-focus-visible:outline-hidden focus-visible:ring-0 data-active:border-emerald-500 data-active:bg-transparent data-active:text-emerald-400 data-active:shadow-none"
             >
-              {tabTitle}
-            </Tab>
+              {tab.title}
+            </TabsTab>
           ))}
-        </TabList>
+        </TabsList>
       )}
     </div>
   )
@@ -176,19 +186,24 @@ function CodeGroupHeader({ title, tabTitles, selectedIndex }: CodeGroupHeaderPro
 
 type ICodeGroupPanelsProps = PropsWithChildren<{
   targetCode?: CodeExample[]
+  tabs?: CodeTab[]
   [key: string]: any
 }>
 
-function CodeGroupPanels({ children, targetCode, ...props }: ICodeGroupPanelsProps) {
-  if ((targetCode?.length ?? 0) > 1) {
+function CodeGroupPanels({ children, targetCode, tabs, ...props }: ICodeGroupPanelsProps) {
+  if ((targetCode?.length ?? 0) > 1 && tabs) {
     return (
-      <TabPanels>
-        {targetCode!.map((code, index) => (
-          <TabPanel key={code.title || code.tag || index}>
-            <CodePanel {...props} targetCode={code} />
-          </TabPanel>
-        ))}
-      </TabPanels>
+      <>
+        {targetCode!.map((code, index) => {
+          const tab = tabs[index]
+
+          return (
+            <TabsPanel key={code.title || code.tag || index} value={tab?.value ?? String(index)}>
+              <CodePanel {...props} targetCode={code} />
+            </TabsPanel>
+          )
+        })}
+      </>
     )
   }
 
@@ -201,18 +216,27 @@ function usePreventLayoutShift() {
 
   useEffect(() => {
     return () => {
-      window.cancelAnimationFrame(rafRef.current)
+      if (rafRef.current)
+        window.cancelAnimationFrame(rafRef.current)
     }
   }, [])
 
   return {
     positionRef,
-    preventLayoutShift(callback: () => {}) {
+    preventLayoutShift(callback: () => void) {
+      if (!positionRef.current) {
+        callback()
+        return
+      }
+
       const initialTop = positionRef.current.getBoundingClientRect().top
 
       callback()
 
       rafRef.current = window.requestAnimationFrame(() => {
+        if (!positionRef.current)
+          return
+
         const newTop = positionRef.current.getBoundingClientRect().top
         window.scrollBy(0, newTop - initialTop)
       })
@@ -220,27 +244,27 @@ function usePreventLayoutShift() {
   }
 }
 
-function useTabGroupProps(availableLanguages: string[]) {
-  const [preferredLanguages, addPreferredLanguage] = useState<any>([])
-  const [selectedIndex, setSelectedIndex] = useState(0)
-  const activeLanguage = [...(availableLanguages || [])].sort(
-    (a, z) => preferredLanguages.indexOf(z) - preferredLanguages.indexOf(a),
-  )[0]
-  const languageIndex = availableLanguages?.indexOf(activeLanguage!) || 0
-  const newSelectedIndex = languageIndex === -1 ? selectedIndex : languageIndex
-  if (newSelectedIndex !== selectedIndex)
-    setSelectedIndex(newSelectedIndex)
-
+function useTabGroupProps(tabValues: string[]) {
+  const [selectedValue, setSelectedValue] = useState(tabValues[0] ?? '')
   const { positionRef, preventLayoutShift } = usePreventLayoutShift()
+  const value = tabValues.includes(selectedValue)
+    ? selectedValue
+    : tabValues[0] ?? ''
 
   return {
-    as: 'div',
     ref: positionRef,
-    selectedIndex,
-    onChange: (newSelectedIndex: number) => {
-      preventLayoutShift(() =>
-        (addPreferredLanguage(availableLanguages[newSelectedIndex]) as any),
-      )
+    value,
+    onValueChange: (newValue: string | number | null) => {
+      if (newValue == null)
+        return
+
+      const nextValue = String(newValue)
+      if (!tabValues.includes(nextValue))
+        return
+
+      preventLayoutShift(() => {
+        setSelectedValue(nextValue)
+      })
     },
   }
 }
@@ -260,24 +284,35 @@ type CodeGroupProps = PropsWithChildren<{
 
 export function CodeGroup({ children, title, targetCode, ...props }: CodeGroupProps) {
   const examples = typeof targetCode === 'string' ? [{ code: targetCode }] as CodeExample[] : targetCode
-  const tabTitles = examples?.map(({ title }) => title || 'Code') || []
-  const tabGroupProps = useTabGroupProps(tabTitles)
-  const hasTabs = tabTitles.length > 1
-  const Container = hasTabs ? TabGroup : 'div'
-  const containerProps = hasTabs ? tabGroupProps : {}
-  const headerProps = hasTabs
-    ? { selectedIndex: tabGroupProps.selectedIndex, tabTitles }
-    : {}
+  const tabs = examples?.map(({ title }, index) => ({
+    title: title || 'Code',
+    value: String(index),
+  })) || []
+  const tabGroupProps = useTabGroupProps(tabs.map(tab => tab.value))
+  const hasTabs = tabs.length > 1
+  const content = (
+    <>
+      <CodeGroupHeader title={title} tabs={hasTabs ? tabs : undefined} />
+      <CodeGroupPanels {...props} targetCode={examples} tabs={hasTabs ? tabs : undefined}>{children}</CodeGroupPanels>
+    </>
+  )
 
   return (
     <CodeGroupContext.Provider value={true}>
-      <Container
-        {...containerProps}
-        className="not-prose my-6 overflow-hidden rounded-2xl bg-zinc-900 shadow-md dark:ring-1 dark:ring-white/10"
-      >
-        <CodeGroupHeader title={title} {...headerProps} />
-        <CodeGroupPanels {...props} targetCode={examples}>{children}</CodeGroupPanels>
-      </Container>
+      {hasTabs
+        ? (
+            <Tabs
+              {...tabGroupProps}
+              className="not-prose my-6 overflow-hidden rounded-2xl bg-zinc-900 shadow-md dark:ring-1 dark:ring-white/10"
+            >
+              {content}
+            </Tabs>
+          )
+        : (
+            <div className="not-prose my-6 overflow-hidden rounded-2xl bg-zinc-900 shadow-md dark:ring-1 dark:ring-white/10">
+              {content}
+            </div>
+          )}
     </CodeGroupContext.Provider>
   )
 }

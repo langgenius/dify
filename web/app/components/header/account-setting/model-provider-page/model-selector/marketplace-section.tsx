@@ -1,4 +1,3 @@
-import type { FC } from 'react'
 import type { ModelProviderQuotaGetPaid } from '@/types/model-provider'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -16,7 +15,7 @@ type MarketplaceSectionProps = {
   onInstallPlugin: (key: ModelProviderQuotaGetPaid) => void | Promise<void>
 }
 
-const MarketplaceSection: FC<MarketplaceSectionProps> = ({
+function MarketplaceSection({
   marketplaceProviders,
   marketplaceCollapsed,
   installingProvider,
@@ -24,7 +23,7 @@ const MarketplaceSection: FC<MarketplaceSectionProps> = ({
   theme,
   onMarketplaceCollapsedChange,
   onInstallPlugin,
-}) => {
+}: MarketplaceSectionProps) {
   const { t } = useTranslation()
 
   if (marketplaceProviders.length === 0)
@@ -36,14 +35,15 @@ const MarketplaceSection: FC<MarketplaceSectionProps> = ({
         <div className="h-px bg-divider-subtle" />
       </div>
       <div>
-        <div className="flex h-[22px] items-center pr-2 pl-4">
-          <div
-            className="flex flex-1 cursor-pointer items-center system-sm-medium text-text-primary"
+        <div className="flex h-5.5 items-center pr-2 pl-4">
+          <button
+            type="button"
+            className="flex flex-1 cursor-pointer items-center border-0 bg-transparent p-0 text-left system-sm-medium text-text-primary"
             onClick={() => onMarketplaceCollapsedChange(!marketplaceCollapsed)}
           >
             {t('modelProvider.selector.fromMarketplace', { ns: 'common' })}
             <span className={cn('i-custom-vender-solid-general-arrow-down-round-fill h-4 w-4 text-text-quaternary', marketplaceCollapsed && '-rotate-90')} />
-          </div>
+          </button>
         </div>
         {!marketplaceCollapsed && (
           <div className="px-1 pb-1">

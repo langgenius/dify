@@ -42,18 +42,11 @@ const InputCopy = ({
       <div className="flex h-5 grow items-center">
         {children}
         <div className="relative h-full grow text-[13px]">
-          <div
-            className="r-0 absolute top-0 left-0 w-full cursor-pointer truncate pr-2 pl-2"
-            role="button"
+          <button
+            type="button"
+            className="r-0 absolute top-0 left-0 w-full cursor-pointer truncate border-none bg-transparent py-0 pr-2 pl-2 text-left"
             aria-label={copyLabel}
-            tabIndex={0}
             onClick={handleCopy}
-            onKeyDown={(event) => {
-              if (event.key === 'Enter' || event.key === ' ') {
-                event.preventDefault()
-                handleCopy()
-              }
-            }}
           >
             <Tooltip>
               <TooltipTrigger
@@ -63,7 +56,7 @@ const InputCopy = ({
                 {copyLabel}
               </TooltipContent>
             </Tooltip>
-          </div>
+          </button>
         </div>
         <div className="h-4 w-px shrink-0 bg-divider-regular" />
         <div className="mx-1"><CopyFeedback content={value} /></div>

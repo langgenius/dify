@@ -75,17 +75,22 @@ const Panel: FC<NodePanelProps<CodeNodeType>> = ({
                   <div className="flex gap-2">
                     <Tooltip>
                       <TooltipTrigger
-                        className="cursor-pointer rounded-md p-1 select-none hover:bg-state-base-hover"
+                        className="cursor-pointer rounded-md border-none bg-transparent p-1 select-none hover:bg-state-base-hover focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
                         onClick={handleSyncFunctionSignature}
-                        data-testid="sync-button"
+                        aria-label={t(`${i18nPrefix}.syncFunctionSignature`, { ns: 'workflow' })}
                       >
-                        <span className="i-ri-refresh-line h-4 w-4 text-text-tertiary" />
+                        <span className="i-ri-refresh-line h-4 w-4 text-text-tertiary" aria-hidden="true" />
                       </TooltipTrigger>
                       <TooltipContent>{t(`${i18nPrefix}.syncFunctionSignature`, { ns: 'workflow' })}</TooltipContent>
                     </Tooltip>
-                    <div className="cursor-pointer rounded-md p-1 select-none hover:bg-state-base-hover" onClick={handleAddVariable} data-testid="add-button">
-                      <span className="i-ri-add-line h-4 w-4 text-text-tertiary" />
-                    </div>
+                    <button
+                      type="button"
+                      aria-label={`${t('operation.add', { ns: 'common' })} ${t(`${i18nPrefix}.inputVars`, { ns: 'workflow' })}`}
+                      className="cursor-pointer rounded-md border-none bg-transparent p-1 select-none hover:bg-state-base-hover focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
+                      onClick={handleAddVariable}
+                    >
+                      <span className="i-ri-add-line h-4 w-4 text-text-tertiary" aria-hidden="true" />
+                    </button>
                   </div>
                 )
               : undefined
@@ -124,9 +129,14 @@ const Panel: FC<NodePanelProps<CodeNodeType>> = ({
         <Field
           title={t(`${i18nPrefix}.outputVars`, { ns: 'workflow' })}
           operations={(
-            <div className="cursor-pointer rounded-md p-1 select-none hover:bg-state-base-hover" onClick={handleAddOutputVariable} data-testid="add-button">
-              <span className="i-ri-add-line h-4 w-4 text-text-tertiary" />
-            </div>
+            <button
+              type="button"
+              aria-label={`${t('operation.add', { ns: 'common' })} ${t(`${i18nPrefix}.outputVars`, { ns: 'workflow' })}`}
+              className="cursor-pointer rounded-md border-none bg-transparent p-1 select-none hover:bg-state-base-hover focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
+              onClick={handleAddOutputVariable}
+            >
+              <span className="i-ri-add-line h-4 w-4 text-text-tertiary" aria-hidden="true" />
+            </button>
           )}
           required
         >

@@ -2,8 +2,15 @@
 import type { FC } from 'react'
 import type { ToolWithProvider } from '../../../workflow/types'
 import { cn } from '@langgenius/dify-ui/cn'
+import {
+  Drawer,
+  DrawerBackdrop,
+  DrawerContent,
+  DrawerPopup,
+  DrawerPortal,
+  DrawerViewport,
+} from '@langgenius/dify-ui/drawer'
 import * as React from 'react'
-import Drawer from '@/app/components/base/drawer'
 import MCPDetailContent from './content'
 
 type Props = {
@@ -32,23 +39,32 @@ const MCPDetailPanel: FC<Props> = ({
 
   return (
     <Drawer
-      isOpen={!!detail}
-      clickOutsideNotOpen={false}
-      onClose={onHide}
-      footer={null}
-      mask={false}
-      positionCenter={false}
-      panelClassName={cn('mt-[64px] mr-2 mb-2 w-[420px]! max-w-[420px]! justify-start rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg! p-0! shadow-xl')}
+      open={!!detail}
+      modal
+      swipeDirection="right"
+      onOpenChange={(open) => {
+        if (!open)
+          onHide()
+      }}
     >
-      {detail && (
-        <MCPDetailContent
-          detail={detail}
-          onHide={onHide}
-          onUpdate={handleUpdate}
-          isTriggerAuthorize={isTriggerAuthorize}
-          onFirstCreate={onFirstCreate}
-        />
-      )}
+      <DrawerPortal>
+        <DrawerBackdrop className="bg-transparent" />
+        <DrawerViewport>
+          <DrawerPopup className={cn('justify-start bg-components-panel-bg! p-0! shadow-xl data-[swipe-direction=right]:top-16 data-[swipe-direction=right]:right-2 data-[swipe-direction=right]:bottom-2 data-[swipe-direction=right]:h-auto data-[swipe-direction=right]:w-[420px] data-[swipe-direction=right]:max-w-[420px] data-[swipe-direction=right]:rounded-2xl data-[swipe-direction=right]:border-[0.5px] data-[swipe-direction=right]:border-components-panel-border')}>
+            <DrawerContent className="flex min-h-0 flex-1 flex-col p-0 pb-0">
+              {detail && (
+                <MCPDetailContent
+                  detail={detail}
+                  onHide={onHide}
+                  onUpdate={handleUpdate}
+                  isTriggerAuthorize={isTriggerAuthorize}
+                  onFirstCreate={onFirstCreate}
+                />
+              )}
+            </DrawerContent>
+          </DrawerPopup>
+        </DrawerViewport>
+      </DrawerPortal>
     </Drawer>
   )
 }

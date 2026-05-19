@@ -1,25 +1,22 @@
 'use client'
-import type {
-  OffsetOptions,
-  Placement,
-} from '@floating-ui/react'
+import type { OffsetOptions } from '@floating-ui/react'
+import type { Placement } from '@langgenius/dify-ui/popover'
 import type { FC } from 'react'
 import type { ToolDefaultValue, ToolValue } from './types'
 import type { CustomCollectionBackend } from '@/app/components/tools/types'
 import type { BlockEnum, OnSelectBlock } from '@/app/components/workflow/types'
 import { cn } from '@langgenius/dify-ui/cn'
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@langgenius/dify-ui/popover'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useBoolean } from 'ahooks'
 import * as React from 'react'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-// eslint-disable-next-line no-restricted-imports -- legacy overlay migration is handled separately from this change
-import {
-  PortalToFollowElem,
-  PortalToFollowElemContent,
-  PortalToFollowElemTrigger,
-} from '@/app/components/base/portal-to-follow-elem'
 import SearchBox from '@/app/components/plugins/marketplace/search-box'
 import EditCustomToolModal from '@/app/components/tools/edit-custom-collection-modal'
 import AllTools from '@/app/components/workflow/block-selector/all-tools'
@@ -71,6 +68,8 @@ const ToolPicker: FC<Props> = ({
   const { t } = useTranslation()
   const [searchText, setSearchText] = useState('')
   const [tags, setTags] = useState<string[]>([])
+  const sideOffset = typeof offset === 'number' ? offset : (typeof offset === 'function' ? 0 : (offset?.mainAxis ?? 0))
+  const alignOffset = typeof offset === 'number' ? 0 : (typeof offset === 'function' ? 0 : (offset?.crossAxis ?? 0))
 
   const { data: enable_marketplace } = useSuspenseQuery({
     ...systemFeaturesQueryOptions(),
@@ -121,10 +120,10 @@ const ToolPicker: FC<Props> = ({
 
   const handleAddedCustomTool = invalidateCustomTools
 
-  const handleTriggerClick = () => {
-    if (disabled)
+  const handleOpenChange = (nextOpen: boolean) => {
+    if (nextOpen && disabled)
       return
-    onShowChange(true)
+    onShowChange(nextOpen)
   }
 
   const handleSelect = (_type: BlockEnum, tool?: ToolDefaultValue) => {
@@ -159,19 +158,23 @@ const ToolPicker: FC<Props> = ({
   }
 
   return (
-    <PortalToFollowElem
-      placement={placement}
-      offset={offset}
+    <Popover
       open={isShow}
-      onOpenChange={onShowChange}
+      onOpenChange={handleOpenChange}
     >
-      <PortalToFollowElemTrigger
-        onClick={handleTriggerClick}
+      <PopoverTrigger
+        nativeButton={false}
+        render={<div className="inline-block" />}
       >
         {trigger}
-      </PortalToFollowElemTrigger>
+      </PopoverTrigger>
 
-      <PortalToFollowElemContent className="z-1002">
+      <PopoverContent
+        placement={placement}
+        sideOffset={sideOffset}
+        alignOffset={alignOffset}
+        popupClassName="border-none bg-transparent shadow-none"
+      >
         <div className={cn('relative min-h-20 rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-xs', panelClassName)}>
           <div className="p-2 pb-1">
             <SearchBox
@@ -210,8 +213,8 @@ const ToolPicker: FC<Props> = ({
             }}
           />
         </div>
-      </PortalToFollowElemContent>
-    </PortalToFollowElem>
+      </PopoverContent>
+    </Popover>
   )
 }
 

@@ -10,11 +10,20 @@ import {
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { cn } from '@langgenius/dify-ui/cn'
+import {
+  Drawer,
+  DrawerBackdrop,
+  DrawerCloseButton,
+  DrawerContent,
+  DrawerPopup,
+  DrawerPortal,
+  DrawerTitle,
+  DrawerViewport,
+} from '@langgenius/dify-ui/drawer'
 import * as React from 'react'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Badge from '@/app/components/base/badge'
-import Drawer from '@/app/components/base/drawer-plus'
 import { MessageCheckRemove } from '@/app/components/base/icons/src/vender/line/communication'
 import Pagination from '@/app/components/base/pagination'
 import TabSlider from '@/app/components/base/tab-slider-plain'
@@ -198,75 +207,97 @@ const ViewAnnotationModal: FC<Props> = ({
         </div>
 
       )
+  if (!isShow)
+    return null
+
   return (
     <div>
       <Drawer
-        isShow={isShow}
-        onHide={onHide}
-        maxWidthClassName="max-w-[800px]!"
-        title={(
-          <TabSlider
-            className="relative top-[9px] shrink-0"
-            value={activeTab}
-            onChange={v => setActiveTab(v as TabType)}
-            options={tabs}
-            noBorderBottom
-            itemClassName="pb-3.5!"
-          />
-        )}
-        body={(
-          <div>
-            <div className="space-y-6 p-6 pb-4">
-              {activeTab === TabType.annotation ? annotationTab : hitHistoryTab}
-            </div>
-            <AlertDialog open={showModal} onOpenChange={open => !open && setShowModal(false)}>
-              <AlertDialogContent>
-                <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
-                  <AlertDialogTitle
-                    title={t('feature.annotation.removeConfirm', { ns: 'appDebug' })}
-                    className="w-full truncate title-2xl-semi-bold text-text-primary"
-                  >
-                    {t('feature.annotation.removeConfirm', { ns: 'appDebug' })}
-                  </AlertDialogTitle>
+        open
+        modal
+        disablePointerDismissal
+        swipeDirection="right"
+        onOpenChange={(open) => {
+          if (!open)
+            onHide()
+        }}
+      >
+        <DrawerPortal>
+          <DrawerBackdrop />
+          <DrawerViewport>
+            <DrawerPopup className="data-[swipe-direction=right]:top-16 data-[swipe-direction=right]:right-2 data-[swipe-direction=right]:bottom-3 data-[swipe-direction=right]:h-auto data-[swipe-direction=right]:w-200 data-[swipe-direction=right]:max-w-[calc(100vw-1rem)] data-[swipe-direction=right]:rounded-xl data-[swipe-direction=right]:border-r-[0.5px] data-[swipe-direction=right]:border-divider-subtle">
+              <DrawerContent className="flex min-h-0 flex-1 flex-col p-0 pb-0">
+                <div className="shrink-0 border-b border-divider-subtle py-4">
+                  <div className="flex h-6 items-center justify-between pr-5 pl-6">
+                    <DrawerTitle render={<div />} className="min-w-0">
+                      <TabSlider
+                        className="relative top-[9px] shrink-0"
+                        value={activeTab}
+                        onChange={v => setActiveTab(v as TabType)}
+                        options={tabs}
+                        noBorderBottom
+                        itemClassName="pb-3.5!"
+                      />
+                    </DrawerTitle>
+                    <DrawerCloseButton
+                      aria-label={t('operation.close', { ns: 'common' })}
+                      className="h-6 w-6 rounded-md"
+                    />
+                  </div>
                 </div>
-                <AlertDialogActions>
-                  <AlertDialogCancelButton>
-                    {t('operation.cancel', { ns: 'common' })}
-                  </AlertDialogCancelButton>
-                  <AlertDialogConfirmButton
-                    tone="destructive"
-                    onClick={async () => {
-                      await onRemove()
-                      setShowModal(false)
-                      onHide()
-                    }}
-                  >
-                    {t('operation.confirm', { ns: 'common' })}
-                  </AlertDialogConfirmButton>
-                </AlertDialogActions>
-              </AlertDialogContent>
-            </AlertDialog>
-          </div>
-        )}
-        foot={id
-          ? (
-              <div className="flex h-16 items-center justify-between rounded-br-xl rounded-bl-xl border-t border-divider-subtle bg-background-section-burn px-4 system-sm-medium text-text-tertiary">
-                <div
-                  className="flex cursor-pointer items-center space-x-2 pl-3"
-                  onClick={() => setShowModal(true)}
-                >
-                  <MessageCheckRemove />
-                  <div>{t('editModal.removeThisCache', { ns: 'appAnnotation' })}</div>
+                <div className="min-h-0 flex-1 overflow-y-auto">
+                  <div className="space-y-6 p-6 pb-4">
+                    {activeTab === TabType.annotation ? annotationTab : hitHistoryTab}
+                  </div>
+                  <AlertDialog open={showModal} onOpenChange={open => !open && setShowModal(false)}>
+                    <AlertDialogContent>
+                      <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
+                        <AlertDialogTitle
+                          title={t('feature.annotation.removeConfirm', { ns: 'appDebug' })}
+                          className="w-full truncate title-2xl-semi-bold text-text-primary"
+                        >
+                          {t('feature.annotation.removeConfirm', { ns: 'appDebug' })}
+                        </AlertDialogTitle>
+                      </div>
+                      <AlertDialogActions>
+                        <AlertDialogCancelButton>
+                          {t('operation.cancel', { ns: 'common' })}
+                        </AlertDialogCancelButton>
+                        <AlertDialogConfirmButton
+                          tone="destructive"
+                          onClick={async () => {
+                            await onRemove()
+                            setShowModal(false)
+                            onHide()
+                          }}
+                        >
+                          {t('operation.confirm', { ns: 'common' })}
+                        </AlertDialogConfirmButton>
+                      </AlertDialogActions>
+                    </AlertDialogContent>
+                  </AlertDialog>
                 </div>
-                <div>
-                  {t('editModal.createdAt', { ns: 'appAnnotation' })}
+                {id && (
+                  <div className="flex h-16 shrink-0 items-center justify-between rounded-br-xl rounded-bl-xl border-t border-divider-subtle bg-background-section-burn px-4 system-sm-medium text-text-tertiary">
+                    <div
+                      className="flex cursor-pointer items-center space-x-2 pl-3"
+                      onClick={() => setShowModal(true)}
+                    >
+                      <MessageCheckRemove />
+                      <div>{t('editModal.removeThisCache', { ns: 'appAnnotation' })}</div>
+                    </div>
+                    <div>
+                      {t('editModal.createdAt', { ns: 'appAnnotation' })}
 &nbsp;
-                  {formatTime(createdAt, t('dateTimeFormat', { ns: 'appLog' }) as string)}
-                </div>
-              </div>
-            )
-          : undefined}
-      />
+                      {formatTime(createdAt, t('dateTimeFormat', { ns: 'appLog' }) as string)}
+                    </div>
+                  </div>
+                )}
+              </DrawerContent>
+            </DrawerPopup>
+          </DrawerViewport>
+        </DrawerPortal>
+      </Drawer>
     </div>
 
   )

@@ -10,7 +10,8 @@ from sqlalchemy.orm import sessionmaker
 from werkzeug.exceptions import Forbidden
 
 from configs import dify_config
-from controllers.common.schema import register_schema_models
+from controllers.common.fields import SimpleResultResponse
+from controllers.common.schema import register_response_schema_models, register_schema_models
 from controllers.console import console_ns
 from controllers.console.wraps import (
     account_initialization_required,
@@ -252,6 +253,7 @@ register_schema_models(
     MCPProviderDeletePayload,
     MCPAuthPayload,
 )
+register_response_schema_models(console_ns, SimpleResultResponse)
 
 
 @console_ns.route("/workspaces/current/tool-providers")
@@ -874,12 +876,13 @@ class ToolBuiltinProviderSetDefaultApi(Resource):
     @console_ns.expect(console_ns.models[BuiltinProviderDefaultCredentialPayload.__name__])
     @setup_required
     @login_required
+    @is_admin_or_owner_required
     @account_initialization_required
     def post(self, provider):
-        current_user, current_tenant_id = current_account_with_tenant()
+        _, current_tenant_id = current_account_with_tenant()
         payload = BuiltinProviderDefaultCredentialPayload.model_validate(console_ns.payload or {})
         return BuiltinToolManageService.set_default_provider(
-            tenant_id=current_tenant_id, user_id=current_user.id, provider=provider, id=payload.id
+            tenant_id=current_tenant_id, provider=provider, id=payload.id
         )
 
 
@@ -1054,6 +1057,7 @@ class ToolProviderMCPApi(Resource):
         return {"result": "success"}
 
     @console_ns.expect(console_ns.models[MCPProviderDeletePayload.__name__])
+    @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required

@@ -8,10 +8,17 @@ from flask import request
 from flask_restx import Resource
 from pydantic import BaseModel, Field, field_validator, model_validator
 from sqlalchemy import select
+from werkzeug.exceptions import NotFound
 
 from configs import dify_config
 from constants.languages import supported_language
-from controllers.common.schema import register_schema_models
+from controllers.common.fields import (
+    AvatarUrlResponse,
+    SimpleResultDataResponse,
+    SimpleResultResponse,
+    VerificationTokenResponse,
+)
+from controllers.common.schema import register_response_schema_models, register_schema_models
 from controllers.console import console_ns
 from controllers.console.auth.error import (
     EmailAlreadyInUseError,
@@ -41,15 +48,15 @@ from fields.base import ResponseModel
 from fields.member_fields import Account as AccountResponse
 from graphon.file import helpers as file_helpers
 from libs.datetime_utils import naive_utc_now
-from libs.helper import EmailStr, extract_remote_ip, timezone
+from libs.helper import EmailStr, extract_remote_ip, timezone, to_timestamp
 from libs.login import current_account_with_tenant, login_required
 from models import AccountIntegrate, InvitationCode
 from models.account import AccountStatus, InvitationCodeStatus
+from models.enums import CreatorUserRole
+from models.model import UploadFile
 from services.account_service import AccountService
 from services.billing_service import BillingService
 from services.errors.account import CurrentPasswordIncorrectError as ServiceCurrentPasswordIncorrectError
-
-DEFAULT_REF_TEMPLATE_SWAGGER_2_0 = "#/definitions/{model}"
 
 
 class AccountInitPayload(BaseModel):
@@ -158,37 +165,30 @@ class CheckEmailUniquePayload(BaseModel):
     email: EmailStr
 
 
-def reg(cls: type[BaseModel]):
-    console_ns.schema_model(cls.__name__, cls.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0))
-
-
-reg(AccountInitPayload)
-reg(AccountNamePayload)
-reg(AccountAvatarPayload)
-reg(AccountAvatarQuery)
-reg(AccountInterfaceLanguagePayload)
-reg(AccountInterfaceThemePayload)
-reg(AccountTimezonePayload)
-reg(AccountPasswordPayload)
-reg(AccountDeletePayload)
-reg(AccountDeletionFeedbackPayload)
-reg(EducationActivatePayload)
-reg(EducationAutocompleteQuery)
-reg(ChangeEmailSendPayload)
-reg(ChangeEmailValidityPayload)
-reg(ChangeEmailResetPayload)
-reg(CheckEmailUniquePayload)
-register_schema_models(console_ns, AccountResponse)
+register_schema_models(
+    console_ns,
+    AccountResponse,
+    AccountInitPayload,
+    AccountNamePayload,
+    AccountAvatarPayload,
+    AccountAvatarQuery,
+    AccountInterfaceLanguagePayload,
+    AccountInterfaceThemePayload,
+    AccountTimezonePayload,
+    AccountPasswordPayload,
+    AccountDeletePayload,
+    AccountDeletionFeedbackPayload,
+    EducationActivatePayload,
+    EducationAutocompleteQuery,
+    ChangeEmailSendPayload,
+    ChangeEmailValidityPayload,
+    ChangeEmailResetPayload,
+    CheckEmailUniquePayload,
+)
 
 
 def _serialize_account(account) -> dict[str, Any]:
     return AccountResponse.model_validate(account, from_attributes=True).model_dump(mode="json")
-
-
-def _to_timestamp(value: datetime | int | None) -> int | None:
-    if isinstance(value, datetime):
-        return int(value.timestamp())
-    return value
 
 
 class AccountIntegrateResponse(ResponseModel):
@@ -200,7 +200,7 @@ class AccountIntegrateResponse(ResponseModel):
     @field_validator("created_at", mode="before")
     @classmethod
     def _normalize_created_at(cls, value: datetime | int | None) -> int | None:
-        return _to_timestamp(value)
+        return to_timestamp(value)
 
 
 class AccountIntegrateListResponse(ResponseModel):
@@ -220,7 +220,7 @@ class EducationStatusResponse(ResponseModel):
     @field_validator("expire_at", mode="before")
     @classmethod
     def _normalize_expire_at(cls, value: datetime | int | None) -> int | None:
-        return _to_timestamp(value)
+        return to_timestamp(value)
 
 
 class EducationAutocompleteResponse(ResponseModel):
@@ -237,11 +237,19 @@ register_schema_models(
     EducationStatusResponse,
     EducationAutocompleteResponse,
 )
+register_response_schema_models(
+    console_ns,
+    AvatarUrlResponse,
+    SimpleResultDataResponse,
+    SimpleResultResponse,
+    VerificationTokenResponse,
+)
 
 
 @console_ns.route("/account/init")
 class AccountInitApi(Resource):
     @console_ns.expect(console_ns.models[AccountInitPayload.__name__])
+    @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
     @setup_required
     @login_required
     def post(self):
@@ -318,13 +326,29 @@ class AccountAvatarApi(Resource):
     @console_ns.expect(console_ns.models[AccountAvatarQuery.__name__])
     @console_ns.doc("get_account_avatar")
     @console_ns.doc(description="Get account avatar url")
+    @console_ns.response(200, "Success", console_ns.models[AvatarUrlResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
     def get(self):
-        args = AccountAvatarQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
+        current_user, current_tenant_id = current_account_with_tenant()
+        args = AccountAvatarQuery.model_validate(request.args.to_dict(flat=True))
+        avatar = args.avatar
 
-        avatar_url = file_helpers.get_signed_file_url(args.avatar)
+        if avatar.startswith(("http://", "https://")):
+            return {"avatar_url": avatar}
+
+        upload_file = db.session.scalar(select(UploadFile).where(UploadFile.id == avatar).limit(1))
+        if upload_file is None:
+            raise NotFound("Avatar file not found")
+
+        if upload_file.tenant_id != current_tenant_id:
+            raise NotFound("Avatar file not found")
+
+        if upload_file.created_by_role != CreatorUserRole.ACCOUNT or upload_file.created_by != current_user.id:
+            raise NotFound("Avatar file not found")
+
+        avatar_url = file_helpers.get_signed_file_url(upload_file_id=upload_file.id)
         return {"avatar_url": avatar_url}
 
     @console_ns.expect(console_ns.models[AccountAvatarPayload.__name__])
@@ -464,6 +488,7 @@ class AccountDeleteVerifyApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @console_ns.response(200, "Success", console_ns.models[SimpleResultDataResponse.__name__])
     def get(self):
         account, _ = current_account_with_tenant()
 
@@ -476,6 +501,7 @@ class AccountDeleteVerifyApi(Resource):
 @console_ns.route("/account/delete")
 class AccountDeleteApi(Resource):
     @console_ns.expect(console_ns.models[AccountDeletePayload.__name__])
+    @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -496,6 +522,7 @@ class AccountDeleteApi(Resource):
 @console_ns.route("/account/delete/feedback")
 class AccountDeleteUpdateFeedbackApi(Resource):
     @console_ns.expect(console_ns.models[AccountDeletionFeedbackPayload.__name__])
+    @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
     @setup_required
     def post(self):
         payload = console_ns.payload or {}
@@ -575,6 +602,7 @@ class EducationAutoCompleteApi(Resource):
 @console_ns.route("/account/change-email")
 class ChangeEmailSendEmailApi(Resource):
     @console_ns.expect(console_ns.models[ChangeEmailSendPayload.__name__])
+    @console_ns.response(200, "Success", console_ns.models[SimpleResultDataResponse.__name__])
     @enable_change_email
     @setup_required
     @login_required
@@ -640,6 +668,7 @@ class ChangeEmailSendEmailApi(Resource):
 @console_ns.route("/account/change-email/validity")
 class ChangeEmailCheckApi(Resource):
     @console_ns.expect(console_ns.models[ChangeEmailValidityPayload.__name__])
+    @console_ns.response(200, "Success", console_ns.models[VerificationTokenResponse.__name__])
     @enable_change_email
     @setup_required
     @login_required
@@ -756,6 +785,7 @@ class ChangeEmailResetApi(Resource):
 @console_ns.route("/account/change-email/check-email-unique")
 class CheckEmailUnique(Resource):
     @console_ns.expect(console_ns.models[CheckEmailUniquePayload.__name__])
+    @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
     @setup_required
     def post(self):
         payload = console_ns.payload or {}

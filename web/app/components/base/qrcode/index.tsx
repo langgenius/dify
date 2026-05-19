@@ -1,10 +1,10 @@
 'use client'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { QRCodeCanvas as QRCode } from 'qrcode.react'
 import * as React from 'react'
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
-import Tooltip from '@/app/components/base/tooltip'
 import { downloadUrl } from '@/utils/download'
 
 type Props = {
@@ -52,15 +52,18 @@ const ShareQRCode = ({ content }: Props) => {
   const tooltipText = t(`${prefixEmbedded}`, { ns: 'appOverview' })
   /* v8 ignore next -- react-i18next returns a non-empty key/string in configured runtime; empty fallback protects against missing i18n payloads. @preserve */
   const safeTooltipText = tooltipText || ''
+  const downloadText = t('overview.appInfo.qrcode.download', { ns: 'appOverview' })
 
   return (
-    <Tooltip
-      popupContent={safeTooltipText}
-    >
-      <div className="relative h-6 w-6" onClick={toggleQRCode} data-testid="qrcode-container">
-        <ActionButton>
-          <span className="i-ri-qr-code-line h-4 w-4" />
-        </ActionButton>
+    <Tooltip>
+      <div className="relative h-6 w-6">
+        <TooltipTrigger
+          render={(
+            <ActionButton aria-label={safeTooltipText} onClick={toggleQRCode}>
+              <span className="i-ri-qr-code-line h-4 w-4" aria-hidden="true" />
+            </ActionButton>
+          )}
+        />
         {isShow && (
           <div
             ref={qrCodeRef}
@@ -71,11 +74,20 @@ const ShareQRCode = ({ content }: Props) => {
             <div className="flex items-center system-xs-regular">
               <div className="text-text-tertiary">{t('overview.appInfo.qrcode.scan', { ns: 'appOverview' })}</div>
               <div className="text-text-tertiary">·</div>
-              <div className="cursor-pointer text-text-accent-secondary" onClick={downloadQR}>{t('overview.appInfo.qrcode.download', { ns: 'appOverview' })}</div>
+              <button
+                type="button"
+                className="cursor-pointer border-none bg-transparent p-0 text-left text-text-accent-secondary focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
+                onClick={downloadQR}
+              >
+                {downloadText}
+              </button>
             </div>
           </div>
         )}
       </div>
+      <TooltipContent>
+        {safeTooltipText}
+      </TooltipContent>
     </Tooltip>
   )
 }

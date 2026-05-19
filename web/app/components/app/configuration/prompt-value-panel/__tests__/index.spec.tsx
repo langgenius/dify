@@ -439,7 +439,7 @@ describe('PromptValuePanel', () => {
   it('collapses the user input panel and hides the clear and run actions', () => {
     renderPanel()
 
-    fireEvent.click(screen.getByText('appDebug.inputs.userInputField'))
+    fireEvent.click(screen.getByRole('button', { name: 'appDebug.inputs.userInputField' }))
 
     expect(screen.queryByRole('button', { name: 'common.operation.clear' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'appDebug.inputs.run' })).not.toBeInTheDocument()

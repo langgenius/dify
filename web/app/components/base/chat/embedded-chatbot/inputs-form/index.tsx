@@ -56,7 +56,6 @@ const InputsFormNode = ({
               size="small"
               variant="ghost"
               onClick={() => setCollapsed(false)}
-              data-testid="inputs-form-edit-button"
             >
               {t('operation.edit', { ns: 'common' })}
             </Button>
@@ -67,7 +66,6 @@ const InputsFormNode = ({
               size="small"
               variant="ghost"
               onClick={() => setCollapsed(true)}
-              data-testid="inputs-form-close-button"
             >
               {t('operation.close', { ns: 'common' })}
             </Button>
@@ -84,7 +82,6 @@ const InputsFormNode = ({
               variant="primary"
               className="w-full"
               onClick={() => handleStartChat(() => setCollapsed(true))}
-              data-testid="inputs-form-start-chat-button"
               style={
                 themeBuilder?.theme
                   ? {

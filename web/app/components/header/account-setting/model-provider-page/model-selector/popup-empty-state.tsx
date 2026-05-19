@@ -1,4 +1,3 @@
-import type { FC } from 'react'
 import { Button } from '@langgenius/dify-ui/button'
 import { useTranslation } from 'react-i18next'
 
@@ -6,9 +5,9 @@ type ModelSelectorEmptyStateProps = {
   onConfigure: () => void
 }
 
-const ModelSelectorEmptyState: FC<ModelSelectorEmptyStateProps> = ({
+function ModelSelectorEmptyState({
   onConfigure,
-}) => {
+}: ModelSelectorEmptyStateProps) {
   const { t } = useTranslation()
 
   return (

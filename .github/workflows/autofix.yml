@@ -113,8 +113,18 @@ jobs:
           find . -name "*.py.bak" -type f -delete
 
       - name: Setup web environment
-        if: github.event_name != 'merge_group' && steps.web-changes.outputs.any_changed == 'true'
+        if: github.event_name != 'merge_group'
         uses: ./.github/actions/setup-web
+
+      - name: Generate API docs
+        if: github.event_name != 'merge_group' && steps.api-changes.outputs.any_changed == 'true'
+        run: |
+          cd api
+          uv run dev/generate_swagger_markdown_docs.py --swagger-dir ../packages/contracts/openapi --markdown-dir openapi/markdown --keep-swagger-json
+
+      - name: Generate frontend contracts
+        if: github.event_name != 'merge_group' && steps.api-changes.outputs.any_changed == 'true'
+        run: pnpm --dir packages/contracts gen-api-contract-from-openapi
 
       - name: ESLint autofix
         if: github.event_name != 'merge_group' && steps.web-changes.outputs.any_changed == 'true'

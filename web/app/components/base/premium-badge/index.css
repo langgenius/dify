@@ -1,5 +1,5 @@
 @utility premium-badge {
-  @apply shrink-0 relative inline-flex justify-center items-center rounded-md box-border border border-transparent text-white shadow-xs hover:shadow-lg bg-origin-border overflow-hidden transition-all duration-100 ease-out;
+  @apply shrink-0 relative inline-flex justify-center items-center rounded-md box-border border border-transparent text-white shadow-xs hover:shadow-lg bg-origin-border overflow-hidden transition-[background-color,background-image,box-shadow] duration-100 ease-out motion-reduce:transition-none;
   background-clip: padding-box, border-box;
 }
 

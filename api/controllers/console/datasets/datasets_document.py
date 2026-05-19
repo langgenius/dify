@@ -15,7 +15,8 @@ from werkzeug.exceptions import Forbidden, NotFound
 
 import services
 from controllers.common.controller_schemas import DocumentBatchDownloadZipPayload
-from controllers.common.schema import register_schema_models
+from controllers.common.fields import SimpleResultMessageResponse, SimpleResultResponse, UrlResponse
+from controllers.common.schema import register_response_schema_models, register_schema_models
 from controllers.console import console_ns
 from core.errors.error import (
     LLMBadRequestError,
@@ -39,6 +40,7 @@ from fields.document_fields import (
 from graphon.model_runtime.entities.model_entities import ModelType
 from graphon.model_runtime.errors.invoke import InvokeAuthorizationError
 from libs.datetime_utils import naive_utc_now
+from libs.helper import to_timestamp
 from libs.login import current_account_with_tenant, login_required
 from models import DatasetProcessRule, Document, DocumentSegment, UploadFile
 from models.dataset import DocumentPipelineExecutionLog
@@ -71,12 +73,6 @@ from ..wraps import (
 logger = logging.getLogger(__name__)
 
 
-def _to_timestamp(value: datetime | int | None) -> int | None:
-    if isinstance(value, datetime):
-        return int(value.timestamp())
-    return value
-
-
 def _normalize_enum(value: Any) -> Any:
     if isinstance(value, str) or value is None:
         return value
@@ -101,7 +97,7 @@ class DatasetResponse(ResponseModel):
     @field_validator("created_at", mode="before")
     @classmethod
     def _normalize_timestamp(cls, value: datetime | int | None) -> int | None:
-        return _to_timestamp(value)
+        return to_timestamp(value)
 
 
 class DocumentMetadataResponse(ResponseModel):
@@ -152,7 +148,7 @@ class DocumentResponse(ResponseModel):
     @field_validator("created_at", "disabled_at", mode="before")
     @classmethod
     def _normalize_timestamp(cls, value: datetime | int | None) -> int | None:
-        return _to_timestamp(value)
+        return to_timestamp(value)
 
 
 class DocumentWithSegmentsResponse(DocumentResponse):
@@ -209,6 +205,7 @@ register_schema_models(
     DocumentWithSegmentsResponse,
     DatasetAndDocumentResponse,
 )
+register_response_schema_models(console_ns, SimpleResultMessageResponse, SimpleResultResponse, UrlResponse)
 
 
 class DocumentResource(Resource):
@@ -369,28 +366,31 @@ class DatasetDocumentListApi(Resource):
         else:
             sort_logic = asc
 
-        if sort == "hit_count":
-            sub_query = (
-                sa.select(DocumentSegment.document_id, sa.func.sum(DocumentSegment.hit_count).label("total_hit_count"))
-                .where(DocumentSegment.dataset_id == str(dataset_id))
-                .group_by(DocumentSegment.document_id)
-                .subquery()
-            )
+        match sort:
+            case "hit_count":
+                sub_query = (
+                    sa.select(
+                        DocumentSegment.document_id, sa.func.sum(DocumentSegment.hit_count).label("total_hit_count")
+                    )
+                    .where(DocumentSegment.dataset_id == str(dataset_id))
+                    .group_by(DocumentSegment.document_id)
+                    .subquery()
+                )
 
-            query = query.outerjoin(sub_query, sub_query.c.document_id == Document.id).order_by(
-                sort_logic(sa.func.coalesce(sub_query.c.total_hit_count, 0)),
-                sort_logic(Document.position),
-            )
-        elif sort == "created_at":
-            query = query.order_by(
-                sort_logic(Document.created_at),
-                sort_logic(Document.position),
-            )
-        else:
-            query = query.order_by(
-                desc(Document.created_at),
-                desc(Document.position),
-            )
+                query = query.outerjoin(sub_query, sub_query.c.document_id == Document.id).order_by(
+                    sort_logic(sa.func.coalesce(sub_query.c.total_hit_count, 0)),
+                    sort_logic(Document.position),
+                )
+            case "created_at":
+                query = query.order_by(
+                    sort_logic(Document.created_at),
+                    sort_logic(Document.position),
+                )
+            case _:
+                query = query.order_by(
+                    desc(Document.created_at),
+                    desc(Document.position),
+                )
 
         paginated_documents = db.paginate(select=query, page=page, per_page=limit, max_per_page=100, error_out=False)
         documents = paginated_documents.items
@@ -489,6 +489,7 @@ class DatasetDocumentListApi(Resource):
     @login_required
     @account_initialization_required
     @cloud_edition_billing_rate_limit_check("knowledge")
+    @console_ns.response(204, "Documents deleted successfully")
     def delete(self, dataset_id):
         dataset_id = str(dataset_id)
         dataset = DatasetService.get_dataset(dataset_id)
@@ -948,6 +949,7 @@ class DocumentApi(DocumentResource):
     @login_required
     @account_initialization_required
     @cloud_edition_billing_rate_limit_check("knowledge")
+    @console_ns.response(204, "Document deleted successfully")
     def delete(self, dataset_id, document_id):
         dataset_id = str(dataset_id)
         document_id = str(document_id)
@@ -973,6 +975,7 @@ class DocumentDownloadApi(DocumentResource):
 
     @console_ns.doc("get_dataset_document_download_url")
     @console_ns.doc(description="Get a signed download URL for a dataset document's original uploaded file")
+    @console_ns.response(200, "Download URL generated successfully", console_ns.models[UrlResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -1030,7 +1033,11 @@ class DocumentProcessingApi(DocumentResource):
     @console_ns.doc(
         params={"dataset_id": "Dataset ID", "document_id": "Document ID", "action": "Action to perform (pause/resume)"}
     )
-    @console_ns.response(200, "Processing status updated successfully")
+    @console_ns.response(
+        200,
+        "Processing status updated successfully",
+        console_ns.models[SimpleResultResponse.__name__],
+    )
     @console_ns.response(404, "Document not found")
     @console_ns.response(400, "Invalid action")
     @setup_required
@@ -1075,7 +1082,11 @@ class DocumentMetadataApi(DocumentResource):
     @console_ns.doc(description="Update document metadata")
     @console_ns.doc(params={"dataset_id": "Dataset ID", "document_id": "Document ID"})
     @console_ns.expect(console_ns.models[DocumentMetadataUpdatePayload.__name__])
-    @console_ns.response(200, "Document metadata updated successfully")
+    @console_ns.response(
+        200,
+        "Document metadata updated successfully",
+        console_ns.models[SimpleResultMessageResponse.__name__],
+    )
     @console_ns.response(404, "Document not found")
     @console_ns.response(403, "Permission denied")
     @setup_required
@@ -1129,6 +1140,7 @@ class DocumentStatusApi(DocumentResource):
     @account_initialization_required
     @cloud_edition_billing_resource_check("vector_space")
     @cloud_edition_billing_rate_limit_check("knowledge")
+    @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
     def patch(self, dataset_id, action: Literal["enable", "disable", "archive", "un_archive"]):
         current_user, _ = current_account_with_tenant()
         dataset_id = str(dataset_id)
@@ -1166,6 +1178,7 @@ class DocumentPauseApi(DocumentResource):
     @login_required
     @account_initialization_required
     @cloud_edition_billing_rate_limit_check("knowledge")
+    @console_ns.response(204, "Document paused successfully")
     def patch(self, dataset_id, document_id):
         """pause document."""
         dataset_id = str(dataset_id)
@@ -1200,6 +1213,7 @@ class DocumentRecoverApi(DocumentResource):
     @login_required
     @account_initialization_required
     @cloud_edition_billing_rate_limit_check("knowledge")
+    @console_ns.response(204, "Document resumed successfully")
     def patch(self, dataset_id, document_id):
         """recover document."""
         dataset_id = str(dataset_id)
@@ -1232,6 +1246,7 @@ class DocumentRetryApi(DocumentResource):
     @account_initialization_required
     @cloud_edition_billing_rate_limit_check("knowledge")
     @console_ns.expect(console_ns.models[DocumentRetryPayload.__name__])
+    @console_ns.response(204, "Documents retry started successfully")
     def post(self, dataset_id):
         """retry document."""
         payload = DocumentRetryPayload.model_validate(console_ns.payload or {})
@@ -1298,6 +1313,7 @@ class WebsiteDocumentSyncApi(DocumentResource):
     @setup_required
     @login_required
     @account_initialization_required
+    @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
     def get(self, dataset_id, document_id):
         """sync website document."""
         _, current_tenant_id = current_account_with_tenant()
@@ -1364,7 +1380,11 @@ class DocumentGenerateSummaryApi(Resource):
     @console_ns.doc(description="Generate summary index for documents")
     @console_ns.doc(params={"dataset_id": "Dataset ID"})
     @console_ns.expect(console_ns.models[GenerateSummaryPayload.__name__])
-    @console_ns.response(200, "Summary generation started successfully")
+    @console_ns.response(
+        200,
+        "Summary generation started successfully",
+        console_ns.models[SimpleResultResponse.__name__],
+    )
     @console_ns.response(400, "Invalid request or dataset configuration")
     @console_ns.response(403, "Permission denied")
     @console_ns.response(404, "Dataset not found")

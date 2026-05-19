@@ -337,6 +337,8 @@
   "variableConfig.file.image.name": "Image",
   "variableConfig.file.supportFileTypes": "Support File Types",
   "variableConfig.file.video.name": "Video",
+  "variableConfig.hidden": "Verborgen en vooraf ingevuld",
+  "variableConfig.hiddenDescription": "Verberg dit veld voor eindgebruikers en geef de waarde zelf op. Wederzijds exclusief met Verplicht. <docLink>Meer informatie</docLink>",
   "variableConfig.hide": "Hide",
   "variableConfig.inputPlaceholder": "Please input",
   "variableConfig.json": "JSON Code",

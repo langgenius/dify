@@ -245,6 +245,7 @@ class Jieba(BaseKeyword):
             segment = pre_segment_data["segment"]
             if pre_segment_data["keywords"]:
                 segment.keywords = pre_segment_data["keywords"]
+                assert segment.index_node_id
                 keyword_table = self._add_text_to_keyword_table(
                     keyword_table or {}, segment.index_node_id, pre_segment_data["keywords"]
                 )
@@ -253,6 +254,7 @@ class Jieba(BaseKeyword):
 
                 keywords = keyword_table_handler.extract_keywords(segment.content, keyword_number)
                 segment.keywords = list(keywords)
+                assert segment.index_node_id
                 keyword_table = self._add_text_to_keyword_table(
                     keyword_table or {}, segment.index_node_id, list(keywords)
                 )

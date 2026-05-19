@@ -20,7 +20,7 @@ import { useCollaborativeWorkflow } from '@/app/components/workflow/hooks/use-co
 import { useNodesInteractions, useNodesReadOnly, useNodesSyncDraft } from './hooks'
 import { useSelectionInteractions } from './hooks/use-selection-interactions'
 import { useWorkflowHistory, WorkflowHistoryEvent } from './hooks/use-workflow-history'
-import ShortcutsName from './shortcuts-name'
+import { ShortcutKbd } from './shortcuts/shortcut-kbd'
 import { useStore, useWorkflowStore } from './store'
 
 const AlignType = {
@@ -383,30 +383,27 @@ const SelectionContextmenu = () => {
         <ContextMenuGroup>
           <ContextMenuItem
             className="justify-between px-3 text-text-secondary"
-            data-testid="selection-contextmenu-item-copy"
             onClick={handleCopyNodes}
           >
             <span>{t('common.copy', { defaultValue: 'common.copy', ns: 'workflow' })}</span>
-            <ShortcutsName keys={['ctrl', 'c']} />
+            <ShortcutKbd shortcut="workflow.copy" />
           </ContextMenuItem>
           <ContextMenuItem
             className="justify-between px-3 text-text-secondary"
-            data-testid="selection-contextmenu-item-duplicate"
             onClick={handleDuplicateNodes}
           >
             <span>{t('common.duplicate', { defaultValue: 'common.duplicate', ns: 'workflow' })}</span>
-            <ShortcutsName keys={['ctrl', 'd']} />
+            <ShortcutKbd shortcut="workflow.duplicate" />
           </ContextMenuItem>
         </ContextMenuGroup>
         <ContextMenuSeparator />
         <ContextMenuGroup>
           <ContextMenuItem
             className="justify-between px-3 text-text-secondary data-highlighted:bg-state-destructive-hover data-highlighted:text-text-destructive"
-            data-testid="selection-contextmenu-item-delete"
             onClick={handleDeleteNodes}
           >
             <span>{t('operation.delete', { defaultValue: 'operation.delete', ns: 'common' })}</span>
-            <ShortcutsName keys={['del']} />
+            <ShortcutKbd shortcut="workflow.delete" />
           </ContextMenuItem>
         </ContextMenuGroup>
         <ContextMenuSeparator />

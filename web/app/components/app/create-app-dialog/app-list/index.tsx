@@ -74,7 +74,7 @@ const Apps = ({
     const filteredByCategory = allList.filter((item) => {
       if (currCategory === allCategoriesEn)
         return true
-      return item.category === currCategory
+      return item.categories?.includes(currCategory) ?? false
     })
     if (currentType.length === 0)
       return filteredByCategory
@@ -127,7 +127,7 @@ const Apps = ({
         icon_background,
         description,
       })
-      trackCreateApp({ appMode: mode })
+      trackCreateApp({ source: 'studio_template_list', appMode: mode, templateId: currApp?.app_id })
 
       setIsShowCreateModal(false)
       toast.success(t('newApp.appCreated', { ns: 'app' }))

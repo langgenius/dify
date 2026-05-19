@@ -43,9 +43,14 @@ const Panel: FC<NodePanelProps<TemplateTransformNodeType>> = ({
           operations={
             !readOnly
               ? (
-                  <div className="cursor-pointer rounded-md p-1 select-none hover:bg-state-base-hover" onClick={handleAddEmptyVariable} data-testid="add-button">
-                    <span className="i-ri-add-line h-4 w-4 text-text-tertiary" />
-                  </div>
+                  <button
+                    type="button"
+                    aria-label={`${t('operation.add', { ns: 'common' })} ${t(`${i18nPrefix}.inputVars`, { ns: 'workflow' })}`}
+                    className="cursor-pointer rounded-md border-none bg-transparent p-1 select-none hover:bg-state-base-hover focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
+                    onClick={handleAddEmptyVariable}
+                  >
+                    <span className="i-ri-add-line h-4 w-4 text-text-tertiary" aria-hidden="true" />
+                  </button>
                 )
               : undefined
           }
@@ -77,6 +82,7 @@ const Panel: FC<NodePanelProps<TemplateTransformNodeType>> = ({
                 className="flex h-[18px] items-center space-x-0.5 text-xs font-normal text-text-tertiary"
                 href="https://jinja.palletsprojects.com/en/3.1.x/templates/"
                 target="_blank"
+                rel="noopener noreferrer"
               >
                 <span>{t(`${i18nPrefix}.codeSupportTip`, { ns: 'workflow' })}</span>
                 <RiQuestionLine className="h-3 w-3" />

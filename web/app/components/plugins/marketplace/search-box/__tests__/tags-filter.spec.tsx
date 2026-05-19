@@ -32,10 +32,6 @@ vi.mock('@/app/components/plugins/hooks', () => ({
   }),
 }))
 
-vi.mock('@/app/components/base/checkbox', () => ({
-  default: ({ checked }: { checked: boolean }) => <span data-testid="checkbox">{String(checked)}</span>,
-}))
-
 vi.mock('@/app/components/base/input', () => ({
   default: ({
     value,

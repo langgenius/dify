@@ -1,28 +1,32 @@
 'use client'
-import type {
-  OffsetOptions,
-  Placement,
-} from '@floating-ui/react'
-import type { FC } from 'react'
+
+import type { Placement } from '@langgenius/dify-ui/combobox'
+import type { ReactNode } from 'react'
 import type { App } from '@/types/app'
+import { Button } from '@langgenius/dify-ui/button'
 import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@langgenius/dify-ui/popover'
-import * as React from 'react'
-import { useCallback, useEffect, useRef } from 'react'
+  Combobox,
+  ComboboxContent,
+  ComboboxEmpty,
+  ComboboxInput,
+  ComboboxInputGroup,
+  ComboboxItem,
+  ComboboxItemText,
+  ComboboxList,
+  ComboboxStatus,
+  ComboboxTrigger,
+} from '@langgenius/dify-ui/combobox'
+import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
-import Input from '@/app/components/base/input'
 import { AppModeEnum } from '@/types/app'
 
-type Props = {
-  scope: string
+type AppPickerProps = {
+  scope?: string
   disabled: boolean
-  trigger: React.ReactNode
+  trigger: ReactNode
   placement?: Placement
-  offset?: OffsetOptions
+  offset?: number
   isShow: boolean
   onShowChange: (isShow: boolean) => void
   onSelect: (app: App) => void
@@ -34,8 +38,62 @@ type Props = {
   onSearchChange: (text: string) => void
 }
 
-const AppPicker: FC<Props> = ({
-  scope: _scope,
+function getAppTypeLabel(app: App) {
+  switch (app.mode) {
+    case AppModeEnum.ADVANCED_CHAT:
+      return 'chatflow'
+    case AppModeEnum.AGENT_CHAT:
+      return 'agent'
+    case AppModeEnum.CHAT:
+      return 'chat'
+    case AppModeEnum.COMPLETION:
+      return 'completion'
+    case AppModeEnum.WORKFLOW:
+      return 'workflow'
+    default:
+      return app.mode
+  }
+}
+
+function getAppSearchText(app: App) {
+  return `${app.name} ${app.id} ${getAppTypeLabel(app)}`
+}
+
+function AppPickerOption({
+  app,
+}: {
+  app: App
+}) {
+  return (
+    <ComboboxItem
+      key={app.id}
+      value={app}
+      className="mx-0 grid-cols-[minmax(0,1fr)_auto] gap-3 py-1 pr-3 pl-2"
+    >
+      <ComboboxItemText className="flex min-w-0 items-center gap-3 px-0">
+        <AppIcon
+          className="shrink-0"
+          size="xs"
+          iconType={app.icon_type}
+          icon={app.icon}
+          background={app.icon_background}
+          imageUrl={app.icon_url}
+        />
+        <span title={`${app.name} (${app.id})`} className="min-w-0 grow truncate system-sm-medium text-components-input-text-filled">
+          <span className="mr-1">{app.name}</span>
+          <span className="text-text-tertiary">
+            (
+            {app.id.slice(0, 8)}
+            )
+          </span>
+        </span>
+      </ComboboxItemText>
+      <span className="shrink-0 system-2xs-medium-uppercase text-text-tertiary">{getAppTypeLabel(app)}</span>
+    </ComboboxItem>
+  )
+}
+
+export function AppPicker({
   disabled,
   trigger,
   placement = 'right-start',
@@ -49,186 +107,91 @@ const AppPicker: FC<Props> = ({
   onLoadMore,
   searchText,
   onSearchChange,
-}) => {
+}: AppPickerProps) {
   const { t } = useTranslation()
-  const observerTargetRef = useRef<HTMLDivElement>(null)
-  const observerRef = useRef<IntersectionObserver | null>(null)
-  const loadingRef = useRef(false)
-  const loadingResetTimerIdRef = useRef<number | undefined>(undefined)
 
-  const retimeLoadingReset = useCallback((timerId?: number) => {
-    if (loadingResetTimerIdRef.current !== undefined)
-      globalThis.clearTimeout(loadingResetTimerIdRef.current)
-
-    loadingResetTimerIdRef.current = timerId
-  }, [])
-
-  const resetLoadingState = useCallback(() => {
-    retimeLoadingReset()
-    loadingRef.current = false
-  }, [retimeLoadingReset])
-
-  const disconnectObserver = useCallback(() => {
-    if (!observerRef.current)
+  const handleValueChange = useCallback((app: App | null) => {
+    if (!app)
       return
 
-    observerRef.current.disconnect()
-    observerRef.current = null
-  }, [])
-
-  const handleIntersection = useCallback((entries: IntersectionObserverEntry[]) => {
-    const target = entries[0]
-    if (!target!.isIntersecting || loadingRef.current || !hasMore || isLoading)
-      return
-
-    loadingRef.current = true
-    onLoadMore()
-    retimeLoadingReset(window.setTimeout(() => {
-      loadingRef.current = false
-      retimeLoadingReset()
-    }, 500))
-  }, [hasMore, isLoading, onLoadMore, retimeLoadingReset])
-
-  useEffect(() => {
-    if (!isShow) {
-      resetLoadingState()
-      disconnectObserver()
-      return
-    }
-
-    let mutationObserver: MutationObserver | null = null
-
-    const setupIntersectionObserver = () => {
-      if (!observerTargetRef.current)
-        return
-
-      disconnectObserver()
-
-      // Create new observer
-      observerRef.current = new IntersectionObserver(handleIntersection, {
-        root: null,
-        rootMargin: '100px',
-        threshold: 0.1,
-      })
-
-      observerRef.current.observe(observerTargetRef.current)
-    }
-
-    // Set up MutationObserver to watch DOM changes
-    mutationObserver = new MutationObserver((_mutations) => {
-      if (observerTargetRef.current) {
-        setupIntersectionObserver()
-        mutationObserver?.disconnect()
-      }
-    })
-
-    // Watch body changes since Portal adds content to body
-    mutationObserver.observe(document.body, {
-      childList: true,
-      subtree: true,
-    })
-
-    // If element exists, set up IntersectionObserver directly
-    if (observerTargetRef.current)
-      setupIntersectionObserver()
-
-    return () => {
-      resetLoadingState()
-      disconnectObserver()
-      mutationObserver?.disconnect()
-    }
-  }, [disconnectObserver, handleIntersection, isShow, resetLoadingState])
-
-  const getAppType = (app: App) => {
-    switch (app.mode) {
-      case AppModeEnum.ADVANCED_CHAT:
-        return 'chatflow'
-      case AppModeEnum.AGENT_CHAT:
-        return 'agent'
-      case AppModeEnum.CHAT:
-        return 'chat'
-      case AppModeEnum.COMPLETION:
-        return 'completion'
-      case AppModeEnum.WORKFLOW:
-        return 'workflow'
-    }
-  }
-
-  const resolvedOffset = typeof offset === 'number' || typeof offset === 'function' ? undefined : offset
-  const sideOffset = typeof offset === 'number' ? offset : resolvedOffset?.mainAxis ?? 0
-  const alignOffset = typeof offset === 'number' ? 0 : resolvedOffset?.crossAxis ?? resolvedOffset?.alignmentAxis ?? 0
-  const handleTriggerClick = useCallback((event: React.MouseEvent<HTMLElement>) => {
-    event.preventDefault()
-    if (disabled || isShow)
-      return
-
-    onShowChange(true)
-  }, [disabled, isShow, onShowChange])
+    onSelect(app)
+    onShowChange(false)
+  }, [onSelect, onShowChange])
 
   return (
-    <Popover
+    <Combobox<App>
+      items={apps}
       open={isShow}
+      inputValue={searchText}
       onOpenChange={onShowChange}
+      onInputValueChange={onSearchChange}
+      onValueChange={handleValueChange}
+      itemToStringLabel={app => app?.name ?? ''}
+      itemToStringValue={app => app?.id ?? ''}
+      filter={(app, query) => getAppSearchText(app).toLowerCase().includes(query.toLowerCase())}
+      disabled={disabled}
     >
-      <PopoverTrigger
-        render={<div>{trigger}</div>}
-        onClick={handleTriggerClick}
-      />
-
-      <PopoverContent
+      <ComboboxTrigger
+        aria-label={t('appSelector.label', { ns: 'app' })}
+        icon={false}
+        className="block h-auto w-full border-0 bg-transparent p-0 text-left hover:bg-transparent focus-visible:bg-transparent focus-visible:ring-0 data-open:bg-transparent"
+      >
+        {trigger}
+      </ComboboxTrigger>
+      <ComboboxContent
         placement={placement}
-        sideOffset={sideOffset}
-        alignOffset={alignOffset}
+        sideOffset={offset}
         popupClassName="border-0 bg-transparent p-0 shadow-none backdrop-blur-none"
       >
-        <div className="relative flex max-h-[400px] min-h-20 w-[356px] flex-col rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-xs">
+        <div className="relative flex max-h-100 min-h-20 w-89 flex-col rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-xs">
           <div className="p-2 pb-1">
-            <Input
-              showLeftIcon
-              showClearIcon
-              value={searchText}
-              onChange={e => onSearchChange(e.target.value)}
-              onClear={() => onSearchChange('')}
-            />
+            <ComboboxInputGroup className="h-8 min-h-8 px-2">
+              <span className="mr-0.5 i-ri-search-line size-4 shrink-0 text-text-tertiary" aria-hidden="true" />
+              <ComboboxInput
+                aria-label={t('appSelector.placeholder', { ns: 'app' })}
+                placeholder={t('appSelector.placeholder', { ns: 'app' })}
+                className="block h-4.5 grow px-1 py-0 text-[13px] text-text-primary"
+              />
+              {searchText && (
+                <button
+                  type="button"
+                  aria-label={t('operation.clear', { ns: 'common' })}
+                  className="ml-1.5 flex size-3.5 shrink-0 cursor-pointer items-center justify-center rounded-none text-text-quaternary outline-hidden hover:bg-transparent hover:text-text-quaternary focus-visible:ring-1 focus-visible:ring-components-input-border-active"
+                  onClick={() => onSearchChange('')}
+                >
+                  <span className="i-custom-vender-solid-general-x-circle size-3.5" aria-hidden="true" />
+                </button>
+              )}
+            </ComboboxInputGroup>
           </div>
           <div className="min-h-0 flex-1 overflow-y-auto p-1">
-            {apps.map(app => (
-              <div
-                key={app.id}
-                className="flex cursor-pointer items-center gap-3 rounded-lg py-1 pr-3 pl-2 hover:bg-state-base-hover"
-                onClick={() => onSelect(app)}
-              >
-                <AppIcon
-                  className="shrink-0"
-                  size="xs"
-                  iconType={app.icon_type}
-                  icon={app.icon}
-                  background={app.icon_background}
-                  imageUrl={app.icon_url}
-                />
-                <div title={`${app.name} (${app.id})`} className="grow system-sm-medium text-components-input-text-filled">
-                  <span className="mr-1">{app.name}</span>
-                  <span className="text-text-tertiary">
-                    (
-                    {app.id.slice(0, 8)}
-                    )
-                  </span>
-                </div>
-                <div className="shrink-0 system-2xs-medium-uppercase text-text-tertiary">{getAppType(app)}</div>
-              </div>
-            ))}
-            <div ref={observerTargetRef} className="h-4 w-full">
-              {isLoading && (
-                <div className="flex justify-center py-2">
-                  <div className="text-sm text-gray-500">{t('loading', { ns: 'common' })}</div>
-                </div>
+            {isLoading && (
+              <ComboboxStatus>
+                {t('loading', { ns: 'common' })}
+              </ComboboxStatus>
+            )}
+            <ComboboxList className="max-h-none p-0">
+              {(app: App) => (
+                <AppPickerOption key={app.id} app={app} />
               )}
-            </div>
+            </ComboboxList>
+            <ComboboxEmpty>
+              {t('noData', { ns: 'common' })}
+            </ComboboxEmpty>
+            {hasMore && (
+              <div className="flex justify-center px-3 py-2">
+                <Button
+                  size="small"
+                  disabled={isLoading}
+                  onClick={() => onLoadMore()}
+                >
+                  {isLoading ? t('loading', { ns: 'common' }) : t('common.loadMore', { ns: 'workflow' })}
+                </Button>
+              </div>
+            )}
           </div>
         </div>
-      </PopoverContent>
-    </Popover>
+      </ComboboxContent>
+    </Combobox>
   )
 }
-
-export default React.memo(AppPicker)

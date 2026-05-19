@@ -1,9 +1,16 @@
 import type { FC } from 'react'
 import type { ArrayType, Type } from '../../../../types'
 import { cn } from '@langgenius/dify-ui/cn'
-import { RiArrowDownSLine, RiCheckLine } from '@remixicon/react'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectItemIndicator,
+  SelectItemText,
+  SelectTrigger,
+} from '@langgenius/dify-ui/select'
+import { RiCheckLine } from '@remixicon/react'
 import { useState } from 'react'
-import { PortalToFollowElem, PortalToFollowElemContent, PortalToFollowElemTrigger } from '@/app/components/base/portal-to-follow-elem'
 
 export type TypeItem = {
   value: Type | ArrayType
@@ -26,45 +33,46 @@ const TypeSelector: FC<TypeSelectorProps> = ({
   const [open, setOpen] = useState(false)
 
   return (
-    <PortalToFollowElem
+    <Select<Type | ArrayType>
       open={open}
       onOpenChange={setOpen}
-      placement="bottom-start"
-      offset={{
-        mainAxis: 4,
+      value={currentValue}
+      onValueChange={(nextValue) => {
+        const selected = items.find(item => item.value === nextValue)
+        if (selected)
+          onSelect(selected)
       }}
     >
-      <PortalToFollowElemTrigger onClick={() => setOpen(v => !v)}>
-        <div className={cn(
-          'flex items-center rounded-[5px] p-0.5 pl-1 hover:bg-state-base-hover',
+      <SelectTrigger
+        className={cn(
+          'h-auto w-auto rounded-[5px] bg-transparent p-0.5 pl-1 hover:bg-state-base-hover',
           open && 'bg-state-base-hover',
         )}
-        >
-          <span className="system-xs-medium text-text-tertiary">{currentValue}</span>
-          <RiArrowDownSLine className="h-4 w-4 text-text-tertiary" />
-        </div>
-      </PortalToFollowElemTrigger>
-      <PortalToFollowElemContent className={popupClassName}>
-        <div className="w-40 rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg p-1 shadow-lg shadow-shadow-shadow-5">
-          {items.map((item) => {
-            const isSelected = item.value === currentValue
-            return (
-              <div
-                key={item.value}
-                className="flex items-center gap-x-1 rounded-lg px-2 py-1 hover:bg-state-base-hover"
-                onClick={() => {
-                  onSelect(item)
-                  setOpen(false)
-                }}
-              >
-                <span className="px-1 system-sm-medium text-text-secondary">{item.text}</span>
-                {isSelected && <RiCheckLine className="h-4 w-4 text-text-accent" />}
-              </div>
-            )
-          })}
-        </div>
-      </PortalToFollowElemContent>
-    </PortalToFollowElem>
+      >
+        <span className="system-xs-medium text-text-tertiary">{currentValue}</span>
+      </SelectTrigger>
+      <SelectContent
+        sideOffset={4}
+        className={popupClassName}
+        popupClassName="w-40 rounded-xl border-[0.5px] p-1 shadow-lg shadow-shadow-shadow-5"
+        listClassName="p-0"
+      >
+        {items.map((item) => {
+          const isSelected = item.value === currentValue
+          return (
+            <SelectItem
+              key={item.value}
+              value={item.value}
+              className="gap-x-1 rounded-lg px-2 py-1"
+            >
+              <SelectItemText className="px-1 system-sm-medium text-text-secondary">{item.text}</SelectItemText>
+              {isSelected && <RiCheckLine className="h-4 w-4 text-text-accent" />}
+              <SelectItemIndicator className="hidden" />
+            </SelectItem>
+          )
+        })}
+      </SelectContent>
+    </Select>
   )
 }
 

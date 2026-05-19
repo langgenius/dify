@@ -3,23 +3,23 @@ import type { FC } from 'react'
 import type { DeliveryMethod } from '../../types'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@langgenius/dify-ui/popover'
+import {
   RiAddLine,
   RiDiscordFill,
   RiLightbulbFlashFill,
   RiMailSendFill,
   RiRobot2Fill,
 } from '@remixicon/react'
-import { memo, useCallback, useMemo, useRef, useState } from 'react'
+import { memo, useMemo, useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import { v4 as uuid4 } from 'uuid'
 import ActionButton from '@/app/components/base/action-button'
 import Badge from '@/app/components/base/badge'
 import { Slack, Teams } from '@/app/components/base/icons/src/public/other'
-import {
-  PortalToFollowElem,
-  PortalToFollowElemContent,
-  PortalToFollowElemTrigger,
-} from '@/app/components/base/portal-to-follow-elem'
 import useWorkflowNodes from '@/app/components/workflow/store/workflow/use-nodes'
 import { isTriggerWorkflow } from '@/app/components/workflow/utils/workflow-entry'
 import { IS_CE_EDITION } from '@/config'
@@ -40,19 +40,9 @@ const MethodSelector: FC<MethodSelectorProps> = ({
   onShowUpgradeTip,
 }) => {
   const { t } = useTranslation()
-  const [open, doSetOpen] = useState(false)
+  const [open, setOpen] = useState(false)
   const humanInputEmailDeliveryEnabled = useProviderContextSelector(s => s.humanInputEmailDeliveryEnabled)
-  const openRef = useRef(open)
   const nodes = useWorkflowNodes()
-
-  const setOpen = useCallback((v: boolean) => {
-    doSetOpen(v)
-    openRef.current = v
-  }, [doSetOpen])
-
-  const handleTrigger = useCallback(() => {
-    setOpen(!openRef.current)
-  }, [setOpen])
 
   const webAppDeliveryInfo = useMemo(() => {
     const isTriggerMode = isTriggerWorkflow(nodes)
@@ -71,23 +61,25 @@ const MethodSelector: FC<MethodSelectorProps> = ({
   }, [data, humanInputEmailDeliveryEnabled])
 
   return (
-    <PortalToFollowElem
+    <Popover
       open={open}
       onOpenChange={setOpen}
-      placement="bottom-end"
-      offset={{
-        mainAxis: 4,
-        crossAxis: 12,
-      }}
     >
-      <PortalToFollowElemTrigger onClick={handleTrigger}>
-        <div>
-          <ActionButton className={cn(open && 'bg-state-base-hover')}>
+      <PopoverTrigger
+        render={(
+          <ActionButton
+            aria-label={t(`${i18nPrefix}.deliveryMethod.title`, { ns: 'workflow' })}
+            className={cn(open && 'bg-state-base-hover')}
+          >
             <RiAddLine className="h-4 w-4" />
           </ActionButton>
-        </div>
-      </PortalToFollowElemTrigger>
-      <PortalToFollowElemContent className="z-50">
+        )}
+      />
+      <PopoverContent
+        placement="bottom-end"
+        sideOffset={4}
+        popupClassName="border-none bg-transparent p-0 shadow-none backdrop-blur-none"
+      >
         <div className="w-[360px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-xs">
           <div className="p-1">
             <div
@@ -215,8 +207,8 @@ const MethodSelector: FC<MethodSelectorProps> = ({
             </div>
           </div>
         )}
-      </PortalToFollowElemContent>
-    </PortalToFollowElem>
+      </PopoverContent>
+    </Popover>
   )
 }
 export default memo(MethodSelector)

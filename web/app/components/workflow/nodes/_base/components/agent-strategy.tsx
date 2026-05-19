@@ -266,6 +266,7 @@ export const AgentStrategy = memo((props: AgentStrategyProps) => {
                       href={docLink('/use-dify/nodes/agent')}
                       className="text-text-accent-secondary"
                       target="_blank"
+                      rel="noopener noreferrer"
                     >
                       {t('nodes.agent.learnMore', { ns: 'workflow' })}
                     </Link>

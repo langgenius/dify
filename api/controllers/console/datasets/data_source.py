@@ -9,7 +9,8 @@ from sqlalchemy import select
 from sqlalchemy.orm import sessionmaker
 from werkzeug.exceptions import NotFound
 
-from controllers.common.schema import get_or_create_model, register_schema_model
+from controllers.common.fields import SimpleResultResponse, TextContentResponse
+from controllers.common.schema import get_or_create_model, register_response_schema_models, register_schema_model
 from core.datasource.entities.datasource_entities import DatasourceProviderType, OnlineDocumentPagesMessage
 from core.datasource.online_document.online_document_plugin import OnlineDocumentDatasourcePlugin
 from core.indexing_runner import IndexingRunner
@@ -54,6 +55,7 @@ class DataSourceNotionPreviewQuery(BaseModel):
 
 
 register_schema_model(console_ns, NotionEstimatePayload)
+register_response_schema_models(console_ns, SimpleResultResponse, TextContentResponse)
 
 
 integrate_icon_model = get_or_create_model("DataSourceIntegrateIcon", integrate_icon_fields)
@@ -157,6 +159,7 @@ class DataSourceApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
     def patch(self, binding_id, action: Literal["enable", "disable"]):
         _, current_tenant_id = current_account_with_tenant()
         binding_id = str(binding_id)
@@ -289,6 +292,7 @@ class DataSourceNotionApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @console_ns.response(200, "Success", console_ns.models[TextContentResponse.__name__])
     def get(self, page_id, page_type):
         _, current_tenant_id = current_account_with_tenant()
 
@@ -362,6 +366,7 @@ class DataSourceNotionDatasetSyncApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
     def get(self, dataset_id):
         dataset_id_str = str(dataset_id)
         dataset = DatasetService.get_dataset(dataset_id_str)
@@ -379,6 +384,7 @@ class DataSourceNotionDocumentSyncApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
     def get(self, dataset_id, document_id):
         dataset_id_str = str(dataset_id)
         document_id_str = str(document_id)
