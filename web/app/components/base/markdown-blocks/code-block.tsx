@@ -14,16 +14,18 @@ import SVGRenderer from '../svg-gallery' // Assumes svg-gallery.tsx is in /base 
 import { highlightCode } from './shiki-highlight'
 
 const Flowchart = dynamic(() => import('@/app/components/base/mermaid'), { ssr: false })
+const InfographicRenderer = dynamic(() => import('@/app/components/base/infographic'), { ssr: false })
 
 const capitalizationLanguageNameMap: Record<string, string> = {
   sql: 'SQL',
   javascript: 'JavaScript',
-  java: 'Java',
   typescript: 'TypeScript',
   vbscript: 'VBScript',
   css: 'CSS',
   html: 'HTML',
+  infographic: 'Infographic',
   xml: 'XML',
+  java: 'Java',
   php: 'PHP',
   python: 'Python',
   yaml: 'Yaml',
@@ -334,6 +336,12 @@ const CodeBlock: any = memo(({ inline, className, children = '', ...props }: any
     switch (language) {
       case 'mermaid':
         return <Flowchart PrimitiveCode={content} theme={theme as 'light' | 'dark'} />
+      case 'infographic':
+        return (
+          <ErrorBoundary>
+            <InfographicRenderer PrimitiveCode={content} />
+          </ErrorBoundary>
+        )
       case 'echarts': {
         // Loading state: show loading indicator
         if (chartState === 'loading') {

@@ -50,6 +50,7 @@
   "dependencies": {
     "@amplitude/analytics-browser": "catalog:",
     "@amplitude/plugin-session-replay-browser": "catalog:",
+    "@antv/infographic": "catalog:",
     "@base-ui/react": "catalog:",
     "@emoji-mart/data": "catalog:",
     "@floating-ui/react": "catalog:",
