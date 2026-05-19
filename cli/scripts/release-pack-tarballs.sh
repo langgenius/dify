@@ -1,8 +1,15 @@
 #!/usr/bin/env bash
-# scripts/release-pack-tarballs.sh — build distributable tarballs.
+# scripts/release-pack-tarballs.sh — build a distributable tarball for the
+# current host target.
 #
-# Required env: CLI_VERSION. Output:
-#   dist/difyctl-v<CLI_VERSION>-<os>-<arch>.tar.xz
+# Uses `pnpm deploy` to resolve workspace `catalog:` / `workspace:` refs from
+# the monorepo lockfile and produce a self-contained directory. The deploy
+# installs native optionalDependencies (e.g. @napi-rs/keyring) for the host
+# OS/arch, so each target must be packed on its native runner.
+#
+# Required env: CLI_VERSION.
+# Optional env: PACK_TARGET (override detected target, e.g. linux-x64).
+# Output:        dist/difyctl-v<CLI_VERSION>-<target>.tar.xz
 
 set -euo pipefail
 
@@ -15,33 +22,49 @@ require tar
 
 : "${CLI_VERSION:?CLI_VERSION is required}"
 
-cd "$(cli::root)"
+detect_target() {
+    local os arch
+    case "$(uname -s)" in
+        Linux)  os=linux ;;
+        Darwin) os=darwin ;;
+        *)      die "unsupported OS: $(uname -s)" ;;
+    esac
+    case "$(uname -m)" in
+        x86_64|amd64)  arch=x64 ;;
+        arm64|aarch64) arch=arm64 ;;
+        *)             die "unsupported arch: $(uname -m)" ;;
+    esac
+    printf '%s' "${os}-${arch}"
+}
 
-BUILD_DIR="dist/release-staging"
+target="${PACK_TARGET:-$(detect_target)}"
+
+cli_root="$(cli::root)"
+workspace_root="$(cd "${cli_root}/.." && pwd)"
+
+BUILD_DIR="${cli_root}/dist/release-staging"
+STAGE="${BUILD_DIR}/difyctl"
+
 rm -rf "$BUILD_DIR"
-mkdir -p "$BUILD_DIR/difyctl/bin"
+mkdir -p "$BUILD_DIR"
 
-log::info "staging files for v${CLI_VERSION}..."
-
-# Copy built code, manifests, and the binary entrypoint
-cp -r dist/ "$BUILD_DIR/difyctl/dist"
-cp bin/run.js "$BUILD_DIR/difyctl/bin/difyctl"
-chmod +x "$BUILD_DIR/difyctl/bin/difyctl"
-cp package.json README.md pnpm-lock.yaml "$BUILD_DIR/difyctl/"
-
-# Install production dependencies into the staging folder
+log::info "deploying difyctl@v${CLI_VERSION} (${target}) via pnpm deploy..."
 (
-    cd "$BUILD_DIR/difyctl"
-    pnpm install --prod --frozen-lockfile
+    cd "$workspace_root"
+    # --legacy: cli has no workspace:* prod deps; injection isn't needed. Avoids
+    # requiring `inject-workspace-packages=true` on the whole monorepo (pnpm v10+).
+    pnpm --filter @langgenius/difyctl deploy --prod --legacy "$STAGE"
 )
 
-# Create tarballs for each target platform
-# The contents are the same for all, but naming them per-platform simplifies
-# the installer and allows for platform-specific native deps later.
-for target in linux-x64 linux-arm64 darwin-x64 darwin-arm64; do
-    log::info "packing ${target}..."
-    tar -C "$BUILD_DIR" -cJf "dist/difyctl-v${CLI_VERSION}-${target}.tar.xz" difyctl
-done
+# install-cli.sh expects bin/difyctl. Keep bin/run.js too so `node bin/run.js`
+# from the extracted tree still works and the package.json bin field stays valid.
+cp "$STAGE/bin/run.js" "$STAGE/bin/difyctl"
+chmod +x "$STAGE/bin/difyctl"
 
-log::info "tarballs created in dist/"
-ls -lh dist/difyctl-v${CLI_VERSION}-*.tar.xz >&2
+mkdir -p "${cli_root}/dist"
+tarball="${cli_root}/dist/difyctl-v${CLI_VERSION}-${target}.tar.xz"
+log::info "packing ${target} -> $(basename "$tarball")..."
+tar -C "$BUILD_DIR" -cJf "$tarball" difyctl
+
+log::info "tarball created: $tarball"
+ls -lh "$tarball" >&2
