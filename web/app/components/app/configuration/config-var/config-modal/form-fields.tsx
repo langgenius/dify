@@ -3,6 +3,7 @@ import type { ChangeEvent, FC } from 'react'
 import type { Item as SelectOptionItem } from './type-select'
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import type { InputVar, UploadFileSetting } from '@/app/components/workflow/types'
+import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import {
   Select,
   SelectContent,
@@ -14,7 +15,6 @@ import {
 } from '@langgenius/dify-ui/select'
 import * as React from 'react'
 import { Trans } from 'react-i18next'
-import Checkbox from '@/app/components/base/checkbox'
 import { FileUploaderInAttachmentWrapper } from '@/app/components/base/file-uploader'
 import { Infotip } from '@/app/components/base/infotip'
 import Input from '@/app/components/base/input'
@@ -232,16 +232,26 @@ const ConfigModalFormFields: FC<ConfigModalFormFieldsProps> = ({
         </Field>
       )}
 
-      <div className="mt-5! flex h-6 items-center space-x-2">
-        <Checkbox checked={tempPayload.required} disabled={!isFileInput && tempPayload.hide} onCheck={() => onPayloadChange('required')(!tempPayload.required)} />
+      <label className="mt-5! flex h-6 items-center space-x-2">
+        <Checkbox
+          checked={tempPayload.required}
+          disabled={!isFileInput && tempPayload.hide}
+          onCheckedChange={checked => onPayloadChange('required')(checked)}
+        />
         <span className="system-sm-semibold text-text-secondary">{t('variableConfig.required', { ns: 'appDebug' })}</span>
-      </div>
+      </label>
 
       {!isFileInput && (
-        <div className="mt-5! flex h-6 items-center space-x-2">
-          <Checkbox checked={tempPayload.hide} disabled={tempPayload.required} onCheck={() => onPayloadChange('hide')(!tempPayload.hide)} />
-          <div className="flex items-center gap-1">
+        <div className="mt-5! flex h-6 items-center gap-2">
+          <label className="flex items-center gap-2">
+            <Checkbox
+              checked={tempPayload.hide}
+              disabled={tempPayload.required}
+              onCheckedChange={checked => onPayloadChange('hide')(checked)}
+            />
             <span className="system-sm-semibold text-text-secondary">{t('variableConfig.hidden', { ns: 'appDebug' })}</span>
+          </label>
+          <div className="flex items-center gap-1">
             <Infotip
               aria-label={hiddenDescriptionAriaLabel}
               popupClassName="max-w-[300px]"

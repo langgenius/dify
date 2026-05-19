@@ -828,14 +828,6 @@
       "count": 10
     }
   },
-  "web/app/components/base/checkbox/index.stories.tsx": {
-    "no-console": {
-      "count": 1
-    },
-    "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
   "web/app/components/base/chip/index.tsx": {
     "ts/no-explicit-any": {
       "count": 3
@@ -2546,7 +2538,7 @@
       "count": 1
     },
     "ts/no-explicit-any": {
-      "count": 3
+      "count": 2
     }
   },
   "web/app/components/plugins/install-plugin/install-from-github/steps/selectPackage.tsx": {

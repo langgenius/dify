@@ -47,7 +47,7 @@ const TryApp: FC<Props> = ({
           onClose()
       }}
     >
-      <DialogContent className="h-[calc(100vh-32px)] max-h-none w-full max-w-[calc(100vw-32px)] min-w-[1280px] overflow-hidden overflow-x-auto border-none p-2 text-left align-middle">
+      <DialogContent className="h-[calc(100dvh-32px)] max-h-[calc(100dvh-32px)] w-full max-w-[calc(100vw-32px)] min-w-[1280px] overflow-hidden overflow-x-auto border-none p-2 text-left align-middle">
 
         {isLoading ? (
           <div className="flex h-full items-center justify-center">

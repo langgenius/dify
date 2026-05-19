@@ -1,12 +1,11 @@
 'use client'
-import type { FC } from 'react'
 import type { Props as PaginationProps } from '@/app/components/base/pagination'
 import type { SimpleDocumentDetail } from '@/models/datasets'
+import { Checkbox } from '@langgenius/dify-ui/checkbox'
+import { CheckboxGroup } from '@langgenius/dify-ui/checkbox-group'
 import { useBoolean } from 'ahooks'
-import * as React from 'react'
-import { useCallback, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Checkbox from '@/app/components/base/checkbox'
 import Pagination from '@/app/components/base/pagination'
 import EditMetadataBatchModal from '@/app/components/datasets/metadata/edit-metadata-batch/modal'
 import useBatchEditDocumentMetadata from '@/app/components/datasets/metadata/hooks/use-batch-edit-document-metadata'
@@ -37,7 +36,7 @@ type DocumentListProps = {
 /**
  * Document list component including basic information
  */
-const DocumentList: FC<DocumentListProps> = ({
+const DocumentList = ({
   embeddingAvailable,
   documents = [],
   selectedIds,
@@ -48,7 +47,7 @@ const DocumentList: FC<DocumentListProps> = ({
   onManageMetadata,
   remoteSortValue,
   onSortChange,
-}) => {
+}: DocumentListProps) => {
   const { t } = useTranslation()
   const datasetConfig = useDatasetDetailContext(s => s.dataset)
   const datasetACLCapabilities = React.useMemo(() => getDatasetACLCapabilities(datasetConfig?.permission_keys), [datasetConfig?.permission_keys])
@@ -64,10 +63,6 @@ const DocumentList: FC<DocumentListProps> = ({
 
   // Selection
   const {
-    isAllSelected,
-    isSomeSelected,
-    onSelectAll,
-    onSelectOne,
     hasErrorDocumentsSelected,
     downloadableSelectedIds,
     clearSelection,
@@ -76,6 +71,7 @@ const DocumentList: FC<DocumentListProps> = ({
     selectedIds,
     onSelectedIdChange,
   })
+  const documentIds = useMemo(() => documents.map(doc => doc.id), [documents])
 
   // Actions
   const { handleAction, handleBatchReIndex, handleBatchDownload } = useDocumentActions({
@@ -118,7 +114,12 @@ const DocumentList: FC<DocumentListProps> = ({
 
   return (
     <div className="relative mt-3 flex h-full w-full flex-col">
-      <div className="relative h-0 grow overflow-x-auto">
+      <CheckboxGroup
+        value={selectedIds}
+        onValueChange={nextSelectedIds => onSelectedIdChange(nextSelectedIds)}
+        allValues={documentIds}
+        className="relative h-0 grow overflow-x-auto"
+      >
         <table className={`w-full max-w-full min-w-[700px] border-collapse border-0 text-sm ${s.documentTable}`}>
           <thead className="h-8 border-b border-divider-subtle text-xs leading-8 font-medium text-text-tertiary uppercase">
             <tr>
@@ -127,9 +128,8 @@ const DocumentList: FC<DocumentListProps> = ({
                   {embeddingAvailable && (
                     <Checkbox
                       className="mr-2 shrink-0"
-                      checked={isAllSelected}
-                      indeterminate={!isAllSelected && isSomeSelected}
-                      onCheck={onSelectAll}
+                      parent
+                      aria-label={t('operation.selectAll', { ns: 'common' })}
                     />
                   )}
                   #
@@ -169,12 +169,10 @@ const DocumentList: FC<DocumentListProps> = ({
                 doc={doc}
                 index={index}
                 datasetId={datasetId}
-                isSelected={selectedIds.includes(doc.id)}
                 isGeneralMode={isGeneralMode}
                 isQAMode={isQAMode}
                 embeddingAvailable={embeddingAvailable}
                 selectedIds={selectedIds}
-                onSelectOne={onSelectOne}
                 onSelectedIdChange={onSelectedIdChange}
                 onShowRenameModal={handleShowRenameModal}
                 onUpdate={onUpdate}
@@ -182,7 +180,7 @@ const DocumentList: FC<DocumentListProps> = ({
             ))}
           </tbody>
         </table>
-      </div>
+      </CheckboxGroup>
 
       {selectedIds.length > 0 && (
         <BatchAction

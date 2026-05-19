@@ -1,10 +1,10 @@
 import type { CSSProperties } from 'react'
 import type { NotionPageRow as NotionPageRowData, NotionPageSelectionMode } from './types'
+import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { cn } from '@langgenius/dify-ui/cn'
 import { RiArrowDownSLine, RiArrowRightSLine } from '@remixicon/react'
 import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
-import Checkbox from '@/app/components/base/checkbox'
 import NotionIcon from '@/app/components/base/notion-icon'
 import Radio from '@/app/components/base/radio/ui'
 
@@ -51,8 +51,8 @@ const NotionPageRow = ({
               className="mr-2 shrink-0"
               checked={checked}
               disabled={disabled}
-              onCheck={() => onSelect(pageId)}
-              id={`notion-page-checkbox-${pageId}`}
+              aria-label={row.page.page_name}
+              onCheckedChange={() => onSelect(pageId)}
             />
           )
         : (

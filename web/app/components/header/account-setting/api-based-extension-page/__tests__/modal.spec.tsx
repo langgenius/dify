@@ -1,5 +1,6 @@
+import type { ApiBasedExtensionResponse } from '@dify/contracts/api/console/api-based-extension/types.gen'
 import type { TFunction } from 'i18next'
-import type { ReactElement } from 'react'
+import type { ComponentProps, ReactElement } from 'react'
 import { fireEvent, render as RTLRender, screen, waitFor } from '@testing-library/react'
 import * as reactI18next from 'react-i18next'
 import { useDocLink } from '@/context/i18n'
@@ -33,11 +34,31 @@ vi.mock('@langgenius/dify-ui/toast', () => ({
 }))
 
 describe('ApiBasedExtensionModal', () => {
-  const mockOnCancel = vi.fn()
+  const mockOnOpenChange = vi.fn()
   const mockOnSave = vi.fn()
   const mockDocLink = vi.fn((path?: string) => `https://docs.dify.ai${path || ''}`)
+  const mockExtension = (overrides: Partial<ApiBasedExtensionResponse> = {}): ApiBasedExtensionResponse => ({
+    id: '1',
+    name: 'Existing',
+    api_endpoint: 'url',
+    api_key: 'key',
+    ...overrides,
+  })
 
   const render = (ui: ReactElement) => RTLRender(ui)
+  const renderModal = (props: Partial<ComponentProps<typeof ApiBasedExtensionModal>> = {}) => render(
+    <ApiBasedExtensionModal
+      open
+      extension={{}}
+      onOpenChange={mockOnOpenChange}
+      onSave={mockOnSave}
+      {...props}
+    />,
+  )
+  const expectCloseRequested = () => {
+    const calls = mockOnOpenChange.mock.calls
+    expect(calls[calls.length - 1]?.[0]).toBe(false)
+  }
 
   beforeEach(() => {
     vi.clearAllMocks()
@@ -47,9 +68,10 @@ describe('ApiBasedExtensionModal', () => {
   describe('Rendering', () => {
     it('should render correctly for adding a new extension', () => {
       // Act
-      render(<ApiBasedExtensionModal data={{}} onCancel={mockOnCancel} onSave={mockOnSave} />)
+      renderModal()
 
       // Assert
+      expect(screen.getByRole('dialog', { name: 'common.apiBasedExtension.modal.title' })).toBeInTheDocument()
       expect(screen.getByText('common.apiBasedExtension.modal.title')).toBeInTheDocument()
       expect(screen.getByPlaceholderText('common.apiBasedExtension.modal.name.placeholder')).toBeInTheDocument()
       expect(screen.getByPlaceholderText('common.apiBasedExtension.modal.apiEndpoint.placeholder')).toBeInTheDocument()
@@ -58,10 +80,10 @@ describe('ApiBasedExtensionModal', () => {
 
     it('should render correctly for editing an existing extension', () => {
       // Arrange
-      const data = { id: '1', name: 'Existing', api_endpoint: 'url', api_key: 'key' }
+      const data = mockExtension()
 
       // Act
-      render(<ApiBasedExtensionModal data={data} onCancel={mockOnCancel} onSave={mockOnSave} />)
+      renderModal({ extension: data })
 
       // Assert
       expect(screen.getByText('common.apiBasedExtension.modal.editTitle')).toBeInTheDocument()
@@ -69,13 +91,27 @@ describe('ApiBasedExtensionModal', () => {
       expect(screen.getByDisplayValue('url')).toBeInTheDocument()
       expect(screen.getByDisplayValue('key')).toBeInTheDocument()
     })
+
+    it('should not render dialog content when closed', () => {
+      // Act
+      renderModal({ open: false })
+
+      // Assert
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    })
   })
 
   describe('Form Submissions', () => {
     it('should call addApiBasedExtension on save for new extension', async () => {
       // Arrange
-      vi.mocked(addApiBasedExtension).mockResolvedValue({ id: 'new-id' })
-      render(<ApiBasedExtensionModal data={{}} onCancel={mockOnCancel} onSave={mockOnSave} />)
+      const newExtension = mockExtension({
+        id: 'new-id',
+        name: 'New Ext',
+        api_endpoint: 'https://api.test',
+        api_key: 'secret-key',
+      })
+      vi.mocked(addApiBasedExtension).mockResolvedValue(newExtension)
+      renderModal()
 
       // Act
       fireEvent.change(screen.getByPlaceholderText('common.apiBasedExtension.modal.name.placeholder'), { target: { value: 'New Ext' } })
@@ -93,15 +129,15 @@ describe('ApiBasedExtensionModal', () => {
             api_key: 'secret-key',
           },
         })
-        expect(mockOnSave).toHaveBeenCalledWith({ id: 'new-id' })
+        expect(mockOnSave).toHaveBeenCalledWith(newExtension)
       })
     })
 
     it('should call updateApiBasedExtension on save for existing extension', async () => {
       // Arrange
-      const data = { id: '1', name: 'Existing', api_endpoint: 'url', api_key: 'long-secret-key' }
+      const data = mockExtension({ api_key: 'long-secret-key' })
       vi.mocked(updateApiBasedExtension).mockResolvedValue({ ...data, name: 'Updated' })
-      render(<ApiBasedExtensionModal data={data} onCancel={mockOnCancel} onSave={mockOnSave} />)
+      renderModal({ extension: data })
 
       // Act
       fireEvent.change(screen.getByDisplayValue('Existing'), { target: { value: 'Updated' } })
@@ -111,12 +147,11 @@ describe('ApiBasedExtensionModal', () => {
       await waitFor(() => {
         expect(updateApiBasedExtension).toHaveBeenCalledWith({
           url: '/api-based-extension/1',
-          body: expect.objectContaining({
-            id: '1',
+          body: {
             name: 'Updated',
             api_endpoint: 'url',
             api_key: '[__HIDDEN__]',
-          }),
+          },
         })
         expect(mockToast.success).toHaveBeenCalledWith('common.actionMsg.modifiedSuccessfully')
         expect(mockOnSave).toHaveBeenCalled()
@@ -125,9 +160,9 @@ describe('ApiBasedExtensionModal', () => {
 
     it('should call updateApiBasedExtension with new api_key when key is changed', async () => {
       // Arrange
-      const data = { id: '1', name: 'Existing', api_endpoint: 'url', api_key: 'old-key' }
+      const data = mockExtension({ api_key: 'old-key' })
       vi.mocked(updateApiBasedExtension).mockResolvedValue({ ...data, api_key: 'new-longer-key' })
-      render(<ApiBasedExtensionModal data={data} onCancel={mockOnCancel} onSave={mockOnSave} />)
+      renderModal({ extension: data })
 
       // Act
       fireEvent.change(screen.getByDisplayValue('old-key'), { target: { value: 'new-longer-key' } })
@@ -137,9 +172,11 @@ describe('ApiBasedExtensionModal', () => {
       await waitFor(() => {
         expect(updateApiBasedExtension).toHaveBeenCalledWith({
           url: '/api-based-extension/1',
-          body: expect.objectContaining({
+          body: {
+            name: 'Existing',
+            api_endpoint: 'url',
             api_key: 'new-longer-key',
-          }),
+          },
         })
       })
     })
@@ -148,7 +185,7 @@ describe('ApiBasedExtensionModal', () => {
   describe('Validation', () => {
     it('should show error if api key is too short', async () => {
       // Arrange
-      render(<ApiBasedExtensionModal data={{}} onCancel={mockOnCancel} onSave={mockOnSave} />)
+      renderModal()
 
       // Act
       fireEvent.change(screen.getByPlaceholderText('common.apiBasedExtension.modal.name.placeholder'), { target: { value: 'Ext' } })
@@ -165,8 +202,8 @@ describe('ApiBasedExtensionModal', () => {
   describe('Interactions', () => {
     it('should work when onSave is not provided', async () => {
       // Arrange
-      vi.mocked(addApiBasedExtension).mockResolvedValue({ id: 'new-id' })
-      render(<ApiBasedExtensionModal data={{}} onCancel={mockOnCancel} />)
+      vi.mocked(addApiBasedExtension).mockResolvedValue(mockExtension({ id: 'new-id' }))
+      renderModal({ onSave: undefined })
 
       // Act
       fireEvent.change(screen.getByPlaceholderText('common.apiBasedExtension.modal.name.placeholder'), { target: { value: 'New Ext' } })
@@ -180,15 +217,56 @@ describe('ApiBasedExtensionModal', () => {
       })
     })
 
-    it('should call onCancel when clicking cancel button', () => {
+    it('should request closing when clicking cancel button', () => {
       // Arrange
-      render(<ApiBasedExtensionModal data={{}} onCancel={mockOnCancel} onSave={mockOnSave} />)
+      renderModal()
 
       // Act
       fireEvent.click(screen.getByText('common.operation.cancel'))
 
       // Assert
-      expect(mockOnCancel).toHaveBeenCalled()
+      expectCloseRequested()
+    })
+
+    it('should request closing when clicking close button', async () => {
+      // Arrange
+      renderModal()
+
+      // Act
+      fireEvent.click(screen.getByRole('button', { name: 'Close' }))
+
+      // Assert
+      await waitFor(() => {
+        expectCloseRequested()
+      })
+    })
+
+    it('should request closing when pressing Escape', async () => {
+      // Arrange
+      renderModal()
+
+      // Act
+      fireEvent.keyDown(document, { key: 'Escape' })
+
+      // Assert
+      await waitFor(() => {
+        expectCloseRequested()
+      })
+    })
+
+    it('should keep open when clicking outside the dialog', () => {
+      // Arrange
+      renderModal()
+
+      // Act
+      const backdrop = document.querySelector('.bg-background-overlay')
+      expect(backdrop).toBeInTheDocument()
+      fireEvent.pointerDown(backdrop!)
+      fireEvent.pointerUp(backdrop!)
+      fireEvent.click(backdrop!)
+
+      // Assert
+      expect(mockOnOpenChange).not.toHaveBeenCalled()
     })
   })
 
@@ -216,7 +294,7 @@ describe('ApiBasedExtensionModal', () => {
       } as unknown as ReturnType<typeof reactI18next.useTranslation>)
 
       // Act
-      const { container } = render(<ApiBasedExtensionModal data={{}} onCancel={mockOnCancel} />)
+      const { container } = renderModal({ onSave: undefined })
 
       // Assert
       const inputs = container.querySelectorAll('input')

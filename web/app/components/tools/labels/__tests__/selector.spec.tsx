@@ -265,9 +265,7 @@ describe('LabelSelector', () => {
         vi.advanceTimersByTime(10)
       })
 
-      // Checkboxes should be visible in the dropdown
-      const checkboxes = document.querySelectorAll('[data-testid^="checkbox"]')
-      expect(checkboxes.length).toBeGreaterThan(0)
+      expect(screen.getAllByRole('checkbox').length).toBeGreaterThan(0)
     })
   })
 

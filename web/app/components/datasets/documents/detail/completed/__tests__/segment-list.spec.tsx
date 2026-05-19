@@ -284,11 +284,9 @@ describe('SegmentList', () => {
   // Checkbox Selection
   describe('Checkbox Selection', () => {
     it('should render checkbox for each segment', () => {
-      const { container } = render(<SegmentList {...defaultProps} />)
+      render(<SegmentList {...defaultProps} />)
 
-      // Assert - Checkbox component should exist
-      const checkboxes = container.querySelectorAll('[class*="checkbox"]')
-      expect(checkboxes.length).toBeGreaterThan(0)
+      expect(screen.getAllByRole('checkbox')).toHaveLength(defaultProps.items.length)
     })
 
     it('should pass selectedSegmentIds to check state', () => {
