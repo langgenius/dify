@@ -34,8 +34,10 @@ export type LookupOutcome = 'expired' | 'rate_limited' | 'failed'
 
 export function classifyLookupError(err: unknown): LookupOutcome {
   if (err instanceof DeviceFlowError) {
-    if (err.code === 'rate_limited' || err.status === 429) return 'rate_limited'
-    if (err.code === 'server_error' || err.status >= 500) return 'failed'
+    if (err.code === 'rate_limited' || err.status === 429)
+      return 'rate_limited'
+    if (err.code === 'server_error' || err.status >= 500)
+      return 'failed'
   }
   return 'expired'
 }
