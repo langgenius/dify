@@ -2,7 +2,7 @@ import logging
 import os
 import uuid
 from datetime import datetime, timedelta
-from typing import cast
+from typing import Any, cast
 
 from langsmith import Client
 from langsmith.schemas import RunBase
@@ -63,6 +63,21 @@ class LangSmithDataTrace(BaseTraceInstance):
         if isinstance(trace_info, GenerateNameTraceInfo):
             self.generate_name_trace(trace_info)
 
+    @staticmethod
+    def _build_thread_message_inputs(trace_info: WorkflowTraceInfo) -> dict[str, Any]:
+        """Build the root chat turn shape while preserving non-system workflow inputs."""
+        workflow_inputs = trace_info.workflow_run_inputs
+        content = trace_info.query or workflow_inputs.get("query") or workflow_inputs.get("sys.query") or ""
+        inputs: dict[str, Any] = {"messages": [{"role": "user", "content": str(content)}]}
+        user_workflow_inputs = {
+            key: value
+            for key, value in workflow_inputs.items()
+            if not key.startswith("sys.") and key != "query"
+        }
+        if user_workflow_inputs:
+            inputs["workflow_inputs"] = user_workflow_inputs
+        return inputs
+
     def workflow_trace(self, trace_info: WorkflowTraceInfo):
         # trace_id must equal the root run's run_id (LangSmith protocol); external trace_id
         # cannot be used here as it would cause HTTP 400.
@@ -86,7 +101,7 @@ class LangSmithDataTrace(BaseTraceInstance):
             message_run = LangSmithRunModel(
                 id=trace_info.message_id,
                 name=TraceTaskName.MESSAGE_TRACE,
-                inputs=dict(trace_info.workflow_run_inputs),
+                inputs=self._build_thread_message_inputs(trace_info),
                 outputs=dict(trace_info.workflow_run_outputs),
                 run_type=LangSmithRunType.chain,
                 start_time=trace_info.start_time,
