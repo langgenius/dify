@@ -6,6 +6,7 @@ import { TransferMethod } from '@/types/app'
 import {
   getButtonStyle,
   getFormContentInputNames,
+  getProcessedHumanInputFormInputs,
   getRelativeTime,
   getRenderedFormInputs,
   hasInvalidRequiredHumanInput,
@@ -55,6 +56,23 @@ const fileListInput = (overrides: Partial<Extract<FormInputItem, { type: InputVa
   number_limits: 5,
   ...overrides,
 })
+
+const uploadedFile = {
+  id: 'file-1',
+  name: 'avatar.png',
+  size: 128,
+  type: 'image',
+  progress: 100,
+  transferMethod: TransferMethod.local_file,
+  supportFileType: 'image',
+  uploadedId: 'upload-file-1',
+}
+
+const uploadingFile = {
+  ...uploadedFile,
+  uploadedId: undefined,
+  progress: 50,
+}
 
 describe('human-input utils', () => {
   describe('getButtonStyle', () => {
@@ -240,6 +258,15 @@ describe('human-input utils', () => {
         attachments: [],
       })
     })
+
+    it('should ignore unsupported input types', () => {
+      expect(initializeInputs([
+        {
+          type: 'unsupported',
+          output_variable_name: 'unknown',
+        } as unknown as FormInputItem,
+      ])).toEqual({})
+    })
   })
 
   describe('required input checks', () => {
@@ -255,6 +282,103 @@ describe('human-input utils', () => {
 
       expect(hasInvalidSelectOrFileInput(formInputs, values)).toBe(false)
       expect(hasInvalidRequiredHumanInput(formInputs, values)).toBe(false)
+    })
+
+    it('should detect empty select values and unuploaded file values', () => {
+      expect(hasInvalidSelectOrFileInput([
+        selectInput({ output_variable_name: 'decision' }),
+      ], {
+        decision: '',
+      })).toBe(true)
+      expect(hasInvalidRequiredHumanInput([
+        paragraphInput({ output_variable_name: 'summary' }),
+      ], {
+        summary: '   ',
+      })).toBe(true)
+      expect(hasInvalidSelectOrFileInput([
+        fileInput({ output_variable_name: 'attachment' }),
+      ], {
+        attachment: uploadingFile,
+      })).toBe(true)
+      expect(hasInvalidRequiredHumanInput([
+        fileListInput({ output_variable_name: 'attachments' }),
+      ], {
+        attachments: [uploadedFile, uploadingFile],
+      })).toBe(true)
+    })
+
+    it('should accept uploaded single and multiple file values', () => {
+      expect(hasInvalidSelectOrFileInput([
+        fileInput({ output_variable_name: 'attachment' }),
+        fileListInput({ output_variable_name: 'attachments' }),
+      ], {
+        attachment: [uploadedFile],
+        attachments: [uploadedFile],
+      })).toBe(false)
+      expect(hasInvalidRequiredHumanInput([
+        fileInput({ output_variable_name: 'attachment' }),
+        fileListInput({ output_variable_name: 'attachments' }),
+      ], {
+        attachment: [uploadedFile],
+        attachments: [uploadedFile],
+      })).toBe(false)
+    })
+
+    it('should treat unsupported input types as valid by default', () => {
+      const unsupportedInput = {
+        type: 'unsupported',
+        output_variable_name: 'unknown',
+      } as unknown as FormInputItem
+
+      expect(hasInvalidSelectOrFileInput([unsupportedInput], {
+        unknown: 'value',
+      })).toBe(false)
+      expect(hasInvalidRequiredHumanInput([unsupportedInput], {
+        unknown: 'value',
+      })).toBe(false)
+    })
+  })
+
+  describe('getProcessedHumanInputFormInputs', () => {
+    it('should return undefined when no values are provided', () => {
+      expect(getProcessedHumanInputFormInputs([], undefined)).toBeUndefined()
+    })
+
+    it('should process file values and fallback invalid file values', () => {
+      expect(getProcessedHumanInputFormInputs([
+        fileInput({ output_variable_name: 'attachment' }),
+        fileInput({ output_variable_name: 'attachmentFromArray' }),
+        fileInput({ output_variable_name: 'emptyAttachment' }),
+        fileListInput({ output_variable_name: 'attachments' }),
+        fileListInput({ output_variable_name: 'emptyAttachments' }),
+      ], {
+        attachment: uploadedFile,
+        attachmentFromArray: [uploadedFile],
+        emptyAttachment: '',
+        attachments: [uploadedFile],
+        emptyAttachments: null,
+      })).toEqual({
+        attachment: {
+          type: 'image',
+          transfer_method: TransferMethod.local_file,
+          url: '',
+          upload_file_id: 'upload-file-1',
+        },
+        attachmentFromArray: {
+          type: 'image',
+          transfer_method: TransferMethod.local_file,
+          url: '',
+          upload_file_id: 'upload-file-1',
+        },
+        emptyAttachment: undefined,
+        attachments: [{
+          type: 'image',
+          transfer_method: TransferMethod.local_file,
+          url: '',
+          upload_file_id: 'upload-file-1',
+        }],
+        emptyAttachments: [],
+      })
     })
   })
 

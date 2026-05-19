@@ -1,10 +1,12 @@
 import type { FormData } from '../form'
-import { render, screen } from '@testing-library/react'
+import type { HumanInputFieldValue } from '@/app/components/base/chat/chat/answer/human-input-content/field-renderer'
+import { act, render, renderHook, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { UserActionButtonType } from '@/app/components/workflow/nodes/human-input/types'
 import { InputVarType, SupportUploadFileTypes } from '@/app/components/workflow/types'
 import { TransferMethod } from '@/types/app'
 import FormContent from '../form'
+import { useFormSubmit } from '../use-form-submit'
 
 const mockSubmitForm = vi.hoisted(() => vi.fn())
 const mockUseGetHumanInputForm = vi.hoisted(() => vi.fn())
@@ -171,6 +173,71 @@ describe('Human input share form', () => {
     })
   })
 
+  it('should render the loading state while the form is being fetched', () => {
+    mockUseGetHumanInputForm.mockReturnValue({
+      data: undefined,
+      isLoading: true,
+      error: null,
+    })
+
+    render(<FormContent />)
+
+    expect(screen.getByText('loading')).toBeInTheDocument()
+  })
+
+  it('should render status cards for terminal fetch states', () => {
+    const cases = [
+      {
+        error: { code: 'human_input_form_expired' },
+        title: 'share.humanInput.sorry',
+        subtitle: 'share.humanInput.expired',
+        submissionID: true,
+      },
+      {
+        error: { code: 'human_input_form_submitted' },
+        title: 'share.humanInput.sorry',
+        subtitle: 'share.humanInput.completed',
+        submissionID: true,
+      },
+      {
+        error: { code: 'web_form_rate_limit_exceeded' },
+        title: 'share.humanInput.rateLimitExceeded',
+        subtitle: undefined,
+        submissionID: false,
+      },
+      {
+        error: null,
+        title: 'share.humanInput.formNotFound',
+        subtitle: undefined,
+        submissionID: false,
+      },
+    ]
+
+    cases.forEach(({ error, title, subtitle, submissionID }) => {
+      mockUseGetHumanInputForm.mockReturnValue({
+        data: undefined,
+        isLoading: false,
+        error,
+      })
+      const { unmount } = render(<FormContent />)
+
+      expect(screen.getByText(title)).toBeInTheDocument()
+      if (subtitle)
+        expect(screen.getByText(subtitle)).toBeInTheDocument()
+      else
+        expect(screen.queryByText('share.humanInput.expired')).not.toBeInTheDocument()
+
+      if (submissionID)
+        expect(screen.getByText('share.humanInput.submissionID:{"id":"token-123"}')).toBeInTheDocument()
+      else
+        expect(screen.queryByText(/share\.humanInput\.submissionID/)).not.toBeInTheDocument()
+
+      expect(screen.getByText('share.chat.poweredBy')).toBeInTheDocument()
+      expect(screen.getByText('dify-logo')).toBeInTheDocument()
+      unmount()
+    })
+  })
+
   it('submits typed human input values through the share form mutation', async () => {
     const user = userEvent.setup()
 
@@ -193,6 +260,47 @@ describe('Human input share form', () => {
             upload_file_id: 'upload-file-1',
           }],
         },
+      },
+    }, expect.objectContaining({
+      onSuccess: expect.any(Function),
+    }))
+  })
+
+  it('should show the success status after the submit mutation succeeds', async () => {
+    const user = userEvent.setup()
+
+    render(<FormContent />)
+
+    await user.click(screen.getByRole('button', { name: 'share-update-summary' }))
+    await user.click(screen.getByRole('button', { name: 'share-update-attachments' }))
+    await user.click(screen.getByRole('button', { name: 'Approve' }))
+
+    const options = mockSubmitForm.mock.calls[0]![1] as { onSuccess: () => void }
+    act(() => {
+      options.onSuccess()
+    })
+
+    expect(screen.getByText('share.humanInput.thanks')).toBeInTheDocument()
+    expect(screen.getByText('share.humanInput.recorded')).toBeInTheDocument()
+    expect(screen.getByText('share.humanInput.submissionID:{"id":"token-123"}')).toBeInTheDocument()
+  })
+
+  it('should submit empty inputs when there are no form values to process', () => {
+    const { result } = renderHook(() => useFormSubmit('token-empty'))
+
+    act(() => {
+      result.current.submit(
+        undefined as unknown as Record<string, HumanInputFieldValue>,
+        'reject',
+        [],
+      )
+    })
+
+    expect(mockSubmitForm).toHaveBeenCalledWith({
+      token: 'token-empty',
+      data: {
+        action: 'reject',
+        inputs: {},
       },
     }, expect.objectContaining({
       onSuccess: expect.any(Function),

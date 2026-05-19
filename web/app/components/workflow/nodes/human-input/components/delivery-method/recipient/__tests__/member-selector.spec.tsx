@@ -63,9 +63,22 @@ vi.mock('../member-list', () => ({
     searchValue: string
     list: Member[]
     email: string
+    onSearchChange: (value: string) => void
+    onSelect: (memberId: string) => void
   }) => {
     mockMemberList(props)
-    return <div data-testid="member-list" />
+    return (
+      <div data-testid="member-list">
+        <input
+          aria-label="member search"
+          value={props.searchValue}
+          onChange={e => props.onSearchChange(e.target.value)}
+        />
+        <button type="button" onClick={() => props.onSelect('member-1')}>
+          select member
+        </button>
+      </div>
+    )
   },
 }))
 
@@ -113,6 +126,35 @@ describe('human-input/delivery-method/recipient/member-selector', () => {
     }))
 
     fireEvent.click(trigger)
+    expect(screen.queryByTestId('member-list')).not.toBeInTheDocument()
+  })
+
+  it('should update search value and close the list after selecting a member', () => {
+    const handleSelect = vi.fn()
+
+    render(
+      <MemberSelector
+        value={[]}
+        email="owner@example.com"
+        onSelect={handleSelect}
+        list={members}
+      />,
+    )
+
+    fireEvent.click(screen.getByRole('button', {
+      name: 'workflow.nodes.humanInput.deliveryMethod.emailConfigure.memberSelector.trigger',
+    }))
+    fireEvent.change(screen.getByRole('textbox', { name: 'member search' }), {
+      target: { value: 'member one' },
+    })
+
+    expect(mockMemberList).toHaveBeenLastCalledWith(expect.objectContaining({
+      searchValue: 'member one',
+    }))
+
+    fireEvent.click(screen.getByRole('button', { name: 'select member' }))
+
+    expect(handleSelect).toHaveBeenCalledWith('member-1')
     expect(screen.queryByTestId('member-list')).not.toBeInTheDocument()
   })
 })

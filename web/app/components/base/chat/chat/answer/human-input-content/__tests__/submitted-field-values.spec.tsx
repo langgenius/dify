@@ -105,4 +105,36 @@ describe('SubmittedFieldValues', () => {
     expect(screen.queryByTestId('submitted-field-decision')).not.toBeInTheDocument()
     expect(screen.queryByTestId('submitted-field-attachment')).not.toBeInTheDocument()
   })
+
+  it('infers value types when field definitions are unavailable', () => {
+    render(
+      <SubmittedFieldValues
+        values={{
+          summary: 'Unstructured summary',
+          attachment: attachmentValue,
+          evidence: evidenceValues,
+        }}
+      />,
+    )
+
+    expect(screen.getByTestId('submitted-field-summary')).toHaveTextContent('Unstructured summary')
+    expect(screen.getByTestId('submitted-field-attachment')).toHaveTextContent('decision.pdf')
+    expect(screen.getByRole('img', { name: 'Preview' })).toHaveAttribute('src', 'https://example.com/evidence-1.png')
+    expect(screen.getByText('evidence-2.pdf')).toBeInTheDocument()
+  })
+
+  it('skips file fields when submitted values have incompatible shapes', () => {
+    render(
+      <SubmittedFieldValues
+        fields={fields}
+        values={{
+          attachment: 'not-a-file',
+          evidence: attachmentValue,
+        }}
+      />,
+    )
+
+    expect(screen.queryByTestId('submitted-field-attachment')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('submitted-field-evidence')).not.toBeInTheDocument()
+  })
 })

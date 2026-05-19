@@ -109,4 +109,20 @@ describe('SubmittedHumanInputContent Integration', () => {
     expect(screen.getByTestId('mock-markdown')).toHaveTextContent('Rendered **Markdown** content')
     expect(screen.queryByTestId('submitted-field-values')).not.toBeInTheDocument()
   })
+
+  it('should render submitted field values when original form layout is unavailable', () => {
+    render(
+      <SubmittedHumanInputContent formData={{
+        ...mockFormData,
+        submitted_data: {
+          answer: 'approved',
+        },
+      }}
+      />,
+    )
+
+    expect(screen.getByTestId('submitted-field-values')).toBeInTheDocument()
+    expect(screen.getByTestId('submitted-field-answer')).toHaveTextContent('approved')
+    expect(screen.queryByTestId('submitted-content')).not.toBeInTheDocument()
+  })
 })

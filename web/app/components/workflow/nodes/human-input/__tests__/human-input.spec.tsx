@@ -494,6 +494,38 @@ describe('DSL Import with Human Input Node', () => {
       expect(result.errorMessage).toBe('nodes.humanInput.errorMsg.emailConfigIncomplete')
     })
 
+    it('should validate enabled email subject and body content', () => {
+      const t = (key: string) => key
+      const createPayload = (body: string, subject = 'Review request') => ({
+        ...humanInputDefault.defaultValue,
+        delivery_methods: [
+          {
+            id: 'dm-email',
+            type: DeliveryMethodType.Email,
+            enabled: true,
+            config: {
+              recipients: { whole_workspace: true, items: [] },
+              subject,
+              body,
+              debug_mode: false,
+            },
+          },
+        ],
+        user_actions: [
+          { id: 'approve', title: 'Approve', button_style: UserActionButtonType.Primary },
+        ],
+      }) as HumanInputNodeType
+
+      expect(humanInputDefault.checkValid(createPayload('{{#url#}}', '  '), t)).toEqual({
+        isValid: false,
+        errorMessage: 'nodes.humanInput.errorMsg.emailConfigIncomplete',
+      })
+      expect(humanInputDefault.checkValid(createPayload('Please review'), t)).toEqual({
+        isValid: false,
+        errorMessage: 'nodes.humanInput.errorMsg.emailConfigIncomplete',
+      })
+    })
+
     it('should validate that user actions are required', () => {
       const t = (key: string) => key
       const payload = {
@@ -525,6 +557,30 @@ describe('DSL Import with Human Input Node', () => {
       const result = humanInputDefault.checkValid(payload, t)
 
       expect(result.isValid).toBe(false)
+    })
+
+    it('should validate that user action ids and titles are not empty', () => {
+      const t = (key: string) => key
+      const createPayload = (userActions: HumanInputNodeType['user_actions']) => ({
+        ...humanInputDefault.defaultValue,
+        delivery_methods: [
+          { id: 'dm-1', type: DeliveryMethodType.WebApp, enabled: true },
+        ],
+        user_actions: userActions,
+      }) as HumanInputNodeType
+
+      expect(humanInputDefault.checkValid(createPayload([
+        { id: '  ', title: 'Approve', button_style: UserActionButtonType.Primary },
+      ]), t)).toEqual({
+        isValid: false,
+        errorMessage: 'nodes.humanInput.errorMsg.emptyActionId',
+      })
+      expect(humanInputDefault.checkValid(createPayload([
+        { id: 'approve', title: '  ', button_style: UserActionButtonType.Primary },
+      ]), t)).toEqual({
+        isValid: false,
+        errorMessage: 'nodes.humanInput.errorMsg.emptyActionTitle',
+      })
     })
 
     it('should pass validation with correct configuration', () => {
