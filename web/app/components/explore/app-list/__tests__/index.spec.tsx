@@ -208,6 +208,11 @@ const mockMemberRole = (hasEditPermission: boolean) => {
   })
 }
 
+const getLastByText = (text: string) => {
+  const elements = screen.getAllByText(text)
+  return elements[elements.length - 1]!
+}
+
 type RenderOptions = {
   enableExploreBanner?: boolean
 }
@@ -413,7 +418,7 @@ describe('AppList', () => {
       })
 
       renderAppList(true, onSuccess)
-      fireEvent.click(screen.getByText('explore.appCard.addToWorkspace'))
+      fireEvent.click(getLastByText('explore.appCard.addToWorkspace'))
       fireEvent.click(await screen.findByTestId('confirm-create'))
 
       await waitFor(() => {
@@ -429,6 +434,26 @@ describe('AppList', () => {
           appMode: AppModeEnum.CHAT,
         })
         expect(onSuccess).toHaveBeenCalledTimes(1)
+      })
+    })
+
+    it('should open create flow from learn dify item hover actions', async () => {
+      vi.useRealTimers()
+      mockExploreData = {
+        categories: ['Writing'],
+        allList: [createApp()],
+      };
+      (fetchAppDetail as unknown as Mock).mockResolvedValue({ export_data: 'yaml-content', mode: AppModeEnum.CHAT })
+      mockHandleImportDSL.mockImplementation(async (_payload: unknown, options: { onSuccess?: () => void }) => {
+        options.onSuccess?.()
+      })
+
+      renderAppList(true)
+      fireEvent.click(screen.getAllByText('explore.appCard.addToWorkspace')[0]!)
+      fireEvent.click(await screen.findByTestId('confirm-create'))
+
+      await waitFor(() => {
+        expect(fetchAppDetail).toHaveBeenCalledWith('learn-basic-1')
       })
     })
   })
@@ -483,7 +508,7 @@ describe('AppList', () => {
       (fetchAppDetail as unknown as Mock).mockResolvedValue({ export_data: 'yaml', mode: AppModeEnum.CHAT })
 
       renderAppList(true)
-      fireEvent.click(screen.getByText('explore.appCard.addToWorkspace'))
+      fireEvent.click(getLastByText('explore.appCard.addToWorkspace'))
       expect(await screen.findByTestId('create-app-modal')).toBeInTheDocument()
 
       fireEvent.click(screen.getByTestId('hide-create'))
@@ -505,7 +530,7 @@ describe('AppList', () => {
       })
 
       renderAppList(true)
-      fireEvent.click(screen.getByText('explore.appCard.addToWorkspace'))
+      fireEvent.click(getLastByText('explore.appCard.addToWorkspace'))
       fireEvent.click(await screen.findByTestId('confirm-create'))
 
       await waitFor(() => {
@@ -525,7 +550,7 @@ describe('AppList', () => {
       })
 
       renderAppList(true)
-      fireEvent.click(screen.getByText('explore.appCard.addToWorkspace'))
+      fireEvent.click(getLastByText('explore.appCard.addToWorkspace'))
       fireEvent.click(await screen.findByTestId('confirm-create'))
 
       await waitFor(() => {
@@ -549,7 +574,7 @@ describe('AppList', () => {
 
       renderAppList(true)
 
-      fireEvent.click(screen.getByText('explore.appCard.try'))
+      fireEvent.click(getLastByText('explore.appCard.try'))
       expect(screen.getByTestId('try-app-panel')).toBeInTheDocument()
 
       fireEvent.click(screen.getByTestId('try-app-create'))
@@ -572,7 +597,7 @@ describe('AppList', () => {
 
       renderAppList(true)
 
-      fireEvent.click(screen.getByText('explore.appCard.try'))
+      fireEvent.click(getLastByText('explore.appCard.try'))
       fireEvent.click(screen.getByTestId('try-app-create'))
       fireEvent.click(await screen.findByTestId('confirm-create'))
 
@@ -591,7 +616,7 @@ describe('AppList', () => {
 
       renderAppList(true)
 
-      fireEvent.click(screen.getByText('explore.appCard.try'))
+      fireEvent.click(getLastByText('explore.appCard.try'))
       expect(screen.getByTestId('try-app-panel')).toBeInTheDocument()
 
       fireEvent.click(screen.getByTestId('try-app-close'))

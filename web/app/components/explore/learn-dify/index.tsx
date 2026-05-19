@@ -1,5 +1,7 @@
 'use client'
 
+import type { App } from '@/models/explore'
+import type { TryAppSelection } from '@/types/try-app'
 import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
 import { useEffect, useRef, useState } from 'react'
@@ -9,17 +11,23 @@ import LearnDifyItem from './item'
 import { useLearnDifyHiddenState } from './storage'
 
 type LearnDifyProps = {
+  canCreate?: boolean
   className?: string
   dismissible?: boolean
   itemLimit?: number
+  onCreate?: (app: App) => void
+  onTry?: (params: TryAppSelection) => void
   showDescription?: boolean
   title?: string
 }
 
 const LearnDify = ({
+  canCreate = false,
   className,
   dismissible = true,
   itemLimit,
+  onCreate,
+  onTry,
   showDescription = true,
   title,
 }: LearnDifyProps) => {
@@ -101,7 +109,13 @@ const LearnDify = ({
       </div>
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
         {visibleItems.map(item => (
-          <LearnDifyItem key={item.app_id} item={item} />
+          <LearnDifyItem
+            key={item.app_id}
+            canCreate={canCreate}
+            item={item}
+            onCreate={onCreate}
+            onTry={onTry}
+          />
         ))}
       </div>
     </section>

@@ -197,7 +197,15 @@ const Apps = ({
           </div>
         )}
         <ContinueWork className="mt-10" />
-        <LearnDify className="mt-4" />
+        <LearnDify
+          canCreate={hasEditPermission}
+          className="mt-4"
+          onCreate={(app) => {
+            setCurrApp(app)
+            setIsShowCreateModal(true)
+          }}
+          onTry={handleTryApp}
+        />
 
         <div className="sticky top-0 z-10 bg-background-body">
           <div className="px-12 pt-4">

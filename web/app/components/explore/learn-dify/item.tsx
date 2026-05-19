@@ -1,20 +1,49 @@
 'use client'
 
 import type { App } from '@/models/explore'
+import type { TryAppSelection } from '@/types/try-app'
+import { Button } from '@langgenius/dify-ui/button'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import * as React from 'react'
+import { useTranslation } from 'react-i18next'
+import { trackEvent } from '@/app/components/base/amplitude'
 import AppIcon from '@/app/components/base/app-icon'
+import { systemFeaturesQueryOptions } from '@/service/system-features'
 
 type LearnDifyItemProps = {
+  canCreate: boolean
   item: App
+  onCreate?: (app: App) => void
+  onTry?: (params: TryAppSelection) => void
 }
 
 const LearnDifyItem = ({
+  canCreate,
   item,
+  onCreate,
+  onTry,
 }: LearnDifyItemProps) => {
+  const { t } = useTranslation()
   const appBasicInfo = item.app
+  const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
+  const isTrialApp = item.can_trial && systemFeatures.enable_trial_app
+  const canShowCreate = canCreate && !!onCreate
+  const canShowTry = (canCreate || isTrialApp) && !!onTry
+  const showHoverActions = canShowCreate || canShowTry
+
+  const handleTryApp = () => {
+    trackEvent('preview_template', {
+      template_id: item.app_id,
+      template_name: appBasicInfo.name,
+      template_mode: appBasicInfo.mode,
+      template_categories: item.categories,
+      page: 'explore',
+    })
+    onTry?.({ appId: item.app_id, app: item })
+  }
 
   return (
-    <article className="flex min-w-0 flex-col overflow-hidden rounded-xl border-[0.5px] border-components-panel-border-subtle bg-components-panel-on-panel-item-bg px-4 py-3 shadow-md">
+    <article className="group relative flex min-w-0 cursor-pointer flex-col overflow-hidden rounded-xl border-[0.5px] border-components-panel-border-subtle bg-components-panel-on-panel-item-bg px-4 py-3 shadow-md">
       <div className="flex items-center gap-3">
         <AppIcon
           size="large"
@@ -30,6 +59,24 @@ const LearnDifyItem = ({
       <p className="mt-3 line-clamp-2 min-h-8 system-xs-regular text-text-tertiary">
         {item.description}
       </p>
+      {showHoverActions && (
+        <div className="absolute right-0 bottom-0 left-0 hidden bg-linear-to-t from-components-panel-gradient-2 from-[60.27%] to-transparent p-4 pt-8 group-hover:flex">
+          <div className={canShowCreate && canShowTry ? 'grid h-8 w-full grid-cols-2 gap-2' : 'grid h-8 w-full grid-cols-1 gap-2'}>
+            {canShowCreate && (
+              <Button variant="primary" className="h-7" onClick={() => onCreate?.(item)}>
+                <span className="mr-1 i-heroicons-plus-20-solid size-4" />
+                <span className="text-xs">{t('appCard.addToWorkspace', { ns: 'explore' })}</span>
+              </Button>
+            )}
+            {canShowTry && (
+              <Button className="h-7" onClick={handleTryApp}>
+                <span className="mr-1 i-ri-information-2-line size-4" />
+                <span>{t('appCard.try', { ns: 'explore' })}</span>
+              </Button>
+            )}
+          </div>
+        </div>
+      )}
     </article>
   )
 }
