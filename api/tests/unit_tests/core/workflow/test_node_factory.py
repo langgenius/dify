@@ -109,9 +109,8 @@ class TestFetchMemory:
             def scalar(self, _stmt):
                 return None
 
-        monkeypatch.setattr(node_factory, "db", SimpleNamespace(engine=sentinel.engine))
+        monkeypatch.setattr(node_factory, "session_factory", SimpleNamespace(create_session=FakeSession))
         monkeypatch.setattr(node_factory, "select", MagicMock(return_value=FakeSelect()))
-        monkeypatch.setattr(node_factory, "Session", FakeSession)
 
         result = node_factory.fetch_memory(
             conversation_id="conversation-id",
@@ -144,9 +143,8 @@ class TestFetchMemory:
                 return conversation
 
         token_buffer_memory = MagicMock(return_value=memory)
-        monkeypatch.setattr(node_factory, "db", SimpleNamespace(engine=sentinel.engine))
+        monkeypatch.setattr(node_factory, "session_factory", SimpleNamespace(create_session=FakeSession))
         monkeypatch.setattr(node_factory, "select", MagicMock(return_value=FakeSelect()))
-        monkeypatch.setattr(node_factory, "Session", FakeSession)
         monkeypatch.setattr(node_factory, "TokenBufferMemory", token_buffer_memory)
 
         result = node_factory.fetch_memory(
@@ -161,6 +159,41 @@ class TestFetchMemory:
             conversation=conversation,
             model_instance=sentinel.model_instance,
         )
+
+    def test_uses_configured_session_factory_without_flask_app_context(self, monkeypatch: pytest.MonkeyPatch):
+        class FakeSelect:
+            def where(self, *_args):
+                return self
+
+        class FakeSession:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *_args):
+                return False
+
+            def scalar(self, _stmt):
+                return sentinel.conversation
+
+        class RaisingDB:
+            @property
+            def engine(self):
+                raise RuntimeError("Working outside of application context.")
+
+        token_buffer_memory = MagicMock(return_value=sentinel.memory)
+        monkeypatch.setattr(node_factory, "db", RaisingDB(), raising=False)
+        monkeypatch.setattr(node_factory, "session_factory", SimpleNamespace(create_session=FakeSession))
+        monkeypatch.setattr(node_factory, "select", MagicMock(return_value=FakeSelect()))
+        monkeypatch.setattr(node_factory, "TokenBufferMemory", token_buffer_memory)
+
+        result = node_factory.fetch_memory(
+            conversation_id="conversation-id",
+            app_id="app-id",
+            node_data_memory=object(),
+            model_instance=sentinel.model_instance,
+        )
+
+        assert result is sentinel.memory
 
 
 class TestDifyGraphInitContext:
@@ -419,7 +452,7 @@ class TestDifyNodeFactoryCreateNode:
         factory._jinja2_template_renderer = sentinel.jinja2_template_renderer
         factory._template_transform_max_output_length = 2048
         factory._http_request_http_client = sentinel.http_client
-        factory._bound_tool_file_manager_factory = sentinel.tool_file_manager_factory
+        factory._bound_tool_file_manager_factory = MagicMock(return_value=sentinel.tool_file_manager)
         factory._file_reference_factory = sentinel.file_reference_factory
         factory._prompt_message_serializer = sentinel.prompt_message_serializer
         factory._retriever_attachment_loader = sentinel.retriever_attachment_loader
@@ -507,6 +540,7 @@ class TestDifyNodeFactoryCreateNode:
             (BuiltinNodeTypes.TEMPLATE_TRANSFORM, "TemplateTransformNode"),
             (BuiltinNodeTypes.HTTP_REQUEST, "HttpRequestNode"),
             (BuiltinNodeTypes.HUMAN_INPUT, "HumanInputNode"),
+            (BuiltinNodeTypes.TOOL, "ToolNode"),
             (KNOWLEDGE_INDEX_NODE_TYPE, "KnowledgeIndexNode"),
             (BuiltinNodeTypes.DATASOURCE, "DatasourceNode"),
             (BuiltinNodeTypes.KNOWLEDGE_RETRIEVAL, "KnowledgeRetrievalNode"),
@@ -547,13 +581,19 @@ class TestDifyNodeFactoryCreateNode:
         elif constructor_name == "HttpRequestNode":
             assert kwargs["http_request_config"] is sentinel.http_request_config
             assert kwargs["http_client"] is sentinel.http_client
-            assert kwargs["tool_file_manager_factory"] is sentinel.tool_file_manager_factory
+            assert kwargs["tool_file_manager_factory"] is factory._bound_tool_file_manager_factory
             assert kwargs["file_manager"] is sentinel.file_manager
             assert kwargs["file_reference_factory"] is sentinel.file_reference_factory
+            factory._bound_tool_file_manager_factory.assert_not_called()
         elif constructor_name == "HumanInputNode":
             assert kwargs["form_repository"] is form_repository
+            assert kwargs["file_reference_factory"] is sentinel.file_reference_factory
             assert kwargs["runtime"] is factory._human_input_runtime
             factory._human_input_runtime.build_form_repository.assert_called_once_with()
+        elif constructor_name == "ToolNode":
+            assert kwargs["tool_file_manager"] is sentinel.tool_file_manager
+            assert kwargs["runtime"] is sentinel.tool_runtime
+            factory._bound_tool_file_manager_factory.assert_called_once_with()
         elif constructor_name == "DocumentExtractorNode":
             assert kwargs["unstructured_api_config"] is sentinel.unstructured_api_config
             assert kwargs["http_client"] is sentinel.http_client

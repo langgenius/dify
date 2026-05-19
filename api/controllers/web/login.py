@@ -8,7 +8,13 @@ from werkzeug.exceptions import Unauthorized
 
 import services
 from configs import dify_config
-from controllers.common.schema import register_schema_models
+from controllers.common.fields import (
+    AccessTokenResultResponse,
+    LoginStatusResponse,
+    SimpleResultDataResponse,
+    SimpleResultResponse,
+)
+from controllers.common.schema import register_response_schema_models, register_schema_models
 from controllers.console.auth.error import (
     AuthenticationFailedError,
     EmailCodeError,
@@ -57,6 +63,13 @@ class EmailCodeLoginVerifyPayload(BaseModel):
 
 
 register_schema_models(web_ns, LoginPayload, EmailCodeLoginSendPayload, EmailCodeLoginVerifyPayload)
+register_response_schema_models(
+    web_ns,
+    AccessTokenResultResponse,
+    LoginStatusResponse,
+    SimpleResultDataResponse,
+    SimpleResultResponse,
+)
 
 
 @web_ns.route("/login")
@@ -77,6 +90,7 @@ class LoginApi(Resource):
             404: "Account not found",
         }
     )
+    @web_ns.response(200, "Authentication successful", web_ns.models[AccessTokenResultResponse.__name__])
     @decrypt_password_field
     def post(self):
         """Authenticate user and login."""
@@ -114,6 +128,7 @@ class LoginStatusApi(Resource):
             401: "Login status",
         }
     )
+    @web_ns.response(200, "Login status", web_ns.models[LoginStatusResponse.__name__])
     def get(self):
         app_code = request.args.get("app_code")
         user_id = request.args.get("user_id")
@@ -160,6 +175,7 @@ class LogoutApi(Resource):
             200: "Logout successful",
         }
     )
+    @web_ns.response(200, "Logout successful", web_ns.models[SimpleResultResponse.__name__])
     def post(self):
         response = make_response({"result": "success"})
         # enterprise SSO sets same site to None in https deployment
@@ -182,6 +198,7 @@ class EmailCodeLoginSendEmailApi(Resource):
             404: "Account not found",
         }
     )
+    @web_ns.response(200, "Email code sent successfully", web_ns.models[SimpleResultDataResponse.__name__])
     def post(self):
         payload = EmailCodeLoginSendPayload.model_validate(web_ns.payload or {})
 
@@ -212,6 +229,11 @@ class EmailCodeLoginApi(Resource):
             401: "Invalid token or expired code",
             404: "Account not found",
         }
+    )
+    @web_ns.response(
+        200,
+        "Email code verified and login successful",
+        web_ns.models[AccessTokenResultResponse.__name__],
     )
     @decrypt_code_field
     def post(self):

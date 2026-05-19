@@ -1,5 +1,5 @@
-import type { FC } from 'react'
-import type { Label } from '@/app/components/tools/labels/constant'
+import { Checkbox } from '@langgenius/dify-ui/checkbox'
+import { CheckboxGroup } from '@langgenius/dify-ui/checkbox-group'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   Popover,
@@ -7,10 +7,8 @@ import {
   PopoverTrigger,
 } from '@langgenius/dify-ui/popover'
 import { useDebounceFn } from 'ahooks'
-import { noop } from 'es-toolkit/function'
-import { useMemo, useState } from 'react'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Checkbox from '@/app/components/base/checkbox'
 import { Tag03 } from '@/app/components/base/icons/src/vender/line/financeAndECommerce'
 import Input from '@/app/components/base/input'
 import { useTags } from '@/app/components/plugins/hooks'
@@ -20,10 +18,10 @@ type LabelSelectorProps = {
   onChange: (v: string[]) => void
 }
 
-const LabelSelector: FC<LabelSelectorProps> = ({
+function LabelSelector({
   value,
   onChange,
-}) => {
+}: LabelSelectorProps) {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
 
@@ -40,20 +38,8 @@ const LabelSelector: FC<LabelSelectorProps> = ({
     handleSearch()
   }
 
-  const filteredLabelList = useMemo(() => {
-    return labelList.filter(label => label.name.includes(searchKeywords))
-  }, [labelList, searchKeywords])
-
-  const selectedLabels = useMemo(() => {
-    return value.map(v => labelList.find(l => l.name === v)?.label).join(', ')
-  }, [value, labelList])
-
-  const selectLabel = (label: Label) => {
-    if (value.includes(label.name))
-      onChange(value.filter(v => v !== label.name))
-    else
-      onChange([...value, label.name])
-  }
+  const filteredLabelList = labelList.filter(label => label.name.includes(searchKeywords))
+  const selectedLabels = value.map(v => labelList.find(l => l.name === v)?.label).join(', ')
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -87,20 +73,23 @@ const LabelSelector: FC<LabelSelectorProps> = ({
                 onClear={() => handleKeywordsChange('')}
               />
             </div>
-            <div className="max-h-[264px] overflow-y-auto p-1">
+            <CheckboxGroup
+              aria-label={t('createTool.toolInput.labelPlaceholder', { ns: 'tools' })}
+              value={value}
+              onValueChange={nextValue => onChange(nextValue)}
+              className="max-h-[264px] overflow-y-auto p-1"
+            >
               {filteredLabelList.map(label => (
-                <div
+                <label
                   key={label.name}
                   className="flex cursor-pointer items-center gap-2 rounded-lg py-[6px] pr-2 pl-3 hover:bg-components-panel-on-panel-item-bg-hover"
-                  onClick={() => selectLabel(label)}
                 >
                   <Checkbox
                     className="shrink-0"
-                    checked={value.includes(label.name)}
-                    onCheck={noop}
+                    value={label.name}
                   />
                   <div title={label.label} className="grow truncate text-sm leading-5 text-text-secondary">{label.label}</div>
-                </div>
+                </label>
               ))}
               {!filteredLabelList.length && (
                 <div className="flex flex-col items-center gap-1 p-3">
@@ -108,7 +97,7 @@ const LabelSelector: FC<LabelSelectorProps> = ({
                   <div className="text-xs leading-[14px] text-text-tertiary">{t('tag.noTag', { ns: 'common' })}</div>
                 </div>
               )}
-            </div>
+            </CheckboxGroup>
           </div>
         </PopoverContent>
       </div>

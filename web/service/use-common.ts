@@ -7,7 +7,6 @@ import type {
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type {
   AccountIntegrate,
-  ApiBasedExtension,
   CodeBasedExtension,
   CommonResponse,
   FileUploadConfigResponse,
@@ -52,7 +51,6 @@ export const commonQueryKeys = {
   accountIntegrates: [NAME_SPACE, 'account-integrates'] as const,
   pluginProviders: [NAME_SPACE, 'plugin-providers'] as const,
   notionConnection: [NAME_SPACE, 'notion-connection'] as const,
-  apiBasedExtensions: [NAME_SPACE, 'api-based-extensions'] as const,
   codeBasedExtensions: (module?: string) => [NAME_SPACE, 'code-based-extensions', module] as const,
   invitationCheck: (params?: { workspace_id?: string, email?: string, token?: string }) => [
     NAME_SPACE,
@@ -316,13 +314,6 @@ export const useCodeBasedExtensions = (module: string) => {
   return useQuery<CodeBasedExtension>({
     queryKey: commonQueryKeys.codeBasedExtensions(module),
     queryFn: () => get<CodeBasedExtension>(`/code-based-extension?module=${module}`),
-  })
-}
-
-export const useApiBasedExtensions = () => {
-  return useQuery<ApiBasedExtension[]>({
-    queryKey: commonQueryKeys.apiBasedExtensions,
-    queryFn: () => get<ApiBasedExtension[]>('/api-based-extension'),
   })
 }
 

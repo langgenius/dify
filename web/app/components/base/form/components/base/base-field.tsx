@@ -18,7 +18,7 @@ import {
   useMemo,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import CheckboxList from '@/app/components/base/checkbox-list'
+import { CheckboxList } from '@/app/components/base/checkbox-list'
 import { FormItemValidateStatusEnum, FormTypeEnum } from '@/app/components/base/form/types'
 import { Infotip } from '@/app/components/base/infotip'
 import Input from '@/app/components/base/input'
@@ -305,6 +305,7 @@ const BaseField = ({
           {
             formItemType === FormTypeEnum.checkbox /* && multiple */ && (
               <CheckboxList
+                name={field.name}
                 title={name}
                 value={value}
                 onChange={v => field.handleChange(v)}

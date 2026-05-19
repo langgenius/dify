@@ -11,8 +11,16 @@ import {
   zPostApiKeyAuthDataSourceBindingResponse,
 } from './zod.gen'
 
+/**
+ * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
+ *
+ * @deprecated
+ */
 export const post = oc
   .route({
+    deprecated: true,
+    description:
+      'Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postApiKeyAuthDataSourceBinding',
@@ -32,6 +40,7 @@ export const delete_ = oc
     method: 'DELETE',
     operationId: 'deleteApiKeyAuthDataSourceByBindingId',
     path: '/api-key-auth/data-source/{binding_id}',
+    successStatus: 204,
     tags: ['console'],
   })
   .input(z.object({ params: zDeleteApiKeyAuthDataSourceByBindingIdPath }))

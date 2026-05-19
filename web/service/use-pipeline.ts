@@ -195,10 +195,10 @@ export const useInvalidDataSourceList = () => {
 export const publishedPipelineInfoQueryKeyPrefix = [NAME_SPACE, 'published-pipeline']
 
 export const usePublishedPipelineInfo = (pipelineId: string) => {
-  return useQuery<PublishedPipelineInfoResponse>({
+  return useQuery<PublishedPipelineInfoResponse | null>({
     queryKey: [...publishedPipelineInfoQueryKeyPrefix, pipelineId],
     queryFn: () => {
-      return get<PublishedPipelineInfoResponse>(`/rag/pipelines/${pipelineId}/workflows/publish`)
+      return get<PublishedPipelineInfoResponse | null>(`/rag/pipelines/${pipelineId}/workflows/publish`)
     },
     enabled: !!pipelineId,
   })

@@ -39,6 +39,7 @@ class _TokenData(TypedDict, total=False):
     token_type: str
     code: str
     old_email: str
+    phase: str
 
 
 _token_data_adapter: TypeAdapter[_TokenData] = TypeAdapter(_TokenData)
@@ -97,12 +98,13 @@ def extract_tenant_id(user: "Account | EndUser") -> str | None:
     from models import Account
     from models.model import EndUser
 
-    if isinstance(user, Account):
-        return user.current_tenant_id
-    elif isinstance(user, EndUser):
-        return user.tenant_id
-    else:
-        raise ValueError(f"Invalid user type: {type(user)}. Expected Account or EndUser.")
+    match user:
+        case Account():
+            return user.current_tenant_id
+        case EndUser():
+            return user.tenant_id
+        case _:
+            raise ValueError(f"Invalid user type: {type(user)}. Expected Account or EndUser.")
 
 
 def run(script):
@@ -421,18 +423,19 @@ def length_prefixed_response(
         # | Magic Number 1byte | Reserved 1byte | Header Length 2bytes | Data Length 4bytes | Reserved 6bytes | Data
         return struct.pack("<BBHI", magic_number, 0, header_length, data_length) + b"\x00" * 6 + response
 
-    if isinstance(response, Mapping):
-        return Response(
-            response=pack_response_with_length_prefix(json.dumps(jsonable_encoder(response)).encode("utf-8")),
-            status=200,
-            mimetype="application/json",
-        )
-    elif isinstance(response, BaseModel):
-        return Response(
-            response=pack_response_with_length_prefix(response.model_dump_json().encode("utf-8")),
-            status=200,
-            mimetype="application/json",
-        )
+    match response:
+        case Mapping():
+            return Response(
+                response=pack_response_with_length_prefix(json.dumps(jsonable_encoder(response)).encode("utf-8")),
+                status=200,
+                mimetype="application/json",
+            )
+        case BaseModel():
+            return Response(
+                response=pack_response_with_length_prefix(response.model_dump_json().encode("utf-8")),
+                status=200,
+                mimetype="application/json",
+            )
 
     stream_response = response
 

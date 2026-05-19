@@ -90,7 +90,7 @@ class TestMailRegisterTask:
         to_email = fake.email()
         account_name = fake.name()
 
-        with patch("tasks.mail_register_task.dify_config", autospec=True) as mock_config:
+        with patch("tasks.mail_register_task.dify_config") as mock_config:
             mock_config.CONSOLE_WEB_URL = "https://console.dify.ai"
 
             send_email_register_mail_task_when_account_exist(language=language, to=to_email, account_name=account_name)
