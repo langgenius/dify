@@ -82,46 +82,36 @@ vi.mock('@/service/tag', () => ({
   fetchTagList: vi.fn().mockResolvedValue([]),
 }))
 
-vi.mock('@/service/use-common', () => ({
-  useMembers: () => ({
-    data: {
-      accounts: [
-        { id: 'user-1', name: 'Current User', email: 'current@example.com', avatar: '', avatar_url: '', role: 'owner', last_login_at: '', created_at: '', status: 'active' },
-      ],
-    },
-  }),
-}))
-
-vi.mock('@/service/apps', () => ({
-  fetchWorkflowOnlineUsers: vi.fn().mockResolvedValue({}),
-}))
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@tanstack/react-query')>()
+  return {
+    ...actual,
+    useQuery: () => ({
+      data: [],
+    }),
+    useInfiniteQuery: () => ({
+      data: { pages: mockPages },
+      isLoading: mockIsLoading,
+      isFetching: mockIsFetching,
+      isFetchingNextPage: false,
+      fetchNextPage: mockFetchNextPage,
+      hasNextPage: false,
+      error: null,
+      refetch: mockRefetch,
+    }),
+  }
+})
 
 vi.mock('@/service/use-apps', () => ({
-  useInfiniteAppList: () => ({
-    data: { pages: mockPages },
-    isLoading: mockIsLoading,
-    isFetching: mockIsFetching,
-    isFetchingNextPage: false,
-    fetchNextPage: mockFetchNextPage,
-    hasNextPage: false,
-    error: null,
-    refetch: mockRefetch,
-  }),
   useDeleteAppMutation: () => ({
     mutateAsync: vi.fn(),
     isPending: false,
   }),
 }))
 
-vi.mock('@/service/use-snippets', () => ({
-  useInfiniteSnippetList: () => ({
-    data: { pages: [] },
-    isLoading: false,
-    isFetching: false,
-    isFetchingNextPage: false,
-    fetchNextPage: vi.fn(),
-    hasNextPage: false,
-    error: null,
+vi.mock('@/app/components/apps/hooks/use-workflow-online-users', () => ({
+  useWorkflowOnlineUsers: () => ({
+    onlineUsersMap: {},
   }),
 }))
 

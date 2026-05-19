@@ -9,7 +9,7 @@ from core.repositories.human_input_repository import (
     HumanInputFormEntity,
     HumanInputFormRepository,
 )
-from core.workflow.node_runtime import DifyHumanInputNodeRuntime
+from core.workflow.node_runtime import DifyFileReferenceFactory, DifyHumanInputNodeRuntime
 from core.workflow.system_variables import build_system_variables
 from graphon.entities import WorkflowStartReason
 from graphon.graph import Graph
@@ -24,7 +24,7 @@ from graphon.graph_events import (
 from graphon.nodes.base.entities import OutputVariableEntity
 from graphon.nodes.end.end_node import EndNode
 from graphon.nodes.end.entities import EndNodeData
-from graphon.nodes.human_input.entities import HumanInputNodeData, UserAction
+from graphon.nodes.human_input.entities import HumanInputNodeData, UserActionConfig
 from graphon.nodes.human_input.enums import HumanInputFormStatus
 from graphon.nodes.human_input.human_input_node import HumanInputNode
 from graphon.nodes.start.entities import StartNodeData
@@ -111,7 +111,7 @@ class StaticRepo(HumanInputFormRepository):
 
 
 def _build_runtime_state() -> GraphRuntimeState:
-    variable_pool = VariablePool(
+    variable_pool = VariablePool.from_bootstrap(
         system_variables=build_system_variables(
             user_id="user",
             app_id="app",
@@ -140,7 +140,7 @@ def _build_graph(runtime_state: GraphRuntimeState, repo: HumanInputFormRepositor
     start_config = {"id": "start", "data": StartNodeData(title="Start", variables=[]).model_dump()}
     start_node = StartNode(
         node_id=start_config["id"],
-        config=StartNodeData(title="Start", variables=[]),
+        data=StartNodeData(title="Start", variables=[]),
         graph_init_params=graph_init_params,
         graph_runtime_state=runtime_state,
     )
@@ -149,26 +149,28 @@ def _build_graph(runtime_state: GraphRuntimeState, repo: HumanInputFormRepositor
         title="Human Input",
         form_content="Human input required",
         inputs=[],
-        user_actions=[UserAction(id="approve", title="Approve")],
+        user_actions=[UserActionConfig(id="approve", title="Approve")],
     )
 
     human_a_config = {"id": "human_a", "data": human_data.model_dump()}
     human_a = HumanInputNode(
         node_id=human_a_config["id"],
-        config=human_data,
+        data=human_data,
         graph_init_params=graph_init_params,
         graph_runtime_state=runtime_state,
         form_repository=repo,
+        file_reference_factory=DifyFileReferenceFactory(graph_init_params.run_context),
         runtime=DifyHumanInputNodeRuntime(graph_init_params.run_context),
     )
 
     human_b_config = {"id": "human_b", "data": human_data.model_dump()}
     human_b = HumanInputNode(
         node_id=human_b_config["id"],
-        config=human_data,
+        data=human_data,
         graph_init_params=graph_init_params,
         graph_runtime_state=runtime_state,
         form_repository=repo,
+        file_reference_factory=DifyFileReferenceFactory(graph_init_params.run_context),
         runtime=DifyHumanInputNodeRuntime(graph_init_params.run_context),
     )
 
@@ -183,7 +185,7 @@ def _build_graph(runtime_state: GraphRuntimeState, repo: HumanInputFormRepositor
     end_config = {"id": "end", "data": end_data.model_dump()}
     end_node = EndNode(
         node_id=end_config["id"],
-        config=end_data,
+        data=end_data,
         graph_init_params=graph_init_params,
         graph_runtime_state=runtime_state,
     )

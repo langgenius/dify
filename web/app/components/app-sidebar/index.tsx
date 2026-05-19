@@ -1,3 +1,4 @@
+import type { AppInfoActions } from './app-info/use-app-info-actions'
 import type { NavIcon } from './nav-link'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useHover, useKeyPress } from 'ahooks'
@@ -10,7 +11,7 @@ import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import { usePathname } from '@/next/navigation'
 import Divider from '../base/divider'
 import { getKeyboardKeyCodeBySystem } from '../workflow/utils'
-import AppInfo from './app-info'
+import AppInfo, { AppInfoView } from './app-info'
 import AppSidebarDropdown from './app-sidebar-dropdown'
 import DatasetInfo from './dataset-info'
 import DatasetSidebarDropdown from './dataset-sidebar-dropdown'
@@ -36,16 +37,14 @@ type IAppDetailNavProps = {
     disabled?: boolean
   }>
   extraInfo?: (modeState: string) => React.ReactNode
-  renderHeader?: (modeState: string) => React.ReactNode
-  renderNavigation?: (modeState: string) => React.ReactNode
+  appInfoActions?: AppInfoActions
 }
 
 const AppDetailNav = ({
   navigation,
   extraInfo,
   iconType = 'app',
-  renderHeader,
-  renderNavigation,
+  appInfoActions,
 }: IAppDetailNavProps) => {
   const { appSidebarExpand, setAppSidebarExpand } = useAppStore(useShallow(state => ({
     appSidebarExpand: state.appSidebarExpand,
@@ -93,7 +92,10 @@ const AppDetailNav = ({
   if (inWorkflowCanvas && hideHeader) {
     return (
       <div className="flex w-0 shrink-0">
-        <AppSidebarDropdown navigation={navigation} />
+        <AppSidebarDropdown
+          navigation={navigation}
+          appInfoActions={appInfoActions}
+        />
       </div>
     )
   }
@@ -120,11 +122,18 @@ const AppDetailNav = ({
           expand ? 'p-2' : 'p-1',
         )}
       >
-        {renderHeader?.(appSidebarExpand)}
-        {!renderHeader && iconType === 'app' && (
-          <AppInfo expand={expand} />
+        {iconType === 'app' && (
+          appInfoActions
+            ? (
+                <AppInfoView
+                  expand={expand}
+                  actions={appInfoActions}
+                  renderDetail={false}
+                />
+              )
+            : <AppInfo expand={expand} />
         )}
-        {!renderHeader && iconType !== 'app' && (
+        {iconType !== 'app' && (
           <DatasetInfo expand={expand} />
         )}
       </div>
@@ -153,8 +162,7 @@ const AppDetailNav = ({
           expand ? 'px-3 py-2' : 'p-3',
         )}
       >
-        {renderNavigation?.(appSidebarExpand)}
-        {!renderNavigation && navigation.map((item, index) => {
+        {navigation.map((item, index) => {
           return (
             <NavLink
               key={index}

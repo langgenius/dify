@@ -11,6 +11,7 @@ type SwaggerSchema = JsonObject & {
   '$ref'?: string
   'x-nullable'?: boolean
   'additionalProperties'?: unknown
+  'allOf'?: SwaggerSchema[]
   'anyOf'?: SwaggerSchema[]
   'const'?: unknown
   'default'?: unknown
@@ -19,6 +20,7 @@ type SwaggerSchema = JsonObject & {
   'enum'?: unknown[]
   'format'?: string
   'items'?: SwaggerSchema
+  'oneOf'?: SwaggerSchema[]
   'properties'?: Record<string, SwaggerSchema>
   'required'?: string[]
   'type'?: string
@@ -38,6 +40,8 @@ type SwaggerResponse = JsonObject & {
 }
 
 type SwaggerOperation = JsonObject & {
+  deprecated?: boolean
+  description?: string
   operationId?: string
   parameters?: SwaggerParameter[]
   responses?: Record<string, SwaggerResponse>
@@ -54,8 +58,16 @@ type ApiSpec = {
 }
 
 type ApiJob = {
+  clean?: boolean
   document: SwaggerDocument
   outputPath: string
+  plugins?: UserConfig['plugins']
+  source?: {
+    callback: () => void
+    enabled: true
+    path: null
+    serialize: () => string
+  }
 }
 
 type ApiContractOperation = {
@@ -63,10 +75,17 @@ type ApiContractOperation = {
   path: string
 }
 
+type ApiReadinessSurfaceStats = {
+  notReady: number
+  total: number
+}
+
 const currentDir = path.dirname(fileURLToPath(import.meta.url))
 const apiOpenApiDir = path.resolve(currentDir, 'openapi')
+const apiReadinessStatsPath = path.resolve(currentDir, 'generated/api/readiness.json')
 
 const operationMethods = new Set(['delete', 'get', 'patch', 'post', 'put'])
+const noBodyResponseStatuses = new Set(['204', '205', '304'])
 
 const apiSpecs: ApiSpec[] = [
   { filename: 'console-swagger.json', name: 'console' },
@@ -74,12 +93,22 @@ const apiSpecs: ApiSpec[] = [
   { filename: 'service-swagger.json', name: 'service' },
 ]
 
+const inaccurateGeneratedContractDescription = 'Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.'
+const apiReadinessStats: Record<string, ApiReadinessSurfaceStats> = {}
+
 const isObject = (value: unknown): value is JsonObject => {
   return !!value && typeof value === 'object' && !Array.isArray(value)
 }
 
 const unknownObjectSchema = (): SwaggerSchema => ({
   additionalProperties: true,
+  type: 'object',
+})
+
+const noContentSchema = (): SwaggerSchema => ({
+  // Hey API's Swagger 2.0 pipeline currently needs a response schema symbol even for no-content responses.
+  additionalProperties: false,
+  properties: {},
   type: 'object',
 })
 
@@ -425,7 +454,12 @@ const normalizeGetBodyParameters = (
 const normalizeResponses = (operation: SwaggerOperation) => {
   const responses = operation.responses ??= {}
 
-  for (const response of Object.values(responses)) {
+  for (const [status, response] of Object.entries(responses)) {
+    if (noBodyResponseStatuses.has(status)) {
+      response.schema = noContentSchema()
+      continue
+    }
+
     if (!response.schema)
       response.schema = unknownObjectSchema()
   }
@@ -438,7 +472,103 @@ const normalizeResponses = (operation: SwaggerOperation) => {
   }
 }
 
-const normalizeOperations = (document: SwaggerDocument) => {
+const hasProperties = (schema: SwaggerSchema) => {
+  return isObject(schema.properties) && Object.keys(schema.properties).length > 0
+}
+
+const isEmptySchemaObject = (value: unknown) => {
+  return isObject(value) && Object.keys(value).length === 0
+}
+
+const isLooseObjectSchema = (schema: SwaggerSchema) => {
+  if (hasProperties(schema))
+    return false
+
+  if (schema.additionalProperties === true || isEmptySchemaObject(schema.additionalProperties))
+    return true
+
+  return schema.type === 'object' && schema.additionalProperties === undefined
+}
+
+const hasLooseSchema = (
+  schema: SwaggerSchema | undefined,
+  definitions: Record<string, SwaggerSchema>,
+  visitedRefs = new Set<string>(),
+): boolean => {
+  if (!schema)
+    return true
+
+  const ref = schema?.$ref
+  if (ref?.startsWith('#/definitions/')) {
+    const refName = ref.slice('#/definitions/'.length)
+    if (visitedRefs.has(refName))
+      return false
+
+    return hasLooseSchema(definitions[refName], definitions, new Set([...visitedRefs, refName]))
+  }
+
+  const normalizedSchema = withoutNullableWrapper(schema)
+
+  for (const variants of [normalizedSchema.allOf, normalizedSchema.anyOf, normalizedSchema.oneOf]) {
+    if (Array.isArray(variants) && variants.some(item => !isNullSchema(item) && hasLooseSchema(item, definitions, visitedRefs)))
+      return true
+  }
+
+  if (normalizedSchema.type === 'array')
+    return hasLooseSchema(normalizedSchema.items, definitions, visitedRefs)
+
+  if (isLooseObjectSchema(normalizedSchema))
+    return true
+
+  if (isObject(normalizedSchema.additionalProperties) && hasLooseSchema(normalizedSchema.additionalProperties, definitions, visitedRefs))
+    return true
+
+  return Object.values(normalizedSchema.properties ?? {})
+    .some(property => hasLooseSchema(property, definitions, visitedRefs))
+}
+
+const hasPossiblyInaccurateGeneratedContractTypes = (
+  operation: SwaggerOperation,
+  definitions: Record<string, SwaggerSchema>,
+) => {
+  const successResponses = Object.entries(operation.responses ?? {})
+    .filter(([status]) => /^2\d\d$/.test(status))
+
+  if (successResponses.length === 0)
+    return true
+
+  const successResponsesWithBody = successResponses.filter(([status]) => !noBodyResponseStatuses.has(status))
+  if (successResponsesWithBody.some(([, response]) => hasLooseSchema(response.schema, definitions)))
+    return true
+
+  return operation.parameters?.some((parameter) => {
+    return parameter.in === 'body' && hasLooseSchema(parameter.schema, definitions)
+  }) ?? false
+}
+
+const appendOperationDescription = (operation: SwaggerOperation, description: string) => {
+  const currentDescription = operation.description?.trim()
+  operation.description = currentDescription ? `${currentDescription}\n\n${description}` : description
+}
+
+const markPossiblyInaccurateGeneratedContract = (operation: SwaggerOperation) => {
+  operation.deprecated = true
+  appendOperationDescription(operation, inaccurateGeneratedContractDescription)
+}
+
+const recordApiReadiness = (surface: string, isReady: boolean) => {
+  const stats = apiReadinessStats[surface] ??= {
+    notReady: 0,
+    total: 0,
+  }
+
+  stats.total += 1
+
+  if (!isReady)
+    stats.notReady += 1
+}
+
+const normalizeOperations = (document: SwaggerDocument, surface: string) => {
   const definitions = document.definitions ??= {}
 
   for (const [routePath, pathItem] of Object.entries(document.paths ?? {})) {
@@ -450,14 +580,19 @@ const normalizeOperations = (document: SwaggerDocument) => {
       swaggerOperation.operationId = operationId(method, routePath)
 
       normalizeResponses(swaggerOperation)
+      const hasPossiblyInaccurateTypes = hasPossiblyInaccurateGeneratedContractTypes(swaggerOperation, definitions)
+      recordApiReadiness(surface, !hasPossiblyInaccurateTypes)
 
       if (method === 'get')
         normalizeGetBodyParameters(swaggerOperation, definitions)
+
+      if (hasPossiblyInaccurateTypes)
+        markPossiblyInaccurateGeneratedContract(swaggerOperation)
     }
   }
 }
 
-const normalizeApiSwagger = (document: SwaggerDocument) => {
+const normalizeApiSwagger = (document: SwaggerDocument, surface: string) => {
   document.definitions ??= {}
 
   // Flask-RESTX emits Pydantic nested $defs inside individual schemas while
@@ -466,9 +601,23 @@ const normalizeApiSwagger = (document: SwaggerDocument) => {
   ensureReferencedDefinitions(document)
   normalizeNullableAnyOf(document)
   removeNullDefaults(document)
-  normalizeOperations(document)
+  normalizeOperations(document, surface)
 
   return document
+}
+
+const writeApiReadinessStats = () => {
+  const sortedSurfaces = Object.entries(apiReadinessStats)
+    .sort(([left], [right]) => left.localeCompare(right))
+
+  fs.mkdirSync(path.dirname(apiReadinessStatsPath), { recursive: true })
+  fs.writeFileSync(
+    apiReadinessStatsPath,
+    `${JSON.stringify({
+      surfaces: Object.fromEntries(sortedSurfaces),
+      warning: inaccurateGeneratedContractDescription,
+    }, null, 2)}\n`,
+  )
 }
 
 const topLevelPathSegment = (routePath: string) => {
@@ -520,6 +669,50 @@ const cloneDocumentWithPaths = (
   } satisfies SwaggerDocument
 }
 
+const consoleContractEntryContent = (segments: string[]) => {
+  const contracts = segments.map((segment) => {
+    return {
+      importPath: toKebabCase(segment),
+      name: toCamelCase(segmentWords(segment)),
+    }
+  })
+
+  const imports = contracts
+    .map(contract => `import { ${contract.name} } from './${contract.importPath}/orpc.gen'`)
+    .join('\n')
+  const contractEntries = contracts.map(contract => `  ${contract.name},`).join('\n')
+
+  return `// This file is auto-generated by @hey-api/openapi-ts
+
+${imports}
+
+export const contract = {
+${contractEntries}
+}
+`
+}
+
+const writeConsoleContractEntry = (segments: string[]) => {
+  const entryPath = path.resolve(currentDir, 'generated/api/console/orpc.gen.ts')
+  fs.mkdirSync(path.dirname(entryPath), { recursive: true })
+  fs.writeFileSync(entryPath, consoleContractEntryContent(segments))
+}
+
+const createConsoleContractEntryJob = (document: SwaggerDocument, segments: string[]): ApiJob => {
+  return {
+    clean: false,
+    document,
+    outputPath: 'generated/api/console',
+    plugins: [],
+    source: {
+      callback: () => writeConsoleContractEntry(segments),
+      enabled: true,
+      path: null,
+      serialize: () => '',
+    },
+  }
+}
+
 const splitConsoleDocument = (document: SwaggerDocument) => {
   const pathsBySegment = new Map<string, Record<string, Record<string, unknown>>>()
 
@@ -530,16 +723,17 @@ const splitConsoleDocument = (document: SwaggerDocument) => {
     pathsBySegment.set(segment, paths)
   }
 
-  return [...pathsBySegment.entries()]
-    .sort(([left], [right]) => left.localeCompare(right))
-    .map(([segment, paths]): ApiJob => ({
-      document: cloneDocumentWithPaths(document, paths),
-      outputPath: `generated/api/console/${toKebabCase(segment)}`,
-    }))
+  const segments = [...pathsBySegment.keys()].sort((left, right) => left.localeCompare(right))
+  const jobs = segments.map((segment): ApiJob => ({
+    document: cloneDocumentWithPaths(document, pathsBySegment.get(segment) ?? {}),
+    outputPath: `generated/api/console/${toKebabCase(segment)}`,
+  }))
+
+  return [...jobs, createConsoleContractEntryJob(document, segments)]
 }
 
 const createApiJobs = (spec: ApiSpec): ApiJob[] => {
-  const document = normalizeApiSwagger(readApiSwagger(spec.filename))
+  const document = normalizeApiSwagger(readApiSwagger(spec.filename), spec.name)
 
   if (spec.name === 'console')
     return splitConsoleDocument(document)
@@ -552,29 +746,24 @@ const createApiJobs = (spec: ApiSpec): ApiJob[] => {
   ]
 }
 
+const apiJobs = apiSpecs.flatMap(createApiJobs)
+writeApiReadinessStats()
+
 const createApiConfig = (job: ApiJob): UserConfig => ({
   input: job.document,
   logs: {
     file: false,
   },
   output: {
+    ...(job.clean === undefined ? {} : { clean: job.clean }),
     entryFile: false,
     fileName: {
       suffix: '.gen',
     },
     path: job.outputPath,
-    postProcess: [
-      {
-        args: ['fmt', '{{path}}'],
-        command: 'vp',
-      },
-      {
-        args: ['--fix', '{{path}}/*.ts'],
-        command: 'eslint',
-      },
-    ],
+    ...(job.source ? { source: job.source } : {}),
   },
-  plugins: [
+  plugins: job.plugins ?? [
     {
       'comments': false,
       'name': '@hey-api/typescript',
@@ -607,4 +796,4 @@ const createApiConfig = (job: ApiJob): UserConfig => ({
   ],
 })
 
-export default defineConfig(apiSpecs.flatMap(createApiJobs).map(createApiConfig))
+export default defineConfig(apiJobs.map(createApiConfig))

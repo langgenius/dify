@@ -328,22 +328,14 @@ describe('Filter', () => {
       const user = userEvent.setup()
       const setQueryParams = vi.fn()
 
-      const { container } = render(
+      render(
         <Filter
           queryParams={createDefaultQueryParams({ keyword: 'test' })}
           setQueryParams={setQueryParams}
         />,
       )
 
-      // The Input component renders a clear icon div inside the input wrapper
-      // when showClearIcon is true and value exists
-      const inputWrapper = container.querySelector('.w-\\[200px\\]')
-
-      // Find the clear icon div (has cursor-pointer class and contains RiCloseCircleFill)
-      const clearIconDiv = inputWrapper?.querySelector('div.cursor-pointer')
-
-      expect(clearIconDiv)!.toBeInTheDocument()
-      await user.click(clearIconDiv!)
+      await user.click(screen.getByRole('button', { name: 'common.operation.clear' }))
 
       expect(setQueryParams).toHaveBeenCalledWith({
         status: 'all',

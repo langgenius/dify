@@ -23,8 +23,7 @@ import DatasetDetailContext from '@/context/dataset-detail'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import useDocumentTitle from '@/hooks/use-document-title'
-import { useSnippetAndEvaluationPlanAccess } from '@/hooks/use-snippet-and-evaluation-plan-access'
-import { usePathname } from '@/next/navigation'
+import { usePathname, useRouter } from '@/next/navigation'
 import { useDatasetDetail, useDatasetRelatedApps } from '@/service/knowledge/use-dataset'
 
 type IAppDetailLayoutProps = {
@@ -32,8 +31,17 @@ type IAppDetailLayoutProps = {
   datasetId: string
 }
 
-const EvaluationIcon = ({ className }: { className?: string }) => {
-  return <span aria-hidden className={cn('i-custom-vender-line-others-evaluation', className)} />
+const getResponseStatus = (error: unknown) => {
+  if (error instanceof Response)
+    return error.status
+
+  if (typeof error === 'object' && error && 'status' in error && typeof error.status === 'number')
+    return error.status
+}
+
+const shouldRedirectToDatasetList = (error: unknown) => {
+  const status = getResponseStatus(error)
+  return status === 403 || status === 404
 }
 
 const DatasetDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
@@ -42,6 +50,7 @@ const DatasetDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
     datasetId,
   } = props
   const { t } = useTranslation()
+  const router = useRouter()
   const pathname = usePathname()
   const hideSideBar = pathname.endsWith('documents/create') || pathname.endsWith('documents/create-from-pipeline')
   const isPipelineCanvas = pathname.endsWith('/pipeline')
@@ -54,15 +63,14 @@ const DatasetDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
       setHideHeader(v.payload)
   })
   const { isCurrentWorkspaceDatasetOperator } = useAppContext()
-  const { canAccess: canAccessSnippetsAndEvaluation } = useSnippetAndEvaluationPlanAccess()
 
   const media = useBreakpoints()
   const isMobile = media === MediaType.mobile
 
   const { data: datasetRes, error, refetch: mutateDatasetRes } = useDatasetDetail(datasetId)
+  const shouldRedirect = shouldRedirectToDatasetList(error)
 
-  const { data: relatedApps } = useDatasetRelatedApps(datasetId)
-  const isRagPipelineDataset = datasetRes?.runtime_mode === 'rag_pipeline'
+  const { data: relatedApps } = useDatasetRelatedApps(datasetId, { enabled: !!datasetRes && !shouldRedirect })
 
   const isButtonDisabledWithPipeline = useMemo(() => {
     if (!datasetRes)
@@ -93,36 +101,24 @@ const DatasetDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
     ]
 
     if (datasetRes?.provider !== 'external') {
-      return [
-        {
-          name: t('datasetMenus.documents', { ns: 'common' }),
-          href: `/datasets/${datasetId}/documents`,
-          icon: RiFileTextLine,
-          selectedIcon: RiFileTextFill,
-          disabled: isButtonDisabledWithPipeline,
-        },
-        {
-          name: t('datasetMenus.pipeline', { ns: 'common' }),
-          href: `/datasets/${datasetId}/pipeline`,
-          icon: PipelineLine as RemixiconComponentType,
-          selectedIcon: PipelineFill as RemixiconComponentType,
-          disabled: false,
-        },
-        ...baseNavigation,
-        ...(isRagPipelineDataset && canAccessSnippetsAndEvaluation
-          ? [{
-              name: t('datasetMenus.evaluation', { ns: 'common' }),
-              href: `/datasets/${datasetId}/evaluation`,
-              icon: EvaluationIcon,
-              selectedIcon: EvaluationIcon,
-              disabled: isButtonDisabledWithPipeline,
-            }]
-          : []),
-      ]
+      baseNavigation.unshift({
+        name: t('datasetMenus.pipeline', { ns: 'common' }),
+        href: `/datasets/${datasetId}/pipeline`,
+        icon: PipelineLine as RemixiconComponentType,
+        selectedIcon: PipelineFill as RemixiconComponentType,
+        disabled: false,
+      })
+      baseNavigation.unshift({
+        name: t('datasetMenus.documents', { ns: 'common' }),
+        href: `/datasets/${datasetId}/documents`,
+        icon: RiFileTextLine,
+        selectedIcon: RiFileTextFill,
+        disabled: isButtonDisabledWithPipeline,
+      })
     }
 
     return baseNavigation
-  }, [canAccessSnippetsAndEvaluation, t, datasetId, isButtonDisabledWithPipeline, isRagPipelineDataset, datasetRes?.provider])
+  }, [t, datasetId, isButtonDisabledWithPipeline, datasetRes?.provider])
 
   useDocumentTitle(datasetRes?.name || t('menus.datasets', { ns: 'common' }))
 
@@ -134,7 +130,15 @@ const DatasetDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
     setAppSidebarExpand(isMobile ? mode : localeMode)
   }, [isMobile, setAppSidebarExpand])
 
+  useEffect(() => {
+    if (shouldRedirect)
+      router.replace('/datasets')
+  }, [router, shouldRedirect])
+
   if (!datasetRes && !error)
+    return <Loading type="app" />
+
+  if (shouldRedirect)
     return <Loading type="app" />
 
   return (

@@ -398,7 +398,7 @@ class TestWorkflowDraftVariableService:
         self,
         mock_engine,
         mock_session,
-        monkeypatch,
+        monkeypatch: pytest.MonkeyPatch,
     ):
         """Test resetting a node variable when execution record doesn't exist"""
         mock_repo_session = Mock(spec=Session)
@@ -435,7 +435,7 @@ class TestWorkflowDraftVariableService:
     def test_reset_node_variable_with_valid_execution_record(
         self,
         mock_session,
-        monkeypatch,
+        monkeypatch: pytest.MonkeyPatch,
     ):
         """Test resetting a node variable with valid execution record - should restore from execution"""
         mock_repo_session = Mock(spec=Session)

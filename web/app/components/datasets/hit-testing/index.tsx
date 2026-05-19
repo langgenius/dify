@@ -10,12 +10,19 @@ import type {
 } from '@/models/datasets'
 import type { RetrievalConfig } from '@/types/app'
 import { cn } from '@langgenius/dify-ui/cn'
+import {
+  Drawer,
+  DrawerBackdrop,
+  DrawerContent,
+  DrawerPopup,
+  DrawerPortal,
+  DrawerViewport,
+} from '@langgenius/dify-ui/drawer'
 import { useBoolean } from 'ahooks'
 import * as React from 'react'
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
-import Drawer from '@/app/components/base/drawer'
 import FloatRightContainer from '@/app/components/base/float-right-container'
 import Loading from '@/app/components/base/loading'
 import Pagination from '@/app/components/base/pagination'
@@ -158,7 +165,6 @@ const HitTestingPage: FC<Props> = ({ datasetId }: Props) => {
         isMobile={isMobile}
         isOpen={isShowRightPanel}
         onClose={hideRightPanel}
-        footer={null}
       >
         <div className="flex min-w-0 flex-1 flex-col pt-3">
           {isRetrievalLoading
@@ -181,23 +187,33 @@ const HitTestingPage: FC<Props> = ({ datasetId }: Props) => {
         </div>
       </FloatRightContainer>
       <Drawer
-        unmount={true}
-        isOpen={isShowModifyRetrievalModal}
-        onClose={() => setIsShowModifyRetrievalModal(false)}
-        footer={null}
-        mask={isMobile}
-        panelClassName="mt-16 mx-2 sm:mr-2 mb-3 p-0! max-w-[640px]! rounded-xl"
-      >
-        <ModifyRetrievalModal
-          indexMethod={currentDataset?.indexing_technique || ''}
-          value={retrievalConfig}
-          isShow={isShowModifyRetrievalModal}
-          onHide={() => setIsShowModifyRetrievalModal(false)}
-          onSave={(value) => {
-            setRetrievalConfig(value)
+        open={isShowModifyRetrievalModal}
+        modal
+        swipeDirection="right"
+        onOpenChange={(open) => {
+          if (!open)
             setIsShowModifyRetrievalModal(false)
-          }}
-        />
+        }}
+      >
+        <DrawerPortal>
+          <DrawerBackdrop className={cn(!isMobile && 'bg-transparent')} />
+          <DrawerViewport>
+            <DrawerPopup className="p-0! data-[swipe-direction=right]:top-16 data-[swipe-direction=right]:right-2 data-[swipe-direction=right]:bottom-3 data-[swipe-direction=right]:h-auto data-[swipe-direction=right]:w-full data-[swipe-direction=right]:max-w-[640px] data-[swipe-direction=right]:rounded-xl">
+              <DrawerContent className="flex min-h-0 flex-1 flex-col p-0 pb-0">
+                <ModifyRetrievalModal
+                  indexMethod={currentDataset?.indexing_technique || ''}
+                  value={retrievalConfig}
+                  isShow={isShowModifyRetrievalModal}
+                  onHide={() => setIsShowModifyRetrievalModal(false)}
+                  onSave={(value) => {
+                    setRetrievalConfig(value)
+                    setIsShowModifyRetrievalModal(false)
+                  }}
+                />
+              </DrawerContent>
+            </DrawerPopup>
+          </DrawerViewport>
+        </DrawerPortal>
       </Drawer>
     </div>
   )

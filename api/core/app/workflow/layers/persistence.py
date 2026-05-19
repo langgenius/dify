@@ -15,6 +15,7 @@ from datetime import datetime
 from typing import Any, Union
 
 from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, WorkflowAppGenerateEntity
+from core.helper.trace_id_helper import ParentTraceContext
 from core.ops.entities.trace_entity import TraceTaskName
 from core.ops.ops_trace_manager import TraceQueueManager, TraceTask
 from core.repositories.factory import WorkflowExecutionRepository, WorkflowNodeExecutionRepository
@@ -104,52 +105,31 @@ class WorkflowPersistenceLayer(GraphEngineLayer):
         self._node_sequence = 0
 
     def on_event(self, event: GraphEngineEvent) -> None:
-        if isinstance(event, GraphRunStartedEvent):
-            self._handle_graph_run_started()
-            return
-
-        if isinstance(event, GraphRunSucceededEvent):
-            self._handle_graph_run_succeeded(event)
-            return
-
-        if isinstance(event, GraphRunPartialSucceededEvent):
-            self._handle_graph_run_partial_succeeded(event)
-            return
-
-        if isinstance(event, GraphRunFailedEvent):
-            self._handle_graph_run_failed(event)
-            return
-
-        if isinstance(event, GraphRunAbortedEvent):
-            self._handle_graph_run_aborted(event)
-            return
-
-        if isinstance(event, GraphRunPausedEvent):
-            self._handle_graph_run_paused(event)
-            return
-
-        if isinstance(event, NodeRunRetryEvent):
-            self._handle_node_retry(event)
-            return
-
-        if isinstance(event, NodeRunStartedEvent):
-            self._handle_node_started(event)
-            return
-
-        if isinstance(event, NodeRunSucceededEvent):
-            self._handle_node_succeeded(event)
-            return
-
-        if isinstance(event, NodeRunFailedEvent):
-            self._handle_node_failed(event)
-            return
-
-        if isinstance(event, NodeRunExceptionEvent):
-            self._handle_node_exception(event)
-            return
-
-        if isinstance(event, NodeRunPauseRequestedEvent):
-            self._handle_node_pause_requested(event)
+        match event:
+            case GraphRunStartedEvent():
+                self._handle_graph_run_started()
+            case GraphRunSucceededEvent():
+                self._handle_graph_run_succeeded(event)
+            case GraphRunPartialSucceededEvent():
+                self._handle_graph_run_partial_succeeded(event)
+            case GraphRunFailedEvent():
+                self._handle_graph_run_failed(event)
+            case GraphRunAbortedEvent():
+                self._handle_graph_run_aborted(event)
+            case GraphRunPausedEvent():
+                self._handle_graph_run_paused(event)
+            case NodeRunRetryEvent():
+                self._handle_node_retry(event)
+            case NodeRunStartedEvent():
+                self._handle_node_started(event)
+            case NodeRunSucceededEvent():
+                self._handle_node_succeeded(event)
+            case NodeRunFailedEvent():
+                self._handle_node_failed(event)
+            case NodeRunExceptionEvent():
+                self._handle_node_exception(event)
+            case NodeRunPauseRequestedEvent():
+                self._handle_node_pause_requested(event)
 
     def on_graph_end(self, error: Exception | None) -> None:
         return
@@ -403,8 +383,13 @@ class WorkflowPersistenceLayer(GraphEngineLayer):
 
         conversation_id = self._system_variables().get(SystemVariableKey.CONVERSATION_ID.value)
         external_trace_id = None
+        parent_trace_context = None
         if isinstance(self._application_generate_entity, (WorkflowAppGenerateEntity, AdvancedChatAppGenerateEntity)):
-            external_trace_id = self._application_generate_entity.extras.get("external_trace_id")
+            extras = self._application_generate_entity.extras
+            external_trace_id = extras.get("external_trace_id")
+            parent_trace_context = extras.get("parent_trace_context")
+            if isinstance(parent_trace_context, ParentTraceContext):
+                parent_trace_context = parent_trace_context.model_dump(exclude_none=True)
 
         trace_task = TraceTask(
             TraceTaskName.WORKFLOW_TRACE,
@@ -412,6 +397,7 @@ class WorkflowPersistenceLayer(GraphEngineLayer):
             conversation_id=conversation_id,
             user_id=self._trace_manager.user_id,
             external_trace_id=external_trace_id,
+            parent_trace_context=parent_trace_context,
         )
         self._trace_manager.add_trace_task(trace_task)
 

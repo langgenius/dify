@@ -1,3 +1,4 @@
+import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { RiInfoI } from '@remixicon/react'
 import * as React from 'react'
 
@@ -11,14 +12,20 @@ const Tooltip = ({
   if (!content)
     return null
   return (
-    <div className="group relative z-10 size-[18px] overflow-visible">
-      <div className="absolute right-0 bottom-0 -z-10 hidden w-[260px] bg-saas-dify-blue-static px-5 py-[18px] system-xs-regular text-text-primary-on-surface group-hover:block">
-        {content}
-      </div>
-      <div className="flex h-full w-full items-center justify-center rounded-sm bg-state-base-hover transition-all duration-500 ease-in-out group-hover:rounded-none group-hover:bg-saas-dify-blue-static">
+    <Popover>
+      <PopoverTrigger
+        openOnHover
+        delay={0}
+        closeDelay={0}
+        aria-label={content}
+        className="group relative z-10 flex size-[18px] items-center justify-center rounded-sm border-0 bg-state-base-hover p-0 transition-[border-radius,background-color] duration-500 ease-in-out hover:rounded-none hover:bg-saas-dify-blue-static"
+      >
         <RiInfoI className="size-3.5 text-text-tertiary group-hover:text-text-primary-on-surface" data-testid="tooltip-icon" />
-      </div>
-    </div>
+      </PopoverTrigger>
+      <PopoverContent placement="top-end" popupClassName="w-[260px] rounded-none border-0 bg-saas-dify-blue-static px-5 py-[18px] system-xs-regular text-text-primary-on-surface shadow-none">
+        {content}
+      </PopoverContent>
+    </Popover>
   )
 }
 

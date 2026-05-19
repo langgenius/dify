@@ -8,15 +8,13 @@ import { useBoolean, useDebounceFn } from 'ahooks'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Input from '@/app/components/base/input'
-import TagManagementModal from '@/app/components/base/tag-management'
-import TagFilter from '@/app/components/base/tag-management/filter'
-// Hooks
-import { useStore as useTagStore } from '@/app/components/base/tag-management/store'
 import CheckboxWithLabel from '@/app/components/datasets/create/website/base/checkbox-with-label'
 import { useAppContext, useSelector as useAppContextSelector } from '@/context/app-context'
 import { useExternalApiPanel } from '@/context/external-api-panel-context'
+import { TagFilter } from '@/features/tag-management/components/tag-filter'
+import { TagManagementModal } from '@/features/tag-management/components/tag-management-modal'
 import useDocumentTitle from '@/hooks/use-document-title'
-import { useDatasetApiBaseUrl } from '@/service/knowledge/use-dataset'
+import { useDatasetApiBaseUrl, useInvalidDatasetList } from '@/service/knowledge/use-dataset'
 import { systemFeaturesQueryOptions } from '@/service/system-features'
 // Components
 import ExternalAPIPanel from '../external-api/external-api-panel'
@@ -28,9 +26,10 @@ const List = () => {
   const { t } = useTranslation()
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const { isCurrentWorkspaceOwner } = useAppContext()
-  const showTagManagementModal = useTagStore(s => s.showTagManagementModal)
+  const [showTagManagementModal, setShowTagManagementModal] = useState(false)
   const { showExternalApiPanel, setShowExternalApiPanel } = useExternalApiPanel()
   const [includeAll, { toggle: toggleIncludeAll }] = useBoolean(false)
+  const invalidDatasetList = useInvalidDatasetList()
   useDocumentTitle(t('knowledge', { ns: 'dataset' }))
 
   const [keywords, setKeywords] = useState('')
@@ -56,7 +55,7 @@ const List = () => {
   const { data: apiBaseInfo } = useDatasetApiBaseUrl()
 
   return (
-    <div className="scroll-container relative flex grow flex-col overflow-y-auto bg-background-body">
+    <div className="relative flex grow flex-col overflow-y-auto bg-background-body">
       <div className="sticky top-0 z-10 flex items-center justify-end gap-x-1 bg-background-body px-12 pt-4 pb-2">
         <div className="flex items-center justify-center gap-2">
           {isCurrentWorkspaceOwner && (
@@ -69,7 +68,7 @@ const List = () => {
               tooltip={t('allKnowledgeDescription', { ns: 'dataset' }) as string}
             />
           )}
-          <TagFilter type="knowledge" value={tagFilterValue} onChange={handleTagsChange} />
+          <TagFilter type="knowledge" value={tagFilterValue} onChange={handleTagsChange} onOpenTagManagement={() => setShowTagManagementModal(true)} />
           <Input
             showLeftIcon
             showClearIcon
@@ -93,11 +92,14 @@ const List = () => {
           </Button>
         </div>
       </div>
-      <Datasets tags={tagIDs} keywords={searchKeywords} includeAll={includeAll} />
+      <Datasets tags={tagIDs} keywords={searchKeywords} includeAll={includeAll} onOpenTagManagement={() => setShowTagManagementModal(true)} />
       {!systemFeatures.branding.enabled && <DatasetFooter />}
-      {showTagManagementModal && (
-        <TagManagementModal type="knowledge" show={showTagManagementModal} />
-      )}
+      <TagManagementModal
+        type="knowledge"
+        show={showTagManagementModal}
+        onClose={() => setShowTagManagementModal(false)}
+        onTagsChange={invalidDatasetList}
+      />
       {showExternalApiPanel && <ExternalAPIPanel onClose={() => setShowExternalApiPanel(false)} />}
     </div>
   )

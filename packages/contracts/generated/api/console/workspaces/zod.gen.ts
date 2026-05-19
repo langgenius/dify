@@ -173,7 +173,7 @@ export const zParserCredentialValidate = z.object({
  * ParserPreferredProviderType
  */
 export const zParserPreferredProviderType = z.object({
-  preferred_provider_type: z.enum(['system', 'custom']),
+  preferred_provider_type: z.enum(['custom', 'system']),
 })
 
 /**
@@ -431,7 +431,7 @@ export const zAccountWithRoleList = z.object({
 /**
  * TenantAccountRole
  */
-export const zTenantAccountRole = z.enum(['owner', 'admin', 'editor', 'normal', 'dataset_operator'])
+export const zTenantAccountRole = z.enum(['admin', 'dataset_operator', 'editor', 'normal', 'owner'])
 
 /**
  * MemberInvitePayload
@@ -449,10 +449,10 @@ export const zMemberInvitePayload = z.object({
  */
 export const zModelType = z.enum([
   'llm',
-  'text-embedding',
+  'moderation',
   'rerank',
   'speech2text',
-  'moderation',
+  'text-embedding',
   'tts',
 ])
 
@@ -559,12 +559,12 @@ export const zParserPostModels = z.object({
 /**
  * DebugPermission
  */
-export const zDebugPermission = z.enum(['everyone', 'admins', 'noone'])
+export const zDebugPermission = z.enum(['admins', 'everyone', 'noone'])
 
 /**
  * InstallPermission
  */
-export const zInstallPermission = z.enum(['everyone', 'admins', 'noone'])
+export const zInstallPermission = z.enum(['admins', 'everyone', 'noone'])
 
 /**
  * ParserPermissionChange
@@ -588,10 +588,10 @@ export const zPluginPermissionSettingsPayload = z.object({
  * Enum class for api provider schema type.
  */
 export const zApiProviderSchemaType = z.enum([
+  'openai_actions',
+  'openai_plugin',
   'openapi',
   'swagger',
-  'openai_plugin',
-  'openai_actions',
 ])
 
 /**
@@ -657,7 +657,7 @@ export const zStrategySetting = z.enum(['disabled', 'fix_only', 'latest'])
 /**
  * UpgradeMode
  */
-export const zUpgradeMode = z.enum(['all', 'partial', 'exclude'])
+export const zUpgradeMode = z.enum(['all', 'exclude', 'partial'])
 
 /**
  * PluginAutoUpgradeSettingsPayload
@@ -681,7 +681,7 @@ export const zParserPreferencesChange = z.object({
 /**
  * ToolParameterForm
  */
-export const zToolParameterForm = z.enum(['schema', 'form', 'llm'])
+export const zToolParameterForm = z.enum(['form', 'llm', 'schema'])
 
 /**
  * WorkflowToolParameterConfiguration
@@ -1214,8 +1214,8 @@ export const zPostWorkspacesCurrentModelProvidersByProviderModelsLoadBalancingCo
 
 export const zPostWorkspacesCurrentModelProvidersByProviderModelsLoadBalancingConfigsByConfigIdCredentialsValidatePath
   = z.object({
-    provider: z.string(),
     config_id: z.string(),
+    provider: z.string(),
   })
 
 /**
@@ -1484,8 +1484,8 @@ export const zPostWorkspacesCurrentPluginTasksByTaskIdDeleteResponse = z.record(
 )
 
 export const zPostWorkspacesCurrentPluginTasksByTaskIdDeleteByIdentifierPath = z.object({
-  task_id: z.string(),
   identifier: z.string(),
+  task_id: z.string(),
 })
 
 /**
@@ -1623,8 +1623,8 @@ export const zGetWorkspacesCurrentToolProviderBuiltinByProviderCredentialInfoRes
 
 export const zGetWorkspacesCurrentToolProviderBuiltinByProviderCredentialSchemaByCredentialTypePath
   = z.object({
-    provider: z.string(),
     credential_type: z.string(),
+    provider: z.string(),
   })
 
 /**
@@ -2135,10 +2135,10 @@ export const zPostWorkspacesSwitchBody = zSwitchWorkspacePayload
 export const zPostWorkspacesSwitchResponse = z.record(z.string(), z.unknown())
 
 export const zGetWorkspacesByTenantIdModelProvidersByProviderByIconTypeByLangPath = z.object({
-  tenant_id: z.string(),
-  provider: z.string(),
   icon_type: z.string(),
   lang: z.string(),
+  provider: z.string(),
+  tenant_id: z.string(),
 })
 
 /**

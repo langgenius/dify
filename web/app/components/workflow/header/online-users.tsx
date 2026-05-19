@@ -189,7 +189,6 @@ const OnlineUsers = () => {
                 placement="bottom-start"
                 sideOffset={8}
                 alignOffset={-48}
-                className="z-[9999]"
                 popupClassName={cn(
                   'mt-1.5 flex max-h-[200px] w-[240px] flex-col overflow-y-auto',
                   'rounded-xl border-[0.5px] border-components-panel-border',

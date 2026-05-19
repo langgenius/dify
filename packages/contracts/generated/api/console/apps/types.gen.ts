@@ -17,7 +17,7 @@ export type CreateAppPayload = {
   icon?: string | null
   icon_background?: string | null
   icon_type?: IconType
-  mode: 'chat' | 'agent-chat' | 'advanced-chat' | 'workflow' | 'completion'
+  mode: 'advanced-chat' | 'agent-chat' | 'chat' | 'completion' | 'workflow'
   name: string
 }
 
@@ -68,6 +68,14 @@ export type CheckDependenciesResult = {
   leaked_dependencies?: Array<PluginDependency>
 }
 
+export type WorkflowOnlineUsersPayload = {
+  app_ids?: Array<string>
+}
+
+export type WorkflowOnlineUsersResponse = {
+  data: Array<WorkflowOnlineUsersByApp>
+}
+
 export type AppDetailWithSite = {
   access_mode?: string | null
   api_base_url?: string | null
@@ -104,12 +112,19 @@ export type UpdateAppPayload = {
   use_icon_as_answer_icon?: boolean | null
 }
 
-export type AdvancedChatWorkflowRunPagination = {
-  [key: string]: unknown
+export type AdvancedChatWorkflowRunPaginationResponse = {
+  data: Array<AdvancedChatWorkflowRunForListResponse>
+  has_more: boolean
+  limit: number
 }
 
-export type WorkflowRunCount = {
-  [key: string]: unknown
+export type WorkflowRunCountResponse = {
+  failed: number
+  partial_succeeded: number
+  running: number
+  stopped: number
+  succeeded: number
+  total: number
 }
 
 export type HumanInputFormPreviewPayload = {
@@ -309,7 +324,7 @@ export type AppExportResponse = {
 export type MessageFeedbackPayload = {
   content?: string | null
   message_id: string
-  rating?: 'like' | 'dislike' | null
+  rating?: 'dislike' | 'like' | null
 }
 
 export type AppIconPayload = {
@@ -415,7 +430,7 @@ export type AppSiteUpdatePayload = {
   copyright?: string | null
   custom_disclaimer?: string | null
   customize_domain?: string | null
-  customize_token_strategy?: 'must' | 'allow' | 'not_allow' | null
+  customize_token_strategy?: 'allow' | 'must' | 'not_allow' | null
   default_language?: string | null
   description?: string | null
   icon?: string | null
@@ -510,24 +525,43 @@ export type WorkflowArchivedLogPaginationResponse = {
   total: number
 }
 
-export type WorkflowRunPagination = {
-  [key: string]: unknown
+export type WorkflowRunPaginationResponse = {
+  data: Array<WorkflowRunForListResponse>
+  has_more: boolean
+  limit: number
 }
 
-export type WorkflowRunDetail = {
-  [key: string]: unknown
+export type WorkflowRunDetailResponse = {
+  created_at?: number | null
+  created_by_account?: SimpleAccount
+  created_by_end_user?: SimpleEndUser
+  created_by_role?: string | null
+  elapsed_time?: number | null
+  error?: string | null
+  exceptions_count?: number | null
+  finished_at?: number | null
+  graph: unknown
+  id: string
+  inputs: unknown
+  outputs: unknown
+  status?: string | null
+  total_steps?: number | null
+  total_tokens?: number | null
+  version?: string | null
 }
 
-export type WorkflowRunExport = {
-  [key: string]: unknown
+export type WorkflowRunExportResponse = {
+  presigned_url?: string | null
+  presigned_url_expires_at?: string | null
+  status: string
 }
 
-export type WorkflowRunNodeExecutionList = {
-  [key: string]: unknown
+export type WorkflowRunNodeExecutionListResponse = {
+  data: Array<WorkflowRunNodeExecutionResponse>
 }
 
-export type WorkflowCommentBasic = {
-  [key: string]: unknown
+export type WorkflowCommentBasicList = {
+  data: Array<WorkflowCommentBasic>
 }
 
 export type WorkflowCommentCreatePayload = {
@@ -538,7 +572,8 @@ export type WorkflowCommentCreatePayload = {
 }
 
 export type WorkflowCommentCreate = {
-  [key: string]: unknown
+  created_at?: number | null
+  id: string
 }
 
 export type WorkflowCommentMentionUsersPayload = {
@@ -546,7 +581,20 @@ export type WorkflowCommentMentionUsersPayload = {
 }
 
 export type WorkflowCommentDetail = {
-  [key: string]: unknown
+  content: string
+  created_at?: number | null
+  created_by: string
+  created_by_account?: WorkflowCommentAccount
+  id: string
+  mentions: Array<WorkflowCommentMention>
+  position_x: number
+  position_y: number
+  replies: Array<WorkflowCommentReply>
+  resolved: boolean
+  resolved_at?: number | null
+  resolved_by?: string | null
+  resolved_by_account?: WorkflowCommentAccount
+  updated_at?: number | null
 }
 
 export type WorkflowCommentUpdatePayload = {
@@ -557,7 +605,8 @@ export type WorkflowCommentUpdatePayload = {
 }
 
 export type WorkflowCommentUpdate = {
-  [key: string]: unknown
+  id: string
+  updated_at?: number | null
 }
 
 export type WorkflowCommentReplyPayload = {
@@ -566,23 +615,49 @@ export type WorkflowCommentReplyPayload = {
 }
 
 export type WorkflowCommentReplyCreate = {
-  [key: string]: unknown
+  created_at?: number | null
+  id: string
 }
 
 export type WorkflowCommentReplyUpdate = {
-  [key: string]: unknown
+  id: string
+  updated_at?: number | null
 }
 
 export type WorkflowCommentResolve = {
-  [key: string]: unknown
+  id: string
+  resolved: boolean
+  resolved_at?: number | null
+  resolved_by?: string | null
 }
 
-export type WorkflowPagination = {
-  [key: string]: unknown
+export type WorkflowPaginationResponse = {
+  has_more: boolean
+  items: Array<WorkflowResponse>
+  limit: number
+  page: number
 }
 
-export type Workflow = {
-  [key: string]: unknown
+export type WorkflowResponse = {
+  conversation_variables: Array<WorkflowConversationVariableResponse>
+  created_at: number
+  created_by?: SimpleAccount
+  environment_variables: Array<WorkflowEnvironmentVariableResponse>
+  features: {
+    [key: string]: unknown
+  }
+  graph: {
+    [key: string]: unknown
+  }
+  hash: string
+  id: string
+  marked_comment: string
+  marked_name: string
+  rag_pipeline_variables: Array<PipelineVariableResponse>
+  tool_published: boolean
+  updated_at: number
+  updated_by?: SimpleAccount
+  version: string
 }
 
 export type SyncDraftWorkflowPayload = {
@@ -602,11 +677,13 @@ export type SyncDraftWorkflowPayload = {
 }
 
 export type SyncDraftWorkflowResponse = {
-  [key: string]: unknown
+  hash?: string
+  result?: string
+  updated_at?: string
 }
 
 export type WorkflowDraftVariableList = {
-  [key: string]: unknown
+  items?: Array<WorkflowDraftVariable>
 }
 
 export type ConversationVariableUpdatePayload = {
@@ -634,8 +711,29 @@ export type HumanInputDeliveryTestPayload = {
   }
 }
 
-export type WorkflowRunNodeExecution = {
-  [key: string]: unknown
+export type WorkflowRunNodeExecutionResponse = {
+  created_at?: number | null
+  created_by_account?: SimpleAccount
+  created_by_end_user?: SimpleEndUser
+  created_by_role?: string | null
+  elapsed_time?: number | null
+  error?: string | null
+  execution_metadata?: unknown
+  extras?: unknown
+  finished_at?: number | null
+  id: string
+  index?: number | null
+  inputs?: unknown
+  inputs_truncated?: boolean | null
+  node_id?: string | null
+  node_type?: string | null
+  outputs?: unknown
+  outputs_truncated?: boolean | null
+  predecessor_node_id?: string | null
+  process_data?: unknown
+  process_data_truncated?: boolean | null
+  status?: string | null
+  title?: string | null
 }
 
 export type DraftWorkflowNodeRunPayload = {
@@ -660,7 +758,7 @@ export type DraftWorkflowRunPayload = {
 }
 
 export type DraftWorkflowTriggerRunRequest = {
-  [key: string]: unknown
+  node_id: string
 }
 
 export type DraftWorkflowTriggerRunAllPayload = {
@@ -668,11 +766,28 @@ export type DraftWorkflowTriggerRunAllPayload = {
 }
 
 export type WorkflowDraftVariableListWithoutValue = {
-  [key: string]: unknown
+  items?: Array<WorkflowDraftVariableWithoutValue>
+  total?: {
+    [key: string]: unknown
+  }
 }
 
 export type WorkflowDraftVariable = {
-  [key: string]: unknown
+  description?: string
+  edited?: boolean
+  full_content?: {
+    [key: string]: unknown
+  }
+  id?: string
+  is_truncated?: boolean
+  name?: string
+  selector?: Array<string>
+  type?: string
+  value?: {
+    [key: string]: unknown
+  }
+  value_type?: string
+  visible?: boolean
 }
 
 export type WorkflowDraftVariableUpdatePayload = {
@@ -734,33 +849,15 @@ export type AppPartial = {
   workflow?: WorkflowPartial
 }
 
-export type IconType = 'image' | 'emoji' | 'link'
+export type IconType = 'emoji' | 'image' | 'link'
 
 export type ModelConfig = {
-  agent_mode_dict?: JsonValue
-  annotation_reply_dict?: JsonValue
-  chat_prompt_config_dict?: JsonValue
-  completion_prompt_config_dict?: JsonValue
-  created_at?: number | null
-  created_by?: string | null
-  dataset_configs_dict?: JsonValue
-  dataset_query_variable?: string | null
-  external_data_tools_list?: JsonValue
-  file_upload_dict?: JsonValue
-  model_dict?: JsonValue
-  more_like_this_dict?: JsonValue
-  opening_statement?: string | null
-  pre_prompt?: string | null
-  prompt_type?: string | null
-  retriever_resource_dict?: JsonValue
-  sensitive_word_avoidance_dict?: JsonValue
-  speech_to_text_dict?: JsonValue
-  suggested_questions_after_answer_dict?: JsonValue
-  suggested_questions_list?: JsonValue
-  text_to_speech_dict?: JsonValue
-  updated_at?: number | null
-  updated_by?: string | null
-  user_input_form_list?: JsonValue
+  completion_params?: {
+    [key: string]: unknown
+  }
+  mode: LlmMode
+  name: string
+  provider: string
 }
 
 export type Tag = {
@@ -779,12 +876,17 @@ export type WorkflowPartial = {
   updated_by?: string | null
 }
 
-export type ImportStatus = 'completed' | 'completed-with-warnings' | 'pending' | 'failed'
+export type ImportStatus = 'completed' | 'completed-with-warnings' | 'failed' | 'pending'
 
 export type PluginDependency = {
   current_identifier?: string | null
   type: Type
   value: unknown
+}
+
+export type WorkflowOnlineUsersByApp = {
+  app_id: string
+  users: Array<WorkflowOnlineUser>
 }
 
 export type DeletedTool = {
@@ -816,6 +918,22 @@ export type Site = {
   updated_at?: number | null
   updated_by?: string | null
   use_icon_as_answer_icon?: boolean | null
+}
+
+export type AdvancedChatWorkflowRunForListResponse = {
+  conversation_id?: string | null
+  created_at?: number | null
+  created_by_account?: SimpleAccount
+  elapsed_time?: number | null
+  exceptions_count?: number | null
+  finished_at?: number | null
+  id: string
+  message_id?: string | null
+  retry_index?: number | null
+  status?: string | null
+  total_steps?: number | null
+  total_tokens?: number | null
+  version?: string | null
 }
 
 export type AnnotationHitHistory = {
@@ -967,7 +1085,7 @@ export type MessageFile = {
   url?: string | null
 }
 
-export type AppMcpServerStatus = 'normal' | 'active' | 'inactive'
+export type AppMcpServerStatus = 'active' | 'inactive' | 'normal'
 
 export type WorkflowAppLogPartialResponse = {
   created_at?: number | null
@@ -989,6 +1107,51 @@ export type WorkflowArchivedLogPartialResponse = {
   workflow_run?: WorkflowRunForArchivedLogResponse
 }
 
+export type WorkflowRunForListResponse = {
+  created_at?: number | null
+  created_by_account?: SimpleAccount
+  elapsed_time?: number | null
+  exceptions_count?: number | null
+  finished_at?: number | null
+  id: string
+  retry_index?: number | null
+  status?: string | null
+  total_steps?: number | null
+  total_tokens?: number | null
+  version?: string | null
+}
+
+export type SimpleAccount = {
+  email: string
+  id: string
+  name: string
+}
+
+export type SimpleEndUser = {
+  id: string
+  is_anonymous: boolean
+  session_id?: string | null
+  type: string
+}
+
+export type WorkflowCommentBasic = {
+  content: string
+  created_at?: number | null
+  created_by: string
+  created_by_account?: WorkflowCommentAccount
+  id: string
+  mention_count: number
+  participants: Array<WorkflowCommentAccount>
+  position_x: number
+  position_y: number
+  reply_count: number
+  resolved: boolean
+  resolved_at?: number | null
+  resolved_by?: string | null
+  resolved_by_account?: WorkflowCommentAccount
+  updated_at?: number | null
+}
+
 export type AccountWithRole = {
   avatar?: string | null
   created_at?: number | null
@@ -1001,6 +1164,78 @@ export type AccountWithRole = {
   status: string
 }
 
+export type WorkflowCommentAccount = {
+  readonly avatar_url: string | null
+  email: string
+  id: string
+  name: string
+}
+
+export type WorkflowCommentMention = {
+  mentioned_user_account?: WorkflowCommentAccount
+  mentioned_user_id: string
+  reply_id?: string | null
+}
+
+export type WorkflowCommentReply = {
+  content: string
+  created_at?: number | null
+  created_by: string
+  created_by_account?: WorkflowCommentAccount
+  id: string
+}
+
+export type WorkflowConversationVariableResponse = {
+  description: string
+  id: string
+  name: string
+  value: {
+    [key: string]: unknown
+  }
+  value_type: string
+}
+
+export type WorkflowEnvironmentVariableResponse = {
+  description: string
+  id: string
+  name: string
+  value: {
+    [key: string]: unknown
+  }
+  value_type: string
+}
+
+export type PipelineVariableResponse = {
+  allowed_file_extensions?: Array<string> | null
+  allowed_file_types?: Array<string> | null
+  allowed_file_upload_methods?: Array<string> | null
+  belong_to_node_id: string
+  default_value?: {
+    [key: string]: unknown
+  }
+  label: string
+  max_length?: number | null
+  options?: Array<string> | null
+  placeholder?: string | null
+  required: boolean
+  tooltips?: string | null
+  type: string
+  unit?: string | null
+  variable: string
+}
+
+export type WorkflowDraftVariableWithoutValue = {
+  description?: string
+  edited?: boolean
+  id?: string
+  is_truncated?: boolean
+  name?: string
+  selector?: Array<string>
+  type?: string
+  value_type?: string
+  visible?: boolean
+}
+
 export type ModelConfigPartial = {
   created_at?: number | null
   created_by?: string | null
@@ -1009,6 +1244,8 @@ export type ModelConfigPartial = {
   updated_at?: number | null
   updated_by?: string | null
 }
+
+export type LlmMode = 'chat' | 'completion'
 
 export type Type = 'github' | 'marketplace' | 'package'
 
@@ -1027,6 +1264,12 @@ export type Marketplace = {
 export type Package = {
   plugin_unique_identifier: string
   version?: string | null
+}
+
+export type WorkflowOnlineUser = {
+  avatar?: string | null
+  user_id: string
+  username: string
 }
 
 export type SimpleModelConfig = {
@@ -1050,20 +1293,14 @@ export type SimpleMessageDetail = {
   query: string
 }
 
-export type SimpleAccount = {
-  email: string
-  id: string
-  name: string
-}
-
 export type HumanInputFormDefinition = {
-  actions?: Array<UserAction>
+  actions?: Array<UserActionConfig>
   display_in_ui?: boolean
   expiration_time: number
   form_content: string
   form_id: string
   form_token?: string | null
-  inputs?: Array<FormInput>
+  inputs?: Array<FormInputConfig>
   node_id: string
   node_title: string
   resolved_default_values?: {
@@ -1080,13 +1317,6 @@ export type HumanInputFormSubmissionData = {
 }
 
 export type ExecutionContentType = 'human_input'
-
-export type SimpleEndUser = {
-  id: string
-  is_anonymous: boolean
-  session_id?: string | null
-  type: string
-}
 
 export type WorkflowRunForLogResponse = {
   created_at?: number | null
@@ -1110,29 +1340,121 @@ export type WorkflowRunForArchivedLogResponse = {
   triggered_from?: string | null
 }
 
-export type UserAction = {
+export type UserActionConfig = {
   button_style?: ButtonStyle
   id: string
   title: string
 }
 
-export type FormInput = {
-  default?: FormInputDefault
+export type FormInputConfig = unknown
+
+export type ButtonStyle = 'accent' | 'default' | 'ghost' | 'primary'
+
+export type ParagraphInputConfig = {
+  default?: StringSource
   output_variable_name: string
-  type: FormInputType
+  type?: string
 }
 
-export type ButtonStyle = 'primary' | 'default' | 'accent' | 'ghost'
+export type SelectInputConfig = {
+  option_source: StringListSource
+  output_variable_name: string
+  type?: string
+}
 
-export type FormInputDefault = {
+export type FileInputConfig = {
+  allowed_file_extensions?: Array<string>
+  allowed_file_types?: Array<FileType>
+  allowed_file_upload_methods?: Array<FileTransferMethod>
+  output_variable_name: string
+  type?: string
+}
+
+export type FileListInputConfig = {
+  allowed_file_extensions?: Array<string>
+  allowed_file_types?: Array<FileType>
+  allowed_file_upload_methods?: Array<FileTransferMethod>
+  number_limits?: number
+  output_variable_name: string
+  type?: string
+}
+
+export type StringSource = {
   selector?: Array<string>
-  type: PlaceholderType
+  type: ValueSourceType
   value?: string
 }
 
-export type FormInputType = 'text_input' | 'paragraph'
+export type StringListSource = {
+  selector?: Array<string>
+  type: ValueSourceType
+  value?: Array<string>
+}
 
-export type PlaceholderType = 'variable' | 'constant'
+export type FileType = 'audio' | 'custom' | 'document' | 'image' | 'video'
+
+export type FileTransferMethod = 'datasource_file' | 'local_file' | 'remote_url' | 'tool_file'
+
+export type ValueSourceType = 'constant' | 'variable'
+
+export type WorkflowCommentBasicListWritable = {
+  data: Array<WorkflowCommentBasicWritable>
+}
+
+export type WorkflowCommentDetailWritable = {
+  content: string
+  created_at?: number | null
+  created_by: string
+  created_by_account?: WorkflowCommentAccountWritable
+  id: string
+  mentions: Array<WorkflowCommentMentionWritable>
+  position_x: number
+  position_y: number
+  replies: Array<WorkflowCommentReplyWritable>
+  resolved: boolean
+  resolved_at?: number | null
+  resolved_by?: string | null
+  resolved_by_account?: WorkflowCommentAccountWritable
+  updated_at?: number | null
+}
+
+export type WorkflowCommentBasicWritable = {
+  content: string
+  created_at?: number | null
+  created_by: string
+  created_by_account?: WorkflowCommentAccountWritable
+  id: string
+  mention_count: number
+  participants: Array<WorkflowCommentAccountWritable>
+  position_x: number
+  position_y: number
+  reply_count: number
+  resolved: boolean
+  resolved_at?: number | null
+  resolved_by?: string | null
+  resolved_by_account?: WorkflowCommentAccountWritable
+  updated_at?: number | null
+}
+
+export type WorkflowCommentAccountWritable = {
+  email: string
+  id: string
+  name: string
+}
+
+export type WorkflowCommentMentionWritable = {
+  mentioned_user_account?: WorkflowCommentAccountWritable
+  mentioned_user_id: string
+  reply_id?: string | null
+}
+
+export type WorkflowCommentReplyWritable = {
+  content: string
+  created_at?: number | null
+  created_by: string
+  created_by_account?: WorkflowCommentAccountWritable
+  id: string
+}
 
 export type GetAppsData = {
   body?: never
@@ -1140,7 +1462,7 @@ export type GetAppsData = {
   query?: {
     is_created_by_me?: boolean | null
     limit?: number
-    mode?: 'completion' | 'chat' | 'advanced-chat' | 'workflow' | 'agent-chat' | 'channel' | 'all'
+    mode?: 'advanced-chat' | 'agent-chat' | 'all' | 'channel' | 'chat' | 'completion' | 'workflow'
     name?: string | null
     page?: number
     tag_ids?: Array<string> | null
@@ -1237,23 +1559,19 @@ export type PostAppsImportsByImportIdConfirmResponses = {
 export type PostAppsImportsByImportIdConfirmResponse
   = PostAppsImportsByImportIdConfirmResponses[keyof PostAppsImportsByImportIdConfirmResponses]
 
-export type GetAppsWorkflowsOnlineUsersData = {
-  body?: never
+export type PostAppsWorkflowsOnlineUsersData = {
+  body: WorkflowOnlineUsersPayload
   path?: never
-  query: {
-    app_ids: string
-  }
+  query?: never
   url: '/apps/workflows/online-users'
 }
 
-export type GetAppsWorkflowsOnlineUsersResponses = {
-  200: {
-    [key: string]: unknown
-  }
+export type PostAppsWorkflowsOnlineUsersResponses = {
+  200: WorkflowOnlineUsersResponse
 }
 
-export type GetAppsWorkflowsOnlineUsersResponse
-  = GetAppsWorkflowsOnlineUsersResponses[keyof GetAppsWorkflowsOnlineUsersResponses]
+export type PostAppsWorkflowsOnlineUsersResponse
+  = PostAppsWorkflowsOnlineUsersResponses[keyof PostAppsWorkflowsOnlineUsersResponses]
 
 export type DeleteAppsByAppIdData = {
   body?: never
@@ -1274,7 +1592,7 @@ export type DeleteAppsByAppIdError = DeleteAppsByAppIdErrors[keyof DeleteAppsByA
 
 export type DeleteAppsByAppIdResponses = {
   204: {
-    [key: string]: unknown
+    [key: string]: never
   }
 }
 
@@ -1327,16 +1645,16 @@ export type GetAppsByAppIdAdvancedChatWorkflowRunsData = {
     app_id: string
   }
   query?: {
-    triggered_from?: 'debugging' | 'app-run' | null
-    status?: 'running' | 'succeeded' | 'failed' | 'stopped' | 'partial-succeeded' | null
-    last_id?: string | null
+    last_id?: string
     limit?: number
+    status?: 'failed' | 'partial-succeeded' | 'running' | 'stopped' | 'succeeded'
+    triggered_from?: 'app-run' | 'debugging'
   }
   url: '/apps/{app_id}/advanced-chat/workflow-runs'
 }
 
 export type GetAppsByAppIdAdvancedChatWorkflowRunsResponses = {
-  200: AdvancedChatWorkflowRunPagination
+  200: AdvancedChatWorkflowRunPaginationResponse
 }
 
 export type GetAppsByAppIdAdvancedChatWorkflowRunsResponse
@@ -1348,15 +1666,15 @@ export type GetAppsByAppIdAdvancedChatWorkflowRunsCountData = {
     app_id: string
   }
   query?: {
-    triggered_from?: 'debugging' | 'app-run' | null
-    time_range?: string | null
-    status?: 'running' | 'succeeded' | 'failed' | 'stopped' | 'partial-succeeded' | null
+    status?: 'failed' | 'partial-succeeded' | 'running' | 'stopped' | 'succeeded'
+    time_range?: string
+    triggered_from?: 'app-run' | 'debugging'
   }
   url: '/apps/{app_id}/advanced-chat/workflow-runs/count'
 }
 
 export type GetAppsByAppIdAdvancedChatWorkflowRunsCountResponses = {
-  200: WorkflowRunCount
+  200: WorkflowRunCountResponse
 }
 
 export type GetAppsByAppIdAdvancedChatWorkflowRunsCountResponse
@@ -1525,8 +1843,8 @@ export type GetAppsByAppIdAgentLogsResponse
 export type PostAppsByAppIdAnnotationReplyByActionData = {
   body: AnnotationReplyPayload
   path: {
-    app_id: string
     action: string
+    app_id: string
   }
   query?: never
   url: '/apps/{app_id}/annotation-reply/{action}'
@@ -1553,8 +1871,8 @@ export type PostAppsByAppIdAnnotationReplyByActionResponse
 export type GetAppsByAppIdAnnotationReplyByActionStatusByJobIdData = {
   body?: never
   path: {
-    app_id: string
     action: string
+    app_id: string
     job_id: string
   }
   query?: never
@@ -1609,8 +1927,8 @@ export type GetAppsByAppIdAnnotationSettingResponse
 export type PostAppsByAppIdAnnotationSettingsByAnnotationSettingIdData = {
   body: AnnotationSettingUpdatePayload
   path: {
-    app_id: string
     annotation_setting_id: string
+    app_id: string
   }
   query?: never
   url: '/apps/{app_id}/annotation-settings/{annotation_setting_id}'
@@ -1835,8 +2153,8 @@ export type DeleteAppsByAppIdAnnotationsByAnnotationIdResponse
 export type PostAppsByAppIdAnnotationsByAnnotationIdData = {
   body: UpdateAnnotationPayload
   path: {
-    app_id: string
     annotation_id: string
+    app_id: string
   }
   query?: never
   url: '/apps/{app_id}/annotations/{annotation_id}'
@@ -1854,7 +2172,7 @@ export type PostAppsByAppIdAnnotationsByAnnotationIdError
 export type PostAppsByAppIdAnnotationsByAnnotationIdResponses = {
   200: Annotation
   204: {
-    [key: string]: unknown
+    [key: string]: never
   }
 }
 
@@ -1864,12 +2182,12 @@ export type PostAppsByAppIdAnnotationsByAnnotationIdResponse
 export type GetAppsByAppIdAnnotationsByAnnotationIdHitHistoriesData = {
   body?: never
   path: {
-    app_id: string
     annotation_id: string
+    app_id: string
   }
   query?: {
-    page?: number
     limit?: number
+    page?: number
   }
   url: '/apps/{app_id}/annotations/{annotation_id}/hit-histories'
 }
@@ -1949,12 +2267,12 @@ export type GetAppsByAppIdChatConversationsData = {
     app_id: string
   }
   query?: {
-    annotation_status?: 'annotated' | 'not_annotated' | 'all'
+    annotation_status?: 'all' | 'annotated' | 'not_annotated'
     end?: string | null
     keyword?: string | null
     limit?: number
     page?: number
-    sort_by?: 'created_at' | '-created_at' | 'updated_at' | '-updated_at'
+    sort_by?: '-created_at' | '-updated_at' | 'created_at' | 'updated_at'
     start?: string | null
   }
   url: '/apps/{app_id}/chat-conversations'
@@ -2000,7 +2318,7 @@ export type DeleteAppsByAppIdChatConversationsByConversationIdError
 
 export type DeleteAppsByAppIdChatConversationsByConversationIdResponses = {
   204: {
-    [key: string]: unknown
+    [key: string]: never
   }
 }
 
@@ -2116,7 +2434,7 @@ export type GetAppsByAppIdCompletionConversationsData = {
     app_id: string
   }
   query?: {
-    annotation_status?: 'annotated' | 'not_annotated' | 'all'
+    annotation_status?: 'all' | 'annotated' | 'not_annotated'
     end?: string | null
     keyword?: string | null
     limit?: number
@@ -2166,7 +2484,7 @@ export type DeleteAppsByAppIdCompletionConversationsByConversationIdError
 
 export type DeleteAppsByAppIdCompletionConversationsByConversationIdResponses = {
   204: {
-    [key: string]: unknown
+    [key: string]: never
   }
 }
 
@@ -2388,9 +2706,9 @@ export type GetAppsByAppIdFeedbacksExportData = {
   query?: {
     end_date?: string | null
     format?: 'csv' | 'json'
-    from_source?: 'user' | 'admin' | null
+    from_source?: 'admin' | 'user' | null
     has_comment?: boolean | null
-    rating?: 'like' | 'dislike' | null
+    rating?: 'dislike' | 'like' | null
     start_date?: string | null
   }
   url: '/apps/{app_id}/feedbacks/export'
@@ -2969,7 +3287,7 @@ export type DeleteAppsByAppIdTraceConfigError
 
 export type DeleteAppsByAppIdTraceConfigResponses = {
   204: {
-    [key: string]: unknown
+    [key: string]: never
   }
 }
 
@@ -3149,16 +3467,16 @@ export type GetAppsByAppIdWorkflowRunsData = {
     app_id: string
   }
   query?: {
-    triggered_from?: 'debugging' | 'app-run' | null
-    status?: 'running' | 'succeeded' | 'failed' | 'stopped' | 'partial-succeeded' | null
-    last_id?: string | null
+    last_id?: string
     limit?: number
+    status?: 'failed' | 'partial-succeeded' | 'running' | 'stopped' | 'succeeded'
+    triggered_from?: 'app-run' | 'debugging'
   }
   url: '/apps/{app_id}/workflow-runs'
 }
 
 export type GetAppsByAppIdWorkflowRunsResponses = {
-  200: WorkflowRunPagination
+  200: WorkflowRunPaginationResponse
 }
 
 export type GetAppsByAppIdWorkflowRunsResponse
@@ -3170,15 +3488,15 @@ export type GetAppsByAppIdWorkflowRunsCountData = {
     app_id: string
   }
   query?: {
-    triggered_from?: 'debugging' | 'app-run' | null
-    time_range?: string | null
-    status?: 'running' | 'succeeded' | 'failed' | 'stopped' | 'partial-succeeded' | null
+    status?: 'failed' | 'partial-succeeded' | 'running' | 'stopped' | 'succeeded'
+    time_range?: string
+    triggered_from?: 'app-run' | 'debugging'
   }
   url: '/apps/{app_id}/workflow-runs/count'
 }
 
 export type GetAppsByAppIdWorkflowRunsCountResponses = {
-  200: WorkflowRunCount
+  200: WorkflowRunCountResponse
 }
 
 export type GetAppsByAppIdWorkflowRunsCountResponse
@@ -3235,7 +3553,7 @@ export type GetAppsByAppIdWorkflowRunsByRunIdError
   = GetAppsByAppIdWorkflowRunsByRunIdErrors[keyof GetAppsByAppIdWorkflowRunsByRunIdErrors]
 
 export type GetAppsByAppIdWorkflowRunsByRunIdResponses = {
-  200: WorkflowRunDetail
+  200: WorkflowRunDetailResponse
 }
 
 export type GetAppsByAppIdWorkflowRunsByRunIdResponse
@@ -3252,7 +3570,7 @@ export type GetAppsByAppIdWorkflowRunsByRunIdExportData = {
 }
 
 export type GetAppsByAppIdWorkflowRunsByRunIdExportResponses = {
-  200: WorkflowRunExport
+  200: WorkflowRunExportResponse
 }
 
 export type GetAppsByAppIdWorkflowRunsByRunIdExportResponse
@@ -3278,7 +3596,7 @@ export type GetAppsByAppIdWorkflowRunsByRunIdNodeExecutionsError
   = GetAppsByAppIdWorkflowRunsByRunIdNodeExecutionsErrors[keyof GetAppsByAppIdWorkflowRunsByRunIdNodeExecutionsErrors]
 
 export type GetAppsByAppIdWorkflowRunsByRunIdNodeExecutionsResponses = {
-  200: WorkflowRunNodeExecutionList
+  200: WorkflowRunNodeExecutionListResponse
 }
 
 export type GetAppsByAppIdWorkflowRunsByRunIdNodeExecutionsResponse
@@ -3294,7 +3612,7 @@ export type GetAppsByAppIdWorkflowCommentsData = {
 }
 
 export type GetAppsByAppIdWorkflowCommentsResponses = {
-  200: WorkflowCommentBasic
+  200: WorkflowCommentBasicList
 }
 
 export type GetAppsByAppIdWorkflowCommentsResponse
@@ -3344,7 +3662,7 @@ export type DeleteAppsByAppIdWorkflowCommentsByCommentIdData = {
 
 export type DeleteAppsByAppIdWorkflowCommentsByCommentIdResponses = {
   204: {
-    [key: string]: unknown
+    [key: string]: never
   }
 }
 
@@ -3415,7 +3733,7 @@ export type DeleteAppsByAppIdWorkflowCommentsByCommentIdRepliesByReplyIdData = {
 
 export type DeleteAppsByAppIdWorkflowCommentsByCommentIdRepliesByReplyIdResponses = {
   204: {
-    [key: string]: unknown
+    [key: string]: never
   }
 }
 
@@ -3556,7 +3874,7 @@ export type GetAppsByAppIdWorkflowsData = {
 }
 
 export type GetAppsByAppIdWorkflowsResponses = {
-  200: WorkflowPagination
+  200: WorkflowPaginationResponse
 }
 
 export type GetAppsByAppIdWorkflowsResponse
@@ -3629,7 +3947,7 @@ export type GetAppsByAppIdWorkflowsDraftError
   = GetAppsByAppIdWorkflowsDraftErrors[keyof GetAppsByAppIdWorkflowsDraftErrors]
 
 export type GetAppsByAppIdWorkflowsDraftResponses = {
-  200: Workflow
+  200: WorkflowResponse
 }
 
 export type GetAppsByAppIdWorkflowsDraftResponse
@@ -3911,7 +4229,7 @@ export type GetAppsByAppIdWorkflowsDraftNodesByNodeIdLastRunError
   = GetAppsByAppIdWorkflowsDraftNodesByNodeIdLastRunErrors[keyof GetAppsByAppIdWorkflowsDraftNodesByNodeIdLastRunErrors]
 
 export type GetAppsByAppIdWorkflowsDraftNodesByNodeIdLastRunResponses = {
-  200: WorkflowRunNodeExecution
+  200: WorkflowRunNodeExecutionResponse
 }
 
 export type GetAppsByAppIdWorkflowsDraftNodesByNodeIdLastRunResponse
@@ -3940,7 +4258,7 @@ export type PostAppsByAppIdWorkflowsDraftNodesByNodeIdRunError
   = PostAppsByAppIdWorkflowsDraftNodesByNodeIdRunErrors[keyof PostAppsByAppIdWorkflowsDraftNodesByNodeIdRunErrors]
 
 export type PostAppsByAppIdWorkflowsDraftNodesByNodeIdRunResponses = {
-  200: WorkflowRunNodeExecution
+  200: WorkflowRunNodeExecutionResponse
 }
 
 export type PostAppsByAppIdWorkflowsDraftNodesByNodeIdRunResponse
@@ -3980,8 +4298,8 @@ export type PostAppsByAppIdWorkflowsDraftNodesByNodeIdTriggerRunResponse
 export type DeleteAppsByAppIdWorkflowsDraftNodesByNodeIdVariablesData = {
   body?: never
   path: {
-    node_id: string
     app_id: string
+    node_id: string
   }
   query?: never
   url: '/apps/{app_id}/workflows/draft/nodes/{node_id}/variables'
@@ -3989,7 +4307,7 @@ export type DeleteAppsByAppIdWorkflowsDraftNodesByNodeIdVariablesData = {
 
 export type DeleteAppsByAppIdWorkflowsDraftNodesByNodeIdVariablesResponses = {
   204: {
-    [key: string]: unknown
+    [key: string]: never
   }
 }
 
@@ -4127,7 +4445,7 @@ export type DeleteAppsByAppIdWorkflowsDraftVariablesData = {
 
 export type DeleteAppsByAppIdWorkflowsDraftVariablesResponses = {
   204: {
-    [key: string]: unknown
+    [key: string]: never
   }
 }
 
@@ -4140,8 +4458,8 @@ export type GetAppsByAppIdWorkflowsDraftVariablesData = {
     app_id: string
   }
   query?: {
-    page?: number
     limit?: number
+    page?: number
   }
   url: '/apps/{app_id}/workflows/draft/variables'
 }
@@ -4174,7 +4492,7 @@ export type DeleteAppsByAppIdWorkflowsDraftVariablesByVariableIdError
 
 export type DeleteAppsByAppIdWorkflowsDraftVariablesByVariableIdResponses = {
   204: {
-    [key: string]: unknown
+    [key: string]: never
   }
 }
 
@@ -4255,7 +4573,7 @@ export type PutAppsByAppIdWorkflowsDraftVariablesByVariableIdResetError
 export type PutAppsByAppIdWorkflowsDraftVariablesByVariableIdResetResponses = {
   200: WorkflowDraftVariable
   204: {
-    [key: string]: unknown
+    [key: string]: never
   }
 }
 
@@ -4271,17 +4589,8 @@ export type GetAppsByAppIdWorkflowsPublishData = {
   url: '/apps/{app_id}/workflows/publish'
 }
 
-export type GetAppsByAppIdWorkflowsPublishErrors = {
-  404: {
-    [key: string]: unknown
-  }
-}
-
-export type GetAppsByAppIdWorkflowsPublishError
-  = GetAppsByAppIdWorkflowsPublishErrors[keyof GetAppsByAppIdWorkflowsPublishErrors]
-
 export type GetAppsByAppIdWorkflowsPublishResponses = {
-  200: Workflow
+  200: WorkflowResponse
 }
 
 export type GetAppsByAppIdWorkflowsPublishResponse
@@ -4328,8 +4637,8 @@ export type GetAppsByAppIdWorkflowsTriggersWebhookResponse
 export type DeleteAppsByAppIdWorkflowsByWorkflowIdData = {
   body?: never
   path: {
-    workflow_id: string
     app_id: string
+    workflow_id: string
   }
   query?: never
   url: '/apps/{app_id}/workflows/{workflow_id}'
@@ -4367,7 +4676,7 @@ export type PatchAppsByAppIdWorkflowsByWorkflowIdError
   = PatchAppsByAppIdWorkflowsByWorkflowIdErrors[keyof PatchAppsByAppIdWorkflowsByWorkflowIdErrors]
 
 export type PatchAppsByAppIdWorkflowsByWorkflowIdResponses = {
-  200: Workflow
+  200: WorkflowResponse
 }
 
 export type PatchAppsByAppIdWorkflowsByWorkflowIdResponse
@@ -4448,8 +4757,8 @@ export type PostAppsByResourceIdApiKeysResponse
 export type DeleteAppsByResourceIdApiKeysByApiKeyIdData = {
   body?: never
   path: {
-    resource_id: string
     api_key_id: string
+    resource_id: string
   }
   query?: never
   url: '/apps/{resource_id}/api-keys/{api_key_id}'
@@ -4457,7 +4766,7 @@ export type DeleteAppsByResourceIdApiKeysByApiKeyIdData = {
 
 export type DeleteAppsByResourceIdApiKeysByApiKeyIdResponses = {
   204: {
-    [key: string]: unknown
+    [key: string]: never
   }
 }
 

@@ -175,7 +175,13 @@ const CSVUploader: FC<Props> = ({ file, updateFile }) => {
               <CSVIcon className="shrink-0" />
               <div className="text-text-secondary">
                 {t('list.batchModal.csvUploadTitle', { ns: 'datasetDocuments' })}
-                <span className="cursor-pointer text-text-accent" onClick={selectHandle}>{t('list.batchModal.browse', { ns: 'datasetDocuments' })}</span>
+                <button
+                  type="button"
+                  className="inline cursor-pointer border-none bg-transparent p-0 text-left text-text-accent focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
+                  onClick={selectHandle}
+                >
+                  {t('list.batchModal.browse', { ns: 'datasetDocuments' })}
+                </button>
               </div>
             </div>
             {dragging && <div ref={dragRef} className="absolute top-0 left-0 h-full w-full" />}
@@ -197,9 +203,14 @@ const CSVUploader: FC<Props> = ({ file, updateFile }) => {
               )}
               <Button onClick={selectHandle}>{t('stepOne.uploader.change', { ns: 'datasetCreation' })}</Button>
               <div className="mx-2 h-4 w-px bg-text-secondary" />
-              <div className="cursor-pointer p-2" onClick={removeFile}>
-                <RiDeleteBinLine className="h-4 w-4 text-text-secondary" />
-              </div>
+              <button
+                type="button"
+                className="cursor-pointer border-none bg-transparent p-2 focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
+                aria-label={t('operation.delete', { ns: 'common' })}
+                onClick={removeFile}
+              >
+                <RiDeleteBinLine className="h-4 w-4 text-text-secondary" aria-hidden="true" />
+              </button>
             </div>
           </div>
         )}

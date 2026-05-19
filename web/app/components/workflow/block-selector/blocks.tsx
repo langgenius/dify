@@ -1,6 +1,7 @@
 import type { NodeDefault } from '../types'
 import type { BlockClassificationEnum } from './types'
 import {
+  createPreviewCardHandle,
   PreviewCard,
   PreviewCardContent,
   PreviewCardTrigger,
@@ -15,7 +16,6 @@ import { useTranslation } from 'react-i18next'
 import { useStoreApi } from 'reactflow'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import Badge from '@/app/components/base/badge'
-import { filterEvaluationWorkflowRestrictedBlockTypes, isEvaluationWorkflow } from '@/app/components/workflow/utils/evaluation-workflow'
 import BlockIcon from '../block-icon'
 import { BlockEnum } from '../types'
 import { BLOCK_CLASSIFICATIONS } from './constants'
@@ -27,6 +27,10 @@ type BlocksProps = {
   availableBlocksTypes?: BlockEnum[]
   blocks?: NodeDefault[]
 }
+type BlockPreviewPayload = {
+  block: NodeDefault
+}
+
 const Blocks = ({
   searchText,
   onSelect,
@@ -35,14 +39,8 @@ const Blocks = ({
 }: BlocksProps) => {
   const { t } = useTranslation()
   const store = useStoreApi()
-  const appType = useAppStore(s => s.appDetail?.workflow_kind)
   const blocksFromHooks = useBlocks()
-  const filteredAvailableBlocksTypes = useMemo(() => {
-    if (!isEvaluationWorkflow(appType))
-      return availableBlocksTypes
-
-    return filterEvaluationWorkflowRestrictedBlockTypes(availableBlocksTypes)
-  }, [appType, availableBlocksTypes])
+  const previewCardHandle = useMemo(() => createPreviewCardHandle<BlockPreviewPayload>(), [])
 
   // Use external blocks if provided, otherwise fallback to hook-based blocks
   const blocks = blocksFromProps || blocksFromHooks.map(block => ({
@@ -70,7 +68,7 @@ const Blocks = ({
           return false
         }
 
-        return block.metaData.title.toLowerCase().includes(searchText.toLowerCase()) && filteredAvailableBlocksTypes.includes(block.metaData.type)
+        return block.metaData.title.toLowerCase().includes(searchText.toLowerCase()) && availableBlocksTypes.includes(block.metaData.type)
       })
 
       return {
@@ -78,7 +76,7 @@ const Blocks = ({
         [classification]: list,
       }
     }, {} as Record<string, typeof blocks>)
-  }, [blocks, filteredAvailableBlocksTypes, searchText])
+  }, [blocks, availableBlocksTypes, searchText])
   const isEmpty = Object.values(groups).every(list => !list.length)
 
   const renderGroup = useCallback((classification: BlockClassificationEnum) => {
@@ -110,51 +108,38 @@ const Blocks = ({
           // hover/focus-only activation is a11y-safe. See
           // packages/dify-ui/AGENTS.md → Overlay Primitive Selection.
           filteredList.map(block => (
-            <PreviewCard key={block.metaData.type}>
-              <PreviewCardTrigger
-                delay={150}
-                closeDelay={150}
-                render={(
-                  <div
-                    className="flex h-8 w-full cursor-pointer items-center rounded-lg px-3 hover:bg-state-base-hover"
-                    onClick={() => onSelect(block.metaData.type)}
-                  >
-                    <BlockIcon
-                      className="mr-2 shrink-0"
-                      type={block.metaData.type}
-                    />
-                    <div className="grow text-sm text-text-secondary">{block.metaData.title}</div>
-                    {
-                      block.metaData.type === BlockEnum.LoopEnd && (
-                        <Badge
-                          text={t('nodes.loop.loopNode', { ns: 'workflow' })}
-                          className="ml-2 shrink-0"
-                        />
-                      )
-                    }
-                  </div>
-                )}
-              />
-              <PreviewCardContent
-                placement="right"
-                popupClassName="w-[200px] border-none px-3 py-2"
-              >
-                <div>
+            <PreviewCardTrigger
+              key={block.metaData.type}
+              delay={150}
+              closeDelay={150}
+              handle={previewCardHandle}
+              payload={{ block }}
+              render={(
+                <div
+                  className="flex h-8 w-full cursor-pointer items-center rounded-lg px-3 hover:bg-state-base-hover"
+                  onClick={() => onSelect(block.metaData.type)}
+                >
                   <BlockIcon
-                    size="md"
-                    className="mb-2"
+                    className="mr-2 shrink-0"
                     type={block.metaData.type}
                   />
-                  <div className="mb-1 system-md-medium text-text-primary">{block.metaData.title}</div>
-                  <div className="system-xs-regular text-text-tertiary">{block.metaData.description}</div>
+                  <div className="grow text-sm text-text-secondary">{block.metaData.title}</div>
+                  {
+                    block.metaData.type === BlockEnum.LoopEnd && (
+                      <Badge
+                        text={t('nodes.loop.loopNode', { ns: 'workflow' })}
+                        className="ml-2 shrink-0"
+                      />
+                    )
+                  }
                 </div>
-              </PreviewCardContent>
-            </PreviewCard>
+              )}
+            />
           ))
         }
       </div>
     )
-  }, [groups, onSelect, t, store])
+  }, [groups, onSelect, previewCardHandle, t, store])
 
   return (
     <div className="max-h-[480px] max-w-[500px] overflow-y-auto p-1">
@@ -166,7 +151,42 @@ const Blocks = ({
       {
         !isEmpty && BLOCK_CLASSIFICATIONS.map(renderGroup)
       }
+      <PreviewCard handle={previewCardHandle}>
+        {({ payload }) => (
+          <BlockPreviewCard payload={payload as BlockPreviewPayload | undefined} />
+        )}
+      </PreviewCard>
     </div>
+  )
+}
+
+type BlockPreviewCardProps = {
+  payload?: BlockPreviewPayload
+}
+
+function BlockPreviewCard({
+  payload,
+}: BlockPreviewCardProps) {
+  if (!payload)
+    return null
+
+  const { block } = payload
+
+  return (
+    <PreviewCardContent
+      placement="right"
+      popupClassName="w-[200px] border-none px-3 py-2"
+    >
+      <div>
+        <BlockIcon
+          size="md"
+          className="mb-2"
+          type={block.metaData.type}
+        />
+        <div className="mb-1 system-md-medium text-text-primary">{block.metaData.title}</div>
+        <div className="system-xs-regular wrap-break-word text-text-tertiary">{block.metaData.description}</div>
+      </div>
+    </PreviewCardContent>
   )
 }
 

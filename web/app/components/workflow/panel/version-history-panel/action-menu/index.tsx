@@ -33,7 +33,8 @@ const ActionMenu: FC<ActionMenuProps> = (props: ActionMenuProps) => {
       onOpenChange={setOpen}
     >
       <DropdownMenuTrigger
-        render={<Button size="small" className="px-1" onClick={e => e.stopPropagation()} />}
+        nativeButton={false}
+        render={<Button nativeButton={false} size="small" className="px-1" onClick={e => e.stopPropagation()} />}
       >
         <RiMoreFill className="h-4 w-4" />
       </DropdownMenuTrigger>

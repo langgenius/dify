@@ -40,7 +40,7 @@ vi.mock('../score-slider', () => ({
     <input
       role="slider"
       type="range"
-      min={80}
+      min={0}
       max={100}
       value={value}
       onChange={e => onChange(Number((e.target as HTMLInputElement).value))}
@@ -272,7 +272,7 @@ describe('ConfigParamModal', () => {
     )
 
     const slider = screen.getByRole('slider')
-    expect(slider).toHaveAttribute('min', '80')
+    expect(slider).toHaveAttribute('min', '0')
     expect(slider).toHaveAttribute('max', '100')
     expect(slider).toHaveValue('90')
   })
@@ -375,7 +375,7 @@ describe('ConfigParamModal', () => {
   it('should use ANNOTATION_DEFAULT score_threshold when config has no score_threshold', () => {
     const configWithoutThreshold = {
       ...defaultAnnotationConfig,
-      score_threshold: 0,
+      score_threshold: undefined as unknown as number,
     }
     render(
       <ConfigParamModal
@@ -388,6 +388,35 @@ describe('ConfigParamModal', () => {
     )
 
     expect(screen.getByRole('slider')).toHaveValue('90')
+  })
+
+  it('should preserve zero score threshold instead of falling back to default', async () => {
+    const onSave = vi.fn().mockResolvedValue(undefined)
+    render(
+      <ConfigParamModal
+        appId="test-app"
+        isShow={true}
+        onHide={vi.fn()}
+        onSave={onSave}
+        annotationConfig={{
+          ...defaultAnnotationConfig,
+          score_threshold: 0,
+        }}
+      />,
+    )
+
+    expect(screen.getByRole('slider')).toHaveValue('0')
+
+    const buttons = screen.getAllByRole('button')
+    const saveBtn = buttons.find(b => b.textContent?.includes('initSetup'))
+    fireEvent.click(saveBtn!)
+
+    await waitFor(() => {
+      expect(onSave).toHaveBeenCalledWith(
+        expect.objectContaining({ embedding_provider_name: 'openai' }),
+        0,
+      )
+    })
   })
 
   it('should set loading state while saving', async () => {

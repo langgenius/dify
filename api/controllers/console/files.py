@@ -82,7 +82,7 @@ class FileApi(Resource):
         try:
             upload_file = FileService(db.engine).upload_file(
                 filename=file.filename,
-                content=file.read(),
+                content=file.stream.read(),
                 mimetype=file.mimetype,
                 user=current_user,
                 source=source,
@@ -105,7 +105,8 @@ class FilePreviewApi(Resource):
     @account_initialization_required
     def get(self, file_id):
         file_id = str(file_id)
-        text = FileService(db.engine).get_file_preview(file_id)
+        _, tenant_id = current_account_with_tenant()
+        text = FileService(db.engine).get_file_preview(file_id, tenant_id)
         return {"content": text}
 
 

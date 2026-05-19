@@ -161,35 +161,39 @@ class AdvancedPromptTransform(PromptTransform):
         prompt_messages: list[PromptMessage] = []
         for prompt_item in prompt_template:
             raw_prompt = prompt_item.text
-
-            if prompt_item.edition_type == "basic" or not prompt_item.edition_type:
-                if self.with_variable_tmpl:
-                    vp = VariablePool.empty()
-                    for k, v in inputs.items():
-                        if k.startswith("#"):
-                            vp.add(k[1:-1].split("."), v)
-                    raw_prompt = raw_prompt.replace("{{#context#}}", context or "")
-                    prompt = vp.convert_template(raw_prompt).text
-                else:
-                    parser = PromptTemplateParser(template=raw_prompt, with_variable_tmpl=self.with_variable_tmpl)
-                    prompt_inputs: Mapping[str, str] = {k: inputs[k] for k in parser.variable_keys if k in inputs}
-                    prompt_inputs = self._set_context_variable(
-                        context=context, parser=parser, prompt_inputs=prompt_inputs
-                    )
-                    prompt = parser.format(prompt_inputs)
-            elif prompt_item.edition_type == "jinja2":
-                prompt = raw_prompt
-                prompt_inputs = inputs
-                prompt = Jinja2Formatter.format(template=prompt, inputs=prompt_inputs)
-            else:
-                raise ValueError(f"Invalid edition type: {prompt_item.edition_type}")
-
-            if prompt_item.role == PromptMessageRole.USER:
-                prompt_messages.append(UserPromptMessage(content=prompt))
-            elif prompt_item.role == PromptMessageRole.SYSTEM and prompt:
-                prompt_messages.append(SystemPromptMessage(content=prompt))
-            elif prompt_item.role == PromptMessageRole.ASSISTANT:
-                prompt_messages.append(AssistantPromptMessage(content=prompt))
+            edition_type = prompt_item.edition_type or "basic"
+            match edition_type:
+                case "basic":
+                    if self.with_variable_tmpl:
+                        vp = VariablePool.empty()
+                        for k, v in inputs.items():
+                            if k.startswith("#"):
+                                vp.add(k[1:-1].split("."), v)
+                        raw_prompt = raw_prompt.replace("{{#context#}}", context or "")
+                        prompt = vp.convert_template(raw_prompt).text
+                    else:
+                        parser = PromptTemplateParser(template=raw_prompt, with_variable_tmpl=self.with_variable_tmpl)
+                        prompt_inputs: Mapping[str, str] = {k: inputs[k] for k in parser.variable_keys if k in inputs}
+                        prompt_inputs = self._set_context_variable(
+                            context=context, parser=parser, prompt_inputs=prompt_inputs
+                        )
+                        prompt = parser.format(prompt_inputs)
+                case "jinja2":
+                    prompt = raw_prompt
+                    prompt_inputs = inputs
+                    prompt = Jinja2Formatter.format(template=prompt, inputs=prompt_inputs)
+                case _:
+                    raise ValueError(f"Invalid edition type: {prompt_item.edition_type}")
+            match prompt_item.role:
+                case PromptMessageRole.USER:
+                    prompt_messages.append(UserPromptMessage(content=prompt))
+                case PromptMessageRole.SYSTEM:
+                    if prompt:
+                        prompt_messages.append(SystemPromptMessage(content=prompt))
+                case PromptMessageRole.ASSISTANT:
+                    prompt_messages.append(AssistantPromptMessage(content=prompt))
+                case PromptMessageRole.TOOL:
+                    pass
 
         if query and memory_config and memory_config.query_prompt_template:
             parser = PromptTemplateParser(

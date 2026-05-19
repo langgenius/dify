@@ -9,6 +9,7 @@ import {
 } from '@remixicon/react'
 import * as React from 'react'
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import Badge from '@/app/components/base/badge'
 import { BracketsX as VarIcon } from '@/app/components/base/icons/src/vender/line/development'
 import IconTypeIcon from './input-type-icon'
@@ -36,6 +37,7 @@ const VarItem: FC<ItemProps> = ({
   onRemove,
   canDrag,
 }) => {
+  const { t } = useTranslation()
   const [isDeleting, setIsDeleting] = useState(false)
 
   return (
@@ -58,21 +60,24 @@ const VarItem: FC<ItemProps> = ({
           <IconTypeIcon type={type as IInputTypeIconProps['type']} className="text-text-tertiary" />
         </div>
         <div className={cn('hidden items-center justify-end rounded-lg', !readonly && 'group-hover:flex')}>
-          <div
-            className="mr-1 flex h-6 w-6 cursor-pointer items-center justify-center rounded-md hover:bg-black/5"
+          <button
+            type="button"
+            aria-label={t('operation.edit', { ns: 'common' })}
+            className="mr-1 flex h-6 w-6 cursor-pointer items-center justify-center rounded-md border-none bg-transparent p-0 hover:bg-black/5 focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
             onClick={onEdit}
           >
-            <RiEditLine className="h-4 w-4 text-text-tertiary" />
-          </div>
-          <div
-            data-testid="var-item-delete-btn"
-            className="flex h-6 w-6 cursor-pointer items-center justify-center text-text-tertiary hover:text-text-destructive"
+            <RiEditLine className="h-4 w-4 text-text-tertiary" aria-hidden="true" />
+          </button>
+          <button
+            type="button"
+            aria-label={t('operation.delete', { ns: 'common' })}
+            className="flex h-6 w-6 cursor-pointer items-center justify-center border-none bg-transparent p-0 text-text-tertiary hover:text-text-destructive focus-visible:ring-1 focus-visible:ring-state-destructive-border focus-visible:outline-hidden"
             onClick={onRemove}
             onMouseOver={() => setIsDeleting(true)}
             onMouseLeave={() => setIsDeleting(false)}
           >
-            <RiDeleteBinLine className="h-4 w-4" />
-          </div>
+            <RiDeleteBinLine className="h-4 w-4" aria-hidden="true" />
+          </button>
         </div>
       </div>
     </div>

@@ -146,7 +146,7 @@ const ChatInputArea = ({ readonly, botName, showFeatureBar, showFileUpload, feat
               <div ref={textValueRef} className="pointer-events-none invisible absolute h-auto w-auto p-1 body-lg-regular leading-6 whitespace-pre">
                 {query}
               </div>
-              <Textarea ref={ref => textareaRef.current = ref as any} className={cn('w-full resize-none bg-transparent p-1 body-lg-regular leading-6 text-text-primary outline-none')} placeholder={decode(t(readonly ? 'chat.inputDisabledPlaceholder' : 'chat.inputPlaceholder', { ns: 'common', botName }) || '')} autoFocus minRows={1} value={query} onChange={e => handleQueryChange(e.target.value)} onKeyDown={handleKeyDown} onCompositionStart={handleCompositionStart} onCompositionEnd={handleCompositionEnd} onPaste={handleClipboardPasteFile} onDragEnter={handleDragFileEnter} onDragLeave={handleDragFileLeave} onDragOver={handleDragFileOver} onDrop={handleDropFile} readOnly={readonly} />
+              <Textarea ref={ref => textareaRef.current = ref as any} className={cn('w-full resize-none bg-transparent p-1 body-lg-regular leading-6 text-text-primary outline-hidden')} placeholder={decode(t(readonly ? 'chat.inputDisabledPlaceholder' : 'chat.inputPlaceholder', { ns: 'common', botName }) || '')} autoFocus minRows={1} value={query} onChange={e => handleQueryChange(e.target.value)} onKeyDown={handleKeyDown} onCompositionStart={handleCompositionStart} onCompositionEnd={handleCompositionEnd} onPaste={handleClipboardPasteFile} onDragEnter={handleDragFileEnter} onDragLeave={handleDragFileLeave} onDragOver={handleDragFileOver} onDrop={handleDropFile} readOnly={readonly} />
             </div>
             {!isMultipleLine && operation}
           </div>

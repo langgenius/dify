@@ -24,7 +24,7 @@ import { useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ArrowNarrowLeft } from '@/app/components/base/icons/src/vender/line/arrows'
 import Loading from '@/app/components/base/loading'
-import { PROVIDER_WITH_PRESET_TONE, STOP_PARAMETER_RULE, TONE_LIST } from '@/config'
+import { PROVIDER_WITH_PRESET_TONE, STOP_PARAMETER_RULE } from '@/config'
 import { useModelParameterRules } from '@/service/use-common'
 import {
   useTextGenerationCurrentProviderAndModelAndModelList,
@@ -32,6 +32,7 @@ import {
 import ModelSelector from '../model-selector'
 import ParameterItem from './parameter-item'
 import PresetsParameter from './presets-parameter'
+import { getSupportedPresetConfig } from './presets-parameter-utils'
 import Trigger from './trigger'
 
 export type ModelParameterModalProps = {
@@ -75,10 +76,9 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
   const settingsIconRef = useRef<HTMLDivElement>(null)
   const {
     data: parameterRulesData,
-    isPending,
     isLoading,
   } = useModelParameterRules(provider, modelId)
-  const isRulesLoading = isPending || isLoading
+  const isRulesLoading = !!provider && !!modelId && isLoading
   const {
     currentProvider,
     currentModel,
@@ -90,6 +90,9 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
   const parameterRules: ModelParameterRule[] = useMemo(() => {
     return parameterRulesData?.data || []
   }, [parameterRulesData])
+  const supportedPresetParameterNames = useMemo(() => {
+    return parameterRules.map(parameterRule => parameterRule.name)
+  }, [parameterRules])
 
   const handleParamChange = (key: string, value: ParameterValue) => {
     onCompletionParamsChange({
@@ -125,13 +128,10 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
   }
 
   const handleSelectPresetParameter = (toneId: number) => {
-    const tone = TONE_LIST.find(tone => tone.id === toneId)
-    if (tone) {
-      onCompletionParamsChange({
-        ...completionParams,
-        ...tone.config,
-      })
-    }
+    onCompletionParamsChange({
+      ...completionParams,
+      ...getSupportedPresetConfig(toneId, supportedPresetParameterNames),
+    })
   }
 
   return (
@@ -199,7 +199,10 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
                   <div className="flex flex-1 items-center system-sm-semibold-uppercase text-text-secondary">{t('modelProvider.parameters', { ns: 'common' })}</div>
                   {
                     PROVIDER_WITH_PRESET_TONE.includes(provider) && (
-                      <PresetsParameter onSelect={handleSelectPresetParameter} />
+                      <PresetsParameter
+                        onSelect={handleSelectPresetParameter}
+                        supportedParameterNames={supportedPresetParameterNames}
+                      />
                     )
                   }
                 </div>

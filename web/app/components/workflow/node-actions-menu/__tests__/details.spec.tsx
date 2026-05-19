@@ -226,6 +226,11 @@ describe('node actions menu details', () => {
     const user = userEvent.setup()
     renderDropdownContent()
 
+    const deleteMenuItem = screen.getByText('common.operation.delete').closest('[role="menuitem"]')
+    expect(deleteMenuItem).toHaveAttribute('data-variant', 'default')
+    expect(deleteMenuItem).toHaveClass('text-text-secondary')
+    expect(deleteMenuItem).toHaveClass('data-highlighted:text-text-destructive')
+
     await user.click(screen.getByText('workflow.panel.runThisStep'))
     await user.click(screen.getByText('workflow.common.copy'))
     await user.click(screen.getByText('workflow.common.duplicate'))

@@ -25,6 +25,10 @@ class TagBasePayload(BaseModel):
     type: TagType = Field(description="Tag type")
 
 
+class TagUpdateRequestPayload(BaseModel):
+    name: str = Field(description="Tag name", min_length=1, max_length=50)
+
+
 class TagBindingPayload(BaseModel):
     tag_ids: list[str] = Field(description="Tag IDs to bind")
     target_id: str = Field(description="Target ID to bind tags to")
@@ -32,12 +36,7 @@ class TagBindingPayload(BaseModel):
 
 
 class TagBindingRemovePayload(BaseModel):
-    tag_id: str = Field(description="Tag ID to remove")
-    target_id: str = Field(description="Target ID to unbind tag from")
-    type: TagType = Field(description="Tag type")
-
-
-class TagBindingItemDeletePayload(BaseModel):
+    tag_ids: list[str] = Field(description="Tag IDs to remove", min_length=1)
     target_id: str = Field(description="Target ID to unbind tag from")
     type: TagType = Field(description="Tag type")
 
@@ -73,9 +72,9 @@ class TagResponse(ResponseModel):
 register_schema_models(
     console_ns,
     TagBasePayload,
+    TagUpdateRequestPayload,
     TagBindingPayload,
     TagBindingRemovePayload,
-    TagBindingItemDeletePayload,
     TagListQueryParam,
     TagResponse,
 )
@@ -124,7 +123,7 @@ class TagListApi(Resource):
 
 @console_ns.route("/tags/<uuid:tag_id>")
 class TagUpdateDeleteApi(Resource):
-    @console_ns.expect(console_ns.models[TagBasePayload.__name__])
+    @console_ns.expect(console_ns.models[TagUpdateRequestPayload.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -135,8 +134,8 @@ class TagUpdateDeleteApi(Resource):
         if not (current_user.has_edit_permission or current_user.is_dataset_editor):
             raise Forbidden()
 
-        payload = TagBasePayload.model_validate(console_ns.payload or {})
-        tag = TagService.update_tags(UpdateTagPayload(name=payload.name, type=payload.type), tag_id)
+        payload = TagUpdateRequestPayload.model_validate(console_ns.payload or {})
+        tag = TagService.update_tags(UpdateTagPayload(name=payload.name), tag_id)
 
         binding_count = TagService.get_tag_binding_count(tag_id)
 
@@ -184,13 +183,13 @@ def _create_tag_bindings() -> tuple[dict[str, str], int]:
     return {"result": "success"}, 200
 
 
-def _remove_tag_binding() -> tuple[dict[str, str], int]:
+def _remove_tag_bindings() -> tuple[dict[str, str], int]:
     _require_tag_binding_edit_permission()
 
     payload = TagBindingRemovePayload.model_validate(console_ns.payload or {})
     TagService.delete_tag_binding(
         TagBindingDeletePayload(
-            tag_id=payload.tag_id,
+            tag_ids=payload.tag_ids,
             target_id=payload.target_id,
             type=payload.type,
         )
@@ -211,54 +210,15 @@ class TagBindingCollectionApi(Resource):
         return _create_tag_bindings()
 
 
-@console_ns.route("/tag-bindings/<uuid:id>")
-class TagBindingItemApi(Resource):
-    """Canonical item resource for tag binding deletion."""
-
-    @console_ns.doc("delete_tag_binding")
-    @console_ns.doc(params={"id": "Tag ID"})
-    @console_ns.expect(console_ns.models[TagBindingItemDeletePayload.__name__])
-    @setup_required
-    @login_required
-    @account_initialization_required
-    def delete(self, id):
-        _require_tag_binding_edit_permission()
-        payload = TagBindingItemDeletePayload.model_validate(console_ns.payload or {})
-        TagService.delete_tag_binding(
-            TagBindingDeletePayload(
-                tag_id=str(id),
-                target_id=payload.target_id,
-                type=payload.type,
-            )
-        )
-        return {"result": "success"}, 200
-
-
-@console_ns.route("/tag-bindings/create")
-class DeprecatedTagBindingCreateApi(Resource):
-    """Deprecated verb-based alias for tag binding creation."""
-
-    @console_ns.doc("create_tag_binding_deprecated")
-    @console_ns.doc(deprecated=True)
-    @console_ns.doc(description="Deprecated legacy alias. Use POST /tag-bindings instead.")
-    @console_ns.expect(console_ns.models[TagBindingPayload.__name__])
-    @setup_required
-    @login_required
-    @account_initialization_required
-    def post(self):
-        return _create_tag_bindings()
-
-
 @console_ns.route("/tag-bindings/remove")
-class DeprecatedTagBindingRemoveApi(Resource):
-    """Deprecated verb-based alias for tag binding deletion."""
+class TagBindingRemoveApi(Resource):
+    """Batch resource for tag binding deletion."""
 
-    @console_ns.doc("delete_tag_binding_deprecated")
-    @console_ns.doc(deprecated=True)
-    @console_ns.doc(description="Deprecated legacy alias. Use DELETE /tag-bindings/{id} instead.")
+    @console_ns.doc("remove_tag_bindings")
+    @console_ns.doc(description="Remove one or more tag bindings from a target.")
     @console_ns.expect(console_ns.models[TagBindingRemovePayload.__name__])
     @setup_required
     @login_required
     @account_initialization_required
     def post(self):
-        return _remove_tag_binding()
+        return _remove_tag_bindings()

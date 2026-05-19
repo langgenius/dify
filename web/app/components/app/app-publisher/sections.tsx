@@ -1,7 +1,6 @@
 import type { CSSProperties, ReactNode } from 'react'
 import type { ModelAndParameter } from '../configuration/debug/types'
 import type { AppPublisherProps } from './index'
-import type { WorkflowTypeSwitchConfig } from './use-workflow-type-switch'
 import type { PublishWorkflowParams } from '@/types/workflow'
 import { Button } from '@langgenius/dify-ui/button'
 import {
@@ -9,12 +8,12 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '@langgenius/dify-ui/tooltip'
+import { RiSettings2Line } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
 import Divider from '@/app/components/base/divider'
 import Loading from '@/app/components/base/loading'
 import UpgradeBtn from '@/app/components/billing/upgrade-btn'
 import WorkflowToolConfigureButton from '@/app/components/tools/workflow-tool/configure-button'
-import { appDefaultIconBackground } from '@/config'
 import { AppModeEnum } from '@/types/app'
 import ShortcutsName from '../../workflow/shortcuts-name'
 import PublishWithMultipleModel from './publish-with-multiple-model'
@@ -31,13 +30,9 @@ type SummarySectionProps = Pick<AppPublisherProps, | 'debugWithMultipleModel'
     handlePublish: (params?: ModelAndParameter | PublishWorkflowParams) => Promise<void>
     handleRestore: () => Promise<void>
     isChatApp: boolean
-    onWorkflowTypeSwitch: () => Promise<void>
     published: boolean
     publishShortcut: string[]
     upgradeHighlightStyle: CSSProperties
-    workflowTypeSwitchConfig?: WorkflowTypeSwitchConfig
-    workflowTypeSwitchDisabled: boolean
-    workflowTypeSwitchDisabledReason?: string
   }
 
 type AccessSectionProps = {
@@ -50,11 +45,8 @@ type AccessSectionProps = {
 
 type ActionsSectionProps = Pick<AppPublisherProps, | 'hasHumanInputNode'
   | 'hasTriggerNode'
-  | 'inputs'
   | 'missingStartNode'
-  | 'onRefreshData'
   | 'toolPublished'
-  | 'outputs'
   | 'publishedAt'
   | 'workflowToolAvailable'> & {
     appDetail: {
@@ -71,9 +63,16 @@ type ActionsSectionProps = Pick<AppPublisherProps, | 'hasHumanInputNode'
     disabledFunctionTooltip?: string
     handleEmbed: () => void
     handleOpenInExplore: () => void
+    handleOpenRunConfig?: (url: string) => void
     handlePublish: (params?: ModelAndParameter | PublishWorkflowParams) => Promise<void>
     published: boolean
+    showBatchRunConfig?: boolean
+    showRunConfig?: boolean
+    workflowToolIsLoading: boolean
+    workflowToolOutdated: boolean
+    workflowToolIsCurrentWorkspaceManager: boolean
     workflowToolMessage?: string
+    onConfigureWorkflowTool: () => void
   }
 
 export const AccessModeDisplay = ({ mode }: { mode?: keyof typeof ACCESS_MODE_MAP }) => {
@@ -94,28 +93,6 @@ export const AccessModeDisplay = ({ mode }: { mode?: keyof typeof ACCESS_MODE_MA
   )
 }
 
-const ActionTooltip = ({
-  disabled,
-  tooltip,
-  children,
-}: {
-  disabled: boolean
-  tooltip?: ReactNode
-  children: ReactNode
-}) => {
-  if (!disabled || !tooltip)
-    return <>{children}</>
-
-  return (
-    <Tooltip>
-      <TooltipTrigger render={<div className="flex">{children}</div>} />
-      <TooltipContent>
-        {tooltip}
-      </TooltipContent>
-    </Tooltip>
-  )
-}
-
 export const PublisherSummarySection = ({
   debugWithMultipleModel = false,
   draftUpdatedAt,
@@ -124,16 +101,12 @@ export const PublisherSummarySection = ({
   handleRestore,
   isChatApp,
   multipleModelConfigs = [],
-  onWorkflowTypeSwitch,
   publishDisabled = false,
   published,
   publishedAt,
   publishShortcut,
   startNodeLimitExceeded = false,
   upgradeHighlightStyle,
-  workflowTypeSwitchConfig,
-  workflowTypeSwitchDisabled,
-  workflowTypeSwitchDisabledReason,
 }: SummarySectionProps) => {
   const { t } = useTranslation()
 
@@ -194,47 +167,6 @@ export const PublisherSummarySection = ({
                       </div>
                     )}
               </Button>
-              {workflowTypeSwitchConfig && (
-                <ActionTooltip disabled={workflowTypeSwitchDisabled} tooltip={workflowTypeSwitchDisabledReason}>
-                  <Button
-                    variant="ghost"
-                    className="mt-1 w-full gap-0.5 px-3 text-text-tertiary"
-                    onClick={() => void onWorkflowTypeSwitch()}
-                    disabled={workflowTypeSwitchDisabled}
-                  >
-                    <span className="px-0.5">
-                      {t(
-                        publishedAt
-                          ? workflowTypeSwitchConfig.switchLabelKey
-                          : workflowTypeSwitchConfig.publishLabelKey,
-                        { ns: 'workflow' },
-                      )}
-                    </span>
-                    <Tooltip>
-                      <TooltipTrigger
-                        render={(
-                          <span
-                            className="flex h-4 w-4 items-center justify-center text-text-quaternary hover:text-text-tertiary"
-                            aria-label={t(workflowTypeSwitchConfig.tipKey, { ns: 'workflow' })}
-                            onClick={(e) => {
-                              e.preventDefault()
-                              e.stopPropagation()
-                            }}
-                          >
-                            <span className="i-ri-question-line h-3.5 w-3.5" />
-                          </span>
-                        )}
-                      />
-                      <TooltipContent
-                        placement="top"
-                        className="w-[180px]"
-                      >
-                        {t(workflowTypeSwitchConfig.tipKey, { ns: 'workflow' })}
-                      </TooltipContent>
-                    </Tooltip>
-                  </Button>
-                </ActionTooltip>
-              )}
               {startNodeLimitExceeded && (
                 <div className="mt-3 flex flex-col items-stretch">
                   <p
@@ -298,6 +230,28 @@ export const PublisherAccessSection = ({
   )
 }
 
+const ActionTooltip = ({
+  disabled,
+  tooltip,
+  children,
+}: {
+  disabled: boolean
+  tooltip?: ReactNode
+  children: ReactNode
+}) => {
+  if (!disabled || !tooltip)
+    return <>{children}</>
+
+  return (
+    <Tooltip>
+      <TooltipTrigger render={<div className="flex">{children}</div>} />
+      <TooltipContent>
+        {tooltip}
+      </TooltipContent>
+    </Tooltip>
+  )
+}
+
 export const PublisherActionsSection = ({
   appDetail,
   appURL,
@@ -305,18 +259,20 @@ export const PublisherActionsSection = ({
   disabledFunctionTooltip,
   handleEmbed,
   handleOpenInExplore,
-  handlePublish,
+  handleOpenRunConfig,
   hasHumanInputNode = false,
   hasTriggerNode = false,
-  inputs,
   missingStartNode = false,
-  onRefreshData,
-  outputs,
-  published,
   publishedAt,
+  showBatchRunConfig = false,
+  showRunConfig = false,
   toolPublished,
   workflowToolAvailable = true,
+  workflowToolIsLoading,
+  workflowToolOutdated,
+  workflowToolIsCurrentWorkspaceManager,
   workflowToolMessage,
+  onConfigureWorkflowTool,
 }: ActionsSectionProps) => {
   const { t } = useTranslation()
 
@@ -333,6 +289,13 @@ export const PublisherActionsSection = ({
           disabled={disabledFunctionButton}
           link={appURL}
           icon={<span className="i-ri-play-circle-line h-4 w-4" />}
+          actionButton={showRunConfig
+            ? {
+                ariaLabel: t('operation.config', { ns: 'common' }),
+                icon: <RiSettings2Line className="h-4 w-4" />,
+                onClick: () => handleOpenRunConfig?.(appURL),
+              }
+            : undefined}
         >
           {t('common.runApp', { ns: 'workflow' })}
         </SuggestedAction>
@@ -345,6 +308,13 @@ export const PublisherActionsSection = ({
                 disabled={disabledFunctionButton}
                 link={`${appURL}${appURL.includes('?') ? '&' : '?'}mode=batch`}
                 icon={<span className="i-ri-play-list-2-line h-4 w-4" />}
+                actionButton={showBatchRunConfig
+                  ? {
+                      ariaLabel: t('operation.config', { ns: 'common' }),
+                      icon: <RiSettings2Line className="h-4 w-4" />,
+                      onClick: () => handleOpenRunConfig?.(`${appURL}${appURL.includes('?') ? '&' : '?'}mode=batch`),
+                    }
+                  : undefined}
               >
                 {t('common.batchRunApp', { ns: 'workflow' })}
               </SuggestedAction>
@@ -389,18 +359,10 @@ export const PublisherActionsSection = ({
         <WorkflowToolConfigureButton
           disabled={workflowToolDisabled}
           published={!!toolPublished}
-          detailNeedUpdate={!!toolPublished && published}
-          workflowAppId={appDetail?.id ?? ''}
-          icon={{
-            content: (appDetail.icon_type === 'image' ? '🤖' : appDetail?.icon) || '🤖',
-            background: (appDetail.icon_type === 'image' ? appDefaultIconBackground : appDetail?.icon_background) || appDefaultIconBackground,
-          }}
-          name={appDetail?.name ?? ''}
-          description={appDetail?.description ?? ''}
-          inputs={inputs}
-          outputs={outputs}
-          handlePublish={handlePublish}
-          onRefreshData={onRefreshData}
+          isLoading={workflowToolIsLoading}
+          outdated={workflowToolOutdated}
+          isCurrentWorkspaceManager={workflowToolIsCurrentWorkspaceManager}
+          onConfigure={onConfigureWorkflowTool}
           disabledReason={workflowToolMessage}
         />
       )}

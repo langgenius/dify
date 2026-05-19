@@ -11,6 +11,7 @@ from werkzeug.exceptions import Forbidden
 from controllers.common.schema import register_schema_models
 from extensions.ext_database import db
 from fields.base import ResponseModel
+from libs.helper import to_timestamp
 from libs.login import current_account_with_tenant, login_required
 from models.dataset import Dataset
 from models.enums import ApiTokenType
@@ -19,12 +20,6 @@ from services.api_token_service import ApiTokenCache
 
 from . import console_ns
 from .wraps import account_initialization_required, edit_permission_required, setup_required
-
-
-def _to_timestamp(value: datetime | int | None) -> int | None:
-    if isinstance(value, datetime):
-        return int(value.timestamp())
-    return value
 
 
 class ApiKeyItem(ResponseModel):
@@ -37,7 +32,7 @@ class ApiKeyItem(ResponseModel):
     @field_validator("last_used_at", "created_at", mode="before")
     @classmethod
     def _normalize_timestamp(cls, value: datetime | int | None) -> int | None:
-        return _to_timestamp(value)
+        return to_timestamp(value)
 
 
 class ApiKeyList(ResponseModel):
