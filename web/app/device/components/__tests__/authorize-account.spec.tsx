@@ -2,8 +2,8 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import AuthorizeAccount from '../authorize-account'
 
-const mockApproveAccount = vi.fn().mockResolvedValue(undefined)
-const mockDenyAccount = vi.fn().mockResolvedValue(undefined)
+const mockApproveAccount = vi.fn()
+const mockDenyAccount = vi.fn()
 
 vi.mock('@/service/device-flow', () => ({
   deviceApproveAccount: (...args: unknown[]) => mockApproveAccount(...args),
@@ -31,7 +31,11 @@ const makeProps = () => ({
 })
 
 describe('AuthorizeAccount', () => {
-  beforeEach(() => vi.clearAllMocks())
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mockApproveAccount.mockResolvedValue(undefined)
+    mockDenyAccount.mockResolvedValue(undefined)
+  })
 
   it('renders accountName', () => {
     render(<AuthorizeAccount {...makeProps()} />)
@@ -65,5 +69,20 @@ describe('AuthorizeAccount', () => {
     render(<AuthorizeAccount {...makeProps()} />)
     fireEvent.click(screen.getByRole('button', { name: /Cancel/i }))
     await waitFor(() => expect(mockDenyAccount).toHaveBeenCalledWith('ABCD-3456'))
+  })
+
+  it('calls onDenied after successful deny', async () => {
+    const props = makeProps()
+    render(<AuthorizeAccount {...props} />)
+    fireEvent.click(screen.getByRole('button', { name: /Cancel/i }))
+    await waitFor(() => expect(props.onDenied).toHaveBeenCalled())
+  })
+
+  it('calls onError when approve throws', async () => {
+    mockApproveAccount.mockRejectedValue(new Error('unexpected'))
+    const props = makeProps()
+    render(<AuthorizeAccount {...props} />)
+    fireEvent.click(screen.getByRole('button', { name: /Authorize/i }))
+    await waitFor(() => expect(props.onError).toHaveBeenCalledWith(expect.any(String)))
   })
 })
