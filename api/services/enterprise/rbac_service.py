@@ -1195,10 +1195,9 @@ class RBACService:
                 account_id=account_id,
                 json={"account_ids": member_account_ids},
             )
-            if isinstance(data, list):
-                items = data
-            else:
-                items = (data or {}).get("data") or []
+            items = []
+            if isinstance(data, dict):
+                items = [{"account_id": account_id, "roles": roles} for account_id, roles in data.items()]
             rst = []
             for item in items:
                 tmp = MemberRolesResponse.model_validate(item)

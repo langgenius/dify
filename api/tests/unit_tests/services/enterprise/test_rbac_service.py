@@ -488,19 +488,11 @@ class TestMemberRoles:
 
     def test_batch_get(self, mock_send: MagicMock):
         mock_send.return_value = {
-            "data": [
-                {
-                    "account_id": "acct-2",
-                    "roles": [
-                        {"id": "role-1", "name": "Admin"},
-                        {"id": "role-2", "name": "Editor"},
-                    ],
-                },
-                {
-                    "account_id": "acct-3",
-                    "roles": [],
-                },
-            ]
+            "acct-2": [
+                {"id": "role-1", "name": "Admin"},
+                {"id": "role-2", "name": "Editor"},
+            ],
+            "acct-3": [],
         }
 
         out = svc.RBACService.MemberRoles.batch_get("tenant-1", "acct-1", ["acct-2", "acct-3"])
@@ -511,6 +503,8 @@ class TestMemberRoles:
         assert call.json == {"account_ids": ["acct-2", "acct-3"]}
         assert out[0].account_id == "acct-2"
         assert len(out[0].roles) == 2
+        assert out[1].account_id == "acct-3"
+        assert out[1].roles == []
 
 
 class TestResourcePermissions:
