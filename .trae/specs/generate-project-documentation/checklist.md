@@ -1,0 +1,23 @@
+- [x] project-docs/ 目录结构已创建（architecture, features, flows, api, deployment 子目录）
+- [x] project-docs/architecture/overview.md 包含项目简介、技术栈、目录结构、核心模块关系图
+- [x] project-docs/architecture/backend.md 包含 DDD 分层架构图、核心模块列表、数据库模型、异步任务、存储架构
+- [x] project-docs/architecture/frontend.md 包含应用结构图、路由说明、组件层次、状态管理、i18n 方案
+- [x] project-docs/features/workflow.md 包含节点类型列表、执行引擎架构、变量池机制、人工输入流程、触发器类型
+- [x] project-docs/features/rag-pipeline.md 包含 RAG 完整流程、数据源类型、分块策略、嵌入配置、检索方法、重排序机制
+- [x] project-docs/features/agent.md 包含 Agent 策略说明、工具调用流程、记忆机制、插件集成
+- [x] project-docs/features/plugin.md 包含插件架构图、生命周期、端点注册、向后兼容策略
+- [x] project-docs/features/mcp.md 包含 MCP 架构、客户端/服务器交互、认证、会话管理
+- [x] project-docs/features/trigger.md 包含触发器类型列表、Webhook 流程、定时调度、插件触发器
+- [x] project-docs/features/tools.md 包含工具类型列表、工具引擎架构、各类工具创建使用流程
+- [x] project-docs/features/model-provider.md 包含供应商架构、模型配置流程、负载均衡策略、配额管理
+- [x] project-docs/features/dataset.md 包含数据集生命周期、文档处理流程、分段管理、元数据、命中测试
+- [x] project-docs/features/user-workspace.md 包含账户体系、OAuth 集成、工作空间管理、成员权限、API Key
+- [x] project-docs/deployment/architecture.md 包含 Docker Compose 架构图、中间件列表、Nginx、SSRF 代理、环境变量
+- [x] project-docs/api/overview.md 包含 API 分类、Console API 端点列表、Service API 端点列表、Web API 端点列表
+- [x] project-docs/flows/app-lifecycle.md 包含应用创建与发布闭环流程的 Mermaid 流程图
+- [x] project-docs/flows/workflow-execution.md 包含 Workflow 执行闭环流程的 Mermaid 流程图
+- [x] project-docs/flows/rag-pipeline-flow.md 包含 RAG 知识库构建闭环流程的 Mermaid 流程图
+- [x] project-docs/flows/agent-conversation.md 包含 Agent 对话闭环流程的 Mermaid 流程图
+- [x] project-docs/flows/logic-flows.md 包含模块间关系图、数据流向图、核心功能交互图
+- [x] 所有文档使用专业一致的格式，包含清晰的章节标题、表格和 Mermaid 图表
+- [x] 所有文档以中文编写

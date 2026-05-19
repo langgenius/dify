@@ -79,7 +79,8 @@ COPY --from=builder --chown=dify:dify /app/web/.next/standalone ./targets/next/
 COPY --from=builder --chown=dify:dify /app/web/.next/static ./targets/next/web/.next/static
 COPY --from=builder --chown=dify:dify /app/web/dist/standalone ./targets/vinext
 
-COPY --chown=dify:dify --chmod=755 web/docker/entrypoint.sh ./entrypoint.sh
+COPY --chown=dify:dify web/docker/entrypoint.sh ./entrypoint.sh
+RUN chmod 755 ./entrypoint.sh
 
 ARG COMMIT_SHA
 ENV COMMIT_SHA=${COMMIT_SHA}

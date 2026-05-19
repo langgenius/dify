@@ -3,10 +3,9 @@ FROM python:3.12-slim-bookworm AS base
 
 WORKDIR /app/api
 
-# Install uv
+# Install uv (use aliyun mirror for China)
 ENV UV_VERSION=0.8.9
-
-RUN pip install --no-cache-dir uv==${UV_VERSION}
+RUN pip install --no-cache-dir -i https://mirrors.aliyun.com/pypi/simple/ uv==${UV_VERSION}
 
 
 FROM base AS packages
@@ -22,10 +21,10 @@ RUN apt-get update \
           libmpfr-dev libmpc-dev
 
 # Install Python dependencies (workspace members under providers/vdb/)
-COPY pyproject.toml uv.lock ./
-COPY providers ./providers
+COPY api/pyproject.toml api/uv.lock ./
+COPY api/providers ./providers
 # Trust the checked-in lock during image builds; dev-only path sources live outside the api/ context.
-RUN uv sync --frozen --no-dev
+RUN UV_HTTP_TIMEOUT=1800 uv sync --frozen --no-dev -i https://mirrors.aliyun.com/pypi/simple/
 
 # production stage
 FROM base AS production

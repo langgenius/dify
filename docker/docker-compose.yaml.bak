@@ -372,10 +372,7 @@ services:
 
   # Frontend web application.
   web:
-    build:
-      context: ..
-      dockerfile: web/Dockerfile
-    image: dify-web:local
+    image: langgenius/dify-web:1.14.1
     restart: always
     env_file:
       - path: ./envs/core-services/web.env
