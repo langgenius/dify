@@ -874,10 +874,10 @@ Only non-sensitive configuration data should be returned by this endpoint.
 
 ##### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | System features retrieved successfully |
-| 500 | Internal server error |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | System features retrieved successfully | [SystemFeatureResponse](#systemfeatureresponse) |
+| 500 | Internal server error |  |
 
 ### /text-to-audio
 
@@ -922,11 +922,11 @@ Retrieve the access mode for a web application (public or restricted).
 
 ##### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
-| 400 | Bad Request |
-| 500 | Internal Server Error |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Access mode retrieved successfully | [AppAccessModeResponse](#appaccessmoderesponse) |
+| 400 | Bad Request |  |
+| 500 | Internal Server Error |  |
 
 ### /webapp/permission
 
@@ -943,12 +943,12 @@ Check if user has permission to access a web application.
 
 ##### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
-| 400 | Bad Request |
-| 401 | Unauthorized |
-| 500 | Internal Server Error |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Permission check completed | [AppPermissionResponse](#apppermissionresponse) |
+| 400 | Bad Request |  |
+| 401 | Unauthorized |  |
+| 500 | Internal Server Error |  |
 
 ### /workflows/run
 
@@ -1044,6 +1044,18 @@ Returns Server-Sent Events stream.
 | ---- | ---- | ----------- | -------- |
 | appCode | string | Application code | No |
 | appId | string | Application ID | No |
+
+#### AppAccessModeResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| accessMode | string | Application access mode (public or restricted) | No |
+
+#### AppPermissionResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| result | boolean | Whether user has permission to access the app | No |
 
 #### ChatMessagePayload
 
@@ -1206,6 +1218,12 @@ Returns Server-Sent Events stream.
 | ---- | ---- | ----------- | -------- |
 | last_id | string |  | No |
 | limit | integer |  | No |
+
+#### SystemFeatureResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| features | object | System feature configuration object | No |
 
 #### TextToAudioPayload
 

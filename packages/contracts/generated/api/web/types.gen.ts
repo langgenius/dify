@@ -9,6 +9,14 @@ export type AppAccessModeQuery = {
   appId?: string | null
 }
 
+export type AppAccessModeResponse = {
+  accessMode?: string
+}
+
+export type AppPermissionResponse = {
+  result?: boolean
+}
+
 export type ChatMessagePayload = {
   conversation_id?: string | null
   files?: Array<{
@@ -139,6 +147,12 @@ export type SavedMessageCreatePayload = {
 export type SavedMessageListQuery = {
   last_id?: string | null
   limit?: number
+}
+
+export type SystemFeatureResponse = {
+  features?: {
+    [key: string]: unknown
+  }
 }
 
 export type TextToAudioPayload = {
@@ -1308,9 +1322,7 @@ export type GetSystemFeaturesErrors = {
 export type GetSystemFeaturesError = GetSystemFeaturesErrors[keyof GetSystemFeaturesErrors]
 
 export type GetSystemFeaturesResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: SystemFeatureResponse
 }
 
 export type GetSystemFeaturesResponse = GetSystemFeaturesResponses[keyof GetSystemFeaturesResponses]
@@ -1369,9 +1381,7 @@ export type GetWebappAccessModeErrors = {
 export type GetWebappAccessModeError = GetWebappAccessModeErrors[keyof GetWebappAccessModeErrors]
 
 export type GetWebappAccessModeResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: AppAccessModeResponse
 }
 
 export type GetWebappAccessModeResponse
@@ -1401,9 +1411,7 @@ export type GetWebappPermissionErrors = {
 export type GetWebappPermissionError = GetWebappPermissionErrors[keyof GetWebappPermissionErrors]
 
 export type GetWebappPermissionResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: AppPermissionResponse
 }
 
 export type GetWebappPermissionResponse

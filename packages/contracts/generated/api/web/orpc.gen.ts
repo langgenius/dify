@@ -1113,16 +1113,10 @@ export const textToAudio = {
 
 /**
  * Retrieve the access mode for a web application (public or restricted).
- *
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
  */
 export const get14 = oc
   .route({
-    deprecated: true,
-    description:
-      'Retrieve the access mode for a web application (public or restricted).\n\nGenerated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
+    description: 'Retrieve the access mode for a web application (public or restricted).',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getWebappAccessMode',
@@ -1138,16 +1132,10 @@ export const accessMode = {
 
 /**
  * Check if user has permission to access a web application.
- *
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
  */
 export const get15 = oc
   .route({
-    deprecated: true,
-    description:
-      'Check if user has permission to access a web application.\n\nGenerated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
+    description: 'Check if user has permission to access a web application.',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getWebappPermission',

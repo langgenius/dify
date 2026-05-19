@@ -10,6 +10,14 @@ export const zAppAccessModeQuery = z.object({
   appId: z.string().nullish(),
 })
 
+export const zAppAccessModeResponse = z.object({
+  accessMode: z.string().optional(),
+})
+
+export const zAppPermissionResponse = z.object({
+  result: z.boolean().optional(),
+})
+
 /**
  * ChatMessagePayload
  */
@@ -192,6 +200,10 @@ export const zSavedMessageCreatePayload = z.object({
 export const zSavedMessageListQuery = z.object({
   last_id: z.string().nullish(),
   limit: z.int().gte(1).lte(100).optional().default(20),
+})
+
+export const zSystemFeatureResponse = z.object({
+  features: z.record(z.string(), z.unknown()).optional(),
 })
 
 /**
@@ -492,7 +504,7 @@ export const zGetSiteResponse = z.record(z.string(), z.unknown())
 /**
  * System features retrieved successfully
  */
-export const zGetSystemFeaturesResponse = z.record(z.string(), z.unknown())
+export const zGetSystemFeaturesResponse = zSystemFeatureResponse
 
 export const zPostTextToAudioBody = zTextToAudioPayload
 
@@ -507,18 +519,18 @@ export const zGetWebappAccessModeQuery = z.object({
 })
 
 /**
- * Success
+ * Access mode retrieved successfully
  */
-export const zGetWebappAccessModeResponse = z.record(z.string(), z.unknown())
+export const zGetWebappAccessModeResponse = zAppAccessModeResponse
 
 export const zGetWebappPermissionQuery = z.object({
   appId: z.string(),
 })
 
 /**
- * Success
+ * Permission check completed
  */
-export const zGetWebappPermissionResponse = z.record(z.string(), z.unknown())
+export const zGetWebappPermissionResponse = zAppPermissionResponse
 
 export const zGetWorkflowByTaskIdEventsPath = z.object({
   task_id: z.string(),
