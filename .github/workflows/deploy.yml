@@ -23,7 +23,9 @@ jobs:
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
             cd ~/dify
-            git pull origin main
+            git fetch origin main
+            git reset --hard origin/main
+            git clean -fd
             aws ecr get-login-password --region ap-south-1 | \
               docker login --username AWS --password-stdin \
               $(grep ECR_REGISTRY deploy/.env | cut -d= -f2)
