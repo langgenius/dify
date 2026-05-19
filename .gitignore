@@ -252,3 +252,12 @@ scripts/stress-test/reports/
 .qoder/*
 .context/*
 .eslintcache
+
+# Csutom Settings
+.agents/
+.agent/
+.github/
+.claude/
+.cursor/
+.codex/
+.opencode/
