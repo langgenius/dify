@@ -7,22 +7,26 @@ import AuthDevicesRevoke from './auth/devices/revoke/index.js'
 import AuthLogin from './auth/login/index.js'
 import AuthLogout from './auth/logout/index.js'
 import AuthStatus from './auth/status/index.js'
-import AuthUse from './auth/use/index.js'
 import AuthWhoami from './auth/whoami/index.js'
 import ConfigGet from './config/get/index.js'
 import ConfigPath from './config/path/index.js'
 import ConfigSet from './config/set/index.js'
 import ConfigUnset from './config/unset/index.js'
 import ConfigView from './config/view/index.js'
+import CreateMember from './create/member/index.js'
+import DeleteMember from './delete/member/index.js'
 import DescribeApp from './describe/app/index.js'
 import EnvList from './env/list/index.js'
 import GetApp from './get/app/index.js'
+import GetMember from './get/member/index.js'
 import GetWorkspace from './get/workspace/index.js'
 import HelpAccount from './help/account/index.js'
 import HelpEnvironment from './help/environment/index.js'
 import HelpExternal from './help/external/index.js'
 import ResumeApp from './resume/app/index.js'
 import RunApp from './run/app/index.js'
+import SetMember from './set/member/index.js'
+import UseWorkspace from './use/workspace/index.js'
 import Version from './version/index.js'
 
 export const commandTree: CommandTree = {
@@ -37,7 +41,6 @@ export const commandTree: CommandTree = {
       login: { command: AuthLogin, subcommands: {} },
       logout: { command: AuthLogout, subcommands: {} },
       status: { command: AuthStatus, subcommands: {} },
-      use: { command: AuthUse, subcommands: {} },
       whoami: { command: AuthWhoami, subcommands: {} },
     },
   },
@@ -48,6 +51,16 @@ export const commandTree: CommandTree = {
       set: { command: ConfigSet, subcommands: {} },
       unset: { command: ConfigUnset, subcommands: {} },
       view: { command: ConfigView, subcommands: {} },
+    },
+  },
+  create: {
+    subcommands: {
+      member: { command: CreateMember, subcommands: {} },
+    },
+  },
+  delete: {
+    subcommands: {
+      member: { command: DeleteMember, subcommands: {} },
     },
   },
   describe: {
@@ -63,6 +76,7 @@ export const commandTree: CommandTree = {
   get: {
     subcommands: {
       app: { command: GetApp, subcommands: {} },
+      member: { command: GetMember, subcommands: {} },
       workspace: { command: GetWorkspace, subcommands: {} },
     },
   },
@@ -81,6 +95,16 @@ export const commandTree: CommandTree = {
   run: {
     subcommands: {
       app: { command: RunApp, subcommands: {} },
+    },
+  },
+  set: {
+    subcommands: {
+      member: { command: SetMember, subcommands: {} },
+    },
+  },
+  use: {
+    subcommands: {
+      workspace: { command: UseWorkspace, subcommands: {} },
     },
   },
   version: { command: Version, subcommands: {} },

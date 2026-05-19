@@ -151,6 +151,59 @@ export const zHumanInputFormSubmitPayload = z.object({
 })
 
 /**
+ * MemberActionResponse
+ */
+export const zMemberActionResponse = z.object({
+  result: z.string().optional().default('success'),
+})
+
+/**
+ * MemberInvitePayload
+ */
+export const zMemberInvitePayload = z.object({
+  email: z.string(),
+  role: z.enum(['admin', 'normal']),
+})
+
+/**
+ * MemberInviteResponse
+ */
+export const zMemberInviteResponse = z.object({
+  email: z.string(),
+  invite_url: z.string().nullish(),
+  member_id: z.string(),
+  result: z.string().optional().default('success'),
+  role: z.string(),
+  tenant_id: z.string(),
+})
+
+/**
+ * MemberResponse
+ */
+export const zMemberResponse = z.object({
+  avatar: z.string().nullish(),
+  email: z.string(),
+  id: z.string(),
+  name: z.string(),
+  role: z.string(),
+  status: z.string(),
+})
+
+/**
+ * MemberListResponse
+ */
+export const zMemberListResponse = z.object({
+  members: z.array(zMemberResponse),
+})
+
+/**
+ * MemberRoleUpdatePayload
+ */
+export const zMemberRoleUpdatePayload = z.object({
+  role: z.enum(['admin', 'normal']),
+})
+
+/**
  * PermittedExternalAppsListQuery
  *
  * Strict (extra='forbid').
@@ -546,3 +599,54 @@ export const zGetWorkspacesByWorkspaceIdPath = z.object({
  * Workspace detail
  */
 export const zGetWorkspacesByWorkspaceIdResponse = zWorkspaceDetailResponse
+
+export const zGetWorkspacesByWorkspaceIdMembersPath = z.object({
+  workspace_id: z.string(),
+})
+
+/**
+ * Member list
+ */
+export const zGetWorkspacesByWorkspaceIdMembersResponse = zMemberListResponse
+
+export const zPostWorkspacesByWorkspaceIdMembersBody = zMemberInvitePayload
+
+export const zPostWorkspacesByWorkspaceIdMembersPath = z.object({
+  workspace_id: z.string(),
+})
+
+/**
+ * Member invited
+ */
+export const zPostWorkspacesByWorkspaceIdMembersResponse = zMemberInviteResponse
+
+export const zDeleteWorkspacesByWorkspaceIdMembersByMemberIdPath = z.object({
+  member_id: z.string(),
+  workspace_id: z.string(),
+})
+
+/**
+ * Member removed
+ */
+export const zDeleteWorkspacesByWorkspaceIdMembersByMemberIdResponse = zMemberActionResponse
+
+export const zPutWorkspacesByWorkspaceIdMembersByMemberIdRoleBody = zMemberRoleUpdatePayload
+
+export const zPutWorkspacesByWorkspaceIdMembersByMemberIdRolePath = z.object({
+  member_id: z.string(),
+  workspace_id: z.string(),
+})
+
+/**
+ * Role updated
+ */
+export const zPutWorkspacesByWorkspaceIdMembersByMemberIdRoleResponse = zMemberActionResponse
+
+export const zPostWorkspacesByWorkspaceIdSwitchPath = z.object({
+  workspace_id: z.string(),
+})
+
+/**
+ * Workspace detail
+ */
+export const zPostWorkspacesByWorkspaceIdSwitchResponse = zWorkspaceDetailResponse
