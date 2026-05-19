@@ -51,6 +51,8 @@ import ReactFlow, {
   useReactFlow,
   useStoreApi,
 } from 'reactflow'
+import { registerDifyAgentPageContext } from '@/app/components/agent-context/runtime'
+import { buildWorkflowAgentContext } from '@/app/components/agent-context/workflow'
 import { IS_DEV } from '@/config'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import {
@@ -59,6 +61,7 @@ import {
   useAllMCPTools,
   useAllWorkflowTools,
 } from '@/service/use-tools'
+import { useAllTriggerPlugins } from '@/service/use-triggers'
 import { fetchAllInspectVars } from '@/service/workflow'
 import CandidateNode from './candidate-node'
 import UserCursors from './collaboration/components/user-cursors'
@@ -206,6 +209,9 @@ export const Workflow: FC<WorkflowProps> = memo(({
   const [isMouseOverCanvas, setIsMouseOverCanvas] = useState(false)
   const [nodes, setNodes] = useNodesState(originalNodes)
   const [edges, setEdges] = useEdgesState(originalEdges)
+  const nodesRef = useRef<Node[]>(nodes as Node[])
+  const edgesRef = useRef<Edge[]>(edges as Edge[])
+  const agentPluginCatalogRef = useRef<Record<string, unknown[]>>({})
   const controlMode = useStore(s => s.controlMode)
   const nodeAnimation = useStore(s => s.nodeAnimation)
   const showConfirm = useStore(s => s.showConfirm)
@@ -255,6 +261,31 @@ export const Workflow: FC<WorkflowProps> = memo(({
       }
     }
   }, [setWorkflowCanvasHeight, setWorkflowCanvasWidth])
+
+  useEffect(() => {
+    nodesRef.current = nodes as Node[]
+  }, [nodes])
+
+  useEffect(() => {
+    edgesRef.current = edges as Edge[]
+  }, [edges])
+
+  useEffect(() => {
+    return registerDifyAgentPageContext('workflow', () => {
+      const state = workflowStore.getState()
+
+      return buildWorkflowAgentContext({
+        candidateNode: state.candidateNode,
+        controlMode: state.controlMode,
+        edges: edgesRef.current,
+        isListening: state.isListening,
+        nodes: nodesRef.current,
+        pathname: window.location.pathname,
+        pendingSingleRun: state.pendingSingleRun,
+        pluginCatalog: agentPluginCatalogRef.current,
+      })
+    })
+  }, [workflowStore])
 
   const {
     setShowConfirm,
@@ -574,7 +605,16 @@ export const Workflow: FC<WorkflowProps> = memo(({
   const { data: customTools } = useAllCustomTools()
   const { data: workflowTools } = useAllWorkflowTools()
   const { data: mcpTools } = useAllMCPTools()
+  const { data: triggerPlugins } = useAllTriggerPlugins()
   const dataSourceList = useStore(s => s.dataSourceList)
+  agentPluginCatalogRef.current = {
+    buildInTools: buildInTools || [],
+    customTools: customTools || [],
+    dataSourceList: dataSourceList ?? [],
+    mcpTools: mcpTools || [],
+    triggerPlugins: triggerPlugins || [],
+    workflowTools: workflowTools || [],
+  }
   // buildInTools, customTools, workflowTools, mcpTools, dataSourceList
   const configsMap = useHooksStore(s => s.configsMap)
   const [isLoadedVars, setIsLoadedVars] = useState(false)

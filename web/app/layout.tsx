@@ -4,6 +4,7 @@ import { TooltipProvider } from '@langgenius/dify-ui/tooltip'
 import { Provider as JotaiProvider } from 'jotai/react'
 import { ThemeProvider } from 'next-themes'
 import { NuqsAdapter } from 'nuqs/adapters/next/app'
+import { AgentContextProvider } from '@/app/components/agent-context/provider'
 import AmplitudeProvider from '@/app/components/base/amplitude'
 import { IS_PROD } from '@/config'
 import { TanstackQueryInitializer } from '@/context/query-client'
@@ -59,6 +60,7 @@ const LocaleLayout = async ({
         className="h-full select-auto"
         {...datasetMap}
       >
+        <script src="/dify-agent-context.js" nonce={nonce} />
         <div className="isolate h-full">
           <AmplitudeProvider />
           <JotaiProvider>
@@ -73,6 +75,7 @@ const LocaleLayout = async ({
                 <TanstackQueryInitializer>
                   <I18nServerProvider>
                     <ToastHost timeout={5000} limit={3} />
+                    <AgentContextProvider />
                     <PartnerStackCookieRecorder />
                     <TooltipProvider delay={300} closeDelay={200}>
                       {children}
