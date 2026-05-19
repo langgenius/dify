@@ -23,7 +23,6 @@ PLUGIN_CATEGORIES = tuple(PluginCategory)
 SECONDS_PER_DAY = 24 * 60 * 60
 AUTO_UPGRADE_CHECK_SLOT_SECONDS = 15 * 60
 AUTO_UPGRADE_CHECK_SLOT_COUNT = SECONDS_PER_DAY // AUTO_UPGRADE_CHECK_SLOT_SECONDS
-AUTO_UPGRADE_CHECK_SLOT_OFFSET_SECONDS = AUTO_UPGRADE_CHECK_SLOT_SECONDS // 2
 
 
 @dataclass(frozen=True)
@@ -43,10 +42,10 @@ class PluginAutoUpgradeService:
 
     @staticmethod
     def default_upgrade_time_of_day(tenant_id: str) -> int:
-        """Spread default checks across 15-minute slots by tenant."""
+        """Spread default checks across 15-minute aligned slots by tenant."""
         hash_input = tenant_id.encode()
         slot = int.from_bytes(sha256(hash_input).digest()[:8], "big") % AUTO_UPGRADE_CHECK_SLOT_COUNT
-        return slot * AUTO_UPGRADE_CHECK_SLOT_SECONDS + AUTO_UPGRADE_CHECK_SLOT_OFFSET_SECONDS
+        return slot * AUTO_UPGRADE_CHECK_SLOT_SECONDS
 
     @staticmethod
     def _coerce_category(category: object) -> PluginCategory | None:

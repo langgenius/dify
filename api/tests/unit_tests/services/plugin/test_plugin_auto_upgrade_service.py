@@ -219,6 +219,14 @@ class TestBackfillStrategyCategories:
         assert model_strategy.strategy_setting == TenantPluginAutoUpgradeStrategy.StrategySetting.LATEST
         assert model_strategy.upgrade_time_of_day == expected_time
 
+    def test_default_upgrade_time_is_aligned_to_fifteen_minutes(self):
+        from services.plugin.plugin_auto_upgrade_service import PluginAutoUpgradeService
+
+        default_time = PluginAutoUpgradeService.default_upgrade_time_of_day("t1")
+
+        assert default_time % (15 * 60) == 0
+        assert 0 <= default_time < 24 * 60 * 60
+
     def test_creates_missing_categories_and_splits_known_plugins(self):
         p1, session = _patched_session()
         tool_strategy = SimpleNamespace(
