@@ -733,9 +733,9 @@ export const zSite = z.object({
  * ComposerBindingPayload
  */
 export const zComposerBindingPayload = z.object({
-  agent_config_version_id: z.string().nullish(),
   agent_id: z.string().nullish(),
   binding_type: z.enum(['inline_agent', 'roster_agent']),
+  current_snapshot_id: z.string().nullish(),
 })
 
 /**

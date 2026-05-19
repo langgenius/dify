@@ -160,9 +160,7 @@ def test_workflow_binding_stores_node_job_config_separately_from_agent_soul():
 
 
 def test_long_text_columns_do_not_use_mysql_incompatible_server_defaults():
-    for column in (
-        Agent.__table__.c.description,
-    ):
+    for column in (Agent.__table__.c.description,):
         assert isinstance(column.type, LongText)
         assert column.server_default is None
     assert AgentConfigSnapshot.__table__.c.config_snapshot.server_default is None

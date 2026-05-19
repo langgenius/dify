@@ -3,13 +3,20 @@
 import * as z from 'zod'
 
 /**
+ * AgentIconType
+ *
+ * Supported icon storage formats for Agent roster entries.
+ */
+export const zAgentIconType = z.enum(['emoji', 'image', 'link'])
+
+/**
  * RosterAgentUpdatePayload
  */
 export const zRosterAgentUpdatePayload = z.object({
   description: z.string().nullish(),
   icon: z.string().max(255).nullish(),
   icon_background: z.string().max(255).nullish(),
-  icon_type: z.string().max(255).nullish(),
+  icon_type: zAgentIconType.optional(),
   name: z.string().min(1).max(255).nullish(),
 })
 
@@ -119,7 +126,7 @@ export const zRosterAgentCreatePayload = z.object({
   description: z.string().optional().default(''),
   icon: z.string().max(255).nullish(),
   icon_background: z.string().max(255).nullish(),
-  icon_type: z.string().max(255).nullish(),
+  icon_type: zAgentIconType.optional(),
   name: z.string().min(1).max(255),
   version_note: z.string().nullish(),
 })

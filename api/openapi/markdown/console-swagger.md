@@ -10468,6 +10468,14 @@ Get banner list
 | model_mode | string | Model mode | Yes |
 | model_name | string | Model name | Yes |
 
+#### AgentIconType
+
+Supported icon storage formats for Agent roster entries.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| AgentIconType | string | Supported icon storage formats for Agent roster entries. |  |
+
 #### AgentIdPath
 
 | Name | Type | Description | Required |
@@ -13877,7 +13885,7 @@ Form input definition.
 | description | string |  | No |
 | icon | string |  | No |
 | icon_background | string |  | No |
-| icon_type | string |  | No |
+| icon_type | [AgentIconType](#agenticontype) |  | No |
 | name | string |  | Yes |
 | version_note | string |  | No |
 
@@ -13888,7 +13896,7 @@ Form input definition.
 | description | string |  | No |
 | icon | string |  | No |
 | icon_background | string |  | No |
-| icon_type | string |  | No |
+| icon_type | [AgentIconType](#agenticontype) |  | No |
 | name | string |  | No |
 
 #### RosterListQuery

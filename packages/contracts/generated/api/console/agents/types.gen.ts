@@ -9,7 +9,7 @@ export type RosterAgentCreatePayload = {
   description?: string
   icon?: string | null
   icon_background?: string | null
-  icon_type?: string | null
+  icon_type?: AgentIconType
   name: string
   version_note?: string | null
 }
@@ -18,7 +18,7 @@ export type RosterAgentUpdatePayload = {
   description?: string | null
   icon?: string | null
   icon_background?: string | null
-  icon_type?: string | null
+  icon_type?: AgentIconType
   name?: string | null
 }
 
@@ -40,6 +40,8 @@ export type AgentSoulConfig = {
   skills_files?: AgentSoulSkillsFilesConfig
   tools?: AgentSoulToolsConfig
 }
+
+export type AgentIconType = 'emoji' | 'image' | 'link'
 
 export type AppVariableConfig = {
   default?: unknown

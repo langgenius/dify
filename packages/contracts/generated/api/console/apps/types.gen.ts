@@ -981,9 +981,9 @@ export type AgentSoulConfig = {
 }
 
 export type ComposerBindingPayload = {
-  agent_config_version_id?: string | null
   agent_id?: string | null
   binding_type: 'inline_agent' | 'roster_agent'
+  current_snapshot_id?: string | null
 }
 
 export type WorkflowNodeJobConfig = {

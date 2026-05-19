@@ -516,9 +516,7 @@ def test_roster_update_archive_versions_and_detail(monkeypatch):
     )
     service.archive_roster_agent(tenant_id="tenant-1", agent_id="agent-1", account_id="account-1")
     versions = service.list_agent_versions(tenant_id="tenant-1", agent_id="agent-1")
-    detail = service.get_agent_version_detail(
-        tenant_id="tenant-1", agent_id="agent-1", version_id="version-1"
-    )
+    detail = service.get_agent_version_detail(tenant_id="tenant-1", agent_id="agent-1", version_id="version-1")
 
     assert updated["description"] == "new"
     assert agent.status == AgentStatus.ARCHIVED
