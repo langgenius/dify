@@ -1,14 +1,14 @@
 #!/bin/sh
-# install-cli.sh — one-line difyctl installer from latest GitHub Actions build.
+# install-cli.sh — one-line difyctl installer from the latest GitHub Actions build.
 #
 # usage:
-#   curl -fsSL https://raw.githubusercontent.com/langgenius/dify/main/cli/scripts/install-cli.sh | sh
+#   GH_TOKEN=<pat> curl -fsSL https://raw.githubusercontent.com/langgenius/dify/main/cli/scripts/install-cli.sh | sh
 #
 # env: DIFYCTL_PREFIX (default $HOME/.local), DIFYCTL_REPO (default langgenius/dify),
 #      DIFYCTL_BRANCH (default main),
-#      GH_TOKEN (required — GitHub workflow artifact zip downloads need auth even on public repos;
-#               minimum scope: actions:read).
-# requires: curl, tar (xz), uname, jq, unzip, sha256sum or shasum.
+#      GH_TOKEN/GITHUB_TOKEN (required — workflow artifact zip downloads need
+#                             auth even on public repos; minimum scope: actions:read).
+# requires: curl, uname, jq, unzip, sha256sum or shasum.
 
 set -eu
 
@@ -23,7 +23,6 @@ die() { err "$*"; exit 1; }
 need() { command -v "$1" >/dev/null 2>&1 || die "$1 is required"; }
 
 need curl
-need tar
 need uname
 need jq
 need unzip
@@ -43,7 +42,7 @@ fi
 case "$(uname -s)" in
     Linux*)  os=linux ;;
     Darwin*) os=darwin ;;
-    *)       die "unsupported OS: $(uname -s)" ;;
+    *)       die "unsupported OS: $(uname -s) (use the Windows .exe directly)" ;;
 esac
 
 case "$(uname -m)" in
@@ -54,7 +53,7 @@ esac
 
 target="${os}-${arch}"
 
-# 1. Find the latest successful workflow run
+# 1. Find the latest successful workflow run on the branch
 api_url="https://api.github.com/repos/${REPO}/actions/workflows/${WORKFLOW_FILE}/runs?branch=${BRANCH}&status=success&per_page=1"
 run_id=$(gh_curl "$api_url" | jq -r '.workflow_runs[0].id')
 
@@ -72,22 +71,21 @@ if [ -z "$artifact_id" ] || [ "$artifact_id" = "null" ]; then
     die "could not find any artifacts for workflow run ${run_id}"
 fi
 
-# 3. Download and unzip the artifact
+# 3. Download and unzip the artifact (one zip with all platform binaries + checksums)
 tmp=$(mktemp -d 2>/dev/null || mktemp -d -t difyctl-install)
 trap 'rm -rf "$tmp"' EXIT INT TERM
 
 download_url="https://api.github.com/repos/${REPO}/actions/artifacts/${artifact_id}/zip"
 printf 'downloading artifact %s (run %s)...\n' "$artifact_name" "$run_id"
 gh_curl -L "$download_url" -o "${tmp}/artifact.zip"
-
 unzip -q "${tmp}/artifact.zip" -d "${tmp}/artifact"
 
-# 4. Find the tarball + checksum file by target
-asset_path=$(ls "${tmp}/artifact"/difyctl-v*-"${target}".tar.xz 2>/dev/null | head -1)
-[ -n "$asset_path" ] || die "no tarball matching target ${target} in artifact"
+# 4. Locate the binary for this host + the checksum manifest
+asset_path=$(ls "${tmp}/artifact"/difyctl-v*-"${target}" 2>/dev/null | head -1)
+[ -n "$asset_path" ] || die "no binary matching target ${target} in artifact"
 asset=$(basename "$asset_path")
 cli_version=${asset#difyctl-v}
-cli_version=${cli_version%-${target}.tar.xz}
+cli_version=${cli_version%-${target}}
 checksums="difyctl-v${cli_version}-checksums.txt"
 
 [ -f "${tmp}/artifact/${checksums}" ] || die "checksum file ${checksums} not found in artifact"
@@ -98,26 +96,20 @@ checksums="difyctl-v${cli_version}-checksums.txt"
     grep " ${asset}\$" "$checksums" | $HASH -c -
 ) || die "checksum mismatch for ${asset}"
 
-# 6. Extract and install
-share_dir="${PREFIX}/share/difyctl"
+# 6. Install: copy binary to <prefix>/bin/difyctl and chmod +x
 bin_dir="${PREFIX}/bin"
-mkdir -p "$share_dir" "$bin_dir"
+mkdir -p "$bin_dir"
+target_bin="${bin_dir}/difyctl"
+cp "${tmp}/artifact/${asset}" "$target_bin"
+chmod +x "$target_bin"
 
-printf 'extracting to %s\n' "$share_dir"
-tar -xJf "${tmp}/artifact/${asset}" -C "$share_dir" --strip-components=1
-
-target_bin="${share_dir}/bin/difyctl"
-[ -x "$target_bin" ] || die "expected binary at ${target_bin} after extract"
-
-ln -sf "$target_bin" "${bin_dir}/difyctl"
-
-printf '\ndifyctl v%s installed: %s/difyctl\n' "$cli_version" "$bin_dir"
+printf '\ndifyctl v%s installed: %s\n' "$cli_version" "$target_bin"
 
 case ":${PATH}:" in
     *":${bin_dir}:"*)
-        "${bin_dir}/difyctl" version >/dev/null 2>&1 \
+        "$target_bin" version >/dev/null 2>&1 \
             && printf 'verify: run "difyctl version"\n' \
-            || err "binary present but failed to execute; check ${bin_dir}/difyctl"
+            || err "binary present but failed to execute; check ${target_bin}"
         ;;
     *)
         printf '\n%s is not on your PATH. Add this to your shell profile:\n' "$bin_dir"

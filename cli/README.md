@@ -4,7 +4,7 @@ CLI client for [Dify] platform. Browser device-flow signin, list/inspect apps, r
 
 ## Install
 
-Pre-release builds are published only as **GitHub Actions workflow artifacts** (no npm, no GitHub Release assets). The installer fetches the latest successful `cli-release.yml` run on `main`, verifies sha256, and extracts the tarball into `$HOME/.local`.
+Builds are standalone binaries (Bun-compiled) published as **GitHub Actions workflow artifacts** — no npm, no GitHub Release assets. The installer fetches the latest successful `cli-release.yml` run on `main`, verifies sha256, and copies the binary into `$HOME/.local/bin/difyctl`.
 
 ```sh
 # GH_TOKEN with `actions:read` scope is required — workflow artifact downloads
@@ -13,14 +13,14 @@ export GH_TOKEN=<your-pat>
 curl -fsSL https://raw.githubusercontent.com/langgenius/dify/main/cli/scripts/install-cli.sh | sh
 ```
 
-| Env              | Default           | Purpose                                             |
-| ---------------- | ----------------- | --------------------------------------------------- |
-| `GH_TOKEN`       | —                 | GitHub PAT (or `GITHUB_TOKEN`) with `actions:read`. |
-| `DIFYCTL_PREFIX` | `$HOME/.local`    | Install root. Binary symlinked to `<prefix>/bin`.   |
-| `DIFYCTL_REPO`   | `langgenius/dify` | Source repo.                                        |
-| `DIFYCTL_BRANCH` | `main`            | Branch to pick the latest successful run from.      |
+| Env              | Default           | Purpose                                               |
+| ---------------- | ----------------- | ----------------------------------------------------- |
+| `GH_TOKEN`       | —                 | GitHub PAT (or `GITHUB_TOKEN`) with `actions:read`.   |
+| `DIFYCTL_PREFIX` | `$HOME/.local`    | Install root. Binary lands at `<prefix>/bin/difyctl`. |
+| `DIFYCTL_REPO`   | `langgenius/dify` | Source repo.                                          |
+| `DIFYCTL_BRANCH` | `main`            | Branch to pick the latest successful run from.        |
 
-Targets: `darwin-arm64`, `darwin-x64`, `linux-arm64`, `linux-x64`. Windows is not supported at this stage.
+Supported targets: `darwin-arm64`, `darwin-x64`, `linux-arm64`, `linux-x64`, `windows-x64.exe`. The shell installer covers Linux + macOS; Windows users can download the `.exe` directly from the same artifact.
 
 ## Quickstart
 

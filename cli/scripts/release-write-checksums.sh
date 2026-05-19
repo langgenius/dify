@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
-# scripts/release-write-checksums.sh — write sha256 manifest for tarballs.
+# scripts/release-write-checksums.sh — write sha256 manifest for release binaries.
 #
 # Required env: CLI_VERSION (e.g. 0.1.0-rc.1). Output:
-#   cli/dist/difyctl-v<CLI_VERSION>-checksums.txt
+#   cli/dist/bin/difyctl-v<CLI_VERSION>-checksums.txt
 
 set -euo pipefail
 
@@ -12,7 +12,7 @@ source "${_dir}/lib/common.sh"
 
 : "${CLI_VERSION:?CLI_VERSION is required}"
 
-cd "$(cli::root)/dist"
+cd "$(cli::root)/dist/bin"
 
 manifest="difyctl-v${CLI_VERSION}-checksums.txt"
 > "$manifest"
@@ -26,12 +26,13 @@ else
 fi
 
 found=0
-for tar in difyctl-v"${CLI_VERSION}"-*.tar.xz; do
-    [[ -f "$tar" ]] || continue
-    $hash_cmd "$tar" >> "$manifest"
+for bin in difyctl-v"${CLI_VERSION}"-*; do
+    [[ -f "$bin" ]] || continue
+    [[ "$bin" == "$manifest" ]] && continue
+    $hash_cmd "$bin" >> "$manifest"
     found=$((found + 1))
 done
 
-[[ "$found" -gt 0 ]] || die "no tarballs matching difyctl-v${CLI_VERSION}-*.tar.xz in dist/"
+[[ "$found" -gt 0 ]] || die "no binaries matching difyctl-v${CLI_VERSION}-* in dist/bin/"
 
 log::info "wrote ${manifest} (${found} entries)"

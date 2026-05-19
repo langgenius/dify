@@ -40,10 +40,10 @@ Examples: `get/app/`, `auth/devices/revoke/`, `describe/app/`.
 
 **2. Mandatory files**
 
-| File       | Responsibility                                                                           |
-| ---------- | ---------------------------------------------------------------------------------------- |
-| `index.ts` | oclif `Command` subclass. Flag/arg declaration + `run()` wiring only. No business logic. |
-| `run.ts`   | Pure async function. Typed options + deps. Returns string. No `@oclif/core` imports.     |
+| File       | Responsibility                                                                          |
+| ---------- | --------------------------------------------------------------------------------------- |
+| `index.ts` | `DifyCommand` subclass. Flag/arg declaration + `run()` wiring only. No business logic.  |
+| `run.ts`   | Pure async function. Typed options + deps. Returns string. No `src/framework/` imports. |
 
 **3. Optional files — add as needed**
 
@@ -61,10 +61,10 @@ Examples: `get/app/`, `auth/devices/revoke/`, `describe/app/`.
 - [ ] Authed command calls `this.authedCtx()`; non-authed skips
 - [ ] No try/catch in `run()` — `DifyCommand.catch()` handles `BaseError`
 - [ ] `run.ts` returns string; no direct stdout write
-- [ ] `run.ts` no `@oclif/core` imports
+- [ ] `run.ts` no `src/framework/` imports
 - [ ] HTTP client via factory dep, not direct
 - [ ] `run.test.ts` written before impl (test-first)
-- [ ] `pnpm manifest` run after adding command (updates `oclif.manifest.json`)
+- [ ] `pnpm tree:gen` run after adding command (updates `src/commands/tree.ts`)
 - [ ] README command table updated by hand
 
 ---
@@ -236,7 +236,7 @@ Never instantiate clients in `index.ts`.
 
 **Test-first.** Write failing test, run to confirm fail, then implement.
 
-Tests live in `run.test.ts` alongside command. Test `run.ts` direct — never oclif `Command` class.
+Tests live in `run.test.ts` alongside command. Test `run.ts` direct — never the `DifyCommand` class.
 
 ```typescript
 const io = bufferStreams()
@@ -290,13 +290,14 @@ expect(JSON.parse(out).workspaces).toHaveLength(2)
 | `pnpm type-check`       | `tsc --noEmit` — catches type errors without build |
 | `pnpm lint`             | ESLint check                                       |
 | `pnpm lint:fix`         | ESLint auto-fix (perfectionist sort, chaining)     |
-| `pnpm build`            | Production bundle + `oclif manifest`               |
-| `pnpm manifest`         | Regenerate `oclif.manifest.json` only              |
-| `pnpm pack:tarballs`    | Build distributable tarballs (release only)        |
+| `pnpm build`            | Production bundle (`vp pack`)                      |
+| `pnpm tree:gen`         | Regenerate `src/commands/tree.ts` (registry)       |
+| `pnpm tree:check`       | Verify `tree.ts` matches the filesystem            |
+| `pnpm build:bin`        | Cross-compile standalone binaries via Bun (CI)     |
 
-**`pnpm manifest` rule:** run after adding, removing, renaming any command, flag, or arg. Manifest = runtime command registry — stale manifest causes silent flag failures at runtime.
+**`pnpm tree:gen` rule:** run after adding, removing, renaming any command. The generated `tree.ts` is the runtime command registry — stale tree causes commands to be invisible at runtime. (Runs implicitly via `prebuild`/`predev`/`pretest`.)
 
-**README hand-maintained.** `oclif readme` incompatible with this monorepo setup. When adding command, update command table in `README.md` manually.
+**README hand-maintained.** When adding a command, update the command table in `README.md` manually.
 
 ---
 
@@ -336,7 +337,7 @@ Repo runs `@antfu/eslint-config` + perfectionist + unicorn.
 | `enabled: !isHuman` in `runWithSpinner`                              | Set `outputFormat` on `IOStreams`; spinner auto-detects |
 | Long positional arg lists                                            | Options struct                                          |
 | `Record<string, Strategy>` dispatch map                              | Named singletons + picker function                      |
-| `@oclif/core` import in `run.ts`                                     | Keep oclif in `index.ts` only                           |
+| `src/framework/` import in `run.ts`                                  | Keep framework imports in `index.ts` only               |
 | `buildAuthedContext(this, opts)` in command body                     | `this.authedCtx(opts)`                                  |
 | `console.log` in `src/`                                              | Return string from `run.ts`; write in `index.ts`        |
 | New dependency without approval                                      | Check first                                             |

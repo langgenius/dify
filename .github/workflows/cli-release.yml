@@ -8,22 +8,10 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  pack:
-    name: pack (${{ matrix.target }})
+  release:
+    name: build standalone binaries (all targets)
+    runs-on: depot-ubuntu-24.04
     if: github.repository == 'langgenius/dify'
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - target: linux-x64
-            runs-on: depot-ubuntu-24.04
-          - target: linux-arm64
-            runs-on: ubuntu-24.04-arm
-          - target: darwin-x64
-            runs-on: macos-13
-          - target: darwin-arm64
-            runs-on: macos-14
-    runs-on: ${{ matrix.runs-on }}
     permissions:
       contents: read
     defaults:
@@ -40,6 +28,11 @@ jobs:
 
       - name: Setup web environment
         uses: ./.github/actions/setup-web
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@4bc047ad259df6fc24a6c9b0f9a0cb08cf17fbe5 # v2.0.2
+        with:
+          bun-version: latest
 
       - name: Read cli/package.json
         id: manifest
@@ -58,7 +51,13 @@ jobs:
       - name: Validate manifest
         run: scripts/release-validate-manifest.sh
 
-      - name: Build cli
+      - name: Install cross-arch native prebuilds
+        # Re-installs node_modules with every @napi-rs/keyring platform variant
+        # so `bun build --compile` can embed the right .node into each target.
+        working-directory: ./
+        run: NPM_CONFIG_USERCONFIG="$PWD/cli/scripts/cross-arch.npmrc" pnpm install --frozen-lockfile
+
+      - name: Build cli (dist/)
         env:
           DIFYCTL_VERSION: ${{ steps.manifest.outputs.version }}
           DIFYCTL_CHANNEL: ${{ steps.manifest.outputs.channel }}
@@ -69,62 +68,21 @@ jobs:
           DIFYCTL_BUILD_DATE="$(git log -1 --format=%cI HEAD)" \
             pnpm build
 
-      - name: Pack tarball (${{ matrix.target }})
+      - name: Compile standalone binaries (all targets)
         env:
           CLI_VERSION: ${{ steps.manifest.outputs.version }}
-          PACK_TARGET: ${{ matrix.target }}
-        run: pnpm pack:tarballs
-
-      - name: Upload per-target tarball
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-        with:
-          name: difyctl-${{ steps.manifest.outputs.version }}-${{ matrix.target }}
-          path: cli/dist/difyctl-v*-${{ matrix.target }}.tar.xz
-          retention-days: 7
-          if-no-files-found: error
-
-  bundle:
-    name: bundle release artifact
-    needs: pack
-    if: github.repository == 'langgenius/dify'
-    runs-on: depot-ubuntu-24.04
-    permissions:
-      contents: read
-    defaults:
-      run:
-        shell: bash
-        working-directory: ./cli
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-        with:
-          persist-credentials: false
-
-      - name: Read manifest version
-        id: manifest
-        run: |
-          version=$(node -p "require('./package.json').version")
-          echo "version=$version" >> "$GITHUB_OUTPUT"
-
-      - name: Download per-target tarballs
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
-        with:
-          path: cli/dist
-          pattern: difyctl-${{ steps.manifest.outputs.version }}-*
-          merge-multiple: true
+        run: pnpm build:bin
 
       - name: Generate sha256 checksum file
         env:
           CLI_VERSION: ${{ steps.manifest.outputs.version }}
         run: scripts/release-write-checksums.sh
 
-      - name: Upload combined release artifact
+      - name: Upload release artifact
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: difyctl-${{ steps.manifest.outputs.version }}
           path: |
-            cli/dist/difyctl-v*.tar.xz
-            cli/dist/difyctl-v*-checksums.txt
-          retention-days: 90
+            cli/dist/bin/difyctl-v*
+          retention-days: 21
           if-no-files-found: error

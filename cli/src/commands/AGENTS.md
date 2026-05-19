@@ -4,7 +4,7 @@ Per-command agent-optimized usage and structure guide.
 
 ## Command folder convention
 
-Every command is a folder. `index.ts` is the only oclif entrypoint. All related
+Every command is a folder. `index.ts` is the command class file. All related
 code — business logic, helpers, tests, and optional agent guide — colocates inside
 the folder. Subcommands are subfolders.
 
@@ -12,8 +12,8 @@ the folder. Subcommands are subfolders.
 src/commands/
   <topic>/
     <verb>/
-      index.ts        ← oclif command entrypoint (the ONLY file oclif discovers)
-      run.ts          ← business logic (not a command, invisible to oclif)
+      index.ts        ← command class (extends DifyCommand; the ONLY file the registry discovers)
+      run.ts          ← business logic (not a command, invisible to the registry)
       handlers.ts     ← helpers
       guide.ts        ← agent guide string (optional)
       *.test.ts       ← tests
@@ -23,16 +23,17 @@ src/commands/
       <shared>.ts
 ```
 
-oclif discovers commands only via `**/index.+(js|cjs|mjs)`. All other files in
-command folders are invisible to oclif — add freely without glob exclusions.
-Folders prefixed with `_` (e.g. `_shared/`, `_strategies/`) are also excluded
-from oclif discovery and from coverage checks.
+The registry generator (`pnpm tree:gen` → `src/commands/tree.ts`) discovers
+commands only via `**/index.+(js|cjs|mjs|ts)`. All other files in command
+folders are invisible to the registry — add freely without glob exclusions.
+Folders prefixed with `_` (e.g. `_shared/`, `_strategies/`) are excluded from
+registry discovery and from coverage checks.
 
 ## Adding a new command
 
 1. Create `src/commands/<topic>/<verb>/index.ts` extending `DifyCommand`.
 1. Add business logic in sibling files (e.g. `run.ts`, `handlers.ts`).
-1. Run `pnpm build` to regenerate the oclif manifest.
+1. Run `pnpm tree:gen` to regenerate the command tree (also runs implicitly via `prebuild`/`predev`/`pretest`).
 1. Run `pnpm test` to verify coverage.
 
 ## Adding an agent guide
