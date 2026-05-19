@@ -344,7 +344,7 @@ class BaseSession[
                         )
 
                         responder = RequestResponder[ReceiveRequestT, SendResultT](
-                            request_id=message.message.root.id,
+                            request_id=message.message.root.id,  # type: ignore[union-attr]  # match/case narrows root to JSONRPCRequest
                             request_meta=validated_request.root.params.meta if validated_request.root.params else None,
                             request=validated_request,  # type: ignore[arg-type]  # mypy can't narrow constrained TypeVar from model_validate
                             session=self,
