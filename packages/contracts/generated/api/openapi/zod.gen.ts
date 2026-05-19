@@ -170,7 +170,7 @@ export const zMemberInvitePayload = z.object({
  */
 export const zMemberInviteResponse = z.object({
   email: z.string(),
-  invite_url: z.string().nullish(),
+  invite_url: z.string(),
   member_id: z.string(),
   result: z.string().optional().default('success'),
   role: z.string(),

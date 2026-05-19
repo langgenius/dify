@@ -381,7 +381,7 @@ class MemberInviteResponse(BaseModel):
     email: str
     role: str
     member_id: str
-    invite_url: str | None = None
+    invite_url: str
     tenant_id: str
 
 
