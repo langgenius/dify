@@ -27,7 +27,7 @@ import pytest
 from flask import Flask, g
 from flask.views import MethodView
 from pydantic import ValidationError
-from werkzeug.exceptions import BadRequest, NotFound
+from werkzeug.exceptions import BadRequest, Forbidden, NotFound
 
 from controllers.openapi import bp as openapi_bp
 from controllers.openapi._models import MemberInvitePayload, MemberRoleUpdatePayload
@@ -336,6 +336,170 @@ def test_invite_happy_path_returns_invite_url_and_member_id(app, bypass_pipeline
     assert "token=tok-123" in body["invite_url"]
     assert "email=new%40example.com" in body["invite_url"]
     assert body["tenant_id"] == ws_id
+
+
+def _features(
+    *,
+    billing_enabled: bool = False,
+    members_size: int = 0,
+    members_limit: int = 0,
+    workspace_members_enabled: bool = False,
+    workspace_members_size: int = 0,
+    workspace_members_limit: int = 0,
+) -> SimpleNamespace:
+    """Build a feature object matching the surface `_check_member_invite_quota`
+    reads: `.billing.enabled`, `.members.{size,limit}`,
+    `.workspace_members.{enabled, is_available(N)}`.
+
+    Defaults model CE (both flags off, both caps inert).
+    """
+
+    def _is_available(n: int) -> bool:
+        return workspace_members_size + n <= workspace_members_limit
+
+    return SimpleNamespace(
+        billing=SimpleNamespace(enabled=billing_enabled),
+        members=SimpleNamespace(size=members_size, limit=members_limit),
+        workspace_members=SimpleNamespace(
+            enabled=workspace_members_enabled,
+            size=workspace_members_size,
+            limit=workspace_members_limit,
+            is_available=_is_available,
+        ),
+    )
+
+
+def _invite_request(app, ws_id: str, acct_id: uuid.UUID):
+    return app.test_request_context(
+        f"/openapi/v1/workspaces/{ws_id}/members",
+        method="POST",
+        data=json.dumps({"email": "new@example.com", "role": "normal"}),
+        content_type="application/json",
+    )
+
+
+def test_invite_blocked_by_saas_members_cap(app, bypass_pipeline, monkeypatch):
+    """SaaS billing plan member cap → 403 with `members.limit_exceeded`.
+
+    Verifies the envelope shape the CLI error-mapper relies on (code +
+    message + hint on the wire body).
+    """
+    ws_id = str(uuid.uuid4())
+    acct_id = uuid.uuid4()
+    api = WorkspaceMembersApi()
+
+    mock_db = MagicMock()
+    mock_db.session.get.side_effect = [_account(account_id=str(acct_id)), _tenant(ws_id)]
+
+    invite_mock = Mock()
+    monkeypatch.setattr(
+        sys.modules["controllers.openapi.workspaces"],
+        "RegisterService",
+        SimpleNamespace(invite_new_member=invite_mock),
+    )
+    monkeypatch.setattr(sys.modules["controllers.openapi.workspaces"], "db", mock_db)
+    monkeypatch.setattr(
+        sys.modules["controllers.openapi.workspaces"],
+        "FeatureService",
+        SimpleNamespace(
+            get_features=Mock(
+                return_value=_features(billing_enabled=True, members_size=10, members_limit=10),
+            ),
+        ),
+    )
+
+    with _invite_request(app, ws_id, acct_id):
+        g.auth_ctx = _auth_ctx(account_id=acct_id)
+        with pytest.raises(Forbidden) as exc_info:
+            api.post.__wrapped__.__wrapped__.__wrapped__(api, workspace_id=ws_id)
+
+    body = exc_info.value.response.json
+    assert body["code"] == "members.limit_exceeded"
+    assert "Subscription member limit" in body["message"]
+    assert body["hint"]
+    invite_mock.assert_not_called()
+
+
+def test_invite_blocked_by_ee_workspace_members_license(app, bypass_pipeline, monkeypatch):
+    """EE License workspace_members cap → 403 with `workspace_members.license_exceeded`.
+
+    Note: billing.enabled is False (EE without SaaS billing); only the
+    license cap fires.
+    """
+    ws_id = str(uuid.uuid4())
+    acct_id = uuid.uuid4()
+    api = WorkspaceMembersApi()
+
+    mock_db = MagicMock()
+    mock_db.session.get.side_effect = [_account(account_id=str(acct_id)), _tenant(ws_id)]
+
+    invite_mock = Mock()
+    monkeypatch.setattr(
+        sys.modules["controllers.openapi.workspaces"],
+        "RegisterService",
+        SimpleNamespace(invite_new_member=invite_mock),
+    )
+    monkeypatch.setattr(sys.modules["controllers.openapi.workspaces"], "db", mock_db)
+    monkeypatch.setattr(
+        sys.modules["controllers.openapi.workspaces"],
+        "FeatureService",
+        SimpleNamespace(
+            get_features=Mock(
+                return_value=_features(
+                    workspace_members_enabled=True,
+                    workspace_members_size=5,
+                    workspace_members_limit=5,
+                ),
+            ),
+        ),
+    )
+
+    with _invite_request(app, ws_id, acct_id):
+        g.auth_ctx = _auth_ctx(account_id=acct_id)
+        with pytest.raises(Forbidden) as exc_info:
+            api.post.__wrapped__.__wrapped__.__wrapped__(api, workspace_id=ws_id)
+
+    body = exc_info.value.response.json
+    assert body["code"] == "workspace_members.license_exceeded"
+    assert "license" in body["message"].lower()
+    assert body["hint"]
+    invite_mock.assert_not_called()
+
+
+def test_invite_ce_passes_when_both_caps_disabled(app, bypass_pipeline, monkeypatch):
+    """CE deployment (no billing, no license) → quota gate is a no-op,
+    invite proceeds normally."""
+    ws_id = str(uuid.uuid4())
+    acct_id = uuid.uuid4()
+    api = WorkspaceMembersApi()
+
+    invited = _account(account_id="new-1", email="new@example.com")
+    mock_db = MagicMock()
+    mock_db.session.get.side_effect = [_account(account_id=str(acct_id)), _tenant(ws_id)]
+
+    monkeypatch.setattr(
+        sys.modules["controllers.openapi.workspaces"],
+        "RegisterService",
+        SimpleNamespace(invite_new_member=Mock(return_value="tok-ce")),
+    )
+    monkeypatch.setattr(
+        sys.modules["controllers.openapi.workspaces"],
+        "AccountService",
+        SimpleNamespace(get_account_by_email_with_case_fallback=Mock(return_value=invited)),
+    )
+    monkeypatch.setattr(sys.modules["controllers.openapi.workspaces"], "db", mock_db)
+    monkeypatch.setattr(
+        sys.modules["controllers.openapi.workspaces"],
+        "FeatureService",
+        SimpleNamespace(get_features=Mock(return_value=_features())),  # all defaults
+    )
+
+    with _invite_request(app, ws_id, acct_id):
+        g.auth_ctx = _auth_ctx(account_id=acct_id)
+        body, status = api.post.__wrapped__.__wrapped__.__wrapped__(api, workspace_id=ws_id)
+
+    assert status == 201
+    assert body["email"] == "new@example.com"
 
 
 def test_invite_400_when_already_in_tenant(app, bypass_pipeline, monkeypatch):
