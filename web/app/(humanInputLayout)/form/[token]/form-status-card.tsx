@@ -20,14 +20,14 @@ const FormStatusCard = ({
 
   return (
     <div className={cn('flex h-full w-full flex-col items-center justify-center')}>
-      <div className="max-w-[640px] min-w-[480px]">
-        <div className="flex h-[320px] flex-col gap-4 rounded-[20px] border border-divider-subtle bg-chat-bubble-bg p-10 pb-9 shadow-lg backdrop-blur-xs">
+      <div className="max-w-160 min-w-120">
+        <div className="flex h-80 flex-col gap-4 rounded-[20px] border border-divider-subtle bg-chat-bubble-bg p-10 pb-9 shadow-lg backdrop-blur-xs">
           <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border border-components-panel-border-subtle bg-background-default-dodge p-3">
             <span className={cn('h-8 w-8', iconClassName)} />
           </div>
           <div className="grow">
             <div className="title-4xl-semi-bold text-text-primary">{title}</div>
-            {subtitle ? subtitle : (
+            {!!subtitle && (
               <div className="title-4xl-semi-bold text-text-primary">{subtitle}</div>
             )}
           </div>
