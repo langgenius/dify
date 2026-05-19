@@ -35,4 +35,23 @@ describe('Chooser', () => {
     expect(vi.mocked(setPostLoginRedirect)).toHaveBeenCalledWith('/device?user_code=ABCD-3456')
     expect(mockPush).toHaveBeenCalledWith('/signin')
   })
+
+  it('encodes userCode in post-login redirect', () => {
+    // Uses a code with a space to exercise encodeURIComponent
+    render(<Chooser userCode="AB CD" ssoAvailable={false} />)
+    fireEvent.click(screen.getByRole('button', { name: /Sign in with Dify account/i }))
+    expect(vi.mocked(setPostLoginRedirect)).toHaveBeenCalledWith('/device?user_code=AB%20CD')
+  })
+
+  it('navigates to SSO initiate URL on SSO button click', () => {
+    Object.defineProperty(window, 'location', {
+      writable: true,
+      value: { href: '' },
+    })
+    render(<Chooser userCode="ABCD-3456" ssoAvailable={true} />)
+    fireEvent.click(screen.getByRole('button', { name: /Sign in with SSO/i }))
+    expect(window.location.href).toBe(
+      '/openapi/v1/oauth/device/sso-initiate?user_code=ABCD-3456',
+    )
+  })
 })
