@@ -1,7 +1,7 @@
 import type { AnnotationItem } from '../type'
 import { fireEvent, render, screen, within } from '@testing-library/react'
 import * as React from 'react'
-import List from '../list'
+import { List } from '../list'
 
 const mockFormatTime = vi.fn(() => 'formatted-time')
 
@@ -62,7 +62,7 @@ describe('List', () => {
     )
 
     fireEvent.click(screen.getByRole('checkbox', { name: 'A' }))
-    expect(onSelectedIdsChange).toHaveBeenCalledWith(['a'])
+    expect(onSelectedIdsChange.mock.calls.at(-1)?.[0]).toEqual(['a'])
 
     rerender(
       <List
@@ -76,10 +76,10 @@ describe('List', () => {
       />,
     )
     fireEvent.click(screen.getByRole('checkbox', { name: 'A' }))
-    expect(onSelectedIdsChange).toHaveBeenCalledWith([])
+    expect(onSelectedIdsChange.mock.calls.at(-1)?.[0]).toEqual([])
 
     fireEvent.click(screen.getByRole('checkbox', { name: 'common.operation.selectAll' }))
-    expect(onSelectedIdsChange).toHaveBeenCalledWith(['a', 'b'])
+    expect(onSelectedIdsChange.mock.calls.at(-1)?.[0]).toEqual(['a', 'b'])
   })
 
   it('should confirm before removing an annotation and expose batch actions', async () => {

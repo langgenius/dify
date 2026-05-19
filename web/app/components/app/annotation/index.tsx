@@ -26,7 +26,7 @@ import { sleep } from '@/utils'
 import EmptyElement from './empty-element'
 import Filter from './filter'
 import HeaderOpts from './header-opts'
-import List from './list'
+import { List } from './list'
 import { AnnotationEnableStatus, JobStatus } from './type'
 import ViewAnnotationModal from './view-annotation-modal'
 
