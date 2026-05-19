@@ -169,6 +169,41 @@ export type HumanInputFormSubmitPayload = {
 
 export type JsonValue = unknown
 
+export type MemberActionResponse = {
+  result?: string
+}
+
+export type MemberInvitePayload = {
+  email: string
+  role: 'admin' | 'normal'
+}
+
+export type MemberInviteResponse = {
+  email: string
+  invite_url?: string | null
+  member_id: string
+  result?: string
+  role: string
+  tenant_id: string
+}
+
+export type MemberListResponse = {
+  members: Array<MemberResponse>
+}
+
+export type MemberResponse = {
+  avatar?: string | null
+  email: string
+  id: string
+  name: string
+  role: string
+  status: string
+}
+
+export type MemberRoleUpdatePayload = {
+  role: 'admin' | 'normal'
+}
+
 export type MessageMetadata = {
   retriever_resources?: Array<{
     [key: string]: unknown
@@ -638,3 +673,85 @@ export type GetWorkspacesByWorkspaceIdResponses = {
 
 export type GetWorkspacesByWorkspaceIdResponse
   = GetWorkspacesByWorkspaceIdResponses[keyof GetWorkspacesByWorkspaceIdResponses]
+
+export type GetWorkspacesByWorkspaceIdMembersData = {
+  body?: never
+  path: {
+    workspace_id: string
+  }
+  query?: never
+  url: '/workspaces/{workspace_id}/members'
+}
+
+export type GetWorkspacesByWorkspaceIdMembersResponses = {
+  200: MemberListResponse
+}
+
+export type GetWorkspacesByWorkspaceIdMembersResponse
+  = GetWorkspacesByWorkspaceIdMembersResponses[keyof GetWorkspacesByWorkspaceIdMembersResponses]
+
+export type PostWorkspacesByWorkspaceIdMembersData = {
+  body: MemberInvitePayload
+  path: {
+    workspace_id: string
+  }
+  query?: never
+  url: '/workspaces/{workspace_id}/members'
+}
+
+export type PostWorkspacesByWorkspaceIdMembersResponses = {
+  201: MemberInviteResponse
+}
+
+export type PostWorkspacesByWorkspaceIdMembersResponse
+  = PostWorkspacesByWorkspaceIdMembersResponses[keyof PostWorkspacesByWorkspaceIdMembersResponses]
+
+export type DeleteWorkspacesByWorkspaceIdMembersByMemberIdData = {
+  body?: never
+  path: {
+    member_id: string
+    workspace_id: string
+  }
+  query?: never
+  url: '/workspaces/{workspace_id}/members/{member_id}'
+}
+
+export type DeleteWorkspacesByWorkspaceIdMembersByMemberIdResponses = {
+  200: MemberActionResponse
+}
+
+export type DeleteWorkspacesByWorkspaceIdMembersByMemberIdResponse
+  = DeleteWorkspacesByWorkspaceIdMembersByMemberIdResponses[keyof DeleteWorkspacesByWorkspaceIdMembersByMemberIdResponses]
+
+export type PutWorkspacesByWorkspaceIdMembersByMemberIdRoleData = {
+  body: MemberRoleUpdatePayload
+  path: {
+    member_id: string
+    workspace_id: string
+  }
+  query?: never
+  url: '/workspaces/{workspace_id}/members/{member_id}/role'
+}
+
+export type PutWorkspacesByWorkspaceIdMembersByMemberIdRoleResponses = {
+  200: MemberActionResponse
+}
+
+export type PutWorkspacesByWorkspaceIdMembersByMemberIdRoleResponse
+  = PutWorkspacesByWorkspaceIdMembersByMemberIdRoleResponses[keyof PutWorkspacesByWorkspaceIdMembersByMemberIdRoleResponses]
+
+export type PostWorkspacesByWorkspaceIdSwitchData = {
+  body?: never
+  path: {
+    workspace_id: string
+  }
+  query?: never
+  url: '/workspaces/{workspace_id}/switch'
+}
+
+export type PostWorkspacesByWorkspaceIdSwitchResponses = {
+  200: WorkspaceDetailResponse
+}
+
+export type PostWorkspacesByWorkspaceIdSwitchResponse
+  = PostWorkspacesByWorkspaceIdSwitchResponses[keyof PostWorkspacesByWorkspaceIdSwitchResponses]
