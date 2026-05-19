@@ -209,7 +209,14 @@ export default function DevicePage() {
             to get a new code.
           </p>
           <Divider className="my-3" />
-          <Button variant="ghost" className="w-full" onClick={() => setView({ kind: 'code_entry' })}>
+          <Button
+            variant="ghost"
+            className="w-full"
+            onClick={() => {
+              setView({ kind: 'code_entry' })
+              setErrMsg(null)
+            }}
+          >
             ← Try a different code
           </Button>
         </div>
@@ -223,7 +230,14 @@ export default function DevicePage() {
           <h1 className="text-xl font-semibold text-text-primary">Too many attempts</h1>
           <p className="text-sm text-text-secondary">Wait a moment and try again.</p>
           <Divider className="my-3" />
-          <Button variant="ghost" className="w-full" onClick={() => setView({ kind: 'code_entry' })}>
+          <Button
+            variant="ghost"
+            className="w-full"
+            onClick={() => {
+              setView({ kind: 'code_entry' })
+              setErrMsg(null)
+            }}
+          >
             ← Try again
           </Button>
         </div>
@@ -239,7 +253,14 @@ export default function DevicePage() {
             Something went wrong on our side. Try again in a moment.
           </p>
           <Divider className="my-3" />
-          <Button variant="ghost" className="w-full" onClick={() => setView({ kind: 'code_entry' })}>
+          <Button
+            variant="ghost"
+            className="w-full"
+            onClick={() => {
+              setView({ kind: 'code_entry' })
+              setErrMsg(null)
+            }}
+          >
             ← Try again
           </Button>
         </div>
