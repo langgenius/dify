@@ -154,7 +154,7 @@ class WorkflowNodeJobConfig(BaseModel):
 class ComposerBindingPayload(BaseModel):
     binding_type: Literal["roster_agent", "inline_agent"]
     agent_id: str | None = None
-    agent_config_version_id: str | None = None
+    current_snapshot_id: str | None = None
 
 
 class ComposerSoulLockPayload(BaseModel):

@@ -44,7 +44,7 @@ def patch_account_context(monkeypatch, account):
 def test_roster_list_get_parses_query_and_calls_service(app, monkeypatch):
     captured = {}
 
-    def list_roster_agents(**kwargs):
+    def list_roster_agents(_self, **kwargs):
         captured.update(kwargs)
         return {"data": [], "page": kwargs["page"], "limit": kwargs["limit"], "total": 0, "has_more": False}
 
@@ -62,12 +62,12 @@ def test_roster_list_post_creates_agent_and_returns_detail(app, monkeypatch):
     monkeypatch.setattr(
         roster_controller.AgentRosterService,
         "create_roster_agent",
-        lambda **kwargs: created_agent,
+        lambda _self, **kwargs: created_agent,
     )
     monkeypatch.setattr(
         roster_controller.AgentRosterService,
         "get_roster_agent_detail",
-        lambda **kwargs: {"id": kwargs["agent_id"], "tenant_id": kwargs["tenant_id"]},
+        lambda _self, **kwargs: {"id": kwargs["agent_id"], "tenant_id": kwargs["tenant_id"]},
     )
 
     with app.test_request_context(json={"name": "Analyst", "agent_soul": {"prompt": {"system_prompt": "x"}}}):
@@ -80,7 +80,7 @@ def test_roster_list_post_creates_agent_and_returns_detail(app, monkeypatch):
 def test_invite_options_get_parses_app_id(app, monkeypatch):
     captured = {}
 
-    def list_invite_options(**kwargs):
+    def list_invite_options(_self, **kwargs):
         captured.update(kwargs)
         return {"data": []}
 
@@ -100,27 +100,27 @@ def test_roster_detail_patch_delete_and_versions_call_services(app, monkeypatch)
     monkeypatch.setattr(
         roster_controller.AgentRosterService,
         "get_roster_agent_detail",
-        lambda **kwargs: {"id": kwargs["agent_id"]},
+        lambda _self, **kwargs: {"id": kwargs["agent_id"]},
     )
     monkeypatch.setattr(
         roster_controller.AgentRosterService,
         "update_roster_agent",
-        lambda **kwargs: {"id": kwargs["agent_id"], "description": kwargs["payload"].description},
+        lambda _self, **kwargs: {"id": kwargs["agent_id"], "description": kwargs["payload"].description},
     )
     monkeypatch.setattr(
         roster_controller.AgentRosterService,
         "archive_roster_agent",
-        lambda **kwargs: archived.update(kwargs),
+        lambda _self, **kwargs: archived.update(kwargs),
     )
     monkeypatch.setattr(
         roster_controller.AgentRosterService,
         "list_agent_versions",
-        lambda **kwargs: [{"id": "version-1"}],
+        lambda _self, **kwargs: [{"id": "version-1"}],
     )
     monkeypatch.setattr(
         roster_controller.AgentRosterService,
         "get_agent_version_detail",
-        lambda **kwargs: {"id": kwargs["version_id"], "agent_id": kwargs["agent_id"]},
+        lambda _self, **kwargs: {"id": kwargs["version_id"], "agent_id": kwargs["agent_id"]},
     )
 
     assert _unwrap(AgentRosterDetailApi.get)(AgentRosterDetailApi(), agent_id)["id"] == agent_id
@@ -140,7 +140,7 @@ def test_workflow_composer_get_put_validate_candidates_impact_and_save(app, monk
     payload = {
         "variant": ComposerVariant.WORKFLOW.value,
         "save_strategy": ComposerSaveStrategy.NODE_JOB_ONLY.value,
-        "binding": {"binding_type": "roster_agent", "agent_config_version_id": "version-1"},
+        "binding": {"binding_type": "roster_agent", "current_snapshot_id": "version-1"},
     }
     monkeypatch.setattr(
         composer_controller.AgentComposerService,
@@ -161,7 +161,7 @@ def test_workflow_composer_get_put_validate_candidates_impact_and_save(app, monk
     monkeypatch.setattr(
         composer_controller.AgentComposerService,
         "calculate_impact",
-        lambda **kwargs: {"agent_config_version_id": kwargs["agent_config_version_id"], "workflow_node_count": 1},
+        lambda **kwargs: {"current_snapshot_id": kwargs["current_snapshot_id"], "workflow_node_count": 1},
     )
 
     assert _unwrap(WorkflowAgentComposerApi.get)(WorkflowAgentComposerApi(), app_model, "node-1") == {
@@ -180,7 +180,7 @@ def test_workflow_composer_get_put_validate_candidates_impact_and_save(app, monk
     ) == {"data": []}
     with app.test_request_context(json=payload):
         assert _unwrap(WorkflowAgentComposerImpactApi.post)(WorkflowAgentComposerImpactApi(), app_model, "node-1") == {
-            "agent_config_version_id": "version-1",
+            "current_snapshot_id": "version-1",
             "workflow_node_count": 1,
         }
         assert (
@@ -199,7 +199,7 @@ def test_workflow_impact_returns_empty_without_version(app):
             WorkflowAgentComposerImpactApi(), SimpleNamespace(id="app-1"), "node-1"
         )
 
-    assert result == {"agent_config_version_id": None, "workflow_node_count": 0, "bindings": []}
+    assert result == {"current_snapshot_id": None, "workflow_node_count": 0, "bindings": []}
 
 
 def test_agent_app_composer_get_put_validate_and_candidates(app, monkeypatch):

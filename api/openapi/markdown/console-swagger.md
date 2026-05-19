@@ -11279,9 +11279,9 @@ Button styles for user actions.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| agent_config_version_id | string |  | No |
 | agent_id | string |  | No |
 | binding_type | string | *Enum:* `"inline_agent"`, `"roster_agent"` | Yes |
+| current_snapshot_id | string |  | No |
 
 #### ComposerSavePayload
 

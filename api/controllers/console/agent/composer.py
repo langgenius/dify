@@ -77,10 +77,10 @@ class WorkflowAgentComposerImpactApi(Resource):
     def post(self, app_model, node_id: str):
         _, tenant_id = current_account_with_tenant()
         payload = ComposerSavePayload.model_validate(console_ns.payload or {})
-        version_id = payload.binding.agent_config_version_id if payload.binding else None
-        if not version_id:
-            return {"agent_config_version_id": None, "workflow_node_count": 0, "bindings": []}
-        return AgentComposerService.calculate_impact(tenant_id=tenant_id, agent_config_version_id=version_id)
+        current_snapshot_id = payload.binding.current_snapshot_id if payload.binding else None
+        if not current_snapshot_id:
+            return {"current_snapshot_id": None, "workflow_node_count": 0, "bindings": []}
+        return AgentComposerService.calculate_impact(tenant_id=tenant_id, current_snapshot_id=current_snapshot_id)
 
 
 @console_ns.route("/apps/<uuid:app_id>/workflows/draft/nodes/<string:node_id>/agent-composer/save-to-roster")

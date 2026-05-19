@@ -1,16 +1,14 @@
-import json
 from typing import Any
 
 from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 
-from extensions.ext_database import db
 from libs.datetime_utils import naive_utc_now
 from models.agent import (
     Agent,
-    AgentConfigVersion,
-    AgentConfigVersionOperation,
-    AgentConfigVersionRevision,
+    AgentConfigRevision,
+    AgentConfigRevisionOperation,
+    AgentConfigSnapshot,
     AgentKind,
     AgentScope,
     AgentSource,
@@ -28,13 +26,12 @@ from services.agent.errors import (
 from services.entities.agent_entities import RosterAgentCreatePayload, RosterAgentUpdatePayload
 
 
-def _json_dump(value: dict[str, Any]) -> str:
-    return json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
-
-
 class AgentRosterService:
+    def __init__(self, session: Any):
+        self._session = session
+
     @staticmethod
-    def serialize_agent(agent: Agent, active_version: AgentConfigVersion | None = None) -> dict[str, Any]:
+    def serialize_agent(agent: Agent, active_version: AgentConfigSnapshot | None = None) -> dict[str, Any]:
         return {
             "id": agent.id,
             "name": agent.name,
@@ -48,8 +45,8 @@ class AgentRosterService:
             "app_id": agent.app_id,
             "workflow_id": agent.workflow_id,
             "workflow_node_id": agent.workflow_node_id,
-            "active_config_version_id": agent.active_config_version_id,
-            "active_config_version": AgentRosterService.serialize_version(active_version) if active_version else None,
+            "active_config_snapshot_id": agent.active_config_snapshot_id,
+            "active_config_snapshot": AgentRosterService.serialize_version(active_version) if active_version else None,
             "status": agent.status.value,
             "created_by": agent.created_by,
             "updated_by": agent.updated_by,
@@ -60,7 +57,7 @@ class AgentRosterService:
         }
 
     @staticmethod
-    def serialize_version(version: AgentConfigVersion | None) -> dict[str, Any] | None:
+    def serialize_version(version: AgentConfigSnapshot | None) -> dict[str, Any] | None:
         if version is None:
             return None
         return {
@@ -73,9 +70,8 @@ class AgentRosterService:
             "created_at": version.created_at.isoformat() if version.created_at else None,
         }
 
-    @classmethod
     def list_roster_agents(
-        cls, *, tenant_id: str, page: int = 1, limit: int = 20, keyword: str | None = None
+        self, *, tenant_id: str, page: int = 1, limit: int = 20, keyword: str | None = None
     ) -> dict[str, Any]:
         stmt = select(Agent).where(
             Agent.tenant_id == tenant_id,
@@ -89,18 +85,18 @@ class AgentRosterService:
             stmt = stmt.where(Agent.name.ilike(f"%{escaped_keyword}%", escape="\\"))
         stmt = stmt.order_by(Agent.updated_at.desc())
 
-        total = db.session.scalar(select(func.count()).select_from(stmt.subquery())) or 0
-        agents = list(db.session.scalars(stmt.offset((page - 1) * limit).limit(limit)).all())
-        versions_by_id = cls._load_versions_by_id(
-            [agent.active_config_version_id for agent in agents if agent.active_config_version_id]
+        total = self._session.scalar(select(func.count()).select_from(stmt.subquery())) or 0
+        agents = list(self._session.scalars(stmt.offset((page - 1) * limit).limit(limit)).all())
+        versions_by_id = self._load_versions_by_id(
+            [agent.active_config_snapshot_id for agent in agents if agent.active_config_snapshot_id]
         )
 
         data = []
         for agent in agents:
             active_version = (
-                versions_by_id.get(agent.active_config_version_id) if agent.active_config_version_id else None
+                versions_by_id.get(agent.active_config_snapshot_id) if agent.active_config_snapshot_id else None
             )
-            data.append(cls.serialize_agent(agent, active_version))
+            data.append(self.serialize_agent(agent, active_version))
 
         return {
             "data": data,
@@ -110,14 +106,13 @@ class AgentRosterService:
             "has_more": page * limit < total,
         }
 
-    @classmethod
     def list_invite_options(
-        cls, *, tenant_id: str, page: int = 1, limit: int = 20, keyword: str | None = None, app_id: str | None = None
+        self, *, tenant_id: str, page: int = 1, limit: int = 20, keyword: str | None = None, app_id: str | None = None
     ) -> dict[str, Any]:
-        result = cls.list_roster_agents(tenant_id=tenant_id, page=page, limit=limit, keyword=keyword)
+        result = self.list_roster_agents(tenant_id=tenant_id, page=page, limit=limit, keyword=keyword)
         usage_by_agent_id: dict[str, list[str]] = {}
         if app_id:
-            draft_workflow = db.session.scalar(
+            draft_workflow = self._session.scalar(
                 select(Workflow)
                 .where(
                     Workflow.tenant_id == tenant_id,
@@ -129,11 +124,10 @@ class AgentRosterService:
             if draft_workflow:
                 agent_ids = [item["id"] for item in result["data"]]
                 if agent_ids:
-                    bindings = db.session.scalars(
+                    bindings = self._session.scalars(
                         select(WorkflowAgentNodeBinding).where(
                             WorkflowAgentNodeBinding.tenant_id == tenant_id,
                             WorkflowAgentNodeBinding.workflow_id == draft_workflow.id,
-                            WorkflowAgentNodeBinding.workflow_version == Workflow.VERSION_DRAFT,
                             WorkflowAgentNodeBinding.agent_id.in_(agent_ids),
                         )
                     ).all()
@@ -148,9 +142,8 @@ class AgentRosterService:
             item["existing_node_ids"] = existing_node_ids
         return result
 
-    @classmethod
     def create_roster_agent(
-        cls,
+        self,
         *,
         tenant_id: str,
         account_id: str,
@@ -158,7 +151,6 @@ class AgentRosterService:
         source: AgentSource = AgentSource.AGENT_APP,
     ) -> Agent:
         ComposerConfigValidator.validate_agent_soul(payload.agent_soul)
-        snapshot = _json_dump(payload.agent_soul.model_dump(mode="json"))
 
         agent = Agent(
             tenant_id=tenant_id,
@@ -174,57 +166,54 @@ class AgentRosterService:
             created_by=account_id,
             updated_by=account_id,
         )
-        db.session.add(agent)
+        self._session.add(agent)
         try:
-            db.session.flush()
+            self._session.flush()
         except IntegrityError as exc:
-            db.session.rollback()
+            self._session.rollback()
             raise AgentNameConflictError() from exc
 
-        version = AgentConfigVersion(
+        version = AgentConfigSnapshot(
             tenant_id=tenant_id,
             agent_id=agent.id,
             version=1,
-            config_snapshot=snapshot,
+            config_snapshot=payload.agent_soul,
             version_note=payload.version_note,
             created_by=account_id,
         )
-        db.session.add(version)
-        db.session.flush()
+        self._session.add(version)
+        self._session.flush()
 
-        revision = AgentConfigVersionRevision(
+        revision = AgentConfigRevision(
             tenant_id=tenant_id,
             agent_id=agent.id,
-            agent_config_version_id=version.id,
+            current_snapshot_id=version.id,
             revision=1,
-            operation=AgentConfigVersionOperation.CREATE_VERSION,
-            config_snapshot=snapshot,
+            operation=AgentConfigRevisionOperation.CREATE_VERSION,
             version_note=payload.version_note,
             created_by=account_id,
         )
-        db.session.add(revision)
-        agent.active_config_version_id = version.id
+        self._session.add(revision)
+        agent.active_config_snapshot_id = version.id
 
         try:
-            db.session.commit()
+            self._session.commit()
         except IntegrityError as exc:
-            db.session.rollback()
+            self._session.rollback()
             raise AgentNameConflictError() from exc
         return agent
 
-    @classmethod
-    def get_roster_agent_detail(cls, *, tenant_id: str, agent_id: str) -> dict[str, Any]:
-        agent = cls._get_agent(tenant_id=tenant_id, agent_id=agent_id, roster_only=True)
-        active_version = cls._get_version(
-            tenant_id=tenant_id, agent_id=agent.id, version_id=agent.active_config_version_id
+    def get_roster_agent_detail(self, *, tenant_id: str, agent_id: str) -> dict[str, Any]:
+        agent = self._get_agent(tenant_id=tenant_id, agent_id=agent_id, roster_only=True)
+        active_version = self._get_version(
+            tenant_id=tenant_id, agent_id=agent.id, version_id=agent.active_config_snapshot_id
         )
-        return cls.serialize_agent(agent, active_version)
+        return self.serialize_agent(agent, active_version)
 
-    @classmethod
     def update_roster_agent(
-        cls, *, tenant_id: str, agent_id: str, account_id: str, payload: RosterAgentUpdatePayload
+        self, *, tenant_id: str, agent_id: str, account_id: str, payload: RosterAgentUpdatePayload
     ) -> dict[str, Any]:
-        agent = cls._get_agent(tenant_id=tenant_id, agent_id=agent_id, roster_only=True)
+        agent = self._get_agent(tenant_id=tenant_id, agent_id=agent_id, roster_only=True)
         if agent.status == AgentStatus.ARCHIVED:
             raise AgentArchivedError()
 
@@ -234,59 +223,58 @@ class AgentRosterService:
         agent.updated_by = account_id
 
         try:
-            db.session.commit()
+            self._session.commit()
         except IntegrityError as exc:
-            db.session.rollback()
+            self._session.rollback()
             raise AgentNameConflictError() from exc
-        return cls.get_roster_agent_detail(tenant_id=tenant_id, agent_id=agent_id)
+        return self.get_roster_agent_detail(tenant_id=tenant_id, agent_id=agent_id)
 
-    @classmethod
-    def archive_roster_agent(cls, *, tenant_id: str, agent_id: str, account_id: str) -> None:
-        agent = cls._get_agent(tenant_id=tenant_id, agent_id=agent_id, roster_only=True)
+    def archive_roster_agent(self, *, tenant_id: str, agent_id: str, account_id: str) -> None:
+        agent = self._get_agent(tenant_id=tenant_id, agent_id=agent_id, roster_only=True)
         if agent.status == AgentStatus.ARCHIVED:
             return
         agent.status = AgentStatus.ARCHIVED
         agent.archived_by = account_id
         agent.archived_at = naive_utc_now()
         agent.updated_by = account_id
-        db.session.commit()
+        self._session.commit()
 
-    @classmethod
-    def list_agent_versions(cls, *, tenant_id: str, agent_id: str) -> list[dict[str, Any]]:
-        cls._get_agent(tenant_id=tenant_id, agent_id=agent_id, roster_only=True)
+    def list_agent_versions(self, *, tenant_id: str, agent_id: str) -> list[dict[str, Any]]:
+        self._get_agent(tenant_id=tenant_id, agent_id=agent_id, roster_only=True)
         versions = list(
-            db.session.scalars(
-                select(AgentConfigVersion)
-                .where(AgentConfigVersion.tenant_id == tenant_id, AgentConfigVersion.agent_id == agent_id)
-                .order_by(AgentConfigVersion.version.desc())
+            self._session.scalars(
+                select(AgentConfigSnapshot)
+                .where(AgentConfigSnapshot.tenant_id == tenant_id, AgentConfigSnapshot.agent_id == agent_id)
+                .order_by(AgentConfigSnapshot.version.desc())
             ).all()
         )
         return [
             serialized_version
             for version in versions
-            if (serialized_version := cls.serialize_version(version)) is not None
+            if (serialized_version := self.serialize_version(version)) is not None
         ]
 
-    @classmethod
-    def get_agent_version_detail(cls, *, tenant_id: str, agent_id: str, version_id: str) -> dict[str, Any]:
-        cls._get_agent(tenant_id=tenant_id, agent_id=agent_id, roster_only=True)
-        version = cls._get_version(tenant_id=tenant_id, agent_id=agent_id, version_id=version_id)
+    def get_agent_version_detail(self, *, tenant_id: str, agent_id: str, version_id: str) -> dict[str, Any]:
+        self._get_agent(tenant_id=tenant_id, agent_id=agent_id, roster_only=True)
+        version = self._get_version(tenant_id=tenant_id, agent_id=agent_id, version_id=version_id)
         revisions = list(
-            db.session.scalars(
-                select(AgentConfigVersionRevision)
+            self._session.scalars(
+                select(AgentConfigRevision)
                 .where(
-                    AgentConfigVersionRevision.tenant_id == tenant_id,
-                    AgentConfigVersionRevision.agent_id == agent_id,
-                    AgentConfigVersionRevision.agent_config_version_id == version_id,
+                    AgentConfigRevision.tenant_id == tenant_id,
+                    AgentConfigRevision.agent_id == agent_id,
+                    AgentConfigRevision.current_snapshot_id == version_id,
                 )
-                .order_by(AgentConfigVersionRevision.revision.desc())
+                .order_by(AgentConfigRevision.revision.desc())
             ).all()
         )
-        result = cls.serialize_version(version) or {}
+        result = self.serialize_version(version) or {}
         result["config_snapshot"] = version.config_snapshot_dict
         result["revisions"] = [
             {
                 "id": revision.id,
+                "previous_snapshot_id": revision.previous_snapshot_id,
+                "current_snapshot_id": revision.current_snapshot_id,
                 "revision": revision.revision,
                 "operation": revision.operation.value,
                 "summary": revision.summary,
@@ -298,26 +286,24 @@ class AgentRosterService:
         ]
         return result
 
-    @classmethod
-    def _get_agent(cls, *, tenant_id: str, agent_id: str, roster_only: bool = False) -> Agent:
+    def _get_agent(self, *, tenant_id: str, agent_id: str, roster_only: bool = False) -> Agent:
         stmt = select(Agent).where(Agent.tenant_id == tenant_id, Agent.id == agent_id)
         if roster_only:
             stmt = stmt.where(Agent.scope == AgentScope.ROSTER)
-        agent = db.session.scalar(stmt.limit(1))
+        agent = self._session.scalar(stmt.limit(1))
         if not agent:
             raise AgentNotFoundError()
         return agent
 
-    @classmethod
-    def _get_version(cls, *, tenant_id: str, agent_id: str, version_id: str | None) -> AgentConfigVersion:
+    def _get_version(self, *, tenant_id: str, agent_id: str, version_id: str | None) -> AgentConfigSnapshot:
         if not version_id:
             raise AgentVersionNotFoundError()
-        version = db.session.scalar(
-            select(AgentConfigVersion)
+        version = self._session.scalar(
+            select(AgentConfigSnapshot)
             .where(
-                AgentConfigVersion.tenant_id == tenant_id,
-                AgentConfigVersion.agent_id == agent_id,
-                AgentConfigVersion.id == version_id,
+                AgentConfigSnapshot.tenant_id == tenant_id,
+                AgentConfigSnapshot.agent_id == agent_id,
+                AgentConfigSnapshot.id == version_id,
             )
             .limit(1)
         )
@@ -325,9 +311,10 @@ class AgentRosterService:
             raise AgentVersionNotFoundError()
         return version
 
-    @classmethod
-    def _load_versions_by_id(cls, version_ids: list[str]) -> dict[str, AgentConfigVersion]:
+    def _load_versions_by_id(self, version_ids: list[str]) -> dict[str, AgentConfigSnapshot]:
         if not version_ids:
             return {}
-        versions = db.session.scalars(select(AgentConfigVersion).where(AgentConfigVersion.id.in_(version_ids))).all()
+        versions = self._session.scalars(
+            select(AgentConfigSnapshot).where(AgentConfigSnapshot.id.in_(version_ids))
+        ).all()
         return {version.id: version for version in versions}

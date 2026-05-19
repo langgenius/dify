@@ -50,7 +50,7 @@ def upgrade():
         sa.Column("app_id", models.types.StringUUID(), nullable=True),
         sa.Column("workflow_id", models.types.StringUUID(), nullable=True),
         sa.Column("workflow_node_id", sa.String(length=255), nullable=True),
-        sa.Column("active_config_version_id", models.types.StringUUID(), nullable=True),
+        sa.Column("active_config_snapshot_id", models.types.StringUUID(), nullable=True),
         sa.Column("status", sa.String(length=32), server_default=sa.text("'active'"), nullable=False),
         sa.Column(
             "roster_unique_name",
@@ -71,10 +71,10 @@ def upgrade():
     op.create_index("agent_tenant_scope_idx", "agents", ["tenant_id", "scope"])
     op.create_index("agent_tenant_workflow_id_idx", "agents", ["tenant_id", "workflow_id"])
     op.create_index("agent_tenant_app_id_idx", "agents", ["tenant_id", "app_id"])
-    op.create_index("agent_active_config_version_id_idx", "agents", ["active_config_version_id"])
+    op.create_index("agent_active_config_snapshot_id_idx", "agents", ["active_config_snapshot_id"])
 
     op.create_table(
-        "agent_config_versions",
+        "agent_config_snapshots",
         _uuid_column("id", primary_key=True),
         sa.Column("tenant_id", models.types.StringUUID(), nullable=False),
         sa.Column("agent_id", models.types.StringUUID(), nullable=False),
@@ -90,17 +90,17 @@ def upgrade():
         sa.Column("created_by", models.types.StringUUID(), nullable=True),
         sa.Column("created_at", sa.DateTime(), server_default=sa.func.current_timestamp(), nullable=False),
         sa.Column("updated_at", sa.DateTime(), server_default=sa.func.current_timestamp(), nullable=False),
-        sa.PrimaryKeyConstraint("id", name=op.f("agent_config_version_pkey")),
-        sa.UniqueConstraint("agent_id", "version", name=op.f("agent_config_version_agent_version_unique")),
+        sa.PrimaryKeyConstraint("id", name=op.f("agent_config_snapshot_pkey")),
+        sa.UniqueConstraint("agent_id", "version", name=op.f("agent_config_snapshot_agent_version_unique")),
     )
     op.create_index(
-        "agent_config_version_tenant_agent_created_at_idx",
-        "agent_config_versions",
+        "agent_config_snapshot_tenant_agent_created_at_idx",
+        "agent_config_snapshots",
         ["tenant_id", "agent_id", "created_at"],
     )
     op.create_index(
-        "agent_config_version_tenant_created_at_idx",
-        "agent_config_versions",
+        "agent_config_snapshot_tenant_created_at_idx",
+        "agent_config_snapshots",
         ["tenant_id", "created_at"],
     )
 
@@ -110,11 +110,10 @@ def upgrade():
         sa.Column("tenant_id", models.types.StringUUID(), nullable=False),
         sa.Column("app_id", models.types.StringUUID(), nullable=False),
         sa.Column("workflow_id", models.types.StringUUID(), nullable=False),
-        sa.Column("workflow_version", sa.String(length=255), nullable=False),
         sa.Column("node_id", sa.String(length=255), nullable=False),
         sa.Column("binding_type", sa.String(length=32), nullable=False),
         sa.Column("agent_id", models.types.StringUUID(), nullable=True),
-        sa.Column("agent_config_version_id", models.types.StringUUID(), nullable=True),
+        sa.Column("current_snapshot_id", models.types.StringUUID(), nullable=True),
         sa.Column("node_job_config", models.types.LongText(), nullable=False),
         sa.Column("created_by", models.types.StringUUID(), nullable=True),
         sa.Column("updated_by", models.types.StringUUID(), nullable=True),
@@ -124,15 +123,9 @@ def upgrade():
         sa.UniqueConstraint(
             "tenant_id",
             "workflow_id",
-            "workflow_version",
             "node_id",
             name=op.f("workflow_agent_node_binding_node_unique"),
         ),
-    )
-    op.create_index(
-        "workflow_agent_node_binding_workflow_idx",
-        "workflow_agent_node_bindings",
-        ["tenant_id", "workflow_id", "workflow_version"],
     )
     op.create_index(
         "workflow_agent_node_binding_agent_idx",
@@ -140,9 +133,9 @@ def upgrade():
         ["tenant_id", "agent_id"],
     )
     op.create_index(
-        "workflow_agent_node_binding_config_version_idx",
+        "workflow_agent_node_binding_current_snapshot_idx",
         "workflow_agent_node_bindings",
-        ["tenant_id", "agent_config_version_id"],
+        ["tenant_id", "current_snapshot_id"],
     )
     op.create_index(
         "workflow_agent_node_binding_app_idx",
@@ -153,16 +146,15 @@ def upgrade():
 
 def downgrade():
     op.drop_index("workflow_agent_node_binding_app_idx", table_name="workflow_agent_node_bindings")
-    op.drop_index("workflow_agent_node_binding_config_version_idx", table_name="workflow_agent_node_bindings")
+    op.drop_index("workflow_agent_node_binding_current_snapshot_idx", table_name="workflow_agent_node_bindings")
     op.drop_index("workflow_agent_node_binding_agent_idx", table_name="workflow_agent_node_bindings")
-    op.drop_index("workflow_agent_node_binding_workflow_idx", table_name="workflow_agent_node_bindings")
     op.drop_table("workflow_agent_node_bindings")
 
-    op.drop_index("agent_config_version_tenant_created_at_idx", table_name="agent_config_versions")
-    op.drop_index("agent_config_version_tenant_agent_created_at_idx", table_name="agent_config_versions")
-    op.drop_table("agent_config_versions")
+    op.drop_index("agent_config_snapshot_tenant_created_at_idx", table_name="agent_config_snapshots")
+    op.drop_index("agent_config_snapshot_tenant_agent_created_at_idx", table_name="agent_config_snapshots")
+    op.drop_table("agent_config_snapshots")
 
-    op.drop_index("agent_active_config_version_id_idx", table_name="agents")
+    op.drop_index("agent_active_config_snapshot_id_idx", table_name="agents")
     op.drop_index("agent_tenant_app_id_idx", table_name="agents")
     op.drop_index("agent_tenant_workflow_id_idx", table_name="agents")
     op.drop_index("agent_tenant_scope_idx", table_name="agents")

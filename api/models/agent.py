@@ -11,7 +11,7 @@ from libs.datetime_utils import naive_utc_now
 from libs.uuid_utils import uuidv7
 
 from .base import Base, DefaultFieldsMixin
-from .types import EnumText, LongText, StringUUID
+from .types import EnumText, JSONModelColumn, LongText, StringUUID
 
 
 class AgentKind(StrEnum):
@@ -67,12 +67,12 @@ class AgentStatus(StrEnum):
     ARCHIVED = "archived"
 
 
-class AgentConfigVersionOperation(StrEnum):
+class AgentConfigRevisionOperation(StrEnum):
     """Audit operation recorded for Agent Soul version/revision changes."""
 
     # Initial version creation for a new Agent.
     CREATE_VERSION = "create_version"
-    # Mutates the current semantic version and appends a revision record.
+    # Saves over the user-facing current version by creating a replacement snapshot.
     SAVE_CURRENT_VERSION = "save_current_version"
     # Creates a new semantic version for the same Agent.
     SAVE_NEW_VERSION = "save_new_version"
@@ -102,7 +102,7 @@ class Agent(DefaultFieldsMixin, Base):
         Index("agent_tenant_scope_idx", "tenant_id", "scope"),
         Index("agent_tenant_workflow_id_idx", "tenant_id", "workflow_id"),
         Index("agent_tenant_app_id_idx", "tenant_id", "app_id"),
-        Index("agent_active_config_version_id_idx", "active_config_version_id"),
+        Index("agent_active_config_snapshot_id_idx", "active_config_snapshot_id"),
     )
 
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
@@ -123,7 +123,7 @@ class Agent(DefaultFieldsMixin, Base):
     app_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
     workflow_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
     workflow_node_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
-    active_config_version_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
+    active_config_snapshot_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
     status: Mapped[AgentStatus] = mapped_column(
         EnumText(AgentStatus, length=32), nullable=False, default=AgentStatus.ACTIVE
     )
@@ -138,57 +138,63 @@ class Agent(DefaultFieldsMixin, Base):
     archived_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
 
-class AgentConfigVersion(DefaultFieldsMixin, Base):
-    """Immutable Agent Soul snapshot version.
+class AgentConfigSnapshot(DefaultFieldsMixin, Base):
+    """Immutable Agent Soul snapshot.
 
-    ``config_snapshot`` is a JSON string stored as ``LongText``. It may contain
-    credential or secret references, but must never contain plaintext secrets.
+    ``config_snapshot`` stores ``AgentSoulConfig`` as JSON-backed ``LongText``.
+    It may contain credential or secret references, but must never contain
+    plaintext secrets.
     """
 
-    __tablename__ = "agent_config_versions"
+    __tablename__ = "agent_config_snapshots"
     __table_args__ = (
-        sa.PrimaryKeyConstraint("id", name="agent_config_version_pkey"),
-        UniqueConstraint("agent_id", "version", name="agent_config_version_agent_version_unique"),
-        Index("agent_config_version_tenant_agent_created_at_idx", "tenant_id", "agent_id", "created_at"),
-        Index("agent_config_version_tenant_created_at_idx", "tenant_id", "created_at"),
+        sa.PrimaryKeyConstraint("id", name="agent_config_snapshot_pkey"),
+        UniqueConstraint("agent_id", "version", name="agent_config_snapshot_agent_version_unique"),
+        Index("agent_config_snapshot_tenant_agent_created_at_idx", "tenant_id", "agent_id", "created_at"),
+        Index("agent_config_snapshot_tenant_created_at_idx", "tenant_id", "created_at"),
     )
 
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     agent_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     version: Mapped[int] = mapped_column(sa.Integer, nullable=False)
-    # Serialized services.entities.agent_entities.AgentSoulConfig JSON.
-    config_snapshot: Mapped[str] = mapped_column(LongText, nullable=False, default="{}")
+    config_snapshot: Mapped[Any] = mapped_column(
+        JSONModelColumn("services.entities.agent_entities.AgentSoulConfig"), nullable=False
+    )
     summary: Mapped[str | None] = mapped_column(LongText, nullable=True)
     version_note: Mapped[str | None] = mapped_column(LongText, nullable=True)
     created_by: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
 
     @property
     def config_snapshot_dict(self) -> dict[str, Any]:
-        return json.loads(self.config_snapshot) if self.config_snapshot else {}
+        if not self.config_snapshot:
+            return {}
+        if hasattr(self.config_snapshot, "model_dump"):
+            return self.config_snapshot.model_dump(mode="json")
+        if isinstance(self.config_snapshot, str):
+            return json.loads(self.config_snapshot)
+        return dict(self.config_snapshot)
 
 
-class AgentConfigVersionRevision(Base):
-    """Audit snapshot for every Agent Soul save operation.
+class AgentConfigRevision(Base):
+    """Audit edge for every Agent Soul save operation.
 
-    ``AgentConfigVersion`` represents a semantic version that workflow bindings
-    can reference. Revisions record mutable saves against that semantic version,
-    especially ``Save to Current Version`` where the version id must stay stable.
-    JSON fields are stored as ``LongText`` and must not use DB server defaults.
+    Revisions link immutable Agent Soul snapshots instead of duplicating the
+    serialized configuration JSON.
     """
 
-    __tablename__ = "agent_config_version_revisions"
+    __tablename__ = "agent_config_revisions"
     __table_args__ = (
-        sa.PrimaryKeyConstraint("id", name="agent_config_version_revision_pkey"),
+        sa.PrimaryKeyConstraint("id", name="agent_config_revision_pkey"),
         UniqueConstraint(
-            "agent_config_version_id",
+            "agent_id",
             "revision",
-            name="agent_config_version_revision_version_revision_unique",
+            name="agent_config_revision_agent_revision_unique",
         ),
-        Index("agent_config_version_revision_tenant_agent_created_at_idx", "tenant_id", "agent_id", "created_at"),
+        Index("agent_config_revision_tenant_agent_created_at_idx", "tenant_id", "agent_id", "created_at"),
         Index(
-            "agent_config_version_revision_tenant_version_created_at_idx",
+            "agent_config_revision_tenant_current_snapshot_created_at_idx",
             "tenant_id",
-            "agent_config_version_id",
+            "current_snapshot_id",
             "created_at",
         ),
     )
@@ -196,14 +202,12 @@ class AgentConfigVersionRevision(Base):
     id: Mapped[str] = mapped_column(StringUUID, primary_key=True, default=lambda: str(uuidv7()))
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     agent_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
-    agent_config_version_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    previous_snapshot_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
+    current_snapshot_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     revision: Mapped[int] = mapped_column(sa.Integer, nullable=False)
-    operation: Mapped[AgentConfigVersionOperation] = mapped_column(
-        EnumText(AgentConfigVersionOperation, length=64), nullable=False
+    operation: Mapped[AgentConfigRevisionOperation] = mapped_column(
+        EnumText(AgentConfigRevisionOperation, length=64), nullable=False
     )
-    # Serialized services.entities.agent_entities.AgentSoulConfig JSON at this revision.
-    config_snapshot: Mapped[str] = mapped_column(LongText, nullable=False)
-    previous_config_snapshot: Mapped[str | None] = mapped_column(LongText, nullable=True)
     summary: Mapped[str | None] = mapped_column(LongText, nullable=True)
     version_note: Mapped[str | None] = mapped_column(LongText, nullable=True)
     created_by: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
@@ -214,20 +218,12 @@ class AgentConfigVersionRevision(Base):
         server_default=func.current_timestamp(),
     )
 
-    @property
-    def config_snapshot_dict(self) -> dict[str, Any]:
-        return json.loads(self.config_snapshot) if self.config_snapshot else {}
-
-    @property
-    def previous_config_snapshot_dict(self) -> dict[str, Any] | None:
-        return json.loads(self.previous_config_snapshot) if self.previous_config_snapshot else None
-
 
 class WorkflowAgentNodeBinding(DefaultFieldsMixin, Base):
-    """Binding between one workflow node and one Agent config version.
+    """Binding between one workflow node and one Agent config snapshot.
 
     ``node_job_config`` stores Workflow Node Job JSON only. Agent Soul belongs
-    to ``AgentConfigVersion.config_snapshot`` and must not be duplicated here.
+    to ``AgentConfigSnapshot.config_snapshot`` and must not be duplicated here.
     """
 
     __tablename__ = "workflow_agent_node_bindings"
@@ -236,30 +232,35 @@ class WorkflowAgentNodeBinding(DefaultFieldsMixin, Base):
         UniqueConstraint(
             "tenant_id",
             "workflow_id",
-            "workflow_version",
             "node_id",
             name="workflow_agent_node_binding_node_unique",
         ),
-        Index("workflow_agent_node_binding_workflow_idx", "tenant_id", "workflow_id", "workflow_version"),
         Index("workflow_agent_node_binding_agent_idx", "tenant_id", "agent_id"),
-        Index("workflow_agent_node_binding_config_version_idx", "tenant_id", "agent_config_version_id"),
+        Index("workflow_agent_node_binding_current_snapshot_idx", "tenant_id", "current_snapshot_id"),
         Index("workflow_agent_node_binding_app_idx", "tenant_id", "app_id"),
     )
 
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     app_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     workflow_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
-    workflow_version: Mapped[str] = mapped_column(String(255), nullable=False)
     node_id: Mapped[str] = mapped_column(String(255), nullable=False)
     binding_type: Mapped[WorkflowAgentBindingType] = mapped_column(
         EnumText(WorkflowAgentBindingType, length=32), nullable=False
     )
     agent_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
-    agent_config_version_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
-    node_job_config: Mapped[str] = mapped_column(LongText, nullable=False, default="{}")
+    current_snapshot_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
+    node_job_config: Mapped[Any] = mapped_column(
+        JSONModelColumn("services.entities.agent_entities.WorkflowNodeJobConfig"), nullable=False
+    )
     created_by: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
     updated_by: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
 
     @property
     def node_job_config_dict(self) -> dict[str, Any]:
-        return json.loads(self.node_job_config) if self.node_job_config else {}
+        if not self.node_job_config:
+            return {}
+        if hasattr(self.node_job_config, "model_dump"):
+            return self.node_job_config.model_dump(mode="json")
+        if isinstance(self.node_job_config, str):
+            return json.loads(self.node_job_config)
+        return dict(self.node_job_config)
