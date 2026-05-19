@@ -63,8 +63,12 @@ def make_request(method: str, url: str, max_retries: int = SSRF_DEFAULT_MAX_RETR
     """
 
     normalized_method = method.upper()
-    if normalized_method in {"GET", "HEAD"}:
-        response = _resolve_dify_signed_file_url(normalized_method, url)
+    if normalized_method == "GET":
+        response = _resolve_dify_signed_file_url("GET", url)
+        if response is not None:
+            return response
+    if normalized_method == "HEAD":
+        response = _resolve_dify_signed_file_url("HEAD", url)
         if response is not None:
             return response
     return ssrf_proxy.make_request(method=method, url=url, max_retries=max_retries, **kwargs)
@@ -168,9 +172,15 @@ def _resolve_dify_signed_file_url(method: Literal["GET", "HEAD"], url: str) -> h
 def _parse_signed_file_path(path: str) -> _SignedFileUrl | None:
     upload_match = _UPLOAD_FILE_PATH_PATTERN.match(path)
     if upload_match:
+        preview_kind: Literal["file-preview", "image-preview"]
+        if upload_match.group("preview_kind") == "image-preview":
+            preview_kind = "image-preview"
+        else:
+            preview_kind = "file-preview"
+
         return _SignedFileUrl(
             file_id=upload_match.group("file_id"),
-            preview_kind=upload_match.group("preview_kind"),
+            preview_kind=preview_kind,
             record_kind="upload",
         )
 

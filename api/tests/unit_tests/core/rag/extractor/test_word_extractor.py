@@ -61,7 +61,7 @@ def test_parse_row():
         assert extractor._parse_row(row, {}, 3) == gt[idx]
 
 
-def test_init_downloads_via_ssrf_proxy(monkeypatch: pytest.MonkeyPatch):
+def test_init_downloads_via_remote_fetcher(monkeypatch: pytest.MonkeyPatch):
     doc = Document()
     doc.add_paragraph("hello")
     buf = io.BytesIO()
@@ -81,7 +81,7 @@ def test_init_downloads_via_ssrf_proxy(monkeypatch: pytest.MonkeyPatch):
         calls.append(("get", (url, kwargs)))
         return FakeResponse()
 
-    monkeypatch.setattr(we, "ssrf_proxy", SimpleNamespace(get=fake_get))
+    monkeypatch.setattr(we, "remote_fetcher", SimpleNamespace(get=fake_get))
 
     extractor = WordExtractor("https://example.com/test.docx", "tenant_id", "user_id")
     try:
@@ -143,7 +143,7 @@ def test_extract_images_from_docx(monkeypatch: pytest.MonkeyPatch):
         assert url == "https://example.com/image.png"
         return SimpleNamespace(status_code=200, headers={"Content-Type": "image/png"}, content=external_bytes)
 
-    monkeypatch.setattr(we, "ssrf_proxy", SimpleNamespace(get=fake_get))
+    monkeypatch.setattr(we, "remote_fetcher", SimpleNamespace(get=fake_get))
 
     # A hashable internal part object with a blob attribute
     class HashablePart:
@@ -327,7 +327,7 @@ def test_init_rejects_invalid_url_status(monkeypatch: pytest.MonkeyPatch):
             self.closed = True
 
     fake_response = FakeResponse()
-    monkeypatch.setattr(we, "ssrf_proxy", SimpleNamespace(get=lambda url, **kwargs: fake_response))
+    monkeypatch.setattr(we, "remote_fetcher", SimpleNamespace(get=lambda url, **kwargs: fake_response))
 
     with pytest.raises(ValueError, match="returned status code 404"):
         WordExtractor("https://example.com/missing.docx", "tenant", "user")
@@ -421,7 +421,7 @@ def test_extract_images_handles_invalid_external_cases(monkeypatch: pytest.Monke
             raise RuntimeError("network")
         return SimpleNamespace(status_code=200, headers={"Content-Type": "application/unknown"}, content=b"x")
 
-    monkeypatch.setattr(we, "ssrf_proxy", SimpleNamespace(get=fake_get))
+    monkeypatch.setattr(we, "remote_fetcher", SimpleNamespace(get=fake_get))
     db_stub = SimpleNamespace(session=SimpleNamespace(add=lambda obj: None, commit=MagicMock()))
     monkeypatch.setattr(we, "db", db_stub)
     monkeypatch.setattr(we, "storage", SimpleNamespace(save=lambda key, data: None))
