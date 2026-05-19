@@ -39,6 +39,7 @@ export type DevProxyCliOptions = {
   envFile?: string
   host?: string
   port?: string
+  watch?: boolean
   help?: boolean
 }
 

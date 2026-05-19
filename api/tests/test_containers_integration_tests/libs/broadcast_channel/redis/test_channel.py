@@ -252,6 +252,9 @@ class TestRedisBroadcastChannelIntegration:
         def consumer_thread() -> set[bytes]:
             received_msgs: set[bytes] = set()
             with subscription:
+                # Prime the subscription before producers publish. Redis Pub/Sub does not
+                # replay messages sent before the subscribe command is active.
+                subscription.receive(timeout=0.1)
                 consumer_ready.set()
                 while True:
                     try:
@@ -278,8 +281,10 @@ class TestRedisBroadcastChannelIntegration:
             for future in as_completed(producer_futures, timeout=30.0):
                 sent_msgs.update(future.result())
 
-            subscription.close()
-            consumer_received_msgs = consumer_future.result(timeout=30.0)
+            try:
+                consumer_received_msgs = consumer_future.result(timeout=30.0)
+            finally:
+                subscription.close()
 
         # Verify message content
         assert sent_msgs == consumer_received_msgs

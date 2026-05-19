@@ -255,6 +255,9 @@ catalogs:
     c12:
       specifier: 4.0.0-beta.5
       version: 4.0.0-beta.5
+    chokidar:
+      specifier: 5.0.0
+      version: 5.0.0
     class-variance-authority:
       specifier: 0.7.1
       version: 0.7.1
@@ -699,6 +702,9 @@ importers:
       c12:
         specifier: 'catalog:'
         version: 4.0.0-beta.5(chokidar@5.0.0)(dotenv@17.4.2)(giget@3.2.0)(jiti@2.7.0)(magicast@0.5.2)
+      chokidar:
+        specifier: 'catalog:'
+        version: 5.0.0
       hono:
         specifier: 'catalog:'
         version: 4.12.18
@@ -16265,6 +16271,7 @@ time:
   agentation@3.0.2: '2026-03-25T16:24:19.682Z'
   ahooks@3.9.7: '2026-03-23T15:49:13.605Z'
   c12@4.0.0-beta.5: '2026-05-06T17:28:34.367Z'
+  chokidar@5.0.0: '2025-11-25T23:28:06.854Z'
   class-variance-authority@0.7.1: '2024-11-26T08:20:34.604Z'
   client-only@0.0.1: '2022-09-03T01:07:11.981Z'
   clsx@2.1.1: '2024-04-23T05:26:04.645Z'

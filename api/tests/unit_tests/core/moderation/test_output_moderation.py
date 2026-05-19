@@ -88,7 +88,7 @@ class TestOutputModeration:
     def test_start_thread(self, output_moderation):
         mock_app = MagicMock(spec=Flask)
         with patch("core.moderation.output_moderation.current_app") as mock_current_app:
-            mock_current_app._get_current_object.return_value = mock_app
+            mock_current_app._get_current_object = MagicMock(return_value=mock_app)
             with patch("threading.Thread") as mock_thread_class:
                 mock_thread_instance = MagicMock()
                 mock_thread_class.return_value = mock_thread_instance
