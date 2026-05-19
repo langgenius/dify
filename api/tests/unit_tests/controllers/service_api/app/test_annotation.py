@@ -17,6 +17,7 @@ from types import SimpleNamespace
 from unittest.mock import Mock
 
 import pytest
+from flask import Flask
 from flask_restx.api import HTTPStatus
 
 from controllers.service_api.app.annotation import (
@@ -163,7 +164,7 @@ class TestAnnotationErrorPatterns:
 
 
 class TestAnnotationReplyActionApi:
-    def test_enable(self, app, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_enable(self, app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
         enable_mock = Mock()
         monkeypatch.setattr(AppAnnotationService, "enable_app_annotation", enable_mock)
 
@@ -181,7 +182,7 @@ class TestAnnotationReplyActionApi:
         assert status == 200
         enable_mock.assert_called_once()
 
-    def test_disable(self, app, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_disable(self, app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
         disable_mock = Mock()
         monkeypatch.setattr(AppAnnotationService, "disable_app_annotation", disable_mock)
 
@@ -231,7 +232,7 @@ class TestAnnotationReplyActionStatusApi:
 
 
 class TestAnnotationListApi:
-    def test_get(self, app, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_get(self, app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
         annotation = SimpleNamespace(id="a1", question="q", content="a", created_at=0)
         monkeypatch.setattr(
             AppAnnotationService,
@@ -248,7 +249,7 @@ class TestAnnotationListApi:
 
         assert response["total"] == 1
 
-    def test_create(self, app, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_create(self, app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
         annotation = SimpleNamespace(id="a1", question="q", content="a", created_at=0)
         monkeypatch.setattr(
             AppAnnotationService,
@@ -268,7 +269,7 @@ class TestAnnotationListApi:
 
 
 class TestAnnotationUpdateDeleteApi:
-    def test_update_delete(self, app, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_update_delete(self, app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
         annotation = SimpleNamespace(id="a1", question="q", content="a", created_at=0)
         monkeypatch.setattr(
             AppAnnotationService,

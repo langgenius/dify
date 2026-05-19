@@ -262,8 +262,8 @@ describe('Apps', () => {
     })
 
     it('should track template preview creation after a successful import', async () => {
-      mockHandleImportDSL.mockImplementation(async (_payload: unknown, options: { onSuccess?: () => void }) => {
-        options.onSuccess?.()
+      mockHandleImportDSL.mockImplementation(async (_payload: unknown, options: { onSuccess?: (payload: { app_mode: AppModeEnum }) => void }) => {
+        options.onSuccess?.({ app_mode: AppModeEnum.CHAT })
       })
 
       renderWithClient(<Apps />)
@@ -275,7 +275,9 @@ describe('Apps', () => {
       await waitFor(() => {
         expect(mockFetchAppDetail).toHaveBeenCalledWith('template-1')
         expect(mockTrackCreateApp).toHaveBeenCalledWith({
+          source: 'studio_template_preview',
           appMode: AppModeEnum.CHAT,
+          templateId: 'template-1',
         })
       })
     })
@@ -284,8 +286,8 @@ describe('Apps', () => {
       mockHandleImportDSL.mockImplementation(async (_payload: unknown, options: { onPending?: () => void }) => {
         options.onPending?.()
       })
-      mockHandleImportDSLConfirm.mockImplementation(async (options: { onSuccess?: () => void }) => {
-        options.onSuccess?.()
+      mockHandleImportDSLConfirm.mockImplementation(async (options: { onSuccess?: (payload: { app_mode: AppModeEnum }) => void }) => {
+        options.onSuccess?.({ app_mode: AppModeEnum.WORKFLOW })
       })
 
       renderWithClient(<Apps />)
@@ -299,7 +301,9 @@ describe('Apps', () => {
       await waitFor(() => {
         expect(mockHandleImportDSLConfirm).toHaveBeenCalledTimes(1)
         expect(mockTrackCreateApp).toHaveBeenCalledWith({
-          appMode: AppModeEnum.CHAT,
+          source: 'studio_template_preview',
+          appMode: AppModeEnum.WORKFLOW,
+          templateId: 'template-1',
         })
       })
     })
@@ -365,8 +369,8 @@ describe('Apps', () => {
     })
 
     it('should import DSL from marketplace template on confirm', async () => {
-      mockHandleImportDSL.mockImplementation(async (_payload: unknown, options: { onSuccess?: () => void }) => {
-        options.onSuccess?.()
+      mockHandleImportDSL.mockImplementation(async (_payload: unknown, options: { onSuccess?: (payload: { app_mode: AppModeEnum }) => void }) => {
+        options.onSuccess?.({ app_mode: AppModeEnum.CHAT })
       })
       mockSearchParams = new URLSearchParams('template-id=tpl-42')
       renderWithClient(<Apps />)
@@ -378,13 +382,21 @@ describe('Apps', () => {
           { mode: 'yaml-content', yaml_content: 'yaml-dsl-content' },
           expect.objectContaining({ onSuccess: expect.any(Function) }),
         )
+        expect(mockTrackCreateApp).toHaveBeenCalledWith({
+          source: 'external',
+          appMode: AppModeEnum.CHAT,
+          templateId: 'tpl-42',
+        })
         expect(mockReplace).toHaveBeenCalled()
       })
     })
 
-    it('should show DSL confirm modal when marketplace import is pending', async () => {
+    it('should track marketplace template creation after confirming a pending import', async () => {
       mockHandleImportDSL.mockImplementation(async (_payload: unknown, options: { onPending?: () => void }) => {
         options.onPending?.()
+      })
+      mockHandleImportDSLConfirm.mockImplementation(async (options: { onSuccess?: (payload: { app_mode: AppModeEnum }) => void }) => {
+        options.onSuccess?.({ app_mode: AppModeEnum.WORKFLOW })
       })
       mockSearchParams = new URLSearchParams('template-id=tpl-42')
       renderWithClient(<Apps />)
@@ -394,6 +406,16 @@ describe('Apps', () => {
       await waitFor(() => {
         expect(screen.getByTestId('dsl-confirm-modal')).toBeInTheDocument()
         expect(mockReplace).toHaveBeenCalled()
+      })
+
+      fireEvent.click(screen.getByTestId('confirm-dsl'))
+
+      await waitFor(() => {
+        expect(mockTrackCreateApp).toHaveBeenCalledWith({
+          source: 'external',
+          appMode: AppModeEnum.WORKFLOW,
+          templateId: 'tpl-42',
+        })
       })
     })
   })

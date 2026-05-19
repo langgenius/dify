@@ -73,35 +73,43 @@ class PluginService:
                     cache_not_exists.append(plugin_id)
 
             if cache_not_exists:
-                manifests = {
-                    manifest.plugin_id: manifest
-                    for manifest in marketplace.batch_fetch_plugin_manifests(cache_not_exists)
-                }
-
-                for plugin_id, manifest in manifests.items():
-                    latest_plugin = PluginService.LatestPluginCache(
-                        plugin_id=plugin_id,
-                        version=manifest.latest_version,
-                        unique_identifier=manifest.latest_package_identifier,
-                        status=manifest.status,
-                        deprecated_reason=manifest.deprecated_reason,
-                        alternative_plugin_id=manifest.alternative_plugin_id,
+                if not dify_config.MARKETPLACE_ENABLED:
+                    logger.info(
+                        "Marketplace disabled; skipping latest-plugins metadata fetch for %d ids",
+                        len(cache_not_exists),
                     )
+                    for plugin_id in cache_not_exists:
+                        result[plugin_id] = None
+                else:
+                    manifests = {
+                        manifest.plugin_id: manifest
+                        for manifest in marketplace.batch_fetch_plugin_manifests(cache_not_exists)
+                    }
 
-                    # Store in Redis
-                    redis_client.setex(
-                        f"{PluginService.REDIS_KEY_PREFIX}{plugin_id}",
-                        PluginService.REDIS_TTL,
-                        latest_plugin.model_dump_json(),
-                    )
+                    for plugin_id, manifest in manifests.items():
+                        latest_plugin = PluginService.LatestPluginCache(
+                            plugin_id=plugin_id,
+                            version=manifest.latest_version,
+                            unique_identifier=manifest.latest_package_identifier,
+                            status=manifest.status,
+                            deprecated_reason=manifest.deprecated_reason,
+                            alternative_plugin_id=manifest.alternative_plugin_id,
+                        )
 
-                    result[plugin_id] = latest_plugin
+                        # Store in Redis
+                        redis_client.setex(
+                            f"{PluginService.REDIS_KEY_PREFIX}{plugin_id}",
+                            PluginService.REDIS_TTL,
+                            latest_plugin.model_dump_json(),
+                        )
 
-                    # pop plugin_id from cache_not_exists
-                    cache_not_exists.remove(plugin_id)
+                        result[plugin_id] = latest_plugin
 
-                for plugin_id in cache_not_exists:
-                    result[plugin_id] = None
+                        # pop plugin_id from cache_not_exists
+                        cache_not_exists.remove(plugin_id)
+
+                    for plugin_id in cache_not_exists:
+                        result[plugin_id] = None
 
             return result
         except Exception:

@@ -18,6 +18,7 @@ import uuid
 from unittest.mock import Mock, patch
 
 import pytest
+from flask import Flask
 from werkzeug.exceptions import Forbidden, NotFound
 
 import services
@@ -91,7 +92,7 @@ class TestHitTestingApiPost:
         mock_hit_svc,
         mock_marshal,
         mock_ns,
-        app,
+        app: Flask,
     ):
         """Test successful hit testing request."""
         dataset_id = str(uuid.uuid4())
@@ -129,7 +130,7 @@ class TestHitTestingApiPost:
         mock_hit_svc,
         mock_marshal,
         mock_ns,
-        app,
+        app: Flask,
     ):
         """Test hit testing with custom retrieval model."""
         dataset_id = str(uuid.uuid4())
@@ -183,7 +184,7 @@ class TestHitTestingApiPost:
         mock_hit_svc,
         mock_marshal,
         mock_ns,
-        app,
+        app: Flask,
     ):
         """Service API retrieval payload should not drop metadata filters."""
         dataset_id = str(uuid.uuid4())
@@ -239,7 +240,7 @@ class TestHitTestingApiPost:
         mock_hit_svc,
         mock_marshal,
         mock_ns,
-        app,
+        app: Flask,
     ):
         """Test service API prepares nullable list fields from marshalled records."""
         dataset_id = str(uuid.uuid4())
@@ -286,7 +287,7 @@ class TestHitTestingApiPost:
         mock_current_user,
         mock_dataset_svc,
         mock_ns,
-        app,
+        app: Flask,
     ):
         """Test hit testing with non-existent dataset."""
         dataset_id = str(uuid.uuid4())
@@ -308,7 +309,7 @@ class TestHitTestingApiPost:
         mock_current_user,
         mock_dataset_svc,
         mock_ns,
-        app,
+        app: Flask,
     ):
         """Test hit testing when user lacks dataset permission."""
         dataset_id = str(uuid.uuid4())

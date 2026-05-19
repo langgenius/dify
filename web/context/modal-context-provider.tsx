@@ -1,6 +1,5 @@
 'use client'
 
-import type { ApiBasedExtensionResponse } from '@dify/contracts/api/console/api-based-extension/types.gen'
 import type { ReactNode, SetStateAction } from 'react'
 import type { ModalState, ModelModalType } from './modal-context'
 import type { OpeningStatement } from '@/app/components/base/features/types'
@@ -34,9 +33,6 @@ import {
 } from './modal-context'
 
 const AccountSetting = dynamic(() => import('@/app/components/header/account-setting'), {
-  ssr: false,
-})
-const ApiBasedExtensionModal = dynamic(() => import('@/app/components/header/account-setting/api-based-extension-page/modal'), {
   ssr: false,
 })
 const ModerationSettingModal = dynamic(() => import('@/app/components/base/features/new-feature-panel/moderation/moderation-setting-modal'), {
@@ -90,7 +86,6 @@ export const ModalContextProvider = ({
         ? urlAccountModalState.payload
         : DEFAULT_ACCOUNT_SETTING_TAB)
     : null
-  const [showApiBasedExtensionModal, setShowApiBasedExtensionModal] = useState<ModalState<Partial<ApiBasedExtensionResponse>> | null>(null)
   const [showModerationSettingModal, setShowModerationSettingModal] = useState<ModalState<ModerationConfig> | null>(null)
   const [showExternalDataToolModal, setShowExternalDataToolModal] = useState<ModalState<ExternalDataTool> | null>(null)
   const [showModelModal, setShowModelModal] = useState<ModalState<ModelModalType> | null>(null)
@@ -206,12 +201,6 @@ export const ModalContextProvider = ({
       showOpeningModal.onCancelCallback()
   }, [showOpeningModal])
 
-  const handleSaveApiBasedExtension = (newApiBasedExtension: ApiBasedExtensionResponse) => {
-    if (showApiBasedExtensionModal?.onSaveCallback)
-      showApiBasedExtensionModal.onSaveCallback(newApiBasedExtension)
-    setShowApiBasedExtensionModal(null)
-  }
-
   const handleSaveModeration = (newModerationConfig: ModerationConfig) => {
     if (showModerationSettingModal?.onSaveCallback)
       showModerationSettingModal.onSaveCallback(newModerationConfig)
@@ -247,7 +236,6 @@ export const ModalContextProvider = ({
   return (
     <ModalContext.Provider value={{
       setShowAccountSettingModal,
-      setShowApiBasedExtensionModal,
       setShowModerationSettingModal,
       setShowExternalDataToolModal,
       setShowPricingModal: handleShowPricingModal,
@@ -273,15 +261,6 @@ export const ModalContextProvider = ({
           )
         }
 
-        {
-          !!showApiBasedExtensionModal && (
-            <ApiBasedExtensionModal
-              data={showApiBasedExtensionModal.payload}
-              onCancel={() => setShowApiBasedExtensionModal(null)}
-              onSave={handleSaveApiBasedExtension}
-            />
-          )
-        }
         {
           !!showModerationSettingModal && (
             <ModerationSettingModal
