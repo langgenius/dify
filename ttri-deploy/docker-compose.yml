@@ -1,10 +1,10 @@
 # docker-compose.yml
 #
 # Dify 精簡部署套件
-#   外部依賴：PostgreSQL + Redis（sacahan-network）
-#   向量資料庫：Weaviate（容器內）
-#   包含：api、worker、worker_beat、web、nginx、sandbox、ssrf_proxy、plugin_daemon、weaviate
-#   Host 需要新建的目錄：./app/storage、./plugin_daemon、./weaviate、./nginx/conf.d、./nginx/ssl、./sandbox/dependencies、./sandbox/conf、./ssrf_proxy
+#   外部依賴：PostgreSQL + Redis + Weaviate
+#   向量資料庫：Weaviate（172.16.42.84:8080 REST/GraphQL, 172.16.42.84:50051 gRPC）
+#   包含：api、worker、worker_beat、web、nginx、sandbox、ssrf_proxy、plugin_daemon
+#   Host 需要新建的目錄：./app/storage、./plugin_daemon、./nginx/conf.d、./nginx/ssl、./sandbox/dependencies、./sandbox/conf、./ssrf_proxy
 #
 # 啟動方式（在本目錄下執行）：
 #   cp .env.example .env    # 填入真實憑證
@@ -42,13 +42,16 @@ services:
 
   # API 服務
   api:
-    image: langgenius/dify-api:1.13.3
+    image: langgenius/dify-api:1.14.1
     restart: always
     env_file: .env
     environment:
       MODE: api
       PLUGIN_REMOTE_INSTALL_HOST: ${EXPOSE_PLUGIN_DEBUGGING_HOST:-localhost}
       PLUGIN_REMOTE_INSTALL_PORT: ${EXPOSE_PLUGIN_DEBUGGING_PORT:-5003}
+      PLUGIN_MAX_PACKAGE_SIZE: ${PLUGIN_MAX_PACKAGE_SIZE:-52428800}
+      PLUGIN_DAEMON_TIMEOUT: ${PLUGIN_DAEMON_TIMEOUT:-600.0}
+      INNER_API_KEY_FOR_PLUGIN: ${PLUGIN_DIFY_INNER_API_KEY:-QaHbTe77CtuXmsfyhR7+vRjI/+XbV1AaFy691iy+kGDv2Jvy0/eAh8Y1}
     volumes:
       - ./app/storage:/app/api/storage
     depends_on:
@@ -67,11 +70,13 @@ services:
 
   # Celery Worker（處理所有任務佇列）
   worker:
-    image: langgenius/dify-api:1.13.3
+    image: langgenius/dify-api:1.14.1
     restart: always
     env_file: .env
     environment:
       MODE: worker
+      PLUGIN_MAX_PACKAGE_SIZE: ${PLUGIN_MAX_PACKAGE_SIZE:-52428800}
+      INNER_API_KEY_FOR_PLUGIN: ${PLUGIN_DIFY_INNER_API_KEY:-QaHbTe77CtuXmsfyhR7+vRjI/+XbV1AaFy691iy+kGDv2Jvy0/eAh8Y1}
     volumes:
       - ./app/storage:/app/api/storage
     depends_on:
@@ -84,7 +89,7 @@ services:
 
   # Celery Beat（排程週期性任務）
   worker_beat:
-    image: langgenius/dify-api:1.13.3
+    image: langgenius/dify-api:1.14.1
     restart: always
     env_file: .env
     environment:
@@ -99,7 +104,7 @@ services:
 
   # 前端 Web 應用
   web:
-    image: langgenius/dify-web:1.13.3
+    image: langgenius/dify-web:1.14.1
     restart: always
     env_file: .env
 
@@ -127,7 +132,7 @@ services:
 
   # Sandbox（程式碼執行節點）
   sandbox:
-    image: langgenius/dify-sandbox:0.2.14
+    image: langgenius/dify-sandbox:0.2.15
     restart: always
     environment:
       API_KEY: ${SANDBOX_API_KEY:-dify-sandbox}
@@ -171,7 +176,7 @@ services:
 
   # Plugin Daemon（外掛執行環境）
   plugin_daemon:
-    image: langgenius/dify-plugin-daemon:0.5.3-local
+    image: langgenius/dify-plugin-daemon:0.6.1-local
     restart: always
     env_file: .env
     environment:
@@ -201,29 +206,3 @@ services:
       - default
       - ttri-network
 
-  # Weaviate 向量資料庫
-  weaviate:
-    image: semitechnologies/weaviate:1.27.0
-    restart: always
-    volumes:
-      - ./weaviate:/var/lib/weaviate
-    environment:
-      PERSISTENCE_DATA_PATH: /var/lib/weaviate
-      QUERY_DEFAULTS_LIMIT: 25
-      AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED: "false"
-      DEFAULT_VECTORIZER_MODULE: none
-      CLUSTER_HOSTNAME: node1
-      AUTHENTICATION_APIKEY_ENABLED: "true"
-      AUTHENTICATION_APIKEY_ALLOWED_KEYS: ${WEAVIATE_API_KEY:-WVF5YThaHlkYwhGUSmCRgsX3tD5ngdN8pkih}
-      AUTHENTICATION_APIKEY_USERS: hello@dify.ai
-      AUTHORIZATION_ADMINLIST_ENABLED: "true"
-      AUTHORIZATION_ADMINLIST_USERS: hello@dify.ai
-      DISABLE_TELEMETRY: "true"
-    healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://localhost:8080/v1/.well-known/ready"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
-      start_period: 30s
-    networks:
-      - default
