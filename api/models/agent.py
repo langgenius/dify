@@ -15,36 +15,68 @@ from .types import EnumText, LongText, StringUUID
 
 
 class AgentKind(StrEnum):
+    """Agent implementation family.
+
+    This leaves room for future non-Dify agent implementations while keeping
+    the current roster/workflow APIs scoped to Dify Agent.
+    """
+
+    # Native Agent backed by the Dify Agent runtime/protocol.
     DIFY_AGENT = "dify_agent"
 
 
 class AgentScope(StrEnum):
+    """Visibility and lifecycle scope of an Agent record."""
+
+    # Workspace-visible Agent that can be reused from Agent Roster.
     ROSTER = "roster"
+    # Temporary workflow-local Agent created inside one draft workflow node.
     WORKFLOW_ONLY = "workflow_only"
 
 
 class AgentSource(StrEnum):
+    """Origin that created or imported the Agent."""
+
+    # Created from an Agent App composer.
     AGENT_APP = "agent_app"
+    # Created from a Workflow Agent Composer flow.
     WORKFLOW = "workflow"
+    # Imported from an external artifact or future CLI/export flow.
     IMPORTED = "imported"
+    # Created by system bootstrap or managed templates.
     SYSTEM = "system"
 
 
 class AgentStatus(StrEnum):
+    """Soft lifecycle state for Agent records."""
+
+    # Available for roster lookup, composer use, and workflow binding.
     ACTIVE = "active"
+    # Hidden from active roster queries while preserving historical bindings.
     ARCHIVED = "archived"
 
 
 class AgentConfigVersionOperation(StrEnum):
+    """Audit operation recorded for Agent Soul version/revision changes."""
+
+    # Initial version creation for a new Agent.
     CREATE_VERSION = "create_version"
+    # Mutates the current semantic version and appends a revision record.
     SAVE_CURRENT_VERSION = "save_current_version"
+    # Creates a new semantic version for the same Agent.
     SAVE_NEW_VERSION = "save_new_version"
+    # Saves composer content into a brand-new roster Agent.
     SAVE_NEW_AGENT = "save_new_agent"
+    # Promotes a workflow-only Agent into the reusable Agent Roster.
     SAVE_TO_ROSTER = "save_to_roster"
 
 
 class WorkflowAgentBindingType(StrEnum):
+    """How a workflow node is bound to an Agent."""
+
+    # Node uses a reusable Agent from the workspace roster.
     ROSTER_AGENT = "roster_agent"
+    # Node owns a workflow-only Agent that is not visible in the roster.
     INLINE_AGENT = "inline_agent"
 
 
