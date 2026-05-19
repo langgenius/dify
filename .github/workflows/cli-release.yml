@@ -57,21 +57,16 @@ jobs:
         working-directory: ./
         run: NPM_CONFIG_USERCONFIG="$PWD/cli/scripts/cross-arch.npmrc" pnpm install --frozen-lockfile
 
-      - name: Build cli (dist/)
+      - name: Compile standalone binaries (all targets)
         env:
-          DIFYCTL_VERSION: ${{ steps.manifest.outputs.version }}
+          CLI_VERSION: ${{ steps.manifest.outputs.version }}
           DIFYCTL_CHANNEL: ${{ steps.manifest.outputs.channel }}
           DIFYCTL_MIN_DIFY: ${{ steps.manifest.outputs.minDify }}
           DIFYCTL_MAX_DIFY: ${{ steps.manifest.outputs.maxDify }}
         run: |
           DIFYCTL_COMMIT="$(git rev-parse HEAD)" \
           DIFYCTL_BUILD_DATE="$(git log -1 --format=%cI HEAD)" \
-            pnpm build
-
-      - name: Compile standalone binaries (all targets)
-        env:
-          CLI_VERSION: ${{ steps.manifest.outputs.version }}
-        run: pnpm build:bin
+            pnpm build:bin
 
       - name: Generate sha256 checksum file
         env:
