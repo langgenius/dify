@@ -79,14 +79,14 @@ export const initializeInputs = (formInputs: FormInputItem[], defaultValues: Rec
   return initialInputs
 }
 
-export const isHumanInputFileUploaded = (value: HumanInputFieldValue | undefined) => {
+const isHumanInputFileUploaded = (value: HumanInputFieldValue | undefined) => {
   return !!value
     && !Array.isArray(value)
     && typeof value !== 'string'
     && !!fileIsUploaded(value as FileEntity)
 }
 
-export const hasUploadedHumanInputFiles = (value: HumanInputFieldValue | undefined) => {
+const hasUploadedHumanInputFiles = (value: HumanInputFieldValue | undefined) => {
   return Array.isArray(value)
     && value.length > 0
     && value.every(file => !!fileIsUploaded(file))

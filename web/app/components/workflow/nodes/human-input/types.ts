@@ -64,13 +64,13 @@ export type UserAction = {
   button_style: UserActionButtonType
 }
 
-export type StringDefault = {
+type StringDefault = {
   selector: ValueSelector
   type: 'variable' | 'constant'
   value: string
 }
 
-export type StringListSource = {
+type StringListSource = {
   selector: ValueSelector
   type: 'variable' | 'constant'
   value: string[]
@@ -137,18 +137,6 @@ export const isFileListFormInput = (
   return input.type === InputVarType.multiFiles
 }
 
-export const isFileLikeFormInput = (
-  input: FormInputItem,
-): input is FileFormInput | FileListFormInput => {
-  return input.type === InputVarType.singleFile || input.type === InputVarType.multiFiles
-}
-
-export const supportsDefaultValue = (
-  input: FormInputItem,
-): input is ParagraphFormInput => {
-  return isParagraphFormInput(input)
-}
-
 export const createDefaultParagraphFormInput = (
   output_variable_name = '',
 ): ParagraphFormInput => ({
@@ -161,7 +149,7 @@ export const createDefaultParagraphFormInput = (
   },
 })
 
-export const createDefaultSelectFormInput = (
+const createDefaultSelectFormInput = (
   output_variable_name = '',
 ): SelectFormInput => ({
   type: InputVarType.select,
@@ -173,7 +161,7 @@ export const createDefaultSelectFormInput = (
   },
 })
 
-export const createDefaultFileFormInput = (
+const createDefaultFileFormInput = (
   output_variable_name = '',
 ): FileFormInput => ({
   type: InputVarType.singleFile,
@@ -183,7 +171,7 @@ export const createDefaultFileFormInput = (
   allowed_file_upload_methods: [TransferMethod.local_file, TransferMethod.remote_url],
 })
 
-export const createDefaultFileListFormInput = (
+const createDefaultFileListFormInput = (
   output_variable_name = '',
 ): FileListFormInput => ({
   type: InputVarType.multiFiles,

@@ -314,7 +314,7 @@ type HumanInputFormLocalFileUploadParams = {
 const humanInputFormUploadTokenCache = new Map<string, HumanInputFormUploadTokenResponse>()
 const UPLOAD_TOKEN_REFRESH_BUFFER_SECONDS = 30
 
-export const getHumanInputFormUploadToken = async (formToken: string) => {
+const getHumanInputFormUploadToken = async (formToken: string) => {
   const cachedToken = humanInputFormUploadTokenCache.get(formToken)
   const now = Math.floor(Date.now() / 1000)
 

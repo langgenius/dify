@@ -66,14 +66,14 @@ export type CitationItem = {
   word_count: number
 }
 
-export type PendingHumanInputExtraContent = {
+type PendingHumanInputExtraContent = {
   type: 'human_input'
   submitted: false
   form_definition: HumanInputFormData
   workflow_run_id: string
 }
 
-export type SubmittedHumanInputExtraContent = {
+type SubmittedHumanInputExtraContent = {
   type: 'human_input'
   submitted: true
   form_definition?: HumanInputFormData
