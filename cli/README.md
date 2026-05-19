@@ -37,17 +37,7 @@ Background docs: `difyctl help account`, `difyctl help external`, `difyctl help 
 
 ## Commands
 
-| Group      | Commands                                                                                           |
-| ---------- | -------------------------------------------------------------------------------------------------- |
-| `auth`     | `login`, `logout`, `status`, `whoami`, `use <workspace>`, `devices list/revoke`                    |
-| `get`      | `get app [<id>] [-A] [--mode] [--name] [--tag] [-o json\|yaml\|name\|wide]`, `get workspace`       |
-| `describe` | `describe app <id> [--refresh] [-o json\|yaml]`                                                    |
-| `run`      | `run app <id> [<message>] [--input k=v]... [--conversation <id>] [--stream] [-o json\|yaml\|text]` |
-| `config`   | `view`, `get <key>`, `set <key> <value>`, `unset <key>`, `path`                                    |
-| `env`      | `list`                                                                                             |
-| `help`     | `account`, `external`, `environment`                                                               |
-| `version`  | `version [--json]`                                                                                 |
-
+Run `difyctl --help` for the full list of commands.
 Run `difyctl <cmd> --help` for per-command reference.
 
 ## Output formats
