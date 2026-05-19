@@ -15,6 +15,7 @@ from openinference.semconv.trace import (
     SpanAttributes,
     ToolCallAttributes,
 )
+from opentelemetry.context import Context
 from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter as GrpcOTLPSpanExporter
 from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter as HttpOTLPSpanExporter
 from opentelemetry.sdk import trace as trace_sdk
@@ -45,8 +46,8 @@ from dify_trace_arize_phoenix.config import ArizeConfig, PhoenixConfig
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from graphon.enums import WorkflowNodeExecutionStatus
-from models.model import EndUser, MessageFile
-from models.workflow import WorkflowNodeExecutionTriggeredFrom
+from models.model import App, EndUser, MessageFile
+from models.workflow import WorkflowNodeExecutionTriggeredFrom, WorkflowRun
 
 logger = logging.getLogger(__name__)
 
@@ -137,6 +138,48 @@ def _resolve_published_parent_span_context(parent_node_execution_id: str) -> dic
         )
 
     return normalized_carrier
+
+
+def _app_uses_phoenix_provider(app_tracing_config: Mapping[str, Any] | None) -> bool:
+    if not app_tracing_config or not app_tracing_config.get("enabled"):
+        return False
+    return app_tracing_config.get("tracing_provider") in {"arize", "phoenix"}
+
+
+def _parent_workflow_can_publish_span_context(parent_workflow_run_id: str) -> bool:
+    parent_run = db.session.query(WorkflowRun).where(WorkflowRun.id == parent_workflow_run_id).first()
+    if parent_run is None:
+        return True
+
+    parent_app = db.session.query(App).where(App.id == parent_run.app_id).first()
+    if parent_app is None or not parent_app.tracing:
+        return False
+
+    try:
+        app_tracing_config = json.loads(parent_app.tracing)
+    except (TypeError, json.JSONDecodeError):
+        return False
+    if not isinstance(app_tracing_config, Mapping):
+        return False
+
+    return _app_uses_phoenix_provider(app_tracing_config)
+
+
+def _resolve_workflow_parent_carrier(
+    parent_node_execution_id: str, parent_workflow_run_id: str | None
+) -> dict[str, str] | None:
+    try:
+        return _resolve_published_parent_span_context(parent_node_execution_id)
+    except PendingTraceParentContextError:
+        if parent_workflow_run_id and not _parent_workflow_can_publish_span_context(parent_workflow_run_id):
+            logger.info(
+                "[Arize/Phoenix] Parent workflow cannot publish Phoenix span context; falling back to root span: "
+                "parent_workflow_run_id=%s parent_node_execution_id=%s",
+                parent_workflow_run_id,
+                parent_node_execution_id,
+            )
+            return None
+        raise
 
 
 def setup_tracer(arize_phoenix_config: ArizeConfig | PhoenixConfig) -> tuple[trace_sdk.Tracer, SimpleSpanProcessor]:
@@ -581,9 +624,11 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
             workflow_session_id,
         )
 
+        workflow_parent_carrier: dict[str, str] | None = None
         if parent_node_execution_id:
-            workflow_parent_carrier = _resolve_published_parent_span_context(parent_node_execution_id)
-        else:
+            workflow_parent_carrier = _resolve_workflow_parent_carrier(parent_node_execution_id, parent_workflow_run_id)
+
+        if workflow_parent_carrier is None:
             root_trace_id = _resolve_workflow_root_trace_id(trace_info)
             workflow_root_span_name: str | None = trace_info.workflow_run_id
             if not isinstance(workflow_root_span_name, str) or not workflow_root_span_name.strip():
@@ -1176,7 +1221,7 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
             if root_span_attributes:
                 root_span_attributes_dict.update(root_span_attributes)
 
-            root_span = self.tracer.start_span(name=span_name, attributes=root_span_attributes_dict)
+            root_span = self.tracer.start_span(name=span_name, attributes=root_span_attributes_dict, context=Context())
 
             with use_span(root_span, end_on_exit=False):
                 self.propagator.inject(carrier=carrier)

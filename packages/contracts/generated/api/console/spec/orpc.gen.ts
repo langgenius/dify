@@ -8,10 +8,16 @@ import { zGetSpecSchemaDefinitionsResponse } from './zod.gen'
  * Get system JSON Schema definitions specification
  *
  * Used for frontend component type mapping
+ *
+ * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
+ *
+ * @deprecated
  */
 export const get = oc
   .route({
-    description: 'Used for frontend component type mapping',
+    deprecated: true,
+    description:
+      'Used for frontend component type mapping\n\nGenerated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getSpecSchemaDefinitions',
