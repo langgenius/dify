@@ -161,6 +161,13 @@ export const zSuggestedQuestionsResponse = z.object({
 })
 
 /**
+ * SimpleResultResponse
+ */
+export const zSimpleResultResponse = z.object({
+  result: z.string(),
+})
+
+/**
  * CompletionMessagePayload
  */
 export const zCompletionMessagePayload = z.object({
@@ -180,6 +187,13 @@ export const zConvertToWorkflowPayload = z.object({
   icon_background: z.string().nullish(),
   icon_type: z.string().nullish(),
   name: z.string().nullish(),
+})
+
+/**
+ * NewAppResponse
+ */
+export const zNewAppResponse = z.object({
+  new_app_id: z.string(),
 })
 
 /**
@@ -221,6 +235,13 @@ export const zModelConfigRequest = z.object({
  */
 export const zAppNamePayload = z.object({
   name: z.string().min(1),
+})
+
+/**
+ * RedirectUrlResponse
+ */
+export const zRedirectUrlResponse = z.object({
+  redirect_url: z.string(),
 })
 
 /**
@@ -2327,7 +2348,7 @@ export const zPostAppsByAppIdChatMessagesByTaskIdStopPath = z.object({
 /**
  * Task stopped successfully
  */
-export const zPostAppsByAppIdChatMessagesByTaskIdStopResponse = z.record(z.string(), z.unknown())
+export const zPostAppsByAppIdChatMessagesByTaskIdStopResponse = zSimpleResultResponse
 
 export const zGetAppsByAppIdCompletionConversationsPath = z.object({
   app_id: z.string(),
@@ -2390,10 +2411,7 @@ export const zPostAppsByAppIdCompletionMessagesByTaskIdStopPath = z.object({
 /**
  * Task stopped successfully
  */
-export const zPostAppsByAppIdCompletionMessagesByTaskIdStopResponse = z.record(
-  z.string(),
-  z.unknown(),
-)
+export const zPostAppsByAppIdCompletionMessagesByTaskIdStopResponse = zSimpleResultResponse
 
 export const zGetAppsByAppIdConversationVariablesPath = z.object({
   app_id: z.string(),
@@ -2417,7 +2435,7 @@ export const zPostAppsByAppIdConvertToWorkflowPath = z.object({
 /**
  * Application converted to workflow successfully
  */
-export const zPostAppsByAppIdConvertToWorkflowResponse = z.record(z.string(), z.unknown())
+export const zPostAppsByAppIdConvertToWorkflowResponse = zNewAppResponse
 
 export const zPostAppsByAppIdCopyBody = zCopyAppPayload
 
@@ -2453,7 +2471,7 @@ export const zPostAppsByAppIdFeedbacksPath = z.object({
 /**
  * Feedback updated successfully
  */
-export const zPostAppsByAppIdFeedbacksResponse = z.record(z.string(), z.unknown())
+export const zPostAppsByAppIdFeedbacksResponse = zSimpleResultResponse
 
 export const zGetAppsByAppIdFeedbacksExportPath = z.object({
   app_id: z.string(),
@@ -2523,7 +2541,7 @@ export const zPostAppsByAppIdPublishToCreatorsPlatformPath = z.object({
 /**
  * Success
  */
-export const zPostAppsByAppIdPublishToCreatorsPlatformResponse = z.record(z.string(), z.unknown())
+export const zPostAppsByAppIdPublishToCreatorsPlatformResponse = zRedirectUrlResponse
 
 export const zGetAppsByAppIdServerPath = z.object({
   app_id: z.string(),
@@ -2757,7 +2775,7 @@ export const zPostAppsByAppIdTracePath = z.object({
 /**
  * Trace configuration updated successfully
  */
-export const zPostAppsByAppIdTraceResponse = z.record(z.string(), z.unknown())
+export const zPostAppsByAppIdTraceResponse = zSimpleResultResponse
 
 export const zDeleteAppsByAppIdTraceConfigBody = zTraceProviderQuery
 
@@ -2906,10 +2924,7 @@ export const zPostAppsByAppIdWorkflowRunsTasksByTaskIdStopPath = z.object({
 /**
  * Task stopped successfully
  */
-export const zPostAppsByAppIdWorkflowRunsTasksByTaskIdStopResponse = z.record(
-  z.string(),
-  z.unknown(),
-)
+export const zPostAppsByAppIdWorkflowRunsTasksByTaskIdStopResponse = zSimpleResultResponse
 
 export const zGetAppsByAppIdWorkflowRunsByRunIdPath = z.object({
   app_id: z.string(),
@@ -3246,7 +3261,7 @@ export const zPostAppsByAppIdWorkflowsDraftFeaturesPath = z.object({
 /**
  * Workflow features updated successfully
  */
-export const zPostAppsByAppIdWorkflowsDraftFeaturesResponse = z.record(z.string(), z.unknown())
+export const zPostAppsByAppIdWorkflowsDraftFeaturesResponse = zSimpleResultResponse
 
 export const zPostAppsByAppIdWorkflowsDraftHumanInputNodesByNodeIdDeliveryTestBody
   = zHumanInputDeliveryTestPayload

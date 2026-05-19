@@ -3,6 +3,28 @@
 import * as z from 'zod'
 
 /**
+ * AccessModeResponse
+ */
+export const zAccessModeResponse = z.object({
+  accessMode: z.string(),
+})
+
+/**
+ * AccessTokenData
+ */
+export const zAccessTokenData = z.object({
+  access_token: z.string(),
+})
+
+/**
+ * AccessTokenResultResponse
+ */
+export const zAccessTokenResultResponse = z.object({
+  data: zAccessTokenData,
+  result: z.string(),
+})
+
+/**
  * AppAccessModeQuery
  */
 export const zAppAccessModeQuery = z.object({
@@ -16,6 +38,24 @@ export const zAppAccessModeResponse = z.object({
 
 export const zAppPermissionResponse = z.object({
   result: z.boolean().optional(),
+})
+
+/**
+ * BooleanResultResponse
+ */
+export const zBooleanResultResponse = z.object({
+  result: z.boolean(),
+})
+
+/**
+ * BrandingModel
+ */
+export const zBrandingModel = z.object({
+  application_title: z.string().default(''),
+  enabled: z.boolean().default(false),
+  favicon: z.string().default(''),
+  login_page_logo: z.string().default(''),
+  workspace_logo: z.string().default(''),
 })
 
 /**
@@ -104,14 +144,14 @@ export const zFileResponse = z.object({
  * FileWithSignedUrl
  */
 export const zFileWithSignedUrl = z.object({
-  created_at: z.int().nullish(),
-  created_by: z.string().nullish(),
-  extension: z.string().nullish(),
+  created_at: z.int().nullable(),
+  created_by: z.string().nullable(),
+  extension: z.string().nullable(),
   id: z.string(),
-  mime_type: z.string().nullish(),
+  mime_type: z.string().nullable(),
   name: z.string(),
   size: z.int(),
-  url: z.string().nullish(),
+  url: z.string().nullable(),
 })
 
 /**
@@ -141,11 +181,46 @@ export const zForgotPasswordSendPayload = z.object({
 })
 
 /**
+ * LicenseLimitationModel
+ *
+ * - enabled: whether this limit is enforced
+ * - size: current usage count
+ * - limit: maximum allowed count; 0 means unlimited
+ */
+export const zLicenseLimitationModel = z.object({
+  enabled: z.boolean().default(false),
+  limit: z.int().default(0),
+  size: z.int().default(0),
+})
+
+/**
+ * LicenseStatus
+ */
+export const zLicenseStatus = z.enum(['active', 'expired', 'expiring', 'inactive', 'lost', 'none'])
+
+/**
+ * LicenseModel
+ */
+export const zLicenseModel = z.object({
+  expired_at: z.string().default(''),
+  status: zLicenseStatus,
+  workspaces: zLicenseLimitationModel,
+})
+
+/**
  * LoginPayload
  */
 export const zLoginPayload = z.object({
   email: z.string(),
   password: z.string(),
+})
+
+/**
+ * LoginStatusResponse
+ */
+export const zLoginStatusResponse = z.object({
+  app_logged_in: z.boolean(),
+  logged_in: z.boolean(),
 })
 
 /**
@@ -173,6 +248,31 @@ export const zMessageMoreLikeThisQuery = z.object({
 })
 
 /**
+ * PluginInstallationScope
+ */
+export const zPluginInstallationScope = z.enum([
+  'all',
+  'none',
+  'official_and_specific_partners',
+  'official_only',
+])
+
+/**
+ * PluginInstallationPermissionModel
+ */
+export const zPluginInstallationPermissionModel = z.object({
+  plugin_installation_scope: zPluginInstallationScope,
+  restrict_to_marketplace_only: z.boolean().default(false),
+})
+
+/**
+ * PluginManagerModel
+ */
+export const zPluginManagerModel = z.object({
+  enabled: z.boolean().default(false),
+})
+
+/**
  * RemoteFileInfo
  */
 export const zRemoteFileInfo = z.object({
@@ -185,6 +285,13 @@ export const zRemoteFileInfo = z.object({
  */
 export const zRemoteFileUploadPayload = z.object({
   url: z.url().min(1).max(2083),
+})
+
+/**
+ * ResultResponse
+ */
+export const zResultResponse = z.object({
+  result: z.string(),
 })
 
 /**
@@ -207,6 +314,28 @@ export const zSystemFeatureResponse = z.object({
 })
 
 /**
+ * SimpleResultDataResponse
+ */
+export const zSimpleResultDataResponse = z.object({
+  data: z.string(),
+  result: z.string(),
+})
+
+/**
+ * SimpleResultResponse
+ */
+export const zSimpleResultResponse = z.object({
+  result: z.string(),
+})
+
+/**
+ * SuggestedQuestionsResponse
+ */
+export const zSuggestedQuestionsResponse = z.object({
+  data: z.array(z.string()),
+})
+
+/**
  * TextToAudioPayload
  */
 export const zTextToAudioPayload = z.object({
@@ -214,6 +343,61 @@ export const zTextToAudioPayload = z.object({
   streaming: z.boolean().nullish(),
   text: z.string().nullish(),
   voice: z.string().nullish(),
+})
+
+/**
+ * VerificationTokenResponse
+ */
+export const zVerificationTokenResponse = z.object({
+  email: z.string(),
+  is_valid: z.boolean(),
+  token: z.string(),
+})
+
+/**
+ * WebAppAuthSSOModel
+ */
+export const zWebAppAuthSsoModel = z.object({
+  protocol: z.string().default(''),
+})
+
+/**
+ * WebAppAuthModel
+ */
+export const zWebAppAuthModel = z.object({
+  allow_email_code_login: z.boolean().default(false),
+  allow_email_password_login: z.boolean().default(false),
+  allow_sso: z.boolean().default(false),
+  enabled: z.boolean().default(false),
+  sso_config: zWebAppAuthSsoModel,
+})
+
+/**
+ * SystemFeatureModel
+ */
+export const zSystemFeatureModel = z.object({
+  app_dsl_version: z.string().default(''),
+  branding: zBrandingModel,
+  enable_change_email: z.boolean().default(true),
+  enable_collaboration_mode: z.boolean().default(true),
+  enable_creators_platform: z.boolean().default(false),
+  enable_email_code_login: z.boolean().default(false),
+  enable_email_password_login: z.boolean().default(true),
+  enable_explore_banner: z.boolean().default(false),
+  enable_marketplace: z.boolean().default(false),
+  enable_social_oauth_login: z.boolean().default(false),
+  enable_trial_app: z.boolean().default(false),
+  is_allow_create_workspace: z.boolean().default(false),
+  is_allow_register: z.boolean().default(false),
+  is_email_setup: z.boolean().default(false),
+  license: zLicenseModel,
+  max_plugin_package_size: z.int().default(15728640),
+  plugin_installation_permission: zPluginInstallationPermissionModel,
+  plugin_manager: zPluginManagerModel,
+  sso_enforced_for_signin: z.boolean().default(false),
+  sso_enforced_for_signin_protocol: z.string().default(''),
+  trial_models: z.array(z.string()).default([]),
+  webapp_auth: zWebAppAuthModel,
 })
 
 /**
@@ -243,7 +427,7 @@ export const zPostChatMessagesByTaskIdStopPath = z.object({
 /**
  * Success
  */
-export const zPostChatMessagesByTaskIdStopResponse = z.record(z.string(), z.unknown())
+export const zPostChatMessagesByTaskIdStopResponse = zSimpleResultResponse
 
 export const zPostCompletionMessagesBody = zCompletionMessagePayload
 
@@ -259,7 +443,7 @@ export const zPostCompletionMessagesByTaskIdStopPath = z.object({
 /**
  * Success
  */
-export const zPostCompletionMessagesByTaskIdStopResponse = z.record(z.string(), z.unknown())
+export const zPostCompletionMessagesByTaskIdStopResponse = zSimpleResultResponse
 
 export const zGetConversationsQuery = z.object({
   last_id: z.string().optional(),
@@ -306,7 +490,7 @@ export const zPatchConversationsByCIdPinPath = z.object({
 /**
  * Conversation pinned successfully
  */
-export const zPatchConversationsByCIdPinResponse = z.record(z.string(), z.unknown())
+export const zPatchConversationsByCIdPinResponse = zResultResponse
 
 export const zPatchConversationsByCIdUnpinPath = z.object({
   c_id: z.string(),
@@ -315,21 +499,21 @@ export const zPatchConversationsByCIdUnpinPath = z.object({
 /**
  * Conversation unpinned successfully
  */
-export const zPatchConversationsByCIdUnpinResponse = z.record(z.string(), z.unknown())
+export const zPatchConversationsByCIdUnpinResponse = zResultResponse
 
 export const zPostEmailCodeLoginBody = zEmailCodeLoginSendPayload
 
 /**
  * Email code sent successfully
  */
-export const zPostEmailCodeLoginResponse = z.record(z.string(), z.unknown())
+export const zPostEmailCodeLoginResponse = zSimpleResultDataResponse
 
 export const zPostEmailCodeLoginValidityBody = zEmailCodeLoginVerifyPayload
 
 /**
  * Email code verified and login successful
  */
-export const zPostEmailCodeLoginValidityResponse = z.record(z.string(), z.unknown())
+export const zPostEmailCodeLoginValidityResponse = zAccessTokenResultResponse
 
 /**
  * File uploaded successfully
@@ -341,21 +525,21 @@ export const zPostForgotPasswordBody = zForgotPasswordSendPayload
 /**
  * Password reset email sent successfully
  */
-export const zPostForgotPasswordResponse = z.record(z.string(), z.unknown())
+export const zPostForgotPasswordResponse = zSimpleResultDataResponse
 
 export const zPostForgotPasswordResetsBody = zForgotPasswordResetPayload
 
 /**
  * Password reset successfully
  */
-export const zPostForgotPasswordResetsResponse = z.record(z.string(), z.unknown())
+export const zPostForgotPasswordResetsResponse = zSimpleResultResponse
 
 export const zPostForgotPasswordValidityBody = zForgotPasswordCheckPayload
 
 /**
  * Token is valid
  */
-export const zPostForgotPasswordValidityResponse = z.record(z.string(), z.unknown())
+export const zPostForgotPasswordValidityResponse = zVerificationTokenResponse
 
 export const zGetFormHumanInputByFormTokenPath = z.object({
   form_token: z.string(),
@@ -380,17 +564,17 @@ export const zPostLoginBody = zLoginPayload
 /**
  * Authentication successful
  */
-export const zPostLoginResponse = z.record(z.string(), z.unknown())
+export const zPostLoginResponse = zAccessTokenResultResponse
 
 /**
  * Login status
  */
-export const zGetLoginStatusResponse = z.record(z.string(), z.unknown())
+export const zGetLoginStatusResponse = zLoginStatusResponse
 
 /**
  * Logout successful
  */
-export const zPostLogoutResponse = z.record(z.string(), z.unknown())
+export const zPostLogoutResponse = zSimpleResultResponse
 
 export const zGetMessagesQuery = z.object({
   conversation_id: z.string(),
@@ -415,7 +599,7 @@ export const zPostMessagesByMessageIdFeedbacksQuery = z.object({
 /**
  * Feedback submitted successfully
  */
-export const zPostMessagesByMessageIdFeedbacksResponse = z.record(z.string(), z.unknown())
+export const zPostMessagesByMessageIdFeedbacksResponse = zResultResponse
 
 export const zGetMessagesByMessageIdMoreLikeThisPath = z.object({
   message_id: z.string(),
@@ -437,7 +621,7 @@ export const zGetMessagesByMessageIdSuggestedQuestionsPath = z.object({
 /**
  * Success
  */
-export const zGetMessagesByMessageIdSuggestedQuestionsResponse = z.record(z.string(), z.unknown())
+export const zGetMessagesByMessageIdSuggestedQuestionsResponse = zSuggestedQuestionsResponse
 
 /**
  * Success
@@ -485,7 +669,7 @@ export const zPostSavedMessagesQuery = z.object({
 /**
  * Message saved successfully
  */
-export const zPostSavedMessagesResponse = z.record(z.string(), z.unknown())
+export const zPostSavedMessagesResponse = zResultResponse
 
 export const zDeleteSavedMessagesByMessageIdPath = z.object({
   message_id: z.string(),
@@ -504,7 +688,7 @@ export const zGetSiteResponse = z.record(z.string(), z.unknown())
 /**
  * System features retrieved successfully
  */
-export const zGetSystemFeaturesResponse = zSystemFeatureResponse
+export const zGetSystemFeaturesResponse = zSystemFeatureModel
 
 export const zPostTextToAudioBody = zTextToAudioPayload
 
@@ -521,7 +705,7 @@ export const zGetWebappAccessModeQuery = z.object({
 /**
  * Access mode retrieved successfully
  */
-export const zGetWebappAccessModeResponse = zAppAccessModeResponse
+export const zGetWebappAccessModeResponse = zAccessModeResponse
 
 export const zGetWebappPermissionQuery = z.object({
   appId: z.string(),
@@ -530,7 +714,7 @@ export const zGetWebappPermissionQuery = z.object({
 /**
  * Permission check completed
  */
-export const zGetWebappPermissionResponse = zAppPermissionResponse
+export const zGetWebappPermissionResponse = zBooleanResultResponse
 
 export const zGetWorkflowByTaskIdEventsPath = z.object({
   task_id: z.string(),
@@ -555,4 +739,4 @@ export const zPostWorkflowsTasksByTaskIdStopPath = z.object({
 /**
  * Success
  */
-export const zPostWorkflowsTasksByTaskIdStopResponse = z.record(z.string(), z.unknown())
+export const zPostWorkflowsTasksByTaskIdStopResponse = zSimpleResultResponse

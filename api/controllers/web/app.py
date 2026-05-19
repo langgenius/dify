@@ -8,7 +8,7 @@ from werkzeug.exceptions import Unauthorized
 
 from constants import HEADER_NAME_APP_CODE
 from controllers.common import fields
-from controllers.common.schema import register_schema_models
+from controllers.common.schema import register_response_schema_models, register_schema_models
 from core.app.app_config.common.parameters_mapping import get_parameters_from_feature_dict
 from libs.passport import PassportService
 from libs.token import extract_webapp_passport
@@ -33,6 +33,11 @@ class AppAccessModeQuery(BaseModel):
 
 
 register_schema_models(web_ns, AppAccessModeQuery)
+register_response_schema_models(
+    web_ns,
+    fields.AccessModeResponse,
+    fields.BooleanResultResponse,
+)
 
 
 class AppAccessModeResponse(BaseModel):
@@ -113,9 +118,14 @@ class AppAccessMode(Resource):
             "appCode": {"description": "Application code", "type": "string", "required": False},
         }
     )
-    @web_ns.response(200, "Access mode retrieved successfully", web_ns.models[AppAccessModeResponse.__name__])
-    @web_ns.response(400, "Bad Request")
-    @web_ns.response(500, "Internal Server Error")
+    @web_ns.doc(
+        responses={
+            200: "Success",
+            400: "Bad Request",
+            500: "Internal Server Error",
+        }
+    )
+    @web_ns.response(200, "Success", web_ns.models[fields.AccessModeResponse.__name__])
     def get(self):
         raw_args = request.args.to_dict()
         args = AppAccessModeQuery.model_validate(raw_args)
@@ -141,10 +151,15 @@ class AppWebAuthPermission(Resource):
     @web_ns.doc("Check App Permission")
     @web_ns.doc(description="Check if user has permission to access a web application.")
     @web_ns.doc(params={"appId": {"description": "Application ID", "type": "string", "required": True}})
-    @web_ns.response(200, "Permission check completed", web_ns.models[AppPermissionResponse.__name__])
-    @web_ns.response(400, "Bad Request")
-    @web_ns.response(401, "Unauthorized")
-    @web_ns.response(500, "Internal Server Error")
+    @web_ns.doc(
+        responses={
+            200: "Success",
+            400: "Bad Request",
+            401: "Unauthorized",
+            500: "Internal Server Error",
+        }
+    )
+    @web_ns.response(200, "Success", web_ns.models[fields.BooleanResultResponse.__name__])
     def get(self):
         user_id = "visitor"
         app_code = request.headers.get(HEADER_NAME_APP_CODE)

@@ -1262,16 +1262,10 @@ export const byMessageId = {
 
 /**
  * Stop a running chat message generation
- *
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
  */
 export const post16 = oc
   .route({
-    deprecated: true,
-    description:
-      'Stop a running chat message generation\n\nGenerated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
+    description: 'Stop a running chat message generation',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postAppsByAppIdChatMessagesByTaskIdStop',
@@ -1387,16 +1381,10 @@ export const completionConversations = {
 
 /**
  * Stop a running completion message generation
- *
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
  */
 export const post17 = oc
   .route({
-    deprecated: true,
-    description:
-      'Stop a running completion message generation\n\nGenerated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
+    description: 'Stop a running completion message generation',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postAppsByAppIdCompletionMessagesByTaskIdStop',
@@ -1475,16 +1463,11 @@ export const conversationVariables = {
  * Convert application to workflow mode
  * Convert expert mode of chatbot app to workflow mode
  * Convert Completion App to Workflow App
- *
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
  */
 export const post19 = oc
   .route({
-    deprecated: true,
     description:
-      'Convert application to workflow mode\nConvert expert mode of chatbot app to workflow mode\nConvert Completion App to Workflow App\n\nGenerated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
+      'Convert application to workflow mode\nConvert expert mode of chatbot app to workflow mode\nConvert Completion App to Workflow App',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postAppsByAppIdConvertToWorkflow',
@@ -1589,16 +1572,10 @@ export const export3 = {
 
 /**
  * Create or update message feedback (like/dislike)
- *
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
  */
 export const post21 = oc
   .route({
-    deprecated: true,
-    description:
-      'Create or update message feedback (like/dislike)\n\nGenerated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
+    description: 'Create or update message feedback (like/dislike)',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postAppsByAppIdFeedbacks',
@@ -1724,16 +1701,9 @@ export const name = {
 
 /**
  * Publish app to Creators Platform
- *
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
  */
 export const post25 = oc
   .route({
-    deprecated: true,
-    description:
-      'Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postAppsByAppIdPublishToCreatorsPlatform',
@@ -2217,16 +2187,10 @@ export const get32 = oc
 
 /**
  * Update app tracing configuration
- *
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
  */
 export const post31 = oc
   .route({
-    deprecated: true,
-    description:
-      'Update app tracing configuration\n\nGenerated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
+    description: 'Update app tracing configuration',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postAppsByAppIdTrace',
@@ -2476,16 +2440,10 @@ export const count3 = {
  * Stop workflow task
  *
  * Stop running workflow task
- *
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
  */
 export const post34 = oc
   .route({
-    deprecated: true,
-    description:
-      'Stop running workflow task\n\nGenerated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
+    description: 'Stop running workflow task',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postAppsByAppIdWorkflowRunsTasksByTaskIdStop',

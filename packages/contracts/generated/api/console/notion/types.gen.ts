@@ -4,6 +4,10 @@ export type ClientOptions = {
   baseUrl: `${string}://${string}/console/api` | (string & {})
 }
 
+export type TextContentResponse = {
+  content: string
+}
+
 export type NotionEstimatePayload = {
   doc_form?: string
   doc_language?: string
@@ -26,9 +30,7 @@ export type GetNotionPagesByPageIdByPageTypePreviewData = {
 }
 
 export type GetNotionPagesByPageIdByPageTypePreviewResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: TextContentResponse
 }
 
 export type GetNotionPagesByPageIdByPageTypePreviewResponse
