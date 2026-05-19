@@ -29,6 +29,11 @@ from tests.unit_tests.conftest import (
 )
 
 
+def _configure_current_app_mock(mock_current_app):
+    mock_current_app.login_manager = Mock()
+    mock_current_app._get_current_object = Mock(return_value=Mock())
+
+
 class TestValidateAndGetApiToken:
     """Test suite for validate_and_get_api_token function"""
 
@@ -120,8 +125,7 @@ class TestValidateAppToken:
     ):
         """Test that valid app token allows access to decorated view."""
         # Arrange
-        # Use standard Mock for login_manager to avoid AsyncMockMixin warnings
-        mock_current_app.login_manager = Mock()
+        _configure_current_app_mock(mock_current_app)
 
         mock_api_token = Mock()
         mock_api_token.app_id = str(uuid.uuid4())
@@ -448,8 +452,7 @@ class TestValidateDatasetToken:
     def test_valid_dataset_token(self, mock_current_app, mock_validate_token, mock_db, mock_user_logged_in, app: Flask):
         """Test that valid dataset token allows access."""
         # Arrange
-        # Use standard Mock for login_manager
-        mock_current_app.login_manager = Mock()
+        _configure_current_app_mock(mock_current_app)
 
         tenant_id = str(uuid.uuid4())
         mock_api_token = Mock()
