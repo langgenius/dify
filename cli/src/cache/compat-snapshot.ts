@@ -1,4 +1,4 @@
-import type { ServerVersionResponse } from '../types/data-contracts.js'
+import type { ServerVersionResponse } from '@dify/contracts/api/openapi/types.gen'
 import type { CompatStatus } from '../version/compat.js'
 import { mkdir, readFile, rename, writeFile } from 'node:fs/promises'
 import { dirname, join } from 'node:path'

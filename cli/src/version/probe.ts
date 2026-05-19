@@ -1,5 +1,5 @@
+import type { ServerVersionResponse } from '@dify/contracts/api/openapi/types.gen'
 import type { HostsBundle } from '../auth/hosts.js'
-import type { ServerVersionResponse } from '../types/data-contracts.js'
 import type { CompatVerdict } from './compat.js'
 import type { Channel } from './info.js'
 import { MetaClient } from '../api/meta.js'

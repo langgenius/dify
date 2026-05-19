@@ -42,7 +42,6 @@
     "clean": "rm -rf dist node_modules/.cache",
     "version:info": "bun scripts/print-buildinfo.ts",
     "docker:build-dev": "scripts/docker-build-dev.sh",
-    "sync-models": "scripts/sync-models.sh",
     "build:bin": "scripts/release-build.sh"
   },
   "dependencies": {

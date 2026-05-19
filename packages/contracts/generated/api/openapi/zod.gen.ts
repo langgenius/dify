@@ -150,6 +150,16 @@ export const zRevokeResponse = z.object({
 })
 
 /**
+ * ServerVersionResponse
+ *
+ * Meta endpoint payload for `GET /openapi/v1/_version` — no auth required.
+ */
+export const zServerVersionResponse = z.object({
+  edition: z.enum(['CLOUD', 'SELF_HOSTED']),
+  version: z.string(),
+})
+
+/**
  * SessionRow
  */
 export const zSessionRow = z.object({
@@ -341,6 +351,11 @@ export const zWorkspaceListResponse = z.object({
  * Success
  */
 export const zGetHealthResponse = z.record(z.string(), z.unknown())
+
+/**
+ * Server version
+ */
+export const zGetVersionResponse = zServerVersionResponse
 
 /**
  * Account info

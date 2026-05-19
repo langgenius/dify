@@ -178,6 +178,11 @@ export type RevokeResponse = {
   status: string
 }
 
+export type ServerVersionResponse = {
+  edition: 'CLOUD' | 'SELF_HOSTED'
+  version: string
+}
+
 export type SessionListResponse = {
   data: Array<SessionRow>
   has_more: boolean
@@ -262,6 +267,19 @@ export type GetHealthResponses = {
 }
 
 export type GetHealthResponse = GetHealthResponses[keyof GetHealthResponses]
+
+export type GetVersionData = {
+  body?: never
+  path?: never
+  query?: never
+  url: '/_version'
+}
+
+export type GetVersionResponses = {
+  200: ServerVersionResponse
+}
+
+export type GetVersionResponse = GetVersionResponses[keyof GetVersionResponses]
 
 export type GetAccountData = {
   body?: never

@@ -1,5 +1,5 @@
+import type { ServerVersionResponse } from '@dify/contracts/api/openapi/types.gen'
 import type { CompatSnapshot, CompatSnapshotStore } from '../cache/compat-snapshot.js'
-import type { ServerVersionResponse } from '../types/data-contracts.js'
 import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'

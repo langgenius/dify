@@ -1,5 +1,5 @@
+import type { ServerVersionResponse } from '@dify/contracts/api/openapi/types.gen'
 import type { CompatSnapshot, CompatSnapshotStore } from '../cache/compat-snapshot.js'
-import type { ServerVersionResponse } from '../types/data-contracts.js'
 import pc from 'picocolors'
 import { difyCompat, evaluateCompat } from './compat.js'
 import { versionInfo } from './info.js'
