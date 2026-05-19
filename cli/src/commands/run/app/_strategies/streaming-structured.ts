@@ -1,39 +1,13 @@
 import type { SseEvent } from '../../../../http/sse.js'
-import type { HitlPausePayload } from '../sse-collector.js'
 import type { RunContext, RunStrategy } from './index.js'
 import { buildRunBody } from '../../../../api/app-run.js'
 import { startSpinner } from '../../../../io/spinner.js'
 import { extractThinkBlocks, stripThinkBlocks } from '../../../../io/think-filter.js'
 import { chatConversationHint, newAppRunObject, RUN_MODES } from '../handlers.js'
+import { renderHitlHint, renderHitlOutput } from '../hitl-render.js'
 import { collect, HitlPauseError } from '../sse-collector.js'
 
 const CHAT_MODES: ReadonlySet<string> = new Set([RUN_MODES.Chat, RUN_MODES.AgentChat, RUN_MODES.AdvancedChat])
-
-function buildHitlExitJson(appId: string, payload: HitlPausePayload): string {
-  return JSON.stringify({
-    status: 'paused',
-    app_id: appId,
-    task_id: payload.task_id,
-    workflow_run_id: payload.workflow_run_id,
-    form_token: payload.form_token,
-    form_content: payload.form_content,
-    inputs: payload.inputs,
-    resolved_default_values: payload.resolved_default_values,
-    user_actions: payload.user_actions,
-    expiration_time: payload.expiration_time,
-  })
-}
-
-function hitlResumeHint(appId: string, payload: HitlPausePayload): string {
-  let hint = `hint: workflow paused — resume with: difyctl run app resume ${appId} ${payload.form_token} --workflow-run-id ${payload.workflow_run_id}`
-  const actions = payload.user_actions as { id: string }[]
-  if (actions.length > 1) {
-    const firstAction = actions[0]?.id
-    if (firstAction !== undefined)
-      hint += ` --action ${firstAction}`
-  }
-  return `${hint}\n`
-}
 
 async function* captureTaskId(
   iter: AsyncIterable<SseEvent>,
@@ -65,7 +39,7 @@ export class StreamingStructuredStrategy implements RunStrategy {
       workflowId: opts.workflowId,
     })
 
-    const spinner = startSpinner({ io: deps.io, label: 'running', enabled: !ctx.livePrint })
+    const spinner = startSpinner({ io: deps.io, label: 'running', enabled: ctx.isText && !ctx.livePrint })
 
     let taskId: string | undefined
     const cleanup = () => {
@@ -88,9 +62,9 @@ export class StreamingStructuredStrategy implements RunStrategy {
     catch (err) {
       ctrl.abort()
       if (err instanceof HitlPauseError) {
-        deps.io.out.write(`${buildHitlExitJson(opts.appId, err.pausePayload)}\n`)
-        deps.io.err.write(hitlResumeHint(opts.appId, err.pausePayload))
-        exit(2)
+        deps.io.out.write(renderHitlOutput(opts.appId, err.pausePayload, isText, deps.io.isOutTTY))
+        deps.io.err.write(renderHitlHint(opts.appId, err.pausePayload, deps.io.isErrTTY))
+        exit(0)
       }
       throw err
     }

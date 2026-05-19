@@ -29,9 +29,9 @@ HITL PAUSE (exit code 2)
   When a workflow pauses for human input, stdout receives a JSON object
   with status "paused", form_token, workflow_run_id, and resolved_default_values.
   Resume with:
-    difyctl run app resume <app_id> <form_token> --workflow-run-id <id>
+    difyctl resume app <app_id> <form_token> --workflow-run-id <id>
   You can supply form values by:
-    difyctl run app resume <app_id> <form_token> --workflow-run-id <id> --inputs '{"name":"Alice"}'
+    difyctl resume app <app_id> <form_token> --workflow-run-id <id> --inputs '{"name":"Alice"}'
 
 ERROR RECOVERY
   not logged in          difyctl auth login

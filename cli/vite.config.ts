@@ -7,6 +7,7 @@ export default defineConfig({
   pack: {
     entry: ['src/index.ts', 'src/commands/**/*.ts', 'src/framework/**/*.ts'],
     format: ['esm'],
+    fixedExtension: false,
     dts: true,
     clean: true,
     sourcemap: true,
@@ -25,7 +26,7 @@ export default defineConfig({
   test: {
     environment: 'node',
     setupFiles: ['./test/setup.ts'],
-    include: ['test/**/*.test.ts', 'src/**/*.test.ts'],
+    include: ['test/**/*.test.ts', 'src/**/*.test.ts', 'scripts/**/*.test.ts'],
     coverage: {
       provider: 'v8',
       reporter: ['text', 'text-summary', 'json'],

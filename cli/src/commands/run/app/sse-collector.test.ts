@@ -119,6 +119,45 @@ describe('decodeStreamError', () => {
     const err = decodeStreamError(new Uint8Array())
     expect(err.message).toMatch(/error event/i)
   })
+
+  it('unwraps openapi-v1 invoke-error: prefers args.description', () => {
+    const inner = {
+      args: { description: '[models] Error: API request failed with status code 402: Insufficient Balance' },
+      error_type: 'InvokeError',
+      message: 'fallback message',
+    }
+    const env = { message: JSON.stringify(inner), status: 400 }
+    const err = decodeStreamError(enc.encode(JSON.stringify(env)))
+    expect(err.message).toBe(inner.args.description)
+    expect(err.code).toBe('server_4xx_other')
+    expect(err.httpStatus).toBe(400)
+  })
+
+  it('unwraps openapi-v1 invoke-error: falls back to inner.message when no args.description', () => {
+    const inner = { error_type: 'InvokeError', message: 'inner only' }
+    const env = { message: JSON.stringify(inner), status: 500 }
+    const err = decodeStreamError(enc.encode(JSON.stringify(env)))
+    expect(err.message).toBe('inner only')
+    expect(err.code).toBe('server_5xx')
+  })
+
+  it('leaves message untouched when env.message is plain text', () => {
+    const env = { message: 'plain text error', status: 400 }
+    const err = decodeStreamError(enc.encode(JSON.stringify(env)))
+    expect(err.message).toBe('plain text error')
+  })
+
+  it('leaves message untouched when nested JSON lacks error_type', () => {
+    const env = { message: JSON.stringify({ foo: 'bar' }), status: 400 }
+    const err = decodeStreamError(enc.encode(JSON.stringify(env)))
+    expect(err.message).toBe(JSON.stringify({ foo: 'bar' }))
+  })
+
+  it('leaves message untouched on malformed nested JSON starting with {', () => {
+    const env = { message: '{not valid json', status: 400 }
+    const err = decodeStreamError(enc.encode(JSON.stringify(env)))
+    expect(err.message).toBe('{not valid json')
+  })
 })
 
 describe('collect — human_input_required', () => {
@@ -126,12 +165,18 @@ describe('collect — human_input_required', () => {
     const hitlData = {
       task_id: 'task-1',
       workflow_run_id: 'wf-run-1',
-      form_token: 'ft-1',
-      form_content: 'Please fill in',
-      inputs: [],
-      resolved_default_values: {},
-      user_actions: [{ id: 'submit', title: 'Submit' }],
-      expiration_time: 9999999999,
+      data: {
+        form_id: 'form-1',
+        node_id: 'n1',
+        node_title: 'First',
+        form_content: 'Please fill in',
+        inputs: [],
+        actions: [{ id: 'submit', title: 'Submit' }],
+        display_in_ui: false,
+        form_token: 'ft-1',
+        resolved_default_values: {},
+        expiration_time: 9999999999,
+      },
     }
     await expect(collect(iterOf(
       ev('workflow_started', {}),
@@ -143,12 +188,18 @@ describe('collect — human_input_required', () => {
     const hitlData = {
       task_id: 'task-1',
       workflow_run_id: 'wf-run-1',
-      form_token: 'ft-abc',
-      form_content: 'form',
-      inputs: [],
-      resolved_default_values: { name: 'Alice' },
-      user_actions: [],
-      expiration_time: 9999999999,
+      data: {
+        form_id: 'form-1',
+        node_id: 'n1',
+        node_title: 'First',
+        form_content: 'form',
+        inputs: [],
+        actions: [],
+        display_in_ui: false,
+        form_token: 'ft-abc',
+        resolved_default_values: { name: 'Alice' },
+        expiration_time: 9999999999,
+      },
     }
     let caught: HitlPauseError | undefined
     try {
@@ -159,8 +210,8 @@ describe('collect — human_input_required', () => {
         caught = e
     }
     expect(caught).toBeDefined()
-    expect(caught!.pausePayload.form_token).toBe('ft-abc')
-    expect(caught!.pausePayload.resolved_default_values).toEqual({ name: 'Alice' })
+    expect(caught!.pausePayload.data.form_token).toBe('ft-abc')
+    expect(caught!.pausePayload.data.resolved_default_values).toEqual({ name: 'Alice' })
   })
 })
 

@@ -1,23 +1,33 @@
 import type { CommandOutput } from './output.js'
-import type { ArgDefinition, FlagDefinition, ICommand, InferArgs, InferFlags } from './types.js'
+import type { ArgDefinition, FlagDefinition, ICommand, InferArgs, InferFlags, OptionalArgValueType } from './types.js'
 import { parseArgv } from './flags.js'
 
 export type CommandConstructor = {
   new(): Command
   description?: string
-  flags?: Record<string, FlagDefinition<string | boolean | number | string[] | undefined>>
+  flags?: Record<string, FlagDefinition<OptionalArgValueType>>
   args?: Record<string, ArgDefinition<string | undefined>>
   examples?: string[]
+  hidden?: boolean
+  deprecated?: string
 }
 
+type InferCommandArgs<C extends CommandConstructor> = C['args'] extends Record<string, ArgDefinition<string | undefined>>
+  ? InferArgs<C['args']>
+  : Record<string, string | undefined>
+
+type InferCommandFlags<C extends CommandConstructor> = C['flags'] extends Record<string, FlagDefinition<OptionalArgValueType>>
+  ? InferFlags<C['flags']>
+  : Record<string, OptionalArgValueType>
+
 type ParseResult<C extends CommandConstructor> = {
-  args: C['args'] extends Record<string, ArgDefinition<string | undefined>> ? InferArgs<C['args']> : Record<string, string | undefined>
-  flags: C['flags'] extends Record<string, FlagDefinition<string | boolean | number | string[] | undefined>> ? InferFlags<C['flags']> : Record<string, string | boolean | number | string[] | undefined>
+  args: InferCommandArgs<C>
+  flags: InferCommandFlags<C>
 }
 
 export abstract class Command implements ICommand {
   static description?: string
-  static flags: Record<string, FlagDefinition<string | boolean | number | string[] | undefined>> = {}
+  static flags: Record<string, FlagDefinition<OptionalArgValueType>> = {}
   static args: Record<string, ArgDefinition<string | undefined>> = {}
   static examples: string[] = []
 

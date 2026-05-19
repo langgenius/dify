@@ -98,12 +98,18 @@ describe('streamPrinterFor — HITL events', () => {
     const hitl = {
       task_id: 't-1',
       workflow_run_id: 'wf-1',
-      form_token: 'ft-1',
-      form_content: 'fill',
-      inputs: [],
-      resolved_default_values: {},
-      user_actions: [],
-      expiration_time: 999,
+      data: {
+        form_id: 'form-1',
+        node_id: 'n1',
+        node_title: 'First',
+        form_content: 'fill',
+        inputs: [],
+        actions: [],
+        display_in_ui: false,
+        form_token: 'ft-1',
+        resolved_default_values: {},
+        expiration_time: 999,
+      },
     }
     expect(() => sp.onEvent(stream, stream, ev('human_input_required', hitl))).toThrow(HitlPauseError)
   })
