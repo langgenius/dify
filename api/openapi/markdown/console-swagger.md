@@ -340,6 +340,110 @@ Check if activation token is valid
 | ---- | ----------- | ------ |
 | 200 | Success | [ActivationCheckResponse](#activationcheckresponse) |
 
+### /agents
+
+#### GET
+##### Responses
+
+| Code | Description |
+| ---- | ----------- |
+| 200 | Success |
+
+#### POST
+##### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| payload | body |  | Yes | [RosterAgentCreatePayload](#rosteragentcreatepayload) |
+
+##### Responses
+
+| Code | Description |
+| ---- | ----------- |
+| 200 | Success |
+
+### /agents/invite-options
+
+#### GET
+##### Responses
+
+| Code | Description |
+| ---- | ----------- |
+| 200 | Success |
+
+### /agents/{agent_id}
+
+#### DELETE
+##### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| agent_id | path |  | Yes | string |
+
+##### Responses
+
+| Code | Description |
+| ---- | ----------- |
+| 200 | Success |
+
+#### GET
+##### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| agent_id | path |  | Yes | string |
+
+##### Responses
+
+| Code | Description |
+| ---- | ----------- |
+| 200 | Success |
+
+#### PATCH
+##### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| agent_id | path |  | Yes | string |
+| payload | body |  | Yes | [RosterAgentUpdatePayload](#rosteragentupdatepayload) |
+
+##### Responses
+
+| Code | Description |
+| ---- | ----------- |
+| 200 | Success |
+
+### /agents/{agent_id}/versions
+
+#### GET
+##### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| agent_id | path |  | Yes | string |
+
+##### Responses
+
+| Code | Description |
+| ---- | ----------- |
+| 200 | Success |
+
+### /agents/{agent_id}/versions/{version_id}
+
+#### GET
+##### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| agent_id | path |  | Yes | string |
+| version_id | path |  | Yes | string |
+
+##### Responses
+
+| Code | Description |
+| ---- | ----------- |
+| 200 | Success |
+
 ### /all-workspaces
 
 #### GET
@@ -607,9 +711,9 @@ Get workflow online users
 
 ##### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Workflow online users retrieved successfully | [WorkflowOnlineUsersResponse](#workflowonlineusersresponse) |
 
 ### /apps/{app_id}
 
@@ -862,6 +966,66 @@ Run draft workflow for advanced chat application
 | 200 | Workflow run started successfully |
 | 400 | Invalid request parameters |
 | 403 | Permission denied |
+
+### /apps/{app_id}/agent-composer
+
+#### GET
+##### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string |
+
+##### Responses
+
+| Code | Description |
+| ---- | ----------- |
+| 200 | Success |
+
+#### PUT
+##### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string |
+| payload | body |  | Yes | [ComposerSavePayload](#composersavepayload) |
+
+##### Responses
+
+| Code | Description |
+| ---- | ----------- |
+| 200 | Success |
+
+### /apps/{app_id}/agent-composer/candidates
+
+#### GET
+##### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string |
+
+##### Responses
+
+| Code | Description |
+| ---- | ----------- |
+| 200 | Success |
+
+### /apps/{app_id}/agent-composer/validate
+
+#### POST
+##### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string |
+| payload | body |  | Yes | [ComposerSavePayload](#composersavepayload) |
+
+##### Responses
+
+| Code | Description |
+| ---- | ----------- |
+| 200 | Success |
 
 ### /apps/{app_id}/agent/logs
 
@@ -2720,7 +2884,7 @@ Get all published workflows for an application
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Published workflows retrieved successfully | [WorkflowPagination](#workflowpagination) |
+| 200 | Published workflows retrieved successfully | [WorkflowPaginationResponse](#workflowpaginationresponse) |
 
 ### /apps/{app_id}/workflows/default-workflow-block-configs
 
@@ -2792,7 +2956,7 @@ Get draft workflow for an application
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Draft workflow retrieved successfully | [Workflow](#workflow) |
+| 200 | Draft workflow retrieved successfully | [WorkflowResponse](#workflowresponse) |
 | 404 | Draft workflow not found |  |
 
 #### POST
@@ -3047,6 +3211,103 @@ Run draft workflow loop node
 | 200 | Workflow loop node run started successfully |
 | 403 | Permission denied |
 | 404 | Node not found |
+
+### /apps/{app_id}/workflows/draft/nodes/{node_id}/agent-composer
+
+#### GET
+##### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string |
+| node_id | path |  | Yes | string |
+
+##### Responses
+
+| Code | Description |
+| ---- | ----------- |
+| 200 | Success |
+
+#### PUT
+##### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string |
+| node_id | path |  | Yes | string |
+| payload | body |  | Yes | [ComposerSavePayload](#composersavepayload) |
+
+##### Responses
+
+| Code | Description |
+| ---- | ----------- |
+| 200 | Success |
+
+### /apps/{app_id}/workflows/draft/nodes/{node_id}/agent-composer/candidates
+
+#### GET
+##### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string |
+| node_id | path |  | Yes | string |
+
+##### Responses
+
+| Code | Description |
+| ---- | ----------- |
+| 200 | Success |
+
+### /apps/{app_id}/workflows/draft/nodes/{node_id}/agent-composer/impact
+
+#### POST
+##### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string |
+| node_id | path |  | Yes | string |
+
+##### Responses
+
+| Code | Description |
+| ---- | ----------- |
+| 200 | Success |
+
+### /apps/{app_id}/workflows/draft/nodes/{node_id}/agent-composer/save-to-roster
+
+#### POST
+##### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string |
+| node_id | path |  | Yes | string |
+| payload | body |  | Yes | [ComposerSavePayload](#composersavepayload) |
+
+##### Responses
+
+| Code | Description |
+| ---- | ----------- |
+| 200 | Success |
+
+### /apps/{app_id}/workflows/draft/nodes/{node_id}/agent-composer/validate
+
+#### POST
+##### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string |
+| node_id | path |  | Yes | string |
+| payload | body |  | Yes | [ComposerSavePayload](#composersavepayload) |
+
+##### Responses
+
+| Code | Description |
+| ---- | ----------- |
+| 200 | Success |
 
 ### /apps/{app_id}/workflows/draft/nodes/{node_id}/last-run
 
@@ -3403,8 +3664,7 @@ Get published workflow for an application
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Published workflow retrieved successfully | [Workflow](#workflow) |
-| 404 | Published workflow not found |  |
+| 200 | Published workflow retrieved successfully, or null if not found | [WorkflowResponse](#workflowresponse) |
 
 #### POST
 ##### Summary
@@ -3485,7 +3745,7 @@ Update workflow by ID
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Workflow updated successfully | [Workflow](#workflow) |
+| 200 | Workflow updated successfully | [WorkflowResponse](#workflowresponse) |
 | 403 | Permission denied |  |
 | 404 | Workflow not found |  |
 
@@ -6685,9 +6945,10 @@ Get published workflows
 
 ##### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Published workflows retrieved successfully | [WorkflowPaginationResponse](#workflowpaginationresponse) |
+| 403 | Permission denied |  |
 
 ### /rag/pipelines/{pipeline_id}/workflows/default-workflow-block-configs
 
@@ -6743,9 +7004,10 @@ Get draft rag pipeline's workflow
 
 ##### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Draft workflow retrieved successfully | [WorkflowResponse](#workflowresponse) |
+| 404 | Draft workflow not found |  |
 
 #### POST
 ##### Summary
@@ -7105,9 +7367,9 @@ Get published pipeline
 
 ##### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Published workflow retrieved successfully, or null if not exist | [WorkflowResponse](#workflowresponse) |
 
 #### POST
 ##### Summary
@@ -7260,9 +7522,12 @@ Update workflow attributes
 
 ##### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Workflow updated successfully | [WorkflowResponse](#workflowresponse) |
+| 400 | No valid fields to update |  |
+| 403 | Permission denied |  |
+| 404 | Workflow not found |  |
 
 ### /rag/pipelines/{pipeline_id}/workflows/{workflow_id}/restore
 
@@ -10189,12 +10454,107 @@ Get banner list
 | model_mode | string | Model mode | Yes |
 | model_name | string | Model name | Yes |
 
+#### AgentIdPath
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| agent_id | string |  | Yes |
+
+#### AgentInviteOptionsQuery
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| app_id | string | Workflow app id for in-current-workflow markers | No |
+| keyword | string |  | No |
+| limit | integer |  | No |
+| page | integer |  | No |
+
+#### AgentKnowledgeQueryMode
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| AgentKnowledgeQueryMode | string |  |  |
+
 #### AgentLogQuery
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | conversation_id | string | Conversation UUID | Yes |
 | message_id | string | Message UUID | Yes |
+
+#### AgentSoulConfig
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| app_features | object |  | No |
+| app_variables | [ [AppVariableConfig](#appvariableconfig) ] |  | No |
+| env | [AgentSoulEnvConfig](#agentsoulenvconfig) |  | No |
+| human | [AgentSoulHumanConfig](#agentsoulhumanconfig) |  | No |
+| knowledge | [AgentSoulKnowledgeConfig](#agentsoulknowledgeconfig) |  | No |
+| memory | [AgentSoulMemoryConfig](#agentsoulmemoryconfig) |  | No |
+| misc_legacy | object |  | No |
+| prompt | [AgentSoulPromptConfig](#agentsoulpromptconfig) |  | No |
+| sandbox | [AgentSoulSandboxConfig](#agentsoulsandboxconfig) |  | No |
+| schema_version | integer |  | No |
+| skills_files | [AgentSoulSkillsFilesConfig](#agentsoulskillsfilesconfig) |  | No |
+| tools | [AgentSoulToolsConfig](#agentsoultoolsconfig) |  | No |
+
+#### AgentSoulEnvConfig
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| secret_refs | [ object ] |  | No |
+| variables | [ object ] |  | No |
+
+#### AgentSoulHumanConfig
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| contacts | [ object ] |  | No |
+| tools | [ object ] |  | No |
+
+#### AgentSoulKnowledgeConfig
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| datasets | [ object ] |  | No |
+| query_config | object |  | No |
+| query_mode | [AgentKnowledgeQueryMode](#agentknowledgequerymode) |  | No |
+
+#### AgentSoulMemoryConfig
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| artifacts | [ object ] |  | No |
+| budget | string |  | No |
+| scope | string |  | No |
+
+#### AgentSoulPromptConfig
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| system_prompt | string |  | No |
+
+#### AgentSoulSandboxConfig
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| config | object |  | No |
+| provider | string |  | No |
+
+#### AgentSoulSkillsFilesConfig
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| files | [ object ] |  | No |
+| skills | [ object ] |  | No |
+
+#### AgentSoulToolsConfig
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| cli_tools | [ object ] |  | No |
+| dify_tools | [ object ] |  | No |
 
 #### AgentThought
 
@@ -10615,6 +10975,15 @@ AppMCPServer Status Enum
 | enabled | boolean | Enable or disable tracing | Yes |
 | tracing_provider | string | Tracing provider | No |
 
+#### AppVariableConfig
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| default |  |  | No |
+| name | string |  | Yes |
+| required | boolean |  | No |
+| type | string |  | Yes |
+
 #### AudioTranscriptResponse
 
 | Name | Type | Description | Required |
@@ -10840,6 +11209,48 @@ Button styles for user actions.
 | ---- | ---- | ----------- | -------- |
 | doc_name | string | Compliance document name | Yes |
 
+#### ComposerBindingPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| agent_config_version_id | string |  | No |
+| agent_id | string |  | No |
+| binding_type | string | *Enum:* `"inline_agent"`, `"roster_agent"` | Yes |
+
+#### ComposerSavePayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| agent_soul | [AgentSoulConfig](#agentsoulconfig) |  | No |
+| binding | [ComposerBindingPayload](#composerbindingpayload) |  | No |
+| client_revision_id | string |  | No |
+| idempotency_key | string |  | No |
+| new_agent_name | string |  | No |
+| node_job | [WorkflowNodeJobConfig](#workflownodejobconfig) |  | No |
+| save_strategy | [ComposerSaveStrategy](#composersavestrategy) |  | Yes |
+| soul_lock | [ComposerSoulLockPayload](#composersoullockpayload) |  | No |
+| variant | [ComposerVariant](#composervariant) |  | Yes |
+| version_note | string |  | No |
+
+#### ComposerSaveStrategy
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ComposerSaveStrategy | string |  |  |
+
+#### ComposerSoulLockPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| locked | boolean |  | No |
+| unlocked_from_version_id | string |  | No |
+
+#### ComposerVariant
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ComposerVariant | string |  |  |
+
 #### Condition
 
 Condition detail
@@ -10954,16 +11365,6 @@ Condition detail
 | ---- | ---- | ----------- | -------- |
 | auto_generate | boolean |  | No |
 | name | string |  | No |
-
-#### ConversationVariable
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| description | string |  | No |
-| id | string |  | No |
-| name | string |  | No |
-| value | object |  | No |
-| value_type | string |  | No |
 
 #### ConversationVariableResponse
 
@@ -11384,6 +11785,48 @@ Condition detail
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | DebugPermission | string |  |  |
+
+#### DeclaredOutputCheckConfig
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| benchmark_file_ref | object |  | No |
+| prompt | string |  | No |
+| type | string |  | Yes |
+
+#### DeclaredOutputConfig
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| checks | [ [DeclaredOutputCheckConfig](#declaredoutputcheckconfig) ] |  | No |
+| description | string |  | No |
+| failure_strategy | [DeclaredOutputFailureStrategy](#declaredoutputfailurestrategy) |  | No |
+| file | [DeclaredOutputFileConfig](#declaredoutputfileconfig) |  | No |
+| id | string |  | No |
+| name | string |  | Yes |
+| required | boolean |  | No |
+| type | [DeclaredOutputType](#declaredoutputtype) |  | Yes |
+
+#### DeclaredOutputFailureStrategy
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| max_retries | integer |  | No |
+| on_output_check_failed | string |  | No |
+| on_type_check_failed | string |  | No |
+
+#### DeclaredOutputFileConfig
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| extensions | [ string ] |  | No |
+| mime_types | [ string ] |  | No |
+
+#### DeclaredOutputType
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| DeclaredOutputType | string |  |  |
 
 #### DefaultBlockConfigQuery
 
@@ -12993,24 +13436,24 @@ Form input definition.
 | icon_info | object |  | No |
 | name | string |  | Yes |
 
-#### PipelineVariable
+#### PipelineVariableResponse
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| allow_file_extension | [ string ] |  | No |
-| allow_file_upload_methods | [ string ] |  | No |
+| allowed_file_extensions | [ string ] |  | No |
 | allowed_file_types | [ string ] |  | No |
-| belong_to_node_id | string |  | No |
+| allowed_file_upload_methods | [ string ] |  | No |
+| belong_to_node_id | string |  | Yes |
 | default_value | object |  | No |
-| label | string |  | No |
+| label | string |  | Yes |
 | max_length | integer |  | No |
 | options | [ string ] |  | No |
 | placeholder | string |  | No |
-| required | boolean |  | No |
+| required | boolean |  | Yes |
 | tooltips | string |  | No |
-| type | string |  | No |
+| type | string |  | Yes |
 | unit | string |  | No |
-| variable | string |  | No |
+| variable | string |  | Yes |
 
 #### PluginAutoUpgradeSettingsPayload
 
@@ -13206,6 +13649,36 @@ Form input definition.
 | search_method | [RetrievalMethod](#retrievalmethod) |  | Yes |
 | top_k | integer |  | Yes |
 | weights | [WeightModel](#weightmodel) |  | No |
+
+#### RosterAgentCreatePayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| agent_soul | [AgentSoulConfig](#agentsoulconfig) |  | No |
+| description | string |  | No |
+| icon | string |  | No |
+| icon_background | string |  | No |
+| icon_type | string |  | No |
+| name | string |  | Yes |
+| version_note | string |  | No |
+
+#### RosterAgentUpdatePayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| description | string |  | No |
+| icon | string |  | No |
+| icon_background | string |  | No |
+| icon_type | string |  | No |
+| name | string |  | No |
+
+#### RosterListQuery
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| keyword | string |  | No |
+| limit | integer |  | No |
+| page | integer |  | No |
 
 #### Rule
 
@@ -13906,26 +14379,6 @@ in form definiton, or a variable while the workflow is running.
 | embedding_provider_name | string |  | Yes |
 | vector_weight | number |  | Yes |
 
-#### Workflow
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| conversation_variables | [ [ConversationVariable](#conversationvariable) ] |  | No |
-| created_at | object |  | No |
-| created_by | [SimpleAccount](#simpleaccount) |  | No |
-| environment_variables | [ object ] |  | No |
-| features | object |  | No |
-| graph | object |  | No |
-| hash | string |  | No |
-| id | string |  | No |
-| marked_comment | string |  | No |
-| marked_name | string |  | No |
-| rag_pipeline_variables | [ [PipelineVariable](#pipelinevariable) ] |  | No |
-| tool_published | boolean |  | No |
-| updated_at | object |  | No |
-| updated_by | [SimpleAccount](#simpleaccount) |  | No |
-| version | string |  | No |
-
 #### WorkflowAppLogPaginationResponse
 
 | Name | Type | Description | Required |
@@ -14124,6 +14577,16 @@ in form definiton, or a variable while the workflow is running.
 | position_x | number | Comment X position | No |
 | position_y | number | Comment Y position | No |
 
+#### WorkflowConversationVariableResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| description | string |  | Yes |
+| id | string |  | Yes |
+| name | string |  | Yes |
+| value | object |  | Yes |
+| value_type | string |  | Yes |
+
 #### WorkflowDraftEnvVariable
 
 | Name | Type | Description | Required |
@@ -14207,6 +14670,16 @@ in form definiton, or a variable while the workflow is running.
 | value_type | string |  | No |
 | visible | boolean |  | No |
 
+#### WorkflowEnvironmentVariableResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| description | string |  | Yes |
+| id | string |  | Yes |
+| name | string |  | Yes |
+| value | object |  | Yes |
+| value_type | string |  | Yes |
+
 #### WorkflowExecutionStatus
 
 | Name | Type | Description | Required |
@@ -14228,20 +14701,59 @@ in form definiton, or a variable while the workflow is running.
 | page | integer |  | No |
 | user_id | string |  | No |
 
+#### WorkflowNodeJobConfig
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| declared_outputs | [ [DeclaredOutputConfig](#declaredoutputconfig) ] |  | No |
+| human_contacts | [ object ] |  | No |
+| metadata | object |  | No |
+| mode | [WorkflowNodeJobMode](#workflownodejobmode) |  | No |
+| previous_node_output_refs | [ object ] |  | No |
+| schema_version | integer |  | No |
+| workflow_prompt | string |  | No |
+
+#### WorkflowNodeJobMode
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| WorkflowNodeJobMode | string |  |  |
+
+#### WorkflowOnlineUser
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| avatar | string |  | No |
+| user_id | string |  | Yes |
+| username | string |  | Yes |
+
+#### WorkflowOnlineUsersByApp
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| app_id | string |  | Yes |
+| users | [ [WorkflowOnlineUser](#workflowonlineuser) ] |  | Yes |
+
 #### WorkflowOnlineUsersPayload
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | app_ids | [ string ] | App IDs | No |
 
-#### WorkflowPagination
+#### WorkflowOnlineUsersResponse
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| has_more | boolean |  | No |
-| items | [ [Workflow](#workflow) ] |  | No |
-| limit | integer |  | No |
-| page | integer |  | No |
+| data | [ [WorkflowOnlineUsersByApp](#workflowonlineusersbyapp) ] |  | Yes |
+
+#### WorkflowPaginationResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| has_more | boolean |  | Yes |
+| items | [ [WorkflowResponse](#workflowresponse) ] |  | Yes |
+| limit | integer |  | Yes |
+| page | integer |  | Yes |
 
 #### WorkflowPartial
 
@@ -14259,6 +14771,26 @@ in form definiton, or a variable while the workflow is running.
 | ---- | ---- | ----------- | -------- |
 | paused_at | string |  | No |
 | paused_nodes | [ [PausedNodeResponse](#pausednoderesponse) ] |  | Yes |
+
+#### WorkflowResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| conversation_variables | [ [WorkflowConversationVariableResponse](#workflowconversationvariableresponse) ] |  | Yes |
+| created_at | integer |  | Yes |
+| created_by | [SimpleAccount](#simpleaccount) |  | No |
+| environment_variables | [ [WorkflowEnvironmentVariableResponse](#workflowenvironmentvariableresponse) ] |  | Yes |
+| features | object |  | Yes |
+| graph | object |  | Yes |
+| hash | string |  | Yes |
+| id | string |  | Yes |
+| marked_comment | string |  | Yes |
+| marked_name | string |  | Yes |
+| rag_pipeline_variables | [ [PipelineVariableResponse](#pipelinevariableresponse) ] |  | Yes |
+| tool_published | boolean |  | Yes |
+| updated_at | integer |  | Yes |
+| updated_by | [SimpleAccount](#simpleaccount) |  | No |
+| version | string |  | Yes |
 
 #### WorkflowRunCountQuery
 

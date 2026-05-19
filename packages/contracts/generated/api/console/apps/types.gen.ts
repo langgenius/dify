@@ -72,6 +72,10 @@ export type WorkflowOnlineUsersPayload = {
   app_ids?: Array<string>
 }
 
+export type WorkflowOnlineUsersResponse = {
+  data: Array<WorkflowOnlineUsersByApp>
+}
+
 export type AppDetailWithSite = {
   access_mode?: string | null
   api_base_url?: string | null
@@ -161,6 +165,19 @@ export type AdvancedChatWorkflowRunPayload = {
   } | null
   parent_message_id?: string | null
   query?: string
+}
+
+export type ComposerSavePayload = {
+  agent_soul?: AgentSoulConfig
+  binding?: ComposerBindingPayload
+  client_revision_id?: string | null
+  idempotency_key?: string | null
+  new_agent_name?: string | null
+  node_job?: WorkflowNodeJobConfig
+  save_strategy: ComposerSaveStrategy
+  soul_lock?: ComposerSoulLockPayload
+  variant: ComposerVariant
+  version_note?: string | null
 }
 
 export type AnnotationReplyPayload = {
@@ -627,39 +644,33 @@ export type WorkflowCommentResolve = {
   resolved_by?: string | null
 }
 
-export type WorkflowPagination = {
-  has_more?: boolean
-  items?: Array<Workflow>
-  limit?: number
-  page?: number
+export type WorkflowPaginationResponse = {
+  has_more: boolean
+  items: Array<WorkflowResponse>
+  limit: number
+  page: number
 }
 
-export type Workflow = {
-  conversation_variables?: Array<ConversationVariable>
-  created_at?: {
-    [key: string]: unknown
-  }
+export type WorkflowResponse = {
+  conversation_variables: Array<WorkflowConversationVariableResponse>
+  created_at: number
   created_by?: SimpleAccount
-  environment_variables?: Array<{
-    [key: string]: unknown
-  }>
-  features?: {
+  environment_variables: Array<WorkflowEnvironmentVariableResponse>
+  features: {
     [key: string]: unknown
   }
-  graph?: {
+  graph: {
     [key: string]: unknown
   }
-  hash?: string
-  id?: string
-  marked_comment?: string
-  marked_name?: string
-  rag_pipeline_variables?: Array<PipelineVariable>
-  tool_published?: boolean
-  updated_at?: {
-    [key: string]: unknown
-  }
+  hash: string
+  id: string
+  marked_comment: string
+  marked_name: string
+  rag_pipeline_variables: Array<PipelineVariableResponse>
+  tool_published: boolean
+  updated_at: number
   updated_by?: SimpleAccount
-  version?: string
+  version: string
 }
 
 export type SyncDraftWorkflowPayload = {
@@ -886,6 +897,11 @@ export type PluginDependency = {
   value: unknown
 }
 
+export type WorkflowOnlineUsersByApp = {
+  app_id: string
+  users: Array<WorkflowOnlineUser>
+}
+
 export type DeletedTool = {
   provider_id: string
   tool_name: string
@@ -932,6 +948,61 @@ export type AdvancedChatWorkflowRunForListResponse = {
   total_tokens?: number | null
   version?: string | null
 }
+
+export type AgentSoulConfig = {
+  app_features?: {
+    [key: string]: unknown
+  }
+  app_variables?: Array<AppVariableConfig>
+  env?: AgentSoulEnvConfig
+  human?: AgentSoulHumanConfig
+  knowledge?: AgentSoulKnowledgeConfig
+  memory?: AgentSoulMemoryConfig
+  misc_legacy?: {
+    [key: string]: unknown
+  }
+  prompt?: AgentSoulPromptConfig
+  sandbox?: AgentSoulSandboxConfig
+  schema_version?: number
+  skills_files?: AgentSoulSkillsFilesConfig
+  tools?: AgentSoulToolsConfig
+}
+
+export type ComposerBindingPayload = {
+  agent_config_version_id?: string | null
+  agent_id?: string | null
+  binding_type: 'inline_agent' | 'roster_agent'
+}
+
+export type WorkflowNodeJobConfig = {
+  declared_outputs?: Array<DeclaredOutputConfig>
+  human_contacts?: Array<{
+    [key: string]: unknown
+  }>
+  metadata?: {
+    [key: string]: unknown
+  }
+  mode?: WorkflowNodeJobMode
+  previous_node_output_refs?: Array<{
+    [key: string]: unknown
+  }>
+  schema_version?: number
+  workflow_prompt?: string
+}
+
+export type ComposerSaveStrategy
+  = | 'node_job_only'
+    | 'save_as_new_agent'
+    | 'save_as_new_version'
+    | 'save_to_current_version'
+    | 'save_to_roster'
+
+export type ComposerSoulLockPayload = {
+  locked?: boolean
+  unlocked_from_version_id?: string | null
+}
+
+export type ComposerVariant = 'agent_app' | 'workflow'
 
 export type AnnotationHitHistory = {
   annotation_content?: string | null
@@ -1182,33 +1253,43 @@ export type WorkflowCommentReply = {
   id: string
 }
 
-export type ConversationVariable = {
-  description?: string
-  id?: string
-  name?: string
-  value?: {
+export type WorkflowConversationVariableResponse = {
+  description: string
+  id: string
+  name: string
+  value: {
     [key: string]: unknown
   }
-  value_type?: string
+  value_type: string
 }
 
-export type PipelineVariable = {
-  allow_file_extension?: Array<string>
-  allow_file_upload_methods?: Array<string>
-  allowed_file_types?: Array<string>
-  belong_to_node_id?: string
+export type WorkflowEnvironmentVariableResponse = {
+  description: string
+  id: string
+  name: string
+  value: {
+    [key: string]: unknown
+  }
+  value_type: string
+}
+
+export type PipelineVariableResponse = {
+  allowed_file_extensions?: Array<string> | null
+  allowed_file_types?: Array<string> | null
+  allowed_file_upload_methods?: Array<string> | null
+  belong_to_node_id: string
   default_value?: {
     [key: string]: unknown
   }
-  label?: string
-  max_length?: number
-  options?: Array<string>
-  placeholder?: string
-  required?: boolean
-  tooltips?: string
-  type?: string
-  unit?: string
-  variable?: string
+  label: string
+  max_length?: number | null
+  options?: Array<string> | null
+  placeholder?: string | null
+  required: boolean
+  tooltips?: string | null
+  type: string
+  unit?: string | null
+  variable: string
 }
 
 export type WorkflowDraftVariableWithoutValue = {
@@ -1252,6 +1333,97 @@ export type Package = {
   plugin_unique_identifier: string
   version?: string | null
 }
+
+export type WorkflowOnlineUser = {
+  avatar?: string | null
+  user_id: string
+  username: string
+}
+
+export type AppVariableConfig = {
+  default?: unknown
+  name: string
+  required?: boolean
+  type: string
+}
+
+export type AgentSoulEnvConfig = {
+  secret_refs?: Array<{
+    [key: string]: unknown
+  }>
+  variables?: Array<{
+    [key: string]: unknown
+  }>
+}
+
+export type AgentSoulHumanConfig = {
+  contacts?: Array<{
+    [key: string]: unknown
+  }>
+  tools?: Array<{
+    [key: string]: unknown
+  }>
+}
+
+export type AgentSoulKnowledgeConfig = {
+  datasets?: Array<{
+    [key: string]: unknown
+  }>
+  query_config?: {
+    [key: string]: unknown
+  }
+  query_mode?: AgentKnowledgeQueryMode
+}
+
+export type AgentSoulMemoryConfig = {
+  artifacts?: Array<{
+    [key: string]: unknown
+  }>
+  budget?: string | null
+  scope?: string | null
+}
+
+export type AgentSoulPromptConfig = {
+  system_prompt?: string
+}
+
+export type AgentSoulSandboxConfig = {
+  config?: {
+    [key: string]: unknown
+  }
+  provider?: string | null
+}
+
+export type AgentSoulSkillsFilesConfig = {
+  files?: Array<{
+    [key: string]: unknown
+  }>
+  skills?: Array<{
+    [key: string]: unknown
+  }>
+}
+
+export type AgentSoulToolsConfig = {
+  cli_tools?: Array<{
+    [key: string]: unknown
+  }>
+  dify_tools?: Array<{
+    [key: string]: unknown
+  }>
+}
+
+export type DeclaredOutputConfig = {
+  checks?: Array<DeclaredOutputCheckConfig>
+  description?: string | null
+  failure_strategy?: DeclaredOutputFailureStrategy
+  file?: DeclaredOutputFileConfig
+  id?: string | null
+  name: string
+  required?: boolean
+  type: DeclaredOutputType
+}
+
+export type WorkflowNodeJobMode = 'let_agent_figure_it_out' | 'tell_agent_what_to_do'
 
 export type SimpleModelConfig = {
   model_dict?: JsonValue
@@ -1320,6 +1492,29 @@ export type WorkflowRunForArchivedLogResponse = {
   total_tokens?: number | null
   triggered_from?: string | null
 }
+
+export type AgentKnowledgeQueryMode = 'generated_query' | 'user_query'
+
+export type DeclaredOutputCheckConfig = {
+  benchmark_file_ref?: {
+    [key: string]: unknown
+  } | null
+  prompt?: string | null
+  type: string
+}
+
+export type DeclaredOutputFailureStrategy = {
+  max_retries?: number
+  on_output_check_failed?: string | null
+  on_type_check_failed?: string | null
+}
+
+export type DeclaredOutputFileConfig = {
+  extensions?: Array<string>
+  mime_types?: Array<string>
+}
+
+export type DeclaredOutputType = 'array' | 'boolean' | 'file' | 'number' | 'object' | 'string'
 
 export type UserActionConfig = {
   button_style?: ButtonStyle
@@ -1548,9 +1743,7 @@ export type PostAppsWorkflowsOnlineUsersData = {
 }
 
 export type PostAppsWorkflowsOnlineUsersResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: WorkflowOnlineUsersResponse
 }
 
 export type PostAppsWorkflowsOnlineUsersResponse
@@ -1575,7 +1768,7 @@ export type DeleteAppsByAppIdError = DeleteAppsByAppIdErrors[keyof DeleteAppsByA
 
 export type DeleteAppsByAppIdResponses = {
   204: {
-    [key: string]: unknown
+    [key: string]: never
   }
 }
 
@@ -1792,6 +1985,78 @@ export type PostAppsByAppIdAdvancedChatWorkflowsDraftRunResponses = {
 
 export type PostAppsByAppIdAdvancedChatWorkflowsDraftRunResponse
   = PostAppsByAppIdAdvancedChatWorkflowsDraftRunResponses[keyof PostAppsByAppIdAdvancedChatWorkflowsDraftRunResponses]
+
+export type GetAppsByAppIdAgentComposerData = {
+  body?: never
+  path: {
+    app_id: string
+  }
+  query?: never
+  url: '/apps/{app_id}/agent-composer'
+}
+
+export type GetAppsByAppIdAgentComposerResponses = {
+  200: {
+    [key: string]: unknown
+  }
+}
+
+export type GetAppsByAppIdAgentComposerResponse
+  = GetAppsByAppIdAgentComposerResponses[keyof GetAppsByAppIdAgentComposerResponses]
+
+export type PutAppsByAppIdAgentComposerData = {
+  body: ComposerSavePayload
+  path: {
+    app_id: string
+  }
+  query?: never
+  url: '/apps/{app_id}/agent-composer'
+}
+
+export type PutAppsByAppIdAgentComposerResponses = {
+  200: {
+    [key: string]: unknown
+  }
+}
+
+export type PutAppsByAppIdAgentComposerResponse
+  = PutAppsByAppIdAgentComposerResponses[keyof PutAppsByAppIdAgentComposerResponses]
+
+export type GetAppsByAppIdAgentComposerCandidatesData = {
+  body?: never
+  path: {
+    app_id: string
+  }
+  query?: never
+  url: '/apps/{app_id}/agent-composer/candidates'
+}
+
+export type GetAppsByAppIdAgentComposerCandidatesResponses = {
+  200: {
+    [key: string]: unknown
+  }
+}
+
+export type GetAppsByAppIdAgentComposerCandidatesResponse
+  = GetAppsByAppIdAgentComposerCandidatesResponses[keyof GetAppsByAppIdAgentComposerCandidatesResponses]
+
+export type PostAppsByAppIdAgentComposerValidateData = {
+  body: ComposerSavePayload
+  path: {
+    app_id: string
+  }
+  query?: never
+  url: '/apps/{app_id}/agent-composer/validate'
+}
+
+export type PostAppsByAppIdAgentComposerValidateResponses = {
+  200: {
+    [key: string]: unknown
+  }
+}
+
+export type PostAppsByAppIdAgentComposerValidateResponse
+  = PostAppsByAppIdAgentComposerValidateResponses[keyof PostAppsByAppIdAgentComposerValidateResponses]
 
 export type GetAppsByAppIdAgentLogsData = {
   body?: never
@@ -2155,7 +2420,7 @@ export type PostAppsByAppIdAnnotationsByAnnotationIdError
 export type PostAppsByAppIdAnnotationsByAnnotationIdResponses = {
   200: Annotation
   204: {
-    [key: string]: unknown
+    [key: string]: never
   }
 }
 
@@ -2301,7 +2566,7 @@ export type DeleteAppsByAppIdChatConversationsByConversationIdError
 
 export type DeleteAppsByAppIdChatConversationsByConversationIdResponses = {
   204: {
-    [key: string]: unknown
+    [key: string]: never
   }
 }
 
@@ -2467,7 +2732,7 @@ export type DeleteAppsByAppIdCompletionConversationsByConversationIdError
 
 export type DeleteAppsByAppIdCompletionConversationsByConversationIdResponses = {
   204: {
-    [key: string]: unknown
+    [key: string]: never
   }
 }
 
@@ -3270,7 +3535,7 @@ export type DeleteAppsByAppIdTraceConfigError
 
 export type DeleteAppsByAppIdTraceConfigResponses = {
   204: {
-    [key: string]: unknown
+    [key: string]: never
   }
 }
 
@@ -3645,7 +3910,7 @@ export type DeleteAppsByAppIdWorkflowCommentsByCommentIdData = {
 
 export type DeleteAppsByAppIdWorkflowCommentsByCommentIdResponses = {
   204: {
-    [key: string]: unknown
+    [key: string]: never
   }
 }
 
@@ -3716,7 +3981,7 @@ export type DeleteAppsByAppIdWorkflowCommentsByCommentIdRepliesByReplyIdData = {
 
 export type DeleteAppsByAppIdWorkflowCommentsByCommentIdRepliesByReplyIdResponses = {
   204: {
-    [key: string]: unknown
+    [key: string]: never
   }
 }
 
@@ -3857,7 +4122,7 @@ export type GetAppsByAppIdWorkflowsData = {
 }
 
 export type GetAppsByAppIdWorkflowsResponses = {
-  200: WorkflowPagination
+  200: WorkflowPaginationResponse
 }
 
 export type GetAppsByAppIdWorkflowsResponse
@@ -3930,7 +4195,7 @@ export type GetAppsByAppIdWorkflowsDraftError
   = GetAppsByAppIdWorkflowsDraftErrors[keyof GetAppsByAppIdWorkflowsDraftErrors]
 
 export type GetAppsByAppIdWorkflowsDraftResponses = {
-  200: Workflow
+  200: WorkflowResponse
 }
 
 export type GetAppsByAppIdWorkflowsDraftResponse
@@ -4189,6 +4454,120 @@ export type PostAppsByAppIdWorkflowsDraftLoopNodesByNodeIdRunResponses = {
 export type PostAppsByAppIdWorkflowsDraftLoopNodesByNodeIdRunResponse
   = PostAppsByAppIdWorkflowsDraftLoopNodesByNodeIdRunResponses[keyof PostAppsByAppIdWorkflowsDraftLoopNodesByNodeIdRunResponses]
 
+export type GetAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerData = {
+  body?: never
+  path: {
+    app_id: string
+    node_id: string
+  }
+  query?: never
+  url: '/apps/{app_id}/workflows/draft/nodes/{node_id}/agent-composer'
+}
+
+export type GetAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerResponses = {
+  200: {
+    [key: string]: unknown
+  }
+}
+
+export type GetAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerResponse
+  = GetAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerResponses[keyof GetAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerResponses]
+
+export type PutAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerData = {
+  body: ComposerSavePayload
+  path: {
+    app_id: string
+    node_id: string
+  }
+  query?: never
+  url: '/apps/{app_id}/workflows/draft/nodes/{node_id}/agent-composer'
+}
+
+export type PutAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerResponses = {
+  200: {
+    [key: string]: unknown
+  }
+}
+
+export type PutAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerResponse
+  = PutAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerResponses[keyof PutAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerResponses]
+
+export type GetAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerCandidatesData = {
+  body?: never
+  path: {
+    app_id: string
+    node_id: string
+  }
+  query?: never
+  url: '/apps/{app_id}/workflows/draft/nodes/{node_id}/agent-composer/candidates'
+}
+
+export type GetAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerCandidatesResponses = {
+  200: {
+    [key: string]: unknown
+  }
+}
+
+export type GetAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerCandidatesResponse
+  = GetAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerCandidatesResponses[keyof GetAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerCandidatesResponses]
+
+export type PostAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerImpactData = {
+  body?: never
+  path: {
+    app_id: string
+    node_id: string
+  }
+  query?: never
+  url: '/apps/{app_id}/workflows/draft/nodes/{node_id}/agent-composer/impact'
+}
+
+export type PostAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerImpactResponses = {
+  200: {
+    [key: string]: unknown
+  }
+}
+
+export type PostAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerImpactResponse
+  = PostAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerImpactResponses[keyof PostAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerImpactResponses]
+
+export type PostAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerSaveToRosterData = {
+  body: ComposerSavePayload
+  path: {
+    app_id: string
+    node_id: string
+  }
+  query?: never
+  url: '/apps/{app_id}/workflows/draft/nodes/{node_id}/agent-composer/save-to-roster'
+}
+
+export type PostAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerSaveToRosterResponses = {
+  200: {
+    [key: string]: unknown
+  }
+}
+
+export type PostAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerSaveToRosterResponse
+  = PostAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerSaveToRosterResponses[keyof PostAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerSaveToRosterResponses]
+
+export type PostAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerValidateData = {
+  body: ComposerSavePayload
+  path: {
+    app_id: string
+    node_id: string
+  }
+  query?: never
+  url: '/apps/{app_id}/workflows/draft/nodes/{node_id}/agent-composer/validate'
+}
+
+export type PostAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerValidateResponses = {
+  200: {
+    [key: string]: unknown
+  }
+}
+
+export type PostAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerValidateResponse
+  = PostAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerValidateResponses[keyof PostAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerValidateResponses]
+
 export type GetAppsByAppIdWorkflowsDraftNodesByNodeIdLastRunData = {
   body?: never
   path: {
@@ -4290,7 +4669,7 @@ export type DeleteAppsByAppIdWorkflowsDraftNodesByNodeIdVariablesData = {
 
 export type DeleteAppsByAppIdWorkflowsDraftNodesByNodeIdVariablesResponses = {
   204: {
-    [key: string]: unknown
+    [key: string]: never
   }
 }
 
@@ -4428,7 +4807,7 @@ export type DeleteAppsByAppIdWorkflowsDraftVariablesData = {
 
 export type DeleteAppsByAppIdWorkflowsDraftVariablesResponses = {
   204: {
-    [key: string]: unknown
+    [key: string]: never
   }
 }
 
@@ -4475,7 +4854,7 @@ export type DeleteAppsByAppIdWorkflowsDraftVariablesByVariableIdError
 
 export type DeleteAppsByAppIdWorkflowsDraftVariablesByVariableIdResponses = {
   204: {
-    [key: string]: unknown
+    [key: string]: never
   }
 }
 
@@ -4556,7 +4935,7 @@ export type PutAppsByAppIdWorkflowsDraftVariablesByVariableIdResetError
 export type PutAppsByAppIdWorkflowsDraftVariablesByVariableIdResetResponses = {
   200: WorkflowDraftVariable
   204: {
-    [key: string]: unknown
+    [key: string]: never
   }
 }
 
@@ -4572,17 +4951,8 @@ export type GetAppsByAppIdWorkflowsPublishData = {
   url: '/apps/{app_id}/workflows/publish'
 }
 
-export type GetAppsByAppIdWorkflowsPublishErrors = {
-  404: {
-    [key: string]: unknown
-  }
-}
-
-export type GetAppsByAppIdWorkflowsPublishError
-  = GetAppsByAppIdWorkflowsPublishErrors[keyof GetAppsByAppIdWorkflowsPublishErrors]
-
 export type GetAppsByAppIdWorkflowsPublishResponses = {
-  200: Workflow
+  200: WorkflowResponse
 }
 
 export type GetAppsByAppIdWorkflowsPublishResponse
@@ -4668,7 +5038,7 @@ export type PatchAppsByAppIdWorkflowsByWorkflowIdError
   = PatchAppsByAppIdWorkflowsByWorkflowIdErrors[keyof PatchAppsByAppIdWorkflowsByWorkflowIdErrors]
 
 export type PatchAppsByAppIdWorkflowsByWorkflowIdResponses = {
-  200: Workflow
+  200: WorkflowResponse
 }
 
 export type PatchAppsByAppIdWorkflowsByWorkflowIdResponse
@@ -4758,7 +5128,7 @@ export type DeleteAppsByResourceIdApiKeysByApiKeyIdData = {
 
 export type DeleteAppsByResourceIdApiKeysByApiKeyIdResponses = {
   204: {
-    [key: string]: unknown
+    [key: string]: never
   }
 }
 

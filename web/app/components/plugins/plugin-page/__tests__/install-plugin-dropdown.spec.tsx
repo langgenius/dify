@@ -60,16 +60,18 @@ vi.mock('@langgenius/dify-ui/dropdown-menu', async () => {
     DropdownMenu: ({
       open,
       onOpenChange,
+      modal,
       children,
     }: {
       open: boolean
       onOpenChange?: (open: boolean) => void
+      modal?: boolean
       children: React.ReactNode
     }) => {
       portalOpen = open
       return (
         <DropdownMenuContext value={{ isOpen: open, setOpen: onOpenChange ?? vi.fn() }}>
-          <div data-testid="dropdown-menu" data-open={open}>{children}</div>
+          <div data-testid="dropdown-menu" data-open={open} data-modal={modal}>{children}</div>
         </DropdownMenuContext>
       )
     },
@@ -158,6 +160,7 @@ describe('InstallPluginDropdown', () => {
 
     fireEvent.click(screen.getByTestId('dropdown-trigger'))
 
+    expect(screen.getByTestId('dropdown-menu')).toHaveAttribute('data-modal', 'false')
     expect(screen.getByText('plugin.installFrom')).toBeInTheDocument()
     expect(screen.getByText('plugin.source.marketplace')).toBeInTheDocument()
     expect(screen.getByText('plugin.source.github')).toBeInTheDocument()
