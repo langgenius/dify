@@ -4,15 +4,26 @@ services:
       context: ../api
       dockerfile: Dockerfile
     image: nexoraa/dify-api:local
+    pull_policy: never
+    env_file:
+      - .env.local
 
   worker:
     build:
       context: ../api
       dockerfile: Dockerfile
     image: nexoraa/dify-api:local
+    pull_policy: never
+    env_file:
+      - .env.local
 
   web:
     build:
-      context: ../web
-      dockerfile: Dockerfile
+      context: ..
+      dockerfile: web/Dockerfile
     image: nexoraa/dify-web:local
+    pull_policy: never
+
+  plugin_daemon:
+    env_file:
+      - .env.local
