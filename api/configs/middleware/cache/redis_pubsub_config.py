@@ -2,6 +2,7 @@ from typing import Literal, Protocol, cast
 from urllib.parse import quote_plus, urlunparse
 
 from pydantic import AliasChoices, Field
+from pydantic.types import NonNegativeInt
 from pydantic_settings import BaseSettings
 
 
@@ -70,7 +71,7 @@ class RedisPubSubConfig(BaseSettings):
         default=600,
     )
 
-    PUBSUB_LISTENER_JOIN_TIMEOUT_MS: int = Field(
+    PUBSUB_LISTENER_JOIN_TIMEOUT_MS: NonNegativeInt = Field(
         validation_alias=AliasChoices("EVENT_BUS_LISTENER_JOIN_TIMEOUT_MS", "PUBSUB_LISTENER_JOIN_TIMEOUT_MS"),
         description=(
             "Maximum time (milliseconds) that ``Subscription.close()`` waits for its listener thread to "
