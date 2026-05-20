@@ -8,7 +8,7 @@ from agenton_collections.layers.plain import PLAIN_PROMPT_LAYER_TYPE_ID, PromptL
 import dify_agent.protocol as protocol_exports
 from dify_agent.layers.dify_plugin import DIFY_PLUGIN_LAYER_TYPE_ID, DIFY_PLUGIN_LLM_LAYER_TYPE_ID
 from dify_agent.layers.output import DIFY_OUTPUT_LAYER_TYPE_ID, DifyOutputLayerConfig
-from dify_agent.protocol import DIFY_AGENT_MODEL_LAYER_ID, DIFY_AGENT_OUTPUT_LAYER_ID
+from dify_agent.protocol import DIFY_AGENT_HISTORY_LAYER_ID, DIFY_AGENT_MODEL_LAYER_ID, DIFY_AGENT_OUTPUT_LAYER_ID
 from dify_agent.protocol.schemas import (
     RUN_EVENT_ADAPTER,
     CreateRunRequest,
@@ -63,6 +63,7 @@ def test_pydantic_ai_event_data_uses_agent_stream_event_model() -> None:
 
 def test_create_run_request_rejects_old_compositor_payload_and_model_layer_id_is_public() -> None:
     assert DIFY_AGENT_MODEL_LAYER_ID == "llm"
+    assert DIFY_AGENT_HISTORY_LAYER_ID == "history"
     assert DIFY_AGENT_OUTPUT_LAYER_ID == "output"
     with pytest.raises(ValidationError):
         _ = CreateRunRequest.model_validate(

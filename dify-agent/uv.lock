@@ -614,7 +614,7 @@ requires-dist = [
     { name = "graphon", marker = "extra == 'server'", specifier = "~=0.2.2" },
     { name = "httpx", specifier = ">=0.28.1" },
     { name = "jsonschema", marker = "extra == 'server'", specifier = ">=4.23.0" },
-    { name = "pydantic", specifier = ">=2.12.5,<2.13" },
+    { name = "pydantic", specifier = ">=2.12.5,<3" },
     { name = "pydantic-ai-slim", specifier = ">=1.85.1" },
     { name = "pydantic-ai-slim", extras = ["anthropic", "google", "openai"], marker = "extra == 'server'", specifier = ">=1.85.1" },
     { name = "pydantic-settings", marker = "extra == 'server'", specifier = ">=2.12.0" },

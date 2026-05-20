@@ -5,18 +5,19 @@ from typing import Any
 import httpx
 import pytest
 from pydantic_ai.exceptions import UnexpectedModelBehavior
-from pydantic_ai.messages import ModelMessage, ModelResponse, ToolCallPart
+from pydantic_ai.messages import ModelMessage, ModelRequest, ModelResponse, SystemPromptPart, TextPart, ToolCallPart, UserPromptPart
 from pydantic_ai.models import ModelRequestParameters
 from pydantic_ai.models.test import TestModel
 from pydantic_ai.settings import ModelSettings
 
 from agenton.compositor import CompositorSessionSnapshot, LayerSessionSnapshot
 from agenton.layers import ExitIntent, LifecycleState
+from agenton_collections.layers.pydantic_ai import PYDANTIC_AI_HISTORY_LAYER_TYPE_ID, PydanticAIHistoryRuntimeState
 from agenton_collections.layers.plain import PromptLayerConfig
 from dify_agent.layers.dify_plugin.configs import DifyPluginLLMLayerConfig, DifyPluginLayerConfig
 from dify_agent.layers.dify_plugin.llm_layer import DifyPluginLLMLayer
 from dify_agent.layers.output import DIFY_OUTPUT_LAYER_TYPE_ID, DifyOutputLayerConfig
-from dify_agent.protocol import DIFY_AGENT_MODEL_LAYER_ID, DIFY_AGENT_OUTPUT_LAYER_ID
+from dify_agent.protocol import DIFY_AGENT_HISTORY_LAYER_ID, DIFY_AGENT_MODEL_LAYER_ID, DIFY_AGENT_OUTPUT_LAYER_ID
 from dify_agent.protocol.schemas import (
     CreateRunRequest,
     LayerExitSignals,
@@ -31,6 +32,7 @@ from dify_agent.runtime.runner import AgentRunRunner, AgentRunValidationError
 def _request(
     user: str | list[str] = "hello",
     *,
+    include_history: bool = False,
     llm_layer_name: str = DIFY_AGENT_MODEL_LAYER_ID,
     plugin_layer_name: str = "plugin",
     on_exit: LayerExitSignals | None = None,
@@ -41,6 +43,11 @@ def _request(
             name="prompt",
             type="plain.prompt",
             config=PromptLayerConfig(prefix="system", user=user),
+        ),
+        *(
+            [RunLayerSpec(name=DIFY_AGENT_HISTORY_LAYER_ID, type=PYDANTIC_AI_HISTORY_LAYER_TYPE_ID)]
+            if include_history
+            else []
         ),
         RunLayerSpec(
             name=plugin_layer_name,
@@ -122,6 +129,58 @@ class SequenceOutputTestModel(TestModel):
         )
 
 
+class RecordingTestModel(TestModel):
+    seen_requests: list[list[ModelMessage]]
+    failure: Exception | None
+
+    def __init__(self, *, custom_output_text: str = "done", failure: Exception | None = None) -> None:
+        super().__init__(call_tools=[], custom_output_text=custom_output_text)
+        self.seen_requests = []
+        self.failure = failure
+
+    def _request(
+        self,
+        messages: list[ModelMessage],
+        model_settings: ModelSettings | None,
+        model_request_parameters: ModelRequestParameters,
+    ) -> ModelResponse:
+        self.seen_requests.append(list(messages))
+        if self.failure is not None:
+            raise self.failure
+        return super()._request(messages, model_settings, model_request_parameters)
+
+
+def _history_session_snapshot(
+    messages: list[ModelMessage],
+    *,
+    include_output: bool = False,
+) -> CompositorSessionSnapshot:
+    layers = [
+        LayerSessionSnapshot(name="prompt", lifecycle_state=LifecycleState.SUSPENDED, runtime_state={}),
+        LayerSessionSnapshot(
+            name=DIFY_AGENT_HISTORY_LAYER_ID,
+            lifecycle_state=LifecycleState.SUSPENDED,
+            runtime_state=PydanticAIHistoryRuntimeState(messages=messages).model_dump(mode="json"),
+        ),
+        LayerSessionSnapshot(name="plugin", lifecycle_state=LifecycleState.SUSPENDED, runtime_state={}),
+        LayerSessionSnapshot(name=DIFY_AGENT_MODEL_LAYER_ID, lifecycle_state=LifecycleState.SUSPENDED, runtime_state={}),
+    ]
+    if include_output:
+        layers.append(
+            LayerSessionSnapshot(name=DIFY_AGENT_OUTPUT_LAYER_ID, lifecycle_state=LifecycleState.SUSPENDED, runtime_state={})
+        )
+    return CompositorSessionSnapshot(layers=layers)
+
+
+def _history_messages_from_snapshot(snapshot: CompositorSessionSnapshot) -> list[ModelMessage]:
+    history_snapshot = next(layer for layer in snapshot.layers if layer.name == DIFY_AGENT_HISTORY_LAYER_ID)
+    return PydanticAIHistoryRuntimeState.model_validate(history_snapshot.runtime_state).messages
+
+
+def _flatten_message_parts(messages: list[ModelMessage]) -> list[object]:
+    return [part for message in messages for part in message.parts]
+
+
 def test_runner_emits_terminal_success_and_snapshot(monkeypatch: pytest.MonkeyPatch) -> None:
     seen_clients: list[httpx.AsyncClient] = []
 
@@ -168,6 +227,172 @@ def test_runner_emits_terminal_success_and_snapshot(monkeypatch: pytest.MonkeyPa
         LifecycleState.SUSPENDED,
     ]
     assert sink.statuses["run-1"] == "succeeded"
+
+
+def test_runner_passes_temporary_system_prompt_prefix_without_history_layer(monkeypatch: pytest.MonkeyPatch) -> None:
+    model = RecordingTestModel(custom_output_text="done")
+
+    def fake_get_model(_self: DifyPluginLLMLayer, *, http_client: httpx.AsyncClient):
+        assert http_client.is_closed is False
+        return model  # pyright: ignore[reportReturnType]
+
+    monkeypatch.setattr(DifyPluginLLMLayer, "get_model", fake_get_model)
+    sink = InMemoryRunEventSink()
+
+    async def scenario() -> None:
+        async with httpx.AsyncClient() as client:
+            await AgentRunRunner(
+                sink=sink,
+                request=_request("current user"),
+                run_id="run-no-history",
+                plugin_daemon_http_client=client,
+            ).run()
+
+    asyncio.run(scenario())
+
+    request_parts = _flatten_message_parts(model.seen_requests[0])
+    assert isinstance(request_parts[0], SystemPromptPart)
+    assert request_parts[0].content == "system"
+    assert isinstance(request_parts[1], UserPromptPart)
+    assert request_parts[1].content == "current user"
+    terminal = sink.events["run-no-history"][-1]
+    assert isinstance(terminal, RunSucceededEvent)
+    assert [layer.name for layer in terminal.data.session_snapshot.layers] == ["prompt", "plugin", DIFY_AGENT_MODEL_LAYER_ID]
+
+
+def test_runner_prepends_current_system_prompt_to_stored_history_and_appends_only_new_messages(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    model = RecordingTestModel(custom_output_text="done")
+    stored_history = [
+        ModelRequest(parts=[UserPromptPart(content="old user")]),
+        ModelResponse(parts=[TextPart(content="old assistant")]),
+    ]
+
+    def fake_get_model(_self: DifyPluginLLMLayer, *, http_client: httpx.AsyncClient):
+        assert http_client.is_closed is False
+        return model  # pyright: ignore[reportReturnType]
+
+    monkeypatch.setattr(DifyPluginLLMLayer, "get_model", fake_get_model)
+    request = _request("current user", include_history=True)
+    request.session_snapshot = _history_session_snapshot(stored_history)
+    sink = InMemoryRunEventSink()
+
+    async def scenario() -> None:
+        async with httpx.AsyncClient() as client:
+            await AgentRunRunner(
+                sink=sink,
+                request=request,
+                run_id="run-history",
+                plugin_daemon_http_client=client,
+            ).run()
+
+    asyncio.run(scenario())
+
+    request_parts = _flatten_message_parts(model.seen_requests[0])
+    assert isinstance(request_parts[0], SystemPromptPart)
+    assert request_parts[0].content == "system"
+    assert isinstance(request_parts[1], UserPromptPart)
+    assert request_parts[1].content == "old user"
+    assert isinstance(request_parts[2], TextPart)
+    assert request_parts[2].content == "old assistant"
+    assert isinstance(request_parts[3], UserPromptPart)
+    assert request_parts[3].content == "current user"
+
+    terminal = sink.events["run-history"][-1]
+    assert isinstance(terminal, RunSucceededEvent)
+    saved_history = _history_messages_from_snapshot(terminal.data.session_snapshot)
+    assert saved_history[:2] == stored_history
+    assert isinstance(saved_history[2], ModelRequest)
+    assert len(saved_history[2].parts) == 1
+    assert isinstance(saved_history[2].parts[0], UserPromptPart)
+    assert saved_history[2].parts[0].content == "current user"
+    assert isinstance(saved_history[3], ModelResponse)
+    assert len(saved_history[3].parts) == 1
+    assert isinstance(saved_history[3].parts[0], TextPart)
+    assert saved_history[3].parts[0].content == "done"
+    assert all(not any(isinstance(part, SystemPromptPart) for part in message.parts) for message in saved_history)
+
+
+def test_runner_with_empty_history_layer_still_sends_system_prompt_and_saves_only_new_messages(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    model = RecordingTestModel(custom_output_text="done")
+
+    def fake_get_model(_self: DifyPluginLLMLayer, *, http_client: httpx.AsyncClient):
+        assert http_client.is_closed is False
+        return model  # pyright: ignore[reportReturnType]
+
+    monkeypatch.setattr(DifyPluginLLMLayer, "get_model", fake_get_model)
+    request = _request("current user", include_history=True)
+    request.session_snapshot = _history_session_snapshot([])
+    sink = InMemoryRunEventSink()
+
+    async def scenario() -> None:
+        async with httpx.AsyncClient() as client:
+            await AgentRunRunner(
+                sink=sink,
+                request=request,
+                run_id="run-empty-history",
+                plugin_daemon_http_client=client,
+            ).run()
+
+    asyncio.run(scenario())
+
+    request_parts = _flatten_message_parts(model.seen_requests[0])
+    assert isinstance(request_parts[0], SystemPromptPart)
+    assert request_parts[0].content == "system"
+    assert isinstance(request_parts[1], UserPromptPart)
+    assert request_parts[1].content == "current user"
+
+    terminal = sink.events["run-empty-history"][-1]
+    assert isinstance(terminal, RunSucceededEvent)
+    saved_history = _history_messages_from_snapshot(terminal.data.session_snapshot)
+    assert isinstance(saved_history[0], ModelRequest)
+    assert len(saved_history[0].parts) == 1
+    assert isinstance(saved_history[0].parts[0], UserPromptPart)
+    assert saved_history[0].parts[0].content == "current user"
+    assert isinstance(saved_history[1], ModelResponse)
+    assert len(saved_history[1].parts) == 1
+    assert isinstance(saved_history[1].parts[0], TextPart)
+    assert saved_history[1].parts[0].content == "done"
+    assert all(not any(isinstance(part, SystemPromptPart) for part in message.parts) for message in saved_history)
+
+
+def test_runner_failure_with_history_layer_emits_failed_terminal_event_without_success_snapshot(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    model = RecordingTestModel(failure=RuntimeError("boom"))
+    stored_history = [
+        ModelRequest(parts=[UserPromptPart(content="old user")]),
+        ModelResponse(parts=[TextPart(content="old assistant")]),
+    ]
+
+    def fake_get_model(_self: DifyPluginLLMLayer, *, http_client: httpx.AsyncClient):
+        assert http_client.is_closed is False
+        return model  # pyright: ignore[reportReturnType]
+
+    monkeypatch.setattr(DifyPluginLLMLayer, "get_model", fake_get_model)
+    request = _request("current user", include_history=True)
+    request.session_snapshot = _history_session_snapshot(stored_history)
+    sink = InMemoryRunEventSink()
+
+    async def scenario() -> None:
+        async with httpx.AsyncClient() as client:
+            with pytest.raises(RuntimeError, match="boom"):
+                await AgentRunRunner(
+                    sink=sink,
+                    request=request,
+                    run_id="run-history-failure",
+                    plugin_daemon_http_client=client,
+                ).run()
+
+    asyncio.run(scenario())
+
+    assert [event.type for event in sink.events["run-history-failure"]] == ["run_started", "run_failed"]
+    assert sink.statuses["run-history-failure"] == "failed"
+    assert request.session_snapshot is not None
+    assert _history_messages_from_snapshot(request.session_snapshot) == stored_history
 
 
 def test_runner_applies_on_exit_overrides_to_success_snapshot(monkeypatch: pytest.MonkeyPatch) -> None:
