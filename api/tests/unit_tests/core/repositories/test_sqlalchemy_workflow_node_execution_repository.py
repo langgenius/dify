@@ -661,6 +661,62 @@ def test_save_execution_data_queues_celery_task_when_async_persistence_enabled(
     assert call_args["creator_user_id"] == "user"
 
 
+def test_queue_async_save_requires_context(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(
+        "core.repositories.sqlalchemy_workflow_node_execution_repository.FileService",
+        lambda *_: SimpleNamespace(upload_file=Mock()),
+    )
+    repo = SQLAlchemyWorkflowNodeExecutionRepository(
+        session_factory=Mock(spec=sessionmaker),
+        user=_mock_account(),
+        app_id="app",
+        triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
+    )
+    execution = _execution()
+
+    repo._triggered_from = None
+    with pytest.raises(ValueError, match="triggered_from is required"):
+        repo._queue_async_save(execution)
+
+    repo._triggered_from = WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN
+    repo._creator_user_id = None
+    with pytest.raises(ValueError, match="created_by is required"):
+        repo._queue_async_save(execution)
+
+    repo._creator_user_id = "user"
+    repo._creator_user_role = None
+    with pytest.raises(ValueError, match="created_by_role is required"):
+        repo._queue_async_save(execution)
+
+
+def test_queue_async_save_execution_data_requires_context(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(
+        "core.repositories.sqlalchemy_workflow_node_execution_repository.FileService",
+        lambda *_: SimpleNamespace(upload_file=Mock()),
+    )
+    repo = SQLAlchemyWorkflowNodeExecutionRepository(
+        session_factory=Mock(spec=sessionmaker),
+        user=_mock_account(),
+        app_id="app",
+        triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
+    )
+    execution = _execution()
+
+    repo._triggered_from = None
+    with pytest.raises(ValueError, match="triggered_from is required"):
+        repo._queue_async_save_execution_data(execution)
+
+    repo._triggered_from = WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN
+    repo._creator_user_id = None
+    with pytest.raises(ValueError, match="created_by is required"):
+        repo._queue_async_save_execution_data(execution)
+
+    repo._creator_user_id = "user"
+    repo._creator_user_role = None
+    with pytest.raises(ValueError, match="created_by_role is required"):
+        repo._queue_async_save_execution_data(execution)
+
+
 def test_save_retries_duplicate_and_logs_non_duplicate(
     monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
 ) -> None:
