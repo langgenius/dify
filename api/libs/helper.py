@@ -16,8 +16,9 @@ from zoneinfo import available_timezones
 
 from flask import Response, stream_with_context
 from flask_restx import fields
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict, TypeAdapter
 from pydantic.functional_validators import AfterValidator
+from typing_extensions import TypedDict
 
 from configs import dify_config
 from core.app.features.rate_limiting.rate_limit import RateLimitGenerator
@@ -30,6 +31,28 @@ if TYPE_CHECKING:
     from models.model import EndUser
 
 logger = logging.getLogger(__name__)
+
+
+class _TokenData(TypedDict, total=False):
+    """Shared baseline token payload.
+
+    `extra='allow'` keeps TokenManager from silently stripping business-
+    specific metadata keys while still validating the common auth fields.
+    Business flows that need stronger guarantees should validate again at
+    their own boundary with a dedicated Pydantic model.
+    """
+
+    __pydantic_config__ = ConfigDict(extra="allow")
+
+    account_id: str | None
+    email: str
+    token_type: str
+    code: str
+    old_email: str
+    phase: str
+
+
+_token_data_adapter: TypeAdapter[_TokenData] = TypeAdapter(_TokenData)
 
 
 def _stream_with_request_context(response: object) -> Any:
@@ -495,15 +518,7 @@ class TokenManager:
         if token_data_json is None:
             logger.warning("%s token %s not found with key %s", token_type, token, key)
             return None
-        try:
-            token_data = json.loads(token_data_json)
-        except json.JSONDecodeError:
-            logger.warning("%s token %s has invalid JSON payload", token_type, token)
-            return None
-        if not isinstance(token_data, dict):
-            logger.warning("%s token %s payload is not a JSON object", token_type, token)
-            return None
-        return cast(dict[str, Any], token_data)
+        return _token_data_adapter.validate_json(token_data_json)
 
     @classmethod
     def _get_current_token_for_account(cls, account_id: str, token_type: str) -> str | None:
