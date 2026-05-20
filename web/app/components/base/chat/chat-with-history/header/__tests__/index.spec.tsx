@@ -101,8 +101,8 @@ describe('Header Component', () => {
       })
 
       const buttons = screen.getAllByRole('button')
-      // Sidebar(1) + NewChat(1) + ResetChat(1) + ViewForm(1) = 4 buttons
-      expect(buttons).toHaveLength(4)
+      // Sidebar(1) + Conversation operation(1) + NewChat(1) + ResetChat(1) + ViewForm(1) = 5 buttons
+      expect(buttons).toHaveLength(5)
     })
   })
 
@@ -306,8 +306,8 @@ describe('Header Component', () => {
       })
 
       const buttons = screen.getAllByRole('button')
-      // Sidebar(1) + NewChat(1) + ResetChat(1) = 3 buttons
-      expect(buttons).toHaveLength(3)
+      // Sidebar(1) + Conversation operation(1) + NewChat(1) + ResetChat(1) = 4 buttons
+      expect(buttons).toHaveLength(4)
     })
 
     it('should render system title if conversation id is missing', () => {
