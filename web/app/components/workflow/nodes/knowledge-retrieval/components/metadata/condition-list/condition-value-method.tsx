@@ -36,7 +36,7 @@ const ConditionValueMethod = ({
             size="small"
           >
             {capitalize(valueMethod)}
-            <RiArrowDownSLine className="ml-px h-3.5 w-3.5" />
+            <RiArrowDownSLine className="ml-px size-3.5" />
           </Button>
         )}
       />

@@ -78,32 +78,33 @@ class ToolTransformService:
         :param tenant_id: the tenant id
         :param provider: the provider dict
         """
-        if isinstance(provider, dict) and "icon" in provider:
-            provider["icon"] = ToolTransformService.get_tool_provider_icon_url(
-                provider_type=provider["type"], provider_name=provider["name"], icon=provider["icon"]
-            )
-        elif isinstance(provider, ToolProviderApiEntity):
-            if provider.plugin_id:
-                if isinstance(provider.icon, str):
-                    provider.icon = PluginService.get_plugin_icon_url(tenant_id=tenant_id, filename=provider.icon)
-                if isinstance(provider.icon_dark, str) and provider.icon_dark:
-                    provider.icon_dark = PluginService.get_plugin_icon_url(
-                        tenant_id=tenant_id, filename=provider.icon_dark
-                    )
-            else:
-                provider.icon = ToolTransformService.get_tool_provider_icon_url(
-                    provider_type=provider.type.value, provider_name=provider.name, icon=provider.icon
+        match provider:
+            case dict() if "icon" in provider:
+                provider["icon"] = ToolTransformService.get_tool_provider_icon_url(
+                    provider_type=provider["type"], provider_name=provider["name"], icon=provider["icon"]
                 )
-                if provider.icon_dark:
-                    provider.icon_dark = ToolTransformService.get_tool_provider_icon_url(
-                        provider_type=provider.type.value, provider_name=provider.name, icon=provider.icon_dark
+            case ToolProviderApiEntity():
+                if provider.plugin_id:
+                    if isinstance(provider.icon, str):
+                        provider.icon = PluginService.get_plugin_icon_url(tenant_id=tenant_id, filename=provider.icon)
+                    if isinstance(provider.icon_dark, str) and provider.icon_dark:
+                        provider.icon_dark = PluginService.get_plugin_icon_url(
+                            tenant_id=tenant_id, filename=provider.icon_dark
+                        )
+                else:
+                    provider.icon = ToolTransformService.get_tool_provider_icon_url(
+                        provider_type=provider.type.value, provider_name=provider.name, icon=provider.icon
                     )
-        elif isinstance(provider, PluginDatasourceProviderEntity):
-            if provider.plugin_id:
-                if isinstance(provider.declaration.identity.icon, str):
-                    provider.declaration.identity.icon = PluginService.get_plugin_icon_url(
-                        tenant_id=tenant_id, filename=provider.declaration.identity.icon
-                    )
+                    if provider.icon_dark:
+                        provider.icon_dark = ToolTransformService.get_tool_provider_icon_url(
+                            provider_type=provider.type.value, provider_name=provider.name, icon=provider.icon_dark
+                        )
+            case PluginDatasourceProviderEntity():
+                if provider.plugin_id:
+                    if isinstance(provider.declaration.identity.icon, str):
+                        provider.declaration.identity.icon = PluginService.get_plugin_icon_url(
+                            tenant_id=tenant_id, filename=provider.declaration.identity.icon
+                        )
 
     @classmethod
     def builtin_provider_to_user_provider(

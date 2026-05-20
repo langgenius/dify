@@ -84,8 +84,8 @@ const DatasetNav = () => {
   return (
     <Nav
       isApp={false}
-      icon={<RiBook2Line className="h-4 w-4" />}
-      activeIcon={<RiBook2Fill className="h-4 w-4" />}
+      icon={<RiBook2Line className="size-4" />}
+      activeIcon={<RiBook2Fill className="size-4" />}
       text={t('menus.datasets', { ns: 'common' })}
       activeSegment="datasets"
       link="/datasets"

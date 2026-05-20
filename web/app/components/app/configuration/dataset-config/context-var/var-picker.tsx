@@ -74,7 +74,7 @@ const VarPicker: FC<Props> = ({
                       </div>
                     )}
               </div>
-              <ChevronDownIcon className={cn(open && 'rotate-180 text-text-tertiary', 'h-3.5 w-3.5')} />
+              <ChevronDownIcon className={cn(open && 'rotate-180 text-text-tertiary', 'size-3.5')} />
             </div>
           </div>
         )}
@@ -104,7 +104,7 @@ const VarPicker: FC<Props> = ({
           : (
               <div className="w-[240px] rounded-lg border border-components-panel-border bg-components-panel-bg p-6 shadow-lg">
                 <div className="mb-1 text-sm font-medium text-text-secondary">{t('feature.dataSet.queryVariable.noVar', { ns: 'appDebug' })}</div>
-                <div className="text-xs leading-normal text-text-tertiary">{t('feature.dataSet.queryVariable.noVarTip', { ns: 'appDebug' })}</div>
+                <div className="text-xs/normal text-text-tertiary">{t('feature.dataSet.queryVariable.noVarTip', { ns: 'appDebug' })}</div>
               </div>
             )}
       </PopoverContent>

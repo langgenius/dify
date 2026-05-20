@@ -64,7 +64,7 @@ const OperationSelector: FC<OperationSelectorProps> = ({
             {selectedItem && isOperationItem(selectedItem) ? t(`nodes.assigner.operations.${selectedItem.name}`, { ns: 'workflow' }) : t('nodes.assigner.operations.title', { ns: 'workflow' })}
           </span>
         </div>
-        <span aria-hidden className={cn('i-ri-arrow-down-s-line h-4 w-4 text-text-quaternary', disabled && 'text-components-input-text-placeholder', open && 'text-text-secondary')} />
+        <span aria-hidden className={cn('i-ri-arrow-down-s-line size-4 text-text-quaternary', disabled && 'text-components-input-text-placeholder', open && 'text-text-secondary')} />
       </DropdownMenuTrigger>
 
       <DropdownMenuContent
@@ -90,7 +90,7 @@ const OperationSelector: FC<OperationSelectorProps> = ({
                     </div>
                     {item.value === value && (
                       <div className="flex items-center justify-center">
-                        <span aria-hidden className="i-ri-check-line h-4 w-4 text-text-accent" />
+                        <span aria-hidden className="i-ri-check-line size-4 text-text-accent" />
                       </div>
                     )}
                   </DropdownMenuItem>

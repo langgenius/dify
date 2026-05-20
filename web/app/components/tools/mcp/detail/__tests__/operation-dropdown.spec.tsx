@@ -100,13 +100,13 @@ describe('OperationDropdown', () => {
 
     it('should render medium size by default', () => {
       render(<OperationDropdown {...defaultProps} />)
-      const icon = document.querySelector('.h-4.w-4')
+      const icon = document.querySelector('.size-4')
       expect(icon).toBeInTheDocument()
     })
 
     it('should render large size when inCard is true', () => {
       render(<OperationDropdown {...defaultProps} inCard={true} />)
-      const icon = document.querySelector('.h-5.w-5')
+      const icon = document.querySelector('.size-5')
       expect(icon).toBeInTheDocument()
     })
   })

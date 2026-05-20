@@ -99,18 +99,18 @@ const StrategyDetail: FC<Props> = ({
               <div className="relative border-b border-divider-subtle p-4 pb-3">
                 <div className="absolute top-3 right-3">
                   <ActionButton onClick={onHide}>
-                    <RiCloseLine className="h-4 w-4" />
+                    <RiCloseLine className="size-4" />
                   </ActionButton>
                 </div>
                 <div
                   className="mb-2 flex cursor-pointer items-center gap-1 system-xs-semibold-uppercase text-text-accent-secondary"
                   onClick={onHide}
                 >
-                  <RiArrowLeftLine className="h-4 w-4" />
+                  <RiArrowLeftLine className="size-4" />
                   BACK
                 </div>
                 <div className="flex items-center gap-1">
-                  <Icon size="tiny" className="h-6 w-6" src={`${API_PREFIX}/workspaces/current/plugin/icon?tenant_id=${provider.tenant_id}&filename=${provider.icon}`} />
+                  <Icon size="tiny" className="size-6" src={`${API_PREFIX}/workspaces/current/plugin/icon?tenant_id=${provider.tenant_id}&filename=${provider.icon}`} />
                   <div className="">{getValueFromI18nObject(provider.label)}</div>
                 </div>
                 <div className="mt-1 system-md-semibold text-text-primary">{getValueFromI18nObject(detail.identity.label)}</div>

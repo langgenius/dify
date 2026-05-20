@@ -65,18 +65,18 @@ const NotionPageRow = ({
           )}
       {!searchValue && row.hasChild && (
         <div
-          className="mr-1 flex h-5 w-5 shrink-0 items-center justify-center rounded-md hover:bg-components-button-ghost-bg-hover"
+          className="mr-1 flex size-5 shrink-0 items-center justify-center rounded-md hover:bg-components-button-ghost-bg-hover"
           style={{ marginLeft: row.depth * 8 }}
           onClick={() => onToggle(pageId)}
           data-testid={`notion-page-toggle-${pageId}`}
         >
           {row.expand
-            ? <RiArrowDownSLine className="h-4 w-4 text-text-tertiary" />
-            : <RiArrowRightSLine className="h-4 w-4 text-text-tertiary" />}
+            ? <RiArrowDownSLine className="size-4 text-text-tertiary" />
+            : <RiArrowRightSLine className="size-4 text-text-tertiary" />}
         </div>
       )}
       {!searchValue && !row.hasChild && row.parentExists && (
-        <div className="mr-1 h-5 w-5 shrink-0" style={{ marginLeft: row.depth * 8 }} />
+        <div className="mr-1 size-5 shrink-0" style={{ marginLeft: row.depth * 8 }} />
       )}
       <NotionIcon
         className="mr-1 shrink-0"

@@ -113,14 +113,14 @@ const PlanComp: FC<Props> = ({
           <div className="flex shrink-0 items-center gap-1">
             {enableEducationPlan && (!isEducationAccount || isAboutToExpire) && (
               <Button variant="ghost" onClick={handleVerify} disabled={isPending}>
-                <RiGraduationCapLine className="mr-1 h-4 w-4" />
+                <RiGraduationCapLine className="mr-1 size-4" />
                 {t('toVerified', { ns: 'education' })}
                 {isPending && <Loading className="ml-1 animate-spin-slow" />}
               </Button>
             )}
             {enableEducationPlan && isEducationAccount && type === Plan.sandbox && isCurrentWorkspaceManager && (
               <Button variant="ghost" onClick={handleEducationDiscount} disabled={isEducationDiscountLoading}>
-                <RiGraduationCapLine className="mr-1 h-4 w-4" />
+                <RiGraduationCapLine className="mr-1 size-4" />
                 {t('useEducationDiscount', { ns: 'education' })}
                 {isEducationDiscountLoading && <Loading className="ml-1 animate-spin-slow" />}
               </Button>

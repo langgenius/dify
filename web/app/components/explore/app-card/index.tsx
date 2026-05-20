@@ -56,12 +56,12 @@ const AppCard = ({
           />
           <AppTypeIcon
             wrapperClassName="absolute -bottom-0.5 -right-0.5 w-4 h-4 shadow-sm"
-            className="h-3 w-3"
+            className="size-3"
             type={appBasicInfo.mode}
           />
         </div>
         <div className="w-0 grow py-px">
-          <div className="flex items-center text-sm leading-5 font-semibold text-text-secondary">
+          <div className="flex items-center text-sm/5 font-semibold text-text-secondary">
             <div className="truncate" title={appBasicInfo.name}>{appBasicInfo.name}</div>
           </div>
           <div className="flex items-center text-[10px] leading-[18px] font-medium text-text-tertiary">
@@ -84,7 +84,7 @@ const AppCard = ({
             {
               canCreate && (
                 <Button variant="primary" className="h-7" onClick={() => onCreate()}>
-                  <PlusIcon className="mr-1 h-4 w-4" />
+                  <PlusIcon className="mr-1 size-4" />
                   <span className="text-xs">{t('appCard.addToWorkspace', { ns: 'explore' })}</span>
                 </Button>
               )

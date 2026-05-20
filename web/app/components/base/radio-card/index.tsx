@@ -53,7 +53,7 @@ const RadioCard: FC<Props> = ({
           <div className="absolute top-3 right-3">
             <div
               className={cn(
-                'h-4 w-4 rounded-full border border-components-radio-border bg-components-radio-bg shadow-xs',
+                'size-4 rounded-full border border-components-radio-border bg-components-radio-bg shadow-xs',
                 isChosen && 'border-[5px] border-components-radio-border-checked',
               )}
               aria-hidden="true"

@@ -15,7 +15,7 @@ const NoData: FC<Props> = ({
   const { t } = useTranslation()
   return (
     <div className="rounded-xl bg-linear-to-r from-workflow-workflow-progress-bg-1 to-workflow-workflow-progress-bg-2 p-4 pt-3">
-      <div className="text-xs leading-5 font-semibold text-text-secondary">{t('metadata.metadata', { ns: 'dataset' })}</div>
+      <div className="text-xs/5 font-semibold text-text-secondary">{t('metadata.metadata', { ns: 'dataset' })}</div>
       <div className="mt-1 system-xs-regular text-text-tertiary">{t('metadata.documentMetadata.metadataToolTip', { ns: 'dataset' })}</div>
       <Button variant="primary" className="mt-2" onClick={onStart}>
         <div>{t('metadata.documentMetadata.startLabeling', { ns: 'dataset' })}</div>

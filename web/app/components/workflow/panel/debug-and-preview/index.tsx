@@ -103,7 +103,7 @@ const DebugAndPreview = () => {
               <TooltipTrigger
                 render={(
                   <ActionButton onClick={() => handleRestartChat()}>
-                    <RefreshCcw01 className="h-4 w-4" />
+                    <RefreshCcw01 className="size-4" />
                   </ActionButton>
                 )}
               />
@@ -117,7 +117,7 @@ const DebugAndPreview = () => {
                   <TooltipTrigger
                     render={(
                       <ActionButton state={expanded ? ActionButtonState.Active : undefined} onClick={() => setExpanded(!expanded)}>
-                        <RiEqualizer2Line className="h-4 w-4" />
+                        <RiEqualizer2Line className="size-4" />
                       </ActionButton>
                     )}
                   />
@@ -130,10 +130,10 @@ const DebugAndPreview = () => {
             )}
             <div className="mx-3 h-3.5 w-px bg-divider-regular"></div>
             <div
-              className="flex h-6 w-6 cursor-pointer items-center justify-center"
+              className="flex size-6 cursor-pointer items-center justify-center"
               onClick={handleCancelDebugAndPreviewPanel}
             >
-              <RiCloseLine className="h-4 w-4 text-text-tertiary" />
+              <RiCloseLine className="size-4 text-text-tertiary" />
             </div>
           </div>
         </div>

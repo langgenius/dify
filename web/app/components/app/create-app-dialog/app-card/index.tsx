@@ -53,7 +53,7 @@ const AppCard = ({
           />
           <AppTypeIcon
             wrapperClassName="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-sm border border-divider-regular outline-solid outline-components-panel-on-panel-item-bg"
-            className="h-3 w-3"
+            className="size-3"
             type={appBasicInfo.mode}
           />
         </div>
@@ -74,7 +74,7 @@ const AppCard = ({
           <div className={cn('grid h-8 w-full grid-cols-1 items-center space-x-2', canCreate && 'grid-cols-2')}>
             {canCreate && (
               <Button variant="primary" onClick={() => onCreate()}>
-                <PlusIcon className="mr-1 h-4 w-4" />
+                <PlusIcon className="mr-1 size-4" />
                 <span className="text-xs">{t('newApp.useTemplate', { ns: 'app' })}</span>
               </Button>
             )}

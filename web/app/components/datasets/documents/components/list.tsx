@@ -111,7 +111,7 @@ const DocumentList = ({
   }, [onUpdate])
 
   return (
-    <div className="relative mt-3 flex h-full w-full flex-col">
+    <div className="relative mt-3 flex size-full flex-col">
       <CheckboxGroup
         value={selectedIds}
         onValueChange={nextSelectedIds => onSelectedIdChange(nextSelectedIds)}
@@ -119,7 +119,7 @@ const DocumentList = ({
         className="relative h-0 grow overflow-x-auto"
       >
         <table className={`w-full max-w-full min-w-[700px] border-collapse border-0 text-sm ${s.documentTable}`}>
-          <thead className="h-8 border-b border-divider-subtle text-xs leading-8 font-medium text-text-tertiary uppercase">
+          <thead className="h-8 border-b border-divider-subtle text-xs/8 font-medium text-text-tertiary uppercase">
             <tr>
               <td className="w-12">
                 <div className="flex items-center" onClick={e => e.stopPropagation()}>

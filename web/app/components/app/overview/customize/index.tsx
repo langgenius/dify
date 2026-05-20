@@ -17,7 +17,7 @@ type IShareLinkProps = {
 }
 
 const StepNum: FC<{ children: React.ReactNode }> = ({ children }) => (
-  <div className="mr-3 flex h-7 w-7 shrink-0 items-center justify-center rounded-2xl bg-util-colors-blue-blue-50 text-text-accent">
+  <div className="mr-3 flex size-7 shrink-0 items-center justify-center rounded-2xl bg-util-colors-blue-blue-50 text-text-accent">
     {children}
   </div>
 )
@@ -117,7 +117,7 @@ const CustomizeModal: FC<IShareLinkProps> = ({
               className="mt-2"
             >
               <span className="text-sm text-text-secondary">{t(`${prefixCustomize}.way2.operation`, { ns: 'appOverview' })}</span>
-              <span aria-hidden="true" className="ml-1 i-heroicons-arrow-top-right-on-square h-4 w-4 shrink-0 text-text-secondary" />
+              <span aria-hidden="true" className="ml-1 i-heroicons-arrow-top-right-on-square size-4 shrink-0 text-text-secondary" />
             </Button>
           </div>
         </div>

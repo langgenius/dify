@@ -141,7 +141,7 @@ const MCPServerModal = ({
           className="absolute top-5 right-5 z-10 cursor-pointer border-none bg-transparent p-1.5 focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
           onClick={onHide}
         >
-          <RiCloseLine className="h-5 w-5 text-text-tertiary" aria-hidden="true" />
+          <RiCloseLine className="size-5 text-text-tertiary" aria-hidden="true" />
         </button>
         <div className="relative shrink-0 p-6 pr-12 pb-3 title-2xl-semi-bold text-xl wrap-break-word text-text-primary">
           {!data ? t('mcp.server.modal.addTitle', { ns: 'tools' }) : t('mcp.server.modal.editTitle', { ns: 'tools' })}

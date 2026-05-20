@@ -33,7 +33,7 @@ const Label = ({
       {!isRequired && showOptional && <div className="ml-1 system-xs-regular text-text-tertiary">{t('label.optional', { ns: 'common' })}</div>}
       {isRequired && <div className="ml-1 system-xs-regular text-text-destructive-secondary">*</div>}
       {tooltip && (
-        <Infotip aria-label={tooltip} className="ml-0.5 h-4 w-4" popupClassName="w-[200px]">
+        <Infotip aria-label={tooltip} className="ml-0.5 size-4" popupClassName="w-[200px]">
           {tooltip}
         </Infotip>
       )}
