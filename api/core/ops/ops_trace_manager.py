@@ -150,7 +150,7 @@ def _lookup_llm_credential_info(
                         ProviderModel.tenant_id == tenant_id,
                         ProviderModel.provider_name == provider,
                         ProviderModel.model_name == model,
-                        legacy_compatible_model_type_filter(ProviderModel.model_type, model_type),
+                        legacy_compatible_model_type_filter(ProviderModel.model_type, model_type or "llm"),
                     )
                 )
 

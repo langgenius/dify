@@ -9,7 +9,6 @@ from sqlalchemy import CHAR, TEXT, VARCHAR, LargeBinary, TypeDecorator
 from sqlalchemy.dialects.mysql import LONGBLOB, LONGTEXT
 from sqlalchemy.dialects.postgresql import BYTEA, JSONB, UUID
 from sqlalchemy.engine.interfaces import Dialect
-from sqlalchemy.sql.elements import ColumnElement
 from sqlalchemy.sql.type_api import TypeEngine
 
 from configs import dify_config
@@ -205,9 +204,7 @@ class EnumText[T: enum.StrEnum](TypeDecorator[T | None]):
         return x == y
 
 
-def legacy_compatible_model_type_filter(
-    column: ColumnElement[Any], model_type: ModelType | str
-) -> ColumnElement[bool]:
+def legacy_compatible_model_type_filter(column: Any, model_type: ModelType | str):
     """
     Match both canonical and legacy persisted model_type values during reads.
 
