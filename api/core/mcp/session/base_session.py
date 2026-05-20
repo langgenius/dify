@@ -339,12 +339,16 @@ class BaseSession[
                     case Exception():
                         self._handle_incoming(message)
                     case SessionMessage(message=JSONRPCMessage(root=JSONRPCRequest())):
+                        request_root = message.message.root
+                        if not isinstance(request_root, JSONRPCRequest):
+                            continue
+
                         validated_request = self._receive_request_type.model_validate(
-                            message.message.root.model_dump(by_alias=True, mode="json", exclude_none=True)
+                            request_root.model_dump(by_alias=True, mode="json", exclude_none=True)
                         )
 
                         responder = RequestResponder[ReceiveRequestT, SendResultT](
-                            request_id=message.message.root.id,  # type: ignore[union-attr]  # match/case narrows root to JSONRPCRequest
+                            request_id=request_root.id,
                             request_meta=validated_request.root.params.meta if validated_request.root.params else None,
                             request=validated_request,  # type: ignore[arg-type]  # mypy can't narrow constrained TypeVar from model_validate
                             session=self,
@@ -376,9 +380,14 @@ class BaseSession[
                                 "Failed to validate notification: %s. Message was: %s", e, message.message.root
                             )
                     case _:  # Response or error
-                        response_queue = self._response_streams.get(message.message.root.id)
+                        response_root = message.message.root
+                        if not isinstance(response_root, (JSONRPCResponse, JSONRPCError)):
+                            self._handle_incoming(RuntimeError(f"Server Error: {message}"))
+                            continue
+
+                        response_queue = self._response_streams.get(response_root.id)
                         if response_queue is not None:
-                            response_queue.put(message.message.root)
+                            response_queue.put(response_root)
                         else:
                             self._handle_incoming(RuntimeError(f"Server Error: {message}"))
             except queue.Empty:
