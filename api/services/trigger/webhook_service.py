@@ -903,6 +903,7 @@ class WebhookService:
         namespace_map: dict[str, dict[str, Any]] = {
             "req_body_params": webhook_data.get("body", {}),
             "body": webhook_data.get("body", {}),
+            "payload": webhook_data.get("body", {}),
             "req_query_params": webhook_data.get("query_params", {}),
             "query_params": webhook_data.get("query_params", {}),
             "req_header_params": webhook_data.get("headers", {}),
