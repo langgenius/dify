@@ -240,6 +240,27 @@ class TestSQLAlchemyWorkflowExecutionRepository:
         cached_model = repo._execution_cache[sample_workflow_execution.id_]
         assert cached_model.id == sample_workflow_execution.id_
 
+    def test_save_rejects_existing_run_from_other_tenant(
+        self, mock_session_factory, mock_account, sample_workflow_execution
+    ):
+        repo = SQLAlchemyWorkflowExecutionRepository(
+            session_factory=mock_session_factory,
+            user=mock_account,
+            app_id="test_app",
+            triggered_from=WorkflowRunTriggeredFrom.APP_RUN,
+        )
+        existing_run = WorkflowRun()
+        existing_run.id = sample_workflow_execution.id_
+        existing_run.tenant_id = "other-tenant"
+        session = mock_session_factory.return_value.__enter__.return_value
+        session.get.return_value = existing_run
+
+        with pytest.raises(ValueError, match="Unauthorized access to workflow run"):
+            repo.save(sample_workflow_execution)
+
+        session.merge.assert_not_called()
+        session.commit.assert_not_called()
+
     @patch("core.repositories.sqlalchemy_workflow_execution_repository.save_workflow_execution_task")
     def test_save_queues_celery_task_when_async_persistence_enabled(
         self, mock_task, mock_session_factory, mock_account, sample_workflow_execution
@@ -263,6 +284,33 @@ class TestSQLAlchemyWorkflowExecutionRepository:
         assert call_args["creator_user_id"] == mock_account.id
         session = mock_session_factory.return_value.__enter__.return_value
         session.merge.assert_not_called()
+
+    @patch("core.repositories.sqlalchemy_workflow_execution_repository.save_workflow_execution_task")
+    def test_queue_async_save_requires_context(
+        self, mock_task, mock_session_factory, mock_account, sample_workflow_execution
+    ):
+        repo = SQLAlchemyWorkflowExecutionRepository(
+            session_factory=mock_session_factory,
+            user=mock_account,
+            app_id="test_app",
+            triggered_from=WorkflowRunTriggeredFrom.APP_RUN,
+        )
+
+        repo._triggered_from = None
+        with pytest.raises(ValueError, match="triggered_from is required"):
+            repo._queue_async_save(sample_workflow_execution)
+
+        repo._triggered_from = WorkflowRunTriggeredFrom.APP_RUN
+        repo._creator_user_id = None
+        with pytest.raises(ValueError, match="created_by is required"):
+            repo._queue_async_save(sample_workflow_execution)
+
+        repo._creator_user_id = "user-id"
+        repo._creator_user_role = None
+        with pytest.raises(ValueError, match="created_by_role is required"):
+            repo._queue_async_save(sample_workflow_execution)
+
+        mock_task.delay.assert_not_called()
 
     def test_save_uses_execution_started_at_when_record_does_not_exist(
         self, mock_session_factory, mock_account, sample_workflow_execution
