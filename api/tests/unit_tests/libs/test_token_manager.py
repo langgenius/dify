@@ -4,10 +4,10 @@ Regression tests for the `_TokenData` TypedDict used by
 
 These tests guard the contract that every field a caller writes via
 `generate_token` survives the TypedDict-validated round-trip performed
-by `get_token_data`. Specifically, the `phase` field that the console
-and web `forgot-password` + `change-email` controllers depend on for
-the security check introduced in PR #35425 (GHSA-4q3w-q5mc-45rq) must
-be preserved — otherwise downstream `if data.get("phase", "") != "reset"`
+by `get_token_data`. Specifically, the `phase` / `email_change_phase`
+fields that the console and web `forgot-password` + `change-email`
+controllers depend on for the security check introduced in PR #35425
+(GHSA-4q3w-q5mc-45rq) must be preserved — otherwise downstream phase
 checks always fail with `InvalidTokenError`.
 """
 
@@ -56,3 +56,28 @@ def test_token_data_adapter_preserves_change_email_payload() -> None:
 
     assert data.get("old_email") == "old@example.com"
     assert data.get("phase") == "verify_old_email"
+
+
+def test_token_data_adapter_preserves_change_email_phase_key() -> None:
+    """`email_change_phase` must survive because the change-email controllers
+    branch on `AccountService.CHANGE_EMAIL_TOKEN_PHASE_KEY`, not `phase`.
+
+    Regression: PR #36116 fixed the generic `phase` field but missed the
+    dedicated change-email key introduced by PR #35425, so the Redis ->
+    TypedDict round-trip silently stripped the phase and every
+    `/account/change-email/validity` call failed with `InvalidTokenError`.
+    """
+    payload = {
+        "account_id": "acc-1",
+        "email": "new@example.com",
+        "token_type": "change_email",
+        "code": "654321",
+        "old_email": "old@example.com",
+        "email_change_phase": "old_email",
+    }
+    data = dict(_token_data_adapter.validate_json(json.dumps(payload)))
+
+    assert data.get("email_change_phase") == "old_email", (
+        "email_change_phase field was stripped by the _TokenData TypedDict adapter; "
+        "the change-email validity step will always reject the token."
+    )

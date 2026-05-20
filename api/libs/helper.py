@@ -34,12 +34,16 @@ logger = logging.getLogger(__name__)
 
 
 class _TokenData(TypedDict, total=False):
+    # Keep this schema aligned with every token metadata key that callers
+    # persist via `TokenManager.generate_token`; `get_token_data` validates
+    # through this adapter and silently drops undeclared keys.
     account_id: str | None
     email: str
     token_type: str
     code: str
     old_email: str
     phase: str
+    email_change_phase: str
 
 
 _token_data_adapter: TypeAdapter[_TokenData] = TypeAdapter(_TokenData)
