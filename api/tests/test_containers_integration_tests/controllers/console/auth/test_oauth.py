@@ -45,7 +45,7 @@ class TestGetOAuthProviders:
     )
     @patch("controllers.console.auth.oauth.dify_config")
     def test_should_configure_oauth_providers_correctly(
-        self, mock_config, app, github_config, google_config, expected_github, expected_google
+        self, mock_config, app: Flask, github_config, google_config, expected_github, expected_google
     ):
         mock_config.GITHUB_CLIENT_ID = github_config["id"]
         mock_config.GITHUB_CLIENT_SECRET = github_config["secret"]
@@ -89,7 +89,7 @@ class TestOAuthLogin:
         self,
         mock_redirect,
         mock_get_providers,
-        resource,
+        resource: OAuthCallback,
         app: Flask,
         mock_oauth_provider,
         invite_token,
@@ -114,7 +114,7 @@ class TestOAuthLogin:
         self,
         mock_redirect,
         mock_get_providers,
-        resource,
+        resource: OAuthCallback,
         app: Flask,
         mock_oauth_provider,
     ):
@@ -136,7 +136,7 @@ class TestOAuthLogin:
         self,
         mock_redirect,
         mock_get_providers,
-        resource,
+        resource: OAuthCallback,
         app: Flask,
         mock_oauth_provider,
     ):
@@ -212,7 +212,7 @@ class TestOAuthCallback:
         mock_generate_account,
         mock_get_providers,
         mock_config,
-        resource,
+        resource: OAuthCallback,
         app: Flask,
         oauth_setup,
     ):
@@ -265,7 +265,7 @@ class TestOAuthCallback:
         mock_register_service,
         mock_get_providers,
         mock_config,
-        resource,
+        resource: OAuthCallback,
         app: Flask,
         oauth_setup,
     ):
@@ -310,7 +310,7 @@ class TestOAuthCallback:
         mock_config,
         mock_tenant_service,
         mock_account_service,
-        resource,
+        resource: OAuthCallback,
         app: Flask,
         oauth_setup,
         account_status,
@@ -349,7 +349,7 @@ class TestOAuthCallback:
         mock_generate_account,
         mock_get_providers,
         mock_config,
-        resource,
+        resource: OAuthCallback,
         app: Flask,
         oauth_setup,
     ):
@@ -385,7 +385,7 @@ class TestOAuthCallback:
         mock_generate_account,
         mock_get_providers,
         mock_config,
-        resource,
+        resource: OAuthCallback,
         app: Flask,
         oauth_setup,
     ):
