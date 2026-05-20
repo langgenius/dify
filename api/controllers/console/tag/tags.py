@@ -44,7 +44,7 @@ class TagBindingRemovePayload(BaseModel):
 
 class TagListQueryParam(BaseModel):
     type: Literal["knowledge", "app", ""] = Field("", description="Tag type filter")
-    keyword: str | None = Field(None, description="Search keyword")
+    keyword: str = Field("", description="Search keyword")
 
 
 class TagResponse(ResponseModel):

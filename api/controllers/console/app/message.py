@@ -387,11 +387,11 @@ class MessageFeedbackExportApi(Resource):
         try:
             export_data = FeedbackService.export_feedbacks(
                 app_id=app_model.id,
-                from_source=args.from_source,
-                rating=args.rating,
+                from_source=args.from_source or "",
+                rating=args.rating or "",
                 has_comment=args.has_comment,
-                start_date=args.start_date,
-                end_date=args.end_date,
+                start_date=args.start_date or "",
+                end_date=args.end_date or "",
                 format_type=args.format,
             )
 

@@ -15,11 +15,11 @@ class FeedbackService:
     @staticmethod
     def export_feedbacks(
         app_id: str,
-        from_source: str | None = None,
-        rating: str | None = None,
+        from_source: str = "",
+        rating: str = "",
         has_comment: bool | None = None,
-        start_date: str | None = None,
-        end_date: str | None = None,
+        start_date: str = "",
+        end_date: str = "",
         format_type: str = "csv",
     ):
         """
