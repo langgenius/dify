@@ -459,7 +459,7 @@ const BaseField = ({
             <span className="break-all">
               {translatedHelp}
             </span>
-            <div className="ml-1 i-ri-external-link-line h-3 w-3 shrink-0" />
+            <div className="ml-1 i-ri-external-link-line size-3 shrink-0" />
           </a>
         )
       }

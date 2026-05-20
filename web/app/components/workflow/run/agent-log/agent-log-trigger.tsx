@@ -39,7 +39,7 @@ const AgentLogTrigger = ({
           className="flex shrink-0 cursor-pointer items-center px-px system-xs-regular-uppercase text-text-tertiary"
         >
           {t('detail', { ns: 'runLog' })}
-          <RiArrowRightLine className="ml-0.5 h-3.5 w-3.5" />
+          <RiArrowRightLine className="ml-0.5 size-3.5" />
         </div>
       </div>
     </div>

@@ -167,10 +167,10 @@ const Panel: FC<NodePanelProps<WebhookTriggerNodeType>> = ({
                       >
                         <span className="mt-0.5 w-0.5 bg-divider-regular" style={{ height: '28px' }} />
                         <span className="flex-1" style={{ width: '352px', height: '32px' }}>
-                          <span className="block text-xs leading-4 text-text-tertiary">
+                          <span className="block text-xs/4 text-text-tertiary">
                             {t(`${i18nPrefix}.debugUrlTitle`, { ns: 'workflow' })}
                           </span>
-                          <span className="block truncate text-xs leading-4 text-text-primary">
+                          <span className="block truncate text-xs/4 text-text-primary">
                             {inputs.webhook_debug_url}
                           </span>
                         </span>

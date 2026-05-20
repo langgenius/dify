@@ -157,7 +157,7 @@ const StepOne = ({
   }, [dataSourceType, doOnStepChange, files, supportBatchUpload, notionPages, showPlanUpgradeModal, websitePages])
 
   return (
-    <div className="h-full w-full overflow-x-auto">
+    <div className="size-full overflow-x-auto">
       <div className="flex h-full w-full min-w-[1440px]">
         {/* Left Panel - Form */}
         <div className="relative h-full w-1/2 overflow-y-auto">

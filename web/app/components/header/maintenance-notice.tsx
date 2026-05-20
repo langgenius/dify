@@ -43,10 +43,10 @@ const MaintenanceNotice = () => {
       <button
         type="button"
         aria-label={t('operation.close', { ns: 'common' })}
-        className="h-4 w-4 shrink-0 cursor-pointer border-none bg-transparent p-0 text-gray-500"
+        className="size-4 shrink-0 cursor-pointer border-none bg-transparent p-0 text-gray-500"
         onClick={handleCloseNotice}
       >
-        <X className="h-4 w-4" aria-hidden="true" />
+        <X className="size-4" aria-hidden="true" />
       </button>
     </div>
   )

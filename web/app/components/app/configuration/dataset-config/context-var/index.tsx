@@ -17,7 +17,7 @@ const ContextVar: FC<Props> = (props) => {
     <div className={cn(notSetVar ? 'rounded-br-xl rounded-bl-xl border-[#FEF0C7] bg-[#FEF0C7]' : 'border-components-panel-border-subtle', 'flex h-12 items-center justify-between border-t px-3')}>
       <div className="flex shrink-0 items-center space-x-1">
         <div className="p-1">
-          <BracketsX className="h-4 w-4 text-text-accent" />
+          <BracketsX className="size-4 text-text-accent" />
         </div>
         <div className="mr-1 text-sm font-medium text-text-secondary">{t('feature.dataSet.queryVariable.title', { ns: 'appDebug' })}</div>
         <Infotip

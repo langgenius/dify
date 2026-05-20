@@ -177,7 +177,7 @@ const FollowUpSettingModal = ({
                 </div>
                 {promptMode === PROMPT_MODE.default && (
                   <div className="mt-3 rounded-lg border border-components-input-border-active bg-components-input-bg-normal px-3 py-2">
-                    <div className="system-sm-regular break-words whitespace-pre-wrap text-text-secondary">
+                    <div className="system-sm-regular wrap-break-word whitespace-pre-wrap text-text-secondary">
                       {DEFAULT_FOLLOW_UP_PROMPT}
                     </div>
                   </div>

@@ -198,10 +198,10 @@ const AgentTools: FC = () => {
               )}
             >
               <div className="flex w-0 grow items-center">
-                {item.isDeleted && <DefaultToolIcon className="h-5 w-5" />}
+                {item.isDeleted && <DefaultToolIcon className="size-5" />}
                 {!item.isDeleted && (
                   <div className={cn((item.notAuthor || !item.enabled) && 'shrink-0 opacity-50')}>
-                    {typeof item.icon === 'string' && <div className="h-5 w-5 rounded-md bg-cover bg-center" style={{ backgroundImage: `url(${item.icon})` }} />}
+                    {typeof item.icon === 'string' && <div className="size-5 rounded-md bg-cover bg-center" style={{ backgroundImage: `url(${item.icon})` }} />}
                     {typeof item.icon !== 'string' && <AppIcon className="rounded-md" size="xs" icon={item.icon?.content} background={item.icon?.background} />}
                   </div>
                 )}
@@ -268,7 +268,7 @@ const AgentTools: FC = () => {
                       onMouseOver={() => setIsDeleting(index)}
                       onMouseLeave={() => setIsDeleting(-1)}
                     >
-                      <RiDeleteBinLine className="h-4 w-4" aria-hidden="true" />
+                      <RiDeleteBinLine className="size-4" aria-hidden="true" />
                     </button>
                   </div>
                 )}
@@ -287,7 +287,7 @@ const AgentTools: FC = () => {
                                 setIsShowSettingTool(true)
                               }}
                             >
-                              <RiEqualizer2Line className="h-4 w-4 text-text-tertiary" />
+                              <RiEqualizer2Line className="size-4 text-text-tertiary" />
                             </button>
                           )}
                         />
@@ -310,7 +310,7 @@ const AgentTools: FC = () => {
                       onMouseOver={() => setIsDeleting(index)}
                       onMouseLeave={() => setIsDeleting(-1)}
                     >
-                      <RiDeleteBinLine className="h-4 w-4" aria-hidden="true" />
+                      <RiDeleteBinLine className="size-4" aria-hidden="true" />
                     </button>
                   </div>
                 )}

@@ -54,7 +54,7 @@ const ErrorHandleTypeSelector = ({
         )}
       >
         {selectedOption?.label}
-        <RiArrowDownSLine className="h-3.5 w-3.5" />
+        <RiArrowDownSLine className="size-3.5" />
       </DropdownMenuTrigger>
       <DropdownMenuContent
         placement="bottom-end"
@@ -79,7 +79,7 @@ const ErrorHandleTypeSelector = ({
                 <div className="mr-1 w-4 shrink-0">
                   {
                     value === option.value && (
-                      <RiCheckLine className="h-4 w-4 text-text-accent" />
+                      <RiCheckLine className="size-4 text-text-accent" />
                     )
                   }
                 </div>

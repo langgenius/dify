@@ -217,7 +217,7 @@ const Authorized = ({
                             ` (${unavailableCredentials.length} ${t('auth.unavailable', { ns: 'plugin' })})`
                           )
                         }
-                        <span className="ml-0.5 i-ri-arrow-down-s-line h-4 w-4" />
+                        <span className="ml-0.5 i-ri-arrow-down-s-line size-4" />
                       </Button>
                     )
               }

@@ -61,7 +61,7 @@ const TopKAndScoreThreshold = ({
           {t('datasetConfig.top_k', { ns: 'appDebug' })}
           <Infotip
             aria-label={t('datasetConfig.top_kTip', { ns: 'appDebug' })}
-            className="ml-0.5 h-3.5 w-3.5"
+            className="ml-0.5 size-3.5"
             iconClassName="h-3.5 w-3.5"
           >
             {t('datasetConfig.top_kTip', { ns: 'appDebug' })}
@@ -99,7 +99,7 @@ const TopKAndScoreThreshold = ({
               </div>
               <Infotip
                 aria-label={t('datasetConfig.score_thresholdTip', { ns: 'appDebug' })}
-                className="ml-0.5 h-3.5 w-3.5"
+                className="ml-0.5 size-3.5"
                 iconClassName="h-3.5 w-3.5"
               >
                 {t('datasetConfig.score_thresholdTip', { ns: 'appDebug' })}

@@ -64,7 +64,7 @@ const SettingContent = ({
           className="cursor-pointer border-none bg-transparent p-1 focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
           onClick={onClose}
         >
-          <span className="i-ri-close-line h-4 w-4 text-text-tertiary" aria-hidden="true" />
+          <span className="i-ri-close-line size-4 text-text-tertiary" aria-hidden="true" />
         </button>
       </div>
       <FileUploadSetting

@@ -167,7 +167,7 @@ const Right = ({
       <div className="flex shrink-0 items-center justify-between gap-1 px-2 pt-2">
         {bottomPanelWidth < 488 && (
           <ActionButton className="shrink-0" onClick={handleOpenMenu}>
-            <RiMenuLine className="h-4 w-4" />
+            <RiMenuLine className="size-4" />
           </ActionButton>
         )}
         <div className="flex w-0 grow items-center gap-1">
@@ -264,7 +264,7 @@ const Right = ({
                   <TooltipTrigger
                     render={(
                       <ActionButton onClick={resetValue}>
-                        <RiArrowGoBackLine className="h-4 w-4" />
+                        <RiArrowGoBackLine className="size-4" />
                       </ActionButton>
                     )}
                   />
@@ -278,7 +278,7 @@ const Right = ({
                   <TooltipTrigger
                     render={(
                       <ActionButton onClick={handleClear}>
-                        <RiArrowGoBackLine className="h-4 w-4" />
+                        <RiArrowGoBackLine className="size-4" />
                       </ActionButton>
                     )}
                   />
@@ -293,7 +293,7 @@ const Right = ({
             </>
           )}
           <ActionButton onClick={handleClose}>
-            <RiCloseLine className="h-4 w-4" />
+            <RiCloseLine className="size-4" />
           </ActionButton>
         </div>
       </div>
