@@ -356,6 +356,23 @@ describe('MainNav', () => {
     expect(screen.queryByRole('link', { name: /common.menus.datasets/ })).not.toBeInTheDocument()
   })
 
+  it.each([
+    '/datasets/create',
+    '/datasets/create-from-pipeline',
+    '/datasets/connect',
+    '/datasets/dataset-1/documents/create',
+    '/datasets/dataset-1/documents/create-from-pipeline',
+  ])('keeps global navigation on dataset creation route %s', (pathname) => {
+    mockPathname = pathname
+
+    renderMainNav()
+
+    expect(screen.queryByTestId('dataset-detail-top')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('dataset-detail-section')).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'common.mainNav.workspace.openMenu' })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /common.menus.datasets/ })).toHaveAttribute('href', '/datasets')
+  })
+
   it('marks marketplace active on marketplace routes', () => {
     mockPathname = '/marketplace'
 

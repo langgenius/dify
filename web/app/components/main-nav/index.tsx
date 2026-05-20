@@ -23,6 +23,24 @@ import MainNavSearchButton from './components/search-button'
 import WebAppsSection from './components/web-apps-section'
 import WorkspaceCard from './components/workspace-card'
 
+const DATASET_COLLECTION_ROUTES = new Set(['create', 'create-from-pipeline', 'connect'])
+const DATASET_DOCUMENT_CREATION_ROUTES = new Set(['create', 'create-from-pipeline'])
+
+const isDatasetDetailPathname = (pathname: string) => {
+  const [section, datasetId, subSection, action] = pathname.split('/').filter(Boolean)
+
+  if (section !== 'datasets' || !datasetId)
+    return false
+
+  if (DATASET_COLLECTION_ROUTES.has(datasetId))
+    return false
+
+  if (subSection === 'documents' && action && DATASET_DOCUMENT_CREATION_ROUTES.has(action))
+    return false
+
+  return true
+}
+
 const MainNav = ({
   className,
 }: MainNavProps) => {
@@ -32,7 +50,7 @@ const MainNav = ({
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const showEnvTag = langGeniusVersionInfo.current_env === 'TESTING' || langGeniusVersionInfo.current_env === 'DEVELOPMENT'
   const showAppDetailNavigation = !isCurrentWorkspaceDatasetOperator && pathname.startsWith('/app/')
-  const showDatasetDetailNavigation = pathname.startsWith('/datasets/')
+  const showDatasetDetailNavigation = isDatasetDetailPathname(pathname)
   const showDetailNavigation = showAppDetailNavigation || showDatasetDetailNavigation
   const navItems = useMemo<MainNavItem[]>(() => [
     ...(!isCurrentWorkspaceDatasetOperator
