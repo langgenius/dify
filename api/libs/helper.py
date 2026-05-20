@@ -16,7 +16,7 @@ from zoneinfo import available_timezones
 
 from flask import Response, stream_with_context
 from flask_restx import fields
-from pydantic import BaseModel, ConfigDict, TypeAdapter
+from pydantic import BaseModel, ConfigDict, TypeAdapter, with_config
 from pydantic.functional_validators import AfterValidator
 from typing_extensions import TypedDict
 
@@ -33,6 +33,7 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
+@with_config(ConfigDict(extra="allow"))
 class _TokenData(TypedDict, total=False):
     """Shared baseline token payload.
 
@@ -47,8 +48,6 @@ class _TokenData(TypedDict, total=False):
     validation for the state-machine key without taking over the full business
     model.
     """
-
-    __pydantic_config__ = ConfigDict(extra="allow")
 
     account_id: str | None
     email: str
@@ -525,7 +524,7 @@ class TokenManager:
         if token_data_json is None:
             logger.warning("%s token %s not found with key %s", token_type, token, key)
             return None
-        return _token_data_adapter.validate_json(token_data_json)
+        return dict(_token_data_adapter.validate_json(token_data_json))
 
     @classmethod
     def _get_current_token_for_account(cls, account_id: str, token_type: str) -> str | None:
