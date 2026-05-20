@@ -610,6 +610,7 @@ class AccountService:
             raise EmailChangeRateLimitExceededError(int(cls.change_email_rate_limiter.time_window / 60))
 
         code = "".join([str(secrets.randbelow(exclusive_upper_bound=10)) for _ in range(6)])
+        token_data: ChangeEmailTokenData
         if phase == cls.CHANGE_EMAIL_PHASE_OLD:
             token_data = ChangeEmailOldEmailToken(
                 token_type="change_email",
