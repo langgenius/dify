@@ -1986,9 +1986,6 @@
     },
     "react-refresh/only-export-components": {
       "count": 1
-    },
-    "react/use-memo": {
-      "count": 1
     }
   },
   "web/app/components/datasets/documents/detail/completed/segment-list.tsx": {

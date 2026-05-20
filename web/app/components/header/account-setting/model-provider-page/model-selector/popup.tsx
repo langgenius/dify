@@ -7,11 +7,12 @@ import { useSuspenseQuery } from '@tanstack/react-query'
 import { useTheme } from 'next-themes'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
+import { ACCOUNT_SETTING_MODAL_ACTION, ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
 import checkTaskStatus from '@/app/components/plugins/install-plugin/base/check-task-status'
 import useRefreshPluginList from '@/app/components/plugins/install-plugin/hooks/use-refresh-plugin-list'
 import { useModalContext } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
+import { useSearchParams } from '@/next/navigation'
 import { systemFeaturesQueryOptions } from '@/service/system-features'
 import { useInstallPackageFromMarketPlace } from '@/service/use-plugins'
 import { CustomConfigurationStatusEnum, ModelFeatureEnum, ModelStatusEnum, ModelTypeEnum } from '../declarations'
@@ -46,6 +47,7 @@ function Popup({
   onHide,
 }: PopupProps) {
   const { t } = useTranslation()
+  const searchParams = useSearchParams()
   const { theme } = useTheme()
   const language = useLanguage()
   const previewCardHandle = useMemo(() => createPreviewCardHandle<ModelSelectorPreviewPayload>(), [])
@@ -160,6 +162,8 @@ function Popup({
   const handleClosePreviewCard = useCallback(() => {
     previewCardHandle.close()
   }, [previewCardHandle])
+  const isProviderSettingsCurrentPage = searchParams?.get('action') === ACCOUNT_SETTING_MODAL_ACTION
+    && searchParams?.get('tab') === ACCOUNT_SETTING_TAB.PROVIDER
 
   return (
     <ModelSelectorPopupFrame>
@@ -221,7 +225,9 @@ function Popup({
           />
         )}
       </PreviewCard>
-      <ModelProviderSettingsFooter onOpenSettings={handleOpenSettings} />
+      {!isProviderSettingsCurrentPage && (
+        <ModelProviderSettingsFooter onOpenSettings={handleOpenSettings} />
+      )}
     </ModelSelectorPopupFrame>
   )
 }

@@ -142,6 +142,7 @@ catalog:
   agentation: 3.0.2
   ahooks: 3.9.7
   c12: 4.0.0-beta.5
+  chokidar: 5.0.0
   class-variance-authority: 0.7.1
   client-only: 0.0.1
   clsx: 2.1.1

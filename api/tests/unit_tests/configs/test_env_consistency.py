@@ -1,6 +1,5 @@
 from pathlib import Path
 
-import yaml  # type: ignore
 from dotenv import dotenv_values
 
 BASE_API_AND_DOCKER_CONFIG_SET_DIFF: frozenset[str] = frozenset(
@@ -91,34 +90,29 @@ BASE_API_AND_DOCKER_COMPOSE_CONFIG_SET_DIFF: frozenset[str] = frozenset(
     )
 )
 
-API_CONFIG_SET = set(dotenv_values(Path("api") / Path(".env.example")).keys())
-DOCKER_CONFIG_SET = set(dotenv_values(Path("docker") / Path(".env.example")).keys())
-DOCKER_COMPOSE_CONFIG_SET = set(DOCKER_CONFIG_SET)
-
-# Read environment variables from the split env files used by docker-compose
-# Walk through all .env.example files in subdirectories (per-module structure)
-envs_dir = Path("docker") / Path("envs")
-if envs_dir.exists():
-    for env_file_path in envs_dir.rglob("*.env.example"):
-        env_keys = set(dotenv_values(env_file_path).keys())
-        DOCKER_CONFIG_SET.update(env_keys)
-        DOCKER_COMPOSE_CONFIG_SET.update(env_keys)
+REPO_ROOT = Path(__file__).resolve().parents[4]
 
 
-def test_yaml_config():
-    # python set == operator is used to compare two sets
-    DIFF_API_WITH_DOCKER = API_CONFIG_SET - DOCKER_CONFIG_SET - BASE_API_AND_DOCKER_CONFIG_SET_DIFF
-    if DIFF_API_WITH_DOCKER:
-        print(f"API and Docker config sets are different with key: {DIFF_API_WITH_DOCKER}")
-        raise Exception("API and Docker config sets are different")
-    DIFF_API_WITH_DOCKER_COMPOSE = (
-        API_CONFIG_SET - DOCKER_COMPOSE_CONFIG_SET - BASE_API_AND_DOCKER_COMPOSE_CONFIG_SET_DIFF
-    )
-    if DIFF_API_WITH_DOCKER_COMPOSE:
-        print(f"API and Docker Compose config sets are different with key: {DIFF_API_WITH_DOCKER_COMPOSE}")
-        raise Exception("API and Docker Compose config sets are different")
-    print("All tests passed!")
+def _api_config_set() -> set[str]:
+    return set(dotenv_values(REPO_ROOT / "api" / ".env.example").keys())
 
 
-if __name__ == "__main__":
-    test_yaml_config()
+def _docker_config_set() -> set[str]:
+    docker_config_set = set(dotenv_values(REPO_ROOT / "docker" / ".env.example").keys())
+    envs_dir = REPO_ROOT / "docker" / "envs"
+    if envs_dir.exists():
+        for env_file_path in envs_dir.rglob("*.env.example"):
+            docker_config_set.update(dotenv_values(env_file_path).keys())
+    return docker_config_set
+
+
+def test_api_env_keys_exist_in_docker_env_examples():
+    diff = _api_config_set() - _docker_config_set() - BASE_API_AND_DOCKER_CONFIG_SET_DIFF
+
+    assert not diff, f"API and Docker config sets are different with keys: {sorted(diff)}"
+
+
+def test_api_env_keys_exist_in_docker_compose_env_examples():
+    diff = _api_config_set() - _docker_config_set() - BASE_API_AND_DOCKER_COMPOSE_CONFIG_SET_DIFF
+
+    assert not diff, f"API and Docker Compose config sets are different with keys: {sorted(diff)}"
