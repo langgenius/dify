@@ -117,8 +117,8 @@ const PromptValuePanel: FC<IPromptValuePanelProps> = ({
             onClick={() => setUserInputFieldCollapse(!userInputFieldCollapse)}
           >
             <div className="system-md-semibold-uppercase text-text-secondary">{t('inputs.userInputField', { ns: 'appDebug' })}</div>
-            {userInputFieldCollapse && <RiArrowRightSLine className="h-4 w-4 text-text-secondary" aria-hidden="true" />}
-            {!userInputFieldCollapse && <RiArrowDownSLine className="h-4 w-4 text-text-secondary" aria-hidden="true" />}
+            {userInputFieldCollapse && <RiArrowRightSLine className="size-4 text-text-secondary" aria-hidden="true" />}
+            {!userInputFieldCollapse && <RiArrowDownSLine className="size-4 text-text-secondary" aria-hidden="true" />}
           </button>
           {!userInputFieldCollapse && (
             <div className="mt-1 system-xs-regular text-text-tertiary">{t('inputs.completionVarTip', { ns: 'appDebug' })}</div>
@@ -237,7 +237,7 @@ const PromptValuePanel: FC<IPromptValuePanelProps> = ({
                       onClick={() => onSend?.()}
                       className="w-[96px]"
                     >
-                      <RiPlayLargeFill className="mr-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+                      <RiPlayLargeFill className="mr-0.5 size-4 shrink-0" aria-hidden="true" />
                       {t('inputs.run', { ns: 'appDebug' })}
                     </Button>
                   )}
@@ -254,7 +254,7 @@ const PromptValuePanel: FC<IPromptValuePanelProps> = ({
                 onClick={() => onSend?.()}
                 className="w-[96px]"
               >
-                <RiPlayLargeFill className="mr-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+                <RiPlayLargeFill className="mr-0.5 size-4 shrink-0" aria-hidden="true" />
                 {t('inputs.run', { ns: 'appDebug' })}
               </Button>
             )}

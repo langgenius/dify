@@ -150,7 +150,7 @@ const Empty = ({
         ))}
       </div>
       {/* mask */}
-      <div className="absolute z-20 h-full w-full bg-linear-to-b from-components-panel-bg-transparent to-components-panel-bg" />
+      <div className="absolute z-20 size-full bg-linear-to-b from-components-panel-bg-transparent to-components-panel-bg" />
       <div className="relative z-30 flex h-full items-center justify-center">
         <div className={cn(
           'flex flex-col items-center',
@@ -167,14 +167,14 @@ const Empty = ({
             >
               {isIntegrationsCategory
                 ? (
-                    <span className="text-text-tertiary">
-                      {isIntegrationsAgentStrategy
-                        ? <AgentStrategyEmptyIcon />
-                        : isIntegrationsExtension
-                          ? <ExtensionEmptyIcon />
-                          : <TriggerEmptyIcon />}
-                    </span>
-                  )
+                  <span className="text-text-tertiary">
+                    {isIntegrationsAgentStrategy
+                      ? <AgentStrategyEmptyIcon />
+                      : isIntegrationsExtension
+                        ? <ExtensionEmptyIcon />
+                        : <TriggerEmptyIcon />}
+                  </span>
+                )
                 : <Group className="size-5 text-text-tertiary" />}
               {!isIntegrationsCategory && (
                 <>

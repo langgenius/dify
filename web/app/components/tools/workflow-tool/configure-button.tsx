@@ -49,7 +49,7 @@ const WorkflowToolConfigureButton = ({
                       onConfigure()
                   }}
                 >
-                  <span className={cn('relative i-ri-hammer-line h-4 w-4 text-text-secondary', !disabled && !published && 'group-hover:text-text-accent')} />
+                  <span className={cn('relative i-ri-hammer-line size-4 text-text-secondary', !disabled && !published && 'group-hover:text-text-accent')} />
                   <div
                     title={t('common.workflowAsTool', { ns: 'workflow' }) || ''}
                     className={cn('shrink grow basis-0 truncate system-sm-medium text-text-secondary', !disabled && !published && 'group-hover:text-text-accent')}
@@ -67,7 +67,7 @@ const WorkflowToolConfigureButton = ({
                 <div
                   className="flex items-center justify-start gap-2 p-2 pl-2.5"
                 >
-                  <span className="i-ri-hammer-line h-4 w-4 text-text-tertiary" />
+                  <span className="i-ri-hammer-line size-4 text-text-tertiary" />
                   <div
                     title={t('common.workflowAsTool', { ns: 'workflow' }) || ''}
                     className="shrink grow basis-0 truncate system-sm-medium text-text-tertiary"
@@ -100,7 +100,7 @@ const WorkflowToolConfigureButton = ({
                   disabled={disabled}
                 >
                   {t('common.manageInTools', { ns: 'workflow' })}
-                  <span className="ml-1 i-ri-arrow-right-up-line h-4 w-4" />
+                  <span className="ml-1 i-ri-arrow-right-up-line size-4" />
                 </Button>
               </div>
               {outdated && (

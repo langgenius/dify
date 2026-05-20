@@ -75,58 +75,84 @@ const List = () => {
     <div className="relative flex grow flex-col overflow-y-auto bg-background-body">
       {showEmptyDataList
         ? (
-            <>
-              <div className="sticky top-0 z-10 flex flex-col bg-background-body px-6 pt-2 pb-2">
-                <div className="flex min-h-14 items-start pt-2">
-                  <DatasetListPageTitle
-                    title={t('knowledge', { ns: 'dataset' })}
-                    description={t('studioDescription', { ns: 'dataset' })}
-                    titleClassName="text-dify-logo-black"
-                  />
-                </div>
+          <>
+            <div className="sticky top-0 z-10 flex flex-col bg-background-body px-6 pt-2 pb-2">
+              <div className="flex min-h-14 items-start pt-2">
+                <DatasetListPageTitle
+                  title={t('knowledge', { ns: 'dataset' })}
+                  description={t('studioDescription', { ns: 'dataset' })}
+                  titleClassName="text-dify-logo-black"
+                />
               </div>
-              <DatasetFirstEmptyState />
-            </>
-          )
+            </div>
+            <DatasetFirstEmptyState />
+          </>
+        )
         : (
-            <>
-              <DatasetListHeader
-                apiBaseUrl={apiBaseInfo?.api_base_url ?? ''}
-                includeAll={includeAll}
-                isCurrentWorkspaceEditor={isCurrentWorkspaceEditor}
-                isCurrentWorkspaceManager={isCurrentWorkspaceManager}
-                isCurrentWorkspaceOwner={isCurrentWorkspaceOwner}
-                keywords={keywords}
-                tagFilterValue={tagFilterValue}
-                onCreateDataset={() => push('/datasets/create')}
-                onCreateFromPipeline={() => push('/datasets/create-from-pipeline')}
-                onConnectDataset={() => push('/datasets/connect')}
-                onExternalApiClick={() => setShowExternalApiPanel(true)}
-                onIncludeAllChange={toggleIncludeAll}
-                onKeywordsChange={handleKeywordsChange}
-                onOpenTagManagement={() => setShowTagManagementModal(true)}
-                onTagsChange={handleTagsChange}
-              />
-              <Datasets
-                datasetList={datasetListQuery.data}
-                emptyElement={showFilteredEmptyState ? <FilterEmptyState title={t('filterEmpty.noKnowledge', { ns: 'dataset' })} /> : undefined}
-                fetchNextPage={datasetListQuery.fetchNextPage}
-                hasNextPage={datasetListQuery.hasNextPage}
-                isFetching={datasetListQuery.isFetching}
-                isFetchingNextPage={datasetListQuery.isFetchingNextPage}
-                onOpenTagManagement={() => setShowTagManagementModal(true)}
-              />
-              {!systemFeatures.branding.enabled && <DatasetFooter />}
-            </>
-          )}
-      <TagManagementModal
-        type="knowledge"
-        show={showTagManagementModal}
-        onClose={() => setShowTagManagementModal(false)}
-        onTagsChange={invalidDatasetList}
+          <>
+            <DatasetListHeader
+              apiBaseUrl={apiBaseInfo?.api_base_url ?? ''}
+              includeAll={includeAll}
+              isCurrentWorkspaceEditor={isCurrentWorkspaceEditor}
+              isCurrentWorkspaceManager={isCurrentWorkspaceManager}
+              isCurrentWorkspaceOwner={isCurrentWorkspaceOwner}
+              keywords={keywords}
+              tagFilterValue={tagFilterValue}
+              onCreateDataset={() => push('/datasets/create')}
+              onCreateFromPipeline={() => push('/datasets/create-from-pipeline')}
+              onConnectDataset={() => push('/datasets/connect')}
+              onExternalApiClick={() => setShowExternalApiPanel(true)}
+              onIncludeAllChange={toggleIncludeAll}
+              onKeywordsChange={handleKeywordsChange}
+              onOpenTagManagement={() => setShowTagManagementModal(true)}
+              onTagsChange={handleTagsChange}
+            />
+            <Datasets
+              datasetList={datasetListQuery.data}
+              emptyElement={showFilteredEmptyState ? <FilterEmptyState title={t('filterEmpty.noKnowledge', { ns: 'dataset' })} /> : undefined}
+              fetchNextPage={datasetListQuery.fetchNextPage}
+              hasNextPage={datasetListQuery.hasNextPage}
+              isFetching={datasetListQuery.isFetching}
+              isFetchingNextPage={datasetListQuery.isFetchingNextPage}
+              onOpenTagManagement={() => setShowTagManagementModal(true)}
+            />
+            {!systemFeatures.branding.enabled && <DatasetFooter />}
+          </>
+        )}
+      <TagFilter type="knowledge" value={tagFilterValue} onChange={handleTagsChange} onOpenTagManagement={() => setShowTagManagementModal(true)} />
+      <Input
+        showLeftIcon
+        showClearIcon
+        wrapperClassName="w-[200px]"
+        value={keywords}
+        onChange={e => handleKeywordsChange(e.target.value)}
+        onClear={() => handleKeywordsChange('')}
       />
-      {showExternalApiPanel && <ExternalAPIPanel onClose={() => setShowExternalApiPanel(false)} />}
+      {
+        isCurrentWorkspaceManager && (
+          <ServiceApi apiBaseUrl={apiBaseInfo?.api_base_url ?? ''} />
+        )
+      }
+      <div className="h-4 w-px bg-divider-regular" />
+      <Button
+        className="gap-0.5 shadow-xs"
+        onClick={() => setShowExternalApiPanel(true)}
+      >
+        <span className="i-custom-vender-solid-development-api-connection-mod size-4 text-components-button-secondary-text" />
+        <span className="flex items-center justify-center gap-1 px-0.5 system-sm-medium text-components-button-secondary-text">{t('externalAPIPanelTitle', { ns: 'dataset' })}</span>
+      </Button>
     </div>
+      </div >
+  <Datasets tags={tagIDs} keywords={searchKeywords} includeAll={includeAll} onOpenTagManagement={() => setShowTagManagementModal(true)} />
+{ !systemFeatures.branding.enabled && <DatasetFooter /> }
+<TagManagementModal
+  type="knowledge"
+  show={showTagManagementModal}
+  onClose={() => setShowTagManagementModal(false)}
+  onTagsChange={invalidDatasetList}
+/>
+{ showExternalApiPanel && <ExternalAPIPanel onClose={() => setShowExternalApiPanel(false)} /> }
+    </div >
   )
 }
 

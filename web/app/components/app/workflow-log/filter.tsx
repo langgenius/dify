@@ -52,7 +52,7 @@ const Filter: FC<IFilterProps> = ({ queryParams, setQueryParams }: IFilterProps)
       <Chip
         className="min-w-[150px]"
         panelClassName="w-[270px]"
-        leftIcon={<RiCalendarLine className="h-4 w-4 text-text-secondary" />}
+        leftIcon={<RiCalendarLine className="size-4 text-text-secondary" />}
         value={queryParams.period}
         onSelect={(item) => {
           setQueryParams({ ...queryParams, period: item.value })

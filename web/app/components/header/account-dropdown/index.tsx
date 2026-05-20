@@ -58,21 +58,21 @@ export default function AppSelector({
       <DropdownMenu open={isAccountMenuOpen} onOpenChange={setIsAccountMenuOpen}>
         {trigger
           ? (
-              <DropdownMenuTrigger
-                render={trigger({
-                  isOpen: isAccountMenuOpen,
-                  ariaLabel: t('account.account', { ns: 'common' }),
-                })}
-              />
-            )
+            <DropdownMenuTrigger
+              render={trigger({
+                isOpen: isAccountMenuOpen,
+                ariaLabel: t('account.account', { ns: 'common' }),
+              })}
+            />
+          )
           : (
-              <DropdownMenuTrigger
-                aria-label={t('account.account', { ns: 'common' })}
-                className={cn('inline-flex items-center rounded-[20px] p-0.5 hover:bg-background-default-dodge', isAccountMenuOpen && 'bg-background-default-dodge')}
-              >
-                <Avatar avatar={userProfile.avatar_url} name={userProfile.name} size="lg" />
-              </DropdownMenuTrigger>
-            )}
+            <DropdownMenuTrigger
+              aria-label={t('account.account', { ns: 'common' })}
+              className={cn('inline-flex items-center rounded-[20px] p-0.5 hover:bg-background-default-dodge', isAccountMenuOpen && 'bg-background-default-dodge')}
+            >
+              <Avatar avatar={userProfile.avatar_url} name={userProfile.name} size="lg" />
+            </DropdownMenuTrigger>
+          )}
         <DropdownMenuContent
           placement={variant === 'mainNav' ? 'top-start' : 'bottom-end'}
           sideOffset={6}
@@ -82,12 +82,12 @@ export default function AppSelector({
           {variant === 'mainNav'
             ? <MainNavMenuContent onLogout={handleLogout} />
             : (
-                <DefaultMenuContent
-                  closeAccountDropdown={() => setIsAccountMenuOpen(false)}
-                  onShowAbout={() => setAboutVisible(true)}
-                  onLogout={handleLogout}
-                />
-              )}
+              <DefaultMenuContent
+                closeAccountDropdown={() => setIsAccountMenuOpen(false)}
+                onShowAbout={() => setAboutVisible(true)}
+                onLogout={handleLogout}
+              />
+            )}
         </DropdownMenuContent>
       </DropdownMenu>
       {aboutVisible && <AccountAbout onCancel={() => setAboutVisible(false)} langGeniusVersionInfo={langGeniusVersionInfo} />}

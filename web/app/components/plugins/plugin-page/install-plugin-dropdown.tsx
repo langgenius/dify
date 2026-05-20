@@ -153,7 +153,7 @@ const InstallPluginDropdown = ({
               variant={triggerVariant}
               disabled={disabled}
               className={cn(
-                'h-full w-full p-2',
+                'size-full p-2',
                 triggerClassName,
                 !disabled && isMenuOpen && triggerOpenClassName,
               )}
@@ -161,9 +161,9 @@ const InstallPluginDropdown = ({
           )}
         >
           <>
-            <RiAddLine className="h-4 w-4" />
+            <RiAddLine className="size-4" />
             <span className="pl-1">{triggerLabel ?? t('installPlugin', { ns: 'plugin' })}</span>
-            <RiArrowDownSLine className="ml-1 h-4 w-4" />
+            <RiArrowDownSLine className="ml-1 size-4" />
           </>
         </DropdownMenuTrigger>
         <DropdownMenuContent
@@ -171,7 +171,7 @@ const InstallPluginDropdown = ({
           sideOffset={4}
           popupClassName={cn('w-[200px] pb-2', popupClassName)}
         >
-          <span className="flex items-start self-stretch pt-1 pr-3 pb-0.5 pl-3 system-xs-medium-uppercase text-text-tertiary">
+          <span className="flex items-start self-stretch px-3 pt-1 pb-0.5 system-xs-medium-uppercase text-text-tertiary">
             {t('installFrom', { ns: 'plugin' })}
           </span>
           {installMethods.map(({ icon: Icon, text, action }) => (
@@ -181,9 +181,7 @@ const InstallPluginDropdown = ({
               onClick={() => handleInstallMethodSelect(action)}
             >
               <div className="flex items-center gap-1">
-                <span className="text-text-tertiary">
-                  <Icon />
-                </span>
+                <Icon className="size-4 text-text-tertiary" />
                 <span className="px-1 system-md-regular text-text-secondary">{text}</span>
               </div>
             </DropdownMenuItem>
@@ -197,7 +195,8 @@ const InstallPluginDropdown = ({
           onClose={() => setSelectedAction(null)}
         />
       )}
-      {selectedAction === 'local' && selectedFile
+      {
+        selectedAction === 'local' && selectedFile
         && (
           <InstallFromLocalPackage
             file={selectedFile}
@@ -205,7 +204,8 @@ const InstallPluginDropdown = ({
             onClose={handleCloseLocalInstaller}
             onSuccess={noop}
           />
-        )}
+        )
+      }
       {/* {pluginLists.map((item: any) => (
         <div key={item.id} onClick={() => handleUninstall(item.id)}>{item.name} 卸载</div>
       ))} */}

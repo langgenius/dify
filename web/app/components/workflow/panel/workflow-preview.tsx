@@ -122,7 +122,7 @@ const WorkflowPreview = () => {
           className="cursor-pointer border-none bg-transparent p-1 focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
           onClick={() => handleCancelDebugAndPreviewPanel()}
         >
-          <span className="i-ri-close-line h-4 w-4 text-text-tertiary" aria-hidden="true" />
+          <span className="i-ri-close-line size-4 text-text-tertiary" aria-hidden="true" />
         </button>
       </div>
       <div className="relative flex grow flex-col">
@@ -222,7 +222,7 @@ const WorkflowPreview = () => {
                     toast.success(t('actionMsg.copySuccessfully', { ns: 'common' }))
                   }}
                 >
-                  <span className="i-ri-clipboard-line h-3.5 w-3.5" />
+                  <span className="i-ri-clipboard-line size-3.5" />
                   <div>{t('operation.copy', { ns: 'common' })}</div>
                 </Button>
               )}

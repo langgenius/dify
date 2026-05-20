@@ -26,20 +26,24 @@ _logger = logging.getLogger(__name__)
 # Loading the .env file if it exists
 def _load_env():
     current_file_path = pathlib.Path(__file__).absolute()
-    # Items later in the list have higher precedence.
     env_file_paths = [
-        os.getenv("DIFY_TEST_ENV_FILE", str(current_file_path.parent / _DEFUALT_TEST_ENV)),
-        os.getenv("DIFY_VDB_TEST_ENV_FILE", str(current_file_path.parent / _DEFAULT_VDB_TEST_ENV)),
+        pathlib.Path(os.getenv("DIFY_TEST_ENV_FILE", str(current_file_path.parent / _DEFUALT_TEST_ENV))),
     ]
+    vdb_env_path = pathlib.Path(
+        os.getenv("DIFY_VDB_TEST_ENV_FILE", str(current_file_path.parent / _DEFAULT_VDB_TEST_ENV))
+    )
+    if vdb_env_path.exists() or "DIFY_VDB_TEST_ENV_FILE" in os.environ:
+        env_file_paths.append(vdb_env_path)
 
-    for env_path_str in env_file_paths:
-        if not pathlib.Path(env_path_str).exists():
-            _logger.warning("specified configuration file %s not exist", env_path_str)
+    for env_path in env_file_paths:
+        if not env_path.exists():
+            _logger.warning("specified configuration file %s not exist", env_path)
+            continue
 
         from dotenv import load_dotenv
 
         # Set `override=True` to ensure values from `vdb.env` take priority over values from `.env`
-        load_dotenv(str(env_path_str), override=True)
+        load_dotenv(str(env_path), override=True)
 
 
 _load_env()

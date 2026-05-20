@@ -148,23 +148,23 @@ const Card = ({
             {
               pluginDetail
                 ? (
-                    <DataSourcePluginActions
-                      detail={pluginDetail}
-                      onUpdate={onPluginUpdate}
-                    />
-                  )
+                  <DataSourcePluginActions
+                    detail={pluginDetail}
+                    onUpdate={onPluginUpdate}
+                  />
+                )
                 : !!fallbackPluginVersion && (
-                    <Badge
-                      className="h-5 px-1.5"
-                      text={(
-                        <>
-                          <div>{fallbackPluginVersion}</div>
-                          <span className="ml-1 i-ri-arrow-left-right-line h-3 w-3 shrink-0 text-text-tertiary" />
-                        </>
-                      )}
-                      uppercase={false}
-                    />
-                  )
+                  <Badge
+                    className="h-5 px-1.5"
+                    text={(
+                      <>
+                        <div>{fallbackPluginVersion}</div>
+                        <span className="ml-1 i-ri-arrow-left-right-line h-3 w-3 shrink-0 text-text-tertiary" />
+                      </>
+                    )}
+                    uppercase={false}
+                  />
+                )
             }
           </div>
         </div>

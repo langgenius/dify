@@ -1,6 +1,7 @@
 'use client'
 
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
+import { CheckboxGroup } from '@langgenius/dify-ui/checkbox-group'
 import {
   Popover,
   PopoverContent,
@@ -28,12 +29,6 @@ const TagsFilter = ({
   const [searchText, setSearchText] = useState('')
   const { tags: options, tagsMap } = useTags()
   const filteredOptions = options.filter(option => option.label.toLowerCase().includes(searchText.toLowerCase()))
-  const handleCheck = (id: string) => {
-    if (tags.includes(id))
-      onTagsChange(tags.filter((tag: string) => tag !== id))
-    else
-      onTagsChange([...tags, id])
-  }
   const selectedTagsLength = tags.length
 
   return (
@@ -85,7 +80,12 @@ const TagsFilter = ({
               placeholder={t('searchTags', { ns: 'pluginTags' }) || ''}
             />
           </div>
-          <div className="max-h-[448px] overflow-y-auto p-1">
+          <CheckboxGroup
+            aria-label={t('allTags', { ns: 'pluginTags' })}
+            value={tags}
+            onValueChange={nextTags => onTagsChange(nextTags)}
+            className="max-h-[448px] overflow-y-auto p-1"
+          >
             {
               filteredOptions.map(option => (
                 <label
@@ -94,8 +94,7 @@ const TagsFilter = ({
                 >
                   <Checkbox
                     className="mr-1"
-                    checked={tags.includes(option.name)}
-                    onCheckedChange={() => handleCheck(option.name)}
+                    value={option.name}
                   />
                   <div className="px-1 system-sm-medium text-text-secondary">
                     {option.label}
@@ -103,7 +102,7 @@ const TagsFilter = ({
                 </label>
               ))
             }
-          </div>
+          </CheckboxGroup>
         </div>
       </PopoverContent>
     </Popover>

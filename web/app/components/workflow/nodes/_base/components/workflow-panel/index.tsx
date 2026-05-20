@@ -531,7 +531,7 @@ const BasePanel: FC<BasePanelProps> = ({
                         <button
                           type="button"
                           aria-label={singleRunActionLabel}
-                          className="mr-1 flex h-6 w-6 cursor-pointer items-center justify-center rounded-md border-0 bg-transparent p-0 hover:bg-state-base-hover focus-visible:ring-1 focus-visible:ring-components-input-border-hover focus-visible:outline-hidden"
+                          className="mr-1 flex size-6 cursor-pointer items-center justify-center rounded-md border-0 bg-transparent p-0 hover:bg-state-base-hover focus-visible:ring-1 focus-visible:ring-components-input-border-hover focus-visible:outline-hidden"
                           onClick={() => {
                             if (isSingleRunning)
                               handleStop()
@@ -541,8 +541,8 @@ const BasePanel: FC<BasePanelProps> = ({
                         >
                           {
                             isSingleRunning
-                              ? <Stop aria-hidden className="h-4 w-4 text-text-tertiary" />
-                              : <RiPlayLargeLine aria-hidden className="h-4 w-4 text-text-tertiary" />
+                              ? <Stop aria-hidden className="size-4 text-text-tertiary" />
+                              : <RiPlayLargeLine aria-hidden className="size-4 text-text-tertiary" />
                           }
                         </button>
                       )}
@@ -557,10 +557,10 @@ const BasePanel: FC<BasePanelProps> = ({
               <NodeActionsDropdown id={id} data={data} showHelpLink={false} />
               <div className="mx-3 h-3.5 w-px bg-divider-regular" />
               <div
-                className="flex h-6 w-6 cursor-pointer items-center justify-center"
+                className="flex size-6 cursor-pointer items-center justify-center"
                 onClick={() => handleNodeSelect(id, true)}
               >
-                <RiCloseLine className="h-4 w-4 text-text-tertiary" />
+                <RiCloseLine className="size-4 text-text-tertiary" />
               </div>
             </div>
           </div>

@@ -63,7 +63,7 @@ const Marketplace = ({
       <div className="sticky bottom-0 flex shrink-0 flex-col bg-background-default-subtle pt-2 pb-[14px]">
         {isMarketplaceArrowVisible && (
           <RiArrowUpDoubleLine
-            className="absolute top-2 left-1/2 z-10 h-4 w-4 -translate-x-1/2 cursor-pointer text-text-quaternary"
+            className="absolute top-2 left-1/2 z-10 size-4 -translate-x-1/2 cursor-pointer text-text-quaternary"
             onClick={showMarketplacePanel}
           />
         )}
@@ -107,7 +107,7 @@ const Marketplace = ({
               target="_blank"
             >
               {t('marketplace.difyMarketplace', { ns: 'plugin' })}
-              <RiArrowRightUpLine className="h-4 w-4" />
+              <RiArrowRightUpLine className="size-4" />
             </a>
           </div>
         </div>
@@ -115,7 +115,7 @@ const Marketplace = ({
       <div className="mt-[-14px] shrink-0 grow bg-background-default-subtle pb-2">
         {
           isLoading && page === 1 && (
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">
+            <div className="absolute top-1/2 left-1/2 -translate-1/2">
               <Loading />
             </div>
           )

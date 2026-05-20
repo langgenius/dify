@@ -268,7 +268,7 @@ const ProviderDetail = ({
                     </div>
                     <div className="flex gap-1">
                       <ActionButton aria-label={t('operation.close', { ns: 'common' })} onClick={onHide}>
-                        <RiCloseLine className="h-4 w-4" />
+                        <RiCloseLine className="size-4" />
                       </ActionButton>
                     </div>
                   </div>
@@ -282,7 +282,7 @@ const ProviderDetail = ({
                       className={cn('my-3 w-full shrink-0')}
                       onClick={() => setIsShowEditCustomCollectionModal(true)}
                     >
-                      <Settings01 className="mr-1 h-4 w-4 text-text-tertiary" />
+                      <Settings01 className="mr-1 size-4 text-text-tertiary" />
                       <div className="system-sm-medium text-text-secondary">{t('createTool.editAction', { ns: 'tools' })}</div>
                     </Button>
                   )}
@@ -294,7 +294,7 @@ const ProviderDetail = ({
                       >
                         <a className="flex items-center" href={`${basePath}/app/${(customCollection as WorkflowToolProviderResponse).workflow_app_id}/workflow`} rel="noreferrer" target="_blank">
                           <div className="system-sm-medium">{t('openInStudio', { ns: 'tools' })}</div>
-                          <LinkExternal02 className="ml-1 h-4 w-4" />
+                          <LinkExternal02 className="ml-1 size-4" />
                         </a>
                       </Button>
                       <Button

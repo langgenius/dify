@@ -1,6 +1,7 @@
 'use client'
 import type { App } from '@/models/explore'
 import type { TryAppSelection } from '@/types/try-app'
+import { PlusIcon } from '@heroicons/react/20/solid'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useSuspenseQuery } from '@tanstack/react-query'
@@ -93,7 +94,7 @@ const AppCard = ({
             {
               canCreate && (
                 <Button variant="primary" className="h-7" onClick={() => onCreate()}>
-                  <span className="mr-1 i-heroicons-plus-20-solid h-4 w-4" />
+                  <PlusIcon className="mr-1 size-4" />
                   <span className="text-xs">{t('appCard.addToWorkspace', { ns: 'explore' })}</span>
                 </Button>
               )

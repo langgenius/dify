@@ -56,7 +56,7 @@ const WrappedDatePicker = ({
           <RiCalendarLine
             aria-hidden="true"
             className={cn(
-              'block h-4 w-4 shrink-0',
+              'block size-4 shrink-0',
               hasValue ? 'text-text-quaternary group-hover:hidden' : 'text-text-tertiary',
             )}
           />
@@ -67,14 +67,14 @@ const WrappedDatePicker = ({
                 type="button"
                 aria-label={t('operation.clear', { ns: 'common' })}
                 className={cn(
-                  'hidden h-4 w-4 cursor-pointer rounded-full border-none bg-transparent p-0 text-text-quaternary group-hover:block hover:text-components-input-text-filled focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden',
+                  'hidden size-4 cursor-pointer rounded-full border-none bg-transparent p-0 text-text-quaternary group-hover:block hover:text-components-input-text-filled focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden',
                 )}
                 onClick={(event) => {
                   event.stopPropagation()
                   handleDateChange()
                 }}
               >
-                <RiCloseCircleFill className="h-4 w-4" aria-hidden="true" />
+                <RiCloseCircleFill className="size-4" aria-hidden="true" />
               </button>
             )
           : null}

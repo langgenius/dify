@@ -224,13 +224,13 @@ describe('DevelopMain', () => {
 
     it('should have horizontal padding on content', () => {
       const { container } = render(<DevelopMain appId="app-123" />)
-      const content = container.querySelector('.px-4')
+      const content = container.querySelector('.p-4')
       expect(content).toBeInTheDocument()
     })
 
     it('should have vertical padding on content', () => {
       const { container } = render(<DevelopMain appId="app-123" />)
-      const content = container.querySelector('.py-4')
+      const content = container.querySelector('.p-4')
       expect(content).toBeInTheDocument()
     })
 

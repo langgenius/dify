@@ -181,13 +181,13 @@ const NodeSelector: FC<NodeSelectorProps> = ({
     <PopoverTrigger
       aria-label={t('common.addBlock', { ns: 'workflow' })}
       className={cn(
-        'z-10 flex h-4 w-4 cursor-pointer items-center justify-center rounded-full border-0 bg-components-button-primary-bg p-0 text-text-primary-on-surface hover:bg-components-button-primary-bg-hover focus-visible:ring-1 focus-visible:ring-components-input-border-hover focus-visible:outline-hidden',
+        'z-10 flex size-4 cursor-pointer items-center justify-center rounded-full border-0 bg-components-button-primary-bg p-0 text-text-primary-on-surface hover:bg-components-button-primary-bg-hover focus-visible:ring-1 focus-visible:ring-components-input-border-hover focus-visible:outline-hidden',
         triggerClassName?.(open),
       )}
       style={triggerStyle}
       onClick={handleTrigger}
     >
-      <Plus02 aria-hidden className="h-2.5 w-2.5" />
+      <Plus02 aria-hidden className="size-2.5" />
     </PopoverTrigger>
   )
   const triggerElement = trigger?.(open)

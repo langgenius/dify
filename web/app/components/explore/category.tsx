@@ -5,6 +5,7 @@ import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import exploreI18n from '@/i18n/en-US/explore.json'
+import { ThumbsUp } from '../base/icons/src/vender/line/alertsAndFeedback'
 
 type ICategoryProps = {
   className?: string
@@ -60,9 +61,7 @@ const Category: FC<ICategoryProps> = ({
               onClick={() => onChange(item.name)}
             >
               {item.isAll && (
-                <span className="flex size-5 shrink-0 items-center justify-center">
-                  <span className="i-custom-vender-line-alertsAndFeedback-thumbs-up h-4 w-4" />
-                </span>
+                <ThumbsUp className="mr-1 size-3.5" />
               )}
               <span className="flex shrink-0 items-center justify-center gap-1 p-0.5">
                 {item.label}

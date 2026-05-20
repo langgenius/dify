@@ -19,7 +19,7 @@ const InputFieldButton = () => {
       className="flex gap-x-0.5"
       onClick={handleClick}
     >
-      <InputField className="h-4 w-4" />
+      <InputField className="size-4" />
       <span className="px-0.5">{t('inputField', { ns: 'datasetPipeline' })}</span>
     </Button>
   )

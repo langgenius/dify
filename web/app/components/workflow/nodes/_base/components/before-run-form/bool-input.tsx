@@ -27,7 +27,7 @@ const BoolInput: FC<Props> = ({
   return (
     <label className="flex h-6 items-center gap-2">
       <Checkbox
-        className="h-4! w-4!"
+        className="size-4!"
         checked={!!value}
         onCheckedChange={handleChange}
         disabled={readonly}

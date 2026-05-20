@@ -96,7 +96,7 @@ const EditMetadataBatchModal: FC<Props> = ({ datasetId, documentNum, list, onSav
           onHide()
       }}
     >
-      <DialogContent className="w-full !max-w-[640px] overflow-hidden! border-none text-left align-middle">
+      <DialogContent className="w-full max-w-[640px]! overflow-hidden! border-none text-left align-middle">
         <DialogCloseButton />
         <DialogTitle className="title-2xl-semi-bold text-text-primary">
           {t(`${i18nPrefix}.editMetadata`, { ns: 'dataset' })}

@@ -203,7 +203,7 @@ const ModelProviderPage = ({
       {!filteredConfiguredProviders?.length && (
         <div className="mb-2 rounded-[10px] bg-workflow-process-bg p-4">
           <div className="flex h-10 w-10 items-center justify-center rounded-[10px] border-[0.5px] border-components-card-border bg-components-card-bg shadow-lg backdrop-blur-sm">
-            <span className="i-ri-brain-line h-5 w-5 text-text-primary" />
+            <span className="i-ri-brain-line size-5 text-text-primary" />
           </div>
           <div className="mt-2 system-sm-medium text-text-secondary">{t('modelProvider.emptyProviderTitle', { ns: 'common' })}</div>
           <div className="mt-1 system-xs-regular text-text-tertiary">{t('modelProvider.emptyProviderTip', { ns: 'common' })}</div>

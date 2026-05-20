@@ -120,6 +120,7 @@ describe('CustomCreateCard', () => {
     it('should render add icon', () => {
       render(<CustomCreateCard onRefreshData={mockOnRefreshData} />)
 
+      // RiAddCircleFill icon should be present
       const iconContainer = document.querySelector('.size-10')
       expect(iconContainer).toBeInTheDocument()
     })

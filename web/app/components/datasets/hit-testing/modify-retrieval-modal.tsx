@@ -87,11 +87,11 @@ const ModifyRetrievalModal: FC<Props> = ({ indexMethod, value, isShow, onHide, o
         <div className="flex">
           <button
             type="button"
-            className="flex h-8 w-8 cursor-pointer items-center justify-center border-none bg-transparent p-0 focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
+            className="flex size-8 cursor-pointer items-center justify-center border-none bg-transparent p-0 focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
             aria-label={t('operation.close', { ns: 'common' })}
             onClick={onHide}
           >
-            <RiCloseLine className="h-4 w-4 text-text-tertiary" aria-hidden="true" />
+            <RiCloseLine className="size-4 text-text-tertiary" aria-hidden="true" />
           </button>
         </div>
       </div>

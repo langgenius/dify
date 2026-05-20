@@ -155,7 +155,7 @@ const DetailHeader = ({
           {/* Title Row */}
           <div className="flex h-5 items-center">
             <Title title={label[locale]} />
-            {verified && !isReadmeView && <Verified className="ml-0.5 h-4 w-4" text={t('marketplace.verifiedTip', { ns: 'plugin' })} />}
+            {verified && !isReadmeView && <Verified className="ml-0.5 size-4" text={t('marketplace.verifiedTip', { ns: 'plugin' })} />}
 
             {/* Version Picker */}
             {!!version && (
@@ -177,7 +177,7 @@ const DetailHeader = ({
                     text={(
                       <>
                         <div>{isFromGitHub ? (meta?.version ?? version ?? '') : version}</div>
-                        {isFromMarketplace && !isReadmeView && <span aria-hidden className="ml-1 i-ri-arrow-left-right-line h-3 w-3 text-text-tertiary" />}
+                        {isFromMarketplace && !isReadmeView && <span aria-hidden className="ml-1 i-ri-arrow-left-right-line size-3 text-text-tertiary" />}
                       </>
                     )}
                     hasRedCornerMark={hasNewVersion}
@@ -251,7 +251,7 @@ const DetailHeader = ({
               detailUrl={detailUrl}
             />
             <ActionButton onClick={onHide}>
-              <span aria-hidden className="i-ri-close-line h-4 w-4" />
+              <span aria-hidden className="i-ri-close-line size-4" />
             </ActionButton>
           </div>
         )}

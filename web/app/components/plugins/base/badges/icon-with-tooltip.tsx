@@ -20,7 +20,7 @@ const IconWithTooltip: FC<IconWithTooltipProps> = ({
   BadgeIconDark,
 }) => {
   const isDark = theme === Theme.dark
-  const iconClassName = cn('h-5 w-5', className)
+  const iconClassName = cn('size-5', className)
   const Icon = isDark ? BadgeIconDark : BadgeIconLight
   const icon = (
     <span

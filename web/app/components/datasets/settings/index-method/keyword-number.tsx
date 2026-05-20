@@ -38,7 +38,7 @@ const KeyWordNumber = ({
         </div>
         <Infotip
           aria-label={t('form.numberOfKeywords', { ns: 'datasetSettings' })}
-          className="h-3.5 w-3.5"
+          className="size-3.5"
         >
           {t('form.numberOfKeywords', { ns: 'datasetSettings' })}
         </Infotip>

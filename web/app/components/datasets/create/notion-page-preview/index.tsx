@@ -54,11 +54,11 @@ const NotionPagePreview = ({
           <span>{t('stepOne.pagePreview', { ns: 'datasetCreation' })}</span>
           <button
             type="button"
-            className="flex h-6 w-6 cursor-pointer items-center justify-center border-none bg-transparent p-0 focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
+            className="flex size-6 cursor-pointer items-center justify-center border-none bg-transparent p-0 focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
             aria-label={t('operation.close', { ns: 'common' })}
             onClick={hidePreview}
           >
-            <XMarkIcon className="h-4 w-4" aria-hidden="true"></XMarkIcon>
+            <XMarkIcon className="size-4" aria-hidden="true"></XMarkIcon>
           </button>
         </div>
         <div className={cn(s.fileName, 'system-xs-medium')}>

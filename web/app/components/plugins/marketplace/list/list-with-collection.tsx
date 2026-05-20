@@ -52,7 +52,7 @@ const ListWithCollection = ({
                     onClick={() => handleMoreClick(collection.search_params)}
                   >
                     {t('marketplace.viewMore', { ns: 'plugin' })}
-                    <RiArrowRightSLine className="h-4 w-4" />
+                    <RiArrowRightSLine className="size-4" />
                   </div>
                 )
               }

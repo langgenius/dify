@@ -135,7 +135,7 @@ const MCPModalContent: FC<MCPModalContentProps> = ({
         className="absolute top-5 right-5 z-10 cursor-pointer border-none bg-transparent p-1.5 focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
         onClick={onHide}
       >
-        <RiCloseLine className="h-5 w-5 text-text-tertiary" aria-hidden="true" />
+        <RiCloseLine className="size-5 text-text-tertiary" aria-hidden="true" />
       </button>
       <div className="relative pb-3 title-2xl-semi-bold text-xl text-text-primary">
         {!isCreate ? t('mcp.modal.editTitle', { ns: 'tools' }) : t('mcp.modal.title', { ns: 'tools' })}
@@ -178,7 +178,7 @@ const MCPModalContent: FC<MCPModalContentProps> = ({
               icon={state.appIcon.type === 'emoji' ? state.appIcon.icon : state.appIcon.fileId}
               background={state.appIcon.type === 'emoji' ? state.appIcon.background : undefined}
               imageUrl={state.appIcon.type === 'image' ? state.appIcon.url : undefined}
-              innerIcon={shouldUseMcpIconForAppIcon(state.appIcon.type, state.appIcon.type === 'emoji' ? state.appIcon.icon : '') ? <Mcp className="h-8 w-8 text-text-primary-on-surface" /> : undefined}
+              innerIcon={shouldUseMcpIconForAppIcon(state.appIcon.type, state.appIcon.type === 'emoji' ? state.appIcon.icon : '') ? <Mcp className="size-8 text-text-primary-on-surface" /> : undefined}
               size="xxl"
               className="relative cursor-pointer rounded-2xl"
               coverElement={

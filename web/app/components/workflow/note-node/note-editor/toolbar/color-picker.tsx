@@ -65,13 +65,13 @@ const ColorPicker = ({
           <button
             type="button"
             className={cn(
-              'flex h-8 w-8 cursor-pointer items-center justify-center rounded-md hover:bg-black/5',
+              'flex size-8 cursor-pointer items-center justify-center rounded-md hover:bg-black/5',
               open && 'bg-black/5',
             )}
           >
             <div
               className={cn(
-                'h-4 w-4 rounded-full border border-black/5',
+                'size-4 rounded-full border border-black/5',
                 THEME_MAP[theme]!.title,
               )}
             >
@@ -89,7 +89,7 @@ const ColorPicker = ({
             COLOR_LIST.map(color => (
               <div
                 key={color.key}
-                className="group relative flex h-8 w-8 cursor-pointer items-center justify-center rounded-md"
+                className="group relative flex size-8 cursor-pointer items-center justify-center rounded-md"
                 onClick={(e) => {
                   e.stopPropagation()
                   onThemeChange(color.key)
@@ -105,7 +105,7 @@ const ColorPicker = ({
                 </div>
                 <div
                   className={cn(
-                    'absolute top-1/2 left-1/2 h-4 w-4 -translate-x-1/2 -translate-y-1/2 rounded-full border border-black/5',
+                    'absolute top-1/2 left-1/2 size-4 -translate-1/2 rounded-full border border-black/5',
                     color.inner,
                   )}
                 >

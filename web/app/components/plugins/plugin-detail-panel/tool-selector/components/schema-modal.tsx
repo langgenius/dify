@@ -40,7 +40,7 @@ const SchemaModal: FC<Props> = ({
             <button
               type="button"
               aria-label={t('operation.close', { ns: 'common' })}
-              className="absolute top-5 right-5 flex h-8 w-8 items-center justify-center p-1.5"
+              className="absolute top-5 right-5 flex size-8 items-center justify-center p-1.5"
               onClick={onClose}
             >
               <span className="i-ri-close-line h-[18px] w-[18px] text-text-tertiary" />

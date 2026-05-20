@@ -213,8 +213,8 @@ function Operation({
                       onClick={() => handleFeedback(null, undefined, 'user')}
                     >
                       {displayUserFeedback?.rating === 'like'
-                        ? <span aria-hidden="true" className="i-ri-thumb-up-line h-4 w-4" />
-                        : <span aria-hidden="true" className="i-ri-thumb-down-line h-4 w-4" />}
+                        ? <span aria-hidden="true" className="i-ri-thumb-up-line size-4" />
+                        : <span aria-hidden="true" className="i-ri-thumb-down-line size-4" />}
                     </ActionButton>
                   </FeedbackTooltip>
                 )
@@ -225,14 +225,14 @@ function Operation({
                       state={displayUserFeedback?.rating === 'like' ? ActionButtonState.Active : ActionButtonState.Default}
                       onClick={() => handleLikeClick('user')}
                     >
-                      <span aria-hidden="true" className="i-ri-thumb-up-line h-4 w-4" />
+                      <span aria-hidden="true" className="i-ri-thumb-up-line size-4" />
                     </ActionButton>
                     <ActionButton
                       aria-label={`${userFeedbackLabel}: ${dislikeLabel}`}
                       state={displayUserFeedback?.rating === 'dislike' ? ActionButtonState.Destructive : ActionButtonState.Default}
                       onClick={() => handleDislikeClick('user')}
                     >
-                      <span aria-hidden="true" className="i-ri-thumb-down-line h-4 w-4" />
+                      <span aria-hidden="true" className="i-ri-thumb-down-line size-4" />
                     </ActionButton>
                   </>
                 )}
@@ -251,12 +251,12 @@ function Operation({
                 {displayUserFeedback.rating === 'like'
                   ? (
                       <ActionButton aria-label={`${userFeedbackLabel}: ${likeLabel}`} state={ActionButtonState.Active}>
-                        <span aria-hidden="true" className="i-ri-thumb-up-line h-4 w-4" />
+                        <span aria-hidden="true" className="i-ri-thumb-up-line size-4" />
                       </ActionButton>
                     )
                   : (
                       <ActionButton aria-label={`${userFeedbackLabel}: ${dislikeLabel}`} state={ActionButtonState.Destructive}>
-                        <span aria-hidden="true" className="i-ri-thumb-down-line h-4 w-4" />
+                        <span aria-hidden="true" className="i-ri-thumb-down-line size-4" />
                       </ActionButton>
                     )}
               </FeedbackTooltip>
@@ -274,8 +274,8 @@ function Operation({
                       onClick={() => handleFeedback(null, undefined, 'admin')}
                     >
                       {adminLocalFeedback?.rating === 'like'
-                        ? <span aria-hidden="true" className="i-ri-thumb-up-line h-4 w-4" />
-                        : <span aria-hidden="true" className="i-ri-thumb-down-line h-4 w-4" />}
+                        ? <span aria-hidden="true" className="i-ri-thumb-up-line size-4" />
+                        : <span aria-hidden="true" className="i-ri-thumb-down-line size-4" />}
                     </ActionButton>
                   </FeedbackTooltip>
                 )
@@ -289,7 +289,7 @@ function Operation({
                         state={adminLocalFeedback?.rating === 'like' ? ActionButtonState.Active : ActionButtonState.Default}
                         onClick={() => handleLikeClick('admin')}
                       >
-                        <span aria-hidden="true" className="i-ri-thumb-up-line h-4 w-4" />
+                        <span aria-hidden="true" className="i-ri-thumb-up-line size-4" />
                       </ActionButton>
                     </FeedbackTooltip>
                     <FeedbackTooltip
@@ -300,7 +300,7 @@ function Operation({
                         state={adminLocalFeedback?.rating === 'dislike' ? ActionButtonState.Destructive : ActionButtonState.Default}
                         onClick={() => handleDislikeClick('admin')}
                       >
-                        <span aria-hidden="true" className="i-ri-thumb-down-line h-4 w-4" />
+                        <span aria-hidden="true" className="i-ri-thumb-down-line size-4" />
                       </ActionButton>
                     </FeedbackTooltip>
                   </>
@@ -329,12 +329,12 @@ function Operation({
                   toast.success(t('actionMsg.copySuccessfully', { ns: 'common' }))
                 }}
               >
-                <span aria-hidden="true" className="i-ri-clipboard-line h-4 w-4" />
+                <span aria-hidden="true" className="i-ri-clipboard-line size-4" />
               </ActionButton>
             )}
             {!noChatInput && (
               <ActionButton aria-label={regenerateLabel} onClick={() => onRegenerate?.(item)}>
-                <span aria-hidden="true" className="i-ri-reset-left-line h-4 w-4" />
+                <span aria-hidden="true" className="i-ri-reset-left-line size-4" />
               </ActionButton>
             )}
             {config?.supportAnnotation && config.annotation_reply?.enabled && !humanInputFormDataList?.length && (
@@ -384,7 +384,7 @@ function Operation({
                 <DialogDescription className="mt-1 system-xs-regular text-text-tertiary">
                   {t('feedback.subtitle', { ns: 'common' }) || 'Please tell us what went wrong with this response'}
                 </DialogDescription>
-                <DialogCloseButton className="top-5 right-5 h-8 w-8 rounded-lg" />
+                <DialogCloseButton className="top-5 right-5 size-8 rounded-lg" />
               </div>
               <div className="min-h-0 flex-1 overflow-y-auto px-6 py-3">
                 <label htmlFor={feedbackTextareaId} className="mb-2 block system-sm-semibold text-text-secondary">

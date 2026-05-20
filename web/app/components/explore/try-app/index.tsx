@@ -55,11 +55,11 @@ const TryApp: FC<Props> = ({
           </div>
         ) : isError ? (
           <div className="flex h-full items-center justify-center">
-            <AppUnavailable className="h-auto w-auto" isUnknownReason={!error} unknownReason={error instanceof Error ? error.message : undefined} />
+            <AppUnavailable className="size-auto" isUnknownReason={!error} unknownReason={error instanceof Error ? error.message : undefined} />
           </div>
         ) : !appDetail ? (
           <div className="flex h-full items-center justify-center">
-            <AppUnavailable className="h-auto w-auto" isUnknownReason />
+            <AppUnavailable className="size-auto" isUnknownReason />
           </div>
         ) : (
           <div className="flex h-full flex-col">

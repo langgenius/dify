@@ -196,7 +196,7 @@ const EmailChangeModal = ({ onClose, email }: Props) => {
     <Dialog open onOpenChange={open => !open && onClose()}>
       <DialogContent className="w-[420px]! p-6!">
         <div className="absolute top-5 right-5 cursor-pointer p-1.5" onClick={onClose}>
-          <RiCloseLine className="h-5 w-5 text-text-tertiary" />
+          <RiCloseLine className="size-5 text-text-tertiary" />
         </div>
         {step === STEP.start && (
           <>

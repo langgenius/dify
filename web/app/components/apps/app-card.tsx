@@ -23,6 +23,11 @@ import {
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
 import { toast } from '@langgenius/dify-ui/toast'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@langgenius/dify-ui/tooltip'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import * as React from 'react'
 import { useCallback, useId, useMemo, useState } from 'react'
@@ -36,6 +41,7 @@ import { useAppContext } from '@/context/app-context'
 import { useProviderContext } from '@/context/provider-context'
 import { AppCardTags } from '@/features/tag-management/components/app-card-tags'
 import { useAsyncWindowOpen } from '@/hooks/use-async-window-open'
+import { AccessMode } from '@/models/access-control'
 import dynamic from '@/next/dynamic'
 import { useRouter } from '@/next/navigation'
 import { useGetUserCanAccessApp } from '@/service/access-control'
@@ -144,7 +150,7 @@ const AppCardOperationsMenu: React.FC<AppCardOperationsMenuProps> = ({
         <>
           <DropdownMenuSeparator />
           <DropdownMenuItem className="gap-2 px-3" onClick={e => handleMenuAction(e, onSwitch)}>
-            <span className="text-sm leading-5 text-text-secondary">{t('switch', { ns: 'app' })}</span>
+            <span className="text-sm/5 text-text-secondary">{t('switch', { ns: 'app' })}</span>
           </DropdownMenuItem>
         </>
       )}
@@ -160,7 +166,7 @@ const AppCardOperationsMenu: React.FC<AppCardOperationsMenuProps> = ({
       {shouldShowAccessControlOption && (
         <>
           <DropdownMenuItem className="gap-2 px-3" onClick={e => handleMenuAction(e, onAccessControl)}>
-            <span className="text-sm leading-5 text-text-secondary">{t('accessControl', { ns: 'app' })}</span>
+            <span className="text-sm/5 text-text-secondary">{t('accessControl', { ns: 'app' })}</span>
           </DropdownMenuItem>
           <DropdownMenuSeparator />
         </>
@@ -447,7 +453,7 @@ const AppCard = ({ app, onlineUsers = [], onRefresh, onOpenTagManagement = () =>
               background={app.icon_background}
               imageUrl={app.icon_url}
             />
-            <AppTypeIcon type={app.mode} wrapperClassName="absolute -bottom-0.5 -right-0.5 w-4 h-4 shadow-sm" className="h-3 w-3" />
+            <AppTypeIcon type={app.mode} wrapperClassName="absolute -bottom-0.5 -right-0.5 w-4 h-4 shadow-sm" className="size-3" />
           </div>
           <div className="flex w-0 grow flex-col gap-1 py-px">
             <div className="flex items-center text-sm/5 font-semibold text-text-secondary">
@@ -455,12 +461,49 @@ const AppCard = ({ app, onlineUsers = [], onRefresh, onOpenTagManagement = () =>
             </div>
             <div className="truncate system-2xs-medium-uppercase text-text-tertiary" title={appModeLabel}>{appModeLabel}</div>
           </div>
-          {onlinePresenceUsers.length > 0 && (
-            <div className="ml-3 flex h-10 shrink-0 flex-col items-end">
+          <div className="ml-3 flex h-10 shrink-0 flex-col items-end justify-between py-px">
+            {onlinePresenceUsers.length > 0 && (
               <UserAvatarList users={onlinePresenceUsers} size="xxs" maxVisible={3} className="justify-end" />
+            )}
+            <div className="flex size-5 items-center justify-center">
+              {app.access_mode === AccessMode.PUBLIC && (
+                <Tooltip>
+                  <TooltipTrigger
+                    aria-label={t('accessItemsDescription.anyone', { ns: 'app' })}
+                    render={<span title={t('accessItemsDescription.anyone', { ns: 'app' })} className="i-ri-global-line size-4 text-text-quaternary" />}
+                  />
+                  <TooltipContent>{t('accessItemsDescription.anyone', { ns: 'app' })}</TooltipContent>
+                </Tooltip>
+              )}
+              {app.access_mode === AccessMode.SPECIFIC_GROUPS_MEMBERS && (
+                <Tooltip>
+                  <TooltipTrigger
+                    aria-label={t('accessItemsDescription.specific', { ns: 'app' })}
+                    render={<span title={t('accessItemsDescription.specific', { ns: 'app' })} className="i-ri-lock-line size-4 text-text-quaternary" />}
+                  />
+                  <TooltipContent>{t('accessItemsDescription.specific', { ns: 'app' })}</TooltipContent>
+                </Tooltip>
+              )}
+              {app.access_mode === AccessMode.ORGANIZATION && (
+                <Tooltip>
+                  <TooltipTrigger
+                    aria-label={t('accessItemsDescription.organization', { ns: 'app' })}
+                    render={<span title={t('accessItemsDescription.organization', { ns: 'app' })} className="i-ri-building-line size-4 text-text-quaternary" />}
+                  />
+                  <TooltipContent>{t('accessItemsDescription.organization', { ns: 'app' })}</TooltipContent>
+                </Tooltip>
+              )}
+              {app.access_mode === AccessMode.EXTERNAL_MEMBERS && (
+                <Tooltip>
+                  <TooltipTrigger
+                    aria-label={t('accessItemsDescription.external', { ns: 'app' })}
+                    render={<span title={t('accessItemsDescription.external', { ns: 'app' })} className="i-ri-verified-badge-line size-4 text-text-quaternary" />}
+                  />
+                  <TooltipContent>{t('accessItemsDescription.external', { ns: 'app' })}</TooltipContent>
+                </Tooltip>
+              )}
             </div>
-          )}
-
+          </div>
         </div>
         <div className="shrink-0 px-4 py-1 system-xs-regular text-text-tertiary">
           <div
@@ -508,6 +551,7 @@ const AppCard = ({ app, onlineUsers = [], onRefresh, onOpenTagManagement = () =>
               <DropdownMenuTrigger
                 aria-label={t('operation.more', { ns: 'common' })}
                 className={cn(
+                  isOperationsMenuOpen ? 'bg-state-base-hover shadow-none' : 'bg-transparent',
                   'flex items-center overflow-hidden rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 backdrop-blur-xs hover:bg-components-actionbar-bg focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:ring-inset',
                   isOperationsMenuOpen ? 'shadow-none' : 'shadow-lg',
                 )}

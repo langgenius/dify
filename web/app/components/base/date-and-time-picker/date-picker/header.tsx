@@ -21,7 +21,7 @@ const Header: FC<DatePickerHeaderProps> = ({
           className="flex items-center gap-x-0.5 rounded-lg px-2 py-1.5 system-md-semibold text-text-primary hover:bg-state-base-hover"
         >
           <span>{`${months[currentDate.month()]} ${currentDate.year()}`}</span>
-          <RiArrowDownSLine className="h-4 w-4 text-text-tertiary" />
+          <RiArrowDownSLine className="size-4 text-text-tertiary" />
         </button>
       </div>
       <button

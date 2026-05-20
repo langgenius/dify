@@ -16,7 +16,7 @@ const ManageInputField = ({
         className="flex h-8 grow cursor-pointer items-center px-3"
         onClick={onManage}
       >
-        <RiAddLine className="mr-1 h-4 w-4 text-text-tertiary" />
+        <RiAddLine className="mr-1 size-4 text-text-tertiary" />
         <div
           className="truncate system-xs-medium text-text-tertiary"
           title="Create user input field"

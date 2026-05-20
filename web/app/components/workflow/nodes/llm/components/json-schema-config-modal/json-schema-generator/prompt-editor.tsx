@@ -47,10 +47,10 @@ const PromptEditor: FC<PromptEditorProps> = ({
       <button
         type="button"
         aria-label={t('operation.close', { ns: 'common' })}
-        className="absolute top-2.5 right-2.5 flex h-8 w-8 items-center justify-center border-none bg-transparent p-0"
+        className="absolute top-2.5 right-2.5 flex size-8 items-center justify-center border-none bg-transparent p-0"
         onClick={onClose}
       >
-        <RiCloseLine className="h-4 w-4 text-text-tertiary" aria-hidden="true" />
+        <RiCloseLine className="size-4 text-text-tertiary" aria-hidden="true" />
       </button>
       {/* Title */}
       <div className="flex flex-col gap-y-[0.5px] px-3 pt-3.5 pb-1">
@@ -82,7 +82,7 @@ const PromptEditor: FC<PromptEditorProps> = ({
           <span>{t('nodes.llm.jsonSchema.instruction', { ns: 'workflow' })}</span>
           <Infotip
             aria-label={t('nodes.llm.jsonSchema.promptTooltip', { ns: 'workflow' })}
-            className="h-3.5 w-3.5"
+            className="size-3.5"
             iconClassName="h-full w-full"
           >
             {t('nodes.llm.jsonSchema.promptTooltip', { ns: 'workflow' })}
@@ -107,7 +107,7 @@ const PromptEditor: FC<PromptEditorProps> = ({
           className="flex items-center gap-x-0.5"
           onClick={onGenerate}
         >
-          <RiSparklingFill className="h-4 w-4" />
+          <RiSparklingFill className="size-4" />
           <span>{t('nodes.llm.jsonSchema.generate', { ns: 'workflow' })}</span>
         </Button>
       </div>

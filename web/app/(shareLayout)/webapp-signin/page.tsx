@@ -63,7 +63,7 @@ const WebSSOForm: FC = () => {
 
   return (
     <div className="flex h-full flex-col items-center justify-center gap-y-4">
-      <AppUnavailable className="h-auto w-auto" isUnknownReason={true} />
+      <AppUnavailable className="size-auto" isUnknownReason={true} />
       <span className="cursor-pointer system-sm-regular text-text-tertiary" onClick={backToHome}>{t('login.backToHome', { ns: 'share' })}</span>
     </div>
   )

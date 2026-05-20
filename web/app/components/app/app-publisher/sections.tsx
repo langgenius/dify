@@ -85,7 +85,7 @@ export const AccessModeDisplay = ({ mode }: { mode?: keyof typeof ACCESS_MODE_MA
 
   return (
     <>
-      <span className={`${icon} h-4 w-4 shrink-0 text-text-secondary`} />
+      <span className={`${icon} size-4 shrink-0 text-text-secondary`} />
       <div className="grow truncate">
         <span className="system-sm-medium text-text-secondary">{t(`accessControlDialog.accessItems.${label}`, { ns: 'app' })}</span>
       </div>
@@ -170,13 +170,13 @@ export const PublisherSummarySection = ({
               {startNodeLimitExceeded && (
                 <div className="mt-3 flex flex-col items-stretch">
                   <p
-                    className="text-sm leading-5 font-semibold text-transparent"
+                    className="text-sm/5 font-semibold text-transparent"
                     style={upgradeHighlightStyle}
                   >
                     <span className="block">{t('publishLimit.startNodeTitlePrefix', { ns: 'workflow' })}</span>
                     <span className="block">{t('publishLimit.startNodeTitleSuffix', { ns: 'workflow' })}</span>
                   </p>
-                  <p className="mt-1 text-xs leading-4 text-text-secondary">
+                  <p className="mt-1 text-xs/4 text-text-secondary">
                     {t('publishLimit.startNodeDesc', { ns: 'workflow' })}
                   </p>
                   <UpgradeBtn
@@ -219,8 +219,8 @@ export const PublisherAccessSection = ({
               <AccessModeDisplay mode={accessMode} />
             </div>
             {!isAppAccessSet && <p className="shrink-0 system-xs-regular text-text-tertiary">{t('publishApp.notSet', { ns: 'app' })}</p>}
-            <div className="flex h-4 w-4 shrink-0 items-center justify-center">
-              <span className="i-ri-arrow-right-s-line h-4 w-4 text-text-quaternary" />
+            <div className="flex size-4 shrink-0 items-center justify-center">
+              <span className="i-ri-arrow-right-s-line size-4 text-text-quaternary" />
             </div>
           </div>
           {!isAppAccessSet && <p className="mt-1 system-xs-regular text-text-warning">{t('publishApp.notSetDesc', { ns: 'app' })}</p>}
@@ -288,11 +288,11 @@ export const PublisherActionsSection = ({
           className="flex-1"
           disabled={disabledFunctionButton}
           link={appURL}
-          icon={<span className="i-ri-play-circle-line h-4 w-4" />}
+          icon={<span className="i-ri-play-circle-line size-4" />}
           actionButton={showRunConfig
             ? {
                 ariaLabel: t('operation.config', { ns: 'common' }),
-                icon: <RiSettings2Line className="h-4 w-4" />,
+                icon: <RiSettings2Line className="size-4" />,
                 onClick: () => handleOpenRunConfig?.(appURL),
               }
             : undefined}
@@ -307,11 +307,11 @@ export const PublisherActionsSection = ({
                 className="flex-1"
                 disabled={disabledFunctionButton}
                 link={`${appURL}${appURL.includes('?') ? '&' : '?'}mode=batch`}
-                icon={<span className="i-ri-play-list-2-line h-4 w-4" />}
+                icon={<span className="i-ri-play-list-2-line size-4" />}
                 actionButton={showBatchRunConfig
                   ? {
                       ariaLabel: t('operation.config', { ns: 'common' }),
-                      icon: <RiSettings2Line className="h-4 w-4" />,
+                      icon: <RiSettings2Line className="size-4" />,
                       onClick: () => handleOpenRunConfig?.(`${appURL}${appURL.includes('?') ? '&' : '?'}mode=batch`),
                     }
                   : undefined}
@@ -324,7 +324,7 @@ export const PublisherActionsSection = ({
             <SuggestedAction
               onClick={handleEmbed}
               disabled={!publishedAt}
-              icon={<span className="i-custom-vender-line-development-code-browser h-4 w-4" />}
+              icon={<span className="i-custom-vender-line-development-code-browser size-4" />}
             >
               {t('common.embedIntoSite', { ns: 'workflow' })}
             </SuggestedAction>
@@ -337,7 +337,7 @@ export const PublisherActionsSection = ({
               handleOpenInExplore()
           }}
           disabled={disabledFunctionButton}
-          icon={<span className="i-ri-planet-line h-4 w-4" />}
+          icon={<span className="i-ri-planet-line size-4" />}
         >
           {t('common.openInExplore', { ns: 'workflow' })}
         </SuggestedAction>
@@ -350,7 +350,7 @@ export const PublisherActionsSection = ({
           className="flex-1"
           disabled={!publishedAt || missingStartNode}
           link="./develop"
-          icon={<span className="i-ri-terminal-box-line h-4 w-4" />}
+          icon={<span className="i-ri-terminal-box-line size-4" />}
         >
           {t('common.accessAPIReference', { ns: 'workflow' })}
         </SuggestedAction>

@@ -42,7 +42,7 @@ const OperationDropdown: FC<Props> = ({
       <DropdownMenuTrigger
         render={<ActionButton size={inCard ? 'l' : 'm'} className={cn(open && 'bg-state-base-hover')} />}
       >
-        <RiMoreFill className={cn('h-4 w-4', inCard && 'h-5 w-5')} />
+        <RiMoreFill className={cn('size-4', inCard && 'size-5')} />
       </DropdownMenuTrigger>
       <DropdownMenuContent
         placement="bottom-end"
@@ -50,14 +50,14 @@ const OperationDropdown: FC<Props> = ({
         popupClassName="w-[160px]"
       >
         <DropdownMenuItem onClick={onEdit}>
-          <RiEditLine className="h-4 w-4 shrink-0 text-text-tertiary" />
+          <RiEditLine className="size-4 shrink-0 text-text-tertiary" />
           <div className="ml-2 system-md-regular text-text-secondary">{t('mcp.operation.edit', { ns: 'tools' })}</div>
         </DropdownMenuItem>
         <DropdownMenuItem
           className="data-highlighted:bg-state-destructive-hover data-highlighted:text-text-destructive"
           onClick={onRemove}
         >
-          <RiDeleteBinLine className="h-4 w-4 shrink-0 text-inherit" />
+          <RiDeleteBinLine className="size-4 shrink-0 text-inherit" />
           <div className="ml-2 system-md-regular text-inherit">{t('mcp.operation.remove', { ns: 'tools' })}</div>
         </DropdownMenuItem>
       </DropdownMenuContent>
