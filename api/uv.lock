@@ -52,7 +52,7 @@ members = [
 ]
 overrides = [
     { name = "litellm", specifier = ">=1.83.10,<2.0.0" },
-    { name = "pyarrow", specifier = ">=18.0.0,<24.0.0" },
+    { name = "pyarrow", specifier = ">=23.0.1,<24.0.0" },
 ]
 
 [[package]]
@@ -1291,9 +1291,9 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "fastapi", marker = "extra == 'server'", specifier = ">=0.136.0,<1.0.0" },
+    { name = "fastapi", marker = "extra == 'server'", specifier = ">=0.136.0,<0.137.0" },
     { name = "graphon", marker = "extra == 'server'", specifier = "~=0.2.2" },
-    { name = "httpx", specifier = ">=0.28.1,<1.0.0" },
+    { name = "httpx", specifier = ">=0.28.1,<0.29.0" },
     { name = "jsonschema", marker = "extra == 'server'", specifier = ">=4.23.0,<5.0.0" },
     { name = "pydantic", specifier = ">=2.12.5,<2.13" },
     { name = "pydantic-ai-slim", specifier = ">=1.85.1,<2.0.0" },
@@ -1301,7 +1301,7 @@ requires-dist = [
     { name = "pydantic-settings", marker = "extra == 'server'", specifier = ">=2.12.0,<3.0.0" },
     { name = "redis", marker = "extra == 'server'", specifier = ">=5,<8.0.0" },
     { name = "typing-extensions", specifier = ">=4.12.2,<5.0.0" },
-    { name = "uvicorn", extras = ["standard"], marker = "extra == 'server'", specifier = ">=0.38.0,<1.0.0" },
+    { name = "uvicorn", extras = ["standard"], marker = "extra == 'server'", specifier = ">=0.46.0,<0.47.0" },
 ]
 provides-extras = ["server"]
 
@@ -1609,7 +1609,7 @@ vdb-xinference = [
 
 [package.metadata]
 requires-dist = [
-    { name = "aliyun-log-python-sdk", specifier = ">=0.9.44,<1.0.0" },
+    { name = "aliyun-log-python-sdk", specifier = ">=0.9.44,<0.10.0" },
     { name = "azure-identity", specifier = ">=1.25.3,<2.0.0" },
     { name = "bleach", specifier = ">=6.3.0,<7.0.0" },
     { name = "boto3", specifier = ">=1.43.10,<2.0.0" },
@@ -1620,31 +1620,31 @@ requires-dist = [
     { name = "flask", specifier = ">=3.1.3,<4.0.0" },
     { name = "flask-compress", specifier = ">=1.24,<2.0.0" },
     { name = "flask-cors", specifier = ">=6.0.2,<7.0.0" },
-    { name = "flask-login", specifier = ">=0.6.3,<1.0.0" },
+    { name = "flask-login", specifier = ">=0.6.3,<0.7.0" },
     { name = "flask-migrate", specifier = ">=4.1.0,<5.0.0" },
     { name = "flask-orjson", specifier = ">=2.0.0,<3.0.0" },
     { name = "flask-restx", specifier = ">=1.3.2,<2.0.0" },
-    { name = "gevent", specifier = ">=26.4.0,<27.0.0" },
-    { name = "gevent-websocket", specifier = ">=0.10.1,<1.0.0" },
+    { name = "gevent", specifier = ">=26.4.0,<26.5.0" },
+    { name = "gevent-websocket", specifier = ">=0.10.1,<0.11.0" },
     { name = "gmpy2", specifier = ">=2.3.0,<3.0.0" },
     { name = "google-api-python-client", specifier = ">=2.196.0,<3.0.0" },
     { name = "google-cloud-aiplatform", specifier = ">=1.151.0,<2.0.0" },
     { name = "graphon", specifier = "~=0.4.0" },
     { name = "gunicorn", specifier = ">=26.0.0,<27.0.0" },
-    { name = "httpx", extras = ["socks"], specifier = ">=0.28.1,<1.0.0" },
+    { name = "httpx", extras = ["socks"], specifier = ">=0.28.1,<0.29.0" },
     { name = "httpx-sse", specifier = "~=0.4.0" },
     { name = "json-repair", specifier = "~=0.59.4" },
-    { name = "opentelemetry-distro", specifier = ">=0.62b1,<1.0.0" },
-    { name = "opentelemetry-instrumentation-celery", specifier = ">=0.62b0,<1.0.0" },
-    { name = "opentelemetry-instrumentation-flask", specifier = ">=0.62b0,<1.0.0" },
-    { name = "opentelemetry-instrumentation-httpx", specifier = ">=0.62b0,<1.0.0" },
-    { name = "opentelemetry-instrumentation-redis", specifier = ">=0.62b0,<1.0.0" },
-    { name = "opentelemetry-instrumentation-sqlalchemy", specifier = ">=0.62b0,<1.0.0" },
+    { name = "opentelemetry-distro", specifier = ">=0.62b1,<0.63.0" },
+    { name = "opentelemetry-instrumentation-celery", specifier = ">=0.62b0,<0.63.0" },
+    { name = "opentelemetry-instrumentation-flask", specifier = ">=0.62b0,<0.63.0" },
+    { name = "opentelemetry-instrumentation-httpx", specifier = ">=0.62b0,<0.63.0" },
+    { name = "opentelemetry-instrumentation-redis", specifier = ">=0.62b0,<0.63.0" },
+    { name = "opentelemetry-instrumentation-sqlalchemy", specifier = ">=0.62b0,<0.63.0" },
     { name = "opentelemetry-propagator-b3", specifier = ">=1.41.1,<2.0.0" },
     { name = "psycogreen", specifier = ">=1.0.2,<2.0.0" },
     { name = "psycopg2-binary", specifier = ">=2.9.12,<3.0.0" },
     { name = "python-socketio", specifier = ">=5.13.0,<6.0.0" },
-    { name = "readabilipy", specifier = ">=0.3.0,<1.0.0" },
+    { name = "readabilipy", specifier = ">=0.3.0,<0.4.0" },
     { name = "redis", extras = ["hiredis"], specifier = ">=7.4.0,<8.0.0" },
     { name = "resend", specifier = ">=2.27.0,<3.0.0" },
     { name = "sendgrid", specifier = ">=6.12.5,<7.0.0" },
@@ -1717,11 +1717,11 @@ dev = [
 ]
 storage = [
     { name = "azure-storage-blob", specifier = ">=12.29.0,<13.0.0" },
-    { name = "bce-python-sdk", specifier = ">=0.9.71,<1.0.0" },
+    { name = "bce-python-sdk", specifier = ">=0.9.71,<0.10.0" },
     { name = "cos-python-sdk-v5", specifier = ">=1.9.43,<2.0.0" },
     { name = "esdk-obs-python", specifier = ">=3.22.2,<4.0.0" },
     { name = "google-cloud-storage", specifier = ">=3.10.1,<4.0.0" },
-    { name = "opendal", specifier = ">=0.46.0,<1.0.0" },
+    { name = "opendal", specifier = ">=0.46.0,<0.47.0" },
     { name = "oss2", specifier = ">=2.19.1,<3.0.0" },
     { name = "supabase", specifier = ">=2.30.0,<3.0.0" },
     { name = "tos", specifier = ">=2.9.0,<3.0.0" },
@@ -1862,7 +1862,7 @@ dependencies = [
 ]
 
 [package.metadata]
-requires-dist = [{ name = "langsmith", specifier = ">=0.8.0,<1.0.0" }]
+requires-dist = [{ name = "langsmith", specifier = ">=0.8.0,<0.9.0" }]
 
 [[package]]
 name = "dify-trace-mlflow"
@@ -1914,7 +1914,7 @@ dependencies = [
 ]
 
 [package.metadata]
-requires-dist = [{ name = "weave", specifier = ">=0.52.36,<1.0.0" }]
+requires-dist = [{ name = "weave", specifier = ">=0.52.36,<0.53.0" }]
 
 [[package]]
 name = "dify-vdb-alibabacloud-mysql"
@@ -1975,7 +1975,7 @@ dependencies = [
 ]
 
 [package.metadata]
-requires-dist = [{ name = "clickzetta-connector-python", specifier = ">=0.8.102,<1.0.0" }]
+requires-dist = [{ name = "clickzetta-connector-python", specifier = ">=0.8.102,<0.9.0" }]
 
 [[package]]
 name = "dify-vdb-couchbase"
@@ -2008,7 +2008,7 @@ dependencies = [
 ]
 
 [package.metadata]
-requires-dist = [{ name = "holo-search-sdk", specifier = ">=0.4.2,<1.0.0" }]
+requires-dist = [{ name = "holo-search-sdk", specifier = ">=0.4.2,<0.5.0" }]
 
 [[package]]
 name = "dify-vdb-huawei-cloud"
@@ -2044,7 +2044,7 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "opensearch-py", specifier = "==3.1.0" },
-    { name = "tenacity", specifier = ">=8.0.0,<10.0.0" },
+    { name = "tenacity", specifier = ">=8.0.0,<9.0.0" },
 ]
 
 [[package]]
@@ -6443,11 +6443,11 @@ wheels = [
 
 [[package]]
 name = "tenacity"
-version = "9.1.2"
+version = "8.5.0"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/0a/d4/2b0cd0fe285e14b36db076e78c93766ff1d529d70408bd1d2a5a84f1d929/tenacity-9.1.2.tar.gz", hash = "sha256:1169d376c297e7de388d18b4481760d478b0e99a777cad3a9c86e556f4b697cb", size = 48036, upload-time = "2025-04-02T08:25:09.966Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/a3/4d/6a19536c50b849338fcbe9290d562b52cbdcf30d8963d3588a68a4107df1/tenacity-8.5.0.tar.gz", hash = "sha256:8bc6c0c8a09b31e6cad13c47afbed1a567518250a9a171418582ed8d9c20ca78", size = 47309, upload-time = "2024-07-05T07:25:31.836Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/e5/30/643397144bfbfec6f6ef821f36f33e57d35946c44a2352d3c9f0ae847619/tenacity-9.1.2-py3-none-any.whl", hash = "sha256:f77bf36710d8b73a50b2dd155c97b870017ad21afe6ab300326b0371b3b05138", size = 28248, upload-time = "2025-04-02T08:25:07.678Z" },
+    { url = "https://files.pythonhosted.org/packages/d2/3f/8ba87d9e287b9d385a02a7114ddcef61b26f86411e121c9003eb509a1773/tenacity-8.5.0-py3-none-any.whl", hash = "sha256:b594c2a5945830c267ce6b79a166228323ed52718f30302c1359836112346687", size = 28165, upload-time = "2024-07-05T07:25:29.591Z" },
 ]
 
 [[package]]

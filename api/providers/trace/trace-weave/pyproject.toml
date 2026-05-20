@@ -2,7 +2,7 @@
 name = "dify-trace-weave"
 version = "0.0.1"
 dependencies = [
-    "weave>=0.52.36,<1.0.0",
+    "weave>=0.52.36,<0.53.0",
 ]
 description = "Dify ops tracing provider (Weave)."
 
