@@ -611,7 +611,6 @@ class AccountService:
         token_data: ChangeEmailTokenData
         if phase == cls.CHANGE_EMAIL_PHASE_OLD:
             token_data = ChangeEmailOldEmailToken(
-                token_type="change_email",
                 account_id=account.id,
                 email=account_email,
                 old_email=old_email,
@@ -619,7 +618,6 @@ class AccountService:
             )
         else:
             token_data = ChangeEmailNewEmailToken(
-                token_type="change_email",
                 account_id=account.id,
                 email=account_email,
                 old_email=old_email,
