@@ -48,10 +48,23 @@ const FLOATING_UI_RESTRICTED_IMPORT_PATTERNS = [
   },
 ]
 
+const LEGACY_WEB_INPUT_RESTRICTED_IMPORT_PATTERNS = [
+  {
+    group: [
+      '@/app/components/base/input',
+      '@/app/components/base/input/*',
+      '**/components/base/input',
+      '**/components/base/input/*',
+    ],
+    message: 'Do not import the deprecated web base Input. Use @langgenius/dify-ui/input or @langgenius/dify-ui/field instead.',
+  },
+]
+
 export const WEB_RESTRICTED_IMPORT_PATTERNS = [
   ...NEXT_PLATFORM_RESTRICTED_IMPORT_PATTERNS,
   ...BASE_UI_RESTRICTED_IMPORT_PATTERNS,
   ...FLOATING_UI_RESTRICTED_IMPORT_PATTERNS,
+  ...LEGACY_WEB_INPUT_RESTRICTED_IMPORT_PATTERNS,
 ]
 
 export const HYOBAN_PREFER_TAILWIND_ICONS_OPTIONS = {
