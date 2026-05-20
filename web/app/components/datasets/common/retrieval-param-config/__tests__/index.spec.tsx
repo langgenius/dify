@@ -103,25 +103,6 @@ vi.mock('@/app/components/base/param-item/score-threshold-item', () => ({
   ),
 }))
 
-vi.mock('@/app/components/base/radio-card', () => ({
-  default: ({ isChosen, onChosen, title, description }: {
-    isChosen: boolean
-    onChosen: () => void
-    title: string
-    description: string
-  }) => (
-    <div
-      data-testid="radio-card"
-      data-chosen={isChosen}
-      data-title={title}
-      onClick={onChosen}
-    >
-      {title}
-      <span data-testid="radio-description">{description}</span>
-    </div>
-  ),
-}))
-
 vi.mock('@langgenius/dify-ui/switch', () => ({
   Switch: ({ checked, onCheckedChange }: { checked: boolean, onCheckedChange?: (v: boolean) => void }) => (
     <button
@@ -477,8 +458,7 @@ describe('RetrievalParamConfig', () => {
         />,
       )
 
-      const radioCards = screen.getAllByTestId('radio-card')
-      expect(radioCards).toHaveLength(2)
+      expect(screen.getAllByRole('radio')).toHaveLength(2)
     })
 
     it('should have WeightedScore option', () => {
@@ -554,9 +534,7 @@ describe('RetrievalParamConfig', () => {
         />,
       )
 
-      const radioCards = screen.getAllByTestId('radio-card')
-      const weightedScoreCard = radioCards.find(card => card.getAttribute('data-title') === 'dataset.weightedScore.title')
-      fireEvent.click(weightedScoreCard!)
+      fireEvent.click(screen.getByRole('radio', { name: /dataset\.weightedScore\.title/ }))
 
       expect(mockOnChange).toHaveBeenCalled()
       const calledWith = mockOnChange.mock.calls[0]![0]
@@ -573,9 +551,7 @@ describe('RetrievalParamConfig', () => {
         />,
       )
 
-      const radioCards = screen.getAllByTestId('radio-card')
-      const rerankModelCard = radioCards.find(card => card.getAttribute('data-title') === 'common.modelProvider.rerankModel.key')
-      fireEvent.click(rerankModelCard!)
+      fireEvent.click(screen.getByRole('radio', { name: /common\.modelProvider\.rerankModel\.key/ }))
 
       expect(mockOnChange).not.toHaveBeenCalled()
     })
@@ -605,9 +581,7 @@ describe('RetrievalParamConfig', () => {
         />,
       )
 
-      const radioCards = screen.getAllByTestId('radio-card')
-      const rerankModelCard = radioCards.find(card => card.getAttribute('data-title') === 'common.modelProvider.rerankModel.key')
-      fireEvent.click(rerankModelCard!)
+      fireEvent.click(screen.getByRole('radio', { name: /common\.modelProvider\.rerankModel\.key/ }))
 
       expect(mockNotify).toHaveBeenCalledWith('workflow.errorMsg.rerankModelRequired')
     })
@@ -827,9 +801,7 @@ describe('RetrievalParamConfig', () => {
         />,
       )
 
-      const radioCards = screen.getAllByTestId('radio-card')
-      const weightedScoreCard = radioCards.find(card => card.getAttribute('data-title') === 'dataset.weightedScore.title')
-      fireEvent.click(weightedScoreCard!)
+      fireEvent.click(screen.getByRole('radio', { name: /dataset\.weightedScore\.title/ }))
 
       expect(mockOnChange).toHaveBeenCalled()
       const calledWith = mockOnChange.mock.calls[0]![0]
@@ -861,9 +833,7 @@ describe('RetrievalParamConfig', () => {
         />,
       )
 
-      const radioCards = screen.getAllByTestId('radio-card')
-      const weightedScoreCard = radioCards.find(card => card.getAttribute('data-title') === 'dataset.weightedScore.title')
-      fireEvent.click(weightedScoreCard!)
+      fireEvent.click(screen.getByRole('radio', { name: /dataset\.weightedScore\.title/ }))
 
       expect(mockOnChange).toHaveBeenCalled()
       const calledWith = mockOnChange.mock.calls[0]![0]
