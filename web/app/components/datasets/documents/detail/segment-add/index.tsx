@@ -38,22 +38,13 @@ export function SegmentAdd({
     ? 'text-components-button-secondary-accent-text-disabled'
     : 'text-components-button-secondary-accent-text'
 
-  const handleAddClick = () => {
+  const openSegmentDialog = (openDialog: () => void) => {
     if (!canAddChunks) {
       setIsPlanUpgradeModalOpen(true)
       return
     }
 
-    showNewSegmentModal()
-  }
-
-  const handleBatchAddClick = () => {
-    if (!canAddChunks) {
-      setIsPlanUpgradeModalOpen(true)
-      return
-    }
-
-    showBatchModal()
+    openDialog()
   }
 
   if (importStatus) {
@@ -120,7 +111,7 @@ export function SegmentAdd({
         type="button"
         className={`inline-flex items-center rounded-l-lg border-0 border-r border-r-divider-subtle bg-transparent px-2.5 py-2 text-left
           hover:bg-state-base-hover disabled:cursor-not-allowed disabled:hover:bg-transparent`}
-        onClick={handleAddClick}
+        onClick={() => openSegmentDialog(showNewSegmentModal)}
         disabled={embedding}
       >
         <span aria-hidden className={cn('i-ri-add-line size-4', textColor)} />
@@ -137,18 +128,16 @@ export function SegmentAdd({
             hover:bg-state-base-hover disabled:cursor-not-allowed disabled:bg-transparent disabled:hover:bg-transparent data-popup-open:bg-state-base-hover`,
           )}
         >
-          <div className="flex items-center justify-center">
-            <span aria-hidden className={cn('i-ri-arrow-down-s-line size-4', textColor)} />
-          </div>
+          <span aria-hidden className={cn('i-ri-arrow-down-s-line size-4', textColor)} />
         </DropdownMenuTrigger>
         <DropdownMenuContent
-          placement="bottom-start"
+          placement="bottom-end"
           sideOffset={4}
           popupClassName="min-w-[120px]"
         >
           <DropdownMenuItem
             className="system-md-regular"
-            onClick={handleBatchAddClick}
+            onClick={() => openSegmentDialog(showBatchModal)}
           >
             {t('list.action.batchAdd', { ns: 'datasetDocuments' })}
           </DropdownMenuItem>
