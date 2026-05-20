@@ -600,9 +600,7 @@ def test_save_execution_data_handles_missing_db_model(monkeypatch: pytest.Monkey
 
 
 @patch("core.repositories.sqlalchemy_workflow_node_execution_repository.save_workflow_node_execution_task")
-def test_save_queues_celery_task_when_async_persistence_enabled(
-    mock_task, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_save_queues_celery_task_when_async_persistence_enabled(mock_task, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(
         "core.repositories.sqlalchemy_workflow_node_execution_repository.FileService",
         lambda *_: SimpleNamespace(upload_file=Mock()),
