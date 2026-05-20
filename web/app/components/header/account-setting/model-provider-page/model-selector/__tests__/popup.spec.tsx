@@ -24,6 +24,10 @@ vi.mock('@/context/modal-context', () => ({
   }),
 }))
 
+vi.mock('@/app/components/plugins/install-plugin/hooks/use-workspace-plugin-install-permission', () => ({
+  default: () => ({ canInstallPlugin: true }),
+}))
+
 const mockSupportFunctionCall = vi.hoisted(() => vi.fn())
 vi.mock('@/utils/tool-call', () => ({
   supportFunctionCall: mockSupportFunctionCall,

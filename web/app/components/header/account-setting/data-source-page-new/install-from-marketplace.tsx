@@ -1,9 +1,6 @@
+import type { DataSourceAuth } from './types'
 import type { Plugin } from '@/app/components/plugins/types'
 import { cn } from '@langgenius/dify-ui/cn'
-import {
-  RiArrowDownSLine,
-  RiArrowRightUpLine,
-} from '@remixicon/react'
 import { useTheme } from 'next-themes'
 import {
   memo,
@@ -22,7 +19,7 @@ import {
 } from './hooks'
 
 type InstallFromMarketplaceProps = {
-  providers: any[]
+  providers: DataSourceAuth[]
   searchText: string
 }
 const InstallFromMarketplace = ({
@@ -54,14 +51,14 @@ const InstallFromMarketplace = ({
           className="flex cursor-pointer items-center gap-1 border-none bg-transparent p-0 text-left system-md-semibold text-text-primary"
           onClick={() => setCollapse(!collapse)}
         >
-          <RiArrowDownSLine className={cn('h-4 w-4', collapse && '-rotate-90')} aria-hidden="true" />
+          <span className={cn('i-ri-arrow-down-s-line', 'h-4 w-4', collapse && '-rotate-90')} aria-hidden="true" />
           {t('modelProvider.installDataSourceProvider', { ns: 'common' })}
         </button>
         <div className="mb-2 flex items-center pt-2">
           <span className="pr-1 system-sm-regular text-text-tertiary">{t('modelProvider.discoverMore', { ns: 'common' })}</span>
           <Link target="_blank" href={getMarketplaceUrl('', { theme })} className="inline-flex items-center system-sm-medium text-text-accent">
             {t('marketplace.difyMarketplace', { ns: 'plugin' })}
-            <RiArrowRightUpLine className="h-4 w-4" />
+            <span className="i-ri-arrow-right-up-line h-4 w-4" />
           </Link>
         </div>
       </div>

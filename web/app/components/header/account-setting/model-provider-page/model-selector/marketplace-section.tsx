@@ -10,6 +10,7 @@ type MarketplaceSectionProps = {
   marketplaceCollapsed: boolean
   installingProvider: ModelProviderQuotaGetPaid | null
   isMarketplacePluginsLoading: boolean
+  canInstallPlugin: boolean
   theme?: string
   onMarketplaceCollapsedChange: (collapsed: boolean) => void
   onInstallPlugin: (key: ModelProviderQuotaGetPaid) => void | Promise<void>
@@ -20,6 +21,7 @@ function MarketplaceSection({
   marketplaceCollapsed,
   installingProvider,
   isMarketplacePluginsLoading,
+  canInstallPlugin,
   theme,
   onMarketplaceCollapsedChange,
   onInstallPlugin,
@@ -59,21 +61,23 @@ function MarketplaceSection({
                     <Icon className="h-5 w-5 shrink-0 rounded-md" />
                     <span className="system-sm-regular text-text-secondary">{modelNameMap[key]}</span>
                   </div>
-                  <Button
-                    variant="secondary"
-                    size="small"
-                    className={cn(
-                      'shrink-0 backdrop-blur-[5px]',
-                      !isInstalling && 'hidden group-hover:flex',
-                    )}
-                    disabled={isInstalling || isMarketplacePluginsLoading}
-                    onClick={() => onInstallPlugin(key)}
-                  >
-                    {isInstalling && <span className="i-ri-loader-2-line h-3.5 w-3.5 animate-spin" />}
-                    {isInstalling
-                      ? t('installModal.installing', { ns: 'plugin' })
-                      : t('modelProvider.selector.install', { ns: 'common' })}
-                  </Button>
+                  {canInstallPlugin && (
+                    <Button
+                      variant="secondary"
+                      size="small"
+                      className={cn(
+                        'shrink-0 backdrop-blur-[5px]',
+                        !isInstalling && 'hidden group-hover:flex',
+                      )}
+                      disabled={isInstalling || isMarketplacePluginsLoading}
+                      onClick={() => onInstallPlugin(key)}
+                    >
+                      {isInstalling && <span className="i-ri-loader-2-line h-3.5 w-3.5 animate-spin" />}
+                      {isInstalling
+                        ? t('installModal.installing', { ns: 'plugin' })
+                        : t('modelProvider.selector.install', { ns: 'common' })}
+                    </Button>
+                  )}
                 </div>
               )
             })}

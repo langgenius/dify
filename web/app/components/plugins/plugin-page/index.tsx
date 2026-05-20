@@ -21,6 +21,7 @@ import { fetchBundleInfoFromMarketPlace, fetchManifestFromMarketPlace } from '@/
 import { systemFeaturesQueryOptions } from '@/service/system-features'
 import { sleep } from '@/utils'
 import { PLUGIN_PAGE_TABS_MAP } from '../hooks'
+import { PluginInstallPermissionProvider } from '../install-plugin/components/plugin-install-permission-provider'
 import InstallFromLocalPackage from '../install-plugin/install-from-local-package'
 import InstallFromMarketplace from '../install-plugin/install-from-marketplace'
 import { PLUGIN_TYPE_SEARCH_MAP } from '../marketplace/constants'
@@ -106,6 +107,7 @@ const PluginPage = ({
     canInstall,
     canDebugger,
     canSetPreferences,
+    currentDifyVersion,
     setReferenceSettings,
   } = useReferenceSetting()
   const [showPluginSettingModal, {
@@ -144,152 +146,157 @@ const PluginPage = ({
 
   const { dragging, fileUploader, fileChangeHandle, removeFile } = uploaderProps
   return (
-    <div
-      id="marketplace-container"
-      ref={containerRef}
-      style={{ scrollbarGutter: 'stable' }}
-      className={cn('relative flex grow flex-col overflow-y-auto border-t border-divider-subtle', isPluginsTab
-        ? 'rounded-t-xl bg-components-panel-bg'
-        : 'bg-background-body')}
+    <PluginInstallPermissionProvider
+      canInstallPlugin={canInstall}
+      currentDifyVersion={currentDifyVersion}
     >
       <div
-        className={cn(
-          'sticky top-0 z-10 flex min-h-15 items-center gap-1 self-stretch bg-components-panel-bg px-12 pt-4 pb-2',
-          isExploringMarketplace && 'bg-background-body',
-        )}
+        id="marketplace-container"
+        ref={containerRef}
+        style={{ scrollbarGutter: 'stable' }}
+        className={cn('relative flex grow flex-col overflow-y-auto border-t border-divider-subtle', isPluginsTab
+          ? 'rounded-t-xl bg-components-panel-bg'
+          : 'bg-background-body')}
       >
-        <div className="flex w-full items-center justify-between">
-          <div className="flex-1">
-            <TabSlider
-              value={isPluginsTab ? PLUGIN_PAGE_TABS_MAP.plugins : PLUGIN_PAGE_TABS_MAP.marketplace}
-              onChange={(nextTab) => {
-                if (isPluginPageTab(nextTab))
-                  setActiveTab(nextTab)
-              }}
-              options={options}
-            />
-          </div>
-          <div className="flex shrink-0 items-center gap-1">
-            {
-              isExploringMarketplace && (
-                <>
-                  <Link
-                    href="https://github.com/langgenius/dify-plugins/issues/new?template=plugin_request.yaml"
-                    target="_blank"
-                  >
-                    <Button
-                      variant="ghost"
-                      className="text-text-tertiary"
-                    >
-                      {t('requestAPlugin', { ns: 'plugin' })}
-                    </Button>
-                  </Link>
-                  <Link
-                    href={docLink('/develop-plugin/publishing/marketplace-listing/release-to-dify-marketplace')}
-                    target="_blank"
-                  >
-                    <Button
-                      className="px-3"
-                      variant="secondary-accent"
-                    >
-                      <span className="mr-1 i-ri-book-open-line h-4 w-4" />
-                      {t('publishPlugins', { ns: 'plugin' })}
-                    </Button>
-                  </Link>
-                  <div className="mx-1 h-3.5 w-px shrink-0 bg-divider-regular"></div>
-                </>
-              )
-            }
-            <PluginTasks />
-            {canInstall && (
-              <InstallPluginDropdown
-                onSwitchToMarketplaceTab={() => setActiveTab('discover')}
+        <div
+          className={cn(
+            'sticky top-0 z-10 flex min-h-15 items-center gap-1 self-stretch bg-components-panel-bg px-12 pt-4 pb-2',
+            isExploringMarketplace && 'bg-background-body',
+          )}
+        >
+          <div className="flex w-full items-center justify-between">
+            <div className="flex-1">
+              <TabSlider
+                value={isPluginsTab ? PLUGIN_PAGE_TABS_MAP.plugins : PLUGIN_PAGE_TABS_MAP.marketplace}
+                onChange={(nextTab) => {
+                  if (isPluginPageTab(nextTab))
+                    setActiveTab(nextTab)
+                }}
+                options={options}
               />
-            )}
-            {
-              canDebugger && (
-                <DebugInfo />
-              )
-            }
-            {
-              canSetPreferences && (
-                <Tooltip>
-                  <TooltipTrigger
-                    render={(
+            </div>
+            <div className="flex shrink-0 items-center gap-1">
+              {
+                isExploringMarketplace && (
+                  <>
+                    <Link
+                      href="https://github.com/langgenius/dify-plugins/issues/new?template=plugin_request.yaml"
+                      target="_blank"
+                    >
                       <Button
-                        aria-label={t('privilege.title', { ns: 'plugin' })}
-                        className="group h-full w-full p-2 text-components-button-secondary-text"
-                        onClick={setShowPluginSettingModal}
+                        variant="ghost"
+                        className="text-text-tertiary"
                       >
-                        <span className="i-ri-equalizer-2-line h-4 w-4" aria-hidden="true" />
+                        {t('requestAPlugin', { ns: 'plugin' })}
                       </Button>
-                    )}
-                  />
-                  <TooltipContent>
-                    {t('privilege.title', { ns: 'plugin' })}
-                  </TooltipContent>
-                </Tooltip>
-              )
-            }
+                    </Link>
+                    <Link
+                      href={docLink('/develop-plugin/publishing/marketplace-listing/release-to-dify-marketplace')}
+                      target="_blank"
+                    >
+                      <Button
+                        className="px-3"
+                        variant="secondary-accent"
+                      >
+                        <span className="mr-1 i-ri-book-open-line h-4 w-4" />
+                        {t('publishPlugins', { ns: 'plugin' })}
+                      </Button>
+                    </Link>
+                    <div className="mx-1 h-3.5 w-px shrink-0 bg-divider-regular"></div>
+                  </>
+                )
+              }
+              <PluginTasks />
+              {canInstall && (
+                <InstallPluginDropdown
+                  onSwitchToMarketplaceTab={() => setActiveTab('discover')}
+                />
+              )}
+              {
+                canDebugger && (
+                  <DebugInfo />
+                )
+              }
+              {
+                canSetPreferences && (
+                  <Tooltip>
+                    <TooltipTrigger
+                      render={(
+                        <Button
+                          aria-label={t('privilege.title', { ns: 'plugin' })}
+                          className="group h-full w-full p-2 text-components-button-secondary-text"
+                          onClick={setShowPluginSettingModal}
+                        >
+                          <span className="i-ri-equalizer-2-line h-4 w-4" aria-hidden="true" />
+                        </Button>
+                      )}
+                    />
+                    <TooltipContent>
+                      {t('privilege.title', { ns: 'plugin' })}
+                    </TooltipContent>
+                  </Tooltip>
+                )
+              }
+            </div>
           </div>
         </div>
-      </div>
-      {isPluginsTab && canInstall && (
-        <>
-          {plugins}
-          {dragging && (
-            <div
-              className="absolute inset-0 m-0.5 rounded-2xl border-2 border-dashed border-components-dropzone-border-accent
+        {isPluginsTab && canInstall && (
+          <>
+            {plugins}
+            {dragging && (
+              <div
+                className="absolute inset-0 m-0.5 rounded-2xl border-2 border-dashed border-components-dropzone-border-accent
                   bg-[rgba(21,90,239,0.14)] p-2"
-            >
+              >
+              </div>
+            )}
+            <div className={`flex items-center justify-center gap-2 py-4 ${dragging ? 'text-text-accent' : 'text-text-quaternary'}`}>
+              <span className="i-ri-drag-drop-line h-4 w-4" />
+              <span className="system-xs-regular">{t('installModal.dropPluginToInstall', { ns: 'plugin' })}</span>
             </div>
-          )}
-          <div className={`flex items-center justify-center gap-2 py-4 ${dragging ? 'text-text-accent' : 'text-text-quaternary'}`}>
-            <span className="i-ri-drag-drop-line h-4 w-4" />
-            <span className="system-xs-regular">{t('installModal.dropPluginToInstall', { ns: 'plugin' })}</span>
-          </div>
-          {currentFile && (
-            <InstallFromLocalPackage
-              file={currentFile}
-              onClose={removeFile ?? noop}
-              onSuccess={noop}
+            {currentFile && (
+              <InstallFromLocalPackage
+                file={currentFile}
+                onClose={removeFile ?? noop}
+                onSuccess={noop}
+              />
+            )}
+            <input
+              ref={fileUploader}
+              className="hidden"
+              type="file"
+              id="fileUploader"
+              accept={SUPPORT_INSTALL_LOCAL_FILE_EXTENSIONS}
+              onChange={fileChangeHandle ?? noop}
             />
-          )}
-          <input
-            ref={fileUploader}
-            className="hidden"
-            type="file"
-            id="fileUploader"
-            accept={SUPPORT_INSTALL_LOCAL_FILE_EXTENSIONS}
-            onChange={fileChangeHandle ?? noop}
-          />
-        </>
-      )}
-      {
-        isExploringMarketplace && enable_marketplace && marketplace
-      }
+          </>
+        )}
+        {
+          isExploringMarketplace && enable_marketplace && marketplace
+        }
 
-      {showPluginSettingModal && (
-        <ReferenceSettingModal
-          payload={referenceSetting!}
-          onHide={setHidePluginSettingModal}
-          onSave={setReferenceSettings}
-        />
-      )}
-
-      {
-        isShowInstallFromMarketplace && uniqueIdentifier && (
-          <InstallFromMarketplace
-            manifest={manifest! as PluginManifestInMarket}
-            uniqueIdentifier={uniqueIdentifier}
-            isBundle={!!bundleInfo}
-            dependencies={dependencies}
-            onClose={hideInstallFromMarketplace}
-            onSuccess={hideInstallFromMarketplace}
+        {showPluginSettingModal && (
+          <ReferenceSettingModal
+            payload={referenceSetting!}
+            onHide={setHidePluginSettingModal}
+            onSave={setReferenceSettings}
           />
-        )
-      }
-    </div>
+        )}
+
+        {
+          isShowInstallFromMarketplace && uniqueIdentifier && canInstall && (
+            <InstallFromMarketplace
+              manifest={manifest! as PluginManifestInMarket}
+              uniqueIdentifier={uniqueIdentifier}
+              isBundle={!!bundleInfo}
+              dependencies={dependencies}
+              onClose={hideInstallFromMarketplace}
+              onSuccess={hideInstallFromMarketplace}
+            />
+          )
+        }
+      </div>
+    </PluginInstallPermissionProvider>
   )
 }
 

@@ -3,8 +3,8 @@
 import type { MarketplaceCollection } from '../types'
 import type { Plugin } from '@/app/components/plugins/types'
 import { cn } from '@langgenius/dify-ui/cn'
-import { RiArrowRightSLine } from '@remixicon/react'
 import { useLocale, useTranslation } from '#i18n'
+import { PluginInstallPermissionProviderGuard } from '@/app/components/plugins/install-plugin/components/plugin-install-permission-provider'
 import { getLanguage } from '@/i18n-config/language'
 import { useMarketplaceMoreClick } from '../atoms'
 import CardWrapper from './card-wrapper'
@@ -28,7 +28,7 @@ const ListWithCollection = ({
   const onMoreClick = useMarketplaceMoreClick()
 
   return (
-    <>
+    <PluginInstallPermissionProviderGuard canInstallPlugin={!!showInstallButton}>
       {
         marketplaceCollections.filter((collection) => {
           return marketplaceCollectionPluginsMap[collection.name]?.length
@@ -49,7 +49,7 @@ const ListWithCollection = ({
                     onClick={() => onMoreClick(collection.search_params)}
                   >
                     {t('marketplace.viewMore', { ns: 'plugin' })}
-                    <RiArrowRightSLine className="h-4 w-4" />
+                    <span className="i-ri-arrow-right-s-line h-4 w-4" />
                   </div>
                 )
               }
@@ -77,7 +77,7 @@ const ListWithCollection = ({
           </div>
         ))
       }
-    </>
+    </PluginInstallPermissionProviderGuard>
   )
 }
 

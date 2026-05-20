@@ -21,6 +21,10 @@ vi.mock('@/app/components/plugins/install-plugin/install-from-marketplace', () =
   ),
 }))
 
+vi.mock('@/app/components/plugins/install-plugin/hooks/use-plugin-install-permission', () => ({
+  default: () => ({ canInstallPlugin: true }),
+}))
+
 vi.mock('@/app/components/plugins/marketplace/utils', () => ({
   getPluginLinkInMarketplace: (plugin: Plugin, params: Record<string, string>) =>
     `/marketplace/${plugin.org}/${plugin.name}?language=${params.language}&theme=${params.theme}`,

@@ -7,7 +7,7 @@ import * as React from 'react'
 import { useEffect, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import useCheckInstalled from '@/app/components/plugins/install-plugin/hooks/use-check-installed'
-import { useAppContext } from '@/context/app-context'
+import usePluginInstallPermission from '@/app/components/plugins/install-plugin/hooks/use-plugin-install-permission'
 import { useInstallPackageFromMarketPlace, usePluginDeclarationFromMarketPlace, usePluginTaskList, useUpdatePackageFromMarketPlace } from '@/service/use-plugins'
 import { isEqualOrLaterThanVersion } from '@/utils/semver'
 import Card from '../../../card'
@@ -121,15 +121,16 @@ const Installed: FC<Props> = ({
     }
   }
 
-  const { langGeniusVersionInfo } = useAppContext()
+  const { canInstallPlugin, currentDifyVersion } = usePluginInstallPermission()
   const { data: pluginDeclaration } = usePluginDeclarationFromMarketPlace(uniqueIdentifier)
   const isDifyVersionCompatible = useMemo(() => {
-    if (!pluginDeclaration || !langGeniusVersionInfo.current_version)
+    if (!pluginDeclaration || !currentDifyVersion)
       return true
-    return isEqualOrLaterThanVersion(langGeniusVersionInfo.current_version, pluginDeclaration?.manifest.meta.minimum_dify_version ?? '0.0.0')
-  }, [langGeniusVersionInfo.current_version, pluginDeclaration])
+    return isEqualOrLaterThanVersion(currentDifyVersion, pluginDeclaration?.manifest.meta.minimum_dify_version ?? '0.0.0')
+  }, [currentDifyVersion, pluginDeclaration])
 
-  const { canInstall } = useInstallPluginLimit({ ...payload, from: 'marketplace' })
+  const { canInstall: canInstallByLimit } = useInstallPluginLimit({ ...payload, from: 'marketplace' })
+  const canInstall = canInstallByLimit && canInstallPlugin
   return (
     <>
       <div className="flex flex-col items-start justify-center gap-4 self-stretch px-6 py-3">

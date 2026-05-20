@@ -10,6 +10,7 @@ import { useTranslation } from 'react-i18next'
 import Badge from '@/app/components/base/badge'
 import { Badge as Badge2, BadgeState } from '@/app/components/base/badge/index'
 import useGetIcon from '@/app/components/plugins/install-plugin/base/use-get-icon'
+import useWorkspacePluginInstallPermission from '@/app/components/plugins/install-plugin/hooks/use-workspace-plugin-install-permission'
 import { pluginManifestToCardPluginProps } from '@/app/components/plugins/install-plugin/utils'
 import PluginMutationModel from '@/app/components/plugins/plugin-mutation-model'
 import PluginVersionPicker from '@/app/components/plugins/update-plugin/plugin-version-picker'
@@ -34,6 +35,7 @@ export const SwitchPluginVersion: FC<SwitchPluginVersionProps> = (props) => {
     version: string
     pluginUniqueIden: string
   }>()
+  const { canInstallPlugin } = useWorkspacePluginInstallPermission()
   const pluginDetails = useCheckInstalled({
     pluginIds: [pluginId!],
     enabled: true,
@@ -64,7 +66,7 @@ export const SwitchPluginVersion: FC<SwitchPluginVersionProps> = (props) => {
   const { t } = useTranslation()
 
   // Guard against null/undefined uniqueIdentifier to prevent app crash
-  if (!uniqueIdentifier || !pluginId)
+  if (!uniqueIdentifier || !pluginId || !canInstallPlugin)
     return null
 
   const content = (

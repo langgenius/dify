@@ -11,6 +11,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Infotip } from '@/app/components/base/infotip'
 import Loading from '@/app/components/base/loading'
+import { PluginInstallPermissionProvider } from '@/app/components/plugins/install-plugin/components/plugin-install-permission-provider'
+import useWorkspacePluginInstallPermission from '@/app/components/plugins/install-plugin/hooks/use-workspace-plugin-install-permission'
 import InstallFromMarketplace from '@/app/components/plugins/install-plugin/install-from-marketplace'
 import useTimestamp from '@/hooks/use-timestamp'
 import { systemFeaturesQueryOptions } from '@/service/system-features'
@@ -51,11 +53,12 @@ const QuotaPanel: FC<QuotaPanelProps> = ({
     setTrue: showInstallFromMarketplace,
     setFalse: hideInstallFromMarketplace,
   }] = useBoolean(false)
+  const { canInstallPlugin, currentDifyVersion } = useWorkspacePluginInstallPermission()
   const selectedPluginIdRef = useRef<string | null>(null)
 
   const handleIconClick = useCallback((key: ModelProviderQuotaGetPaid) => {
     const isInstalled = providerMap.get(key)
-    if (!isInstalled && allPlugins) {
+    if (!isInstalled && allPlugins && canInstallPlugin) {
       const pluginId = providerKeyToPluginId[key]
       const plugin = allPlugins.find(p => p.plugin_id === pluginId)
       if (plugin) {
@@ -64,7 +67,7 @@ const QuotaPanel: FC<QuotaPanelProps> = ({
         showInstallFromMarketplace()
       }
     }
-  }, [allPlugins, providerMap, showInstallFromMarketplace])
+  }, [allPlugins, canInstallPlugin, providerMap, showInstallFromMarketplace])
 
   useEffect(() => {
     if (isShowInstallModal && selectedPluginIdRef.current) {
@@ -143,7 +146,7 @@ const QuotaPanel: FC<QuotaPanelProps> = ({
                     aria-label={tooltipText}
                     render={(
                       <div
-                        className={cn('relative h-6 w-6', !providerType && 'cursor-pointer hover:opacity-80')}
+                        className={cn('relative h-6 w-6', !providerType && canInstallPlugin && 'cursor-pointer hover:opacity-80')}
                         onClick={() => handleIconClick(key)}
                       >
                         <Icon className="h-6 w-6 rounded-lg" />
@@ -162,13 +165,18 @@ const QuotaPanel: FC<QuotaPanelProps> = ({
           </div>
         </div>
       </div>
-      {isShowInstallModal && selectedPlugin && (
-        <InstallFromMarketplace
-          manifest={selectedPlugin}
-          uniqueIdentifier={selectedPlugin.latest_package_identifier}
-          onClose={hideInstallFromMarketplace}
-          onSuccess={hideInstallFromMarketplace}
-        />
+      {isShowInstallModal && selectedPlugin && canInstallPlugin && (
+        <PluginInstallPermissionProvider
+          canInstallPlugin={canInstallPlugin}
+          currentDifyVersion={currentDifyVersion}
+        >
+          <InstallFromMarketplace
+            manifest={selectedPlugin}
+            uniqueIdentifier={selectedPlugin.latest_package_identifier}
+            onClose={hideInstallFromMarketplace}
+            onSuccess={hideInstallFromMarketplace}
+          />
+        </PluginInstallPermissionProvider>
       )}
     </div>
   )

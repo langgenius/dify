@@ -1,7 +1,6 @@
 'use client'
 import type { Plugin } from '@/app/components/plugins/types'
 import { Button } from '@langgenius/dify-ui/button'
-import { RiArrowRightUpLine } from '@remixicon/react'
 import { useBoolean } from 'ahooks'
 import { useTheme } from 'next-themes'
 import * as React from 'react'
@@ -10,6 +9,7 @@ import { useLocale, useTranslation } from '#i18n'
 import Card from '@/app/components/plugins/card'
 import CardMoreInfo from '@/app/components/plugins/card/card-more-info'
 import { useTags } from '@/app/components/plugins/hooks'
+import usePluginInstallPermission from '@/app/components/plugins/install-plugin/hooks/use-plugin-install-permission'
 import InstallFromMarketplace from '@/app/components/plugins/install-plugin/install-from-marketplace'
 import { getPluginDetailLinkInMarketplace, getPluginLinkInMarketplace } from '../utils'
 
@@ -29,6 +29,7 @@ const CardWrapperComponent = ({
   }] = useBoolean(false)
   const locale = useLocale()
   const { getTagLabel } = useTags()
+  const { canInstallPlugin } = usePluginInstallPermission()
 
   // Memoize marketplace link params to prevent unnecessary re-renders
   const marketplaceLinkParams = useMemo(() => ({
@@ -40,7 +41,7 @@ const CardWrapperComponent = ({
   const tagLabels = useMemo(() =>
     plugin.tags.map(tag => getTagLabel(tag.name)), [plugin.tags, getTagLabel])
 
-  if (showInstallButton) {
+  if (showInstallButton && canInstallPlugin) {
     return (
       <div
         className="group relative cursor-pointer rounded-xl hover:bg-components-panel-on-panel-item-bg-hover"
@@ -68,7 +69,7 @@ const CardWrapperComponent = ({
               className="w-full gap-0.5"
             >
               {t('detailPanel.operation.detail', { ns: 'plugin' })}
-              <RiArrowRightUpLine className="ml-1 h-4 w-4" />
+              <span className="ml-1 i-ri-arrow-right-up-line h-4 w-4" />
             </Button>
           </a>
         </div>

@@ -8,6 +8,8 @@ import { useDebounce } from 'ahooks'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { usePluginsWithLatestVersion } from '@/app/components/plugins/hooks'
+import { PluginInstallPermissionProvider } from '@/app/components/plugins/install-plugin/components/plugin-install-permission-provider'
+import useWorkspacePluginInstallPermission from '@/app/components/plugins/install-plugin/hooks/use-workspace-plugin-install-permission'
 import { IS_CLOUD_EDITION } from '@/config'
 import { useProviderContext } from '@/context/provider-context'
 import { consoleQuery } from '@/service/client'
@@ -43,6 +45,7 @@ const ModelProviderPage = ({ searchText }: Props) => {
   const { data: ttsDefaultModel, isLoading: isTTSDefaultModelLoading } = useDefaultModel(ModelTypeEnum.tts)
   const { modelProviders: providers } = useProviderContext()
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
+  const { canInstallPlugin, currentDifyVersion } = useWorkspacePluginInstallPermission()
 
   const allPluginIds = useMemo(() => {
     return [...new Set(providers.map(p => providerToPluginId(p.provider)).filter(Boolean))]
@@ -194,10 +197,15 @@ const ModelProviderPage = ({ searchText }: Props) => {
       )}
       {
         enableMarketplace && (
-          <InstallFromMarketplace
-            providers={providers}
-            searchText={searchText}
-          />
+          <PluginInstallPermissionProvider
+            canInstallPlugin={canInstallPlugin}
+            currentDifyVersion={currentDifyVersion}
+          >
+            <InstallFromMarketplace
+              providers={providers}
+              searchText={searchText}
+            />
+          </PluginInstallPermissionProvider>
         )
       }
     </div>

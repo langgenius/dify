@@ -23,7 +23,7 @@ const hasPluginPermission = (permission: PermissionType | undefined, isAdmin: bo
 
 const useReferenceSetting = () => {
   const { t } = useTranslation()
-  const { isCurrentWorkspaceManager, isCurrentWorkspaceOwner, workspacePermissionKeys } = useAppContext()
+  const { isCurrentWorkspaceManager, isCurrentWorkspaceOwner, langGeniusVersionInfo, workspacePermissionKeys } = useAppContext()
   const { data } = useReferenceSettings()
 
   const { permission: permissions } = data || {}
@@ -47,6 +47,7 @@ const useReferenceSetting = () => {
     canUninstall,
     canDebugger: hasPluginPermission(permissions?.debug_permission, isAdmin),
     canSetPreferences,
+    currentDifyVersion: langGeniusVersionInfo.current_version,
     isUpdatePending,
   }
 }
