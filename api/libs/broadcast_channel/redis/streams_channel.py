@@ -24,20 +24,42 @@ class StreamsBroadcastChannel:
     - The stream key expires `retention_seconds` after the last event is published (to bound storage).
     """
 
-    def __init__(self, redis_client: Redis | RedisCluster, *, retention_seconds: int = 600):
+    def __init__(
+        self,
+        redis_client: Redis | RedisCluster,
+        *,
+        retention_seconds: int = 600,
+        join_timeout_ms: int = 2000,
+    ):
         self._client = redis_client
         self._retention_seconds = max(int(retention_seconds or 0), 0)
+        # Max time close() will wait for the listener thread to finish.
+        # See `_StreamsSubscription._join_timeout_ms` for the rationale.
+        self._join_timeout_ms = max(int(join_timeout_ms or 0), 0)
 
     def topic(self, topic: str) -> StreamsTopic:
-        return StreamsTopic(self._client, topic, retention_seconds=self._retention_seconds)
+        return StreamsTopic(
+            self._client,
+            topic,
+            retention_seconds=self._retention_seconds,
+            join_timeout_ms=self._join_timeout_ms,
+        )
 
 
 class StreamsTopic:
-    def __init__(self, redis_client: Redis | RedisCluster, topic: str, *, retention_seconds: int = 600):
+    def __init__(
+        self,
+        redis_client: Redis | RedisCluster,
+        topic: str,
+        *,
+        retention_seconds: int = 600,
+        join_timeout_ms: int = 2000,
+    ):
         self._client = redis_client
         self._topic = topic
         self._key = serialize_redis_name(f"stream:{topic}")
         self._retention_seconds = retention_seconds
+        self._join_timeout_ms = max(int(join_timeout_ms or 0), 0)
         self.max_length = 5000
 
     def as_producer(self) -> Producer:
@@ -55,15 +77,23 @@ class StreamsTopic:
         return self
 
     def subscribe(self) -> Subscription:
-        return _StreamsSubscription(self._client, self._key)
+        return _StreamsSubscription(self._client, self._key, join_timeout_ms=self._join_timeout_ms)
 
 
 class _StreamsSubscription(Subscription):
     _SENTINEL = object()
 
-    def __init__(self, client: Redis | RedisCluster, key: str):
+    def __init__(self, client: Redis | RedisCluster, key: str, *, join_timeout_ms: int = 2000):
         self._client = client
         self._key = key
+        # Max time close() will wait for the listener thread to finish before
+        # returning. Bounds SSE close tail latency: the listener blocks on
+        # XREAD with BLOCK=1000ms, so close() naturally waits up to ~1s for
+        # the thread to notice _closed. Setting this lower lets close()
+        # return promptly while the daemon listener exits on its own within
+        # one BLOCK window - safe because the listener holds no critical
+        # state. ``0`` means close() does not wait at all.
+        self._join_timeout_ms = max(int(join_timeout_ms or 0), 0)
 
         self._queue: queue.Queue[object] = queue.Queue()
 
@@ -181,11 +211,13 @@ class _StreamsSubscription(Subscription):
         # We close the listener outside of the with block to avoid holding the
         # lock for a long time.
         if listener is not None and listener.is_alive():
-            listener.join(timeout=2.0)
+            listener.join(timeout=self._join_timeout_ms / 1000.0)
             if listener.is_alive():
-                logger.warning(
-                    "Streams subscription listener for key %s did not stop within timeout; keeping reference.",
+                logger.debug(
+                    "Streams subscription listener for key %s did not stop within %dms; "
+                    "daemon thread will exit on its own within one poll window.",
                     self._key,
+                    self._join_timeout_ms,
                 )
 
     # Context manager helpers
