@@ -848,7 +848,7 @@ class WebhookService:
 
     @classmethod
     def generate_webhook_response(
-        cls, node_config: NodeConfigDict, webhook_data: dict[str, Any] | None = None
+        cls, node_config: NodeConfigDict, webhook_data: RawWebhookDataDict | None = None
     ) -> tuple[dict[str, Any], int]:
         """Generate HTTP response based on node configuration.
 
@@ -888,7 +888,7 @@ class WebhookService:
         return response_data, status_code
 
     @classmethod
-    def _interpolate_variables(cls, template: str, webhook_data: dict[str, Any]) -> str:
+    def _interpolate_variables(cls, template: str, webhook_data: Mapping[str, Any]) -> str:
         """Replace {{...}} placeholders in template with values from webhook_data.
 
         Unresolvable placeholders are left unchanged.
