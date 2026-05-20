@@ -90,10 +90,10 @@ const InviteModal = ({
         {!isEmailSetup && (
           <div className="grow basis-0 overflow-y-auto pb-4">
             <div className="relative mb-1 rounded-xl border border-components-panel-border p-2 shadow-xs">
-              <div className="absolute top-0 left-0 h-full w-full rounded-xl opacity-40" style={{ background: 'linear-gradient(92deg, rgba(255, 171, 0, 0.25) 18.12%, rgba(255, 255, 255, 0.00) 167.31%)' }}></div>
-              <div className="relative flex h-full w-full items-start">
+              <div className="absolute top-0 left-0 size-full rounded-xl opacity-40" style={{ background: 'linear-gradient(92deg, rgba(255, 171, 0, 0.25) 18.12%, rgba(255, 255, 255, 0.00) 167.31%)' }}></div>
+              <div className="relative flex size-full items-start">
                 <div className="mr-0.5 shrink-0 p-0.5">
-                  <div className="i-ri-error-warning-fill h-5 w-5 text-text-warning" />
+                  <div className="i-ri-error-warning-fill size-5 text-text-warning" />
                 </div>
                 <div className="system-xs-medium text-text-primary">
                   <span>{t('members.emailNotSetup', { ns: 'common' })}</span>
@@ -107,7 +107,7 @@ const InviteModal = ({
           <div className="mb-2 text-sm font-medium text-text-primary">{t('members.email', { ns: 'common' })}</div>
           <div className="mb-8 flex h-36 flex-col items-stretch">
             <ReactMultiEmail
-              className={cn('h-full w-full border-components-input-border-active bg-components-input-bg-normal! px-3 pt-2 outline-hidden', 'appearance-none overflow-y-auto rounded-lg text-sm text-text-primary!')}
+              className={cn('size-full border-components-input-border-active bg-components-input-bg-normal! px-3 pt-2 outline-hidden', 'appearance-none overflow-y-auto rounded-lg text-sm text-text-primary!')}
               autoFocus
               emails={emails}
               inputClassName="bg-transparent"

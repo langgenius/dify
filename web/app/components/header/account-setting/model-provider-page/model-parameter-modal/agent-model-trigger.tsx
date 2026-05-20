@@ -131,7 +131,7 @@ const AgentModelTrigger: FC<AgentModelTriggerProps> = ({
               )}
               {modelProvider && !disabled && !needsConfiguration && (
                 <div className="flex items-center pr-1">
-                  <RiEqualizer2Line className="h-4 w-4 text-text-tertiary group-hover:text-text-secondary" />
+                  <RiEqualizer2Line className="size-4 text-text-tertiary group-hover:text-text-secondary" />
                 </div>
               )}
             </>
@@ -139,12 +139,12 @@ const AgentModelTrigger: FC<AgentModelTriggerProps> = ({
         : (
             <>
               <div className="flex grow items-center gap-1 p-1 pl-2">
-                <span className="overflow-hidden system-sm-regular text-ellipsis whitespace-nowrap text-components-input-text-placeholder">
+                <span className="truncate system-sm-regular text-components-input-text-placeholder">
                   {t('nodes.agent.configureModel', { ns: 'workflow' })}
                 </span>
               </div>
               <div className="flex items-center pr-1">
-                <RiEqualizer2Line className="h-4 w-4 text-text-tertiary group-hover:text-text-secondary" />
+                <RiEqualizer2Line className="size-4 text-text-tertiary group-hover:text-text-secondary" />
               </div>
             </>
           )}

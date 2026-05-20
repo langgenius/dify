@@ -43,10 +43,10 @@ const PluginsNav = ({
             />
           )
         }
-        <div className="mr-0.5 flex h-5 w-5 items-center justify-center">
+        <div className="mr-0.5 flex size-5 items-center justify-center">
           {
             (!(isInstalling || isInstallingWithError) || activated) && (
-              <Group className="h-4 w-4" />
+              <Group className="size-4" />
             )
           }
           {

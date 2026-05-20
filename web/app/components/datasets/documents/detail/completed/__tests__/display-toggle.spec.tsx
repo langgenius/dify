@@ -32,7 +32,7 @@ describe('DisplayToggle', () => {
       )
 
       // Assert - RiLineHeight icon for expand
-      const icon = container.querySelector('.h-4.w-4')
+      const icon = container.querySelector('.size-4')
       expect(icon).toBeInTheDocument()
     })
 
@@ -42,7 +42,7 @@ describe('DisplayToggle', () => {
       )
 
       // Assert - Collapse icon
-      const icon = container.querySelector('.h-4.w-4')
+      const icon = container.querySelector('.size-4')
       expect(icon).toBeInTheDocument()
     })
   })
@@ -91,7 +91,7 @@ describe('DisplayToggle', () => {
       rerender(<DisplayToggle isCollapsed={false} toggleCollapsed={vi.fn()} />)
 
       // Assert - icon should still be present
-      const icon = container.querySelector('.h-4.w-4')
+      const icon = container.querySelector('.size-4')
       expect(icon).toBeInTheDocument()
     })
 

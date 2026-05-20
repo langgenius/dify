@@ -13,7 +13,6 @@ import {
   RiMoreFill,
 } from '@remixicon/react'
 import * as React from 'react'
-import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
 
@@ -31,18 +30,13 @@ const OperationDropdown: FC<Props> = ({
   onRemove,
 }) => {
   const { t } = useTranslation()
-  const [open, setOpen] = useState(false)
-  const handleOpenChange = useCallback((nextOpen: boolean) => {
-    setOpen(nextOpen)
-    onOpenChange?.(nextOpen)
-  }, [onOpenChange])
 
   return (
-    <DropdownMenu open={open} onOpenChange={handleOpenChange}>
+    <DropdownMenu onOpenChange={onOpenChange}>
       <DropdownMenuTrigger
-        render={<ActionButton size={inCard ? 'l' : 'm'} className={cn(open && 'bg-state-base-hover')} />}
+        render={<ActionButton size={inCard ? 'l' : 'm'} className="data-popup-open:bg-state-base-hover" />}
       >
-        <RiMoreFill className={cn('h-4 w-4', inCard && 'h-5 w-5')} />
+        <RiMoreFill className={cn('size-4', inCard && 'size-5')} />
       </DropdownMenuTrigger>
       <DropdownMenuContent
         placement="bottom-end"
@@ -50,14 +44,14 @@ const OperationDropdown: FC<Props> = ({
         popupClassName="w-[160px]"
       >
         <DropdownMenuItem onClick={onEdit}>
-          <RiEditLine className="h-4 w-4 shrink-0 text-text-tertiary" />
+          <RiEditLine className="size-4 shrink-0 text-text-tertiary" />
           <div className="ml-2 system-md-regular text-text-secondary">{t('mcp.operation.edit', { ns: 'tools' })}</div>
         </DropdownMenuItem>
         <DropdownMenuItem
           className="data-highlighted:bg-state-destructive-hover data-highlighted:text-text-destructive"
           onClick={onRemove}
         >
-          <RiDeleteBinLine className="h-4 w-4 shrink-0 text-inherit" />
+          <RiDeleteBinLine className="size-4 shrink-0 text-inherit" />
           <div className="ml-2 system-md-regular text-inherit">{t('mcp.operation.remove', { ns: 'tools' })}</div>
         </DropdownMenuItem>
       </DropdownMenuContent>

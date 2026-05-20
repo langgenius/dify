@@ -51,7 +51,7 @@ const TextToSpeech = ({
     <FeatureCard
       icon={(
         <div className="shrink-0 rounded-lg border-[0.5px] border-divider-subtle bg-util-colors-violet-violet-600 p-1 shadow-xs">
-          <TextToAudio className="h-4 w-4 text-text-primary-on-surface" />
+          <TextToAudio className="size-4 text-text-primary-on-surface" />
         </div>
       )}
       title={t('feature.textToSpeech.title', { ns: 'appDebug' })}
@@ -88,7 +88,7 @@ const TextToSpeech = ({
             {(isHovering || modalOpen) && (
               <VoiceSettings open={modalOpen && !disabled} onOpen={setModalOpen} onChange={onChange}>
                 <Button className="w-full" disabled={disabled}>
-                  <RiEqualizer2Line className="mr-1 h-4 w-4" />
+                  <RiEqualizer2Line className="mr-1 size-4" />
                   {t('voice.voiceSettings.title', { ns: 'appDebug' })}
                 </Button>
               </VoiceSettings>

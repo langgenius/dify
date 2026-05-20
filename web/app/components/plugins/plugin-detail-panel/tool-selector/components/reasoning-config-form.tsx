@@ -131,7 +131,7 @@ const ReasoningConfigForm: React.FC<Props> = ({
     const tooltipContent = tooltipText && (
       <Infotip
         aria-label={tooltipText}
-        className="ml-0.5 h-4 w-4"
+        className="ml-0.5 size-4"
         popupClassName="w-[200px]"
       >
         {tooltipText}
@@ -300,7 +300,7 @@ const ReasoningConfigForm: React.FC<Props> = ({
             className="inline-flex items-center text-xs text-text-accent"
           >
             {t('howToGet', { ns: 'tools' })}
-            <RiArrowRightUpLine className="ml-1 h-3 w-3" />
+            <RiArrowRightUpLine className="ml-1 size-3" />
           </a>
         )}
       </div>

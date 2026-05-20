@@ -84,10 +84,10 @@ const PublishAsKnowledgePipelineModal = ({
             <button
               type="button"
               aria-label={t('operation.close', { ns: 'common' })}
-              className="absolute top-5 right-5 flex h-8 w-8 cursor-pointer items-center justify-center border-none bg-transparent p-0"
+              className="absolute top-5 right-5 flex size-8 cursor-pointer items-center justify-center border-none bg-transparent p-0"
               onClick={onCancel}
             >
-              <RiCloseLine className="h-4 w-4 text-text-tertiary" aria-hidden="true" />
+              <RiCloseLine className="size-4 text-text-tertiary" aria-hidden="true" />
             </button>
           </div>
           <div className="px-6 py-3">

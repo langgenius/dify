@@ -117,10 +117,10 @@ const Item = ({
           <div className="flex w-0 grow items-center space-x-1.5">
             {
               showSelectedIcon && (
-                <div className="h-4 w-4">
+                <div className="size-4">
                   {
                     selectedCredentialId === credential.id && (
-                      <RiCheckLine className="h-4 w-4 text-text-accent" />
+                      <RiCheckLine className="size-4 text-text-accent" />
                     )
                   }
                 </div>
@@ -183,7 +183,7 @@ const Item = ({
                           setRenameValue(credential.name)
                         }}
                       >
-                        <RiEditLine className="h-4 w-4 text-text-tertiary" />
+                        <RiEditLine className="size-4 text-text-tertiary" />
                       </ActionButton>
                     )}
                   />
@@ -212,7 +212,7 @@ const Item = ({
                           )
                         }}
                       >
-                        <RiEqualizer2Line className="h-4 w-4 text-text-tertiary" />
+                        <RiEqualizer2Line className="size-4 text-text-tertiary" />
                       </ActionButton>
                     )}
                   />
@@ -235,7 +235,7 @@ const Item = ({
                           onDelete?.(credential.id)
                         }}
                       >
-                        <RiDeleteBinLine className="h-4 w-4 text-text-tertiary hover:text-text-destructive" />
+                        <RiDeleteBinLine className="size-4 text-text-tertiary hover:text-text-destructive" />
                       </ActionButton>
                     )}
                   />

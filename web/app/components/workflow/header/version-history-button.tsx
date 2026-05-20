@@ -54,7 +54,7 @@ const VersionHistoryButton: FC<VersionHistoryButtonProps> = ({
             )}
             onClick={handleViewVersionHistory}
           >
-            <span className="i-ri-history-line h-4 w-4 text-components-button-secondary-text" />
+            <span className="i-ri-history-line size-4 text-components-button-secondary-text" />
           </Button>
         )}
       />

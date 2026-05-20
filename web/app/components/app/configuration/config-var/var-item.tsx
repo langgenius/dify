@@ -42,9 +42,9 @@ const VarItem: FC<ItemProps> = ({
 
   return (
     <div className={cn('group relative mb-1 flex h-[34px] w-full items-center rounded-lg border-[0.5px] border-components-panel-border-subtle bg-components-panel-on-panel-item-bg pr-3 pl-2.5 shadow-xs last-of-type:mb-0 hover:bg-components-panel-on-panel-item-bg-hover hover:shadow-sm', isDeleting && 'border-state-destructive-border hover:bg-state-destructive-hover', readonly && 'cursor-not-allowed', className)}>
-      <VarIcon className={cn('mr-1 h-4 w-4 shrink-0 text-text-accent', canDrag && 'group-hover:opacity-0')} />
+      <VarIcon className={cn('mr-1 size-4 shrink-0 text-text-accent', canDrag && 'group-hover:opacity-0')} />
       {canDrag && (
-        <RiDraggable className="absolute top-3 left-3 hidden h-3 w-3 cursor-pointer text-text-tertiary group-hover:block" />
+        <RiDraggable className="absolute top-3 left-3 hidden size-3 cursor-pointer text-text-tertiary group-hover:block" />
       )}
       <div className="flex w-0 grow items-center">
         <div className="truncate" title={`${name} · ${label}`}>
@@ -63,20 +63,20 @@ const VarItem: FC<ItemProps> = ({
           <button
             type="button"
             aria-label={t('operation.edit', { ns: 'common' })}
-            className="mr-1 flex h-6 w-6 cursor-pointer items-center justify-center rounded-md border-none bg-transparent p-0 hover:bg-black/5 focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
+            className="mr-1 flex size-6 cursor-pointer items-center justify-center rounded-md border-none bg-transparent p-0 hover:bg-black/5 focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
             onClick={onEdit}
           >
-            <RiEditLine className="h-4 w-4 text-text-tertiary" aria-hidden="true" />
+            <RiEditLine className="size-4 text-text-tertiary" aria-hidden="true" />
           </button>
           <button
             type="button"
             aria-label={t('operation.delete', { ns: 'common' })}
-            className="flex h-6 w-6 cursor-pointer items-center justify-center border-none bg-transparent p-0 text-text-tertiary hover:text-text-destructive focus-visible:ring-1 focus-visible:ring-state-destructive-border focus-visible:outline-hidden"
+            className="flex size-6 cursor-pointer items-center justify-center border-none bg-transparent p-0 text-text-tertiary hover:text-text-destructive focus-visible:ring-1 focus-visible:ring-state-destructive-border focus-visible:outline-hidden"
             onClick={onRemove}
             onMouseOver={() => setIsDeleting(true)}
             onMouseLeave={() => setIsDeleting(false)}
           >
-            <RiDeleteBinLine className="h-4 w-4" aria-hidden="true" />
+            <RiDeleteBinLine className="size-4" aria-hidden="true" />
           </button>
         </div>
       </div>

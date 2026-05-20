@@ -174,7 +174,7 @@ const UsageInfo: FC<Props> = ({
   return (
     <div className={cn('flex flex-col gap-2 rounded-xl bg-components-panel-bg p-4', className)}>
       {!hideIcon && Icon && (
-        <Icon className="h-4 w-4 text-text-tertiary" />
+        <Icon className="size-4 text-text-tertiary" />
       )}
       <div className="flex items-center gap-1">
         <div className="system-xs-medium text-text-tertiary">{name}</div>

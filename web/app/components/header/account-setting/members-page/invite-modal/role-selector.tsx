@@ -39,8 +39,8 @@ const RoleSelector = ({ value, onChange }: RoleSelectorProps) => {
           open && 'bg-state-base-hover',
         )}
       >
-        <div className="mr-2 grow text-sm leading-5 text-text-primary">{t('members.invitedAsRole', { ns: 'common', role: t(roleI18nKeyMap[value], { ns: 'common' }) })}</div>
-        <div className="i-ri-arrow-down-s-line h-4 w-4 shrink-0 text-text-secondary" />
+        <div className="mr-2 grow text-sm/5 text-text-primary">{t('members.invitedAsRole', { ns: 'common', role: t(roleI18nKeyMap[value], { ns: 'common' }) })}</div>
+        <div className="i-ri-arrow-down-s-line size-4 shrink-0 text-text-secondary" />
       </PopoverTrigger>
       <PopoverContent
         placement="bottom-start"
@@ -58,12 +58,12 @@ const RoleSelector = ({ value, onChange }: RoleSelectorProps) => {
             }}
           >
             <div className="relative pl-5">
-              <div className="text-sm leading-5 text-text-secondary">{t('members.normal', { ns: 'common' })}</div>
+              <div className="text-sm/5 text-text-secondary">{t('members.normal', { ns: 'common' })}</div>
               <div className="text-xs leading-[18px] text-text-tertiary">{t('members.normalTip', { ns: 'common' })}</div>
               {value === 'normal' && (
                 <div
                   aria-hidden="true"
-                  className="absolute top-0.5 left-0 i-custom-vender-line-general-check h-4 w-4 text-text-accent"
+                  className="absolute top-0.5 left-0 i-custom-vender-line-general-check size-4 text-text-accent"
                 />
               )}
             </div>
@@ -78,12 +78,12 @@ const RoleSelector = ({ value, onChange }: RoleSelectorProps) => {
             }}
           >
             <div className="relative pl-5">
-              <div className="text-sm leading-5 text-text-secondary">{t('members.editor', { ns: 'common' })}</div>
+              <div className="text-sm/5 text-text-secondary">{t('members.editor', { ns: 'common' })}</div>
               <div className="text-xs leading-[18px] text-text-tertiary">{t('members.editorTip', { ns: 'common' })}</div>
               {value === 'editor' && (
                 <div
                   aria-hidden="true"
-                  className="absolute top-0.5 left-0 i-custom-vender-line-general-check h-4 w-4 text-text-accent"
+                  className="absolute top-0.5 left-0 i-custom-vender-line-general-check size-4 text-text-accent"
                 />
               )}
             </div>
@@ -98,12 +98,12 @@ const RoleSelector = ({ value, onChange }: RoleSelectorProps) => {
             }}
           >
             <div className="relative pl-5">
-              <div className="text-sm leading-5 text-text-secondary">{t('members.admin', { ns: 'common' })}</div>
+              <div className="text-sm/5 text-text-secondary">{t('members.admin', { ns: 'common' })}</div>
               <div className="text-xs leading-[18px] text-text-tertiary">{t('members.adminTip', { ns: 'common' })}</div>
               {value === 'admin' && (
                 <div
                   aria-hidden="true"
-                  className="absolute top-0.5 left-0 i-custom-vender-line-general-check h-4 w-4 text-text-accent"
+                  className="absolute top-0.5 left-0 i-custom-vender-line-general-check size-4 text-text-accent"
                 />
               )}
             </div>
@@ -119,12 +119,12 @@ const RoleSelector = ({ value, onChange }: RoleSelectorProps) => {
               }}
             >
               <div className="relative pl-5">
-                <div className="text-sm leading-5 text-text-secondary">{t('members.datasetOperator', { ns: 'common' })}</div>
+                <div className="text-sm/5 text-text-secondary">{t('members.datasetOperator', { ns: 'common' })}</div>
                 <div className="text-xs leading-[18px] text-text-tertiary">{t('members.datasetOperatorTip', { ns: 'common' })}</div>
                 {value === 'dataset_operator' && (
                   <div
                     aria-hidden="true"
-                    className="absolute top-0.5 left-0 i-custom-vender-line-general-check h-4 w-4 text-text-accent"
+                    className="absolute top-0.5 left-0 i-custom-vender-line-general-check size-4 text-text-accent"
                   />
                 )}
               </div>

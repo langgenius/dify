@@ -37,9 +37,9 @@ class TestAppGenerateService:
                 "services.app_generate_service.MessageBasedAppGenerator", autospec=True
             ) as mock_message_based_generator,
             patch("services.account_service.FeatureService", autospec=True) as mock_account_feature_service,
-            patch("services.app_generate_service.dify_config", autospec=True) as mock_dify_config,
-            patch("services.quota_service.dify_config", autospec=True) as mock_quota_dify_config,
-            patch("configs.dify_config", autospec=True) as mock_global_dify_config,
+            patch("services.app_generate_service.dify_config") as mock_dify_config,
+            patch("services.quota_service.dify_config") as mock_quota_dify_config,
+            patch("configs.dify_config") as mock_global_dify_config,
         ):
             # Setup default mock returns for billing service
             mock_billing_service.quota_reserve.return_value = {

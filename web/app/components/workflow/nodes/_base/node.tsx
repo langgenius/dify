@@ -195,7 +195,7 @@ const BaseNode: FC<BaseNodeProps> = ({
           'rounded-[15px] border border-transparent',
           (controlMode === ControlMode.Comment) && 'hover:cursor-none',
           !isContainerNode(data.type) && 'w-[240px] bg-workflow-block-bg',
-          isContainerNode(data.type) && 'flex h-full w-full flex-col border-workflow-block-border bg-workflow-block-bg-transparent',
+          isContainerNode(data.type) && 'flex size-full flex-col border-workflow-block-border bg-workflow-block-bg-transparent',
           !data._runningStatus && 'hover:shadow-lg',
           showRunningBorder && 'border-state-accent-solid!',
           showSuccessBorder && 'border-state-success-solid!',

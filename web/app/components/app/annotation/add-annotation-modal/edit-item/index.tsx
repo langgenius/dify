@@ -21,7 +21,7 @@ const EditItem: FC<Props> = ({
   onChange,
 }) => {
   const { t } = useTranslation()
-  const avatar = type === EditItemType.Query ? <User className="h-6 w-6" /> : <Robot className="h-6 w-6" />
+  const avatar = type === EditItemType.Query ? <User className="size-6" /> : <Robot className="size-6" />
   const name = type === EditItemType.Query ? t('addModal.queryName', { ns: 'appAnnotation' }) : t('addModal.answerName', { ns: 'appAnnotation' })
   const placeholder = type === EditItemType.Query ? t('addModal.queryPlaceholder', { ns: 'appAnnotation' }) : t('addModal.answerPlaceholder', { ns: 'appAnnotation' })
 

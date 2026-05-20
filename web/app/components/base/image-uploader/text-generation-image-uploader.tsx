@@ -52,7 +52,7 @@ const PasteImageLinkButton: FC<PasteImageLinkButtonProps> = ({
               ${disabled ? 'cursor-not-allowed' : 'cursor-pointer'}
             `}
           >
-            <Link03 className="mr-2 h-4 w-4" />
+            <Link03 className="mr-2 size-4" />
             {t('imageUploader.pasteImageLink', { ns: 'common' })}
           </div>
         )}
@@ -109,7 +109,7 @@ const TextGenerationImageUploader: FC<TextGenerationImageUploaderProps> = ({
             ${hovering && 'hover:bg-components-button-tertiary-bg-hover'}
           `}
           >
-            <ImagePlus className="mr-2 h-4 w-4" />
+            <ImagePlus className="mr-2 size-4" />
             {t('imageUploader.uploadFromComputer', { ns: 'common' })}
           </div>
         )

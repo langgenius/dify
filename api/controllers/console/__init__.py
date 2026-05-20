@@ -44,6 +44,8 @@ from . import (
     spec,
     version,
 )
+from .agent import composer as agent_composer
+from .agent import roster as agent_roster
 
 # Import app controllers
 from .app import (
@@ -143,7 +145,9 @@ __all__ = [
     "activate",
     "advanced_prompt_template",
     "agent",
+    "agent_composer",
     "agent_providers",
+    "agent_roster",
     "annotation",
     "api",
     "apikey",

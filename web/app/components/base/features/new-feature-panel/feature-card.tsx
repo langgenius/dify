@@ -40,7 +40,7 @@ const FeatureCard = ({
           {tooltip && (
             <Infotip
               aria-label={typeof tooltip === 'string' ? tooltip : String(title)}
-              className="ml-0.5 h-3.5 w-3.5"
+              className="ml-0.5 size-3.5"
             >
               {tooltip}
             </Infotip>

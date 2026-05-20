@@ -62,7 +62,7 @@ const NewFeaturePanel = ({
           </div>
           <DrawerCloseButton
             aria-label={t('operation.close', { ns: 'common' })}
-            className="h-8 w-8 p-2"
+            className="size-8 p-2"
           />
         </div>
         {/* list */}
