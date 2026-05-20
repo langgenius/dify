@@ -1574,26 +1574,6 @@
       "count": 1
     }
   },
-  "web/app/components/base/radio-card/index.stories.tsx": {
-    "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
-  "web/app/components/base/radio/component/group/index.tsx": {
-    "ts/no-explicit-any": {
-      "count": 2
-    }
-  },
-  "web/app/components/base/radio/context/index.ts": {
-    "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
-  "web/app/components/base/radio/index.stories.tsx": {
-    "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
   "web/app/components/base/search-input/index.stories.tsx": {
     "no-console": {
       "count": 3
