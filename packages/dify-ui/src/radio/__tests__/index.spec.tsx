@@ -149,8 +149,9 @@ describe('Radio', () => {
 describe('RadioSkeleton', () => {
   it('should render a visual placeholder without radio semantics', async () => {
     const screen = await render(<RadioSkeleton />)
+    const skeleton = screen.container.querySelector<HTMLElement>('.rounded-full')
 
     expect(screen.container.querySelector('[role="radio"]')).not.toBeInTheDocument()
-    await expect.element(screen.container.firstElementChild).toHaveClass('rounded-full', 'opacity-20')
+    await expect.element(skeleton).toHaveClass('rounded-full', 'opacity-20')
   })
 })
