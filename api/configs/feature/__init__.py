@@ -265,6 +265,11 @@ class PluginConfig(BaseSettings):
         default=60 * 60,
     )
 
+    PLUGIN_MODEL_PROVIDERS_CACHE_TTL: PositiveInt = Field(
+        description="TTL in seconds for caching tenant plugin model providers in Redis",
+        default=60 * 5,
+    )
+
     PLUGIN_MAX_FILE_SIZE: PositiveInt = Field(
         description="Maximum allowed size (bytes) for plugin-generated files",
         default=50 * 1024 * 1024,

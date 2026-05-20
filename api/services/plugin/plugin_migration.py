@@ -22,6 +22,7 @@ from core.helper import marketplace
 from core.plugin.entities.plugin import PluginInstallationSource
 from core.plugin.entities.plugin_daemon import PluginInstallTaskStatus
 from core.plugin.impl.plugin import PluginInstaller
+from core.plugin.plugin_service import PluginService
 from core.tools.entities.tool_entities import ToolProviderType
 from extensions.ext_database import db
 from models.account import Tenant
@@ -29,7 +30,6 @@ from models.model import App, AppMode, AppModelConfig
 from models.provider_ids import ModelProviderID, ToolProviderID
 from models.tools import BuiltinToolProvider
 from models.workflow import Workflow
-from services.plugin.plugin_service import PluginService
 
 logger = logging.getLogger(__name__)
 

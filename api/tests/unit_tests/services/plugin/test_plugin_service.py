@@ -1,6 +1,13 @@
 from unittest.mock import MagicMock, patch
 
-MODULE = "services.plugin.plugin_service"
+MODULE = "core.plugin.plugin_service"
+
+
+def test_legacy_services_plugin_service_aliases_core_module() -> None:
+    import core.plugin.plugin_service as core_plugin_service
+    import services.plugin.plugin_service as legacy_plugin_service
+
+    assert legacy_plugin_service is core_plugin_service
 
 
 class TestFetchLatestPluginVersion:
@@ -14,7 +21,7 @@ class TestFetchLatestPluginVersion:
             mock_cfg.MARKETPLACE_ENABLED = False
             mock_redis.get.return_value = None  # all cache misses
 
-            from services.plugin.plugin_service import PluginService
+            from core.plugin.plugin_service import PluginService
 
             result = PluginService.fetch_latest_plugin_version(["langgenius/openai", "langgenius/anthropic"])
 
@@ -40,7 +47,7 @@ class TestFetchLatestPluginVersion:
             mock_redis.get.return_value = None
             mock_marketplace.batch_fetch_plugin_manifests.return_value = [manifest]
 
-            from services.plugin.plugin_service import PluginService
+            from core.plugin.plugin_service import PluginService
 
             result = PluginService.fetch_latest_plugin_version(["langgenius/openai"])
 
@@ -48,3 +55,62 @@ class TestFetchLatestPluginVersion:
         mock_marketplace.batch_fetch_plugin_manifests.assert_called_once()
         assert result["langgenius/openai"] is not None
         assert result["langgenius/openai"].version == "1.0.0"
+
+
+class TestPluginModelProviderCacheInvalidation:
+    def test_install_from_local_pkg_invalidates_model_provider_cache_for_tenant(self) -> None:
+        """Starting a plugin install invalidates only the mutated tenant provider cache."""
+        with (
+            patch(f"{MODULE}.PluginService._check_marketplace_only_permission"),
+            patch(f"{MODULE}.PluginService._check_plugin_installation_scope"),
+            patch(f"{MODULE}.PluginInstaller") as installer_cls,
+            patch(f"{MODULE}.PluginService.invalidate_plugin_model_providers_cache") as invalidate_cache,
+        ):
+            installer = installer_cls.return_value
+            decode_response = MagicMock()
+            decode_response.verification = None
+            installer.decode_plugin_from_identifier.return_value = decode_response
+            installer.install_from_identifiers.return_value = "task-id"
+
+            from core.plugin.plugin_service import PluginService
+
+            result = PluginService.install_from_local_pkg("tenant-1", ["langgenius/openai:1.0.0"])
+
+        assert result == "task-id"
+        invalidate_cache.assert_called_once_with("tenant-1")
+
+    def test_upgrade_plugin_with_github_invalidates_model_provider_cache_for_tenant(self) -> None:
+        """Starting a plugin upgrade invalidates only the mutated tenant provider cache."""
+        with (
+            patch(f"{MODULE}.PluginService._check_marketplace_only_permission"),
+            patch(f"{MODULE}.PluginInstaller") as installer_cls,
+            patch(f"{MODULE}.PluginService.invalidate_plugin_model_providers_cache") as invalidate_cache,
+        ):
+            installer = installer_cls.return_value
+            installer.upgrade_plugin.return_value = "task-id"
+
+            from core.plugin.plugin_service import PluginService
+
+            result = PluginService.upgrade_plugin_with_github(
+                "tenant-1", "old-uid", "new-uid", "langgenius/openai", "1.0.0", "openai.difypkg"
+            )
+
+        assert result == "task-id"
+        invalidate_cache.assert_called_once_with("tenant-1")
+
+    def test_uninstall_invalidates_model_provider_cache_for_tenant(self) -> None:
+        """Successful uninstall invalidates only the mutated tenant provider cache."""
+        with (
+            patch(f"{MODULE}.PluginInstaller") as installer_cls,
+            patch(f"{MODULE}.PluginService.invalidate_plugin_model_providers_cache") as invalidate_cache,
+        ):
+            installer = installer_cls.return_value
+            installer.list_plugins.return_value = []
+            installer.uninstall.return_value = True
+
+            from core.plugin.plugin_service import PluginService
+
+            result = PluginService.uninstall("tenant-1", "installation-1")
+
+        assert result is True
+        invalidate_cache.assert_called_once_with("tenant-1")
