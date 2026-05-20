@@ -15,7 +15,7 @@
 ## 2. 知识库创建流程图
 
 ```mermaid
-flowchart TD
+graph TB
     A[用户进入知识库管理] --> B[点击创建知识库]
     B --> C[输入知识库名称与描述]
     C --> D{选择创建方式}
@@ -24,16 +24,16 @@ flowchart TD
     D -->|RAG Pipeline| E2[选择管道模板]
 
     E1 --> F1{索引技术类型}
-    F1 -->|高质量模式<br/>high_quality| G1[选择嵌入模型<br/>配置向量数据库]
-    F1 -->|经济模式<br/>economy| G2[使用 Jieba 关键词索引<br/>无需嵌入模型]
+    F1 -->|高质量模式 - high_quality| G1[选择嵌入模型 - 配置向量数据库]
+    F1 -->|经济模式 - economy| G2[使用 Jieba 关键词索引 - 无需嵌入模型]
 
     G1 --> H1[选择索引结构]
-    G2 --> H2[仅支持段落索引<br/>text_model]
+    G2 --> H2[仅支持段落索引 - text_model]
 
     H1 --> I1{索引结构类型}
-    I1 -->|段落索引<br/>text_model| J1[ParagraphIndexProcessor]
-    I1 -->|QA 索引<br/>qa_model| J2[QAIndexProcessor<br/>LLM 生成问答对]
-    I1 -->|父子层级索引<br/>hierarchical_model| J3[ParentChildIndexProcessor<br/>子块检索 + 父块上下文]
+    I1 -->|段落索引 - text_model| J1[ParagraphIndexProcessor]
+    I1 -->|QA 索引 - qa_model| J2[QAIndexProcessor - LLM 生成问答对]
+    I1 -->|父子层级索引 - hierarchical_model| J3[ParentChildIndexProcessor - 子块检索 + 父块上下文]
 
     J1 --> K[创建 Dataset 记录]
     J2 --> K
@@ -49,17 +49,10 @@ flowchart TD
     M2 --> N
     M3 --> N
 
-    N --> O[编辑管道草稿<br/>配置数据源与索引节点]
+    N --> O[编辑管道草稿 - 配置数据源与索引节点]
     O --> K
 
-    K --> P[知识库创建完成<br/>等待添加文档]
-
-    style A fill:#e1f5fe
-    style D fill:#fff3e0
-    style F1 fill:#fff3e0
-    style I1 fill:#fff3e0
-    style K fill:#e8f5e9
-    style P fill:#c8e6c9
+    K --> P[知识库创建完成 - 等待添加文档]
 ```
 
 ### 索引技术类型对比
@@ -82,33 +75,33 @@ flowchart TD
 ## 3. 文档上传与处理流程图
 
 ```mermaid
-flowchart TD
+graph TB
     A[用户添加文档] --> B{数据源类型}
 
-    B -->|文件上传| C1[上传文件到对象存储<br/>PDF / Word / Excel / CSV ...]
-    B -->|Web 爬取| C2[选择爬取提供商<br/>Firecrawl / WaterCrawl / Jina]
-    B -->|Notion 同步| C3[Notion API 授权<br/>选择页面导入]
-    B -->|外部知识库| C4[配置外部 API<br/>自定义检索参数]
-    B -->|在线文档| C5[插件方式接入<br/>浏览并选择文档]
-    B -->|在线网盘| C6[插件方式接入<br/>浏览并选择文件]
+    B -->|文件上传| C1[上传文件到对象存储 - PDF/Word/Excel/CSV...]
+    B -->|Web 爬取| C2[选择爬取提供商 - Firecrawl/WaterCrawl/Jina]
+    B -->|Notion 同步| C3[Notion API 授权 - 选择页面导入]
+    B -->|外部知识库| C4[配置外部 API - 自定义检索参数]
+    B -->|在线文档| C5[插件方式接入 - 浏览并选择文档]
+    B -->|在线网盘| C6[插件方式接入 - 浏览并选择文件]
 
-    C1 --> D[ExtractProcessor<br/>文档提取]
+    C1 --> D[ExtractProcessor - 文档提取]
     C2 --> D
     C3 --> D
     C5 --> D
     C6 --> D
 
-    D --> E{ETL 类型判断<br/>ETL_TYPE}
-    E -->|dify| F1[内置提取器<br/>Pdf / Word / Excel / CSV ...]
-    E -->|Unstructured| F2[Unstructured 提取器<br/>需配置 API URL + Key]
+    D --> E{ETL 类型判断 - ETL_TYPE}
+    E -->|dify| F1[内置提取器 - Pdf/Word/Excel/CSV...]
+    E -->|Unstructured| F2[Unstructured 提取器 - 需配置 API URL + Key]
 
-    F1 --> G[提取文本内容<br/>返回 Document 列表]
+    F1 --> G[提取文本内容 - 返回 Document 列表]
     F2 --> G
 
-    G --> H[CleanProcessor<br/>文本清洗]
+    G --> H[CleanProcessor - 文本清洗]
     H --> H1[移除无效 Unicode]
-    H --> H2[移除多余空格<br/>remove_extra_spaces]
-    H --> H3[移除 URL 和邮箱<br/>remove_urls_emails]
+    H --> H2[移除多余空格 - remove_extra_spaces]
+    H --> H3[移除 URL 和邮箱 - remove_urls_emails]
     H --> H4[替换特殊标记]
 
     H1 --> I{分块模式}
@@ -116,38 +109,30 @@ flowchart TD
     H3 --> I
     H4 --> I
 
-    I -->|自动分块<br/>automatic| J1[EnhanceRecursiveCharacterTextSplitter<br/>系统预设规则]
-    I -->|自定义分块<br/>custom| J2[FixedRecursiveCharacterTextSplitter<br/>自定义分隔符 + Token 数]
+    I -->|自动分块 - automatic| J1[EnhanceRecursiveCharacterTextSplitter - 系统预设规则]
+    I -->|自定义分块 - custom| J2[FixedRecursiveCharacterTextSplitter - 自定义分隔符 + Token 数]
 
-    J1 --> K[文本分块<br/>生成 DocumentSegment 列表]
+    J1 --> K[文本分块 - 生成 DocumentSegment 列表]
     J2 --> K
 
     K --> L{索引技术类型}
-    L -->|high_quality| M[CacheEmbedding<br/>嵌入模型向量化]
-    L -->|economy| N[Jieba 分词<br/>关键词索引构建]
+    L -->|high_quality| M[CacheEmbedding - 嵌入模型向量化]
+    L -->|economy| N[Jieba 分词 - 关键词索引构建]
 
-    M --> M1[embed_documents<br/>文档文本 → 向量]
-    M1 --> M2[数据库缓存<br/>model_name + hash + provider_name]
+    M --> M1[embed_documents - 文档文本转向量]
+    M1 --> M2[数据库缓存 - model_name + hash + provider_name]
     M2 --> M3[向量归一化]
-    M3 --> M4[存入向量数据库<br/>Vector Store]
+    M3 --> M4[存入向量数据库 - Vector Store]
 
     N --> N1[Jieba 分词提取关键词]
     N1 --> N2[TF-IDF 计算权重]
     N2 --> N3[构建关键词索引]
 
-    M4 --> O[索引构建完成<br/>文档状态 = completed]
+    M4 --> O[索引构建完成 - 文档状态 = completed]
     N3 --> O
 
-    C4 --> P[外部检索 API<br/>ExternalDatasetService]
-    P --> Q[外部知识库就绪<br/>检索时直接调用外部 API]
-
-    style A fill:#e1f5fe
-    style D fill:#fff3e0
-    style H fill:#e1f5fe
-    style I fill:#fff3e0
-    style L fill:#fff3e0
-    style O fill:#e8f5e9
-    style Q fill:#c8e6c9
+    C4 --> P[外部检索 API - ExternalDatasetService]
+    P --> Q[外部知识库就绪 - 检索时直接调用外部 API]
 ```
 
 ### 文档处理时序图
@@ -204,26 +189,26 @@ sequenceDiagram
 ## 4. 检索与重排序流程图
 
 ```mermaid
-flowchart TD
+graph TB
     A[用户查询输入] --> B[RetrievalService.retrieve]
 
     B --> C{检索策略}
-    C -->|单数据集检索<br/>SINGLE| D1[LLM 路由选择最相关数据集<br/>ReAct / Function Call]
-    C -->|多数据集检索<br/>MULTIPLE| D2[并行检索多个数据集<br/>合并结果]
+    C -->|单数据集检索 - SINGLE| D1[LLM 路由选择最相关数据集 - ReAct/Function Call]
+    C -->|多数据集检索 - MULTIPLE| D2[并行检索多个数据集 - 合并结果]
 
     D1 --> E{检索方法}
     D2 --> E
 
-    E -->|向量检索<br/>semantic_search| F1[embed_query<br/>查询向量化]
-    F1 --> G1[search_by_vector<br/>向量相似度搜索]
+    E -->|向量检索 - semantic_search| F1[embed_query - 查询向量化]
+    F1 --> G1[search_by_vector - 向量相似度搜索]
 
-    E -->|全文检索<br/>full_text_search| F2[查询文本处理]
-    F2 --> G2[search_by_full_text<br/>全文搜索]
+    E -->|全文检索 - full_text_search| F2[查询文本处理]
+    F2 --> G2[search_by_full_text - 全文搜索]
 
-    E -->|混合检索<br/>hybrid_search| F3[并行执行<br/>向量检索 + 全文检索]
+    E -->|混合检索 - hybrid_search| F3[并行执行 - 向量检索 + 全文检索]
     F3 --> G3[去重合并结果]
 
-    E -->|关键词检索<br/>keyword_search| F4[Jieba 分词]
+    E -->|关键词检索 - keyword_search| F4[Jieba 分词]
     F4 --> G4[TF-IDF 关键词匹配]
 
     G1 --> H{元数据过滤}
@@ -235,30 +220,25 @@ flowchart TD
     H -->|automatic| I2[LLM 提取过滤条件]
     H -->|manual| I3[用户指定过滤条件]
 
-    I1 --> J[DataPostProcessor<br/>数据后处理]
+    I1 --> J[DataPostProcessor - 数据后处理]
     I2 --> J
     I3 --> J
 
     J --> K{重排序模式}
-    K -->|reranking_model| L1[RerankModelRunner<br/>Rerank 模型重排]
-    K -->|weighted_score| L2[WeightRerankRunner<br/>加权评分重排]
+    K -->|reranking_model| L1[RerankModelRunner - Rerank 模型重排]
+    K -->|weighted_score| L2[WeightRerankRunner - 加权评分重排]
     K -->|None| L3[跳过重排序]
 
-    L1 --> M[分数阈值过滤<br/>score_threshold]
+    L1 --> M[分数阈值过滤 - score_threshold]
     L2 --> M
     L3 --> N
 
-    M --> N{交错重排<br/>ReorderRunner}
-    N -->|enabled| O[Lost in the Middle 缓解<br/>奇偶位交错排列]
+    M --> N{交错重排 - ReorderRunner}
+    N -->|enabled| O[Lost in the Middle 缓解 - 奇偶位交错排列]
     N -->|disabled| P[直接输出]
 
     O --> P
     P --> Q[返回 Top-K 检索结果]
-
-    style A fill:#e1f5fe
-    style E fill:#fff3e0
-    style K fill:#fff3e0
-    style Q fill:#c8e6c9
 ```
 
 ### 检索方法对比
@@ -290,53 +270,43 @@ flowchart TD
 ## 5. 知识库维护流程图
 
 ```mermaid
-flowchart TD
+graph TB
     A[知识库运行中] --> B{维护操作}
 
     B -->|添加文档| C[上传新文档]
-    C --> D[文档处理流程<br/>提取 → 清洗 → 分块 → 嵌入 → 索引]
-    D --> E[新文档索引完成<br/>立即可检索]
+    C --> D[文档处理流程 - 提取 清洗 分块 嵌入 索引]
+    D --> E[新文档索引完成 - 立即可检索]
 
     B -->|更新文档| F[重新上传文档]
-    F --> G[删除旧索引数据<br/>clean(dataset, node_ids)]
-    G --> H[重新处理文档<br/>提取 → 清洗 → 分块 → 嵌入 → 索引]
+    F --> G[删除旧索引数据 - clean dataset node_ids]
+    G --> H[重新处理文档 - 提取 清洗 分块 嵌入 索引]
     H --> I[文档更新完成]
 
     B -->|删除文档| J[标记文档为删除]
-    J --> K[清理索引数据<br/>从向量数据库移除]
+    J --> K[清理索引数据 - 从向量数据库移除]
     K --> L[删除 Document 记录]
     L --> M[文档删除完成]
 
-    B -->|重新索引| N[选择重新索引范围<br/>单个文档 / 全部文档]
+    B -->|重新索引| N[选择重新索引范围 - 单个文档/全部文档]
     N --> O[清理旧索引]
-    O --> P[重新执行嵌入与索引<br/>使用当前嵌入模型配置]
+    O --> P[重新执行嵌入与索引 - 使用当前嵌入模型配置]
     P --> Q[重新索引完成]
 
     B -->|修改配置| R{配置变更类型}
-    R -->|嵌入模型变更| S[全量重新索引<br/>所有文档需重新嵌入]
-    R -->|分块规则变更| T[全量重新分块<br/>所有文档需重新处理]
-    R -->|检索参数变更| U[即时生效<br/>无需重新索引]
+    R -->|嵌入模型变更| S[全量重新索引 - 所有文档需重新嵌入]
+    R -->|分块规则变更| T[全量重新分块 - 所有文档需重新处理]
+    R -->|检索参数变更| U[即时生效 - 无需重新索引]
 
     S --> P
     T --> D
     U --> V[配置更新完成]
 
     B -->|RAG Pipeline 管理| W{管道操作}
-    W -->|编辑管道| X[修改 Draft Workflow<br/>调整数据源 / 索引节点]
-    W -->|发布管道| Y[publish_workflow<br/>新版本生效]
-    W -->|回滚管道| Z[restore_published_workflow_to_draft<br/>恢复历史版本]
-    W -->|导出 DSL| AA[export_rag_pipeline_dsl<br/>YAML 格式导出]
-    W -->|导入 DSL| AB[import_rag_pipeline<br/>YAML 解析 + 依赖安装]
-
-    style A fill:#e1f5fe
-    style B fill:#fff3e0
-    style R fill:#fff3e0
-    style W fill:#fff3e0
-    style E fill:#e8f5e9
-    style I fill:#e8f5e9
-    style M fill:#e8f5e9
-    style Q fill:#e8f5e9
-    style V fill:#e8f5e9
+    W -->|编辑管道| X[修改 Draft Workflow - 调整数据源/索引节点]
+    W -->|发布管道| Y[publish_workflow - 新版本生效]
+    W -->|回滚管道| Z[restore_published_workflow_to_draft - 恢复历史版本]
+    W -->|导出 DSL| AA[export_rag_pipeline_dsl - YAML 格式导出]
+    W -->|导入 DSL| AB[import_rag_pipeline - YAML 解析 + 依赖安装]
 ```
 
 ### RAG Pipeline 生命周期

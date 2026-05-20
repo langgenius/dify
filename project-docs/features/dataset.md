@@ -426,19 +426,18 @@ flowchart TD
 ### 7.1 架构模型
 
 ```mermaid
-flowchart LR
+graph LR
     subgraph Dify
-        A[Dataset<br/>provider=external] --> B[ExternalKnowledgeBindings]
+        A[Dataset - external provider] --> B[ExternalKnowledgeBindings]
         B --> C[ExternalKnowledgeApis]
     end
 
     subgraph 外部系统
         D[外部知识库 API]
-        D --> E[/retrieval 端点]
+        D --> E[retrieval 端点]
     end
 
     C -->|HTTP 请求| D
-
     C -->|settings| F[endpoint + api_key]
 ```
 

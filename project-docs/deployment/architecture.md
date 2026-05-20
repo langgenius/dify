@@ -114,39 +114,44 @@ graph LR
 
 ```mermaid
 graph TB
-    subgraph default 网络
-        API
-        WS
-        WORKER
-        BEAT
-        WEB
-        PLUGIN
-        NGINX
-        SSRF
-        PG
-        REDIS
+    subgraph 默认网络
+        NGINX[Nginx]
+        WEB[Web]
+        PG[PostgreSQL]
+        REDIS[Redis]
     end
 
-    subgraph ssrf_proxy_network<br/>内部网络 - 不可外部访问
-        API2[API]
-        WS2[WebSocket]
-        WORKER2[Worker]
-        BEAT2[Beat]
-        PLUGIN2[Plugin Daemon]
-        SSRF2[SSRF Proxy]
-        SANDBOX2[Sandbox]
+    subgraph SSRF代理网络
+        API[API]
+        WS[WebSocket]
+        WORKER[Worker]
+        BEAT[Beat]
+        PLUGIN[Plugin Daemon]
+        SSRF[SSRF Proxy]
+        SANDBOX[Sandbox]
     end
 
-    subgraph milvus 网络
+    subgraph 向量数据库网络
         ETCD[etcd]
         MINIO[MinIO]
-        MILVUS_S[Milvus Standalone]
+        MILVUS[Milvus]
     end
 
-    subgraph opensearch-net 网络
+    subgraph 搜索网络
         OS[OpenSearch]
-        OSD[OpenSearch Dashboards]
+        OSD[Dashboards]
     end
+
+    NGINX --> WEB
+    NGINX --> API
+    NGINX --> WS
+    API --> PG
+    API --> REDIS
+    WORKER --> PG
+    WORKER --> REDIS
+    API --> SSRF
+    WORKER --> SSRF
+    SANDBOX --> SSRF
 ```
 
 Docker Compose 定义了以下网络：
@@ -299,10 +304,10 @@ proxy_cache_bypass $http_upgrade;
 
 ```mermaid
 sequenceDiagram
-    participant Entrypoint as docker-entrypoint.sh
-    participant Template as 配置模板
-    participant Config as 最终配置
-    participant Nginx as Nginx 进程
+    participant Entrypoint as "docker-entrypoint.sh"
+    participant Template as "配置模板"
+    participant Config as "最终配置"
+    participant Nginx as "Nginx 进程"
 
     Entrypoint->>Entrypoint: 检查 NGINX_HTTPS_ENABLED
     alt HTTPS 启用
@@ -317,7 +322,7 @@ sequenceDiagram
     Entrypoint->>Config: 生成 proxy.conf
     Entrypoint->>Template: envsubst default.conf.template
     Entrypoint->>Config: 生成 default.conf
-    Entrypoint->>Nginx: 启动 nginx -g 'daemon off;'
+    Entrypoint->>Nginx: 启动 nginx -g daemon off
 ```
 
 ## 4. SSRF 代理机制

@@ -64,42 +64,36 @@ flowchart TD
 ## 3. 应用发布为 WebApp 的流程
 
 ```mermaid
-flowchart TD
+graph TB
     A[应用编辑完成] --> B[发布工作流 / 配置]
     B --> C{应用类型判断}
-    C -->|Chatbot / Agent| D[发布 AppModelConfig]
-    C -->|Workflow / Advanced Chat| E[发布 Draft Workflow<br/>WorkflowService.publish_workflow]
-    C -->|RAG Pipeline| F[发布 Pipeline Workflow<br/>RagPipelineService.publish_workflow]
+    C -->|Chatbot/Agent| D[发布 AppModelConfig]
+    C -->|Workflow/Advanced Chat| E[发布 Draft Workflow - WorkflowService.publish_workflow]
+    C -->|RAG Pipeline| F[发布 Pipeline Workflow - RagPipelineService.publish_workflow]
 
-    D --> G[启用站点访问<br/>enable_site = true]
+    D --> G[启用站点访问 - enable_site = true]
     E --> G
     F --> G
 
     G --> H{WebApp 认证模式}
-    H -->|public| I[公开访问<br/>任何人可访问]
-    H -->|private| J[需登录访问<br/>EnterpriseService.WebAppAuth]
+    H -->|public| I[公开访问 - 任何人可访问]
+    H -->|private| J[需登录访问 - EnterpriseService.WebAppAuth]
 
-    I --> K[生成 WebApp URL<br/>/apps/{app_id}]
+    I --> K[生成 WebApp URL - /apps/app_id]
     J --> K
 
     K --> L[用户访问 WebApp]
     L --> M{应用模式}
-    M -->|Chat| N[对话界面交互<br/>ChatService.handle]
-    M -->|Completion| O[单次生成界面<br/>CompletionService.handle]
-    M -->|Workflow| P[参数输入界面<br/>WorkflowEntry.run]
+    M -->|Chat| N[对话界面交互 - ChatService.handle]
+    M -->|Completion| O[单次生成界面 - CompletionService.handle]
+    M -->|Workflow| P[参数输入界面 - WorkflowEntry.run]
 
     N --> Q[流式响应输出]
     O --> Q
     P --> Q
 
-    Q --> R[记录对话日志<br/>Message + MessageAgentThought]
-    R --> S[用户反馈<br/>like / dislike]
-
-    style A fill:#e1f5fe
-    style B fill:#fff3e0
-    style G fill:#fce4ec
-    style Q fill:#e8f5e9
-    style S fill:#c8e6c9
+    Q --> R[记录对话日志 - Message + MessageAgentThought]
+    R --> S[用户反馈 - like/dislike]
 ```
 
 ### WebApp 发布配置项
@@ -117,19 +111,19 @@ flowchart TD
 ## 4. 应用通过 API 调用的流程
 
 ```mermaid
-flowchart TD
-    A[应用发布完成] --> B[启用 API 访问<br/>enable_api = true]
-    B --> C[生成 API 密钥<br/>AppApiKeyService]
+graph TB
+    A[应用发布完成] --> B[启用 API 访问 - enable_api = true]
+    B --> C[生成 API 密钥 - AppApiKeyService]
     C --> D[外部系统集成]
 
-    D --> E[构造 API 请求<br/>Authorization: Bearer {api_key}]
+    D --> E[构造 API 请求 - Authorization: Bearer api_key]
     E --> F{API 端点路由}
 
-    F -->|/chat-messages| G[Chat API<br/>对话型接口]
-    F -->|/completion-messages| H[Completion API<br/>文本生成接口]
-    F -->|/workflows/run| I[Workflow API<br/>工作流执行接口]
+    F -->|/chat-messages| G[Chat API - 对话型接口]
+    F -->|/completion-messages| H[Completion API - 文本生成接口]
+    F -->|/workflows/run| I[Workflow API - 工作流执行接口]
 
-    G --> J[认证与限流检查<br/>validate_api_token + rate_limit]
+    G --> J[认证与限流检查 - validate_api_token + rate_limit]
     H --> J
     I --> J
 
@@ -138,20 +132,13 @@ flowchart TD
     K -->|是| M[执行应用逻辑]
 
     M --> N{流式 / 非流式}
-    N -->|streaming| O[SSE 流式响应<br/>event: message / end]
-    N -->|blocking| P[同步等待响应<br/>JSON 返回]
+    N -->|streaming| O[SSE 流式响应 - event: message/end]
+    N -->|blocking| P[同步等待响应 - JSON 返回]
 
-    O --> Q[记录调用日志<br/>invoke_from = service-api]
+    O --> Q[记录调用日志 - invoke_from = service-api]
     P --> Q
 
     Q --> R[返回结果给调用方]
-
-    style A fill:#e1f5fe
-    style C fill:#fff3e0
-    style J fill:#fce4ec
-    style O fill:#e8f5e9
-    style P fill:#e8f5e9
-    style R fill:#c8e6c9
 ```
 
 ### API 调用认证流程
