@@ -89,7 +89,7 @@ class TestOAuthLogin:
         self,
         mock_redirect,
         mock_get_providers,
-        resource: OAuthCallback,
+        resource: OAuthLogin,
         app: Flask,
         mock_oauth_provider,
         invite_token,
@@ -114,7 +114,7 @@ class TestOAuthLogin:
         self,
         mock_redirect,
         mock_get_providers,
-        resource: OAuthCallback,
+        resource: OAuthLogin,
         app: Flask,
         mock_oauth_provider,
     ):
@@ -136,7 +136,7 @@ class TestOAuthLogin:
         self,
         mock_redirect,
         mock_get_providers,
-        resource: OAuthCallback,
+        resource: OAuthLogin,
         app: Flask,
         mock_oauth_provider,
     ):
@@ -237,7 +237,7 @@ class TestOAuthCallback:
         ],
     )
     @patch("controllers.console.auth.oauth.get_oauth_providers")
-    def test_should_handle_oauth_exceptions(self, mock_get_providers, resource, app, exception, expected_error):
+    def test_should_handle_oauth_exceptions(self, mock_get_providers, resource:OAuthCallback, app:Flask, exception, expected_error):
         # Import the real requests module to create a proper exception
         import httpx
 
@@ -460,7 +460,7 @@ class TestAccountGeneration:
     @patch("controllers.console.auth.oauth.AccountService.get_account_by_email_with_case_fallback")
     @patch("controllers.console.auth.oauth.Account")
     def test_should_get_account_by_openid_or_email(
-        self, mock_account_model, mock_get_account, flask_req_ctx_with_containers, user_info, mock_account
+        self, mock_account_model, mock_get_account, flask_req_ctx_with_containers, user_info:OAuthUserInfo, mock_account
     ):
         # Test OpenID found
         mock_account_model.get_by_openid.return_value = mock_account
@@ -516,7 +516,7 @@ class TestAccountGeneration:
         mock_feature_service,
         mock_get_account,
         app: Flask,
-        user_info,
+        user_info:OAuthUserInfo,
         mock_account,
         allow_register,
         existing_account,
@@ -592,7 +592,7 @@ class TestAccountGeneration:
         mock_feature_service,
         mock_get_account,
         app: Flask,
-        user_info,
+        user_info:OAuthUserInfo,
     ):
         mock_feature_service.get_system_features.return_value.is_allow_register = True
         mock_register_service.register.return_value = MagicMock()
@@ -623,7 +623,7 @@ class TestAccountGeneration:
         mock_feature_service,
         mock_get_account,
         app: Flask,
-        user_info,
+        user_info:OAuthUserInfo,
     ):
         mock_feature_service.get_system_features.return_value.is_allow_register = True
         mock_register_service.register.return_value = MagicMock()
@@ -654,7 +654,7 @@ class TestAccountGeneration:
         mock_tenant_service,
         mock_get_account,
         app: Flask,
-        user_info,
+        user_info:OAuthUserInfo,
         mock_account,
     ):
         mock_get_account.return_value = mock_account
