@@ -614,7 +614,9 @@ def test_get_project_url_error(trace_instance: OpikDataTrace):
         trace_instance.get_project_url()
 
 
-def test_workflow_trace_usage_extraction_error_fixed(trace_instance: OpikDataTrace, monkeypatch: pytest.MonkeyPatch, caplog):
+def test_workflow_trace_usage_extraction_error_fixed(
+    trace_instance: OpikDataTrace, monkeypatch: pytest.MonkeyPatch, caplog
+):
     trace_info = WorkflowTraceInfo(
         workflow_id="86a52565-4a6b-4a1b-9bfd-98e4595e70de",
         tenant_id="66e8e918-472e-4b69-8051-12502c34fc07",

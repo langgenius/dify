@@ -614,7 +614,9 @@ class TestMessageTrace:
         span.set_status.assert_called_once()
         span.add_event.assert_called_once()
 
-    def test_message_trace_with_file_data(self, trace_instance: MLflowDataTrace, mock_tracing, mock_db, monkeypatch: pytest.MonkeyPatch):
+    def test_message_trace_with_file_data(
+        self, trace_instance: MLflowDataTrace, mock_tracing, mock_db, monkeypatch: pytest.MonkeyPatch
+    ):
         span = MagicMock()
         mock_tracing["start"].return_value = span
         mock_tracing["set"].return_value = "token"
@@ -740,7 +742,9 @@ class TestModerationTrace:
         assert end_kwargs["action"] == "allow"
         assert end_kwargs["flagged"] is False
 
-    def test_moderation_uses_message_data_created_at_if_no_start_time(self, trace_instance: MLflowDataTrace, mock_tracing):
+    def test_moderation_uses_message_data_created_at_if_no_start_time(
+        self, trace_instance: MLflowDataTrace, mock_tracing
+    ):
         span = MagicMock()
         mock_tracing["start"].return_value = span
 

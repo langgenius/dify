@@ -1486,7 +1486,9 @@ class TestNotionExtractorErrorScenarios:
         ],
     )
     @patch("httpx.request")
-    def test_get_notion_block_data_network_errors(self, mock_request, extractor: NotionExtractor, error_type, error_value):
+    def test_get_notion_block_data_network_errors(
+        self, mock_request, extractor: NotionExtractor, error_type, error_value
+    ):
         """Test handling of various network errors.
 
         Network issues (timeouts, connection failures) should raise appropriate errors.
@@ -1509,7 +1511,9 @@ class TestNotionExtractorErrorScenarios:
         ],
     )
     @patch("httpx.request")
-    def test_get_notion_block_data_http_status_errors(self, mock_request, extractor: NotionExtractor, status_code, description):
+    def test_get_notion_block_data_http_status_errors(
+        self, mock_request, extractor: NotionExtractor, status_code, description
+    ):
         """Test handling of various HTTP status errors.
 
         Different HTTP error codes (401, 403, 404, 429) should be handled appropriately.
@@ -1534,7 +1538,9 @@ class TestNotionExtractorErrorScenarios:
         ],
     )
     @patch("httpx.request")
-    def test_get_notion_block_data_malformed_responses(self, mock_request, extractor: NotionExtractor, response_data, description):
+    def test_get_notion_block_data_malformed_responses(
+        self, mock_request, extractor: NotionExtractor, response_data, description
+    ):
         """Test handling of malformed API responses.
 
         Various malformed responses should be handled gracefully.

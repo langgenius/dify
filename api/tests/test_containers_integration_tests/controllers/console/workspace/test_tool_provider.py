@@ -1,13 +1,13 @@
 """Testcontainers integration tests for controllers.console.workspace.tool_providers endpoints."""
 
 from __future__ import annotations
-from flask.testing import FlaskClient
 
 import json
 from unittest.mock import MagicMock, patch
 
 import pytest
 from flask import Flask
+from flask.testing import FlaskClient
 from werkzeug.exceptions import Forbidden
 
 from controllers.console.workspace.tool_providers import (
@@ -74,7 +74,9 @@ def client(flask_app_with_containers: Flask):
 @patch("controllers.console.workspace.tool_providers.sessionmaker", autospec=True)
 @patch("controllers.console.workspace.tool_providers.MCPToolManageService._reconnect_with_url", autospec=True)
 @pytest.mark.usefixtures("_mock_cache", "_mock_user_tenant")
-def test_create_mcp_provider_populates_tools(mock_reconnect, mock_session, mock_current_account_with_tenant, client: FlaskClient):
+def test_create_mcp_provider_populates_tools(
+    mock_reconnect, mock_session, mock_current_account_with_tenant, client: FlaskClient
+):
     # Arrange: reconnect returns tools immediately
     mock_reconnect.return_value = ReconnectResult(
         authed=True,
