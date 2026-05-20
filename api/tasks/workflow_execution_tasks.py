@@ -110,9 +110,10 @@ def _create_workflow_run_from_execution(
         else "{}"
     )
     workflow_run.error = execution.error_message
-    workflow_run.elapsed_time = execution.elapsed_time
+    workflow_run.elapsed_time = _calculate_elapsed_time(execution)
     workflow_run.total_tokens = execution.total_tokens
     workflow_run.total_steps = execution.total_steps
+    workflow_run.exceptions_count = execution.exceptions_count
     workflow_run.created_by_role = creator_user_role
     workflow_run.created_by = creator_user_id
     workflow_run.created_at = execution.started_at
@@ -131,7 +132,14 @@ def _update_workflow_run_from_execution(workflow_run: WorkflowRun, execution: Wo
         json.dumps(json_converter.to_json_encodable(execution.outputs)) if execution.outputs else "{}"
     )
     workflow_run.error = execution.error_message
-    workflow_run.elapsed_time = execution.elapsed_time
+    workflow_run.elapsed_time = _calculate_elapsed_time(execution)
     workflow_run.total_tokens = execution.total_tokens
     workflow_run.total_steps = execution.total_steps
+    workflow_run.exceptions_count = execution.exceptions_count
     workflow_run.finished_at = execution.finished_at
+
+
+def _calculate_elapsed_time(execution: WorkflowExecution) -> float:
+    if execution.finished_at is None:
+        return execution.elapsed_time
+    return max((execution.finished_at - execution.started_at).total_seconds(), 0.0)
