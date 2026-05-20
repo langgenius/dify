@@ -123,8 +123,8 @@
     }
   },
   "scripts": {
-    "storybook": "storybook dev",
-    "storybook:build": "storybook build",
+    "storybook": "NODE_PATH=./node_modules storybook dev",
+    "storybook:build": "NODE_PATH=./node_modules storybook build",
     "test": "vp test",
     "test:watch": "vp test --watch",
     "type-check": "tsgo"
