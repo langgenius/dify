@@ -53,6 +53,13 @@ class ChangeEmailTokenBase(BaseModel):
 
     The discriminator lives in `email_change_phase`; callers use the concrete
     model type to decide which transitions are legal.
+
+    The full progression is:
+
+    `old_email -> old_email_verified -> new_email -> new_email_verified`
+
+    Every state is bound to the initiating `account_id` so the change-email
+    flow cannot be replayed across accounts.
     """
 
     token_type: Literal["change_email"]
@@ -71,6 +78,8 @@ class ChangeEmailTokenBase(BaseModel):
 
 
 class _ChangeEmailOldAddressMixin(ChangeEmailTokenBase):
+    """States whose `email` must still be the account's current address."""
+
     @model_validator(mode="after")
     def validate_old_address_binding(self) -> "_ChangeEmailOldAddressMixin":
         if self.email.lower() != self.old_email.lower():
@@ -79,9 +88,17 @@ class _ChangeEmailOldAddressMixin(ChangeEmailTokenBase):
 
 
 class ChangeEmailOldEmailToken(_ChangeEmailOldAddressMixin):
+    """Phase-1 token minted when sending a code to the old email address.
+
+    This token proves only that the flow started for the current account. It
+    must not unlock the new-email send step or the final reset step until the
+    old-email verification code has been checked.
+    """
+
     email_change_phase: Literal["old_email"] = "old_email"
 
     def promote(self) -> "ChangeEmailOldEmailVerifiedToken":
+        """Advance to the state that is allowed to request the new-email code."""
         return ChangeEmailOldEmailVerifiedToken(
             **self.model_dump(exclude={"email_change_phase"}),
             email_change_phase="old_email_verified",
@@ -89,13 +106,28 @@ class ChangeEmailOldEmailToken(_ChangeEmailOldAddressMixin):
 
 
 class ChangeEmailOldEmailVerifiedToken(_ChangeEmailOldAddressMixin):
+    """Token returned after the old email verification code succeeds.
+
+    The token used to request a new-email code must come from this state. This
+    blocks the GHSA-4q3w-q5mc-45rq bypass where a phase-1 token was replayed to
+    skip the old-email verification step.
+    """
+
     email_change_phase: Literal["old_email_verified"] = "old_email_verified"
 
 
 class ChangeEmailNewEmailToken(ChangeEmailTokenBase):
+    """Token minted when sending a code to the target new email address.
+
+    At this point the account binding is already fixed, but the new address has
+    not been verified yet, so the token may only be promoted by a successful
+    new-email verification code check.
+    """
+
     email_change_phase: Literal["new_email"] = "new_email"
 
     def promote(self) -> "ChangeEmailNewEmailVerifiedToken":
+        """Advance to the only state that may perform the final email reset."""
         return ChangeEmailNewEmailVerifiedToken(
             **self.model_dump(exclude={"email_change_phase"}),
             email_change_phase="new_email_verified",
@@ -103,19 +135,29 @@ class ChangeEmailNewEmailToken(ChangeEmailTokenBase):
 
 
 class ChangeEmailNewEmailVerifiedToken(ChangeEmailTokenBase):
+    """Final verified token for the change-email flow.
+
+    Only this state may change the account email, and the reset endpoint must
+    additionally require that the request's `new_email` matches this token's
+    `email` so a verified token for address A cannot be replayed for address B.
+    """
+
     email_change_phase: Literal["new_email_verified"] = "new_email_verified"
 
 
+# Tokens that can still advance by verifying a code.
 ChangeEmailPendingTokenData = Annotated[
     ChangeEmailOldEmailToken | ChangeEmailNewEmailToken,
     Field(discriminator="email_change_phase"),
 ]
 
+# Tokens that already completed a verification step.
 ChangeEmailVerifiedTokenData = Annotated[
     ChangeEmailOldEmailVerifiedToken | ChangeEmailNewEmailVerifiedToken,
     Field(discriminator="email_change_phase"),
 ]
 
+# Complete change-email token state machine.
 ChangeEmailTokenData = Annotated[
     ChangeEmailOldEmailToken
     | ChangeEmailOldEmailVerifiedToken
