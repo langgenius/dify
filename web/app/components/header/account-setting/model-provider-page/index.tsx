@@ -36,6 +36,7 @@ type Props = {
   onSearchTextChange?: (value: string) => void
   searchText: string
   stickyToolbar?: boolean
+  hideSystemModelSelectorProviderSettingsFooter?: boolean
 }
 
 const FixedModelProvider = ['langgenius/openai/openai', 'langgenius/anthropic/anthropic']
@@ -45,6 +46,7 @@ const ModelProviderPage = ({
   onSearchTextChange,
   searchText,
   stickyToolbar,
+  hideSystemModelSelectorProviderSettingsFooter,
 }: Props) => {
   const debouncedSearchText = useDebounce(searchText, { wait: 500 })
   const { t } = useTranslation()
@@ -170,6 +172,7 @@ const ModelProviderPage = ({
             speech2textDefaultModel={speech2textDefaultModel}
             ttsDefaultModel={ttsDefaultModel}
             isLoading={isDefaultModelLoading}
+            hideProviderSettingsFooter={hideSystemModelSelectorProviderSettingsFooter}
           />
         </div>
       </div>

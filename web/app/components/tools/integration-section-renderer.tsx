@@ -33,6 +33,7 @@ const IntegrationSectionRenderer = ({
         <div className={`${toolsContentFrameClassNames.compact} ${toolsContentInsetClassNames.compact} pt-2`}>
           <ModelProviderPage
             fixedWarningAlignment="content-frame"
+            hideSystemModelSelectorProviderSettingsFooter
             searchText={providerSearchText}
             stickyToolbar
             onSearchTextChange={onProviderSearchTextChange}

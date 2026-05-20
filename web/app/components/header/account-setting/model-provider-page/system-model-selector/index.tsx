@@ -36,6 +36,7 @@ type SystemModelSelectorProps = {
   ttsDefaultModel: DefaultModelResponse | undefined
   notConfigured: boolean
   isLoading?: boolean
+  hideProviderSettingsFooter?: boolean
 }
 
 type SystemModelLabelKey
@@ -61,6 +62,7 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
   ttsDefaultModel,
   notConfigured,
   isLoading,
+  hideProviderSettingsFooter,
 }) => {
   const { t } = useTranslation()
   const { isCurrentWorkspaceManager } = useAppContext()
@@ -181,6 +183,7 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
                   <ModelSelector
                     defaultModel={currentTextGenerationDefaultModel}
                     modelList={textGenerationModelList}
+                    hideProviderSettingsFooter={hideProviderSettingsFooter}
                     onSelect={model => handleChangeDefaultModel(ModelTypeEnum.textGeneration, model)}
                   />
                 </div>
@@ -191,6 +194,7 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
                   <ModelSelector
                     defaultModel={currentEmbeddingsDefaultModel}
                     modelList={embeddingModelList}
+                    hideProviderSettingsFooter={hideProviderSettingsFooter}
                     onSelect={model => handleChangeDefaultModel(ModelTypeEnum.textEmbedding, model)}
                   />
                 </div>
@@ -201,6 +205,7 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
                   <ModelSelector
                     defaultModel={currentRerankDefaultModel}
                     modelList={rerankModelList}
+                    hideProviderSettingsFooter={hideProviderSettingsFooter}
                     onSelect={model => handleChangeDefaultModel(ModelTypeEnum.rerank, model)}
                   />
                 </div>
@@ -211,6 +216,7 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
                   <ModelSelector
                     defaultModel={currentSpeech2textDefaultModel}
                     modelList={speech2textModelList}
+                    hideProviderSettingsFooter={hideProviderSettingsFooter}
                     onSelect={model => handleChangeDefaultModel(ModelTypeEnum.speech2text, model)}
                   />
                 </div>
@@ -221,6 +227,7 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
                   <ModelSelector
                     defaultModel={currentTTSDefaultModel}
                     modelList={ttsModelList}
+                    hideProviderSettingsFooter={hideProviderSettingsFooter}
                     onSelect={model => handleChangeDefaultModel(ModelTypeEnum.tts, model)}
                   />
                 </div>

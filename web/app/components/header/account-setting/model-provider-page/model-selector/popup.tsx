@@ -35,6 +35,7 @@ export type PopupProps = {
   inputValue: string
   modelList: Model[]
   scopeFeatures?: ModelFeatureEnum[]
+  hideProviderSettingsFooter?: boolean
   onInputValueChange: (value: string) => void
   onHide: () => void
 }
@@ -43,6 +44,7 @@ function Popup({
   inputValue,
   modelList,
   scopeFeatures = [],
+  hideProviderSettingsFooter,
   onInputValueChange,
   onHide,
 }: PopupProps) {
@@ -225,7 +227,7 @@ function Popup({
           />
         )}
       </PreviewCard>
-      {!isProviderSettingsCurrentPage && (
+      {!hideProviderSettingsFooter && !isProviderSettingsCurrentPage && (
         <ModelProviderSettingsFooter onOpenSettings={handleOpenSettings} />
       )}
     </ModelSelectorPopupFrame>

@@ -796,6 +796,18 @@ describe('Popup', () => {
     expect(screen.queryByText('common.modelProvider.selector.modelProviderSettings')).not.toBeInTheDocument()
   })
 
+  it('should hide provider settings footer when requested by the caller', () => {
+    renderPopup(
+      <PopupHarness
+        hideProviderSettingsFooter
+        modelList={[makeModel()]}
+        onHide={vi.fn()}
+      />,
+    )
+
+    expect(screen.queryByText('common.modelProvider.selector.modelProviderSettings')).not.toBeInTheDocument()
+  })
+
   it('should show empty state when no providers are configured', () => {
     const onHide = vi.fn()
     renderPopup(

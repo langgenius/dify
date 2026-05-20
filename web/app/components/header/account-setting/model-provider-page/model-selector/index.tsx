@@ -22,6 +22,7 @@ type ModelSelectorProps = {
   scopeFeatures?: ModelFeatureEnum[]
   deprecatedClassName?: string
   showDeprecatedWarnIcon?: boolean
+  hideProviderSettingsFooter?: boolean
 }
 function ModelSelector({
   defaultModel,
@@ -34,6 +35,7 @@ function ModelSelector({
   scopeFeatures = [],
   deprecatedClassName,
   showDeprecatedWarnIcon = true,
+  hideProviderSettingsFooter,
 }: ModelSelectorProps) {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
@@ -137,6 +139,7 @@ function ModelSelector({
           inputValue={inputValue}
           modelList={modelList}
           scopeFeatures={scopeFeatures}
+          hideProviderSettingsFooter={hideProviderSettingsFooter}
           onInputValueChange={setInputValue}
           onHide={handleHide}
         />
