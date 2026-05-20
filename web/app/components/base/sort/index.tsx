@@ -57,7 +57,7 @@ const Sort: FC<Props> = ({
                   {triggerContent}
                 </div>
               </div>
-              <RiArrowDownSLine className="h-4 w-4 text-text-tertiary" />
+              <RiArrowDownSLine className="size-4 text-text-tertiary" />
             </div>
           </DropdownMenuTrigger>
           <DropdownMenuContent
@@ -78,7 +78,7 @@ const Sort: FC<Props> = ({
                   className="gap-2 rounded-lg px-2 py-[6px] pl-3"
                 >
                   <div title={item.name} className="grow truncate system-sm-medium text-text-secondary">{item.name}</div>
-                  {value === item.value && <RiCheckLine className="h-4 w-4 shrink-0 text-util-colors-blue-light-blue-light-600" />}
+                  {value === item.value && <RiCheckLine className="size-4 shrink-0 text-util-colors-blue-light-blue-light-600" />}
                 </DropdownMenuRadioItem>
               ))}
             </DropdownMenuRadioGroup>
@@ -91,8 +91,8 @@ const Sort: FC<Props> = ({
         className="ml-px cursor-pointer rounded-r-lg border-none bg-components-button-tertiary-bg p-2 hover:bg-components-button-tertiary-bg-hover focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
         onClick={() => onSelect(`${order ? '' : '-'}${value}`)}
       >
-        {!order && <RiSortAsc className="h-4 w-4 text-components-button-tertiary-text" aria-hidden="true" />}
-        {order && <RiSortDesc className="h-4 w-4 text-components-button-tertiary-text" aria-hidden="true" />}
+        {!order && <RiSortAsc className="size-4 text-components-button-tertiary-text" aria-hidden="true" />}
+        {order && <RiSortDesc className="size-4 text-components-button-tertiary-text" aria-hidden="true" />}
       </button>
     </div>
 

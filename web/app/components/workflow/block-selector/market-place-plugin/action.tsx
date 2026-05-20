@@ -80,7 +80,7 @@ const OperationDropdown: FC<Props> = ({
             className={cn(open && 'bg-state-base-hover', 'focus-visible:ring-2 focus-visible:ring-state-accent-solid')}
             aria-label={t('operation.more', { ns: 'common' })}
           >
-            <span aria-hidden className="i-ri-more-fill h-4 w-4 text-components-button-secondary-accent-text" />
+            <span aria-hidden className="i-ri-more-fill size-4 text-components-button-secondary-accent-text" />
           </ActionButton>
         )}
       />

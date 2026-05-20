@@ -26,7 +26,7 @@ const Item: FC<CalendarItemProps> = ({
       )}
     >
       {date.date()}
-      {isToday && <div className="absolute bottom-1 mx-auto h-1 w-1 rounded-full bg-components-button-primary-bg" />}
+      {isToday && <div className="absolute bottom-1 mx-auto size-1 rounded-full bg-components-button-primary-bg" />}
     </button>
   )
 }

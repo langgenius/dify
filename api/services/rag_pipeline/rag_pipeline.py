@@ -618,26 +618,27 @@ class RagPipelineService:
             for key, value in datasource_parameters.items():
                 param_value = value.get("value")
 
-                if not param_value:
-                    variables_map[key] = param_value
-                elif isinstance(param_value, str):
-                    # handle string type parameter value, check if it contains variable reference pattern
-                    pattern = r"\{\{#([a-zA-Z0-9_]{1,50}(?:\.[a-zA-Z0-9_][a-zA-Z0-9_]{0,29}){1,10})#\}\}"
-                    match = re.match(pattern, param_value)
-                    if match:
-                        # extract variable path and try to get value from user inputs
-                        full_path = match.group(1)
-                        last_part = full_path.split(".")[-1]
-                        variables_map[key] = user_inputs.get(last_part, param_value)
-                    else:
+                match param_value:
+                    case None | "" | [] | {}:
                         variables_map[key] = param_value
-                elif isinstance(param_value, list) and param_value:
-                    # handle list type parameter value, check if the last element is in user inputs
-                    last_part = param_value[-1]
-                    variables_map[key] = user_inputs.get(last_part, param_value)
-                else:
-                    # other type directly use original value
-                    variables_map[key] = param_value
+                    case str():
+                        # handle string type parameter value, check if it contains variable reference pattern
+                        pattern = r"\{\{#([a-zA-Z0-9_]{1,50}(?:\.[a-zA-Z0-9_][a-zA-Z0-9_]{0,29}){1,10})#\}\}"
+                        match_result = re.match(pattern, param_value)
+                        if match_result:
+                            # extract variable path and try to get value from user inputs
+                            full_path = match_result.group(1)
+                            last_part = full_path.split(".")[-1]
+                            variables_map[key] = user_inputs.get(last_part, param_value)
+                        else:
+                            variables_map[key] = param_value
+                    case list() if param_value:
+                        # handle list type parameter value, check if the last element is in user inputs
+                        last_part = param_value[-1]
+                        variables_map[key] = user_inputs.get(last_part, param_value)
+                    case _:
+                        # other type directly use original value
+                        variables_map[key] = param_value
 
             from core.datasource.datasource_manager import DatasourceManager
 

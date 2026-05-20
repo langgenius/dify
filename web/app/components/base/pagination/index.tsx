@@ -105,10 +105,10 @@ const CustomizedPagination: FC<Props> = ({
         >
           <Button
             variant="secondary"
-            className="h-7 w-7 px-1.5"
+            className="size-7 px-1.5"
             disabled={current === 0}
           >
-            <RiArrowLeftLine className="h-4 w-4" />
+            <RiArrowLeftLine className="size-4" />
           </Button>
         </Pagination.PrevButton>
         {!showInput && (
@@ -142,10 +142,10 @@ const CustomizedPagination: FC<Props> = ({
         >
           <Button
             variant="secondary"
-            className="h-7 w-7 px-1.5"
+            className="size-7 px-1.5"
             disabled={current === totalPages - 1}
           >
-            <RiArrowRightLine className="h-4 w-4" />
+            <RiArrowRightLine className="size-4" />
           </Button>
         </Pagination.NextButton>
       </div>

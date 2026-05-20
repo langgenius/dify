@@ -110,7 +110,7 @@ const ZoomInOut: FC = () => {
             type="button"
             aria-label={t('operator.zoomOut', { ns: 'workflow' })}
             disabled={zoom <= 0.25}
-            className={`flex h-8 w-8 items-center justify-center rounded-lg ${zoom <= 0.25 ? 'cursor-not-allowed' : 'cursor-pointer hover:bg-black/5'}`}
+            className={`flex size-8 items-center justify-center rounded-lg ${zoom <= 0.25 ? 'cursor-not-allowed' : 'cursor-pointer hover:bg-black/5'}`}
             onClick={(e) => {
               if (zoom <= 0.25)
                 return
@@ -119,7 +119,7 @@ const ZoomInOut: FC = () => {
               zoomOut()
             }}
           >
-            <span aria-hidden className="i-ri-zoom-out-line h-4 w-4 text-text-tertiary hover:text-text-secondary" />
+            <span aria-hidden className="i-ri-zoom-out-line size-4 text-text-tertiary hover:text-text-secondary" />
           </button>
         </TipPopup>
         <DropdownMenu
@@ -177,7 +177,7 @@ const ZoomInOut: FC = () => {
             type="button"
             aria-label={t('operator.zoomIn', { ns: 'workflow' })}
             disabled={zoom >= 2}
-            className={`flex h-8 w-8 items-center justify-center rounded-lg ${zoom >= 2 ? 'cursor-not-allowed' : 'cursor-pointer hover:bg-black/5'}`}
+            className={`flex size-8 items-center justify-center rounded-lg ${zoom >= 2 ? 'cursor-not-allowed' : 'cursor-pointer hover:bg-black/5'}`}
             onClick={(e) => {
               if (zoom >= 2)
                 return
@@ -186,7 +186,7 @@ const ZoomInOut: FC = () => {
               zoomIn()
             }}
           >
-            <span aria-hidden className="i-ri-zoom-in-line h-4 w-4 text-text-tertiary hover:text-text-secondary" />
+            <span aria-hidden className="i-ri-zoom-in-line size-4 text-text-tertiary hover:text-text-secondary" />
           </button>
         </TipPopup>
       </div>

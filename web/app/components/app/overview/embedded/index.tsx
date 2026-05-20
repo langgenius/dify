@@ -211,8 +211,8 @@ const EmbeddedContent = ({
               </div>
             </div>
             {hiddenInputsCollapsed
-              ? <RiArrowRightSLine className="h-4 w-4 shrink-0 text-text-tertiary" />
-              : <RiArrowDownSLine className="h-4 w-4 shrink-0 text-text-tertiary" />}
+              ? <RiArrowRightSLine className="size-4 shrink-0 text-text-tertiary" />
+              : <RiArrowDownSLine className="size-4 shrink-0 text-text-tertiary" />}
           </button>
           {!hiddenInputsCollapsed && (
             <div className="max-h-72 space-y-4 overflow-y-auto border-t-[0.5px] border-divider-subtle px-4 py-4">
@@ -254,7 +254,7 @@ const EmbeddedContent = ({
             className={cn('inline-flex w-full items-center justify-center gap-2 rounded-lg py-3', 'shrink-0 bg-primary-600 text-white hover:bg-primary-600/75 hover:shadow-sm')}
             onClick={navigateToChromeUrl}
           >
-            <div className={`relative h-4 w-4 ${style.pluginInstallIcon}`}></div>
+            <div className={`relative size-4 ${style.pluginInstallIcon}`}></div>
             <div className="font-['Inter'] text-sm leading-tight font-medium text-white">{t(`${prefixEmbedded}.chromePlugin`, { ns: 'appOverview' })}</div>
           </button>
         </div>
@@ -273,8 +273,8 @@ const EmbeddedContent = ({
                     : t(`${prefixEmbedded}.copy`, { ns: 'appOverview' })) || ''}
                   onClick={() => void onClickCopy()}
                 >
-                  {copiedOption === option && <span aria-hidden="true" className="i-ri-clipboard-fill h-4 w-4" />}
-                  {copiedOption !== option && <span aria-hidden="true" className="i-ri-clipboard-line h-4 w-4" />}
+                  {copiedOption === option && <span aria-hidden="true" className="i-ri-clipboard-fill size-4" />}
+                  {copiedOption !== option && <span aria-hidden="true" className="i-ri-clipboard-line size-4" />}
                 </ActionButton>
               )}
             />

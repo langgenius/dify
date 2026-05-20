@@ -59,10 +59,10 @@ const FileItem = ({
           showDeleteAction && (
             <Button
               aria-label={t('operation.remove', { ns: 'common' })}
-              className="absolute -top-1.5 -right-1.5 z-11 hidden h-5 w-5 rounded-full p-0 group-hover/file-item:flex"
+              className="absolute -top-1.5 -right-1.5 z-11 hidden size-5 rounded-full p-0 group-hover/file-item:flex"
               onClick={() => onRemove?.(id)}
             >
-              <span className="i-ri-close-line h-4 w-4 text-components-button-secondary-text" aria-hidden="true" />
+              <span className="i-ri-close-line size-4 text-components-button-secondary-text" aria-hidden="true" />
             </Button>
           )
         }
@@ -103,7 +103,7 @@ const FileItem = ({
                   downloadUrl({ url: download_url || '', fileName: name, target: '_blank' })
                 }}
               >
-                <span className="i-ri-download-line h-3.5 w-3.5 text-text-tertiary" aria-hidden="true" />
+                <span className="i-ri-download-line size-3.5 text-text-tertiary" aria-hidden="true" />
               </ActionButton>
             )
           }
@@ -121,10 +121,10 @@ const FileItem = ({
               <button
                 type="button"
                 aria-label={t('operation.retry', { ns: 'common' })}
-                className="h-4 w-4 cursor-pointer border-none bg-transparent p-0 text-text-tertiary focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
+                className="size-4 cursor-pointer border-none bg-transparent p-0 text-text-tertiary focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
                 onClick={() => onReUpload?.(id)}
               >
-                <span className="i-custom-vender-other-replay-line block h-4 w-4" aria-hidden="true" />
+                <span className="i-custom-vender-other-replay-line block size-4" aria-hidden="true" />
               </button>
             )
           }

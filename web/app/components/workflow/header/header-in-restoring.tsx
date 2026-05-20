@@ -163,7 +163,7 @@ const HeaderInRestoring = ({
           )}
         >
           <div className="flex items-center gap-x-0.5">
-            <RiHistoryLine className="h-4 w-4" />
+            <RiHistoryLine className="size-4" />
             <span className="px-0.5">{t('common.exitVersions', { ns: 'workflow' })}</span>
           </div>
         </Button>

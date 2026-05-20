@@ -26,7 +26,7 @@ const FileUploaderInChatInput = ({
         className={cn(open && 'bg-state-base-hover')}
         disabled={readonly}
       >
-        <RiAttachmentLine className="h-5 w-5" />
+        <RiAttachmentLine className="size-5" />
       </ActionButton>
     )
   }, [])

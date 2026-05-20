@@ -84,10 +84,10 @@ const Operation = ({ member, operatorRole, onOperate }: IOperationProps) => {
   return (
     <DropdownMenu open={open} onOpenChange={setOpen}>
       <DropdownMenuTrigger
-        render={<button type="button" className={cn('group flex h-full w-full cursor-pointer items-center justify-between border-none bg-transparent px-3 text-left system-sm-regular text-text-secondary hover:bg-state-base-hover', open && 'bg-state-base-hover')} />}
+        render={<button type="button" className={cn('group flex size-full cursor-pointer items-center justify-between border-none bg-transparent px-3 text-left system-sm-regular text-text-secondary hover:bg-state-base-hover', open && 'bg-state-base-hover')} />}
       >
         {RoleMap[member.role] || RoleMap.normal}
-        <span aria-hidden className={cn('i-ri-arrow-down-s-line h-4 w-4 shrink-0 group-hover:block', open ? 'block' : 'hidden')} />
+        <span aria-hidden className={cn('i-ri-arrow-down-s-line size-4 shrink-0 group-hover:block', open ? 'block' : 'hidden')} />
       </DropdownMenuTrigger>
       <DropdownMenuContent
         placement="bottom-end"

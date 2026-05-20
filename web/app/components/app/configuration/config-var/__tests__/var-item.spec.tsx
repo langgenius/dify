@@ -20,7 +20,7 @@ describe('VarItem', () => {
     expect(screen.getByTitle('api_key · API Key')).toBeInTheDocument()
     expect(screen.getByText('required')).toBeInTheDocument()
 
-    const editButton = container.querySelector('.mr-1.flex.h-6.w-6') as HTMLElement
+    const editButton = container.querySelector('.mr-1.flex.size-6') as HTMLElement
     fireEvent.click(editButton)
 
     expect(onEdit).toHaveBeenCalledTimes(1)

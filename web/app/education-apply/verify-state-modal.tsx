@@ -50,7 +50,7 @@ function Confirm({
     >
       <DialogContent className="w-full max-w-[481px]! overflow-hidden! border-none bg-transparent p-0! shadow-none">
         <div className="shadows-shadow-lg flex max-w-full flex-col items-start rounded-2xl border-[0.5px] border-solid border-components-panel-border bg-components-panel-bg">
-          <div className="flex flex-col items-start gap-2 self-stretch pt-6 pr-6 pb-4 pl-6">
+          <div className="flex flex-col items-start gap-2 self-stretch px-6 pt-6 pb-4">
             <DialogTitle className="title-2xl-semi-bold text-text-primary">{title}</DialogTitle>
             <div className="w-full system-md-regular text-text-tertiary">{content}</div>
           </div>
@@ -65,7 +65,7 @@ function Confirm({
               {showLink && (
                 <>
                   <a onClick={handleClick} href={eduDocLink} target="_blank" rel="noopener noreferrer" className="cursor-pointer system-xs-regular text-text-accent">{t('learn', { ns: 'education' })}</a>
-                  <RiExternalLinkLine className="h-3 w-3 text-text-accent" />
+                  <RiExternalLinkLine className="size-3 text-text-accent" />
                 </>
               )}
             </div>

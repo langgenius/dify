@@ -123,14 +123,14 @@ const InstallPluginDropdown = ({
         <DropdownMenuTrigger
           render={(
             <Button
-              className={cn('h-full w-full p-2 text-components-button-secondary-text', isMenuOpen && 'bg-state-base-hover')}
+              className={cn('size-full p-2 text-components-button-secondary-text', isMenuOpen && 'bg-state-base-hover')}
             />
           )}
         >
           <>
-            <RiAddLine className="h-4 w-4" />
+            <RiAddLine className="size-4" />
             <span className="pl-1">{t('installPlugin', { ns: 'plugin' })}</span>
-            <RiArrowDownSLine className="ml-1 h-4 w-4" />
+            <RiArrowDownSLine className="ml-1 size-4" />
           </>
         </DropdownMenuTrigger>
         <DropdownMenuContent
@@ -138,7 +138,7 @@ const InstallPluginDropdown = ({
           sideOffset={4}
           popupClassName="w-[200px] pb-2"
         >
-          <span className="flex items-start self-stretch pt-1 pr-3 pb-0.5 pl-3 system-xs-medium-uppercase text-text-tertiary">
+          <span className="flex items-start self-stretch px-3 pt-1 pb-0.5 system-xs-medium-uppercase text-text-tertiary">
             {t('installFrom', { ns: 'plugin' })}
           </span>
           {installMethods.map(({ icon: Icon, text, action }) => (
@@ -148,7 +148,7 @@ const InstallPluginDropdown = ({
               onClick={() => handleInstallMethodSelect(action)}
             >
               <div className="flex items-center gap-1">
-                <Icon className="h-4 w-4 text-text-tertiary" />
+                <Icon className="size-4 text-text-tertiary" />
                 <span className="px-1 system-md-regular text-text-secondary">{text}</span>
               </div>
             </DropdownMenuItem>

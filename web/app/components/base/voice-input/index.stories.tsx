@@ -42,7 +42,7 @@ const VoiceInputMock = ({ onConverted, onCancel }: any) => {
         </div>
 
         {state === 'converting' && (
-          <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-primary-700 border-t-transparent" />
+          <div className="mr-2 size-4 animate-spin rounded-full border-2 border-primary-700 border-t-transparent" />
         )}
 
         <div className="z-10 grow">
@@ -56,16 +56,16 @@ const VoiceInputMock = ({ onConverted, onCancel }: any) => {
 
         {state === 'recording' && (
           <div
-            className="mr-1 flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg hover:bg-primary-100"
+            className="mr-1 flex size-8 cursor-pointer items-center justify-center rounded-lg hover:bg-primary-100"
             onClick={handleStop}
           >
-            <div className="h-5 w-5 rounded-sm bg-primary-600" />
+            <div className="size-5 rounded-sm bg-primary-600" />
           </div>
         )}
 
         {state === 'converting' && (
           <div
-            className="mr-1 flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg hover:bg-gray-200"
+            className="mr-1 flex size-8 cursor-pointer items-center justify-center rounded-lg hover:bg-gray-200"
             onClick={onCancel}
           >
             <span className="text-lg text-gray-500">×</span>
@@ -177,7 +177,7 @@ const ChatInputWithVoiceDemo = () => {
       {/* Existing messages */}
       <div className="mb-4 h-64 space-y-3 overflow-y-auto">
         <div className="flex gap-3">
-          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-500 text-sm text-white">
+          <div className="flex size-8 items-center justify-center rounded-full bg-blue-500 text-sm text-white">
             U
           </div>
           <div className="flex-1">
@@ -187,7 +187,7 @@ const ChatInputWithVoiceDemo = () => {
           </div>
         </div>
         <div className="flex gap-3">
-          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-green-500 text-sm text-white">
+          <div className="flex size-8 items-center justify-center rounded-full bg-green-500 text-sm text-white">
             A
           </div>
           <div className="flex-1">

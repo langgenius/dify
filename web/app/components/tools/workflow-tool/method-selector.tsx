@@ -43,7 +43,7 @@ const MethodSelector: FC<MethodSelectorProps> = ({
                 {value === 'llm' ? t('createTool.toolInput.methodParameter', { ns: 'tools' }) : t('createTool.toolInput.methodSetting', { ns: 'tools' })}
               </div>
               <div className="ml-1 shrink-0 text-text-secondary opacity-60">
-                <RiArrowDownSLine className="h-4 w-4" />
+                <RiArrowDownSLine className="size-4" />
               </div>
             </div>
           )}
@@ -60,8 +60,8 @@ const MethodSelector: FC<MethodSelectorProps> = ({
                 onClick={() => handleSelect('llm')}
               >
                 <div className="flex items-center gap-1">
-                  <div className="h-4 w-4 shrink-0">
-                    {value === 'llm' && <Check className="h-4 w-4 shrink-0 text-text-accent" aria-hidden />}
+                  <div className="size-4 shrink-0">
+                    {value === 'llm' && <Check className="size-4 shrink-0 text-text-accent" aria-hidden />}
                   </div>
                   <div className="text-[13px] leading-[18px] font-medium text-text-secondary">{t('createTool.toolInput.methodParameter', { ns: 'tools' })}</div>
                 </div>
@@ -73,8 +73,8 @@ const MethodSelector: FC<MethodSelectorProps> = ({
                 onClick={() => handleSelect('form')}
               >
                 <div className="flex items-center gap-1">
-                  <div className="h-4 w-4 shrink-0">
-                    {value === 'form' && <Check className="h-4 w-4 shrink-0 text-text-accent" aria-hidden />}
+                  <div className="size-4 shrink-0">
+                    {value === 'form' && <Check className="size-4 shrink-0 text-text-accent" aria-hidden />}
                   </div>
                   <div className="text-[13px] leading-[18px] font-medium text-text-secondary">{t('createTool.toolInput.methodSetting', { ns: 'tools' })}</div>
                 </div>

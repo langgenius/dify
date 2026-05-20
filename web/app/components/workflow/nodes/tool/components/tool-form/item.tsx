@@ -124,7 +124,7 @@ const ToolFormItem: FC<Props> = ({
           )}
         </div>
         {showDescription && tooltip && (
-          <div className="pb-0.5 body-xs-regular break-words text-text-tertiary">
+          <div className="pb-0.5 body-xs-regular wrap-break-word text-text-tertiary">
             {renderDescriptionWithLinks(tooltip[language] || tooltip.en_US)}
           </div>
         )}

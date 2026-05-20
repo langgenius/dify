@@ -2,6 +2,7 @@ import type { ResponseError } from '@/service/fetch'
 import { Button } from '@langgenius/dify-ui/button'
 import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
 import { toast } from '@langgenius/dify-ui/toast'
+import { RiCloseLine } from '@remixicon/react'
 import { useDebounceFn } from 'ahooks'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
@@ -246,7 +247,7 @@ const EmailChangeModal = ({ onClose, email }: Props) => {
     <Dialog open onOpenChange={open => !open && onClose()}>
       <DialogContent className="w-105! p-6!">
         <div className="absolute top-5 right-5 cursor-pointer p-1.5" onClick={onClose}>
-          <span aria-hidden="true" className="i-ri-close-line h-5 w-5 text-text-tertiary" />
+          <RiCloseLine className="size-5 text-text-tertiary" />
         </div>
         {step === STEP.start && (
           <>

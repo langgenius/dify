@@ -69,7 +69,7 @@ const Panel: FC<NodePanelProps<IfElseNodeType>> = ({
           onClick={() => handleAddCase()}
           disabled={readOnly}
         >
-          <RiAddLine className="mr-1 h-4 w-4" />
+          <RiAddLine className="mr-1 size-4" />
           ELIF
         </Button>
       </div>

@@ -57,7 +57,7 @@ const VarItem: FC<Props> = ({
   return (
     <div ref={ref} className={cn('flex h-8 cursor-pointer items-center justify-between rounded-lg border border-components-panel-border-subtle bg-components-panel-on-panel-item-bg px-2.5 shadow-xs hover:shadow-md', className)}>
       <div className="flex w-0 grow items-center space-x-1">
-        <Variable02 className={cn('h-3.5 w-3.5 text-text-accent', canDrag && 'group-hover:opacity-0')} />
+        <Variable02 className={cn('size-3.5 text-text-accent', canDrag && 'group-hover:opacity-0')} />
         <div title={payload.variable} className="max-w-[130px] shrink-0 truncate text-[13px] font-medium text-text-secondary">{payload.variable}</div>
         {payload.label && (
           <>
@@ -81,7 +81,7 @@ const VarItem: FC<Props> = ({
                     {payload.required && (
                       <div className="mr-2 text-xs font-normal text-text-tertiary">{t('nodes.start.required', { ns: 'workflow' })}</div>
                     )}
-                    <InputVarTypeIcon type={payload.type} className="h-3.5 w-3.5 text-text-tertiary" />
+                    <InputVarTypeIcon type={payload.type} className="size-3.5 text-text-tertiary" />
                   </>
                 )
               : (!readonly && (
@@ -92,7 +92,7 @@ const VarItem: FC<Props> = ({
                       className="mr-1 cursor-pointer rounded-md border-none bg-transparent p-1 hover:bg-state-base-hover focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
                       onClick={showEditVarModal}
                     >
-                      <Edit03 className="h-4 w-4 text-text-tertiary" aria-hidden="true" />
+                      <Edit03 className="size-4 text-text-tertiary" aria-hidden="true" />
                     </button>
                     <button
                       type="button"
@@ -100,7 +100,7 @@ const VarItem: FC<Props> = ({
                       className="group cursor-pointer rounded-md border-none bg-transparent p-1 hover:bg-state-destructive-hover focus-visible:ring-1 focus-visible:ring-state-destructive-border focus-visible:outline-hidden"
                       onClick={onRemove}
                     >
-                      <RiDeleteBinLine className="h-4 w-4 text-text-tertiary group-hover:text-text-destructive" aria-hidden="true" />
+                      <RiDeleteBinLine className="size-4 text-text-tertiary group-hover:text-text-destructive" aria-hidden="true" />
                     </button>
                   </>
                 ))}

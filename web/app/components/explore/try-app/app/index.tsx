@@ -22,7 +22,7 @@ const TryApp: FC<Props> = ({
 
   useDocumentTitle(appDetail?.site?.title || '')
   return (
-    <div className="flex h-full w-full">
+    <div className="flex size-full">
       {isChat && (
         <Chat appId={appId} appDetail={appDetail} className="h-full grow" />
       )}

@@ -20,7 +20,7 @@ const ParamsConfig: FC = () => {
       <PopoverTrigger
         render={(
           <Button variant="ghost" size="small" className={cn('')}>
-            <RiSettings2Line className="h-3.5 w-3.5" />
+            <RiSettings2Line className="size-3.5" />
             <div className="ml-1">{t('voice.settings', { ns: 'appDebug' })}</div>
           </Button>
         )}

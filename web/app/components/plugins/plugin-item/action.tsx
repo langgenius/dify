@@ -123,7 +123,7 @@ const Action: FC<Props> = ({
             <TooltipTrigger
               render={(
                 <ActionButton onClick={handleFetchNewVersion}>
-                  <span className="i-ri-loop-left-line h-4 w-4 text-text-tertiary" />
+                  <span className="i-ri-loop-left-line size-4 text-text-tertiary" />
                 </ActionButton>
               )}
             />
@@ -139,7 +139,7 @@ const Action: FC<Props> = ({
             <TooltipTrigger
               render={(
                 <ActionButton onClick={showPluginInfo}>
-                  <span className="i-ri-information-2-line h-4 w-4 text-text-tertiary" />
+                  <span className="i-ri-information-2-line size-4 text-text-tertiary" />
                 </ActionButton>
               )}
             />
@@ -159,7 +159,7 @@ const Action: FC<Props> = ({
                   className="text-text-tertiary hover:bg-state-destructive-hover hover:text-text-destructive"
                   onClick={showDeleteConfirm}
                 >
-                  <span className="i-ri-delete-bin-line h-4 w-4" />
+                  <span className="i-ri-delete-bin-line size-4" />
                 </ActionButton>
               )}
             />

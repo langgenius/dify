@@ -50,7 +50,7 @@ const Conversion = () => {
   const confirmTitle = t('conversion.confirm.title', { ns: 'datasetPipeline' })
   const confirmContent = t('conversion.confirm.content', { ns: 'datasetPipeline' })
   return (
-    <div className="flex h-full w-full items-center justify-center bg-background-body p-6 pb-16">
+    <div className="flex size-full items-center justify-center bg-background-body p-6 pb-16">
       <div className="flex rounded-2xl border-[0.5px] border-components-card-border bg-components-card-bg shadow-sm shadow-shadow-shadow-4">
         <div className="flex max-w-[480px] flex-col justify-between p-10">
           <div className="flex flex-col gap-y-2.5">
