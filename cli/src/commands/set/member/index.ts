@@ -1,4 +1,5 @@
 import { Args, Flags } from '../../../framework/flags.js'
+import { formatted } from '../../../framework/output.js'
 import { DifyCommand } from '../../_shared/dify-command.js'
 import { httpRetryFlag } from '../../_shared/global-flags.js'
 import { runSetMember } from './run.js'
@@ -9,6 +10,7 @@ export default class SetMember extends DifyCommand {
   static override examples = [
     '<%= config.bin %> set member acct-1 --role admin',
     '<%= config.bin %> set member acct-1 --role normal -w ws-1',
+    '<%= config.bin %> set member acct-1 --role admin -o json',
   ]
 
   static override args = {
@@ -25,14 +27,17 @@ export default class SetMember extends DifyCommand {
       description: 'workspace id (overrides DIFY_WORKSPACE_ID and stored default)',
     }),
     'http-retry': httpRetryFlag,
+    'output': Flags.string({ char: 'o', description: 'output format (json|yaml|name|text)', default: '' }),
   }
 
-  async run(argv: string[]): Promise<void> {
+  async run(argv: string[]) {
     const { args, flags } = this.parse(SetMember, argv)
-    const ctx = await this.authedCtx({ retryFlag: flags['http-retry'] })
-    await runSetMember(
-      { memberId: args.memberId, role: flags.role, workspace: flags.workspace },
+    const format = flags.output
+    const ctx = await this.authedCtx({ retryFlag: flags['http-retry'], format })
+    const result = await runSetMember(
+      { memberId: args.memberId, role: flags.role, workspace: flags.workspace, format },
       { bundle: ctx.bundle, http: ctx.http, io: ctx.io },
     )
+    return formatted({ format, data: result.data })
   }
 }

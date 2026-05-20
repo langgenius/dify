@@ -22,21 +22,22 @@ function fakeClient() {
 }
 
 describe('runDeleteMember', () => {
-  it('happy path: DELETE then print success', async () => {
-    const io = bufferStreams()
+  it('happy path: DELETE, returns DeleteMemberOutput with text/json/name', async () => {
     const client = fakeClient()
     const result = await runDeleteMember(
       { memberId: 'acct-2' },
       {
         bundle: bundle(),
         http: {} as KyInstance,
-        io,
+        io: bufferStreams(),
         membersFactory: () => client as never,
       },
     )
     expect(client.remove).toHaveBeenCalledExactlyOnceWith('ws-1', 'acct-2')
-    expect(result.result).toBe('success')
-    expect(io.outBuf()).toMatch(/Removed acct-2/)
+    expect(result.data.text()).toMatch(/Removed acct-2/)
+    expect(result.data.name()).toBe('acct-2')
+    expect(result.data.json()).toEqual({ id: 'acct-2', deleted: true })
+    expect(result.workspaceId).toBe('ws-1')
   })
 
   it('-w flag overrides resolved workspace', async () => {

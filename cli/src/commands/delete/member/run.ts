@@ -1,4 +1,3 @@
-import type { MemberActionResponse } from '@dify/contracts/api/openapi/types.gen'
 import type { KyInstance } from 'ky'
 import type { HostsBundle } from '../../../auth/hosts.js'
 import type { IOStreams } from '../../../io/streams.js'
@@ -9,10 +8,12 @@ import { colorEnabled, colorScheme } from '../../../io/color.js'
 import { runWithSpinner } from '../../../io/spinner.js'
 import { nullStreams } from '../../../io/streams.js'
 import { resolveWorkspaceId } from '../../../workspace/resolver.js'
+import { DeleteMemberOutput } from './handlers.js'
 
 export type DeleteMemberOptions = {
   readonly memberId: string
   readonly workspace?: string
+  readonly format?: string
 }
 
 export type DeleteMemberDeps = {
@@ -23,10 +24,15 @@ export type DeleteMemberDeps = {
   readonly membersFactory?: (http: KyInstance) => MembersClient
 }
 
+export type DeleteMemberResult = {
+  readonly data: DeleteMemberOutput
+  readonly workspaceId: string
+}
+
 export async function runDeleteMember(
   opts: DeleteMemberOptions,
   deps: DeleteMemberDeps,
-): Promise<MemberActionResponse> {
+): Promise<DeleteMemberResult> {
   if (opts.memberId === undefined || opts.memberId === '') {
     throw new BaseError({
       code: ErrorCode.UsageMissingArg,
@@ -46,11 +52,14 @@ export async function runDeleteMember(
     bundle: deps.bundle,
   })
 
-  const result = await runWithSpinner(
+  await runWithSpinner(
     { io, label: `Removing ${opts.memberId}` },
     () => factory(deps.http).remove(wsId, opts.memberId),
   )
 
-  io.out.write(`${cs.successIcon()} Removed ${opts.memberId}\n`)
-  return result
+  const textLine = `${cs.successIcon()} Removed ${opts.memberId}\n`
+  return {
+    data: new DeleteMemberOutput(opts.memberId, textLine),
+    workspaceId: wsId,
+  }
 }

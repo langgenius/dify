@@ -1,4 +1,3 @@
-import type { MemberActionResponse } from '@dify/contracts/api/openapi/types.gen'
 import type { KyInstance } from 'ky'
 import type { HostsBundle } from '../../../auth/hosts.js'
 import type { IOStreams } from '../../../io/streams.js'
@@ -9,11 +8,13 @@ import { colorEnabled, colorScheme } from '../../../io/color.js'
 import { runWithSpinner } from '../../../io/spinner.js'
 import { nullStreams } from '../../../io/streams.js'
 import { resolveWorkspaceId } from '../../../workspace/resolver.js'
+import { SetMemberOutput } from './handlers.js'
 
 export type SetMemberOptions = {
   readonly memberId: string
   readonly role: string
   readonly workspace?: string
+  readonly format?: string
 }
 
 export type SetMemberDeps = {
@@ -24,12 +25,17 @@ export type SetMemberDeps = {
   readonly membersFactory?: (http: KyInstance) => MembersClient
 }
 
+export type SetMemberResult = {
+  readonly data: SetMemberOutput
+  readonly workspaceId: string
+}
+
 const ASSIGNABLE_ROLES = new Set(['normal', 'admin'])
 
 export async function runSetMember(
   opts: SetMemberOptions,
   deps: SetMemberDeps,
-): Promise<MemberActionResponse> {
+): Promise<SetMemberResult> {
   if (opts.memberId === undefined || opts.memberId === '') {
     throw new BaseError({
       code: ErrorCode.UsageMissingArg,
@@ -56,13 +62,17 @@ export async function runSetMember(
     bundle: deps.bundle,
   })
 
-  const result = await runWithSpinner(
+  await runWithSpinner(
     { io, label: `Updating role for ${opts.memberId}` },
     () => factory(deps.http).updateRole(wsId, opts.memberId, {
       role: opts.role as 'normal' | 'admin',
     }),
   )
 
-  io.out.write(`${cs.successIcon()} Set ${opts.memberId} role to ${opts.role}\n`)
-  return result
+  const role = opts.role as 'normal' | 'admin'
+  const textLine = `${cs.successIcon()} Set ${opts.memberId} role to ${role}\n`
+  return {
+    data: new SetMemberOutput({ id: opts.memberId, role }, textLine),
+    workspaceId: wsId,
+  }
 }

@@ -30,21 +30,28 @@ function fakeClient() {
 }
 
 describe('runCreateMember', () => {
-  it('happy path: POSTs invite, prints success line, returns response', async () => {
-    const io = bufferStreams()
+  it('happy path: POSTs invite, returns InviteOutput with text/json/name', async () => {
     const client = fakeClient()
     const result = await runCreateMember(
       { email: 'new@example.com', role: 'normal' },
       {
         bundle: bundle(),
         http: {} as KyInstance,
-        io,
+        io: bufferStreams(),
         membersFactory: () => client as never,
       },
     )
     expect(client.invite).toHaveBeenCalledWith('ws-1', { email: 'new@example.com', role: 'normal' })
-    expect(result.member_id).toBe('acct-new')
-    expect(io.outBuf()).toMatch(/Invited new@example\.com as normal/)
+    expect(result.data.text()).toMatch(/Invited new@example\.com as normal/)
+    expect(result.data.name()).toBe('acct-new')
+    expect(result.data.json()).toMatchObject({
+      email: 'new@example.com',
+      role: 'normal',
+      member_id: 'acct-new',
+      invite_url: 'https://console.example.com/activate?email=x&token=tok',
+      tenant_id: 'ws-1',
+    })
+    expect(result.workspaceId).toBe('ws-1')
   })
 
   it('rejects unknown role before any HTTP call', async () => {
