@@ -9,10 +9,10 @@ import { useIsChatMode } from '../../hooks'
 type Params = {
   id: string
   payload: StartNodeType
-  runInputData: Record<string, any>
-  runInputDataRef: RefObject<Record<string, any>>
+  runInputData: FormProps['values']
+  runInputDataRef: RefObject<FormProps['values']>
   getInputVars: (textList: string[]) => InputVar[]
-  setRunInputData: (data: Record<string, any>) => void
+  setRunInputData: FormProps['onChange']
   toVarInputs: (variables: Variable[]) => InputVar[]
 }
 const useSingleRunFormParams = ({
@@ -42,13 +42,6 @@ const useSingleRunFormParams = ({
       })
     }
 
-    inputs.push({
-      label: 'sys.files',
-      variable: '#sys.files#',
-      type: InputVarType.multiFiles,
-      required: false,
-    })
-
     forms.push(
       {
         label: t('nodes.llm.singleRun.variable', { ns: 'workflow' })!,
@@ -65,7 +58,7 @@ const useSingleRunFormParams = ({
     const inputVars = payload.variables.map((item) => {
       return [id, item.variable]
     })
-    const vars: ValueSelector[] = [...inputVars, ['sys', 'files']]
+    const vars: ValueSelector[] = [...inputVars]
 
     if (isChatMode)
       vars.push(['sys', 'query'])

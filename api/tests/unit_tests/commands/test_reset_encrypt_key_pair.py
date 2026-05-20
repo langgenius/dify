@@ -8,7 +8,7 @@ such as `/console/api/workspaces/current/tool-providers` returning 500.
 from unittest.mock import MagicMock, patch
 
 import commands
-from commands import system as system_commands
+from commands import workspace as workspace_commands
 from models.provider import Provider, ProviderModel
 from models.tools import ApiToolProvider, BuiltinToolProvider, MCPToolProvider
 
@@ -35,7 +35,7 @@ def _delete_targets(session_mock: MagicMock) -> list:
 
 
 def test_reset_aborts_when_not_self_hosted(monkeypatch, capsys):
-    monkeypatch.setattr(system_commands.dify_config, "EDITION", "CLOUD")
+    monkeypatch.setattr(workspace_commands.dify_config, "EDITION", "CLOUD")
 
     exit_code = _invoke_reset()
     captured = capsys.readouterr()
@@ -47,8 +47,8 @@ def test_reset_aborts_when_not_self_hosted(monkeypatch, capsys):
 def test_reset_purges_provider_and_tool_tables_for_each_tenant(monkeypatch, capsys):
     """The command must purge LLM provider rows AND every tool provider table
     that stores ciphertext encrypted under the tenant key (#35396)."""
-    monkeypatch.setattr(system_commands.dify_config, "EDITION", "SELF_HOSTED")
-    monkeypatch.setattr(system_commands, "generate_key_pair", lambda tenant_id: f"new-key-{tenant_id}")
+    monkeypatch.setattr(workspace_commands.dify_config, "EDITION", "SELF_HOSTED")
+    monkeypatch.setattr(workspace_commands, "generate_key_pair", lambda tenant_id: f"new-key-{tenant_id}")
 
     fake_tenant = MagicMock(id="tenant-abc", encrypt_public_key="old-key")
     session = MagicMock()
@@ -59,8 +59,8 @@ def test_reset_purges_provider_and_tool_tables_for_each_tenant(monkeypatch, caps
     fake_sessionmaker.begin.return_value.__exit__.return_value = False
 
     with (
-        patch.object(system_commands, "db", MagicMock()),
-        patch.object(system_commands, "sessionmaker", return_value=fake_sessionmaker),
+        patch.object(workspace_commands, "db", MagicMock()),
+        patch.object(workspace_commands, "sessionmaker", return_value=fake_sessionmaker),
     ):
         exit_code = _invoke_reset()
 
@@ -85,8 +85,8 @@ def test_reset_purges_provider_and_tool_tables_for_each_tenant(monkeypatch, caps
 
 def test_reset_iterates_all_tenants(monkeypatch, capsys):
     """Multi-tenant deployments must purge every tenant, not just the first."""
-    monkeypatch.setattr(system_commands.dify_config, "EDITION", "SELF_HOSTED")
-    monkeypatch.setattr(system_commands, "generate_key_pair", lambda tenant_id: f"new-key-{tenant_id}")
+    monkeypatch.setattr(workspace_commands.dify_config, "EDITION", "SELF_HOSTED")
+    monkeypatch.setattr(workspace_commands, "generate_key_pair", lambda tenant_id: f"new-key-{tenant_id}")
 
     tenants = [MagicMock(id=f"tenant-{i}", encrypt_public_key="old") for i in range(3)]
     session = MagicMock()
@@ -97,8 +97,8 @@ def test_reset_iterates_all_tenants(monkeypatch, capsys):
     fake_sessionmaker.begin.return_value.__exit__.return_value = False
 
     with (
-        patch.object(system_commands, "db", MagicMock()),
-        patch.object(system_commands, "sessionmaker", return_value=fake_sessionmaker),
+        patch.object(workspace_commands, "db", MagicMock()),
+        patch.object(workspace_commands, "sessionmaker", return_value=fake_sessionmaker),
     ):
         _invoke_reset()
 

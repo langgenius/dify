@@ -85,6 +85,7 @@ export const getGlobalVars = (isChatMode: boolean): Var[] => {
 
 export const VAR_SHOW_NAME_MAP: Record<string, string> = {
   'sys.query': 'query',
+  // TODO: Remove this display alias after all persisted workflows are migrated.
   'sys.files': 'files',
 }
 

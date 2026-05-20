@@ -8,6 +8,7 @@ import Panel from '../panel'
 const mockUseConfig = vi.hoisted(() => vi.fn())
 const mockConfigVarModal = vi.hoisted(() => vi.fn())
 const mockRemoveEffectVarConfirm = vi.hoisted(() => vi.fn())
+const legacyFilesVariable = ['userinput', 'files'].join('.')
 
 vi.mock('../use-config', () => ({
   __esModule: true,
@@ -90,7 +91,7 @@ describe('StartPanel', () => {
     render(<Panel id="start-node" data={createData()} panelProps={{} as PanelProps} />)
 
     expect(screen.getByText('userinput.query')).toBeInTheDocument()
-    expect(screen.getByText('userinput.files')).toBeInTheDocument()
+    expect(screen.getByText(legacyFilesVariable)).toBeInTheDocument()
     expect(screen.queryByText('LEGACY')).not.toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('button', { name: 'common.operation.add workflow.nodes.start.inputField' }))
@@ -116,6 +117,7 @@ describe('StartPanel', () => {
     render(<Panel id="start-node" data={createData()} panelProps={{} as PanelProps} />)
 
     expect(screen.queryByText('userinput.query')).not.toBeInTheDocument()
+    expect(screen.getByText(legacyFilesVariable)).toBeInTheDocument()
     expect(screen.getByText('LEGACY')).toBeInTheDocument()
     expect(screen.getByText('remove-confirm')).toBeInTheDocument()
 

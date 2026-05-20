@@ -15,6 +15,7 @@ import type {
 } from '../../types'
 import type { PickerBlockMenuOption } from './menu'
 import type { EventEmitterValue } from '@/context/event-emitter'
+// eslint-disable-next-line no-restricted-imports -- Existing Lexical typeahead positioning uses Floating UI directly.
 import {
   flip,
   offset,
@@ -202,7 +203,7 @@ const ComponentPicker = ({
       else if (varName === 'last_run')
         editor.dispatchCommand(INSERT_LAST_RUN_BLOCK_COMMAND, null)
     }
-    else if (variables[1] === 'sys.query' || variables[1] === 'sys.files') {
+    else if (variables[1] === 'sys.query') {
       editor.dispatchCommand(INSERT_WORKFLOW_VARIABLE_BLOCK_COMMAND, [variables[1]])
     }
     else {

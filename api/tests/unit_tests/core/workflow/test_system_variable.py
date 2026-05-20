@@ -1,6 +1,7 @@
 from types import SimpleNamespace
 
 from core.workflow.system_variables import (
+    build_bootstrap_variables,
     build_system_variables,
     default_system_variables,
     get_node_creation_preload_selectors,
@@ -54,6 +55,25 @@ def test_build_system_variables_preserves_file_values():
     system_values = system_variables_to_mapping(system_variables)
 
     assert system_values["files"] == [file]
+
+
+def test_build_bootstrap_variables_adds_userinput_files_alias():
+    file = File(
+        file_type=FileType.DOCUMENT,
+        transfer_method=FileTransferMethod.LOCAL_FILE,
+        related_id="file-id",
+        filename="test.txt",
+        extension=".txt",
+        mime_type="text/plain",
+        size=1,
+        storage_key="storage-key",
+    )
+
+    bootstrap_variables = build_bootstrap_variables(system_variables=build_system_variables(files=[file]))
+    file_variables_by_selector = {tuple(variable.selector): variable for variable in bootstrap_variables}
+
+    assert file_variables_by_selector[("sys", "files")].value == [file]
+    assert file_variables_by_selector[("userinput", "files")].value == [file]
 
 
 def test_default_system_variables_generates_workflow_run_id():

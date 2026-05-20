@@ -17,6 +17,11 @@ from models.workflow import (
     is_system_variable_editable,
 )
 
+_LEGACY_FILE_TEMPLATE = "{{#" + ".".join(("sys", "files")) + "#}}"
+_LEGACY_FILE_SELECTOR = ["sys", "files"]
+_USER_INPUT_FILE_TEMPLATE = "{{#" + ".".join(("userinput", "files")) + "#}}"
+_USER_INPUT_FILE_SELECTOR = ["userinput", "files"]
+
 
 def test_environment_variables():
     # tenant_id context variable removed - using current_user.current_tenant_id directly
@@ -191,6 +196,131 @@ class TestIsSystemVariableEditable:
             assert editable == is_system_variable_editable(name)
 
         assert is_system_variable_editable("invalid_or_new_system_variable") == False
+
+
+class TestWorkflowLegacySysFilesCompatibility:
+    def _make_workflow(self, graph: dict, *, features: dict | None = None) -> Workflow:
+        return Workflow(
+            tenant_id="tenant_id",
+            app_id="app_id",
+            type="workflow",
+            version="draft",
+            graph=json.dumps(graph),
+            features=json.dumps(features or {}),
+            created_by="account_id",
+            environment_variables=[],
+            conversation_variables=[],
+        )
+
+    def test_graph_dict_rewrites_legacy_sys_files_references_to_userinput_files(self):
+        workflow = self._make_workflow(
+            {
+                "nodes": [
+                    {
+                        "id": "start",
+                        "data": {
+                            "type": "start",
+                            "title": "Start",
+                            "variables": [],
+                        },
+                    },
+                    {
+                        "id": "llm",
+                        "data": {
+                            "type": "llm",
+                            "prompt_template": [{"role": "user", "text": f"files: {_LEGACY_FILE_TEMPLATE}"}],
+                            "context": {"variable_selector": _LEGACY_FILE_SELECTOR},
+                        },
+                    },
+                ],
+                "edges": [],
+            }
+        )
+
+        graph = workflow.graph_dict
+        start_node = next(node for node in graph["nodes"] if node["id"] == "start")
+        llm_node = next(node for node in graph["nodes"] if node["id"] == "llm")
+
+        assert start_node["data"]["variables"] == []
+        assert llm_node["data"]["prompt_template"][0]["text"] == f"files: {_USER_INPUT_FILE_TEMPLATE}"
+        assert llm_node["data"]["context"]["variable_selector"] == _USER_INPUT_FILE_SELECTOR
+
+        stored_graph = json.loads(workflow.graph)
+        stored_llm_node = next(node for node in stored_graph["nodes"] if node["id"] == "llm")
+        assert stored_llm_node["data"]["prompt_template"][0]["text"] == f"files: {_USER_INPUT_FILE_TEMPLATE}"
+        assert stored_llm_node["data"]["context"]["variable_selector"] == _USER_INPUT_FILE_SELECTOR
+
+    def test_graph_dict_preserves_existing_start_variables_when_migrating_legacy_sys_files(self):
+        workflow = self._make_workflow(
+            {
+                "nodes": [
+                    {
+                        "id": "start",
+                        "data": {
+                            "type": "start",
+                            "title": "Start",
+                            "variables": [
+                                {"variable": "sys_files", "label": "Existing", "type": "text-input"},
+                            ],
+                        },
+                    },
+                    {
+                        "id": "answer",
+                        "data": {
+                            "type": "answer",
+                            "answer": _LEGACY_FILE_TEMPLATE,
+                        },
+                    },
+                ],
+                "edges": [],
+            }
+        )
+
+        graph = workflow.graph_dict
+        start_node = next(node for node in graph["nodes"] if node["id"] == "start")
+        answer_node = next(node for node in graph["nodes"] if node["id"] == "answer")
+
+        assert [variable["variable"] for variable in start_node["data"]["variables"]] == ["sys_files"]
+        assert answer_node["data"]["answer"] == _USER_INPUT_FILE_TEMPLATE
+
+    def test_graph_dict_leaves_userinput_files_references_unchanged(self):
+        workflow = self._make_workflow(
+            {
+                "nodes": [
+                    {
+                        "id": "start",
+                        "data": {
+                            "type": "start",
+                            "title": "Start",
+                            "variables": [],
+                        },
+                    },
+                    {
+                        "id": "answer",
+                        "data": {
+                            "type": "answer",
+                            "answer": _USER_INPUT_FILE_TEMPLATE,
+                        },
+                    },
+                ],
+                "edges": [],
+            },
+            features={
+                "file_upload": {
+                    "enabled": True,
+                    "allowed_file_upload_methods": ["remote_url"],
+                    "allowed_file_types": ["document", "custom"],
+                    "allowed_file_extensions": [".pdf"],
+                    "number_limits": 8,
+                }
+            },
+        )
+
+        graph = workflow.graph_dict
+        start_node = next(node for node in graph["nodes"] if node["id"] == "start")
+
+        assert start_node["data"]["variables"] == []
+        assert json.loads(workflow.graph) == graph
 
 
 class TestWorkflowDraftVariableGetValue:

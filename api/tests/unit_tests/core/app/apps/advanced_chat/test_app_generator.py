@@ -44,7 +44,7 @@ class TestAdvancedChatAppGeneratorValidation:
         with pytest.raises(ValueError, match="query must be a string"):
             generator.generate(
                 app_model=SimpleNamespace(),
-                workflow=SimpleNamespace(),
+                workflow=SimpleNamespace(graph_dict={"nodes": []}),
                 user=SimpleNamespace(),
                 args={"inputs": {}, "query": 123},
                 invoke_from=InvokeFrom.WEB_APP,
@@ -177,7 +177,7 @@ class TestAdvancedChatAppGeneratorInternals:
 
         result = generator.generate(
             app_model=SimpleNamespace(id="app", tenant_id="tenant"),
-            workflow=SimpleNamespace(features_dict={}),
+            workflow=SimpleNamespace(features_dict={}, graph_dict={"nodes": []}),
             user=user,
             args={
                 "query": "hello",
@@ -1153,7 +1153,7 @@ class TestAdvancedChatAppGeneratorInternals:
         monkeypatch.setattr(generator, "_generate", _fake_generate)
 
         app_model = SimpleNamespace(id="app", tenant_id="tenant")
-        workflow = SimpleNamespace(features_dict={})
+        workflow = SimpleNamespace(features_dict={}, graph_dict={"nodes": []})
         from models import Account
 
         user = Account(name="Tester", email="tester@example.com")
@@ -1232,7 +1232,7 @@ class TestAdvancedChatAppGeneratorInternals:
         monkeypatch.setattr(generator, "_generate", _fake_generate)
 
         app_model = SimpleNamespace(id="app", tenant_id="tenant")
-        workflow = SimpleNamespace(features_dict={})
+        workflow = SimpleNamespace(features_dict={}, graph_dict={"nodes": []})
         from models.model import EndUser
 
         user = EndUser(tenant_id="tenant", type="session", name="tester", session_id="session")

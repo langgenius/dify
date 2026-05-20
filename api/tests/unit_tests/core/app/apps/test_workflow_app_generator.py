@@ -70,7 +70,7 @@ def test_generate_includes_parent_trace_context_in_extras(monkeypatch):
 
     result = generator.generate(
         app_model=SimpleNamespace(tenant_id="tenant-1", id="app-1"),
-        workflow=SimpleNamespace(features_dict={}),
+        workflow=SimpleNamespace(features_dict={}, graph_dict={"nodes": []}),
         user=SimpleNamespace(id="user-1", session_id="session-1"),
         args={
             "inputs": {"query": "hello"},

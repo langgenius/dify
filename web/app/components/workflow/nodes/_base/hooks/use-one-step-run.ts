@@ -747,6 +747,7 @@ const useOneStepRun = <T>({
           const isStartNode = data.type === BlockEnum.Start
           const postData: Record<string, any> = {}
           if (isStartNode) {
+            // TODO: Remove this legacy submit-data fallback after all persisted workflows are migrated.
             const { '#sys.query#': query, '#sys.files#': files, ...inputs } = submitData
             if (isChatMode)
               postData.conversation_id = ''

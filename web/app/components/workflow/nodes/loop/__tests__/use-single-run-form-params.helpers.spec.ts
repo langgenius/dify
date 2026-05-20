@@ -124,7 +124,7 @@ describe('use-single-run-form-params helpers', () => {
     mockGetNodeUsedVars.mockImplementation((node: Node) => {
       switch (node.id) {
         case 'tool-a':
-          return [['sys', 'files']]
+          return [['sys', 'query']]
         case 'tool-b':
           return [['start-node', 'answer'], ['current-node', 'self'], ['inner-node', 'secret']]
         default:
@@ -132,7 +132,7 @@ describe('use-single-run-form-params helpers', () => {
       }
     })
     mockGetNodeUsedVarPassToServerKey.mockImplementation((_node: Node, selector: string[]) => {
-      return selector[0] === 'sys' ? ['sys_files', 'sys_files_backup'] : 'answer_key'
+      return selector[0] === 'sys' ? ['sys_query', 'sys_query_backup'] : 'answer_key'
     })
     mockGetNodeInfoById.mockImplementation((nodes: Node[], id: string) => nodes.find(node => node.id === id))
     mockIsSystemVar.mockImplementation((selector: string[]) => selector[0] === 'sys')
@@ -152,11 +152,11 @@ describe('use-single-run-form-params helpers', () => {
 
     expect(toVarInputs).toHaveBeenCalledWith([
       expect.objectContaining({
-        variable: 'sys.files',
+        variable: 'sys.query',
         label: {
           nodeType: BlockEnum.Start,
           nodeName: 'System',
-          variable: 'sys.files',
+          variable: 'sys.query',
         },
       }),
       expect.objectContaining({
@@ -169,10 +169,10 @@ describe('use-single-run-form-params helpers', () => {
       }),
     ])
     expect(result.usedOutVars).toEqual([
-      createInputVar('sys.files', {
+      createInputVar('sys.query', {
         nodeType: BlockEnum.Start,
         nodeName: 'System',
-        variable: 'sys.files',
+        variable: 'sys.query',
       }),
       createInputVar('start-node.answer', {
         nodeType: BlockEnum.Start,
@@ -181,11 +181,11 @@ describe('use-single-run-form-params helpers', () => {
       }),
     ])
     expect(result.allVarObject).toEqual({
-      [['sys.files', 'tool-a', 0].join(VALUE_SELECTOR_DELIMITER)]: {
-        inSingleRunPassedKey: 'sys_files',
+      [['sys.query', 'tool-a', 0].join(VALUE_SELECTOR_DELIMITER)]: {
+        inSingleRunPassedKey: 'sys_query',
       },
-      [['sys.files', 'tool-a', 1].join(VALUE_SELECTOR_DELIMITER)]: {
-        inSingleRunPassedKey: 'sys_files_backup',
+      [['sys.query', 'tool-a', 1].join(VALUE_SELECTOR_DELIMITER)]: {
+        inSingleRunPassedKey: 'sys_query_backup',
       },
       [['start-node.answer', 'tool-b', 0].join(VALUE_SELECTOR_DELIMITER)]: {
         inSingleRunPassedKey: 'answer_key',

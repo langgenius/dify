@@ -45,6 +45,7 @@ from core.ops.ops_trace_manager import TraceQueueManager
 from core.prompt.utils.get_thread_messages_length import get_thread_messages_length
 from core.repositories import DifyCoreRepositoryFactory
 from core.repositories.factory import WorkflowExecutionRepository, WorkflowNodeExecutionRepository
+from core.workflow.legacy_system_files import normalize_legacy_sys_files_args
 from extensions.ext_database import db
 from factories import file_factory
 from graphon.graph_engine.layers import GraphEngineLayer
@@ -129,6 +130,8 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
         if not args.get("query"):
             raise ValueError("query is required")
 
+        # TODO: Remove this compatibility normalization after all persisted workflows are migrated.
+        args, _ = normalize_legacy_sys_files_args(graph=workflow.graph_dict, args=args)
         query = args["query"]
         if not isinstance(query, str):
             raise ValueError("query must be a string")

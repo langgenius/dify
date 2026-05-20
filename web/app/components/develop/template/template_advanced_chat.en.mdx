@@ -429,7 +429,6 @@ Chat applications support session persistence, allowing previous chat history to
         "id": "a4959eb4-c852-4e0c-ac7a-348233f7f345",
         "workflow_id": "e46514f1-c008-41ff-94b0-4f33d4b97d36",
         "inputs": {
-          "sys.files": [],
           "sys.user_id": "abc-123",
           "sys.app_id": "d1074979-f67e-4114-8691-e35878df9a89",
           "sys.workflow_id": "e46514f1-c008-41ff-94b0-4f33d4b97d36",
@@ -473,7 +472,6 @@ Chat applications support session persistence, allowing previous chat history to
         "index": 1,
         "predecessor_node_id": null,
         "inputs": {
-          "sys.files": [],
           "sys.user_id": "abc-123",
           "sys.app_id": "d1074979-f67e-4114-8691-e35878df9a89",
           "sys.workflow_id": "e46514f1-c008-41ff-94b0-4f33d4b97d36",
@@ -484,7 +482,6 @@ Chat applications support session persistence, allowing previous chat history to
         "process_data": {},
         "process_data_truncated": false,
         "outputs": {
-          "sys.files": [],
           "sys.user_id": "abc-123",
           "sys.app_id": "d1074979-f67e-4114-8691-e35878df9a89",
           "sys.workflow_id": "e46514f1-c008-41ff-94b0-4f33d4b97d36",
@@ -1047,7 +1044,7 @@ Chat applications support session persistence, allowing previous chat history to
     ```streaming {{ title: 'Response' }}
     event: ping
 
-    data: {"event":"workflow_started","task_id":"1784c3dd-20eb-4919-bd5d-a8d800b74ada","workflow_run_id":"5d7ef348-e1c1-4f6d-bb9b-62cc2fb2ef3c","data":{"id":"5d7ef348-e1c1-4f6d-bb9b-62cc2fb2ef3c","workflow_id":"e46514f1-c008-41ff-94b0-4f33d4b97d36","inputs":{"sys.files":[],"sys.user_id":"abc-123","sys.app_id":"d1074979-f67e-4114-8691-e35878df9a89","sys.workflow_id":"e46514f1-c008-41ff-94b0-4f33d4b97d36","sys.workflow_run_id":"5d7ef348-e1c1-4f6d-bb9b-62cc2fb2ef3c","sys.timestamp":1776087863},"created_at":1776087863,"reason":"initial"}}
+    data: {"event":"workflow_started","task_id":"1784c3dd-20eb-4919-bd5d-a8d800b74ada","workflow_run_id":"5d7ef348-e1c1-4f6d-bb9b-62cc2fb2ef3c","data":{"id":"5d7ef348-e1c1-4f6d-bb9b-62cc2fb2ef3c","workflow_id":"e46514f1-c008-41ff-94b0-4f33d4b97d36","inputs":{"sys.user_id":"abc-123","sys.app_id":"d1074979-f67e-4114-8691-e35878df9a89","sys.workflow_id":"e46514f1-c008-41ff-94b0-4f33d4b97d36","sys.workflow_run_id":"5d7ef348-e1c1-4f6d-bb9b-62cc2fb2ef3c","sys.timestamp":1776087863},"created_at":1776087863,"reason":"initial"}}
 
     data: {"event":"node_started","task_id":"1784c3dd-20eb-4919-bd5d-a8d800b74ada","workflow_run_id":"5d7ef348-e1c1-4f6d-bb9b-62cc2fb2ef3c","data":{"id":"b552d685-1119-4e6a-9a81-e91a23e5324b","node_id":"1775717266623","node_type":"start","title":"User Input","index":1,"predecessor_node_id":null,"inputs":null,"created_at":1776087863,"extras":{},"iteration_id":null,"loop_id":null}}
 
@@ -1059,7 +1056,7 @@ Chat applications support session persistence, allowing previous chat history to
 
     data: {"event":"workflow_paused","task_id":"1784c3dd-20eb-4919-bd5d-a8d800b74ada","workflow_run_id":"5d7ef348-e1c1-4f6d-bb9b-62cc2fb2ef3c","data":{"workflow_run_id":"5d7ef348-e1c1-4f6d-bb9b-62cc2fb2ef3c","paused_nodes":["1775717346519"],"outputs":{},"reasons":[{"form_id":"019d8716-0fde-75da-8207-1458ccde76e5","form_content":"this is form 1:\n{{#$output.some_field#}}\n","inputs":[{"type":"paragraph","output_variable_name":"some_field","default":{"type":"variable","selector":["sys","workflow_run_id"],"value":""}}],"actions":[{"id":"approve","title":"YES","button_style":"default"},{"id":"reject","title":"NO","button_style":"default"}],"display_in_ui":true,"node_id":"1775717346519","node_title":"Human Input","resolved_default_values":{"some_field":"5d7ef348-e1c1-4f6d-bb9b-62cc2fb2ef3c"},"form_token":"n7hFG4ZDYdGcgZ5VDc7EGM","type":"human_input_required"}],"status":"paused","created_at":1776087863,"elapsed_time":0.0,"total_tokens":0,"total_steps":2}}
 
-    data: {"event":"workflow_started","workflow_run_id":"5d7ef348-e1c1-4f6d-bb9b-62cc2fb2ef3c","task_id":"1784c3dd-20eb-4919-bd5d-a8d800b74ada","data":{"id":"5d7ef348-e1c1-4f6d-bb9b-62cc2fb2ef3c","workflow_id":"e46514f1-c008-41ff-94b0-4f33d4b97d36","inputs":{"sys.files":[],"sys.user_id":"abc-123","sys.app_id":"d1074979-f67e-4114-8691-e35878df9a89","sys.workflow_id":"e46514f1-c008-41ff-94b0-4f33d4b97d36","sys.workflow_run_id":"5d7ef348-e1c1-4f6d-bb9b-62cc2fb2ef3c"},"created_at":1776087877,"reason":"resumption"}}
+    data: {"event":"workflow_started","workflow_run_id":"5d7ef348-e1c1-4f6d-bb9b-62cc2fb2ef3c","task_id":"1784c3dd-20eb-4919-bd5d-a8d800b74ada","data":{"id":"5d7ef348-e1c1-4f6d-bb9b-62cc2fb2ef3c","workflow_id":"e46514f1-c008-41ff-94b0-4f33d4b97d36","inputs":{"sys.user_id":"abc-123","sys.app_id":"d1074979-f67e-4114-8691-e35878df9a89","sys.workflow_id":"e46514f1-c008-41ff-94b0-4f33d4b97d36","sys.workflow_run_id":"5d7ef348-e1c1-4f6d-bb9b-62cc2fb2ef3c"},"created_at":1776087877,"reason":"resumption"}}
 
     data: {"event":"node_started","workflow_run_id":"5d7ef348-e1c1-4f6d-bb9b-62cc2fb2ef3c","task_id":"1784c3dd-20eb-4919-bd5d-a8d800b74ada","data":{"id":"8d7e8e01-5159-4089-a4b6-3aa394992cc2","node_id":"1775717346519","node_type":"human-input","title":"Human Input","index":1,"predecessor_node_id":null,"inputs":null,"inputs_truncated":false,"created_at":1776087877,"extras":{},"iteration_id":null,"loop_id":null,"agent_strategy":null}}
 
