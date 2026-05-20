@@ -7,7 +7,7 @@ improving performance by offloading storage operations to background workers.
 
 import json
 import logging
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from celery import shared_task
 from sqlalchemy import select
@@ -19,6 +19,11 @@ from graphon.entities.workflow_node_execution import (
 from graphon.workflow_type_encoder import WorkflowRuntimeTypeConverter
 from models import Account, CreatorUserRole, EndUser, WorkflowNodeExecutionModel
 from models.workflow import WorkflowNodeExecutionTriggeredFrom
+
+if TYPE_CHECKING:
+    from core.repositories.sqlalchemy_workflow_node_execution_repository import (
+        SQLAlchemyWorkflowNodeExecutionRepository,
+    )
 
 logger = logging.getLogger(__name__)
 
