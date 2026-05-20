@@ -7,10 +7,13 @@ validation now happens at the callsite boundary (for example,
 `AccountService.get_change_email_data`), not inside `TokenManager`.
 """
 
+import json
 from types import SimpleNamespace
 
 import libs.helper as helper_module
+import pytest
 from libs.helper import TokenManager
+from pydantic import ValidationError
 
 
 def test_token_manager_roundtrip_preserves_untyped_metadata_keys() -> None:
@@ -89,3 +92,27 @@ def test_token_manager_roundtrip_uses_explicit_email_with_account() -> None:
     assert data.get("email") == "new@example.com"
     assert data.get("old_email") == "old@example.com"
     assert data.get("email_change_phase") == "new_email"
+
+
+def test_token_manager_roundtrip_still_validates_declared_fields() -> None:
+    """Unknown fields should be preserved, but declared baseline fields should
+    still be validated by `_token_data_adapter`.
+    """
+
+    storage = {
+        "change_email:token:token-123": json.dumps(
+            {
+                "token_type": "change_email",
+                "account_id": "acc-1",
+                "email": ["not-a-string"],
+                "code": "654321",
+                "old_email": "old@example.com",
+                "email_change_phase": "old_email",
+            }
+        )
+    }
+
+    helper_module.redis_client.get.side_effect = storage.get
+
+    with pytest.raises(ValidationError):
+        TokenManager.get_token_data("token-123", "change_email")
