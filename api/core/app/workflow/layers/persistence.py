@@ -4,17 +4,19 @@ This layer mirrors the former ``WorkflowCycleManager`` responsibilities by
 listening to ``GraphEngineEvent`` instances directly and persisting workflow
 and node execution state via the injected repositories.
 
-The design keeps domain persistence concerns inside the engine thread, while
-allowing presentation layers to remain read-only observers of repository
-state.
+The layer owns domain-to-persistence event handling, while the injected
+repositories choose the write strategy. Debug executions use synchronous
+writes so developer tools can read DB state immediately; non-debug app
+executions use a Celery-backed write path to keep DB writes out of the engine
+thread.
 """
 
 from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any, Union, override
+from typing import Any, Protocol, override, runtime_checkable
 
-from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, WorkflowAppGenerateEntity
+from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, InvokeFrom, WorkflowAppGenerateEntity
 from core.helper.trace_id_helper import ParentTraceContext
 from core.ops.entities.trace_entity import TraceTaskName
 from core.ops.ops_trace_manager import TraceQueueManager, TraceTask
@@ -65,6 +67,21 @@ class PersistenceWorkflowInfo:
     graph_data: Mapping[str, Any]
 
 
+def should_use_async_workflow_persistence(invoke_from: InvokeFrom) -> bool:
+    """Return whether workflow execution state should be persisted through Celery."""
+    return invoke_from != InvokeFrom.DEBUGGER
+
+
+@runtime_checkable
+class AsyncPersistenceConfigurable(Protocol):
+    def set_async_persistence(self, enabled: bool) -> None: ...
+
+
+def _configure_async_persistence(repository: object, enabled: bool) -> None:
+    if isinstance(repository, AsyncPersistenceConfigurable):
+        repository.set_async_persistence(enabled)
+
+
 @dataclass(slots=True)
 class _NodeRuntimeSnapshot:
     """Lightweight cache to keep node metadata across event phases."""
@@ -83,10 +100,11 @@ class WorkflowPersistenceLayer(GraphEngineLayer):
     def __init__(
         self,
         *,
-        application_generate_entity: Union[AdvancedChatAppGenerateEntity, WorkflowAppGenerateEntity],
+        application_generate_entity: AdvancedChatAppGenerateEntity | WorkflowAppGenerateEntity,
         workflow_info: PersistenceWorkflowInfo,
         workflow_execution_repository: WorkflowExecutionRepository,
         workflow_node_execution_repository: WorkflowNodeExecutionRepository,
+        invoke_from: InvokeFrom | None = None,
         trace_manager: TraceQueueManager | None = None,
     ) -> None:
         super().__init__()
@@ -94,6 +112,11 @@ class WorkflowPersistenceLayer(GraphEngineLayer):
         self._workflow_info = workflow_info
         self._workflow_execution_repository = workflow_execution_repository
         self._workflow_node_execution_repository = workflow_node_execution_repository
+        use_async_persistence = should_use_async_workflow_persistence(
+            invoke_from or application_generate_entity.invoke_from
+        )
+        _configure_async_persistence(self._workflow_execution_repository, use_async_persistence)
+        _configure_async_persistence(self._workflow_node_execution_repository, use_async_persistence)
         self._trace_manager = trace_manager
 
         self._workflow_execution: WorkflowExecution | None = None

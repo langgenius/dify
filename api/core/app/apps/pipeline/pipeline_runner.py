@@ -198,6 +198,7 @@ class PipelineRunner(WorkflowBasedAppRunner):
             ),
             workflow_execution_repository=self._workflow_execution_repository,
             workflow_node_execution_repository=self._workflow_node_execution_repository,
+            invoke_from=invoke_from,
             trace_manager=self.application_generate_entity.trace_manager,
         )
 

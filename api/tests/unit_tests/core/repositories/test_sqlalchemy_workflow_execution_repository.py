@@ -1,5 +1,5 @@
 from datetime import UTC, datetime
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 from uuid import uuid4
 
 import pytest
@@ -239,6 +239,30 @@ class TestSQLAlchemyWorkflowExecutionRepository:
         assert sample_workflow_execution.id_ in repo._execution_cache
         cached_model = repo._execution_cache[sample_workflow_execution.id_]
         assert cached_model.id == sample_workflow_execution.id_
+
+    @patch("core.repositories.sqlalchemy_workflow_execution_repository.save_workflow_execution_task")
+    def test_save_queues_celery_task_when_async_persistence_enabled(
+        self, mock_task, mock_session_factory, mock_account, sample_workflow_execution
+    ):
+        repo = SQLAlchemyWorkflowExecutionRepository(
+            session_factory=mock_session_factory,
+            user=mock_account,
+            app_id="test_app",
+            triggered_from=WorkflowRunTriggeredFrom.APP_RUN,
+        )
+        repo.set_async_persistence(True)
+
+        repo.save(sample_workflow_execution)
+
+        mock_task.delay.assert_called_once()
+        call_args = mock_task.delay.call_args.kwargs
+        assert call_args["execution_data"] == sample_workflow_execution.model_dump()
+        assert call_args["tenant_id"] == mock_account.current_tenant_id
+        assert call_args["app_id"] == "test_app"
+        assert call_args["triggered_from"] == WorkflowRunTriggeredFrom.APP_RUN
+        assert call_args["creator_user_id"] == mock_account.id
+        session = mock_session_factory.return_value.__enter__.return_value
+        session.merge.assert_not_called()
 
     def test_save_uses_execution_started_at_when_record_does_not_exist(
         self, mock_session_factory, mock_account, sample_workflow_execution
