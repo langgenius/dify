@@ -86,7 +86,13 @@ const DocTypeSelector: FC<DocTypeSelectorProps> = ({
             )}
             {CUSTOMIZABLE_DOC_TYPES.map(type => (
               <FieldItem key={type}>
-                <FieldLabel className={`${s.radio} ${currValue === type ? 'shadow-none' : ''}`}>
+                <FieldLabel
+                  className={cn(
+                    s.radio,
+                    'focus-within:ring-2 focus-within:ring-components-input-border-hover focus-within:ring-offset-1 focus-within:outline-hidden',
+                    currValue === type && 'shadow-none',
+                  )}
+                >
                   <Radio
                     value={type}
                     aria-label={metadataMap[type].text}

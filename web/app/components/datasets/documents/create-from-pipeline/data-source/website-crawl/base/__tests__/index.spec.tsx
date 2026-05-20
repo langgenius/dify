@@ -1,4 +1,5 @@
 import type { CrawlResultItem as CrawlResultItemType } from '@/models/datasets'
+import { RadioGroup } from '@langgenius/dify-ui/radio-group'
 import { fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
@@ -260,18 +261,24 @@ describe('CrawledResultItem', () => {
 
     it('should toggle radio state when isMultipleChoice is false', () => {
       const mockOnCheckChange = vi.fn()
-      const { container } = render(
-        <CrawledResultItem
-          {...defaultProps}
-          isMultipleChoice={false}
-          isChecked={false}
-          onCheckChange={mockOnCheckChange}
-        />,
+      render(
+        <RadioGroup
+          aria-label="Crawled pages"
+          onValueChange={(sourceUrl) => {
+            if (sourceUrl === defaultProps.payload.source_url)
+              mockOnCheckChange(true)
+          }}
+        >
+          <CrawledResultItem
+            {...defaultProps}
+            isMultipleChoice={false}
+            isChecked={false}
+            onCheckChange={mockOnCheckChange}
+          />
+        </RadioGroup>,
       )
 
-      // Act - Radio uses size-4 rounded-full classes
-      const radio = container.querySelector('.size-4.rounded-full')!
-      fireEvent.click(radio)
+      fireEvent.click(screen.getByRole('radio', { name: /Test Page Title/ }))
 
       expect(mockOnCheckChange).toHaveBeenCalledWith(true)
     })
