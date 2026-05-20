@@ -59,6 +59,7 @@ export default function AccountSetting({
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const containerRef = useRef<HTMLDivElement>(null)
   const canViewMembers = hasPermission(workspacePermissionKeys, ['workspace.member.view', 'workspace.member.manage'])
+  const canViewRoles = hasPermission(workspacePermissionKeys, ['workspace.role.view', 'workspace.role.manage'])
 
   const workplaceGroupItems: GroupItem[] = (() => {
     const items: GroupItem[] = [
@@ -79,7 +80,7 @@ export default function AccountSetting({
       })
     }
 
-    if (systemFeatures.rbac_enabled && hasPermission(workspacePermissionKeys, 'workspace.role.view')) {
+    if (systemFeatures.rbac_enabled && canViewRoles) {
       items.push(
         {
           key: ACCOUNT_SETTING_TAB.PERMISSIONS,
