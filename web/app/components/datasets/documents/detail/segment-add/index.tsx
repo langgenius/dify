@@ -7,7 +7,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
-import { useRef, useState } from 'react'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { PlanUpgradeModal } from '@/app/components/billing/plan-upgrade-modal'
 import { Plan } from '@/app/components/billing/type'
@@ -31,7 +31,6 @@ export function SegmentAdd({
 }: SegmentAddProps) {
   const { t } = useTranslation()
   const [isPlanUpgradeModalOpen, setIsPlanUpgradeModalOpen] = useState(false)
-  const batchMenuAnchorRef = useRef<HTMLDivElement>(null)
   const { plan, enableBilling } = useProviderContext()
   const canAddChunks = !enableBilling || plan.type !== Plan.sandbox
 
@@ -49,14 +48,12 @@ export function SegmentAdd({
   }
 
   const handleBatchAddClick = () => {
-    queueMicrotask(() => {
-      if (!canAddChunks) {
-        setIsPlanUpgradeModalOpen(true)
-        return
-      }
+    if (!canAddChunks) {
+      setIsPlanUpgradeModalOpen(true)
+      return
+    }
 
-      showBatchModal()
-    })
+    showBatchModal()
   }
 
   if (importStatus) {
@@ -114,7 +111,6 @@ export function SegmentAdd({
 
   return (
     <div
-      ref={batchMenuAnchorRef}
       className={cn(
         'relative z-20 flex items-center rounded-lg border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg shadow-xs shadow-shadow-shadow-3 backdrop-blur-[5px]',
         embedding && 'border-components-button-secondary-border-disabled bg-components-button-secondary-bg-disabled',
@@ -148,8 +144,7 @@ export function SegmentAdd({
         <DropdownMenuContent
           placement="bottom-start"
           sideOffset={4}
-          positionerProps={{ anchor: batchMenuAnchorRef }}
-          popupClassName="w-[var(--anchor-width)]"
+          popupClassName="min-w-[120px]"
         >
           <DropdownMenuItem
             className="system-md-regular"

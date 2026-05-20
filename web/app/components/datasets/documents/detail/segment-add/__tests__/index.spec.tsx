@@ -143,6 +143,18 @@ describe('SegmentAdd', () => {
 
       expect(mockShowBatchModal).toHaveBeenCalledTimes(1)
     })
+
+    it('should show plan upgrade modal instead of batch modal for sandbox users', async () => {
+      mockPlan = { type: Plan.sandbox }
+      const mockShowBatchModal = vi.fn()
+      render(<SegmentAdd {...defaultProps} showBatchModal={mockShowBatchModal} />)
+
+      fireEvent.click(screen.getByRole('button', { name: /list\.action\.batchAdd/i }))
+      fireEvent.click(await screen.findByRole('menuitem', { name: /list\.action\.batchAdd/i }))
+
+      expect(screen.getByRole('dialog')).toBeInTheDocument()
+      expect(mockShowBatchModal).not.toHaveBeenCalled()
+    })
   })
 
   // Disabled state (embedding)
