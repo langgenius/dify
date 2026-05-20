@@ -1,3 +1,4 @@
+from collections.abc import Mapping
 from datetime import UTC, datetime
 from unittest.mock import Mock, patch
 
@@ -17,7 +18,13 @@ from tasks.workflow_node_execution_tasks import (
 )
 
 
-def _execution() -> WorkflowNodeExecution:
+def _execution(
+    *,
+    metadata: Mapping[WorkflowNodeExecutionMetadataKey, object] | None = None,
+) -> WorkflowNodeExecution:
+    if metadata is None:
+        metadata = {WorkflowNodeExecutionMetadataKey.TOTAL_TOKENS: 10}
+
     return WorkflowNodeExecution(
         id="exec-id",
         node_execution_id="node-exec-id",
@@ -31,7 +38,7 @@ def _execution() -> WorkflowNodeExecution:
         process_data={"process": "value"},
         outputs={"output": "value"},
         status=WorkflowNodeExecutionStatus.SUCCEEDED,
-        metadata={WorkflowNodeExecutionMetadataKey.TOTAL_TOKENS: 10},
+        metadata=metadata,
         created_at=datetime.now(UTC).replace(tzinfo=None),
         finished_at=datetime.now(UTC).replace(tzinfo=None),
     )
@@ -53,6 +60,19 @@ def test_create_node_execution_persists_metadata_without_data_payloads() -> None
     assert db_model.execution_metadata == '{"total_tokens": 10}'
 
 
+def test_create_node_execution_defaults_empty_metadata() -> None:
+    db_model = _create_node_execution_from_domain(
+        execution=_execution(metadata={}),
+        tenant_id="tenant-id",
+        app_id="app-id",
+        triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
+        creator_user_id="user-id",
+        creator_user_role=CreatorUserRole.ACCOUNT,
+    )
+
+    assert db_model.execution_metadata == "{}"
+
+
 def test_update_node_execution_metadata_preserves_data_payloads() -> None:
     db_model = WorkflowNodeExecutionModel()
     db_model.inputs = '{"old_input": true}'
@@ -65,6 +85,14 @@ def test_update_node_execution_metadata_preserves_data_payloads() -> None:
     assert db_model.process_data == '{"old_process": true}'
     assert db_model.outputs == '{"old_output": true}'
     assert db_model.status == WorkflowNodeExecutionStatus.SUCCEEDED
+
+
+def test_update_node_execution_metadata_defaults_empty_metadata() -> None:
+    db_model = WorkflowNodeExecutionModel()
+
+    _update_node_execution_metadata(db_model, _execution(metadata={}))
+
+    assert db_model.execution_metadata == "{}"
 
 
 @patch("tasks.workflow_node_execution_tasks._create_sqlalchemy_repository")
@@ -94,6 +122,33 @@ def test_save_workflow_node_execution_data_task_uses_sqlalchemy_repository(mock_
     saved_data_execution = repository.save_execution_data.call_args.args[0]
     assert saved_execution.model_dump() == execution.model_dump()
     assert saved_data_execution.model_dump() == execution.model_dump()
+
+
+@patch("tasks.workflow_node_execution_tasks._create_sqlalchemy_repository")
+def test_save_workflow_node_execution_data_task_retries_on_failure(mock_create_repository: Mock) -> None:
+    mock_create_repository.side_effect = RuntimeError("db unavailable")
+    execution = _execution()
+
+    with (
+        patch.object(
+            save_workflow_node_execution_data_task,
+            "retry",
+            side_effect=RuntimeError("retry requested"),
+        ) as retry,
+        pytest.raises(RuntimeError, match="retry requested"),
+    ):
+        save_workflow_node_execution_data_task.run(
+            execution_data=execution.model_dump(),
+            tenant_id="tenant-id",
+            app_id="app-id",
+            triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN.value,
+            creator_user_id="user-id",
+            creator_user_role=CreatorUserRole.ACCOUNT.value,
+        )
+
+    retry.assert_called_once()
+    assert isinstance(retry.call_args.kwargs["exc"], RuntimeError)
+    assert retry.call_args.kwargs["countdown"] == 60
 
 
 @patch("tasks.workflow_node_execution_tasks.session_factory.create_session")
