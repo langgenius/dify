@@ -29,7 +29,7 @@ class TestTidbOnQdrantVectorDeleteByIds:
             )
             return vector
 
-    def test_delete_by_ids_with_multiple_ids(self, vector_instance: TidbOnQdrantVector):
+    def test_delete_by_ids_with_multiple_ids(self, vector_instance):
         """Test batch deletion with multiple document IDs."""
         ids = ["doc1", "doc2", "doc3"]
 
@@ -52,7 +52,7 @@ class TestTidbOnQdrantVectorDeleteByIds:
         assert isinstance(field_condition.match, rest.MatchAny)
         assert set(field_condition.match.any) == {"doc1", "doc2", "doc3"}
 
-    def test_delete_by_ids_with_single_id(self, vector_instance: TidbOnQdrantVector):
+    def test_delete_by_ids_with_single_id(self, vector_instance):
         """Test deletion with a single document ID."""
         ids = ["doc1"]
 
@@ -69,14 +69,14 @@ class TestTidbOnQdrantVectorDeleteByIds:
         assert isinstance(field_condition.match, rest.MatchAny)
         assert field_condition.match.any == ["doc1"]
 
-    def test_delete_by_ids_with_empty_list(self, vector_instance: TidbOnQdrantVector):
+    def test_delete_by_ids_with_empty_list(self, vector_instance):
         """Test deletion with empty ID list returns early without API call."""
         vector_instance.delete_by_ids([])
 
         # Verify that delete was NOT called
         vector_instance._client.delete.assert_not_called()
 
-    def test_delete_by_ids_with_404_error(self, vector_instance: TidbOnQdrantVector):
+    def test_delete_by_ids_with_404_error(self, vector_instance):
         """Test that 404 errors (collection not found) are handled gracefully."""
         ids = ["doc1", "doc2"]
 
@@ -95,7 +95,7 @@ class TestTidbOnQdrantVectorDeleteByIds:
         # Verify delete was called
         vector_instance._client.delete.assert_called_once()
 
-    def test_delete_by_ids_with_unexpected_error(self, vector_instance: TidbOnQdrantVector):
+    def test_delete_by_ids_with_unexpected_error(self, vector_instance):
         """Test that non-404 errors are re-raised."""
         ids = ["doc1", "doc2"]
 
@@ -114,7 +114,7 @@ class TestTidbOnQdrantVectorDeleteByIds:
 
         assert exc_info.value.status_code == 500
 
-    def test_delete_by_ids_with_exactly_1000(self, vector_instance: TidbOnQdrantVector):
+    def test_delete_by_ids_with_exactly_1000(self, vector_instance):
         """Test deletion with exactly 1000 IDs triggers a single batch."""
         ids = [f"doc_{i}" for i in range(1000)]
 
@@ -131,7 +131,7 @@ class TestTidbOnQdrantVectorDeleteByIds:
         assert "doc_0" in field_condition.match.any
         assert "doc_999" in field_condition.match.any
 
-    def test_delete_by_ids_splits_into_batches(self, vector_instance: TidbOnQdrantVector):
+    def test_delete_by_ids_splits_into_batches(self, vector_instance):
         """Test deletion with >1000 IDs triggers multiple batched calls."""
         ids = [f"doc_{i}" for i in range(2500)]
 
@@ -149,7 +149,7 @@ class TestTidbOnQdrantVectorDeleteByIds:
         assert len(batches[1]) == 1000
         assert len(batches[2]) == 500
 
-    def test_delete_by_ids_filter_structure(self, vector_instance: TidbOnQdrantVector):
+    def test_delete_by_ids_filter_structure(self, vector_instance):
         """Test that the filter structure is correctly constructed."""
         ids = ["doc1", "doc2"]
 
