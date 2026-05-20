@@ -22,6 +22,17 @@ class LoginFailureReason(StrEnum):
 
 
 class ChangeEmailPhase(StrEnum):
+    """Change-email token state machine.
+
+    Allowed transitions:
+
+    `OLD_EMAIL -> OLD_EMAIL_VERIFIED -> NEW_EMAIL -> NEW_EMAIL_VERIFIED`
+
+    The flow starts by sending a code to the current email address. Only a
+    token in `OLD_EMAIL_VERIFIED` may request the new-email code, and only a
+    token in `NEW_EMAIL_VERIFIED` may perform the final email reset.
+    """
+
     OLD_EMAIL = "old_email"
     OLD_EMAIL_VERIFIED = "old_email_verified"
     NEW_EMAIL = "new_email"
