@@ -39,7 +39,7 @@ const NodeControl: FC<NodeControlProps> = ({
         'invisible absolute -top-7 right-0 flex h-7 pb-1',
         !pluginInstallLocked && 'group-hover:visible',
         data.selected && 'visible',
-        'has-[[data-popup-open]]:visible',
+        'has-data-popup-open:visible',
       )}
     >
       <div
@@ -52,7 +52,7 @@ const NodeControl: FC<NodeControlProps> = ({
             <button
               type="button"
               aria-label={isSingleRunning ? t('debug.variableInspect.trigger.stop', { ns: 'workflow' }) : t('panel.runThisStep', { ns: 'workflow' })}
-              className={`flex h-5 w-5 items-center justify-center rounded-md ${isSingleRunning && 'cursor-pointer hover:bg-state-base-hover'}`}
+              className={`flex size-5 items-center justify-center rounded-md ${isSingleRunning && 'cursor-pointer hover:bg-state-base-hover'}`}
               onClick={() => {
                 const action = isSingleRunning ? 'stop' : 'run'
 
@@ -67,11 +67,11 @@ const NodeControl: FC<NodeControlProps> = ({
             >
               {
                 isSingleRunning
-                  ? <Stop className="h-3 w-3" />
+                  ? <Stop className="size-3" />
                   : (
                       <Tooltip>
                         <TooltipTrigger
-                          render={<span className="i-ri-play-large-line h-3 w-3" />}
+                          render={<span className="i-ri-play-large-line size-3" />}
                         />
                         <TooltipContent>
                           {t('panel.runThisStep', { ns: 'workflow' })}

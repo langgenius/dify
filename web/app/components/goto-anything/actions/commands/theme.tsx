@@ -15,19 +15,19 @@ const THEME_ITEMS = [
     id: 'system',
     titleKey: 'gotoAnything.actions.themeSystem',
     descKey: 'gotoAnything.actions.themeSystemDesc',
-    icon: <RiComputerLine className="h-4 w-4 text-text-tertiary" />,
+    icon: <RiComputerLine className="size-4 text-text-tertiary" />,
   },
   {
     id: 'light',
     titleKey: 'gotoAnything.actions.themeLight',
     descKey: 'gotoAnything.actions.themeLightDesc',
-    icon: <RiSunLine className="h-4 w-4 text-text-tertiary" />,
+    icon: <RiSunLine className="size-4 text-text-tertiary" />,
   },
   {
     id: 'dark',
     titleKey: 'gotoAnything.actions.themeDark',
     descKey: 'gotoAnything.actions.themeDarkDesc',
-    icon: <RiMoonLine className="h-4 w-4 text-text-tertiary" />,
+    icon: <RiMoonLine className="size-4 text-text-tertiary" />,
   },
 ] as const
 

@@ -112,22 +112,22 @@ const SimpleNode: FC<SimpleNodeProps> = ({
           </div>
           {
             (data._runningStatus === NodeRunningStatus.Running || data._singleRunningStatus === NodeRunningStatus.Running) && (
-              <RiLoader2Line className="h-3.5 w-3.5 animate-spin text-text-accent" />
+              <RiLoader2Line className="size-3.5 animate-spin text-text-accent" />
             )
           }
           {
             data._runningStatus === NodeRunningStatus.Succeeded && (
-              <RiCheckboxCircleFill className="h-3.5 w-3.5 text-text-success" />
+              <RiCheckboxCircleFill className="size-3.5 text-text-success" />
             )
           }
           {
             data._runningStatus === NodeRunningStatus.Failed && (
-              <RiErrorWarningFill className="h-3.5 w-3.5 text-text-destructive" />
+              <RiErrorWarningFill className="size-3.5 text-text-destructive" />
             )
           }
           {
             data._runningStatus === NodeRunningStatus.Exception && (
-              <RiAlertFill className="h-3.5 w-3.5 text-text-warning-secondary" />
+              <RiAlertFill className="size-3.5 text-text-warning-secondary" />
             )
           }
         </div>

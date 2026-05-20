@@ -52,7 +52,7 @@ const Operation: FC<Props> = ({
         )}
       >
         <span className="system-md-semibold">{title}</span>
-        <span aria-hidden className="i-ri-arrow-down-s-line h-4 w-4" />
+        <span aria-hidden className="i-ri-arrow-down-s-line size-4" />
       </DropdownMenuTrigger>
       <DropdownMenuContent
         placement={placement}

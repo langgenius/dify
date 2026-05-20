@@ -46,12 +46,12 @@ const ProviderIcon: FC<ProviderIconProps> = ({
             <img
               alt="provider-icon"
               src={iconUrl}
-              className="h-6 w-6"
+              className="size-6"
             />
           )
         : (
-            <div className="flex h-6 w-6 items-center justify-center rounded-md border-[0.5px] border-components-panel-border-subtle bg-background-default-subtle">
-              <span aria-hidden className="i-custom-vender-other-group h-4 w-4 text-text-tertiary" />
+            <div className="flex size-6 items-center justify-center rounded-md border-[0.5px] border-components-panel-border-subtle bg-background-default-subtle">
+              <span aria-hidden className="i-custom-vender-other-group size-4 text-text-tertiary" />
             </div>
           )}
       <div className="system-md-semibold text-text-primary">

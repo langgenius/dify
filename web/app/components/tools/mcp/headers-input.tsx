@@ -61,7 +61,7 @@ const HeadersInput = ({
             onClick={handleAddItem}
             className="w-full"
           >
-            <RiAddLine className="mr-1 h-4 w-4" />
+            <RiAddLine className="mr-1 size-4" />
             {t('mcp.modal.addHeader', { ns: 'tools' })}
           </Button>
         )}
@@ -111,7 +111,7 @@ const HeadersInput = ({
                   onClick={() => handleRemoveItem(index)}
                   className="mr-2"
                 >
-                  <RiDeleteBinLine className="h-4 w-4 text-text-destructive" />
+                  <RiDeleteBinLine className="size-4 text-text-destructive" />
                 </ActionButton>
               )}
             </div>
@@ -125,7 +125,7 @@ const HeadersInput = ({
           onClick={handleAddItem}
           className="w-full"
         >
-          <RiAddLine className="mr-1 h-4 w-4" />
+          <RiAddLine className="mr-1 size-4" />
           {t('mcp.modal.addHeader', { ns: 'tools' })}
         </Button>
       )}

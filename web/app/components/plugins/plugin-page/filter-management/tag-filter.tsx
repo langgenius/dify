@@ -68,7 +68,7 @@ const TagsFilter = ({
             {
               !!selectedTagsLength && (
                 <RiCloseCircleFill
-                  className="h-4 w-4 cursor-pointer text-text-quaternary"
+                  className="size-4 cursor-pointer text-text-quaternary"
                   onClick={(e) => {
                     e.stopPropagation()
                     onChange([])
@@ -78,7 +78,7 @@ const TagsFilter = ({
             }
             {
               !selectedTagsLength && (
-                <RiArrowDownSLine className="h-4 w-4" />
+                <RiArrowDownSLine className="size-4" />
               )
             }
           </div>

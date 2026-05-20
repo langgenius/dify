@@ -37,7 +37,7 @@ const Icon = ({
           icon={src.content}
           background={src.background}
           className="rounded-md"
-          innerIcon={shouldUseMcpIcon(src) ? <Mcp className="h-8 w-8 text-text-primary-on-surface" /> : undefined}
+          innerIcon={shouldUseMcpIcon(src) ? <Mcp className="size-8 text-text-primary-on-surface" /> : undefined}
         />
       </div>
     )
@@ -54,7 +54,7 @@ const Icon = ({
         installed
         && (
           <div className={cn(iconClassName, 'bg-state-success-solid')}>
-            <RiCheckLine className="h-3 w-3 text-text-primary-on-surface" />
+            <RiCheckLine className="size-3 text-text-primary-on-surface" />
           </div>
         )
       }
@@ -62,7 +62,7 @@ const Icon = ({
         installFailed
         && (
           <div className={cn(iconClassName, 'bg-state-destructive-solid')}>
-            <RiCloseLine className="h-3 w-3 text-text-primary-on-surface" />
+            <RiCloseLine className="size-3 text-text-primary-on-surface" />
           </div>
         )
       }

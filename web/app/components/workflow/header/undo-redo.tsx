@@ -35,12 +35,12 @@ const UndoRedo: FC<UndoRedoProps> = ({ handleUndo, handleRedo }) => {
           data-tooltip-id="workflow.undo"
           disabled={nodesReadOnly || buttonsDisabled.undo}
           className={
-            cn('flex h-8 w-8 cursor-pointer items-center rounded-md px-1.5 system-sm-medium text-text-tertiary select-none hover:bg-state-base-hover hover:text-text-secondary', (nodesReadOnly || buttonsDisabled.undo)
+            cn('flex size-8 cursor-pointer items-center rounded-md px-1.5 system-sm-medium text-text-tertiary select-none hover:bg-state-base-hover hover:text-text-secondary', (nodesReadOnly || buttonsDisabled.undo)
             && 'cursor-not-allowed text-text-disabled hover:bg-transparent hover:text-text-disabled')
           }
           onClick={handleUndo}
         >
-          <span className="i-ri-arrow-go-back-line h-4 w-4" />
+          <span className="i-ri-arrow-go-back-line size-4" />
         </button>
       </TipPopup>
       <TipPopup title={t('common.redo', { ns: 'workflow' })!} shortcut="workflow.redo">
@@ -50,12 +50,12 @@ const UndoRedo: FC<UndoRedoProps> = ({ handleUndo, handleRedo }) => {
           data-tooltip-id="workflow.redo"
           disabled={nodesReadOnly || buttonsDisabled.redo}
           className={
-            cn('flex h-8 w-8 cursor-pointer items-center rounded-md px-1.5 system-sm-medium text-text-tertiary select-none hover:bg-state-base-hover hover:text-text-secondary', (nodesReadOnly || buttonsDisabled.redo)
+            cn('flex size-8 cursor-pointer items-center rounded-md px-1.5 system-sm-medium text-text-tertiary select-none hover:bg-state-base-hover hover:text-text-secondary', (nodesReadOnly || buttonsDisabled.redo)
             && 'cursor-not-allowed text-text-disabled hover:bg-transparent hover:text-text-disabled')
           }
           onClick={handleRedo}
         >
-          <span className="i-ri-arrow-go-forward-fill h-4 w-4" />
+          <span className="i-ri-arrow-go-forward-fill size-4" />
         </button>
       </TipPopup>
       <Divider type="vertical" className="mx-0.5 h-3.5" />

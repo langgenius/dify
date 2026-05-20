@@ -85,7 +85,7 @@ const VersionSelector: React.FC<VersionSelectorProps> = ({ versionLen, value, on
                 {option.label}
               </div>
               {
-                value === option.value && <RiCheckLine className="h-4 w-4 shrink-0 text-text-accent" />
+                value === option.value && <RiCheckLine className="size-4 shrink-0 text-text-accent" />
               }
             </DropdownMenuRadioItem>
           ))}

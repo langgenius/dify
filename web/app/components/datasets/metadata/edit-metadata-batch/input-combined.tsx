@@ -54,8 +54,8 @@ const InputCombined: FC<Props> = ({
               className={cn(className, 'rounded-l-md')}
             />
             <NumberFieldControls className="overflow-hidden">
-              <NumberFieldIncrement className="pt-0 pb-0" />
-              <NumberFieldDecrement className="pt-0 pb-0" />
+              <NumberFieldIncrement className="py-0" />
+              <NumberFieldDecrement className="py-0" />
             </NumberFieldControls>
           </NumberFieldGroup>
         </NumberField>

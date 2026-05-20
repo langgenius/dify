@@ -116,7 +116,7 @@ const IndexingSection = ({
             />
             {showUpgradeWarning && (
               <div className="relative mt-2 flex h-10 items-center gap-x-0.5 overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur px-2 shadow-xs shadow-shadow-shadow-3">
-                <div className="absolute top-0 left-0 flex h-full w-full items-center bg-toast-warning-bg opacity-40" />
+                <div className="absolute top-0 left-0 flex size-full items-center bg-toast-warning-bg opacity-40" />
                 <div className="p-1">
                   <RiAlertFill className="size-4 text-text-warning-secondary" />
                 </div>

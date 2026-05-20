@@ -186,7 +186,7 @@ const HeaderOptions: FC<Props> = ({
   return (
     <div className="flex space-x-2">
       <Button variant="primary" onClick={() => setShowAddModal(true)}>
-        <span aria-hidden className="mr-0.5 i-ri-add-line h-4 w-4" />
+        <span aria-hidden className="mr-0.5 i-ri-add-line size-4" />
         <div>{t('table.header.addAnnotation', { ns: 'appAnnotation' })}</div>
       </Button>
       <DropdownMenu modal={false} open={isOperationsMenuOpen} onOpenChange={setIsOperationsMenuOpen}>
@@ -194,7 +194,7 @@ const HeaderOptions: FC<Props> = ({
           aria-label={t('operation.more', { ns: 'common' })}
           className="mr-0 box-border inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg p-0 text-components-button-secondary-text shadow-xs backdrop-blur-[5px] hover:border-components-button-secondary-border-hover hover:bg-components-button-secondary-bg-hover data-popup-open:border-components-button-secondary-border-hover data-popup-open:bg-components-button-secondary-bg-hover"
         >
-          <span aria-hidden className="i-ri-more-fill h-4 w-4" />
+          <span aria-hidden className="i-ri-more-fill size-4" />
         </DropdownMenuTrigger>
         <DropdownMenuContent
           placement="bottom-end"

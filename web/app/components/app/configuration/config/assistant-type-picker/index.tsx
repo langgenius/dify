@@ -47,9 +47,9 @@ const SelectItem: FC<ItemProps> = ({ text, value, Icon, isChecked, description, 
       <div className="flex items-center justify-between">
         <div className="flex items-center">
           <div className="mr-3 rounded-lg bg-indigo-50 p-1">
-            <Icon className="h-4 w-4 text-indigo-600" />
+            <Icon className="size-4 text-indigo-600" />
           </div>
-          <div className="text-sm leading-5 font-medium text-gray-900">{text}</div>
+          <div className="text-sm/5 font-medium text-gray-900">{text}</div>
         </div>
         <Radio isChecked={isChecked} />
       </div>
@@ -117,9 +117,9 @@ const AssistantTypePicker: FC<Props> = ({
             <div className={cn(open && 'bg-gray-50', 'flex h-8 cursor-pointer items-center space-x-1 rounded-lg border border-black/5 px-3 text-indigo-600 select-none')} />
           )}
         >
-          {isAgent ? <BubbleText className="h-3 w-3" /> : <CuteRobot className="h-3 w-3" />}
+          {isAgent ? <BubbleText className="size-3" /> : <CuteRobot className="size-3" />}
           <div className="text-xs font-medium">{t(`assistantType.${isAgent ? 'agentAssistant' : 'chatAssistant'}.name`, { ns: 'appDebug' })}</div>
-          <RiArrowDownSLine className="h-3 w-3" />
+          <RiArrowDownSLine className="size-3" />
         </PopoverTrigger>
         <PopoverContent
           placement="bottom-end"
@@ -127,7 +127,7 @@ const AssistantTypePicker: FC<Props> = ({
           alignOffset={-2}
           popupClassName="relative left-0.5 w-[480px] rounded-xl border border-black/8 bg-white p-6 shadow-lg"
         >
-          <div className="mb-2 text-sm leading-5 font-semibold text-gray-900">{t('assistantType.name', { ns: 'appDebug' })}</div>
+          <div className="mb-2 text-sm/5 font-semibold text-gray-900">{t('assistantType.name', { ns: 'appDebug' })}</div>
           <SelectItem
             Icon={BubbleText}
             value="chat"

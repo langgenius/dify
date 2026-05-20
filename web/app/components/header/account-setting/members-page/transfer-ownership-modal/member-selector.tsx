@@ -68,7 +68,7 @@ const MemberSelector: FC<Props> = ({
                 <div className="system-xs-regular text-text-quaternary">{currentValue.email}</div>
               </>
             )}
-            <div className={cn('i-ri-arrow-down-s-line h-4 w-4 text-text-quaternary group-hover:text-text-secondary', open && 'text-text-secondary')} />
+            <div className={cn('i-ri-arrow-down-s-line size-4 text-text-quaternary group-hover:text-text-secondary', open && 'text-text-secondary')} />
           </div>
         )}
       />

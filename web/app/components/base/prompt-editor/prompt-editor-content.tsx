@@ -132,7 +132,7 @@ const PromptEditorContent: FC<PromptEditorContentProps> = ({
           <ContentEditable
             className={cn(
               'group/editable text-text-secondary outline-hidden group-[.clamp]:max-h-24 group-[.clamp]:overflow-y-auto',
-              compact ? 'text-[13px] leading-5' : 'text-sm leading-6',
+              compact ? 'text-[13px] leading-5' : 'text-sm/6',
               className,
             )}
             style={style || {}}

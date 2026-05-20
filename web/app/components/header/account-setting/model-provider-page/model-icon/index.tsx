@@ -31,11 +31,11 @@ const ModelIcon: FC<ModelIconProps> = ({
   const iconUrl = theme === Theme.dark ? darkIconUrl || lightIconUrl : lightIconUrl
 
   if (provider?.provider && ['openai', 'langgenius/openai/openai'].includes(provider.provider) && modelName?.startsWith('o'))
-    return <div className="flex items-center justify-center"><OpenaiYellow className={cn('h-5 w-5', className)} /></div>
+    return <div className="flex items-center justify-center"><OpenaiYellow className={cn('size-5', className)} /></div>
 
   if (iconUrl) {
     return (
-      <div className={cn('flex h-5 w-5 items-center justify-center', isDeprecated && 'opacity-50', className)}>
+      <div className={cn('flex size-5 items-center justify-center', isDeprecated && 'opacity-50', className)}>
         <img
           alt="model-icon"
           src={iconUrl}
@@ -51,8 +51,8 @@ const ModelIcon: FC<ModelIconProps> = ({
       className,
     )}
     >
-      <div className={cn('flex h-5 w-5 items-center justify-center opacity-35', iconClassName)}>
-        <span aria-hidden className="i-custom-vender-other-group h-3 w-3 text-text-tertiary" />
+      <div className={cn('flex size-5 items-center justify-center opacity-35', iconClassName)}>
+        <span aria-hidden className="i-custom-vender-other-group size-3 text-text-tertiary" />
       </div>
     </div>
   )

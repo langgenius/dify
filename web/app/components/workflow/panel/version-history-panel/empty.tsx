@@ -16,7 +16,7 @@ const Empty: FC<EmptyProps> = ({
   return (
     <div className="flex h-5/6 w-full flex-col justify-center gap-y-2">
       <div className="flex justify-center">
-        <RiHistoryLine className="h-10 w-10 text-text-empty-state-icon" />
+        <RiHistoryLine className="size-10 text-text-empty-state-icon" />
       </div>
       <div className="flex justify-center system-xs-regular text-text-tertiary">
         {t('versionHistory.filter.empty', { ns: 'workflow' })}

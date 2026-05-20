@@ -176,7 +176,7 @@ describe('TryApp (app/index.tsx)', () => {
       const { container } = render(<TryApp appId="test-app-id" appDetail={appDetail} />)
 
       const wrapper = container.firstChild as HTMLElement
-      expect(wrapper).toHaveClass('flex', 'h-full', 'w-full')
+      expect(wrapper).toHaveClass('flex', 'size-full')
     })
   })
 })

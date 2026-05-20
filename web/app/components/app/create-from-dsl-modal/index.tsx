@@ -221,10 +221,10 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDS
           <div className="flex items-center justify-between pt-6 pr-5 pb-3 pl-6 title-2xl-semi-bold text-text-primary">
             {t('importApp', { ns: 'app' })}
             <div
-              className="flex h-8 w-8 cursor-pointer items-center"
+              className="flex size-8 cursor-pointer items-center"
               onClick={() => onClose()}
             >
-              <span className="i-ri-close-line h-5 w-5 text-text-tertiary" />
+              <span className="i-ri-close-line size-5 text-text-tertiary" />
             </div>
           </div>
           <div className="flex h-9 items-center space-x-6 border-b border-divider-subtle px-6 system-md-semibold text-text-tertiary">

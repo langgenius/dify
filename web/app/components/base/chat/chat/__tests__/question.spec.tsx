@@ -135,13 +135,13 @@ describe('Question component', () => {
     const markdown = container.querySelector('.markdown-body')
     expect(markdown).toBeInTheDocument()
 
-    const avatar = container.querySelector('.h-10.w-10') || container.querySelector('.h-10.w-10.shrink-0')
+    const avatar = container.querySelector('.size-10') || container.querySelector('.size-10.shrink-0')
     expect(avatar).toBeTruthy()
   })
 
   it('should hide avatar when hideAvatar is true', () => {
     const { container } = renderWithProvider(makeItem(), vi.fn() as unknown as OnRegenerate, { hideAvatar: true })
-    const avatar = container.querySelector('.h-10.w-10')
+    const avatar = container.querySelector('.size-10')
     expect(avatar).toBeNull()
   })
 
