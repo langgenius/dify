@@ -60,7 +60,7 @@ const FieldList = ({
           disabled={readonly}
           className={cn(readonly && 'cursor-not-allowed')}
         >
-          <RiAddLine className="h-4 w-4 text-text-tertiary" aria-hidden="true" />
+          <RiAddLine className="size-4 text-text-tertiary" aria-hidden="true" />
         </ActionButton>
       </div>
       <FieldListContainer

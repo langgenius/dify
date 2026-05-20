@@ -415,7 +415,7 @@ class TestChatRequestPayloadController:
 
 
 class TestCompletionApiController:
-    def test_wrong_mode(self, app) -> None:
+    def test_wrong_mode(self, app: Flask) -> None:
         api = CompletionApi()
         handler = _unwrap(api.post)
         app_model = SimpleNamespace(mode=AppMode.CHAT.value)
@@ -425,7 +425,7 @@ class TestCompletionApiController:
             with pytest.raises(AppUnavailableError):
                 handler(api, app_model=app_model, end_user=end_user)
 
-    def test_conversation_not_found(self, app, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_conversation_not_found(self, app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr(
             AppGenerateService,
             "generate",
@@ -443,7 +443,7 @@ class TestCompletionApiController:
 
 
 class TestCompletionStopApiController:
-    def test_wrong_mode(self, app) -> None:
+    def test_wrong_mode(self, app: Flask) -> None:
         api = CompletionStopApi()
         handler = _unwrap(api.post)
         app_model = SimpleNamespace(mode=AppMode.CHAT.value)
@@ -453,7 +453,7 @@ class TestCompletionStopApiController:
             with pytest.raises(AppUnavailableError):
                 handler(api, app_model=app_model, end_user=end_user, task_id="t1")
 
-    def test_success(self, app, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_success(self, app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
         stop_mock = Mock()
         monkeypatch.setattr(AppTaskService, "stop_task", stop_mock)
 
@@ -470,7 +470,7 @@ class TestCompletionStopApiController:
 
 
 class TestChatApiController:
-    def test_wrong_mode(self, app) -> None:
+    def test_wrong_mode(self, app: Flask) -> None:
         api = ChatApi()
         handler = _unwrap(api.post)
         app_model = SimpleNamespace(mode=AppMode.COMPLETION.value)
@@ -480,7 +480,7 @@ class TestChatApiController:
             with pytest.raises(NotChatAppError):
                 handler(api, app_model=app_model, end_user=end_user)
 
-    def test_workflow_not_found(self, app, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_workflow_not_found(self, app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr(
             AppGenerateService,
             "generate",
@@ -496,7 +496,7 @@ class TestChatApiController:
             with pytest.raises(NotFound):
                 handler(api, app_model=app_model, end_user=end_user)
 
-    def test_draft_workflow(self, app, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_draft_workflow(self, app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr(
             AppGenerateService,
             "generate",
@@ -514,10 +514,10 @@ class TestChatApiController:
 
 
 class TestChatStopApiController:
-    def test_wrong_mode(self, app) -> None:
+    def test_wrong_mode(self, app: Flask) -> None:
         api = ChatStopApi()
         handler = _unwrap(api.post)
-        app_model = SimpleNamespace(mode=AppMode.COMPLETION.value)
+        app_model = SimpleNamespace(mode=AppMode.COMPLETION)
         end_user = SimpleNamespace(id="u1")
 
         with app.test_request_context("/chat-messages/1/stop", method="POST"):

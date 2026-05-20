@@ -157,11 +157,6 @@
       "count": 2
     }
   },
-  "web/app/account/(commonLayout)/account-page/email-change-modal.tsx": {
-    "ts/no-explicit-any": {
-      "count": 5
-    }
-  },
   "web/app/account/(commonLayout)/delete-account/components/verify-email.tsx": {
     "react/set-state-in-effect": {
       "count": 1
@@ -789,19 +784,6 @@
       "count": 10
     }
   },
-  "web/app/components/base/checkbox/index.stories.tsx": {
-    "no-console": {
-      "count": 1
-    },
-    "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
-  "web/app/components/base/chip/index.tsx": {
-    "ts/no-explicit-any": {
-      "count": 3
-    }
-  },
   "web/app/components/base/date-and-time-picker/hooks.ts": {
     "react/no-unnecessary-use-prefix": {
       "count": 2
@@ -1029,14 +1011,6 @@
   "web/app/components/base/form/utils/secret-input/index.ts": {
     "ts/no-explicit-any": {
       "count": 2
-    }
-  },
-  "web/app/components/base/ga/index.tsx": {
-    "erasable-syntax-only/enums": {
-      "count": 1
-    },
-    "react-refresh/only-export-components": {
-      "count": 1
     }
   },
   "web/app/components/base/icons/src/public/avatar/index.ts": {
@@ -1422,14 +1396,6 @@
       "count": 1
     }
   },
-  "web/app/components/base/message-log-modal/index.tsx": {
-    "react/set-state-in-effect": {
-      "count": 1
-    },
-    "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
   "web/app/components/base/new-audio-button/index.tsx": {
     "ts/no-explicit-any": {
       "count": 1
@@ -1634,11 +1600,6 @@
     },
     "ts/no-explicit-any": {
       "count": 1
-    }
-  },
-  "web/app/components/base/sort/index.tsx": {
-    "ts/no-explicit-any": {
-      "count": 2
     }
   },
   "web/app/components/base/svg-gallery/index.tsx": {
@@ -2002,9 +1963,6 @@
     },
     "react-refresh/only-export-components": {
       "count": 1
-    },
-    "react/use-memo": {
-      "count": 1
     }
   },
   "web/app/components/datasets/documents/detail/completed/segment-list.tsx": {
@@ -2108,16 +2066,6 @@
       "count": 2
     }
   },
-  "web/app/components/datasets/metadata/metadata-dataset/dataset-metadata-drawer.tsx": {
-    "react/static-components": {
-      "count": 2
-    }
-  },
-  "web/app/components/datasets/metadata/metadata-dataset/select-metadata.tsx": {
-    "react/static-components": {
-      "count": 2
-    }
-  },
   "web/app/components/datasets/metadata/types.ts": {
     "erasable-syntax-only/enums": {
       "count": 2
@@ -2160,11 +2108,6 @@
     },
     "react/set-state-in-effect": {
       "count": 2
-    }
-  },
-  "web/app/components/explore/item-operation/index.tsx": {
-    "react/set-state-in-effect": {
-      "count": 1
     }
   },
   "web/app/components/explore/try-app/tab.tsx": {
@@ -2279,11 +2222,6 @@
   "web/app/components/header/account-setting/key-validator/declarations.ts": {
     "ts/no-explicit-any": {
       "count": 1
-    }
-  },
-  "web/app/components/header/account-setting/members-page/invite-modal/index.tsx": {
-    "react/set-state-in-effect": {
-      "count": 3
     }
   },
   "web/app/components/header/account-setting/members-page/transfer-ownership-modal/index.tsx": {
@@ -2448,7 +2386,7 @@
   },
   "web/app/components/plugins/install-plugin/install-from-github/index.tsx": {
     "ts/no-explicit-any": {
-      "count": 3
+      "count": 2
     }
   },
   "web/app/components/plugins/install-plugin/install-from-github/steps/selectPackage.tsx": {
@@ -2643,11 +2581,6 @@
       "count": 2
     }
   },
-  "web/app/components/plugins/plugin-page/install-plugin-dropdown.tsx": {
-    "react/set-state-in-effect": {
-      "count": 2
-    }
-  },
   "web/app/components/plugins/reference-setting-modal/auto-update-setting/types.ts": {
     "erasable-syntax-only/enums": {
       "count": 2
@@ -2825,11 +2758,6 @@
       "count": 1
     }
   },
-  "web/app/components/share/text-generation/menu-dropdown.tsx": {
-    "react/set-state-in-effect": {
-      "count": 1
-    }
-  },
   "web/app/components/share/text-generation/no-data/index.tsx": {
     "ts/no-empty-object-type": {
       "count": 1
@@ -2962,11 +2890,6 @@
       "count": 2
     }
   },
-  "web/app/components/workflow-app/hooks/use-workflow-run.ts": {
-    "ts/no-explicit-any": {
-      "count": 5
-    }
-  },
   "web/app/components/workflow-app/hooks/use-workflow-template.ts": {
     "ts/no-explicit-any": {
       "count": 2
@@ -2999,11 +2922,6 @@
   },
   "web/app/components/workflow/block-selector/main.tsx": {
     "no-restricted-imports": {
-      "count": 1
-    }
-  },
-  "web/app/components/workflow/block-selector/market-place-plugin/action.tsx": {
-    "react/set-state-in-effect": {
       "count": 1
     }
   },
@@ -4103,11 +4021,6 @@
       "count": 1
     }
   },
-  "web/app/components/workflow/operator/zoom-in-out.tsx": {
-    "erasable-syntax-only/enums": {
-      "count": 1
-    }
-  },
   "web/app/components/workflow/panel/__tests__/index.spec.tsx": {
     "react/static-components": {
       "count": 2
@@ -4430,11 +4343,6 @@
       "count": 1
     }
   },
-  "web/app/components/workflow/workflow-preview/components/zoom-in-out.tsx": {
-    "erasable-syntax-only/enums": {
-      "count": 1
-    }
-  },
   "web/app/education-apply/hooks.ts": {
     "react/set-state-in-effect": {
       "count": 5
@@ -4676,11 +4584,6 @@
   "web/service/base.ts": {
     "ts/no-explicit-any": {
       "count": 3
-    }
-  },
-  "web/service/client.spec.ts": {
-    "next/no-assign-module-variable": {
-      "count": 1
     }
   },
   "web/service/common.ts": {

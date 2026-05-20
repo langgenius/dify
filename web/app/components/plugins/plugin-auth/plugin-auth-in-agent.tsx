@@ -90,7 +90,7 @@ const PluginAuthInAgent = ({
         {
           unavailable && t('auth.unavailable', { ns: 'plugin' })
         }
-        <RiArrowDownSLine className="ml-0.5 h-4 w-4" />
+        <RiArrowDownSLine className="ml-0.5 size-4" />
       </Button>
     )
   }, [credentialId, credentials, t])

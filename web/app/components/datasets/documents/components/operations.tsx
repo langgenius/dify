@@ -216,7 +216,7 @@ const Operations = ({ embeddingAvailable, datasetId, detail, selectedIds, onSele
                 </Popover>
               )
             : <Switch checked={enabled} onCheckedChange={v => handleSwitch(v ? 'enable' : 'disable')} size="md" />}
-          <Divider className="!mr-2 !ml-4 !h-3" type="vertical" />
+          <Divider className="mr-2! ml-4! h-3!" type="vertical" />
         </>
       )}
       {embeddingAvailable && (
@@ -232,7 +232,7 @@ const Operations = ({ embeddingAvailable, datasetId, detail, selectedIds, onSele
                     : 'border-none bg-transparent p-0.5 hover:bg-state-base-hover')}
                   onClick={() => router.push(`/datasets/${datasetId}/documents/${detail.id}/settings`)}
                 >
-                  <span aria-hidden className="i-ri-equalizer-2-line h-4 w-4 text-components-button-secondary-text" />
+                  <span aria-hidden className="i-ri-equalizer-2-line size-4 text-components-button-secondary-text" />
                 </button>
               )}
             />
@@ -246,10 +246,10 @@ const Operations = ({ embeddingAvailable, datasetId, detail, selectedIds, onSele
               className={cn(
                 isListScene ? s.actionIconWrapperList : s.actionIconWrapperDetail,
                 'inline-flex items-center justify-center',
-                !isListScene && '!h-8 !w-8 rounded-lg backdrop-blur-[5px]',
+                !isListScene && 'h-8! w-8! rounded-lg backdrop-blur-[5px]',
                 isOperationsMenuOpen
-                  ? '!shadow-none hover:!bg-state-base-hover'
-                  : isListScene && '!bg-transparent',
+                  ? 'shadow-none! hover:bg-state-base-hover!'
+                  : isListScene && 'bg-transparent!',
               )}
               onClick={(e) => {
                 e.stopPropagation()
@@ -257,7 +257,7 @@ const Operations = ({ embeddingAvailable, datasetId, detail, selectedIds, onSele
               }}
             >
               <div className={cn(s.commonIcon)}>
-                <span aria-hidden className="i-ri-more-fill h-4 w-4 text-components-button-secondary-text" />
+                <span aria-hidden className="i-ri-more-fill size-4 text-components-button-secondary-text" />
               </div>
             </DropdownMenuTrigger>
             <DropdownMenuContent
@@ -269,24 +269,24 @@ const Operations = ({ embeddingAvailable, datasetId, detail, selectedIds, onSele
                 {!archived && (
                   <>
                     <button type="button" className={cn(menuActionClassName, 'text-left')} onClick={handleShowRename}>
-                      <span aria-hidden className="i-ri-edit-line h-4 w-4 text-text-tertiary" />
+                      <span aria-hidden className="i-ri-edit-line size-4 text-text-tertiary" />
                       <span className={s.actionName}>{t('list.table.rename', { ns: 'datasetDocuments' })}</span>
                     </button>
                     {data_source_type === DataSourceType.FILE && (
                       <button type="button" className={cn(menuActionClassName, 'text-left')} onClick={handleDownloadClick}>
-                        <span aria-hidden className="i-ri-download-2-line h-4 w-4 text-text-tertiary" />
+                        <span aria-hidden className="i-ri-download-2-line size-4 text-text-tertiary" />
                         <span className={s.actionName}>{t('list.action.download', { ns: 'datasetDocuments' })}</span>
                       </button>
                     )}
                     {['notion_import', DataSourceType.WEB].includes(data_source_type) && (
                       <button type="button" className={cn(menuActionClassName, 'text-left')} onClick={() => handleMenuOperation('sync')}>
-                        <span aria-hidden className="i-ri-loop-left-line h-4 w-4 text-text-tertiary" />
+                        <span aria-hidden className="i-ri-loop-left-line size-4 text-text-tertiary" />
                         <span className={s.actionName}>{t('list.action.sync', { ns: 'datasetDocuments' })}</span>
                       </button>
                     )}
                     {IS_CE_EDITION && (
                       <button type="button" className={cn(menuActionClassName, 'text-left')} onClick={() => handleMenuOperation('summary')}>
-                        <span aria-hidden className="i-custom-vender-knowledge-search-lines-sparkle h-4 w-4 text-text-tertiary" />
+                        <span aria-hidden className="i-custom-vender-knowledge-search-lines-sparkle size-4 text-text-tertiary" />
                         <span className={s.actionName}>{t('list.action.summary', { ns: 'datasetDocuments' })}</span>
                       </button>
                     )}
@@ -296,7 +296,7 @@ const Operations = ({ embeddingAvailable, datasetId, detail, selectedIds, onSele
                 {archived && data_source_type === DataSourceType.FILE && (
                   <>
                     <button type="button" className={cn(menuActionClassName, 'text-left')} onClick={handleDownloadClick}>
-                      <span aria-hidden className="i-ri-download-2-line h-4 w-4 text-text-tertiary" />
+                      <span aria-hidden className="i-ri-download-2-line size-4 text-text-tertiary" />
                       <span className={s.actionName}>{t('list.action.download', { ns: 'datasetDocuments' })}</span>
                     </button>
                     <Divider className="my-1" />
@@ -304,30 +304,30 @@ const Operations = ({ embeddingAvailable, datasetId, detail, selectedIds, onSele
                 )}
                 {!archived && display_status?.toLowerCase() === 'indexing' && (
                   <button type="button" className={cn(menuActionClassName, 'text-left')} onClick={() => handleMenuOperation('pause')}>
-                    <span aria-hidden className="i-ri-pause-circle-line h-4 w-4 text-text-tertiary" />
+                    <span aria-hidden className="i-ri-pause-circle-line size-4 text-text-tertiary" />
                     <span className={s.actionName}>{t('list.action.pause', { ns: 'datasetDocuments' })}</span>
                   </button>
                 )}
                 {!archived && display_status?.toLowerCase() === 'paused' && (
                   <button type="button" className={cn(menuActionClassName, 'text-left')} onClick={() => handleMenuOperation('resume')}>
-                    <span aria-hidden className="i-ri-play-circle-line h-4 w-4 text-text-tertiary" />
+                    <span aria-hidden className="i-ri-play-circle-line size-4 text-text-tertiary" />
                     <span className={s.actionName}>{t('list.action.resume', { ns: 'datasetDocuments' })}</span>
                   </button>
                 )}
                 {!archived && (
                   <button type="button" className={cn(menuActionClassName, 'text-left')} onClick={() => handleMenuOperation('archive')}>
-                    <span aria-hidden className="i-ri-archive-2-line h-4 w-4 text-text-tertiary" />
+                    <span aria-hidden className="i-ri-archive-2-line size-4 text-text-tertiary" />
                     <span className={s.actionName}>{t('list.action.archive', { ns: 'datasetDocuments' })}</span>
                   </button>
                 )}
                 {archived && (
                   <button type="button" className={cn(menuActionClassName, 'text-left')} onClick={() => handleMenuOperation('un_archive')}>
-                    <span aria-hidden className="i-ri-archive-2-line h-4 w-4 text-text-tertiary" />
+                    <span aria-hidden className="i-ri-archive-2-line size-4 text-text-tertiary" />
                     <span className={s.actionName}>{t('list.action.unarchive', { ns: 'datasetDocuments' })}</span>
                   </button>
                 )}
                 <button type="button" className={cn(menuDeleteActionClassName, 'text-left')} onClick={handleDeleteClick}>
-                  <span aria-hidden className="i-ri-delete-bin-line h-4 w-4 text-text-tertiary group-hover:text-text-destructive" />
+                  <span aria-hidden className="i-ri-delete-bin-line size-4 text-text-tertiary group-hover:text-text-destructive" />
                   <span className={cn(s.actionName, 'group-hover:text-text-destructive')}>{t('list.action.delete', { ns: 'datasetDocuments' })}</span>
                 </button>
               </div>

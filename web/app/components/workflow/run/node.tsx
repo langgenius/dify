@@ -126,7 +126,7 @@ const NodePanel: FC<Props> = ({
           {!hideProcessDetail && (
             <RiArrowRightSLine
               className={cn(
-                'mr-1 h-4 w-4 shrink-0 text-text-quaternary transition-all group-hover:text-text-tertiary',
+                'mr-1 size-4 shrink-0 text-text-quaternary transition-all group-hover:text-text-tertiary',
                 !collapseState && 'rotate-90',
               )}
             />
@@ -156,24 +156,24 @@ const NodePanel: FC<Props> = ({
             </div>
           )}
           {nodeInfo.status === 'succeeded' && (
-            <RiCheckboxCircleFill className="ml-2 h-3.5 w-3.5 shrink-0 text-text-success" />
+            <RiCheckboxCircleFill className="ml-2 size-3.5 shrink-0 text-text-success" />
           )}
           {nodeInfo.status === 'failed' && (
-            <RiErrorWarningFill className="ml-2 h-3.5 w-3.5 shrink-0 text-text-destructive" />
+            <RiErrorWarningFill className="ml-2 size-3.5 shrink-0 text-text-destructive" />
           )}
           {nodeInfo.status === 'stopped' && (
-            <RiAlertFill className={cn('ml-2 h-4 w-4 shrink-0 text-text-warning-secondary', inMessage && 'h-3.5 w-3.5')} />
+            <RiAlertFill className={cn('ml-2 size-4 shrink-0 text-text-warning-secondary', inMessage && 'size-3.5')} />
           )}
           {nodeInfo.status === 'paused' && (
-            <RiPauseCircleFill className={cn('ml-2 h-4 w-4 shrink-0 text-text-warning-secondary', inMessage && 'h-3.5 w-3.5')} />
+            <RiPauseCircleFill className={cn('ml-2 size-4 shrink-0 text-text-warning-secondary', inMessage && 'size-3.5')} />
           )}
           {nodeInfo.status === 'exception' && (
-            <RiAlertFill className={cn('ml-2 h-4 w-4 shrink-0 text-text-warning-secondary', inMessage && 'h-3.5 w-3.5')} />
+            <RiAlertFill className={cn('ml-2 size-4 shrink-0 text-text-warning-secondary', inMessage && 'size-3.5')} />
           )}
           {nodeInfo.status === 'running' && (
             <div className="flex shrink-0 items-center text-[13px] leading-[16px] font-medium text-text-accent">
               <span className="mr-2 text-xs font-normal">Running</span>
-              <RiLoader2Line className="h-3.5 w-3.5 animate-spin" />
+              <RiLoader2Line className="size-3.5 animate-spin" />
             </div>
           )}
         </div>

@@ -25,7 +25,7 @@ const DevelopMain = ({ appId }: IDevelopMainProps) => {
         <div className="text-lg font-medium text-text-primary"></div>
         <ApiServer apiBaseUrl={appDetail.api_base_url} appId={appId} />
       </div>
-      <div className="grow overflow-auto px-4 py-4 sm:px-10">
+      <div className="grow overflow-auto p-4 sm:px-10">
         <Doc appDetail={appDetail} />
       </div>
     </div>

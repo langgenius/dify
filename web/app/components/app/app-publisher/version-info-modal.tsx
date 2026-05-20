@@ -81,7 +81,7 @@ const VersionInfoModal: FC<VersionInfoModalProps> = ({
           </div>
           <button
             type="button"
-            className="absolute top-5 right-5 flex h-8 w-8 cursor-pointer items-center justify-center border-none bg-transparent p-1.5 focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
+            className="absolute top-5 right-5 flex size-8 cursor-pointer items-center justify-center border-none bg-transparent p-1.5 focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
             aria-label={t('operation.close', { ns: 'common' })}
             onClick={onClose}
           >

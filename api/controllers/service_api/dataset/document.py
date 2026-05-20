@@ -26,7 +26,8 @@ from controllers.common.errors import (
     TooManyFilesError,
     UnsupportedFileTypeError,
 )
-from controllers.common.schema import register_enum_models, register_schema_models
+from controllers.common.fields import UrlResponse
+from controllers.common.schema import register_enum_models, register_response_schema_models, register_schema_models
 from controllers.service_api import service_api_ns
 from controllers.service_api.app.error import ProviderNotInitializeError
 from controllers.service_api.dataset.error import (
@@ -120,6 +121,7 @@ register_schema_models(
     PreProcessingRule,
     Segmentation,
 )
+register_response_schema_models(service_api_ns, UrlResponse)
 
 
 def _create_document_by_text(tenant_id: str, dataset_id: UUID) -> tuple[Mapping[str, object], int]:
@@ -748,6 +750,11 @@ class DocumentDownloadApi(DatasetApiResource):
             403: "Forbidden - insufficient permissions",
             404: "Document or upload file not found",
         }
+    )
+    @service_api_ns.response(
+        200,
+        "Download URL generated successfully",
+        service_api_ns.models[UrlResponse.__name__],
     )
     @cloud_edition_billing_rate_limit_check("knowledge", "dataset")
     def get(self, tenant_id, dataset_id, document_id):

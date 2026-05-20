@@ -9,11 +9,21 @@ export type EmailPayload = {
   language?: string | null
 }
 
+export type SimpleResultDataResponse = {
+  data: string
+  result: string
+}
+
 export type EmailCodeLoginPayload = {
   code: string
   email: string
   language?: string | null
+  timezone?: string | null
   token: string
+}
+
+export type SimpleResultResponse = {
+  result: string
 }
 
 export type PostEmailCodeLoginData = {
@@ -24,9 +34,7 @@ export type PostEmailCodeLoginData = {
 }
 
 export type PostEmailCodeLoginResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: SimpleResultDataResponse
 }
 
 export type PostEmailCodeLoginResponse
@@ -40,9 +48,7 @@ export type PostEmailCodeLoginValidityData = {
 }
 
 export type PostEmailCodeLoginValidityResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: SimpleResultResponse
 }
 
 export type PostEmailCodeLoginValidityResponse

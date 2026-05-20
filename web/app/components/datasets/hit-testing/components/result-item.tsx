@@ -78,7 +78,7 @@ const ResultItem = ({
                 toggleFold()
               }}
             >
-              <Icon className={cn('h-4 w-4', isFold && 'opacity-50')} />
+              <Icon className={cn('size-4', isFold && 'opacity-50')} />
               <div className="text-xs font-semibold uppercase">{t(`${i18nPrefix}hitChunks`, { ns: 'datasetHitTesting', num: child_chunks.length })}</div>
             </div>
             {!isFold && (

@@ -8,7 +8,8 @@ from sqlalchemy.orm import sessionmaker
 from werkzeug.exceptions import BadRequest, Forbidden
 
 from configs import dify_config
-from controllers.common.schema import register_schema_models
+from controllers.common.fields import SimpleResultResponse
+from controllers.common.schema import register_response_schema_models, register_schema_models
 from controllers.web.error import NotFoundError
 from core.plugin.entities.plugin_daemon import CredentialType
 from core.plugin.impl.oauth import OAuthHandler
@@ -68,6 +69,7 @@ register_schema_models(
     TriggerSubscriptionBuilderUpdatePayload,
     TriggerOAuthClientPayload,
 )
+register_response_schema_models(console_ns, SimpleResultResponse)
 
 
 @console_ns.route("/workspaces/current/trigger-provider/<path:provider>/icon")
@@ -365,6 +367,7 @@ class TriggerSubscriptionUpdateApi(Resource):
     "/workspaces/current/trigger-provider/<path:subscription_id>/subscriptions/delete",
 )
 class TriggerSubscriptionDeleteApi(Resource):
+    @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
     @setup_required
     @login_required
     @is_admin_or_owner_required

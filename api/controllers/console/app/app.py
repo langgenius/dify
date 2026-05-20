@@ -3,7 +3,6 @@ import re
 import uuid
 from datetime import datetime
 from typing import Any, Literal
-from uuid import UUID
 
 from flask import request
 from flask_restx import Resource
@@ -13,8 +12,9 @@ from sqlalchemy.orm import Session
 from werkzeug.datastructures import MultiDict
 from werkzeug.exceptions import BadRequest
 
+from controllers.common.fields import RedirectUrlResponse, SimpleResultResponse
 from controllers.common.helpers import FileInfo
-from controllers.common.schema import register_enum_models, register_schema_models
+from controllers.common.schema import register_enum_models, register_response_schema_models, register_schema_models
 from controllers.console import console_ns
 from controllers.console.app.wraps import get_app_model
 from controllers.console.workspace.models import LoadBalancingPayload
@@ -34,7 +34,7 @@ from core.trigger.constants import TRIGGER_NODE_TYPES
 from extensions.ext_database import db
 from fields.base import ResponseModel
 from graphon.enums import WorkflowExecutionStatus
-from libs.helper import build_icon_url
+from libs.helper import build_icon_url, to_timestamp
 from libs.login import current_account_with_tenant, login_required
 from models import App, DatasetPermissionEnum, Workflow
 from models.model import IconType
@@ -178,12 +178,6 @@ class AppTracePayload(BaseModel):
 type JSONValue = Any
 
 
-def _to_timestamp(value: datetime | int | None) -> int | None:
-    if isinstance(value, datetime):
-        return int(value.timestamp())
-    return value
-
-
 class Tag(ResponseModel):
     id: str
     name: str
@@ -200,7 +194,7 @@ class WorkflowPartial(ResponseModel):
     @field_validator("created_at", "updated_at", mode="before")
     @classmethod
     def _normalize_timestamp(cls, value: datetime | int | None) -> int | None:
-        return _to_timestamp(value)
+        return to_timestamp(value)
 
 
 class ModelConfigPartial(ResponseModel):
@@ -214,7 +208,7 @@ class ModelConfigPartial(ResponseModel):
     @field_validator("created_at", "updated_at", mode="before")
     @classmethod
     def _normalize_timestamp(cls, value: datetime | int | None) -> int | None:
-        return _to_timestamp(value)
+        return to_timestamp(value)
 
 
 class ModelConfig(ResponseModel):
@@ -275,7 +269,7 @@ class ModelConfig(ResponseModel):
     @field_validator("created_at", "updated_at", mode="before")
     @classmethod
     def _normalize_timestamp(cls, value: datetime | int | None) -> int | None:
-        return _to_timestamp(value)
+        return to_timestamp(value)
 
 
 class Site(ResponseModel):
@@ -318,7 +312,7 @@ class Site(ResponseModel):
     @field_validator("created_at", "updated_at", mode="before")
     @classmethod
     def _normalize_timestamp(cls, value: datetime | int | None) -> int | None:
-        return _to_timestamp(value)
+        return to_timestamp(value)
 
 
 class DeletedTool(ResponseModel):
@@ -361,7 +355,7 @@ class AppPartial(ResponseModel):
     @field_validator("created_at", "updated_at", mode="before")
     @classmethod
     def _normalize_timestamp(cls, value: datetime | int | None) -> int | None:
-        return _to_timestamp(value)
+        return to_timestamp(value)
 
 
 class AppDetail(ResponseModel):
@@ -391,7 +385,7 @@ class AppDetail(ResponseModel):
     @field_validator("created_at", "updated_at", mode="before")
     @classmethod
     def _normalize_timestamp(cls, value: datetime | int | None) -> int | None:
-        return _to_timestamp(value)
+        return to_timestamp(value)
 
 
 class AppDetailWithSite(AppDetail):
@@ -420,6 +414,7 @@ class AppExportResponse(ResponseModel):
 
 
 register_enum_models(console_ns, RetrievalMethod, WorkflowExecutionStatus, DatasetPermissionEnum)
+register_response_schema_models(console_ns, RedirectUrlResponse, SimpleResultResponse)
 
 register_schema_models(
     console_ns,
@@ -731,6 +726,7 @@ class AppExportApi(Resource):
 
 @console_ns.route("/apps/<uuid:app_id>/publish-to-creators-platform")
 class AppPublishToCreatorsPlatformApi(Resource):
+    @console_ns.response(200, "Success", console_ns.models[RedirectUrlResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -856,10 +852,11 @@ class AppTraceApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def get(self, app_id: UUID):
+    @get_app_model
+    def get(self, app_model):
         """Get app trace"""
         with session_factory.create_session() as session:
-            app_trace_config = OpsTraceManager.get_app_tracing_config(str(app_id), session)
+            app_trace_config = OpsTraceManager.get_app_tracing_config(app_model.id, session)
 
         return app_trace_config
 
@@ -867,18 +864,23 @@ class AppTraceApi(Resource):
     @console_ns.doc(description="Update app tracing configuration")
     @console_ns.doc(params={"app_id": "Application ID"})
     @console_ns.expect(console_ns.models[AppTracePayload.__name__])
-    @console_ns.response(200, "Trace configuration updated successfully")
+    @console_ns.response(
+        200,
+        "Trace configuration updated successfully",
+        console_ns.models[SimpleResultResponse.__name__],
+    )
     @console_ns.response(403, "Insufficient permissions")
     @setup_required
     @login_required
     @account_initialization_required
     @edit_permission_required
-    def post(self, app_id: UUID):
+    @get_app_model
+    def post(self, app_model):
         # add app trace
         args = AppTracePayload.model_validate(console_ns.payload)
 
         OpsTraceManager.update_app_tracing_config(
-            app_id=str(app_id),
+            app_id=app_model.id,
             enabled=args.enabled,
             tracing_provider=args.tracing_provider,
         )

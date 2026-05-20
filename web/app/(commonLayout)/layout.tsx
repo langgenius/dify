@@ -2,7 +2,8 @@ import type { ReactNode } from 'react'
 import * as React from 'react'
 import { AppInitializer } from '@/app/components/app-initializer'
 import InSiteMessageNotification from '@/app/components/app/in-site-message/notification'
-import GA, { GaType } from '@/app/components/base/ga'
+import AmplitudeProvider from '@/app/components/base/amplitude'
+import { GoogleAnalyticsScripts } from '@/app/components/base/ga'
 import Zendesk from '@/app/components/base/zendesk'
 import { GotoAnything } from '@/app/components/goto-anything'
 import Header from '@/app/components/header'
@@ -18,7 +19,8 @@ import RoleRouteGuard from './role-route-guard'
 const Layout = ({ children }: { children: ReactNode }) => {
   return (
     <>
-      <GA gaType={GaType.admin} />
+      <GoogleAnalyticsScripts />
+      <AmplitudeProvider />
       <AppInitializer>
         <AppContextProvider>
           <EventEmitterContextProvider>

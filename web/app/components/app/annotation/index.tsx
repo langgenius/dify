@@ -26,7 +26,7 @@ import { sleep } from '@/utils'
 import EmptyElement from './empty-element'
 import Filter from './filter'
 import HeaderOpts from './header-opts'
-import List from './list'
+import { List } from './list'
 import { AnnotationEnableStatus, JobStatus } from './type'
 import ViewAnnotationModal from './view-annotation-modal'
 
@@ -151,7 +151,7 @@ const Annotation: FC<Props> = (props) => {
             {isChatApp && (
               <>
                 <div className={cn(!annotationConfig?.enabled && 'pr-2', 'flex h-7 items-center space-x-1 rounded-lg border border-components-panel-border bg-components-panel-bg-blur pl-2')}>
-                  <MessageFast className="h-4 w-4 text-util-colors-indigo-indigo-600" />
+                  <MessageFast className="size-4 text-util-colors-indigo-indigo-600" />
                   <div className="system-sm-medium text-text-primary">{t('name', { ns: 'appAnnotation' })}</div>
                   <Switch
                     key={controlRefreshSwitch}
@@ -176,10 +176,10 @@ const Annotation: FC<Props> = (props) => {
                   >
                   </Switch>
                   {annotationConfig?.enabled && (
-                    <div className="flex items-center pl-1.5">
+                    <div className="flex items-center pr-1 pl-1.5">
                       <div className="mr-1 h-3.5 w-px shrink-0 bg-divider-subtle"></div>
                       <ActionButton onClick={() => setIsShowEdit(true)}>
-                        <RiEqualizer2Line className="h-4 w-4 text-text-tertiary" />
+                        <RiEqualizer2Line className="size-4 text-text-tertiary" />
                       </ActionButton>
                     </div>
                   )}
@@ -210,7 +210,6 @@ const Annotation: FC<Props> = (props) => {
                   selectedIds={selectedIds}
                   onSelectedIdsChange={setSelectedIds}
                   onBatchDelete={handleBatchDelete}
-                  onCancel={() => setSelectedIds([])}
                 />
               )
             : <div className="flex h-full grow items-center justify-center"><EmptyElement /></div>}

@@ -51,7 +51,7 @@ const UploadDropzone = ({
           dragging && 'border-components-dropzone-border-accent bg-components-dropzone-bg-accent',
         )}
       >
-        <div className="flex min-h-5 items-center justify-center text-sm leading-4 text-text-secondary">
+        <div className="flex min-h-5 items-center justify-center text-sm/4 text-text-secondary">
           <span className="mr-2 i-ri-upload-cloud-2-line size-5" />
           <span>
             {supportBatchUpload
@@ -83,7 +83,7 @@ const UploadDropzone = ({
                 batchCount: fileUploadConfig.batch_count_limit,
               })}
         </div>
-        {dragging && <div ref={dragRef} className="absolute top-0 left-0 h-full w-full" />}
+        {dragging && <div ref={dragRef} className="absolute top-0 left-0 size-full" />}
       </div>
     </>
   )

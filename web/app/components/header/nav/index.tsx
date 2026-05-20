@@ -60,7 +60,7 @@ const Nav = ({
           <div>
             {
               (hovered && curNav)
-                ? <ArrowNarrowLeft className="h-4 w-4" />
+                ? <ArrowNarrowLeft className="size-4" />
                 : isActivated
                   ? activeIcon
                   : icon

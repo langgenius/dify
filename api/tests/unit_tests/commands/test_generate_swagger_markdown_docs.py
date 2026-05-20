@@ -1,6 +1,7 @@
 """Unit tests for the Markdown API docs generator."""
 
 import importlib.util
+import json
 import sys
 from pathlib import Path
 
@@ -101,3 +102,195 @@ def test_generate_markdown_docs_only_removes_generated_specs_from_separate_swagg
 
     assert existing_file.read_text(encoding="utf-8") == "keep me"
     assert not list(swagger_dir.glob("*.json"))
+
+
+def test_patch_union_schema_markdown_fills_converter_blank_schema_types(tmp_path):
+    module = _load_generate_swagger_markdown_docs_module()
+    spec_path = tmp_path / "console-swagger.json"
+    spec_path.write_text(
+        json.dumps(
+            {
+                "definitions": {
+                    "FormInputConfig": {
+                        "oneOf": [
+                            {"$ref": "#/definitions/ParagraphInputConfig"},
+                            {"$ref": "#/definitions/SelectInputConfig"},
+                            {"$ref": "#/definitions/FileInputConfig"},
+                        ],
+                    },
+                    "ParagraphInputConfig": {
+                        "properties": {
+                            "default": {
+                                "anyOf": [
+                                    {"$ref": "#/definitions/StringSource"},
+                                    {"type": "null"},
+                                ],
+                            },
+                            "output_variable_name": {"type": "string"},
+                        },
+                    },
+                    "SelectInputConfig": {
+                        "properties": {
+                            "option_source": {"$ref": "#/definitions/StringListSource"},
+                        },
+                    },
+                    "FileInputConfig": {
+                        "properties": {
+                            "allowed_file_types": {
+                                "type": "array",
+                                "items": {"$ref": "#/definitions/FileType"},
+                            },
+                        },
+                    },
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
+    markdown = """#### FormInputConfig
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| FormInputConfig |  |  |  |
+
+#### ParagraphInputConfig
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| default |  |  | No |
+| output_variable_name | string |  | Yes |
+
+#### SelectInputConfig
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| option_source |  |  | Yes |
+
+#### FileInputConfig
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| allowed_file_types |  |  | No |
+"""
+
+    patched = module._patch_union_schema_markdown(markdown, spec_path)
+
+    assert (
+        "| FormInputConfig | "
+        "[ParagraphInputConfig](#paragraphinputconfig)<br>"
+        "[SelectInputConfig](#selectinputconfig)<br>"
+        "[FileInputConfig](#fileinputconfig) |  |  |"
+    ) in patched
+    assert "| default | [StringSource](#stringsource) |  | No |" in patched
+    assert "| output_variable_name | string |  | Yes |" in patched
+    assert "| option_source | [StringListSource](#stringlistsource) |  | Yes |" in patched
+    assert "| allowed_file_types | [ [FileType](#filetype) ] |  | No |" in patched
+
+
+def test_patch_union_schema_markdown_ignores_specs_without_definitions(tmp_path):
+    module = _load_generate_swagger_markdown_docs_module()
+    spec_path = tmp_path / "console-swagger.json"
+    spec_path.write_text("{}", encoding="utf-8")
+
+    assert module._patch_union_schema_markdown("unchanged", spec_path) == "unchanged"
+
+
+def test_patch_union_schema_markdown_ignores_unrenderable_shapes(tmp_path):
+    module = _load_generate_swagger_markdown_docs_module()
+    spec_path = tmp_path / "console-swagger.json"
+    spec_path.write_text(
+        json.dumps(
+            {
+                "definitions": {
+                    "NotAMapping": [],
+                    "BrokenUnion": {
+                        "oneOf": [
+                            {},
+                            {"$ref": "#/definitions/Missing"},
+                            {"$ref": "#/definitions/NoPropertyMapping"},
+                        ],
+                    },
+                    "NoPropertyMapping": {"properties": []},
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    assert module._definition_ref_name(None) is None
+    assert module._schema_markdown_type(None) == ""
+    assert module._schema_markdown_type({"anyOf": [{"type": "null"}]}) == ""
+    assert module._replace_schema_table_type("unchanged", "Definition", "field", "") == "unchanged"
+    assert (
+        module._replace_schema_table_type(
+            "#### Definition\n#### Next\n| field |  |  | No |",
+            "Definition",
+            "field",
+            "string",
+        )
+        == "#### Definition\n#### Next\n| field |  |  | No |"
+    )
+    assert (
+        module._replace_schema_table_type("#### Definition\n| field |", "Definition", "field", "string")
+        == "#### Definition\n| field |"
+    )
+
+    assert module._patch_union_schema_markdown("#### BrokenUnion\n", spec_path) == "#### BrokenUnion"
+
+
+def test_convert_spec_to_markdown_patches_generated_union_tables(tmp_path, monkeypatch):
+    module = _load_generate_swagger_markdown_docs_module()
+    spec_path = tmp_path / "console-swagger.json"
+    output_path = tmp_path / "console-swagger.md"
+    spec_path.write_text(
+        json.dumps(
+            {
+                "definitions": {
+                    "FormInputConfig": {
+                        "oneOf": [
+                            {"$ref": "#/definitions/ParagraphInputConfig"},
+                        ],
+                    },
+                    "ParagraphInputConfig": {
+                        "properties": {
+                            "default": {
+                                "anyOf": [
+                                    {"$ref": "#/definitions/StringSource"},
+                                    {"type": "null"},
+                                ],
+                            },
+                        },
+                    },
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    def run_converter(args, **kwargs):
+        assert kwargs["check"] is False
+        markdown_path = Path(args[args.index("-o") + 1])
+        markdown_path.write_text(
+            """#### FormInputConfig
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| FormInputConfig |  |  |  |
+
+#### ParagraphInputConfig
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| default |  |  | No |
+""",
+            encoding="utf-8",
+        )
+        return module.subprocess.CompletedProcess(args=args, returncode=0, stdout="", stderr="")
+
+    monkeypatch.setattr(module.subprocess, "run", run_converter)
+
+    module._convert_spec_to_markdown(spec_path, output_path)
+
+    converted = output_path.read_text(encoding="utf-8")
+    assert "| FormInputConfig | [ParagraphInputConfig](#paragraphinputconfig) |  |  |" in converted
+    assert "| default | [StringSource](#stringsource) |  | No |" in converted

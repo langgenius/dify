@@ -22,16 +22,16 @@ const NotionIcon = ({
           <img
             alt="workspace icon"
             src={src}
-            className={cn('block h-5 w-5 object-cover', className)}
+            className={cn('block size-5 object-cover', className)}
           />
         )
       }
       return (
-        <div className={cn('flex h-5 w-5 items-center justify-center', className)}>{src}</div>
+        <div className={cn('flex size-5 items-center justify-center', className)}>{src}</div>
       )
     }
     return (
-      <div className={cn('flex h-5 w-5 items-center justify-center rounded-sm bg-gray-200 text-xs font-medium text-gray-500', className)}>{name?.[0]!.toLocaleUpperCase()}</div>
+      <div className={cn('flex size-5 items-center justify-center rounded-sm bg-gray-200 text-xs font-medium text-gray-500', className)}>{name?.[0]!.toLocaleUpperCase()}</div>
     )
   }
 
@@ -41,17 +41,17 @@ const NotionIcon = ({
         <img
           alt="page icon"
           src={src.url || ''}
-          className={cn('block h-5 w-5 object-cover', className)}
+          className={cn('block size-5 object-cover', className)}
         />
       )
     }
     return (
-      <div className={cn('flex h-5 w-5 items-center justify-center', className)}>{src?.emoji}</div>
+      <div className={cn('flex size-5 items-center justify-center', className)}>{src?.emoji}</div>
     )
   }
 
   return (
-    <RiFileTextLine className={cn('h-5 w-5 text-text-tertiary', className)} />
+    <RiFileTextLine className={cn('size-5 text-text-tertiary', className)} />
   )
 }
 

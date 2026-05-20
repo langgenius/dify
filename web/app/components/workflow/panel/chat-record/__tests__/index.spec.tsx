@@ -88,7 +88,7 @@ describe('ChatRecord', () => {
 
     await screen.findByText('Question 1')
 
-    await user.click(container.querySelector('.h-6.w-6.cursor-pointer') as HTMLElement)
+    await user.click(container.querySelector('.size-6.cursor-pointer') as HTMLElement)
 
     expect(handleLoadBackupDraft).toHaveBeenCalledTimes(1)
     expect(store.getState().historyWorkflowData).toBeUndefined()

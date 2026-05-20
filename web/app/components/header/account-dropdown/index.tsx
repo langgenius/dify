@@ -2,7 +2,6 @@
 
 import type { MouseEventHandler, ReactNode } from 'react'
 import { Avatar } from '@langgenius/dify-ui/avatar'
-import { cn } from '@langgenius/dify-ui/cn'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuLinkItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@langgenius/dify-ui/dropdown-menu'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useState } from 'react'
@@ -110,7 +109,6 @@ function AccountMenuSection({ children }: AccountMenuSectionProps) {
 export default function AppSelector() {
   const router = useRouter()
   const [aboutVisible, setAboutVisible] = useState(false)
-  const [isAccountMenuOpen, setIsAccountMenuOpen] = useState(false)
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
 
   const { t } = useTranslation()
@@ -136,10 +134,10 @@ export default function AppSelector() {
 
   return (
     <div>
-      <DropdownMenu open={isAccountMenuOpen} onOpenChange={setIsAccountMenuOpen}>
+      <DropdownMenu>
         <DropdownMenuTrigger
           aria-label={t('account.account', { ns: 'common' })}
-          className={cn('inline-flex items-center rounded-[20px] p-0.5 hover:bg-background-default-dodge', isAccountMenuOpen && 'bg-background-default-dodge')}
+          className="inline-flex items-center rounded-[20px] p-0.5 hover:bg-background-default-dodge data-popup-open:bg-background-default-dodge"
         >
           <Avatar avatar={userProfile.avatar_url} name={userProfile.name} size="lg" />
         </DropdownMenuTrigger>
@@ -154,7 +152,7 @@ export default function AppSelector() {
                   {userProfile.name}
                   {isEducationAccount && (
                     <PremiumBadge size="s" color="blue" className="ml-1 px-2!">
-                      <span aria-hidden className="mr-1 i-ri-graduation-cap-fill h-3 w-3" />
+                      <span aria-hidden className="mr-1 i-ri-graduation-cap-fill size-3" />
                       <span className="system-2xs-medium">EDU</span>
                     </PremiumBadge>
                   )}
@@ -185,7 +183,7 @@ export default function AppSelector() {
                   label={t('userProfile.helpCenter', { ns: 'common' })}
                   trailing={<ExternalLinkIndicator />}
                 />
-                <Support closeAccountDropdown={() => setIsAccountMenuOpen(false)} />
+                <Support />
                 {IS_CLOUD_EDITION && isCurrentWorkspaceOwner && <Compliance />}
               </AccountMenuSection>
               <DropdownMenuSeparator className="my-0! bg-divider-subtle" />
@@ -214,7 +212,6 @@ export default function AppSelector() {
                       label={t('userProfile.about', { ns: 'common' })}
                       onClick={() => {
                         setAboutVisible(true)
-                        setIsAccountMenuOpen(false)
                       }}
                       trailing={(
                         <div className="flex shrink-0 items-center">

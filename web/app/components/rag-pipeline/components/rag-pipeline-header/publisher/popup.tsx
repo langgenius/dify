@@ -189,24 +189,24 @@ const Popup = ({
       <div className="border-t-[0.5px] border-t-divider-regular p-4 pt-3">
         <Button className="mb-1 w-full hover:bg-state-accent-hover hover:text-text-accent" variant="tertiary" onClick={goToAddDocuments} disabled={!publishedAt}>
           <div className="flex grow items-center">
-            <RiPlayCircleLine className="mr-2 h-4 w-4" />
+            <RiPlayCircleLine className="mr-2 size-4" />
             {t('common.goToAddDocuments', { ns: 'pipeline' })}
           </div>
-          <RiArrowRightUpLine className="ml-2 h-4 w-4 shrink-0" />
+          <RiArrowRightUpLine className="ml-2 size-4 shrink-0" />
         </Button>
         <Link href={apiReferenceUrl} target="_blank" rel="noopener noreferrer">
           <Button className="w-full hover:bg-state-accent-hover hover:text-text-accent" variant="tertiary" disabled={!publishedAt}>
             <div className="flex grow items-center">
-              <RiTerminalBoxLine className="mr-2 h-4 w-4" />
+              <RiTerminalBoxLine className="mr-2 size-4" />
               {t('common.accessAPIReference', { ns: 'workflow' })}
             </div>
-            <RiArrowRightUpLine className="ml-2 h-4 w-4 shrink-0" />
+            <RiArrowRightUpLine className="ml-2 size-4 shrink-0" />
           </Button>
         </Link>
         <Divider className="my-2" />
         <Button className="w-full hover:bg-state-accent-hover hover:text-text-accent" variant="tertiary" onClick={handleClickPublishAsKnowledgePipeline} disabled={!publishedAt || isPublishingAsCustomizedPipeline}>
           <div className="flex grow items-center gap-x-2 overflow-hidden">
-            <RiHammerLine className="h-4 w-4 shrink-0" />
+            <RiHammerLine className="size-4 shrink-0" />
             <span className="grow truncate text-left" title={t('common.publishAs', { ns: 'pipeline' })}>
               {t('common.publishAs', { ns: 'pipeline' })}
             </span>
