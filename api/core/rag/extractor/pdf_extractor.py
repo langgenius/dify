@@ -115,7 +115,6 @@ class PdfExtractor(BaseExtractor):
         """
         image_content = []
         upload_files = []
-        base_url = dify_config.FILES_URL
 
         try:
             image_objects = page.get_objects(filter=(pdfium_c.FPDF_PAGEOBJ_IMAGE,))
@@ -165,7 +164,7 @@ class PdfExtractor(BaseExtractor):
                         used_at=naive_utc_now(),
                     )
                     upload_files.append(upload_file)
-                    image_content.append(f"![image]({base_url}/files/{upload_file.id}/file-preview)")
+                    image_content.append(f"![image](/files/{upload_file.id}/file-preview)")
                 except Exception as e:
                     logger.warning("Failed to extract image from PDF: %s", e)
                     continue

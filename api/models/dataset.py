@@ -940,9 +940,10 @@ class DocumentSegment(TypeBase):
     def get_sign_content(self) -> str:
         signed_urls: list[tuple[int, int, str]] = []
         text = self.content
+        reference_url = dify_config.FILES_URL or ""
 
         # For data before v0.10.0
-        pattern = r"/files/([a-f0-9\-]+)/image-preview(?:\?.*?)?"
+        pattern = r"(?:https?://[^/]+)?/files/([a-f0-9\-]+)/image-preview(?:\?.*?)?"
         matches = re.finditer(pattern, text)
         for match in matches:
             upload_file_id = match.group(1)
@@ -954,12 +955,12 @@ class DocumentSegment(TypeBase):
             encoded_sign = base64.urlsafe_b64encode(sign).decode()
 
             params = f"timestamp={timestamp}&nonce={nonce}&sign={encoded_sign}"
-            base_url = f"/files/{upload_file_id}/image-preview"
+            base_url = f"{reference_url}/files/{upload_file_id}/image-preview"
             signed_url = f"{base_url}?{params}"
             signed_urls.append((match.start(), match.end(), signed_url))
 
         # For data after v0.10.0
-        pattern = r"/files/([a-f0-9\-]+)/file-preview(?:\?.*?)?"
+        pattern = r"(?:https?://[^/]+)?/files/([a-f0-9\-]+)/file-preview(?:\?.*?)?"
         matches = re.finditer(pattern, text)
         for match in matches:
             upload_file_id = match.group(1)
@@ -971,13 +972,12 @@ class DocumentSegment(TypeBase):
             encoded_sign = base64.urlsafe_b64encode(sign).decode()
 
             params = f"timestamp={timestamp}&nonce={nonce}&sign={encoded_sign}"
-            base_url = f"/files/{upload_file_id}/file-preview"
+            base_url = f"{reference_url}/files/{upload_file_id}/file-preview"
             signed_url = f"{base_url}?{params}"
             signed_urls.append((match.start(), match.end(), signed_url))
 
         # For tools directory - direct file formats (e.g., .png, .jpg, etc.)
-        # Match URL including any query parameters up to common URL boundaries (space, parenthesis, quotes)
-        pattern = r"/files/tools/([a-f0-9\-]+)\.([a-zA-Z0-9]+)(?:\?[^\s\)\"\']*)?"
+        pattern = r"(?:https?://[^/]+)?/files/tools/([a-f0-9\-]+)\.([a-zA-Z0-9]+)(?:\?[^\s\)\"\']*)?"
         matches = re.finditer(pattern, text)
         for match in matches:
             upload_file_id = match.group(1)
@@ -990,7 +990,7 @@ class DocumentSegment(TypeBase):
             encoded_sign = base64.urlsafe_b64encode(sign).decode()
 
             params = f"timestamp={timestamp}&nonce={nonce}&sign={encoded_sign}"
-            base_url = f"/files/tools/{upload_file_id}.{file_extension}"
+            base_url = f"{reference_url}/files/tools/{upload_file_id}.{file_extension}"
             signed_url = f"{base_url}?{params}"
             signed_urls.append((match.start(), match.end(), signed_url))
 

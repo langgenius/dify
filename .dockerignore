@@ -1,0 +1,6 @@
+docker/volumes
+.git
+*.md
+.env
+.env.local
+.env.*.local
