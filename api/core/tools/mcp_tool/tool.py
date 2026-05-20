@@ -111,13 +111,14 @@ class MCPTool(Tool):
 
     def _process_json_content(self, content_json: Any) -> Generator[ToolInvokeMessage, None, None]:
         """Process JSON content based on its type."""
-        if isinstance(content_json, dict):
-            yield self.create_json_message(content_json)
-        elif isinstance(content_json, list):
-            yield from self._process_json_list(content_json)
-        else:
-            # For primitive types (str, int, bool, etc.), convert to string
-            yield self.create_text_message(str(content_json))
+        match content_json:
+            case dict():
+                yield self.create_json_message(content_json)
+            case list():
+                yield from self._process_json_list(content_json)
+            case _:
+                # For primitive types (str, int, bool, etc.), convert to string
+                yield self.create_text_message(str(content_json))
 
     def _process_json_list(self, json_list: list) -> Generator[ToolInvokeMessage, None, None]:
         """Process a list of JSON items."""
