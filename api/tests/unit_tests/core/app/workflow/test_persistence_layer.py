@@ -5,8 +5,12 @@ from types import SimpleNamespace
 
 import pytest
 
-from core.app.entities.app_invoke_entities import WorkflowAppGenerateEntity
-from core.app.workflow.layers.persistence import PersistenceWorkflowInfo, WorkflowPersistenceLayer
+from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerateEntity
+from core.app.workflow.layers.persistence import (
+    PersistenceWorkflowInfo,
+    WorkflowPersistenceLayer,
+    should_use_async_workflow_persistence,
+)
 from core.ops.ops_trace_manager import TraceTask, TraceTaskName
 from core.workflow.system_variables import SystemVariableKey, build_system_variables
 from graphon.entities import WorkflowNodeExecution, WorkflowStartReason
@@ -43,6 +47,7 @@ class _RepoRecorder:
         self.synchronously_saved: list[object] = []
         self.saved_exec_data: list[object] = []
         self.loaded: list[object] = []
+        self.async_enabled: bool | None = None
 
     def save(self, entity):
         self.saved.append(entity)
@@ -56,6 +61,9 @@ class _RepoRecorder:
     def get_by_workflow_execution(self, _workflow_execution_id):
         return self.loaded
 
+    def set_async_persistence(self, enabled: bool) -> None:
+        self.async_enabled = enabled
+
 
 def _naive_utc_now() -> datetime:
     return datetime.now(UTC).replace(tzinfo=None)
@@ -65,6 +73,7 @@ def _make_layer(
     system_variables: list | None = None,
     *,
     extras: dict | None = None,
+    invoke_from: InvokeFrom = InvokeFrom.DEBUGGER,
     trace_manager: object | None = None,
 ):
     system_variables = system_variables or build_system_variables(
@@ -84,7 +93,7 @@ def _make_layer(
         files=[],
         user_id="user",
         stream=False,
-        invoke_from=None,
+        invoke_from=invoke_from,
         trace_manager=None,
         workflow_execution_id="run-id",
         extras=extras or {},
@@ -106,6 +115,7 @@ def _make_layer(
         workflow_info=workflow_info,
         workflow_execution_repository=workflow_execution_repo,
         workflow_node_execution_repository=workflow_node_execution_repo,
+        invoke_from=invoke_from,
         trace_manager=trace_manager,
     )
     layer.initialize(read_only_state, command_channel=None)
@@ -114,6 +124,30 @@ def _make_layer(
 
 
 class TestWorkflowPersistenceLayer:
+    @pytest.mark.parametrize(
+        ("invoke_from", "expected"),
+        [
+            (InvokeFrom.DEBUGGER, False),
+            (InvokeFrom.WEB_APP, True),
+            (InvokeFrom.SERVICE_API, True),
+            (InvokeFrom.TRIGGER, True),
+        ],
+    )
+    def test_should_use_async_workflow_persistence(self, invoke_from: InvokeFrom, expected: bool):
+        assert should_use_async_workflow_persistence(invoke_from) is expected
+
+    def test_configures_repositories_for_debug_synchronous_persistence(self):
+        _, exec_repo, node_repo, _ = _make_layer(invoke_from=InvokeFrom.DEBUGGER)
+
+        assert exec_repo.async_enabled is False
+        assert node_repo.async_enabled is False
+
+    def test_configures_repositories_for_non_debug_async_persistence(self):
+        _, exec_repo, node_repo, _ = _make_layer(invoke_from=InvokeFrom.WEB_APP)
+
+        assert exec_repo.async_enabled is True
+        assert node_repo.async_enabled is True
+
     def test_on_graph_start_resets_state(self):
         layer, _, _, _ = _make_layer()
         layer._workflow_execution = object()
