@@ -391,6 +391,48 @@ def test_save_execution_data_persists_each_truncation_offload(
     assert read_truncated(execution) == {"large": "truncated"}
 
 
+def test_queue_async_save_requires_context(
+    monkeypatch: pytest.MonkeyPatch, sqlite_session_factory: sessionmaker[Session]
+) -> None:
+    repo = _repository(monkeypatch, sqlite_session_factory)
+    execution = _execution()
+
+    repo._triggered_from = None
+    with pytest.raises(ValueError, match="triggered_from is required"):
+        repo._queue_async_save(execution)
+
+    repo._triggered_from = WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN
+    repo._creator_user_id = None
+    with pytest.raises(ValueError, match="created_by is required"):
+        repo._queue_async_save(execution)
+
+    repo._creator_user_id = "user-1"
+    repo._creator_user_role = None
+    with pytest.raises(ValueError, match="created_by_role is required"):
+        repo._queue_async_save(execution)
+
+
+def test_queue_async_save_execution_data_requires_context(
+    monkeypatch: pytest.MonkeyPatch, sqlite_session_factory: sessionmaker[Session]
+) -> None:
+    repo = _repository(monkeypatch, sqlite_session_factory)
+    execution = _execution()
+
+    repo._triggered_from = None
+    with pytest.raises(ValueError, match="triggered_from is required"):
+        repo._queue_async_save_execution_data(execution)
+
+    repo._triggered_from = WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN
+    repo._creator_user_id = None
+    with pytest.raises(ValueError, match="created_by is required"):
+        repo._queue_async_save_execution_data(execution)
+
+    repo._creator_user_id = "user-1"
+    repo._creator_user_role = None
+    with pytest.raises(ValueError, match="created_by_role is required"):
+        repo._queue_async_save_execution_data(execution)
+
+
 def test_get_by_workflow_run_filters_tenant_app_trigger_and_paused_and_orders(
     monkeypatch: pytest.MonkeyPatch, sqlite_session_factory: sessionmaker[Session]
 ) -> None:
