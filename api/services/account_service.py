@@ -47,11 +47,9 @@ from models.account import (
 from models.model import DifySetup
 from services.billing_service import BillingService
 from services.entities.auth_entities import (
-    ChangeEmailPhase,
     ChangeEmailNewEmailToken,
-    ChangeEmailNewEmailVerifiedToken,
     ChangeEmailOldEmailToken,
-    ChangeEmailOldEmailVerifiedToken,
+    ChangeEmailPhase,
     ChangeEmailTokenData,
 )
 from services.errors.account import (
@@ -613,7 +611,6 @@ class AccountService:
         token_data: ChangeEmailTokenData
         if phase == cls.CHANGE_EMAIL_PHASE_OLD:
             token_data = ChangeEmailOldEmailToken(
-                token_type="change_email",
                 account_id=account.id,
                 email=account_email,
                 old_email=old_email,
@@ -621,7 +618,6 @@ class AccountService:
             )
         else:
             token_data = ChangeEmailNewEmailToken(
-                token_type="change_email",
                 account_id=account.id,
                 email=account_email,
                 old_email=old_email,
@@ -814,7 +810,7 @@ class AccountService:
         try:
             return _change_email_token_adapter.validate_python(token_data)
         except ValidationError:
-            logger.warning("change_email token %s has invalid payload", token)
+            logger.warning("change_email token %s has invalid payload", token, exc_info=True)
             return None
 
     @classmethod
