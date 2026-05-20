@@ -21,6 +21,13 @@ class LoginFailureReason(StrEnum):
     LOGIN_RATE_LIMITED = auto()
 
 
+class ChangeEmailPhase(StrEnum):
+    OLD_EMAIL = "old_email"
+    OLD_EMAIL_VERIFIED = "old_email_verified"
+    NEW_EMAIL = "new_email"
+    NEW_EMAIL_VERIFIED = "new_email_verified"
+
+
 class LoginPayloadBase(BaseModel):
     email: EmailStr
     password: str
@@ -95,13 +102,13 @@ class ChangeEmailOldEmailToken(_ChangeEmailOldAddressMixin):
     old-email verification code has been checked.
     """
 
-    email_change_phase: Literal["old_email"] = "old_email"
+    email_change_phase: Literal[ChangeEmailPhase.OLD_EMAIL] = ChangeEmailPhase.OLD_EMAIL
 
     def promote(self) -> "ChangeEmailOldEmailVerifiedToken":
         """Advance to the state that is allowed to request the new-email code."""
         return ChangeEmailOldEmailVerifiedToken(
             **self.model_dump(exclude={"email_change_phase"}),
-            email_change_phase="old_email_verified",
+            email_change_phase=ChangeEmailPhase.OLD_EMAIL_VERIFIED,
         )
 
 
@@ -113,7 +120,7 @@ class ChangeEmailOldEmailVerifiedToken(_ChangeEmailOldAddressMixin):
     skip the old-email verification step.
     """
 
-    email_change_phase: Literal["old_email_verified"] = "old_email_verified"
+    email_change_phase: Literal[ChangeEmailPhase.OLD_EMAIL_VERIFIED] = ChangeEmailPhase.OLD_EMAIL_VERIFIED
 
 
 class ChangeEmailNewEmailToken(ChangeEmailTokenBase):
@@ -124,13 +131,13 @@ class ChangeEmailNewEmailToken(ChangeEmailTokenBase):
     new-email verification code check.
     """
 
-    email_change_phase: Literal["new_email"] = "new_email"
+    email_change_phase: Literal[ChangeEmailPhase.NEW_EMAIL] = ChangeEmailPhase.NEW_EMAIL
 
     def promote(self) -> "ChangeEmailNewEmailVerifiedToken":
         """Advance to the only state that may perform the final email reset."""
         return ChangeEmailNewEmailVerifiedToken(
             **self.model_dump(exclude={"email_change_phase"}),
-            email_change_phase="new_email_verified",
+            email_change_phase=ChangeEmailPhase.NEW_EMAIL_VERIFIED,
         )
 
 
@@ -142,7 +149,7 @@ class ChangeEmailNewEmailVerifiedToken(ChangeEmailTokenBase):
     `email` so a verified token for address A cannot be replayed for address B.
     """
 
-    email_change_phase: Literal["new_email_verified"] = "new_email_verified"
+    email_change_phase: Literal[ChangeEmailPhase.NEW_EMAIL_VERIFIED] = ChangeEmailPhase.NEW_EMAIL_VERIFIED
 
 
 # Tokens that can still advance by verifying a code.

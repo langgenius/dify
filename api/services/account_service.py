@@ -47,6 +47,7 @@ from models.account import (
 from models.model import DifySetup
 from services.billing_service import BillingService
 from services.entities.auth_entities import (
+    ChangeEmailPhase,
     ChangeEmailNewEmailToken,
     ChangeEmailNewEmailVerifiedToken,
     ChangeEmailOldEmailToken,
@@ -122,10 +123,10 @@ REFRESH_TOKEN_EXPIRY = timedelta(days=dify_config.REFRESH_TOKEN_EXPIRE_DAYS)
 
 
 class AccountService:
-    CHANGE_EMAIL_PHASE_OLD = "old_email"
-    CHANGE_EMAIL_PHASE_OLD_VERIFIED = "old_email_verified"
-    CHANGE_EMAIL_PHASE_NEW = "new_email"
-    CHANGE_EMAIL_PHASE_NEW_VERIFIED = "new_email_verified"
+    CHANGE_EMAIL_PHASE_OLD = ChangeEmailPhase.OLD_EMAIL
+    CHANGE_EMAIL_PHASE_OLD_VERIFIED = ChangeEmailPhase.OLD_EMAIL_VERIFIED
+    CHANGE_EMAIL_PHASE_NEW = ChangeEmailPhase.NEW_EMAIL
+    CHANGE_EMAIL_PHASE_NEW_VERIFIED = ChangeEmailPhase.NEW_EMAIL_VERIFIED
 
     reset_password_rate_limiter = RateLimiter(prefix="reset_password_rate_limit", max_attempts=1, time_window=60 * 1)
     email_register_rate_limiter = RateLimiter(prefix="email_register_rate_limit", max_attempts=1, time_window=60 * 1)
