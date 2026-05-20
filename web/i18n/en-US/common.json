@@ -690,7 +690,7 @@
   "theme.dark": "dark",
   "theme.light": "light",
   "theme.theme": "Theme",
-  "toolsPage.description": "All the tools available in your workspace — built-in tools and plugins installed from Marketplace.",
+  "toolsPage.description": "All tools available in your workspace — both built-in and installed from the Marketplace.",
   "triggerPage.description": "Convert third-party events into inputs your apps can recognize and act on — automate workflows without manual triggers.",
   "unit.char": "chars",
   "userProfile.about": "About",
