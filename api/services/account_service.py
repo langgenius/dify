@@ -590,14 +590,12 @@ class AccountService:
     @classmethod
     def send_change_email_email(
         cls,
-        account: Account | None = None,
+        account: Account,
         email: str | None = None,
         old_email: str | None = None,
         language: str = "en-US",
         phase: str | None = None,
     ):
-        if account is None:
-            raise ValueError("Account must be provided.")
         account_email = email if email is not None else account.email
         if not phase:
             raise ValueError("phase must be provided.")
