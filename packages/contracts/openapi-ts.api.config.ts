@@ -90,7 +90,6 @@ type ApiOperationContext = {
 
 const currentDir = path.dirname(fileURLToPath(import.meta.url))
 const apiOpenApiDir = path.resolve(currentDir, 'openapi')
-const apiReadinessStatsPath = path.resolve(currentDir, 'generated/api/readiness.json')
 const apiControllersDir = path.resolve(currentDir, '../../api/controllers')
 
 const operationMethods = new Set(['delete', 'get', 'patch', 'post', 'put'])
@@ -750,6 +749,10 @@ const recordApiReadiness = (surface: string, isReady: boolean) => {
     stats.notReady += 1
 }
 
+const formatPercent = (ready: number, total: number) => {
+  return total === 0 ? '0.0%' : `${((ready / total) * 100).toFixed(1)}%`
+}
+
 const normalizeOperations = (document: SwaggerDocument, surface: string) => {
   const definitions = document.definitions ??= {}
 
@@ -792,18 +795,29 @@ const normalizeApiSwagger = (document: SwaggerDocument, surface: string) => {
   return document
 }
 
-const writeApiReadinessStats = () => {
+const printApiReadinessStats = () => {
   const sortedSurfaces = Object.entries(apiReadinessStats)
     .sort(([left], [right]) => left.localeCompare(right))
 
-  fs.mkdirSync(path.dirname(apiReadinessStatsPath), { recursive: true })
-  fs.writeFileSync(
-    apiReadinessStatsPath,
-    `${JSON.stringify({
-      surfaces: Object.fromEntries(sortedSurfaces),
-      warning: inaccurateGeneratedContractDescription,
-    }, null, 2)}\n`,
+  const totals = sortedSurfaces.reduce(
+    (summary, [, stats]) => {
+      summary.notReady += stats.notReady
+      summary.total += stats.total
+      return summary
+    },
+    { notReady: 0, total: 0 },
   )
+  const totalReady = totals.total - totals.notReady
+  const rows = sortedSurfaces.map(([surface, stats]) => {
+    const ready = stats.total - stats.notReady
+    return `  ${surface}: ${ready}/${stats.total} ready (${formatPercent(ready, stats.total)}), ${stats.notReady} not ready`
+  })
+
+  console.log([
+    'API OpenAPI readiness:',
+    ...rows,
+    `  total: ${totalReady}/${totals.total} ready (${formatPercent(totalReady, totals.total)}), ${totals.notReady} not ready`,
+  ].join('\n'))
 }
 
 const topLevelPathSegment = (routePath: string) => {
@@ -933,7 +947,7 @@ const createApiJobs = (spec: ApiSpec): ApiJob[] => {
 }
 
 const apiJobs = apiSpecs.flatMap(createApiJobs)
-writeApiReadinessStats()
+printApiReadinessStats()
 
 const createApiConfig = (job: ApiJob): UserConfig => ({
   input: job.document,
