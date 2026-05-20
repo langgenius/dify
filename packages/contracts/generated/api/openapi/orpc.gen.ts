@@ -22,6 +22,7 @@ import {
   zGetOauthDeviceLookupQuery,
   zGetOauthDeviceLookupResponse,
   zGetPermittedExternalAppsResponse,
+  zGetVersionResponse,
   zGetWorkspacesByWorkspaceIdPath,
   zGetWorkspacesByWorkspaceIdResponse,
   zGetWorkspacesResponse,
@@ -65,6 +66,20 @@ export const health = {
   get,
 }
 
+export const get2 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getVersion',
+    path: '/_version',
+    tags: ['openapi'],
+  })
+  .output(zGetVersionResponse)
+
+export const version = {
+  get: get2,
+}
+
 export const delete_ = oc
   .route({
     inputStructure: 'detailed',
@@ -94,7 +109,7 @@ export const bySessionId = {
   delete: delete2,
 }
 
-export const get2 = oc
+export const get3 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -105,12 +120,12 @@ export const get2 = oc
   .output(zGetAccountSessionsResponse)
 
 export const sessions = {
-  get: get2,
+  get: get3,
   self,
   bySessionId,
 }
 
-export const get3 = oc
+export const get4 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -121,7 +136,7 @@ export const get3 = oc
   .output(zGetAccountResponse)
 
 export const account = {
-  get: get3,
+  get: get4,
   sessions,
 }
 
@@ -130,7 +145,7 @@ export const account = {
  *
  * @deprecated
  */
-export const get4 = oc
+export const get5 = oc
   .route({
     deprecated: true,
     description:
@@ -150,7 +165,7 @@ export const get4 = oc
   .output(zGetAppsByAppIdDescribeResponse)
 
 export const describe = {
-  get: get4,
+  get: get5,
 }
 
 /**
@@ -158,7 +173,7 @@ export const describe = {
  *
  * @deprecated
  */
-export const get5 = oc
+export const get6 = oc
   .route({
     deprecated: true,
     description:
@@ -197,7 +212,7 @@ export const post = oc
   .output(zPostAppsByAppIdFormHumanInputByFormTokenResponse)
 
 export const byFormToken = {
-  get: get5,
+  get: get6,
   post,
 }
 
@@ -237,7 +252,7 @@ export const run = {
  *
  * @deprecated
  */
-export const get6 = oc
+export const get7 = oc
   .route({
     deprecated: true,
     description:
@@ -252,7 +267,7 @@ export const get6 = oc
   .output(zGetAppsByAppIdTasksByTaskIdEventsResponse)
 
 export const events = {
-  get: get6,
+  get: get7,
 }
 
 /**
@@ -294,7 +309,7 @@ export const byAppId = {
   tasks,
 }
 
-export const get7 = oc
+export const get8 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -306,7 +321,7 @@ export const get7 = oc
   .output(zGetAppsResponse)
 
 export const apps = {
-  get: get7,
+  get: get8,
   byAppId,
 }
 
@@ -355,7 +370,7 @@ export const deny = {
   post: post6,
 }
 
-export const get8 = oc
+export const get9 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -367,7 +382,7 @@ export const get8 = oc
   .output(zGetOauthDeviceLookupResponse)
 
 export const lookup = {
-  get: get8,
+  get: get9,
 }
 
 /**
@@ -405,7 +420,7 @@ export const oauth = {
   device,
 }
 
-export const get9 = oc
+export const get10 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -416,10 +431,10 @@ export const get9 = oc
   .output(zGetPermittedExternalAppsResponse)
 
 export const permittedExternalApps = {
-  get: get9,
+  get: get10,
 }
 
-export const get10 = oc
+export const get11 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -431,10 +446,10 @@ export const get10 = oc
   .output(zGetWorkspacesByWorkspaceIdResponse)
 
 export const byWorkspaceId = {
-  get: get10,
+  get: get11,
 }
 
-export const get11 = oc
+export const get12 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -445,12 +460,13 @@ export const get11 = oc
   .output(zGetWorkspacesResponse)
 
 export const workspaces = {
-  get: get11,
+  get: get12,
   byWorkspaceId,
 }
 
 export const contract = {
   health,
+  version,
   account,
   apps,
   oauth,

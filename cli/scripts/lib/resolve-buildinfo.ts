@@ -1,5 +1,8 @@
 import type { ExecSyncOptions } from 'node:child_process'
 import { execSync } from 'node:child_process'
+import { readFileSync } from 'node:fs'
+import { dirname, resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
 
 export const BUILD_CHANNELS = ['dev', 'rc', 'stable'] as const
 export type BuildChannel = (typeof BUILD_CHANNELS)[number]
@@ -30,18 +33,41 @@ export const defaultGitProbe: GitProbe = (cmd) => {
   }
 }
 
+type PackageManifest = {
+  difyctl?: {
+    channel?: string
+    compat?: { minDify?: string, maxDify?: string }
+  }
+}
+
+export type PackageReader = () => PackageManifest
+
+// Default reader resolves cli/package.json relative to this file so the same
+// helper works whether invoked from vite.config.ts, bin/dev.js, or release.sh.
+const defaultPackageReader: PackageReader = () => {
+  try {
+    const pkgPath = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..', 'package.json')
+    return JSON.parse(readFileSync(pkgPath, 'utf8')) as PackageManifest
+  }
+  catch {
+    return {}
+  }
+}
+
 export type ResolveOptions = {
   env?: Env
   git?: GitProbe
   now?: () => Date
+  pkg?: PackageReader
 }
 
 export function resolveBuildInfo(opts: ResolveOptions = {}): BuildInfo {
   const env = opts.env ?? process.env
   const git = opts.git ?? defaultGitProbe
   const now = opts.now ?? (() => new Date())
+  const pkg = (opts.pkg ?? defaultPackageReader)()
 
-  const channel = env.DIFYCTL_CHANNEL ?? 'dev'
+  const channel = env.DIFYCTL_CHANNEL ?? pkg.difyctl?.channel ?? 'dev'
   if (!(BUILD_CHANNELS as readonly string[]).includes(channel)) {
     throw new Error(
       `invalid DIFYCTL_CHANNEL: ${channel} (expected ${BUILD_CHANNELS.join(' | ')})`,
@@ -59,8 +85,8 @@ export function resolveBuildInfo(opts: ResolveOptions = {}): BuildInfo {
       ?? 'none'
 
   const buildDate = env.DIFYCTL_BUILD_DATE ?? now().toISOString()
-  const minDify = env.DIFYCTL_MIN_DIFY ?? '0.0.0'
-  const maxDify = env.DIFYCTL_MAX_DIFY ?? '0.0.0'
+  const minDify = env.DIFYCTL_MIN_DIFY ?? pkg.difyctl?.compat?.minDify ?? '0.0.0'
+  const maxDify = env.DIFYCTL_MAX_DIFY ?? pkg.difyctl?.compat?.maxDify ?? '0.0.0'
 
   return { version, commit, buildDate, channel: channel as BuildChannel, minDify, maxDify }
 }

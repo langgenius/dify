@@ -41,6 +41,7 @@ from controllers.openapi._models import (
     PermittedExternalAppsListQuery,
     PermittedExternalAppsListResponse,
     RevokeResponse,
+    ServerVersionResponse,
     SessionListResponse,
     SessionRow,
     TagItem,
@@ -89,9 +90,11 @@ register_response_schema_models(
     DeviceLookupResponse,
     DeviceMutateResponse,
     FileResponse,
+    ServerVersionResponse,
 )
 
 from . import (
+    _meta,
     account,
     app_run,
     apps,
@@ -108,6 +111,7 @@ from . import (
 # Request models are imported from _models.py and registered above.
 
 __all__ = [
+    "_meta",
     "account",
     "app_run",
     "apps",
