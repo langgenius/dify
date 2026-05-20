@@ -5,7 +5,6 @@ import {
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
 import * as React from 'react'
-import { useCallback, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import Menu from './menu'
 
@@ -21,17 +20,9 @@ const Dropdown = ({
   onBreadcrumbClick,
 }: DropdownProps) => {
   const { t } = useTranslation()
-  const menuActionsRef = useRef<{ close: () => void, unmount: () => void } | null>(null)
-
-  const handleBreadCrumbClick = useCallback((index: number) => {
-    onBreadcrumbClick(index)
-    menuActionsRef.current?.close()
-  }, [onBreadcrumbClick])
 
   return (
-    <DropdownMenu
-      actionsRef={menuActionsRef}
-    >
+    <DropdownMenu>
       <DropdownMenuTrigger
         render={(
           <button
@@ -54,7 +45,7 @@ const Dropdown = ({
         <Menu
           breadcrumbs={breadcrumbs}
           startIndex={startIndex}
-          onBreadcrumbClick={handleBreadCrumbClick}
+          onBreadcrumbClick={onBreadcrumbClick}
         />
       </DropdownMenuContent>
       <span className="system-xs-regular text-divider-deep">/</span>

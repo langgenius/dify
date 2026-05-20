@@ -11,7 +11,7 @@ import {
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
 import * as React from 'react'
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
 import ThemeSwitcher from '@/app/components/base/theme-switcher'
@@ -25,44 +25,34 @@ type Props = {
   data?: SiteInfo
   placement?: Placement
   hideLogout?: boolean
-  forceClose?: boolean
 }
 
 const MenuDropdown: FC<Props> = ({
   data,
   placement,
   hideLogout,
-  forceClose,
 }) => {
   const webAppAccessMode = useWebAppStore(s => s.webAppAccessMode)
   const router = useRouter()
   const pathname = usePathname()
   const { t } = useTranslation()
-  const menuActionsRef = useRef<{ close: () => void, unmount: () => void } | null>(null)
 
   const shareCode = useWebAppStore(s => s.shareCode)
-  const handleLogout = useCallback(async () => {
+  const handleLogout = async () => {
     await webAppLogout(shareCode!)
     router.replace(`/webapp-signin?redirect_url=${pathname}`)
-  }, [pathname, router, shareCode])
+  }
 
   const [show, setShow] = useState(false)
-  const handleOpenInfoModal = useCallback(() => {
+  const handleOpenInfoModal = () => {
     queueMicrotask(() => {
       setShow(true)
     })
-  }, [])
-
-  useEffect(() => {
-    if (forceClose)
-      menuActionsRef.current?.close()
-  }, [forceClose])
+  }
 
   return (
     <>
-      <DropdownMenu
-        actionsRef={menuActionsRef}
-      >
+      <DropdownMenu>
         <DropdownMenuTrigger
           render={(
             <ActionButton size="l" className="data-popup-open:bg-state-base-hover">

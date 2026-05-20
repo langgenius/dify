@@ -4,7 +4,7 @@ import type { MouseEventHandler, ReactNode } from 'react'
 import { Avatar } from '@langgenius/dify-ui/avatar'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuLinkItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@langgenius/dify-ui/dropdown-menu'
 import { useSuspenseQuery } from '@tanstack/react-query'
-import { useRef, useState } from 'react'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { resetUser } from '@/app/components/base/amplitude/utils'
 import PremiumBadge from '@/app/components/base/premium-badge'
@@ -109,7 +109,6 @@ function AccountMenuSection({ children }: AccountMenuSectionProps) {
 export default function AppSelector() {
   const router = useRouter()
   const [aboutVisible, setAboutVisible] = useState(false)
-  const menuActionsRef = useRef<{ close: () => void, unmount: () => void } | null>(null)
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
 
   const { t } = useTranslation()
@@ -135,7 +134,7 @@ export default function AppSelector() {
 
   return (
     <div>
-      <DropdownMenu actionsRef={menuActionsRef}>
+      <DropdownMenu>
         <DropdownMenuTrigger
           aria-label={t('account.account', { ns: 'common' })}
           className="inline-flex items-center rounded-[20px] p-0.5 hover:bg-background-default-dodge data-popup-open:bg-background-default-dodge"
@@ -184,7 +183,7 @@ export default function AppSelector() {
                   label={t('userProfile.helpCenter', { ns: 'common' })}
                   trailing={<ExternalLinkIndicator />}
                 />
-                <Support closeAccountDropdown={() => menuActionsRef.current?.close()} />
+                <Support />
                 {IS_CLOUD_EDITION && isCurrentWorkspaceOwner && <Compliance />}
               </AccountMenuSection>
               <DropdownMenuSeparator className="my-0! bg-divider-subtle" />
@@ -213,7 +212,6 @@ export default function AppSelector() {
                       label={t('userProfile.about', { ns: 'common' })}
                       onClick={() => {
                         setAboutVisible(true)
-                        menuActionsRef.current?.close()
                       }}
                       trailing={(
                         <div className="flex shrink-0 items-center">
