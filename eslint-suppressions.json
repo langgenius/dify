@@ -1574,11 +1574,6 @@
       "count": 1
     }
   },
-  "web/app/components/base/radio-card/index.stories.tsx": {
-    "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
   "web/app/components/base/search-input/index.stories.tsx": {
     "no-console": {
       "count": 3
