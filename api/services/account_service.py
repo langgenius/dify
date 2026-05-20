@@ -7,7 +7,7 @@ from datetime import UTC, datetime, timedelta
 from hashlib import sha256
 from typing import Any, TypedDict, cast
 
-from pydantic import BaseModel, TypeAdapter
+from pydantic import BaseModel, TypeAdapter, ValidationError
 from sqlalchemy import delete, func, select, update
 
 from core.db.session_factory import session_factory
@@ -46,6 +46,12 @@ from models.account import (
 )
 from models.model import DifySetup
 from services.billing_service import BillingService
+from services.entities.auth_entities import (
+    ChangeEmailNewEmailToken,
+    ChangeEmailOldEmailToken,
+    ChangeEmailPhase,
+    ChangeEmailTokenData,
+)
 from services.errors.account import (
     AccountAlreadyInTenantError,
     AccountLoginError,
@@ -84,6 +90,8 @@ from tasks.mail_reset_password_task import (
 
 logger = logging.getLogger(__name__)
 
+_change_email_token_adapter: TypeAdapter[ChangeEmailTokenData] = TypeAdapter(ChangeEmailTokenData)
+
 
 class InvitationDetailDict(TypedDict):
     account: Account
@@ -113,13 +121,10 @@ REFRESH_TOKEN_EXPIRY = timedelta(days=dify_config.REFRESH_TOKEN_EXPIRE_DAYS)
 
 
 class AccountService:
-    # Phase-bound token metadata for the change-email flow. Tokens carry the
-    # current phase so that downstream endpoints can enforce proper progression
-    CHANGE_EMAIL_TOKEN_PHASE_KEY = "email_change_phase"
-    CHANGE_EMAIL_PHASE_OLD = "old_email"
-    CHANGE_EMAIL_PHASE_OLD_VERIFIED = "old_email_verified"
-    CHANGE_EMAIL_PHASE_NEW = "new_email"
-    CHANGE_EMAIL_PHASE_NEW_VERIFIED = "new_email_verified"
+    CHANGE_EMAIL_PHASE_OLD = ChangeEmailPhase.OLD_EMAIL
+    CHANGE_EMAIL_PHASE_OLD_VERIFIED = ChangeEmailPhase.OLD_EMAIL_VERIFIED
+    CHANGE_EMAIL_PHASE_NEW = ChangeEmailPhase.NEW_EMAIL
+    CHANGE_EMAIL_PHASE_NEW_VERIFIED = ChangeEmailPhase.NEW_EMAIL_VERIFIED
 
     reset_password_rate_limiter = RateLimiter(prefix="reset_password_rate_limit", max_attempts=1, time_window=60 * 1)
     email_register_rate_limiter = RateLimiter(prefix="email_register_rate_limit", max_attempts=1, time_window=60 * 1)
@@ -583,31 +588,42 @@ class AccountService:
     @classmethod
     def send_change_email_email(
         cls,
-        account: Account | None = None,
+        account: Account,
         email: str | None = None,
         old_email: str | None = None,
         language: str = "en-US",
         phase: str | None = None,
     ):
-        account_email = account.email if account else email
-        if account_email is None:
-            raise ValueError("Email must be provided.")
+        account_email = email if email is not None else account.email
         if not phase:
             raise ValueError("phase must be provided.")
         if phase not in (cls.CHANGE_EMAIL_PHASE_OLD, cls.CHANGE_EMAIL_PHASE_NEW):
             raise ValueError("phase must be one of old_email or new_email.")
+        if old_email is None:
+            raise ValueError("old_email must be provided.")
 
         if cls.change_email_rate_limiter.is_rate_limited(account_email):
             from controllers.console.auth.error import EmailChangeRateLimitExceededError
 
             raise EmailChangeRateLimitExceededError(int(cls.change_email_rate_limiter.time_window / 60))
 
-        code, token = cls.generate_change_email_token(
-            account_email,
-            account,
-            old_email=old_email,
-            additional_data={cls.CHANGE_EMAIL_TOKEN_PHASE_KEY: phase},
-        )
+        code = "".join([str(secrets.randbelow(exclusive_upper_bound=10)) for _ in range(6)])
+        token_data: ChangeEmailTokenData
+        if phase == cls.CHANGE_EMAIL_PHASE_OLD:
+            token_data = ChangeEmailOldEmailToken(
+                account_id=account.id,
+                email=account_email,
+                old_email=old_email,
+                code=code,
+            )
+        else:
+            token_data = ChangeEmailNewEmailToken(
+                account_id=account.id,
+                email=account_email,
+                old_email=old_email,
+                code=code,
+            )
+        token = cls.generate_change_email_token(token_data, account)
 
         send_change_mail_task.delay(
             language=language,
@@ -735,20 +751,16 @@ class AccountService:
     @classmethod
     def generate_change_email_token(
         cls,
-        email: str,
-        account: Account | None = None,
-        code: str | None = None,
-        old_email: str | None = None,
-        additional_data: dict[str, Any] = {},
-    ):
-        if not code:
-            code = "".join([str(secrets.randbelow(exclusive_upper_bound=10)) for _ in range(6)])
-        additional_data["code"] = code
-        additional_data["old_email"] = old_email
+        token_data: ChangeEmailTokenData,
+        account: Account,
+    ) -> str:
         token = TokenManager.generate_token(
-            account=account, email=email, token_type="change_email", additional_data=additional_data
+            account=account,
+            email=token_data.email,
+            token_type="change_email",
+            additional_data=token_data.to_token_manager_payload(),
         )
-        return code, token
+        return token
 
     @classmethod
     def generate_owner_transfer_token(
@@ -791,8 +803,15 @@ class AccountService:
         return TokenManager.get_token_data(token, "email_register")
 
     @classmethod
-    def get_change_email_data(cls, token: str) -> dict[str, Any] | None:
-        return TokenManager.get_token_data(token, "change_email")
+    def get_change_email_data(cls, token: str) -> ChangeEmailTokenData | None:
+        token_data = TokenManager.get_token_data(token, "change_email")
+        if token_data is None:
+            return None
+        try:
+            return _change_email_token_adapter.validate_python(token_data)
+        except ValidationError:
+            logger.warning("change_email token %s has invalid payload", token, exc_info=True)
+            return None
 
     @classmethod
     def get_owner_transfer_data(cls, token: str) -> dict[str, Any] | None:
