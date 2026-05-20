@@ -1748,6 +1748,30 @@ export const zAgentSoulKnowledgeConfig = z.object({
 })
 
 /**
+ * AgentSoulModelCredentialRef
+ *
+ * Reference to model credentials resolved only at runtime.
+ */
+export const zAgentSoulModelCredentialRef = z.object({
+  id: z.string().max(255).nullish(),
+  provider: z.string().max(255).nullish(),
+  type: z.string().min(1).max(64),
+})
+
+/**
+ * AgentSoulModelConfig
+ *
+ * Stable model selection for Agent runtime without storing secret values.
+ */
+export const zAgentSoulModelConfig = z.object({
+  credential_ref: zAgentSoulModelCredentialRef.optional(),
+  model: z.string().min(1).max(255),
+  model_provider: z.string().min(1).max(255),
+  model_settings: z.record(z.string(), z.unknown()).optional(),
+  plugin_id: z.string().min(1).max(255),
+})
+
+/**
  * AgentSoulConfig
  */
 export const zAgentSoulConfig = z.object({
@@ -1758,6 +1782,7 @@ export const zAgentSoulConfig = z.object({
   knowledge: zAgentSoulKnowledgeConfig.optional(),
   memory: zAgentSoulMemoryConfig.optional(),
   misc_legacy: z.record(z.string(), z.unknown()).optional(),
+  model: zAgentSoulModelConfig.optional(),
   prompt: zAgentSoulPromptConfig.optional(),
   sandbox: zAgentSoulSandboxConfig.optional(),
   schema_version: z.int().optional().default(1),
