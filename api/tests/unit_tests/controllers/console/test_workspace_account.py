@@ -54,7 +54,6 @@ def _build_change_email_token(
     code: str = "1234",
 ):
     token_kwargs = {
-        "token_type": "change_email",
         "account_id": account_id,
         "email": email,
         "old_email": old_email,
