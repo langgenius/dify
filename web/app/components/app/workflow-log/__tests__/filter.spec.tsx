@@ -8,7 +8,7 @@
  */
 
 import type { QueryParam } from '../index'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
 import Filter, { TIME_PERIOD_MAPPING } from '../filter'
@@ -297,13 +297,13 @@ describe('Filter', () => {
 
     it('should call setQueryParams when typing in search', async () => {
       const user = userEvent.setup()
-      const setQueryParams = vi.fn()
+      const onSetQueryParams = vi.fn()
 
       const Wrapper = () => {
-        const [queryParams, updateQueryParams] = useState<QueryParam>(createDefaultQueryParams())
+        const [queryParams, setQueryParams] = useState<QueryParam>(() => createDefaultQueryParams())
         const handleSetQueryParams = (next: QueryParam) => {
-          updateQueryParams(next)
           setQueryParams(next)
+          onSetQueryParams(next)
         }
         return (
           <Filter
@@ -319,7 +319,7 @@ describe('Filter', () => {
       await user.type(input, 'workflow')
 
       // Should call setQueryParams for each character typed
-      expect(setQueryParams).toHaveBeenLastCalledWith(
+      expect(onSetQueryParams).toHaveBeenLastCalledWith(
         expect.objectContaining({ keyword: 'workflow' }),
       )
     })
@@ -335,7 +335,9 @@ describe('Filter', () => {
         />,
       )
 
-      await user.click(screen.getByRole('button', { name: 'common.operation.clear' }))
+      const searchInput = screen.getByPlaceholderText('common.operation.search')
+      const searchField = searchInput.closest('div')!
+      await user.click(within(searchField).getByRole('button', { name: 'common.operation.clear' }))
 
       expect(setQueryParams).toHaveBeenCalledWith({
         status: 'all',
