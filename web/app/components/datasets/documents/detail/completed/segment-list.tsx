@@ -15,8 +15,6 @@ import ParagraphListSkeleton from './skeleton/paragraph-list-skeleton'
 type ISegmentListProps = {
   isLoading: boolean
   items: SegmentDetailModel[]
-  selectedSegmentIds: string[]
-  onSelected: (segId: string) => void
   onClick: (detail: SegmentDetailModel, isEditMode?: boolean) => void
   onChangeSwitch: (enabled: boolean, segId?: string) => Promise<void>
   onDelete: (segId: string) => Promise<void>
@@ -33,8 +31,6 @@ const SegmentList = (
     ref,
     isLoading,
     items,
-    selectedSegmentIds,
-    onSelected,
     onClick: onClickCard,
     onChangeSwitch,
     onDelete,
@@ -84,9 +80,8 @@ const SegmentList = (
               <Checkbox
                 key={`${segItem.id}-checkbox`}
                 className="mt-3.5 shrink-0"
-                checked={selectedSegmentIds.includes(segItem.id)}
+                value={segItem.id}
                 aria-label={`${t('segment.chunk', { ns: 'datasetDocuments' })} ${segItem.position}`}
-                onCheckedChange={() => onSelected(segItem.id)}
               />
               <div className="min-w-0 grow">
                 <SegmentCard

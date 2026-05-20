@@ -44,7 +44,7 @@ const InvitationLink = ({
               render={(
                 <button
                   type="button"
-                  className="absolute top-0 right-0 left-0 block w-full cursor-pointer truncate border-none bg-transparent p-0 pr-2 pl-2 text-left text-text-primary"
+                  className="absolute inset-x-0 top-0 block w-full cursor-pointer truncate border-none bg-transparent p-0 px-2 text-left text-text-primary"
                   onClick={copyHandle}
                 >
                   {value.url}

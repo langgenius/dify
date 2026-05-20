@@ -49,7 +49,7 @@ const ListWithCollection = ({
                     onClick={() => onMoreClick(collection.search_params)}
                   >
                     {t('marketplace.viewMore', { ns: 'plugin' })}
-                    <span className="i-ri-arrow-right-s-line h-4 w-4" />
+                    <span className="i-ri-arrow-right-s-line size-4" />
                   </div>
                 )
               }

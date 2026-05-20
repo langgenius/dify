@@ -93,8 +93,8 @@ const RoleSelector = ({ value, onChange }: RoleSelectorProps) => {
           open && 'bg-state-base-hover',
         )}
       >
-        <div className="mr-2 grow text-sm leading-5 text-text-primary">{t('members.invitedAsRole', { ns: 'common', role: selectedRoleName })}</div>
-        <div className={cn('h-4 w-4 shrink-0 text-text-secondary', open ? 'i-ri-arrow-up-s-line' : 'i-ri-arrow-down-s-line')} />
+        <div className="mr-2 grow text-sm/5 text-text-primary">{t('members.invitedAsRole', { ns: 'common', role: selectedRoleName })}</div>
+        <div className={cn('size-4 shrink-0 text-text-secondary', open ? 'i-ri-arrow-up-s-line' : 'i-ri-arrow-down-s-line')} />
       </DropdownMenuTrigger>
       <DropdownMenuContent
         placement="bottom-start"

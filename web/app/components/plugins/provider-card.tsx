@@ -68,7 +68,7 @@ const ProviderCardComponent: FC<Props> = ({
         ))}
       </div>
       <div
-        className="absolute right-0 bottom-0 left-0 hidden items-center gap-2 rounded-xl bg-linear-to-tr from-components-panel-on-panel-item-bg to-background-gradient-mask-transparent p-4 pt-4 group-hover:flex"
+        className="absolute inset-x-0 bottom-0 hidden items-center gap-2 rounded-xl bg-linear-to-tr from-components-panel-on-panel-item-bg to-background-gradient-mask-transparent p-4 pt-4 group-hover:flex"
       >
         {canInstallPlugin && (
           <Button
@@ -85,7 +85,7 @@ const ProviderCardComponent: FC<Props> = ({
         >
           <a href={getPluginLinkInMarketplace(payload, marketplaceLinkParams)} target="_blank" className="flex items-center gap-0.5">
             {t('detailPanel.operation.detail', { ns: 'plugin' })}
-            <span className="i-ri-arrow-right-up-line h-4 w-4" />
+            <span className="i-ri-arrow-right-up-line size-4" />
           </a>
         </Button>
       </div>

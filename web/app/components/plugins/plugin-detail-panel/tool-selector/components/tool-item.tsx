@@ -82,7 +82,7 @@ const ToolItem = ({
           isShowCanNotChooseMCPTip && 'opacity-30',
         )}
         >
-          <div className="flex h-5 w-5 items-center justify-center opacity-35">
+          <div className="flex size-5 items-center justify-center opacity-35">
             <span className="i-custom-vender-other-group text-text-tertiary" />
           </div>
         </div>
@@ -94,7 +94,7 @@ const ToolItem = ({
       <div className="hidden items-center gap-1 group-hover:flex">
         {!noAuth && !isError && !uninstalled && !versionMismatch && !isShowCanNotChooseMCPTip && (
           <ActionButton>
-            <span className="i-ri-equalizer-2-line h-4 w-4" />
+            <span className="i-ri-equalizer-2-line size-4" />
           </ActionButton>
         )}
         <div
@@ -106,7 +106,7 @@ const ToolItem = ({
           onMouseOver={() => setIsDeleting(true)}
           onMouseLeave={() => setIsDeleting(false)}
         >
-          <span className="i-ri-delete-bin-line h-4 w-4" />
+          <span className="i-ri-delete-bin-line size-4" />
         </div>
       </div>
       {!isError && !uninstalled && !noAuth && !versionMismatch && !isShowCanNotChooseMCPTip && showSwitch && (
@@ -169,7 +169,7 @@ const ToolItem = ({
             aria-label={typeof errorTip === 'string' ? errorTip : t('detailPanel.toolSelector.unsupportedTitle', { ns: 'plugin' })}
             className="inline-flex border-0 bg-transparent p-0"
           >
-            <span className="i-ri-error-warning-fill h-4 w-4 text-text-destructive" />
+            <span className="i-ri-error-warning-fill size-4 text-text-destructive" />
           </PopoverTrigger>
           <PopoverContent popupClassName="px-3 py-2 system-xs-regular text-text-tertiary">
             {errorTip}

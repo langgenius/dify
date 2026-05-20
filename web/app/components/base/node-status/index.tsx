@@ -57,7 +57,7 @@ const NodeStatus = ({
       {...props}
     >
       <Icon
-        className={cn('h-3.5 w-3.5 shrink-0', iconClassName)}
+        className={cn('size-3.5 shrink-0', iconClassName)}
       />
       <span>{message ?? defaultMessage}</span>
       {children}

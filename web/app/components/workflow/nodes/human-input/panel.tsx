@@ -137,7 +137,7 @@ const Panel: FC<NodePanelProps<HumanInputNodeType>> = ({
                     toast.success(t('actionMsg.copySuccessfully', { ns: 'common' }))
                   }}
                 >
-                  <RiClipboardLine className="h-4 w-4 text-text-secondary" aria-hidden />
+                  <RiClipboardLine className="size-4 text-text-secondary" aria-hidden />
                 </button>
                 <button
                   type="button"
@@ -145,7 +145,7 @@ const Panel: FC<NodePanelProps<HumanInputNodeType>> = ({
                   className={cn('flex size-6 cursor-pointer items-center justify-center rounded-md border-none bg-transparent p-0 text-text-secondary hover:bg-components-button-ghost-bg-hover', isExpandFormContent && 'bg-state-accent-active text-text-accent')}
                   onClick={toggleExpandFormContent}
                 >
-                  {isExpandFormContent ? <RiCollapseDiagonalLine className="h-4 w-4" aria-hidden /> : <RiExpandDiagonalLine className="h-4 w-4" aria-hidden />}
+                  {isExpandFormContent ? <RiCollapseDiagonalLine className="size-4" aria-hidden /> : <RiExpandDiagonalLine className="size-4" aria-hidden />}
                 </button>
               </div>
             </div>
@@ -180,7 +180,7 @@ const Panel: FC<NodePanelProps<HumanInputNodeType>> = ({
               <ActionButton
                 onClick={onAddUseAction}
               >
-                <RiAddLine className="h-4 w-4" />
+                <RiAddLine className="size-4" />
               </ActionButton>
             </div>
           )}

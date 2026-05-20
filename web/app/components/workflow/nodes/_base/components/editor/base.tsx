@@ -108,10 +108,10 @@ const Base: FC<Props> = ({
             <ActionButton className="ml-1" onClick={handleCopy}>
               {!isCopied
                 ? (
-                    <Copy className="h-4 w-4 cursor-pointer" />
+                    <Copy className="size-4 cursor-pointer" />
                   )
                 : (
-                    <CopyCheck className="h-4 w-4" />
+                    <CopyCheck className="size-4" />
                   )}
             </ActionButton>
             <div className="ml-1">

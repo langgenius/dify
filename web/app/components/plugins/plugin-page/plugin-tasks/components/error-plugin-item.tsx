@@ -106,8 +106,8 @@ const ErrorPluginItem: FC<ErrorPluginItemProps> = ({ plugin, getIconUrl, languag
         getIconUrl={getIconUrl}
         language={language}
         statusIcon={(
-          <span className="flex h-4 w-4 items-center justify-center rounded-full border border-components-panel-bg bg-components-panel-bg">
-            <span className="i-ri-error-warning-fill h-4 w-4 text-text-destructive" />
+          <span className="flex size-4 items-center justify-center rounded-full border border-components-panel-bg bg-components-panel-bg">
+            <span className="i-ri-error-warning-fill size-4 text-text-destructive" />
           </span>
         )}
         statusText={(

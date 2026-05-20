@@ -76,7 +76,7 @@ export default function ConfigCredential({
             className={cn(
               'data-[swipe-direction=right]:top-2 data-[swipe-direction=right]:bottom-auto data-[swipe-direction=right]:h-fit data-[swipe-direction=right]:max-h-[calc(100dvh-1rem)] data-[swipe-direction=right]:w-130 data-[swipe-direction=right]:max-w-[calc(100vw-1rem)] data-[swipe-direction=right]:rounded-xl data-[swipe-direction=right]:border-r-[0.5px] data-[swipe-direction=right]:border-divider-subtle',
               positionCenter
-                ? 'data-[swipe-direction=right]:right-[max(0.5rem,calc(50%_-_260px))]'
+                ? 'data-[swipe-direction=right]:right-[max(0.5rem,calc(50%-260px))]'
                 : 'data-[swipe-direction=right]:right-2',
             )}
           >
@@ -88,7 +88,7 @@ export default function ConfigCredential({
                   </DrawerTitle>
                   <DrawerCloseButton
                     aria-label={t('operation.close', { ns: 'common' })}
-                    className="h-6 w-6 rounded-md"
+                    className="size-6 rounded-md"
                   />
                 </div>
               </div>
@@ -158,7 +158,7 @@ export default function ConfigCredential({
                           {t('createTool.authMethod.key', { ns: 'tools' })}
                           <Infotip
                             aria-label={t('createTool.authMethod.keyTooltip', { ns: 'tools' })}
-                            className="ml-0.5 h-4 w-4"
+                            className="ml-0.5 size-4"
                             popupClassName="w-[261px] text-text-tertiary"
                           >
                             {t('createTool.authMethod.keyTooltip', { ns: 'tools' })}
@@ -187,7 +187,7 @@ export default function ConfigCredential({
                           {t('createTool.authMethod.queryParam', { ns: 'tools' })}
                           <Infotip
                             aria-label={t('createTool.authMethod.queryParamTooltip', { ns: 'tools' })}
-                            className="ml-0.5 h-4 w-4"
+                            className="ml-0.5 size-4"
                             popupClassName="w-[261px] text-text-tertiary"
                           >
                             {t('createTool.authMethod.queryParamTooltip', { ns: 'tools' })}
@@ -211,7 +211,7 @@ export default function ConfigCredential({
                   )}
                 </div>
               </div>
-              <div className="mt-4 flex shrink-0 justify-end space-x-2 py-4 pr-6 pl-6">
+              <div className="mt-4 flex shrink-0 justify-end space-x-2 px-6 py-4">
                 <Button onClick={onHide}>{t('operation.cancel', { ns: 'common' })}</Button>
                 <Button
                   variant="primary"

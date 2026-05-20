@@ -235,10 +235,11 @@ class TokenBufferMemory:
             if isinstance(m.content, list):
                 inner_msg = ""
                 for content in m.content:
-                    if isinstance(content, TextPromptMessageContent):
-                        inner_msg += f"{content.data}\n"
-                    elif isinstance(content, ImagePromptMessageContent):
-                        inner_msg += "[image]\n"
+                    match content:
+                        case TextPromptMessageContent():
+                            inner_msg += f"{content.data}\n"
+                        case ImagePromptMessageContent():
+                            inner_msg += "[image]\n"
 
                 string_messages.append(f"{role}: {inner_msg.strip()}")
             else:

@@ -101,7 +101,7 @@ function PopupItem({
           onClick={() => setCollapsed(prev => !prev)}
         >
           <span className="truncate">{model.label[language] || model.label.en_US}</span>
-          <span className={cn('i-custom-vender-solid-general-arrow-down-round-fill h-4 w-4 shrink-0 text-text-quaternary', collapsed && '-rotate-90')} />
+          <span className={cn('i-custom-vender-solid-general-arrow-down-round-fill size-4 shrink-0 text-text-quaternary', collapsed && '-rotate-90')} />
         </button>
         <Popover open={dropdownOpen} onOpenChange={setDropdownOpen}>
           <PopoverTrigger
@@ -113,13 +113,13 @@ function PopupItem({
                       hasCredits
                         ? (
                             <>
-                              <CreditsCoin className="h-3 w-3" />
+                              <CreditsCoin className="size-3" />
                               <span className="ml-1 truncate">{t('modelProvider.selector.aiCredits', { ns: 'common' })}</span>
                             </>
                           )
                         : (
                             <>
-                              <span className="i-ri-alert-fill h-3 w-3 shrink-0 text-text-warning-secondary" />
+                              <span className="i-ri-alert-fill size-3 shrink-0 text-text-warning-secondary" />
                               <span className="ml-1 truncate text-text-warning">{t('modelProvider.selector.creditsExhausted', { ns: 'common' })}</span>
                             </>
                           )
@@ -127,17 +127,17 @@ function PopupItem({
                   : credentialName
                     ? (
                         <>
-                          <span className={cn('h-1.5 w-1.5 shrink-0 rounded-xs border', isApiKeyActive ? 'border-components-badge-status-light-success-border-inner bg-components-badge-status-light-success-bg' : 'border-components-badge-status-light-error-border-inner bg-components-badge-status-light-error-bg')} />
+                          <span className={cn('size-1.5 shrink-0 rounded-xs border', isApiKeyActive ? 'border-components-badge-status-light-success-border-inner bg-components-badge-status-light-success-bg' : 'border-components-badge-status-light-error-border-inner bg-components-badge-status-light-error-bg')} />
                           <span className="ml-1 truncate text-text-tertiary">{credentialName}</span>
                         </>
                       )
                     : (
                         <>
-                          <span className="h-1.5 w-1.5 shrink-0 rounded-xs border border-components-badge-status-light-disabled-border-inner bg-components-badge-status-light-disabled-bg" />
+                          <span className="size-1.5 shrink-0 rounded-xs border border-components-badge-status-light-disabled-border-inner bg-components-badge-status-light-disabled-bg" />
                           <span className="ml-1 truncate text-text-tertiary">{t('modelProvider.selector.configureRequired', { ns: 'common' })}</span>
                         </>
                       )}
-                {canUseCredentials && <span className="i-ri-arrow-down-s-line h-3.5! w-3.5! shrink-0 translate-y-px text-text-tertiary" />}
+                {canUseCredentials && <span className="i-ri-arrow-down-s-line size-3.5! shrink-0 translate-y-px text-text-tertiary" />}
               </button>
             )}
           />
@@ -161,7 +161,7 @@ function PopupItem({
           <>
             <div className="flex min-w-0 items-center gap-2">
               <ModelIcon
-                className={cn('h-5 w-5 shrink-0')}
+                className={cn('size-5 shrink-0')}
                 provider={model}
                 modelName={modelItem.model}
               />
@@ -173,7 +173,7 @@ function PopupItem({
             {
               defaultModel?.model === modelItem.model && defaultModel.provider === currentProvider.provider && (
                 <ComboboxItemIndicator className="shrink-0 text-text-accent">
-                  <span className="i-custom-vender-line-general-check h-4 w-4" aria-hidden="true" />
+                  <span className="i-custom-vender-line-general-check size-4" aria-hidden="true" />
                 </ComboboxItemIndicator>
               )
             }

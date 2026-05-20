@@ -89,7 +89,7 @@ const ModelListItem = ({ model, provider, isConfigurable, onChange, onModifyLoad
       <div className="flex shrink-0 items-center">
         {modelLoadBalancingEnabled && !model.deprecated && model.load_balancing_enabled && !model.has_invalid_load_balancing_configs && (
           <Badge className="mr-1 h-4.5 w-4.5 items-center justify-center border-text-accent-secondary p-0">
-            <Balance className="h-3 w-3 text-text-accent-secondary" />
+            <Balance className="size-3 text-text-accent-secondary" />
           </Badge>
         )}
         {

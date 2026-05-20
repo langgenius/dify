@@ -22,9 +22,9 @@ export const OptionCardHeader: FC<OptionCardHeaderProps> = (props) => {
   return (
     <div className={cn('relative flex flex-1 overflow-hidden rounded-t-xl', isActive && activeClassName, !disabled && 'cursor-pointer')}>
       <div className="relative flex size-14 items-center justify-center overflow-hidden">
-        {isActive && effectImg && <img src={effectImg} className="absolute top-0 left-0 h-full w-full" alt="" width={56} height={56} />}
+        {isActive && effectImg && <img src={effectImg} className="absolute top-0 left-0 size-full" alt="" width={56} height={56} />}
         <div className="p-1">
-          <div className="flex size-8 justify-center rounded-lg border border-components-panel-border-subtle bg-background-default-dodge p-1.5 shadow-md">
+          <div className="flex action-btn-l justify-center border border-components-panel-border-subtle bg-background-default-dodge shadow-md">
             {icon}
           </div>
         </div>

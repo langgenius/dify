@@ -137,7 +137,7 @@ const FeaturedTools = ({
         <span className="system-xs-medium text-text-primary">{t('tabs.featuredTools', { ns: 'workflow' })}</span>
         <span className={cn(
           'i-custom-vender-solid-arrows-arrow-down-round-fill',
-          'ml-0.5 h-4 w-4 text-text-tertiary transition-transform',
+          'ml-0.5 size-4 text-text-tertiary transition-transform',
           isCollapsed ? '-rotate-90' : 'rotate-0',
         )}
         />
@@ -281,7 +281,7 @@ function FeaturedToolUninstalledItem({
       <div className="ml-auto flex h-full items-center gap-1 pl-1">
         <span className={`system-xs-regular text-text-tertiary ${actionOpen ? 'hidden' : 'group-hover:hidden'}`}>{installCountLabel}</span>
         <div
-          className={`flex h-full items-center gap-1 system-xs-medium text-components-button-secondary-accent-text [&_.action-btn]:h-6 [&_.action-btn]:min-h-0 [&_.action-btn]:w-6 [&_.action-btn]:rounded-lg [&_.action-btn]:p-0 ${actionOpen ? '' : 'hidden group-hover:flex'}`}
+          className={`flex h-full items-center gap-1 system-xs-medium text-components-button-secondary-accent-text [&_.action-btn]:size-6 [&_.action-btn]:min-h-0 [&_.action-btn]:rounded-lg [&_.action-btn]:p-0 ${actionOpen ? '' : 'hidden group-hover:flex'}`}
         >
           {canInstallPlugin && (
             <button
@@ -359,7 +359,7 @@ function FeaturedToolPreviewCard({
     <PreviewCardContent placement="right" popupClassName="w-[224px] px-3 py-2.5">
       <div>
         <BlockIcon size="md" className="mb-2" type={BlockEnum.Tool} toolIcon={payload.plugin.icon} />
-        <div className="mb-1 text-sm leading-5 text-text-primary">{payload.label}</div>
+        <div className="mb-1 text-sm/5 text-text-primary">{payload.label}</div>
         <div className="text-xs leading-[18px] wrap-break-word text-text-secondary">{payload.description}</div>
       </div>
     </PreviewCardContent>

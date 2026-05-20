@@ -203,7 +203,7 @@ const PluginPage = ({
                         className="px-3"
                         variant="secondary-accent"
                       >
-                        <span className="mr-1 i-ri-book-open-line h-4 w-4" />
+                        <span className="mr-1 i-ri-book-open-line size-4" />
                         {t('publishPlugins', { ns: 'plugin' })}
                       </Button>
                     </Link>
@@ -229,10 +229,10 @@ const PluginPage = ({
                       render={(
                         <Button
                           aria-label={t('privilege.title', { ns: 'plugin' })}
-                          className="group h-full w-full p-2 text-components-button-secondary-text"
+                          className="group size-full p-2 text-components-button-secondary-text"
                           onClick={setShowPluginSettingModal}
                         >
-                          <span className="i-ri-equalizer-2-line h-4 w-4" aria-hidden="true" />
+                          <span className="i-ri-equalizer-2-line size-4" aria-hidden="true" />
                         </Button>
                       )}
                     />
@@ -258,7 +258,7 @@ const PluginPage = ({
                   </div>
                 )}
                 <div className={`flex items-center justify-center gap-2 py-4 ${dragging ? 'text-text-accent' : 'text-text-quaternary'}`}>
-                  <span className="i-ri-drag-drop-line h-4 w-4" />
+                  <span className="i-ri-drag-drop-line size-4" />
                   <span className="system-xs-regular">{t('installModal.dropPluginToInstall', { ns: 'plugin' })}</span>
                 </div>
                 {currentFile && (

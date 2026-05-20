@@ -499,7 +499,7 @@ describe('Processing', () => {
       const { container } = render(<Processing {...props} />)
 
       // Assert - Check for flex layout with proper widths
-      const mainContainer = container.querySelector('.flex.h-full.w-full.justify-center')
+      const mainContainer = container.querySelector('.flex.size-full.justify-center')
       expect(mainContainer).toBeInTheDocument()
 
       // Check for left panel (3/5 width)

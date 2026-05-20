@@ -63,7 +63,7 @@ export const ToolIcon = memo(({ providerName }: ToolIconProps) => {
     throw new Error('Unknown status')
   }, [name, notSuccess, status, t])
   const [iconFetchError, setIconFetchError] = useState(false)
-  let iconContent: ReactNode = <Group className="h-3 w-3 opacity-35" />
+  let iconContent: ReactNode = <Group className="size-3 opacity-35" />
 
   if (!iconFetchError && icon) {
     if (typeof icon === 'string') {
@@ -71,7 +71,7 @@ export const ToolIcon = memo(({ providerName }: ToolIconProps) => {
         <img
           src={icon}
           alt="tool icon"
-          className={cn('size-3.5 h-full w-full object-cover', notSuccess && 'opacity-50')}
+          className={cn('size-3.5 size-full object-cover', notSuccess && 'opacity-50')}
           onError={() => setIconFetchError(true)}
         />
       )
@@ -79,7 +79,7 @@ export const ToolIcon = memo(({ providerName }: ToolIconProps) => {
     else if (typeof icon === 'object') {
       iconContent = (
         <AppIcon
-          className={cn('size-3.5 h-full w-full object-cover', notSuccess && 'opacity-50')}
+          className={cn('size-3.5 size-full object-cover', notSuccess && 'opacity-50')}
           icon={icon?.content}
           background={icon?.background}
         />

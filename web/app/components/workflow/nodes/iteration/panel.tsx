@@ -52,7 +52,7 @@ const Panel: FC<NodePanelProps<IterationNodeType>> = ({
   const selectedResponseMethod = responseMethod.find(item => item.value === inputs.error_handle_mode)
 
   return (
-    <div className="pt-2 pb-2">
+    <div className="py-2">
       <div className="space-y-4 px-4 pb-4">
         <Field
           title={t(`${i18nPrefix}.input`, { ns: 'workflow' })}

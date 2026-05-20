@@ -84,7 +84,7 @@ const SwitchCredentialInLoadBalancing = ({
             <Badge className="ml-2">Enterprise</Badge>
           )
         }
-        <RiArrowDownSLine className="h-4 w-4" />
+        <RiArrowDownSLine className="size-4" />
       </Button>
     )
     if (empty && notAllowCustomCredential) {

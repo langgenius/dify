@@ -74,11 +74,11 @@ const CreateAppCard = ({
       <div className="grow rounded-t-xl p-2">
         <div className="px-6 pt-2 pb-1 text-xs leading-4.5 font-medium text-text-tertiary">{t('createApp', { ns: 'app' })}</div>
         <button type="button" className="mb-1 flex w-full cursor-pointer items-center rounded-lg px-6 py-1.75 text-[13px] leading-4.5 font-medium text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary" onClick={() => setShowNewAppModal(true)}>
-          <span className="mr-2 i-custom-vender-line-files-file-plus-01 h-4 w-4 shrink-0" />
+          <span className="mr-2 i-custom-vender-line-files-file-plus-01 size-4 shrink-0" />
           {t('newApp.startFromBlank', { ns: 'app' })}
         </button>
         <button type="button" className="flex w-full cursor-pointer items-center rounded-lg px-6 py-1.75 text-[13px] leading-4.5 font-medium text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary" onClick={() => setShowNewAppTemplateDialog(true)}>
-          <span className="mr-2 i-custom-vender-line-files-file-plus-02 h-4 w-4 shrink-0" />
+          <span className="mr-2 i-custom-vender-line-files-file-plus-02 size-4 shrink-0" />
           {t('newApp.startFromTemplate', { ns: 'app' })}
         </button>
         <button
@@ -86,7 +86,7 @@ const CreateAppCard = ({
           onClick={() => setShowCreateFromDSLModal(true)}
           className="flex w-full cursor-pointer items-center rounded-lg px-6 py-1.75 text-[13px] leading-4.5 font-medium text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary"
         >
-          <span className="mr-2 i-custom-vender-line-files-file-arrow-01 h-4 w-4 shrink-0" />
+          <span className="mr-2 i-custom-vender-line-files-file-arrow-01 size-4 shrink-0" />
           {t('importDSL', { ns: 'app' })}
         </button>
       </div>
