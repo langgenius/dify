@@ -40,6 +40,12 @@ class _TokenData(TypedDict, total=False):
     specific metadata keys while still validating the common auth fields.
     Business flows that need stronger guarantees should validate again at
     their own boundary with a dedicated Pydantic model.
+
+    For the change-email flow specifically, `email_change_phase` is the
+    discriminator used by `services.entities.auth_entities.ChangeEmailTokenData`.
+    It is declared here so the shared token adapter can still provide baseline
+    validation for the state-machine key without taking over the full business
+    model.
     """
 
     __pydantic_config__ = ConfigDict(extra="allow")
@@ -50,6 +56,7 @@ class _TokenData(TypedDict, total=False):
     code: str
     old_email: str
     phase: str
+    email_change_phase: str
 
 
 _token_data_adapter: TypeAdapter[_TokenData] = TypeAdapter(_TokenData)

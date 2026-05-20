@@ -116,3 +116,28 @@ def test_token_manager_roundtrip_still_validates_declared_fields() -> None:
 
     with pytest.raises(ValidationError):
         TokenManager.get_token_data("token-123", "change_email")
+
+
+def test_token_manager_roundtrip_validates_email_change_phase_as_string() -> None:
+    """`email_change_phase` is part of the shared baseline schema, so obviously
+    malformed discriminator values should fail before the change-email-specific
+    union parsing at the callsite boundary.
+    """
+
+    storage = {
+        "change_email:token:token-456": json.dumps(
+            {
+                "token_type": "change_email",
+                "account_id": "acc-1",
+                "email": "new@example.com",
+                "code": "654321",
+                "old_email": "old@example.com",
+                "email_change_phase": ["not-a-string"],
+            }
+        )
+    }
+
+    helper_module.redis_client.get.side_effect = storage.get
+
+    with pytest.raises(ValidationError):
+        TokenManager.get_token_data("token-456", "change_email")
