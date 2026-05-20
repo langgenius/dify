@@ -1,4 +1,3 @@
-import type { MemberInviteResponse } from '@dify/contracts/api/openapi/types.gen'
 import type { KyInstance } from 'ky'
 import type { HostsBundle } from '../../../auth/hosts.js'
 import type { IOStreams } from '../../../io/streams.js'
@@ -9,11 +8,13 @@ import { colorEnabled, colorScheme } from '../../../io/color.js'
 import { runWithSpinner } from '../../../io/spinner.js'
 import { nullStreams } from '../../../io/streams.js'
 import { resolveWorkspaceId } from '../../../workspace/resolver.js'
+import { InviteOutput } from './handlers.js'
 
 export type CreateMemberOptions = {
   readonly email: string
   readonly role: string
   readonly workspace?: string
+  readonly format?: string
 }
 
 export type CreateMemberDeps = {
@@ -24,13 +25,18 @@ export type CreateMemberDeps = {
   readonly membersFactory?: (http: KyInstance) => MembersClient
 }
 
+export type CreateMemberResult = {
+  readonly data: InviteOutput
+  readonly workspaceId: string
+}
+
 // `owner` is intentionally absent — ownership transfer is console-only.
 const ASSIGNABLE_ROLES = new Set(['normal', 'admin'])
 
 export async function runCreateMember(
   opts: CreateMemberOptions,
   deps: CreateMemberDeps,
-): Promise<MemberInviteResponse> {
+): Promise<CreateMemberResult> {
   if (opts.email === undefined || opts.email === '') {
     throw new BaseError({
       code: ErrorCode.UsageMissingArg,
@@ -56,7 +62,7 @@ export async function runCreateMember(
     bundle: deps.bundle,
   })
 
-  const result = await runWithSpinner(
+  const response = await runWithSpinner(
     { io, label: `Inviting ${opts.email}` },
     () => factory(deps.http).invite(wsId, {
       email: opts.email,
@@ -64,6 +70,6 @@ export async function runCreateMember(
     }),
   )
 
-  io.out.write(`${cs.successIcon()} Invited ${result.email} as ${result.role}\n`)
-  return result
+  const textLine = `${cs.successIcon()} Invited ${response.email} as ${response.role}\n`
+  return { data: new InviteOutput(response, textLine), workspaceId: wsId }
 }

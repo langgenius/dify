@@ -1,4 +1,5 @@
 import { Args, Flags } from '../../../framework/flags.js'
+import { formatted } from '../../../framework/output.js'
 import { DifyCommand } from '../../_shared/dify-command.js'
 import { httpRetryFlag } from '../../_shared/global-flags.js'
 import { runDeleteMember } from './run.js'
@@ -9,6 +10,7 @@ export default class DeleteMember extends DifyCommand {
   static override examples = [
     '<%= config.bin %> delete member acct-1',
     '<%= config.bin %> delete member acct-1 -w ws-1',
+    '<%= config.bin %> delete member acct-1 -o json',
   ]
 
   static override args = {
@@ -21,14 +23,17 @@ export default class DeleteMember extends DifyCommand {
       description: 'workspace id (overrides DIFY_WORKSPACE_ID and stored default)',
     }),
     'http-retry': httpRetryFlag,
+    'output': Flags.string({ char: 'o', description: 'output format (json|yaml|name|text)', default: '' }),
   }
 
-  async run(argv: string[]): Promise<void> {
+  async run(argv: string[]) {
     const { args, flags } = this.parse(DeleteMember, argv)
-    const ctx = await this.authedCtx({ retryFlag: flags['http-retry'] })
-    await runDeleteMember(
-      { memberId: args.memberId, workspace: flags.workspace },
+    const format = flags.output
+    const ctx = await this.authedCtx({ retryFlag: flags['http-retry'], format })
+    const result = await runDeleteMember(
+      { memberId: args.memberId, workspace: flags.workspace, format },
       { bundle: ctx.bundle, http: ctx.http, io: ctx.io },
     )
+    return formatted({ format, data: result.data })
   }
 }

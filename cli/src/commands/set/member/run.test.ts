@@ -22,21 +22,22 @@ function fakeClient() {
 }
 
 describe('runSetMember', () => {
-  it('happy path: PUT new role and print success', async () => {
-    const io = bufferStreams()
+  it('happy path: PUT new role, returns SetMemberOutput with text/json/name', async () => {
     const client = fakeClient()
     const result = await runSetMember(
       { memberId: 'acct-2', role: 'admin' },
       {
         bundle: bundle(),
         http: {} as KyInstance,
-        io,
+        io: bufferStreams(),
         membersFactory: () => client as never,
       },
     )
     expect(client.updateRole).toHaveBeenCalledExactlyOnceWith('ws-1', 'acct-2', { role: 'admin' })
-    expect(result.result).toBe('success')
-    expect(io.outBuf()).toMatch(/Set acct-2 role to admin/)
+    expect(result.data.text()).toMatch(/Set acct-2 role to admin/)
+    expect(result.data.name()).toBe('acct-2')
+    expect(result.data.json()).toEqual({ id: 'acct-2', role: 'admin' })
+    expect(result.workspaceId).toBe('ws-1')
   })
 
   it('rejects unknown role before any HTTP call', async () => {
