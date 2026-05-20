@@ -10,7 +10,6 @@ import {
 import {
   Fragment,
   memo,
-  useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
@@ -20,14 +19,16 @@ import {
 import TipPopup from '@/app/components/workflow/operator/tip-popup'
 import { ShortcutKbd } from '@/app/components/workflow/shortcuts/shortcut-kbd'
 
-enum ZoomType {
-  zoomToFit = 'zoomToFit',
-  zoomTo25 = 'zoomTo25',
-  zoomTo50 = 'zoomTo50',
-  zoomTo75 = 'zoomTo75',
-  zoomTo100 = 'zoomTo100',
-  zoomTo200 = 'zoomTo200',
-}
+const ZoomType = {
+  zoomToFit: 'zoomToFit',
+  zoomTo25: 'zoomTo25',
+  zoomTo50: 'zoomTo50',
+  zoomTo75: 'zoomTo75',
+  zoomTo100: 'zoomTo100',
+  zoomTo200: 'zoomTo200',
+} as const
+
+type ZoomType = typeof ZoomType[keyof typeof ZoomType]
 
 const ZoomInOut: FC = () => {
   const { t } = useTranslation()
@@ -38,7 +39,6 @@ const ZoomInOut: FC = () => {
     fitView,
   } = useReactFlow()
   const { zoom } = useViewport()
-  const [open, setOpen] = useState(false)
 
   const zoomOptions = [
     [
@@ -71,9 +71,7 @@ const ZoomInOut: FC = () => {
     ],
   ]
 
-  const handleZoom = (type: string) => {
-    setOpen(false)
-
+  const handleZoom = (type: ZoomType) => {
     if (type === ZoomType.zoomToFit)
       fitView()
 
@@ -122,11 +120,8 @@ const ZoomInOut: FC = () => {
             <span aria-hidden className="i-ri-zoom-out-line size-4 text-text-tertiary hover:text-text-secondary" />
           </button>
         </TipPopup>
-        <DropdownMenu
-          open={open}
-          onOpenChange={setOpen}
-        >
-          <DropdownMenuTrigger className={cn('flex h-8 w-[34px] items-center justify-center rounded-lg system-sm-medium text-text-tertiary hover:bg-black/5 hover:text-text-secondary', open && 'bg-black/5 text-text-secondary')}>
+        <DropdownMenu>
+          <DropdownMenuTrigger className="flex h-8 w-[34px] items-center justify-center rounded-lg system-sm-medium text-text-tertiary hover:bg-black/5 hover:text-text-secondary data-popup-open:bg-black/5 data-popup-open:text-text-secondary">
             {Number.parseFloat(`${zoom * 100}`).toFixed(0)}
             %
           </DropdownMenuTrigger>

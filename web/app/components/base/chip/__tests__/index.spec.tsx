@@ -40,7 +40,7 @@ describe('Chip', () => {
 
   // Helper function to get the trigger element
   const getTrigger = (container: HTMLElement) => {
-    return container.querySelector('[role="button"][aria-haspopup="menu"]') as HTMLElement | null
+    return container.querySelector('button[aria-haspopup="menu"], [role="button"][aria-haspopup="menu"]') as HTMLElement | null
   }
 
   // Helper function to open dropdown panel
@@ -98,12 +98,11 @@ describe('Chip', () => {
     })
 
     it('should hide left icon when showLeftIcon is false', () => {
-      renderChip({ showLeftIcon: false })
+      renderChip({ showLeftIcon: false, value: '' })
 
       // When showLeftIcon is false, there should be no filter icon before the text
-      const textElement = screen.getByText('All Items')
-      const parent = textElement.closest('[role="button"]')
-      const icons = parent?.querySelectorAll('svg')
+      const trigger = getTrigger(document.body)
+      const icons = trigger?.querySelectorAll('svg')
 
       // Should only have the arrow icon, not the filter icon
       expect(icons?.length).toBe(1)
@@ -190,12 +189,7 @@ describe('Chip', () => {
     it('should call onClear when clear button is clicked', () => {
       const { container } = renderChip({ value: 'active' })
 
-      // Find the close icon (last SVG in the trigger) and click its parent
-      const trigger = getTrigger(container)
-      const svgs = trigger?.querySelectorAll('svg')
-      // The close icon should be the last SVG element
-      const closeIcon = svgs?.[svgs.length - 1]
-      const clearButton = closeIcon?.parentElement
+      const clearButton = container.querySelector('button[aria-label="common.operation.clear"]')
 
       expect(clearButton)!.toBeInTheDocument()
       if (clearButton)
@@ -210,10 +204,7 @@ describe('Chip', () => {
       const trigger = getTrigger(container)
       expect(trigger)!.toHaveAttribute('aria-expanded', 'false')
 
-      // Find the close icon (last SVG) and click its parent
-      const svgs = trigger?.querySelectorAll('svg')
-      const closeIcon = svgs?.[svgs.length - 1]
-      const clearButton = closeIcon?.parentElement
+      const clearButton = container.querySelector('button[aria-label="common.operation.clear"]')
 
       if (clearButton)
         fireEvent.click(clearButton)

@@ -39,16 +39,15 @@ const OperationDropdown: FC<Props> = ({
   popupClassName,
 }) => {
   const { t } = useTranslation()
-  const [open, setOpen] = React.useState(false)
   const { data: enable_marketplace } = useSuspenseQuery({
     ...systemFeaturesQueryOptions(),
     select: s => s.enable_marketplace,
   })
 
   return (
-    <DropdownMenu open={open} onOpenChange={setOpen}>
+    <DropdownMenu>
       <DropdownMenuTrigger
-        className={cn('action-btn action-btn-m', open && 'bg-state-base-hover')}
+        className="action-btn action-btn-m data-popup-open:bg-state-base-hover"
       >
         <span className="i-ri-more-fill size-4" />
       </DropdownMenuTrigger>
