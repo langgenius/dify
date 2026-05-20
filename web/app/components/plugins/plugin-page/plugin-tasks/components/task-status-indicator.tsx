@@ -44,7 +44,7 @@ const TaskStatusIndicator: FC<TaskStatusIndicatorProps> = ({
             size="small"
             aria-label={tip}
             className={cn(
-              'relative h-8 w-8 rounded-lg px-0',
+              'relative size-8 rounded-lg px-0',
               'focus-visible:ring-2 focus-visible:ring-state-accent-solid',
               showErrorStyle && 'cursor-pointer border-components-button-destructive-secondary-border-hover bg-state-destructive-hover hover:bg-state-destructive-hover-alt',
               (isInstalling || isInstallingWithSuccess || isSuccess) && 'cursor-pointer hover:bg-components-button-secondary-bg-hover',
@@ -58,7 +58,7 @@ const TaskStatusIndicator: FC<TaskStatusIndicatorProps> = ({
                   <span
                     aria-hidden
                     className={cn(
-                      'i-ri-install-line h-4 w-4 text-components-button-secondary-text',
+                      'i-ri-install-line size-4 text-components-button-secondary-text',
                       showErrorStyle && 'text-components-button-destructive-secondary-text',
                     )}
                   />
@@ -80,10 +80,10 @@ const TaskStatusIndicator: FC<TaskStatusIndicatorProps> = ({
                 />
               )}
               {showSuccessIcon && !isInstalling && !isInstallingWithSuccess && !isInstallingWithError && (
-                <span aria-hidden className="i-ri-checkbox-circle-fill h-3.5 w-3.5 text-text-success" />
+                <span aria-hidden className="i-ri-checkbox-circle-fill size-3.5 text-text-success" />
               )}
               {isFailed && (
-                <span aria-hidden className="i-ri-error-warning-fill h-3.5 w-3.5 text-text-destructive" />
+                <span aria-hidden className="i-ri-error-warning-fill size-3.5 text-text-destructive" />
               )}
             </div>
           </Button>

@@ -52,7 +52,7 @@ const CommentPreview: FC<CommentPreviewProps> = ({ comment, onClick }) => {
         </div>
       </div>
 
-      <div className="system-sm-regular break-words text-text-secondary">{comment.content}</div>
+      <div className="system-sm-regular wrap-break-word text-text-secondary">{comment.content}</div>
     </div>
   )
 }

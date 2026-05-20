@@ -180,7 +180,7 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
             {t('modelProvider.modelSettings', { ns: 'common' })}
           </div>
           <PopoverClose className="absolute top-2.5 right-2.5 flex items-center justify-center rounded-lg p-1.5 hover:bg-state-base-hover">
-            <span className="i-ri-close-line h-4 w-4 text-text-tertiary" />
+            <span className="i-ri-close-line size-4 text-text-tertiary" />
           </PopoverClose>
         </div>
         <div className="max-h-[420px] overflow-y-auto">
@@ -246,7 +246,7 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
                 ? t('debugAsSingleModel', { ns: 'appDebug' })
                 : t('debugAsMultipleModel', { ns: 'appDebug' })
             }
-            <ArrowNarrowLeft className="h-3 w-3 rotate-180" />
+            <ArrowNarrowLeft className="size-3 rotate-180" />
           </div>
         )}
       </PopoverContent>

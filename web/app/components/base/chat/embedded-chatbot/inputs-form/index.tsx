@@ -48,7 +48,7 @@ const InputsFormNode = ({
           isMobile && 'px-4 py-3',
         )}
         >
-          <div className="i-custom-public-other-message-3-fill h-6 w-6 shrink-0" />
+          <div className="i-custom-public-other-message-3-fill size-6 shrink-0" />
           <div className="grow system-xl-semibold text-text-secondary">{t('chat.chatSettingsTitle', { ns: 'share' })}</div>
           {collapsed && (
             <Button

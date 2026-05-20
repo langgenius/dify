@@ -54,7 +54,7 @@ const ItemOperation: FC<IItemOperationProps> = ({
     >
       <DropdownMenuTrigger
         data-testid="item-operation-trigger"
-        className={cn(className, s.btn, 'h-6 w-6 rounded-md border-none py-1', (isItemHovering || open) && `${s.open} bg-components-actionbar-bg! shadow-none!`)}
+        className={cn(className, s.btn, 'size-6 rounded-md border-none py-1', (isItemHovering || open) && `${s.open} bg-components-actionbar-bg! shadow-none!`)}
         onClick={(e) => {
           e.stopPropagation()
         }}
@@ -78,7 +78,7 @@ const ItemOperation: FC<IItemOperationProps> = ({
             togglePin()
           }}
         >
-          <Pin02 className="h-4 w-4 shrink-0 text-text-secondary" />
+          <Pin02 className="size-4 shrink-0 text-text-secondary" />
           <span className={s.actionName}>{isPinned ? t('sidebar.action.unpin') : t('sidebar.action.pin')}</span>
         </DropdownMenuItem>
         {isShowRenameConversation && (
@@ -89,7 +89,7 @@ const ItemOperation: FC<IItemOperationProps> = ({
               onRenameConversation?.()
             }}
           >
-            <RiEditLine className="h-4 w-4 shrink-0 text-text-secondary" />
+            <RiEditLine className="size-4 shrink-0 text-text-secondary" />
             <span className={s.actionName}>{t('sidebar.action.rename')}</span>
           </DropdownMenuItem>
         )}
@@ -101,7 +101,7 @@ const ItemOperation: FC<IItemOperationProps> = ({
               onDelete()
             }}
           >
-            <RiDeleteBinLine className={cn(s.deleteActionItemChild, 'h-4 w-4 shrink-0 stroke-current stroke-2 text-inherit')} />
+            <RiDeleteBinLine className={cn(s.deleteActionItemChild, 'size-4 shrink-0 stroke-current stroke-2 text-inherit')} />
             <span className={cn(s.actionName, s.deleteActionItemChild, 'text-inherit')}>{t('sidebar.action.delete')}</span>
           </DropdownMenuItem>
         )}

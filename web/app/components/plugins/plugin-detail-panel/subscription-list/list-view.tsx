@@ -33,7 +33,7 @@ export const SubscriptionListView: React.FC<SubscriptionListViewProps> = ({
             </span>
             <Infotip
               aria-label={t('subscription.list.tip', { ns: 'pluginTrigger' })}
-              className="h-3.5 w-3.5"
+              className="size-3.5"
               iconClassName="h-full w-full"
             >
               {t('subscription.list.tip', { ns: 'pluginTrigger' })}

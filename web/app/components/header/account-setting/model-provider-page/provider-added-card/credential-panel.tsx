@@ -72,7 +72,7 @@ function TextLabel({ variant }: { variant: CardVariant }) {
         {t(labelKey, { ns: 'common' })}
       </span>
       {variant === 'credits-fallback' && (
-        <Warning className="h-3 w-3 shrink-0 text-text-warning" />
+        <Warning className="size-3 shrink-0 text-text-warning" />
       )}
     </>
   )
@@ -96,7 +96,7 @@ function StatusLabel({ variant, credentialName }: {
         {credentialName}
       </span>
       {showWarning && (
-        <Warning className="ml-auto h-3 w-3 shrink-0 text-text-warning" />
+        <Warning className="ml-auto size-3 shrink-0 text-text-warning" />
       )}
     </>
   )

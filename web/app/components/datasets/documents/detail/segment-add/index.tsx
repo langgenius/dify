@@ -69,14 +69,14 @@ export function SegmentAdd({
             shadow-xs shadow-shadow-shadow-3 backdrop-blur-[5px]"
           >
             <div className={cn('absolute top-0 left-0 z-0 h-full border-r-[1.5px] border-r-components-progress-bar-progress-highlight bg-components-progress-bar-progress', importStatus === segmentImportStatus.waiting ? 'w-3/12' : 'w-2/3')} />
-            <span aria-hidden className="mr-1 i-ri-loader-2-line h-4 w-4 animate-spin" />
+            <span aria-hidden className="mr-1 i-ri-loader-2-line size-4 animate-spin" />
             <span className="z-10 pr-0.5 system-sm-medium">{t('list.batchModal.processing', { ns: 'datasetDocuments' })}</span>
           </div>
         )}
         {importStatus === segmentImportStatus.completed && (
           <div className="relative mr-2 inline-flex items-center overflow-hidden rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-xs shadow-shadow-shadow-3 backdrop-blur-[5px]">
             <div className="inline-flex items-center border-r border-r-divider-subtle px-2.5 py-2 text-text-success">
-              <span aria-hidden className="mr-1 i-custom-vender-solid-general-check-circle h-4 w-4" />
+              <span aria-hidden className="mr-1 i-custom-vender-solid-general-check-circle size-4" />
               <span className="pr-0.5 system-sm-medium">{t('list.batchModal.completed', { ns: 'datasetDocuments' })}</span>
             </div>
             <div className="m-1 inline-flex items-center">
@@ -88,13 +88,13 @@ export function SegmentAdd({
                 {t('list.batchModal.ok', { ns: 'datasetDocuments' })}
               </button>
             </div>
-            <div className="absolute top-0 left-0 -z-10 h-full w-full bg-dataset-chunk-process-success-bg opacity-40" />
+            <div className="absolute top-0 left-0 -z-10 size-full bg-dataset-chunk-process-success-bg opacity-40" />
           </div>
         )}
         {importStatus === segmentImportStatus.error && (
           <div className="relative mr-2 inline-flex items-center overflow-hidden rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-xs shadow-shadow-shadow-3 backdrop-blur-[5px]">
             <div className="inline-flex items-center border-r border-r-divider-subtle px-2.5 py-2 text-text-destructive">
-              <span aria-hidden className="mr-1 i-ri-error-warning-fill h-4 w-4" />
+              <span aria-hidden className="mr-1 i-ri-error-warning-fill size-4" />
               <span className="pr-0.5 system-sm-medium">{t('list.batchModal.error', { ns: 'datasetDocuments' })}</span>
             </div>
             <div className="m-1 inline-flex items-center">
@@ -106,7 +106,7 @@ export function SegmentAdd({
                 {t('list.batchModal.ok', { ns: 'datasetDocuments' })}
               </button>
             </div>
-            <div className="absolute top-0 left-0 -z-10 h-full w-full bg-dataset-chunk-process-error-bg opacity-40" />
+            <div className="absolute top-0 left-0 -z-10 size-full bg-dataset-chunk-process-error-bg opacity-40" />
           </div>
         )}
       </>
@@ -128,7 +128,7 @@ export function SegmentAdd({
         onClick={handleAddClick}
         disabled={embedding}
       >
-        <span aria-hidden className={cn('i-ri-add-line h-4 w-4', textColor)} />
+        <span aria-hidden className={cn('i-ri-add-line size-4', textColor)} />
         <span className={cn('ml-0.5 px-0.5 text-[13px] leading-[16px] font-medium capitalize', textColor)}>
           {t('list.action.addButton', { ns: 'datasetDocuments' })}
         </span>
@@ -144,7 +144,7 @@ export function SegmentAdd({
           )}
         >
           <div className="flex items-center justify-center">
-            <span aria-hidden className={cn('i-ri-arrow-down-s-line h-4 w-4', textColor)} />
+            <span aria-hidden className={cn('i-ri-arrow-down-s-line size-4', textColor)} />
           </div>
         </DropdownMenuTrigger>
         <DropdownMenuContent

@@ -85,7 +85,7 @@ const List = ({
         rel="noopener noreferrer"
       >
         <span>{t('findMoreInMarketplace', { ns: 'plugin' })}</span>
-        <RiArrowRightUpLine className="ml-0.5 h-3 w-3" />
+        <RiArrowRightUpLine className="ml-0.5 size-3" />
       </Link>
     )
   }
@@ -108,7 +108,7 @@ const List = ({
             onClick={e => e.stopPropagation()}
           >
             <span>{t('searchInMarketplace', { ns: 'plugin' })}</span>
-            <RiArrowRightUpLine className="ml-0.5 h-3 w-3" />
+            <RiArrowRightUpLine className="ml-0.5 size-3" />
           </Link>
         </div>
       )}
@@ -129,7 +129,7 @@ const List = ({
               rel="noopener noreferrer"
               className="flex h-4 shrink-0 items-center system-sm-medium text-text-accent-light-mode-only"
             >
-              <RiSearchLine className="mr-0.5 h-3 w-3" />
+              <RiSearchLine className="mr-0.5 size-3" />
               <span>{t('searchInMarketplace', { ns: 'plugin' })}</span>
             </Link>
             <div className="h-[2px] w-[90px] bg-linear-to-l from-[rgba(255,255,255,0.01)] to-[rgba(16,24,40,0.08)]"></div>

@@ -150,7 +150,7 @@ describe('SecretKeyButton', () => {
 
     it('should have correct icon dimensions', () => {
       const { container } = render(<SecretKeyButton />)
-      const iconContainer = container.querySelector('.h-3\\.5.w-3\\.5')
+      const iconContainer = container.querySelector('.size-3\\.5')
       expect(iconContainer)!.toBeInTheDocument()
     })
 

@@ -2,29 +2,24 @@ import type { ReactElement, ReactNode } from 'react'
 import { render, screen } from '@testing-library/react'
 
 type ConfigState = {
-  isCeEdition: boolean
+  isCloudEdition: boolean
   isProd: boolean
 }
 
-type GaProps = {
-  gaType: string
-}
-
-type GaRenderFn = (props: GaProps) => Promise<ReactNode>
-type GaTypeValue = 'admin' | 'webapp'
+type GoogleAnalyticsScriptsRenderFn = () => Promise<ReactNode>
 
 const { mockHeaders, mockHeadersGet, configState } = vi.hoisted(() => ({
   mockHeaders: vi.fn(),
   mockHeadersGet: vi.fn(),
   configState: ({
-    isCeEdition: false,
+    isCloudEdition: true,
     isProd: true,
   }) as ConfigState,
 }))
 
 vi.mock('@/config', () => ({
-  get IS_CE_EDITION() {
-    return configState.isCeEdition
+  get IS_CLOUD_EDITION() {
+    return configState.isCloudEdition
   },
   get IS_PROD() {
     return configState.isProd
@@ -41,18 +36,18 @@ vi.mock('@/next/script', () => ({
     strategy,
     src,
     nonce,
-    dangerouslySetInnerHTML,
+    children,
   }: {
     id?: string
     strategy?: string
     src?: string
     nonce?: string
-    dangerouslySetInnerHTML?: { __html?: string }
+    children?: ReactNode
   }) => (
     <script
       data-testid="mock-next-script"
       data-id={id ?? ''}
-      data-inline={dangerouslySetInnerHTML?.__html ?? ''}
+      data-inline={typeof children === 'string' ? children : ''}
       data-nonce={nonce ?? ''}
       data-src={src ?? ''}
       data-strategy={strategy ?? ''}
@@ -62,24 +57,15 @@ vi.mock('@/next/script', () => ({
 
 const loadComponent = async () => {
   const mod = await import('../index')
-  // mod.default is either an async function (server component) or
-  // a React.memo object whose .type is the async function.
-  const rawExport = mod.default as unknown
-  const renderer: GaRenderFn | undefined
-    = typeof rawExport === 'function' ? (rawExport as GaRenderFn) : (rawExport as { type?: GaRenderFn }).type
-
-  if (!renderer)
-    throw new Error('GA component is not callable in tests')
 
   return {
-    renderer,
-    GaType: mod.GaType,
+    renderer: mod.GoogleAnalyticsScripts as GoogleAnalyticsScriptsRenderFn,
   }
 }
 
-const renderGA = async (gaType: GaTypeValue) => {
+const renderGoogleAnalyticsScripts = async () => {
   const { renderer } = await loadComponent()
-  const element = await renderer({ gaType })
+  const element = await renderer()
   if (!element)
     return { element }
 
@@ -92,43 +78,57 @@ describe('GA', () => {
     vi.clearAllMocks()
     vi.resetModules()
 
-    configState.isCeEdition = false
+    configState.isCloudEdition = true
     configState.isProd = true
 
-    mockHeadersGet.mockReturnValue(`default-src 'self'; script-src 'self' 'nonce-test-nonce'`)
+    mockHeadersGet.mockImplementation((name: string) => name === 'x-nonce' ? 'test-nonce' : null)
     mockHeaders.mockResolvedValue({
       get: mockHeadersGet,
     })
   })
 
   describe('Rendering', () => {
-    it('should return null when CE edition is enabled', async () => {
-      configState.isCeEdition = true
-      const { element } = await renderGA('admin')
+    it('should return null when cloud edition is disabled', async () => {
+      configState.isCloudEdition = false
+      const { element } = await renderGoogleAnalyticsScripts()
 
       expect(element).toBeNull()
       expect(mockHeaders).not.toHaveBeenCalled()
     })
 
-    it('should render three script tags with admin GA id in production', async () => {
-      await renderGA('admin')
+    it('should return null when not in production', async () => {
+      configState.isProd = false
+      const { element } = await renderGoogleAnalyticsScripts()
+
+      expect(element).toBeNull()
+      expect(mockHeaders).not.toHaveBeenCalled()
+    })
+
+    it('should render consent, CookieYes, and Google Analytics scripts in production', async () => {
+      await renderGoogleAnalyticsScripts()
 
       const scripts = screen.getAllByTestId('mock-next-script')
-      expect(scripts).toHaveLength(3)
+      expect(scripts).toHaveLength(4)
 
       expect(mockHeaders).toHaveBeenCalledTimes(1)
-      expect(mockHeadersGet).toHaveBeenCalledWith('content-security-policy')
+      expect(mockHeadersGet).toHaveBeenCalledWith('x-nonce')
 
-      expect(scripts[0]).toHaveAttribute('data-id', 'ga-init')
+      expect(scripts[0]).toHaveAttribute('data-id', 'google-consent-defaults')
       expect(scripts[0]).toHaveAttribute('data-strategy', 'afterInteractive')
-      expect(scripts[0]).toHaveAttribute('data-inline', expect.stringContaining(`window.gtag('config', 'G-DM9497FN4V');`))
+      expect(scripts[0]).toHaveAttribute('data-inline', expect.stringContaining(`window.gtag('consent', 'default'`))
+      expect(scripts[0]).toHaveAttribute('data-inline', expect.stringContaining(`analytics_storage: 'denied'`))
 
+      expect(scripts[1]).toHaveAttribute('data-id', 'cookieyes')
       expect(scripts[1]).toHaveAttribute('data-strategy', 'afterInteractive')
-      expect(scripts[1]).toHaveAttribute('data-src', 'https://www.googletagmanager.com/gtag/js?id=G-DM9497FN4V')
+      expect(scripts[1]).toHaveAttribute('data-src', 'https://cdn-cookieyes.com/client_data/2a645945fcae53f8e025a2b1/script.js')
 
-      expect(scripts[2]).toHaveAttribute('data-id', 'cookieyes')
-      expect(scripts[2]).toHaveAttribute('data-strategy', 'lazyOnload')
-      expect(scripts[2]).toHaveAttribute('data-src', 'https://cdn-cookieyes.com/client_data/2a645945fcae53f8e025a2b1/script.js')
+      expect(scripts[2]).toHaveAttribute('data-id', 'google-analytics')
+      expect(scripts[2]).toHaveAttribute('data-strategy', 'afterInteractive')
+      expect(scripts[2]).toHaveAttribute('data-src', 'https://www.googletagmanager.com/gtag/js?id=G-DM9497FN4V')
+
+      expect(scripts[3]).toHaveAttribute('data-id', 'google-analytics-init')
+      expect(scripts[3]).toHaveAttribute('data-strategy', 'afterInteractive')
+      expect(scripts[3]).toHaveAttribute('data-inline', expect.stringContaining(`window.gtag('config', 'G-DM9497FN4V');`))
 
       scripts.forEach((script) => {
         expect(script).toHaveAttribute('data-nonce', 'test-nonce')
@@ -136,45 +136,10 @@ describe('GA', () => {
     })
   })
 
-  describe('Props', () => {
-    it('should use webapp GA id when gaType is webapp', async () => {
-      await renderGA('webapp')
-
-      const scripts = screen.getAllByTestId('mock-next-script')
-
-      expect(scripts[0]).toHaveAttribute('data-inline', expect.stringContaining(`window.gtag('config', 'G-2MFWXK7WYT');`))
-      expect(scripts[1]).toHaveAttribute('data-src', 'https://www.googletagmanager.com/gtag/js?id=G-2MFWXK7WYT')
-    })
-  })
-
   describe('Edge Cases', () => {
-    it('should not read headers and should omit nonce when not in production', async () => {
-      configState.isProd = false
-      await renderGA('admin')
-
-      const scripts = screen.getAllByTestId('mock-next-script')
-
-      expect(mockHeaders).not.toHaveBeenCalled()
-      scripts.forEach((script) => {
-        expect(script).toHaveAttribute('data-nonce', '')
-      })
-    })
-
-    it('should omit nonce when CSP header does not contain nonce token', async () => {
-      mockHeadersGet.mockReturnValue(`default-src 'self'; script-src 'self'`)
-      await renderGA('admin')
-
-      const scripts = screen.getAllByTestId('mock-next-script')
-
-      expect(mockHeaders).toHaveBeenCalledTimes(1)
-      scripts.forEach((script) => {
-        expect(script).toHaveAttribute('data-nonce', '')
-      })
-    })
-
-    it('should omit nonce when CSP header is null', async () => {
+    it('should omit nonce when x-nonce header is missing', async () => {
       mockHeadersGet.mockReturnValue(null)
-      await renderGA('admin')
+      await renderGoogleAnalyticsScripts()
 
       const scripts = screen.getAllByTestId('mock-next-script')
 

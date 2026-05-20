@@ -58,7 +58,7 @@ const WorkflowHiddenInputFields = ({
             type="checkbox"
             checked={Boolean(fieldValue)}
             onChange={(event: ChangeEvent<HTMLInputElement>) => onValueChange(variable.variable, event.target.checked)}
-            className="h-4 w-4 rounded border-divider-subtle"
+            className="size-4 rounded border-divider-subtle"
           />
           <span className="system-sm-regular text-text-secondary">{label}</span>
         </label>

@@ -70,10 +70,10 @@ export const DSLExportConfirmContent = ({
                 <tr key={env.name}>
                   <td className={cn('h-7 border-r border-divider-regular pl-3 system-xs-medium', index + 1 !== envList.length && 'border-b border-divider-regular')}>
                     <div className="flex w-50 items-center gap-1">
-                      <span aria-hidden="true" className="i-custom-vender-line-others-env h-4 w-4 shrink-0 text-util-colors-violet-violet-600" />
+                      <span aria-hidden="true" className="i-custom-vender-line-others-env size-4 shrink-0 text-util-colors-violet-violet-600" />
                       <div className="truncate text-text-primary">{env.name}</div>
                       <div className="shrink-0 text-text-tertiary">{t('env.export.secret', { ns: 'workflow' })}</div>
-                      <span aria-hidden="true" className="i-ri-lock-2-line h-3 w-3 shrink-0 text-text-tertiary" />
+                      <span aria-hidden="true" className="i-ri-lock-2-line size-3 shrink-0 text-text-tertiary" />
                     </div>
                   </td>
                   <td className={cn('h-7 pl-3', index + 1 !== envList.length && 'border-b border-divider-regular')}>

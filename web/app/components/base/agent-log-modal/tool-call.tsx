@@ -58,7 +58,7 @@ const ToolCallItem: FC<Props> = ({ toolCall, isLLM = false, isFinal, tokens, obs
         >
           <ChevronRight
             className={cn(
-              'mr-1 h-3 w-3 shrink-0 text-text-quaternary transition-all group-hover:text-text-tertiary',
+              'mr-1 size-3 shrink-0 text-text-quaternary transition-all group-hover:text-text-tertiary',
               !collapseState && 'rotate-90',
             )}
           />

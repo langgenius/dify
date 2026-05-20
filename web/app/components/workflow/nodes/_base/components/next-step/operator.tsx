@@ -91,8 +91,8 @@ const Operator = ({
     >
       <DropdownMenuTrigger
         render={(
-          <Button className="h-6 w-6 p-0" aria-label={t('common.moreActions', { ns: 'workflow' })}>
-            <span aria-hidden className="i-ri-more-fill h-4 w-4" />
+          <Button className="size-6 p-0" aria-label={t('common.moreActions', { ns: 'workflow' })}>
+            <span aria-hidden className="i-ri-more-fill size-4" />
           </Button>
         )}
       />

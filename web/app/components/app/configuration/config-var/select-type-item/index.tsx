@@ -38,7 +38,7 @@ const SelectTypeItem: FC<ISelectTypeItemProps> = ({
       onClick={onClick}
     >
       <div className="shrink-0">
-        <InputVarTypeIcon type={type} className="h-5 w-5" />
+        <InputVarTypeIcon type={type} className="size-5" />
       </div>
       <span>{typeName}</span>
     </div>

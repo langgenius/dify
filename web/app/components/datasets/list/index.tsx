@@ -87,7 +87,7 @@ const List = () => {
             className="gap-0.5 shadow-xs"
             onClick={() => setShowExternalApiPanel(true)}
           >
-            <span className="i-custom-vender-solid-development-api-connection-mod h-4 w-4 text-components-button-secondary-text" />
+            <span className="i-custom-vender-solid-development-api-connection-mod size-4 text-components-button-secondary-text" />
             <span className="flex items-center justify-center gap-1 px-0.5 system-sm-medium text-components-button-secondary-text">{t('externalAPIPanelTitle', { ns: 'dataset' })}</span>
           </Button>
         </div>

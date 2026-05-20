@@ -75,7 +75,7 @@ const StatusIndicators = ({ needsConfiguration, modelProvider, inModelList, disa
                   ariaLabel={t('nodes.agent.modelSelectorTooltips.deprecated', { ns: 'workflow' })}
                   content={t('nodes.agent.modelSelectorTooltips.deprecated', { ns: 'workflow' })}
                 >
-                  <RiErrorWarningFill className="h-4 w-4 text-text-destructive" />
+                  <RiErrorWarningFill className="size-4 text-text-destructive" />
                 </StatusPopover>
               )
             : !pluginInfo
@@ -89,7 +89,7 @@ const StatusIndicators = ({ needsConfiguration, modelProvider, inModelList, disa
                         '/plugins',
                       )}
                     >
-                      <RiErrorWarningFill className="h-4 w-4 text-text-destructive" />
+                      <RiErrorWarningFill className="size-4 text-text-destructive" />
                     </StatusPopover>
                   )
                 : (
@@ -113,7 +113,7 @@ const StatusIndicators = ({ needsConfiguration, modelProvider, inModelList, disa
             '/plugins',
           )}
         >
-          <RiErrorWarningFill className="h-4 w-4 text-text-destructive" />
+          <RiErrorWarningFill className="size-4 text-text-destructive" />
         </StatusPopover>
       )}
     </>

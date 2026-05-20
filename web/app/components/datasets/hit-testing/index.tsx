@@ -104,7 +104,7 @@ const HitTestingPage: FC<Props> = ({ datasetId }: Props) => {
 
   const renderEmptyState = () => (
     <div className="flex h-full flex-col items-center justify-center rounded-tl-2xl bg-background-body px-4 py-3">
-      <div className={cn(docStyle.commonIcon, docStyle.targetIcon, 'h-14! w-14! bg-text-quaternary!')} />
+      <div className={cn(docStyle.commonIcon, docStyle.targetIcon, 'size-14! bg-text-quaternary!')} />
       <div className="mt-3 text-[13px] text-text-quaternary">
         {t('hit.emptyTip', { ns: 'datasetHitTesting' })}
       </div>
@@ -121,7 +121,7 @@ const HitTestingPage: FC<Props> = ({ datasetId }: Props) => {
   }, [isMobile, setShowRightPanel])
 
   return (
-    <div className="relative flex h-full w-full gap-x-6 overflow-y-auto pl-6">
+    <div className="relative flex size-full gap-x-6 overflow-y-auto pl-6">
       <div className="flex min-w-0 flex-1 flex-col py-3">
         <div className="mb-4 flex flex-col justify-center">
           <h1 className="text-base font-semibold text-text-primary">{t('title', { ns: 'datasetHitTesting' })}</h1>

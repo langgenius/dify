@@ -465,7 +465,7 @@
   "modelProvider.speechToTextModel.tip": "Legen Sie das Standardmodell für die Spracheingabe in Konversationen fest.",
   "modelProvider.systemModelSettings": "Systemmodell-Einstellungen",
   "modelProvider.systemReasoningModel.key": "System-Reasoning-Modell",
-  "modelProvider.systemReasoningModel.tip": "Legen Sie das Standardinferenzmodell fest, das für die Erstellung von Anwendungen verwendet wird, sowie Funktionen wie die Generierung von Dialognamen und die Vorschlagserstellung für die nächste Frage, die auch das Standardinferenzmodell verwenden.",
+  "modelProvider.systemReasoningModel.tip": "Legen Sie das Standardmodell für Reasoning beim Erstellen von Anwendungen fest. Dieses Modell wird auch für Funktionen wie das Generieren von Gesprächsnamen und Vorschläge für nächste Fragen verwendet.",
   "modelProvider.toBeConfigured": "Zu konfigurieren",
   "modelProvider.ttsModel.key": "Text-zu-Sprache-Modell",
   "modelProvider.ttsModel.tip": "Legen Sie das Standardmodell für die Text-zu-Sprache-Eingabe in Konversationen fest.",

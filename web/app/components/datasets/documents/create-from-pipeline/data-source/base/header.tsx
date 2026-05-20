@@ -40,7 +40,7 @@ const Header = ({
                 aria-label={configurationTip}
                 onClick={onClickConfiguration}
               >
-                <span aria-hidden className="i-ri-equalizer-2-line h-4 w-4" />
+                <span aria-hidden className="i-ri-equalizer-2-line size-4" />
               </Button>
             )}
           />

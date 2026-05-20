@@ -123,7 +123,7 @@ const Sidebar = ({ isPanel, panelVisible }: Props) => {
       </div>
       <div className="shrink-0 px-3 py-4">
         <Button variant="secondary-accent" disabled={isResponding} className="w-full justify-center" onClick={handleNewConversation}>
-          <RiEditBoxLine className="mr-1 h-4 w-4" />
+          <RiEditBoxLine className="mr-1 size-4" />
           {t('chat.newChat', { ns: 'share' })}
         </Button>
       </div>

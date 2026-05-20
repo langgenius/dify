@@ -1,8 +1,10 @@
 import enum
+import json
 import uuid
 from typing import Any, cast
 
 import sqlalchemy as sa
+from pydantic import BaseModel
 from sqlalchemy import CHAR, TEXT, VARCHAR, LargeBinary, TypeDecorator
 from sqlalchemy.dialects.mysql import LONGBLOB, LONGTEXT
 from sqlalchemy.dialects.postgresql import BYTEA, JSONB, UUID
@@ -59,6 +61,45 @@ class LongText(TypeDecorator[str | None]):
         if value is None:
             return value
         return value
+
+
+class JSONModelColumn[T: BaseModel](TypeDecorator[T | None]):
+    """Store a Pydantic model as dialect-adjusted LongText JSON."""
+
+    impl = TEXT
+    cache_ok = True
+
+    _model_class: type[T]
+
+    def __init__(self, model_class: type[T]):
+        if not issubclass(model_class, BaseModel):
+            raise TypeError(f"{model_class.__module__}.{model_class.__name__} must be a Pydantic BaseModel subclass")
+        self._model_class = model_class
+        super().__init__()
+
+    def load_dialect_impl(self, dialect: Dialect) -> TypeEngine[Any]:
+        if dialect.name == "postgresql":
+            return dialect.type_descriptor(TEXT())
+        elif dialect.name == "mysql":
+            return dialect.type_descriptor(LONGTEXT())
+        else:
+            return dialect.type_descriptor(TEXT())
+
+    def process_bind_param(self, value: T | dict[str, Any] | str | None, dialect: Dialect) -> str | None:
+        if value is None:
+            return None
+        if isinstance(value, self._model_class):
+            model = value
+        elif isinstance(value, str):
+            model = self._model_class.model_validate_json(value)
+        else:
+            model = self._model_class.model_validate(value)
+        return json.dumps(model.model_dump(mode="json"), ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+
+    def process_result_value(self, value: str | None, dialect: Dialect) -> T | None:
+        if value is None or value == "":
+            return None
+        return self._model_class.model_validate_json(value)
 
 
 class BinaryData(TypeDecorator[bytes | None]):

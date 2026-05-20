@@ -175,6 +175,7 @@ const Authorized = ({
         onOpenChange={setMergedIsOpen}
       >
         <PopoverTrigger
+          nativeButton={false}
           render={<div className={triggerPopupSameWidth ? 'w-full' : 'inline-block'}>{renderTrigger(mergedIsOpen)}</div>}
           onClick={handleTriggerClick}
         />
@@ -240,7 +241,7 @@ const Authorized = ({
                   )}
                   className="flex h-[40px] cursor-pointer items-center px-3 system-xs-medium text-text-accent-light-mode-only"
                 >
-                  <RiAddLine className="mr-1 h-4 w-4" />
+                  <RiAddLine className="mr-1 size-4" />
                   {t('modelProvider.auth.addModelCredential', { ns: 'common' })}
                 </div>
               )

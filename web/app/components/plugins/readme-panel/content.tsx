@@ -61,11 +61,11 @@ export function ReadmePanelContent({
   }
 
   return (
-    <div className="flex h-full min-h-0 w-full flex-col overflow-hidden">
-      <div className="shrink-0 rounded-t-xl bg-background-body px-4 py-4">
+    <div className="flex size-full min-h-0 flex-col overflow-hidden">
+      <div className="shrink-0 rounded-t-xl bg-background-body p-4">
         <div className="mb-3 flex items-center justify-between gap-3">
           <div className="flex min-w-0 items-center gap-1">
-            <span aria-hidden="true" className="i-ri-book-read-line h-3 w-3 shrink-0 text-text-tertiary" />
+            <span aria-hidden="true" className="i-ri-book-read-line size-3 shrink-0 text-text-tertiary" />
             {title}
           </div>
           {closeButton}

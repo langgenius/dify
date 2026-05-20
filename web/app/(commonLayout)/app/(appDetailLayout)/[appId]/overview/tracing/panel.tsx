@@ -253,11 +253,11 @@ const Panel: FC = () => {
             <TracingIcon size="md" />
             <div className="mx-2 system-sm-semibold text-text-secondary">{t(`${I18N_PREFIX}.title`, { ns: 'app' })}</div>
             <div className="rounded-md p-1">
-              <RiEqualizer2Line className="h-4 w-4 text-text-tertiary" />
+              <RiEqualizer2Line className="size-4 text-text-tertiary" />
             </div>
             <Divider type="vertical" className="h-3.5" />
             <div className="rounded-md p-1">
-              <RiArrowDownDoubleLine className="h-4 w-4 text-text-tertiary" />
+              <RiArrowDownDoubleLine className="size-4 text-text-tertiary" />
             </div>
           </div>
         </ConfigButton>
@@ -297,7 +297,7 @@ const Panel: FC = () => {
             </div>
             {InUseProviderIcon && <InUseProviderIcon className="ml-1 h-4" />}
             <div className="ml-2 rounded-md p-1">
-              <RiEqualizer2Line className="h-4 w-4 text-text-tertiary" />
+              <RiEqualizer2Line className="size-4 text-text-tertiary" />
             </div>
             <Divider type="vertical" className="h-3.5" />
           </div>

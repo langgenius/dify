@@ -465,7 +465,7 @@
   "modelProvider.speechToTextModel.tip": "Atur model default untuk input ucapan-ke-teks dalam percakapan.",
   "modelProvider.systemModelSettings": "Pengaturan Model Sistem",
   "modelProvider.systemReasoningModel.key": "Model Penalaran Sistem",
-  "modelProvider.systemReasoningModel.tip": "Atur model inferensi default yang akan digunakan untuk membuat aplikasi, serta fitur seperti pembuatan nama dialog dan saran pertanyaan berikutnya juga akan menggunakan model inferensi default.",
+  "modelProvider.systemReasoningModel.tip": "Atur model penalaran default untuk membuat aplikasi. Model ini juga digunakan untuk fitur seperti pembuatan nama percakapan dan saran pertanyaan berikutnya.",
   "modelProvider.toBeConfigured": "Untuk dikonfigurasi",
   "modelProvider.ttsModel.key": "Model Teks-ke-Ucapan",
   "modelProvider.ttsModel.tip": "Atur model default untuk input teks-ke-ucapan dalam percakapan.",
