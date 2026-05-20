@@ -80,7 +80,7 @@ class ChangeEmailTokenBase(BaseModel):
     flow cannot be replayed across accounts.
     """
 
-    token_type: Literal["change_email"]
+    token_type: Literal["change_email"] = "change_email"
     account_id: str = Field(min_length=1)
     email: EmailStr
     old_email: EmailStr
