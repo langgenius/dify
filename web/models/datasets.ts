@@ -646,7 +646,7 @@ type Segment = {
 type Document = {
   id: string
   data_source_type: string
-  name: string
+  name: string | null
   doc_type: DocType
 }
 
