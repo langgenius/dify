@@ -41,12 +41,12 @@ describe('Input', () => {
     await expect.element(screen.getByRole('textbox', { name: 'Large field' })).toHaveClass('rounded-[10px]', 'py-[7px]', 'system-md-regular')
   })
 
-  it('should expose invalid state for standalone usage', async () => {
+  it('should use FieldRoot invalid state', async () => {
     const screen = await render(
-      <label>
-        Repository URL
-        <Input invalid name="repositoryUrl" defaultValue="github.com/langgenius" />
-      </label>,
+      <FieldRoot name="repositoryUrl" invalid>
+        <FieldLabel>Repository URL</FieldLabel>
+        <Input defaultValue="github.com/langgenius" />
+      </FieldRoot>,
     )
 
     const input = screen.getByRole('textbox', { name: 'Repository URL' })

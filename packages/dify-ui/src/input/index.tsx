@@ -12,7 +12,6 @@ export type InputProps
   = Omit<BaseInputNS.Props, 'className' | 'size'>
     & VariantProps<typeof inputVariants>
     & {
-      invalid?: boolean
       className?: string
     }
 
@@ -21,19 +20,12 @@ export type InputChangeEventDetails = BaseInputNS.ChangeEventDetails
 export function Input({
   className,
   size = 'medium',
-  invalid,
   ...props
 }: InputProps) {
   return (
     <BaseInput
       className={cn(inputVariants({ size }), className)}
       {...props}
-      {...(invalid
-        ? {
-            'aria-invalid': true,
-            'data-invalid': '',
-          }
-        : {})}
     />
   )
 }

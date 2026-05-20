@@ -74,18 +74,18 @@ export const States: Story = {
         <Input id="filled-state" name="filledState" defaultValue="Customer knowledge base" autoComplete="off" />
       </div>
       <div className="grid gap-1">
-        <label className="text-text-secondary system-sm-medium" htmlFor="invalid-state">Invalid</label>
-        <Input
-          id="invalid-state"
-          invalid
-          name="repositoryUrl"
-          type="url"
-          inputMode="url"
-          defaultValue="github.com/langgenius"
-          autoComplete="off"
-          spellCheck={false}
-        />
-        <span className="py-0.5 text-text-destructive body-xs-regular">Enter a full URL including https://.</span>
+        <FieldRoot name="repositoryUrl" invalid>
+          <FieldLabel>Invalid</FieldLabel>
+          <Input
+            id="invalid-state"
+            type="url"
+            inputMode="url"
+            defaultValue="github.com/langgenius"
+            autoComplete="off"
+            spellCheck={false}
+          />
+          <FieldError match>Enter a full URL including https://.</FieldError>
+        </FieldRoot>
       </div>
       <div className="grid gap-1">
         <label className="text-text-secondary system-sm-medium" htmlFor="disabled-state">Disabled</label>
