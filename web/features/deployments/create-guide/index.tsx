@@ -6,7 +6,7 @@ import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { toast } from '@langgenius/dify-ui/toast'
 import { keepPreviousData, useInfiniteQuery, useMutation, useQuery } from '@tanstack/react-query'
-import { useLayoutEffect, useRef, useState } from 'react'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
 import Input from '@/app/components/base/input'
@@ -19,7 +19,7 @@ import { SOURCE_APPS_PAGE_SIZE } from '../data'
 import { environmentMode, environmentName } from '../environment'
 
 type GuideMethod = 'bindApp' | 'importDsl'
-type GuideStep = 'method' | 'source' | 'release' | 'target' | 'review' | 'done'
+type GuideStep = 'method' | 'source' | 'release' | 'target' | 'done'
 type EnvironmentOption = AppDeployEnvironment & { id: string }
 type BindingSelections = Record<string, string>
 
@@ -28,13 +28,9 @@ type BindingSelectOption = {
   label: string
 }
 
-const guideSteps: GuideStep[] = ['method', 'source', 'release', 'target', 'review']
 const sourceAppSkeletonKeys = ['first-source-app', 'second-source-app', 'third-source-app']
 const targetEnvironmentSkeletonKeys = ['first-target-environment', 'second-target-environment']
 const targetBindingSkeletonKeys = ['first-target-binding', 'second-target-binding']
-const maxGuideCardHeight = 640
-const minGuideCardHeight = 320
-const guideCardVerticalMargin = 144
 
 const dslPreviewDeployTargetEnvironments: EnvironmentOption[] = [
   {
@@ -152,48 +148,13 @@ function StepShell({ title, description, children }: {
   children: React.ReactNode
 }) {
   return (
-    <section className="flex min-w-0 flex-col gap-5">
-      <div className="flex min-w-0 flex-col gap-1">
-        <h2 className="title-xl-semi-bold text-text-primary">{title}</h2>
+    <section className="flex min-w-0 flex-col gap-4">
+      <div className="flex min-w-0 flex-col gap-0.5">
+        <h2 className="system-md-semibold text-text-primary">{title}</h2>
         <p className="system-sm-regular text-text-tertiary">{description}</p>
       </div>
       {children}
     </section>
-  )
-}
-
-function StepList({ activeStep }: {
-  activeStep: GuideStep
-}) {
-  const { t } = useTranslation('deployments')
-  const activeIndex = activeStep === 'done' ? guideSteps.length : guideSteps.indexOf(activeStep)
-
-  return (
-    <ol className="flex flex-col gap-3">
-      {guideSteps.map((step, index) => {
-        const isActive = step === activeStep
-        const isDone = activeIndex > index || activeStep === 'done'
-        return (
-          <li key={step} className="flex min-w-0 items-center gap-2" aria-current={isActive ? 'step' : undefined}>
-            <span className="flex size-4 shrink-0 items-center justify-center" aria-hidden="true">
-              <span
-                className={cn(
-                  'rounded-full',
-                  isActive
-                    ? 'size-2 bg-primary-600'
-                    : isDone
-                      ? 'size-1.5 bg-text-quaternary'
-                      : 'size-1.5 border border-divider-regular bg-transparent',
-                )}
-              />
-            </span>
-            <span className={cn('truncate', isActive ? 'system-sm-medium text-text-primary' : 'system-sm-regular text-text-tertiary')}>
-              {t(`createGuide.steps.${step}`)}
-            </span>
-          </li>
-        )
-      })}
-    </ol>
   )
 }
 
@@ -210,33 +171,29 @@ function MethodCard({ icon, title, description, badge, selected, onClick }: {
       type="button"
       onClick={onClick}
       className={cn(
-        'group flex min-h-16 min-w-0 items-center gap-3 rounded-lg border p-3 text-left transition-colors',
-        selected
-          ? 'border-primary-600 bg-primary-50'
-          : 'border-divider-subtle bg-background-default hover:border-divider-regular hover:bg-background-default-hover',
+        `relative box-content h-[84px] w-full cursor-pointer rounded-xl border-[0.5px]
+        border-components-option-card-option-border bg-components-panel-on-panel-item-bg p-3
+        text-left shadow-xs hover:shadow-md sm:w-[191px]`,
+        selected && 'shadow-md outline-[1.5px] outline-components-option-card-option-selected-border outline-solid',
       )}
     >
-      <span className="flex size-8 shrink-0 items-center justify-center rounded-lg border border-divider-subtle bg-background-default-subtle">
+      <span className="flex size-6 shrink-0 items-center justify-center rounded-md border border-divider-subtle bg-background-default-subtle">
         <span className={cn('size-4 text-text-tertiary', icon)} aria-hidden="true" />
       </span>
-      <span className="flex min-w-0 grow flex-col gap-1">
-        <span className="flex min-w-0 items-center gap-2">
-          <span className="truncate system-sm-semibold text-text-primary">{title}</span>
-          {badge && (
-            <span className="rounded-md bg-background-default-subtle px-1.5 py-0.5 system-2xs-medium-uppercase text-text-tertiary">
-              {badge}
-            </span>
-          )}
-        </span>
-        <span className="line-clamp-2 system-xs-regular text-text-tertiary">{description}</span>
-      </span>
-      <span
-        className={cn(
-          'i-ri-arrow-right-line size-4 shrink-0 text-text-quaternary transition-colors group-hover:text-text-secondary',
-          selected && 'text-primary-600',
+      <span className="mt-2 mb-0.5 flex min-w-0 items-center gap-1">
+        <span className="truncate system-sm-semibold text-text-secondary">{title}</span>
+        {badge && (
+          <span className="shrink-0 rounded-md bg-background-default-subtle px-1.5 py-0.5 system-2xs-medium-uppercase text-text-tertiary">
+            {badge}
+          </span>
         )}
-        aria-hidden="true"
-      />
+      </span>
+      <span className="flex min-w-0 items-start gap-1">
+        <span className="line-clamp-2 min-w-0 grow system-xs-regular text-text-tertiary" title={description}>
+          {description}
+        </span>
+        <span className="mt-0.5 i-ri-arrow-right-line size-3.5 shrink-0 text-text-quaternary" aria-hidden="true" />
+      </span>
     </button>
   )
 }
@@ -245,142 +202,104 @@ function GuideCard({ children, actions }: {
   children: React.ReactNode
   actions: React.ReactNode
 }) {
-  const cardRef = useRef<HTMLDivElement>(null)
-  const scrollerRef = useRef<HTMLDivElement>(null)
-  const contentRef = useRef<HTMLDivElement>(null)
-  const actionsRef = useRef<HTMLDivElement>(null)
-
-  useLayoutEffect(() => {
-    let animationFrame = 0
-    let restoreScrollTimeout = 0
-
-    function restoreScroll() {
-      if (scrollerRef.current)
-        scrollerRef.current.style.overflowY = ''
-    }
-
-    function hideScroll() {
-      if (scrollerRef.current)
-        scrollerRef.current.style.overflowY = 'hidden'
-    }
-
-    function updateHeight() {
-      const cardElement = cardRef.current
-      const contentElement = contentRef.current
-      if (!cardElement || !contentElement)
-        return
-
-      const actionsElement = actionsRef.current
-      const measuredHeight = Math.ceil(
-        contentElement.getBoundingClientRect().height
-        + (actionsElement?.getBoundingClientRect().height ?? 0)
-        + 2,
-      )
-      const availableHeight = Math.max(
-        minGuideCardHeight,
-        Math.min(maxGuideCardHeight, window.innerHeight - guideCardVerticalMargin),
-      )
-      const nextHeight = Math.min(measuredHeight, availableHeight)
-      const currentHeight = Math.ceil(cardElement.getBoundingClientRect().height)
-      if (currentHeight !== nextHeight && scrollerRef.current) {
-        hideScroll()
-        window.clearTimeout(restoreScrollTimeout)
-        restoreScrollTimeout = window.setTimeout(restoreScroll, 240)
-      }
-      cardElement.style.height = `${nextHeight}px`
-    }
-
-    function scheduleHeightUpdate() {
-      cancelAnimationFrame(animationFrame)
-      animationFrame = requestAnimationFrame(updateHeight)
-    }
-
-    function handleTransitionStart(event: TransitionEvent) {
-      if (event.target === cardRef.current && event.propertyName === 'height') {
-        hideScroll()
-        window.clearTimeout(restoreScrollTimeout)
-      }
-    }
-
-    function handleTransitionEnd(event: TransitionEvent) {
-      if (event.target === cardRef.current && event.propertyName === 'height')
-        restoreScroll()
-    }
-
-    scheduleHeightUpdate()
-
-    const resizeObserver = new ResizeObserver(scheduleHeightUpdate)
-    const transitionElement = cardRef.current
-    if (contentRef.current)
-      resizeObserver.observe(contentRef.current)
-    if (actionsRef.current)
-      resizeObserver.observe(actionsRef.current)
-    if (transitionElement)
-      transitionElement.addEventListener('transitionend', handleTransitionEnd)
-    if (transitionElement)
-      transitionElement.addEventListener('transitionstart', handleTransitionStart)
-    if (transitionElement)
-      transitionElement.addEventListener('transitioncancel', handleTransitionEnd)
-    window.addEventListener('resize', scheduleHeightUpdate)
-
-    return () => {
-      cancelAnimationFrame(animationFrame)
-      window.clearTimeout(restoreScrollTimeout)
-      resizeObserver.disconnect()
-      if (transitionElement) {
-        transitionElement.removeEventListener('transitionend', handleTransitionEnd)
-        transitionElement.removeEventListener('transitionstart', handleTransitionStart)
-        transitionElement.removeEventListener('transitioncancel', handleTransitionEnd)
-      }
-      window.removeEventListener('resize', scheduleHeightUpdate)
-    }
-  }, [])
-
   return (
-    <div
-      ref={cardRef}
-      className="mx-auto flex max-h-[40rem] w-full max-w-xl flex-col overflow-hidden rounded-xl border border-components-card-border bg-components-card-bg shadow-xs transition-[height] duration-200 ease-out motion-reduce:transition-none"
-    >
-      <div ref={scrollerRef} className="min-h-0 flex-1 overflow-y-auto">
-        <div ref={contentRef} className="p-6">
-          {children}
-        </div>
+    <div className="flex w-full min-w-0 flex-col">
+      <div className="min-h-0">
+        {children}
       </div>
-      <div ref={actionsRef} className="shrink-0">
-        {actions}
-      </div>
+      {actions}
     </div>
   )
 }
 
-function GuideFrame({ activeStep, children }: {
+function GuideFrame({ activeStep, preview, children }: {
   activeStep: GuideStep
+  preview: React.ReactNode
   children: React.ReactNode
 }) {
   const { t } = useTranslation('deployments')
 
   return (
-    <div className="min-h-0 flex-1 overflow-y-auto">
-      <div className="mx-auto grid min-h-full w-full max-w-6xl grid-cols-1 gap-5 px-4 py-5 md:grid-cols-[9rem_minmax(0,36rem)_10rem] md:justify-center md:px-6 md:py-8 lg:grid-cols-[10rem_minmax(0,36rem)_11rem] xl:grid-cols-[11rem_minmax(0,36rem)_13rem] xl:gap-6">
-        <div className="hidden pt-3 md:block">
-          <div className="sticky top-8 flex flex-col gap-3">
-            <Link href="/deployments" className="inline-flex items-center gap-1 system-sm-medium text-text-tertiary hover:text-text-secondary">
-              <span className="i-ri-arrow-left-line size-4" aria-hidden="true" />
-              {t('createGuide.nav.back')}
-            </Link>
-            <h1 className="title-md-semi-bold text-text-primary">{t('createGuide.title')}</h1>
+    <div className="flex h-full min-h-0 overflow-hidden bg-background-default-subtle">
+      <div className="flex min-w-0 flex-1 shrink-0 justify-center overflow-y-auto lg:justify-end">
+        <section
+          aria-label={t('createGuide.title')}
+          className="w-full max-w-[660px] px-6 sm:px-10"
+        >
+          <div className="h-6 2xl:h-[139px]" />
+          <div className="pt-1 pb-5">
+            <h1 className="title-2xl-semi-bold text-text-primary">{t('createGuide.title')}</h1>
           </div>
-        </div>
-        <div className="min-w-0">
           {children}
-        </div>
-        <aside className="hidden pt-3 md:block">
-          <div className="sticky top-8">
-            <StepList activeStep={activeStep} />
-          </div>
-        </aside>
+        </section>
       </div>
+      <DeploymentPreview activeStep={activeStep} preview={preview} />
     </div>
+  )
+}
+
+function DeploymentPreview({ activeStep, preview }: {
+  activeStep: GuideStep
+  preview: React.ReactNode
+}) {
+  const { t } = useTranslation('deployments')
+  const stepInfo = activeStep === 'done'
+    ? {
+        title: t('createGuide.done.title'),
+        description: t('createGuide.done.next'),
+      }
+    : activeStep === 'target'
+      ? {
+          title: t('createGuide.target.title'),
+          description: t('createGuide.target.description'),
+        }
+      : activeStep === 'release'
+        ? {
+            title: t('createGuide.release.title'),
+            description: t('createGuide.release.description'),
+          }
+        : activeStep === 'source'
+          ? {
+              title: t('createGuide.source.title'),
+              description: t('createGuide.source.description'),
+            }
+          : {
+              title: t('createGuide.steps.method'),
+              description: t('createGuide.method.description'),
+            }
+
+  return (
+    <aside
+      aria-label={t('createGuide.review.summary')}
+      className="relative hidden h-full flex-1 shrink justify-start overflow-hidden border-x border-x-divider-subtle lg:flex"
+    >
+      <div className="absolute top-0 right-0 left-0 h-6 border-b border-b-divider-subtle 2xl:h-[139px]" />
+      <div className="relative h-full w-full max-w-[760px]">
+        <div className="h-6 2xl:h-[139px]" />
+        <div className="px-8 pt-5 pb-4">
+          <h4 className="system-sm-semibold-uppercase text-text-secondary">{stepInfo.title}</h4>
+          <div className="mt-1 min-h-8 max-w-96 system-xs-regular text-text-tertiary">
+            <span>{stepInfo.description}</span>
+          </div>
+        </div>
+        <div className="absolute right-0 left-0 border-b border-b-divider-subtle" />
+        <div className="px-8 py-6">
+          <div className="w-full max-w-[392px] overflow-hidden rounded-xl border border-components-card-border bg-components-card-bg shadow-xs">
+            <div className="flex items-start gap-3 border-b border-divider-subtle px-4 py-4">
+              <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-components-icon-bg-blue-light-solid">
+                <span className="i-ri-rocket-2-line size-4 text-components-avatar-shape-fill-stop-100" aria-hidden="true" />
+              </span>
+              <div className="min-w-0">
+                <div className="system-md-semibold text-text-primary">{t('createGuide.review.title')}</div>
+                <div className="mt-0.5 line-clamp-2 system-xs-regular text-text-tertiary">{t('createGuide.review.description')}</div>
+              </div>
+            </div>
+            {preview}
+          </div>
+        </div>
+        <div className="absolute right-0 left-0 border-b border-b-divider-subtle" />
+      </div>
+    </aside>
   )
 }
 
@@ -392,7 +311,7 @@ function MethodStep({ method, onSelect }: {
 
   return (
     <StepShell title={t('createGuide.steps.method')} description={t('createGuide.method.description')}>
-      <div className="flex flex-col gap-2">
+      <div className="flex flex-col gap-2 sm:flex-row">
         <MethodCard
           icon="i-ri-stack-line"
           title={t('createGuide.methods.bindApp.title')}
@@ -513,7 +432,7 @@ function SourceStep({
           onClear={() => onSearchTextChange('')}
           className="h-9"
         />
-        <div className="overflow-hidden rounded-lg border border-divider-subtle bg-background-default">
+        <div className="max-h-64 overflow-y-auto rounded-lg border border-divider-subtle bg-background-default">
           {isLoading
             ? <SourceAppSkeleton />
             : filteredApps.length === 0
@@ -566,6 +485,9 @@ function ReleaseStep({
   instanceDescription,
   releaseName,
   releaseDescription,
+  instanceNamePlaceholder,
+  releaseNamePlaceholder,
+  releaseDescriptionPlaceholder,
   onInstanceNameChange,
   onInstanceDescriptionChange,
   onReleaseNameChange,
@@ -575,6 +497,9 @@ function ReleaseStep({
   instanceDescription: string
   releaseName: string
   releaseDescription: string
+  instanceNamePlaceholder: string
+  releaseNamePlaceholder: string
+  releaseDescriptionPlaceholder: string
   onInstanceNameChange: (value: string) => void
   onInstanceDescriptionChange: (value: string) => void
   onReleaseNameChange: (value: string) => void
@@ -594,6 +519,7 @@ function ReleaseStep({
               id="create-guide-instance-name"
               value={instanceName}
               onChange={event => onInstanceNameChange(event.target.value)}
+              placeholder={instanceNamePlaceholder}
               required
               className="h-9"
             />
@@ -619,6 +545,7 @@ function ReleaseStep({
               id="create-guide-release-name"
               value={releaseName}
               onChange={event => onReleaseNameChange(event.target.value)}
+              placeholder={releaseNamePlaceholder}
               required
               className="h-9"
             />
@@ -631,6 +558,7 @@ function ReleaseStep({
               id="create-guide-release-description"
               value={releaseDescription}
               onChange={event => onReleaseDescriptionChange(event.target.value)}
+              placeholder={releaseDescriptionPlaceholder}
               className="min-h-20 w-full resize-none appearance-none rounded-md border border-transparent bg-components-input-bg-normal p-2 px-3 system-sm-regular text-components-input-text-filled caret-primary-600 outline-hidden placeholder:text-components-input-text-placeholder hover:border-components-input-border-hover hover:bg-components-input-bg-hover focus:border-components-input-border-active focus:bg-components-input-bg-active focus:shadow-xs"
             />
           </div>
@@ -854,7 +782,7 @@ function TargetStep({
   )
 }
 
-function ReviewStep({
+function DeploymentSummaryPreview({
   sourceName,
   instanceName,
   releaseName,
@@ -872,71 +800,75 @@ function ReviewStep({
   bindingSelections: BindingSelections
 }) {
   const { t } = useTranslation('deployments')
-  const environmentDisplayName = targetEnvironmentName || '—'
-  const summaryRows = [
-    [t('createGuide.review.source'), sourceName],
-    [t('createGuide.review.instance'), instanceName],
-    [t('createGuide.review.release'), releaseName],
-    [t('createGuide.review.environment'), environmentDisplayName],
-  ]
-  const planRows = [
-    t('createGuide.review.plan.createInstance'),
-    t('createGuide.review.plan.createRelease', { release: releaseName }),
-    t('createGuide.review.plan.resolveBindings'),
-    t('createGuide.review.plan.deployTo', { environment: environmentDisplayName }),
+  const displayValue = (value: string) => value || '—'
+  const sourceDisplayName = displayValue(sourceName)
+  const instanceDisplayName = displayValue(instanceName)
+  const releaseDisplayName = displayValue(releaseName)
+  const environmentDisplayName = displayValue(targetEnvironmentName)
+  const routeItems = [
+    {
+      icon: 'i-ri-apps-2-line',
+      label: t('createGuide.review.source'),
+      meta: `${t('createGuide.review.instance')} ${instanceDisplayName}`,
+      value: sourceDisplayName,
+    },
+    {
+      icon: 'i-ri-price-tag-3-line',
+      label: t('createGuide.review.release'),
+      value: releaseDisplayName,
+    },
+    {
+      icon: 'i-ri-cloud-line',
+      label: t('createGuide.review.environment'),
+      value: environmentDisplayName,
+    },
   ]
 
   return (
-    <StepShell title={t('createGuide.review.title')} description={t('createGuide.review.description')}>
-      <div className="grid grid-cols-1 gap-4">
-        <section aria-label={t('createGuide.review.summary')} className="rounded-lg bg-background-default-subtle p-3">
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            {summaryRows.map(([label, value]) => (
-              <div key={label} className="flex min-w-0 flex-col gap-1">
-                <div className="system-xs-medium-uppercase text-text-tertiary">{label}</div>
-                <div className="truncate system-sm-semibold text-text-primary" title={value}>{value}</div>
-              </div>
-            ))}
+    <div className="flex max-h-[360px] flex-col gap-4 overflow-y-auto p-4">
+      <div className="flex flex-col">
+        {routeItems.map((item, index) => (
+          <div key={item.label} className="flex min-w-0 gap-3">
+            <div className="flex w-8 shrink-0 flex-col items-center">
+              <span className="flex size-8 items-center justify-center rounded-lg border border-divider-subtle bg-background-default-subtle">
+                <span className={cn('size-4 text-text-tertiary', item.icon)} aria-hidden="true" />
+              </span>
+              {index < routeItems.length - 1 && <span className="my-1 h-5 w-px bg-divider-subtle" aria-hidden="true" />}
+            </div>
+            <div className="min-w-0 flex-1 pb-3">
+              <div className="system-2xs-medium-uppercase text-text-tertiary">{item.label}</div>
+              <div className="truncate system-sm-semibold text-text-primary" title={item.value}>{item.value}</div>
+              {item.meta && <div className="mt-0.5 truncate system-xs-regular text-text-tertiary" title={item.meta}>{item.meta}</div>}
+            </div>
           </div>
-        </section>
-        <section className="rounded-lg bg-background-default-subtle p-3">
-          <div className="system-xs-medium-uppercase text-text-tertiary">{t('createGuide.review.planTitle')}</div>
-          <ol className="mt-3 flex flex-col gap-2">
-            {planRows.map((row, index) => (
-              <li key={row} className="flex items-center gap-2 system-sm-regular text-text-secondary">
-                <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-background-default system-2xs-medium text-text-tertiary">
-                  {index + 1}
-                </span>
-                <span>{row}</span>
-              </li>
-            ))}
-          </ol>
-        </section>
-        <section className="rounded-lg bg-background-default-subtle p-3">
-          <div className="system-xs-medium-uppercase text-text-tertiary">{t('createGuide.review.bindings')}</div>
-          <div className="mt-3 flex flex-col gap-2">
-            {bindingSlots.length === 0
-              ? (
-                  <div className="system-sm-regular text-text-tertiary">{t('createGuide.target.noBindingRequired')}</div>
-                )
-              : bindingSlots.map((slot) => {
-                  const selectedValue = bindingSelections[bindingSlotKey(slot)] ?? ''
-                  const selectedCandidate = bindingCandidateOptions(slot).find(candidate => candidate.value === selectedValue)
-                  return (
-                    <div key={bindingSlotKey(slot)} className="grid min-w-0 gap-1 rounded-lg bg-background-default px-3 py-2 sm:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] sm:items-center">
-                      <span className="truncate system-sm-medium text-text-secondary">{slot.name || bindingSlotKey(slot)}</span>
-                      <span className="truncate system-sm-regular text-text-tertiary sm:text-right">{selectedCandidate?.label || '—'}</span>
-                    </div>
-                  )
-                })}
-          </div>
-        </section>
-        <section className="rounded-lg bg-background-default-subtle p-3">
-          <div className="system-xs-medium-uppercase text-text-tertiary">{t('createGuide.review.releaseNote')}</div>
-          <div className="mt-2 system-sm-regular whitespace-pre-wrap text-text-secondary">{releaseDescription || '—'}</div>
-        </section>
+        ))}
       </div>
-    </StepShell>
+      <div>
+        <div className="system-xs-medium-uppercase text-text-tertiary">{t('createGuide.review.bindings')}</div>
+        <div className="mt-2 flex flex-col gap-1.5">
+          {bindingSlots.length === 0
+            ? (
+                <div className="rounded-lg bg-background-default-subtle px-3 py-2 system-xs-regular text-text-tertiary">
+                  {t('createGuide.target.noBindingRequired')}
+                </div>
+              )
+            : bindingSlots.map((slot) => {
+                const selectedValue = bindingSelections[bindingSlotKey(slot)] ?? ''
+                const selectedCandidate = bindingCandidateOptions(slot).find(candidate => candidate.value === selectedValue)
+                return (
+                  <div key={bindingSlotKey(slot)} className="grid min-w-0 grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] gap-2 rounded-lg bg-background-default-subtle px-3 py-2">
+                    <span className="truncate system-xs-medium text-text-secondary">{slot.name || bindingSlotKey(slot)}</span>
+                    <span className="truncate text-right system-xs-regular text-text-tertiary">{selectedCandidate?.label || '—'}</span>
+                  </div>
+                )
+              })}
+        </div>
+      </div>
+      <div>
+        <div className="system-xs-medium-uppercase text-text-tertiary">{t('createGuide.review.releaseNote')}</div>
+        <div className="mt-1 line-clamp-3 system-xs-regular whitespace-pre-wrap text-text-secondary">{releaseDescription || '—'}</div>
+      </div>
+    </div>
   )
 }
 
@@ -984,7 +916,7 @@ function GuideActions({
   onPrimaryAction: () => void
 }) {
   const { t } = useTranslation('deployments')
-  const primaryLabel = step === 'review'
+  const primaryLabel = step === 'target'
     ? isDeploying ? t('createGuide.actions.deploying') : t('createGuide.actions.deploy')
     : step === 'release' && isDeploying
       ? t('createGuide.actions.creating')
@@ -994,14 +926,138 @@ function GuideActions({
     return null
 
   return (
-    <div className="flex items-center justify-between gap-3 border-t border-divider-subtle bg-background-default-subtle px-5 py-3">
-      <Button type="button" variant="secondary" onClick={onBack} disabled={isDeploying}>
-        {t('createGuide.actions.back')}
-      </Button>
+    <div className="flex items-center justify-end gap-2 pt-5 pb-10">
+      {(step === 'release' || step === 'target') && (
+        <Button type="button" variant="secondary" onClick={onBack} disabled={isDeploying}>
+          {t('createGuide.actions.back')}
+        </Button>
+      )}
       <Button type="button" variant="primary" disabled={!canContinue || isDeploying} onClick={onPrimaryAction}>
         {primaryLabel}
       </Button>
     </div>
+  )
+}
+
+function CreationSections({
+  children,
+  defaultReleaseNote,
+  defaultedReleaseName,
+  instanceDescription,
+  instanceName,
+  method,
+  onInstanceDescriptionChange,
+  onInstanceNameChange,
+  onReleaseDescriptionChange,
+  onReleaseNameChange,
+  onSearchTextChange,
+  onSelectMethod,
+  onSelectSourceApp,
+  releaseDescription,
+  releaseName,
+  selectedApp,
+  sourceApps,
+  sourceAppsLoading,
+  sourceName,
+  sourceSearchText,
+  stage,
+}: {
+  children?: React.ReactNode
+  defaultReleaseNote: string
+  defaultedReleaseName: string
+  instanceDescription: string
+  instanceName: string
+  method?: GuideMethod
+  onInstanceDescriptionChange: (value: string) => void
+  onInstanceNameChange: (value: string) => void
+  onReleaseDescriptionChange: (value: string) => void
+  onReleaseNameChange: (value: string) => void
+  onSearchTextChange: (value: string) => void
+  onSelectMethod: (method: GuideMethod) => void
+  onSelectSourceApp: (app: App) => void
+  releaseDescription: string
+  releaseName: string
+  selectedApp?: App
+  sourceApps: App[]
+  sourceAppsLoading: boolean
+  sourceName: string
+  sourceSearchText: string
+  stage: 'source' | 'release'
+}) {
+  return (
+    <div className="flex flex-col gap-7 pb-4">
+      {stage === 'source' && (
+        <>
+          <MethodStep method={method} onSelect={onSelectMethod} />
+          {method === 'bindApp' && (
+            <SourceStep
+              apps={sourceApps}
+              selectedApp={selectedApp}
+              searchText={sourceSearchText}
+              isLoading={sourceAppsLoading}
+              onSearchTextChange={onSearchTextChange}
+              onSelectApp={onSelectSourceApp}
+            />
+          )}
+          {method === 'importDsl' && <DslStep />}
+        </>
+      )}
+      {stage === 'release' && method && (
+        <ReleaseStep
+          instanceName={instanceName}
+          instanceDescription={instanceDescription}
+          releaseName={releaseName}
+          releaseDescription={releaseDescription}
+          instanceNamePlaceholder={sourceName}
+          releaseNamePlaceholder={defaultedReleaseName}
+          releaseDescriptionPlaceholder={defaultReleaseNote}
+          onInstanceNameChange={onInstanceNameChange}
+          onInstanceDescriptionChange={onInstanceDescriptionChange}
+          onReleaseNameChange={onReleaseNameChange}
+          onReleaseDescriptionChange={onReleaseDescriptionChange}
+        />
+      )}
+      {children}
+    </div>
+  )
+}
+
+function TargetReviewSections({
+  bindingSelections,
+  bindingSlots,
+  environments,
+  isBindingError,
+  isBindingLoading,
+  isEnvironmentError,
+  isEnvironmentLoading,
+  onSelectBinding,
+  onSelectEnvironment,
+  selectedEnvironmentId,
+}: {
+  bindingSelections: BindingSelections
+  bindingSlots: DeploymentBindingSlot[]
+  environments: EnvironmentOption[]
+  isBindingError: boolean
+  isBindingLoading: boolean
+  isEnvironmentError: boolean
+  isEnvironmentLoading: boolean
+  onSelectBinding: (slot: string, value: string) => void
+  onSelectEnvironment: (environmentId: string) => void
+  selectedEnvironmentId: string
+}) {
+  return (
+    <TargetStep
+      environments={environments}
+      bindingSlots={bindingSlots}
+      selectedEnvironmentId={selectedEnvironmentId}
+      bindingSelections={bindingSelections}
+      isEnvironmentLoading={isEnvironmentLoading}
+      isEnvironmentError={isEnvironmentError}
+      isBindingLoading={isBindingLoading}
+      isBindingError={isBindingError}
+      onSelectEnvironment={onSelectEnvironment}
+      onSelectBinding={onSelectBinding}
+    />
   )
 }
 
@@ -1064,12 +1120,16 @@ export function CreateDeploymentGuide() {
     enabled: shouldLoadDeploymentTarget,
   }))
 
-  const environments = method === 'bindApp'
-    ? shouldLoadDeploymentTarget ? environmentsFromDeployments(environmentDeploymentsQuery.data?.data) : []
-    : dslPreviewDeployTargetEnvironments
-  const bindingSlots = method === 'bindApp'
-    ? shouldLoadDeploymentTarget ? deploymentPlanQuery.data?.plan?.slots?.filter(slot => bindingSlotKey(slot)) ?? [] : []
-    : dslPreviewBindingSlots
+  const environments = method === 'importDsl'
+    ? dslPreviewDeployTargetEnvironments
+    : method === 'bindApp' && shouldLoadDeploymentTarget
+      ? environmentsFromDeployments(environmentDeploymentsQuery.data?.data)
+      : []
+  const bindingSlots = method === 'importDsl'
+    ? dslPreviewBindingSlots
+    : method === 'bindApp' && shouldLoadDeploymentTarget
+      ? deploymentPlanQuery.data?.plan?.slots?.filter(slot => bindingSlotKey(slot)) ?? []
+      : []
   const effectiveSelectedEnvironmentId = selectedEnvironmentId || environments[0]?.id || ''
   const selectedEnvironment = environments.find(env => env.id === effectiveSelectedEnvironmentId) ?? environments[0]
   const selectedTargetEnvironmentName = selectedEnvironment ? environmentName(selectedEnvironment) : ''
@@ -1078,6 +1138,16 @@ export function CreateDeploymentGuide() {
   const isEnvironmentLoading = shouldLoadDeploymentTarget && (environmentDeploymentsQuery.isLoading || (environmentDeploymentsQuery.isFetching && !environmentDeploymentsQuery.data))
   const isBindingLoading = shouldLoadDeploymentTarget && (deploymentPlanQuery.isLoading || (deploymentPlanQuery.isFetching && !deploymentPlanQuery.data))
   const isDeploying = createInstance.isPending || createRelease.isPending || createDeployment.isPending
+  const sourceName = method === 'importDsl'
+    ? t('createGuide.dsl.defaultAppName')
+    : method === 'bindApp'
+      ? effectiveSelectedApp?.name ?? ''
+      : ''
+  const displayedInstanceName = instanceName.trim() || sourceName
+  const defaultedReleaseName = sourceName ? `${sourceName}-release` : ''
+  const displayedReleaseName = createdRelease?.name || releaseName.trim() || defaultedReleaseName
+  const displayedReleaseDescription = releaseDescription.trim() || defaultReleaseNote
+  const showTargetConfiguration = Boolean(method && step === 'target')
 
   function resetCreatedArtifacts() {
     setCreatedAppInstanceId('')
@@ -1097,25 +1167,19 @@ export function CreateDeploymentGuide() {
     setStep('source')
   }
 
-  function ensureReleaseDefaults() {
-    const sourceName = method === 'importDsl'
-      ? t('createGuide.dsl.defaultAppName')
-      : effectiveSelectedApp?.name ?? ''
-    if (!instanceName.trim())
-      setInstanceName(sourceName)
-    if (!releaseName.trim())
-      setReleaseName(`${sourceName}-release`)
-    if (!releaseDescription.trim())
-      setReleaseDescription(defaultReleaseNote)
-  }
-
   function canContinueCurrentStep() {
     if (step === 'method')
       return Boolean(method)
     if (step === 'source')
-      return method === 'importDsl' || Boolean(effectiveSelectedApp?.id)
-    if (step === 'release')
-      return Boolean(instanceName.trim() && releaseName.trim())
+      return Boolean(method && (method === 'importDsl' || effectiveSelectedApp?.id))
+    if (step === 'release') {
+      return Boolean(
+        method
+        && (method === 'importDsl' || effectiveSelectedApp?.id)
+        && displayedInstanceName.trim()
+        && displayedReleaseName.trim(),
+      )
+    }
     if (step === 'target') {
       const deploymentTargetReady = method === 'importDsl'
         || (shouldLoadDeploymentTarget
@@ -1129,22 +1193,16 @@ export function CreateDeploymentGuide() {
         && requiredBindingsReady,
       )
     }
-    if (step === 'review')
-      return Boolean(!isDeploying)
     return false
   }
 
   function handleBack() {
     if (isDeploying)
       return
-    if (step === 'source')
-      setStep('method')
-    else if (step === 'release')
+    if (step === 'release')
       setStep('source')
     else if (step === 'target')
       setStep('release')
-    else if (step === 'review')
-      setStep('target')
   }
 
   async function createReleaseArtifactsAndContinue() {
@@ -1162,10 +1220,10 @@ export function CreateDeploymentGuide() {
     }
 
     try {
-      const trimmedInstanceName = instanceName.trim()
+      const trimmedInstanceName = displayedInstanceName.trim()
       const trimmedInstanceDescription = instanceDescription.trim()
-      const trimmedReleaseName = releaseName.trim()
-      const trimmedReleaseDescription = releaseDescription.trim()
+      const trimmedReleaseName = displayedReleaseName.trim()
+      const trimmedReleaseDescription = displayedReleaseDescription.trim()
       const createdInstance = await createInstance.mutateAsync({
         body: {
           sourceAppId: effectiveSelectedApp.id,
@@ -1251,129 +1309,132 @@ export function CreateDeploymentGuide() {
     if (step === 'source') {
       if (method === 'bindApp' && effectiveSelectedApp)
         setSelectedApp(effectiveSelectedApp)
-      ensureReleaseDefaults()
       setStep('release')
       return
     }
     if (step === 'release') {
+      if (method === 'bindApp' && effectiveSelectedApp)
+        setSelectedApp(effectiveSelectedApp)
       void createReleaseArtifactsAndContinue()
       return
     }
     if (step === 'target') {
-      setStep('review')
-      return
-    }
-    if (step === 'review')
       void handleDeploy()
+    }
   }
 
-  const sourceName = method === 'importDsl'
-    ? t('createGuide.dsl.defaultAppName')
-    : effectiveSelectedApp?.name ?? ''
-  const displayedInstanceName = instanceName.trim() || sourceName
-  const displayedReleaseName = createdRelease?.name || releaseName.trim()
+  const deploymentPreview = (
+    <DeploymentSummaryPreview
+      sourceName={sourceName}
+      instanceName={displayedInstanceName}
+      releaseName={displayedReleaseName}
+      releaseDescription={displayedReleaseDescription}
+      targetEnvironmentName={selectedTargetEnvironmentName}
+      bindingSlots={bindingSlots}
+      bindingSelections={bindingSelections}
+    />
+  )
+
   const guideContent = (
     <>
-      {step === 'method' && (
-        <MethodStep method={method} onSelect={handleSelectMethod} />
-      )}
-      {step === 'source' && method === 'bindApp' && (
-        <SourceStep
-          apps={sourceApps}
-          selectedApp={effectiveSelectedApp}
-          searchText={sourceSearchText}
-          isLoading={sourceAppsQuery.isLoading || (sourceAppsQuery.isFetching && sourceApps.length === 0)}
-          onSearchTextChange={setSourceSearchText}
-          onSelectApp={(app) => {
-            setSelectedApp(app)
-            resetCreatedArtifacts()
-          }}
-        />
-      )}
-      {step === 'source' && method === 'importDsl' && <DslStep />}
-      {step === 'release' && (
-        <ReleaseStep
-          instanceName={instanceName}
-          instanceDescription={instanceDescription}
-          releaseName={releaseName}
-          releaseDescription={releaseDescription}
-          onInstanceNameChange={(value) => {
-            setInstanceName(value)
-            resetCreatedArtifacts()
-          }}
-          onInstanceDescriptionChange={(value) => {
-            setInstanceDescription(value)
-            resetCreatedArtifacts()
-          }}
-          onReleaseNameChange={(value) => {
-            setReleaseName(value)
-            resetCreatedArtifacts()
-          }}
-          onReleaseDescriptionChange={(value) => {
-            setReleaseDescription(value)
-            resetCreatedArtifacts()
-          }}
-        />
-      )}
-      {step === 'target' && (
-        <TargetStep
-          environments={environments}
-          bindingSlots={bindingSlots}
-          selectedEnvironmentId={effectiveSelectedEnvironmentId}
-          bindingSelections={bindingSelections}
-          isEnvironmentLoading={isEnvironmentLoading}
-          isEnvironmentError={environmentDeploymentsQuery.isError}
-          isBindingLoading={isBindingLoading}
-          isBindingError={deploymentPlanQuery.isError}
-          onSelectEnvironment={setSelectedEnvironmentId}
-          onSelectBinding={(slot, value) => {
-            setManualBindingSelections(prev => ({ ...prev, [slot]: value }))
-          }}
-        />
-      )}
-      {step === 'review' && (
-        <ReviewStep
-          sourceName={sourceName}
-          instanceName={displayedInstanceName}
-          releaseName={displayedReleaseName}
-          releaseDescription={releaseDescription}
-          targetEnvironmentName={selectedTargetEnvironmentName}
-          bindingSlots={bindingSlots}
-          bindingSelections={bindingSelections}
-        />
-      )}
-      {step === 'done' && (
-        <DoneStep environmentName={deployedEnvironmentName || selectedTargetEnvironmentName} />
-      )}
+      {step === 'done'
+        ? (
+            <DoneStep environmentName={deployedEnvironmentName || selectedTargetEnvironmentName} />
+          )
+        : showTargetConfiguration
+          ? (
+              <div className="flex flex-col gap-7 pb-4">
+                <TargetReviewSections
+                  environments={environments}
+                  bindingSlots={bindingSlots}
+                  selectedEnvironmentId={effectiveSelectedEnvironmentId}
+                  bindingSelections={bindingSelections}
+                  isEnvironmentLoading={isEnvironmentLoading}
+                  isEnvironmentError={environmentDeploymentsQuery.isError}
+                  isBindingLoading={isBindingLoading}
+                  isBindingError={deploymentPlanQuery.isError}
+                  onSelectEnvironment={setSelectedEnvironmentId}
+                  onSelectBinding={(slot, value) => {
+                    setManualBindingSelections(prev => ({ ...prev, [slot]: value }))
+                  }}
+                />
+              </div>
+            )
+          : (
+              <CreationSections
+                stage={step === 'release' ? 'release' : 'source'}
+                method={method}
+                sourceApps={sourceApps}
+                selectedApp={effectiveSelectedApp}
+                sourceSearchText={sourceSearchText}
+                sourceAppsLoading={sourceAppsQuery.isLoading || (sourceAppsQuery.isFetching && sourceApps.length === 0)}
+                sourceName={sourceName}
+                instanceName={instanceName}
+                instanceDescription={instanceDescription}
+                releaseName={releaseName}
+                releaseDescription={releaseDescription}
+                defaultedReleaseName={defaultedReleaseName}
+                defaultReleaseNote={defaultReleaseNote}
+                onSelectMethod={handleSelectMethod}
+                onSearchTextChange={setSourceSearchText}
+                onSelectSourceApp={(app) => {
+                  setSelectedApp(app)
+                  resetCreatedArtifacts()
+                  setStep('release')
+                }}
+                onInstanceNameChange={(value) => {
+                  setInstanceName(value)
+                  resetCreatedArtifacts()
+                  setStep('release')
+                }}
+                onInstanceDescriptionChange={(value) => {
+                  setInstanceDescription(value)
+                  resetCreatedArtifacts()
+                  setStep('release')
+                }}
+                onReleaseNameChange={(value) => {
+                  setReleaseName(value)
+                  resetCreatedArtifacts()
+                  setStep('release')
+                }}
+                onReleaseDescriptionChange={(value) => {
+                  setReleaseDescription(value)
+                  resetCreatedArtifacts()
+                  setStep('release')
+                }}
+              />
+            )}
     </>
   )
 
   return (
-    <div className="flex h-full min-h-0 bg-background-body">
-      <main className="flex min-w-0 grow flex-col overflow-hidden">
-        <div className="border-b border-divider-subtle px-6 py-4 md:hidden">
-          <Link href="/deployments" className="inline-flex items-center gap-1 system-sm-medium text-text-tertiary hover:text-text-secondary">
-            <span className="i-ri-arrow-left-line size-4" aria-hidden="true" />
-            {t('createGuide.nav.back')}
-          </Link>
-          <h1 className="mt-2 title-xl-semi-bold text-text-primary">{t('createGuide.title')}</h1>
-        </div>
-        <GuideFrame activeStep={step}>
-          <GuideCard
-            actions={(
-              <GuideActions
-                canContinue={canContinueCurrentStep()}
-                isDeploying={isDeploying}
-                step={step}
-                onBack={handleBack}
-                onPrimaryAction={handlePrimaryAction}
-              />
-            )}
+    <div className="fixed inset-0 z-50 bg-background-overlay-backdrop p-4 backdrop-blur-[6px]">
+      <div className="h-full w-full overflow-hidden rounded-2xl border border-effects-highlight bg-background-default-subtle">
+        <main className="relative flex h-full min-w-0 grow flex-col overflow-hidden">
+          <Link
+            href="/deployments"
+            aria-label={t('createGuide.nav.back')}
+            className="absolute top-3 right-3 z-50 flex h-9 w-9 cursor-pointer items-center justify-center rounded-[10px] bg-components-button-tertiary-bg hover:bg-components-button-tertiary-bg-hover"
           >
-            {guideContent}
-          </GuideCard>
-        </GuideFrame>
-      </main>
+            <span aria-hidden="true" className="i-ri-close-large-line h-3.5 w-3.5 text-components-button-tertiary-text" />
+          </Link>
+          <GuideFrame activeStep={step} preview={deploymentPreview}>
+            <GuideCard
+              actions={(
+                <GuideActions
+                  canContinue={canContinueCurrentStep()}
+                  isDeploying={isDeploying}
+                  step={step}
+                  onBack={handleBack}
+                  onPrimaryAction={handlePrimaryAction}
+                />
+              )}
+            >
+              {guideContent}
+            </GuideCard>
+          </GuideFrame>
+        </main>
+      </div>
     </div>
   )
 }
