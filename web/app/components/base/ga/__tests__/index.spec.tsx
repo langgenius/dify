@@ -110,6 +110,14 @@ describe('GA', () => {
       expect(mockHeaders).not.toHaveBeenCalled()
     })
 
+    it('should return null when not in production', async () => {
+      configState.isProd = false
+      const { element } = await renderGA('admin')
+
+      expect(element).toBeNull()
+      expect(mockHeaders).not.toHaveBeenCalled()
+    })
+
     it('should render three script tags with admin GA id in production', async () => {
       await renderGA('admin')
 
@@ -148,18 +156,6 @@ describe('GA', () => {
   })
 
   describe('Edge Cases', () => {
-    it('should not read headers and should omit nonce when not in production', async () => {
-      configState.isProd = false
-      await renderGA('admin')
-
-      const scripts = screen.getAllByTestId('mock-next-script')
-
-      expect(mockHeaders).not.toHaveBeenCalled()
-      scripts.forEach((script) => {
-        expect(script).toHaveAttribute('data-nonce', '')
-      })
-    })
-
     it('should omit nonce when CSP header does not contain nonce token', async () => {
       mockHeadersGet.mockReturnValue(`default-src 'self'; script-src 'self'`)
       await renderGA('admin')

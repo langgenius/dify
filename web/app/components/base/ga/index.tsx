@@ -32,12 +32,10 @@ const extractNonceFromCSP = (cspHeader: string | null): string | undefined => {
 const GA: FC<IGAProps> = async ({
   gaType,
 }) => {
-  if (IS_CE_EDITION)
+  if (IS_CE_EDITION || !IS_PROD)
     return null
 
-  const cspHeader = IS_PROD
-    ? (await headers()).get('content-security-policy')
-    : null
+  const cspHeader = (await headers()).get('content-security-policy')
   const nonce = extractNonceFromCSP(cspHeader)
 
   return (
