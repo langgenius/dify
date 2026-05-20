@@ -246,7 +246,7 @@ export const useLogout = () => {
   })
 }
 
-type ForgotPasswordValidity = CommonResponse & { is_valid: boolean, email: string }
+type ForgotPasswordValidity = CommonResponse & { is_valid: boolean, email: string, token: string }
 export const useVerifyForgotPasswordToken = (token?: string | null) => {
   return useQuery<ForgotPasswordValidity>({
     queryKey: commonQueryKeys.forgotPasswordValidity(token),
