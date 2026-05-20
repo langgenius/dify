@@ -732,8 +732,8 @@ describe('auto-update-setting', () => {
     const triggerName = (strategy: AUTO_UPDATE_STRATEGY) =>
       new RegExp(`plugin\\.autoUpdate\\.strategy\\.${i18nKeyByStrategy[strategy]}\\.name`, 'i')
 
-    const findOption = async (key: 'disabled' | 'fixOnly' | 'latest') => {
-      const options = await screen.findAllByRole('menuitemradio')
+    const findOption = (key: 'disabled' | 'fixOnly' | 'latest') => {
+      const options = screen.getAllByRole('button')
       const option = options.find(item =>
         item.textContent?.includes(`plugin.autoUpdate.strategy.${key}.name`),
       )
@@ -743,25 +743,12 @@ describe('auto-update-setting', () => {
     }
 
     describe('Rendering', () => {
-      it('should render trigger button with current strategy label', () => {
+      it('should render the segmented control with all strategies', () => {
         render(<StrategyPicker value={AUTO_UPDATE_STRATEGY.disabled} onChange={vi.fn()} />)
 
+        expect(screen.getByRole('group', { name: 'plugin.autoUpdate.automaticUpdates' })).toBeInTheDocument()
         expect(screen.getByRole('button', { name: triggerName(AUTO_UPDATE_STRATEGY.disabled) })).toBeInTheDocument()
-      })
-
-      it('should not render dropdown content when closed', () => {
-        render(<StrategyPicker value={AUTO_UPDATE_STRATEGY.disabled} onChange={vi.fn()} />)
-
-        expect(screen.queryByRole('menu')).not.toBeInTheDocument()
-      })
-
-      it('should render all strategy options when open', async () => {
-        const user = userEvent.setup()
-        render(<StrategyPicker value={AUTO_UPDATE_STRATEGY.disabled} onChange={vi.fn()} />)
-
-        await user.click(screen.getByRole('button', { name: triggerName(AUTO_UPDATE_STRATEGY.disabled) }))
-
-        const options = await screen.findAllByRole('menuitemradio')
+        const options = screen.getAllByRole('button')
         expect(options).toHaveLength(3)
         expect(options.some(o => o.textContent?.includes('plugin.autoUpdate.strategy.disabled.name'))).toBe(true)
         expect(options.some(o => o.textContent?.includes('plugin.autoUpdate.strategy.fixOnly.name'))).toBe(true)
@@ -770,17 +757,6 @@ describe('auto-update-setting', () => {
     })
 
     describe('User Interactions', () => {
-      it('should open and close the menu when the trigger is clicked', async () => {
-        const user = userEvent.setup()
-        render(<StrategyPicker value={AUTO_UPDATE_STRATEGY.disabled} onChange={vi.fn()} />)
-
-        const trigger = screen.getByRole('button', { name: triggerName(AUTO_UPDATE_STRATEGY.disabled) })
-        expect(screen.queryByRole('menu')).not.toBeInTheDocument()
-
-        await user.click(trigger)
-        expect(await screen.findByRole('menu')).toBeInTheDocument()
-      })
-
       it.each<[AUTO_UPDATE_STRATEGY, 'disabled' | 'fixOnly' | 'latest', AUTO_UPDATE_STRATEGY]>([
         [AUTO_UPDATE_STRATEGY.disabled, 'fixOnly', AUTO_UPDATE_STRATEGY.fixOnly],
         [AUTO_UPDATE_STRATEGY.disabled, 'latest', AUTO_UPDATE_STRATEGY.latest],
@@ -790,36 +766,19 @@ describe('auto-update-setting', () => {
         const onChange = vi.fn()
         render(<StrategyPicker value={initial} onChange={onChange} />)
 
-        await user.click(screen.getByRole('button', { name: triggerName(initial) }))
-        await user.click(await findOption(optionKey))
+        await user.click(findOption(optionKey))
 
         expect(onChange).toHaveBeenCalledWith(expected)
       })
 
-      it('should mark only the currently selected option with aria-checked', async () => {
-        const user = userEvent.setup()
+      it('should mark only the currently selected option with aria-pressed', () => {
         render(<StrategyPicker value={AUTO_UPDATE_STRATEGY.fixOnly} onChange={vi.fn()} />)
 
-        await user.click(screen.getByRole('button', { name: triggerName(AUTO_UPDATE_STRATEGY.fixOnly) }))
-
-        const options = await screen.findAllByRole('menuitemradio')
-        const checked = options.filter(o => o.getAttribute('aria-checked') === 'true')
+        const options = screen.getAllByRole('button')
+        const checked = options.filter(o => o.getAttribute('aria-pressed') === 'true')
 
         expect(checked).toHaveLength(1)
         expect(checked[0]).toHaveTextContent('plugin.autoUpdate.strategy.fixOnly.name')
-      })
-
-      it('should render the check indicator inside the selected option only', async () => {
-        const user = userEvent.setup()
-        render(<StrategyPicker value={AUTO_UPDATE_STRATEGY.fixOnly} onChange={vi.fn()} />)
-
-        await user.click(screen.getByRole('button', { name: triggerName(AUTO_UPDATE_STRATEGY.fixOnly) }))
-
-        const fixOnlyOption = await findOption('fixOnly')
-        const latestOption = await findOption('latest')
-
-        expect(fixOnlyOption.querySelector('.i-ri-check-line')).toBeInTheDocument()
-        expect(latestOption.querySelector('.i-ri-check-line')).toBeNull()
       })
     })
   })
@@ -1277,12 +1236,8 @@ describe('auto-update-setting', () => {
         render(<AutoUpdateSetting payload={payload} onChange={onChange} />)
 
         await user.click(
-          screen.getByRole('button', { name: /plugin\.autoUpdate\.strategy\.fixOnly\.name/i }),
+          screen.getByRole('button', { name: /plugin\.autoUpdate\.strategy\.latest\.name/i }),
         )
-        const latestOption = (await screen.findAllByRole('menuitemradio')).find(item =>
-          item.textContent?.includes('plugin.autoUpdate.strategy.latest.name'),
-        )!
-        await user.click(latestOption)
 
         // Assert
         expect(onChange).toHaveBeenCalledWith(
@@ -1548,10 +1503,10 @@ describe('auto-update-setting', () => {
         // Act
         render(<AutoUpdateSetting {...defaultProps} payload={payload} />)
 
-        // Assert - OptionCard component will be rendered for each mode
-        expect(screen.getByText('plugin.autoUpdate.upgradeMode.all')).toBeInTheDocument()
-        expect(screen.getByText('plugin.autoUpdate.upgradeMode.exclude')).toBeInTheDocument()
-        expect(screen.getByText('plugin.autoUpdate.upgradeMode.partial')).toBeInTheDocument()
+        // Assert
+        expect(screen.getByRole('button', { name: 'plugin.autoUpdate.upgradeMode.all' })).toHaveAttribute('aria-pressed', 'false')
+        expect(screen.getByRole('button', { name: 'plugin.autoUpdate.upgradeMode.exclude' })).toHaveAttribute('aria-pressed', 'false')
+        expect(screen.getByRole('button', { name: 'plugin.autoUpdate.upgradeMode.partial' })).toHaveAttribute('aria-pressed', 'true')
       })
 
       it('should call onChange when upgrade mode is changed', () => {
@@ -1565,7 +1520,7 @@ describe('auto-update-setting', () => {
         // Act
         render(<AutoUpdateSetting payload={payload} onChange={onChange} />)
 
-        // Click on partial mode - find the option card for partial
+        // Click on partial mode
         const partialOption = screen.getByText('plugin.autoUpdate.upgradeMode.partial')
         fireEvent.click(partialOption)
 

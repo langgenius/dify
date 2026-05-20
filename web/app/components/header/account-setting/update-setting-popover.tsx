@@ -26,14 +26,10 @@ type Props = {
   disabled?: boolean
 }
 
-type SegmentedOption<T extends string> = {
-  label: string
-  value: T
-}
-
 const updateSettingFormClassName = 'flex flex-col items-start gap-1 pb-1 pt-0.5'
 const updateSettingFormInputSetClassName = 'flex flex-col items-start gap-0.5 px-4 py-1'
 const updateSettingFormLabelClassName = 'flex min-h-6 items-center system-sm-semibold text-text-secondary'
+const updateSettingToggleItemClassName = 'flex-1 hover:bg-state-base-hover-alt data-pressed:hover:bg-components-segmented-control-item-active-bg'
 
 function SettingTimeZone({ children }: { children?: ReactNode }) {
   const setShowAccountSettingModal = useModalContextSelector(s => s.setShowAccountSettingModal)
@@ -46,43 +42,6 @@ function SettingTimeZone({ children }: { children?: ReactNode }) {
     >
       {children}
     </button>
-  )
-}
-
-const SegmentedControl = <T extends string>({
-  ariaLabel,
-  className,
-  options,
-  value,
-  onChange,
-}: {
-  ariaLabel: string
-  className?: string
-  options: Array<SegmentedOption<T>>
-  value: T
-  onChange: (value: T) => void
-}) => {
-  return (
-    <ToggleGroup<T>
-      aria-label={ariaLabel}
-      className={cn('flex', className)}
-      value={[value]}
-      onValueChange={(nextValue) => {
-        const selectedValue = nextValue[0]
-        if (selectedValue)
-          onChange(selectedValue)
-      }}
-    >
-      {options.map(option => (
-        <ToggleGroupItem<T>
-          key={option.value}
-          value={option.value}
-          className="flex-1 hover:bg-state-base-hover-alt data-pressed:hover:bg-components-segmented-control-item-active-bg"
-        >
-          <span className="p-0.5 whitespace-nowrap">{option.label}</span>
-        </ToggleGroupItem>
-      ))}
-    </ToggleGroup>
   )
 }
 
@@ -144,7 +103,7 @@ const UpdateSettingPopover = ({
     const localSeconds = convertUTCDaySecondsToLocalSeconds(autoUpgrade.upgrade_time_of_day, timezone)
     return timeOfDayToDayjs(localSeconds).format('HH:mm')
   }, [autoUpgrade, timezone])
-  const strategyOptions = useMemo<Array<SegmentedOption<AUTO_UPDATE_STRATEGY>>>(() => [
+  const strategyOptions = useMemo(() => [
     {
       value: AUTO_UPDATE_STRATEGY.disabled,
       label: getStrategyLabel(AUTO_UPDATE_STRATEGY.disabled),
@@ -158,7 +117,7 @@ const UpdateSettingPopover = ({
       label: getStrategyLabel(AUTO_UPDATE_STRATEGY.latest),
     },
   ], [getStrategyLabel])
-  const scopeOptions = useMemo<Array<SegmentedOption<AUTO_UPDATE_MODE>>>(() => [
+  const scopeOptions = useMemo(() => [
     {
       value: AUTO_UPDATE_MODE.update_all,
       label: t('autoUpdate.scopeMode.all', { ns: 'plugin' }),
@@ -308,13 +267,26 @@ const UpdateSettingPopover = ({
                     <div className={updateSettingFormLabelClassName}>
                       {t('autoUpdate.automaticUpdates', { ns: 'plugin' })}
                     </div>
-                    <SegmentedControl
-                      ariaLabel={t('autoUpdate.automaticUpdates', { ns: 'plugin' })}
-                      className="w-full"
-                      options={strategyOptions}
-                      value={autoUpgrade.strategy_setting}
-                      onChange={strategy_setting => updateAutoUpgrade({ strategy_setting })}
-                    />
+                    <ToggleGroup<AUTO_UPDATE_STRATEGY>
+                      aria-label={t('autoUpdate.automaticUpdates', { ns: 'plugin' })}
+                      className="flex w-full"
+                      value={[autoUpgrade.strategy_setting]}
+                      onValueChange={(nextValue) => {
+                        const strategy_setting = nextValue[0]
+                        if (strategy_setting)
+                          updateAutoUpgrade({ strategy_setting })
+                      }}
+                    >
+                      {strategyOptions.map(option => (
+                        <ToggleGroupItem<AUTO_UPDATE_STRATEGY>
+                          key={option.value}
+                          value={option.value}
+                          className={updateSettingToggleItemClassName}
+                        >
+                          <span className="p-0.5 whitespace-nowrap">{option.label}</span>
+                        </ToggleGroupItem>
+                      ))}
+                    </ToggleGroup>
                   </div>
                 </div>
                 {autoUpgrade.strategy_setting !== AUTO_UPDATE_STRATEGY.disabled && (
@@ -354,13 +326,26 @@ const UpdateSettingPopover = ({
                         <div className={updateSettingFormLabelClassName}>
                           {t('autoUpdate.scope', { ns: 'plugin' })}
                         </div>
-                        <SegmentedControl
-                          ariaLabel={t('autoUpdate.scope', { ns: 'plugin' })}
-                          className="w-full"
-                          options={scopeOptions}
-                          value={autoUpgrade.upgrade_mode}
-                          onChange={upgrade_mode => updateAutoUpgrade({ upgrade_mode })}
-                        />
+                        <ToggleGroup<AUTO_UPDATE_MODE>
+                          aria-label={t('autoUpdate.scope', { ns: 'plugin' })}
+                          className="flex w-full"
+                          value={[autoUpgrade.upgrade_mode]}
+                          onValueChange={(nextValue) => {
+                            const upgrade_mode = nextValue[0]
+                            if (upgrade_mode)
+                              updateAutoUpgrade({ upgrade_mode })
+                          }}
+                        >
+                          {scopeOptions.map(option => (
+                            <ToggleGroupItem<AUTO_UPDATE_MODE>
+                              key={option.value}
+                              value={option.value}
+                              className={updateSettingToggleItemClassName}
+                            >
+                              <span className="p-0.5 whitespace-nowrap">{option.label}</span>
+                            </ToggleGroupItem>
+                          ))}
+                        </ToggleGroup>
                         {autoUpgrade.upgrade_mode !== AUTO_UPDATE_MODE.update_all && (
                           <PluginsPicker
                             value={plugins}
