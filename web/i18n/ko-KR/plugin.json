@@ -225,6 +225,8 @@
   "pluginInfoModal.title": "통합 정보",
   "privilege.admins": "관리자",
   "privilege.everyone": "모두",
+  "privilege.noDebugPermissionTooltip": "통합을 디버그할 권한이 없습니다",
+  "privilege.noInstallPermissionTooltip": "통합을 설치하고 관리할 권한이 없습니다",
   "privilege.noone": "아무도 없어",
   "privilege.permissions": "권한",
   "privilege.quickWhoCanDebug": "디버그는 누가 할 수 있나요?",

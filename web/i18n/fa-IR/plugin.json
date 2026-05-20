@@ -225,6 +225,8 @@
   "pluginInfoModal.title": "اطلاعات یکپارچه‌سازی",
   "privilege.admins": "مدیران",
   "privilege.everyone": "همه",
+  "privilege.noDebugPermissionTooltip": "شما مجوز اشکال‌زدایی یکپارچه‌سازی‌ها را ندارید",
+  "privilege.noInstallPermissionTooltip": "شما مجوز نصب و مدیریت یکپارچه‌سازی‌ها را ندارید",
   "privilege.noone": "هیچ",
   "privilege.permissions": "مجوزها",
   "privilege.quickWhoCanDebug": "چه کسی می‌تواند اشکال‌زدایی کند؟",

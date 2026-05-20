@@ -225,6 +225,8 @@
   "pluginInfoModal.title": "インテグレーション情報",
   "privilege.admins": "管理者",
   "privilege.everyone": "みんな",
+  "privilege.noDebugPermissionTooltip": "インテグレーションをデバッグする権限がありません",
+  "privilege.noInstallPermissionTooltip": "インテグレーションをインストールおよび管理する権限がありません",
   "privilege.noone": "誰もいない",
   "privilege.permissions": "権限",
   "privilege.quickWhoCanDebug": "デバッグできるユーザー",

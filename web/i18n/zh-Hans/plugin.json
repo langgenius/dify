@@ -225,6 +225,8 @@
   "pluginInfoModal.title": "集成信息",
   "privilege.admins": "管理员",
   "privilege.everyone": "所有人",
+  "privilege.noDebugPermissionTooltip": "你没有调试集成的权限",
+  "privilege.noInstallPermissionTooltip": "你没有安装和管理集成的权限",
   "privilege.noone": "无人",
   "privilege.permissions": "权限",
   "privilege.quickWhoCanDebug": "谁可以调试？",

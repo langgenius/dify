@@ -225,6 +225,8 @@
   "pluginInfoModal.title": "Informacije o integracijau",
   "privilege.admins": "Administratori",
   "privilege.everyone": "Vsi",
+  "privilege.noDebugPermissionTooltip": "Nimate dovoljenja za odpravljanje napak v integracijah",
+  "privilege.noInstallPermissionTooltip": "Nimate dovoljenja za namestitev in upravljanje integracij",
   "privilege.noone": "Nihče",
   "privilege.permissions": "Dovoljenja",
   "privilege.quickWhoCanDebug": "Kdo lahko odpravlja napake?",

@@ -225,6 +225,8 @@
   "pluginInfoModal.title": "Entegrasyon bilgisi",
   "privilege.admins": "Yöneticiler",
   "privilege.everyone": "Herkes",
+  "privilege.noDebugPermissionTooltip": "Entegrasyonlarda hata ayıklama izniniz yok",
+  "privilege.noInstallPermissionTooltip": "Entegrasyonları yükleme ve yönetme izniniz yok",
   "privilege.noone": "Hiç kimse",
   "privilege.permissions": "İzinler",
   "privilege.quickWhoCanDebug": "Kim debug yapabilir?",

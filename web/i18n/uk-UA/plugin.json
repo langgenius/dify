@@ -225,6 +225,8 @@
   "pluginInfoModal.title": "Інформація про інтеграція",
   "privilege.admins": "Адміни",
   "privilege.everyone": "Кожен",
+  "privilege.noDebugPermissionTooltip": "У вас немає дозволу налагоджувати інтеграції",
+  "privilege.noInstallPermissionTooltip": "У вас немає дозволу встановлювати інтеграції та керувати ними",
   "privilege.noone": "Ніхто",
   "privilege.permissions": "Дозволи",
   "privilege.quickWhoCanDebug": "Хто може налагоджувати?",

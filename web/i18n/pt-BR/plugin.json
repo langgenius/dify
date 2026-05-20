@@ -225,6 +225,8 @@
   "pluginInfoModal.title": "Informações do integração",
   "privilege.admins": "Administradores",
   "privilege.everyone": "Todos",
+  "privilege.noDebugPermissionTooltip": "Você não tem permissão para depurar integrações",
+  "privilege.noInstallPermissionTooltip": "Você não tem permissão para instalar e gerenciar integrações",
   "privilege.noone": "Ninguém",
   "privilege.permissions": "Permissões",
   "privilege.quickWhoCanDebug": "Quem pode depurar?",

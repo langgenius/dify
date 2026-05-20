@@ -225,6 +225,8 @@
   "pluginInfoModal.title": "Info integrasi",
   "privilege.admins": "Admin",
   "privilege.everyone": "Orang",
+  "privilege.noDebugPermissionTooltip": "Anda tidak memiliki izin untuk men-debug integrasi",
+  "privilege.noInstallPermissionTooltip": "Anda tidak memiliki izin untuk menginstal dan mengelola integrasi",
   "privilege.noone": "Tidak ada seorang pun",
   "privilege.permissions": "Izin",
   "privilege.quickWhoCanDebug": "Siapa yang dapat men-debug?",

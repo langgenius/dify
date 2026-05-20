@@ -225,6 +225,8 @@
   "pluginInfoModal.title": "Integratie info",
   "privilege.admins": "Admins",
   "privilege.everyone": "Everyone",
+  "privilege.noDebugPermissionTooltip": "Je hebt geen toestemming om integraties te debuggen",
+  "privilege.noInstallPermissionTooltip": "Je hebt geen toestemming om integraties te installeren en te beheren",
   "privilege.noone": "No one",
   "privilege.permissions": "Machtigingen",
   "privilege.quickWhoCanDebug": "Wie mag debuggen?",

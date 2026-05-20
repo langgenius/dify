@@ -1,10 +1,11 @@
 'use client'
 
-import type { CSSProperties } from 'react'
+import type { CSSProperties, ReactNode } from 'react'
 import type { IntegrationSection } from '@/app/components/tools/integration-routes'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import UpdateSettingPopover from '@/app/components/header/account-setting/update-setting-popover'
@@ -43,6 +44,43 @@ type IntegrationsPageProps = {
   section?: IntegrationSection
 }
 
+type PermissionTooltipWrapperProps = {
+  children: ReactNode
+  className?: string
+  content: string
+  placement: 'top' | 'bottom'
+  show: boolean
+}
+
+const permissionTooltipClassName = 'w-[112px] text-left'
+
+const PermissionTooltipWrapper = ({
+  children,
+  className,
+  content,
+  placement,
+  show,
+}: PermissionTooltipWrapperProps) => {
+  const trigger = (
+    <span
+      aria-label={show ? content : undefined}
+      className={cn('inline-flex', className)}
+    >
+      {children}
+    </span>
+  )
+
+  if (!show)
+    return trigger
+
+  return (
+    <Tooltip>
+      <TooltipTrigger render={trigger} />
+      <TooltipContent placement={placement} sideOffset={8} className={permissionTooltipClassName}>{content}</TooltipContent>
+    </Tooltip>
+  )
+}
+
 export default function IntegrationsPage({
   onSectionChange,
   onSwitchToMarketplace,
@@ -61,7 +99,6 @@ export default function IntegrationsPage({
     showPluginCategorySetting,
   } = useIntegrationPermissions(section)
   const [providerSearchText, setProviderSearchText] = useState('')
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
   const {
     activeItem,
     dataSourceItem,
@@ -77,8 +114,8 @@ export default function IntegrationsPage({
     toolsUnifiedContentFrameClassName,
   )
   const sidebarWidthStyle = {
-    '--integrations-sidebar-width': sidebarCollapsed ? '56px' : '200px',
-    '--model-provider-warning-left': `calc(240px + ${sidebarCollapsed ? '56px' : '200px'})`,
+    '--integrations-sidebar-width': '200px',
+    '--model-provider-warning-left': 'calc(240px + 200px)',
   } as CSSProperties & Record<'--integrations-sidebar-width' | '--model-provider-warning-left', string>
   const pluginSettingCategory = getPluginCategoryBySection(section)
   const pluginSettingAction = showPluginCategorySetting && pluginSettingCategory
@@ -99,7 +136,6 @@ export default function IntegrationsPage({
   }
   const toolsNavItemClassName = cn(
     integrationSidebarNavItemClassName,
-    sidebarCollapsed && 'justify-center px-0',
     section === 'builtin' ? integrationSidebarActiveNavItemClassName : integrationSidebarInactiveNavItemClassName,
   )
   const toolsNavItemContent = (
@@ -111,9 +147,7 @@ export default function IntegrationsPage({
         )}
         />
       </span>
-      {!sidebarCollapsed && (
-        <span className="min-w-0 flex-1 truncate">{t('menus.tools', { ns: 'common' })}</span>
-      )}
+      <span className="min-w-0 flex-1 truncate">{t('menus.tools', { ns: 'common' })}</span>
     </>
   )
 
@@ -121,45 +155,29 @@ export default function IntegrationsPage({
     <div className="flex h-full min-h-0 bg-components-panel-bg" style={sidebarWidthStyle}>
       <aside className={cn(
         'flex shrink-0 flex-col border-r border-divider-burn bg-components-panel-bg px-2 py-2 transition-[width]',
-        sidebarCollapsed ? 'w-14 items-center' : 'w-[200px] items-end',
+        'w-[200px] items-end',
       )}
       >
-        <div className={cn(
-          'flex min-h-0 flex-1 flex-col pb-4',
-          sidebarCollapsed ? 'w-10' : 'w-[184px]',
-        )}
+        <div
+          className="flex min-h-0 w-[184px] flex-1 flex-col pb-4"
         >
-          <div className={cn(
-            'flex h-8 shrink-0 items-center py-1',
-            sidebarCollapsed ? 'justify-center' : 'justify-between',
-          )}
+          <div
+            className="flex h-8 shrink-0 items-center py-1"
           >
-            {!sidebarCollapsed && (
-              <div className="title-3xl-semi-bold whitespace-nowrap text-text-primary">
-                {t('settings.integrations', { ns: 'common' })}
-              </div>
-            )}
-            <button
-              type="button"
-              className="flex size-5 items-center justify-center rounded-md text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary"
-              aria-label={t(sidebarCollapsed ? 'settings.expand' : 'settings.collapse', { ns: 'common' })}
-              title={t(sidebarCollapsed ? 'settings.expand' : 'settings.collapse', { ns: 'common' })}
-              onClick={() => setSidebarCollapsed(collapsed => !collapsed)}
-            >
-              <span
-                aria-hidden
-                className={cn(
-                  'i-custom-vender-integrations-panel-left size-[14.5px]',
-                  sidebarCollapsed && 'rotate-180',
-                )}
-              />
-            </button>
+            <div className="title-3xl-semi-bold whitespace-nowrap text-text-primary">
+              {t('settings.integrations', { ns: 'common' })}
+            </div>
           </div>
-          {!sidebarCollapsed && (
-            <div className="mt-6 flex shrink-0 items-center gap-1">
+          <div className="mt-6 flex shrink-0 items-center gap-1">
+            <PermissionTooltipWrapper
+              show={!canManagement}
+              content={t('privilege.noInstallPermissionTooltip', { ns: 'plugin' })}
+              placement="bottom"
+              className="min-w-0 flex-1"
+            >
               <InstallPluginDropdown
                 disabled={!canManagement}
-                rootClassName="min-w-0 flex-1"
+                rootClassName="w-full"
                 triggerVariant="primary"
                 triggerClassName="h-8 min-w-0 gap-0.5 p-2 system-sm-medium"
                 triggerLabel={t('installAction', { ns: 'plugin' })}
@@ -168,55 +186,60 @@ export default function IntegrationsPage({
                 installContextCategory={getPluginCategoryBySection(section)}
                 onSwitchToMarketplaceTab={handleSwitchToMarketplace}
               />
-              <div className="size-8 shrink-0">
-                {canDebugger
-                  ? (
-                      <DebugInfo />
-                    )
-                  : (
-                      <Button
-                        variant="secondary"
-                        disabled
-                        className="h-full w-full p-0"
-                        aria-label={t('debugInfo.title', { ns: 'plugin' })}
-                        title={t('debugInfo.title', { ns: 'plugin' })}
-                      >
-                        <span aria-hidden className="i-ri-bug-line size-4" />
-                      </Button>
-                    )}
-              </div>
-              <Popover>
-                <PopoverTrigger
-                  render={(
+            </PermissionTooltipWrapper>
+            <PermissionTooltipWrapper
+              show={!canDebugger}
+              content={t('privilege.noDebugPermissionTooltip', { ns: 'plugin' })}
+              placement="top"
+              className="size-8 shrink-0"
+            >
+              {canDebugger
+                ? (
+                    <DebugInfo />
+                  )
+                : (
                     <Button
                       variant="secondary"
-                      disabled={!showPermissionQuickPanel}
-                      className="size-8 shrink-0 p-0"
-                      aria-label={t('privilege.permissions', { ns: 'plugin' })}
-                      title={t('privilege.permissions', { ns: 'plugin' })}
+                      disabled
+                      className="h-full w-full p-0"
+                      aria-label={t('debugInfo.title', { ns: 'plugin' })}
+                      title={t('debugInfo.title', { ns: 'plugin' })}
                     >
-                      <span aria-hidden className="i-ri-equalizer-2-line size-4" />
+                      <span aria-hidden className="i-ri-bug-line size-4" />
                     </Button>
                   )}
-                />
-                {showPermissionQuickPanel && permission && (
-                  <PopoverContent
-                    placement="bottom-start"
-                    sideOffset={4}
-                    popupClassName="border-0 bg-transparent p-0 shadow-none"
+            </PermissionTooltipWrapper>
+            <Popover>
+              <PopoverTrigger
+                render={(
+                  <Button
+                    variant="secondary"
+                    disabled={!showPermissionQuickPanel}
+                    className="size-8 shrink-0 p-0"
+                    aria-label={t('privilege.permissions', { ns: 'plugin' })}
+                    title={t('privilege.permissions', { ns: 'plugin' })}
                   >
-                    <PermissionQuickPanel
-                      permission={permission}
-                      onChange={handlePermissionChange}
-                    />
-                  </PopoverContent>
+                    <span aria-hidden className="i-ri-equalizer-2-line size-4" />
+                  </Button>
                 )}
-              </Popover>
-            </div>
-          )}
+              />
+              {showPermissionQuickPanel && permission && (
+                <PopoverContent
+                  placement="bottom-start"
+                  sideOffset={4}
+                  popupClassName="border-0 bg-transparent p-0 shadow-none"
+                >
+                  <PermissionQuickPanel
+                    permission={permission}
+                    onChange={handlePermissionChange}
+                  />
+                </PopoverContent>
+              )}
+            </Popover>
+          </div>
           <nav className="mt-6 shrink-0 space-y-0.5">
-            <IntegrationSidebarNavItem collapsed={sidebarCollapsed} item={providerItem} onSelect={onSectionChange} section={section} />
-            <IntegrationSidebarNavItem collapsed={sidebarCollapsed} item={dataSourceItem} onSelect={onSectionChange} section={section} />
+            <IntegrationSidebarNavItem item={providerItem} onSelect={onSectionChange} section={section} />
+            <IntegrationSidebarNavItem item={dataSourceItem} onSelect={onSectionChange} section={section} />
             <div>
               {onSectionChange
                 ? (
@@ -240,10 +263,9 @@ export default function IntegrationsPage({
                       {toolsNavItemContent}
                     </Link>
                   )}
-              <div className={cn('space-y-0.5', !sidebarCollapsed && 'pl-6')}>
+              <div className="space-y-0.5 pl-6">
                 {toolItems.map(item => (
                   <IntegrationSidebarNavItem
-                    collapsed={sidebarCollapsed}
                     key={item.label}
                     item={item}
                     onSelect={onSectionChange}
@@ -254,7 +276,6 @@ export default function IntegrationsPage({
             </div>
             {secondaryItems.map(item => (
               <IntegrationSidebarNavItem
-                collapsed={sidebarCollapsed}
                 key={item.label}
                 item={item}
                 onSelect={onSectionChange}
@@ -263,36 +284,34 @@ export default function IntegrationsPage({
             ))}
           </nav>
         </div>
-        {!sidebarCollapsed && (
-          <div className="flex min-h-[123px] w-full shrink-0 flex-col items-start gap-2 rounded-xl bg-background-default-hover p-4">
-            <div className="relative isolate h-[34.654px] w-[86.251px] shrink-0">
-              <div className="absolute top-0 left-[-1px] z-[3] flex size-[34.139px] items-center justify-center">
-                <div className="flex size-8 rotate-[-3.97deg] items-center justify-center rounded-lg border border-background-default-subtle bg-background-default-subtle">
-                  <div className="flex size-full items-center justify-center rounded-lg border-[0.5px] border-divider-regular bg-components-icon-bg-pink-soft p-1 text-[20px] leading-[1.2]">
-                    🕹️
-                  </div>
-                </div>
-              </div>
-              <div className="absolute top-0 left-[26.14px] z-[2] flex size-[34.654px] items-center justify-center">
-                <div className="flex size-8 rotate-[4.97deg] items-center justify-center rounded-lg border border-background-default-subtle bg-background-default-subtle">
-                  <div className="flex size-full items-center justify-center rounded-lg border-[0.5px] border-divider-regular bg-components-icon-bg-orange-dark-soft p-1 text-[20px] leading-[1.2]">
-                    📙
-                  </div>
-                </div>
-              </div>
-              <div className="absolute top-px left-[53.79px] z-[1] flex size-[33.458px] items-center justify-center">
-                <div className="flex size-8 rotate-[-2.67deg] items-center justify-center rounded-lg border border-background-default-subtle bg-background-default-subtle">
-                  <div className="flex size-full items-center justify-center rounded-lg border-[0.5px] border-divider-regular bg-components-icon-bg-teal-soft p-1 text-[20px] leading-[1.2]">
-                    🤖
-                  </div>
+        <div className="flex min-h-[123px] w-full shrink-0 flex-col items-start gap-2 rounded-xl bg-background-default-hover p-4">
+          <div className="relative isolate h-[34.654px] w-[86.251px] shrink-0">
+            <div className="absolute top-0 left-[-1px] z-[3] flex size-[34.139px] items-center justify-center">
+              <div className="flex size-8 rotate-[-3.97deg] items-center justify-center rounded-lg border border-background-default-subtle bg-background-default-subtle">
+                <div className="flex size-full items-center justify-center rounded-lg border-[0.5px] border-divider-regular bg-components-icon-bg-pink-soft p-1 text-[20px] leading-[1.2]">
+                  🕹️
                 </div>
               </div>
             </div>
-            <div className="w-full system-xs-medium text-text-secondary">
-              {t('settings.discoverMoreIntegrationsInMarketplace', { ns: 'common' })}
+            <div className="absolute top-0 left-[26.14px] z-[2] flex size-[34.654px] items-center justify-center">
+              <div className="flex size-8 rotate-[4.97deg] items-center justify-center rounded-lg border border-background-default-subtle bg-background-default-subtle">
+                <div className="flex size-full items-center justify-center rounded-lg border-[0.5px] border-divider-regular bg-components-icon-bg-orange-dark-soft p-1 text-[20px] leading-[1.2]">
+                  📙
+                </div>
+              </div>
+            </div>
+            <div className="absolute top-px left-[53.79px] z-[1] flex size-[33.458px] items-center justify-center">
+              <div className="flex size-8 rotate-[-2.67deg] items-center justify-center rounded-lg border border-background-default-subtle bg-background-default-subtle">
+                <div className="flex size-full items-center justify-center rounded-lg border-[0.5px] border-divider-regular bg-components-icon-bg-teal-soft p-1 text-[20px] leading-[1.2]">
+                  🤖
+                </div>
+              </div>
             </div>
           </div>
-        )}
+          <div className="w-full system-xs-medium text-text-secondary">
+            {t('settings.discoverMoreIntegrationsInMarketplace', { ns: 'common' })}
+          </div>
+        </div>
       </aside>
       <section className="flex min-w-0 flex-1 flex-col overflow-hidden">
         {integrationHeader && (

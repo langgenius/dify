@@ -225,6 +225,8 @@
   "pluginInfoModal.title": "集成資訊",
   "privilege.admins": "管理員",
   "privilege.everyone": "每個人 都",
+  "privilege.noDebugPermissionTooltip": "你沒有偵錯整合的權限",
+  "privilege.noInstallPermissionTooltip": "你沒有安裝和管理整合的權限",
   "privilege.noone": "沒人",
   "privilege.permissions": "權限",
   "privilege.quickWhoCanDebug": "誰可以調試？",

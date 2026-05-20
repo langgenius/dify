@@ -225,6 +225,8 @@
   "pluginInfoModal.title": "एकीकरण जानकारी",
   "privilege.admins": "व्यवस्थापक",
   "privilege.everyone": "सभी",
+  "privilege.noDebugPermissionTooltip": "आपके पास इंटीग्रेशन डीबग करने की अनुमति नहीं है",
+  "privilege.noInstallPermissionTooltip": "आपके पास इंटीग्रेशन इंस्टॉल और मैनेज करने की अनुमति नहीं है",
   "privilege.noone": "कोई नहीं",
   "privilege.permissions": "अनुमतियाँ",
   "privilege.quickWhoCanDebug": "कौन debug कर सकता है?",

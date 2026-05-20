@@ -225,6 +225,8 @@
   "pluginInfoModal.title": "Informations sur le intégration",
   "privilege.admins": "Administrateurs",
   "privilege.everyone": "Tout le monde",
+  "privilege.noDebugPermissionTooltip": "Vous n’avez pas l’autorisation de déboguer des intégrations",
+  "privilege.noInstallPermissionTooltip": "Vous n’avez pas l’autorisation d’installer et de gérer des intégrations",
   "privilege.noone": "Personne",
   "privilege.permissions": "Autorisations",
   "privilege.quickWhoCanDebug": "Qui peut déboguer ?",

@@ -225,6 +225,8 @@
   "pluginInfoModal.title": "Thông tin tích hợp",
   "privilege.admins": "Quản trị viên",
   "privilege.everyone": "Ai ai",
+  "privilege.noDebugPermissionTooltip": "Bạn không có quyền gỡ lỗi tích hợp",
+  "privilege.noInstallPermissionTooltip": "Bạn không có quyền cài đặt và quản lý tích hợp",
   "privilege.noone": "Không ai",
   "privilege.permissions": "Quyền",
   "privilege.quickWhoCanDebug": "Ai có thể gỡ lỗi?",

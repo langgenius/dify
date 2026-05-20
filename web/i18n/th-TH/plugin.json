@@ -225,6 +225,8 @@
   "pluginInfoModal.title": "ข้อมูลการผสานรวม",
   "privilege.admins": "ผู้ดูแลระบบ",
   "privilege.everyone": "ทุกคน",
+  "privilege.noDebugPermissionTooltip": "คุณไม่มีสิทธิ์ดีบักอินทิเกรชัน",
+  "privilege.noInstallPermissionTooltip": "คุณไม่มีสิทธิ์ติดตั้งและจัดการอินทิเกรชัน",
   "privilege.noone": "ไม่มีใคร",
   "privilege.permissions": "สิทธิ์",
   "privilege.quickWhoCanDebug": "ใครสามารถ debug ได้?",

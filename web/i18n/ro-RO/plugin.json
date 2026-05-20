@@ -225,6 +225,8 @@
   "pluginInfoModal.title": "Informații despre integrare",
   "privilege.admins": "Administratori",
   "privilege.everyone": "Oricine",
+  "privilege.noDebugPermissionTooltip": "Nu ai permisiunea de a depana integrări",
+  "privilege.noInstallPermissionTooltip": "Nu ai permisiunea de a instala și gestiona integrări",
   "privilege.noone": "Nimeni",
   "privilege.permissions": "Permisiuni",
   "privilege.quickWhoCanDebug": "Cine poate depana?",

@@ -225,6 +225,8 @@
   "pluginInfoModal.title": "معلومات الإضافة",
   "privilege.admins": "المسؤولون",
   "privilege.everyone": "الجميع",
+  "privilege.noDebugPermissionTooltip": "ليس لديك إذن لتصحيح أخطاء عمليات التكامل",
+  "privilege.noInstallPermissionTooltip": "ليس لديك إذن لتثبيت عمليات التكامل وإدارتها",
   "privilege.noone": "لا أحد",
   "privilege.permissions": "الأذونات",
   "privilege.quickWhoCanDebug": "من يمكنه التصحيح؟",

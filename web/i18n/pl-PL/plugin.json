@@ -225,6 +225,8 @@
   "pluginInfoModal.title": "Informacje o wtyczce",
   "privilege.admins": "Administratorzy",
   "privilege.everyone": "Każdy",
+  "privilege.noDebugPermissionTooltip": "Nie masz uprawnień do debugowania integracji",
+  "privilege.noInstallPermissionTooltip": "Nie masz uprawnień do instalowania integracji i zarządzania nimi",
   "privilege.noone": "Nikt",
   "privilege.permissions": "Uprawnienia",
   "privilege.quickWhoCanDebug": "Kto może debugować?",

@@ -119,7 +119,7 @@ vi.mock('@/app/components/header/account-setting/data-source-page-new', () => ({
 
 vi.mock('@/app/components/header/account-setting/api-based-extension-page', () => ({
   __esModule: true,
-  default: () => <div data-testid="api-extension-page" />,
+  ApiBasedExtensionPage: () => <div data-testid="api-extension-page" />,
 }))
 
 vi.mock('../provider-list', async () => {
@@ -256,6 +256,7 @@ describe('IntegrationsPage', () => {
 
     renderIntegrationsPage({ section: 'data-source' })
 
+    expect(screen.getByLabelText('plugin.privilege.noDebugPermissionTooltip')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'plugin.debugInfo.title' })).toBeDisabled()
   })
 
@@ -381,6 +382,7 @@ describe('IntegrationsPage', () => {
 
     renderIntegrationsPage({ section: 'trigger' })
 
+    expect(screen.getByLabelText('plugin.privilege.noInstallPermissionTooltip')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'plugin install' })).toBeDisabled()
     expect(screen.getByTestId('plugin-category-trigger')).toHaveAttribute('data-can-install', 'false')
   })
@@ -424,27 +426,18 @@ describe('IntegrationsPage', () => {
     expect(screen.queryByText('plugin.privilege.quickWhoCanDebug')).not.toBeInTheDocument()
   })
 
-  it('collapses and expands the integrations sidebar', () => {
+  it('keeps the integrations sidebar expanded without a collapse control', () => {
     const { container } = renderIntegrationsPage({ section: 'provider' })
 
     expect(container.firstElementChild).toHaveStyle({
       '--model-provider-warning-left': 'calc(240px + 200px)',
     })
 
-    fireEvent.click(screen.getByRole('button', { name: 'common.settings.collapse' }))
-
-    expect(container.firstElementChild).toHaveStyle({
-      '--model-provider-warning-left': 'calc(240px + 56px)',
-    })
-    expect(screen.queryByText('common.settings.integrations')).not.toBeInTheDocument()
-    expect(screen.queryByText('common.settings.customTool')).not.toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'MCP' })).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'plugin.categorySingle.trigger' })).toHaveAttribute('href', '/integrations/trigger')
-    expect(screen.getByRole('button', { name: 'common.settings.expand' })).toBeInTheDocument()
-
-    fireEvent.click(screen.getByRole('button', { name: 'common.settings.expand' }))
-
     expect(screen.getByText('common.settings.integrations')).toBeInTheDocument()
     expect(screen.getByText('common.settings.customTool')).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'MCP' })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'plugin.categorySingle.trigger' })).toHaveAttribute('href', '/integrations/trigger')
+    expect(screen.queryByRole('button', { name: 'common.settings.collapse' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'common.settings.expand' })).not.toBeInTheDocument()
   })
 })

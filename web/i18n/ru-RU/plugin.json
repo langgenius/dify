@@ -225,6 +225,8 @@
   "pluginInfoModal.title": "Информация о интеграцияе",
   "privilege.admins": "Админы",
   "privilege.everyone": "Каждый",
+  "privilege.noDebugPermissionTooltip": "У вас нет разрешения отлаживать интеграции",
+  "privilege.noInstallPermissionTooltip": "У вас нет разрешения устанавливать интеграции и управлять ими",
   "privilege.noone": "Никто",
   "privilege.permissions": "Разрешения",
   "privilege.quickWhoCanDebug": "Кто может отлаживать?",
