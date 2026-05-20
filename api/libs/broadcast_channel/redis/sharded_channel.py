@@ -17,17 +17,27 @@ class ShardedRedisBroadcastChannel:
     def __init__(
         self,
         redis_client: Redis | RedisCluster,
+        *,
+        join_timeout_ms: int = 2000,
     ):
         self._client = redis_client
+        self._join_timeout_ms = max(int(join_timeout_ms or 0), 0)
 
     def topic(self, topic: str) -> ShardedTopic:
-        return ShardedTopic(self._client, topic)
+        return ShardedTopic(self._client, topic, join_timeout_ms=self._join_timeout_ms)
 
 
 class ShardedTopic:
-    def __init__(self, redis_client: Redis | RedisCluster, topic: str):
+    def __init__(
+        self,
+        redis_client: Redis | RedisCluster,
+        topic: str,
+        *,
+        join_timeout_ms: int = 2000,
+    ):
         self._client = redis_client
         self._topic = topic
+        self._join_timeout_ms = max(int(join_timeout_ms or 0), 0)
 
     def as_producer(self) -> Producer:
         return self
@@ -43,6 +53,7 @@ class ShardedTopic:
             client=self._client,
             pubsub=self._client.pubsub(),
             topic=self._topic,
+            join_timeout_ms=self._join_timeout_ms,
         )
 
 
