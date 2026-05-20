@@ -293,4 +293,5 @@ project-includes = ["."]
 project-excludes = [".venv", "migrations/"]
 python-platform = "linux"
 python-version = "3.12.0"
-infer-with-first-use = false
+infer-with-first-use = true
+min-severity = "warn"
