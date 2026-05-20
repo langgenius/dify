@@ -594,6 +594,7 @@ class TestIndexingRunnerLoad:
             patch("core.indexing_runner.threading.Thread") as mock_thread,
             patch("core.indexing_runner.concurrent.futures.ThreadPoolExecutor") as mock_executor,
         ):
+            mock_app._get_current_object = Mock(return_value=Mock())
             yield {
                 "db": mock_db,
                 "model_manager": mock_model_manager,

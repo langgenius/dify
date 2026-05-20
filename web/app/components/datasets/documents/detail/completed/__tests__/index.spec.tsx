@@ -137,37 +137,46 @@ vi.mock('../hooks/use-child-segment-data', () => ({
   },
 }))
 
-// Mock child components to simplify testing
-vi.mock('../components', () => ({
-  MenuBar: ({ totalText, onInputChange, inputValue, isLoading, onSelectedAll, onChangeStatus }: {
-    totalText: string
-    onInputChange: (value: string) => void
-    inputValue: string
-    isLoading: boolean
-    onSelectedAll?: () => void
-    onChangeStatus?: (item: { value: string | number, name: string }) => void
-  }) => (
-    <div data-testid="menu-bar">
-      <span data-testid="total-text">{totalText}</span>
-      <input
-        data-testid="search-input"
-        value={inputValue}
-        onChange={e => onInputChange(e.target.value)}
-        disabled={isLoading}
-      />
-      {onSelectedAll && (
-        <button data-testid="select-all-button" onClick={onSelectedAll}>Select All</button>
-      )}
-      {onChangeStatus && (
-        <>
-          <button data-testid="status-enabled" onClick={() => onChangeStatus({ value: 1, name: 'Enabled' })}>Enabled</button>
-          <button data-testid="status-disabled" onClick={() => onChangeStatus({ value: 0, name: 'Disabled' })}>Disabled</button>
-          <button data-testid="status-all" onClick={() => onChangeStatus({ value: 'all', name: 'All' })}>All</button>
-        </>
-      )}
-    </div>
-  ),
+vi.mock('../components/menu-bar', async () => {
+  const { Checkbox } = await import('@langgenius/dify-ui/checkbox')
+
+  return {
+    default: ({ hasSelectableSegments, totalText, onInputChange, inputValue, isLoading, onChangeStatus }: {
+      hasSelectableSegments: boolean
+      totalText: string
+      onInputChange: (value: string) => void
+      inputValue: string
+      isLoading: boolean
+      onChangeStatus?: (item: { value: string | number, name: string }) => void
+    }) => (
+      <div data-testid="menu-bar">
+        <span data-testid="total-text">{totalText}</span>
+        <input
+          data-testid="search-input"
+          value={inputValue}
+          onChange={e => onInputChange(e.target.value)}
+          disabled={isLoading}
+        />
+        {hasSelectableSegments
+          ? <Checkbox parent data-testid="select-all-button" aria-label="Select All" disabled={isLoading} />
+          : <span data-testid="select-all-spacer" aria-hidden />}
+        {onChangeStatus && (
+          <>
+            <button data-testid="status-enabled" onClick={() => onChangeStatus({ value: 1, name: 'Enabled' })}>Enabled</button>
+            <button data-testid="status-disabled" onClick={() => onChangeStatus({ value: 0, name: 'Disabled' })}>Disabled</button>
+            <button data-testid="status-all" onClick={() => onChangeStatus({ value: 'all', name: 'All' })}>All</button>
+          </>
+        )}
+      </div>
+    ),
+  }
+})
+
+vi.mock('../components/drawer-group', () => ({
   DrawerGroup: () => <div data-testid="drawer-group" />,
+}))
+
+vi.mock('../components/segment-list-content', () => ({
   FullDocModeContent: () => <div data-testid="full-doc-mode-content" />,
   GeneralModeContent: () => <div data-testid="general-mode-content" />,
 }))
@@ -563,7 +572,7 @@ describe('Edge Cases', () => {
     expect(screen.getByTestId('general-mode-content'))!.toBeInTheDocument()
   })
 
-  it('should handle ProcessStatus.COMPLETED importStatus', () => {
+  it('should handle completed importStatus', () => {
     render(<Completed {...defaultProps} importStatus="completed" />, { wrapper: createWrapper() })
 
     expect(screen.getByTestId('general-mode-content'))!.toBeInTheDocument()
@@ -744,6 +753,17 @@ describe('Batch Action Callbacks', () => {
     await waitFor(() => {
       expect(screen.getByTestId('batch-action'))!.toBeInTheDocument()
     })
+  })
+
+  it('should not render select all when there are no current page segments', () => {
+    mockSegmentListData.data = []
+    mockSegmentListData.total = 0
+
+    render(<Completed {...defaultProps} />, { wrapper: createWrapper() })
+
+    expect(screen.queryByTestId('select-all-button')).not.toBeInTheDocument()
+    expect(screen.getByTestId('select-all-spacer')).toBeInTheDocument()
+    expect(screen.queryByTestId('batch-action')).not.toBeInTheDocument()
   })
 
   it('should call onChangeSwitch with true when batch enable is clicked', async () => {

@@ -14,7 +14,6 @@ import {
   GENERATED_IGNORES,
   HYOBAN_PREFER_TAILWIND_ICONS_OPTIONS,
   NEXT_PLATFORM_RESTRICTED_IMPORT_PATHS,
-  OVERLAY_RESTRICTED_IMPORT_PATTERNS,
   WEB_RESTRICTED_IMPORT_PATTERNS,
 } from './eslint.constants.mjs'
 import dify from './plugins/eslint/index.js'
@@ -52,7 +51,6 @@ export default antfu(
   {
     files: [...GLOB_TESTS, GLOB_MARKDOWN_CODE, 'vitest.setup.ts', 'test/i18n-mock.ts'],
     rules: {
-      'react/component-hook-factories': 'off',
       'react/no-unnecessary-use-prefix': 'off',
     },
   },
@@ -155,12 +153,6 @@ export default antfu(
     },
   },
   {
-    files: ['package.json'],
-    rules: {
-      'hyoban/no-dependency-version-prefix': 'error',
-    },
-  },
-  {
     name: 'dify/restricted-imports',
     files: [GLOB_TS, GLOB_TSX],
     ignores: ['next/**'],
@@ -168,23 +160,6 @@ export default antfu(
       'no-restricted-imports': ['error', {
         paths: NEXT_PLATFORM_RESTRICTED_IMPORT_PATHS,
         patterns: WEB_RESTRICTED_IMPORT_PATTERNS,
-      }],
-    },
-  },
-  {
-    name: 'dify/overlay-migration',
-    files: [GLOB_TS, GLOB_TSX],
-    ignores: [
-      'next/**',
-      ...GLOB_TESTS,
-    ],
-    rules: {
-      'no-restricted-imports': ['error', {
-        paths: NEXT_PLATFORM_RESTRICTED_IMPORT_PATHS,
-        patterns: [
-          ...WEB_RESTRICTED_IMPORT_PATTERNS,
-          ...OVERLAY_RESTRICTED_IMPORT_PATTERNS,
-        ],
       }],
     },
   },

@@ -1,10 +1,9 @@
 import { Button } from '@langgenius/dify-ui/button'
+import { Dialog, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
 import {
   RiExternalLinkLine,
 } from '@remixicon/react'
 import * as React from 'react'
-import { useCallback, useEffect, useRef, useState } from 'react'
-import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
 import { useDocLink } from '@/context/i18n'
 
@@ -34,61 +33,25 @@ function Confirm({
 }: IConfirm) {
   const { t } = useTranslation()
   const docLink = useDocLink()
-  const dialogRef = useRef<HTMLDivElement>(null)
-  const [isVisible, setIsVisible] = useState(isShow)
   const eduDocLink = docLink('/use-dify/workspace/subscription-management#dify-for-education')
 
   const handleClick = () => {
     window.open(eduDocLink, '_blank', 'noopener,noreferrer')
   }
 
-  useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape')
-        onCancel()
-    }
-
-    document.addEventListener('keydown', handleKeyDown)
-    return () => {
-      document.removeEventListener('keydown', handleKeyDown)
-    }
-  }, [onCancel])
-
-  const handleClickOutside = useCallback((event: MouseEvent) => {
-    if (maskClosable && dialogRef.current && !dialogRef.current.contains(event.target as Node))
-      onCancel()
-  }, [maskClosable, onCancel])
-
-  useEffect(() => {
-    document.addEventListener('mousedown', handleClickOutside)
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside)
-    }
-  }, [handleClickOutside])
-
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setIsVisible(isShow)
-    }, isShow ? 0 : 200)
-
-    return () => clearTimeout(timer)
-  }, [isShow])
-
-  if (!isVisible)
-    return null
-
-  return createPortal(
-    <div
-      className="fixed inset-0 z-10000000 flex items-center justify-center bg-background-overlay"
-      onClick={(e) => {
-        e.preventDefault()
-        e.stopPropagation()
+  return (
+    <Dialog
+      open={isShow}
+      onOpenChange={(open) => {
+        if (!open)
+          onCancel()
       }}
+      disablePointerDismissal={!maskClosable}
     >
-      <div ref={dialogRef} className="relative w-full max-w-[481px] overflow-hidden">
+      <DialogContent className="w-full max-w-[481px]! overflow-hidden! border-none bg-transparent p-0! shadow-none">
         <div className="shadows-shadow-lg flex max-w-full flex-col items-start rounded-2xl border-[0.5px] border-solid border-components-panel-border bg-components-panel-bg">
           <div className="flex flex-col items-start gap-2 self-stretch pt-6 pr-6 pb-4 pl-6">
-            <div className="title-2xl-semi-bold text-text-primary">{title}</div>
+            <DialogTitle className="title-2xl-semi-bold text-text-primary">{title}</DialogTitle>
             <div className="w-full system-md-regular text-text-tertiary">{content}</div>
           </div>
           {email && (
@@ -109,9 +72,8 @@ function Confirm({
             <Button variant="primary" className={confirmText ? 'min-w-20!' : 'w-20!'} onClick={onConfirm}>{confirmText || t('operation.ok', { ns: 'common' })}</Button>
           </div>
         </div>
-      </div>
-    </div>,
-    document.body,
+      </DialogContent>
+    </Dialog>
   )
 }
 

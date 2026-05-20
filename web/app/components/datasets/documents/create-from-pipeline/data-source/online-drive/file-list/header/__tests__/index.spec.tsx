@@ -320,7 +320,7 @@ describe('Header', () => {
         render(<Header {...props} />)
 
         // Act - Find and click the clear icon container
-        const clearButton = screen.getByTestId('input-clear')
+        const clearButton = screen.getByRole('button', { name: 'common.operation.clear' })
         expect(clearButton)!.toBeInTheDocument()
         fireEvent.click(clearButton!)
 
@@ -332,7 +332,7 @@ describe('Header', () => {
         render(<Header {...props} />)
 
         // Act & Assert - Clear icon should not be visible
-        const clearIcon = screen.queryByTestId('input-clear')
+        const clearIcon = screen.queryByRole('button', { name: 'common.operation.clear' })
         expect(clearIcon).not.toBeInTheDocument()
       })
 
@@ -341,7 +341,7 @@ describe('Header', () => {
         render(<Header {...props} />)
 
         // Act & Assert - Clear icon should be visible
-        const clearIcon = screen.getByTestId('input-clear')
+        const clearIcon = screen.getByRole('button', { name: 'common.operation.clear' })
         expect(clearIcon)!.toBeInTheDocument()
       })
     })
@@ -582,9 +582,9 @@ describe('Header', () => {
       const { rerender } = render(<Header {...props} />)
 
       // Act - Click clear, rerender, click again
-      fireEvent.click(screen.getByTestId('input-clear'))
+      fireEvent.click(screen.getByRole('button', { name: 'common.operation.clear' }))
       rerender(<Header {...props} />)
-      fireEvent.click(screen.getByTestId('input-clear'))
+      fireEvent.click(screen.getByRole('button', { name: 'common.operation.clear' }))
 
       expect(mockHandleResetKeywords).toHaveBeenCalledTimes(2)
     })

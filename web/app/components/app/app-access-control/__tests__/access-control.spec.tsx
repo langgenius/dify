@@ -1,4 +1,3 @@
-/* eslint-disable ts/no-explicit-any */
 import type { AccessControlAccount, AccessControlGroup, Subject } from '@/models/access-control'
 import type { App } from '@/types/app'
 import { toast } from '@langgenius/dify-ui/toast'
@@ -42,34 +41,6 @@ vi.mock('@/service/access-control', () => ({
   useSearchForWhiteListCandidates: (...args: unknown[]) => mockUseSearchForWhiteListCandidates(...args),
   useUpdateAccessMode: () => mockUseUpdateAccessMode(),
 }))
-
-vi.mock('@headlessui/react', () => {
-  const DialogComponent: any = ({ children, className, ...rest }: any) => (
-    <div role="dialog" className={className} {...rest}>{children}</div>
-  )
-  DialogComponent.Panel = ({ children, className, ...rest }: any) => (
-    <div className={className} {...rest}>{children}</div>
-  )
-  const DialogTitle = ({ children, className, ...rest }: any) => (
-    <div className={className} {...rest}>{children}</div>
-  )
-  const DialogDescription = ({ children, className, ...rest }: any) => (
-    <div className={className} {...rest}>{children}</div>
-  )
-  const TransitionChild = ({ children }: any) => (
-    <>{typeof children === 'function' ? children({}) : children}</>
-  )
-  const Transition = ({ show = true, children }: any) => (
-    show ? <>{typeof children === 'function' ? children({}) : children}</> : null
-  )
-  Transition.Child = TransitionChild
-  return {
-    Dialog: DialogComponent,
-    Transition,
-    DialogTitle,
-    Description: DialogDescription,
-  }
-})
 
 vi.mock('ahooks', async (importOriginal) => {
   const actual = await importOriginal<typeof import('ahooks')>()
@@ -176,7 +147,7 @@ describe('AccessControlItem', () => {
   })
 })
 
-// AccessControlDialog renders a headless UI dialog with a manual close control
+// AccessControlDialog renders the shared dialog primitive with a close control.
 describe('AccessControlDialog', () => {
   it('should render dialog content when visible', () => {
     render(
@@ -191,13 +162,13 @@ describe('AccessControlDialog', () => {
 
   it('should trigger onClose when clicking the close control', async () => {
     const handleClose = vi.fn()
-    const { container } = render(
+    render(
       <AccessControlDialog show onClose={handleClose}>
         <div>Dialog Content</div>
       </AccessControlDialog>,
     )
 
-    const closeButton = container.querySelector('.absolute.right-5.top-5') as HTMLElement
+    const closeButton = screen.getByRole('button', { name: 'Close' })
     fireEvent.click(closeButton)
 
     await waitFor(() => {
@@ -241,16 +212,16 @@ describe('SpecificGroupsOrMembers', () => {
       expect(screen.getByText(baseMember.name)).toBeInTheDocument()
     })
 
-    const groupItem = screen.getByText(baseGroup.name).closest('div')
-    const groupRemove = groupItem?.querySelector('.h-4.w-4.cursor-pointer') as HTMLElement
+    const groupRemove = screen.getAllByRole('button', { name: /operation\.remove$/ })[0]!
+
     fireEvent.click(groupRemove)
 
     await waitFor(() => {
       expect(screen.queryByText(baseGroup.name)).not.toBeInTheDocument()
     })
 
-    const memberItem = screen.getByText(baseMember.name).closest('div')
-    const memberRemove = memberItem?.querySelector('.h-4.w-4.cursor-pointer') as HTMLElement
+    const memberRemove = screen.getAllByRole('button', { name: /operation\.remove$/ })[0]!
+
     fireEvent.click(memberRemove)
 
     await waitFor(() => {
@@ -283,9 +254,7 @@ describe('AddMemberOrGroupDialog', () => {
     await user.click(expandButton)
     expect(useAccessControlStore.getState().selectedGroupsForBreadcrumb).toEqual([baseGroup])
 
-    const memberLabel = screen.getByText(baseMember.name)
-    const memberCheckbox = memberLabel.parentElement?.previousElementSibling as HTMLElement
-    fireEvent.click(memberCheckbox)
+    await user.click(screen.getByRole('option', { name: /Member One/ }))
 
     expect(useAccessControlStore.getState().specificMembers).toEqual([baseMember])
   })
@@ -306,13 +275,13 @@ describe('AddMemberOrGroupDialog', () => {
     await user.type(screen.getByPlaceholderText('app.accessControlDialog.operateGroupAndMember.searchPlaceholder'), 'Group')
     expect(document.querySelector('.spin-animation')).toBeInTheDocument()
 
-    const groupCheckbox = screen.getByText(baseGroup.name).closest('div')?.previousElementSibling as HTMLElement
-    fireEvent.click(groupCheckbox)
-    fireEvent.click(groupCheckbox)
+    const groupOption = screen.getByRole('option', { name: /Group One/ })
+    fireEvent.click(groupOption)
+    fireEvent.click(groupOption)
 
-    const memberCheckbox = screen.getByText(baseMember.name).parentElement?.previousElementSibling as HTMLElement
-    fireEvent.click(memberCheckbox)
-    fireEvent.click(memberCheckbox)
+    const memberOption = screen.getByRole('option', { name: /Member One/ })
+    fireEvent.click(memberOption)
+    fireEvent.click(memberOption)
 
     fireEvent.click(screen.getByText('app.accessControlDialog.operateGroupAndMember.expand'))
     fireEvent.click(screen.getByText('app.accessControlDialog.operateGroupAndMember.allMembers'))
@@ -336,7 +305,7 @@ describe('AddMemberOrGroupDialog', () => {
 
     await user.click(screen.getByText('common.operation.add'))
 
-    expect(screen.getByText('app.accessControlDialog.operateGroupAndMember.noResult')).toBeInTheDocument()
+    expect(screen.getByRole('status')).toHaveTextContent('app.accessControlDialog.operateGroupAndMember.noResult')
   })
 })
 

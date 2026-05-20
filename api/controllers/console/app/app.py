@@ -12,8 +12,9 @@ from sqlalchemy.orm import Session
 from werkzeug.datastructures import MultiDict
 from werkzeug.exceptions import BadRequest
 
+from controllers.common.fields import RedirectUrlResponse, SimpleResultResponse
 from controllers.common.helpers import FileInfo
-from controllers.common.schema import register_enum_models, register_schema_models
+from controllers.common.schema import register_enum_models, register_response_schema_models, register_schema_models
 from controllers.console import console_ns
 from controllers.console.app.wraps import get_app_model
 from controllers.console.workspace.models import LoadBalancingPayload
@@ -25,6 +26,7 @@ from controllers.console.wraps import (
     is_admin_or_owner_required,
     setup_required,
 )
+from core.db.session_factory import session_factory
 from core.ops.ops_trace_manager import OpsTraceManager
 from core.rag.entities import PreProcessingRule, Rule, Segmentation
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
@@ -32,12 +34,12 @@ from core.trigger.constants import TRIGGER_NODE_TYPES
 from extensions.ext_database import db
 from fields.base import ResponseModel
 from graphon.enums import WorkflowExecutionStatus
-from libs.helper import build_icon_url
+from libs.helper import build_icon_url, to_timestamp
 from libs.login import current_account_with_tenant, login_required
 from models import App, DatasetPermissionEnum, Workflow
 from models.model import IconType
 from services.app_dsl_service import AppDslService
-from services.app_service import AppService
+from services.app_service import AppListParams, AppService, CreateAppParams
 from services.enterprise.enterprise_service import EnterpriseService
 from services.entities.dsl_entities import ImportMode, ImportStatus
 from services.entities.knowledge_entities.knowledge_entities import (
@@ -176,12 +178,6 @@ class AppTracePayload(BaseModel):
 type JSONValue = Any
 
 
-def _to_timestamp(value: datetime | int | None) -> int | None:
-    if isinstance(value, datetime):
-        return int(value.timestamp())
-    return value
-
-
 class Tag(ResponseModel):
     id: str
     name: str
@@ -198,7 +194,7 @@ class WorkflowPartial(ResponseModel):
     @field_validator("created_at", "updated_at", mode="before")
     @classmethod
     def _normalize_timestamp(cls, value: datetime | int | None) -> int | None:
-        return _to_timestamp(value)
+        return to_timestamp(value)
 
 
 class ModelConfigPartial(ResponseModel):
@@ -212,7 +208,7 @@ class ModelConfigPartial(ResponseModel):
     @field_validator("created_at", "updated_at", mode="before")
     @classmethod
     def _normalize_timestamp(cls, value: datetime | int | None) -> int | None:
-        return _to_timestamp(value)
+        return to_timestamp(value)
 
 
 class ModelConfig(ResponseModel):
@@ -273,7 +269,7 @@ class ModelConfig(ResponseModel):
     @field_validator("created_at", "updated_at", mode="before")
     @classmethod
     def _normalize_timestamp(cls, value: datetime | int | None) -> int | None:
-        return _to_timestamp(value)
+        return to_timestamp(value)
 
 
 class Site(ResponseModel):
@@ -316,7 +312,7 @@ class Site(ResponseModel):
     @field_validator("created_at", "updated_at", mode="before")
     @classmethod
     def _normalize_timestamp(cls, value: datetime | int | None) -> int | None:
-        return _to_timestamp(value)
+        return to_timestamp(value)
 
 
 class DeletedTool(ResponseModel):
@@ -359,7 +355,7 @@ class AppPartial(ResponseModel):
     @field_validator("created_at", "updated_at", mode="before")
     @classmethod
     def _normalize_timestamp(cls, value: datetime | int | None) -> int | None:
-        return _to_timestamp(value)
+        return to_timestamp(value)
 
 
 class AppDetail(ResponseModel):
@@ -389,7 +385,7 @@ class AppDetail(ResponseModel):
     @field_validator("created_at", "updated_at", mode="before")
     @classmethod
     def _normalize_timestamp(cls, value: datetime | int | None) -> int | None:
-        return _to_timestamp(value)
+        return to_timestamp(value)
 
 
 class AppDetailWithSite(AppDetail):
@@ -418,6 +414,7 @@ class AppExportResponse(ResponseModel):
 
 
 register_enum_models(console_ns, RetrievalMethod, WorkflowExecutionStatus, DatasetPermissionEnum)
+register_response_schema_models(console_ns, RedirectUrlResponse, SimpleResultResponse)
 
 register_schema_models(
     console_ns,
@@ -476,11 +473,18 @@ class AppListApi(Resource):
         current_user, current_tenant_id = current_account_with_tenant()
 
         args = AppListQuery.model_validate(_normalize_app_list_query_args(request.args))
-        args_dict = args.model_dump()
+        params = AppListParams(
+            page=args.page,
+            limit=args.limit,
+            mode=args.mode,
+            name=args.name,
+            tag_ids=args.tag_ids,
+            is_created_by_me=args.is_created_by_me,
+        )
 
         # get app list
         app_service = AppService()
-        app_pagination = app_service.get_paginate_apps(current_user.id, current_tenant_id, args_dict)
+        app_pagination = app_service.get_paginate_apps(current_user.id, current_tenant_id, params)
         if not app_pagination:
             empty = AppPagination(page=args.page, limit=args.limit, total=0, has_more=False, data=[])
             return empty.model_dump(mode="json"), 200
@@ -544,9 +548,17 @@ class AppListApi(Resource):
         """Create app"""
         current_user, current_tenant_id = current_account_with_tenant()
         args = CreateAppPayload.model_validate(console_ns.payload)
+        params = CreateAppParams(
+            name=args.name,
+            description=args.description,
+            mode=args.mode,
+            icon_type=args.icon_type,
+            icon=args.icon,
+            icon_background=args.icon_background,
+        )
 
         app_service = AppService()
-        app = app_service.create_app(current_tenant_id, args.model_dump(), current_user)
+        app = app_service.create_app(current_tenant_id, params, current_user)
         app_detail = AppDetail.model_validate(app, from_attributes=True)
         return app_detail.model_dump(mode="json"), 201
 
@@ -700,7 +712,7 @@ class AppExportApi(Resource):
     @edit_permission_required
     def get(self, app_model):
         """Export app"""
-        args = AppExportQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
+        args = AppExportQuery.model_validate(request.args.to_dict(flat=True))
 
         payload = AppExportResponse(
             data=AppDslService.export_dsl(
@@ -714,6 +726,7 @@ class AppExportApi(Resource):
 
 @console_ns.route("/apps/<uuid:app_id>/publish-to-creators-platform")
 class AppPublishToCreatorsPlatformApi(Resource):
+    @console_ns.response(200, "Success", console_ns.models[RedirectUrlResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -839,9 +852,11 @@ class AppTraceApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def get(self, app_id):
+    @get_app_model
+    def get(self, app_model):
         """Get app trace"""
-        app_trace_config = OpsTraceManager.get_app_tracing_config(app_id=app_id)
+        with session_factory.create_session() as session:
+            app_trace_config = OpsTraceManager.get_app_tracing_config(app_model.id, session)
 
         return app_trace_config
 
@@ -849,18 +864,23 @@ class AppTraceApi(Resource):
     @console_ns.doc(description="Update app tracing configuration")
     @console_ns.doc(params={"app_id": "Application ID"})
     @console_ns.expect(console_ns.models[AppTracePayload.__name__])
-    @console_ns.response(200, "Trace configuration updated successfully")
+    @console_ns.response(
+        200,
+        "Trace configuration updated successfully",
+        console_ns.models[SimpleResultResponse.__name__],
+    )
     @console_ns.response(403, "Insufficient permissions")
     @setup_required
     @login_required
     @account_initialization_required
     @edit_permission_required
-    def post(self, app_id):
+    @get_app_model
+    def post(self, app_model):
         # add app trace
         args = AppTracePayload.model_validate(console_ns.payload)
 
         OpsTraceManager.update_app_tracing_config(
-            app_id=app_id,
+            app_id=app_model.id,
             enabled=args.enabled,
             tracing_provider=args.tracing_provider,
         )

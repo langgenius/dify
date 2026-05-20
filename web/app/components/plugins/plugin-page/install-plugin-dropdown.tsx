@@ -111,7 +111,7 @@ const InstallPluginDropdown = ({
   }
 
   return (
-    <DropdownMenu open={isMenuOpen} onOpenChange={setIsMenuOpen}>
+    <DropdownMenu open={isMenuOpen} onOpenChange={setIsMenuOpen} modal={false}>
       <div className="relative">
         <input
           type="file"

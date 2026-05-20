@@ -9,6 +9,7 @@ import type {
 import { cn } from '@langgenius/dify-ui/cn'
 import { Select, SelectContent, SelectItem, SelectItemIndicator, SelectItemText, SelectTrigger } from '@langgenius/dify-ui/select'
 import { Switch } from '@langgenius/dify-ui/switch'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import {
   RiArrowRightUpLine,
   RiBracesLine,
@@ -16,9 +17,8 @@ import {
 import { useBoolean } from 'ahooks'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { Infotip } from '@/app/components/base/infotip'
 import Input from '@/app/components/base/input'
-// eslint-disable-next-line no-restricted-imports -- legacy tooltip migration is handled separately from this change
-import Tooltip from '@/app/components/base/tooltip'
 import { FormTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { AppSelector } from '@/app/components/plugins/plugin-detail-panel/app-selector'
@@ -127,17 +127,16 @@ const ReasoningConfigForm: React.FC<Props> = ({
     } = schema
     const auto = value[variable]?.auto
     const fieldTitle = getFieldTitle(label, language)
-    const tooltipContent = (tooltip && (
-      <Tooltip
-        popupContent={(
-          <div className="w-[200px]">
-            {tooltip[language] || tooltip.en_US}
-          </div>
-        )}
-        triggerClassName="ml-0.5 w-4 h-4"
-        asChild={false}
-      />
-    ))
+    const tooltipText = tooltip?.[language] || tooltip?.en_US
+    const tooltipContent = tooltipText && (
+      <Infotip
+        aria-label={tooltipText}
+        className="ml-0.5 h-4 w-4"
+        popupClassName="w-[200px]"
+      >
+        {tooltipText}
+      </Infotip>
+    )
     const varInput = value[variable]!.value
     const {
       isString,
@@ -173,20 +172,22 @@ const ReasoningConfigForm: React.FC<Props> = ({
             <span className="mx-1 system-xs-regular text-text-quaternary">·</span>
             <span className="system-xs-regular text-text-tertiary">{resolveTargetVarType(type)}</span>
             {isShowJSONEditor && (
-              <Tooltip
-                popupContent={(
-                  <div className="system-xs-medium text-text-secondary">
-                    {t('nodes.agent.clickToViewParameterSchema', { ns: 'workflow' })}
-                  </div>
-                )}
-                asChild={false}
-              >
-                <div
-                  className="ml-0.5 cursor-pointer rounded-sm p-px text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary"
-                  onClick={() => showSchema(input_schema as SchemaRoot, fieldTitle!)}
-                >
-                  <RiBracesLine className="size-3.5" />
-                </div>
+              <Tooltip>
+                <TooltipTrigger
+                  render={(
+                    <button
+                      type="button"
+                      aria-label={t('nodes.agent.clickToViewParameterSchema', { ns: 'workflow' })}
+                      className="ml-0.5 cursor-pointer rounded-sm border-0 bg-transparent p-px text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary"
+                      onClick={() => showSchema(input_schema as SchemaRoot, fieldTitle!)}
+                    >
+                      <RiBracesLine className="size-3.5" />
+                    </button>
+                  )}
+                />
+                <TooltipContent className="system-xs-medium text-text-secondary">
+                  {t('nodes.agent.clickToViewParameterSchema', { ns: 'workflow' })}
+                </TooltipContent>
               </Tooltip>
             )}
 

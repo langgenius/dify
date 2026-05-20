@@ -10,27 +10,31 @@ from services.billing_service import BillingService
 from services.enterprise.enterprise_service import EnterpriseService
 
 
-class SubscriptionModel(BaseModel):
+class FeatureResponseModel(BaseModel):
+    model_config = ConfigDict(json_schema_serialization_defaults_required=True, protected_namespaces=())
+
+
+class SubscriptionModel(FeatureResponseModel):
     plan: str = CloudPlan.SANDBOX
     interval: str = ""
 
 
-class BillingModel(BaseModel):
+class BillingModel(FeatureResponseModel):
     enabled: bool = False
     subscription: SubscriptionModel = SubscriptionModel()
 
 
-class EducationModel(BaseModel):
+class EducationModel(FeatureResponseModel):
     enabled: bool = False
     activated: bool = False
 
 
-class LimitationModel(BaseModel):
+class LimitationModel(FeatureResponseModel):
     size: int = 0
     limit: int = 0
 
 
-class LicenseLimitationModel(BaseModel):
+class LicenseLimitationModel(FeatureResponseModel):
     """
     - enabled: whether this limit is enforced
     - size: current usage count
@@ -56,7 +60,7 @@ class LicenseLimitationModel(BaseModel):
         return (self.limit - self.size) >= required
 
 
-class Quota(BaseModel):
+class Quota(FeatureResponseModel):
     usage: int = 0
     limit: int = 0
     reset_date: int = -1
@@ -71,13 +75,13 @@ class LicenseStatus(StrEnum):
     LOST = "lost"
 
 
-class LicenseModel(BaseModel):
+class LicenseModel(FeatureResponseModel):
     status: LicenseStatus = LicenseStatus.NONE
     expired_at: str = ""
     workspaces: LicenseLimitationModel = LicenseLimitationModel(enabled=False, size=0, limit=0)
 
 
-class BrandingModel(BaseModel):
+class BrandingModel(FeatureResponseModel):
     enabled: bool = False
     application_title: str = ""
     login_page_logo: str = ""
@@ -85,11 +89,11 @@ class BrandingModel(BaseModel):
     favicon: str = ""
 
 
-class WebAppAuthSSOModel(BaseModel):
+class WebAppAuthSSOModel(FeatureResponseModel):
     protocol: str = ""
 
 
-class WebAppAuthModel(BaseModel):
+class WebAppAuthModel(FeatureResponseModel):
     enabled: bool = False
     allow_sso: bool = False
     sso_config: WebAppAuthSSOModel = WebAppAuthSSOModel()
@@ -97,7 +101,7 @@ class WebAppAuthModel(BaseModel):
     allow_email_password_login: bool = False
 
 
-class KnowledgePipeline(BaseModel):
+class KnowledgePipeline(FeatureResponseModel):
     publish_enabled: bool = False
 
 
@@ -108,7 +112,7 @@ class PluginInstallationScope(StrEnum):
     ALL = "all"
 
 
-class PluginInstallationPermissionModel(BaseModel):
+class PluginInstallationPermissionModel(FeatureResponseModel):
     # Plugin installation scope – possible values:
     #   none: prohibit all plugin installations
     #   official_only: allow only Dify official plugins
@@ -121,7 +125,7 @@ class PluginInstallationPermissionModel(BaseModel):
     restrict_to_marketplace_only: bool = False
 
 
-class FeatureModel(BaseModel):
+class FeatureModel(FeatureResponseModel):
     billing: BillingModel = BillingModel()
     education: EducationModel = EducationModel()
     members: LimitationModel = LimitationModel(size=0, limit=1)
@@ -141,23 +145,21 @@ class FeatureModel(BaseModel):
     api_rate_limit: Quota = Quota(usage=0, limit=5000, reset_date=0)
     # Controls whether email delivery is allowed for HumanInput nodes.
     human_input_email_delivery_enabled: bool = False
-    # pydantic configs
-    model_config = ConfigDict(protected_namespaces=())
     knowledge_pipeline: KnowledgePipeline = KnowledgePipeline()
     next_credit_reset_date: int = 0
 
 
-class KnowledgeRateLimitModel(BaseModel):
+class KnowledgeRateLimitModel(FeatureResponseModel):
     enabled: bool = False
     limit: int = 10
     subscription_plan: str = ""
 
 
-class PluginManagerModel(BaseModel):
+class PluginManagerModel(FeatureResponseModel):
     enabled: bool = False
 
 
-class SystemFeatureModel(BaseModel):
+class SystemFeatureModel(FeatureResponseModel):
     app_dsl_version: str = ""
     sso_enforced_for_signin: bool = False
     sso_enforced_for_signin_protocol: str = ""
@@ -166,7 +168,7 @@ class SystemFeatureModel(BaseModel):
     enable_email_code_login: bool = False
     enable_email_password_login: bool = True
     enable_social_oauth_login: bool = False
-    enable_collaboration_mode: bool = False
+    enable_collaboration_mode: bool = True
     is_allow_register: bool = False
     is_allow_create_workspace: bool = False
     is_email_setup: bool = False

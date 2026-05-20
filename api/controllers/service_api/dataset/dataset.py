@@ -6,7 +6,8 @@ from pydantic import BaseModel, Field, TypeAdapter, field_validator, model_valid
 from werkzeug.exceptions import Forbidden, NotFound
 
 import services
-from controllers.common.schema import register_schema_models
+from controllers.common.fields import SimpleResultResponse
+from controllers.common.schema import register_enum_models, register_response_schema_models, register_schema_models
 from controllers.console.wraps import edit_permission_required
 from controllers.service_api import service_api_ns
 from controllers.service_api.dataset.error import DatasetInUseError, DatasetNameDuplicateError, InvalidActionError
@@ -31,16 +32,12 @@ from services.tag_service import (
     TagBindingCreatePayload,
     TagBindingDeletePayload,
     TagService,
-    UpdateTagPayload,
+)
+from services.tag_service import (
+    UpdateTagPayload as UpdateTagServicePayload,
 )
 
-DEFAULT_REF_TEMPLATE_SWAGGER_2_0 = "#/definitions/{model}"
-
-
-service_api_ns.schema_model(
-    DatasetPermissionEnum.__name__,
-    TypeAdapter(DatasetPermissionEnum).json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0),
-)
+register_enum_models(service_api_ns, DatasetPermissionEnum)
 
 
 class DatasetCreatePayload(BaseModel):
@@ -142,6 +139,7 @@ register_schema_models(
     DatasetListQuery,
     DataSetTag,
 )
+register_response_schema_models(service_api_ns, SimpleResultResponse)
 
 
 @service_api_ns.route("/datasets")
@@ -438,6 +436,11 @@ class DatasetApi(DatasetApiResource):
 class DocumentStatusApi(DatasetApiResource):
     """Resource for batch document status operations."""
 
+    @service_api_ns.response(
+        200,
+        "Document status updated successfully",
+        service_api_ns.models[SimpleResultResponse.__name__],
+    )
     @service_api_ns.doc("update_document_status")
     @service_api_ns.doc(description="Batch update document status")
     @service_api_ns.doc(
@@ -562,7 +565,7 @@ class DatasetTagsApi(DatasetApiResource):
 
         payload = TagUpdatePayload.model_validate(service_api_ns.payload or {})
         tag_id = payload.tag_id
-        tag = TagService.update_tags(UpdateTagPayload(name=payload.name, type=TagType.KNOWLEDGE), tag_id)
+        tag = TagService.update_tags(UpdateTagServicePayload(name=payload.name), tag_id)
 
         binding_count = TagService.get_tag_binding_count(tag_id)
 

@@ -31,7 +31,6 @@ const DatePicker = ({
   needTimePicker = true,
   renderTrigger,
   triggerWrapClassName,
-  popupZIndexClassname,
   noConfirm,
   getIsDateDisabled,
 }: DatePickerProps) => {
@@ -229,14 +228,20 @@ const DatePicker = ({
                   placeholder={placeholderDate}
                 />
                 <span className={cn('i-ri-calendar-line h-4 w-4 shrink-0 text-text-quaternary', isOpen ? 'text-text-secondary' : 'group-hover:text-text-secondary', (displayValue || (isOpen && selectedDate)) && 'group-hover:hidden')} />
-                <span className={cn('i-ri-close-circle-fill hidden h-4 w-4 shrink-0 text-text-quaternary', (displayValue || (isOpen && selectedDate)) && 'group-hover:inline-block hover:text-text-secondary')} onClick={handleClear} data-testid="date-picker-clear-button" />
+                <button
+                  type="button"
+                  aria-label={t('operation.clear', { ns: 'common' })}
+                  className={cn('hidden h-4 w-4 shrink-0 border-none bg-transparent p-0 text-text-quaternary hover:text-text-secondary focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden', (displayValue || (isOpen && selectedDate)) && 'group-hover:inline-block')}
+                  onClick={handleClear}
+                >
+                  <span className="i-ri-close-circle-fill h-4 w-4" aria-hidden="true" />
+                </button>
               </div>
             )}
       />
       <PopoverContent
         placement="bottom-end"
         sideOffset={0}
-        className={popupZIndexClassname}
         popupClassName="border-none bg-transparent shadow-none"
       >
         <div className="mt-1 w-[252px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg shadow-shadow-shadow-5">

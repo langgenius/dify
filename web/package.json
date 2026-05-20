@@ -1,7 +1,7 @@
 {
   "name": "dify-web",
   "type": "module",
-  "version": "1.14.0",
+  "version": "1.14.2",
   "private": true,
   "imports": {
     "#i18n": {
@@ -54,7 +54,6 @@
     "@emoji-mart/data": "catalog:",
     "@floating-ui/react": "catalog:",
     "@formatjs/intl-localematcher": "catalog:",
-    "@headlessui/react": "catalog:",
     "@heroicons/react": "catalog:",
     "@lexical/code": "catalog:",
     "@lexical/link": "catalog:",

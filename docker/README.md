@@ -5,44 +5,46 @@ Welcome to the new `docker` directory for deploying Dify using Docker Compose. T
 ### What's Updated
 
 - **Certbot Container**: `docker-compose.yaml` now contains `certbot` for managing SSL certificates. This container automatically renews certificates and ensures secure HTTPS connections.\
-  For more information, refer `docker/certbot/README.md`.
+  For more information, refer to `docker/certbot/README.md`.
 
-- **Persistent Environment Variables**: Default environment variables are managed through `.env.default`, while local overrides are stored in `.env`, ensuring that your configurations persist across deployments.
+- **Persistent Environment Variables**: Essential startup defaults are provided in `.env.example`, while local values are stored in `.env`, ensuring that your configurations persist across deployments.
 
   > What is `.env`? </br> </br>
-  > The `.env` file is a local override file. Keep it small by adding only the values that differ from `.env.default`. Use `.env.example` as the full reference when you need advanced configuration.
+  > The `.env` file is the local startup file. Copy it from `.env.example` for a default deployment. Optional advanced settings live in `envs/*.env.example` files.
 
 - **Unified Vector Database Services**: All vector database services are now managed from a single Docker Compose file `docker-compose.yaml`. You can switch between different vector databases by setting the `VECTOR_STORE` environment variable in your `.env` file.
-
-- **Local .env Overrides**: The `dify-compose` and `dify-compose.ps1` wrappers create `.env` if it is missing and generate a persistent `SECRET_KEY` for this deployment.
 
 ### How to Deploy Dify with `docker-compose.yaml`
 
 1. **Prerequisites**: Ensure Docker and Docker Compose are installed on your system.
-1. **Environment Setup**:
+2. **Environment Setup**:
    - Navigate to the `docker` directory.
-   - No copy step is required. The `dify-compose` wrappers create `.env` if it is missing and write a generated `SECRET_KEY` to it.
-   - When prompted on first run, press Enter to use the default deployment, or answer `y` to stop and edit `.env` first.
-   - Customize `.env` only when you need to override defaults from `.env.default`. Refer to `.env.example` for the full list of available variables.
+   - Copy `.env.example` to `.env`.
+   - Customize `.env` when you need to change essential startup defaults. Copy optional files from `envs/` without the `.example` suffix when you need advanced settings.
    - **Optional (for advanced deployments)**:
      If you maintain a full `.env` file copied from `.env.example`, you may use the environment synchronization tool to keep it aligned with the latest `.env.example` updates while preserving your custom settings.
      See the [Environment Variables Synchronization](#environment-variables-synchronization) section below.
-1. **Running the Services**:
-   - Execute `./dify-compose up -d` from the `docker` directory to start the services. On Windows PowerShell, run `.\dify-compose.ps1 up -d`.
-   - To specify a vector database, set the `VECTOR_STORE` variable in your `.env` file to your desired vector database service, such as `milvus`, `weaviate`, or `opensearch`.
-1. **SSL Certificate Setup**:
-   - Refer `docker/certbot/README.md` to set up SSL certificates using Certbot.
-1. **OpenTelemetry Collector Setup**:
-   - Change `ENABLE_OTEL` to `true` in `.env`.
-   - Configure `OTLP_BASE_ENDPOINT` properly.
+3. **Running the Services**:
+   - Execute `docker compose up -d` from the `docker` directory to start the services.
+   - To specify a vector database, set the `VECTOR_STORE` variable in your `.env` file to your desired vector database service, such as `milvus`, `weaviate`, or `opensearch`. See `envs/vectorstores/` for the full list of supported options.
+   ```bash
+   cp .env.example .env
+   docker compose up -d
+   ```
+
+4. **SSL Certificate Setup**:
+   - Refer to `docker/certbot/README.md` to set up SSL certificates using Certbot.
+5. **OpenTelemetry Collector Setup**:
+   - Copy `envs/core-services/shared.env.example` to `envs/core-services/shared.env`.
+   - Set `ENABLE_OTEL=true` and configure `OTLP_BASE_ENDPOINT`. Tune the other `OTEL_*` knobs in the same file if needed.
 
 ### How to Deploy Middleware for Developing Dify
 
 1. **Middleware Setup**:
    - Use the `docker-compose.middleware.yaml` for setting up essential middleware services like databases and caches.
    - Navigate to the `docker` directory.
-   - Ensure the `middleware.env` file is created by running `cp middleware.env.example middleware.env` (refer to the `middleware.env.example` file).
-1. **Running Middleware Services**:
+   - Ensure the `middleware.env` file is created by running `cp envs/middleware.env.example middleware.env` (refer to the `envs/middleware.env.example` file).
+2. **Running Middleware Services**:
    - Navigate to the `docker` directory.
    - Execute `docker compose --env-file middleware.env -f docker-compose.middleware.yaml -p dify up -d` to start PostgreSQL/MySQL (per `DB_TYPE`) plus the bundled Weaviate instance.
 
@@ -53,18 +55,18 @@ Welcome to the new `docker` directory for deploying Dify using Docker Compose. T
 For users migrating from the `docker-legacy` setup:
 
 1. **Review Changes**: Familiarize yourself with the new `.env` configuration and Docker Compose setup.
-1. **Transfer Customizations**:
+2. **Transfer Customizations**:
    - If you have customized configurations such as `docker-compose.yaml`, `ssrf_proxy/squid.conf`, or `nginx/conf.d/default.conf`, you will need to reflect these changes in the `.env` file you create.
-1. **Data Migration**:
+3. **Data Migration**:
    - Ensure that data from services like databases and caches is backed up and migrated appropriately to the new structure if necessary.
 
-### Overview of `.env.default`, `.env`, and `.env.example`
+### Overview of `.env`, `.env.example`, and `envs/`
 
-- `.env.default` contains the minimal default configuration for Docker Compose deployments.
-- `.env` contains the generated `SECRET_KEY` plus any local overrides.
-- `.env.example` is the full reference for advanced configuration.
+- `.env.example` contains the essential default configuration for Docker Compose deployments.
+- `.env` contains local startup values copied from `.env.example` and any local changes.
+- `envs/*.env.example` files contain optional advanced configuration grouped by theme.
 
-The `dify-compose` wrappers merge `.env.default` and `.env` into a temporary environment file, append paired internal service keys when needed, and remove the temporary file after Docker Compose starts.
+Docker Compose reads `envs/*.env` files when present, then reads `.env` last so values in `.env` take precedence.
 
 #### Key Modules and Customization
 
@@ -74,61 +76,63 @@ The `dify-compose` wrappers merge `.env.default` and `.env` into a temporary env
 
 #### Other notable variables
 
-The `.env.example` file provided in the Docker setup is extensive and covers a wide range of configuration options. It is structured into several sections, each pertaining to different aspects of the application and its services. Here are some of the key sections and variables:
+The root `.env.example` file contains the essential startup settings. Optional and provider-specific settings are grouped in `envs/*.env.example` files. Here are some of the key sections and variables:
 
 1. **Common Variables**:
 
-   - `CONSOLE_API_URL`, `SERVICE_API_URL`: URLs for different API services.
-   - `APP_WEB_URL`: Frontend application URL.
-   - `FILES_URL`: Base URL for file downloads and previews.
+   - `CONSOLE_API_URL`, `CONSOLE_WEB_URL`, `SERVICE_API_URL`, `APP_API_URL`, `APP_WEB_URL`: URLs for the API and frontend services.
+   - `FILES_URL`, `INTERNAL_FILES_URL`: Public and internal base URLs for file downloads and previews.
+   - `ENDPOINT_URL_TEMPLATE`, `NEXT_PUBLIC_SOCKET_URL`, `TRIGGER_URL`: Additional service URLs. 
+   
+   See `.env.example` for the full list.
 
-1. **Server Configuration**:
+2. **Server Configuration**:
 
    - `LOG_LEVEL`, `DEBUG`, `FLASK_DEBUG`: Logging and debug settings.
-   - `SECRET_KEY`: A key for encrypting session cookies and other sensitive data.
+   - `SECRET_KEY`: A key for signing sessions, JWTs, and file URLs. Leave it empty to let Dify generate a persistent key in the storage directory, or set a unique value yourself.
 
-1. **Database Configuration**:
+3. **Database Configuration**:
 
    - `DB_USERNAME`, `DB_PASSWORD`, `DB_HOST`, `DB_PORT`, `DB_DATABASE`: PostgreSQL database credentials and connection details.
 
-1. **Redis Configuration**:
+4. **Redis Configuration**:
 
    - `REDIS_HOST`, `REDIS_PORT`, `REDIS_PASSWORD`: Redis server connection settings.
    - `REDIS_KEY_PREFIX`: Optional global namespace prefix for Redis keys, topics, streams, and Celery Redis transport artifacts.
 
-1. **Celery Configuration**:
+5. **Celery Configuration**:
 
    - `CELERY_BROKER_URL`: Configuration for Celery message broker.
 
-1. **Storage Configuration**:
+6. **Storage Configuration**:
 
-   - `STORAGE_TYPE`, `S3_BUCKET_NAME`, `AZURE_BLOB_ACCOUNT_NAME`: Settings for file storage options like local, S3, Azure Blob, etc.
+   - `STORAGE_TYPE`, `OPENDAL_SCHEME`, `OPENDAL_FS_ROOT`: Default local file storage settings. Optional storage backends are configured from the files under `envs/`.
 
-1. **Vector Database Configuration**:
+7. **Vector Database Configuration**:
 
-   - `VECTOR_STORE`: Type of vector database (e.g., `weaviate`, `milvus`).
+   - `VECTOR_STORE`: Type of vector database (e.g., `weaviate`, `milvus`). See `envs/vectorstores/` for the full list of supported options.
    - Specific settings for each vector store like `WEAVIATE_ENDPOINT`, `MILVUS_URI`.
 
-1. **CORS Configuration**:
+8. **CORS Configuration**:
 
    - `WEB_API_CORS_ALLOW_ORIGINS`, `CONSOLE_CORS_ALLOW_ORIGINS`: Settings for cross-origin resource sharing.
 
-1. **OpenTelemetry Configuration**:
+9. **OpenTelemetry Configuration**:
 
    - `ENABLE_OTEL`: Enable OpenTelemetry collector in api.
    - `OTLP_BASE_ENDPOINT`: Endpoint for your OTLP exporter.
 
-1. **Other Service-Specific Environment Variables**:
+10. **Other Service-Specific Environment Variables**:
 
-   - Each service like `nginx`, `redis`, `db`, and vector databases have specific environment variables that are directly referenced in the `docker-compose.yaml`.
+    - Each service like `nginx`, `redis`, `db`, and vector databases have specific environment variables that are directly referenced in the `docker-compose.yaml`.
 
 ### Environment Variables Synchronization
 
-When upgrading Dify or pulling the latest changes, new environment variables may be introduced in `.env.default` or `.env.example`.
+When upgrading Dify or pulling the latest changes, new environment variables may be introduced in `.env.example` or the optional files under `envs/`.
 
-If you use the default override-only workflow, review `.env.default` and add only the values you need to override to `.env`.
+If you use the default workflow, review `.env.example` and keep your `.env` aligned with essential startup values.
 
-If you maintain a full `.env` file copied from `.env.example`, an optional environment variables synchronization tool is provided.
+If you maintain a customized `.env` file copied from `.env.example`, an optional environment variables synchronization tool is provided.
 
 > This tool performs a **one-way synchronization** from `.env.example` to `.env`.
 > Existing values in `.env` are never overwritten automatically.

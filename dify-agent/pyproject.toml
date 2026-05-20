@@ -1,0 +1,76 @@
+[project]
+name = "dify-agent"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "httpx>=0.28.1",
+    "pydantic>=2.12.5,<2.13",
+    "pydantic-ai-slim>=1.85.1",
+    "typing-extensions>=4.12.2",
+]
+
+[project.optional-dependencies]
+server = [
+    "fastapi>=0.136.0",
+    "graphon~=0.2.2",
+    "jsonschema>=4.23.0",
+    "pydantic-ai-slim[anthropic,google,openai]>=1.85.1",
+    "pydantic-settings>=2.12.0",
+    "redis>=5",
+    "uvicorn[standard]>=0.38.0",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = [
+    "agenton*",
+    "agenton_collections*",
+    "dify_agent*",
+]
+
+[tool.pyright]
+include = ["src", "examples", "tests"]
+venvPath = "."
+venv = ".venv"
+pythonVersion = "3.12"
+extraPaths = [
+    "src",
+    "examples/agenton",
+    "examples/dify_agent",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py", "*_test.py"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py312"
+include = [
+    "src/**/*.py",
+    "examples/**/*.py",
+    "tests/**/*.py",
+    "docs/**/*.py",
+]
+
+[dependency-groups]
+dev = [
+    "basedpyright>=1.39.3",
+    "coverage[toml]>=7.10.7",
+    "pytest>=9.0.3",
+    "pytest-examples>=0.0.18",
+    "pytest-mock>=3.14.0",
+    "ruff>=0.15.11",
+]
+docs = [
+    "mkdocs>=1.6.1,<2",
+    "mkdocs-glightbox>=0.4.0",
+    "mkdocs-material>=9.7.0",
+    "mkdocstrings-python>=2.0.0",
+]
+
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"

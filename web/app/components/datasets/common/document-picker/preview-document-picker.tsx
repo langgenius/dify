@@ -14,7 +14,6 @@ import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
 import FileIcon from '../document-file-icon'
-import DocumentList from './document-list'
 
 type Props = {
   className?: string
@@ -74,7 +73,7 @@ const PreviewDocumentPicker: FC<Props> = ({
           {files?.length > 1 && <div className="flex h-8 items-center pl-2 system-xs-medium-uppercase text-text-tertiary">{t('preprocessDocument', { ns: 'dataset', num: files.length })}</div>}
           {files?.length > 0
             ? (
-                <DocumentList
+                <PreviewDocumentList
                   list={files}
                   onChange={handleChange}
                 />
@@ -90,3 +89,27 @@ const PreviewDocumentPicker: FC<Props> = ({
   )
 }
 export default React.memo(PreviewDocumentPicker)
+
+function PreviewDocumentList({
+  list,
+  onChange,
+}: {
+  list: DocumentItem[]
+  onChange: (value: DocumentItem) => void
+}) {
+  return (
+    <div className="max-h-[calc(100vh-120px)] overflow-auto">
+      {list.map(item => (
+        <button
+          key={item.id}
+          type="button"
+          className="flex h-8 w-full cursor-pointer items-center gap-2 rounded-lg border-0 bg-transparent px-2 text-left hover:bg-state-base-hover"
+          onClick={() => onChange(item)}
+        >
+          <FileIcon name={item.name} extension={item.extension} size="lg" />
+          <span className="truncate text-sm text-text-secondary">{item.name}</span>
+        </button>
+      ))}
+    </div>
+  )
+}

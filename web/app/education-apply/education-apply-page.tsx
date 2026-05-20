@@ -4,12 +4,12 @@ import type { ReactNode } from 'react'
 import type { Plan as PlanType } from '@/app/components/billing/type'
 import type { ICurrentWorkspace } from '@/models/common'
 import { Button } from '@langgenius/dify-ui/button'
+import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useQueryClient } from '@tanstack/react-query'
 import { noop } from 'es-toolkit/function'
 import { useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
-import Checkbox from '@/app/components/base/checkbox'
 import { useEducationDiscount } from '@/app/components/billing/hooks/use-education-discount'
 import { Plan } from '@/app/components/billing/type'
 import { EDUCATION_VERIFYING_LOCALSTORAGE_ITEM } from '@/app/education-apply/constants'
@@ -264,22 +264,22 @@ const EducationApplyAgeContent = () => {
                       {t('form.terms.desc.end', { ns: 'education' })}
                     </div>
                     <div className="py-2 system-md-regular text-text-primary">
-                      <div className="mb-2 flex">
+                      <label className="mb-2 flex">
                         <Checkbox
                           className="mr-2 shrink-0"
                           checked={ageChecked}
-                          onCheck={() => setAgeChecked(!ageChecked)}
+                          onCheckedChange={setAgeChecked}
                         />
                         {t('form.terms.option.age', { ns: 'education' })}
-                      </div>
-                      <div className="flex">
+                      </label>
+                      <label className="flex">
                         <Checkbox
                           className="mr-2 shrink-0"
                           checked={inSchoolChecked}
-                          onCheck={() => setInSchoolChecked(!inSchoolChecked)}
+                          onCheckedChange={setInSchoolChecked}
                         />
                         {t('form.terms.option.inSchool', { ns: 'education' })}
-                      </div>
+                      </label>
                     </div>
                   </div>
                   <Button

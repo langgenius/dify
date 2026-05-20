@@ -219,13 +219,13 @@ describe('Operation', () => {
 
     it('should show copy and regenerate buttons', () => {
       renderOperation()
-      expect(screen.getByTestId('copy-btn'))!.toBeInTheDocument()
-      expect(screen.getByTestId('regenerate-btn'))!.toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'operation.copy' }))!.toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'operation.regenerate' }))!.toBeInTheDocument()
     })
 
     it('should hide regenerate button when noChatInput is true', () => {
       renderOperation({ ...baseProps, noChatInput: true })
-      expect(screen.queryByTestId('regenerate-btn')).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'operation.regenerate' })).not.toBeInTheDocument()
     })
 
     it('should show TTS button when text_to_speech is enabled', () => {
@@ -259,7 +259,7 @@ describe('Operation', () => {
     it('should copy content on copy click', async () => {
       const user = userEvent.setup()
       renderOperation()
-      await user.click(screen.getByTestId('copy-btn'))
+      await user.click(screen.getByRole('button', { name: 'operation.copy' }))
       expect(copy).toHaveBeenCalledWith('Hello world')
     })
 
@@ -274,7 +274,7 @@ describe('Operation', () => {
         ],
       }
       renderOperation({ ...baseProps, item })
-      await user.click(screen.getByTestId('copy-btn'))
+      await user.click(screen.getByRole('button', { name: 'operation.copy' }))
       expect(copy).toHaveBeenCalledWith('Hello World')
     })
   })
@@ -283,7 +283,7 @@ describe('Operation', () => {
     it('should call onRegenerate on regenerate click', async () => {
       const user = userEvent.setup()
       renderOperation()
-      await user.click(screen.getByTestId('regenerate-btn'))
+      await user.click(screen.getByRole('button', { name: 'operation.regenerate' }))
       expect(mockContextValue.onRegenerate).toHaveBeenCalledWith(baseItem)
     })
   })
@@ -299,7 +299,7 @@ describe('Operation', () => {
       const item = { ...baseItem, humanInputFormDataList: [{}] } as ChatItem
       renderOperation({ ...baseProps, item })
       expect(screen.queryByTestId('audio-btn')).not.toBeInTheDocument()
-      expect(screen.queryByTestId('copy-btn')).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'operation.copy' })).not.toBeInTheDocument()
     })
   })
 
@@ -793,7 +793,7 @@ describe('Operation', () => {
       const user = userEvent.setup()
       const item: ChatItem = { ...baseItem, agent_thoughts: [] }
       renderOperation({ ...baseProps, item })
-      await user.click(screen.getByTestId('copy-btn'))
+      await user.click(screen.getByRole('button', { name: 'operation.copy' }))
       expect(copy).toHaveBeenCalledWith('Hello world')
     })
 

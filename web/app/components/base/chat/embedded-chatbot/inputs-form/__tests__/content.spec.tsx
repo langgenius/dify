@@ -179,7 +179,7 @@ describe('InputsFormContent', () => {
 
   it('should handle bool input changes', async () => {
     render(<InputsFormContent />)
-    const checkbox = screen.getByTestId(/checkbox-/i)
+    const checkbox = screen.getByRole('checkbox', { name: 'Bool Label' })
     await user.click(checkbox)
 
     expect(mockContextValue.setCurrentConversationInputs).toHaveBeenCalled()
@@ -208,7 +208,7 @@ describe('InputsFormContent', () => {
 
     await user.click(selectTrigger)
 
-    expect(screen.getByText('Option 1').closest('.z-1002')).not.toBeNull()
+    expect(screen.getByText('Option 1').closest('.z-50')).not.toBeNull()
   })
 
   it('should handle single file upload change', async () => {

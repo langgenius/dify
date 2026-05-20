@@ -28,8 +28,6 @@ from services.entities.auth_entities import (
 )
 from services.feature_service import FeatureService
 
-DEFAULT_REF_TEMPLATE_SWAGGER_2_0 = "#/definitions/{model}"
-
 
 class ForgotPasswordEmailResponse(BaseModel):
     result: str = Field(description="Operation result")

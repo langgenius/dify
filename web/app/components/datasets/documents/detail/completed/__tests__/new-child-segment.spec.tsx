@@ -57,15 +57,15 @@ vi.mock('../common/action-buttons', () => ({
 }))
 
 vi.mock('../common/add-another', () => ({
-  default: ({ isChecked, onCheck, className }: { isChecked: boolean, onCheck: () => void, className?: string }) => (
-    <div data-testid="add-another" className={className}>
+  default: ({ checked, onCheckedChange, className }: { checked: boolean, onCheckedChange: (checked: boolean) => void, className?: string }) => (
+    <label className={className}>
       <input
         type="checkbox"
-        checked={isChecked}
-        onChange={onCheck}
-        data-testid="add-another-checkbox"
+        checked={checked}
+        onChange={event => onCheckedChange(event.currentTarget.checked)}
       />
-    </div>
+      datasetDocuments.segment.addAnother
+    </label>
   ),
 }))
 
@@ -134,30 +134,26 @@ describe('NewChildSegmentModal', () => {
     it('should render add another checkbox', () => {
       render(<NewChildSegmentModal {...defaultProps} />)
 
-      expect(screen.getByTestId('add-another'))!.toBeInTheDocument()
+      expect(screen.getByRole('checkbox', { name: 'datasetDocuments.segment.addAnother' }))!.toBeInTheDocument()
     })
   })
 
   describe('User Interactions', () => {
     it('should call onCancel when close button is clicked', () => {
       const mockOnCancel = vi.fn()
-      const { container } = render(
+      render(
         <NewChildSegmentModal {...defaultProps} onCancel={mockOnCancel} />,
       )
 
-      const closeButtons = container.querySelectorAll('.cursor-pointer')
-      if (closeButtons.length > 1)
-        fireEvent.click(closeButtons[1]!)
+      fireEvent.click(screen.getByRole('button', { name: 'common.operation.close' }))
 
       expect(mockOnCancel).toHaveBeenCalled()
     })
 
     it('should call toggleFullScreen when expand button is clicked', () => {
-      const { container } = render(<NewChildSegmentModal {...defaultProps} />)
+      render(<NewChildSegmentModal {...defaultProps} />)
 
-      const expandButtons = container.querySelectorAll('.cursor-pointer')
-      if (expandButtons.length > 0)
-        fireEvent.click(expandButtons[0]!)
+      fireEvent.click(screen.getByRole('button', { name: 'common.operation.zoomIn' }))
 
       expect(mockToggleFullScreen).toHaveBeenCalled()
     })
@@ -174,7 +170,7 @@ describe('NewChildSegmentModal', () => {
 
     it('should toggle add another checkbox', () => {
       render(<NewChildSegmentModal {...defaultProps} />)
-      const checkbox = screen.getByTestId('add-another-checkbox')
+      const checkbox = screen.getByRole('checkbox', { name: 'datasetDocuments.segment.addAnother' })
 
       fireEvent.click(checkbox)
 
@@ -261,7 +257,7 @@ describe('NewChildSegmentModal', () => {
 
       render(<NewChildSegmentModal {...defaultProps} />)
 
-      expect(screen.getByTestId('add-another'))!.toBeInTheDocument()
+      expect(screen.getByRole('checkbox', { name: 'datasetDocuments.segment.addAnother' }))!.toBeInTheDocument()
     })
   })
 
@@ -316,8 +312,7 @@ describe('NewChildSegmentModal', () => {
 
       render(<NewChildSegmentModal {...defaultProps} onCancel={mockOnCancel} />)
 
-      // Uncheck add another
-      fireEvent.click(screen.getByTestId('add-another-checkbox'))
+      fireEvent.click(screen.getByRole('checkbox', { name: 'datasetDocuments.segment.addAnother' }))
 
       // Enter valid content
       fireEvent.change(screen.getByTestId('content-input'), {

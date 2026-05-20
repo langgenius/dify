@@ -18,6 +18,7 @@ from sqlalchemy import delete
 from sqlalchemy.orm import Session
 
 from libs.email_i18n import EmailType
+from models import AccountStatus, TenantStatus
 from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from tasks.mail_email_code_login import send_email_code_login_mail_task
 
@@ -91,7 +92,7 @@ class TestSendEmailCodeLoginMailTask:
             email=fake.email(),
             name=fake.name(),
             interface_language="en-US",
-            status="active",
+            status=AccountStatus.ACTIVE,
         )
 
         db_session_with_containers.add(account)
@@ -120,7 +121,7 @@ class TestSendEmailCodeLoginMailTask:
         tenant = Tenant(
             name=fake.company(),
             plan="basic",
-            status="normal",
+            status=TenantStatus.NORMAL,
         )
 
         db_session_with_containers.add(tenant)

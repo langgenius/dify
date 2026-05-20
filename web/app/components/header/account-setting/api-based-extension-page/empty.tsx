@@ -5,7 +5,7 @@ import {
 import { useTranslation } from 'react-i18next'
 import { useDocLink } from '@/context/i18n'
 
-const Empty = () => {
+export function Empty() {
   const { t } = useTranslation()
   const docLink = useDocLink()
 
@@ -27,5 +27,3 @@ const Empty = () => {
     </div>
   )
 }
-
-export default Empty

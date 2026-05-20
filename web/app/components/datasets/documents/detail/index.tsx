@@ -1,6 +1,7 @@
 'use client'
 import type { FC } from 'react'
-import type { DataSourceInfo, DocumentDisplayStatus, FileItem, FullDocumentDetail, LegacyDataSourceInfo } from '@/models/datasets'
+import type { DocumentDisplayStatus, FileItem, FullDocumentDetail } from '@/models/datasets'
+import type { SegmentImportStatus } from '@/types/dataset'
 import { cn } from '@langgenius/dify-ui/cn'
 import { toast } from '@langgenius/dify-ui/toast'
 import * as React from 'react'
@@ -17,6 +18,7 @@ import { useRouter, useSearchParams } from '@/next/navigation'
 import { useDocumentDetail, useDocumentMetadata, useInvalidDocumentList } from '@/service/knowledge/use-document'
 import { useCheckSegmentBatchImportProgress, useChildSegmentListKey, useSegmentBatchImport, useSegmentListKey } from '@/service/knowledge/use-segment'
 import { useInvalid } from '@/service/use-base'
+import { segmentImportStatus } from '@/types/dataset'
 import Operations from '../components/operations'
 import StatusItem from '../status-item'
 import BatchModal from './batch-modal'
@@ -24,7 +26,7 @@ import Completed from './completed'
 import { DocumentContext } from './context'
 import { DocumentTitle } from './document-title'
 import Embedding from './embedding'
-import SegmentAdd, { ProcessStatus } from './segment-add'
+import { SegmentAdd } from './segment-add'
 import style from './style.module.css'
 
 type DocumentDetailProps = {
@@ -35,10 +37,6 @@ type DocumentDetailProps = {
 const NON_TERMINAL_DISPLAY_STATUSES = new Set<typeof DisplayStatusList[number]>(
   DisplayStatusList.filter(s => s === 'queuing' || s === 'indexing' || s === 'paused'),
 )
-
-const isLegacyDataSourceInfo = (info?: DataSourceInfo): info is LegacyDataSourceInfo => {
-  return !!info && 'upload_file' in info
-}
 
 const DocumentDetail: FC<DocumentDetailProps> = ({ datasetId, documentId }) => {
   const router = useRouter()
@@ -53,20 +51,20 @@ const DocumentDetail: FC<DocumentDetailProps> = ({ datasetId, documentId }) => {
   const [showMetadata, setShowMetadata] = useState(!isMobile)
   const [newSegmentModalVisible, setNewSegmentModalVisible] = useState(false)
   const [batchModalVisible, setBatchModalVisible] = useState(false)
-  const [importStatus, setImportStatus] = useState<ProcessStatus | string>()
+  const [importStatus, setImportStatus] = useState<SegmentImportStatus>()
   const showNewSegmentModal = () => setNewSegmentModalVisible(true)
   const showBatchModal = () => setBatchModalVisible(true)
   const hideBatchModal = () => setBatchModalVisible(false)
-  const resetProcessStatus = () => setImportStatus('')
+  const resetImportStatus = () => setImportStatus(undefined)
 
   const { mutateAsync: checkSegmentBatchImportProgress } = useCheckSegmentBatchImportProgress()
   const checkProcess = async (jobID: string) => {
     await checkSegmentBatchImportProgress({ jobID }, {
       onSuccess: (res) => {
         setImportStatus(res.job_status)
-        if (res.job_status === ProcessStatus.WAITING || res.job_status === ProcessStatus.PROCESSING)
+        if (res.job_status === segmentImportStatus.waiting || res.job_status === segmentImportStatus.processing)
           setTimeout(() => checkProcess(res.job_id), 2500)
-        if (res.job_status === ProcessStatus.ERROR)
+        if (res.job_status === segmentImportStatus.error)
           toast.error(`${t('list.batchModal.runError', { ns: 'datasetDocuments' })}`)
       },
       onError: (e) => {
@@ -120,14 +118,6 @@ const DocumentDetail: FC<DocumentDetailProps> = ({ datasetId, documentId }) => {
   const isDetailLoading = !documentDetail && !error
 
   const embedding = NON_TERMINAL_DISPLAY_STATUSES.has(documentDetail?.display_status as DocumentDisplayStatus)
-
-  const documentUploadFile = useMemo(() => {
-    if (!documentDetail?.data_source_info)
-      return undefined
-    if (isLegacyDataSourceInfo(documentDetail.data_source_info))
-      return documentDetail.data_source_info.upload_file
-    return undefined
-  }, [documentDetail?.data_source_info])
 
   const invalidChunkList = useInvalid(useSegmentListKey)
   const invalidChildChunkList = useInvalid(useChildSegmentListKey)
@@ -198,11 +188,10 @@ const DocumentDetail: FC<DocumentDetailProps> = ({ datasetId, documentId }) => {
         <div className="flex min-h-16 flex-wrap items-center justify-between border-b border-b-divider-subtle py-2.5 pr-4 pl-3">
           <button
             type="button"
-            data-testid="document-detail-back-button"
             aria-label={backButtonLabel}
             title={backButtonLabel}
             onClick={backToPrev}
-            className="flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-full hover:bg-components-button-tertiary-bg"
+            className="flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-full border-none bg-transparent p-0 hover:bg-components-button-tertiary-bg focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
           >
             <span
               aria-hidden="true"
@@ -211,18 +200,16 @@ const DocumentDetail: FC<DocumentDetailProps> = ({ datasetId, documentId }) => {
           </button>
           <DocumentTitle
             datasetId={datasetId}
-            extension={documentUploadFile?.extension}
-            name={documentDetail?.name}
+            document={documentDetail}
             wrapperCls="mr-2"
-            parent_mode={parentMode}
-            chunkingMode={documentDetail?.doc_form as ChunkingMode}
+            parentMode={parentMode}
           />
           <div className="flex flex-wrap items-center">
             {embeddingAvailable && documentDetail && !documentDetail.archived && !isFullDocMode && (
               <>
                 <SegmentAdd
                   importStatus={importStatus}
-                  clearProcessStatus={resetProcessStatus}
+                  clearImportStatus={resetImportStatus}
                   showNewSegmentModal={showNewSegmentModal}
                   showBatchModal={showBatchModal}
                   embedding={embedding}
@@ -290,7 +277,7 @@ const DocumentDetail: FC<DocumentDetailProps> = ({ datasetId, documentId }) => {
                       )}
                 </div>
               )}
-          <FloatRightContainer showClose isOpen={showMetadata} onClose={() => setShowMetadata(false)} isMobile={isMobile} panelClassName="justify-start!" footer={null}>
+          <FloatRightContainer showClose isOpen={showMetadata} onClose={() => setShowMetadata(false)} isMobile={isMobile} panelClassName="justify-start!">
             <Metadata
               className="mt-3 mr-2"
               datasetId={datasetId}

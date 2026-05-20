@@ -68,7 +68,7 @@ def _segment():
     )
 
 
-def test_get_segment_with_summary(monkeypatch):
+def test_get_segment_with_summary(monkeypatch: pytest.MonkeyPatch):
     segment = _segment()
     summary = SimpleNamespace(summary_content="summary")
 

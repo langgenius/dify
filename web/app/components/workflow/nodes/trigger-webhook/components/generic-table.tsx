@@ -1,11 +1,11 @@
 'use client'
 import type { FC, ReactNode } from 'react'
+import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Select, SelectContent, SelectItem, SelectItemIndicator, SelectItemText, SelectTrigger } from '@langgenius/dify-ui/select'
 import { RiDeleteBinLine } from '@remixicon/react'
 import * as React from 'react'
 import { useCallback, useMemo } from 'react'
-import Checkbox from '@/app/components/base/checkbox'
 import Input from '@/app/components/base/input'
 import { replaceSpaceWithUnderscoreInVarNameInput } from '@/utils/var'
 
@@ -169,9 +169,9 @@ const renderSwitchCell = (
   return (
     <div className="flex h-7 items-center">
       <Checkbox
-        id={`${column.key}-${String(dataIndex ?? 'v')}`}
         checked={Boolean(value)}
-        onCheck={() => handleChange(!value)}
+        aria-label={column.title}
+        onCheckedChange={handleChange}
         disabled={readonly}
       />
     </div>

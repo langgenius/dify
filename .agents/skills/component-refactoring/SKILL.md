@@ -63,7 +63,7 @@ pnpm analyze-component <path> --json
 
 ```typescript
 // ❌ Before: Complex state logic in component
-const Configuration: FC = () => {
+function Configuration() {
   const [modelConfig, setModelConfig] = useState<ModelConfig>(...)
   const [datasetConfigs, setDatasetConfigs] = useState<DatasetConfigs>(...)
   const [completionParams, setCompletionParams] = useState<FormValue>({})
@@ -85,7 +85,7 @@ export const useModelConfig = (appId: string) => {
 }
 
 // Component becomes cleaner
-const Configuration: FC = () => {
+function Configuration() {
   const { modelConfig, setModelConfig } = useModelConfig(appId)
   return <div>...</div>
 }
@@ -189,8 +189,6 @@ const Template = useMemo(() => {
 
 **Dify Convention**:
 - This skill is for component decomposition, not query/mutation design.
-- When refactoring data fetching, follow `web/AGENTS.md`.
-- Use `frontend-query-mutation` for contracts, query shape, data-fetching wrappers, query/mutation call-site patterns, conditional queries, invalidation, and mutation error handling.
 - Do not introduce deprecated `useInvalid` / `useReset`.
 - Do not add thin passthrough `useQuery` wrappers during refactoring; only extract a custom hook when it truly orchestrates multiple queries/mutations or shared derived state.
 

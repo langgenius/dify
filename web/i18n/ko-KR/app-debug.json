@@ -337,6 +337,8 @@
   "variableConfig.file.image.name": "이미지",
   "variableConfig.file.supportFileTypes": "지원 파일 형식",
   "variableConfig.file.video.name": "비디오",
+  "variableConfig.hidden": "숨김 및 미리 채우기",
+  "variableConfig.hiddenDescription": "이 필드를 최종 사용자에게 숨기고 값을 직접 입력하세요. 필수 항목과 함께 사용할 수 없습니다. <docLink>자세히 알아보기</docLink>",
   "variableConfig.hide": "숨기기",
   "variableConfig.inputPlaceholder": "입력하세요",
   "variableConfig.json": "JSON 코드",

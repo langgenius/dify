@@ -25,6 +25,14 @@
       "types": "./src/button/index.tsx",
       "import": "./src/button/index.tsx"
     },
+    "./checkbox": {
+      "types": "./src/checkbox/index.tsx",
+      "import": "./src/checkbox/index.tsx"
+    },
+    "./checkbox-group": {
+      "types": "./src/checkbox-group/index.tsx",
+      "import": "./src/checkbox-group/index.tsx"
+    },
     "./combobox": {
       "types": "./src/combobox/index.tsx",
       "import": "./src/combobox/index.tsx"
@@ -37,9 +45,25 @@
       "types": "./src/dialog/index.tsx",
       "import": "./src/dialog/index.tsx"
     },
+    "./drawer": {
+      "types": "./src/drawer/index.tsx",
+      "import": "./src/drawer/index.tsx"
+    },
     "./dropdown-menu": {
       "types": "./src/dropdown-menu/index.tsx",
       "import": "./src/dropdown-menu/index.tsx"
+    },
+    "./field": {
+      "types": "./src/field/index.tsx",
+      "import": "./src/field/index.tsx"
+    },
+    "./fieldset": {
+      "types": "./src/fieldset/index.tsx",
+      "import": "./src/fieldset/index.tsx"
+    },
+    "./form": {
+      "types": "./src/form/index.tsx",
+      "import": "./src/form/index.tsx"
     },
     "./meter": {
       "types": "./src/meter/index.tsx",
@@ -72,6 +96,14 @@
     "./switch": {
       "types": "./src/switch/index.tsx",
       "import": "./src/switch/index.tsx"
+    },
+    "./tabs": {
+      "types": "./src/tabs/index.tsx",
+      "import": "./src/tabs/index.tsx"
+    },
+    "./toggle-group": {
+      "types": "./src/toggle-group/index.tsx",
+      "import": "./src/toggle-group/index.tsx"
     },
     "./toast": {
       "types": "./src/toast/index.tsx",

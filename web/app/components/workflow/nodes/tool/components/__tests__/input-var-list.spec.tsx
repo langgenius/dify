@@ -1,7 +1,7 @@
 import type { ToolVarInputs } from '../../types'
 import type { CredentialFormSchema } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { App } from '@/types/app'
-import { screen } from '@testing-library/react'
+import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
 import { createMockProviderContextValue } from '@/__mocks__/provider-context'
@@ -479,20 +479,23 @@ describe('InputVarList', () => {
       },
     })
 
-    await user.click(screen.getByRole('combobox', { name: 'app.appSelector.label' }))
-    await user.type(screen.getByPlaceholderText('Topic'), 'weather')
+    const topicInput = await screen.findByPlaceholderText('Topic')
+    await user.type(topicInput, 'weather')
 
-    expect(onChange).toHaveBeenLastCalledWith({
-      assistant: {
-        app_id: 'app-1',
-        inputs: { topic: 'weather' },
-        files: [],
-      },
-      model: {
-        credential_id: 'credential-1',
-      },
+    await waitFor(() => {
+      expect(onChange).toHaveBeenLastCalledWith({
+        assistant: {
+          app_id: 'app-1',
+          inputs: { topic: 'weather' },
+          files: [],
+        },
+        model: {
+          credential_id: 'credential-1',
+        },
+      })
     })
 
+    await user.click(screen.getByRole('button', { name: 'app.appSelector.label' }))
     await user.click(screen.getByText('workflow:errorMsg.configureModel'))
     await user.click(await screen.findByRole('combobox', { name: 'plugin.detailPanel.configureModel' }))
     await user.click(await screen.findByRole('option', { name: /GPT-4o/i }))

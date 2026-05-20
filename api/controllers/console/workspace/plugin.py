@@ -9,11 +9,13 @@ from werkzeug.datastructures import FileStorage
 from werkzeug.exceptions import Forbidden
 
 from configs import dify_config
-from controllers.common.schema import register_enum_models, register_schema_models
+from controllers.common.fields import SuccessResponse
+from controllers.common.schema import register_enum_models, register_response_schema_models, register_schema_models
 from controllers.console import console_ns
 from controllers.console.workspace import plugin_permission_required
 from controllers.console.wraps import account_initialization_required, is_admin_or_owner_required, setup_required
 from core.plugin.impl.exc import PluginDaemonClientSideError
+from fields.base import ResponseModel
 from graphon.model_runtime.utils.encoders import jsonable_encoder
 from libs.login import current_account_with_tenant, login_required
 from models.account import TenantPluginAutoUpgradeStrategy, TenantPluginPermission
@@ -137,6 +139,12 @@ class ParserReadme(BaseModel):
     language: str = Field(default="en-US")
 
 
+class PluginDebuggingKeyResponse(ResponseModel):
+    key: str
+    host: str
+    port: int
+
+
 register_schema_models(
     console_ns,
     ParserList,
@@ -160,6 +168,7 @@ register_schema_models(
     ParserExcludePlugin,
     ParserReadme,
 )
+register_response_schema_models(console_ns, PluginDebuggingKeyResponse, SuccessResponse)
 
 register_enum_models(
     console_ns,
@@ -177,7 +186,7 @@ def _read_upload_content(file: FileStorage, max_size: int) -> bytes:
     FileStorage.content_length is not reliable for multipart test uploads and may be zero even when
     content exists, so the controllers validate against the loaded bytes instead.
     """
-    content = file.read()
+    content = file.stream.read()
     if len(content) > max_size:
         raise ValueError("File size exceeds the maximum allowed size")
 
@@ -186,6 +195,7 @@ def _read_upload_content(file: FileStorage, max_size: int) -> bytes:
 
 @console_ns.route("/workspaces/current/plugin/debugging-key")
 class PluginDebuggingKeyApi(Resource):
+    @console_ns.response(200, "Success", console_ns.models[PluginDebuggingKeyResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -211,7 +221,7 @@ class PluginListApi(Resource):
     @account_initialization_required
     def get(self):
         _, tenant_id = current_account_with_tenant()
-        args = ParserList.model_validate(request.args.to_dict(flat=True))  # type: ignore
+        args = ParserList.model_validate(request.args.to_dict(flat=True))
         try:
             plugins_with_total = PluginService.list_with_total(tenant_id, args.page, args.page_size)
         except PluginDaemonClientSideError as e:
@@ -261,7 +271,7 @@ class PluginIconApi(Resource):
     @console_ns.expect(console_ns.models[ParserIcon.__name__])
     @setup_required
     def get(self):
-        args = ParserIcon.model_validate(request.args.to_dict(flat=True))  # type: ignore
+        args = ParserIcon.model_validate(request.args.to_dict(flat=True))
 
         try:
             icon_bytes, mimetype = PluginService.get_asset(args.tenant_id, args.filename)
@@ -279,7 +289,7 @@ class PluginAssetApi(Resource):
     @login_required
     @account_initialization_required
     def get(self):
-        args = ParserAsset.model_validate(request.args.to_dict(flat=True))  # type: ignore
+        args = ParserAsset.model_validate(request.args.to_dict(flat=True))
 
         _, tenant_id = current_account_with_tenant()
         try:
@@ -421,7 +431,7 @@ class PluginFetchMarketplacePkgApi(Resource):
     @plugin_permission_required(install_required=True)
     def get(self):
         _, tenant_id = current_account_with_tenant()
-        args = ParserPluginIdentifierQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
+        args = ParserPluginIdentifierQuery.model_validate(request.args.to_dict(flat=True))
 
         try:
             return jsonable_encoder(
@@ -446,7 +456,7 @@ class PluginFetchManifestApi(Resource):
     def get(self):
         _, tenant_id = current_account_with_tenant()
 
-        args = ParserPluginIdentifierQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
+        args = ParserPluginIdentifierQuery.model_validate(request.args.to_dict(flat=True))
 
         try:
             return jsonable_encoder(
@@ -466,7 +476,7 @@ class PluginFetchInstallTasksApi(Resource):
     def get(self):
         _, tenant_id = current_account_with_tenant()
 
-        args = ParserTasks.model_validate(request.args.to_dict(flat=True))  # type: ignore
+        args = ParserTasks.model_validate(request.args.to_dict(flat=True))
 
         try:
             return jsonable_encoder({"tasks": PluginService.fetch_install_tasks(tenant_id, args.page, args.page_size)})
@@ -491,6 +501,7 @@ class PluginFetchInstallTaskApi(Resource):
 
 @console_ns.route("/workspaces/current/plugin/tasks/<task_id>/delete")
 class PluginDeleteInstallTaskApi(Resource):
+    @console_ns.response(200, "Success", console_ns.models[SuccessResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -506,6 +517,7 @@ class PluginDeleteInstallTaskApi(Resource):
 
 @console_ns.route("/workspaces/current/plugin/tasks/delete_all")
 class PluginDeleteAllInstallTaskItemsApi(Resource):
+    @console_ns.response(200, "Success", console_ns.models[SuccessResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -521,6 +533,7 @@ class PluginDeleteAllInstallTaskItemsApi(Resource):
 
 @console_ns.route("/workspaces/current/plugin/tasks/<task_id>/delete/<path:identifier>")
 class PluginDeleteInstallTaskItemApi(Resource):
+    @console_ns.response(200, "Success", console_ns.models[SuccessResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -586,6 +599,7 @@ class PluginUpgradeFromGithubApi(Resource):
 @console_ns.route("/workspaces/current/plugin/uninstall")
 class PluginUninstallApi(Resource):
     @console_ns.expect(console_ns.models[ParserUninstall.__name__])
+    @console_ns.response(200, "Success", console_ns.models[SuccessResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -604,6 +618,7 @@ class PluginUninstallApi(Resource):
 @console_ns.route("/workspaces/current/plugin/permission/change")
 class PluginChangePermissionApi(Resource):
     @console_ns.expect(console_ns.models[ParserPermissionChange.__name__])
+    @console_ns.response(200, "Success", console_ns.models[SuccessResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -660,7 +675,7 @@ class PluginFetchDynamicSelectOptionsApi(Resource):
         current_user, tenant_id = current_account_with_tenant()
         user_id = current_user.id
 
-        args = ParserDynamicOptions.model_validate(request.args.to_dict(flat=True))  # type: ignore
+        args = ParserDynamicOptions.model_validate(request.args.to_dict(flat=True))
 
         try:
             options = PluginParameterService.get_dynamic_select_options(
@@ -822,7 +837,7 @@ class PluginReadmeApi(Resource):
     @account_initialization_required
     def get(self):
         _, tenant_id = current_account_with_tenant()
-        args = ParserReadme.model_validate(request.args.to_dict(flat=True))  # type: ignore
+        args = ParserReadme.model_validate(request.args.to_dict(flat=True))
         return jsonable_encoder(
             {"readme": PluginService.fetch_plugin_readme(tenant_id, args.plugin_unique_identifier, args.language)}
         )

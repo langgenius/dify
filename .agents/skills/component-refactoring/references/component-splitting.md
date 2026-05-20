@@ -65,10 +65,10 @@ interface ConfigurationHeaderProps {
   onPublish: () => void
 }
 
-const ConfigurationHeader: FC<ConfigurationHeaderProps> = ({
+function ConfigurationHeader({
   isAdvancedMode,
   onPublish,
-}) => {
+}: ConfigurationHeaderProps) {
   const { t } = useTranslation()
   
   return (
@@ -136,7 +136,7 @@ const AppInfo = () => {
 }
 
 // ✅ After: Separate view components
-const AppInfoExpanded: FC<AppInfoViewProps> = ({ appDetail, onAction }) => {
+function AppInfoExpanded({ appDetail, onAction }: AppInfoViewProps) {
   return (
     <div className="expanded">
       {/* Clean, focused expanded view */}
@@ -144,7 +144,7 @@ const AppInfoExpanded: FC<AppInfoViewProps> = ({ appDetail, onAction }) => {
   )
 }
 
-const AppInfoCollapsed: FC<AppInfoViewProps> = ({ appDetail, onAction }) => {
+function AppInfoCollapsed({ appDetail, onAction }: AppInfoViewProps) {
   return (
     <div className="collapsed">
       {/* Clean, focused collapsed view */}
@@ -203,12 +203,12 @@ interface AppInfoModalsProps {
   onSuccess: () => void
 }
 
-const AppInfoModals: FC<AppInfoModalsProps> = ({
+function AppInfoModals({
   appDetail,
   activeModal,
   onClose,
   onSuccess,
-}) => {
+}: AppInfoModalsProps) {
   const handleEdit = async (data) => { /* logic */ }
   const handleDuplicate = async (data) => { /* logic */ }
   const handleDelete = async () => { /* logic */ }
@@ -296,7 +296,7 @@ interface OperationItemProps {
   onAction: (id: string) => void
 }
 
-const OperationItem: FC<OperationItemProps> = ({ operation, onAction }) => {
+function OperationItem({ operation, onAction }: OperationItemProps) {
   return (
     <div className="operation-item">
       <span className="icon">{operation.icon}</span>
@@ -435,7 +435,7 @@ interface ChildProps {
   onSubmit: () => void
 }
 
-const Child: FC<ChildProps> = ({ value, onChange, onSubmit }) => {
+function Child({ value, onChange, onSubmit }: ChildProps) {
   return (
     <div>
       <input value={value} onChange={e => onChange(e.target.value)} />

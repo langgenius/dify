@@ -1,5 +1,5 @@
 import { fireEvent, render, screen } from '@testing-library/react'
-import DisplayContent from '../display-content'
+import { DisplayContent } from '../display-content'
 import { PreviewType } from '../types'
 
 describe('variable inspect display content', () => {

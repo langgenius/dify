@@ -82,7 +82,9 @@ const InputField: React.FC<InputFieldProps> = ({
   }, [handleSave])
 
   return (
-    <div className="w-[372px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-3 shadow-lg backdrop-blur-[5px]">
+    <div className="w-[372px]
+     rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-3 shadow-lg backdrop-blur-[5px]"
+    >
       <div className="system-md-semibold text-text-primary">{t(`${i18nPrefix}.title`, { ns: 'workflow' })}</div>
       <div className="mt-3">
         <div className="system-xs-medium text-text-secondary">
@@ -121,11 +123,10 @@ const InputField: React.FC<InputFieldProps> = ({
         />
       </div>
       <div className="mt-4 flex justify-end space-x-2">
-        <Button data-testid="hitl-input-cancel-btn" onClick={onCancel}>{t('operation.cancel', { ns: 'common' })}</Button>
+        <Button onClick={onCancel}>{t('operation.cancel', { ns: 'common' })}</Button>
         {isEdit
           ? (
               <Button
-                data-testid="hitl-input-save-btn"
                 variant="primary"
                 onClick={handleSave}
                 disabled={!nameValid}
@@ -135,7 +136,6 @@ const InputField: React.FC<InputFieldProps> = ({
             )
           : (
               <Button
-                data-testid="hitl-input-insert-btn"
                 className="flex"
                 variant="primary"
                 disabled={!nameValid}
