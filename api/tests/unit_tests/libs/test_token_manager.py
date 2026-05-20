@@ -10,10 +10,11 @@ validation now happens at the callsite boundary (for example,
 import json
 from types import SimpleNamespace
 
-import libs.helper as helper_module
 import pytest
-from libs.helper import TokenManager
 from pydantic import ValidationError
+
+import libs.helper as helper_module
+from libs.helper import TokenManager
 
 
 def _build_fake_redis(storage: dict[str, str]):
