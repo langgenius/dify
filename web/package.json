@@ -231,7 +231,7 @@
     "nock": "14.0.11",
     "postcss": "8.5.8",
     "postcss-js": "5.1.0",
-    "react-server-dom-webpack": "19.2.5",
+    "react-server-dom-webpack": "19.2.6",
     "sass": "1.98.0",
     "storybook": "10.3.1",
     "tailwindcss": "3.4.19",

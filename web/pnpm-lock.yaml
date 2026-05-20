@@ -513,7 +513,7 @@ importers:
         version: 6.0.1(@voidzero-dev/vite-plus-core@0.1.13(@types/node@25.5.0)(esbuild@0.27.2)(jiti@1.21.7)(sass@1.98.0)(terser@5.46.1)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.2))
       '@vitejs/plugin-rsc':
         specifier: 0.5.21
-        version: 0.5.21(@voidzero-dev/vite-plus-core@0.1.13(@types/node@25.5.0)(esbuild@0.27.2)(jiti@1.21.7)(sass@1.98.0)(terser@5.46.1)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.2))(react-dom@19.2.6(react@19.2.6))(react-server-dom-webpack@19.2.5(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(webpack@5.105.4(esbuild@0.27.2)(uglify-js@3.19.3)))(react@19.2.6)
+        version: 0.5.21(@voidzero-dev/vite-plus-core@0.1.13(@types/node@25.5.0)(esbuild@0.27.2)(jiti@1.21.7)(sass@1.98.0)(terser@5.46.1)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.2))(react-dom@19.2.6(react@19.2.6))(react-server-dom-webpack@19.2.6(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(webpack@5.105.4(esbuild@0.27.2)(uglify-js@3.19.3)))(react@19.2.6)
       '@vitest/coverage-v8':
         specifier: 4.1.0
         version: 4.1.0(@voidzero-dev/vite-plus-test@0.1.13(@types/node@25.5.0)(@voidzero-dev/vite-plus-core@0.1.13(@types/node@25.5.0)(esbuild@0.27.2)(jiti@1.21.7)(sass@1.98.0)(terser@5.46.1)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.2))(esbuild@0.27.2)(jiti@1.21.7)(jsdom@29.0.1(canvas@3.2.2))(sass@1.98.0)(terser@5.46.1)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.2))
@@ -584,8 +584,8 @@ importers:
         specifier: 5.1.0
         version: 5.1.0(postcss@8.5.8)
       react-server-dom-webpack:
-        specifier: 19.2.5
-        version: 19.2.5(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(webpack@5.105.4(esbuild@0.27.2)(uglify-js@3.19.3))
+        specifier: 19.2.6
+        version: 19.2.6(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(webpack@5.105.4(esbuild@0.27.2)(uglify-js@3.19.3))
       sass:
         specifier: 1.98.0
         version: 1.98.0
@@ -609,7 +609,7 @@ importers:
         version: 3.19.3
       vinext:
         specifier: https://pkg.pr.new/vinext@b6a2cac
-        version: https://pkg.pr.new/vinext@b6a2cac(42c28de8b44bdfefb45fa6a6250a8957)
+        version: https://pkg.pr.new/vinext@b6a2cac(c12995b54e56fda018546eb90c392d74)
       vite:
         specifier: npm:@voidzero-dev/vite-plus-core@0.1.13
         version: '@voidzero-dev/vite-plus-core@0.1.13(@types/node@25.5.0)(esbuild@0.27.2)(jiti@1.21.7)(sass@1.98.0)(terser@5.46.1)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.2)'
@@ -6876,12 +6876,12 @@ packages:
       react: '>=16.3.0'
       react-dom: '>=16.3.0'
 
-  react-server-dom-webpack@19.2.5:
-    resolution: {integrity: sha512-bYhdd2cZJhXHqyJBoloYaJrn8MrL9Egf3ZZVn0OrIODCCORm2goFD7C+xszf6xgfsSJi0rtgB/ichcuHfkJ4yQ==}
+  react-server-dom-webpack@19.2.6:
+    resolution: {integrity: sha512-762YXjBPc6hw2V16k4x1sdnw0mxghcSPzoiOhefGYjiTguJLCImGBUz6EjznPIfqKhWgLtpaQMlBhp66N8dKrw==}
     engines: {node: '>=0.10.0'}
     peerDependencies:
-      react: ^19.2.5
-      react-dom: ^19.2.5
+      react: ^19.2.6
+      react-dom: ^19.2.6
       webpack: ^5.59.0
 
   react-sortablejs@6.1.4:
@@ -11144,7 +11144,7 @@ snapshots:
       '@rolldown/pluginutils': 1.0.0-rc.7
       vite: '@voidzero-dev/vite-plus-core@0.1.13(@types/node@25.5.0)(esbuild@0.27.2)(jiti@1.21.7)(sass@1.98.0)(terser@5.46.1)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.2)'
 
-  '@vitejs/plugin-rsc@0.5.21(@voidzero-dev/vite-plus-core@0.1.13(@types/node@25.5.0)(esbuild@0.27.2)(jiti@1.21.7)(sass@1.98.0)(terser@5.46.1)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.2))(react-dom@19.2.6(react@19.2.6))(react-server-dom-webpack@19.2.5(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(webpack@5.105.4(esbuild@0.27.2)(uglify-js@3.19.3)))(react@19.2.6)':
+  '@vitejs/plugin-rsc@0.5.21(@voidzero-dev/vite-plus-core@0.1.13(@types/node@25.5.0)(esbuild@0.27.2)(jiti@1.21.7)(sass@1.98.0)(terser@5.46.1)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.2))(react-dom@19.2.6(react@19.2.6))(react-server-dom-webpack@19.2.6(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(webpack@5.105.4(esbuild@0.27.2)(uglify-js@3.19.3)))(react@19.2.6)':
     dependencies:
       '@rolldown/pluginutils': 1.0.0-rc.5
       es-module-lexer: 2.0.0
@@ -11159,7 +11159,7 @@ snapshots:
       vite: '@voidzero-dev/vite-plus-core@0.1.13(@types/node@25.5.0)(esbuild@0.27.2)(jiti@1.21.7)(sass@1.98.0)(terser@5.46.1)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.2)'
       vitefu: 1.1.2(@voidzero-dev/vite-plus-core@0.1.13(@types/node@25.5.0)(esbuild@0.27.2)(jiti@1.21.7)(sass@1.98.0)(terser@5.46.1)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.2))
     optionalDependencies:
-      react-server-dom-webpack: 19.2.5(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(webpack@5.105.4(esbuild@0.27.2)(uglify-js@3.19.3))
+      react-server-dom-webpack: 19.2.6(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(webpack@5.105.4(esbuild@0.27.2)(uglify-js@3.19.3))
 
   '@vitest/coverage-v8@4.1.0(@voidzero-dev/vite-plus-test@0.1.13(@types/node@25.5.0)(@voidzero-dev/vite-plus-core@0.1.13(@types/node@25.5.0)(esbuild@0.27.2)(jiti@1.21.7)(sass@1.98.0)(terser@5.46.1)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.2))(esbuild@0.27.2)(jiti@1.21.7)(jsdom@29.0.1(canvas@3.2.2))(sass@1.98.0)(terser@5.46.1)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.2))':
     dependencies:
@@ -14918,7 +14918,7 @@ snapshots:
       react-draggable: 4.5.0(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
       tslib: 2.6.2
 
-  react-server-dom-webpack@19.2.5(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(webpack@5.105.4(esbuild@0.27.2)(uglify-js@3.19.3)):
+  react-server-dom-webpack@19.2.6(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(webpack@5.105.4(esbuild@0.27.2)(uglify-js@3.19.3)):
     dependencies:
       acorn-loose: 8.5.2
       neo-async: 2.6.2
@@ -15963,7 +15963,7 @@ snapshots:
       '@types/unist': 3.0.3
       vfile-message: 4.0.3
 
-  vinext@https://pkg.pr.new/vinext@b6a2cac(42c28de8b44bdfefb45fa6a6250a8957):
+  vinext@https://pkg.pr.new/vinext@b6a2cac(c12995b54e56fda018546eb90c392d74):
     dependencies:
       '@unpic/react': 1.0.2(next@16.2.6(@babel/core@7.29.0)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(sass@1.98.0))(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
       '@vercel/og': 0.8.6
@@ -15977,8 +15977,8 @@ snapshots:
       vite-tsconfig-paths: 6.1.1(@voidzero-dev/vite-plus-core@0.1.13(@types/node@25.5.0)(esbuild@0.27.2)(jiti@1.21.7)(sass@1.98.0)(terser@5.46.1)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.2))(typescript@5.9.3)
     optionalDependencies:
       '@mdx-js/rollup': 3.1.1(rollup@4.59.0)
-      '@vitejs/plugin-rsc': 0.5.21(@voidzero-dev/vite-plus-core@0.1.13(@types/node@25.5.0)(esbuild@0.27.2)(jiti@1.21.7)(sass@1.98.0)(terser@5.46.1)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.2))(react-dom@19.2.6(react@19.2.6))(react-server-dom-webpack@19.2.5(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(webpack@5.105.4(esbuild@0.27.2)(uglify-js@3.19.3)))(react@19.2.6)
-      react-server-dom-webpack: 19.2.5(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(webpack@5.105.4(esbuild@0.27.2)(uglify-js@3.19.3))
+      '@vitejs/plugin-rsc': 0.5.21(@voidzero-dev/vite-plus-core@0.1.13(@types/node@25.5.0)(esbuild@0.27.2)(jiti@1.21.7)(sass@1.98.0)(terser@5.46.1)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.2))(react-dom@19.2.6(react@19.2.6))(react-server-dom-webpack@19.2.6(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(webpack@5.105.4(esbuild@0.27.2)(uglify-js@3.19.3)))(react@19.2.6)
+      react-server-dom-webpack: 19.2.6(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(webpack@5.105.4(esbuild@0.27.2)(uglify-js@3.19.3))
     transitivePeerDependencies:
       - next
       - supports-color
