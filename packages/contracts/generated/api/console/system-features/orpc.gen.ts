@@ -14,16 +14,11 @@ import { zGetSystemFeaturesResponse } from './zod.gen'
  * Authentication would create circular dependency (can't login without dashboard loading).
  *
  * Only non-sensitive configuration data should be returned by this endpoint.
- *
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
  */
 export const get = oc
   .route({
-    deprecated: true,
     description:
-      'Get system-wide feature configuration\nNOTE: This endpoint is unauthenticated by design, as it provides system features\ndata required for dashboard initialization.\n\nAuthentication would create circular dependency (can\'t login without dashboard loading).\n\nOnly non-sensitive configuration data should be returned by this endpoint.\n\nGenerated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
+      'Get system-wide feature configuration\nNOTE: This endpoint is unauthenticated by design, as it provides system features\ndata required for dashboard initialization.\n\nAuthentication would create circular dependency (can\'t login without dashboard loading).\n\nOnly non-sensitive configuration data should be returned by this endpoint.',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getSystemFeatures',

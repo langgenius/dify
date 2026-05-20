@@ -18,10 +18,14 @@ export type ActivationResponse = {
 }
 
 export type ActivationCheckResponse = {
-  data?: {
-    [key: string]: unknown
-  } | null
+  data?: ActivationCheckData
   is_valid: boolean
+}
+
+export type ActivationCheckData = {
+  email: string | null
+  workspace_id: string | null
+  workspace_name: string | null
 }
 
 export type PostActivateData = {

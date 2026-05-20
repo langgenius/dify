@@ -15,7 +15,8 @@ from controllers.common.errors import (
     TooManyFilesError,
     UnsupportedFileTypeError,
 )
-from controllers.common.schema import register_schema_models
+from controllers.common.fields import AllowedExtensionsResponse, TextContentResponse
+from controllers.common.schema import register_response_schema_models, register_schema_models
 from controllers.console.wraps import (
     account_initialization_required,
     cloud_edition_billing_resource_check,
@@ -29,6 +30,7 @@ from services.file_service import FileService
 from . import console_ns
 
 register_schema_models(console_ns, UploadConfig, FileResponse)
+register_response_schema_models(console_ns, AllowedExtensionsResponse, TextContentResponse)
 
 PREVIEW_WORDS_LIMIT = 3000
 
@@ -103,6 +105,7 @@ class FilePreviewApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @console_ns.response(200, "Success", console_ns.models[TextContentResponse.__name__])
     def get(self, file_id):
         file_id = str(file_id)
         _, tenant_id = current_account_with_tenant()
@@ -115,5 +118,6 @@ class FileSupportTypeApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @console_ns.response(200, "Success", console_ns.models[AllowedExtensionsResponse.__name__])
     def get(self):
         return {"allowed_extensions": list(DOCUMENT_EXTENSIONS)}

@@ -4,10 +4,78 @@ export type ClientOptions = {
   baseUrl: `${string}://${string}/console/api` | (string & {})
 }
 
-export type SystemFeatureResponse = {
-  features?: {
-    [key: string]: unknown
-  }
+export type SystemFeatureModel = {
+  app_dsl_version: string
+  branding: BrandingModel
+  enable_change_email: boolean
+  enable_collaboration_mode: boolean
+  enable_creators_platform: boolean
+  enable_email_code_login: boolean
+  enable_email_password_login: boolean
+  enable_explore_banner: boolean
+  enable_marketplace: boolean
+  enable_social_oauth_login: boolean
+  enable_trial_app: boolean
+  is_allow_create_workspace: boolean
+  is_allow_register: boolean
+  is_email_setup: boolean
+  license: LicenseModel
+  max_plugin_package_size: number
+  plugin_installation_permission: PluginInstallationPermissionModel
+  plugin_manager: PluginManagerModel
+  sso_enforced_for_signin: boolean
+  sso_enforced_for_signin_protocol: string
+  trial_models: Array<string>
+  webapp_auth: WebAppAuthModel
+}
+
+export type BrandingModel = {
+  application_title: string
+  enabled: boolean
+  favicon: string
+  login_page_logo: string
+  workspace_logo: string
+}
+
+export type LicenseModel = {
+  expired_at: string
+  status: LicenseStatus
+  workspaces: LicenseLimitationModel
+}
+
+export type PluginInstallationPermissionModel = {
+  plugin_installation_scope: PluginInstallationScope
+  restrict_to_marketplace_only: boolean
+}
+
+export type PluginManagerModel = {
+  enabled: boolean
+}
+
+export type WebAppAuthModel = {
+  allow_email_code_login: boolean
+  allow_email_password_login: boolean
+  allow_sso: boolean
+  enabled: boolean
+  sso_config: WebAppAuthSsoModel
+}
+
+export type LicenseStatus = 'active' | 'expired' | 'expiring' | 'inactive' | 'lost' | 'none'
+
+export type LicenseLimitationModel = {
+  enabled: boolean
+  limit: number
+  size: number
+}
+
+export type PluginInstallationScope
+  = | 'all'
+    | 'none'
+    | 'official_and_specific_partners'
+    | 'official_only'
+
+export type WebAppAuthSsoModel = {
+  protocol: string
 }
 
 export type GetSystemFeaturesData = {
@@ -18,7 +86,7 @@ export type GetSystemFeaturesData = {
 }
 
 export type GetSystemFeaturesResponses = {
-  200: SystemFeatureResponse
+  200: SystemFeatureModel
 }
 
 export type GetSystemFeaturesResponse = GetSystemFeaturesResponses[keyof GetSystemFeaturesResponses]

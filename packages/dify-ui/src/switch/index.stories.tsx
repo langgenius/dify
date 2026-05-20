@@ -4,7 +4,7 @@ import { useState, useTransition } from 'react'
 import { Switch, SwitchSkeleton } from '.'
 
 const meta = {
-  title: 'Base/UI/Switch',
+  title: 'Base/Form/Switch',
   component: Switch,
   parameters: {
     layout: 'centered',

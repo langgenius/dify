@@ -6,7 +6,7 @@ from sqlalchemy.orm import sessionmaker
 from werkzeug.exceptions import NotFound
 
 from controllers.common.controller_schemas import ConversationRenamePayload
-from controllers.common.schema import register_schema_models
+from controllers.common.schema import register_response_schema_models, register_schema_models
 from controllers.web import web_ns
 from controllers.web.error import NotChatAppError
 from controllers.web.wraps import WebApiResource
@@ -39,6 +39,7 @@ class ConversationListQuery(BaseModel):
 
 
 register_schema_models(web_ns, ConversationListQuery, ConversationRenamePayload)
+register_response_schema_models(web_ns, ResultResponse)
 
 
 @web_ns.route("/conversations")
@@ -201,6 +202,7 @@ class ConversationPinApi(WebApiResource):
             500: "Internal Server Error",
         }
     )
+    @web_ns.response(200, "Conversation pinned successfully", web_ns.models[ResultResponse.__name__])
     def patch(self, app_model, end_user, c_id):
         app_mode = AppMode.value_of(app_model.mode)
         if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:
@@ -231,6 +233,7 @@ class ConversationUnPinApi(WebApiResource):
             500: "Internal Server Error",
         }
     )
+    @web_ns.response(200, "Conversation unpinned successfully", web_ns.models[ResultResponse.__name__])
     def patch(self, app_model, end_user, c_id):
         app_mode = AppMode.value_of(app_model.mode)
         if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:

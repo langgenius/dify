@@ -305,6 +305,7 @@ const FormInputItem: FC<Props> = ({
       )}
       {isCheckbox && isConstant && (
         <CheckboxList
+          name={variable}
           title={schema.label?.[language] || schema.label?.en_US || variable}
           value={checkboxListValue}
           onChange={handleCheckboxListChange}

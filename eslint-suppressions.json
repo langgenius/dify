@@ -1986,9 +1986,6 @@
     },
     "react-refresh/only-export-components": {
       "count": 1
-    },
-    "react/use-memo": {
-      "count": 1
     }
   },
   "web/app/components/datasets/documents/detail/completed/segment-list.tsx": {
@@ -4640,11 +4637,6 @@
   "web/service/base.ts": {
     "ts/no-explicit-any": {
       "count": 3
-    }
-  },
-  "web/service/client.spec.ts": {
-    "next/no-assign-module-variable": {
-      "count": 1
     }
   },
   "web/service/common.ts": {
