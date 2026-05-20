@@ -399,16 +399,15 @@ const BaseField = ({
                       value={stringValue}
                       onValueChange={optionValue => handleChange(optionValue)}
                       className={cn(
-                        memorizedOptions.length < 3 ? 'flex items-center space-x-2' : 'space-y-2',
+                        memorizedOptions.length >= 3 && 'flex-col items-stretch',
                       )}
-                      data-testid="radio-group"
                     />
                   )}
                 >
                   <FieldsetLegend className="sr-only">{translatedLabel || name}</FieldsetLegend>
                   {
                     memorizedOptions.map(option => (
-                      <FieldItem key={option.value} className="min-w-0 flex-1 grow">
+                      <FieldItem key={option.value} className={cn('min-w-0', memorizedOptions.length < 3 && 'flex-1 grow')}>
                         <FieldLabel
                           className={cn(
                             'hover:bg-components-option-card-option-hover-bg hover:border-components-option-card-option-hover-border flex h-8 w-full cursor-pointer items-center justify-center gap-2 rounded-lg border border-components-option-card-option-border bg-components-option-card-option-bg p-2 system-sm-regular text-text-secondary',
