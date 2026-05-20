@@ -6,7 +6,7 @@ requires-python = "~=3.12.0"
 dependencies = [
     # Legacy: mature and widely deployed
     "bleach>=6.3.0",
-    "boto3>=1.43.6",
+    "boto3>=1.43.10",
     "celery>=5.6.3",
     "croniter>=6.2.2",
     "dify-agent",
@@ -103,7 +103,7 @@ dify-trace-weave = { workspace = true }
 default-groups = ["storage", "tools", "vdb-all", "trace-all"]
 package = false
 override-dependencies = [
-    "litellm>=1.83.7",
+    "litellm>=1.83.10",
     "pyarrow>=18.0.0",
 ]
 
@@ -158,7 +158,7 @@ dev = [
     "types-tensorflow>=2.18.0.20260408",
     "types-tqdm>=4.67.3.20260408",
     "types-ujson>=5.10.0",
-    "boto3-stubs>=1.43.2",
+    "boto3-stubs>=1.43.10",
     "types-jmespath>=1.1.0.20260408",
     "hypothesis>=6.152.4",
     "types_pyOpenSSL>=24.1.0",
@@ -183,9 +183,9 @@ dev = [
 # Required for storage clients
 ############################################################
 storage = [
-    "azure-storage-blob>=12.28.0",
+    "azure-storage-blob>=12.29.0",
     "bce-python-sdk>=0.9.71",
-    "cos-python-sdk-v5>=1.9.42",
+    "cos-python-sdk-v5>=1.9.43",
     "esdk-obs-python>=3.22.2",
     "google-cloud-storage>=3.10.1",
     "opendal>=0.46.0",
@@ -293,4 +293,5 @@ project-includes = ["."]
 project-excludes = [".venv", "migrations/"]
 python-platform = "linux"
 python-version = "3.12.0"
-infer-with-first-use = false
+infer-with-first-use = true
+min-severity = "warn"

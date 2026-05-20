@@ -388,6 +388,10 @@ class TestChangeEmailApis:
 
         with (
             app.test_request_context("/", json=payload),
+            patch(
+                "controllers.console.workspace.account.current_account_with_tenant",
+                return_value=(MagicMock(id="acc-1"), "t1"),
+            ),
             patch.object(
                 type(console_ns),
                 "payload",
@@ -400,7 +404,11 @@ class TestChangeEmailApis:
             ),
             patch(
                 "controllers.console.workspace.account.AccountService.get_change_email_data",
-                return_value={"email": "a@test.com", "code": "y"},
+                return_value=MagicMock(
+                    email="a@test.com",
+                    code="y",
+                    is_bound_to_account=MagicMock(return_value=True),
+                ),
             ),
         ):
             with pytest.raises(EmailCodeError):

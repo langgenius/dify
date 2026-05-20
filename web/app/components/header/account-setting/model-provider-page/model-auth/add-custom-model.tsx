@@ -108,6 +108,7 @@ const AddCustomModel = ({
       onOpenChange={setOpen}
     >
       <PopoverTrigger
+        nativeButton={false}
         render={<div className="inline-block">{renderTrigger(open)}</div>}
       />
       <PopoverContent

@@ -5,7 +5,6 @@ import type {
 } from '../declarations'
 import { cn } from '@langgenius/dify-ui/cn'
 import { OpenaiYellow } from '@/app/components/base/icons/src/public/llm'
-import { Group } from '@/app/components/base/icons/src/vender/other'
 import useTheme from '@/hooks/use-theme'
 import { renderI18nObject } from '@/i18n-config'
 import { Theme } from '@/types/app'
@@ -27,20 +26,19 @@ const ModelIcon: FC<ModelIconProps> = ({
 }) => {
   const { theme } = useTheme()
   const language = useLanguage()
+  const lightIconUrl = provider?.icon_small ? renderI18nObject(provider.icon_small, language) : ''
+  const darkIconUrl = provider?.icon_small_dark ? renderI18nObject(provider.icon_small_dark, language) : ''
+  const iconUrl = theme === Theme.dark ? darkIconUrl || lightIconUrl : lightIconUrl
+
   if (provider?.provider && ['openai', 'langgenius/openai/openai'].includes(provider.provider) && modelName?.startsWith('o'))
     return <div className="flex items-center justify-center"><OpenaiYellow className={cn('size-5', className)} /></div>
 
-  if (provider?.icon_small) {
+  if (iconUrl) {
     return (
       <div className={cn('flex size-5 items-center justify-center', isDeprecated && 'opacity-50', className)}>
         <img
           alt="model-icon"
-          src={renderI18nObject(
-            theme === Theme.dark && provider.icon_small_dark
-              ? provider.icon_small_dark
-              : provider.icon_small,
-            language,
-          )}
+          src={iconUrl}
           className={iconClassName}
         />
       </div>
@@ -54,7 +52,7 @@ const ModelIcon: FC<ModelIconProps> = ({
     )}
     >
       <div className={cn('flex size-5 items-center justify-center opacity-35', iconClassName)}>
-        <Group className="size-3 text-text-tertiary" />
+        <span aria-hidden className="i-custom-vender-other-group size-3 text-text-tertiary" />
       </div>
     </div>
   )
