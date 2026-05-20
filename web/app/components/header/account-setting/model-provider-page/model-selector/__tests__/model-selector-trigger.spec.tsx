@@ -284,7 +284,7 @@ describe('ModelSelectorTrigger', () => {
       )
 
       expect(container.querySelector('img[alt="model-icon"]')).not.toBeInTheDocument()
-      expect(container.querySelector('svg')).toBeInTheDocument()
+      expect(container.querySelector('.i-custom-vender-other-group')).toBeInTheDocument()
     })
   })
 })
