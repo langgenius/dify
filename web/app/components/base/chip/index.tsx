@@ -62,7 +62,7 @@ const Chip: FC<Props> = ({
             {showLeftIcon && (
               <div className="p-0.5">
                 {leftIcon || (
-                  <RiFilter3Line className={cn('h-4 w-4 text-text-tertiary', !!value && 'text-text-secondary')} />
+                  <RiFilter3Line className={cn('size-4 text-text-tertiary', !!value && 'text-text-secondary')} />
                 )}
               </div>
             )}
@@ -71,7 +71,7 @@ const Chip: FC<Props> = ({
                 {triggerContent}
               </div>
             </div>
-            {!value && <RiArrowDownSLine className="h-4 w-4 text-text-tertiary" />}
+            {!value && <RiArrowDownSLine className="size-4 text-text-tertiary" />}
             {!!value && (
               <div
                 className="group/clear cursor-pointer p-px"
@@ -80,7 +80,7 @@ const Chip: FC<Props> = ({
                   onClear()
                 }}
               >
-                <RiCloseCircleFill className="h-3.5 w-3.5 text-text-quaternary group-hover/clear:text-text-tertiary" />
+                <RiCloseCircleFill className="size-3.5 text-text-quaternary group-hover/clear:text-text-tertiary" />
               </div>
             )}
           </div>
@@ -107,7 +107,7 @@ const Chip: FC<Props> = ({
                 className="gap-2 rounded-lg px-2 py-[6px] pl-3"
               >
                 <div title={item.name} className="grow truncate system-sm-medium text-text-secondary">{item.name}</div>
-                {value === item.value && <RiCheckLine className="h-4 w-4 shrink-0 text-util-colors-blue-light-blue-light-600" />}
+                {value === item.value && <RiCheckLine className="size-4 shrink-0 text-util-colors-blue-light-blue-light-600" />}
               </DropdownMenuRadioItem>
             ))}
           </DropdownMenuRadioGroup>

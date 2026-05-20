@@ -88,7 +88,7 @@ const AuthorizedInNode = ({
         }
         <RiArrowDownSLine
           className={cn(
-            'h-3.5 w-3.5 text-components-button-ghost-text',
+            'size-3.5 text-components-button-ghost-text',
             removed && 'text-text-destructive',
           )}
         />

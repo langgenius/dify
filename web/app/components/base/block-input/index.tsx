@@ -63,7 +63,7 @@ const BlockInput: FC<IBlockInputProps> = ({
   }, [isEditing])
 
   const style = cn({
-    'block h-full w-full border-0 px-4 py-2 text-sm break-all text-gray-900 outline-0': true,
+    'block size-full border-0 px-4 py-2 text-sm break-all text-gray-900 outline-0': true,
     'block-input--editing': isEditing,
   })
 
@@ -124,7 +124,7 @@ const BlockInput: FC<IBlockInputProps> = ({
             <div className="h-full px-4 py-2">
               <textarea
                 ref={contentEditableRef}
-                className={cn(editAreaClassName, 'block h-full w-full resize-none')}
+                className={cn(editAreaClassName, 'block size-full resize-none')}
                 placeholder={placeholder}
                 onChange={onValueChange}
                 value={currentValue}

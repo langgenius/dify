@@ -258,7 +258,7 @@ const List: FC<Props> = ({
             role="region"
             aria-label={t('newApp.dropDSLToCreateApp', { ns: 'app' })}
           >
-            <span className="i-ri-drag-drop-line h-4 w-4" />
+            <span className="i-ri-drag-drop-line size-4" />
             <span className="system-xs-regular">{t('newApp.dropDSLToCreateApp', { ns: 'app' })}</span>
           </div>
         )}

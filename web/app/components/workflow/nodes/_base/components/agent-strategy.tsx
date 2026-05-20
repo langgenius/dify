@@ -255,7 +255,7 @@ export const AgentStrategy = memo((props: AgentStrategyProps) => {
             )
           : (
               <ListEmpty
-                icon={<Agent className="h-5 w-5 shrink-0 text-text-accent" />}
+                icon={<Agent className="size-5 shrink-0 text-text-accent" />}
                 title={t('nodes.agent.strategy.configureTip', { ns: 'workflow' })}
                 description={(
                   <div className="text-xs text-text-tertiary">

@@ -46,7 +46,7 @@ const OperationsDropdown = ({
           )}
           aria-label="Dataset operations"
         >
-          <span className="i-ri-more-fill h-5 w-5 text-text-tertiary" />
+          <span className="i-ri-more-fill size-5 text-text-tertiary" />
         </DropdownMenuTrigger>
         <DropdownMenuContent
           placement="bottom-end"

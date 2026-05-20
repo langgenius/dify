@@ -88,7 +88,7 @@ const ProviderPanel: FC<Props> = ({
           <div className="flex items-center justify-between space-x-1">
             {hasConfigured && (
               <div className="flex h-6 cursor-pointer items-center space-x-1 rounded-md border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg px-2 text-text-secondary shadow-xs" onClick={viewBtnClick}>
-                <View className="h-3 w-3" />
+                <View className="size-3" />
                 <div className="text-xs font-medium">{t(`${I18N_PREFIX}.view`, { ns: 'app' })}</div>
               </div>
             )}
@@ -96,7 +96,7 @@ const ProviderPanel: FC<Props> = ({
               className="flex h-6 cursor-pointer items-center space-x-1 rounded-md border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg px-2 text-text-secondary shadow-xs"
               onClick={handleConfigBtnClick}
             >
-              <RiEqualizer2Line className="h-3 w-3" />
+              <RiEqualizer2Line className="size-3" />
               <div className="text-xs font-medium">{t(`${I18N_PREFIX}.config`, { ns: 'app' })}</div>
             </div>
           </div>

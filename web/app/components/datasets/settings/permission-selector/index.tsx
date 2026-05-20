@@ -169,7 +169,7 @@ const PermissionSelector = ({
               }
               <RiArrowDownSLine
                 className={cn(
-                  'h-4 w-4 shrink-0 text-text-quaternary group-hover:text-text-secondary',
+                  'size-4 shrink-0 text-text-quaternary group-hover:text-text-secondary',
                   open && 'text-text-secondary',
                   disabled && 'text-components-input-text-placeholder!',
                 )}

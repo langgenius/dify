@@ -101,7 +101,7 @@ const HandThumbIconWithCount: FC<{ count: number, iconType: 'up' | 'down' }> = (
   const Icon = iconType === 'up' ? HandThumbUpIcon : HandThumbDownIcon
   return (
     <div className={`inline-flex w-fit items-center rounded-md p-1 text-xs ${classname} mr-1 last:mr-0`}>
-      <Icon className="mr-0.5 h-3 w-3 rounded-md" />
+      <Icon className="mr-0.5 size-3 rounded-md" />
       {count > 0 ? count : null}
     </div>
   )
@@ -437,7 +437,7 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
           {!isAdvanced && <ModelInfo model={detail.model_config.model} />}
         </div>
         <ActionButton size="l" aria-label={t('operation.close', { ns: 'common' })} onClick={onClose}>
-          <RiCloseLine className="h-4 w-4 text-text-tertiary" />
+          <RiCloseLine className="size-4 text-text-tertiary" />
         </ActionButton>
       </div>
       {/* Panel Body */}
@@ -784,14 +784,14 @@ const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh })
       <Tooltip>
         <TooltipTrigger
           render={(
-            <div className={cn(isEmptyStyle ? 'text-text-quaternary' : 'text-text-secondary', !isHighlight ? '' : 'bg-orange-100', 'overflow-hidden system-sm-regular text-ellipsis whitespace-nowrap')}>
+            <div className={cn(isEmptyStyle ? 'text-text-quaternary' : 'text-text-secondary', !isHighlight ? '' : 'bg-orange-100', 'truncate system-sm-regular')}>
               {value || '-'}
             </div>
           )}
         />
         <TooltipContent className={(isHighlight && !isChatMode) ? '' : 'hidden!'}>
           <span className="inline-flex items-center text-xs text-text-tertiary">
-            <RiEditFill className="mr-1 h-3 w-3" />
+            <RiEditFill className="mr-1 size-3" />
             {`${t('detail.annotationTip', { ns: 'appLog', user: annotation?.account?.name })} ${formatTime(annotation?.created_at || dayjs().unix(), 'MM-DD hh:mm A')}`}
           </span>
         </TooltipContent>
@@ -835,7 +835,7 @@ const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh })
                 <td className="h-4">
                   {!log.read_at && (
                     <div className="flex items-center p-3 pr-0.5">
-                      <span className="inline-block h-1.5 w-1.5 rounded-sm bg-util-colors-blue-blue-500"></span>
+                      <span className="inline-block size-1.5 rounded-sm bg-util-colors-blue-blue-500"></span>
                     </div>
                   )}
                 </td>

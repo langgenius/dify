@@ -217,7 +217,7 @@ function JsonSchemaConfigContent({
         </div>
         <button
           type="button"
-          className="absolute top-5 right-5 flex h-8 w-8 items-center justify-center p-1.5"
+          className="absolute top-5 right-5 flex size-8 items-center justify-center p-1.5"
           aria-label={t('operation.close', { ns: 'common' })}
           onClick={onClose}
         >

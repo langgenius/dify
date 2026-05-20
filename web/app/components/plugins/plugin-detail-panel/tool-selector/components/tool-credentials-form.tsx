@@ -85,7 +85,7 @@ const ToolCredentialForm: FC<Props> = ({
                           className="inline-flex items-center text-xs text-text-accent"
                         >
                           {t('howToGet', { ns: 'tools' })}
-                          <RiArrowRightUpLine className="ml-1 h-3 w-3" />
+                          <RiArrowRightUpLine className="ml-1 size-3" />
                         </a>
                       )
                     : null}

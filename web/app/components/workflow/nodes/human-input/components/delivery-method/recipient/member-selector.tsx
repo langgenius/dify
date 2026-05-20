@@ -48,7 +48,7 @@ const MemberSelector: FC<Props> = ({
             className={cn('w-full justify-between', open && 'bg-state-accent-hover')}
             variant="ghost-accent"
           >
-            <RiContactsBookLine className="mr-1 h-4 w-4" />
+            <RiContactsBookLine className="mr-1 size-4" />
             <div>{t(`${i18nPrefix}.deliveryMethod.emailConfigure.memberSelector.trigger`, { ns: 'workflow' })}</div>
           </Button>
         )}

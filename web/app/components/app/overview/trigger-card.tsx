@@ -34,12 +34,12 @@ const getTriggerIcon = (trigger: AppTrigger, triggerPlugins: any[]) => {
   const getStatusDot = () => {
     if (status === 'enabled') {
       return (
-        <div className="absolute -top-0.5 -left-0.5 h-1.5 w-1.5 rounded-xs border border-black/15 bg-green-500" />
+        <div className="absolute -top-0.5 -left-0.5 size-1.5 rounded-xs border border-black/15 bg-green-500" />
       )
     }
     else {
       return (
-        <div className="absolute -top-0.5 -left-0.5 h-1.5 w-1.5 rounded-xs border border-components-badge-status-light-disabled-border-inner bg-components-badge-status-light-disabled-bg shadow-status-indicator-gray-shadow" />
+        <div className="absolute -top-0.5 -left-0.5 size-1.5 rounded-xs border border-components-badge-status-light-disabled-border-inner bg-components-badge-status-light-disabled-bg shadow-status-indicator-gray-shadow" />
       )
     }
   }
@@ -158,7 +158,7 @@ function TriggerCard({ appInfo, onToggleResult }: ITriggerCardProps) {
           <div className="flex w-full items-center gap-3 self-stretch">
             <div className="flex grow items-center">
               <div className="mr-2 shrink-0 rounded-lg border-[0.5px] border-divider-subtle bg-util-colors-purple-purple-500 p-1 shadow-md">
-                <TriggerAll className="h-4 w-4 text-text-primary-on-surface" />
+                <TriggerAll className="size-4 text-text-primary-on-surface" />
               </div>
               <div className="group w-full">
                 <div className="min-w-0 overflow-hidden system-md-semibold break-normal text-ellipsis text-text-secondary group-hover:text-text-primary">

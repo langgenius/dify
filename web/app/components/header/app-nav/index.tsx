@@ -100,8 +100,8 @@ const AppNav = () => {
     <>
       <Nav
         isApp
-        icon={<RiRobot2Line className="h-4 w-4" />}
-        activeIcon={<RiRobot2Fill className="h-4 w-4" />}
+        icon={<RiRobot2Line className="size-4" />}
+        activeIcon={<RiRobot2Fill className="size-4" />}
         text={t('menus.apps', { ns: 'common' })}
         activeSegment={['apps', 'app']}
         link="/apps"

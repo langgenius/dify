@@ -62,10 +62,10 @@ const CredentialItem = ({
       <div className="flex w-0 grow items-center space-x-1.5">
         {
           showSelectedIcon && (
-            <div className="h-4 w-4">
+            <div className="size-4">
               {
                 selectedCredentialId === credential.credential_id && (
-                  <span className="i-ri-check-line h-4 w-4 text-text-accent" />
+                  <span className="i-ri-check-line size-4 text-text-accent" />
                 )
               }
             </div>
@@ -101,7 +101,7 @@ const CredentialItem = ({
                           onEdit?.(credential)
                         }}
                       >
-                        <span className="i-ri-equalizer-2-line h-4 w-4 text-text-tertiary" />
+                        <span className="i-ri-equalizer-2-line size-4 text-text-tertiary" />
                       </ActionButton>
                     )}
                   />
@@ -124,7 +124,7 @@ const CredentialItem = ({
                         }}
                       >
                         <span className={cn(
-                          'i-ri-delete-bin-line h-4 w-4 text-text-tertiary',
+                          'i-ri-delete-bin-line size-4 text-text-tertiary',
                           !disableDeleteWhenSelected && 'hover:text-text-destructive',
                           disableDeleteWhenSelected && 'opacity-50',
                         )}

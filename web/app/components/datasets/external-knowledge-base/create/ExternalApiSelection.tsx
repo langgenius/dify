@@ -78,7 +78,7 @@ const ExternalApiSelection: React.FC<ExternalApiSelectionProps> = ({ external_kn
             )
           : (
               <Button variant="tertiary" onClick={handleAddNewAPI} className="justify-start gap-0.5">
-                <RiAddLine className="h-4 w-4 text-text-tertiary" />
+                <RiAddLine className="size-4 text-text-tertiary" />
                 <span className="system-sm-regular text-text-tertiary">{t('noExternalKnowledge', { ns: 'dataset' })}</span>
               </Button>
             )}

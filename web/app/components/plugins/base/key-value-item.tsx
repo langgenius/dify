@@ -56,8 +56,8 @@ const KeyValueItem: FC<Props> = ({
             render={(
               <ActionButton aria-label={copyLabel} onClick={handleCopy}>
                 {isCopied
-                  ? <CopyCheck aria-hidden className="h-3.5 w-3.5 shrink-0 text-text-tertiary" />
-                  : <span aria-hidden className="i-ri-clipboard-line h-3.5 w-3.5 shrink-0 text-text-tertiary" />}
+                  ? <CopyCheck aria-hidden className="size-3.5 shrink-0 text-text-tertiary" />
+                  : <span aria-hidden className="i-ri-clipboard-line size-3.5 shrink-0 text-text-tertiary" />}
               </ActionButton>
             )}
           />
