@@ -294,17 +294,12 @@ class WorkflowAgentNodeValidator:
             )
 
         upload_file_id = (
-            file_ref.get("upload_file_id")
-            or file_ref.get("file_id")
-            or file_ref.get("id")
-            or file_ref.get("reference")
+            file_ref.get("upload_file_id") or file_ref.get("file_id") or file_ref.get("id") or file_ref.get("reference")
         )
         if upload_file_id is None and (file_ref.get("url") or file_ref.get("remote_url")):
             return
         if not isinstance(upload_file_id, str) or not upload_file_id:
-            raise WorkflowAgentNodeValidationError(
-                f"Workflow Agent node {binding.node_id} has invalid {ref_context}."
-            )
+            raise WorkflowAgentNodeValidationError(f"Workflow Agent node {binding.node_id} has invalid {ref_context}.")
 
         upload_file = session.scalar(
             select(UploadFile)
