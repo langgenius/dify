@@ -1,6 +1,6 @@
 import pytest
 
-from models.agent_config_entities import AgentKnowledgeQueryMode, DeclaredOutputType
+from models.agent_config_entities import AgentKnowledgeQueryMode, AgentSoulModelConfig, DeclaredOutputType
 from services.agent.composer_service import AgentComposerService
 from services.agent.composer_validator import ComposerConfigValidator
 from services.agent.errors import AgentSoulLockedError, PlaintextSecretNotAllowedError
@@ -86,6 +86,22 @@ def test_knowledge_query_mode_uses_stable_backend_enums():
     )
 
     assert config.knowledge.query_mode == AgentKnowledgeQueryMode.GENERATED_QUERY
+
+
+def test_agent_soul_model_config_is_first_class_without_credentials():
+    config = AgentSoulConfig(
+        model=AgentSoulModelConfig(
+            plugin_id="langgenius/openai",
+            model_provider="openai",
+            model="gpt-test",
+            credential_ref={"type": "provider", "id": "credential-1"},
+            model_settings={"temperature": 0},
+        )
+    )
+
+    dumped = config.model_dump(mode="json")
+    assert dumped["model"]["plugin_id"] == "langgenius/openai"
+    assert dumped["model"]["credential_ref"] == {"type": "provider", "id": "credential-1", "provider": None}
 
 
 def test_declared_outputs_support_file_check_and_failure_strategy():

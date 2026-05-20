@@ -64,6 +64,24 @@ class AgentSoulMemoryConfig(BaseModel):
     artifacts: list[dict[str, Any]] = Field(default_factory=list)
 
 
+class AgentSoulModelCredentialRef(BaseModel):
+    """Reference to model credentials resolved only at runtime."""
+
+    type: str = Field(min_length=1, max_length=64)
+    id: str | None = Field(default=None, max_length=255)
+    provider: str | None = Field(default=None, max_length=255)
+
+
+class AgentSoulModelConfig(BaseModel):
+    """Stable model selection for Agent runtime without storing secret values."""
+
+    plugin_id: str = Field(min_length=1, max_length=255)
+    model_provider: str = Field(min_length=1, max_length=255)
+    model: str = Field(min_length=1, max_length=255)
+    credential_ref: AgentSoulModelCredentialRef | None = None
+    model_settings: dict[str, Any] = Field(default_factory=dict)
+
+
 class AppVariableConfig(BaseModel):
     name: str = Field(min_length=1, max_length=255)
     type: str = Field(min_length=1, max_length=64)
@@ -83,6 +101,7 @@ class AgentSoulConfig(BaseModel):
     env: AgentSoulEnvConfig = Field(default_factory=AgentSoulEnvConfig)
     sandbox: AgentSoulSandboxConfig = Field(default_factory=AgentSoulSandboxConfig)
     memory: AgentSoulMemoryConfig = Field(default_factory=AgentSoulMemoryConfig)
+    model: AgentSoulModelConfig | None = None
     app_features: dict[str, Any] = Field(default_factory=dict)
     app_variables: list[AppVariableConfig] = Field(default_factory=list)
     misc_legacy: dict[str, Any] = Field(default_factory=dict)
