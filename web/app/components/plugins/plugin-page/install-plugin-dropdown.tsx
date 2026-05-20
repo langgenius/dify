@@ -13,7 +13,7 @@ import {
 import { RiAddLine, RiArrowDownSLine } from '@remixicon/react'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { noop } from 'es-toolkit/function'
-import { useEffect, useRef, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import InstallFromGitHub from '@/app/components/plugins/install-plugin/install-from-github'
 import InstallFromLocalPackage from '@/app/components/plugins/install-plugin/install-from-local-package'
@@ -38,7 +38,7 @@ type Props = {
 }
 
 type InstallMethod = {
-  icon: React.ComponentType
+  icon: React.ComponentType<{ className?: string }>
   text: string
   action: string
 }
@@ -101,20 +101,17 @@ const InstallPluginDropdown = ({
   //   console.log(res)
   // }
 
-  const [installMethods, setInstallMethods] = useState<InstallMethod[]>([])
-  useEffect(() => {
-    const methods = []
+  const installMethods = useMemo<InstallMethod[]>(() => {
+    const methods: InstallMethod[] = []
     if (enable_marketplace)
       methods.push({ icon: MarketplaceInstallSourceIcon, text: t('source.marketplace', { ns: 'plugin' }), action: 'marketplace' })
 
-    if (plugin_installation_permission.restrict_to_marketplace_only) {
-      setInstallMethods(methods)
-    }
-    else {
-      methods.push({ icon: GithubInstallSourceIcon, text: t('source.github', { ns: 'plugin' }), action: 'github' })
-      methods.push({ icon: LocalPackageInstallSourceIcon, text: t('source.local', { ns: 'plugin' }), action: 'local' })
-      setInstallMethods(methods)
-    }
+    if (plugin_installation_permission.restrict_to_marketplace_only)
+      return methods
+
+    methods.push({ icon: GithubInstallSourceIcon, text: t('source.github', { ns: 'plugin' }), action: 'github' })
+    methods.push({ icon: LocalPackageInstallSourceIcon, text: t('source.local', { ns: 'plugin' }), action: 'local' })
+    return methods
   }, [plugin_installation_permission, enable_marketplace, t])
 
   const handleInstallMethodSelect = (action: string) => {

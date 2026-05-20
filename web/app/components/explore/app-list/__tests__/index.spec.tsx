@@ -97,6 +97,20 @@ vi.mock('@/utils/create-app-tracking', () => ({
   trackCreateApp: (...args: unknown[]) => mockTrackCreateApp(...args),
 }))
 
+const mockConfig = vi.hoisted(() => ({
+  isCloudEdition: false,
+}))
+
+vi.mock('@/config', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/config')>()
+  return {
+    ...actual,
+    get IS_CLOUD_EDITION() {
+      return mockConfig.isCloudEdition
+    },
+  }
+})
+
 vi.mock('@/app/components/explore/create-app-modal', () => ({
   default: (props: CreateAppModalProps) => {
     if (!props.show)
@@ -215,6 +229,7 @@ const getLastByText = (text: string) => {
 
 type RenderOptions = {
   enableExploreBanner?: boolean
+  isCloudEdition?: boolean
 }
 
 const renderAppList = (
@@ -223,6 +238,7 @@ const renderAppList = (
   searchParams?: Record<string, string>,
   options: RenderOptions = {},
 ) => {
+  mockConfig.isCloudEdition = options.isCloudEdition ?? false
   mockMemberRole(hasEditPermission)
   const { wrapper: SystemFeaturesWrapper, queryClient } = createSystemFeaturesWrapper({
     systemFeatures: { enable_explore_banner: options.enableExploreBanner ?? false },
@@ -260,6 +276,7 @@ describe('AppList', () => {
     mockWorkspaceApps = []
     mockIsLoading = false
     mockIsError = false
+    mockConfig.isCloudEdition = false
   })
 
   afterEach(() => {
@@ -582,7 +599,7 @@ describe('AppList', () => {
         allList: [createApp()],
       }
 
-      renderAppList(true)
+      renderAppList(true, undefined, undefined, { isCloudEdition: true })
 
       fireEvent.click(getLastByText('explore.appCard.try'))
       expect(screen.getByTestId('try-app-panel')).toBeInTheDocument()
@@ -605,7 +622,7 @@ describe('AppList', () => {
         options.onSuccess?.({ app_mode: AppModeEnum.CHAT })
       })
 
-      renderAppList(true)
+      renderAppList(true, undefined, undefined, { isCloudEdition: true })
 
       fireEvent.click(getLastByText('explore.appCard.try'))
       fireEvent.click(screen.getByTestId('try-app-create'))
@@ -626,7 +643,7 @@ describe('AppList', () => {
         allList: [createApp()],
       }
 
-      renderAppList(true)
+      renderAppList(true, undefined, undefined, { isCloudEdition: true })
 
       fireEvent.click(getLastByText('explore.appCard.try'))
       expect(screen.getByTestId('try-app-panel')).toBeInTheDocument()

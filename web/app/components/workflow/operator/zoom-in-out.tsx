@@ -1,5 +1,4 @@
 import type { FC } from 'react'
-import { cn } from '@langgenius/dify-ui/cn'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -11,7 +10,6 @@ import { useSuspenseQuery } from '@tanstack/react-query'
 import {
   Fragment,
   memo,
-  useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
@@ -26,17 +24,19 @@ import {
 import { ShortcutKbd } from '../shortcuts/shortcut-kbd'
 import TipPopup from './tip-popup'
 
-enum ZoomType {
-  zoomToFit = 'zoomToFit',
-  zoomTo25 = 'zoomTo25',
-  zoomTo50 = 'zoomTo50',
-  zoomTo75 = 'zoomTo75',
-  zoomTo100 = 'zoomTo100',
-  zoomTo200 = 'zoomTo200',
-  toggleUserComments = 'toggleUserComments',
-  toggleUserCursors = 'toggleUserCursors',
-  toggleMiniMap = 'toggleMiniMap',
-}
+const ZoomType = {
+  zoomToFit: 'zoomToFit',
+  zoomTo25: 'zoomTo25',
+  zoomTo50: 'zoomTo50',
+  zoomTo75: 'zoomTo75',
+  zoomTo100: 'zoomTo100',
+  zoomTo200: 'zoomTo200',
+  toggleUserComments: 'toggleUserComments',
+  toggleUserCursors: 'toggleUserCursors',
+  toggleMiniMap: 'toggleMiniMap',
+} as const
+
+type ZoomType = typeof ZoomType[keyof typeof ZoomType]
 
 type ZoomInOutProps = {
   showMiniMap?: boolean
@@ -66,7 +66,6 @@ const ZoomInOut: FC<ZoomInOutProps> = ({
   } = useReactFlow()
   const { zoom } = useViewport()
   const { handleSyncWorkflowDraft } = useNodesSyncDraft()
-  const [open, setOpen] = useState(false)
   const {
     workflowReadOnly,
     getWorkflowReadOnly,
@@ -126,11 +125,9 @@ const ZoomInOut: FC<ZoomInOutProps> = ({
         ],
   ]
 
-  const handleZoom = (type: string) => {
+  const handleZoom = (type: ZoomType) => {
     if (workflowReadOnly)
       return
-
-    setOpen(false)
 
     if (type === ZoomType.zoomToFit)
       fitView()
@@ -199,16 +196,10 @@ const ZoomInOut: FC<ZoomInOutProps> = ({
             <span aria-hidden className="i-ri-zoom-out-line size-4 text-text-tertiary hover:text-text-secondary" />
           </button>
         </TipPopup>
-        <DropdownMenu
-          open={open}
-          onOpenChange={setOpen}
-        >
+        <DropdownMenu>
           <DropdownMenuTrigger
             disabled={getWorkflowReadOnly()}
-            className={cn(
-              'flex h-8 w-[34px] items-center justify-center rounded-lg system-sm-medium text-text-tertiary hover:bg-black/5 hover:text-text-secondary',
-              open && 'bg-black/5 text-text-secondary',
-            )}
+            className="flex h-8 w-[34px] items-center justify-center rounded-lg system-sm-medium text-text-tertiary hover:bg-black/5 hover:text-text-secondary data-popup-open:bg-black/5 data-popup-open:text-text-secondary"
           >
             {Number.parseFloat(`${zoom * 100}`).toFixed(0)}
             %

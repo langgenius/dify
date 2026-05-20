@@ -808,15 +808,6 @@ export const usePluginManifestInfo = (pluginUID: string) => {
   })
 }
 
-export const useDownloadPlugin = (info: { organization: string, pluginName: string, version: string }, needDownload: boolean) => {
-  return useQuery({
-    queryKey: [NAME_SPACE, 'downloadPlugin', info],
-    queryFn: () => getMarketplace<Blob>(`/plugins/${info.organization}/${info.pluginName}/${info.version}/download`),
-    enabled: needDownload,
-    retry: 0,
-  })
-}
-
 export const useMutationCheckDependencies = () => {
   return useMutation({
     mutationFn: (appId: string) => {
