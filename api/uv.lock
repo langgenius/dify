@@ -1291,9 +1291,9 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "fastapi", marker = "extra == 'server'", specifier = ">=0.136.0,<0.137.0" },
-    { name = "graphon", marker = "extra == 'server'", specifier = "~=0.2.2" },
-    { name = "httpx", specifier = ">=0.28.1,<0.29.0" },
+    { name = "fastapi", marker = "extra == 'server'", specifier = "==0.136.0" },
+    { name = "graphon", marker = "extra == 'server'", specifier = "==0.2.2" },
+    { name = "httpx", specifier = "==0.28.1" },
     { name = "jsonschema", marker = "extra == 'server'", specifier = ">=4.23.0,<5.0.0" },
     { name = "pydantic", specifier = ">=2.12.5,<2.13" },
     { name = "pydantic-ai-slim", specifier = ">=1.85.1,<2.0.0" },
@@ -1301,7 +1301,7 @@ requires-dist = [
     { name = "pydantic-settings", marker = "extra == 'server'", specifier = ">=2.12.0,<3.0.0" },
     { name = "redis", marker = "extra == 'server'", specifier = ">=7.4.0,<8.0.0" },
     { name = "typing-extensions", specifier = ">=4.12.2,<5.0.0" },
-    { name = "uvicorn", extras = ["standard"], marker = "extra == 'server'", specifier = ">=0.46.0,<0.47.0" },
+    { name = "uvicorn", extras = ["standard"], marker = "extra == 'server'", specifier = "==0.46.0" },
 ]
 provides-extras = ["server"]
 
@@ -1609,42 +1609,42 @@ vdb-xinference = [
 
 [package.metadata]
 requires-dist = [
-    { name = "aliyun-log-python-sdk", specifier = ">=0.9.44,<0.10.0" },
+    { name = "aliyun-log-python-sdk", specifier = "==0.9.44" },
     { name = "azure-identity", specifier = ">=1.25.3,<2.0.0" },
     { name = "bleach", specifier = ">=6.3.0,<7.0.0" },
     { name = "boto3", specifier = ">=1.43.10,<2.0.0" },
     { name = "celery", specifier = ">=5.6.3,<6.0.0" },
     { name = "croniter", specifier = ">=6.2.2,<7.0.0" },
     { name = "dify-agent", directory = "../dify-agent" },
-    { name = "fastopenapi", extras = ["flask"], specifier = "~=0.7.0" },
+    { name = "fastopenapi", extras = ["flask"], specifier = "==0.7.0" },
     { name = "flask", specifier = ">=3.1.3,<4.0.0" },
     { name = "flask-compress", specifier = ">=1.24,<2.0.0" },
     { name = "flask-cors", specifier = ">=6.0.2,<7.0.0" },
-    { name = "flask-login", specifier = ">=0.6.3,<0.7.0" },
+    { name = "flask-login", specifier = "==0.6.3" },
     { name = "flask-migrate", specifier = ">=4.1.0,<5.0.0" },
     { name = "flask-orjson", specifier = ">=2.0.0,<3.0.0" },
     { name = "flask-restx", specifier = ">=1.3.2,<2.0.0" },
     { name = "gevent", specifier = ">=26.4.0,<26.5.0" },
-    { name = "gevent-websocket", specifier = ">=0.10.1,<0.11.0" },
+    { name = "gevent-websocket", specifier = "==0.10.1" },
     { name = "gmpy2", specifier = ">=2.3.0,<3.0.0" },
     { name = "google-api-python-client", specifier = ">=2.196.0,<3.0.0" },
     { name = "google-cloud-aiplatform", specifier = ">=1.151.0,<2.0.0" },
-    { name = "graphon", specifier = "~=0.4.0" },
+    { name = "graphon", specifier = "==0.4.0" },
     { name = "gunicorn", specifier = ">=26.0.0,<27.0.0" },
-    { name = "httpx", extras = ["socks"], specifier = ">=0.28.1,<0.29.0" },
-    { name = "httpx-sse", specifier = "~=0.4.0" },
-    { name = "json-repair", specifier = "~=0.59.4" },
-    { name = "opentelemetry-distro", specifier = ">=0.62b1,<0.63.0" },
-    { name = "opentelemetry-instrumentation-celery", specifier = ">=0.62b0,<0.63.0" },
-    { name = "opentelemetry-instrumentation-flask", specifier = ">=0.62b0,<0.63.0" },
-    { name = "opentelemetry-instrumentation-httpx", specifier = ">=0.62b0,<0.63.0" },
-    { name = "opentelemetry-instrumentation-redis", specifier = ">=0.62b0,<0.63.0" },
-    { name = "opentelemetry-instrumentation-sqlalchemy", specifier = ">=0.62b0,<0.63.0" },
+    { name = "httpx", extras = ["socks"], specifier = "==0.28.1" },
+    { name = "httpx-sse", specifier = "==0.4.3" },
+    { name = "json-repair", specifier = "==0.59.4" },
+    { name = "opentelemetry-distro", specifier = "==0.62b1" },
+    { name = "opentelemetry-instrumentation-celery", specifier = "==0.62b1" },
+    { name = "opentelemetry-instrumentation-flask", specifier = "==0.62b1" },
+    { name = "opentelemetry-instrumentation-httpx", specifier = "==0.62b1" },
+    { name = "opentelemetry-instrumentation-redis", specifier = "==0.62b1" },
+    { name = "opentelemetry-instrumentation-sqlalchemy", specifier = "==0.62b1" },
     { name = "opentelemetry-propagator-b3", specifier = ">=1.41.1,<2.0.0" },
     { name = "psycogreen", specifier = ">=1.0.2,<2.0.0" },
     { name = "psycopg2-binary", specifier = ">=2.9.12,<3.0.0" },
     { name = "python-socketio", specifier = ">=5.13.0,<6.0.0" },
-    { name = "readabilipy", specifier = ">=0.3.0,<0.4.0" },
+    { name = "readabilipy", specifier = "==0.3.0" },
     { name = "redis", extras = ["hiredis"], specifier = ">=7.4.0,<8.0.0" },
     { name = "resend", specifier = ">=2.27.0,<3.0.0" },
     { name = "sendgrid", specifier = ">=6.12.5,<7.0.0" },
@@ -1717,11 +1717,11 @@ dev = [
 ]
 storage = [
     { name = "azure-storage-blob", specifier = ">=12.29.0,<13.0.0" },
-    { name = "bce-python-sdk", specifier = ">=0.9.71,<0.10.0" },
+    { name = "bce-python-sdk", specifier = "==0.9.71" },
     { name = "cos-python-sdk-v5", specifier = ">=1.9.43,<2.0.0" },
     { name = "esdk-obs-python", specifier = ">=3.22.2,<4.0.0" },
     { name = "google-cloud-storage", specifier = ">=3.10.1,<4.0.0" },
-    { name = "opendal", specifier = ">=0.46.0,<0.47.0" },
+    { name = "opendal", specifier = "==0.46.0" },
     { name = "oss2", specifier = ">=2.19.1,<3.0.0" },
     { name = "supabase", specifier = ">=2.30.0,<3.0.0" },
     { name = "tos", specifier = ">=2.9.0,<3.0.0" },
@@ -1840,7 +1840,7 @@ dependencies = [
 ]
 
 [package.metadata]
-requires-dist = [{ name = "arize-phoenix-otel", specifier = "~=0.15.0" }]
+requires-dist = [{ name = "arize-phoenix-otel", specifier = "==0.15.0" }]
 
 [[package]]
 name = "dify-trace-langfuse"
@@ -1862,7 +1862,7 @@ dependencies = [
 ]
 
 [package.metadata]
-requires-dist = [{ name = "langsmith", specifier = ">=0.8.0,<0.9.0" }]
+requires-dist = [{ name = "langsmith", specifier = "==0.8.5" }]
 
 [[package]]
 name = "dify-trace-mlflow"
@@ -1914,7 +1914,7 @@ dependencies = [
 ]
 
 [package.metadata]
-requires-dist = [{ name = "weave", specifier = ">=0.52.36,<0.53.0" }]
+requires-dist = [{ name = "weave", specifier = "==0.52.36" }]
 
 [[package]]
 name = "dify-vdb-alibabacloud-mysql"
@@ -1940,8 +1940,8 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "alibabacloud-gpdb20160503", specifier = "~=5.2.0" },
-    { name = "alibabacloud-tea-openapi", specifier = "~=0.4.3" },
-    { name = "clickhouse-connect", specifier = "~=0.15.0" },
+    { name = "alibabacloud-tea-openapi", specifier = "==0.4.4" },
+    { name = "clickhouse-connect", specifier = "==0.15.1" },
 ]
 
 [[package]]
@@ -1975,7 +1975,7 @@ dependencies = [
 ]
 
 [package.metadata]
-requires-dist = [{ name = "clickzetta-connector-python", specifier = ">=0.8.102,<0.9.0" }]
+requires-dist = [{ name = "clickzetta-connector-python", specifier = "==0.8.104" }]
 
 [[package]]
 name = "dify-vdb-couchbase"
@@ -2008,7 +2008,7 @@ dependencies = [
 ]
 
 [package.metadata]
-requires-dist = [{ name = "holo-search-sdk", specifier = ">=0.4.2,<0.5.0" }]
+requires-dist = [{ name = "holo-search-sdk", specifier = "==0.4.2" }]
 
 [[package]]
 name = "dify-vdb-huawei-cloud"
@@ -2056,7 +2056,7 @@ dependencies = [
 ]
 
 [package.metadata]
-requires-dist = [{ name = "mo-vector", specifier = "~=0.1.13" }]
+requires-dist = [{ name = "mo-vector", specifier = "==0.1.13" }]
 
 [[package]]
 name = "dify-vdb-milvus"
@@ -2078,7 +2078,7 @@ dependencies = [
 ]
 
 [package.metadata]
-requires-dist = [{ name = "clickhouse-connect", specifier = "~=0.15.0" }]
+requires-dist = [{ name = "clickhouse-connect", specifier = "==0.15.1" }]
 
 [[package]]
 name = "dify-vdb-oceanbase"
@@ -2092,7 +2092,7 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "mysql-connector-python", specifier = ">=9.3.0,<10.0.0" },
-    { name = "pyobvector", specifier = "~=0.2.17" },
+    { name = "pyobvector", specifier = "==0.2.25" },
 ]
 
 [[package]]
@@ -2131,7 +2131,7 @@ dependencies = [
 ]
 
 [package.metadata]
-requires-dist = [{ name = "pgvecto-rs", extras = ["sqlalchemy"], specifier = "~=0.2.2" }]
+requires-dist = [{ name = "pgvecto-rs", extras = ["sqlalchemy"], specifier = "==0.2.2" }]
 
 [[package]]
 name = "dify-vdb-pgvector"
@@ -2224,7 +2224,7 @@ dependencies = [
 ]
 
 [package.metadata]
-requires-dist = [{ name = "pyobvector", specifier = "~=0.2.17" }]
+requires-dist = [{ name = "pyobvector", specifier = "==0.2.25" }]
 
 [[package]]
 name = "dify-vdb-vikingdb"
