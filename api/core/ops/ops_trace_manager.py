@@ -44,6 +44,7 @@ from models.dataset import Dataset
 from models.model import App, AppModelConfig, Conversation, Message, MessageFile, TraceAppConfig
 from models.provider import Provider, ProviderCredential, ProviderModel, ProviderModelCredential, ProviderType
 from models.tools import ApiToolProvider, BuiltinToolProvider, MCPToolProvider, WorkflowToolProvider
+from models.types import legacy_compatible_model_type_filter
 from models.workflow import WorkflowAppLog
 from tasks.ops_trace_task import process_trace_tasks
 
@@ -149,7 +150,7 @@ def _lookup_llm_credential_info(
                         ProviderModel.tenant_id == tenant_id,
                         ProviderModel.provider_name == provider,
                         ProviderModel.model_name == model,
-                        ProviderModel.model_type == model_type,
+                        legacy_compatible_model_type_filter(ProviderModel.model_type, model_type),
                     )
                 )
 

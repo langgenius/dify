@@ -6,7 +6,9 @@ from sqlalchemy.dialects import mysql, postgresql, sqlite
 from sqlalchemy.dialects.mysql import LONGTEXT
 from sqlalchemy.sql.sqltypes import TEXT
 
-from models.types import JSONModelColumn
+from graphon.model_runtime.entities.model_entities import ModelType
+from models.provider import ProviderModelCredential
+from models.types import JSONModelColumn, legacy_compatible_model_type_filter
 
 
 class JsonColumnSample(BaseModel):
@@ -63,3 +65,11 @@ def test_json_model_column_uses_long_text_compatible_dialect_types():
 def test_json_model_column_rejects_string_model_paths():
     with pytest.raises(TypeError):
         JSONModelColumn(cast(type[BaseModel], "tests.unit_tests.models.test_types.JsonColumnSample"))
+
+
+def test_legacy_compatible_model_type_filter_matches_canonical_and_legacy_values():
+    expr = legacy_compatible_model_type_filter(ProviderModelCredential.model_type, ModelType.LLM)
+    compiled = str(expr.compile(dialect=sqlite.dialect(), compile_kwargs={"literal_binds": True}))
+
+    assert "'llm'" in compiled
+    assert "text-generation" in compiled

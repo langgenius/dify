@@ -48,6 +48,7 @@ from models.provider import (
     TenantPreferredModelProvider,
 )
 from models.provider_ids import ModelProviderID
+from models.types import legacy_compatible_model_type_filter
 
 logger = logging.getLogger(__name__)
 
@@ -399,7 +400,7 @@ class ProviderConfiguration(BaseModel):
                 ProviderModelCredential.tenant_id == self.tenant_id,
                 ProviderModelCredential.provider_name.in_(self._get_provider_names()),
                 ProviderModelCredential.model_name == model,
-                ProviderModelCredential.model_type == model_type,
+                legacy_compatible_model_type_filter(ProviderModelCredential.model_type, model_type),
             ),
         )
 
@@ -748,7 +749,7 @@ class ProviderConfiguration(BaseModel):
             ProviderModel.tenant_id == self.tenant_id,
             ProviderModel.provider_name.in_(provider_names),
             ProviderModel.model_name == model,
-            ProviderModel.model_type == model_type,
+            legacy_compatible_model_type_filter(ProviderModel.model_type, model_type),
         )
 
         return session.execute(stmt).scalar_one_or_none()
@@ -773,7 +774,7 @@ class ProviderConfiguration(BaseModel):
                 ProviderModelCredential.tenant_id == self.tenant_id,
                 ProviderModelCredential.provider_name.in_(self._get_provider_names()),
                 ProviderModelCredential.model_name == model,
-                ProviderModelCredential.model_type == model_type,
+                legacy_compatible_model_type_filter(ProviderModelCredential.model_type, model_type),
             )
 
             credential_record = session.execute(stmt).scalar_one_or_none()
@@ -820,7 +821,7 @@ class ProviderConfiguration(BaseModel):
             ProviderModelCredential.tenant_id == self.tenant_id,
             ProviderModelCredential.provider_name.in_(self._get_provider_names()),
             ProviderModelCredential.model_name == model,
-            ProviderModelCredential.model_type == model_type,
+            legacy_compatible_model_type_filter(ProviderModelCredential.model_type, model_type),
             ProviderModelCredential.credential_name == credential_name,
         )
         if exclude_id:
@@ -895,7 +896,7 @@ class ProviderConfiguration(BaseModel):
                         ProviderModelCredential.tenant_id == self.tenant_id,
                         ProviderModelCredential.provider_name.in_(self._get_provider_names()),
                         ProviderModelCredential.model_name == model,
-                        ProviderModelCredential.model_type == model_type,
+                        legacy_compatible_model_type_filter(ProviderModelCredential.model_type, model_type),
                     )
                     credential_record = session.execute(stmt).scalar_one_or_none()
                     original_credentials = (
@@ -1031,7 +1032,7 @@ class ProviderConfiguration(BaseModel):
                 ProviderModelCredential.tenant_id == self.tenant_id,
                 ProviderModelCredential.provider_name.in_(self._get_provider_names()),
                 ProviderModelCredential.model_name == model,
-                ProviderModelCredential.model_type == model_type,
+                legacy_compatible_model_type_filter(ProviderModelCredential.model_type, model_type),
             )
             credential_record = session.execute(stmt).scalar_one_or_none()
             if not credential_record:
@@ -1075,7 +1076,7 @@ class ProviderConfiguration(BaseModel):
                 ProviderModelCredential.tenant_id == self.tenant_id,
                 ProviderModelCredential.provider_name.in_(self._get_provider_names()),
                 ProviderModelCredential.model_name == model,
-                ProviderModelCredential.model_type == model_type,
+                legacy_compatible_model_type_filter(ProviderModelCredential.model_type, model_type),
             )
             credential_record = session.execute(stmt).scalar_one_or_none()
             if not credential_record:
@@ -1108,7 +1109,7 @@ class ProviderConfiguration(BaseModel):
                     ProviderModelCredential.tenant_id == self.tenant_id,
                     ProviderModelCredential.provider_name.in_(self._get_provider_names()),
                     ProviderModelCredential.model_name == model,
-                    ProviderModelCredential.model_type == model_type,
+                    legacy_compatible_model_type_filter(ProviderModelCredential.model_type, model_type),
                 )
                 available_credentials_count = session.execute(count_stmt).scalar() or 0
                 session.delete(credential_record)
@@ -1148,7 +1149,7 @@ class ProviderConfiguration(BaseModel):
                 ProviderModelCredential.tenant_id == self.tenant_id,
                 ProviderModelCredential.provider_name.in_(self._get_provider_names()),
                 ProviderModelCredential.model_name == model,
-                ProviderModelCredential.model_type == model_type,
+                legacy_compatible_model_type_filter(ProviderModelCredential.model_type, model_type),
             )
             credential_record = session.execute(stmt).scalar_one_or_none()
             if not credential_record:
@@ -1199,7 +1200,7 @@ class ProviderConfiguration(BaseModel):
                 ProviderModelCredential.tenant_id == self.tenant_id,
                 ProviderModelCredential.provider_name.in_(self._get_provider_names()),
                 ProviderModelCredential.model_name == model,
-                ProviderModelCredential.model_type == model_type,
+                legacy_compatible_model_type_filter(ProviderModelCredential.model_type, model_type),
             )
             credential_record = session.execute(stmt).scalar_one_or_none()
             if not credential_record:
@@ -1255,7 +1256,7 @@ class ProviderConfiguration(BaseModel):
         stmt = select(ProviderModelSetting).where(
             ProviderModelSetting.tenant_id == self.tenant_id,
             ProviderModelSetting.provider_name.in_(self._get_provider_names()),
-            ProviderModelSetting.model_type == model_type,
+            legacy_compatible_model_type_filter(ProviderModelSetting.model_type, model_type),
             ProviderModelSetting.model_name == model,
         )
         return session.execute(stmt).scalars().first()
@@ -1340,7 +1341,7 @@ class ProviderConfiguration(BaseModel):
             stmt = select(func.count(LoadBalancingModelConfig.id)).where(
                 LoadBalancingModelConfig.tenant_id == self.tenant_id,
                 LoadBalancingModelConfig.provider_name.in_(provider_names),
-                LoadBalancingModelConfig.model_type == model_type,
+                legacy_compatible_model_type_filter(LoadBalancingModelConfig.model_type, model_type),
                 LoadBalancingModelConfig.model_name == model,
             )
             load_balancing_config_count = session.execute(stmt).scalar() or 0

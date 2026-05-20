@@ -7,6 +7,7 @@ from unittest.mock import MagicMock
 
 import pytest
 from pytest_mock import MockerFixture
+from sqlalchemy.dialects import sqlite
 
 from constants import HIDDEN_VALUE
 from graphon.model_runtime.entities.common_entities import I18nObject
@@ -188,6 +189,39 @@ def test_get_load_balancing_configs_should_insert_inherit_config_when_missing_fo
     assert configs[1]["credentials"] == {"api_key": "plain-key"}
     assert mock_db.session.add.call_count == 1
     assert mock_db.session.commit.call_count == 1
+
+
+def test_get_load_balancing_configs_query_supports_legacy_model_type_values(
+    service: ModelLoadBalancingService,
+    mock_db: MagicMock,
+    mocker: MockerFixture,
+) -> None:
+    provider_configuration = _build_provider_configuration(
+        custom_provider=False,
+        load_balancing_enabled=False,
+        provider_schema=_build_provider_credential_schema(),
+    )
+    service.provider_manager.get_configurations.return_value = {"openai": provider_configuration}
+    mock_db.session.scalars.return_value.all.return_value = []
+    mocker.patch(
+        "services.model_load_balancing_service.encrypter.get_decrypt_decoding",
+        return_value=("rsa", "cipher"),
+    )
+
+    is_enabled, configs = service.get_load_balancing_configs(
+        "tenant-1",
+        "openai",
+        "gpt-4o-mini",
+        ModelType.LLM,
+    )
+
+    stmt = mock_db.session.scalars.call_args.args[0]
+    compiled = str(stmt.compile(dialect=sqlite.dialect(), compile_kwargs={"literal_binds": True}))
+
+    assert is_enabled is False
+    assert configs == []
+    assert "'llm'" in compiled
+    assert "text-generation" in compiled
 
 
 def test_get_load_balancing_configs_should_reorder_existing_inherit_and_tolerate_json_or_decrypt_errors(

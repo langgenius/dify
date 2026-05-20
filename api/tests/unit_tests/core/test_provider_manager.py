@@ -3,6 +3,7 @@ from unittest.mock import MagicMock, Mock, PropertyMock, patch
 
 import pytest
 from pytest_mock import MockerFixture
+from sqlalchemy.dialects import sqlite
 
 from core.entities.provider_entities import ModelSettings
 from core.provider_manager import ProviderManager
@@ -293,6 +294,26 @@ def test_get_default_model_uses_injected_runtime_for_existing_default_record(moc
     assert result is not None
     assert result.model == "gpt-4"
     assert result.provider.provider == "openai"
+
+
+def test_get_provider_model_available_credentials_query_supports_legacy_model_type_values(
+    mocker: MockerFixture,
+) -> None:
+    manager = _build_provider_manager(mocker)
+    session = Mock()
+    session.scalars.return_value.all.return_value = []
+
+    with patch(
+        "core.provider_manager.session_factory.create_session",
+        return_value=_build_session_context(session),
+    ):
+        manager.get_provider_model_available_credentials("tenant-id", "openai", "gpt-4o", "llm")
+
+    stmt = session.scalars.call_args.args[0]
+    compiled = str(stmt.compile(dialect=sqlite.dialect(), compile_kwargs={"literal_binds": True}))
+
+    assert "'llm'" in compiled
+    assert "text-generation" in compiled
 
 
 def test_get_configurations_uses_injected_runtime_and_adds_provider_aliases(mocker: MockerFixture):

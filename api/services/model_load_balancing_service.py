@@ -21,6 +21,7 @@ from graphon.model_runtime.model_providers.model_provider_factory import ModelPr
 from libs.datetime_utils import naive_utc_now
 from models.enums import CredentialSourceType
 from models.provider import LoadBalancingModelConfig, ProviderCredential, ProviderModelCredential
+from models.types import legacy_compatible_model_type_filter
 
 logger = logging.getLogger(__name__)
 
@@ -133,7 +134,7 @@ class ModelLoadBalancingService:
                 .where(
                     LoadBalancingModelConfig.tenant_id == tenant_id,
                     LoadBalancingModelConfig.provider_name == provider_configuration.provider.provider,
-                    LoadBalancingModelConfig.model_type == model_type_enum,
+                    legacy_compatible_model_type_filter(LoadBalancingModelConfig.model_type, model_type_enum),
                     LoadBalancingModelConfig.model_name == model,
                     or_(
                         LoadBalancingModelConfig.credential_source_type == credential_source_type,
@@ -258,7 +259,7 @@ class ModelLoadBalancingService:
             .where(
                 LoadBalancingModelConfig.tenant_id == tenant_id,
                 LoadBalancingModelConfig.provider_name == provider_configuration.provider.provider,
-                LoadBalancingModelConfig.model_type == model_type_enum,
+                legacy_compatible_model_type_filter(LoadBalancingModelConfig.model_type, model_type_enum),
                 LoadBalancingModelConfig.model_name == model,
                 LoadBalancingModelConfig.id == config_id,
             )
@@ -347,7 +348,7 @@ class ModelLoadBalancingService:
             select(LoadBalancingModelConfig).where(
                 LoadBalancingModelConfig.tenant_id == tenant_id,
                 LoadBalancingModelConfig.provider_name == provider_configuration.provider.provider,
-                LoadBalancingModelConfig.model_type == model_type_enum,
+                legacy_compatible_model_type_filter(LoadBalancingModelConfig.model_type, model_type_enum),
                 LoadBalancingModelConfig.model_name == model,
             )
         ).all()
@@ -387,7 +388,7 @@ class ModelLoadBalancingService:
                             ProviderModelCredential.tenant_id == tenant_id,
                             ProviderModelCredential.provider_name == provider_configuration.provider.provider,
                             ProviderModelCredential.model_name == model,
-                            ProviderModelCredential.model_type == model_type_enum,
+                            legacy_compatible_model_type_filter(ProviderModelCredential.model_type, model_type_enum),
                         )
                         .limit(1)
                     )
@@ -534,7 +535,7 @@ class ModelLoadBalancingService:
                 .where(
                     LoadBalancingModelConfig.tenant_id == tenant_id,
                     LoadBalancingModelConfig.provider_name == provider,
-                    LoadBalancingModelConfig.model_type == model_type_enum,
+                    legacy_compatible_model_type_filter(LoadBalancingModelConfig.model_type, model_type_enum),
                     LoadBalancingModelConfig.model_name == model,
                     LoadBalancingModelConfig.id == config_id,
                 )

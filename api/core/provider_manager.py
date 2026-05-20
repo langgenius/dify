@@ -53,6 +53,7 @@ from models.provider import (
     TenantPreferredModelProvider,
 )
 from models.provider_ids import ModelProviderID
+from models.types import legacy_compatible_model_type_filter
 from services.feature_service import FeatureService
 
 if TYPE_CHECKING:
@@ -334,7 +335,7 @@ class ProviderManager:
         """
         stmt = select(TenantDefaultModel).where(
             TenantDefaultModel.tenant_id == tenant_id,
-            TenantDefaultModel.model_type == model_type,
+            legacy_compatible_model_type_filter(TenantDefaultModel.model_type, model_type),
         )
         default_model = db.session.scalar(stmt)
 
@@ -419,7 +420,7 @@ class ProviderManager:
             raise ValueError(f"Model {model} does not exist.")
         stmt = select(TenantDefaultModel).where(
             TenantDefaultModel.tenant_id == tenant_id,
-            TenantDefaultModel.model_type == model_type,
+            legacy_compatible_model_type_filter(TenantDefaultModel.model_type, model_type),
         )
         default_model = db.session.scalar(stmt)
 
@@ -615,7 +616,7 @@ class ProviderManager:
                     ProviderModelCredential.tenant_id == tenant_id,
                     ProviderModelCredential.provider_name.in_(ProviderManager._get_provider_names(provider_name)),
                     ProviderModelCredential.model_name == model_name,
-                    ProviderModelCredential.model_type == model_type,
+                    legacy_compatible_model_type_filter(ProviderModelCredential.model_type, model_type),
                 )
                 .order_by(ProviderModelCredential.created_at.desc())
             )

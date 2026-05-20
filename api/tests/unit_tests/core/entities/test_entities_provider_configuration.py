@@ -6,6 +6,7 @@ from typing import Any
 from unittest.mock import Mock, patch
 
 import pytest
+from sqlalchemy.dialects import sqlite
 
 from constants import HIDDEN_VALUE
 from core.entities.model_entities import ModelStatus
@@ -1042,6 +1043,22 @@ def test_get_specific_custom_model_credential_success_and_not_found() -> None:
     with _patched_session(session):
         invalid_json = configuration._get_specific_custom_model_credential(ModelType.LLM, "gpt-4o", "cred-1")
     assert invalid_json["credentials"] == {}
+
+
+def test_get_specific_custom_model_credential_query_supports_legacy_model_type_values() -> None:
+    configuration = _build_provider_configuration()
+    session = Mock()
+    session.execute.return_value.scalar_one_or_none.return_value = None
+
+    with _patched_session(session):
+        with pytest.raises(ValueError, match="Credential with id cred-1 not found"):
+            configuration._get_specific_custom_model_credential(ModelType.LLM, "gpt-4o", "cred-1")
+
+    stmt = session.execute.call_args.args[0]
+    compiled = str(stmt.compile(dialect=sqlite.dialect(), compile_kwargs={"literal_binds": True}))
+
+    assert "'llm'" in compiled
+    assert "text-generation" in compiled
 
 
 def test_check_custom_model_credential_name_exists_respects_exclusion() -> None:
