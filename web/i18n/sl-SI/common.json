@@ -465,7 +465,7 @@
   "modelProvider.speechToTextModel.tip": "Nastavite privzeti model za vnos govora v besedilo v pogovoru.",
   "modelProvider.systemModelSettings": "Nastavitve sistemskega modela",
   "modelProvider.systemReasoningModel.key": "Sistemski model za sklepanja",
-  "modelProvider.systemReasoningModel.tip": "Nastavite privzeti model za sklepanja, ki se bo uporabljal za ustvarjanje aplikacij, kot tudi funkcije, kot so generiranje imen dialogov in predlaganje naslednjih vprašanj.",
+  "modelProvider.systemReasoningModel.tip": "Nastavite privzeti model za sklepanje pri ustvarjanju aplikacij. Ta model se uporablja tudi za funkcije, kot sta ustvarjanje imen pogovorov in predlaganje naslednjih vprašanj.",
   "modelProvider.toBeConfigured": "Za konfiguracijo",
   "modelProvider.ttsModel.key": "Model za pretvorbo besedila v govor",
   "modelProvider.ttsModel.tip": "Nastavite privzeti model za pretvorbo besedila v govor v pogovoru.",

@@ -95,7 +95,7 @@ describe('Header', () => {
       const { container } = render(<Header {...props} />)
 
       // Assert - Input should have search icon class
-      const searchIcon = container.querySelector('.i-ri-search-line.h-4.w-4')
+      const searchIcon = container.querySelector('.i-ri-search-line.size-4')
       expect(searchIcon)!.toBeInTheDocument()
     })
 

@@ -33,8 +33,8 @@ const SearchInput: FC<SearchInputProps> = ({
       className,
     )}
     >
-      <div className="pointer-events-none mr-1.5 flex h-4 w-4 shrink-0 items-center justify-center">
-        <RiSearchLine className="h-4 w-4 text-components-input-text-placeholder" aria-hidden="true" />
+      <div className="pointer-events-none mr-1.5 flex size-4 shrink-0 items-center justify-center">
+        <RiSearchLine className="size-4 text-components-input-text-placeholder" aria-hidden="true" />
       </div>
       <input
         ref={inputRef}
@@ -70,13 +70,13 @@ const SearchInput: FC<SearchInputProps> = ({
         <button
           type="button"
           aria-label={t('operation.clear', { ns: 'common' })}
-          className="group/clear flex h-4 w-4 shrink-0 cursor-pointer items-center justify-center border-none bg-transparent p-0"
+          className="group/clear flex size-4 shrink-0 cursor-pointer items-center justify-center border-none bg-transparent p-0"
           onClick={() => {
             onChange('')
             inputRef.current?.focus()
           }}
         >
-          <RiCloseCircleFill className="h-4 w-4 text-text-quaternary group-hover/clear:text-text-tertiary" />
+          <RiCloseCircleFill className="size-4 text-text-quaternary group-hover/clear:text-text-tertiary" />
         </button>
       )}
     </div>

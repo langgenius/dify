@@ -59,7 +59,7 @@ const AppSidebarDropdown = ({ navigation, appInfoActions }: Props) => {
               background={appDetail.icon_background}
               imageUrl={appDetail.icon_url}
             />
-            <RiMenuLine className="h-4 w-4 text-text-tertiary" />
+            <RiMenuLine className="size-4 text-text-tertiary" />
           </DropdownMenuTrigger>
           <DropdownMenuContent
             placement="bottom-start"
@@ -87,8 +87,8 @@ const AppSidebarDropdown = ({ navigation, appInfoActions }: Props) => {
                       imageUrl={appDetail.icon_url}
                     />
                     <div className="flex items-center justify-center rounded-md p-0.5">
-                      <div className="flex h-5 w-5 items-center justify-center">
-                        <RiEqualizer2Line className="h-4 w-4 text-text-tertiary" />
+                      <div className="flex size-5 items-center justify-center">
+                        <RiEqualizer2Line className="size-4 text-text-tertiary" />
                       </div>
                     </div>
                   </div>

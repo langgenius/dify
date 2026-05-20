@@ -40,7 +40,7 @@ export const ChecklistNodeGroup = memo(({
           size="sm"
           toolIcon={item.toolIcon}
         />
-        <span className="min-w-0 grow truncate text-sm leading-5 font-medium text-text-primary">
+        <span className="min-w-0 grow truncate text-sm/5 font-medium text-text-primary">
           {item.title}
         </span>
       </div>
@@ -49,12 +49,12 @@ export const ChecklistNodeGroup = memo(({
           const content = (
             <>
               <ItemIndicator />
-              <span className="min-w-0 grow truncate text-xs leading-4 text-text-warning">
+              <span className="min-w-0 grow truncate text-xs/4 text-text-warning">
                 {sub.message}
               </span>
               {goToEnabled && (
                 <div className="flex shrink-0 items-center gap-0.5 pr-0.5 opacity-0 transition-opacity duration-150 group-hover/item:opacity-100">
-                  <span className="text-xs leading-4 font-medium whitespace-nowrap text-text-accent">
+                  <span className="text-xs/4 font-medium whitespace-nowrap text-text-accent">
                     {t('panel.goToFix', { ns: 'workflow' })}
                   </span>
                   <span className="i-ri-arrow-right-line size-3.5 text-text-accent" aria-hidden="true" />

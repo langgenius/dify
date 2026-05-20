@@ -53,6 +53,18 @@
       "types": "./src/dropdown-menu/index.tsx",
       "import": "./src/dropdown-menu/index.tsx"
     },
+    "./field": {
+      "types": "./src/field/index.tsx",
+      "import": "./src/field/index.tsx"
+    },
+    "./fieldset": {
+      "types": "./src/fieldset/index.tsx",
+      "import": "./src/fieldset/index.tsx"
+    },
+    "./form": {
+      "types": "./src/form/index.tsx",
+      "import": "./src/form/index.tsx"
+    },
     "./meter": {
       "types": "./src/meter/index.tsx",
       "import": "./src/meter/index.tsx"
@@ -60,6 +72,14 @@
     "./number-field": {
       "types": "./src/number-field/index.tsx",
       "import": "./src/number-field/index.tsx"
+    },
+    "./radio": {
+      "types": "./src/radio/index.tsx",
+      "import": "./src/radio/index.tsx"
+    },
+    "./radio-group": {
+      "types": "./src/radio-group/index.tsx",
+      "import": "./src/radio-group/index.tsx"
     },
     "./popover": {
       "types": "./src/popover/index.tsx",

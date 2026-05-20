@@ -27,7 +27,7 @@ const SummaryStatus = ({ status }: SummaryStatusProps) => {
         render={(
           <span className="inline-flex">
             <Badge className="border-text-accent-secondary text-text-accent-secondary">
-              <SearchLinesSparkle aria-hidden className="mr-0.5 h-3 w-3" />
+              <SearchLinesSparkle aria-hidden className="mr-0.5 size-3" />
               <span>{t('list.summary.generating', { ns: 'datasetDocuments' })}</span>
             </Badge>
           </span>

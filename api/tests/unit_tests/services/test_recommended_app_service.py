@@ -13,7 +13,7 @@ from services.recommended_app_service import RecommendedAppService
 class TestGetRecommendAppDetailNullCheck:
     @patch("services.recommended_app_service.FeatureService", autospec=True)
     @patch("services.recommended_app_service.RecommendAppRetrievalFactory", autospec=True)
-    @patch("services.recommended_app_service.dify_config", autospec=True)
+    @patch("services.recommended_app_service.dify_config")
     def test_returns_none_when_retrieval_returns_none_and_trial_disabled(
         self, mock_config, mock_factory_class, mock_feature_service
     ):
@@ -29,7 +29,7 @@ class TestGetRecommendAppDetailNullCheck:
 
     @patch("services.recommended_app_service.FeatureService", autospec=True)
     @patch("services.recommended_app_service.RecommendAppRetrievalFactory", autospec=True)
-    @patch("services.recommended_app_service.dify_config", autospec=True)
+    @patch("services.recommended_app_service.dify_config")
     def test_returns_none_when_retrieval_returns_none_and_trial_enabled(
         self, mock_config, mock_factory_class, mock_feature_service
     ):

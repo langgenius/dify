@@ -39,7 +39,7 @@ const AuthenticationSection: FC<AuthenticationSectionProps> = ({
         </div>
         {!isDynamicRegistration && (
           <div className="mt-2 flex gap-2 rounded-lg bg-state-warning-hover p-3">
-            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-text-warning" />
+            <AlertTriangle className="mt-0.5 size-4 shrink-0 text-text-warning" />
             <div className="system-xs-regular text-text-secondary">
               <div className="mb-1">{t('mcp.modal.redirectUrlWarning', { ns: 'tools' })}</div>
               <code className="block rounded-sm bg-state-warning-active px-2 py-1 system-xs-medium break-all text-text-secondary">

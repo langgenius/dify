@@ -214,7 +214,7 @@ const GenerationItem: FC<IGenerationItemProps> = ({
               />
               {!workflowProcessData && taskId && (
                 <div className={cn('sticky top-0 left-0 flex w-full items-center rounded-t-2xl bg-components-actionbar-bg p-4 pb-3 system-2xs-medium-uppercase text-text-accent-secondary', isError && 'text-text-destructive')}>
-                  <RiPlayList2Line className="mr-1 h-3 w-3" />
+                  <RiPlayList2Line className="mr-1 size-3" />
                   <span>{t('generation.execution', { ns: 'share' })}</span>
                   <span className="px-1">·</span>
                   <span>{getGenerationTaskLabel(taskId, depth)}</span>
@@ -281,7 +281,7 @@ const GenerationItem: FC<IGenerationItemProps> = ({
                   isMobile ? 'top-[3.5px]' : 'top-2',
                 )}
                 >
-                  <RiSparklingFill className="h-3 w-3 text-text-primary-on-surface" />
+                  <RiSparklingFill className="size-3 text-text-primary-on-surface" />
                 </div>
               </div>
             )}

@@ -465,7 +465,7 @@
   "modelProvider.speechToTextModel.tip": "设置对话中语音转文字输入的默认使用模型。",
   "modelProvider.systemModelSettings": "默认模型设置",
   "modelProvider.systemReasoningModel.key": "系统推理模型",
-  "modelProvider.systemReasoningModel.tip": "设置创建应用使用的默认推理模型，以及对话名称生成、下一步问题建议等功能也会使用该默认推理模型。",
+  "modelProvider.systemReasoningModel.tip": "设置创建应用时使用的默认推理模型。该模型也会用于对话名称生成、下一步问题建议等功能。",
   "modelProvider.toBeConfigured": "待配置",
   "modelProvider.ttsModel.key": "文本转语音模型",
   "modelProvider.ttsModel.tip": "设置对话中文字转语音输出的默认使用模型。",

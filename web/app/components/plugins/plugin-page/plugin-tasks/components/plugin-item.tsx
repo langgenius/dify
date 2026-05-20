@@ -39,7 +39,7 @@ const PluginItem: FC<PluginItemProps> = ({
         <div className="truncate system-sm-medium text-text-secondary">
           {plugin.labels[language]}
         </div>
-        <div className={`min-w-0 system-xs-regular break-words ${statusClassName || 'text-text-tertiary'}`}>
+        <div className={`min-w-0 system-xs-regular wrap-break-word ${statusClassName || 'text-text-tertiary'}`}>
           {statusText}
         </div>
         {action}
@@ -47,10 +47,10 @@ const PluginItem: FC<PluginItemProps> = ({
       {onClear && (
         <button
           type="button"
-          className="invisible flex h-6 w-6 shrink-0 items-center justify-center self-start rounded-md group-hover/item:visible hover:bg-state-base-hover-alt"
+          className="invisible flex size-6 shrink-0 items-center justify-center self-start rounded-md group-hover/item:visible hover:bg-state-base-hover-alt"
           onClick={onClear}
         >
-          <span className="i-ri-close-line h-4 w-4 text-text-tertiary" />
+          <span className="i-ri-close-line size-4 text-text-tertiary" />
         </button>
       )}
     </div>

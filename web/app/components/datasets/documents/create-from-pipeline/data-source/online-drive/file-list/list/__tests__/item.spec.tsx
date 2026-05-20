@@ -1,13 +1,8 @@
 import type { OnlineDriveFile } from '@/models/pipeline'
+import { RadioGroup } from '@langgenius/dify-ui/radio-group'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import Item from '../item'
-
-vi.mock('@/app/components/base/radio/ui', () => ({
-  default: ({ isChecked, onCheck }: { isChecked: boolean, onCheck: () => void }) => (
-    <input type="radio" data-testid="radio" checked={isChecked} onChange={onCheck} />
-  ),
-}))
 
 vi.mock('../file-icon', () => ({
   default: () => <span data-testid="file-icon" />,
@@ -43,8 +38,13 @@ describe('Item', () => {
   })
 
   it('should render radio for file type in single choice mode', () => {
-    render(<Item {...defaultProps} isMultipleChoice={false} />)
-    expect(screen.getByTestId('radio')).toBeInTheDocument()
+    render(
+      <RadioGroup aria-label="Files" value={defaultProps.file.id}>
+        <Item {...defaultProps} isMultipleChoice={false} />
+      </RadioGroup>,
+    )
+
+    expect(screen.getByRole('radio', { name: 'test.pdf' })).toBeInTheDocument()
   })
 
   it('should not render checkbox for bucket type', () => {

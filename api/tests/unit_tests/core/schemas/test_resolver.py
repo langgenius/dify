@@ -1,5 +1,4 @@
-import os
-import statistics
+import copy
 import time
 from concurrent.futures import ThreadPoolExecutor
 from unittest.mock import MagicMock, patch
@@ -474,9 +473,10 @@ class TestSchemaResolverClass:
         assert resolved[2]["title"] == "Q&A Structure"
 
     def test_cache_performance(self):
-        """Test that cached resolution returns the same result as a cold resolution."""
+        """Test that repeated references share cached schema lookups."""
         SchemaResolver.clear_cache()
 
+        # Create a schema with many references to the same schema
         schema = {
             "type": "object",
             "properties": {
@@ -485,41 +485,16 @@ class TestSchemaResolverClass:
             },
         }
 
-        SchemaResolver.clear_cache()
-        result_without_cache = resolve_dify_schema_refs(schema)
+        registry = SchemaRegistry.default_registry()
+        file_schema = registry.get_schema("https://dify.ai/schemas/v1/file.json")
+        assert file_schema is not None
 
-<<<<<<< HEAD
-        median_time_no_cache = statistics.median(results1)
-
-        # Second run (with cache) - run multiple times
-        # Warm up cache first
-=======
-        # Warm the cache, then resolve again.
->>>>>>> 89470446e (fix(test): address review feedback and ruff formatting)
-        resolve_dify_schema_refs(schema)
-        result_with_cache = resolve_dify_schema_refs(schema)
-
-<<<<<<< HEAD
-        results2 = []
-        for _ in range(3):
-            start = time.perf_counter()
-            result2 = resolve_dify_schema_refs(schema)
-            time_with_cache = time.perf_counter() - start
-            results2.append(time_with_cache)
-
-        median_time_with_cache = statistics.median(results2)
+        with patch.object(registry, "get_schema", wraps=registry.get_schema) as mock_get:
+            result1 = resolve_dify_schema_refs(copy.deepcopy(schema), registry=registry)
+            result2 = resolve_dify_schema_refs(copy.deepcopy(schema), registry=registry)
 
         assert result1 == result2
-        # Timing is meaningless under pytest-xdist (CPU contention); correctness is still covered above.
-        if os.environ.get("PYTEST_XDIST_WORKER") is not None:
-            return
-
-        # Median dampens noise; allow generous slack for laptop power management and background load.
-        performance_ratio = median_time_with_cache / median_time_no_cache if median_time_no_cache > 0 else 1.0
-        assert performance_ratio <= 5.0, f"Cache performance degraded too much: {performance_ratio}"
-=======
-        assert result_without_cache == result_with_cache
->>>>>>> 89470446e (fix(test): address review feedback and ruff formatting)
+        mock_get.assert_called_once_with("https://dify.ai/schemas/v1/file.json")
 
     def test_fast_path_performance_no_refs(self):
         """Test that schemas without $refs use fast path and avoid deep copying"""

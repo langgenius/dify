@@ -465,7 +465,7 @@
   "modelProvider.speechToTextModel.tip": "تعيين النموذج الافتراضي لإدخال تحويل الكلام إلى نص في المحادثة.",
   "modelProvider.systemModelSettings": "إعدادات نموذج النظام",
   "modelProvider.systemReasoningModel.key": "نموذج التفكير النظامي",
-  "modelProvider.systemReasoningModel.tip": "تعيين نموذج الاستنتاج الافتراضي لاستخدامه لإنشاء التطبيقات، بالإضافة إلى ميزات مثل إنشاء اسم الحوار واقتراح السؤال التالي ستستخدم أيضًا نموذج الاستنتاج الافتراضي.",
+  "modelProvider.systemReasoningModel.tip": "عيّن نموذج الاستدلال الافتراضي لإنشاء التطبيقات. يُستخدم هذا النموذج أيضًا في ميزات مثل إنشاء اسم المحادثة واقتراح الأسئلة التالية.",
   "modelProvider.toBeConfigured": "ليتم تكوينه",
   "modelProvider.ttsModel.key": "نموذج تحويل النص إلى كلام",
   "modelProvider.ttsModel.tip": "تعيين النموذج الافتراضي لإدخال تحويل النص إلى كلام في المحادثة.",

@@ -117,7 +117,7 @@ const AutoUpdateSetting: FC<Props> = ({
       >
         <div className="flex w-0 grow items-center gap-x-1">
           <RiTimeLine className={cn(
-            'h-4 w-4 shrink-0 text-text-tertiary',
+            'size-4 shrink-0 text-text-tertiary',
             isOpen ? 'text-text-secondary' : 'group-hover:text-text-secondary',
           )}
           />

@@ -231,7 +231,7 @@ const ConditionItem = ({
                         ? (
                             <div className="flex cursor-pointer justify-start">
                               <div className="inline-flex h-6 max-w-full items-center rounded-md border-[0.5px] border-components-panel-border-subtle bg-components-badge-white-to-dark px-1.5 text-text-accent shadow-xs">
-                                <Variable02 className="h-3.5 w-3.5 shrink-0 text-text-accent" />
+                                <Variable02 className="size-3.5 shrink-0 text-text-accent" />
                                 <div className="ml-0.5 truncate system-xs-medium">{selectedSubVarOption.name}</div>
                               </div>
                             </div>
@@ -350,12 +350,12 @@ const ConditionItem = ({
         }
       </div>
       <div
-        className="mt-1 ml-1 flex h-6 w-6 shrink-0 cursor-pointer items-center justify-center rounded-lg text-text-tertiary hover:bg-state-destructive-hover hover:text-text-destructive"
+        className="mt-1 ml-1 flex size-6 shrink-0 cursor-pointer items-center justify-center rounded-lg text-text-tertiary hover:bg-state-destructive-hover hover:text-text-destructive"
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
         onClick={doRemoveCondition}
       >
-        <RiDeleteBinLine className="h-4 w-4" />
+        <RiDeleteBinLine className="size-4" />
       </div>
     </div>
   )

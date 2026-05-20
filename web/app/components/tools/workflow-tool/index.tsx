@@ -76,7 +76,7 @@ const InfoTooltip = ({ children }: { children: string }) => {
   return (
     <Infotip
       aria-label={children}
-      className="ml-1 h-3.5 w-3.5"
+      className="ml-1 size-3.5"
       iconClassName="h-3.5 w-3.5"
       popupClassName="w-[180px]"
     >
@@ -110,7 +110,7 @@ const WorkflowToolDrawerFrame = ({ title, closeLabel, onHide, children }: Workfl
                     {title}
                   </DrawerTitle>
                   <DrawerCloseButton
-                    className="h-6 w-6 rounded-md"
+                    className="size-6 rounded-md"
                     aria-label={closeLabel}
                   />
                 </div>
@@ -387,7 +387,7 @@ export function WorkflowToolDrawer({
                                       <Tooltip>
                                         <TooltipTrigger
                                           render={(
-                                            <span data-testid="reserved-output-warning" className="i-ri-error-warning-line h-3 w-3 text-text-warning-secondary" />
+                                            <span data-testid="reserved-output-warning" className="i-ri-error-warning-line size-3 text-text-warning-secondary" />
                                           )}
                                         />
                                         <TooltipContent>

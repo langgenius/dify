@@ -67,6 +67,21 @@ def test_create_run_returns_running_from_scheduler() -> None:
     assert response.json() == {"run_id": "run-1", "status": "running"}
 
 
+def test_cancel_run_endpoint_is_reserved_but_not_implemented() -> None:
+    from fastapi import FastAPI
+
+    app = FastAPI()
+    app.include_router(
+        create_runs_router(lambda: FakeStore(), lambda: FakeScheduler())  # pyright: ignore[reportArgumentType]
+    )
+    client = TestClient(app)
+
+    response = client.post("/runs/run-1/cancel", json={"reason": "user_cancelled"})
+
+    assert response.status_code == 501
+    assert response.json()["detail"] == "run cancellation is not implemented"
+
+
 def test_create_run_accepts_valid_full_plugin_graph() -> None:
     from fastapi import FastAPI
 
