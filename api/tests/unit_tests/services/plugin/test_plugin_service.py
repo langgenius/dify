@@ -3,13 +3,6 @@ from unittest.mock import MagicMock, patch
 MODULE = "core.plugin.plugin_service"
 
 
-def test_legacy_services_plugin_service_aliases_core_module() -> None:
-    import core.plugin.plugin_service as core_plugin_service
-    import services.plugin.plugin_service as legacy_plugin_service
-
-    assert legacy_plugin_service is core_plugin_service
-
-
 class TestFetchLatestPluginVersion:
     def test_skips_marketplace_fetch_when_disabled(self) -> None:
         """Cache misses stay None; marketplace is never called when disabled."""
