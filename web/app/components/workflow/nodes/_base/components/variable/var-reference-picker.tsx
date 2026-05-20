@@ -33,6 +33,7 @@ import { BlockEnum } from '@/app/components/workflow/types'
 import { isExceptionVariable } from '@/app/components/workflow/utils'
 import { useFetchDynamicOptions } from '@/service/use-plugins'
 import useAvailableVarList from '../../hooks/use-available-var-list'
+import { toolDeclarativeTypeMatches } from '../form-input-item.helpers'
 import { removeFileVars, varTypeToStructType } from './utils'
 import VarFullPathPanel from './var-full-path-panel'
 import {
@@ -153,7 +154,12 @@ const VarReferencePicker: FC<Props> = ({
   }, [])
 
   const [varKindType, setVarKindType] = useState<VarKindType>(defaultVarKindType)
-  const isConstant = isSupportConstantValue && varKindType === VarKindType.constant
+  const resolvedVarKindType = useMemo(() => {
+    if (isSupportConstantValue && toolDeclarativeTypeMatches(schema ?? {}, 'date-picker'))
+      return VarKindType.constant
+    return varKindType
+  }, [isSupportConstantValue, schema, varKindType])
+  const isConstant = isSupportConstantValue && resolvedVarKindType === VarKindType.constant
 
   const outputVars = useMemo(() => {
     const results = passedInAvailableVars || availableVars
@@ -226,16 +232,16 @@ const VarReferencePicker: FC<Props> = ({
         })
       }
     })
-    onChange(newValue, varKindType, varInfo)
+    onChange(newValue, resolvedVarKindType, varInfo)
     setOpen(false)
-  }, [onChange, varKindType])
+  }, [onChange, resolvedVarKindType])
 
   const handleClearVar = useCallback(() => {
-    if (varKindType === VarKindType.constant)
-      onChange('', varKindType)
+    if (resolvedVarKindType === VarKindType.constant)
+      onChange('', resolvedVarKindType)
     else
-      onChange([], varKindType)
-  }, [onChange, varKindType])
+      onChange([], resolvedVarKindType)
+  }, [onChange, resolvedVarKindType])
 
   const handleVariableJump = useCallback((nodeId: string) => {
     const currentNodeIndex = availableNodes.findIndex(node => node.id === nodeId)
@@ -392,6 +398,7 @@ const VarReferencePicker: FC<Props> = ({
             outputVarNodeId={outputVarNodeId}
             placeholder={triggerPlaceholder}
             readonly={readonly}
+            schema={schema}
             schemaWithDynamicSelect={schemaWithDynamicSelect}
             setControlFocus={setControlFocus}
             setOpen={setOpen}

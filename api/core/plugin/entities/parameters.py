@@ -46,6 +46,8 @@ class PluginParameterType(StrEnum):
     # MCP object and array type parameters
     ARRAY = CommonParameterType.ARRAY
     OBJECT = CommonParameterType.OBJECT
+    DATE = CommonParameterType.DATE
+    DATE_PICKER = CommonParameterType.DATE_PICKER
 
 
 class MCPServerParameterType(StrEnum):
@@ -91,10 +93,13 @@ class PluginParameter(BaseModel):
 
 
 def as_normal_type(typ: StrEnum):
+    if typ.value == PluginParameterType.DATE_PICKER:
+        return "object"
     if typ.value in {
         PluginParameterType.SECRET_INPUT,
         PluginParameterType.SELECT,
         PluginParameterType.CHECKBOX,
+        PluginParameterType.DATE,
     }:
         return "string"
     return typ.value
@@ -109,11 +114,35 @@ def cast_parameter_value(typ: StrEnum, value: Any, /):
                 | PluginParameterType.SELECT
                 | PluginParameterType.CHECKBOX
                 | PluginParameterType.DYNAMIC_SELECT
+                | PluginParameterType.DATE
             ):
                 if value is None:
                     return ""
                 else:
                     return value if isinstance(value, str) else str(value)
+            case PluginParameterType.DATE_PICKER:
+                if value is None or value == "":
+                    return {}
+                if isinstance(value, dict):
+                    out: dict[str, str] = {}
+                    for key in ("start", "end"):
+                        if key not in value or value[key] is None or value[key] == "":
+                            continue
+                        raw = value[key]
+                        out[key] = raw if isinstance(raw, str) else str(raw)
+                    return out
+                if isinstance(value, str):
+                    try:
+                        parsed_value = json.loads(value)
+                        if isinstance(parsed_value, dict):
+                            return cast_parameter_value(typ, parsed_value)
+                    except (json.JSONDecodeError, ValueError):
+                        pass
+                    stripped = value.strip()
+                    if not stripped:
+                        return {}
+                    return {"start": stripped}
+                raise ValueError("The date-picker parameter must be a JSON object, JSON string, or empty.")
 
             case PluginParameterType.BOOLEAN:
                 if value is None:

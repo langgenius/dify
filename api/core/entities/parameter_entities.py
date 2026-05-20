@@ -16,6 +16,8 @@ class CommonParameterType(StrEnum):
     TOOLS_SELECTOR = "array[tools]"
     CHECKBOX = "checkbox"
     ANY = auto()
+    DATE = "date"
+    DATE_PICKER = "date-picker"
 
     # Dynamic select parameter
     # Once you are not sure about the available options until authorization is done

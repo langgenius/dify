@@ -313,6 +313,8 @@ class ToolParameter(PluginParameter):
         MODEL_SELECTOR = PluginParameterType.MODEL_SELECTOR
         ANY = PluginParameterType.ANY
         DYNAMIC_SELECT = PluginParameterType.DYNAMIC_SELECT
+        DATE = PluginParameterType.DATE
+        DATE_PICKER = PluginParameterType.DATE_PICKER
 
         # MCP object and array type parameters
         ARRAY = MCPServerParameterType.ARRAY

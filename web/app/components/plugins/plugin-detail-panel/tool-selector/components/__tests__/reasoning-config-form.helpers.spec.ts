@@ -24,10 +24,14 @@ describe('reasoning-config-form helpers', () => {
     expect(getVarKindType(FormTypeEnum.files)).toBe(VarKindType.variable)
     expect(getVarKindType(FormTypeEnum.textNumber)).toBe(VarKindType.constant)
     expect(getVarKindType(FormTypeEnum.textInput)).toBe(VarKindType.mixed)
+    expect(getVarKindType(FormTypeEnum.date)).toBe(VarKindType.constant)
+    expect(getVarKindType(FormTypeEnum.datePicker)).toBe(VarKindType.constant)
     expect(getVarKindType(FormTypeEnum.dynamicSelect)).toBeUndefined()
 
     expect(resolveTargetVarType(FormTypeEnum.textInput)).toBe(VarType.string)
     expect(resolveTargetVarType(FormTypeEnum.textNumber)).toBe(VarType.number)
+    expect(resolveTargetVarType(FormTypeEnum.date)).toBe(VarType.string)
+    expect(resolveTargetVarType(FormTypeEnum.datePicker)).toBe(VarType.string)
     expect(resolveTargetVarType(FormTypeEnum.files)).toBe(VarType.arrayFile)
     expect(resolveTargetVarType(FormTypeEnum.file)).toBe(VarType.file)
     expect(resolveTargetVarType(FormTypeEnum.checkbox)).toBe(VarType.boolean)
@@ -44,6 +48,14 @@ describe('reasoning-config-form helpers', () => {
     expect(numberFilter?.({ type: VarType.string } as never)).toBe(false)
     expect(stringFilter?.({ type: VarType.secret } as never)).toBe(true)
     expect(fileFilter?.({ type: VarType.arrayFile } as never)).toBe(true)
+  })
+
+  it('creates date field variable filters when schema declares date', () => {
+    const dateFilter = createFilterVar(FormTypeEnum.textInput, { _type: 'date' } as never)
+    expect(dateFilter?.({ type: VarType.string } as never)).toBe(true)
+    expect(dateFilter?.({ type: VarType.number } as never)).toBe(true)
+    expect(dateFilter?.({ type: VarType.file } as never)).toBe(false)
+    expect(createFilterVar(FormTypeEnum.datePicker, { type: FormTypeEnum.datePicker } as never)).toBeUndefined()
   })
 
   it('filters select options based on show_on conditions', () => {

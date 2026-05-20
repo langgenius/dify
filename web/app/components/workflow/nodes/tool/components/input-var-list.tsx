@@ -14,6 +14,9 @@ import { FormTypeEnum } from '@/app/components/header/account-setting/model-prov
 import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { AppSelector } from '@/app/components/plugins/plugin-detail-panel/app-selector'
 import ModelParameterModal from '@/app/components/plugins/plugin-detail-panel/model-selector'
+import {
+  toolDeclarativeTypeMatches,
+} from '@/app/components/workflow/nodes/_base/components/form-input-item.helpers'
 import Input from '@/app/components/workflow/nodes/_base/components/input-support-select-var'
 import VarReferencePicker from '@/app/components/workflow/nodes/_base/components/variable/var-reference-picker'
 import useAvailableVarList from '@/app/components/workflow/nodes/_base/hooks/use-available-var-list'
@@ -53,7 +56,7 @@ const InputVarList: FC<Props> = ({
       return [VarType.string, VarType.number, VarType.secret].includes(varPayload.type)
     },
   })
-  const paramType = (type: string) => {
+  const paramType = (type: string, row: CredentialFormSchema & { _type?: string }) => {
     if (type === FormTypeEnum.textNumber)
       return 'Number'
     else if (type === FormTypeEnum.file || type === FormTypeEnum.files)
@@ -66,6 +69,10 @@ const InputVarList: FC<Props> = ({
       return 'ToolSelector'
     else if (type === FormTypeEnum.dynamicSelect || type === FormTypeEnum.select)
       return 'Select'
+    else if (toolDeclarativeTypeMatches(row, 'date'))
+      return 'Date'
+    else if (toolDeclarativeTypeMatches(row, 'date-picker'))
+      return 'DatePicker'
     else
       return 'String'
   }
@@ -172,19 +179,21 @@ const InputVarList: FC<Props> = ({
           } = schema
           const varInput = value[variable]
           const isNumber = type === FormTypeEnum.textNumber
+          const isDatePicker = toolDeclarativeTypeMatches(schema as { type?: string, _type?: string }, 'date-picker')
+          const isDate = toolDeclarativeTypeMatches(schema as { type?: string, _type?: string }, 'date') && !isDatePicker
           const isDynamicSelect = type === FormTypeEnum.dynamicSelect
           const isSelect = type === FormTypeEnum.select || type === FormTypeEnum.dynamicSelect
           const isFile = type === FormTypeEnum.file || type === FormTypeEnum.files
           const isAppSelector = type === FormTypeEnum.appSelector
           const isModelSelector = type === FormTypeEnum.modelSelector
           // const isToolSelector = type === FormTypeEnum.toolSelector
-          const isString = !isNumber && !isSelect && !isFile && !isAppSelector && !isModelSelector
+          const isString = !isNumber && !isSelect && !isFile && !isAppSelector && !isModelSelector && !isDate && !isDatePicker
 
           return (
             <div key={variable} className="space-y-1">
               <div className="flex items-center space-x-2 leading-[18px]">
                 <span className="code-sm-semibold text-text-secondary">{label[language] || label.en_US}</span>
-                <span className="system-xs-regular text-text-tertiary">{paramType(type)}</span>
+                <span className="system-xs-regular text-text-tertiary">{paramType(type, schema)}</span>
                 {required && <span className="system-xs-regular text-util-colors-orange-dark-orange-dark-600">Required</span>}
               </div>
               {isString && (
@@ -200,7 +209,7 @@ const InputVarList: FC<Props> = ({
                   placeholderClassName="leading-[21px]!"
                 />
               )}
-              {(isNumber || isSelect) && (
+              {(isNumber || isSelect || isDate || isDatePicker) && (
                 <VarReferencePicker
                   readonly={readOnly}
                   isShowNodeName
@@ -208,9 +217,15 @@ const InputVarList: FC<Props> = ({
                   value={varInput?.type === VarKindType.constant ? (varInput?.value ?? '') : (varInput?.value ?? [])}
                   onChange={handleNotMixedTypeChange(variable)}
                   onOpen={handleOpen(index)}
-                  defaultVarKindType={varInput?.type || ((isNumber || isDynamicSelect) ? VarKindType.constant : VarKindType.variable)}
+                  defaultVarKindType={varInput?.type || ((isNumber || isDynamicSelect || isDatePicker) ? VarKindType.constant : VarKindType.variable)}
                   isSupportConstantValue={isSupportConstantValue}
-                  filterVar={isNumber ? filterVar : undefined}
+                  filterVar={
+                    isNumber
+                      ? filterVar
+                      : isDate
+                        ? (varPayload: Var) => [VarType.string, VarType.number, VarType.secret].includes(varPayload.type)
+                        : undefined
+                  }
                   availableVars={isSelect ? availableVars : undefined}
                   schema={schema}
                   currentTool={currentTool}
