@@ -51,12 +51,10 @@ const FLOATING_UI_RESTRICTED_IMPORT_PATTERNS = [
 const LEGACY_WEB_INPUT_RESTRICTED_IMPORT_PATTERNS = [
   {
     group: [
-      '@/app/components/base/input',
-      '@/app/components/base/input/*',
-      '**/components/base/input',
-      '**/components/base/input/*',
+      '**/base/input',
+      '**/base/input/*',
     ],
-    message: 'Do not import the deprecated web base Input. Use @langgenius/dify-ui/input or @langgenius/dify-ui/field instead.',
+    message: 'Do not import the deprecated web base Input. Use @langgenius/dify-ui/input for standalone inputs, and @langgenius/dify-ui/field for labelled or validated form composition.',
   },
 ]
 
