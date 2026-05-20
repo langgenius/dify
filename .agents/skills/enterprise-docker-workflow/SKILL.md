@@ -32,16 +32,17 @@ Before compose validation for a new official version candidate:
 
 - Confirm compose commands are run from the new worktree, not the previous version directory.
 - Copy the previous stable `docker/.env` and `docker/volumes/**` into the new worktree for local validation, after stopping compose services and backing up any accidental new initialization data.
+- After copying `docker/.env`, update version-bearing values such as `DIFY_ENTERPRISE_VERSION` to the new enterprise version before any compose start.
 - Use a temporary root container to copy protected PostgreSQL `pgdata` when host permissions block normal copying; mount the old worktree read-only.
-- Export `DIFY_ENTERPRISE_VERSION=<version>-enterprise` and `COMPOSE_PROFILES=weaviate,postgresql` explicitly for compose commands.
-- Run `docker compose ... config --images` and verify it resolves the new enterprise API/Web images, not official `langgenius/dify-api` or `langgenius/dify-web`.
-- After `up --force-recreate`, inspect API, Web, worker, plugin daemon, database, Redis, vector store, sandbox, and ssrf proxy containers. All bind mounts must point to the new worktree.
-- Do not leave `weaviate`, `sandbox`, `ssrf_proxy`, `plugin_daemon`, or database services running from an old worktree while validating a new candidate.
+- Export `DIFY_ENTERPRISE_VERSION=<version>-enterprise` and `COMPOSE_PROFILES=weaviate,postgresql,collaboration` explicitly for compose commands.
+- Run `docker compose ... config --images` and verify it resolves the new enterprise API/Web/API WebSocket images, not the previous enterprise tag and not official `langgenius/dify-api` or `langgenius/dify-web`.
+- After `up --force-recreate`, inspect API, API WebSocket, Web, worker, plugin daemon, database, Redis, vector store, sandbox, and ssrf proxy containers. All bind mounts must point to the new worktree.
+- Do not leave `api_websocket`, `weaviate`, `sandbox`, `ssrf_proxy`, `plugin_daemon`, or database services running from an old worktree while validating a new candidate.
 - Verify migrated data with read-only checks before asking the user to log in: accounts, tenants, apps/workflows, datasets, installed plugins, enterprise marketplace assets, and `alembic_version`.
 
 ## Rebuild Decisions
 
-- Backend runtime or API Docker input changed: rebuild `api`, then recreate `api`, `worker`, `worker_beat`, and `nginx`.
+- Backend runtime or API Docker input changed: rebuild `api`, then recreate `api`, `api_websocket`, `worker`, `worker_beat`, and `nginx`.
 - Frontend runtime or web Docker input changed: rebuild `web`, then recreate `web` and `nginx`.
 - Only Nginx config changed: recreate `nginx`.
 - Formal release packaging must export the same enterprise image IDs that already passed compose runtime validation.
@@ -50,10 +51,11 @@ Before compose validation for a new official version candidate:
 
 ```powershell
 $env:DIFY_ENTERPRISE_VERSION = "1.15.0-enterprise"
+$env:COMPOSE_PROFILES = "weaviate,postgresql,collaboration"
 docker compose -f docker/docker-compose.yaml -f docker/docker-compose.enterprise.yaml config -q
 docker compose -f docker/docker-compose.yaml -f docker/docker-compose.enterprise.yaml build api
 docker compose -f docker/docker-compose.yaml -f docker/docker-compose.enterprise.yaml build web
-docker compose -f docker/docker-compose.yaml -f docker/docker-compose.enterprise.yaml up -d --force-recreate api worker worker_beat web nginx
+docker compose -f docker/docker-compose.yaml -f docker/docker-compose.enterprise.yaml up -d --force-recreate api api_websocket worker worker_beat web nginx
 docker compose -f docker/docker-compose.yaml -f docker/docker-compose.enterprise.yaml ps
 .\scripts\build-enterprise-offline.ps1 -Version $env:DIFY_ENTERPRISE_VERSION -Mode reuse
 ```

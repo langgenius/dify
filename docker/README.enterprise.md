@@ -22,7 +22,7 @@ The enterprise overlay must follow the clean-candidate workflow described in `..
 
 ## What the enterprise overlay changes
 
-- Replaces `api`, `worker`, and `worker_beat` with the self-built `dify-api-enterprise` image.
+- Replaces `api`, `api_websocket`, `worker`, and `worker_beat` with the self-built `dify-api-enterprise` image.
 - Replaces `web` with the self-built `dify-web-enterprise` image.
 - Injects enterprise defaults through environment variables:
   - `ENTERPRISE_ENABLED=false` by default, so the fork-local enterprise image does not call the official enterprise API unless a deployment explicitly supplies that service URL and secrets.
@@ -71,7 +71,7 @@ Standard checks:
 ```powershell
 $env:DEBUG = "false"
 $env:ENTERPRISE_ENABLED = "false"
-$env:COMPOSE_PROFILES = "weaviate,postgresql"
+$env:COMPOSE_PROFILES = "weaviate,postgresql,collaboration"
 docker compose -f docker/docker-compose.yaml -f docker/docker-compose.enterprise.yaml config -q
 docker compose -f docker/docker-compose.yaml -f docker/docker-compose.enterprise.yaml build api
 docker compose -f docker/docker-compose.yaml -f docker/docker-compose.enterprise.yaml build web
@@ -80,13 +80,13 @@ docker compose -f docker/docker-compose.yaml -f docker/docker-compose.enterprise
 
 Recreate rules:
 
-- After rebuilding `dify-api-enterprise:1.15.0-enterprise`, recreate `api`, `worker`, `worker_beat`, and `nginx`:
+- After rebuilding `dify-api-enterprise:1.15.0-enterprise`, recreate `api`, `api_websocket`, `worker`, `worker_beat`, and `nginx`:
 
 ```powershell
 $env:DEBUG = "false"
 $env:ENTERPRISE_ENABLED = "false"
-$env:COMPOSE_PROFILES = "weaviate,postgresql"
-docker compose -f docker/docker-compose.yaml -f docker/docker-compose.enterprise.yaml up -d --force-recreate api worker worker_beat plugin_daemon sandbox ssrf_proxy nginx weaviate
+$env:COMPOSE_PROFILES = "weaviate,postgresql,collaboration"
+docker compose -f docker/docker-compose.yaml -f docker/docker-compose.enterprise.yaml up -d --force-recreate api api_websocket worker worker_beat plugin_daemon sandbox ssrf_proxy nginx weaviate
 ```
 
 - After rebuilding `dify-web-enterprise:1.15.0-enterprise`, recreate `web` and `nginx`:
@@ -102,8 +102,9 @@ docker compose -f docker/docker-compose.yaml -f docker/docker-compose.enterprise
 Do not default to restarting the entire compose stack after every enterprise build. Prefer the smallest compose-owned recreate set that matches the changed runtime surface.
 
 Vector store note: `VECTOR_STORE=weaviate` requires the `weaviate` compose profile/service to be running. Do not rely on
-`COMPOSE_PROFILES` inside `docker/.env` alone for CLI profile activation; export `COMPOSE_PROFILES=weaviate,postgresql`
-in the shell or include the `weaviate` service explicitly in `docker compose up` commands.
+`COMPOSE_PROFILES` inside `docker/.env` alone for CLI profile activation; export `COMPOSE_PROFILES=weaviate,postgresql,collaboration`
+in the shell or include the `weaviate` and `api_websocket` services explicitly in `docker compose up` commands.
+`api_websocket` is part of the 1.15.0 collaboration runtime and must be covered by the enterprise overlay so it uses the same enterprise API image as `api`.
 
 ## Local upgrade data migration
 
@@ -113,7 +114,7 @@ Recommended order:
 
 1. Stop compose services for the old and new worktrees before copying runtime data.
 2. If the new worktree was already initialized, back up its temporary `docker/.env` and `docker/volumes/**` outside the source diff.
-3. Copy the previous stable worktree's `docker/.env` into the new worktree, then review it against the new `docker/envs/**/*.env.example` layout and add any new required settings.
+3. Copy the previous stable worktree's `docker/.env` into the new worktree, then review it against the new `docker/envs/**/*.env.example` layout and add any new required settings. Always update version-bearing values such as `DIFY_ENTERPRISE_VERSION`; a migrated `.env` must not keep the previous enterprise tag.
 4. Copy the previous stable worktree's `docker/volumes/**` into the new worktree, preserving ownership and permissions.
 5. Start compose only from the new worktree with explicit shell values for `DIFY_ENTERPRISE_VERSION` and `COMPOSE_PROFILES`.
 
@@ -121,10 +122,12 @@ Example Linux startup after migration:
 
 ```bash
 export DIFY_ENTERPRISE_VERSION=1.15.0-enterprise
-export COMPOSE_PROFILES=weaviate,postgresql
+export COMPOSE_PROFILES=weaviate,postgresql,collaboration
 docker compose -f docker/docker-compose.yaml -f docker/docker-compose.enterprise.yaml config --images | sort -u
 docker compose -f docker/docker-compose.yaml -f docker/docker-compose.enterprise.yaml up -d --force-recreate --pull never
 ```
+
+The `config --images` output must show the current enterprise tags for `api`, `api_websocket`, `worker`, `worker_beat`, and `web`. If it shows the previous enterprise tag or `langgenius/dify-api`, fix `docker/.env` or the enterprise overlay before starting containers.
 
 If PostgreSQL `pgdata` cannot be copied by the host user, use a temporary container to copy as root without writing to the old worktree:
 
@@ -163,7 +166,7 @@ Linux equivalent:
 ```bash
 python3 docker/dify-env-sync.py --dir docker --no-backup
 export DIFY_ENTERPRISE_VERSION=1.15.0-enterprise
-export COMPOSE_PROFILES=weaviate,postgresql
+export COMPOSE_PROFILES=weaviate,postgresql,collaboration
 docker compose -f docker/docker-compose.yaml -f docker/docker-compose.enterprise.yaml config -q
 ./scripts/build-enterprise-offline.sh -Version "$DIFY_ENTERPRISE_VERSION" -Mode reuse
 ```
@@ -175,7 +178,7 @@ Do not rebuild during final packaging after runtime validation. `Mode=reuse` sho
 Use two artifacts:
 
 - Image bundle: a single `docker save` archive generated by the enterprise offline script with `Mode=reuse`.
-- Configuration bundle: a small archive containing only deployment configuration files needed to run the enterprise compose stack.
+- Configuration bundle: a small archive containing only deployment configuration files and `docker/ENTERPRISE_DEPLOY_STARTUP.md`, which tells operators how to start and verify the enterprise compose stack.
 
 Build the configuration bundle only after the `Mode=reuse` image bundle has produced the manifest and image list:
 

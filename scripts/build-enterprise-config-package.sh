@@ -34,6 +34,7 @@ required_files=(
   "docker/docker-compose.yaml"
   "docker/docker-compose.enterprise.yaml"
   "docker/.env.example"
+  "docker/ENTERPRISE_DEPLOY_STARTUP.md"
   "docker/dify-env-sync.py"
   "docker/dify-env-sync.sh"
   "docker/README.enterprise.md"

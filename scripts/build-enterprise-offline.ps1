@@ -45,7 +45,7 @@ if (-not $env:COMPOSE_PROFILES) {
   }
   $vectorStore = if ($envValues.ContainsKey("VECTOR_STORE") -and $envValues["VECTOR_STORE"]) { $envValues["VECTOR_STORE"] } else { "weaviate" }
   $dbType = if ($envValues.ContainsKey("DB_TYPE") -and $envValues["DB_TYPE"]) { $envValues["DB_TYPE"] } else { "postgresql" }
-  $env:COMPOSE_PROFILES = "$vectorStore,$dbType"
+  $env:COMPOSE_PROFILES = "$vectorStore,$dbType,collaboration"
 }
 
 function Get-ImageCommitSha {

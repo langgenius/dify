@@ -61,7 +61,7 @@ export ENTERPRISE_ENABLED="${ENTERPRISE_ENABLED:-false}"
 if [[ -z "${COMPOSE_PROFILES:-}" ]]; then
   ENV_VECTOR_STORE="$(awk -F= '/^VECTOR_STORE=/{print $2; exit}' "$ENV_FILE")"
   ENV_DB_TYPE="$(awk -F= '/^DB_TYPE=/{print $2; exit}' "$ENV_FILE")"
-  export COMPOSE_PROFILES="${ENV_VECTOR_STORE:-weaviate},${ENV_DB_TYPE:-postgresql}"
+  export COMPOSE_PROFILES="${ENV_VECTOR_STORE:-weaviate},${ENV_DB_TYPE:-postgresql},collaboration"
 fi
 
 mkdir -p "$OUTPUT_PATH"

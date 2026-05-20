@@ -208,9 +208,9 @@ Before this candidate becomes the new `enterprise/main`:
 2. Commit only source, config, documentation, tests, migrations, and release scripts.
 3. Confirm `api/pyproject.toml` and `web/package.json` both report `1.15.0`.
 4. For local upgrade validation, stop compose, migrate the previous stable enterprise `docker/.env` and `docker/volumes/**` into the new worktree, update version-bearing `.env` values such as `DIFY_ENTERPRISE_VERSION`, then start compose from the new worktree only.
-5. Confirm all running compose services use the new worktree bind mounts and the new enterprise API/Web image IDs; no service may keep an old worktree mount.
+5. Confirm all running compose services use the new worktree bind mounts and the new enterprise API/Web image IDs; no service may keep an old worktree mount, and `api_websocket` must not fall back to the official `langgenius/dify-api` image.
 6. Rebuild enterprise `api` and `web` images as `1.15.0-enterprise`.
-7. Force recreate `api`, `worker`, `worker_beat`, `web`, `plugin_daemon`, vector store, sandbox, ssrf proxy, and `nginx` as required by changed runtime surfaces and data-migration checks.
+7. Force recreate `api`, `api_websocket`, `worker`, `worker_beat`, `web`, `plugin_daemon`, vector store, sandbox, ssrf proxy, and `nginx` as required by changed runtime surfaces and data-migration checks.
 8. Verify migrated data is present, including accounts, workspaces, apps/workflows, datasets, installed plugins, and enterprise marketplace assets when available.
 9. Repeat the verified runtime flows and inspect logs for new 500s, tracebacks, and Next error boundaries.
 10. Export the offline image bundle with `Mode=reuse` from the same validated image IDs.

@@ -109,13 +109,13 @@ git switch -c codex/enterprise-candidate-1.15.0-20260626 1.15.0
 硬规则：
 
 - 新版本必须使用新的工作目录、新候选分支和当前目录下的 compose 文件启动，不得复用旧工作目录里的 compose 运行面。
-- 新工作区启动 compose 前，应优先从上一稳定企业工作区平移 `docker/.env`，再按官方新版 `docker/envs/**` 与 `.env.example` 补齐新增配置。
+- 新工作区启动 compose 前，应优先从上一稳定企业工作区平移 `docker/.env`，再按官方新版 `docker/envs/**` 与 `.env.example` 补齐新增配置。平移后必须检查并更新版本型配置，尤其是 `DIFY_ENTERPRISE_VERSION`，不得保留上一版本如 `1.14.1-enterprise`。
 - 新工作区启动 compose 前，应优先从上一稳定企业工作区平移 `docker/volumes/**`，用于保留本机开发验证所需的数据库、上传文件、Redis、插件、向量库和 sandbox 依赖。
 - 平移运行数据前，先停止相关 compose 服务；如果新目录已经误初始化过，先把新目录的临时 `docker/volumes` 和 `docker/.env` 备份到本机备份目录，再用旧稳定数据覆盖新目录。
 - PostgreSQL `pgdata` 可能因权限无法由普通用户复制。可使用临时 `busybox`/`alpine` 容器以 root 身份同时挂载旧、新 `docker/volumes` 目录完成复制；复制命令不得写入旧目录。
-- 启动新环境时必须显式传入 `DIFY_ENTERPRISE_VERSION=<new-version>-enterprise` 和需要的 `COMPOSE_PROFILES`，不要只依赖旧 `.env` 里的 profile 或镜像配置。
-- 启动后必须检查所有 Dify 相关容器的 `image`、image ID、compose project 和 bind mount 路径，确认 API/Web/worker 使用新版本企业镜像，且 `db`、`redis`、`plugin_daemon`、`weaviate`、`sandbox`、`ssrf_proxy` 等服务全部挂载到新工作目录。
-- 不允许只重建 API/Web，而让 `weaviate`、`sandbox`、`ssrf_proxy`、`plugin_daemon` 等依赖服务继续挂载旧工作目录。
+- 启动新环境时必须显式传入 `DIFY_ENTERPRISE_VERSION=<new-version>-enterprise` 和需要的 `COMPOSE_PROFILES`。1.15.0 起默认应包含 `collaboration`，即常规本机验证使用 `COMPOSE_PROFILES=weaviate,postgresql,collaboration`，不要只依赖旧 `.env` 里的 profile 或镜像配置。启动前执行 `docker compose ... config --images`，确认 API/Web/worker/api_websocket 全部解析到当前企业版本镜像。
+- 启动后必须检查所有 Dify 相关容器的 `image`、image ID、compose project 和 bind mount 路径，确认 API/Web/worker/api_websocket 使用新版本企业镜像，且 `db`、`redis`、`plugin_daemon`、`weaviate`、`sandbox`、`ssrf_proxy` 等服务全部挂载到新工作目录。
+- 不允许只重建 API/Web，而让 `api_websocket`、`weaviate`、`sandbox`、`ssrf_proxy`、`plugin_daemon` 等依赖服务继续挂载旧工作目录或使用官方 API 镜像。
 - 旧企业镜像可以保留为本机缓存，但运行容器不得引用旧企业版本 tag。
 
 迁移完成后，应通过只读检查确认旧数据已经接管新环境，例如账户、空间、应用、知识库、已安装插件、智慧广场资产数量，以及 `alembic_version` 是否到达当前企业迁移 head。浏览器访问 `/apps` 应进入登录页或已登录工作台，不应进入初始化页。
@@ -157,7 +157,7 @@ git switch -c codex/enterprise-candidate-1.15.0-20260626 1.15.0
 
 只要本轮改动涉及运行时代码，必须先重建对应 enterprise 镜像，再用这批新镜像重建 compose 服务后做点击验证。
 
-- 后端运行时代码变更：重建 `api`，然后 force recreate `api worker worker_beat nginx`。
+- 后端运行时代码变更：重建 `api`，然后 force recreate `api api_websocket worker worker_beat nginx`。
 - 前端运行时代码变更：重建 `web`，然后 force recreate `web nginx`。
 - Nginx 配置变更：force recreate `nginx`。
 
