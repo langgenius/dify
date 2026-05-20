@@ -48,7 +48,7 @@ const LoadedFormContent = ({
   const site = formData.site.site
 
   return (
-    <div className={cn('mx-auto flex h-full w-full max-w-[720px] flex-col items-center')}>
+    <div className={cn('mx-auto flex size-full max-w-180 flex-col items-center')}>
       <div className="mt-4 flex w-full shrink-0 items-center gap-3 py-3">
         <AppIcon
           size="large"
