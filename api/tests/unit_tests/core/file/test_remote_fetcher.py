@@ -561,10 +561,7 @@ def test_invalid_url_scheme_delegates_to_ssrf_proxy(monkeypatch):
 
 def test_invalid_url_port_delegates_to_ssrf_proxy(monkeypatch):
     _patch_file_fetcher_config(monkeypatch)
-    url = (
-        f"http://localhost:invalid/files/{UPLOAD_FILE_ID}/file-preview?"
-        "timestamp=1700000000&nonce=nonce&sign=ignored"
-    )
+    url = f"http://localhost:invalid/files/{UPLOAD_FILE_ID}/file-preview?timestamp=1700000000&nonce=nonce&sign=ignored"
     proxy_response = httpx.Response(403, request=httpx.Request("GET", "http://proxy.example/fallback"))
     ssrf_make_request = _patch_ssrf_make_request(monkeypatch, proxy_response)
 

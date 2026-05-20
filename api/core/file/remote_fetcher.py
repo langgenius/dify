@@ -43,9 +43,7 @@ _UPLOAD_FILE_PATH_PATTERN = re.compile(
     r"^/files/(?P<file_id>[a-fA-F0-9-]+)/(?P<preview_kind>file-preview|image-preview)$"
 )
 _TOOL_FILE_PATH_PATTERN = re.compile(r"^/files/tools/(?P<file_id>[a-fA-F0-9-]+)(?P<extension>\.[^/]*)?$")
-_DATASOURCE_FILE_PATH_PATTERN = re.compile(
-    r"^/files/datasources/(?P<file_id>[a-fA-F0-9-]+)(?P<extension>\.[^/]*)?$"
-)
+_DATASOURCE_FILE_PATH_PATTERN = re.compile(r"^/files/datasources/(?P<file_id>[a-fA-F0-9-]+)(?P<extension>\.[^/]*)?$")
 
 _file_access_controller = DatabaseFileAccessController()
 
