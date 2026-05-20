@@ -149,7 +149,7 @@ class TestDatasourceFileManager:
         mock_response = MagicMock()
         mock_response.content = b"bits"
         mock_response.headers = {}  # No content-type in headers
-        mock_ssrf.get.return_value = mock_response
+        mock_ssrf.make_request.return_value = mock_response
 
         # Execute
         tool_file = DatasourceFileManager.create_file_by_url(
@@ -169,7 +169,7 @@ class TestDatasourceFileManager:
         mock_response = MagicMock()
         mock_response.content = b"bits"
         mock_response.headers = {}
-        mock_ssrf.get.return_value = mock_response
+        mock_ssrf.make_request.return_value = mock_response
 
         # Execute
         tool_file = DatasourceFileManager.create_file_by_url(
@@ -191,7 +191,7 @@ class TestDatasourceFileManager:
         mock_response = MagicMock()
         mock_response.content = b"downloaded bits"
         mock_response.headers = {"Content-Type": "image/jpeg"}
-        mock_ssrf.get.return_value = mock_response
+        mock_ssrf.make_request.return_value = mock_response
 
         # Execute
         tool_file = DatasourceFileManager.create_file_by_url(
@@ -207,7 +207,7 @@ class TestDatasourceFileManager:
     @patch("core.datasource.datasource_file_manager.remote_fetcher")
     def test_create_file_by_url_timeout(self, mock_ssrf):
         # Setup
-        mock_ssrf.get.side_effect = httpx.TimeoutException("Timeout")
+        mock_ssrf.make_request.side_effect = httpx.TimeoutException("Timeout")
 
         # Execute & Verify
         with pytest.raises(ValueError, match="timeout when downloading file"):

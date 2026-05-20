@@ -317,8 +317,8 @@ class TestAppDslService:
     ):
         monkeypatch.setattr(
             app_dsl_service.remote_fetcher,
-            "get",
-            lambda _url, **_kw: (_ for _ in ()).throw(RuntimeError("boom")),
+            "make_request",
+            lambda _method, _url, **_kw: (_ for _ in ()).throw(RuntimeError("boom")),
         )
 
         service = AppDslService(db_session_with_containers)
@@ -336,7 +336,7 @@ class TestAppDslService:
         response = MagicMock()
         response.content = b""
         response.raise_for_status.return_value = None
-        monkeypatch.setattr(app_dsl_service.remote_fetcher, "get", lambda _url, **_kw: response)
+        monkeypatch.setattr(app_dsl_service.remote_fetcher, "make_request", lambda _method, _url, **_kw: response)
 
         service = AppDslService(db_session_with_containers)
         result = service.import_app(
@@ -353,7 +353,7 @@ class TestAppDslService:
         response = MagicMock()
         response.content = b"x" * (DSL_MAX_SIZE + 1)
         response.raise_for_status.return_value = None
-        monkeypatch.setattr(app_dsl_service.remote_fetcher, "get", lambda _url, **_kw: response)
+        monkeypatch.setattr(app_dsl_service.remote_fetcher, "make_request", lambda _method, _url, **_kw: response)
 
         service = AppDslService(db_session_with_containers)
         result = service.import_app(
@@ -372,14 +372,15 @@ class TestAppDslService:
 
         requested_urls: list[str] = []
 
-        def fake_get(url: str, **kwargs):
+        def fake_make_request(method: str, url: str, **kwargs):
+            assert method == "GET"
             requested_urls.append(url)
             response = MagicMock()
             response.content = yaml_bytes
             response.raise_for_status.return_value = None
             return response
 
-        monkeypatch.setattr(app_dsl_service.remote_fetcher, "get", fake_get)
+        monkeypatch.setattr(app_dsl_service.remote_fetcher, "make_request", fake_make_request)
 
         service = AppDslService(db_session_with_containers)
         result = service.import_app(
@@ -401,7 +402,8 @@ class TestAppDslService:
 
         requested_urls: list[str] = []
 
-        def fake_get(url: str, **kwargs):
+        def fake_make_request(method: str, url: str, **kwargs):
+            assert method == "GET"
             requested_urls.append(url)
             assert url == raw_url
             response = MagicMock()
@@ -409,7 +411,7 @@ class TestAppDslService:
             response.raise_for_status.return_value = None
             return response
 
-        monkeypatch.setattr(app_dsl_service.remote_fetcher, "get", fake_get)
+        monkeypatch.setattr(app_dsl_service.remote_fetcher, "make_request", fake_make_request)
 
         service = AppDslService(db_session_with_containers)
         result = service.import_app(

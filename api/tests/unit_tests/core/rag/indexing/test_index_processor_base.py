@@ -200,7 +200,7 @@ class TestBaseIndexProcessor:
         mock_db.engine = Mock()
 
         with (
-            patch("core.rag.index_processor.index_processor_base.remote_fetcher.get", return_value=response),
+            patch("core.rag.index_processor.index_processor_base.remote_fetcher.make_request", return_value=response),
             patch("core.rag.index_processor.index_processor_base.db", mock_db),
             patch("services.file_service.FileService") as mock_file_service,
         ):
@@ -215,7 +215,7 @@ class TestBaseIndexProcessor:
         too_large.headers = {"Content-Length": str(3 * 1024 * 1024), "content-type": "image/png"}
         too_large.raise_for_status.return_value = None
 
-        with patch("core.rag.index_processor.index_processor_base.remote_fetcher.get", return_value=too_large):
+        with patch("core.rag.index_processor.index_processor_base.remote_fetcher.make_request", return_value=too_large):
             assert processor._download_image("https://example.com/too-large.png", current_user=Mock()) is None
 
         empty = Mock()
@@ -223,7 +223,7 @@ class TestBaseIndexProcessor:
         empty.raise_for_status.return_value = None
         empty.iter_bytes.return_value = []
 
-        with patch("core.rag.index_processor.index_processor_base.remote_fetcher.get", return_value=empty):
+        with patch("core.rag.index_processor.index_processor_base.remote_fetcher.make_request", return_value=empty):
             assert processor._download_image("https://example.com/empty.png", current_user=Mock()) is None
 
     def test_download_image_limits_stream_size(self, processor: _ForwardingBaseIndexProcessor) -> None:
@@ -232,7 +232,7 @@ class TestBaseIndexProcessor:
         response.raise_for_status.return_value = None
         response.iter_bytes.return_value = [b"a" * (3 * 1024 * 1024)]
 
-        with patch("core.rag.index_processor.index_processor_base.remote_fetcher.get", return_value=response):
+        with patch("core.rag.index_processor.index_processor_base.remote_fetcher.make_request", return_value=response):
             assert processor._download_image("https://example.com/big-stream.png", current_user=Mock()) is None
 
     def test_download_image_handles_timeout_request_and_unexpected_errors(
@@ -241,19 +241,19 @@ class TestBaseIndexProcessor:
         request = httpx.Request("GET", "https://example.com/image.png")
 
         with patch(
-            "core.rag.index_processor.index_processor_base.remote_fetcher.get",
+            "core.rag.index_processor.index_processor_base.remote_fetcher.make_request",
             side_effect=httpx.TimeoutException("timeout"),
         ):
             assert processor._download_image("https://example.com/image.png", current_user=Mock()) is None
 
         with patch(
-            "core.rag.index_processor.index_processor_base.remote_fetcher.get",
+            "core.rag.index_processor.index_processor_base.remote_fetcher.make_request",
             side_effect=httpx.RequestError("bad request", request=request),
         ):
             assert processor._download_image("https://example.com/image.png", current_user=Mock()) is None
 
         with patch(
-            "core.rag.index_processor.index_processor_base.remote_fetcher.get",
+            "core.rag.index_processor.index_processor_base.remote_fetcher.make_request",
             side_effect=RuntimeError("unexpected"),
         ):
             assert processor._download_image("https://example.com/image.png", current_user=Mock()) is None

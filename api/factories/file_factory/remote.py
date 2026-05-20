@@ -81,7 +81,7 @@ def get_remote_file_info(url: str) -> tuple[str, str, int]:
     filename = os.path.basename(url_path)
     mime_type = _guess_mime_type(filename)
 
-    resp = remote_fetcher.head(url, follow_redirects=True)
+    resp = remote_fetcher.make_request("HEAD", url, follow_redirects=True)
     if resp.status_code == httpx.codes.OK:
         content_disposition = resp.headers.get("Content-Disposition")
         extracted_filename = extract_filename(url_path, content_disposition)

@@ -109,7 +109,7 @@ class ToolFileManager:
     ) -> ToolFile:
         # try to download image
         try:
-            response = remote_fetcher.get(file_url)
+            response = remote_fetcher.make_request("GET", file_url)
             response.raise_for_status()
             blob = response.content
         except httpx.TimeoutException:

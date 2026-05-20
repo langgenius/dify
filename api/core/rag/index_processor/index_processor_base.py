@@ -243,7 +243,7 @@ class BaseIndexProcessor(ABC):
 
         try:
             # Download with timeout
-            response = remote_fetcher.get(image_url, timeout=DOWNLOAD_TIMEOUT)
+            response = remote_fetcher.make_request("GET", image_url, timeout=DOWNLOAD_TIMEOUT)
             response.raise_for_status()
 
             # Check Content-Length header if available

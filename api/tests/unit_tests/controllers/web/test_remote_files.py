@@ -30,7 +30,7 @@ class TestRemoteFileInfoApi:
         mock_resp = MagicMock()
         mock_resp.status_code = 200
         mock_resp.headers = {"Content-Type": "application/pdf", "Content-Length": "1024"}
-        mock_proxy.head.return_value = mock_resp
+        mock_proxy.make_request.return_value = mock_resp
 
         with app.test_request_context("/remote-files/https%3A%2F%2Fexample.com%2Ffile.pdf"):
             result = RemoteFileInfoApi().get(_app_model(), _end_user(), "https%3A%2F%2Fexample.com%2Ffile.pdf")
@@ -79,14 +79,13 @@ class TestRemoteFileInfoApi:
         get_resp.status_code = 200
         get_resp.headers = {"Content-Type": "text/plain", "Content-Length": "42"}
         get_resp.raise_for_status = MagicMock()
-        mock_proxy.head.return_value = head_resp
-        mock_proxy.get.return_value = get_resp
+        mock_proxy.make_request.side_effect = [head_resp, get_resp]
 
         with app.test_request_context("/remote-files/https%3A%2F%2Fexample.com%2Ffile.txt"):
             result = RemoteFileInfoApi().get(_app_model(), _end_user(), "https%3A%2F%2Fexample.com%2Ffile.txt")
 
         assert result["file_type"] == "text/plain"
-        mock_proxy.get.assert_called_once()
+        assert mock_proxy.make_request.call_args_list[1].args == ("GET", "https://example.com/file.txt")
 
 
 # ---------------------------------------------------------------------------
@@ -115,10 +114,9 @@ class TestRemoteFileUploadApi:
         head_resp.status_code = 200
         head_resp.content = b"pdf-content"
         head_resp.request.method = "HEAD"
-        mock_proxy.head.return_value = head_resp
         get_resp = MagicMock()
         get_resp.content = b"pdf-content"
-        mock_proxy.get.return_value = get_resp
+        mock_proxy.make_request.side_effect = [head_resp, get_resp]
 
         mock_guess.return_value = SimpleNamespace(
             filename="file.pdf", extension="pdf", mimetype="application/pdf", size=100
@@ -159,7 +157,7 @@ class TestRemoteFileUploadApi:
         mock_ns.payload = {"url": "https://example.com/big.zip"}
         head_resp = MagicMock()
         head_resp.status_code = 200
-        mock_proxy.head.return_value = head_resp
+        mock_proxy.make_request.return_value = head_resp
         mock_guess.return_value = SimpleNamespace(
             filename="big.zip", extension="zip", mimetype="application/zip", size=999999999
         )
@@ -174,7 +172,7 @@ class TestRemoteFileUploadApi:
         import httpx
 
         mock_ns.payload = {"url": "https://example.com/bad"}
-        mock_proxy.head.side_effect = httpx.RequestError("connection failed")
+        mock_proxy.make_request.side_effect = httpx.RequestError("connection failed")
 
         with app.test_request_context("/remote-files/upload", method="POST"):
             with pytest.raises(RemoteFileUploadError):

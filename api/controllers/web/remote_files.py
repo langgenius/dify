@@ -60,10 +60,10 @@ class RemoteFileInfoApi(WebApiResource):
             HTTPException: If the remote file cannot be accessed
         """
         decoded_url = helpers.decode_remote_url(url, request.query_string)
-        resp = remote_fetcher.head(decoded_url)
+        resp = remote_fetcher.make_request("HEAD", decoded_url)
         if resp.status_code != httpx.codes.OK:
             # failed back to get method
-            resp = remote_fetcher.get(decoded_url, timeout=3)
+            resp = remote_fetcher.make_request("GET", decoded_url, timeout=3)
         resp.raise_for_status()
         info = RemoteFileInfo(
             file_type=resp.headers.get("Content-Type", "application/octet-stream"),
@@ -112,9 +112,9 @@ class RemoteFileUploadApi(WebApiResource):
         url = str(payload.url)
 
         try:
-            resp = remote_fetcher.head(url=url)
+            resp = remote_fetcher.make_request("HEAD", url=url)
             if resp.status_code != httpx.codes.OK:
-                resp = remote_fetcher.get(url=url, timeout=3, follow_redirects=True)
+                resp = remote_fetcher.make_request("GET", url=url, timeout=3, follow_redirects=True)
             if resp.status_code != httpx.codes.OK:
                 raise RemoteFileUploadError(f"Failed to fetch file from {url}: {resp.text}")
         except httpx.RequestError as e:
@@ -125,7 +125,7 @@ class RemoteFileUploadApi(WebApiResource):
         if not FileService.is_file_size_within_limit(extension=file_info.extension, file_size=file_info.size):
             raise FileTooLargeError
 
-        content = resp.content if resp.request.method == "GET" else remote_fetcher.get(url).content
+        content = resp.content if resp.request.method == "GET" else remote_fetcher.make_request("GET", url).content
 
         try:
             upload_file = FileService(db.engine).upload_file(

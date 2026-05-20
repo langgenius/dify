@@ -97,7 +97,7 @@ class TestExtractProcessorLoaders:
         self, monkeypatch: pytest.MonkeyPatch, url, headers, expected_suffix
     ):
         response = SimpleNamespace(headers=headers, content=b"body")
-        monkeypatch.setattr(processor_module.remote_fetcher, "get", lambda *args, **kwargs: response)
+        monkeypatch.setattr(processor_module.remote_fetcher, "make_request", lambda *args, **kwargs: response)
         monkeypatch.setattr(processor_module, "ExtractSetting", lambda **kwargs: SimpleNamespace(**kwargs))
 
         captured = {}

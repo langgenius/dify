@@ -68,7 +68,7 @@ def test_init_downloads_via_remote_fetcher(monkeypatch: pytest.MonkeyPatch):
     doc.save(buf)
     docx_bytes = buf.getvalue()
 
-    calls: list[tuple[str, object]] = []
+    calls: list[tuple[str, tuple[str, dict[str, object]] | None]] = []
 
     class FakeResponse:
         status_code = 200
@@ -77,17 +77,20 @@ def test_init_downloads_via_remote_fetcher(monkeypatch: pytest.MonkeyPatch):
         def close(self) -> None:
             calls.append(("close", None))
 
-    def fake_get(url: str, **kwargs):
+    def fake_make_request(method: str, url: str, **kwargs):
+        assert method == "GET"
         calls.append(("get", (url, kwargs)))
         return FakeResponse()
 
-    monkeypatch.setattr(we, "remote_fetcher", SimpleNamespace(get=fake_get))
+    monkeypatch.setattr(we, "remote_fetcher", SimpleNamespace(make_request=fake_make_request))
 
     extractor = WordExtractor("https://example.com/test.docx", "tenant_id", "user_id")
     try:
         assert calls
         assert calls[0][0] == "get"
-        url, kwargs = calls[0][1]
+        first_call = calls[0][1]
+        assert first_call is not None
+        url, kwargs = first_call
         assert url == "https://example.com/test.docx"
         assert kwargs.get("timeout") is None
         assert extractor.web_path == "https://example.com/test.docx"
@@ -139,11 +142,12 @@ def test_extract_images_from_docx(monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setattr(we, "UploadFile", FakeUploadFile)
 
     # Patch external image fetcher
-    def fake_get(url: str, **kwargs):
+    def fake_make_request(method: str, url: str, **kwargs):
+        assert method == "GET"
         assert url == "https://example.com/image.png"
         return SimpleNamespace(status_code=200, headers={"Content-Type": "image/png"}, content=external_bytes)
 
-    monkeypatch.setattr(we, "remote_fetcher", SimpleNamespace(get=fake_get))
+    monkeypatch.setattr(we, "remote_fetcher", SimpleNamespace(make_request=fake_make_request))
 
     # A hashable internal part object with a blob attribute
     class HashablePart:
@@ -327,7 +331,7 @@ def test_init_rejects_invalid_url_status(monkeypatch: pytest.MonkeyPatch):
             self.closed = True
 
     fake_response = FakeResponse()
-    monkeypatch.setattr(we, "remote_fetcher", SimpleNamespace(get=lambda url, **kwargs: fake_response))
+    monkeypatch.setattr(we, "remote_fetcher", SimpleNamespace(make_request=lambda method, url, **kwargs: fake_response))
 
     with pytest.raises(ValueError, match="returned status code 404"):
         WordExtractor("https://example.com/missing.docx", "tenant", "user")
@@ -416,12 +420,13 @@ def test_extract_images_handles_invalid_external_cases(monkeypatch: pytest.Monke
         )
     )
 
-    def fake_get(url, **kwargs):
+    def fake_make_request(method, url, **kwargs):
+        assert method == "GET"
         if "image-error" in url:
             raise RuntimeError("network")
         return SimpleNamespace(status_code=200, headers={"Content-Type": "application/unknown"}, content=b"x")
 
-    monkeypatch.setattr(we, "remote_fetcher", SimpleNamespace(get=fake_get))
+    monkeypatch.setattr(we, "remote_fetcher", SimpleNamespace(make_request=fake_make_request))
     db_stub = SimpleNamespace(session=SimpleNamespace(add=lambda obj: None, commit=MagicMock()))
     monkeypatch.setattr(we, "db", db_stub)
     monkeypatch.setattr(we, "storage", SimpleNamespace(save=lambda key, data: None))

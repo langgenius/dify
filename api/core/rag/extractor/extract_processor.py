@@ -55,7 +55,7 @@ class ExtractProcessor:
 
     @classmethod
     def load_from_url(cls, url: str, return_text: bool = False) -> Union[list[Document], str]:
-        response = remote_fetcher.get(url, headers={"User-Agent": USER_AGENT})
+        response = remote_fetcher.make_request("GET", url, headers={"User-Agent": USER_AGENT})
 
         with tempfile.TemporaryDirectory() as temp_dir:
             suffix = Path(url).suffix

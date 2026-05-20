@@ -42,8 +42,10 @@ from models import ToolFile, UploadFile
 _UPLOAD_FILE_PATH_PATTERN = re.compile(
     r"^/files/(?P<file_id>[a-fA-F0-9-]+)/(?P<preview_kind>file-preview|image-preview)$"
 )
-_TOOL_FILE_PATH_PATTERN = re.compile(r"^/files/tools/(?P<file_id>[a-fA-F0-9-]+)\.(?P<extension>[^/]+)$")
-_DATASOURCE_FILE_PATH_PATTERN = re.compile(r"^/files/datasources/(?P<file_id>[a-fA-F0-9-]+)\.(?P<extension>[^/]+)$")
+_TOOL_FILE_PATH_PATTERN = re.compile(r"^/files/tools/(?P<file_id>[a-fA-F0-9-]+)(?P<extension>\.[^/]*)?$")
+_DATASOURCE_FILE_PATH_PATTERN = re.compile(
+    r"^/files/datasources/(?P<file_id>[a-fA-F0-9-]+)(?P<extension>\.[^/]*)?$"
+)
 
 _file_access_controller = DatabaseFileAccessController()
 
@@ -74,42 +76,12 @@ def make_request(method: str, url: str, max_retries: int = SSRF_DEFAULT_MAX_RETR
     return ssrf_proxy.make_request(method=method, url=url, max_retries=max_retries, **kwargs)
 
 
-def get(url: str, max_retries: int = SSRF_DEFAULT_MAX_RETRIES, **kwargs: Any) -> httpx.Response:
-    """Fetch remote file content, resolving Dify-owned signed file URLs locally."""
-
-    response = _resolve_dify_signed_file_url("GET", url)
-    if response is not None:
-        return response
-    return ssrf_proxy.get(url=url, max_retries=max_retries, **kwargs)
-
-
-def head(url: str, max_retries: int = SSRF_DEFAULT_MAX_RETRIES, **kwargs: Any) -> httpx.Response:
-    """Fetch remote file metadata, resolving Dify-owned signed file URLs locally."""
-
-    response = _resolve_dify_signed_file_url("HEAD", url)
-    if response is not None:
-        return response
-    return ssrf_proxy.head(url=url, max_retries=max_retries, **kwargs)
-
-
-def post(url: str, max_retries: int = SSRF_DEFAULT_MAX_RETRIES, **kwargs: Any) -> httpx.Response:
-    return ssrf_proxy.post(url=url, max_retries=max_retries, **kwargs)
-
-
-def put(url: str, max_retries: int = SSRF_DEFAULT_MAX_RETRIES, **kwargs: Any) -> httpx.Response:
-    return ssrf_proxy.put(url=url, max_retries=max_retries, **kwargs)
-
-
-def delete(url: str, max_retries: int = SSRF_DEFAULT_MAX_RETRIES, **kwargs: Any) -> httpx.Response:
-    return ssrf_proxy.delete(url=url, max_retries=max_retries, **kwargs)
-
-
-def patch(url: str, max_retries: int = SSRF_DEFAULT_MAX_RETRIES, **kwargs: Any) -> httpx.Response:
-    return ssrf_proxy.patch(url=url, max_retries=max_retries, **kwargs)
-
-
 class GraphonRemoteFileFetcher:
-    """Graphon HTTP-client adapter backed by the unified remote-file fetcher."""
+    """Graphon HTTP-client adapter backed by the unified remote-file fetcher.
+
+    Graphon requires method-specific HTTP client methods, while regular Dify
+    call sites should use `make_request` directly.
+    """
 
     @property
     def max_retries_exceeded_error(self) -> type[Exception]:
@@ -120,22 +92,22 @@ class GraphonRemoteFileFetcher:
         return request_error
 
     def get(self, url: str, max_retries: int = SSRF_DEFAULT_MAX_RETRIES, **kwargs: Any):
-        return _to_graphon_http_response(get(url=url, max_retries=max_retries, **kwargs))
+        return _to_graphon_http_response(make_request("GET", url=url, max_retries=max_retries, **kwargs))
 
     def head(self, url: str, max_retries: int = SSRF_DEFAULT_MAX_RETRIES, **kwargs: Any):
-        return _to_graphon_http_response(head(url=url, max_retries=max_retries, **kwargs))
+        return _to_graphon_http_response(make_request("HEAD", url=url, max_retries=max_retries, **kwargs))
 
     def post(self, url: str, max_retries: int = SSRF_DEFAULT_MAX_RETRIES, **kwargs: Any):
-        return _to_graphon_http_response(post(url=url, max_retries=max_retries, **kwargs))
+        return _to_graphon_http_response(make_request("POST", url=url, max_retries=max_retries, **kwargs))
 
     def put(self, url: str, max_retries: int = SSRF_DEFAULT_MAX_RETRIES, **kwargs: Any):
-        return _to_graphon_http_response(put(url=url, max_retries=max_retries, **kwargs))
+        return _to_graphon_http_response(make_request("PUT", url=url, max_retries=max_retries, **kwargs))
 
     def delete(self, url: str, max_retries: int = SSRF_DEFAULT_MAX_RETRIES, **kwargs: Any):
-        return _to_graphon_http_response(delete(url=url, max_retries=max_retries, **kwargs))
+        return _to_graphon_http_response(make_request("DELETE", url=url, max_retries=max_retries, **kwargs))
 
     def patch(self, url: str, max_retries: int = SSRF_DEFAULT_MAX_RETRIES, **kwargs: Any):
-        return _to_graphon_http_response(patch(url=url, max_retries=max_retries, **kwargs))
+        return _to_graphon_http_response(make_request("PATCH", url=url, max_retries=max_retries, **kwargs))
 
 
 def _resolve_dify_signed_file_url(method: Literal["GET", "HEAD"], url: str) -> httpx.Response | None:
@@ -222,7 +194,11 @@ def _is_dify_file_origin(parsed_url: urllib.parse.ParseResult) -> bool:
 def _origin_parts(parsed_url: urllib.parse.ParseResult) -> tuple[str, str, int] | None:
     if parsed_url.scheme not in {"http", "https"} or not parsed_url.hostname:
         return None
-    return parsed_url.scheme, parsed_url.hostname.lower(), parsed_url.port or _default_port(parsed_url.scheme)
+    try:
+        port = parsed_url.port
+    except ValueError:
+        return None
+    return parsed_url.scheme, parsed_url.hostname.lower(), port or _default_port(parsed_url.scheme)
 
 
 def _default_port(scheme: str) -> int:

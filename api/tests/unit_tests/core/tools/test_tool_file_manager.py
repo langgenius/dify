@@ -77,7 +77,7 @@ def test_create_file_by_url_downloads_and_persists_record() -> None:
         patch("core.tools.tool_file_manager.ToolFile", side_effect=tool_file_factory),
         patch("core.tools.tool_file_manager.uuid4", return_value=SimpleNamespace(hex="def")),
         _patch_session_factory(session),
-        patch("core.tools.tool_file_manager.remote_fetcher.get", return_value=response),
+        patch("core.tools.tool_file_manager.remote_fetcher.make_request", return_value=response),
     ):
         file_model = manager.create_file_by_url("u1", "t1", "https://example.com/f.bin", "c1")
 
@@ -91,7 +91,10 @@ def test_create_file_by_url_downloads_and_persists_record() -> None:
 def test_create_file_by_url_raises_on_timeout() -> None:
     manager = ToolFileManager()
 
-    with patch("core.tools.tool_file_manager.remote_fetcher.get", side_effect=httpx.TimeoutException("timeout")):
+    with patch(
+        "core.tools.tool_file_manager.remote_fetcher.make_request",
+        side_effect=httpx.TimeoutException("timeout"),
+    ):
         with pytest.raises(ValueError, match="timeout when downloading file"):
             manager.create_file_by_url("u1", "t1", "https://example.com/f.bin", "c1")
 
