@@ -789,11 +789,6 @@
       "count": 10
     }
   },
-  "web/app/components/base/chip/index.tsx": {
-    "ts/no-explicit-any": {
-      "count": 3
-    }
-  },
   "web/app/components/base/date-and-time-picker/hooks.ts": {
     "react/no-unnecessary-use-prefix": {
       "count": 2
@@ -1612,11 +1607,6 @@
       "count": 1
     }
   },
-  "web/app/components/base/sort/index.tsx": {
-    "ts/no-explicit-any": {
-      "count": 2
-    }
-  },
   "web/app/components/base/svg-gallery/index.tsx": {
     "node/prefer-global/buffer": {
       "count": 1
@@ -2125,11 +2115,6 @@
       "count": 2
     }
   },
-  "web/app/components/explore/item-operation/index.tsx": {
-    "react/set-state-in-effect": {
-      "count": 1
-    }
-  },
   "web/app/components/explore/try-app/tab.tsx": {
     "erasable-syntax-only/enums": {
       "count": 1
@@ -2601,11 +2586,6 @@
       "count": 2
     }
   },
-  "web/app/components/plugins/plugin-page/install-plugin-dropdown.tsx": {
-    "react/set-state-in-effect": {
-      "count": 2
-    }
-  },
   "web/app/components/plugins/reference-setting-modal/auto-update-setting/types.ts": {
     "erasable-syntax-only/enums": {
       "count": 2
@@ -2783,11 +2763,6 @@
       "count": 1
     }
   },
-  "web/app/components/share/text-generation/menu-dropdown.tsx": {
-    "react/set-state-in-effect": {
-      "count": 1
-    }
-  },
   "web/app/components/share/text-generation/no-data/index.tsx": {
     "ts/no-empty-object-type": {
       "count": 1
@@ -2952,11 +2927,6 @@
   },
   "web/app/components/workflow/block-selector/main.tsx": {
     "no-restricted-imports": {
-      "count": 1
-    }
-  },
-  "web/app/components/workflow/block-selector/market-place-plugin/action.tsx": {
-    "react/set-state-in-effect": {
       "count": 1
     }
   },
@@ -4056,11 +4026,6 @@
       "count": 1
     }
   },
-  "web/app/components/workflow/operator/zoom-in-out.tsx": {
-    "erasable-syntax-only/enums": {
-      "count": 1
-    }
-  },
   "web/app/components/workflow/panel/__tests__/index.spec.tsx": {
     "react/static-components": {
       "count": 2
@@ -4380,11 +4345,6 @@
   },
   "web/app/components/workflow/workflow-preview/components/nodes/constants.ts": {
     "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
-  "web/app/components/workflow/workflow-preview/components/zoom-in-out.tsx": {
-    "erasable-syntax-only/enums": {
       "count": 1
     }
   },
