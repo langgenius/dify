@@ -267,7 +267,7 @@ class PluginConfig(BaseSettings):
 
     PLUGIN_MODEL_PROVIDERS_CACHE_TTL: PositiveInt = Field(
         description="TTL in seconds for caching tenant plugin model providers in Redis",
-        default=60 * 5,
+        default=60 * 60 * 24,
     )
 
     PLUGIN_MAX_FILE_SIZE: PositiveInt = Field(
