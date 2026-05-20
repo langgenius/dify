@@ -58,6 +58,7 @@ export default function AccountSetting({
   const workspacePermissionKeys = useAppContextWithSelector(s => s.workspacePermissionKeys)
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const containerRef = useRef<HTMLDivElement>(null)
+  const canViewMembers = hasPermission(workspacePermissionKeys, ['workspace.member.view', 'workspace.member.manage'])
 
   const workplaceGroupItems: GroupItem[] = (() => {
     const items: GroupItem[] = [
@@ -69,7 +70,7 @@ export default function AccountSetting({
       },
     ]
 
-    if (hasPermission(workspacePermissionKeys, 'workspace.member.manage')) {
+    if (canViewMembers) {
       items.push({
         key: ACCOUNT_SETTING_TAB.MEMBERS,
         name: t('settings.members', { ns: 'common' }),
@@ -162,6 +163,8 @@ export default function AccountSetting({
     },
   ]
   const activeItem = [...menuItems[0]!.items, ...menuItems[1]!.items].find(item => item.key === activeMenu)
+  const visibleActiveItem = activeItem ?? menuItems[0]!.items[0] ?? menuItems[1]!.items[0]
+  const visibleActiveMenu = visibleActiveItem?.key ?? ACCOUNT_SETTING_TAB.LANGUAGE
 
   const [searchValue, setSearchValue] = useState<string>('')
 
@@ -200,7 +203,7 @@ export default function AccountSetting({
                           key={item.key}
                           className={cn(
                             'mb-0.5 flex h-9.25 w-full items-center rounded-lg p-1 pl-3 text-left text-sm',
-                            activeMenu === item.key ? 'bg-state-base-active system-sm-semibold text-components-menu-item-text-active' : 'system-sm-medium text-components-menu-item-text',
+                            visibleActiveMenu === item.key ? 'bg-state-base-active system-sm-semibold text-components-menu-item-text-active' : 'system-sm-medium text-components-menu-item-text',
                           )}
                           aria-label={item.name}
                           title={item.name}
@@ -208,7 +211,7 @@ export default function AccountSetting({
                             handleTabChange(item.key)
                           }}
                         >
-                          {activeMenu === item.key ? item.activeIcon : item.icon}
+                          {visibleActiveMenu === item.key ? item.activeIcon : item.icon}
                           {!isMobile && <div className="truncate">{item.name}</div>}
                         </button>
                       ))
@@ -242,12 +245,12 @@ export default function AccountSetting({
           >
             <div className="sticky top-0 z-20 mx-8 mb-4.5 flex items-center bg-components-panel-bg pt-6.75 pb-2">
               <div className="shrink-0 title-2xl-semi-bold text-text-primary">
-                {activeItem?.name}
-                {activeItem?.description && (
-                  <div className="mt-1 system-sm-regular text-text-tertiary">{activeItem?.description}</div>
+                {visibleActiveItem?.name}
+                {visibleActiveItem?.description && (
+                  <div className="mt-1 system-sm-regular text-text-tertiary">{visibleActiveItem?.description}</div>
                 )}
               </div>
-              {activeItem?.key === ACCOUNT_SETTING_TAB.PROVIDER && (
+              {visibleActiveItem?.key === ACCOUNT_SETTING_TAB.PROVIDER && (
                 <div className="flex grow justify-end">
                   <SearchInput
                     className="w-50"
@@ -258,15 +261,15 @@ export default function AccountSetting({
               )}
             </div>
             <div className="px-4 pt-2 sm:px-8">
-              {activeMenu === ACCOUNT_SETTING_TAB.PROVIDER && <ModelProviderPage searchText={searchValue} />}
-              {activeMenu === ACCOUNT_SETTING_TAB.MEMBERS && <MembersPage />}
-              {activeMenu === ACCOUNT_SETTING_TAB.PERMISSIONS && <PermissionsPage containerRef={containerRef} />}
-              {activeMenu === ACCOUNT_SETTING_TAB.ACCESS_RULES && <AccessRulesPage />}
-              {activeMenu === ACCOUNT_SETTING_TAB.BILLING && <BillingPage />}
-              {activeMenu === ACCOUNT_SETTING_TAB.DATA_SOURCE && <DataSourcePage />}
-              {activeMenu === ACCOUNT_SETTING_TAB.API_BASED_EXTENSION && <ApiBasedExtensionPage />}
-              {activeMenu === ACCOUNT_SETTING_TAB.CUSTOM && <CustomPage />}
-              {activeMenu === ACCOUNT_SETTING_TAB.LANGUAGE && <LanguagePage />}
+              {visibleActiveMenu === ACCOUNT_SETTING_TAB.PROVIDER && <ModelProviderPage searchText={searchValue} />}
+              {visibleActiveMenu === ACCOUNT_SETTING_TAB.MEMBERS && <MembersPage />}
+              {visibleActiveMenu === ACCOUNT_SETTING_TAB.PERMISSIONS && <PermissionsPage containerRef={containerRef} />}
+              {visibleActiveMenu === ACCOUNT_SETTING_TAB.ACCESS_RULES && <AccessRulesPage />}
+              {visibleActiveMenu === ACCOUNT_SETTING_TAB.BILLING && <BillingPage />}
+              {visibleActiveMenu === ACCOUNT_SETTING_TAB.DATA_SOURCE && <DataSourcePage />}
+              {visibleActiveMenu === ACCOUNT_SETTING_TAB.API_BASED_EXTENSION && <ApiBasedExtensionPage />}
+              {visibleActiveMenu === ACCOUNT_SETTING_TAB.CUSTOM && <CustomPage />}
+              {visibleActiveMenu === ACCOUNT_SETTING_TAB.LANGUAGE && <LanguagePage />}
             </div>
           </ScrollArea>
         </div>

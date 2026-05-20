@@ -53,7 +53,7 @@ const QuotaPanel: FC<QuotaPanelProps> = ({
     setTrue: showInstallFromMarketplace,
     setFalse: hideInstallFromMarketplace,
   }] = useBoolean(false)
-  const { canInstallPlugin, currentDifyVersion } = useWorkspacePluginInstallPermission()
+  const { canInstallPlugin, canUpdatePlugin, currentDifyVersion } = useWorkspacePluginInstallPermission()
   const selectedPluginIdRef = useRef<string | null>(null)
 
   const handleIconClick = useCallback((key: ModelProviderQuotaGetPaid) => {
@@ -168,6 +168,7 @@ const QuotaPanel: FC<QuotaPanelProps> = ({
       {isShowInstallModal && selectedPlugin && canInstallPlugin && (
         <PluginInstallPermissionProvider
           canInstallPlugin={canInstallPlugin}
+          canUpdatePlugin={canUpdatePlugin}
           currentDifyVersion={currentDifyVersion}
         >
           <InstallFromMarketplace

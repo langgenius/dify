@@ -34,7 +34,7 @@ const ModelListItem = ({ model, provider, isConfigurable, onChange, onModifyLoad
   const modelLoadBalancingEnabled = useProviderContextSelector(state => state.modelLoadBalancingEnabled)
   const { workspacePermissionKeys } = useAppContext()
   const canManageLoadBalancing = hasPermission(workspacePermissionKeys, ['model.manage', 'plugin.manage'])
-  const canToggleModelStatus = hasPermission(workspacePermissionKeys, 'model.manage')
+  const canToggleModelStatus = hasPermission(workspacePermissionKeys, ['model.manage', 'plugin.manage'])
   const queryClient = useQueryClient()
   const updateModelList = useUpdateModelList()
   const modelProviderModelListQueryKey = consoleQuery.modelProviders.models.queryKey({

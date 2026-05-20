@@ -41,6 +41,8 @@ vi.mock('@/context/app-context', () => ({
   useAppContext: () => ({
     isCurrentWorkspaceManager: true,
     isCurrentWorkspaceOwner: false,
+    langGeniusVersionInfo: { current_version: '1.0.0' },
+    workspacePermissionKeys: ['plugin.install', 'plugin.manage', 'plugin.preference.manage'],
   }),
 }))
 

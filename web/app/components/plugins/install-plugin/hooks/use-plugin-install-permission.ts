@@ -5,6 +5,7 @@ import { createStore } from 'zustand/vanilla'
 
 export type PluginInstallPermissionState = {
   canInstallPlugin: boolean
+  canUpdatePlugin: boolean
   currentDifyVersion?: string
 }
 
@@ -18,12 +19,16 @@ export type PluginInstallPermissionStore = StoreApi<PluginInstallPermissionStore
 
 const defaultPluginInstallPermissionState: PluginInstallPermissionState = {
   canInstallPlugin: true,
+  canUpdatePlugin: true,
 }
 
 export const createPluginInstallPermissionStore = (initProps?: Partial<PluginInstallPermissionState>) => {
+  const canInstallPlugin = initProps?.canInstallPlugin ?? defaultPluginInstallPermissionState.canInstallPlugin
+
   return createStore<PluginInstallPermissionStoreState>()(set => ({
     ...defaultPluginInstallPermissionState,
     ...initProps,
+    canUpdatePlugin: initProps?.canUpdatePlugin ?? canInstallPlugin,
     setPluginInstallPermission: state => set(() => state),
   }))
 }
@@ -40,10 +45,12 @@ export const usePluginInstallPermissionStore = <T>(selector: (state: PluginInsta
 
 const usePluginInstallPermission = () => {
   const canInstallPlugin = usePluginInstallPermissionStore(state => state.canInstallPlugin)
+  const canUpdatePlugin = usePluginInstallPermissionStore(state => state.canUpdatePlugin)
   const currentDifyVersion = usePluginInstallPermissionStore(state => state.currentDifyVersion)
 
   return {
     canInstallPlugin,
+    canUpdatePlugin,
     currentDifyVersion,
   }
 }

@@ -36,16 +36,26 @@ const useReferenceSetting = () => {
   })
   const isAdmin = isCurrentWorkspaceManager || isCurrentWorkspaceOwner
 
-  const canInstall = hasPermission(workspacePermissionKeys, ['plugin.install', 'plugin.manage'])
+  const canInstallPluginByPermissionKey = hasPermission(workspacePermissionKeys, 'plugin.install')
+  const canUpdatePlugin = hasPermission(workspacePermissionKeys, ['plugin.install', 'plugin.manage'])
+  const canViewInstalledPlugins = canUpdatePlugin
+  const canManagePlugin = hasPermission(workspacePermissionKeys, 'plugin.manage')
   const canUninstall = hasPermission(workspacePermissionKeys, ['plugin.uninstall', 'plugin.manage'])
-  const canSetPreferences = hasPermission(workspacePermissionKeys, ['plugin.preference.manage'])
+  const canSetPermissions = hasPermission(workspacePermissionKeys, 'plugin.preference.manage')
+  const canSetAutoUpdate = hasPermission(workspacePermissionKeys, ['plugin.install', 'plugin.preference.manage'])
+  const canSetPreferences = canSetPermissions || canSetAutoUpdate
 
   return {
     referenceSetting: data,
     setReferenceSettings: updateReferenceSetting,
-    canInstall: hasPluginPermission(permissions?.install_permission, canInstall),
+    canViewInstalledPlugins,
+    canInstall: canInstallPluginByPermissionKey && hasPluginPermission(permissions?.install_permission, isAdmin),
+    canUpdate: canUpdatePlugin,
+    canManagePlugin,
     canUninstall,
     canDebugger: hasPluginPermission(permissions?.debug_permission, isAdmin),
+    canSetPermissions,
+    canSetAutoUpdate,
     canSetPreferences,
     currentDifyVersion: langGeniusVersionInfo.current_version,
     isUpdatePending,

@@ -1,6 +1,6 @@
 'use client'
 import type { FC } from 'react'
-import type { PluginDetail } from '../types'
+import type { PluginDeclaration, PluginDetail } from '../types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { useSuspenseQuery } from '@tanstack/react-query'
@@ -42,7 +42,7 @@ const PluginItem: FC<Props> = ({
   const { categoriesMap } = useCategories(true)
   const currentPluginID = usePluginPageContext(v => v.currentPluginID)
   const setCurrentPluginID = usePluginPageContext(v => v.setCurrentPluginID)
-  const { canInstall, canUninstall } = useReferenceSetting()
+  const { canUpdate, canUninstall } = useReferenceSetting()
   const { refreshPluginList } = useRefreshPluginList()
 
   const {
@@ -75,7 +75,7 @@ const PluginItem: FC<Props> = ({
   }, [status, deprecated_reason])
 
   const handleDelete = useCallback(() => {
-    refreshPluginList({ category } as any)
+    refreshPluginList({ category } as PluginDeclaration)
   }, [category, refreshPluginList])
 
   const getValueFromI18nObject = useRenderI18nObject()
@@ -147,7 +147,7 @@ const PluginItem: FC<Props> = ({
                   author={author}
                   pluginName={name}
                   usedInApps={5}
-                  isShowFetchNewVersion={source === PluginSource.github && canInstall}
+                  isShowFetchNewVersion={source === PluginSource.github && canUpdate}
                   isShowInfo={source === PluginSource.github}
                   isShowDelete={canUninstall}
                   meta={meta}

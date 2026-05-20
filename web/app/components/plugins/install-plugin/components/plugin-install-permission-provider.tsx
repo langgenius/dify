@@ -10,12 +10,14 @@ import {
 
 type PluginInstallPermissionProviderProps = {
   canInstallPlugin: boolean
+  canUpdatePlugin?: boolean
   currentDifyVersion?: string
   children: ReactNode
 }
 
 export const PluginInstallPermissionProvider = ({
   canInstallPlugin,
+  canUpdatePlugin,
   currentDifyVersion,
   children,
 }: PluginInstallPermissionProviderProps) => {
@@ -24,6 +26,7 @@ export const PluginInstallPermissionProvider = ({
   if (!storeRef.current) {
     storeRef.current = createPluginInstallPermissionStore({
       canInstallPlugin,
+      canUpdatePlugin,
       currentDifyVersion,
     })
   }
@@ -31,9 +34,10 @@ export const PluginInstallPermissionProvider = ({
   useEffect(() => {
     storeRef.current?.getState().setPluginInstallPermission({
       canInstallPlugin,
+      canUpdatePlugin: canUpdatePlugin ?? canInstallPlugin,
       currentDifyVersion,
     })
-  }, [canInstallPlugin, currentDifyVersion])
+  }, [canInstallPlugin, canUpdatePlugin, currentDifyVersion])
 
   return (
     <PluginInstallPermissionContext value={storeRef.current}>
@@ -44,6 +48,7 @@ export const PluginInstallPermissionProvider = ({
 
 export const PluginInstallPermissionProviderGuard = ({
   canInstallPlugin,
+  canUpdatePlugin,
   currentDifyVersion,
   children,
 }: PluginInstallPermissionProviderProps) => {
@@ -55,6 +60,7 @@ export const PluginInstallPermissionProviderGuard = ({
   return (
     <PluginInstallPermissionProvider
       canInstallPlugin={canInstallPlugin}
+      canUpdatePlugin={canUpdatePlugin}
       currentDifyVersion={currentDifyVersion}
     >
       {children}

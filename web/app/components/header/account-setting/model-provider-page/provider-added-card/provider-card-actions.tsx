@@ -25,7 +25,7 @@ const ProviderCardActions: FC<Props> = ({ detail, onUpdate }) => {
   const { t } = useTranslation()
   const { theme } = useTheme()
   const locale = useLocale()
-  const { canInstall } = useReferenceSetting()
+  const { canUpdate } = useReferenceSetting()
 
   const { source, version, latest_version, latest_unique_identifier, meta } = detail
   const author = detail.declaration?.author ?? ''
@@ -79,7 +79,7 @@ const ProviderCardActions: FC<Props> = ({ detail, onUpdate }) => {
     <>
       {!!version && (
         <PluginVersionPicker
-          disabled={!isFromMarketplace || !canInstall}
+          disabled={!isFromMarketplace || !canUpdate}
           isShow={versionPicker.isShow}
           onShowChange={versionPicker.setIsShow}
           pluginID={detail.plugin_id}
@@ -105,7 +105,7 @@ const ProviderCardActions: FC<Props> = ({ detail, onUpdate }) => {
         />
       )}
 
-      {(hasNewVersion || isFromGitHub) && canInstall && (
+      {(hasNewVersion || isFromGitHub) && canUpdate && (
         <Tooltip>
           <TooltipTrigger
             delay={300}

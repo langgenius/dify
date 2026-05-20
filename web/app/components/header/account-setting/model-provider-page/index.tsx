@@ -45,7 +45,7 @@ const ModelProviderPage = ({ searchText }: Props) => {
   const { data: ttsDefaultModel, isLoading: isTTSDefaultModelLoading } = useDefaultModel(ModelTypeEnum.tts)
   const { modelProviders: providers } = useProviderContext()
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
-  const { canInstallPlugin, currentDifyVersion } = useWorkspacePluginInstallPermission()
+  const { canInstallPlugin, canUpdatePlugin, currentDifyVersion } = useWorkspacePluginInstallPermission()
 
   const allPluginIds = useMemo(() => {
     return [...new Set(providers.map(p => providerToPluginId(p.provider)).filter(Boolean))]
@@ -199,6 +199,7 @@ const ModelProviderPage = ({ searchText }: Props) => {
         enableMarketplace && (
           <PluginInstallPermissionProvider
             canInstallPlugin={canInstallPlugin}
+            canUpdatePlugin={canUpdatePlugin}
             currentDifyVersion={currentDifyVersion}
           >
             <InstallFromMarketplace

@@ -104,8 +104,12 @@ const PluginPage = ({
 
   const {
     referenceSetting,
+    canViewInstalledPlugins,
     canInstall,
+    canUpdate,
     canDebugger,
+    canSetPermissions,
+    canSetAutoUpdate,
     canSetPreferences,
     currentDifyVersion,
     setReferenceSettings,
@@ -148,6 +152,7 @@ const PluginPage = ({
   return (
     <PluginInstallPermissionProvider
       canInstallPlugin={canInstall}
+      canUpdatePlugin={canUpdate}
       currentDifyVersion={currentDifyVersion}
     >
       <div
@@ -240,35 +245,39 @@ const PluginPage = ({
             </div>
           </div>
         </div>
-        {isPluginsTab && canInstall && (
+        {isPluginsTab && canViewInstalledPlugins && (
           <>
             {plugins}
-            {dragging && (
-              <div
-                className="absolute inset-0 m-0.5 rounded-2xl border-2 border-dashed border-components-dropzone-border-accent
-                  bg-[rgba(21,90,239,0.14)] p-2"
-              >
-              </div>
+            {canInstall && (
+              <>
+                {dragging && (
+                  <div
+                    className="absolute inset-0 m-0.5 rounded-2xl border-2 border-dashed border-components-dropzone-border-accent
+                      bg-[rgba(21,90,239,0.14)] p-2"
+                  >
+                  </div>
+                )}
+                <div className={`flex items-center justify-center gap-2 py-4 ${dragging ? 'text-text-accent' : 'text-text-quaternary'}`}>
+                  <span className="i-ri-drag-drop-line h-4 w-4" />
+                  <span className="system-xs-regular">{t('installModal.dropPluginToInstall', { ns: 'plugin' })}</span>
+                </div>
+                {currentFile && (
+                  <InstallFromLocalPackage
+                    file={currentFile}
+                    onClose={removeFile ?? noop}
+                    onSuccess={noop}
+                  />
+                )}
+                <input
+                  ref={fileUploader}
+                  className="hidden"
+                  type="file"
+                  id="fileUploader"
+                  accept={SUPPORT_INSTALL_LOCAL_FILE_EXTENSIONS}
+                  onChange={fileChangeHandle ?? noop}
+                />
+              </>
             )}
-            <div className={`flex items-center justify-center gap-2 py-4 ${dragging ? 'text-text-accent' : 'text-text-quaternary'}`}>
-              <span className="i-ri-drag-drop-line h-4 w-4" />
-              <span className="system-xs-regular">{t('installModal.dropPluginToInstall', { ns: 'plugin' })}</span>
-            </div>
-            {currentFile && (
-              <InstallFromLocalPackage
-                file={currentFile}
-                onClose={removeFile ?? noop}
-                onSuccess={noop}
-              />
-            )}
-            <input
-              ref={fileUploader}
-              className="hidden"
-              type="file"
-              id="fileUploader"
-              accept={SUPPORT_INSTALL_LOCAL_FILE_EXTENSIONS}
-              onChange={fileChangeHandle ?? noop}
-            />
           </>
         )}
         {
@@ -278,6 +287,8 @@ const PluginPage = ({
         {showPluginSettingModal && (
           <ReferenceSettingModal
             payload={referenceSetting!}
+            canSetPermissions={canSetPermissions}
+            canSetAutoUpdate={canSetAutoUpdate}
             onHide={setHidePluginSettingModal}
             onSave={setReferenceSettings}
           />

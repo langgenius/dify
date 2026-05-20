@@ -14,10 +14,12 @@ function createWrapper() {
 
 let mockModelLoadBalancingEnabled = false
 let mockPlanType: string = 'pro'
+let mockWorkspacePermissionKeys: string[] = ['model.manage']
 
 vi.mock('@/context/app-context', () => ({
   useAppContext: () => ({
     isCurrentWorkspaceManager: true,
+    workspacePermissionKeys: mockWorkspacePermissionKeys,
   }),
 }))
 
@@ -70,6 +72,7 @@ describe('ModelListItem', () => {
     vi.clearAllMocks()
     mockModelLoadBalancingEnabled = false
     mockPlanType = 'pro'
+    mockWorkspacePermissionKeys = ['model.manage']
   })
 
   it('should render model item with icon and name', () => {
@@ -140,6 +143,24 @@ describe('ModelListItem', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'modify load balancing' }))
     expect(onModifyLoadBalancing).toHaveBeenCalledWith(mockModel)
+  })
+
+  it('should allow model status and load balancing controls with plugin.manage', () => {
+    mockWorkspacePermissionKeys = ['plugin.manage']
+    mockModelLoadBalancingEnabled = true
+
+    render(
+      <ModelListItem
+        model={mockModel}
+        provider={mockProvider}
+        isConfigurable
+        onModifyLoadBalancing={vi.fn()}
+      />,
+      { wrapper: createWrapper() },
+    )
+
+    expect(screen.getByRole('switch')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'modify load balancing' })).toBeInTheDocument()
   })
 
   // Deprecated branches: opacity-60, disabled switch, no ConfigModel

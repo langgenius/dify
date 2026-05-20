@@ -13,7 +13,7 @@ const DataSourcePage = () => {
     select: s => s.enable_marketplace,
   })
   const { data } = useGetDataSourceListAuth()
-  const { canInstallPlugin, currentDifyVersion } = useWorkspacePluginInstallPermission()
+  const { canInstallPlugin, canUpdatePlugin, currentDifyVersion } = useWorkspacePluginInstallPermission()
 
   return (
     <div>
@@ -31,6 +31,7 @@ const DataSourcePage = () => {
         enable_marketplace && (
           <PluginInstallPermissionProvider
             canInstallPlugin={canInstallPlugin}
+            canUpdatePlugin={canUpdatePlugin}
             currentDifyVersion={currentDifyVersion}
           >
             <InstallFromMarketplace

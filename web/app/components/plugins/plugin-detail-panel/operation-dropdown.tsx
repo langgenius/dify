@@ -45,7 +45,7 @@ const OperationDropdown: FC<Props> = ({
     ...systemFeaturesQueryOptions(),
     select: s => s.enable_marketplace,
   })
-  const { canInstall, canUninstall } = useReferenceSetting()
+  const { canUpdate, canUninstall } = useReferenceSetting()
 
   return (
     <DropdownMenu open={open} onOpenChange={setOpen}>
@@ -65,7 +65,7 @@ const OperationDropdown: FC<Props> = ({
             {t('detailPanel.operation.info', { ns: 'plugin' })}
           </DropdownMenuItem>
         )}
-        {source === PluginSource.github && canInstall && (
+        {source === PluginSource.github && canUpdate && (
           <DropdownMenuItem onClick={onCheckVersion}>
             {t('detailPanel.operation.checkUpdate', { ns: 'plugin' })}
           </DropdownMenuItem>

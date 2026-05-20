@@ -21,6 +21,7 @@ import Link from '@/next/link'
 import { useRouter } from '@/next/navigation'
 import { systemFeaturesQueryOptions } from '@/service/system-features'
 import { useLogout } from '@/service/use-common'
+import { hasPermission } from '@/utils/permission'
 import AccountAbout from '../account-about'
 import GithubStar from '../github-star'
 import Indicator from '../indicator'
@@ -115,9 +116,10 @@ export default function AppSelector() {
 
   const { t } = useTranslation()
   const docLink = useDocLink()
-  const { userProfile, langGeniusVersionInfo, isCurrentWorkspaceOwner } = useAppContext()
+  const { userProfile, langGeniusVersionInfo, isCurrentWorkspaceOwner, workspacePermissionKeys } = useAppContext()
   const { isEducationAccount } = useProviderContext()
   const { setShowAccountSettingModal } = useModalContext()
+  const canViewMembers = hasPermission(workspacePermissionKeys, ['workspace.member.view', 'workspace.member.manage'])
 
   const { mutateAsync: logout } = useLogout()
   const handleLogout = async () => {
@@ -172,7 +174,7 @@ export default function AppSelector() {
             <AccountMenuActionItem
               iconClassName="i-ri-settings-3-line"
               label={t('userProfile.settings', { ns: 'common' })}
-              onClick={() => setShowAccountSettingModal({ payload: ACCOUNT_SETTING_TAB.MEMBERS })}
+              onClick={() => setShowAccountSettingModal({ payload: canViewMembers ? ACCOUNT_SETTING_TAB.MEMBERS : ACCOUNT_SETTING_TAB.PROVIDER })}
             />
           </DropdownMenuGroup>
           <DropdownMenuSeparator className="my-0! bg-divider-subtle" />

@@ -238,6 +238,19 @@ describe('reference-setting-modal', () => {
         expect(screen.queryByTestId('auto-update-setting')).not.toBeInTheDocument()
       })
 
+      it('should hide permission controls when permission editing is disabled', () => {
+        render(<ReferenceSettingModal {...defaultProps} canSetPermissions={false} />)
+
+        expect(screen.queryByText('plugin.privilege.whoCanInstall')).not.toBeInTheDocument()
+        expect(screen.queryByText('plugin.privilege.whoCanDebug')).not.toBeInTheDocument()
+      })
+
+      it('should hide AutoUpdateSetting when auto update editing is disabled', () => {
+        render(<ReferenceSettingModal {...defaultProps} canSetAutoUpdate={false} />)
+
+        expect(screen.queryByTestId('auto-update-setting')).not.toBeInTheDocument()
+      })
+
       it('should render modal with closable attribute', () => {
         // Arrange & Act
         render(<ReferenceSettingModal {...defaultProps} />)
@@ -434,6 +447,66 @@ describe('reference-setting-modal', () => {
             auto_upgrade: expect.objectContaining({
               strategy_setting: AUTO_UPDATE_STRATEGY.latest,
             }),
+          }))
+        })
+      })
+
+      it('should preserve permission values when permission editing is disabled', async () => {
+        const onSave = vi.fn().mockResolvedValue(undefined)
+        const payload = createMockReferenceSetting({
+          permission: {
+            install_permission: PermissionType.admin,
+            debug_permission: PermissionType.noOne,
+          },
+        })
+
+        render(
+          <ReferenceSettingModal
+            {...defaultProps}
+            payload={payload}
+            canSetPermissions={false}
+            onSave={onSave}
+          />,
+        )
+        fireEvent.click(screen.getByTestId('auto-update-change'))
+        fireEvent.click(screen.getByText('common.operation.save'))
+
+        await waitFor(() => {
+          expect(onSave).toHaveBeenCalledWith(expect.objectContaining({
+            permission: payload.permission,
+            auto_upgrade: expect.objectContaining({
+              strategy_setting: AUTO_UPDATE_STRATEGY.latest,
+            }),
+          }))
+        })
+      })
+
+      it('should preserve auto update values when auto update editing is disabled', async () => {
+        const onSave = vi.fn().mockResolvedValue(undefined)
+        const payload = createMockReferenceSetting({
+          auto_upgrade: createMockAutoUpdateConfig({
+            strategy_setting: AUTO_UPDATE_STRATEGY.fixOnly,
+          }),
+        })
+
+        render(
+          <ReferenceSettingModal
+            {...defaultProps}
+            payload={payload}
+            canSetAutoUpdate={false}
+            onSave={onSave}
+          />,
+        )
+        const noOneOptions = screen.getAllByTestId('option-card-plugin.privilege.noone')
+        fireEvent.click(noOneOptions[0]!)
+        fireEvent.click(screen.getByText('common.operation.save'))
+
+        await waitFor(() => {
+          expect(onSave).toHaveBeenCalledWith(expect.objectContaining({
+            permission: expect.objectContaining({
+              install_permission: PermissionType.noOne,
+            }),
+            auto_upgrade: payload.auto_upgrade,
           }))
         })
       })
@@ -762,7 +835,7 @@ describe('reference-setting-modal', () => {
 
         // Assert
         const modal = screen.getByTestId('modal')
-        expect(modal)!.toHaveClass('w-[620px]', 'max-w-[620px]', 'p-0!')
+        expect(modal)!.toHaveClass('w-155', 'max-w-155', 'p-0!')
       })
 
       it('should pass isShow=true to Modal', () => {
