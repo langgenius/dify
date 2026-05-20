@@ -8,7 +8,7 @@ import {
   FieldRoot,
 } from '../field'
 import { FieldsetLegend, FieldsetRoot } from '../fieldset'
-import { Radio } from '../radio'
+import { Radio, RadioControl, RadioRoot } from '../radio'
 
 const meta = {
   title: 'Base/Form/RadioGroup',
@@ -17,7 +17,7 @@ const meta = {
     layout: 'centered',
     docs: {
       description: {
-        component: 'RadioGroup primitive built on Base UI. It owns mutually exclusive radio state and form integration. Compose with `Radio` from `@langgenius/dify-ui/radio`; use Field and Fieldset when a group label, description, or error belongs to the selection.',
+        component: 'RadioGroup primitive built on Base UI. For normal form rows, compose FieldRoot, FieldsetRoot, FieldLabel, RadioGroup, and Radio. For option cards, make the card itself a RadioRoot with variant="unstyled" and render RadioControl inside it.',
       },
     },
   },
@@ -27,17 +27,17 @@ const meta = {
 export default meta
 type Story = StoryObj<typeof meta>
 
-function StorageSelectionDemo() {
+function StandardFormRowsDemo() {
   const [value, setValue] = useState('vector')
 
   return (
-    <FieldRoot name="storageType">
+    <FieldRoot name="retrievalIndex" className="w-80">
       <FieldsetRoot
         render={(
           <RadioGroup value={value} onValueChange={setValue} className="flex-col items-start gap-3" />
         )}
       >
-        <FieldsetLegend>Storage type</FieldsetLegend>
+        <FieldsetLegend>Retrieval index</FieldsetLegend>
         {[
           { value: 'vector', label: 'Vector storage' },
           { value: 'keyword', label: 'Keyword index' },
@@ -55,12 +55,113 @@ function StorageSelectionDemo() {
   )
 }
 
-export const StorageSelection: Story = {
-  render: () => <StorageSelectionDemo />,
+export const StandardFormRows: Story = {
+  render: () => <StandardFormRowsDemo />,
   parameters: {
     docs: {
       description: {
-        story: 'A standalone radio group with implicit labels. Use this when the surrounding UI already provides the group name.',
+        story: 'Default form composition. Most product code should use this shape: RadioGroup owns value, FieldsetLegend names the group, and FieldLabel makes each row clickable.',
+      },
+    },
+  },
+}
+
+function BooleanInlineDemo() {
+  const [value, setValue] = useState(true)
+
+  return (
+    <FieldRoot name="streaming" className="w-80">
+      <FieldsetRoot
+        render={(
+          <RadioGroup<boolean> value={value} onValueChange={setValue} className="gap-3" />
+        )}
+      >
+        <FieldsetLegend>Streaming output</FieldsetLegend>
+        <div className="flex items-center gap-3">
+          <FieldItem>
+            <FieldLabel className="flex items-center gap-1.5 system-sm-regular text-text-secondary">
+              <Radio value={true} />
+              True
+            </FieldLabel>
+          </FieldItem>
+          <FieldItem>
+            <FieldLabel className="flex items-center gap-1.5 system-sm-regular text-text-secondary">
+              <Radio value={false} />
+              False
+            </FieldLabel>
+          </FieldItem>
+        </div>
+      </FieldsetRoot>
+    </FieldRoot>
+  )
+}
+
+export const BooleanInline: Story = {
+  render: () => <BooleanInlineDemo />,
+  parameters: {
+    docs: {
+      description: {
+        story: 'Compact boolean radio fields. This is the pattern used by model parameters and dynamic boolean schema fields.',
+      },
+    },
+  },
+}
+
+function OptionCardsDemo() {
+  const [value, setValue] = useState('default')
+
+  return (
+    <FieldRoot name="promptMode" className="w-100">
+      <FieldsetRoot
+        render={(
+          <RadioGroup value={value} onValueChange={setValue} className="flex-col items-stretch gap-3" />
+        )}
+      >
+        <FieldsetLegend>Prompt mode</FieldsetLegend>
+        {[
+          {
+            value: 'default',
+            title: 'Default prompt',
+            description: 'Use the built-in prompt for consistent output.',
+          },
+          {
+            value: 'custom',
+            title: 'Custom prompt',
+            description: 'Write a prompt for this app and keep full control.',
+          },
+        ].map(option => (
+          <RadioRoot
+            key={option.value}
+            value={option.value}
+            variant="unstyled"
+            nativeButton
+            render={<button type="button" />}
+            className="w-full rounded-xl border border-components-option-card-option-border bg-components-option-card-option-bg p-4 text-left transition-colors hover:bg-state-base-hover data-checked:border-components-option-card-option-selected-border data-checked:bg-components-option-card-option-selected-bg"
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <div className="system-sm-semibold text-text-primary">
+                  {option.title}
+                </div>
+                <div className="mt-1 system-xs-regular text-text-tertiary">
+                  {option.description}
+                </div>
+              </div>
+              <RadioControl aria-hidden="true" />
+            </div>
+          </RadioRoot>
+        ))}
+      </FieldsetRoot>
+    </FieldRoot>
+  )
+}
+
+export const OptionCards: Story = {
+  render: () => <OptionCardsDemo />,
+  parameters: {
+    docs: {
+      description: {
+        story: 'Use RadioRoot with variant="unstyled" when the entire option card is the radio. RadioControl renders the visual dot inside the card.',
       },
     },
   },
