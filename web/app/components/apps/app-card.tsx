@@ -72,11 +72,56 @@ const AccessControl = dynamic(() => import('@/app/components/app/app-access-cont
   ssr: false,
 })
 
+const ACCESS_MODE_ICON_CLASS_NAMES: Record<AccessMode, string> = {
+  [AccessMode.PUBLIC]: 'i-ri-global-line',
+  [AccessMode.SPECIFIC_GROUPS_MEMBERS]: 'i-ri-lock-line',
+  [AccessMode.ORGANIZATION]: 'i-ri-building-line',
+  [AccessMode.EXTERNAL_MEMBERS]: 'i-ri-verified-badge-line',
+}
+
+const ACCESS_MODE_LABEL_KEYS: Record<AccessMode, string> = {
+  [AccessMode.PUBLIC]: 'accessItemsDescription.anyone',
+  [AccessMode.SPECIFIC_GROUPS_MEMBERS]: 'accessItemsDescription.specific',
+  [AccessMode.ORGANIZATION]: 'accessItemsDescription.organization',
+  [AccessMode.EXTERNAL_MEMBERS]: 'accessItemsDescription.external',
+}
+
 type AppCardProps = {
   app: App
   onlineUsers?: WorkflowOnlineUser[]
   onRefresh?: () => void
   onOpenTagManagement?: () => void
+}
+
+type AppAccessModeIconProps = {
+  accessMode?: AccessMode | null
+}
+
+function AppAccessModeIcon({ accessMode }: AppAccessModeIconProps) {
+  const { t } = useTranslation()
+
+  if (!accessMode)
+    return null
+
+  const iconClassName = ACCESS_MODE_ICON_CLASS_NAMES[accessMode]
+  const labelKey = ACCESS_MODE_LABEL_KEYS[accessMode]
+
+  if (!iconClassName || !labelKey)
+    return null
+
+  const label = t(labelKey, { ns: 'app' })
+
+  return (
+    <div className="absolute right-3 bottom-3 flex size-4 items-center justify-center">
+      <Tooltip>
+        <TooltipTrigger
+          aria-label={label}
+          render={<span title={label} className={cn(iconClassName, 'size-4 text-text-quaternary')} />}
+        />
+        <TooltipContent>{label}</TooltipContent>
+      </Tooltip>
+    </div>
+  )
 }
 
 type AppCardOperationsMenuProps = {
@@ -461,49 +506,11 @@ const AppCard = ({ app, onlineUsers = [], onRefresh, onOpenTagManagement = () =>
             </div>
             <div className="truncate system-2xs-medium-uppercase text-text-tertiary" title={appModeLabel}>{appModeLabel}</div>
           </div>
-          <div className="ml-3 flex h-10 shrink-0 flex-col items-end justify-between py-px">
-            {onlinePresenceUsers.length > 0 && (
+          {onlinePresenceUsers.length > 0 && (
+            <div className="ml-3 flex shrink-0 items-start">
               <UserAvatarList users={onlinePresenceUsers} size="xxs" maxVisible={3} className="justify-end" />
-            )}
-            <div className="flex size-5 items-center justify-center">
-              {app.access_mode === AccessMode.PUBLIC && (
-                <Tooltip>
-                  <TooltipTrigger
-                    aria-label={t('accessItemsDescription.anyone', { ns: 'app' })}
-                    render={<span title={t('accessItemsDescription.anyone', { ns: 'app' })} className="i-ri-global-line size-4 text-text-quaternary" />}
-                  />
-                  <TooltipContent>{t('accessItemsDescription.anyone', { ns: 'app' })}</TooltipContent>
-                </Tooltip>
-              )}
-              {app.access_mode === AccessMode.SPECIFIC_GROUPS_MEMBERS && (
-                <Tooltip>
-                  <TooltipTrigger
-                    aria-label={t('accessItemsDescription.specific', { ns: 'app' })}
-                    render={<span title={t('accessItemsDescription.specific', { ns: 'app' })} className="i-ri-lock-line size-4 text-text-quaternary" />}
-                  />
-                  <TooltipContent>{t('accessItemsDescription.specific', { ns: 'app' })}</TooltipContent>
-                </Tooltip>
-              )}
-              {app.access_mode === AccessMode.ORGANIZATION && (
-                <Tooltip>
-                  <TooltipTrigger
-                    aria-label={t('accessItemsDescription.organization', { ns: 'app' })}
-                    render={<span title={t('accessItemsDescription.organization', { ns: 'app' })} className="i-ri-building-line size-4 text-text-quaternary" />}
-                  />
-                  <TooltipContent>{t('accessItemsDescription.organization', { ns: 'app' })}</TooltipContent>
-                </Tooltip>
-              )}
-              {app.access_mode === AccessMode.EXTERNAL_MEMBERS && (
-                <Tooltip>
-                  <TooltipTrigger
-                    aria-label={t('accessItemsDescription.external', { ns: 'app' })}
-                    render={<span title={t('accessItemsDescription.external', { ns: 'app' })} className="i-ri-verified-badge-line size-4 text-text-quaternary" />}
-                  />
-                  <TooltipContent>{t('accessItemsDescription.external', { ns: 'app' })}</TooltipContent>
-                </Tooltip>
-              )}
             </div>
-          </div>
+          )}
         </div>
         <div className="shrink-0 px-4 py-1 system-xs-regular text-text-tertiary">
           <div
@@ -531,13 +538,14 @@ const AppCard = ({ app, onlineUsers = [], onRefresh, onOpenTagManagement = () =>
             </div>
           )}
         </div>
-        <div className="flex min-w-0 shrink-0 items-center pt-2 pr-3 pb-3 pl-4 system-xs-regular text-text-tertiary">
+        <div className="flex min-w-0 shrink-0 items-center pt-2 pr-12 pb-3 pl-4 system-xs-regular text-text-tertiary">
           <div className="flex min-w-0 flex-1 items-center gap-1 whitespace-nowrap">
             <div className="truncate" title={app.author_name}>{app.author_name}</div>
             <div className="shrink-0">·</div>
             <div className="truncate" title={editTimeText}>{editTimeText}</div>
           </div>
         </div>
+        <AppAccessModeIcon accessMode={app.access_mode} />
         {isCurrentWorkspaceEditor && (
           <div
             className={cn(

@@ -426,32 +426,36 @@ describe('AppCard', () => {
   })
 
   describe('Access Mode Icons', () => {
-    it('should not show public icon on the card', () => {
+    it('should show public icon on the bottom right of the card', () => {
       const publicApp = { ...mockApp, access_mode: AccessMode.PUBLIC }
       const { container } = render(<AppCard app={publicApp} />)
       const tooltip = container.querySelector('[title="app.accessItemsDescription.anyone"]')
-      expect(tooltip).not.toBeInTheDocument()
+      expect(tooltip).toBeInTheDocument()
+      expect(tooltip?.closest('.right-3.bottom-3')).toBeInTheDocument()
     })
 
-    it('should not show lock icon on the card', () => {
+    it('should show lock icon on the bottom right of the card', () => {
       const specificApp = { ...mockApp, access_mode: AccessMode.SPECIFIC_GROUPS_MEMBERS }
       const { container } = render(<AppCard app={specificApp} />)
       const tooltip = container.querySelector('[title="app.accessItemsDescription.specific"]')
-      expect(tooltip).not.toBeInTheDocument()
+      expect(tooltip).toBeInTheDocument()
+      expect(tooltip?.closest('.right-3.bottom-3')).toBeInTheDocument()
     })
 
-    it('should not show organization icon on the card', () => {
+    it('should show organization icon on the bottom right of the card', () => {
       const orgApp = { ...mockApp, access_mode: AccessMode.ORGANIZATION }
       const { container } = render(<AppCard app={orgApp} />)
       const tooltip = container.querySelector('[title="app.accessItemsDescription.organization"]')
-      expect(tooltip).not.toBeInTheDocument()
+      expect(tooltip).toBeInTheDocument()
+      expect(tooltip?.closest('.right-3.bottom-3')).toBeInTheDocument()
     })
 
-    it('should not show external icon on the card', () => {
+    it('should show external icon on the bottom right of the card', () => {
       const externalApp = { ...mockApp, access_mode: AccessMode.EXTERNAL_MEMBERS }
       const { container } = render(<AppCard app={externalApp} />)
       const tooltip = container.querySelector('[title="app.accessItemsDescription.external"]')
-      expect(tooltip).not.toBeInTheDocument()
+      expect(tooltip).toBeInTheDocument()
+      expect(tooltip?.closest('.right-3.bottom-3')).toBeInTheDocument()
     })
   })
 
@@ -696,7 +700,7 @@ describe('AppCard', () => {
   describe('Styling', () => {
     it('should have correct card container styling', () => {
       const { container } = render(<AppCard app={mockApp} />)
-      const card = container.querySelector('[class*="h-[160px]"]')
+      const card = container.querySelector('[class*="h-41.5"]')
       expect(card).toBeInTheDocument()
     })
 
