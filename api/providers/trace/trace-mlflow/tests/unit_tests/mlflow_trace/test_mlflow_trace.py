@@ -284,42 +284,42 @@ class TestInit:
 
 
 class TestTraceDispatcher:
-    def test_dispatches_workflow(self, trace_instance: MLflowDataTrace, mock_tracing, mock_db):
+    def test_dispatches_workflow(self, trace_instance, mock_tracing, mock_db):
         with patch.object(trace_instance, "workflow_trace") as mock_wt:
             trace_instance.trace(_make_workflow_trace_info())
             mock_wt.assert_called_once()
 
-    def test_dispatches_message(self, trace_instance: MLflowDataTrace, mock_tracing, mock_db):
+    def test_dispatches_message(self, trace_instance, mock_tracing, mock_db):
         with patch.object(trace_instance, "message_trace") as mock_mt:
             trace_instance.trace(_make_message_trace_info())
             mock_mt.assert_called_once()
 
-    def test_dispatches_tool(self, trace_instance: MLflowDataTrace, mock_tracing, mock_db):
+    def test_dispatches_tool(self, trace_instance, mock_tracing, mock_db):
         with patch.object(trace_instance, "tool_trace") as mock_tt:
             trace_instance.trace(_make_tool_trace_info())
             mock_tt.assert_called_once()
 
-    def test_dispatches_moderation(self, trace_instance: MLflowDataTrace, mock_tracing, mock_db):
+    def test_dispatches_moderation(self, trace_instance, mock_tracing, mock_db):
         with patch.object(trace_instance, "moderation_trace") as mock_mod:
             trace_instance.trace(_make_moderation_trace_info(message_data=SimpleNamespace(created_at=_dt())))
             mock_mod.assert_called_once()
 
-    def test_dispatches_dataset_retrieval(self, trace_instance: MLflowDataTrace, mock_tracing, mock_db):
+    def test_dispatches_dataset_retrieval(self, trace_instance, mock_tracing, mock_db):
         with patch.object(trace_instance, "dataset_retrieval_trace") as mock_dr:
             trace_instance.trace(_make_dataset_retrieval_trace_info())
             mock_dr.assert_called_once()
 
-    def test_dispatches_suggested_question(self, trace_instance: MLflowDataTrace, mock_tracing, mock_db):
+    def test_dispatches_suggested_question(self, trace_instance, mock_tracing, mock_db):
         with patch.object(trace_instance, "suggested_question_trace") as mock_sq:
             trace_instance.trace(_make_suggested_question_trace_info())
             mock_sq.assert_called_once()
 
-    def test_dispatches_generate_name(self, trace_instance: MLflowDataTrace, mock_tracing, mock_db):
+    def test_dispatches_generate_name(self, trace_instance, mock_tracing, mock_db):
         with patch.object(trace_instance, "generate_name_trace") as mock_gn:
             trace_instance.trace(_make_generate_name_trace_info())
             mock_gn.assert_called_once()
 
-    def test_reraises_exception(self, trace_instance: MLflowDataTrace, mock_tracing, mock_db):
+    def test_reraises_exception(self, trace_instance, mock_tracing, mock_db):
         with patch.object(trace_instance, "workflow_trace", side_effect=RuntimeError("boom")):
             with pytest.raises(RuntimeError, match="boom"):
                 trace_instance.trace(_make_workflow_trace_info())
@@ -329,7 +329,7 @@ class TestTraceDispatcher:
 
 
 class TestWorkflowTrace:
-    def test_basic_workflow_no_nodes(self, trace_instance: MLflowDataTrace, mock_tracing, mock_db):
+    def test_basic_workflow_no_nodes(self, trace_instance, mock_tracing, mock_db):
         mock_db.session.scalars.return_value.all.return_value = []
         span = MagicMock()
         mock_tracing["start"].return_value = span
@@ -342,7 +342,7 @@ class TestWorkflowTrace:
         mock_tracing["start"].assert_called_once()
         span.end.assert_called_once()
 
-    def test_workflow_filters_sys_inputs_and_adds_query(self, trace_instance: MLflowDataTrace, mock_tracing, mock_db):
+    def test_workflow_filters_sys_inputs_and_adds_query(self, trace_instance, mock_tracing, mock_db):
         mock_db.session.scalars.return_value.all.return_value = []
         span = MagicMock()
         mock_tracing["start"].return_value = span
@@ -360,7 +360,7 @@ class TestWorkflowTrace:
         assert inputs["user_input"] == "hi"
         assert inputs["query"] == "hello"
 
-    def test_workflow_with_llm_node(self, trace_instance: MLflowDataTrace, mock_tracing, mock_db):
+    def test_workflow_with_llm_node(self, trace_instance, mock_tracing, mock_db):
         llm_node = _make_node(
             node_type=BuiltinNodeTypes.LLM,
             process_data=json.dumps(
@@ -386,7 +386,7 @@ class TestWorkflowTrace:
         node_span.end.assert_called_once()
         workflow_span.end.assert_called_once()
 
-    def test_workflow_with_question_classifier_node(self, trace_instance: MLflowDataTrace, mock_tracing, mock_db):
+    def test_workflow_with_question_classifier_node(self, trace_instance, mock_tracing, mock_db):
         qc_node = _make_node(
             node_type=BuiltinNodeTypes.QUESTION_CLASSIFIER,
             process_data=json.dumps(
@@ -406,7 +406,7 @@ class TestWorkflowTrace:
         trace_instance.workflow_trace(_make_workflow_trace_info())
         assert mock_tracing["start"].call_count == 2
 
-    def test_workflow_with_http_request_node(self, trace_instance: MLflowDataTrace, mock_tracing, mock_db):
+    def test_workflow_with_http_request_node(self, trace_instance, mock_tracing, mock_db):
         http_node = _make_node(
             node_type=BuiltinNodeTypes.HTTP_REQUEST,
             process_data='{"url": "https://api.com"}',
@@ -422,7 +422,7 @@ class TestWorkflowTrace:
         node_start_call = mock_tracing["start"].call_args_list[1]
         assert node_start_call.kwargs["inputs"] == '{"url": "https://api.com"}'
 
-    def test_workflow_with_knowledge_retrieval_node(self, trace_instance: MLflowDataTrace, mock_tracing, mock_db):
+    def test_workflow_with_knowledge_retrieval_node(self, trace_instance, mock_tracing, mock_db):
         kr_node = _make_node(
             node_type=BuiltinNodeTypes.KNOWLEDGE_RETRIEVAL,
             outputs=json.dumps(
@@ -446,7 +446,7 @@ class TestWorkflowTrace:
         outputs = end_call.kwargs["outputs"]
         assert len(outputs) == 2
 
-    def test_workflow_with_failed_node(self, trace_instance: MLflowDataTrace, mock_tracing, mock_db):
+    def test_workflow_with_failed_node(self, trace_instance, mock_tracing, mock_db):
         failed_node = _make_node(status="failed")
         mock_db.session.scalars.return_value.all.return_value = [failed_node]
         workflow_span = MagicMock()
@@ -458,7 +458,7 @@ class TestWorkflowTrace:
         node_span.set_status.assert_called_once()
         node_span.add_event.assert_called_once()
 
-    def test_workflow_with_workflow_error(self, trace_instance: MLflowDataTrace, mock_tracing, mock_db):
+    def test_workflow_with_workflow_error(self, trace_instance, mock_tracing, mock_db):
         mock_db.session.scalars.return_value.all.return_value = []
         workflow_span = MagicMock()
         mock_tracing["start"].return_value = workflow_span
@@ -471,7 +471,7 @@ class TestWorkflowTrace:
         # Still ends the span via finally
         workflow_span.end.assert_called_once()
 
-    def test_workflow_node_no_inputs_no_outputs(self, trace_instance: MLflowDataTrace, mock_tracing, mock_db):
+    def test_workflow_node_no_inputs_no_outputs(self, trace_instance, mock_tracing, mock_db):
         node = _make_node(inputs=None, outputs=None)
         mock_db.session.scalars.return_value.all.return_value = [node]
         workflow_span = MagicMock()
@@ -485,7 +485,7 @@ class TestWorkflowTrace:
         end_call = node_span.end.call_args
         assert end_call.kwargs["outputs"] == {}
 
-    def test_workflow_no_user_id_no_conversation_id(self, trace_instance: MLflowDataTrace, mock_tracing, mock_db):
+    def test_workflow_no_user_id_no_conversation_id(self, trace_instance, mock_tracing, mock_db):
         mock_db.session.scalars.return_value.all.return_value = []
         span = MagicMock()
         mock_tracing["start"].return_value = span
@@ -499,7 +499,7 @@ class TestWorkflowTrace:
         # _set_trace_metadata still called with empty metadata
         mock_tracing["update"].assert_called_once()
 
-    def test_workflow_empty_query(self, trace_instance: MLflowDataTrace, mock_tracing, mock_db):
+    def test_workflow_empty_query(self, trace_instance, mock_tracing, mock_db):
         """When query is empty string, it's falsy so no query key added."""
         mock_db.session.scalars.return_value.all.return_value = []
         span = MagicMock()
@@ -517,19 +517,19 @@ class TestWorkflowTrace:
 
 
 class TestParseLlmInputsAndAttributes:
-    def test_none_process_data(self, trace_instance: MLflowDataTrace):
+    def test_none_process_data(self, trace_instance):
         node = _make_node(process_data=None)
         inputs, attrs = trace_instance._parse_llm_inputs_and_attributes(node)
         assert inputs == {}
         assert attrs == {}
 
-    def test_invalid_json(self, trace_instance: MLflowDataTrace):
+    def test_invalid_json(self, trace_instance):
         node = _make_node(process_data="not json")
         inputs, attrs = trace_instance._parse_llm_inputs_and_attributes(node)
         assert inputs == {}
         assert attrs == {}
 
-    def test_valid_process_data_with_usage(self, trace_instance: MLflowDataTrace):
+    def test_valid_process_data_with_usage(self, trace_instance):
         node = _make_node(
             process_data=json.dumps(
                 {
@@ -546,7 +546,7 @@ class TestParseLlmInputsAndAttributes:
         assert attrs["model_name"] == "gpt-4"
         assert "usage" in attrs
 
-    def test_valid_process_data_without_usage(self, trace_instance: MLflowDataTrace):
+    def test_valid_process_data_without_usage(self, trace_instance):
         node = _make_node(
             process_data=json.dumps(
                 {
@@ -564,23 +564,23 @@ class TestParseLlmInputsAndAttributes:
 
 
 class TestParseKnowledgeRetrievalOutputs:
-    def test_with_results(self, trace_instance: MLflowDataTrace):
+    def test_with_results(self, trace_instance):
         outputs = {"result": [{"content": "c1", "metadata": {"s": "1"}}]}
         docs = trace_instance._parse_knowledge_retrieval_outputs(outputs)
         assert len(docs) == 1
         assert docs[0].page_content == "c1"
 
-    def test_empty_result(self, trace_instance: MLflowDataTrace):
+    def test_empty_result(self, trace_instance):
         outputs = {"result": []}
         result = trace_instance._parse_knowledge_retrieval_outputs(outputs)
         assert result == outputs
 
-    def test_no_result_key(self, trace_instance: MLflowDataTrace):
+    def test_no_result_key(self, trace_instance):
         outputs = {"other": "data"}
         result = trace_instance._parse_knowledge_retrieval_outputs(outputs)
         assert result == outputs
 
-    def test_result_not_list(self, trace_instance: MLflowDataTrace):
+    def test_result_not_list(self, trace_instance):
         outputs = {"result": "not a list"}
         result = trace_instance._parse_knowledge_retrieval_outputs(outputs)
         assert result == outputs
@@ -590,12 +590,12 @@ class TestParseKnowledgeRetrievalOutputs:
 
 
 class TestMessageTrace:
-    def test_returns_early_if_no_message_data(self, trace_instance: MLflowDataTrace, mock_tracing, mock_db):
+    def test_returns_early_if_no_message_data(self, trace_instance, mock_tracing, mock_db):
         trace_info = _make_message_trace_info(message_data=None)
         trace_instance.message_trace(trace_info)
         mock_tracing["start"].assert_not_called()
 
-    def test_basic_message_trace(self, trace_instance: MLflowDataTrace, mock_tracing, mock_db):
+    def test_basic_message_trace(self, trace_instance, mock_tracing, mock_db):
         span = MagicMock()
         mock_tracing["start"].return_value = span
         mock_tracing["set"].return_value = "token"
@@ -604,7 +604,7 @@ class TestMessageTrace:
         mock_tracing["start"].assert_called_once()
         span.end.assert_called_once()
 
-    def test_message_trace_with_error(self, trace_instance: MLflowDataTrace, mock_tracing, mock_db):
+    def test_message_trace_with_error(self, trace_instance, mock_tracing, mock_db):
         span = MagicMock()
         mock_tracing["start"].return_value = span
         mock_tracing["set"].return_value = "token"
@@ -614,9 +614,7 @@ class TestMessageTrace:
         span.set_status.assert_called_once()
         span.add_event.assert_called_once()
 
-    def test_message_trace_with_file_data(
-        self, trace_instance: MLflowDataTrace, mock_tracing, mock_db, monkeypatch: pytest.MonkeyPatch
-    ):
+    def test_message_trace_with_file_data(self, trace_instance, mock_tracing, mock_db, monkeypatch: pytest.MonkeyPatch):
         span = MagicMock()
         mock_tracing["start"].return_value = span
         mock_tracing["set"].return_value = "token"
@@ -633,7 +631,7 @@ class TestMessageTrace:
         assert "http://files.test/path/to/file.png" in attrs["file_list"]
         assert "existing_file.txt" in attrs["file_list"]
 
-    def test_message_trace_file_list_none(self, trace_instance: MLflowDataTrace, mock_tracing, mock_db):
+    def test_message_trace_file_list_none(self, trace_instance, mock_tracing, mock_db):
         span = MagicMock()
         mock_tracing["start"].return_value = span
         mock_tracing["set"].return_value = "token"
@@ -642,7 +640,7 @@ class TestMessageTrace:
         trace_instance.message_trace(trace_info)
         mock_tracing["start"].assert_called_once()
 
-    def test_message_trace_with_end_user(self, trace_instance: MLflowDataTrace, mock_tracing, mock_db):
+    def test_message_trace_with_end_user(self, trace_instance, mock_tracing, mock_db):
         span = MagicMock()
         mock_tracing["start"].return_value = span
         mock_tracing["set"].return_value = "token"
@@ -657,7 +655,7 @@ class TestMessageTrace:
         # update_current_trace called with user id from EndUser
         mock_tracing["update"].assert_called_once()
 
-    def test_message_trace_with_no_conversation_id(self, trace_instance: MLflowDataTrace, mock_tracing, mock_db):
+    def test_message_trace_with_no_conversation_id(self, trace_instance, mock_tracing, mock_db):
         span = MagicMock()
         mock_tracing["start"].return_value = span
         mock_tracing["set"].return_value = "token"
@@ -673,23 +671,23 @@ class TestMessageTrace:
 
 
 class TestGetMessageUserId:
-    def test_returns_end_user_session_id(self, trace_instance: MLflowDataTrace, mock_db):
+    def test_returns_end_user_session_id(self, trace_instance, mock_db):
         end_user = MagicMock()
         end_user.session_id = "session-1"
         mock_db.session.get.return_value = end_user
         result = trace_instance._get_message_user_id({"from_end_user_id": "eu-1"})
         assert result == "session-1"
 
-    def test_returns_account_id_when_no_end_user(self, trace_instance: MLflowDataTrace, mock_db):
+    def test_returns_account_id_when_no_end_user(self, trace_instance, mock_db):
         mock_db.session.get.return_value = None
         result = trace_instance._get_message_user_id({"from_end_user_id": "eu-1", "from_account_id": "acc-1"})
         assert result == "acc-1"
 
-    def test_returns_account_id_when_no_end_user_id(self, trace_instance: MLflowDataTrace, mock_db):
+    def test_returns_account_id_when_no_end_user_id(self, trace_instance, mock_db):
         result = trace_instance._get_message_user_id({"from_account_id": "acc-1"})
         assert result == "acc-1"
 
-    def test_returns_none_when_nothing(self, trace_instance: MLflowDataTrace, mock_db):
+    def test_returns_none_when_nothing(self, trace_instance, mock_db):
         result = trace_instance._get_message_user_id({})
         assert result is None
 
@@ -698,7 +696,7 @@ class TestGetMessageUserId:
 
 
 class TestToolTrace:
-    def test_basic_tool_trace(self, trace_instance: MLflowDataTrace, mock_tracing):
+    def test_basic_tool_trace(self, trace_instance, mock_tracing):
         span = MagicMock()
         mock_tracing["start"].return_value = span
 
@@ -707,7 +705,7 @@ class TestToolTrace:
         span.end.assert_called_once()
         span.set_status.assert_not_called()
 
-    def test_tool_trace_with_error(self, trace_instance: MLflowDataTrace, mock_tracing):
+    def test_tool_trace_with_error(self, trace_instance, mock_tracing):
         span = MagicMock()
         mock_tracing["start"].return_value = span
 
@@ -721,12 +719,12 @@ class TestToolTrace:
 
 
 class TestModerationTrace:
-    def test_returns_early_if_no_message_data(self, trace_instance: MLflowDataTrace, mock_tracing):
+    def test_returns_early_if_no_message_data(self, trace_instance, mock_tracing):
         trace_info = _make_moderation_trace_info(message_data=None)
         trace_instance.moderation_trace(trace_info)
         mock_tracing["start"].assert_not_called()
 
-    def test_basic_moderation_trace(self, trace_instance: MLflowDataTrace, mock_tracing):
+    def test_basic_moderation_trace(self, trace_instance, mock_tracing):
         span = MagicMock()
         mock_tracing["start"].return_value = span
 
@@ -742,9 +740,7 @@ class TestModerationTrace:
         assert end_kwargs["action"] == "allow"
         assert end_kwargs["flagged"] is False
 
-    def test_moderation_uses_message_data_created_at_if_no_start_time(
-        self, trace_instance: MLflowDataTrace, mock_tracing
-    ):
+    def test_moderation_uses_message_data_created_at_if_no_start_time(self, trace_instance, mock_tracing):
         span = MagicMock()
         mock_tracing["start"].return_value = span
 
@@ -761,12 +757,12 @@ class TestModerationTrace:
 
 
 class TestDatasetRetrievalTrace:
-    def test_returns_early_if_no_message_data(self, trace_instance: MLflowDataTrace, mock_tracing):
+    def test_returns_early_if_no_message_data(self, trace_instance, mock_tracing):
         trace_info = _make_dataset_retrieval_trace_info(message_data=None)
         trace_instance.dataset_retrieval_trace(trace_info)
         mock_tracing["start"].assert_not_called()
 
-    def test_basic_dataset_retrieval_trace(self, trace_instance: MLflowDataTrace, mock_tracing):
+    def test_basic_dataset_retrieval_trace(self, trace_instance, mock_tracing):
         span = MagicMock()
         mock_tracing["start"].return_value = span
 
@@ -779,12 +775,12 @@ class TestDatasetRetrievalTrace:
 
 
 class TestSuggestedQuestionTrace:
-    def test_returns_early_if_no_message_data(self, trace_instance: MLflowDataTrace, mock_tracing):
+    def test_returns_early_if_no_message_data(self, trace_instance, mock_tracing):
         trace_info = _make_suggested_question_trace_info(message_data=None)
         trace_instance.suggested_question_trace(trace_info)
         mock_tracing["start"].assert_not_called()
 
-    def test_basic_suggested_question_trace(self, trace_instance: MLflowDataTrace, mock_tracing):
+    def test_basic_suggested_question_trace(self, trace_instance, mock_tracing):
         span = MagicMock()
         mock_tracing["start"].return_value = span
 
@@ -792,7 +788,7 @@ class TestSuggestedQuestionTrace:
         mock_tracing["start"].assert_called_once()
         span.end.assert_called_once()
 
-    def test_suggested_question_with_error(self, trace_instance: MLflowDataTrace, mock_tracing):
+    def test_suggested_question_with_error(self, trace_instance, mock_tracing):
         span = MagicMock()
         mock_tracing["start"].return_value = span
 
@@ -801,7 +797,7 @@ class TestSuggestedQuestionTrace:
         span.set_status.assert_called_once()
         span.add_event.assert_called_once()
 
-    def test_uses_message_data_times_when_no_start_end(self, trace_instance: MLflowDataTrace, mock_tracing):
+    def test_uses_message_data_times_when_no_start_end(self, trace_instance, mock_tracing):
         span = MagicMock()
         mock_tracing["start"].return_value = span
 
@@ -818,7 +814,7 @@ class TestSuggestedQuestionTrace:
 
 
 class TestGenerateNameTrace:
-    def test_basic_generate_name_trace(self, trace_instance: MLflowDataTrace, mock_tracing):
+    def test_basic_generate_name_trace(self, trace_instance, mock_tracing):
         span = MagicMock()
         mock_tracing["start"].return_value = span
 
@@ -831,7 +827,7 @@ class TestGenerateNameTrace:
 
 
 class TestGetWorkflowNodes:
-    def test_queries_db(self, trace_instance: MLflowDataTrace, mock_db):
+    def test_queries_db(self, trace_instance, mock_db):
         mock_db.session.scalars.return_value.all.return_value = ["n1", "n2"]
         result = trace_instance._get_workflow_nodes("run-1")
         assert result == ["n1", "n2"]
@@ -853,11 +849,11 @@ class TestGetNodeSpanType:
             (BuiltinNodeTypes.AGENT, "AGENT"),
         ],
     )
-    def test_mapped_types(self, trace_instance: MLflowDataTrace, node_type, expected_contains):
+    def test_mapped_types(self, trace_instance, node_type, expected_contains):
         result = trace_instance._get_node_span_type(node_type)
         assert expected_contains in str(result)
 
-    def test_unknown_type_returns_chain(self, trace_instance: MLflowDataTrace):
+    def test_unknown_type_returns_chain(self, trace_instance):
         result = trace_instance._get_node_span_type("unknown_node")
         assert result == "CHAIN"
 
@@ -866,7 +862,7 @@ class TestGetNodeSpanType:
 
 
 class TestSetTraceMetadata:
-    def test_sets_and_detaches(self, trace_instance: MLflowDataTrace, mock_tracing):
+    def test_sets_and_detaches(self, trace_instance, mock_tracing):
         span = MagicMock()
         mock_tracing["set"].return_value = "token"
 
@@ -875,7 +871,7 @@ class TestSetTraceMetadata:
         mock_tracing["update"].assert_called_once_with(metadata={"key": "val"})
         mock_tracing["detach"].assert_called_once_with("token")
 
-    def test_detaches_even_on_error(self, trace_instance: MLflowDataTrace, mock_tracing):
+    def test_detaches_even_on_error(self, trace_instance, mock_tracing):
         span = MagicMock()
         mock_tracing["set"].return_value = "token"
         mock_tracing["update"].side_effect = RuntimeError("fail")
@@ -884,7 +880,7 @@ class TestSetTraceMetadata:
             trace_instance._set_trace_metadata(span, {})
         mock_tracing["detach"].assert_called_once_with("token")
 
-    def test_no_detach_when_token_is_none(self, trace_instance: MLflowDataTrace, mock_tracing):
+    def test_no_detach_when_token_is_none(self, trace_instance, mock_tracing):
         span = MagicMock()
         mock_tracing["set"].return_value = None
 
@@ -896,14 +892,14 @@ class TestSetTraceMetadata:
 
 
 class TestParsePrompts:
-    def test_string_input(self, trace_instance: MLflowDataTrace):
+    def test_string_input(self, trace_instance):
         assert trace_instance._parse_prompts("hello") == "hello"
 
-    def test_dict_input(self, trace_instance: MLflowDataTrace):
+    def test_dict_input(self, trace_instance):
         result = trace_instance._parse_prompts({"role": "user", "text": "hi"})
         assert result == {"role": "user", "content": "hi"}
 
-    def test_list_input(self, trace_instance: MLflowDataTrace):
+    def test_list_input(self, trace_instance):
         prompts = [
             {"role": "user", "text": "hi"},
             {"role": "assistant", "text": "hello"},
@@ -912,10 +908,10 @@ class TestParsePrompts:
         assert len(result) == 2
         assert result[0]["role"] == "user"
 
-    def test_none_input(self, trace_instance: MLflowDataTrace):
+    def test_none_input(self, trace_instance):
         assert trace_instance._parse_prompts(None) is None
 
-    def test_int_passthrough(self, trace_instance: MLflowDataTrace):
+    def test_int_passthrough(self, trace_instance):
         assert trace_instance._parse_prompts(42) == 42
 
 
@@ -923,15 +919,15 @@ class TestParsePrompts:
 
 
 class TestParseSingleMessage:
-    def test_basic_message(self, trace_instance: MLflowDataTrace):
+    def test_basic_message(self, trace_instance):
         result = trace_instance._parse_single_message({"role": "user", "text": "hello"})
         assert result == {"role": "user", "content": "hello"}
 
-    def test_default_role(self, trace_instance: MLflowDataTrace):
+    def test_default_role(self, trace_instance):
         result = trace_instance._parse_single_message({"text": "hello"})
         assert result["role"] == "user"
 
-    def test_with_tool_calls(self, trace_instance: MLflowDataTrace):
+    def test_with_tool_calls(self, trace_instance):
         item = {
             "role": "assistant",
             "text": "",
@@ -940,7 +936,7 @@ class TestParseSingleMessage:
         result = trace_instance._parse_single_message(item)
         assert "tool_calls" in result
 
-    def test_tool_role_ignores_tool_calls(self, trace_instance: MLflowDataTrace):
+    def test_tool_role_ignores_tool_calls(self, trace_instance):
         item = {
             "role": "tool",
             "text": "result",
@@ -949,12 +945,12 @@ class TestParseSingleMessage:
         result = trace_instance._parse_single_message(item)
         assert "tool_calls" not in result
 
-    def test_with_files(self, trace_instance: MLflowDataTrace):
+    def test_with_files(self, trace_instance):
         item = {"role": "user", "text": "look", "files": ["f1.png"]}
         result = trace_instance._parse_single_message(item)
         assert result["files"] == ["f1.png"]
 
-    def test_no_files(self, trace_instance: MLflowDataTrace):
+    def test_no_files(self, trace_instance):
         result = trace_instance._parse_single_message({"role": "user", "text": "hi"})
         assert "files" not in result
 
@@ -963,7 +959,7 @@ class TestParseSingleMessage:
 
 
 class TestResolveToolCallIds:
-    def test_resolves_tool_call_ids(self, trace_instance: MLflowDataTrace):
+    def test_resolves_tool_call_ids(self, trace_instance):
         messages = [
             {
                 "role": "assistant",
@@ -977,7 +973,7 @@ class TestResolveToolCallIds:
         assert result[1]["tool_call_id"] == "tc1"
         assert result[2]["tool_call_id"] == "tc2"
 
-    def test_no_tool_calls(self, trace_instance: MLflowDataTrace):
+    def test_no_tool_calls(self, trace_instance):
         messages = [
             {"role": "user", "content": "hi"},
             {"role": "assistant", "content": "hello"},
@@ -986,7 +982,7 @@ class TestResolveToolCallIds:
         assert "tool_call_id" not in result[0]
         assert "tool_call_id" not in result[1]
 
-    def test_tool_message_no_ids_available(self, trace_instance: MLflowDataTrace):
+    def test_tool_message_no_ids_available(self, trace_instance):
         """Tool message with no preceding tool_calls should not crash."""
         messages = [
             {"role": "tool", "content": "result"},
@@ -999,11 +995,11 @@ class TestResolveToolCallIds:
 
 
 class TestApiCheck:
-    def test_success(self, trace_instance: MLflowDataTrace, mock_mlflow):
+    def test_success(self, trace_instance, mock_mlflow):
         mock_mlflow.search_experiments.return_value = []
         assert trace_instance.api_check() is True
 
-    def test_failure(self, trace_instance: MLflowDataTrace, mock_mlflow):
+    def test_failure(self, trace_instance, mock_mlflow):
         mock_mlflow.search_experiments.side_effect = ConnectionError("refused")
         with pytest.raises(ValueError, match="MLflow connection failed"):
             trace_instance.api_check()
@@ -1013,5 +1009,5 @@ class TestApiCheck:
 
 
 class TestGetProjectUrl:
-    def test_returns_url(self, trace_instance: MLflowDataTrace):
+    def test_returns_url(self, trace_instance):
         assert "experiments" in trace_instance.get_project_url()
