@@ -173,7 +173,7 @@ describe('Countdown', () => {
   // Exported Constants
   describe('Exported Constants', () => {
     it('should export COUNT_DOWN_TIME_MS as 59000', () => {
-      expect(COUNT_DOWN_TIME_MS).toBe(1)
+      expect(COUNT_DOWN_TIME_MS).toBe(59000)
     })
 
     it('should export COUNT_DOWN_KEY as leftTime', () => {
