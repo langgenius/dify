@@ -53,7 +53,7 @@ function RadioCard(props: Props) {
             <div className="system-xs-regular text-text-tertiary">{description}</div>
           </div>
         </div>
-        {chosenConfig && (
+        {Boolean(chosenConfig) && (
           <div className="mt-2 flex gap-x-2">
             <div className="size-8 shrink-0"></div>
             <div className={cn(chosenConfigWrapClassName, 'grow')}>
