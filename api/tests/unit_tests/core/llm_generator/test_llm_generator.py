@@ -6,14 +6,15 @@ import pytest
 from core.app.app_config.entities import ModelConfig
 from core.llm_generator.entities import RuleCodeGeneratePayload, RuleGeneratePayload, RuleStructuredOutputPayload
 from core.llm_generator.llm_generator import LLMGenerator
-from dify_graph.model_runtime.entities.llm_entities import LLMMode, LLMResult
-from dify_graph.model_runtime.errors.invoke import InvokeAuthorizationError, InvokeError
+from graphon.model_runtime.entities.llm_entities import LLMMode, LLMResult
+from graphon.model_runtime.entities.model_entities import ModelType
+from graphon.model_runtime.errors.invoke import InvokeAuthorizationError, InvokeError
 
 
 class TestLLMGenerator:
     @pytest.fixture
     def mock_model_instance(self):
-        with patch("core.llm_generator.llm_generator.ModelManager") as mock_manager:
+        with patch("core.llm_generator.llm_generator.ModelManager.for_tenant") as mock_manager:
             instance = MagicMock()
             mock_manager.return_value.get_default_model_instance.return_value = instance
             mock_manager.return_value.get_model_instance.return_value = instance
@@ -96,9 +97,13 @@ class TestLLMGenerator:
         questions = LLMGenerator.generate_suggested_questions_after_answer("tenant_id", "histories")
         assert len(questions) == 2
         assert questions[0] == "Question 1?"
+        assert mock_model_instance.invoke_llm.call_args.kwargs["model_parameters"] == {
+            "max_tokens": 2560,
+            "temperature": 0.0,
+        }
 
     def test_generate_suggested_questions_after_answer_auth_error(self, mock_model_instance):
-        with patch("core.llm_generator.llm_generator.ModelManager") as mock_manager:
+        with patch("core.llm_generator.llm_generator.ModelManager.for_tenant") as mock_manager:
             mock_manager.return_value.get_default_model_instance.side_effect = InvokeAuthorizationError("Auth failed")
             questions = LLMGenerator.generate_suggested_questions_after_answer("tenant_id", "histories")
             assert questions == []
@@ -112,6 +117,97 @@ class TestLLMGenerator:
         mock_model_instance.invoke_llm.side_effect = Exception("Random error")
         questions = LLMGenerator.generate_suggested_questions_after_answer("tenant_id", "histories")
         assert questions == []
+
+    @patch("core.llm_generator.llm_generator.ModelManager.for_tenant")
+    def test_generate_suggested_questions_after_answer_with_custom_model_and_prompt(self, mock_for_tenant):
+        custom_model_instance = MagicMock()
+        custom_response = MagicMock()
+        custom_response.message.get_text_content.return_value = '["Question 1?"]'
+        custom_model_instance.invoke_llm.return_value = custom_response
+
+        mock_for_tenant.return_value.get_model_instance.return_value = custom_model_instance
+
+        questions = LLMGenerator.generate_suggested_questions_after_answer(
+            "tenant_id",
+            "histories",
+            instruction_prompt="custom prompt",
+            model_config={
+                "provider": "openai",
+                "name": "gpt-4o",
+                "completion_params": {"temperature": 0.2},
+            },
+        )
+
+        assert questions == ["Question 1?"]
+        mock_for_tenant.return_value.get_model_instance.assert_called_once_with(
+            tenant_id="tenant_id",
+            model_type=ModelType.LLM,
+            provider="openai",
+            model="gpt-4o",
+        )
+
+        invoke_kwargs = custom_model_instance.invoke_llm.call_args.kwargs
+        assert invoke_kwargs["model_parameters"] == {"temperature": 0.2}
+        assert invoke_kwargs["stop"] == []
+        assert "custom prompt" in invoke_kwargs["prompt_messages"][0].content
+
+    @patch("core.llm_generator.llm_generator.ModelManager.for_tenant")
+    def test_generate_suggested_questions_after_answer_fallback_to_default_model(self, mock_for_tenant):
+        default_model_instance = MagicMock()
+        default_response = MagicMock()
+        default_response.message.get_text_content.return_value = '["Question 1?"]'
+        default_model_instance.invoke_llm.return_value = default_response
+
+        mock_for_tenant.return_value.get_model_instance.side_effect = ValueError("invalid configured model")
+        mock_for_tenant.return_value.get_default_model_instance.return_value = default_model_instance
+
+        questions = LLMGenerator.generate_suggested_questions_after_answer(
+            "tenant_id",
+            "histories",
+            model_config={
+                "provider": "openai",
+                "name": "not-found-model",
+                "completion_params": {"temperature": 0.2},
+            },
+        )
+
+        assert questions == ["Question 1?"]
+        mock_for_tenant.return_value.get_default_model_instance.assert_called_once_with(
+            tenant_id="tenant_id",
+            model_type=ModelType.LLM,
+        )
+        assert default_model_instance.invoke_llm.call_args.kwargs["model_parameters"] == {
+            "max_tokens": 2560,
+            "temperature": 0.0,
+        }
+        assert default_model_instance.invoke_llm.call_args.kwargs["stop"] == []
+
+    @patch("core.llm_generator.llm_generator.ModelManager.for_tenant")
+    def test_generate_suggested_questions_after_answer_drops_non_positive_max_tokens(self, mock_for_tenant):
+        custom_model_instance = MagicMock()
+        custom_response = MagicMock()
+        custom_response.message.get_text_content.return_value = '["Question 1?"]'
+        custom_model_instance.invoke_llm.return_value = custom_response
+        mock_for_tenant.return_value.get_model_instance.return_value = custom_model_instance
+
+        questions = LLMGenerator.generate_suggested_questions_after_answer(
+            "tenant_id",
+            "histories",
+            model_config={
+                "provider": "openai",
+                "name": "gpt-4o",
+                "completion_params": {
+                    "temperature": 0.2,
+                    "max_tokens": 0,
+                    "stop": ["END"],
+                },
+            },
+        )
+
+        assert questions == ["Question 1?"]
+        invoke_kwargs = custom_model_instance.invoke_llm.call_args.kwargs
+        assert invoke_kwargs["model_parameters"] == {"temperature": 0.2}
+        assert invoke_kwargs["stop"] == ["END"]
 
     def test_generate_rule_config_no_variable_success(self, mock_model_instance, model_config_entity):
         payload = RuleGeneratePayload(
@@ -314,8 +410,8 @@ class TestLLMGenerator:
         assert "An unexpected error occurred" in result["error"]
 
     def test_instruction_modify_legacy_no_last_run(self, mock_model_instance, model_config_entity):
-        with patch("extensions.ext_database.db.session.query") as mock_query:
-            mock_query.return_value.where.return_value.order_by.return_value.first.return_value = None
+        with patch("extensions.ext_database.db.session.scalar") as mock_scalar:
+            mock_scalar.return_value = None
 
             # Mock __instruction_modify_common call via invoke_llm
             mock_response = MagicMock()
@@ -328,12 +424,12 @@ class TestLLMGenerator:
             assert result == {"modified": "prompt"}
 
     def test_instruction_modify_legacy_with_last_run(self, mock_model_instance, model_config_entity):
-        with patch("extensions.ext_database.db.session.query") as mock_query:
+        with patch("extensions.ext_database.db.session.scalar") as mock_scalar:
             last_run = MagicMock()
             last_run.query = "q"
             last_run.answer = "a"
             last_run.error = "e"
-            mock_query.return_value.where.return_value.order_by.return_value.first.return_value = last_run
+            mock_scalar.return_value = last_run
 
             mock_response = MagicMock()
             mock_response.message.get_text_content.return_value = '{"modified": "prompt"}'
@@ -346,13 +442,13 @@ class TestLLMGenerator:
 
     def test_instruction_modify_workflow_app_not_found(self):
         with patch("extensions.ext_database.db.session") as mock_session:
-            mock_session.return_value.query.return_value.where.return_value.first.return_value = None
+            mock_session.return_value.scalar.return_value = None
             with pytest.raises(ValueError, match="App not found."):
                 LLMGenerator.instruction_modify_workflow("t", "f", "n", "c", "i", MagicMock(), "o", MagicMock())
 
     def test_instruction_modify_workflow_no_workflow(self):
         with patch("extensions.ext_database.db.session") as mock_session:
-            mock_session.return_value.query.return_value.where.return_value.first.return_value = MagicMock()
+            mock_session.return_value.scalar.return_value = MagicMock()
             workflow_service = MagicMock()
             workflow_service.get_draft_workflow.return_value = None
             with pytest.raises(ValueError, match="Workflow not found for the given app model."):
@@ -360,7 +456,7 @@ class TestLLMGenerator:
 
     def test_instruction_modify_workflow_success(self, mock_model_instance, model_config_entity):
         with patch("extensions.ext_database.db.session") as mock_session:
-            mock_session.return_value.query.return_value.where.return_value.first.return_value = MagicMock()
+            mock_session.return_value.scalar.return_value = MagicMock()
             workflow = MagicMock()
             workflow.graph_dict = {"graph": {"nodes": [{"id": "node_id", "data": {"type": "llm"}}]}}
 
@@ -395,7 +491,7 @@ class TestLLMGenerator:
 
     def test_instruction_modify_workflow_no_last_run_fallback(self, mock_model_instance, model_config_entity):
         with patch("extensions.ext_database.db.session") as mock_session:
-            mock_session.return_value.query.return_value.where.return_value.first.return_value = MagicMock()
+            mock_session.return_value.scalar.return_value = MagicMock()
             workflow = MagicMock()
             workflow.graph_dict = {"graph": {"nodes": [{"id": "node_id", "data": {"type": "code"}}]}}
 
@@ -421,7 +517,7 @@ class TestLLMGenerator:
 
     def test_instruction_modify_workflow_node_type_fallback(self, mock_model_instance, model_config_entity):
         with patch("extensions.ext_database.db.session") as mock_session:
-            mock_session.return_value.query.return_value.where.return_value.first.return_value = MagicMock()
+            mock_session.return_value.scalar.return_value = MagicMock()
             workflow = MagicMock()
             # Cause exception in node_type logic
             workflow.graph_dict = {"graph": {"nodes": []}}
@@ -448,7 +544,7 @@ class TestLLMGenerator:
 
     def test_instruction_modify_workflow_empty_agent_log(self, mock_model_instance, model_config_entity):
         with patch("extensions.ext_database.db.session") as mock_session:
-            mock_session.return_value.query.return_value.where.return_value.first.return_value = MagicMock()
+            mock_session.return_value.scalar.return_value = MagicMock()
             workflow = MagicMock()
             workflow.graph_dict = {"graph": {"nodes": [{"id": "node_id", "data": {"type": "llm"}}]}}
 
@@ -483,8 +579,8 @@ class TestLLMGenerator:
 
     def test_instruction_modify_common_placeholders(self, mock_model_instance, model_config_entity):
         # Testing placeholders replacement via instruction_modify_legacy for convenience
-        with patch("extensions.ext_database.db.session.query") as mock_query:
-            mock_query.return_value.where.return_value.order_by.return_value.first.return_value = None
+        with patch("extensions.ext_database.db.session.scalar") as mock_scalar:
+            mock_scalar.return_value = None
 
             mock_response = MagicMock()
             mock_response.message.get_text_content.return_value = '{"ok": true}'
@@ -504,8 +600,8 @@ class TestLLMGenerator:
             assert "current_val" in user_msg_dict["instruction"]
 
     def test_instruction_modify_common_no_braces(self, mock_model_instance, model_config_entity):
-        with patch("extensions.ext_database.db.session.query") as mock_query:
-            mock_query.return_value.where.return_value.order_by.return_value.first.return_value = None
+        with patch("extensions.ext_database.db.session.scalar") as mock_scalar:
+            mock_scalar.return_value = None
             mock_response = MagicMock()
             mock_response.message.get_text_content.return_value = "No braces here"
             mock_model_instance.invoke_llm.return_value = mock_response
@@ -516,8 +612,8 @@ class TestLLMGenerator:
             assert "Could not find a valid JSON object" in result["error"]
 
     def test_instruction_modify_common_not_dict(self, mock_model_instance, model_config_entity):
-        with patch("extensions.ext_database.db.session.query") as mock_query:
-            mock_query.return_value.where.return_value.order_by.return_value.first.return_value = None
+        with patch("extensions.ext_database.db.session.scalar") as mock_scalar:
+            mock_scalar.return_value = None
             mock_response = MagicMock()
             mock_response.message.get_text_content.return_value = "[1, 2, 3]"
             mock_model_instance.invoke_llm.return_value = mock_response
@@ -528,7 +624,7 @@ class TestLLMGenerator:
             assert "An unexpected error occurred" in result["error"]
 
     def test_instruction_modify_common_other_node_type(self, mock_model_instance, model_config_entity):
-        with patch("core.llm_generator.llm_generator.ModelManager") as mock_manager:
+        with patch("core.llm_generator.llm_generator.ModelManager.for_tenant") as mock_manager:
             instance = MagicMock()
             mock_manager.return_value.get_model_instance.return_value = instance
             mock_response = MagicMock()
@@ -536,7 +632,7 @@ class TestLLMGenerator:
             instance.invoke_llm.return_value = mock_response
 
             with patch("extensions.ext_database.db.session") as mock_session:
-                mock_session.return_value.query.return_value.where.return_value.first.return_value = MagicMock()
+                mock_session.return_value.scalar.return_value = MagicMock()
                 workflow = MagicMock()
                 workflow.graph_dict = {"graph": {"nodes": [{"id": "node_id", "data": {"type": "other"}}]}}
 
@@ -556,8 +652,8 @@ class TestLLMGenerator:
                 )
 
     def test_instruction_modify_common_invoke_error(self, mock_model_instance, model_config_entity):
-        with patch("extensions.ext_database.db.session.query") as mock_query:
-            mock_query.return_value.where.return_value.order_by.return_value.first.return_value = None
+        with patch("extensions.ext_database.db.session.scalar") as mock_scalar:
+            mock_scalar.return_value = None
             mock_model_instance.invoke_llm.side_effect = InvokeError("Invoke Failed")
 
             result = LLMGenerator.instruction_modify_legacy(
@@ -566,8 +662,8 @@ class TestLLMGenerator:
             assert "Failed to generate code" in result["error"]
 
     def test_instruction_modify_common_exception(self, mock_model_instance, model_config_entity):
-        with patch("extensions.ext_database.db.session.query") as mock_query:
-            mock_query.return_value.where.return_value.order_by.return_value.first.return_value = None
+        with patch("extensions.ext_database.db.session.scalar") as mock_scalar:
+            mock_scalar.return_value = None
             mock_model_instance.invoke_llm.side_effect = Exception("Random error")
 
             result = LLMGenerator.instruction_modify_legacy(
@@ -576,8 +672,8 @@ class TestLLMGenerator:
             assert "An unexpected error occurred" in result["error"]
 
     def test_instruction_modify_common_json_error(self, mock_model_instance, model_config_entity):
-        with patch("extensions.ext_database.db.session.query") as mock_query:
-            mock_query.return_value.where.return_value.order_by.return_value.first.return_value = None
+        with patch("extensions.ext_database.db.session.scalar") as mock_scalar:
+            mock_scalar.return_value = None
 
             mock_response = MagicMock()
             mock_response.message.get_text_content.return_value = "No JSON here"

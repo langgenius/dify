@@ -4,12 +4,13 @@ from typing import Any, Literal, cast
 from flask import request
 from flask_restx import Resource, fields, marshal, marshal_with
 from pydantic import BaseModel
+from sqlalchemy import select
 from werkzeug.exceptions import Forbidden, InternalServerError, NotFound
 
 import services
 from controllers.common.fields import Parameters as ParametersResponse
 from controllers.common.fields import Site as SiteResponse
-from controllers.common.schema import get_or_create_model
+from controllers.common.schema import get_or_create_model, register_schema_models
 from controllers.console import console_ns
 from controllers.console.app.error import (
     AppUnavailableError,
@@ -41,8 +42,6 @@ from core.errors.error import (
     ProviderTokenNotInitError,
     QuotaExceededError,
 )
-from dify_graph.graph_engine.manager import GraphEngineManager
-from dify_graph.model_runtime.errors.invoke import InvokeError
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from fields.app_fields import (
@@ -60,6 +59,8 @@ from fields.workflow_fields import (
     workflow_fields,
     workflow_partial_fields,
 )
+from graphon.graph_engine.manager import GraphEngineManager
+from graphon.model_runtime.errors.invoke import InvokeError
 from libs import helper
 from libs.helper import uuid_value
 from libs.login import current_user
@@ -105,7 +106,7 @@ app_detail_fields_with_site_copy["tags"] = fields.List(fields.Nested(tag_model))
 app_detail_fields_with_site_copy["site"] = fields.Nested(site_model)
 app_detail_with_site_model = get_or_create_model("TrialAppDetailWithSite", app_detail_fields_with_site_copy)
 
-simple_account_model = get_or_create_model("SimpleAccount", simple_account_fields)
+simple_account_model = get_or_create_model("TrialSimpleAccount", simple_account_fields)
 conversation_variable_model = get_or_create_model("TrialConversationVariable", conversation_variable_fields)
 pipeline_variable_model = get_or_create_model("TrialPipelineVariable", pipeline_variable_fields)
 
@@ -117,10 +118,6 @@ workflow_fields_copy["updated_by"] = fields.Nested(
 workflow_fields_copy["conversation_variables"] = fields.List(fields.Nested(conversation_variable_model))
 workflow_fields_copy["rag_pipeline_variables"] = fields.List(fields.Nested(pipeline_variable_model))
 workflow_model = get_or_create_model("TrialWorkflow", workflow_fields_copy)
-
-
-# Pydantic models for request validation
-DEFAULT_REF_TEMPLATE_SWAGGER_2_0 = "#/definitions/{model}"
 
 
 class WorkflowRunRequest(BaseModel):
@@ -152,22 +149,11 @@ class CompletionRequest(BaseModel):
     retriever_from: str = "explore_app"
 
 
-# Register schemas for Swagger documentation
-console_ns.schema_model(
-    WorkflowRunRequest.__name__, WorkflowRunRequest.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0)
-)
-console_ns.schema_model(
-    ChatRequest.__name__, ChatRequest.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0)
-)
-console_ns.schema_model(
-    TextToSpeechRequest.__name__, TextToSpeechRequest.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0)
-)
-console_ns.schema_model(
-    CompletionRequest.__name__, CompletionRequest.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0)
-)
+register_schema_models(console_ns, WorkflowRunRequest, ChatRequest, TextToSpeechRequest, CompletionRequest)
 
 
 class TrialAppWorkflowRunApi(TrialAppResource):
+    @trial_feature_enable
     @console_ns.expect(console_ns.models[WorkflowRunRequest.__name__])
     def post(self, trial_app):
         """
@@ -209,6 +195,7 @@ class TrialAppWorkflowRunApi(TrialAppResource):
 
 
 class TrialAppWorkflowTaskStopApi(TrialAppResource):
+    @trial_feature_enable
     def post(self, trial_app, task_id: str):
         """
         Stop workflow task
@@ -289,7 +276,6 @@ class TrialChatApi(TrialAppResource):
 
 
 class TrialMessageSuggestedQuestionApi(TrialAppResource):
-    @trial_feature_enable
     def get(self, trial_app, message_id):
         app_model = trial_app
         app_mode = AppMode.value_of(app_model.mode)
@@ -469,14 +455,13 @@ class TrialCompletionApi(TrialAppResource):
 class TrialSitApi(Resource):
     """Resource for trial app sites."""
 
-    @trial_feature_enable
     @get_app_model_with_trial(None)
     def get(self, app_model):
         """Retrieve app site info.
 
         Returns the site configuration for the application including theme, icons, and text.
         """
-        site = db.session.query(Site).where(Site.app_id == app_model.id).first()
+        site = db.session.scalar(select(Site).where(Site.app_id == app_model.id).limit(1))
 
         if not site:
             raise Forbidden()
@@ -491,7 +476,6 @@ class TrialSitApi(Resource):
 class TrialAppParameterApi(Resource):
     """Resource for app variables."""
 
-    @trial_feature_enable
     @get_app_model_with_trial(None)
     def get(self, app_model):
         """Retrieve app parameters."""
@@ -520,7 +504,6 @@ class TrialAppParameterApi(Resource):
 
 
 class AppApi(Resource):
-    @trial_feature_enable
     @get_app_model_with_trial(None)
     @marshal_with(app_detail_with_site_model)
     def get(self, app_model):
@@ -533,7 +516,6 @@ class AppApi(Resource):
 
 
 class AppWorkflowApi(Resource):
-    @trial_feature_enable
     @get_app_model_with_trial(None)
     @marshal_with(workflow_model)
     def get(self, app_model):
@@ -541,18 +523,11 @@ class AppWorkflowApi(Resource):
         if not app_model.workflow_id:
             raise AppUnavailableError()
 
-        workflow = (
-            db.session.query(Workflow)
-            .where(
-                Workflow.id == app_model.workflow_id,
-            )
-            .first()
-        )
+        workflow = db.session.get(Workflow, app_model.workflow_id)
         return workflow
 
 
 class DatasetListApi(Resource):
-    @trial_feature_enable
     @get_app_model_with_trial(None)
     def get(self, app_model):
         page = request.args.get("page", default=1, type=int)

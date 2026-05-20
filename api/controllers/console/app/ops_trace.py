@@ -5,13 +5,14 @@ from flask_restx import Resource, fields
 from pydantic import BaseModel, Field
 from werkzeug.exceptions import BadRequest
 
+from controllers.common.schema import register_schema_models
 from controllers.console import console_ns
 from controllers.console.app.error import TracingConfigCheckError, TracingConfigIsExist, TracingConfigNotExist
+from controllers.console.app.wraps import get_app_model
 from controllers.console.wraps import account_initialization_required, setup_required
 from libs.login import login_required
+from models import App
 from services.ops_service import OpsService
-
-DEFAULT_REF_TEMPLATE_SWAGGER_2_0 = "#/definitions/{model}"
 
 
 class TraceProviderQuery(BaseModel):
@@ -23,13 +24,7 @@ class TraceConfigPayload(BaseModel):
     tracing_config: dict[str, Any] = Field(..., description="Tracing configuration data")
 
 
-console_ns.schema_model(
-    TraceProviderQuery.__name__,
-    TraceProviderQuery.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0),
-)
-console_ns.schema_model(
-    TraceConfigPayload.__name__, TraceConfigPayload.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0)
-)
+register_schema_models(console_ns, TraceProviderQuery, TraceConfigPayload)
 
 
 @console_ns.route("/apps/<uuid:app_id>/trace-config")
@@ -49,11 +44,14 @@ class TraceAppConfigApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def get(self, app_id):
+    @get_app_model
+    def get(self, app_model: App):
         args = TraceProviderQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
 
         try:
-            trace_config = OpsService.get_tracing_app_config(app_id=app_id, tracing_provider=args.tracing_provider)
+            trace_config = OpsService.get_tracing_app_config(
+                app_id=app_model.id, tracing_provider=args.tracing_provider
+            )
             if not trace_config:
                 return {"has_not_configured": True}
             return trace_config
@@ -71,13 +69,14 @@ class TraceAppConfigApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def post(self, app_id):
+    @get_app_model
+    def post(self, app_model: App):
         """Create a new trace app configuration"""
         args = TraceConfigPayload.model_validate(console_ns.payload)
 
         try:
             result = OpsService.create_tracing_app_config(
-                app_id=app_id, tracing_provider=args.tracing_provider, tracing_config=args.tracing_config
+                app_id=app_model.id, tracing_provider=args.tracing_provider, tracing_config=args.tracing_config
             )
             if not result:
                 raise TracingConfigIsExist()
@@ -96,13 +95,14 @@ class TraceAppConfigApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def patch(self, app_id):
+    @get_app_model
+    def patch(self, app_model: App):
         """Update an existing trace app configuration"""
         args = TraceConfigPayload.model_validate(console_ns.payload)
 
         try:
             result = OpsService.update_tracing_app_config(
-                app_id=app_id, tracing_provider=args.tracing_provider, tracing_config=args.tracing_config
+                app_id=app_model.id, tracing_provider=args.tracing_provider, tracing_config=args.tracing_config
             )
             if not result:
                 raise TracingConfigNotExist()
@@ -119,12 +119,13 @@ class TraceAppConfigApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def delete(self, app_id):
+    @get_app_model
+    def delete(self, app_model: App):
         """Delete an existing trace app configuration"""
-        args = TraceProviderQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
+        args = TraceProviderQuery.model_validate(request.args.to_dict(flat=True))
 
         try:
-            result = OpsService.delete_tracing_app_config(app_id=app_id, tracing_provider=args.tracing_provider)
+            result = OpsService.delete_tracing_app_config(app_id=app_model.id, tracing_provider=args.tracing_provider)
             if not result:
                 raise TracingConfigNotExist()
             return {"result": "success"}, 204

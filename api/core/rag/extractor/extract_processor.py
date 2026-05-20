@@ -94,16 +94,18 @@ class ExtractProcessor:
         cls, extract_setting: ExtractSetting, is_automatic: bool = False, file_path: str | None = None
     ) -> list[Document]:
         if extract_setting.datasource_type == DatasourceType.FILE:
+            upload_file = extract_setting.upload_file
             with tempfile.TemporaryDirectory() as temp_dir:
+                upload_file = extract_setting.upload_file
                 if not file_path:
-                    assert extract_setting.upload_file is not None, "upload_file is required"
-                    upload_file: UploadFile = extract_setting.upload_file
+                    assert upload_file is not None, "upload_file is required"
                     suffix = Path(upload_file.key).suffix
                     # FIXME mypy: Cannot determine type of 'tempfile._get_candidate_names' better not use it here
                     file_path = f"{temp_dir}/{next(tempfile._get_candidate_names())}{suffix}"  # type: ignore
                     storage.download(upload_file.key, file_path)
                 input_file = Path(file_path)
                 file_extension = input_file.suffix.lower()
+                assert upload_file is not None, "upload_file is required"
                 etl_type = dify_config.ETL_TYPE
                 extractor: BaseExtractor | None = None
                 if etl_type == "Unstructured":
@@ -113,6 +115,7 @@ class ExtractProcessor:
                     if file_extension in {".xlsx", ".xls"}:
                         extractor = ExcelExtractor(file_path)
                     elif file_extension == ".pdf":
+                        assert upload_file is not None
                         extractor = PdfExtractor(file_path, upload_file.tenant_id, upload_file.created_by)
                     elif file_extension in {".md", ".markdown", ".mdx"}:
                         extractor = (
@@ -123,6 +126,7 @@ class ExtractProcessor:
                     elif file_extension in {".htm", ".html"}:
                         extractor = HtmlExtractor(file_path)
                     elif file_extension == ".docx":
+                        assert upload_file is not None
                         extractor = WordExtractor(file_path, upload_file.tenant_id, upload_file.created_by)
                     elif file_extension == ".doc":
                         extractor = UnstructuredWordExtractor(file_path, unstructured_api_url, unstructured_api_key)
@@ -149,12 +153,14 @@ class ExtractProcessor:
                     if file_extension in {".xlsx", ".xls"}:
                         extractor = ExcelExtractor(file_path)
                     elif file_extension == ".pdf":
+                        assert upload_file is not None
                         extractor = PdfExtractor(file_path, upload_file.tenant_id, upload_file.created_by)
                     elif file_extension in {".md", ".markdown", ".mdx"}:
                         extractor = MarkdownExtractor(file_path, autodetect_encoding=True)
                     elif file_extension in {".htm", ".html"}:
                         extractor = HtmlExtractor(file_path)
                     elif file_extension == ".docx":
+                        assert upload_file is not None
                         extractor = WordExtractor(file_path, upload_file.tenant_id, upload_file.created_by)
                     elif file_extension == ".csv":
                         extractor = CSVExtractor(file_path, autodetect_encoding=True)
@@ -177,34 +183,35 @@ class ExtractProcessor:
             return extractor.extract()
         elif extract_setting.datasource_type == DatasourceType.WEBSITE:
             assert extract_setting.website_info is not None, "website_info is required"
-            if extract_setting.website_info.provider == "firecrawl":
-                extractor = FirecrawlWebExtractor(
-                    url=extract_setting.website_info.url,
-                    job_id=extract_setting.website_info.job_id,
-                    tenant_id=extract_setting.website_info.tenant_id,
-                    mode=extract_setting.website_info.mode,
-                    only_main_content=extract_setting.website_info.only_main_content,
-                )
-                return extractor.extract()
-            elif extract_setting.website_info.provider == "watercrawl":
-                extractor = WaterCrawlWebExtractor(
-                    url=extract_setting.website_info.url,
-                    job_id=extract_setting.website_info.job_id,
-                    tenant_id=extract_setting.website_info.tenant_id,
-                    mode=extract_setting.website_info.mode,
-                    only_main_content=extract_setting.website_info.only_main_content,
-                )
-                return extractor.extract()
-            elif extract_setting.website_info.provider == "jinareader":
-                extractor = JinaReaderWebExtractor(
-                    url=extract_setting.website_info.url,
-                    job_id=extract_setting.website_info.job_id,
-                    tenant_id=extract_setting.website_info.tenant_id,
-                    mode=extract_setting.website_info.mode,
-                    only_main_content=extract_setting.website_info.only_main_content,
-                )
-                return extractor.extract()
-            else:
-                raise ValueError(f"Unsupported website provider: {extract_setting.website_info.provider}")
+            match extract_setting.website_info.provider:
+                case "firecrawl":
+                    extractor = FirecrawlWebExtractor(
+                        url=extract_setting.website_info.url,
+                        job_id=extract_setting.website_info.job_id,
+                        tenant_id=extract_setting.website_info.tenant_id,
+                        mode=extract_setting.website_info.mode,
+                        only_main_content=extract_setting.website_info.only_main_content,
+                    )
+                    return extractor.extract()
+                case "watercrawl":
+                    extractor = WaterCrawlWebExtractor(
+                        url=extract_setting.website_info.url,
+                        job_id=extract_setting.website_info.job_id,
+                        tenant_id=extract_setting.website_info.tenant_id,
+                        mode=extract_setting.website_info.mode,
+                        only_main_content=extract_setting.website_info.only_main_content,
+                    )
+                    return extractor.extract()
+                case "jinareader":
+                    extractor = JinaReaderWebExtractor(
+                        url=extract_setting.website_info.url,
+                        job_id=extract_setting.website_info.job_id,
+                        tenant_id=extract_setting.website_info.tenant_id,
+                        mode=extract_setting.website_info.mode,
+                        only_main_content=extract_setting.website_info.only_main_content,
+                    )
+                    return extractor.extract()
+                case _:
+                    raise ValueError(f"Unsupported website provider: {extract_setting.website_info.provider}")
         else:
             raise ValueError(f"Unsupported datasource type: {extract_setting.datasource_type}")

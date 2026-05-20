@@ -13,8 +13,10 @@ import pytest
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import NotFound
 
-from models import Account, Tenant, TenantAccountJoin, TenantAccountRole
+from core.rag.index_processor.constant.index_type import IndexTechniqueType
+from models import Account, AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole, TenantStatus
 from models.dataset import AppDatasetJoin, Dataset, DatasetPermissionEnum
+from models.enums import DataSourceType
 from models.model import App
 from services.dataset_service import DatasetService
 from services.errors.account import NoPermissionError
@@ -36,13 +38,13 @@ class DatasetUpdateDeleteTestDataFactory:
             email=f"{uuid4()}@example.com",
             name=f"user-{uuid4()}",
             interface_language="en-US",
-            status="active",
+            status=AccountStatus.ACTIVE,
         )
         db_session_with_containers.add(account)
         db_session_with_containers.commit()
 
         if tenant is None:
-            tenant = Tenant(name=f"tenant-{uuid4()}", status="normal")
+            tenant = Tenant(name=f"tenant-{uuid4()}", status=TenantStatus.NORMAL)
             db_session_with_containers.add(tenant)
             db_session_with_containers.commit()
 
@@ -72,8 +74,8 @@ class DatasetUpdateDeleteTestDataFactory:
             tenant_id=tenant_id,
             name=name,
             description="Test description",
-            data_source_type="upload_file",
-            indexing_technique="high_quality",
+            data_source_type=DataSourceType.UPLOAD_FILE,
+            indexing_technique=IndexTechniqueType.HIGH_QUALITY,
             created_by=created_by,
             permission=permission,
             provider="vendor",

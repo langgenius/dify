@@ -1,13 +1,13 @@
 'use client'
 import type { FC } from 'react'
+import { Button } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
 import { RiDeleteBinLine, RiEditFill, RiEditLine } from '@remixicon/react'
 import * as React from 'react'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
 import { Robot, User } from '@/app/components/base/icons/src/public/avatar'
 import Textarea from '@/app/components/base/textarea'
-import { cn } from '@/utils/classnames'
 
 export enum EditItemType {
   Query = 'query',
@@ -21,8 +21,8 @@ type Props = {
 }
 
 export const EditTitle: FC<{ className?: string, title: string }> = ({ className, title }) => (
-  <div className={cn(className, 'system-xs-medium flex h-[18px] items-center text-text-tertiary')}>
-    <RiEditFill className="mr-1 h-3.5 w-3.5" />
+  <div className={cn(className, 'flex h-[18px] items-center system-xs-medium text-text-tertiary')}>
+    <RiEditFill className="mr-1 size-3.5" />
     <div>{title}</div>
     <div
       className="ml-2 h-px grow"
@@ -42,7 +42,7 @@ const EditItem: FC<Props> = ({
   const { t } = useTranslation()
   const [newContent, setNewContent] = useState('')
   const showNewContent = newContent && newContent !== content
-  const avatar = type === EditItemType.Query ? <User className="h-6 w-6" /> : <Robot className="h-6 w-6" />
+  const avatar = type === EditItemType.Query ? <User className="size-6" /> : <Robot className="size-6" />
   const name = type === EditItemType.Query ? t('editModal.queryName', { ns: 'appAnnotation' }) : t('editModal.answerName', { ns: 'appAnnotation' })
   const editTitle = type === EditItemType.Query ? t('editModal.yourQuery', { ns: 'appAnnotation' }) : t('editModal.yourAnswer', { ns: 'appAnnotation' })
   const placeholder = type === EditItemType.Query ? t('editModal.queryPlaceholder', { ns: 'appAnnotation' }) : t('editModal.answerPlaceholder', { ns: 'appAnnotation' })
@@ -75,7 +75,7 @@ const EditItem: FC<Props> = ({
         {avatar}
       </div>
       <div className="grow">
-        <div className="system-xs-semibold mb-1 text-text-primary">{name}</div>
+        <div className="mb-1 system-xs-semibold text-text-primary">{name}</div>
         <div className="system-sm-regular text-text-primary">{content}</div>
         {!isEdit
           ? (
@@ -83,24 +83,24 @@ const EditItem: FC<Props> = ({
                 {showNewContent && (
                   <div className="mt-3">
                     <EditTitle title={editTitle} />
-                    <div className="system-sm-regular mt-1 text-text-primary">{newContent}</div>
+                    <div className="mt-1 system-sm-regular text-text-primary">{newContent}</div>
                   </div>
                 )}
                 <div className="mt-2 flex items-center">
                   {!readonly && (
                     <div
-                      className="system-xs-medium flex cursor-pointer items-center space-x-1 text-text-accent"
+                      className="flex cursor-pointer items-center space-x-1 system-xs-medium text-text-accent"
                       onClick={() => {
                         setIsEdit(true)
                       }}
                     >
-                      <RiEditLine className="mr-1 h-3.5 w-3.5" />
+                      <RiEditLine className="mr-1 size-3.5" />
                       <div>{t('operation.edit', { ns: 'common' })}</div>
                     </div>
                   )}
 
                   {showNewContent && (
-                    <div className="system-xs-medium ml-2 flex items-center text-text-tertiary">
+                    <div className="ml-2 flex items-center system-xs-medium text-text-tertiary">
                       <div className="mr-2">·</div>
                       <div
                         className="flex cursor-pointer items-center space-x-1"
@@ -116,8 +116,8 @@ const EditItem: FC<Props> = ({
                           }
                         }}
                       >
-                        <div className="h-3.5 w-3.5">
-                          <RiDeleteBinLine className="h-3.5 w-3.5" />
+                        <div className="size-3.5">
+                          <RiDeleteBinLine className="size-3.5" />
                         </div>
                         <div>{t('operation.delete', { ns: 'common' })}</div>
                       </div>

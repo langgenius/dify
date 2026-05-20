@@ -8,7 +8,7 @@ const mockReplace = vi.fn()
 const mockPush = vi.fn()
 const mockInstalledAppsData = { installed_apps: [] as const }
 
-vi.mock('next/navigation', () => ({
+vi.mock('@/next/navigation', () => ({
   useRouter: () => ({
     replace: mockReplace,
     push: mockPush,

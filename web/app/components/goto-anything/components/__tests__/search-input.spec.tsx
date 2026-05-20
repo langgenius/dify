@@ -186,7 +186,7 @@ describe('SearchInput', () => {
       render(<SearchInput {...defaultProps} />)
 
       const icon = screen.getByTestId('search-icon')
-      expect(icon).toHaveClass('h-4', 'w-4', 'text-text-quaternary')
+      expect(icon).toHaveClass('size-4', 'text-text-quaternary')
     })
 
     it('should have mode badge styling when visible', () => {
@@ -194,7 +194,7 @@ describe('SearchInput', () => {
 
       const badge = container.querySelector('.bg-gray-100')
       expect(badge).toBeInTheDocument()
-      expect(badge).toHaveClass('rounded', 'px-2', 'text-xs', 'font-medium')
+      expect(badge).toHaveClass('rounded-sm', 'px-2', 'text-xs', 'font-medium')
     })
   })
 })

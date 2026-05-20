@@ -31,13 +31,13 @@ describe('VersionMismatchModal', () => {
     it('should render dialog when isShow is true', () => {
       render(<VersionMismatchModal {...defaultProps} />)
 
-      expect(screen.getByRole('dialog')).toBeInTheDocument()
+      expect(screen.getByRole('alertdialog')).toBeInTheDocument()
     })
 
     it('should not render dialog when isShow is false', () => {
       render(<VersionMismatchModal {...defaultProps} isShow={false} />)
 
-      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+      expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
     })
 
     it('should render error title', () => {
@@ -85,23 +85,6 @@ describe('VersionMismatchModal', () => {
       fireEvent.click(screen.getByRole('button', { name: /app\.newApp\.Confirm/ }))
 
       expect(mockOnConfirm).toHaveBeenCalledTimes(1)
-    })
-  })
-
-  describe('button variants', () => {
-    it('should render cancel button with secondary variant', () => {
-      render(<VersionMismatchModal {...defaultProps} />)
-
-      const cancelBtn = screen.getByRole('button', { name: /app\.newApp\.Cancel/ })
-      expect(cancelBtn).toHaveClass('btn-secondary')
-    })
-
-    it('should render confirm button with primary destructive variant', () => {
-      render(<VersionMismatchModal {...defaultProps} />)
-
-      const confirmBtn = screen.getByRole('button', { name: /app\.newApp\.Confirm/ })
-      expect(confirmBtn).toHaveClass('btn-primary')
-      expect(confirmBtn).toHaveClass('btn-destructive')
     })
   })
 

@@ -19,10 +19,10 @@ import { getFlowPrefix } from './utils'
 const NAME_SPACE = 'workflow'
 
 export const useAppWorkflow = (appID: string) => {
-  return useQuery<FetchWorkflowDraftResponse>({
+  return useQuery<FetchWorkflowDraftResponse | null>({
     enabled: !!appID,
     queryKey: [NAME_SPACE, 'publish', appID],
-    queryFn: () => get<FetchWorkflowDraftResponse>(`/apps/${appID}/workflows/publish`),
+    queryFn: () => get<FetchWorkflowDraftResponse | null>(`/apps/${appID}/workflows/publish`),
   })
 }
 
@@ -113,6 +113,13 @@ export const useDeleteWorkflow = () => {
   })
 }
 
+export const useRestoreWorkflow = () => {
+  return useMutation({
+    mutationKey: [NAME_SPACE, 'restore'],
+    mutationFn: (url: string) => post<CommonResponse & { updated_at: number, hash: string }>(url, {}, { silent: true }),
+  })
+}
+
 export const usePublishWorkflow = () => {
   return useMutation({
     mutationKey: [NAME_SPACE, 'publish'],
@@ -181,7 +188,6 @@ export const useResetToLastRunValue = (flowType: FlowType, flowId: string) => {
   })
 }
 
-export const useSysVarValuesKey = [NAME_SPACE, 'sys-variable']
 export const useSysVarValues = (flowType?: FlowType, flowId?: string) => {
   return useQuery({
     enabled: !!flowId,

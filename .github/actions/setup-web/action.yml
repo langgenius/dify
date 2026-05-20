@@ -1,33 +1,16 @@
 name: Setup Web Environment
-description: Setup pnpm, Node.js, and install web dependencies.
-
-inputs:
-  node-version:
-    description: Node.js version to use
-    required: false
-    default: "22"
-  install-dependencies:
-    description: Whether to install web dependencies after setting up Node.js
-    required: false
-    default: "true"
+description: Set up Node.js, Vite+, pnpm, and web dependencies
 
 runs:
   using: composite
   steps:
-    - name: Install pnpm
-      uses: pnpm/action-setup@41ff72655975bd51cab0327fa583b6e92b6d3061 # v4.2.0
+    - name: Setup pnpm
+      uses: pnpm/action-setup@0e279bb959325dab635dd2c09392533439d90093 # v6.0.8
       with:
-        package_json_file: web/package.json
         run_install: false
-
-    - name: Setup Node.js
-      uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
+    - name: Setup Vite+
+      uses: voidzero-dev/setup-vp@ca1c46663915d6c1042ae23bd39ab85718bfb0fa # v1.10.0
       with:
-        node-version: ${{ inputs.node-version }}
-        cache: pnpm
-        cache-dependency-path: ./web/pnpm-lock.yaml
-
-    - name: Install dependencies
-      if: ${{ inputs.install-dependencies == 'true' }}
-      shell: bash
-      run: pnpm --dir web install --frozen-lockfile
+        node-version-file: .nvmrc
+        cache: true
+        run-install: true

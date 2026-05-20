@@ -1,7 +1,10 @@
-from dify_graph.entities.graph_init_params import DIFY_RUN_CONTEXT_KEY
-from dify_graph.entities.workflow_node_execution import WorkflowNodeExecutionStatus
-from dify_graph.node_events import NodeRunResult, StreamChunkEvent, StreamCompletedEvent
-from dify_graph.nodes.datasource.datasource_node import DatasourceNode
+from pytest_mock import MockerFixture
+
+from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY
+from core.workflow.nodes.datasource.datasource_node import DatasourceNode
+from core.workflow.nodes.datasource.entities import DatasourceNodeData
+from graphon.enums import WorkflowNodeExecutionStatus
+from graphon.node_events import NodeRunResult, StreamChunkEvent, StreamCompletedEvent
 
 
 class _VarSeg:
@@ -43,7 +46,7 @@ class _GraphParams:
     call_depth = 0
 
 
-def test_datasource_node_delegates_to_manager_stream(mocker):
+def test_datasource_node_delegates_to_manager_stream(mocker: MockerFixture):
     # prepare sys variables
     sys_vars = {
         "sys": {
@@ -74,23 +77,21 @@ def test_datasource_node_delegates_to_manager_stream(mocker):
         def get_upload_file_by_id(cls, **_):
             raise AssertionError("not called")
 
+    mocker.patch("core.workflow.nodes.datasource.datasource_node.DatasourceManager", new=_Mgr)
+
     node = DatasourceNode(
-        id="n",
-        config={
-            "id": "n",
-            "data": {
-                "type": "datasource",
-                "version": "1",
-                "title": "Datasource",
-                "provider_type": "plugin",
-                "provider_name": "p",
-                "plugin_id": "plug",
-                "datasource_name": "ds",
-            },
-        },
+        node_id="n",
+        data=DatasourceNodeData(
+            type="datasource",
+            version="1",
+            title="Datasource",
+            provider_type="plugin",
+            provider_name="p",
+            plugin_id="plug",
+            datasource_name="ds",
+        ),
         graph_init_params=gp,
         graph_runtime_state=gs,
-        datasource_manager=_Mgr,
     )
 
     evts = list(node._run())

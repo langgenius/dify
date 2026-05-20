@@ -42,10 +42,6 @@ vi.mock('@/context/app-context', () => ({
   }),
 }))
 
-vi.mock('@/app/components/base/toast/context', () => ({
-  useToastContext: () => ({ notify: vi.fn() }),
-}))
-
 vi.mock('@/hooks/use-oauth', () => ({
   openOAuthPopup: vi.fn(),
 }))
@@ -115,7 +111,7 @@ describe('AuthorizedInNode Component', () => {
       <AuthorizedInNode pluginPayload={pluginPayload} onAuthorizationItemClick={vi.fn()} />,
       { wrapper: createWrapper() },
     )
-    expect(screen.getByText('plugin.auth.workspaceDefault')).toBeInTheDocument()
+    expect(screen.getByText('plugin.auth.workspaceDefault'))!.toBeInTheDocument()
   })
 
   it('should render credential name when credentialId matches', async () => {
@@ -131,7 +127,7 @@ describe('AuthorizedInNode Component', () => {
       <AuthorizedInNode pluginPayload={pluginPayload} onAuthorizationItemClick={vi.fn()} credentialId="selected-id" />,
       { wrapper: createWrapper() },
     )
-    expect(screen.getByText('My Credential')).toBeInTheDocument()
+    expect(screen.getByText('My Credential'))!.toBeInTheDocument()
   })
 
   it('should show auth removed when credentialId not found', async () => {
@@ -146,7 +142,7 @@ describe('AuthorizedInNode Component', () => {
       <AuthorizedInNode pluginPayload={pluginPayload} onAuthorizationItemClick={vi.fn()} credentialId="non-existent" />,
       { wrapper: createWrapper() },
     )
-    expect(screen.getByText('plugin.auth.authRemoved')).toBeInTheDocument()
+    expect(screen.getByText('plugin.auth.authRemoved'))!.toBeInTheDocument()
   })
 
   it('should show unavailable when credential is not allowed', async () => {
@@ -199,7 +195,7 @@ describe('AuthorizedInNode Component', () => {
       { wrapper: createWrapper() },
     )
     const buttons = screen.getAllByRole('button')
-    fireEvent.click(buttons[0])
+    fireEvent.click(buttons[0]!)
     expect(screen.getAllByRole('button').length).toBeGreaterThan(0)
   })
 

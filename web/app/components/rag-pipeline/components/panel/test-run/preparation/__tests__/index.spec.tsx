@@ -253,9 +253,9 @@ describe('StepIndicator', () => {
     it('should render without crashing', () => {
       render(<StepIndicator steps={defaultSteps} currentStep={1} />)
 
-      expect(screen.getByText('Step 1')).toBeInTheDocument()
-      expect(screen.getByText('Step 2')).toBeInTheDocument()
-      expect(screen.getByText('Step 3')).toBeInTheDocument()
+      expect(screen.getByText('Step 1'))!.toBeInTheDocument()
+      expect(screen.getByText('Step 2'))!.toBeInTheDocument()
+      expect(screen.getByText('Step 3'))!.toBeInTheDocument()
     })
 
     it('should render all step labels', () => {
@@ -266,8 +266,8 @@ describe('StepIndicator', () => {
 
       render(<StepIndicator steps={steps} currentStep={1} />)
 
-      expect(screen.getByText('Data Source')).toBeInTheDocument()
-      expect(screen.getByText('Processing')).toBeInTheDocument()
+      expect(screen.getByText('Data Source'))!.toBeInTheDocument()
+      expect(screen.getByText('Processing'))!.toBeInTheDocument()
     })
 
     it('should render container with correct classes', () => {
@@ -337,7 +337,7 @@ describe('StepIndicator', () => {
     it('should handle empty steps array', () => {
       const { container } = render(<StepIndicator steps={[]} currentStep={1} />)
 
-      expect(container.firstChild).toBeInTheDocument()
+      expect(container.firstChild)!.toBeInTheDocument()
     })
   })
 
@@ -347,7 +347,7 @@ describe('StepIndicator', () => {
 
       rerender(<StepIndicator steps={defaultSteps} currentStep={1} />)
 
-      expect(screen.getByText('Step 1')).toBeInTheDocument()
+      expect(screen.getByText('Step 1'))!.toBeInTheDocument()
     })
 
     it('should update when currentStep changes', () => {
@@ -373,8 +373,8 @@ describe('StepIndicator', () => {
       ]
       rerender(<StepIndicator steps={newSteps} currentStep={1} />)
 
-      expect(screen.getByText('New Step 1')).toBeInTheDocument()
-      expect(screen.getByText('New Step 2')).toBeInTheDocument()
+      expect(screen.getByText('New Step 1'))!.toBeInTheDocument()
+      expect(screen.getByText('New Step 2'))!.toBeInTheDocument()
       expect(screen.queryByText('Step 3')).not.toBeInTheDocument()
     })
   })
@@ -402,7 +402,7 @@ describe('StepIndicator', () => {
 
       render(<StepIndicator steps={stepsWithEmpty} currentStep={1} />)
 
-      expect(screen.getByText('Valid')).toBeInTheDocument()
+      expect(screen.getByText('Valid'))!.toBeInTheDocument()
     })
 
     it('should handle steps with very long labels', () => {
@@ -411,7 +411,7 @@ describe('StepIndicator', () => {
 
       render(<StepIndicator steps={stepsWithLong} currentStep={1} />)
 
-      expect(screen.getByText(longLabel)).toBeInTheDocument()
+      expect(screen.getByText(longLabel))!.toBeInTheDocument()
     })
 
     it('should handle special characters in labels', () => {
@@ -419,7 +419,7 @@ describe('StepIndicator', () => {
 
       render(<StepIndicator steps={specialSteps} currentStep={1} />)
 
-      expect(screen.getByText('<Test> & "Label"')).toBeInTheDocument()
+      expect(screen.getByText('<Test> & "Label"'))!.toBeInTheDocument()
     })
 
     it('should handle unicode characters in labels', () => {
@@ -427,7 +427,7 @@ describe('StepIndicator', () => {
 
       render(<StepIndicator steps={unicodeSteps} currentStep={1} />)
 
-      expect(screen.getByText('数据源 🎉')).toBeInTheDocument()
+      expect(screen.getByText('数据源 🎉'))!.toBeInTheDocument()
     })
 
     it('should handle negative currentStep', () => {
@@ -448,7 +448,7 @@ describe('FooterTips', () => {
     it('should render without crashing', () => {
       render(<FooterTips />)
 
-      expect(screen.getByText('datasetPipeline.testRun.tooltip')).toBeInTheDocument()
+      expect(screen.getByText('datasetPipeline.testRun.tooltip'))!.toBeInTheDocument()
     })
 
     it('should render with correct container classes', () => {
@@ -472,7 +472,7 @@ describe('FooterTips', () => {
 
       rerender(<FooterTips />)
 
-      expect(screen.getByText('datasetPipeline.testRun.tooltip')).toBeInTheDocument()
+      expect(screen.getByText('datasetPipeline.testRun.tooltip'))!.toBeInTheDocument()
     })
 
     it('should render consistently across multiple rerenders', () => {
@@ -481,7 +481,7 @@ describe('FooterTips', () => {
       for (let i = 0; i < 5; i++)
         rerender(<FooterTips />)
 
-      expect(screen.getByText('datasetPipeline.testRun.tooltip')).toBeInTheDocument()
+      expect(screen.getByText('datasetPipeline.testRun.tooltip'))!.toBeInTheDocument()
     })
   })
 
@@ -510,15 +510,15 @@ describe('useTestRunSteps', () => {
       const { result } = renderHook(() => useTestRunSteps())
 
       expect(result.current.steps).toHaveLength(2)
-      expect(result.current.steps[0].value).toBe('dataSource')
-      expect(result.current.steps[1].value).toBe('documentProcessing')
+      expect(result.current.steps[0]!.value).toBe('dataSource')
+      expect(result.current.steps[1]!.value).toBe('documentProcessing')
     })
 
     it('should provide translated step labels', () => {
       const { result } = renderHook(() => useTestRunSteps())
 
-      expect(result.current.steps[0].label).toContain('testRun.steps.dataSource')
-      expect(result.current.steps[1].label).toContain('testRun.steps.documentProcessing')
+      expect(result.current.steps[0]!.label).toContain('testRun.steps.dataSource')
+      expect(result.current.steps[1]!.label).toContain('testRun.steps.documentProcessing')
     })
   })
 
@@ -714,7 +714,7 @@ describe('useDatasourceOptions', () => {
 
       const { result } = renderHook(() => useDatasourceOptions())
 
-      expect(result.current[0].value).toBe('unique-node-id-123')
+      expect(result.current[0]!.value).toBe('unique-node-id-123')
     })
 
     it('should map node title to option label', () => {
@@ -730,7 +730,7 @@ describe('useDatasourceOptions', () => {
 
       const { result } = renderHook(() => useDatasourceOptions())
 
-      expect(result.current[0].label).toBe('Custom Data Source Title')
+      expect(result.current[0]!.label).toBe('Custom Data Source Title')
     })
 
     it('should include full node data in option', () => {
@@ -752,7 +752,7 @@ describe('useDatasourceOptions', () => {
 
       const { result } = renderHook(() => useDatasourceOptions())
 
-      expect(result.current[0].data).toEqual(nodeData)
+      expect(result.current[0]!.data).toEqual(nodeData)
     })
   })
 
@@ -773,7 +773,7 @@ describe('useDatasourceOptions', () => {
       rerender()
 
       expect(result.current).toHaveLength(1)
-      expect(result.current[0].label).toBe('Test')
+      expect(result.current[0]!.label).toBe('Test')
     })
 
     it('should update options when nodes change', () => {
@@ -789,7 +789,7 @@ describe('useDatasourceOptions', () => {
 
       const { result, rerender } = renderHook(() => useDatasourceOptions())
       expect(result.current).toHaveLength(1)
-      expect(result.current[0].label).toBe('First')
+      expect(result.current[0]!.label).toBe('First')
 
       mockNodes = [
         {
@@ -810,8 +810,8 @@ describe('useDatasourceOptions', () => {
       rerender()
 
       expect(result.current).toHaveLength(2)
-      expect(result.current[0].label).toBe('Second')
-      expect(result.current[1].label).toBe('Third')
+      expect(result.current[0]!.label).toBe('Second')
+      expect(result.current[1]!.label).toBe('Third')
     })
   })
 
@@ -829,7 +829,7 @@ describe('useDatasourceOptions', () => {
 
       const { result } = renderHook(() => useDatasourceOptions())
 
-      expect(result.current[0].label).toBe('')
+      expect(result.current[0]!.label).toBe('')
     })
 
     it('should handle multiple DataSource nodes', () => {
@@ -1054,32 +1054,32 @@ describe('Preparation', () => {
     it('should render without crashing', () => {
       render(<Preparation />)
 
-      expect(screen.getByTestId('data-source-options')).toBeInTheDocument()
+      expect(screen.getByTestId('data-source-options'))!.toBeInTheDocument()
     })
 
     it('should render StepIndicator', () => {
       render(<Preparation />)
 
-      expect(screen.getByText('datasetPipeline.testRun.steps.dataSource')).toBeInTheDocument()
-      expect(screen.getByText('datasetPipeline.testRun.steps.documentProcessing')).toBeInTheDocument()
+      expect(screen.getByText('datasetPipeline.testRun.steps.dataSource'))!.toBeInTheDocument()
+      expect(screen.getByText('datasetPipeline.testRun.steps.documentProcessing'))!.toBeInTheDocument()
     })
 
     it('should render DataSourceOptions on step 1', () => {
       render(<Preparation />)
 
-      expect(screen.getByTestId('data-source-options')).toBeInTheDocument()
+      expect(screen.getByTestId('data-source-options'))!.toBeInTheDocument()
     })
 
     it('should render Actions on step 1', () => {
       render(<Preparation />)
 
-      expect(screen.getByText('datasetCreation.stepOne.button')).toBeInTheDocument()
+      expect(screen.getByText('datasetCreation.stepOne.button'))!.toBeInTheDocument()
     })
 
     it('should render FooterTips on step 1', () => {
       render(<Preparation />)
 
-      expect(screen.getByText('datasetPipeline.testRun.tooltip')).toBeInTheDocument()
+      expect(screen.getByText('datasetPipeline.testRun.tooltip'))!.toBeInTheDocument()
     })
 
     it('should not render DocumentProcessing on step 1', () => {
@@ -1095,7 +1095,7 @@ describe('Preparation', () => {
 
       fireEvent.click(screen.getByTestId('select-local-file'))
 
-      expect(screen.getByTestId('local-file')).toBeInTheDocument()
+      expect(screen.getByTestId('local-file'))!.toBeInTheDocument()
     })
 
     it('should render OnlineDocuments component when online document datasource is selected', () => {
@@ -1103,7 +1103,7 @@ describe('Preparation', () => {
 
       fireEvent.click(screen.getByTestId('select-online-document'))
 
-      expect(screen.getByTestId('online-documents')).toBeInTheDocument()
+      expect(screen.getByTestId('online-documents'))!.toBeInTheDocument()
     })
 
     it('should render WebsiteCrawl component when website crawl datasource is selected', () => {
@@ -1111,7 +1111,7 @@ describe('Preparation', () => {
 
       fireEvent.click(screen.getByTestId('select-website-crawl'))
 
-      expect(screen.getByTestId('website-crawl')).toBeInTheDocument()
+      expect(screen.getByTestId('website-crawl'))!.toBeInTheDocument()
     })
 
     it('should render OnlineDrive component when online drive datasource is selected', () => {
@@ -1119,7 +1119,7 @@ describe('Preparation', () => {
 
       fireEvent.click(screen.getByTestId('select-online-drive'))
 
-      expect(screen.getByTestId('online-drive')).toBeInTheDocument()
+      expect(screen.getByTestId('online-drive'))!.toBeInTheDocument()
     })
 
     it('should pass correct props to LocalFile component', () => {
@@ -1128,8 +1128,8 @@ describe('Preparation', () => {
       fireEvent.click(screen.getByTestId('select-local-file'))
 
       const localFile = screen.getByTestId('local-file')
-      expect(localFile).toHaveAttribute('data-extensions', '["txt","pdf"]')
-      expect(localFile).toHaveAttribute('data-batch', 'false')
+      expect(localFile)!.toHaveAttribute('data-extensions', '["txt","pdf"]')
+      expect(localFile)!.toHaveAttribute('data-batch', 'false')
     })
 
     it('should pass isInPipeline=true to OnlineDocuments', () => {
@@ -1138,7 +1138,7 @@ describe('Preparation', () => {
       fireEvent.click(screen.getByTestId('select-online-document'))
 
       const onlineDocs = screen.getByTestId('online-documents')
-      expect(onlineDocs).toHaveAttribute('data-in-pipeline', 'true')
+      expect(onlineDocs)!.toHaveAttribute('data-in-pipeline', 'true')
     })
 
     it('should pass supportBatchUpload=false to all data source components', () => {
@@ -1146,7 +1146,7 @@ describe('Preparation', () => {
 
       fireEvent.click(screen.getByTestId('select-online-document'))
 
-      expect(screen.getByTestId('online-documents')).toHaveAttribute('data-batch', 'false')
+      expect(screen.getByTestId('online-documents'))!.toHaveAttribute('data-batch', 'false')
     })
 
     it('should update dataSourceNodeId when selecting different datasources', () => {
@@ -1154,11 +1154,11 @@ describe('Preparation', () => {
 
       fireEvent.click(screen.getByTestId('select-local-file'))
 
-      expect(screen.getByTestId('data-source-options')).toHaveAttribute('data-selected', 'local-file-node')
+      expect(screen.getByTestId('data-source-options'))!.toHaveAttribute('data-selected', 'local-file-node')
 
       fireEvent.click(screen.getByTestId('select-online-document'))
 
-      expect(screen.getByTestId('data-source-options')).toHaveAttribute('data-selected', 'online-doc-node')
+      expect(screen.getByTestId('data-source-options'))!.toHaveAttribute('data-selected', 'online-doc-node')
     })
   })
 
@@ -1166,7 +1166,7 @@ describe('Preparation', () => {
     it('should disable next button when no datasource is selected', () => {
       render(<Preparation />)
 
-      expect(screen.getByRole('button', { name: /datasetCreation.stepOne.button/i })).toBeDisabled()
+      expect(screen.getByRole('button', { name: /datasetCreation.stepOne.button/i }))!.toBeDisabled()
     })
 
     it('should disable next button for local file when file list is empty', () => {
@@ -1175,7 +1175,7 @@ describe('Preparation', () => {
 
       fireEvent.click(screen.getByTestId('select-local-file'))
 
-      expect(screen.getByRole('button', { name: /datasetCreation.stepOne.button/i })).toBeDisabled()
+      expect(screen.getByRole('button', { name: /datasetCreation.stepOne.button/i }))!.toBeDisabled()
     })
 
     it('should disable next button for local file when file has no id', () => {
@@ -1186,7 +1186,7 @@ describe('Preparation', () => {
 
       fireEvent.click(screen.getByTestId('select-local-file'))
 
-      expect(screen.getByRole('button', { name: /datasetCreation.stepOne.button/i })).toBeDisabled()
+      expect(screen.getByRole('button', { name: /datasetCreation.stepOne.button/i }))!.toBeDisabled()
     })
 
     it('should enable next button for local file when file has valid id', () => {
@@ -1206,7 +1206,7 @@ describe('Preparation', () => {
 
       fireEvent.click(screen.getByTestId('select-online-document'))
 
-      expect(screen.getByRole('button', { name: /datasetCreation.stepOne.button/i })).toBeDisabled()
+      expect(screen.getByRole('button', { name: /datasetCreation.stepOne.button/i }))!.toBeDisabled()
     })
 
     it('should enable next button for online document when documents exist', () => {
@@ -1224,7 +1224,7 @@ describe('Preparation', () => {
 
       fireEvent.click(screen.getByTestId('select-website-crawl'))
 
-      expect(screen.getByRole('button', { name: /datasetCreation.stepOne.button/i })).toBeDisabled()
+      expect(screen.getByRole('button', { name: /datasetCreation.stepOne.button/i }))!.toBeDisabled()
     })
 
     it('should enable next button for website crawl when pages exist', () => {
@@ -1242,7 +1242,7 @@ describe('Preparation', () => {
 
       fireEvent.click(screen.getByTestId('select-online-drive'))
 
-      expect(screen.getByRole('button', { name: /datasetCreation.stepOne.button/i })).toBeDisabled()
+      expect(screen.getByRole('button', { name: /datasetCreation.stepOne.button/i }))!.toBeDisabled()
     })
 
     it('should enable next button for online drive when files are selected', () => {
@@ -1265,7 +1265,7 @@ describe('Preparation', () => {
       fireEvent.click(screen.getByTestId('select-local-file'))
       fireEvent.click(screen.getByRole('button', { name: /datasetCreation.stepOne.button/i }))
 
-      expect(screen.getByTestId('document-processing')).toBeInTheDocument()
+      expect(screen.getByTestId('document-processing'))!.toBeInTheDocument()
       expect(screen.queryByTestId('data-source-options')).not.toBeInTheDocument()
     })
 
@@ -1278,7 +1278,7 @@ describe('Preparation', () => {
       fireEvent.click(screen.getByTestId('select-local-file'))
       fireEvent.click(screen.getByRole('button', { name: /datasetCreation.stepOne.button/i }))
 
-      expect(screen.getByTestId('document-processing')).toHaveAttribute('data-node-id', 'local-file-node')
+      expect(screen.getByTestId('document-processing'))!.toHaveAttribute('data-node-id', 'local-file-node')
     })
 
     it('should navigate back to step 1 when back button is clicked', () => {
@@ -1289,11 +1289,11 @@ describe('Preparation', () => {
 
       fireEvent.click(screen.getByTestId('select-local-file'))
       fireEvent.click(screen.getByRole('button', { name: /datasetCreation.stepOne.button/i }))
-      expect(screen.getByTestId('document-processing')).toBeInTheDocument()
+      expect(screen.getByTestId('document-processing'))!.toBeInTheDocument()
 
       fireEvent.click(screen.getByTestId('back-btn'))
 
-      expect(screen.getByTestId('data-source-options')).toBeInTheDocument()
+      expect(screen.getByTestId('data-source-options'))!.toBeInTheDocument()
       expect(screen.queryByTestId('document-processing')).not.toBeInTheDocument()
     })
   })
@@ -1479,7 +1479,7 @@ describe('Preparation', () => {
       const { rerender } = render(<Preparation />)
       rerender(<Preparation />)
 
-      expect(screen.getByTestId('data-source-options')).toBeInTheDocument()
+      expect(screen.getByTestId('data-source-options'))!.toBeInTheDocument()
     })
 
     it('should maintain state across rerenders', () => {
@@ -1493,7 +1493,7 @@ describe('Preparation', () => {
 
       rerender(<Preparation />)
 
-      expect(screen.getByTestId('document-processing')).toBeInTheDocument()
+      expect(screen.getByTestId('document-processing'))!.toBeInTheDocument()
     })
   })
 
@@ -1538,7 +1538,7 @@ describe('Preparation', () => {
       fireEvent.click(screen.getByTestId('select-online-drive'))
       fireEvent.click(screen.getByTestId('select-local-file'))
 
-      expect(screen.getByTestId('local-file')).toBeInTheDocument()
+      expect(screen.getByTestId('local-file'))!.toBeInTheDocument()
     })
 
     it('should handle rapid step navigation', () => {
@@ -1553,7 +1553,7 @@ describe('Preparation', () => {
       fireEvent.click(screen.getByRole('button', { name: /datasetCreation.stepOne.button/i }))
       fireEvent.click(screen.getByTestId('back-btn'))
 
-      expect(screen.getByTestId('data-source-options')).toBeInTheDocument()
+      expect(screen.getByTestId('data-source-options'))!.toBeInTheDocument()
     })
   })
 
@@ -1565,10 +1565,10 @@ describe('Preparation', () => {
       render(<Preparation />)
 
       fireEvent.click(screen.getByTestId('select-local-file'))
-      expect(screen.getByTestId('local-file')).toBeInTheDocument()
+      expect(screen.getByTestId('local-file'))!.toBeInTheDocument()
 
       fireEvent.click(screen.getByRole('button', { name: /datasetCreation.stepOne.button/i }))
-      expect(screen.getByTestId('document-processing')).toBeInTheDocument()
+      expect(screen.getByTestId('document-processing'))!.toBeInTheDocument()
 
       fireEvent.click(screen.getByTestId('process-btn'))
 
@@ -1586,15 +1586,15 @@ describe('Preparation', () => {
 
       fireEvent.click(screen.getByTestId('select-local-file'))
       fireEvent.click(screen.getByRole('button', { name: /datasetCreation.stepOne.button/i }))
-      expect(screen.getByTestId('document-processing')).toBeInTheDocument()
+      expect(screen.getByTestId('document-processing'))!.toBeInTheDocument()
 
       fireEvent.click(screen.getByTestId('back-btn'))
       fireEvent.click(screen.getByTestId('select-online-document'))
-      expect(screen.getByTestId('online-documents')).toBeInTheDocument()
+      expect(screen.getByTestId('online-documents'))!.toBeInTheDocument()
 
       fireEvent.click(screen.getByRole('button', { name: /datasetCreation.stepOne.button/i }))
 
-      expect(screen.getByTestId('document-processing')).toHaveAttribute('data-node-id', 'online-doc-node')
+      expect(screen.getByTestId('document-processing'))!.toHaveAttribute('data-node-id', 'online-doc-node')
     })
   })
 })
@@ -1610,7 +1610,7 @@ describe('Callback Dependencies', () => {
       const { rerender } = render(<Preparation />)
       fireEvent.click(screen.getByTestId('select-local-file'))
 
-      expect(screen.getByRole('button', { name: /datasetCreation.stepOne.button/i })).toBeDisabled()
+      expect(screen.getByRole('button', { name: /datasetCreation.stepOne.button/i }))!.toBeDisabled()
 
       mockDataSourceStoreState.localFileList = [
         { file: { id: 'file-123', name: 'test.txt', type: 'text/plain', size: 100, extension: 'txt', mime_type: 'text/plain' } },
@@ -1625,7 +1625,7 @@ describe('Callback Dependencies', () => {
       const { rerender } = render(<Preparation />)
       fireEvent.click(screen.getByTestId('select-online-document'))
 
-      expect(screen.getByRole('button', { name: /datasetCreation.stepOne.button/i })).toBeDisabled()
+      expect(screen.getByRole('button', { name: /datasetCreation.stepOne.button/i }))!.toBeDisabled()
 
       mockDataSourceStoreState.onlineDocuments = [{ workspace_id: 'ws-1' }]
       rerender(<Preparation />)
@@ -1638,7 +1638,7 @@ describe('Callback Dependencies', () => {
       const { rerender } = render(<Preparation />)
       fireEvent.click(screen.getByTestId('select-website-crawl'))
 
-      expect(screen.getByRole('button', { name: /datasetCreation.stepOne.button/i })).toBeDisabled()
+      expect(screen.getByRole('button', { name: /datasetCreation.stepOne.button/i }))!.toBeDisabled()
 
       mockDataSourceStoreState.websitePages = [{ url: 'https://example.com' }]
       rerender(<Preparation />)
@@ -1651,7 +1651,7 @@ describe('Callback Dependencies', () => {
       const { rerender } = render(<Preparation />)
       fireEvent.click(screen.getByTestId('select-online-drive'))
 
-      expect(screen.getByRole('button', { name: /datasetCreation.stepOne.button/i })).toBeDisabled()
+      expect(screen.getByRole('button', { name: /datasetCreation.stepOne.button/i }))!.toBeDisabled()
 
       mockDataSourceStoreState.selectedFileIds = ['file-1']
       rerender(<Preparation />)

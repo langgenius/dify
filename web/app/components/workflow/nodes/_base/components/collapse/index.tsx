@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react'
+import { cn } from '@langgenius/dify-ui/cn'
 import { useMemo, useState } from 'react'
 import { ArrowDownRoundFill } from '@/app/components/base/icons/src/vender/solid/general'
-import { cn } from '@/utils/classnames'
 
 export { default as FieldCollapse } from './field-collapse'
 
@@ -32,8 +32,8 @@ const Collapse = ({
     return (
       <ArrowDownRoundFill
         className={cn(
-          'h-4 w-4 cursor-pointer text-text-quaternary group-hover/collapse:text-text-secondary',
-          collapsedMerged && 'rotate-[270deg]',
+          'size-4 cursor-pointer text-text-quaternary group-hover/collapse:text-text-secondary',
+          collapsedMerged && 'rotate-270',
         )}
       />
     )
@@ -52,7 +52,7 @@ const Collapse = ({
         >
           {typeof trigger === 'function' ? trigger(collapseIcon) : trigger}
           {!hideCollapseIcon && (
-            <div className="h-4 w-4 shrink-0">
+            <div className="size-4 shrink-0">
               {collapseIcon}
             </div>
           )}

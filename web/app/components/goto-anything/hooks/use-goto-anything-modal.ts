@@ -5,7 +5,7 @@ import { useKeyPress } from 'ahooks'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { getKeyboardKeyCodeBySystem, isEventTargetInputArea } from '@/app/components/workflow/utils/common'
 
-export type UseGotoAnythingModalReturn = {
+type UseGotoAnythingModalReturn = {
   show: boolean
   setShow: (show: boolean | ((prev: boolean) => boolean)) => void
   inputRef: RefObject<HTMLInputElement | null>

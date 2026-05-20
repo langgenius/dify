@@ -111,77 +111,27 @@ describe('Segment CRUD Flow', () => {
   })
 
   describe('Segment Selection → Batch Operations', () => {
-    const segments = [
-      createSegment('seg-1'),
-      createSegment('seg-2'),
-      createSegment('seg-3'),
-    ]
-
     it('should manage individual segment selection', () => {
-      const { result } = renderHook(() => useSegmentSelection(segments))
+      const { result } = renderHook(() => useSegmentSelection())
 
       act(() => {
-        result.current.onSelected('seg-1')
+        result.current.onSelectedSegmentIdsChange(['seg-1'])
       })
       expect(result.current.selectedSegmentIds).toContain('seg-1')
 
       act(() => {
-        result.current.onSelected('seg-2')
+        result.current.onSelectedSegmentIdsChange(['seg-1', 'seg-2'])
       })
       expect(result.current.selectedSegmentIds).toContain('seg-1')
       expect(result.current.selectedSegmentIds).toContain('seg-2')
       expect(result.current.selectedSegmentIds).toHaveLength(2)
     })
 
-    it('should toggle selection on repeated click', () => {
-      const { result } = renderHook(() => useSegmentSelection(segments))
-
-      act(() => {
-        result.current.onSelected('seg-1')
-      })
-      expect(result.current.selectedSegmentIds).toContain('seg-1')
-
-      act(() => {
-        result.current.onSelected('seg-1')
-      })
-      expect(result.current.selectedSegmentIds).not.toContain('seg-1')
-    })
-
-    it('should support select all toggle', () => {
-      const { result } = renderHook(() => useSegmentSelection(segments))
-
-      act(() => {
-        result.current.onSelectedAll()
-      })
-      expect(result.current.selectedSegmentIds).toHaveLength(3)
-      expect(result.current.isAllSelected).toBe(true)
-
-      act(() => {
-        result.current.onSelectedAll()
-      })
-      expect(result.current.selectedSegmentIds).toHaveLength(0)
-      expect(result.current.isAllSelected).toBe(false)
-    })
-
-    it('should detect partial selection via isSomeSelected', () => {
-      const { result } = renderHook(() => useSegmentSelection(segments))
-
-      act(() => {
-        result.current.onSelected('seg-1')
-      })
-
-      // After selecting one of three, isSomeSelected should be true
-      expect(result.current.selectedSegmentIds).toEqual(['seg-1'])
-      expect(result.current.isSomeSelected).toBe(true)
-      expect(result.current.isAllSelected).toBe(false)
-    })
-
     it('should clear selection via onCancelBatchOperation', () => {
-      const { result } = renderHook(() => useSegmentSelection(segments))
+      const { result } = renderHook(() => useSegmentSelection())
 
       act(() => {
-        result.current.onSelected('seg-1')
-        result.current.onSelected('seg-2')
+        result.current.onSelectedSegmentIdsChange(['seg-1', 'seg-2'])
       })
       expect(result.current.selectedSegmentIds).toHaveLength(2)
 
@@ -271,7 +221,7 @@ describe('Segment CRUD Flow', () => {
         useSearchFilter({ onPageChange: vi.fn() }),
       )
       const { result: selectionResult } = renderHook(() =>
-        useSegmentSelection(segments),
+        useSegmentSelection(),
       )
       const { result: modalResult } = renderHook(() =>
         useModalState({ onNewSegmentModalChange: vi.fn() }),
@@ -284,12 +234,12 @@ describe('Segment CRUD Flow', () => {
 
       // Select a segment
       act(() => {
-        selectionResult.current.onSelected('seg-1')
+        selectionResult.current.onSelectedSegmentIdsChange(['seg-1'])
       })
 
       // Open detail modal
       act(() => {
-        modalResult.current.onClickCard(segments[0])
+        modalResult.current.onClickCard(segments[0]!)
       })
 
       // All states should be independent

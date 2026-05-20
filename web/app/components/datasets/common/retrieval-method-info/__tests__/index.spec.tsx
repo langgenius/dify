@@ -1,27 +1,7 @@
-import type { ReactNode } from 'react'
 import { render, screen } from '@testing-library/react'
 import { RETRIEVE_METHOD } from '@/types/app'
 import { retrievalIcon } from '../../../create/icons'
 import RetrievalMethodInfo, { getIcon } from '../index'
-
-// Override global next/image auto-mock: tests assert on rendered <img> src attributes via data-testid
-vi.mock('next/image', () => ({
-  default: ({ src, alt, className }: { src: string, alt: string, className?: string }) => (
-    <img src={src} alt={alt || ''} className={className} data-testid="method-icon" />
-  ),
-}))
-
-// Mock RadioCard
-vi.mock('@/app/components/base/radio-card', () => ({
-  default: ({ title, description, chosenConfig, icon }: { title: string, description: string, chosenConfig: ReactNode, icon: ReactNode }) => (
-    <div data-testid="radio-card">
-      <div data-testid="card-title">{title}</div>
-      <div data-testid="card-description">{description}</div>
-      <div data-testid="card-icon">{icon}</div>
-      <div data-testid="chosen-config">{chosenConfig}</div>
-    </div>
-  ),
-}))
 
 // Mock icons
 vi.mock('../../../create/icons', () => ({
@@ -50,16 +30,14 @@ describe('RetrievalMethodInfo', () => {
   })
 
   it('should render correctly with full config', () => {
-    render(<RetrievalMethodInfo value={defaultConfig} />)
-
-    expect(screen.getByTestId('radio-card')).toBeInTheDocument()
+    const { container } = render(<RetrievalMethodInfo value={defaultConfig} />)
 
     // Check Title & Description (mocked i18n returns key prefixed with ns)
-    expect(screen.getByTestId('card-title')).toHaveTextContent('dataset.retrieval.semantic_search.title')
-    expect(screen.getByTestId('card-description')).toHaveTextContent('dataset.retrieval.semantic_search.description')
+    expect(screen.getByText('dataset.retrieval.semantic_search.title')).toBeInTheDocument()
+    expect(screen.getByText('dataset.retrieval.semantic_search.description')).toBeInTheDocument()
 
     // Check Icon
-    const icon = screen.getByTestId('method-icon')
+    const icon = container.querySelector('img')
     expect(icon).toHaveAttribute('src', 'vector-icon.png')
 
     // Check Config Details
@@ -87,18 +65,18 @@ describe('RetrievalMethodInfo', () => {
   it('should handle different retrieval methods', () => {
     // Test Hybrid
     const hybridConfig = { ...defaultConfig, search_method: RETRIEVE_METHOD.hybrid }
-    const { unmount } = render(<RetrievalMethodInfo value={hybridConfig} />)
+    const { container, unmount } = render(<RetrievalMethodInfo value={hybridConfig} />)
 
-    expect(screen.getByTestId('card-title')).toHaveTextContent('dataset.retrieval.hybrid_search.title')
-    expect(screen.getByTestId('method-icon')).toHaveAttribute('src', 'hybrid-icon.png')
+    expect(screen.getByText('dataset.retrieval.hybrid_search.title')).toBeInTheDocument()
+    expect(container.querySelector('img')).toHaveAttribute('src', 'hybrid-icon.png')
 
     unmount()
 
     // Test FullText
     const fullTextConfig = { ...defaultConfig, search_method: RETRIEVE_METHOD.fullText }
-    render(<RetrievalMethodInfo value={fullTextConfig} />)
-    expect(screen.getByTestId('card-title')).toHaveTextContent('dataset.retrieval.full_text_search.title')
-    expect(screen.getByTestId('method-icon')).toHaveAttribute('src', 'fulltext-icon.png')
+    const { container: fullTextContainer } = render(<RetrievalMethodInfo value={fullTextConfig} />)
+    expect(screen.getByText('dataset.retrieval.full_text_search.title')).toBeInTheDocument()
+    expect(fullTextContainer.querySelector('img')).toHaveAttribute('src', 'fulltext-icon.png')
   })
 
   describe('getIcon utility', () => {
@@ -132,17 +110,17 @@ describe('RetrievalMethodInfo', () => {
 
   it('should render correctly with invertedIndex search method', () => {
     const invertedIndexConfig = { ...defaultConfig, search_method: RETRIEVE_METHOD.invertedIndex }
-    render(<RetrievalMethodInfo value={invertedIndexConfig} />)
+    const { container } = render(<RetrievalMethodInfo value={invertedIndexConfig} />)
 
     // invertedIndex uses vector icon
-    expect(screen.getByTestId('method-icon')).toHaveAttribute('src', 'vector-icon.png')
+    expect(container.querySelector('img')).toHaveAttribute('src', 'vector-icon.png')
   })
 
   it('should render correctly with keywordSearch search method', () => {
     const keywordSearchConfig = { ...defaultConfig, search_method: RETRIEVE_METHOD.keywordSearch }
-    render(<RetrievalMethodInfo value={keywordSearchConfig} />)
+    const { container } = render(<RetrievalMethodInfo value={keywordSearchConfig} />)
 
     // keywordSearch uses vector icon
-    expect(screen.getByTestId('method-icon')).toHaveAttribute('src', 'vector-icon.png')
+    expect(container.querySelector('img')).toHaveAttribute('src', 'vector-icon.png')
   })
 })

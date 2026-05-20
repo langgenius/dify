@@ -19,7 +19,7 @@ vi.mock('zustand/react/shallow', () => ({
   useShallow: (fn: unknown) => fn,
 }))
 
-vi.mock('next/navigation', () => ({
+vi.mock('@/next/navigation', () => ({
   usePathname: () => mockPathname,
 }))
 
@@ -58,6 +58,9 @@ vi.mock('@/app/components/workflow/utils', () => ({
 
 vi.mock('../app-info', () => ({
   default: ({ expand }: { expand: boolean }) => (
+    <div data-testid="app-info" data-expand={expand} />
+  ),
+  AppInfoView: ({ expand }: { expand: boolean }) => (
     <div data-testid="app-info" data-expand={expand} />
   ),
 }))

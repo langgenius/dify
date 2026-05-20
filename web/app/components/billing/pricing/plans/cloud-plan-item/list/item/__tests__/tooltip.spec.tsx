@@ -1,4 +1,5 @@
 import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import Tooltip from '../tooltip'
 
 describe('Tooltip', () => {
@@ -8,12 +9,14 @@ describe('Tooltip', () => {
 
   // Rendering the info tooltip container
   describe('Rendering', () => {
-    it('should render the content panel when provide with text', () => {
+    it('should render the content panel when hovered', async () => {
+      const user = userEvent.setup()
       const content = 'Usage resets on the first day of every month.'
 
       render(<Tooltip content={content} />)
+      await user.hover(screen.getByRole('button', { name: content }))
 
-      expect(() => screen.getByText(content)).not.toThrow()
+      expect(await screen.findByText(content)).toBeInTheDocument()
     })
   })
 

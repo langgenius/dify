@@ -4,12 +4,12 @@ import * as React from 'react'
 import NavLink from '..'
 
 // Mock Next.js navigation
-vi.mock('next/navigation', () => ({
+vi.mock('@/next/navigation', () => ({
   useSelectedLayoutSegment: () => 'overview',
 }))
 
 // Mock Next.js Link component
-vi.mock('next/link', () => ({
+vi.mock('@/next/link', () => ({
   default: function MockLink({ children, href, className, title }: { children: React.ReactNode, href: string, className?: string, title?: string }) {
     return (
       <a href={href} className={className} title={title} data-testid="nav-link">
@@ -109,8 +109,8 @@ describe('NavLink Animation and Layout Issues', () => {
       expect(expandedIconWrapper).not.toHaveClass('-ml-1')
 
       // Icon itself maintains consistent classes - no margin changes
-      expect(iconElement).toHaveClass('h-4')
-      expect(iconElement).toHaveClass('w-4')
+      expect(iconElement).toHaveClass('size-4')
+      expect(iconElement).toHaveClass('size-4')
       expect(iconElement).toHaveClass('shrink-0')
 
       // This wrapper approach eliminates the icon margin shift issue
@@ -168,8 +168,8 @@ describe('NavLink Animation and Layout Issues', () => {
       expect(iconWrapper).toHaveClass('-ml-1')
 
       // Icon itself has consistent classes
-      expect(iconElement).toHaveClass('h-4')
-      expect(iconElement).toHaveClass('w-4')
+      expect(iconElement).toHaveClass('size-4')
+      expect(iconElement).toHaveClass('size-4')
       expect(iconElement).toHaveClass('shrink-0')
 
       rerender(<NavLink {...mockProps} mode="expand" />)
@@ -180,8 +180,8 @@ describe('NavLink Animation and Layout Issues', () => {
       expect(expandedIconWrapper).not.toHaveClass('-ml-1')
 
       // Icon classes remain consistent - no margin shifts
-      expect(iconElement).toHaveClass('h-4')
-      expect(iconElement).toHaveClass('w-4')
+      expect(iconElement).toHaveClass('size-4')
+      expect(iconElement).toHaveClass('size-4')
       expect(iconElement).toHaveClass('shrink-0')
     })
   })

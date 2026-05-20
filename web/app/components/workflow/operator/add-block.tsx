@@ -2,6 +2,7 @@ import type { OffsetOptions } from '@floating-ui/react'
 import type {
   OnSelectBlock,
 } from '@/app/components/workflow/types'
+import { cn } from '@langgenius/dify-ui/cn'
 import { RiAddCircleFill } from '@remixicon/react'
 import {
   memo,
@@ -15,7 +16,6 @@ import {
   BlockEnum,
 } from '@/app/components/workflow/types'
 import { FlowType } from '@/types/common'
-import { cn } from '@/utils/classnames'
 import {
   useAvailableBlocks,
   useIsChatMode,
@@ -90,12 +90,12 @@ const AddBlock = ({
         title={t('common.addBlock', { ns: 'workflow' })}
       >
         <div className={cn(
-          'flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary',
+          'flex size-8 cursor-pointer items-center justify-center rounded-lg text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary',
           `${nodesReadOnly && 'cursor-not-allowed text-text-disabled hover:bg-transparent hover:text-text-disabled'}`,
           open && 'bg-state-accent-active text-text-accent',
         )}
         >
-          <RiAddCircleFill className="h-4 w-4" />
+          <RiAddCircleFill className="size-4" />
         </div>
       </TipPopup>
     )
@@ -113,7 +113,7 @@ const AddBlock = ({
         crossAxis: -8,
       }}
       trigger={renderTrigger || renderTriggerElement}
-      popupClassName="!min-w-[256px]"
+      popupClassName="min-w-[256px]!"
       availableBlocksTypes={availableNextBlocks}
       showStartTab={showStartTab}
     />

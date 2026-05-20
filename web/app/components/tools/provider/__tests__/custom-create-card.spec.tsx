@@ -70,11 +70,11 @@ vi.mock('@/app/components/tools/edit-custom-collection-modal', () => ({
   },
 }))
 
-// Mock Toast
-const mockToastNotify = vi.fn()
-vi.mock('@/app/components/base/toast', () => ({
-  default: {
-    notify: (options: { type: string, message: string }) => mockToastNotify(options),
+// Mock toast
+const mockToastSuccess = vi.fn()
+vi.mock('@langgenius/dify-ui/toast', () => ({
+  toast: {
+    success: (title: string) => mockToastSuccess(title),
   },
 }))
 
@@ -121,7 +121,7 @@ describe('CustomCreateCard', () => {
       render(<CustomCreateCard onRefreshData={mockOnRefreshData} />)
 
       // RiAddCircleFill icon should be present
-      const iconContainer = document.querySelector('.h-10.w-10')
+      const iconContainer = document.querySelector('.size-10')
       expect(iconContainer).toBeInTheDocument()
     })
 
@@ -198,10 +198,7 @@ describe('CustomCreateCard', () => {
       fireEvent.click(screen.getByTestId('submit-modal'))
 
       await waitFor(() => {
-        expect(mockToastNotify).toHaveBeenCalledWith({
-          type: 'success',
-          message: expect.any(String),
-        })
+        expect(mockToastSuccess).toHaveBeenCalledWith(expect.any(String))
       })
     })
 

@@ -47,12 +47,9 @@ describe('DocTypeSelector', () => {
     })
 
     it('should render icon buttons for each doc type', () => {
-      const { container } = render(<DocTypeSelector {...defaultProps} />)
+      render(<DocTypeSelector {...defaultProps} />)
 
-      // Each doc type renders an IconButton wrapped in Radio
-      const iconButtons = container.querySelectorAll('button[type="button"]')
-      // 3 doc types + 1 confirm button = 4 buttons
-      expect(iconButtons.length).toBeGreaterThanOrEqual(3)
+      expect(screen.getAllByRole('radio')).toHaveLength(3)
     })
 
     it('should render confirm button disabled when tempDocType is empty', () => {
@@ -133,7 +130,7 @@ describe('DocumentTypeDisplay', () => {
       const onClick = vi.fn()
       render(<DocumentTypeDisplay displayType="book" showChangeLink={true} onChangeClick={onClick} />)
 
-      fireEvent.click(screen.getByText(/operation\.change/))
+      fireEvent.click(screen.getByRole('button', { name: /operation\.change/ }))
 
       expect(onClick).toHaveBeenCalled()
     })

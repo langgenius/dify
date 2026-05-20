@@ -132,7 +132,7 @@ export const useDynamicTestRunOptions = (): TestRunOptions => {
           name: t('common.runAllTriggers', { ns: 'workflow' }),
           icon: (
             <div className="flex h-6 w-6 items-center justify-center rounded-lg border-[0.5px] border-white/2 bg-util-colors-purple-purple-500 text-white shadow-md">
-              <TriggerAll className="h-4.5 w-4.5" />
+              <TriggerAll className="size-4.5" />
             </div>
           ),
           relatedNodeIds: triggerNodeIds,

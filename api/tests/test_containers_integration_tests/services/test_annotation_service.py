@@ -6,9 +6,10 @@ from sqlalchemy.orm import Session
 from werkzeug.exceptions import NotFound
 
 from models import Account
+from models.enums import ConversationFromSource, InvokeFrom
 from models.model import MessageAnnotation
 from services.annotation_service import AppAnnotationService
-from services.app_service import AppService
+from services.app_service import AppService, CreateAppParams
 from tests.test_containers_integration_tests.helpers import generate_valid_password
 
 
@@ -85,16 +86,16 @@ class TestAnnotationService:
         tenant = account.current_tenant
 
         # Setup app creation arguments
-        app_args = {
-            "name": fake.company(),
-            "description": fake.text(max_nb_chars=100),
-            "mode": "chat",
-            "icon_type": "emoji",
-            "icon": "🤖",
-            "icon_background": "#FF6B6B",
-            "api_rph": 100,
-            "api_rpm": 10,
-        }
+        app_args = CreateAppParams(
+            name=fake.company(),
+            description=fake.text(max_nb_chars=100),
+            mode="chat",
+            icon_type="emoji",
+            icon="🤖",
+            icon_background="#FF6B6B",
+            api_rph=100,
+            api_rpm=10,
+        )
 
         # Create app
         app_service = AppService()
@@ -136,8 +137,8 @@ class TestAnnotationService:
             system_instruction="",
             system_instruction_tokens=0,
             status="normal",
-            invoke_from="console",
-            from_source="console",
+            invoke_from=InvokeFrom.EXPLORE,
+            from_source=ConversationFromSource.CONSOLE,
             from_end_user_id=None,
             from_account_id=account.id,
         )
@@ -174,8 +175,8 @@ class TestAnnotationService:
             provider_response_latency=0,
             total_price=0,
             currency="USD",
-            invoke_from="console",
-            from_source="console",
+            invoke_from=InvokeFrom.EXPLORE,
+            from_source=ConversationFromSource.CONSOLE,
             from_end_user_id=None,
             from_account_id=account.id,
         )
@@ -721,7 +722,7 @@ class TestAnnotationService:
                 query=f"Query {i}: {fake.sentence()}",
                 user_id=account.id,
                 message_id=fake.uuid4(),
-                from_source="console",
+                from_source=ConversationFromSource.CONSOLE,
                 score=0.8 + (i * 0.1),
             )
 
@@ -772,7 +773,7 @@ class TestAnnotationService:
             query=query,
             user_id=account.id,
             message_id=message_id,
-            from_source="console",
+            from_source=ConversationFromSource.CONSOLE,
             score=score,
         )
 

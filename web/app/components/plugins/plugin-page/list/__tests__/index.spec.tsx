@@ -113,7 +113,8 @@ describe('PluginList', () => {
       const { container } = render(<PluginList pluginList={pluginList} />)
 
       // Assert
-      expect(container).toBeInTheDocument()
+      // Assert
+      expect(container)!.toBeInTheDocument()
     })
 
     it('should render container with correct structure', () => {
@@ -125,10 +126,10 @@ describe('PluginList', () => {
 
       // Assert
       const outerDiv = container.firstChild as HTMLElement
-      expect(outerDiv).toHaveClass('pb-3')
+      expect(outerDiv)!.toHaveClass('pb-3')
 
       const gridDiv = outerDiv.firstChild as HTMLElement
-      expect(gridDiv).toHaveClass('grid', 'grid-cols-2', 'gap-3')
+      expect(gridDiv)!.toHaveClass('grid', 'grid-cols-2', 'gap-3')
     })
 
     it('should render single plugin correctly', () => {
@@ -141,7 +142,7 @@ describe('PluginList', () => {
       // Assert
       const pluginItems = screen.getAllByTestId('plugin-item')
       expect(pluginItems).toHaveLength(1)
-      expect(pluginItems[0]).toHaveAttribute('data-plugin-name', 'single-plugin')
+      expect(pluginItems[0])!.toHaveAttribute('data-plugin-name', 'single-plugin')
     })
 
     it('should render multiple plugins correctly', () => {
@@ -169,9 +170,9 @@ describe('PluginList', () => {
 
       // Assert
       const pluginItems = screen.getAllByTestId('plugin-item')
-      expect(pluginItems[0]).toHaveAttribute('data-plugin-id', 'first')
-      expect(pluginItems[1]).toHaveAttribute('data-plugin-id', 'second')
-      expect(pluginItems[2]).toHaveAttribute('data-plugin-id', 'third')
+      expect(pluginItems[0])!.toHaveAttribute('data-plugin-id', 'first')
+      expect(pluginItems[1])!.toHaveAttribute('data-plugin-id', 'second')
+      expect(pluginItems[2])!.toHaveAttribute('data-plugin-id', 'third')
     })
 
     it('should pass plugin prop to each PluginItem', () => {
@@ -185,8 +186,9 @@ describe('PluginList', () => {
       render(<PluginList pluginList={pluginList} />)
 
       // Assert
-      expect(screen.getByText('Plugin A')).toBeInTheDocument()
-      expect(screen.getByText('Plugin B')).toBeInTheDocument()
+      // Assert
+      expect(screen.getByText('Plugin A'))!.toBeInTheDocument()
+      expect(screen.getByText('Plugin B'))!.toBeInTheDocument()
     })
   })
 
@@ -198,7 +200,7 @@ describe('PluginList', () => {
 
       // Assert
       const gridDiv = container.querySelector('.grid')
-      expect(gridDiv).toBeEmptyDOMElement()
+      expect(gridDiv)!.toBeEmptyDOMElement()
     })
 
     it('should handle pluginList with various categories', () => {
@@ -250,6 +252,37 @@ describe('PluginList', () => {
       // Arrange & Act
       render(<PluginList pluginList={[]} />)
 
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
       // Assert
       expect(screen.queryByTestId('plugin-item')).not.toBeInTheDocument()
     })
@@ -303,7 +336,8 @@ describe('PluginList', () => {
       render(<PluginList pluginList={pluginList} />)
 
       // Assert
-      expect(screen.getByTestId('plugin-item')).toBeInTheDocument()
+      // Assert
+      expect(screen.getByTestId('plugin-item'))!.toBeInTheDocument()
     })
 
     it('should handle plugin with minimal data', () => {
@@ -317,7 +351,8 @@ describe('PluginList', () => {
       render(<PluginList pluginList={[minimalPlugin]} />)
 
       // Assert
-      expect(screen.getByTestId('plugin-item')).toBeInTheDocument()
+      // Assert
+      expect(screen.getByTestId('plugin-item'))!.toBeInTheDocument()
     })
 
     it('should handle plugins with undefined optional fields', () => {
@@ -333,7 +368,8 @@ describe('PluginList', () => {
       render(<PluginList pluginList={pluginList} />)
 
       // Assert
-      expect(screen.getByTestId('plugin-item')).toBeInTheDocument()
+      // Assert
+      expect(screen.getByTestId('plugin-item'))!.toBeInTheDocument()
     })
   })
 
@@ -348,7 +384,7 @@ describe('PluginList', () => {
 
       // Assert
       const gridDiv = container.querySelector('.grid')
-      expect(gridDiv).toHaveClass('grid-cols-2')
+      expect(gridDiv)!.toHaveClass('grid-cols-2')
     })
 
     it('should have proper gap between items', () => {
@@ -360,7 +396,7 @@ describe('PluginList', () => {
 
       // Assert
       const gridDiv = container.querySelector('.grid')
-      expect(gridDiv).toHaveClass('gap-3')
+      expect(gridDiv)!.toHaveClass('gap-3')
     })
 
     it('should have bottom padding on container', () => {
@@ -372,7 +408,7 @@ describe('PluginList', () => {
 
       // Assert
       const outerDiv = container.firstChild as HTMLElement
-      expect(outerDiv).toHaveClass('pb-3')
+      expect(outerDiv)!.toHaveClass('pb-3')
     })
   })
 
@@ -405,6 +441,37 @@ describe('PluginList', () => {
       rerender(<PluginList pluginList={emptyList} />)
 
       // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
       expect(screen.queryByTestId('plugin-item')).not.toBeInTheDocument()
     })
 
@@ -430,12 +497,13 @@ describe('PluginList', () => {
 
       // Act
       const { rerender } = render(<PluginList pluginList={initialList} />)
-      expect(screen.getByText('Original Name')).toBeInTheDocument()
+      expect(screen.getByText('Original Name'))!.toBeInTheDocument()
 
       rerender(<PluginList pluginList={updatedList} />)
 
       // Assert
-      expect(screen.getByText('Updated Name')).toBeInTheDocument()
+      // Assert
+      expect(screen.getByText('Updated Name'))!.toBeInTheDocument()
       expect(screen.queryByText('Original Name')).not.toBeInTheDocument()
     })
   })
@@ -454,15 +522,15 @@ describe('PluginList', () => {
       const { rerender } = render(<PluginList pluginList={pluginList} />)
 
       // Reorder the list
-      const reorderedList = [pluginList[2], pluginList[0], pluginList[1]]
+      const reorderedList = [pluginList[2]!, pluginList[0]!, pluginList[1]!]
       rerender(<PluginList pluginList={reorderedList} />)
 
       // Assert - All items should still be present
       const items = screen.getAllByTestId('plugin-item')
       expect(items).toHaveLength(3)
-      expect(items[0]).toHaveAttribute('data-plugin-id', 'stable-key-3')
-      expect(items[1]).toHaveAttribute('data-plugin-id', 'stable-key-1')
-      expect(items[2]).toHaveAttribute('data-plugin-id', 'stable-key-2')
+      expect(items[0])!.toHaveAttribute('data-plugin-id', 'stable-key-3')
+      expect(items[1])!.toHaveAttribute('data-plugin-id', 'stable-key-1')
+      expect(items[2])!.toHaveAttribute('data-plugin-id', 'stable-key-2')
     })
   })
 
@@ -476,7 +544,8 @@ describe('PluginList', () => {
       render(<PluginList pluginList={pluginList} />)
 
       // Assert
-      expect(screen.getByTestId('plugin-item')).toBeInTheDocument()
+      // Assert
+      expect(screen.getByTestId('plugin-item'))!.toBeInTheDocument()
     })
 
     it('should render deleted/deprecated plugins', () => {
@@ -492,7 +561,8 @@ describe('PluginList', () => {
       render(<PluginList pluginList={pluginList} />)
 
       // Assert
-      expect(screen.getByTestId('plugin-item')).toBeInTheDocument()
+      // Assert
+      expect(screen.getByTestId('plugin-item'))!.toBeInTheDocument()
     })
 
     it('should render mixed status plugins', () => {
@@ -529,7 +599,8 @@ describe('PluginList', () => {
       render(<PluginList pluginList={pluginList} />)
 
       // Assert
-      expect(screen.getByTestId('plugin-item')).toBeInTheDocument()
+      // Assert
+      expect(screen.getByTestId('plugin-item'))!.toBeInTheDocument()
     })
 
     it('should render plugins with outdated version', () => {
@@ -545,7 +616,8 @@ describe('PluginList', () => {
       render(<PluginList pluginList={pluginList} />)
 
       // Assert
-      expect(screen.getByTestId('plugin-item')).toBeInTheDocument()
+      // Assert
+      expect(screen.getByTestId('plugin-item'))!.toBeInTheDocument()
     })
   })
 
@@ -607,9 +679,10 @@ describe('PluginList', () => {
       render(<PluginList pluginList={pluginList} />)
 
       // Assert
-      expect(screen.getByText('Marketplace Plugin')).toBeInTheDocument()
-      expect(screen.getByText('GitHub Plugin')).toBeInTheDocument()
-      expect(screen.getByText('Local Plugin')).toBeInTheDocument()
+      // Assert
+      expect(screen.getByText('Marketplace Plugin'))!.toBeInTheDocument()
+      expect(screen.getByText('GitHub Plugin'))!.toBeInTheDocument()
+      expect(screen.getByText('Local Plugin'))!.toBeInTheDocument()
     })
 
     it('should render plugins of different categories together', () => {
@@ -636,9 +709,10 @@ describe('PluginList', () => {
       render(<PluginList pluginList={pluginList} />)
 
       // Assert
-      expect(screen.getByText('Tool Plugin')).toBeInTheDocument()
-      expect(screen.getByText('Model Plugin')).toBeInTheDocument()
-      expect(screen.getByText('Agent Plugin')).toBeInTheDocument()
+      // Assert
+      expect(screen.getByText('Tool Plugin'))!.toBeInTheDocument()
+      expect(screen.getByText('Model Plugin'))!.toBeInTheDocument()
+      expect(screen.getByText('Agent Plugin'))!.toBeInTheDocument()
     })
   })
 

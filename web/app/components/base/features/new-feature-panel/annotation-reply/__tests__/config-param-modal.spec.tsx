@@ -1,5 +1,5 @@
+import { toast } from '@langgenius/dify-ui/toast'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import Toast from '@/app/components/base/toast'
 import ConfigParamModal from '../config-param-modal'
 
 let mockHooksReturn: {
@@ -31,10 +31,6 @@ vi.mock('@/app/components/header/account-setting/model-provider-page/model-selec
   ),
 }))
 
-vi.mock('@/app/components/base/toast', () => ({
-  default: { notify: vi.fn() },
-}))
-
 vi.mock('@/config', () => ({
   ANNOTATION_DEFAULT: { score_threshold: 0.9 },
 }))
@@ -44,7 +40,7 @@ vi.mock('../score-slider', () => ({
     <input
       role="slider"
       type="range"
-      min={80}
+      min={0}
       max={100}
       value={value}
       onChange={e => onChange(Number((e.target as HTMLInputElement).value))}
@@ -63,8 +59,11 @@ const defaultAnnotationConfig = {
 }
 
 describe('ConfigParamModal', () => {
+  const toastErrorSpy = vi.spyOn(toast, 'error').mockReturnValue('toast-error')
+
   beforeEach(() => {
     vi.clearAllMocks()
+    toastErrorSpy.mockClear()
     mockHooksReturn = {
       modelList: [{ provider: { provider: 'openai' }, models: [{ model: 'text-embedding-ada-002' }] }],
       defaultModel: { provider: { provider: 'openai' }, model: 'text-embedding-ada-002' },
@@ -241,9 +240,7 @@ describe('ConfigParamModal', () => {
     const saveBtn = buttons.find(b => b.textContent?.includes('initSetup'))
     fireEvent.click(saveBtn!)
 
-    expect(Toast.notify).toHaveBeenCalledWith(
-      expect.objectContaining({ type: 'error' }),
-    )
+    expect(toastErrorSpy).toHaveBeenCalledWith('common.modelProvider.embeddingModel.required')
   })
 
   it('should call onHide when cancel is clicked and not loading', () => {
@@ -275,7 +272,7 @@ describe('ConfigParamModal', () => {
     )
 
     const slider = screen.getByRole('slider')
-    expect(slider).toHaveAttribute('min', '80')
+    expect(slider).toHaveAttribute('min', '0')
     expect(slider).toHaveAttribute('max', '100')
     expect(slider).toHaveValue('90')
   })
@@ -378,7 +375,7 @@ describe('ConfigParamModal', () => {
   it('should use ANNOTATION_DEFAULT score_threshold when config has no score_threshold', () => {
     const configWithoutThreshold = {
       ...defaultAnnotationConfig,
-      score_threshold: 0,
+      score_threshold: undefined as unknown as number,
     }
     render(
       <ConfigParamModal
@@ -391,6 +388,35 @@ describe('ConfigParamModal', () => {
     )
 
     expect(screen.getByRole('slider')).toHaveValue('90')
+  })
+
+  it('should preserve zero score threshold instead of falling back to default', async () => {
+    const onSave = vi.fn().mockResolvedValue(undefined)
+    render(
+      <ConfigParamModal
+        appId="test-app"
+        isShow={true}
+        onHide={vi.fn()}
+        onSave={onSave}
+        annotationConfig={{
+          ...defaultAnnotationConfig,
+          score_threshold: 0,
+        }}
+      />,
+    )
+
+    expect(screen.getByRole('slider')).toHaveValue('0')
+
+    const buttons = screen.getAllByRole('button')
+    const saveBtn = buttons.find(b => b.textContent?.includes('initSetup'))
+    fireEvent.click(saveBtn!)
+
+    await waitFor(() => {
+      expect(onSave).toHaveBeenCalledWith(
+        expect.objectContaining({ embedding_provider_name: 'openai' }),
+        0,
+      )
+    })
   })
 
   it('should set loading state while saving', async () => {

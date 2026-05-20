@@ -35,6 +35,7 @@
   "details.structureTooltip": "La estructura de fragmentos determina cómo se dividen e indexan los documentos, ofreciendo modos General, Principal-Secundario y Preguntas y respuestas, y es única para cada base de conocimiento.",
   "documentSettings.title": "Parametrizaciones de documentos",
   "editPipelineInfo": "Editar información de canalización",
+  "editPipelineInfoNameRequired": "Por favor, ingrese un nombre para la Base de Conocimiento.",
   "exportDSL.errorTip": "No se pudo exportar DSL de canalización",
   "exportDSL.successTip": "Exportar DSL de canalización correctamente",
   "inputField": "Campo de entrada",

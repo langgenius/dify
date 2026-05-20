@@ -1,6 +1,7 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import * as React from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { createReactI18nextMock } from '@/test/i18n-mock'
 import ErrorBoundary, { ErrorFallback, useAsyncError, useErrorHandler, withErrorBoundary } from '../index'
 
 const mockConfig = vi.hoisted(() => ({
@@ -11,6 +12,19 @@ vi.mock('@/config', () => ({
   get IS_DEV() {
     return mockConfig.isDev
   },
+}))
+
+vi.mock('react-i18next', () => createReactI18nextMock({
+  'error': 'Error',
+  'errorBoundary.componentStack': 'Component Stack:',
+  'errorBoundary.details': 'Error Details (Development Only)',
+  'errorBoundary.errorCount': 'This error has occurred {{count}} times',
+  'errorBoundary.fallbackTitle': 'Oops! Something went wrong',
+  'errorBoundary.message': 'An unexpected error occurred while rendering this component.',
+  'errorBoundary.reloadPage': 'Reload Page',
+  'errorBoundary.title': 'Something went wrong',
+  'errorBoundary.tryAgain': 'Try Again',
+  'errorBoundary.tryAgainCompact': 'Try again',
 }))
 
 type ThrowOnRenderProps = {

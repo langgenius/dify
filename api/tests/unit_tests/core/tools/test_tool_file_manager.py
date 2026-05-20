@@ -14,6 +14,7 @@ import httpx
 import pytest
 
 from core.tools.tool_file_manager import ToolFileManager
+from graphon.file import FileTransferMethod
 
 
 def _setup_tool_file_signing(monkeypatch: pytest.MonkeyPatch) -> dict[str, str]:
@@ -128,7 +129,7 @@ def test_get_file_binary_returns_none_when_not_found() -> None:
     # Arrange
     manager = ToolFileManager()
     session = Mock()
-    session.query.return_value.where.return_value.first.return_value = None
+    session.scalar.return_value = None
 
     # Act
     with _patch_session_factory(session):
@@ -143,7 +144,7 @@ def test_get_file_binary_returns_bytes_when_found() -> None:
     manager = ToolFileManager()
     tool_file = SimpleNamespace(file_key="k1", mimetype="text/plain")
     session = Mock()
-    session.query.return_value.where.return_value.first.return_value = tool_file
+    session.scalar.return_value = tool_file
 
     # Act
     with patch("core.tools.tool_file_manager.storage") as storage:
@@ -159,11 +160,7 @@ def test_get_file_binary_by_message_file_id_when_messagefile_missing() -> None:
     # Arrange
     manager = ToolFileManager()
     session = Mock()
-    first_query = Mock()
-    second_query = Mock()
-    first_query.where.return_value.first.return_value = None
-    second_query.where.return_value.first.return_value = None
-    session.query.side_effect = [first_query, second_query]
+    session.scalar.side_effect = [None, None]
 
     # Act
     with _patch_session_factory(session):
@@ -178,11 +175,7 @@ def test_get_file_binary_by_message_file_id_when_url_is_none() -> None:
     manager = ToolFileManager()
     message_file = SimpleNamespace(url=None)
     session = Mock()
-    first_query = Mock()
-    second_query = Mock()
-    first_query.where.return_value.first.return_value = message_file
-    second_query.where.return_value.first.return_value = None
-    session.query.side_effect = [first_query, second_query]
+    session.scalar.side_effect = [message_file, None]
 
     # Act
     with _patch_session_factory(session):
@@ -198,11 +191,7 @@ def test_get_file_binary_by_message_file_id_returns_bytes_when_found() -> None:
     message_file = SimpleNamespace(url="https://x/files/tools/tool123.png")
     tool_file = SimpleNamespace(file_key="k2", mimetype="image/png")
     session = Mock()
-    first_query = Mock()
-    second_query = Mock()
-    first_query.where.return_value.first.return_value = message_file
-    second_query.where.return_value.first.return_value = tool_file
-    session.query.side_effect = [first_query, second_query]
+    session.scalar.side_effect = [message_file, tool_file]
 
     # Act
     with patch("core.tools.tool_file_manager.storage") as storage:
@@ -218,7 +207,7 @@ def test_get_file_generator_returns_none_when_toolfile_missing() -> None:
     # Arrange
     manager = ToolFileManager()
     session = Mock()
-    session.query.return_value.where.return_value.first.return_value = None
+    session.scalar.return_value = None
 
     # Act
     with _patch_session_factory(session):
@@ -232,18 +221,25 @@ def test_get_file_generator_returns_none_when_toolfile_missing() -> None:
 def test_get_file_generator_returns_stream_when_found() -> None:
     # Arrange
     manager = ToolFileManager()
-    tool_file = SimpleNamespace(file_key="k2", mimetype="image/png")
+    tool_file = SimpleNamespace(
+        id="tool123",
+        file_key="k2",
+        mimetype="image/png",
+        original_url=None,
+        name="image.png",
+        size=12,
+    )
     session = Mock()
-    session.query.return_value.where.return_value.first.return_value = tool_file
+    session.scalar.return_value = tool_file
 
     # Act
     with patch("core.tools.tool_file_manager.storage") as storage:
         stream = iter([b"a", b"b"])
         storage.load_stream.return_value = stream
-        with (
-            _patch_session_factory(session),
-            patch("core.tools.tool_file_manager.ToolFilePydanticModel.model_validate", return_value="validated-file"),
-        ):
+        with _patch_session_factory(session):
             result_stream, result_file = manager.get_file_generator_by_tool_file_id("tool123")
             assert list(result_stream) == [b"a", b"b"]
-            assert result_file == "validated-file"
+            assert result_file is not None
+            assert result_file.related_id == "tool123"
+            assert result_file.mime_type == "image/png"
+            assert result_file.transfer_method == FileTransferMethod.TOOL_FILE

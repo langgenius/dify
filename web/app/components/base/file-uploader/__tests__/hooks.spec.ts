@@ -6,15 +6,14 @@ import { useFile, useFileSizeLimit } from '../hooks'
 
 const mockNotify = vi.fn()
 
-vi.mock('next/navigation', () => ({
+vi.mock('@/next/navigation', () => ({
   useParams: () => ({ token: undefined }),
 }))
 
-// Exception: hook requires toast context that isn't available without a provider wrapper
-vi.mock('@/app/components/base/toast/context', () => ({
-  useToastContext: () => ({
-    notify: mockNotify,
-  }),
+vi.mock('@langgenius/dify-ui/toast', () => ({
+  toast: {
+    error: (message: string) => mockNotify({ type: 'error', message }),
+  },
 }))
 
 const mockSetFiles = vi.fn()
@@ -226,7 +225,7 @@ describe('useFile', () => {
       const { result } = renderHook(() => useFile(defaultFileConfig))
       result.current.handleReUploadFile('file-1')
 
-      const uploadCall = mockFileUpload.mock.calls[0][0]
+      const uploadCall = mockFileUpload.mock.calls[0]![0]
       uploadCall.onProgressCallback(50)
       expect(mockSetFiles).toHaveBeenCalled()
     })
@@ -247,7 +246,7 @@ describe('useFile', () => {
       const { result } = renderHook(() => useFile(defaultFileConfig))
       result.current.handleReUploadFile('file-1')
 
-      const uploadCall = mockFileUpload.mock.calls[0][0]
+      const uploadCall = mockFileUpload.mock.calls[0]![0]
       uploadCall.onSuccessCallback({ id: 'uploaded-1' })
       expect(mockSetFiles).toHaveBeenCalled()
     })
@@ -268,7 +267,7 @@ describe('useFile', () => {
       const { result } = renderHook(() => useFile(defaultFileConfig))
       result.current.handleReUploadFile('file-1')
 
-      const uploadCall = mockFileUpload.mock.calls[0][0]
+      const uploadCall = mockFileUpload.mock.calls[0]![0]
       uploadCall.onErrorCallback(new Error('fail'))
       expect(mockNotify).toHaveBeenCalledWith(expect.objectContaining({ type: 'error' }))
     })
@@ -669,7 +668,7 @@ describe('useFile', () => {
 
       expect(mockSetFiles).toHaveBeenCalled()
       // The file should have been added with base64Url set (for image type)
-      const addedFiles = mockSetFiles.mock.calls[0][0]
+      const addedFiles = mockSetFiles.mock.calls[0]![0]
       expect(addedFiles[0].base64Url).toBe('data:text/plain;base64,Y29udGVudA==')
     })
 
@@ -681,7 +680,7 @@ describe('useFile', () => {
       result.current.handleLocalFileUpload(file)
 
       expect(mockSetFiles).toHaveBeenCalled()
-      const addedFiles = mockSetFiles.mock.calls[0][0]
+      const addedFiles = mockSetFiles.mock.calls[0]![0]
       expect(addedFiles[0].base64Url).toBe('')
     })
 
@@ -692,7 +691,7 @@ describe('useFile', () => {
       result.current.handleLocalFileUpload(file)
 
       expect(mockFileUpload).toHaveBeenCalled()
-      const uploadCall = mockFileUpload.mock.calls[0][0]
+      const uploadCall = mockFileUpload.mock.calls[0]![0]
 
       // Test progress callback
       uploadCall.onProgressCallback(50)
@@ -709,7 +708,7 @@ describe('useFile', () => {
       const { result } = renderHook(() => useFile(defaultFileConfig))
       result.current.handleLocalFileUpload(file)
 
-      const uploadCall = mockFileUpload.mock.calls[0][0]
+      const uploadCall = mockFileUpload.mock.calls[0]![0]
       uploadCall.onErrorCallback(new Error('upload failed'))
 
       expect(mockNotify).toHaveBeenCalledWith(expect.objectContaining({ type: 'error' }))

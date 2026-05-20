@@ -1,13 +1,13 @@
 'use client'
 
 import type { INavSelectorProps } from './nav-selector'
-import Link from 'next/link'
-import { useSelectedLayoutSegment } from 'next/navigation'
+import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
 import { useState } from 'react'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { ArrowNarrowLeft } from '@/app/components/base/icons/src/vender/line/arrows'
-import { cn } from '@/utils/classnames'
+import Link from '@/next/link'
+import { useSelectedLayoutSegment } from '@/next/navigation'
 import NavSelector from './nav-selector'
 
 type INavProps = {
@@ -60,7 +60,7 @@ const Nav = ({
           <div>
             {
               (hovered && curNav)
-                ? <ArrowNarrowLeft className="h-4 w-4" />
+                ? <ArrowNarrowLeft className="size-4" />
                 : isActivated
                   ? activeIcon
                   : icon

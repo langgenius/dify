@@ -2,10 +2,11 @@ from typing import Literal
 
 from flask_login import current_user
 from flask_restx import marshal
-from pydantic import BaseModel
 from werkzeug.exceptions import NotFound
 
-from controllers.common.schema import register_schema_model, register_schema_models
+from controllers.common.controller_schemas import MetadataUpdatePayload
+from controllers.common.fields import SimpleResultResponse
+from controllers.common.schema import register_response_schema_models, register_schema_model, register_schema_models
 from controllers.service_api import service_api_ns
 from controllers.service_api.wraps import DatasetApiResource, cloud_edition_billing_rate_limit_check
 from fields.dataset_fields import dataset_metadata_fields
@@ -18,11 +19,6 @@ from services.entities.knowledge_entities.knowledge_entities import (
 )
 from services.metadata_service import MetadataService
 
-
-class MetadataUpdatePayload(BaseModel):
-    name: str
-
-
 register_schema_model(service_api_ns, MetadataUpdatePayload)
 register_schema_models(
     service_api_ns,
@@ -31,6 +27,7 @@ register_schema_models(
     DocumentMetadataOperation,
     MetadataOperationData,
 )
+register_response_schema_models(service_api_ns, SimpleResultResponse)
 
 
 @service_api_ns.route("/datasets/<uuid:dataset_id>/metadata")
@@ -159,6 +156,11 @@ class DatasetMetadataBuiltInFieldActionServiceApi(DatasetApiResource):
             404: "Dataset not found",
         }
     )
+    @service_api_ns.response(
+        200,
+        "Action completed successfully",
+        service_api_ns.models[SimpleResultResponse.__name__],
+    )
     @cloud_edition_billing_rate_limit_check("knowledge", "dataset")
     def post(self, tenant_id, dataset_id, action: Literal["enable", "disable"]):
         """Enable or disable built-in metadata field."""
@@ -188,6 +190,11 @@ class DocumentMetadataEditServiceApi(DatasetApiResource):
             401: "Unauthorized - invalid API token",
             404: "Dataset not found",
         }
+    )
+    @service_api_ns.response(
+        200,
+        "Documents metadata updated successfully",
+        service_api_ns.models[SimpleResultResponse.__name__],
     )
     @cloud_edition_billing_rate_limit_check("knowledge", "dataset")
     def post(self, tenant_id, dataset_id):

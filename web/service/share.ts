@@ -246,10 +246,6 @@ export const textToAudioStream = (url: string, appSourceType: AppSourceType, hea
   return (getAction('post', appSourceType))(url, { body, header }, { needAllResponseContent: true })
 }
 
-export const textToAudio = (url: string, appSourceType: AppSourceType, body: FormData) => {
-  return (getAction('post', appSourceType))(url, { body }, { bodyStringify: false, deleteContentType: true }) as Promise<{ data: string }>
-}
-
 export const fetchAccessToken = async ({ userId, appCode }: { userId?: string, appCode: string }) => {
   const headers = new Headers()
   headers.append(WEB_APP_SHARE_CODE_HEADER_NAME, appCode)

@@ -1,146 +1,302 @@
-import type { FC } from 'react'
-import type {
-  DefaultModel,
-  Model,
-  ModelItem,
-} from '../declarations'
-import {
-  RiArrowRightUpLine,
-  RiSearchLine,
-} from '@remixicon/react'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import type { DefaultModel, Model } from '../declarations'
+import type { ModelSelectorPreviewPayload } from './popup-item'
+import type { ModelProviderQuotaGetPaid } from '@/types/model-provider'
+import { ComboboxList } from '@langgenius/dify-ui/combobox'
+import { createPreviewCardHandle, PreviewCard, PreviewCardContent } from '@langgenius/dify-ui/preview-card'
+import { useSuspenseQuery } from '@tanstack/react-query'
+import { useTheme } from 'next-themes'
+import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { XCircle } from '@/app/components/base/icons/src/vender/solid/general'
-import { tooltipManager } from '@/app/components/base/tooltip/TooltipManager'
-import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
+import { ACCOUNT_SETTING_MODAL_ACTION, ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
+import checkTaskStatus from '@/app/components/plugins/install-plugin/base/check-task-status'
+import useRefreshPluginList from '@/app/components/plugins/install-plugin/hooks/use-refresh-plugin-list'
 import { useModalContext } from '@/context/modal-context'
-import { supportFunctionCall } from '@/utils/tool-call'
-import { ModelFeatureEnum } from '../declarations'
-import { useLanguage } from '../hooks'
+import { useProviderContext } from '@/context/provider-context'
+import { useSearchParams } from '@/next/navigation'
+import { systemFeaturesQueryOptions } from '@/service/system-features'
+import { useInstallPackageFromMarketPlace } from '@/service/use-plugins'
+import { CustomConfigurationStatusEnum, ModelFeatureEnum, ModelStatusEnum, ModelTypeEnum } from '../declarations'
+import { useLanguage, useMarketplaceAllPlugins } from '../hooks'
+import ModelBadge from '../model-badge'
+import ModelIcon from '../model-icon'
+import CreditsExhaustedAlert from '../provider-added-card/model-auth-dropdown/credits-exhausted-alert'
+import { useTrialCredits } from '../provider-added-card/use-trial-credits'
+import { providerSupportsCredits } from '../supports-credits'
+import { MODEL_PROVIDER_QUOTA_GET_PAID, modelTypeFormat, providerKeyToPluginId, sizeFormat } from '../utils'
+import FeatureIcon from './feature-icon'
+import MarketplaceSection from './marketplace-section'
+import { createModelSelectorSearchIndex, filterModelSelectorModels } from './model-search'
+import ModelSelectorEmptyState from './popup-empty-state'
 import PopupItem from './popup-item'
+import { CompatibleModelsNotice, ModelProviderSettingsFooter, ModelSelectorPopupFrame, ModelSelectorScrollBody, ModelSelectorSearchHeader } from './popup-layout'
 
-type PopupProps = {
+export type PopupProps = {
   defaultModel?: DefaultModel
+  inputValue: string
   modelList: Model[]
-  onSelect: (provider: string, model: ModelItem) => void
   scopeFeatures?: ModelFeatureEnum[]
+  onInputValueChange: (value: string) => void
   onHide: () => void
 }
-const Popup: FC<PopupProps> = ({
+function Popup({
   defaultModel,
+  inputValue,
   modelList,
-  onSelect,
   scopeFeatures = [],
+  onInputValueChange,
   onHide,
-}) => {
+}: PopupProps) {
   const { t } = useTranslation()
+  const searchParams = useSearchParams()
+  const { theme } = useTheme()
   const language = useLanguage()
-  const [searchText, setSearchText] = useState('')
+  const previewCardHandle = useMemo(() => createPreviewCardHandle<ModelSelectorPreviewPayload>(), [])
+  const [marketplaceCollapsed, setMarketplaceCollapsed] = useState(false)
   const { setShowAccountSettingModal } = useModalContext()
-  const scrollRef = useRef<HTMLDivElement>(null)
+  const { modelProviders } = useProviderContext()
+  const {
+    plugins: allPlugins,
+    isLoading: isMarketplacePluginsLoading,
+  } = useMarketplaceAllPlugins(modelProviders, '')
+  const { mutateAsync: installPackageFromMarketPlace } = useInstallPackageFromMarketPlace()
+  const { refreshPluginList } = useRefreshPluginList()
+  const [installingProvider, setInstallingProvider] = useState<ModelProviderQuotaGetPaid | null>(null)
+  const { isExhausted: isCreditsExhausted } = useTrialCredits()
+  const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
+  const trialModels = systemFeatures.trial_models
+  const installedProviderMap = useMemo(() => new Map(
+    modelProviders.map(provider => [provider.provider, provider]),
+  ), [modelProviders])
+  const aiCreditVisibleProviders = useMemo(() => {
+    if (isCreditsExhausted)
+      return new Set<string>()
 
-  // Close any open tooltips when the user scrolls to prevent them from appearing
-  // in incorrect positions or becoming detached from their trigger elements
-  useEffect(() => {
-    const handleTooltipCloseOnScroll = () => {
-      tooltipManager.closeActiveTooltip()
-    }
+    return new Set(
+      modelProviders
+        .filter(provider => providerSupportsCredits(provider, trialModels))
+        .map(provider => provider.provider),
+    )
+  }, [isCreditsExhausted, modelProviders, trialModels])
+  const showCreditsExhaustedAlert = isCreditsExhausted
+    && modelProviders.some(provider => providerSupportsCredits(provider, trialModels))
+  const hasApiKeyFallback = modelProviders.some((provider) => {
+    const isApiKeyActive = provider.custom_configuration?.status === CustomConfigurationStatusEnum.active
+    return isApiKeyActive && providerSupportsCredits(provider, trialModels)
+  })
 
-    const scrollContainer = scrollRef.current
-    if (!scrollContainer)
+  const handleInstallPlugin = useCallback(async (key: ModelProviderQuotaGetPaid) => {
+    if (!allPlugins || isMarketplacePluginsLoading || installingProvider)
+      return
+    const pluginId = providerKeyToPluginId[key]
+    const plugin = allPlugins.find(p => p.plugin_id === pluginId)
+    if (!plugin)
       return
 
-    // Use passive listener for better performance since we don't prevent default
-    scrollContainer.addEventListener('scroll', handleTooltipCloseOnScroll, { passive: true })
-
-    return () => {
-      scrollContainer.removeEventListener('scroll', handleTooltipCloseOnScroll)
+    const uniqueIdentifier = plugin.latest_package_identifier
+    setInstallingProvider(key)
+    try {
+      const { all_installed, task_id } = await installPackageFromMarketPlace(uniqueIdentifier)
+      if (!all_installed) {
+        const { check } = checkTaskStatus()
+        await check({ taskId: task_id, pluginUniqueIdentifier: uniqueIdentifier })
+      }
+      refreshPluginList(plugin)
     }
-  }, [])
+    catch { }
+    finally {
+      setInstallingProvider(null)
+    }
+  }, [allPlugins, installPackageFromMarketPlace, installingProvider, isMarketplacePluginsLoading, refreshPluginList])
 
-  const filteredModelList = useMemo(() => {
-    return modelList.map((model) => {
-      const filteredModels = model.models
-        .filter((modelItem) => {
-          if (modelItem.label[language] !== undefined)
-            return modelItem.label[language].toLowerCase().includes(searchText.toLowerCase())
-          return Object.values(modelItem.label).some(label =>
-            label.toLowerCase().includes(searchText.toLowerCase()),
-          )
-        })
-        .filter((modelItem) => {
-          if (scopeFeatures.length === 0)
-            return true
-          return scopeFeatures.every((feature) => {
-            if (feature === ModelFeatureEnum.toolCall)
-              return supportFunctionCall(modelItem.features)
-            return modelItem.features?.includes(feature) ?? false
-          })
-        })
-      return { ...model, models: filteredModels }
-    }).filter(model => model.models.length > 0)
-  }, [language, modelList, scopeFeatures, searchText])
+  const installedModelList = useMemo(() => {
+    const modelMap = new Map(modelList.map(model => [model.provider, model]))
+    const installedMarketplaceModels = MODEL_PROVIDER_QUOTA_GET_PAID.flatMap((providerKey) => {
+      const installedProvider = installedProviderMap.get(providerKey)
+
+      if (!installedProvider)
+        return []
+
+      const matchedModel = modelMap.get(providerKey)
+      if (matchedModel)
+        return [matchedModel]
+
+      if (!aiCreditVisibleProviders.has(providerKey))
+        return []
+
+      return [{
+        provider: installedProvider.provider,
+        icon_small: installedProvider.icon_small,
+        icon_small_dark: installedProvider.icon_small_dark,
+        label: installedProvider.label,
+        models: [],
+        status: ModelStatusEnum.active,
+      }]
+    })
+    const otherModels = modelList.filter(model => !MODEL_PROVIDER_QUOTA_GET_PAID.includes(model.provider as ModelProviderQuotaGetPaid))
+
+    return [...installedMarketplaceModels, ...otherModels]
+  }, [aiCreditVisibleProviders, installedProviderMap, modelList])
+
+  const searchIndex = useMemo(
+    () => createModelSelectorSearchIndex(installedModelList, language),
+    [installedModelList, language],
+  )
+  const filteredModelList = useMemo(() => filterModelSelectorModels({
+    aiCreditVisibleProviders,
+    defaultModel,
+    inputValue,
+    installedModelList,
+    scopeFeatures,
+    searchIndex,
+  }), [aiCreditVisibleProviders, defaultModel, inputValue, installedModelList, scopeFeatures, searchIndex])
+
+  const marketplaceProviders = useMemo(() => {
+    const installedProviders = new Set(modelProviders.map(provider => provider.provider))
+    return MODEL_PROVIDER_QUOTA_GET_PAID.filter(key => !installedProviders.has(key))
+  }, [modelProviders])
+
+  const handleOpenSettings = useCallback(() => {
+    onHide()
+    setShowAccountSettingModal({ payload: ACCOUNT_SETTING_TAB.PROVIDER })
+  }, [onHide, setShowAccountSettingModal])
+  const handleClosePreviewCard = useCallback(() => {
+    previewCardHandle.close()
+  }, [previewCardHandle])
+  const isProviderSettingsCurrentPage = searchParams?.get('action') === ACCOUNT_SETTING_MODAL_ACTION
+    && searchParams?.get('tab') === ACCOUNT_SETTING_TAB.PROVIDER
 
   return (
-    <div ref={scrollRef} className="max-h-[480px] w-[320px] overflow-y-auto rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg">
-      <div className="sticky top-0 z-10 bg-components-panel-bg pb-1 pl-3 pr-2 pt-3">
-        <div className={`
-          flex h-8 items-center rounded-lg border pl-[9px] pr-[10px]
-          ${searchText ? 'border-components-input-border-active bg-components-input-bg-active shadow-xs' : 'border-transparent bg-components-input-bg-normal'}
-        `}
-        >
-          <RiSearchLine
-            className={`
-              mr-[7px] h-[14px] w-[14px] shrink-0
-              ${searchText ? 'text-text-tertiary' : 'text-text-quaternary'}
-            `}
-          />
-          <input
-            className="block h-[18px] grow appearance-none bg-transparent text-[13px] text-text-primary outline-none"
-            placeholder={t('form.searchModel', { ns: 'datasetSettings' }) || ''}
-            value={searchText}
-            onChange={e => setSearchText(e.target.value)}
-          />
-          {
-            searchText && (
-              <XCircle
-                className="ml-1.5 h-[14px] w-[14px] shrink-0 cursor-pointer text-text-quaternary"
-                onClick={() => setSearchText('')}
-              />
-            )
-          }
-        </div>
-      </div>
-      <div className="p-1">
-        {
-          filteredModelList.map(model => (
-            <PopupItem
-              key={model.provider}
-              defaultModel={defaultModel}
-              model={model}
-              onSelect={onSelect}
+    <ModelSelectorPopupFrame>
+      <ModelSelectorSearchHeader
+        inputValue={inputValue}
+        onInputValueChange={onInputValueChange}
+      />
+      {showCreditsExhaustedAlert && (
+        <CreditsExhaustedAlert hasApiKeyFallback={hasApiKeyFallback} />
+      )}
+      <ModelSelectorScrollBody label={t('modelProvider.models', { ns: 'common' })}>
+        <ComboboxList className="max-h-none overflow-visible p-0">
+          <div className="pb-1">
+            {
+              filteredModelList.map(model => (
+                <PopupItem
+                  key={model.provider}
+                  defaultModel={defaultModel}
+                  model={model}
+                  previewCardHandle={previewCardHandle}
+                  onPreviewCardClose={handleClosePreviewCard}
+                  onHide={onHide}
+                />
+              ))
+            }
+          </div>
+        </ComboboxList>
+        <div className="pb-1">
+          {!filteredModelList.length && !installedModelList.length && (
+            <ModelSelectorEmptyState
+              onConfigure={handleOpenSettings}
             />
-          ))
-        }
-        {
-          !filteredModelList.length && (
-            <div className="break-all px-3 py-1.5 text-center text-xs leading-[18px] text-text-tertiary">
-              {`No model found for “${searchText}”`}
+          )}
+          {!filteredModelList.length && installedModelList.length > 0 && (
+            <div className="px-3 py-1.5 text-center text-xs/4.5 break-all text-text-tertiary">
+              {`No model found for \u201C${inputValue}\u201D`}
             </div>
-          )
-        }
+          )}
+          {scopeFeatures.length > 0 && (
+            <CompatibleModelsNotice />
+          )}
+          <MarketplaceSection
+            marketplaceProviders={marketplaceProviders}
+            marketplaceCollapsed={marketplaceCollapsed}
+            installingProvider={installingProvider}
+            isMarketplacePluginsLoading={isMarketplacePluginsLoading}
+            theme={theme}
+            onMarketplaceCollapsedChange={setMarketplaceCollapsed}
+            onInstallPlugin={handleInstallPlugin}
+          />
+        </div>
+      </ModelSelectorScrollBody>
+      <PreviewCard handle={previewCardHandle}>
+        {({ payload }) => (
+          <ModelSelectorPreviewCard
+            capabilitiesLabel={t('model.capabilities', { ns: 'common' })}
+            language={language}
+            payload={payload as ModelSelectorPreviewPayload | undefined}
+          />
+        )}
+      </PreviewCard>
+      {!isProviderSettingsCurrentPage && (
+        <ModelProviderSettingsFooter onOpenSettings={handleOpenSettings} />
+      )}
+    </ModelSelectorPopupFrame>
+  )
+}
+
+type ModelSelectorPreviewCardProps = {
+  capabilitiesLabel: string
+  language: string
+  payload?: ModelSelectorPreviewPayload
+}
+
+function ModelSelectorPreviewCard({
+  capabilitiesLabel,
+  language,
+  payload,
+}: ModelSelectorPreviewCardProps) {
+  if (!payload)
+    return null
+
+  const { provider, modelItem } = payload
+
+  return (
+    <PreviewCardContent
+      placement="right"
+      popupClassName="w-[206px] bg-components-panel-bg-blur p-3 shadow-none backdrop-blur-xs"
+    >
+      <div className="flex flex-col gap-1">
+        <div className="flex flex-col items-start gap-2">
+          <ModelIcon
+            className="size-5 shrink-0"
+            provider={provider}
+            modelName={modelItem.model}
+          />
+          <div className="system-md-medium text-wrap wrap-break-word text-text-primary">{modelItem.label[language] || modelItem.label.en_US}</div>
+        </div>
+        <div className="flex flex-wrap gap-1">
+          {!!modelItem.model_type && (
+            <ModelBadge>
+              {modelTypeFormat(modelItem.model_type)}
+            </ModelBadge>
+          )}
+          {!!modelItem.model_properties.mode && (
+            <ModelBadge>
+              {(modelItem.model_properties.mode as string).toLocaleUpperCase()}
+            </ModelBadge>
+          )}
+          {!!modelItem.model_properties.context_size && (
+            <ModelBadge>
+              {sizeFormat(modelItem.model_properties.context_size as number)}
+            </ModelBadge>
+          )}
+        </div>
+        {[ModelTypeEnum.textGeneration, ModelTypeEnum.textEmbedding, ModelTypeEnum.rerank].includes(modelItem.model_type as ModelTypeEnum)
+          && modelItem.features?.some(feature => [ModelFeatureEnum.vision, ModelFeatureEnum.audio, ModelFeatureEnum.video, ModelFeatureEnum.document].includes(feature))
+          && (
+            <div className="pt-2">
+              <div className="mb-1 system-2xs-medium-uppercase text-text-tertiary">{capabilitiesLabel}</div>
+              <div className="flex flex-wrap gap-1">
+                {modelItem.features?.map(feature => (
+                  <FeatureIcon
+                    key={feature}
+                    feature={feature}
+                    showFeaturesLabel
+                  />
+                ))}
+              </div>
+            </div>
+          )}
       </div>
-      <div
-        className="sticky bottom-0 flex cursor-pointer items-center rounded-b-lg border-t border-divider-subtle bg-components-panel-bg px-4 py-2 text-text-accent-light-mode-only"
-        onClick={() => {
-          onHide()
-          setShowAccountSettingModal({ payload: ACCOUNT_SETTING_TAB.PROVIDER })
-        }}
-      >
-        <span className="system-xs-medium">{t('model.settingsLink', { ns: 'common' })}</span>
-        <RiArrowRightUpLine className="ml-0.5 h-3 w-3" />
-      </div>
-    </div>
+    </PreviewCardContent>
   )
 }
 

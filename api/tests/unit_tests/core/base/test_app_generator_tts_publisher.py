@@ -3,6 +3,7 @@ import queue
 from unittest.mock import MagicMock
 
 import pytest
+from pytest_mock import MockerFixture
 
 from core.base.tts.app_generator_tts_publisher import (
     AppGeneratorTTSPublisher,
@@ -17,7 +18,7 @@ from core.base.tts.app_generator_tts_publisher import (
 
 
 @pytest.fixture
-def mock_model_instance(mocker):
+def mock_model_instance(mocker: MockerFixture):
     model = mocker.MagicMock()
     model.invoke_tts.return_value = [b"audio1", b"audio2"]
     model.get_tts_voices.return_value = [{"value": "voice1"}, {"value": "voice2"}]
@@ -28,15 +29,12 @@ def mock_model_instance(mocker):
 def mock_model_manager(mocker, mock_model_instance):
     manager = mocker.MagicMock()
     manager.get_default_model_instance.return_value = mock_model_instance
-    mocker.patch(
-        "core.base.tts.app_generator_tts_publisher.ModelManager",
-        return_value=manager,
-    )
+    mocker.patch("core.base.tts.app_generator_tts_publisher.ModelManager.for_tenant", return_value=manager)
     return manager
 
 
 @pytest.fixture(autouse=True)
-def patch_threads(mocker):
+def patch_threads(mocker: MockerFixture):
     """Prevent real threads from starting during tests"""
     mocker.patch("threading.Thread.start", return_value=None)
 
@@ -64,16 +62,14 @@ class TestInvoiceTTS:
         [None, "", "   "],
     )
     def test_invoice_tts_empty_or_none_returns_none(self, text, mock_model_instance):
-        result = _invoice_tts(text, mock_model_instance, "tenant", "voice1")
+        result = _invoice_tts(text, mock_model_instance, "voice1")
         assert result is None
         mock_model_instance.invoke_tts.assert_not_called()
 
     def test_invoice_tts_valid_text(self, mock_model_instance):
-        result = _invoice_tts(" hello ", mock_model_instance, "tenant", "voice1")
+        result = _invoice_tts(" hello ", mock_model_instance, "voice1")
         mock_model_instance.invoke_tts.assert_called_once_with(
             content_text="hello",
-            user="responding_tts",
-            tenant_id="tenant",
             voice="voice1",
         )
         assert result == [b"audio1", b"audio2"]
@@ -119,7 +115,7 @@ class TestProcessFuture:
         finish = audio_queue.get()
         assert finish.status == "finish"
 
-    def test_process_future_exception(self, mocker):
+    def test_process_future_exception(self, mocker: MockerFixture):
         future_queue = queue.Queue()
         audio_queue = queue.Queue()
 
@@ -227,7 +223,7 @@ class TestAppGeneratorTTSPublisher:
 
         publisher.executor.submit.assert_not_called()
 
-    def test_runtime_sentence_threshold_triggers_submit(self, mock_model_manager, mocker):
+    def test_runtime_sentence_threshold_triggers_submit(self, mock_model_manager, mocker: MockerFixture):
         publisher = AppGeneratorTTSPublisher("tenant", "voice1")
         publisher.executor = MagicMock()
 
@@ -302,13 +298,13 @@ class TestAppGeneratorTTSPublisher:
 
         publisher.executor.submit.assert_not_called()
 
-    def test_runtime_handles_agent_message_event_list_content(self, mock_model_manager, mocker):
+    def test_runtime_handles_agent_message_event_list_content(self, mock_model_manager, mocker: MockerFixture):
         publisher = AppGeneratorTTSPublisher("tenant", "voice1")
         publisher.executor = MagicMock()
 
         from core.app.entities.queue_entities import QueueAgentMessageEvent
-        from dify_graph.model_runtime.entities.llm_entities import LLMResultChunk, LLMResultChunkDelta
-        from dify_graph.model_runtime.entities.message_entities import (
+        from graphon.model_runtime.entities.llm_entities import LLMResultChunk, LLMResultChunkDelta
+        from graphon.model_runtime.entities.message_entities import (
             AssistantPromptMessage,
             ImagePromptMessageContent,
             TextPromptMessageContent,
@@ -337,13 +333,13 @@ class TestAppGeneratorTTSPublisher:
 
         assert publisher.msg_text == "Hello "
 
-    def test_runtime_handles_agent_message_event_empty_content(self, mock_model_manager, mocker):
+    def test_runtime_handles_agent_message_event_empty_content(self, mock_model_manager, mocker: MockerFixture):
         publisher = AppGeneratorTTSPublisher("tenant", "voice1")
         publisher.executor = MagicMock()
 
         from core.app.entities.queue_entities import QueueAgentMessageEvent
-        from dify_graph.model_runtime.entities.llm_entities import LLMResultChunk, LLMResultChunkDelta
-        from dify_graph.model_runtime.entities.message_entities import AssistantPromptMessage
+        from graphon.model_runtime.entities.llm_entities import LLMResultChunk, LLMResultChunkDelta
+        from graphon.model_runtime.entities.message_entities import AssistantPromptMessage
 
         chunk = LLMResultChunk(
             model="model",
@@ -363,7 +359,7 @@ class TestAppGeneratorTTSPublisher:
 
         assert publisher.msg_text == ""
 
-    def test_runtime_resets_msg_text_when_text_tmp_not_str(self, mock_model_manager, mocker):
+    def test_runtime_resets_msg_text_when_text_tmp_not_str(self, mock_model_manager, mocker: MockerFixture):
         publisher = AppGeneratorTTSPublisher("tenant", "voice1")
         publisher.executor = MagicMock()
 

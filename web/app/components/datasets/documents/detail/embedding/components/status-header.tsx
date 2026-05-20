@@ -45,8 +45,8 @@ const StatusHeader: FC<StatusHeaderProps> = React.memo(({
 
   return (
     <div className="flex h-6 items-center gap-x-1">
-      {isEmbedding && <RiLoader2Line className="h-4 w-4 animate-spin text-text-secondary" />}
-      <span className="system-md-semibold-uppercase grow text-text-secondary">
+      {isEmbedding && <RiLoader2Line className="size-4 animate-spin text-text-secondary" />}
+      <span className="grow system-md-semibold-uppercase text-text-secondary">
         {getStatusText()}
       </span>
       {isEmbedding && (
@@ -56,8 +56,8 @@ const StatusHeader: FC<StatusHeaderProps> = React.memo(({
           onClick={onPause}
           disabled={isPauseLoading}
         >
-          <RiPauseCircleLine className="h-3.5 w-3.5 text-components-button-secondary-text" />
-          <span className="system-xs-medium pr-[3px] text-components-button-secondary-text">
+          <RiPauseCircleLine className="size-3.5 text-components-button-secondary-text" />
+          <span className="pr-[3px] system-xs-medium text-components-button-secondary-text">
             {t('embedding.pause', { ns: 'datasetDocuments' })}
           </span>
         </button>
@@ -69,8 +69,8 @@ const StatusHeader: FC<StatusHeaderProps> = React.memo(({
           onClick={onResume}
           disabled={isResumeLoading}
         >
-          <RiPlayCircleLine className="h-3.5 w-3.5 text-components-button-secondary-text" />
-          <span className="system-xs-medium pr-[3px] text-components-button-secondary-text">
+          <RiPlayCircleLine className="size-3.5 text-components-button-secondary-text" />
+          <span className="pr-[3px] system-xs-medium text-components-button-secondary-text">
             {t('embedding.resume', { ns: 'datasetDocuments' })}
           </span>
         </button>

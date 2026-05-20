@@ -2,42 +2,159 @@
 Unit tests for human input node entities.
 """
 
+from collections.abc import Mapping
+from dataclasses import dataclass, field
+from datetime import datetime, timedelta
 from types import SimpleNamespace
+from typing import Any
 from unittest.mock import MagicMock
 
 import pytest
 from pydantic import ValidationError
 
-from dify_graph.entities import GraphInitParams
-from dify_graph.entities.graph_init_params import DIFY_RUN_CONTEXT_KEY
-from dify_graph.node_events import PauseRequestedEvent
-from dify_graph.node_events.node import StreamCompletedEvent
-from dify_graph.nodes.human_input.entities import (
+from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY
+from core.repositories.human_input_repository import (
+    FormCreateParams,
+    HumanInputFormEntity,
+    HumanInputFormRecipientEntity,
+    HumanInputFormRepository,
+)
+from core.workflow.human_input_adapter import (
+    DeliveryMethodType,
     EmailDeliveryConfig,
     EmailDeliveryMethod,
     EmailRecipients,
+    EmailRecipientType,
     ExternalRecipient,
-    FormInput,
-    FormInputDefault,
-    HumanInputNodeData,
     MemberRecipient,
-    UserAction,
     WebAppDeliveryMethod,
     _WebAppDeliveryConfig,
 )
-from dify_graph.nodes.human_input.enums import (
-    ButtonStyle,
-    DeliveryMethodType,
-    EmailRecipientType,
-    FormInputType,
-    PlaceholderType,
-    TimeoutUnit,
+from core.workflow.node_runtime import DifyFileReferenceFactory, DifyHumanInputNodeRuntime
+from core.workflow.system_variables import build_system_variables
+from graphon.entities import GraphInitParams
+from graphon.node_events import PauseRequestedEvent
+from graphon.node_events.node import StreamCompletedEvent
+from graphon.nodes.human_input.entities import (
+    HumanInputNodeData,
+    ParagraphInputConfig,
+    StringSource,
+    UserActionConfig,
 )
-from dify_graph.nodes.human_input.human_input_node import HumanInputNode
-from dify_graph.repositories.human_input_form_repository import HumanInputFormRepository
-from dify_graph.runtime import GraphRuntimeState, VariablePool
-from dify_graph.system_variable import SystemVariable
-from tests.unit_tests.core.workflow.graph_engine.human_input_test_utils import InMemoryHumanInputFormRepository
+from graphon.nodes.human_input.enums import (
+    ButtonStyle,
+    FormInputType,
+    HumanInputFormStatus,
+    TimeoutUnit,
+    ValueSourceType,
+)
+from graphon.nodes.human_input.human_input_node import HumanInputNode
+from graphon.runtime import GraphRuntimeState, VariablePool
+from libs.datetime_utils import naive_utc_now
+
+
+@dataclass
+class _InMemoryFormEntity(HumanInputFormEntity):
+    form_id: str
+    rendered: str
+    token: str | None = None
+    action_id: str | None = None
+    data: Mapping[str, Any] | None = None
+    is_submitted: bool = False
+    status_value: HumanInputFormStatus = HumanInputFormStatus.WAITING
+    expiration: datetime = field(default_factory=lambda: naive_utc_now() + timedelta(days=1))
+
+    @property
+    def id(self) -> str:
+        return self.form_id
+
+    @property
+    def submission_token(self) -> str | None:
+        return self.token
+
+    @property
+    def recipients(self) -> list[HumanInputFormRecipientEntity]:
+        return []
+
+    @property
+    def rendered_content(self) -> str:
+        return self.rendered
+
+    @property
+    def selected_action_id(self) -> str | None:
+        return self.action_id
+
+    @property
+    def submitted_data(self) -> Mapping[str, Any] | None:
+        return self.data
+
+    @property
+    def submitted(self) -> bool:
+        return self.is_submitted
+
+    @property
+    def status(self) -> HumanInputFormStatus:
+        return self.status_value
+
+    @property
+    def expiration_time(self) -> datetime:
+        return self.expiration
+
+
+class InMemoryHumanInputFormRepository(HumanInputFormRepository):
+    """Minimal in-memory repository for Dify-owned HumanInputNode behavior tests."""
+
+    def __init__(self) -> None:
+        self._form_counter = 0
+        self.created_params: list[FormCreateParams] = []
+        self.created_forms: list[_InMemoryFormEntity] = []
+        self._forms_by_node_id: dict[str, _InMemoryFormEntity] = {}
+
+    def create_form(self, params: FormCreateParams) -> HumanInputFormEntity:
+        self.created_params.append(params)
+        self._form_counter += 1
+        form_id = f"form-{self._form_counter}"
+        entity = _InMemoryFormEntity(
+            form_id=form_id,
+            rendered=params.rendered_content,
+            token=f"token-{form_id}",
+        )
+        self.created_forms.append(entity)
+        self._forms_by_node_id[params.node_id] = entity
+        return entity
+
+    def get_form(self, node_id: str) -> HumanInputFormEntity | None:
+        return self._forms_by_node_id.get(node_id)
+
+    def set_submission(self, *, action_id: str, form_data: Mapping[str, Any] | None = None) -> None:
+        if not self.created_forms:
+            raise AssertionError("no form has been created to attach submission data")
+        entity = self.created_forms[-1]
+        entity.action_id = action_id
+        entity.data = form_data or {}
+        entity.is_submitted = True
+        entity.status_value = HumanInputFormStatus.SUBMITTED
+
+
+def _build_human_input_node(
+    *,
+    node_id: str,
+    node_data: HumanInputNodeData | Mapping[str, Any],
+    graph_init_params: GraphInitParams,
+    graph_runtime_state: GraphRuntimeState,
+    runtime: DifyHumanInputNodeRuntime,
+) -> HumanInputNode:
+    typed_node_data = (
+        node_data if isinstance(node_data, HumanInputNodeData) else HumanInputNodeData.model_validate(node_data)
+    )
+    return HumanInputNode(
+        node_id=node_id,
+        data=typed_node_data,
+        graph_init_params=graph_init_params,
+        graph_runtime_state=graph_runtime_state,
+        file_reference_factory=DifyFileReferenceFactory(graph_init_params.run_context),
+        runtime=runtime,
+    )
 
 
 class TestDeliveryMethod:
@@ -54,9 +171,9 @@ class TestDeliveryMethod:
     def test_email_delivery_method(self):
         """Test email delivery method creation."""
         recipients = EmailRecipients(
-            whole_workspace=False,
+            include_bound_group=False,
             items=[
-                MemberRecipient(type=EmailRecipientType.MEMBER, user_id="test-user-123"),
+                MemberRecipient(type=EmailRecipientType.MEMBER, reference_id="test-user-123"),
                 ExternalRecipient(type=EmailRecipientType.EXTERNAL, email="test@example.com"),
             ],
         )
@@ -74,32 +191,36 @@ class TestDeliveryMethod:
         assert len(delivery_method.config.recipients.items) == 2
 
 
-class TestFormInput:
-    """Test FormInput entity."""
+class TestParagraphInputConfig:
+    """Test ParagraphInputConfig entity."""
 
-    def test_text_input_with_constant_default(self):
-        """Test text input with constant default value."""
-        default = FormInputDefault(type=PlaceholderType.CONSTANT, value="Enter your response here...")
+    def test_paragraph_input_with_constant_default(self):
+        """Test paragraph input with constant default value."""
+        default = StringSource(type=ValueSourceType.CONSTANT, value="Enter your response here...")
 
-        form_input = FormInput(type=FormInputType.TEXT_INPUT, output_variable_name="user_input", default=default)
+        form_input = ParagraphInputConfig(
+            type=FormInputType.PARAGRAPH, output_variable_name="user_input", default=default
+        )
 
-        assert form_input.type == FormInputType.TEXT_INPUT
+        assert form_input.type == FormInputType.PARAGRAPH
         assert form_input.output_variable_name == "user_input"
-        assert form_input.default.type == PlaceholderType.CONSTANT
+        assert form_input.default.type == ValueSourceType.CONSTANT
         assert form_input.default.value == "Enter your response here..."
 
-    def test_text_input_with_variable_default(self):
-        """Test text input with variable default value."""
-        default = FormInputDefault(type=PlaceholderType.VARIABLE, selector=["node_123", "output_var"])
+    def test_paragraph_input_with_variable_default(self):
+        """Test paragraph input with variable default value."""
+        default = StringSource(type=ValueSourceType.VARIABLE, selector=["node_123", "output_var"])
 
-        form_input = FormInput(type=FormInputType.TEXT_INPUT, output_variable_name="user_input", default=default)
+        form_input = ParagraphInputConfig(
+            type=FormInputType.PARAGRAPH, output_variable_name="user_input", default=default
+        )
 
-        assert form_input.default.type == PlaceholderType.VARIABLE
+        assert form_input.default.type == ValueSourceType.VARIABLE
         assert form_input.default.selector == ["node_123", "output_var"]
 
     def test_form_input_without_default(self):
         """Test form input without default value."""
-        form_input = FormInput(type=FormInputType.PARAGRAPH, output_variable_name="description")
+        form_input = ParagraphInputConfig(type=FormInputType.PARAGRAPH, output_variable_name="description")
 
         assert form_input.type == FormInputType.PARAGRAPH
         assert form_input.output_variable_name == "description"
@@ -107,11 +228,11 @@ class TestFormInput:
 
 
 class TestUserAction:
-    """Test UserAction entity."""
+    """Test UserActionConfig entity."""
 
     def test_user_action_creation(self):
         """Test user action creation."""
-        action = UserAction(id="approve", title="Approve", button_style=ButtonStyle.PRIMARY)
+        action = UserActionConfig(id="approve", title="Approve", button_style=ButtonStyle.PRIMARY)
 
         assert action.id == "approve"
         assert action.title == "Approve"
@@ -119,22 +240,22 @@ class TestUserAction:
 
     def test_user_action_default_button_style(self):
         """Test user action with default button style."""
-        action = UserAction(id="cancel", title="Cancel")
+        action = UserActionConfig(id="cancel", title="Cancel")
 
         assert action.button_style == ButtonStyle.DEFAULT
 
     def test_user_action_length_boundaries(self):
         """Test user action id and title length boundaries."""
-        action = UserAction(id="a" * 20, title="b" * 20)
+        action = UserActionConfig(id="a" * 20, title="b" * 100)
 
         assert action.id == "a" * 20
-        assert action.title == "b" * 20
+        assert action.title == "b" * 100
 
     @pytest.mark.parametrize(
         ("field_name", "value"),
         [
             ("id", "a" * 21),
-            ("title", "b" * 21),
+            ("title", "b" * 101),
         ],
     )
     def test_user_action_length_limits(self, field_name: str, value: str):
@@ -143,7 +264,7 @@ class TestUserAction:
         data[field_name] = value
 
         with pytest.raises(ValidationError) as exc_info:
-            UserAction(**data)
+            UserActionConfig.model_validate(data)
 
         errors = exc_info.value.errors()
         assert any(error["loc"] == (field_name,) and error["type"] == "string_too_long" for error in errors)
@@ -157,14 +278,14 @@ class TestHumanInputNodeData:
         delivery_methods = [WebAppDeliveryMethod(enabled=True, config=_WebAppDeliveryConfig())]
 
         inputs = [
-            FormInput(
-                type=FormInputType.TEXT_INPUT,
+            ParagraphInputConfig(
+                type=FormInputType.PARAGRAPH,
                 output_variable_name="content",
-                default=FormInputDefault(type=PlaceholderType.CONSTANT, value="Enter content..."),
+                default=StringSource(type=ValueSourceType.CONSTANT, value="Enter content..."),
             )
         ]
 
-        user_actions = [UserAction(id="submit", title="Submit", button_style=ButtonStyle.PRIMARY)]
+        user_actions = [UserActionConfig(id="submit", title="Submit", button_style=ButtonStyle.PRIMARY)]
 
         node_data = HumanInputNodeData(
             title="Human Input Test",
@@ -193,7 +314,7 @@ class TestHumanInputNodeData:
             EmailDeliveryMethod(
                 enabled=False,  # Disabled method should be fine
                 config=EmailDeliveryConfig(
-                    subject="Hi there", body="", recipients=EmailRecipients(whole_workspace=True)
+                    subject="Hi there", body="", recipients=EmailRecipients(include_bound_group=True)
                 ),
             ),
         ]
@@ -212,7 +333,7 @@ class TestHumanInputNodeData:
 
         assert node_data.title == "Test Node"
         assert node_data.desc is None
-        assert node_data.delivery_methods == []
+        assert node_data.model_dump().get("delivery_methods") is None
         assert node_data.form_content == ""
         assert node_data.inputs == []
         assert node_data.user_actions == []
@@ -222,8 +343,8 @@ class TestHumanInputNodeData:
     def test_duplicate_input_output_variable_name_raises_validation_error(self):
         """Duplicate form input output_variable_name should raise validation error."""
         duplicate_inputs = [
-            FormInput(type=FormInputType.TEXT_INPUT, output_variable_name="content"),
-            FormInput(type=FormInputType.TEXT_INPUT, output_variable_name="content"),
+            ParagraphInputConfig(type=FormInputType.PARAGRAPH, output_variable_name="content"),
+            ParagraphInputConfig(type=FormInputType.PARAGRAPH, output_variable_name="content"),
         ]
 
         with pytest.raises(ValidationError, match="duplicated output_variable_name 'content'"):
@@ -232,8 +353,8 @@ class TestHumanInputNodeData:
     def test_duplicate_user_action_ids_raise_validation_error(self):
         """Duplicate user action ids should raise validation error."""
         duplicate_actions = [
-            UserAction(id="submit", title="Submit"),
-            UserAction(id="submit", title="Submit Again"),
+            UserActionConfig(id="submit", title="Submit"),
+            UserActionConfig(id="submit", title="Submit Again"),
         ]
 
         with pytest.raises(ValidationError, match="duplicated user action id 'submit'"):
@@ -261,10 +382,10 @@ class TestRecipients:
 
     def test_member_recipient(self):
         """Test member recipient creation."""
-        recipient = MemberRecipient(type=EmailRecipientType.MEMBER, user_id="user-123")
+        recipient = MemberRecipient(type=EmailRecipientType.MEMBER, reference_id="user-123")
 
         assert recipient.type == EmailRecipientType.MEMBER
-        assert recipient.user_id == "user-123"
+        assert recipient.reference_id == "user-123"
 
     def test_external_recipient(self):
         """Test external recipient creation."""
@@ -273,37 +394,46 @@ class TestRecipients:
         assert recipient.type == EmailRecipientType.EXTERNAL
         assert recipient.email == "test@example.com"
 
-    def test_email_recipients_whole_workspace(self):
-        """Test email recipients with whole workspace enabled."""
+    def test_email_recipients_bound_group(self):
+        """Test email recipients with the bound group enabled."""
         recipients = EmailRecipients(
-            whole_workspace=True, items=[MemberRecipient(type=EmailRecipientType.MEMBER, user_id="user-123")]
+            include_bound_group=True,
+            items=[MemberRecipient(type=EmailRecipientType.MEMBER, reference_id="user-123")],
         )
 
-        assert recipients.whole_workspace is True
-        assert len(recipients.items) == 1  # Items are preserved even when whole_workspace is True
+        assert recipients.include_bound_group is True
+        assert len(recipients.items) == 1  # Items are preserved even when include_bound_group is True
 
     def test_email_recipients_specific_users(self):
         """Test email recipients with specific users."""
         recipients = EmailRecipients(
-            whole_workspace=False,
+            include_bound_group=False,
             items=[
-                MemberRecipient(type=EmailRecipientType.MEMBER, user_id="user-123"),
+                MemberRecipient(type=EmailRecipientType.MEMBER, reference_id="user-123"),
                 ExternalRecipient(type=EmailRecipientType.EXTERNAL, email="external@example.com"),
             ],
         )
 
-        assert recipients.whole_workspace is False
+        assert recipients.include_bound_group is False
         assert len(recipients.items) == 2
-        assert recipients.items[0].user_id == "user-123"
+        assert recipients.items[0].reference_id == "user-123"
         assert recipients.items[1].email == "external@example.com"
+
+    def test_legacy_recipient_keys_are_rejected(self):
+        with pytest.raises(ValidationError):
+            MemberRecipient(type=EmailRecipientType.MEMBER, user_id="user-123")
+
+        recipients = EmailRecipients(whole_workspace=True, items=[])
+        assert recipients.include_bound_group is True
+        assert recipients.items == []
 
 
 class TestHumanInputNodeVariableResolution:
     """Tests for resolving variable-based defaults in HumanInputNode."""
 
     def test_resolves_variable_defaults(self):
-        variable_pool = VariablePool(
-            system_variables=SystemVariable(
+        variable_pool = VariablePool.from_bootstrap(
+            system_variables=build_system_variables(
                 user_id="user",
                 app_id="app",
                 workflow_id="workflow",
@@ -333,18 +463,18 @@ class TestHumanInputNodeVariableResolution:
             title="Human Input",
             form_content="Provide your name",
             inputs=[
-                FormInput(
-                    type=FormInputType.TEXT_INPUT,
+                ParagraphInputConfig(
+                    type=FormInputType.PARAGRAPH,
                     output_variable_name="user_name",
-                    default=FormInputDefault(type=PlaceholderType.VARIABLE, selector=["start", "name"]),
+                    default=StringSource(type=ValueSourceType.VARIABLE, selector=["start", "name"]),
                 ),
-                FormInput(
-                    type=FormInputType.TEXT_INPUT,
+                ParagraphInputConfig(
+                    type=FormInputType.PARAGRAPH,
                     output_variable_name="user_email",
-                    default=FormInputDefault(type=PlaceholderType.CONSTANT, value="foo@example.com"),
+                    default=StringSource(type=ValueSourceType.CONSTANT, value="foo@example.com"),
                 ),
             ],
-            user_actions=[UserAction(id="submit", title="Submit")],
+            user_actions=[UserActionConfig(id="submit", title="Submit")],
         )
         config = {"id": "human", "data": node_data.model_dump()}
 
@@ -353,17 +483,19 @@ class TestHumanInputNodeVariableResolution:
         mock_repo.create_form.return_value = SimpleNamespace(
             id="form-1",
             rendered_content="Provide your name",
-            web_app_token="token",
+            submission_token="token",
             recipients=[],
             submitted=False,
         )
 
-        node = HumanInputNode(
-            id=config["id"],
-            config=config,
+        runtime = DifyHumanInputNodeRuntime(graph_init_params.run_context)
+        runtime._build_form_repository = MagicMock(return_value=mock_repo)  # type: ignore[attr-defined]
+        node = _build_human_input_node(
+            node_id=config["id"],
+            node_data=config["data"],
             graph_init_params=graph_init_params,
             graph_runtime_state=runtime_state,
-            form_repository=mock_repo,
+            runtime=runtime,
         )
 
         run_result = node._run()
@@ -377,8 +509,8 @@ class TestHumanInputNodeVariableResolution:
         assert params.resolved_default_values == expected_values
 
     def test_debugger_falls_back_to_recipient_token_when_webapp_disabled(self):
-        variable_pool = VariablePool(
-            system_variables=SystemVariable(
+        variable_pool = VariablePool.from_bootstrap(
+            system_variables=build_system_variables(
                 user_id="user",
                 app_id="app",
                 workflow_id="workflow",
@@ -407,7 +539,7 @@ class TestHumanInputNodeVariableResolution:
             title="Human Input",
             form_content="Provide your name",
             inputs=[],
-            user_actions=[UserAction(id="submit", title="Submit")],
+            user_actions=[UserActionConfig(id="submit", title="Submit")],
         )
         config = {"id": "human", "data": node_data.model_dump()}
 
@@ -416,28 +548,96 @@ class TestHumanInputNodeVariableResolution:
         mock_repo.create_form.return_value = SimpleNamespace(
             id="form-2",
             rendered_content="Provide your name",
-            web_app_token="console-token",
+            submission_token="console-token",
             recipients=[SimpleNamespace(token="recipient-token")],
             submitted=False,
         )
 
-        node = HumanInputNode(
-            id=config["id"],
-            config=config,
+        runtime = DifyHumanInputNodeRuntime(graph_init_params.run_context)
+        runtime._build_form_repository = MagicMock(return_value=mock_repo)  # type: ignore[attr-defined]
+        node = _build_human_input_node(
+            node_id=config["id"],
+            node_data=config["data"],
             graph_init_params=graph_init_params,
             graph_runtime_state=runtime_state,
-            form_repository=mock_repo,
+            runtime=runtime,
         )
 
         run_result = node._run()
         pause_event = next(run_result)
 
         assert isinstance(pause_event, PauseRequestedEvent)
-        assert pause_event.reason.form_token == "console-token"
+        assert not hasattr(pause_event.reason, "form_token")
+
+    def test_webapp_runtime_keeps_form_visible_in_ui_when_webapp_delivery_is_enabled(self):
+        variable_pool = VariablePool.from_bootstrap(
+            system_variables=build_system_variables(
+                user_id="user",
+                app_id="app",
+                workflow_id="workflow",
+                workflow_execution_id="exec-4",
+            ),
+            user_inputs={},
+            conversation_variables=[],
+        )
+        runtime_state = GraphRuntimeState(variable_pool=variable_pool, start_at=0.0)
+        graph_init_params = GraphInitParams(
+            workflow_id="workflow",
+            graph_config={"nodes": [], "edges": []},
+            run_context={
+                DIFY_RUN_CONTEXT_KEY: {
+                    "tenant_id": "tenant",
+                    "app_id": "app",
+                    "user_id": "end-user-1",
+                    "user_from": "end-user",
+                    "invoke_from": "web-app",
+                }
+            },
+            call_depth=0,
+        )
+
+        config = {
+            "id": "human",
+            "data": {
+                "type": "human-input",
+                "title": "Human Input",
+                "form_content": "Provide your name",
+                "inputs": [],
+                "user_actions": [{"id": "submit", "title": "Submit"}],
+                "delivery_methods": [{"enabled": True, "type": "webapp", "config": {}}],
+            },
+        }
+
+        mock_repo = MagicMock(spec=HumanInputFormRepository)
+        mock_repo.get_form.return_value = None
+        mock_repo.create_form.return_value = SimpleNamespace(
+            id="form-4",
+            rendered_content="Provide your name",
+            submission_token="token",
+            recipients=[],
+            submitted=False,
+        )
+
+        runtime = DifyHumanInputNodeRuntime(graph_init_params.run_context)
+        runtime._build_form_repository = MagicMock(return_value=mock_repo)  # type: ignore[attr-defined]
+        node = _build_human_input_node(
+            node_id=config["id"],
+            node_data=config["data"],
+            graph_init_params=graph_init_params,
+            graph_runtime_state=runtime_state,
+            runtime=runtime,
+        )
+
+        run_result = node._run()
+        pause_event = next(run_result)
+
+        assert isinstance(pause_event, PauseRequestedEvent)
+        params = mock_repo.create_form.call_args.args[0]
+        assert params.display_in_ui is True
 
     def test_debugger_debug_mode_overrides_email_recipients(self):
-        variable_pool = VariablePool(
-            system_variables=SystemVariable(
+        variable_pool = VariablePool.from_bootstrap(
+            system_variables=build_system_variables(
                 user_id="user-123",
                 app_id="app",
                 workflow_id="workflow",
@@ -466,13 +666,13 @@ class TestHumanInputNodeVariableResolution:
             title="Human Input",
             form_content="Provide your name",
             inputs=[],
-            user_actions=[UserAction(id="submit", title="Submit")],
+            user_actions=[UserActionConfig(id="submit", title="Submit")],
             delivery_methods=[
                 EmailDeliveryMethod(
                     enabled=True,
                     config=EmailDeliveryConfig(
                         recipients=EmailRecipients(
-                            whole_workspace=False,
+                            include_bound_group=False,
                             items=[ExternalRecipient(type=EmailRecipientType.EXTERNAL, email="target@example.com")],
                         ),
                         subject="Subject",
@@ -489,17 +689,19 @@ class TestHumanInputNodeVariableResolution:
         mock_repo.create_form.return_value = SimpleNamespace(
             id="form-3",
             rendered_content="Provide your name",
-            web_app_token="token",
+            submission_token="token",
             recipients=[],
             submitted=False,
         )
 
-        node = HumanInputNode(
-            id=config["id"],
-            config=config,
+        runtime = DifyHumanInputNodeRuntime(graph_init_params.run_context)
+        runtime._build_form_repository = MagicMock(return_value=mock_repo)  # type: ignore[attr-defined]
+        node = _build_human_input_node(
+            node_id=config["id"],
+            node_data=config["data"],
             graph_init_params=graph_init_params,
             graph_runtime_state=runtime_state,
-            form_repository=mock_repo,
+            runtime=runtime,
         )
 
         run_result = node._run()
@@ -511,11 +713,11 @@ class TestHumanInputNodeVariableResolution:
         method = params.delivery_methods[0]
         assert isinstance(method, EmailDeliveryMethod)
         assert method.config.debug_mode is True
-        assert method.config.recipients.whole_workspace is False
+        assert method.config.recipients.include_bound_group is False
         assert len(method.config.recipients.items) == 1
         recipient = method.config.recipients.items[0]
         assert isinstance(recipient, MemberRecipient)
-        assert recipient.user_id == "user-123"
+        assert recipient.reference_id == "user-123"
 
 
 class TestValidation:
@@ -524,7 +726,7 @@ class TestValidation:
     def test_invalid_form_input_type(self):
         """Test validation with invalid form input type."""
         with pytest.raises(ValidationError):
-            FormInput(
+            ParagraphInputConfig(
                 type="invalid-type",  # Invalid type
                 output_variable_name="test",
             )
@@ -532,7 +734,7 @@ class TestValidation:
     def test_invalid_button_style(self):
         """Test validation with invalid button style."""
         with pytest.raises(ValidationError):
-            UserAction(
+            UserActionConfig(
                 id="test",
                 title="Test",
                 button_style="invalid-style",  # Invalid style
@@ -551,8 +753,8 @@ class TestHumanInputNodeRenderedContent:
     """Tests for rendering submitted content."""
 
     def test_replaces_outputs_placeholders_after_submission(self):
-        variable_pool = VariablePool(
-            system_variables=SystemVariable(
+        variable_pool = VariablePool.from_bootstrap(
+            system_variables=build_system_variables(
                 user_id="user",
                 app_id="app",
                 workflow_id="workflow",
@@ -581,22 +783,24 @@ class TestHumanInputNodeRenderedContent:
             title="Human Input",
             form_content="Name: {{#$output.name#}}",
             inputs=[
-                FormInput(
-                    type=FormInputType.TEXT_INPUT,
+                ParagraphInputConfig(
+                    type=FormInputType.PARAGRAPH,
                     output_variable_name="name",
                 )
             ],
-            user_actions=[UserAction(id="approve", title="Approve")],
+            user_actions=[UserActionConfig(id="approve", title="Approve")],
         )
         config = {"id": "human", "data": node_data.model_dump()}
 
         form_repository = InMemoryHumanInputFormRepository()
-        node = HumanInputNode(
-            id=config["id"],
-            config=config,
+        runtime = DifyHumanInputNodeRuntime(graph_init_params.run_context)
+        runtime._build_form_repository = MagicMock(return_value=form_repository)  # type: ignore[attr-defined]
+        node = _build_human_input_node(
+            node_id=config["id"],
+            node_data=config["data"],
             graph_init_params=graph_init_params,
             graph_runtime_state=runtime_state,
-            form_repository=form_repository,
+            runtime=runtime,
         )
 
         pause_gen = node._run()
@@ -611,4 +815,4 @@ class TestHumanInputNodeRenderedContent:
         last_event = events[-1]
         assert isinstance(last_event, StreamCompletedEvent)
         node_run_result = last_event.node_run_result
-        assert node_run_result.outputs["__rendered_content"] == "Name: Alice"
+        assert node_run_result.outputs["__rendered_content"].to_object() == "Name: Alice"

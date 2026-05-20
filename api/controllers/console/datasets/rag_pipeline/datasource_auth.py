@@ -6,12 +6,13 @@ from pydantic import BaseModel, Field
 from werkzeug.exceptions import Forbidden, NotFound
 
 from configs import dify_config
-from controllers.common.schema import register_schema_models
+from controllers.common.fields import SimpleResultResponse
+from controllers.common.schema import register_response_schema_models, register_schema_models
 from controllers.console import console_ns
 from controllers.console.wraps import account_initialization_required, edit_permission_required, setup_required
 from core.plugin.impl.oauth import OAuthHandler
-from dify_graph.model_runtime.errors.validate import CredentialsValidateFailedError
-from dify_graph.model_runtime.utils.encoders import jsonable_encoder
+from graphon.model_runtime.errors.validate import CredentialsValidateFailedError
+from graphon.model_runtime.utils.encoders import jsonable_encoder
 from libs.login import current_account_with_tenant, login_required
 from models.provider_ids import DatasourceProviderID
 from services.datasource_provider_service import DatasourceProviderService
@@ -56,6 +57,7 @@ register_schema_models(
     DatasourceDefaultPayload,
     DatasourceUpdateNamePayload,
 )
+register_response_schema_models(console_ns, SimpleResultResponse)
 
 
 @console_ns.route("/oauth/plugin/<path:provider_id>/datasource/get-authorization-url")
@@ -120,7 +122,8 @@ class DatasourceOAuthCallback(Resource):
         if context is None:
             raise Forbidden("Invalid context_id")
 
-        user_id, tenant_id = context.get("user_id"), context.get("tenant_id")
+        user_id: str = context["user_id"]
+        tenant_id: str = context["tenant_id"]
         datasource_provider_id = DatasourceProviderID(provider_id)
         plugin_id = datasource_provider_id.plugin_id
         datasource_provider_service = DatasourceProviderService()
@@ -141,7 +144,7 @@ class DatasourceOAuthCallback(Resource):
             system_credentials=oauth_client_params,
             request=request,
         )
-        credential_id = context.get("credential_id")
+        credential_id: str | None = context.get("credential_id")
         if credential_id:
             datasource_provider_service.reauthorize_datasource_oauth_provider(
                 tenant_id=tenant_id,
@@ -150,7 +153,7 @@ class DatasourceOAuthCallback(Resource):
                 name=oauth_response.metadata.get("name") or None,
                 expire_at=oauth_response.expires_at,
                 credentials=dict(oauth_response.credentials),
-                credential_id=context.get("credential_id"),
+                credential_id=credential_id,
             )
         else:
             datasource_provider_service.add_datasource_oauth_provider(
@@ -208,6 +211,7 @@ class DatasourceAuth(Resource):
 @console_ns.route("/auth/plugin/datasource/<path:provider_id>/delete")
 class DatasourceAuthDeleteApi(Resource):
     @console_ns.expect(console_ns.models[DatasourceCredentialDeletePayload.__name__])
+    @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -305,6 +309,7 @@ class DatasourceAuthOauthCustomClient(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
     def delete(self, provider_id: str):
         _, current_tenant_id = current_account_with_tenant()
 
@@ -320,6 +325,7 @@ class DatasourceAuthOauthCustomClient(Resource):
 @console_ns.route("/auth/plugin/datasource/<path:provider_id>/default")
 class DatasourceAuthDefaultApi(Resource):
     @console_ns.expect(console_ns.models[DatasourceDefaultPayload.__name__])
+    @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -341,6 +347,7 @@ class DatasourceAuthDefaultApi(Resource):
 @console_ns.route("/auth/plugin/datasource/<path:provider_id>/update-name")
 class DatasourceUpdateProviderNameApi(Resource):
     @console_ns.expect(console_ns.models[DatasourceUpdateNamePayload.__name__])
+    @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required

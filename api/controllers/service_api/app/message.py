@@ -1,5 +1,4 @@
 import logging
-from typing import Literal
 
 from flask import request
 from flask_restx import Resource
@@ -7,14 +6,16 @@ from pydantic import BaseModel, Field, TypeAdapter
 from werkzeug.exceptions import BadRequest, InternalServerError, NotFound
 
 import services
-from controllers.common.schema import register_schema_models
+from controllers.common.controller_schemas import MessageFeedbackPayload, MessageListQuery
+from controllers.common.fields import SimpleResultStringListResponse
+from controllers.common.schema import register_response_schema_models, register_schema_models
 from controllers.service_api import service_api_ns
 from controllers.service_api.app.error import NotChatAppError
 from controllers.service_api.wraps import FetchUserArg, WhereisUserArg, validate_app_token
 from core.app.entities.app_invoke_entities import InvokeFrom
 from fields.conversation_fields import ResultResponse
 from fields.message_fields import MessageInfiniteScrollPagination, MessageListItem
-from libs.helper import UUIDStrOrEmpty
+from models.enums import FeedbackRating
 from models.model import App, AppMode, EndUser
 from services.errors.message import (
     FirstMessageNotExistsError,
@@ -26,23 +27,13 @@ from services.message_service import MessageService
 logger = logging.getLogger(__name__)
 
 
-class MessageListQuery(BaseModel):
-    conversation_id: UUIDStrOrEmpty
-    first_id: UUIDStrOrEmpty | None = None
-    limit: int = Field(default=20, ge=1, le=100, description="Number of messages to return")
-
-
-class MessageFeedbackPayload(BaseModel):
-    rating: Literal["like", "dislike"] | None = Field(default=None, description="Feedback rating")
-    content: str | None = Field(default=None, description="Feedback content")
-
-
 class FeedbackListQuery(BaseModel):
     page: int = Field(default=1, ge=1, description="Page number")
     limit: int = Field(default=20, ge=1, le=101, description="Number of feedbacks per page")
 
 
 register_schema_models(service_api_ns, MessageListQuery, MessageFeedbackPayload, FeedbackListQuery)
+register_response_schema_models(service_api_ns, ResultResponse, SimpleResultStringListResponse)
 
 
 @service_api_ns.route("/messages")
@@ -91,6 +82,7 @@ class MessageListApi(Resource):
 @service_api_ns.route("/messages/<uuid:message_id>/feedbacks")
 class MessageFeedbackApi(Resource):
     @service_api_ns.expect(service_api_ns.models[MessageFeedbackPayload.__name__])
+    @service_api_ns.response(200, "Feedback submitted successfully", service_api_ns.models[ResultResponse.__name__])
     @service_api_ns.doc("create_message_feedback")
     @service_api_ns.doc(description="Submit feedback for a message")
     @service_api_ns.doc(params={"message_id": "Message ID"})
@@ -116,7 +108,7 @@ class MessageFeedbackApi(Resource):
                 app_model=app_model,
                 message_id=message_id,
                 user=end_user,
-                rating=payload.rating,
+                rating=FeedbackRating(payload.rating) if payload.rating else None,
                 content=payload.content,
             )
         except MessageNotExistsError:
@@ -149,6 +141,11 @@ class AppGetFeedbacksApi(Resource):
 
 @service_api_ns.route("/messages/<uuid:message_id>/suggested")
 class MessageSuggestedApi(Resource):
+    @service_api_ns.response(
+        200,
+        "Suggested questions retrieved successfully",
+        service_api_ns.models[SimpleResultStringListResponse.__name__],
+    )
     @service_api_ns.doc("get_suggested_questions")
     @service_api_ns.doc(description="Get suggested follow-up questions for a message")
     @service_api_ns.doc(params={"message_id": "Message ID"})

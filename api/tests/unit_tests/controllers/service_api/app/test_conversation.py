@@ -15,10 +15,12 @@ Focus on:
 
 import sys
 import uuid
+from datetime import UTC, datetime
 from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
 import pytest
+from flask import Flask
 from werkzeug.exceptions import BadRequest, NotFound
 
 import services
@@ -29,11 +31,16 @@ from controllers.service_api.app.conversation import (
     ConversationRenameApi,
     ConversationRenamePayload,
     ConversationVariableDetailApi,
+    ConversationVariableInfiniteScrollPaginationResponse,
+    ConversationVariableResponse,
     ConversationVariablesApi,
     ConversationVariablesQuery,
     ConversationVariableUpdatePayload,
 )
 from controllers.service_api.app.error import NotChatAppError
+from fields._value_type_serializer import serialize_value_type
+from graphon.variables import StringSegment
+from graphon.variables.types import SegmentType
 from models.model import App, AppMode, EndUser
 from services.conversation_service import ConversationService
 from services.errors.conversation import (
@@ -261,13 +268,79 @@ class TestConversationVariableUpdatePayload:
         assert payload.value == nested
 
 
+class TestConversationVariableResponseModels:
+    def test_variable_response_normalizes_value_type_and_timestamps(self):
+        created_at = datetime(2026, 1, 2, 3, 4, 5, tzinfo=UTC)
+        response = ConversationVariableResponse.model_validate(
+            {
+                "id": "550e8400-e29b-41d4-a716-446655440000",
+                "name": "foo",
+                "value_type": SegmentType.INTEGER,
+                "value": 1,
+                "description": "desc",
+                "created_at": created_at,
+                "updated_at": created_at,
+            }
+        )
+        assert response.value_type == "number"
+        assert response.value == "1"
+        assert response.created_at == int(created_at.timestamp())
+        assert response.updated_at == int(created_at.timestamp())
+
+    def test_variable_response_normalizes_string_value_type_alias(self):
+        response = ConversationVariableResponse.model_validate(
+            {
+                "id": "550e8400-e29b-41d4-a716-446655440000",
+                "name": "foo",
+                "value_type": SegmentType.INTEGER.value,
+            }
+        )
+
+        assert response.value_type == "number"
+
+    def test_variable_response_normalizes_callable_exposed_type(self):
+        response = ConversationVariableResponse.model_validate(
+            {
+                "id": "550e8400-e29b-41d4-a716-446655440000",
+                "name": "foo",
+                "value_type": SimpleNamespace(exposed_type=lambda: SegmentType.STRING.exposed_type()),
+            }
+        )
+
+        assert response.value_type == "string"
+
+    def test_serialize_value_type_supports_segments_and_mappings(self):
+        assert serialize_value_type(StringSegment(value="hello")) == "string"
+        assert serialize_value_type({"value_type": SegmentType.INTEGER}) == "number"
+
+    def test_variable_pagination_response(self):
+        response = ConversationVariableInfiniteScrollPaginationResponse.model_validate(
+            {
+                "limit": 1,
+                "has_more": False,
+                "data": [
+                    {
+                        "id": "550e8400-e29b-41d4-a716-446655440000",
+                        "name": "foo",
+                        "value_type": "string",
+                        "value": "bar",
+                    }
+                ],
+            }
+        )
+        assert response.limit == 1
+        assert response.has_more is False
+        assert len(response.data) == 1
+        assert response.data[0].name == "foo"
+
+
 class TestConversationAppModeValidation:
     """Test app mode validation for conversation endpoints."""
 
     @pytest.mark.parametrize(
         "mode",
         [
-            AppMode.CHAT.value,
+            AppMode.CHAT,
             AppMode.AGENT_CHAT.value,
             AppMode.ADVANCED_CHAT.value,
         ],
@@ -292,7 +365,7 @@ class TestConversationAppModeValidation:
         app raises NotChatAppError.
         """
         app = Mock(spec=App)
-        app.mode = AppMode.COMPLETION.value
+        app.mode = AppMode.COMPLETION
 
         app_mode = AppMode.value_of(app.mode)
         assert app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}
@@ -422,23 +495,30 @@ class TestConversationPayloadsController:
 
 
 class TestConversationApiController:
-    def test_list_not_chat(self, app) -> None:
+    def test_list_not_chat(self, app: Flask) -> None:
         api = ConversationApi()
         handler = _unwrap(api.get)
-        app_model = SimpleNamespace(mode=AppMode.COMPLETION.value)
+        app_model = SimpleNamespace(mode=AppMode.COMPLETION)
         end_user = SimpleNamespace()
 
         with app.test_request_context("/conversations", method="GET"):
             with pytest.raises(NotChatAppError):
                 handler(api, app_model=app_model, end_user=end_user)
 
-    def test_list_last_not_found(self, app, monkeypatch: pytest.MonkeyPatch) -> None:
-        class _SessionStub:
+    def test_list_last_not_found(self, app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+        class _BeginStub:
             def __enter__(self):
                 return SimpleNamespace()
 
             def __exit__(self, exc_type, exc, tb):
                 return False
+
+        class _SessionMakerStub:
+            def __init__(self, *args, **kwargs):
+                pass
+
+            def begin(self):
+                return _BeginStub()
 
         monkeypatch.setattr(
             ConversationService,
@@ -447,11 +527,11 @@ class TestConversationApiController:
         )
         conversation_module = sys.modules["controllers.service_api.app.conversation"]
         monkeypatch.setattr(conversation_module, "db", SimpleNamespace(engine=object()))
-        monkeypatch.setattr(conversation_module, "Session", lambda *_args, **_kwargs: _SessionStub())
+        monkeypatch.setattr(conversation_module, "sessionmaker", _SessionMakerStub)
 
         api = ConversationApi()
         handler = _unwrap(api.get)
-        app_model = SimpleNamespace(mode=AppMode.CHAT.value)
+        app_model = SimpleNamespace(mode=AppMode.CHAT)
         end_user = SimpleNamespace()
 
         with app.test_request_context(
@@ -463,17 +543,17 @@ class TestConversationApiController:
 
 
 class TestConversationDetailApiController:
-    def test_delete_not_chat(self, app) -> None:
+    def test_delete_not_chat(self, app: Flask) -> None:
         api = ConversationDetailApi()
         handler = _unwrap(api.delete)
-        app_model = SimpleNamespace(mode=AppMode.COMPLETION.value)
+        app_model = SimpleNamespace(mode=AppMode.COMPLETION)
         end_user = SimpleNamespace()
 
         with app.test_request_context("/conversations/1", method="DELETE"):
             with pytest.raises(NotChatAppError):
                 handler(api, app_model=app_model, end_user=end_user, c_id="00000000-0000-0000-0000-000000000001")
 
-    def test_delete_not_found(self, app, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_delete_not_found(self, app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr(
             ConversationService,
             "delete",
@@ -482,7 +562,7 @@ class TestConversationDetailApiController:
 
         api = ConversationDetailApi()
         handler = _unwrap(api.delete)
-        app_model = SimpleNamespace(mode=AppMode.CHAT.value)
+        app_model = SimpleNamespace(mode=AppMode.CHAT)
         end_user = SimpleNamespace()
 
         with app.test_request_context("/conversations/1", method="DELETE"):
@@ -491,7 +571,7 @@ class TestConversationDetailApiController:
 
 
 class TestConversationRenameApiController:
-    def test_not_found(self, app, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_not_found(self, app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr(
             ConversationService,
             "rename",
@@ -500,7 +580,7 @@ class TestConversationRenameApiController:
 
         api = ConversationRenameApi()
         handler = _unwrap(api.post)
-        app_model = SimpleNamespace(mode=AppMode.CHAT.value)
+        app_model = SimpleNamespace(mode=AppMode.CHAT)
         end_user = SimpleNamespace()
 
         with app.test_request_context(
@@ -513,17 +593,17 @@ class TestConversationRenameApiController:
 
 
 class TestConversationVariablesApiController:
-    def test_not_chat(self, app) -> None:
+    def test_not_chat(self, app: Flask) -> None:
         api = ConversationVariablesApi()
         handler = _unwrap(api.get)
-        app_model = SimpleNamespace(mode=AppMode.COMPLETION.value)
+        app_model = SimpleNamespace(mode=AppMode.COMPLETION)
         end_user = SimpleNamespace()
 
         with app.test_request_context("/conversations/1/variables", method="GET"):
             with pytest.raises(NotChatAppError):
                 handler(api, app_model=app_model, end_user=end_user, c_id="00000000-0000-0000-0000-000000000001")
 
-    def test_not_found(self, app, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_not_found(self, app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr(
             ConversationService,
             "get_conversational_variable",
@@ -532,7 +612,7 @@ class TestConversationVariablesApiController:
 
         api = ConversationVariablesApi()
         handler = _unwrap(api.get)
-        app_model = SimpleNamespace(mode=AppMode.CHAT.value)
+        app_model = SimpleNamespace(mode=AppMode.CHAT)
         end_user = SimpleNamespace()
 
         with app.test_request_context(
@@ -542,9 +622,47 @@ class TestConversationVariablesApiController:
             with pytest.raises(NotFound):
                 handler(api, app_model=app_model, end_user=end_user, c_id="00000000-0000-0000-0000-000000000001")
 
+    def test_success_serializes_response(self, app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+        created_at = datetime(2026, 1, 2, 3, 4, 5, tzinfo=UTC)
+        monkeypatch.setattr(
+            ConversationService,
+            "get_conversational_variable",
+            lambda *_args, **_kwargs: SimpleNamespace(
+                limit=1,
+                has_more=False,
+                data=[
+                    {
+                        "id": "550e8400-e29b-41d4-a716-446655440000",
+                        "name": "foo",
+                        "value_type": SegmentType.INTEGER,
+                        "value": 1,
+                        "created_at": created_at,
+                        "updated_at": created_at,
+                    }
+                ],
+            ),
+        )
+
+        api = ConversationVariablesApi()
+        handler = _unwrap(api.get)
+        app_model = SimpleNamespace(mode=AppMode.CHAT)
+        end_user = SimpleNamespace()
+
+        with app.test_request_context(
+            "/conversations/1/variables?limit=20",
+            method="GET",
+        ):
+            result = handler(api, app_model=app_model, end_user=end_user, c_id="00000000-0000-0000-0000-000000000001")
+
+        assert result["limit"] == 1
+        assert result["has_more"] is False
+        assert result["data"][0]["value_type"] == "number"
+        assert result["data"][0]["value"] == "1"
+        assert result["data"][0]["created_at"] == int(created_at.timestamp())
+
 
 class TestConversationVariableDetailApiController:
-    def test_update_type_mismatch(self, app, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_update_type_mismatch(self, app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr(
             ConversationService,
             "update_conversation_variable",
@@ -553,7 +671,7 @@ class TestConversationVariableDetailApiController:
 
         api = ConversationVariableDetailApi()
         handler = _unwrap(api.put)
-        app_model = SimpleNamespace(mode=AppMode.CHAT.value)
+        app_model = SimpleNamespace(mode=AppMode.CHAT)
         end_user = SimpleNamespace()
 
         with app.test_request_context(
@@ -570,7 +688,7 @@ class TestConversationVariableDetailApiController:
                     variable_id="00000000-0000-0000-0000-000000000002",
                 )
 
-    def test_update_not_found(self, app, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_update_not_found(self, app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr(
             ConversationService,
             "update_conversation_variable",
@@ -579,7 +697,7 @@ class TestConversationVariableDetailApiController:
 
         api = ConversationVariableDetailApi()
         handler = _unwrap(api.put)
-        app_model = SimpleNamespace(mode=AppMode.CHAT.value)
+        app_model = SimpleNamespace(mode=AppMode.CHAT)
         end_user = SimpleNamespace()
 
         with app.test_request_context(
@@ -595,3 +713,41 @@ class TestConversationVariableDetailApiController:
                     c_id="00000000-0000-0000-0000-000000000001",
                     variable_id="00000000-0000-0000-0000-000000000002",
                 )
+
+    def test_update_success_serializes_response(self, app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+        created_at = datetime(2026, 1, 2, 3, 4, 5, tzinfo=UTC)
+        monkeypatch.setattr(
+            ConversationService,
+            "update_conversation_variable",
+            lambda *_args, **_kwargs: {
+                "id": "550e8400-e29b-41d4-a716-446655440000",
+                "name": "foo",
+                "value_type": SegmentType.INTEGER,
+                "value": 1,
+                "created_at": created_at,
+                "updated_at": created_at,
+            },
+        )
+
+        api = ConversationVariableDetailApi()
+        handler = _unwrap(api.put)
+        app_model = SimpleNamespace(mode=AppMode.CHAT)
+        end_user = SimpleNamespace()
+
+        with app.test_request_context(
+            "/conversations/1/variables/2",
+            method="PUT",
+            json={"value": 1},
+        ):
+            result = handler(
+                api,
+                app_model=app_model,
+                end_user=end_user,
+                c_id="00000000-0000-0000-0000-000000000001",
+                variable_id="00000000-0000-0000-0000-000000000002",
+            )
+
+        assert result["id"] == "550e8400-e29b-41d4-a716-446655440000"
+        assert result["value_type"] == "number"
+        assert result["value"] == "1"
+        assert result["created_at"] == int(created_at.timestamp())

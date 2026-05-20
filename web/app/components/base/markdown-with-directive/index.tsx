@@ -1,5 +1,5 @@
 'use client'
-import type { ReactNode } from 'react'
+import type { AnchorHTMLAttributes, ClassAttributes, ReactNode } from 'react'
 import type { Components, StreamdownProps } from 'streamdown'
 import DOMPurify from 'dompurify'
 import remarkDirective from 'remark-directive'
@@ -91,7 +91,7 @@ function buildDirectiveRehypePlugins(): PluggableList {
   ])
 
   const attributes: Record<string, AttributeDefinition[]> = {
-    ...(defaultSanitizeSchema.attributes ?? {}),
+    ...defaultSanitizeSchema.attributes,
   }
 
   for (const [tagName, allowedAttributes] of Object.entries(DIRECTIVE_ALLOWED_TAGS))
@@ -104,9 +104,9 @@ function buildDirectiveRehypePlugins(): PluggableList {
   }
 
   return [
-    defaultRehypePlugins.raw,
+    defaultRehypePlugins.raw!,
     [sanitizePlugin, sanitizeSchema] as Pluggable,
-    defaultRehypePlugins.harden,
+    defaultRehypePlugins.harden!,
   ]
 }
 
@@ -122,12 +122,12 @@ function normalizeDirectiveAttributeBlocks(markdown: string): string {
 
     const directivePrefix = match[1]
     const attributeBlocks = match[2]
-    const attrMatches = [...attributeBlocks.matchAll(ATTRIBUTE_BLOCK_REGEX)]
+    const attrMatches = [...attributeBlocks!.matchAll(ATTRIBUTE_BLOCK_REGEX)]
     if (attrMatches.length === 0)
       return line
 
     const mergedAttributes = attrMatches
-      .map(result => result[1].trim())
+      .map(result => result[1]!.trim())
       .filter(Boolean)
       .join(' ')
 
@@ -241,10 +241,25 @@ function directivePlugin() {
   }
 }
 
-const directiveComponents = {
+const directiveComponents: Components = {
+  a: (props) => {
+    const { children, href } = props as ClassAttributes<HTMLAnchorElement> & AnchorHTMLAttributes<HTMLAnchorElement>
+
+    return (
+      <a
+        href={href}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="text-text-accent"
+        style={{ textDecoration: 'none' }}
+      >
+        {children}
+      </a>
+    )
+  },
   withiconcardlist: WithIconCardListAdapter,
   withiconcarditem: WithIconCardItemAdapter,
-} satisfies Components
+}
 
 type MarkdownWithDirectiveProps = {
   markdown: string

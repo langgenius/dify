@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 import CredentialSelector from '../index'
 
-// Mock CredentialIcon since it's likely a complex component or uses next/image
+// Mock CredentialIcon since it's likely a complex component.
 vi.mock('@/app/components/datasets/common/credential-icon', () => ({
   CredentialIcon: ({ name }: { name: string }) => <div data-testid="credential-icon">{name}</div>,
 }))
@@ -32,7 +32,7 @@ describe('CredentialSelector', () => {
     const user = userEvent.setup()
     render(<CredentialSelector value="1" items={mockItems} onSelect={vi.fn()} />)
 
-    const btn = screen.getByTestId('notion-credential-selector-btn')
+    const btn = screen.getByRole('combobox', { name: /Notion Workspace 1/ })
     await user.click(btn)
 
     expect(screen.getByTestId('notion-credential-item-1')).toBeInTheDocument()
@@ -44,7 +44,7 @@ describe('CredentialSelector', () => {
     const user = userEvent.setup()
     render(<CredentialSelector value="1" items={mockItems} onSelect={handleSelect} />)
 
-    const btn = screen.getByTestId('notion-credential-selector-btn')
+    const btn = screen.getByRole('combobox', { name: /Notion Workspace 1/ })
     await user.click(btn)
 
     const item2 = screen.getByTestId('notion-credential-item-2')

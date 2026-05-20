@@ -78,7 +78,7 @@ class UserProfile(TypedDict):
     nickname: NotRequired[str]
 ```
 
-- For classes, declare member variables at the top of the class body (before `__init__`) so the class shape is obvious at a glance:
+- For classes, declare all member variables explicitly with types at the top of the class body (before `__init__`), even when the class is not a dataclass or Pydantic model, so the class shape is obvious at a glance:
 
 ```python
 from datetime import datetime
@@ -180,6 +180,8 @@ Quick checks while iterating:
 - Format: `make format`
 - Lint (includes auto-fix): `make lint`
 - Type check: `make type-check`
+- Unit tests: `make test`
+- Full backend tests, including Docker-backed suites: `make test-all`
 - Targeted tests: `make test TARGET_TESTS=./api/tests/<target_tests>`
 
 Before opening a PR / submitting:
@@ -193,6 +195,10 @@ Before opening a PR / submitting:
 - Controllers: parse input via Pydantic, invoke services, return serialised responses; no business logic.
 - Services: coordinate repositories, providers, background tasks; keep side effects explicit.
 - Document non-obvious behaviour with concise docstrings and comments.
+- For Flask-RESTX controller request, query, and response schemas, follow `controllers/API_SCHEMA_GUIDE.md`.
+  In short: use Pydantic models, document GET query params with `query_params_from_model(...)`, register response
+  DTOs with `register_response_schema_models(...)`, serialize response DTOs with `dump_response(...)`,
+  and avoid adding new legacy `ns.model(...)`, `@marshal_with(...)`, or GET `@ns.expect(...)` patterns.
 
 ### Miscellaneous
 

@@ -8,7 +8,7 @@ const replaceMock = vi.fn()
 const backMock = vi.fn()
 const useSearchParamsMock = vi.fn(() => new URLSearchParams())
 
-vi.mock('next/navigation', () => ({
+vi.mock('@/next/navigation', () => ({
   usePathname: vi.fn(() => '/chatbot/test-app'),
   useRouter: vi.fn(() => ({
     replace: replaceMock,

@@ -2,10 +2,10 @@
 
 import type { MarketplaceCollection } from '../types'
 import type { Plugin } from '@/app/components/plugins/types'
-import { useLocale, useTranslation } from '#i18n'
+import { cn } from '@langgenius/dify-ui/cn'
 import { RiArrowRightSLine } from '@remixicon/react'
+import { useLocale, useTranslation } from '#i18n'
 import { getLanguage } from '@/i18n-config/language'
-import { cn } from '@/utils/classnames'
 import { useMarketplaceMoreClick } from '../atoms'
 import CardWrapper from './card-wrapper'
 
@@ -45,11 +45,11 @@ const ListWithCollection = ({
               {
                 collection.searchable && (
                   <div
-                    className="system-xs-medium flex cursor-pointer items-center text-text-accent "
+                    className="flex cursor-pointer items-center system-xs-medium text-text-accent"
                     onClick={() => onMoreClick(collection.search_params)}
                   >
                     {t('marketplace.viewMore', { ns: 'plugin' })}
-                    <RiArrowRightSLine className="h-4 w-4" />
+                    <RiArrowRightSLine className="size-4" />
                   </div>
                 )
               }
@@ -60,7 +60,7 @@ const ListWithCollection = ({
             )}
             >
               {
-                marketplaceCollectionPluginsMap[collection.name].map((plugin) => {
+                marketplaceCollectionPluginsMap[collection.name]!.map((plugin) => {
                   if (cardRender)
                     return cardRender(plugin)
 
