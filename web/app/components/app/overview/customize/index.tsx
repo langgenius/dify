@@ -67,7 +67,7 @@ const CustomizeModal: FC<IShareLinkProps> = ({
               <div className="flex flex-col">
                 <div className="text-text-primary">{t(`${prefixCustomize}.way1.step1`, { ns: 'appOverview' })}</div>
                 <div className="mt-1 mb-2 text-xs text-text-tertiary">{t(`${prefixCustomize}.way1.step1Tip`, { ns: 'appOverview' })}</div>
-                <Button render={<a href={`https://github.com/langgenius/${isChatApp ? 'webapp-conversation' : 'webapp-text-generator'}`} target="_blank" rel="noopener noreferrer" />}>
+                <Button nativeButton={false} render={<a href={`https://github.com/langgenius/${isChatApp ? 'webapp-conversation' : 'webapp-text-generator'}`} target="_blank" rel="noopener noreferrer" />}>
                   <GithubIcon className="mr-2 text-text-secondary" />
                   {t(`${prefixCustomize}.way1.step1Operation`, { ns: 'appOverview' })}
                 </Button>
@@ -78,7 +78,7 @@ const CustomizeModal: FC<IShareLinkProps> = ({
               <div className="flex flex-col">
                 <div className="text-text-primary">{t(`${prefixCustomize}.way1.step2`, { ns: 'appOverview' })}</div>
                 <div className="mt-1 mb-2 text-xs text-text-tertiary">{t(`${prefixCustomize}.way1.step2Tip`, { ns: 'appOverview' })}</div>
-                <Button render={<a href="https://vercel.com/docs/concepts/deployments/git/vercel-for-github" target="_blank" rel="noopener noreferrer" />}>
+                <Button nativeButton={false} render={<a href="https://vercel.com/docs/concepts/deployments/git/vercel-for-github" target="_blank" rel="noopener noreferrer" />}>
                   <div className="mr-1.5 border-t-0 border-r-[7px] border-b-12 border-l-[7px] border-solid border-text-primary border-t-transparent border-r-transparent border-l-transparent"></div>
                   <span>{t(`${prefixCustomize}.way1.step2Operation`, { ns: 'appOverview' })}</span>
                 </Button>
@@ -113,6 +113,7 @@ const CustomizeModal: FC<IShareLinkProps> = ({
             </Tag>
             <p className="my-2 system-sm-medium text-text-secondary">{t(`${prefixCustomize}.way2.name`, { ns: 'appOverview' })}</p>
             <Button
+              nativeButton={false}
               render={<a href={apiDocLink} target="_blank" rel="noopener noreferrer" />}
               className="mt-2"
             >

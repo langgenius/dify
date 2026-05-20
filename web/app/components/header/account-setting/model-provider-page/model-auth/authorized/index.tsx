@@ -175,6 +175,7 @@ const Authorized = ({
         onOpenChange={setMergedIsOpen}
       >
         <PopoverTrigger
+          nativeButton={false}
           render={<div className={triggerPopupSameWidth ? 'w-full' : 'inline-block'}>{renderTrigger(mergedIsOpen)}</div>}
           onClick={handleTriggerClick}
         />
