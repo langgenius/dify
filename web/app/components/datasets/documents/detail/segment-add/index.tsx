@@ -30,7 +30,6 @@ export function SegmentAdd({
   embedding,
 }: SegmentAddProps) {
   const { t } = useTranslation()
-  const [isBatchMenuOpen, setIsBatchMenuOpen] = useState(false)
   const [isPlanUpgradeModalOpen, setIsPlanUpgradeModalOpen] = useState(false)
   const batchMenuAnchorRef = useRef<HTMLDivElement>(null)
   const { plan, enableBilling } = useProviderContext()
@@ -50,14 +49,14 @@ export function SegmentAdd({
   }
 
   const handleBatchAddClick = () => {
-    setIsBatchMenuOpen(false)
+    queueMicrotask(() => {
+      if (!canAddChunks) {
+        setIsPlanUpgradeModalOpen(true)
+        return
+      }
 
-    if (!canAddChunks) {
-      setIsPlanUpgradeModalOpen(true)
-      return
-    }
-
-    showBatchModal()
+      showBatchModal()
+    })
   }
 
   if (importStatus) {
@@ -133,14 +132,13 @@ export function SegmentAdd({
           {t('list.action.addButton', { ns: 'datasetDocuments' })}
         </span>
       </button>
-      <DropdownMenu open={isBatchMenuOpen} onOpenChange={setIsBatchMenuOpen}>
+      <DropdownMenu>
         <DropdownMenuTrigger
           aria-label={t('list.action.batchAdd', { ns: 'datasetDocuments' })}
           disabled={embedding}
           className={cn(
             `rounded-l-none rounded-r-lg border-0 bg-transparent p-2 backdrop-blur-[5px]
-            hover:bg-state-base-hover disabled:cursor-not-allowed disabled:bg-transparent disabled:hover:bg-transparent`,
-            isBatchMenuOpen && 'bg-state-base-hover',
+            hover:bg-state-base-hover disabled:cursor-not-allowed disabled:bg-transparent disabled:hover:bg-transparent data-popup-open:bg-state-base-hover`,
           )}
         >
           <div className="flex items-center justify-center">

@@ -1,4 +1,4 @@
-import type { FC } from 'react'
+import type { ReactNode } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   DropdownMenu,
@@ -8,24 +8,28 @@ import {
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
 import { RiArrowDownSLine, RiCheckLine, RiCloseCircleFill, RiFilter3Line } from '@remixicon/react'
-import { useMemo, useState } from 'react'
+import { useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
 
-export type Item = {
-  value: number | string
+type ItemValue = number | string
+
+export type Item<T extends ItemValue = ItemValue> = {
+  value: T
   name: string
-} & Record<string, any>
+} & Record<string, unknown>
 
-type Props = {
+type Props<T extends ItemValue> = {
   className?: string
   panelClassName?: string
   showLeftIcon?: boolean
-  leftIcon?: any
-  value: number | string
-  items: Item[]
-  onSelect: (item: any) => void
+  leftIcon?: ReactNode
+  value: T
+  items: Item<T>[]
+  onSelect: (item: Item<T>) => void
   onClear: () => void
 }
-const Chip: FC<Props> = ({
+
+function Chip<T extends ItemValue>({
   className,
   panelClassName,
   showLeftIcon = true,
@@ -34,31 +38,24 @@ const Chip: FC<Props> = ({
   items,
   onSelect,
   onClear,
-}) => {
-  const [open, setOpen] = useState(false)
-
+}: Props<T>) {
+  const { t } = useTranslation()
   const triggerContent = useMemo(() => {
     return items.find(item => item.value === value)?.name || ''
   }, [items, value])
 
   return (
-    <DropdownMenu
-      open={open}
-      onOpenChange={setOpen}
-    >
+    <DropdownMenu>
       <div className="relative">
-        <DropdownMenuTrigger
-          nativeButton={false}
-          render={<div className="block" />}
-        >
-          <div className={cn(
+        <div
+          className={cn(
             'flex min-h-8 cursor-pointer items-center rounded-lg border-[0.5px] border-transparent bg-components-input-bg-normal px-2 py-1 hover:bg-state-base-hover-alt',
-            open && !value && 'bg-state-base-hover-alt! hover:bg-state-base-hover-alt',
-            !open && !!value && 'border-components-button-secondary-border! bg-components-button-secondary-bg! shadow-xs hover:border-components-button-secondary-border-hover hover:bg-components-button-secondary-bg-hover!',
-            open && !!value && 'border-components-button-secondary-border-hover! bg-components-button-secondary-bg-hover! shadow-xs hover:border-components-button-secondary-border-hover hover:bg-components-button-secondary-bg-hover!',
+            !value && 'has-data-popup-open:bg-state-base-hover-alt! has-data-popup-open:hover:bg-state-base-hover-alt',
+            !!value && 'border-components-button-secondary-border! bg-components-button-secondary-bg! shadow-xs hover:border-components-button-secondary-border-hover hover:bg-components-button-secondary-bg-hover! has-data-popup-open:border-components-button-secondary-border-hover! has-data-popup-open:bg-components-button-secondary-bg-hover! has-data-popup-open:hover:border-components-button-secondary-border-hover has-data-popup-open:hover:bg-components-button-secondary-bg-hover!',
             className,
           )}
-          >
+        >
+          <DropdownMenuTrigger className="flex min-w-0 grow items-center border-none bg-transparent p-0 text-left">
             {showLeftIcon && (
               <div className="p-0.5">
                 {leftIcon || (
@@ -72,19 +69,21 @@ const Chip: FC<Props> = ({
               </div>
             </div>
             {!value && <RiArrowDownSLine className="size-4 text-text-tertiary" />}
-            {!!value && (
-              <div
-                className="group/clear cursor-pointer p-px"
-                onClick={(e) => {
-                  e.stopPropagation()
-                  onClear()
-                }}
-              >
-                <RiCloseCircleFill className="size-3.5 text-text-quaternary group-hover/clear:text-text-tertiary" />
-              </div>
-            )}
-          </div>
-        </DropdownMenuTrigger>
+          </DropdownMenuTrigger>
+          {!!value && (
+            <button
+              type="button"
+              aria-label={t('operation.clear', { ns: 'common' })}
+              className="group/clear cursor-pointer border-none bg-transparent p-px"
+              onClick={(e) => {
+                e.stopPropagation()
+                onClear()
+              }}
+            >
+              <RiCloseCircleFill className="size-3.5 text-text-quaternary group-hover/clear:text-text-tertiary" />
+            </button>
+          )}
+        </div>
         <DropdownMenuContent
           placement="bottom-start"
           sideOffset={4}

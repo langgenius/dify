@@ -1,7 +1,6 @@
 'use client'
 
 import { Button } from '@langgenius/dify-ui/button'
-import { cn } from '@langgenius/dify-ui/cn'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -11,7 +10,7 @@ import {
 import { RiAddLine, RiArrowDownSLine } from '@remixicon/react'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { noop } from 'es-toolkit/function'
-import { useEffect, useRef, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { FileZip } from '@/app/components/base/icons/src/vender/solid/files'
 import { Github } from '@/app/components/base/icons/src/vender/solid/general'
@@ -36,7 +35,6 @@ const InstallPluginDropdown = ({
 }: Props) => {
   const { t } = useTranslation()
   const fileInputRef = useRef<HTMLInputElement>(null)
-  const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [selectedAction, setSelectedAction] = useState<string | null>(null)
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const { data: enable_marketplace } = useSuspenseQuery({
@@ -54,7 +52,6 @@ const InstallPluginDropdown = ({
     if (file) {
       setSelectedFile(file)
       setSelectedAction('local')
-      setIsMenuOpen(false)
     }
   }
 
@@ -78,20 +75,17 @@ const InstallPluginDropdown = ({
   //   console.log(res)
   // }
 
-  const [installMethods, setInstallMethods] = useState<InstallMethod[]>([])
-  useEffect(() => {
-    const methods = []
+  const installMethods = useMemo<InstallMethod[]>(() => {
+    const methods: InstallMethod[] = []
     if (enable_marketplace)
       methods.push({ icon: MagicBox, text: t('source.marketplace', { ns: 'plugin' }), action: 'marketplace' })
 
-    if (plugin_installation_permission.restrict_to_marketplace_only) {
-      setInstallMethods(methods)
-    }
-    else {
-      methods.push({ icon: Github, text: t('source.github', { ns: 'plugin' }), action: 'github' })
-      methods.push({ icon: FileZip, text: t('source.local', { ns: 'plugin' }), action: 'local' })
-      setInstallMethods(methods)
-    }
+    if (plugin_installation_permission.restrict_to_marketplace_only)
+      return methods
+
+    methods.push({ icon: Github, text: t('source.github', { ns: 'plugin' }), action: 'github' })
+    methods.push({ icon: FileZip, text: t('source.local', { ns: 'plugin' }), action: 'local' })
+    return methods
   }, [plugin_installation_permission, enable_marketplace, t])
 
   const handleInstallMethodSelect = (action: string) => {
@@ -111,7 +105,7 @@ const InstallPluginDropdown = ({
   }
 
   return (
-    <DropdownMenu open={isMenuOpen} onOpenChange={setIsMenuOpen} modal={false}>
+    <DropdownMenu modal={false}>
       <div className="relative">
         <input
           type="file"
@@ -123,7 +117,7 @@ const InstallPluginDropdown = ({
         <DropdownMenuTrigger
           render={(
             <Button
-              className={cn('size-full p-2 text-components-button-secondary-text', isMenuOpen && 'bg-state-base-hover')}
+              className="size-full p-2 text-components-button-secondary-text data-popup-open:bg-state-base-hover"
             />
           )}
         >

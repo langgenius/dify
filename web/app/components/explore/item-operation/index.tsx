@@ -13,7 +13,7 @@ import {
 } from '@remixicon/react'
 import { useBoolean } from 'ahooks'
 import * as React from 'react'
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Pin02 } from '../../base/icons/src/vender/line/general'
 import s from './style.module.css'
@@ -43,18 +43,23 @@ const ItemOperation: FC<IItemOperationProps> = ({
   const { t: tCommon } = useTranslation('common')
   const [open, setOpen] = useState(false)
   const [isHovering, { setTrue: setIsHovering, setFalse: setNotHovering }] = useBoolean(false)
-  useEffect(() => {
-    if (!isItemHovering && !isHovering)
-      setOpen(false)
-  }, [isItemHovering, isHovering])
+  const shouldClose = open && isItemHovering === false && !isHovering
+  if (shouldClose)
+    setOpen(false)
+
   return (
     <DropdownMenu
-      open={open}
+      open={shouldClose ? false : open}
       onOpenChange={setOpen}
     >
       <DropdownMenuTrigger
         data-testid="item-operation-trigger"
-        className={cn(className, s.btn, 'size-6 rounded-md border-none py-1', (isItemHovering || open) && `${s.open} bg-components-actionbar-bg! shadow-none!`)}
+        className={cn(
+          className,
+          s.btn,
+          'size-6 rounded-md border-none py-1 data-popup-open:bg-components-actionbar-bg! data-popup-open:shadow-none!',
+          isItemHovering && `${s.open} bg-components-actionbar-bg! shadow-none!`,
+        )}
         onClick={(e) => {
           e.stopPropagation()
         }}

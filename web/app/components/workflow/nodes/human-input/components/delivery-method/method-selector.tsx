@@ -69,7 +69,7 @@ const MethodSelector: FC<MethodSelectorProps> = ({
         render={(
           <ActionButton
             aria-label={t(`${i18nPrefix}.deliveryMethod.title`, { ns: 'workflow' })}
-            className={cn(open && 'bg-state-base-hover')}
+            className="data-popup-open:bg-state-base-hover"
           >
             <RiAddLine className="size-4" />
           </ActionButton>

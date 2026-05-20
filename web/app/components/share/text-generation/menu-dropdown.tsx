@@ -2,7 +2,6 @@
 import type { Placement } from '@langgenius/dify-ui/dropdown-menu'
 import type { FC } from 'react'
 import type { SiteInfo } from '@/models/share'
-import { cn } from '@langgenius/dify-ui/cn'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -12,7 +11,7 @@ import {
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
 import * as React from 'react'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
 import ThemeSwitcher from '@/app/components/base/theme-switcher'
@@ -39,18 +38,16 @@ const MenuDropdown: FC<Props> = ({
   const router = useRouter()
   const pathname = usePathname()
   const { t } = useTranslation()
-  const [open, setOpen] = useState(false)
+  const menuActionsRef = useRef<{ close: () => void, unmount: () => void } | null>(null)
 
   const shareCode = useWebAppStore(s => s.shareCode)
   const handleLogout = useCallback(async () => {
-    setOpen(false)
     await webAppLogout(shareCode!)
     router.replace(`/webapp-signin?redirect_url=${pathname}`)
-  }, [pathname, router, setOpen, shareCode])
+  }, [pathname, router, shareCode])
 
   const [show, setShow] = useState(false)
   const handleOpenInfoModal = useCallback(() => {
-    setOpen(false)
     queueMicrotask(() => {
       setShow(true)
     })
@@ -58,18 +55,17 @@ const MenuDropdown: FC<Props> = ({
 
   useEffect(() => {
     if (forceClose)
-      setOpen(false)
-  }, [forceClose, setOpen])
+      menuActionsRef.current?.close()
+  }, [forceClose])
 
   return (
     <>
       <DropdownMenu
-        open={open}
-        onOpenChange={setOpen}
+        actionsRef={menuActionsRef}
       >
         <DropdownMenuTrigger
           render={(
-            <ActionButton size="l" className={cn(open && 'bg-state-base-hover')}>
+            <ActionButton size="l" className="data-popup-open:bg-state-base-hover">
               <span aria-hidden className="i-ri-equalizer-2-line h-[18px] w-[18px]" />
             </ActionButton>
           )}

@@ -159,12 +159,13 @@ describe('ItemOperation', () => {
 
   describe('Edge Cases', () => {
     it('should close the menu when mouse leaves the panel and item is not hovering', async () => {
-      renderComponent()
+      const { props, rerender } = renderComponent({ isItemHovering: true })
       fireEvent.click(screen.getByTestId('item-operation-trigger'))
       await screen.findByText('explore.sidebar.action.pin')
       const menu = screen.getByTestId('dropdown-content')
 
       fireEvent.mouseEnter(menu)
+      rerender(<ItemOperation {...props} isItemHovering={false} />)
       fireEvent.mouseLeave(menu)
 
       await waitFor(() => {
