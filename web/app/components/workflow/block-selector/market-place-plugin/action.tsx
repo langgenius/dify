@@ -7,13 +7,12 @@ import {
   DropdownMenuLinkItem,
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMutation } from '@tanstack/react-query'
 import { useTheme } from 'next-themes'
 import * as React from 'react'
-import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
-import { getMarketplace } from '@/service/base'
+import { marketplaceQuery } from '@/service/client'
 import { downloadBlob } from '@/utils/download'
 import { getMarketplaceUrl } from '@/utils/var'
 
@@ -34,35 +33,25 @@ const OperationDropdown: FC<Props> = ({
 }) => {
   const { t } = useTranslation()
   const { theme } = useTheme()
-  const queryClient = useQueryClient()
 
-  const downloadInfo = useMemo(() => ({
-    organization: author,
-    pluginName: name,
-    version,
-  }), [author, name, version])
-
-  const downloadMutation = useMutation({
-    mutationFn: () => getMarketplace<Blob>(`/plugins/${downloadInfo.organization}/${downloadInfo.pluginName}/${downloadInfo.version}/download`),
+  const downloadMutation = useMutation(marketplaceQuery.downloadPlugin.mutationOptions({
     onSuccess: (blob) => {
       downloadBlob({ data: blob, fileName: `${author}-${name}_${version}.zip` })
-      queryClient.removeQueries({
-        queryKey: ['plugins', 'downloadPlugin', downloadInfo],
-        exact: true,
-      })
     },
-  })
+  }))
 
   const handleDownload = () => {
     if (downloadMutation.isPending)
       return
 
     onOpenChange(false)
-    queryClient.removeQueries({
-      queryKey: ['plugins', 'downloadPlugin', downloadInfo],
-      exact: true,
+    downloadMutation.mutate({
+      params: {
+        organization: author,
+        pluginName: name,
+        version,
+      },
     })
-    downloadMutation.mutate()
   }
 
   return (
