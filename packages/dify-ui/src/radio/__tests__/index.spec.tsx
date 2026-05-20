@@ -1,4 +1,7 @@
+import type { ComponentProps, ReactNode } from 'react'
 import { render } from 'vitest-browser-react'
+import { FieldItem, FieldLabel, FieldRoot } from '../../field'
+import { FieldsetLegend, FieldsetRoot } from '../../fieldset'
 import { RadioGroup } from '../../radio-group'
 import {
   Radio,
@@ -12,19 +15,53 @@ const clickElement = (element: HTMLElement | SVGElement) => {
   element.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }))
 }
 
+type TestRadioGroupProps = ComponentProps<typeof RadioGroup> & {
+  children: ReactNode
+  label: string
+  name?: string
+}
+
+function TestRadioGroup({
+  children,
+  label,
+  name = 'radioField',
+  ...props
+}: TestRadioGroupProps) {
+  return (
+    <FieldRoot name={name}>
+      <FieldsetRoot render={<RadioGroup {...props} />}>
+        <FieldsetLegend>{label}</FieldsetLegend>
+        {children}
+      </FieldsetRoot>
+    </FieldRoot>
+  )
+}
+
+type TestRadioOptionProps = ComponentProps<typeof Radio> & {
+  children: ReactNode
+}
+
+function TestRadioOption({
+  children,
+  ...props
+}: TestRadioOptionProps) {
+  return (
+    <FieldItem>
+      <FieldLabel>
+        <Radio {...props} />
+        {children}
+      </FieldLabel>
+    </FieldItem>
+  )
+}
+
 describe('Radio', () => {
   it('should render unchecked and checked radios with Base UI semantics', async () => {
     const screen = await render(
-      <RadioGroup defaultValue="ssd" aria-label="Storage type">
-        <label>
-          <Radio value="ssd" />
-          SSD
-        </label>
-        <label>
-          <Radio value="hdd" />
-          HDD
-        </label>
-      </RadioGroup>,
+      <TestRadioGroup defaultValue="ssd" label="Storage type">
+        <TestRadioOption value="ssd">SSD</TestRadioOption>
+        <TestRadioOption value="hdd">HDD</TestRadioOption>
+      </TestRadioGroup>,
     )
 
     const ssd = screen.getByRole('radio', { name: 'SSD' })
@@ -40,16 +77,10 @@ describe('Radio', () => {
   it('should call onValueChange and update uncontrolled state when selected', async () => {
     const onValueChange = vi.fn()
     const screen = await render(
-      <RadioGroup defaultValue="ssd" aria-label="Storage type" onValueChange={onValueChange}>
-        <label>
-          <Radio value="ssd" />
-          SSD
-        </label>
-        <label>
-          <Radio value="hdd" />
-          HDD
-        </label>
-      </RadioGroup>,
+      <TestRadioGroup defaultValue="ssd" label="Storage type" onValueChange={onValueChange}>
+        <TestRadioOption value="ssd">SSD</TestRadioOption>
+        <TestRadioOption value="hdd">HDD</TestRadioOption>
+      </TestRadioGroup>,
     )
 
     clickElement(screen.getByRole('radio', { name: 'HDD' }).element())
@@ -62,16 +93,10 @@ describe('Radio', () => {
   it('should ignore interaction when disabled', async () => {
     const onValueChange = vi.fn()
     const screen = await render(
-      <RadioGroup defaultValue="ssd" aria-label="Storage type" onValueChange={onValueChange}>
-        <label>
-          <Radio value="ssd" />
-          SSD
-        </label>
-        <label>
-          <Radio value="hdd" disabled />
-          HDD
-        </label>
-      </RadioGroup>,
+      <TestRadioGroup defaultValue="ssd" label="Storage type" onValueChange={onValueChange}>
+        <TestRadioOption value="ssd">SSD</TestRadioOption>
+        <TestRadioOption value="hdd" disabled>HDD</TestRadioOption>
+      </TestRadioGroup>,
     )
 
     const hdd = screen.getByRole('radio', { name: 'HDD' })
@@ -87,16 +112,10 @@ describe('Radio', () => {
   it('should submit the selected group value through the hidden input', async () => {
     const screen = await render(
       <form>
-        <RadioGroup defaultValue="ssd" name="storageType" aria-label="Storage type">
-          <label>
-            <Radio value="ssd" />
-            SSD
-          </label>
-          <label>
-            <Radio value="hdd" />
-            HDD
-          </label>
-        </RadioGroup>
+        <TestRadioGroup defaultValue="ssd" label="Storage type" name="storageType">
+          <TestRadioOption value="ssd">SSD</TestRadioOption>
+          <TestRadioOption value="hdd">HDD</TestRadioOption>
+        </TestRadioGroup>
       </form>,
     )
     const form = screen.container.querySelector<HTMLFormElement>('form')
@@ -111,14 +130,16 @@ describe('Radio', () => {
 
   it('should support custom compound composition with RadioRoot and RadioIndicator', async () => {
     const screen = await render(
-      <RadioGroup defaultValue="custom" aria-label="Custom">
-        <label>
-          <RadioRoot value="custom" className="custom-root">
-            <RadioIndicator className="custom-indicator" keepMounted />
-          </RadioRoot>
-          Custom
-        </label>
-      </RadioGroup>,
+      <TestRadioGroup defaultValue="custom" label="Custom">
+        <FieldItem>
+          <FieldLabel>
+            <RadioRoot value="custom" className="custom-root">
+              <RadioIndicator className="custom-indicator" keepMounted />
+            </RadioRoot>
+            Custom
+          </FieldLabel>
+        </FieldItem>
+      </TestRadioGroup>,
     )
 
     await expect.element(screen.getByRole('radio', { name: 'Custom' })).toHaveClass('custom-root')

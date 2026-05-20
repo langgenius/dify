@@ -15,16 +15,23 @@ describe('RadioGroup', () => {
       const [value, setValue] = useState('ssd')
 
       return (
-        <RadioGroup value={value} onValueChange={setValue} aria-label="Storage type">
-          <label>
-            <Radio value="ssd" />
-            SSD
-          </label>
-          <label>
-            <Radio value="hdd" />
-            HDD
-          </label>
-        </RadioGroup>
+        <FieldRoot name="storageType">
+          <FieldsetRoot render={<RadioGroup value={value} onValueChange={setValue} />}>
+            <FieldsetLegend>Storage type</FieldsetLegend>
+            <FieldItem>
+              <FieldLabel>
+                <Radio value="ssd" />
+                SSD
+              </FieldLabel>
+            </FieldItem>
+            <FieldItem>
+              <FieldLabel>
+                <Radio value="hdd" />
+                HDD
+              </FieldLabel>
+            </FieldItem>
+          </FieldsetRoot>
+        </FieldRoot>
       )
     }
 
