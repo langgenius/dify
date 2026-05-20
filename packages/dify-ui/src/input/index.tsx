@@ -22,25 +22,18 @@ export function Input({
   className,
   size = 'medium',
   invalid,
-  'aria-invalid': ariaInvalid,
   ...props
 }: InputProps) {
-  const invalidProps = invalid
-    ? {
-        'aria-invalid': ariaInvalid ?? true,
-        'data-invalid': '',
-      }
-    : ariaInvalid !== undefined
-      ? {
-          'aria-invalid': ariaInvalid,
-        }
-      : {}
-
   return (
     <BaseInput
       className={cn(inputVariants({ size }), className)}
       {...props}
-      {...invalidProps}
+      {...(invalid
+        ? {
+            'aria-invalid': true,
+            'data-invalid': '',
+          }
+        : {})}
     />
   )
 }
