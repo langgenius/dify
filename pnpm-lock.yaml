@@ -647,9 +647,6 @@ importers:
       js-yaml:
         specifier: 'catalog:'
         version: 4.1.1
-      ky:
-        specifier: 'catalog:'
-        version: 2.0.2
       lockfile:
         specifier: 'catalog:'
         version: 1.0.4
