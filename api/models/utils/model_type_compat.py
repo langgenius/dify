@@ -1,10 +1,54 @@
+from __future__ import annotations
+
+from collections import defaultdict
+from collections.abc import Callable, Iterable, Sequence
+from dataclasses import dataclass
+from typing import Any
+
 import sqlalchemy as sa
-from sqlalchemy.orm import Mapped
 
 from graphon.model_runtime.entities.model_entities import ModelType
 
+PERSISTED_MODEL_TYPE_LABEL = "persisted_model_type"
 
-def legacy_compatible_model_type_filter(column: Mapped[ModelType], model_type: ModelType | str):
+
+@dataclass(frozen=True)
+class ModelTypeCompatValues:
+    canonical_enum: ModelType
+    canonical_value: str
+    legacy_value: str
+
+    @property
+    def has_distinct_legacy_value(self) -> bool:
+        return self.legacy_value != self.canonical_value
+
+
+@dataclass(frozen=True)
+class PersistedModelTypeRecord[T]:
+    record: T
+    persisted_model_type: str
+
+
+def get_model_type_compat_values(model_type: ModelType | str) -> ModelTypeCompatValues:
+    model_type_enum = model_type if isinstance(model_type, ModelType) else ModelType.value_of(model_type)
+    return ModelTypeCompatValues(
+        canonical_enum=model_type_enum,
+        canonical_value=model_type_enum.value,
+        legacy_value=model_type_enum.to_origin_model_type(),
+    )
+
+
+def canonical_model_type_filter(column: Any, model_type: ModelType | str):
+    values = get_model_type_compat_values(model_type)
+    return column == values.canonical_enum
+
+
+def legacy_model_type_filter(column: Any, model_type: ModelType | str):
+    values = get_model_type_compat_values(model_type)
+    return sa.type_coerce(column, sa.String()) == values.legacy_value
+
+
+def legacy_compatible_model_type_filter(column: Any, model_type: ModelType | str):
     """
     Match both canonical and legacy persisted model_type values during reads.
 
@@ -12,16 +56,77 @@ def legacy_compatible_model_type_filter(column: Mapped[ModelType], model_type: M
     ``ModelType.LLM``. Query paths therefore receive canonical enums while
     older rows may still store the original string value.
     """
+    values = get_model_type_compat_values(model_type)
 
-    model_type_enum = model_type if isinstance(model_type, ModelType) else ModelType.value_of(model_type)
-    legacy_model_type = model_type_enum.to_origin_model_type()
-
-    if legacy_model_type == model_type_enum.value:
-        return column == model_type_enum
+    if not values.has_distinct_legacy_value:
+        return canonical_model_type_filter(column, values.canonical_enum)
 
     return sa.or_(
-        column == model_type_enum,
+        canonical_model_type_filter(column, values.canonical_enum),
         # rely on sa.type_coerce instead of sa.cast to ensure that we can
         # utilize indexes.
-        sa.type_coerce(column, sa.String()) == legacy_model_type,
+        legacy_model_type_filter(column, values.canonical_enum),
     )
+
+
+def persisted_model_type_column(column: Any):
+    return sa.type_coerce(column, sa.String()).label(PERSISTED_MODEL_TYPE_LABEL)
+
+
+def fetch_singleton_with_model_type_fallback[T](
+    *,
+    column: Any,
+    model_type: ModelType | str,
+    fetch_by_filter: Callable[[Any], T | None],
+) -> T | None:
+    values = get_model_type_compat_values(model_type)
+
+    result = fetch_by_filter(canonical_model_type_filter(column, values.canonical_enum))
+    if result is not None or not values.has_distinct_legacy_value:
+        return result
+
+    return fetch_by_filter(legacy_model_type_filter(column, values.canonical_enum))
+
+
+def build_persisted_model_type_records(rows: Iterable[Any]) -> list[PersistedModelTypeRecord[Any]]:
+    return [
+        PersistedModelTypeRecord(record=row[0], persisted_model_type=row[1])
+        for row in rows
+    ]
+
+
+def prefer_canonical_model_type_records[T, K](
+    records: Sequence[PersistedModelTypeRecord[T]],
+    *,
+    scope_key: Callable[[T], K],
+    model_type_getter: Callable[[T], ModelType],
+) -> list[T]:
+    grouped_records: dict[K, list[PersistedModelTypeRecord[T]]] = defaultdict(list)
+    for record in records:
+        grouped_records[scope_key(record.record)].append(record)
+
+    preferred_records: list[T] = []
+    for scoped_records in grouped_records.values():
+        compat_values = get_model_type_compat_values(model_type_getter(scoped_records[0].record))
+        canonical_records = [
+            scoped_record.record
+            for scoped_record in scoped_records
+            if scoped_record.persisted_model_type == compat_values.canonical_value
+        ]
+        if canonical_records:
+            preferred_records.extend(canonical_records)
+            continue
+
+        if compat_values.has_distinct_legacy_value:
+            legacy_records = [
+                scoped_record.record
+                for scoped_record in scoped_records
+                if scoped_record.persisted_model_type == compat_values.legacy_value
+            ]
+            if legacy_records:
+                preferred_records.extend(legacy_records)
+                continue
+
+        preferred_records.extend(scoped_record.record for scoped_record in scoped_records)
+
+    return preferred_records

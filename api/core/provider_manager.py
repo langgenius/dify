@@ -53,7 +53,13 @@ from models.provider import (
     TenantPreferredModelProvider,
 )
 from models.provider_ids import ModelProviderID
-from models.utils.model_type_compat import legacy_compatible_model_type_filter
+from models.utils.model_type_compat import (
+    build_persisted_model_type_records,
+    fetch_singleton_with_model_type_fallback,
+    legacy_compatible_model_type_filter,
+    persisted_model_type_column,
+    prefer_canonical_model_type_records,
+)
 from services.feature_service import FeatureService
 
 if TYPE_CHECKING:
@@ -333,11 +339,19 @@ class ProviderManager:
         :param model_type: model type
         :return:
         """
-        stmt = select(TenantDefaultModel).where(
-            TenantDefaultModel.tenant_id == tenant_id,
-            legacy_compatible_model_type_filter(TenantDefaultModel.model_type, model_type),
+
+        def _fetch_by_model_type(model_type_filter):
+            stmt = select(TenantDefaultModel).where(
+                TenantDefaultModel.tenant_id == tenant_id,
+                model_type_filter,
+            )
+            return db.session.scalar(stmt)
+
+        default_model = fetch_singleton_with_model_type_fallback(
+            column=TenantDefaultModel.model_type,
+            model_type=model_type,
+            fetch_by_filter=_fetch_by_model_type,
         )
-        default_model = db.session.scalar(stmt)
 
         # If it does not exist, get the first available provider model from get_configurations
         # and update the TenantDefaultModel record
@@ -418,11 +432,19 @@ class ProviderManager:
         model_names = [model.model for model in available_models]
         if model not in model_names:
             raise ValueError(f"Model {model} does not exist.")
-        stmt = select(TenantDefaultModel).where(
-            TenantDefaultModel.tenant_id == tenant_id,
-            legacy_compatible_model_type_filter(TenantDefaultModel.model_type, model_type),
+
+        def _fetch_by_model_type(model_type_filter):
+            stmt = select(TenantDefaultModel).where(
+                TenantDefaultModel.tenant_id == tenant_id,
+                model_type_filter,
+            )
+            return db.session.scalar(stmt)
+
+        default_model = fetch_singleton_with_model_type_fallback(
+            column=TenantDefaultModel.model_type,
+            model_type=model_type,
+            fetch_by_filter=_fetch_by_model_type,
         )
-        default_model = db.session.scalar(stmt)
 
         # create or update TenantDefaultModel record
         if default_model:
@@ -464,8 +486,19 @@ class ProviderManager:
         """
         provider_name_to_provider_model_records_dict = defaultdict(list)
         with session_factory.create_session() as session:
-            stmt = select(ProviderModel).where(ProviderModel.tenant_id == tenant_id, ProviderModel.is_valid == True)
-            provider_models = session.scalars(stmt)
+            stmt = select(
+                ProviderModel,
+                persisted_model_type_column(ProviderModel.model_type),
+            ).where(ProviderModel.tenant_id == tenant_id, ProviderModel.is_valid == True)
+            provider_models = prefer_canonical_model_type_records(
+                build_persisted_model_type_records(session.execute(stmt).all()),
+                scope_key=lambda provider_model: (
+                    provider_model.provider_name,
+                    provider_model.model_name,
+                    provider_model.model_type,
+                ),
+                model_type_getter=lambda provider_model: provider_model.model_type,
+            )
             for provider_model in provider_models:
                 provider_name_to_provider_model_records_dict[provider_model.provider_name].append(provider_model)
         return provider_name_to_provider_model_records_dict
@@ -498,8 +531,19 @@ class ProviderManager:
         """
         provider_name_to_provider_model_settings_dict = defaultdict(list)
         with session_factory.create_session() as session:
-            stmt = select(ProviderModelSetting).where(ProviderModelSetting.tenant_id == tenant_id)
-            provider_model_settings = session.scalars(stmt)
+            stmt = select(
+                ProviderModelSetting,
+                persisted_model_type_column(ProviderModelSetting.model_type),
+            ).where(ProviderModelSetting.tenant_id == tenant_id)
+            provider_model_settings = prefer_canonical_model_type_records(
+                build_persisted_model_type_records(session.execute(stmt).all()),
+                scope_key=lambda provider_model_setting: (
+                    provider_model_setting.provider_name,
+                    provider_model_setting.model_name,
+                    provider_model_setting.model_type,
+                ),
+                model_type_getter=lambda provider_model_setting: provider_model_setting.model_type,
+            )
             for provider_model_setting in provider_model_settings:
                 provider_name_to_provider_model_settings_dict[provider_model_setting.provider_name].append(
                     provider_model_setting
@@ -516,8 +560,19 @@ class ProviderManager:
         """
         provider_name_to_provider_model_credentials_dict = defaultdict(list)
         with session_factory.create_session() as session:
-            stmt = select(ProviderModelCredential).where(ProviderModelCredential.tenant_id == tenant_id)
-            provider_model_credentials = session.scalars(stmt)
+            stmt = select(
+                ProviderModelCredential,
+                persisted_model_type_column(ProviderModelCredential.model_type),
+            ).where(ProviderModelCredential.tenant_id == tenant_id)
+            provider_model_credentials = prefer_canonical_model_type_records(
+                build_persisted_model_type_records(session.execute(stmt).all()),
+                scope_key=lambda provider_model_credential: (
+                    provider_model_credential.provider_name,
+                    provider_model_credential.model_name,
+                    provider_model_credential.model_type,
+                ),
+                model_type_getter=lambda provider_model_credential: provider_model_credential.model_type,
+            )
             for provider_model_credential in provider_model_credentials:
                 provider_name_to_provider_model_credentials_dict[provider_model_credential.provider_name].append(
                     provider_model_credential
@@ -546,8 +601,20 @@ class ProviderManager:
 
         provider_name_to_provider_load_balancing_model_configs_dict = defaultdict(list)
         with session_factory.create_session() as session:
-            stmt = select(LoadBalancingModelConfig).where(LoadBalancingModelConfig.tenant_id == tenant_id)
-            provider_load_balancing_configs = session.scalars(stmt)
+            stmt = select(
+                LoadBalancingModelConfig,
+                persisted_model_type_column(LoadBalancingModelConfig.model_type),
+            ).where(LoadBalancingModelConfig.tenant_id == tenant_id)
+            provider_load_balancing_configs = prefer_canonical_model_type_records(
+                build_persisted_model_type_records(session.execute(stmt).all()),
+                scope_key=lambda provider_load_balancing_config: (
+                    provider_load_balancing_config.provider_name,
+                    provider_load_balancing_config.model_name,
+                    provider_load_balancing_config.model_type,
+                    provider_load_balancing_config.credential_source_type,
+                ),
+                model_type_getter=lambda provider_load_balancing_config: provider_load_balancing_config.model_type,
+            )
             for provider_load_balancing_config in provider_load_balancing_configs:
                 provider_name_to_provider_load_balancing_model_configs_dict[
                     provider_load_balancing_config.provider_name
@@ -611,7 +678,10 @@ class ProviderManager:
         """
         with session_factory.create_session() as session:
             stmt = (
-                select(ProviderModelCredential)
+                select(
+                    ProviderModelCredential,
+                    persisted_model_type_column(ProviderModelCredential.model_type),
+                )
                 .where(
                     ProviderModelCredential.tenant_id == tenant_id,
                     ProviderModelCredential.provider_name.in_(ProviderManager._get_provider_names(provider_name)),
@@ -621,7 +691,15 @@ class ProviderManager:
                 .order_by(ProviderModelCredential.created_at.desc())
             )
 
-            available_credentials = session.scalars(stmt).all()
+            available_credentials = prefer_canonical_model_type_records(
+                build_persisted_model_type_records(session.execute(stmt).all()),
+                scope_key=lambda credential: (
+                    credential.provider_name,
+                    credential.model_name,
+                    credential.model_type,
+                ),
+                model_type_getter=lambda credential: credential.model_type,
+            )
 
         return [
             CredentialConfiguration(credential_id=credential.id, credential_name=credential.credential_name)

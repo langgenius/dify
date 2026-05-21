@@ -3,7 +3,6 @@ from unittest.mock import MagicMock, Mock, PropertyMock, patch
 
 import pytest
 from pytest_mock import MockerFixture
-from sqlalchemy.dialects import sqlite
 
 from core.entities.provider_entities import ModelSettings
 from core.provider_manager import ProviderManager
@@ -296,24 +295,37 @@ def test_get_default_model_uses_injected_runtime_for_existing_default_record(moc
     assert result.provider.provider == "openai"
 
 
-def test_get_provider_model_available_credentials_query_supports_legacy_model_type_values(
+def test_get_provider_model_available_credentials_prefers_canonical_rows_over_legacy(
     mocker: MockerFixture,
 ) -> None:
     manager = _build_provider_manager(mocker)
     session = Mock()
-    session.scalars.return_value.all.return_value = []
+    legacy_credential = SimpleNamespace(
+        id="cred-legacy",
+        credential_name="Legacy",
+        provider_name="openai",
+        model_name="gpt-4o",
+        model_type=ModelType.LLM,
+    )
+    canonical_credential = SimpleNamespace(
+        id="cred-canonical",
+        credential_name="Canonical",
+        provider_name="openai",
+        model_name="gpt-4o",
+        model_type=ModelType.LLM,
+    )
+    session.execute.return_value.all.return_value = [
+        (legacy_credential, "text-generation"),
+        (canonical_credential, "llm"),
+    ]
 
     with patch(
         "core.provider_manager.session_factory.create_session",
         return_value=_build_session_context(session),
     ):
-        manager.get_provider_model_available_credentials("tenant-id", "openai", "gpt-4o", "llm")
+        result = manager.get_provider_model_available_credentials("tenant-id", "openai", "gpt-4o", "llm")
 
-    stmt = session.scalars.call_args.args[0]
-    compiled = str(stmt.compile(dialect=sqlite.dialect(), compile_kwargs={"literal_binds": True}))
-
-    assert "'llm'" in compiled
-    assert "text-generation" in compiled
+    assert [credential.credential_id for credential in result] == ["cred-canonical"]
 
 
 def test_get_configurations_uses_injected_runtime_and_adds_provider_aliases(mocker: MockerFixture):
@@ -609,10 +621,18 @@ def test_get_all_providers_normalizes_provider_names_with_model_provider_id() ->
 )
 def test_provider_grouping_helpers_group_records_by_provider_name(method_name: str) -> None:
     session = Mock()
-    openai_primary = SimpleNamespace(provider_name="openai")
-    openai_secondary = SimpleNamespace(provider_name="openai")
-    anthropic_record = SimpleNamespace(provider_name="anthropic")
-    session.scalars.return_value = [openai_primary, openai_secondary, anthropic_record]
+    openai_primary = SimpleNamespace(provider_name="openai", model_name="gpt-4o", model_type=ModelType.LLM)
+    openai_secondary = SimpleNamespace(
+        provider_name="openai",
+        model_name="text-embedding-3-large",
+        model_type=ModelType.TEXT_EMBEDDING,
+    )
+    anthropic_record = SimpleNamespace(provider_name="anthropic", model_name="claude", model_type=ModelType.LLM)
+    session.execute.return_value.all.return_value = [
+        (openai_primary, openai_primary.model_type.value),
+        (openai_secondary, openai_secondary.model_type.value),
+        (anthropic_record, anthropic_record.model_type.value),
+    ]
 
     with (
         patch("core.provider_manager.session_factory.create_session", return_value=_build_session_context(session)),
@@ -620,6 +640,34 @@ def test_provider_grouping_helpers_group_records_by_provider_name(method_name: s
         result = getattr(ProviderManager, method_name)("tenant-id")
 
     assert list(result["openai"]) == [openai_primary, openai_secondary]
+    assert list(result["anthropic"]) == [anthropic_record]
+
+
+@pytest.mark.parametrize(
+    "method_name",
+    [
+        "_get_all_provider_models",
+        "_get_all_provider_model_settings",
+        "_get_all_provider_model_credentials",
+    ],
+)
+def test_provider_grouping_helpers_prefer_canonical_rows_over_legacy(method_name: str) -> None:
+    session = Mock()
+    canonical_record = SimpleNamespace(provider_name="openai", model_name="gpt-4o", model_type=ModelType.LLM)
+    legacy_record = SimpleNamespace(provider_name="openai", model_name="gpt-4o", model_type=ModelType.LLM)
+    anthropic_record = SimpleNamespace(provider_name="anthropic", model_name="claude", model_type=ModelType.LLM)
+    session.execute.return_value.all.return_value = [
+        (legacy_record, "text-generation"),
+        (canonical_record, "llm"),
+        (anthropic_record, "llm"),
+    ]
+
+    with (
+        patch("core.provider_manager.session_factory.create_session", return_value=_build_session_context(session)),
+    ):
+        result = getattr(ProviderManager, method_name)("tenant-id")
+
+    assert list(result["openai"]) == [canonical_record]
     assert list(result["anthropic"]) == [anthropic_record]
 
 
@@ -655,9 +703,22 @@ def test_get_all_provider_load_balancing_configs_returns_empty_when_cached_flag_
 
 def test_get_all_provider_load_balancing_configs_populates_cache_and_groups_configs() -> None:
     session = Mock()
-    openai_config = SimpleNamespace(provider_name="openai")
-    anthropic_config = SimpleNamespace(provider_name="anthropic")
-    session.scalars.return_value = [openai_config, anthropic_config]
+    openai_config = SimpleNamespace(
+        provider_name="openai",
+        model_name="gpt-4o",
+        model_type=ModelType.LLM,
+        credential_source_type=None,
+    )
+    anthropic_config = SimpleNamespace(
+        provider_name="anthropic",
+        model_name="claude",
+        model_type=ModelType.LLM,
+        credential_source_type=None,
+    )
+    session.execute.return_value.all.return_value = [
+        (openai_config, "llm"),
+        (anthropic_config, "llm"),
+    ]
 
     with (
         patch("core.provider_manager.redis_client.get", return_value=None),
@@ -673,3 +734,36 @@ def test_get_all_provider_load_balancing_configs_populates_cache_and_groups_conf
     mock_setex.assert_called_once_with("tenant:tenant-id:model_load_balancing_enabled", 120, "True")
     assert list(result["openai"]) == [openai_config]
     assert list(result["anthropic"]) == [anthropic_config]
+
+
+def test_get_all_provider_load_balancing_configs_prefers_canonical_rows_over_legacy() -> None:
+    session = Mock()
+    legacy_config = SimpleNamespace(
+        provider_name="openai",
+        model_name="gpt-4o",
+        model_type=ModelType.LLM,
+        credential_source_type=None,
+    )
+    canonical_config = SimpleNamespace(
+        provider_name="openai",
+        model_name="gpt-4o",
+        model_type=ModelType.LLM,
+        credential_source_type=None,
+    )
+    session.execute.return_value.all.return_value = [
+        (legacy_config, "text-generation"),
+        (canonical_config, "llm"),
+    ]
+
+    with (
+        patch("core.provider_manager.redis_client.get", return_value=None),
+        patch("core.provider_manager.redis_client.setex"),
+        patch(
+            "core.provider_manager.FeatureService.get_features",
+            return_value=SimpleNamespace(model_load_balancing_enabled=True),
+        ),
+        patch("core.provider_manager.session_factory.create_session", return_value=_build_session_context(session)),
+    ):
+        result = ProviderManager._get_all_provider_load_balancing_configs("tenant-id")
+
+    assert list(result["openai"]) == [canonical_config]

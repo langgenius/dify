@@ -21,7 +21,13 @@ from graphon.model_runtime.model_providers.model_provider_factory import ModelPr
 from libs.datetime_utils import naive_utc_now
 from models.enums import CredentialSourceType
 from models.provider import LoadBalancingModelConfig, ProviderCredential, ProviderModelCredential
-from models.utils.model_type_compat import legacy_compatible_model_type_filter
+from models.utils.model_type_compat import (
+    build_persisted_model_type_records,
+    fetch_singleton_with_model_type_fallback,
+    legacy_compatible_model_type_filter,
+    persisted_model_type_column,
+    prefer_canonical_model_type_records,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -128,21 +134,33 @@ class ModelLoadBalancingService:
             credential_source_type = CredentialSourceType.CUSTOM_MODEL
 
         # Get load balancing configurations
-        load_balancing_configs = list(
-            db.session.scalars(
-                select(LoadBalancingModelConfig)
-                .where(
-                    LoadBalancingModelConfig.tenant_id == tenant_id,
-                    LoadBalancingModelConfig.provider_name == provider_configuration.provider.provider,
-                    legacy_compatible_model_type_filter(LoadBalancingModelConfig.model_type, model_type_enum),
-                    LoadBalancingModelConfig.model_name == model,
-                    or_(
-                        LoadBalancingModelConfig.credential_source_type == credential_source_type,
-                        LoadBalancingModelConfig.credential_source_type.is_(None),
-                    ),
-                )
-                .order_by(LoadBalancingModelConfig.created_at)
-            ).all()
+        load_balancing_configs = prefer_canonical_model_type_records(
+            build_persisted_model_type_records(
+                db.session.execute(
+                    select(
+                        LoadBalancingModelConfig,
+                        persisted_model_type_column(LoadBalancingModelConfig.model_type),
+                    )
+                    .where(
+                        LoadBalancingModelConfig.tenant_id == tenant_id,
+                        LoadBalancingModelConfig.provider_name == provider_configuration.provider.provider,
+                        legacy_compatible_model_type_filter(LoadBalancingModelConfig.model_type, model_type_enum),
+                        LoadBalancingModelConfig.model_name == model,
+                        or_(
+                            LoadBalancingModelConfig.credential_source_type == credential_source_type,
+                            LoadBalancingModelConfig.credential_source_type.is_(None),
+                        ),
+                    )
+                    .order_by(LoadBalancingModelConfig.created_at)
+                ).all()
+            ),
+            scope_key=lambda config: (
+                config.provider_name,
+                config.model_name,
+                config.model_type,
+                config.credential_source_type,
+            ),
+            model_type_getter=lambda config: config.model_type,
         )
 
         if provider_configuration.custom_configuration.provider:
@@ -254,16 +272,23 @@ class ModelLoadBalancingService:
         model_type_enum = ModelType.value_of(model_type)
 
         # Get load balancing configurations
-        load_balancing_model_config = db.session.scalar(
-            select(LoadBalancingModelConfig)
-            .where(
-                LoadBalancingModelConfig.tenant_id == tenant_id,
-                LoadBalancingModelConfig.provider_name == provider_configuration.provider.provider,
-                legacy_compatible_model_type_filter(LoadBalancingModelConfig.model_type, model_type_enum),
-                LoadBalancingModelConfig.model_name == model,
-                LoadBalancingModelConfig.id == config_id,
+        def _fetch_by_model_type(model_type_filter):
+            return db.session.scalar(
+                select(LoadBalancingModelConfig)
+                .where(
+                    LoadBalancingModelConfig.tenant_id == tenant_id,
+                    LoadBalancingModelConfig.provider_name == provider_configuration.provider.provider,
+                    model_type_filter,
+                    LoadBalancingModelConfig.model_name == model,
+                    LoadBalancingModelConfig.id == config_id,
+                )
+                .limit(1)
             )
-            .limit(1)
+
+        load_balancing_model_config = fetch_singleton_with_model_type_fallback(
+            column=LoadBalancingModelConfig.model_type,
+            model_type=model_type_enum,
+            fetch_by_filter=_fetch_by_model_type,
         )
 
         if not load_balancing_model_config:
@@ -344,14 +369,28 @@ class ModelLoadBalancingService:
         if not isinstance(configs, list):
             raise ValueError("Invalid load balancing configs")
 
-        current_load_balancing_configs = db.session.scalars(
-            select(LoadBalancingModelConfig).where(
-                LoadBalancingModelConfig.tenant_id == tenant_id,
-                LoadBalancingModelConfig.provider_name == provider_configuration.provider.provider,
-                legacy_compatible_model_type_filter(LoadBalancingModelConfig.model_type, model_type_enum),
-                LoadBalancingModelConfig.model_name == model,
-            )
-        ).all()
+        current_load_balancing_configs = prefer_canonical_model_type_records(
+            build_persisted_model_type_records(
+                db.session.execute(
+                    select(
+                        LoadBalancingModelConfig,
+                        persisted_model_type_column(LoadBalancingModelConfig.model_type),
+                    ).where(
+                        LoadBalancingModelConfig.tenant_id == tenant_id,
+                        LoadBalancingModelConfig.provider_name == provider_configuration.provider.provider,
+                        legacy_compatible_model_type_filter(LoadBalancingModelConfig.model_type, model_type_enum),
+                        LoadBalancingModelConfig.model_name == model,
+                    )
+                ).all()
+            ),
+            scope_key=lambda config: (
+                config.provider_name,
+                config.model_name,
+                config.model_type,
+                config.credential_source_type,
+            ),
+            model_type_getter=lambda config: config.model_type,
+        )
 
         # id as key, config as value
         current_load_balancing_configs_dict = {config.id: config for config in current_load_balancing_configs}
@@ -381,16 +420,25 @@ class ModelLoadBalancingService:
                         .limit(1)
                     )
                 else:
-                    credential_record = db.session.scalar(
-                        select(ProviderModelCredential)
-                        .where(
-                            ProviderModelCredential.id == credential_id,
-                            ProviderModelCredential.tenant_id == tenant_id,
-                            ProviderModelCredential.provider_name == provider_configuration.provider.provider,
-                            ProviderModelCredential.model_name == model,
-                            legacy_compatible_model_type_filter(ProviderModelCredential.model_type, model_type_enum),
+                    current_credential_id = credential_id
+
+                    def _fetch_by_model_type(model_type_filter, credential_id=current_credential_id):
+                        return db.session.scalar(
+                            select(ProviderModelCredential)
+                            .where(
+                                ProviderModelCredential.id == credential_id,
+                                ProviderModelCredential.tenant_id == tenant_id,
+                                ProviderModelCredential.provider_name == provider_configuration.provider.provider,
+                                ProviderModelCredential.model_name == model,
+                                model_type_filter,
+                            )
+                            .limit(1)
                         )
-                        .limit(1)
+
+                    credential_record = fetch_singleton_with_model_type_fallback(
+                        column=ProviderModelCredential.model_type,
+                        model_type=model_type_enum,
+                        fetch_by_filter=_fetch_by_model_type,
                     )
                 if not credential_record:
                     raise ValueError(f"Provider credential with id {credential_id} not found")
@@ -530,16 +578,23 @@ class ModelLoadBalancingService:
         load_balancing_model_config = None
         if config_id:
             # Get load balancing config
-            load_balancing_model_config = db.session.scalar(
-                select(LoadBalancingModelConfig)
-                .where(
-                    LoadBalancingModelConfig.tenant_id == tenant_id,
-                    LoadBalancingModelConfig.provider_name == provider,
-                    legacy_compatible_model_type_filter(LoadBalancingModelConfig.model_type, model_type_enum),
-                    LoadBalancingModelConfig.model_name == model,
-                    LoadBalancingModelConfig.id == config_id,
+            def _fetch_by_model_type(model_type_filter):
+                return db.session.scalar(
+                    select(LoadBalancingModelConfig)
+                    .where(
+                        LoadBalancingModelConfig.tenant_id == tenant_id,
+                        LoadBalancingModelConfig.provider_name == provider,
+                        model_type_filter,
+                        LoadBalancingModelConfig.model_name == model,
+                        LoadBalancingModelConfig.id == config_id,
+                    )
+                    .limit(1)
                 )
-                .limit(1)
+
+            load_balancing_model_config = fetch_singleton_with_model_type_fallback(
+                column=LoadBalancingModelConfig.model_type,
+                model_type=model_type_enum,
+                fetch_by_filter=_fetch_by_model_type,
             )
 
             if not load_balancing_model_config:

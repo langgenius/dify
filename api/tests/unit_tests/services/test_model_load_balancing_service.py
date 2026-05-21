@@ -7,7 +7,6 @@ from unittest.mock import MagicMock
 
 import pytest
 from pytest_mock import MockerFixture
-from sqlalchemy.dialects import sqlite
 
 from constants import HIDDEN_VALUE
 from graphon.model_runtime.entities.common_entities import I18nObject
@@ -19,6 +18,7 @@ from graphon.model_runtime.entities.provider_entities import (
     ModelCredentialSchema,
     ProviderCredentialSchema,
 )
+from models.enums import CredentialSourceType
 from models.provider import LoadBalancingModelConfig
 from services.model_load_balancing_service import ModelLoadBalancingService
 
@@ -158,8 +158,12 @@ def test_get_load_balancing_configs_should_insert_inherit_config_when_missing_fo
         encrypted_config=json.dumps({"api_key": "encrypted-key"}),
         credential_id="cred-1",
         enabled=True,
+        provider_name="openai",
+        model_name="gpt-4o-mini",
+        model_type=ModelType.LLM,
+        credential_source_type=CredentialSourceType.CUSTOM_MODEL,
     )
-    mock_db.session.scalars.return_value.all.return_value = [config]
+    mock_db.session.execute.return_value.all.return_value = [(config, "llm")]
     mocker.patch(
         "services.model_load_balancing_service.encrypter.get_decrypt_decoding",
         return_value=("rsa", "cipher"),
@@ -191,7 +195,7 @@ def test_get_load_balancing_configs_should_insert_inherit_config_when_missing_fo
     assert mock_db.session.commit.call_count == 1
 
 
-def test_get_load_balancing_configs_query_supports_legacy_model_type_values(
+def test_get_load_balancing_configs_prefers_canonical_rows_over_legacy(
     service: ModelLoadBalancingService,
     mock_db: MagicMock,
     mocker: MockerFixture,
@@ -202,7 +206,36 @@ def test_get_load_balancing_configs_query_supports_legacy_model_type_values(
         provider_schema=_build_provider_credential_schema(),
     )
     service.provider_manager.get_configurations.return_value = {"openai": provider_configuration}
-    mock_db.session.scalars.return_value.all.return_value = []
+    mock_db.session.execute.return_value.all.return_value = [
+        (
+            SimpleNamespace(
+                id="cfg-legacy",
+                name="legacy",
+                encrypted_config=None,
+                credential_id=None,
+                enabled=True,
+                provider_name="openai",
+                model_name="gpt-4o-mini",
+                model_type=ModelType.LLM,
+                credential_source_type=CredentialSourceType.CUSTOM_MODEL,
+            ),
+            "text-generation",
+        ),
+        (
+            SimpleNamespace(
+                id="cfg-canonical",
+                name="canonical",
+                encrypted_config=None,
+                credential_id=None,
+                enabled=True,
+                provider_name="openai",
+                model_name="gpt-4o-mini",
+                model_type=ModelType.LLM,
+                credential_source_type=CredentialSourceType.CUSTOM_MODEL,
+            ),
+            "llm",
+        ),
+    ]
     mocker.patch(
         "services.model_load_balancing_service.encrypter.get_decrypt_decoding",
         return_value=("rsa", "cipher"),
@@ -215,13 +248,8 @@ def test_get_load_balancing_configs_query_supports_legacy_model_type_values(
         ModelType.LLM,
     )
 
-    stmt = mock_db.session.scalars.call_args.args[0]
-    compiled = str(stmt.compile(dialect=sqlite.dialect(), compile_kwargs={"literal_binds": True}))
-
     assert is_enabled is False
-    assert configs == []
-    assert "'llm'" in compiled
-    assert "text-generation" in compiled
+    assert [config["id"] for config in configs] == ["cfg-canonical"]
 
 
 def test_get_load_balancing_configs_should_reorder_existing_inherit_and_tolerate_json_or_decrypt_errors(
@@ -242,6 +270,10 @@ def test_get_load_balancing_configs_should_reorder_existing_inherit_and_tolerate
         encrypted_config=json.dumps({"api_key": "bad-encrypted"}),
         credential_id="cred-1",
         enabled=True,
+        provider_name="openai",
+        model_name="gpt-4o-mini",
+        model_type=ModelType.LLM,
+        credential_source_type=None,
     )
     inherit_config = SimpleNamespace(
         id="cfg-2",
@@ -249,10 +281,14 @@ def test_get_load_balancing_configs_should_reorder_existing_inherit_and_tolerate
         encrypted_config="not-json",
         credential_id=None,
         enabled=False,
+        provider_name="openai",
+        model_name="gpt-4o-mini",
+        model_type=ModelType.LLM,
+        credential_source_type=None,
     )
-    mock_db.session.scalars.return_value.all.return_value = [
-        normal_config,
-        inherit_config,
+    mock_db.session.execute.return_value.all.return_value = [
+        (normal_config, "llm"),
+        (inherit_config, "llm"),
     ]
     mocker.patch(
         "services.model_load_balancing_service.encrypter.get_decrypt_decoding",
@@ -401,7 +437,7 @@ def test_update_load_balancing_configs_should_raise_value_error_when_config_item
     # Arrange
     provider_configuration = _build_provider_configuration(provider_schema=_build_provider_credential_schema())
     service.provider_manager.get_configurations.return_value = {"openai": provider_configuration}
-    mock_db.session.scalars.return_value.all.return_value = []
+    mock_db.session.execute.return_value.all.return_value = []
 
     # Act + Assert
     with pytest.raises(ValueError, match="Invalid load balancing config"):
@@ -422,7 +458,7 @@ def test_update_load_balancing_configs_should_raise_value_error_when_credential_
     # Arrange
     provider_configuration = _build_provider_configuration(provider_schema=_build_provider_credential_schema())
     service.provider_manager.get_configurations.return_value = {"openai": provider_configuration}
-    mock_db.session.scalars.return_value.all.return_value = []
+    mock_db.session.execute.return_value.all.return_value = []
     mock_db.session.scalar.return_value = None
 
     # Act + Assert
@@ -444,7 +480,7 @@ def test_update_load_balancing_configs_should_raise_value_error_when_name_or_ena
     # Arrange
     provider_configuration = _build_provider_configuration(provider_schema=_build_provider_credential_schema())
     service.provider_manager.get_configurations.return_value = {"openai": provider_configuration}
-    mock_db.session.scalars.return_value.all.return_value = []
+    mock_db.session.execute.return_value.all.return_value = []
 
     # Act + Assert
     with pytest.raises(ValueError, match="Invalid load balancing config name"):
@@ -475,8 +511,14 @@ def test_update_load_balancing_configs_should_raise_value_error_when_existing_co
     # Arrange
     provider_configuration = _build_provider_configuration(provider_schema=_build_provider_credential_schema())
     service.provider_manager.get_configurations.return_value = {"openai": provider_configuration}
-    current_config = SimpleNamespace(id="cfg-1")
-    mock_db.session.scalars.return_value.all.return_value = [current_config]
+    current_config = SimpleNamespace(
+        id="cfg-1",
+        provider_name="openai",
+        model_name="gpt-4o-mini",
+        model_type=ModelType.LLM,
+        credential_source_type=CredentialSourceType.CUSTOM_MODEL,
+    )
+    mock_db.session.execute.return_value.all.return_value = [(current_config, "llm")]
 
     # Act + Assert
     with pytest.raises(ValueError, match="Invalid load balancing config id: cfg-2"):
@@ -497,8 +539,18 @@ def test_update_load_balancing_configs_should_raise_value_error_when_credentials
     # Arrange
     provider_configuration = _build_provider_configuration(provider_schema=_build_provider_credential_schema())
     service.provider_manager.get_configurations.return_value = {"openai": provider_configuration}
-    existing_config = SimpleNamespace(id="cfg-1", name="old", enabled=True, encrypted_config=None, updated_at=None)
-    mock_db.session.scalars.return_value.all.return_value = [existing_config]
+    existing_config = SimpleNamespace(
+        id="cfg-1",
+        name="old",
+        enabled=True,
+        encrypted_config=None,
+        updated_at=None,
+        provider_name="openai",
+        model_name="gpt-4o-mini",
+        model_type=ModelType.LLM,
+        credential_source_type=CredentialSourceType.CUSTOM_MODEL,
+    )
+    mock_db.session.execute.return_value.all.return_value = [(existing_config, "llm")]
 
     # Act + Assert
     with pytest.raises(ValueError, match="Invalid load balancing config credentials"):
@@ -536,6 +588,10 @@ def test_update_load_balancing_configs_should_update_existing_create_new_and_del
         enabled=True,
         encrypted_config=json.dumps({"api_key": "old"}),
         updated_at=None,
+        provider_name="openai",
+        model_name="gpt-4o-mini",
+        model_type=ModelType.LLM,
+        credential_source_type=CredentialSourceType.CUSTOM_MODEL,
     )
     existing_config_2 = SimpleNamespace(
         id="cfg-2",
@@ -543,8 +599,15 @@ def test_update_load_balancing_configs_should_update_existing_create_new_and_del
         enabled=True,
         encrypted_config=None,
         updated_at=None,
+        provider_name="openai",
+        model_name="gpt-4o-mini",
+        model_type=ModelType.LLM,
+        credential_source_type=CredentialSourceType.CUSTOM_MODEL,
     )
-    mock_db.session.scalars.return_value.all.return_value = [existing_config_1, existing_config_2]
+    mock_db.session.execute.return_value.all.return_value = [
+        (existing_config_1, "llm"),
+        (existing_config_2, "llm"),
+    ]
     mocker.patch.object(service, "_custom_credentials_validate", return_value={"api_key": "encrypted"})
     mock_clear_cache = mocker.patch.object(service, "_clear_credentials_cache")
 
@@ -579,7 +642,7 @@ def test_update_load_balancing_configs_should_raise_value_error_for_invalid_new_
     # Arrange
     provider_configuration = _build_provider_configuration(provider_schema=_build_provider_credential_schema())
     service.provider_manager.get_configurations.return_value = {"openai": provider_configuration}
-    mock_db.session.scalars.return_value.all.return_value = []
+    mock_db.session.execute.return_value.all.return_value = []
 
     # Act + Assert
     with pytest.raises(ValueError, match="Invalid load balancing config name"):
@@ -610,7 +673,7 @@ def test_update_load_balancing_configs_should_create_from_existing_provider_cred
     # Arrange
     provider_configuration = _build_provider_configuration(provider_schema=_build_provider_credential_schema())
     service.provider_manager.get_configurations.return_value = {"openai": provider_configuration}
-    mock_db.session.scalars.return_value.all.return_value = []
+    mock_db.session.execute.return_value.all.return_value = []
     credential_record = SimpleNamespace(credential_name="Main Credential", encrypted_config='{"api_key":"enc"}')
     mock_db.session.scalar.return_value = credential_record
 

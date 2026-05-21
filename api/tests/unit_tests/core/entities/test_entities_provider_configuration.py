@@ -1045,20 +1045,35 @@ def test_get_specific_custom_model_credential_success_and_not_found() -> None:
     assert invalid_json["credentials"] == {}
 
 
-def test_get_specific_custom_model_credential_query_supports_legacy_model_type_values() -> None:
+def test_get_specific_custom_model_credential_falls_back_from_canonical_to_legacy() -> None:
     configuration = _build_provider_configuration()
+    configuration.provider.model_credential_schema = _build_secret_model_schema()
     session = Mock()
-    session.execute.return_value.scalar_one_or_none.return_value = None
+    session.execute.side_effect = [
+        _exec_result(scalar_one_or_none=None),
+        _exec_result(
+            scalar_one_or_none=SimpleNamespace(
+                id="cred-1",
+                credential_name="Main",
+                encrypted_config='{"openai_api_key":"enc"}',
+            )
+        ),
+    ]
 
     with _patched_session(session):
-        with pytest.raises(ValueError, match="Credential with id cred-1 not found"):
-            configuration._get_specific_custom_model_credential(ModelType.LLM, "gpt-4o", "cred-1")
+        with patch("core.entities.provider_configuration.encrypter.decrypt_token", return_value="raw"):
+            with patch.object(ProviderConfiguration, "obfuscated_credentials", return_value={"openai_api_key": "***"}):
+                response = configuration._get_specific_custom_model_credential(ModelType.LLM, "gpt-4o", "cred-1")
 
-    stmt = session.execute.call_args.args[0]
-    compiled = str(stmt.compile(dialect=sqlite.dialect(), compile_kwargs={"literal_binds": True}))
+    canonical_stmt = session.execute.call_args_list[0].args[0]
+    legacy_stmt = session.execute.call_args_list[1].args[0]
+    canonical_compiled = str(canonical_stmt.compile(dialect=sqlite.dialect(), compile_kwargs={"literal_binds": True}))
+    legacy_compiled = str(legacy_stmt.compile(dialect=sqlite.dialect(), compile_kwargs={"literal_binds": True}))
 
-    assert "'llm'" in compiled
-    assert "text-generation" in compiled
+    assert response["current_credential_id"] == "cred-1"
+    assert "'llm'" in canonical_compiled
+    assert "text-generation" not in canonical_compiled
+    assert "text-generation" in legacy_compiled
 
 
 def test_check_custom_model_credential_name_exists_respects_exclusion() -> None:

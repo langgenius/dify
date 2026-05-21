@@ -339,8 +339,14 @@ class TestLookupLlmCredentialInfo:
 
         provider_record = self._provider_record(credential_id="prov-cred-id")
 
-        # scalar calls: (1) Provider, (2) ProviderModel → None, (3) ProviderCredential.credential_name
-        mock_db, cm, _session = _make_db_and_session_patches(scalar_side_effect=[provider_record, None, "ProvCredName"])
+        # scalar calls:
+        # (1) Provider
+        # (2) ProviderModel canonical lookup -> None
+        # (3) ProviderModel legacy lookup -> None
+        # (4) ProviderCredential.credential_name
+        mock_db, cm, _session = _make_db_and_session_patches(
+            scalar_side_effect=[provider_record, None, None, "ProvCredName"]
+        )
 
         with (
             patch("core.ops.ops_trace_manager.db", mock_db),
@@ -441,9 +447,9 @@ class TestLookupLlmCredentialInfo:
 
         provider_record = self._provider_record(credential_id="prov-cred-id")
 
-        # Provider found, no model record, then name lookup raises
+        # Provider found, no model record in canonical or legacy lookup, then name lookup raises
         mock_db, cm, _session = _make_db_and_session_patches(
-            scalar_side_effect=[provider_record, None, Exception("deleted")]
+            scalar_side_effect=[provider_record, None, None, Exception("deleted")]
         )
 
         with (

@@ -48,7 +48,10 @@ from models.provider import (
     TenantPreferredModelProvider,
 )
 from models.provider_ids import ModelProviderID
-from models.utils.model_type_compat import legacy_compatible_model_type_filter
+from models.utils.model_type_compat import (
+    fetch_singleton_with_model_type_fallback,
+    legacy_compatible_model_type_filter,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -745,14 +748,20 @@ class ProviderConfiguration(BaseModel):
         if model_provider_id.is_langgenius():
             provider_names.append(model_provider_id.provider_name)
 
-        stmt = select(ProviderModel).where(
-            ProviderModel.tenant_id == self.tenant_id,
-            ProviderModel.provider_name.in_(provider_names),
-            ProviderModel.model_name == model,
-            legacy_compatible_model_type_filter(ProviderModel.model_type, model_type),
-        )
+        def _fetch_by_model_type(model_type_filter):
+            stmt = select(ProviderModel).where(
+                ProviderModel.tenant_id == self.tenant_id,
+                ProviderModel.provider_name.in_(provider_names),
+                ProviderModel.model_name == model,
+                model_type_filter,
+            )
+            return session.execute(stmt).scalar_one_or_none()
 
-        return session.execute(stmt).scalar_one_or_none()
+        return fetch_singleton_with_model_type_fallback(
+            column=ProviderModel.model_type,
+            model_type=model_type,
+            fetch_by_filter=_fetch_by_model_type,
+        )
 
     def _get_specific_custom_model_credential(
         self, model_type: ModelType, model: str, credential_id: str
@@ -769,15 +778,22 @@ class ProviderConfiguration(BaseModel):
         )
 
         with Session(db.engine) as session:
-            stmt = select(ProviderModelCredential).where(
-                ProviderModelCredential.id == credential_id,
-                ProviderModelCredential.tenant_id == self.tenant_id,
-                ProviderModelCredential.provider_name.in_(self._get_provider_names()),
-                ProviderModelCredential.model_name == model,
-                legacy_compatible_model_type_filter(ProviderModelCredential.model_type, model_type),
-            )
 
-            credential_record = session.execute(stmt).scalar_one_or_none()
+            def _fetch_by_model_type(model_type_filter):
+                stmt = select(ProviderModelCredential).where(
+                    ProviderModelCredential.id == credential_id,
+                    ProviderModelCredential.tenant_id == self.tenant_id,
+                    ProviderModelCredential.provider_name.in_(self._get_provider_names()),
+                    ProviderModelCredential.model_name == model,
+                    model_type_filter,
+                )
+                return session.execute(stmt).scalar_one_or_none()
+
+            credential_record = fetch_singleton_with_model_type_fallback(
+                column=ProviderModelCredential.model_type,
+                model_type=model_type,
+                fetch_by_filter=_fetch_by_model_type,
+            )
 
         if not credential_record or not credential_record.encrypted_config:
             raise ValueError(f"Credential with id {credential_id} not found.")
@@ -817,16 +833,27 @@ class ProviderConfiguration(BaseModel):
         """
         not allowed same name when create or update a credential
         """
-        stmt = select(ProviderModelCredential).where(
-            ProviderModelCredential.tenant_id == self.tenant_id,
-            ProviderModelCredential.provider_name.in_(self._get_provider_names()),
-            ProviderModelCredential.model_name == model,
-            legacy_compatible_model_type_filter(ProviderModelCredential.model_type, model_type),
-            ProviderModelCredential.credential_name == credential_name,
+
+        def _fetch_by_model_type(model_type_filter):
+            stmt = select(ProviderModelCredential).where(
+                ProviderModelCredential.tenant_id == self.tenant_id,
+                ProviderModelCredential.provider_name.in_(self._get_provider_names()),
+                ProviderModelCredential.model_name == model,
+                model_type_filter,
+                ProviderModelCredential.credential_name == credential_name,
+            )
+            if exclude_id:
+                stmt = stmt.where(ProviderModelCredential.id != exclude_id)
+            return session.execute(stmt).scalar_one_or_none()
+
+        return (
+            fetch_singleton_with_model_type_fallback(
+                column=ProviderModelCredential.model_type,
+                model_type=model_type,
+                fetch_by_filter=_fetch_by_model_type,
+            )
+            is not None
         )
-        if exclude_id:
-            stmt = stmt.where(ProviderModelCredential.id != exclude_id)
-        return session.execute(stmt).scalar_one_or_none() is not None
 
     def get_custom_model_credential(
         self, model_type: ModelType, model: str, credential_id: str | None
@@ -891,14 +918,22 @@ class ProviderConfiguration(BaseModel):
         if credential_id:
             with Session(db.engine) as session:
                 try:
-                    stmt = select(ProviderModelCredential).where(
-                        ProviderModelCredential.id == credential_id,
-                        ProviderModelCredential.tenant_id == self.tenant_id,
-                        ProviderModelCredential.provider_name.in_(self._get_provider_names()),
-                        ProviderModelCredential.model_name == model,
-                        legacy_compatible_model_type_filter(ProviderModelCredential.model_type, model_type),
+
+                    def _fetch_by_model_type(model_type_filter):
+                        stmt = select(ProviderModelCredential).where(
+                            ProviderModelCredential.id == credential_id,
+                            ProviderModelCredential.tenant_id == self.tenant_id,
+                            ProviderModelCredential.provider_name.in_(self._get_provider_names()),
+                            ProviderModelCredential.model_name == model,
+                            model_type_filter,
+                        )
+                        return session.execute(stmt).scalar_one_or_none()
+
+                    credential_record = fetch_singleton_with_model_type_fallback(
+                        column=ProviderModelCredential.model_type,
+                        model_type=model_type,
+                        fetch_by_filter=_fetch_by_model_type,
                     )
-                    credential_record = session.execute(stmt).scalar_one_or_none()
                     original_credentials = (
                         json.loads(credential_record.encrypted_config)
                         if credential_record and credential_record.encrypted_config
@@ -1027,14 +1062,21 @@ class ProviderConfiguration(BaseModel):
         with Session(db.engine) as session:
             provider_model_record = self._get_custom_model_record(model_type=model_type, model=model, session=session)
 
-            stmt = select(ProviderModelCredential).where(
-                ProviderModelCredential.id == credential_id,
-                ProviderModelCredential.tenant_id == self.tenant_id,
-                ProviderModelCredential.provider_name.in_(self._get_provider_names()),
-                ProviderModelCredential.model_name == model,
-                legacy_compatible_model_type_filter(ProviderModelCredential.model_type, model_type),
+            def _fetch_by_model_type(model_type_filter):
+                stmt = select(ProviderModelCredential).where(
+                    ProviderModelCredential.id == credential_id,
+                    ProviderModelCredential.tenant_id == self.tenant_id,
+                    ProviderModelCredential.provider_name.in_(self._get_provider_names()),
+                    ProviderModelCredential.model_name == model,
+                    model_type_filter,
+                )
+                return session.execute(stmt).scalar_one_or_none()
+
+            credential_record = fetch_singleton_with_model_type_fallback(
+                column=ProviderModelCredential.model_type,
+                model_type=model_type,
+                fetch_by_filter=_fetch_by_model_type,
             )
-            credential_record = session.execute(stmt).scalar_one_or_none()
             if not credential_record:
                 raise ValueError("Credential record not found.")
 
@@ -1071,14 +1113,22 @@ class ProviderConfiguration(BaseModel):
         :return:
         """
         with Session(db.engine) as session:
-            stmt = select(ProviderModelCredential).where(
-                ProviderModelCredential.id == credential_id,
-                ProviderModelCredential.tenant_id == self.tenant_id,
-                ProviderModelCredential.provider_name.in_(self._get_provider_names()),
-                ProviderModelCredential.model_name == model,
-                legacy_compatible_model_type_filter(ProviderModelCredential.model_type, model_type),
+
+            def _fetch_by_model_type(model_type_filter):
+                stmt = select(ProviderModelCredential).where(
+                    ProviderModelCredential.id == credential_id,
+                    ProviderModelCredential.tenant_id == self.tenant_id,
+                    ProviderModelCredential.provider_name.in_(self._get_provider_names()),
+                    ProviderModelCredential.model_name == model,
+                    model_type_filter,
+                )
+                return session.execute(stmt).scalar_one_or_none()
+
+            credential_record = fetch_singleton_with_model_type_fallback(
+                column=ProviderModelCredential.model_type,
+                model_type=model_type,
+                fetch_by_filter=_fetch_by_model_type,
             )
-            credential_record = session.execute(stmt).scalar_one_or_none()
             if not credential_record:
                 raise ValueError("Credential record not found.")
 
@@ -1144,14 +1194,22 @@ class ProviderConfiguration(BaseModel):
         :return:
         """
         with Session(db.engine) as session:
-            stmt = select(ProviderModelCredential).where(
-                ProviderModelCredential.id == credential_id,
-                ProviderModelCredential.tenant_id == self.tenant_id,
-                ProviderModelCredential.provider_name.in_(self._get_provider_names()),
-                ProviderModelCredential.model_name == model,
-                legacy_compatible_model_type_filter(ProviderModelCredential.model_type, model_type),
+
+            def _fetch_by_model_type(model_type_filter):
+                stmt = select(ProviderModelCredential).where(
+                    ProviderModelCredential.id == credential_id,
+                    ProviderModelCredential.tenant_id == self.tenant_id,
+                    ProviderModelCredential.provider_name.in_(self._get_provider_names()),
+                    ProviderModelCredential.model_name == model,
+                    model_type_filter,
+                )
+                return session.execute(stmt).scalar_one_or_none()
+
+            credential_record = fetch_singleton_with_model_type_fallback(
+                column=ProviderModelCredential.model_type,
+                model_type=model_type,
+                fetch_by_filter=_fetch_by_model_type,
             )
-            credential_record = session.execute(stmt).scalar_one_or_none()
             if not credential_record:
                 raise ValueError("Credential record not found.")
 
@@ -1195,14 +1253,22 @@ class ProviderConfiguration(BaseModel):
         :return:
         """
         with Session(db.engine) as session:
-            stmt = select(ProviderModelCredential).where(
-                ProviderModelCredential.id == credential_id,
-                ProviderModelCredential.tenant_id == self.tenant_id,
-                ProviderModelCredential.provider_name.in_(self._get_provider_names()),
-                ProviderModelCredential.model_name == model,
-                legacy_compatible_model_type_filter(ProviderModelCredential.model_type, model_type),
+
+            def _fetch_by_model_type(model_type_filter):
+                stmt = select(ProviderModelCredential).where(
+                    ProviderModelCredential.id == credential_id,
+                    ProviderModelCredential.tenant_id == self.tenant_id,
+                    ProviderModelCredential.provider_name.in_(self._get_provider_names()),
+                    ProviderModelCredential.model_name == model,
+                    model_type_filter,
+                )
+                return session.execute(stmt).scalar_one_or_none()
+
+            credential_record = fetch_singleton_with_model_type_fallback(
+                column=ProviderModelCredential.model_type,
+                model_type=model_type,
+                fetch_by_filter=_fetch_by_model_type,
             )
-            credential_record = session.execute(stmt).scalar_one_or_none()
             if not credential_record:
                 raise ValueError("Credential record not found.")
 
@@ -1256,10 +1322,17 @@ class ProviderConfiguration(BaseModel):
         stmt = select(ProviderModelSetting).where(
             ProviderModelSetting.tenant_id == self.tenant_id,
             ProviderModelSetting.provider_name.in_(self._get_provider_names()),
-            legacy_compatible_model_type_filter(ProviderModelSetting.model_type, model_type),
             ProviderModelSetting.model_name == model,
         )
-        return session.execute(stmt).scalars().first()
+
+        def _fetch_by_model_type(model_type_filter):
+            return session.execute(stmt.where(model_type_filter)).scalars().first()
+
+        return fetch_singleton_with_model_type_fallback(
+            column=ProviderModelSetting.model_type,
+            model_type=model_type,
+            fetch_by_filter=_fetch_by_model_type,
+        )
 
     def enable_model(self, model_type: ModelType, model: str) -> ProviderModelSetting:
         """

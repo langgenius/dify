@@ -44,7 +44,7 @@ from models.dataset import Dataset
 from models.model import App, AppModelConfig, Conversation, Message, MessageFile, TraceAppConfig
 from models.provider import Provider, ProviderCredential, ProviderModel, ProviderModelCredential, ProviderType
 from models.tools import ApiToolProvider, BuiltinToolProvider, MCPToolProvider, WorkflowToolProvider
-from models.utils.model_type_compat import legacy_compatible_model_type_filter
+from models.utils.model_type_compat import fetch_singleton_with_model_type_fallback
 from models.workflow import WorkflowAppLog
 from tasks.ops_trace_task import process_trace_tasks
 
@@ -145,13 +145,20 @@ def _lookup_llm_credential_info(
 
             if model:
                 # Try model-level first
-                model_record = session.scalar(
-                    select(ProviderModel).where(
-                        ProviderModel.tenant_id == tenant_id,
-                        ProviderModel.provider_name == provider,
-                        ProviderModel.model_name == model,
-                        legacy_compatible_model_type_filter(ProviderModel.model_type, model_type or "llm"),
+                def _fetch_by_model_type(model_type_filter):
+                    return session.scalar(
+                        select(ProviderModel).where(
+                            ProviderModel.tenant_id == tenant_id,
+                            ProviderModel.provider_name == provider,
+                            ProviderModel.model_name == model,
+                            model_type_filter,
+                        )
                     )
+
+                model_record = fetch_singleton_with_model_type_fallback(
+                    column=ProviderModel.model_type,
+                    model_type=model_type or "llm",
+                    fetch_by_filter=_fetch_by_model_type,
                 )
 
                 if model_record and model_record.credential_id:
