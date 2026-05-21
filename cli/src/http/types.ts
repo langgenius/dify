@@ -19,3 +19,73 @@ export type HttpFactoryOptions = {
   readonly userAgent?: string
   readonly logger?: HttpLogger
 }
+
+export type HttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE'
+
+export type SearchParamValue = string | number | boolean | undefined
+
+// Local equivalents of the DOM-named union types — globals exist (Request, Response, Headers, Blob, …)
+// but the union aliases BodyInit / HeadersInit are not exposed by @types/node. Matching the shapes
+// the global Request/Response constructors accept.
+export type HeadersInit = Headers | string[][] | Record<string, string>
+export type BodyInit = string | Blob | ArrayBuffer | ArrayBufferView | FormData | URLSearchParams | ReadableStream<Uint8Array> | Uint8Array
+
+export type FetchContext = {
+  request: Request
+  readonly options: ResolvedOptions
+  response?: Response
+  error?: unknown
+  attempt: number
+  readonly meta: Map<string | symbol, unknown>
+}
+
+export type Hook = (ctx: FetchContext) => void | Promise<void>
+
+export type Hooks = {
+  readonly onRequest?: Hook | Hook[]
+  readonly onResponse?: Hook | Hook[]
+  readonly onRequestError?: Hook | Hook[]
+  readonly onResponseError?: Hook | Hook[]
+}
+
+export type RequestOptions = {
+  readonly method?: HttpMethod
+  readonly headers?: HeadersInit
+  readonly json?: unknown
+  readonly body?: BodyInit
+  readonly searchParams?: Record<string, SearchParamValue>
+  readonly timeoutMs?: number
+  readonly retryAttempts?: number
+  readonly signal?: AbortSignal
+  readonly throwOnError?: boolean
+}
+
+export type ResolvedOptions = {
+  readonly method: HttpMethod
+  readonly headers: Headers
+  readonly body: BodyInit | null
+  readonly timeoutMs: number | undefined
+  readonly retryAttempts: number
+  readonly throwOnError: boolean
+}
+
+export type ClientOptions = {
+  readonly baseURL: string
+  readonly bearer?: string
+  readonly userAgent?: string
+  readonly timeoutMs?: number
+  readonly retryAttempts?: number
+  readonly logger?: HttpLogger
+  readonly hooks?: Hooks
+}
+
+export type HttpClient = {
+  readonly get: <T>(path: string, opts?: RequestOptions) => Promise<T>
+  readonly post: <T>(path: string, opts?: RequestOptions) => Promise<T>
+  readonly put: <T>(path: string, opts?: RequestOptions) => Promise<T>
+  readonly patch: <T>(path: string, opts?: RequestOptions) => Promise<T>
+  readonly delete: <T>(path: string, opts?: RequestOptions) => Promise<T>
+  readonly fetch: (path: string, opts?: RequestOptions) => Promise<Response>
+  readonly stream: (path: string, opts?: RequestOptions) => Promise<Response>
+  readonly extend: (overrides: Partial<ClientOptions>) => HttpClient
+}
