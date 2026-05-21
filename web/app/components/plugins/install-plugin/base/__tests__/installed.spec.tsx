@@ -93,10 +93,10 @@ describe('Installed', () => {
 
     expect(screen.getByText('installModal.installedSuccessfullyWithPageDesc')).toBeInTheDocument()
 
-    fireEvent.click(screen.getByText('plugin.installModal.goToCategory:{"categoryName":"common.settings.extension"}'))
+    fireEvent.click(screen.getByText('plugin.installModal.viewDetails'))
 
     expect(mockOnCancel).toHaveBeenCalled()
-    expect(screen.getByText('plugin.installModal.goToCategory:{"categoryName":"common.settings.extension"}').closest('a')).toHaveAttribute('href', '/integrations/extension')
+    expect(screen.getByText('plugin.installModal.viewDetails').closest('a')).toHaveAttribute('href', '/integrations/extension')
     expect(document.querySelector('.i-ri-arrow-right-up-line')).toBeInTheDocument()
   })
 

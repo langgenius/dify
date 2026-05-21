@@ -114,7 +114,7 @@ const Installed: FC<Props> = ({
           {categoryTarget
             ? (
                 <>
-                  <span>{t('installModal.goToCategory', { ns: 'plugin', categoryName })}</span>
+                  <span>{t('installModal.viewDetails', { ns: 'plugin' })}</span>
                   <span className="i-ri-arrow-right-up-line size-4 shrink-0" aria-hidden="true" />
                 </>
               )
