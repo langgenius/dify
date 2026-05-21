@@ -199,7 +199,7 @@ const UpdateSettingPopover = ({
     return (
       <button
         type="button"
-        className="group flex h-8 w-full cursor-pointer items-center justify-center rounded-lg border-none bg-[#f5f4ee] px-3 text-center shadow-xs hover:bg-state-base-hover-alt focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
+        className="group flex h-8 w-full cursor-pointer items-center justify-center rounded-lg border-none bg-components-input-bg-normal px-3 text-center shadow-xs hover:bg-state-base-hover-alt focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
         onClick={onClick}
       >
         <div className="flex min-w-0 items-center gap-1">
