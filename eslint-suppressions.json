@@ -636,11 +636,6 @@
       "count": 1
     }
   },
-  "web/app/components/apps/app-card.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
   "web/app/components/apps/list.tsx": {
     "no-restricted-imports": {
       "count": 1
