@@ -68,12 +68,30 @@ describe('MainNavLayout', () => {
     expect(screen.queryByTestId('desktop-header')).not.toBeInTheDocument()
   })
 
-  it('hides the desktop main nav on fullscreen workflow canvases', () => {
-    mockPathname = '/apps/app-1/workflow'
+  it('hides the desktop main nav on fullscreen app workflow canvases', () => {
+    mockPathname = '/app/app-1/workflow'
     localStorage.setItem('workflow-canvas-maximize', 'true')
 
     render(<MainNavLayout><div>content</div></MainNavLayout>)
 
     expect(screen.getByTestId('main-nav')).toHaveClass('hidden')
+  })
+
+  it('hides the desktop main nav on fullscreen dataset pipeline canvases', () => {
+    mockPathname = '/datasets/dataset-1/pipeline'
+    localStorage.setItem('workflow-canvas-maximize', 'true')
+
+    render(<MainNavLayout><div>content</div></MainNavLayout>)
+
+    expect(screen.getByTestId('main-nav')).toHaveClass('hidden')
+  })
+
+  it('keeps the main nav visible on the integrations workflow tool page', () => {
+    mockPathname = '/integrations/tools/workflow'
+    localStorage.setItem('workflow-canvas-maximize', 'true')
+
+    render(<MainNavLayout><div>content</div></MainNavLayout>)
+
+    expect(screen.getByTestId('main-nav')).not.toHaveClass('hidden')
   })
 })

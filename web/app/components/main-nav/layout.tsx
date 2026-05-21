@@ -13,12 +13,16 @@ type MainNavLayoutProps = {
   children: ReactNode
 }
 
+const isCanvasFullscreenPath = (pathname: string) => {
+  return /^\/app\/[^/]+\/workflow$/.test(pathname)
+    || /^\/datasets\/[^/]+\/pipeline$/.test(pathname)
+}
+
 const MainNavLayout = ({
   children,
 }: MainNavLayoutProps) => {
   const pathname = usePathname()
-  const inWorkflowCanvas = pathname.endsWith('/workflow')
-  const isPipelineCanvas = pathname.endsWith('/pipeline')
+  const inCanvasFullscreenPath = isCanvasFullscreenPath(pathname)
   const [hideMainNav, setHideMainNav] = useState(() => (
     globalThis.localStorage?.getItem('workflow-canvas-maximize') === 'true'
   ))
@@ -34,7 +38,7 @@ const MainNavLayout = ({
       <WorkspaceProvider>
         <MainNav
           className={cn(
-            hideMainNav && (inWorkflowCanvas || isPipelineCanvas) && 'hidden',
+            hideMainNav && inCanvasFullscreenPath && 'hidden',
           )}
         />
       </WorkspaceProvider>
