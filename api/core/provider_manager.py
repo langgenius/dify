@@ -54,7 +54,6 @@ from models.provider import (
 )
 from models.provider_ids import ModelProviderID
 from models.utils.model_type_compat import (
-    build_persisted_model_type_records,
     fetch_singleton_with_model_type_fallback,
     legacy_compatible_model_type_filter,
     persisted_model_type_column,
@@ -491,7 +490,7 @@ class ProviderManager:
                 persisted_model_type_column(ProviderModel.model_type),
             ).where(ProviderModel.tenant_id == tenant_id, ProviderModel.is_valid == True)
             provider_models = prefer_canonical_model_type_records(
-                build_persisted_model_type_records(session.execute(stmt).all()),
+                session.execute(stmt).all(),
                 scope_key=lambda provider_model: (
                     provider_model.provider_name,
                     provider_model.model_name,
@@ -536,7 +535,7 @@ class ProviderManager:
                 persisted_model_type_column(ProviderModelSetting.model_type),
             ).where(ProviderModelSetting.tenant_id == tenant_id)
             provider_model_settings = prefer_canonical_model_type_records(
-                build_persisted_model_type_records(session.execute(stmt).all()),
+                session.execute(stmt).all(),
                 scope_key=lambda provider_model_setting: (
                     provider_model_setting.provider_name,
                     provider_model_setting.model_name,
@@ -565,7 +564,7 @@ class ProviderManager:
                 persisted_model_type_column(ProviderModelCredential.model_type),
             ).where(ProviderModelCredential.tenant_id == tenant_id)
             provider_model_credentials = prefer_canonical_model_type_records(
-                build_persisted_model_type_records(session.execute(stmt).all()),
+                session.execute(stmt).all(),
                 scope_key=lambda provider_model_credential: (
                     provider_model_credential.provider_name,
                     provider_model_credential.model_name,
@@ -606,7 +605,7 @@ class ProviderManager:
                 persisted_model_type_column(LoadBalancingModelConfig.model_type),
             ).where(LoadBalancingModelConfig.tenant_id == tenant_id)
             provider_load_balancing_configs = prefer_canonical_model_type_records(
-                build_persisted_model_type_records(session.execute(stmt).all()),
+                session.execute(stmt).all(),
                 scope_key=lambda provider_load_balancing_config: (
                     provider_load_balancing_config.provider_name,
                     provider_load_balancing_config.model_name,
@@ -692,7 +691,7 @@ class ProviderManager:
             )
 
             available_credentials = prefer_canonical_model_type_records(
-                build_persisted_model_type_records(session.execute(stmt).all()),
+                session.execute(stmt).all(),
                 scope_key=lambda credential: (
                     credential.provider_name,
                     credential.model_name,

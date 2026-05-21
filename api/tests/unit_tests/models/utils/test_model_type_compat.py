@@ -5,7 +5,6 @@ from sqlalchemy.dialects import postgresql
 from graphon.model_runtime.entities.model_entities import ModelType
 from models.provider import ProviderModelCredential
 from models.utils.model_type_compat import (
-    PersistedModelTypeRecord,
     fetch_singleton_with_model_type_fallback,
     legacy_compatible_model_type_filter,
     prefer_canonical_model_type_records,
@@ -78,9 +77,9 @@ def test_prefer_canonical_model_type_records_prefers_canonical_per_scope():
 
     result = prefer_canonical_model_type_records(
         [
-            PersistedModelTypeRecord(record=legacy, persisted_model_type="text-generation"),
-            PersistedModelTypeRecord(record=canonical, persisted_model_type="llm"),
-            PersistedModelTypeRecord(record=legacy_only, persisted_model_type="embeddings"),
+            (legacy, "text-generation"),
+            (canonical, "llm"),
+            (legacy_only, "embeddings"),
         ],
         scope_key=lambda record: (record.provider_name, record.model_name, record.model_type),
         model_type_getter=lambda record: record.model_type,

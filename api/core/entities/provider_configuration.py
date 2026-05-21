@@ -403,6 +403,11 @@ class ProviderConfiguration(BaseModel):
                 ProviderModelCredential.tenant_id == self.tenant_id,
                 ProviderModelCredential.provider_name.in_(self._get_provider_names()),
                 ProviderModelCredential.model_name == model,
+                # While this is not a query returning one row, for
+                # API key name generation it's ok to keep both rows with canonical enum values
+                # and rows with legacy enum values.
+                #
+                # The `max()` call will ensure the result works as expected.
                 legacy_compatible_model_type_filter(ProviderModelCredential.model_type, model_type),
             ),
         )

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from collections.abc import Callable, Iterable, Sequence
+from collections.abc import Callable, Iterable
 from dataclasses import dataclass
 
 import sqlalchemy as sa
@@ -89,16 +89,19 @@ def fetch_singleton_with_model_type_fallback[T](
     return fetch_by_filter(_legacy_model_type_filter(column, values.canonical_enum))
 
 
-def build_persisted_model_type_records[T](rows: Iterable[Row[tuple[T, str]]]) -> list[PersistedModelTypeRecord[T]]:
+def _build_persisted_model_type_records[T](
+    rows: Iterable[tuple[T, str] | Row[tuple[T, str]]],
+) -> list[PersistedModelTypeRecord[T]]:
     return [PersistedModelTypeRecord(record=row[0], persisted_model_type=row[1]) for row in rows]
 
 
 def prefer_canonical_model_type_records[T, K](
-    records: Sequence[PersistedModelTypeRecord[T]],
+    rows: Iterable[tuple[T, str] | Row[tuple[T, str]]],
     *,
     scope_key: Callable[[T], K],
     model_type_getter: Callable[[T], ModelType],
 ) -> list[T]:
+    records = _build_persisted_model_type_records(rows)
     grouped_records: dict[K, list[PersistedModelTypeRecord[T]]] = defaultdict(list)
     for record in records:
         grouped_records[scope_key(record.record)].append(record)

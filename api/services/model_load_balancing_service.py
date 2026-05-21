@@ -22,7 +22,6 @@ from libs.datetime_utils import naive_utc_now
 from models.enums import CredentialSourceType
 from models.provider import LoadBalancingModelConfig, ProviderCredential, ProviderModelCredential
 from models.utils.model_type_compat import (
-    build_persisted_model_type_records,
     fetch_singleton_with_model_type_fallback,
     legacy_compatible_model_type_filter,
     persisted_model_type_column,
@@ -135,25 +134,23 @@ class ModelLoadBalancingService:
 
         # Get load balancing configurations
         load_balancing_configs = prefer_canonical_model_type_records(
-            build_persisted_model_type_records(
-                db.session.execute(
-                    select(
-                        LoadBalancingModelConfig,
-                        persisted_model_type_column(LoadBalancingModelConfig.model_type),
-                    )
-                    .where(
-                        LoadBalancingModelConfig.tenant_id == tenant_id,
-                        LoadBalancingModelConfig.provider_name == provider_configuration.provider.provider,
-                        legacy_compatible_model_type_filter(LoadBalancingModelConfig.model_type, model_type_enum),
-                        LoadBalancingModelConfig.model_name == model,
-                        or_(
-                            LoadBalancingModelConfig.credential_source_type == credential_source_type,
-                            LoadBalancingModelConfig.credential_source_type.is_(None),
-                        ),
-                    )
-                    .order_by(LoadBalancingModelConfig.created_at)
-                ).all()
-            ),
+            db.session.execute(
+                select(
+                    LoadBalancingModelConfig,
+                    persisted_model_type_column(LoadBalancingModelConfig.model_type),
+                )
+                .where(
+                    LoadBalancingModelConfig.tenant_id == tenant_id,
+                    LoadBalancingModelConfig.provider_name == provider_configuration.provider.provider,
+                    legacy_compatible_model_type_filter(LoadBalancingModelConfig.model_type, model_type_enum),
+                    LoadBalancingModelConfig.model_name == model,
+                    or_(
+                        LoadBalancingModelConfig.credential_source_type == credential_source_type,
+                        LoadBalancingModelConfig.credential_source_type.is_(None),
+                    ),
+                )
+                .order_by(LoadBalancingModelConfig.created_at)
+            ).all(),
             scope_key=lambda config: (
                 config.provider_name,
                 config.model_name,
@@ -370,19 +367,17 @@ class ModelLoadBalancingService:
             raise ValueError("Invalid load balancing configs")
 
         current_load_balancing_configs = prefer_canonical_model_type_records(
-            build_persisted_model_type_records(
-                db.session.execute(
-                    select(
-                        LoadBalancingModelConfig,
-                        persisted_model_type_column(LoadBalancingModelConfig.model_type),
-                    ).where(
-                        LoadBalancingModelConfig.tenant_id == tenant_id,
-                        LoadBalancingModelConfig.provider_name == provider_configuration.provider.provider,
-                        legacy_compatible_model_type_filter(LoadBalancingModelConfig.model_type, model_type_enum),
-                        LoadBalancingModelConfig.model_name == model,
-                    )
-                ).all()
-            ),
+            db.session.execute(
+                select(
+                    LoadBalancingModelConfig,
+                    persisted_model_type_column(LoadBalancingModelConfig.model_type),
+                ).where(
+                    LoadBalancingModelConfig.tenant_id == tenant_id,
+                    LoadBalancingModelConfig.provider_name == provider_configuration.provider.provider,
+                    legacy_compatible_model_type_filter(LoadBalancingModelConfig.model_type, model_type_enum),
+                    LoadBalancingModelConfig.model_name == model,
+                )
+            ).all(),
             scope_key=lambda config: (
                 config.provider_name,
                 config.model_name,
