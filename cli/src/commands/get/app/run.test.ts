@@ -1,11 +1,12 @@
-import type { DifyMock } from '@test/fixtures/dify-mock/server'
-import type { HostsBundle } from '@/auth/hosts'
-import { startMock } from '@test/fixtures/dify-mock/server'
+import type { DifyMock } from '../../../../test/fixtures/dify-mock/server.js'
+import type { HostsBundle } from '../../../auth/hosts.js'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { stringifyOutput, table } from '@/framework/output'
-import { createClient } from '@/http/client'
-import { AppListOutput } from './handlers'
-import { runGetApp } from './run'
+import { startMock } from '../../../../test/fixtures/dify-mock/server.js'
+import { stringifyOutput, table } from '../../../framework/output.js'
+import { createHttpClient } from '../../../http/client.js'
+import { openAPIBase } from '../../../util/host.js'
+import { AppListOutput } from './handlers.js'
+import { runGetApp } from './run.js'
 
 const baseBundle: HostsBundle = {
   current_host: '127.0.0.1',
@@ -32,7 +33,7 @@ describe('runGetApp', () => {
   })
 
   function http() {
-    return createClient({ host: mock.url, bearer: 'dfoa_test' })
+    return createHttpClient({ baseURL: openAPIBase(mock.url), bearer: 'dfoa_test' })
   }
 
   async function render(opts: Parameters<typeof runGetApp>[0] = {}): Promise<string> {

@@ -6,7 +6,7 @@ function ctxFor(method: HttpMethod): FetchContext {
   const options: ResolvedOptions = {
     method,
     headers: new Headers(),
-    body: null,
+    body: undefined,
     timeoutMs: undefined,
     retryAttempts: 0,
     throwOnError: true,

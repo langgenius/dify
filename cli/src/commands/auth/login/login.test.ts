@@ -6,12 +6,14 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { startMock } from '@test/fixtures/dify-mock/server'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { DeviceFlowApi } from '@/api/oauth-device'
-import { createClient } from '@/http/client'
-import { ENV_CONFIG_DIR } from '@/store/dir'
-import { tokenKey } from '@/store/manager'
-import { bufferStreams } from '@/sys/io/streams'
-import { runLogin } from './login'
+import { startMock } from '../../../../test/fixtures/dify-mock/server.js'
+import { DeviceFlowApi } from '../../../api/oauth-device.js'
+import { createHttpClient } from '../../../http/client.js'
+import { ENV_CONFIG_DIR } from '../../../store/dir.js'
+import { tokenKey } from '../../../store/manager.js'
+import { bufferStreams } from '../../../sys/io/streams'
+import { openAPIBase } from '../../../util/host.js'
+import { runLogin } from './login.js'
 
 const noopClock: Clock = {
   sleepMs: async () => { /* immediate */ },
@@ -65,7 +67,7 @@ describe('runLogin', () => {
       noBrowser: true,
       insecure: true,
       deviceLabel: 'difyctl on test',
-      api: new DeviceFlowApi(createClient({ host: mock.url })),
+      api: new DeviceFlowApi(createHttpClient({ baseURL: openAPIBase(mock.url) })),
       store: { store, mode: 'file' },
       clock: noopClock,
       browserOpener: noopBrowser,
@@ -97,7 +99,7 @@ describe('runLogin', () => {
       noBrowser: true,
       insecure: true,
       deviceLabel: 'difyctl on test',
-      api: new DeviceFlowApi(createClient({ host: mock.url })),
+      api: new DeviceFlowApi(createHttpClient({ baseURL: openAPIBase(mock.url) })),
       store: { store, mode: 'file' },
       clock: noopClock,
       browserOpener: noopBrowser,
@@ -122,7 +124,7 @@ describe('runLogin', () => {
       noBrowser: true,
       insecure: true,
       deviceLabel: 'difyctl on test',
-      api: new DeviceFlowApi(createClient({ host: mock.url })),
+      api: new DeviceFlowApi(createHttpClient({ baseURL: openAPIBase(mock.url) })),
       store: { store, mode: 'file' },
       clock: noopClock,
       browserOpener: noopBrowser,
@@ -141,7 +143,7 @@ describe('runLogin', () => {
       noBrowser: true,
       insecure: true,
       deviceLabel: 'difyctl on test',
-      api: new DeviceFlowApi(createClient({ host: mock.url })),
+      api: new DeviceFlowApi(createHttpClient({ baseURL: openAPIBase(mock.url) })),
       store: { store, mode: 'file' },
       clock: noopClock,
       browserOpener: noopBrowser,
@@ -157,7 +159,7 @@ describe('runLogin', () => {
       noBrowser: true,
       insecure: false,
       deviceLabel: 'difyctl on test',
-      api: new DeviceFlowApi(createClient({ host: mock.url })),
+      api: new DeviceFlowApi(createHttpClient({ baseURL: openAPIBase(mock.url) })),
       store: { store, mode: 'file' },
       clock: noopClock,
       browserOpener: noopBrowser,
@@ -173,7 +175,7 @@ describe('runLogin', () => {
       noBrowser: true,
       insecure: true,
       deviceLabel: 'difyctl on test',
-      api: new DeviceFlowApi(createClient({ host: mock.url })),
+      api: new DeviceFlowApi(createHttpClient({ baseURL: openAPIBase(mock.url) })),
       store: { store, mode: 'file' },
       clock: noopClock,
       browserOpener: noopBrowser,

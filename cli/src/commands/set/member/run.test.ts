@@ -1,8 +1,8 @@
-import type { KyInstance } from 'ky'
-import type { HostsBundle } from '@/auth/hosts'
+import type { HostsBundle } from '../../../auth/hosts.js'
+import type { HttpClient } from '../../../http/types.js'
 import { describe, expect, it, vi } from 'vitest'
-import { bufferStreams } from '@/sys/io/streams'
-import { runSetMember } from './run'
+import { bufferStreams } from '../../../sys/io/streams'
+import { runSetMember } from './run.js'
 
 function bundle(): HostsBundle {
   return {
@@ -28,7 +28,7 @@ describe('runSetMember', () => {
       { memberId: 'acct-2', role: 'admin' },
       {
         bundle: bundle(),
-        http: {} as KyInstance,
+        http: {} as HttpClient,
         io: bufferStreams(),
         membersFactory: () => client as never,
       },
@@ -47,7 +47,7 @@ describe('runSetMember', () => {
         { memberId: 'acct-2', role: 'owner' },
         {
           bundle: bundle(),
-          http: {} as KyInstance,
+          http: {} as HttpClient,
           io: bufferStreams(),
           membersFactory: () => client as never,
         },
@@ -63,7 +63,7 @@ describe('runSetMember', () => {
         { memberId: '', role: 'admin' },
         {
           bundle: bundle(),
-          http: {} as KyInstance,
+          http: {} as HttpClient,
           io: bufferStreams(),
           membersFactory: () => client as never,
         },
@@ -77,7 +77,7 @@ describe('runSetMember', () => {
       { memberId: 'acct-2', role: 'normal', workspace: 'ws-9' },
       {
         bundle: bundle(),
-        http: {} as KyInstance,
+        http: {} as HttpClient,
         io: bufferStreams(),
         membersFactory: () => client as never,
       },

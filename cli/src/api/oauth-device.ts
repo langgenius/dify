@@ -1,6 +1,6 @@
-import type { KyInstance } from 'ky'
-import { BaseError } from '@/errors/base'
-import { ErrorCode } from '@/errors/codes'
+import type { HttpClient } from '../http/types.js'
+import { BaseError } from '../errors/base.js'
+import { ErrorCode } from '../errors/codes.js'
 
 export const DEFAULT_CLIENT_ID = 'difyctl'
 
@@ -62,9 +62,9 @@ const POLL_ERROR_TO_STATUS: Record<string, PollResult['status']> = {
 }
 
 export class DeviceFlowApi {
-  private readonly http: KyInstance
+  private readonly http: HttpClient
 
-  constructor(http: KyInstance) {
+  constructor(http: HttpClient) {
     this.http = http
   }
 
@@ -76,7 +76,7 @@ export class DeviceFlowApi {
       })
     }
     const body = { client_id: req.client_id ?? DEFAULT_CLIENT_ID, device_label: req.device_label }
-    const res = await this.http.post('oauth/device/code', { json: body, throwHttpErrors: false, context: { skipClassify: true } })
+    const res = await this.http.fetch('oauth/device/code', { method: 'POST', json: body })
     if (res.status === 404)
       throw versionSkew()
     if (!res.ok) {
@@ -97,7 +97,7 @@ export class DeviceFlowApi {
       })
     }
     const body = { client_id: req.client_id ?? DEFAULT_CLIENT_ID, device_code: req.device_code }
-    const res = await this.http.post('oauth/device/token', { json: body, throwHttpErrors: false, context: { skipClassify: true } })
+    const res = await this.http.fetch('oauth/device/token', { method: 'POST', json: body })
     if (res.status === 404)
       throw versionSkew()
     if (res.status >= 500)

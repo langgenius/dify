@@ -2,9 +2,10 @@ import type { AddressInfo } from 'node:net'
 import { Buffer } from 'node:buffer'
 import * as http from 'node:http'
 import { afterEach, describe, expect, it } from 'vitest'
-import { isBaseError } from '@/errors/base'
-import { createClient } from '@/http/client'
-import { MembersClient } from './members'
+import { isBaseError } from '../errors/base.js'
+import { createHttpClient } from '../http/client.js'
+import { openAPIBase } from '../util/host.js'
+import { MembersClient } from './members.js'
 
 type StubServer = {
   url: string
@@ -52,7 +53,7 @@ function startServer(handler: http.RequestListener): Promise<StubServer> {
 }
 
 function makeClient(host: string): MembersClient {
-  return new MembersClient(createClient({ host, bearer: 'dfoa_test' }))
+  return new MembersClient(createHttpClient({ baseURL: openAPIBase(host), bearer: 'dfoa_test' }))
 }
 
 describe('MembersClient.list', () => {
@@ -259,8 +260,8 @@ describe('WorkspacesClient.switch (integration with stub)', () => {
     )
     stub.lastRequest = captured
 
-    const { WorkspacesClient } = await import('./workspaces')
-    const client = new WorkspacesClient(createClient({ host: stub.url, bearer: 'dfoa_test' }))
+    const { WorkspacesClient } = await import('./workspaces.js')
+    const client = new WorkspacesClient(createHttpClient({ baseURL: openAPIBase(stub.url), bearer: 'dfoa_test' }))
     const result = await client.switch('ws-1')
     expect(captured.method).toBe('POST')
     expect(captured.url).toBe('/openapi/v1/workspaces/ws-1/switch')
@@ -271,8 +272,8 @@ describe('WorkspacesClient.switch (integration with stub)', () => {
     const captured: StubServer['lastRequest'] = {}
     stub = await startServer(jsonResponder(404, { error: 'not found' }, captured))
 
-    const { WorkspacesClient } = await import('./workspaces')
-    const client = new WorkspacesClient(createClient({ host: stub.url, bearer: 'dfoa_test' }))
+    const { WorkspacesClient } = await import('./workspaces.js')
+    const client = new WorkspacesClient(createHttpClient({ baseURL: openAPIBase(stub.url), bearer: 'dfoa_test' }))
     await expect(client.switch('ws-x')).rejects.toSatisfy(
       err => isBaseError(err) && err.httpStatus === 404,
     )

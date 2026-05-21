@@ -1,11 +1,11 @@
-import type { KyInstance } from 'ky'
-import { loadHosts } from '@/auth/hosts'
-import { DifyCommand } from '@/commands/_shared/dify-command'
-import { createClient } from '@/http/client'
-import { runWithSpinner } from '@/sys/io/spinner'
-import { realStreams } from '@/sys/io/streams'
-import { hostWithScheme } from '@/util/host'
-import { runLogout } from './logout'
+import type { HttpClient } from '../../../http/types.js'
+import { loadHosts } from '../../../auth/hosts.js'
+import { createHttpClient } from '../../../http/client.js'
+import { runWithSpinner } from '../../../sys/io/spinner.js'
+import { realStreams } from '../../../sys/io/streams'
+import { hostWithScheme, openAPIBase } from '../../../util/host.js'
+import { DifyCommand } from '../../_shared/dify-command.js'
+import { runLogout } from './logout.js'
 
 export default class Logout extends DifyCommand {
   static override description = 'Log out of the active Dify host'
@@ -18,10 +18,10 @@ export default class Logout extends DifyCommand {
     this.parse(Logout, argv)
     const bundle = loadHosts()
 
-    let http: KyInstance | undefined
+    let http: HttpClient | undefined
     if (bundle !== undefined && bundle.current_host !== '' && bundle.tokens?.bearer !== undefined && bundle.tokens.bearer !== '') {
-      http = createClient({
-        host: hostWithScheme(bundle.current_host, bundle.scheme),
+      http = createHttpClient({
+        baseURL: openAPIBase(hostWithScheme(bundle.current_host, bundle.scheme)),
         bearer: bundle.tokens.bearer,
         retryAttempts: 0,
       })

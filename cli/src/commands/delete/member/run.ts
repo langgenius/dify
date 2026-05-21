@@ -1,15 +1,15 @@
-import type { KyInstance } from 'ky'
-import type { HostsBundle } from '@/auth/hosts'
-import type { IOStreams } from '@/sys/io/streams'
+import type { HostsBundle } from '../../../auth/hosts.js'
+import type { HttpClient } from '../../../http/types.js'
+import type { IOStreams } from '../../../sys/io/streams.js'
 import * as readline from 'node:readline'
-import { MembersClient } from '@/api/members'
-import { BaseError } from '@/errors/base'
-import { ErrorCode } from '@/errors/codes'
-import { colorEnabled, colorScheme } from '@/sys/io/color'
-import { runWithSpinner } from '@/sys/io/spinner'
-import { nullStreams } from '@/sys/io/streams'
-import { resolveWorkspaceId } from '@/workspace/resolver'
-import { DeleteMemberOutput } from './handlers'
+import { MembersClient } from '../../../api/members.js'
+import { BaseError } from '../../../errors/base.js'
+import { ErrorCode } from '../../../errors/codes.js'
+import { colorEnabled, colorScheme } from '../../../sys/io/color.js'
+import { runWithSpinner } from '../../../sys/io/spinner.js'
+import { nullStreams } from '../../../sys/io/streams.js'
+import { resolveWorkspaceId } from '../../../workspace/resolver.js'
+import { DeleteMemberOutput } from './handlers.js'
 
 export type DeleteMemberOptions = {
   readonly memberId: string
@@ -20,10 +20,10 @@ export type DeleteMemberOptions = {
 
 export type DeleteMemberDeps = {
   readonly bundle: HostsBundle
-  readonly http: KyInstance
+  readonly http: HttpClient
   readonly io?: IOStreams
   readonly envLookup?: (k: string) => string | undefined
-  readonly membersFactory?: (http: KyInstance) => MembersClient
+  readonly membersFactory?: (http: HttpClient) => MembersClient
 }
 
 export type DeleteMemberResult = {
@@ -44,7 +44,7 @@ export async function runDeleteMember(
   }
 
   const env = deps.envLookup ?? ((k: string) => process.env[k])
-  const factory = deps.membersFactory ?? ((h: KyInstance) => new MembersClient(h))
+  const factory = deps.membersFactory ?? ((h: HttpClient) => new MembersClient(h))
   const io = deps.io ?? nullStreams()
   const cs = colorScheme(colorEnabled(io.isErrTTY))
 

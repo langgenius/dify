@@ -1,10 +1,10 @@
-import type { KyInstance } from 'ky'
-import type { HostsBundle } from '@/auth/hosts'
-import type { IOStreams } from '@/sys/io/streams'
-import { WorkspacesClient } from '@/api/workspaces'
-import { runWithSpinner } from '@/sys/io/spinner'
-import { nullStreams } from '@/sys/io/streams'
-import { WorkspaceListOutput, WorkspaceRow } from './handlers'
+import type { HostsBundle } from '../../../auth/hosts.js'
+import type { HttpClient } from '../../../http/types.js'
+import type { IOStreams } from '../../../sys/io/streams'
+import { WorkspacesClient } from '../../../api/workspaces.js'
+import { runWithSpinner } from '../../../sys/io/spinner.js'
+import { nullStreams } from '../../../sys/io/streams'
+import { WorkspaceListOutput, WorkspaceRow } from './handlers.js'
 
 export const EMPTY_WORKSPACES_MESSAGE
   = 'No workspaces visible to this bearer (external-SSO subjects see empty data).\n'
@@ -15,9 +15,9 @@ export type GetWorkspaceOptions = {
 
 export type GetWorkspaceDeps = {
   readonly bundle: HostsBundle
-  readonly http: KyInstance
+  readonly http: HttpClient
   readonly io?: IOStreams
-  readonly workspacesFactory?: (http: KyInstance) => WorkspacesClient
+  readonly workspacesFactory?: (http: HttpClient) => WorkspacesClient
 }
 
 export type GetWorkspaceResult
@@ -25,7 +25,7 @@ export type GetWorkspaceResult
     | { readonly kind: 'output', readonly data: WorkspaceListOutput }
 
 export async function runGetWorkspace(opts: GetWorkspaceOptions, deps: GetWorkspaceDeps): Promise<GetWorkspaceResult> {
-  const wsFactory = deps.workspacesFactory ?? ((h: KyInstance) => new WorkspacesClient(h))
+  const wsFactory = deps.workspacesFactory ?? ((h: HttpClient) => new WorkspacesClient(h))
   const io = deps.io ?? nullStreams()
   const env = await runWithSpinner(
     { io, label: 'Fetching workspaces' },

@@ -26,9 +26,11 @@ export type SearchParamValue = string | number | boolean | undefined
 
 // Local equivalents of the DOM-named union types — globals exist (Request, Response, Headers, Blob, …)
 // but the union aliases BodyInit / HeadersInit are not exposed by @types/node. Matching the shapes
-// the global Request/Response constructors accept.
-export type HeadersInit = Headers | string[][] | Record<string, string>
-export type BodyInit = string | Blob | ArrayBuffer | ArrayBufferView | FormData | URLSearchParams | ReadableStream<Uint8Array> | Uint8Array
+// the global Request/Response constructors accept; ArrayBufferView is omitted because @types/node's
+// RequestInit is stricter and only accepts DataView, which `Uint8Array` covers for our byte-buffer
+// callers.
+export type HeadersInit = Headers | [string, string][] | Record<string, string>
+export type BodyInit = string | Blob | ArrayBuffer | FormData | URLSearchParams | ReadableStream<Uint8Array> | Uint8Array
 
 export type FetchContext = {
   request: Request
@@ -63,7 +65,7 @@ export type RequestOptions = {
 export type ResolvedOptions = {
   readonly method: HttpMethod
   readonly headers: Headers
-  readonly body: BodyInit | null
+  readonly body: BodyInit | undefined
   readonly timeoutMs: number | undefined
   readonly retryAttempts: number
   readonly throwOnError: boolean

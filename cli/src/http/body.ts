@@ -30,7 +30,7 @@ export type BuildBodyInput = {
 }
 
 export type BuildBodyResult = {
-  readonly body: BodyInit | null
+  readonly body: BodyInit | undefined
   readonly contentType: string | undefined
 }
 
@@ -43,7 +43,7 @@ export function buildBody(input: BuildBodyInput): BuildBodyResult {
 
   if (json !== undefined) {
     if (!isPayloadMethod)
-      return { body: null, contentType: undefined }
+      return { body: undefined, contentType: undefined }
     if (isJSONSerializable(json))
       return { body: JSON.stringify(json), contentType: 'application/json' }
     return { body: json as BodyInit, contentType: undefined }
@@ -52,5 +52,5 @@ export function buildBody(input: BuildBodyInput): BuildBodyResult {
   if (body !== undefined && isPayloadMethod)
     return { body, contentType: undefined }
 
-  return { body: null, contentType: undefined }
+  return { body: undefined, contentType: undefined }
 }
