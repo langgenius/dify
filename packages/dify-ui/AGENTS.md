@@ -11,6 +11,8 @@ Shared design tokens, the `cn()` utility, CSS-first Tailwind styles, and headles
 - Props pattern: `Omit<BaseXxx.Root.Props, 'className' | ...> & VariantProps<typeof xxxVariants> & { /* custom */ }`.
 - Use plain `Omit<...>` only for non-union Base UI props. When a prop changes the valid shape of related props (for example `value` / `defaultValue`, `multiple` / `value`, or `clearable` / `onChange`), model that relationship with an explicit discriminated union or a distributive helper instead of flattening the props.
 - When a component accepts a prop typed from a shared internal module, `export type` it from that component so consumers import it from the component subpath.
+- Prefer Base UI data attributes and CSS variables for visual states; do not mirror state in React solely to add classes.
+- When a Base UI API or selector contract is unclear, read the docs linked from `README.md` and the local `@base-ui/react` `.d.ts` files before coding.
 
 ## Overlay Primitive Selection: Tooltip vs PreviewCard vs Popover
 

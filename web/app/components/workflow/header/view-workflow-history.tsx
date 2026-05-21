@@ -157,7 +157,7 @@ const ViewWorkflowHistory = () => {
               aria-label={t('changeHistory.title', { ns: 'workflow' })}
               disabled={nodesReadOnly}
               className={
-                cn('box-border inline-flex size-8 max-h-8 min-h-8 max-w-8 min-w-8 shrink-0 cursor-pointer items-center justify-center overflow-hidden rounded-md p-0 text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary', open && 'bg-state-accent-active text-text-accent', nodesReadOnly && 'cursor-not-allowed text-text-disabled hover:bg-transparent hover:text-text-disabled')
+                cn('box-border inline-flex size-8 max-h-8 min-h-8 max-w-8 min-w-8 shrink-0 cursor-pointer items-center justify-center overflow-hidden rounded-md p-0 text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary data-popup-open:bg-state-accent-active data-popup-open:text-text-accent', nodesReadOnly && 'cursor-not-allowed text-text-disabled hover:bg-transparent hover:text-text-disabled')
               }
               onClick={() => {
                 if (nodesReadOnly)
