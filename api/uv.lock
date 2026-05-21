@@ -1296,7 +1296,7 @@ requires-dist = [
     { name = "httpx", specifier = "==0.28.1" },
     { name = "jsonschema", marker = "extra == 'server'", specifier = ">=4.23.0,<5.0.0" },
     { name = "pydantic", specifier = ">=2.12.5,<2.13" },
-    { name = "pydantic-ai-slim", specifier = ">=1.99.0,<2.0.0" },
+    { name = "pydantic-ai-slim", specifier = ">=1.85.1,<2.0.0" },
     { name = "pydantic-ai-slim", extras = ["anthropic", "google", "openai"], marker = "extra == 'server'", specifier = ">=1.85.1,<2.0.0" },
     { name = "pydantic-settings", marker = "extra == 'server'", specifier = ">=2.12.0,<3.0.0" },
     { name = "redis", marker = "extra == 'server'", specifier = ">=7.4.0,<8.0.0" },
