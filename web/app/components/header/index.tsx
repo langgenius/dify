@@ -46,8 +46,8 @@ const Header = () => {
   }, [isFreePlan, setShowAccountSettingModal, setShowPricingModal])
 
   const canAccessExplorePage = hasPermission(workspacePermissionKeys, 'page.explore.access')
-  const canAccessAppsPage = hasPermission(workspacePermissionKeys, 'app_library.access')
-  const canAccessDatasetsPage = hasPermission(workspacePermissionKeys, ['dataset.create', 'dataset.tag.manage', 'dataset.external.connect'])
+  const canAccessAppsPage = hasPermission(workspacePermissionKeys, 'page.apps.access') || true // todo: remove true after app page permission ready
+  const canAccessDatasetsPage = hasPermission(workspacePermissionKeys, 'page.datasets.access')
   const canAccessToolsPage = hasPermission(workspacePermissionKeys, 'page.tool.access')
 
   const renderLogo = () => (

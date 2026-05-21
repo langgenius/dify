@@ -28,6 +28,8 @@ type AppContextMock = {
   isCurrentWorkspaceEditor: boolean
   isCurrentWorkspaceDatasetOperator: boolean
   isLoadingCurrentWorkspace: boolean
+  isLoadingWorkspacePermissionKeys: boolean
+  workspacePermissionKeys: string[]
   currentWorkspace: {
     id: string
   }
@@ -37,6 +39,8 @@ const baseContext: AppContextMock = {
   isCurrentWorkspaceEditor: true,
   isCurrentWorkspaceDatasetOperator: false,
   isLoadingCurrentWorkspace: false,
+  isLoadingWorkspacePermissionKeys: false,
+  workspacePermissionKeys: ['page.datasets.access'],
   currentWorkspace: {
     id: 'workspace-1',
   },
@@ -72,10 +76,28 @@ describe('DatasetsLayout', () => {
     expect(mockReplace).not.toHaveBeenCalled()
   })
 
-  it('should redirect non-editor and non-dataset-operator users to /apps', async () => {
+  it('should render loading while workspace permission keys are loading', () => {
     setAppContext({
-      isCurrentWorkspaceEditor: false,
-      isCurrentWorkspaceDatasetOperator: false,
+      isLoadingWorkspacePermissionKeys: true,
+      workspacePermissionKeys: [],
+    })
+
+    render((
+      <DatasetsLayout>
+        <div>datasets</div>
+      </DatasetsLayout>
+    ))
+
+    expect(screen.getByRole('status')).toBeInTheDocument()
+    expect(screen.queryByText('datasets')).not.toBeInTheDocument()
+    expect(mockReplace).not.toHaveBeenCalled()
+  })
+
+  it('should redirect users without dataset page access to /apps', async () => {
+    setAppContext({
+      isCurrentWorkspaceEditor: true,
+      isCurrentWorkspaceDatasetOperator: true,
+      workspacePermissionKeys: ['dataset.create', 'dataset.external.connect'],
     })
 
     render((
@@ -90,10 +112,11 @@ describe('DatasetsLayout', () => {
     })
   })
 
-  it('should render children for dataset operators', () => {
+  it('should render children when workspace has dataset page access', () => {
     setAppContext({
       isCurrentWorkspaceEditor: false,
-      isCurrentWorkspaceDatasetOperator: true,
+      isCurrentWorkspaceDatasetOperator: false,
+      workspacePermissionKeys: ['page.datasets.access'],
     })
 
     render((

@@ -65,7 +65,7 @@ export const AppContextProvider: FC<AppContextProviderProps> = ({ children }) =>
   const isCurrentWorkspaceEditor = useMemo(() => ['owner', 'admin', 'editor'].includes(currentWorkspace.role), [currentWorkspace.role])
   const isCurrentWorkspaceDatasetOperator = useMemo(() => currentWorkspace.role === 'dataset_operator', [currentWorkspace.role])
 
-  const { data: workspacePermissionKeysResponse } = useWorkspacePermissionKeys()
+  const { data: workspacePermissionKeysResponse, isPending: isLoadingWorkspacePermissionKeys } = useWorkspacePermissionKeys()
   const workspacePermissionKeys = useMemo(() => {
     return workspacePermissionKeysResponse?.workspace.permission_keys || []
   }, [workspacePermissionKeysResponse])
@@ -151,6 +151,7 @@ export const AppContextProvider: FC<AppContextProviderProps> = ({ children }) =>
       isCurrentWorkspaceDatasetOperator,
       mutateCurrentWorkspace,
       isLoadingCurrentWorkspace,
+      isLoadingWorkspacePermissionKeys,
       isValidatingCurrentWorkspace,
       workspacePermissionKeys,
     }}
