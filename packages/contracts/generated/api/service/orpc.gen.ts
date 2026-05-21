@@ -1634,16 +1634,10 @@ export const byAction3 = {
  * Get all built-in metadata fields
  *
  * Get all built-in metadata fields
- *
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
  */
 export const get15 = oc
   .route({
-    deprecated: true,
-    description:
-      'Get all built-in metadata fields\n\nGenerated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
+    description: 'Get all built-in metadata fields',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getDatasetsByDatasetIdMetadataBuiltIn',
@@ -1682,16 +1676,10 @@ export const delete7 = oc
  * Update metadata name
  *
  * Update metadata name
- *
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
  */
 export const patch5 = oc
   .route({
-    deprecated: true,
-    description:
-      'Update metadata name\n\nGenerated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
+    description: 'Update metadata name',
     inputStructure: 'detailed',
     method: 'PATCH',
     operationId: 'patchDatasetsByDatasetIdMetadataByMetadataId',
@@ -1716,16 +1704,10 @@ export const byMetadataId = {
  * Get all metadata for a dataset
  *
  * Get all metadata for a dataset
- *
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
  */
 export const get16 = oc
   .route({
-    deprecated: true,
-    description:
-      'Get all metadata for a dataset\n\nGenerated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
+    description: 'Get all metadata for a dataset',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getDatasetsByDatasetIdMetadata',
@@ -1740,16 +1722,10 @@ export const get16 = oc
  * Create metadata for a dataset
  *
  * Create metadata for a dataset
- *
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
  */
 export const post28 = oc
   .route({
-    deprecated: true,
-    description:
-      'Create metadata for a dataset\n\nGenerated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
+    description: 'Create metadata for a dataset',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postDatasetsByDatasetIdMetadata',

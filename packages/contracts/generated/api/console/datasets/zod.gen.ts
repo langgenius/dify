@@ -205,6 +205,15 @@ export const zMetadataArgs = z.object({
 })
 
 /**
+ * DatasetMetadataResponse
+ */
+export const zDatasetMetadataResponse = z.object({
+  id: z.string(),
+  name: z.string(),
+  type: z.string(),
+})
+
+/**
  * MetadataUpdatePayload
  */
 export const zMetadataUpdatePayload = z.object({
@@ -320,6 +329,21 @@ export const zDatasetResponse = z.object({
 })
 
 /**
+ * DatasetMetadataBuiltInFieldResponse
+ */
+export const zDatasetMetadataBuiltInFieldResponse = z.object({
+  name: z.string(),
+  type: z.string(),
+})
+
+/**
+ * DatasetMetadataBuiltInFieldsResponse
+ */
+export const zDatasetMetadataBuiltInFieldsResponse = z.object({
+  fields: z.array(zDatasetMetadataBuiltInFieldResponse),
+})
+
+/**
  * DocumentMetadataResponse
  */
 export const zDocumentMetadataResponse = z.object({
@@ -366,6 +390,24 @@ export const zDatasetAndDocumentResponse = z.object({
   batch: z.string(),
   dataset: zDatasetResponse,
   documents: z.array(zDocumentResponse),
+})
+
+/**
+ * DatasetMetadataListItemResponse
+ */
+export const zDatasetMetadataListItemResponse = z.object({
+  count: z.int().optional().default(0),
+  id: z.string(),
+  name: z.string(),
+  type: z.string(),
+})
+
+/**
+ * DatasetMetadataListResponse
+ */
+export const zDatasetMetadataListResponse = z.object({
+  built_in_field_enabled: z.boolean(),
+  doc_metadata: z.array(zDatasetMetadataListItemResponse),
 })
 
 export const zAppDetailKernel = z.object({
@@ -966,9 +1008,9 @@ export const zPostDatasetsInitBody = zKnowledgeConfig
 export const zPostDatasetsInitResponse = zDatasetAndDocumentResponse
 
 /**
- * Success
+ * Built-in fields retrieved successfully
  */
-export const zGetDatasetsMetadataBuiltInResponse = z.record(z.string(), z.unknown())
+export const zGetDatasetsMetadataBuiltInResponse = zDatasetMetadataBuiltInFieldsResponse
 
 /**
  * Success
@@ -1149,9 +1191,9 @@ export const zPostDatasetsByDatasetIdDocumentsMetadataPath = z.object({
 })
 
 /**
- * Success
+ * Documents metadata updated successfully
  */
-export const zPostDatasetsByDatasetIdDocumentsMetadataResponse = zSimpleResultResponse
+export const zPostDatasetsByDatasetIdDocumentsMetadataResponse = z.record(z.string(), z.never())
 
 export const zPatchDatasetsByDatasetIdDocumentsStatusByActionBatchPath = z.object({
   action: z.string(),
@@ -1566,9 +1608,9 @@ export const zGetDatasetsByDatasetIdMetadataPath = z.object({
 })
 
 /**
- * Success
+ * Metadata retrieved successfully
  */
-export const zGetDatasetsByDatasetIdMetadataResponse = z.record(z.string(), z.unknown())
+export const zGetDatasetsByDatasetIdMetadataResponse = zDatasetMetadataListResponse
 
 export const zPostDatasetsByDatasetIdMetadataBody = zMetadataArgs
 
@@ -1577,9 +1619,9 @@ export const zPostDatasetsByDatasetIdMetadataPath = z.object({
 })
 
 /**
- * Success
+ * Metadata created successfully
  */
-export const zPostDatasetsByDatasetIdMetadataResponse = z.record(z.string(), z.unknown())
+export const zPostDatasetsByDatasetIdMetadataResponse = zDatasetMetadataResponse
 
 export const zPostDatasetsByDatasetIdMetadataBuiltInByActionPath = z.object({
   action: z.string(),
@@ -1587,9 +1629,12 @@ export const zPostDatasetsByDatasetIdMetadataBuiltInByActionPath = z.object({
 })
 
 /**
- * Success
+ * Action completed successfully
  */
-export const zPostDatasetsByDatasetIdMetadataBuiltInByActionResponse = zSimpleResultResponse
+export const zPostDatasetsByDatasetIdMetadataBuiltInByActionResponse = z.record(
+  z.string(),
+  z.never(),
+)
 
 export const zDeleteDatasetsByDatasetIdMetadataByMetadataIdPath = z.object({
   dataset_id: z.string(),
@@ -1612,12 +1657,9 @@ export const zPatchDatasetsByDatasetIdMetadataByMetadataIdPath = z.object({
 })
 
 /**
- * Success
+ * Metadata updated successfully
  */
-export const zPatchDatasetsByDatasetIdMetadataByMetadataIdResponse = z.record(
-  z.string(),
-  z.unknown(),
-)
+export const zPatchDatasetsByDatasetIdMetadataByMetadataIdResponse = zDatasetMetadataResponse
 
 export const zGetDatasetsByDatasetIdNotionSyncPath = z.object({
   dataset_id: z.string(),
