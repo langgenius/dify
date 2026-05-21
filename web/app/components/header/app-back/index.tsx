@@ -8,7 +8,7 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 type IAppBackProps = {
-  curApp: AppDetailResponse
+  readonly curApp: AppDetailResponse
 }
 export default function AppBack({ curApp }: IAppBackProps) {
   const { t } = useTranslation()
