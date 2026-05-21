@@ -2,30 +2,55 @@
 
 import { useEffect } from 'react'
 import Loading from '@/app/components/base/loading'
-import { useAppContext } from '@/context/app-context'
+import { useSelector as useAppContextSelector } from '@/context/app-context'
 import { ExternalApiPanelProvider } from '@/context/external-api-panel-context'
 import { ExternalKnowledgeApiProvider } from '@/context/external-knowledge-api-context'
-import { useRouter } from '@/next/navigation'
+import { usePathname, useRouter } from '@/next/navigation'
 import { hasPermission } from '@/utils/permission'
 
+const isDatasetCreatePath = (pathname: string) => {
+  return pathname === '/datasets/create'
+    || pathname.startsWith('/datasets/create/')
+    || pathname === '/datasets/create-from-pipeline'
+    || pathname.startsWith('/datasets/create-from-pipeline/')
+}
+
+const isDatasetExternalConnectPath = (pathname: string) => {
+  return pathname === '/datasets/connect'
+    || pathname.startsWith('/datasets/connect/')
+}
+
 export default function DatasetsLayout({ children }: { children: React.ReactNode }) {
-  const { currentWorkspace, isLoadingCurrentWorkspace, isLoadingWorkspacePermissionKeys, workspacePermissionKeys } = useAppContext()
+  const currentWorkspaceId = useAppContextSelector(state => state.currentWorkspace.id)
+  const isLoadingCurrentWorkspace = useAppContextSelector(state => state.isLoadingCurrentWorkspace)
+  const isLoadingWorkspacePermissionKeys = useAppContextSelector(state => state.isLoadingWorkspacePermissionKeys)
+  const workspacePermissionKeys = useAppContextSelector(state => state.workspacePermissionKeys)
   const router = useRouter()
+  const pathname = usePathname()
   const isLoadingAccess = isLoadingCurrentWorkspace || !!isLoadingWorkspacePermissionKeys
   const canAccessDatasetsPage = hasPermission(workspacePermissionKeys, 'page.datasets.access')
-  const shouldRedirect = !isLoadingAccess
-    && currentWorkspace.id
+  const canCreateDataset = hasPermission(workspacePermissionKeys, 'dataset.create')
+  const canConnectExternalDataset = hasPermission(workspacePermissionKeys, 'dataset.external.connect')
+  const shouldRedirectToApps = !isLoadingAccess
+    && !!currentWorkspaceId
     && !canAccessDatasetsPage
+  const shouldRedirectToDatasets = !isLoadingAccess
+    && !!currentWorkspaceId
+    && canAccessDatasetsPage
+    && ((isDatasetCreatePath(pathname) && !canCreateDataset)
+      || (isDatasetExternalConnectPath(pathname) && !canConnectExternalDataset))
 
   useEffect(() => {
-    if (shouldRedirect)
+    if (shouldRedirectToApps)
       router.replace('/apps')
-  }, [shouldRedirect, router])
+    else if (shouldRedirectToDatasets)
+      router.replace('/datasets')
+  }, [shouldRedirectToApps, shouldRedirectToDatasets, router])
 
-  if (isLoadingAccess || !currentWorkspace.id)
+  if (isLoadingAccess || !currentWorkspaceId)
     return <Loading type="app" />
 
-  if (shouldRedirect) {
+  if (shouldRedirectToApps || shouldRedirectToDatasets) {
     return null
   }
 
