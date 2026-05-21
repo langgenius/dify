@@ -30,7 +30,7 @@ function ApiKeySection({
   const { t } = useTranslation()
   const notAllowCustomCredential = provider.allow_custom_token === false
   const workspacePermissionKeys = useAppContextWithSelector(state => state.workspacePermissionKeys)
-  const canAddCredentials = hasPermission(workspacePermissionKeys, 'credential.manage')
+  const canManageCredential = hasPermission(workspacePermissionKeys, 'credential.manage')
 
   if (!credentials.length) {
     return (
@@ -45,7 +45,7 @@ function ApiKeySection({
             </div>
           </div>
         </div>
-        {!notAllowCustomCredential && canAddCredentials && (
+        {!notAllowCustomCredential && canManageCredential && (
           <Button
             onClick={onAdd}
             className="w-full"
@@ -74,11 +74,13 @@ function ApiKeySection({
               onItemClick={onItemClick}
               onEdit={onEdit}
               onDelete={onDelete}
+              disableEdit={!canManageCredential}
+              disableDelete={!canManageCredential}
             />
           ))}
         </div>
       </div>
-      {!notAllowCustomCredential && canAddCredentials && (
+      {!notAllowCustomCredential && canManageCredential && (
         <div className="p-2">
           <Button
             onClick={onAdd}

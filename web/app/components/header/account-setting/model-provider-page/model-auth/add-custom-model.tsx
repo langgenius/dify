@@ -18,16 +18,14 @@ import {
   TooltipTrigger,
 } from '@langgenius/dify-ui/tooltip'
 import {
-  RiAddCircleFill,
-  RiAddLine,
-} from '@remixicon/react'
-import {
   memo,
   useCallback,
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ModelModalModeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import { useSelector as useAppContextWithSelector } from '@/context/app-context'
+import { hasPermission } from '@/utils/permission'
 import ModelIcon from '../model-icon'
 import { useAuth } from './hooks/use-auth'
 import { useCanAddedModels } from './hooks/use-custom-models'
@@ -48,6 +46,9 @@ const AddCustomModel = ({
   const [open, setOpen] = useState(false)
   const canAddedModels = useCanAddedModels(provider)
   const noModels = !canAddedModels.length
+  const workspacePermissionKeys = useAppContextWithSelector(state => state.workspacePermissionKeys)
+  const canUseCredential = hasPermission(workspacePermissionKeys, ['credential.use', 'credential.manage'])
+  const canManageCredential = hasPermission(workspacePermissionKeys, 'credential.manage')
   const {
     handleOpenModal: handleOpenModalForAddNewCustomModel,
   } = useAuth(
@@ -72,6 +73,7 @@ const AddCustomModel = ({
   )
   const notAllowCustomCredential = provider.allow_custom_token === false
   const renderTrigger = useCallback((open?: boolean, onClick?: () => void) => {
+    const disabled = (noModels && !canManageCredential) || (!noModels && !canUseCredential)
     const item = (
       <Button
         variant="ghost"
@@ -81,13 +83,14 @@ const AddCustomModel = ({
           'text-text-tertiary',
           open && 'bg-components-button-ghost-bg-hover',
           notAllowCustomCredential && !!noModels && 'cursor-not-allowed opacity-50',
+          disabled && 'cursor-not-allowed opacity-50',
         )}
       >
-        <RiAddCircleFill className="mr-1 size-3.5" />
+        <span className="mr-1 i-ri-add-circle-fill size-3.5" />
         {t('modelProvider.addModel', { ns: 'common' })}
       </Button>
     )
-    if (notAllowCustomCredential && !!noModels) {
+    if ((notAllowCustomCredential && !!noModels) || disabled) {
       return (
         <Tooltip>
           <TooltipTrigger render={item} />
@@ -96,10 +99,10 @@ const AddCustomModel = ({
       )
     }
     return item
-  }, [t, notAllowCustomCredential, noModels])
+  }, [canManageCredential, canUseCredential, t, notAllowCustomCredential, noModels])
 
   if (noModels) {
-    return renderTrigger(false, notAllowCustomCredential ? undefined : handleOpenModalForAddNewCustomModel)
+    return renderTrigger(false, notAllowCustomCredential || !canManageCredential ? undefined : handleOpenModalForAddNewCustomModel)
   }
 
   return (
@@ -124,6 +127,9 @@ const AddCustomModel = ({
                   key={model.model}
                   className="flex h-8 cursor-pointer items-center rounded-lg px-2 hover:bg-state-base-hover"
                   onClick={() => {
+                    if (!canUseCredential)
+                      return
+
                     setOpen(false)
                     handleOpenModalForAddCustomModelToModelList(undefined, model)
                   }}
@@ -145,7 +151,7 @@ const AddCustomModel = ({
             }
           </div>
           {
-            !notAllowCustomCredential && (
+            !notAllowCustomCredential && canManageCredential && (
               <div
                 className="flex cursor-pointer items-center border-t border-t-divider-subtle p-3 system-xs-medium text-text-accent-light-mode-only"
                 onClick={() => {
@@ -153,7 +159,7 @@ const AddCustomModel = ({
                   handleOpenModalForAddNewCustomModel()
                 }}
               >
-                <RiAddLine className="mr-1 size-4" />
+                <span className="mr-1 i-ri-add-line size-4" />
                 {t('modelProvider.auth.addNewModel', { ns: 'common' })}
               </div>
             )

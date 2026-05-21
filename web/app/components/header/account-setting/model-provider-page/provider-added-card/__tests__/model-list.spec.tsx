@@ -4,7 +4,7 @@ import { ConfigurationMethodEnum } from '../../declarations'
 import ModelList from '../model-list'
 
 const mockSetShowModelLoadBalancingModal = vi.fn()
-let mockWorkspacePermissionKeys: string[] = ['model.manage']
+let mockWorkspacePermissionKeys: string[] = ['model.manage', 'credential.manage', 'credential.use']
 
 vi.mock('@/context/app-context', () => ({
   useSelector: (selector: (state: { workspacePermissionKeys: string[] }) => unknown) =>
@@ -45,7 +45,7 @@ describe('ModelList', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
-    mockWorkspacePermissionKeys = ['model.manage']
+    mockWorkspacePermissionKeys = ['model.manage', 'credential.manage', 'credential.use']
   })
 
   it('should render model count and model items', () => {

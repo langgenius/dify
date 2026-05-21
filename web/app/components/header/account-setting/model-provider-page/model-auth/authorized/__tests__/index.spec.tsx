@@ -11,6 +11,13 @@ const mockHandleConfirmDelete = vi.fn()
 
 let mockDeleteCredentialId: string | null = null
 let mockDoingAction = false
+let mockWorkspacePermissionKeys = ['credential.manage', 'credential.use']
+
+vi.mock('@/context/app-context', () => ({
+  useSelector: (selector: (state: { workspacePermissionKeys: string[] }) => unknown) => selector({
+    workspacePermissionKeys: mockWorkspacePermissionKeys,
+  }),
+}))
 
 vi.mock('../../hooks', () => ({
   useAuth: () => ({
@@ -25,9 +32,12 @@ vi.mock('../../hooks', () => ({
 }))
 
 vi.mock('../authorized-item', () => ({
-  default: ({ credentials, model, onEdit, onDelete, onItemClick }: {
+  default: ({ credentials, model, disabled, disableEdit, disableDelete, onEdit, onDelete, onItemClick }: {
     credentials: Credential[]
     model?: CustomModel
+    disabled?: boolean
+    disableEdit?: boolean
+    disableDelete?: boolean
     onEdit?: (credential: Credential, model?: CustomModel) => void
     onDelete?: (credential: Credential, model?: CustomModel) => void
     onItemClick?: (credential: Credential, model?: CustomModel) => void
@@ -36,9 +46,9 @@ vi.mock('../authorized-item', () => ({
       {credentials.map((cred: Credential) => (
         <div key={cred.credential_id}>
           <span>{cred.credential_name}</span>
-          <button onClick={() => onEdit?.(cred, model)}>Edit</button>
-          <button onClick={() => onDelete?.(cred, model)}>Delete</button>
-          <button onClick={() => onItemClick?.(cred, model)}>Select</button>
+          <button disabled={disabled || disableEdit} onClick={() => onEdit?.(cred, model)}>Edit</button>
+          <button disabled={disabled || disableDelete} onClick={() => onDelete?.(cred, model)}>Delete</button>
+          <button disabled={disabled} onClick={() => onItemClick?.(cred, model)}>Select</button>
         </div>
       ))}
     </div>
@@ -79,6 +89,7 @@ describe('Authorized', () => {
     vi.clearAllMocks()
     mockDeleteCredentialId = null
     mockDoingAction = false
+    mockWorkspacePermissionKeys = ['credential.manage', 'credential.use']
   })
 
   it('should render trigger and open popup when trigger is clicked', () => {
@@ -182,6 +193,29 @@ describe('Authorized', () => {
     )
 
     fireEvent.click(screen.getByRole('button', { name: /trigger\s*closed/i }))
+    expect(screen.queryByRole('button', { name: /addApiKey/i })).not.toBeInTheDocument()
+  })
+
+  it('should allow use-only users to switch credentials but not add, edit, or delete them', () => {
+    mockWorkspacePermissionKeys = ['credential.use']
+
+    render(
+      <Authorized
+        provider={mockProvider}
+        configurationMethod={ConfigurationMethodEnum.predefinedModel}
+        items={mockItems}
+        renderTrigger={mockRenderTrigger}
+      />,
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: /trigger\s*closed/i }))
+    fireEvent.click(screen.getAllByRole('button', { name: 'Edit' })[0]!)
+    fireEvent.click(screen.getAllByRole('button', { name: 'Delete' })[0]!)
+    fireEvent.click(screen.getAllByRole('button', { name: 'Select' })[0]!)
+
+    expect(mockHandleActiveCredential).toHaveBeenCalledWith(mockCredentials[0], mockItems[0]!.model)
+    expect(mockHandleOpenModal).not.toHaveBeenCalled()
+    expect(mockOpenConfirmDelete).not.toHaveBeenCalled()
     expect(screen.queryByRole('button', { name: /addApiKey/i })).not.toBeInTheDocument()
   })
 

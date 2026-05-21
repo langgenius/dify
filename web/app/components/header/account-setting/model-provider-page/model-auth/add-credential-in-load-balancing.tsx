@@ -6,7 +6,6 @@ import type {
   ModelProvider,
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { cn } from '@langgenius/dify-ui/cn'
-import { RiAddLine } from '@remixicon/react'
 import {
   memo,
   useCallback,
@@ -14,6 +13,8 @@ import {
 import { useTranslation } from 'react-i18next'
 import { ConfigurationMethodEnum, ModelModalModeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { Authorized } from '@/app/components/header/account-setting/model-provider-page/model-auth'
+import { useSelector as useAppContextWithSelector } from '@/context/app-context'
+import { hasPermission } from '@/utils/permission'
 
 type AddCredentialInLoadBalancingProps = {
   provider: ModelProvider
@@ -22,7 +23,7 @@ type AddCredentialInLoadBalancingProps = {
   currentCustomConfigurationModelFixedFields?: CustomConfigurationModelFixedFields
   modelCredential: ModelCredential
   onSelectCredential: (credential: Credential) => void
-  onUpdate?: (payload?: any, formValues?: Record<string, any>) => void
+  onUpdate?: (payload?: unknown, formValues?: Record<string, unknown>) => void
   onRemove?: (credentialId: string) => void
 }
 const AddCredentialInLoadBalancing = ({
@@ -35,12 +36,15 @@ const AddCredentialInLoadBalancing = ({
   onRemove,
 }: AddCredentialInLoadBalancingProps) => {
   const { t } = useTranslation()
+  const workspacePermissionKeys = useAppContextWithSelector(state => state.workspacePermissionKeys)
+  const canUseCredential = hasPermission(workspacePermissionKeys, ['credential.use', 'credential.manage'])
+  const canManageCredential = hasPermission(workspacePermissionKeys, 'credential.manage')
   const {
     available_credentials,
   } = modelCredential
   const isCustomModel = configurationMethod === ConfigurationMethodEnum.customizableModel
   const notAllowCustomCredential = provider.allow_custom_token === false
-  const handleUpdate = useCallback((payload?: any, formValues?: Record<string, any>) => {
+  const handleUpdate = useCallback((payload?: unknown, formValues?: Record<string, unknown>) => {
     onUpdate?.(payload, formValues)
   }, [onUpdate])
 
@@ -51,13 +55,16 @@ const AddCredentialInLoadBalancing = ({
         open && 'bg-state-base-hover',
       )}
       >
-        <RiAddLine className="mr-2 size-4" />
+        <span className="mr-2 i-ri-add-line size-4" />
         {t('modelProvider.auth.addCredential', { ns: 'common' })}
       </div>
     )
 
     return Item
-  }, [t, isCustomModel])
+  }, [t])
+
+  if (!canUseCredential)
+    return null
 
   return (
     <Authorized
@@ -69,7 +76,7 @@ const AddCredentialInLoadBalancing = ({
         onUpdate: handleUpdate,
         onRemove,
       }}
-      triggerOnlyOpenModal={!available_credentials?.length && !notAllowCustomCredential}
+      triggerOnlyOpenModal={!available_credentials?.length && !notAllowCustomCredential && canManageCredential}
       items={[
         {
           title: isCustomModel ? '' : t('modelProvider.auth.apiKeys', { ns: 'common' }),
@@ -86,6 +93,7 @@ const AddCredentialInLoadBalancing = ({
           }
         : undefined}
       onItemClick={onSelectCredential}
+      hideAddAction={!canManageCredential}
       placement="bottom-start"
       popupTitle={isCustomModel ? t('modelProvider.auth.modelCredentials', { ns: 'common' }) : ''}
     />

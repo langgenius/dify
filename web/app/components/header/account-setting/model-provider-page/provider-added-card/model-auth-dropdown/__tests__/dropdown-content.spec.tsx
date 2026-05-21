@@ -10,6 +10,7 @@ const mockOpenConfirmDelete = vi.fn()
 const mockCloseConfirmDelete = vi.fn()
 const mockHandleConfirmDelete = vi.fn()
 let mockDeleteCredentialId: string | null = null
+let mockWorkspacePermissionKeys = ['credential.manage', 'credential.use']
 
 vi.mock('../../use-trial-credits', () => ({
   useTrialCredits: () => ({ credits: 0, totalCredits: 10_000, isExhausted: true, isLoading: false }),
@@ -34,9 +35,18 @@ vi.mock('../../../model-auth/hooks', () => ({
   }),
 }))
 
+vi.mock('@/context/app-context', () => ({
+  useSelector: (selector: (state: { workspacePermissionKeys: string[] }) => unknown) => selector({
+    workspacePermissionKeys: mockWorkspacePermissionKeys,
+  }),
+}))
+
 vi.mock('../../../model-auth/authorized/credential-item', () => ({
-  default: ({ credential, onItemClick, onEdit, onDelete }: {
+  default: ({ credential, disabled, disableEdit, disableDelete, onItemClick, onEdit, onDelete }: {
     credential: { credential_id: string, credential_name: string }
+    disabled?: boolean
+    disableEdit?: boolean
+    disableDelete?: boolean
     onItemClick?: (c: unknown) => void
     onEdit?: (c: unknown) => void
     onDelete?: (c: unknown) => void
@@ -44,8 +54,8 @@ vi.mock('../../../model-auth/authorized/credential-item', () => ({
     <div data-testid={`credential-${credential.credential_id}`}>
       <span>{credential.credential_name}</span>
       <button data-testid={`click-${credential.credential_id}`} onClick={() => onItemClick?.(credential)}>select</button>
-      <button data-testid={`edit-${credential.credential_id}`} onClick={() => onEdit?.(credential)}>edit</button>
-      <button data-testid={`delete-${credential.credential_id}`} onClick={() => onDelete?.(credential)}>delete</button>
+      <button data-testid={`edit-${credential.credential_id}`} disabled={disabled || disableEdit} onClick={() => onEdit?.(credential)}>edit</button>
+      <button data-testid={`delete-${credential.credential_id}`} disabled={disabled || disableDelete} onClick={() => onDelete?.(credential)}>delete</button>
     </div>
   ),
 }))
@@ -87,6 +97,7 @@ describe('DropdownContent', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockDeleteCredentialId = null
+    mockWorkspacePermissionKeys = ['credential.manage', 'credential.use']
   })
 
   describe('UsagePrioritySection visibility', () => {
@@ -362,6 +373,30 @@ describe('DropdownContent', () => {
         expect.objectContaining({ credential_id: 'cred-2' }),
       )
     })
+
+    it('should allow use-only users to switch credentials but not edit or delete them', () => {
+      mockWorkspacePermissionKeys = ['credential.use']
+
+      render(
+        <DropdownContent
+          provider={createProvider()}
+          state={createState()}
+          isChangingPriority={false}
+          onChangePriority={onChangePriority}
+          onClose={onClose}
+        />,
+      )
+
+      fireEvent.click(screen.getByTestId('click-cred-2'))
+      fireEvent.click(screen.getByTestId('edit-cred-2'))
+      fireEvent.click(screen.getByTestId('delete-cred-2'))
+
+      expect(mockActivate).toHaveBeenCalledWith(
+        expect.objectContaining({ credential_id: 'cred-2' }),
+      )
+      expect(mockHandleOpenModal).not.toHaveBeenCalled()
+      expect(mockOpenConfirmDelete).not.toHaveBeenCalled()
+    })
   })
 
   describe('Add API Key', () => {
@@ -385,6 +420,27 @@ describe('DropdownContent', () => {
 
       expect(mockHandleOpenModal).toHaveBeenCalledWith()
       expect(onClose).toHaveBeenCalled()
+    })
+
+    it('should hide add action for use-only users', () => {
+      mockWorkspacePermissionKeys = ['credential.use']
+
+      render(
+        <DropdownContent
+          provider={createProvider({
+            custom_configuration: {
+              status: CustomConfigurationStatusEnum.noConfigure,
+              available_credentials: [],
+            },
+          })}
+          state={createState({ hasCredentials: false })}
+          isChangingPriority={false}
+          onChangePriority={onChangePriority}
+          onClose={onClose}
+        />,
+      )
+
+      expect(screen.queryByRole('button', { name: /addApiKey/ })).not.toBeInTheDocument()
     })
   })
 

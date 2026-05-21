@@ -26,9 +26,9 @@ import {
 } from '@/models/app'
 import { fetchAppDetail } from '@/service/explore'
 import { systemFeaturesQueryOptions } from '@/service/system-features'
-import { useMembers } from '@/service/use-common'
 import { useExploreAppList } from '@/service/use-explore'
 import { trackCreateApp } from '@/utils/create-app-tracking'
+import { hasPermission } from '@/utils/permission'
 import TryApp from '../try-app'
 import s from './style.module.css'
 
@@ -40,12 +40,11 @@ const Apps = ({
   onSuccess,
 }: AppsProps) => {
   const { t } = useTranslation()
-  const { userProfile } = useAppContext()
+  const { workspacePermissionKeys } = useAppContext()
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
-  const { data: membersData } = useMembers()
   const allCategoriesEn = t('apps.allCategories', { ns: 'explore', lng: 'en' })
-  const userAccount = membersData?.accounts?.find(account => account.id === userProfile.id)
-  const hasEditPermission = !!userAccount && userAccount.role !== 'normal'
+  const canAccessAppLibrary = hasPermission(workspacePermissionKeys, 'app_library.access')
+  const canCreateApp = hasPermission(workspacePermissionKeys, 'app.create')
 
   const [keywords, setKeywords] = useState('')
   const [searchKeywords, setSearchKeywords] = useState('')
@@ -73,7 +72,7 @@ const Apps = ({
     data,
     isLoading,
     isError,
-  } = useExploreAppList()
+  } = useExploreAppList({ enabled: canAccessAppLibrary })
 
   const filteredList = useMemo(() => {
     if (!data)
@@ -117,13 +116,16 @@ const Apps = ({
     setCurrentTryApp(params)
   }, [])
   const handleShowFromTryApp = useCallback(() => {
+    if (!canCreateApp)
+      return
+
     setCurrApp(currentTryApp?.app || null)
     currentCreateAppTrackingRef.current = {
       source: 'explore_template_preview',
       templateId: currentTryApp?.appId || currentTryApp?.app.app_id,
     }
     setIsShowCreateModal(true)
-  }, [currentTryApp?.app, currentTryApp?.appId])
+  }, [canCreateApp, currentTryApp?.app, currentTryApp?.appId])
   const trackCurrentCreateApp = useCallback((appMode?: App['app']['mode'] | null) => {
     const currentCreateAppTracking = currentCreateAppTrackingRef.current
     const resolvedAppMode = appMode ?? currentCreateAppModeRef.current
@@ -145,6 +147,9 @@ const Apps = ({
     icon_background,
     description,
   }) => {
+    if (!canCreateApp)
+      return
+
     hideTryAppPanel()
 
     const { export_data, mode } = await fetchAppDetail(
@@ -169,7 +174,7 @@ const Apps = ({
         setShowDSLConfirmModal(true)
       },
     })
-  }, [currApp?.app.id, handleImportDSL, hideTryAppPanel, trackCurrentCreateApp])
+  }, [canCreateApp, currApp?.app.id, handleImportDSL, hideTryAppPanel, trackCurrentCreateApp])
 
   const onConfirmDSL = useCallback(async () => {
     await handleImportDSLConfirm({
@@ -179,6 +184,9 @@ const Apps = ({
       },
     })
   }, [handleImportDSLConfirm, onSuccess, trackCurrentCreateApp])
+
+  if (!canAccessAppLibrary)
+    return null
 
   if (isLoading) {
     return (
@@ -253,8 +261,11 @@ const Apps = ({
               <AppCard
                 key={app.app_id}
                 app={app}
-                canCreate={hasEditPermission}
+                canCreate={canCreateApp}
                 onCreate={() => {
+                  if (!canCreateApp)
+                    return
+
                   currentCreateAppTrackingRef.current = {
                     source: 'explore_template_list',
                     templateId: app.app_id,

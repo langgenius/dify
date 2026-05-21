@@ -12,7 +12,6 @@ import { renderWithSystemFeatures as render } from '@/__tests__/utils/mock-syste
 import AppList from '@/app/components/explore/app-list'
 import { useAppContext } from '@/context/app-context'
 import { fetchAppDetail } from '@/service/explore'
-import { useMembers } from '@/service/use-common'
 import { AppModeEnum } from '@/types/app'
 
 const allCategoriesEn = 'explore.apps.allCategories:{"lng":"en"}'
@@ -61,10 +60,6 @@ vi.mock('@/service/explore', () => ({
 
 vi.mock('@/context/app-context', () => ({
   useAppContext: vi.fn(),
-}))
-
-vi.mock('@/service/use-common', () => ({
-  useMembers: vi.fn(),
 }))
 
 vi.mock('@/hooks/use-import-dsl', () => ({
@@ -136,24 +131,22 @@ const createApp = (overrides: Partial<App> = {}): App => ({
   is_agent: overrides.is_agent ?? false,
 })
 
-const mockMemberRole = (hasEditPermission: boolean) => {
+const mockWorkspacePermissions = (canCreateApp: boolean) => {
   ;(useAppContext as Mock).mockReturnValue({
     userProfile: { id: 'user-1' },
-  })
-  ;(useMembers as Mock).mockReturnValue({
-    data: {
-      accounts: [{ id: 'user-1', role: hasEditPermission ? 'admin' : 'normal' }],
-    },
+    workspacePermissionKeys: canCreateApp
+      ? ['app_library.access', 'app.create']
+      : ['app_library.access'],
   })
 }
 
-const renderAppList = (hasEditPermission = true, onSuccess?: () => void) => {
-  mockMemberRole(hasEditPermission)
+const renderAppList = (canCreateApp = true, onSuccess?: () => void) => {
+  mockWorkspacePermissions(canCreateApp)
   return render(<AppList onSuccess={onSuccess} />)
 }
 
-const appListElement = (hasEditPermission = true, onSuccess?: () => void) => {
-  mockMemberRole(hasEditPermission)
+const appListElement = (canCreateApp = true, onSuccess?: () => void) => {
+  mockWorkspacePermissions(canCreateApp)
   return <AppList onSuccess={onSuccess} />
 }
 
@@ -293,13 +286,13 @@ describe('Explore App List Flow', () => {
   })
 
   describe('Permission-Based Behavior', () => {
-    it('should hide add-to-workspace button when user has no edit permission', () => {
+    it('should hide add-to-workspace button when user lacks app creation permission', () => {
       renderAppList(false)
 
       expect(screen.queryByText('explore.appCard.addToWorkspace')).not.toBeInTheDocument()
     })
 
-    it('should show add-to-workspace button when user has edit permission', () => {
+    it('should show add-to-workspace button when user has app creation permission', () => {
       renderAppList(true)
 
       expect(screen.getAllByText('explore.appCard.addToWorkspace').length).toBeGreaterThan(0)

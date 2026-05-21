@@ -51,7 +51,11 @@ function PopupItem({
   const currentProvider = modelProviders.find(provider => provider.provider === model.provider)
   const workspacePermissionKeys = useAppContextWithSelector(state => state.workspacePermissionKeys)
   const canUseCredentials = hasPermission(workspacePermissionKeys, ['credential.manage', 'credential.use'])
+  const canManageCredentials = hasPermission(workspacePermissionKeys, 'credential.manage')
   const handleOpenModelModal = () => {
+    if (!canManageCredentials)
+      return
+
     if (!currentProvider)
       return
     setShowModelModal({
@@ -187,13 +191,15 @@ function PopupItem({
                 onPointerDown={onPreviewCardClose}
               >
                 {rowContent}
-                <button
-                  type="button"
-                  className="hidden cursor-pointer text-xs font-medium text-text-accent group-hover:block"
-                  onClick={handleOpenModelModal}
-                >
-                  {t('operation.add', { ns: 'common' }).toLocaleUpperCase()}
-                </button>
+                {canManageCredentials && (
+                  <button
+                    type="button"
+                    className="hidden cursor-pointer text-xs font-medium text-text-accent group-hover:block"
+                    onClick={handleOpenModelModal}
+                  >
+                    {t('operation.add', { ns: 'common' }).toLocaleUpperCase()}
+                  </button>
+                )}
               </div>
             )
           : (

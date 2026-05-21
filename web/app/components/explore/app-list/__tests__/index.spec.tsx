@@ -6,7 +6,6 @@ import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import { createSystemFeaturesWrapper } from '@/__tests__/utils/mock-system-features'
 import { useAppContext } from '@/context/app-context'
 import { fetchAppDetail } from '@/service/explore'
-import { useMembers } from '@/service/use-common'
 import { renderWithNuqs } from '@/test/nuqs-testing'
 import { AppModeEnum } from '@/types/app'
 import AppList from '../index'
@@ -17,13 +16,10 @@ let mockIsError = false
 const mockHandleImportDSL = vi.fn()
 const mockHandleImportDSLConfirm = vi.fn()
 const mockTrackCreateApp = vi.fn()
+const mockUseExploreAppList = vi.fn()
 
 vi.mock('@/service/use-explore', () => ({
-  useExploreAppList: () => ({
-    data: mockExploreData,
-    isLoading: mockIsLoading,
-    isError: mockIsError,
-  }),
+  useExploreAppList: (options?: { enabled?: boolean }) => mockUseExploreAppList(options),
 }))
 
 vi.mock('@/service/explore', () => ({
@@ -33,10 +29,6 @@ vi.mock('@/service/explore', () => ({
 
 vi.mock('@/context/app-context', () => ({
   useAppContext: vi.fn(),
-}))
-
-vi.mock('@/service/use-common', () => ({
-  useMembers: vi.fn(),
 }))
 
 vi.mock('@/hooks/use-import-dsl', () => ({
@@ -138,30 +130,29 @@ const createApp = (overrides: Partial<App> = {}): App => ({
   is_agent: overrides.is_agent ?? false,
 })
 
-const mockMemberRole = (hasEditPermission: boolean) => {
+const mockWorkspacePermissions = (workspacePermissionKeys: string[]) => {
   ;(useAppContext as Mock).mockReturnValue({
     userProfile: { id: 'user-1' },
-  })
-  ;(useMembers as Mock).mockReturnValue({
-    data: {
-      accounts: [{ id: 'user-1', role: hasEditPermission ? 'admin' : 'normal' }],
-    },
+    workspacePermissionKeys,
   })
 }
 
 type RenderOptions = {
   enableExploreBanner?: boolean
   isCloudEdition?: boolean
+  workspacePermissionKeys?: string[]
 }
 
 const renderAppList = (
-  hasEditPermission = false,
+  canCreateApp = false,
   onSuccess?: () => void,
   searchParams?: Record<string, string>,
   options: RenderOptions = {},
 ) => {
   mockConfig.isCloudEdition = options.isCloudEdition ?? false
-  mockMemberRole(hasEditPermission)
+  mockWorkspacePermissions(
+    options.workspacePermissionKeys ?? (canCreateApp ? ['app_library.access', 'app.create'] : ['app_library.access']),
+  )
   const { wrapper: SystemFeaturesWrapper, queryClient } = createSystemFeaturesWrapper({
     systemFeatures: { enable_explore_banner: options.enableExploreBanner ?? false },
   })
@@ -183,6 +174,11 @@ describe('AppList', () => {
     mockIsLoading = false
     mockIsError = false
     mockConfig.isCloudEdition = false
+    mockUseExploreAppList.mockImplementation(() => ({
+      data: mockExploreData,
+      isLoading: mockIsLoading,
+      isError: mockIsError,
+    }))
   })
 
   afterEach(() => {
@@ -468,6 +464,66 @@ describe('AppList', () => {
 
       fireEvent.click(screen.getByTestId('try-app-close'))
       expect(screen.queryByTestId('try-app-panel')).not.toBeInTheDocument()
+    })
+  })
+
+  describe('Permission-Based Behavior', () => {
+    it('should hide add-to-workspace button when user lacks app creation permission', () => {
+      mockExploreData = {
+        categories: ['Writing'],
+        allList: [createApp()],
+      }
+
+      renderAppList(true, undefined, undefined, {
+        workspacePermissionKeys: ['app_library.access'],
+      })
+
+      expect(screen.queryByText('explore.appCard.addToWorkspace')).not.toBeInTheDocument()
+    })
+
+    it('should show add-to-workspace button when user has app creation permission', () => {
+      mockExploreData = {
+        categories: ['Writing'],
+        allList: [createApp()],
+      }
+
+      renderAppList(false, undefined, undefined, {
+        workspacePermissionKeys: ['app_library.access', 'app.create'],
+      })
+
+      expect(screen.getByText('explore.appCard.addToWorkspace')).toBeInTheDocument()
+    })
+
+    it('should not fetch or render templates when user lacks app library access', () => {
+      mockUseExploreAppList.mockReturnValue({
+        data: undefined,
+        isLoading: false,
+        isError: false,
+      })
+
+      const { container } = renderAppList(true, undefined, undefined, {
+        workspacePermissionKeys: ['app.create'],
+      })
+
+      expect(mockUseExploreAppList).toHaveBeenCalledWith({ enabled: false })
+      expect(container.innerHTML).toBe('')
+    })
+
+    it('should not open create modal from try app panel without app creation permission', () => {
+      mockExploreData = {
+        categories: ['Writing'],
+        allList: [createApp()],
+      }
+
+      renderAppList(true, undefined, undefined, {
+        isCloudEdition: true,
+        workspacePermissionKeys: ['app_library.access'],
+      })
+
+      fireEvent.click(screen.getByText('explore.appCard.try'))
+      fireEvent.click(screen.getByTestId('try-app-create'))
+
+      expect(screen.queryByTestId('create-app-modal')).not.toBeInTheDocument()
     })
   })
 

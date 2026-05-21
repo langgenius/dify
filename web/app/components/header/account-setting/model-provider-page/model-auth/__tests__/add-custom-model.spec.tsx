@@ -24,6 +24,12 @@ vi.mock('../hooks/use-custom-models', () => ({
   useCanAddedModels: () => mockCanAddedModels,
 }))
 
+vi.mock('@/context/app-context', () => ({
+  useSelector: (selector: (state: { workspacePermissionKeys: string[] }) => unknown) => selector({
+    workspacePermissionKeys: ['credential.manage', 'credential.use'],
+  }),
+}))
+
 // Mock components
 vi.mock('../../model-icon', () => ({
   default: () => <div data-testid="model-icon" />,
@@ -66,7 +72,6 @@ describe('AddCustomModel', () => {
     )
 
     expect(screen.getByText(/modelProvider.addModel/)).toBeInTheDocument()
-    expect(screen.getByTestId('add-circle-icon')).toBeInTheDocument()
   })
 
   it('should call handleOpenModal directly when no models available and allowed', () => {
