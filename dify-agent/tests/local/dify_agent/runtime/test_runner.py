@@ -457,7 +457,6 @@ def test_runner_passes_output_layer_spec_to_agent_and_serializes_structured_resu
                 "required": ["title", "severity", "actions"],
                 "additionalProperties": False,
             },
-            name="incident_summary",
             description="Structured incident summary returned by the agent.",
             strict=True,
         )
@@ -492,10 +491,10 @@ def test_runner_passes_output_layer_spec_to_agent_and_serializes_structured_resu
     assert model.last_model_request_parameters is not None
     assert len(model.last_model_request_parameters.output_tools) == 1
     output_tool = model.last_model_request_parameters.output_tools[0]
-    assert output_tool.name == "incident_summary"
+    assert output_tool.name == "final_output"
     assert output_tool.description == "Structured incident summary returned by the agent."
     assert output_tool.parameters_json_schema["type"] == "object"
-    assert output_tool.parameters_json_schema["title"] == "incident_summary"
+    assert output_tool.parameters_json_schema["title"] == "final_output"
     assert output_tool.parameters_json_schema["properties"] == {
         "title": {"type": "string"},
         "severity": {"type": "string", "enum": ["low", "medium", "high"]},
@@ -546,7 +545,6 @@ def test_runner_retries_invalid_structured_output_and_eventually_succeeds(monkey
                 "required": ["title", "severity", "actions"],
                 "additionalProperties": False,
             },
-            name="incident_summary",
             description="Structured incident summary returned by the agent.",
         )
     )
@@ -599,7 +597,6 @@ def test_runner_fails_when_invalid_structured_output_exhausts_retries(monkeypatc
                 "required": ["title", "severity", "actions"],
                 "additionalProperties": False,
             },
-            name="incident_summary",
             description="Structured incident summary returned by the agent.",
         )
     )
@@ -636,7 +633,6 @@ def test_runner_rejects_invalid_output_layer_before_model_resolution(monkeypatch
     monkeypatch.setattr(DifyPluginLLMLayer, "get_model", fake_get_model)
     request = _request(
         output_config={
-            "name": "incident_summary",
             "json_schema": _recursive_output_schema(),
         }
     )

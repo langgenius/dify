@@ -192,7 +192,6 @@ def test_create_run_rejects_invalid_output_schema_before_persisting() -> None:
                 await scheduler.create_run(
                     _request(
                         output_config={
-                            "name": "incident_summary",
                             "json_schema": _recursive_output_schema(),
                         }
                     )
@@ -213,7 +212,6 @@ def test_create_run_rejects_remote_ref_output_schema_before_persisting() -> None
                 await scheduler.create_run(
                     _request(
                         output_config={
-                            "name": "incident_summary",
                             "json_schema": {
                                 "type": "object",
                                 "properties": {
@@ -239,10 +237,35 @@ def test_create_run_rejects_non_object_output_schema_before_persisting() -> None
                 await scheduler.create_run(
                     _request(
                         output_config={
-                            "name": "incident_actions",
                             "json_schema": {
                                 "type": "array",
                                 "items": {"type": "string"},
+                            },
+                        }
+                    )
+                )
+
+        assert store.records == {}
+
+    asyncio.run(scenario())
+
+
+def test_create_run_rejects_public_output_tool_name_override_before_persisting() -> None:
+    async def scenario() -> None:
+        store = FakeStore()
+        async with httpx.AsyncClient() as client:
+            scheduler = RunScheduler(store=store, plugin_daemon_http_client=client)
+
+            with pytest.raises(ValueError, match="Extra inputs are not permitted"):
+                await scheduler.create_run(
+                    _request(
+                        output_config={
+                            "name": "incident_summary",
+                            "json_schema": {
+                                "type": "object",
+                                "properties": {"title": {"type": "string"}},
+                                "required": ["title"],
+                                "additionalProperties": False,
                             },
                         }
                     )
@@ -263,7 +286,6 @@ def test_create_run_rejects_non_defs_local_ref_in_direct_object_schema_before_pe
                 await scheduler.create_run(
                     _request(
                         output_config={
-                            "name": "incident_summary",
                             "json_schema": {
                                 "type": "object",
                                 "properties": {
