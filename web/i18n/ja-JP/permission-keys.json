@@ -1,6 +1,5 @@
 {
   "api_extension.manage": "API拡張設定を管理",
-  "app.access_config": "すべてのアプリのアクセス権限を設定",
   "app.acl.access_config": "アプリアクセス権限を設定",
   "app.acl.delete": "アプリを削除",
   "app.acl.edit": "アプリの編集とオーケストレーション",
@@ -19,7 +18,6 @@
   "credential.use": "認証情報を使用",
   "customization.manage": "カスタマイズを管理",
   "data_source.manage": "データソース設定を管理",
-  "dataset.access_config": "すべてのナレッジベースのアクセス権限を設定",
   "dataset.acl.access_config": "ナレッジベースのアクセス権限を設定",
   "dataset.acl.delete": "ナレッジベースを削除",
   "dataset.acl.delete_file": "ナレッジベースファイルを削除",

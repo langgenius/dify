@@ -18,7 +18,6 @@ let mockWorkspacePermissionKeys: string[] = ['model.manage']
 
 vi.mock('@/context/app-context', () => ({
   useAppContext: () => ({
-    isCurrentWorkspaceManager: true,
     workspacePermissionKeys: mockWorkspacePermissionKeys,
   }),
 }))
@@ -161,6 +160,24 @@ describe('ModelListItem', () => {
 
     expect(screen.getByRole('switch')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'modify load balancing' })).toBeInTheDocument()
+  })
+
+  it('should hide model status and load balancing controls without model.manage or plugin.manage', () => {
+    mockWorkspacePermissionKeys = []
+    mockModelLoadBalancingEnabled = true
+
+    render(
+      <ModelListItem
+        model={mockModel}
+        provider={mockProvider}
+        isConfigurable
+        onModifyLoadBalancing={vi.fn()}
+      />,
+      { wrapper: createWrapper() },
+    )
+
+    expect(screen.queryByRole('switch')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'modify load balancing' })).not.toBeInTheDocument()
   })
 
   // Deprecated branches: opacity-60, disabled switch, no ConfigModel

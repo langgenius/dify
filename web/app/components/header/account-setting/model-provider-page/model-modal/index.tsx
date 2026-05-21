@@ -41,8 +41,9 @@ import {
   useCredentialData,
 } from '@/app/components/header/account-setting/model-provider-page/model-auth/hooks'
 import ModelIcon from '@/app/components/header/account-setting/model-provider-page/model-icon'
-import { useAppContext } from '@/context/app-context'
+import { useSelector as useAppContextWithSelector } from '@/context/app-context'
 import { useRenderI18nObject } from '@/hooks/use-i18n'
+import { hasPermission } from '@/utils/permission'
 import {
   ConfigurationMethodEnum,
   FormTypeEnum,
@@ -106,7 +107,8 @@ const ModelModal: FC<ModelModalProps> = ({
     available_credentials,
   } = credentialData as any
 
-  const { isCurrentWorkspaceManager } = useAppContext()
+  const workspacePermissionKeys = useAppContextWithSelector(state => state.workspacePermissionKeys)
+  const canManageModelProviders = hasPermission(workspacePermissionKeys, 'model.manage')
   const { t } = useTranslation()
   const language = useLanguage()
   const {
@@ -120,7 +122,7 @@ const ModelModal: FC<ModelModalProps> = ({
   const formRef2 = useRef<FormRefObject>(null)
   const isEditMode = !!credential && !!Object.keys(formSchemasValue || {}).filter((key) => {
     return key !== '__model_name' && key !== '__model_type' && !!formValues[key]
-  }).length && isCurrentWorkspaceManager
+  }).length && canManageModelProviders
 
   const handleSave = useCallback(async () => {
     if (mode === ModelModalModeEnum.addCustomModelToModelList && selectedCredential && !selectedCredential?.addNewCredential) {
@@ -188,7 +190,7 @@ const ModelModal: FC<ModelModalProps> = ({
       })
     }
     onSave(values)
-  }, [handleSaveCredential, credential?.credential_id, model, onSave, mode, selectedCredential, handleActiveCredential])
+  }, [mode, selectedCredential, model, onSave, handleActiveCredential, onCancel, handleSaveCredential, credential?.credential_id])
 
   const modalTitle = useMemo(() => {
     let label = t('modelProvider.auth.apiKeyModal.title', { ns: 'common' })
@@ -270,7 +272,7 @@ const ModelModal: FC<ModelModalProps> = ({
   const handleDeleteCredential = useCallback(() => {
     handleConfirmDelete()
     onCancel()
-  }, [handleConfirmDelete])
+  }, [handleConfirmDelete, onCancel])
 
   const handleModelNameAndTypeChange = useCallback((field: string, value: any) => {
     const {

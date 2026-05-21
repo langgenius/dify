@@ -4,17 +4,15 @@ import type {
   ModelItem,
   ModelProvider,
 } from '../declarations'
-import {
-  RiArrowRightSLine,
-} from '@remixicon/react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   AddCustomModel,
   ManageCustomModelCredentials,
 } from '@/app/components/header/account-setting/model-provider-page/model-auth'
-import { useAppContext } from '@/context/app-context'
+import { useSelector as useAppContextWithSelector } from '@/context/app-context'
 import { useModalContextSelector } from '@/context/modal-context'
+import { hasPermission } from '@/utils/permission'
 import {
   ConfigurationMethodEnum,
 } from '../declarations'
@@ -35,7 +33,8 @@ const ModelList: FC<ModelListProps> = ({
 }) => {
   const { t } = useTranslation()
   const configurativeMethods = provider.configurate_methods.filter(method => method !== ConfigurationMethodEnum.fetchFromRemote)
-  const { isCurrentWorkspaceManager } = useAppContext()
+  const workspacePermissionKeys = useAppContextWithSelector(state => state.workspacePermissionKeys)
+  const canManageModelProviders = hasPermission(workspacePermissionKeys, 'model.manage')
   const isConfigurable = configurativeMethods.includes(ConfigurationMethodEnum.customizableModel)
   const setShowModelLoadBalancingModal = useModalContextSelector(state => state.setShowModelLoadBalancingModal)
   const onModifyLoadBalancing = useCallback((model: ModelItem, credential?: Credential) => {
@@ -68,7 +67,7 @@ const ModelList: FC<ModelListProps> = ({
             </span>
           </span>
           {
-            isConfigurable && isCurrentWorkspaceManager && (
+            isConfigurable && canManageModelProviders && (
               <div className="flex grow justify-end">
                 <ManageCustomModelCredentials
                   provider={provider}

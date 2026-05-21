@@ -1,6 +1,5 @@
 {
   "api_extension.manage": "管理API扩展配置",
-  "app.access_config": "配置所有应用访问权限",
   "app.acl.access_config": "配置应用访问权限",
   "app.acl.delete": "删除应用",
   "app.acl.edit": "编辑与编排应用",
@@ -19,7 +18,6 @@
   "credential.use": "使用凭据",
   "customization.manage": "管理定制",
   "data_source.manage": "管理数据来源配置",
-  "dataset.access_config": "配置所有知识库访问权限",
   "dataset.acl.access_config": "配置知识库访问权限",
   "dataset.acl.delete": "删除知识库",
   "dataset.acl.delete_file": "删除知识库文件",
