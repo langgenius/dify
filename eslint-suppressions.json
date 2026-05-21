@@ -3346,14 +3346,6 @@
       "count": 2
     }
   },
-  "web/app/components/workflow/header/run-mode.tsx": {
-    "no-console": {
-      "count": 1
-    },
-    "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
   "web/app/components/workflow/header/test-run-menu.tsx": {
     "erasable-syntax-only/enums": {
       "count": 1
