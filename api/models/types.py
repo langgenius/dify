@@ -9,11 +9,9 @@ from sqlalchemy import CHAR, TEXT, VARCHAR, LargeBinary, TypeDecorator
 from sqlalchemy.dialects.mysql import LONGBLOB, LONGTEXT
 from sqlalchemy.dialects.postgresql import BYTEA, JSONB, UUID
 from sqlalchemy.engine.interfaces import Dialect
-from sqlalchemy.orm import Mapped
 from sqlalchemy.sql.type_api import TypeEngine
 
 from configs import dify_config
-from graphon.model_runtime.entities.model_entities import ModelType
 
 
 class StringUUID(TypeDecorator[uuid.UUID | str | None]):
@@ -203,26 +201,6 @@ class EnumText[T: enum.StrEnum](TypeDecorator[T | None]):
         if x is None or y is None:
             return x is y
         return x == y
-
-
-def legacy_compatible_model_type_filter(column: Mapped[ModelType], model_type: ModelType | str):
-    """
-    Match both canonical and legacy persisted model_type values during reads.
-
-    Graphon normalizes legacy values such as ``text-generation`` to
-    ``ModelType.LLM``. Query paths therefore receive canonical enums while
-    older rows may still store the original string value.
-    """
-    model_type_enum = model_type if isinstance(model_type, ModelType) else ModelType.value_of(model_type)
-    legacy_model_type = model_type_enum.to_origin_model_type()
-
-    if legacy_model_type == model_type_enum.value:
-        return column == model_type_enum
-
-    return sa.or_(
-        column == model_type_enum,
-        sa.cast(column, VARCHAR()) == legacy_model_type,
-    )
 
 
 def adjusted_json_index(index_name, column_name):

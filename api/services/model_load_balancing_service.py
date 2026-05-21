@@ -21,7 +21,7 @@ from graphon.model_runtime.model_providers.model_provider_factory import ModelPr
 from libs.datetime_utils import naive_utc_now
 from models.enums import CredentialSourceType
 from models.provider import LoadBalancingModelConfig, ProviderCredential, ProviderModelCredential
-from models.types import legacy_compatible_model_type_filter
+from models.utils.model_type_compat import legacy_compatible_model_type_filter
 
 logger = logging.getLogger(__name__)
 

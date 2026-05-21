@@ -53,7 +53,7 @@ from models.provider import (
     TenantPreferredModelProvider,
 )
 from models.provider_ids import ModelProviderID
-from models.types import legacy_compatible_model_type_filter
+from models.utils.model_type_compat import legacy_compatible_model_type_filter
 from services.feature_service import FeatureService
 
 if TYPE_CHECKING:
