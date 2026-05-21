@@ -153,8 +153,15 @@ vi.mock('@/app/components/header/account-setting/update-setting-popover', () => 
 }))
 
 vi.mock('@/app/components/plugins/card', () => ({
-  default: ({ payload, className }: { payload: { name: string }, className?: string }) => (
-    <div data-testid={`card-${payload.name}`} className={className}>{payload.name}</div>
+  default: ({ payload, className }: { payload: { from?: string, name: string, org?: string }, className?: string }) => (
+    <div
+      data-testid={`card-${payload.name}`}
+      data-from={payload.from}
+      data-org={payload.org}
+      className={className}
+    >
+      {payload.name}
+    </div>
   ),
 }))
 
@@ -205,7 +212,23 @@ vi.mock('@/app/components/plugins/marketplace/empty', () => ({
   default: ({ text }: { text: string }) => <div data-testid="empty">{text}</div>,
 }))
 
-const mockHandleScroll = vi.fn()
+const {
+  mockHandleScroll,
+  mockUseMarketplace,
+} = vi.hoisted(() => {
+  const handleScroll = vi.fn()
+  return {
+    mockHandleScroll: handleScroll,
+    mockUseMarketplace: vi.fn(() => ({
+      isLoading: false,
+      marketplaceCollections: [],
+      marketplaceCollectionPluginsMap: {},
+      plugins: [],
+      handleScroll,
+      page: 1,
+    })),
+  }
+})
 vi.mock('../marketplace', () => ({
   default: ({ showMarketplacePanel, isMarketplaceArrowVisible, contentInset }: {
     showMarketplacePanel: () => void
@@ -221,14 +244,7 @@ vi.mock('../marketplace', () => ({
 }))
 
 vi.mock('../marketplace/hooks', () => ({
-  useMarketplace: () => ({
-    isLoading: false,
-    marketplaceCollections: [],
-    marketplaceCollectionPluginsMap: {},
-    plugins: [],
-    handleScroll: mockHandleScroll,
-    page: 1,
-  }),
+  useMarketplace: (...args: unknown[]) => mockUseMarketplace(...args),
 }))
 
 vi.mock('../mcp', () => ({
@@ -528,6 +544,40 @@ describe('ProviderList', () => {
       renderProviderList()
       expect(screen.getByTestId('card-no-label-tool')).toBeInTheDocument()
     })
+
+    it('maps plugin collection identity to the shared card payload', () => {
+      renderProviderList()
+
+      expect(screen.getByTestId('card-plugin-tool')).toHaveAttribute('data-org', 'org')
+      expect(screen.getByTestId('card-plugin-tool')).toHaveAttribute('data-from', 'marketplace')
+    })
+
+    it('keeps non-plugin collections out of the marketplace icon path', () => {
+      renderProviderList()
+
+      expect(screen.getByTestId('card-google-search')).toHaveAttribute('data-from', 'package')
+    })
+
+    it('falls back to the collection name when plugin_id has no package segment', () => {
+      mockCollectionData = [{
+        id: 'builtin-plugin-with-short-id',
+        name: 'fallback-plugin-name',
+        author: 'Dify',
+        description: { en_US: 'Plugin Tool', zh_Hans: '插件工具' },
+        icon: 'icon-plugin',
+        label: { en_US: 'Plugin Tool', zh_Hans: '插件工具' },
+        type: 'builtin',
+        team_credentials: {},
+        is_team_authorization: false,
+        allow_delete: false,
+        labels: [],
+        plugin_id: 'openai',
+      }]
+
+      renderProviderList()
+
+      expect(screen.getByTestId('card-fallback-plugin-name')).toHaveAttribute('data-org', '')
+    })
   })
 
   describe('MCP Tab', () => {
@@ -610,6 +660,13 @@ describe('ProviderList', () => {
     it('does not show marketplace when enable_marketplace is false', () => {
       renderProviderList()
       expect(screen.queryByTestId('marketplace')).not.toBeInTheDocument()
+    })
+
+    it('does not initialize marketplace hook outside builtin tools', () => {
+      mockEnableMarketplace = true
+      renderProviderList(undefined, 'workflow')
+      expect(screen.queryByTestId('marketplace')).not.toBeInTheDocument()
+      expect(mockUseMarketplace).not.toHaveBeenCalled()
     })
 
     it('scrolls to marketplace panel on arrow click', () => {

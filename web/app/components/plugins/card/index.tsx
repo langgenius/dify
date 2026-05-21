@@ -22,9 +22,14 @@ import OrgInfo from './base/org-info'
 import Placeholder from './base/placeholder'
 import Title from './base/title'
 
+export type CardPayload = Omit<Plugin, 'icon' | 'icon_dark'> & {
+  icon: string | { content: string, background: string }
+  icon_dark?: string | { content: string, background: string }
+}
+
 type Props = {
   className?: string
-  payload: Plugin
+  payload: CardPayload
   titleLeft?: React.ReactNode
   installed?: boolean
   installFailed?: boolean

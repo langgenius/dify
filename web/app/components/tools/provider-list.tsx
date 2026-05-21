@@ -1,11 +1,12 @@
 'use client'
+import type { RefObject } from 'react'
 import type { ToolsContentInset } from './content-inset'
 import type { Collection } from './types'
-import type { Plugin } from '@/app/components/plugins/types'
+import type { CardPayload } from '@/app/components/plugins/card'
 import type { ToolCategory } from '@/app/components/tools/integration-routes'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useSuspenseQuery } from '@tanstack/react-query'
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Input from '@/app/components/base/input'
 import TabSliderNew from '@/app/components/base/tab-slider-new'
@@ -34,6 +35,92 @@ import { getToolType } from './utils'
 type ProviderListProps = {
   category?: ToolCategory
   contentInset?: ToolsContentInset
+}
+
+type BuiltinMarketplacePanelProps = {
+  containerRef: RefObject<HTMLDivElement | null>
+  contentInset: ToolsContentInset
+  keywords: string
+  tagFilterValue: string[]
+}
+
+const getCollectionPluginIdentity = (collection: Collection) => {
+  const [org, ...nameParts] = collection.plugin_id?.split('/').filter(Boolean) ?? []
+
+  if (org && nameParts.length) {
+    return {
+      org,
+      name: nameParts.join('/'),
+    }
+  }
+
+  return {
+    org: '',
+    name: collection.name,
+  }
+}
+
+const collectionToCardPayload = (collection: Collection): CardPayload => {
+  const { org, name } = getCollectionPluginIdentity(collection)
+
+  return {
+    ...collection,
+    type: 'tool',
+    org,
+    name,
+    plugin_id: collection.plugin_id ?? collection.id,
+    version: '',
+    latest_version: '',
+    latest_package_identifier: '',
+    brief: collection.description,
+    description: collection.description,
+    introduction: '',
+    repository: '',
+    category: PluginCategoryEnum.tool,
+    install_count: 0,
+    endpoint: {
+      settings: [],
+    },
+    tags: collection.labels?.map(name => ({ name })) ?? [],
+    badges: [],
+    verification: {
+      authorized_category: 'community',
+    },
+    verified: false,
+    from: collection.plugin_id ? 'marketplace' : 'package',
+  }
+}
+
+const BuiltinMarketplacePanel = ({
+  containerRef,
+  contentInset,
+  keywords,
+  tagFilterValue,
+}: BuiltinMarketplacePanelProps) => {
+  const {
+    isMarketplaceArrowVisible,
+    marketplaceContext,
+    showMarketplacePanel,
+    toolListTailRef,
+  } = useToolMarketplacePanel({
+    containerRef,
+    keywords,
+    tagFilterValue,
+  })
+
+  return (
+    <>
+      <div ref={toolListTailRef} />
+      <Marketplace
+        searchPluginText={keywords}
+        filterPluginTags={tagFilterValue}
+        isMarketplaceArrowVisible={isMarketplaceArrowVisible}
+        showMarketplacePanel={showMarketplacePanel}
+        marketplaceContext={marketplaceContext}
+        contentInset={contentInset}
+      />
+    </>
+  )
 }
 
 const ProviderList = ({
@@ -95,17 +182,7 @@ const ProviderList = ({
   const currentPluginDetail = useMemo(() => {
     return checkedInstalledData?.plugins?.[0]
   }, [checkedInstalledData])
-
-  const {
-    containerRef,
-    isMarketplaceArrowVisible,
-    marketplaceContext,
-    showMarketplacePanel,
-    toolListTailRef,
-  } = useToolMarketplacePanel({
-    keywords,
-    tagFilterValue,
-  })
+  const containerRef = useRef<HTMLDivElement>(null)
 
   return (
     <>
@@ -169,12 +246,7 @@ const ProviderList = ({
                       currentProviderId === collection.id && 'border-[1.5px] border-components-option-card-option-selected-border',
                     )}
                     hideCornerMark
-                    payload={{
-                      ...collection,
-                      brief: collection.description,
-                      org: collection.plugin_id ? collection.plugin_id.split('/')[0] : '',
-                      name: collection.plugin_id ? collection.plugin_id.split('/')[1] : collection.name,
-                    } as unknown as Plugin}
+                    payload={collectionToCardPayload(collection)}
                     footer={(
                       <CardMoreInfo
                         tags={collection.labels?.map(label => getTagLabel(label)) || []}
@@ -193,15 +265,12 @@ const ProviderList = ({
           {!filteredCollectionList.length && activeTab === 'builtin' && (
             <Empty lightCard text={t('noTools', { ns: 'tools' })} className={cn('h-[224px] shrink-0', toolListFrameClassName)} />
           )}
-          <div ref={toolListTailRef} />
           {enable_marketplace && activeTab === 'builtin' && (
-            <Marketplace
-              searchPluginText={keywords}
-              filterPluginTags={tagFilterValue}
-              isMarketplaceArrowVisible={isMarketplaceArrowVisible}
-              showMarketplacePanel={showMarketplacePanel}
-              marketplaceContext={marketplaceContext}
+            <BuiltinMarketplacePanel
+              containerRef={containerRef}
               contentInset={contentInset}
+              keywords={keywords}
+              tagFilterValue={tagFilterValue}
             />
           )}
           {activeTab === 'mcp' && (
