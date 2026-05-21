@@ -70,7 +70,7 @@ type ActionsSectionProps = Pick<AppPublisherProps, | 'hasHumanInputNode'
     showRunConfig?: boolean
     workflowToolIsLoading: boolean
     workflowToolOutdated: boolean
-    workflowToolIsCurrentWorkspaceManager: boolean
+    workflowToolCanManage: boolean
     workflowToolMessage?: string
     onConfigureWorkflowTool: () => void
   }
@@ -270,7 +270,7 @@ export const PublisherActionsSection = ({
   workflowToolAvailable = true,
   workflowToolIsLoading,
   workflowToolOutdated,
-  workflowToolIsCurrentWorkspaceManager,
+  workflowToolCanManage,
   workflowToolMessage,
   onConfigureWorkflowTool,
 }: ActionsSectionProps) => {
@@ -361,7 +361,7 @@ export const PublisherActionsSection = ({
           published={!!toolPublished}
           isLoading={workflowToolIsLoading}
           outdated={workflowToolOutdated}
-          isCurrentWorkspaceManager={workflowToolIsCurrentWorkspaceManager}
+          canManageWorkflowTool={workflowToolCanManage}
           onConfigure={onConfigureWorkflowTool}
           disabledReason={workflowToolMessage}
         />

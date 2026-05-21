@@ -444,7 +444,7 @@ const AppPublisher = ({
               workflowToolAvailable={workflowToolAvailable}
               workflowToolIsLoading={workflowTool.isLoading}
               workflowToolOutdated={workflowTool.outdated}
-              workflowToolIsCurrentWorkspaceManager={workflowTool.isCurrentWorkspaceManager}
+              workflowToolCanManage={workflowTool.canManageWorkflowTool}
               workflowToolMessage={workflowToolMessage}
               onConfigureWorkflowTool={openWorkflowToolDrawer}
             />

@@ -1,4 +1,5 @@
 'use client'
+import type { ComponentProps } from 'react'
 import type { ToolWithProvider } from '../../workflow/types'
 import {
   AlertDialog,
@@ -9,15 +10,15 @@ import {
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { cn } from '@langgenius/dify-ui/cn'
-import { RiHammerFill } from '@remixicon/react'
 import { useBoolean } from 'ahooks'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Indicator from '@/app/components/header/indicator'
 import Icon from '@/app/components/plugins/card/base/card-icon'
-import { useAppContext } from '@/context/app-context'
+import { useSelector as useAppContextWithSelector } from '@/context/app-context'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import { useDeleteMCP, useUpdateMCP } from '@/service/use-tools'
+import { hasPermission } from '@/utils/permission'
 import OperationDropdown from './detail/operation-dropdown'
 import MCPModal from './modal'
 
@@ -29,6 +30,11 @@ type Props = {
   onDeleted: () => void
 }
 
+type MCPModalConfirmPayload = Parameters<ComponentProps<typeof MCPModal>['onConfirm']>[0]
+type MutationResult = {
+  result?: string
+}
+
 const MCPCard = ({
   currentProvider,
   data,
@@ -38,7 +44,8 @@ const MCPCard = ({
 }: Props) => {
   const { t } = useTranslation()
   const { formatTimeFromNow } = useFormatTimeFromNow()
-  const { isCurrentWorkspaceManager } = useAppContext()
+  const workspacePermissionKeys = useAppContextWithSelector(state => state.workspacePermissionKeys)
+  const canManageMCP = hasPermission(workspacePermissionKeys, 'mcp.manage')
 
   const { mutateAsync: updateMCP } = useUpdateMCP({})
   const { mutateAsync: deleteMCP } = useDeleteMCP({})
@@ -60,26 +67,32 @@ const MCPCard = ({
     setFalse: hideDeleting,
   }] = useBoolean(false)
 
-  const handleUpdate = useCallback(async (form: any) => {
+  const handleUpdate = useCallback(async (form: MCPModalConfirmPayload) => {
+    if (!canManageMCP)
+      return
+
     const res = await updateMCP({
       ...form,
       provider_id: data.id,
     })
-    if ((res as any)?.result === 'success') {
+    if ((res as MutationResult)?.result === 'success') {
       hideUpdateModal()
       onUpdate(data.id)
     }
-  }, [data, updateMCP, hideUpdateModal, onUpdate])
+  }, [canManageMCP, data, updateMCP, hideUpdateModal, onUpdate])
 
   const handleDelete = useCallback(async () => {
+    if (!canManageMCP)
+      return
+
     showDeleting()
-    const res = await deleteMCP(data.id)
+    const res = await deleteMCP(data.id) as MutationResult
     hideDeleting()
-    if ((res as any)?.result === 'success') {
+    if (res.result === 'success') {
       hideDeleteConfirm()
       onDeleted()
     }
-  }, [showDeleting, deleteMCP, data.id, hideDeleting, hideDeleteConfirm, onDeleted])
+  }, [canManageMCP, showDeleting, deleteMCP, data.id, hideDeleting, hideDeleteConfirm, onDeleted])
 
   return (
     <div
@@ -101,7 +114,7 @@ const MCPCard = ({
       <div className="flex items-center gap-1 rounded-b-xl pt-1.5 pr-2.5 pb-2.5 pl-4">
         <div className="flex w-0 grow items-center gap-2">
           <div className="flex items-center gap-1">
-            <RiHammerFill className="size-3 shrink-0 text-text-quaternary" />
+            <span className="i-ri-hammer-fill size-3 shrink-0 text-text-quaternary" />
             {data.tools.length > 0 && (
               <div className="shrink-0 system-xs-regular text-text-tertiary">{t('mcp.toolsCount', { ns: 'tools', count: data.tools.length })}</div>
             )}
@@ -120,7 +133,7 @@ const MCPCard = ({
           </div>
         )}
       </div>
-      {isCurrentWorkspaceManager && (
+      {canManageMCP && (
         <div className={cn('absolute top-2.5 right-2.5 hidden group-hover:block', isOperationShow && 'block')} onClick={e => e.stopPropagation()}>
           <OperationDropdown
             inCard
@@ -130,7 +143,7 @@ const MCPCard = ({
           />
         </div>
       )}
-      {isShowUpdateModal && (
+      {canManageMCP && isShowUpdateModal && (
         <MCPModal
           data={data}
           show={isShowUpdateModal}
@@ -138,7 +151,7 @@ const MCPCard = ({
           onHide={hideUpdateModal}
         />
       )}
-      <AlertDialog open={isShowDeleteConfirm} onOpenChange={open => !open && hideDeleteConfirm()}>
+      <AlertDialog open={canManageMCP && isShowDeleteConfirm} onOpenChange={open => !open && hideDeleteConfirm()}>
         <AlertDialogContent>
           <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
             <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">

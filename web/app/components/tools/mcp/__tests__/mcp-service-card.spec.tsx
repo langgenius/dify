@@ -57,7 +57,7 @@ type MockHookState = {
     description: string
     parameters: Record<string, unknown>
   } | undefined
-  isCurrentWorkspaceManager: boolean
+  canManageMCP: boolean
   toggleDisabled: boolean
   isMinimalState: boolean
   appUnpublished: boolean
@@ -80,7 +80,7 @@ const createDefaultHookState = (overrides: Partial<MockHookState> = {}): MockHoo
     description: 'Test server',
     parameters: {},
   },
-  isCurrentWorkspaceManager: true,
+  canManageMCP: true,
   toggleDisabled: false,
   isMinimalState: false,
   appUnpublished: false,
@@ -141,6 +141,17 @@ describe('MCPServiceCard', () => {
       expect(screen.getByText('tools.mcp.server.title')).toBeInTheDocument()
       expect(screen.getByText(/appOverview.overview.status/)).toBeInTheDocument()
       expect(screen.getByRole('switch')).toBeInTheDocument()
+    })
+
+    it('should render nothing without mcp.manage', () => {
+      mockHookState = createDefaultHookState({
+        canManageMCP: false,
+        toggleDisabled: true,
+      })
+
+      const { container } = render(<MCPServiceCard appInfo={createMockAppInfo()} />, { wrapper: createWrapper() })
+
+      expect(container.firstChild).toBeNull()
     })
 
     it('should render edit button in full state', () => {

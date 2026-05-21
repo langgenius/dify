@@ -12,12 +12,23 @@ type MockDetail = MockProvider | undefined
 
 // Mock dependencies
 const mockRefetch = vi.fn()
+const mockUseAllToolProviders = vi.fn()
 let mockProviders: MockProvider[] = []
+let mockWorkspacePermissionKeys: string[] = ['mcp.manage']
 
 vi.mock('@/service/use-tools', () => ({
-  useAllToolProviders: () => ({
+  useAllToolProviders: (...args: unknown[]) => {
+    mockUseAllToolProviders(...args)
+    return {
     data: mockProviders,
     refetch: mockRefetch,
+    }
+  },
+}))
+
+vi.mock('@/context/app-context', () => ({
+  useSelector: (selector: (state: { workspacePermissionKeys: string[] }) => unknown) => selector({
+    workspacePermissionKeys: mockWorkspacePermissionKeys,
   }),
 }))
 
@@ -65,6 +76,7 @@ describe('MCPList', () => {
     vi.clearAllMocks()
     vi.useFakeTimers()
     mockProviders = []
+    mockWorkspacePermissionKeys = ['mcp.manage']
     mockRefetch.mockResolvedValue(undefined)
   })
 
@@ -83,6 +95,24 @@ describe('MCPList', () => {
       render(<MCPList searchText="" />)
 
       expect(screen.getByTestId('create-card')).toBeInTheDocument()
+    })
+
+    it('should render nothing when user lacks mcp.manage', () => {
+      mockWorkspacePermissionKeys = []
+      mockProviders = [
+        { id: '1', name: 'Provider 1', type: 'mcp' },
+      ]
+
+      const { container } = render(<MCPList searchText="" />)
+
+      expect(container.firstChild).toBeNull()
+      expect(mockUseAllToolProviders).toHaveBeenCalledWith('mcp', false)
+    })
+
+    it('should fetch only MCP providers when user has mcp.manage', () => {
+      render(<MCPList searchText="" />)
+
+      expect(mockUseAllToolProviders).toHaveBeenCalledWith('mcp', true)
     })
 
     it('should render default skeleton cards when list is empty', () => {
@@ -171,6 +201,18 @@ describe('MCPList', () => {
     })
 
     it('should filter providers based on search text', () => {
+      render(<MCPList searchText="search" />)
+
+      expect(screen.getByTestId('provider-card-1')).toBeInTheDocument()
+      expect(screen.queryByTestId('provider-card-2')).not.toBeInTheDocument()
+    })
+
+    it('should not include non-MCP providers even when search text matches', () => {
+      mockProviders = [
+        { id: '1', name: { 'en-US': 'Search Tool' }, type: 'mcp' },
+        { id: '2', name: { 'en-US': 'Search API Tool' }, type: 'api' },
+      ]
+
       render(<MCPList searchText="search" />)
 
       expect(screen.getByTestId('provider-card-1')).toBeInTheDocument()

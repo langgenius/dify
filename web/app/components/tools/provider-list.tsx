@@ -1,5 +1,6 @@
 'use client'
 import type { Collection } from './types'
+import type { Plugin } from '@/app/components/plugins/types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { parseAsStringLiteral, useQueryState } from 'nuqs'
@@ -35,6 +36,19 @@ const isToolProviderCategory = (value: string): value is ToolProviderCategory =>
   return toolProviderCategorySet.has(value)
 }
 
+const canAccessToolProviderCategory = (
+  category: ToolProviderCategory,
+  permissions: { canManageCustomAndWorkflow: boolean, canManageMCP: boolean },
+) => {
+  if (category === 'builtin')
+    return true
+
+  if (category === 'api' || category === 'workflow')
+    return permissions.canManageCustomAndWorkflow
+
+  return permissions.canManageMCP
+}
+
 const parseAsToolProviderCategory = parseAsStringLiteral(TOOL_PROVIDER_CATEGORY_VALUES)
   .withDefault('builtin')
 
@@ -53,6 +67,11 @@ const ProviderList = () => {
   const [activeTab, setActiveTab] = useQueryState('category', parseAsToolProviderCategory)
   const canManageCustomAndWorkflow = hasPermission(workspacePermissionKeys, 'tool.manage')
   const canManageMCP = hasPermission(workspacePermissionKeys, 'mcp.manage')
+  const canAccessActiveTab = canAccessToolProviderCategory(activeTab, {
+    canManageCustomAndWorkflow,
+    canManageMCP,
+  })
+  const renderedActiveTab = canAccessActiveTab ? activeTab : 'builtin'
   const options = [
     { value: 'builtin', text: t('type.builtIn', { ns: 'tools' }) },
     ...(canManageCustomAndWorkflow
@@ -74,7 +93,7 @@ const ProviderList = () => {
   const { data: collectionList = [], refetch } = useAllToolProviders()
   const filteredCollectionList = useMemo(() => {
     return collectionList.filter((collection) => {
-      if (collection.type !== activeTab)
+      if (collection.type !== renderedActiveTab)
         return false
       if (tagFilterValue.length > 0 && (!collection.labels || collection.labels.every(label => !tagFilterValue.includes(label))))
         return false
@@ -82,9 +101,19 @@ const ProviderList = () => {
         return Object.values(collection.label).some(value => value.toLowerCase().includes(keywords.toLowerCase()))
       return true
     })
-  }, [activeTab, tagFilterValue, keywords, collectionList])
+  }, [renderedActiveTab, tagFilterValue, keywords, collectionList])
 
   const [currentProviderId, setCurrentProviderId] = useState<string | undefined>()
+  useEffect(() => {
+    if (canAccessActiveTab)
+      return
+
+    queueMicrotask(() => {
+      void setActiveTab('builtin')
+      setCurrentProviderId(undefined)
+    })
+  }, [canAccessActiveTab, setActiveTab])
+
   const currentProvider = useMemo<Collection | undefined>(() => {
     return filteredCollectionList.find(collection => collection.id === currentProviderId)
   }, [currentProviderId, filteredCollectionList])
@@ -145,18 +174,20 @@ const ProviderList = () => {
           )}
           >
             <TabSliderNew
-              value={activeTab}
+              value={renderedActiveTab}
               onChange={(state) => {
                 if (!isToolProviderCategory(state))
                   return
+                if (!canAccessToolProviderCategory(state, { canManageCustomAndWorkflow, canManageMCP }))
+                  return
                 setActiveTab(state)
-                if (state !== activeTab)
+                if (state !== renderedActiveTab)
                   setCurrentProviderId(undefined)
               }}
               options={options}
             />
             <div className="flex items-center gap-2">
-              {activeTab !== 'mcp' && (
+              {renderedActiveTab !== 'mcp' && (
                 <LabelFilter value={tagFilterValue} onChange={handleTagsChange} />
               )}
               <Input
@@ -169,13 +200,13 @@ const ProviderList = () => {
               />
             </div>
           </div>
-          {activeTab !== 'mcp' && (
+          {renderedActiveTab !== 'mcp' && (
             <div className={cn(
               'relative grid shrink-0 grid-cols-1 content-start gap-4 px-12 pt-2 pb-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4',
-              !filteredCollectionList.length && activeTab === 'workflow' && 'grow',
+              !filteredCollectionList.length && renderedActiveTab === 'workflow' && 'grow',
             )}
             >
-              {activeTab === 'api' && <CustomCreateCard onRefreshData={refetch} />}
+              {renderedActiveTab === 'api' && <CustomCreateCard onRefreshData={refetch} />}
               {filteredCollectionList.map(collection => (
                 <div
                   key={collection.id}
@@ -192,7 +223,7 @@ const ProviderList = () => {
                       brief: collection.description,
                       org: collection.plugin_id ? collection.plugin_id.split('/')[0] : '',
                       name: collection.plugin_id ? collection.plugin_id.split('/')[1] : collection.name,
-                    } as any}
+                    } as unknown as Plugin}
                     footer={(
                       <CardMoreInfo
                         tags={collection.labels?.map(label => getTagLabel(label)) || []}
@@ -201,14 +232,14 @@ const ProviderList = () => {
                   />
                 </div>
               ))}
-              {!filteredCollectionList.length && activeTab === 'workflow' && <div className="absolute top-1/2 left-1/2 -translate-1/2"><WorkflowToolEmpty type={getToolType(activeTab)} /></div>}
+              {!filteredCollectionList.length && renderedActiveTab === 'workflow' && <div className="absolute top-1/2 left-1/2 -translate-1/2"><WorkflowToolEmpty type={getToolType(renderedActiveTab)} /></div>}
             </div>
           )}
-          {!filteredCollectionList.length && activeTab === 'builtin' && (
+          {!filteredCollectionList.length && renderedActiveTab === 'builtin' && (
             <Empty lightCard text={t('noTools', { ns: 'tools' })} className="h-[224px] shrink-0 px-12" />
           )}
           <div ref={toolListTailRef} />
-          {enable_marketplace && activeTab === 'builtin' && (
+          {enable_marketplace && renderedActiveTab === 'builtin' && (
             <Marketplace
               searchPluginText={keywords}
               filterPluginTags={tagFilterValue}
@@ -217,7 +248,7 @@ const ProviderList = () => {
               marketplaceContext={marketplaceContext}
             />
           )}
-          {activeTab === 'mcp' && (
+          {renderedActiveTab === 'mcp' && (
             <MCPList searchText={keywords} />
           )}
         </div>

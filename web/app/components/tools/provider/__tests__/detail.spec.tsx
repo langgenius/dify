@@ -13,9 +13,13 @@ vi.mock('@/i18n-config/language', () => ({
 }))
 
 const mockIsCurrentWorkspaceManager = vi.fn(() => true)
+let mockWorkspacePermissionKeys: string[] = ['tool.manage']
 vi.mock('@/context/app-context', () => ({
   useAppContext: () => ({
     isCurrentWorkspaceManager: mockIsCurrentWorkspaceManager(),
+  }),
+  useSelector: (selector: (state: { workspacePermissionKeys: string[] }) => unknown) => selector({
+    workspacePermissionKeys: mockWorkspacePermissionKeys,
   }),
 }))
 
@@ -161,6 +165,7 @@ describe('ProviderDetail', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
+    mockWorkspacePermissionKeys = ['tool.manage']
     mockFetchBuiltInToolList.mockResolvedValue([
       { name: 'tool-1', label: { en_US: 'Tool 1' }, description: { en_US: 'desc' }, parameters: [], labels: [], author: '', output_schema: {} },
       { name: 'tool-2', label: { en_US: 'Tool 2' }, description: { en_US: 'desc' }, parameters: [], labels: [], author: '', output_schema: {} },
@@ -271,6 +276,24 @@ describe('ProviderDetail', () => {
         expect(screen.getByText('tools.createTool.editAction'))!.toBeInTheDocument()
       })
     })
+
+    it('hides custom edit button when user lacks tool.manage', async () => {
+      mockWorkspacePermissionKeys = []
+      mockFetchCustomCollection.mockResolvedValue({
+        credentials: { auth_type: 'none' },
+      })
+      render(
+        <ProviderDetail
+          collection={createMockCollection({ type: CollectionType.custom })}
+          onHide={mockOnHide}
+          onRefreshData={mockOnRefreshData}
+        />,
+      )
+      await waitFor(() => {
+        expect(mockFetchCustomCollection).toHaveBeenCalledWith('test-collection')
+      })
+      expect(screen.queryByText('tools.createTool.editAction')).not.toBeInTheDocument()
+    })
   })
 
   describe('Workflow Collection', () => {
@@ -289,6 +312,22 @@ describe('ProviderDetail', () => {
         expect(screen.getByText('tools.openInStudio'))!.toBeInTheDocument()
         expect(screen.getByText('tools.createTool.editAction'))!.toBeInTheDocument()
       })
+    })
+
+    it('hides workflow edit button when user lacks tool.manage', async () => {
+      mockWorkspacePermissionKeys = []
+      render(
+        <ProviderDetail
+          collection={createMockCollection({ type: CollectionType.workflow })}
+          onHide={mockOnHide}
+          onRefreshData={mockOnRefreshData}
+        />,
+      )
+      await waitFor(() => {
+        expect(mockFetchWorkflowToolDetail).toHaveBeenCalledWith('test-id')
+      })
+      expect(screen.getByText('tools.openInStudio'))!.toBeInTheDocument()
+      expect(screen.queryByText('tools.createTool.editAction')).not.toBeInTheDocument()
     })
   })
 

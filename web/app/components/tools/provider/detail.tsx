@@ -21,10 +21,6 @@ import {
   DrawerViewport,
 } from '@langgenius/dify-ui/drawer'
 import { toast } from '@langgenius/dify-ui/toast'
-import {
-  RiCloseLine,
-} from '@remixicon/react'
-import * as React from 'react'
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
@@ -39,7 +35,7 @@ import Title from '@/app/components/plugins/card/base/title'
 import EditCustomToolModal from '@/app/components/tools/edit-custom-collection-modal'
 import ConfigCredential from '@/app/components/tools/setting/build-in/config-credentials'
 import { WorkflowToolDrawer } from '@/app/components/tools/workflow-tool'
-import { useAppContext } from '@/context/app-context'
+import { useAppContext, useSelector as useAppContextWithSelector } from '@/context/app-context'
 import { useLocale } from '@/context/i18n'
 import { useModalContext } from '@/context/modal-context'
 
@@ -59,6 +55,7 @@ import {
   updateCustomCollection,
 } from '@/service/tools'
 import { useInvalidateAllWorkflowTools } from '@/service/use-tools'
+import { hasPermission } from '@/utils/permission'
 import { basePath } from '@/utils/var'
 import { AuthHeaderPrefix, AuthType, CollectionType } from '../types'
 import ToolItem from './tool-item'
@@ -83,6 +80,8 @@ const ProviderDetail = ({
   const isBuiltIn = collection.type === CollectionType.builtIn
   const isModel = collection.type === CollectionType.model
   const { isCurrentWorkspaceManager } = useAppContext()
+  const workspacePermissionKeys = useAppContextWithSelector(state => state.workspacePermissionKeys)
+  const canManageTools = hasPermission(workspacePermissionKeys, 'tool.manage')
   const invalidateAllWorkflowTools = useInvalidateAllWorkflowTools()
   const [isDetailLoading, setIsDetailLoading] = useState(false)
 
@@ -132,6 +131,9 @@ const ProviderDetail = ({
   }, [collection.labels, collection.name])
 
   const doUpdateCustomToolCollection = async (data: CustomCollectionBackend) => {
+    if (!canManageTools)
+      return
+
     await updateCustomCollection(data)
     onRefreshData()
     await getCustomProvider()
@@ -141,6 +143,9 @@ const ProviderDetail = ({
     setIsShowEditCustomCollectionModal(false)
   }
   const doRemoveCustomToolCollection = async () => {
+    if (!canManageTools)
+      return
+
     await removeCustomCollection(collection?.name as string)
     onRefreshData()
     toast.success(t('api.actionSuccess', { ns: 'common' }))
@@ -168,6 +173,9 @@ const ProviderDetail = ({
     setIsDetailLoading(false)
   }, [collection.id])
   const removeWorkflowToolProvider = async () => {
+    if (!canManageTools)
+      return
+
     await deleteWorkflowTool(collection.id)
     onRefreshData()
     toast.success(t('api.actionSuccess', { ns: 'common' }))
@@ -177,6 +185,9 @@ const ProviderDetail = ({
     workflow_app_id: string
     workflow_tool_id: string
   }>) => {
+    if (!canManageTools)
+      return
+
     await saveWorkflowToolProvider(data)
     invalidateAllWorkflowTools()
     onRefreshData()
@@ -185,10 +196,16 @@ const ProviderDetail = ({
     setWorkflowToolDrawerOpen(false)
   }
   const onClickCustomToolDelete = () => {
+    if (!canManageTools)
+      return
+
     setDeleteAction('customTool')
     setShowConfirmDelete(true)
   }
   const onClickWorkflowToolDelete = () => {
+    if (!canManageTools)
+      return
+
     setDeleteAction('workflowTool')
     setShowConfirmDelete(true)
   }
@@ -268,7 +285,7 @@ const ProviderDetail = ({
                     </div>
                     <div className="flex gap-1">
                       <ActionButton aria-label={t('operation.close', { ns: 'common' })} onClick={onHide}>
-                        <RiCloseLine className="size-4" />
+                        <span className="i-ri-close-line size-4" />
                       </ActionButton>
                     </div>
                   </div>
@@ -277,7 +294,7 @@ const ProviderDetail = ({
                   <Description text={collection.description[language]} descriptionLineRows={2}></Description>
                 )}
                 <div className="flex gap-1 border-b-[0.5px] border-divider-subtle">
-                  {collection.type === CollectionType.custom && !isDetailLoading && (
+                  {collection.type === CollectionType.custom && canManageTools && !isDetailLoading && (
                     <Button
                       className={cn('my-3 w-full shrink-0')}
                       onClick={() => setIsShowEditCustomCollectionModal(true)}
@@ -297,13 +314,14 @@ const ProviderDetail = ({
                           <LinkExternal02 className="ml-1 size-4" />
                         </a>
                       </Button>
-                      <Button
-                        className={cn('my-3 w-[183px] shrink-0')}
-                        onClick={() => setWorkflowToolDrawerOpen(true)}
-                        disabled={!isCurrentWorkspaceManager}
-                      >
-                        <div className="system-sm-medium text-text-secondary">{t('createTool.editAction', { ns: 'tools' })}</div>
-                      </Button>
+                      {canManageTools && (
+                        <Button
+                          className={cn('my-3 w-[183px] shrink-0')}
+                          onClick={() => setWorkflowToolDrawerOpen(true)}
+                        >
+                          <div className="system-sm-medium text-text-secondary">{t('createTool.editAction', { ns: 'tools' })}</div>
+                        </Button>
+                      )}
                     </>
                   )}
                 </div>
@@ -405,7 +423,7 @@ const ProviderDetail = ({
                     }}
                   />
                 )}
-                {isShowEditCollectionToolModal && (
+                {canManageTools && isShowEditCollectionToolModal && (
                   <EditCustomToolModal
                     payload={customCollection}
                     onHide={() => setIsShowEditCustomCollectionModal(false)}
@@ -413,7 +431,7 @@ const ProviderDetail = ({
                     onRemove={onClickCustomToolDelete}
                   />
                 )}
-                {workflowToolDrawerOpen && (
+                {canManageTools && workflowToolDrawerOpen && (
                   <WorkflowToolDrawer
                     payload={customCollection as unknown as WorkflowToolDrawerPayload}
                     onHide={() => setWorkflowToolDrawerOpen(false)}
@@ -421,7 +439,7 @@ const ProviderDetail = ({
                     onSave={updateWorkflowToolProvider}
                   />
                 )}
-                <AlertDialog open={showConfirmDelete} onOpenChange={open => !open && setShowConfirmDelete(false)}>
+                <AlertDialog open={canManageTools && showConfirmDelete} onOpenChange={open => !open && setShowConfirmDelete(false)}>
                   <AlertDialogContent>
                     <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
                       <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">

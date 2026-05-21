@@ -12,7 +12,7 @@ type Props = {
   published: boolean
   isLoading: boolean
   outdated: boolean
-  isCurrentWorkspaceManager: boolean
+  canManageWorkflowTool: boolean
   onConfigure: () => void
   disabledReason?: string
 }
@@ -22,7 +22,7 @@ const WorkflowToolConfigureButton = ({
   published,
   isLoading,
   outdated,
-  isCurrentWorkspaceManager,
+  canManageWorkflowTool,
   onConfigure,
   disabledReason,
 }: Props) => {
@@ -35,11 +35,11 @@ const WorkflowToolConfigureButton = ({
       {(!published || !isLoading) && (
         <div className={cn(
           'group rounded-lg bg-background-section-burn transition-colors',
-          disabled || !isCurrentWorkspaceManager ? 'cursor-not-allowed opacity-60 shadow-xs' : 'cursor-pointer',
-          !disabled && !published && isCurrentWorkspaceManager && 'hover:bg-state-accent-hover',
+          disabled || !canManageWorkflowTool ? 'cursor-not-allowed opacity-60 shadow-xs' : 'cursor-pointer',
+          !disabled && !published && canManageWorkflowTool && 'hover:bg-state-accent-hover',
         )}
         >
-          {isCurrentWorkspaceManager
+          {canManageWorkflowTool
             ? (
                 <div
                   className="flex items-center justify-start gap-2 p-2 pl-2.5"
@@ -87,7 +87,7 @@ const WorkflowToolConfigureButton = ({
                   size="small"
                   className="w-[140px]"
                   onClick={onConfigure}
-                  disabled={!isCurrentWorkspaceManager || disabled}
+                  disabled={!canManageWorkflowTool || disabled}
                 >
                   {t('common.configure', { ns: 'workflow' })}
                   {outdated && <Indicator className="ml-1" color="yellow" />}

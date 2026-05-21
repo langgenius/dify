@@ -4,9 +4,10 @@ import type { PublishWorkflowParams } from '@/types/workflow'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useEffect, useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useAppContext } from '@/context/app-context'
+import { useSelector as useAppContextWithSelector } from '@/context/app-context'
 import { createWorkflowToolProvider, saveWorkflowToolProvider } from '@/service/tools'
 import { useInvalidateAllWorkflowTools, useInvalidateWorkflowToolDetailByAppID, useWorkflowToolDetailByAppID } from '@/service/use-tools'
+import { hasPermission } from '@/utils/permission'
 
 // region Pure helpers
 
@@ -119,7 +120,8 @@ export function useConfigureButton(options: UseConfigureButtonOptions) {
   } = options
 
   const { t } = useTranslation()
-  const { isCurrentWorkspaceManager } = useAppContext()
+  const workspacePermissionKeys = useAppContextWithSelector(state => state.workspacePermissionKeys)
+  const canManageWorkflowTool = hasPermission(workspacePermissionKeys, 'tool.manage')
 
   // Data fetching via React Query
   const { data: detail, isLoading } = useWorkflowToolDetailByAppID(workflowAppId, enabled && published)
@@ -175,6 +177,9 @@ export function useConfigureButton(options: UseConfigureButtonOptions) {
 
   // Mutation handlers (not memoized — only used in conditionally-rendered modal)
   const handleCreate = async (data: WorkflowToolProviderRequest & { workflow_app_id: string }) => {
+    if (!canManageWorkflowTool)
+      return
+
     try {
       await createWorkflowToolProvider(data)
       invalidateAllWorkflowTools()
@@ -192,6 +197,9 @@ export function useConfigureButton(options: UseConfigureButtonOptions) {
     workflow_app_id: string
     workflow_tool_id: string
   }>) => {
+    if (!canManageWorkflowTool)
+      return
+
     try {
       await handlePublish()
       await saveWorkflowToolProvider(data)
@@ -209,7 +217,7 @@ export function useConfigureButton(options: UseConfigureButtonOptions) {
     isLoading,
     outdated,
     payload,
-    isCurrentWorkspaceManager,
+    canManageWorkflowTool,
     handleCreate,
     handleUpdate,
   }
