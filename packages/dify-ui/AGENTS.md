@@ -11,6 +11,7 @@ Shared design tokens, the `cn()` utility, CSS-first Tailwind styles, and headles
 - Props pattern: `Omit<BaseXxx.Root.Props, 'className' | ...> & VariantProps<typeof xxxVariants> & { /* custom */ }`.
 - Use plain `Omit<...>` only for non-union Base UI props. When a prop changes the valid shape of related props (for example `value` / `defaultValue`, `multiple` / `value`, or `clearable` / `onChange`), model that relationship with an explicit discriminated union or a distributive helper instead of flattening the props.
 - When a component accepts a prop typed from a shared internal module, `export type` it from that component so consumers import it from the component subpath.
+- Match Base UI data attributes exactly. Use presence variants such as `data-popup-open:` for attributes like `data-popup-open`, and value variants such as `data-[side=top]:` for attributes like `data-side="top"`. Do not invent shorthand variants like `data-side-top:` unless a local custom variant exists. For floating popup animation origins, prefer Base UI's `--transform-origin` via `origin-(--transform-origin)` over side-based fallback selectors.
 
 ## Overlay Primitive Selection: Tooltip vs PreviewCard vs Popover
 
