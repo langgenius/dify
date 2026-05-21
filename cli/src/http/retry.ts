@@ -11,9 +11,8 @@ export function shouldRetry(target: Response | unknown, ctx: FetchContext): bool
     return false
   if (target instanceof Response)
     return RETRY_STATUS_SET.has(target.status)
-  // Transport error: retry if method is in allowlist, except for user-initiated aborts.
-  if (target instanceof Error && target.name === 'AbortError')
-    return false
+  // Any other transport error on a retryable method retries. User aborts are filtered
+  // out earlier in dispatch (before this hook ever runs), so they never reach here.
   return true
 }
 

@@ -11,15 +11,6 @@ export type HttpLogEvent = {
 
 export type HttpLogger = (event: HttpLogEvent) => void
 
-export type HttpFactoryOptions = {
-  readonly host: string
-  readonly bearer?: string
-  readonly timeoutMs?: number
-  readonly retryAttempts?: number
-  readonly userAgent?: string
-  readonly logger?: HttpLogger
-}
-
 export type HttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE'
 
 export type SearchParamValue = string | number | boolean | undefined

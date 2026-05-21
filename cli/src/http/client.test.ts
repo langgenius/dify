@@ -1,4 +1,6 @@
+import type { AddressInfo } from 'node:net'
 import type { DifyMock } from '../../test/fixtures/dify-mock/server.js'
+import * as http from 'node:http'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { startMock } from '../../test/fixtures/dify-mock/server.js'
 import { isBaseError } from '../errors/base.js'
@@ -8,6 +10,22 @@ import { createHttpClient } from './client.js'
 
 function base(mockUrl: string): string {
   return openAPIBase(mockUrl)
+}
+
+type Stub = { url: string, stop: () => Promise<void> }
+
+function startStub(handler: (req: http.IncomingMessage, res: http.ServerResponse) => void): Promise<Stub> {
+  return new Promise((resolve, reject) => {
+    const server = http.createServer(handler)
+    server.listen(0, '127.0.0.1', () => {
+      const addr = server.address() as AddressInfo
+      resolve({
+        url: `http://127.0.0.1:${addr.port}`,
+        stop: () => new Promise<void>((res, rej) => server.close(err => err ? rej(err) : res())),
+      })
+    })
+    server.on('error', reject)
+  })
 }
 
 describe('http client', () => {
@@ -350,22 +368,114 @@ describe('fetch() and stream()', () => {
     await expect(client.fetch('workspaces', { throwOnError: true })).rejects.toBeDefined()
   })
 
-  it('stream() ignores retryAttempts and timeoutMs from client defaults', async () => {
+  it('stream() bypasses the client-default timeout so SSE bodies stay open', async () => {
+    let stub: Stub | undefined
+    try {
+      stub = await startStub((_req, res) => {
+        setTimeout(() => {
+          res.writeHead(200, { 'content-type': 'text/event-stream' })
+          res.end('data: ok\n\n')
+        }, 200)
+      })
+      const client = createHttpClient({
+        baseURL: openAPIBase(stub.url),
+        bearer: 'dfoa_test',
+        timeoutMs: 50, // would abort .get(); stream() must ignore it
+        retryAttempts: 0,
+      })
+      const res = await client.stream('apps/app-1/run', { method: 'POST', json: {} })
+      expect(res.ok).toBe(true)
+    }
+    finally {
+      await stub?.stop()
+    }
+  })
+
+  it('stream() forces retryAttempts=0 even when client default would allow retries', async () => {
     let attempts = 0
     const client = createHttpClient({
       baseURL: openAPIBase('http://nonexistent-host-12345.invalid'),
       bearer: 'dfoa_test',
       retryAttempts: 5,
-      timeoutMs: 100,
+      timeoutMs: 0,
       logger: (e) => {
         if (e.phase === 'request' || e.phase === 'retry')
           attempts++
       },
     })
-    await expect(client.stream('apps/app-1/run', { method: 'POST', json: {} })).rejects.toBeDefined()
-    // POST is not in retryable methods so it's 1 attempt either way — covers same code path.
-    // The intent of this test is that stream() does not retry: confirmed by the existing POST allowlist gate.
+    await expect(client.stream('workspaces')).rejects.toBeDefined()
     expect(attempts).toBe(1)
+  })
+})
+
+describe('timeout + abort retry policy', () => {
+  it('does not retry POST on timeout (method allowlist gates timeout retries)', async () => {
+    let attempts = 0
+    let stub: Stub | undefined
+    try {
+      stub = await startStub(() => {
+        attempts++
+        // Never respond — let the client timeout abort.
+      })
+      const client = createHttpClient({
+        baseURL: openAPIBase(stub.url),
+        bearer: 'dfoa_test',
+        retryAttempts: 3,
+        timeoutMs: 100,
+      })
+      await expect(client.post('apps/app-1/run', { json: {} })).rejects.toBeDefined()
+      expect(attempts).toBe(1)
+    }
+    finally {
+      await stub?.stop()
+    }
+  })
+
+  it('retries GET on timeout up to retryAttempts', async () => {
+    let attempts = 0
+    let stub: Stub | undefined
+    try {
+      stub = await startStub(() => {
+        attempts++
+        // Never respond.
+      })
+      const client = createHttpClient({
+        baseURL: openAPIBase(stub.url),
+        bearer: 'dfoa_test',
+        retryAttempts: 2,
+        timeoutMs: 100,
+      })
+      await expect(client.get('workspaces')).rejects.toBeDefined()
+      expect(attempts).toBe(3) // initial + 2 retries
+    }
+    finally {
+      await stub?.stop()
+    }
+  })
+
+  it('does not retry GET on user-initiated abort', async () => {
+    let attempts = 0
+    let stub: Stub | undefined
+    try {
+      stub = await startStub(() => {
+        attempts++
+        // Never respond — caller will abort.
+      })
+      const ac = new AbortController()
+      const client = createHttpClient({
+        baseURL: openAPIBase(stub.url),
+        bearer: 'dfoa_test',
+        retryAttempts: 3,
+        timeoutMs: 5_000,
+      })
+      const pending = client.get('workspaces', { signal: ac.signal })
+      setTimeout(() => ac.abort(), 50)
+      await expect(pending).rejects.toBeDefined()
+      expect(attempts).toBe(1)
+    }
+    finally {
+      await stub?.stop()
+    }
   })
 })
 

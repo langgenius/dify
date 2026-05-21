@@ -48,12 +48,6 @@ describe('shouldRetry', () => {
   it('does not retry transport errors on non-retryable methods', () => {
     expect(shouldRetry(new Error('econnreset'), ctxFor('POST'))).toBe(false)
   })
-
-  it('does not retry user-initiated aborts', () => {
-    const err = new Error('aborted')
-    err.name = 'AbortError'
-    expect(shouldRetry(err, ctxFor('GET'))).toBe(false)
-  })
 })
 
 describe('backoffDelay', () => {

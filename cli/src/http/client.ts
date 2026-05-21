@@ -76,19 +76,17 @@ async function runHooks(hooks: readonly Hook[], ctx: FetchContext): Promise<void
     await hook(ctx)
 }
 
-function buildSignal(opts: RequestOptions, effectiveTimeoutMs: number | undefined): { signal: AbortSignal | undefined, timeoutSignal: AbortSignal | undefined } {
+function buildSignal(opts: RequestOptions, effectiveTimeoutMs: number | undefined): AbortSignal | undefined {
   const timeoutSignal = effectiveTimeoutMs !== undefined && effectiveTimeoutMs > 0
     ? AbortSignal.timeout(effectiveTimeoutMs)
     : undefined
   const userSignal = opts.signal
 
-  if (timeoutSignal === undefined && userSignal === undefined)
-    return { signal: undefined, timeoutSignal: undefined }
   if (timeoutSignal === undefined)
-    return { signal: userSignal, timeoutSignal: undefined }
+    return userSignal
   if (userSignal === undefined)
-    return { signal: timeoutSignal, timeoutSignal }
-  return { signal: AbortSignal.any([timeoutSignal, userSignal]), timeoutSignal }
+    return timeoutSignal
+  return AbortSignal.any([timeoutSignal, userSignal])
 }
 
 function mergeHeaders(input: HeadersInit | undefined, contentType: string | undefined): Headers {
@@ -110,7 +108,7 @@ async function dispatch(state: ClientState, path: string, opts: RequestOptions, 
   const headers = mergeHeaders(opts.headers, contentType)
   const url = appendSearchParams(joinURL(state.baseURL, path), opts.searchParams)
 
-  const { signal, timeoutSignal } = buildSignal(opts, effectiveTimeoutMs)
+  const signal = buildSignal(opts, effectiveTimeoutMs)
 
   const request = new Request(url, { method, headers, body, signal })
   const resolved: ResolvedOptions = {
@@ -135,10 +133,13 @@ async function dispatch(state: ClientState, path: string, opts: RequestOptions, 
   }
   catch (err) {
     ctx.error = err
+    // Snapshot the abort cause before onRequestError hooks rewrite ctx.error into BaseError.
+    const userAborted = opts.signal?.aborted === true
     await runHooks(state.hooks.onRequestError, ctx)
 
-    const causedByTimeout = timeoutSignal?.aborted === true
-    if (attempt < effectiveRetryAttempts && (causedByTimeout || shouldRetry(ctx.error, ctx))) {
+    // User aborts (ctrl+C) must never retry. Timeouts and other transport errors fall
+    // through to shouldRetry, which enforces the method allowlist.
+    if (!userAborted && attempt < effectiveRetryAttempts && shouldRetry(ctx.error, ctx)) {
       state.logger?.({ phase: 'retry', method, url: redactBearer(request.url), attempt: attempt + 1 })
       const delay = backoffDelay(attempt + 1)
       if (delay > 0)
@@ -192,11 +193,13 @@ export function createHttpClient(opts: ClientOptions): HttpClient {
   }
 
   const streamFetch = (path: string, callOpts?: RequestOptions): Promise<Response> => {
+    // SSE bodies must not be aborted by a request-level timeout — `0` is the dispatch
+    // sentinel for "no timeout" and also overrides the client default.
     const finalOpts: RequestOptions = {
       ...callOpts,
       method: callOpts?.method ?? 'GET',
       retryAttempts: 0,
-      timeoutMs: undefined,
+      timeoutMs: 0,
     }
     return dispatch(state, path, finalOpts, 0, false)
   }

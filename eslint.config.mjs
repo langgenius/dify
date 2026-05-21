@@ -26,7 +26,6 @@ export default antfu(
       'cli/context/**',
       'cli/docs/**',
       'cli/oclif.manifest.json',
-      'cli/src/http/tmp/**',
       '!eslint.config.mjs',
       '!package.json',
       '!pnpm-workspace.yaml',

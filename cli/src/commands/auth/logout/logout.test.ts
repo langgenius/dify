@@ -6,12 +6,11 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { startMock } from '../../../../test/fixtures/dify-mock/server.js'
+import { testHttpClient } from '../../../../test/fixtures/http-client.js'
 import { saveHosts } from '../../../auth/hosts.js'
-import { createHttpClient } from '../../../http/client.js'
 import { ENV_CONFIG_DIR } from '../../../store/dir.js'
 import { tokenKey } from '../../../store/manager.js'
 import { bufferStreams } from '../../../sys/io/streams'
-import { openAPIBase } from '../../../util/host.js'
 import { runLogout } from './logout.js'
 
 class MemStore implements Store {
@@ -72,7 +71,7 @@ describe('runLogout', () => {
     const bundle = fixtureBundle(mock.url)
     store.set(tokenKey(bundle.current_host, 'acct-1'), 'dfoa_test')
     saveHosts(bundle)
-    const http = createHttpClient({ baseURL: openAPIBase(mock.url), bearer: 'dfoa_test' })
+    const http = testHttpClient(mock.url, 'dfoa_test')
 
     await runLogout({ io, bundle, http, store })
 
@@ -92,7 +91,7 @@ describe('runLogout', () => {
     const io = bufferStreams()
     const store = new MemStore()
     const bundle = fixtureBundle(mock.url)
-    const http = createHttpClient({ baseURL: openAPIBase(mock.url), bearer: 'dfoa_test' })
+    const http = testHttpClient(mock.url, 'dfoa_test')
 
     await runLogout({ io, bundle, http, store })
 
@@ -106,7 +105,7 @@ describe('runLogout', () => {
     store.set(tokenKey(bundle.current_host, 'acct-1'), 'dfoa_test')
     saveHosts(bundle)
     mock.setScenario('server-5xx')
-    const http = createHttpClient({ baseURL: openAPIBase(mock.url), bearer: 'dfoa_test', retryAttempts: 0 })
+    const http = testHttpClient(mock.url, { bearer: 'dfoa_test', retryAttempts: 0 })
 
     await runLogout({ io, bundle, http, store })
 
@@ -122,7 +121,7 @@ describe('runLogout', () => {
     bundle.tokens = { bearer: 'dfp_personal_token' }
     store.set(tokenKey(bundle.current_host, 'acct-1'), 'dfp_personal_token')
     saveHosts(bundle)
-    const http = createHttpClient({ baseURL: openAPIBase(mock.url), bearer: 'dfp_personal_token' })
+    const http = testHttpClient(mock.url, 'dfp_personal_token')
 
     await runLogout({ io, bundle, http, store })
 
@@ -136,7 +135,7 @@ describe('runLogout', () => {
     const bundle = fixtureBundle(mock.url)
     saveHosts(bundle)
     await writeFile(join(configDir, 'config.yml'), 'foo: bar\n', 'utf8')
-    const http = createHttpClient({ baseURL: openAPIBase(mock.url), bearer: 'dfoa_test' })
+    const http = testHttpClient(mock.url, 'dfoa_test')
 
     await runLogout({ io, bundle, http, store })
 

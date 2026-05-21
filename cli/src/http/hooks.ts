@@ -7,8 +7,6 @@ export const HTTP_START_SYM = Symbol('difyctl-http-start')
 
 export function setBearer(token: string): Hook {
   return ({ request }) => {
-    if (token === '')
-      return
     if (!request.headers.has('authorization'))
       request.headers.set('authorization', `Bearer ${token}`)
   }

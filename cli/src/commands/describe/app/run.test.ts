@@ -5,12 +5,11 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { startMock } from '../../../../test/fixtures/dify-mock/server.js'
+import { testHttpClient } from '../../../../test/fixtures/http-client.js'
 import { loadAppInfoCache } from '../../../cache/app-info.js'
 import { formatted, stringifyOutput } from '../../../framework/output.js'
-import { createHttpClient } from '../../../http/client.js'
 import { ENV_CACHE_DIR } from '../../../store/dir.js'
 import { CACHE_APP_INFO, getCache } from '../../../store/manager.js'
-import { openAPIBase } from '../../../util/host.js'
 import { runDescribeApp } from './run.js'
 
 function bundle(): HostsBundle {
@@ -50,7 +49,7 @@ describe('runDescribeApp', () => {
     const cache = await loadAppInfoCache({ store: getCache(CACHE_APP_INFO) })
     const data = await runDescribeApp(
       opts,
-      { bundle: bundle(), http: createHttpClient({ baseURL: openAPIBase(mock.url), bearer: 'dfoa_test' }), host: mock.url, cache },
+      { bundle: bundle(), http: testHttpClient(mock.url, 'dfoa_test'), host: mock.url, cache },
     )
     return stringifyOutput(formatted({ format: opts.format ?? '', data }))
   }
@@ -93,13 +92,13 @@ describe('runDescribeApp', () => {
     const cache = await loadAppInfoCache({ store: getCache(CACHE_APP_INFO) })
     await runDescribeApp(
       { appId: 'app-1' },
-      { bundle: bundle(), http: createHttpClient({ baseURL: openAPIBase(mock.url), bearer: 'dfoa_test' }), host: mock.url, cache },
+      { bundle: bundle(), http: testHttpClient(mock.url, 'dfoa_test'), host: mock.url, cache },
     )
     const before = cache.get(mock.url, 'app-1')
     expect(before).toBeDefined()
     await runDescribeApp(
       { appId: 'app-1', refresh: true },
-      { bundle: bundle(), http: createHttpClient({ baseURL: openAPIBase(mock.url), bearer: 'dfoa_test' }), host: mock.url, cache },
+      { bundle: bundle(), http: testHttpClient(mock.url, 'dfoa_test'), host: mock.url, cache },
     )
     const after = cache.get(mock.url, 'app-1')
     expect(after?.fetchedAt).not.toBe(before?.fetchedAt ?? '')
@@ -114,7 +113,7 @@ describe('runDescribeApp', () => {
       { appId: 'nope' },
       {
         bundle: bundle(),
-        http: createHttpClient({ baseURL: openAPIBase(mock.url), bearer: 'dfoa_test', retryAttempts: 0 }),
+        http: testHttpClient(mock.url, { bearer: 'dfoa_test', retryAttempts: 0 }),
         host: mock.url,
       },
     )).rejects.toThrow()
