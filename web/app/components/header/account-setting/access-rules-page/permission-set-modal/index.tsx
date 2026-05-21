@@ -14,7 +14,7 @@ import Input from '@/app/components/base/input'
 import Textarea from '@/app/components/base/textarea'
 import PermissionPicker from './permission-picker'
 
-export type PermissionSetModalMode = 'create' | 'edit'
+export type PermissionSetModalMode = 'create' | 'edit' | 'view'
 
 export type PermissionSetFormValues = {
   name: string
@@ -37,11 +37,13 @@ const RESOURCE_LABEL: Record<AccessPolicyResourceType, string> = {
 }
 
 const buildTitle = (mode: PermissionSetModalMode, resource: AccessPolicyResourceType): string => {
-  const verb = mode === 'create' ? 'Create' : 'Edit'
+  const verb = mode === 'create' ? 'Create' : mode === 'edit' ? 'Edit' : 'View'
   return `${verb} ${RESOURCE_LABEL[resource]} permission set`
 }
 
 const buildDescription = (mode: PermissionSetModalMode, resource: AccessPolicyResourceType): string => {
+  if (mode === 'view')
+    return 'View the name, description, and permissions granted for this permission set.'
   if (mode === 'edit')
     return 'Modify the name, description, and permissions granted for this permission set.'
   if (resource === 'app')
@@ -63,10 +65,11 @@ const PermissionSetModalBody = ({
   const [permissionKeys, setPermissionKeys] = useState<string[]>(initialValues?.permissionKeys ?? [])
 
   const trimmedName = name.trim()
+  const readonly = mode === 'view'
   const canSubmit = trimmedName.length > 0
 
   const handleConfirm = () => {
-    if (!canSubmit)
+    if (readonly || !canSubmit)
       return
     onSubmit({
       name: trimmedName,
@@ -106,6 +109,7 @@ const PermissionSetModalBody = ({
             value={name}
             onChange={e => setName(e.target.value)}
             placeholder="e.g. Can export DSL"
+            disabled={readonly}
           />
         </div>
 
@@ -119,6 +123,7 @@ const PermissionSetModalBody = ({
             onChange={e => setDescription(e.target.value)}
             placeholder="Describe what this permission set grants"
             className="min-h-20 resize-none"
+            disabled={readonly}
           />
         </div>
 
@@ -128,6 +133,7 @@ const PermissionSetModalBody = ({
             resourceType={resourceType}
             value={permissionKeys}
             onChange={setPermissionKeys}
+            readonly={readonly}
           />
         </div>
       </div>
@@ -144,15 +150,17 @@ const PermissionSetModalBody = ({
         </a>
         <div className="flex items-center gap-2">
           <Button variant="secondary" onClick={onClose}>
-            Cancel
+            {readonly ? 'Close' : 'Cancel'}
           </Button>
-          <Button
-            variant="primary"
-            disabled={!canSubmit}
-            onClick={handleConfirm}
-          >
-            Confirm
-          </Button>
+          {!readonly && (
+            <Button
+              variant="primary"
+              disabled={!canSubmit}
+              onClick={handleConfirm}
+            >
+              Confirm
+            </Button>
+          )}
         </div>
       </div>
     </DialogContent>

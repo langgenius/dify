@@ -50,7 +50,7 @@ const DocumentList = ({
 }: DocumentListProps) => {
   const { t } = useTranslation()
   const datasetConfig = useDatasetDetailContext(s => s.dataset)
-  const datasetACLCapabilities = React.useMemo(() => getDatasetACLCapabilities(datasetConfig?.permission_keys), [datasetConfig?.permission_keys])
+  const datasetACLCapabilities = useMemo(() => getDatasetACLCapabilities(datasetConfig?.permission_keys), [datasetConfig?.permission_keys])
   const chunkingMode = datasetConfig?.doc_form
   const isGeneralMode = chunkingMode !== ChunkingMode.parentChild
   const isQAMode = chunkingMode === ChunkingMode.qa

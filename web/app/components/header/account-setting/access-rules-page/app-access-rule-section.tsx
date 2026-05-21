@@ -50,6 +50,18 @@ const AppAccessRuleSection = ({
     setPermissionSetModalState({ mode: 'create' })
   }, [])
 
+  const handleView = useCallback((rule: AccessPolicyWithBindings) => {
+    const { policy } = rule
+    setPermissionSetModalState({
+      mode: 'view',
+      initialValues: {
+        name: policy.name,
+        description: policy.description,
+        permissionKeys: policy.permission_keys,
+      },
+    })
+  }, [])
+
   const handleEdit = useCallback((rule: AccessPolicyWithBindings) => {
     const { policy } = rule
     setPermissionSetModalState({
@@ -136,6 +148,7 @@ const AppAccessRuleSection = ({
         rules={appAccessRules}
         isLoadingRules={isLoading}
         onCreate={handleCreate}
+        onViewRule={handleView}
         onEditRule={handleEdit}
         onAddRole={handleAddRole}
         onRemoveBinding={handleRemoveBinding}

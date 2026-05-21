@@ -24,11 +24,13 @@ import { useCopyAccessRule, useDeleteAccessRule } from '@/service/access-control
 
 export type AccessRuleRowMenuProps = {
   rule: AccessPolicy
+  onView?: () => void
   onEdit?: () => void
 }
 
 const AccessRuleRowMenu = ({
   rule,
+  onView,
   onEdit,
 }: AccessRuleRowMenuProps) => {
   const [open, setOpen] = useState(false)
@@ -36,6 +38,10 @@ const AccessRuleRowMenu = ({
 
   const { mutateAsync: copyAccessRule } = useCopyAccessRule(rule.resource_type)
   const { mutateAsync: deleteAccessRule, isPending: isDeletingAccessRule } = useDeleteAccessRule(rule.resource_type)
+
+  const handleView = useCallback(() => {
+    onView?.()
+  }, [onView])
 
   const handleCopyRules = useCallback(() => {
     copyAccessRule(rule.id, {
@@ -60,6 +66,8 @@ const AccessRuleRowMenu = ({
     })
   }, [deleteAccessRule, rule.id])
 
+  const isBuiltIn = rule.is_builtin
+
   return (
     <>
       <DropdownMenu open={open} onOpenChange={setOpen}>
@@ -79,26 +87,41 @@ const AccessRuleRowMenu = ({
           sideOffset={4}
           popupClassName="min-w-[140px]"
         >
-          <DropdownMenuItem
-            className="system-sm-semibold text-text-secondary"
-            onClick={onEdit}
-          >
-            Edit
-          </DropdownMenuItem>
+          {isBuiltIn
+            ? (
+                <DropdownMenuItem
+                  className="system-sm-semibold text-text-secondary"
+                  onClick={handleView}
+                >
+                  View
+                </DropdownMenuItem>
+              )
+            : (
+                <DropdownMenuItem
+                  className="system-sm-semibold text-text-secondary"
+                  onClick={onEdit}
+                >
+                  Edit
+                </DropdownMenuItem>
+              )}
           <DropdownMenuItem
             className="system-sm-semibold text-text-secondary"
             onClick={handleCopyRules}
           >
             Copy
           </DropdownMenuItem>
-          <DropdownMenuSeparator />
-          <DropdownMenuItem
-            variant="destructive"
-            className="system-sm-semibold"
-            onClick={openDeleteConfirm}
-          >
-            Delete
-          </DropdownMenuItem>
+          {!isBuiltIn && (
+            <>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                variant="destructive"
+                className="system-sm-semibold"
+                onClick={openDeleteConfirm}
+              >
+                Delete
+              </DropdownMenuItem>
+            </>
+          )}
         </DropdownMenuContent>
       </DropdownMenu>
       <AlertDialog open={showDeleteConfirm} onOpenChange={open => !open && setShowDeleteConfirm(false)}>

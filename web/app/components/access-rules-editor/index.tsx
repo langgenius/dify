@@ -12,11 +12,13 @@ import { useUpdateDatasetAccessRuleBindings } from '@/service/access-control/use
 
 export type AccessRulesEditorProps = {
   rules: AccessPolicyWithBindings[]
+  canManage: boolean
   className?: string
 }
 
 const AccessRulesEditor = ({
   rules,
+  canManage,
   className,
 }: AccessRulesEditorProps) => {
   const { appId } = useParams() as { appId: string }
@@ -102,6 +104,7 @@ const AccessRulesEditor = ({
         <AccessRuleRow
           key={rule.policy.id}
           rule={rule}
+          canManage={canManage}
           showMenu={false}
           onAddRole={handleAddRole}
           onRemove={handleRemoveRole}

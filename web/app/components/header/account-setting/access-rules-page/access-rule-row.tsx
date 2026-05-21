@@ -11,6 +11,7 @@ export type AccessRuleRowProps = {
   canManage: boolean
   className?: string
   showMenu?: boolean
+  onView?: (rule: AccessPolicyWithBindings) => void
   onEdit?: (rule: AccessPolicyWithBindings) => void
   onAddRole?: (rule: AccessPolicyWithBindings) => void
   onRemove?: (payload: RemoveBindingPayload) => void
@@ -21,6 +22,7 @@ const AccessRuleRow = ({
   canManage,
   className,
   showMenu = true,
+  onView,
   onEdit,
   onAddRole,
   onRemove,
@@ -28,6 +30,7 @@ const AccessRuleRow = ({
   const { policy, roles, accounts } = rule
   const { id: policyId, resource_type } = policy
 
+  const handleView = useCallback(() => onView?.(rule), [onView, rule])
   const handleEdit = useCallback(() => onEdit?.(rule), [onEdit, rule])
   const handleAddRole = useCallback(() => onAddRole?.(rule), [onAddRole, rule])
 
@@ -95,6 +98,7 @@ const AccessRuleRow = ({
       </div>
       {showMenu && canManage && (
         <AccessRuleRowMenu
+          onView={handleView}
           onEdit={handleEdit}
           rule={policy}
         />

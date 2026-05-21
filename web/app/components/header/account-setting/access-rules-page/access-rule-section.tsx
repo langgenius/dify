@@ -13,6 +13,7 @@ type AccessRuleSectionProps = {
   rules: AccessPolicyWithBindings[]
   isLoadingRules: boolean
   onCreate?: () => void
+  onViewRule?: (rule: AccessPolicyWithBindings) => void
   onEditRule?: (rule: AccessPolicyWithBindings) => void
   onAddRole?: (rule: AccessPolicyWithBindings) => void
   onRemoveBinding?: (payload: RemoveBindingPayload) => void
@@ -24,6 +25,7 @@ const AccessRuleSection = ({
   rules,
   isLoadingRules,
   onCreate,
+  onViewRule,
   onEditRule,
   onAddRole,
   onRemoveBinding,
@@ -57,6 +59,7 @@ const AccessRuleSection = ({
             rule={rule}
             canManage={canManage}
             className={cn(index > 0 && 'border-t border-divider-subtle')}
+            onView={onViewRule}
             onEdit={onEditRule}
             onAddRole={onAddRole}
             onRemove={onRemoveBinding}
