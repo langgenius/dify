@@ -370,7 +370,7 @@ function SourceAppOption({ app, selected, onSelect }: {
   return (
     <label
       className={cn(
-        'group flex min-h-14 cursor-pointer items-center gap-3 border-b border-l-2 border-b-divider-subtle px-3 py-2 transition-colors last:border-b-0',
+        'group flex min-h-14 cursor-pointer items-center gap-3 border-b border-l-2 border-b-divider-subtle px-3 py-2 transition-colors first:rounded-t-lg last:rounded-b-lg last:border-b-0',
         selected
           ? 'border-l-state-accent-solid bg-state-accent-hover hover:bg-state-accent-hover'
           : 'border-l-transparent bg-background-default hover:bg-state-base-hover',
