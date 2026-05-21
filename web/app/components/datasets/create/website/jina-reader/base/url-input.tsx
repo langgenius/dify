@@ -34,7 +34,6 @@ const UrlInput: FC<Props> = ({
         onValueChange={setUrl}
         placeholder={docLink()}
         size="small"
-        className="h-8 rounded-lg"
       />
       <Button
         variant="primary"
