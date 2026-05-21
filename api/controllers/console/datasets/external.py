@@ -218,7 +218,7 @@ class ExternalApiTemplateApi(Resource):
             raise Forbidden()
 
         ExternalDatasetService.delete_external_knowledge_api(current_tenant_id, external_knowledge_api_id)
-        return {"result": "success"}, 204
+        return "", 204
 
 
 @console_ns.route("/datasets/external-knowledge-api/<uuid:external_knowledge_api_id>/use-check")

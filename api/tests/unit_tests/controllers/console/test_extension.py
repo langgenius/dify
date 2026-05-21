@@ -242,5 +242,5 @@ def test_api_based_extension_detail_delete_removes_extension(app: Flask, monkeyp
         response, status = APIBasedExtensionDetailAPI().delete(extension_id)
 
     delete_mock.assert_called_once_with(existing_extension)
-    assert response == {"result": "success"}
     assert status == 204
+    assert response == ""
