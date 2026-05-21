@@ -3,6 +3,7 @@
 Shared UI primitives, design tokens, CSS-first Tailwind styles, and the `cn()` utility consumed by Dify's `web/` app.
 
 The primitives are thin, opinionated wrappers around [Base UI] headless components, styled with `cva` + `cn` and Dify design tokens.
+For upstream component docs, start from the [Base UI docs index].
 
 > `private: true` — this package is consumed by `web/` via the pnpm workspace and is not published to npm. Treat the API as internal to Dify, but stable within the workspace.
 
@@ -39,12 +40,16 @@ Importing from `@langgenius/dify-ui` (no subpath) is intentionally not supported
 
 ## Primitives
 
-| Category | Subpath                                                                                                                                                        | Notes                                                |
-| -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------- |
-| Overlay  | `./alert-dialog`, `./autocomplete`, `./combobox`, `./context-menu`, `./dialog`, `./drawer`, `./dropdown-menu`, `./popover`, `./select`, `./toast`, `./tooltip` | Portalled. See [Overlay & portal contract] below.    |
-| Form     | `./form`, `./field`, `./fieldset`, `./checkbox`, `./checkbox-group`, `./number-field`, `./select`, `./slider`, `./switch`                                      | Native form boundary, field semantics, and controls. |
-| Layout   | `./scroll-area`                                                                                                                                                | Custom-styled scrollbar over the host viewport.      |
-| Media    | `./avatar`, `./button`                                                                                                                                         | Button exposes `cva` variants.                       |
+| Category         | Subpath                                                                                                                                                          | Notes                                                |
+| ---------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------- |
+| Actions          | `./button`                                                                                                                                                       | Design-system CTA primitive with `cva` variants.     |
+| Feedback         | `./meter`, `./toast`                                                                                                                                             | Meter is inline status; Toast owns the `z-60` layer. |
+| Form             | `./form`, `./field`, `./fieldset`, `./input`, `./checkbox`, `./checkbox-group`, `./radio`, `./radio-group`, `./number-field`, `./select`, `./slider`, `./switch` | Native form boundary, field semantics, and controls. |
+| Layout           | `./scroll-area`                                                                                                                                                  | Custom-styled scrollbar over the host viewport.      |
+| Media            | `./avatar`                                                                                                                                                       | Avatar root, image, and fallback primitives.         |
+| Navigation       | `./tabs`, `./toggle-group`                                                                                                                                       | Tabs for panels; ToggleGroup for segmented modes.    |
+| Overlay / menu   | `./alert-dialog`, `./context-menu`, `./dialog`, `./drawer`, `./dropdown-menu`, `./popover`, `./preview-card`, `./tooltip`                                        | Portalled. See [Overlay & portal contract] below.    |
+| Search / pickers | `./autocomplete`, `./combobox`, `./select`                                                                                                                       | Search input, searchable picker, and closed picker.  |
 
 Utilities:
 
@@ -174,5 +179,6 @@ See `[AGENTS.md](./AGENTS.md)` for:
 [Base UI Fieldset]: https://base-ui.com/react/components/fieldset
 [Base UI Form]: https://base-ui.com/react/components/form
 [Base UI Portal]: https://base-ui.com/react/overview/quick-start#portals
+[Base UI docs index]: https://base-ui.com/llms.txt
 [Base UI]: https://base-ui.com/react
 [Overlay & portal contract]: #overlay--portal-contract
