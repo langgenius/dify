@@ -11,7 +11,7 @@ register_response_schema_models(service_api_ns, IndexInfoResponse)
 @service_api_ns.route("/")
 class IndexApi(Resource):
     @service_api_ns.response(200, "Success", service_api_ns.models[IndexInfoResponse.__name__])
-    def get(self):
+    def get(self) -> dict[str, str]:
         return {
             "welcome": "Dify OpenAPI",
             "api_version": "v1",
