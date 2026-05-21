@@ -489,6 +489,14 @@ describe('ProviderList', () => {
       expect(screen.getByTestId('update-setting-popover')).toBeInTheDocument()
     })
 
+    it('hides the tools update settings action when permission management is unavailable', () => {
+      mockCanSetPermissions.mockReturnValue(false)
+
+      renderProviderList(undefined, 'builtin')
+
+      expect(screen.queryByTestId('update-setting-popover')).not.toBeInTheDocument()
+    })
+
     it.each([
       ['mcp'],
       ['api'],

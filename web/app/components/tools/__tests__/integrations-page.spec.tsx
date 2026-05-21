@@ -389,6 +389,15 @@ describe('IntegrationsPage', () => {
     expect(screen.getByTestId('plugin-category-trigger')).toHaveAttribute('data-can-install', 'false')
   })
 
+  it('disables the debug action when debug permission is unavailable', () => {
+    mockCanDebugger.mockReturnValue(false)
+
+    renderIntegrationsPage({ section: 'trigger' })
+
+    expect(screen.getByLabelText('plugin.privilege.noDebugPermissionTooltip')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'plugin.debugInfo.title' })).toBeDisabled()
+  })
+
   it('hides plugin update settings action when permission management is unavailable', () => {
     mockCanSetPermissions.mockReturnValue(false)
 
