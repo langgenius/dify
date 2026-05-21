@@ -80,7 +80,8 @@ describe('human-input/delivery-method/recipient/member-selector', () => {
     expect(screen.queryByTestId('member-list')).not.toBeInTheDocument()
   })
 
-  it('should update search value and close the list after selecting a member', () => {
+  it('should update search value and close the list after selecting a member', async () => {
+    const user = userEvent.setup()
     const handleSelect = vi.fn()
 
     render(
@@ -92,18 +93,16 @@ describe('human-input/delivery-method/recipient/member-selector', () => {
       />,
     )
 
-    fireEvent.click(screen.getByRole('button', {
+    await user.click(screen.getByRole('button', {
       name: 'workflow.nodes.humanInput.deliveryMethod.emailConfigure.memberSelector.trigger',
     }))
-    fireEvent.change(screen.getByRole('textbox', { name: 'member search' }), {
-      target: { value: 'member one' },
-    })
+    await user.type(screen.getByRole('textbox', { name: 'member search' }), 'member one')
 
     expect(mockMemberList).toHaveBeenLastCalledWith(expect.objectContaining({
       searchValue: 'member one',
     }))
 
-    fireEvent.click(screen.getByRole('button', { name: 'select member' }))
+    await user.click(screen.getByRole('button', { name: 'select member' }))
 
     expect(handleSelect).toHaveBeenCalledWith('member-1')
     expect(screen.queryByTestId('member-list')).not.toBeInTheDocument()
