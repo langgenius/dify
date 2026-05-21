@@ -274,10 +274,10 @@ function DeploymentPreview({ activeStep, preview }: {
   return (
     <aside
       aria-label={t('createGuide.review.summary')}
-      className="relative hidden h-full flex-1 shrink justify-start overflow-hidden border-x border-x-divider-subtle lg:flex"
+      className="relative hidden h-full flex-1 shrink justify-start overflow-hidden lg:flex"
     >
       <div className="absolute top-0 right-0 left-0 h-6 border-b border-b-divider-subtle 2xl:h-[139px]" />
-      <div className="relative h-full w-full max-w-[760px]">
+      <div className="h-full w-fit max-w-full border-x border-x-divider-subtle">
         <div className="h-6 2xl:h-[139px]" />
         <div className="px-8 pt-5 pb-4">
           <h4 className="system-sm-semibold-uppercase text-text-secondary">{stepInfo.title}</h4>
@@ -287,7 +287,7 @@ function DeploymentPreview({ activeStep, preview }: {
         </div>
         <div className="absolute right-0 left-0 border-b border-b-divider-subtle" />
         <div
-          className="flex h-[448px] w-full max-w-[664px] items-center justify-center"
+          className="flex h-[448px] w-[664px] max-w-full items-center justify-center"
           style={{ background: 'repeating-linear-gradient(135deg, transparent, transparent 2px, rgba(16,24,40,0.04) 4px, transparent 3px, transparent 6px)' }}
         >
           <div className="w-full max-w-[392px] overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg shadow-xs">
