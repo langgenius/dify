@@ -11,6 +11,7 @@ import { AppModeEnum } from '@/types/app'
 import AppCard from '../app-card'
 
 let mockWebappAuthEnabled = false
+let mockWorkspacePermissionKeys: string[] = ['app.create']
 
 const render = (ui: React.ReactElement) => renderWithSystemFeatures(ui, {
   systemFeatures: {
@@ -62,8 +63,12 @@ vi.mock('use-context-selector', () => ({
 
 // Mock app context
 vi.mock('@/context/app-context', () => ({
+  useSelector: (selector: (state: { workspacePermissionKeys: string[] }) => unknown) => selector({
+    workspacePermissionKeys: mockWorkspacePermissionKeys,
+  }),
   useAppContext: () => ({
     isCurrentWorkspaceEditor: true,
+    workspacePermissionKeys: mockWorkspacePermissionKeys,
   }),
 }))
 
@@ -330,6 +335,14 @@ const createMockApp = (overrides: Partial<App> = {}): App => ({
   api_rpm: 60,
   api_rph: 3600,
   is_demo: false,
+  permission_keys: [
+    'app.acl.view_layout',
+    'app.acl.test_and_run',
+    'app.acl.edit',
+    'app.acl.import_export_dsl',
+    'app.acl.delete',
+    'app.acl.access_config',
+  ],
   ...overrides,
 } as App)
 
@@ -341,6 +354,7 @@ describe('AppCard', () => {
     vi.clearAllMocks()
     mockOpenAsyncWindow.mockReset()
     mockWebappAuthEnabled = false
+    mockWorkspacePermissionKeys = ['app.create']
     mockDeleteMutationPending = false
   })
 
@@ -507,6 +521,18 @@ describe('AppCard', () => {
 
       await waitFor(() => {
         expect(screen.getByText('app.duplicate')).toBeInTheDocument()
+      })
+    })
+
+    it('should hide duplicate option without app.create permission', async () => {
+      mockWorkspacePermissionKeys = []
+      render(<AppCard app={mockApp} />)
+
+      fireEvent.click(screen.getByTestId('dropdown-menu-trigger'))
+
+      await waitFor(() => {
+        expect(screen.getByText('app.editApp')).toBeInTheDocument()
+        expect(screen.queryByText('app.duplicate')).not.toBeInTheDocument()
       })
     })
 
@@ -694,7 +720,7 @@ describe('AppCard', () => {
   describe('Styling', () => {
     it('should have correct card container styling', () => {
       const { container } = render(<AppCard app={mockApp} />)
-      const card = container.querySelector('[class*="h-[160px]"]')
+      const card = container.querySelector('[class*="h-40"]')
       expect(card).toBeInTheDocument()
     })
 

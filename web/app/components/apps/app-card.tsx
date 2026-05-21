@@ -37,6 +37,7 @@ import AppIcon from '@/app/components/base/app-icon'
 import Input from '@/app/components/base/input'
 import { UserAvatarList } from '@/app/components/base/user-avatar-list'
 import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
+import { useSelector as useAppContextWithSelector } from '@/context/app-context'
 import { useProviderContext } from '@/context/provider-context'
 import { AppCardTags } from '@/features/tag-management/components/app-card-tags'
 import { useAsyncWindowOpen } from '@/hooks/use-async-window-open'
@@ -52,7 +53,7 @@ import { fetchWorkflowDraft } from '@/service/workflow'
 import { AppModeEnum } from '@/types/app'
 import { getRedirection } from '@/utils/app-redirection'
 import { downloadBlob } from '@/utils/download'
-import { getAppACLCapabilities } from '@/utils/permission'
+import { getAppACLCapabilities, hasPermission } from '@/utils/permission'
 import { formatTime } from '@/utils/time'
 import { basePath } from '@/utils/var'
 
@@ -107,7 +108,9 @@ const AppCardOperationsMenu: React.FC<AppCardOperationsMenuProps> = ({
   const { t } = useTranslation()
   const openAsyncWindow = useAsyncWindowOpen()
   const { push } = useRouter()
+  const workspacePermissionKeys = useAppContextWithSelector(state => state.workspacePermissionKeys)
   const appACLCapabilities = useMemo(() => getAppACLCapabilities(app.permission_keys), [app.permission_keys])
+  const canDuplicateApp = hasPermission(workspacePermissionKeys, 'app.create')
 
   const handleMenuAction = useCallback((e: React.MouseEvent<HTMLElement>, action: () => void) => {
     e.stopPropagation()
@@ -151,9 +154,11 @@ const AppCardOperationsMenu: React.FC<AppCardOperationsMenuProps> = ({
           <DropdownMenuSeparator />
         </>
       )}
-      <DropdownMenuItem className="gap-2 px-3" onClick={e => handleMenuAction(e, onDuplicate)}>
-        <span className="system-sm-regular text-text-secondary">{t('duplicate', { ns: 'app' })}</span>
-      </DropdownMenuItem>
+      {canDuplicateApp && (
+        <DropdownMenuItem className="gap-2 px-3" onClick={e => handleMenuAction(e, onDuplicate)}>
+          <span className="system-sm-regular text-text-secondary">{t('duplicate', { ns: 'app' })}</span>
+        </DropdownMenuItem>
+      )}
       {appACLCapabilities.canImportExportDSL && (
         <DropdownMenuItem className="gap-2 px-3" onClick={e => handleMenuAction(e, onExport)}>
           <span className="system-sm-regular text-text-secondary">{t('export', { ns: 'app' })}</span>
@@ -234,13 +239,16 @@ const AppCard = ({ app, onlineUsers = [], onRefresh, onOpenTagManagement = () =>
   const { t } = useTranslation()
   const deleteAppNameInputId = useId()
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
+  const workspacePermissionKeys = useAppContextWithSelector(state => state.workspacePermissionKeys)
   const appACLCapabilities = useMemo(() => getAppACLCapabilities(app.permission_keys), [app.permission_keys])
+  const canDuplicateApp = hasPermission(workspacePermissionKeys, 'app.create')
   const canOpenAppLayout = appACLCapabilities.canViewLayout || appACLCapabilities.canEdit
   const canShowOperations = appACLCapabilities.canEdit
     || appACLCapabilities.canImportExportDSL
     || appACLCapabilities.canDelete
     || appACLCapabilities.canAccessConfig
     || appACLCapabilities.canTestAndRun
+    || canDuplicateApp
   const { onPlanInfoChanged } = useProviderContext()
   const { push } = useRouter()
 

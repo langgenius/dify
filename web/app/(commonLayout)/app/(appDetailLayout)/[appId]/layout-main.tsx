@@ -161,6 +161,10 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
       router.replace(`/app/${appId}/overview`)
       return
     }
+    if (!canAccessMonitor && pathname.endsWith('overview')) {
+      router.replace(`/app/${appId}/develop`)
+      return
+    }
     if (!appACLCapabilities.canAccessConfig && pathname.endsWith('access-config')) {
       router.replace(`/app/${appId}/overview`)
       return
@@ -175,7 +179,7 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
       setAppDetail({ ...res, enable_sso: false })
       setNavigation(getNavigationConfig(appId, res.mode))
     }
-  }, [appDetailRes, appACLCapabilities, appId, canAccessLog, currentWorkspace.id, getNavigationConfig, isLoadingAppDetail, isLoadingCurrentWorkspace, pathname, router, setAppDetail])
+  }, [appDetailRes, appACLCapabilities, appId, canAccessLog, canAccessMonitor, currentWorkspace.id, getNavigationConfig, isLoadingAppDetail, isLoadingCurrentWorkspace, pathname, router, setAppDetail])
 
   useUnmount(() => {
     setAppDetail()
