@@ -13,8 +13,8 @@ import Link from '@/next/link'
 import { systemFeaturesQueryOptions } from '@/service/system-features'
 
 type IAccountSettingProps = {
-  langGeniusVersionInfo: LangGeniusVersionResponse
-  onCancel: () => void
+  readonly langGeniusVersionInfo: LangGeniusVersionResponse
+  readonly onCancel: () => void
 }
 
 export default function AccountAbout({

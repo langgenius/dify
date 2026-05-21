@@ -9,10 +9,10 @@ import PremiumBadge, { PremiumBadgeButton } from '../../base/premium-badge'
 import { Plan } from '../../billing/type'
 
 type PlanBadgeProps = {
-  plan: Plan
-  allowHover?: boolean
-  sandboxAsUpgrade?: boolean
-  onClick?: () => void
+  readonly plan: Plan
+  readonly allowHover?: boolean
+  readonly sandboxAsUpgrade?: boolean
+  readonly onClick?: () => void
 }
 
 function PlanBadgeShell({
@@ -22,9 +22,9 @@ function PlanBadgeShell({
   onClick,
   children,
 }: Pick<PlanBadgeProps, 'allowHover' | 'onClick'> & {
-  size?: 's' | 'm'
-  color: 'blue' | 'indigo' | 'gray'
-  children: ReactNode
+  readonly size?: 's' | 'm'
+  readonly color: 'blue' | 'indigo' | 'gray'
+  readonly children: ReactNode
 }) {
   if (onClick) {
     return (
