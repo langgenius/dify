@@ -7,10 +7,9 @@
 # 3. 支持代码修改后自动重载
 
 services:
-  # API 服务 - 挂载源代码（只挂载 app 目录）
+  # API 服务 - 挂载源代码
   api:
     volumes:
-      # 只挂载源代码目录，不挂载 .venv
       - ../api/app:/app/api/app:ro
       - ../api/models:/app/api/models:ro
       - ../api/services:/app/api/services:ro
@@ -22,7 +21,6 @@ services:
       - ../api/migrations:/app/api/migrations:ro
       - ../api/extensions:/app/api/extensions:ro
       - ../api/providers:/app/api/providers:ro
-      # 保留存储目录
       - ./volumes/app/storage:/app/api/storage
 
   # Worker 服务 - 同样挂载源代码
@@ -41,20 +39,26 @@ services:
       - ../api/providers:/app/api/providers:ro
       - ./volumes/app/storage:/app/api/storage
 
-  # Web 服务 - 挂载源代码
-  web:
+  # Worker Beat 服务
+  worker_beat:
     volumes:
-      # 挂载 Web 源代码
-      - ../web:/app:ro
-      # Next.js 开发模式配置
-      - /app/node_modules
-      - /app/.next
-    environment:
-      - NODE_ENV=development
-      - FAST_REFRESH=true
+      - ../api/app:/app/api/app:ro
+      - ../api/models:/app/api/models:ro
+      - ../api/services:/app/api/services:ro
+      - ../api/controllers:/app/api/controllers:ro
+      - ../api/libs:/app/api/libs:ro
+      - ../api/core:/app/api/core:ro
+      - ../api/tasks:/app/api/tasks:ro
+      - ../api/configs:/app/api/configs:ro
+      - ../api/migrations:/app/api/migrations:ro
+      - ../api/extensions:/app/api/extensions:ro
+      - ../api/providers:/app/api/providers:ro
+      - ./volumes/app/storage:/app/api/storage
 
-  # Websocket 服务
+  # WebSocket 服务
   api_websocket:
+    environment:
+      MIGRATION_ENABLED: "false"
     volumes:
       - ../api/app:/app/api/app:ro
       - ../api/models:/app/api/models:ro

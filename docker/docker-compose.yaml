@@ -66,6 +66,9 @@ x-shared-api-worker-config: &shared-api-worker-config
     - path: ./envs/infrastructure/milvus-standalone.env
       required: false
     - ./.env
+  volumes:
+    - ./volumes/app/storage:/app/api/storage
+    - ../api:/app/api
   networks:
     - ssrf_proxy_network
     - default
@@ -132,6 +135,9 @@ x-shared-worker-config: &shared-worker-config
     - path: ./envs/infrastructure/milvus-standalone.env
       required: false
     - ./.env
+  volumes:
+    - ./volumes/app/storage:/app/api/storage
+    - ../api:/app/api
   networks:
     - ssrf_proxy_network
     - default
@@ -198,6 +204,9 @@ x-shared-worker-beat-config: &shared-worker-beat-config
     - path: ./envs/infrastructure/milvus-standalone.env
       required: false
     - ./.env
+  volumes:
+    - ./volumes/app/storage:/app/api/storage
+    - ../api:/app/api
   networks:
     - ssrf_proxy_network
     - default
@@ -288,6 +297,8 @@ services:
         required: false
       redis:
         condition: service_started
+    volumes:
+      - ./volumes/app/storage:/app/api/storage
     networks:
       - ssrf_proxy_network
       - default
@@ -359,6 +370,8 @@ services:
         required: false
       redis:
         condition: service_started
+    volumes:
+      - ./volumes/app/storage:/app/api/storage
     healthcheck:
       test: ["CMD-SHELL", "celery -A celery_healthcheck.celery inspect ping"]
       interval: ${COMPOSE_WORKER_HEALTHCHECK_INTERVAL:-30s}

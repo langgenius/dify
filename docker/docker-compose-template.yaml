@@ -60,6 +60,9 @@ x-shared-api-worker-config: &shared-api-worker-config
     - path: ./envs/infrastructure/milvus-standalone.env
       required: false
     - ./.env
+  volumes:
+    - ./volumes/app/storage:/app/api/storage
+    - ../api:/app/api
   networks:
     - ssrf_proxy_network
     - default
@@ -126,6 +129,9 @@ x-shared-worker-config: &shared-worker-config
     - path: ./envs/infrastructure/milvus-standalone.env
       required: false
     - ./.env
+  volumes:
+    - ./volumes/app/storage:/app/api/storage
+    - ../api:/app/api
   networks:
     - ssrf_proxy_network
     - default
@@ -192,6 +198,9 @@ x-shared-worker-beat-config: &shared-worker-beat-config
     - path: ./envs/infrastructure/milvus-standalone.env
       required: false
     - ./.env
+  volumes:
+    - ./volumes/app/storage:/app/api/storage
+    - ../api:/app/api
   networks:
     - ssrf_proxy_network
     - default

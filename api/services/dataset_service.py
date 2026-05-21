@@ -2935,7 +2935,7 @@ class DocumentService:
         process_rule = args.get("process_rule", {})
         if isinstance(process_rule, dict):
             sis = process_rule.get("summary_index_setting")
-            if isinstance(sis, dict) and sis.get("enable") is None:
+            if not isinstance(sis, dict) or "enable" not in sis or sis["enable"] is None:
                 process_rule.pop("summary_index_setting", None)
         try:
             validated = _EstimateArgs.model_validate(args)
