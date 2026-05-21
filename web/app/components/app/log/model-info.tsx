@@ -71,10 +71,10 @@ const ModelInfo: FC<Props> = ({
         <div className="relative">
           <PopoverTrigger
             render={(
-              <button type="button" className="block border-none bg-transparent p-0">
+              <button type="button" className="group block border-none bg-transparent p-0">
                 <div className={cn(
                   'cursor-pointer rounded-r-lg bg-components-button-tertiary-bg p-2 hover:bg-components-button-tertiary-bg-hover',
-                  open && 'bg-components-button-tertiary-bg-hover',
+                  'group-data-popup-open:bg-components-button-tertiary-bg-hover',
                 )}
                 >
                   <RiInformation2Line className="size-4 text-text-tertiary" />
