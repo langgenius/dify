@@ -36,7 +36,7 @@ const MethodSelector: FC<MethodSelectorProps> = ({
           render={(
             <div className={cn(
               'flex h-9 min-h-[56px] cursor-pointer items-center gap-1 bg-transparent px-3 py-2 hover:bg-background-section-burn',
-              open && 'bg-background-section-burn! hover:bg-background-section-burn',
+              'data-popup-open:bg-background-section-burn! data-popup-open:hover:bg-background-section-burn',
             )}
             >
               <div className={cn('grow truncate text-[13px] leading-[18px] text-text-secondary')}>

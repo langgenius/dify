@@ -109,7 +109,7 @@ export default function AddMemberOrGroupDialog() {
         aria-label={t('operation.add', { ns: 'common' })}
         icon={false}
         size="small"
-        className="flex h-6 w-auto shrink-0 items-center gap-x-0.5 rounded-md border-0 bg-transparent px-2 py-0 text-xs font-medium text-components-button-secondary-accent-text hover:bg-state-accent-hover focus-visible:bg-state-accent-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid data-open:bg-state-accent-hover"
+        className="flex h-6 w-auto shrink-0 items-center gap-x-0.5 rounded-md border-0 bg-transparent px-2 py-0 text-xs font-medium text-components-button-secondary-accent-text hover:bg-state-accent-hover focus-visible:bg-state-accent-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid data-popup-open:bg-state-accent-hover"
       >
         <RiAddCircleFill className="size-4" aria-hidden="true" />
         <span>{t('operation.add', { ns: 'common' })}</span>

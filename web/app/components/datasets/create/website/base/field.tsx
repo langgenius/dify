@@ -3,7 +3,7 @@ import type { FC } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
 import { Infotip } from '@/app/components/base/infotip'
-import Input from './input'
+import Input from './text-input'
 
 type Props = {
   className?: string

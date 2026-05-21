@@ -22,6 +22,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
+import { FieldControl, FieldLabel, FieldRoot } from '@langgenius/dify-ui/field'
 import { toast } from '@langgenius/dify-ui/toast'
 import {
   Tooltip,
@@ -30,11 +31,10 @@ import {
 } from '@langgenius/dify-ui/tooltip'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import * as React from 'react'
-import { useCallback, useId, useMemo, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import { AppTypeIcon } from '@/app/components/app/type-selector'
 import AppIcon from '@/app/components/base/app-icon'
-import Input from '@/app/components/base/input'
 import { UserAvatarList } from '@/app/components/base/user-avatar-list'
 import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
 import { useSelector as useAppContextWithSelector } from '@/context/app-context'
@@ -237,7 +237,6 @@ const AppCardOperationsMenuContent: React.FC<AppCardOperationsMenuContentProps> 
 
 const AppCard = ({ app, onlineUsers = [], onRefresh, onOpenTagManagement = () => {} }: AppCardProps) => {
   const { t } = useTranslation()
-  const deleteAppNameInputId = useId()
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const workspacePermissionKeys = useAppContextWithSelector(state => state.workspacePermissionKeys)
   const appACLCapabilities = useMemo(() => getAppACLCapabilities(app.permission_keys), [app.permission_keys])
@@ -667,8 +666,8 @@ const AppCard = ({ app, onlineUsers = [], onRefresh, onOpenTagManagement = () =>
               <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
                 {t('deleteAppConfirmContent', { ns: 'app' })}
               </AlertDialogDescription>
-              <div className="mt-2">
-                <label htmlFor={deleteAppNameInputId} className="mb-1 block system-sm-regular text-text-secondary">
+              <FieldRoot name="confirm-app-name" className="mt-2">
+                <FieldLabel className="mb-1 block py-0 system-sm-regular text-text-secondary">
                   <Trans
                     i18nKey="deleteAppConfirmInputLabel"
                     ns="app"
@@ -677,19 +676,17 @@ const AppCard = ({ app, onlineUsers = [], onRefresh, onOpenTagManagement = () =>
                       appName: <span className="system-sm-semibold text-text-primary" translate="no" />,
                     }}
                   />
-                </label>
-                <Input
-                  id={deleteAppNameInputId}
-                  name="confirm-app-name"
+                </FieldLabel>
+                <FieldControl
                   type="text"
                   autoComplete="off"
                   spellCheck={false}
                   placeholder={t('deleteAppConfirmInputPlaceholder', { ns: 'app' })}
                   value={confirmDeleteInput}
-                  onChange={e => setConfirmDeleteInput(e.target.value)}
+                  onValueChange={setConfirmDeleteInput}
                   className="border-components-input-border-hover bg-components-input-bg-normal focus:border-components-input-border-active focus:bg-components-input-bg-active"
                 />
-              </div>
+              </FieldRoot>
             </div>
             <AlertDialogActions>
               <AlertDialogCancelButton type="button" disabled={isDeleting}>

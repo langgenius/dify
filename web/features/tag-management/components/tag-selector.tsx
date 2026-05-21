@@ -219,8 +219,7 @@ export const TagSelector = ({
         disabled={!canManageTags}
         aria-label={triggerLabel}
         className={cn(
-          open ? 'bg-state-base-hover' : 'bg-transparent',
-          'block h-auto w-full rounded-lg border-0 bg-transparent p-0 text-left hover:bg-transparent focus:outline-hidden focus-visible:bg-transparent focus-visible:ring-1 focus-visible:ring-components-input-border-hover focus-visible:ring-inset data-open:bg-state-base-hover data-open:hover:bg-state-base-hover',
+          'block h-auto w-full rounded-lg border-0 bg-transparent p-0 text-left hover:bg-transparent focus:outline-hidden focus-visible:bg-transparent focus-visible:ring-1 focus-visible:ring-components-input-border-hover focus-visible:ring-inset data-popup-open:bg-state-base-hover data-popup-open:hover:bg-state-base-hover',
         )}
         icon={false}
       >
