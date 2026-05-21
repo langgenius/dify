@@ -3,17 +3,18 @@ from __future__ import annotations
 from collections import defaultdict
 from collections.abc import Callable, Iterable, Sequence
 from dataclasses import dataclass
-from typing import Any
 
 import sqlalchemy as sa
+from sqlalchemy import ColumnElement, Row
+from sqlalchemy.orm import Mapped
 
 from graphon.model_runtime.entities.model_entities import ModelType
 
-PERSISTED_MODEL_TYPE_LABEL = "persisted_model_type"
+_PERSISTED_MODEL_TYPE_LABEL = "persisted_model_type"
 
 
 @dataclass(frozen=True)
-class ModelTypeCompatValues:
+class _ModelTypeCompatValues:
     canonical_enum: ModelType
     canonical_value: str
     legacy_value: str
@@ -29,26 +30,26 @@ class PersistedModelTypeRecord[T]:
     persisted_model_type: str
 
 
-def get_model_type_compat_values(model_type: ModelType | str) -> ModelTypeCompatValues:
+def _get_model_type_compat_values(model_type: ModelType | str) -> _ModelTypeCompatValues:
     model_type_enum = model_type if isinstance(model_type, ModelType) else ModelType.value_of(model_type)
-    return ModelTypeCompatValues(
+    return _ModelTypeCompatValues(
         canonical_enum=model_type_enum,
         canonical_value=model_type_enum.value,
         legacy_value=model_type_enum.to_origin_model_type(),
     )
 
 
-def canonical_model_type_filter(column: Any, model_type: ModelType | str):
-    values = get_model_type_compat_values(model_type)
+def _canonical_model_type_filter(column: Mapped[ModelType], model_type: ModelType | str):
+    values = _get_model_type_compat_values(model_type)
     return column == values.canonical_enum
 
 
-def legacy_model_type_filter(column: Any, model_type: ModelType | str):
-    values = get_model_type_compat_values(model_type)
+def _legacy_model_type_filter(column: Mapped[ModelType], model_type: ModelType | str):
+    values = _get_model_type_compat_values(model_type)
     return sa.type_coerce(column, sa.String()) == values.legacy_value
 
 
-def legacy_compatible_model_type_filter(column: Any, model_type: ModelType | str):
+def legacy_compatible_model_type_filter(column: Mapped[ModelType], model_type: ModelType | str):
     """
     Match both canonical and legacy persisted model_type values during reads.
 
@@ -56,43 +57,40 @@ def legacy_compatible_model_type_filter(column: Any, model_type: ModelType | str
     ``ModelType.LLM``. Query paths therefore receive canonical enums while
     older rows may still store the original string value.
     """
-    values = get_model_type_compat_values(model_type)
+    values = _get_model_type_compat_values(model_type)
 
     if not values.has_distinct_legacy_value:
-        return canonical_model_type_filter(column, values.canonical_enum)
+        return _canonical_model_type_filter(column, values.canonical_enum)
 
     return sa.or_(
-        canonical_model_type_filter(column, values.canonical_enum),
+        _canonical_model_type_filter(column, values.canonical_enum),
         # rely on sa.type_coerce instead of sa.cast to ensure that we can
         # utilize indexes.
-        legacy_model_type_filter(column, values.canonical_enum),
+        _legacy_model_type_filter(column, values.canonical_enum),
     )
 
 
-def persisted_model_type_column(column: Any):
-    return sa.type_coerce(column, sa.String()).label(PERSISTED_MODEL_TYPE_LABEL)
+def persisted_model_type_column(column: Mapped[ModelType]):
+    return sa.type_coerce(column, sa.String()).label(_PERSISTED_MODEL_TYPE_LABEL)
 
 
 def fetch_singleton_with_model_type_fallback[T](
     *,
-    column: Any,
+    column: Mapped[ModelType],
     model_type: ModelType | str,
-    fetch_by_filter: Callable[[Any], T | None],
+    fetch_by_filter: Callable[[ColumnElement[bool]], T | None],
 ) -> T | None:
-    values = get_model_type_compat_values(model_type)
+    values = _get_model_type_compat_values(model_type)
 
-    result = fetch_by_filter(canonical_model_type_filter(column, values.canonical_enum))
+    result = fetch_by_filter(_canonical_model_type_filter(column, values.canonical_enum))
     if result is not None or not values.has_distinct_legacy_value:
         return result
 
-    return fetch_by_filter(legacy_model_type_filter(column, values.canonical_enum))
+    return fetch_by_filter(_legacy_model_type_filter(column, values.canonical_enum))
 
 
-def build_persisted_model_type_records(rows: Iterable[Any]) -> list[PersistedModelTypeRecord[Any]]:
-    return [
-        PersistedModelTypeRecord(record=row[0], persisted_model_type=row[1])
-        for row in rows
-    ]
+def build_persisted_model_type_records[T](rows: Iterable[Row[tuple[T, str]]]) -> list[PersistedModelTypeRecord[T]]:
+    return [PersistedModelTypeRecord(record=row[0], persisted_model_type=row[1]) for row in rows]
 
 
 def prefer_canonical_model_type_records[T, K](
@@ -107,7 +105,7 @@ def prefer_canonical_model_type_records[T, K](
 
     preferred_records: list[T] = []
     for scoped_records in grouped_records.values():
-        compat_values = get_model_type_compat_values(model_type_getter(scoped_records[0].record))
+        compat_values = _get_model_type_compat_values(model_type_getter(scoped_records[0].record))
         canonical_records = [
             scoped_record.record
             for scoped_record in scoped_records
