@@ -121,7 +121,7 @@
   "createGuide.methods.importDsl.title": "导入 DSL",
   "createGuide.methods.mocked": "模拟",
   "createGuide.nav.back": "部署",
-  "createGuide.release.defaultNote": "初始可部署发布版本",
+  "createGuide.release.defaultName": "初始发布版本",
   "createGuide.release.description": "填写应用实例信息和第一个发布版本的信息。",
   "createGuide.release.instanceDescription": "实例描述",
   "createGuide.release.instanceName": "实例名称",

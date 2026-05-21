@@ -121,7 +121,7 @@
   "createGuide.methods.importDsl.title": "Import DSL",
   "createGuide.methods.mocked": "Mocked",
   "createGuide.nav.back": "Deployments",
-  "createGuide.release.defaultNote": "Initial deployable release",
+  "createGuide.release.defaultName": "initial release",
   "createGuide.release.description": "Fill in the app instance details and the first release details.",
   "createGuide.release.instanceDescription": "Instance description",
   "createGuide.release.instanceName": "Instance name",

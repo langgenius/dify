@@ -142,17 +142,21 @@ function sourceAppSearchText(app: App) {
   return `${app.name} ${app.id} ${app.mode}`.toLowerCase()
 }
 
-function StepShell({ title, description, children }: {
+function StepShell({ title, description, descriptionClassName, hideHeader, children }: {
   title: string
   description: string
+  descriptionClassName?: string
+  hideHeader?: boolean
   children: React.ReactNode
 }) {
   return (
-    <section className="flex min-w-0 flex-col gap-4">
-      <div className="flex min-w-0 flex-col gap-0.5">
-        <h2 className="system-md-semibold text-text-primary">{title}</h2>
-        <p className="system-sm-regular text-text-tertiary">{description}</p>
-      </div>
+    <section aria-label={hideHeader ? title : undefined} className="flex min-w-0 flex-col gap-4">
+      {!hideHeader && (
+        <div className="flex min-w-0 flex-col gap-0.5">
+          <h2 className="system-md-semibold text-text-primary">{title}</h2>
+          <p className={cn('system-sm-regular text-text-tertiary', descriptionClassName)}>{description}</p>
+        </div>
+      )}
       {children}
     </section>
   )
@@ -192,7 +196,6 @@ function MethodCard({ icon, title, description, badge, selected, onClick }: {
         <span className="line-clamp-2 min-w-0 grow system-xs-regular text-text-tertiary" title={description}>
           {description}
         </span>
-        <span className="mt-0.5 i-ri-arrow-right-line size-3.5 shrink-0 text-text-quaternary" aria-hidden="true" />
       </span>
     </button>
   )
@@ -283,14 +286,17 @@ function DeploymentPreview({ activeStep, preview }: {
           </div>
         </div>
         <div className="absolute right-0 left-0 border-b border-b-divider-subtle" />
-        <div className="px-8 py-6">
-          <div className="w-full max-w-[392px] overflow-hidden rounded-xl border border-components-card-border bg-components-card-bg shadow-xs">
+        <div
+          className="flex h-[448px] w-full max-w-[664px] items-center justify-center"
+          style={{ background: 'repeating-linear-gradient(135deg, transparent, transparent 2px, rgba(16,24,40,0.04) 4px, transparent 3px, transparent 6px)' }}
+        >
+          <div className="w-full max-w-[392px] overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg shadow-xs">
             <div className="flex items-start gap-3 border-b border-divider-subtle px-4 py-4">
-              <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-components-icon-bg-blue-light-solid">
-                <span className="i-ri-rocket-2-line size-4 text-components-avatar-shape-fill-stop-100" aria-hidden="true" />
+              <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-background-default-subtle">
+                <span className="i-ri-rocket-2-line size-4 text-text-tertiary" aria-hidden="true" />
               </span>
               <div className="min-w-0">
-                <div className="system-md-semibold text-text-primary">{t('createGuide.review.title')}</div>
+                <div className="system-md-semibold text-text-secondary">{t('createGuide.review.title')}</div>
                 <div className="mt-0.5 line-clamp-2 system-xs-regular text-text-tertiary">{t('createGuide.review.description')}</div>
               </div>
             </div>
@@ -310,7 +316,12 @@ function MethodStep({ method, onSelect }: {
   const { t } = useTranslation('deployments')
 
   return (
-    <StepShell title={t('createGuide.steps.method')} description={t('createGuide.method.description')}>
+    <StepShell
+      title={t('createGuide.steps.method')}
+      description={t('createGuide.method.description')}
+      descriptionClassName="lg:hidden"
+      hideHeader
+    >
       <div className="flex flex-col gap-2 sm:flex-row">
         <MethodCard
           icon="i-ri-stack-line"
@@ -359,10 +370,10 @@ function SourceAppOption({ app, selected, onSelect }: {
   return (
     <label
       className={cn(
-        'group flex min-h-14 cursor-pointer items-center gap-3 border-b border-divider-subtle px-3 py-2 transition-colors last:border-b-0 hover:bg-state-base-hover',
+        'group flex min-h-14 cursor-pointer items-center gap-3 border-b border-l-2 border-b-divider-subtle px-3 py-2 transition-colors last:border-b-0',
         selected
-          ? 'bg-state-base-hover'
-          : 'bg-background-default',
+          ? 'border-l-state-accent-solid bg-state-accent-hover hover:bg-state-accent-hover'
+          : 'border-l-transparent bg-background-default hover:bg-state-base-hover',
       )}
     >
       <AppIcon
@@ -374,8 +385,8 @@ function SourceAppOption({ app, selected, onSelect }: {
         imageUrl={app.icon_url}
       />
       <span className="flex min-w-0 grow flex-col gap-0.5">
-        <span className="truncate system-sm-medium text-text-primary">{app.name}</span>
-        <span className="truncate system-xs-regular text-text-tertiary">{t(`appMode.${mode}`)}</span>
+        <span className={cn('truncate system-sm-medium', selected ? 'text-text-accent' : 'text-text-primary')}>{app.name}</span>
+        <span className={cn('truncate system-xs-regular', selected ? 'text-text-secondary' : 'text-text-tertiary')}>{t(`appMode.${mode}`)}</span>
       </span>
       <input
         type="radio"
@@ -387,7 +398,7 @@ function SourceAppOption({ app, selected, onSelect }: {
       <span
         className={cn(
           'flex size-5 shrink-0 items-center justify-center rounded-full',
-          selected ? 'text-text-accent' : 'text-transparent',
+          selected ? 'bg-primary-600 text-text-primary-on-surface' : 'text-transparent',
         )}
         aria-hidden="true"
       >
@@ -419,7 +430,12 @@ function SourceStep({
     : apps
 
   return (
-    <StepShell title={t('createGuide.source.title')} description={t('createGuide.source.description')}>
+    <StepShell
+      title={t('createGuide.source.title')}
+      description={t('createGuide.source.description')}
+      descriptionClassName="lg:hidden"
+      hideHeader
+    >
       <div className="flex flex-col gap-3">
         <Input
           id="create-guide-source-search"
@@ -487,7 +503,6 @@ function ReleaseStep({
   releaseDescription,
   instanceNamePlaceholder,
   releaseNamePlaceholder,
-  releaseDescriptionPlaceholder,
   onInstanceNameChange,
   onInstanceDescriptionChange,
   onReleaseNameChange,
@@ -499,7 +514,6 @@ function ReleaseStep({
   releaseDescription: string
   instanceNamePlaceholder: string
   releaseNamePlaceholder: string
-  releaseDescriptionPlaceholder: string
   onInstanceNameChange: (value: string) => void
   onInstanceDescriptionChange: (value: string) => void
   onReleaseNameChange: (value: string) => void
@@ -508,7 +522,11 @@ function ReleaseStep({
   const { t } = useTranslation('deployments')
 
   return (
-    <StepShell title={t('createGuide.release.title')} description={t('createGuide.release.description')}>
+    <StepShell
+      title={t('createGuide.release.title')}
+      description={t('createGuide.release.description')}
+      hideHeader
+    >
       <div className="flex flex-col gap-5">
         <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
           <div className="flex flex-col gap-2">
@@ -558,7 +576,6 @@ function ReleaseStep({
               id="create-guide-release-description"
               value={releaseDescription}
               onChange={event => onReleaseDescriptionChange(event.target.value)}
-              placeholder={releaseDescriptionPlaceholder}
               className="min-h-20 w-full resize-none appearance-none rounded-md border border-transparent bg-components-input-bg-normal p-2 px-3 system-sm-regular text-components-input-text-filled caret-primary-600 outline-hidden placeholder:text-components-input-text-placeholder hover:border-components-input-border-hover hover:bg-components-input-bg-hover focus:border-components-input-border-active focus:bg-components-input-bg-active focus:shadow-xs"
             />
           </div>
@@ -581,8 +598,8 @@ function EnvironmentOptionRow({ environment, selected, onSelect }: {
       className={cn(
         'flex cursor-pointer items-center gap-3 rounded-xl border p-3',
         selected
-          ? 'border-primary-600 bg-primary-50'
-          : 'border-components-card-border bg-components-card-bg hover:bg-background-default-hover',
+          ? 'border-state-accent-solid bg-state-accent-hover shadow-xs'
+          : 'border-components-option-card-option-border bg-components-option-card-option-bg hover:border-components-option-card-option-border-hover hover:bg-components-option-card-option-bg-hover hover:shadow-xs',
       )}
     >
       <input
@@ -593,8 +610,8 @@ function EnvironmentOptionRow({ environment, selected, onSelect }: {
         className="size-4 shrink-0 accent-primary-600"
       />
       <span className="flex min-w-0 grow flex-col gap-1">
-        <span className="truncate system-sm-semibold text-text-primary">{environmentName(environment)}</span>
-        <span className="flex flex-wrap items-center gap-1.5 system-xs-regular text-text-tertiary">
+        <span className={cn('truncate system-sm-semibold', selected ? 'text-text-accent' : 'text-text-primary')}>{environmentName(environment)}</span>
+        <span className={cn('flex flex-wrap items-center gap-1.5 system-xs-regular', selected ? 'text-text-secondary' : 'text-text-tertiary')}>
           <span>{t(mode === 'isolated' ? 'mode.isolated' : 'mode.shared')}</span>
           <span>{environment.status}</span>
           <span>{environment.backend}</span>
@@ -722,7 +739,11 @@ function TargetStep({
   const hasEnvironmentOptions = environments.length > 0
 
   return (
-    <StepShell title={t('createGuide.target.title')} description={t('createGuide.target.description')}>
+    <StepShell
+      title={t('createGuide.target.title')}
+      description={t('createGuide.target.description')}
+      hideHeader
+    >
       <div className="flex flex-col gap-6">
         <div className="flex flex-col gap-3">
           <div className="system-xs-medium-uppercase text-text-tertiary">{t('createGuide.target.environment')}</div>
@@ -749,7 +770,7 @@ function TargetStep({
                   </div>
                 )}
         </div>
-        <div className="overflow-hidden rounded-xl border border-divider-subtle bg-background-default-subtle">
+        <div className="overflow-hidden rounded-xl border border-components-option-card-option-border bg-components-option-card-option-bg">
           <div className="flex min-w-0 flex-col gap-0.5 px-3 py-2.5">
             <div className="system-xs-medium-uppercase text-text-tertiary">{t('createGuide.target.bindings')}</div>
             <span className="system-xs-regular text-text-quaternary">{t('createGuide.target.bindingHint')}</span>
@@ -941,7 +962,6 @@ function GuideActions({
 
 function CreationSections({
   children,
-  defaultReleaseNote,
   defaultedReleaseName,
   instanceDescription,
   instanceName,
@@ -963,7 +983,6 @@ function CreationSections({
   stage,
 }: {
   children?: React.ReactNode
-  defaultReleaseNote: string
   defaultedReleaseName: string
   instanceDescription: string
   instanceName: string
@@ -1010,7 +1029,6 @@ function CreationSections({
           releaseDescription={releaseDescription}
           instanceNamePlaceholder={sourceName}
           releaseNamePlaceholder={defaultedReleaseName}
-          releaseDescriptionPlaceholder={defaultReleaseNote}
           onInstanceNameChange={onInstanceNameChange}
           onInstanceDescriptionChange={onInstanceDescriptionChange}
           onReleaseNameChange={onReleaseNameChange}
@@ -1068,8 +1086,8 @@ export function CreateDeploymentGuide() {
   const createRelease = useMutation(consoleQuery.enterprise.appReleaseService.createRelease.mutationOptions())
   const createDeployment = useMutation(consoleQuery.enterprise.appDeploymentService.createDeployment.mutationOptions())
 
-  const [step, setStep] = useState<GuideStep>('method')
-  const [method, setMethod] = useState<GuideMethod>()
+  const [step, setStep] = useState<GuideStep>('source')
+  const [method, setMethod] = useState<GuideMethod>('bindApp')
   const [sourceSearchText, setSourceSearchText] = useState('')
   const [selectedApp, setSelectedApp] = useState<App>()
   const [instanceName, setInstanceName] = useState('')
@@ -1098,7 +1116,6 @@ export function CreateDeploymentGuide() {
   })
   const sourceApps = sourceAppsQuery.data?.pages.flatMap(page => page.data) ?? []
   const effectiveSelectedApp = selectedApp ?? sourceApps[0]
-  const defaultReleaseNote = t('createGuide.release.defaultNote')
   const hasCreatedReleaseArtifacts = Boolean(createdAppInstanceId && createdRelease?.id)
   const shouldLoadDeploymentTarget = method === 'bindApp' && hasCreatedReleaseArtifacts
 
@@ -1144,9 +1161,9 @@ export function CreateDeploymentGuide() {
       ? effectiveSelectedApp?.name ?? ''
       : ''
   const displayedInstanceName = instanceName.trim() || sourceName
-  const defaultedReleaseName = sourceName ? `${sourceName}-release` : ''
+  const defaultedReleaseName = t('createGuide.release.defaultName')
   const displayedReleaseName = createdRelease?.name || releaseName.trim() || defaultedReleaseName
-  const displayedReleaseDescription = releaseDescription.trim() || defaultReleaseNote
+  const displayedReleaseDescription = releaseDescription.trim()
   const showTargetConfiguration = Boolean(method && step === 'target')
 
   function resetCreatedArtifacts() {
@@ -1374,13 +1391,11 @@ export function CreateDeploymentGuide() {
                 releaseName={releaseName}
                 releaseDescription={releaseDescription}
                 defaultedReleaseName={defaultedReleaseName}
-                defaultReleaseNote={defaultReleaseNote}
                 onSelectMethod={handleSelectMethod}
                 onSearchTextChange={setSourceSearchText}
                 onSelectSourceApp={(app) => {
                   setSelectedApp(app)
                   resetCreatedArtifacts()
-                  setStep('release')
                 }}
                 onInstanceNameChange={(value) => {
                   setInstanceName(value)
