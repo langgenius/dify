@@ -3,6 +3,7 @@
 import type { BindingType } from '@/models/access-control'
 import { cn } from '@langgenius/dify-ui/cn'
 import { memo } from 'react'
+import { useTranslation } from 'react-i18next'
 
 export type RoleTagProps = {
   id: string
@@ -21,6 +22,8 @@ const RoleTag = ({
   onRemove,
   className,
 }: RoleTagProps) => {
+  const { t } = useTranslation()
+
   return (
     <span
       className={cn(
@@ -33,7 +36,7 @@ const RoleTag = ({
       {showRemove && onRemove && (
         <button
           type="button"
-          aria-label={`Remove ${label}`}
+          aria-label={t('accessRule.removeBindingAria', { ns: 'permission', name: label })}
           onClick={(e) => {
             e.stopPropagation()
             onRemove(id, type)

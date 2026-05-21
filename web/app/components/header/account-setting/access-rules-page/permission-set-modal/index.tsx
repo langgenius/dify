@@ -10,6 +10,7 @@ import {
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import Input from '@/app/components/base/input'
 import Textarea from '@/app/components/base/textarea'
 import PermissionPicker from './permission-picker'
@@ -31,26 +32,6 @@ export type PermissionSetModalProps = {
   onSubmit: (values: PermissionSetFormValues) => void
 }
 
-const RESOURCE_LABEL: Record<AccessPolicyResourceType, string> = {
-  app: 'App',
-  dataset: 'Knowledge Base',
-}
-
-const buildTitle = (mode: PermissionSetModalMode, resource: AccessPolicyResourceType): string => {
-  const verb = mode === 'create' ? 'Create' : mode === 'edit' ? 'Edit' : 'View'
-  return `${verb} ${RESOURCE_LABEL[resource]} permission set`
-}
-
-const buildDescription = (mode: PermissionSetModalMode, resource: AccessPolicyResourceType): string => {
-  if (mode === 'view')
-    return 'View the name, description, and permissions granted for this permission set.'
-  if (mode === 'edit')
-    return 'Modify the name, description, and permissions granted for this permission set.'
-  if (resource === 'app')
-    return 'Create an app permission set that can be referenced in access rules for quick authorization.'
-  return 'Create a knowledge base permission set that can be referenced in access rules for quick authorization.'
-}
-
 type PermissionSetModalBodyProps = Omit<PermissionSetModalProps, 'open'>
 
 const PermissionSetModalBody = ({
@@ -60,6 +41,7 @@ const PermissionSetModalBody = ({
   onClose,
   onSubmit,
 }: PermissionSetModalBodyProps) => {
+  const { t } = useTranslation()
   const [name, setName] = useState(initialValues?.name ?? '')
   const [description, setDescription] = useState(initialValues?.description ?? '')
   const [permissionKeys, setPermissionKeys] = useState<string[]>(initialValues?.permissionKeys ?? [])
@@ -88,10 +70,10 @@ const PermissionSetModalBody = ({
         <DialogCloseButton />
         <div className="pr-8">
           <DialogTitle className="system-xl-semibold text-text-primary">
-            {buildTitle(mode, resourceType)}
+            {t(`permissionSet.modal.${mode}.${resourceType}.title`, { ns: 'permission' })}
           </DialogTitle>
           <DialogDescription className="mt-1 system-sm-regular text-text-tertiary">
-            {buildDescription(mode, resourceType)}
+            {t(`permissionSet.modal.${mode}.${resourceType}.description`, { ns: 'permission' })}
           </DialogDescription>
         </div>
       </div>
@@ -101,34 +83,34 @@ const PermissionSetModalBody = ({
       <div className="flex min-h-0 flex-1 flex-col gap-5 overflow-y-hidden px-6 py-5">
         <div className="flex flex-col gap-1">
           <label htmlFor="permission-set-name" className="system-sm-medium text-text-secondary">
-            permission set name
+            {t('permissionSet.nameLabel', { ns: 'permission' })}
             <span aria-hidden className="ml-0.5 text-text-destructive">*</span>
           </label>
           <Input
             id="permission-set-name"
             value={name}
             onChange={e => setName(e.target.value)}
-            placeholder="e.g. Can export DSL"
+            placeholder={t('permissionSet.namePlaceholder', { ns: 'permission' })}
             disabled={readonly}
           />
         </div>
 
         <div className="flex flex-col gap-1">
           <label htmlFor="permission-set-description" className="system-sm-medium text-text-secondary">
-            Description
+            {t('permissionSet.descriptionLabel', { ns: 'permission' })}
           </label>
           <Textarea
             id="permission-set-description"
             value={description}
             onChange={e => setDescription(e.target.value)}
-            placeholder="Describe what this permission set grants"
+            placeholder={t('permissionSet.descriptionPlaceholder', { ns: 'permission' })}
             className="min-h-20 resize-none"
             disabled={readonly}
           />
         </div>
 
         <div className="flex flex-col gap-2">
-          <div className="system-sm-medium text-text-secondary">Permissions</div>
+          <div className="system-sm-medium text-text-secondary">{t('permissionSet.permissions', { ns: 'permission' })}</div>
           <PermissionPicker
             resourceType={resourceType}
             value={permissionKeys}
@@ -145,12 +127,12 @@ const PermissionSetModalBody = ({
           rel="noreferrer"
           className="inline-flex items-center gap-1 system-xs-medium text-text-accent hover:underline"
         >
-          <span>Learn more about permissions</span>
+          <span>{t('permissionSet.learnMore', { ns: 'permission' })}</span>
           <span aria-hidden className="i-ri-external-link-line h-3.5 w-3.5" />
         </a>
         <div className="flex items-center gap-2">
           <Button variant="secondary" onClick={onClose}>
-            {readonly ? 'Close' : 'Cancel'}
+            {readonly ? t('operation.close', { ns: 'common' }) : t('operation.cancel', { ns: 'common' })}
           </Button>
           {!readonly && (
             <Button
@@ -158,7 +140,7 @@ const PermissionSetModalBody = ({
               disabled={!canSubmit}
               onClick={handleConfirm}
             >
-              Confirm
+              {t('operation.confirm', { ns: 'common' })}
             </Button>
           )}
         </div>

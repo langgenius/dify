@@ -2,6 +2,7 @@
 
 import { ScrollArea } from '@langgenius/dify-ui/scroll-area'
 import { useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
 import AccessRulesEditor from '@/app/components/access-rules-editor'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import { useDatasetAccessRules } from '@/service/access-control/use-dataset-access-config'
@@ -12,6 +13,7 @@ type DatasetAccessConfigPageProps = {
 }
 
 const DatasetAccessConfigPage = ({ datasetId }: DatasetAccessConfigPageProps) => {
+  const { t } = useTranslation()
   const { data: datasetAccessRulesResponse } = useDatasetAccessRules(datasetId)
   const datasetPermissionKeys = useDatasetDetailContextWithSelector(state => state.dataset?.permission_keys)
   const datasetACLCapabilities = useMemo(
@@ -27,7 +29,7 @@ const DatasetAccessConfigPage = ({ datasetId }: DatasetAccessConfigPageProps) =>
       slotClassNames={{ viewport: 'overscroll-contain' }}
     >
       <div className="px-12 py-8">
-        <h1 className="title-2xl-semi-bold text-text-primary">Access Config</h1>
+        <h1 className="title-2xl-semi-bold text-text-primary">{t('settings.accessConfig', { ns: 'common' })}</h1>
         <div className="mt-6">
           <AccessRulesEditor rules={datasetAccessRules} canManage={datasetACLCapabilities.canAccessConfig} />
         </div>

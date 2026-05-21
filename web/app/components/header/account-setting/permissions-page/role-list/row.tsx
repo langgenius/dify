@@ -1,6 +1,7 @@
 import type { Role, RoleCategory } from '@/models/access-control'
 import { cn } from '@langgenius/dify-ui/cn'
 import { memo } from 'react'
+import { useTranslation } from 'react-i18next'
 import RowMenu from './row-menu'
 
 type RowProps = {
@@ -22,6 +23,8 @@ const Row = ({
   onView,
   onEdit,
 }: RowProps) => {
+  const { t } = useTranslation()
+
   return (
     <div
       className={cn(
@@ -34,7 +37,7 @@ const Row = ({
           {name}
         </div>
         <p className="mt-1 system-sm-regular text-text-tertiary">
-          {description || 'No description'}
+          {description || t('role.noDescription', { ns: 'permission' })}
         </p>
       </div>
       <RowMenu

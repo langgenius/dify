@@ -4,6 +4,7 @@ import type { AccessPolicyWithBindings, RemoveBindingPayload } from '@/models/ac
 import { cn } from '@langgenius/dify-ui/cn'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useCallback, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import AccessRuleRow from '@/app/components/header/account-setting/access-rules-page/access-rule-row'
 import AddRuleTargetsModal from '@/app/components/header/account-setting/access-rules-page/add-rule-targets-modal'
 import { useParams } from '@/next/navigation'
@@ -21,6 +22,7 @@ const AccessRulesEditor = ({
   canManage,
   className,
 }: AccessRulesEditorProps) => {
+  const { t } = useTranslation()
   const { appId } = useParams() as { appId: string }
   const [currentRule, setCurrentRule] = useState<AccessPolicyWithBindings | null>(null)
 
@@ -47,7 +49,7 @@ const AccessRulesEditor = ({
           account_ids: selection.memberIds,
         }, {
           onSuccess: () => {
-            toast.success('Rule binding updated successfully')
+            toast.success(t('accessRule.bindingUpdated', { ns: 'permission' }))
           },
         })
       }
@@ -59,12 +61,12 @@ const AccessRulesEditor = ({
           account_ids: selection.memberIds,
         }, {
           onSuccess: () => {
-            toast.success('Rule binding updated successfully')
+            toast.success(t('accessRule.bindingUpdated', { ns: 'permission' }))
           },
         })
       }
     },
-    [appId, currentRule, updateAppAccessRuleBindings, updateDatasetAccessRuleBindings],
+    [appId, currentRule, t, updateAppAccessRuleBindings, updateDatasetAccessRuleBindings],
   )
 
   const handleRemoveRole = useCallback(
@@ -78,7 +80,7 @@ const AccessRulesEditor = ({
           account_ids,
         }, {
           onSuccess: () => {
-            toast.success('Rule binding removed successfully')
+            toast.success(t('accessRule.bindingRemoved', { ns: 'permission' }))
           },
         })
       }
@@ -90,12 +92,12 @@ const AccessRulesEditor = ({
           account_ids,
         }, {
           onSuccess: () => {
-            toast.success('Rule binding removed successfully')
+            toast.success(t('accessRule.bindingRemoved', { ns: 'permission' }))
           },
         })
       }
     },
-    [appId, updateAppAccessRuleBindings, updateDatasetAccessRuleBindings],
+    [appId, t, updateAppAccessRuleBindings, updateDatasetAccessRuleBindings],
   )
 
   return (

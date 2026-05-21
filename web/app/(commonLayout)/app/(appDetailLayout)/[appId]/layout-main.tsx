@@ -110,7 +110,7 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
         : []),
       ...(appACLCapabilities.canAccessConfig
         ? [{
-            name: 'Access Config',
+            name: t('settings.accessConfig', { ns: 'common' }),
             href: `/app/${appId}/access-config`,
             icon: RiUserSettingsLine,
             selectedIcon: RiUserSettingsFill,

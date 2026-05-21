@@ -10,6 +10,7 @@ import {
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
 import { useCallback, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import RolesTab from '../../workspace-role-checkbox-list'
 import MembersTab from './members-tab'
 
@@ -25,10 +26,10 @@ type AddRuleTargetsModalBaseProps = {
 
 export type AddRuleTargetsModalProps = AddRuleTargetsModalBaseProps
 
-const TABS: Array<{ key: TabKey, label: string }> = [
-  { key: 'roles', label: 'ROLES' },
-  { key: 'members', label: 'MEMBERS' },
-]
+const TABS = [
+  { key: 'roles', labelKey: 'addRuleTargets.rolesTab' },
+  { key: 'members', labelKey: 'addRuleTargets.membersTab' },
+] as const satisfies ReadonlyArray<{ key: TabKey, labelKey: 'addRuleTargets.rolesTab' | 'addRuleTargets.membersTab' }>
 
 const AddRuleTargetsModalBody = ({
   ruleName,
@@ -37,6 +38,7 @@ const AddRuleTargetsModalBody = ({
   onClose,
   onSubmit,
 }: AddRuleTargetsModalBaseProps) => {
+  const { t } = useTranslation()
   const [activeTab, setActiveTab] = useState<TabKey>('roles')
   const [selectedRoleIds, setSelectedRoleIds] = useState<string[]>(initialRoleIds)
   const [selectedMemberIds, setSelectedMemberIds] = useState<string[]>(initialMemberIds)
@@ -47,15 +49,14 @@ const AddRuleTargetsModalBody = ({
   }, [onClose, onSubmit, selectedMemberIds, selectedRoleIds])
 
   const description = ruleName
-    ? `Select roles or members to grant the "${ruleName}" access level by default.`
-    : 'Select roles or members to grant this access level by default.'
+    ? t('addRuleTargets.descriptionWithName', { ns: 'permission', name: ruleName })
+    : t('addRuleTargets.description', { ns: 'permission' })
 
-  const summary = (() => {
-    const parts: string[] = []
-    parts.push(`${selectedRoleIds.length} ${selectedRoleIds.length === 1 ? 'role' : 'roles'}`)
-    parts.push(`${selectedMemberIds.length} ${selectedMemberIds.length === 1 ? 'member' : 'members'} selected`)
-    return parts.join(', ')
-  })()
+  const summary = t('addRuleTargets.selectedSummary', {
+    ns: 'permission',
+    roleCount: selectedRoleIds.length,
+    memberCount: selectedMemberIds.length,
+  })
 
   return (
     <DialogContent
@@ -66,7 +67,7 @@ const AddRuleTargetsModalBody = ({
         <DialogCloseButton />
         <div className="pr-8">
           <DialogTitle className="system-xl-semibold text-text-primary">
-            Add Roles or Members
+            {t('addRuleTargets.title', { ns: 'permission' })}
           </DialogTitle>
           <DialogDescription className="mt-1 system-sm-regular text-text-tertiary">
             {description}
@@ -75,7 +76,7 @@ const AddRuleTargetsModalBody = ({
       </div>
 
       <div className="shrink-0 border-b border-divider-subtle px-6">
-        <div role="tablist" aria-label="Targets" className="flex items-center gap-6">
+        <div role="tablist" aria-label={t('addRuleTargets.targetsAria', { ns: 'permission' })} className="flex items-center gap-6">
           {TABS.map((tab) => {
             const active = activeTab === tab.key
             return (
@@ -92,7 +93,7 @@ const AddRuleTargetsModalBody = ({
                     : 'border-transparent text-text-tertiary hover:text-text-secondary',
                 )}
               >
-                {tab.label}
+                {t(tab.labelKey, { ns: 'permission' })}
               </button>
             )
           })}
@@ -118,10 +119,10 @@ const AddRuleTargetsModalBody = ({
         </div>
         <div className="flex items-center gap-2">
           <Button variant="secondary" onClick={onClose}>
-            Cancel
+            {t('operation.cancel', { ns: 'common' })}
           </Button>
           <Button variant="primary" onClick={handleConfirm}>
-            Confirm
+            {t('operation.confirm', { ns: 'common' })}
           </Button>
         </div>
       </div>

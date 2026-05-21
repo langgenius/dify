@@ -19,6 +19,7 @@ import {
 } from '@langgenius/dify-ui/dropdown-menu'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useCallback, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
 import { useCopyAccessRule, useDeleteAccessRule } from '@/service/access-control/use-workspace-access-rules'
 
@@ -33,6 +34,7 @@ const AccessRuleRowMenu = ({
   onView,
   onEdit,
 }: AccessRuleRowMenuProps) => {
+  const { t } = useTranslation()
   const [open, setOpen] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
 
@@ -46,11 +48,11 @@ const AccessRuleRowMenu = ({
   const handleCopyRules = useCallback(() => {
     copyAccessRule(rule.id, {
       onSuccess: () => {
-        toast.success('Access rule copied successfully')
+        toast.success(t('accessRule.copied', { ns: 'permission' }))
         setOpen(false)
       },
     })
-  }, [copyAccessRule, rule.id])
+  }, [copyAccessRule, rule.id, t])
 
   const openDeleteConfirm = useCallback(() => {
     setShowDeleteConfirm(true)
@@ -60,11 +62,11 @@ const AccessRuleRowMenu = ({
   const handleDelete = useCallback(() => {
     deleteAccessRule(rule.id, {
       onSuccess: () => {
-        toast.success('Access rule deleted successfully')
+        toast.success(t('accessRule.deleted', { ns: 'permission' }))
         setShowDeleteConfirm(false)
       },
     })
-  }, [deleteAccessRule, rule.id])
+  }, [deleteAccessRule, rule.id, t])
 
   const isBuiltIn = rule.is_builtin
 
@@ -76,7 +78,7 @@ const AccessRuleRowMenu = ({
             <ActionButton
               size="l"
               className={open ? 'bg-state-base-hover' : ''}
-              aria-label="More actions"
+              aria-label={t('operation.moreActions', { ns: 'common' })}
             />
           )}
         >
@@ -93,7 +95,7 @@ const AccessRuleRowMenu = ({
                   className="system-sm-semibold text-text-secondary"
                   onClick={handleView}
                 >
-                  View
+                  {t('operation.view', { ns: 'common' })}
                 </DropdownMenuItem>
               )
             : (
@@ -101,14 +103,14 @@ const AccessRuleRowMenu = ({
                   className="system-sm-semibold text-text-secondary"
                   onClick={onEdit}
                 >
-                  Edit
+                  {t('operation.edit', { ns: 'common' })}
                 </DropdownMenuItem>
               )}
           <DropdownMenuItem
             className="system-sm-semibold text-text-secondary"
             onClick={handleCopyRules}
           >
-            Copy
+            {t('operation.copy', { ns: 'common' })}
           </DropdownMenuItem>
           {!isBuiltIn && (
             <>
@@ -118,7 +120,7 @@ const AccessRuleRowMenu = ({
                 className="system-sm-semibold"
                 onClick={openDeleteConfirm}
               >
-                Delete
+                {t('operation.delete', { ns: 'common' })}
               </DropdownMenuItem>
             </>
           )}
@@ -128,19 +130,19 @@ const AccessRuleRowMenu = ({
         <AlertDialogContent backdropProps={{ forceRender: true }}>
           <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
             <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
-              {`Delete "${rule.name}"?`}
+              {t('accessRule.deleteTitle', { ns: 'permission', name: rule.name })}
             </AlertDialogTitle>
             <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
-              This access rule will be permanently deleted and removed from the resource authorization list.
+              {t('accessRule.deleteDescription', { ns: 'permission' })}
             </AlertDialogDescription>
           </div>
           <AlertDialogActions>
-            <AlertDialogCancelButton>Cancel</AlertDialogCancelButton>
+            <AlertDialogCancelButton>{t('operation.cancel', { ns: 'common' })}</AlertDialogCancelButton>
             <AlertDialogConfirmButton
               disabled={isDeletingAccessRule}
               onClick={handleDelete}
             >
-              Delete
+              {t('operation.delete', { ns: 'common' })}
             </AlertDialogConfirmButton>
           </AlertDialogActions>
         </AlertDialogContent>

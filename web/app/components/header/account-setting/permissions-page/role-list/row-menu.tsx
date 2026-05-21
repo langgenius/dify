@@ -18,6 +18,7 @@ import {
 } from '@langgenius/dify-ui/dropdown-menu'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useCallback, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
 import { useSelector as useAppContextWithSelector } from '@/context/app-context'
 import { useCopyWorkspaceRole, useDeleteWorkspaceRole } from '@/service/access-control/use-workspace-roles'
@@ -36,6 +37,7 @@ const RowMenu = ({
   onView,
   onEdit,
 }: RowMenuProps) => {
+  const { t } = useTranslation()
   const [open, setOpen] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
 
@@ -50,11 +52,11 @@ const RowMenu = ({
   const handleDuplicate = useCallback(() => {
     copyRole(role.id, {
       onSuccess: () => {
-        toast.success('Role duplicated successfully')
+        toast.success(t('role.duplicated', { ns: 'permission' }))
         setOpen(false)
       },
     })
-  }, [copyRole, role.id])
+  }, [copyRole, role.id, t])
 
   const { mutateAsync: deleteRole, isPending: isDeletingRole } = useDeleteWorkspaceRole()
 
@@ -66,11 +68,11 @@ const RowMenu = ({
   const handleDelete = useCallback(() => {
     deleteRole(role.id, {
       onSuccess: () => {
-        toast.success('Role deleted successfully')
+        toast.success(t('role.deleted', { ns: 'permission' }))
         setShowDeleteConfirm(false)
       },
     })
-  }, [deleteRole, role.id])
+  }, [deleteRole, role.id, t])
 
   const canManageRoles = hasPermission(workspacePermissionKeys, 'workspace.role.manage')
 
@@ -81,24 +83,24 @@ const RowMenu = ({
   return (
     <>
       <DropdownMenu open={open} onOpenChange={setOpen}>
-        <DropdownMenuTrigger render={<ActionButton size="l" className={open ? 'bg-state-base-hover' : ''} aria-label="More actions" />}>
+        <DropdownMenuTrigger render={<ActionButton size="l" className={open ? 'bg-state-base-hover' : ''} aria-label={t('operation.moreActions', { ns: 'common' })} />}>
           <span aria-hidden className="i-ri-more-fill h-4 w-4 text-text-tertiary" />
         </DropdownMenuTrigger>
         <DropdownMenuContent placement="bottom-end" sideOffset={4} popupClassName="min-w-[160px]">
           <DropdownMenuItem className="system-sm-semibold text-text-secondary" onClick={handleView}>
-            View
+            {t('operation.view', { ns: 'common' })}
           </DropdownMenuItem>
           {
             hasEditAction && (
               <DropdownMenuItem className="system-sm-semibold text-text-secondary" onClick={handleEdit}>
-                Edit
+                {t('operation.edit', { ns: 'common' })}
               </DropdownMenuItem>
             )
           }
           {
             hasDuplicateAction && (
               <DropdownMenuItem className="system-sm-semibold text-text-secondary" onClick={handleDuplicate}>
-                Duplicate
+                {t('operation.duplicate', { ns: 'common' })}
               </DropdownMenuItem>
             )
           }
@@ -107,7 +109,7 @@ const RowMenu = ({
               <>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem variant="destructive" className="system-sm-semibold" onClick={openDeleteConfirm}>
-                  Delete
+                  {t('operation.delete', { ns: 'common' })}
                 </DropdownMenuItem>
               </>
             )
@@ -118,19 +120,19 @@ const RowMenu = ({
         <AlertDialogContent backdropProps={{ forceRender: true }}>
           <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
             <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
-              {`Delete "${role.name}"?`}
+              {t('role.deleteTitle', { ns: 'permission', name: role.name })}
             </AlertDialogTitle>
             <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
-              This role will be permanently deleted and removed from any members or access rules that use it.
+              {t('role.deleteDescription', { ns: 'permission' })}
             </AlertDialogDescription>
           </div>
           <AlertDialogActions>
-            <AlertDialogCancelButton>Cancel</AlertDialogCancelButton>
+            <AlertDialogCancelButton>{t('operation.cancel', { ns: 'common' })}</AlertDialogCancelButton>
             <AlertDialogConfirmButton
               disabled={isDeletingRole}
               onClick={handleDelete}
             >
-              Delete
+              {t('operation.delete', { ns: 'common' })}
             </AlertDialogConfirmButton>
           </AlertDialogActions>
         </AlertDialogContent>

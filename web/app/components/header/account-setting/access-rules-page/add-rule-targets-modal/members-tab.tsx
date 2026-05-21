@@ -2,10 +2,11 @@
 
 import type { Member } from '@/models/common'
 import { Avatar } from '@langgenius/dify-ui/avatar'
+import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { cn } from '@langgenius/dify-ui/cn'
 import { ScrollArea } from '@langgenius/dify-ui/scroll-area'
 import { useMemo, useState } from 'react'
-import { Checkbox } from '@langgenius/dify-ui/checkbox'
+import { useTranslation } from 'react-i18next'
 import Input from '@/app/components/base/input'
 import { useMembers } from '@/service/use-common'
 
@@ -32,6 +33,7 @@ const MembersTab = ({
   selectedMemberIds,
   onSelectedMemberIdsChange,
 }: MembersTabProps) => {
+  const { t } = useTranslation()
   const [keyword, setKeyword] = useState('')
 
   const { data: membersData, isLoading: membersLoading } = useMembers()
@@ -72,7 +74,7 @@ const MembersTab = ({
           value={keyword}
           onChange={e => setKeyword(e.target.value)}
           onClear={() => setKeyword('')}
-          placeholder="Search members..."
+          placeholder={t('addRuleTargets.searchMembers', { ns: 'permission' })}
         />
       </div>
 
@@ -83,13 +85,13 @@ const MembersTab = ({
         {membersLoading
           ? (
               <div className="px-3 py-6 text-center system-sm-regular text-text-tertiary">
-                Loading members...
+                {t('addRuleTargets.loadingMembers', { ns: 'permission' })}
               </div>
             )
           : filteredMembers.length === 0
             ? (
                 <div className="px-3 py-6 text-center system-sm-regular text-text-tertiary">
-                  No matching members
+                  {t('addRuleTargets.noMatchingMembers', { ns: 'permission' })}
                 </div>
               )
             : (

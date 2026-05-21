@@ -1,5 +1,6 @@
 'use client'
 
+import { useTranslation } from 'react-i18next'
 import PermissionPicker from './permission-picker'
 
 export type PermissionFieldProps = {
@@ -13,9 +14,11 @@ const PermissionField = ({
   onChange,
   readonly = false,
 }: PermissionFieldProps) => {
+  const { t } = useTranslation()
+
   return (
     <div className="flex flex-col gap-2">
-      <div className="system-sm-medium text-text-secondary">Permissions</div>
+      <div className="system-sm-medium text-text-secondary">{t('permissionSet.permissions', { ns: 'permission' })}</div>
       <PermissionPicker value={value} onChange={onChange} readonly={readonly} />
     </div>
   )

@@ -1,9 +1,10 @@
 'use client'
 
+import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { cn } from '@langgenius/dify-ui/cn'
 import { ScrollArea } from '@langgenius/dify-ui/scroll-area'
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Checkbox } from '@langgenius/dify-ui/checkbox'
+import { useTranslation } from 'react-i18next'
 import Input from '@/app/components/base/input'
 import { useWorkspaceRoleList } from '@/service/access-control/use-workspace-roles'
 
@@ -18,6 +19,7 @@ const WorkspaceRoleCheckboxList = ({
   selectedRoleIds,
   onSelectedRoleIdsChange,
 }: WorkspaceRoleCheckboxListProps) => {
+  const { t } = useTranslation()
   const [keyword, setKeyword] = useState('')
   const containerRef = useRef<HTMLDivElement>(null)
   const anchorRef = useRef<HTMLDivElement>(null)
@@ -88,7 +90,7 @@ const WorkspaceRoleCheckboxList = ({
           value={keyword}
           onChange={e => setKeyword(e.target.value)}
           onClear={() => setKeyword('')}
-          placeholder="Search roles..."
+          placeholder={t('role.searchPlaceholder', { ns: 'permission' })}
         />
       </div>
 
@@ -100,13 +102,13 @@ const WorkspaceRoleCheckboxList = ({
         {rolesLoading
           ? (
               <div className="px-3 py-6 text-center system-sm-regular text-text-tertiary">
-                Loading roles...
+                {t('role.loading', { ns: 'permission' })}
               </div>
             )
           : filteredRoles.length === 0
             ? (
                 <div className="px-3 py-6 text-center system-sm-regular text-text-tertiary">
-                  No matching roles
+                  {t('role.noMatchingRoles', { ns: 'permission' })}
                 </div>
               )
             : (
@@ -143,7 +145,7 @@ const WorkspaceRoleCheckboxList = ({
                                 {role.name}
                               </div>
                               <div className="mt-0.5 system-xs-regular text-text-tertiary">
-                                {role.description || 'No description'}
+                                {role.description || t('role.noDescription', { ns: 'permission' })}
                               </div>
                             </div>
                           </div>

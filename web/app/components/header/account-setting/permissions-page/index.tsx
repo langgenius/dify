@@ -5,6 +5,7 @@ import type { Role } from '@/models/access-control'
 import { Button } from '@langgenius/dify-ui/button'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useSelector as useAppContextWithSelector } from '@/context/app-context'
 import { useCreateWorkspaceRole, useUpdateWorkspaceRole } from '@/service/access-control/use-workspace-roles'
 import { hasPermission } from '@/utils/permission'
@@ -24,6 +25,7 @@ type ModalState = {
 const PAGE_SIZE = 20
 
 const PermissionsPage = ({ containerRef }: PermissionsPageProps) => {
+  const { t } = useTranslation()
   const [modalState, setModalState] = useState<ModalState>(null)
   const anchorRef = useRef<HTMLDivElement>(null)
 
@@ -67,7 +69,7 @@ const PermissionsPage = ({ containerRef }: PermissionsPageProps) => {
       if (mode === 'create') {
         createWorkspaceRole({ name, description, permission_keys: permissionKeys }, {
           onSuccess: () => {
-            toast.success('Role created successfully')
+            toast.success(t('role.created', { ns: 'permission' }))
             closeModal()
           },
         })
@@ -75,13 +77,13 @@ const PermissionsPage = ({ containerRef }: PermissionsPageProps) => {
       else if (mode === 'edit') {
         updateWorkspaceRole({ id: roleId, name, description, permission_keys: permissionKeys }, {
           onSuccess: () => {
-            toast.success('Role updated successfully')
+            toast.success(t('role.updated', { ns: 'permission' }))
             closeModal()
           },
         })
       }
     },
-    [createWorkspaceRole, updateWorkspaceRole, closeModal, modalState],
+    [createWorkspaceRole, updateWorkspaceRole, closeModal, modalState, t],
   )
 
   useEffect(() => {
@@ -118,10 +120,10 @@ const PermissionsPage = ({ containerRef }: PermissionsPageProps) => {
         <div className="mb-4 flex items-center gap-3 rounded-xl border-t-[0.5px] border-l-[0.5px] border-divider-subtle bg-linear-to-bl from-background-gradient-bg-fill-chat-bg-2 to-background-gradient-bg-fill-chat-bg-1 p-3 pr-5">
           <div className="flex grow flex-col gap-y-1">
             <div className="system-md-semibold text-text-primary">
-              Default Global
+              {t('role.defaultGlobal.title', { ns: 'permission' })}
             </div>
             <div className="system-sm-regular text-text-tertiary">
-              A default global permission scheme applied to the workspace
+              {t('role.defaultGlobal.description', { ns: 'permission' })}
             </div>
           </div>
           {canManageRoles && (
@@ -131,7 +133,7 @@ const PermissionsPage = ({ containerRef }: PermissionsPageProps) => {
                 size="small"
                 onClick={openCreate}
               >
-                + Add Role
+                {t('role.addRole', { ns: 'permission' })}
               </Button>
             </div>
           )}

@@ -4,6 +4,7 @@ import type { AccessPolicyWithBindings, RemoveBindingPayload } from '@/models/ac
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { memo } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useSelector as useAppContextWithSelector } from '@/context/app-context'
 import { hasPermission } from '@/utils/permission'
 import AccessRuleRow from './access-rule-row'
@@ -31,6 +32,7 @@ const AccessRuleSection = ({
   onRemoveBinding,
   className,
 }: AccessRuleSectionProps) => {
+  const { t } = useTranslation()
   const workspacePermissionKeys = useAppContextWithSelector(s => s.workspacePermissionKeys)
   const canManage = hasPermission(workspacePermissionKeys, 'workspace.role.manage')
 
@@ -48,7 +50,7 @@ const AccessRuleSection = ({
             disabled={isLoadingRules}
           >
             <span className="mr-0.5 i-ri-add-line size-4" />
-            <span>New permission set</span>
+            <span>{t('accessRule.newPermissionSet', { ns: 'permission' })}</span>
           </Button>
         )}
       </div>

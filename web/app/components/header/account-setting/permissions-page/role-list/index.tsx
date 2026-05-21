@@ -2,6 +2,7 @@
 
 import type { Role, RoleCategory } from '@/models/access-control'
 import { cn } from '@langgenius/dify-ui/cn'
+import { useTranslation } from 'react-i18next'
 import Row from './row'
 
 export type RoleListGroup = {
@@ -24,6 +25,8 @@ const RoleList = ({
   onView,
   onEdit,
 }: RoleListProps) => {
+  const { t } = useTranslation()
+
   return (
     <div className={cn('flex flex-col', className)}>
       {groups.map((group, groupIndex) => (
@@ -32,7 +35,7 @@ const RoleList = ({
           className={cn(groupIndex > 0 && 'mt-6')}
         >
           <h3 className="mb-2 pr-3 system-xs-medium-uppercase tracking-wide text-text-tertiary">
-            {group.title}
+            {t(`role.groups.${group.id}`, { ns: 'permission', defaultValue: group.title })}
           </h3>
           <div className="overflow-hidden">
             {group.items.map((row, rowIndex) => (

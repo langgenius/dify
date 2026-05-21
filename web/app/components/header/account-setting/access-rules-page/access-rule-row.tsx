@@ -3,6 +3,7 @@
 import type { AccessPolicyWithBindings, BindingType, RemoveBindingPayload } from '@/models/access-control'
 import { cn } from '@langgenius/dify-ui/cn'
 import { memo, useCallback } from 'react'
+import { useTranslation } from 'react-i18next'
 import AccessRuleRowMenu from './access-rule-row-menu'
 import RoleTag from './role-tag'
 
@@ -27,6 +28,7 @@ const AccessRuleRow = ({
   onAddRole,
   onRemove,
 }: AccessRuleRowProps) => {
+  const { t } = useTranslation()
   const { policy, roles, accounts } = rule
   const { id: policyId, resource_type } = policy
 
@@ -88,10 +90,10 @@ const AccessRuleRow = ({
               type="button"
               onClick={handleAddRole}
               className="inline-flex h-6 items-center gap-0.5 rounded-md border border-divider-deep px-1.5 system-xs-medium text-text-tertiary hover:border-divider-solid hover:text-text-secondary"
-              aria-label={`Add role to ${policy.name}`}
+              aria-label={t('accessRule.addRoleAria', { ns: 'permission', name: policy.name })}
             >
               <span aria-hidden className="i-ri-add-line h-3 w-3" />
-              Add
+              {t('operation.add', { ns: 'common' })}
             </button>
           )}
         </div>

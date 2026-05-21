@@ -10,6 +10,7 @@ import {
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
 import { useCallback, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import Input from '@/app/components/base/input'
 import Textarea from '@/app/components/base/textarea'
 import PermissionField from './permission-field'
@@ -30,21 +31,6 @@ export type RoleModalProps = {
   onSubmit?: (data: submitRoleData) => void
 }
 
-const TITLES: Record<RoleModalMode, { title: string, description: string }> = {
-  create: {
-    title: 'Create Role',
-    description: 'Create a role and assign permissions',
-  },
-  edit: {
-    title: 'Edit Role',
-    description: 'Edit role details and permissions',
-  },
-  view: {
-    title: 'View Role',
-    description: 'View role details and permissions',
-  },
-}
-
 const RoleModal = ({
   mode,
   open,
@@ -52,12 +38,12 @@ const RoleModal = ({
   onClose,
   onSubmit,
 }: RoleModalProps) => {
+  const { t } = useTranslation()
   const [name, setName] = useState(role?.name ?? '')
   const [desc, setDesc] = useState(role?.description ?? '')
   const [permissionKeys, setPermissionKeys] = useState<string[]>(role?.permission_keys ?? [])
 
   const readonly = mode === 'view'
-  const { title, description } = TITLES[mode]
 
   const onRoleNameChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     setName(e.target.value)
@@ -88,10 +74,10 @@ const RoleModal = ({
           <DialogCloseButton />
           <div className="pr-8">
             <DialogTitle className="system-xl-semibold text-text-primary">
-              {title}
+              {t(`role.modal.${mode}.title`, { ns: 'permission' })}
             </DialogTitle>
             <DialogDescription className="mt-1 system-sm-regular text-text-tertiary">
-              {description}
+              {t(`role.modal.${mode}.description`, { ns: 'permission' })}
             </DialogDescription>
           </div>
         </div>
@@ -99,25 +85,25 @@ const RoleModal = ({
         <div className="flex min-h-0 flex-1 flex-col gap-5 overflow-y-hidden px-6 py-5">
           <div className="flex flex-col gap-1">
             <label htmlFor="role-name" className="system-sm-medium text-text-secondary">
-              Role name
+              {t('role.modal.nameLabel', { ns: 'permission' })}
             </label>
             <Input
               id="role-name"
               value={name}
               onChange={onRoleNameChange}
-              placeholder="e.g. Marketing Lead"
+              placeholder={t('role.modal.namePlaceholder', { ns: 'permission' })}
               disabled={readonly}
             />
           </div>
           <div className="flex flex-col gap-1">
             <label htmlFor="role-description" className="system-sm-medium text-text-secondary">
-              Description
+              {t('role.modal.descriptionLabel', { ns: 'permission' })}
             </label>
             <Textarea
               id="role-description"
               value={desc}
               onChange={onRoleDescChange}
-              placeholder="Describe what this role is responsible for"
+              placeholder={t('role.modal.descriptionPlaceholder', { ns: 'permission' })}
               disabled={readonly}
               className="min-h-24 resize-none"
             />
@@ -135,12 +121,12 @@ const RoleModal = ({
             rel="noreferrer"
             className="inline-flex items-center gap-1 system-xs-medium text-text-accent hover:underline"
           >
-            <span>Learn more about permissions</span>
+            <span>{t('permissionSet.learnMore', { ns: 'permission' })}</span>
             <span aria-hidden className="i-ri-external-link-line h-3.5 w-3.5" />
           </a>
           <div className="flex items-center gap-2">
             <Button variant="secondary" onClick={onClose}>
-              {readonly ? 'Close' : 'Cancel'}
+              {readonly ? t('operation.close', { ns: 'common' }) : t('operation.cancel', { ns: 'common' })}
             </Button>
             {!readonly && (
               <Button
@@ -148,7 +134,7 @@ const RoleModal = ({
                 disabled={!name.trim()}
                 onClick={handleSubmit}
               >
-                Confirm
+                {t('operation.confirm', { ns: 'common' })}
               </Button>
             )}
           </div>

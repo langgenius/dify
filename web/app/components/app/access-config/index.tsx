@@ -2,6 +2,7 @@
 
 import { ScrollArea } from '@langgenius/dify-ui/scroll-area'
 import { useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
 import AccessRulesEditor from '@/app/components/access-rules-editor'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { useAppAccessRules } from '@/service/access-control/use-app-access-config'
@@ -12,6 +13,7 @@ type AppAccessConfigPageProps = {
 }
 
 const AppAccessConfigPage = ({ appId }: AppAccessConfigPageProps) => {
+  const { t } = useTranslation()
   const { data: appAccessRulesResponse } = useAppAccessRules(appId)
   const appPermissionKeys = useAppStore(state => state.appDetail?.permission_keys)
   const appACLCapabilities = useMemo(
@@ -27,7 +29,7 @@ const AppAccessConfigPage = ({ appId }: AppAccessConfigPageProps) => {
       slotClassNames={{ viewport: 'overscroll-contain' }}
     >
       <div className="w-full px-16 py-8">
-        <h1 className="title-2xl-semi-bold text-text-primary">Access Config</h1>
+        <h1 className="title-2xl-semi-bold text-text-primary">{t('settings.accessConfig', { ns: 'common' })}</h1>
         <div className="mt-6">
           <AccessRulesEditor rules={appAccessRules} canManage={appACLCapabilities.canAccessConfig} />
         </div>

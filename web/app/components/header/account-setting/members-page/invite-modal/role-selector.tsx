@@ -133,7 +133,7 @@ const RoleSelector = ({ value, onChange }: RoleSelectorProps) => {
                           >
                             <div className="relative min-w-0 pl-5">
                               <div className="truncate text-sm leading-5 text-text-secondary">{role.name}</div>
-                              <div className="line-clamp-2 text-xs leading-4.5 text-text-tertiary">{role.description || 'No description'}</div>
+                              <div className="line-clamp-2 text-xs leading-4.5 text-text-tertiary">{role.description || t('role.noDescription', { ns: 'permission' })}</div>
                               {value === role.id && (
                                 <div
                                   aria-hidden="true"

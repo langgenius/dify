@@ -2,6 +2,7 @@ import type { PermissionSetFormValues, PermissionSetModalMode } from './permissi
 import type { AccessPolicyWithBindings, RemoveBindingPayload } from '@/models/access-control'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useCallback, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import {
   useCreateAccessRule,
   useUpdateAccessRule,
@@ -25,6 +26,7 @@ type PermissionSetModalState = {
 const AppAccessRuleSection = ({
   className,
 }: AppAccessRuleSectionProps) => {
+  const { t } = useTranslation()
   const [addingRule, setAddingRule] = useState<AccessPolicyWithBindings | null>(null)
   const [permissionSetModalState, setPermissionSetModalState] = useState<PermissionSetModalState | null>(null)
 
@@ -89,11 +91,11 @@ const AppAccessRuleSection = ({
       account_ids: selection.memberIds,
     }, {
       onSuccess: () => {
-        toast.success('Access rule updated successfully')
+        toast.success(t('accessRule.updated', { ns: 'permission' }))
         closeAddModal()
       },
     })
-  }, [addingRule, closeAddModal, updateAppAccessRuleBindings])
+  }, [addingRule, closeAddModal, t, updateAppAccessRuleBindings])
 
   const handleRemoveBinding = useCallback((payload: RemoveBindingPayload) => {
     updateAppAccessRuleBindings({
@@ -102,10 +104,10 @@ const AppAccessRuleSection = ({
       account_ids: payload.account_ids,
     }, {
       onSuccess: () => {
-        toast.success('Access rule updated successfully')
+        toast.success(t('accessRule.updated', { ns: 'permission' }))
       },
     })
-  }, [updateAppAccessRuleBindings])
+  }, [t, updateAppAccessRuleBindings])
 
   const handlePermissionSetSubmit = useCallback((values: PermissionSetFormValues) => {
     if (!permissionSetModalState)
@@ -120,7 +122,7 @@ const AppAccessRuleSection = ({
         resourceType: 'app',
       }, {
         onSuccess: () => {
-          toast.success('Access rule created successfully')
+          toast.success(t('accessRule.created', { ns: 'permission' }))
           closePermissionSetModal()
         },
       })
@@ -134,17 +136,17 @@ const AppAccessRuleSection = ({
         resourceType: 'app',
       }, {
         onSuccess: () => {
-          toast.success('Access rule updated successfully')
+          toast.success(t('accessRule.updated', { ns: 'permission' }))
           closePermissionSetModal()
         },
       })
     }
-  }, [closePermissionSetModal, createAccessRule, permissionSetModalState, updateAccessRule])
+  }, [closePermissionSetModal, createAccessRule, permissionSetModalState, t, updateAccessRule])
 
   return (
     <>
       <AccessRuleSection
-        title="App Access Rules"
+        title={t('accessRule.appTitle', { ns: 'permission' })}
         rules={appAccessRules}
         isLoadingRules={isLoading}
         onCreate={handleCreate}
