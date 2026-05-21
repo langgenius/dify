@@ -3,6 +3,7 @@
 Shared UI primitives, design tokens, CSS-first Tailwind styles, and the `cn()` utility consumed by Dify's `web/` app.
 
 The primitives are thin, opinionated wrappers around [Base UI] headless components, styled with `cva` + `cn` and Dify design tokens.
+For upstream component docs, start from the [Base UI docs index].
 
 > `private: true` — this package is consumed by `web/` via the pnpm workspace and is not published to npm. Treat the API as internal to Dify, but stable within the workspace.
 
@@ -178,5 +179,6 @@ See `[AGENTS.md](./AGENTS.md)` for:
 [Base UI Fieldset]: https://base-ui.com/react/components/fieldset
 [Base UI Form]: https://base-ui.com/react/components/form
 [Base UI Portal]: https://base-ui.com/react/overview/quick-start#portals
+[Base UI docs index]: https://base-ui.com/llms.txt
 [Base UI]: https://base-ui.com/react
 [Overlay & portal contract]: #overlay--portal-contract
