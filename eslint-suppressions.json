@@ -3919,22 +3919,6 @@
       "count": 1
     }
   },
-  "web/app/components/workflow/nodes/human-input/components/form-content-preview.tsx": {
-    "react/unsupported-syntax": {
-      "count": 1
-    }
-  },
-  "web/app/components/workflow/nodes/human-input/components/form-content.tsx": {
-    "react/no-nested-component-definitions": {
-      "count": 1
-    },
-    "react/set-state-in-effect": {
-      "count": 1
-    },
-    "ts/no-explicit-any": {
-      "count": 3
-    }
-  },
   "web/app/components/workflow/nodes/human-input/components/timeout.tsx": {
     "no-restricted-imports": {
       "count": 1
@@ -3943,11 +3927,6 @@
   "web/app/components/workflow/nodes/human-input/components/user-action.tsx": {
     "no-restricted-imports": {
       "count": 1
-    }
-  },
-  "web/app/components/workflow/nodes/human-input/components/variable-in-markdown.tsx": {
-    "react-refresh/only-export-components": {
-      "count": 2
     }
   },
   "web/app/components/workflow/nodes/human-input/types.ts": {
