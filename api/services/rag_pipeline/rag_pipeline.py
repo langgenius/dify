@@ -1350,6 +1350,12 @@ class RagPipelineService:
         )
         return workflow_node_execution_db_model
 
+    def _fetch_recommended_plugin_manifests(self, plugin_ids: list[str]) -> list[Any]:
+        if not dify_config.MARKETPLACE_ENABLED:
+            logger.info("Marketplace disabled; recommended-plugins list empty")
+            return []
+        return marketplace.batch_fetch_plugin_by_ids(plugin_ids)
+
     def get_recommended_plugins(self, type: str) -> dict[str, Any]:
         # Query active recommended plugins
         stmt = select(PipelineRecommendedPlugin).where(PipelineRecommendedPlugin.active == True)
@@ -1372,7 +1378,7 @@ class RagPipelineService:
         )
         providers_map = {provider.plugin_id: provider.to_dict() for provider in providers}
 
-        plugin_manifests = marketplace.batch_fetch_plugin_by_ids(plugin_ids)
+        plugin_manifests = self._fetch_recommended_plugin_manifests(plugin_ids)
         plugin_manifests_map = {manifest["plugin_id"]: manifest for manifest in plugin_manifests}
 
         installed_plugin_list = []
