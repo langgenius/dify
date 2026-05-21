@@ -327,6 +327,8 @@ describe('MainNav', () => {
     const datasetsLink = screen.getByRole('link', { name: /common.menus.datasets/ })
     expect(datasetsLink.className).toContain('bg-[linear-gradient(98.077deg')
     expect(datasetsLink).toHaveClass(activeEdgeClassName)
+    expect(datasetsLink).toHaveAttribute('aria-current', 'page')
+    expect(screen.getByRole('link', { name: /common.mainNav.home/ })).not.toHaveAttribute('aria-current')
   })
 
   it('replaces global navigation with app detail navigation on app routes', () => {

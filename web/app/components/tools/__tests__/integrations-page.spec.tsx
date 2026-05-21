@@ -188,6 +188,8 @@ describe('IntegrationsPage', () => {
     expect(screen.getByTestId('model-provider-page').parentElement).toHaveClass('max-w-[1600px]', 'px-6', 'pt-2')
     expect(screen.getByTestId('model-provider-page')).toHaveAttribute('data-fixed-warning-alignment', 'content-frame')
     expect(screen.getAllByText('common.settings.provider')).toHaveLength(2)
+    expect(screen.getByRole('link', { name: 'common.settings.provider' })).toHaveAttribute('aria-current', 'page')
+    expect(screen.getByRole('link', { name: 'common.settings.dataSource' })).not.toHaveAttribute('aria-current')
     expect(screen.getByRole('textbox', { name: 'search' })).toBeInTheDocument()
   })
 

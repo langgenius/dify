@@ -84,6 +84,7 @@ export function IntegrationSidebarNavItem({
         type="button"
         title={item.label}
         aria-label={item.label}
+        aria-pressed={isActive}
         className={cn(className, 'border-none bg-transparent')}
         onClick={() => onSelect(item.section!)}
       >
@@ -97,6 +98,7 @@ export function IntegrationSidebarNavItem({
       href={buildIntegrationPath(item.section)}
       title={item.label}
       aria-label={item.label}
+      aria-current={isActive ? 'page' : undefined}
       className={className}
     >
       {content}
