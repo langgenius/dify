@@ -10515,6 +10515,7 @@ Supported icon storage formats for Agent roster entries.
 | knowledge | [AgentSoulKnowledgeConfig](#agentsoulknowledgeconfig) |  | No |
 | memory | [AgentSoulMemoryConfig](#agentsoulmemoryconfig) |  | No |
 | misc_legacy | object |  | No |
+| model | [AgentSoulModelConfig](#agentsoulmodelconfig) |  | No |
 | prompt | [AgentSoulPromptConfig](#agentsoulpromptconfig) |  | No |
 | sandbox | [AgentSoulSandboxConfig](#agentsoulsandboxconfig) |  | No |
 | schema_version | integer |  | No |
@@ -10550,6 +10551,28 @@ Supported icon storage formats for Agent roster entries.
 | artifacts | [ object ] |  | No |
 | budget | string |  | No |
 | scope | string |  | No |
+
+#### AgentSoulModelConfig
+
+Stable model selection for Agent runtime without storing secret values.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| credential_ref | [AgentSoulModelCredentialRef](#agentsoulmodelcredentialref) |  | No |
+| model | string |  | Yes |
+| model_provider | string |  | Yes |
+| model_settings | object |  | No |
+| plugin_id | string |  | Yes |
+
+#### AgentSoulModelCredentialRef
+
+Reference to model credentials resolved only at runtime.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| id | string |  | No |
+| provider | string |  | No |
+| type | string |  | Yes |
 
 #### AgentSoulPromptConfig
 
