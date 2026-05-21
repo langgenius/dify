@@ -1,20 +1,7 @@
-import type { ReactNode } from 'react'
 import { render, screen } from '@testing-library/react'
 import { RETRIEVE_METHOD } from '@/types/app'
 import { retrievalIcon } from '../../../create/icons'
 import RetrievalMethodInfo, { getIcon } from '../index'
-
-// Mock RadioCard
-vi.mock('@/app/components/base/radio-card', () => ({
-  default: ({ title, description, chosenConfig, icon }: { title: string, description: string, chosenConfig: ReactNode, icon: ReactNode }) => (
-    <div data-testid="radio-card">
-      <div data-testid="card-title">{title}</div>
-      <div data-testid="card-description">{description}</div>
-      <div data-testid="card-icon">{icon}</div>
-      <div data-testid="chosen-config">{chosenConfig}</div>
-    </div>
-  ),
-}))
 
 // Mock icons
 vi.mock('../../../create/icons', () => ({
@@ -45,11 +32,9 @@ describe('RetrievalMethodInfo', () => {
   it('should render correctly with full config', () => {
     const { container } = render(<RetrievalMethodInfo value={defaultConfig} />)
 
-    expect(screen.getByTestId('radio-card')).toBeInTheDocument()
-
     // Check Title & Description (mocked i18n returns key prefixed with ns)
-    expect(screen.getByTestId('card-title')).toHaveTextContent('dataset.retrieval.semantic_search.title')
-    expect(screen.getByTestId('card-description')).toHaveTextContent('dataset.retrieval.semantic_search.description')
+    expect(screen.getByText('dataset.retrieval.semantic_search.title')).toBeInTheDocument()
+    expect(screen.getByText('dataset.retrieval.semantic_search.description')).toBeInTheDocument()
 
     // Check Icon
     const icon = container.querySelector('img')
@@ -82,7 +67,7 @@ describe('RetrievalMethodInfo', () => {
     const hybridConfig = { ...defaultConfig, search_method: RETRIEVE_METHOD.hybrid }
     const { container, unmount } = render(<RetrievalMethodInfo value={hybridConfig} />)
 
-    expect(screen.getByTestId('card-title')).toHaveTextContent('dataset.retrieval.hybrid_search.title')
+    expect(screen.getByText('dataset.retrieval.hybrid_search.title')).toBeInTheDocument()
     expect(container.querySelector('img')).toHaveAttribute('src', 'hybrid-icon.png')
 
     unmount()
@@ -90,7 +75,7 @@ describe('RetrievalMethodInfo', () => {
     // Test FullText
     const fullTextConfig = { ...defaultConfig, search_method: RETRIEVE_METHOD.fullText }
     const { container: fullTextContainer } = render(<RetrievalMethodInfo value={fullTextConfig} />)
-    expect(screen.getByTestId('card-title')).toHaveTextContent('dataset.retrieval.full_text_search.title')
+    expect(screen.getByText('dataset.retrieval.full_text_search.title')).toBeInTheDocument()
     expect(fullTextContainer.querySelector('img')).toHaveAttribute('src', 'fulltext-icon.png')
   })
 

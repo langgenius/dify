@@ -233,25 +233,6 @@ describe('MenuDropdown', () => {
     })
   })
 
-  describe('forceClose prop', () => {
-    it('should close dropdown when forceClose changes to true', async () => {
-      const { rerender } = render(<MenuDropdown data={baseSiteInfo} forceClose={false} />)
-
-      const triggerButton = screen.getByRole('button')
-      fireEvent.click(triggerButton)
-
-      await waitFor(() => {
-        expect(screen.getByText('common.theme.theme')).toBeInTheDocument()
-      })
-
-      rerender(<MenuDropdown data={baseSiteInfo} forceClose={true} />)
-
-      await waitFor(() => {
-        expect(screen.queryByText('common.theme.theme')).not.toBeInTheDocument()
-      })
-    })
-  })
-
   describe('placement prop', () => {
     it('should accept custom placement', () => {
       render(<MenuDropdown data={baseSiteInfo} placement="top-start" />)

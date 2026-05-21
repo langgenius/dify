@@ -532,8 +532,7 @@ const AppCard = ({ app, onlineUsers = [], onRefresh, onOpenTagManagement = () =>
                   <DropdownMenuTrigger
                     aria-label={t('operation.more', { ns: 'common' })}
                     className={cn(
-                      isOperationsMenuOpen ? 'bg-state-base-hover shadow-none' : 'bg-transparent',
-                      'flex size-8 items-center justify-center rounded-md border-none p-2 hover:bg-state-base-hover focus-visible:bg-state-base-hover focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:ring-inset',
+                      'flex size-8 items-center justify-center rounded-md border-none bg-transparent p-2 hover:bg-state-base-hover focus-visible:bg-state-base-hover focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:ring-inset data-popup-open:bg-state-base-hover data-popup-open:shadow-none',
                     )}
                     onClick={(e) => {
                       e.stopPropagation()
