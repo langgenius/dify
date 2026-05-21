@@ -8,6 +8,7 @@ import { useBoolean } from 'ahooks'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
+import { useCurrentPlanVectorSpace } from '@/app/components/billing/hooks/use-current-plan-vector-space'
 import { PlanUpgradeModal } from '@/app/components/billing/plan-upgrade-modal'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import { useProviderContextSelector } from '@/context/provider-context'
@@ -91,7 +92,20 @@ const CreateFormPipeline = () => {
   } = useOnlineDrive()
 
   // Computed values
-  const isVectorSpaceFull = plan.usage.vectorSpace >= plan.total.vectorSpace
+  const shouldCheckVectorSpace = enableBilling && (
+    allFileLoaded
+    || onlineDocuments.length > 0
+    || websitePages.length > 0
+    || selectedFileIds.length > 0
+  )
+  const {
+    data: vectorSpace,
+    isFetching: isFetchingVectorSpacePlan,
+  } = useCurrentPlanVectorSpace(shouldCheckVectorSpace)
+  const isCheckingVectorSpace = shouldCheckVectorSpace && !vectorSpace && isFetchingVectorSpacePlan
+  const isVectorSpaceFull = !!vectorSpace
+    && vectorSpace.limit > 0
+    && vectorSpace.size >= vectorSpace.limit
   const supportBatchUpload = !enableBilling || plan.type !== 'sandbox'
 
   // UI state
@@ -112,6 +126,7 @@ const CreateFormPipeline = () => {
     selectedFileIdsLength: selectedFileIds.length,
     onlineDriveFileList,
     isVectorSpaceFull,
+    isCheckingVectorSpace,
     enableBilling,
     currentWorkspacePagesLength: currentWorkspace?.pages.length ?? 0,
     fileUploadConfig,

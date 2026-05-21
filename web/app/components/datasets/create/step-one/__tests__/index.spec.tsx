@@ -36,6 +36,16 @@ vi.mock('@/context/provider-context', () => ({
   }),
 }))
 
+vi.mock('@/app/components/billing/hooks/use-current-plan-vector-space', () => ({
+  useCurrentPlanVectorSpace: () => ({
+    data: {
+      size: mockPlan.usage.vectorSpace,
+      limit: mockPlan.total.vectorSpace,
+    },
+    isFetching: false,
+  }),
+}))
+
 vi.mock('../../file-uploader', () => ({
   default: ({ onPreview, fileList }: { onPreview: (file: File) => void, fileList: FileItem[] }) => (
     <div data-testid="file-uploader">

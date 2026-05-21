@@ -6,6 +6,7 @@ import {
 } from '@remixicon/react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
+import { useCurrentPlanVectorSpace } from '@/app/components/billing/hooks/use-current-plan-vector-space'
 import { useProviderContext } from '@/context/provider-context'
 import { Plan } from '../type'
 import UsageInfo from '../usage-info'
@@ -23,11 +24,25 @@ const VectorSpaceInfo: FC<Props> = ({
 }) => {
   const { t } = useTranslation()
   const { plan } = useProviderContext()
+  const { data: vectorSpace } = useCurrentPlanVectorSpace()
+  const displayPlan = vectorSpace
+    ? {
+        ...plan,
+        usage: {
+          ...plan.usage,
+          vectorSpace: vectorSpace.size,
+        },
+        total: {
+          ...plan.total,
+          vectorSpace: vectorSpace.limit,
+        },
+      }
+    : plan
   const {
     type,
     usage,
     total,
-  } = plan
+  } = displayPlan
 
   // Determine total based on plan type (in MB), derived from ALL_PLANS config
   const getTotalInMB = () => {
