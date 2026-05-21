@@ -179,6 +179,27 @@ describe('result-request', () => {
     })
   })
 
+  it('should reject pending local prompt file inputs outside batch mode', () => {
+    const result = validateResultRequest({
+      completionFiles: [],
+      inputs: {
+        name: 'Alice',
+        file: createFileEntity({ uploadedId: undefined }),
+      },
+      isCallBatchAPI: false,
+      promptConfig,
+      t: createTranslator(),
+    })
+
+    expect(result).toEqual({
+      canSend: false,
+      notification: {
+        type: 'info',
+        message: 'errorMessage.waitForFileUpload',
+      },
+    })
+  })
+
   it('should handle missing prompt metadata with and without pending uploads', () => {
     const t = createTranslator()
 
@@ -284,6 +305,53 @@ describe('result-request', () => {
             transfer_method: TransferMethod.local_file,
             upload_file_id: 'uploaded-2',
             url: 'https://example.com/second.txt',
+          },
+        ],
+        name: 'Alice',
+      },
+    })
+  })
+
+  it('should preserve hidden default file inputs that are already in server format', () => {
+    const hiddenDefaultFile = {
+      type: 'document',
+      transfer_method: TransferMethod.local_file,
+      upload_file_id: 'upload-hidden',
+      url: '',
+    }
+    const hiddenDefaultListFile = {
+      type: 'document',
+      transfer_method: TransferMethod.remote_url,
+      related_id: 'remote-related',
+      remote_url: 'https://example.com/default.docx',
+    }
+
+    const result = buildResultRequestData({
+      completionFiles: [],
+      inputs: {
+        name: 'Alice',
+        file: hiddenDefaultFile,
+        files: [hiddenDefaultListFile],
+      },
+      promptConfig,
+      visionConfig: { ...visionConfig, enabled: false },
+    })
+
+    expect(result).toEqual({
+      inputs: {
+        enabled: false,
+        file: {
+          type: 'document',
+          transfer_method: TransferMethod.local_file,
+          upload_file_id: 'upload-hidden',
+          url: '',
+        },
+        files: [
+          {
+            type: 'document',
+            transfer_method: TransferMethod.remote_url,
+            upload_file_id: 'remote-related',
+            url: 'https://example.com/default.docx',
           },
         ],
         name: 'Alice',
