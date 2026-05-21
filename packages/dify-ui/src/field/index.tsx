@@ -4,7 +4,7 @@ import type { Field as BaseFieldNS } from '@base-ui/react/field'
 import type { VariantProps } from 'class-variance-authority'
 import { Field as BaseField } from '@base-ui/react/field'
 import { cn } from '../cn'
-import { inputVariants } from '../form-control-shared'
+import { textControlVariants } from '../text-control-variants'
 
 export type FieldRootProps
   = Omit<BaseFieldNS.Root.Props, 'className'>
@@ -62,11 +62,11 @@ export function FieldLabel({
   )
 }
 
-export type FieldControlSize = NonNullable<VariantProps<typeof inputVariants>['size']>
+export type FieldControlSize = NonNullable<VariantProps<typeof textControlVariants>['size']>
 
 export type FieldControlProps
   = Omit<BaseFieldNS.Control.Props, 'className' | 'size'>
-    & VariantProps<typeof inputVariants>
+    & VariantProps<typeof textControlVariants>
     & {
       className?: string
     }
@@ -80,7 +80,7 @@ export function FieldControl({
 }: FieldControlProps) {
   return (
     <BaseField.Control
-      className={cn(inputVariants({ size }), className)}
+      className={cn(textControlVariants({ size }), className)}
       {...props}
     />
   )

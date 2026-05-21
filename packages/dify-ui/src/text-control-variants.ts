@@ -1,7 +1,6 @@
-import type { VariantProps } from 'class-variance-authority'
 import { cva } from 'class-variance-authority'
 
-export const inputVariants = cva(
+export const textControlVariants = cva(
   [
     'w-full appearance-none border border-transparent bg-components-input-bg-normal text-components-input-text-filled caret-primary-600 outline-hidden transition-[background-color,border-color,box-shadow]',
     'placeholder:text-components-input-text-placeholder',
@@ -26,5 +25,3 @@ export const inputVariants = cva(
     },
   },
 )
-
-export type InputSize = NonNullable<VariantProps<typeof inputVariants>['size']>
