@@ -49,6 +49,7 @@ class AgentBackendModelConfig(BaseModel):
     model: str
     user_id: str | None = None
     credentials: dict[str, DifyPluginCredentialValue] = Field(default_factory=dict)
+    model_settings: dict[str, JsonValue] = Field(default_factory=dict)
 
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
 
@@ -138,6 +139,7 @@ class AgentBackendRunRequestBuilder:
                         model_provider=run_input.model.model_provider,
                         model=run_input.model.model,
                         credentials=run_input.model.credentials,
+                        model_settings=run_input.model.model_settings or None,
                     ),
                 ),
             ]
