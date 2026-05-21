@@ -31,7 +31,6 @@ export type ComboboxRootHighlightEventDetails = BaseCombobox.Root.HighlightEvent
 
 const comboboxPopupClassName = [
   'w-(--anchor-width) max-w-[min(28rem,var(--available-width))] overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg outline-hidden',
-  'data-[side=top]:origin-bottom data-[side=bottom]:origin-top data-[side=left]:origin-right data-[side=right]:origin-left',
 ]
 
 const comboboxListClassName = [
