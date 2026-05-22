@@ -4,8 +4,7 @@ import type { Field as BaseFieldNS } from '@base-ui/react/field'
 import type { VariantProps } from 'class-variance-authority'
 import { Field as BaseField } from '@base-ui/react/field'
 import { cn } from '../cn'
-import { formLabelClassName } from '../form-shared'
-import { textControlVariants } from '../text-control-variants'
+import { formLabelClassName, textControlVariants } from '../form-control-shared'
 
 export type FieldRootProps
   = Omit<BaseFieldNS.Root.Props, 'className'>

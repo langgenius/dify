@@ -6,7 +6,7 @@ import type { Placement } from '../placement'
 import { Select as BaseSelect } from '@base-ui/react/select'
 import { cva } from 'class-variance-authority'
 import { cn } from '../cn'
-import { formLabelClassName } from '../form-shared'
+import { formLabelClassName } from '../form-control-shared'
 import {
   overlayLabelClassName,
   overlayPopupAnimationClassName,

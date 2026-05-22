@@ -2,7 +2,7 @@
 
 import { Slider as BaseSlider } from '@base-ui/react/slider'
 import { cn } from '../cn'
-import { formLabelClassName } from '../form-shared'
+import { formLabelClassName } from '../form-control-shared'
 
 export const SliderRoot = BaseSlider.Root
 

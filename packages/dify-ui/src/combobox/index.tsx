@@ -6,7 +6,7 @@ import type { Placement } from '../placement'
 import { Combobox as BaseCombobox } from '@base-ui/react/combobox'
 import { cva } from 'class-variance-authority'
 import { cn } from '../cn'
-import { formLabelClassName } from '../form-shared'
+import { formLabelClassName } from '../form-control-shared'
 import {
   overlayIndicatorClassName,
   overlayLabelClassName,
