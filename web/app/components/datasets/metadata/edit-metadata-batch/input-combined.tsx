@@ -67,6 +67,7 @@ const InputCombined: FC<Props> = ({
   }
   return (
     <Input
+      aria-label={label}
       className={cn(configClassName, className, 'rounded-md')}
       value={value}
       onChange={e => onChange(e.target.value)}
