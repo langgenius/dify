@@ -873,7 +873,7 @@ class TestDatasetApiDelete:
             result, status = method(api, dataset_id)
 
         assert status == 204
-        assert result == {"result": "success"}
+        assert result == ""
 
     def test_delete_forbidden_no_permission(self, app: Flask):
         api = DatasetApi()
@@ -1687,7 +1687,7 @@ class TestDatasetApiDeleteApi:
             response, status = method(api, "api-key-id")
 
         assert status == 204
-        assert response["result"] == "success"
+        assert response == ""
 
     def test_delete_key_not_found(self, app: Flask):
         api = DatasetApiDeleteApi()

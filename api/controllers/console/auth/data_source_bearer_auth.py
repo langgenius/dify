@@ -93,4 +93,4 @@ class ApiKeyAuthDataSourceBindingDelete(Resource):
 
         ApiKeyAuthService.delete_provider_auth(current_tenant_id, binding_id)
 
-        return {"result": "success"}, 204
+        return "", 204

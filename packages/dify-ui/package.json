@@ -65,6 +65,10 @@
       "types": "./src/form/index.tsx",
       "import": "./src/form/index.tsx"
     },
+    "./input": {
+      "types": "./src/input/index.tsx",
+      "import": "./src/input/index.tsx"
+    },
     "./meter": {
       "types": "./src/meter/index.tsx",
       "import": "./src/meter/index.tsx"

@@ -1,5 +1,5 @@
 from collections.abc import Generator
-from typing import Any, cast
+from typing import Any, cast, override
 
 from core.app.apps.base_app_generate_response_converter import AppGenerateResponseConverter
 from core.app.entities.task_entities import (
@@ -20,6 +20,7 @@ class AdvancedChatAppGenerateResponseConverter(
     AppGenerateResponseConverter[ChatbotAppBlockingResponse | AdvancedChatPausedBlockingResponse]
 ):
     @classmethod
+    @override
     def convert_blocking_full_response(
         cls, blocking_response: ChatbotAppBlockingResponse | AdvancedChatPausedBlockingResponse
     ) -> dict[str, Any]:
@@ -59,6 +60,7 @@ class AdvancedChatAppGenerateResponseConverter(
         return response
 
     @classmethod
+    @override
     def convert_blocking_simple_response(
         cls, blocking_response: ChatbotAppBlockingResponse | AdvancedChatPausedBlockingResponse
     ) -> dict[str, Any]:
@@ -76,6 +78,7 @@ class AdvancedChatAppGenerateResponseConverter(
         return response
 
     @classmethod
+    @override
     def convert_stream_full_response(
         cls, stream_response: Generator[AppStreamResponse, None, None]
     ) -> Generator[dict[str, Any] | str, Any, None]:
@@ -107,6 +110,7 @@ class AdvancedChatAppGenerateResponseConverter(
             yield response_chunk
 
     @classmethod
+    @override
     def convert_stream_simple_response(
         cls, stream_response: Generator[AppStreamResponse, None, None]
     ) -> Generator[dict[str, Any] | str, Any, None]:

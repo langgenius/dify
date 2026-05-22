@@ -174,7 +174,7 @@ describe('Select wrappers', () => {
     it('should include open state feedback classes', async () => {
       const screen = await renderOpenSelect()
 
-      expect(screen.getByRole('combobox', { name: 'city select' }).element().className).toContain('data-open:bg-state-base-hover-alt')
+      expect(screen.getByRole('combobox', { name: 'city select' }).element().className).toContain('data-popup-open:bg-state-base-hover-alt')
     })
   })
 

@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event'
 import CrawledResult from '../base/crawled-result'
 import CrawledResultItem from '../base/crawled-result-item'
 import Header from '../base/header'
-import Input from '../base/input'
+import Input from '../base/text-input'
 
 const createCrawlResultItem = (overrides: Partial<CrawlResultItem> = {}): CrawlResultItem => ({
   title: 'Test Page Title',

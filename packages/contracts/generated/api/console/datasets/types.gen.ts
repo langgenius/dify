@@ -140,6 +140,10 @@ export type DatasetAndDocumentResponse = {
   documents: Array<DocumentResponse>
 }
 
+export type DatasetMetadataBuiltInFieldsResponse = {
+  fields: Array<DatasetMetadataBuiltInFieldResponse>
+}
+
 export type TextContentResponse = {
   content: string
 }
@@ -291,9 +295,20 @@ export type HitTestingResponse = {
   records?: Array<HitTestingRecord>
 }
 
+export type DatasetMetadataListResponse = {
+  built_in_field_enabled: boolean
+  doc_metadata: Array<DatasetMetadataListItemResponse>
+}
+
 export type MetadataArgs = {
   name: string
   type: 'number' | 'string' | 'time'
+}
+
+export type DatasetMetadataResponse = {
+  id: string
+  name: string
+  type: string
 }
 
 export type MetadataUpdatePayload = {
@@ -409,6 +424,11 @@ export type DatasetResponse = {
   permission?: string | null
 }
 
+export type DatasetMetadataBuiltInFieldResponse = {
+  name: string
+  type: string
+}
+
 export type DocumentMetadataOperation = {
   document_id: string
   metadata_list: Array<MetadataDetail>
@@ -429,6 +449,13 @@ export type HitTestingRecord = {
   segment?: HitTestingSegment
   summary?: string | null
   tsne_position?: unknown
+}
+
+export type DatasetMetadataListItemResponse = {
+  count?: number
+  id: string
+  name: string
+  type: string
 }
 
 export type DatasetContent = {
@@ -977,9 +1004,7 @@ export type GetDatasetsMetadataBuiltInData = {
 }
 
 export type GetDatasetsMetadataBuiltInResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: DatasetMetadataBuiltInFieldsResponse
 }
 
 export type GetDatasetsMetadataBuiltInResponse
@@ -1341,7 +1366,9 @@ export type PostDatasetsByDatasetIdDocumentsMetadataData = {
 }
 
 export type PostDatasetsByDatasetIdDocumentsMetadataResponses = {
-  200: SimpleResultResponse
+  204: {
+    [key: string]: never
+  }
 }
 
 export type PostDatasetsByDatasetIdDocumentsMetadataResponse
@@ -2052,9 +2079,7 @@ export type GetDatasetsByDatasetIdMetadataData = {
 }
 
 export type GetDatasetsByDatasetIdMetadataResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: DatasetMetadataListResponse
 }
 
 export type GetDatasetsByDatasetIdMetadataResponse
@@ -2070,9 +2095,7 @@ export type PostDatasetsByDatasetIdMetadataData = {
 }
 
 export type PostDatasetsByDatasetIdMetadataResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  201: DatasetMetadataResponse
 }
 
 export type PostDatasetsByDatasetIdMetadataResponse
@@ -2089,7 +2112,9 @@ export type PostDatasetsByDatasetIdMetadataBuiltInByActionData = {
 }
 
 export type PostDatasetsByDatasetIdMetadataBuiltInByActionResponses = {
-  200: SimpleResultResponse
+  204: {
+    [key: string]: never
+  }
 }
 
 export type PostDatasetsByDatasetIdMetadataBuiltInByActionResponse
@@ -2125,9 +2150,7 @@ export type PatchDatasetsByDatasetIdMetadataByMetadataIdData = {
 }
 
 export type PatchDatasetsByDatasetIdMetadataByMetadataIdResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: DatasetMetadataResponse
 }
 
 export type PatchDatasetsByDatasetIdMetadataByMetadataIdResponse

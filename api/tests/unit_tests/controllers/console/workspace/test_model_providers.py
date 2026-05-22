@@ -179,8 +179,8 @@ class TestModelProviderCredentialApi:
         ):
             result, status = method(api, provider="openai")
 
-        assert result["result"] == "success"
         assert status == 204
+        assert result == ""
 
 
 class TestModelProviderCredentialSwitchApi:

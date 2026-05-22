@@ -153,7 +153,7 @@ export function DocumentPicker({
         aria-label={value?.name || t('operation.search', { ns: 'common' })}
         icon={false}
         className={cn(
-          'ml-1 flex size-auto rounded-lg border-0 bg-transparent px-2 py-1 hover:bg-state-base-hover focus-visible:bg-state-base-hover focus-visible:ring-1 focus-visible:ring-components-input-border-active data-open:bg-state-base-hover',
+          'ml-1 flex size-auto rounded-lg border-0 bg-transparent px-2 py-1 hover:bg-state-base-hover focus-visible:bg-state-base-hover focus-visible:ring-1 focus-visible:ring-components-input-border-active data-popup-open:bg-state-base-hover',
         )}
       >
         <ComboboxValue>

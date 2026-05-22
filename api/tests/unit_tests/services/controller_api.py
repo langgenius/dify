@@ -87,6 +87,7 @@ from uuid import uuid4
 
 import pytest
 from flask import Flask
+from flask.testing import FlaskClient
 from flask_restx import Api
 
 from controllers.console.datasets.datasets import DatasetApi, DatasetListApi
@@ -339,7 +340,7 @@ class TestDatasetListApi:
             mock_get_user.return_value = (mock_user, mock_tenant_id)
             yield mock_get_user
 
-    def test_get_datasets_success(self, client, mock_current_user):
+    def test_get_datasets_success(self, client: FlaskClient, mock_current_user):
         """
         Test successful retrieval of dataset list.
 
@@ -380,7 +381,7 @@ class TestDatasetListApi:
         # Verify service was called
         mock_get_datasets.assert_called_once()
 
-    def test_get_datasets_with_search(self, client, mock_current_user):
+    def test_get_datasets_with_search(self, client: FlaskClient, mock_current_user):
         """
         Test dataset listing with search keyword.
 
@@ -410,7 +411,7 @@ class TestDatasetListApi:
         call_args = mock_get_datasets.call_args
         assert call_args[1]["search"] == search_keyword
 
-    def test_get_datasets_with_pagination(self, client, mock_current_user):
+    def test_get_datasets_with_pagination(self, client: FlaskClient, mock_current_user):
         """
         Test dataset listing with pagination parameters.
 
@@ -495,7 +496,7 @@ class TestDatasetApiGet:
             mock_get_user.return_value = (mock_user, mock_tenant_id)
             yield mock_get_user
 
-    def test_get_dataset_success(self, client, mock_current_user):
+    def test_get_dataset_success(self, client: FlaskClient, mock_current_user):
         """
         Test successful retrieval of a single dataset.
 
@@ -533,7 +534,7 @@ class TestDatasetApiGet:
         mock_get_dataset.assert_called_once_with(dataset_id)
         mock_check_perm.assert_called_once()
 
-    def test_get_dataset_not_found(self, client, mock_current_user):
+    def test_get_dataset_not_found(self, client: FlaskClient, mock_current_user):
         """
         Test error handling when dataset is not found.
 
@@ -611,7 +612,7 @@ class TestDatasetApiCreate:
             mock_get_user.return_value = (mock_user, mock_tenant_id)
             yield mock_get_user
 
-    def test_create_dataset_success(self, client, mock_current_user):
+    def test_create_dataset_success(self, client: FlaskClient, mock_current_user):
         """
         Test successful creation of a dataset.
 
@@ -706,7 +707,7 @@ class TestHitTestingApi:
             mock_get_user.return_value = (mock_user, mock_tenant_id)
             yield mock_get_user
 
-    def test_hit_testing_success(self, client, mock_current_user):
+    def test_hit_testing_success(self, client: FlaskClient, mock_current_user):
         """
         Test successful hit testing operation.
 
