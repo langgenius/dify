@@ -63,11 +63,9 @@ describe('ApiKeyList', () => {
       const cell = row?.querySelector('[data-slot="deployment-detail-table-cell"]')
 
       expect(tableContainer).toHaveClass(
-        'overflow-hidden',
-        'rounded-lg',
-        'border',
-        'border-divider-subtle',
-        'bg-background-default',
+        'relative',
+        'w-full',
+        'overflow-x-auto',
       )
       expect(tableShell?.tagName).toBe('TABLE')
       expect(header?.tagName).toBe('THEAD')
@@ -77,27 +75,44 @@ describe('ApiKeyList', () => {
       expect(cell?.tagName).toBe('TD')
       expect(tableShell).toHaveClass(
         'w-full',
-        'table-fixed',
+        'max-w-full',
+        'min-w-[700px]',
         'border-collapse',
+        'border-0',
         'caption-bottom',
+        'text-sm',
+      )
+      expect(header).toHaveClass(
+        'h-8',
+        'border-b',
+        'border-divider-subtle',
+        'text-xs/8',
+        'font-medium',
+        'text-text-tertiary',
+        'uppercase',
       )
       expect(head).toHaveClass(
-        'h-9',
-        'px-4',
-        'py-2',
-        'system-sm-medium-uppercase',
+        'max-w-[200px]',
+        'px-2.5',
+        'py-0',
+        'pl-3',
+        'font-medium',
+        'whitespace-nowrap',
         'text-text-tertiary',
       )
+      expect(body).toHaveClass('text-text-secondary')
       expect(row).toHaveClass(
+        'h-8',
         'border-b',
         'border-divider-subtle',
         'hover:bg-background-default-hover',
       )
       expect(cell).toHaveClass(
-        'h-12',
-        'min-w-0',
-        'px-4',
-        'py-2',
+        'max-w-[200px]',
+        'px-2.5',
+        'py-[5px]',
+        'pl-3',
+        'align-middle',
       )
       expect(row?.querySelector('[data-slot="deployment-detail-table-row-content"]')).toBeNull()
       expect(screen.getAllByLabelText('deployments.access.revoke')).toHaveLength(2)

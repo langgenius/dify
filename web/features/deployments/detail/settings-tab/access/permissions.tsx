@@ -417,7 +417,7 @@ export function EnvironmentPermissionRow({
 
   return (
     <DetailTableRow className="block pc:table-row">
-      <DetailTableCell className="block h-auto px-4 pt-3 pb-1 align-top pc:table-cell pc:h-12 pc:py-3">
+      <DetailTableCell className="block h-auto px-4 pt-3 pb-1 align-top pc:table-cell pc:px-2.5 pc:py-[5px] pc:pl-3">
         <div className="system-2xs-medium-uppercase text-text-tertiary pc:hidden">
           {t('access.permissions.col.environment')}
         </div>
@@ -428,7 +428,7 @@ export function EnvironmentPermissionRow({
           </span>
         </div>
       </DetailTableCell>
-      <DetailTableCell className="block h-auto px-4 py-1 align-top pc:table-cell pc:h-12 pc:py-3">
+      <DetailTableCell className="block h-auto px-4 py-1 align-top pc:table-cell pc:px-2.5 pc:py-[5px] pc:pl-3">
         <div className="mb-1 system-2xs-medium-uppercase text-text-tertiary pc:hidden">
           {t('access.permissions.col.permission')}
         </div>
@@ -438,7 +438,7 @@ export function EnvironmentPermissionRow({
           onChange={handlePermissionChange}
         />
       </DetailTableCell>
-      <DetailTableCell className="block h-auto px-4 pt-1 pb-3 align-top pc:table-cell pc:h-12 pc:py-3">
+      <DetailTableCell className="block h-auto px-4 pt-1 pb-3 align-top pc:table-cell pc:px-2.5 pc:py-[5px] pc:pl-3">
         <div className="mb-1 system-2xs-medium-uppercase text-text-tertiary pc:hidden">
           {t('access.permissions.col.subjects')}
         </div>

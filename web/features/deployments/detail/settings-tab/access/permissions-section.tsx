@@ -44,13 +44,13 @@ function AccessPermissionsSkeleton() {
       <DetailTableBody>
         {ACCESS_PERMISSIONS_SKELETON_KEYS.map(key => (
           <DetailTableRow key={key} className="block pc:table-row">
-            <DetailTableCell className="block h-auto px-4 pt-3 pb-1 pc:table-cell pc:h-12 pc:py-3">
+            <DetailTableCell className="block h-auto px-4 pt-3 pb-1 pc:table-cell pc:px-2.5 pc:py-[5px] pc:pl-3">
               <SkeletonRectangle className="h-4 w-32 animate-pulse" />
             </DetailTableCell>
-            <DetailTableCell className="block h-auto px-4 py-1 pc:table-cell pc:h-12 pc:py-3">
+            <DetailTableCell className="block h-auto px-4 py-1 pc:table-cell pc:px-2.5 pc:py-[5px] pc:pl-3">
               <SkeletonRectangle className="my-0 h-8 w-full animate-pulse rounded-lg" />
             </DetailTableCell>
-            <DetailTableCell className="block h-auto px-4 pt-1 pb-3 pc:table-cell pc:h-12 pc:py-3">
+            <DetailTableCell className="block h-auto px-4 pt-1 pb-3 pc:table-cell pc:px-2.5 pc:py-[5px] pc:pl-3">
               <SkeletonRectangle className="my-0 h-8 w-full animate-pulse rounded-lg" />
             </DetailTableCell>
           </DetailTableRow>
