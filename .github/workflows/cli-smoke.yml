@@ -12,6 +12,9 @@ on:
         type: string
         required: false
 
+permissions:
+  contents: read
+
 jobs:
   smoke:
     runs-on: ubuntu-latest
