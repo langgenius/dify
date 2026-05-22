@@ -1,5 +1,5 @@
 import type { CommandTree } from './registry.js'
-import { BaseError, unknownError } from '../errors/base.js'
+import { BaseError } from '../errors/base.js'
 import { formatErrorForCli } from '../errors/format.js'
 import { formatHelp } from './help.js'
 import { stringifyOutput } from './output.js'
@@ -40,38 +40,31 @@ export async function run(tree: CommandTree, argv: string[]): Promise<void> {
     process.exit(1)
   }
 
-  const Ctor = resolved.command
-  if (typeof Ctor.deprecated === 'string' && Ctor.deprecated.length > 0)
-    process.stderr.write(`deprecated: ${Ctor.deprecated}\n`)
-
-  let cmd
   try {
-    cmd = new Ctor()
-  }
-  catch (err) {
-    handleRunError(err, argv)
-    return
-  }
-
-  let output
-  try {
-    output = await cmd.run(argv.slice(resolved.path.length))
-  }
-  catch (err) {
-    handleRunError(err, argv)
-    return
-  }
-
-  if (output === undefined)
-    return
-
-  try {
-    process.stdout.write(stringifyOutput(output))
+    const Ctor = resolved.command
+    if (typeof Ctor.deprecated === 'string' && Ctor.deprecated.length > 0)
+      process.stderr.write(`deprecated: ${Ctor.deprecated}\n`)
+    const cmd = new Ctor()
+    const output = await cmd.run(argv.slice(resolved.path.length))
+    if (output !== undefined)
+      process.stdout.write(stringifyOutput(output))
   }
   catch (err) {
     if ((err as NodeJS.ErrnoException).code === 'EPIPE')
       process.exit(0)
-    throw err
+    if (err instanceof BaseError) {
+      const format = sniffOutputFormat(argv)
+      process.stderr.write(`${formatErrorForCli(err, { format, isErrTTY: process.stderr.isTTY })}\n`)
+      process.exit(err.exit())
+      return
+    }
+    if (err instanceof Error) {
+      process.stderr.write(`${err.message}\n`)
+      process.exit(1)
+      return
+    }
+    process.stderr.write(`${String(err)}\n`)
+    process.exit(1)
   }
 }
 
@@ -116,52 +109,10 @@ function printTopLevelHelp(tree: CommandTree): void {
     for (const [verb, sub] of Object.entries(node.subcommands)) {
       if (sub.command?.hidden === true)
         continue
-      const desc = sub.command?.description ?? (Object.keys(sub.subcommands).length > 0 ? `${Object.keys(sub.subcommands).length} subcommands` : '')
+      const desc = sub.command?.description ?? ''
       process.stdout.write(`    ${verb}  ${desc}\n`)
     }
   }
 
-  process.stdout.write('\nGLOBAL FLAGS\n')
-  process.stdout.write('  -o, --output <string>  output format (varies by command)\n')
-  process.stdout.write('  -w, --workspace <string>  workspace id (overrides DIFY_WORKSPACE_ID and stored default)\n')
-  process.stdout.write('  --http-retry <integer>  HTTP retry attempts for transient GET/PUT/DELETE errors. 0 disables. Overrides DIFYCTL_HTTP_RETRY.\n')
-
-  process.stdout.write('\nQUICK START\n')
-  process.stdout.write('  $ difyctl auth login\n')
-  process.stdout.write('  $ difyctl get app\n')
-  process.stdout.write('  $ difyctl run app <app-id> "hello"\n')
-
   process.stdout.write('\n')
-}
-
-function safeWriteStderr(text: string): void {
-  try {
-    process.stderr.write(text)
-  }
-  catch (e) {
-    if ((e as NodeJS.ErrnoException).code !== 'EPIPE')
-      throw e
-  }
-}
-
-function handleRunError(err: unknown, argv: readonly string[]): void {
-  const format = sniffOutputFormat(argv)
-  if (err instanceof BaseError) {
-    safeWriteStderr(`${formatErrorForCli(err, { format, isErrTTY: process.stderr.isTTY })}\n`)
-    process.exit(err.exit())
-    return
-  }
-  if (err instanceof Error) {
-    const msg = format === 'json'
-      ? formatErrorForCli(unknownError(err.message, err), { format, isErrTTY: process.stderr.isTTY })
-      : err.message
-    safeWriteStderr(`${msg}\n`)
-    process.exit(1)
-    return
-  }
-  const msg = format === 'json'
-    ? formatErrorForCli(unknownError(String(err), err), { format, isErrTTY: process.stderr.isTTY })
-    : String(err)
-  safeWriteStderr(`${msg}\n`)
-  process.exit(1)
 }

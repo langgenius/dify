@@ -14,7 +14,6 @@ export type DifyMock = {
   port: number
   scenario: Scenario
   setScenario: (s: Scenario) => void
-  reset: () => void
   stop: () => Promise<void>
   /** Body of the most recent POST to /apps/:id/run */
   lastRunBody: Record<string, unknown> | null
@@ -35,8 +34,7 @@ function sseChunks(events: { event: string, data: Record<string, unknown> }[]): 
   return events.map(e => `data: ${JSON.stringify({ ...e.data, event: e.event })}\n\n`).join('')
 }
 
-function streamingRunResponse(mode: string, query: string, isAgent: boolean, scenario: Scenario): string {
-  const thinkPrefix = scenario === 'think-blocks' ? '<think>reasoning</think>\n' : ''
+function streamingRunResponse(mode: string, query: string, isAgent: boolean): string {
   if (mode === 'workflow') {
     return sseChunks([
       { event: 'workflow_started', data: { id: 'wf-run-1', workflow_id: 'wf-1' } },
@@ -47,14 +45,14 @@ function streamingRunResponse(mode: string, query: string, isAgent: boolean, sce
   }
   if (mode === 'completion') {
     return sseChunks([
-      { event: 'message', data: { message_id: 'msg-1', mode, answer: `${thinkPrefix}echo: ` } },
+      { event: 'message', data: { message_id: 'msg-1', mode, answer: 'echo: ' } },
       { event: 'message', data: { answer: query } },
       { event: 'message_end', data: { message_id: 'msg-1', task_id: 'task-1', metadata: {} } },
     ])
   }
   const evt = isAgent ? 'agent_message' : 'message'
   const events: { event: string, data: Record<string, unknown> }[] = [
-    { event: evt, data: { message_id: 'msg-1', conversation_id: 'conv-1', mode, answer: `${thinkPrefix}echo: ` } },
+    { event: evt, data: { message_id: 'msg-1', conversation_id: 'conv-1', mode, answer: 'echo: ' } },
     { event: evt, data: { answer: query } },
   ]
   if (isAgent)
@@ -82,33 +80,6 @@ function hitlPauseResponse(): string {
           display_in_ui: false,
           form_token: 'ft-hitl-1',
           resolved_default_values: { name: 'Alice' },
-          expiration_time: 9999999999,
-        },
-      },
-    },
-    { event: 'workflow_paused', data: { reasons: [] } },
-  ])
-}
-
-function hitlPauseMultiActionResponse(): string {
-  return sseChunks([
-    { event: 'workflow_started', data: { id: 'wf-run-hitl-1', workflow_id: 'wf-1' } },
-    { event: 'node_started', data: { id: 'n1', title: 'First Node' } },
-    {
-      event: 'human_input_required',
-      data: {
-        task_id: 'task-hitl-1',
-        workflow_run_id: 'wf-run-hitl-1',
-        data: {
-          form_id: 'form-hitl-1',
-          node_id: 'n1',
-          node_title: 'First Node',
-          form_content: 'Please provide input',
-          inputs: [{ output_variable_name: 'name' }],
-          actions: [{ id: 'approve', title: 'Approve' }, { id: 'reject', title: 'Reject' }],
-          display_in_ui: true,
-          form_token: 'ft-hitl-multi',
-          resolved_default_values: {},
           expiration_time: 9999999999,
         },
       },
@@ -324,10 +295,7 @@ export function buildApp(getScenario: () => Scenario, state?: MockState): Hono {
     if (scenario === 'hitl-pause') {
       return new Response(hitlPauseResponse(), { status: 200, headers: { 'content-type': 'text/event-stream' } })
     }
-    if (scenario === 'hitl-pause-multi-action') {
-      return new Response(hitlPauseMultiActionResponse(), { status: 200, headers: { 'content-type': 'text/event-stream' } })
-    }
-    const sse = streamingRunResponse(app.mode, query, isAgent, scenario)
+    const sse = streamingRunResponse(app.mode, query, isAgent)
     return new Response(sse, { status: 200, headers: { 'content-type': 'text/event-stream' } })
   })
 
@@ -356,20 +324,7 @@ export function buildApp(getScenario: () => Scenario, state?: MockState): Hono {
     return c.json({ result: 'success' })
   })
 
-  app.get('/openapi/v1/apps/:id/form/human_input/:formToken', (c) => {
-    const scenario = getScenario()
-    if (scenario === 'hitl-pause-multi-action' || scenario === 'hitl-resume-already-consumed')
-      return c.json({ user_actions: [{ id: 'approve', title: 'Approve' }, { id: 'reject', title: 'Reject' }] })
-    // default: single action
-    return c.json({ user_actions: [{ id: 'submit', title: 'Submit' }] })
-  })
-
   app.post('/openapi/v1/apps/:id/form/human_input/:formToken', (c) => {
-    const scenario = getScenario()
-    if (scenario === 'hitl-resume-expired-token')
-      return c.json({ error: { code: 'not_found', message: 'Form not found or token expired' } }, { status: 404 })
-    if (scenario === 'hitl-resume-already-consumed')
-      return c.json({ error: { code: 'token_consumed', message: 'Form token has already been consumed' } }, { status: 400 })
     return c.json({})
   })
 
@@ -435,10 +390,6 @@ export function startMock(opts: DifyMockOptions = {}): Promise<DifyMock> {
         port: addr.port,
         scenario,
         setScenario(s) { scenario = s },
-        reset() {
-          state.lastRunBody = null
-          state.uploadCallCount = 0
-        },
         stop() {
           return new Promise<void>((res, rej) => {
             server.close(err => err ? rej(err) : res())

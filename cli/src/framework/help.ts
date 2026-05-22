@@ -43,29 +43,13 @@ export function formatHelp(ctor: CommandConstructor, path: string): string {
   }
 
   if (ctor.flags && Object.keys(ctor.flags).length > 0) {
-    const globalFlags: Array<[string, FlagDefinition]> = []
-    const localFlags: Array<[string, FlagDefinition]> = []
+    lines.push('FLAGS')
 
     for (const [name, def] of Object.entries(ctor.flags)) {
-      if (def.helpGroup === 'GLOBAL')
-        globalFlags.push([name, def])
-      else
-        localFlags.push([name, def])
+      lines.push(`  ${flagLabel(name, def)}  ${def.description}${flagDefault(def)}`)
     }
 
-    if (localFlags.length > 0) {
-      lines.push('FLAGS')
-      for (const [name, def] of localFlags)
-        lines.push(`  ${flagLabel(name, def)}  ${def.description}${flagDefault(def)}`)
-      lines.push('')
-    }
-
-    if (globalFlags.length > 0) {
-      lines.push('GLOBAL FLAGS')
-      for (const [name, def] of globalFlags)
-        lines.push(`  ${flagLabel(name, def)}  ${def.description}${flagDefault(def)}`)
-      lines.push('')
-    }
+    lines.push('')
   }
 
   if (ctor.examples && ctor.examples.length > 0) {

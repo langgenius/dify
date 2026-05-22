@@ -6,7 +6,6 @@ import { AppMetaClient } from '../../../api/app-meta.js'
 import { AppRunClient } from '../../../api/app-run.js'
 import { AppsClient } from '../../../api/apps.js'
 import { FileUploadClient } from '../../../api/file-upload.js'
-import { getEnv } from '../../../env/registry.js'
 import { BaseError } from '../../../errors/base.js'
 import { ErrorCode } from '../../../errors/codes.js'
 import { FieldInfo } from '../../../types/app-meta.js'
@@ -79,7 +78,7 @@ async function resolveInputs(
 }
 
 export async function runApp(opts: RunAppOptions, deps: RunAppDeps): Promise<void> {
-  const env = deps.envLookup ?? getEnv
+  const env = deps.envLookup ?? ((k: string) => process.env[k])
   const wsId = resolveWorkspaceId({ flag: opts.workspace, env: env('DIFY_WORKSPACE_ID'), bundle: deps.bundle })
   const apps = new AppsClient(deps.http)
   const meta = new AppMetaClient({ apps, host: deps.host, cache: deps.cache })

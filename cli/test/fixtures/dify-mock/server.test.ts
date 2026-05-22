@@ -1,19 +1,15 @@
 import type { DifyMock } from './server.js'
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { startMock } from './server.js'
 
 describe('dify-mock fixture server', () => {
   let mock: DifyMock
 
-  beforeAll(async () => {
+  beforeEach(async () => {
     mock = await startMock()
   })
 
-  beforeEach(() => {
-    mock.setScenario('happy')
-    mock.reset()
-  })
-  afterAll(async () => {
+  afterEach(async () => {
     await mock.stop()
   })
 

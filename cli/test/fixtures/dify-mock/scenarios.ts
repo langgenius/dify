@@ -1,5 +1,3 @@
-import type { HostsBundle } from '../../../src/auth/hosts.js'
-
 export type Scenario
   = | 'happy'
     | 'sso'
@@ -10,12 +8,8 @@ export type Scenario
     | 'server-5xx'
     | 'slow-down'
     | 'stream-error'
-    | 'think-blocks'
     | 'hitl-pause'
-    | 'hitl-pause-multi-action'
     | 'hitl-resume'
-    | 'hitl-resume-expired-token'
-    | 'hitl-resume-already-consumed'
     | 'server-version-empty'
     | 'server-version-unsupported'
 
@@ -75,32 +69,6 @@ export const WORKSPACES: WorkspaceFixture[] = [
   { id: 'ws-1', name: 'Default', role: 'owner', status: 'normal', is_current: true },
   { id: 'ws-2', name: 'Other', role: 'normal', status: 'normal', is_current: false },
 ]
-
-export type HostsBundleFixtureOptions = {
-  readonly bearer?: string
-  readonly currentHost?: string
-  readonly workspaceId?: string
-  readonly includeAllWorkspaces?: boolean
-}
-
-export function hostsBundleFixture(opts: HostsBundleFixtureOptions = {}): HostsBundle {
-  const bearer = opts.bearer ?? 'dfoa_test'
-  const currentHost = opts.currentHost ?? 'http://localhost'
-  const workspaceId = opts.workspaceId ?? 'ws-1'
-  const ws = WORKSPACES.find(w => w.id === workspaceId) ?? WORKSPACES.at(0)
-  if (ws === undefined)
-    throw new Error('WORKSPACES fixture is empty')
-  const available = opts.includeAllWorkspaces === true ? WORKSPACES : WORKSPACES.filter(w => w.id === ws.id)
-
-  return {
-    current_host: currentHost,
-    token_storage: 'file',
-    tokens: { bearer },
-    account: { id: ACCOUNT.id, email: ACCOUNT.email, name: ACCOUNT.name },
-    workspace: { id: ws.id, name: ws.name, role: ws.role },
-    available_workspaces: available.map(w => ({ id: w.id, name: w.name, role: w.role })),
-  }
-}
 
 export const APPS: AppFixture[] = [
   {
