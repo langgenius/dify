@@ -178,6 +178,16 @@ export const zMemberInviteResponse = z.object({
 })
 
 /**
+ * MemberListQuery
+ *
+ * Strict (extra='forbid').
+ */
+export const zMemberListQuery = z.object({
+  limit: z.int().gte(1).lte(200).optional().default(20),
+  page: z.int().gte(1).optional().default(1),
+})
+
+/**
  * MemberResponse
  */
 export const zMemberResponse = z.object({
@@ -193,7 +203,11 @@ export const zMemberResponse = z.object({
  * MemberListResponse
  */
 export const zMemberListResponse = z.object({
-  members: z.array(zMemberResponse),
+  data: z.array(zMemberResponse),
+  has_more: z.boolean(),
+  limit: z.int(),
+  page: z.int(),
+  total: z.int(),
 })
 
 /**
@@ -602,6 +616,11 @@ export const zGetWorkspacesByWorkspaceIdResponse = zWorkspaceDetailResponse
 
 export const zGetWorkspacesByWorkspaceIdMembersPath = z.object({
   workspace_id: z.string(),
+})
+
+export const zGetWorkspacesByWorkspaceIdMembersQuery = z.object({
+  limit: z.int().gte(1).lte(200).optional().default(20),
+  page: z.int().gte(1).optional().default(1),
 })
 
 /**

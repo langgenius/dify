@@ -187,8 +187,17 @@ export type MemberInviteResponse = {
   tenant_id: string
 }
 
+export type MemberListQuery = {
+  limit?: number
+  page?: number
+}
+
 export type MemberListResponse = {
-  members: Array<MemberResponse>
+  data: Array<MemberResponse>
+  has_more: boolean
+  limit: number
+  page: number
+  total: number
 }
 
 export type MemberResponse = {
@@ -679,7 +688,10 @@ export type GetWorkspacesByWorkspaceIdMembersData = {
   path: {
     workspace_id: string
   }
-  query?: never
+  query?: {
+    limit?: number
+    page?: number
+  }
   url: '/workspaces/{workspace_id}/members'
 }
 
