@@ -1,8 +1,9 @@
 'use client'
 import type { Plugin } from '../types'
-import { useTranslation } from '#i18n'
+import { cn } from '@langgenius/dify-ui/cn'
 import { RiAlertFill } from '@remixicon/react'
 import * as React from 'react'
+import { useTranslation } from '#i18n'
 import { useSelector } from '@/context/app-context'
 import { useGetLanguage } from '@/context/i18n'
 import useTheme from '@/hooks/use-theme'
@@ -10,7 +11,6 @@ import {
   renderI18nObject,
 } from '@/i18n-config'
 import { Theme } from '@/types/app'
-import { cn } from '@/utils/classnames'
 import Partner from '../base/badges/partner'
 import Verified from '../base/badges/verified'
 import Icon from '../card/base/card-icon'
@@ -77,15 +77,15 @@ const Card = ({
   return (
     <div className={wrapClassName}>
       <div className={cn('p-4 pb-3', limitedInstall && 'pb-1')}>
-        {!hideCornerMark && <CornerMark text={categoriesMap[type === 'bundle' ? type : category]?.label} />}
+        {!hideCornerMark && <CornerMark text={categoriesMap[type === 'bundle' ? type : category]?.label!} />}
         {/* Header */}
         <div className="flex">
           <Icon src={iconSrc} installed={installed} installFailed={installFailed} />
           <div className="ml-3 w-0 grow">
             <div className="flex h-5 items-center">
               <Title title={getLocalizedText(label)} />
-              {isPartner && <Partner className="ml-0.5 h-4 w-4" text={t('marketplace.partnerTip', { ns: 'plugin' })} />}
-              {verified && <Verified className="ml-0.5 h-4 w-4" text={t('marketplace.verifiedTip', { ns: 'plugin' })} />}
+              {isPartner && <Partner className="ml-0.5 size-4" text={t('marketplace.partnerTip', { ns: 'plugin' })} />}
+              {verified && <Verified className="ml-0.5 size-4" text={t('marketplace.verifiedTip', { ns: 'plugin' })} />}
               {titleLeft}
               {' '}
               {/* This can be version badge */}
@@ -106,9 +106,9 @@ const Card = ({
       </div>
       {limitedInstall
         && (
-          <div className="relative flex h-8 items-center gap-x-2 px-3 after:absolute after:bottom-0 after:left-0 after:right-0 after:top-0 after:bg-toast-warning-bg after:opacity-40">
-            <RiAlertFill className="h-3 w-3 shrink-0 text-text-warning-secondary" />
-            <p className="z-10 grow text-text-secondary system-xs-regular">
+          <div className="relative flex h-8 items-center gap-x-2 px-3 after:absolute after:inset-0 after:bg-toast-warning-bg after:opacity-40">
+            <RiAlertFill className="size-3 shrink-0 text-text-warning-secondary" />
+            <p className="z-10 grow system-xs-regular text-text-secondary">
               {t('installModal.installWarning', { ns: 'plugin' })}
             </p>
           </div>

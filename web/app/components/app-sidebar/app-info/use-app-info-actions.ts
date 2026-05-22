@@ -1,14 +1,15 @@
+import type { Dispatch, SetStateAction } from 'react'
 import type { DuplicateAppModalProps } from '@/app/components/app/duplicate-modal'
 import type { CreateAppModalProps } from '@/app/components/explore/create-app-modal'
 import type { EnvironmentVariable } from '@/app/components/workflow/types'
-import { useCallback, useState } from 'react'
+import { toast } from '@langgenius/dify-ui/toast'
+import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useStore as useAppStore } from '@/app/components/app/store'
-import { toast } from '@/app/components/base/ui/toast'
 import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
 import { useProviderContext } from '@/context/provider-context'
 import { useRouter } from '@/next/navigation'
-import { copyApp, deleteApp, exportAppConfig, updateAppInfo } from '@/service/apps'
+import { copyApp, deleteApp, exportAppConfig, fetchAppDetail, updateAppInfo } from '@/service/apps'
 import { useInvalidateAppList } from '@/service/use-apps'
 import { fetchWorkflowDraft } from '@/service/workflow'
 import { AppModeEnum } from '@/types/app'
@@ -19,9 +20,36 @@ export type AppInfoModalType = 'edit' | 'duplicate' | 'delete' | 'switch' | 'imp
 
 type UseAppInfoActionsParams = {
   onDetailExpand?: (expand: boolean) => void
+  resetKey?: string
 }
 
-export function useAppInfoActions({ onDetailExpand }: UseAppInfoActionsParams) {
+type AppInfoUiState = {
+  resetKey?: string
+  panelOpen: boolean
+  activeModal: AppInfoModalType
+  secretEnvList: EnvironmentVariable[]
+}
+
+const emptySecretEnvList: EnvironmentVariable[] = []
+
+const createInitialUiState = (resetKey?: string): AppInfoUiState => ({
+  resetKey,
+  panelOpen: false,
+  activeModal: null,
+  secretEnvList: [],
+})
+
+const resolveStateAction = <T>(value: SetStateAction<T>, previous: T) => {
+  return typeof value === 'function'
+    ? (value as (previous: T) => T)(previous)
+    : value
+}
+
+const getCurrentUiState = (state: AppInfoUiState, resetKey?: string) => {
+  return state.resetKey === resetKey ? state : createInitialUiState(resetKey)
+}
+
+export function useAppInfoActions({ onDetailExpand, resetKey }: UseAppInfoActionsParams) {
   const { t } = useTranslation()
   const { replace } = useRouter()
   const { onPlanInfoChanged } = useProviderContext()
@@ -29,23 +57,105 @@ export function useAppInfoActions({ onDetailExpand }: UseAppInfoActionsParams) {
   const setAppDetail = useAppStore(state => state.setAppDetail)
   const invalidateAppList = useInvalidateAppList()
 
-  const [panelOpen, setPanelOpen] = useState(false)
-  const [activeModal, setActiveModal] = useState<AppInfoModalType>(null)
-  const [secretEnvList, setSecretEnvList] = useState<EnvironmentVariable[]>([])
+  const [uiState, setUiState] = useState(() => createInitialUiState(resetKey))
+  const uiStateMatchesResetKey = uiState.resetKey === resetKey
+  const panelOpen = uiStateMatchesResetKey ? uiState.panelOpen : false
+  const activeModal = uiStateMatchesResetKey ? uiState.activeModal : null
+  const secretEnvList = uiStateMatchesResetKey ? uiState.secretEnvList : emptySecretEnvList
+
+  const setPanelOpen = useCallback<Dispatch<SetStateAction<boolean>>>((value) => {
+    setUiState((state) => {
+      const current = getCurrentUiState(state, resetKey)
+      return {
+        ...current,
+        panelOpen: resolveStateAction(value, current.panelOpen),
+      }
+    })
+  }, [resetKey])
+
+  const setActiveModal = useCallback<Dispatch<SetStateAction<AppInfoModalType>>>((value) => {
+    setUiState((state) => {
+      const current = getCurrentUiState(state, resetKey)
+      return {
+        ...current,
+        activeModal: resolveStateAction(value, current.activeModal),
+      }
+    })
+  }, [resetKey])
+
+  const setSecretEnvList = useCallback<Dispatch<SetStateAction<EnvironmentVariable[]>>>((value) => {
+    setUiState((state) => {
+      const current = getCurrentUiState(state, resetKey)
+      return {
+        ...current,
+        secretEnvList: resolveStateAction(value, current.secretEnvList),
+      }
+    })
+  }, [resetKey])
 
   const closePanel = useCallback(() => {
     setPanelOpen(false)
     onDetailExpand?.(false)
-  }, [onDetailExpand])
+  }, [onDetailExpand, setPanelOpen])
 
   const openModal = useCallback((modal: Exclude<AppInfoModalType, null>) => {
     closePanel()
     setActiveModal(modal)
-  }, [closePanel])
+  }, [closePanel, setActiveModal])
 
   const closeModal = useCallback(() => {
     setActiveModal(null)
-  }, [])
+  }, [setActiveModal])
+
+  const emitAppMetaUpdate = useCallback(() => {
+    if (!appDetail?.id)
+      return
+
+    void import('@/app/components/workflow/collaboration/core/websocket-manager')
+      .then(({ webSocketClient }) => {
+        const socket = webSocketClient.getSocket(appDetail.id)
+        if (!socket)
+          return
+        socket.emit('collaboration_event', {
+          type: 'app_meta_update',
+          data: { timestamp: Date.now() },
+          timestamp: Date.now(),
+        })
+      })
+      .catch(() => { })
+  }, [appDetail?.id])
+
+  useEffect(() => {
+    if (!appDetail?.id)
+      return
+
+    let unsubscribe: (() => void) | null = null
+    let disposed = false
+
+    void import('@/app/components/workflow/collaboration/core/collaboration-manager')
+      .then(({ collaborationManager }) => {
+        if (disposed)
+          return
+
+        unsubscribe = collaborationManager.onAppMetaUpdate(async () => {
+          try {
+            const res = await fetchAppDetail({ url: '/apps', id: appDetail.id })
+            if (disposed)
+              return
+            setAppDetail({ ...res })
+          }
+          catch (error) {
+            console.error('failed to refresh app detail from collaboration update:', error)
+          }
+        })
+      })
+      .catch(() => { })
+
+    return () => {
+      disposed = true
+      unsubscribe?.()
+    }
+  }, [appDetail?.id, setAppDetail])
 
   const onEdit: CreateAppModalProps['onConfirm'] = useCallback(async ({
     name,
@@ -72,11 +182,12 @@ export function useAppInfoActions({ onDetailExpand }: UseAppInfoActionsParams) {
       closeModal()
       toast(t('editDone', { ns: 'app' }), { type: 'success' })
       setAppDetail(app)
+      emitAppMetaUpdate()
     }
     catch {
       toast(t('editFailed', { ns: 'app' }), { type: 'error' })
     }
-  }, [appDetail, closeModal, setAppDetail, t])
+  }, [appDetail, closeModal, setAppDetail, t, emitAppMetaUpdate])
 
   const onCopy: DuplicateAppModalProps['onConfirm'] = useCallback(async ({
     name,
@@ -127,12 +238,11 @@ export function useAppInfoActions({ onDetailExpand }: UseAppInfoActionsParams) {
       return
     }
     setActiveModal('exportWarning')
-  }, [appDetail, onExport])
+  }, [appDetail, onExport, setActiveModal])
 
   const handleConfirmExport = useCallback(async () => {
     if (!appDetail)
       return
-    closeModal()
     try {
       const workflowDraft = await fetchWorkflowDraft(`/apps/${appDetail.id}/workflows/draft`)
       const list = (workflowDraft.environment_variables || []).filter(env => env.value_type === 'secret')
@@ -145,7 +255,10 @@ export function useAppInfoActions({ onDetailExpand }: UseAppInfoActionsParams) {
     catch {
       toast(t('exportFailed', { ns: 'app' }), { type: 'error' })
     }
-  }, [appDetail, closeModal, onExport, t])
+    finally {
+      closeModal()
+    }
+  }, [appDetail, closeModal, onExport, setSecretEnvList, t])
 
   const onConfirmDelete = useCallback(async () => {
     if (!appDetail)
@@ -182,3 +295,5 @@ export function useAppInfoActions({ onDetailExpand }: UseAppInfoActionsParams) {
     onConfirmDelete,
   }
 }
+
+export type AppInfoActions = ReturnType<typeof useAppInfoActions>

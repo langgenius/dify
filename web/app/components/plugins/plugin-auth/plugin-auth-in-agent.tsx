@@ -2,6 +2,8 @@ import type {
   Credential,
   PluginPayload,
 } from './types'
+import { Button } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
 import { RiArrowDownSLine } from '@remixicon/react'
 import {
   memo,
@@ -9,9 +11,7 @@ import {
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Button } from '@/app/components/base/ui/button'
 import Indicator from '@/app/components/header/indicator'
-import { cn } from '@/utils/classnames'
 import Authorize from './authorize'
 import Authorized from './authorized'
 import { usePluginAuth } from './hooks/use-plugin-auth'
@@ -90,7 +90,7 @@ const PluginAuthInAgent = ({
         {
           unavailable && t('auth.unavailable', { ns: 'plugin' })
         }
-        <RiArrowDownSLine className="ml-0.5 h-4 w-4" />
+        <RiArrowDownSLine className="ml-0.5 size-4" />
       </Button>
     )
   }, [credentialId, credentials, t])

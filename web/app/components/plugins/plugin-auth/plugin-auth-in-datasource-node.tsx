@@ -1,8 +1,8 @@
 import type { ReactNode } from 'react'
+import { Button } from '@langgenius/dify-ui/button'
 import { RiAddLine } from '@remixicon/react'
 import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Button } from '@/app/components/base/ui/button'
 
 type PluginAuthInDataSourceNodeProps = {
   children?: ReactNode
@@ -25,7 +25,7 @@ const PluginAuthInDataSourceNode = ({
               variant="primary"
               onClick={onJumpToDataSourcePage}
             >
-              <RiAddLine className="mr-1 h-4 w-4" />
+              <RiAddLine className="mr-1 size-4" />
               {t('integrations.connect', { ns: 'common' })}
             </Button>
           </div>

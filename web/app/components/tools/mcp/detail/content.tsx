@@ -1,18 +1,6 @@
 'use client'
-import type { FC } from 'react'
+import type { ComponentProps, FC } from 'react'
 import type { ToolWithProvider } from '../../../workflow/types'
-import {
-  RiCloseLine,
-  RiLoader2Line,
-  RiLoopLeftLine,
-} from '@remixicon/react'
-import { useBoolean } from 'ahooks'
-import copy from 'copy-to-clipboard'
-import * as React from 'react'
-import { useCallback, useEffect } from 'react'
-import { useTranslation } from 'react-i18next'
-import ActionButton from '@/app/components/base/action-button'
-import Tooltip from '@/app/components/base/tooltip'
 import {
   AlertDialog,
   AlertDialogActions,
@@ -21,8 +9,16 @@ import {
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogTitle,
-} from '@/app/components/base/ui/alert-dialog'
-import { Button } from '@/app/components/base/ui/button'
+} from '@langgenius/dify-ui/alert-dialog'
+import { Button } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
+import { useBoolean } from 'ahooks'
+import copy from 'copy-to-clipboard'
+import * as React from 'react'
+import { useCallback, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
+import ActionButton from '@/app/components/base/action-button'
 import Indicator from '@/app/components/header/indicator'
 import Icon from '@/app/components/plugins/card/base/card-icon'
 import { useAppContext } from '@/context/app-context'
@@ -30,12 +26,12 @@ import { openOAuthPopup } from '@/hooks/use-oauth'
 import {
   useAuthorizeMCP,
   useDeleteMCP,
+  useInvalidateAllMCPTools,
   useInvalidateMCPTools,
   useMCPTools,
   useUpdateMCP,
   useUpdateMCPTools,
 } from '@/service/use-tools'
-import { cn } from '@/utils/classnames'
 import MCPModal from '../modal'
 import ListLoading from './list-loading'
 import OperationDropdown from './operation-dropdown'
@@ -47,6 +43,11 @@ type Props = {
   onHide: () => void
   isTriggerAuthorize: boolean
   onFirstCreate: () => void
+}
+
+type MCPModalConfirmPayload = Parameters<ComponentProps<typeof MCPModal>['onConfirm']>[0]
+type MutationResult = {
+  result?: string
 }
 
 const MCPDetailContent: FC<Props> = ({
@@ -61,6 +62,7 @@ const MCPDetailContent: FC<Props> = ({
 
   const { data, isFetching: isGettingTools } = useMCPTools(detail.is_team_authorization ? detail.id : '')
   const invalidateMCPTools = useInvalidateMCPTools()
+  const invalidateAllMCPTools = useInvalidateAllMCPTools()
   const { mutateAsync: updateTools, isPending: isUpdating } = useUpdateMCPTools()
   const { mutateAsync: authorizeMcp, isPending: isAuthorizing } = useAuthorizeMCP()
   const toolList = data?.tools || []
@@ -76,8 +78,9 @@ const MCPDetailContent: FC<Props> = ({
       return
     await updateTools(detail.id)
     invalidateMCPTools(detail.id)
+    invalidateAllMCPTools()
     onUpdate()
-  }, [detail, hideUpdateConfirm, invalidateMCPTools, onUpdate, updateTools])
+  }, [detail, hideUpdateConfirm, invalidateAllMCPTools, invalidateMCPTools, onUpdate, updateTools])
 
   const { mutateAsync: updateMCP } = useUpdateMCP({})
   const { mutateAsync: deleteMCP } = useDeleteMCP({})
@@ -128,14 +131,14 @@ const MCPDetailContent: FC<Props> = ({
     }
   }, [onFirstCreate, isCurrentWorkspaceManager, detail, authorizeMcp, handleUpdateTools, handleOAuthCallback, onUpdate])
 
-  const handleUpdate = useCallback(async (data: any) => {
+  const handleUpdate = useCallback(async (data: MCPModalConfirmPayload) => {
     if (!detail)
       return
     const res = await updateMCP({
       ...data,
       provider_id: detail.id,
-    })
-    if ((res as any)?.result === 'success') {
+    }) as MutationResult
+    if (res.result === 'success') {
       hideUpdateModal()
       onUpdate()
       handleAuthorize()
@@ -146,9 +149,9 @@ const MCPDetailContent: FC<Props> = ({
     if (!detail)
       return
     showDeleting()
-    const res = await deleteMCP(detail.id)
+    const res = await deleteMCP(detail.id) as MutationResult
     hideDeleting()
-    if ((res as any)?.result === 'success') {
+    if (res.result === 'success') {
       hideDeleteConfirm()
       onUpdate(true)
     }
@@ -161,6 +164,8 @@ const MCPDetailContent: FC<Props> = ({
 
   if (!detail)
     return null
+  const identifierLabel = t('mcp.identifier', { ns: 'tools' })
+  const serverUrlLabel = t('mcp.modal.serverUrl', { ns: 'tools' })
 
   return (
     <>
@@ -174,12 +179,37 @@ const MCPDetailContent: FC<Props> = ({
               <div className="truncate system-md-semibold text-text-primary" title={detail.name}>{detail.name}</div>
             </div>
             <div className="mt-0.5 flex items-center gap-1">
-              <Tooltip popupContent={t('mcp.identifier', { ns: 'tools' })}>
-                <div className="shrink-0 cursor-pointer system-xs-regular text-text-secondary" onClick={() => copy(detail.server_identifier || '')}>{detail.server_identifier}</div>
+              <Tooltip>
+                <TooltipTrigger
+                  render={(
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="small"
+                      aria-label={identifierLabel}
+                      className="h-auto shrink-0 cursor-pointer rounded bg-transparent p-0 text-left system-xs-regular text-text-secondary hover:bg-transparent focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+                      onClick={() => copy(detail.server_identifier || '')}
+                    >
+                      {detail.server_identifier}
+                    </Button>
+                  )}
+                />
+                <TooltipContent>
+                  {identifierLabel}
+                </TooltipContent>
               </Tooltip>
               <div className="shrink-0 system-xs-regular text-text-quaternary">·</div>
-              <Tooltip popupContent={t('mcp.modal.serverUrl', { ns: 'tools' })}>
-                <div className="truncate system-xs-regular text-text-secondary">{detail.server_url}</div>
+              <Tooltip>
+                <TooltipTrigger
+                  render={(
+                    <div aria-label={serverUrlLabel} className="truncate system-xs-regular text-text-secondary">
+                      {detail.server_url}
+                    </div>
+                  )}
+                />
+                <TooltipContent>
+                  {serverUrlLabel}
+                </TooltipContent>
               </Tooltip>
             </div>
           </div>
@@ -188,8 +218,8 @@ const MCPDetailContent: FC<Props> = ({
               onEdit={showUpdateModal}
               onRemove={showDeleteConfirm}
             />
-            <ActionButton onClick={onHide}>
-              <RiCloseLine className="h-4 w-4" />
+            <ActionButton aria-label={t('operation.close', { ns: 'common' })} onClick={onHide}>
+              <span aria-hidden className="i-ri-close-line size-4" />
             </ActionButton>
           </div>
         </div>
@@ -221,7 +251,7 @@ const MCPDetailContent: FC<Props> = ({
               className="w-full"
               disabled
             >
-              <RiLoader2Line className={cn('mr-1 h-4 w-4 animate-spin')} />
+              <span aria-hidden className="mr-1 i-ri-loader-2-line size-4 animate-spin" />
               {t('mcp.authorizing', { ns: 'tools' })}
             </Button>
           )}
@@ -237,13 +267,13 @@ const MCPDetailContent: FC<Props> = ({
               </div>
               <div></div>
             </div>
-            <div className="flex h-full w-full grow flex-col overflow-hidden px-4 pb-4">
+            <div className="flex size-full grow flex-col overflow-hidden px-4 pb-4">
               <ListLoading />
             </div>
           </>
         )}
         {!isUpdating && detail.is_team_authorization && !isGettingTools && !toolList.length && (
-          <div className="flex h-full w-full flex-col items-center justify-center">
+          <div className="flex size-full flex-col items-center justify-center">
             <div className="mb-3 system-sm-regular text-text-tertiary">{t('mcp.toolsEmpty', { ns: 'tools' })}</div>
             <Button
               variant="primary"
@@ -262,7 +292,7 @@ const MCPDetailContent: FC<Props> = ({
               </div>
               <div>
                 <Button size="small" onClick={showUpdateConfirm}>
-                  <RiLoopLeftLine className="mr-1 h-3.5 w-3.5" />
+                  <span aria-hidden className="mr-1 i-ri-loop-left-line size-3.5" />
                   {t('mcp.update', { ns: 'tools' })}
                 </Button>
               </div>
@@ -279,7 +309,7 @@ const MCPDetailContent: FC<Props> = ({
         )}
 
         {!isUpdating && !detail.is_team_authorization && (
-          <div className="flex h-full w-full flex-col items-center justify-center">
+          <div className="flex size-full flex-col items-center justify-center">
             {!isAuthorizing && <div className="mb-1 system-md-medium text-text-secondary">{t('mcp.authorizingRequired', { ns: 'tools' })}</div>}
             {isAuthorizing && <div className="mb-1 system-md-medium text-text-secondary">{t('mcp.authorizing', { ns: 'tools' })}</div>}
             <div className="system-sm-regular text-text-tertiary">{t('mcp.authorizeTip', { ns: 'tools' })}</div>

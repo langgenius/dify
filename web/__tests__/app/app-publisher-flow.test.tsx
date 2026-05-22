@@ -1,5 +1,6 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
 import AppPublisher from '@/app/components/app/app-publisher'
 import { AccessMode } from '@/models/access-control'
 import { AppModeEnum } from '@/types/app'
@@ -27,6 +28,15 @@ let mockAppDetail: {
   }
 } | null = null
 
+const renderWithQueryClient = (ui: React.ReactElement) =>
+  renderWithSystemFeatures(ui, {
+    systemFeatures: {
+      webapp_auth: {
+        enabled: true,
+      },
+    },
+  })
+
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({
     t: (key: string) => key,
@@ -41,16 +51,6 @@ vi.mock('@/app/components/app/store', () => ({
   useStore: (selector: (state: Record<string, unknown>) => unknown) => selector({
     appDetail: mockAppDetail,
     setAppDetail: mockSetAppDetail,
-  }),
-}))
-
-vi.mock('@/context/global-public-context', () => ({
-  useGlobalPublicStore: (selector: (state: Record<string, unknown>) => unknown) => selector({
-    systemFeatures: {
-      webapp_auth: {
-        enabled: true,
-      },
-    },
   }),
 }))
 
@@ -84,7 +84,7 @@ vi.mock('@/service/apps', () => ({
   fetchAppDetailDirect: (...args: unknown[]) => mockFetchAppDetailDirect(...args),
 }))
 
-vi.mock('@/app/components/base/ui/toast', () => ({
+vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: {
     error: (...args: unknown[]) => mockToastError(...args),
   },
@@ -106,37 +106,23 @@ vi.mock('@/app/components/app/overview/embedded', () => ({
   ),
 }))
 
+vi.mock('@/app/components/workflow/collaboration/core/websocket-manager', () => ({
+  webSocketClient: {
+    getSocket: vi.fn(() => null),
+  },
+}))
+
+vi.mock('@/app/components/workflow/collaboration/core/collaboration-manager', () => ({
+  collaborationManager: {
+    onAppPublishUpdate: vi.fn(() => vi.fn()),
+  },
+}))
+
 vi.mock('@/app/components/app/app-access-control', () => ({
   default: () => <div data-testid="app-access-control" />,
 }))
 
-vi.mock('@/app/components/base/portal-to-follow-elem', async () => {
-  const React = await vi.importActual<typeof import('react')>('react')
-  const OpenContext = React.createContext(false)
-
-  return {
-    PortalToFollowElem: ({ children, open }: { children: React.ReactNode, open: boolean }) => (
-      <OpenContext.Provider value={open}>
-        <div>{children}</div>
-      </OpenContext.Provider>
-    ),
-    PortalToFollowElemTrigger: ({
-      children,
-      onClick,
-    }: {
-      children: React.ReactNode
-      onClick?: () => void
-    }) => (
-      <div onClick={onClick}>
-        {children}
-      </div>
-    ),
-    PortalToFollowElemContent: ({ children }: { children: React.ReactNode }) => {
-      const open = React.useContext(OpenContext)
-      return open ? <div>{children}</div> : null
-    },
-  }
-})
+vi.mock('@langgenius/dify-ui/popover', () => import('@/__mocks__/base-ui-popover'))
 
 vi.mock('@/app/components/workflow/utils', () => ({
   getKeyboardKeyCodeBySystem: () => 'ctrl',
@@ -183,7 +169,7 @@ describe('App Publisher Flow', () => {
   it('publishes from the summary panel and tracks the publish event', async () => {
     const onPublish = vi.fn().mockResolvedValue(undefined)
 
-    render(
+    renderWithQueryClient(
       <AppPublisher
         publishedAt={1700000000}
         onPublish={onPublish}
@@ -210,7 +196,7 @@ describe('App Publisher Flow', () => {
   })
 
   it('opens embedded modal and resolves the installed explore target', async () => {
-    render(<AppPublisher publishedAt={1700000000} />)
+    renderWithQueryClient(<AppPublisher publishedAt={1700000000} />)
 
     fireEvent.click(screen.getByText('common.publish'))
     fireEvent.click(screen.getByText('common.embedIntoSite'))
@@ -231,7 +217,7 @@ describe('App Publisher Flow', () => {
       installed_apps: [],
     })
 
-    render(<AppPublisher publishedAt={1700000000} />)
+    renderWithQueryClient(<AppPublisher publishedAt={1700000000} />)
 
     fireEvent.click(screen.getByText('common.publish'))
     fireEvent.click(screen.getByText('common.openInExplore'))

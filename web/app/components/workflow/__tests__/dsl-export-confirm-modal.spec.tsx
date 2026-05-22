@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import DSLExportConfirmModal from '../dsl-export-confirm-modal'
 
@@ -103,6 +103,42 @@ describe('DSLExportConfirmModal', () => {
 
     expect(onConfirm).toHaveBeenCalledWith(true)
     expect(onClose).toHaveBeenCalledTimes(1)
+  })
+
+  it('should show exporting state and prevent duplicate submits while exporting', async () => {
+    let resolveConfirm: () => void
+    const onConfirm = vi.fn(() => new Promise<void>((resolve) => {
+      resolveConfirm = resolve
+    }))
+    const onClose = vi.fn()
+    const user = userEvent.setup()
+
+    render(
+      <DSLExportConfirmModal
+        envList={envList}
+        onConfirm={onConfirm}
+        onClose={onClose}
+      />,
+    )
+
+    const confirmButton = screen.getByRole('button', { name: 'workflow.env.export.ignore' })
+
+    const firstClick = user.click(confirmButton)
+    await waitFor(() => {
+      expect(confirmButton).toBeDisabled()
+      expect(confirmButton).toHaveTextContent('common.operation.exporting')
+      expect(screen.getByRole('button', { name: 'common.operation.cancel' })).toBeDisabled()
+    })
+
+    await user.click(confirmButton)
+
+    expect(onConfirm).toHaveBeenCalledTimes(1)
+    expect(onClose).not.toHaveBeenCalled()
+
+    resolveConfirm!()
+    await firstClick
+
+    await waitFor(() => expect(onClose).toHaveBeenCalledTimes(1))
   })
 
   it('should render border separators for all rows except the last one', () => {

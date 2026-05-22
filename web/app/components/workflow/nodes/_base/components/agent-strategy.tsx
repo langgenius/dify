@@ -4,11 +4,7 @@ import type { NodeOutPutVar } from '../../../types'
 import type { ToolVarInputs } from '../../tool/types'
 import type { CredentialFormSchema, CredentialFormSchemaNumberInput, CredentialFormSchemaTextInput } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { PluginMeta } from '@/app/components/plugins/types'
-import { noop } from 'es-toolkit/function'
-import { memo } from 'react'
-import { useTranslation } from 'react-i18next'
-import { Agent } from '@/app/components/base/icons/src/vender/workflow'
-import ListEmpty from '@/app/components/base/list-empty'
+import { FieldsetLegend, FieldsetRoot } from '@langgenius/dify-ui/fieldset'
 import {
   NumberField,
   NumberFieldControls,
@@ -16,8 +12,13 @@ import {
   NumberFieldGroup,
   NumberFieldIncrement,
   NumberFieldInput,
-} from '@/app/components/base/ui/number-field'
-import { Slider } from '@/app/components/base/ui/slider'
+} from '@langgenius/dify-ui/number-field'
+import { Slider } from '@langgenius/dify-ui/slider'
+import { noop } from 'es-toolkit/function'
+import { memo } from 'react'
+import { useTranslation } from 'react-i18next'
+import { Agent } from '@/app/components/base/icons/src/vender/workflow'
+import ListEmpty from '@/app/components/base/list-empty'
 import { FormTypeEnum, ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useDefaultModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import Form from '@/app/components/header/account-setting/model-provider-page/model-modal/Form'
@@ -128,6 +129,7 @@ export const AgentStrategy = memo((props: AgentStrategyProps) => {
 
           const defaultValue = schema.default ? Number.parseInt(schema.default) : 1
           const value = props.value[schema.variable] ?? defaultValue
+          const label = renderI18nObject(def.label)
           const onChange = (value: number) => {
             props.onChange({ ...props.value, [schema.variable]: value })
           }
@@ -135,7 +137,7 @@ export const AgentStrategy = memo((props: AgentStrategyProps) => {
             <Field
               title={(
                 <>
-                  {renderI18nObject(def.label)}
+                  {label}
                   {' '}
                   {def.required && <span className="text-red-500">*</span>}
                 </>
@@ -144,14 +146,15 @@ export const AgentStrategy = memo((props: AgentStrategyProps) => {
               tooltip={def.tooltip && renderI18nObject(def.tooltip)}
               inline
             >
-              <div className="flex w-[200px] items-center gap-3">
+              <FieldsetRoot className="flex w-[200px] items-center gap-3">
+                <FieldsetLegend className="sr-only">{label}</FieldsetLegend>
                 <Slider
                   value={value}
                   onValueChange={onChange}
                   className="w-full"
                   min={def.min}
                   max={def.max}
-                  aria-label={renderI18nObject(def.label)}
+                  aria-label={label}
                 />
                 <NumberField
                   value={value}
@@ -159,15 +162,15 @@ export const AgentStrategy = memo((props: AgentStrategyProps) => {
                   max={def.max}
                   onValueChange={nextValue => onChange(nextValue ?? defaultValue)}
                 >
-                  <NumberFieldGroup size="regular">
-                    <NumberFieldInput size="regular" className="w-12" />
+                  <NumberFieldGroup>
+                    <NumberFieldInput aria-label={label} className="w-12" />
                     <NumberFieldControls>
-                      <NumberFieldIncrement size="regular" />
-                      <NumberFieldDecrement size="regular" />
+                      <NumberFieldIncrement />
+                      <NumberFieldDecrement />
                     </NumberFieldControls>
                   </NumberFieldGroup>
                 </NumberField>
-              </div>
+              </FieldsetRoot>
             </Field>
           )
         }
@@ -255,7 +258,7 @@ export const AgentStrategy = memo((props: AgentStrategyProps) => {
             )
           : (
               <ListEmpty
-                icon={<Agent className="h-5 w-5 shrink-0 text-text-accent" />}
+                icon={<Agent className="size-5 shrink-0 text-text-accent" />}
                 title={t('nodes.agent.strategy.configureTip', { ns: 'workflow' })}
                 description={(
                   <div className="text-xs text-text-tertiary">
@@ -266,6 +269,7 @@ export const AgentStrategy = memo((props: AgentStrategyProps) => {
                       href={docLink('/use-dify/nodes/agent')}
                       className="text-text-accent-secondary"
                       target="_blank"
+                      rel="noopener noreferrer"
                     >
                       {t('nodes.agent.learnMore', { ns: 'workflow' })}
                     </Link>

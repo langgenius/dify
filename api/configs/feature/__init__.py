@@ -23,9 +23,9 @@ class SecurityConfig(BaseSettings):
     """
 
     SECRET_KEY: str = Field(
-        description="Secret key for secure session cookie signing."
-        "Make sure you are changing this key for your deployment with a strong key."
-        "Generate a strong key using `openssl rand -base64 42` or set via the `SECRET_KEY` environment variable.",
+        description="Secret key for secure session cookie signing. "
+        "Leave empty to let Dify generate a persistent key in the storage directory, "
+        "or set a strong value via the `SECRET_KEY` environment variable.",
         default="",
     )
 
@@ -284,6 +284,27 @@ class MarketplaceConfig(BaseSettings):
     MARKETPLACE_API_URL: HttpUrl = Field(
         description="Marketplace API URL",
         default=HttpUrl("https://marketplace.dify.ai"),
+    )
+
+
+class CreatorsPlatformConfig(BaseSettings):
+    """
+    Configuration for Creators Platform integration
+    """
+
+    CREATORS_PLATFORM_FEATURES_ENABLED: bool = Field(
+        description="Enable or disable Creators Platform features",
+        default=True,
+    )
+
+    CREATORS_PLATFORM_API_URL: HttpUrl = Field(
+        description="Creators Platform API URL",
+        default=HttpUrl("https://creators.dify.ai"),
+    )
+
+    CREATORS_PLATFORM_OAUTH_CLIENT_ID: str = Field(
+        description="OAuth client ID for Creators Platform integration",
+        default="",
     )
 
 
@@ -740,7 +761,7 @@ class WorkflowConfig(BaseSettings):
     # GraphEngine Worker Pool Configuration
     GRAPH_ENGINE_MIN_WORKERS: PositiveInt = Field(
         description="Minimum number of workers per GraphEngine instance",
-        default=1,
+        default=3,
     )
 
     GRAPH_ENGINE_MAX_WORKERS: PositiveInt = Field(
@@ -1116,6 +1137,18 @@ class MultiModalTransferConfig(BaseSettings):
     )
 
 
+class OpsTraceConfig(BaseSettings):
+    OPS_TRACE_RETRYABLE_DISPATCH_MAX_RETRIES: PositiveInt = Field(
+        description="Maximum retry attempts for transient ops trace provider dispatch failures.",
+        default=60,
+    )
+
+    OPS_TRACE_RETRYABLE_DISPATCH_DELAY_SECONDS: PositiveInt = Field(
+        description="Delay in seconds between transient ops trace provider dispatch retry attempts.",
+        default=5,
+    )
+
+
 class CeleryBeatConfig(BaseSettings):
     CELERY_BEAT_SCHEDULER_TIME: int = Field(
         description="Interval in days for Celery Beat scheduler execution, default to 1 day",
@@ -1274,6 +1307,13 @@ class PositionConfig(BaseSettings):
         return {item.strip() for item in self.POSITION_TOOL_EXCLUDES.split(",") if item.strip() != ""}
 
 
+class CollaborationConfig(BaseSettings):
+    ENABLE_COLLABORATION_MODE: bool = Field(
+        description="Whether to enable collaboration mode features across the workspace",
+        default=True,
+    )
+
+
 class LoginConfig(BaseSettings):
     ENABLE_EMAIL_CODE_LOGIN: bool = Field(
         description="whether to enable email code login",
@@ -1372,6 +1412,7 @@ class FeatureConfig(
     AuthConfig,  # Changed from OAuthConfig to AuthConfig
     BillingConfig,
     CodeExecutionSandboxConfig,
+    CreatorsPlatformConfig,
     TriggerConfig,
     AsyncWorkflowConfig,
     PluginConfig,
@@ -1388,6 +1429,7 @@ class FeatureConfig(
     ModelLoadBalanceConfig,
     ModerationConfig,
     MultiModalTransferConfig,
+    OpsTraceConfig,
     PositionConfig,
     RagEtlConfig,
     RepositoryConfig,
@@ -1399,6 +1441,7 @@ class FeatureConfig(
     WorkflowConfig,
     WorkflowNodeExecutionConfig,
     WorkspaceConfig,
+    CollaborationConfig,
     LoginConfig,
     AccountConfig,
     SwaggerUIConfig,

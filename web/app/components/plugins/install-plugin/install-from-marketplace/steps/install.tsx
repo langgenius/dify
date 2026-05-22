@@ -1,11 +1,11 @@
 'use client'
 import type { FC } from 'react'
 import type { Plugin, PluginManifestInMarket } from '../../../types'
+import { Button } from '@langgenius/dify-ui/button'
 import { RiLoader2Line } from '@remixicon/react'
 import * as React from 'react'
 import { useEffect, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Button } from '@/app/components/base/ui/button'
 import useCheckInstalled from '@/app/components/plugins/install-plugin/hooks/use-check-installed'
 import { useAppContext } from '@/context/app-context'
 import { useInstallPackageFromMarketPlace, usePluginDeclarationFromMarketPlace, usePluginTaskList, useUpdatePackageFromMarketPlace } from '@/service/use-plugins'
@@ -169,7 +169,7 @@ const Installed: FC<Props> = ({
           disabled={isInstalling || isLoading || !canInstall}
           onClick={handleInstall}
         >
-          {isInstalling && <RiLoader2Line className="h-4 w-4 animate-spin-slow" />}
+          {isInstalling && <RiLoader2Line className="size-4 animate-spin-slow" />}
           <span>{t(`${i18nPrefix}.${isInstalling ? 'installing' : 'install'}`, { ns: 'plugin' })}</span>
         </Button>
       </div>

@@ -19,7 +19,7 @@ const toastMocks = vi.hoisted(() => ({
   promise: vi.fn(),
 }))
 
-vi.mock('@/app/components/base/ui/toast', () => ({
+vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: Object.assign(toastMocks.call, {
     success: vi.fn((message: string, options?: Record<string, unknown>) => toastMocks.call({ type: 'success', message, ...options })),
     error: vi.fn((message: string, options?: Record<string, unknown>) => toastMocks.call({ type: 'error', message, ...options })),
@@ -372,7 +372,7 @@ describe('SettingsModal', () => {
 
       // Act
       await renderSettingsModal(createDataset())
-      await user.click(screen.getByText('datasetSettings.form.embeddingModelTipLink'))
+      await user.click(screen.getByRole('button', { name: 'datasetSettings.form.embeddingModelTipLink' }))
 
       // Assert
       expect(mockSetShowAccountSettingModal).toHaveBeenCalledWith({ payload: ACCOUNT_SETTING_TAB.PROVIDER })

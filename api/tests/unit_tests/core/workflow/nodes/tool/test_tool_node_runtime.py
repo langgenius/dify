@@ -6,11 +6,6 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 import pytest
-from graphon.model_runtime.entities.llm_entities import LLMUsage
-from graphon.nodes.tool.entities import ToolNodeData, ToolProviderType
-from graphon.nodes.tool.exc import ToolRuntimeInvocationError
-from graphon.nodes.tool_runtime_entities import ToolRuntimeHandle, ToolRuntimeMessage
-from graphon.runtime import VariablePool
 
 from core.callback_handler.workflow_tool_callback_handler import DifyWorkflowCallbackHandler
 from core.plugin.impl.exc import PluginDaemonClientSideError, PluginInvokeError
@@ -22,6 +17,11 @@ from core.tools.tool_manager import ToolManager
 from core.tools.utils.message_transformer import ToolFileMessageTransformer
 from core.workflow.node_runtime import DifyToolNodeRuntime
 from core.workflow.system_variables import build_system_variables
+from graphon.model_runtime.entities.llm_entities import LLMUsage
+from graphon.nodes.tool.entities import ToolNodeData, ToolProviderType
+from graphon.nodes.tool.exc import ToolRuntimeInvocationError
+from graphon.nodes.tool_runtime_entities import ToolRuntimeHandle, ToolRuntimeMessage
+from graphon.runtime import VariablePool
 from tests.workflow_test_utils import build_test_graph_init_params, build_test_variable_pool
 
 
@@ -145,6 +145,69 @@ def test_get_runtime_converts_graph_provider_type_for_tool_manager(runtime: Dify
     assert not hasattr(tool_runtime, "conversation_id")
     workflow_tool = runtime_mock.call_args.args[3]
     assert workflow_tool.provider_type == CoreToolProviderType.BUILT_IN
+
+
+def test_get_runtime_stores_parent_trace_context_for_workflow_tools(
+    runtime: DifyToolNodeRuntime,
+) -> None:
+    variable_pool: VariablePool = build_test_variable_pool(
+        variables=build_system_variables(
+            conversation_id="conversation-id",
+            workflow_execution_id="workflow-run-id",
+        )
+    )
+    workflow_runtime = MagicMock()
+    workflow_runtime.runtime.runtime_parameters = {}
+    node_data = ToolNodeData.model_validate(
+        {
+            "type": "tool",
+            "title": "Tool",
+            "provider_id": "provider",
+            "provider_type": ToolProviderType.WORKFLOW,
+            "provider_name": "provider",
+            "tool_name": "lookup",
+            "tool_label": "Lookup",
+            "tool_configurations": {},
+            "tool_parameters": {},
+        }
+    )
+
+    with patch.object(ToolManager, "get_workflow_tool_runtime", return_value=workflow_runtime):
+        tool_runtime = runtime.get_runtime(
+            node_id="node-id",
+            node_data=node_data,
+            variable_pool=variable_pool,
+            node_execution_id="node-execution-id",
+        )
+
+    assert tool_runtime.raw.parent_trace_context.model_dump() == {
+        "parent_workflow_run_id": "workflow-run-id",
+        "parent_node_execution_id": "node-execution-id",
+    }
+    assert workflow_runtime.runtime.runtime_parameters == {}
+
+
+def test_get_runtime_leaves_non_workflow_tool_runtime_parameters_unchanged(
+    runtime: DifyToolNodeRuntime,
+) -> None:
+    variable_pool: VariablePool = build_test_variable_pool(
+        variables=build_system_variables(
+            conversation_id="conversation-id",
+            workflow_execution_id="workflow-run-id",
+        )
+    )
+    builtin_runtime = MagicMock()
+    builtin_runtime.runtime.runtime_parameters = {}
+
+    with patch.object(ToolManager, "get_workflow_tool_runtime", return_value=builtin_runtime):
+        runtime.get_runtime(
+            node_id="node-id",
+            node_data=_build_tool_node_data(),
+            variable_pool=variable_pool,
+            node_execution_id="node-execution-id",
+        )
+
+    assert builtin_runtime.runtime.runtime_parameters == {}
 
 
 def test_get_runtime_parameters_reads_required_flags(runtime: DifyToolNodeRuntime) -> None:

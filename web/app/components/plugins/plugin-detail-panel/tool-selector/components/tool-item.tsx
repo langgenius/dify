@@ -1,4 +1,8 @@
 'use client'
+import { Button } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
+import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
+import { Switch } from '@langgenius/dify-ui/switch'
 import {
   RiDeleteBinLine,
   RiEqualizer2Line,
@@ -10,16 +14,11 @@ import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
 import AppIcon from '@/app/components/base/app-icon'
 import { Group } from '@/app/components/base/icons/src/vender/other'
-import Switch from '@/app/components/base/switch'
-import Tooltip from '@/app/components/base/tooltip'
-import { ToolTipContent } from '@/app/components/base/tooltip/content'
-import { Button } from '@/app/components/base/ui/button'
 import Indicator from '@/app/components/header/indicator'
 import { InstallPluginButton } from '@/app/components/workflow/nodes/_base/components/install-plugin-button'
 import { useMCPToolAvailability } from '@/app/components/workflow/nodes/_base/components/mcp-tool-availability'
 import McpToolNotSupportTooltip from '@/app/components/workflow/nodes/_base/components/mcp-tool-not-support-tooltip'
 import { SwitchPluginVersion } from '@/app/components/workflow/nodes/_base/components/switch-plugin-version'
-import { cn } from '@/utils/classnames'
 
 type Props = {
   icon?: string | { content?: string, background?: string }
@@ -89,7 +88,7 @@ const ToolItem = ({
           isShowCanNotChooseMCPTip && 'opacity-30',
         )}
         >
-          <div className="flex h-5 w-5 items-center justify-center opacity-35">
+          <div className="flex size-5 items-center justify-center opacity-35">
             <Group className="text-text-tertiary" />
           </div>
         </div>
@@ -101,7 +100,7 @@ const ToolItem = ({
       <div className="hidden items-center gap-1 group-hover:flex">
         {!noAuth && !isError && !uninstalled && !versionMismatch && !isShowCanNotChooseMCPTip && (
           <ActionButton>
-            <RiEqualizer2Line className="h-4 w-4" />
+            <RiEqualizer2Line className="size-4" />
           </ActionButton>
         )}
         <div
@@ -113,15 +112,15 @@ const ToolItem = ({
           onMouseOver={() => setIsDeleting(true)}
           onMouseLeave={() => setIsDeleting(false)}
         >
-          <RiDeleteBinLine className="h-4 w-4" />
+          <RiDeleteBinLine className="size-4" />
         </div>
       </div>
       {!isError && !uninstalled && !noAuth && !versionMismatch && !isShowCanNotChooseMCPTip && showSwitch && (
         <div className="mr-1" onClick={e => e.stopPropagation()}>
           <Switch
             size="md"
-            value={switchValue ?? false}
-            onChange={onSwitchChange}
+            checked={switchValue ?? false}
+            onCheckedChange={onSwitchChange}
           />
         </div>
       )}
@@ -144,11 +143,14 @@ const ToolItem = ({
             className="-mt-1"
             uniqueIdentifier={installInfo}
             tooltip={(
-              <ToolTipContent
-                title={t('detailPanel.toolSelector.unsupportedTitle', { ns: 'plugin' })}
-              >
-                {`${t('detailPanel.toolSelector.unsupportedContent', { ns: 'plugin' })} ${t('detailPanel.toolSelector.unsupportedContent2', { ns: 'plugin' })}`}
-              </ToolTipContent>
+              <div className="w-[180px]" data-testid="tooltip-content">
+                <div className="mb-1.5 font-semibold text-text-secondary" data-testid="tooltip-content-title">
+                  {t('detailPanel.toolSelector.unsupportedTitle', { ns: 'plugin' })}
+                </div>
+                <div className="mb-1.5 text-text-tertiary" data-testid="tooltip-content-body">
+                  {`${t('detailPanel.toolSelector.unsupportedContent', { ns: 'plugin' })} ${t('detailPanel.toolSelector.unsupportedContent2', { ns: 'plugin' })}`}
+                </div>
+              </div>
             )}
             onChange={() => {
               onInstall?.()
@@ -167,13 +169,18 @@ const ToolItem = ({
         />
       )}
       {isError && (
-        <Tooltip
-          popupContent={errorTip}
-        >
-          <div>
-            <RiErrorWarningFill className="h-4 w-4 text-text-destructive" />
-          </div>
-        </Tooltip>
+        <Popover>
+          <PopoverTrigger
+            openOnHover
+            aria-label={typeof errorTip === 'string' ? errorTip : t('detailPanel.toolSelector.unsupportedTitle', { ns: 'plugin' })}
+            className="inline-flex border-0 bg-transparent p-0"
+          >
+            <RiErrorWarningFill className="size-4 text-text-destructive" />
+          </PopoverTrigger>
+          <PopoverContent popupClassName="px-3 py-2 system-xs-regular text-text-tertiary">
+            {errorTip}
+          </PopoverContent>
+        </Popover>
       )}
     </div>
   )

@@ -114,8 +114,8 @@ export const getValidationError = ({
   if (!systemTypes.includes(localeData.type as typeof systemTypes[number]) && currentProvider?.form_schema) {
     for (let i = 0; i < currentProvider.form_schema.length; i++) {
       const form = currentProvider.form_schema[i]
-      if (!localeData.config?.[form.variable] && form.required) {
-        return t('errorMessage.valueOfVarRequired', { ns: 'appDebug', key: locale === LanguagesSupported[1] ? form.label['zh-Hans'] : form.label['en-US'] })
+      if (!localeData.config?.[form!.variable] && form!.required) {
+        return t('errorMessage.valueOfVarRequired', { ns: 'appDebug', key: locale === LanguagesSupported[1] ? form!.label['zh-Hans'] : form!.label['en-US'] })
       }
     }
   }

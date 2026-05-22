@@ -1,7 +1,7 @@
 'use client'
+import { Button } from '@langgenius/dify-ui/button'
 import { useTranslation } from 'react-i18next'
 import Divider from '@/app/components/base/divider'
-import { Button } from '@/app/components/base/ui/button'
 import BasicInfoSection from './components/basic-info-section'
 import ExternalKnowledgeSection from './components/external-knowledge-section'
 import IndexingSection from './components/indexing-section'

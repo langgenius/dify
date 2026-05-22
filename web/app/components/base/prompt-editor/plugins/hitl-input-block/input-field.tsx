@@ -1,11 +1,11 @@
 import type { FormInputItem, FormInputItemDefault } from '@/app/components/workflow/nodes/human-input/types'
 import type { ValueSelector } from '@/app/components/workflow/types'
+import { Button } from '@langgenius/dify-ui/button'
 import { produce } from 'immer'
 import * as React from 'react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Input from '@/app/components/base/input'
-import { Button } from '@/app/components/base/ui/button'
 import { InputVarType } from '@/app/components/workflow/types'
 import { getKeyboardKeyNameBySystem } from '@/app/components/workflow/utils'
 import PrePopulate from './pre-populate'
@@ -82,7 +82,9 @@ const InputField: React.FC<InputFieldProps> = ({
   }, [handleSave])
 
   return (
-    <div className="w-[372px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-3 shadow-lg backdrop-blur-[5px]">
+    <div className="w-[372px]
+     rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-3 shadow-lg backdrop-blur-[5px]"
+    >
       <div className="system-md-semibold text-text-primary">{t(`${i18nPrefix}.title`, { ns: 'workflow' })}</div>
       <div className="mt-3">
         <div className="system-xs-medium text-text-secondary">
@@ -121,11 +123,10 @@ const InputField: React.FC<InputFieldProps> = ({
         />
       </div>
       <div className="mt-4 flex justify-end space-x-2">
-        <Button data-testid="hitl-input-cancel-btn" onClick={onCancel}>{t('operation.cancel', { ns: 'common' })}</Button>
+        <Button onClick={onCancel}>{t('operation.cancel', { ns: 'common' })}</Button>
         {isEdit
           ? (
               <Button
-                data-testid="hitl-input-save-btn"
                 variant="primary"
                 onClick={handleSave}
                 disabled={!nameValid}
@@ -135,15 +136,14 @@ const InputField: React.FC<InputFieldProps> = ({
             )
           : (
               <Button
-                data-testid="hitl-input-insert-btn"
                 className="flex"
                 variant="primary"
                 disabled={!nameValid}
                 onClick={handleSave}
               >
                 <span className="mr-1">{t(`${i18nPrefix}.insert`, { ns: 'workflow' })}</span>
-                <span className="mr-0.5 flex h-4 items-center radius-xs bg-components-kbd-bg-white px-1 system-kbd">{getKeyboardKeyNameBySystem('ctrl')}</span>
-                <span className="flex h-4 items-center radius-xs bg-components-kbd-bg-white px-1 system-kbd">↩︎</span>
+                <span className="mr-0.5 flex h-4 items-center rounded-sm bg-components-kbd-bg-white px-1 system-kbd">{getKeyboardKeyNameBySystem('ctrl')}</span>
+                <span className="flex h-4 items-center rounded-sm bg-components-kbd-bg-white px-1 system-kbd">↩︎</span>
               </Button>
             )}
 

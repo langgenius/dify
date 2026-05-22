@@ -182,6 +182,16 @@ describe('var-reference-picker.helpers', () => {
       maxVarNameWidth: expect.any(Number),
     })
 
+    expect(getWidthAllocations(240, '', 'sys.user_id', 'String')).toEqual({
+      maxNodeNameWidth: 0,
+      maxTypeWidth: 64,
+      maxVarNameWidth: 119,
+    })
+
+    expect(getWidthAllocations(240, 'User Input', 'aa', 'String')).toMatchObject({
+      maxVarNameWidth: 16,
+    })
+
     expect(getTooltipContent(true, true, true)).toBe('full-path')
     expect(getTooltipContent(true, false, false)).toBe('invalid-variable')
     expect(getTooltipContent(false, false, true)).toBeNull()

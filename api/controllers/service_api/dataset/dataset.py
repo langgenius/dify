@@ -2,12 +2,12 @@ from typing import Any, Literal, cast
 
 from flask import request
 from flask_restx import marshal
-from graphon.model_runtime.entities.model_entities import ModelType
-from pydantic import BaseModel, Field, TypeAdapter, field_validator
+from pydantic import BaseModel, Field, TypeAdapter, field_validator, model_validator
 from werkzeug.exceptions import Forbidden, NotFound
 
 import services
-from controllers.common.schema import register_schema_models
+from controllers.common.fields import SimpleResultResponse
+from controllers.common.schema import register_enum_models, register_response_schema_models, register_schema_models
 from controllers.console.wraps import edit_permission_required
 from controllers.service_api import service_api_ns
 from controllers.service_api.dataset.error import DatasetInUseError, DatasetNameDuplicateError, InvalidActionError
@@ -19,6 +19,7 @@ from core.plugin.impl.model_runtime_factory import create_plugin_provider_manage
 from core.rag.index_processor.constant.index_type import IndexTechniqueType
 from fields.dataset_fields import dataset_detail_fields
 from fields.tag_fields import DataSetTag
+from graphon.model_runtime.entities.model_entities import ModelType
 from libs.login import current_user
 from models.account import Account
 from models.dataset import DatasetPermissionEnum
@@ -31,16 +32,12 @@ from services.tag_service import (
     TagBindingCreatePayload,
     TagBindingDeletePayload,
     TagService,
-    UpdateTagPayload,
+)
+from services.tag_service import (
+    UpdateTagPayload as UpdateTagServicePayload,
 )
 
-DEFAULT_REF_TEMPLATE_SWAGGER_2_0 = "#/definitions/{model}"
-
-
-service_api_ns.schema_model(
-    DatasetPermissionEnum.__name__,
-    TypeAdapter(DatasetPermissionEnum).json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0),
-)
+register_enum_models(service_api_ns, DatasetPermissionEnum)
 
 
 class DatasetCreatePayload(BaseModel):
@@ -100,8 +97,26 @@ class TagBindingPayload(BaseModel):
 
 
 class TagUnbindingPayload(BaseModel):
-    tag_id: str
+    """Accept the legacy single-tag Service API payload while exposing a normalized tag_ids list internally."""
+
+    tag_ids: list[str] = Field(default_factory=list)
+    tag_id: str | None = None
     target_id: str
+
+    @model_validator(mode="before")
+    @classmethod
+    def normalize_legacy_tag_id(cls, data: object) -> object:
+        if not isinstance(data, dict):
+            return data
+        if not data.get("tag_ids") and data.get("tag_id"):
+            return {**data, "tag_ids": [data["tag_id"]]}
+        return data
+
+    @model_validator(mode="after")
+    def validate_tag_ids(self) -> "TagUnbindingPayload":
+        if not self.tag_ids:
+            raise ValueError("Tag IDs is required.")
+        return self
 
 
 class DatasetListQuery(BaseModel):
@@ -124,6 +139,7 @@ register_schema_models(
     DatasetListQuery,
     DataSetTag,
 )
+register_response_schema_models(service_api_ns, SimpleResultResponse)
 
 
 @service_api_ns.route("/datasets")
@@ -161,14 +177,9 @@ class DatasetListApi(DatasetApiResource):
 
         data = marshal(datasets, dataset_detail_fields)
         for item in data:
-            if (
-                item["indexing_technique"] == IndexTechniqueType.HIGH_QUALITY  # pyrefly: ignore[bad-index]
-                and item["embedding_model_provider"]  # pyrefly: ignore[bad-index]
-            ):
-                item["embedding_model_provider"] = str(  # pyrefly: ignore[unsupported-operation]
-                    ModelProviderID(item["embedding_model_provider"])  # pyrefly: ignore[bad-index]
-                )
-                item_model = f"{item['embedding_model']}:{item['embedding_model_provider']}"  # pyrefly: ignore[bad-index]
+            if item["indexing_technique"] == IndexTechniqueType.HIGH_QUALITY and item["embedding_model_provider"]:
+                item["embedding_model_provider"] = str(ModelProviderID(item["embedding_model_provider"]))
+                item_model = f"{item['embedding_model']}:{item['embedding_model_provider']}"
                 if item_model in model_names:
                     item["embedding_available"] = True  # type: ignore
                 else:
@@ -420,6 +431,11 @@ class DatasetApi(DatasetApiResource):
 class DocumentStatusApi(DatasetApiResource):
     """Resource for batch document status operations."""
 
+    @service_api_ns.response(
+        200,
+        "Document status updated successfully",
+        service_api_ns.models[SimpleResultResponse.__name__],
+    )
     @service_api_ns.doc("update_document_status")
     @service_api_ns.doc(description="Batch update document status")
     @service_api_ns.doc(
@@ -544,7 +560,7 @@ class DatasetTagsApi(DatasetApiResource):
 
         payload = TagUpdatePayload.model_validate(service_api_ns.payload or {})
         tag_id = payload.tag_id
-        tag = TagService.update_tags(UpdateTagPayload(name=payload.name, type=TagType.KNOWLEDGE), tag_id)
+        tag = TagService.update_tags(UpdateTagServicePayload(name=payload.name), tag_id)
 
         binding_count = TagService.get_tag_binding_count(tag_id)
 
@@ -601,11 +617,11 @@ class DatasetTagBindingApi(DatasetApiResource):
 @service_api_ns.route("/datasets/tags/unbinding")
 class DatasetTagUnbindingApi(DatasetApiResource):
     @service_api_ns.expect(service_api_ns.models[TagUnbindingPayload.__name__])
-    @service_api_ns.doc("unbind_dataset_tag")
-    @service_api_ns.doc(description="Unbind a tag from a dataset")
+    @service_api_ns.doc("unbind_dataset_tags")
+    @service_api_ns.doc(description="Unbind tags from a dataset")
     @service_api_ns.doc(
         responses={
-            204: "Tag unbound successfully",
+            204: "Tags unbound successfully",
             401: "Unauthorized - invalid API token",
             403: "Forbidden - insufficient permissions",
         }
@@ -618,7 +634,7 @@ class DatasetTagUnbindingApi(DatasetApiResource):
 
         payload = TagUnbindingPayload.model_validate(service_api_ns.payload or {})
         TagService.delete_tag_binding(
-            TagBindingDeletePayload(tag_id=payload.tag_id, target_id=payload.target_id, type=TagType.KNOWLEDGE)
+            TagBindingDeletePayload(tag_ids=payload.tag_ids, target_id=payload.target_id, type=TagType.KNOWLEDGE)
         )
 
         return "", 204

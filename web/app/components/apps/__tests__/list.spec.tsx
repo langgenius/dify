@@ -1,16 +1,42 @@
 import { act, fireEvent, screen } from '@testing-library/react'
 import * as React from 'react'
-import { useStore as useTagStore } from '@/app/components/base/tag-management/store'
+import { createSystemFeaturesWrapper } from '@/__tests__/utils/mock-system-features'
 import { renderWithNuqs } from '@/test/nuqs-testing'
 import { AppModeEnum } from '@/types/app'
 
 import List from '../list'
+
+const mockAppListInfiniteOptions = vi.hoisted(() => vi.fn((options: unknown) => options))
+const mockUseWorkflowOnlineUsers = vi.hoisted(() => vi.fn((_options: unknown) => ({
+  onlineUsersMap: {},
+})))
 
 const mockReplace = vi.fn()
 const mockRouter = { replace: mockReplace }
 vi.mock('@/next/navigation', () => ({
   useRouter: () => mockRouter,
   useSearchParams: () => new URLSearchParams(''),
+}))
+
+vi.mock('@/service/client', () => ({
+  consoleClient: {
+    systemFeatures: vi.fn(),
+  },
+  consoleQuery: {
+    apps: {
+      list: {
+        infiniteOptions: (options: unknown) => mockAppListInfiniteOptions(options),
+      },
+    },
+    tags: {
+      list: {
+        queryOptions: (options: unknown) => options,
+      },
+    },
+    systemFeatures: {
+      queryKey: () => ['console', 'systemFeatures'],
+    },
+  },
 }))
 
 const mockIsCurrentWorkspaceEditor = vi.fn(() => true)
@@ -22,24 +48,24 @@ vi.mock('@/context/app-context', () => ({
   }),
 }))
 
-vi.mock('@/context/global-public-context', () => ({
-  useGlobalPublicStore: () => ({
-    systemFeatures: {
-      branding: { enabled: false },
-    },
-  }),
-}))
-
-const mockSetQuery = vi.fn()
+const mockSetKeywords = vi.fn()
+const mockSetTagIDs = vi.fn()
+const mockSetIsCreatedByMe = vi.fn()
+const mockSetCategory = vi.fn()
 const mockQueryState = {
+  category: 'all',
   tagIDs: [] as string[],
   keywords: '',
   isCreatedByMe: false,
 }
 vi.mock('../hooks/use-apps-query-state', () => ({
-  default: () => ({
+  isAppListCategory: (value: string) => value === 'all' || Object.values(AppModeEnum).includes(value as AppModeEnum),
+  useAppsQueryState: () => ({
     query: mockQueryState,
-    setQuery: mockSetQuery,
+    setCategory: mockSetCategory,
+    setKeywords: mockSetKeywords,
+    setTagIDs: mockSetTagIDs,
+    setIsCreatedByMe: mockSetIsCreatedByMe,
   }),
 }))
 
@@ -52,12 +78,17 @@ vi.mock('../hooks/use-dsl-drag-drop', () => ({
   },
 }))
 
+vi.mock('../hooks/use-workflow-online-users', () => ({
+  useWorkflowOnlineUsers: (options: unknown) => mockUseWorkflowOnlineUsers(options),
+}))
+
 const mockRefetch = vi.fn()
 const mockFetchNextPage = vi.fn()
 
 const mockServiceState = {
   error: null as Error | null,
   hasNextPage: false,
+  isFetching: false,
   isLoading: false,
   isFetchingNextPage: false,
 }
@@ -96,29 +127,37 @@ const defaultAppData = {
   }],
 }
 
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@tanstack/react-query')>()
+  return {
+    ...actual,
+    useInfiniteQuery: () => ({
+      data: defaultAppData,
+      isLoading: mockServiceState.isLoading,
+      isFetching: mockServiceState.isFetching,
+      isFetchingNextPage: mockServiceState.isFetchingNextPage,
+      fetchNextPage: mockFetchNextPage,
+      hasNextPage: mockServiceState.hasNextPage,
+      error: mockServiceState.error,
+      refetch: mockRefetch,
+    }),
+  }
+})
+
 vi.mock('@/service/use-apps', () => ({
-  useInfiniteAppList: () => ({
-    data: defaultAppData,
-    isLoading: mockServiceState.isLoading,
-    isFetchingNextPage: mockServiceState.isFetchingNextPage,
-    fetchNextPage: mockFetchNextPage,
-    hasNextPage: mockServiceState.hasNextPage,
-    error: mockServiceState.error,
-    refetch: mockRefetch,
-  }),
   useDeleteAppMutation: () => ({
     mutateAsync: vi.fn(),
     isPending: false,
   }),
 }))
 
-vi.mock('@/service/tag', () => ({
-  fetchTagList: vi.fn().mockResolvedValue([{ id: 'tag-1', name: 'Test Tag', type: 'app' }]),
-}))
-
-vi.mock('@/config', () => ({
-  NEED_REFRESH_APP_LIST_KEY: 'needRefreshAppList',
-}))
+vi.mock('@/config', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/config')>()
+  return {
+    ...actual,
+    NEED_REFRESH_APP_LIST_KEY: 'needRefreshAppList',
+  }
+})
 
 vi.mock('@/hooks/use-pay', () => ({
   CheckModal: () => null,
@@ -188,18 +227,23 @@ beforeAll(() => {
   } as unknown as typeof IntersectionObserver
 })
 
-// Render helper wrapping with shared nuqs testing helper.
+// Render helper wrapping with shared nuqs testing helper plus a seeded
+// systemFeatures cache so List can resolve its useSuspenseQuery.
 const renderList = (searchParams = '') => {
-  return renderWithNuqs(<List />, { searchParams })
+  const { wrapper: SystemFeaturesWrapper } = createSystemFeaturesWrapper({
+    systemFeatures: { branding: { enabled: false } },
+  })
+  return renderWithNuqs(<SystemFeaturesWrapper><List /></SystemFeaturesWrapper>, { searchParams })
+}
+
+type AppListInfiniteOptions = {
+  input: (pageParam: number) => { query: Record<string, unknown> }
+  getNextPageParam: (lastPage: { has_more: boolean, page: number }) => number | undefined
 }
 
 describe('List', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    useTagStore.setState({
-      tagList: [{ id: 'tag-1', name: 'Test Tag', type: 'app', binding_count: 0 }],
-      showTagManagementModal: false,
-    })
     mockIsCurrentWorkspaceEditor.mockReturnValue(true)
     mockIsCurrentWorkspaceDatasetOperator.mockReturnValue(false)
     mockDragging = false
@@ -208,9 +252,11 @@ describe('List', () => {
     mockServiceState.hasNextPage = false
     mockServiceState.isLoading = false
     mockServiceState.isFetchingNextPage = false
+    mockQueryState.category = 'all'
     mockQueryState.tagIDs = []
     mockQueryState.keywords = ''
     mockQueryState.isCreatedByMe = false
+    mockUseWorkflowOnlineUsers.mockClear()
     intersectionCallback = null
     localStorage.clear()
   })
@@ -218,85 +264,90 @@ describe('List', () => {
   describe('Rendering', () => {
     it('should render without crashing', () => {
       renderList()
-      expect(screen.getByText('app.types.all')).toBeInTheDocument()
+      expect(screen.getByText('app.types.all'))!.toBeInTheDocument()
     })
 
     it('should render tab slider with all app types', () => {
       renderList()
 
-      expect(screen.getByText('app.types.all')).toBeInTheDocument()
-      expect(screen.getByText('app.types.workflow')).toBeInTheDocument()
-      expect(screen.getByText('app.types.advanced')).toBeInTheDocument()
-      expect(screen.getByText('app.types.chatbot')).toBeInTheDocument()
-      expect(screen.getByText('app.types.agent')).toBeInTheDocument()
-      expect(screen.getByText('app.types.completion')).toBeInTheDocument()
+      expect(screen.getByText('app.types.all'))!.toBeInTheDocument()
+      expect(screen.getByText('app.types.workflow'))!.toBeInTheDocument()
+      expect(screen.getByText('app.types.advanced'))!.toBeInTheDocument()
+      expect(screen.getByText('app.types.chatbot'))!.toBeInTheDocument()
+      expect(screen.getByText('app.types.agent'))!.toBeInTheDocument()
+      expect(screen.getByText('app.types.completion'))!.toBeInTheDocument()
     })
 
     it('should render search input', () => {
       renderList()
-      expect(screen.getByRole('textbox')).toBeInTheDocument()
+      expect(screen.getByRole('textbox'))!.toBeInTheDocument()
     })
 
     it('should render tag filter', () => {
       renderList()
-      expect(screen.getByText('common.tag.placeholder')).toBeInTheDocument()
+      expect(screen.getByText('common.tag.placeholder'))!.toBeInTheDocument()
     })
 
     it('should render created by me checkbox', () => {
       renderList()
-      expect(screen.getByText('app.showMyCreatedAppsOnly')).toBeInTheDocument()
+      expect(screen.getByText('app.showMyCreatedAppsOnly'))!.toBeInTheDocument()
     })
 
     it('should render app cards when apps exist', () => {
       renderList()
 
-      expect(screen.getByTestId('app-card-app-1')).toBeInTheDocument()
-      expect(screen.getByTestId('app-card-app-2')).toBeInTheDocument()
+      expect(screen.getByTestId('app-card-app-1'))!.toBeInTheDocument()
+      expect(screen.getByTestId('app-card-app-2'))!.toBeInTheDocument()
     })
 
     it('should render new app card for editors', () => {
       renderList()
-      expect(screen.getByTestId('new-app-card')).toBeInTheDocument()
+      expect(screen.getByTestId('new-app-card'))!.toBeInTheDocument()
     })
 
     it('should render footer when branding is disabled', () => {
       renderList()
-      expect(screen.getByTestId('footer')).toBeInTheDocument()
+      expect(screen.getByTestId('footer'))!.toBeInTheDocument()
     })
 
     it('should render drop DSL hint for editors', () => {
       renderList()
-      expect(screen.getByText('app.newApp.dropDSLToCreateApp')).toBeInTheDocument()
+      expect(screen.getByText('app.newApp.dropDSLToCreateApp'))!.toBeInTheDocument()
+    })
+
+    it('should pass workflow app ids to online users hook', () => {
+      renderList()
+
+      expect(mockUseWorkflowOnlineUsers).toHaveBeenCalledWith({
+        appIds: ['app-2'],
+        enabled: expect.any(Boolean),
+      })
     })
   })
 
   describe('Tab Navigation', () => {
-    it('should update URL when workflow tab is clicked', async () => {
-      const { onUrlUpdate } = renderList()
+    it('should update category when workflow tab is clicked', () => {
+      renderList()
 
       fireEvent.click(screen.getByText('app.types.workflow'))
 
-      await vi.waitFor(() => expect(onUrlUpdate).toHaveBeenCalled())
-      const lastCall = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1][0]
-      expect(lastCall.searchParams.get('category')).toBe(AppModeEnum.WORKFLOW)
+      expect(mockSetCategory).toHaveBeenCalledWith(AppModeEnum.WORKFLOW)
     })
 
-    it('should update URL when all tab is clicked', async () => {
-      const { onUrlUpdate } = renderList('?category=workflow')
+    it('should update category when all tab is clicked', () => {
+      mockQueryState.category = AppModeEnum.WORKFLOW
+      renderList()
 
       fireEvent.click(screen.getByText('app.types.all'))
 
-      await vi.waitFor(() => expect(onUrlUpdate).toHaveBeenCalled())
-      const lastCall = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1][0]
-      // nuqs removes the default value ('all') from URL params
-      expect(lastCall.searchParams.has('category')).toBe(false)
+      expect(mockSetCategory).toHaveBeenCalledWith('all')
     })
   })
 
   describe('Search Functionality', () => {
     it('should render search input field', () => {
       renderList()
-      expect(screen.getByRole('textbox')).toBeInTheDocument()
+      expect(screen.getByRole('textbox'))!.toBeInTheDocument()
     })
 
     it('should handle search input change', () => {
@@ -305,7 +356,7 @@ describe('List', () => {
       const input = screen.getByRole('textbox')
       fireEvent.change(input, { target: { value: 'test search' } })
 
-      expect(mockSetQuery).toHaveBeenCalled()
+      expect(mockSetKeywords).toHaveBeenCalledWith('test search')
     })
 
     it('should handle search clear button click', () => {
@@ -314,34 +365,60 @@ describe('List', () => {
       renderList()
 
       const clearButton = document.querySelector('.group')
-      expect(clearButton).toBeInTheDocument()
+      expect(clearButton)!.toBeInTheDocument()
       if (clearButton)
         fireEvent.click(clearButton)
 
-      expect(mockSetQuery).toHaveBeenCalled()
+      expect(mockSetKeywords).toHaveBeenCalledWith('')
+    })
+  })
+
+  describe('App List Query', () => {
+    it('should build paged query input from active filters', () => {
+      mockQueryState.tagIDs = ['tag-1']
+      mockQueryState.keywords = 'sales'
+      mockQueryState.isCreatedByMe = true
+      mockQueryState.category = AppModeEnum.WORKFLOW
+
+      renderList()
+
+      const options = mockAppListInfiniteOptions.mock.calls.at(-1)?.[0] as AppListInfiniteOptions
+
+      expect(options.input(2)).toEqual({
+        query: {
+          page: 2,
+          limit: 30,
+          name: 'sales',
+          tag_ids: ['tag-1'],
+          is_created_by_me: true,
+          mode: AppModeEnum.WORKFLOW,
+        },
+      })
+      expect(options.getNextPageParam({ has_more: true, page: 2 })).toBe(3)
+      expect(options.getNextPageParam({ has_more: false, page: 2 })).toBeUndefined()
     })
   })
 
   describe('Tag Filter', () => {
     it('should render tag filter component', () => {
       renderList()
-      expect(screen.getByText('common.tag.placeholder')).toBeInTheDocument()
+      expect(screen.getByText('common.tag.placeholder'))!.toBeInTheDocument()
     })
   })
 
   describe('Created By Me Filter', () => {
     it('should render checkbox with correct label', () => {
       renderList()
-      expect(screen.getByText('app.showMyCreatedAppsOnly')).toBeInTheDocument()
+      expect(screen.getByText('app.showMyCreatedAppsOnly'))!.toBeInTheDocument()
     })
 
     it('should handle checkbox change', () => {
       renderList()
 
-      const checkbox = screen.getByTestId('checkbox-undefined')
+      const checkbox = screen.getByRole('checkbox', { name: 'app.showMyCreatedAppsOnly' })
       fireEvent.click(checkbox)
 
-      expect(mockSetQuery).toHaveBeenCalled()
+      expect(mockSetIsCreatedByMe).toHaveBeenCalledWith(true)
     })
   })
 
@@ -386,39 +463,40 @@ describe('List', () => {
 
   describe('Edge Cases', () => {
     it('should handle multiple renders without issues', () => {
-      const { rerender } = renderWithNuqs(<List />)
-      expect(screen.getByText('app.types.all')).toBeInTheDocument()
+      const { unmount } = renderList()
+      expect(screen.getByText('app.types.all'))!.toBeInTheDocument()
 
-      rerender(<List />)
-      expect(screen.getByText('app.types.all')).toBeInTheDocument()
+      unmount()
+      renderList()
+      expect(screen.getByText('app.types.all'))!.toBeInTheDocument()
     })
 
     it('should render app cards correctly', () => {
       renderList()
 
-      expect(screen.getByText('Test App 1')).toBeInTheDocument()
-      expect(screen.getByText('Test App 2')).toBeInTheDocument()
+      expect(screen.getByText('Test App 1'))!.toBeInTheDocument()
+      expect(screen.getByText('Test App 2'))!.toBeInTheDocument()
     })
 
     it('should render with all filter options visible', () => {
       renderList()
 
-      expect(screen.getByRole('textbox')).toBeInTheDocument()
-      expect(screen.getByText('common.tag.placeholder')).toBeInTheDocument()
-      expect(screen.getByText('app.showMyCreatedAppsOnly')).toBeInTheDocument()
+      expect(screen.getByRole('textbox'))!.toBeInTheDocument()
+      expect(screen.getByText('common.tag.placeholder'))!.toBeInTheDocument()
+      expect(screen.getByText('app.showMyCreatedAppsOnly'))!.toBeInTheDocument()
     })
   })
 
   describe('Dragging State', () => {
     it('should show drop hint when DSL feature is enabled for editors', () => {
       renderList()
-      expect(screen.getByText('app.newApp.dropDSLToCreateApp')).toBeInTheDocument()
+      expect(screen.getByText('app.newApp.dropDSLToCreateApp'))!.toBeInTheDocument()
     })
 
     it('should render dragging state overlay when dragging', () => {
       mockDragging = true
       const { container } = renderList()
-      expect(container).toBeInTheDocument()
+      expect(container)!.toBeInTheDocument()
     })
   })
 
@@ -426,16 +504,16 @@ describe('List', () => {
     it('should render all app type tabs', () => {
       renderList()
 
-      expect(screen.getByText('app.types.all')).toBeInTheDocument()
-      expect(screen.getByText('app.types.workflow')).toBeInTheDocument()
-      expect(screen.getByText('app.types.advanced')).toBeInTheDocument()
-      expect(screen.getByText('app.types.chatbot')).toBeInTheDocument()
-      expect(screen.getByText('app.types.agent')).toBeInTheDocument()
-      expect(screen.getByText('app.types.completion')).toBeInTheDocument()
+      expect(screen.getByText('app.types.all'))!.toBeInTheDocument()
+      expect(screen.getByText('app.types.workflow'))!.toBeInTheDocument()
+      expect(screen.getByText('app.types.advanced'))!.toBeInTheDocument()
+      expect(screen.getByText('app.types.chatbot'))!.toBeInTheDocument()
+      expect(screen.getByText('app.types.agent'))!.toBeInTheDocument()
+      expect(screen.getByText('app.types.completion'))!.toBeInTheDocument()
     })
 
-    it('should update URL for each app type tab click', async () => {
-      const { onUrlUpdate } = renderList()
+    it('should update category for each app type tab click', () => {
+      renderList()
 
       const appTypeTexts = [
         { mode: AppModeEnum.WORKFLOW, text: 'app.types.workflow' },
@@ -446,11 +524,9 @@ describe('List', () => {
       ]
 
       for (const { mode, text } of appTypeTexts) {
-        onUrlUpdate.mockClear()
+        mockSetCategory.mockClear()
         fireEvent.click(screen.getByText(text))
-        await vi.waitFor(() => expect(onUrlUpdate).toHaveBeenCalled())
-        const lastCall = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1][0]
-        expect(lastCall.searchParams.get('category')).toBe(mode)
+        expect(mockSetCategory).toHaveBeenCalledWith(mode)
       }
     })
   })
@@ -459,22 +535,22 @@ describe('List', () => {
     it('should display all app cards from data', () => {
       renderList()
 
-      expect(screen.getByTestId('app-card-app-1')).toBeInTheDocument()
-      expect(screen.getByTestId('app-card-app-2')).toBeInTheDocument()
+      expect(screen.getByTestId('app-card-app-1'))!.toBeInTheDocument()
+      expect(screen.getByTestId('app-card-app-2'))!.toBeInTheDocument()
     })
 
     it('should display app names correctly', () => {
       renderList()
 
-      expect(screen.getByText('Test App 1')).toBeInTheDocument()
-      expect(screen.getByText('Test App 2')).toBeInTheDocument()
+      expect(screen.getByText('Test App 1'))!.toBeInTheDocument()
+      expect(screen.getByText('Test App 2'))!.toBeInTheDocument()
     })
   })
 
   describe('Footer Visibility', () => {
     it('should render footer when branding is disabled', () => {
       renderList()
-      expect(screen.getByTestId('footer')).toBeInTheDocument()
+      expect(screen.getByTestId('footer'))!.toBeInTheDocument()
     })
   })
 
@@ -488,7 +564,7 @@ describe('List', () => {
           mockOnDSLFileDropped(mockFile)
       })
 
-      expect(screen.getByTestId('create-dsl-modal')).toBeInTheDocument()
+      expect(screen.getByTestId('create-dsl-modal'))!.toBeInTheDocument()
     })
 
     it('should close DSL modal when onClose is called', () => {
@@ -500,7 +576,7 @@ describe('List', () => {
           mockOnDSLFileDropped(mockFile)
       })
 
-      expect(screen.getByTestId('create-dsl-modal')).toBeInTheDocument()
+      expect(screen.getByTestId('create-dsl-modal'))!.toBeInTheDocument()
 
       fireEvent.click(screen.getByTestId('close-dsl-modal'))
 
@@ -516,7 +592,7 @@ describe('List', () => {
           mockOnDSLFileDropped(mockFile)
       })
 
-      expect(screen.getByTestId('create-dsl-modal')).toBeInTheDocument()
+      expect(screen.getByTestId('create-dsl-modal'))!.toBeInTheDocument()
 
       fireEvent.click(screen.getByTestId('success-dsl-modal'))
 
@@ -580,7 +656,7 @@ describe('List', () => {
     it('should handle error state in useEffect', () => {
       mockServiceState.error = new Error('Test error')
       const { container } = renderList()
-      expect(container).toBeInTheDocument()
+      expect(container)!.toBeInTheDocument()
     })
   })
 })

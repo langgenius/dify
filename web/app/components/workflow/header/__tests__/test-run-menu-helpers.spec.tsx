@@ -1,7 +1,7 @@
+import type * as React from 'react'
 import type { TriggerOption } from '../test-run-menu'
 import { fireEvent, render, renderHook, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import * as React from 'react'
 import { TriggerType } from '../test-run-menu'
 import {
   getNormalizedShortcutKey,
@@ -9,6 +9,33 @@ import {
   SingleOptionTrigger,
   useShortcutMenu,
 } from '../test-run-menu-helpers'
+
+vi.mock('@langgenius/dify-ui/dropdown-menu', async () => {
+  const React = await import('react')
+  const DropdownMenuContext = React.createContext<{ open: boolean, setOpen: (open: boolean) => void } | null>(null)
+
+  const useDropdownMenuContext = () => {
+    const context = React.use(DropdownMenuContext)
+    if (!context)
+      throw new Error('DropdownMenu components must be wrapped in DropdownMenu')
+    return context
+  }
+
+  return {
+    DropdownMenu: ({ children, open, onOpenChange }: { children: React.ReactNode, open: boolean, onOpenChange?: (open: boolean) => void }) => (
+      <DropdownMenuContext value={{ open, setOpen: onOpenChange ?? vi.fn() }}>
+        <div>{children}</div>
+      </DropdownMenuContext>
+    ),
+    DropdownMenuContent: ({ children }: { children: React.ReactNode }) => {
+      const { open } = useDropdownMenuContext()
+      return open ? <div>{children}</div> : null
+    },
+    DropdownMenuItem: ({ children, onClick, className }: { children: React.ReactNode, onClick?: React.MouseEventHandler<HTMLButtonElement>, className?: string }) => (
+      <button type="button" className={className} onClick={onClick}>{children}</button>
+    ),
+  }
+})
 
 vi.mock('../shortcuts-name', () => ({
   default: ({ keys }: { keys: string[] }) => <span>{keys.join('+')}</span>,

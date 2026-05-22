@@ -73,7 +73,7 @@ vi.mock('../../context', () => ({
   },
 }))
 
-vi.mock('@/app/components/base/ui/toast', () => ({
+vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: mockToast,
 }))
 
@@ -137,37 +137,46 @@ vi.mock('../hooks/use-child-segment-data', () => ({
   },
 }))
 
-// Mock child components to simplify testing
-vi.mock('../components', () => ({
-  MenuBar: ({ totalText, onInputChange, inputValue, isLoading, onSelectedAll, onChangeStatus }: {
-    totalText: string
-    onInputChange: (value: string) => void
-    inputValue: string
-    isLoading: boolean
-    onSelectedAll?: () => void
-    onChangeStatus?: (item: { value: string | number, name: string }) => void
-  }) => (
-    <div data-testid="menu-bar">
-      <span data-testid="total-text">{totalText}</span>
-      <input
-        data-testid="search-input"
-        value={inputValue}
-        onChange={e => onInputChange(e.target.value)}
-        disabled={isLoading}
-      />
-      {onSelectedAll && (
-        <button data-testid="select-all-button" onClick={onSelectedAll}>Select All</button>
-      )}
-      {onChangeStatus && (
-        <>
-          <button data-testid="status-enabled" onClick={() => onChangeStatus({ value: 1, name: 'Enabled' })}>Enabled</button>
-          <button data-testid="status-disabled" onClick={() => onChangeStatus({ value: 0, name: 'Disabled' })}>Disabled</button>
-          <button data-testid="status-all" onClick={() => onChangeStatus({ value: 'all', name: 'All' })}>All</button>
-        </>
-      )}
-    </div>
-  ),
+vi.mock('../components/menu-bar', async () => {
+  const { Checkbox } = await import('@langgenius/dify-ui/checkbox')
+
+  return {
+    default: ({ hasSelectableSegments, totalText, onInputChange, inputValue, isLoading, onChangeStatus }: {
+      hasSelectableSegments: boolean
+      totalText: string
+      onInputChange: (value: string) => void
+      inputValue: string
+      isLoading: boolean
+      onChangeStatus?: (item: { value: string | number, name: string }) => void
+    }) => (
+      <div data-testid="menu-bar">
+        <span data-testid="total-text">{totalText}</span>
+        <input
+          data-testid="search-input"
+          value={inputValue}
+          onChange={e => onInputChange(e.target.value)}
+          disabled={isLoading}
+        />
+        {hasSelectableSegments
+          ? <Checkbox parent data-testid="select-all-button" aria-label="Select All" disabled={isLoading} />
+          : <span data-testid="select-all-spacer" aria-hidden />}
+        {onChangeStatus && (
+          <>
+            <button data-testid="status-enabled" onClick={() => onChangeStatus({ value: 1, name: 'Enabled' })}>Enabled</button>
+            <button data-testid="status-disabled" onClick={() => onChangeStatus({ value: 0, name: 'Disabled' })}>Disabled</button>
+            <button data-testid="status-all" onClick={() => onChangeStatus({ value: 'all', name: 'All' })}>All</button>
+          </>
+        )}
+      </div>
+    ),
+  }
+})
+
+vi.mock('../components/drawer-group', () => ({
   DrawerGroup: () => <div data-testid="drawer-group" />,
+}))
+
+vi.mock('../components/segment-list-content', () => ({
   FullDocModeContent: () => <div data-testid="full-doc-mode-content" />,
   GeneralModeContent: () => <div data-testid="general-mode-content" />,
 }))
@@ -287,10 +296,10 @@ describe('SegmentListContext', () => {
 
       render(<TestComponent />)
 
-      expect(screen.getByTestId('isCollapsed')).toHaveTextContent('true')
-      expect(screen.getByTestId('fullScreen')).toHaveTextContent('false')
-      expect(screen.getByTestId('currSegmentShowModal')).toHaveTextContent('false')
-      expect(screen.getByTestId('currChildChunkShowModal')).toHaveTextContent('false')
+      expect(screen.getByTestId('isCollapsed'))!.toHaveTextContent('true')
+      expect(screen.getByTestId('fullScreen'))!.toHaveTextContent('false')
+      expect(screen.getByTestId('currSegmentShowModal'))!.toHaveTextContent('false')
+      expect(screen.getByTestId('currChildChunkShowModal'))!.toHaveTextContent('false')
     })
   })
 
@@ -324,9 +333,9 @@ describe('SegmentListContext', () => {
         </SegmentListContext.Provider>,
       )
 
-      expect(screen.getByTestId('isCollapsed')).toHaveTextContent('false')
-      expect(screen.getByTestId('fullScreen')).toHaveTextContent('true')
-      expect(screen.getByTestId('currSegmentShowModal')).toHaveTextContent('true')
+      expect(screen.getByTestId('isCollapsed'))!.toHaveTextContent('false')
+      expect(screen.getByTestId('fullScreen'))!.toHaveTextContent('true')
+      expect(screen.getByTestId('currSegmentShowModal'))!.toHaveTextContent('true')
     })
   })
 
@@ -356,8 +365,8 @@ describe('SegmentListContext', () => {
         </SegmentListContext.Provider>,
       )
 
-      expect(screen.getByTestId('isCollapsed')).toHaveTextContent('true')
-      expect(screen.getByTestId('fullScreen')).toHaveTextContent('false')
+      expect(screen.getByTestId('isCollapsed'))!.toHaveTextContent('true')
+      expect(screen.getByTestId('fullScreen'))!.toHaveTextContent('false')
 
       // Rerender with changed values
       rerender(
@@ -373,8 +382,8 @@ describe('SegmentListContext', () => {
         </SegmentListContext.Provider>,
       )
 
-      expect(screen.getByTestId('isCollapsed')).toHaveTextContent('false')
-      expect(screen.getByTestId('fullScreen')).toHaveTextContent('true')
+      expect(screen.getByTestId('isCollapsed'))!.toHaveTextContent('false')
+      expect(screen.getByTestId('fullScreen'))!.toHaveTextContent('true')
     })
   })
 })
@@ -400,7 +409,7 @@ describe('Completed Component', () => {
     it('should render MenuBar when not in full-doc mode', () => {
       render(<Completed {...defaultProps} />, { wrapper: createWrapper() })
 
-      expect(screen.getByTestId('menu-bar')).toBeInTheDocument()
+      expect(screen.getByTestId('menu-bar'))!.toBeInTheDocument()
     })
 
     it('should not render MenuBar when in full-doc mode', () => {
@@ -415,7 +424,7 @@ describe('Completed Component', () => {
     it('should render GeneralModeContent when not in full-doc mode', () => {
       render(<Completed {...defaultProps} />, { wrapper: createWrapper() })
 
-      expect(screen.getByTestId('general-mode-content')).toBeInTheDocument()
+      expect(screen.getByTestId('general-mode-content'))!.toBeInTheDocument()
     })
 
     it('should render FullDocModeContent when in full-doc mode', () => {
@@ -424,25 +433,25 @@ describe('Completed Component', () => {
 
       render(<Completed {...defaultProps} />, { wrapper: createWrapper() })
 
-      expect(screen.getByTestId('full-doc-mode-content')).toBeInTheDocument()
+      expect(screen.getByTestId('full-doc-mode-content'))!.toBeInTheDocument()
     })
 
     it('should render Pagination component', () => {
       render(<Completed {...defaultProps} />, { wrapper: createWrapper() })
 
-      expect(screen.getByTestId('pagination')).toBeInTheDocument()
+      expect(screen.getByTestId('pagination'))!.toBeInTheDocument()
     })
 
     it('should render Divider component', () => {
       render(<Completed {...defaultProps} />, { wrapper: createWrapper() })
 
-      expect(screen.getByTestId('divider')).toBeInTheDocument()
+      expect(screen.getByTestId('divider'))!.toBeInTheDocument()
     })
 
     it('should render DrawerGroup when docForm is available', () => {
       render(<Completed {...defaultProps} />, { wrapper: createWrapper() })
 
-      expect(screen.getByTestId('drawer-group')).toBeInTheDocument()
+      expect(screen.getByTestId('drawer-group'))!.toBeInTheDocument()
     })
 
     it('should not render DrawerGroup when docForm is undefined', () => {
@@ -458,7 +467,7 @@ describe('Completed Component', () => {
     it('should start with page 0 (current - 1)', () => {
       render(<Completed {...defaultProps} />, { wrapper: createWrapper() })
 
-      expect(screen.getByTestId('current-page')).toHaveTextContent('0')
+      expect(screen.getByTestId('current-page'))!.toHaveTextContent('0')
     })
 
     it('should update page when pagination changes', async () => {
@@ -468,7 +477,7 @@ describe('Completed Component', () => {
       fireEvent.click(nextPageButton)
 
       await waitFor(() => {
-        expect(screen.getByTestId('current-page')).toHaveTextContent('1')
+        expect(screen.getByTestId('current-page'))!.toHaveTextContent('1')
       })
     })
 
@@ -479,7 +488,8 @@ describe('Completed Component', () => {
       fireEvent.click(changeLimitButton)
 
       // Limit change is handled internally
-      expect(changeLimitButton).toBeInTheDocument()
+      // Limit change is handled internally
+      expect(changeLimitButton)!.toBeInTheDocument()
     })
   })
 
@@ -495,19 +505,19 @@ describe('Completed Component', () => {
     it('should handle archived prop', () => {
       render(<Completed {...defaultProps} archived={true} />, { wrapper: createWrapper() })
 
-      expect(screen.getByTestId('general-mode-content')).toBeInTheDocument()
+      expect(screen.getByTestId('general-mode-content'))!.toBeInTheDocument()
     })
 
     it('should handle embeddingAvailable prop', () => {
       render(<Completed {...defaultProps} embeddingAvailable={false} />, { wrapper: createWrapper() })
 
-      expect(screen.getByTestId('general-mode-content')).toBeInTheDocument()
+      expect(screen.getByTestId('general-mode-content'))!.toBeInTheDocument()
     })
 
     it('should handle showNewSegmentModal prop', () => {
       render(<Completed {...defaultProps} showNewSegmentModal={true} />, { wrapper: createWrapper() })
 
-      expect(screen.getByTestId('drawer-group')).toBeInTheDocument()
+      expect(screen.getByTestId('drawer-group'))!.toBeInTheDocument()
     })
   })
 
@@ -517,7 +527,8 @@ describe('Completed Component', () => {
       render(<Completed {...defaultProps} />, { wrapper: createWrapper() })
 
       // Context is provided, components should render without errors
-      expect(screen.getByTestId('general-mode-content')).toBeInTheDocument()
+      // Context is provided, components should render without errors
+      expect(screen.getByTestId('general-mode-content'))!.toBeInTheDocument()
     })
   })
 })
@@ -544,7 +555,7 @@ describe('Edge Cases', () => {
 
     render(<Completed {...defaultProps} />, { wrapper: createWrapper() })
 
-    expect(screen.getByTestId('general-mode-content')).toBeInTheDocument()
+    expect(screen.getByTestId('general-mode-content'))!.toBeInTheDocument()
   })
 
   it('should handle empty documentId', () => {
@@ -552,19 +563,19 @@ describe('Edge Cases', () => {
 
     render(<Completed {...defaultProps} />, { wrapper: createWrapper() })
 
-    expect(screen.getByTestId('general-mode-content')).toBeInTheDocument()
+    expect(screen.getByTestId('general-mode-content'))!.toBeInTheDocument()
   })
 
   it('should handle undefined importStatus', () => {
     render(<Completed {...defaultProps} importStatus={undefined} />, { wrapper: createWrapper() })
 
-    expect(screen.getByTestId('general-mode-content')).toBeInTheDocument()
+    expect(screen.getByTestId('general-mode-content'))!.toBeInTheDocument()
   })
 
-  it('should handle ProcessStatus.COMPLETED importStatus', () => {
+  it('should handle completed importStatus', () => {
     render(<Completed {...defaultProps} importStatus="completed" />, { wrapper: createWrapper() })
 
-    expect(screen.getByTestId('general-mode-content')).toBeInTheDocument()
+    expect(screen.getByTestId('general-mode-content'))!.toBeInTheDocument()
   })
 
   it('should handle all ChunkingMode values', () => {
@@ -575,7 +586,7 @@ describe('Edge Cases', () => {
 
       const { unmount } = render(<Completed {...defaultProps} />, { wrapper: createWrapper() })
 
-      expect(screen.getByTestId('pagination')).toBeInTheDocument()
+      expect(screen.getByTestId('pagination'))!.toBeInTheDocument()
 
       unmount()
     })
@@ -591,7 +602,7 @@ describe('Edge Cases', () => {
 
       const { unmount } = render(<Completed {...defaultProps} />, { wrapper: createWrapper() })
 
-      expect(screen.getByTestId('pagination')).toBeInTheDocument()
+      expect(screen.getByTestId('pagination'))!.toBeInTheDocument()
 
       unmount()
     })
@@ -617,33 +628,34 @@ describe('Integration Tests', () => {
     render(<Completed {...defaultProps} />, { wrapper: createWrapper() })
 
     // All components should render without errors
-    expect(screen.getByTestId('menu-bar')).toBeInTheDocument()
-    expect(screen.getByTestId('general-mode-content')).toBeInTheDocument()
-    expect(screen.getByTestId('pagination')).toBeInTheDocument()
-    expect(screen.getByTestId('drawer-group')).toBeInTheDocument()
+    // All components should render without errors
+    expect(screen.getByTestId('menu-bar'))!.toBeInTheDocument()
+    expect(screen.getByTestId('general-mode-content'))!.toBeInTheDocument()
+    expect(screen.getByTestId('pagination'))!.toBeInTheDocument()
+    expect(screen.getByTestId('drawer-group'))!.toBeInTheDocument()
   })
 
   it('should update UI when mode changes', () => {
     const { rerender } = render(<Completed {...defaultProps} />, { wrapper: createWrapper() })
 
-    expect(screen.getByTestId('general-mode-content')).toBeInTheDocument()
+    expect(screen.getByTestId('general-mode-content'))!.toBeInTheDocument()
 
     mockDocForm.current = ChunkingModeEnum.parentChild
     mockParentMode.current = 'full-doc'
 
     rerender(<Completed {...defaultProps} />)
 
-    expect(screen.getByTestId('full-doc-mode-content')).toBeInTheDocument()
+    expect(screen.getByTestId('full-doc-mode-content'))!.toBeInTheDocument()
   })
 
   it('should handle prop updates correctly', () => {
     const { rerender } = render(<Completed {...defaultProps} />, { wrapper: createWrapper() })
 
-    expect(screen.getByTestId('drawer-group')).toBeInTheDocument()
+    expect(screen.getByTestId('drawer-group'))!.toBeInTheDocument()
 
     rerender(<Completed {...defaultProps} showNewSegmentModal={true} />)
 
-    expect(screen.getByTestId('drawer-group')).toBeInTheDocument()
+    expect(screen.getByTestId('drawer-group'))!.toBeInTheDocument()
   })
 })
 
@@ -697,6 +709,37 @@ describe('Batch Action Callbacks', () => {
     render(<Completed {...defaultProps} />, { wrapper: createWrapper() })
 
     // Initially no segments are selected, so batch action should not be visible
+    // Initially no segments are selected, so batch action should not be visible
+    // Initially no segments are selected, so batch action should not be visible
+    // Initially no segments are selected, so batch action should not be visible
+    // Initially no segments are selected, so batch action should not be visible
+    // Initially no segments are selected, so batch action should not be visible
+    // Initially no segments are selected, so batch action should not be visible
+    // Initially no segments are selected, so batch action should not be visible
+    // Initially no segments are selected, so batch action should not be visible
+    // Initially no segments are selected, so batch action should not be visible
+    // Initially no segments are selected, so batch action should not be visible
+    // Initially no segments are selected, so batch action should not be visible
+    // Initially no segments are selected, so batch action should not be visible
+    // Initially no segments are selected, so batch action should not be visible
+    // Initially no segments are selected, so batch action should not be visible
+    // Initially no segments are selected, so batch action should not be visible
+    // Initially no segments are selected, so batch action should not be visible
+    // Initially no segments are selected, so batch action should not be visible
+    // Initially no segments are selected, so batch action should not be visible
+    // Initially no segments are selected, so batch action should not be visible
+    // Initially no segments are selected, so batch action should not be visible
+    // Initially no segments are selected, so batch action should not be visible
+    // Initially no segments are selected, so batch action should not be visible
+    // Initially no segments are selected, so batch action should not be visible
+    // Initially no segments are selected, so batch action should not be visible
+    // Initially no segments are selected, so batch action should not be visible
+    // Initially no segments are selected, so batch action should not be visible
+    // Initially no segments are selected, so batch action should not be visible
+    // Initially no segments are selected, so batch action should not be visible
+    // Initially no segments are selected, so batch action should not be visible
+    // Initially no segments are selected, so batch action should not be visible
+    // Initially no segments are selected, so batch action should not be visible
     expect(screen.queryByTestId('batch-action')).not.toBeInTheDocument()
   })
 
@@ -708,8 +751,19 @@ describe('Batch Action Callbacks', () => {
 
     // Now batch actions should be visible
     await waitFor(() => {
-      expect(screen.getByTestId('batch-action')).toBeInTheDocument()
+      expect(screen.getByTestId('batch-action'))!.toBeInTheDocument()
     })
+  })
+
+  it('should not render select all when there are no current page segments', () => {
+    mockSegmentListData.data = []
+    mockSegmentListData.total = 0
+
+    render(<Completed {...defaultProps} />, { wrapper: createWrapper() })
+
+    expect(screen.queryByTestId('select-all-button')).not.toBeInTheDocument()
+    expect(screen.getByTestId('select-all-spacer')).toBeInTheDocument()
+    expect(screen.queryByTestId('batch-action')).not.toBeInTheDocument()
   })
 
   it('should call onChangeSwitch with true when batch enable is clicked', async () => {
@@ -721,7 +775,7 @@ describe('Batch Action Callbacks', () => {
 
     // Wait for batch actions to appear
     await waitFor(() => {
-      expect(screen.getByTestId('batch-action')).toBeInTheDocument()
+      expect(screen.getByTestId('batch-action'))!.toBeInTheDocument()
     })
 
     const enableButton = screen.getByTestId('batch-enable')
@@ -739,7 +793,7 @@ describe('Batch Action Callbacks', () => {
 
     // Wait for batch actions to appear
     await waitFor(() => {
-      expect(screen.getByTestId('batch-action')).toBeInTheDocument()
+      expect(screen.getByTestId('batch-action'))!.toBeInTheDocument()
     })
 
     const disableButton = screen.getByTestId('batch-disable')
@@ -757,7 +811,7 @@ describe('Batch Action Callbacks', () => {
 
     // Wait for batch actions to appear
     await waitFor(() => {
-      expect(screen.getByTestId('batch-action')).toBeInTheDocument()
+      expect(screen.getByTestId('batch-action'))!.toBeInTheDocument()
     })
 
     const deleteButton = screen.getByTestId('batch-delete')
@@ -887,14 +941,15 @@ describe('refreshChunkListDataWithDetailChanged branch coverage', () => {
 
     // Create a refreshMap similar to the component
     const refreshMap: Record<string, () => void> = {
-      true: () => {
+      true: (() => {
         mockInvalidAll()
         mockInvalidDisabled()
-      },
+      })!,
     }
 
     // Execute the 'true' branch
-    refreshMap.true()
+    // Execute the 'true' branch
+    refreshMap.true!()
 
     expect(mockInvalidAll).toHaveBeenCalled()
     expect(mockInvalidDisabled).toHaveBeenCalled()
@@ -907,14 +962,15 @@ describe('refreshChunkListDataWithDetailChanged branch coverage', () => {
 
     // Create a refreshMap similar to the component
     const refreshMap: Record<string, () => void> = {
-      false: () => {
+      false: (() => {
         mockInvalidAll()
         mockInvalidEnabled()
-      },
+      })!,
     }
 
     // Execute the 'false' branch
-    refreshMap.false()
+    // Execute the 'false' branch
+    refreshMap.false!()
 
     expect(mockInvalidAll).toHaveBeenCalled()
     expect(mockInvalidEnabled).toHaveBeenCalled()
@@ -989,13 +1045,13 @@ describe('Inline callback and hook initialization coverage', () => {
 
     fireEvent.click(screen.getByTestId('next-page'))
     await waitFor(() => {
-      expect(screen.getByTestId('current-page')).toHaveTextContent('1')
+      expect(screen.getByTestId('current-page'))!.toHaveTextContent('1')
     })
 
     fireEvent.click(screen.getByTestId('status-enabled'))
 
     await waitFor(() => {
-      expect(screen.getByTestId('current-page')).toHaveTextContent('0')
+      expect(screen.getByTestId('current-page'))!.toHaveTextContent('0')
     })
   })
 
@@ -1006,7 +1062,7 @@ describe('Inline callback and hook initialization coverage', () => {
       <Completed {...defaultProps} onNewSegmentModalChange={mockOnChange} />,
       { wrapper: createWrapper() },
     )
-    expect(screen.getByTestId('drawer-group')).toBeInTheDocument()
+    expect(screen.getByTestId('drawer-group'))!.toBeInTheDocument()
   })
 
   // Covers lines 74-90: refreshChunkListDataWithDetailChanged with status true
@@ -1056,7 +1112,7 @@ describe('Inline callback and hook initialization coverage', () => {
     fireEvent.click(screen.getByTestId('select-all-button'))
 
     await waitFor(() => {
-      expect(screen.getByTestId('batch-action')).toBeInTheDocument()
+      expect(screen.getByTestId('batch-action'))!.toBeInTheDocument()
     })
 
     fireEvent.click(screen.getByTestId('cancel-batch'))
@@ -1072,7 +1128,7 @@ describe('Inline callback and hook initialization coverage', () => {
 
     fireEvent.click(screen.getByTestId('select-all-button'))
     await waitFor(() => {
-      expect(screen.getByTestId('batch-action')).toBeInTheDocument()
+      expect(screen.getByTestId('batch-action'))!.toBeInTheDocument()
     })
 
     fireEvent.click(screen.getByTestId('batch-enable'))
@@ -1086,7 +1142,7 @@ describe('Inline callback and hook initialization coverage', () => {
 
     fireEvent.click(screen.getByTestId('select-all-button'))
     await waitFor(() => {
-      expect(screen.getByTestId('batch-action')).toBeInTheDocument()
+      expect(screen.getByTestId('batch-action'))!.toBeInTheDocument()
     })
 
     fireEvent.click(screen.getByTestId('batch-disable'))
@@ -1100,7 +1156,7 @@ describe('Inline callback and hook initialization coverage', () => {
 
     fireEvent.click(screen.getByTestId('select-all-button'))
     await waitFor(() => {
-      expect(screen.getByTestId('batch-action')).toBeInTheDocument()
+      expect(screen.getByTestId('batch-action'))!.toBeInTheDocument()
     })
 
     fireEvent.click(screen.getByTestId('batch-delete'))
@@ -1115,12 +1171,12 @@ describe('Inline callback and hook initialization coverage', () => {
 
     fireEvent.click(screen.getByTestId('next-page'))
     await waitFor(() => {
-      expect(screen.getByTestId('current-page')).toHaveTextContent('1')
+      expect(screen.getByTestId('current-page'))!.toHaveTextContent('1')
     })
 
     fireEvent.click(screen.getByTestId('next-page'))
     await waitFor(() => {
-      expect(screen.getByTestId('current-page')).toHaveTextContent('2')
+      expect(screen.getByTestId('current-page'))!.toHaveTextContent('2')
     })
   })
 
@@ -1132,7 +1188,7 @@ describe('Inline callback and hook initialization coverage', () => {
 
     render(<Completed {...defaultProps} />, { wrapper: createWrapper() })
 
-    expect(screen.getByTestId('total-items')).toHaveTextContent('42')
+    expect(screen.getByTestId('total-items'))!.toHaveTextContent('42')
   })
 
   // Covers search input change
@@ -1142,6 +1198,6 @@ describe('Inline callback and hook initialization coverage', () => {
     const searchInput = screen.getByTestId('search-input')
     fireEvent.change(searchInput, { target: { value: 'test query' } })
 
-    expect(searchInput).toHaveValue('test query')
+    expect(searchInput)!.toHaveValue('test query')
   })
 })

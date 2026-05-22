@@ -1,15 +1,15 @@
 'use client'
-import type { ButtonProps } from '@/app/components/base/ui/button'
+import type { ButtonProps } from '@langgenius/dify-ui/button'
 import type { UserAction } from '@/app/components/workflow/nodes/human-input/types'
 import type { HumanInputFormData } from '@/types/workflow'
+import { Button } from '@langgenius/dify-ui/button'
 import { RiArrowLeftLine } from '@remixicon/react'
-import * as React from 'react'
 
+import * as React from 'react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import ContentItem from '@/app/components/base/chat/chat/answer/human-input-content/content-item'
 import { getButtonStyle, initializeInputs, splitByOutputVar } from '@/app/components/base/chat/chat/answer/human-input-content/utils'
-import { Button } from '@/app/components/base/ui/button'
 
 type Props = {
   nodeName: string
@@ -49,10 +49,14 @@ const FormContent = ({
     <>
       {showBackButton && (
         <div className="flex items-center p-4 pb-1">
-          <div className="flex cursor-pointer items-center system-sm-semibold-uppercase text-text-accent" onClick={handleBack}>
-            <RiArrowLeftLine className="mr-1 h-4 w-4" />
+          <button
+            type="button"
+            className="flex cursor-pointer items-center border-none bg-transparent p-0 text-left system-sm-semibold-uppercase text-text-accent"
+            onClick={handleBack}
+          >
+            <RiArrowLeftLine className="mr-1 size-4" aria-hidden />
             {t('nodes.humanInput.singleRun.back', { ns: 'workflow' })}
-          </div>
+          </button>
           <div className="mx-1 system-xs-regular text-divider-deep">/</div>
           <div className="system-sm-semibold-uppercase text-text-secondary">{nodeName}</div>
         </div>

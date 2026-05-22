@@ -56,7 +56,7 @@ export type Member = Pick<UserProfileResponse, 'id' | 'name' | 'email' | 'last_l
   role: 'owner' | 'admin' | 'editor' | 'normal' | 'dataset_operator'
 }
 
-export enum ProviderName {
+enum ProviderName {
   OPENAI = 'openai',
   AZURE_OPENAI = 'azure_openai',
   ANTHROPIC = 'anthropic',
@@ -188,13 +188,6 @@ export type InvitationResult = {
 
 export type InvitationResponse = CommonResponse & {
   invitation_results: InvitationResult[]
-}
-
-export type ApiBasedExtension = {
-  id?: string
-  name?: string
-  api_endpoint?: string
-  api_key?: string
 }
 
 export type CodeBasedExtensionForm = {

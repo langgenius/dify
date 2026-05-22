@@ -2,12 +2,11 @@ import logging
 from typing import Literal
 
 from flask import request
-from graphon.model_runtime.errors.invoke import InvokeError
 from pydantic import BaseModel, TypeAdapter
 from werkzeug.exceptions import InternalServerError, NotFound
 
 from controllers.common.controller_schemas import MessageFeedbackPayload, MessageListQuery
-from controllers.common.schema import register_schema_models
+from controllers.common.schema import register_response_schema_models, register_schema_models
 from controllers.console.app.error import (
     AppMoreLikeThisDisabledError,
     CompletionRequestError,
@@ -25,6 +24,7 @@ from core.app.entities.app_invoke_entities import InvokeFrom
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
 from fields.conversation_fields import ResultResponse
 from fields.message_fields import MessageInfiniteScrollPagination, MessageListItem, SuggestedQuestionsResponse
+from graphon.model_runtime.errors.invoke import InvokeError
 from libs import helper
 from libs.login import current_account_with_tenant
 from models.enums import FeedbackRating
@@ -49,6 +49,7 @@ class MoreLikeThisQuery(BaseModel):
 
 
 register_schema_models(console_ns, MessageListQuery, MessageFeedbackPayload, MoreLikeThisQuery)
+register_response_schema_models(console_ns, ResultResponse, SuggestedQuestionsResponse)
 
 
 @console_ns.route(
@@ -93,6 +94,7 @@ class MessageListApi(InstalledAppResource):
 )
 class MessageFeedbackApi(InstalledAppResource):
     @console_ns.expect(console_ns.models[MessageFeedbackPayload.__name__])
+    @console_ns.response(200, "Feedback submitted successfully", console_ns.models[ResultResponse.__name__])
     def post(self, installed_app, message_id):
         current_user, _ = current_account_with_tenant()
         app_model = installed_app.app
@@ -166,6 +168,7 @@ class MessageMoreLikeThisApi(InstalledAppResource):
     endpoint="installed_app_suggested_question",
 )
 class MessageSuggestedQuestionApi(InstalledAppResource):
+    @console_ns.response(200, "Success", console_ns.models[SuggestedQuestionsResponse.__name__])
     def get(self, installed_app, message_id):
         current_user, _ = current_account_with_tenant()
         app_model = installed_app.app

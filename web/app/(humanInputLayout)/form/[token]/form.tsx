@@ -1,8 +1,10 @@
 'use client'
-import type { ButtonProps } from '@/app/components/base/ui/button'
+import type { ButtonProps } from '@langgenius/dify-ui/button'
 import type { FormInputItem, UserAction } from '@/app/components/workflow/nodes/human-input/types'
 import type { SiteInfo } from '@/models/share'
 import type { HumanInputFormError } from '@/service/use-share'
+import { Button } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
 import {
   RiCheckboxCircleFill,
   RiErrorWarningFill,
@@ -18,11 +20,9 @@ import ExpirationTime from '@/app/components/base/chat/chat/answer/human-input-c
 import { getButtonStyle } from '@/app/components/base/chat/chat/answer/human-input-content/utils'
 import Loading from '@/app/components/base/loading'
 import DifyLogo from '@/app/components/base/logo/dify-logo'
-import { Button } from '@/app/components/base/ui/button'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { useParams } from '@/next/navigation'
 import { useGetHumanInputForm, useSubmitHumanInputForm } from '@/service/use-share'
-import { cn } from '@/utils/classnames'
 
 export type FormData = {
   site: { site: SiteInfo }
@@ -99,11 +99,11 @@ const FormContent = () => {
 
   if (success) {
     return (
-      <div className={cn('flex h-full w-full flex-col items-center justify-center')}>
+      <div className={cn('flex size-full flex-col items-center justify-center')}>
         <div className="max-w-[640px] min-w-[480px]">
-          <div className="border-components-divider-subtle flex h-[320px] flex-col gap-4 radius-3xl border bg-chat-bubble-bg p-10 pb-9 shadow-lg backdrop-blur-xs">
+          <div className="border-components-divider-subtle flex h-[320px] flex-col gap-4 rounded-[20px] border bg-chat-bubble-bg p-10 pb-9 shadow-lg backdrop-blur-xs">
             <div className="h-[56px] w-[56px] shrink-0 rounded-2xl border border-components-panel-border-subtle bg-background-default-dodge p-3">
-              <RiCheckboxCircleFill className="h-8 w-8 text-text-success" />
+              <RiCheckboxCircleFill className="size-8 text-text-success" />
             </div>
             <div className="grow">
               <div className="title-4xl-semi-bold text-text-primary">{t('humanInput.thanks', { ns: 'share' })}</div>
@@ -127,11 +127,11 @@ const FormContent = () => {
 
   if (expired) {
     return (
-      <div className={cn('flex h-full w-full flex-col items-center justify-center')}>
+      <div className={cn('flex size-full flex-col items-center justify-center')}>
         <div className="max-w-[640px] min-w-[480px]">
-          <div className="border-components-divider-subtle flex h-[320px] flex-col gap-4 radius-3xl border bg-chat-bubble-bg p-10 pb-9 shadow-lg backdrop-blur-xs">
-            <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border border-components-panel-border-subtle bg-background-default-dodge p-3">
-              <RiInformation2Fill className="h-8 w-8 text-text-accent" />
+          <div className="border-components-divider-subtle flex h-[320px] flex-col gap-4 rounded-[20px] border bg-chat-bubble-bg p-10 pb-9 shadow-lg backdrop-blur-xs">
+            <div className="flex size-14 shrink-0 items-center justify-center rounded-2xl border border-components-panel-border-subtle bg-background-default-dodge p-3">
+              <RiInformation2Fill className="size-8 text-text-accent" />
             </div>
             <div className="grow">
               <div className="title-4xl-semi-bold text-text-primary">{t('humanInput.sorry', { ns: 'share' })}</div>
@@ -155,11 +155,11 @@ const FormContent = () => {
 
   if (submitted) {
     return (
-      <div className={cn('flex h-full w-full flex-col items-center justify-center')}>
+      <div className={cn('flex size-full flex-col items-center justify-center')}>
         <div className="max-w-[640px] min-w-[480px]">
-          <div className="border-components-divider-subtle flex h-[320px] flex-col gap-4 radius-3xl border bg-chat-bubble-bg p-10 pb-9 shadow-lg backdrop-blur-xs">
-            <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border border-components-panel-border-subtle bg-background-default-dodge p-3">
-              <RiInformation2Fill className="h-8 w-8 text-text-accent" />
+          <div className="border-components-divider-subtle flex h-[320px] flex-col gap-4 rounded-[20px] border bg-chat-bubble-bg p-10 pb-9 shadow-lg backdrop-blur-xs">
+            <div className="flex size-14 shrink-0 items-center justify-center rounded-2xl border border-components-panel-border-subtle bg-background-default-dodge p-3">
+              <RiInformation2Fill className="size-8 text-text-accent" />
             </div>
             <div className="grow">
               <div className="title-4xl-semi-bold text-text-primary">{t('humanInput.sorry', { ns: 'share' })}</div>
@@ -183,11 +183,11 @@ const FormContent = () => {
 
   if (rateLimitExceeded) {
     return (
-      <div className={cn('flex h-full w-full flex-col items-center justify-center')}>
+      <div className={cn('flex size-full flex-col items-center justify-center')}>
         <div className="max-w-[640px] min-w-[480px]">
-          <div className="border-components-divider-subtle flex h-[320px] flex-col gap-4 radius-3xl border bg-chat-bubble-bg p-10 pb-9 shadow-lg backdrop-blur-xs">
-            <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border border-components-panel-border-subtle bg-background-default-dodge p-3">
-              <RiErrorWarningFill className="h-8 w-8 text-text-destructive" />
+          <div className="border-components-divider-subtle flex h-[320px] flex-col gap-4 rounded-[20px] border bg-chat-bubble-bg p-10 pb-9 shadow-lg backdrop-blur-xs">
+            <div className="flex size-14 shrink-0 items-center justify-center rounded-2xl border border-components-panel-border-subtle bg-background-default-dodge p-3">
+              <RiErrorWarningFill className="size-8 text-text-destructive" />
             </div>
             <div className="grow">
               <div className="title-4xl-semi-bold text-text-primary">{t('humanInput.rateLimitExceeded', { ns: 'share' })}</div>
@@ -209,11 +209,11 @@ const FormContent = () => {
 
   if (!formData) {
     return (
-      <div className={cn('flex h-full w-full flex-col items-center justify-center')}>
+      <div className={cn('flex size-full flex-col items-center justify-center')}>
         <div className="max-w-[640px] min-w-[480px]">
-          <div className="border-components-divider-subtle flex h-[320px] flex-col gap-4 radius-3xl border bg-chat-bubble-bg p-10 pb-9 shadow-lg backdrop-blur-xs">
-            <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border border-components-panel-border-subtle bg-background-default-dodge p-3">
-              <RiErrorWarningFill className="h-8 w-8 text-text-destructive" />
+          <div className="border-components-divider-subtle flex h-[320px] flex-col gap-4 rounded-[20px] border bg-chat-bubble-bg p-10 pb-9 shadow-lg backdrop-blur-xs">
+            <div className="flex size-14 shrink-0 items-center justify-center rounded-2xl border border-components-panel-border-subtle bg-background-default-dodge p-3">
+              <RiErrorWarningFill className="size-8 text-text-destructive" />
             </div>
             <div className="grow">
               <div className="title-4xl-semi-bold text-text-primary">{t('humanInput.formNotFound', { ns: 'share' })}</div>
@@ -248,7 +248,7 @@ const FormContent = () => {
         <div className="grow system-xl-semibold text-text-primary">{site.title}</div>
       </div>
       <div className="h-0 w-full grow overflow-y-auto">
-        <div className="border-components-divider-subtle radius-3xl border bg-chat-bubble-bg p-4 shadow-lg backdrop-blur-xs">
+        <div className="border-components-divider-subtle rounded-[20px] border bg-chat-bubble-bg p-4 shadow-lg backdrop-blur-xs">
           {contentList.map((content, index) => (
             <ContentItem
               key={index}

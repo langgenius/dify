@@ -1,11 +1,10 @@
 import logging
 
-from graphon.graph_engine.manager import GraphEngineManager
-from graphon.model_runtime.errors.invoke import InvokeError
 from werkzeug.exceptions import InternalServerError
 
 from controllers.common.controller_schemas import WorkflowRunPayload
-from controllers.common.schema import register_schema_model
+from controllers.common.fields import SimpleResultResponse
+from controllers.common.schema import register_response_schema_models, register_schema_model
 from controllers.console.app.error import (
     CompletionRequestError,
     ProviderModelCurrentlyNotSupportError,
@@ -23,6 +22,8 @@ from core.errors.error import (
     QuotaExceededError,
 )
 from extensions.ext_redis import redis_client
+from graphon.graph_engine.manager import GraphEngineManager
+from graphon.model_runtime.errors.invoke import InvokeError
 from libs import helper
 from libs.login import current_account_with_tenant
 from models.model import AppMode, InstalledApp
@@ -34,6 +35,7 @@ from .. import console_ns
 logger = logging.getLogger(__name__)
 
 register_schema_model(console_ns, WorkflowRunPayload)
+register_response_schema_models(console_ns, SimpleResultResponse)
 
 
 @console_ns.route("/installed-apps/<uuid:installed_app_id>/workflows/run")
@@ -78,6 +80,7 @@ class InstalledAppWorkflowRunApi(InstalledAppResource):
 
 @console_ns.route("/installed-apps/<uuid:installed_app_id>/workflows/tasks/<string:task_id>/stop")
 class InstalledAppWorkflowTaskStopApi(InstalledAppResource):
+    @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
     def post(self, installed_app: InstalledApp, task_id: str):
         """
         Stop workflow task

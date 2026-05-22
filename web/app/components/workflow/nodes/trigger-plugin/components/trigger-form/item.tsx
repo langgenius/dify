@@ -4,12 +4,12 @@ import type { CredentialFormSchema } from '@/app/components/header/account-setti
 import type { Event } from '@/app/components/tools/types'
 import type { TriggerWithProvider } from '@/app/components/workflow/block-selector/types'
 import type { PluginTriggerVarInputs } from '@/app/components/workflow/nodes/trigger-plugin/types'
+import { Button } from '@langgenius/dify-ui/button'
 import {
   RiBracesLine,
 } from '@remixicon/react'
 import { useBoolean } from 'ahooks'
-import Tooltip from '@/app/components/base/tooltip'
-import { Button } from '@/app/components/base/ui/button'
+import { Infotip } from '@/app/components/base/infotip'
 import { FormTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { SchemaModal } from '@/app/components/plugins/plugin-detail-panel/tool-selector/components'
@@ -57,15 +57,13 @@ const TriggerFormItem: FC<Props> = ({
             <div className="ml-1 system-xs-regular text-text-destructive-secondary">*</div>
           )}
           {!showDescription && tooltip && (
-            <Tooltip
-              popupContent={(
-                <div className="w-[200px]">
-                  {tooltip[language] || tooltip.en_US}
-                </div>
-              )}
-              triggerClassName="ml-1 w-4 h-4"
-              asChild={false}
-            />
+            <Infotip
+              aria-label={tooltip[language] || tooltip.en_US}
+              className="ml-1 size-4"
+              popupClassName="w-[200px]"
+            >
+              {tooltip[language] || tooltip.en_US}
+            </Infotip>
           )}
           {showSchemaButton && (
             <>

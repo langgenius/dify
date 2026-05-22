@@ -7,11 +7,6 @@ from datetime import datetime
 from types import SimpleNamespace
 
 import pytest
-from graphon.nodes.human_input.entities import (
-    FormDefinition,
-    UserAction,
-)
-from graphon.nodes.human_input.enums import HumanInputFormKind, HumanInputFormStatus
 
 from core.repositories.human_input_repository import (
     HumanInputFormRecord,
@@ -19,13 +14,18 @@ from core.repositories.human_input_repository import (
     HumanInputFormSubmissionRepository,
     _WorkspaceMemberInfo,
 )
-from core.workflow.human_input_compat import (
+from core.workflow.human_input_adapter import (
     EmailDeliveryConfig,
     EmailDeliveryMethod,
     EmailRecipients,
     ExternalRecipient,
     MemberRecipient,
 )
+from graphon.nodes.human_input.entities import (
+    FormDefinition,
+    UserActionConfig,
+)
+from graphon.nodes.human_input.enums import HumanInputFormKind, HumanInputFormStatus
 from libs.datetime_utils import naive_utc_now
 from models.human_input import (
     EmailExternalRecipientPayload,
@@ -272,7 +272,7 @@ def _make_form_definition() -> str:
     return FormDefinition(
         form_content="hello",
         inputs=[],
-        user_actions=[UserAction(id="submit", title="Submit")],
+        user_actions=[UserActionConfig(id="submit", title="Submit")],
         rendered_content="<p>hello</p>",
         expiration_time=naive_utc_now(),
     ).model_dump_json()

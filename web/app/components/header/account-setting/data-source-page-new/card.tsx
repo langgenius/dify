@@ -3,19 +3,19 @@ import type {
   DataSourceCredential,
 } from './types'
 import {
-  memo,
-  useCallback,
-  useRef,
-} from 'react'
-import { useTranslation } from 'react-i18next'
-import {
   AlertDialog,
   AlertDialogActions,
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
   AlertDialogContent,
   AlertDialogTitle,
-} from '@/app/components/base/ui/alert-dialog'
+} from '@langgenius/dify-ui/alert-dialog'
+import {
+  memo,
+  useCallback,
+  useRef,
+} from 'react'
+import { useTranslation } from 'react-i18next'
 import {
   ApiKeyModal,
   usePluginAuthAction,
@@ -124,7 +124,7 @@ const Card = ({
       <div className="flex items-center p-3 pb-2">
         <img
           src={icon}
-          className="mr-3 flex h-10 w-10 shrink-0 items-center justify-center"
+          className="mr-3 flex size-10 shrink-0 items-center justify-center"
         />
         <div className="grow">
           <div className="system-md-semibold text-text-primary">
@@ -164,7 +164,7 @@ const Card = ({
       {
         !credentials_list.length && (
           <div className="p-3 pt-1">
-            <div className="flex h-10 items-center justify-center radius-lg bg-background-section system-xs-regular text-text-tertiary">
+            <div className="flex h-10 items-center justify-center rounded-[10px] bg-background-section system-xs-regular text-text-tertiary">
               {t('auth.emptyAuth', { ns: 'plugin' })}
             </div>
           </div>

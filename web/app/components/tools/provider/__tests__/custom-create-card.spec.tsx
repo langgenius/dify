@@ -72,7 +72,7 @@ vi.mock('@/app/components/tools/edit-custom-collection-modal', () => ({
 
 // Mock toast
 const mockToastSuccess = vi.fn()
-vi.mock('@/app/components/base/ui/toast', () => ({
+vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: {
     success: (title: string) => mockToastSuccess(title),
   },
@@ -121,7 +121,7 @@ describe('CustomCreateCard', () => {
       render(<CustomCreateCard onRefreshData={mockOnRefreshData} />)
 
       // RiAddCircleFill icon should be present
-      const iconContainer = document.querySelector('.h-10.w-10')
+      const iconContainer = document.querySelector('.size-10')
       expect(iconContainer).toBeInTheDocument()
     })
 

@@ -1,5 +1,7 @@
 import type { AppIconSelection } from '@/app/components/base/app-icon-picker'
 import type { PipelineTemplate } from '@/models/pipeline'
+import { Button } from '@langgenius/dify-ui/button'
+import { toast } from '@langgenius/dify-ui/toast'
 import { RiCloseLine } from '@remixicon/react'
 import * as React from 'react'
 import { useCallback, useRef, useState } from 'react'
@@ -8,8 +10,6 @@ import AppIcon from '@/app/components/base/app-icon'
 import AppIconPicker from '@/app/components/base/app-icon-picker'
 import Input from '@/app/components/base/input'
 import Textarea from '@/app/components/base/textarea'
-import { Button } from '@/app/components/base/ui/button'
-import { toast } from '@/app/components/base/ui/toast'
 import { useInvalidCustomizedTemplateList, useUpdateTemplateInfo } from '@/service/use-pipeline'
 
 type EditPipelineInfoProps = {

@@ -1,6 +1,3 @@
-import * as React from 'react'
-import { useCallback, useState } from 'react'
-import { useTranslation } from 'react-i18next'
 import {
   AlertDialog,
   AlertDialogActions,
@@ -9,9 +6,12 @@ import {
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogTitle,
-} from '@/app/components/base/ui/alert-dialog'
-import { Button } from '@/app/components/base/ui/button'
-import { toast } from '@/app/components/base/ui/toast'
+} from '@langgenius/dify-ui/alert-dialog'
+import { Button } from '@langgenius/dify-ui/button'
+import { toast } from '@langgenius/dify-ui/toast'
+import * as React from 'react'
+import { useCallback, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useParams } from '@/next/navigation'
 import { datasetDetailQueryKeyPrefix } from '@/service/knowledge/use-dataset'
 import { useInvalid } from '@/service/use-base'
@@ -50,7 +50,7 @@ const Conversion = () => {
   const confirmTitle = t('conversion.confirm.title', { ns: 'datasetPipeline' })
   const confirmContent = t('conversion.confirm.content', { ns: 'datasetPipeline' })
   return (
-    <div className="flex h-full w-full items-center justify-center bg-background-body p-6 pb-16">
+    <div className="flex size-full items-center justify-center bg-background-body p-6 pb-16">
       <div className="flex rounded-2xl border-[0.5px] border-components-card-border bg-components-card-bg shadow-sm shadow-shadow-shadow-4">
         <div className="flex max-w-[480px] flex-col justify-between p-10">
           <div className="flex flex-col gap-y-2.5">

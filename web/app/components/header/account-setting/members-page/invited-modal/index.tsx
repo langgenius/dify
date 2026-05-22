@@ -1,9 +1,9 @@
 import type { InvitationResult } from '@/models/common'
+import { Button } from '@langgenius/dify-ui/button'
+import { Dialog, DialogCloseButton, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Button } from '@/app/components/base/ui/button'
-import { Dialog, DialogCloseButton, DialogContent, DialogTitle } from '@/app/components/base/ui/dialog'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/app/components/base/ui/tooltip'
 import { IS_CE_EDITION } from '@/config'
 import InvitationLink from './invitation-link'
 
@@ -78,7 +78,7 @@ const InvitedModal = ({
                                 render={(
                                   <div className="flex items-center justify-center gap-1 text-sm">
                                     {item.email}
-                                    <div className="i-ri-question-line h-4 w-4 text-red-300" />
+                                    <div className="i-ri-question-line size-4 text-red-300" />
                                   </div>
                                 )}
                               />

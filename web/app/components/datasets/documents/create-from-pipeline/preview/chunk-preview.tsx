@@ -1,13 +1,13 @@
 import type { NotionPage } from '@/models/common'
 import type { CrawlResultItem, CustomFile, DocumentItem, FileIndexingEstimateResponse } from '@/models/datasets'
 import type { OnlineDriveFile } from '@/models/pipeline'
+import { Button } from '@langgenius/dify-ui/button'
 import { RiSearchEyeLine } from '@remixicon/react'
 import * as React from 'react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Badge from '@/app/components/base/badge'
 import { SkeletonContainer, SkeletonPoint, SkeletonRectangle, SkeletonRow } from '@/app/components/base/skeleton'
-import { Button } from '@/app/components/base/ui/button'
 import SummaryLabel from '@/app/components/datasets/documents/detail/completed/common/summary-label'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import { ChunkingMode } from '@/models/datasets'
@@ -55,9 +55,9 @@ const ChunkPreview = ({
   const currentDocForm = useDatasetDetailContextWithSelector(s => s.dataset?.doc_form)
 
   const [previewFile, setPreviewFile] = useState<DocumentItem>(localFiles[0] as DocumentItem)
-  const [previewOnlineDocument, setPreviewOnlineDocument] = useState<NotionPage>(onlineDocuments[0])
-  const [previewWebsitePage, setPreviewWebsitePage] = useState<CrawlResultItem>(websitePages[0])
-  const [previewOnlineDriveFile, setPreviewOnlineDriveFile] = useState<OnlineDriveFile>(onlineDriveFiles[0])
+  const [previewOnlineDocument, setPreviewOnlineDocument] = useState<NotionPage>(onlineDocuments[0]!)
+  const [previewWebsitePage, setPreviewWebsitePage] = useState<CrawlResultItem>(websitePages[0]!)
+  const [previewOnlineDriveFile, setPreviewOnlineDriveFile] = useState<OnlineDriveFile>(onlineDriveFiles[0]!)
 
   return (
     <PreviewContainer
@@ -160,7 +160,7 @@ const ChunkPreview = ({
           </div>
         </PreviewHeader>
       )}
-      className="relative flex h-full w-full shrink-0"
+      className="relative flex size-full shrink-0"
       mainClassName="space-y-6"
     >
       {!isPending && currentDocForm === ChunkingMode.qa && estimateData?.qa_preview && (
@@ -216,7 +216,7 @@ const ChunkPreview = ({
         })
       )}
       {isIdle && (
-        <div className="flex h-full w-full items-center justify-center">
+        <div className="flex size-full items-center justify-center">
           <div className="flex flex-col items-center justify-center gap-3 pb-4">
             <RiSearchEyeLine className="size-10 text-text-empty-state-icon" />
             <p className="text-sm text-text-tertiary">
@@ -229,7 +229,7 @@ const ChunkPreview = ({
         </div>
       )}
       {isPending && (
-        <div className="h-full w-full space-y-6 overflow-hidden">
+        <div className="size-full space-y-6 overflow-hidden">
           {Array.from({ length: 10 }, (_, i) => (
             <SkeletonContainer key={i}>
               <SkeletonRow>

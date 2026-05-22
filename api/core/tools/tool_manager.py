@@ -8,7 +8,6 @@ from threading import Lock
 from typing import TYPE_CHECKING, Any, Literal, Protocol, cast
 
 import sqlalchemy as sa
-from graphon.runtime import VariablePool
 from pydantic import TypeAdapter
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -29,13 +28,12 @@ from core.tools.plugin_tool.tool import PluginTool
 from core.tools.utils.uuid_utils import is_valid_uuid
 from core.tools.workflow_as_tool.provider import WorkflowToolProviderController
 from extensions.ext_database import db
+from graphon.runtime import VariablePool
 from models.provider_ids import ToolProviderID
 from services.tools.mcp_tools_manage_service import MCPToolManageService
 
 if TYPE_CHECKING:
     pass
-
-from graphon.model_runtime.utils.encoders import jsonable_encoder
 
 from core.agent.entities import AgentToolEntity
 from core.app.entities.app_invoke_entities import InvokeFrom
@@ -62,6 +60,7 @@ from core.tools.tool_label_manager import ToolLabelManager
 from core.tools.utils.configuration import ToolParameterConfigurationManager
 from core.tools.utils.encryption import create_provider_encrypter, create_tool_provider_encrypter
 from core.tools.workflow_as_tool.tool import WorkflowTool
+from graphon.model_runtime.utils.encoders import jsonable_encoder
 from models.tools import ApiToolProvider, BuiltinToolProvider, WorkflowToolProvider
 from services.tools.tools_transform_service import ToolTransformService
 
@@ -265,9 +264,9 @@ class ToolManager:
                     if builtin_provider is None:
                         raise ToolProviderNotFoundError(f"builtin provider {provider_id} not found")
 
-                from core.helper.credential_utils import check_credential_policy_compliance
+                from core.helper.credential_utils import runtime_check_credential_policy_compliance
 
-                check_credential_policy_compliance(
+                runtime_check_credential_policy_compliance(
                     credential_id=builtin_provider.id,
                     provider=provider_id,
                     credential_type=PluginCredentialType.TOOL,
@@ -1079,11 +1078,23 @@ class ToolManager:
             if parameter.form == ToolParameter.ToolParameterForm.FORM:
                 if variable_pool:
                     config = tool_configurations.get(parameter.name, {})
+
+                    selector_value = cls._extract_runtime_selector_value(parameter, config)
+                    if selector_value is not None:
+                        # Selector parameters carry structured dictionaries, not scalar ToolInput values.
+                        runtime_parameters[parameter.name] = selector_value
+                        continue
+
                     if not (config and isinstance(config, dict) and config.get("value") is not None):
                         continue
                     tool_input = ToolNodeData.ToolInput.model_validate(tool_configurations.get(parameter.name, {}))
                     if tool_input.type == "variable":
-                        variable = variable_pool.get(tool_input.value)
+                        variable_selector = tool_input.value
+                        if not isinstance(variable_selector, list) or not all(
+                            isinstance(selector_part, str) for selector_part in variable_selector
+                        ):
+                            raise ToolParameterError("Variable tool input must be a variable selector")
+                        variable = variable_pool.get(variable_selector)
                         if variable is None:
                             raise ToolParameterError(f"Variable {tool_input.value} does not exist")
                         parameter_value = variable.value
@@ -1100,6 +1111,40 @@ class ToolManager:
                     value = parameter.init_frontend_parameter(tool_configurations.get(parameter.name))
                     runtime_parameters[parameter.name] = value
         return runtime_parameters
+
+    @classmethod
+    def _extract_runtime_selector_value(cls, parameter: ToolParameter, config: Any) -> dict[str, Any] | None:
+        if parameter.type not in {
+            ToolParameter.ToolParameterType.MODEL_SELECTOR,
+            ToolParameter.ToolParameterType.APP_SELECTOR,
+        }:
+            return None
+        if not isinstance(config, dict):
+            return None
+
+        input_value = config.get("value")
+        if isinstance(input_value, dict) and cls._is_selector_value(parameter, input_value):
+            return cast("dict[str, Any]", parameter.init_frontend_parameter(input_value))
+
+        if cls._is_selector_value(parameter, config):
+            selector_value = dict(config)
+            selector_value.pop("type", None)
+            selector_value.pop("value", None)
+            return cast("dict[str, Any]", parameter.init_frontend_parameter(selector_value))
+
+        return None
+
+    @classmethod
+    def _is_selector_value(cls, parameter: ToolParameter, value: Mapping[str, Any]) -> bool:
+        if parameter.type == ToolParameter.ToolParameterType.MODEL_SELECTOR:
+            return (
+                isinstance(value.get("provider"), str)
+                and isinstance(value.get("model"), str)
+                and isinstance(value.get("model_type"), str)
+            )
+        if parameter.type == ToolParameter.ToolParameterType.APP_SELECTOR:
+            return isinstance(value.get("app_id"), str)
+        return False
 
 
 ToolManager.load_hardcoded_providers_cache()

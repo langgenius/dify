@@ -1,14 +1,16 @@
 import type { Viewport } from '@/next'
+import { ToastHost } from '@langgenius/dify-ui/toast'
+import { TooltipProvider } from '@langgenius/dify-ui/tooltip'
 import { Provider as JotaiProvider } from 'jotai/react'
 import { ThemeProvider } from 'next-themes'
 import { NuqsAdapter } from 'nuqs/adapters/next/app'
-import GlobalPublicStoreProvider from '@/context/global-public-context'
+import { IS_PROD } from '@/config'
 import { TanstackQueryInitializer } from '@/context/query-client'
 import { getDatasetMap } from '@/env'
 import { getLocaleOnServer } from '@/i18n-config/server'
-import { ToastHost } from './components/base/ui/toast'
-import { TooltipProvider } from './components/base/ui/tooltip'
+import { headers } from '@/next/headers'
 import PartnerStackCookieRecorder from './components/billing/partner-stack/cookie-recorder'
+import CreateAppAttributionBootstrap from './components/create-app-attribution-bootstrap'
 import { AgentationLoader } from './components/devtools/agentation-loader'
 import { ReactScanLoader } from './components/devtools/react-scan/loader'
 import { I18nServerProvider } from './components/provider/i18n-server'
@@ -31,6 +33,7 @@ const LocaleLayout = async ({
 }) => {
   const locale = await getLocaleOnServer()
   const datasetMap = getDatasetMap()
+  const nonce = IS_PROD ? (await headers()).get('x-nonce') ?? undefined : undefined
 
   return (
     <html lang={locale ?? 'en'} className="h-full" suppressHydrationWarning>
@@ -47,6 +50,7 @@ const LocaleLayout = async ({
         <meta name="msapplication-TileColor" content="#1C64F2" />
         <meta name="msapplication-config" content="/browserconfig.xml" />
 
+        <CreateAppAttributionBootstrap />
         {/* <ReactGrabLoader /> */}
         <ReactScanLoader />
       </head>
@@ -61,18 +65,16 @@ const LocaleLayout = async ({
               defaultTheme="system"
               enableSystem
               disableTransitionOnChange
-              enableColorScheme={false}
+              nonce={nonce}
             >
               <NuqsAdapter>
                 <TanstackQueryInitializer>
                   <I18nServerProvider>
                     <ToastHost timeout={5000} limit={3} />
                     <PartnerStackCookieRecorder />
-                    <GlobalPublicStoreProvider>
-                      <TooltipProvider delay={300} closeDelay={200}>
-                        {children}
-                      </TooltipProvider>
-                    </GlobalPublicStoreProvider>
+                    <TooltipProvider delay={300} closeDelay={200}>
+                      {children}
+                    </TooltipProvider>
                   </I18nServerProvider>
                 </TanstackQueryInitializer>
               </NuqsAdapter>

@@ -1,18 +1,18 @@
 import type { FC } from 'react'
 import type { UserAction } from '../types'
+import { Button } from '@langgenius/dify-ui/button'
+import { toast } from '@langgenius/dify-ui/toast'
 import {
   RiDeleteBinLine,
 } from '@remixicon/react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import Input from '@/app/components/base/input'
-import { Button } from '@/app/components/base/ui/button'
-import { toast } from '@/app/components/base/ui/toast'
 import ButtonStyleDropdown from './button-style-dropdown'
 
 const i18nPrefix = 'nodes.humanInput'
 const ACTION_ID_MAX_LENGTH = 20
-const BUTTON_TEXT_MAX_LENGTH = 20
+const ACTION_VALUE_MAX_LENGTH = 100
 
 type UserActionItemProps = {
   data: UserAction
@@ -63,9 +63,9 @@ const UserActionItem: FC<UserActionItemProps> = ({
 
   const handleTextChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     let value = e.target.value
-    if (value.length > BUTTON_TEXT_MAX_LENGTH) {
-      value = value.slice(0, BUTTON_TEXT_MAX_LENGTH)
-      toast.error(t(`${i18nPrefix}.userActions.buttonTextTooLong`, { ns: 'workflow', maxLength: BUTTON_TEXT_MAX_LENGTH }))
+    if (value.length > ACTION_VALUE_MAX_LENGTH) {
+      value = value.slice(0, ACTION_VALUE_MAX_LENGTH)
+      toast.error(t(`${i18nPrefix}.userActions.buttonTextTooLong`, { ns: 'workflow', maxLength: ACTION_VALUE_MAX_LENGTH }))
     }
     onChange({ ...data, title: value })
   }
@@ -101,7 +101,7 @@ const UserActionItem: FC<UserActionItemProps> = ({
           variant="tertiary"
           onClick={() => onDelete(data.id)}
         >
-          <RiDeleteBinLine className="h-4 w-4" />
+          <RiDeleteBinLine className="size-4" />
         </Button>
       )}
     </div>

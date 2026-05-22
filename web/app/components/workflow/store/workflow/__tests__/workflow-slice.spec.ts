@@ -8,15 +8,15 @@ describe('createWorkflowSlice', () => {
     localStorage.clear()
   })
 
-  it('defaults to hand mode until a persisted pointer mode is present', () => {
+  it('defaults to pointer mode and restores persisted control mode', () => {
     const defaultStore = createStore(createWorkflowSlice)
 
-    expect(defaultStore.getState().controlMode).toBe('hand')
+    expect(defaultStore.getState().controlMode).toBe('pointer')
 
-    localStorage.setItem('workflow-operation-mode', 'pointer')
+    localStorage.setItem('workflow-operation-mode', 'hand')
     const persistedStore = createStore(createWorkflowSlice)
 
-    expect(persistedStore.getState().controlMode).toBe('pointer')
+    expect(persistedStore.getState().controlMode).toBe('hand')
   })
 
   it('persists control mode updates and stores run state payloads', () => {

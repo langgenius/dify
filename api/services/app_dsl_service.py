@@ -10,19 +10,13 @@ from uuid import uuid4
 import yaml
 from Crypto.Cipher import AES
 from Crypto.Util.Padding import pad, unpad
-from graphon.enums import BuiltinNodeTypes
-from graphon.model_runtime.utils.encoders import jsonable_encoder
-from graphon.nodes.llm.entities import LLMNodeData
-from graphon.nodes.parameter_extractor.entities import ParameterExtractorNodeData
-from graphon.nodes.question_classifier.entities import QuestionClassifierNodeData
-from graphon.nodes.tool.entities import ToolNodeData
-from packaging import version
 from packaging.version import parse as parse_version
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from configs import dify_config
+from constants.dsl_version import CURRENT_APP_DSL_VERSION
 from core.helper import ssrf_proxy
 from core.plugin.entities.plugin import PluginDependency
 from core.trigger.constants import (
@@ -35,10 +29,17 @@ from core.workflow.nodes.trigger_schedule.trigger_schedule_node import TriggerSc
 from events.app_event import app_model_config_was_updated, app_was_created
 from extensions.ext_redis import redis_client
 from factories import variable_factory
+from graphon.enums import BuiltinNodeTypes
+from graphon.model_runtime.utils.encoders import jsonable_encoder
+from graphon.nodes.llm.entities import LLMNodeData
+from graphon.nodes.parameter_extractor.entities import ParameterExtractorNodeData
+from graphon.nodes.question_classifier.entities import QuestionClassifierNodeData
+from graphon.nodes.tool.entities import ToolNodeData
 from libs.datetime_utils import naive_utc_now
 from models import Account, App, AppMode
 from models.model import AppModelConfig, AppModelConfigDict, IconType
 from models.workflow import Workflow
+from services.dsl_version import check_version_compatibility
 from services.entities.dsl_entities import CheckDependenciesResult, ImportMode, ImportStatus
 from services.plugin.dependencies_analysis import DependenciesAnalysisService
 from services.workflow_draft_variable_service import WorkflowDraftVariableService
@@ -50,7 +51,7 @@ IMPORT_INFO_REDIS_KEY_PREFIX = "app_import_info:"
 CHECK_DEPENDENCIES_REDIS_KEY_PREFIX = "app_check_dependencies:"
 IMPORT_INFO_REDIS_EXPIRY = 10 * 60  # 10 minutes
 DSL_MAX_SIZE = 10 * 1024 * 1024  # 10MB
-CURRENT_DSL_VERSION = "0.6.0"
+CURRENT_DSL_VERSION = CURRENT_APP_DSL_VERSION
 
 
 class Import(BaseModel):
@@ -61,30 +62,6 @@ class Import(BaseModel):
     current_dsl_version: str = CURRENT_DSL_VERSION
     imported_dsl_version: str = ""
     error: str = ""
-
-
-def _check_version_compatibility(imported_version: str) -> ImportStatus:
-    """Determine import status based on version comparison"""
-    try:
-        current_ver = version.parse(CURRENT_DSL_VERSION)
-        imported_ver = version.parse(imported_version)
-    except version.InvalidVersion:
-        return ImportStatus.FAILED
-
-    # If imported version is newer than current, always return PENDING
-    if imported_ver > current_ver:
-        return ImportStatus.PENDING
-
-    # If imported version is older than current's major, return PENDING
-    if imported_ver.major < current_ver.major:
-        return ImportStatus.PENDING
-
-    # If imported version is older than current's minor, return COMPLETED_WITH_WARNINGS
-    if imported_ver.minor < current_ver.minor:
-        return ImportStatus.COMPLETED_WITH_WARNINGS
-
-    # If imported version equals or is older than current's micro, return COMPLETED
-    return ImportStatus.COMPLETED
 
 
 class PendingData(BaseModel):
@@ -202,7 +179,7 @@ class AppDslService:
             # check if imported_version is a float-like string
             if not isinstance(imported_version, str):
                 raise ValueError(f"Invalid version type, expected str, got {type(imported_version)}")
-            status = _check_version_compatibility(imported_version)
+            status = check_version_compatibility(imported_version, CURRENT_DSL_VERSION)
 
             # Extract app data
             app_data = data.get("app")
@@ -455,7 +432,7 @@ class AppDslService:
             app.updated_by = account.id
 
             self._session.add(app)
-            self._session.commit()
+            self._session.flush()
             app_was_created.send(app, account=account)
 
         # save dependencies

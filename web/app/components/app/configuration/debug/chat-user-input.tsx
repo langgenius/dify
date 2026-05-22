@@ -1,14 +1,14 @@
 import type { Inputs } from '@/models/debug'
+import { cn } from '@langgenius/dify-ui/cn'
+import { Select, SelectContent, SelectItem, SelectItemIndicator, SelectItemText, SelectTrigger } from '@langgenius/dify-ui/select'
 import * as React from 'react'
 import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
 import Input from '@/app/components/base/input'
-import Select from '@/app/components/base/select'
 import Textarea from '@/app/components/base/textarea'
 import BoolInput from '@/app/components/workflow/nodes/_base/components/before-run-form/bool-input'
 import ConfigContext from '@/context/debug-configuration'
-import { cn } from '@/utils/classnames'
 
 type Props = {
   inputs: Inputs
@@ -67,7 +67,7 @@ const ChatUserInput = ({
 
   return (
     <div className={cn('z-1 rounded-xl border-[0.5px] border-components-panel-border-subtle bg-components-panel-on-panel-item-bg shadow-xs')}>
-      <div className="px-4 pb-4 pt-3">
+      <div className="px-4 pt-3 pb-4">
         {promptVariables.map(({ key, name, type, options, max_length, required }, index) => (
           <div
             key={key}
@@ -75,7 +75,7 @@ const ChatUserInput = ({
           >
             <div>
               {type !== 'checkbox' && (
-                <div className="system-sm-semibold mb-1 flex h-6 items-center gap-1 text-text-secondary">
+                <div className="mb-1 flex h-6 items-center gap-1 system-sm-semibold text-text-secondary">
                   <div className="truncate">{name || key}</div>
                   {!required && <span className="system-xs-regular text-text-tertiary">{t('panel.optional', { ns: 'workflow' })}</span>}
                 </div>
@@ -102,13 +102,26 @@ const ChatUserInput = ({
                 )}
                 {type === 'select' && (
                   <Select
-                    className="w-full"
-                    defaultValue={inputs[key] as string}
-                    onSelect={(i) => { handleInputValueChange(key, i.value as string) }}
-                    items={(options || []).map(i => ({ name: i, value: i }))}
-                    allowSearch={false}
+                    value={inputs[key] ? String(inputs[key]) : null}
                     disabled={readonly}
-                  />
+                    onValueChange={(nextValue) => {
+                      if (!nextValue)
+                        return
+                      handleInputValueChange(key, nextValue)
+                    }}
+                  >
+                    <SelectTrigger className="w-full">
+                      {String(inputs[key] || t('placeholder.select', { ns: 'common' }))}
+                    </SelectTrigger>
+                    <SelectContent>
+                      {(options || []).map(option => (
+                        <SelectItem key={option} value={option}>
+                          <SelectItemText>{option}</SelectItemText>
+                          <SelectItemIndicator />
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 )}
                 {type === 'number' && (
                   <Input

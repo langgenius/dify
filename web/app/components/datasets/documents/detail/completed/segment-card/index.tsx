@@ -1,13 +1,5 @@
 import type { FC } from 'react'
 import type { ChildChunkDetail, SegmentDetailModel } from '@/models/datasets'
-import { RiDeleteBinLine, RiEditLine } from '@remixicon/react'
-import * as React from 'react'
-import { useCallback, useMemo, useState } from 'react'
-import { useTranslation } from 'react-i18next'
-import Badge from '@/app/components/base/badge'
-import Divider from '@/app/components/base/divider'
-import Switch from '@/app/components/base/switch'
-import Tooltip from '@/app/components/base/tooltip'
 import {
   AlertDialog,
   AlertDialogActions,
@@ -15,10 +7,18 @@ import {
   AlertDialogConfirmButton,
   AlertDialogContent,
   AlertDialogTitle,
-} from '@/app/components/base/ui/alert-dialog'
+} from '@langgenius/dify-ui/alert-dialog'
+import { cn } from '@langgenius/dify-ui/cn'
+import { Switch } from '@langgenius/dify-ui/switch'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
+import { RiDeleteBinLine, RiEditLine } from '@remixicon/react'
+import * as React from 'react'
+import { useCallback, useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import Badge from '@/app/components/base/badge'
+import Divider from '@/app/components/base/divider'
 import ImageList from '@/app/components/datasets/common/image-list'
 import { ChunkingMode } from '@/models/datasets'
-import { cn } from '@/utils/classnames'
 import { formatNumber } from '@/utils/format'
 import { isAfter } from '@/utils/time'
 import StatusItem from '../../../status-item'
@@ -177,40 +177,46 @@ const SegmentCard: FC<ISegmentCardProps> = ({
                 <div className="flex items-center">
                   <StatusItem status={enabled ? 'enabled' : 'disabled'} reverse textCls="text-text-tertiary system-xs-regular" />
                   {embeddingAvailable && (
-                    <div className="absolute -top-2 -right-2.5 z-20 hidden items-center gap-x-0.5 radius-lg border-[0.5px]
+                    <div className="absolute -top-2 -right-2.5 z-20 hidden items-center gap-x-0.5 rounded-[10px] border-[0.5px]
                       border-components-actionbar-border bg-components-actionbar-bg p-1 shadow-md backdrop-blur-[5px] group-hover/card:flex"
                     >
                       {!archived && (
                         <>
-                          <Tooltip
-                            popupContent="Edit"
-                            popupClassName="text-text-secondary system-xs-medium"
-                          >
-                            <div
-                              data-testid="segment-edit-button"
-                              className="flex h-6 w-6 shrink-0 cursor-pointer items-center justify-center rounded-lg hover:bg-state-base-hover"
-                              onClick={(e) => {
-                                e.stopPropagation()
-                                onClickEdit?.()
-                              }}
-                            >
-                              <RiEditLine className="h-4 w-4 text-text-tertiary" />
-                            </div>
+                          <Tooltip>
+                            <TooltipTrigger
+                              render={(
+                                <button
+                                  type="button"
+                                  aria-label={t('operation.edit', { ns: 'common' })}
+                                  className="flex size-6 shrink-0 cursor-pointer items-center justify-center rounded-lg border-none bg-transparent p-0 hover:bg-state-base-hover"
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    onClickEdit?.()
+                                  }}
+                                >
+                                  <RiEditLine className="size-4 text-text-tertiary" aria-hidden="true" />
+                                </button>
+                              )}
+                            />
+                            <TooltipContent className="system-xs-medium text-text-secondary">Edit</TooltipContent>
                           </Tooltip>
-                          <Tooltip
-                            popupContent="Delete"
-                            popupClassName="text-text-secondary system-xs-medium"
-                          >
-                            <div
-                              data-testid="segment-delete-button"
-                              className="group/delete flex h-6 w-6 shrink-0 cursor-pointer items-center justify-center rounded-lg hover:bg-state-destructive-hover"
-                              onClick={(e) => {
-                                e.stopPropagation()
-                                setShowModal(true)
-                              }}
-                            >
-                              <RiDeleteBinLine className="h-4 w-4 text-text-tertiary group-hover/delete:text-text-destructive" />
-                            </div>
+                          <Tooltip>
+                            <TooltipTrigger
+                              render={(
+                                <button
+                                  type="button"
+                                  aria-label={t('operation.delete', { ns: 'common' })}
+                                  className="group/delete flex size-6 shrink-0 cursor-pointer items-center justify-center rounded-lg border-none bg-transparent p-0 hover:bg-state-destructive-hover"
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    setShowModal(true)
+                                  }}
+                                >
+                                  <RiDeleteBinLine className="size-4 text-text-tertiary group-hover/delete:text-text-destructive" aria-hidden="true" />
+                                </button>
+                              )}
+                            />
+                            <TooltipContent className="system-xs-medium text-text-secondary">Delete</TooltipContent>
                           </Tooltip>
                           <Divider type="vertical" className="h-3.5 bg-divider-regular" />
                         </>
@@ -223,8 +229,8 @@ const SegmentCard: FC<ISegmentCardProps> = ({
                         <Switch
                           size="md"
                           disabled={archived || detail?.status !== 'completed'}
-                          value={enabled}
-                          onChange={async (val) => {
+                          checked={enabled}
+                          onCheckedChange={async (val) => {
                             await onChangeSwitch?.(val, id)
                           }}
                         />
@@ -261,7 +267,7 @@ const SegmentCard: FC<ISegmentCardProps> = ({
           ? (
               <button
                 type="button"
-                className="mt-0.5 mb-2 system-xs-semibold-uppercase text-text-accent"
+                className="mt-0.5 mb-2 border-none bg-transparent p-0 text-left system-xs-semibold-uppercase text-text-accent"
                 onClick={() => onClick?.()}
               >
                 {t('operation.viewMore', { ns: 'common' })}

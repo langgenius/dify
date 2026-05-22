@@ -1,8 +1,8 @@
 import type { FC } from 'react'
+import { cn } from '@langgenius/dify-ui/cn'
 import { RiCloseCircleFill, RiSearchLine } from '@remixicon/react'
 import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { cn } from '@/utils/classnames'
 
 type SearchInputProps = {
   placeholder?: string
@@ -33,16 +33,16 @@ const SearchInput: FC<SearchInputProps> = ({
       className,
     )}
     >
-      <div className="pointer-events-none mr-1.5 flex h-4 w-4 shrink-0 items-center justify-center">
-        <RiSearchLine className="h-4 w-4 text-components-input-text-placeholder" aria-hidden="true" />
+      <div className="pointer-events-none mr-1.5 flex size-4 shrink-0 items-center justify-center">
+        <RiSearchLine className="size-4 text-components-input-text-placeholder" aria-hidden="true" />
       </div>
       <input
         ref={inputRef}
         type="text"
         name="query"
         className={cn(
-          'system-sm-regular caret-#295EFF block h-[18px] grow appearance-none border-0 bg-transparent text-components-input-text-filled outline-hidden placeholder:text-components-input-text-placeholder',
-          white && 'bg-white! placeholder:text-gray-400! hover:bg-white! group-hover:bg-white!',
+          'caret-#295EFF block h-[18px] grow appearance-none border-0 bg-transparent system-sm-regular text-components-input-text-filled outline-hidden placeholder:text-components-input-text-placeholder',
+          white && 'bg-white! group-hover:bg-white! placeholder:text-gray-400! hover:bg-white!',
         )}
         placeholder={placeholder || t('operation.search', { ns: 'common' })!}
         value={isComposing.current ? compositionValue : value}
@@ -70,13 +70,13 @@ const SearchInput: FC<SearchInputProps> = ({
         <button
           type="button"
           aria-label={t('operation.clear', { ns: 'common' })}
-          className="group/clear flex h-4 w-4 shrink-0 cursor-pointer items-center justify-center border-none bg-transparent p-0"
+          className="group/clear flex size-4 shrink-0 cursor-pointer items-center justify-center border-none bg-transparent p-0"
           onClick={() => {
             onChange('')
             inputRef.current?.focus()
           }}
         >
-          <RiCloseCircleFill className="h-4 w-4 text-text-quaternary group-hover/clear:text-text-tertiary" />
+          <RiCloseCircleFill className="size-4 text-text-quaternary group-hover/clear:text-text-tertiary" />
         </button>
       )}
     </div>

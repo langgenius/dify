@@ -1,7 +1,5 @@
 from typing import Any
 
-from graphon.model_runtime.entities.message_entities import PromptMessageRole
-
 from core.app.app_config.entities import (
     AdvancedChatMessageEntity,
     AdvancedChatPromptTemplateEntity,
@@ -9,6 +7,7 @@ from core.app.app_config.entities import (
     PromptTemplateEntity,
 )
 from core.prompt.simple_prompt_transform import ModelMode
+from graphon.model_runtime.entities.message_entities import PromptMessageRole
 from models.model import AppMode, AppModelConfigDict
 
 
@@ -76,7 +75,7 @@ class PromptTemplateConfigManager:
         if not config.get("prompt_type"):
             config["prompt_type"] = PromptTemplateEntity.PromptType.SIMPLE
 
-        prompt_type_vals = [typ.value for typ in PromptTemplateEntity.PromptType]
+        prompt_type_vals = list(PromptTemplateEntity.PromptType)
         if config["prompt_type"] not in prompt_type_vals:
             raise ValueError(f"prompt_type must be in {prompt_type_vals}")
 

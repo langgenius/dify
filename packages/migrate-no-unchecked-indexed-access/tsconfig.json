@@ -1,0 +1,3 @@
+{
+  "extends": "@dify/tsconfig/node.json"
+}

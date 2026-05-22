@@ -1,16 +1,17 @@
+import { cn } from '@langgenius/dify-ui/cn'
+import { toast } from '@langgenius/dify-ui/toast'
 import { RiContractLine, RiDoorLockLine, RiErrorWarningFill } from '@remixicon/react'
+import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import * as React from 'react'
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { toast } from '@/app/components/base/ui/toast'
 import { IS_CE_EDITION } from '@/config'
-import { useGlobalPublicStore } from '@/context/global-public-context'
 import Link from '@/next/link'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { invitationCheck } from '@/service/common'
-import { useIsLogin } from '@/service/use-common'
+import { systemFeaturesQueryOptions } from '@/service/system-features'
+import { isLegacyBase401, userProfileQueryOptions } from '@/service/use-common'
 import { LicenseStatus } from '@/types/feature'
-import { cn } from '@/utils/classnames'
 import Loading from '../components/base/loading'
 import MailAndCodeAuth from './components/mail-and-code-auth'
 import MailAndPasswordAuth from './components/mail-and-password-auth'
@@ -23,14 +24,20 @@ const NormalForm = () => {
   const { t } = useTranslation()
   const router = useRouter()
   const searchParams = useSearchParams()
-  const { isLoading: isCheckLoading, data: loginData } = useIsLogin()
-  const isLoggedIn = loginData?.logged_in
+  // Login probe: 401 stays as `error` (legitimate "not logged in" state on /signin),
+  // other errors throw to error.tsx. jumpTo same-pathname guard in service/base.ts
+  // prevents the redirect loop on 401.
+  const { isPending: isCheckLoading, data: userResp, error: probeError } = useQuery({
+    ...userProfileQueryOptions(),
+    throwOnError: err => !isLegacyBase401(err),
+  })
+  const isLoggedIn = !!userResp && !probeError
   const message = decodeURIComponent(searchParams.get('message') || '')
   const invite_token = decodeURIComponent(searchParams.get('invite_token') || '')
   const [isInitCheckLoading, setInitCheckLoading] = useState(true)
   const [isRedirecting, setIsRedirecting] = useState(false)
   const isLoading = isCheckLoading || isInitCheckLoading || isRedirecting
-  const { systemFeatures } = useGlobalPublicStore()
+  const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const [authType, updateAuthType] = useState<'code' | 'password'>('password')
   const [showORLine, setShowORLine] = useState(false)
   const [allMethodsAreDisabled, setAllMethodsAreDisabled] = useState(false)
@@ -42,7 +49,7 @@ const NormalForm = () => {
     try {
       if (isLoggedIn) {
         setIsRedirecting(true)
-        const redirectUrl = resolvePostLoginRedirect()
+        const redirectUrl = resolvePostLoginRedirect(searchParams)
         router.replace(redirectUrl || '/apps')
         return
       }
@@ -91,9 +98,9 @@ const NormalForm = () => {
       <div className="mx-auto mt-8 w-full">
         <div className="relative">
           <div className="rounded-lg bg-linear-to-r from-workflow-workflow-progress-bg-1 to-workflow-workflow-progress-bg-2 p-4">
-            <div className="shadows-shadow-lg relative mb-2 flex h-10 w-10 items-center justify-center rounded-xl bg-components-card-bg shadow">
-              <RiContractLine className="h-5 w-5" />
-              <RiErrorWarningFill className="absolute -top-1 -right-1 h-4 w-4 text-text-warning-secondary" />
+            <div className="shadows-shadow-lg relative mb-2 flex size-10 items-center justify-center rounded-xl bg-components-card-bg shadow">
+              <RiContractLine className="size-5" />
+              <RiErrorWarningFill className="absolute -top-1 -right-1 size-4 text-text-warning-secondary" />
             </div>
             <p className="system-sm-medium text-text-primary">{t('licenseLost', { ns: 'login' })}</p>
             <p className="mt-1 system-xs-regular text-text-tertiary">{t('licenseLostTip', { ns: 'login' })}</p>
@@ -107,9 +114,9 @@ const NormalForm = () => {
       <div className="mx-auto mt-8 w-full">
         <div className="relative">
           <div className="rounded-lg bg-linear-to-r from-workflow-workflow-progress-bg-1 to-workflow-workflow-progress-bg-2 p-4">
-            <div className="shadows-shadow-lg relative mb-2 flex h-10 w-10 items-center justify-center rounded-xl bg-components-card-bg shadow">
-              <RiContractLine className="h-5 w-5" />
-              <RiErrorWarningFill className="absolute -top-1 -right-1 h-4 w-4 text-text-warning-secondary" />
+            <div className="shadows-shadow-lg relative mb-2 flex size-10 items-center justify-center rounded-xl bg-components-card-bg shadow">
+              <RiContractLine className="size-5" />
+              <RiErrorWarningFill className="absolute -top-1 -right-1 size-4 text-text-warning-secondary" />
             </div>
             <p className="system-sm-medium text-text-primary">{t('licenseExpired', { ns: 'login' })}</p>
             <p className="mt-1 system-xs-regular text-text-tertiary">{t('licenseExpiredTip', { ns: 'login' })}</p>
@@ -123,9 +130,9 @@ const NormalForm = () => {
       <div className="mx-auto mt-8 w-full">
         <div className="relative">
           <div className="rounded-lg bg-linear-to-r from-workflow-workflow-progress-bg-1 to-workflow-workflow-progress-bg-2 p-4">
-            <div className="shadows-shadow-lg relative mb-2 flex h-10 w-10 items-center justify-center rounded-xl bg-components-card-bg shadow">
-              <RiContractLine className="h-5 w-5" />
-              <RiErrorWarningFill className="absolute -top-1 -right-1 h-4 w-4 text-text-warning-secondary" />
+            <div className="shadows-shadow-lg relative mb-2 flex size-10 items-center justify-center rounded-xl bg-components-card-bg shadow">
+              <RiContractLine className="size-5" />
+              <RiErrorWarningFill className="absolute -top-1 -right-1 size-4 text-text-warning-secondary" />
             </div>
             <p className="system-sm-medium text-text-primary">{t('licenseInactive', { ns: 'login' })}</p>
             <p className="mt-1 system-xs-regular text-text-tertiary">{t('licenseInactiveTip', { ns: 'login' })}</p>
@@ -221,8 +228,8 @@ const NormalForm = () => {
           {allMethodsAreDisabled && (
             <>
               <div className="rounded-lg bg-linear-to-r from-workflow-workflow-progress-bg-1 to-workflow-workflow-progress-bg-2 p-4">
-                <div className="shadows-shadow-lg mb-2 flex h-10 w-10 items-center justify-center rounded-xl bg-components-card-bg shadow">
-                  <RiDoorLockLine className="h-5 w-5" />
+                <div className="shadows-shadow-lg mb-2 flex size-10 items-center justify-center rounded-xl bg-components-card-bg shadow">
+                  <RiDoorLockLine className="size-5" />
                 </div>
                 <p className="system-sm-medium text-text-primary">{t('noLoginMethod', { ns: 'login' })}</p>
                 <p className="mt-1 system-xs-regular text-text-tertiary">{t('noLoginMethodTip', { ns: 'login' })}</p>

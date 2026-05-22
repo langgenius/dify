@@ -26,6 +26,8 @@ class RedisSubscriptionBase(Subscription):
         client: Redis | RedisCluster,
         pubsub: PubSub,
         topic: str,
+        *,
+        join_timeout_ms: int = 2000,
     ):
         # The _pubsub is None only if the subscription is closed.
         self._client = client
@@ -37,6 +39,11 @@ class RedisSubscriptionBase(Subscription):
         self._listener_thread: threading.Thread | None = None
         self._start_lock = threading.Lock()
         self._started = False
+        # Max time close() will wait for the listener thread to finish before
+        # returning. Bounds SSE close tail latency. The listener is a daemon
+        # and exits on its own within one poll window (~1s), so a low value
+        # here just means close() returns sooner without breaking anything.
+        self._join_timeout_ms = max(int(join_timeout_ms or 0), 0)
 
     def _start_if_needed(self) -> None:
         """Start the subscription if not already started."""
@@ -205,7 +212,7 @@ class RedisSubscriptionBase(Subscription):
         # Due to the restriction above, the PubSub cleanup logic happens inside the consumer thread.
         listener = self._listener_thread
         if listener is not None:
-            listener.join(timeout=1.0)
+            listener.join(timeout=self._join_timeout_ms / 1000.0)
             self._listener_thread = None
 
     # Abstract methods to be implemented by subclasses

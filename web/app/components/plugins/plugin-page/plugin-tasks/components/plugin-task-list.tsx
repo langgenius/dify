@@ -1,7 +1,8 @@
 import type { FC } from 'react'
 import type { PluginStatus } from '@/app/components/plugins/types'
+import { Button } from '@langgenius/dify-ui/button'
+import { ScrollArea } from '@langgenius/dify-ui/scroll-area'
 import { useTranslation } from 'react-i18next'
-import { Button } from '@/app/components/base/ui/button'
 import { useGetLanguage } from '@/context/i18n'
 import ErrorPluginItem from './error-plugin-item'
 import PluginSection from './plugin-section'
@@ -39,7 +40,7 @@ const PluginTaskList: FC<PluginTaskListProps> = ({
           getIconUrl={getIconUrl}
           language={language}
           statusIcon={
-            <span className="i-ri-loader-2-line h-3.5 w-3.5 animate-spin text-text-accent" />
+            <span className="i-ri-loader-2-line size-3.5 animate-spin text-text-accent" />
           }
           defaultStatusText={t('task.installingHint', { ns: 'plugin' })}
         />
@@ -54,7 +55,7 @@ const PluginTaskList: FC<PluginTaskListProps> = ({
           getIconUrl={getIconUrl}
           language={language}
           statusIcon={
-            <span className="i-ri-checkbox-circle-fill h-3.5 w-3.5 text-text-success" />
+            <span className="i-ri-checkbox-circle-fill size-3.5 text-text-success" />
           }
           defaultStatusText={t('task.installed', { ns: 'plugin' })}
           statusClassName="text-text-success"
@@ -86,7 +87,14 @@ const PluginTaskList: FC<PluginTaskListProps> = ({
               {t('task.clearAll', { ns: 'plugin' })}
             </Button>
           </div>
-          <div className="max-h-[300px] overflow-y-auto">
+          <ScrollArea
+            className="max-h-[300px] overflow-hidden"
+            label={t('task.installedError', { ns: 'plugin', errorLength: errorPlugins.length })}
+            slotClassNames={{
+              viewport: 'overscroll-contain',
+              content: 'min-w-0',
+            }}
+          >
             {errorPlugins.map(plugin => (
               <ErrorPluginItem
                 key={plugin.plugin_unique_identifier}
@@ -96,7 +104,7 @@ const PluginTaskList: FC<PluginTaskListProps> = ({
                 onClear={() => onClearSingle(plugin.taskId, plugin.plugin_unique_identifier)}
               />
             ))}
-          </div>
+          </ScrollArea>
         </>
       )}
     </div>

@@ -9,7 +9,7 @@ from flask import request
 from flask_restx import Resource
 from pydantic import BaseModel, Field
 from sqlalchemy import select
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import Session
 
 from controllers.common.schema import register_schema_model
 from controllers.console.wraps import setup_required
@@ -56,7 +56,7 @@ class EnterpriseAppDSLImport(Resource):
 
         account.set_tenant_id(workspace_id)
 
-        with sessionmaker(db.engine).begin() as session:
+        with Session(db.engine, expire_on_commit=False) as session:
             dsl_service = AppDslService(session)
             result = dsl_service.import_app(
                 account=account,
@@ -65,6 +65,10 @@ class EnterpriseAppDSLImport(Resource):
                 name=args.name,
                 description=args.description,
             )
+            if result.status == ImportStatus.FAILED:
+                session.rollback()
+            else:
+                session.commit()
 
         if result.status == ImportStatus.FAILED:
             return result.model_dump(mode="json"), 400

@@ -20,7 +20,7 @@ describe('NoData', () => {
       const handleStart = vi.fn()
       const { container } = render(<NoData onStart={handleStart} />)
       // Title should have correct styling
-      const title = container.querySelector('.text-xs.font-semibold')
+      const title = container.querySelector('.text-xs\\/5.font-semibold')
       expect(title).toBeInTheDocument()
     })
 
@@ -103,7 +103,7 @@ describe('NoData', () => {
     it('should have correct title styling', () => {
       const handleStart = vi.fn()
       const { container } = render(<NoData onStart={handleStart} />)
-      const title = container.querySelector('.text-xs.font-semibold')
+      const title = container.querySelector('.text-xs\\/5.font-semibold')
       expect(title).toBeInTheDocument()
     })
 

@@ -37,11 +37,11 @@ const { mockToast } = vi.hoisted(() => {
   return { mockToast }
 })
 
-vi.mock('@/app/components/base/ui/toast', () => ({
+vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: mockToast,
 }))
 
-vi.mock('@/app/components/base/ui/button', () => ({
+vi.mock('@langgenius/dify-ui/button', () => ({
   Button: ({ children, onClick, ...props }: Record<string, unknown>) => (
     <button onClick={onClick as () => void} {...props}>{children as string}</button>
   ),

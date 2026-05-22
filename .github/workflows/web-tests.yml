@@ -16,7 +16,7 @@ concurrency:
 jobs:
   test:
     name: Web Tests (${{ matrix.shardIndex }}/${{ matrix.shardTotal }})
-    runs-on: ubuntu-latest
+    runs-on: depot-ubuntu-24.04-4
     env:
       VITEST_COVERAGE_SCOPE: app-components
     strategy:
@@ -39,7 +39,7 @@ jobs:
         uses: ./.github/actions/setup-web
 
       - name: Run tests
-        run: vp test run --reporter=blob --shard=${{ matrix.shardIndex }}/${{ matrix.shardTotal }} --coverage
+        run: vp test run --reporter=blob --reporter=minimal --shard=${{ matrix.shardIndex }}/${{ matrix.shardTotal }} --coverage
 
       - name: Upload blob report
         if: ${{ !cancelled() }}
@@ -54,7 +54,7 @@ jobs:
     name: Merge Test Reports
     if: ${{ !cancelled() }}
     needs: [test]
-    runs-on: ubuntu-latest
+    runs-on: depot-ubuntu-24.04-4
     env:
       CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
     defaults:
@@ -83,9 +83,43 @@ jobs:
 
       - name: Report coverage
         if: ${{ env.CODECOV_TOKEN != '' }}
-        uses: codecov/codecov-action@57e3a136b779b570ffcdbf80b3bdc90e7fab3de2 # v6.0.0
+        uses: codecov/codecov-action@e79a6962e0d4c0c17b229090214935d2e33f8354 # v6.0.1
         with:
           directory: web/coverage
           flags: web
+        env:
+          CODECOV_TOKEN: ${{ env.CODECOV_TOKEN }}
+
+  dify-ui-test:
+    name: dify-ui Tests
+    runs-on: depot-ubuntu-24.04-4
+    env:
+      CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+    defaults:
+      run:
+        shell: bash
+        working-directory: ./packages/dify-ui
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Setup web environment
+        uses: ./.github/actions/setup-web
+
+      - name: Install Chromium for Browser Mode
+        run: vp exec playwright install --with-deps chromium
+
+      - name: Run dify-ui tests
+        run: vp test run --coverage --silent=passed-only
+
+      - name: Report coverage
+        if: ${{ env.CODECOV_TOKEN != '' }}
+        uses: codecov/codecov-action@e79a6962e0d4c0c17b229090214935d2e33f8354 # v6.0.1
+        with:
+          directory: packages/dify-ui/coverage
+          flags: dify-ui
         env:
           CODECOV_TOKEN: ${{ env.CODECOV_TOKEN }}

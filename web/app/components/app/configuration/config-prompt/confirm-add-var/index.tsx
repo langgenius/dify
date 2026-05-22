@@ -1,9 +1,9 @@
 'use client'
 import type { FC } from 'react'
+import { Button } from '@langgenius/dify-ui/button'
 import * as React from 'react'
 import { useRef } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Button } from '@/app/components/base/ui/button'
 import VarHighlight from '../../base/var-highlight'
 
 type IConfirmAddVarProps = {
@@ -49,7 +49,7 @@ const ConfirmAddVar: FC<IConfirmAddVarProps> = ({
       >
         <div className="flex items-start space-x-3">
           <div
-            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-components-card-border bg-components-card-bg-alt shadow-lg"
+            className="flex size-10 shrink-0 items-center justify-center rounded-xl border border-components-card-border bg-components-card-bg-alt shadow-lg"
           >
             {VarIcon}
           </div>

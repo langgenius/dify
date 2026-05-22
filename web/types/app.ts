@@ -1,6 +1,6 @@
-import type { Tag } from '@/app/components/base/tag-management/constant'
 import type { CollectionType } from '@/app/components/tools/types'
 import type { UploadFileSetting } from '@/app/components/workflow/types'
+import type { Tag } from '@/contract/console/tags'
 import type { LanguagesSupported } from '@/i18n-config/language'
 import type { AccessMode } from '@/models/access-control'
 import type { ExternalDataTool } from '@/models/common'
@@ -50,8 +50,7 @@ export const AppModes = [AppModeEnum.COMPLETION, AppModeEnum.WORKFLOW, AppModeEn
 /**
  * Variable type
  */
-export const VariableTypes = ['string', 'number', 'select'] as const
-export type VariableType = typeof VariableTypes[number]
+type VariableType = 'string' | 'number' | 'select'
 
 /**
  * Prompt variable parameter
@@ -69,7 +68,7 @@ export type PromptVariable = {
   max_length?: number
 }
 
-export type TextTypeFormItem = {
+type TextTypeFormItem = {
   default: string
   label: string
   variable: string
@@ -78,7 +77,7 @@ export type TextTypeFormItem = {
   hide: boolean
 }
 
-export type SelectTypeFormItem = {
+type SelectTypeFormItem = {
   default: string
   label: string
   variable: string
@@ -200,6 +199,8 @@ export type ModelConfig = {
   }
   suggested_questions_after_answer: {
     enabled: boolean
+    model?: Model
+    prompt?: string
   }
   speech_to_text: {
     enabled: boolean

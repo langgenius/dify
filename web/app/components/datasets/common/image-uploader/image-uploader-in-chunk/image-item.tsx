@@ -1,4 +1,5 @@
 import type { FileEntity } from '../types'
+import { Button } from '@langgenius/dify-ui/button'
 import {
   RiCloseLine,
 } from '@remixicon/react'
@@ -9,7 +10,6 @@ import {
 import FileImageRender from '@/app/components/base/file-uploader/file-image-render'
 import { ReplayLine } from '@/app/components/base/icons/src/vender/other'
 import ProgressCircle from '@/app/components/base/progress-bar/progress-circle'
-import { Button } from '@/app/components/base/ui/button'
 import { fileIsUploaded } from '../utils'
 
 type ImageItemProps = {
@@ -54,10 +54,10 @@ const ImageItem = ({
       {
         showDeleteAction && (
           <Button
-            className="absolute -top-1.5 -right-1.5 z-11 hidden h-5 w-5 rounded-full p-0 group-hover/file-image:flex"
+            className="absolute -top-1.5 -right-1.5 z-11 hidden size-5 rounded-full p-0 group-hover/file-image:flex"
             onClick={handleRemove}
           >
-            <RiCloseLine className="h-4 w-4 text-components-button-secondary-text" />
+            <RiCloseLine className="size-4 text-components-button-secondary-text" />
           </Button>
         )
       }

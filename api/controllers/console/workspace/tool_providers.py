@@ -5,13 +5,13 @@ from urllib.parse import urlparse
 
 from flask import make_response, redirect, request, send_file
 from flask_restx import Resource
-from graphon.model_runtime.utils.encoders import jsonable_encoder
 from pydantic import BaseModel, Field, HttpUrl, field_validator, model_validator
 from sqlalchemy.orm import sessionmaker
 from werkzeug.exceptions import Forbidden
 
 from configs import dify_config
-from controllers.common.schema import register_schema_models
+from controllers.common.fields import SimpleResultResponse
+from controllers.common.schema import register_response_schema_models, register_schema_models
 from controllers.console import console_ns
 from controllers.console.wraps import (
     account_initialization_required,
@@ -28,6 +28,7 @@ from core.plugin.entities.plugin_daemon import CredentialType
 from core.plugin.impl.oauth import OAuthHandler
 from core.tools.entities.tool_entities import ApiProviderSchemaType, WorkflowToolParameterConfiguration
 from extensions.ext_database import db
+from graphon.model_runtime.utils.encoders import jsonable_encoder
 from libs.helper import alphanumeric, uuid_value
 from libs.login import current_account_with_tenant, login_required
 from models.provider_ids import ToolProviderID
@@ -252,6 +253,7 @@ register_schema_models(
     MCPProviderDeletePayload,
     MCPAuthPayload,
 )
+register_response_schema_models(console_ns, SimpleResultResponse)
 
 
 @console_ns.route("/workspaces/current/tool-providers")
@@ -874,12 +876,13 @@ class ToolBuiltinProviderSetDefaultApi(Resource):
     @console_ns.expect(console_ns.models[BuiltinProviderDefaultCredentialPayload.__name__])
     @setup_required
     @login_required
+    @is_admin_or_owner_required
     @account_initialization_required
     def post(self, provider):
-        current_user, current_tenant_id = current_account_with_tenant()
+        _, current_tenant_id = current_account_with_tenant()
         payload = BuiltinProviderDefaultCredentialPayload.model_validate(console_ns.payload or {})
         return BuiltinToolManageService.set_default_provider(
-            tenant_id=current_tenant_id, user_id=current_user.id, provider=provider, id=payload.id
+            tenant_id=current_tenant_id, provider=provider, id=payload.id
         )
 
 
@@ -1054,6 +1057,7 @@ class ToolProviderMCPApi(Resource):
         return {"result": "success"}
 
     @console_ns.expect(console_ns.models[MCPProviderDeletePayload.__name__])
+    @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -1131,6 +1135,14 @@ class ToolMCPAuthApi(Resource):
             with sessionmaker(db.engine).begin() as session:
                 service = MCPToolManageService(session=session)
                 service.clear_provider_credentials(provider_id=provider_id, tenant_id=tenant_id)
+            parsed = urlparse(server_url)
+            sanitized_url = f"{parsed.scheme}://{parsed.hostname}{parsed.path}"
+            logger.warning(
+                "MCP authorization failed for provider %s (url=%s)",
+                provider_id,
+                sanitized_url,
+                exc_info=True,
+            )
             raise ValueError(f"Failed to connect to MCP server: {e}") from e
 
 

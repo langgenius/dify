@@ -7,7 +7,8 @@ from werkzeug.exceptions import BadRequest, InternalServerError, NotFound
 
 import services
 from controllers.common.controller_schemas import MessageFeedbackPayload, MessageListQuery
-from controllers.common.schema import register_schema_models
+from controllers.common.fields import SimpleResultStringListResponse
+from controllers.common.schema import register_response_schema_models, register_schema_models
 from controllers.service_api import service_api_ns
 from controllers.service_api.app.error import NotChatAppError
 from controllers.service_api.wraps import FetchUserArg, WhereisUserArg, validate_app_token
@@ -32,6 +33,7 @@ class FeedbackListQuery(BaseModel):
 
 
 register_schema_models(service_api_ns, MessageListQuery, MessageFeedbackPayload, FeedbackListQuery)
+register_response_schema_models(service_api_ns, ResultResponse, SimpleResultStringListResponse)
 
 
 @service_api_ns.route("/messages")
@@ -80,6 +82,7 @@ class MessageListApi(Resource):
 @service_api_ns.route("/messages/<uuid:message_id>/feedbacks")
 class MessageFeedbackApi(Resource):
     @service_api_ns.expect(service_api_ns.models[MessageFeedbackPayload.__name__])
+    @service_api_ns.response(200, "Feedback submitted successfully", service_api_ns.models[ResultResponse.__name__])
     @service_api_ns.doc("create_message_feedback")
     @service_api_ns.doc(description="Submit feedback for a message")
     @service_api_ns.doc(params={"message_id": "Message ID"})
@@ -138,6 +141,11 @@ class AppGetFeedbacksApi(Resource):
 
 @service_api_ns.route("/messages/<uuid:message_id>/suggested")
 class MessageSuggestedApi(Resource):
+    @service_api_ns.response(
+        200,
+        "Suggested questions retrieved successfully",
+        service_api_ns.models[SimpleResultStringListResponse.__name__],
+    )
     @service_api_ns.doc("get_suggested_questions")
     @service_api_ns.doc(description="Get suggested follow-up questions for a message")
     @service_api_ns.doc(params={"message_id": "Message ID"})

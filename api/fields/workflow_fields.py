@@ -1,8 +1,8 @@
 from flask_restx import fields
-from graphon.variables import SecretVariable, SegmentType, VariableBase
 
 from core.helper import encrypter
 from fields.member_fields import simple_account_fields
+from graphon.variables import SecretVariable, SegmentType, VariableBase
 from libs.helper import TimestampField
 
 from ._value_type_serializer import serialize_value_type
@@ -26,7 +26,7 @@ class EnvironmentVariableField(fields.Raw):
                 "id": value.id,
                 "name": value.name,
                 "value": value.value,
-                "value_type": value.value_type.exposed_type().value,
+                "value_type": str(value.value_type.exposed_type()),
                 "description": value.description,
             }
         if isinstance(value, dict):

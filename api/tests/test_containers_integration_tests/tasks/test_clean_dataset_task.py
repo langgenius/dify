@@ -220,7 +220,6 @@ class TestCleanDatasetTask:
             DocumentSegment: Created document segment instance
         """
         segment = DocumentSegment(
-            id=str(uuid.uuid4()),
             tenant_id=tenant.id,
             dataset_id=dataset.id,
             document_id=document.id,
@@ -232,8 +231,6 @@ class TestCleanDatasetTask:
             status=SegmentStatus.COMPLETED,
             index_node_id=str(uuid.uuid4()),
             index_node_hash="test_hash",
-            created_at=datetime.now(),
-            updated_at=datetime.now(),
         )
 
         db_session_with_containers.add(segment)
@@ -614,7 +611,6 @@ class TestCleanDatasetTask:
         """
 
         segment = DocumentSegment(
-            id=str(uuid.uuid4()),
             tenant_id=tenant.id,
             dataset_id=dataset.id,
             document_id=document.id,
@@ -626,8 +622,6 @@ class TestCleanDatasetTask:
             status=SegmentStatus.COMPLETED,
             index_node_id=str(uuid.uuid4()),
             index_node_hash="test_hash",
-            created_at=datetime.now(),
-            updated_at=datetime.now(),
         )
 
         db_session_with_containers.add(segment)
@@ -729,8 +723,6 @@ class TestCleanDatasetTask:
                 type=DatasetMetadataType.STRING,
                 created_by=account.id,
             )
-            metadata.id = str(uuid.uuid4())
-            metadata.created_at = datetime.now()
             metadata_items.append(metadata)
 
             # Create binding for each metadata item
@@ -741,8 +733,6 @@ class TestCleanDatasetTask:
                 document_id=documents[i % len(documents)].id,
                 created_by=account.id,
             )
-            binding.id = str(uuid.uuid4())
-            binding.created_at = datetime.now()
             bindings.append(binding)
 
         db_session_with_containers.add_all(metadata_items)
@@ -946,7 +936,6 @@ class TestCleanDatasetTask:
         long_content = "Very long content " * 100  # Long content within reasonable limits
         segment_content = f"Segment with special chars: {special_content}\n{long_content}"
         segment = DocumentSegment(
-            id=str(uuid.uuid4()),
             tenant_id=tenant.id,
             dataset_id=dataset.id,
             document_id=document.id,
@@ -958,8 +947,6 @@ class TestCleanDatasetTask:
             status=SegmentStatus.COMPLETED,
             index_node_id=str(uuid.uuid4()),
             index_node_hash="test_hash_" + "x" * 50,  # Long hash within limits
-            created_at=datetime.now(),
-            updated_at=datetime.now(),
         )
         db_session_with_containers.add(segment)
         db_session_with_containers.commit()

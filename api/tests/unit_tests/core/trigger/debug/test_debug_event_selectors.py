@@ -8,10 +8,10 @@ and select_trigger_debug_events orchestrator.
 from __future__ import annotations
 
 from datetime import datetime
+from typing import Any
 from unittest.mock import MagicMock, patch
 
 import pytest
-from graphon.enums import BuiltinNodeTypes, NodeType
 
 from core.plugin.entities.request import TriggerInvokeEventResponse
 from core.trigger.constants import (
@@ -27,10 +27,11 @@ from core.trigger.debug.event_selectors import (
     select_trigger_debug_events,
 )
 from core.trigger.debug.events import PluginTriggerDebugEvent, WebhookDebugEvent
+from graphon.enums import BuiltinNodeTypes, NodeType
 from tests.unit_tests.core.trigger.conftest import VALID_PROVIDER_ID
 
 
-def _make_poller_args(node_config: dict | None = None) -> dict:
+def _make_poller_args(node_config: dict[str, Any] | None = None) -> dict[str, Any]:
     return {
         "tenant_id": "t1",
         "user_id": "u1",

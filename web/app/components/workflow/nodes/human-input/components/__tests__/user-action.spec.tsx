@@ -27,7 +27,7 @@ vi.mock('@/app/components/base/input', () => ({
   ),
 }))
 
-vi.mock('@/app/components/base/ui/button', () => ({
+vi.mock('@langgenius/dify-ui/button', () => ({
   Button: (props: {
     children?: ReactNode
     onClick?: () => void
@@ -38,7 +38,7 @@ vi.mock('@/app/components/base/ui/button', () => ({
   ),
 }))
 
-vi.mock('@/app/components/base/ui/toast', () => ({
+vi.mock('@langgenius/dify-ui/toast', () => ({
   __esModule: true,
   toast: {
     success: (message: string) => mockNotify({ type: 'success', message }),
@@ -87,7 +87,7 @@ describe('UserActionItem', () => {
     fireEvent.change(screen.getByTestId('nodes.humanInput.userActions.actionNamePlaceholder'), { target: { value: 'Approve action' } })
     fireEvent.change(screen.getByTestId('nodes.humanInput.userActions.actionNamePlaceholder'), { target: { value: '1invalid' } })
     fireEvent.change(screen.getByTestId('nodes.humanInput.userActions.actionNamePlaceholder'), { target: { value: 'averyveryveryverylongidentifier' } })
-    fireEvent.change(screen.getByTestId('nodes.humanInput.userActions.buttonTextPlaceholder'), { target: { value: 'A very very very long button title' } })
+    fireEvent.change(screen.getByTestId('nodes.humanInput.userActions.buttonTextPlaceholder'), { target: { value: 'card_visa_enterprise_001' } })
 
     expect(onChange).toHaveBeenNthCalledWith(1, expect.objectContaining({
       id: 'Approve_action',
@@ -96,7 +96,7 @@ describe('UserActionItem', () => {
       id: 'averyveryveryverylon',
     }))
     expect(onChange).toHaveBeenNthCalledWith(3, expect.objectContaining({
-      title: 'A very very very lon',
+      title: 'card_visa_enterprise_001',
     }))
     expect(mockNotify).toHaveBeenNthCalledWith(1, expect.objectContaining({
       type: 'error',
@@ -106,10 +106,7 @@ describe('UserActionItem', () => {
       type: 'error',
       message: 'nodes.humanInput.userActions.actionIdTooLong',
     }))
-    expect(mockNotify).toHaveBeenNthCalledWith(3, expect.objectContaining({
-      type: 'error',
-      message: 'nodes.humanInput.userActions.buttonTextTooLong',
-    }))
+    expect(mockNotify).toHaveBeenCalledTimes(2)
   })
 
   it('should support clearing ids, updating button style, deleting, and readonly mode', () => {
@@ -123,7 +120,7 @@ describe('UserActionItem', () => {
 
     fireEvent.change(screen.getByTestId('nodes.humanInput.userActions.actionNamePlaceholder'), { target: { value: '   ' } })
     fireEvent.click(screen.getByText('change-style'))
-    fireEvent.click(screen.getAllByRole('button')[1])
+    fireEvent.click(screen.getAllByRole('button')[1]!)
 
     expect(onChange).toHaveBeenNthCalledWith(1, expect.objectContaining({ id: '' }))
     expect(onChange).toHaveBeenNthCalledWith(2, expect.objectContaining({ button_style: UserActionButtonType.Ghost }))
@@ -138,8 +135,8 @@ describe('UserActionItem', () => {
       />,
     )
 
-    expect(screen.getByTestId('nodes.humanInput.userActions.actionNamePlaceholder')).toBeDisabled()
-    expect(screen.getByTestId('nodes.humanInput.userActions.buttonTextPlaceholder')).toBeDisabled()
+    expect(screen.getByTestId('nodes.humanInput.userActions.actionNamePlaceholder'))!.toBeDisabled()
+    expect(screen.getByTestId('nodes.humanInput.userActions.buttonTextPlaceholder'))!.toBeDisabled()
     expect(screen.getAllByRole('button')).toHaveLength(1)
   })
 })

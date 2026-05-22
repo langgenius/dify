@@ -10,6 +10,20 @@ import type {
   FormSchema,
 } from '@/app/components/base/form/types'
 import {
+  AlertDialog,
+  AlertDialogActions,
+  AlertDialogCancelButton,
+  AlertDialogConfirmButton,
+  AlertDialogContent,
+  AlertDialogTitle,
+} from '@langgenius/dify-ui/alert-dialog'
+import { Button } from '@langgenius/dify-ui/button'
+import {
+  Dialog,
+  DialogCloseButton,
+  DialogContent,
+} from '@langgenius/dify-ui/dialog'
+import {
   memo,
   useCallback,
   useMemo,
@@ -22,20 +36,6 @@ import AuthForm from '@/app/components/base/form/form-scenarios/auth'
 import { LinkExternal02 } from '@/app/components/base/icons/src/vender/line/general'
 import { Lock01 } from '@/app/components/base/icons/src/vender/solid/security'
 import Loading from '@/app/components/base/loading'
-import {
-  AlertDialog,
-  AlertDialogActions,
-  AlertDialogCancelButton,
-  AlertDialogConfirmButton,
-  AlertDialogContent,
-  AlertDialogTitle,
-} from '@/app/components/base/ui/alert-dialog'
-import { Button } from '@/app/components/base/ui/button'
-import {
-  Dialog,
-  DialogCloseButton,
-  DialogContent,
-} from '@/app/components/base/ui/dialog'
 import {
   useAuth,
   useCredentialData,
@@ -226,7 +226,7 @@ const ModelModal: FC<ModelModalProps> = ({
       return (
         <div className="mt-2 flex items-center">
           <ModelIcon
-            className="mr-2 h-4 w-4 shrink-0"
+            className="mr-2 size-4 shrink-0"
             provider={provider}
           />
           <div className="mr-1 system-md-regular text-text-secondary">{renderI18nObject(provider.label)}</div>
@@ -237,7 +237,7 @@ const ModelModal: FC<ModelModalProps> = ({
       return (
         <div className="mt-2 flex items-center">
           <ModelIcon
-            className="mr-2 h-4 w-4 shrink-0"
+            className="mr-2 size-4 shrink-0"
             provider={provider}
             modelName={model.model}
           />
@@ -295,15 +295,15 @@ const ModelModal: FC<ModelModalProps> = ({
     <Dialog open onOpenChange={handleOpenChange}>
       <DialogContent
         backdropProps={{ forceRender: true }}
-        className="w-[640px] max-w-[640px] overflow-hidden p-0"
+        className="flex w-[640px] max-w-[640px] flex-col overflow-hidden p-0"
       >
-        <DialogCloseButton className="top-5 right-5 h-8 w-8" />
-        <div className="p-6 pb-3">
+        <DialogCloseButton className="top-5 right-5 size-8" />
+        <div className="shrink-0 p-6 pb-3">
           {modalTitle}
           {modalDesc}
           {modalModel}
         </div>
-        <div className="max-h-[calc(100vh-320px)] overflow-y-auto px-6 py-3">
+        <div className="min-h-0 flex-1 overflow-y-auto px-6 py-3">
           {
             mode === ModelModalModeEnum.configCustomModel && (
               <AuthForm
@@ -365,7 +365,7 @@ const ModelModal: FC<ModelModalProps> = ({
             )
           }
         </div>
-        <div className="flex justify-between p-6 pt-5">
+        <div className="flex shrink-0 justify-between p-6 pt-5">
           {
             (provider.help && (provider.help.title || provider.help.url))
               ? (
@@ -410,9 +410,9 @@ const ModelModal: FC<ModelModalProps> = ({
         </div>
         {
           (mode === ModelModalModeEnum.configCustomModel || mode === ModelModalModeEnum.configProviderCredential) && (
-            <div className="border-t-[0.5px] border-t-divider-regular">
+            <div className="shrink-0 border-t-[0.5px] border-t-divider-regular">
               <div className="flex items-center justify-center rounded-b-2xl bg-background-section-burn py-3 text-xs text-text-tertiary">
-                <Lock01 className="mr-1 h-3 w-3 text-text-tertiary" />
+                <Lock01 className="mr-1 size-3 text-text-tertiary" />
                 {t('modelProvider.encrypted.front', { ns: 'common' })}
                 <a
                   className="mx-1 text-text-accent"

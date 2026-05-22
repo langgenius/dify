@@ -1,6 +1,8 @@
 import type { DataSourceNodeType } from '@/app/components/workflow/nodes/data-source/types'
 import type { Node } from '@/app/components/workflow/types'
 import type { InputVar, RAGPipelineVariables } from '@/models/pipeline'
+import { Button } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
 import { RiCloseLine, RiEyeLine } from '@remixicon/react'
 import {
   memo,
@@ -11,13 +13,11 @@ import {
 import { useTranslation } from 'react-i18next'
 import { useNodes } from 'reactflow'
 import Divider from '@/app/components/base/divider'
-import Tooltip from '@/app/components/base/tooltip'
-import { Button } from '@/app/components/base/ui/button'
+import { Infotip } from '@/app/components/base/infotip'
 import { useInputFieldPanel } from '@/app/components/rag-pipeline/hooks'
 import { useNodesSyncDraft } from '@/app/components/workflow/hooks'
 import { useStore } from '@/app/components/workflow/store'
 import { BlockEnum } from '@/app/components/workflow/types'
-import { cn } from '@/utils/classnames'
 import FieldList from './field-list'
 import FooterTip from './footer-tip'
 import Datasource from './label-right-content/datasource'
@@ -66,7 +66,7 @@ const InputFieldPanel = () => {
     const globalInputFields: RAGPipelineVariables = []
     Object.keys(inputFieldsMap.current).forEach((key) => {
       const inputFields = inputFieldsMap.current[key]
-      inputFields.forEach((inputField) => {
+      inputFields!.forEach((inputField) => {
         if (key === 'shared') {
           globalInputFields.push({
             ...inputField,
@@ -121,6 +121,7 @@ const InputFieldPanel = () => {
         <Divider type="vertical" className="mx-1 h-3" />
         <button
           type="button"
+          aria-label={t('operation.close', { ns: 'common' })}
           className="flex size-6 shrink-0 items-center justify-center p-0.5"
           onClick={closePanel}
         >
@@ -136,10 +137,12 @@ const InputFieldPanel = () => {
           <span className="system-sm-semibold-uppercase text-text-secondary">
             {t('inputFieldPanel.uniqueInputs.title', { ns: 'datasetPipeline' })}
           </span>
-          <Tooltip
-            popupContent={t('inputFieldPanel.uniqueInputs.tooltip', { ns: 'datasetPipeline' })}
+          <Infotip
+            aria-label={t('inputFieldPanel.uniqueInputs.tooltip', { ns: 'datasetPipeline' })}
             popupClassName="max-w-[240px]"
-          />
+          >
+            {t('inputFieldPanel.uniqueInputs.tooltip', { ns: 'datasetPipeline' })}
+          </Infotip>
         </div>
         <div className="flex flex-col gap-y-1 py-1">
           {
@@ -149,7 +152,7 @@ const InputFieldPanel = () => {
                 <FieldList
                   key={key}
                   nodeId={key}
-                  LabelRightContent={<Datasource nodeData={datasourceNodeDataMap[key]} />}
+                  LabelRightContent={<Datasource nodeData={datasourceNodeDataMap[key]!} />}
                   inputFields={inputFields}
                   readonly={isPreviewing || isEditing}
                   labelClassName="pt-1 pb-1"

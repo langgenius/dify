@@ -1,8 +1,6 @@
-import urllib.parse
-
 import httpx
+from flask import request
 from flask_restx import Resource
-from graphon.file import helpers as file_helpers
 from pydantic import BaseModel, Field
 
 import services
@@ -12,10 +10,12 @@ from controllers.common.errors import (
     RemoteFileUploadError,
     UnsupportedFileTypeError,
 )
+from controllers.common.schema import register_response_schema_models, register_schema_models
 from controllers.console import console_ns
 from core.helper import ssrf_proxy
 from extensions.ext_database import db
 from fields.file_fields import FileWithSignedUrl, RemoteFileInfo
+from graphon.file import helpers as file_helpers
 from libs.login import current_account_with_tenant, login_required
 from services.file_service import FileService
 
@@ -24,11 +24,16 @@ class RemoteFileUploadPayload(BaseModel):
     url: str = Field(..., description="URL to fetch")
 
 
+register_schema_models(console_ns, RemoteFileUploadPayload)
+register_response_schema_models(console_ns, FileWithSignedUrl, RemoteFileInfo)
+
+
 @console_ns.route("/remote-files/<path:url>")
 class GetRemoteFileInfo(Resource):
+    @console_ns.response(200, "Success", console_ns.models[RemoteFileInfo.__name__])
     @login_required
     def get(self, url: str):
-        decoded_url = urllib.parse.unquote(url)
+        decoded_url = helpers.decode_remote_url(url, request.query_string)
         resp = ssrf_proxy.head(decoded_url)
         if resp.status_code != httpx.codes.OK:
             resp = ssrf_proxy.get(decoded_url, timeout=3)
@@ -41,6 +46,8 @@ class GetRemoteFileInfo(Resource):
 
 @console_ns.route("/remote-files/upload")
 class RemoteFileUpload(Resource):
+    @console_ns.expect(console_ns.models[RemoteFileUploadPayload.__name__])
+    @console_ns.response(201, "File uploaded successfully", console_ns.models[FileWithSignedUrl.__name__])
     @login_required
     def post(self):
         payload = RemoteFileUploadPayload.model_validate(console_ns.payload)

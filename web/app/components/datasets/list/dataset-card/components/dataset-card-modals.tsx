@@ -1,6 +1,4 @@
 import type { DataSet } from '@/models/datasets'
-import * as React from 'react'
-import { useTranslation } from 'react-i18next'
 import {
   AlertDialog,
   AlertDialogActions,
@@ -9,7 +7,9 @@ import {
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogTitle,
-} from '@/app/components/base/ui/alert-dialog'
+} from '@langgenius/dify-ui/alert-dialog'
+import * as React from 'react'
+import { useTranslation } from 'react-i18next'
 import RenameDatasetModal from '../../../rename-modal'
 
 type ModalState = {

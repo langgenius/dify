@@ -1,11 +1,10 @@
 import json
 import logging
-from typing import Any, TypedDict, cast
+from typing import Any, Literal, TypedDict, cast
 
 import sqlalchemy as sa
 from flask_sqlalchemy.pagination import Pagination
-from graphon.model_runtime.entities.model_entities import ModelPropertyKey, ModelType
-from graphon.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
+from pydantic import BaseModel, Field
 from sqlalchemy import select
 
 from configs import dify_config
@@ -17,6 +16,8 @@ from core.tools.tool_manager import ToolManager
 from core.tools.utils.configuration import ToolParameterConfigurationManager
 from events.app_event import app_was_created, app_was_deleted, app_was_updated
 from extensions.ext_database import db
+from graphon.model_runtime.entities.model_entities import ModelPropertyKey, ModelType
+from graphon.model_runtime.model_providers.base.large_language_model import LargeLanguageModel
 from libs.datetime_utils import naive_utc_now
 from libs.login import current_user
 from models import Account
@@ -31,39 +32,59 @@ from tasks.remove_app_and_related_data_task import remove_app_and_related_data_t
 logger = logging.getLogger(__name__)
 
 
+class AppListParams(BaseModel):
+    page: int = Field(default=1, ge=1)
+    limit: int = Field(default=20, ge=1, le=100)
+    mode: Literal["completion", "chat", "advanced-chat", "workflow", "agent-chat", "channel", "all"] = "all"
+    name: str | None = None
+    tag_ids: list[str] | None = None
+    is_created_by_me: bool | None = None
+
+
+class CreateAppParams(BaseModel):
+    name: str = Field(min_length=1)
+    description: str | None = None
+    mode: Literal["chat", "agent-chat", "advanced-chat", "workflow", "completion"]
+    icon_type: str | None = None
+    icon: str | None = None
+    icon_background: str | None = None
+    api_rph: int = 0
+    api_rpm: int = 0
+    max_active_requests: int | None = None
+
+
 class AppService:
-    def get_paginate_apps(self, user_id: str, tenant_id: str, args: dict[str, Any]) -> Pagination | None:
+    def get_paginate_apps(self, user_id: str, tenant_id: str, params: AppListParams) -> Pagination | None:
         """
         Get app list with pagination
         :param user_id: user id
         :param tenant_id: tenant id
-        :param args: request args
+        :param params: query parameters
         :return:
         """
         filters = [App.tenant_id == tenant_id, App.is_universal == False]
 
-        if args["mode"] == "workflow":
+        if params.mode == "workflow":
             filters.append(App.mode == AppMode.WORKFLOW)
-        elif args["mode"] == "completion":
+        elif params.mode == "completion":
             filters.append(App.mode == AppMode.COMPLETION)
-        elif args["mode"] == "chat":
+        elif params.mode == "chat":
             filters.append(App.mode == AppMode.CHAT)
-        elif args["mode"] == "advanced-chat":
+        elif params.mode == "advanced-chat":
             filters.append(App.mode == AppMode.ADVANCED_CHAT)
-        elif args["mode"] == "agent-chat":
+        elif params.mode == "agent-chat":
             filters.append(App.mode == AppMode.AGENT_CHAT)
 
-        if args.get("is_created_by_me", False):
+        if params.is_created_by_me:
             filters.append(App.created_by == user_id)
-        if args.get("name"):
+        if params.name:
             from libs.helper import escape_like_pattern
 
-            name = args["name"][:30]
+            name = params.name[:30]
             escaped_name = escape_like_pattern(name)
             filters.append(App.name.ilike(f"%{escaped_name}%", escape="\\"))
-        # Check if tag_ids is not empty to avoid WHERE false condition
-        if args.get("tag_ids") and len(args["tag_ids"]) > 0:
-            target_ids = TagService.get_target_ids_by_tag_ids("app", tenant_id, args["tag_ids"])
+        if params.tag_ids and len(params.tag_ids) > 0:
+            target_ids = TagService.get_target_ids_by_tag_ids("app", tenant_id, params.tag_ids)
             if target_ids and len(target_ids) > 0:
                 filters.append(App.id.in_(target_ids))
             else:
@@ -71,21 +92,21 @@ class AppService:
 
         app_models = db.paginate(
             sa.select(App).where(*filters).order_by(App.created_at.desc()),
-            page=args["page"],
-            per_page=args["limit"],
+            page=params.page,
+            per_page=params.limit,
             error_out=False,
         )
 
         return app_models
 
-    def create_app(self, tenant_id: str, args: dict[str, Any], account: Account) -> App:
+    def create_app(self, tenant_id: str, params: CreateAppParams, account: Account) -> App:
         """
         Create app
         :param tenant_id: tenant id
-        :param args: request args
+        :param params: app creation parameters
         :param account: Account instance
         """
-        app_mode = AppMode.value_of(args["mode"])
+        app_mode = AppMode.value_of(params.mode)
         app_template = default_app_templates[app_mode]
 
         # get model config
@@ -143,15 +164,16 @@ class AppService:
             default_model_config["model"] = json.dumps(default_model_dict)
 
         app = App(**app_template["app"])
-        app.name = args["name"]
-        app.description = args.get("description", "")
-        app.mode = args["mode"]
-        app.icon_type = args.get("icon_type", "emoji")
-        app.icon = args["icon"]
-        app.icon_background = args["icon_background"]
+        app.name = params.name
+        app.description = params.description or ""
+        app.mode = app_mode
+        app.icon_type = IconType(params.icon_type) if params.icon_type else IconType.EMOJI
+        app.icon = params.icon
+        app.icon_background = params.icon_background
         app.tenant_id = tenant_id
-        app.api_rph = args.get("api_rph", 0)
-        app.api_rpm = args.get("api_rpm", 0)
+        app.api_rph = params.api_rph
+        app.api_rpm = params.api_rpm
+        app.max_active_requests = params.max_active_requests
         app.created_by = account.id
         app.updated_by = account.id
 
@@ -303,17 +325,22 @@ class AppService:
 
         return app
 
-    def update_app_icon(self, app: App, icon: str, icon_background: str) -> App:
+    def update_app_icon(
+        self, app: App, icon: str, icon_background: str, icon_type: IconType | str | None = None
+    ) -> App:
         """
         Update app icon
         :param app: App instance
         :param icon: new icon
         :param icon_background: new icon_background
+        :param icon_type: new icon type
         :return: App instance
         """
         assert current_user is not None
         app.icon = icon
         app.icon_background = icon_background
+        if icon_type is not None:
+            app.icon_type = icon_type if isinstance(icon_type, IconType) else IconType(icon_type)
         app.updated_by = current_user.id
         app.updated_at = naive_utc_now()
         db.session.commit()

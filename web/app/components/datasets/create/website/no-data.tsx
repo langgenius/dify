@@ -1,9 +1,9 @@
 'use client'
 import type { FC } from 'react'
+import { Button } from '@langgenius/dify-ui/button'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { Icon3Dots } from '@/app/components/base/icons/src/vender/line/others'
-import { Button } from '@/app/components/base/ui/button'
 import { ENABLE_WEBSITE_FIRECRAWL, ENABLE_WEBSITE_JINAREADER, ENABLE_WEBSITE_WATERCRAWL } from '@/config'
 import { DataSourceProvider } from '@/models/common'
 import s from './index.module.css'
@@ -57,7 +57,7 @@ const NoData: FC<Props> = ({
   return (
     <>
       <div className="mt-4 max-w-[640px] rounded-2xl bg-workflow-process-bg p-6">
-        <div className="flex h-12 w-12 items-center justify-center radius-lg border-[0.5px]
+        <div className="flex h-12 w-12 items-center justify-center rounded-[10px] border-[0.5px]
           border-components-card-border bg-components-card-bg shadow-lg shadow-shadow-shadow-5 backdrop-blur-[5px]"
         >
           {currentProvider.emoji}

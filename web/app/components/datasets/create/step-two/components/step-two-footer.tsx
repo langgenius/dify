@@ -1,9 +1,9 @@
 'use client'
 
 import type { FC } from 'react'
+import { Button } from '@langgenius/dify-ui/button'
 import { RiArrowLeftLine } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
-import { Button } from '@/app/components/base/ui/button'
 
 type StepTwoFooterProps = {
   isSetting?: boolean
@@ -26,7 +26,7 @@ export const StepTwoFooter: FC<StepTwoFooterProps> = ({
     return (
       <div className="mt-8 flex items-center py-2">
         <Button onClick={onPrevious}>
-          <RiArrowLeftLine className="mr-1 h-4 w-4" />
+          <RiArrowLeftLine className="mr-1 size-4" />
           {t('stepTwo.previousStep', { ns: 'datasetCreation' })}
         </Button>
         <Button

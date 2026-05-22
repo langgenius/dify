@@ -30,8 +30,8 @@ const StartNodeSelectionPanel: FC<StartNodeSelectionPanelProps> = ({
     <div className="grid grid-cols-2 gap-4">
       <StartNodeOption
         icon={(
-          <div className="flex h-9 w-9 items-center justify-center radius-lg border-[0.5px] border-transparent bg-util-colors-blue-brand-blue-brand-500 p-2">
-            <Home className="h-5 w-5 text-white" />
+          <div className="flex h-9 w-9 items-center justify-center rounded-[10px] border-[0.5px] border-transparent bg-util-colors-blue-brand-blue-brand-500 p-2">
+            <Home className="size-5 text-white" />
           </div>
         )}
         title={t('onboarding.userInputFull', { ns: 'workflow' })}
@@ -57,8 +57,8 @@ const StartNodeSelectionPanel: FC<StartNodeSelectionPanelProps> = ({
         trigger={() => (
           <StartNodeOption
             icon={(
-              <div className="flex h-9 w-9 items-center justify-center radius-lg border-[0.5px] border-transparent bg-util-colors-blue-brand-blue-brand-500 p-2">
-                <TriggerAll className="h-5 w-5 text-white" />
+              <div className="flex h-9 w-9 items-center justify-center rounded-[10px] border-[0.5px] border-transparent bg-util-colors-blue-brand-blue-brand-500 p-2">
+                <TriggerAll className="size-5 text-white" />
               </div>
             )}
             title={t('onboarding.trigger', { ns: 'workflow' })}

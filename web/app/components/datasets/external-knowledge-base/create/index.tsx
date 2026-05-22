@@ -1,11 +1,11 @@
 'use client'
 
 import type { CreateKnowledgeBaseReq } from './declarations'
+import { Button } from '@langgenius/dify-ui/button'
 import { RiArrowLeftLine, RiArrowRightLine } from '@remixicon/react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Divider from '@/app/components/base/divider'
-import { Button } from '@/app/components/base/ui/button'
 import { useDocLink } from '@/context/i18n'
 import { useRouter } from '@/next/navigation'
 import ExternalApiSelection from './ExternalApiSelection'
@@ -74,7 +74,7 @@ const ExternalKnowledgeBaseCreate: React.FC<ExternalKnowledgeBaseCreateProps> = 
                 variant="tertiary"
                 onClick={navBackHandle}
               >
-                <RiArrowLeftLine className="h-4 w-4 text-text-tertiary" />
+                <RiArrowLeftLine className="size-4 text-text-tertiary" />
               </Button>
             </div>
             <KnowledgeBaseInfo
@@ -119,7 +119,7 @@ const ExternalKnowledgeBaseCreate: React.FC<ExternalKnowledgeBaseCreateProps> = 
                 loading={loading}
               >
                 <div className="system-sm-medium text-components-button-primary-text">{t('externalKnowledgeForm.connect', { ns: 'dataset' })}</div>
-                <RiArrowRightLine className="h-4 w-4 text-components-button-primary-text" />
+                <RiArrowRightLine className="size-4 text-components-button-primary-text" />
               </Button>
             </div>
           </div>

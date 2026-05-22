@@ -282,7 +282,7 @@ describe('Hit Testing Flow', () => {
       const response = createHitTestingResponse(5)
 
       for (let i = 1; i < response.records.length; i++) {
-        expect(response.records[i - 1].score).toBeGreaterThanOrEqual(response.records[i].score)
+        expect(response.records[i - 1]!.score).toBeGreaterThanOrEqual(response.records[i]!.score)
       }
     })
 
@@ -290,8 +290,8 @@ describe('Hit Testing Flow', () => {
       const response = createHitTestingResponse(1)
       const record = response.records[0]
 
-      expect(record.segment.document.name).toBeTruthy()
-      expect(record.segment.document.data_source_type).toBeTruthy()
+      expect(record!.segment.document.name).toBeTruthy()
+      expect(record!.segment.document.data_source_type).toBeTruthy()
     })
   })
 

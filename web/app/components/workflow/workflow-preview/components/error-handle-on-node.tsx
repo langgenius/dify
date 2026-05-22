@@ -1,10 +1,10 @@
 import type { Node } from '@/app/components/workflow/types'
+import { cn } from '@langgenius/dify-ui/cn'
 import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useUpdateNodeInternals } from 'reactflow'
 import { ErrorHandleTypeEnum } from '@/app/components/workflow/nodes/_base/components/error-handle/types'
 import { NodeRunningStatus } from '@/app/components/workflow/types'
-import { cn } from '@/utils/classnames'
 import { NodeSourceHandle } from './node-handle'
 
 type ErrorHandleOnNodeProps = Pick<Node, 'id' | 'data'>
@@ -25,7 +25,7 @@ const ErrorHandleOnNode = ({
     return null
 
   return (
-    <div className="relative px-3 pb-2 pt-1">
+    <div className="relative px-3 pt-1 pb-2">
       <div className={cn(
         'relative flex h-6 items-center justify-between rounded-md bg-workflow-block-parma-bg px-[5px]',
         data._runningStatus === NodeRunningStatus.Exception && 'border-[0.5px] border-components-badge-status-light-warning-halo bg-state-warning-hover',

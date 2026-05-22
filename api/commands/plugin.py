@@ -11,7 +11,7 @@ from configs import dify_config
 from core.helper import encrypter
 from core.plugin.entities.plugin_daemon import CredentialType
 from core.plugin.impl.plugin import PluginInstaller
-from core.tools.utils.system_oauth_encryption import encrypt_system_oauth_params
+from core.tools.utils.system_encryption import encrypt_system_params
 from extensions.ext_database import db
 from models import Tenant
 from models.oauth import DatasourceOauthParamConfig, DatasourceProvider
@@ -44,7 +44,7 @@ def setup_system_tool_oauth_client(provider, client_params):
 
         click.echo(click.style(f"Encrypting client params: {client_params}", fg="yellow"))
         click.echo(click.style(f"Using SECRET_KEY: `{dify_config.SECRET_KEY}`", fg="yellow"))
-        oauth_client_params = encrypt_system_oauth_params(client_params_dict)
+        oauth_client_params = encrypt_system_params(client_params_dict)
         click.echo(click.style("Client params encrypted successfully.", fg="green"))
     except Exception as e:
         click.echo(click.style(f"Error parsing client params: {str(e)}", fg="red"))
@@ -94,7 +94,7 @@ def setup_system_trigger_oauth_client(provider, client_params):
 
         click.echo(click.style(f"Encrypting client params: {client_params}", fg="yellow"))
         click.echo(click.style(f"Using SECRET_KEY: `{dify_config.SECRET_KEY}`", fg="yellow"))
-        oauth_client_params = encrypt_system_oauth_params(client_params_dict)
+        oauth_client_params = encrypt_system_params(client_params_dict)
         click.echo(click.style("Client params encrypted successfully.", fg="green"))
     except Exception as e:
         click.echo(click.style(f"Error parsing client params: {str(e)}", fg="red"))
@@ -185,9 +185,9 @@ def transform_datasource_credentials(environment: str):
         firecrawl_plugin_id = "langgenius/firecrawl_datasource"
         jina_plugin_id = "langgenius/jina_datasource"
         if environment == "online":
-            notion_plugin_unique_identifier = plugin_migration._fetch_plugin_unique_identifier(notion_plugin_id)  # pyright: ignore[reportPrivateUsage]
-            firecrawl_plugin_unique_identifier = plugin_migration._fetch_plugin_unique_identifier(firecrawl_plugin_id)  # pyright: ignore[reportPrivateUsage]
-            jina_plugin_unique_identifier = plugin_migration._fetch_plugin_unique_identifier(jina_plugin_id)  # pyright: ignore[reportPrivateUsage]
+            notion_plugin_unique_identifier = plugin_migration._fetch_plugin_unique_identifier(notion_plugin_id)
+            firecrawl_plugin_unique_identifier = plugin_migration._fetch_plugin_unique_identifier(firecrawl_plugin_id)
+            jina_plugin_unique_identifier = plugin_migration._fetch_plugin_unique_identifier(jina_plugin_id)
         else:
             notion_plugin_unique_identifier = None
             firecrawl_plugin_unique_identifier = None

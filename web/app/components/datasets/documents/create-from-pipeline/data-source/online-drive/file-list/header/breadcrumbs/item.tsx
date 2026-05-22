@@ -1,6 +1,6 @@
+import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
 import { useCallback } from 'react'
-import { cn } from '@/utils/classnames'
 
 type BreadcrumbItemProps = {
   name: string
@@ -39,7 +39,7 @@ const BreadcrumbItem = ({
       >
         {name}
       </button>
-      {showSeparator && <span className="system-xs-regular shrink-0 text-divider-deep">/</span>}
+      {showSeparator && <span className="shrink-0 system-xs-regular text-divider-deep">/</span>}
     </>
   )
 }
