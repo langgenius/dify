@@ -237,7 +237,7 @@ class AppListApi(Resource):
         params = AppListParams(
             page=query.page,
             limit=query.limit,
-            mode=query.mode.value if query.mode else "all", # type:ignore
+            mode=query.mode.value if query.mode else "all",  # type:ignore
             name=query.name,
             tag_ids=tag_ids,
             status="normal",
@@ -270,7 +270,7 @@ class AppListApi(Resource):
             )
             for r in pagination.items
         ]
-        
+
         env = AppListResponse(
             page=query.page,
             limit=query.limit,

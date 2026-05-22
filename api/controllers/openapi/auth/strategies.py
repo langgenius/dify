@@ -142,8 +142,8 @@ def _has_tenant_membership(account_id: uuid.UUID | str | None, tenant_id: str) -
 
 def _login_as(user) -> None:
     """Set Flask-Login request user so downstream services see the caller."""
-    current_app.login_manager._update_request_context_with_user(user) # type:ignore
-    user_logged_in.send(current_app._get_current_object(), user=user) # type:ignore
+    current_app.login_manager._update_request_context_with_user(user)  # type:ignore
+    user_logged_in.send(current_app._get_current_object(), user=user)  # type:ignore
 
 
 class CallerMounter(Protocol):

@@ -11,9 +11,9 @@ import uuid
 from dataclasses import dataclass, field
 from datetime import datetime
 from typing import TYPE_CHECKING, Literal, Protocol
-from werkzeug.exceptions import Unauthorized
 
 from flask import Request
+from werkzeug.exceptions import Unauthorized
 
 from libs.oauth_bearer import Scope, SubjectType
 
@@ -51,6 +51,7 @@ class Context:
         if not self.subject_type:
             raise Unauthorized("subject_type unset — BearerCheck did not run")
         return self.subject_type
+
 
 class Step(Protocol):
     """One responsibility. Mutate ctx or raise to short-circuit."""
