@@ -123,6 +123,27 @@ describe('Nav Component', () => {
       expect(screen.getByTestId('active-icon')).toBeInTheDocument()
     })
 
+    it('should render active child link when activeLink matches the current segment', () => {
+      vi.mocked(useSelectedLayoutSegment).mockReturnValue('snippets')
+
+      render(
+        <Nav
+          {...defaultProps}
+          activeSegment={['apps', 'app', 'snippets']}
+          activeLink={{
+            segment: 'snippets',
+            text: 'SNIPPETS',
+            link: '/snippets',
+          }}
+        />,
+      )
+
+      expect(screen.getByText('Nav Text')).toBeInTheDocument()
+      expect(screen.getByText('Nav Text')).toHaveClass('max-[1024px]:hidden')
+      expect(screen.getByRole('link', { name: 'SNIPPETS' })).toHaveAttribute('href', '/snippets')
+      expect(screen.getByRole('link', { name: 'SNIPPETS' })).not.toHaveClass('max-[1024px]:hidden')
+    })
+
     it('should not show hover background if not activated', () => {
       vi.mocked(useSelectedLayoutSegment).mockReturnValue('other')
       const { container } = render(<Nav {...defaultProps} />)

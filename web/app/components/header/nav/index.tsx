@@ -15,6 +15,11 @@ type INavProps = {
   text: string
   activeSegment: string | string[]
   link: string
+  activeLink?: {
+    segment: string
+    text: string
+    link: string
+  }
   isApp: boolean
 } & INavSelectorProps
 
@@ -24,6 +29,7 @@ const Nav = ({
   text,
   activeSegment,
   link,
+  activeLink,
   curNav,
   navigationItems,
   createText,
@@ -36,6 +42,7 @@ const Nav = ({
   const [hovered, setHovered] = useState(false)
   const segment = useSelectedLayoutSegment()
   const isActivated = Array.isArray(activeSegment) ? activeSegment.includes(segment!) : segment === activeSegment
+  const shouldShowActiveLink = isActivated && activeLink && segment === activeLink.segment
 
   return (
     <div className={`
@@ -85,6 +92,19 @@ const Nav = ({
               onLoadMore={onLoadMore}
               isLoadingMore={isLoadingMore}
             />
+          </>
+        )
+      }
+      {
+        !curNav && shouldShowActiveLink && (
+          <>
+            <div className="font-light text-divider-deep">/</div>
+            <Link
+              href={activeLink.link}
+              className="hover:bg-components-main-nav-nav-button-bg-active-hover flex h-7 cursor-pointer items-center rounded-[10px] px-2.5 text-components-main-nav-nav-button-text-active"
+            >
+              {activeLink.text}
+            </Link>
           </>
         )
       }
