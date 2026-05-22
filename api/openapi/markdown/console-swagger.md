@@ -5693,6 +5693,23 @@ Get feature configuration for current tenant
 | ---- | ----------- | ------ |
 | 200 | Success | [FeatureModel](#featuremodel) |
 
+### /features/vector-space
+
+#### GET
+##### Summary
+
+Get vector-space usage and limit for current tenant
+
+##### Description
+
+Get vector-space usage and limit for current tenant
+
+##### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | [LimitationModel](#limitationmodel) |
+
 ### /files/support-type
 
 #### GET
