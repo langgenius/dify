@@ -26,7 +26,7 @@ export type VisibleScoreThresholdFieldProps = {
   onEnabledChange: (value: boolean) => void
 }
 
-export type ScoreThresholdFieldProps
+type ScoreThresholdFieldProps
   = | VisibleScoreThresholdFieldProps
     | {
       hidden: true
