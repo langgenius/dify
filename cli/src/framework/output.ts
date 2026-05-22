@@ -79,14 +79,8 @@ function stringifyFormattedOutput(output: FormattedOutput<FormattedPrintable>): 
     case '':
     case 'text':
       return output.data.text()
-    case 'json':
-      return `${JSON.stringify(output.data.json(), null, 2)}\n`
-    case 'yaml':
-      return yaml.dump(output.data.json(), { indent: 2, lineWidth: -1 })
-    case 'name':
-      return `${toName(output.data)}\n`
     default:
-      throw new Error(`output format ${JSON.stringify(output.format)} not supported, allowed: json, name, text, yaml`)
+      return stringifyJsonLike(output.format, output.data, 'json, name, text, yaml')
   }
 }
 
@@ -95,14 +89,25 @@ function stringifyTableOutput(output: TableOutput<TablePrintable>): string {
     case '':
     case 'wide':
       return renderTable(output)
-    case 'json':
-      return `${JSON.stringify(output.data.json(), null, 2)}\n`
-    case 'yaml':
-      return yaml.dump(output.data.json(), { indent: 2, lineWidth: -1 })
-    case 'name':
-      return `${toName(output.data)}\n`
     default:
-      throw new Error(`output format ${JSON.stringify(output.format)} not supported, allowed: json, name, wide, yaml`)
+      return stringifyJsonLike(output.format, output.data, 'json, name, wide, yaml')
+  }
+}
+
+function stringifyJsonLike(
+  format: string,
+  data: TablePrintable | FormattedPrintable,
+  allowed: string,
+): string {
+  switch (format) {
+    case 'json':
+      return `${JSON.stringify(data.json(), null, 2)}\n`
+    case 'yaml':
+      return yaml.dump(data.json(), { indent: 2, lineWidth: -1 })
+    case 'name':
+      return `${toName(data)}\n`
+    default:
+      throw new Error(`output format ${JSON.stringify(format)} not supported, allowed: ${allowed}`)
   }
 }
 
@@ -158,15 +163,18 @@ function formatTable(rows: readonly (readonly string[])[]): string {
     return ''
   const colCount = rows[0]?.length ?? 0
   const widths: number[] = Array.from({ length: colCount }, () => 0)
+  const rowWidths: number[][] = []
   for (const row of rows) {
+    const rw: number[] = Array.from({ length: colCount }, (_v, i) => displayWidth(row[i] ?? ''))
+    rowWidths.push(rw)
     for (let i = 0; i < colCount; i++) {
-      const cell = row[i] ?? ''
-      const w = displayWidth(cell)
+      const w = rw[i] ?? 0
       if (w > (widths[i] ?? 0))
         widths[i] = w
     }
   }
-  const lines = rows.map((row) => {
+  const lines = rows.map((row, rowIdx) => {
+    const rw = rowWidths[rowIdx] ?? []
     const cells: string[] = []
     for (let i = 0; i < colCount; i++) {
       const cell = row[i] ?? ''
@@ -175,7 +183,7 @@ function formatTable(rows: readonly (readonly string[])[]): string {
         cells.push(cell)
       }
       else {
-        const pad = (widths[i] ?? 0) - displayWidth(cell) + 2
+        const pad = (widths[i] ?? 0) - (rw[i] ?? 0) + 2
         cells.push(cell + ' '.repeat(pad))
       }
     }
