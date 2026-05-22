@@ -9,7 +9,7 @@ import {
   NumberFieldIncrement,
   NumberFieldInput,
 } from '@langgenius/dify-ui/number-field'
-import { Select, SelectContent, SelectItem, SelectItemIndicator, SelectItemText, SelectTrigger } from '@langgenius/dify-ui/select'
+import { Select, SelectContent, SelectItem, SelectItemIndicator, SelectItemText, SelectLabel, SelectTrigger } from '@langgenius/dify-ui/select'
 import { toast } from '@langgenius/dify-ui/toast'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import copy from 'copy-to-clipboard'
@@ -203,6 +203,7 @@ const Panel: FC<NodePanelProps<WebhookTriggerNodeType>> = ({
               disabled={readOnly}
               onValueChange={value => value && handleContentTypeChange(value)}
             >
+              <SelectLabel className="sr-only">{t(`${i18nPrefix}.contentType`, { ns: 'workflow' })}</SelectLabel>
               <SelectTrigger className="h-8 w-full text-sm">
                 {selectedContentType?.name}
               </SelectTrigger>

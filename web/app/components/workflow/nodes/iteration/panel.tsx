@@ -2,7 +2,7 @@ import type { FC } from 'react'
 import type { IterationNodeType } from './types'
 import type { NodePanelProps } from '@/app/components/workflow/types'
 import { FieldsetLegend, FieldsetRoot } from '@langgenius/dify-ui/fieldset'
-import { Select, SelectContent, SelectItem, SelectItemIndicator, SelectItemText, SelectTrigger } from '@langgenius/dify-ui/select'
+import { Select, SelectContent, SelectItem, SelectItemIndicator, SelectItemText, SelectLabel, SelectTrigger } from '@langgenius/dify-ui/select'
 import { Slider } from '@langgenius/dify-ui/slider'
 import { Switch } from '@langgenius/dify-ui/switch'
 import * as React from 'react'
@@ -24,6 +24,7 @@ const Panel: FC<NodePanelProps<IterationNodeType>> = ({
 }) => {
   const { t } = useTranslation()
   const maxParallelismLabel = t(`${i18nPrefix}.MaxParallelismTitle`, { ns: 'workflow' })
+  const errorResponseMethodLabel = t(`${i18nPrefix}.errorResponseMethod`, { ns: 'workflow' })
   const responseMethod = [
     {
       value: ErrorHandleMode.Terminated,
@@ -122,7 +123,7 @@ const Panel: FC<NodePanelProps<IterationNodeType>> = ({
       <Split />
 
       <div className="px-4 py-2">
-        <Field title={t(`${i18nPrefix}.errorResponseMethod`, { ns: 'workflow' })}>
+        <Field title={errorResponseMethodLabel}>
           <Select
             value={selectedResponseMethod ? String(selectedResponseMethod.value) : null}
             onValueChange={(nextValue) => {
@@ -133,6 +134,7 @@ const Panel: FC<NodePanelProps<IterationNodeType>> = ({
                 changeErrorResponseMode(nextItem)
             }}
           >
+            <SelectLabel className="sr-only">{errorResponseMethodLabel}</SelectLabel>
             <SelectTrigger className="w-full">
               {selectedResponseMethod?.name ?? t('placeholder.select', { ns: 'common' })}
             </SelectTrigger>

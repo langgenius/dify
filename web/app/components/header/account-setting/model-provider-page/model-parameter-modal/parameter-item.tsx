@@ -8,7 +8,7 @@ import { FieldItem, FieldLabel, FieldRoot } from '@langgenius/dify-ui/field'
 import { FieldsetLegend, FieldsetRoot } from '@langgenius/dify-ui/fieldset'
 import { Radio } from '@langgenius/dify-ui/radio'
 import { RadioGroup } from '@langgenius/dify-ui/radio-group'
-import { Select, SelectContent, SelectItem, SelectItemIndicator, SelectItemText, SelectTrigger, SelectValue } from '@langgenius/dify-ui/select'
+import { Select, SelectContent, SelectItem, SelectItemIndicator, SelectItemText, SelectLabel, SelectTrigger, SelectValue } from '@langgenius/dify-ui/select'
 import { Slider } from '@langgenius/dify-ui/slider'
 import { Switch } from '@langgenius/dify-ui/switch'
 import { useEffect, useMemo, useRef, useState } from 'react'
@@ -349,6 +349,7 @@ function ParameterItem({
           value={renderValue as string}
           onValueChange={v => handleInputChange(v ?? undefined)}
         >
+          <SelectLabel className="sr-only">{sliderLabel}</SelectLabel>
           <SelectTrigger className="w-full">
             <SelectValue />
           </SelectTrigger>

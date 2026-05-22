@@ -37,8 +37,7 @@ export const Default: Story = {
   render: () => (
     <div className={triggerWidth}>
       <Select defaultValue="seattle">
-        <SelectLabel>City</SelectLabel>
-        <SelectTrigger>
+        <SelectTrigger aria-label="City">
           <SelectValue placeholder="Select a city" />
         </SelectTrigger>
         <SelectContent>
@@ -56,6 +55,29 @@ export const Default: Story = {
           </SelectItem>
           <SelectItem value="paris">
             <SelectItemText>Paris</SelectItemText>
+            <SelectItemIndicator />
+          </SelectItem>
+        </SelectContent>
+      </Select>
+    </div>
+  ),
+}
+
+export const WithVisibleLabel: Story = {
+  render: () => (
+    <div className={triggerWidth}>
+      <Select defaultValue="seattle">
+        <SelectLabel>City</SelectLabel>
+        <SelectTrigger>
+          <SelectValue placeholder="Select a city" />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="seattle">
+            <SelectItemText>Seattle</SelectItemText>
+            <SelectItemIndicator />
+          </SelectItem>
+          <SelectItem value="new-york">
+            <SelectItemText>New York</SelectItemText>
             <SelectItemIndicator />
           </SelectItem>
         </SelectContent>

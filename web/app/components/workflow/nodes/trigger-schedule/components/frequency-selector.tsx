@@ -7,6 +7,7 @@ import {
   SelectItem,
   SelectItemIndicator,
   SelectItemText,
+  SelectLabel,
   SelectTrigger,
 } from '@langgenius/dify-ui/select'
 import { useTranslation } from 'react-i18next'
@@ -24,6 +25,7 @@ type FrequencySelectorProps = {
 const FrequencySelector = ({ frequency, onChange }: FrequencySelectorProps) => {
   const { t } = useTranslation()
   const groupLabel = t('nodes.triggerSchedule.frequency.label', { ns: 'workflow' })
+  const fieldLabel = t('nodes.triggerSchedule.frequencyLabel', { ns: 'workflow' })
 
   const frequencies: FrequencyOption[] = [
     { value: 'hourly', name: t('nodes.triggerSchedule.frequency.hourly', { ns: 'workflow' }) },
@@ -45,6 +47,7 @@ const FrequencySelector = ({ frequency, onChange }: FrequencySelectorProps) => {
       value={frequency}
       onValueChange={handleFrequencyChange}
     >
+      <SelectLabel className="sr-only">{fieldLabel}</SelectLabel>
       <SelectTrigger className="w-full py-2">
         {selectedFrequency?.name ?? t('nodes.triggerSchedule.selectFrequency', { ns: 'workflow' })}
       </SelectTrigger>
