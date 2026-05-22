@@ -11,6 +11,10 @@ from graphon.runtime import VariablePool
 class DifyIterationNode(IterationNode):
     """Dify compatibility layer for Graphon's iteration node."""
 
+    @classmethod
+    def version(cls) -> str:
+        return IterationNode.version()
+
     @override
     def _execute_parallel_iteration_with_graph_engine(
         self,
