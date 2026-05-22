@@ -24,6 +24,7 @@ export default class DeleteMember extends DifyCommand {
     }),
     'http-retry': httpRetryFlag,
     'output': Flags.string({ char: 'o', description: 'output format (json|yaml|name|text)', default: '' }),
+    'yes': Flags.boolean({ char: 'y', description: 'skip confirmation prompt', default: false }),
   }
 
   async run(argv: string[]) {
@@ -31,7 +32,7 @@ export default class DeleteMember extends DifyCommand {
     const format = flags.output
     const ctx = await this.authedCtx({ retryFlag: flags['http-retry'], format })
     const result = await runDeleteMember(
-      { memberId: args.memberId, workspace: flags.workspace, format },
+      { memberId: args.memberId, workspace: flags.workspace, format, yes: flags.yes },
       { bundle: ctx.bundle, http: ctx.http, io: ctx.io },
     )
     return formatted({ format, data: result.data })
