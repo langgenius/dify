@@ -9,21 +9,11 @@ from typing import Any, TypedDict, cast
 
 from pydantic import BaseModel, TypeAdapter, ValidationError
 from sqlalchemy import delete, func, select, update
-
-from core.db.session_factory import session_factory
-
-
-class InvitationData(TypedDict):
-    account_id: str
-    email: str
-    workspace_id: str
-
-
-_invitation_adapter: TypeAdapter[InvitationData] = TypeAdapter(InvitationData)
 from werkzeug.exceptions import Unauthorized
 
 from configs import dify_config
 from constants.languages import get_valid_language, language_timezone_mapping
+from core.db.session_factory import session_factory
 from events.tenant_event import tenant_was_created
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client, redis_fallback
@@ -46,12 +36,16 @@ from models.account import (
 )
 from models.model import DifySetup
 from services.billing_service import BillingService
+
 from services.entities.auth_entities import (
     ChangeEmailNewEmailToken,
     ChangeEmailOldEmailToken,
     ChangeEmailPhase,
     ChangeEmailTokenData,
 )
+
+from services.enterprise.rbac_service import ListOption, RBACService
+
 from services.errors.account import (
     AccountAlreadyInTenantError,
     AccountLoginError,
@@ -68,7 +62,6 @@ from services.errors.account import (
     TenantNotFoundError,
 )
 from services.errors.workspace import WorkSpaceNotAllowedCreateError, WorkspacesLimitExceededError
-from services.enterprise.rbac_service import ListOption, RBACService
 from services.feature_service import FeatureService
 from tasks.delete_account_task import delete_account_task
 from tasks.mail_account_deletion_task import send_account_deletion_verification_code
@@ -88,6 +81,15 @@ from tasks.mail_reset_password_task import (
     send_reset_password_mail_task,
     send_reset_password_mail_task_when_account_not_exist,
 )
+
+
+class InvitationData(TypedDict):
+    account_id: str
+    email: str
+    workspace_id: str
+
+
+_invitation_adapter: TypeAdapter[InvitationData] = TypeAdapter(InvitationData)
 
 logger = logging.getLogger(__name__)
 
@@ -175,6 +177,23 @@ class AccountService:
                 return role_id
 
         raise ValueError(f"Workspace RBAC role not found for identifier: {role_identifier}")
+
+    @staticmethod
+    def replace_workspace_member_rbac_role(
+        tenant_id: str, actor_account_id: str, member_account_id: str, role_identifier: str
+    ) -> None:
+        """Assign a workspace RBAC role to a member account."""
+        resolved_role_id = AccountService.resolve_workspace_rbac_role_id(
+            tenant_id=tenant_id,
+            account_id=actor_account_id,
+            role_identifier=role_identifier,
+        )
+        RBACService.MemberRoles.replace(
+            tenant_id=tenant_id,
+            account_id=actor_account_id,
+            member_account_id=member_account_id,
+            role_ids=[resolved_role_id],
+        )
 
     @staticmethod
     def _get_refresh_token_key(refresh_token: str) -> str:
@@ -1177,16 +1196,11 @@ class TenantService:
             tenant = TenantService.create_tenant(name=f"{account.name}'s Workspace", is_setup=is_setup)
         TenantService.create_tenant_member(tenant, account, role="owner")
         if dify_config.RBAC_ENABLED:
-            resolved_role_id = AccountService.resolve_workspace_rbac_role_id(
+            AccountService.replace_workspace_member_rbac_role(
                 tenant_id=str(tenant.id),
-                account_id=account.id,
-                role_identifier="所有者",
-            )
-            RBACService.MemberRoles.replace(
-                tenant_id=str(tenant.id),
-                account_id=account.id,
+                actor_account_id=account.id,
                 member_account_id=account.id,
-                role_ids=[resolved_role_id],
+                role_identifier="所有者",
             )
         account.current_tenant = tenant
         db.session.commit()
@@ -1663,9 +1677,7 @@ class RegisterService:
                 status=AccountStatus.PENDING,
                 is_setup=True,
             )
-            # Create new tenant member for invited tenant (legacy path)
-            if not dify_config.RBAC_ENABLED:
-                TenantService.create_tenant_member(tenant, account, role)
+            TenantService.create_tenant_member(tenant, account, role)
             TenantService.switch_tenant(account, tenant.id)
         else:
             TenantService.check_member_permission(tenant, inviter, account, "add")
@@ -1676,25 +1688,26 @@ class RegisterService:
             )
 
             if not ta:
-                if not dify_config.RBAC_ENABLED:
-                    TenantService.create_tenant_member(tenant, account, role)
+                TenantService.create_tenant_member(tenant, account, role)
 
             # Support resend invitation email when the account is pending status
             if account.status != AccountStatus.PENDING:
+                if dify_config.RBAC_ENABLED and not ta:
+                    AccountService.replace_workspace_member_rbac_role(
+                        tenant_id=str(tenant.id),
+                        actor_account_id=inviter.id,
+                        member_account_id=account.id,
+                        role_identifier=role,
+                    )
                 raise AccountAlreadyInTenantError("Account already in tenant.")
 
         # Assign RBAC role if RBAC is enabled
         if dify_config.RBAC_ENABLED:
-            resolved_role_id = AccountService.resolve_workspace_rbac_role_id(
+            AccountService.replace_workspace_member_rbac_role(
                 tenant_id=str(tenant.id),
-                account_id=inviter.id,
-                role_identifier=role,
-            )
-            RBACService.MemberRoles.replace(
-                tenant_id=str(tenant.id),
-                account_id=inviter.id,
+                actor_account_id=inviter.id,
                 member_account_id=account.id,
-                role_ids=[resolved_role_id],
+                role_identifier=role,
             )
 
         token = cls.generate_invite_token(tenant, account)
