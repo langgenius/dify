@@ -172,6 +172,37 @@ export type DatasetListQuery = {
   tag_ids?: Array<string>
 }
 
+export type DatasetMetadataActionResponse = {
+  result: string
+}
+
+export type DatasetMetadataBuiltInFieldResponse = {
+  name: string
+  type: string
+}
+
+export type DatasetMetadataBuiltInFieldsResponse = {
+  fields: Array<DatasetMetadataBuiltInFieldResponse>
+}
+
+export type DatasetMetadataListItemResponse = {
+  count?: number
+  id: string
+  name: string
+  type: string
+}
+
+export type DatasetMetadataListResponse = {
+  built_in_field_enabled: boolean
+  doc_metadata: Array<DatasetMetadataListItemResponse>
+}
+
+export type DatasetMetadataResponse = {
+  id: string
+  name: string
+  type: string
+}
+
 export type DatasetPermissionEnum = 'all_team_members' | 'only_me' | 'partial_members'
 
 export type DatasetUpdatePayload = {
@@ -1666,7 +1697,7 @@ export type PostDatasetsByDatasetIdDocumentsMetadataError
   = PostDatasetsByDatasetIdDocumentsMetadataErrors[keyof PostDatasetsByDatasetIdDocumentsMetadataErrors]
 
 export type PostDatasetsByDatasetIdDocumentsMetadataResponses = {
-  200: SimpleResultResponse
+  200: DatasetMetadataActionResponse
 }
 
 export type PostDatasetsByDatasetIdDocumentsMetadataResponse
@@ -2349,9 +2380,7 @@ export type GetDatasetsByDatasetIdMetadataError
   = GetDatasetsByDatasetIdMetadataErrors[keyof GetDatasetsByDatasetIdMetadataErrors]
 
 export type GetDatasetsByDatasetIdMetadataResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: DatasetMetadataListResponse
 }
 
 export type GetDatasetsByDatasetIdMetadataResponse
@@ -2379,9 +2408,7 @@ export type PostDatasetsByDatasetIdMetadataError
   = PostDatasetsByDatasetIdMetadataErrors[keyof PostDatasetsByDatasetIdMetadataErrors]
 
 export type PostDatasetsByDatasetIdMetadataResponses = {
-  201: {
-    [key: string]: unknown
-  }
+  201: DatasetMetadataResponse
 }
 
 export type PostDatasetsByDatasetIdMetadataResponse
@@ -2406,9 +2433,7 @@ export type GetDatasetsByDatasetIdMetadataBuiltInError
   = GetDatasetsByDatasetIdMetadataBuiltInErrors[keyof GetDatasetsByDatasetIdMetadataBuiltInErrors]
 
 export type GetDatasetsByDatasetIdMetadataBuiltInResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: DatasetMetadataBuiltInFieldsResponse
 }
 
 export type GetDatasetsByDatasetIdMetadataBuiltInResponse
@@ -2437,7 +2462,7 @@ export type PostDatasetsByDatasetIdMetadataBuiltInByActionError
   = PostDatasetsByDatasetIdMetadataBuiltInByActionErrors[keyof PostDatasetsByDatasetIdMetadataBuiltInByActionErrors]
 
 export type PostDatasetsByDatasetIdMetadataBuiltInByActionResponses = {
-  200: SimpleResultResponse
+  200: DatasetMetadataActionResponse
 }
 
 export type PostDatasetsByDatasetIdMetadataBuiltInByActionResponse
@@ -2497,9 +2522,7 @@ export type PatchDatasetsByDatasetIdMetadataByMetadataIdError
   = PatchDatasetsByDatasetIdMetadataByMetadataIdErrors[keyof PatchDatasetsByDatasetIdMetadataByMetadataIdErrors]
 
 export type PatchDatasetsByDatasetIdMetadataByMetadataIdResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: DatasetMetadataResponse
 }
 
 export type PatchDatasetsByDatasetIdMetadataByMetadataIdResponse

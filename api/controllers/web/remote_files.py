@@ -1,6 +1,5 @@
-import urllib.parse
-
 import httpx
+from flask import request
 from pydantic import BaseModel, Field, HttpUrl
 
 import services
@@ -59,7 +58,7 @@ class RemoteFileInfoApi(WebApiResource):
         Raises:
             HTTPException: If the remote file cannot be accessed
         """
-        decoded_url = urllib.parse.unquote(url)
+        decoded_url = helpers.decode_remote_url(url, request.query_string)
         resp = ssrf_proxy.head(decoded_url)
         if resp.status_code != httpx.codes.OK:
             # failed back to get method
