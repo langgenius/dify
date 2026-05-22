@@ -53,6 +53,18 @@ function VersionsIcon({ className }: TailwindNavIconProps) {
 function VersionsSelectedIcon({ className }: TailwindNavIconProps) {
   return <span aria-hidden className={cn('i-ri-stack-fill', className)} />
 }
+function AccessIcon({ className }: TailwindNavIconProps) {
+  return <span aria-hidden className={cn('i-ri-shield-user-line', className)} />
+}
+function AccessSelectedIcon({ className }: TailwindNavIconProps) {
+  return <span aria-hidden className={cn('i-ri-shield-user-fill', className)} />
+}
+function ApiIcon({ className }: TailwindNavIconProps) {
+  return <span aria-hidden className={cn('i-ri-code-s-slash-line', className)} />
+}
+function ApiSelectedIcon({ className }: TailwindNavIconProps) {
+  return <span aria-hidden className={cn('i-ri-code-s-slash-fill', className)} />
+}
 function SettingsIcon({ className }: TailwindNavIconProps) {
   return <span aria-hidden className={cn('i-ri-settings-3-line', className)} />
 }
@@ -64,6 +76,8 @@ const TABS: TabDef[] = [
   { key: 'overview', icon: OverviewIcon, selectedIcon: OverviewSelectedIcon },
   { key: 'deploy', icon: DeployIcon, selectedIcon: DeploySelectedIcon },
   { key: 'releases', icon: VersionsIcon, selectedIcon: VersionsSelectedIcon },
+  { key: 'access', icon: AccessIcon, selectedIcon: AccessSelectedIcon },
+  { key: 'api', icon: ApiIcon, selectedIcon: ApiSelectedIcon },
   { key: 'settings', icon: SettingsIcon, selectedIcon: SettingsSelectedIcon },
 ]
 

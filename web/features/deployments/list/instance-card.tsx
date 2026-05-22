@@ -244,26 +244,29 @@ function DeploymentAccessLinks({ appInstanceId, access, isLoading }: {
   const links = [
     access?.accessChannelsEnabled && access.webappUrl
       ? {
-          href: getInstanceTabHref(appInstanceId, 'overview'),
+          key: 'webapp',
+          href: getInstanceTabHref(appInstanceId, 'access'),
           label: t('card.access.webApp'),
           icon: 'i-ri-global-line',
         }
       : undefined,
     access?.accessChannelsEnabled && access.cliUrl
       ? {
-          href: getInstanceTabHref(appInstanceId, 'deploy'),
+          key: 'cli',
+          href: getInstanceTabHref(appInstanceId, 'access'),
           label: t('card.access.cli'),
           icon: 'i-ri-terminal-box-line',
         }
       : undefined,
     access?.developerApiEnabled && access.apiUrl
       ? {
-          href: getInstanceTabHref(appInstanceId, 'settings'),
+          key: 'api',
+          href: getInstanceTabHref(appInstanceId, 'api'),
           label: t('card.access.api'),
           icon: 'i-ri-code-s-slash-line',
         }
       : undefined,
-  ].filter((link): link is { href: string, label: string, icon: string } => Boolean(link))
+  ].filter((link): link is { key: string, href: string, label: string, icon: string } => Boolean(link))
 
   if (links.length === 0)
     return <div className="min-w-0 grow" />
@@ -271,7 +274,7 @@ function DeploymentAccessLinks({ appInstanceId, access, isLoading }: {
   return (
     <div className="flex min-w-0 grow items-center gap-2">
       {links.map(link => (
-        <Tooltip key={link.href}>
+        <Tooltip key={link.key}>
           <TooltipTrigger
             render={(
               <Link
@@ -360,12 +363,16 @@ export function InstanceCard({ app }: {
                 </div>
               )
             : (
-                <p
-                  className="mt-2 line-clamp-2 min-h-9 system-xs-regular text-text-tertiary"
-                  title={description || t('card.noDescription')}
-                >
-                  {description || t('card.noDescription')}
-                </p>
+                description
+                  ? (
+                      <p
+                        className="mt-2 line-clamp-2 min-h-9 system-xs-regular text-text-tertiary"
+                        title={description}
+                      >
+                        {description}
+                      </p>
+                    )
+                  : <div className="mt-2 min-h-9" />
               )}
         </Link>
 

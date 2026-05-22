@@ -38,26 +38,79 @@ function ApiKeyRow({ appInstanceId, apiKey }: {
   }
 
   return (
-    <div className="flex items-center gap-3 py-1.5">
-      <div className="flex min-w-35 flex-col">
-        <span className="system-sm-medium text-text-primary">{apiKey.name || apiKey.id}</span>
-        <span className="system-xs-regular text-text-tertiary">
-          {t('access.api.envPrefix', { env: environmentLabel })}
-        </span>
-      </div>
-      <div className="flex min-w-0 flex-1 items-center gap-1 rounded-lg border border-components-input-border-active bg-components-input-bg-normal pr-1 pl-2">
-        <div className="min-w-0 flex-1 truncate font-mono system-sm-medium text-text-secondary">
-          {displayValue}
+    <tr className="border-t border-divider-subtle">
+      <td className="px-3 py-2.5 align-middle">
+        <div className="max-w-54 truncate system-sm-medium text-text-primary">
+          {apiKey.name || apiKey.id}
         </div>
+      </td>
+      <td className="px-3 py-2.5 align-middle">
+        <span className="inline-flex h-5 max-w-36 items-center rounded-md bg-background-section-burn px-1.5 system-xs-medium text-text-tertiary">
+          <span className="truncate">{environmentLabel}</span>
+        </span>
+      </td>
+      <td className="px-3 py-2.5 align-middle">
+        <div className="flex h-8 min-w-0 items-center rounded-lg border border-components-input-border-active bg-components-input-bg-normal px-2">
+          <div className="min-w-0 flex-1 truncate font-mono system-sm-medium text-text-secondary">
+            {displayValue}
+          </div>
+        </div>
+      </td>
+      <td className="px-3 py-2.5 text-right align-middle">
         <button
           type="button"
           onClick={handleRevoke}
           aria-label={t('access.revoke')}
-          className="flex size-6 shrink-0 items-center justify-center rounded-md text-text-tertiary hover:bg-state-destructive-hover hover:text-text-destructive"
+          className="inline-flex size-7 shrink-0 items-center justify-center rounded-md text-text-tertiary hover:bg-state-destructive-hover hover:text-text-destructive"
         >
           <span className="i-ri-delete-bin-line size-3.5" />
         </button>
-      </div>
+      </td>
+    </tr>
+  )
+}
+
+function ApiKeyTableHeader() {
+  const { t } = useTranslation('deployments')
+
+  return (
+    <thead>
+      <tr className="bg-background-default-subtle text-left system-xs-medium-uppercase text-text-tertiary">
+        <th className="w-56 px-3 py-2 font-medium">
+          {t('access.api.table.name')}
+        </th>
+        <th className="w-40 px-3 py-2 font-medium">
+          {t('access.api.table.environment')}
+        </th>
+        <th className="px-3 py-2 font-medium">
+          {t('access.api.table.key')}
+        </th>
+        <th className="w-18 px-3 py-2 text-right font-medium">
+          {t('access.api.table.action')}
+        </th>
+      </tr>
+    </thead>
+  )
+}
+
+function ApiKeyTable({ appInstanceId, apiKeys }: {
+  appInstanceId: string
+  apiKeys: DeveloperApiKeyRow[]
+}) {
+  return (
+    <div className="overflow-x-auto rounded-lg border border-divider-subtle">
+      <table className="w-full min-w-175 table-fixed border-collapse">
+        <ApiKeyTableHeader />
+        <tbody className="bg-components-panel-bg">
+          {apiKeys.map(apiKey => (
+            <ApiKeyRow
+              key={apiKey.id}
+              appInstanceId={appInstanceId}
+              apiKey={apiKey}
+            />
+          ))}
+        </tbody>
+      </table>
     </div>
   )
 }
@@ -67,15 +120,7 @@ export function ApiKeyList({ appInstanceId, apiKeys }: {
   apiKeys: DeveloperApiKeyRow[]
 }) {
   return (
-    <div className="flex flex-col divide-y divide-divider-subtle">
-      {apiKeys.map(apiKey => (
-        <ApiKeyRow
-          key={apiKey.id}
-          appInstanceId={appInstanceId}
-          apiKey={apiKey}
-        />
-      ))}
-    </div>
+    <ApiKeyTable appInstanceId={appInstanceId} apiKeys={apiKeys} />
   )
 }
 

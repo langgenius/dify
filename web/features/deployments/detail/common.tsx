@@ -10,6 +10,7 @@ type SectionProps = {
   children: ReactNode
   layout?: 'block' | 'row'
   tone?: 'default' | 'destructive'
+  showDivider?: boolean
 }
 
 export function SectionState({ children }: {
@@ -39,6 +40,7 @@ export function Section({
   children,
   layout = 'block',
   tone = 'default',
+  showDivider = true,
 }: SectionProps) {
   const titleClassName = cn(
     'system-sm-semibold',
@@ -55,7 +57,7 @@ export function Section({
 
   if (layout === 'row') {
     return (
-      <section className="border-b border-divider-subtle py-4 first:pt-0 last:border-b-0 last:pb-0">
+      <section className={cn('py-4 first:pt-0 last:pb-0', showDivider && 'border-b border-divider-subtle last:border-b-0')}>
         <div className="flex flex-col gap-3 sm:flex-row sm:gap-x-6">
           <div className="flex min-w-0 shrink-0 flex-col sm:w-40 sm:pt-1">
             <div className={titleClassName}>
@@ -87,7 +89,7 @@ export function Section({
   }
 
   return (
-    <section className="border-b border-divider-subtle py-6 first:pt-0 last:border-b-0 last:pb-0">
+    <section className={cn('py-6 first:pt-0 last:pb-0', showDivider && 'border-b border-divider-subtle last:border-b-0')}>
       <div className="mb-3 flex items-start justify-between gap-4">
         <div className="min-w-0">
           <div className={titleClassName}>

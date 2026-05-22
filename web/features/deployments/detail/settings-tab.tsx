@@ -22,9 +22,6 @@ import { useRouter } from '@/next/navigation'
 import { consoleQuery } from '@/service/client'
 import { isUndeployedDeploymentRow } from '../runtime-status'
 import { Section, SectionState } from './common'
-import { AccessChannelsSection } from './settings-tab/access/channels-section'
-import { DeveloperApiSection } from './settings-tab/access/developer-api-section'
-import { AccessPermissionsSection } from './settings-tab/access/permissions-section'
 
 type AppInstanceWithId = AppInstanceBasicInfo & { id: string }
 
@@ -404,9 +401,6 @@ export function SettingsTab({ appInstanceId }: {
 }) {
   return (
     <div className="mx-auto flex w-full max-w-[1080px] min-w-0 flex-col gap-y-4 px-6 py-6 sm:py-8">
-      <AccessPermissionsSection appInstanceId={appInstanceId} />
-      <AccessChannelsSection appInstanceId={appInstanceId} />
-      <DeveloperApiSection appInstanceId={appInstanceId} />
       <SettingsFormSection appInstanceId={appInstanceId} />
       <DeleteInstanceControlSection appInstanceId={appInstanceId} />
     </div>

@@ -6,11 +6,11 @@ import type {
 } from '@dify/contracts/enterprise/types.gen'
 import { Switch, SwitchSkeleton } from '@langgenius/dify-ui/switch'
 import { useMutation, useQuery } from '@tanstack/react-query'
-import { useState } from 'react'
+import { atom, useAtom, useSetAtom } from 'jotai'
 import { useTranslation } from 'react-i18next'
 import { SkeletonRectangle, SkeletonRow } from '@/app/components/base/skeleton'
 import { consoleQuery } from '@/service/client'
-import { Section, SectionState } from '../../common'
+import { SectionState } from '../../common'
 import { ApiKeyGenerateMenu, ApiKeyList } from './api-keys'
 import { CopyPill } from './common'
 
@@ -18,6 +18,8 @@ type CreatedApiToken = {
   appInstanceId: string
   token: string
 }
+
+const createdApiTokenAtom = atom<CreatedApiToken | undefined>(undefined)
 
 const DEVELOPER_API_KEY_SKELETON_KEYS = ['primary-key', 'secondary-key']
 
@@ -43,6 +45,50 @@ function DeveloperApiSwitch({ appInstanceId, checked, disabled }: {
         })
       }}
     />
+  )
+}
+
+export function DeveloperApiHeaderActions({ appInstanceId }: {
+  appInstanceId: string
+}) {
+  const setCreatedApiToken = useSetAtom(createdApiTokenAtom)
+  const accessConfigQuery = useQuery(consoleQuery.enterprise.appDeployAccessService.getAppInstanceAccess.queryOptions({
+    input: {
+      params: { appInstanceId },
+    },
+  }))
+  const accessConfig = accessConfigQuery.data
+  const apiEnabled = accessConfig?.developerApi?.enabled ?? false
+  const apiKeys = accessConfig?.developerApi?.apiKeys ?? []
+  const environments = accessConfig?.permissions
+    ?.map(permissionEnvironment)
+    .filter((environment): environment is AppDeployEnvironment => Boolean(environment)) ?? []
+
+  if (accessConfigQuery.isLoading) {
+    return (
+      <div className="flex items-center gap-2">
+        <SkeletonRectangle className="my-0 h-8 w-32 animate-pulse rounded-lg" />
+        <SwitchSkeleton />
+      </div>
+    )
+  }
+
+  return (
+    <div className="flex items-center gap-2">
+      {apiEnabled && (
+        <ApiKeyGenerateMenu
+          appInstanceId={appInstanceId}
+          environments={environments}
+          apiKeys={apiKeys}
+          onCreatedToken={token => setCreatedApiToken({ appInstanceId, token })}
+        />
+      )}
+      <DeveloperApiSwitch
+        appInstanceId={appInstanceId}
+        checked={apiEnabled}
+        disabled={accessConfigQuery.isError}
+      />
+    </div>
   )
 }
 
@@ -82,18 +128,18 @@ function CreatedApiTokenCard({ token, onDismiss }: {
 
 function DeveloperApiSkeleton() {
   return (
-    <div className="flex flex-col gap-2">
+    <div className="flex flex-col gap-4">
       <SkeletonRectangle className="my-0 h-8 w-full animate-pulse rounded-lg" />
-      <SkeletonRow className="items-center justify-between gap-3">
+      <SkeletonRow className="items-center justify-between gap-3 rounded-lg border border-divider-subtle bg-background-default-subtle px-4 py-3">
         <div className="flex min-w-0 flex-col gap-1.5">
           <SkeletonRectangle className="h-3.5 w-28 animate-pulse" />
           <SkeletonRectangle className="h-3 w-40 animate-pulse" />
         </div>
         <SkeletonRectangle className="my-0 h-8 w-24 animate-pulse rounded-lg" />
       </SkeletonRow>
-      <div className="flex flex-col divide-y divide-divider-subtle">
+      <div className="flex flex-col gap-2">
         {DEVELOPER_API_KEY_SKELETON_KEYS.map(key => (
-          <SkeletonRow key={key} className="items-center gap-3 py-1.5">
+          <SkeletonRow key={key} className="items-center gap-3 rounded-lg border border-divider-subtle bg-background-default-subtle px-3 py-3">
             <div className="flex min-w-35 flex-col gap-1.5">
               <SkeletonRectangle className="h-3 w-24 animate-pulse" />
               <SkeletonRectangle className="h-2.5 w-18 animate-pulse" />
@@ -112,7 +158,7 @@ export function DeveloperApiSection({
   appInstanceId: string
 }) {
   const { t } = useTranslation('deployments')
-  const [createdApiToken, setCreatedApiToken] = useState<CreatedApiToken>()
+  const [createdApiToken, setCreatedApiToken] = useAtom(createdApiTokenAtom)
   const accessConfigQuery = useQuery(consoleQuery.enterprise.appDeployAccessService.getAppInstanceAccess.queryOptions({
     input: {
       params: { appInstanceId },
@@ -130,51 +176,20 @@ export function DeveloperApiSection({
     : undefined
 
   return (
-    <Section
-      title={t('access.api.developerTitle')}
-      description={t('access.api.description')}
-      layout="row"
-      action={(
-        accessConfigQuery.isLoading
-          ? <SwitchSkeleton />
-          : (
-              <DeveloperApiSwitch
-                appInstanceId={appInstanceId}
-                checked={apiEnabled}
-                disabled={accessConfigQuery.isError}
-              />
-            )
-      )}
-    >
+    <>
       {accessConfigQuery.isLoading
         ? <DeveloperApiSkeleton />
         : accessConfigQuery.isError
           ? <SectionState>{t('common.loadFailed')}</SectionState>
           : apiEnabled
             ? (
-                <div className="flex flex-col gap-2">
+                <div className="flex flex-col gap-4">
                   {apiUrl && (
                     <CopyPill
                       label={t('access.api.endpoint')}
                       value={apiUrl}
                     />
                   )}
-                  <div className="flex items-center justify-between gap-3">
-                    <div className="flex min-w-0 flex-col">
-                      <span className="system-sm-medium text-text-primary">
-                        {t('access.api.backendTitle')}
-                      </span>
-                      <span className="system-xs-regular text-text-tertiary">
-                        {t('access.api.keyList')}
-                      </span>
-                    </div>
-                    <ApiKeyGenerateMenu
-                      appInstanceId={appInstanceId}
-                      environments={environments}
-                      apiKeys={apiKeys}
-                      onCreatedToken={token => setCreatedApiToken({ appInstanceId, token })}
-                    />
-                  </div>
                   {visibleCreatedApiToken && (
                     <CreatedApiTokenCard
                       token={visibleCreatedApiToken}
@@ -202,6 +217,6 @@ export function DeveloperApiSection({
                   {t('access.api.disabled')}
                 </div>
               )}
-    </Section>
+    </>
   )
 }

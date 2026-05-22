@@ -412,31 +412,53 @@ export function EnvironmentPermissionRow({
   }
 
   return (
-    <div className="grid gap-x-3 gap-y-2 sm:grid-cols-[minmax(88px,108px)_minmax(0,1fr)] lg:grid-cols-[minmax(88px,108px)_minmax(160px,180px)_minmax(0,1fr)]">
-      <span className="pt-1.5 system-xs-regular text-text-tertiary">
-        {environmentName(environment)}
-      </span>
+    <div className="grid gap-3 border-t border-divider-subtle px-4 py-3 first:border-t-0 lg:grid-cols-[minmax(140px,180px)_minmax(190px,230px)_minmax(0,1fr)] lg:items-start">
+      <div className="min-w-0 lg:pt-1.5">
+        <div className="system-2xs-medium-uppercase text-text-tertiary">
+          {t('access.permissions.col.environment')}
+        </div>
+        <div className="mt-1 flex min-w-0 items-center gap-2">
+          <span className="i-ri-server-line size-3.5 shrink-0 text-text-tertiary" aria-hidden="true" />
+          <span className="min-w-0 truncate system-sm-medium text-text-primary">
+            {environmentName(environment)}
+          </span>
+        </div>
+      </div>
       <div className="min-w-0">
+        <div className="mb-1 system-2xs-medium-uppercase text-text-tertiary">
+          {t('access.permissions.col.permission')}
+        </div>
         <PermissionPicker
           value={permissionKind}
           disabled={controlsDisabled}
           onChange={handlePermissionChange}
         />
       </div>
-      {permissionKind === 'specific' && (
-        <div className="min-w-0 sm:col-start-2 lg:col-start-3">
-          <SubjectPicker
-            selectedSubjects={subjects}
-            disabled={controlsDisabled}
-            onChange={handleSubjectsChange}
-          />
-          {subjects.length === 0 && (
-            <span className="mt-1.5 block system-xs-regular text-text-tertiary">
-              {t('access.members.emptySelection')}
-            </span>
-          )}
+      <div className="min-w-0">
+        <div className="mb-1 system-2xs-medium-uppercase text-text-tertiary">
+          {t('access.permissions.col.subjects')}
         </div>
-      )}
+        {permissionKind === 'specific'
+          ? (
+              <>
+                <SubjectPicker
+                  selectedSubjects={subjects}
+                  disabled={controlsDisabled}
+                  onChange={handleSubjectsChange}
+                />
+                {subjects.length === 0 && (
+                  <span className="mt-1.5 block system-xs-regular text-text-tertiary">
+                    {t('access.members.emptySelection')}
+                  </span>
+                )}
+              </>
+            )
+          : (
+              <div className="flex min-h-8 items-center system-xs-regular text-text-tertiary">
+                {t(`access.permission.${permissionKind}Desc`)}
+              </div>
+            )}
+      </div>
     </div>
   )
 }

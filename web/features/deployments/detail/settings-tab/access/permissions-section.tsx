@@ -20,11 +20,15 @@ function hasEnvironment(row: EnvironmentAccessRow): row is EnvironmentAccessRow 
 
 function AccessPermissionsSkeleton() {
   return (
-    <div className="flex flex-col gap-3">
+    <div className="overflow-hidden rounded-lg border border-divider-subtle bg-components-panel-bg">
       {ACCESS_PERMISSIONS_SKELETON_KEYS.map(key => (
-        <SkeletonRow key={key} className="flex-wrap items-center gap-x-3 gap-y-1.5">
-          <SkeletonRectangle className="h-3 w-35 animate-pulse" />
-          <SkeletonRectangle className="my-0 h-8 w-55 animate-pulse rounded-lg" />
+        <SkeletonRow
+          key={key}
+          className="grid gap-3 border-t border-divider-subtle px-4 py-3 first:border-t-0 lg:grid-cols-[minmax(140px,180px)_minmax(190px,230px)_minmax(0,1fr)] lg:items-center"
+        >
+          <SkeletonRectangle className="h-4 w-32 animate-pulse" />
+          <SkeletonRectangle className="my-0 h-8 w-full animate-pulse rounded-lg" />
+          <SkeletonRectangle className="my-0 h-8 w-full animate-pulse rounded-lg" />
         </SkeletonRow>
       ))}
     </div>
@@ -49,7 +53,7 @@ export function AccessPermissionsSection({
     <Section
       title={t('access.permissions.title')}
       description={t('access.permissions.description')}
-      layout="row"
+      showDivider={false}
     >
       {accessConfigQuery.isLoading
         ? <AccessPermissionsSkeleton />
@@ -62,7 +66,7 @@ export function AccessPermissionsSection({
                 </SectionState>
               )
             : (
-                <div className="flex flex-col gap-2.5">
+                <div className="overflow-hidden rounded-lg border border-divider-subtle bg-components-panel-bg">
                   {permissionRows.map(row => (
                     <EnvironmentPermissionRow
                       key={row.environment.id}
