@@ -12,7 +12,7 @@ state.
 from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any, Union
+from typing import Any, Union, override
 
 from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, WorkflowAppGenerateEntity
 from core.helper.trace_id_helper import ParentTraceContext
@@ -98,12 +98,14 @@ class WorkflowPersistenceLayer(GraphEngineLayer):
     # ------------------------------------------------------------------
     # GraphEngineLayer lifecycle
     # ------------------------------------------------------------------
+    @override
     def on_graph_start(self) -> None:
         self._workflow_execution = None
         self._node_execution_cache.clear()
         self._node_snapshots.clear()
         self._node_sequence = 0
 
+    @override
     def on_event(self, event: GraphEngineEvent) -> None:
         match event:
             case GraphRunStartedEvent():
@@ -131,6 +133,7 @@ class WorkflowPersistenceLayer(GraphEngineLayer):
             case NodeRunPauseRequestedEvent():
                 self._handle_node_pause_requested(event)
 
+    @override
     def on_graph_end(self, error: Exception | None) -> None:
         return
 

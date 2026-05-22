@@ -259,7 +259,7 @@ class ModelProviderModelApi(Resource):
             tenant_id=tenant_id, provider=provider, model=args.model, model_type=args.model_type
         )
 
-        return {"result": "success"}, 204
+        return "", 204
 
 
 @console_ns.route("/workspaces/current/model-providers/<path:provider>/models/credentials")
@@ -395,7 +395,7 @@ class ModelProviderModelCredentialApi(Resource):
             credential_id=args.credential_id,
         )
 
-        return {"result": "success"}, 204
+        return "", 204
 
 
 @console_ns.route("/workspaces/current/model-providers/<path:provider>/models/credentials/switch")

@@ -877,7 +877,7 @@ Update metadata for multiple documents
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Documents metadata updated successfully | [SimpleResultResponse](#simpleresultresponse) |
+| 200 | Documents metadata updated successfully | [DatasetMetadataActionResponse](#datasetmetadataactionresponse) |
 | 401 | Unauthorized - invalid API token |  |
 | 404 | Dataset not found |  |
 
@@ -1378,11 +1378,11 @@ Get all metadata for a dataset
 
 ##### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Metadata retrieved successfully |
-| 401 | Unauthorized - invalid API token |
-| 404 | Dataset not found |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Metadata retrieved successfully | [DatasetMetadataListResponse](#datasetmetadatalistresponse) |
+| 401 | Unauthorized - invalid API token |  |
+| 404 | Dataset not found |  |
 
 #### POST
 ##### Summary
@@ -1402,11 +1402,11 @@ Create metadata for a dataset
 
 ##### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 201 | Metadata created successfully |
-| 401 | Unauthorized - invalid API token |
-| 404 | Dataset not found |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 201 | Metadata created successfully | [DatasetMetadataResponse](#datasetmetadataresponse) |
+| 401 | Unauthorized - invalid API token |  |
+| 404 | Dataset not found |  |
 
 ### /datasets/{dataset_id}/metadata/built-in
 
@@ -1427,10 +1427,10 @@ Get all built-in metadata fields
 
 ##### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Built-in fields retrieved successfully |
-| 401 | Unauthorized - invalid API token |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Built-in fields retrieved successfully | [DatasetMetadataBuiltInFieldsResponse](#datasetmetadatabuiltinfieldsresponse) |
+| 401 | Unauthorized - invalid API token |  |
 
 ### /datasets/{dataset_id}/metadata/built-in/{action}
 
@@ -1454,7 +1454,7 @@ Enable or disable built-in metadata field
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Action completed successfully | [SimpleResultResponse](#simpleresultresponse) |
+| 200 | Action completed successfully | [DatasetMetadataActionResponse](#datasetmetadataactionresponse) |
 | 401 | Unauthorized - invalid API token |  |
 | 404 | Dataset not found |  |
 
@@ -1503,11 +1503,11 @@ Update metadata name
 
 ##### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Metadata updated successfully |
-| 401 | Unauthorized - invalid API token |
-| 404 | Dataset or metadata not found |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Metadata updated successfully | [DatasetMetadataResponse](#datasetmetadataresponse) |
+| 401 | Unauthorized - invalid API token |  |
+| 404 | Dataset or metadata not found |  |
 
 ### /datasets/{dataset_id}/pipeline/datasource-plugins
 
@@ -2313,6 +2313,49 @@ Condition detail
 | limit | integer | Number of items per page | No |
 | page | integer | Page number | No |
 | tag_ids | [ string ] | Filter by tag IDs | No |
+
+#### DatasetMetadataActionResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| result | string |  | Yes |
+
+#### DatasetMetadataBuiltInFieldResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| name | string |  | Yes |
+| type | string |  | Yes |
+
+#### DatasetMetadataBuiltInFieldsResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| fields | [ [DatasetMetadataBuiltInFieldResponse](#datasetmetadatabuiltinfieldresponse) ] |  | Yes |
+
+#### DatasetMetadataListItemResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| count | integer |  | No |
+| id | string |  | Yes |
+| name | string |  | Yes |
+| type | string |  | Yes |
+
+#### DatasetMetadataListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| built_in_field_enabled | boolean |  | Yes |
+| doc_metadata | [ [DatasetMetadataListItemResponse](#datasetmetadatalistitemresponse) ] |  | Yes |
+
+#### DatasetMetadataResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| id | string |  | Yes |
+| name | string |  | Yes |
+| type | string |  | Yes |
 
 #### DatasetPermissionEnum
 

@@ -29,9 +29,6 @@ from fields.conversation_fields import (
 from fields.conversation_fields import (
     ConversationWithSummaryPagination as ConversationWithSummaryPaginationResponse,
 )
-from fields.conversation_fields import (
-    ResultResponse,
-)
 from libs.datetime_utils import naive_utc_now, parse_time_range
 from libs.login import current_account_with_tenant, login_required
 from models import Conversation, EndUser, Message, MessageAnnotation
@@ -77,7 +74,6 @@ register_schema_models(
     ConversationMessageDetailResponse,
     ConversationWithSummaryPaginationResponse,
     ConversationDetailResponse,
-    ResultResponse,
     CompletionConversationQuery,
     ChatConversationQuery,
 )
@@ -194,7 +190,7 @@ class CompletionConversationDetailApi(Resource):
         except ConversationNotExistsError:
             raise NotFound("Conversation Not Exists.")
 
-        return ResultResponse(result="success").model_dump(mode="json"), 204
+        return "", 204
 
 
 @console_ns.route("/apps/<uuid:app_id>/chat-conversations")
@@ -347,7 +343,7 @@ class ChatConversationDetailApi(Resource):
         except ConversationNotExistsError:
             raise NotFound("Conversation Not Exists.")
 
-        return ResultResponse(result="success").model_dump(mode="json"), 204
+        return "", 204
 
 
 def _get_conversation(app_model, conversation_id):

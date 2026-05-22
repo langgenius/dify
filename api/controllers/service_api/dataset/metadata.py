@@ -1,15 +1,19 @@
 from typing import Literal
 
 from flask_login import current_user
-from flask_restx import marshal
 from werkzeug.exceptions import NotFound
 
 from controllers.common.controller_schemas import MetadataUpdatePayload
-from controllers.common.fields import SimpleResultResponse
 from controllers.common.schema import register_response_schema_models, register_schema_model, register_schema_models
 from controllers.service_api import service_api_ns
 from controllers.service_api.wraps import DatasetApiResource, cloud_edition_billing_rate_limit_check
-from fields.dataset_fields import dataset_metadata_fields
+from fields.dataset_fields import (
+    DatasetMetadataActionResponse,
+    DatasetMetadataBuiltInFieldsResponse,
+    DatasetMetadataListResponse,
+    DatasetMetadataResponse,
+)
+from libs.helper import dump_response
 from services.dataset_service import DatasetService
 from services.entities.knowledge_entities.knowledge_entities import (
     DocumentMetadataOperation,
@@ -27,7 +31,13 @@ register_schema_models(
     DocumentMetadataOperation,
     MetadataOperationData,
 )
-register_response_schema_models(service_api_ns, SimpleResultResponse)
+register_response_schema_models(
+    service_api_ns,
+    DatasetMetadataActionResponse,
+    DatasetMetadataBuiltInFieldsResponse,
+    DatasetMetadataListResponse,
+    DatasetMetadataResponse,
+)
 
 
 @service_api_ns.route("/datasets/<uuid:dataset_id>/metadata")
@@ -43,6 +53,9 @@ class DatasetMetadataCreateServiceApi(DatasetApiResource):
             404: "Dataset not found",
         }
     )
+    @service_api_ns.response(
+        201, "Metadata created successfully", service_api_ns.models[DatasetMetadataResponse.__name__]
+    )
     @cloud_edition_billing_rate_limit_check("knowledge", "dataset")
     def post(self, tenant_id, dataset_id):
         """Create metadata for a dataset."""
@@ -55,7 +68,7 @@ class DatasetMetadataCreateServiceApi(DatasetApiResource):
         DatasetService.check_dataset_permission(dataset, current_user)
 
         metadata = MetadataService.create_metadata(dataset_id_str, metadata_args)
-        return marshal(metadata, dataset_metadata_fields), 201
+        return dump_response(DatasetMetadataResponse, metadata), 201
 
     @service_api_ns.doc("get_dataset_metadata")
     @service_api_ns.doc(description="Get all metadata for a dataset")
@@ -67,13 +80,17 @@ class DatasetMetadataCreateServiceApi(DatasetApiResource):
             404: "Dataset not found",
         }
     )
+    @service_api_ns.response(
+        200, "Metadata retrieved successfully", service_api_ns.models[DatasetMetadataListResponse.__name__]
+    )
     def get(self, tenant_id, dataset_id):
         """Get all metadata for a dataset."""
         dataset_id_str = str(dataset_id)
         dataset = DatasetService.get_dataset(dataset_id_str)
         if dataset is None:
             raise NotFound("Dataset not found.")
-        return MetadataService.get_dataset_metadatas(dataset), 200
+        metadata = MetadataService.get_dataset_metadatas(dataset)
+        return dump_response(DatasetMetadataListResponse, metadata), 200
 
 
 @service_api_ns.route("/datasets/<uuid:dataset_id>/metadata/<uuid:metadata_id>")
@@ -89,6 +106,9 @@ class DatasetMetadataServiceApi(DatasetApiResource):
             404: "Dataset or metadata not found",
         }
     )
+    @service_api_ns.response(
+        200, "Metadata updated successfully", service_api_ns.models[DatasetMetadataResponse.__name__]
+    )
     @cloud_edition_billing_rate_limit_check("knowledge", "dataset")
     def patch(self, tenant_id, dataset_id, metadata_id):
         """Update metadata name."""
@@ -102,7 +122,7 @@ class DatasetMetadataServiceApi(DatasetApiResource):
         DatasetService.check_dataset_permission(dataset, current_user)
 
         metadata = MetadataService.update_metadata_name(dataset_id_str, metadata_id_str, payload.name)
-        return marshal(metadata, dataset_metadata_fields), 200
+        return dump_response(DatasetMetadataResponse, metadata), 200
 
     @service_api_ns.doc("delete_dataset_metadata")
     @service_api_ns.doc(description="Delete metadata")
@@ -114,6 +134,7 @@ class DatasetMetadataServiceApi(DatasetApiResource):
             404: "Dataset or metadata not found",
         }
     )
+    @service_api_ns.response(204, "Metadata deleted successfully")
     @cloud_edition_billing_rate_limit_check("knowledge", "dataset")
     def delete(self, tenant_id, dataset_id, metadata_id):
         """Delete metadata."""
@@ -138,10 +159,15 @@ class DatasetMetadataBuiltInFieldServiceApi(DatasetApiResource):
             401: "Unauthorized - invalid API token",
         }
     )
+    @service_api_ns.response(
+        200,
+        "Built-in fields retrieved successfully",
+        service_api_ns.models[DatasetMetadataBuiltInFieldsResponse.__name__],
+    )
     def get(self, tenant_id, dataset_id):
         """Get all built-in metadata fields."""
         built_in_fields = MetadataService.get_built_in_fields()
-        return {"fields": built_in_fields}, 200
+        return dump_response(DatasetMetadataBuiltInFieldsResponse, {"fields": built_in_fields}), 200
 
 
 @service_api_ns.route("/datasets/<uuid:dataset_id>/metadata/built-in/<string:action>")
@@ -157,9 +183,7 @@ class DatasetMetadataBuiltInFieldActionServiceApi(DatasetApiResource):
         }
     )
     @service_api_ns.response(
-        200,
-        "Action completed successfully",
-        service_api_ns.models[SimpleResultResponse.__name__],
+        200, "Action completed successfully", service_api_ns.models[DatasetMetadataActionResponse.__name__]
     )
     @cloud_edition_billing_rate_limit_check("knowledge", "dataset")
     def post(self, tenant_id, dataset_id, action: Literal["enable", "disable"]):
@@ -175,7 +199,7 @@ class DatasetMetadataBuiltInFieldActionServiceApi(DatasetApiResource):
                 MetadataService.enable_built_in_field(dataset)
             case "disable":
                 MetadataService.disable_built_in_field(dataset)
-        return {"result": "success"}, 200
+        return dump_response(DatasetMetadataActionResponse, {"result": "success"}), 200
 
 
 @service_api_ns.route("/datasets/<uuid:dataset_id>/documents/metadata")
@@ -194,7 +218,7 @@ class DocumentMetadataEditServiceApi(DatasetApiResource):
     @service_api_ns.response(
         200,
         "Documents metadata updated successfully",
-        service_api_ns.models[SimpleResultResponse.__name__],
+        service_api_ns.models[DatasetMetadataActionResponse.__name__],
     )
     @cloud_edition_billing_rate_limit_check("knowledge", "dataset")
     def post(self, tenant_id, dataset_id):
@@ -209,4 +233,4 @@ class DocumentMetadataEditServiceApi(DatasetApiResource):
 
         MetadataService.update_documents_metadata(dataset, metadata_args)
 
-        return {"result": "success"}, 200
+        return dump_response(DatasetMetadataActionResponse, {"result": "success"}), 200
