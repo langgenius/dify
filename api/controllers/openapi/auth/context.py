@@ -11,6 +11,7 @@ import uuid
 from dataclasses import dataclass, field
 from datetime import datetime
 from typing import TYPE_CHECKING, Literal, Protocol
+from werkzeug.exceptions import Unauthorized
 
 from flask import Request
 
@@ -39,6 +40,17 @@ class Context:
     caller: object | None = None
     caller_kind: Literal["account", "end_user"] | None = None
 
+    @property
+    def must_tenant(self) -> Tenant:
+        if not self.tenant:
+            raise Unauthorized("tenant is not associated")
+        return self.tenant
+
+    @property
+    def must_subject_type(self) -> SubjectType:
+        if not self.subject_type:
+            raise Unauthorized("subject_type unset — BearerCheck did not run")
+        return self.subject_type
 
 class Step(Protocol):
     """One responsibility. Mutate ctx or raise to short-circuit."""

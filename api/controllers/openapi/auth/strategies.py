@@ -69,7 +69,7 @@ class AclStrategy:
         access_mode = self._fetch_access_mode(ctx.app.id)
         if access_mode is None:
             return False
-        if not self._subject_allowed_for_mode(ctx.subject_type, access_mode):
+        if not self._subject_allowed_for_mode(ctx.must_subject_type, access_mode):
             return False
         if access_mode not in self._MODES_REQUIRING_INNER_CHECK:
             return True
@@ -142,8 +142,8 @@ def _has_tenant_membership(account_id: uuid.UUID | str | None, tenant_id: str) -
 
 def _login_as(user) -> None:
     """Set Flask-Login request user so downstream services see the caller."""
-    current_app.login_manager._update_request_context_with_user(user)
-    user_logged_in.send(current_app._get_current_object(), user=user)
+    current_app.login_manager._update_request_context_with_user(user) # type:ignore
+    user_logged_in.send(current_app._get_current_object(), user=user) # type:ignore
 
 
 class CallerMounter(Protocol):
@@ -162,7 +162,7 @@ class AccountMounter:
         account = db.session.get(Account, ctx.account_id)
         if account is None:
             raise RuntimeError("AccountMounter: account row missing for resolved bearer")
-        account.current_tenant = ctx.tenant
+        account.current_tenant = ctx.must_tenant
         _login_as(account)
         ctx.caller, ctx.caller_kind = account, "account"
 

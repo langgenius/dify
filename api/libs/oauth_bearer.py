@@ -348,7 +348,7 @@ class OAuthAccessTokenResolver:
         )
         result = session.execute(stmt)
         session.commit()
-        if result.rowcount == 1:
+        if result.rowcount == 1: # type: ignore
             logger.warning(
                 "audit: %s token_id=%s",
                 AUDIT_OAUTH_EXPIRED,

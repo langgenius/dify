@@ -7,7 +7,7 @@ is last → outermost → sets `g.auth_ctx` before `require_scope` reads it.
 from __future__ import annotations
 
 import uuid as _uuid
-from typing import Any
+from typing import Any, cast
 
 import sqlalchemy as sa
 from flask import g, request
@@ -207,7 +207,7 @@ class AppListApi(Resource):
             parsed_uuid = None
 
         if parsed_uuid is not None:
-            app: App = db.session.get(App, str(parsed_uuid))
+            app: App | None = db.session.get(App, str(parsed_uuid))
             if not app or app.status != "normal" or str(app.tenant_id) != workspace_id or not is_openapi_visible(app):
                 return empty
             tenant_name = db.session.execute(
@@ -237,7 +237,7 @@ class AppListApi(Resource):
         params = AppListParams(
             page=query.page,
             limit=query.limit,
-            mode=query.mode.value if query.mode else "all",
+            mode=query.mode.value if query.mode else "all", # type:ignore
             name=query.name,
             tag_ids=tag_ids,
             status="normal",
@@ -246,7 +246,7 @@ class AppListApi(Resource):
             openapi_visible=True,
         )
 
-        pagination = AppService().get_paginate_apps(ctx.account_id, workspace_id, params)
+        pagination = AppService().get_paginate_apps(str(ctx.account_id), workspace_id, params)
         if pagination is None:
             return empty
 
@@ -270,11 +270,12 @@ class AppListApi(Resource):
             )
             for r in pagination.items
         ]
+        
         env = AppListResponse(
             page=query.page,
             limit=query.limit,
-            total=int(pagination.total),
-            has_more=query.page * query.limit < int(pagination.total),
+            total=cast(int, pagination.total),
+            has_more=query.page * query.limit < cast(int, pagination.total),
             data=items,
         )
         return env.model_dump(mode="json"), 200

@@ -131,7 +131,7 @@ class WorkspaceMembershipCheck:
 
         check_workspace_membership(
             account_id=ctx.account_id,
-            tenant_id=ctx.tenant.id,
+            tenant_id=ctx.must_tenant.id,
             token_hash=ctx.token_hash,
             cached_verdicts=ctx.cached_verified_tenants or {},
         )
@@ -154,7 +154,7 @@ class CallerMount:
         if ctx.subject_type is None:
             raise Unauthorized("subject_type unset — BearerCheck did not run")
         for m in self._mounters:
-            if m.applies_to(ctx.subject_type):
+            if m.applies_to(ctx.must_subject_type):
                 m.mount(ctx)
                 return
         raise Unauthorized("no caller mounter for subject type")

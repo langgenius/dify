@@ -39,7 +39,7 @@ def _row_to_schema(row_type: str, row: dict[str, Any]) -> dict[str, Any] | None:
     base: dict[str, Any] = {"title": label} if label else {}
 
     if row_type in ("text-input", "paragraph"):
-        out = {"type": "string"} | base
+        out: dict[str, Any] = {"type": "string"} | base
         max_length = row.get("max_length")
         if isinstance(max_length, int) and max_length > 0:
             out["maxLength"] = max_length

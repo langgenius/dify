@@ -1,8 +1,8 @@
 """add oauth_access_tokens table
 
 Revision ID: d4a5e1f3c9b7
-Revises: a4f2d8c9b731
-Create Date: 2026-04-23 22:00:00.000000
+Revises: f8b6b7e9c421
+Create Date: 2026-05-22 17:00:00.000000
 
 Table stores user-level OAuth bearer tokens minted via the device-flow grant
 (difyctl auth login). PAT storage (personal_access_tokens) is a separate
@@ -14,7 +14,7 @@ from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
 revision = "d4a5e1f3c9b7"
-down_revision = "a4f2d8c9b731"
+down_revision = "f8b6b7e9c421"
 branch_labels = None
 depends_on = None
 
