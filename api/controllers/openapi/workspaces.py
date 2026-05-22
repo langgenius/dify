@@ -44,11 +44,12 @@ from libs.oauth_bearer import (
     validate_bearer,
 )
 from models import Account, Tenant, TenantAccountJoin
-from models.account import TenantAccountRole
+from models.account import TenantAccountRole, TenantStatus
 from services.account_service import AccountService, RegisterService, TenantService
 from services.errors.account import (
     AccountAlreadyInTenantError,
     AccountNotLinkTenantError,
+    AccountRegisterError,
     CannotOperateSelfError,
     MemberNotInTenantError,
     NoPermissionError,
@@ -75,18 +76,15 @@ def _member_response(account: Account) -> MemberResponse:
         id=str(account.id),
         name=account.name,
         email=account.email,
-        role=str(account.role),
-        status=str(account.status),
+        role=account.role.value if account.role else "",
+        status=account.status.value if account.status else "",
         avatar=account.avatar,
     )
 
 
 def _load_tenant(workspace_id: str) -> Tenant:
     tenant = db.session.get(Tenant, workspace_id)
-    if tenant is None:
-        # require_workspace_role has already verified membership, so a
-        # missing Tenant here means the row vanished between the gate
-        # query and now — treat the same as non-member.
+    if tenant is None or tenant.status != TenantStatus.NORMAL:
         raise NotFound("workspace not found")
     return tenant
 
@@ -257,6 +255,8 @@ class WorkspaceMembersApi(Resource):
         except AccountAlreadyInTenantError as exc:
             raise BadRequest(str(exc))
         except NoPermissionError as exc:
+            raise BadRequest(str(exc))
+        except AccountRegisterError as exc:
             raise BadRequest(str(exc))
 
         normalized_email = payload.email.lower()

@@ -42,6 +42,7 @@ from models.account import AccountStatus, TenantAccountRole
 from services.errors.account import (
     AccountAlreadyInTenantError,
     AccountNotLinkTenantError,
+    AccountRegisterError,
     CannotOperateSelfError,
     MemberNotInTenantError,
     NoPermissionError,
@@ -784,3 +785,70 @@ def test_non_member_caller_gets_404_on_switch(app, bypass_pipeline, monkeypatch)
             gated(api, workspace_id=ws_id)
 
     switch_mock.assert_not_called()
+
+
+# ---------------------------------------------------------------------------
+# _load_tenant rejects archived tenant
+# ---------------------------------------------------------------------------
+
+
+def test_load_tenant_rejects_archived_workspace(app, bypass_pipeline, monkeypatch):
+    """Member management against an archived workspace → 404."""
+    ws_id = str(uuid.uuid4())
+    acct_id = uuid.uuid4()
+    api = WorkspaceMembersApi()
+
+    archived = SimpleNamespace(id=ws_id, name="WS", status="archive", created_at=datetime(2026, 5, 18, tzinfo=UTC))
+    mock_db = MagicMock()
+    mock_db.session.get.return_value = archived
+
+    monkeypatch.setattr(
+        sys.modules["controllers.openapi.workspaces"],
+        "TenantService",
+        SimpleNamespace(
+            switch_tenant=Mock(),
+            get_tenant_members=Mock(return_value=[]),
+            remove_member_from_tenant=Mock(),
+            update_member_role=Mock(),
+        ),
+    )
+    monkeypatch.setattr(sys.modules["controllers.openapi.workspaces"], "db", mock_db)
+
+    with app.test_request_context(f"/openapi/v1/workspaces/{ws_id}/members"):
+        g.auth_ctx = _auth_ctx(account_id=acct_id)
+        with pytest.raises(NotFound):
+            api.get.__wrapped__.__wrapped__.__wrapped__(api, workspace_id=ws_id)
+
+
+# ---------------------------------------------------------------------------
+# Invite catches AccountRegisterError
+# ---------------------------------------------------------------------------
+
+
+def test_invite_400_when_register_error(app, bypass_pipeline, monkeypatch):
+    """AccountRegisterError (frozen email, workspace creation blocked) → 400."""
+    ws_id = str(uuid.uuid4())
+    acct_id = uuid.uuid4()
+    api = WorkspaceMembersApi()
+
+    mock_db = MagicMock()
+    mock_db.session.get.side_effect = [_account(account_id=str(acct_id)), _tenant(ws_id)]
+
+    monkeypatch.setattr(
+        sys.modules["controllers.openapi.workspaces"],
+        "RegisterService",
+        SimpleNamespace(
+            invite_new_member=Mock(side_effect=AccountRegisterError("Workspace is not allowed to create.")),
+        ),
+    )
+    monkeypatch.setattr(sys.modules["controllers.openapi.workspaces"], "db", mock_db)
+
+    with app.test_request_context(
+        f"/openapi/v1/workspaces/{ws_id}/members",
+        method="POST",
+        data=json.dumps({"email": "frozen@example.com", "role": "normal"}),
+        content_type="application/json",
+    ):
+        g.auth_ctx = _auth_ctx(account_id=acct_id)
+        with pytest.raises(BadRequest):
+            api.post.__wrapped__.__wrapped__.__wrapped__(api, workspace_id=ws_id)

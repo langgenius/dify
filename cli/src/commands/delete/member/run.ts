@@ -1,6 +1,7 @@
 import type { KyInstance } from 'ky'
 import type { HostsBundle } from '../../../auth/hosts.js'
 import type { IOStreams } from '../../../io/streams.js'
+import * as readline from 'node:readline'
 import { MembersClient } from '../../../api/members.js'
 import { BaseError } from '../../../errors/base.js'
 import { ErrorCode } from '../../../errors/codes.js'
@@ -14,6 +15,7 @@ export type DeleteMemberOptions = {
   readonly memberId: string
   readonly workspace?: string
   readonly format?: string
+  readonly yes?: boolean
 }
 
 export type DeleteMemberDeps = {
@@ -52,6 +54,17 @@ export async function runDeleteMember(
     bundle: deps.bundle,
   })
 
+  if (!opts.yes && io.isErrTTY) {
+    const confirmed = await promptConfirm(io, `Remove member ${opts.memberId}? [y/N] `)
+    if (!confirmed) {
+      throw new BaseError({
+        code: ErrorCode.UsageMissingArg,
+        message: 'aborted by user',
+        hint: 'pass --yes to skip confirmation',
+      })
+    }
+  }
+
   await runWithSpinner(
     { io, label: `Removing ${opts.memberId}` },
     () => factory(deps.http).remove(wsId, opts.memberId),
@@ -61,5 +74,17 @@ export async function runDeleteMember(
   return {
     data: new DeleteMemberOutput(opts.memberId, textLine),
     workspaceId: wsId,
+  }
+}
+
+async function promptConfirm(io: IOStreams, message: string): Promise<boolean> {
+  io.err.write(message)
+  const rl = readline.createInterface({ input: io.in, output: io.err, terminal: false })
+  try {
+    const line: string = await new Promise(resolve => rl.once('line', resolve))
+    return line.trim().toLowerCase() === 'y'
+  }
+  finally {
+    rl.close()
   }
 }
