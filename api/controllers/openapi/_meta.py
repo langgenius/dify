@@ -5,7 +5,6 @@ compatibility without needing to be logged in. Mirrors the `_health` endpoint
 in `index.py`.
 """
 
-from typing import Literal
 from flask_restx import Resource
 
 from configs import dify_config
