@@ -1,3 +1,4 @@
+import json
 import logging
 from collections.abc import Mapping, Sequence
 from mimetypes import guess_type
@@ -32,6 +33,7 @@ from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from models.provider import Provider, ProviderCredential, TenantPreferredModelProvider
 from models.provider_ids import GenericProviderID
+from models.workflow import Workflow
 from services.enterprise.plugin_manager_service import (
     PluginManagerService,
     PreUninstallPluginRequest,
@@ -282,6 +284,63 @@ class PluginService:
         return manager.delete_plugin_installation_task_item(tenant_id, task_id, identifier)
 
     @staticmethod
+    def _replace_plugin_unique_identifier(value: object, original: str, new: str) -> int:
+        replacements = 0
+
+        if isinstance(value, dict):
+            if value.get("plugin_unique_identifier") == original:
+                value["plugin_unique_identifier"] = new
+                replacements += 1
+
+            for child in value.values():
+                replacements += PluginService._replace_plugin_unique_identifier(child, original, new)
+        elif isinstance(value, list):
+            for child in value:
+                replacements += PluginService._replace_plugin_unique_identifier(child, original, new)
+
+        return replacements
+
+    @staticmethod
+    def _migrate_workflow_plugin_unique_identifier(
+        tenant_id: str, original_plugin_unique_identifier: str, new_plugin_unique_identifier: str
+    ) -> int:
+        workflows = (
+            db.session.scalars(
+                select(Workflow).where(
+                    Workflow.tenant_id == tenant_id,
+                    Workflow.graph.contains(original_plugin_unique_identifier),
+                )
+            )
+            .all()
+        )
+
+        updated_workflow_count = 0
+        replacement_count = 0
+        for workflow in workflows:
+            graph = workflow.graph_dict
+            count = PluginService._replace_plugin_unique_identifier(
+                graph, original_plugin_unique_identifier, new_plugin_unique_identifier
+            )
+            if count == 0:
+                continue
+
+            workflow.graph = json.dumps(graph, ensure_ascii=False)
+            updated_workflow_count += 1
+            replacement_count += count
+
+        if updated_workflow_count:
+            db.session.commit()
+            logger.info(
+                "migrated plugin_unique_identifier references for plugin upgrade: tenant_id=%s, "
+                "workflows=%s, replacements=%s",
+                tenant_id,
+                updated_workflow_count,
+                replacement_count,
+            )
+
+        return updated_workflow_count
+
+    @staticmethod
     def upgrade_plugin_with_marketplace(
         tenant_id: str, original_plugin_unique_identifier: str, new_plugin_unique_identifier: str
     ):
@@ -315,7 +374,7 @@ class PluginService:
             # check if the plugin is available to install
             PluginService._check_plugin_installation_scope(response.verification)
 
-        return manager.upgrade_plugin(
+        result = manager.upgrade_plugin(
             tenant_id,
             original_plugin_unique_identifier,
             new_plugin_unique_identifier,
@@ -324,6 +383,10 @@ class PluginService:
                 "plugin_unique_identifier": new_plugin_unique_identifier,
             },
         )
+        PluginService._migrate_workflow_plugin_unique_identifier(
+            tenant_id, original_plugin_unique_identifier, new_plugin_unique_identifier
+        )
+        return result
 
     @staticmethod
     def upgrade_plugin_with_github(
@@ -339,7 +402,7 @@ class PluginService:
         """
         PluginService._check_marketplace_only_permission()
         manager = PluginInstaller()
-        return manager.upgrade_plugin(
+        result = manager.upgrade_plugin(
             tenant_id,
             original_plugin_unique_identifier,
             new_plugin_unique_identifier,
@@ -350,6 +413,10 @@ class PluginService:
                 "package": package,
             },
         )
+        PluginService._migrate_workflow_plugin_unique_identifier(
+            tenant_id, original_plugin_unique_identifier, new_plugin_unique_identifier
+        )
+        return result
 
     @staticmethod
     def upload_pkg(tenant_id: str, pkg: bytes, verify_signature: bool = False) -> PluginDecodeResponse:
