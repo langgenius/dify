@@ -1,5 +1,7 @@
 import { cva } from 'class-variance-authority'
 
+export const formLabelClassName = 'w-fit py-1 text-text-secondary system-sm-medium data-disabled:cursor-not-allowed'
+
 export const textControlVariants = cva(
   [
     'w-full appearance-none border border-transparent bg-components-input-bg-normal text-components-input-text-filled caret-primary-600 outline-hidden transition-[background-color,border-color,box-shadow]',

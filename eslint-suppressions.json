@@ -2255,9 +2255,6 @@
     }
   },
   "web/app/components/datasets/metadata/edit-metadata-batch/input-combined.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    },
     "ts/no-explicit-any": {
       "count": 2
     }
