@@ -45,7 +45,7 @@ function InputNumberWithSlider({
       <FieldsetLegend className="sr-only">{label}</FieldsetLegend>
       <div className="flex h-8 items-center justify-between space-x-2">
         <input
-          aria-label={`${label} input`}
+          aria-label={label}
           value={value}
           className="block h-8 w-12 shrink-0 appearance-none rounded-lg bg-components-input-bg-normal pl-3 text-[13px] text-components-input-text-filled outline-hidden"
           type="number"
@@ -64,7 +64,7 @@ function InputNumberWithSlider({
           step={1}
           onValueChange={onChange}
           disabled={readonly}
-          aria-label={`${label} slider`}
+          aria-label={label}
         />
       </div>
     </FieldsetRoot>

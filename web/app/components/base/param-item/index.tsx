@@ -64,7 +64,7 @@ const ParamItem: FC<Props> = ({ className, id, name, noTooltip, tip, step = 0.1,
             onValueChange={nextValue => onChange(id, nextValue ?? min)}
           >
             <NumberFieldGroup>
-              <NumberFieldInput aria-label={`${name} input`} className="w-18" />
+              <NumberFieldInput aria-label={name} className="w-18" />
               <NumberFieldControls>
                 <NumberFieldIncrement />
                 <NumberFieldDecrement />
@@ -80,7 +80,7 @@ const ParamItem: FC<Props> = ({ className, id, name, noTooltip, tip, step = 0.1,
             min={min < 1 ? min * 100 : min}
             max={max < 5 ? max * 100 : max}
             onValueChange={value => onChange(id, value / (max < 5 ? 100 : 1))}
-            aria-label={`${name} slider`}
+            aria-label={name}
           />
         </div>
       </div>

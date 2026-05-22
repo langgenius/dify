@@ -77,10 +77,10 @@ const RetryOnPanel = ({
                   onValueChange={handleMaxRetriesChange}
                   min={1}
                   max={10}
-                  aria-label={`${maxRetriesLabel} slider`}
+                  aria-label={maxRetriesLabel}
                 />
                 <Input
-                  aria-label={`${maxRetriesLabel} input`}
+                  aria-label={maxRetriesLabel}
                   type="number"
                   wrapperClassName="w-[100px]"
                   value={retry_config?.max_retries || 3}
@@ -101,10 +101,10 @@ const RetryOnPanel = ({
                   onValueChange={handleRetryIntervalChange}
                   min={100}
                   max={5000}
-                  aria-label={`${retryIntervalLabel} slider`}
+                  aria-label={retryIntervalLabel}
                 />
                 <Input
-                  aria-label={`${retryIntervalLabel} input`}
+                  aria-label={retryIntervalLabel}
                   type="number"
                   wrapperClassName="w-[100px]"
                   value={retry_config?.retry_interval || 1000}

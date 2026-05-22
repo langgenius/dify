@@ -168,10 +168,10 @@ const MemoryConfig: FC<Props> = ({
                   step={1}
                   onValueChange={handleWindowSizeChange}
                   disabled={readonly || !payload.window?.enabled}
-                  aria-label={`${windowSizeLabel} slider`}
+                  aria-label={windowSizeLabel}
                 />
                 <Input
-                  aria-label={`${windowSizeLabel} input`}
+                  aria-label={windowSizeLabel}
                   value={(payload.window?.size || WINDOW_SIZE_DEFAULT) as number}
                   wrapperClassName="w-12"
                   className="appearance-none pr-0"

@@ -105,14 +105,14 @@ const Panel: FC<NodePanelProps<IterationNodeType>> = ({
             <Field title={maxParallelismLabel} isSubTitle tooltip={<div className="w-[230px]">{t(`${i18nPrefix}.MaxParallelismDesc`, { ns: 'workflow' })}</div>}>
               <FieldsetRoot className="row flex">
                 <FieldsetLegend className="sr-only">{maxParallelismLabel}</FieldsetLegend>
-                <Input aria-label={`${maxParallelismLabel} input`} type="number" wrapperClassName="w-18 mr-4" max={MAX_PARALLEL_LIMIT} min={MIN_ITERATION_PARALLEL_NUM} value={inputs.parallel_nums} onChange={(e) => { changeParallelNums(Number(e.target.value)) }} />
+                <Input aria-label={maxParallelismLabel} type="number" wrapperClassName="w-18 mr-4" max={MAX_PARALLEL_LIMIT} min={MIN_ITERATION_PARALLEL_NUM} value={inputs.parallel_nums} onChange={(e) => { changeParallelNums(Number(e.target.value)) }} />
                 <Slider
                   value={inputs.parallel_nums}
                   onValueChange={changeParallelNums}
                   max={MAX_PARALLEL_LIMIT}
                   min={MIN_ITERATION_PARALLEL_NUM}
                   className="mt-4 flex-1 shrink-0"
-                  aria-label={`${maxParallelismLabel} slider`}
+                  aria-label={maxParallelismLabel}
                 />
               </FieldsetRoot>
 

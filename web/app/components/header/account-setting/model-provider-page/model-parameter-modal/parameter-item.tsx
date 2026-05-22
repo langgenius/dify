@@ -191,10 +191,10 @@ function ParameterItem({
             max={parameterRule.max}
             step={step}
             onValueChange={handleSlideChange}
-            aria-label={`${sliderLabel} slider`}
+            aria-label={sliderLabel}
           />
           <input
-            aria-label={`${sliderLabel} input`}
+            aria-label={sliderLabel}
             ref={numberInputRef}
             className="ml-4 block h-8 w-16 shrink-0 appearance-none rounded-lg bg-components-input-bg-normal pl-3 system-sm-regular text-components-input-text-filled outline-hidden"
             type="number"
@@ -235,10 +235,10 @@ function ParameterItem({
             max={parameterRule.max}
             step={0.1}
             onValueChange={handleSlideChange}
-            aria-label={`${sliderLabel} slider`}
+            aria-label={sliderLabel}
           />
           <input
-            aria-label={`${sliderLabel} input`}
+            aria-label={sliderLabel}
             ref={numberInputRef}
             className="ml-4 block h-8 w-16 shrink-0 appearance-none rounded-lg bg-components-input-bg-normal pl-3 system-sm-regular text-components-input-text-filled outline-hidden"
             type="number"

@@ -52,7 +52,7 @@ const KeyWordNumber = ({
         min={MIN_KEYWORD_NUMBER}
         max={MAX_KEYWORD_NUMBER}
         onValueChange={onKeywordNumberChange}
-        aria-label={`${label} slider`}
+        aria-label={label}
       />
       <NumberField
         className="w-[74px] shrink-0"
@@ -62,7 +62,7 @@ const KeyWordNumber = ({
         onValueChange={handleInputChange}
       >
         <NumberFieldGroup>
-          <NumberFieldInput aria-label={`${label} input`} className="w-12 flex-none px-2 text-center" />
+          <NumberFieldInput aria-label={label} className="w-12 flex-none px-2 text-center" />
           <NumberFieldControls>
             <NumberFieldIncrement />
             <NumberFieldDecrement />

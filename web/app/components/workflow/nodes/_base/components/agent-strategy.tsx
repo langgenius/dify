@@ -154,7 +154,7 @@ export const AgentStrategy = memo((props: AgentStrategyProps) => {
                   className="w-full"
                   min={def.min}
                   max={def.max}
-                  aria-label={`${label} slider`}
+                  aria-label={label}
                 />
                 <NumberField
                   value={value}
@@ -163,7 +163,7 @@ export const AgentStrategy = memo((props: AgentStrategyProps) => {
                   onValueChange={nextValue => onChange(nextValue ?? defaultValue)}
                 >
                   <NumberFieldGroup>
-                    <NumberFieldInput aria-label={`${label} input`} className="w-12" />
+                    <NumberFieldInput aria-label={label} className="w-12" />
                     <NumberFieldControls>
                       <NumberFieldIncrement />
                       <NumberFieldDecrement />

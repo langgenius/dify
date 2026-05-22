@@ -111,10 +111,10 @@ const IndexMethod = ({
                   className="mr-3 w-24 shrink-0"
                   value={keywordNumber}
                   onValueChange={onKeywordNumberChange}
-                  aria-label={`${keywordNumberLabel} slider`}
+                  aria-label={keywordNumberLabel}
                 />
                 <Input
-                  aria-label={`${keywordNumberLabel} input`}
+                  aria-label={keywordNumberLabel}
                   disabled={readonly}
                   className="shrink-0"
                   wrapperClassName="shrink-0 w-[72px]"

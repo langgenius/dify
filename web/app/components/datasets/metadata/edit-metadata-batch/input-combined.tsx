@@ -16,6 +16,7 @@ import { DataType } from '../types'
 
 type Props = {
   className?: string
+  label: string
   type: DataType
   value: any
   onChange: (value: any) => void
@@ -24,6 +25,7 @@ type Props = {
 
 const InputCombined: FC<Props> = ({
   className: configClassName,
+  label,
   type,
   value,
   onChange,
@@ -51,7 +53,7 @@ const InputCombined: FC<Props> = ({
         >
           <NumberFieldGroup>
             <NumberFieldInput
-              aria-label="Metadata number value"
+              aria-label={label}
               className={cn(className, 'rounded-l-md')}
             />
             <NumberFieldControls className="overflow-hidden">

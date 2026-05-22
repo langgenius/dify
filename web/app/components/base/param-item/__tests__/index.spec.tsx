@@ -17,7 +17,9 @@ describe('ParamItem', () => {
     vi.clearAllMocks()
   })
 
-  const getSlider = () => screen.getByLabelText('Test Param slider')
+  const getSlider = () => screen.getByLabelText('Test Param', {
+    selector: 'input[type="range"]',
+  })
 
   describe('Rendering', () => {
     it('should render the parameter name', () => {

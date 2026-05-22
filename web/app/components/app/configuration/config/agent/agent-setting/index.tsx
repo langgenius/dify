@@ -114,11 +114,11 @@ const AgentSetting: FC<Props> = ({
                     max_iteration: value,
                   })
                 }}
-                aria-label={`${maximumIterationsLabel} slider`}
+                aria-label={maximumIterationsLabel}
               />
 
               <input
-                aria-label={`${maximumIterationsLabel} input`}
+                aria-label={maximumIterationsLabel}
                 type="number"
                 min={maxIterationsMin}
                 max={MAX_ITERATIONS_NUM}
