@@ -64,7 +64,7 @@ class _RedisShardedSubscription(RedisSubscriptionBase):
     def _get_subscription_type(self) -> str:
         return "sharded"
 
-    def _publish_control_event(self) -> None:
+    def _publish_close_event(self) -> None:
         try:
             self._client.spublish(self._topic, SIG_CLOSE)  # type: ignore[attr-defined,union-attr]
         except Exception:
