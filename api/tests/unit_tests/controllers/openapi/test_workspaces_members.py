@@ -287,9 +287,74 @@ def test_members_list_returns_normalized_rows(app, bypass_pipeline, monkeypatch)
         body, status = api.get.__wrapped__.__wrapped__.__wrapped__(api, workspace_id=ws_id)
 
     assert status == 200
-    assert body["members"][0]["email"] == "mia@example.com"
-    assert body["members"][0]["role"] == "admin"
-    assert body["members"][0]["status"] == "active"
+    assert body["page"] == 1
+    assert body["limit"] == 20
+    assert body["total"] == 1
+    assert body["has_more"] is False
+    assert body["data"][0]["email"] == "mia@example.com"
+    assert body["data"][0]["role"] == "admin"
+    assert body["data"][0]["status"] == "active"
+
+
+def test_members_list_paginates_with_query_params(app, bypass_pipeline, monkeypatch):
+    """`?page=2&limit=2` slices service output and reports total/has_more."""
+    ws_id = str(uuid.uuid4())
+    acct_id = uuid.uuid4()
+    api = WorkspaceMembersApi()
+
+    members = [
+        SimpleNamespace(
+            id=f"m-{i}",
+            name=f"User {i}",
+            email=f"u{i}@example.com",
+            status=AccountStatus.ACTIVE,
+            avatar=None,
+            role=TenantAccountRole.NORMAL,
+        )
+        for i in range(5)
+    ]
+
+    mock_db = MagicMock()
+    mock_db.session.get.return_value = _tenant(ws_id)
+
+    monkeypatch.setattr(
+        sys.modules["controllers.openapi.workspaces"],
+        "TenantService",
+        SimpleNamespace(
+            switch_tenant=Mock(),
+            get_tenant_members=Mock(return_value=members),
+            remove_member_from_tenant=Mock(),
+            update_member_role=Mock(),
+        ),
+    )
+    monkeypatch.setattr(sys.modules["controllers.openapi.workspaces"], "db", mock_db)
+
+    with app.test_request_context(f"/openapi/v1/workspaces/{ws_id}/members?page=2&limit=2"):
+        g.auth_ctx = _auth_ctx(account_id=acct_id)
+        body, status = api.get.__wrapped__.__wrapped__.__wrapped__(api, workspace_id=ws_id)
+
+    assert status == 200
+    assert body["page"] == 2
+    assert body["limit"] == 2
+    assert body["total"] == 5
+    assert body["has_more"] is True
+    assert [d["id"] for d in body["data"]] == ["m-2", "m-3"]
+
+
+def test_members_list_rejects_unknown_query_param(app, bypass_pipeline, monkeypatch):
+    """Strict (`extra='forbid'`) — typos like `?pg=2` surface as 400."""
+    ws_id = str(uuid.uuid4())
+    acct_id = uuid.uuid4()
+    api = WorkspaceMembersApi()
+
+    mock_db = MagicMock()
+    mock_db.session.get.return_value = _tenant(ws_id)
+    monkeypatch.setattr(sys.modules["controllers.openapi.workspaces"], "db", mock_db)
+
+    with app.test_request_context(f"/openapi/v1/workspaces/{ws_id}/members?pg=2"):
+        g.auth_ctx = _auth_ctx(account_id=acct_id)
+        with pytest.raises(BadRequest):
+            api.get.__wrapped__.__wrapped__.__wrapped__(api, workspace_id=ws_id)
 
 
 # ---------------------------------------------------------------------------
@@ -542,8 +607,8 @@ def test_delete_member_happy_path(app, bypass_pipeline, monkeypatch):
     mock_db = MagicMock()
     mock_db.session.get.side_effect = [
         _account(account_id=str(acct_id)),  # operator
-        _tenant(ws_id),                     # tenant
-        _account(account_id=member_id),     # target member
+        _tenant(ws_id),  # tenant
+        _account(account_id=member_id),  # target member
     ]
 
     remove_mock = Mock()

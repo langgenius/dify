@@ -40,6 +40,7 @@ from controllers.openapi._models import (
     MemberActionResponse,
     MemberInvitePayload,
     MemberInviteResponse,
+    MemberListQuery,
     MemberListResponse,
     MemberResponse,
     MemberRoleUpdatePayload,
@@ -70,6 +71,7 @@ register_schema_models(
     DeviceLookupQuery,
     DeviceMutateRequest,
     MemberInvitePayload,
+    MemberListQuery,
     MemberRoleUpdatePayload,
     PermittedExternalAppsListQuery,
 )

@@ -22,11 +22,13 @@ from sqlalchemy import select
 from werkzeug.exceptions import BadRequest, Forbidden, NotFound
 
 from configs import dify_config
+from controllers.common.schema import query_params_from_model
 from controllers.openapi import openapi_ns
 from controllers.openapi._models import (
     MemberActionResponse,
     MemberInvitePayload,
     MemberInviteResponse,
+    MemberListQuery,
     MemberListResponse,
     MemberResponse,
     MemberRoleUpdatePayload,
@@ -220,15 +222,32 @@ class WorkspaceMembersApi(Resource):
     assigned through invite (ownership transfer is console-only).
     """
 
+    @openapi_ns.doc(params=query_params_from_model(MemberListQuery))
     @openapi_ns.response(200, "Member list", openapi_ns.models[MemberListResponse.__name__])
     @validate_bearer(accept=ACCEPT_USER_ANY)
     @accept_subjects(SubjectType.ACCOUNT)
     @require_workspace_role()
     def get(self, workspace_id: str):
+        try:
+            query = MemberListQuery.model_validate(request.args.to_dict(flat=True))
+        except ValidationError as exc:
+            raise BadRequest(exc.json())
+
         tenant = _load_tenant(workspace_id)
+        # Members per workspace are bounded by SaaS plan caps (≤50) or EE
+        # license seats (low thousands worst-case), so we materialize and
+        # slice in-memory rather than push pagination into the service —
+        # matches how the rest of the service exposes member lists.
         members = TenantService.get_tenant_members(tenant)
+        total = len(members)
+        start = (query.page - 1) * query.limit
+        page_items = members[start : start + query.limit]
         return MemberListResponse(
-            members=[_member_response(m) for m in members],
+            page=query.page,
+            limit=query.limit,
+            total=total,
+            has_more=query.page * query.limit < total,
+            data=[_member_response(m) for m in page_items],
         ).model_dump(mode="json"), 200
 
     @openapi_ns.expect(openapi_ns.models[MemberInvitePayload.__name__])
