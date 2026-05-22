@@ -102,12 +102,16 @@ class OAuthAccessToken(TypeBase):
     id: Mapped[str] = mapped_column(
         StringUUID, insert_default=lambda: str(uuidv7()), default_factory=lambda: str(uuidv7()), init=False
     )
-    subject_email: Mapped[str] = mapped_column(sa.Text, nullable=False)
+    # Indexed text columns are bounded VARCHARs so the schema is portable
+    # across PostgreSQL and MySQL (MySQL cannot index TEXT without a prefix
+    # length). 255 chars accommodates RFC-compliant emails and typical
+    # OIDC issuer URLs / device labels.
+    subject_email: Mapped[str] = mapped_column(sa.String(255), nullable=False)
     client_id: Mapped[str] = mapped_column(sa.String(64), nullable=False)
-    device_label: Mapped[str] = mapped_column(sa.Text, nullable=False)
+    device_label: Mapped[str] = mapped_column(sa.String(255), nullable=False)
     prefix: Mapped[str] = mapped_column(sa.String(8), nullable=False)
     expires_at: Mapped[datetime] = mapped_column(sa.DateTime(timezone=True), nullable=False)
-    subject_issuer: Mapped[str | None] = mapped_column(sa.Text, nullable=True, default=None)
+    subject_issuer: Mapped[str | None] = mapped_column(sa.String(255), nullable=True, default=None)
     account_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True, default=None)
     token_hash: Mapped[str | None] = mapped_column(sa.String(64), nullable=True, default=None)
     last_used_at: Mapped[datetime | None] = mapped_column(sa.DateTime(timezone=True), nullable=True, default=None)
