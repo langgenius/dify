@@ -423,7 +423,7 @@ export function EnvironmentPermissionRow({
         </div>
         <div className="mt-1 flex min-w-0 items-center gap-2 pc:mt-0">
           <span className="i-ri-server-line size-3.5 shrink-0 text-text-tertiary" aria-hidden="true" />
-          <span className="min-w-0 truncate system-sm-medium text-text-primary">
+          <span className="min-w-0 truncate text-text-primary">
             {environmentName(environment)}
           </span>
         </div>

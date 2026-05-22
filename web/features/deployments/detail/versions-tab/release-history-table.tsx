@@ -137,7 +137,7 @@ function ReleaseHistoryMobileRows({ appInstanceId, releaseRows, deploymentRows, 
                   <Tooltip>
                     <TooltipTrigger
                       render={(
-                        <span className="inline-flex max-w-full cursor-default truncate font-mono system-sm-medium text-text-primary">
+                        <span className="inline-flex max-w-full cursor-default truncate text-text-primary">
                           {releaseLabel(release)}
                         </span>
                       )}
@@ -198,10 +198,10 @@ function ReleaseDeploymentsContent({
     return <ReleaseDeploymentsSkeleton />
 
   if (hasError)
-    return <span className="system-sm-regular text-text-tertiary">{loadFailedLabel}</span>
+    return <span className="text-text-tertiary">{loadFailedLabel}</span>
 
   if (items.length === 0)
-    return <span className="system-sm-regular text-text-quaternary">—</span>
+    return <span className="text-text-quaternary">—</span>
 
   return items.map(item => (
     <DeployedToBadge
@@ -274,7 +274,7 @@ function ReleaseHistoryRows({ appInstanceId, releaseRows, deploymentRows, deploy
                     <Tooltip>
                       <TooltipTrigger
                         render={(
-                          <span className="inline-flex max-w-full cursor-default truncate font-mono system-sm-medium text-text-primary">
+                          <span className="inline-flex max-w-full cursor-default truncate text-text-primary">
                             {releaseLabel(release)}
                           </span>
                         )}
@@ -284,10 +284,10 @@ function ReleaseHistoryRows({ appInstanceId, releaseRows, deploymentRows, deploy
                       </TooltipContent>
                     </Tooltip>
                   </DetailTableCell>
-                  <DetailTableCell className="system-sm-regular text-text-secondary">
+                  <DetailTableCell className="text-text-secondary">
                     <CreatedAtCell createdAt={release.createdAt} />
                   </DetailTableCell>
-                  <DetailTableCell className="truncate system-sm-regular text-text-secondary">
+                  <DetailTableCell className="truncate text-text-secondary">
                     {row.createdBy?.name ?? '—'}
                   </DetailTableCell>
                   <DetailTableCell>

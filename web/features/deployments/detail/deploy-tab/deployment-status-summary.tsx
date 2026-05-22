@@ -23,7 +23,7 @@ export function DeploymentStatusSummary({ row }: {
   const { t } = useTranslation('deployments')
   if (isUndeployedDeploymentRow(row)) {
     return (
-      <span className="inline-flex items-center gap-1.5 system-sm-medium text-text-tertiary">
+      <span className="inline-flex items-center gap-1.5 text-text-tertiary">
         <StatusIconSlot>
           <span className="size-1.5 rounded-full bg-text-quaternary" />
         </StatusIconSlot>
@@ -37,7 +37,7 @@ export function DeploymentStatusSummary({ row }: {
   if (status === 'deploying') {
     const hasTargetRelease = !!(row.currentRelease?.name || row.currentRelease?.id)
     return (
-      <span className="inline-flex items-center gap-1.5 system-sm-medium text-util-colors-blue-blue-700">
+      <span className="inline-flex items-center gap-1.5 text-util-colors-blue-blue-700">
         <StatusIconSlot>
           <span className="i-ri-loader-4-line size-2 animate-spin" />
         </StatusIconSlot>
@@ -51,7 +51,7 @@ export function DeploymentStatusSummary({ row }: {
   if (status === 'deploy_failed') {
     const hasRunningRelease = !!row.currentRelease?.id
     return (
-      <span className="inline-flex items-center gap-1.5 system-sm-medium text-util-colors-red-red-700">
+      <span className="inline-flex items-center gap-1.5 text-util-colors-red-red-700">
         <StatusIconSlot>
           <span className="i-ri-alert-line size-3" />
         </StatusIconSlot>
@@ -62,7 +62,7 @@ export function DeploymentStatusSummary({ row }: {
 
   if (status === 'unknown') {
     return (
-      <span className="inline-flex items-center gap-1.5 system-sm-medium text-text-tertiary">
+      <span className="inline-flex items-center gap-1.5 text-text-tertiary">
         <StatusIconSlot>
           <span className="i-ri-question-line size-3" />
         </StatusIconSlot>
@@ -72,7 +72,7 @@ export function DeploymentStatusSummary({ row }: {
   }
 
   return (
-    <span className="inline-flex items-center gap-1.5 system-sm-medium text-util-colors-green-green-700">
+    <span className="inline-flex items-center gap-1.5 text-util-colors-green-green-700">
       <StatusIconSlot>
         <span className="size-1.5 rounded-full bg-util-colors-green-green-500" />
       </StatusIconSlot>

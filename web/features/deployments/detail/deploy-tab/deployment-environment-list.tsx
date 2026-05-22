@@ -49,7 +49,7 @@ function EnvironmentSummary({ environment }: {
   environment: EnvironmentDeployment['environment']
 }) {
   return (
-    <span className="block truncate system-sm-semibold text-text-primary">
+    <span className="block truncate text-text-primary">
       {environmentName(environment)}
     </span>
   )
@@ -59,18 +59,18 @@ function CurrentReleaseSummary({ release }: {
   release: EnvironmentDeployment['currentRelease']
 }) {
   if (!release?.id && !release?.name)
-    return <span className="system-sm-regular text-text-quaternary">—</span>
+    return <span className="text-text-quaternary">—</span>
 
   const commit = releaseCommit(release)
 
   return (
     <div className="flex min-w-0 flex-col gap-1">
       <div className="flex min-w-0 items-baseline gap-1.5">
-        <span className="truncate font-mono system-sm-medium text-text-primary">
+        <span className="truncate text-text-primary">
           {releaseLabel(release)}
         </span>
         {commit !== '—' && (
-          <span className="shrink-0 font-mono system-xs-regular text-text-tertiary">
+          <span className="shrink-0 text-text-tertiary">
             {commit}
           </span>
         )}

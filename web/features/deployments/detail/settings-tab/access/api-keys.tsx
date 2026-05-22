@@ -31,7 +31,7 @@ function ApiKeyName({ apiKey }: {
   apiKey: DeveloperApiKeyRow
 }) {
   return (
-    <span className="block truncate system-sm-medium text-text-primary">
+    <span className="block truncate text-text-primary">
       {apiKey.name || apiKey.id || '—'}
     </span>
   )
@@ -41,7 +41,7 @@ function EnvironmentBadge({ environment }: {
   environment: DeveloperApiKeyRow['environment']
 }) {
   return (
-    <span className="inline-flex h-5 max-w-36 items-center rounded-md bg-background-section-burn px-1.5 system-xs-medium text-text-tertiary">
+    <span className="inline-flex h-5 max-w-36 items-center rounded-md bg-background-section-burn px-1.5 text-xs text-text-tertiary">
       <span className="truncate">{environmentName(environment)}</span>
     </span>
   )
@@ -52,7 +52,7 @@ function ApiKeyValue({ value }: {
 }) {
   return (
     <div className="flex h-8 min-w-0 items-center rounded-lg border border-components-input-border-active bg-components-input-bg-normal px-2">
-      <div className="min-w-0 flex-1 truncate font-mono system-sm-medium text-text-secondary">
+      <div className="min-w-0 flex-1 truncate text-text-secondary">
         {value}
       </div>
     </div>
