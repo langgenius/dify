@@ -4,6 +4,7 @@ import type { Field as BaseFieldNS } from '@base-ui/react/field'
 import type { VariantProps } from 'class-variance-authority'
 import { Field as BaseField } from '@base-ui/react/field'
 import { cn } from '../cn'
+import { formLabelClassName } from '../form-shared'
 import { textControlVariants } from '../text-control-variants'
 
 export type FieldRootProps
@@ -56,7 +57,7 @@ export function FieldLabel({
 }: FieldLabelProps) {
   return (
     <BaseField.Label
-      className={cn('w-fit py-1 text-text-secondary system-sm-medium data-disabled:cursor-not-allowed', className)}
+      className={cn(formLabelClassName, className)}
       {...props}
     />
   )
