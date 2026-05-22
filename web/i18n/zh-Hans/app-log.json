@@ -19,7 +19,7 @@
   "detail.operation.like": "赞同",
   "detail.promptTemplate": "前缀提示词",
   "detail.promptTemplateBeforeChat": "对话前提示词 · 以系统消息提交",
-  "detail.second": " 秒",
+  "detail.second": "秒",
   "detail.time": "时间",
   "detail.timeConsuming": "耗时",
   "detail.tokenCost": "花费 Token",

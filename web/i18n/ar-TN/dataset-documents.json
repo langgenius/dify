@@ -44,7 +44,7 @@
   "list.batchModal.completed": "اكتمل الاستيراد",
   "list.batchModal.content": "محتوى",
   "list.batchModal.contentTitle": "محتوى القطعة",
-  "list.batchModal.csvUploadTitle": "اسحب وأفلت ملف CSV هنا، أو ",
+  "list.batchModal.csvUploadTitle": "اسحب وأفلت ملف CSV هنا، أو",
   "list.batchModal.error": "خطأ في الاستيراد",
   "list.batchModal.ok": "موافق",
   "list.batchModal.processing": "في معالجة الدفعة",
@@ -56,8 +56,8 @@
   "list.batchModal.title": "إضافة قطع دفعة واحدة",
   "list.delete.content": "إذا كنت بحاجة إلى استئناف المعالجة لاحقًا، فستستمر من حيث توقفت",
   "list.delete.title": "هل أنت متأكد من الحذف؟",
-  "list.desc": "يتم عرض جميع ملفات المعرفة هنا، ويمكن ربط المعرفة بأكملها باقتباسات Dify أو فهرستها عبر مكون الدردشة الإضافي.",
-  "list.empty.sync.tip": "سيقوم Dify بتنزيل الملفات بشكل دوري من Notion وإكمال المعالجة.",
+  "list.desc": "يتم عرض جميع ملفات المعرفة هنا، ويمكن ربط المعرفة بأكملها باقتباسات أو فهرستها عبر مكون الدردشة الإضافي.",
+  "list.empty.sync.tip": "سيقوم بتنزيل الملفات بشكل دوري من Notion وإكمال المعالجة.",
   "list.empty.title": "لا يوجد وثائق بعد",
   "list.empty.upload.tip": "يمكنك تحميل الملفات، والمزامنة من الموقع، أو من تطبيقات الويب مثل Notion و GitHub، إلخ.",
   "list.index.all": "الكل",
@@ -258,8 +258,8 @@
   "metadata.languageMap.th": "تايلاندي",
   "metadata.languageMap.tr": "تركي",
   "metadata.languageMap.zh": "صيني",
-  "metadata.placeholder.add": "إضافة ",
-  "metadata.placeholder.select": "تحديد ",
+  "metadata.placeholder.add": "إضافة",
+  "metadata.placeholder.select": "تحديد",
   "metadata.source.github": "مزامنة من Github",
   "metadata.source.local_file": "ملف محلي",
   "metadata.source.notion": "مزامنة من Notion",
@@ -335,5 +335,5 @@
   "segment.searchResults_zero": "نتيجة",
   "segment.summary": "ملخص",
   "segment.summaryPlaceholder": "اكتب ملخصًا موجزًا لاسترجاع أفضل…",
-  "segment.vectorHash": "تجزئة المتجه: "
+  "segment.vectorHash": "تجزئة المتجه:"
 }

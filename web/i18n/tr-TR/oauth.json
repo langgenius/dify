@@ -12,8 +12,8 @@
   "scopes.timezone": "Saat Dilimi",
   "switchAccount": "Hesabı Değiştir",
   "tips.common": "Gizliliğinize saygı gösteriyoruz ve bu bilgiyi yalnızca geliştirici araçlarımızla deneyiminizi geliştirmek için kullanacağız.",
-  "tips.loggedIn": "Bu uygulama Dify Cloud hesabınızdaki aşağıdaki bilgilere erişmek istiyor.",
+  "tips.loggedIn": "Bu uygulama Cloud hesabınızdaki aşağıdaki bilgilere erişmek istiyor.",
   "tips.needLogin": "Lütfen yetkilendirmek için giriş yapın",
-  "tips.notLoggedIn": "Bu uygulama Dify Cloud hesabınıza erişmek istiyor",
+  "tips.notLoggedIn": "Bu uygulama Cloud hesabınıza erişmek istiyor",
   "unknownApp": "Bilinmeyen Uygulama"
 }

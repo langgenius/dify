@@ -68,7 +68,7 @@ const ChatPreviewCard = ({
               <div className="h-2 w-[144px] rounded-xs bg-text-quaternary opacity-20"></div>
             </Button>
           </div>
-          <div className="flex h-[52px] w-[578px] items-center rounded-xl border border-components-chat-input-border bg-components-panel-bg-blur pl-3.5 body-lg-regular text-text-placeholder shadow-md backdrop-blur-xs">Talk to Dify</div>
+          <div className="flex h-[52px] w-[578px] items-center rounded-xl border border-components-chat-input-border bg-components-panel-bg-blur pl-3.5 body-lg-regular text-text-placeholder shadow-md backdrop-blur-xs">Talk to DG</div>
         </div>
       </div>
     </div>

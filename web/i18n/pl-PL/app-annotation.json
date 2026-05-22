@@ -14,7 +14,7 @@
   "batchModal.completed": "Import zakończony",
   "batchModal.content": "zawartość",
   "batchModal.contentTitle": "zawartość fragmentu",
-  "batchModal.csvUploadTitle": "Przeciągnij i upuść tutaj swój plik CSV, lub ",
+  "batchModal.csvUploadTitle": "Przeciągnij i upuść tutaj swój plik CSV, lub",
   "batchModal.error": "Błąd importu",
   "batchModal.ok": "OK",
   "batchModal.processing": "Przetwarzanie batcha",

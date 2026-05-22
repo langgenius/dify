@@ -34,7 +34,7 @@
   "generation.completionResult": "Tamamlama sonucu",
   "generation.copy": "Kopyala",
   "generation.csvStructureTitle": "CSV dosyası şu yapıya uygun olmalıdır:",
-  "generation.csvUploadTitle": "CSV dosyanızı buraya sürükleyip bırakın ya da ",
+  "generation.csvUploadTitle": "CSV dosyanızı buraya sürükleyip bırakın ya da",
   "generation.downloadTemplate": "Şablonu buradan indir",
   "generation.errorMsg.atLeastOne": "Lütfen yüklenen dosyada en az bir satır girin.",
   "generation.errorMsg.empty": "Lütfen yüklenen dosyada içerik girin.",

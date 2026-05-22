@@ -1,4 +1,5 @@
 import type { SlashCommandHandler } from './types'
+import { FORUM_URL } from '@/config/links'
 import { RiFeedbackLine } from '@remixicon/react'
 import * as React from 'react'
 import { getI18n } from 'react-i18next'
@@ -12,13 +13,12 @@ type ForumDeps = Record<string, never>
  */
 export const forumCommand: SlashCommandHandler<ForumDeps> = {
   name: 'forum',
-  description: 'Open Dify community forum',
+  description: 'Open DG community forum',
   mode: 'direct',
 
   // Direct execution function
   execute: () => {
-    const url = 'https://forum.dify.ai'
-    window.open(url, '_blank', 'noopener,noreferrer')
+    window.open(FORUM_URL, '_blank', 'noopener,noreferrer')
   },
 
   async search(args: string, locale: string = 'en') {
@@ -33,14 +33,14 @@ export const forumCommand: SlashCommandHandler<ForumDeps> = {
           <RiFeedbackLine className="size-4 text-text-tertiary" />
         </div>
       ),
-      data: { command: 'navigation.forum', args: { url: 'https://forum.dify.ai' } },
+      data: { command: 'navigation.forum', args: { url: FORUM_URL } },
     }]
   },
 
   register(_deps: ForumDeps) {
     registerCommands({
       'navigation.forum': async (args) => {
-        const url = args?.url || 'https://forum.dify.ai'
+        const url = args?.url || FORUM_URL
         window.open(url, '_blank', 'noopener,noreferrer')
       },
     })

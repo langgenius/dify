@@ -30,7 +30,7 @@ describe('DifyLogo', () => {
       render(<DifyLogo />)
       const img = screen.getByRole('img', { name: /dify logo/i })
       expect(img).toBeInTheDocument()
-      expect(img).toHaveAttribute('src', '/test-base-path/logo/logo.svg')
+      expect(img).toHaveAttribute('src', '/test-base-path/logo/login_dg.png')
     })
   })
 
@@ -50,7 +50,7 @@ describe('DifyLogo', () => {
     it('applies custom style correctly', () => {
       render(<DifyLogo style="monochromeWhite" />)
       const img = screen.getByRole('img', { name: /dify logo/i })
-      expect(img).toHaveAttribute('src', '/test-base-path/logo/logo-monochrome-white.svg')
+      expect(img).toHaveAttribute('src', '/test-base-path/logo/login_dg.png')
     })
 
     it('applies custom className', () => {
@@ -68,7 +68,7 @@ describe('DifyLogo', () => {
       } as ReturnType<typeof useTheme>)
       render(<DifyLogo style="default" />)
       const img = screen.getByRole('img', { name: /dify logo/i })
-      expect(img).toHaveAttribute('src', '/test-base-path/logo/logo-monochrome-white.svg')
+      expect(img).toHaveAttribute('src', '/test-base-path/logo/login_dg.png')
     })
 
     it('uses monochromeWhite logo in dark theme when style is monochromeWhite', () => {
@@ -78,7 +78,7 @@ describe('DifyLogo', () => {
       } as ReturnType<typeof useTheme>)
       render(<DifyLogo style="monochromeWhite" />)
       const img = screen.getByRole('img', { name: /dify logo/i })
-      expect(img).toHaveAttribute('src', '/test-base-path/logo/logo-monochrome-white.svg')
+      expect(img).toHaveAttribute('src', '/test-base-path/logo/login_dg.png')
     })
 
     it('uses default logo in light theme when style is default', () => {
@@ -88,7 +88,7 @@ describe('DifyLogo', () => {
       } as ReturnType<typeof useTheme>)
       render(<DifyLogo style="default" />)
       const img = screen.getByRole('img', { name: /dify logo/i })
-      expect(img).toHaveAttribute('src', '/test-base-path/logo/logo.svg')
+      expect(img).toHaveAttribute('src', '/test-base-path/logo/login_dg.png')
     })
   })
 })

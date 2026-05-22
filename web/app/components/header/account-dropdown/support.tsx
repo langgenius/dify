@@ -55,30 +55,6 @@ export default function Support() {
               />
             </DropdownMenuLinkItem>
           )}
-          <DropdownMenuLinkItem
-            className="justify-between"
-            href="https://forum.dify.ai/"
-            rel="noopener noreferrer"
-            target="_blank"
-          >
-            <MenuItemContent
-              iconClassName="i-ri-discuss-line"
-              label={t('userProfile.forum', { ns: 'common' })}
-              trailing={<ExternalLinkIndicator />}
-            />
-          </DropdownMenuLinkItem>
-          <DropdownMenuLinkItem
-            className="justify-between"
-            href="https://discord.gg/5AEfbxcd9k"
-            rel="noopener noreferrer"
-            target="_blank"
-          >
-            <MenuItemContent
-              iconClassName="i-ri-discord-line"
-              label={t('userProfile.community', { ns: 'common' })}
-              trailing={<ExternalLinkIndicator />}
-            />
-          </DropdownMenuLinkItem>
         </DropdownMenuGroup>
       </DropdownMenuSubContent>
     </DropdownMenuSub>

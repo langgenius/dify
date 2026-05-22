@@ -330,7 +330,7 @@
   "variableConfig.errorMsg.varNameCanBeRepeat": "Il nome della variabile non può essere ripetuto",
   "variableConfig.fieldType": "Tipo di campo",
   "variableConfig.file.audio.name": "Audio",
-  "variableConfig.file.custom.createPlaceholder": "  Estensione del file, ad esempio .doc",
+  "variableConfig.file.custom.createPlaceholder": "Estensione del file, ad esempio .doc",
   "variableConfig.file.custom.description": "Specificare altri tipi di file.",
   "variableConfig.file.custom.name": "Altri tipi di file",
   "variableConfig.file.document.name": "Documento",

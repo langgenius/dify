@@ -45,7 +45,7 @@
   "modal.oauth.authorization.authFailed": "ไม่สามารถดึงข้อมูลการอนุญาต OAuth ได้",
   "modal.oauth.authorization.authSuccess": "การอนุญาตสำเร็จ",
   "modal.oauth.authorization.authorizeButton": "อนุญาตด้วย {{provider}}",
-  "modal.oauth.authorization.description": "อนุญาตให้ Dify เข้าถึงบัญชีของคุณ",
+  "modal.oauth.authorization.description": "อนุญาตให้ เข้าถึงบัญชีของคุณ",
   "modal.oauth.authorization.redirectUrl": "เปลี่ยนเส้นทาง URL",
   "modal.oauth.authorization.redirectUrlHelp": "ใช้ URL นี้ในการตั้งค่าแอป OAuth ของคุณ",
   "modal.oauth.authorization.title": "การอนุญาต OAuth",

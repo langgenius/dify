@@ -5,7 +5,7 @@
   "form.chunkStructure.title": "Structure de morceaux",
   "form.desc": "Description des connaissances",
   "form.descInfo": "Veuillez rédiger une description textuelle claire pour décrire le contenu de la Connaissance. Cette description sera utilisée comme base pour la correspondance lors de la sélection parmi plusieurs Connaissances pour l'inférence.",
-  "form.descPlaceholder": "Décrivez ce qui se trouve dans cette Connaissance. Une description détaillée permet à l'IA d'accéder au contenu de la Connaissance en temps opportun. Si vide, Dify utilisera la stratégie de hit par défaut.",
+  "form.descPlaceholder": "Décrivez ce qui se trouve dans cette Connaissance. Une description détaillée permet à l'IA d'accéder au contenu de la Connaissance en temps opportun. Si vide, utilisera la stratégie de hit par défaut.",
   "form.descWrite": "Apprenez comment rédiger une bonne description de connaissance.",
   "form.embeddingModel": "Modèle d'Embedding",
   "form.embeddingModelTip": "Changez le modèle intégré, veuillez aller à",

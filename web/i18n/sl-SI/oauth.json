@@ -12,8 +12,8 @@
   "scopes.timezone": "Časovni pas",
   "switchAccount": "Preklopi račun",
   "tips.common": "Soočamo se z vašo zasebnostjo in te informacije bomo uporabili le za izboljšanje vaših izkušenj z našimi orodji za razvijalce.",
-  "tips.loggedIn": "Ta aplikacija želi dostopati do naslednjih informacij iz vašega računa Dify Cloud.",
+  "tips.loggedIn": "Ta aplikacija želi dostopati do naslednjih informacij iz vašega računa Cloud.",
   "tips.needLogin": "Prosimo, prijavite se za avtorizacijo",
-  "tips.notLoggedIn": "Ta aplikacija želi dostopati do vašega Dify Cloud računa",
+  "tips.notLoggedIn": "Ta aplikacija želi dostopati do vašega Cloud računa",
   "unknownApp": "Nepoznana aplikacija"
 }

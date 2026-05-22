@@ -585,7 +585,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
 --header 'Content-Type: application/json' \\
 --data-raw '{
     "message_id": "5ad4cb98-f0c7-4085-b384-88c403be6290",
-    "text": "你好Dify",
+    "text": "你好世界",
     "user": "abc-123"
 }'`}
     />
@@ -635,7 +635,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
         "tag2"
       ],
       "mode": "chat",
-      "author_name": "Dify"
+      "author_name": "AI Assistant"
     }
     ```
     </CodeGroup>
@@ -859,7 +859,7 @@ ___
         {
           "id": "69d48372-ad81-4c75-9c46-2ce197b4d402",
           "question": "What is your name?",
-          "answer": "I am Dify.",
+          "answer": "I am an AI assistant.",
           "hit_count": 0,
           "created_at": 1735625869
         }
@@ -901,7 +901,7 @@ ___
       targetCode={`curl --location --request POST '${props.apiBaseUrl}/apps/annotations' \\
 --header 'Authorization: Bearer {api_key}' \\
 --header 'Content-Type: application/json' \\
---data-raw '{"question": "What is your name?","answer": "I am Dify."}'`}
+--data-raw '{"question": "What is your name?","answer": "I am an AI assistant."}'`}
     />
 
     <CodeGroup title="Response">
@@ -909,7 +909,7 @@ ___
     {
       "id": "69d48372-ad81-4c75-9c46-2ce197b4d402",
       "question": "What is your name?",
-      "answer": "I am Dify.",
+      "answer": "I am an AI assistant.",
       "hit_count": 0,
       "created_at": 1735625869
     }
@@ -948,7 +948,7 @@ ___
       targetCode={`curl --location --request PUT '${props.apiBaseUrl}/apps/annotations/{annotation_id}' \\
 --header 'Authorization: Bearer {api_key}' \\
 --header 'Content-Type: application/json' \\
---data-raw '{"question": "What is your name?","answer": "I am Dify."}'`}
+--data-raw '{"question": "What is your name?","answer": "I am an AI assistant."}'`}
     />
 
     <CodeGroup title="Response">
@@ -956,7 +956,7 @@ ___
     {
       "id": "69d48372-ad81-4c75-9c46-2ce197b4d402",
       "question": "What is your name?",
-      "answer": "I am Dify.",
+      "answer": "I am an AI assistant.",
       "hit_count": 0,
       "created_at": 1735625869
     }

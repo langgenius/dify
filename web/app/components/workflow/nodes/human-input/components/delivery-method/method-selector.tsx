@@ -23,6 +23,7 @@ import { Slack, Teams } from '@/app/components/base/icons/src/public/other'
 import useWorkflowNodes from '@/app/components/workflow/store/workflow/use-nodes'
 import { isTriggerWorkflow } from '@/app/components/workflow/utils/workflow-entry'
 import { IS_CE_EDITION } from '@/config'
+import { DIFY_SUPPORT_EMAIL } from '@/config/links'
 import { useProviderContextSelector } from '@/context/provider-context'
 import { DeliveryMethodType } from '../../types'
 
@@ -201,7 +202,7 @@ const MethodSelector: FC<MethodSelectorProps> = ({
                 <Trans
                   i18nKey={`${i18nPrefix}.deliveryMethod.contactTip2`}
                   ns="workflow"
-                  components={{ email: <a href="mailto:support@dify.ai" className="text-text-accent-light-mode-only">support@dify.ai</a> }}
+                  components={{ email: <a href={`mailto:${DIFY_SUPPORT_EMAIL}`} className="text-text-accent-light-mode-only">{DIFY_SUPPORT_EMAIL}</a> }}
                 />
               </div>
             </div>

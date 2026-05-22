@@ -4,7 +4,7 @@
   "apply": "Anwenden",
   "change": "Ändern",
   "custom": "Anpassung",
-  "customize.contactUs": " kontaktiere uns ",
+  "customize.contactUs": "kontaktiere uns",
   "customize.prefix": "Um das Markenlogo innerhalb der App anzupassen, bitte",
   "customize.suffix": "um auf die Enterprise-Edition zu upgraden.",
   "restore": "Standardeinstellungen wiederherstellen",
@@ -17,6 +17,6 @@
   "uploading": "Lade hoch",
   "webapp.changeLogo": "Ändere Powered by Markenbild",
   "webapp.changeLogoTip": "SVG oder PNG Format mit einer Mindestgröße von 40x40px",
-  "webapp.removeBrand": "Entferne Powered by Dify",
+  "webapp.removeBrand": "Entferne Powered by",
   "webapp.title": "web app Marke anpassen"
 }

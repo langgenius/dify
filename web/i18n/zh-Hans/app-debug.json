@@ -219,7 +219,7 @@
   "generate.template.excelFormulaExpert.name": "Excel 公式专家",
   "generate.template.meetingTakeaways.instruction": "将会议内容提炼总结，包括讨论主题、关键要点和待办事项",
   "generate.template.meetingTakeaways.name": "总结会议纪要",
-  "generate.template.professionalAnalyst.instruction": " 从长篇报告中提取洞察、识别风险并提炼关键信息",
+  "generate.template.professionalAnalyst.instruction": "从长篇报告中提取洞察、识别风险并提炼关键信息",
   "generate.template.professionalAnalyst.name": "职业分析师",
   "generate.template.pythonDebugger.instruction": "一个帮你写和纠错程序的机器人",
   "generate.template.pythonDebugger.name": "Python 代码助手",

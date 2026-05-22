@@ -44,7 +44,7 @@
   "list.batchModal.completed": "Import finalizat",
   "list.batchModal.content": "conținut",
   "list.batchModal.contentTitle": "conținut segment",
-  "list.batchModal.csvUploadTitle": "Trage și plasează fișierul tău CSV aici sau ",
+  "list.batchModal.csvUploadTitle": "Trage și plasează fișierul tău CSV aici sau",
   "list.batchModal.error": "Eroare la import",
   "list.batchModal.ok": "OK",
   "list.batchModal.processing": "În procesare lot",
@@ -56,8 +56,8 @@
   "list.batchModal.title": "Adăugare în lot a segmentelor",
   "list.delete.content": "Dacă trebuie să reluați procesarea mai târziu, veți continua de unde ați rămas",
   "list.delete.title": "Sigur doriți să ștergeți?",
-  "list.desc": "Toate fișierele din Cunoștințe sunt afișate aici, iar întreaga Cunoaștere poate fi legată de citări Dify sau indexată prin intermediul pluginului Chat.",
-  "list.empty.sync.tip": "Dify va descărca periodic fișiere din Notion și va finaliza procesarea.",
+  "list.desc": "Toate fișierele din Cunoștințe sunt afișate aici, iar întreaga Cunoaștere poate fi legată de citări sau indexată prin intermediul pluginului Chat.",
+  "list.empty.sync.tip": "va descărca periodic fișiere din Notion și va finaliza procesarea.",
   "list.empty.title": "Nu există încă documentație",
   "list.empty.upload.tip": "Puteți încărca fișiere, sincroniza de pe site-ul web sau din aplicații web precum Notion, GitHub etc.",
   "list.index.all": "Toate",
@@ -258,8 +258,8 @@
   "metadata.languageMap.th": "Tailandeză",
   "metadata.languageMap.tr": "Turcă",
   "metadata.languageMap.zh": "Chineză",
-  "metadata.placeholder.add": "Adaugă ",
-  "metadata.placeholder.select": "Selectează ",
+  "metadata.placeholder.add": "Adaugă",
+  "metadata.placeholder.select": "Selectează",
   "metadata.source.github": "Sincronizează din Github",
   "metadata.source.local_file": "Fișier local",
   "metadata.source.notion": "Sincronizează din Notion",
@@ -335,5 +335,5 @@
   "segment.searchResults_zero": "REZULTAT",
   "segment.summary": "REZUMAT",
   "segment.summaryPlaceholder": "Scrieți un rezumat scurt pentru o recuperare mai bună…",
-  "segment.vectorHash": "Vector hash: "
+  "segment.vectorHash": "Vector hash:"
 }

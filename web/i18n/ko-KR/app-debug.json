@@ -330,7 +330,7 @@
   "variableConfig.errorMsg.varNameCanBeRepeat": "변수명은 중복될 수 없습니다",
   "variableConfig.fieldType": "필드 타입",
   "variableConfig.file.audio.name": "오디오",
-  "variableConfig.file.custom.createPlaceholder": "  파일 확장자(예: .doc",
+  "variableConfig.file.custom.createPlaceholder": "파일 확장자(예: .doc",
   "variableConfig.file.custom.description": "다른 파일 형식을 지정합니다.",
   "variableConfig.file.custom.name": "다른 파일 형식",
   "variableConfig.file.document.name": "문서",

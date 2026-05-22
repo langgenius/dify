@@ -51,7 +51,7 @@
   "inputFieldPanel.uniqueInputs.title": "Unikalne wejścia dla każdego wejścia",
   "inputFieldPanel.uniqueInputs.tooltip": "Unikatowe dane wejściowe są dostępne tylko dla wybranego źródła danych i jego węzłów podrzędnych. Użytkownicy nie będą musieli go wypełniać podczas wybierania innych źródeł danych. W pierwszym kroku (Źródło danych) pojawią się tylko pola wejściowe, do których odwołują się zmienne źródła danych. Wszystkie inne pola zostaną wyświetlone w drugim kroku (Dokumenty procesowe).",
   "knowledgeDescription": "Opis wiedzy",
-  "knowledgeDescriptionPlaceholder": "Opisz, co znajduje się w tej Bazie wiedzy. Szczegółowy opis umożliwia sztucznej inteligencji dokładniejszy dostęp do zawartości zestawu danych. Jeśli pole jest puste, Dify użyje domyślnej strategii trafień. (Opcjonalnie)",
+  "knowledgeDescriptionPlaceholder": "Opisz, co znajduje się w tej Bazie wiedzy. Szczegółowy opis umożliwia sztucznej inteligencji dokładniejszy dostęp do zawartości zestawu danych. Jeśli pole jest puste, użyje domyślnej strategii trafień. (Opcjonalnie)",
   "knowledgeNameAndIcon": "Nazwa i ikona wiedzy",
   "knowledgeNameAndIconPlaceholder": "Podaj nazwę Bazy Wiedzy",
   "knowledgePermissions": "Uprawnienia",

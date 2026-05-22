@@ -56,8 +56,8 @@
   "list.batchModal.title": "Пакетне додавання фрагментів",
   "list.delete.content": "Файл видалено успішно.",
   "list.delete.title": "Ви впевнені, що хочете видалити?",
-  "list.desc": "Тут відображаються всі файли Знання, і все Знання можна зв’язати з цитатами Dify або проіндексувати за допомогою плагіна Chat.",
-  "list.empty.sync.tip": "Dify періодично завантажуватиме файли з вашого Notion і завершуватиме обробку.",
+  "list.desc": "Тут відображаються всі файли Знання, і все Знання можна зв’язати з цитатами або проіндексувати за допомогою плагіна Chat.",
+  "list.empty.sync.tip": "періодично завантажуватиме файли з вашого Notion і завершуватиме обробку.",
   "list.empty.title": "Документації ще немає",
   "list.empty.upload.tip": "Ви можете завантажувати файли, синхронізувати з веб-сайту або з веб-програм, таких як Notion, GitHub тощо.",
   "list.index.all": "Усі",
@@ -258,8 +258,8 @@
   "metadata.languageMap.th": "Тайська",
   "metadata.languageMap.tr": "Турецька",
   "metadata.languageMap.zh": "Китайська",
-  "metadata.placeholder.add": "Додати ",
-  "metadata.placeholder.select": "Вибрати ",
+  "metadata.placeholder.add": "Додати",
+  "metadata.placeholder.select": "Вибрати",
   "metadata.source.github": "Синхронізувати з Github",
   "metadata.source.local_file": "Локальний файл",
   "metadata.source.notion": "Синхронізувати з Notion",
@@ -335,5 +335,5 @@
   "segment.searchResults_zero": "РЕЗУЛЬТАТ",
   "segment.summary": "РЕЗЮМЕ",
   "segment.summaryPlaceholder": "Напишіть короткий опис для кращого пошуку…",
-  "segment.vectorHash": "Векторний хеш: "
+  "segment.vectorHash": "Векторний хеш:"
 }

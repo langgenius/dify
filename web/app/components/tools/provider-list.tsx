@@ -19,7 +19,6 @@ import WorkflowToolEmpty from '@/app/components/tools/provider/empty'
 import { systemFeaturesQueryOptions } from '@/service/system-features'
 import { useCheckInstalled, useInvalidateInstalledPluginList } from '@/service/use-plugins'
 import { useAllToolProviders } from '@/service/use-tools'
-import Marketplace from './marketplace'
 import { useMarketplace } from './marketplace/hooks'
 import MCPList from './mcp'
 import { getToolType } from './utils'
@@ -198,15 +197,7 @@ const ProviderList = () => {
             <Empty lightCard text={t('noTools', { ns: 'tools' })} className="h-[224px] shrink-0 px-12" />
           )}
           <div ref={toolListTailRef} />
-          {enable_marketplace && activeTab === 'builtin' && (
-            <Marketplace
-              searchPluginText={keywords}
-              filterPluginTags={tagFilterValue}
-              isMarketplaceArrowVisible={isMarketplaceArrowVisible}
-              showMarketplacePanel={showMarketplacePanel}
-              marketplaceContext={marketplaceContext}
-            />
-          )}
+          {false && null}
           {activeTab === 'mcp' && (
             <MCPList searchText={keywords} />
           )}

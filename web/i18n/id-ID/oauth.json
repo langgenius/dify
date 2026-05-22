@@ -12,8 +12,8 @@
   "scopes.timezone": "Zona waktu",
   "switchAccount": "Ganti Akun",
   "tips.common": "Kami menghormati privasi Anda dan hanya akan menggunakan informasi ini untuk meningkatkan pengalaman Anda dengan alat pengembang kami.",
-  "tips.loggedIn": "Aplikasi ini ingin mengakses informasi berikut dari akun Dify Cloud Anda.",
+  "tips.loggedIn": "Aplikasi ini ingin mengakses informasi berikut dari akun Cloud Anda.",
   "tips.needLogin": "Silakan masuk untuk mengotorisasi",
-  "tips.notLoggedIn": "Aplikasi ini ingin mengakses akun Dify Cloud Anda",
+  "tips.notLoggedIn": "Aplikasi ini ingin mengakses akun Cloud Anda",
   "unknownApp": "Aplikasi tidak dikenal"
 }

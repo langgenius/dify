@@ -44,7 +44,7 @@
   "list.batchModal.completed": "Импорт завершен",
   "list.batchModal.content": "содержимое",
   "list.batchModal.contentTitle": "содержимое фрагмента",
-  "list.batchModal.csvUploadTitle": "Перетащите сюда свой CSV-файл или ",
+  "list.batchModal.csvUploadTitle": "Перетащите сюда свой CSV-файл или",
   "list.batchModal.error": "Ошибка импорта",
   "list.batchModal.ok": "ОК",
   "list.batchModal.processing": "В процессе пакетной обработки",
@@ -56,8 +56,8 @@
   "list.batchModal.title": "Пакетное добавление фрагментов",
   "list.delete.content": "Если вам нужно будет возобновить обработку позже, вы продолжите с того места, где остановились",
   "list.delete.title": "Вы уверены, что хотите удалить?",
-  "list.desc": "Здесь отображаются все файлы базы знаний, и вся база знаний может быть связана с цитатами Dify или проиндексирована с помощью чата.",
-  "list.empty.sync.tip": "Dify будет периодически загружать файлы из вашего Notion и завершать обработку.",
+  "list.desc": "Здесь отображаются все файлы базы знаний, и вся база знаний может быть связана с цитатами или проиндексирована с помощью чата.",
+  "list.empty.sync.tip": "будет периодически загружать файлы из вашего Notion и завершать обработку.",
   "list.empty.title": "Пока нет документов",
   "list.empty.upload.tip": "Вы можете загружать файлы, синхронизировать с веб-сайта или из веб-приложений, таких как Notion, GitHub и т. д.",
   "list.index.all": "Все",
@@ -258,8 +258,8 @@
   "metadata.languageMap.th": "Тайский",
   "metadata.languageMap.tr": "Турецкий",
   "metadata.languageMap.zh": "Китайский",
-  "metadata.placeholder.add": "Добавить ",
-  "metadata.placeholder.select": "Выбрать ",
+  "metadata.placeholder.add": "Добавить",
+  "metadata.placeholder.select": "Выбрать",
   "metadata.source.github": "Синхронизировать из Github",
   "metadata.source.local_file": "Локальный файл",
   "metadata.source.notion": "Синхронизировать из Notion",
@@ -335,5 +335,5 @@
   "segment.searchResults_zero": "РЕЗУЛЬТАТ",
   "segment.summary": "РЕЗЮМЕ",
   "segment.summaryPlaceholder": "Напишите краткое резюме для лучшего поиска…",
-  "segment.vectorHash": "Векторный хэш: "
+  "segment.vectorHash": "Векторный хэш:"
 }

@@ -2,7 +2,7 @@
   "allExternalTip": "仅使用外部知识时，用户可以选择是否启用 Rerank 模型。如果不启用，检索到的文本块将根据分数排序。当不同知识库的检索策略不一致时，结果可能不准确。",
   "allKnowledge": "所有知识库",
   "allKnowledgeDescription": "选择以显示该工作区内所有知识库。只有工作区所有者才能管理所有知识库。",
-  "appCount": " 关联应用",
+  "appCount": "关联应用",
   "batchAction.archive": "归档",
   "batchAction.cancel": "取消",
   "batchAction.delete": "删除",
@@ -50,7 +50,7 @@
   "docAllEnabled_one": "{{count}} 个文档已启用",
   "docAllEnabled_other": "所有 {{count}} 个文档已启用",
   "docsFailedNotice": "文档索引失败",
-  "documentCount": " 文档",
+  "documentCount": "文档",
   "documentsDisabled": "{{num}} 个文档已禁用 - 未活动超过 30 天",
   "editExternalAPIConfirmWarningContent.end": "个外部知识库，此修改将应用于所有这些知识库。您确定要保存此更改吗？",
   "editExternalAPIConfirmWarningContent.front": "此外部知识库 API 已链接到",
@@ -69,7 +69,7 @@
   "externalAPIForm.endpoint": "API 端点",
   "externalAPIForm.name": "名称",
   "externalAPIForm.save": "保存",
-  "externalAPIPanelDescription": "外部知识库 API 用于连接到 Dify 之外的知识库并从中检索知识。",
+  "externalAPIPanelDescription": "外部知识库 API 用于连接到 之外的知识库并从中检索知识。",
   "externalAPIPanelDocumentation": "了解如何创建外部知识库 API",
   "externalAPIPanelTitle": "外部知识库 API",
   "externalKnowledgeBase": "外部知识库",
@@ -96,7 +96,7 @@
   "indexingMethod.semantic_search": "向量检索",
   "indexingTechnique.economy": "经济",
   "indexingTechnique.high_quality": "高质量",
-  "intro1": "知识库可以被集成到 Dify 应用中",
+  "intro1": "知识库可以被集成到 应用中",
   "intro2": "作为上下文",
   "intro3": ",",
   "intro4": "或可以",
@@ -185,5 +185,5 @@
   "weightedScore.semantic": "语义",
   "weightedScore.semanticFirst": "语义优先",
   "weightedScore.title": "权重设置",
-  "wordCount": " 千词"
+  "wordCount": "千词"
 }

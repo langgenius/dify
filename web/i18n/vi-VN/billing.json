@@ -14,7 +14,7 @@
   "plans.community.features": [
     "Tất cả các Tính năng Cốt lõi được Phát hành Dưới Kho Lưu trữ Công khai",
     "Không gian làm việc đơn",
-    "Tuân thủ Giấy phép Mã nguồn mở Dify"
+    "Tuân thủ Giấy phép Mã nguồn mở"
   ],
   "plans.community.for": "Dành cho người dùng cá nhân, nhóm nhỏ hoặc các dự án phi thương mại",
   "plans.community.includesTitle": "Tính năng miễn phí:",
@@ -29,9 +29,9 @@
     "Tính năng Doanh nghiệp Độc quyền",
     "Nhiều Không Gian Làm Việc & Quản Lý Doanh Nghiệp",
     "Đăng nhập một lần",
-    "Các SLA đã được đàm phán bởi các Đối tác Dify",
+    "Các SLA đã được đàm phán bởi các Đối tác",
     "Bảo mật & Kiểm soát Nâng cao",
-    "Cập nhật và Bảo trì bởi Dify chính thức",
+    "Cập nhật và Bảo trì bởi chính thức",
     "Hỗ trợ Kỹ thuật Chuyên nghiệp"
   ],
   "plans.enterprise.for": "Dành cho các đội lớn",
@@ -67,7 +67,7 @@
   "plansCommon.annotationQuota": "Hạn ngạch chú thích",
   "plansCommon.annualBilling": "Thanh toán hằng năm, tiết kiệm {{percent}}%",
   "plansCommon.apiRateLimit": "Giới hạn tần suất API",
-  "plansCommon.apiRateLimitTooltip": "Giới hạn tần suất API áp dụng cho tất cả các yêu cầu được thực hiện thông qua API Dify, bao gồm tạo văn bản, cuộc trò chuyện, thực thi quy trình làm việc và xử lý tài liệu.",
+  "plansCommon.apiRateLimitTooltip": "Giới hạn tần suất API áp dụng cho tất cả các yêu cầu được thực hiện thông qua API, bao gồm tạo văn bản, cuộc trò chuyện, thực thi quy trình làm việc và xử lý tài liệu.",
   "plansCommon.apiRateLimitUnit": "{{count,number}}",
   "plansCommon.buildApps": "{{count,number}} ứng dụng",
   "plansCommon.cloud": "Dịch vụ đám mây",
@@ -106,9 +106,9 @@
   "plansCommon.priority.priority": "Ưu tiên",
   "plansCommon.priority.standard": "Tiêu chuẩn",
   "plansCommon.priority.top-priority": "Ưu tiên Cao nhất",
-  "plansCommon.ragAPIRequestTooltip": "Đề cập đến số lượng cuộc gọi API triệu hồi chỉ khả năng xử lý cơ sở kiến thức của Dify.",
+  "plansCommon.ragAPIRequestTooltip": "Đề cập đến số lượng cuộc gọi API triệu hồi chỉ khả năng xử lý cơ sở kiến thức của.",
   "plansCommon.receiptInfo": "Chỉ chủ nhóm và quản trị viên nhóm có thể đăng ký và xem thông tin thanh toán",
-  "plansCommon.save": "Tiết kiệm ",
+  "plansCommon.save": "Tiết kiệm",
   "plansCommon.self": "Tự lưu trữ",
   "plansCommon.startBuilding": "Bắt đầu xây dựng",
   "plansCommon.startForFree": "Bắt đầu miễn phí",

@@ -55,56 +55,6 @@ const CustomizeModal: FC<IShareLinkProps> = ({
         </DialogDescription>
         <DialogCloseButton />
         <div className="mt-4 min-h-0 flex-1 overflow-y-auto overscroll-contain">
-          <div className="w-full rounded-lg border-[0.5px] border-components-panel-border px-6 py-5">
-            <Tag bordered={true} hideBg={true} className="border-text-accent-secondary text-text-accent-secondary uppercase">
-              {t(`${prefixCustomize}.way`, { ns: 'appOverview' })}
-              {' '}
-              1
-            </Tag>
-            <p className="my-2 system-sm-medium text-text-secondary">{t(`${prefixCustomize}.way1.name`, { ns: 'appOverview' })}</p>
-            <div className="flex py-4">
-              <StepNum>1</StepNum>
-              <div className="flex flex-col">
-                <div className="text-text-primary">{t(`${prefixCustomize}.way1.step1`, { ns: 'appOverview' })}</div>
-                <div className="mt-1 mb-2 text-xs text-text-tertiary">{t(`${prefixCustomize}.way1.step1Tip`, { ns: 'appOverview' })}</div>
-                <Button nativeButton={false} render={<a href={`https://github.com/langgenius/${isChatApp ? 'webapp-conversation' : 'webapp-text-generator'}`} target="_blank" rel="noopener noreferrer" />}>
-                  <GithubIcon className="mr-2 text-text-secondary" />
-                  {t(`${prefixCustomize}.way1.step1Operation`, { ns: 'appOverview' })}
-                </Button>
-              </div>
-            </div>
-            <div className="flex pt-4">
-              <StepNum>2</StepNum>
-              <div className="flex flex-col">
-                <div className="text-text-primary">{t(`${prefixCustomize}.way1.step2`, { ns: 'appOverview' })}</div>
-                <div className="mt-1 mb-2 text-xs text-text-tertiary">{t(`${prefixCustomize}.way1.step2Tip`, { ns: 'appOverview' })}</div>
-                <Button nativeButton={false} render={<a href="https://vercel.com/docs/concepts/deployments/git/vercel-for-github" target="_blank" rel="noopener noreferrer" />}>
-                  <div className="mr-1.5 border-t-0 border-r-[7px] border-b-12 border-l-[7px] border-solid border-text-primary border-t-transparent border-r-transparent border-l-transparent"></div>
-                  <span>{t(`${prefixCustomize}.way1.step2Operation`, { ns: 'appOverview' })}</span>
-                </Button>
-              </div>
-            </div>
-            <div className="flex py-4">
-              <StepNum>3</StepNum>
-              <div className="flex w-full flex-col overflow-hidden">
-                <div className="text-text-primary">{t(`${prefixCustomize}.way1.step3`, { ns: 'appOverview' })}</div>
-                <div className="mt-1 mb-2 text-xs text-text-tertiary">{t(`${prefixCustomize}.way1.step3Tip`, { ns: 'appOverview' })}</div>
-                <pre className="box-border overflow-x-scroll rounded-lg border-[0.5px] border-components-panel-border bg-background-section px-4 py-3 text-xs font-medium text-text-secondary select-text">
-                  NEXT_PUBLIC_APP_ID=
-                  {`'${appId}'`}
-                  {' '}
-                  <br />
-                  NEXT_PUBLIC_APP_KEY=
-                  {'\'<Web API Key From Dify>\''}
-                  {' '}
-                  <br />
-                  NEXT_PUBLIC_API_URL=
-                  {`'${api_base_url}'`}
-                </pre>
-              </div>
-            </div>
-
-          </div>
           <div className="mt-4 w-full rounded-lg border-[0.5px] border-components-panel-border px-6 py-5">
             <Tag bordered={true} hideBg={true} className="border-text-accent-secondary text-text-accent-secondary uppercase">
               {t(`${prefixCustomize}.way`, { ns: 'appOverview' })}

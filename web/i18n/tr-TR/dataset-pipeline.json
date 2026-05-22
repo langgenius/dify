@@ -51,7 +51,7 @@
   "inputFieldPanel.uniqueInputs.title": "Her giriş için benzersiz girişler",
   "inputFieldPanel.uniqueInputs.tooltip": "Benzersiz Girişlere yalnızca seçilen veri kaynağı ve aşağı akış düğümleri tarafından erişilebilir. Kullanıcıların diğer veri kaynaklarını seçerken bu bilgileri doldurmaları gerekmez. İlk adımda (Veri Kaynağı) yalnızca veri kaynağı değişkenleri tarafından başvurulan giriş alanları görünecektir. Diğer tüm alanlar ikinci adımda (Belgeleri İşle) gösterilecektir.",
   "knowledgeDescription": "Bilgi açıklaması",
-  "knowledgeDescriptionPlaceholder": "Bu Bilgi Bankasında neler olduğunu açıklayın. Ayrıntılı bir açıklama, yapay zekanın veri kümesinin içeriğine daha doğru bir şekilde erişmesini sağlar. Boşsa, Dify varsayılan isabet stratejisini kullanacaktır. (İsteğe bağlı)",
+  "knowledgeDescriptionPlaceholder": "Bu Bilgi Bankasında neler olduğunu açıklayın. Ayrıntılı bir açıklama, yapay zekanın veri kümesinin içeriğine daha doğru bir şekilde erişmesini sağlar. Boşsa, varsayılan isabet stratejisini kullanacaktır. (İsteğe bağlı)",
   "knowledgeNameAndIcon": "Bilgi adı ve simgesi",
   "knowledgeNameAndIconPlaceholder": "Lütfen Bilgi Bankasının adını giriniz",
   "knowledgePermissions": "İzinler",

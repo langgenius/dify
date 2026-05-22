@@ -14,7 +14,7 @@
   "plans.community.features": [
     "Semua Fitur Inti Dirilis di Bawah Repositori Publik",
     "Ruang Kerja Tunggal",
-    "Mematuhi Lisensi Sumber Terbuka Dify"
+    "Mematuhi Lisensi Sumber Terbuka"
   ],
   "plans.community.for": "Untuk Pengguna Individu, Tim Kecil, atau Proyek Non-Komersial",
   "plans.community.includesTitle": "Fitur Gratis:",
@@ -29,9 +29,9 @@
     "Fitur Eksklusif Perusahaan",
     "Beberapa Ruang Kerja & Manajemen Perusahaan",
     "SSO",
-    "SLA yang dinegosiasikan oleh Mitra Dify",
+    "SLA yang dinegosiasikan oleh Mitra",
     "Keamanan & Kontrol Lanjutan",
-    "Pembaruan dan Pemeliharaan oleh Dify Secara Resmi",
+    "Pembaruan dan Pemeliharaan oleh Secara Resmi",
     "Dukungan Teknis Profesional"
   ],
   "plans.enterprise.for": "Untuk Tim berukuran besar",
@@ -67,7 +67,7 @@
   "plansCommon.annotationQuota": "Kuota Anotasi",
   "plansCommon.annualBilling": "Penagihan tahunan, hemat {{percent}}%",
   "plansCommon.apiRateLimit": "Batas Tarif API",
-  "plansCommon.apiRateLimitTooltip": "Batas Tarif API berlaku untuk semua permintaan yang dibuat melalui Dify API, termasuk pembuatan teks, percakapan obrolan, eksekusi alur kerja, dan pemrosesan dokumen.",
+  "plansCommon.apiRateLimitTooltip": "Batas Tarif API berlaku untuk semua permintaan yang dibuat melalui API, termasuk pembuatan teks, percakapan obrolan, eksekusi alur kerja, dan pemrosesan dokumen.",
   "plansCommon.apiRateLimitUnit": "{{count,number}}",
   "plansCommon.buildApps": "Aplikasi {{count,number}}",
   "plansCommon.cloud": "Layanan Cloud",
@@ -96,7 +96,7 @@
   "plansCommon.memberAfter": "Anggota",
   "plansCommon.messageRequest.title": "kredit pesan {{count,number}}",
   "plansCommon.messageRequest.titlePerMonth": "{{count,number}} kredit pesan/bulan",
-  "plansCommon.messageRequest.tooltip": "Kredit pesan disediakan untuk membantu Anda mencoba berbagai model OpenAI dengan mudah di Dify. Kredit digunakan berdasarkan jenis model. Setelah habis, Anda dapat beralih ke kunci API OpenAI Anda sendiri.",
+  "plansCommon.messageRequest.tooltip": "Kredit pesan disediakan untuk membantu Anda mencoba berbagai model OpenAI dengan mudah di. Kredit digunakan berdasarkan jenis model. Setelah habis, Anda dapat beralih ke kunci API OpenAI Anda sendiri.",
   "plansCommon.modelProviders": "Mendukung OpenAI/Anthropic/Llama2/Azure OpenAI/Hugging Face/Replite",
   "plansCommon.month": "bulan",
   "plansCommon.mostPopular": "Populer",
@@ -106,7 +106,7 @@
   "plansCommon.priority.priority": "Prioritas",
   "plansCommon.priority.standard": "Standar",
   "plansCommon.priority.top-priority": "Prioritas utama",
-  "plansCommon.ragAPIRequestTooltip": "Mengacu pada jumlah panggilan API yang hanya memanggil kemampuan pemrosesan basis pengetahuan Dify.",
+  "plansCommon.ragAPIRequestTooltip": "Mengacu pada jumlah panggilan API yang hanya memanggil kemampuan pemrosesan basis pengetahuan.",
   "plansCommon.receiptInfo": "Hanya pemilik tim dan admin tim yang dapat berlangganan dan melihat informasi penagihan",
   "plansCommon.save": "Simpan",
   "plansCommon.self": "Hosting Mandiri",

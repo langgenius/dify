@@ -10,7 +10,7 @@ describe('LogoSite', () => {
     render(<LogoSite />)
     const img = screen.getByRole('img', { name: /logo/i })
     expect(img).toBeInTheDocument()
-    expect(img).toHaveAttribute('src', '/test-base-path/logo/logo.png')
+    expect(img).toHaveAttribute('src', '/test-base-path/logo/login_dg.png')
   })
 
   it('applies custom className correctly', () => {

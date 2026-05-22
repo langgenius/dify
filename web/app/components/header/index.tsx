@@ -47,7 +47,7 @@ const Header = () => {
   const renderLogo = () => (
     <h1>
       <Link href="/apps" className="flex h-8 shrink-0 items-center justify-center overflow-hidden px-0.5 indent-[-9999px] whitespace-nowrap">
-        {isBrandingEnabled && systemFeatures.branding.application_title ? systemFeatures.branding.application_title : 'Dify'}
+        {isBrandingEnabled && systemFeatures.branding.application_title ? systemFeatures.branding.application_title : 'DG'}
         {systemFeatures.branding.enabled && systemFeatures.branding.workspace_logo
           ? (
               <img

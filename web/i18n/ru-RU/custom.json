@@ -4,7 +4,7 @@
   "apply": "Применить",
   "change": "Изменить",
   "custom": "Настройка",
-  "customize.contactUs": " свяжитесь с нами ",
+  "customize.contactUs": "свяжитесь с нами",
   "customize.prefix": "Чтобы настроить логотип бренда в приложении, пожалуйста,",
   "customize.suffix": "чтобы перейти на корпоративную версию.",
   "restore": "Восстановить значения по умолчанию",
@@ -17,6 +17,6 @@
   "uploading": "Загрузка",
   "webapp.changeLogo": "Изменить изображение бренда Powered by",
   "webapp.changeLogoTip": "Формат SVG или PNG с минимальным размером 40x40px",
-  "webapp.removeBrand": "Удалить Powered by Dify",
+  "webapp.removeBrand": "Удалить Powered by",
   "webapp.title": "Настроить бренд веб-приложения"
 }

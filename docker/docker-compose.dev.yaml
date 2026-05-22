@@ -55,6 +55,34 @@ services:
       - ../api/providers:/app/api/providers:ro
       - ./volumes/app/storage:/app/api/storage
 
+  # Web 前端开发模式 - 热重载支持（挂载本地代码）
+  web:
+    build:
+      context: ..
+      dockerfile: web/Dockerfile.dev
+      target: dev
+    image: dify-web:dev
+    restart: always
+    env_file:
+      - path: ./envs/core-services/web.env
+        required: false
+      - path: ./envs/security.env
+        required: false
+      - ./.env
+    environment:
+      NEXT_PUBLIC_API_PREFIX: http://172.16.12.101/console/api
+      NEXT_PUBLIC_PUBLIC_API_PREFIX: http://172.16.12.101/api
+      NEXT_PUBLIC_SOCKET_URL: ws://172.16.12.101
+      NEXT_TELEMETRY_DISABLED: ${NEXT_TELEMETRY_DISABLED:-0}
+      NEXT_ALLOWED_DEV_ORIGINS: 172.16.12.101
+      MARKETPLACE_API_URL: ${MARKETPLACE_API_URL:-https://marketplace.dify.ai}
+      MARKETPLACE_URL: ${MARKETPLACE_URL:-https://marketplace.dify.ai}
+    command: ["pnpm", "--filter", "dify-web", "dev"]
+    volumes:
+      - ../web:/app/web:rw
+    ports:
+      - "3000:3000"
+
   # WebSocket 服务
   api_websocket:
     environment:

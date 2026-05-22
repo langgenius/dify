@@ -44,7 +44,7 @@
   "list.batchModal.completed": "Import zakończony",
   "list.batchModal.content": "treść",
   "list.batchModal.contentTitle": "treść fragmentu",
-  "list.batchModal.csvUploadTitle": "Przeciągnij i upuść swój plik CSV tutaj, lub ",
+  "list.batchModal.csvUploadTitle": "Przeciągnij i upuść swój plik CSV tutaj, lub",
   "list.batchModal.error": "Błąd importu",
   "list.batchModal.ok": "OK",
   "list.batchModal.processing": "Przetwarzanie partii",
@@ -56,8 +56,8 @@
   "list.batchModal.title": "Dodaj partię fragmentów",
   "list.delete.content": "Jeśli będziesz musiał wznowić przetwarzanie później, będziesz kontynuować tam, gdzie przerwałeś",
   "list.delete.title": "Czy na pewno chcesz usunąć?",
-  "list.desc": "Wszystkie pliki wiedzy są tutaj pokazane, a cała wiedza może być powiązana z odnośnikami Dify lub zindeksowana za pomocą wtyczki Chat.",
-  "list.empty.sync.tip": "Dify regularnie pobiera pliki z Twojego Notion i dokonuje ich przetwarzania.",
+  "list.desc": "Wszystkie pliki wiedzy są tutaj pokazane, a cała wiedza może być powiązana z odnośnikami lub zindeksowana za pomocą wtyczki Chat.",
+  "list.empty.sync.tip": "regularnie pobiera pliki z Twojego Notion i dokonuje ich przetwarzania.",
   "list.empty.title": "Nie ma jeszcze dokumentacji",
   "list.empty.upload.tip": "Możesz wgrać pliki, synchronizować z witryny lub z aplikacji internetowych takich jak Notion, GitHub, itp.",
   "list.index.all": "Wszystkie",
@@ -258,8 +258,8 @@
   "metadata.languageMap.th": "Tajski",
   "metadata.languageMap.tr": "Turecki",
   "metadata.languageMap.zh": "Chiński",
-  "metadata.placeholder.add": "Dodaj ",
-  "metadata.placeholder.select": "Wybierz ",
+  "metadata.placeholder.add": "Dodaj",
+  "metadata.placeholder.select": "Wybierz",
   "metadata.source.github": "Synchronizuj z Github",
   "metadata.source.local_file": "Plik lokalny",
   "metadata.source.notion": "Synchronizuj z Notion",
@@ -335,5 +335,5 @@
   "segment.searchResults_zero": "WYNIK",
   "segment.summary": "PODSUMOWANIE",
   "segment.summaryPlaceholder": "Napisz krótkie podsumowanie dla lepszego wyszukiwania…",
-  "segment.vectorHash": "Wektor hash: "
+  "segment.vectorHash": "Wektor hash:"
 }

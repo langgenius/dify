@@ -4,7 +4,7 @@
   "apply": "Uporabi",
   "change": "Spremeni",
   "custom": "Prilagoditev",
-  "customize.contactUs": " kontaktirajte nas ",
+  "customize.contactUs": "kontaktirajte nas",
   "customize.prefix": "Za prilagoditev logotipa blagovne znamke znotraj aplikacije, prosimo,",
   "customize.suffix": "za nadgradnjo na Enterprise izdajo.",
   "restore": "Obnovi privzete nastavitve",
@@ -17,6 +17,6 @@
   "uploading": "Nalagam",
   "webapp.changeLogo": "Spremeni sliko Powered by Brand",
   "webapp.changeLogoTip": "Format SVG ali PNG z minimalno velikostjo 40x40px",
-  "webapp.removeBrand": "Odstrani Powered by Dify",
+  "webapp.removeBrand": "Odstrani Powered by",
   "webapp.title": "Prilagodi blagovno znamko spletne aplikacije"
 }

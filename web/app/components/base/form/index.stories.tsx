@@ -132,7 +132,7 @@ const mockFileUploadConfig = {
 }
 
 const mockFieldDefaults = {
-  headline: 'Dify App',
+  headline: 'DG App',
   description: 'Streamline your AI workflows with configurable building blocks.',
   category: 'workbench',
   allowNotifications: true,
@@ -435,7 +435,7 @@ export const FieldExplorer: Story = {
         code: `
 const form = useAppForm({
   defaultValues: {
-    headline: 'Dify App',
+    headline: 'DG App',
     description: 'Streamline your AI workflows',
     category: 'workbench',
     allowNotifications: true,

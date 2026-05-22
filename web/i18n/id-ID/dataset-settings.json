@@ -5,7 +5,7 @@
   "form.chunkStructure.title": "Struktur Potongan",
   "form.desc": "Deskripsi Pengetahuan",
   "form.descInfo": "Silakan tulis deskripsi tekstual yang jelas untuk menguraikan isi Pengetahuan. Deskripsi ini akan digunakan sebagai dasar untuk pencocokan saat memilih dari beberapa Pengetahuan untuk inferensi.",
-  "form.descPlaceholder": "Jelaskan apa yang ada dalam kumpulan data ini. Deskripsi terperinci memungkinkan AI mengakses konten kumpulan data tepat waktu. Jika kosong, Dify akan menggunakan strategi hit default.",
+  "form.descPlaceholder": "Jelaskan apa yang ada dalam kumpulan data ini. Deskripsi terperinci memungkinkan AI mengakses konten kumpulan data tepat waktu. Jika kosong, akan menggunakan strategi hit default.",
   "form.descWrite": "Pelajari cara menulis deskripsi Pengetahuan yang baik.",
   "form.embeddingModel": "Menyematkan Model",
   "form.embeddingModelTip": "Ubah model yang disematkan, silakan buka",

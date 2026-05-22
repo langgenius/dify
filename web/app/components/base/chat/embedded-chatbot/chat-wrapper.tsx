@@ -12,7 +12,6 @@ import AnswerIcon from '@/app/components/base/answer-icon'
 import AppIcon from '@/app/components/base/app-icon'
 import SuggestedQuestions from '@/app/components/base/chat/chat/answer/suggested-questions'
 import InputsForm from '@/app/components/base/chat/embedded-chatbot/inputs-form'
-import LogoAvatar from '@/app/components/base/logo/logo-embedded-chat-avatar'
 import { Markdown } from '@/app/components/base/markdown'
 import { InputVarType } from '@/app/components/workflow/types'
 import {
@@ -28,7 +27,6 @@ import Chat from '../chat'
 import { useChat } from '../chat/hooks'
 import { getLastAnswer, isValidGeneratedAnswer } from '../utils'
 import { useEmbeddedChatbotContext } from './context'
-import { isDify } from './utils'
 
 const ChatWrapper = () => {
   const {
@@ -286,9 +284,7 @@ const ChatWrapper = () => {
     )
   }, [chatList, respondingState, currentConversationId, collapsed, inputsForms.length, allInputsHidden, appData?.site, isMobile])
 
-  const answerIcon = isDify()
-    ? <LogoAvatar className="relative shrink-0" />
-    : (appData?.site && appData.site.use_icon_as_answer_icon)
+  const answerIcon = (appData?.site && appData.site.use_icon_as_answer_icon)
         ? (
             <AnswerIcon
               iconType={appData.site.icon_type}

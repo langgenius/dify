@@ -1,8 +1,15 @@
-import * as React from 'react'
-import AppList from '@/app/components/explore/app-list'
+import { basePath } from '@/utils/var'
 
 const Apps = () => {
-  return <AppList />
+  return (
+    <div className="flex h-full w-full items-center justify-center bg-background-body">
+      <img
+        src={`${basePath}/logo/login_dg.png`}
+        className="h-auto max-w-[240px] object-contain"
+        alt="DG logo"
+      />
+    </div>
+  )
 }
 
-export default React.memo(Apps)
+export default Apps

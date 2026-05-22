@@ -4,7 +4,7 @@
   "apply": "تطبيق",
   "change": "تغيير",
   "custom": "تخصيص",
-  "customize.contactUs": " اتصل بنا ",
+  "customize.contactUs": "اتصل بنا",
   "customize.prefix": "لتخصيص شعار العلامة التجارية داخل التطبيق، يرجى",
   "customize.suffix": "للترقية إلى إصدار Enterprise.",
   "restore": "استعادة الافتراضيات",
@@ -17,6 +17,6 @@
   "uploading": "جاري التحميل",
   "webapp.changeLogo": "تغيير صورة Powered by Brand",
   "webapp.changeLogoTip": "تنسيق SVG أو PNG بحجم أدنى 40x40px",
-  "webapp.removeBrand": "إزالة Powered by Dify",
+  "webapp.removeBrand": "إزالة Powered by",
   "webapp.title": "تخصيص العلامة التجارية لتطبيق الويب"
 }

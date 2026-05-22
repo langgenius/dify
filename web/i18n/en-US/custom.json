@@ -4,7 +4,7 @@
   "apply": "Apply",
   "change": "Change",
   "custom": "Customization",
-  "customize.contactUs": " contact us ",
+  "customize.contactUs": "contact us",
   "customize.prefix": "To customize the brand logo within the app, please",
   "customize.suffix": "to upgrade to the Enterprise edition.",
   "restore": "Restore Defaults",
@@ -17,6 +17,6 @@
   "uploading": "Uploading",
   "webapp.changeLogo": "Change Powered by Brand Image",
   "webapp.changeLogoTip": "SVG or PNG format with a minimum size of 40x40px",
-  "webapp.removeBrand": "Remove Powered by Dify",
+  "webapp.removeBrand": "Remove Brand",
   "webapp.title": "Customize web app brand"
 }

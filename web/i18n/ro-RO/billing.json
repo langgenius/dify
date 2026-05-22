@@ -14,7 +14,7 @@
   "plans.community.features": [
     "Toate Funcționalitățile de Bază Lansate în Repositorul Public",
     "Spațiu de lucru unic",
-    "Respectă Licența Open Source Dify"
+    "Respectă Licența Open Source"
   ],
   "plans.community.for": "Pentru utilizatori individuali, echipe mici sau proiecte necomerciale",
   "plans.community.includesTitle": "Funcții gratuite:",
@@ -29,9 +29,9 @@
     "Funcții Exclusive pentru Afaceri",
     "Mai multe spații de lucru și managementul întreprinderii",
     "Autentificare unică",
-    "SLA-uri negociate de partenerii Dify",
+    "SLA-uri negociate de partenerii",
     "Securitate și Control Avansate",
-    "Actualizări și întreținere de către Dify Oficial",
+    "Actualizări și întreținere de către Oficial",
     "Asistență Tehnică Profesională"
   ],
   "plans.enterprise.for": "Pentru echipe de mari dimensiuni",
@@ -67,7 +67,7 @@
   "plansCommon.annotationQuota": "Cota de adnotare",
   "plansCommon.annualBilling": "Facturare anuală, economisește {{percent}}%",
   "plansCommon.apiRateLimit": "Limită de rată API",
-  "plansCommon.apiRateLimitTooltip": "Limita de rată API se aplică tuturor cererilor efectuate prin API-ul Dify, inclusiv generarea de texte, conversațiile de chat, execuțiile fluxului de lucru și procesarea documentelor.",
+  "plansCommon.apiRateLimitTooltip": "Limita de rată API se aplică tuturor cererilor efectuate prin API-ul, inclusiv generarea de texte, conversațiile de chat, execuțiile fluxului de lucru și procesarea documentelor.",
   "plansCommon.apiRateLimitUnit": "{{count,number}}",
   "plansCommon.buildApps": "{{count,number}} aplicații",
   "plansCommon.cloud": "Serviciu de cloud",
@@ -106,9 +106,9 @@
   "plansCommon.priority.priority": "Prioritate",
   "plansCommon.priority.standard": "Standard",
   "plansCommon.priority.top-priority": "Prioritate maximă",
-  "plansCommon.ragAPIRequestTooltip": "Se referă la numărul de apeluri API care invocă doar capacitățile de procesare a bazei de cunoștințe a Dify.",
+  "plansCommon.ragAPIRequestTooltip": "Se referă la numărul de apeluri API care invocă doar capacitățile de procesare a bazei de cunoștințe a.",
   "plansCommon.receiptInfo": "Doar proprietarul echipei și administratorul echipei pot să se aboneze și să vizualizeze informațiile de facturare",
-  "plansCommon.save": "Economisește ",
+  "plansCommon.save": "Economisește",
   "plansCommon.self": "Auto-găzduit",
   "plansCommon.startBuilding": "Începeți să construiți",
   "plansCommon.startForFree": "Începe gratuit",

@@ -44,7 +44,7 @@
   "list.batchModal.completed": "واردات کامل شد",
   "list.batchModal.content": "محتوا",
   "list.batchModal.contentTitle": "محتوای قطعه",
-  "list.batchModal.csvUploadTitle": "فایل CSV خود را اینجا بکشید و رها کنید، یا ",
+  "list.batchModal.csvUploadTitle": "فایل CSV خود را اینجا بکشید و رها کنید، یا",
   "list.batchModal.error": "خطای واردات",
   "list.batchModal.ok": "تأیید",
   "list.batchModal.processing": "در حال پردازش گروهی",
@@ -56,8 +56,8 @@
   "list.batchModal.title": "افزودن گروهی قطعات",
   "list.delete.content": "اگر بعداً نیاز به ادامه پردازش داشتید، از همان جایی که مانده بودید ادامه می‌دهید",
   "list.delete.title": "آیا مطمئن هستید که حذف شود؟",
-  "list.desc": "تمامی فایل‌های دانش در اینجا نمایش داده می‌شوند و کل دانش می‌تواند به ارجاعات Dify متصل شود یا از طریق افزونه چت ایندکس شود.",
-  "list.empty.sync.tip": "Dify به‌طور دوره‌ای فایل‌ها را از Notion شما دانلود و پردازش را کامل می‌کند.",
+  "list.desc": "تمامی فایل‌های دانش در اینجا نمایش داده می‌شوند و کل دانش می‌تواند به ارجاعات متصل شود یا از طریق افزونه چت ایندکس شود.",
+  "list.empty.sync.tip": "به‌طور دوره‌ای فایل‌ها را از Notion شما دانلود و پردازش را کامل می‌کند.",
   "list.empty.title": "هنوز هیچ سندی وجود ندارد",
   "list.empty.upload.tip": "شما می‌توانید فایل‌ها را بارگذاری کنید، از وب‌سایت همگام‌سازی کنید، یا از برنامه‌های وبی مانند Notion، GitHub و غیره.",
   "list.index.all": "همه",
@@ -258,8 +258,8 @@
   "metadata.languageMap.th": "تایلندی",
   "metadata.languageMap.tr": "ترکی",
   "metadata.languageMap.zh": "چینی",
-  "metadata.placeholder.add": "اضافه کردن ",
-  "metadata.placeholder.select": "انتخاب ",
+  "metadata.placeholder.add": "اضافه کردن",
+  "metadata.placeholder.select": "انتخاب",
   "metadata.source.github": "همگام‌سازی از Github",
   "metadata.source.local_file": "فایل محلی",
   "metadata.source.notion": "همگام‌سازی از Notion",
@@ -335,5 +335,5 @@
   "segment.searchResults_zero": "نتیجه",
   "segment.summary": "خلاصه",
   "segment.summaryPlaceholder": "خلاصه‌ای کوتاه برای بازیابی بهتر بنویسید…",
-  "segment.vectorHash": "هش برداری: "
+  "segment.vectorHash": "هش برداری:"
 }

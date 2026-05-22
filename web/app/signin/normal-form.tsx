@@ -6,6 +6,7 @@ import * as React from 'react'
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { IS_CE_EDITION } from '@/config'
+
 import Link from '@/next/link'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { invitationCheck } from '@/service/common'
@@ -241,42 +242,17 @@ const NormalForm = () => {
               </div>
             </>
           )}
-          {!systemFeatures.branding.enabled && (
-            <>
-              <div className="mt-2 block w-full system-xs-regular text-text-tertiary">
-                {t('tosDesc', { ns: 'login' })}
+          {!systemFeatures.branding.enabled && IS_CE_EDITION && (
+            <div className="w-hull mt-2 block system-xs-regular text-text-tertiary">
+              {t('goToInit', { ns: 'login' })}
               &nbsp;
-                <Link
-                  className="system-xs-medium text-text-secondary hover:underline"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  href="https://dify.ai/terms"
-                >
-                  {t('tos', { ns: 'login' })}
-                </Link>
-              &nbsp;&&nbsp;
-                <Link
-                  className="system-xs-medium text-text-secondary hover:underline"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  href="https://dify.ai/privacy"
-                >
-                  {t('pp', { ns: 'login' })}
-                </Link>
-              </div>
-              {IS_CE_EDITION && (
-                <div className="w-hull mt-2 block system-xs-regular text-text-tertiary">
-                  {t('goToInit', { ns: 'login' })}
-              &nbsp;
-                  <Link
-                    className="system-xs-medium text-text-secondary hover:underline"
-                    href="/install"
-                  >
-                    {t('setAdminAccount', { ns: 'login' })}
-                  </Link>
-                </div>
-              )}
-            </>
+              <Link
+                className="system-xs-medium text-text-secondary hover:underline"
+                href="/install"
+              >
+                {t('setAdminAccount', { ns: 'login' })}
+              </Link>
+            </div>
           )}
         </div>
       </div>

@@ -330,7 +330,7 @@
   "variableConfig.errorMsg.varNameCanBeRepeat": "Değişken adı tekrar edemez",
   "variableConfig.fieldType": "Alan türü",
   "variableConfig.file.audio.name": "Ses",
-  "variableConfig.file.custom.createPlaceholder": "  Dosya uzantısı, örneğin .doc",
+  "variableConfig.file.custom.createPlaceholder": "Dosya uzantısı, örneğin .doc",
   "variableConfig.file.custom.description": "Diğer dosya türlerini belirtin.",
   "variableConfig.file.custom.name": "Diğer dosya türleri",
   "variableConfig.file.document.name": "Belge",

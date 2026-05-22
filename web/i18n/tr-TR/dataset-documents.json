@@ -44,7 +44,7 @@
   "list.batchModal.completed": "İçe aktarma tamamlandı",
   "list.batchModal.content": "içerik",
   "list.batchModal.contentTitle": "parça içeriği",
-  "list.batchModal.csvUploadTitle": "CSV dosyanızı buraya sürükleyip bırakın ya da ",
+  "list.batchModal.csvUploadTitle": "CSV dosyanızı buraya sürükleyip bırakın ya da",
   "list.batchModal.error": "İçe Aktarma Hatası",
   "list.batchModal.ok": "Tamam",
   "list.batchModal.processing": "Toplu işlemde",
@@ -56,8 +56,8 @@
   "list.batchModal.title": "Toplu parçalar ekle",
   "list.delete.content": "İşlemeye daha sonra devam etmeniz gerekirse, kaldığınız yerden devam edeceksiniz",
   "list.delete.title": "Silmek istediğinize emin misiniz?",
-  "list.desc": "Bilginin tüm dosyaları burada gösterilir ve Bilginin tamamı Dify alıntılarına veya Sohbet eklentisi üzerinden dizine eklenebilir.",
-  "list.empty.sync.tip": "Dify, Notion'dan periyodik olarak dosyaları indirir ve işlemeyi tamamlar.",
+  "list.desc": "Bilginin tüm dosyaları burada gösterilir ve Bilginin tamamı alıntılarına veya Sohbet eklentisi üzerinden dizine eklenebilir.",
+  "list.empty.sync.tip": ", Notion'dan periyodik olarak dosyaları indirir ve işlemeyi tamamlar.",
   "list.empty.title": "Henüz belge yok",
   "list.empty.upload.tip": "Dosya yükleyebilir, web sitesinden veya Notion, GitHub gibi web uygulamalarından senkronize edebilirsiniz.",
   "list.index.all": "Hepsi",
@@ -258,8 +258,8 @@
   "metadata.languageMap.th": "Tayca",
   "metadata.languageMap.tr": "Türkçe",
   "metadata.languageMap.zh": "Çince",
-  "metadata.placeholder.add": "Ekle ",
-  "metadata.placeholder.select": "Seç ",
+  "metadata.placeholder.add": "Ekle",
+  "metadata.placeholder.select": "Seç",
   "metadata.source.github": "GitHub'dan Senkronize Et",
   "metadata.source.local_file": "Yerel Dosya",
   "metadata.source.notion": "Notion'dan Senkronize Et",
@@ -335,5 +335,5 @@
   "segment.searchResults_zero": "SONUÇ",
   "segment.summary": "ÖZET",
   "segment.summaryPlaceholder": "Daha iyi arama için kısa bir özet yazın…",
-  "segment.vectorHash": "Vektör hash: "
+  "segment.vectorHash": "Vektör hash:"
 }

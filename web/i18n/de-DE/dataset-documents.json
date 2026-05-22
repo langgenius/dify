@@ -44,7 +44,7 @@
   "list.batchModal.completed": "Import abgeschlossen",
   "list.batchModal.content": "Inhalt",
   "list.batchModal.contentTitle": "Chunk-Inhalt",
-  "list.batchModal.csvUploadTitle": "Ziehen Sie Ihre CSV-Datei hierher oder ",
+  "list.batchModal.csvUploadTitle": "Ziehen Sie Ihre CSV-Datei hierher oder",
   "list.batchModal.error": "Importfehler",
   "list.batchModal.ok": "OK",
   "list.batchModal.processing": "In Batch-Verarbeitung",
@@ -56,8 +56,8 @@
   "list.batchModal.title": "Chunks in Batch hinzufügen",
   "list.delete.content": "Wenn Sie die Verarbeitung später fortsetzen müssen, werden Sie dort weitermachen, wo Sie aufgehört haben",
   "list.delete.title": "Sind Sie sicher, dass Sie löschen möchten?",
-  "list.desc": "Alle Dateien des Wissens werden hier angezeigt, und das gesamte Wissen kann mit Dify-Zitaten verknüpft oder über das Chat-Plugin indiziert werden.",
-  "list.empty.sync.tip": "Dify wird periodisch Dateien von Ihrem Notion herunterladen und die Verarbeitung abschließen.",
+  "list.desc": "Alle Dateien des Wissens werden hier angezeigt, und das gesamte Wissen kann mit-Zitaten verknüpft oder über das Chat-Plugin indiziert werden.",
+  "list.empty.sync.tip": "wird periodisch Dateien von Ihrem Notion herunterladen und die Verarbeitung abschließen.",
   "list.empty.title": "Es gibt noch keine Dokumentation",
   "list.empty.upload.tip": "Sie können Dateien hochladen, von der Website oder von Web-Apps wie Notion, GitHub usw. synchronisieren.",
   "list.index.all": "Alle",
@@ -258,8 +258,8 @@
   "metadata.languageMap.th": "Thai",
   "metadata.languageMap.tr": "Türkisch",
   "metadata.languageMap.zh": "Chinesisch",
-  "metadata.placeholder.add": "Hinzufügen ",
-  "metadata.placeholder.select": "Auswählen ",
+  "metadata.placeholder.add": "Hinzufügen",
+  "metadata.placeholder.select": "Auswählen",
   "metadata.source.github": "Von Github synchronisieren",
   "metadata.source.local_file": "Lokale Datei",
   "metadata.source.notion": "Von Notion synchronisieren",
@@ -335,5 +335,5 @@
   "segment.searchResults_zero": "ERGEBNIS",
   "segment.summary": "ZUSAMMENFASSUNG",
   "segment.summaryPlaceholder": "Schreiben Sie eine kurze Zusammenfassung für bessere Abrufbarkeit…",
-  "segment.vectorHash": "Vektor-Hash: "
+  "segment.vectorHash": "Vektor-Hash:"
 }

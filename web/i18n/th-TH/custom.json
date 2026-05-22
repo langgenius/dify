@@ -17,6 +17,6 @@
   "uploading": "อัป โหลด",
   "webapp.changeLogo": "การเปลี่ยนแปลงที่ขับเคลื่อนโดยภาพลักษณ์ของแบรนด์",
   "webapp.changeLogoTip": "รูปแบบ SVG หรือ PNG ที่มีขนาดขั้นต่ํา 40x40px",
-  "webapp.removeBrand": "ลบ ขับเคลื่อนโดย Dify",
+  "webapp.removeBrand": "ลบ ขับเคลื่อนโดย",
   "webapp.title": "ปรับแต่งแบรนด์ web app"
 }

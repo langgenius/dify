@@ -8,7 +8,6 @@ import { accountCommand } from './account'
 import { executeCommand } from './command-bus'
 import { communityCommand } from './community'
 import { docsCommand } from './docs'
-import { forumCommand } from './forum'
 import { goCommand } from './go'
 import { languageCommand } from './language'
 import { slashCommandRegistry } from './registry'
@@ -44,7 +43,6 @@ const registerSlashCommands = (deps: Record<string, any>) => {
   // Register command handlers to the registry system with their respective dependencies
   slashCommandRegistry.register(themeCommand, { setTheme: deps.setTheme })
   slashCommandRegistry.register(languageCommand, { setLocale: deps.setLocale })
-  slashCommandRegistry.register(forumCommand, {})
   slashCommandRegistry.register(docsCommand, {})
   slashCommandRegistry.register(communityCommand, {})
   slashCommandRegistry.register(accountCommand, {})
@@ -56,7 +54,6 @@ const unregisterSlashCommands = () => {
   // Remove command handlers from registry system (automatically calls each command's unregister method)
   slashCommandRegistry.unregister('theme')
   slashCommandRegistry.unregister('language')
-  slashCommandRegistry.unregister('forum')
   slashCommandRegistry.unregister('docs')
   slashCommandRegistry.unregister('community')
   slashCommandRegistry.unregister('account')

@@ -51,7 +51,7 @@
   "inputFieldPanel.uniqueInputs.title": "Entradas únicas para cada entrada",
   "inputFieldPanel.uniqueInputs.tooltip": "Las entradas únicas solo son accesibles para la fuente de datos seleccionada y sus nodos posteriores. Los usuarios no tendrán que rellenarlo al elegir otros orígenes de datos. Solo los campos de entrada a los que hacen referencia las variables de origen de datos aparecerán en el primer paso (Origen de datos). Todos los demás campos se mostrarán en el segundo paso (Procesar documentos).",
   "knowledgeDescription": "Descripción del conocimiento",
-  "knowledgeDescriptionPlaceholder": "Describa lo que hay en esta base de conocimientos. Una descripción detallada permite a la IA acceder al contenido del conjunto de datos con mayor precisión. Si está vacío, Dify usará la estrategia de golpe predeterminada. (Opcional)",
+  "knowledgeDescriptionPlaceholder": "Describa lo que hay en esta base de conocimientos. Una descripción detallada permite a la IA acceder al contenido del conjunto de datos con mayor precisión. Si está vacío, usará la estrategia de golpe predeterminada. (Opcional)",
   "knowledgeNameAndIcon": "Nombre e icono de conocimiento",
   "knowledgeNameAndIconPlaceholder": "Ingrese el nombre de la base de conocimientos",
   "knowledgePermissions": "Permisos",

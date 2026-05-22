@@ -11,13 +11,13 @@
 
 ## 二、部署架构
 
-### 2.1 方案：官方镜像 + 本地代码挂载（开发模式）
+### 2.1 方案：官方镜像 + 本地代码挂载 + 前端热重载（开发模式）
 
 使用 `docker-compose.yaml`（官方镜像）叠加 `docker-compose.dev.yaml`（本地代码卷挂载）：
 
 - **基础服务**（PostgreSQL、Redis、Sandbox 等）：使用官方镜像运行
 - **API / Worker / WebSocket 服务**：官方镜像 + **本地源码目录覆盖**，修改代码后只需重启容器，无需重新构建镜像
-- **前端**：使用官方镜像，不挂载本地代码（避免覆盖 entrypoint 和构建产物）
+- **前端**：开发模式（`Dockerfile.dev` + `next dev`），挂载本地 `web/` 目录，**保存代码即热更新**，无需重启容器
 
 ### 2.2 容器清单
 
@@ -73,6 +73,52 @@ services:
 ```
 
 **重要**：挂载子目录（如 `../api/app:/app/api/app`）会替换掉共享配置中的全局挂载 `../api:/app/api`，从而保留镜像内的 `.venv` 虚拟环境。
+
+### 3.3 Web 前端开发模式
+
+```yaml
+# docker-compose.dev.yaml
+web:
+  build:
+    context: ..
+    dockerfile: web/Dockerfile.dev
+    target: dev
+  image: dify-web:dev
+  restart: always
+  command: ["pnpm", "--filter", "dify-web", "dev"]
+  volumes:
+    - ../web:/app/web:rw
+  ports:
+    - "3000:3000"
+  environment:
+    NEXT_PUBLIC_API_PREFIX: http://172.16.12.101/console/api
+    NEXT_PUBLIC_PUBLIC_API_PREFIX: http://172.16.12.101/api
+    NEXT_PUBLIC_SOCKET_URL: ws://172.16.12.101
+    NEXT_ALLOWED_DEV_ORIGINS: 172.16.12.101
+```
+
+前端环境变量说明（需使用 `NEXT_PUBLIC_` 前缀才能在浏览器端生效）：
+
+| 变量 | 说明 | 默认值（本地开发） |
+|------|------|-------------------|
+| `NEXT_PUBLIC_API_PREFIX` | Console API 地址 | `http://localhost:5001/console/api` |
+| `NEXT_PUBLIC_PUBLIC_API_PREFIX` | 公开 API 地址 | `http://localhost:5001/api` |
+| `NEXT_PUBLIC_SOCKET_URL` | WebSocket 地址 | `ws://localhost:5001` |
+| `NEXT_ALLOWED_DEV_ORIGINS` | Next.js 开发模式允许的跨域域名（解决 Font 403） | - |
+
+### 3.4 nginx WebSocket 代理配置（开发模式必需）
+
+在 `docker/nginx/conf.d/default.conf` 中添加 `/_next/webpack-hmr` 位置以支持前端热重载：
+
+```nginx
+location /_next/webpack-hmr {
+  proxy_pass http://web:3000;
+  include proxy.conf;
+  proxy_set_header Upgrade $http_upgrade;
+  proxy_set_header Connection "upgrade";
+  proxy_cache_bypass $http_upgrade;
+}
+```
 
 ### 3.2 关键修改说明
 
@@ -172,10 +218,16 @@ FLASK_DEBUG=true
 ### 5.2 前端（Web）代码修改
 
 ```bash
-# 前端使用官方镜像，不挂载本地代码
-# 修改代码后需要重新构建镜像
+# 前端使用开发模式（docker-compose.dev.yaml + next dev 热重载）
+# 修改代码无需重启，保存后浏览器自动热更新
 cd /home/project/dify/docker
-docker compose up -d --build web
+
+# 首次或重建
+docker compose -f docker-compose.yaml -f docker-compose.dev.yaml rm -sf web
+docker compose -f docker-compose.yaml -f docker-compose.dev.yaml up -d web
+
+# 如果仅修改了静态文件（logo、favicon 等），直接刷新浏览器即可
+# 容器会在第一次访问页面时自动编译
 ```
 
 ### 5.3 插件代码修改
@@ -240,6 +292,6 @@ docker stats --no-stream --filter "name=docker-"
 
 1. **卷挂载顺序**：`docker-compose.dev.yaml` 中的子目录挂载会替换共享配置中的全局 `../api:/app/api` 挂载，从而保留镜像内的 `.venv`，否则 `flask`/`gunicorn` 命令找不到
 2. **`.venv` 保护**：确保 `api_websocket` 和 `worker_beat` 服务有自己的 `volumes` 声明（哪怕只保留 storage），否则会继承共享配置的全局挂载
-3. **前端不挂载**：web 服务不挂载本地代码，因为 entrypoint 和构建产物都在镜像内部
+3. **前端热重载**：web 服务使用开发模式（`Dockerfile.dev` + `next dev`），挂载 `../web:/app/web:rw` 目录，代码修改保存后浏览器自动热更新，无需重新构建
 4. **数据库持久化**：数据存储在 `./volumes/` 目录，`down` 操作不会丢失数据，`down -v` 才会
 5. **插件修改**：插件代码通过 plugin_daemon 运行，修改后需要重启 plugin_daemon 容器

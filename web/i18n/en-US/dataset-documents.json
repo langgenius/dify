@@ -44,7 +44,7 @@
   "list.batchModal.completed": "Import completed",
   "list.batchModal.content": "content",
   "list.batchModal.contentTitle": "chunk content",
-  "list.batchModal.csvUploadTitle": "Drag and drop your CSV file here, or ",
+  "list.batchModal.csvUploadTitle": "Drag and drop your CSV file here, or",
   "list.batchModal.error": "Import Error",
   "list.batchModal.ok": "OK",
   "list.batchModal.processing": "In batch processing",
@@ -56,8 +56,8 @@
   "list.batchModal.title": "Batch add chunks",
   "list.delete.content": "If you need to resume processing later, you will continue from where you left off",
   "list.delete.title": "Are you sure Delete?",
-  "list.desc": "All files of the Knowledge are shown here, and the entire Knowledge can be linked to Dify citations or indexed via the Chat plugin.",
-  "list.empty.sync.tip": "Dify will periodically download files from your Notion and complete processing.",
+  "list.desc": "All files of the Knowledge are shown here, and the entire Knowledge can be linked to citations or indexed via the Chat plugin.",
+  "list.empty.sync.tip": "The system will periodically download files from your Notion and complete processing.",
   "list.empty.title": "There is no documentation yet",
   "list.empty.upload.tip": "You can upload files, sync from the website, or from web apps like Notion, GitHub, etc.",
   "list.index.all": "All",
@@ -258,8 +258,8 @@
   "metadata.languageMap.th": "Thai",
   "metadata.languageMap.tr": "Turkish",
   "metadata.languageMap.zh": "Chinese",
-  "metadata.placeholder.add": "Add ",
-  "metadata.placeholder.select": "Select ",
+  "metadata.placeholder.add": "Add",
+  "metadata.placeholder.select": "Select",
   "metadata.source.github": "Sync form Github",
   "metadata.source.local_file": "Local File",
   "metadata.source.notion": "Sync form Notion",
@@ -335,5 +335,5 @@
   "segment.searchResults_zero": "RESULT",
   "segment.summary": "SUMMARY",
   "segment.summaryPlaceholder": "Write a brief summary for better retrieval…",
-  "segment.vectorHash": "Vector hash: "
+  "segment.vectorHash": "Vector hash:"
 }

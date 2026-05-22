@@ -1,0 +1,12 @@
+- [x] `login_dg.png` 已复制到 `/web/public/logo/login_dg.png`
+- [x] `dify-logo.tsx` 中 `default` 和 `monochromeWhite` 两个样式都使用 `/logo/login_dg.png`
+- [x] `dify-logo.tsx` 不再导入 `useTheme` 或计算 `themedStyle`
+- [x] `logo-site.tsx` 使用 `/logo/login_dg.png`
+- [x] `logo-embedded-chat-header.tsx` 使用简单的 `<img>` 标签指向 `/logo/login_dg.png`（无 `<picture>` 元素）
+- [x] `logo-embedded-chat-avatar.tsx` 使用 `/logo/login_dg.png`
+- [x] `/api/templates/` 下所有 34 个邮件模板文件中的 `https://assets.dify.ai/images/logo.png` 已替换为 `https://assets.dify.ai/images/login_dg.png`
+- [x] `dify-logo.spec.tsx` 测试通过，反映简化后的组件
+- [x] `logo-site.spec.tsx` 测试通过
+- [x] `logo-embedded-chat-header.spec.tsx` 测试通过
+- [x] `logo-embedded-chat-avatar.spec.tsx` 测试通过
+- [x] 修改后的前端文件无 TypeScript 或 lint 错误

@@ -13,7 +13,7 @@
   "meta.version": "Version",
   "result": "ERGEBNIS",
   "resultEmpty.link": "Gruppe Detail",
-  "resultEmpty.tipLeft": "Bitte gehen Sie zum ",
+  "resultEmpty.tipLeft": "Bitte gehen Sie zum",
   "resultEmpty.tipRight": "ansehen.",
   "resultEmpty.title": "Dieser Lauf gibt nur das JSON-Format aus",
   "resultPanel.status": "STATUS",

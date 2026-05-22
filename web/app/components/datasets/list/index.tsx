@@ -93,7 +93,7 @@ const List = () => {
         </div>
       </div>
       <Datasets tags={tagIDs} keywords={searchKeywords} includeAll={includeAll} onOpenTagManagement={() => setShowTagManagementModal(true)} />
-      {!systemFeatures.branding.enabled && <DatasetFooter />}
+      {false && <DatasetFooter />}
       <TagManagementModal
         type="knowledge"
         show={showTagManagementModal}

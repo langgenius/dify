@@ -299,18 +299,6 @@ const AllTools = ({
               <div className="text-sm font-medium text-text-secondary">
                 {t('tabs.noPluginsFound', { ns: 'workflow' })}
               </div>
-              <Link
-                href="https://github.com/langgenius/dify-plugins/issues/new?template=plugin_request.yaml"
-                target="_blank"
-              >
-                <Button
-                  size="small"
-                  variant="secondary-accent"
-                  className="h-6 cursor-pointer px-3 text-xs"
-                >
-                  {t('tabs.requestToCommunity', { ns: 'workflow' })}
-                </Button>
-              </Link>
             </div>
           )}
         </div>

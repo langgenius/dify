@@ -51,7 +51,7 @@
   "inputFieldPanel.uniqueInputs.title": "Input univoci per ogni ingresso",
   "inputFieldPanel.uniqueInputs.tooltip": "Gli input univoci sono accessibili solo all'origine dati selezionata e ai relativi nodi a valle. Gli utenti non dovranno compilarlo quando scelgono altre fonti di dati. Nel primo passaggio (Origine dati) verranno visualizzati solo i campi di input a cui fanno riferimento le variabili dell'origine dati. Tutti gli altri campi verranno visualizzati nel secondo passaggio (Elabora documenti).",
   "knowledgeDescription": "Descrizione della conoscenza",
-  "knowledgeDescriptionPlaceholder": "Descrivi cosa c'è in questa Knowledge Base. Una descrizione dettagliata consente all'intelligenza artificiale di accedere al contenuto del set di dati in modo più accurato. Se vuoto, Dify utilizzerà la strategia di hit predefinita. (Facoltativo)",
+  "knowledgeDescriptionPlaceholder": "Descrivi cosa c'è in questa Knowledge Base. Una descrizione dettagliata consente all'intelligenza artificiale di accedere al contenuto del set di dati in modo più accurato. Se vuoto, utilizzerà la strategia di hit predefinita. (Facoltativo)",
   "knowledgeNameAndIcon": "Nome e icona della Knowledge Base",
   "knowledgeNameAndIconPlaceholder": "Inserisci il nome della Knowledge Base",
   "knowledgePermissions": "Autorizzazioni",

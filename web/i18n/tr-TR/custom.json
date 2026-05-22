@@ -4,7 +4,7 @@
   "apply": "Uygula",
   "change": "Değiştir",
   "custom": "Özelleştirme",
-  "customize.contactUs": " bizimle iletişime geçin ",
+  "customize.contactUs": "bizimle iletişime geçin",
   "customize.prefix": "Uygulama içindeki marka logosunu özelleştirmek için, lütfen",
   "customize.suffix": "Enterprise sürümüne yükseltin.",
   "restore": "Varsayılan Ayarları Geri Yükle",
@@ -17,6 +17,6 @@
   "uploading": "Yükleniyor",
   "webapp.changeLogo": "Powered by Brand Resmini Değiştir",
   "webapp.changeLogoTip": "SVG veya PNG formatında, en az 40x40px boyutunda",
-  "webapp.removeBrand": "Powered by Dify'i kaldır",
+  "webapp.removeBrand": "Powered by'i kaldır",
   "webapp.title": "web app markasını özelleştir"
 }

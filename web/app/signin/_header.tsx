@@ -6,13 +6,10 @@ import { setLocaleOnClient } from '@/i18n-config'
 import { languages } from '@/i18n-config/language'
 import dynamic from '@/next/dynamic'
 import { systemFeaturesQueryOptions } from '@/service/system-features'
+import Link from '@/next/link'
 import LocaleMenu from './_locale-menu'
 
-// Avoid rendering the logo and theme selector on the server
-const DifyLogo = dynamic(() => import('@/app/components/base/logo/dify-logo'), {
-  ssr: false,
-  loading: () => <div className="h-7 w-16 bg-transparent" />,
-})
+// Avoid rendering the theme selector on the server
 const ThemeSelector = dynamic(() => import('@/app/components/base/theme-selector'), {
   ssr: false,
   loading: () => <div className="size-8 bg-transparent" />,
@@ -24,15 +21,23 @@ const Header = () => {
 
   return (
     <div className="flex w-full items-center justify-between p-6">
-      {systemFeatures.branding.enabled && systemFeatures.branding.login_page_logo
-        ? (
-            <img
-              src={systemFeatures.branding.login_page_logo}
-              className="block h-7 w-auto object-contain"
-              alt="logo"
-            />
-          )
-        : <DifyLogo size="large" />}
+      <Link href="/explore">
+        {systemFeatures.branding.enabled && systemFeatures.branding.login_page_logo
+          ? (
+              <img
+                src={systemFeatures.branding.login_page_logo}
+                className="block h-7 w-auto object-contain"
+                alt="logo"
+              />
+            )
+          : (
+              <img
+                src="/logo/login_dg.png"
+                className="block h-7 w-auto object-contain"
+                alt="logo"
+              />
+            )}
+      </Link>
       <div className="flex items-center gap-1">
         <LocaleMenu
           value={locale}

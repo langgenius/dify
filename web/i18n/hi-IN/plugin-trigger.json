@@ -45,7 +45,7 @@
   "modal.oauth.authorization.authFailed": "OAuth प्राधिकरण जानकारी प्राप्त करने में विफल",
   "modal.oauth.authorization.authSuccess": "प्राधिकरण सफल",
   "modal.oauth.authorization.authorizeButton": "{{provider}} के साथ प्राधिकृत करें",
-  "modal.oauth.authorization.description": "अपने खाते तक पहुँचने के लिए Dify को अधिकृत करें",
+  "modal.oauth.authorization.description": "अपने खाते तक पहुँचने के लिए को अधिकृत करें",
   "modal.oauth.authorization.redirectUrl": "पुनःमार्गित करें URL",
   "modal.oauth.authorization.redirectUrlHelp": "अपने OAuth ऐप कॉन्फ़िगरेशन में इस URL का उपयोग करें",
   "modal.oauth.authorization.title": "OAuth प्राधिकरण",

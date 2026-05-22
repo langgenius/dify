@@ -45,7 +45,7 @@
   "modal.oauth.authorization.authFailed": "Eșuat la obținerea informațiilor de autorizare OAuth",
   "modal.oauth.authorization.authSuccess": "Autorizare reușită",
   "modal.oauth.authorization.authorizeButton": "Autentifică-te cu {{provider}}",
-  "modal.oauth.authorization.description": "Permiteți lui Dify să acceseze contul dumneavoastră",
+  "modal.oauth.authorization.description": "Permiteți lui să acceseze contul dumneavoastră",
   "modal.oauth.authorization.redirectUrl": "Redirecționează URL-ul",
   "modal.oauth.authorization.redirectUrlHelp": "Folosește acest URL în configurația aplicației tale OAuth",
   "modal.oauth.authorization.title": "Autorizare OAuth",

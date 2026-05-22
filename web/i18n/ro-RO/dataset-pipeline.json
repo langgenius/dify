@@ -51,7 +51,7 @@
   "inputFieldPanel.uniqueInputs.title": "Intrări unice pentru fiecare intrare",
   "inputFieldPanel.uniqueInputs.tooltip": "Intrările unice sunt accesibile numai sursei de date selectate și nodurilor sale din aval. Utilizatorii nu vor trebui să-l completeze atunci când aleg alte surse de date. Numai câmpurile de intrare la care se face referire variabilele sursei de date vor apărea în primul pas (Sursă de date). Toate celelalte câmpuri vor fi afișate în al doilea pas (Procesați documente).",
   "knowledgeDescription": "Descrierea cunoștințelor",
-  "knowledgeDescriptionPlaceholder": "Descrieți ce este în această bază de cunoștințe. O descriere detaliată permite AI să acceseze mai precis conținutul setului de date. Dacă este gol, Dify va folosi strategia implicită de accesare. (Opțional)",
+  "knowledgeDescriptionPlaceholder": "Descrieți ce este în această bază de cunoștințe. O descriere detaliată permite AI să acceseze mai precis conținutul setului de date. Dacă este gol, va folosi strategia implicită de accesare. (Opțional)",
   "knowledgeNameAndIcon": "Nume și pictogramă de cunoștințe",
   "knowledgeNameAndIconPlaceholder": "Vă rugăm să introduceți numele bazei de cunoștințe",
   "knowledgePermissions": "Permisiuni",

@@ -51,7 +51,7 @@
   "inputFieldPanel.uniqueInputs.title": "每個入口的獨特輸入",
   "inputFieldPanel.uniqueInputs.tooltip": "唯一輸入只能存取選取的資料來源及其下游節點。使用者在選擇其他資料來源時無需填寫。只有資料來源變數引用的輸入欄位才會出現在第一步（資料來源）中。所有其他欄位將顯示在第二步（處理文件）中。",
   "knowledgeDescription": "知識說明",
-  "knowledgeDescriptionPlaceholder": "描述此知識庫中的內容。詳細的描述使人工智慧能夠更準確地存取資料集的內容。如果為空，Dify 將使用預設命中策略。（選用）",
+  "knowledgeDescriptionPlaceholder": "描述此知識庫中的內容。詳細的描述使人工智慧能夠更準確地存取資料集的內容。如果為空，將使用預設命中策略。（選用）",
   "knowledgeNameAndIcon": "知識名稱和圖示",
   "knowledgeNameAndIconPlaceholder": "請輸入知識庫的名稱",
   "knowledgePermissions": "權限",

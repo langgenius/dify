@@ -179,17 +179,6 @@ const PluginPage = ({
               isExploringMarketplace && (
                 <>
                   <Link
-                    href="https://github.com/langgenius/dify-plugins/issues/new?template=plugin_request.yaml"
-                    target="_blank"
-                  >
-                    <Button
-                      variant="ghost"
-                      className="text-text-tertiary"
-                    >
-                      {t('requestAPlugin', { ns: 'plugin' })}
-                    </Button>
-                  </Link>
-                  <Link
                     href={docLink('/develop-plugin/publishing/marketplace-listing/release-to-dify-marketplace')}
                     target="_blank"
                   >

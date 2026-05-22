@@ -189,19 +189,6 @@ const PluginItem: FC<Props> = ({
         </div>
         {/* Source */}
         <div className="flex shrink-0 items-center">
-          {source === PluginSource.github
-            && (
-              <>
-                <a href={`https://github.com/${meta!.repo}`} target="_blank" className="flex items-center gap-1">
-                  <div className="system-2xs-medium-uppercase text-text-tertiary">{t('from', { ns: 'plugin' })}</div>
-                  <div className="flex items-center space-x-0.5 text-text-secondary">
-                    <Github className="size-3" />
-                    <div className="system-2xs-semibold-uppercase">GitHub</div>
-                    <RiArrowRightUpLine className="size-3" />
-                  </div>
-                </a>
-              </>
-            )}
           {source === PluginSource.marketplace && enable_marketplace
             && (
               <>

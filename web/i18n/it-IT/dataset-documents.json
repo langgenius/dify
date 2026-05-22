@@ -44,7 +44,7 @@
   "list.batchModal.completed": "Importazione completata",
   "list.batchModal.content": "contenuto",
   "list.batchModal.contentTitle": "contenuto del blocco",
-  "list.batchModal.csvUploadTitle": "Trascina e rilascia il tuo file CSV qui, o ",
+  "list.batchModal.csvUploadTitle": "Trascina e rilascia il tuo file CSV qui, o",
   "list.batchModal.error": "Errore di importazione",
   "list.batchModal.ok": "OK",
   "list.batchModal.processing": "Elaborazione batch in corso",
@@ -56,8 +56,8 @@
   "list.batchModal.title": "Aggiungi blocchi in batch",
   "list.delete.content": "Se hai bisogno di riprendere l'elaborazione in seguito, continuerai da dove hai interrotto",
   "list.delete.title": "Sei sicuro di voler eliminare?",
-  "list.desc": "Tutti i file della Conoscenza sono mostrati qui, e l'intera Conoscenza può essere collegata alle citazioni di Dify o indicizzata tramite il plugin di Chat.",
-  "list.empty.sync.tip": "Dify scaricherà periodicamente i file dal tuo Notion e completerà l'elaborazione.",
+  "list.desc": "Tutti i file della Conoscenza sono mostrati qui, e l'intera Conoscenza può essere collegata alle citazioni di o indicizzata tramite il plugin di Chat.",
+  "list.empty.sync.tip": "scaricherà periodicamente i file dal tuo Notion e completerà l'elaborazione.",
   "list.empty.title": "Non ci sono ancora documenti",
   "list.empty.upload.tip": "Puoi caricare file, sincronizzare dal sito web o da app web come Notion, GitHub, ecc.",
   "list.index.all": "Tutti",
@@ -258,8 +258,8 @@
   "metadata.languageMap.th": "Thailandese",
   "metadata.languageMap.tr": "Turco",
   "metadata.languageMap.zh": "Cinese",
-  "metadata.placeholder.add": "Aggiungi ",
-  "metadata.placeholder.select": "Seleziona ",
+  "metadata.placeholder.add": "Aggiungi",
+  "metadata.placeholder.select": "Seleziona",
   "metadata.source.github": "Sincronizza da Github",
   "metadata.source.local_file": "File locale",
   "metadata.source.notion": "Sincronizza da Notion",
@@ -335,5 +335,5 @@
   "segment.searchResults_zero": "RISULTATO",
   "segment.summary": "RIEPILOGO",
   "segment.summaryPlaceholder": "Scrivi un breve riepilogo per un migliore recupero…",
-  "segment.vectorHash": "Hash del vettore: "
+  "segment.vectorHash": "Hash del vettore:"
 }

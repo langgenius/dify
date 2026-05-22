@@ -11,7 +11,7 @@ describe('LogoEmbeddedChatAvatar', () => {
       render(<LogoEmbeddedChatAvatar />)
       const img = screen.getByRole('img', { name: /logo/i })
       expect(img).toBeInTheDocument()
-      expect(img).toHaveAttribute('src', '/test-base-path/logo/logo-embedded-chat-avatar.png')
+      expect(img).toHaveAttribute('src', '/test-base-path/logo/login_dg.png')
     })
   })
 

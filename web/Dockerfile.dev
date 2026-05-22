@@ -1,0 +1,48 @@
+# base image
+FROM node:22-alpine AS base
+LABEL maintainer="takatost@gmail.com"
+
+RUN apk add --no-cache tzdata
+RUN corepack enable
+ENV PNPM_HOME="/pnpm"
+ENV PATH="$PNPM_HOME:$PATH"
+ARG NEXT_PUBLIC_BASE_PATH=""
+ENV NEXT_PUBLIC_BASE_PATH="$NEXT_PUBLIC_BASE_PATH"
+
+
+# install packages
+FROM base AS packages
+
+WORKDIR /app
+
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml /app/
+COPY web/package.json /app/web/
+COPY e2e/package.json /app/e2e/
+COPY sdks/nodejs-client/package.json /app/sdks/nodejs-client/
+COPY packages /app/packages
+
+RUN corepack install
+RUN VITE_GIT_HOOKS=0 pnpm install --frozen-lockfile
+
+
+# dev stage - source code mounted at runtime, no build step
+FROM packages AS dev
+
+ENV NODE_ENV=development
+ENV EDITION=SELF_HOSTED
+ENV DEPLOY_ENV=PRODUCTION
+ENV CONSOLE_API_URL=http://127.0.0.1:5001
+ENV APP_API_URL=http://127.0.0.1:5001
+ENV MARKETPLACE_API_URL=https://marketplace.dify.ai
+ENV MARKETPLACE_URL=https://marketplace.dify.ai
+ENV PORT=3000
+ENV NEXT_TELEMETRY_DISABLED=1
+ENV TZ=UTC
+
+RUN ln -s /usr/share/zoneinfo/${TZ} /etc/localtime \
+    && echo ${TZ} > /etc/timezone
+
+WORKDIR /app
+
+EXPOSE 3000
+CMD ["pnpm", "dev"]

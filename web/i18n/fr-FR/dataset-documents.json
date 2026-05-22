@@ -56,8 +56,8 @@
   "list.batchModal.title": "Ajouter des lots de segments",
   "list.delete.content": "Si vous avez besoin de reprendre le traitement plus tard, vous continuerez à partir de l'endroit où vous vous êtes arrêté",
   "list.delete.title": "Êtes-vous sûr de vouloir supprimer ?",
-  "list.desc": "Tous les fichiers de la Connaissance sont affichés ici, et l'ensemble de la Connaissance peut être lié aux citations Dify ou indexé via le plugin Chat.",
-  "list.empty.sync.tip": "Dify téléchargera périodiquement des fichiers de votre Notion et terminera le traitement.",
+  "list.desc": "Tous les fichiers de la Connaissance sont affichés ici, et l'ensemble de la Connaissance peut être lié aux citations ou indexé via le plugin Chat.",
+  "list.empty.sync.tip": "téléchargera périodiquement des fichiers de votre Notion et terminera le traitement.",
   "list.empty.title": "Il n'y a pas encore de documentation",
   "list.empty.upload.tip": "Vous pouvez télécharger des fichiers, synchroniser à partir du site web, ou à partir d'applications web comme Notion, GitHub, etc.",
   "list.index.all": "Tout",
@@ -335,5 +335,5 @@
   "segment.searchResults_zero": "RÉSULTAT",
   "segment.summary": "RÉSUMÉ",
   "segment.summaryPlaceholder": "Rédigez un bref résumé pour une meilleure récupération…",
-  "segment.vectorHash": "Vector hash: "
+  "segment.vectorHash": "Vector hash:"
 }

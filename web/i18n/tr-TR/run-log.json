@@ -13,7 +13,7 @@
   "meta.version": "Sürüm",
   "result": "SONUÇ",
   "resultEmpty.link": "detay paneli",
-  "resultEmpty.tipLeft": "lütfen ",
+  "resultEmpty.tipLeft": "lütfen",
   "resultEmpty.tipRight": "ne gidin ve görüntüleyin.",
   "resultEmpty.title": "Bu çalıştırma sadece JSON formatında çıktı verdi,",
   "resultPanel.status": "DURUM",

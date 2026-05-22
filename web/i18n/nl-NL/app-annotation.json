@@ -14,7 +14,7 @@
   "batchModal.completed": "Import completed",
   "batchModal.content": "content",
   "batchModal.contentTitle": "chunk content",
-  "batchModal.csvUploadTitle": "Drag and drop your CSV file here, or ",
+  "batchModal.csvUploadTitle": "Drag and drop your CSV file here, or",
   "batchModal.error": "Import Error",
   "batchModal.ok": "OK",
   "batchModal.processing": "In batch processing",

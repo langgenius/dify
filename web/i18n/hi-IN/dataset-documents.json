@@ -44,7 +44,7 @@
   "list.batchModal.completed": "आयात पूरा हुआ",
   "list.batchModal.content": "सामग्री",
   "list.batchModal.contentTitle": "खंड सामग्री",
-  "list.batchModal.csvUploadTitle": "अपनी CSV फाइल यहाँ खींचें और छोड़ें, या ",
+  "list.batchModal.csvUploadTitle": "अपनी CSV फाइल यहाँ खींचें और छोड़ें, या",
   "list.batchModal.error": "आयात त्रुटि",
   "list.batchModal.ok": "ठीक है",
   "list.batchModal.processing": "बैच प्रसंस्करण में",
@@ -258,8 +258,8 @@
   "metadata.languageMap.th": "थाई",
   "metadata.languageMap.tr": "तुर्की",
   "metadata.languageMap.zh": "चीनी",
-  "metadata.placeholder.add": "जोड़ें ",
-  "metadata.placeholder.select": "चुनें ",
+  "metadata.placeholder.add": "जोड़ें",
+  "metadata.placeholder.select": "चुनें",
   "metadata.source.github": "गिटहब से सिंक करें",
   "metadata.source.local_file": "स्थानीय फ़ाइल",
   "metadata.source.notion": "नोशन से सिंक करें",
@@ -335,5 +335,5 @@
   "segment.searchResults_zero": "परिणाम",
   "segment.summary": "सारांश",
   "segment.summaryPlaceholder": "बेहतर पुनर्प्राप्ति के लिए संक्षिप्त सारांश लिखें…",
-  "segment.vectorHash": "वेक्टर हैश: "
+  "segment.vectorHash": "वेक्टर हैश:"
 }

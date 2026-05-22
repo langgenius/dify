@@ -45,7 +45,7 @@
   "modal.oauth.authorization.authFailed": "Не удалось получить информацию об авторизации OAuth",
   "modal.oauth.authorization.authSuccess": "Авторизация прошла успешно",
   "modal.oauth.authorization.authorizeButton": "Авторизоваться с {{provider}}",
-  "modal.oauth.authorization.description": "Разрешить Dify доступ к вашему аккаунту",
+  "modal.oauth.authorization.description": "Разрешить доступ к вашему аккаунту",
   "modal.oauth.authorization.redirectUrl": "URL перенаправления",
   "modal.oauth.authorization.redirectUrlHelp": "Используйте этот URL в настройках вашего приложения OAuth",
   "modal.oauth.authorization.title": "Авторизация OAuth",

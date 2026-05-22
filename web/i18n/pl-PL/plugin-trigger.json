@@ -45,7 +45,7 @@
   "modal.oauth.authorization.authFailed": "Nie udało się pobrać informacji autoryzacyjnych OAuth",
   "modal.oauth.authorization.authSuccess": "Autoryzacja powiodła się",
   "modal.oauth.authorization.authorizeButton": "Autoryzuj za pomocą {{provider}}",
-  "modal.oauth.authorization.description": "Autoryzuj Dify, aby uzyskać dostęp do Twojego konta",
+  "modal.oauth.authorization.description": "Autoryzuj, aby uzyskać dostęp do Twojego konta",
   "modal.oauth.authorization.redirectUrl": "Przekieruj URL",
   "modal.oauth.authorization.redirectUrlHelp": "Użyj tego adresu URL w konfiguracji swojej aplikacji OAuth",
   "modal.oauth.authorization.title": "Autoryzacja OAuth",

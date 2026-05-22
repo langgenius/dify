@@ -14,7 +14,7 @@
   "batchModal.completed": "Importación completada",
   "batchModal.content": "contenido",
   "batchModal.contentTitle": "contenido del fragmento",
-  "batchModal.csvUploadTitle": "Arrastra y suelta tu archivo CSV aquí, o ",
+  "batchModal.csvUploadTitle": "Arrastra y suelta tu archivo CSV aquí, o",
   "batchModal.error": "Error de importación",
   "batchModal.ok": "OK",
   "batchModal.processing": "En proceso de lote",

@@ -4,7 +4,7 @@
   "apply": "Aplicar",
   "change": "Alterar",
   "custom": "Personalização",
-  "customize.contactUs": " entre em contato conosco ",
+  "customize.contactUs": "entre em contato conosco",
   "customize.prefix": "Para personalizar o logotipo da marca dentro do aplicativo, por favor",
   "customize.suffix": "para fazer upgrade para a edição Enterprise.",
   "restore": "Restaurar Padrões",
@@ -17,6 +17,6 @@
   "uploading": "Enviando",
   "webapp.changeLogo": "Alterar Imagem da Marca Powered by",
   "webapp.changeLogoTip": "Formato SVG ou PNG com tamanho mínimo de 40x40px",
-  "webapp.removeBrand": "Remover Powered by Dify",
+  "webapp.removeBrand": "Remover Powered by",
   "webapp.title": "Personalizar marca do web app"
 }

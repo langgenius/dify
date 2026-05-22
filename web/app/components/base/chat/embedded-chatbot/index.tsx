@@ -2,27 +2,19 @@
 import type { AppData } from '@/models/share'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useSuspenseQuery } from '@tanstack/react-query'
-import {
-  useEffect,
-} from 'react'
-import { useTranslation } from 'react-i18next'
 import ChatWrapper from '@/app/components/base/chat/embedded-chatbot/chat-wrapper'
 import Header from '@/app/components/base/chat/embedded-chatbot/header'
 import Loading from '@/app/components/base/loading'
-import DifyLogo from '@/app/components/base/logo/dify-logo'
-import LogoHeader from '@/app/components/base/logo/logo-embedded-chat-header'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { AppSourceType } from '@/service/share'
 import { systemFeaturesQueryOptions } from '@/service/system-features'
-import {
-  EmbeddedChatbotContext,
+import { EmbeddedChatbotContext,
   useEmbeddedChatbotContext,
 } from './context'
 import { useEmbeddedChatbot } from './hooks'
 import { useThemeContext } from './theme/theme-context'
 import { CssTransform } from './theme/utils'
-import { isDify } from './utils'
 
 const Chatbot = () => {
   const {
@@ -34,17 +26,8 @@ const Chatbot = () => {
     handleNewConversation,
     themeBuilder,
   } = useEmbeddedChatbotContext()
-  const { t } = useTranslation()
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
-
-  const customConfig = appData?.custom_config
   const site = appData?.site
-
-  const difyIcon = <LogoHeader />
-
-  useEffect(() => {
-    themeBuilder?.buildTheme(site?.chat_color_theme, site?.chat_color_theme_inverted)
-  }, [site, customConfig, themeBuilder])
 
   useDocumentTitle(site?.title || 'Chat')
 
@@ -61,7 +44,7 @@ const Chatbot = () => {
           isMobile={isMobile}
           allowResetChat={allowResetChat}
           title={site?.title || ''}
-          customerIcon={isDify() ? difyIcon : ''}
+          customerIcon=""
           theme={themeBuilder?.theme}
           onCreateNewChat={handleNewConversation}
         />
@@ -75,23 +58,15 @@ const Chatbot = () => {
         </div>
       </div>
       {/* powered by */}
-      {isMobile && (
+      {isMobile && !appData?.custom_config?.remove_webapp_brand && (
         <div className="flex h-[60px] shrink-0 items-center pl-2">
-          {!appData?.custom_config?.remove_webapp_brand && (
-            <div className={cn(
-              'flex shrink-0 items-center gap-1.5 px-2',
-            )}
-            >
-              <div className="system-2xs-medium-uppercase text-text-tertiary">{t('chat.poweredBy', { ns: 'share' })}</div>
-              {
-                systemFeatures.branding.enabled && systemFeatures.branding.workspace_logo
-                  ? <img src={systemFeatures.branding.workspace_logo} alt="logo" className="block h-5 w-auto" />
-                  : appData?.custom_config?.replace_webapp_logo
-                    ? <img src={`${appData?.custom_config?.replace_webapp_logo}`} alt="logo" className="block h-5 w-auto" />
-                    : <DifyLogo size="small" />
-              }
-            </div>
-          )}
+          <div className="flex shrink-0 items-center gap-1.5 px-2">
+            {systemFeatures.branding.enabled && systemFeatures.branding.workspace_logo
+              ? <img src={systemFeatures.branding.workspace_logo} alt="logo" className="block h-5 w-auto" />
+              : appData?.custom_config?.replace_webapp_logo
+                ? <img src={`${appData?.custom_config?.replace_webapp_logo}`} alt="logo" className="block h-5 w-auto" />
+                : null}
+          </div>
         </div>
       )}
     </div>

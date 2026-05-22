@@ -45,7 +45,7 @@
   "modal.oauth.authorization.authFailed": "無法取得 OAuth 認證資訊",
   "modal.oauth.authorization.authSuccess": "授權成功",
   "modal.oauth.authorization.authorizeButton": "使用 {{provider}} 授權",
-  "modal.oauth.authorization.description": "授權 Dify 存取您的帳戶",
+  "modal.oauth.authorization.description": "授權 存取您的帳戶",
   "modal.oauth.authorization.redirectUrl": "重新導向網址",
   "modal.oauth.authorization.redirectUrlHelp": "在您的 OAuth 應用程式設定中使用此 URL",
   "modal.oauth.authorization.title": "OAuth 授權",

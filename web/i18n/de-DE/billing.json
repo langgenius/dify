@@ -14,7 +14,7 @@
   "plans.community.features": [
     "Alle Kernfunktionen im öffentlichen Repository veröffentlicht",
     "Einzelarbeitsbereich",
-    "Entspricht der Dify Open-Source-Lizenz"
+    "Entspricht der Open-Source-Lizenz"
   ],
   "plans.community.for": "Für Einzelbenutzer, kleine Teams oder nicht-kommerzielle Projekte",
   "plans.community.includesTitle": "Kostenlose Funktionen:",
@@ -29,9 +29,9 @@
     "Exklusive Unternehmensfunktionen",
     "Mehrere Arbeitsbereiche & Unternehmensverwaltung",
     "SSO",
-    "Von Dify-Partnern ausgehandelte SLAs",
+    "Von-Partnern ausgehandelte SLAs",
     "Erweiterte Sicherheit & Steuerungen",
-    "Updates und Wartung offiziell von Dify",
+    "Updates und Wartung offiziell von",
     "Professioneller technischer Support"
   ],
   "plans.enterprise.for": "Für große Teams",
@@ -67,7 +67,7 @@
   "plansCommon.annotationQuota": "Kontingent für Anmerkungen",
   "plansCommon.annualBilling": "Jährliche Abrechnung, sparen Sie {{percent}}%",
   "plansCommon.apiRateLimit": "API-Datenlimit",
-  "plansCommon.apiRateLimitTooltip": "Die API-Datenbeschränkung gilt für alle Anfragen, die über die Dify-API gemacht werden, einschließlich Textgenerierung, Chat-Konversationen, Workflow-Ausführungen und Dokumentenverarbeitung.",
+  "plansCommon.apiRateLimitTooltip": "Die API-Datenbeschränkung gilt für alle Anfragen, die über die-API gemacht werden, einschließlich Textgenerierung, Chat-Konversationen, Workflow-Ausführungen und Dokumentenverarbeitung.",
   "plansCommon.apiRateLimitUnit": "{{count,number}}",
   "plansCommon.buildApps": "{{count,number}} Apps",
   "plansCommon.cloud": "Cloud-Dienst",
@@ -106,9 +106,9 @@
   "plansCommon.priority.priority": "Priorität",
   "plansCommon.priority.standard": "Standard",
   "plansCommon.priority.top-priority": "Höchste Priorität",
-  "plansCommon.ragAPIRequestTooltip": "Bezieht sich auf die Anzahl der API-Aufrufe, die nur die Wissensdatenbankverarbeitungsfähigkeiten von Dify aufrufen.",
+  "plansCommon.ragAPIRequestTooltip": "Bezieht sich auf die Anzahl der API-Aufrufe, die nur die Wissensdatenbankverarbeitungsfähigkeiten von aufrufen.",
   "plansCommon.receiptInfo": "Nur der Teaminhaber und der Teamadministrator können abonnieren und Abrechnungsinformationen einsehen",
-  "plansCommon.save": "Sparen ",
+  "plansCommon.save": "Sparen",
   "plansCommon.self": "Selbst gehostet",
   "plansCommon.startBuilding": "Beginnen Sie mit der Entwicklung",
   "plansCommon.startForFree": "Kostenlos starten",
