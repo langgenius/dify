@@ -6,12 +6,12 @@ import {
   AutocompleteContent,
   AutocompleteEmpty,
   AutocompleteGroup,
+  AutocompleteGroupLabel,
   AutocompleteInput,
   AutocompleteInputGroup,
   AutocompleteItem,
   AutocompleteItemIndicator,
   AutocompleteItemText,
-  AutocompleteLabel,
   AutocompleteList,
   AutocompleteSeparator,
   AutocompleteStatus,
@@ -230,7 +230,7 @@ describe('Autocomplete wrappers', () => {
           <AutocompleteContent popupProps={{ 'role': 'dialog', 'aria-label': 'autocomplete popup' }}>
             <AutocompleteList role="listbox" aria-label="autocomplete list">
               <AutocompleteGroup items={['workflow']}>
-                <AutocompleteLabel className="custom-label">Resources</AutocompleteLabel>
+                <AutocompleteGroupLabel className="custom-label">Resources</AutocompleteGroupLabel>
                 <AutocompleteSeparator className="custom-separator" data-testid="separator" />
                 <AutocompleteItem value="workflow" className="custom-item">
                   <AutocompleteItemText className="custom-text">Workflow</AutocompleteItemText>

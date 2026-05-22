@@ -23,38 +23,16 @@ export const usePanelInteractions = () => {
     })
 
     workflowStore.setState({
-      nodeMenu: undefined,
-      selectionMenu: undefined,
-      edgeMenu: undefined,
-      panelMenu: {
-        clientX: e.clientX,
-        clientY: e.clientY,
-      },
+      contextMenuTarget: { type: 'panel' },
     })
   }, [workflowStore, appDslVersion])
 
   const handlePaneContextmenuCancel = useCallback(() => {
-    workflowStore.setState({
-      panelMenu: undefined,
-    })
-  }, [workflowStore])
-
-  const handleNodeContextmenuCancel = useCallback(() => {
-    workflowStore.setState({
-      nodeMenu: undefined,
-    })
-  }, [workflowStore])
-
-  const handleEdgeContextmenuCancel = useCallback(() => {
-    workflowStore.setState({
-      edgeMenu: undefined,
-    })
+    workflowStore.setState({ contextMenuTarget: undefined })
   }, [workflowStore])
 
   return {
     handlePaneContextMenu,
     handlePaneContextmenuCancel,
-    handleNodeContextmenuCancel,
-    handleEdgeContextmenuCancel,
   }
 }
