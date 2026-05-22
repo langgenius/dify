@@ -290,6 +290,18 @@ export type AutoDisableLogsResponse = {
   document_ids: Array<string>
 }
 
+export type DocumentStatusListResponse = {
+  data: Array<DocumentStatusResponse>
+}
+
+export type DocumentWithSegmentsListResponse = {
+  data: Array<DocumentWithSegmentsResponse>
+  has_more: boolean
+  limit: number
+  page: number
+  total: number
+}
+
 export type DocumentBatchDownloadZipPayload = {
   document_ids: Array<string>
 }
@@ -304,6 +316,21 @@ export type MetadataOperationData = {
 
 export type UrlResponse = {
   url: string
+}
+
+export type DocumentStatusResponse = {
+  cleaning_completed_at: number | null
+  completed_at: number | null
+  completed_segments?: number | null
+  error: string | null
+  id: string
+  indexing_status: string
+  parsing_completed_at: number | null
+  paused_at: number | null
+  processing_started_at: number | null
+  splitting_completed_at: number | null
+  stopped_at: number | null
+  total_segments?: number | null
 }
 
 export type DocumentMetadataUpdatePayload = {
@@ -326,14 +353,14 @@ export type DocumentResponse = {
   created_by?: string | null
   created_from?: string | null
   data_source_detail_dict?: unknown
-  data_source_info_dict?: unknown
+  data_source_info?: unknown
   data_source_type?: string | null
   dataset_process_rule_id?: string | null
   disabled_at?: number | null
   disabled_by?: string | null
   display_status?: string | null
   doc_form?: string | null
-  doc_metadata_details?: Array<DocumentMetadataResponse>
+  doc_metadata?: Array<DocumentMetadataResponse>
   enabled?: boolean | null
   error?: string | null
   hit_count?: number | null
@@ -431,10 +458,6 @@ export type HitTestingPayload = {
 export type HitTestingResponse = {
   query: HitTestingQuery
   records: Array<HitTestingRecord>
-}
-
-export type DocumentStatusListResponse = {
-  data: Array<DocumentStatusResponse>
 }
 
 export type DatasetMetadataListResponse = {
@@ -671,6 +694,36 @@ export type DatasetMetadataBuiltInFieldResponse = {
   type: string
 }
 
+export type DocumentWithSegmentsResponse = {
+  archived?: boolean | null
+  completed_segments?: number | null
+  created_at?: number | null
+  created_by?: string | null
+  created_from?: string | null
+  data_source_detail_dict?: unknown
+  data_source_info?: unknown
+  data_source_type?: string | null
+  dataset_process_rule_id?: string | null
+  disabled_at?: number | null
+  disabled_by?: string | null
+  display_status?: string | null
+  doc_form?: string | null
+  doc_metadata?: Array<DocumentMetadataResponse>
+  enabled?: boolean | null
+  error?: string | null
+  hit_count?: number | null
+  id: string
+  indexing_status?: string | null
+  name: string
+  need_summary?: boolean | null
+  position?: number | null
+  process_rule_dict?: unknown
+  summary_index_status?: string | null
+  tokens?: number | null
+  total_segments?: number | null
+  word_count?: number | null
+}
+
 export type DocumentMetadataOperation = {
   document_id: string
   metadata_list: Array<MetadataDetail>
@@ -728,21 +781,6 @@ export type ChildChunkResponse = {
 export type ChildChunkUpdateArgs = {
   content: string
   id?: string | null
-}
-
-export type DocumentStatusResponse = {
-  cleaning_completed_at: number | null
-  completed_at: number | null
-  completed_segments?: number | null
-  error: string | null
-  id: string
-  indexing_status: string
-  parsing_completed_at: number | null
-  paused_at: number | null
-  processing_started_at: number | null
-  splitting_completed_at: number | null
-  stopped_at: number | null
-  total_segments?: number | null
 }
 
 export type HitTestingQuery = {
@@ -1573,9 +1611,7 @@ export type GetDatasetsByDatasetIdBatchByBatchIndexingStatusData = {
 }
 
 export type GetDatasetsByDatasetIdBatchByBatchIndexingStatusResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: DocumentStatusListResponse
 }
 
 export type GetDatasetsByDatasetIdBatchByBatchIndexingStatusResponse
@@ -1616,9 +1652,7 @@ export type GetDatasetsByDatasetIdDocumentsData = {
 }
 
 export type GetDatasetsByDatasetIdDocumentsResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: DocumentWithSegmentsListResponse
 }
 
 export type GetDatasetsByDatasetIdDocumentsResponse
@@ -1841,9 +1875,7 @@ export type GetDatasetsByDatasetIdDocumentsByDocumentIdIndexingStatusError
   = GetDatasetsByDatasetIdDocumentsByDocumentIdIndexingStatusErrors[keyof GetDatasetsByDatasetIdDocumentsByDocumentIdIndexingStatusErrors]
 
 export type GetDatasetsByDatasetIdDocumentsByDocumentIdIndexingStatusResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: DocumentStatusResponse
 }
 
 export type GetDatasetsByDatasetIdDocumentsByDocumentIdIndexingStatusResponse

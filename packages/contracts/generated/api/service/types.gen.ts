@@ -420,6 +420,11 @@ export type DatasourceNodeRunPayload = {
   is_published: boolean
 }
 
+export type DocumentAndBatchResponse = {
+  batch: string
+  document: DocumentResponse
+}
+
 export type DocumentBatchDownloadZipPayload = {
   document_ids: Array<string>
 }
@@ -431,10 +436,71 @@ export type DocumentListQuery = {
   status?: string | null
 }
 
+export type DocumentListResponse = {
+  data: Array<DocumentResponse>
+  has_more: boolean
+  limit: number
+  page: number
+  total: number
+}
+
 export type DocumentMetadataOperation = {
   document_id: string
   metadata_list: Array<MetadataDetail>
   partial_update?: boolean
+}
+
+export type DocumentMetadataResponse = {
+  id: string
+  name: string
+  type: string
+  value?: string | null
+}
+
+export type DocumentResponse = {
+  archived?: boolean | null
+  created_at?: number | null
+  created_by?: string | null
+  created_from?: string | null
+  data_source_detail_dict?: unknown
+  data_source_info?: unknown
+  data_source_type?: string | null
+  dataset_process_rule_id?: string | null
+  disabled_at?: number | null
+  disabled_by?: string | null
+  display_status?: string | null
+  doc_form?: string | null
+  doc_metadata?: Array<DocumentMetadataResponse>
+  enabled?: boolean | null
+  error?: string | null
+  hit_count?: number | null
+  id: string
+  indexing_status?: string | null
+  name: string
+  need_summary?: boolean | null
+  position?: number | null
+  summary_index_status?: string | null
+  tokens?: number | null
+  word_count?: number | null
+}
+
+export type DocumentStatusListResponse = {
+  data: Array<DocumentStatusResponse>
+}
+
+export type DocumentStatusResponse = {
+  cleaning_completed_at: number | null
+  completed_at: number | null
+  completed_segments?: number | null
+  error: string | null
+  id: string
+  indexing_status: string
+  parsing_completed_at: number | null
+  paused_at: number | null
+  processing_started_at: number | null
+  splitting_completed_at: number | null
+  stopped_at: number | null
+  total_segments?: number | null
 }
 
 export type DocumentTextCreatePayload = {
@@ -1840,9 +1906,7 @@ export type PostDatasetsByDatasetIdDocumentCreateByFileError
   = PostDatasetsByDatasetIdDocumentCreateByFileErrors[keyof PostDatasetsByDatasetIdDocumentCreateByFileErrors]
 
 export type PostDatasetsByDatasetIdDocumentCreateByFileResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: DocumentAndBatchResponse
 }
 
 export type PostDatasetsByDatasetIdDocumentCreateByFileResponse
@@ -1870,9 +1934,7 @@ export type PostDatasetsByDatasetIdDocumentCreateByTextError
   = PostDatasetsByDatasetIdDocumentCreateByTextErrors[keyof PostDatasetsByDatasetIdDocumentCreateByTextErrors]
 
 export type PostDatasetsByDatasetIdDocumentCreateByTextResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: DocumentAndBatchResponse
 }
 
 export type PostDatasetsByDatasetIdDocumentCreateByTextResponse
@@ -1900,9 +1962,7 @@ export type PostDatasetsByDatasetIdDocumentCreateByFile2Error
   = PostDatasetsByDatasetIdDocumentCreateByFile2Errors[keyof PostDatasetsByDatasetIdDocumentCreateByFile2Errors]
 
 export type PostDatasetsByDatasetIdDocumentCreateByFile2Responses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: DocumentAndBatchResponse
 }
 
 export type PostDatasetsByDatasetIdDocumentCreateByFile2Response
@@ -1930,9 +1990,7 @@ export type PostDatasetsByDatasetIdDocumentCreateByText2Error
   = PostDatasetsByDatasetIdDocumentCreateByText2Errors[keyof PostDatasetsByDatasetIdDocumentCreateByText2Errors]
 
 export type PostDatasetsByDatasetIdDocumentCreateByText2Responses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: DocumentAndBatchResponse
 }
 
 export type PostDatasetsByDatasetIdDocumentCreateByText2Response
@@ -1960,9 +2018,7 @@ export type GetDatasetsByDatasetIdDocumentsError
   = GetDatasetsByDatasetIdDocumentsErrors[keyof GetDatasetsByDatasetIdDocumentsErrors]
 
 export type GetDatasetsByDatasetIdDocumentsResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: DocumentListResponse
 }
 
 export type GetDatasetsByDatasetIdDocumentsResponse
@@ -2087,9 +2143,7 @@ export type GetDatasetsByDatasetIdDocumentsByBatchIndexingStatusError
   = GetDatasetsByDatasetIdDocumentsByBatchIndexingStatusErrors[keyof GetDatasetsByDatasetIdDocumentsByBatchIndexingStatusErrors]
 
 export type GetDatasetsByDatasetIdDocumentsByBatchIndexingStatusResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: DocumentStatusListResponse
 }
 
 export type GetDatasetsByDatasetIdDocumentsByBatchIndexingStatusResponse
@@ -2186,9 +2240,7 @@ export type PatchDatasetsByDatasetIdDocumentsByDocumentIdError
   = PatchDatasetsByDatasetIdDocumentsByDocumentIdErrors[keyof PatchDatasetsByDatasetIdDocumentsByDocumentIdErrors]
 
 export type PatchDatasetsByDatasetIdDocumentsByDocumentIdResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: DocumentAndBatchResponse
 }
 
 export type PatchDatasetsByDatasetIdDocumentsByDocumentIdResponse
@@ -2541,9 +2593,7 @@ export type PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFileError
   = PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFileErrors[keyof PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFileErrors]
 
 export type PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFileResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: DocumentAndBatchResponse
 }
 
 export type PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFileResponse
@@ -2572,9 +2622,7 @@ export type PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByTextError
   = PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByTextErrors[keyof PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByTextErrors]
 
 export type PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByTextResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: DocumentAndBatchResponse
 }
 
 export type PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByTextResponse
@@ -2603,9 +2651,7 @@ export type PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFile2Error
   = PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFile2Errors[keyof PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFile2Errors]
 
 export type PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFile2Responses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: DocumentAndBatchResponse
 }
 
 export type PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFile2Response
@@ -2634,9 +2680,7 @@ export type PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByText2Error
   = PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByText2Errors[keyof PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByText2Errors]
 
 export type PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByText2Responses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: DocumentAndBatchResponse
 }
 
 export type PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByText2Response

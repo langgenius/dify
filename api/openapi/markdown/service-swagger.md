@@ -757,11 +757,11 @@ Create a new document by uploading a file
 
 ##### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Document created successfully |
-| 400 | Bad request - invalid file or parameters |
-| 401 | Unauthorized - invalid API token |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Document created successfully | [DocumentAndBatchResponse](#documentandbatchresponse) |
+| 400 | Bad request - invalid file or parameters |  |
+| 401 | Unauthorized - invalid API token |  |
 
 ### /datasets/{dataset_id}/document/create-by-text
 
@@ -779,11 +779,11 @@ Create a new document by providing text content
 
 ##### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Document created successfully |
-| 400 | Bad request - invalid parameters |
-| 401 | Unauthorized - invalid API token |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Document created successfully | [DocumentAndBatchResponse](#documentandbatchresponse) |
+| 400 | Bad request - invalid parameters |  |
+| 401 | Unauthorized - invalid API token |  |
 
 ### /datasets/{dataset_id}/document/create_by_file
 
@@ -800,11 +800,11 @@ Create a new document by uploading a file
 
 ##### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Document created successfully |
-| 400 | Bad request - invalid file or parameters |
-| 401 | Unauthorized - invalid API token |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Document created successfully | [DocumentAndBatchResponse](#documentandbatchresponse) |
+| 400 | Bad request - invalid file or parameters |  |
+| 401 | Unauthorized - invalid API token |  |
 
 ### /datasets/{dataset_id}/document/create_by_text
 
@@ -823,11 +823,11 @@ Deprecated legacy alias for creating a new document by providing text content. U
 
 ##### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Document created successfully |
-| 400 | Bad request - invalid parameters |
-| 401 | Unauthorized - invalid API token |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Document created successfully | [DocumentAndBatchResponse](#documentandbatchresponse) |
+| 400 | Bad request - invalid parameters |  |
+| 401 | Unauthorized - invalid API token |  |
 
 ### /datasets/{dataset_id}/documents
 
@@ -844,11 +844,11 @@ List all documents in a dataset
 
 ##### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Documents retrieved successfully |
-| 401 | Unauthorized - invalid API token |
-| 404 | Dataset not found |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Documents retrieved successfully | [DocumentListResponse](#documentlistresponse) |
+| 401 | Unauthorized - invalid API token |  |
+| 404 | Dataset not found |  |
 
 ### /datasets/{dataset_id}/documents/download-zip
 
@@ -956,11 +956,11 @@ Get indexing status for documents in a batch
 
 ##### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Indexing status retrieved successfully |
-| 401 | Unauthorized - invalid API token |
-| 404 | Dataset or documents not found |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Indexing status retrieved successfully | [DocumentStatusListResponse](#documentstatuslistresponse) |
+| 401 | Unauthorized - invalid API token |  |
+| 404 | Dataset or documents not found |  |
 
 ### /datasets/{dataset_id}/documents/{document_id}
 
@@ -1024,11 +1024,11 @@ Update an existing document by uploading a file
 
 ##### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Document updated successfully |
-| 401 | Unauthorized - invalid API token |
-| 404 | Document not found |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Document updated successfully | [DocumentAndBatchResponse](#documentandbatchresponse) |
+| 401 | Unauthorized - invalid API token |  |
+| 404 | Document not found |  |
 
 ### /datasets/{dataset_id}/documents/{document_id}/download
 
@@ -1279,11 +1279,11 @@ Deprecated legacy alias for updating an existing document by uploading a file. U
 
 ##### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Document updated successfully |
-| 401 | Unauthorized - invalid API token |
-| 404 | Document not found |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Document updated successfully | [DocumentAndBatchResponse](#documentandbatchresponse) |
+| 401 | Unauthorized - invalid API token |  |
+| 404 | Document not found |  |
 
 ### /datasets/{dataset_id}/documents/{document_id}/update-by-text
 
@@ -1302,11 +1302,11 @@ Update an existing document by providing text content
 
 ##### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Document updated successfully |
-| 401 | Unauthorized - invalid API token |
-| 404 | Document not found |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Document updated successfully | [DocumentAndBatchResponse](#documentandbatchresponse) |
+| 401 | Unauthorized - invalid API token |  |
+| 404 | Document not found |  |
 
 ### /datasets/{dataset_id}/documents/{document_id}/update_by_file
 
@@ -1325,11 +1325,11 @@ Deprecated legacy alias for updating an existing document by uploading a file. U
 
 ##### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Document updated successfully |
-| 401 | Unauthorized - invalid API token |
-| 404 | Document not found |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Document updated successfully | [DocumentAndBatchResponse](#documentandbatchresponse) |
+| 401 | Unauthorized - invalid API token |  |
+| 404 | Document not found |  |
 
 ### /datasets/{dataset_id}/documents/{document_id}/update_by_text
 
@@ -1349,11 +1349,11 @@ Deprecated legacy alias for updating an existing document by providing text cont
 
 ##### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Document updated successfully |
-| 401 | Unauthorized - invalid API token |
-| 404 | Document not found |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Document updated successfully | [DocumentAndBatchResponse](#documentandbatchresponse) |
+| 401 | Unauthorized - invalid API token |  |
+| 404 | Document not found |  |
 
 ### /datasets/{dataset_id}/hit-testing
 
@@ -2637,6 +2637,13 @@ Condition detail
 | inputs | object |  | Yes |
 | is_published | boolean |  | Yes |
 
+#### DocumentAndBatchResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| batch | string |  | Yes |
+| document | [DocumentResponse](#documentresponse) |  | Yes |
+
 #### DocumentBatchDownloadZipPayload
 
 Request payload for bulk downloading documents as a zip archive.
@@ -2654,6 +2661,16 @@ Request payload for bulk downloading documents as a zip archive.
 | page | integer | Page number | No |
 | status | string | Document status filter | No |
 
+#### DocumentListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [DocumentResponse](#documentresponse) ] |  | Yes |
+| has_more | boolean |  | Yes |
+| limit | integer |  | Yes |
+| page | integer |  | Yes |
+| total | integer |  | Yes |
+
 #### DocumentMetadataOperation
 
 | Name | Type | Description | Required |
@@ -2661,6 +2678,67 @@ Request payload for bulk downloading documents as a zip archive.
 | document_id | string |  | Yes |
 | metadata_list | [ [MetadataDetail](#metadatadetail) ] |  | Yes |
 | partial_update | boolean |  | No |
+
+#### DocumentMetadataResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| id | string |  | Yes |
+| name | string |  | Yes |
+| type | string |  | Yes |
+| value | string |  | No |
+
+#### DocumentResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| archived | boolean |  | No |
+| created_at | integer |  | No |
+| created_by | string |  | No |
+| created_from | string |  | No |
+| data_source_detail_dict |  |  | No |
+| data_source_info |  |  | No |
+| data_source_type | string |  | No |
+| dataset_process_rule_id | string |  | No |
+| disabled_at | integer |  | No |
+| disabled_by | string |  | No |
+| display_status | string |  | No |
+| doc_form | string |  | No |
+| doc_metadata | [ [DocumentMetadataResponse](#documentmetadataresponse) ] |  | No |
+| enabled | boolean |  | No |
+| error | string |  | No |
+| hit_count | integer |  | No |
+| id | string |  | Yes |
+| indexing_status | string |  | No |
+| name | string |  | Yes |
+| need_summary | boolean |  | No |
+| position | integer |  | No |
+| summary_index_status | string |  | No |
+| tokens | integer |  | No |
+| word_count | integer |  | No |
+
+#### DocumentStatusListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [DocumentStatusResponse](#documentstatusresponse) ] |  | Yes |
+
+#### DocumentStatusResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| cleaning_completed_at | integer |  | Yes |
+| completed_at | integer |  | Yes |
+| completed_segments | integer |  | No |
+| error | string |  | Yes |
+| id | string |  | Yes |
+| indexing_status | string |  | Yes |
+| parsing_completed_at | integer |  | Yes |
+| paused_at | integer |  | Yes |
+| processing_started_at | integer |  | Yes |
+| splitting_completed_at | integer |  | Yes |
+| stopped_at | integer |  | Yes |
+| total_segments | integer |  | No |
 
 #### DocumentTextCreatePayload
 
