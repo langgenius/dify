@@ -304,15 +304,12 @@ class PluginService:
     def _migrate_workflow_plugin_unique_identifier(
         tenant_id: str, original_plugin_unique_identifier: str, new_plugin_unique_identifier: str
     ) -> int:
-        workflows = (
-            db.session.scalars(
-                select(Workflow).where(
-                    Workflow.tenant_id == tenant_id,
-                    Workflow.graph.contains(original_plugin_unique_identifier),
-                )
+        workflows = db.session.scalars(
+            select(Workflow).where(
+                Workflow.tenant_id == tenant_id,
+                Workflow.graph.contains(original_plugin_unique_identifier),
             )
-            .all()
-        )
+        ).all()
 
         updated_workflow_count = 0
         replacement_count = 0
