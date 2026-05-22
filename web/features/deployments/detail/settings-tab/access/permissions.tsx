@@ -39,6 +39,10 @@ import { useTranslation } from 'react-i18next'
 import { SkeletonRectangle, SkeletonRow } from '@/app/components/base/skeleton'
 import { consoleQuery } from '@/service/client'
 import { environmentName } from '../../../environment'
+import {
+  DetailTableCell,
+  DetailTableRow,
+} from '../../table'
 
 type AccessPermissionKind = 'organization' | 'specific' | 'anyone'
 
@@ -412,20 +416,20 @@ export function EnvironmentPermissionRow({
   }
 
   return (
-    <div className="grid gap-3 border-t border-divider-subtle px-4 py-3 first:border-t-0 lg:grid-cols-[minmax(140px,180px)_minmax(190px,230px)_minmax(0,1fr)] lg:items-start">
-      <div className="min-w-0 lg:pt-1.5">
-        <div className="system-2xs-medium-uppercase text-text-tertiary">
+    <DetailTableRow className="block pc:table-row">
+      <DetailTableCell className="block h-auto px-4 pt-3 pb-1 align-top pc:table-cell pc:h-12 pc:py-3">
+        <div className="system-2xs-medium-uppercase text-text-tertiary pc:hidden">
           {t('access.permissions.col.environment')}
         </div>
-        <div className="mt-1 flex min-w-0 items-center gap-2">
+        <div className="mt-1 flex min-w-0 items-center gap-2 pc:mt-0">
           <span className="i-ri-server-line size-3.5 shrink-0 text-text-tertiary" aria-hidden="true" />
           <span className="min-w-0 truncate system-sm-medium text-text-primary">
             {environmentName(environment)}
           </span>
         </div>
-      </div>
-      <div className="min-w-0">
-        <div className="mb-1 system-2xs-medium-uppercase text-text-tertiary">
+      </DetailTableCell>
+      <DetailTableCell className="block h-auto px-4 py-1 align-top pc:table-cell pc:h-12 pc:py-3">
+        <div className="mb-1 system-2xs-medium-uppercase text-text-tertiary pc:hidden">
           {t('access.permissions.col.permission')}
         </div>
         <PermissionPicker
@@ -433,9 +437,9 @@ export function EnvironmentPermissionRow({
           disabled={controlsDisabled}
           onChange={handlePermissionChange}
         />
-      </div>
-      <div className="min-w-0">
-        <div className="mb-1 system-2xs-medium-uppercase text-text-tertiary">
+      </DetailTableCell>
+      <DetailTableCell className="block h-auto px-4 pt-1 pb-3 align-top pc:table-cell pc:h-12 pc:py-3">
+        <div className="mb-1 system-2xs-medium-uppercase text-text-tertiary pc:hidden">
           {t('access.permissions.col.subjects')}
         </div>
         {permissionKind === 'specific'
@@ -458,7 +462,7 @@ export function EnvironmentPermissionRow({
                 {t(`access.permission.${permissionKind}Desc`)}
               </div>
             )}
-      </div>
-    </div>
+      </DetailTableCell>
+    </DetailTableRow>
   )
 }

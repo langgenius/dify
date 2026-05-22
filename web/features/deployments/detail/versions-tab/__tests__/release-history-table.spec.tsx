@@ -100,31 +100,61 @@ describe('ReleaseHistoryTable', () => {
     })
   })
 
-  // The desktop release history should use the same compact table shell as knowledge documents.
+  // The desktop release history should use the shared semantic deployment detail table.
   describe('Rendering', () => {
-    it('should render the desktop release history as a compact document-style table', () => {
+    it('should render the desktop release history with the shared detail table design', () => {
       // Arrange & Act
       const { container } = render(<ReleaseHistoryTable appInstanceId="instance-1" />)
 
       // Assert
-      const table = screen.getByRole('table')
-      expect(table).toHaveClass('border-collapse', 'border-0', 'text-sm', 'min-w-[700px]')
-      expect(container.querySelector('thead')).toHaveClass(
-        'h-8',
-        'border-b',
+      const desktopWrapper = container.querySelector('.hidden.pc\\:block')
+      const tableContainer = desktopWrapper?.querySelector('[data-slot="deployment-detail-table-container"]')
+      const tableShell = desktopWrapper?.querySelector('[data-slot="deployment-detail-table"]')
+      const header = tableShell?.querySelector('[data-slot="deployment-detail-table-header"]')
+      const body = tableShell?.querySelector('[data-slot="deployment-detail-table-body"]')
+      const row = body?.querySelector('[data-slot="deployment-detail-table-row"]')
+      const head = header?.querySelector('[data-slot="deployment-detail-table-head"]')
+      const cell = row?.querySelector('[data-slot="deployment-detail-table-cell"]')
+
+      expect(tableContainer).toHaveClass(
+        'overflow-hidden',
+        'rounded-lg',
+        'border',
         'border-divider-subtle',
-        'text-xs',
-        'leading-8',
-        'font-medium',
-        'text-text-tertiary',
-        'uppercase',
+        'bg-background-default',
       )
-      expect(container.querySelector('tbody tr')).toHaveClass(
-        'h-8',
+      expect(tableShell?.tagName).toBe('TABLE')
+      expect(header?.tagName).toBe('THEAD')
+      expect(body?.tagName).toBe('TBODY')
+      expect(row?.tagName).toBe('TR')
+      expect(head?.tagName).toBe('TH')
+      expect(cell?.tagName).toBe('TD')
+      expect(tableShell).toHaveClass(
+        'w-full',
+        'table-fixed',
+        'border-collapse',
+        'caption-bottom',
+      )
+      expect(head).toHaveClass(
+        'h-9',
+        'px-4',
+        'py-2',
+        'system-sm-medium-uppercase',
+        'text-text-tertiary',
+      )
+      expect(row).toHaveClass(
         'border-b',
         'border-divider-subtle',
         'hover:bg-background-default-hover',
       )
+      expect(cell).toHaveClass(
+        'h-12',
+        'min-w-0',
+        'px-4',
+        'py-2',
+      )
+      expect(row?.querySelector('[data-slot="deployment-detail-table-row-content"]')).toBeNull()
+      expect(screen.getAllByText('R-001')).toHaveLength(2)
     })
   })
 })

@@ -12,12 +12,18 @@ import {
 } from './common'
 import { DeploymentEnvironmentList } from './deploy-tab/deployment-environment-list'
 import {
-  DEPLOYMENT_DETAIL_LIST_GRID_CLASS_NAME,
-  DETAIL_LIST_CLASS_NAME,
-  DETAIL_LIST_DESKTOP_ROW_CLASS_NAME,
-  DETAIL_LIST_HEADER_ROW_CLASS_NAME,
-  DETAIL_LIST_ROW_CLASS_NAME,
-} from './list-styles'
+  DetailTable,
+  DetailTableBody,
+  DetailTableCard,
+  DetailTableCardList,
+  DetailTableCell,
+  DetailTableHead,
+  DetailTableHeader,
+  DetailTableRow,
+} from './table'
+import {
+  DEPLOYMENT_DETAIL_TABLE_COLUMN_CLASS_NAMES,
+} from './table-styles'
 
 function NewDeploymentButton({ appInstanceId }: {
   appInstanceId: string
@@ -44,9 +50,9 @@ function DeploymentEnvironmentListSkeleton() {
 
   return (
     <>
-      <div className={`${DETAIL_LIST_CLASS_NAME} pc:hidden`}>
+      <DetailTableCardList className="pc:hidden">
         {DEPLOYMENT_TABLE_ROW_SKELETON_KEYS.map(key => (
-          <div key={key} className={DETAIL_LIST_ROW_CLASS_NAME}>
+          <DetailTableCard key={key}>
             <div className="flex flex-col gap-3 p-4">
               <div className="flex min-w-0 flex-col gap-1.5">
                 <SkeletonRectangle className="h-3 w-32 animate-pulse" />
@@ -61,39 +67,43 @@ function DeploymentEnvironmentListSkeleton() {
               </div>
               <SkeletonRectangle className="my-0 size-8 animate-pulse rounded-md" />
             </div>
-          </div>
+          </DetailTableCard>
         ))}
-      </div>
+      </DetailTableCardList>
       <div className="hidden pc:block">
-        <div className={DETAIL_LIST_CLASS_NAME}>
-          <div className={`${DETAIL_LIST_HEADER_ROW_CLASS_NAME} ${DEPLOYMENT_DETAIL_LIST_GRID_CLASS_NAME}`}>
-            <div>{t('deployTab.col.environment')}</div>
-            <div>{t('deployTab.col.status')}</div>
-            <div>{t('deployTab.col.currentRelease')}</div>
-            <div className="text-right">{t('deployTab.col.actions')}</div>
-          </div>
-          {DEPLOYMENT_TABLE_ROW_SKELETON_KEYS.map(key => (
-            <div key={key} className={DETAIL_LIST_ROW_CLASS_NAME}>
-              <div className={`${DETAIL_LIST_DESKTOP_ROW_CLASS_NAME} ${DEPLOYMENT_DETAIL_LIST_GRID_CLASS_NAME}`}>
-                <div className="min-w-0">
+        <DetailTable>
+          <DetailTableHeader>
+            <DetailTableRow>
+              <DetailTableHead className={DEPLOYMENT_DETAIL_TABLE_COLUMN_CLASS_NAMES.environment}>{t('deployTab.col.environment')}</DetailTableHead>
+              <DetailTableHead className={DEPLOYMENT_DETAIL_TABLE_COLUMN_CLASS_NAMES.status}>{t('deployTab.col.status')}</DetailTableHead>
+              <DetailTableHead className={DEPLOYMENT_DETAIL_TABLE_COLUMN_CLASS_NAMES.currentRelease}>{t('deployTab.col.currentRelease')}</DetailTableHead>
+              <DetailTableHead className={`${DEPLOYMENT_DETAIL_TABLE_COLUMN_CLASS_NAMES.actions} text-right`}>{t('deployTab.col.actions')}</DetailTableHead>
+            </DetailTableRow>
+          </DetailTableHeader>
+          <DetailTableBody>
+            {DEPLOYMENT_TABLE_ROW_SKELETON_KEYS.map(key => (
+              <DetailTableRow key={key}>
+                <DetailTableCell>
                   <SkeletonRectangle className="h-3 w-32 animate-pulse" />
-                </div>
-                <div className="min-w-0">
+                </DetailTableCell>
+                <DetailTableCell>
                   <SkeletonRectangle className="my-0 h-4 w-18 animate-pulse rounded-md" />
-                </div>
-                <div className="min-w-0">
+                </DetailTableCell>
+                <DetailTableCell>
                   <SkeletonRow className="gap-2">
                     <SkeletonRectangle className="h-3 w-16 animate-pulse" />
                     <SkeletonRectangle className="h-2.5 w-18 animate-pulse" />
                   </SkeletonRow>
-                </div>
-                <div className="flex justify-end">
-                  <SkeletonRectangle className="my-0 size-8 animate-pulse rounded-md" />
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
+                </DetailTableCell>
+                <DetailTableCell>
+                  <div className="flex justify-end">
+                    <SkeletonRectangle className="my-0 size-8 animate-pulse rounded-md" />
+                  </div>
+                </DetailTableCell>
+              </DetailTableRow>
+            ))}
+          </DetailTableBody>
+        </DetailTable>
       </div>
     </>
   )

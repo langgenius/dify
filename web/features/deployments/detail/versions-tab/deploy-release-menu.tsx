@@ -17,7 +17,7 @@ import { environmentId, environmentName } from '../../environment'
 import { releaseDeploymentAction } from '../../release-action'
 import { deploymentStatus, isUndeployedDeploymentRow } from '../../runtime-status'
 import { openDeployDrawerAtom } from '../../store'
-import { DETAIL_LIST_ACTION_TRIGGER_CLASS_NAME } from '../list-styles'
+import { DETAIL_TABLE_ACTION_TRIGGER_CLASS_NAME } from '../table-styles'
 
 type EnvironmentOption = AppDeployEnvironment & {
   id: string
@@ -132,7 +132,7 @@ export function DeployReleaseMenu({ appInstanceId, releaseId, releaseRows }: {
     <DropdownMenu modal={false} open={open} onOpenChange={setOpen}>
       <DropdownMenuTrigger
         aria-label={t('versions.moreActions')}
-        className={DETAIL_LIST_ACTION_TRIGGER_CLASS_NAME}
+        className={DETAIL_TABLE_ACTION_TRIGGER_CLASS_NAME}
       >
         <span aria-hidden className="i-ri-more-fill size-4" />
       </DropdownMenuTrigger>

@@ -19,7 +19,7 @@ import {
 } from '@langgenius/dify-ui/dropdown-menu'
 import { useMutation } from '@tanstack/react-query'
 import { useSetAtom } from 'jotai'
-import { useRef, useState } from 'react'
+import { Fragment, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { consoleQuery } from '@/service/client'
 import {
@@ -30,13 +30,19 @@ import { releaseCommit, releaseLabel } from '../../release'
 import { deploymentStatus, isUndeployedDeploymentRow } from '../../runtime-status'
 import { openDeployDrawerAtom } from '../../store'
 import {
-  DEPLOYMENT_DETAIL_LIST_GRID_CLASS_NAME,
-  DETAIL_LIST_ACTION_TRIGGER_CLASS_NAME,
-  DETAIL_LIST_CLASS_NAME,
-  DETAIL_LIST_DESKTOP_ROW_CLASS_NAME,
-  DETAIL_LIST_HEADER_ROW_CLASS_NAME,
-  DETAIL_LIST_ROW_CLASS_NAME,
-} from '../list-styles'
+  DetailTable,
+  DetailTableBody,
+  DetailTableCard,
+  DetailTableCardList,
+  DetailTableCell,
+  DetailTableHead,
+  DetailTableHeader,
+  DetailTableRow,
+} from '../table'
+import {
+  DEPLOYMENT_DETAIL_TABLE_COLUMN_CLASS_NAMES,
+  DETAIL_TABLE_ACTION_TRIGGER_CLASS_NAME,
+} from '../table-styles'
 import { DeploymentStatusSummary } from './deployment-status-summary'
 
 function EnvironmentSummary({ environment }: {
@@ -131,7 +137,7 @@ function DeploymentRowActions({ appInstanceId, envId, row }: {
         <DropdownMenu modal={false} open={actionsOpen} onOpenChange={setActionsOpen}>
           <DropdownMenuTrigger
             aria-label={t('deployTab.moreActions')}
-            className={DETAIL_LIST_ACTION_TRIGGER_CLASS_NAME}
+            className={DETAIL_TABLE_ACTION_TRIGGER_CLASS_NAME}
           >
             <span aria-hidden className="i-ri-more-fill size-4" />
           </DropdownMenuTrigger>
@@ -236,7 +242,7 @@ function DeploymentEnvironmentMobileRow({ appInstanceId, row }: {
   const showFailureBanner = status === 'deploy_failed' && Boolean(row.status)
 
   return (
-    <div className="border-b border-divider-subtle last:border-b-0">
+    <DetailTableCard>
       <div className="flex flex-col gap-3 p-4 text-left">
         <div className="flex min-w-0 flex-col gap-1">
           <EnvironmentSummary environment={row.environment} />
@@ -253,7 +259,7 @@ function DeploymentEnvironmentMobileRow({ appInstanceId, row }: {
           <span className="min-w-0 flex-1 truncate">{row.status}</span>
         </div>
       )}
-    </div>
+    </DetailTableCard>
   )
 }
 
@@ -270,31 +276,34 @@ function DeploymentEnvironmentDesktopRows({ appInstanceId, rows }: {
         const isLast = index === rows.length - 1
 
         return (
-          <div
-            key={envId}
-            className={DETAIL_LIST_ROW_CLASS_NAME}
-          >
-            <div className={`${DETAIL_LIST_DESKTOP_ROW_CLASS_NAME} ${DEPLOYMENT_DETAIL_LIST_GRID_CLASS_NAME}`}>
-              <div className="min-w-0">
+          <Fragment key={envId}>
+            <DetailTableRow>
+              <DetailTableCell>
                 <EnvironmentSummary environment={row.environment} />
-              </div>
-              <div className="min-w-0">
+              </DetailTableCell>
+              <DetailTableCell>
                 <DeploymentStatusSummary row={row} />
-              </div>
-              <div className="min-w-0">
+              </DetailTableCell>
+              <DetailTableCell>
                 <CurrentReleaseSummary release={row.currentRelease} />
-              </div>
-              <div className="flex w-8 justify-end">
-                <DeploymentRowActions appInstanceId={appInstanceId} envId={envId} row={row} />
-              </div>
-            </div>
+              </DetailTableCell>
+              <DetailTableCell>
+                <div className="flex justify-end">
+                  <DeploymentRowActions appInstanceId={appInstanceId} envId={envId} row={row} />
+                </div>
+              </DetailTableCell>
+            </DetailTableRow>
             {showFailureBanner && (
-              <div className={cn('flex items-center gap-2 border-t border-l-2 border-divider-subtle border-l-util-colors-red-red-500 bg-util-colors-red-red-50 px-4 py-2 system-xs-regular text-util-colors-red-red-700', isLast && 'rounded-b-lg')}>
-                <span aria-hidden className="i-ri-alert-line size-3.5 shrink-0" />
-                <span className="min-w-0 flex-1 truncate">{row.status}</span>
-              </div>
+              <DetailTableRow className="hover:bg-transparent">
+                <DetailTableCell colSpan={4} className="h-auto p-0">
+                  <div className={cn('flex items-center gap-2 border-l-2 border-l-util-colors-red-red-500 bg-util-colors-red-red-50 px-4 py-2 system-xs-regular text-util-colors-red-red-700', isLast && 'rounded-b-lg')}>
+                    <span aria-hidden className="i-ri-alert-line size-3.5 shrink-0" />
+                    <span className="min-w-0 flex-1 truncate">{row.status}</span>
+                  </div>
+                </DetailTableCell>
+              </DetailTableRow>
             )}
-          </div>
+          </Fragment>
         )
       })}
     </>
@@ -309,7 +318,7 @@ export function DeploymentEnvironmentList({ appInstanceId, rows }: {
 
   return (
     <>
-      <div className={cn(DETAIL_LIST_CLASS_NAME, 'pc:hidden')}>
+      <DetailTableCardList className="pc:hidden">
         {rows.map(row => (
           <DeploymentEnvironmentMobileRow
             key={environmentId(row.environment)}
@@ -317,17 +326,21 @@ export function DeploymentEnvironmentList({ appInstanceId, rows }: {
             row={row}
           />
         ))}
-      </div>
+      </DetailTableCardList>
       <div className="hidden pc:block">
-        <div className={DETAIL_LIST_CLASS_NAME}>
-          <div className={`${DETAIL_LIST_HEADER_ROW_CLASS_NAME} ${DEPLOYMENT_DETAIL_LIST_GRID_CLASS_NAME}`}>
-            <div>{t('deployTab.col.environment')}</div>
-            <div>{t('deployTab.col.status')}</div>
-            <div>{t('deployTab.col.currentRelease')}</div>
-            <div className="text-right">{t('deployTab.col.actions')}</div>
-          </div>
-          <DeploymentEnvironmentDesktopRows appInstanceId={appInstanceId} rows={rows} />
-        </div>
+        <DetailTable>
+          <DetailTableHeader>
+            <DetailTableRow>
+              <DetailTableHead className={DEPLOYMENT_DETAIL_TABLE_COLUMN_CLASS_NAMES.environment}>{t('deployTab.col.environment')}</DetailTableHead>
+              <DetailTableHead className={DEPLOYMENT_DETAIL_TABLE_COLUMN_CLASS_NAMES.status}>{t('deployTab.col.status')}</DetailTableHead>
+              <DetailTableHead className={DEPLOYMENT_DETAIL_TABLE_COLUMN_CLASS_NAMES.currentRelease}>{t('deployTab.col.currentRelease')}</DetailTableHead>
+              <DetailTableHead className={`${DEPLOYMENT_DETAIL_TABLE_COLUMN_CLASS_NAMES.actions} text-right`}>{t('deployTab.col.actions')}</DetailTableHead>
+            </DetailTableRow>
+          </DetailTableHeader>
+          <DetailTableBody>
+            <DeploymentEnvironmentDesktopRows appInstanceId={appInstanceId} rows={rows} />
+          </DetailTableBody>
+        </DetailTable>
       </div>
     </>
   )

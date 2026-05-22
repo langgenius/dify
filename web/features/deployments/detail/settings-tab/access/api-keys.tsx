@@ -13,15 +13,58 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { consoleQuery } from '@/service/client'
 import { environmentName } from '../../../environment'
+import {
+  DetailTable,
+  DetailTableBody,
+  DetailTableCard,
+  DetailTableCardList,
+  DetailTableCell,
+  DetailTableHead,
+  DetailTableHeader,
+  DetailTableRow,
+} from '../../table'
+import {
+  API_KEY_DETAIL_TABLE_COLUMN_CLASS_NAMES,
+} from '../../table-styles'
 
-function ApiKeyRow({ appInstanceId, apiKey }: {
+function ApiKeyName({ apiKey }: {
+  apiKey: DeveloperApiKeyRow
+}) {
+  return (
+    <span className="block truncate system-sm-medium text-text-primary">
+      {apiKey.name || apiKey.id || '—'}
+    </span>
+  )
+}
+
+function EnvironmentBadge({ environment }: {
+  environment: DeveloperApiKeyRow['environment']
+}) {
+  return (
+    <span className="inline-flex h-5 max-w-36 items-center rounded-md bg-background-section-burn px-1.5 system-xs-medium text-text-tertiary">
+      <span className="truncate">{environmentName(environment)}</span>
+    </span>
+  )
+}
+
+function ApiKeyValue({ value }: {
+  value: string
+}) {
+  return (
+    <div className="flex h-8 min-w-0 items-center rounded-lg border border-components-input-border-active bg-components-input-bg-normal px-2">
+      <div className="min-w-0 flex-1 truncate font-mono system-sm-medium text-text-secondary">
+        {value}
+      </div>
+    </div>
+  )
+}
+
+function RevokeApiKeyButton({ appInstanceId, apiKey }: {
   appInstanceId: string
   apiKey: DeveloperApiKeyRow
 }) {
   const { t } = useTranslation('deployments')
   const revokeApiKey = useMutation(consoleQuery.enterprise.appDeployAccessService.deleteDeveloperApiKey.mutationOptions())
-  const displayValue = apiKey.maskedKey || apiKey.id || '—'
-  const environmentLabel = environmentName(apiKey.environment)
 
   function handleRevoke() {
     const environmentId = apiKey.environment?.id
@@ -38,35 +81,70 @@ function ApiKeyRow({ appInstanceId, apiKey }: {
   }
 
   return (
-    <tr className="border-t border-divider-subtle">
-      <td className="px-3 py-2.5 align-middle">
-        <div className="max-w-54 truncate system-sm-medium text-text-primary">
-          {apiKey.name || apiKey.id}
-        </div>
-      </td>
-      <td className="px-3 py-2.5 align-middle">
-        <span className="inline-flex h-5 max-w-36 items-center rounded-md bg-background-section-burn px-1.5 system-xs-medium text-text-tertiary">
-          <span className="truncate">{environmentLabel}</span>
-        </span>
-      </td>
-      <td className="px-3 py-2.5 align-middle">
-        <div className="flex h-8 min-w-0 items-center rounded-lg border border-components-input-border-active bg-components-input-bg-normal px-2">
-          <div className="min-w-0 flex-1 truncate font-mono system-sm-medium text-text-secondary">
-            {displayValue}
+    <button
+      type="button"
+      onClick={handleRevoke}
+      aria-label={t('access.revoke')}
+      className="inline-flex size-8 shrink-0 items-center justify-center rounded-md text-text-tertiary outline-hidden hover:bg-state-destructive-hover hover:text-text-destructive focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+    >
+      <span className="i-ri-delete-bin-line size-3.5" />
+    </button>
+  )
+}
+
+function ApiKeyMobileRow({ appInstanceId, apiKey }: {
+  appInstanceId: string
+  apiKey: DeveloperApiKeyRow
+}) {
+  const { t } = useTranslation('deployments')
+  const displayValue = apiKey.maskedKey || apiKey.id || '—'
+
+  return (
+    <DetailTableCard>
+      <div className="flex flex-col gap-3 p-4">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <ApiKeyName apiKey={apiKey} />
+            <div className="mt-1">
+              <EnvironmentBadge environment={apiKey.environment} />
+            </div>
           </div>
+          <RevokeApiKeyButton appInstanceId={appInstanceId} apiKey={apiKey} />
         </div>
-      </td>
-      <td className="px-3 py-2.5 text-right align-middle">
-        <button
-          type="button"
-          onClick={handleRevoke}
-          aria-label={t('access.revoke')}
-          className="inline-flex size-7 shrink-0 items-center justify-center rounded-md text-text-tertiary hover:bg-state-destructive-hover hover:text-text-destructive"
-        >
-          <span className="i-ri-delete-bin-line size-3.5" />
-        </button>
-      </td>
-    </tr>
+        <div className="flex min-w-0 flex-col gap-1">
+          <span className="system-2xs-medium-uppercase text-text-tertiary">
+            {t('access.api.table.key')}
+          </span>
+          <ApiKeyValue value={displayValue} />
+        </div>
+      </div>
+    </DetailTableCard>
+  )
+}
+
+function ApiKeyDesktopRow({ appInstanceId, apiKey }: {
+  appInstanceId: string
+  apiKey: DeveloperApiKeyRow
+}) {
+  const displayValue = apiKey.maskedKey || apiKey.id || '—'
+
+  return (
+    <DetailTableRow>
+      <DetailTableCell>
+        <ApiKeyName apiKey={apiKey} />
+      </DetailTableCell>
+      <DetailTableCell>
+        <EnvironmentBadge environment={apiKey.environment} />
+      </DetailTableCell>
+      <DetailTableCell>
+        <ApiKeyValue value={displayValue} />
+      </DetailTableCell>
+      <DetailTableCell>
+        <div className="flex justify-end">
+          <RevokeApiKeyButton appInstanceId={appInstanceId} apiKey={apiKey} />
+        </div>
+      </DetailTableCell>
+    </DetailTableRow>
   )
 }
 
@@ -74,22 +152,14 @@ function ApiKeyTableHeader() {
   const { t } = useTranslation('deployments')
 
   return (
-    <thead>
-      <tr className="bg-background-default-subtle text-left system-xs-medium-uppercase text-text-tertiary">
-        <th className="w-56 px-3 py-2 font-medium">
-          {t('access.api.table.name')}
-        </th>
-        <th className="w-40 px-3 py-2 font-medium">
-          {t('access.api.table.environment')}
-        </th>
-        <th className="px-3 py-2 font-medium">
-          {t('access.api.table.key')}
-        </th>
-        <th className="w-18 px-3 py-2 text-right font-medium">
-          {t('access.api.table.action')}
-        </th>
-      </tr>
-    </thead>
+    <DetailTableHeader>
+      <DetailTableRow>
+        <DetailTableHead className={API_KEY_DETAIL_TABLE_COLUMN_CLASS_NAMES.name}>{t('access.api.table.name')}</DetailTableHead>
+        <DetailTableHead className={API_KEY_DETAIL_TABLE_COLUMN_CLASS_NAMES.environment}>{t('access.api.table.environment')}</DetailTableHead>
+        <DetailTableHead className={API_KEY_DETAIL_TABLE_COLUMN_CLASS_NAMES.key}>{t('access.api.table.key')}</DetailTableHead>
+        <DetailTableHead className={`${API_KEY_DETAIL_TABLE_COLUMN_CLASS_NAMES.action} text-right`}>{t('access.api.table.action')}</DetailTableHead>
+      </DetailTableRow>
+    </DetailTableHeader>
   )
 }
 
@@ -98,20 +168,31 @@ function ApiKeyTable({ appInstanceId, apiKeys }: {
   apiKeys: DeveloperApiKeyRow[]
 }) {
   return (
-    <div className="overflow-x-auto rounded-lg border border-divider-subtle">
-      <table className="w-full min-w-175 table-fixed border-collapse">
-        <ApiKeyTableHeader />
-        <tbody className="bg-components-panel-bg">
-          {apiKeys.map(apiKey => (
-            <ApiKeyRow
-              key={apiKey.id}
-              appInstanceId={appInstanceId}
-              apiKey={apiKey}
-            />
-          ))}
-        </tbody>
-      </table>
-    </div>
+    <>
+      <DetailTableCardList className={cn('pc:hidden')}>
+        {apiKeys.map((apiKey, index) => (
+          <ApiKeyMobileRow
+            key={apiKey.id ?? apiKey.maskedKey ?? apiKey.name ?? index}
+            appInstanceId={appInstanceId}
+            apiKey={apiKey}
+          />
+        ))}
+      </DetailTableCardList>
+      <div className="hidden pc:block">
+        <DetailTable>
+          <ApiKeyTableHeader />
+          <DetailTableBody>
+            {apiKeys.map((apiKey, index) => (
+              <ApiKeyDesktopRow
+                key={apiKey.id ?? apiKey.maskedKey ?? apiKey.name ?? index}
+                appInstanceId={appInstanceId}
+                apiKey={apiKey}
+              />
+            ))}
+          </DetailTableBody>
+        </DetailTable>
+      </div>
+    </>
   )
 }
 

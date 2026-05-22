@@ -5,9 +5,20 @@ import type {
 } from '@dify/contracts/enterprise/types.gen'
 import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
-import { SkeletonRectangle, SkeletonRow } from '@/app/components/base/skeleton'
+import { SkeletonRectangle } from '@/app/components/base/skeleton'
 import { consoleQuery } from '@/service/client'
 import { Section, SectionState } from '../../common'
+import {
+  DetailTable,
+  DetailTableBody,
+  DetailTableCell,
+  DetailTableHead,
+  DetailTableHeader,
+  DetailTableRow,
+} from '../../table'
+import {
+  ACCESS_PERMISSION_DETAIL_TABLE_COLUMN_CLASS_NAMES,
+} from '../../table-styles'
 import { EnvironmentPermissionRow } from './permissions'
 
 const ACCESS_PERMISSIONS_SKELETON_KEYS = ['production', 'staging', 'development']
@@ -19,19 +30,33 @@ function hasEnvironment(row: EnvironmentAccessRow): row is EnvironmentAccessRow 
 }
 
 function AccessPermissionsSkeleton() {
+  const { t } = useTranslation('deployments')
+
   return (
-    <div className="overflow-hidden rounded-lg border border-divider-subtle bg-components-panel-bg">
-      {ACCESS_PERMISSIONS_SKELETON_KEYS.map(key => (
-        <SkeletonRow
-          key={key}
-          className="grid gap-3 border-t border-divider-subtle px-4 py-3 first:border-t-0 lg:grid-cols-[minmax(140px,180px)_minmax(190px,230px)_minmax(0,1fr)] lg:items-center"
-        >
-          <SkeletonRectangle className="h-4 w-32 animate-pulse" />
-          <SkeletonRectangle className="my-0 h-8 w-full animate-pulse rounded-lg" />
-          <SkeletonRectangle className="my-0 h-8 w-full animate-pulse rounded-lg" />
-        </SkeletonRow>
-      ))}
-    </div>
+    <DetailTable>
+      <DetailTableHeader className="hidden pc:table-header-group">
+        <DetailTableRow>
+          <DetailTableHead className={ACCESS_PERMISSION_DETAIL_TABLE_COLUMN_CLASS_NAMES.environment}>{t('access.permissions.col.environment')}</DetailTableHead>
+          <DetailTableHead className={ACCESS_PERMISSION_DETAIL_TABLE_COLUMN_CLASS_NAMES.permission}>{t('access.permissions.col.permission')}</DetailTableHead>
+          <DetailTableHead className={ACCESS_PERMISSION_DETAIL_TABLE_COLUMN_CLASS_NAMES.subjects}>{t('access.permissions.col.subjects')}</DetailTableHead>
+        </DetailTableRow>
+      </DetailTableHeader>
+      <DetailTableBody>
+        {ACCESS_PERMISSIONS_SKELETON_KEYS.map(key => (
+          <DetailTableRow key={key} className="block pc:table-row">
+            <DetailTableCell className="block h-auto px-4 pt-3 pb-1 pc:table-cell pc:h-12 pc:py-3">
+              <SkeletonRectangle className="h-4 w-32 animate-pulse" />
+            </DetailTableCell>
+            <DetailTableCell className="block h-auto px-4 py-1 pc:table-cell pc:h-12 pc:py-3">
+              <SkeletonRectangle className="my-0 h-8 w-full animate-pulse rounded-lg" />
+            </DetailTableCell>
+            <DetailTableCell className="block h-auto px-4 pt-1 pb-3 pc:table-cell pc:h-12 pc:py-3">
+              <SkeletonRectangle className="my-0 h-8 w-full animate-pulse rounded-lg" />
+            </DetailTableCell>
+          </DetailTableRow>
+        ))}
+      </DetailTableBody>
+    </DetailTable>
   )
 }
 
@@ -66,16 +91,25 @@ export function AccessPermissionsSection({
                 </SectionState>
               )
             : (
-                <div className="overflow-hidden rounded-lg border border-divider-subtle bg-components-panel-bg">
-                  {permissionRows.map(row => (
-                    <EnvironmentPermissionRow
-                      key={row.environment.id}
-                      appInstanceId={appInstanceId}
-                      environment={row.environment}
-                      summaryPolicy={row}
-                    />
-                  ))}
-                </div>
+                <DetailTable>
+                  <DetailTableHeader className="hidden pc:table-header-group">
+                    <DetailTableRow>
+                      <DetailTableHead className={ACCESS_PERMISSION_DETAIL_TABLE_COLUMN_CLASS_NAMES.environment}>{t('access.permissions.col.environment')}</DetailTableHead>
+                      <DetailTableHead className={ACCESS_PERMISSION_DETAIL_TABLE_COLUMN_CLASS_NAMES.permission}>{t('access.permissions.col.permission')}</DetailTableHead>
+                      <DetailTableHead className={ACCESS_PERMISSION_DETAIL_TABLE_COLUMN_CLASS_NAMES.subjects}>{t('access.permissions.col.subjects')}</DetailTableHead>
+                    </DetailTableRow>
+                  </DetailTableHeader>
+                  <DetailTableBody>
+                    {permissionRows.map(row => (
+                      <EnvironmentPermissionRow
+                        key={row.environment.id}
+                        appInstanceId={appInstanceId}
+                        environment={row.environment}
+                        summaryPolicy={row}
+                      />
+                    ))}
+                  </DetailTableBody>
+                </DetailTable>
               )}
     </Section>
   )

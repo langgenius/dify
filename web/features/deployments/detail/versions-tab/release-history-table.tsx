@@ -21,12 +21,18 @@ import {
   DetailListState,
 } from '../common'
 import {
-  DETAIL_LIST_CLASS_NAME,
-  DETAIL_LIST_DESKTOP_ROW_CLASS_NAME,
-  DETAIL_LIST_HEADER_ROW_CLASS_NAME,
-  DETAIL_LIST_ROW_CLASS_NAME,
-  RELEASE_DETAIL_LIST_GRID_CLASS_NAME,
-} from '../list-styles'
+  DetailTable,
+  DetailTableBody,
+  DetailTableCard,
+  DetailTableCardList,
+  DetailTableCell,
+  DetailTableHead,
+  DetailTableHeader,
+  DetailTableRow,
+} from '../table'
+import {
+  RELEASE_DETAIL_TABLE_COLUMN_CLASS_NAMES,
+} from '../table-styles'
 import { DeployReleaseMenu } from './deploy-release-menu'
 import { DeployedToBadge } from './deployed-to-badge'
 import { getReleaseDeployments } from './release-deployments'
@@ -46,9 +52,9 @@ function ReleaseHistoryTableSkeleton() {
 
   return (
     <>
-      <div className={`${DETAIL_LIST_CLASS_NAME} pc:hidden`}>
+      <DetailTableCardList className="pc:hidden">
         {RELEASE_TABLE_ROW_SKELETON_KEYS.map(key => (
-          <div key={key} className={DETAIL_LIST_ROW_CLASS_NAME}>
+          <DetailTableCard key={key}>
             <div className="flex flex-col gap-3 p-4">
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
@@ -64,40 +70,44 @@ function ReleaseHistoryTableSkeleton() {
                 <ReleaseDeploymentsSkeleton />
               </div>
             </div>
-          </div>
+          </DetailTableCard>
         ))}
-      </div>
+      </DetailTableCardList>
       <div className="hidden pc:block">
-        <div className={DETAIL_LIST_CLASS_NAME}>
-          <div className={`${DETAIL_LIST_HEADER_ROW_CLASS_NAME} ${RELEASE_DETAIL_LIST_GRID_CLASS_NAME}`}>
-            <div>{t('versions.col.release')}</div>
-            <div>{t('versions.col.createdAt')}</div>
-            <div>{t('versions.col.author')}</div>
-            <div>{t('versions.col.deployedTo')}</div>
-            <div className="text-right">{t('versions.col.action')}</div>
-          </div>
-          {RELEASE_TABLE_ROW_SKELETON_KEYS.map(key => (
-            <div key={key} className={DETAIL_LIST_ROW_CLASS_NAME}>
-              <div className={`${DETAIL_LIST_DESKTOP_ROW_CLASS_NAME} ${RELEASE_DETAIL_LIST_GRID_CLASS_NAME}`}>
-                <div className="min-w-0">
+        <DetailTable>
+          <DetailTableHeader>
+            <DetailTableRow>
+              <DetailTableHead className={RELEASE_DETAIL_TABLE_COLUMN_CLASS_NAMES.release}>{t('versions.col.release')}</DetailTableHead>
+              <DetailTableHead className={RELEASE_DETAIL_TABLE_COLUMN_CLASS_NAMES.createdAt}>{t('versions.col.createdAt')}</DetailTableHead>
+              <DetailTableHead className={RELEASE_DETAIL_TABLE_COLUMN_CLASS_NAMES.author}>{t('versions.col.author')}</DetailTableHead>
+              <DetailTableHead className={RELEASE_DETAIL_TABLE_COLUMN_CLASS_NAMES.deployedTo}>{t('versions.col.deployedTo')}</DetailTableHead>
+              <DetailTableHead className={`${RELEASE_DETAIL_TABLE_COLUMN_CLASS_NAMES.action} text-right`}>{t('versions.col.action')}</DetailTableHead>
+            </DetailTableRow>
+          </DetailTableHeader>
+          <DetailTableBody>
+            {RELEASE_TABLE_ROW_SKELETON_KEYS.map(key => (
+              <DetailTableRow key={key}>
+                <DetailTableCell>
                   <SkeletonRectangle className="h-3 w-24 animate-pulse" />
-                </div>
-                <div className="min-w-0">
+                </DetailTableCell>
+                <DetailTableCell>
                   <SkeletonRectangle className="h-3 w-24 animate-pulse" />
-                </div>
-                <div className="min-w-0">
+                </DetailTableCell>
+                <DetailTableCell>
                   <SkeletonRectangle className="h-3 w-24 animate-pulse" />
-                </div>
-                <div className="min-w-0">
+                </DetailTableCell>
+                <DetailTableCell>
                   <ReleaseDeploymentsSkeleton />
-                </div>
-                <div className="flex justify-end">
-                  <SkeletonRectangle className="my-0 size-8 animate-pulse rounded-md" />
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
+                </DetailTableCell>
+                <DetailTableCell>
+                  <div className="flex justify-end">
+                    <SkeletonRectangle className="my-0 size-8 animate-pulse rounded-md" />
+                  </div>
+                </DetailTableCell>
+              </DetailTableRow>
+            ))}
+          </DetailTableBody>
+        </DetailTable>
       </div>
     </>
   )
@@ -113,14 +123,14 @@ function ReleaseHistoryMobileRows({ appInstanceId, releaseRows, deploymentRows, 
   const { t } = useTranslation('deployments')
 
   return (
-    <div className={`${DETAIL_LIST_CLASS_NAME} pc:hidden`}>
+    <DetailTableCardList className="pc:hidden">
       {releaseRows.map((row) => {
         const release = row
         const releaseDeployments = getReleaseDeployments(row, deploymentRows)
         const hasDeployments = releaseDeployments.length > 0 || deployedToLoading || deployedToHasError
 
         return (
-          <div key={release.id} className={DETAIL_LIST_ROW_CLASS_NAME}>
+          <DetailTableCard key={release.id}>
             <div className="flex flex-col gap-3 p-4">
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
@@ -157,10 +167,10 @@ function ReleaseHistoryMobileRows({ appInstanceId, releaseRows, deploymentRows, 
                 </div>
               )}
             </div>
-          </div>
+          </DetailTableCard>
         )
       })}
-    </div>
+    </DetailTableCardList>
   )
 }
 
@@ -243,22 +253,24 @@ function ReleaseHistoryRows({ appInstanceId, releaseRows, deploymentRows, deploy
         deployedToHasError={deployedToHasError}
       />
       <div className="hidden pc:block">
-        <div className={DETAIL_LIST_CLASS_NAME}>
-          <div className={`${DETAIL_LIST_HEADER_ROW_CLASS_NAME} ${RELEASE_DETAIL_LIST_GRID_CLASS_NAME}`}>
-            <div>{t('versions.col.release')}</div>
-            <div>{t('versions.col.createdAt')}</div>
-            <div>{t('versions.col.author')}</div>
-            <div>{t('versions.col.deployedTo')}</div>
-            <div className="text-right">{t('versions.col.action')}</div>
-          </div>
-          {releaseRows.map((row) => {
-            const release = row
-            const releaseDeployments = getReleaseDeployments(row, deploymentRows)
+        <DetailTable>
+          <DetailTableHeader>
+            <DetailTableRow>
+              <DetailTableHead className={RELEASE_DETAIL_TABLE_COLUMN_CLASS_NAMES.release}>{t('versions.col.release')}</DetailTableHead>
+              <DetailTableHead className={RELEASE_DETAIL_TABLE_COLUMN_CLASS_NAMES.createdAt}>{t('versions.col.createdAt')}</DetailTableHead>
+              <DetailTableHead className={RELEASE_DETAIL_TABLE_COLUMN_CLASS_NAMES.author}>{t('versions.col.author')}</DetailTableHead>
+              <DetailTableHead className={RELEASE_DETAIL_TABLE_COLUMN_CLASS_NAMES.deployedTo}>{t('versions.col.deployedTo')}</DetailTableHead>
+              <DetailTableHead className={`${RELEASE_DETAIL_TABLE_COLUMN_CLASS_NAMES.action} text-right`}>{t('versions.col.action')}</DetailTableHead>
+            </DetailTableRow>
+          </DetailTableHeader>
+          <DetailTableBody>
+            {releaseRows.map((row) => {
+              const release = row
+              const releaseDeployments = getReleaseDeployments(row, deploymentRows)
 
-            return (
-              <div key={release.id} className={DETAIL_LIST_ROW_CLASS_NAME}>
-                <div className={`${DETAIL_LIST_DESKTOP_ROW_CLASS_NAME} ${RELEASE_DETAIL_LIST_GRID_CLASS_NAME}`}>
-                  <div className="min-w-0">
+              return (
+                <DetailTableRow key={release.id}>
+                  <DetailTableCell>
                     <Tooltip>
                       <TooltipTrigger
                         render={(
@@ -271,14 +283,14 @@ function ReleaseHistoryRows({ appInstanceId, releaseRows, deploymentRows, deploy
                         {t('versions.commitTooltip', { commit: releaseCommit(release) })}
                       </TooltipContent>
                     </Tooltip>
-                  </div>
-                  <div className="min-w-0 system-sm-regular text-text-secondary">
+                  </DetailTableCell>
+                  <DetailTableCell className="system-sm-regular text-text-secondary">
                     <CreatedAtCell createdAt={release.createdAt} />
-                  </div>
-                  <div className="min-w-0 truncate system-sm-regular text-text-secondary">
+                  </DetailTableCell>
+                  <DetailTableCell className="truncate system-sm-regular text-text-secondary">
                     {row.createdBy?.name ?? '—'}
-                  </div>
-                  <div className="min-w-0">
+                  </DetailTableCell>
+                  <DetailTableCell>
                     <div className="flex flex-wrap gap-1">
                       <ReleaseDeploymentsContent
                         items={releaseDeployments}
@@ -287,15 +299,17 @@ function ReleaseHistoryRows({ appInstanceId, releaseRows, deploymentRows, deploy
                         loadFailedLabel={t('common.loadFailed')}
                       />
                     </div>
-                  </div>
-                  <div className="flex justify-end">
-                    <DeployReleaseMenu releaseId={release.id} appInstanceId={appInstanceId} releaseRows={releaseRows} />
-                  </div>
-                </div>
-              </div>
-            )
-          })}
-        </div>
+                  </DetailTableCell>
+                  <DetailTableCell>
+                    <div className="flex justify-end">
+                      <DeployReleaseMenu releaseId={release.id} appInstanceId={appInstanceId} releaseRows={releaseRows} />
+                    </div>
+                  </DetailTableCell>
+                </DetailTableRow>
+              )
+            })}
+          </DetailTableBody>
+        </DetailTable>
       </div>
     </>
   )
