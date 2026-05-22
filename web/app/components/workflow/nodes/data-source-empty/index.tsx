@@ -54,7 +54,6 @@ const DataSourceEmptyNode = ({ id, data }: NodeProps) => {
         )}
         >
           <BlockSelector
-            asChild
             onSelect={handleReplaceNode}
             trigger={renderTrigger}
             noBlocks

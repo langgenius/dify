@@ -1685,6 +1685,7 @@ export const useNodesInteractions = () => {
         node.type === CUSTOM_NOTE_NODE
         || node.type === CUSTOM_ITERATION_START_NODE
       ) {
+        e.stopPropagation()
         return
       }
 
@@ -1692,17 +1693,14 @@ export const useNodesInteractions = () => {
         node.type === CUSTOM_NOTE_NODE
         || node.type === CUSTOM_LOOP_START_NODE
       ) {
+        e.stopPropagation()
         return
       }
 
       e.preventDefault()
       workflowStore.setState({
-        panelMenu: undefined,
-        selectionMenu: undefined,
-        edgeMenu: undefined,
-        nodeMenu: {
-          clientX: e.clientX,
-          clientY: e.clientY,
+        contextMenuTarget: {
+          type: 'node',
           nodeId: node.id,
         },
       })
@@ -2474,7 +2472,7 @@ export const useNodesInteractions = () => {
     setNodes(nodes, shouldBroadcast, 'nodes:history-back')
     if (shouldBroadcast)
       collaborationManager.emitHistoryAction('undo')
-    workflowStore.setState({ edgeMenu: undefined })
+    workflowStore.setState({ contextMenuTarget: undefined })
   }, [
     collaborativeWorkflow,
     workflowStore,
@@ -2499,7 +2497,7 @@ export const useNodesInteractions = () => {
     setNodes(nodes, shouldBroadcast, 'nodes:history-forward')
     if (shouldBroadcast)
       collaborationManager.emitHistoryAction('redo')
-    workflowStore.setState({ edgeMenu: undefined })
+    workflowStore.setState({ contextMenuTarget: undefined })
   }, [
     collaborativeWorkflow,
     redo,
