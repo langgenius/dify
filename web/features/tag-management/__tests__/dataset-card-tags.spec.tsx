@@ -3,23 +3,29 @@ import { fireEvent, render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import { DatasetCardTags } from '../components/dataset-card-tags'
 
+const renderTagSelector = vi.hoisted(() => vi.fn())
+
 vi.mock('@/features/tag-management/components/tag-selector', () => ({
-  TagSelector: ({ value, onOpenTagManagement }: {
+  TagSelector: (props: {
     value: Tag[]
     onOpenTagManagement?: () => void
-  }) => (
-    <div role="group" aria-label="Tag selector mock">
-      <div>{value.map(tag => tag.id).join(',')}</div>
-      <div>
-        {value.length}
-        {' '}
-        tags
+    canBindOrUnbindTags?: boolean
+  }) => {
+    renderTagSelector(props)
+    return (
+      <div role="group" aria-label="Tag selector mock">
+        <div>{props.value.map(tag => tag.id).join(',')}</div>
+        <div>
+          {props.value.length}
+          {' '}
+          tags
+        </div>
+        <button onClick={props.onOpenTagManagement}>
+          Open Management
+        </button>
       </div>
-      <button onClick={onOpenTagManagement}>
-        Open Management
-      </button>
-    </div>
-  ),
+    )
+  },
 }))
 
 describe('DatasetCardTags', () => {
@@ -60,6 +66,14 @@ describe('DatasetCardTags', () => {
     it('should pass dataset id to TagSelector', () => {
       render(<DatasetCardTags {...defaultProps} datasetId="custom-dataset-id" />)
       expect(screen.getByRole('group', { name: 'Tag selector mock' })).toBeInTheDocument()
+    })
+
+    it('should pass tag binding permission to TagSelector', () => {
+      render(<DatasetCardTags {...defaultProps} canBindOrUnbindTags={true} />)
+
+      expect(renderTagSelector).toHaveBeenCalledWith(expect.objectContaining({
+        canBindOrUnbindTags: true,
+      }))
     })
 
     it('should render with empty tags', () => {

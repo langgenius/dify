@@ -1,16 +1,18 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { DatasetACLPermission } from '@/utils/permission'
 import Card from '../card'
 
 // Shared mock state for context selectors
 let mockDatasetId: string | undefined = 'dataset-123'
 let mockMutateDatasetRes: ReturnType<typeof vi.fn> = vi.fn()
 let mockIsCurrentWorkspaceManager = true
+let mockDatasetPermissionKeys: string[] = []
 
 vi.mock('@/context/dataset-detail', () => ({
   useDatasetDetailContextWithSelector: (selector: (state: Record<string, unknown>) => unknown) =>
     selector({
-      dataset: { id: mockDatasetId },
+      dataset: { id: mockDatasetId, permission_keys: mockDatasetPermissionKeys },
       mutateDatasetRes: mockMutateDatasetRes,
     }),
 }))
@@ -42,6 +44,7 @@ describe('Card (API Access)', () => {
     mockDatasetId = 'dataset-123'
     mockMutateDatasetRes = vi.fn()
     mockIsCurrentWorkspaceManager = true
+    mockDatasetPermissionKeys = []
   })
 
   // Rendering: verifies enabled/disabled states render correctly
@@ -160,6 +163,15 @@ describe('Card (API Access)', () => {
 
     it('should enable switch when user is workspace manager', () => {
       mockIsCurrentWorkspaceManager = true
+      render(<Card apiEnabled={true} />)
+
+      const switchButton = screen.getByRole('switch')
+      expect(switchButton).not.toHaveAttribute('aria-disabled', 'true')
+    })
+
+    it('should enable switch when user has dataset edit ACL permission', () => {
+      mockIsCurrentWorkspaceManager = false
+      mockDatasetPermissionKeys = [DatasetACLPermission.Edit]
       render(<Card apiEnabled={true} />)
 
       const switchButton = screen.getByRole('switch')

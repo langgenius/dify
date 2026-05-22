@@ -16,6 +16,7 @@ import { DatasetPermission } from '@/models/datasets'
 import { updateDatasetSetting } from '@/service/datasets'
 import { useInvalidDatasetList } from '@/service/knowledge/use-dataset'
 import { useMembers } from '@/service/use-common'
+import { getDatasetACLCapabilities } from '@/utils/permission'
 import { checkShowMultiModalTip } from '../../utils'
 
 const DEFAULT_APP_ICON: IconInfo = {
@@ -30,6 +31,11 @@ export const useFormState = () => {
   const isCurrentWorkspaceDatasetOperator = useAppContextWithSelector(state => state.isCurrentWorkspaceDatasetOperator)
   const currentDataset = useDatasetDetailContextWithSelector(state => state.dataset)
   const mutateDatasets = useDatasetDetailContextWithSelector(state => state.mutateDatasetRes)
+  const datasetACLCapabilities = useMemo(
+    () => getDatasetACLCapabilities(currentDataset?.permission_keys),
+    [currentDataset?.permission_keys],
+  )
+  const canEditSettings = datasetACLCapabilities.canEdit
 
   // Basic form state
   const [loading, setLoading] = useState(false)
@@ -119,6 +125,9 @@ export const useFormState = () => {
 
   // Save handler
   const handleSave = async () => {
+    if (!canEditSettings)
+      return
+
     if (loading)
       return
 
@@ -210,6 +219,7 @@ export const useFormState = () => {
     // Context values
     currentDataset,
     isCurrentWorkspaceDatasetOperator,
+    canEditSettings,
 
     // Loading state
     loading,

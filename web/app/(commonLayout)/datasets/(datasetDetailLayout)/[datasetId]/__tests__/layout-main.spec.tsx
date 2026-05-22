@@ -1,6 +1,7 @@
 import { render, screen, waitFor } from '@testing-library/react'
 import { usePathname, useRouter } from '@/next/navigation'
 import { useDatasetDetail, useDatasetRelatedApps } from '@/service/knowledge/use-dataset'
+import { DatasetACLPermission } from '@/utils/permission'
 import DatasetDetailLayout from '../layout-main'
 
 const mockReplace = vi.fn()
@@ -130,6 +131,7 @@ describe('DatasetDetailLayout', () => {
           provider: 'vendor',
           runtime_mode: 'rag_pipeline',
           is_published: true,
+          permission_keys: [DatasetACLPermission.Edit],
         },
         error: null,
         refetch: vi.fn(),
@@ -146,6 +148,31 @@ describe('DatasetDetailLayout', () => {
       expect(screen.getByText('Pipeline content')).toBeInTheDocument()
       expect(mockUseDatasetRelatedApps).toHaveBeenCalledWith('dataset-1', { enabled: true })
       expect(mockReplace).not.toHaveBeenCalled()
+    })
+
+    it('should redirect readonly users away from document settings route', async () => {
+      mockUsePathname.mockReturnValue('/datasets/dataset-1/documents/document-1/settings')
+      mockUseDatasetDetail.mockReturnValue({
+        data: {
+          id: 'dataset-1',
+          name: 'Dataset 1',
+          provider: 'vendor',
+          runtime_mode: 'general',
+          permission_keys: [DatasetACLPermission.Readonly],
+        },
+        error: null,
+        refetch: vi.fn(),
+      } as unknown as ReturnType<typeof useDatasetDetail>)
+
+      render(
+        <DatasetDetailLayout datasetId="dataset-1">
+          <div>Document settings content</div>
+        </DatasetDetailLayout>,
+      )
+
+      await waitFor(() => {
+        expect(mockReplace).toHaveBeenCalledWith('/datasets/dataset-1/documents')
+      })
     })
   })
 })

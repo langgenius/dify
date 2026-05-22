@@ -242,6 +242,24 @@ describe('StatusItem', () => {
       const switchElement = screen.getByRole('switch')
       expect(switchElement).toHaveAttribute('aria-disabled', 'true')
     })
+
+    it('should render switch as disabled when canEdit is false', () => {
+      render(
+        <StatusItem
+          status="available"
+          scene="detail"
+          detail={{
+            enabled: true,
+            archived: false,
+            id: 'doc-1',
+          }}
+          datasetId="dataset-1"
+          canEdit={false}
+        />,
+      )
+      const switchElement = screen.getByRole('switch')
+      expect(switchElement).toHaveAttribute('aria-disabled', 'true')
+    })
   })
 
   describe('switch operations', () => {

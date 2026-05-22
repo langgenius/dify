@@ -258,6 +258,18 @@ describe('MetadataDocument', () => {
       expect(screen.getByText(/edit/i))!.toBeInTheDocument()
     })
 
+    it('should hide edit button when canEdit is false', () => {
+      render(
+        <MetadataDocument
+          datasetId="ds-1"
+          documentId="doc-1"
+          docDetail={mockDocDetail as Parameters<typeof MetadataDocument>[0]['docDetail']}
+          canEdit={false}
+        />,
+      )
+      expect(screen.queryByText(/^edit$/i)).not.toBeInTheDocument()
+    })
+
     it('should call startToEdit when edit button is clicked', () => {
       const startToEdit = vi.fn()
       mockUseMetadataDocument.mockReturnValue({

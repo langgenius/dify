@@ -10,6 +10,7 @@ type DatasetCardTagsProps = {
   onClick: (e: MouseEvent) => void
   onOpenTagManagement?: () => void
   onTagsChange?: () => void
+  canBindOrUnbindTags?: boolean
 }
 
 export const DatasetCardTags = ({
@@ -19,6 +20,7 @@ export const DatasetCardTags = ({
   onClick,
   onOpenTagManagement = () => {},
   onTagsChange,
+  canBindOrUnbindTags,
 }: DatasetCardTagsProps) => (
   <div
     className={cn('group/tag-area relative w-full px-3', !embeddingAvailable && 'opacity-30')}
@@ -32,6 +34,7 @@ export const DatasetCardTags = ({
         value={tags}
         onOpenTagManagement={onOpenTagManagement}
         onTagsChange={onTagsChange}
+        canBindOrUnbindTags={canBindOrUnbindTags}
       />
     </div>
     <div

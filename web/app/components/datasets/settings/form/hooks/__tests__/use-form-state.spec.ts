@@ -3,6 +3,7 @@ import type { RetrievalConfig } from '@/types/app'
 import { act, renderHook, waitFor } from '@testing-library/react'
 import { ChunkingMode, DatasetPermission, DataSourceType, WeightedScoreEnum } from '@/models/datasets'
 import { RETRIEVE_METHOD } from '@/types/app'
+import { DatasetACLPermission } from '@/utils/permission'
 import { IndexingType } from '../../../../create/step-two'
 import { useFormState } from '../use-form-state'
 
@@ -85,6 +86,7 @@ const createDefaultMockDataset = (): DataSet => ({
   runtime_mode: 'general',
   enable_api: true,
   is_multimodal: false,
+  permission_keys: [DatasetACLPermission.Edit],
 })
 
 let mockDataset: DataSet = createDefaultMockDataset()
@@ -474,6 +476,21 @@ describe('useFormState', () => {
           permission: DatasetPermission.onlyMe,
         }),
       })
+    })
+
+    it('should not save when dataset only has readonly ACL permission', async () => {
+      const { updateDatasetSetting } = await import('@/service/datasets')
+      mockDataset = {
+        ...createDefaultMockDataset(),
+        permission_keys: [DatasetACLPermission.Readonly],
+      }
+      const { result } = renderHook(() => useFormState())
+
+      await act(async () => {
+        await result.current.handleSave()
+      })
+
+      expect(updateDatasetSetting).not.toHaveBeenCalled()
     })
 
     it('should show success toast on successful save', async () => {

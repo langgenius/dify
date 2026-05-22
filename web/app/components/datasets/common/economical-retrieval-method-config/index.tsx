@@ -40,6 +40,7 @@ const EconomicalRetrievalMethodConfig: FC<Props> = ({
         type={RETRIEVE_METHOD.keywordSearch}
         value={value}
         onChange={onChange}
+        disabled={disabled}
       />
     </OptionCard>
   )

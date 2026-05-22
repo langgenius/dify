@@ -19,6 +19,7 @@ import { useDocumentDetail, useDocumentMetadata, useInvalidDocumentList } from '
 import { useCheckSegmentBatchImportProgress, useChildSegmentListKey, useSegmentBatchImport, useSegmentListKey } from '@/service/knowledge/use-segment'
 import { useInvalid } from '@/service/use-base'
 import { segmentImportStatus } from '@/types/dataset'
+import { getDatasetACLCapabilities } from '@/utils/permission'
 import Operations from '../components/operations'
 import StatusItem from '../status-item'
 import BatchModal from './batch-modal'
@@ -48,6 +49,11 @@ const DocumentDetail: FC<DocumentDetailProps> = ({ datasetId, documentId }) => {
 
   const dataset = useDatasetDetailContextWithSelector(s => s.dataset)
   const embeddingAvailable = !!dataset?.embedding_available
+  const datasetACLCapabilities = useMemo(
+    () => getDatasetACLCapabilities(dataset?.permission_keys),
+    [dataset?.permission_keys],
+  )
+  const canEditDocument = datasetACLCapabilities.canEdit
   const [showMetadata, setShowMetadata] = useState(!isMobile)
   const [newSegmentModalVisible, setNewSegmentModalVisible] = useState(false)
   const [batchModalVisible, setBatchModalVisible] = useState(false)
@@ -205,7 +211,7 @@ const DocumentDetail: FC<DocumentDetailProps> = ({ datasetId, documentId }) => {
             parentMode={parentMode}
           />
           <div className="flex flex-wrap items-center">
-            {embeddingAvailable && documentDetail && !documentDetail.archived && !isFullDocMode && (
+            {embeddingAvailable && canEditDocument && documentDetail && !documentDetail.archived && !isFullDocMode && (
               <>
                 <SegmentAdd
                   importStatus={importStatus}
@@ -226,6 +232,7 @@ const DocumentDetail: FC<DocumentDetailProps> = ({ datasetId, documentId }) => {
                 detail={statusDetail}
                 datasetId={datasetId}
                 onUpdate={handleOperate}
+                canEdit={canEditDocument}
               />
             )}
             <Operations
@@ -283,6 +290,7 @@ const DocumentDetail: FC<DocumentDetailProps> = ({ datasetId, documentId }) => {
               datasetId={datasetId}
               documentId={documentId}
               docDetail={docDetail}
+              canEdit={canEditDocument}
             />
           </FloatRightContainer>
         </div>

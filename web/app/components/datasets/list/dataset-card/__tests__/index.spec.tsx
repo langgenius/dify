@@ -4,6 +4,7 @@ import * as React from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { IndexingType } from '@/app/components/datasets/create/step-two'
 import { ChunkingMode, DatasetPermission, DataSourceType } from '@/models/datasets'
+import { DatasetACLPermission } from '@/utils/permission'
 import DatasetCardFooter from '../components/dataset-card-footer'
 import Description from '../components/description'
 import DatasetCard from '../index'
@@ -53,10 +54,15 @@ vi.mock('../components/dataset-card-header', () => ({
 vi.mock('../components/dataset-card-modals', () => ({
   default: () => <div data-testid="card-modals" />,
 }))
+const renderDatasetCardTags = vi.hoisted(() => vi.fn())
+
 vi.mock('@/features/tag-management/components/dataset-card-tags', () => ({
-  DatasetCardTags: ({ onClick }: { onClick: (e: React.MouseEvent) => void }) => (
-    <div data-testid="tag-area" onClick={onClick} />
-  ),
+  DatasetCardTags: (props: { onClick: (e: React.MouseEvent) => void, canBindOrUnbindTags?: boolean }) => {
+    renderDatasetCardTags(props)
+    return (
+      <div data-testid="tag-area" onClick={props.onClick} />
+    )
+  },
 }))
 vi.mock('../components/operations-dropdown', () => ({
   default: () => <div data-testid="operations-dropdown" />,
@@ -84,6 +90,7 @@ const createMockDataset = (overrides: Partial<DataSet> = {}): DataSet => ({
   doc_form: ChunkingMode.text,
   total_available_documents: 10,
   runtime_mode: 'general',
+  permission_keys: [DatasetACLPermission.Edit],
   ...overrides,
 } as DataSet)
 
@@ -268,5 +275,14 @@ describe('DatasetCard Component', () => {
     fireEvent.click(tagArea)
     // Tag area click should not trigger card navigation
     expect(mockPush).not.toHaveBeenCalled()
+  })
+
+  it('should allow tag binding when dataset has edit ACL permission', () => {
+    const dataset = createMockDataset({ permission_keys: [DatasetACLPermission.Edit] })
+    render(<DatasetCard dataset={dataset} />)
+
+    expect(renderDatasetCardTags).toHaveBeenCalledWith(expect.objectContaining({
+      canBindOrUnbindTags: true,
+    }))
   })
 })

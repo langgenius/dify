@@ -2,7 +2,12 @@ import type { PropsWithChildren } from 'react'
 import type { Edge, Node, Viewport } from 'reactflow'
 import { cleanup, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { DatasetACLPermission } from '@/utils/permission'
 import RagPipelineMain from '../rag-pipeline-main'
+
+const mockPermissionState = vi.hoisted(() => ({
+  permissionKeys: ['dataset.acl.edit'] as string[],
+}))
 
 vi.mock('../../hooks', () => ({
   useAvailableNodesMetaData: () => ({ nodes: [], nodesMap: {} }),
@@ -96,9 +101,15 @@ vi.mock('@/app/components/workflow/hooks/use-fetch-workflow-inspect-vars', () =>
   }),
 }))
 
+vi.mock('@/context/dataset-detail', () => ({
+  useDatasetDetailContextWithSelector: (selector: (state: { dataset: { permission_keys: string[] } }) => unknown) =>
+    selector({ dataset: { permission_keys: mockPermissionState.permissionKeys } }),
+}))
+
 vi.mock('@/app/components/workflow', () => ({
-  WorkflowWithInnerContext: ({ children, onWorkflowDataUpdate }: PropsWithChildren<{ onWorkflowDataUpdate?: (payload: unknown) => void }>) => (
+  WorkflowWithInnerContext: ({ children, onWorkflowDataUpdate, hooksStore }: PropsWithChildren<{ onWorkflowDataUpdate?: (payload: unknown) => void, hooksStore?: { accessControl?: { canComment?: boolean } } }>) => (
     <div data-testid="workflow-inner-context">
+      <div data-testid="can-comment">{String(hooksStore?.accessControl?.canComment)}</div>
       {children}
       <button
         data-testid="trigger-update"
@@ -139,6 +150,7 @@ describe('RagPipelineMain', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
+    mockPermissionState.permissionKeys = [DatasetACLPermission.Edit]
   })
 
   describe('rendering', () => {
@@ -210,6 +222,14 @@ describe('RagPipelineMain', () => {
   })
 
   describe('hooks integration', () => {
+    it('should allow comments with readonly ACL permission', () => {
+      mockPermissionState.permissionKeys = [DatasetACLPermission.Readonly]
+
+      render(<RagPipelineMain {...defaultProps} />)
+
+      expect(screen.getByTestId('can-comment')).toHaveTextContent('true')
+    })
+
     it('should use useNodesSyncDraft hook', () => {
       render(<RagPipelineMain {...defaultProps} />)
 

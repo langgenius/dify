@@ -170,11 +170,18 @@ const DatasetDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
     if (!datasetRes || shouldRedirect)
       return
 
+    const isDocumentSettingsPath = /\/documents\/[^/]+\/settings$/.test(pathname)
+    const isDatasetSettingsPath = pathname.endsWith('/settings') && !isDocumentSettingsPath
+
     if (!datasetACLCapabilities.canRetrievalRecall && pathname.endsWith('/hitTesting')) {
       router.replace(fallbackPath)
       return
     }
-    if (!(datasetACLCapabilities.canReadonly || datasetACLCapabilities.canEdit) && pathname.endsWith('/settings')) {
+    if (isDocumentSettingsPath && !datasetACLCapabilities.canEdit) {
+      router.replace(fallbackPath)
+      return
+    }
+    if (isDatasetSettingsPath && !(datasetACLCapabilities.canReadonly || datasetACLCapabilities.canEdit)) {
       router.replace(fallbackPath)
       return
     }

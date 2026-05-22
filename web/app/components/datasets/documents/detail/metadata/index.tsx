@@ -18,9 +18,10 @@ type MetadataProps = {
   docDetail?: FullDocumentDetail
   loading: boolean
   onUpdate: () => void
+  canEdit?: boolean
 }
 
-const Metadata: FC<MetadataProps> = ({ docDetail, loading, onUpdate }) => {
+const Metadata: FC<MetadataProps> = ({ docDetail, loading, onUpdate, canEdit = true }) => {
   const { t } = useTranslation()
   const metadataMap = useMetadataMap()
 
@@ -56,10 +57,12 @@ const Metadata: FC<MetadataProps> = ({ docDetail, loading, onUpdate }) => {
         <span className={s.title}>{t('metadata.title', { ns: 'datasetDocuments' })}</span>
         {!editStatus
           ? (
-              <Button onClick={enableEdit} className={`${s.opBtn} ${s.opEditBtn}`}>
-                <PencilIcon className={s.opIcon} />
-                {t('operation.edit', { ns: 'common' })}
-              </Button>
+              canEdit && (
+                <Button onClick={enableEdit} className={`${s.opBtn} ${s.opEditBtn}`}>
+                  <PencilIcon className={s.opIcon} />
+                  {t('operation.edit', { ns: 'common' })}
+                </Button>
+              )
             )
           : !showDocTypes && (
               <div className={s.opBtnWrapper}>

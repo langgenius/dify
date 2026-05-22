@@ -3,6 +3,7 @@ import type { RetrievalConfig } from '@/types/app'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { ChunkingMode, DatasetPermission, DataSourceType } from '@/models/datasets'
 import { RETRIEVE_METHOD } from '@/types/app'
+import { DatasetACLPermission } from '@/utils/permission'
 import { IndexingType } from '../../../create/step-two'
 import Form from '../index'
 
@@ -98,6 +99,7 @@ const createMockDataset = (overrides: Partial<DataSet> = {}): DataSet => ({
   runtime_mode: 'general',
   enable_api: true,
   is_multimodal: false,
+  permission_keys: [DatasetACLPermission.Edit],
   ...overrides,
 })
 
@@ -467,6 +469,14 @@ describe('Form', () => {
 
       const descriptionTextarea = screen.getByDisplayValue('Test description')
       expect(descriptionTextarea).toBeDisabled()
+    })
+
+    it('should disable save when dataset only has readonly ACL permission', () => {
+      mockDataset = createMockDataset({ permission_keys: [DatasetACLPermission.Readonly] })
+      render(<Form />)
+
+      const saveButton = screen.getByRole('button', { name: /form\.save/i })
+      expect(saveButton).toBeDisabled()
     })
   })
 

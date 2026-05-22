@@ -114,6 +114,7 @@ const RetrievalMethodConfig: FC<Props> = ({
             value={value}
             onChange={onChange}
             showMultiModalTip={showMultiModalTip}
+            disabled={disabled}
           />
         </OptionCard>
       )}
@@ -137,6 +138,7 @@ const RetrievalMethodConfig: FC<Props> = ({
             value={value}
             onChange={onChange}
             showMultiModalTip={showMultiModalTip}
+            disabled={disabled}
           />
         </OptionCard>
       )}
@@ -161,6 +163,7 @@ const RetrievalMethodConfig: FC<Props> = ({
             value={value}
             onChange={onChange}
             showMultiModalTip={showMultiModalTip}
+            disabled={disabled}
           />
         </OptionCard>
       )}

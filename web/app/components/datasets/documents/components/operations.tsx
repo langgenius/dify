@@ -75,7 +75,7 @@ const Operations = ({ embeddingAvailable, datasetId, detail, selectedIds, onSele
   const { mutateAsync: resumeDocument } = useDocumentResume()
   const datasetPermissionKeys = useDatasetDetailContextWithSelector(s => s.dataset?.permission_keys)
   const datasetACLCapabilities = React.useMemo(() => getDatasetACLCapabilities(datasetPermissionKeys), [datasetPermissionKeys])
-  const canViewDocumentSettings = datasetACLCapabilities.canReadonly || datasetACLCapabilities.canEdit
+  const canViewDocumentSettings = datasetACLCapabilities.canEdit
   const canEditDocument = datasetACLCapabilities.canEdit
   const canDownloadDocument = datasetACLCapabilities.canDocumentDownload
   const canDeleteDocument = datasetACLCapabilities.canDeleteFile

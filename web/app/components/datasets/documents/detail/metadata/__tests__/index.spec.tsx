@@ -196,6 +196,12 @@ describe('Metadata', () => {
       expect(screen.getByText(/operation\.edit/i))!.toBeInTheDocument()
     })
 
+    it('should hide edit button when canEdit is false', () => {
+      render(<Metadata {...defaultProps} canEdit={false} />)
+
+      expect(screen.queryByText(/operation\.edit/i)).not.toBeInTheDocument()
+    })
+
     it('should show loading state', () => {
       render(<Metadata {...defaultProps} loading={true} />)
 

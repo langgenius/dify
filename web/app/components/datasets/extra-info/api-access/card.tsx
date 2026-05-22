@@ -1,6 +1,5 @@
 import { cn } from '@langgenius/dify-ui/cn'
 import { Switch } from '@langgenius/dify-ui/switch'
-import { RiArrowRightUpLine, RiBookOpenLine } from '@remixicon/react'
 import * as React from 'react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -10,6 +9,7 @@ import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import { useDatasetApiAccessUrl } from '@/hooks/use-api-access-url'
 import Link from '@/next/link'
 import { useDisableDatasetServiceApi, useEnableDatasetServiceApi } from '@/service/knowledge/use-dataset'
+import { getDatasetACLCapabilities } from '@/utils/permission'
 
 type CardProps = {
   apiEnabled: boolean
@@ -20,11 +20,17 @@ const Card = ({
 }: CardProps) => {
   const { t } = useTranslation()
   const datasetId = useDatasetDetailContextWithSelector(state => state.dataset?.id)
+  const datasetPermissionKeys = useDatasetDetailContextWithSelector(state => state.dataset?.permission_keys)
   const mutateDatasetRes = useDatasetDetailContextWithSelector(state => state.mutateDatasetRes)
   const { mutateAsync: enableDatasetServiceApi } = useEnableDatasetServiceApi()
   const { mutateAsync: disableDatasetServiceApi } = useDisableDatasetServiceApi()
 
   const isCurrentWorkspaceManager = useAppContextSelector(state => state.isCurrentWorkspaceManager)
+  const datasetACLCapabilities = React.useMemo(
+    () => getDatasetACLCapabilities(datasetPermissionKeys),
+    [datasetPermissionKeys],
+  )
+  const canManageApiAccess = isCurrentWorkspaceManager || datasetACLCapabilities.canEdit
 
   const apiReferenceUrl = useDatasetApiAccessUrl()
 
@@ -62,7 +68,7 @@ const Card = ({
             <Switch
               checked={apiEnabled}
               onCheckedChange={onToggle}
-              disabled={!isCurrentWorkspaceManager}
+              disabled={!canManageApiAccess}
             />
           </div>
           <div className="system-xs-regular text-text-tertiary">
@@ -78,11 +84,11 @@ const Card = ({
           rel="noopener noreferrer"
           className="flex h-8 items-center space-x-[7px] rounded-lg px-2 text-text-tertiary hover:bg-state-base-hover"
         >
-          <RiBookOpenLine className="size-3.5 shrink-0" />
+          <span className="i-ri-book-open-line size-3.5 shrink-0" />
           <div className="grow truncate system-sm-regular">
             {t('overview.apiInfo.doc', { ns: 'appOverview' })}
           </div>
-          <RiArrowRightUpLine className="size-3.5 shrink-0" />
+          <span className="i-ri-arrow-right-up-line size-3.5 shrink-0" />
         </Link>
       </div>
     </div>

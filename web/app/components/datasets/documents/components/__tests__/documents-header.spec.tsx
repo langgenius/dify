@@ -98,12 +98,22 @@ describe('DocumentsHeader', () => {
       render(<DocumentsHeader {...defaultProps} isFreePlan={true} />)
       expect(screen.queryByTestId('auto-disabled-document')).not.toBeInTheDocument()
     })
+
+    it('should not show AutoDisabledDocument without document edit permission', () => {
+      render(<DocumentsHeader {...defaultProps} canEditDocument={false} />)
+      expect(screen.queryByTestId('auto-disabled-document')).not.toBeInTheDocument()
+    })
   })
 
   describe('IndexFailed', () => {
     it('should always show IndexFailed component', () => {
       render(<DocumentsHeader {...defaultProps} />)
       expect(screen.getByTestId('index-failed')).toBeInTheDocument()
+    })
+
+    it('should not show IndexFailed without document edit permission', () => {
+      render(<DocumentsHeader {...defaultProps} canEditDocument={false} />)
+      expect(screen.queryByTestId('index-failed')).not.toBeInTheDocument()
     })
   })
 

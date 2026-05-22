@@ -166,6 +166,7 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
         embeddingAvailable={embeddingAvailable}
         canManageMetadata={datasetACLCapabilities.canEdit}
         canAddDocument={datasetACLCapabilities.canUse}
+        canEditDocument={datasetACLCapabilities.canEdit}
         isFreePlan={isFreePlan}
         statusFilterValue={statusFilterValue}
         sortValue={sortValue}
