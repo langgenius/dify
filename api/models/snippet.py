@@ -12,6 +12,7 @@ from libs.uuid_utils import uuidv7
 from .account import Account
 from .base import Base
 from .engine import db
+from .model import Tag, TagBinding
 from .types import AdjustedJSON, LongText, StringUUID
 
 
@@ -80,6 +81,22 @@ class CustomizedSnippet(Base):
     def input_fields_list(self) -> list[dict[str, Any]]:
         """Parse input_fields JSON to list."""
         return json.loads(self.input_fields) if self.input_fields else []
+
+    @property
+    def tags(self):
+        """Get snippet tags."""
+        tags = db.session.scalars(
+            sa.select(Tag)
+            .join(TagBinding, Tag.id == TagBinding.tag_id)
+            .where(
+                TagBinding.target_id == self.id,
+                TagBinding.tenant_id == self.tenant_id,
+                Tag.tenant_id == self.tenant_id,
+                Tag.type == "snippet",
+            )
+        ).all()
+
+        return tags or []
 
     @property
     def created_by_account(self) -> Account | None:
