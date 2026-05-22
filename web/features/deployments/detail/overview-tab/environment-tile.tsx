@@ -1,6 +1,6 @@
 'use client'
 
-import type { EnvironmentDeployment, ReleaseRow } from '@dify/contracts/enterprise/types.gen'
+import type { EnvironmentDeployment, Release } from '@dify/contracts/enterprise/types.gen'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useSetAtom } from 'jotai'
 import { useTranslation } from 'react-i18next'
@@ -14,7 +14,7 @@ import { computeDrift, latestReleaseId } from './overview-drift'
 type EnvironmentTileProps = {
   appInstanceId: string
   row: EnvironmentDeployment
-  releaseRows: ReleaseRow[]
+  releaseRows: Release[]
 }
 
 type TileKind = 'empty' | 'latest' | 'behind' | 'older' | 'deploying' | 'failed'

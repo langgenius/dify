@@ -1,5 +1,5 @@
 'use client'
-import type { AppInstanceBasicInfo, GetAppInstanceSettingsReply } from '@dify/contracts/enterprise/types.gen'
+import type { AppInstance } from '@dify/contracts/enterprise/types.gen'
 import type { ReactNode } from 'react'
 import {
   AlertDialog,
@@ -23,7 +23,7 @@ import { consoleQuery } from '@/service/client'
 import { isUndeployedDeploymentRow } from '../runtime-status'
 import { Section, SectionState } from './common'
 
-type AppInstanceWithId = AppInstanceBasicInfo & { id: string }
+type AppInstanceWithId = AppInstance & { id: string }
 
 const SETTINGS_FORM_SKELETON_FIELDS = [
   { key: 'name', inputClassName: 'my-0 h-8 w-full animate-pulse rounded-lg' },
@@ -61,13 +61,11 @@ function DeleteInstanceSkeleton() {
 
 type DeleteInstanceControlProps = {
   app: AppInstanceWithId
-  settings?: GetAppInstanceSettingsReply
   hasDeployments: boolean
 }
 
 function DeleteInstanceButton({
   app,
-  settings,
   hasDeployments,
 }: DeleteInstanceControlProps) {
   const { t } = useTranslation('deployments')
@@ -76,7 +74,7 @@ function DeleteInstanceButton({
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const appInstanceId = app.id
   const appName = app.name ?? appInstanceId
-  const canDelete = !hasDeployments && Boolean(settings)
+  const canDelete = !hasDeployments
 
   const handleDelete = () => {
     deleteInstance.mutate(
@@ -137,7 +135,6 @@ function DeleteInstanceButton({
 
 function DeleteInstanceControl({
   app,
-  settings,
   hasDeployments,
 }: DeleteInstanceControlProps) {
   const { t } = useTranslation('deployments')
@@ -151,7 +148,6 @@ function DeleteInstanceControl({
       </div>
       <DeleteInstanceButton
         app={app}
-        settings={settings}
         hasDeployments={hasDeployments}
       />
     </div>
@@ -182,17 +178,16 @@ function DangerSection({ children }: {
   )
 }
 
-function SettingsForm({ app, settings }: {
+function SettingsForm({ app }: {
   app: AppInstanceWithId
-  settings?: GetAppInstanceSettingsReply
 }) {
   const { t } = useTranslation('deployments')
   const updateInstance = useMutation(consoleQuery.enterprise.appInstanceService.updateAppInstance.mutationOptions())
   const appName = app.name ?? app.id
-  const [name, setName] = useState(settings?.name ?? appName)
-  const [description, setDescription] = useState(settings?.description ?? app.description ?? '')
-  const initialName = settings?.name ?? appName
-  const initialDescription = settings?.description ?? app.description ?? ''
+  const [name, setName] = useState(appName)
+  const [description, setDescription] = useState(app.description ?? '')
+  const initialName = appName
+  const initialDescription = app.description ?? ''
   const canSave = Boolean(name.trim() && (name !== initialName || description !== initialDescription) && !updateInstance.isPending)
 
   const handleSave = () => {
@@ -276,16 +271,12 @@ function SettingsFormSection({ appInstanceId }: {
 }) {
   const { t } = useTranslation('deployments')
   const appInput = { params: { appInstanceId } }
-  const overviewQuery = useQuery(consoleQuery.enterprise.appInstanceService.getAppInstanceOverview.queryOptions({
+  const instanceQuery = useQuery(consoleQuery.enterprise.appInstanceService.getAppInstance.queryOptions({
     input: appInput,
   }))
-  const overview = overviewQuery.data
-  const app = overview?.overview?.appInstance
-  const settingsQuery = useQuery(consoleQuery.enterprise.appInstanceService.getAppInstanceSettings.queryOptions({
-    input: appInput,
-  }))
+  const app = instanceQuery.data?.appInstance
 
-  if (overviewQuery.isLoading || settingsQuery.isLoading) {
+  if (instanceQuery.isLoading) {
     return (
       <Section
         title={t('settings.general')}
@@ -297,7 +288,7 @@ function SettingsFormSection({ appInstanceId }: {
     )
   }
 
-  if (overviewQuery.isError || settingsQuery.isError) {
+  if (instanceQuery.isError) {
     return (
       <Section
         title={t('settings.general')}
@@ -322,7 +313,7 @@ function SettingsFormSection({ appInstanceId }: {
   }
 
   const appName = app.name ?? app.id
-  const formKey = `${app.id}-${settingsQuery.data?.name ?? appName}-${settingsQuery.data?.description ?? app.description ?? ''}`
+  const formKey = `${app.id}-${appName}-${app.description ?? ''}`
   const appWithId = {
     ...app,
     id: app.id,
@@ -332,7 +323,6 @@ function SettingsFormSection({ appInstanceId }: {
     <SettingsForm
       key={formKey}
       app={appWithId}
-      settings={settingsQuery.data}
     />
   )
 }
@@ -342,20 +332,16 @@ function DeleteInstanceControlSection({ appInstanceId }: {
 }) {
   const { t } = useTranslation('deployments')
   const appInput = { params: { appInstanceId } }
-  const overviewQuery = useQuery(consoleQuery.enterprise.appInstanceService.getAppInstanceOverview.queryOptions({
+  const instanceQuery = useQuery(consoleQuery.enterprise.appInstanceService.getAppInstance.queryOptions({
     input: appInput,
   }))
-  const overview = overviewQuery.data
-  const environmentDeploymentsQuery = useQuery(consoleQuery.enterprise.appDeploymentService.listEnvironmentDeployments.queryOptions({
-    input: appInput,
-  }))
-  const settingsQuery = useQuery(consoleQuery.enterprise.appInstanceService.getAppInstanceSettings.queryOptions({
+  const environmentDeploymentsQuery = useQuery(consoleQuery.enterprise.deploymentService.listEnvironmentDeployments.queryOptions({
     input: appInput,
   }))
   const environmentDeployments = environmentDeploymentsQuery.data
-  const app = overview?.overview?.appInstance
+  const app = instanceQuery.data?.appInstance
 
-  if (overviewQuery.isLoading || environmentDeploymentsQuery.isLoading || settingsQuery.isLoading) {
+  if (instanceQuery.isLoading || environmentDeploymentsQuery.isLoading) {
     return (
       <DangerSection>
         <DeleteInstanceSkeleton />
@@ -363,7 +349,7 @@ function DeleteInstanceControlSection({ appInstanceId }: {
     )
   }
 
-  if (overviewQuery.isError || environmentDeploymentsQuery.isError || settingsQuery.isError) {
+  if (instanceQuery.isError || environmentDeploymentsQuery.isError) {
     return (
       <DangerSection>
         <SectionState>{t('common.loadFailed')}</SectionState>
@@ -389,7 +375,6 @@ function DeleteInstanceControlSection({ appInstanceId }: {
     <DangerSection>
       <DeleteInstanceControl
         app={appWithId}
-        settings={settingsQuery.data}
         hasDeployments={hasDeployments}
       />
     </DangerSection>

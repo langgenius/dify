@@ -1,8 +1,8 @@
-import type { ReleaseRow, ReleaseSummary } from '@dify/contracts/enterprise/types.gen'
+import type { Release } from '@dify/contracts/enterprise/types.gen'
 
 export type ReleaseDeploymentAction = 'deploy' | 'deployExistingRelease' | 'promote' | 'rollback'
 
-function releaseCreatedAt(release?: ReleaseSummary | ReleaseRow) {
+function releaseCreatedAt(release?: Release) {
   const value = release?.createdAt
   if (!value)
     return undefined
@@ -11,15 +11,19 @@ function releaseCreatedAt(release?: ReleaseSummary | ReleaseRow) {
   return Number.isFinite(time) ? time : undefined
 }
 
-function releaseById(releaseRows: ReleaseRow[], releaseId?: string) {
+function releaseById(releaseRows: Release[], releaseId?: string) {
   return releaseRows.find(release => release.id === releaseId)
 }
 
-function releaseOrderIndex(releaseRows: ReleaseRow[], releaseId?: string) {
+function releaseOrderIndex(releaseRows: Release[], releaseId?: string) {
   return releaseRows.findIndex(release => release.id === releaseId)
 }
 
-function compareReleaseOrder(targetRelease: ReleaseSummary | ReleaseRow | undefined, currentRelease: ReleaseSummary, releaseRows: ReleaseRow[]) {
+function compareReleaseOrder(
+  targetRelease: Release | undefined,
+  currentRelease: Release,
+  releaseRows: Release[],
+) {
   if (!targetRelease?.id || !currentRelease.id)
     return undefined
   if (targetRelease.id === currentRelease.id)
@@ -47,9 +51,9 @@ export function releaseDeploymentAction({
   releaseRows,
   isExistingRelease,
 }: {
-  targetRelease?: ReleaseSummary | ReleaseRow
-  currentRelease?: ReleaseSummary
-  releaseRows: ReleaseRow[]
+  targetRelease?: Release
+  currentRelease?: Release
+  releaseRows: Release[]
   isExistingRelease?: boolean
 }): ReleaseDeploymentAction {
   if (!currentRelease?.id)

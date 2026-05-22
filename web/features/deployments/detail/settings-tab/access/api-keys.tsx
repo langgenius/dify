@@ -1,6 +1,9 @@
 'use client'
 
-import type { AppDeployEnvironment, DeveloperApiKeyRow } from '@dify/contracts/enterprise/types.gen'
+import type {
+  ApiKey,
+  Environment,
+} from '@dify/contracts/enterprise/types.gen'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   DropdownMenu,
@@ -28,7 +31,7 @@ import {
 } from '../../table-styles'
 
 function ApiKeyName({ apiKey }: {
-  apiKey: DeveloperApiKeyRow
+  apiKey: ApiKey
 }) {
   return (
     <span className="block truncate text-text-primary">
@@ -38,7 +41,7 @@ function ApiKeyName({ apiKey }: {
 }
 
 function EnvironmentBadge({ environment }: {
-  environment: DeveloperApiKeyRow['environment']
+  environment?: Environment
 }) {
   return (
     <span className="inline-flex h-5 max-w-36 items-center rounded-md bg-background-section-burn px-1.5 text-xs text-text-tertiary">
@@ -59,22 +62,18 @@ function ApiKeyValue({ value }: {
   )
 }
 
-function RevokeApiKeyButton({ appInstanceId, apiKey }: {
-  appInstanceId: string
-  apiKey: DeveloperApiKeyRow
+function RevokeApiKeyButton({ apiKey }: {
+  apiKey: ApiKey
 }) {
   const { t } = useTranslation('deployments')
-  const revokeApiKey = useMutation(consoleQuery.enterprise.appDeployAccessService.deleteDeveloperApiKey.mutationOptions())
+  const revokeApiKey = useMutation(consoleQuery.enterprise.accessService.deleteApiKey.mutationOptions())
 
   function handleRevoke() {
-    const environmentId = apiKey.environment?.id
-    if (!apiKey.id || !environmentId)
+    if (!apiKey.id)
       return
 
     revokeApiKey.mutate({
       params: {
-        appInstanceId,
-        environmentId,
         apiKeyId: apiKey.id,
       },
     })
@@ -92,12 +91,12 @@ function RevokeApiKeyButton({ appInstanceId, apiKey }: {
   )
 }
 
-function ApiKeyMobileRow({ appInstanceId, apiKey }: {
-  appInstanceId: string
-  apiKey: DeveloperApiKeyRow
+function ApiKeyMobileRow({ apiKey, environment }: {
+  apiKey: ApiKey
+  environment?: Environment
 }) {
   const { t } = useTranslation('deployments')
-  const displayValue = apiKey.maskedKey || apiKey.id || '—'
+  const displayValue = apiKey.maskedToken || apiKey.id || '—'
 
   return (
     <DetailTableCard>
@@ -106,10 +105,10 @@ function ApiKeyMobileRow({ appInstanceId, apiKey }: {
           <div className="min-w-0">
             <ApiKeyName apiKey={apiKey} />
             <div className="mt-1">
-              <EnvironmentBadge environment={apiKey.environment} />
+              <EnvironmentBadge environment={environment} />
             </div>
           </div>
-          <RevokeApiKeyButton appInstanceId={appInstanceId} apiKey={apiKey} />
+          <RevokeApiKeyButton apiKey={apiKey} />
         </div>
         <div className="flex min-w-0 flex-col gap-1">
           <span className="system-2xs-medium-uppercase text-text-tertiary">
@@ -122,11 +121,11 @@ function ApiKeyMobileRow({ appInstanceId, apiKey }: {
   )
 }
 
-function ApiKeyDesktopRow({ appInstanceId, apiKey }: {
-  appInstanceId: string
-  apiKey: DeveloperApiKeyRow
+function ApiKeyDesktopRow({ apiKey, environment }: {
+  apiKey: ApiKey
+  environment?: Environment
 }) {
-  const displayValue = apiKey.maskedKey || apiKey.id || '—'
+  const displayValue = apiKey.maskedToken || apiKey.id || '—'
 
   return (
     <DetailTableRow>
@@ -134,14 +133,14 @@ function ApiKeyDesktopRow({ appInstanceId, apiKey }: {
         <ApiKeyName apiKey={apiKey} />
       </DetailTableCell>
       <DetailTableCell>
-        <EnvironmentBadge environment={apiKey.environment} />
+        <EnvironmentBadge environment={environment} />
       </DetailTableCell>
       <DetailTableCell>
         <ApiKeyValue value={displayValue} />
       </DetailTableCell>
       <DetailTableCell>
         <div className="flex justify-end">
-          <RevokeApiKeyButton appInstanceId={appInstanceId} apiKey={apiKey} />
+          <RevokeApiKeyButton apiKey={apiKey} />
         </div>
       </DetailTableCell>
     </DetailTableRow>
@@ -163,18 +162,20 @@ function ApiKeyTableHeader() {
   )
 }
 
-function ApiKeyTable({ appInstanceId, apiKeys }: {
-  appInstanceId: string
-  apiKeys: DeveloperApiKeyRow[]
+function ApiKeyTable({ apiKeys, environments }: {
+  apiKeys: ApiKey[]
+  environments: Environment[]
 }) {
+  const environmentById = new Map(environments.map(environment => [environment.id, environment]))
+
   return (
     <>
       <DetailTableCardList className={cn('pc:hidden')}>
         {apiKeys.map((apiKey, index) => (
           <ApiKeyMobileRow
-            key={apiKey.id ?? apiKey.maskedKey ?? apiKey.name ?? index}
-            appInstanceId={appInstanceId}
+            key={apiKey.id ?? apiKey.maskedToken ?? apiKey.name ?? index}
             apiKey={apiKey}
+            environment={apiKey.environmentId ? environmentById.get(apiKey.environmentId) : undefined}
           />
         ))}
       </DetailTableCardList>
@@ -184,9 +185,9 @@ function ApiKeyTable({ appInstanceId, apiKeys }: {
           <DetailTableBody>
             {apiKeys.map((apiKey, index) => (
               <ApiKeyDesktopRow
-                key={apiKey.id ?? apiKey.maskedKey ?? apiKey.name ?? index}
-                appInstanceId={appInstanceId}
+                key={apiKey.id ?? apiKey.maskedToken ?? apiKey.name ?? index}
                 apiKey={apiKey}
+                environment={apiKey.environmentId ? environmentById.get(apiKey.environmentId) : undefined}
               />
             ))}
           </DetailTableBody>
@@ -196,30 +197,30 @@ function ApiKeyTable({ appInstanceId, apiKeys }: {
   )
 }
 
-export function ApiKeyList({ appInstanceId, apiKeys }: {
-  appInstanceId: string
-  apiKeys: DeveloperApiKeyRow[]
+export function ApiKeyList({ apiKeys, environments }: {
+  apiKeys: ApiKey[]
+  environments: Environment[]
 }) {
   return (
-    <ApiKeyTable appInstanceId={appInstanceId} apiKeys={apiKeys} />
+    <ApiKeyTable apiKeys={apiKeys} environments={environments} />
   )
 }
 
 export function ApiKeyGenerateMenu({ appInstanceId, environments, apiKeys, onCreatedToken }: {
   appInstanceId: string
-  environments: AppDeployEnvironment[]
-  apiKeys: DeveloperApiKeyRow[]
+  environments: Environment[]
+  apiKeys: ApiKey[]
   onCreatedToken: (token: string) => void
 }) {
   const { t } = useTranslation('deployments')
   const [open, setOpen] = useState(false)
-  const generateApiKey = useMutation(consoleQuery.enterprise.appDeployAccessService.createDeveloperApiKey.mutationOptions())
+  const generateApiKey = useMutation(consoleQuery.enterprise.accessService.createApiKey.mutationOptions())
   const selectableEnvironments = environments.filter(env => env.id)
   const disabled = selectableEnvironments.length === 0
 
   function createApiKeyLabel(environmentId: string) {
     const existingCount = apiKeys.filter(key =>
-      key.environment?.id === environmentId,
+      key.environmentId === environmentId,
     ).length
     const name = environments.find(env => env.id === environmentId)?.name ?? 'env'
 

@@ -1,6 +1,6 @@
 'use client'
 
-import type { AppInstance, AppInstanceBasicInfo } from '@dify/contracts/enterprise/types.gen'
+import type { AppInstance } from '@dify/contracts/enterprise/types.gen'
 import type { NavItem } from '@/app/components/header/nav/nav-selector'
 import { keepPreviousData, useInfiniteQuery, useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
@@ -19,14 +19,14 @@ function navItemFromListApp(app: AppInstance): NavItem[] {
     name: app.name,
     link: `/deployments/${app.id}/overview`,
     icon_type: 'emoji',
-    icon: app.icon ?? '',
-    icon_background: app.iconBackground ?? null,
+    icon: '',
+    icon_background: null,
     icon_url: null,
-    mode: toAppMode(app.mode),
+    mode: toAppMode(),
   }]
 }
 
-function navItemFromOverview(instance?: AppInstanceBasicInfo): NavItem | undefined {
+function navItemFromOverview(instance?: AppInstance): NavItem | undefined {
   if (!instance?.id)
     return undefined
 
@@ -37,10 +37,10 @@ function navItemFromOverview(instance?: AppInstanceBasicInfo): NavItem | undefin
     name,
     link: `/deployments/${instance.id}/overview`,
     icon_type: 'emoji',
-    icon: instance.icon ?? '',
-    icon_background: instance.iconBackground ?? null,
+    icon: '',
+    icon_background: null,
     icon_url: null,
-    mode: toAppMode(instance.mode),
+    mode: toAppMode(),
   }
 }
 
@@ -53,10 +53,10 @@ export function DeploymentsNav() {
   const appInstanceId = params?.appInstanceId
   const hasAppInstanceId = Boolean(appInstanceId)
 
-  const { data: currentInstance } = useQuery(consoleQuery.enterprise.appInstanceService.getAppInstanceOverview.queryOptions({
+  const { data: currentInstance } = useQuery(consoleQuery.enterprise.appInstanceService.getAppInstance.queryOptions({
     input: { params: { appInstanceId: appInstanceId ?? '' } },
     enabled: isActive && hasAppInstanceId,
-    select: data => data.overview?.appInstance,
+    select: data => data.appInstance,
   }))
 
   const listQuery = useInfiniteQuery({

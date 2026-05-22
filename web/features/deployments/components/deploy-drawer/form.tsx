@@ -1,6 +1,12 @@
 'use client'
 
-import type { AppDeployEnvironment, DeploymentBindingSlot, DeploymentRuntimeBinding, EnvironmentDeployment, ReleaseRow } from '@dify/contracts/enterprise/types.gen'
+import type {
+  CredentialSelectionInput,
+  CredentialSlot,
+  Environment,
+  EnvironmentDeployment,
+  Release,
+} from '@dify/contracts/enterprise/types.gen'
 import { Button } from '@langgenius/dify-ui/button'
 import { DialogDescription, DialogTitle } from '@langgenius/dify-ui/dialog'
 import { toast } from '@langgenius/dify-ui/toast'
@@ -11,7 +17,7 @@ import { useTranslation } from 'react-i18next'
 import { SkeletonContainer, SkeletonRectangle, SkeletonRow } from '@/app/components/base/skeleton'
 import { consoleQuery } from '@/service/client'
 import { DEPLOYMENT_PAGE_SIZE } from '../../data'
-import { environmentId, environmentMode, environmentName } from '../../environment'
+import { environmentBackend, environmentId, environmentMode, environmentName } from '../../environment'
 import { releaseCommit, releaseLabel } from '../../release'
 import { releaseDeploymentAction } from '../../release-action'
 import { isUndeployedDeploymentRow } from '../../runtime-status'
@@ -30,12 +36,12 @@ type DeployFormProps = {
 
 type DeployReadyFormProps = DeployFormProps & {
   environments: EnvironmentOption[]
-  releases: ReleaseRow[]
+  releases: Release[]
   defaultReleaseId?: string
   runtimeRows: EnvironmentDeployment[]
 }
 
-type EnvironmentOption = AppDeployEnvironment & { id: string }
+type EnvironmentOption = Environment & { id: string }
 
 const DEPLOY_FORM_FIELD_SKELETON_KEYS = ['environment', 'release']
 
@@ -47,69 +53,57 @@ type BindingSelectOption = {
 }
 
 type BindingOptionsPanelProps = {
-  slots: DeploymentBindingSlot[]
+  slots: CredentialSlot[]
   selections: BindingSelections
   isLoading: boolean
   hasError: boolean
   onChange: (slot: string, value: string) => void
 }
 
-function isEnvBindingSlot(slot: DeploymentBindingSlot) {
-  return (slot.kind?.toLowerCase() ?? '').includes('env')
+function credentialSlotKey(slot: CredentialSlot) {
+  return [slot.providerId ?? '', slot.category ?? ''].join(':')
 }
 
-function bindingSlotKey(slot: DeploymentBindingSlot) {
-  return slot.slot ?? ''
-}
-
-function bindingCandidateOptions(slot: DeploymentBindingSlot): BindingSelectOption[] {
-  if (isEnvBindingSlot(slot)) {
-    return (slot.envVarCandidates ?? [])
-      .filter(candidate => candidate.envVarId)
-      .map(candidate => ({
-        value: candidate.envVarId!,
-        label: [
-          candidate.name,
-          candidate.displayValue,
-        ].filter(Boolean).join(' · ') || candidate.envVarId!,
-      }))
-  }
-
-  return (slot.credentialCandidates ?? [])
+function bindingCandidateOptions(slot: CredentialSlot): BindingSelectOption[] {
+  return (slot.candidates ?? [])
     .filter(candidate => candidate.credentialId)
     .map(candidate => ({
       value: candidate.credentialId!,
       label: [
         candidate.displayName,
-        candidate.pluginName || candidate.pluginId,
-        candidate.pluginVersion,
+        candidate.providerId,
       ].filter(Boolean).join(' · ') || candidate.credentialId!,
     }))
 }
 
-function hasMissingRequiredBinding(slot: DeploymentBindingSlot, selectedValue?: string) {
-  return Boolean(slot.required && !selectedValue)
+function hasMissingRequiredBinding(_slot: CredentialSlot, selectedValue?: string) {
+  return !selectedValue
 }
 
-function selectedDeploymentBindings(slots: DeploymentBindingSlot[], selections: BindingSelections): DeploymentRuntimeBinding[] {
+function selectedDeploymentCredentials(
+  slots: CredentialSlot[],
+  selections: BindingSelections,
+): CredentialSelectionInput[] {
   return slots
-    .map((slot): DeploymentRuntimeBinding | undefined => {
-      const slotKey = bindingSlotKey(slot)
+    .map((slot): CredentialSelectionInput | undefined => {
+      const slotKey = credentialSlotKey(slot)
       const selectedValue = selections[slotKey]
       if (!slotKey || !selectedValue)
         return undefined
 
-      return isEnvBindingSlot(slot)
-        ? { slot: slotKey, envVarId: selectedValue }
-        : { slot: slotKey, credentialId: selectedValue }
+      return {
+        providerId: slot.providerId,
+        category: slot.category,
+        credentialId: selectedValue,
+      }
     })
-    .filter((binding): binding is DeploymentRuntimeBinding => Boolean(binding))
+    .filter((binding): binding is CredentialSelectionInput => Boolean(binding))
 }
 
-function selectedBindingSelections(slots: DeploymentBindingSlot[], manualBindings: BindingSelections): BindingSelections {
+function selectedBindingSelections(slots: CredentialSlot[], manualBindings: BindingSelections): BindingSelections {
   const next: BindingSelections = {}
   for (const slot of slots) {
-    const slotKey = bindingSlotKey(slot)
+    const slotKey = credentialSlotKey(slot)
     const candidates = bindingCandidateOptions(slot)
     const existing = manualBindings[slotKey]
     if (existing && candidates.some(candidate => candidate.value === existing))
@@ -162,23 +156,22 @@ function BindingOptionsPanel({
             </div>
           )
         : slots.map((slot) => {
-            const slotKey = bindingSlotKey(slot)
+            const slotKey = credentialSlotKey(slot)
             const candidates = bindingCandidateOptions(slot)
             const selectedValue = selections[slotKey] ?? ''
             const missing = hasMissingRequiredBinding(slot, selectedValue)
+            const slotName = slot.providerId || slotKey
             return (
               <div key={slotKey} className="flex flex-col gap-2 border-t border-divider-subtle px-3 py-3">
                 <div className="grid min-w-0 gap-2 sm:grid-cols-[minmax(0,1fr)_minmax(220px,0.9fr)] sm:items-start">
                   <div className="flex min-w-0 flex-col gap-1">
                     <div className="flex min-w-0 items-center gap-2">
-                      <span className="truncate system-sm-medium text-text-secondary" title={slot.name || slotKey}>
-                        {slot.name || slotKey}
+                      <span className="truncate system-sm-medium text-text-secondary" title={slotName}>
+                        {slotName}
                       </span>
-                      {slot.required && (
-                        <span className="shrink-0 rounded-md bg-background-default px-1.5 py-0.5 system-2xs-medium-uppercase text-text-tertiary">
-                          {t('deployDrawer.requiredBinding')}
-                        </span>
-                      )}
+                      <span className="shrink-0 rounded-md bg-background-default px-1.5 py-0.5 system-2xs-medium-uppercase text-text-tertiary">
+                        {t('deployDrawer.requiredBinding')}
+                      </span>
                     </div>
                     <span className="font-mono system-xs-regular break-all text-text-quaternary" title={slotKey}>
                       {slotKey}
@@ -253,9 +246,9 @@ function DeployReadyForm({
 }: DeployReadyFormProps) {
   const { t } = useTranslation('deployments')
   const closeDeployDrawer = useSetAtom(closeDeployDrawerAtom)
-  const startDeploy = useMutation(consoleQuery.enterprise.appDeploymentService.createDeployment.mutationOptions())
+  const startDeploy = useMutation(consoleQuery.enterprise.deploymentService.deploy.mutationOptions())
   const presetRelease = presetReleaseId ? releases.find(r => r.id === presetReleaseId) : undefined
-  const displayedRelease: ReleaseRow | undefined = presetRelease ?? (presetReleaseId ? { id: presetReleaseId } : undefined)
+  const displayedRelease: Release | undefined = presetRelease ?? (presetReleaseId ? { id: presetReleaseId } : undefined)
   const isExistingRelease = Boolean(presetReleaseId)
 
   const [selectedEnvId, setSelectedEnvId] = useState<string>(
@@ -277,22 +270,21 @@ function DeployReadyForm({
     releaseRows: releases,
     isExistingRelease,
   })
-  const bindingOptions = useQuery(consoleQuery.enterprise.appDeploymentService.getDeploymentPlan.queryOptions({
+  const bindingOptions = useQuery(consoleQuery.enterprise.releaseService.listReleaseCredentialCandidates.queryOptions({
     input: {
       params: {
-        appInstanceId,
         releaseId: targetReleaseId || '',
       },
     },
     enabled: Boolean(appInstanceId && targetReleaseId),
   }))
-  const bindingSlots = bindingOptions.data?.plan?.slots?.filter(slot => slot.slot) ?? []
+  const bindingSlots = bindingOptions.data?.slots?.filter(slot => credentialSlotKey(slot)) ?? []
   const [manualBindings, setManualBindings] = useState<BindingSelections>({})
   const selectedBindings = selectedBindingSelections(bindingSlots, manualBindings)
-  const deploymentBindings = selectedDeploymentBindings(bindingSlots, selectedBindings)
+  const deploymentCredentials = selectedDeploymentCredentials(bindingSlots, selectedBindings)
   const bindingOptionsLoading = Boolean(targetReleaseId && (bindingOptions.isLoading || bindingOptions.isFetching))
   const bindingOptionsReady = Boolean(targetReleaseId && bindingOptions.data && !bindingOptionsLoading && !bindingOptions.isError)
-  const requiredBindingsReady = bindingSlots.every(slot => !hasMissingRequiredBinding(slot, selectedBindings[bindingSlotKey(slot)]))
+  const requiredBindingsReady = bindingSlots.every(slot => !hasMissingRequiredBinding(slot, selectedBindings[credentialSlotKey(slot)]))
   const isSubmitting = startDeploy.isPending
   const canDeploy = Boolean(
     selectedEnvironmentId
@@ -342,7 +334,7 @@ function DeployReadyForm({
           appInstanceId,
           environmentId: selectedEnvironmentId,
           releaseId: targetReleaseId,
-          bindings: deploymentBindings,
+          credentials: deploymentCredentials,
         },
       },
       {
@@ -415,7 +407,7 @@ function DeployReadyForm({
                 onChange={setSelectedEnvId}
                 options={environments.filter(env => env.id).map(env => ({
                   value: env.id!,
-                  label: `${environmentName(env)} · ${t(environmentMode(env) === 'isolated' ? 'mode.isolated' : 'mode.shared')} · ${(env.type ?? 'env').toUpperCase()}`,
+                  label: `${environmentName(env)} · ${t(environmentMode(env) === 'isolated' ? 'mode.isolated' : 'mode.shared')} · ${environmentBackend(env).toUpperCase()}`,
                 }))}
                 placeholder={t('deployDrawer.selectEnv')}
               />
@@ -450,7 +442,7 @@ export function DeployForm({
   presetReleaseId,
 }: DeployFormProps) {
   const { t } = useTranslation('deployments')
-  const releaseHistoryQuery = useQuery(consoleQuery.enterprise.appReleaseService.listReleases.queryOptions({
+  const releaseHistoryQuery = useQuery(consoleQuery.enterprise.releaseService.listReleases.queryOptions({
     input: {
       params: { appInstanceId },
       query: {
@@ -459,7 +451,7 @@ export function DeployForm({
       },
     },
   }))
-  const runtimeInstancesQuery = useQuery(consoleQuery.enterprise.appDeploymentService.listEnvironmentDeployments.queryOptions({
+  const runtimeInstancesQuery = useQuery(consoleQuery.enterprise.deploymentService.listEnvironmentDeployments.queryOptions({
     input: {
       params: { appInstanceId },
     },

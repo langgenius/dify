@@ -1,6 +1,10 @@
 'use client'
 
-import type { AppDeployEnvironment, EnvironmentDeployment, ReleaseRow } from '@dify/contracts/enterprise/types.gen'
+import type {
+  Environment,
+  EnvironmentDeployment,
+  Release,
+} from '@dify/contracts/enterprise/types.gen'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   DropdownMenu,
@@ -19,7 +23,7 @@ import { deploymentStatus, isUndeployedDeploymentRow } from '../../runtime-statu
 import { openDeployDrawerAtom } from '../../store'
 import { DETAIL_TABLE_ACTION_TRIGGER_CLASS_NAME } from '../table-styles'
 
-type EnvironmentOption = AppDeployEnvironment & {
+type EnvironmentOption = Environment & {
   id: string
 }
 
@@ -49,12 +53,12 @@ function stateToGroup(state: DeployMenuRowState): DeployMenuGroup {
 export function DeployReleaseMenu({ appInstanceId, releaseId, releaseRows }: {
   appInstanceId: string
   releaseId: string
-  releaseRows: ReleaseRow[]
+  releaseRows: Release[]
 }) {
   const { t } = useTranslation('deployments')
   const openDeployDrawer = useSetAtom(openDeployDrawerAtom)
   const [open, setOpen] = useState(false)
-  const { data: environmentDeployments } = useQuery(consoleQuery.enterprise.appDeploymentService.listEnvironmentDeployments.queryOptions({
+  const { data: environmentDeployments } = useQuery(consoleQuery.enterprise.deploymentService.listEnvironmentDeployments.queryOptions({
     input: {
       params: { appInstanceId },
     },

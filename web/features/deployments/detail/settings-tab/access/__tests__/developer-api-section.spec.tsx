@@ -16,24 +16,30 @@ const mockUseQuery = vi.fn<(options: QueryOptions) => QueryResult>()
 
 vi.mock('@tanstack/react-query', () => ({
   useMutation: () => ({ mutate: vi.fn() }),
+  useQueries: () => [],
   useQuery: (options: QueryOptions) => mockUseQuery(options),
 }))
 
 vi.mock('@/service/client', () => ({
   consoleQuery: {
     enterprise: {
-      appDeployAccessService: {
-        createDeveloperApiKey: {
+      accessService: {
+        createApiKey: {
           mutationOptions: () => ({ mutationFn: vi.fn() }),
         },
-        deleteDeveloperApiKey: {
+        deleteApiKey: {
           mutationOptions: () => ({ mutationFn: vi.fn() }),
         },
-        getAppInstanceAccess: {
-          queryOptions: () => ({ queryKey: ['app-instance-access'] }),
+        getAccessChannels: {
+          queryOptions: () => ({ queryKey: ['access-channels'] }),
         },
-        updateDeveloperApi: {
+        updateAccessChannels: {
           mutationOptions: () => ({ mutationFn: vi.fn() }),
+        },
+      },
+      deploymentService: {
+        listEnvironmentDeployments: {
+          queryOptions: () => ({ queryKey: ['environment-deployments'] }),
         },
       },
     },

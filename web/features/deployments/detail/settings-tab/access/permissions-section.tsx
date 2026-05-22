@@ -1,8 +1,6 @@
 'use client'
 
-import type {
-  EnvironmentAccessRow,
-} from '@dify/contracts/enterprise/types.gen'
+import type { Environment } from '@dify/contracts/enterprise/types.gen'
 import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { SkeletonRectangle } from '@/app/components/base/skeleton'
@@ -23,10 +21,8 @@ import { EnvironmentPermissionRow } from './permissions'
 
 const ACCESS_PERMISSIONS_SKELETON_KEYS = ['production', 'staging', 'development']
 
-function hasEnvironment(row: EnvironmentAccessRow): row is EnvironmentAccessRow & {
-  environment: NonNullable<EnvironmentAccessRow['environment']>
-} {
-  return Boolean(row.environment?.id)
+function hasEnvironment(environment?: Environment): environment is Environment & { id: string } {
+  return Boolean(environment?.id)
 }
 
 function AccessPermissionsSkeleton() {
@@ -66,13 +62,14 @@ export function AccessPermissionsSection({
   appInstanceId: string
 }) {
   const { t } = useTranslation('deployments')
-  const accessConfigQuery = useQuery(consoleQuery.enterprise.appDeployAccessService.getAppInstanceAccess.queryOptions({
+  const environmentDeploymentsQuery = useQuery(consoleQuery.enterprise.deploymentService.listEnvironmentDeployments.queryOptions({
     input: {
       params: { appInstanceId },
     },
   }))
-  const accessConfig = accessConfigQuery.data
-  const permissionRows = accessConfig?.permissions?.filter(hasEnvironment) ?? []
+  const environments = environmentDeploymentsQuery.data?.data
+    ?.map(row => row.environment)
+    .filter(hasEnvironment) ?? []
 
   return (
     <Section
@@ -80,11 +77,11 @@ export function AccessPermissionsSection({
       description={t('access.permissions.description')}
       showDivider={false}
     >
-      {accessConfigQuery.isLoading
+      {environmentDeploymentsQuery.isLoading
         ? <AccessPermissionsSkeleton />
-        : accessConfigQuery.isError
+        : environmentDeploymentsQuery.isError
           ? <SectionState>{t('common.loadFailed')}</SectionState>
-          : permissionRows.length === 0
+          : environments.length === 0
             ? (
                 <SectionState>
                   {t('access.runAccess.noEnvs')}
@@ -100,12 +97,11 @@ export function AccessPermissionsSection({
                     </DetailTableRow>
                   </DetailTableHeader>
                   <DetailTableBody>
-                    {permissionRows.map(row => (
+                    {environments.map(environment => (
                       <EnvironmentPermissionRow
-                        key={row.environment.id}
+                        key={environment.id}
                         appInstanceId={appInstanceId}
-                        environment={row.environment}
-                        summaryPolicy={row}
+                        environment={environment}
                       />
                     ))}
                   </DetailTableBody>

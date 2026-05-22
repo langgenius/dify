@@ -124,7 +124,7 @@ function SourceAppPickerSkeleton() {
   )
 }
 
-function SourceAppPicker({ value, onChange }: {
+export function SourceAppPicker({ value, onChange }: {
   value?: App
   onChange: (app: App) => void
 }) {
@@ -236,12 +236,10 @@ function CreateInstanceForm({ onClose }: {
   const router = useRouter()
   const createInstance = useMutation(consoleQuery.enterprise.appInstanceService.createAppInstance.mutationOptions())
 
-  const [sourceApp, setSourceApp] = useState<App>()
-
-  const canCreate = Boolean(sourceApp?.id && !createInstance.isPending)
+  const canCreate = !createInstance.isPending
 
   const handleCreate = async (form: HTMLFormElement) => {
-    if (!canCreate || !sourceApp?.id)
+    if (!canCreate)
       return
 
     const formData = new FormData(form)
@@ -253,15 +251,15 @@ function CreateInstanceForm({ onClose }: {
     try {
       const result = await createInstance.mutateAsync({
         body: {
-          sourceAppId: sourceApp.id,
           name: name.trim(),
           description: description.trim() || undefined,
         },
       })
-      if (!result.appInstanceId)
-        throw new Error('Create app instance did not return an appInstanceId.')
+      const appInstanceId = result.appInstance?.id
+      if (!appInstanceId)
+        throw new Error('Create app instance did not return an app instance.')
       onClose()
-      router.push(`/deployments/${result.appInstanceId}/overview`)
+      router.push(`/deployments/${appInstanceId}/overview`)
     }
     catch {
       toast.error(t('createModal.createFailed'))
@@ -286,14 +284,6 @@ function CreateInstanceForm({ onClose }: {
       </div>
 
       <div className="flex flex-col gap-2">
-        <label className="system-xs-medium-uppercase text-text-tertiary">{t('createModal.sourceApp')}</label>
-        <SourceAppPicker
-          value={sourceApp}
-          onChange={setSourceApp}
-        />
-      </div>
-
-      <div className="flex flex-col gap-2">
         <label className="system-xs-medium-uppercase text-text-tertiary" htmlFor="instance-name">
           {t('createModal.nameLabel')}
         </label>
@@ -301,7 +291,7 @@ function CreateInstanceForm({ onClose }: {
           id="instance-name"
           name="name"
           type="text"
-          placeholder={sourceApp?.name ?? t('createModal.namePlaceholder')}
+          placeholder={t('createModal.namePlaceholder')}
           required
           className="h-8"
         />

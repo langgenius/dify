@@ -1,12 +1,12 @@
-import type { ReleaseRow, ReleaseSummary } from '@dify/contracts/enterprise/types.gen'
+import type { Release } from '@dify/contracts/enterprise/types.gen'
 import { describe, expect, it } from 'vitest'
 import { releaseDeploymentAction } from '../release-action'
 
-function release(overrides: ReleaseRow): ReleaseRow {
+function release(overrides: Release): Release {
   return overrides
 }
 
-function currentRelease(overrides: ReleaseSummary): ReleaseSummary {
+function currentRelease(overrides: Release): Release {
   return overrides
 }
 

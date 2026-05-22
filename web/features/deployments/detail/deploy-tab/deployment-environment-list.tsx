@@ -86,7 +86,7 @@ function DeploymentRowActions({ appInstanceId, envId, row }: {
 }) {
   const { t } = useTranslation('deployments')
   const openDeployDrawer = useSetAtom(openDeployDrawerAtom)
-  const undeployDeployment = useMutation(consoleQuery.enterprise.appDeploymentService.undeployRuntimeInstance.mutationOptions())
+  const undeployDeployment = useMutation(consoleQuery.enterprise.deploymentService.undeploy.mutationOptions())
   const isUndeployed = isUndeployedDeploymentRow(row)
   const status = deploymentStatus(row)
   const [showUndeployConfirm, setShowUndeployConfirm] = useState(false)

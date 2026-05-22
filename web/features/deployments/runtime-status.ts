@@ -3,31 +3,28 @@ import type { EnvironmentDeployment } from '@dify/contracts/enterprise/types.gen
 type DeploymentUiStatus = 'ready' | 'deploying' | 'deploy_failed' | 'unknown'
 
 export const DEPLOYMENT_STATUS_POLLING_INTERVAL = 3000
+const DEPLOYMENT_STATUS_DEPLOYING = 1
+const DEPLOYMENT_STATUS_READY = 2
+const DEPLOYMENT_STATUS_FAILED = 3
+const DEPLOYMENT_STATUS_CANCELLED = 4
 
 type DeploymentStatusQueryData = {
   data?: Array<Pick<EnvironmentDeployment, 'status'>>
 }
 
 export function isUndeployedDeploymentRow(row?: EnvironmentDeployment) {
-  return (row?.status?.toLowerCase() ?? '').includes('undeployed') || (!row?.runtime?.runtimeInstanceId && !row?.currentRelease && !row?.runtime)
+  return !row?.currentRelease?.id && !row?.desiredRelease?.id && !row?.currentDeployment?.id
 }
 
 export function deploymentStatus(row?: Pick<EnvironmentDeployment, 'status'>): DeploymentUiStatus {
-  const runtimeStatus = row?.status?.toLowerCase() ?? ''
-  if (!runtimeStatus || runtimeStatus.includes('undeployed'))
+  if (!row?.status)
     return 'unknown'
-  if (runtimeStatus.includes('deploying') || runtimeStatus.includes('pending'))
+  if (row.status === DEPLOYMENT_STATUS_DEPLOYING)
     return 'deploying'
-  if (runtimeStatus.includes('fail') || runtimeStatus.includes('error'))
+  if (row.status === DEPLOYMENT_STATUS_FAILED || row.status === DEPLOYMENT_STATUS_CANCELLED)
     return 'deploy_failed'
-  if (runtimeStatus.includes('ready')
-    || runtimeStatus.includes('running')
-    || runtimeStatus.includes('active')
-    || runtimeStatus.includes('success')
-    || runtimeStatus.includes('succeed')
-    || runtimeStatus.includes('deployed')) {
+  if (row.status === DEPLOYMENT_STATUS_READY)
     return 'ready'
-  }
   return 'unknown'
 }
 

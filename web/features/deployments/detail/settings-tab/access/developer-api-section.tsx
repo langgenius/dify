@@ -1,11 +1,11 @@
 'use client'
 
 import type {
-  AppDeployEnvironment,
-  EnvironmentAccessRow,
+  ApiKey,
+  Environment,
 } from '@dify/contracts/enterprise/types.gen'
 import { Switch, SwitchSkeleton } from '@langgenius/dify-ui/switch'
-import { useMutation, useQuery } from '@tanstack/react-query'
+import { useMutation, useQueries, useQuery } from '@tanstack/react-query'
 import { atom, useAtom, useSetAtom } from 'jotai'
 import { useTranslation } from 'react-i18next'
 import { SkeletonRectangle } from '@/app/components/base/skeleton'
@@ -34,8 +34,47 @@ const createdApiTokenAtom = atom<CreatedApiToken | undefined>(undefined)
 
 const DEVELOPER_API_KEY_SKELETON_KEYS = ['primary-key', 'secondary-key']
 
-function permissionEnvironment(row: EnvironmentAccessRow): AppDeployEnvironment | undefined {
+function deploymentEnvironment(row: { environment?: Environment }): Environment | undefined {
   return row.environment?.id ? row.environment : undefined
+}
+
+function useDeveloperApiResources(appInstanceId: string) {
+  const accessChannelsQuery = useQuery(consoleQuery.enterprise.accessService.getAccessChannels.queryOptions({
+    input: {
+      params: { appInstanceId },
+    },
+  }))
+  const environmentDeploymentsQuery = useQuery(consoleQuery.enterprise.deploymentService.listEnvironmentDeployments.queryOptions({
+    input: {
+      params: { appInstanceId },
+    },
+  }))
+  const apiEnabled = accessChannelsQuery.data?.accessChannels?.developerApiEnabled ?? false
+  const environments = environmentDeploymentsQuery.data?.data
+    ?.map(deploymentEnvironment)
+    .filter((environment): environment is Environment & { id: string } => Boolean(environment)) ?? []
+  const apiKeyQueries = useQueries({
+    queries: environments.map(environment => consoleQuery.enterprise.accessService.listApiKeys.queryOptions({
+      input: {
+        params: {
+          appInstanceId,
+          environmentId: environment.id,
+        },
+      },
+      enabled: Boolean(apiEnabled),
+    })),
+  })
+  const apiKeys: ApiKey[] = apiKeyQueries.flatMap(query => query.data?.data ?? [])
+  const apiKeysLoading = apiKeyQueries.some(query => query.isLoading)
+  const apiKeysError = apiKeyQueries.some(query => query.isError)
+
+  return {
+    apiEnabled,
+    environments,
+    apiKeys,
+    isLoading: accessChannelsQuery.isLoading || environmentDeploymentsQuery.isLoading || (apiEnabled && apiKeysLoading),
+    isError: accessChannelsQuery.isError || environmentDeploymentsQuery.isError || (apiEnabled && apiKeysError),
+  }
 }
 
 function DeveloperApiSwitch({ appInstanceId, checked, disabled }: {
@@ -43,7 +82,7 @@ function DeveloperApiSwitch({ appInstanceId, checked, disabled }: {
   checked: boolean
   disabled?: boolean
 }) {
-  const toggleDeveloperAPI = useMutation(consoleQuery.enterprise.appDeployAccessService.updateDeveloperApi.mutationOptions())
+  const toggleDeveloperAPI = useMutation(consoleQuery.enterprise.accessService.updateAccessChannels.mutationOptions())
 
   return (
     <Switch
@@ -52,7 +91,7 @@ function DeveloperApiSwitch({ appInstanceId, checked, disabled }: {
       onCheckedChange={(enabled) => {
         toggleDeveloperAPI.mutate({
           params: { appInstanceId },
-          body: { appInstanceId, enabled },
+          body: { appInstanceId, developerApiEnabled: enabled },
         })
       }}
     />
@@ -63,19 +102,15 @@ export function DeveloperApiHeaderActions({ appInstanceId }: {
   appInstanceId: string
 }) {
   const setCreatedApiToken = useSetAtom(createdApiTokenAtom)
-  const accessConfigQuery = useQuery(consoleQuery.enterprise.appDeployAccessService.getAppInstanceAccess.queryOptions({
-    input: {
-      params: { appInstanceId },
-    },
-  }))
-  const accessConfig = accessConfigQuery.data
-  const apiEnabled = accessConfig?.developerApi?.enabled ?? false
-  const apiKeys = accessConfig?.developerApi?.apiKeys ?? []
-  const environments = accessConfig?.permissions
-    ?.map(permissionEnvironment)
-    .filter((environment): environment is AppDeployEnvironment => Boolean(environment)) ?? []
+  const {
+    apiEnabled,
+    apiKeys,
+    environments,
+    isLoading,
+    isError,
+  } = useDeveloperApiResources(appInstanceId)
 
-  if (accessConfigQuery.isLoading) {
+  if (isLoading) {
     return (
       <div className="flex items-center gap-2">
         <SkeletonRectangle className="my-0 h-8 w-32 animate-pulse rounded-lg" />
@@ -97,7 +132,7 @@ export function DeveloperApiHeaderActions({ appInstanceId }: {
       <DeveloperApiSwitch
         appInstanceId={appInstanceId}
         checked={apiEnabled}
-        disabled={accessConfigQuery.isError}
+        disabled={isError}
       />
     </div>
   )
@@ -234,27 +269,23 @@ export function DeveloperApiSection({
 }) {
   const { t } = useTranslation('deployments')
   const [createdApiToken, setCreatedApiToken] = useAtom(createdApiTokenAtom)
-  const accessConfigQuery = useQuery(consoleQuery.enterprise.appDeployAccessService.getAppInstanceAccess.queryOptions({
-    input: {
-      params: { appInstanceId },
-    },
-  }))
-  const accessConfig = accessConfigQuery.data
-  const apiEnabled = accessConfig?.developerApi?.enabled ?? false
-  const apiUrl = accessConfig?.developerApi?.apiUrl
-  const apiKeys = accessConfig?.developerApi?.apiKeys ?? []
-  const environments = accessConfig?.permissions
-    ?.map(permissionEnvironment)
-    .filter((environment): environment is AppDeployEnvironment => Boolean(environment)) ?? []
+  const {
+    apiEnabled,
+    apiKeys,
+    environments,
+    isLoading,
+    isError,
+  } = useDeveloperApiResources(appInstanceId)
+  const apiUrl = environments.find(environment => environment.runtimeEndpoint)?.runtimeEndpoint
   const visibleCreatedApiToken = createdApiToken?.appInstanceId === appInstanceId
     ? createdApiToken.token
     : undefined
 
   return (
     <>
-      {accessConfigQuery.isLoading
+      {isLoading
         ? <DeveloperApiSkeleton />
-        : accessConfigQuery.isError
+        : isError
           ? <SectionState>{t('common.loadFailed')}</SectionState>
           : apiEnabled
             ? (
@@ -281,8 +312,8 @@ export function DeveloperApiSection({
                       )
                     : (
                         <ApiKeyList
-                          appInstanceId={appInstanceId}
                           apiKeys={apiKeys}
+                          environments={environments}
                         />
                       )}
                 </div>

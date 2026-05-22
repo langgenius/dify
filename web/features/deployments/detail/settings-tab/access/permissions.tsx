@@ -1,9 +1,9 @@
 'use client'
 
 import type {
+  AccessPolicy,
   AccessSubject,
-  AppDeployEnvironment,
-  EnvironmentAccessRow,
+  Environment,
   Subject,
 } from '@dify/contracts/enterprise/types.gen'
 import type { ComboboxRootChangeEventDetails } from '@langgenius/dify-ui/combobox'
@@ -46,21 +46,26 @@ import {
 
 type AccessPermissionKind = 'organization' | 'specific' | 'anyone'
 
-function accessModeToPermissionKey(mode?: string): AccessPermissionKind {
-  const normalized = mode?.toLowerCase() ?? ''
-  if (normalized === 'private')
+const ACCESS_MODE_PUBLIC = 1
+const ACCESS_MODE_PRIVATE = 2
+const ACCESS_MODE_PRIVATE_ALL = 3
+const ACCESS_SUBJECT_TYPE_ACCOUNT = 1
+const ACCESS_SUBJECT_TYPE_GROUP = 2
+
+function accessModeToPermissionKey(mode?: number): AccessPermissionKind {
+  if (mode === ACCESS_MODE_PRIVATE)
     return 'specific'
-  if (normalized === 'public')
+  if (mode === ACCESS_MODE_PUBLIC)
     return 'anyone'
   return 'organization'
 }
 
 function permissionKeyToAccessMode(key: AccessPermissionKind) {
   if (key === 'organization')
-    return 'private_all'
+    return ACCESS_MODE_PRIVATE_ALL
   if (key === 'specific')
-    return 'private'
-  return 'public'
+    return ACCESS_MODE_PRIVATE
+  return ACCESS_MODE_PUBLIC
 }
 
 const permissionIcon: Record<AccessPermissionKind, string> = {
@@ -127,20 +132,25 @@ function PermissionPicker({ value, disabled, onChange }: {
 
 type SelectableAccessSubject = {
   id: string
-  subjectType: string
+  subjectType: number
   name?: string
   memberCount?: number
 }
 
+function subjectTypeFromSubject(subject: Subject) {
+  if (subject.subjectType === 'group' || subject.groupData)
+    return ACCESS_SUBJECT_TYPE_GROUP
+  return ACCESS_SUBJECT_TYPE_ACCOUNT
+}
+
 function normalizeSubject(subject: Subject): SelectableAccessSubject | undefined {
   const id = subject.subjectId || subject.accountData?.id || subject.groupData?.id
-  const subjectType = subject.subjectType || (subject.groupData ? 'group' : 'account')
-  if (!id || !subjectType)
+  if (!id)
     return undefined
 
   return {
     id,
-    subjectType,
+    subjectType: subjectTypeFromSubject(subject),
     name: subject.accountData?.name || subject.accountData?.email || subject.groupData?.name || id,
     memberCount: subject.groupData?.groupSize,
   }
@@ -171,16 +181,24 @@ function policySubjects(subjects: SelectableAccessSubject[]): AccessSubject[] {
   }))
 }
 
-function selectedSubjectsFromPolicy(policy?: EnvironmentAccessRow) {
+function selectedSubjectsFromPolicy(policy?: AccessPolicy) {
   return policy?.subjects
-    ?.map(normalizeSubject)
+    ?.map((subject): SelectableAccessSubject | undefined => {
+      if (!subject.subjectId || !subject.subjectType)
+        return undefined
+      return {
+        id: subject.subjectId,
+        subjectType: subject.subjectType,
+        name: subject.subjectId,
+      }
+    })
     .filter((subject): subject is SelectableAccessSubject => Boolean(subject)) ?? []
 }
 
 function SubjectIcon({ subject }: {
   subject: SelectableAccessSubject
 }) {
-  const isGroup = subject.subjectType === 'group'
+  const isGroup = subject.subjectType === ACCESS_SUBJECT_TYPE_GROUP
 
   return (
     <span className={cn(isGroup ? 'i-ri-group-line' : 'i-ri-user-line', 'size-3.5 shrink-0 text-text-tertiary')} aria-hidden="true" />
@@ -261,7 +279,7 @@ function SubjectPicker({
                     >
                       <SubjectIcon subject={subject} />
                       <span className="max-w-32 truncate">{getSubjectLabel(subject)}</span>
-                      {subject.subjectType === 'group' && subject.memberCount != null && (
+                      {subject.subjectType === ACCESS_SUBJECT_TYPE_GROUP && subject.memberCount != null && (
                         <span className="system-2xs-regular text-text-tertiary">{subject.memberCount}</span>
                       )}
                       <ComboboxChipRemove
@@ -307,7 +325,7 @@ function SubjectPicker({
                       <ComboboxItemText className="flex items-center gap-2 px-0">
                         <SubjectIcon subject={subject} />
                         <span className="min-w-0 flex-1 truncate">{getSubjectLabel(subject)}</span>
-                        {subject.subjectType === 'group' && subject.memberCount != null && (
+                        {subject.subjectType === ACCESS_SUBJECT_TYPE_GROUP && subject.memberCount != null && (
                           <span className="shrink-0 system-xs-regular text-text-tertiary">
                             {t('access.members.memberCount', { count: subject.memberCount })}
                           </span>
@@ -329,8 +347,8 @@ function SubjectPicker({
 
 type EnvironmentPermissionRowProps = {
   appInstanceId: string
-  environment: AppDeployEnvironment
-  summaryPolicy?: EnvironmentAccessRow
+  environment: Environment
+  summaryPolicy?: AccessPolicy
 }
 
 export function EnvironmentPermissionRow({
@@ -340,16 +358,26 @@ export function EnvironmentPermissionRow({
 }: EnvironmentPermissionRowProps) {
   const { t } = useTranslation('deployments')
   const environmentId = environment.id
-  const setEnvironmentAccessPolicy = useMutation(consoleQuery.enterprise.appDeployAccessService.updateEnvironmentAccessPolicy.mutationOptions())
-  const policyKind = accessModeToPermissionKey(summaryPolicy?.accessMode)
-  const policySubjectFingerprint = summaryPolicy?.subjects
-    ?.map(subject => `${subject.subjectType ?? ''}:${subject.subjectId ?? subject.accountData?.id ?? subject.groupData?.id ?? ''}`)
+  const accessPolicyQuery = useQuery(consoleQuery.enterprise.accessService.getAccessPolicy.queryOptions({
+    input: {
+      params: {
+        appInstanceId,
+        environmentId: environmentId ?? '',
+      },
+    },
+    enabled: Boolean(environmentId),
+  }))
+  const setEnvironmentAccessPolicy = useMutation(consoleQuery.enterprise.accessService.putAccessPolicy.mutationOptions())
+  const policy = accessPolicyQuery.data?.policy ?? summaryPolicy
+  const policyKind = accessModeToPermissionKey(policy?.mode)
+  const policySubjectFingerprint = policy?.subjects
+    ?.map(subject => `${subject.subjectType ?? ''}:${subject.subjectId ?? ''}`)
     .join(',')
   const policyFingerprint = [
-    summaryPolicy?.accessMode ?? '',
+    policy?.mode ?? '',
     policySubjectFingerprint ?? '',
   ].join(':')
-  const policySelectedSubjects = policyKind === 'specific' ? selectedSubjectsFromPolicy(summaryPolicy) : []
+  const policySelectedSubjects = policyKind === 'specific' ? selectedSubjectsFromPolicy(policy) : []
   const [draft, setDraft] = useState<{
     fingerprint?: string
     kind?: AccessPermissionKind
@@ -359,7 +387,7 @@ export function EnvironmentPermissionRow({
   const permissionKind = hasDraft && draft.kind ? draft.kind : policyKind
   const subjects = hasDraft && draft.subjects ? draft.subjects : policySelectedSubjects
   const isSaving = setEnvironmentAccessPolicy.isPending
-  const controlsDisabled = isSaving
+  const controlsDisabled = isSaving || accessPolicyQuery.isLoading || accessPolicyQuery.isError
 
   const persistPolicy = (nextKind: AccessPermissionKind, nextSubjects: SelectableAccessSubject[]) => {
     if (!environmentId)
@@ -376,7 +404,7 @@ export function EnvironmentPermissionRow({
         body: {
           appInstanceId,
           environmentId,
-          accessMode: permissionKeyToAccessMode(nextKind),
+          mode: permissionKeyToAccessMode(nextKind),
           subjects: nextKind === 'specific' ? policySubjects(nextSubjects) : [],
         },
       },

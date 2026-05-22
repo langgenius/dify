@@ -68,20 +68,21 @@ export function OverviewTab({ appInstanceId }: {
 }) {
   const { t } = useTranslation('deployments')
   const input = { params: { appInstanceId } }
-  const overviewQuery = useQuery(consoleQuery.enterprise.appInstanceService.getAppInstanceOverview.queryOptions({ input }))
-  const runtimeInstancesQuery = useQuery(consoleQuery.enterprise.appDeploymentService.listEnvironmentDeployments.queryOptions({ input }))
-  const releasesQuery = useQuery(consoleQuery.enterprise.appReleaseService.listReleases.queryOptions({
+  const instanceQuery = useQuery(consoleQuery.enterprise.appInstanceService.getAppInstance.queryOptions({ input }))
+  const runtimeInstancesQuery = useQuery(consoleQuery.enterprise.deploymentService.listEnvironmentDeployments.queryOptions({ input }))
+  const releasesQuery = useQuery(consoleQuery.enterprise.releaseService.listReleases.queryOptions({
     input: {
       params: { appInstanceId },
       query: { pageNumber: 1, resultsPerPage: OVERVIEW_RELEASE_WINDOW },
     },
   }))
-  const instance = overviewQuery.data?.overview?.appInstance
+  const accessChannelsQuery = useQuery(consoleQuery.enterprise.accessService.getAccessChannels.queryOptions({ input }))
+  const instance = instanceQuery.data?.appInstance
 
-  if (overviewQuery.isLoading)
+  if (instanceQuery.isLoading)
     return <OverviewLoadingSkeleton appInstanceId={appInstanceId} />
 
-  if (overviewQuery.isError) {
+  if (instanceQuery.isError) {
     return (
       <OverviewLayout>
         <SectionState>{t('common.loadFailed')}</SectionState>
@@ -112,7 +113,7 @@ export function OverviewTab({ appInstanceId }: {
   const runtimeRows = runtimeInstancesQuery.data?.data?.filter(row => row.environment?.id) ?? []
   const latestRelease = releaseRows[0]
   const stats = computeOverviewStats(runtimeRows, releaseRows)
-  const access = overviewQuery.data?.overview?.access
+  const accessChannels = accessChannelsQuery.data?.accessChannels
 
   return (
     <OverviewLayout>
@@ -131,7 +132,7 @@ export function OverviewTab({ appInstanceId }: {
           isLoading={runtimeInstancesQuery.isLoading}
           isError={runtimeInstancesQuery.isError}
         />
-        <AccessStatusSection appInstanceId={appInstanceId} access={access} />
+        <AccessStatusSection appInstanceId={appInstanceId} accessChannels={accessChannels} />
       </div>
     </OverviewLayout>
   )

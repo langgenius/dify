@@ -1,6 +1,6 @@
 'use client'
 
-import type { EnvironmentDeployment, ReleaseRow } from '@dify/contracts/enterprise/types.gen'
+import type { EnvironmentDeployment, Release } from '@dify/contracts/enterprise/types.gen'
 import type { ReleaseDeployment } from './release-deployments'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { keepPreviousData, useQuery } from '@tanstack/react-query'
@@ -39,11 +39,11 @@ import { getReleaseDeployments } from './release-deployments'
 
 const RELEASE_TABLE_ROW_SKELETON_KEYS = ['latest', 'previous', 'older', 'archived', 'initial']
 
-type ReleaseRowWithId = ReleaseRow & {
+type ReleaseRowWithId = Release & {
   id: string
 }
 
-function hasReleaseId(row: ReleaseRow): row is ReleaseRowWithId {
+function hasReleaseId(row: Release): row is ReleaseRowWithId {
   return Boolean(row.id)
 }
 
@@ -321,7 +321,7 @@ export function ReleaseHistoryTable({ appInstanceId }: {
   const { t } = useTranslation('deployments')
   const [currentPage, setCurrentPage] = useState(0)
   const input = { params: { appInstanceId } }
-  const releaseHistoryQuery = useQuery(consoleQuery.enterprise.appReleaseService.listReleases.queryOptions({
+  const releaseHistoryQuery = useQuery(consoleQuery.enterprise.releaseService.listReleases.queryOptions({
     input: {
       ...input,
       query: {
@@ -334,7 +334,7 @@ export function ReleaseHistoryTable({ appInstanceId }: {
   const releaseRows = releaseHistoryQuery.data?.data?.filter(hasReleaseId) ?? []
   const totalReleases = releaseHistoryQuery.data?.pagination?.totalCount ?? releaseRows.length
   const shouldLoadRuntimeInstances = releaseRows.length > 0
-  const environmentDeploymentsQuery = useQuery(consoleQuery.enterprise.appDeploymentService.listEnvironmentDeployments.queryOptions({
+  const environmentDeploymentsQuery = useQuery(consoleQuery.enterprise.deploymentService.listEnvironmentDeployments.queryOptions({
     input,
     enabled: shouldLoadRuntimeInstances,
   }))

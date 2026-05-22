@@ -1,6 +1,10 @@
 'use client'
 
-import type { AppDeployEnvironment, DeploymentBindingSlot, DeploymentRuntimeBinding, EnvironmentDeployment, ReleaseSummary } from '@dify/contracts/enterprise/types.gen'
+import type {
+  CredentialSelectionInput,
+  CredentialSlot,
+  Environment,
+} from '@dify/contracts/enterprise/types.gen'
 import type { App } from '@/types/app'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -16,11 +20,11 @@ import { useRouter } from '@/next/navigation'
 import { consoleQuery } from '@/service/client'
 import { toAppMode } from '../app-mode'
 import { SOURCE_APPS_PAGE_SIZE } from '../data'
-import { environmentMode, environmentName } from '../environment'
+import { environmentBackend, environmentMode, environmentName } from '../environment'
 
 type GuideMethod = 'bindApp' | 'importDsl'
 type GuideStep = 'method' | 'source' | 'release' | 'target' | 'done'
-type EnvironmentOption = AppDeployEnvironment & { id: string }
+type EnvironmentOption = Environment & { id: string }
 type BindingSelections = Record<string, string>
 
 type BindingSelectOption = {
@@ -36,80 +40,58 @@ const dslPreviewDeployTargetEnvironments: EnvironmentOption[] = [
   {
     id: 'env-prod',
     name: 'Production',
-    type: 'isolated',
-    backend: 'Kubernetes',
-    status: 'Ready',
+    mode: 2,
+    backend: 1,
+    status: 3,
   },
   {
     id: 'env-staging',
     name: 'Staging',
-    type: 'shared',
-    backend: 'Runner',
-    status: 'Ready',
+    mode: 1,
+    backend: 2,
+    status: 3,
   },
 ]
 
-const dslPreviewBindingSlots: DeploymentBindingSlot[] = [
+const dslPreviewBindingSlots: CredentialSlot[] = [
   {
-    slot: 'openai-model',
-    kind: 'model',
-    name: 'OpenAI model credential',
-    required: true,
-    credentialCandidates: [
+    providerId: 'openai',
+    category: 1,
+    candidates: [
       {
         credentialId: 'openai-prod',
+        providerId: 'openai',
         displayName: 'OpenAI production key',
       },
     ],
   },
 ]
 
-function hasEnvironmentId(environment?: AppDeployEnvironment): environment is EnvironmentOption {
+function hasEnvironmentId(environment?: Environment): environment is EnvironmentOption {
   return Boolean(environment?.id)
 }
 
-function environmentsFromDeployments(rows?: EnvironmentDeployment[]) {
-  return rows?.map(row => row.environment).filter(hasEnvironmentId) ?? []
+function bindingSlotKey(slot: CredentialSlot) {
+  return [slot.providerId ?? '', slot.category ?? ''].join(':')
 }
 
-function isEnvBindingSlot(slot: DeploymentBindingSlot) {
-  return (slot.kind?.toLowerCase() ?? '').includes('env')
-}
-
-function bindingSlotKey(slot: DeploymentBindingSlot) {
-  return slot.slot ?? ''
-}
-
-function bindingCandidateOptions(slot: DeploymentBindingSlot): BindingSelectOption[] {
-  if (isEnvBindingSlot(slot)) {
-    return (slot.envVarCandidates ?? [])
-      .filter(candidate => candidate.envVarId)
-      .map(candidate => ({
-        value: candidate.envVarId!,
-        label: [
-          candidate.name,
-          candidate.displayValue,
-        ].filter(Boolean).join(' · ') || candidate.envVarId!,
-      }))
-  }
-
-  return (slot.credentialCandidates ?? [])
+function bindingCandidateOptions(slot: CredentialSlot): BindingSelectOption[] {
+  return (slot.candidates ?? [])
     .filter(candidate => candidate.credentialId)
     .map(candidate => ({
       value: candidate.credentialId!,
       label: [
         candidate.displayName,
-        candidate.pluginName || candidate.pluginId,
-        candidate.pluginVersion,
+        candidate.providerId,
       ].filter(Boolean).join(' · ') || candidate.credentialId!,
     }))
 }
 
-function hasMissingRequiredBinding(slot: DeploymentBindingSlot, selectedValue?: string) {
-  return Boolean(slot.required && !selectedValue)
+function hasMissingRequiredBinding(_slot: CredentialSlot, selectedValue?: string) {
+  return !selectedValue
 }
 
-function selectedBindingSelections(slots: DeploymentBindingSlot[], manualBindings: BindingSelections): BindingSelections {
+function selectedBindingSelections(slots: CredentialSlot[], manualBindings: BindingSelections): BindingSelections {
   const next: BindingSelections = {}
   for (const slot of slots) {
     const slotKey = bindingSlotKey(slot)
@@ -123,19 +105,24 @@ function selectedBindingSelections(slots: DeploymentBindingSlot[], manualBinding
   return next
 }
 
-function selectedDeploymentBindings(slots: DeploymentBindingSlot[], selections: BindingSelections): DeploymentRuntimeBinding[] {
+function selectedDeploymentCredentials(
+  slots: CredentialSlot[],
+  selections: BindingSelections,
+): CredentialSelectionInput[] {
   return slots
-    .map((slot): DeploymentRuntimeBinding | undefined => {
+    .map((slot): CredentialSelectionInput | undefined => {
       const slotKey = bindingSlotKey(slot)
       const selectedValue = selections[slotKey]
       if (!slotKey || !selectedValue)
         return undefined
 
-      return isEnvBindingSlot(slot)
-        ? { slot: slotKey, envVarId: selectedValue }
-        : { slot: slotKey, credentialId: selectedValue }
+      return {
+        providerId: slot.providerId,
+        category: slot.category,
+        credentialId: selectedValue,
+      }
     })
-    .filter((binding): binding is DeploymentRuntimeBinding => Boolean(binding))
+    .filter((binding): binding is CredentialSelectionInput => Boolean(binding))
 }
 
 function sourceAppSearchText(app: App) {
@@ -613,8 +600,7 @@ function EnvironmentOptionRow({ environment, selected, onSelect }: {
         <span className={cn('truncate system-sm-semibold', selected ? 'text-text-accent' : 'text-text-primary')}>{environmentName(environment)}</span>
         <span className={cn('flex flex-wrap items-center gap-1.5 system-xs-regular', selected ? 'text-text-secondary' : 'text-text-tertiary')}>
           <span>{t(mode === 'isolated' ? 'mode.isolated' : 'mode.shared')}</span>
-          <span>{environment.status}</span>
-          <span>{environment.backend}</span>
+          <span>{environmentBackend(environment)}</span>
         </span>
       </span>
     </label>
@@ -622,7 +608,7 @@ function EnvironmentOptionRow({ environment, selected, onSelect }: {
 }
 
 function BindingSlotRow({ slot, selectedValue, onChange }: {
-  slot: DeploymentBindingSlot
+  slot: CredentialSlot
   selectedValue: string
   onChange: (value: string) => void
 }) {
@@ -630,20 +616,19 @@ function BindingSlotRow({ slot, selectedValue, onChange }: {
   const slotKey = bindingSlotKey(slot)
   const candidates = bindingCandidateOptions(slot)
   const missing = hasMissingRequiredBinding(slot, selectedValue)
+  const slotName = slot.providerId || slotKey
 
   return (
     <div className="flex flex-col gap-2 border-t border-divider-subtle px-3 py-3">
       <div className="grid min-w-0 gap-2 lg:grid-cols-[minmax(0,1fr)_minmax(220px,0.8fr)] lg:items-start">
         <div className="flex min-w-0 flex-col gap-1">
           <div className="flex min-w-0 items-center gap-2">
-            <span className="truncate system-sm-medium text-text-secondary" title={slot.name || slotKey}>
-              {slot.name || slotKey}
+            <span className="truncate system-sm-medium text-text-secondary" title={slotName}>
+              {slotName}
             </span>
-            {slot.required && (
-              <span className="shrink-0 rounded-md bg-background-default px-1.5 py-0.5 system-2xs-medium-uppercase text-text-tertiary">
-                {t('createGuide.target.required')}
-              </span>
-            )}
+            <span className="shrink-0 rounded-md bg-background-default px-1.5 py-0.5 system-2xs-medium-uppercase text-text-tertiary">
+              {t('createGuide.target.required')}
+            </span>
           </div>
           <span className="font-mono system-xs-regular break-all text-text-quaternary" title={slotKey}>
             {slotKey}
@@ -657,7 +642,7 @@ function BindingSlotRow({ slot, selectedValue, onChange }: {
             )
           : (
               <select
-                aria-label={slot.name || slotKey}
+                aria-label={slotName}
                 value={selectedValue}
                 onChange={event => onChange(event.target.value)}
                 className="h-8 w-full rounded-lg border border-components-input-border-active bg-components-input-bg-normal px-2 system-sm-regular text-components-input-text-filled outline-hidden hover:bg-components-input-bg-hover focus:border-components-input-border-active"
@@ -725,7 +710,7 @@ function TargetStep({
   onSelectBinding,
 }: {
   environments: EnvironmentOption[]
-  bindingSlots: DeploymentBindingSlot[]
+  bindingSlots: CredentialSlot[]
   selectedEnvironmentId: string
   bindingSelections: BindingSelections
   isEnvironmentLoading: boolean
@@ -817,7 +802,7 @@ function DeploymentSummaryPreview({
   releaseName: string
   releaseDescription: string
   targetEnvironmentName: string
-  bindingSlots: DeploymentBindingSlot[]
+  bindingSlots: CredentialSlot[]
   bindingSelections: BindingSelections
 }) {
   const { t } = useTranslation('deployments')
@@ -878,7 +863,7 @@ function DeploymentSummaryPreview({
                 const selectedCandidate = bindingCandidateOptions(slot).find(candidate => candidate.value === selectedValue)
                 return (
                   <div key={bindingSlotKey(slot)} className="grid min-w-0 grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] gap-2 rounded-lg bg-background-default-subtle px-3 py-2">
-                    <span className="truncate system-xs-medium text-text-secondary">{slot.name || bindingSlotKey(slot)}</span>
+                    <span className="truncate system-xs-medium text-text-secondary">{slot.providerId || bindingSlotKey(slot)}</span>
                     <span className="truncate text-right system-xs-regular text-text-tertiary">{selectedCandidate?.label || '—'}</span>
                   </div>
                 )
@@ -1053,7 +1038,7 @@ function TargetReviewSections({
   selectedEnvironmentId,
 }: {
   bindingSelections: BindingSelections
-  bindingSlots: DeploymentBindingSlot[]
+  bindingSlots: CredentialSlot[]
   environments: EnvironmentOption[]
   isBindingError: boolean
   isBindingLoading: boolean
@@ -1082,9 +1067,7 @@ function TargetReviewSections({
 export function CreateDeploymentGuide() {
   const { t } = useTranslation('deployments')
   const router = useRouter()
-  const createInstance = useMutation(consoleQuery.enterprise.appInstanceService.createAppInstance.mutationOptions())
-  const createRelease = useMutation(consoleQuery.enterprise.appReleaseService.createRelease.mutationOptions())
-  const createDeployment = useMutation(consoleQuery.enterprise.appDeploymentService.createDeployment.mutationOptions())
+  const createInitialDeployment = useMutation(consoleQuery.enterprise.deploymentService.createInitialDeploymentFromSourceApp.mutationOptions())
 
   const [step, setStep] = useState<GuideStep>('source')
   const [method, setMethod] = useState<GuideMethod>('bindApp')
@@ -1096,8 +1079,6 @@ export function CreateDeploymentGuide() {
   const [releaseDescription, setReleaseDescription] = useState('')
   const [selectedEnvironmentId, setSelectedEnvironmentId] = useState('')
   const [manualBindingSelections, setManualBindingSelections] = useState<BindingSelections>({})
-  const [createdAppInstanceId, setCreatedAppInstanceId] = useState('')
-  const [createdRelease, setCreatedRelease] = useState<ReleaseSummary>()
   const [deployedEnvironmentName, setDeployedEnvironmentName] = useState('')
 
   const sourceAppsQuery = useInfiniteQuery({
@@ -1116,22 +1097,18 @@ export function CreateDeploymentGuide() {
   })
   const sourceApps = sourceAppsQuery.data?.pages.flatMap(page => page.data) ?? []
   const effectiveSelectedApp = selectedApp ?? sourceApps[0]
-  const hasCreatedReleaseArtifacts = Boolean(createdAppInstanceId && createdRelease?.id)
-  const shouldLoadDeploymentTarget = method === 'bindApp' && hasCreatedReleaseArtifacts
+  const shouldLoadDeploymentTarget = method === 'bindApp' && Boolean(effectiveSelectedApp?.id) && step === 'target'
 
-  const environmentDeploymentsQuery = useQuery(consoleQuery.enterprise.appDeploymentService.listEnvironmentDeployments.queryOptions({
+  const deployableEnvironmentsQuery = useQuery(consoleQuery.enterprise.environmentService.listDeployableEnvironments.queryOptions({
     input: {
-      params: {
-        appInstanceId: createdAppInstanceId,
-      },
+      query: {},
     },
     enabled: shouldLoadDeploymentTarget,
   }))
-  const deploymentPlanQuery = useQuery(consoleQuery.enterprise.appDeploymentService.getDeploymentPlan.queryOptions({
+  const deploymentOptionsQuery = useQuery(consoleQuery.enterprise.releaseService.getDeploymentOptionsFromSourceApp.queryOptions({
     input: {
-      params: {
-        appInstanceId: createdAppInstanceId,
-        releaseId: createdRelease?.id ?? '',
+      body: {
+        sourceAppId: effectiveSelectedApp?.id ?? '',
       },
     },
     enabled: shouldLoadDeploymentTarget,
@@ -1140,21 +1117,21 @@ export function CreateDeploymentGuide() {
   const environments = method === 'importDsl'
     ? dslPreviewDeployTargetEnvironments
     : method === 'bindApp' && shouldLoadDeploymentTarget
-      ? environmentsFromDeployments(environmentDeploymentsQuery.data?.data)
+      ? deployableEnvironmentsQuery.data?.data?.filter(hasEnvironmentId) ?? []
       : []
   const bindingSlots = method === 'importDsl'
     ? dslPreviewBindingSlots
     : method === 'bindApp' && shouldLoadDeploymentTarget
-      ? deploymentPlanQuery.data?.plan?.slots?.filter(slot => bindingSlotKey(slot)) ?? []
+      ? deploymentOptionsQuery.data?.options?.credentialSlots?.filter(slot => bindingSlotKey(slot)) ?? []
       : []
   const effectiveSelectedEnvironmentId = selectedEnvironmentId || environments[0]?.id || ''
   const selectedEnvironment = environments.find(env => env.id === effectiveSelectedEnvironmentId) ?? environments[0]
   const selectedTargetEnvironmentName = selectedEnvironment ? environmentName(selectedEnvironment) : ''
   const bindingSelections = selectedBindingSelections(bindingSlots, manualBindingSelections)
   const requiredBindingsReady = bindingSlots.every(slot => !hasMissingRequiredBinding(slot, bindingSelections[bindingSlotKey(slot)]))
-  const isEnvironmentLoading = shouldLoadDeploymentTarget && (environmentDeploymentsQuery.isLoading || (environmentDeploymentsQuery.isFetching && !environmentDeploymentsQuery.data))
-  const isBindingLoading = shouldLoadDeploymentTarget && (deploymentPlanQuery.isLoading || (deploymentPlanQuery.isFetching && !deploymentPlanQuery.data))
-  const isDeploying = createInstance.isPending || createRelease.isPending || createDeployment.isPending
+  const isEnvironmentLoading = shouldLoadDeploymentTarget && (deployableEnvironmentsQuery.isLoading || (deployableEnvironmentsQuery.isFetching && !deployableEnvironmentsQuery.data))
+  const isBindingLoading = shouldLoadDeploymentTarget && (deploymentOptionsQuery.isLoading || (deploymentOptionsQuery.isFetching && !deploymentOptionsQuery.data))
+  const isDeploying = createInitialDeployment.isPending
   const sourceName = method === 'importDsl'
     ? t('createGuide.dsl.defaultAppName')
     : method === 'bindApp'
@@ -1162,13 +1139,11 @@ export function CreateDeploymentGuide() {
       : ''
   const displayedInstanceName = instanceName.trim() || sourceName
   const defaultedReleaseName = t('createGuide.release.defaultName')
-  const displayedReleaseName = createdRelease?.name || releaseName.trim() || defaultedReleaseName
+  const displayedReleaseName = releaseName.trim() || defaultedReleaseName
   const displayedReleaseDescription = releaseDescription.trim()
   const showTargetConfiguration = Boolean(method && step === 'target')
 
   function resetCreatedArtifacts() {
-    setCreatedAppInstanceId('')
-    setCreatedRelease(undefined)
     setDeployedEnvironmentName('')
   }
 
@@ -1201,9 +1176,9 @@ export function CreateDeploymentGuide() {
       const deploymentTargetReady = method === 'importDsl'
         || (shouldLoadDeploymentTarget
           && !isEnvironmentLoading
-          && !environmentDeploymentsQuery.isError
+          && !deployableEnvironmentsQuery.isError
           && !isBindingLoading
-          && !deploymentPlanQuery.isError)
+          && !deploymentOptionsQuery.isError)
       return Boolean(
         selectedEnvironment?.id
         && deploymentTargetReady
@@ -1223,59 +1198,13 @@ export function CreateDeploymentGuide() {
   }
 
   async function createReleaseArtifactsAndContinue() {
-    if (method === 'importDsl') {
-      setStep('target')
-      return
-    }
-
-    if (!effectiveSelectedApp?.id || isDeploying)
+    if (method === 'bindApp' && (!effectiveSelectedApp?.id || isDeploying))
       return
 
-    if (createdAppInstanceId && createdRelease?.id) {
-      setStep('target')
-      return
-    }
-
-    try {
-      const trimmedInstanceName = displayedInstanceName.trim()
-      const trimmedInstanceDescription = instanceDescription.trim()
-      const trimmedReleaseName = displayedReleaseName.trim()
-      const trimmedReleaseDescription = displayedReleaseDescription.trim()
-      const createdInstance = await createInstance.mutateAsync({
-        body: {
-          sourceAppId: effectiveSelectedApp.id,
-          name: trimmedInstanceName,
-          description: trimmedInstanceDescription || undefined,
-        },
-      })
-
-      if (!createdInstance.appInstanceId)
-        throw new Error('Create app instance did not return an appInstanceId.')
-
-      const createdReleaseResponse = await createRelease.mutateAsync({
-        params: {
-          appInstanceId: createdInstance.appInstanceId,
-        },
-        body: {
-          appInstanceId: createdInstance.appInstanceId,
-          name: trimmedReleaseName,
-          description: trimmedReleaseDescription || undefined,
-        },
-      })
-      const release = createdReleaseResponse.release
-      if (!release?.id)
-        throw new Error('Create release did not return a release id.')
-
-      setCreatedAppInstanceId(createdInstance.appInstanceId)
-      setCreatedRelease(release)
-      setSelectedEnvironmentId('')
-      setManualBindingSelections({})
-      setDeployedEnvironmentName('')
-      setStep('target')
-    }
-    catch {
-      toast.error(t('createGuide.errors.createReleaseFailed'))
-    }
+    setSelectedEnvironmentId('')
+    setManualBindingSelections({})
+    setDeployedEnvironmentName('')
+    setStep('target')
   }
 
   async function handleDeploy() {
@@ -1285,7 +1214,7 @@ export function CreateDeploymentGuide() {
       return
     }
 
-    if (!createdAppInstanceId || !createdRelease?.id || !selectedEnvironment?.id || isDeploying)
+    if (!effectiveSelectedApp?.id || !selectedEnvironment?.id || isDeploying)
       return
 
     try {
@@ -1293,22 +1222,25 @@ export function CreateDeploymentGuide() {
       if (missingRequiredBinding)
         throw new Error('Missing required deployment binding.')
 
-      await createDeployment.mutateAsync({
-        params: {
-          appInstanceId: createdAppInstanceId,
-          environmentId: selectedEnvironment.id,
-        },
+      const response = await createInitialDeployment.mutateAsync({
         body: {
-          appInstanceId: createdAppInstanceId,
+          sourceAppId: effectiveSelectedApp.id,
           environmentId: selectedEnvironment.id,
-          releaseId: createdRelease.id,
-          bindings: selectedDeploymentBindings(bindingSlots, bindingSelections),
+          appInstanceName: displayedInstanceName.trim(),
+          appInstanceDescription: instanceDescription.trim() || undefined,
+          releaseName: displayedReleaseName.trim(),
+          releaseDescription: displayedReleaseDescription.trim() || undefined,
+          credentials: selectedDeploymentCredentials(bindingSlots, bindingSelections),
+          expectedDslDigest: deploymentOptionsQuery.data?.options?.dslDigest,
         },
       })
+      const appInstanceId = response.appInstance?.id
+      if (!appInstanceId)
+        throw new Error('Create initial deployment did not return an app instance.')
 
       setSelectedEnvironmentId(selectedEnvironment.id)
       setDeployedEnvironmentName(environmentName(selectedEnvironment))
-      router.push(`/deployments/${createdAppInstanceId}/overview`)
+      router.push(`/deployments/${appInstanceId}/overview`)
     }
     catch {
       toast.error(t('createGuide.errors.deployFailed'))
@@ -1367,9 +1299,9 @@ export function CreateDeploymentGuide() {
                   selectedEnvironmentId={effectiveSelectedEnvironmentId}
                   bindingSelections={bindingSelections}
                   isEnvironmentLoading={isEnvironmentLoading}
-                  isEnvironmentError={environmentDeploymentsQuery.isError}
+                  isEnvironmentError={deployableEnvironmentsQuery.isError}
                   isBindingLoading={isBindingLoading}
-                  isBindingError={deploymentPlanQuery.isError}
+                  isBindingError={deploymentOptionsQuery.isError}
                   onSelectEnvironment={setSelectedEnvironmentId}
                   onSelectBinding={(slot, value) => {
                     setManualBindingSelections(prev => ({ ...prev, [slot]: value }))

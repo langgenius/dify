@@ -1,5 +1,6 @@
 'use client'
 
+import type { App } from '@/types/app'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Dialog, DialogCloseButton, DialogContent, DialogDescription, DialogTitle } from '@langgenius/dify-ui/dialog'
@@ -9,6 +10,7 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Input from '@/app/components/base/input'
 import { consoleQuery } from '@/service/client'
+import { SourceAppPicker } from '../../components/create-instance-modal'
 
 const DESCRIPTION_MAX_LENGTH = 512
 const DESCRIPTION_WARN_THRESHOLD = 460
@@ -21,12 +23,14 @@ export function CreateReleaseControl({ appInstanceId, variant = 'primary', size 
   className?: string
 }) {
   const { t } = useTranslation('deployments')
-  const createRelease = useMutation(consoleQuery.enterprise.appReleaseService.createRelease.mutationOptions())
+  const createRelease = useMutation(consoleQuery.enterprise.releaseService.createReleaseFromSourceApp.mutationOptions())
   const [isCreating, setIsCreating] = useState(false)
+  const [sourceApp, setSourceApp] = useState<App>()
   const [description, setDescription] = useState('')
 
   function closeDialog() {
     setIsCreating(false)
+    setSourceApp(undefined)
     setDescription('')
   }
 
@@ -37,15 +41,14 @@ export function CreateReleaseControl({ appInstanceId, variant = 'primary', size 
     const formData = new FormData(form)
     const releaseName = String(formData.get('name') ?? '').trim()
     const releaseDescription = description.trim()
-    if (!releaseName)
+    if (!releaseName || !sourceApp?.id)
       return
 
     createRelease.mutate(
       {
-        params: {
-          appInstanceId,
-        },
         body: {
+          appInstanceId,
+          sourceAppId: sourceApp.id,
           name: releaseName,
           description: releaseDescription || undefined,
         },
@@ -70,6 +73,7 @@ export function CreateReleaseControl({ appInstanceId, variant = 'primary', size 
 
   const descriptionLength = description.length
   const isNearLimit = descriptionLength >= DESCRIPTION_WARN_THRESHOLD
+  const canCreate = Boolean(sourceApp?.id && !createRelease.isPending)
 
   return (
     <>
@@ -113,6 +117,16 @@ export function CreateReleaseControl({ appInstanceId, variant = 'primary', size 
               </div>
 
               <div className="flex flex-col gap-5 px-6 py-5">
+                <div className="flex flex-col gap-2">
+                  <label className="system-xs-medium-uppercase text-text-tertiary">
+                    {t('createModal.sourceApp')}
+                  </label>
+                  <SourceAppPicker
+                    value={sourceApp}
+                    onChange={setSourceApp}
+                  />
+                </div>
+
                 <div className="flex flex-col gap-2">
                   <label className="system-xs-medium-uppercase text-text-tertiary" htmlFor="release-name">
                     {t('versions.releaseNameLabel')}
@@ -178,7 +192,7 @@ export function CreateReleaseControl({ appInstanceId, variant = 'primary', size 
                     type="submit"
                     variant="primary"
                     className="min-w-22"
-                    disabled={createRelease.isPending}
+                    disabled={!canCreate}
                   >
                     {createRelease.isPending ? t('versions.creating') : t('versions.create')}
                   </Button>

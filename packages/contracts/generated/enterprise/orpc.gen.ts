@@ -4,69 +4,100 @@ import { oc } from '@orpc/contract'
 import * as z from 'zod'
 
 import {
+  zAccessServiceCreateApiKeyBody,
+  zAccessServiceCreateApiKeyPath,
+  zAccessServiceCreateApiKeyResponse,
+  zAccessServiceDeleteApiKeyPath,
+  zAccessServiceDeleteApiKeyResponse,
+  zAccessServiceGetAccessChannelsPath,
+  zAccessServiceGetAccessChannelsResponse,
+  zAccessServiceGetAccessPolicyPath,
+  zAccessServiceGetAccessPolicyResponse,
+  zAccessServiceListApiKeysPath,
+  zAccessServiceListApiKeysResponse,
+  zAccessServicePutAccessPolicyBody,
+  zAccessServicePutAccessPolicyPath,
+  zAccessServicePutAccessPolicyResponse,
+  zAccessServiceUpdateAccessChannelsBody,
+  zAccessServiceUpdateAccessChannelsPath,
+  zAccessServiceUpdateAccessChannelsResponse,
   zAccessSubjectServiceListAccessSubjectsQuery,
   zAccessSubjectServiceListAccessSubjectsResponse,
-  zAppDeployAccessServiceCreateDeveloperApiKeyBody,
-  zAppDeployAccessServiceCreateDeveloperApiKeyPath,
-  zAppDeployAccessServiceCreateDeveloperApiKeyResponse,
-  zAppDeployAccessServiceDeleteDeveloperApiKeyPath,
-  zAppDeployAccessServiceDeleteDeveloperApiKeyResponse,
-  zAppDeployAccessServiceGetAppInstanceAccessPath,
-  zAppDeployAccessServiceGetAppInstanceAccessResponse,
-  zAppDeployAccessServiceRevealDeveloperApiKeyBody,
-  zAppDeployAccessServiceRevealDeveloperApiKeyPath,
-  zAppDeployAccessServiceRevealDeveloperApiKeyResponse,
-  zAppDeployAccessServiceUpdateAccessChannelsBody,
-  zAppDeployAccessServiceUpdateAccessChannelsPath,
-  zAppDeployAccessServiceUpdateAccessChannelsResponse,
-  zAppDeployAccessServiceUpdateDeveloperApiBody,
-  zAppDeployAccessServiceUpdateDeveloperApiPath,
-  zAppDeployAccessServiceUpdateDeveloperApiResponse,
-  zAppDeployAccessServiceUpdateEnvironmentAccessPolicyBody,
-  zAppDeployAccessServiceUpdateEnvironmentAccessPolicyPath,
-  zAppDeployAccessServiceUpdateEnvironmentAccessPolicyResponse,
-  zAppDeploymentServiceCancelDeploymentBody,
-  zAppDeploymentServiceCancelDeploymentPath,
-  zAppDeploymentServiceCancelDeploymentResponse,
-  zAppDeploymentServiceCreateDeploymentBody,
-  zAppDeploymentServiceCreateDeploymentPath,
-  zAppDeploymentServiceCreateDeploymentResponse,
-  zAppDeploymentServiceGetDeploymentPlanPath,
-  zAppDeploymentServiceGetDeploymentPlanResponse,
-  zAppDeploymentServiceListEnvironmentDeploymentsPath,
-  zAppDeploymentServiceListEnvironmentDeploymentsResponse,
-  zAppDeploymentServiceUndeployRuntimeInstanceBody,
-  zAppDeploymentServiceUndeployRuntimeInstancePath,
-  zAppDeploymentServiceUndeployRuntimeInstanceResponse,
   zAppInstanceServiceCreateAppInstanceBody,
   zAppInstanceServiceCreateAppInstanceResponse,
   zAppInstanceServiceDeleteAppInstancePath,
   zAppInstanceServiceDeleteAppInstanceResponse,
-  zAppInstanceServiceGetAppInstanceOverviewPath,
-  zAppInstanceServiceGetAppInstanceOverviewResponse,
   zAppInstanceServiceGetAppInstancePath,
   zAppInstanceServiceGetAppInstanceResponse,
-  zAppInstanceServiceGetAppInstanceSettingsPath,
-  zAppInstanceServiceGetAppInstanceSettingsResponse,
-  zAppInstanceServiceImportAppInstanceBody,
-  zAppInstanceServiceImportAppInstanceResponse,
   zAppInstanceServiceListAppInstancesQuery,
   zAppInstanceServiceListAppInstancesResponse,
   zAppInstanceServiceUpdateAppInstanceBody,
   zAppInstanceServiceUpdateAppInstancePath,
   zAppInstanceServiceUpdateAppInstanceResponse,
-  zAppReleaseServiceCreateReleaseBody,
-  zAppReleaseServiceCreateReleasePath,
-  zAppReleaseServiceCreateReleaseResponse,
-  zAppReleaseServiceListReleasesPath,
-  zAppReleaseServiceListReleasesQuery,
-  zAppReleaseServiceListReleasesResponse,
-  zAppReleaseServicePreviewReleaseBody,
-  zAppReleaseServicePreviewReleasePath,
-  zAppReleaseServicePreviewReleaseResponse,
   zConsoleSsoOAuth2LoginResponse,
   zConsoleSsoOidcLoginResponse,
   zConsoleSsoSamlLoginResponse,
+  zDeploymentServiceCancelDeploymentBody,
+  zDeploymentServiceCancelDeploymentPath,
+  zDeploymentServiceCancelDeploymentResponse,
+  zDeploymentServiceCreateInitialDeploymentFromDslBody,
+  zDeploymentServiceCreateInitialDeploymentFromDslResponse,
+  zDeploymentServiceCreateInitialDeploymentFromSourceAppBody,
+  zDeploymentServiceCreateInitialDeploymentFromSourceAppResponse,
+  zDeploymentServiceDeployBody,
+  zDeploymentServiceDeployPath,
+  zDeploymentServiceDeployResponse,
+  zDeploymentServiceListDeploymentsPath,
+  zDeploymentServiceListDeploymentsQuery,
+  zDeploymentServiceListDeploymentsResponse,
+  zDeploymentServiceListEnvironmentDeploymentsPath,
+  zDeploymentServiceListEnvironmentDeploymentsResponse,
+  zDeploymentServicePromoteBody,
+  zDeploymentServicePromotePath,
+  zDeploymentServicePromoteResponse,
+  zDeploymentServiceRollbackBody,
+  zDeploymentServiceRollbackPath,
+  zDeploymentServiceRollbackResponse,
+  zDeploymentServiceUndeployBody,
+  zDeploymentServiceUndeployPath,
+  zDeploymentServiceUndeployResponse,
+  zEnvironmentServiceCreateAppRunnerLaunchProfileBody,
+  zEnvironmentServiceCreateAppRunnerLaunchProfilePath,
+  zEnvironmentServiceCreateAppRunnerLaunchProfileResponse,
+  zEnvironmentServiceCreateEnvironmentBody,
+  zEnvironmentServiceCreateEnvironmentResponse,
+  zEnvironmentServiceDeleteEnvironmentPath,
+  zEnvironmentServiceDeleteEnvironmentResponse,
+  zEnvironmentServiceGetEnvironmentPath,
+  zEnvironmentServiceGetEnvironmentResponse,
+  zEnvironmentServiceListDeployableEnvironmentsQuery,
+  zEnvironmentServiceListDeployableEnvironmentsResponse,
+  zEnvironmentServiceListEnvironmentsQuery,
+  zEnvironmentServiceListEnvironmentsResponse,
+  zEnvironmentServiceTestConnectionBody,
+  zEnvironmentServiceTestConnectionPath,
+  zEnvironmentServiceTestConnectionResponse,
+  zEnvironmentServiceUpdateEnvironmentBody,
+  zEnvironmentServiceUpdateEnvironmentPath,
+  zEnvironmentServiceUpdateEnvironmentResponse,
+  zReleaseServiceCreateReleaseFromDslBody,
+  zReleaseServiceCreateReleaseFromDslResponse,
+  zReleaseServiceCreateReleaseFromSourceAppBody,
+  zReleaseServiceCreateReleaseFromSourceAppResponse,
+  zReleaseServiceGetDeploymentOptionsFromDslBody,
+  zReleaseServiceGetDeploymentOptionsFromDslResponse,
+  zReleaseServiceGetDeploymentOptionsFromSourceAppBody,
+  zReleaseServiceGetDeploymentOptionsFromSourceAppResponse,
+  zReleaseServiceGetReleasePath,
+  zReleaseServiceGetReleaseResponse,
+  zReleaseServiceListReleaseCredentialCandidatesPath,
+  zReleaseServiceListReleaseCredentialCandidatesResponse,
+  zReleaseServiceListReleasesPath,
+  zReleaseServiceListReleasesQuery,
+  zReleaseServiceListReleasesResponse,
+  zReleaseServiceUpdateReleaseBody,
+  zReleaseServiceUpdateReleasePath,
+  zReleaseServiceUpdateReleaseResponse,
   zWebAppAuthGetGroupSubjectsQuery,
   zWebAppAuthGetGroupSubjectsResponse,
   zWebAppAuthGetWebAppAccessModeQuery,
@@ -96,12 +127,109 @@ export const accessSubjectService = {
   listAccessSubjects,
 }
 
+export const deleteApiKey = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'DELETE',
+    operationId: 'AccessService_DeleteApiKey',
+    path: '/enterprise/app-deploy/api-keys/{apiKeyId}',
+    tags: ['AccessService'],
+  })
+  .input(z.object({ params: zAccessServiceDeleteApiKeyPath }))
+  .output(zAccessServiceDeleteApiKeyResponse)
+
+export const getAccessChannels = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'AccessService_GetAccessChannels',
+    path: '/enterprise/app-deploy/app-instances/{appInstanceId}/access-channels',
+    tags: ['AccessService'],
+  })
+  .input(z.object({ params: zAccessServiceGetAccessChannelsPath }))
+  .output(zAccessServiceGetAccessChannelsResponse)
+
+export const updateAccessChannels = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'PUT',
+    operationId: 'AccessService_UpdateAccessChannels',
+    path: '/enterprise/app-deploy/app-instances/{appInstanceId}/access-channels',
+    tags: ['AccessService'],
+  })
+  .input(
+    z.object({
+      body: zAccessServiceUpdateAccessChannelsBody,
+      params: zAccessServiceUpdateAccessChannelsPath,
+    }),
+  )
+  .output(zAccessServiceUpdateAccessChannelsResponse)
+
+export const getAccessPolicy = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'AccessService_GetAccessPolicy',
+    path: '/enterprise/app-deploy/app-instances/{appInstanceId}/environments/{environmentId}/access-policy',
+    tags: ['AccessService'],
+  })
+  .input(z.object({ params: zAccessServiceGetAccessPolicyPath }))
+  .output(zAccessServiceGetAccessPolicyResponse)
+
+export const putAccessPolicy = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'PUT',
+    operationId: 'AccessService_PutAccessPolicy',
+    path: '/enterprise/app-deploy/app-instances/{appInstanceId}/environments/{environmentId}/access-policy',
+    tags: ['AccessService'],
+  })
+  .input(
+    z.object({
+      body: zAccessServicePutAccessPolicyBody,
+      params: zAccessServicePutAccessPolicyPath,
+    }),
+  )
+  .output(zAccessServicePutAccessPolicyResponse)
+
+export const listApiKeys = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'AccessService_ListApiKeys',
+    path: '/enterprise/app-deploy/app-instances/{appInstanceId}/environments/{environmentId}/api-keys',
+    tags: ['AccessService'],
+  })
+  .input(z.object({ params: zAccessServiceListApiKeysPath }))
+  .output(zAccessServiceListApiKeysResponse)
+
+export const createApiKey = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'AccessService_CreateApiKey',
+    path: '/enterprise/app-deploy/app-instances/{appInstanceId}/environments/{environmentId}/api-keys',
+    tags: ['AccessService'],
+  })
+  .input(z.object({ body: zAccessServiceCreateApiKeyBody, params: zAccessServiceCreateApiKeyPath }))
+  .output(zAccessServiceCreateApiKeyResponse)
+
+export const accessService = {
+  deleteApiKey,
+  getAccessChannels,
+  updateAccessChannels,
+  getAccessPolicy,
+  putAccessPolicy,
+  listApiKeys,
+  createApiKey,
+}
+
 export const listAppInstances = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'AppInstanceService_ListAppInstances',
-    path: '/enterprise/app-instances',
+    path: '/enterprise/app-deploy/app-instances',
     tags: ['AppInstanceService'],
   })
   .input(z.object({ query: zAppInstanceServiceListAppInstancesQuery.optional() }))
@@ -112,29 +240,18 @@ export const createAppInstance = oc
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'AppInstanceService_CreateAppInstance',
-    path: '/enterprise/app-instances',
+    path: '/enterprise/app-deploy/app-instances',
     tags: ['AppInstanceService'],
   })
   .input(z.object({ body: zAppInstanceServiceCreateAppInstanceBody }))
   .output(zAppInstanceServiceCreateAppInstanceResponse)
-
-export const importAppInstance = oc
-  .route({
-    inputStructure: 'detailed',
-    method: 'POST',
-    operationId: 'AppInstanceService_ImportAppInstance',
-    path: '/enterprise/app-instances/import',
-    tags: ['AppInstanceService'],
-  })
-  .input(z.object({ body: zAppInstanceServiceImportAppInstanceBody }))
-  .output(zAppInstanceServiceImportAppInstanceResponse)
 
 export const deleteAppInstance = oc
   .route({
     inputStructure: 'detailed',
     method: 'DELETE',
     operationId: 'AppInstanceService_DeleteAppInstance',
-    path: '/enterprise/app-instances/{appInstanceId}',
+    path: '/enterprise/app-deploy/app-instances/{appInstanceId}',
     tags: ['AppInstanceService'],
   })
   .input(z.object({ params: zAppInstanceServiceDeleteAppInstancePath }))
@@ -145,7 +262,7 @@ export const getAppInstance = oc
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'AppInstanceService_GetAppInstance',
-    path: '/enterprise/app-instances/{appInstanceId}',
+    path: '/enterprise/app-deploy/app-instances/{appInstanceId}',
     tags: ['AppInstanceService'],
   })
   .input(z.object({ params: zAppInstanceServiceGetAppInstancePath }))
@@ -156,7 +273,7 @@ export const updateAppInstance = oc
     inputStructure: 'detailed',
     method: 'PATCH',
     operationId: 'AppInstanceService_UpdateAppInstance',
-    path: '/enterprise/app-instances/{appInstanceId}',
+    path: '/enterprise/app-deploy/app-instances/{appInstanceId}',
     tags: ['AppInstanceService'],
   })
   .input(
@@ -167,281 +284,353 @@ export const updateAppInstance = oc
   )
   .output(zAppInstanceServiceUpdateAppInstanceResponse)
 
-export const getAppInstanceOverview = oc
-  .route({
-    inputStructure: 'detailed',
-    method: 'GET',
-    operationId: 'AppInstanceService_GetAppInstanceOverview',
-    path: '/enterprise/app-instances/{appInstanceId}/overview',
-    tags: ['AppInstanceService'],
-  })
-  .input(z.object({ params: zAppInstanceServiceGetAppInstanceOverviewPath }))
-  .output(zAppInstanceServiceGetAppInstanceOverviewResponse)
-
-export const getAppInstanceSettings = oc
-  .route({
-    inputStructure: 'detailed',
-    method: 'GET',
-    operationId: 'AppInstanceService_GetAppInstanceSettings',
-    path: '/enterprise/app-instances/{appInstanceId}/settings',
-    tags: ['AppInstanceService'],
-  })
-  .input(z.object({ params: zAppInstanceServiceGetAppInstanceSettingsPath }))
-  .output(zAppInstanceServiceGetAppInstanceSettingsResponse)
-
 export const appInstanceService = {
   listAppInstances,
   createAppInstance,
-  importAppInstance,
   deleteAppInstance,
   getAppInstance,
   updateAppInstance,
-  getAppInstanceOverview,
-  getAppInstanceSettings,
 }
 
-export const getAppInstanceAccess = oc
+export const listDeployments = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
-    operationId: 'AppDeployAccessService_GetAppInstanceAccess',
-    path: '/enterprise/app-instances/{appInstanceId}/access',
-    tags: ['AppDeployAccessService'],
-  })
-  .input(z.object({ params: zAppDeployAccessServiceGetAppInstanceAccessPath }))
-  .output(zAppDeployAccessServiceGetAppInstanceAccessResponse)
-
-export const updateAccessChannels = oc
-  .route({
-    inputStructure: 'detailed',
-    method: 'PATCH',
-    operationId: 'AppDeployAccessService_UpdateAccessChannels',
-    path: '/enterprise/app-instances/{appInstanceId}/access-channels',
-    tags: ['AppDeployAccessService'],
+    operationId: 'DeploymentService_ListDeployments',
+    path: '/enterprise/app-deploy/app-instances/{appInstanceId}/deployments',
+    tags: ['DeploymentService'],
   })
   .input(
     z.object({
-      body: zAppDeployAccessServiceUpdateAccessChannelsBody,
-      params: zAppDeployAccessServiceUpdateAccessChannelsPath,
+      params: zDeploymentServiceListDeploymentsPath,
+      query: zDeploymentServiceListDeploymentsQuery.optional(),
     }),
   )
-  .output(zAppDeployAccessServiceUpdateAccessChannelsResponse)
-
-export const updateDeveloperApi = oc
-  .route({
-    inputStructure: 'detailed',
-    method: 'PATCH',
-    operationId: 'AppDeployAccessService_UpdateDeveloperApi',
-    path: '/enterprise/app-instances/{appInstanceId}/developer-api',
-    tags: ['AppDeployAccessService'],
-  })
-  .input(
-    z.object({
-      body: zAppDeployAccessServiceUpdateDeveloperApiBody,
-      params: zAppDeployAccessServiceUpdateDeveloperApiPath,
-    }),
-  )
-  .output(zAppDeployAccessServiceUpdateDeveloperApiResponse)
-
-export const updateEnvironmentAccessPolicy = oc
-  .route({
-    inputStructure: 'detailed',
-    method: 'PUT',
-    operationId: 'AppDeployAccessService_UpdateEnvironmentAccessPolicy',
-    path: '/enterprise/app-instances/{appInstanceId}/environments/{environmentId}/access-policy',
-    tags: ['AppDeployAccessService'],
-  })
-  .input(
-    z.object({
-      body: zAppDeployAccessServiceUpdateEnvironmentAccessPolicyBody,
-      params: zAppDeployAccessServiceUpdateEnvironmentAccessPolicyPath,
-    }),
-  )
-  .output(zAppDeployAccessServiceUpdateEnvironmentAccessPolicyResponse)
-
-export const createDeveloperApiKey = oc
-  .route({
-    inputStructure: 'detailed',
-    method: 'POST',
-    operationId: 'AppDeployAccessService_CreateDeveloperApiKey',
-    path: '/enterprise/app-instances/{appInstanceId}/environments/{environmentId}/api-keys',
-    tags: ['AppDeployAccessService'],
-  })
-  .input(
-    z.object({
-      body: zAppDeployAccessServiceCreateDeveloperApiKeyBody,
-      params: zAppDeployAccessServiceCreateDeveloperApiKeyPath,
-    }),
-  )
-  .output(zAppDeployAccessServiceCreateDeveloperApiKeyResponse)
-
-export const deleteDeveloperApiKey = oc
-  .route({
-    inputStructure: 'detailed',
-    method: 'DELETE',
-    operationId: 'AppDeployAccessService_DeleteDeveloperApiKey',
-    path: '/enterprise/app-instances/{appInstanceId}/environments/{environmentId}/api-keys/{apiKeyId}',
-    tags: ['AppDeployAccessService'],
-  })
-  .input(z.object({ params: zAppDeployAccessServiceDeleteDeveloperApiKeyPath }))
-  .output(zAppDeployAccessServiceDeleteDeveloperApiKeyResponse)
-
-export const revealDeveloperApiKey = oc
-  .route({
-    inputStructure: 'detailed',
-    method: 'POST',
-    operationId: 'AppDeployAccessService_RevealDeveloperApiKey',
-    path: '/enterprise/app-instances/{appInstanceId}/environments/{environmentId}/api-keys/{apiKeyId}/reveal',
-    tags: ['AppDeployAccessService'],
-  })
-  .input(
-    z.object({
-      body: zAppDeployAccessServiceRevealDeveloperApiKeyBody,
-      params: zAppDeployAccessServiceRevealDeveloperApiKeyPath,
-    }),
-  )
-  .output(zAppDeployAccessServiceRevealDeveloperApiKeyResponse)
-
-export const appDeployAccessService = {
-  getAppInstanceAccess,
-  updateAccessChannels,
-  updateDeveloperApi,
-  updateEnvironmentAccessPolicy,
-  createDeveloperApiKey,
-  deleteDeveloperApiKey,
-  revealDeveloperApiKey,
-}
+  .output(zDeploymentServiceListDeploymentsResponse)
 
 export const listEnvironmentDeployments = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
-    operationId: 'AppDeploymentService_ListEnvironmentDeployments',
-    path: '/enterprise/app-instances/{appInstanceId}/environment-deployments',
-    tags: ['AppDeploymentService'],
+    operationId: 'DeploymentService_ListEnvironmentDeployments',
+    path: '/enterprise/app-deploy/app-instances/{appInstanceId}/environment-deployments',
+    tags: ['DeploymentService'],
   })
-  .input(z.object({ params: zAppDeploymentServiceListEnvironmentDeploymentsPath }))
-  .output(zAppDeploymentServiceListEnvironmentDeploymentsResponse)
-
-export const createDeployment = oc
-  .route({
-    inputStructure: 'detailed',
-    method: 'POST',
-    operationId: 'AppDeploymentService_CreateDeployment',
-    path: '/enterprise/app-instances/{appInstanceId}/environments/{environmentId}/deployments',
-    tags: ['AppDeploymentService'],
-  })
-  .input(
-    z.object({
-      body: zAppDeploymentServiceCreateDeploymentBody,
-      params: zAppDeploymentServiceCreateDeploymentPath,
-    }),
-  )
-  .output(zAppDeploymentServiceCreateDeploymentResponse)
+  .input(z.object({ params: zDeploymentServiceListEnvironmentDeploymentsPath }))
+  .output(zDeploymentServiceListEnvironmentDeploymentsResponse)
 
 export const cancelDeployment = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
-    operationId: 'AppDeploymentService_CancelDeployment',
-    path: '/enterprise/app-instances/{appInstanceId}/environments/{environmentId}/deployments/{deploymentId}/cancel',
-    tags: ['AppDeploymentService'],
+    operationId: 'DeploymentService_CancelDeployment',
+    path: '/enterprise/app-deploy/app-instances/{appInstanceId}/environments/{environmentId}/cancel',
+    tags: ['DeploymentService'],
   })
   .input(
     z.object({
-      body: zAppDeploymentServiceCancelDeploymentBody,
-      params: zAppDeploymentServiceCancelDeploymentPath,
+      body: zDeploymentServiceCancelDeploymentBody,
+      params: zDeploymentServiceCancelDeploymentPath,
     }),
   )
-  .output(zAppDeploymentServiceCancelDeploymentResponse)
+  .output(zDeploymentServiceCancelDeploymentResponse)
 
-export const undeployRuntimeInstance = oc
+export const deploy = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
-    operationId: 'AppDeploymentService_UndeployRuntimeInstance',
-    path: '/enterprise/app-instances/{appInstanceId}/environments/{environmentId}/undeploy',
-    tags: ['AppDeploymentService'],
+    operationId: 'DeploymentService_Deploy',
+    path: '/enterprise/app-deploy/app-instances/{appInstanceId}/environments/{environmentId}/deploy',
+    tags: ['DeploymentService'],
   })
-  .input(
-    z.object({
-      body: zAppDeploymentServiceUndeployRuntimeInstanceBody,
-      params: zAppDeploymentServiceUndeployRuntimeInstancePath,
-    }),
-  )
-  .output(zAppDeploymentServiceUndeployRuntimeInstanceResponse)
+  .input(z.object({ body: zDeploymentServiceDeployBody, params: zDeploymentServiceDeployPath }))
+  .output(zDeploymentServiceDeployResponse)
 
-export const getDeploymentPlan = oc
+export const rollback = oc
   .route({
     inputStructure: 'detailed',
-    method: 'GET',
-    operationId: 'AppDeploymentService_GetDeploymentPlan',
-    path: '/enterprise/app-instances/{appInstanceId}/releases/{releaseId}/deployment-plan',
-    tags: ['AppDeploymentService'],
+    method: 'POST',
+    operationId: 'DeploymentService_Rollback',
+    path: '/enterprise/app-deploy/app-instances/{appInstanceId}/environments/{environmentId}/rollback',
+    tags: ['DeploymentService'],
   })
-  .input(z.object({ params: zAppDeploymentServiceGetDeploymentPlanPath }))
-  .output(zAppDeploymentServiceGetDeploymentPlanResponse)
+  .input(z.object({ body: zDeploymentServiceRollbackBody, params: zDeploymentServiceRollbackPath }))
+  .output(zDeploymentServiceRollbackResponse)
 
-export const appDeploymentService = {
+export const undeploy = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'DeploymentService_Undeploy',
+    path: '/enterprise/app-deploy/app-instances/{appInstanceId}/environments/{environmentId}/undeploy',
+    tags: ['DeploymentService'],
+  })
+  .input(z.object({ body: zDeploymentServiceUndeployBody, params: zDeploymentServiceUndeployPath }))
+  .output(zDeploymentServiceUndeployResponse)
+
+export const promote = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'DeploymentService_Promote',
+    path: '/enterprise/app-deploy/app-instances/{appInstanceId}/promote',
+    tags: ['DeploymentService'],
+  })
+  .input(z.object({ body: zDeploymentServicePromoteBody, params: zDeploymentServicePromotePath }))
+  .output(zDeploymentServicePromoteResponse)
+
+export const createInitialDeploymentFromDsl = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'DeploymentService_CreateInitialDeploymentFromDSL',
+    path: '/enterprise/app-deploy/initial-deployments/dsl',
+    tags: ['DeploymentService'],
+  })
+  .input(z.object({ body: zDeploymentServiceCreateInitialDeploymentFromDslBody }))
+  .output(zDeploymentServiceCreateInitialDeploymentFromDslResponse)
+
+export const createInitialDeploymentFromSourceApp = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'DeploymentService_CreateInitialDeploymentFromSourceApp',
+    path: '/enterprise/app-deploy/initial-deployments/source-app',
+    tags: ['DeploymentService'],
+  })
+  .input(z.object({ body: zDeploymentServiceCreateInitialDeploymentFromSourceAppBody }))
+  .output(zDeploymentServiceCreateInitialDeploymentFromSourceAppResponse)
+
+export const deploymentService = {
+  listDeployments,
   listEnvironmentDeployments,
-  createDeployment,
   cancelDeployment,
-  undeployRuntimeInstance,
-  getDeploymentPlan,
+  deploy,
+  rollback,
+  undeploy,
+  promote,
+  createInitialDeploymentFromDsl,
+  createInitialDeploymentFromSourceApp,
 }
 
 export const listReleases = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
-    operationId: 'AppReleaseService_ListReleases',
-    path: '/enterprise/app-instances/{appInstanceId}/releases',
-    tags: ['AppReleaseService'],
+    operationId: 'ReleaseService_ListReleases',
+    path: '/enterprise/app-deploy/app-instances/{appInstanceId}/releases',
+    tags: ['ReleaseService'],
   })
   .input(
     z.object({
-      params: zAppReleaseServiceListReleasesPath,
-      query: zAppReleaseServiceListReleasesQuery.optional(),
+      params: zReleaseServiceListReleasesPath,
+      query: zReleaseServiceListReleasesQuery.optional(),
     }),
   )
-  .output(zAppReleaseServiceListReleasesResponse)
+  .output(zReleaseServiceListReleasesResponse)
 
-export const createRelease = oc
+export const getDeploymentOptionsFromDsl = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
-    operationId: 'AppReleaseService_CreateRelease',
-    path: '/enterprise/app-instances/{appInstanceId}/releases',
-    tags: ['AppReleaseService'],
+    operationId: 'ReleaseService_GetDeploymentOptionsFromDSL',
+    path: '/enterprise/app-deploy/deployment-options/dsl',
+    tags: ['ReleaseService'],
   })
-  .input(
-    z.object({
-      body: zAppReleaseServiceCreateReleaseBody,
-      params: zAppReleaseServiceCreateReleasePath,
-    }),
-  )
-  .output(zAppReleaseServiceCreateReleaseResponse)
+  .input(z.object({ body: zReleaseServiceGetDeploymentOptionsFromDslBody }))
+  .output(zReleaseServiceGetDeploymentOptionsFromDslResponse)
 
-export const previewRelease = oc
+export const getDeploymentOptionsFromSourceApp = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
-    operationId: 'AppReleaseService_PreviewRelease',
-    path: '/enterprise/app-instances/{appInstanceId}/releases/preview',
-    tags: ['AppReleaseService'],
+    operationId: 'ReleaseService_GetDeploymentOptionsFromSourceApp',
+    path: '/enterprise/app-deploy/deployment-options/source-app',
+    tags: ['ReleaseService'],
+  })
+  .input(z.object({ body: zReleaseServiceGetDeploymentOptionsFromSourceAppBody }))
+  .output(zReleaseServiceGetDeploymentOptionsFromSourceAppResponse)
+
+export const createReleaseFromDsl = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'ReleaseService_CreateReleaseFromDSL',
+    path: '/enterprise/app-deploy/releases/dsl',
+    tags: ['ReleaseService'],
+  })
+  .input(z.object({ body: zReleaseServiceCreateReleaseFromDslBody }))
+  .output(zReleaseServiceCreateReleaseFromDslResponse)
+
+export const createReleaseFromSourceApp = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'ReleaseService_CreateReleaseFromSourceApp',
+    path: '/enterprise/app-deploy/releases/source-app',
+    tags: ['ReleaseService'],
+  })
+  .input(z.object({ body: zReleaseServiceCreateReleaseFromSourceAppBody }))
+  .output(zReleaseServiceCreateReleaseFromSourceAppResponse)
+
+export const getRelease = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'ReleaseService_GetRelease',
+    path: '/enterprise/app-deploy/releases/{releaseId}',
+    tags: ['ReleaseService'],
+  })
+  .input(z.object({ params: zReleaseServiceGetReleasePath }))
+  .output(zReleaseServiceGetReleaseResponse)
+
+export const updateRelease = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'PATCH',
+    operationId: 'ReleaseService_UpdateRelease',
+    path: '/enterprise/app-deploy/releases/{releaseId}',
+    tags: ['ReleaseService'],
   })
   .input(
-    z.object({
-      body: zAppReleaseServicePreviewReleaseBody,
-      params: zAppReleaseServicePreviewReleasePath,
-    }),
+    z.object({ body: zReleaseServiceUpdateReleaseBody, params: zReleaseServiceUpdateReleasePath }),
   )
-  .output(zAppReleaseServicePreviewReleaseResponse)
+  .output(zReleaseServiceUpdateReleaseResponse)
 
-export const appReleaseService = {
+export const listReleaseCredentialCandidates = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'ReleaseService_ListReleaseCredentialCandidates',
+    path: '/enterprise/app-deploy/releases/{releaseId}/credential-candidates',
+    tags: ['ReleaseService'],
+  })
+  .input(z.object({ params: zReleaseServiceListReleaseCredentialCandidatesPath }))
+  .output(zReleaseServiceListReleaseCredentialCandidatesResponse)
+
+export const releaseService = {
   listReleases,
-  createRelease,
-  previewRelease,
+  getDeploymentOptionsFromDsl,
+  getDeploymentOptionsFromSourceApp,
+  createReleaseFromDsl,
+  createReleaseFromSourceApp,
+  getRelease,
+  updateRelease,
+  listReleaseCredentialCandidates,
+}
+
+export const listDeployableEnvironments = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'EnvironmentService_ListDeployableEnvironments',
+    path: '/enterprise/app-deploy/deployable-environments',
+    tags: ['EnvironmentService'],
+  })
+  .input(z.object({ query: zEnvironmentServiceListDeployableEnvironmentsQuery.optional() }))
+  .output(zEnvironmentServiceListDeployableEnvironmentsResponse)
+
+export const listEnvironments = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'EnvironmentService_ListEnvironments',
+    path: '/enterprise/app-deploy/environments',
+    tags: ['EnvironmentService'],
+  })
+  .input(z.object({ query: zEnvironmentServiceListEnvironmentsQuery.optional() }))
+  .output(zEnvironmentServiceListEnvironmentsResponse)
+
+export const createEnvironment = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'EnvironmentService_CreateEnvironment',
+    path: '/enterprise/app-deploy/environments',
+    tags: ['EnvironmentService'],
+  })
+  .input(z.object({ body: zEnvironmentServiceCreateEnvironmentBody }))
+  .output(zEnvironmentServiceCreateEnvironmentResponse)
+
+export const deleteEnvironment = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'DELETE',
+    operationId: 'EnvironmentService_DeleteEnvironment',
+    path: '/enterprise/app-deploy/environments/{environmentId}',
+    tags: ['EnvironmentService'],
+  })
+  .input(z.object({ params: zEnvironmentServiceDeleteEnvironmentPath }))
+  .output(zEnvironmentServiceDeleteEnvironmentResponse)
+
+export const getEnvironment = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'EnvironmentService_GetEnvironment',
+    path: '/enterprise/app-deploy/environments/{environmentId}',
+    tags: ['EnvironmentService'],
+  })
+  .input(z.object({ params: zEnvironmentServiceGetEnvironmentPath }))
+  .output(zEnvironmentServiceGetEnvironmentResponse)
+
+export const updateEnvironment = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'PATCH',
+    operationId: 'EnvironmentService_UpdateEnvironment',
+    path: '/enterprise/app-deploy/environments/{environmentId}',
+    tags: ['EnvironmentService'],
+  })
+  .input(
+    z.object({
+      body: zEnvironmentServiceUpdateEnvironmentBody,
+      params: zEnvironmentServiceUpdateEnvironmentPath,
+    }),
+  )
+  .output(zEnvironmentServiceUpdateEnvironmentResponse)
+
+export const createAppRunnerLaunchProfile = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'EnvironmentService_CreateAppRunnerLaunchProfile',
+    path: '/enterprise/app-deploy/environments/{environmentId}/app-runner-launch-profile',
+    tags: ['EnvironmentService'],
+  })
+  .input(
+    z.object({
+      body: zEnvironmentServiceCreateAppRunnerLaunchProfileBody,
+      params: zEnvironmentServiceCreateAppRunnerLaunchProfilePath,
+    }),
+  )
+  .output(zEnvironmentServiceCreateAppRunnerLaunchProfileResponse)
+
+export const testConnection = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'EnvironmentService_TestConnection',
+    path: '/enterprise/app-deploy/environments/{environmentId}/test-connection',
+    tags: ['EnvironmentService'],
+  })
+  .input(
+    z.object({
+      body: zEnvironmentServiceTestConnectionBody,
+      params: zEnvironmentServiceTestConnectionPath,
+    }),
+  )
+  .output(zEnvironmentServiceTestConnectionResponse)
+
+export const environmentService = {
+  listDeployableEnvironments,
+  listEnvironments,
+  createEnvironment,
+  deleteEnvironment,
+  getEnvironment,
+  updateEnvironment,
+  createAppRunnerLaunchProfile,
+  testConnection,
 }
 
 export const oAuth2Login = oc
@@ -557,10 +746,11 @@ export const webAppAuth = {
 
 export const contract = {
   accessSubjectService,
+  accessService,
   appInstanceService,
-  appDeployAccessService,
-  appDeploymentService,
-  appReleaseService,
+  deploymentService,
+  releaseService,
+  environmentService,
   consoleSso,
   webAppAuth,
 }

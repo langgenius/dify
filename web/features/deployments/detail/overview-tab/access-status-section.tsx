@@ -1,6 +1,6 @@
 'use client'
 
-import type { AccessStatus } from '@dify/contracts/enterprise/types.gen'
+import type { AccessChannels } from '@dify/contracts/enterprise/types.gen'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useTranslation } from 'react-i18next'
 import { SkeletonRectangle } from '@/app/components/base/skeleton'
@@ -8,7 +8,8 @@ import Link from '@/next/link'
 
 type AccessStatusSectionProps = {
   appInstanceId: string
-  access?: AccessStatus
+  accessChannels?: AccessChannels
+  apiKeyCount?: number
 }
 
 type AccessStatusItem = {
@@ -22,7 +23,7 @@ type AccessStatusItem = {
 
 const ACCESS_STATUS_SKELETON_KEYS = ['webapp', 'cli', 'api']
 
-export function AccessStatusSection({ appInstanceId, access }: AccessStatusSectionProps) {
+export function AccessStatusSection({ appInstanceId, accessChannels, apiKeyCount }: AccessStatusSectionProps) {
   const { t } = useTranslation('deployments')
   const items: AccessStatusItem[] = [
     {
@@ -30,25 +31,23 @@ export function AccessStatusSection({ appInstanceId, access }: AccessStatusSecti
       href: `/deployments/${appInstanceId}/access`,
       icon: 'i-ri-global-line',
       label: t('card.access.webApp'),
-      enabled: Boolean(access?.accessChannelsEnabled && access.webappUrl),
-      meta: access?.webappUrl,
+      enabled: Boolean(accessChannels?.webAppEnabled),
     },
     {
       key: 'cli',
       href: `/deployments/${appInstanceId}/access`,
       icon: 'i-ri-terminal-box-line',
       label: t('card.access.cli'),
-      enabled: Boolean(access?.accessChannelsEnabled && access.cliUrl),
-      meta: access?.cliUrl,
+      enabled: Boolean(accessChannels?.webAppEnabled),
     },
     {
       key: 'api',
       href: `/deployments/${appInstanceId}/api`,
       icon: 'i-ri-code-s-slash-line',
       label: t('card.access.api'),
-      enabled: Boolean(access?.developerApiEnabled && access.apiUrl),
-      meta: access?.developerApiEnabled
-        ? t('overview.apiKeysCount', { count: access.apiKeyCount ?? 0 })
+      enabled: Boolean(accessChannels?.developerApiEnabled),
+      meta: accessChannels?.developerApiEnabled && apiKeyCount != null
+        ? t('overview.apiKeysCount', { count: apiKeyCount })
         : undefined,
     },
   ]

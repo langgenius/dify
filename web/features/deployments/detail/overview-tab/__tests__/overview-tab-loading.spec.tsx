@@ -28,18 +28,23 @@ vi.mock('@/service/client', () => ({
   consoleQuery: {
     enterprise: {
       appInstanceService: {
-        getAppInstanceOverview: {
-          queryOptions: () => ({ queryKey: ['app-instance-overview'] }),
+        getAppInstance: {
+          queryOptions: () => ({ queryKey: ['app-instance'] }),
         },
       },
-      appDeploymentService: {
+      deploymentService: {
         listEnvironmentDeployments: {
           queryOptions: () => ({ queryKey: ['runtime-instances'] }),
         },
       },
-      appReleaseService: {
+      releaseService: {
         listReleases: {
           queryOptions: () => ({ queryKey: ['release-history'] }),
+        },
+      },
+      accessService: {
+        getAccessChannels: {
+          queryOptions: () => ({ queryKey: ['access-channels'] }),
         },
       },
     },
@@ -57,13 +62,7 @@ function queryResult(overrides: Partial<QueryResult> = {}): QueryResult {
 
 function completeOverviewData() {
   return {
-    overview: {
-      appInstance: { id: 'instance-1' },
-      access: {
-        accessChannelsEnabled: false,
-        developerApiEnabled: false,
-      },
-    },
+    appInstance: { id: 'instance-1' },
   }
 }
 
@@ -100,12 +99,14 @@ describe('OverviewTab loading states', () => {
       // Arrange
       mockUseQuery.mockImplementation((options: QueryOptions) => {
         switch (options.queryKey?.[0]) {
-          case 'app-instance-overview':
+          case 'app-instance':
             return queryResult({ isLoading: true })
           case 'runtime-instances':
             return queryResult({ data: runtimeInstancesData() })
           case 'release-history':
             return queryResult({ data: releaseHistoryData() })
+          case 'access-channels':
+            return queryResult({ data: { accessChannels: { webAppEnabled: false, developerApiEnabled: false } } })
           default:
             return queryResult()
         }
@@ -125,12 +126,14 @@ describe('OverviewTab loading states', () => {
       // Arrange
       mockUseQuery.mockImplementation((options: QueryOptions) => {
         switch (options.queryKey?.[0]) {
-          case 'app-instance-overview':
+          case 'app-instance':
             return queryResult({ data: completeOverviewData() })
           case 'runtime-instances':
             return queryResult({ data: runtimeInstancesData() })
           case 'release-history':
             return queryResult({ isLoading: true })
+          case 'access-channels':
+            return queryResult({ data: { accessChannels: { webAppEnabled: false, developerApiEnabled: false } } })
           default:
             return queryResult()
         }

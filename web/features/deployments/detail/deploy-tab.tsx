@@ -113,7 +113,7 @@ export function DeployTab({ appInstanceId }: {
   appInstanceId: string
 }) {
   const { t } = useTranslation('deployments')
-  const environmentDeploymentsQuery = useQuery(consoleQuery.enterprise.appDeploymentService.listEnvironmentDeployments.queryOptions({
+  const environmentDeploymentsQuery = useQuery(consoleQuery.enterprise.deploymentService.listEnvironmentDeployments.queryOptions({
     input: {
       params: { appInstanceId },
     },

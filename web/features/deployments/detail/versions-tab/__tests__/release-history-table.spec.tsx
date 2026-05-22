@@ -1,4 +1,4 @@
-import type { EnvironmentDeployment, ReleaseRow } from '@dify/contracts/enterprise/types.gen'
+import type { EnvironmentDeployment, Release } from '@dify/contracts/enterprise/types.gen'
 import { render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { ReleaseHistoryTable } from '../release-history-table'
@@ -19,17 +19,12 @@ vi.mock('@/hooks/use-format-time-from-now', () => ({
 vi.mock('@/service/client', () => ({
   consoleQuery: {
     enterprise: {
-      appInstanceService: {
-        getAppInstanceOverview: {
-          queryOptions: () => ({ queryKey: ['app-instance-overview'] }),
-        },
-      },
-      appReleaseService: {
+      releaseService: {
         listReleases: {
           queryOptions: () => ({ queryKey: ['release-history'] }),
         },
       },
-      appDeploymentService: {
+      deploymentService: {
         listEnvironmentDeployments: {
           queryOptions: () => ({ queryKey: ['runtime-instances'] }),
         },
@@ -38,27 +33,21 @@ vi.mock('@/service/client', () => ({
   },
 }))
 
-function release(overrides: Partial<ReleaseRow> = {}): ReleaseRow {
+function release(overrides: Partial<Release> = {}): Release {
   return {
     id: 'release-1',
     name: 'R-001',
     createdAt: '2026-05-05T10:00:00Z',
     createdBy: { name: 'App-runner-demo' },
-    deployedTo: [
-      {
-        environmentId: 'env-1',
-        environmentName: 'default',
-      },
-    ],
     ...overrides,
   }
 }
 
 function runtimeInstance(overrides: Partial<EnvironmentDeployment> = {}): EnvironmentDeployment {
   return {
-    runtime: { runtimeInstanceId: 'runtime-1' },
+    currentDeployment: { id: 'deployment-1' },
     environment: { id: 'env-1', name: 'default' },
-    status: 'ready',
+    status: 2,
     currentRelease: { id: 'release-1' },
     ...overrides,
   }

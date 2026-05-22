@@ -1,4 +1,4 @@
-import type { EnvironmentDeployment, ReleaseRow } from '@dify/contracts/enterprise/types.gen'
+import type { EnvironmentDeployment, Release } from '@dify/contracts/enterprise/types.gen'
 import { deploymentStatus, isUndeployedDeploymentRow } from '../../runtime-status'
 
 export type Drift
@@ -7,7 +7,10 @@ export type Drift
     | { kind: 'up-to-date' }
     | { kind: 'behind', steps: number }
 
-export function computeDrift(row: EnvironmentDeployment, releaseRows: ReleaseRow[]): Drift {
+export function computeDrift(
+  row: EnvironmentDeployment,
+  releaseRows: Release[],
+): Drift {
   if (isUndeployedDeploymentRow(row))
     return { kind: 'undeployed' }
 
@@ -23,7 +26,7 @@ export function computeDrift(row: EnvironmentDeployment, releaseRows: ReleaseRow
   return { kind: 'behind', steps: idx }
 }
 
-export function latestReleaseId(releaseRows: ReleaseRow[]): string | undefined {
+export function latestReleaseId(releaseRows: Release[]): string | undefined {
   return releaseRows[0]?.id || undefined
 }
 
@@ -36,7 +39,10 @@ export type OverviewStats = {
   undeployed: number
 }
 
-export function computeOverviewStats(rows: EnvironmentDeployment[], releaseRows: ReleaseRow[]): OverviewStats {
+export function computeOverviewStats(
+  rows: EnvironmentDeployment[],
+  releaseRows: Release[],
+): OverviewStats {
   const stats: OverviewStats = { total: rows.length, ready: 0, behind: 0, failed: 0, deploying: 0, undeployed: 0 }
   for (const row of rows) {
     const drift = computeDrift(row, releaseRows)

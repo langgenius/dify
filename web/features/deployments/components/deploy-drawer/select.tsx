@@ -1,13 +1,13 @@
 'use client'
 
-import type { AppDeployEnvironment } from '@dify/contracts/enterprise/types.gen'
+import type { Environment } from '@dify/contracts/enterprise/types.gen'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Select, SelectContent, SelectItem, SelectItemIndicator, SelectItemText, SelectTrigger } from '@langgenius/dify-ui/select'
 import { useTranslation } from 'react-i18next'
 import { environmentHealth, environmentMode, environmentName } from '../../environment'
 import { HealthBadge, ModeBadge } from '../status-badge'
 
-type EnvironmentOption = AppDeployEnvironment & {
+type EnvironmentOption = Environment & {
   disabled?: boolean
 }
 
@@ -88,7 +88,7 @@ export function EnvironmentRow({ env }: { env: EnvironmentOption }) {
         <ModeBadge mode={environmentMode(env)} />
         <HealthBadge health={environmentHealth(env)} />
       </div>
-      <span className="system-xs-regular text-text-tertiary uppercase">{env.type ?? 'env'}</span>
+      <span className="system-xs-regular text-text-tertiary uppercase">{environmentMode(env)}</span>
     </div>
   )
 }

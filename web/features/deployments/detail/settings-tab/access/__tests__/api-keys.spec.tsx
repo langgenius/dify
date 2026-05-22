@@ -1,4 +1,4 @@
-import type { DeveloperApiKeyRow } from '@dify/contracts/enterprise/types.gen'
+import type { ApiKey } from '@dify/contracts/enterprise/types.gen'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -7,8 +7,8 @@ import { ApiKeyList } from '../api-keys'
 vi.mock('@/service/client', () => ({
   consoleQuery: {
     enterprise: {
-      appDeployAccessService: {
-        deleteDeveloperApiKey: {
+      accessService: {
+        deleteApiKey: {
           mutationOptions: () => ({ mutationFn: vi.fn() }),
         },
       },
@@ -16,17 +16,17 @@ vi.mock('@/service/client', () => ({
   },
 }))
 
-function apiKey(overrides: Partial<DeveloperApiKeyRow> = {}): DeveloperApiKeyRow {
+function apiKey(overrides: Partial<ApiKey> = {}): ApiKey {
   return {
     id: 'key-1',
     name: 'production-key-001',
-    environment: { id: 'env-1', name: 'production' },
-    maskedKey: 'app-****-abcd',
+    environmentId: 'env-1',
+    maskedToken: 'app-****-abcd',
     ...overrides,
   }
 }
 
-function renderApiKeyList(apiKeys: DeveloperApiKeyRow[]) {
+function renderApiKeyList(apiKeys: ApiKey[]) {
   const queryClient = new QueryClient({
     defaultOptions: {
       queries: { retry: false },
@@ -36,7 +36,10 @@ function renderApiKeyList(apiKeys: DeveloperApiKeyRow[]) {
 
   return render(
     <QueryClientProvider client={queryClient}>
-      <ApiKeyList appInstanceId="instance-1" apiKeys={apiKeys} />
+      <ApiKeyList
+        apiKeys={apiKeys}
+        environments={[{ id: 'env-1', name: 'production' }]}
+      />
     </QueryClientProvider>,
   )
 }

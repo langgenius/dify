@@ -1,28 +1,25 @@
-import type { AppDeployEnvironment } from '@dify/contracts/enterprise/types.gen'
+import type { Environment } from '@dify/contracts/enterprise/types.gen'
 
-export function environmentId(environment?: AppDeployEnvironment) {
+const ENVIRONMENT_MODE_ISOLATED = 2
+const RUNTIME_BACKEND_EXTERNAL = 2
+const ENVIRONMENT_STATUS_READY = 3
+
+export function environmentId(environment?: Environment) {
   return environment?.id ?? ''
 }
 
-export function environmentName(environment?: AppDeployEnvironment) {
+export function environmentName(environment?: Environment) {
   return environment?.name || environment?.id || '—'
 }
 
-export function environmentMode(environment?: AppDeployEnvironment) {
-  const type = environment?.type?.toLowerCase() ?? ''
-  return type.includes('isolated') ? 'isolated' : 'shared'
+export function environmentMode(environment?: Environment) {
+  return environment?.mode === ENVIRONMENT_MODE_ISOLATED ? 'isolated' : 'shared'
 }
 
-function environmentRuntimeName(environment?: AppDeployEnvironment) {
-  return environment?.backend ?? ''
+export function environmentBackend(environment?: Environment) {
+  return environment?.backend === RUNTIME_BACKEND_EXTERNAL ? 'host' : 'k8s'
 }
 
-export function environmentBackend(environment?: AppDeployEnvironment) {
-  const runtime = environmentRuntimeName(environment).toLowerCase()
-  return runtime.includes('host') ? 'host' : 'k8s'
-}
-
-export function environmentHealth(environment?: AppDeployEnvironment) {
-  const status = environment?.status?.toLowerCase() ?? ''
-  return status.includes('ready') ? 'ready' : 'degraded'
+export function environmentHealth(environment?: Environment) {
+  return environment?.status === ENVIRONMENT_STATUS_READY ? 'ready' : 'degraded'
 }

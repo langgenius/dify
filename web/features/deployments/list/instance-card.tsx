@@ -1,11 +1,10 @@
 'use client'
 
 import type {
-  AccessStatus,
+  AccessChannels,
   AppInstance,
   EnvironmentDeployment,
-  ReleaseRow,
-  ReleaseSummary,
+  Release,
 } from '@dify/contracts/enterprise/types.gen'
 import type { InstanceDetailTabKey } from '../detail/tabs'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -77,10 +76,10 @@ function statusLabel(row: EnvironmentDeployment, t: ReturnType<typeof useTransla
   return t('status.unknown')
 }
 
-function pickDisplayedRelease(rows: EnvironmentDeployment[]): ReleaseSummary | undefined {
+function pickDisplayedRelease(rows: EnvironmentDeployment[]): Release | undefined {
   const releases = rows
     .map(row => row.currentRelease)
-    .filter((release): release is ReleaseSummary => Boolean(release?.id))
+    .filter((release): release is Release => Boolean(release?.id))
 
   return releases.sort((a, b) => {
     const aTime = a.createdAt ? Date.parse(a.createdAt) : 0
@@ -227,7 +226,7 @@ function DeploymentStatusContent({
 
 function DeploymentAccessLinks({ appInstanceId, access, isLoading }: {
   appInstanceId: string
-  access?: AccessStatus
+  access?: AccessChannels
   isLoading?: boolean
 }) {
   const { t } = useTranslation('deployments')
@@ -242,7 +241,7 @@ function DeploymentAccessLinks({ appInstanceId, access, isLoading }: {
   }
 
   const links = [
-    access?.accessChannelsEnabled && access.webappUrl
+    access?.webAppEnabled
       ? {
           key: 'webapp',
           href: getInstanceTabHref(appInstanceId, 'access'),
@@ -250,7 +249,7 @@ function DeploymentAccessLinks({ appInstanceId, access, isLoading }: {
           icon: 'i-ri-global-line',
         }
       : undefined,
-    access?.accessChannelsEnabled && access.cliUrl
+    access?.webAppEnabled
       ? {
           key: 'cli',
           href: getInstanceTabHref(appInstanceId, 'access'),
@@ -258,7 +257,7 @@ function DeploymentAccessLinks({ appInstanceId, access, isLoading }: {
           icon: 'i-ri-terminal-box-line',
         }
       : undefined,
-    access?.developerApiEnabled && access.apiUrl
+    access?.developerApiEnabled
       ? {
           key: 'api',
           href: getInstanceTabHref(appInstanceId, 'api'),
@@ -303,11 +302,15 @@ export function InstanceCard({ app }: {
   const detailHref = getInstanceTabHref(appInstanceId, 'overview')
   const input = { params: { appInstanceId } }
 
-  const overviewQuery = useQuery(consoleQuery.enterprise.appInstanceService.getAppInstanceOverview.queryOptions({
+  const instanceQuery = useQuery(consoleQuery.enterprise.appInstanceService.getAppInstance.queryOptions({
     input,
     enabled: Boolean(appInstanceId),
   }))
-  const releaseHistoryQuery = useQuery(consoleQuery.enterprise.appReleaseService.listReleases.queryOptions({
+  const accessChannelsQuery = useQuery(consoleQuery.enterprise.accessService.getAccessChannels.queryOptions({
+    input,
+    enabled: Boolean(appInstanceId),
+  }))
+  const releaseHistoryQuery = useQuery(consoleQuery.enterprise.releaseService.listReleases.queryOptions({
     input: {
       ...input,
       query: {
@@ -317,7 +320,7 @@ export function InstanceCard({ app }: {
     },
     enabled: Boolean(appInstanceId),
   }))
-  const environmentDeploymentsQuery = useQuery(consoleQuery.enterprise.appDeploymentService.listEnvironmentDeployments.queryOptions({
+  const environmentDeploymentsQuery = useQuery(consoleQuery.enterprise.deploymentService.listEnvironmentDeployments.queryOptions({
     input,
     enabled: Boolean(appInstanceId),
     refetchInterval: query => deploymentStatusPollingInterval(query.state.data),
@@ -326,13 +329,13 @@ export function InstanceCard({ app }: {
   if (!app.id)
     return null
 
-  const description = overviewQuery.data?.overview?.appInstance?.description?.trim()
-  const access = overviewQuery.data?.overview?.access
-  const releaseRows = releaseHistoryQuery.data?.data?.filter((release): release is ReleaseRow & { id: string } => Boolean(release.id)) ?? []
+  const description = (instanceQuery.data?.appInstance?.description ?? app.description)?.trim()
+  const access = accessChannelsQuery.data?.accessChannels
+  const releaseRows = releaseHistoryQuery.data?.data?.filter((release): release is Release & { id: string } => Boolean(release.id)) ?? []
   const hasRelease = releaseRows.length > 0
   const activeDeploymentRows = environmentDeploymentsQuery.data?.data?.filter(isActiveDeployment) ?? []
   const displayedRelease = pickDisplayedRelease(activeDeploymentRows)
-  const displayedTime = displayedRelease?.createdAt ?? app.lastDeployedAt
+  const displayedTime = displayedRelease?.createdAt
   const displayedTimeMs = displayedTime ? Date.parse(displayedTime) : Number.NaN
   const releaseMeta = displayedRelease
     ? [
@@ -355,7 +358,7 @@ export function InstanceCard({ app }: {
           <h3 className="truncate title-md-semi-bold text-text-primary" title={appName}>
             {appName}
           </h3>
-          {overviewQuery.isLoading
+          {instanceQuery.isLoading
             ? (
                 <div className="mt-2 flex min-h-9 flex-col gap-1.5">
                   <SkeletonRectangle className="my-0 h-3 w-4/5 animate-pulse" />
@@ -387,7 +390,7 @@ export function InstanceCard({ app }: {
         </div>
 
         <div className="mt-auto flex h-10.5 min-w-0 items-center border-t border-divider-subtle px-4">
-          <DeploymentAccessLinks appInstanceId={appInstanceId} access={access} isLoading={overviewQuery.isLoading} />
+          <DeploymentAccessLinks appInstanceId={appInstanceId} access={access} isLoading={accessChannelsQuery.isLoading} />
           <Link
             href={displayedRelease ? getInstanceTabHref(appInstanceId, 'releases') : getInstanceTabHref(appInstanceId, 'deploy')}
             className="min-w-0 shrink-0 truncate text-right system-xs-regular text-text-tertiary hover:text-text-secondary"

@@ -1,6 +1,6 @@
 'use client'
 
-import type { ReleaseRow } from '@dify/contracts/enterprise/types.gen'
+import type { Release } from '@dify/contracts/enterprise/types.gen'
 import type { OverviewStats } from './overview-drift'
 import { useTranslation } from 'react-i18next'
 import { SkeletonRectangle } from '@/app/components/base/skeleton'
@@ -10,32 +10,24 @@ import { CreateReleaseControl } from '../versions-tab/create-release-control'
 
 type ReleaseHeroProps = {
   appInstanceId: string
-  latestRelease?: ReleaseRow
+  latestRelease?: Release
   stats: OverviewStats
 }
 
 export function ReleaseHero({ appInstanceId, latestRelease, stats }: ReleaseHeroProps) {
-  const { t, i18n } = useTranslation('deployments')
+  const { t } = useTranslation('deployments')
   const { formatTimeFromNow } = useFormatTimeFromNow()
 
   const hasRelease = Boolean(latestRelease?.id)
   const author = latestRelease?.createdBy?.name ?? ''
   const ago = latestRelease?.createdAt ? formatTimeFromNow(new Date(latestRelease.createdAt).getTime()) : ''
-  const deployedEnvironmentNames = Array.from(new Set(
-    latestRelease?.deployedTo
-      ?.map(item => item.environmentName || item.environmentId)
-      .filter((name): name is string => Boolean(name)) ?? [],
-  ))
-  const deployedTargets = deployedEnvironmentNames.join(i18n.language.startsWith('zh') ? '、' : ', ')
 
   const metaParts: { key: string, value: string }[] = []
   if (author)
     metaParts.push({ key: 'author', value: t('overview.hero.byName', { name: author }) })
   if (ago)
     metaParts.push({ key: 'ago', value: ago })
-  if (deployedTargets)
-    metaParts.push({ key: 'deployedTo', value: `${t('versions.col.deployedTo')} ${deployedTargets}` })
-  else if (hasRelease && stats.total === 0)
+  if (hasRelease && stats.total === 0)
     metaParts.push({ key: 'untargeted', value: t('overview.hero.untargeted') })
 
   return (

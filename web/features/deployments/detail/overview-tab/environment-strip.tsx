@@ -1,6 +1,6 @@
 'use client'
 
-import type { EnvironmentDeployment, ReleaseRow } from '@dify/contracts/enterprise/types.gen'
+import type { EnvironmentDeployment, Release } from '@dify/contracts/enterprise/types.gen'
 import { useTranslation } from 'react-i18next'
 import { SkeletonRectangle, SkeletonRow } from '@/app/components/base/skeleton'
 import { environmentId } from '../../environment'
@@ -11,7 +11,7 @@ import { EnvironmentTile } from './environment-tile'
 type EnvironmentStripProps = {
   appInstanceId: string
   rows: EnvironmentDeployment[]
-  releaseRows: ReleaseRow[]
+  releaseRows: Release[]
   isLoading: boolean
   isError: boolean
 }

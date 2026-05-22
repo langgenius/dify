@@ -1,5 +1,6 @@
 'use client'
 
+import type { Environment } from '@dify/contracts/enterprise/types.gen'
 import type { ReactNode } from 'react'
 import { Switch, SwitchSkeleton } from '@langgenius/dify-ui/switch'
 import { useMutation, useQuery } from '@tanstack/react-query'
@@ -22,7 +23,7 @@ function AccessChannelsSwitch({ appInstanceId, checked, disabled }: {
   checked: boolean
   disabled?: boolean
 }) {
-  const toggleAccessChannel = useMutation(consoleQuery.enterprise.appDeployAccessService.updateAccessChannels.mutationOptions())
+  const toggleAccessChannel = useMutation(consoleQuery.enterprise.accessService.updateAccessChannels.mutationOptions())
 
   return (
     <Switch
@@ -31,7 +32,7 @@ function AccessChannelsSwitch({ appInstanceId, checked, disabled }: {
       onCheckedChange={(enabled) => {
         toggleAccessChannel.mutate({
           params: { appInstanceId },
-          body: { appInstanceId, enabled },
+          body: { appInstanceId, webAppEnabled: enabled },
         })
       }}
     />
@@ -95,36 +96,45 @@ export function AccessChannelsSection({
   appInstanceId: string
 }) {
   const { t } = useTranslation('deployments')
-  const accessConfigQuery = useQuery(consoleQuery.enterprise.appDeployAccessService.getAppInstanceAccess.queryOptions({
+  const accessChannelsQuery = useQuery(consoleQuery.enterprise.accessService.getAccessChannels.queryOptions({
     input: {
       params: { appInstanceId },
     },
   }))
-  const accessConfig = accessConfigQuery.data
-  const runEnabled = accessConfig?.accessChannels?.enabled ?? false
-  const webappRows = accessConfig?.accessChannels?.webappRows?.filter(row => row.url) ?? []
-  const cliDomain = getUrlOrigin(accessConfig?.accessChannels?.cli?.url)
+  const environmentDeploymentsQuery = useQuery(consoleQuery.enterprise.deploymentService.listEnvironmentDeployments.queryOptions({
+    input: {
+      params: { appInstanceId },
+    },
+  }))
+  const accessChannels = accessChannelsQuery.data?.accessChannels
+  const runEnabled = accessChannels?.webAppEnabled ?? false
+  const webappRows = environmentDeploymentsQuery.data?.data
+    ?.map(row => row.environment)
+    .filter((environment): environment is Environment & { id: string, runtimeEndpoint: string } => Boolean(environment?.id && environment.runtimeEndpoint)) ?? []
+  const cliDomain = getUrlOrigin(webappRows[0]?.runtimeEndpoint)
   const cliDocsUrl = cliDomain ? `${cliDomain}/cli` : undefined
+  const isLoading = accessChannelsQuery.isLoading || (runEnabled && environmentDeploymentsQuery.isLoading)
+  const isError = accessChannelsQuery.isError || (runEnabled && environmentDeploymentsQuery.isError)
 
   return (
     <Section
       title={t('access.channels.title')}
       description={t('access.channels.description')}
       action={(
-        accessConfigQuery.isLoading
+        isLoading
           ? <SwitchSkeleton />
           : (
               <AccessChannelsSwitch
                 appInstanceId={appInstanceId}
                 checked={runEnabled}
-                disabled={accessConfigQuery.isError}
+                disabled={isError}
               />
             )
       )}
     >
-      {accessConfigQuery.isLoading
+      {isLoading
         ? <AccessChannelsSkeleton />
-        : accessConfigQuery.isError
+        : isError
           ? <SectionState>{t('common.loadFailed')}</SectionState>
           : runEnabled
             ? (
@@ -139,13 +149,13 @@ export function AccessChannelsSection({
                     {webappRows.length > 0
                       ? (
                           <div className="flex flex-col gap-1.5">
-                            {webappRows.map((row) => {
-                              const endpointUrl = webappUrl(row.url)
+                            {webappRows.map((environment) => {
+                              const endpointUrl = webappUrl(environment.runtimeEndpoint ?? '')
 
                               return (
                                 <EndpointRow
-                                  key={`webapp-${row.environment?.id ?? row.url}`}
-                                  envName={environmentName(row.environment)}
+                                  key={`webapp-${environment.id ?? environment.runtimeEndpoint}`}
+                                  envName={environmentName(environment)}
                                   label={t('access.runAccess.urlLabel')}
                                   value={endpointUrl}
                                   openLabel={t('access.runAccess.openWebapp')}
