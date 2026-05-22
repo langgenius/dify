@@ -10,6 +10,7 @@ export default class GetMember extends DifyCommand {
   static override examples = [
     '<%= config.bin %> get member',
     '<%= config.bin %> get member -w ws-1',
+    '<%= config.bin %> get member --page 2 --limit 50',
     '<%= config.bin %> get member -o json',
     '<%= config.bin %> get member -o name',
   ]
@@ -19,6 +20,8 @@ export default class GetMember extends DifyCommand {
       char: 'w',
       description: 'workspace id (overrides DIFY_WORKSPACE_ID and stored default)',
     }),
+    'page': Flags.integer({ description: 'page number', default: 1 }),
+    'limit': Flags.string({ description: 'page size [1..200]' }),
     'http-retry': httpRetryFlag,
     'output': Flags.string({ char: 'o', description: 'output format (json|yaml|name|wide)', default: '' }),
   }
@@ -28,7 +31,12 @@ export default class GetMember extends DifyCommand {
     const format = flags.output
     const ctx = await this.authedCtx({ retryFlag: flags['http-retry'], format })
     const result = await runGetMember(
-      { workspace: flags.workspace, format },
+      {
+        workspace: flags.workspace,
+        page: flags.page,
+        limitRaw: flags.limit,
+        format,
+      },
       { bundle: ctx.bundle, http: ctx.http, io: ctx.io },
     )
     return table({ format, data: result.data })

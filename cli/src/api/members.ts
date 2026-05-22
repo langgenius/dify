@@ -21,9 +21,16 @@ export class MembersClient {
     this.http = http
   }
 
-  async list(workspaceId: string): Promise<MemberListResponse> {
+  async list(workspaceId: string, q?: { page?: number, limit?: number }): Promise<MemberListResponse> {
+    const params = new URLSearchParams()
+    if (q?.page !== undefined)
+      params.set('page', String(q.page))
+    if (q?.limit !== undefined)
+      params.set('limit', String(q.limit))
+    const hasParams = Array.from(params.keys()).length > 0
+    const opts = hasParams ? { searchParams: params } : undefined
     return this.http
-      .get(`workspaces/${encodeURIComponent(workspaceId)}/members`)
+      .get(`workspaces/${encodeURIComponent(workspaceId)}/members`, opts)
       .json<MemberListResponse>()
   }
 

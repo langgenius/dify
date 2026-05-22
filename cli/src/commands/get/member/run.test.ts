@@ -22,7 +22,11 @@ function fakeClient(envelope: MemberListResponse) {
 
 describe('runGetMember', () => {
   const env: MemberListResponse = {
-    members: [
+    page: 1,
+    limit: 20,
+    total: 2,
+    has_more: false,
+    data: [
       { id: 'acct-1', name: 'Me', email: 'me@example.com', role: 'owner', status: 'active' },
       { id: 'acct-2', name: 'Mate', email: 'mate@example.com', role: 'admin', status: 'active' },
     ],
@@ -39,7 +43,7 @@ describe('runGetMember', () => {
         membersFactory: () => client as never,
       },
     )
-    expect(client.list).toHaveBeenCalledExactlyOnceWith('ws-1')
+    expect(client.list).toHaveBeenCalledExactlyOnceWith('ws-1', { page: 1, limit: 20 })
     expect(r.workspaceId).toBe('ws-1')
     expect(r.data.rows.map(row => row.current)).toEqual([true, false])
     expect(r.data.rows.map(row => row.id)).toEqual(['acct-1', 'acct-2'])
@@ -56,8 +60,22 @@ describe('runGetMember', () => {
         membersFactory: () => client as never,
       },
     )
-    expect(client.list).toHaveBeenCalledWith('ws-9')
+    expect(client.list).toHaveBeenCalledWith('ws-9', { page: 1, limit: 20 })
     expect(r.workspaceId).toBe('ws-9')
+  })
+
+  it('--page/--limit are forwarded to the client', async () => {
+    const client = fakeClient(env)
+    await runGetMember(
+      { page: 3, limitRaw: '50' },
+      {
+        bundle: bundle(),
+        http: {} as KyInstance,
+        io: bufferStreams(),
+        membersFactory: () => client as never,
+      },
+    )
+    expect(client.list).toHaveBeenCalledWith('ws-1', { page: 3, limit: 50 })
   })
 
   it('marks no row when bundle has no account id', async () => {
@@ -102,7 +120,11 @@ describe('runGetMember', () => {
 describe('MemberListOutput shape', () => {
   it('builds table with CURRENT marker column', async () => {
     const env: MemberListResponse = {
-      members: [
+      page: 1,
+      limit: 20,
+      total: 1,
+      has_more: false,
+      data: [
         { id: 'acct-1', name: 'Me', email: 'me@example.com', role: 'owner', status: 'active' },
       ],
     }
@@ -126,6 +148,6 @@ describe('MemberListOutput shape', () => {
     ])
     expect(r.data.tableRows()[0]?.[5]).toBe('*')
     expect(r.data.name()).toBe('acct-1')
-    expect(r.data.json().members[0]?.email).toBe('me@example.com')
+    expect(r.data.json().data[0]?.email).toBe('me@example.com')
   })
 })

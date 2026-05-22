@@ -1,15 +1,17 @@
+import type { SessionListResponse, SessionRow } from '@dify/contracts/api/openapi/types.gen'
 import type { DifyMock } from '../../../../../test/fixtures/dify-mock/server.js'
+import type { AccountSessionsClient } from '../../../../api/account-sessions.js'
 import type { HostsBundle } from '../../../../auth/hosts.js'
 import type { TokenStore } from '../../../../auth/store.js'
 import { mkdtemp, readFile, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { startMock } from '../../../../../test/fixtures/dify-mock/server.js'
 import { saveHosts } from '../../../../auth/hosts.js'
 import { createClient } from '../../../../http/client.js'
 import { bufferStreams } from '../../../../io/streams.js'
-import { runDevicesList, runDevicesRevoke } from './devices.js'
+import { listAllSessions, runDevicesList, runDevicesRevoke } from './devices.js'
 
 class MemStore implements TokenStore {
   readonly entries = new Map<string, string>()
@@ -185,5 +187,49 @@ describe('runDevicesRevoke', () => {
     await expect(runDevicesRevoke({ configDir, io, bundle: bundleFor(mock.url), http, store, all: false }))
       .rejects
       .toThrow(/specify a device label/)
+  })
+})
+
+describe('listAllSessions', () => {
+  const row = (id: string, label = `dev-${id}`): SessionRow => ({
+    id,
+    prefix: 'dfoa_xxx',
+    client_id: 'difyctl',
+    device_label: label,
+    created_at: null,
+    last_used_at: null,
+    expires_at: null,
+  })
+
+  function stubClient(pages: readonly SessionListResponse[]): { client: AccountSessionsClient, list: ReturnType<typeof vi.fn> } {
+    const list = vi.fn(async (q?: { page?: number, limit?: number }) => {
+      const page = q?.page ?? 1
+      const env = pages[page - 1]
+      if (env === undefined)
+        throw new Error(`stub: no page ${page}`)
+      return env
+    })
+    return { client: { list } as unknown as AccountSessionsClient, list }
+  }
+
+  it('exhausts pages until has_more=false', async () => {
+    const { client, list } = stubClient([
+      { page: 1, limit: 200, total: 250, has_more: true, data: Array.from({ length: 200 }, (_, i) => row(`s-${i}`)) },
+      { page: 2, limit: 200, total: 250, has_more: false, data: Array.from({ length: 50 }, (_, i) => row(`s-${200 + i}`)) },
+    ])
+    const all = await listAllSessions(client)
+    expect(all.length).toBe(250)
+    expect(list).toHaveBeenCalledTimes(2)
+    expect(list).toHaveBeenNthCalledWith(1, { page: 1, limit: 200 })
+    expect(list).toHaveBeenNthCalledWith(2, { page: 2, limit: 200 })
+  })
+
+  it('single page (has_more=false): one call', async () => {
+    const { client, list } = stubClient([
+      { page: 1, limit: 200, total: 3, has_more: false, data: [row('a'), row('b'), row('c')] },
+    ])
+    const all = await listAllSessions(client)
+    expect(all.length).toBe(3)
+    expect(list).toHaveBeenCalledTimes(1)
   })
 })
