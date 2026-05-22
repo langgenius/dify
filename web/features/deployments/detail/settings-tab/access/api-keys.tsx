@@ -52,7 +52,7 @@ function ApiKeyValue({ value }: {
 }) {
   return (
     <div className="flex h-8 min-w-0 items-center rounded-lg border border-components-input-border-active bg-components-input-bg-normal px-2">
-      <div className="min-w-0 flex-1 truncate text-text-secondary">
+      <div className="min-w-0 flex-1 truncate font-mono system-sm-medium text-text-secondary">
         {value}
       </div>
     </div>

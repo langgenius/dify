@@ -70,7 +70,7 @@ function CurrentReleaseSummary({ release }: {
           {releaseLabel(release)}
         </span>
         {commit !== '—' && (
-          <span className="shrink-0 text-text-tertiary">
+          <span className="shrink-0 font-mono system-xs-regular text-text-tertiary">
             {commit}
           </span>
         )}
