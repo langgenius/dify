@@ -229,10 +229,12 @@ class TestUpgradePluginWithMarketplace:
         installer.fetch_plugin_manifest.return_value = MagicMock()
         installer.upgrade_plugin.return_value = MagicMock()
 
-        PluginService.upgrade_plugin_with_marketplace("t1", "old-uid", "new-uid")
+        with patch.object(PluginService, "_migrate_workflow_plugin_unique_identifier") as mock_migrate:
+            PluginService.upgrade_plugin_with_marketplace("t1", "old-uid", "new-uid")
 
         mock_marketplace.record_install_plugin_event.assert_called_once_with("new-uid")
         installer.upgrade_plugin.assert_called_once()
+        mock_migrate.assert_called_once_with("t1", "old-uid", "new-uid")
 
     @patch("services.plugin.plugin_service.download_plugin_pkg")
     @patch("services.plugin.plugin_service.FeatureService")
@@ -249,10 +251,12 @@ class TestUpgradePluginWithMarketplace:
         installer.upload_pkg.return_value = upload_resp
         installer.upgrade_plugin.return_value = MagicMock()
 
-        PluginService.upgrade_plugin_with_marketplace("t1", "old-uid", "new-uid")
+        with patch.object(PluginService, "_migrate_workflow_plugin_unique_identifier") as mock_migrate:
+            PluginService.upgrade_plugin_with_marketplace("t1", "old-uid", "new-uid")
 
         mock_download.assert_called_once_with("new-uid")
         installer.upload_pkg.assert_called_once()
+        mock_migrate.assert_called_once_with("t1", "old-uid", "new-uid")
 
 
 class TestUpgradePluginWithGithub:
@@ -263,11 +267,13 @@ class TestUpgradePluginWithGithub:
         installer = mock_installer_cls.return_value
         installer.upgrade_plugin.return_value = MagicMock()
 
-        PluginService.upgrade_plugin_with_github("t1", "old-uid", "new-uid", "org/repo", "v1", "pkg.difypkg")
+        with patch.object(PluginService, "_migrate_workflow_plugin_unique_identifier") as mock_migrate:
+            PluginService.upgrade_plugin_with_github("t1", "old-uid", "new-uid", "org/repo", "v1", "pkg.difypkg")
 
         installer.upgrade_plugin.assert_called_once()
         call_args = installer.upgrade_plugin.call_args
         assert call_args[0][3] == PluginInstallationSource.Github
+        mock_migrate.assert_called_once_with("t1", "old-uid", "new-uid")
 
 
 class TestUploadPkg:
