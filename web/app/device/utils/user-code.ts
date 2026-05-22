@@ -5,7 +5,7 @@
 // entropy by design — humans type it — so the server-side rate-limit + TTL +
 // single-use properties are what defend it, not the alphabet.
 
-export const USER_CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXY3456789' // excludes 0 O 1 I L 2 Z
+const USER_CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXY3456789' // excludes 0 O 1 I L 2 Z
 
 /**
  * normaliseUserCodeInput prepares raw input for display in the code field:
