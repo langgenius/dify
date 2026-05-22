@@ -360,7 +360,20 @@ class MemberResponse(BaseModel):
 
 
 class MemberListResponse(BaseModel):
-    members: list[MemberResponse]
+    page: int
+    limit: int
+    total: int
+    has_more: bool
+    data: list[MemberResponse]
+
+
+class MemberListQuery(BaseModel):
+    """Strict (extra='forbid')."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    page: int = Field(1, ge=1)
+    limit: int = Field(20, ge=1, le=MAX_PAGE_LIMIT)
 
 
 class MemberInvitePayload(BaseModel):
