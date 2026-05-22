@@ -3,7 +3,6 @@ import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { consoleQuery } from '@/service/client'
 import { useSourceAppAvailability } from './source-app-availability'
-import { CreateReleaseControl } from './versions-tab/create-release-control'
 import { ReleaseHistoryTable } from './versions-tab/release-history-table'
 
 function SourceAppUnavailableNotice({ appInstanceId }: {
@@ -29,17 +28,8 @@ function SourceAppUnavailableNotice({ appInstanceId }: {
 export function VersionsTab({ appInstanceId }: {
   appInstanceId: string
 }) {
-  const { t } = useTranslation('deployments')
-
   return (
-    <div className="mx-auto flex w-full max-w-[1080px] min-w-0 flex-col gap-4 px-6 py-6">
-      <div className="flex items-center justify-between gap-3">
-        <div className="system-sm-semibold text-text-primary">
-          {t('versions.releaseHistory')}
-        </div>
-        <CreateReleaseControl appInstanceId={appInstanceId} size="medium" />
-      </div>
-
+    <div className="flex w-full min-w-0 flex-col gap-4 px-6 py-6">
       <SourceAppUnavailableNotice appInstanceId={appInstanceId} />
 
       <ReleaseHistoryTable appInstanceId={appInstanceId} />

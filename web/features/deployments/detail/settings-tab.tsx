@@ -400,7 +400,7 @@ export function SettingsTab({ appInstanceId }: {
   appInstanceId: string
 }) {
   return (
-    <div className="mx-auto flex w-full max-w-[1080px] min-w-0 flex-col gap-y-4 px-6 py-6 sm:py-8">
+    <div className="flex w-full min-w-0 flex-col gap-y-4 px-6 py-6 sm:py-8">
       <SettingsFormSection appInstanceId={appInstanceId} />
       <DeleteInstanceControlSection appInstanceId={appInstanceId} />
     </div>

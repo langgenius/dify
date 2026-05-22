@@ -3,13 +3,11 @@
 import type { AppInstance, AppInstanceBasicInfo } from '@dify/contracts/enterprise/types.gen'
 import type { NavItem } from '@/app/components/header/nav/nav-selector'
 import { keepPreviousData, useInfiniteQuery, useQuery } from '@tanstack/react-query'
-import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Nav from '@/app/components/header/nav'
-import { useParams, useSelectedLayoutSegment } from '@/next/navigation'
+import { useParams, useRouter, useSelectedLayoutSegment } from '@/next/navigation'
 import { consoleQuery } from '@/service/client'
 import { toAppMode } from '../app-mode'
-import { CreateInstanceModal } from '../components/create-instance-modal'
 import { getNextPageParamFromPagination, SOURCE_APPS_PAGE_SIZE } from '../data'
 
 function navItemFromListApp(app: AppInstance): NavItem[] {
@@ -48,12 +46,12 @@ function navItemFromOverview(instance?: AppInstanceBasicInfo): NavItem | undefin
 
 export function DeploymentsNav() {
   const { t } = useTranslation()
+  const router = useRouter()
   const selectedSegment = useSelectedLayoutSegment()
   const isActive = selectedSegment === 'deployments'
   const params = useParams<{ appInstanceId?: string }>()
   const appInstanceId = params?.appInstanceId
   const hasAppInstanceId = Boolean(appInstanceId)
-  const [createModalOpen, setCreateModalOpen] = useState(false)
 
   const { data: currentInstance } = useQuery(consoleQuery.enterprise.appInstanceService.getAppInstanceOverview.queryOptions({
     input: { params: { appInstanceId: appInstanceId ?? '' } },
@@ -89,7 +87,7 @@ export function DeploymentsNav() {
     : undefined
 
   function handleCreate() {
-    setCreateModalOpen(true)
+    router.push('/deployments/create')
   }
 
   function handleLoadMore() {
@@ -98,22 +96,19 @@ export function DeploymentsNav() {
   }
 
   return (
-    <>
-      <Nav
-        isApp={false}
-        icon={<span aria-hidden className="i-ri-rocket-line size-4" />}
-        activeIcon={<span aria-hidden className="i-ri-rocket-fill size-4" />}
-        text={t('menus.deployments', { ns: 'common' })}
-        activeSegment="deployments"
-        link="/deployments"
-        curNav={curNav}
-        navigationItems={navigationItems}
-        createText={t('deployments:createModal.title')}
-        onCreate={handleCreate}
-        onLoadMore={handleLoadMore}
-        isLoadingMore={listQuery.isFetchingNextPage}
-      />
-      <CreateInstanceModal open={createModalOpen} onOpenChange={setCreateModalOpen} />
-    </>
+    <Nav
+      isApp={false}
+      icon={<span aria-hidden className="i-ri-rocket-line size-4" />}
+      activeIcon={<span aria-hidden className="i-ri-rocket-fill size-4" />}
+      text={t('menus.deployments', { ns: 'common' })}
+      activeSegment="deployments"
+      link="/deployments"
+      curNav={curNav}
+      navigationItems={navigationItems}
+      createText={t('deployments:list.createDeployment')}
+      onCreate={handleCreate}
+      onLoadMore={handleLoadMore}
+      isLoadingMore={listQuery.isFetchingNextPage}
+    />
   )
 }

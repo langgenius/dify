@@ -25,7 +25,7 @@ import {
   DEPLOYMENT_DETAIL_TABLE_COLUMN_CLASS_NAMES,
 } from './table-styles'
 
-function NewDeploymentButton({ appInstanceId }: {
+export function NewDeploymentButton({ appInstanceId }: {
   appInstanceId: string
 }) {
   const { t } = useTranslation('deployments')
@@ -125,20 +125,7 @@ export function DeployTab({ appInstanceId }: {
   const hasError = environmentDeploymentsQuery.isError
 
   return (
-    <div className="mx-auto flex w-full max-w-[1080px] min-w-0 flex-col gap-4 px-6 py-6">
-      <div className="flex items-center justify-between">
-        <div className="system-sm-semibold text-text-primary">
-          {t('deployTab.envCount')}
-          {' '}
-          <span className="system-sm-regular text-text-tertiary">
-            (
-            {rows.length}
-            )
-          </span>
-        </div>
-        <NewDeploymentButton appInstanceId={appInstanceId} />
-      </div>
-
+    <div className="flex w-full min-w-0 flex-col gap-4 px-6 py-6">
       {isLoading
         ? <DeploymentEnvironmentListSkeleton />
         : hasError

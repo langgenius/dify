@@ -6,9 +6,11 @@ import { useTranslation } from 'react-i18next'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { useSelectedLayoutSegment } from '@/next/navigation'
 import { DeployDrawer } from '../components/deploy-drawer'
+import { NewDeploymentButton } from './deploy-tab'
 import { DeploymentSidebar } from './deployment-sidebar'
 import { DeveloperApiHeaderActions } from './settings-tab/access/developer-api-section'
 import { isInstanceDetailTabKey } from './tabs'
+import { CreateReleaseControl } from './versions-tab/create-release-control'
 
 export function InstanceDetail({ appInstanceId, children }: {
   appInstanceId: string
@@ -27,15 +29,19 @@ export function InstanceDetail({ appInstanceId, children }: {
         <DeploymentSidebar appInstanceId={appInstanceId} />
         <div className="min-w-0 grow overflow-hidden bg-components-panel-bg">
           <div className="h-full min-w-0 overflow-y-auto">
-            <div className="mx-auto flex w-full max-w-[1280px] flex-col gap-y-0.5 px-6 pt-3 pb-2 2xl:max-w-[1440px]">
+            <div className="flex w-full flex-col gap-y-0.5 px-6 pt-3 pb-2">
               <div className="flex min-w-0 items-start justify-between gap-4">
                 <div className="min-w-0">
                   <div className="system-xl-semibold text-text-primary">{t(`tabs.${activeTab}.name`)}</div>
                   <div className="system-sm-regular text-text-tertiary">{t(`tabs.${activeTab}.description`)}</div>
                 </div>
-                {activeTab === 'api' && (
+                {(activeTab === 'api' || activeTab === 'releases' || activeTab === 'deploy') && (
                   <div className="shrink-0 pt-1.5">
-                    <DeveloperApiHeaderActions appInstanceId={appInstanceId} />
+                    {activeTab === 'api'
+                      ? <DeveloperApiHeaderActions appInstanceId={appInstanceId} />
+                      : activeTab === 'deploy'
+                        ? <NewDeploymentButton appInstanceId={appInstanceId} />
+                        : <CreateReleaseControl appInstanceId={appInstanceId} size="medium" />}
                   </div>
                 )}
               </div>
