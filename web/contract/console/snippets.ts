@@ -32,6 +32,7 @@ export const listCustomizedSnippetsContract = base
       page: number
       limit: number
       keyword?: string
+      tag_ids?: string[]
       creator_id?: string
       is_published?: boolean
     }
