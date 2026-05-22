@@ -1,6 +1,5 @@
 'use client'
 
-import type { AppIconSelection } from '@/app/components/base/app-icon-picker'
 import type { SnippetDetail } from '@/models/snippet'
 import {
   AlertDialog,
@@ -32,12 +31,6 @@ type SnippetInfoDropdownProps = {
   snippet: SnippetDetail
 }
 
-const FALLBACK_ICON: AppIconSelection = {
-  type: 'emoji',
-  icon: '🤖',
-  background: '#FFEAD5',
-}
-
 const SnippetInfoDropdown = ({ snippet }: SnippetInfoDropdownProps) => {
   const { t } = useTranslation('snippet')
   const { replace } = useRouter()
@@ -51,14 +44,7 @@ const SnippetInfoDropdown = ({ snippet }: SnippetInfoDropdownProps) => {
   const initialValue = React.useMemo(() => ({
     name: snippet.name,
     description: snippet.description,
-    icon: snippet.icon
-      ? {
-          type: 'emoji' as const,
-          icon: snippet.icon,
-          background: snippet.iconBackground || FALLBACK_ICON.background,
-        }
-      : FALLBACK_ICON,
-  }), [snippet.description, snippet.icon, snippet.iconBackground, snippet.name])
+  }), [snippet.description, snippet.name])
 
   const handleOpenEditDialog = React.useCallback(() => {
     setOpen(false)
@@ -77,22 +63,15 @@ const SnippetInfoDropdown = ({ snippet }: SnippetInfoDropdownProps) => {
     }
   }, [exportSnippetMutation, snippet.id, snippet.name, t])
 
-  const handleEditSnippet = React.useCallback(async ({ name, description, icon }: {
+  const handleEditSnippet = React.useCallback(async ({ name, description }: {
     name: string
     description: string
-    icon: AppIconSelection
   }) => {
     updateSnippetMutation.mutate({
       params: { snippetId: snippet.id },
       body: {
         name,
         description: description || undefined,
-        icon_info: {
-          icon: icon.type === 'emoji' ? icon.icon : icon.fileId,
-          icon_type: icon.type,
-          icon_background: icon.type === 'emoji' ? icon.background : undefined,
-          icon_url: icon.type === 'image' ? icon.url : undefined,
-        },
       },
     }, {
       onSuccess: () => {
@@ -171,7 +150,7 @@ const SnippetInfoDropdown = ({ snippet }: SnippetInfoDropdownProps) => {
       <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
         <AlertDialogContent className="w-[400px]">
           <div className="space-y-2 p-6">
-            <AlertDialogTitle className="title-lg-semi-bold text-text-primary">
+            <AlertDialogTitle className="title-md-semi-bold text-text-primary">
               {t('deleteConfirmTitle')}
             </AlertDialogTitle>
             <AlertDialogDescription className="system-sm-regular text-text-tertiary">

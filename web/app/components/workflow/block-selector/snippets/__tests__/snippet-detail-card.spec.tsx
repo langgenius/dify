@@ -25,12 +25,7 @@ const createSnippet = (overrides: Partial<PublishedSnippetListItem> = {}): Publi
   type: 'group',
   is_published: true,
   use_count: 3,
-  icon_info: {
-    icon_type: 'emoji',
-    icon: '🧾',
-    icon_background: '#FFEAD5',
-    icon_url: '',
-  },
+  tags: [],
   created_at: 1,
   created_by: 'user-1',
   updated_at: 2,

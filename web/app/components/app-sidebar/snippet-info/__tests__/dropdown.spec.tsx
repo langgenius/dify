@@ -1,4 +1,3 @@
-import type { AppIconSelection } from '@/app/components/base/app-icon-picker'
 import type { CreateSnippetDialogPayload } from '@/app/components/workflow/create-snippet-dialog'
 import type { SnippetDetail } from '@/models/snippet'
 import { render, screen, waitFor } from '@testing-library/react'
@@ -101,7 +100,6 @@ type MockCreateSnippetDialogProps = {
   initialValue?: {
     name?: string
     description?: string
-    icon?: AppIconSelection
   }
   onClose: () => void
   onConfirm: (payload: CreateSnippetDialogPayload) => void
@@ -130,11 +128,6 @@ vi.mock('@/app/components/workflow/create-snippet-dialog', () => ({
           onClick={() => onConfirm({
             name: 'Updated snippet',
             description: 'Updated description',
-            icon: {
-              type: 'emoji',
-              icon: '✨',
-              background: '#FFFFFF',
-            },
             graph: {
               nodes: [],
               edges: [],
@@ -156,8 +149,7 @@ const mockSnippet: SnippetDetail = {
   description: 'Turn one blog post into multiple social media variations.',
   updatedAt: '2026-03-25 10:00',
   usage: '12',
-  icon: '🤖',
-  iconBackground: '#F0FDF9',
+  tags: [],
   status: undefined,
 }
 
@@ -202,12 +194,6 @@ describe('SnippetInfoDropdown', () => {
         body: {
           name: 'Updated snippet',
           description: 'Updated description',
-          icon_info: {
-            icon: '✨',
-            icon_type: 'emoji',
-            icon_background: '#FFFFFF',
-            icon_url: undefined,
-          },
         },
       }, expect.objectContaining({
         onSuccess: expect.any(Function),

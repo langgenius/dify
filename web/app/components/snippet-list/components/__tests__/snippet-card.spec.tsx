@@ -17,6 +17,12 @@ vi.mock('@/utils/time', () => ({
   formatTime: () => 'formatted-time',
 }))
 
+vi.mock('@/features/tag-management/components/tag-selector', () => ({
+  TagSelector: ({ value }: { value: Array<{ name: string }> }) => (
+    <div data-testid="snippet-tags">{value.map(tag => tag.name).join(', ')}</div>
+  ),
+}))
+
 const createSnippet = (overrides: Partial<SnippetListItem> = {}): SnippetListItem => ({
   id: 'snippet-1',
   name: 'Tone Rewriter',
@@ -24,12 +30,7 @@ const createSnippet = (overrides: Partial<SnippetListItem> = {}): SnippetListIte
   type: 'node',
   is_published: true,
   use_count: 19,
-  icon_info: {
-    icon_type: 'emoji',
-    icon: '🪄',
-    icon_background: '#E0EAFF',
-    icon_url: '',
-  },
+  tags: [],
   created_at: 1_704_067_200,
   created_by: 'creator-id',
   updated_at: 1_704_153_600,
@@ -49,6 +50,7 @@ describe('SnippetCard', () => {
       expect(screen.getByText('Tone Rewriter')).toBeInTheDocument()
       expect(screen.getByText('snippet.updatedBy:{"name":"Updater","time":"formatted-time"}')).toBeInTheDocument()
       expect(screen.queryByText('Creator')).not.toBeInTheDocument()
+      expect(screen.queryByRole('img')).not.toBeInTheDocument()
     })
 
     it('should fall back to creator name when updater is unavailable', () => {

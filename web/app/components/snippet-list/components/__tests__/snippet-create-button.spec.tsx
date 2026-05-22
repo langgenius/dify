@@ -55,12 +55,6 @@ describe('SnippetCreateButton', () => {
       body: {
         name: 'My Snippet',
         description: 'Useful snippet description',
-        icon_info: {
-          icon: '🤖',
-          icon_type: 'emoji',
-          icon_background: '#FFEAD5',
-          icon_url: undefined,
-        },
       },
     }, expect.objectContaining({
       onSuccess: expect.any(Function),

@@ -1,6 +1,5 @@
 'use client'
 
-import type { AppIconSelection } from '@/app/components/base/app-icon-picker'
 import { Button } from '@langgenius/dify-ui/button'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useState } from 'react'
@@ -20,22 +19,14 @@ const SnippetCreateButton = () => {
   const handleCreateSnippet = ({
     name,
     description,
-    icon,
   }: {
     name: string
     description: string
-    icon: AppIconSelection
   }) => {
     createSnippetMutation.mutate({
       body: {
         name,
         description: description || undefined,
-        icon_info: {
-          icon: icon.type === 'emoji' ? icon.icon : icon.fileId,
-          icon_type: icon.type,
-          icon_background: icon.type === 'emoji' ? icon.background : undefined,
-          icon_url: icon.type === 'image' ? icon.url : undefined,
-        },
       },
     }, {
       onSuccess: (snippet) => {

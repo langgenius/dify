@@ -89,8 +89,7 @@ const mockSnippetDetail: SnippetDetailPayload = {
     description: 'A static snippet mock.',
     updatedAt: 'Updated 2h ago',
     usage: 'Used 19 times',
-    icon: '🪄',
-    iconBackground: '#E0EAFF',
+    tags: [],
     status: 'Draft',
   },
   graph: {

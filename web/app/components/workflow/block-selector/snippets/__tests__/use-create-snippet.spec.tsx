@@ -69,11 +69,6 @@ describe('useCreateSnippet', () => {
         await result.current.handleCreateSnippet({
           name: 'My snippet',
           description: 'desc',
-          icon: {
-            type: 'emoji',
-            icon: '🤖',
-            background: '#FFEAD5',
-          },
           graph: {
             nodes: [],
             edges: [],
@@ -86,12 +81,6 @@ describe('useCreateSnippet', () => {
         body: {
           name: 'My snippet',
           description: 'desc',
-          icon_info: {
-            icon: '🤖',
-            icon_type: 'emoji',
-            icon_background: '#FFEAD5',
-            icon_url: undefined,
-          },
         },
       })
       expect(mockSyncDraftWorkflow).toHaveBeenCalledWith({
@@ -119,11 +108,6 @@ describe('useCreateSnippet', () => {
         await result.current.handleCreateSnippet({
           name: 'My snippet',
           description: '',
-          icon: {
-            type: 'emoji',
-            icon: '🤖',
-            background: '#FFEAD5',
-          },
           graph: {
             nodes: [],
             edges: [],

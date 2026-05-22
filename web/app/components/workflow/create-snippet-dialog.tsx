@@ -1,30 +1,25 @@
 'use client'
 
 import type { FC } from 'react'
-import type { AppIconSelection } from '@/app/components/base/app-icon-picker'
 import type { SnippetCanvasData } from '@/models/snippet'
 import { Button } from '@langgenius/dify-ui/button'
 import { Dialog, DialogCloseButton, DialogContent, DialogPortal, DialogTitle } from '@langgenius/dify-ui/dialog'
+import { Input } from '@langgenius/dify-ui/input'
 import { useKeyPress } from 'ahooks'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import AppIcon from '@/app/components/base/app-icon'
-import AppIconPicker from '@/app/components/base/app-icon-picker'
-import Input from '@/app/components/base/input'
 import Textarea from '@/app/components/base/textarea'
 import ShortcutsName from './shortcuts-name'
 
 export type CreateSnippetDialogPayload = {
   name: string
   description: string
-  icon: AppIconSelection
   graph: SnippetCanvasData
 }
 
 type CreateSnippetDialogInitialValue = {
   name?: string
   description?: string
-  icon?: AppIconSelection
 }
 
 type CreateSnippetDialogProps = {
@@ -36,12 +31,6 @@ type CreateSnippetDialogProps = {
   title?: string
   confirmText?: string
   initialValue?: CreateSnippetDialogInitialValue
-}
-
-const defaultIcon: AppIconSelection = {
-  type: 'emoji',
-  icon: '🤖',
-  background: '#FFEAD5',
 }
 
 const defaultGraph: SnippetCanvasData = {
@@ -63,14 +52,10 @@ const CreateSnippetDialog: FC<CreateSnippetDialogProps> = ({
   const { t } = useTranslation()
   const [name, setName] = useState(initialValue?.name ?? '')
   const [description, setDescription] = useState(initialValue?.description ?? '')
-  const [icon, setIcon] = useState<AppIconSelection>(initialValue?.icon ?? defaultIcon)
-  const [showAppIconPicker, setShowAppIconPicker] = useState(false)
 
   const resetForm = useCallback(() => {
     setName('')
     setDescription('')
-    setIcon(defaultIcon)
-    setShowAppIconPicker(false)
   }, [])
 
   const handleClose = useCallback(() => {
@@ -88,12 +73,11 @@ const CreateSnippetDialog: FC<CreateSnippetDialogProps> = ({
     const payload = {
       name: trimmedName,
       description: trimmedDescription,
-      icon,
       graph: selectedGraph ?? defaultGraph,
     }
 
     onConfirm(payload)
-  }, [description, icon, name, onConfirm, selectedGraph])
+  }, [description, name, onConfirm, selectedGraph])
 
   useKeyPress(['meta.enter', 'ctrl.enter'], () => {
     if (!isOpen)
@@ -118,28 +102,16 @@ const CreateSnippetDialog: FC<CreateSnippetDialogProps> = ({
           </div>
 
           <div className="space-y-4 px-6 py-2">
-            <div className="flex items-end gap-3">
-              <div className="flex-1 pb-0.5">
-                <div className="mb-1 flex h-6 items-center system-sm-medium text-text-secondary">
-                  {t('snippet.nameLabel', { ns: 'workflow' })}
-                </div>
-                <Input
-                  value={name}
-                  onChange={e => setName(e.target.value)}
-                  placeholder={t('snippet.namePlaceholder', { ns: 'workflow' }) || ''}
-                  disabled={isSubmitting}
-                  autoFocus
-                />
+            <div>
+              <div className="mb-1 flex h-6 items-center system-sm-medium text-text-secondary">
+                {t('snippet.nameLabel', { ns: 'workflow' })}
               </div>
-
-              <AppIcon
-                size="xxl"
-                className="shrink-0 cursor-pointer"
-                iconType={icon.type}
-                icon={icon.type === 'emoji' ? icon.icon : icon.fileId}
-                background={icon.type === 'emoji' ? icon.background : undefined}
-                imageUrl={icon.type === 'image' ? icon.url : undefined}
-                onClick={() => setShowAppIconPicker(true)}
+              <Input
+                value={name}
+                onChange={e => setName(e.target.value)}
+                placeholder={t('snippet.namePlaceholder', { ns: 'workflow' }) || ''}
+                disabled={isSubmitting}
+                autoFocus
               />
             </div>
 
@@ -181,17 +153,6 @@ const CreateSnippetDialog: FC<CreateSnippetDialogProps> = ({
           </div>
         </DialogPortal>
       </Dialog>
-
-      {showAppIconPicker && (
-        <AppIconPicker
-          className="z-[1100]"
-          onSelect={(selection) => {
-            setIcon(selection)
-            setShowAppIconPicker(false)
-          }}
-          onClose={() => setShowAppIconPicker(false)}
-        />
-      )}
     </>
   )
 }

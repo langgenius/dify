@@ -1,13 +1,6 @@
-import type { AppIconType } from '@/types/app'
+import type { Tag } from '@/contract/console/tags'
 
 export type SnippetType = 'node' | 'group'
-
-export type SnippetIconInfo = {
-  icon_type: AppIconType | null
-  icon: string
-  icon_background?: string
-  icon_url?: string
-}
 
 export type SnippetInputField = Record<string, unknown>
 
@@ -19,7 +12,7 @@ export type Snippet = {
   is_published: boolean
   version: string
   use_count: number
-  icon_info: SnippetIconInfo
+  tags: Tag[]
   input_fields: SnippetInputField[]
   created_at: number
   created_by: string
@@ -41,14 +34,12 @@ export type CreateSnippetPayload = {
   name: string
   description?: string
   type?: SnippetType
-  icon_info?: SnippetIconInfo
   input_fields?: SnippetInputField[]
 }
 
 export type UpdateSnippetPayload = {
   name?: string
   description?: string
-  icon_info?: SnippetIconInfo
 }
 
 export type SnippetImportPayload = {

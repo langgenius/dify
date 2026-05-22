@@ -30,7 +30,7 @@ type SnippetListParams = {
   is_published?: boolean
 }
 
-type SnippetSummary = Pick<SnippetContract, 'id' | 'name' | 'description' | 'use_count' | 'icon_info' | 'updated_at' | 'is_published'>
+type SnippetSummary = Pick<SnippetContract, 'id' | 'name' | 'description' | 'use_count' | 'tags' | 'updated_at' | 'is_published'>
 
 const DEFAULT_SNIPPET_LIST_PARAMS = {
   page: 1,
@@ -58,14 +58,6 @@ const formatTimestamp = (timestamp?: number) => {
   return dayjs(milliseconds).format('YYYY-MM-DD HH:mm')
 }
 
-const getSnippetIcon = (iconInfo: SnippetContract['icon_info']) => {
-  return typeof iconInfo?.icon === 'string' ? iconInfo.icon : ''
-}
-
-const getSnippetIconBackground = (iconInfo: SnippetContract['icon_info']) => {
-  return typeof iconInfo?.icon_background === 'string' ? iconInfo.icon_background : ''
-}
-
 const toSnippetListItem = (snippet: SnippetSummary): SnippetListItemUIModel => {
   return {
     id: snippet.id,
@@ -73,8 +65,7 @@ const toSnippetListItem = (snippet: SnippetSummary): SnippetListItemUIModel => {
     description: snippet.description,
     updatedAt: formatTimestamp(snippet.updated_at),
     usage: String(snippet.use_count ?? 0),
-    icon: getSnippetIcon(snippet.icon_info),
-    iconBackground: getSnippetIconBackground(snippet.icon_info),
+    tags: snippet.tags,
     is_published: snippet.is_published,
     status: undefined,
   }

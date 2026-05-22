@@ -65,11 +65,7 @@ describe('useSnippetInit', () => {
         is_published: false,
         version: '1',
         use_count: 0,
-        icon_info: {
-          icon_type: null,
-          icon: '🪄',
-          icon_background: '#E0EAFF',
-        },
+        tags: [],
         input_fields: [],
         created_at: 1_712_300_000,
         created_by: 'user-1',
@@ -111,11 +107,7 @@ describe('useSnippetInit', () => {
         is_published: false,
         version: '1',
         use_count: 0,
-        icon_info: {
-          icon_type: null,
-          icon: '🪄',
-          icon_background: '#E0EAFF',
-        },
+        tags: [],
         input_fields: [
           {
             label: 'Published field',

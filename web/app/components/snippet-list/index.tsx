@@ -165,7 +165,12 @@ const SnippetList = () => {
           ? <SnippetCardSkeleton count={6} />
           : hasAnySnippet
             ? snippets.map(snippet => (
-                <SnippetCard key={snippet.id} snippet={snippet} />
+                <SnippetCard
+                  key={snippet.id}
+                  snippet={snippet}
+                  onOpenTagManagement={() => setShowTagManagementModal(true)}
+                  onTagsChange={refetch}
+                />
               ))
             : <Empty message={t('tabs.noSnippetsFound', { ns: 'workflow' })} />}
         {isFetchingNextPage && (

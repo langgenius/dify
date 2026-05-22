@@ -49,7 +49,6 @@ const LoadingSkeleton = () => {
               index === 3 && 'opacity-10',
             )}
           >
-            <div className="my-1 h-6 w-6 shrink-0 rounded-lg border-[0.5px] border-effects-icon-border bg-text-quaternary" />
             <div className="min-w-0 flex-1 px-1 py-1">
               <div className="h-2 w-[200px] rounded-[2px] bg-text-quaternary" />
             </div>

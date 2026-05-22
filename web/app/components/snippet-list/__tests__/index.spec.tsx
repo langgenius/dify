@@ -86,6 +86,10 @@ vi.mock('@/app/components/workflow/create-snippet-dialog', () => ({
   default: () => null,
 }))
 
+vi.mock('@/features/tag-management/components/tag-selector', () => ({
+  TagSelector: () => <div data-testid="snippet-card-tags" />,
+}))
+
 vi.mock('@/hooks/use-document-title', () => ({
   default: vi.fn(),
 }))
@@ -121,11 +125,7 @@ const mockSnippetListState = {
           type: 'node',
           is_published: true,
           use_count: 12,
-          icon_info: {
-            icon_type: 'emoji',
-            icon: '🤖',
-            icon_background: '#E4FBCC',
-          },
+          tags: [],
           created_at: 1704067200,
           created_by: 'creator-1',
           updated_at: 1704153600,

@@ -2,7 +2,6 @@ import type { FC } from 'react'
 import type { SnippetListItem } from '@/types/snippet'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import AppIcon from '@/app/components/base/app-icon'
 import { useMembers } from '@/service/use-common'
 import { useSnippetPublishedWorkflow } from '@/service/use-snippet-workflows'
 import BlockIcon from '../../block-icon'
@@ -17,7 +16,7 @@ type SnippetDetailCardProps = {
 const SnippetDetailCard: FC<SnippetDetailCardProps> = ({
   snippet,
 }) => {
-  const { description, icon_info, name } = snippet
+  const { description, name } = snippet
   const { t } = useTranslation('snippet')
   const { data: membersData } = useMembers()
   const { data: workflow } = useSnippetPublishedWorkflow(snippet.id)
@@ -63,13 +62,6 @@ const SnippetDetailCard: FC<SnippetDetailCardProps> = ({
     <div className="w-[224px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur px-3 pt-3 pb-4 shadow-lg backdrop-blur-[5px]">
       <div className="flex flex-col gap-2">
         <div className="flex flex-col gap-2">
-          <AppIcon
-            size="tiny"
-            iconType={icon_info.icon_type}
-            icon={icon_info.icon}
-            background={icon_info.icon_background}
-            imageUrl={icon_info.icon_url}
-          />
           <div className="system-md-medium text-text-primary">{name}</div>
         </div>
         {!!description && (

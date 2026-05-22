@@ -174,8 +174,7 @@ const payload: SnippetDetailPayload = {
     description: 'desc',
     updatedAt: '2026-03-29 10:00',
     usage: '0',
-    icon: '',
-    iconBackground: '',
+    tags: [],
   },
   graph: {
     nodes: [],

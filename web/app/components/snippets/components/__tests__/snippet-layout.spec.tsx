@@ -68,8 +68,7 @@ const createSnippet = (overrides: Partial<SnippetDetail> = {}): SnippetDetail =>
   description: 'Snippet description',
   updatedAt: '2026-04-15',
   usage: '42',
-  icon: 'emoji',
-  iconBackground: '#ffffff',
+  tags: [],
   is_published: true,
   ...overrides,
 })

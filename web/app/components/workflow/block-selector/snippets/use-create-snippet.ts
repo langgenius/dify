@@ -24,7 +24,6 @@ export const useCreateSnippet = () => {
   const handleCreateSnippet = async ({
     name,
     description,
-    icon,
     graph,
   }: CreateSnippetDialogPayload) => {
     setIsCreatingSnippet(true)
@@ -34,12 +33,6 @@ export const useCreateSnippet = () => {
         body: {
           name,
           description: description || undefined,
-          icon_info: {
-            icon: icon.type === 'emoji' ? icon.icon : icon.fileId,
-            icon_type: icon.type,
-            icon_background: icon.type === 'emoji' ? icon.background : undefined,
-            icon_url: icon.type === 'image' ? icon.url : undefined,
-          },
         },
       })
 

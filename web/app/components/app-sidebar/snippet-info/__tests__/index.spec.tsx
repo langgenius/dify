@@ -13,8 +13,7 @@ const mockSnippet: SnippetDetail = {
   description: 'Turn one blog post into multiple social media variations.',
   updatedAt: '2026-03-25 10:00',
   usage: '12',
-  icon: '🤖',
-  iconBackground: '#F0FDF9',
+  tags: [],
   status: undefined,
 }
 
