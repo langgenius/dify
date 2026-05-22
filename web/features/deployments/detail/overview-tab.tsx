@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next'
 import Link from '@/next/link'
 import { consoleQuery } from '@/service/client'
 import { SectionState } from './common'
-import { AccessStatusSection } from './overview-tab/access-status-section'
+import { AccessStatusSection, AccessStatusSectionSkeleton } from './overview-tab/access-status-section'
 import { EnvironmentStrip, EnvironmentStripSkeleton } from './overview-tab/environment-strip'
 import { computeOverviewStats } from './overview-tab/overview-drift'
 import { ReleaseHero, ReleaseHeroSkeleton } from './overview-tab/release-hero'
@@ -47,6 +47,22 @@ function ReleaseOverviewSection({ appInstanceId, children }: {
   )
 }
 
+function OverviewLoadingSkeleton({ appInstanceId }: {
+  appInstanceId: string
+}) {
+  return (
+    <OverviewLayout>
+      <div className="flex min-w-0 flex-col gap-6">
+        <ReleaseOverviewSection appInstanceId={appInstanceId}>
+          <ReleaseHeroSkeleton />
+        </ReleaseOverviewSection>
+        <EnvironmentStripSkeleton />
+        <AccessStatusSectionSkeleton />
+      </div>
+    </OverviewLayout>
+  )
+}
+
 export function OverviewTab({ appInstanceId }: {
   appInstanceId: string
 }) {
@@ -62,15 +78,8 @@ export function OverviewTab({ appInstanceId }: {
   }))
   const instance = overviewQuery.data?.overview?.appInstance
 
-  if (overviewQuery.isLoading) {
-    return (
-      <OverviewLayout>
-        <ReleaseOverviewSection appInstanceId={appInstanceId}>
-          <ReleaseHeroSkeleton />
-        </ReleaseOverviewSection>
-      </OverviewLayout>
-    )
-  }
+  if (overviewQuery.isLoading)
+    return <OverviewLoadingSkeleton appInstanceId={appInstanceId} />
 
   if (overviewQuery.isError) {
     return (
@@ -88,16 +97,8 @@ export function OverviewTab({ appInstanceId }: {
     )
   }
 
-  if (releasesQuery.isLoading) {
-    return (
-      <OverviewLayout>
-        <ReleaseOverviewSection appInstanceId={appInstanceId}>
-          <ReleaseHeroSkeleton />
-        </ReleaseOverviewSection>
-        <EnvironmentStripSkeleton />
-      </OverviewLayout>
-    )
-  }
+  if (releasesQuery.isLoading)
+    return <OverviewLoadingSkeleton appInstanceId={appInstanceId} />
 
   if (releasesQuery.isError) {
     return (

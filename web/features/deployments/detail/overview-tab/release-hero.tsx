@@ -92,12 +92,26 @@ export function ReleaseHero({ appInstanceId, latestRelease, stats }: ReleaseHero
 
 export function ReleaseHeroSkeleton() {
   return (
-    <div className="flex flex-col gap-4 rounded-xl border border-components-panel-border bg-components-panel-bg p-5 sm:flex-row sm:items-center sm:justify-between">
-      <div className="flex flex-col gap-3">
-        <SkeletonRectangle className="my-0 h-7 w-40 animate-pulse" />
-        <SkeletonRectangle className="my-0 h-3 w-60 animate-pulse" />
+    <div
+      data-slot="deployment-overview-release-hero-skeleton"
+      className="overflow-hidden rounded-xl border border-components-panel-border bg-components-panel-bg"
+    >
+      <div className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between sm:gap-6">
+        <div className="flex min-w-0 flex-col gap-2">
+          <div className="flex min-w-0 items-center gap-3">
+            <SkeletonRectangle className="my-0 size-9 shrink-0 animate-pulse rounded-lg" />
+            <SkeletonRectangle className="my-0 h-7 w-40 animate-pulse" />
+          </div>
+          <div className="flex min-w-0 flex-wrap items-baseline gap-x-1.5 gap-y-1">
+            <SkeletonRectangle className="my-0 h-3 w-32 animate-pulse" />
+            <SkeletonRectangle className="my-0 h-3 w-14 animate-pulse" />
+            <SkeletonRectangle className="my-0 h-3 w-28 animate-pulse" />
+          </div>
+        </div>
+        <div className="shrink-0">
+          <SkeletonRectangle className="my-0 h-9 w-32 animate-pulse rounded-lg" />
+        </div>
       </div>
-      <SkeletonRectangle className="my-0 h-9 w-32 animate-pulse rounded-lg" />
     </div>
   )
 }
