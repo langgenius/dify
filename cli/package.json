@@ -41,7 +41,6 @@
     "ci": "pnpm tree:check && pnpm type-check && pnpm lint && pnpm test:coverage && pnpm build",
     "clean": "rm -rf dist node_modules/.cache",
     "version:info": "bun scripts/print-buildinfo.ts",
-    "docker:build-dev": "scripts/docker-build-dev.sh",
     "build:bin": "scripts/release-build.sh"
   },
   "dependencies": {
