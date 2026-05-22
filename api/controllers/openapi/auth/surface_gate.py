@@ -77,10 +77,9 @@ def _coerce_subject_type(raw: object) -> SubjectType | None:
         return None
     if isinstance(raw, SubjectType):
         return raw
-    try:
+    if isinstance(raw, str):
         return SubjectType(raw)
-    except ValueError:
-        return None
+    return None
 
 
 def _stringify(value: object) -> str | None:

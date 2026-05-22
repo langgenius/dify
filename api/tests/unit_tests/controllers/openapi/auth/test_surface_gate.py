@@ -21,7 +21,7 @@ from werkzeug.exceptions import Forbidden
 
 from controllers.openapi.auth.context import Context
 from controllers.openapi.auth.steps import SurfaceCheck
-from controllers.openapi.auth.surface_gate import accept_subjects, check_surface
+from controllers.openapi.auth.surface_gate import _coerce_subject_type, accept_subjects, check_surface
 from libs.oauth_bearer import AuthContext, Scope, SubjectType
 
 
@@ -179,3 +179,51 @@ def test_surface_check_rejects_on_miss_and_emits_audit():
             with pytest.raises(Forbidden):
                 step(_pipeline_ctx())
             emit.assert_called_once()
+
+
+# ---------------------------------------------------------------------------
+# _coerce_subject_type — normalises whatever sat on ctx.subject_type
+# ---------------------------------------------------------------------------
+#
+# The gate reads `ctx.subject_type` via `getattr(..., None)`, so the value
+# could be a real enum (happy path), a raw string (e.g. rehydrated from a
+# dict-shaped context), `None` (attribute missing), or something unexpected
+# from a buggy upstream. The coercer must collapse all of that to
+# `SubjectType | None` so `check_surface` can do a clean set-membership
+# check and emit a clean audit payload.
+
+
+def test_coerce_subject_type_returns_none_for_none():
+    assert _coerce_subject_type(None) is None
+
+
+def test_coerce_subject_type_returns_enum_instance_unchanged():
+    # Identity matters: we don't want to round-trip through the string
+    # constructor for an already-valid enum.
+    assert _coerce_subject_type(SubjectType.ACCOUNT) is SubjectType.ACCOUNT
+    assert _coerce_subject_type(SubjectType.EXTERNAL_SSO) is SubjectType.EXTERNAL_SSO
+
+
+@pytest.mark.parametrize(
+    ("raw", "expected"),
+    [
+        ("account", SubjectType.ACCOUNT),
+        ("external_sso", SubjectType.EXTERNAL_SSO),
+    ],
+)
+def test_coerce_subject_type_parses_known_strings(raw: str, expected: SubjectType):
+    assert _coerce_subject_type(raw) is expected
+
+
+def test_coerce_subject_type_raises_on_unknown_string():
+    # Unknown strings reach `SubjectType(raw)` which raises ValueError.
+    # We surface that loudly rather than silently returning None, because
+    # a string that *looks* like a subject type but isn't is almost
+    # certainly an upstream bug worth catching.
+    with pytest.raises(ValueError):
+        _coerce_subject_type("not_a_subject")
+
+
+@pytest.mark.parametrize("raw", [123, 1.5, b"account", object(), ["account"], {"account"}])
+def test_coerce_subject_type_returns_none_for_non_string_non_enum(raw: object):
+    assert _coerce_subject_type(raw) is None

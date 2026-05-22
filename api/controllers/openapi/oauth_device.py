@@ -16,6 +16,7 @@ SSO branch lives in oauth_device_sso.py.
 from __future__ import annotations
 
 import logging
+from typing import Any
 
 from flask import request
 from flask_login import login_required
@@ -56,6 +57,7 @@ from services.oauth_device_flow import (
     DeviceFlowRedis,
     DeviceFlowStatus,
     InvalidTransitionError,
+    PollPayload,
     SlowDownDecision,
     StateNotFoundError,
     mint_oauth_token,
@@ -147,7 +149,7 @@ class OAuthDeviceTokenApi(Resource):
         if terminal.status is DeviceFlowStatus.DENIED:
             return {"error": "access_denied"}, 400
 
-        poll_payload = terminal.poll_payload or {}
+        poll_payload: PollPayload | dict[str, Any] = terminal.poll_payload or {}
         if "token" not in poll_payload:
             logger.error("device_flow: approved state missing poll_payload for %s", device_code)
             return {"error": "expired_token"}, 400
@@ -330,9 +332,10 @@ def _audit_cross_ip_if_needed(state) -> None:
         )
 
 
-def _build_account_poll_payload(account, tenant, mint) -> dict:
-    """Pre-render the poll-response body so the unauthenticated poll
-    handler doesn't re-query accounts/tenants for authz data.
+def _build_account_poll_payload(account, tenant, mint) -> PollPayload:
+    """Account branch of the shared `PollPayload` contract. SSO-only fields
+    (`subject_email`, `subject_issuer`) are intentionally omitted; see the
+    `PollPayload` docstring in `services.oauth_device_flow`.
     """
     from models import Tenant, TenantAccountJoin
 
@@ -355,7 +358,7 @@ def _build_account_poll_payload(account, tenant, mint) -> dict:
     if default_ws_id is None and workspaces:
         default_ws_id = workspaces[0].id
 
-    return {
+    payload: PollPayload = {
         "token": mint.token,
         "expires_at": mint.expires_at.isoformat(),
         "subject_type": SubjectType.ACCOUNT,
@@ -364,6 +367,7 @@ def _build_account_poll_payload(account, tenant, mint) -> dict:
         "default_workspace_id": default_ws_id,
         "token_id": str(mint.token_id),
     }
+    return payload
 
 
 def _emit_approve_audit(state, account, tenant, mint) -> None:

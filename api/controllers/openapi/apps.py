@@ -206,6 +206,7 @@ class AppListApi(Resource):
         else:
             parsed_uuid = None
 
+        tenant_name: str | None = None
         if parsed_uuid is not None:
             app: App | None = db.session.get(App, str(parsed_uuid))
             if not app or app.status != "normal" or str(app.tenant_id) != workspace_id or not is_openapi_visible(app):
@@ -250,7 +251,7 @@ class AppListApi(Resource):
         if pagination is None:
             return empty
 
-        tenant_name: str | None = None
+        tenant_name = None
         if pagination.items:
             tenant_name = db.session.execute(
                 sa.select(Tenant.name).where(Tenant.id == workspace_id)

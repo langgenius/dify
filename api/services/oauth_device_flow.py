@@ -15,12 +15,13 @@ import uuid
 from dataclasses import asdict, dataclass, field
 from datetime import UTC, datetime, timedelta
 from enum import StrEnum
+from typing import NotRequired, TypedDict
 
 from sqlalchemy import func, select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.orm import Session, scoped_session
 
-from libs.oauth_bearer import TOKEN_CACHE_KEY_FMT
+from libs.oauth_bearer import TOKEN_CACHE_KEY_FMT, SubjectType
 from models.oauth import OAuthAccessToken
 
 logger = logging.getLogger(__name__)
@@ -73,6 +74,36 @@ class SlowDownDecision(StrEnum):
     SLOW_DOWN = "slow_down"
 
 
+class PollPayload(TypedDict):
+    """Body served by the unauthenticated poll endpoint
+    (`POST /openapi/v1/oauth/device/token`) once approve has run.
+
+    A single shape across both branches so the CLI/SPA can parse one
+    contract:
+
+    - ``account`` branch (built in `controllers.openapi.oauth_device.
+      _build_account_poll_payload`) populates ``account`` + ``workspaces``
+      + ``default_workspace_id`` and omits the SSO-only fields.
+    - ``external_sso`` branch (built in
+      `controllers.openapi.oauth_device_sso.approve_external`) populates
+      ``subject_email`` + ``subject_issuer`` and zero-fills the
+      account/workspace fields (``None`` / ``[]``).
+
+    Pre-rendering here means the unauthenticated poll handler doesn't
+    re-query accounts/tenants for authz data.
+    """
+
+    token: str
+    expires_at: str
+    subject_type: SubjectType
+    account: dict[str, object] | None
+    workspaces: list[dict[str, object]]
+    default_workspace_id: str | None
+    token_id: str
+    subject_email: NotRequired[str]
+    subject_issuer: NotRequired[str]
+
+
 @dataclass
 class DeviceFlowState:
     """``minted_token`` is plaintext between approve and the next poll;
@@ -91,7 +122,7 @@ class DeviceFlowState:
     created_at: str = ""
     created_ip: str = ""
     last_poll_at: str = ""
-    poll_payload: dict | None = field(default=None)
+    poll_payload: PollPayload | None = field(default=None)
 
     def to_json(self) -> str:
         return json.dumps(asdict(self))
@@ -192,7 +223,7 @@ class DeviceFlowRedis:
         minted_token: str,
         token_id: str,
         subject_issuer: str | None = None,
-        poll_payload: dict | None = None,
+        poll_payload: PollPayload | None = None,
     ) -> None:
         state = self._load_state(device_code)
         if state is None:

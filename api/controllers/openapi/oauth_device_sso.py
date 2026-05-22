@@ -56,6 +56,7 @@ from services.oauth_device_flow import (
     DeviceFlowRedis,
     DeviceFlowStatus,
     InvalidTransitionError,
+    PollPayload,
     StateNotFoundError,
     mint_oauth_token,
     oauth_ttl_days,
@@ -258,7 +259,10 @@ def approve_external():
         ttl_days=ttl_days,
     )
 
-    poll_payload = {
+    # SSO branch of the shared PollPayload contract: account/workspace
+    # fields are zero-filled (`None` / `[]`) for parity with the account
+    # branch in `oauth_device._build_account_poll_payload`.
+    poll_payload: PollPayload = {
         "token": mint.token,
         "expires_at": mint.expires_at.isoformat(),
         "subject_type": SubjectType.EXTERNAL_SSO,
