@@ -62,13 +62,17 @@ describe('MembersClient.list', () => {
     await stub?.stop()
   })
 
-  it('GETs /workspaces/<id>/members and returns parsed body', async () => {
+  it('GETs /workspaces/<id>/members and returns parsed envelope', async () => {
     const captured: StubServer['lastRequest'] = {}
     stub = await startServer(
       jsonResponder(
         200,
         {
-          members: [
+          page: 1,
+          limit: 20,
+          total: 1,
+          has_more: false,
+          data: [
             { id: 'm-1', name: 'Mia', email: 'mia@e.com', role: 'admin', status: 'active' },
           ],
         },
@@ -80,16 +84,29 @@ describe('MembersClient.list', () => {
     const result = await makeClient(stub.url).list('ws-1')
     expect(captured.method).toBe('GET')
     expect(captured.url).toBe('/openapi/v1/workspaces/ws-1/members')
-    expect(result.members[0].email).toBe('mia@e.com')
+    expect(result.data[0].email).toBe('mia@e.com')
   })
 
   it('URL-encodes workspace id', async () => {
     const captured: StubServer['lastRequest'] = {}
-    stub = await startServer(jsonResponder(200, { members: [] }, captured))
+    stub = await startServer(
+      jsonResponder(200, { page: 1, limit: 20, total: 0, has_more: false, data: [] }, captured),
+    )
     stub.lastRequest = captured
 
     await makeClient(stub.url).list('ws with space')
     expect(captured.url).toBe('/openapi/v1/workspaces/ws%20with%20space/members')
+  })
+
+  it('forwards page/limit as query params', async () => {
+    const captured: StubServer['lastRequest'] = {}
+    stub = await startServer(
+      jsonResponder(200, { page: 2, limit: 50, total: 0, has_more: false, data: [] }, captured),
+    )
+    stub.lastRequest = captured
+
+    await makeClient(stub.url).list('ws-1', { page: 2, limit: 50 })
+    expect(captured.url).toBe('/openapi/v1/workspaces/ws-1/members?page=2&limit=50')
   })
 
   it('propagates server 403 as HTTPError', async () => {

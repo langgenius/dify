@@ -4,11 +4,14 @@ import type { IOStreams } from '../../../io/streams.js'
 import { MembersClient } from '../../../api/members.js'
 import { runWithSpinner } from '../../../io/spinner.js'
 import { nullStreams } from '../../../io/streams.js'
+import { LIMIT_DEFAULT, parseLimit } from '../../../limit/limit.js'
 import { resolveWorkspaceId } from '../../../workspace/resolver.js'
 import { MemberListOutput, MemberRow } from './handlers.js'
 
 export type GetMemberOptions = {
   readonly workspace?: string
+  readonly page?: number
+  readonly limitRaw?: string
   readonly format?: string
 }
 
@@ -39,12 +42,24 @@ export async function runGetMember(
     bundle: deps.bundle,
   })
 
+  const limit = resolveLimit(opts.limitRaw, env)
+  const page = opts.page === undefined || opts.page <= 0 ? 1 : opts.page
+
   const envelope = await runWithSpinner(
     { io, label: 'Fetching members' },
-    () => factory(deps.http).list(wsId),
+    () => factory(deps.http).list(wsId, { page, limit }),
   )
 
   const callerId = deps.bundle.account?.id ?? ''
-  const rows = envelope.members.map(m => new MemberRow(m, callerId !== '' && m.id === callerId))
+  const rows = envelope.data.map(m => new MemberRow(m, callerId !== '' && m.id === callerId))
   return { data: new MemberListOutput(rows, envelope), workspaceId: wsId }
+}
+
+function resolveLimit(raw: string | undefined, env: (k: string) => string | undefined): number {
+  if (raw !== undefined && raw !== '')
+    return parseLimit(raw, '--limit')
+  const envValue = env('DIFY_LIMIT')
+  if (envValue !== undefined && envValue !== '')
+    return parseLimit(envValue, 'DIFY_LIMIT')
+  return LIMIT_DEFAULT
 }
