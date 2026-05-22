@@ -3,10 +3,10 @@ import {
   Select,
   SelectContent,
   SelectGroup,
+  SelectGroupLabel,
   SelectItem,
   SelectItemIndicator,
   SelectItemText,
-  SelectLabel,
   SelectTrigger,
 } from '@langgenius/dify-ui/select'
 import { useTranslation } from 'react-i18next'
@@ -50,7 +50,7 @@ const FrequencySelector = ({ frequency, onChange }: FrequencySelectorProps) => {
       </SelectTrigger>
       <SelectContent>
         <SelectGroup>
-          <SelectLabel>{groupLabel}</SelectLabel>
+          <SelectGroupLabel>{groupLabel}</SelectGroupLabel>
           {frequencies.map(item => (
             <SelectItem key={item.value} value={item.value}>
               <SelectItemText>{item.name}</SelectItemText>

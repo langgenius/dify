@@ -62,4 +62,5 @@ export const SelectItemText = ({ children }: { children?: ReactNode }) => <>{chi
 export const SelectItemIndicator = ({ children }: { children?: ReactNode }) => <>{children}</>
 export const SelectGroup = ({ children }: { children?: ReactNode }) => <>{children}</>
 export const SelectLabel = ({ children }: { children?: ReactNode }) => <>{children}</>
+export const SelectGroupLabel = ({ children }: { children?: ReactNode }) => <>{children}</>
 export const SelectSeparator = (props: React.HTMLAttributes<HTMLDivElement>) => <div role="separator" {...props} />

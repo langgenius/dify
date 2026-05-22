@@ -4,6 +4,7 @@ import {
   Select,
   SelectContent,
   SelectGroup,
+  SelectGroupLabel,
   SelectItem,
   SelectItemIndicator,
   SelectItemText,
@@ -36,7 +37,8 @@ export const Default: Story = {
   render: () => (
     <div className={triggerWidth}>
       <Select defaultValue="seattle">
-        <SelectTrigger aria-label="City">
+        <SelectLabel>City</SelectLabel>
+        <SelectTrigger>
           <SelectValue placeholder="Select a city" />
         </SelectTrigger>
         <SelectContent>
@@ -123,7 +125,7 @@ export const WithGroupsAndSeparator: Story = {
         </SelectTrigger>
         <SelectContent>
           <SelectGroup>
-            <SelectLabel>OpenAI</SelectLabel>
+            <SelectGroupLabel>OpenAI</SelectGroupLabel>
             <SelectItem value="gpt-5">
               <SelectItemText>GPT-5</SelectItemText>
               <SelectItemIndicator />
@@ -135,7 +137,7 @@ export const WithGroupsAndSeparator: Story = {
           </SelectGroup>
           <SelectSeparator />
           <SelectGroup>
-            <SelectLabel>Anthropic</SelectLabel>
+            <SelectGroupLabel>Anthropic</SelectGroupLabel>
             <SelectItem value="claude-opus">
               <SelectItemText>Claude Opus</SelectItemText>
               <SelectItemIndicator />
@@ -147,7 +149,7 @@ export const WithGroupsAndSeparator: Story = {
           </SelectGroup>
           <SelectSeparator />
           <SelectGroup>
-            <SelectLabel>Google</SelectLabel>
+            <SelectGroupLabel>Google</SelectGroupLabel>
             <SelectItem value="gemini-25">
               <SelectItemText>Gemini 2.5</SelectItemText>
               <SelectItemIndicator />
