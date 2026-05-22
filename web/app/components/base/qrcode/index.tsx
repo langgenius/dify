@@ -56,11 +56,11 @@ const ShareQRCode = ({ content }: Props) => {
 
   return (
     <Tooltip>
-      <div className="relative h-6 w-6">
+      <div className="relative size-6">
         <TooltipTrigger
           render={(
             <ActionButton aria-label={safeTooltipText} onClick={toggleQRCode}>
-              <span className="i-ri-qr-code-line h-4 w-4" aria-hidden="true" />
+              <span className="i-ri-qr-code-line size-4" aria-hidden="true" />
             </ActionButton>
           )}
         />

@@ -196,7 +196,7 @@ const FeaturesTrigger = () => {
           )}
           onClick={handleShowFeatures}
         >
-          <RiApps2AddLine className="mr-1 h-4 w-4 text-components-button-secondary-text" />
+          <RiApps2AddLine className="mr-1 size-4 text-components-button-secondary-text" />
           {t('common.features', { ns: 'workflow' })}
         </Button>
       )}

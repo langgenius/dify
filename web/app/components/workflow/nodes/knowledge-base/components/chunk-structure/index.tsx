@@ -64,7 +64,7 @@ const ChunkStructure = ({
                   className="w-full"
                   variant="secondary-accent"
                 >
-                  <span className="mr-1 i-ri-add-line h-4 w-4" />
+                  <span className="mr-1 i-ri-add-line size-4" />
                   {t('nodes.knowledgeBase.chooseChunkStructure', { ns: 'workflow' })}
                 </Button>
               )}

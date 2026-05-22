@@ -102,7 +102,7 @@ const OpeningSettingModal = ({
   const [deletingID, setDeletingID] = useState<number | null>(null)
   const [autoFocusQuestionID, setAutoFocusQuestionID] = useState<number | null>(null)
   const openerPlaceholder = (
-    <span className="block break-words whitespace-pre-wrap">
+    <span className="block wrap-break-word whitespace-pre-wrap">
       {t('openingStatement.placeholderLine1', { ns: 'appDebug' })}
       <br />
       {t('openingStatement.placeholderLine2', { ns: 'appDebug' })}
@@ -119,7 +119,7 @@ const OpeningSettingModal = ({
             </div>
             <Infotip
               aria-label={t('openingStatement.openingQuestionDescription', { ns: 'appDebug' })}
-              className="h-3.5 w-3.5"
+              className="size-3.5"
               popupClassName="max-w-[220px] system-sm-regular text-text-secondary"
               delay={0}
             >
@@ -156,7 +156,7 @@ const OpeningSettingModal = ({
                 )}
                 key={index}
               >
-                <span className="handle i-ri-draggable h-4 w-4 cursor-grab text-text-quaternary" />
+                <span className="handle i-ri-draggable size-4 cursor-grab text-text-quaternary" />
                 <input
                   type="input"
                   value={question || ''}
@@ -171,7 +171,7 @@ const OpeningSettingModal = ({
                     }))
                   }}
                   autoFocus={autoFocusQuestionID === index}
-                  className="h-9 w-full grow cursor-pointer overflow-x-auto rounded-lg border-0 bg-transparent pr-8 pl-1.5 text-sm leading-9 text-text-secondary focus:outline-hidden"
+                  className="h-9 w-full grow cursor-pointer overflow-x-auto rounded-lg border-0 bg-transparent pr-8 pl-1.5 text-sm/9 text-text-secondary focus:outline-hidden"
                   onFocus={() => {
                     setFocusID(index)
                     if (autoFocusQuestionID === index)
@@ -188,7 +188,7 @@ const OpeningSettingModal = ({
                   onMouseEnter={() => setDeletingID(index)}
                   onMouseLeave={() => setDeletingID(null)}
                 >
-                  <span className="i-ri-delete-bin-line h-3.5 w-3.5" data-testid={`delete-question-${question}`} />
+                  <span className="i-ri-delete-bin-line size-3.5" data-testid={`delete-question-${question}`} />
                 </div>
               </div>
             )
@@ -204,7 +204,7 @@ const OpeningSettingModal = ({
             }}
             className="mt-1 flex h-9 cursor-pointer items-center gap-2 rounded-lg bg-components-button-tertiary-bg px-3 text-components-button-tertiary-text hover:bg-components-button-tertiary-bg-hover"
           >
-            <span className="i-ri-add-line h-4 w-4" />
+            <span className="i-ri-add-line size-4" />
             <div className="system-sm-medium text-[13px]">{t('variableConfig.addOption', { ns: 'appDebug' })}</div>
           </div>
         )}
@@ -223,7 +223,7 @@ const OpeningSettingModal = ({
             className="cursor-pointer border-none bg-transparent p-1 focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
             onClick={onCancel}
           >
-            <span className="i-ri-close-line h-4 w-4 text-text-tertiary" aria-hidden="true" />
+            <span className="i-ri-close-line size-4 text-text-tertiary" aria-hidden="true" />
           </button>
         </div>
         <div className="mb-8 space-y-4">

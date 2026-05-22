@@ -325,7 +325,7 @@ describe('Empty', () => {
       const { container } = render(<Empty />)
 
       // Icon wrapper should be present
-      const iconWrapper = container.querySelector('.h-14.w-14')
+      const iconWrapper = container.querySelector('.size-14')
       expect(iconWrapper).toBeInTheDocument()
     })
 
@@ -558,7 +558,7 @@ describe('Empty', () => {
     it('should render icon container centered', () => {
       const { container } = render(<Empty />)
 
-      const centerWrapper = container.querySelector('.-translate-x-1\\/2.-translate-y-1\\/2')
+      const centerWrapper = container.querySelector('.-translate-1\\/2')
       expect(centerWrapper).toBeInTheDocument()
     })
 
@@ -785,7 +785,7 @@ describe('Empty and Line Integration', () => {
     expect(container.querySelectorAll('.h-\\[144px\\]').length).toBe(16)
 
     // Icon container
-    expect(container.querySelector('.h-14.w-14')).toBeInTheDocument()
+    expect(container.querySelector('.size-14')).toBeInTheDocument()
 
     // Line components (4) + Group icon (1) = 5 SVGs total
     expect(container.querySelectorAll('svg').length).toBe(5)

@@ -54,10 +54,10 @@ const ImageItem = ({
       {
         showDeleteAction && (
           <Button
-            className="absolute -top-1.5 -right-1.5 z-11 hidden h-5 w-5 rounded-full p-0 group-hover/file-image:flex"
+            className="absolute -top-1.5 -right-1.5 z-11 hidden size-5 rounded-full p-0 group-hover/file-image:flex"
             onClick={handleRemove}
           >
-            <RiCloseLine className="h-4 w-4 text-components-button-secondary-text" />
+            <RiCloseLine className="size-4 text-components-button-secondary-text" />
           </Button>
         )
       }

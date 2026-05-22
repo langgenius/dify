@@ -23,7 +23,7 @@ const STYLE_MAP = {
     icon: <Premium />,
     bg: 'bg-billing-plan-card-premium-bg opacity-10',
     noise: (
-      <div className="absolute -top-12 right-0 left-0 -z-10">
+      <div className="absolute inset-x-0 -top-12 -z-10">
         <PremiumNoise />
       </div>
     ),
@@ -32,7 +32,7 @@ const STYLE_MAP = {
     icon: <Enterprise />,
     bg: 'bg-billing-plan-card-enterprise-bg opacity-10',
     noise: (
-      <div className="absolute -top-12 right-0 left-0 -z-10">
+      <div className="absolute inset-x-0 -top-12 -z-10">
         <EnterpriseNoise />
       </div>
     ),

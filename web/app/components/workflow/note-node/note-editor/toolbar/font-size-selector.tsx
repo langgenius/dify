@@ -48,7 +48,7 @@ const FontSizeSelector = () => {
               fontSizeSelectorShow && 'bg-state-base-hover text-text-secondary',
             )}
           >
-            <RiFontSize className="mr-1 h-4 w-4" />
+            <RiFontSize className="mr-1 size-4" />
             {FONT_SIZE_LIST.find(font => font.key === fontSize)?.value || t('nodes.note.editor.small', { ns: 'workflow' })}
           </button>
         )}
@@ -77,7 +77,7 @@ const FontSizeSelector = () => {
                 </div>
                 {
                   fontSize === font.key && (
-                    <Check className="h-4 w-4 text-text-accent" />
+                    <Check className="size-4 text-text-accent" />
                   )
                 }
               </div>

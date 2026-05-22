@@ -76,7 +76,7 @@ const CredentialSelector = ({
             <div className="grow truncate system-sm-regular text-components-input-text-placeholder">{t('modelProvider.auth.selectModelCredential', { ns: 'common' })}</div>
           )
         }
-        <RiArrowDownSLine className="h-4 w-4 text-text-quaternary" />
+        <RiArrowDownSLine className="size-4 text-text-quaternary" />
       </PopoverTrigger>
       <PopoverContent
         sideOffset={0}
@@ -105,7 +105,7 @@ const CredentialSelector = ({
               className="flex h-10 cursor-pointer items-center border-t border-t-divider-subtle px-7 system-xs-medium text-text-accent-light-mode-only"
               onClick={handleAddNewCredential}
             >
-              <RiAddLine className="mr-1 h-4 w-4" />
+              <RiAddLine className="mr-1 size-4" />
               {t('modelProvider.auth.addNewModelCredential', { ns: 'common' })}
             </div>
           )

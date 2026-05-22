@@ -39,7 +39,7 @@ const Nav = ({
 
   return (
     <div className={`
-      flex h-8 max-w-[670px] shrink-0 items-center rounded-xl px-0.5 text-sm font-medium max-[1024px]:max-w-[400px]
+      flex h-8 max-w-167.5 shrink-0 items-center rounded-xl px-0.5 text-sm font-medium max-[1024px]:max-w-100
       ${isActivated && 'bg-components-main-nav-nav-button-bg-active font-semibold shadow-md'}
       ${!curNav && !isActivated && 'hover:bg-components-main-nav-nav-button-bg-hover'}
     `}
@@ -61,7 +61,7 @@ const Nav = ({
           <div>
             {
               (hovered && curNav)
-                ? <span className="i-custom-vender-line-arrows-arrow-narrow-left h-4 w-4" />
+                ? <span className="i-custom-vender-line-arrows-arrow-narrow-left size-4" />
                 : isActivated
                   ? activeIcon
                   : icon

@@ -133,7 +133,7 @@ const SideBar = () => {
       )}
 
       {!isMobile && (
-        <div className="mt-auto flex pt-3 pb-3">
+        <div className="mt-auto flex py-3">
           <button
             type="button"
             aria-label={isFold ? t('sidebar.expandSidebar', { ns: 'layout' }) : t('sidebar.collapseSidebar', { ns: 'layout' })}
@@ -151,7 +151,7 @@ const SideBar = () => {
 
       <AlertDialog open={showConfirm} onOpenChange={setShowConfirm}>
         <AlertDialogContent>
-          <div className="flex flex-col items-start gap-2 self-stretch pt-6 pr-6 pb-4 pl-6">
+          <div className="flex flex-col items-start gap-2 self-stretch px-6 pt-6 pb-4">
             <AlertDialogTitle className="w-full title-2xl-semi-bold text-text-primary">
               {t('sidebar.delete.title', { ns: 'explore' })}
             </AlertDialogTitle>

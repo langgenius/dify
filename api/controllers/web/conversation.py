@@ -136,7 +136,7 @@ class ConversationApi(WebApiResource):
             ConversationService.delete(app_model, conversation_id, end_user)
         except ConversationNotExistsError:
             raise NotFound("Conversation Not Exists.")
-        return ResultResponse(result="success").model_dump(mode="json"), 204
+        return "", 204
 
 
 @web_ns.route("/conversations/<uuid:c_id>/name")

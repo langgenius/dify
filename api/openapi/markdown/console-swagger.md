@@ -4413,9 +4413,9 @@ Initialize dataset with documents
 #### GET
 ##### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Built-in fields retrieved successfully | [DatasetMetadataBuiltInFieldsResponse](#datasetmetadatabuiltinfieldsresponse) |
 
 ### /datasets/notion-indexing-estimate
 
@@ -4730,9 +4730,9 @@ then asynchronously generates summary indexes for the provided documents.
 
 ##### Responses
 
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Success | [SimpleResultResponse](#simpleresultresponse) |
+| Code | Description |
+| ---- | ----------- |
+| 204 | Documents metadata updated successfully |
 
 ### /datasets/{dataset_id}/documents/status/{action}/batch
 
@@ -5342,9 +5342,9 @@ Get dataset indexing status
 
 ##### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Metadata retrieved successfully | [DatasetMetadataListResponse](#datasetmetadatalistresponse) |
 
 #### POST
 ##### Parameters
@@ -5356,9 +5356,9 @@ Get dataset indexing status
 
 ##### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 201 | Metadata created successfully | [DatasetMetadataResponse](#datasetmetadataresponse) |
 
 ### /datasets/{dataset_id}/metadata/built-in/{action}
 
@@ -5372,9 +5372,9 @@ Get dataset indexing status
 
 ##### Responses
 
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Success | [SimpleResultResponse](#simpleresultresponse) |
+| Code | Description |
+| ---- | ----------- |
+| 204 | Action completed successfully |
 
 ### /datasets/{dataset_id}/metadata/{metadata_id}
 
@@ -5403,9 +5403,9 @@ Get dataset indexing status
 
 ##### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Metadata updated successfully | [DatasetMetadataResponse](#datasetmetadataresponse) |
 
 ### /datasets/{dataset_id}/notion/sync
 
@@ -10515,6 +10515,7 @@ Supported icon storage formats for Agent roster entries.
 | knowledge | [AgentSoulKnowledgeConfig](#agentsoulknowledgeconfig) |  | No |
 | memory | [AgentSoulMemoryConfig](#agentsoulmemoryconfig) |  | No |
 | misc_legacy | object |  | No |
+| model | [AgentSoulModelConfig](#agentsoulmodelconfig) |  | No |
 | prompt | [AgentSoulPromptConfig](#agentsoulpromptconfig) |  | No |
 | sandbox | [AgentSoulSandboxConfig](#agentsoulsandboxconfig) |  | No |
 | schema_version | integer |  | No |
@@ -10550,6 +10551,28 @@ Supported icon storage formats for Agent roster entries.
 | artifacts | [ object ] |  | No |
 | budget | string |  | No |
 | scope | string |  | No |
+
+#### AgentSoulModelConfig
+
+Stable model selection for Agent runtime without storing secret values.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| credential_ref | [AgentSoulModelCredentialRef](#agentsoulmodelcredentialref) |  | No |
+| model | string |  | Yes |
+| model_provider | string |  | Yes |
+| model_settings | object |  | No |
+| plugin_id | string |  | Yes |
+
+#### AgentSoulModelCredentialRef
+
+Reference to model credentials resolved only at runtime.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| id | string |  | No |
+| provider | string |  | No |
+| type | string |  | Yes |
 
 #### AgentSoulPromptConfig
 
@@ -11709,6 +11732,43 @@ Condition detail
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | keyword_weight | number |  | No |
+
+#### DatasetMetadataBuiltInFieldResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| name | string |  | Yes |
+| type | string |  | Yes |
+
+#### DatasetMetadataBuiltInFieldsResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| fields | [ [DatasetMetadataBuiltInFieldResponse](#datasetmetadatabuiltinfieldresponse) ] |  | Yes |
+
+#### DatasetMetadataListItemResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| count | integer |  | No |
+| id | string |  | Yes |
+| name | string |  | Yes |
+| type | string |  | Yes |
+
+#### DatasetMetadataListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| built_in_field_enabled | boolean |  | Yes |
+| doc_metadata | [ [DatasetMetadataListItemResponse](#datasetmetadatalistitemresponse) ] |  | Yes |
+
+#### DatasetMetadataResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| id | string |  | Yes |
+| name | string |  | Yes |
+| type | string |  | Yes |
 
 #### DatasetPermissionEnum
 

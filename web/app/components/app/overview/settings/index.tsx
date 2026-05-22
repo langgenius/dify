@@ -381,7 +381,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
                     {t(`${prefixSettings}.more.privacyPolicyPlaceholder`, { ns: 'appOverview' })}
                   </p>
                 </div>
-                <span aria-hidden="true" className="ml-1 i-ri-arrow-right-s-line h-4 w-4 shrink-0 text-text-secondary" />
+                <span aria-hidden="true" className="ml-1 i-ri-arrow-right-s-line size-4 shrink-0 text-text-secondary" />
               </div>
             )}
             {/* more settings */}

@@ -215,7 +215,7 @@ const QueryInput = ({
                   size="small"
                   onClick={() => setIsSettingsOpen(!isSettingsOpen)}
                 >
-                  <RiEqualizer2Line className="h-3.5 w-3.5 text-components-button-secondary-text" />
+                  <RiEqualizer2Line className="size-3.5 text-components-button-secondary-text" />
                   <div className="flex items-center justify-center gap-1 px-[3px]">
                     <span className="system-xs-medium text-components-button-secondary-text">{t('settingTitle', { ns: 'datasetHitTesting' })}</span>
                   </div>

@@ -54,7 +54,7 @@ function PresetsParameter({ onSelect, supportedParameterNames }: PresetsParamete
         )}
       >
         {t('modelProvider.loadPresets', { ns: 'common' })}
-        <span className="ml-0.5 i-ri-arrow-down-s-line h-3.5 w-3.5" />
+        <span className="ml-0.5 i-ri-arrow-down-s-line size-3.5" />
       </DropdownMenuTrigger>
       <DropdownMenuContent>
         {visiblePresetTones.map(tone => (

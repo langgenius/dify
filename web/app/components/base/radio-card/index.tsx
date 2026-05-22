@@ -1,76 +1,124 @@
 'use client'
-import type { FC } from 'react'
+import type { RadioRootProps } from '@langgenius/dify-ui/radio'
+import type { ReactNode } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
-import { noop } from 'es-toolkit/function'
-import * as React from 'react'
+import { RadioControl, RadioRoot } from '@langgenius/dify-ui/radio'
 
-type Props = {
+type BaseProps = {
   className?: string
-  icon: React.ReactNode
+  icon: ReactNode
   iconBgClassName?: string
-  title: React.ReactNode
+  title: ReactNode
   description: string
-  noRadio?: boolean
-  isChosen?: boolean
-  onChosen?: () => void
-  chosenConfig?: React.ReactNode
+  chosenConfig?: ReactNode
   chosenConfigWrapClassName?: string
 }
 
-const RadioCard: FC<Props> = ({
-  icon,
-  iconBgClassName = 'bg-[#F5F3FF]',
-  title,
-  description,
-  noRadio,
-  isChosen,
-  onChosen = noop,
-  chosenConfig,
-  chosenConfigWrapClassName,
-  className,
-}) => {
-  return (
-    <div
-      className={cn(
-        'relative cursor-pointer rounded-xl border-[0.5px] border-components-option-card-option-border bg-components-option-card-option-bg p-3',
-        isChosen && 'border-[1.5px] bg-components-option-card-option-selected-bg',
+type SelectableRadioCardProps = BaseProps & {
+  noRadio?: false
+} & Omit<RadioRootProps<string>, 'children' | 'className' | 'variant' | 'render' | 'nativeButton'>
+
+type StaticRadioCardProps = BaseProps & {
+  noRadio: true
+  value?: never
+  checked?: never
+}
+
+type Props = SelectableRadioCardProps | StaticRadioCardProps
+
+function RadioCard(props: Props) {
+  if (props.noRadio) {
+    const {
+      icon,
+      iconBgClassName = 'bg-[#F5F3FF]',
+      title,
+      description,
+      chosenConfig,
+      chosenConfigWrapClassName,
+      className,
+    } = props
+
+    return (
+      <div className={cn(
+        'relative rounded-xl border-[0.5px] border-components-option-card-option-border bg-components-option-card-option-bg p-3',
         className,
       )}
-    >
-      <button
-        type="button"
-        className="flex w-full gap-x-2 border-none bg-transparent p-0 text-left focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
-        onClick={onChosen}
       >
-        <div className={cn(iconBgClassName, 'flex size-8 shrink-0 items-center justify-center rounded-lg shadow-md')}>
-          {icon}
+        <div className="flex w-full gap-x-2 text-left">
+          <div className={cn(iconBgClassName, 'flex size-8 shrink-0 items-center justify-center rounded-lg shadow-md')}>
+            {icon}
+          </div>
+          <div className="min-w-0 grow pr-8">
+            <div className="mb-1 system-sm-semibold text-text-secondary">{title}</div>
+            <div className="system-xs-regular text-text-tertiary">{description}</div>
+          </div>
         </div>
-        <div className="grow">
-          <div className="mb-1 system-sm-semibold text-text-secondary">{title}</div>
-          <div className="system-xs-regular text-text-tertiary">{description}</div>
-        </div>
-        {!noRadio && (
-          <div className="absolute top-3 right-3">
-            <div
-              className={cn(
-                'h-4 w-4 rounded-full border border-components-radio-border bg-components-radio-bg shadow-xs',
-                isChosen && 'border-[5px] border-components-radio-border-checked',
-              )}
-              aria-hidden="true"
-            >
+        {Boolean(chosenConfig) && (
+          <div className="mt-2 flex gap-x-2">
+            <div className="size-8 shrink-0"></div>
+            <div className={cn(chosenConfigWrapClassName, 'grow')}>
+              {chosenConfig}
             </div>
           </div>
         )}
-      </button>
-      {!!((isChosen && chosenConfig) || noRadio) && (
-        <div className="mt-2 flex gap-x-2">
-          <div className="size-8 shrink-0"></div>
-          <div className={cn(chosenConfigWrapClassName, 'grow')}>
-            {chosenConfig}
-          </div>
-        </div>
-      )}
+      </div>
+    )
+  }
+
+  const {
+    icon,
+    iconBgClassName = 'bg-[#F5F3FF]',
+    title,
+    description,
+    chosenConfig,
+    chosenConfigWrapClassName,
+    className,
+    noRadio: _noRadio,
+    ...radioRootProps
+  } = props
+
+  const content = (
+    <>
+      <div className={cn(iconBgClassName, 'flex size-8 shrink-0 items-center justify-center rounded-lg shadow-md')}>
+        {icon}
+      </div>
+      <div className="min-w-0 grow pr-8">
+        <div className="mb-1 system-sm-semibold text-text-secondary">{title}</div>
+        <div className="system-xs-regular text-text-tertiary">{description}</div>
+      </div>
+    </>
+  )
+  const rootClassName = cn(
+    'group/radio-card relative rounded-xl border-[0.5px] border-components-option-card-option-border bg-components-option-card-option-bg p-3 transition-colors',
+    'has-[[data-checked]]:border-[1.5px] has-[[data-checked]]:bg-components-option-card-option-selected-bg',
+    className,
+  )
+  const config = !!chosenConfig && (
+    <div className="mt-2 hidden gap-x-2 group-has-data-checked/radio-card:flex">
+      <div className="size-8 shrink-0"></div>
+      <div className={cn(chosenConfigWrapClassName, 'grow')}>
+        {chosenConfig}
+      </div>
+    </div>
+  )
+
+  return (
+    <div
+      className={rootClassName}
+    >
+      <RadioRoot
+        {...radioRootProps}
+        variant="unstyled"
+        nativeButton
+        render={<button type="button" />}
+        className="flex w-full cursor-pointer gap-x-2 border-none bg-transparent p-0 text-left outline-hidden focus-visible:ring-1 focus-visible:ring-components-input-border-active"
+      >
+        {content}
+        <RadioControl className="absolute top-3 right-3" aria-hidden="true" />
+      </RadioRoot>
+      {config}
     </div>
   )
 }
-export default React.memo(RadioCard)
+
+export default RadioCard

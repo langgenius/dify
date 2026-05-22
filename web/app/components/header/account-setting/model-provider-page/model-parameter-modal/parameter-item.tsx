@@ -4,6 +4,10 @@ import type {
   NodeOutPutVar,
 } from '@/app/components/workflow/types'
 import { cn } from '@langgenius/dify-ui/cn'
+import { FieldItem, FieldLabel, FieldRoot } from '@langgenius/dify-ui/field'
+import { FieldsetLegend, FieldsetRoot } from '@langgenius/dify-ui/fieldset'
+import { Radio } from '@langgenius/dify-ui/radio'
+import { RadioGroup } from '@langgenius/dify-ui/radio-group'
 import { Select, SelectContent, SelectItem, SelectItemIndicator, SelectItemText, SelectTrigger, SelectValue } from '@langgenius/dify-ui/select'
 import { Slider } from '@langgenius/dify-ui/slider'
 import { Switch } from '@langgenius/dify-ui/switch'
@@ -11,7 +15,6 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Infotip } from '@/app/components/base/infotip'
 import PromptEditor from '@/app/components/base/prompt-editor'
-import Radio from '@/app/components/base/radio'
 import TagInput from '@/app/components/base/tag-input'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { useLanguage } from '../hooks'
@@ -218,15 +221,35 @@ function ParameterItem({
     }
 
     if (parameterRule.type === 'boolean') {
+      const booleanValue = typeof renderValue === 'boolean' ? renderValue : undefined
+      const translatedLabel = parameterRule.label[language] || parameterRule.label.en_US
+
       return (
-        <Radio.Group
-          className="flex w-[150px] items-center"
-          value={renderValue as boolean}
-          onChange={handleRadioChange}
-        >
-          <Radio value={true} className="w-[70px] px-[18px]">True</Radio>
-          <Radio value={false} className="w-[70px] px-[18px]">False</Radio>
-        </Radio.Group>
+        <FieldRoot name={parameterRule.name} className="contents">
+          <FieldsetRoot
+            render={(
+              <RadioGroup<boolean>
+                className="w-[150px] gap-3"
+                value={booleanValue}
+                onValueChange={handleRadioChange}
+              />
+            )}
+          >
+            <FieldsetLegend className="sr-only">{translatedLabel}</FieldsetLegend>
+            <FieldItem>
+              <FieldLabel className="flex w-[70px] items-center gap-1.5 system-sm-regular text-text-secondary">
+                <Radio value={true} />
+                True
+              </FieldLabel>
+            </FieldItem>
+            <FieldItem>
+              <FieldLabel className="flex w-[70px] items-center gap-1.5 system-sm-regular text-text-secondary">
+                <Radio value={false} />
+                False
+              </FieldLabel>
+            </FieldItem>
+          </FieldsetRoot>
+        </FieldRoot>
       )
     }
 

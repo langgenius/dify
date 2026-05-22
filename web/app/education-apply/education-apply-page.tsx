@@ -118,7 +118,7 @@ const EducationApplyAgeContent = () => {
   }
   const renderBackToDifyButton = () => (
     <Button variant="ghost-accent" onClick={handleReturnHome}>
-      <span className="mr-1 i-ri-arrow-left-line h-4 w-4" />
+      <span className="mr-1 i-ri-arrow-left-line size-4" />
       {t('applied.noPaymentPermission.returnHome', { ns: 'education' })}
     </Button>
   )
@@ -153,7 +153,7 @@ const EducationApplyAgeContent = () => {
       return (
         <div className="flex w-full flex-col items-start gap-3">
           <div className="flex w-full items-start rounded-lg border-[0.5px] border-components-badge-status-light-warning-halo bg-state-warning-hover px-3 py-2.5">
-            <span className="mt-0.5 mr-2 i-ri-alert-fill h-4 w-4 shrink-0 text-text-warning-secondary" />
+            <span className="mt-0.5 mr-2 i-ri-alert-fill size-4 shrink-0 text-text-warning-secondary" />
             <div className="system-md-regular text-text-warning">
               <Trans
                 i18nKey="applied.activeSubscription.description"
@@ -179,7 +179,7 @@ const EducationApplyAgeContent = () => {
     return (
       <div className="flex w-full flex-col items-start gap-3">
         <div className="flex w-full items-start rounded-lg border-[0.5px] border-components-badge-status-light-warning-halo bg-state-warning-hover px-3 py-2.5">
-          <span className="mt-0.5 mr-2 i-ri-alert-fill h-4 w-4 shrink-0 text-text-warning-secondary" />
+          <span className="mt-0.5 mr-2 i-ri-alert-fill size-4 shrink-0 text-text-warning-secondary" />
           <div className="system-md-regular text-text-warning">
             {t('applied.noPaymentPermission.description', { ns: 'education' })}
           </div>
@@ -296,7 +296,7 @@ const EducationApplyAgeContent = () => {
                     target="_blank"
                   >
                     {t('learn', { ns: 'education' })}
-                    <span className="ml-1 i-ri-external-link-line h-3 w-3" />
+                    <span className="ml-1 i-ri-external-link-line size-3" />
                   </a>
                 </>
               )}

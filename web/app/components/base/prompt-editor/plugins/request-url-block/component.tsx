@@ -24,7 +24,7 @@ const RequestURLBlockComponent: FC<RequestURLBlockComponentProps> = ({
       )}
       ref={ref}
     >
-      <RiGlobalLine className="mr-0.5 h-3.5 w-3.5 text-util-colors-violet-violet-600" />
+      <RiGlobalLine className="mr-0.5 size-3.5 text-util-colors-violet-violet-600" />
       <div className="system-xs-medium text-util-colors-violet-violet-600">{t('promptEditor.requestURL.item.title', { ns: 'common' })}</div>
     </div>
   )

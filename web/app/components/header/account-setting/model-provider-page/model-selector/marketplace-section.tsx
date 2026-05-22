@@ -42,7 +42,7 @@ function MarketplaceSection({
             onClick={() => onMarketplaceCollapsedChange(!marketplaceCollapsed)}
           >
             {t('modelProvider.selector.fromMarketplace', { ns: 'common' })}
-            <span className={cn('i-custom-vender-solid-general-arrow-down-round-fill h-4 w-4 text-text-quaternary', marketplaceCollapsed && '-rotate-90')} />
+            <span className={cn('i-custom-vender-solid-general-arrow-down-round-fill size-4 text-text-quaternary', marketplaceCollapsed && '-rotate-90')} />
           </button>
         </div>
         {!marketplaceCollapsed && (
@@ -56,7 +56,7 @@ function MarketplaceSection({
                   className="group flex cursor-pointer items-center gap-1 rounded-lg py-0.5 pr-0.5 pl-3 hover:bg-state-base-hover"
                 >
                   <div className="flex flex-1 items-center gap-2 py-0.5">
-                    <Icon className="h-5 w-5 shrink-0 rounded-md" />
+                    <Icon className="size-5 shrink-0 rounded-md" />
                     <span className="system-sm-regular text-text-secondary">{modelNameMap[key]}</span>
                   </div>
                   <Button
@@ -69,7 +69,7 @@ function MarketplaceSection({
                     disabled={isInstalling || isMarketplacePluginsLoading}
                     onClick={() => onInstallPlugin(key)}
                   >
-                    {isInstalling && <span className="i-ri-loader-2-line h-3.5 w-3.5 animate-spin" />}
+                    {isInstalling && <span className="i-ri-loader-2-line size-3.5 animate-spin" />}
                     {isInstalling
                       ? t('installModal.installing', { ns: 'plugin' })
                       : t('modelProvider.selector.install', { ns: 'common' })}
@@ -86,7 +86,7 @@ function MarketplaceSection({
               <span className="flex-1 system-xs-regular text-text-accent">
                 {t('modelProvider.selector.discoverMoreInMarketplace', { ns: 'common' })}
               </span>
-              <span className="i-ri-arrow-right-up-line h-3! w-3! text-text-accent" />
+              <span className="i-ri-arrow-right-up-line size-3! text-text-accent" />
             </a>
           </div>
         )}

@@ -204,4 +204,4 @@ class APIBasedExtensionDetailAPI(Resource):
 
         APIBasedExtensionService.delete(extension_data_from_db)
 
-        return {"result": "success"}, 204
+        return "", 204

@@ -42,10 +42,10 @@ export function FeaturePanelDrawer({
           <DrawerPopup
             className={cn(
               'border-components-panel-border bg-components-panel-bg-alt p-0 text-left align-middle',
-              'data-[swipe-direction=right]:!h-auto data-[swipe-direction=right]:!w-[420px] data-[swipe-direction=right]:!max-w-[calc(100vw-2rem)]',
+              'data-[swipe-direction=right]:h-auto! data-[swipe-direction=right]:w-[420px]! data-[swipe-direction=right]:max-w-[calc(100vw-2rem)]!',
               inWorkflow
-                ? 'data-[swipe-direction=right]:!top-[112px] data-[swipe-direction=right]:!right-0 data-[swipe-direction=right]:!bottom-2 data-[swipe-direction=right]:!rounded-l-2xl data-[swipe-direction=right]:!rounded-r-none data-[swipe-direction=right]:!border-t-[0.5px] data-[swipe-direction=right]:!border-r-0 data-[swipe-direction=right]:!border-b-[0.5px] data-[swipe-direction=right]:!border-l-[0.5px]'
-                : 'data-[swipe-direction=right]:!top-[64px] data-[swipe-direction=right]:!right-2 data-[swipe-direction=right]:!bottom-2 data-[swipe-direction=right]:!rounded-2xl data-[swipe-direction=right]:!border-[0.5px]',
+                ? 'data-[swipe-direction=right]:top-[112px]! data-[swipe-direction=right]:right-0! data-[swipe-direction=right]:bottom-2! data-[swipe-direction=right]:rounded-l-2xl! data-[swipe-direction=right]:rounded-r-none! data-[swipe-direction=right]:border-t-[0.5px]! data-[swipe-direction=right]:border-r-0! data-[swipe-direction=right]:border-b-[0.5px]! data-[swipe-direction=right]:border-l-[0.5px]!'
+                : 'data-[swipe-direction=right]:top-[64px]! data-[swipe-direction=right]:right-2! data-[swipe-direction=right]:bottom-2! data-[swipe-direction=right]:rounded-2xl! data-[swipe-direction=right]:border-[0.5px]!',
               className,
             )}
           >

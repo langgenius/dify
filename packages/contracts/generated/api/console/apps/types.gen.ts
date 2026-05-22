@@ -973,6 +973,7 @@ export type AgentSoulConfig = {
   misc_legacy?: {
     [key: string]: unknown
   }
+  model?: AgentSoulModelConfig
   prompt?: AgentSoulPromptConfig
   sandbox?: AgentSoulSandboxConfig
   schema_version?: number
@@ -1395,6 +1396,16 @@ export type AgentSoulMemoryConfig = {
   scope?: string | null
 }
 
+export type AgentSoulModelConfig = {
+  credential_ref?: AgentSoulModelCredentialRef
+  model: string
+  model_provider: string
+  model_settings?: {
+    [key: string]: unknown
+  }
+  plugin_id: string
+}
+
 export type AgentSoulPromptConfig = {
   system_prompt?: string
 }
@@ -1506,6 +1517,12 @@ export type WorkflowRunForArchivedLogResponse = {
 }
 
 export type AgentKnowledgeQueryMode = 'generated_query' | 'user_query'
+
+export type AgentSoulModelCredentialRef = {
+  id?: string | null
+  provider?: string | null
+  type: string
+}
 
 export type DeclaredOutputCheckConfig = {
   benchmark_file_ref?: {

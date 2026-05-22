@@ -119,6 +119,11 @@
       "count": 3
     }
   },
+  "web/app/(commonLayout)/app/(appDetailLayout)/[appId]/overview/tracing/field.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
   "web/app/(commonLayout)/app/(appDetailLayout)/[appId]/overview/tracing/provider-panel.tsx": {
     "react/static-components": {
       "count": 2
@@ -147,22 +152,63 @@
       "count": 1
     }
   },
+  "web/app/(shareLayout)/webapp-reset-password/check-code/page.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
   "web/app/(shareLayout)/webapp-reset-password/layout.tsx": {
     "ts/no-explicit-any": {
       "count": 1
     }
   },
+  "web/app/(shareLayout)/webapp-reset-password/page.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/(shareLayout)/webapp-reset-password/set-password/page.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/(shareLayout)/webapp-signin/check-code/page.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/(shareLayout)/webapp-signin/components/mail-and-code-auth.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
   "web/app/(shareLayout)/webapp-signin/components/mail-and-password-auth.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    },
     "ts/no-explicit-any": {
       "count": 2
     }
   },
   "web/app/account/(commonLayout)/account-page/email-change-modal.tsx": {
-    "ts/no-explicit-any": {
-      "count": 5
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/account/(commonLayout)/account-page/index.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/account/(commonLayout)/delete-account/components/check-email.tsx": {
+    "no-restricted-imports": {
+      "count": 1
     }
   },
   "web/app/account/(commonLayout)/delete-account/components/verify-email.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    },
     "react/set-state-in-effect": {
       "count": 1
     }
@@ -174,6 +220,11 @@
   },
   "web/app/account/oauth/authorize/page.tsx": {
     "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/components/app-sidebar/app-info/app-info-modals.tsx": {
+    "no-restricted-imports": {
       "count": 1
     }
   },
@@ -222,6 +273,11 @@
       "count": 1
     },
     "react/set-state-in-effect": {
+      "count": 1
+    }
+  },
+  "web/app/components/app/annotation/filter.tsx": {
+    "no-restricted-imports": {
       "count": 1
     }
   },
@@ -284,9 +340,19 @@
       "count": 2
     }
   },
+  "web/app/components/app/configuration/config-var/config-modal/form-fields.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
   "web/app/components/app/configuration/config-var/config-modal/index.tsx": {
     "ts/no-explicit-any": {
       "count": 4
+    }
+  },
+  "web/app/components/app/configuration/config-var/config-string/index.tsx": {
+    "no-restricted-imports": {
+      "count": 1
     }
   },
   "web/app/components/app/configuration/config-var/select-var-type.tsx": {
@@ -375,6 +441,9 @@
     }
   },
   "web/app/components/app/configuration/dataset-config/settings-modal/index.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    },
     "react/set-state-in-effect": {
       "count": 2
     },
@@ -389,6 +458,11 @@
   },
   "web/app/components/app/configuration/debug/__tests__/index.spec.tsx": {
     "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/components/app/configuration/debug/chat-user-input.tsx": {
+    "no-restricted-imports": {
       "count": 1
     }
   },
@@ -430,8 +504,18 @@
       "count": 1
     }
   },
+  "web/app/components/app/configuration/prompt-value-panel/index.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
   "web/app/components/app/configuration/prompt-value-panel/utils.ts": {
     "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/components/app/create-app-dialog/app-list/index.tsx": {
+    "no-restricted-imports": {
       "count": 1
     }
   },
@@ -443,8 +527,16 @@
       "count": 1
     }
   },
+  "web/app/components/app/create-app-modal/index.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
   "web/app/components/app/create-from-dsl-modal/index.tsx": {
     "erasable-syntax-only/enums": {
+      "count": 1
+    },
+    "no-restricted-imports": {
       "count": 1
     },
     "react-refresh/only-export-components": {
@@ -454,7 +546,15 @@
       "count": 2
     }
   },
+  "web/app/components/app/duplicate-modal/index.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
   "web/app/components/app/log/filter.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    },
     "react-refresh/only-export-components": {
       "count": 1
     }
@@ -485,12 +585,25 @@
       "count": 1
     }
   },
+  "web/app/components/app/overview/settings/index.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
   "web/app/components/app/overview/trigger-card.tsx": {
     "ts/no-explicit-any": {
       "count": 1
     }
   },
+  "web/app/components/app/overview/workflow-hidden-input-fields.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
   "web/app/components/app/switch-app-modal/index.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    },
     "react/set-state-in-effect": {
       "count": 1
     }
@@ -506,6 +619,9 @@
     }
   },
   "web/app/components/app/workflow-log/filter.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    },
     "react-refresh/only-export-components": {
       "count": 1
     }
@@ -517,6 +633,11 @@
   },
   "web/app/components/app/workflow-log/trigger-by-display.tsx": {
     "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/components/apps/list.tsx": {
+    "no-restricted-imports": {
       "count": 1
     }
   },
@@ -680,12 +801,20 @@
     }
   },
   "web/app/components/base/chat/chat-with-history/inputs-form/content.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    },
     "ts/no-explicit-any": {
       "count": 3
     }
   },
   "web/app/components/base/chat/chat-with-history/sidebar/operation.tsx": {
     "react/set-state-in-effect": {
+      "count": 1
+    }
+  },
+  "web/app/components/base/chat/chat-with-history/sidebar/rename-modal.tsx": {
+    "no-restricted-imports": {
       "count": 1
     }
   },
@@ -775,6 +904,9 @@
     }
   },
   "web/app/components/base/chat/embedded-chatbot/inputs-form/content.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    },
     "ts/no-explicit-any": {
       "count": 3
     }
@@ -789,11 +921,6 @@
       "count": 10
     }
   },
-  "web/app/components/base/chip/index.tsx": {
-    "ts/no-explicit-any": {
-      "count": 3
-    }
-  },
   "web/app/components/base/date-and-time-picker/hooks.ts": {
     "react/no-unnecessary-use-prefix": {
       "count": 2
@@ -806,6 +933,11 @@
   },
   "web/app/components/base/date-and-time-picker/utils/dayjs.ts": {
     "no-barrel-files/no-barrel-files": {
+      "count": 1
+    }
+  },
+  "web/app/components/base/emoji-picker/Inner.tsx": {
+    "no-restricted-imports": {
       "count": 1
     }
   },
@@ -909,6 +1041,11 @@
   "web/app/components/base/file-uploader/utils.ts": {
     "ts/no-explicit-any": {
       "count": 3
+    }
+  },
+  "web/app/components/base/form/components/base/base-field.tsx": {
+    "no-restricted-imports": {
+      "count": 1
     }
   },
   "web/app/components/base/form/components/base/base-form.tsx": {
@@ -1021,14 +1158,6 @@
   "web/app/components/base/form/utils/secret-input/index.ts": {
     "ts/no-explicit-any": {
       "count": 2
-    }
-  },
-  "web/app/components/base/ga/index.tsx": {
-    "erasable-syntax-only/enums": {
-      "count": 1
-    },
-    "react-refresh/only-export-components": {
-      "count": 1
     }
   },
   "web/app/components/base/icons/src/public/avatar/index.ts": {
@@ -1339,6 +1468,11 @@
       "count": 9
     }
   },
+  "web/app/components/base/markdown-blocks/form.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
   "web/app/components/base/markdown-blocks/index.ts": {
     "no-barrel-files/no-barrel-files": {
       "count": 10
@@ -1438,6 +1572,9 @@
     }
   },
   "web/app/components/base/pagination/index.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    },
     "unicorn/prefer-number-properties": {
       "count": 1
     }
@@ -1525,6 +1662,11 @@
       "count": 2
     }
   },
+  "web/app/components/base/prompt-editor/plugins/hitl-input-block/input-field.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
   "web/app/components/base/prompt-editor/plugins/last-run-block/index.tsx": {
     "no-barrel-files/no-barrel-files": {
       "count": 3
@@ -1592,37 +1734,12 @@
       "count": 1
     }
   },
-  "web/app/components/base/radio-card/index.stories.tsx": {
-    "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
-  "web/app/components/base/radio/component/group/index.tsx": {
-    "ts/no-explicit-any": {
-      "count": 2
-    }
-  },
-  "web/app/components/base/radio/context/index.ts": {
-    "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
-  "web/app/components/base/radio/index.stories.tsx": {
-    "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
   "web/app/components/base/search-input/index.stories.tsx": {
     "no-console": {
       "count": 3
     },
     "ts/no-explicit-any": {
       "count": 1
-    }
-  },
-  "web/app/components/base/sort/index.tsx": {
-    "ts/no-explicit-any": {
-      "count": 2
     }
   },
   "web/app/components/base/svg-gallery/index.tsx": {
@@ -1770,10 +1887,23 @@
   "web/app/components/datasets/create-from-pipeline/create-options/create-from-dsl-modal/index.tsx": {
     "no-barrel-files/no-barrel-files": {
       "count": 1
+    },
+    "no-restricted-imports": {
+      "count": 1
     }
   },
   "web/app/components/datasets/create-from-pipeline/list/template-card/details/types.ts": {
     "erasable-syntax-only/enums": {
+      "count": 1
+    }
+  },
+  "web/app/components/datasets/create-from-pipeline/list/template-card/edit-pipeline-info.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/datasets/create/empty-dataset-creation-modal/index.tsx": {
+    "no-restricted-imports": {
       "count": 1
     }
   },
@@ -1800,6 +1930,11 @@
   "web/app/components/datasets/create/step-two/components/index.ts": {
     "no-barrel-files/no-barrel-files": {
       "count": 5
+    }
+  },
+  "web/app/components/datasets/create/step-two/components/inputs.tsx": {
+    "no-restricted-imports": {
+      "count": 2
     }
   },
   "web/app/components/datasets/create/step-two/hooks/index.ts": {
@@ -1889,6 +2024,16 @@
       "count": 4
     }
   },
+  "web/app/components/datasets/documents/components/documents-header.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/datasets/documents/components/rename-modal.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
   "web/app/components/datasets/documents/create-from-pipeline/data-source/base/credential-selector/__tests__/index.spec.tsx": {
     "erasable-syntax-only/enums": {
       "count": 1
@@ -1896,6 +2041,11 @@
   },
   "web/app/components/datasets/documents/create-from-pipeline/data-source/online-documents/index.tsx": {
     "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/components/datasets/documents/create-from-pipeline/data-source/online-drive/file-list/header/index.tsx": {
+    "no-restricted-imports": {
       "count": 1
     }
   },
@@ -1965,8 +2115,18 @@
       "count": 2
     }
   },
+  "web/app/components/datasets/documents/detail/completed/child-segment-list.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
   "web/app/components/datasets/documents/detail/completed/common/chunk-content.tsx": {
     "react/set-state-in-effect": {
+      "count": 1
+    }
+  },
+  "web/app/components/datasets/documents/detail/completed/components/menu-bar.tsx": {
+    "no-restricted-imports": {
       "count": 1
     }
   },
@@ -2008,6 +2168,11 @@
       "count": 1
     }
   },
+  "web/app/components/datasets/documents/detail/metadata/components/field-info.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
   "web/app/components/datasets/documents/detail/metadata/components/metadata-field-list.tsx": {
     "ts/no-non-null-asserted-optional-chain": {
       "count": 1
@@ -2036,13 +2201,26 @@
       "count": 3
     }
   },
+  "web/app/components/datasets/external-api/external-api-modal/Form.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
   "web/app/components/datasets/external-knowledge-base/create/ExternalApiSelect.tsx": {
     "react/set-state-in-effect": {
       "count": 1
     }
   },
   "web/app/components/datasets/external-knowledge-base/create/ExternalApiSelection.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    },
     "react/set-state-in-effect": {
+      "count": 1
+    }
+  },
+  "web/app/components/datasets/external-knowledge-base/create/KnowledgeBaseInfo.tsx": {
+    "no-restricted-imports": {
       "count": 1
     }
   },
@@ -2071,7 +2249,15 @@
       "count": 1
     }
   },
+  "web/app/components/datasets/list/index.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
   "web/app/components/datasets/metadata/edit-metadata-batch/input-combined.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    },
     "ts/no-explicit-any": {
       "count": 2
     }
@@ -2089,13 +2275,38 @@
       "count": 2
     }
   },
+  "web/app/components/datasets/metadata/metadata-dataset/create-content.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/datasets/metadata/metadata-dataset/dataset-metadata-drawer.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
   "web/app/components/datasets/metadata/types.ts": {
     "erasable-syntax-only/enums": {
       "count": 2
     }
   },
+  "web/app/components/datasets/rename-modal/index.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
   "web/app/components/datasets/settings/chunk-structure/types.ts": {
     "erasable-syntax-only/enums": {
+      "count": 1
+    }
+  },
+  "web/app/components/datasets/settings/form/components/basic-info-section.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/datasets/settings/permission-selector/index.tsx": {
+    "no-restricted-imports": {
       "count": 1
     }
   },
@@ -2117,6 +2328,11 @@
       "count": 2
     }
   },
+  "web/app/components/explore/app-list/index.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
   "web/app/components/explore/banner/banner-item.tsx": {
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 1
@@ -2133,8 +2349,8 @@
       "count": 2
     }
   },
-  "web/app/components/explore/item-operation/index.tsx": {
-    "react/set-state-in-effect": {
+  "web/app/components/explore/create-app-modal/index.tsx": {
+    "no-restricted-imports": {
       "count": 1
     }
   },
@@ -2199,6 +2415,11 @@
       "count": 4
     }
   },
+  "web/app/components/goto-anything/components/search-input.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
   "web/app/components/goto-anything/context.tsx": {
     "react-refresh/only-export-components": {
       "count": 1
@@ -2238,6 +2459,9 @@
     }
   },
   "web/app/components/header/account-setting/data-source-page-new/item.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    },
     "ts/no-explicit-any": {
       "count": 1
     }
@@ -2252,12 +2476,25 @@
       "count": 1
     }
   },
+  "web/app/components/header/account-setting/members-page/edit-workspace-modal/index.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
   "web/app/components/header/account-setting/members-page/transfer-ownership-modal/index.tsx": {
     "erasable-syntax-only/enums": {
       "count": 1
     },
+    "no-restricted-imports": {
+      "count": 1
+    },
     "ts/no-explicit-any": {
       "count": 2
+    }
+  },
+  "web/app/components/header/account-setting/members-page/transfer-ownership-modal/member-selector.tsx": {
+    "no-restricted-imports": {
+      "count": 1
     }
   },
   "web/app/components/header/account-setting/model-provider-page/declarations.ts": {
@@ -2427,6 +2664,11 @@
       "count": 1
     }
   },
+  "web/app/components/plugins/marketplace/search-box/tags-filter.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
   "web/app/components/plugins/plugin-auth/authorized-in-node.tsx": {
     "ts/no-explicit-any": {
       "count": 1
@@ -2438,6 +2680,9 @@
     }
   },
   "web/app/components/plugins/plugin-auth/authorized/item.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    },
     "ts/no-explicit-any": {
       "count": 1
     }
@@ -2482,6 +2727,9 @@
     }
   },
   "web/app/components/plugins/plugin-detail-panel/app-selector/app-inputs-form.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    },
     "ts/no-explicit-any": {
       "count": 8
     }
@@ -2551,6 +2799,11 @@
       "count": 1
     }
   },
+  "web/app/components/plugins/plugin-detail-panel/subscription-list/delete-confirm.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
   "web/app/components/plugins/plugin-detail-panel/subscription-list/index.tsx": {
     "no-barrel-files/no-barrel-files": {
       "count": 2
@@ -2572,6 +2825,11 @@
   "web/app/components/plugins/plugin-detail-panel/tool-selector/components/index.ts": {
     "no-barrel-files/no-barrel-files": {
       "count": 7
+    }
+  },
+  "web/app/components/plugins/plugin-detail-panel/tool-selector/components/reasoning-config-form.tsx": {
+    "no-restricted-imports": {
+      "count": 1
     }
   },
   "web/app/components/plugins/plugin-detail-panel/tool-selector/components/tool-base-form.tsx": {
@@ -2609,9 +2867,19 @@
       "count": 2
     }
   },
-  "web/app/components/plugins/plugin-page/install-plugin-dropdown.tsx": {
-    "react/set-state-in-effect": {
-      "count": 2
+  "web/app/components/plugins/plugin-page/filter-management/category-filter.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/plugins/plugin-page/filter-management/search-box.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/plugins/plugin-page/filter-management/tag-filter.tsx": {
+    "no-restricted-imports": {
+      "count": 1
     }
   },
   "web/app/components/plugins/reference-setting-modal/auto-update-setting/types.ts": {
@@ -2721,6 +2989,11 @@
       "count": 4
     }
   },
+  "web/app/components/rag-pipeline/components/publish-as-knowledge-pipeline-modal.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
   "web/app/components/rag-pipeline/components/rag-pipeline-children.tsx": {
     "ts/no-explicit-any": {
       "count": 1
@@ -2791,11 +3064,6 @@
       "count": 1
     }
   },
-  "web/app/components/share/text-generation/menu-dropdown.tsx": {
-    "react/set-state-in-effect": {
-      "count": 1
-    }
-  },
   "web/app/components/share/text-generation/no-data/index.tsx": {
     "ts/no-empty-object-type": {
       "count": 1
@@ -2825,6 +3093,9 @@
     }
   },
   "web/app/components/share/text-generation/run-once/index.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    },
     "react/set-state-in-effect": {
       "count": 1
     },
@@ -2842,7 +3113,20 @@
       "count": 2
     }
   },
+  "web/app/components/tools/edit-custom-collection-modal/config-credentials.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/tools/edit-custom-collection-modal/get-schema.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
   "web/app/components/tools/edit-custom-collection-modal/index.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    },
     "react/set-state-in-effect": {
       "count": 4
     },
@@ -2851,7 +3135,20 @@
     }
   },
   "web/app/components/tools/edit-custom-collection-modal/test-api.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    },
     "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/components/tools/labels/filter.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/tools/labels/selector.tsx": {
+    "no-restricted-imports": {
       "count": 1
     }
   },
@@ -2860,8 +3157,18 @@
       "count": 1
     }
   },
+  "web/app/components/tools/mcp/headers-input.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
   "web/app/components/tools/mcp/mcp-server-param-item.tsx": {
     "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/components/tools/mcp/modal.tsx": {
+    "no-restricted-imports": {
       "count": 1
     }
   },
@@ -2870,7 +3177,20 @@
       "count": 3
     }
   },
+  "web/app/components/tools/mcp/sections/authentication-section.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/tools/mcp/sections/configurations-section.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
   "web/app/components/tools/provider-list.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    },
     "ts/no-explicit-any": {
       "count": 1
     }
@@ -2891,6 +3211,11 @@
     },
     "ts/no-explicit-any": {
       "count": 4
+    }
+  },
+  "web/app/components/tools/workflow-tool/index.tsx": {
+    "no-restricted-imports": {
+      "count": 1
     }
   },
   "web/app/components/workflow-app/components/__tests__/workflow-children.spec.tsx": {
@@ -2960,12 +3285,7 @@
   },
   "web/app/components/workflow/block-selector/main.tsx": {
     "no-restricted-imports": {
-      "count": 1
-    }
-  },
-  "web/app/components/workflow/block-selector/market-place-plugin/action.tsx": {
-    "react/set-state-in-effect": {
-      "count": 1
+      "count": 2
     }
   },
   "web/app/components/workflow/block-selector/market-place-plugin/item.tsx": {
@@ -3149,6 +3469,9 @@
     }
   },
   "web/app/components/workflow/nodes/_base/components/before-run-form/form-item.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    },
     "ts/no-explicit-any": {
       "count": 11
     }
@@ -3193,6 +3516,9 @@
     }
   },
   "web/app/components/workflow/nodes/_base/components/error-handle/default-value.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    },
     "ts/no-explicit-any": {
       "count": 1
     }
@@ -3202,6 +3528,11 @@
       "count": 1
     },
     "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/nodes/_base/components/form-input-item.tsx": {
+    "no-restricted-imports": {
       "count": 1
     }
   },
@@ -3232,6 +3563,9 @@
     }
   },
   "web/app/components/workflow/nodes/_base/components/memory-config.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    },
     "unicorn/prefer-number-properties": {
       "count": 1
     }
@@ -3256,6 +3590,11 @@
       "count": 1
     }
   },
+  "web/app/components/workflow/nodes/_base/components/retry/retry-on-panel.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
   "web/app/components/workflow/nodes/_base/components/selector.tsx": {
     "ts/no-explicit-any": {
       "count": 2
@@ -3272,6 +3611,9 @@
     }
   },
   "web/app/components/workflow/nodes/_base/components/variable/output-var-list.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    },
     "ts/no-non-null-asserted-optional-chain": {
       "count": 1
     }
@@ -3282,7 +3624,15 @@
     }
   },
   "web/app/components/workflow/nodes/_base/components/variable/var-list.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    },
     "react/unsupported-syntax": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/nodes/_base/components/variable/var-reference-vars.tsx": {
+    "no-restricted-imports": {
       "count": 1
     }
   },
@@ -3419,6 +3769,11 @@
       "count": 1
     }
   },
+  "web/app/components/workflow/nodes/assigner/components/var-list/index.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
   "web/app/components/workflow/nodes/assigner/default.ts": {
     "ts/no-explicit-any": {
       "count": 1
@@ -3449,6 +3804,11 @@
   },
   "web/app/components/workflow/nodes/code/default.ts": {
     "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/nodes/code/dependency-picker.tsx": {
+    "no-restricted-imports": {
       "count": 1
     }
   },
@@ -3539,6 +3899,11 @@
       "count": 1
     }
   },
+  "web/app/components/workflow/nodes/http/components/authorization/index.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
   "web/app/components/workflow/nodes/http/components/key-value/key-value-edit/index.tsx": {
     "ts/no-explicit-any": {
       "count": 2
@@ -3546,6 +3911,11 @@
   },
   "web/app/components/workflow/nodes/http/components/key-value/key-value-edit/item.tsx": {
     "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/nodes/http/components/timeout/index.tsx": {
+    "no-restricted-imports": {
       "count": 1
     }
   },
@@ -3572,6 +3942,16 @@
       "count": 5
     }
   },
+  "web/app/components/workflow/nodes/human-input/components/delivery-method/email-configure-modal.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/nodes/human-input/components/delivery-method/recipient/member-list.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
   "web/app/components/workflow/nodes/human-input/components/form-content-preview.tsx": {
     "react/unsupported-syntax": {
       "count": 1
@@ -3586,6 +3966,16 @@
     },
     "ts/no-explicit-any": {
       "count": 3
+    }
+  },
+  "web/app/components/workflow/nodes/human-input/components/timeout.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/nodes/human-input/components/user-action.tsx": {
+    "no-restricted-imports": {
+      "count": 1
     }
   },
   "web/app/components/workflow/nodes/human-input/components/variable-in-markdown.tsx": {
@@ -3633,9 +4023,19 @@
       "count": 1
     }
   },
+  "web/app/components/workflow/nodes/iteration/panel.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
   "web/app/components/workflow/nodes/iteration/use-single-run-form-params.ts": {
     "ts/no-explicit-any": {
       "count": 6
+    }
+  },
+  "web/app/components/workflow/nodes/knowledge-base/components/index-method.tsx": {
+    "no-restricted-imports": {
+      "count": 1
     }
   },
   "web/app/components/workflow/nodes/knowledge-base/components/retrieval-setting/hooks.tsx": {
@@ -3666,8 +4066,23 @@
       "count": 1
     }
   },
+  "web/app/components/workflow/nodes/knowledge-retrieval/components/metadata/add-condition.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
   "web/app/components/workflow/nodes/knowledge-retrieval/components/metadata/condition-list/condition-item.tsx": {
     "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/nodes/knowledge-retrieval/components/metadata/condition-list/condition-number.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/nodes/knowledge-retrieval/components/metadata/condition-list/condition-string.tsx": {
+    "no-restricted-imports": {
       "count": 1
     }
   },
@@ -3789,11 +4204,17 @@
     }
   },
   "web/app/components/workflow/nodes/loop/components/loop-variables/form-item.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    },
     "ts/no-explicit-any": {
       "count": 3
     }
   },
   "web/app/components/workflow/nodes/loop/components/loop-variables/item.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    },
     "ts/no-explicit-any": {
       "count": 4
     }
@@ -3832,6 +4253,9 @@
     }
   },
   "web/app/components/workflow/nodes/parameter-extractor/components/extract-parameter/update.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    },
     "ts/no-explicit-any": {
       "count": 1
     }
@@ -4003,6 +4427,16 @@
       "count": 10
     }
   },
+  "web/app/components/workflow/nodes/trigger-schedule/panel.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/nodes/trigger-webhook/components/generic-table.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
   "web/app/components/workflow/nodes/trigger-webhook/components/parameter-table.tsx": {
     "ts/no-non-null-asserted-optional-chain": {
       "count": 1
@@ -4064,11 +4498,6 @@
       "count": 1
     }
   },
-  "web/app/components/workflow/operator/zoom-in-out.tsx": {
-    "erasable-syntax-only/enums": {
-      "count": 1
-    }
-  },
   "web/app/components/workflow/panel/__tests__/index.spec.tsx": {
     "react/static-components": {
       "count": 2
@@ -4090,6 +4519,9 @@
     }
   },
   "web/app/components/workflow/panel/chat-variable-panel/components/array-value-list.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    },
     "ts/no-explicit-any": {
       "count": 4
     }
@@ -4108,6 +4540,11 @@
   "web/app/components/workflow/panel/chat-variable-panel/components/object-value-list.tsx": {
     "ts/no-explicit-any": {
       "count": 2
+    }
+  },
+  "web/app/components/workflow/panel/chat-variable-panel/components/variable-modal.sections.tsx": {
+    "no-restricted-imports": {
+      "count": 1
     }
   },
   "web/app/components/workflow/panel/chat-variable-panel/type.ts": {
@@ -4131,6 +4568,9 @@
     }
   },
   "web/app/components/workflow/panel/env-panel/variable-modal.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    },
     "react/set-state-in-effect": {
       "count": 4
     },
@@ -4391,19 +4831,29 @@
       "count": 1
     }
   },
-  "web/app/components/workflow/workflow-preview/components/zoom-in-out.tsx": {
-    "erasable-syntax-only/enums": {
-      "count": 1
-    }
-  },
   "web/app/education-apply/hooks.ts": {
     "react/set-state-in-effect": {
       "count": 5
     }
   },
+  "web/app/education-apply/search-input.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/forgot-password/ChangePasswordForm.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
   "web/app/forgot-password/ForgotPasswordForm.spec.tsx": {
     "ts/no-explicit-any": {
       "count": 5
+    }
+  },
+  "web/app/forgot-password/ForgotPasswordForm.tsx": {
+    "no-restricted-imports": {
+      "count": 1
     }
   },
   "web/app/init/InitPasswordPopup.tsx": {
@@ -4416,8 +4866,18 @@
       "count": 7
     }
   },
+  "web/app/install/installForm.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
   "web/app/layout.tsx": {
     "react-refresh/only-export-components": {
+      "count": 1
+    }
+  },
+  "web/app/reset-password/check-code/page.tsx": {
+    "no-restricted-imports": {
       "count": 1
     }
   },
@@ -4426,8 +4886,36 @@
       "count": 1
     }
   },
+  "web/app/reset-password/page.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/reset-password/set-password/page.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/signin/check-code/page.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/signin/components/mail-and-code-auth.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
   "web/app/signin/components/mail-and-password-auth.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    },
     "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/signin/invite-settings/page.tsx": {
+    "no-restricted-imports": {
       "count": 1
     }
   },
@@ -4436,8 +4924,28 @@
       "count": 1
     }
   },
+  "web/app/signin/one-more-step.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/signup/check-code/page.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/signup/components/input-mail.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
   "web/app/signup/layout.tsx": {
     "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/signup/set-password/page.tsx": {
+    "no-restricted-imports": {
       "count": 1
     }
   },

@@ -42,7 +42,7 @@ const Panel: FC<NodePanelProps<AssignerNodeType>> = ({
         <div className="flex items-start gap-2 self-stretch">
           <div className="flex grow flex-col items-start justify-center system-sm-semibold-uppercase text-text-secondary">{t(`${i18nPrefix}.variables`, { ns: 'workflow' })}</div>
           <ActionButton onClick={handleAddOperation}>
-            <RiAddLine className="h-4 w-4 shrink-0 text-text-tertiary" />
+            <RiAddLine className="size-4 shrink-0 text-text-tertiary" />
           </ActionButton>
         </div>
         <VarList

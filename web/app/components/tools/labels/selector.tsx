@@ -47,7 +47,7 @@ function LabelSelector({
         <PopoverTrigger
           className={cn(
             'flex h-10 cursor-pointer items-center gap-1 rounded-lg border-[0.5px] border-transparent bg-components-input-bg-normal px-3 text-left hover:bg-components-input-bg-hover',
-            open && 'bg-components-input-bg-hover hover:bg-components-input-bg-hover',
+            'data-popup-open:bg-components-input-bg-hover data-popup-open:hover:bg-components-input-bg-hover',
           )}
         >
           <div title={value.length > 0 ? selectedLabels : ''} className={cn('grow truncate text-[13px] leading-4.5 text-text-secondary', !value.length && 'text-text-quaternary!')}>
@@ -55,7 +55,7 @@ function LabelSelector({
             {!!value.length && selectedLabels}
           </div>
           <div className="ml-1 shrink-0 text-text-secondary opacity-60">
-            <span className="i-ri-arrow-down-s-line h-4 w-4" />
+            <span className="i-ri-arrow-down-s-line size-4" />
           </div>
         </PopoverTrigger>
         <PopoverContent
@@ -88,12 +88,12 @@ function LabelSelector({
                     className="shrink-0"
                     value={label.name}
                   />
-                  <div title={label.label} className="grow truncate text-sm leading-5 text-text-secondary">{label.label}</div>
+                  <div title={label.label} className="grow truncate text-sm/5 text-text-secondary">{label.label}</div>
                 </label>
               ))}
               {!filteredLabelList.length && (
                 <div className="flex flex-col items-center gap-1 p-3">
-                  <Tag03 className="h-6 w-6 text-text-quaternary" />
+                  <Tag03 className="size-6 text-text-quaternary" />
                   <div className="text-xs leading-[14px] text-text-tertiary">{t('tag.noTag', { ns: 'common' })}</div>
                 </div>
               )}

@@ -89,8 +89,8 @@ const FormItem: FC<Props> = ({
             </div>
           )}
           <div className="flex items-center text-primary-600">
-            {!isChatVar && <Variable02 className="h-3.5 w-3.5" />}
-            {isChatVar && <BubbleX className="h-3.5 w-3.5 text-util-colors-teal-teal-700" />}
+            {!isChatVar && <Variable02 className="size-3.5" />}
+            {isChatVar && <BubbleX className="size-3.5 text-util-colors-teal-teal-700" />}
             <div className={cn('ml-0.5 max-w-[150px] truncate text-xs font-medium', isChatVar && 'text-text-secondary')} title={variable}>
               {variable}
             </div>
@@ -319,7 +319,7 @@ const FormItem: FC<Props> = ({
                       ? (
                           <RiDeleteBinLine
                             onClick={handleArrayItemRemove(index)}
-                            className="mr-1 h-3.5 w-3.5 cursor-pointer text-text-tertiary"
+                            className="mr-1 size-3.5 cursor-pointer text-text-tertiary"
                           />
                         )
                       : undefined
@@ -354,7 +354,7 @@ const FormItem: FC<Props> = ({
                       ? (
                           <RiDeleteBinLine
                             onClick={handleArrayItemRemove(index)}
-                            className="mr-1 h-3.5 w-3.5 cursor-pointer text-text-tertiary"
+                            className="mr-1 size-3.5 cursor-pointer text-text-tertiary"
                           />
                         )
                       : undefined

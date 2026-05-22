@@ -3,7 +3,6 @@ import type { FC } from 'react'
 import type { PluginDefaultValue } from '@/app/components/workflow/block-selector/types'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Home, TriggerAll } from '@/app/components/base/icons/src/vender/workflow'
 import NodeSelector from '@/app/components/workflow/block-selector'
 import { TabsEnum } from '@/app/components/workflow/block-selector/types'
 import { BlockEnum } from '@/app/components/workflow/types'
@@ -31,7 +30,7 @@ const StartNodeSelectionPanel: FC<StartNodeSelectionPanelProps> = ({
       <StartNodeOption
         icon={(
           <div className="flex h-9 w-9 items-center justify-center rounded-[10px] border-[0.5px] border-transparent bg-util-colors-blue-brand-blue-brand-500 p-2">
-            <Home className="h-5 w-5 text-white" />
+            <span className="i-custom-vender-workflow-home size-5 text-white" />
           </div>
         )}
         title={t('onboarding.userInputFull', { ns: 'workflow' })}
@@ -57,8 +56,8 @@ const StartNodeSelectionPanel: FC<StartNodeSelectionPanelProps> = ({
         trigger={() => (
           <StartNodeOption
             icon={(
-              <div className="radius-lg flex h-9 w-9 items-center justify-center border-[0.5px] border-transparent bg-util-colors-blue-brand-blue-brand-500 p-2">
-                <TriggerAll className="h-5 w-5 text-white" />
+              <div className="flex h-9 w-9 items-center justify-center rounded-[10px] border-[0.5px] border-transparent bg-util-colors-blue-brand-blue-brand-500 p-2">
+                <span className="i-custom-vender-workflow-trigger-all size-5 text-white" />
               </div>
             )}
             title={t('onboarding.trigger', { ns: 'workflow' })}
