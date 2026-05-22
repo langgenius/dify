@@ -7,8 +7,6 @@ core, listens to those generic events, and persists only the `conversation.*`
 scope updates that matter to chat applications.
 """
 
-from typing import override
-
 import logging
 from typing import override
 

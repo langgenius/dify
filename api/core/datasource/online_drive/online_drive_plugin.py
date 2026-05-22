@@ -1,5 +1,3 @@
-from typing import override
-
 from collections.abc import Generator
 from typing import override
 

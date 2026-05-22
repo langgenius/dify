@@ -10,7 +10,7 @@ import threading
 from abc import ABC, abstractmethod
 from collections.abc import Callable, Generator
 from contextlib import AbstractContextManager, contextmanager
-from typing import Any, Protocol, final, runtime_checkable, override
+from typing import Any, Protocol, final, override, runtime_checkable
 
 from pydantic import BaseModel
 
