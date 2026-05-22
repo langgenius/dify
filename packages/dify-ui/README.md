@@ -64,20 +64,9 @@ Use `Form` for the submit boundary. It renders a native `<form>`, preserves Ente
 
 Use `FieldRoot` for each standalone named field. A field must have a stable `name`, a label relationship, and either a `FieldControl` or another control that participates in the same Base UI field context. Prefer a visible label for normal form rows; when the surrounding UI already supplies the visible text, use the matching label primitive visually hidden or put `aria-label` on the actual interactive control. `FieldDescription` and `FieldError` provide the message relationships that screen readers need, while the Dify wrapper adds the default Form Input Set styling from the design system.
 
-Choose the label primitive by the control semantics:
+Choose the label primitive by the control semantics. Text-like inputs, input-based `Combobox` / `Autocomplete`, single `Checkbox` / `Radio`, `Switch`, and `NumberField` use `FieldLabel`. Trigger-based `Select` fields use `SelectLabel`; `Slider` fields use `SliderLabel`, with per-thumb `aria-label` only when the thumbs need distinct names. `SelectGroupLabel` and `AutocompleteGroupLabel` only label grouped options inside their popup content; they are not field labels.
 
-| Control shape                                                                 | Label pattern                                                                                                                             |
-| ----------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
-| Text-like inputs rendered by `FieldControl`                                   | `FieldRoot name="..."` + `FieldLabel` + `FieldControl`                                                                                    |
-| Input-based `Combobox`, `Autocomplete`, `Checkbox`, `Radio`, `Switch` fields  | `FieldRoot name="..."` + `FieldLabel` around or near the actual input/control                                                             |
-| Trigger-based `Select` fields                                                 | `FieldRoot name="..."` + `Select` + `SelectLabel` + `SelectTrigger`; use `SelectGroupLabel` only for option groups inside `SelectContent` |
-| Trigger-based `Combobox` fields with search input inside the popup            | `ComboboxLabel` names the trigger; popup search inputs need their own label or accessible name                                            |
-| Autocomplete option groups                                                    | `AutocompleteGroupLabel` only labels grouped suggestions inside `AutocompleteContent`; it is not a field label                            |
-| Slider fields                                                                 | `SliderLabel`; use `aria-label` on `SliderThumb` only when no visible label is rendered                                                   |
-| Checkbox groups, radio groups, or multi-control fields sharing one group name | `FieldsetRoot` + `FieldsetLegend`, with each option wrapped in `FieldItem` and its own label                                              |
-| Contextual, icon-only, or visually unlabeled controls                         | Put `aria-label` on the actual interactive control                                                                                        |
-
-Use `FieldsetRoot` and `FieldsetLegend` when one field is represented by a group of related controls, such as checkbox groups, radio groups, or multi-thumb sliders. Compose group controls with the Base UI pattern:
+Use `FieldsetRoot` and `FieldsetLegend` when one field is represented by a group of related controls, such as checkbox groups, radio groups, multi-thumb sliders, or a section that combines several inputs. For checkbox and radio groups, wrap each option with `FieldItem` and give each option its own label:
 
 ```tsx
 <FieldRoot name="allowedNetworkProtocols">
@@ -97,7 +86,7 @@ Use `FieldsetRoot` and `FieldsetLegend` when one field is represented by a group
 
 For complex business forms, keep state ownership outside these primitives. TanStack Form, zod, server validation, dialog reset behavior, and schema-driven rendering belong to the feature layer in `web/`; they should pass `name`, `invalid`, `dirty`, `touched`, `value`, `onValueChange`, and errors into these primitives rather than replacing the field semantics. In this repo, `web/app/components/base/form` is the TanStack/schema runtime adapter; `packages/dify-ui` remains the primitive layer.
 
-Migration rule for `web/`: if a UI has a save/submit action, do not leave it as unrelated `Input` and `Button` pieces. Give it a real submit boundary with `Form` or a native `<form>`, attach visible field names through `FieldLabel`, expose helper/error text through `FieldDescription` / `FieldError`, and keep non-submit buttons as `type="button"`.
+Migration rule for `web/`: if a UI has a save/submit action, do not leave it as unrelated `Input` and `Button` pieces. Give it a real submit boundary with `Form` or a native `<form>`, attach visible field names through the appropriate label primitive (`FieldLabel`, `SelectLabel`, `SliderLabel`, or `FieldsetLegend`), expose helper/error text through `FieldDescription` / `FieldError`, and keep non-submit buttons as `type="button"`.
 
 ## Tailwind CSS v4 integration
 
