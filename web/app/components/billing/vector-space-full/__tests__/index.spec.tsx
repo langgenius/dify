@@ -21,6 +21,12 @@ vi.mock('../../upgrade-btn', () => ({
   default: () => <button data-testid="vector-upgrade-btn" type="button">Upgrade</button>,
 }))
 
+vi.mock('@/service/use-billing', () => ({
+  useCurrentPlanVectorSpace: () => ({
+    data: undefined,
+  }),
+}))
+
 // Mock utils to control threshold and plan limits
 vi.mock('../../utils', () => ({
   getPlanVectorSpaceLimitMB: (planType: string) => {
