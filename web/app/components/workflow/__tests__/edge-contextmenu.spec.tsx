@@ -6,7 +6,7 @@ import { useEffect } from 'react'
 import { useEdges, useNodes, useStoreApi } from 'reactflow'
 import { createEdge, createNode } from '../__tests__/fixtures'
 import { renderWorkflowFlowComponent } from '../__tests__/workflow-test-env'
-import EdgeContextmenu from '../edge-contextmenu'
+import { EdgeContextmenu } from '../edge-contextmenu'
 import { useEdgesInteractions } from '../hooks/use-edges-interactions'
 
 const mockSaveStateToHistory = vi.fn()

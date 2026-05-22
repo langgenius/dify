@@ -1,6 +1,6 @@
 import { ContextMenu } from '@langgenius/dify-ui/context-menu'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
-import PanelContextmenu from '../panel-contextmenu'
+import { PanelContextmenu } from '../panel-contextmenu'
 import { BlockEnum } from '../types'
 import { createNode } from './fixtures'
 import { renderWorkflowFlowComponent } from './workflow-test-env'

@@ -5,10 +5,10 @@ import {
   ContextMenuTrigger,
 } from '@langgenius/dify-ui/context-menu'
 import { useCallback, useRef } from 'react'
-import EdgeContextmenu from './edge-contextmenu'
+import { EdgeContextmenu } from './edge-contextmenu'
 import { NodeContextmenu } from './node-contextmenu'
-import PanelContextmenu from './panel-contextmenu'
-import SelectionContextmenu from './selection-contextmenu'
+import { PanelContextmenu } from './panel-contextmenu'
+import { SelectionContextmenu } from './selection-contextmenu'
 import { useWorkflowStore } from './store'
 
 export function WorkflowContextmenu({

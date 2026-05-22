@@ -8,7 +8,6 @@ import {
 } from '@langgenius/dify-ui/context-menu'
 import { produce } from 'immer'
 import {
-  memo,
   useCallback,
 } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -217,11 +216,11 @@ const distributeNodes = (
   })
 }
 
-const SelectionContextmenu = ({
+export function SelectionContextmenu({
   onClose,
 }: {
   onClose: () => void
-}) => {
+}) {
   const { t } = useTranslation()
   const { getNodesReadOnly } = useNodesReadOnly()
   const { handleNodesCopy, handleNodesDelete, handleNodesDuplicate } = useNodesInteractions()
@@ -400,5 +399,3 @@ const SelectionContextmenu = ({
     </ContextMenuContent>
   )
 }
-
-export default memo(SelectionContextmenu)

@@ -6,7 +6,6 @@ import {
   ContextMenuSeparator,
 } from '@langgenius/dify-ui/context-menu'
 import {
-  memo,
   useCallback,
 } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -22,11 +21,11 @@ import { useOperator } from './operator/hooks'
 import { ShortcutKbd } from './shortcuts/shortcut-kbd'
 import { useStore } from './store'
 
-const PanelContextmenu = ({
+export function PanelContextmenu({
   onClose,
 }: {
   onClose: () => void
-}) => {
+}) {
   const { t } = useTranslation()
   const isPanelContextMenu = useStore(s => s.contextMenuTarget?.type === 'panel')
   const clipboardElements = useStore(s => s.clipboardElements)
@@ -158,5 +157,3 @@ const PanelContextmenu = ({
     </ContextMenuContent>
   )
 }
-
-export default memo(PanelContextmenu)

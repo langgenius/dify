@@ -2,18 +2,17 @@ import {
   ContextMenuContent,
   ContextMenuItem,
 } from '@langgenius/dify-ui/context-menu'
-import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useEdges } from 'reactflow'
 import { useEdgesInteractions } from './hooks'
 import { ShortcutKbd } from './shortcuts/shortcut-kbd'
 import { useStore } from './store'
 
-const EdgeContextmenu = ({
+export function EdgeContextmenu({
   onClose,
 }: {
   onClose: () => void
-}) => {
+}) {
   const { t } = useTranslation()
   const contextMenuTarget = useStore(s => s.contextMenuTarget)
   const edgeId = contextMenuTarget?.type === 'edge' ? contextMenuTarget.edgeId : undefined
@@ -43,5 +42,3 @@ const EdgeContextmenu = ({
     </ContextMenuContent>
   )
 }
-
-export default memo(EdgeContextmenu)
