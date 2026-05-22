@@ -421,8 +421,7 @@ export function EnvironmentPermissionRow({
         <div className="system-2xs-medium-uppercase text-text-tertiary pc:hidden">
           {t('access.permissions.col.environment')}
         </div>
-        <div className="mt-1 flex min-w-0 items-center gap-2 pc:mt-0">
-          <span className="i-ri-server-line size-3.5 shrink-0 text-text-tertiary" aria-hidden="true" />
+        <div className="mt-1 flex min-h-8 min-w-0 items-center pc:mt-0">
           <span className="min-w-0 truncate text-text-primary">
             {environmentName(environment)}
           </span>

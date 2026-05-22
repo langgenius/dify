@@ -321,9 +321,6 @@ export function ReleaseHistoryTable({ appInstanceId }: {
   const { t } = useTranslation('deployments')
   const [currentPage, setCurrentPage] = useState(0)
   const input = { params: { appInstanceId } }
-  const overviewQuery = useQuery(consoleQuery.enterprise.appInstanceService.getAppInstanceOverview.queryOptions({
-    input,
-  }))
   const releaseHistoryQuery = useQuery(consoleQuery.enterprise.appReleaseService.listReleases.queryOptions({
     input: {
       ...input,
@@ -342,12 +339,9 @@ export function ReleaseHistoryTable({ appInstanceId }: {
     enabled: shouldLoadRuntimeInstances,
   }))
   const isLoading = releaseHistoryQuery.isLoading
-    || (releaseRows.length === 0 && overviewQuery.isLoading)
   const hasError = releaseHistoryQuery.isError
-    || (releaseRows.length === 0 && overviewQuery.isError)
   const deployedToLoading = shouldLoadRuntimeInstances && environmentDeploymentsQuery.isLoading
   const deployedToHasError = shouldLoadRuntimeInstances && environmentDeploymentsQuery.isError
-  const sourceAppUnavailable = overviewQuery.data?.overview?.appInstance?.sourceAppAvailable === false
   const deploymentRows = environmentDeploymentsQuery.data?.data?.filter(row => Boolean(row.environment?.id) && !isUndeployedDeploymentRow(row)) ?? []
 
   if (isLoading) {
@@ -365,7 +359,7 @@ export function ReleaseHistoryTable({ appInstanceId }: {
   if (releaseRows.length === 0) {
     return (
       <DetailListState>
-        {sourceAppUnavailable ? t('versions.emptySourceUnavailable') : t('versions.emptyWithCreate')}
+        {t('versions.emptyWithCreate')}
       </DetailListState>
     )
   }

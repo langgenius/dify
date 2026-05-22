@@ -69,12 +69,6 @@ describe('ReleaseHistoryTable', () => {
     vi.clearAllMocks()
     mockUseQuery.mockImplementation((options: { queryKey?: string[] }) => {
       switch (options.queryKey?.[0]) {
-        case 'app-instance-overview':
-          return {
-            data: { overview: { appInstance: { sourceAppAvailable: true } } },
-            isLoading: false,
-            isError: false,
-          }
         case 'release-history':
           return {
             data: {

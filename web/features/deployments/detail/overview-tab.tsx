@@ -5,10 +5,10 @@ import { useTranslation } from 'react-i18next'
 import Link from '@/next/link'
 import { consoleQuery } from '@/service/client'
 import { SectionState } from './common'
+import { AccessStatusSection } from './overview-tab/access-status-section'
 import { EnvironmentStrip, EnvironmentStripSkeleton } from './overview-tab/environment-strip'
 import { computeOverviewStats } from './overview-tab/overview-drift'
 import { ReleaseHero, ReleaseHeroSkeleton } from './overview-tab/release-hero'
-import { useSourceAppAvailability } from './source-app-availability'
 
 const OVERVIEW_RELEASE_WINDOW = 20
 
@@ -17,27 +17,6 @@ function OverviewLayout({ children }: { children: React.ReactNode }) {
     <div className="flex w-full min-w-0 flex-col gap-6 px-6 py-6">
       {children}
     </div>
-  )
-}
-
-function SourceAppDeletedNotice() {
-  const { t } = useTranslation('deployments')
-
-  return (
-    <section
-      role="status"
-      className="flex items-start gap-3 rounded-lg border border-util-colors-warning-warning-200 bg-util-colors-warning-warning-50 px-4 py-3 text-util-colors-warning-warning-700"
-    >
-      <span aria-hidden className="mt-0.5 i-ri-error-warning-fill size-4 shrink-0" />
-      <div className="min-w-0">
-        <div className="system-sm-semibold text-util-colors-warning-warning-700">
-          {t('overview.sourceAppDeletedTitle')}
-        </div>
-        <p className="mt-1 system-sm-regular text-util-colors-warning-warning-700">
-          {t('overview.sourceAppDeletedDescription')}
-        </p>
-      </div>
-    </section>
   )
 }
 
@@ -82,7 +61,6 @@ export function OverviewTab({ appInstanceId }: {
     },
   }))
   const instance = overviewQuery.data?.overview?.appInstance
-  const sourceAppAvailability = useSourceAppAvailability(instance)
 
   if (overviewQuery.isLoading) {
     return (
@@ -113,7 +91,6 @@ export function OverviewTab({ appInstanceId }: {
   if (releasesQuery.isLoading) {
     return (
       <OverviewLayout>
-        {sourceAppAvailability.sourceAppUnavailable && <SourceAppDeletedNotice />}
         <ReleaseOverviewSection appInstanceId={appInstanceId}>
           <ReleaseHeroSkeleton />
         </ReleaseOverviewSection>
@@ -134,10 +111,10 @@ export function OverviewTab({ appInstanceId }: {
   const runtimeRows = runtimeInstancesQuery.data?.data?.filter(row => row.environment?.id) ?? []
   const latestRelease = releaseRows[0]
   const stats = computeOverviewStats(runtimeRows, releaseRows)
+  const access = overviewQuery.data?.overview?.access
 
   return (
     <OverviewLayout>
-      {sourceAppAvailability.sourceAppUnavailable && <SourceAppDeletedNotice />}
       <div className="flex min-w-0 flex-col gap-6">
         <ReleaseOverviewSection appInstanceId={appInstanceId}>
           <ReleaseHero
@@ -150,10 +127,10 @@ export function OverviewTab({ appInstanceId }: {
           appInstanceId={appInstanceId}
           rows={runtimeRows}
           releaseRows={releaseRows}
-          stats={stats}
           isLoading={runtimeInstancesQuery.isLoading}
           isError={runtimeInstancesQuery.isError}
         />
+        <AccessStatusSection appInstanceId={appInstanceId} access={access} />
       </div>
     </OverviewLayout>
   )

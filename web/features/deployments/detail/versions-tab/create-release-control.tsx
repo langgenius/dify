@@ -4,12 +4,11 @@ import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Dialog, DialogCloseButton, DialogContent, DialogDescription, DialogTitle } from '@langgenius/dify-ui/dialog'
 import { toast } from '@langgenius/dify-ui/toast'
-import { useMutation, useQuery } from '@tanstack/react-query'
+import { useMutation } from '@tanstack/react-query'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Input from '@/app/components/base/input'
 import { consoleQuery } from '@/service/client'
-import { useSourceAppAvailability } from '../source-app-availability'
 
 const DESCRIPTION_MAX_LENGTH = 512
 const DESCRIPTION_WARN_THRESHOLD = 460
@@ -25,13 +24,6 @@ export function CreateReleaseControl({ appInstanceId, variant = 'primary', size 
   const createRelease = useMutation(consoleQuery.enterprise.appReleaseService.createRelease.mutationOptions())
   const [isCreating, setIsCreating] = useState(false)
   const [description, setDescription] = useState('')
-  const { data: overview } = useQuery(consoleQuery.enterprise.appInstanceService.getAppInstanceOverview.queryOptions({
-    input: {
-      params: { appInstanceId },
-    },
-  }))
-  const sourceAppAvailability = useSourceAppAvailability(overview?.overview?.appInstance)
-  const canCreateRelease = sourceAppAvailability.canCreateRelease
 
   function closeDialog() {
     setIsCreating(false)
@@ -39,7 +31,7 @@ export function CreateReleaseControl({ appInstanceId, variant = 'primary', size 
   }
 
   function handleCreateRelease(form: HTMLFormElement) {
-    if (!canCreateRelease || createRelease.isPending)
+    if (createRelease.isPending)
       return
 
     const formData = new FormData(form)
@@ -85,7 +77,7 @@ export function CreateReleaseControl({ appInstanceId, variant = 'primary', size 
         size={size}
         variant={variant}
         className={className}
-        disabled={!canCreateRelease}
+        disabled={createRelease.isPending}
         onClick={() => setIsCreating(true)}
       >
         {label ?? t('versions.createRelease')}
@@ -186,7 +178,7 @@ export function CreateReleaseControl({ appInstanceId, variant = 'primary', size 
                     type="submit"
                     variant="primary"
                     className="min-w-22"
-                    disabled={!canCreateRelease || createRelease.isPending}
+                    disabled={createRelease.isPending}
                   >
                     {createRelease.isPending ? t('versions.creating') : t('versions.create')}
                   </Button>

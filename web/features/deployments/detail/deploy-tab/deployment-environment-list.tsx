@@ -19,7 +19,7 @@ import {
 } from '@langgenius/dify-ui/dropdown-menu'
 import { useMutation } from '@tanstack/react-query'
 import { useSetAtom } from 'jotai'
-import { Fragment, useRef, useState } from 'react'
+import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { consoleQuery } from '@/service/client'
 import {
@@ -238,8 +238,6 @@ function DeploymentEnvironmentMobileRow({ appInstanceId, row }: {
 }) {
   const envId = environmentId(row.environment)
   const release = row.currentRelease
-  const status = deploymentStatus(row)
-  const showFailureBanner = status === 'deploy_failed' && Boolean(row.status)
 
   return (
     <DetailTableCard>
@@ -253,12 +251,6 @@ function DeploymentEnvironmentMobileRow({ appInstanceId, row }: {
           <DeploymentRowActions appInstanceId={appInstanceId} envId={envId} row={row} />
         </div>
       </div>
-      {showFailureBanner && (
-        <div className="flex items-center gap-2 border-l-2 border-util-colors-red-red-500 bg-util-colors-red-red-50 px-3 py-2 system-xs-regular text-util-colors-red-red-700">
-          <span aria-hidden className="i-ri-alert-line size-3.5 shrink-0" />
-          <span className="min-w-0 flex-1 truncate">{row.status}</span>
-        </div>
-      )}
     </DetailTableCard>
   )
 }
@@ -271,37 +263,23 @@ function DeploymentEnvironmentDesktopRows({ appInstanceId, rows }: {
     <>
       {rows.map((row) => {
         const envId = environmentId(row.environment)
-        const status = deploymentStatus(row)
-        const showFailureBanner = status === 'deploy_failed' && Boolean(row.status)
         return (
-          <Fragment key={envId}>
-            <DetailTableRow>
-              <DetailTableCell>
-                <EnvironmentSummary environment={row.environment} />
-              </DetailTableCell>
-              <DetailTableCell>
-                <DeploymentStatusSummary row={row} />
-              </DetailTableCell>
-              <DetailTableCell>
-                <CurrentReleaseSummary release={row.currentRelease} />
-              </DetailTableCell>
-              <DetailTableCell>
-                <div className="flex justify-end">
-                  <DeploymentRowActions appInstanceId={appInstanceId} envId={envId} row={row} />
-                </div>
-              </DetailTableCell>
-            </DetailTableRow>
-            {showFailureBanner && (
-              <DetailTableRow className="hover:bg-transparent">
-                <DetailTableCell colSpan={4} className="h-auto p-0">
-                  <div className="flex items-center gap-2 border-l-2 border-l-util-colors-red-red-500 bg-util-colors-red-red-50 px-3 py-2 system-xs-regular text-util-colors-red-red-700">
-                    <span aria-hidden className="i-ri-alert-line size-3.5 shrink-0" />
-                    <span className="min-w-0 flex-1 truncate">{row.status}</span>
-                  </div>
-                </DetailTableCell>
-              </DetailTableRow>
-            )}
-          </Fragment>
+          <DetailTableRow key={envId}>
+            <DetailTableCell>
+              <EnvironmentSummary environment={row.environment} />
+            </DetailTableCell>
+            <DetailTableCell>
+              <DeploymentStatusSummary row={row} />
+            </DetailTableCell>
+            <DetailTableCell>
+              <CurrentReleaseSummary release={row.currentRelease} />
+            </DetailTableCell>
+            <DetailTableCell>
+              <div className="flex justify-end">
+                <DeploymentRowActions appInstanceId={appInstanceId} envId={envId} row={row} />
+              </div>
+            </DetailTableCell>
+          </DetailTableRow>
         )
       })}
     </>
