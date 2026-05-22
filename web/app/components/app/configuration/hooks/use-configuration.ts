@@ -654,6 +654,7 @@ export const useConfiguration = (): ConfigurationViewModel => {
 
   return {
     appPublisherProps: {
+      disabled: !appACLCapabilities.canReleaseAndVersion,
       publishDisabled: cannotPublish || !appACLCapabilities.canReleaseAndVersion,
       publishedAt: (latestPublishedAt || 0) * 1000,
       debugWithMultipleModel,

@@ -292,6 +292,7 @@ describe('useConfiguration', () => {
     })
 
     expect(result.current.contextValue.readonly).toBe(true)
+    expect(result.current.appPublisherProps.disabled).toBe(true)
     expect(result.current.appPublisherProps.publishDisabled).toBe(true)
 
     await act(async () => {
@@ -311,6 +312,7 @@ describe('useConfiguration', () => {
     })
 
     expect(result.current.contextValue.readonly).toBe(false)
+    expect(result.current.appPublisherProps.disabled).toBe(true)
     expect(result.current.appPublisherProps.publishDisabled).toBe(true)
 
     await act(async () => {
@@ -330,6 +332,7 @@ describe('useConfiguration', () => {
     })
 
     expect(result.current.contextValue.readonly).toBe(true)
+    expect(result.current.appPublisherProps.disabled).toBe(false)
     expect(result.current.appPublisherProps.publishDisabled).toBe(false)
 
     await act(async () => {

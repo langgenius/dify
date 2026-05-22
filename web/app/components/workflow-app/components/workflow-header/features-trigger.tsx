@@ -9,7 +9,6 @@ import type { PublishWorkflowParams } from '@/types/workflow'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { toast } from '@langgenius/dify-ui/toast'
-import { RiApps2AddLine } from '@remixicon/react'
 import {
   memo,
   useCallback,
@@ -199,7 +198,7 @@ const FeaturesTrigger = () => {
           )}
           onClick={handleShowFeatures}
         >
-          <RiApps2AddLine className="mr-1 size-4 text-components-button-secondary-text" />
+          <span className="mr-1 i-ri-apps-2-add-line size-4 text-components-button-secondary-text" />
           {t('common.features', { ns: 'workflow' })}
         </Button>
       )}

@@ -8,6 +8,7 @@ import * as appsService from '@/service/apps'
 import * as exploreService from '@/service/explore'
 import * as workflowService from '@/service/workflow'
 import { AppModeEnum } from '@/types/app'
+import { AppACLPermission } from '@/utils/permission'
 import AppCard from '../app-card'
 
 let mockWebappAuthEnabled = false
@@ -336,12 +337,13 @@ const createMockApp = (overrides: Partial<App> = {}): App => ({
   api_rph: 3600,
   is_demo: false,
   permission_keys: [
-    'app.acl.view_layout',
-    'app.acl.test_and_run',
-    'app.acl.edit',
-    'app.acl.import_export_dsl',
-    'app.acl.delete',
-    'app.acl.access_config',
+    AppACLPermission.ViewLayout,
+    AppACLPermission.TestAndRun,
+    AppACLPermission.Edit,
+    AppACLPermission.ImportExportDSL,
+    AppACLPermission.Delete,
+    AppACLPermission.AccessConfig,
+    AppACLPermission.ReleaseAndVersion,
   ],
   ...overrides,
 } as App)
@@ -1597,6 +1599,36 @@ describe('AppCard', () => {
       fireEvent.click(screen.getByTestId('dropdown-menu-trigger'))
       await waitFor(() => {
         expect(screen.getByText('app.accessControl')).toBeInTheDocument()
+      })
+    })
+
+    it('should show access control option when only app release permission is available', async () => {
+      mockWorkspacePermissionKeys = []
+      const releaseOnlyApp = createMockApp({
+        permission_keys: [AppACLPermission.ReleaseAndVersion],
+      })
+
+      render(<AppCard app={releaseOnlyApp} />)
+
+      fireEvent.click(screen.getByTestId('dropdown-menu-trigger'))
+      await waitFor(() => {
+        expect(screen.getByText('app.accessControl')).toBeInTheDocument()
+      })
+    })
+
+    it('should hide access control option when app release permission is missing', async () => {
+      const appWithoutReleasePermission = createMockApp({
+        permission_keys: [
+          AppACLPermission.ViewLayout,
+          AppACLPermission.AccessConfig,
+        ],
+      })
+
+      render(<AppCard app={appWithoutReleasePermission} />)
+
+      fireEvent.click(screen.getByTestId('dropdown-menu-trigger'))
+      await waitFor(() => {
+        expect(screen.queryByText('app.accessControl')).not.toBeInTheDocument()
       })
     })
 

@@ -246,6 +246,7 @@ const AppCard = ({ app, onlineUsers = [], onRefresh, onOpenTagManagement = () =>
     || appACLCapabilities.canImportExportDSL
     || appACLCapabilities.canDelete
     || appACLCapabilities.canAccessConfig
+    || appACLCapabilities.canReleaseAndVersion
     || canDuplicateApp
   const { onPlanInfoChanged } = useProviderContext()
   const { push } = useRouter()
@@ -428,7 +429,7 @@ const AppCard = ({ app, onlineUsers = [], onRefresh, onOpenTagManagement = () =>
   }, [onRefresh, setShowAccessControl])
 
   const shouldShowSwitchOption = app.mode === AppModeEnum.COMPLETION || app.mode === AppModeEnum.CHAT
-  const shouldShowAccessControlOption = systemFeatures.webapp_auth.enabled && appACLCapabilities.canAccessConfig
+  const shouldShowAccessControlOption = systemFeatures.webapp_auth.enabled && appACLCapabilities.canReleaseAndVersion
   const operationsMenuWidthClassName = shouldShowSwitchOption ? 'w-[256px]' : 'w-[216px]'
 
   const EditTimeText = useMemo(() => {
