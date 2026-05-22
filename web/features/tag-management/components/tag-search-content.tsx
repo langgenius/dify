@@ -1,11 +1,11 @@
 import type { TagComboboxItem } from './tag-combobox-item'
 import type { TagType } from '@/contract/console/tags'
-import { ComboboxInput, ComboboxInputGroup, ComboboxItem, ComboboxItemIndicator, ComboboxItemText, ComboboxList, ComboboxSeparator, useComboboxFilteredItems } from '@langgenius/dify-ui/combobox'
+import { ComboboxEmpty, ComboboxInput, ComboboxInputGroup, ComboboxItem, ComboboxItemIndicator, ComboboxItemText, ComboboxList, ComboboxSeparator, useComboboxFilteredItems } from '@langgenius/dify-ui/combobox'
 import { Fragment } from 'react'
 import { useTranslation } from 'react-i18next'
 import { isCreateTagOption } from './tag-combobox-item'
 
-type TagPanelProps = {
+type TagSearchContentProps = {
   type: TagType
   inputValue: string
   onInputValueChange: (value: string) => void
@@ -13,17 +13,16 @@ type TagPanelProps = {
   onClose?: () => void
 }
 
-export const TagPanel = ({
+export const TagSearchContent = ({
   type,
   inputValue,
   onInputValueChange,
   onOpenTagManagement,
   onClose,
-}: TagPanelProps) => {
+}: TagSearchContentProps) => {
   const { t } = useTranslation()
   const filteredItems = useComboboxFilteredItems<TagComboboxItem>()
   const realItemCount = filteredItems.filter(tag => !isCreateTagOption(tag)).length
-  const hasCreateOption = filteredItems.some(isCreateTagOption)
   const placeholder = t('tag.selectorPlaceholder', { ns: 'common' }) || ''
 
   return (
@@ -50,45 +49,41 @@ export const TagPanel = ({
           )}
         </ComboboxInputGroup>
       </div>
-      {filteredItems.length > 0 && (
-        <ComboboxList className="max-h-58">
-          {(tag: TagComboboxItem) => {
-            if (isCreateTagOption(tag)) {
-              return (
-                <Fragment key={tag.id}>
-                  <ComboboxItem
-                    value={tag}
-                  >
-                    <ComboboxItemText className="flex items-center gap-x-1 px-0">
-                      <span aria-hidden="true" className="i-ri-add-line size-4 shrink-0 text-text-tertiary" />
-                      <span className="min-w-0 grow truncate px-1 system-md-regular text-text-secondary">
-                        {`${t('tag.create', { ns: 'common' })} `}
-                        <span className="system-md-medium">{`'${tag.name}'`}</span>
-                      </span>
-                    </ComboboxItemText>
-                  </ComboboxItem>
-                  {realItemCount > 0 && <ComboboxSeparator />}
-                </Fragment>
-              )
-            }
-
+      <ComboboxList className="max-h-58">
+        {(tag: TagComboboxItem) => {
+          if (isCreateTagOption(tag)) {
             return (
-              <ComboboxItem key={tag.id} value={tag}>
-                <ComboboxItemText title={tag.name}>{tag.name}</ComboboxItemText>
-                <ComboboxItemIndicator />
-              </ComboboxItem>
+              <Fragment key={tag.id}>
+                <ComboboxItem
+                  value={tag}
+                >
+                  <ComboboxItemText className="flex items-center gap-x-1 px-0">
+                    <span aria-hidden="true" className="i-ri-add-line size-4 shrink-0 text-text-tertiary" />
+                    <span className="min-w-0 grow truncate px-1 system-md-regular text-text-secondary">
+                      {`${t('tag.create', { ns: 'common' })} `}
+                      <span className="system-md-medium">{`'${tag.name}'`}</span>
+                    </span>
+                  </ComboboxItemText>
+                </ComboboxItem>
+                {realItemCount > 0 && <ComboboxSeparator />}
+              </Fragment>
             )
-          }}
-        </ComboboxList>
-      )}
-      {!hasCreateOption && realItemCount === 0 && (
-        <div className="p-1">
-          <div className="flex flex-col items-center gap-y-1 p-3">
-            <span aria-hidden="true" className="i-ri-price-tag-3-line size-6 text-text-quaternary" />
-            <div className="system-xs-regular text-text-tertiary">{t('tag.noTag', { ns: 'common' })}</div>
-          </div>
+          }
+
+          return (
+            <ComboboxItem key={tag.id} value={tag}>
+              <ComboboxItemText title={tag.name}>{tag.name}</ComboboxItemText>
+              <ComboboxItemIndicator />
+            </ComboboxItem>
+          )
+        }}
+      </ComboboxList>
+      <ComboboxEmpty className="p-1">
+        <div className="flex flex-col items-center gap-y-1 p-3">
+          <span aria-hidden="true" className="i-ri-price-tag-3-line size-6 text-text-quaternary" />
+          <div className="system-xs-regular text-text-tertiary">{t('tag.noTag', { ns: 'common' })}</div>
         </div>
-      )}
+      </ComboboxEmpty>
       <ComboboxSeparator />
       <div className="p-1">
         <button
