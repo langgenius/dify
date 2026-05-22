@@ -26,6 +26,7 @@ import {
   zGetPermittedExternalAppsResponse,
   zGetVersionResponse,
   zGetWorkspacesByWorkspaceIdMembersPath,
+  zGetWorkspacesByWorkspaceIdMembersQuery,
   zGetWorkspacesByWorkspaceIdMembersResponse,
   zGetWorkspacesByWorkspaceIdPath,
   zGetWorkspacesByWorkspaceIdResponse,
@@ -517,7 +518,12 @@ export const get11 = oc
     path: '/workspaces/{workspace_id}/members',
     tags: ['openapi'],
   })
-  .input(z.object({ params: zGetWorkspacesByWorkspaceIdMembersPath }))
+  .input(
+    z.object({
+      params: zGetWorkspacesByWorkspaceIdMembersPath,
+      query: zGetWorkspacesByWorkspaceIdMembersQuery.optional(),
+    }),
+  )
   .output(zGetWorkspacesByWorkspaceIdMembersResponse)
 
 export const post9 = oc
