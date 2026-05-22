@@ -18,13 +18,10 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from libs.broadcast_channel.exc import BroadcastChannelError, SubscriptionClosedError
-from libs.broadcast_channel.redis.channel import (
+from libs.broadcast_channel.redis.pubsub_channel import (
     BroadcastChannel as RedisBroadcastChannel,
 )
-from libs.broadcast_channel.redis.channel import (
-    Topic,
-    _RedisSubscription,
-)
+from libs.broadcast_channel.redis.pubsub_channel import Topic, _RedisSubscription
 from libs.broadcast_channel.redis.sharded_channel import (
     ShardedRedisBroadcastChannel,
     ShardedTopic,

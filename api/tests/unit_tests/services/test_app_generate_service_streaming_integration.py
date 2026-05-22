@@ -109,7 +109,7 @@ def _patch_get_channel_streams(monkeypatch: pytest.MonkeyPatch):
 
 @pytest.fixture
 def _patch_get_channel_pubsub(monkeypatch: pytest.MonkeyPatch):
-    from libs.broadcast_channel.redis.channel import BroadcastChannel as RedisBroadcastChannel
+    from libs.broadcast_channel.redis.pubsub_channel import BroadcastChannel as RedisBroadcastChannel
 
     store: dict[str, deque[bytes]] = defaultdict(deque)
     client = _FakeRedisClient(store)

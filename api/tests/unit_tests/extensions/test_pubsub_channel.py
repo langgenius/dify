@@ -2,7 +2,7 @@ import pytest
 
 from configs import dify_config
 from extensions import ext_redis
-from libs.broadcast_channel.redis.channel import BroadcastChannel as RedisBroadcastChannel
+from libs.broadcast_channel.redis.pubsub_channel import BroadcastChannel as RedisBroadcastChannel
 from libs.broadcast_channel.redis.sharded_channel import ShardedRedisBroadcastChannel
 
 
