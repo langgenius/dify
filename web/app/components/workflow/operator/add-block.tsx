@@ -34,10 +34,12 @@ import TipPopup from './tip-popup'
 type AddBlockProps = {
   renderTrigger?: (open: boolean) => React.ReactNode
   offset?: OffsetOptions
+  onClose?: () => void
 }
 const AddBlock = ({
   renderTrigger,
   offset,
+  onClose,
 }: AddBlockProps) => {
   const { t } = useTranslation()
   const store = useStoreApi()
@@ -54,8 +56,8 @@ const AddBlock = ({
   const handleOpenChange = useCallback((open: boolean) => {
     setOpen(open)
     if (!open)
-      handlePaneContextmenuCancel()
-  }, [handlePaneContextmenuCancel])
+      (onClose ?? handlePaneContextmenuCancel)()
+  }, [handlePaneContextmenuCancel, onClose])
 
   const handleSelect = useCallback<OnSelectBlock>((type, pluginDefaultValue) => {
     const {

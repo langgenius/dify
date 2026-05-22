@@ -390,7 +390,6 @@ vi.mock('../hooks', () => ({
   }),
   usePanelInteractions: () => ({
     handlePaneContextMenu: workflowHookMocks.handlePaneContextMenu,
-    handleEdgeContextmenuCancel: vi.fn(),
   }),
   useSelectionInteractions: () => ({
     handleSelectionStart: workflowHookMocks.handleSelectionStart,
@@ -551,14 +550,10 @@ describe('Workflow edge event wiring', () => {
     ]))
   })
 
-  it('should clear edgeMenu when workflow data updates remove the current edge', () => {
+  it('should clear context menu target when workflow data updates', () => {
     const { store } = renderSubject({
       initialStoreState: {
-        edgeMenu: {
-          clientX: 320,
-          clientY: 180,
-          edgeId: 'edge-1',
-        },
+        contextMenuTarget: { type: 'edge', edgeId: 'edge-1' },
       },
     })
 
@@ -572,7 +567,7 @@ describe('Workflow edge event wiring', () => {
       })
     })
 
-    expect(store.getState().edgeMenu).toBeUndefined()
+    expect(store.getState().contextMenuTarget).toBeUndefined()
   })
 
   it('should render confirm description and clear showConfirm when cancelled', async () => {

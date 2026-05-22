@@ -112,13 +112,12 @@ describe('NodeSelector', () => {
     expect(screen.queryByPlaceholderText('workflow.tabs.searchBlock')).not.toBeInTheDocument()
   })
 
-  it('preserves the child trigger click handler when rendered as child', async () => {
+  it('preserves the custom trigger click handler', async () => {
     const user = userEvent.setup()
     const onTriggerClick = vi.fn()
 
     renderWorkflowComponent(
       <NodeSelector
-        asChild
         onSelect={vi.fn()}
         blocks={[createBlock(BlockEnum.LLM, 'LLM')]}
         availableBlocksTypes={[BlockEnum.LLM]}

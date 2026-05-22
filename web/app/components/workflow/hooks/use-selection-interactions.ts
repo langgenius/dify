@@ -141,19 +141,7 @@ export const useSelectionInteractions = () => {
 
     e.preventDefault()
     workflowStore.setState({
-      nodeMenu: undefined,
-      panelMenu: undefined,
-      edgeMenu: undefined,
-      selectionMenu: {
-        clientX: e.clientX,
-        clientY: e.clientY,
-      },
-    })
-  }, [workflowStore])
-
-  const handleSelectionContextmenuCancel = useCallback(() => {
-    workflowStore.setState({
-      selectionMenu: undefined,
+      contextMenuTarget: { type: 'selection' },
     })
   }, [workflowStore])
 
@@ -163,6 +151,5 @@ export const useSelectionInteractions = () => {
     handleSelectionDrag,
     handleSelectionCancel,
     handleSelectionContextMenu,
-    handleSelectionContextmenuCancel,
   }
 }

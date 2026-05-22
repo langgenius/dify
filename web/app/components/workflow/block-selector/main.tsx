@@ -49,7 +49,6 @@ export type NodeSelectorProps = {
   triggerClassName?: (open: boolean) => string
   triggerInnerClassName?: string
   popupClassName?: string
-  asChild?: boolean
   availableBlocksTypes?: BlockEnum[]
   disabled?: boolean
   blocks?: NodeDefault[]
@@ -74,7 +73,6 @@ const NodeSelector: FC<NodeSelectorProps> = ({
   triggerInnerClassName,
   triggerStyle,
   popupClassName,
-  asChild,
   availableBlocksTypes,
   disabled,
   blocks = [],
@@ -191,14 +189,12 @@ const NodeSelector: FC<NodeSelectorProps> = ({
     </PopoverTrigger>
   )
   const triggerElement = trigger?.(open)
-  const shouldRenderTriggerElementAsRoot = React.isValidElement(triggerElement)
-    && (asChild || triggerElement.type === 'button')
   const triggerElementProps = React.isValidElement(triggerElement)
     ? (triggerElement.props as {
         onClick?: MouseEventHandler<HTMLElement>
       })
     : null
-  const resolvedTriggerElement = shouldRenderTriggerElementAsRoot
+  const resolvedTriggerElement = React.isValidElement(triggerElement)
     ? React.cloneElement(
         triggerElement as React.ReactElement<{
           onClick?: MouseEventHandler<HTMLElement>
@@ -216,11 +212,11 @@ const NodeSelector: FC<NodeSelectorProps> = ({
           {triggerElement}
         </div>
       )
+  const triggerRendersNativeButton = React.isValidElement(resolvedTriggerElement)
+    && resolvedTriggerElement.type === 'button'
   const resolvedOffset = typeof offset === 'number' || typeof offset === 'function' ? undefined : offset
   const sideOffset = typeof offset === 'number' ? offset : (resolvedOffset?.mainAxis ?? 0)
   const alignOffset = typeof offset === 'number' ? 0 : (resolvedOffset?.crossAxis ?? 0)
-  const nativeButton = shouldRenderTriggerElementAsRoot
-    && (typeof triggerElement.type !== 'string' || triggerElement.type === 'button')
 
   return (
     <Popover
@@ -228,7 +224,12 @@ const NodeSelector: FC<NodeSelectorProps> = ({
       onOpenChange={handleOpenChange}
     >
       {trigger
-        ? <PopoverTrigger nativeButton={nativeButton} render={resolvedTriggerElement as React.ReactElement} />
+        ? (
+            <PopoverTrigger
+              nativeButton={triggerRendersNativeButton}
+              render={resolvedTriggerElement as React.ReactElement}
+            />
+          )
         : defaultTriggerElement}
       <PopoverContent
         placement={placement}
