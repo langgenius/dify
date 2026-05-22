@@ -9,7 +9,8 @@ from sqlalchemy import exists, func, select
 from werkzeug.exceptions import InternalServerError, NotFound
 
 from controllers.common.controller_schemas import MessageFeedbackPayload as _MessageFeedbackPayloadBase
-from controllers.common.schema import register_schema_models
+from controllers.common.fields import SimpleResultResponse
+from controllers.common.schema import register_response_schema_models, register_schema_models
 from controllers.console import console_ns
 from controllers.console.app.error import (
     CompletionRequestError,
@@ -37,10 +38,9 @@ from fields.conversation_fields import (
     JSONValue,
     MessageFile,
     format_files_contained,
-    to_timestamp,
 )
 from graphon.model_runtime.errors.invoke import InvokeError
-from libs.helper import uuid_value
+from libs.helper import to_timestamp, uuid_value
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
 from libs.login import current_account_with_tenant, login_required
 from models.enums import FeedbackFromSource, FeedbackRating
@@ -144,9 +144,7 @@ class MessageDetailResponse(ResponseModel):
     @field_validator("created_at", mode="before")
     @classmethod
     def _normalize_created_at(cls, value: datetime | int | None) -> int | None:
-        if isinstance(value, datetime):
-            return to_timestamp(value)
-        return value
+        return to_timestamp(value)
 
 
 class MessageInfiniteScrollPaginationResponse(ResponseModel):
@@ -165,6 +163,7 @@ register_schema_models(
     MessageDetailResponse,
     MessageInfiniteScrollPaginationResponse,
 )
+register_response_schema_models(console_ns, SimpleResultResponse)
 
 
 @console_ns.route("/apps/<uuid:app_id>/chat-messages")
@@ -250,7 +249,7 @@ class MessageFeedbackApi(Resource):
     @console_ns.doc(description="Create or update message feedback (like/dislike)")
     @console_ns.doc(params={"app_id": "Application ID"})
     @console_ns.expect(console_ns.models[MessageFeedbackPayload.__name__])
-    @console_ns.response(200, "Feedback updated successfully")
+    @console_ns.response(200, "Feedback updated successfully", console_ns.models[SimpleResultResponse.__name__])
     @console_ns.response(404, "Message not found")
     @console_ns.response(403, "Insufficient permissions")
     @get_app_model

@@ -8,7 +8,7 @@ import type { ToolWithProvider, ValueSelector, Var } from '@/app/components/work
 import { cn } from '@langgenius/dify-ui/cn'
 import { Select, SelectContent, SelectItem, SelectItemIndicator, SelectItemText, SelectTrigger } from '@langgenius/dify-ui/select'
 import { useEffect, useMemo, useState } from 'react'
-import CheckboxList from '@/app/components/base/checkbox-list'
+import { CheckboxList } from '@/app/components/base/checkbox-list'
 import Input from '@/app/components/base/input'
 import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { AppSelector } from '@/app/components/plugins/plugin-detail-panel/app-selector'
@@ -305,6 +305,7 @@ const FormInputItem: FC<Props> = ({
       )}
       {isCheckbox && isConstant && (
         <CheckboxList
+          name={variable}
           title={schema.label?.[language] || schema.label?.en_US || variable}
           value={checkboxListValue}
           onChange={handleCheckboxListChange}
@@ -332,7 +333,7 @@ const FormInputItem: FC<Props> = ({
             {staticSelectItems.map(item => (
               <SelectItem key={item.value} value={item.value}>
                 {item.icon && (
-                  <img src={item.icon} alt="" className="mr-2 h-4 w-4 shrink-0" />
+                  <img src={item.icon} alt="" className="mr-2 size-4 shrink-0" />
                 )}
                 <SelectItemText>{item.name}</SelectItemText>
                 <SelectItemIndicator />
@@ -364,7 +365,7 @@ const FormInputItem: FC<Props> = ({
             {dynamicSelectItems.map(item => (
               <SelectItem key={item.value} value={item.value}>
                 {item.icon && (
-                  <img src={item.icon} alt="" className="mr-2 h-4 w-4 shrink-0" />
+                  <img src={item.icon} alt="" className="mr-2 size-4 shrink-0" />
                 )}
                 <SelectItemText>{item.name}</SelectItemText>
                 <SelectItemIndicator />

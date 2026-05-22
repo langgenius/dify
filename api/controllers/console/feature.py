@@ -1,11 +1,14 @@
-from flask_restx import Resource, fields
+from flask_restx import Resource
 from werkzeug.exceptions import Unauthorized
 
+from controllers.common.schema import register_response_schema_models
 from libs.login import current_account_with_tenant, current_user, login_required
-from services.feature_service import FeatureService
+from services.feature_service import FeatureModel, FeatureService, SystemFeatureModel
 
 from . import console_ns
 from .wraps import account_initialization_required, cloud_utm_record, setup_required
+
+register_response_schema_models(console_ns, FeatureModel, SystemFeatureModel)
 
 
 @console_ns.route("/features")
@@ -15,7 +18,7 @@ class FeatureApi(Resource):
     @console_ns.response(
         200,
         "Success",
-        console_ns.model("FeatureResponse", {"features": fields.Raw(description="Feature configuration object")}),
+        console_ns.models[FeatureModel.__name__],
     )
     @setup_required
     @login_required
@@ -35,9 +38,7 @@ class SystemFeatureApi(Resource):
     @console_ns.response(
         200,
         "Success",
-        console_ns.model(
-            "SystemFeatureResponse", {"features": fields.Raw(description="System feature configuration object")}
-        ),
+        console_ns.models[SystemFeatureModel.__name__],
     )
     def get(self):
         """Get system-wide feature configuration

@@ -5,7 +5,8 @@ from flask_restx import Resource
 from pydantic import BaseModel, Field, field_validator
 from werkzeug.exceptions import Forbidden
 
-from controllers.common.schema import register_schema_models
+from controllers.common.fields import SimpleResultResponse
+from controllers.common.schema import register_response_schema_models, register_schema_models
 from controllers.console import console_ns
 from controllers.console.wraps import account_initialization_required, edit_permission_required, setup_required
 from fields.base import ResponseModel
@@ -23,6 +24,10 @@ from services.tag_service import (
 class TagBasePayload(BaseModel):
     name: str = Field(description="Tag name", min_length=1, max_length=50)
     type: TagType = Field(description="Tag type")
+
+
+class TagUpdateRequestPayload(BaseModel):
+    name: str = Field(description="Tag name", min_length=1, max_length=50)
 
 
 class TagBindingPayload(BaseModel):
@@ -68,11 +73,13 @@ class TagResponse(ResponseModel):
 register_schema_models(
     console_ns,
     TagBasePayload,
+    TagUpdateRequestPayload,
     TagBindingPayload,
     TagBindingRemovePayload,
     TagListQueryParam,
     TagResponse,
 )
+register_response_schema_models(console_ns, SimpleResultResponse)
 
 
 @console_ns.route("/tags")
@@ -97,6 +104,7 @@ class TagListApi(Resource):
         return serialized_tags, 200
 
     @console_ns.expect(console_ns.models[TagBasePayload.__name__])
+    @console_ns.response(200, "Success", console_ns.models[TagResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -118,7 +126,8 @@ class TagListApi(Resource):
 
 @console_ns.route("/tags/<uuid:tag_id>")
 class TagUpdateDeleteApi(Resource):
-    @console_ns.expect(console_ns.models[TagBasePayload.__name__])
+    @console_ns.expect(console_ns.models[TagUpdateRequestPayload.__name__])
+    @console_ns.response(200, "Success", console_ns.models[TagResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -129,8 +138,8 @@ class TagUpdateDeleteApi(Resource):
         if not (current_user.has_edit_permission or current_user.is_dataset_editor):
             raise Forbidden()
 
-        payload = TagBasePayload.model_validate(console_ns.payload or {})
-        tag = TagService.update_tags(UpdateTagPayload(name=payload.name, type=payload.type), tag_id)
+        payload = TagUpdateRequestPayload.model_validate(console_ns.payload or {})
+        tag = TagService.update_tags(UpdateTagPayload(name=payload.name), tag_id)
 
         binding_count = TagService.get_tag_binding_count(tag_id)
 
@@ -144,6 +153,7 @@ class TagUpdateDeleteApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
+    @console_ns.response(204, "Tag deleted successfully")
     def delete(self, tag_id):
         tag_id = str(tag_id)
 
@@ -198,6 +208,7 @@ class TagBindingCollectionApi(Resource):
 
     @console_ns.doc("create_tag_binding")
     @console_ns.expect(console_ns.models[TagBindingPayload.__name__])
+    @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -212,6 +223,7 @@ class TagBindingRemoveApi(Resource):
     @console_ns.doc("remove_tag_bindings")
     @console_ns.doc(description="Remove one or more tag bindings from a target.")
     @console_ns.expect(console_ns.models[TagBindingRemovePayload.__name__])
+    @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required

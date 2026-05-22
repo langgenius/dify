@@ -3,13 +3,14 @@ import logging
 from typing import Any, Literal, cast
 
 from flask import abort, request
-from flask_restx import Resource, marshal_with  # type: ignore
+from flask_restx import Resource
 from pydantic import BaseModel, Field, ValidationError
 from sqlalchemy.orm import sessionmaker
 from werkzeug.exceptions import BadRequest, Forbidden, InternalServerError, NotFound
 
 import services
 from controllers.common.controller_schemas import DefaultBlockConfigQuery, WorkflowListQuery, WorkflowUpdatePayload
+from controllers.common.fields import SimpleResultResponse
 from controllers.common.schema import register_response_schema_models, register_schema_models
 from controllers.console import console_ns
 from controllers.console.app.error import (
@@ -19,8 +20,8 @@ from controllers.console.app.error import (
 )
 from controllers.console.app.workflow import (
     RESTORE_SOURCE_WORKFLOW_MUST_BE_PUBLISHED_MESSAGE,
-    workflow_model,
-    workflow_pagination_model,
+    WorkflowPaginationResponse,
+    WorkflowResponse,
 )
 from controllers.console.datasets.wraps import get_rag_pipeline
 from controllers.console.wraps import (
@@ -34,6 +35,7 @@ from core.app.apps.pipeline.pipeline_generator import PipelineGenerator
 from core.app.entities.app_invoke_entities import InvokeFrom
 from extensions.ext_database import db
 from factories import variable_factory
+from fields.base import ResponseModel
 from fields.workflow_run_fields import (
     WorkflowRunDetailResponse,
     WorkflowRunNodeExecutionListResponse,
@@ -42,7 +44,7 @@ from fields.workflow_run_fields import (
 )
 from graphon.model_runtime.utils.encoders import jsonable_encoder
 from libs import helper
-from libs.helper import TimestampField, UUIDStrOrEmpty
+from libs.helper import TimestampField, UUIDStrOrEmpty, dump_response
 from libs.login import current_account_with_tenant, current_user, login_required
 from models import Account
 from models.dataset import Pipeline
@@ -115,6 +117,17 @@ class RagPipelineRecommendedPluginQuery(BaseModel):
     type: str = "all"
 
 
+class RagPipelineWorkflowSyncResponse(ResponseModel):
+    result: str
+    hash: str
+    updated_at: int
+
+
+class RagPipelineWorkflowPublishResponse(ResponseModel):
+    result: str
+    created_at: int
+
+
 register_schema_models(
     console_ns,
     DraftWorkflowSyncPayload,
@@ -133,6 +146,9 @@ register_schema_models(
 )
 register_response_schema_models(
     console_ns,
+    RagPipelineWorkflowPublishResponse,
+    RagPipelineWorkflowSyncResponse,
+    SimpleResultResponse,
     WorkflowRunDetailResponse,
     WorkflowRunNodeExecutionListResponse,
     WorkflowRunNodeExecutionResponse,
@@ -142,12 +158,17 @@ register_response_schema_models(
 
 @console_ns.route("/rag/pipelines/<uuid:pipeline_id>/workflows/draft")
 class DraftRagPipelineApi(Resource):
+    @console_ns.response(
+        200,
+        "Draft workflow retrieved successfully",
+        console_ns.models[WorkflowResponse.__name__],
+    )
+    @console_ns.response(404, "Draft workflow not found")
     @setup_required
     @login_required
     @account_initialization_required
     @get_rag_pipeline
     @edit_permission_required
-    @marshal_with(workflow_model)
     def get(self, pipeline: Pipeline):
         """
         Get draft rag pipeline's workflow
@@ -159,14 +180,15 @@ class DraftRagPipelineApi(Resource):
         if not workflow:
             raise DraftWorkflowNotExist()
 
-        # return workflow, if not found, return None (initiate graph by frontend)
-        return workflow
+        # return workflow, if not found, return 404
+        return dump_response(WorkflowResponse, workflow)
 
     @setup_required
     @login_required
     @account_initialization_required
     @get_rag_pipeline
     @edit_permission_required
+    @console_ns.response(200, "Success", console_ns.models[RagPipelineWorkflowSyncResponse.__name__])
     def post(self, pipeline: Pipeline):
         """
         Sync draft workflow
@@ -457,6 +479,7 @@ class RagPipelineDraftNodeRunApi(Resource):
 
 @console_ns.route("/rag/pipelines/<uuid:pipeline_id>/workflow-runs/tasks/<string:task_id>/stop")
 class RagPipelineTaskStopApi(Resource):
+    @console_ns.response(200, "Task stopped successfully", console_ns.models[SimpleResultResponse.__name__])
     @setup_required
     @login_required
     @edit_permission_required
@@ -476,12 +499,16 @@ class RagPipelineTaskStopApi(Resource):
 
 @console_ns.route("/rag/pipelines/<uuid:pipeline_id>/workflows/publish")
 class PublishedRagPipelineApi(Resource):
+    @console_ns.response(
+        200,
+        "Published workflow retrieved successfully, or null if not exist",
+        console_ns.models[WorkflowResponse.__name__],
+    )
     @setup_required
     @login_required
     @account_initialization_required
     @edit_permission_required
     @get_rag_pipeline
-    @marshal_with(workflow_model)
     def get(self, pipeline: Pipeline):
         """
         Get published pipeline
@@ -494,8 +521,12 @@ class PublishedRagPipelineApi(Resource):
         workflow = rag_pipeline_service.get_published_workflow(pipeline=pipeline)
 
         # return workflow, if not found, return None
-        return workflow
+        if workflow is None:
+            return None
 
+        return dump_response(WorkflowResponse, workflow)
+
+    @console_ns.response(200, "Success", console_ns.models[RagPipelineWorkflowPublishResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -567,12 +598,17 @@ class DefaultRagPipelineBlockConfigApi(Resource):
 
 @console_ns.route("/rag/pipelines/<uuid:pipeline_id>/workflows")
 class PublishedAllRagPipelineApi(Resource):
+    @console_ns.response(
+        200,
+        "Published workflows retrieved successfully",
+        console_ns.models[WorkflowPaginationResponse.__name__],
+    )
+    @console_ns.response(403, "Permission denied")
     @setup_required
     @login_required
     @account_initialization_required
     @edit_permission_required
     @get_rag_pipeline
-    @marshal_with(workflow_pagination_model)
     def get(self, pipeline: Pipeline):
         """
         Get published workflows
@@ -601,16 +637,19 @@ class PublishedAllRagPipelineApi(Resource):
                 named_only=named_only,
             )
 
-            return {
-                "items": workflows,
-                "page": page,
-                "limit": limit,
-                "has_more": has_more,
-            }
+            return WorkflowPaginationResponse.model_validate(
+                {
+                    "items": workflows,
+                    "page": page,
+                    "limit": limit,
+                    "has_more": has_more,
+                }
+            ).model_dump(mode="json")
 
 
 @console_ns.route("/rag/pipelines/<uuid:pipeline_id>/workflows/<string:workflow_id>/restore")
 class RagPipelineDraftWorkflowRestoreApi(Resource):
+    @console_ns.response(200, "Success", console_ns.models[RagPipelineWorkflowSyncResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -641,12 +680,15 @@ class RagPipelineDraftWorkflowRestoreApi(Resource):
 
 @console_ns.route("/rag/pipelines/<uuid:pipeline_id>/workflows/<string:workflow_id>")
 class RagPipelineByIdApi(Resource):
+    @console_ns.response(200, "Workflow updated successfully", console_ns.models[WorkflowResponse.__name__])
+    @console_ns.response(400, "No valid fields to update")
+    @console_ns.response(403, "Permission denied")
+    @console_ns.response(404, "Workflow not found")
     @setup_required
     @login_required
     @account_initialization_required
     @edit_permission_required
     @get_rag_pipeline
-    @marshal_with(workflow_model)
     def patch(self, pipeline: Pipeline, workflow_id: str):
         """
         Update workflow attributes
@@ -675,8 +717,9 @@ class RagPipelineByIdApi(Resource):
             if not workflow:
                 raise NotFound("Workflow not found")
 
-            return workflow
+            return dump_response(WorkflowResponse, workflow)
 
+    @console_ns.response(204, "Workflow deleted successfully")
     @setup_required
     @login_required
     @account_initialization_required

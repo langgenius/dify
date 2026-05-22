@@ -61,7 +61,7 @@ const PluginSettingModal: FC<Props> = ({
       }}
     >
       <DialogContent className="w-[620px] max-w-[620px] overflow-hidden! border-none p-0! text-left align-middle">
-        <DialogCloseButton data-testid="modal-close-button" />
+        <DialogCloseButton />
 
         <div className="shadows-shadow-xl flex w-full flex-col items-start rounded-2xl border border-components-panel-border bg-components-panel-bg">
           <div className="flex items-start gap-2 self-stretch pt-6 pr-14 pb-3 pl-6">

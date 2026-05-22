@@ -484,6 +484,51 @@ describe('useNodesInteractions', () => {
     expect(nodesArg[0]?.data.selected).toBe(false)
   })
 
+  it('keeps ReactFlow and node data selection in sync when selecting another node', () => {
+    currentNodes = [
+      createNode({
+        id: 'knowledge-retrieval-node',
+        selected: true,
+        data: {
+          type: BlockEnum.KnowledgeRetrieval,
+          title: 'Knowledge Retrieval',
+          desc: '',
+          selected: true,
+        },
+      }),
+      createNode({
+        id: 'answer-node',
+        position: { x: 100, y: 0 },
+        data: {
+          type: BlockEnum.Answer,
+          title: 'Answer',
+          desc: '',
+        },
+      }),
+    ]
+    rfState.nodes = currentNodes as unknown as typeof rfState.nodes
+
+    const { result } = renderWorkflowHook(() => useNodesInteractions(), {
+      historyStore: {
+        nodes: currentNodes,
+        edges: currentEdges,
+      },
+    })
+
+    act(() => {
+      result.current.handleNodeSelect('answer-node')
+    })
+
+    const nodesArg = rfState.setNodes.mock.calls[0]?.[0] as Node[]
+    const knowledgeNode = nodesArg.find(node => node.id === 'knowledge-retrieval-node')
+    const answerNode = nodesArg.find(node => node.id === 'answer-node')
+
+    expect(knowledgeNode?.selected).toBe(false)
+    expect(knowledgeNode?.data.selected).toBe(false)
+    expect(answerNode?.selected).toBe(true)
+    expect(answerNode?.data.selected).toBe(true)
+  })
+
   it('skips clipboard copy when bundled/selected nodes have no metadata', () => {
     currentNodes = [
       createNode({

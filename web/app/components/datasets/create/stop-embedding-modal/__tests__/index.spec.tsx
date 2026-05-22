@@ -84,9 +84,8 @@ describe('StopEmbeddingModal', () => {
     it('should render buttons in correct order (cancel first, then confirm)', () => {
       renderStopEmbeddingModal({ show: true })
 
-      // Assert - Due to flex-row-reverse, confirm appears first visually but cancel is first in DOM
-      const buttons = screen.getAllByRole('button')
-      expect(buttons).toHaveLength(2)
+      expect(screen.getByRole('button', { name: 'datasetCreation.stepThree.modelButtonCancel' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'datasetCreation.stepThree.modelButtonConfirm' })).toBeInTheDocument()
     })
 
     it('should render confirm button with primary variant styling', () => {
@@ -290,48 +289,28 @@ describe('StopEmbeddingModal', () => {
     })
 
     describe('Close Icon', () => {
-      it('should call onHide when close span is clicked', async () => {
+      it('should call onHide when close button is clicked', async () => {
         const onConfirm = vi.fn()
         const onHide = vi.fn()
-        const { container } = renderStopEmbeddingModal({ onConfirm, onHide })
+        renderStopEmbeddingModal({ onConfirm, onHide })
 
-        // Act - Find the close span (it should be the span with onClick handler)
-        const spans = container.querySelectorAll('span')
-        const closeSpan = Array.from(spans).find(span =>
-          span.className && span.getAttribute('class')?.includes('close'),
-        )
+        await act(async () => {
+          fireEvent.click(screen.getByRole('button', { name: /operation\.close$/ }))
+        })
 
-        if (closeSpan) {
-          await act(async () => {
-            fireEvent.click(closeSpan)
-          })
-
-          expect(onHide).toHaveBeenCalledTimes(1)
-        }
-        else {
-          // If no close span found with class, just verify the modal renders
-          // If no close span found with class, just verify the modal renders
-          expect(screen.getByText('datasetCreation.stepThree.modelTitle'))!.toBeInTheDocument()
-        }
+        expect(onHide).toHaveBeenCalledTimes(1)
       })
 
-      it('should not call onConfirm when close span is clicked', async () => {
+      it('should not call onConfirm when close button is clicked', async () => {
         const onConfirm = vi.fn()
         const onHide = vi.fn()
-        const { container } = renderStopEmbeddingModal({ onConfirm, onHide })
+        renderStopEmbeddingModal({ onConfirm, onHide })
 
-        const spans = container.querySelectorAll('span')
-        const closeSpan = Array.from(spans).find(span =>
-          span.className && span.getAttribute('class')?.includes('close'),
-        )
+        await act(async () => {
+          fireEvent.click(screen.getByRole('button', { name: /operation\.close$/ }))
+        })
 
-        if (closeSpan) {
-          await act(async () => {
-            fireEvent.click(closeSpan)
-          })
-
-          expect(onConfirm).not.toHaveBeenCalled()
-        }
+        expect(onConfirm).not.toHaveBeenCalled()
       })
     })
 
@@ -444,8 +423,8 @@ describe('StopEmbeddingModal', () => {
     it('should have buttons container with flex-row-reverse', () => {
       renderStopEmbeddingModal({ show: true })
 
-      const buttons = screen.getAllByRole('button')
-      expect(buttons[0]!.closest('div'))!.toHaveClass('flex', 'flex-row-reverse')
+      const confirmButton = screen.getByRole('button', { name: 'datasetCreation.stepThree.modelButtonConfirm' })
+      expect(confirmButton.closest('div'))!.toHaveClass('flex', 'flex-row-reverse')
     })
 
     it('should render title and content elements', () => {
@@ -455,11 +434,11 @@ describe('StopEmbeddingModal', () => {
       expect(screen.getByText('datasetCreation.stepThree.modelContent'))!.toBeInTheDocument()
     })
 
-    it('should render two buttons', () => {
+    it('should render two action buttons', () => {
       renderStopEmbeddingModal({ show: true })
 
-      const buttons = screen.getAllByRole('button')
-      expect(buttons).toHaveLength(2)
+      expect(screen.getByRole('button', { name: 'datasetCreation.stepThree.modelButtonCancel' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'datasetCreation.stepThree.modelButtonConfirm' })).toBeInTheDocument()
     })
   })
 
@@ -563,8 +542,9 @@ describe('StopEmbeddingModal', () => {
     it('should have semantic button elements', () => {
       renderStopEmbeddingModal({ show: true })
 
-      const buttons = screen.getAllByRole('button')
-      expect(buttons).toHaveLength(2)
+      expect(screen.getByRole('button', { name: /operation\.close$/ })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'datasetCreation.stepThree.modelButtonCancel' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'datasetCreation.stepThree.modelButtonConfirm' })).toBeInTheDocument()
     })
 
     it('should have accessible text content', () => {

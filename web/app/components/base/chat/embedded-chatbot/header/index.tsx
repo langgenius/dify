@@ -114,11 +114,15 @@ const Header: FC<IHeaderProps> = ({
               <Tooltip>
                 <TooltipTrigger
                   render={(
-                    <ActionButton size="l" onClick={handleToggleExpand} data-testid="expand-button">
+                    <ActionButton
+                      size="l"
+                      aria-label={expanded ? t('chat.collapse', { ns: 'share' }) : t('chat.expand', { ns: 'share' })}
+                      onClick={handleToggleExpand}
+                    >
                       {
                         expanded
-                          ? <div className="i-ri-collapse-diagonal-2-line h-[18px] w-[18px]" />
-                          : <div className="i-ri-expand-diagonal-2-line h-[18px] w-[18px]" />
+                          ? <div className="i-ri-collapse-diagonal-2-line h-[18px] w-[18px]" aria-hidden="true" />
+                          : <div className="i-ri-expand-diagonal-2-line h-[18px] w-[18px]" aria-hidden="true" />
                       }
                     </ActionButton>
                   )}
@@ -133,8 +137,12 @@ const Header: FC<IHeaderProps> = ({
             <Tooltip>
               <TooltipTrigger
                 render={(
-                  <ActionButton size="l" onClick={onCreateNewChat} data-testid="reset-chat-button">
-                    <div className="i-ri-reset-left-line h-[18px] w-[18px]" />
+                  <ActionButton
+                    size="l"
+                    aria-label={t('chat.resetChat', { ns: 'share' })}
+                    onClick={onCreateNewChat}
+                  >
+                    <div className="i-ri-reset-left-line h-[18px] w-[18px]" aria-hidden="true" />
                   </ActionButton>
                 )}
               />
@@ -171,11 +179,15 @@ const Header: FC<IHeaderProps> = ({
             <Tooltip>
               <TooltipTrigger
                 render={(
-                  <ActionButton size="l" onClick={handleToggleExpand} data-testid="mobile-expand-button">
+                  <ActionButton
+                    size="l"
+                    aria-label={expanded ? t('chat.collapse', { ns: 'share' }) : t('chat.expand', { ns: 'share' })}
+                    onClick={handleToggleExpand}
+                  >
                     {
                       expanded
-                        ? <div className={cn('i-ri-collapse-diagonal-2-line h-[18px] w-[18px]', theme?.colorPathOnHeader)} />
-                        : <div className={cn('i-ri-expand-diagonal-2-line h-[18px] w-[18px]', theme?.colorPathOnHeader)} />
+                        ? <div className={cn('i-ri-collapse-diagonal-2-line h-[18px] w-[18px]', theme?.colorPathOnHeader)} aria-hidden="true" />
+                        : <div className={cn('i-ri-expand-diagonal-2-line h-[18px] w-[18px]', theme?.colorPathOnHeader)} aria-hidden="true" />
                     }
                   </ActionButton>
                 )}
@@ -190,8 +202,12 @@ const Header: FC<IHeaderProps> = ({
           <Tooltip>
             <TooltipTrigger
               render={(
-                <ActionButton size="l" onClick={onCreateNewChat} data-testid="mobile-reset-chat-button">
-                  <div className={cn('i-ri-reset-left-line h-[18px] w-[18px]', theme?.colorPathOnHeader)} />
+                <ActionButton
+                  size="l"
+                  aria-label={t('chat.resetChat', { ns: 'share' })}
+                  onClick={onCreateNewChat}
+                >
+                  <div className={cn('i-ri-reset-left-line h-[18px] w-[18px]', theme?.colorPathOnHeader)} aria-hidden="true" />
                 </ActionButton>
               )}
             />

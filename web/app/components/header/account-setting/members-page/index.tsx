@@ -1,5 +1,5 @@
 'use client'
-import type { InvitationResult } from '@/models/common'
+import type { InvitationResult, Member } from '@/models/common'
 import { Avatar } from '@langgenius/dify-ui/avatar'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useSuspenseQuery } from '@tanstack/react-query'
@@ -47,6 +47,12 @@ const MembersPage = () => {
   const isMemberFull = enableBilling && isNotUnlimitedMemberPlan && accounts.length >= plan.total.teamMembers
   const [editWorkspaceModalVisible, setEditWorkspaceModalVisible] = useState(false)
   const [showTransferOwnershipModal, setShowTransferOwnershipModal] = useState(false)
+  const canOperateMember = (account: Member) => {
+    if (isCurrentWorkspaceOwner)
+      return account.role !== 'owner'
+
+    return currentWorkspace.role === 'admin' && account.role !== 'owner' && account.email !== userProfile.email
+  }
 
   return (
     <>
@@ -63,17 +69,19 @@ const MembersPage = () => {
                   <Tooltip>
                     <TooltipTrigger
                       render={(
-                        <div
-                          className="cursor-pointer rounded-md p-1 hover:bg-black/5"
+                        <button
+                          type="button"
+                          aria-label={t('account.editWorkspaceInfo', { ns: 'common' })}
+                          className="cursor-pointer rounded-md border-none bg-transparent p-1 hover:bg-black/5"
                           onClick={() => {
                             setEditWorkspaceModalVisible(true)
                           }}
                         >
-                          <div
-                            data-testid="edit-workspace-pencil"
-                            className="i-ri-pencil-line h-4 w-4 text-text-tertiary"
+                          <span
+                            aria-hidden="true"
+                            className="i-ri-pencil-line size-4 text-text-tertiary"
                           />
-                        </div>
+                        </button>
                       )}
                     />
                     <TooltipContent>
@@ -144,10 +152,10 @@ const MembersPage = () => {
                     {isCurrentWorkspaceOwner && account.role === 'owner' && !isAllowTransferWorkspace && (
                       <div className="px-3 system-sm-regular text-text-secondary">{RoleMap[account.role] || RoleMap.normal}</div>
                     )}
-                    {isCurrentWorkspaceOwner && account.role !== 'owner' && (
+                    {account.role !== 'owner' && canOperateMember(account) && (
                       <Operation member={account} operatorRole={currentWorkspace.role} onOperate={refetch} />
                     )}
-                    {!isCurrentWorkspaceOwner && (
+                    {account.role !== 'owner' && !canOperateMember(account) && (
                       <div className="px-3 system-sm-regular text-text-secondary">{RoleMap[account.role] || RoleMap.normal}</div>
                     )}
                   </div>

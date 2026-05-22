@@ -106,7 +106,7 @@ describe('SegmentAdd', () => {
         />,
       )
 
-      fireEvent.click(screen.getByText(/list\.batchModal\.ok/i))
+      fireEvent.click(screen.getByRole('button', { name: /list\.batchModal\.ok/i }))
 
       expect(mockClearImportStatus).toHaveBeenCalledTimes(1)
     })
@@ -121,7 +121,7 @@ describe('SegmentAdd', () => {
         />,
       )
 
-      fireEvent.click(screen.getByText(/list\.batchModal\.ok/i))
+      fireEvent.click(screen.getByRole('button', { name: /list\.batchModal\.ok/i }))
 
       expect(mockClearImportStatus).toHaveBeenCalledTimes(1)
     })
@@ -142,6 +142,18 @@ describe('SegmentAdd', () => {
       fireEvent.click(await screen.findByRole('menuitem', { name: /list\.action\.batchAdd/i }))
 
       expect(mockShowBatchModal).toHaveBeenCalledTimes(1)
+    })
+
+    it('should show plan upgrade modal instead of batch modal for sandbox users', async () => {
+      mockPlan = { type: Plan.sandbox }
+      const mockShowBatchModal = vi.fn()
+      render(<SegmentAdd {...defaultProps} showBatchModal={mockShowBatchModal} />)
+
+      fireEvent.click(screen.getByRole('button', { name: /list\.action\.batchAdd/i }))
+      fireEvent.click(await screen.findByRole('menuitem', { name: /list\.action\.batchAdd/i }))
+
+      expect(screen.getByRole('dialog')).toBeInTheDocument()
+      expect(mockShowBatchModal).not.toHaveBeenCalled()
     })
   })
 

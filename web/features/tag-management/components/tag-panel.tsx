@@ -30,7 +30,7 @@ export const TagPanel = ({
     <div className="relative w-full">
       <div className="p-2 pb-1">
         <ComboboxInputGroup className="border-divider-subtle bg-components-input-bg-normal">
-          <span aria-hidden="true" className="ml-2 i-ri-search-line h-4 w-4 shrink-0 text-text-tertiary" />
+          <span aria-hidden="true" className="ml-2 i-ri-search-line size-4 shrink-0 text-text-tertiary" />
           <ComboboxInput
             aria-label={placeholder}
             name={`tag-search-${type}`}
@@ -44,7 +44,6 @@ export const TagPanel = ({
               className="mr-1.5 flex size-5 shrink-0 cursor-pointer items-center justify-center rounded-md text-text-tertiary outline-hidden hover:bg-components-input-bg-hover hover:text-text-secondary focus-visible:bg-components-input-bg-hover focus-visible:text-text-secondary focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:ring-inset"
               onClick={() => onInputValueChange('')}
               onPointerDown={event => event.preventDefault()}
-              data-testid="tag-search-clear-button"
             >
               <span className="i-ri-close-line size-4" aria-hidden="true" />
             </button>
@@ -59,10 +58,9 @@ export const TagPanel = ({
                 <Fragment key={tag.id}>
                   <ComboboxItem
                     value={tag}
-                    data-testid="create-tag-option"
                   >
                     <ComboboxItemText className="flex items-center gap-x-1 px-0">
-                      <span aria-hidden="true" className="i-ri-add-line h-4 w-4 shrink-0 text-text-tertiary" />
+                      <span aria-hidden="true" className="i-ri-add-line size-4 shrink-0 text-text-tertiary" />
                       <span className="min-w-0 grow truncate px-1 system-md-regular text-text-secondary">
                         {`${t('tag.create', { ns: 'common' })} `}
                         <span className="system-md-medium">{`'${tag.name}'`}</span>
@@ -86,7 +84,7 @@ export const TagPanel = ({
       {!hasCreateOption && realItemCount === 0 && (
         <div className="p-1">
           <div className="flex flex-col items-center gap-y-1 p-3">
-            <span aria-hidden="true" className="i-ri-price-tag-3-line h-6 w-6 text-text-quaternary" />
+            <span aria-hidden="true" className="i-ri-price-tag-3-line size-6 text-text-quaternary" />
             <div className="system-xs-regular text-text-tertiary">{t('tag.noTag', { ns: 'common' })}</div>
           </div>
         </div>
@@ -101,7 +99,7 @@ export const TagPanel = ({
             onClose?.()
           }}
         >
-          <span aria-hidden="true" className="i-ri-price-tag-3-line h-4 w-4 text-text-tertiary" />
+          <span aria-hidden="true" className="i-ri-price-tag-3-line size-4 text-text-tertiary" />
           <span className="min-w-0 grow truncate px-1 system-md-regular text-text-secondary">
             {t('tag.manageTags', { ns: 'common' })}
           </span>

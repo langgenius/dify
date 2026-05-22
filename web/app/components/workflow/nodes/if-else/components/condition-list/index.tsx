@@ -94,7 +94,7 @@ const ConditionList = ({
               onClick={doToggleConditionLogicalOperator}
             >
               {logical_operator.toUpperCase()}
-              <RiLoopLeftLine className="ml-0.5 h-3 w-3" />
+              <RiLoopLeftLine className="ml-0.5 size-3" />
             </div>
           </div>
         )

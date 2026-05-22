@@ -128,7 +128,7 @@ const DocumentsHeader: FC<DocumentsHeaderProps> = ({
             href={docLink('/use-dify/knowledge/integrate-knowledge-within-application')}
           >
             <span>{t('list.learnMore', { ns: 'datasetDocuments' })}</span>
-            <RiExternalLinkLine className="h-3 w-3" />
+            <RiExternalLinkLine className="size-3" />
           </a>
         </div>
       </div>
@@ -192,7 +192,7 @@ const DocumentsHeader: FC<DocumentsHeaderProps> = ({
           )}
           {embeddingAvailable && (
             <Button variant="primary" onClick={onAddDocument} className="shrink-0">
-              <PlusIcon className="mr-2 h-4 w-4 stroke-current" />
+              <PlusIcon className="mr-2 size-4 stroke-current" />
               {addButtonText}
             </Button>
           )}

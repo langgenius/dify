@@ -127,7 +127,7 @@ describe('ChunkDetailModal', () => {
 
   it('should call onHide when close button is clicked', () => {
     render(<ChunkDetailModal payload={makePayload()} onHide={onHide} />)
-    fireEvent.click(screen.getByTestId('modal-close-button'))
+    fireEvent.click(screen.getByRole('button', { name: 'Close' }))
     expect(onHide).toHaveBeenCalled()
   })
 

@@ -219,7 +219,7 @@ const MCPDetailContent: FC<Props> = ({
               onRemove={showDeleteConfirm}
             />
             <ActionButton aria-label={t('operation.close', { ns: 'common' })} onClick={onHide}>
-              <span aria-hidden className="i-ri-close-line h-4 w-4" />
+              <span aria-hidden className="i-ri-close-line size-4" />
             </ActionButton>
           </div>
         </div>
@@ -251,7 +251,7 @@ const MCPDetailContent: FC<Props> = ({
               className="w-full"
               disabled
             >
-              <span aria-hidden className="mr-1 i-ri-loader-2-line h-4 w-4 animate-spin" />
+              <span aria-hidden className="mr-1 i-ri-loader-2-line size-4 animate-spin" />
               {t('mcp.authorizing', { ns: 'tools' })}
             </Button>
           )}
@@ -267,13 +267,13 @@ const MCPDetailContent: FC<Props> = ({
               </div>
               <div></div>
             </div>
-            <div className="flex h-full w-full grow flex-col overflow-hidden px-4 pb-4">
+            <div className="flex size-full grow flex-col overflow-hidden px-4 pb-4">
               <ListLoading />
             </div>
           </>
         )}
         {!isUpdating && detail.is_team_authorization && !isGettingTools && !toolList.length && (
-          <div className="flex h-full w-full flex-col items-center justify-center">
+          <div className="flex size-full flex-col items-center justify-center">
             <div className="mb-3 system-sm-regular text-text-tertiary">{t('mcp.toolsEmpty', { ns: 'tools' })}</div>
             <Button
               variant="primary"
@@ -292,7 +292,7 @@ const MCPDetailContent: FC<Props> = ({
               </div>
               <div>
                 <Button size="small" onClick={showUpdateConfirm}>
-                  <span aria-hidden className="mr-1 i-ri-loop-left-line h-3.5 w-3.5" />
+                  <span aria-hidden className="mr-1 i-ri-loop-left-line size-3.5" />
                   {t('mcp.update', { ns: 'tools' })}
                 </Button>
               </div>
@@ -309,7 +309,7 @@ const MCPDetailContent: FC<Props> = ({
         )}
 
         {!isUpdating && !detail.is_team_authorization && (
-          <div className="flex h-full w-full flex-col items-center justify-center">
+          <div className="flex size-full flex-col items-center justify-center">
             {!isAuthorizing && <div className="mb-1 system-md-medium text-text-secondary">{t('mcp.authorizingRequired', { ns: 'tools' })}</div>}
             {isAuthorizing && <div className="mb-1 system-md-medium text-text-secondary">{t('mcp.authorizing', { ns: 'tools' })}</div>}
             <div className="system-sm-regular text-text-tertiary">{t('mcp.authorizeTip', { ns: 'tools' })}</div>

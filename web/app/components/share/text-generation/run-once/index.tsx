@@ -251,20 +251,19 @@ const RunOnce: FC<IRunOnceProps> = ({
                 variant={isRunning ? 'secondary' : 'primary'}
                 disabled={isRunning && runControl?.isStopping}
                 onClick={handlePrimaryClick}
-                data-testid={isRunning ? 'stop-button' : 'run-button'}
               >
                 {isRunning
                   ? (
                       <>
                         {runControl?.isStopping
-                          ? <RiLoader2Line className="mr-1 h-4 w-4 shrink-0 animate-spin" aria-hidden="true" />
-                          : <StopCircle className="mr-1 h-4 w-4 shrink-0" aria-hidden="true" />}
+                          ? <RiLoader2Line className="mr-1 size-4 shrink-0 animate-spin" aria-hidden="true" />
+                          : <StopCircle className="mr-1 size-4 shrink-0" aria-hidden="true" />}
                         <span className="text-[13px]">{stopLabel}</span>
                       </>
                     )
                   : (
                       <>
-                        <RiPlayLargeLine className="mr-1 h-4 w-4 shrink-0" aria-hidden="true" />
+                        <RiPlayLargeLine className="mr-1 size-4 shrink-0" aria-hidden="true" />
                         <span className="text-[13px]">{t('generation.run', { ns: 'share' })}</span>
                       </>
                     )}

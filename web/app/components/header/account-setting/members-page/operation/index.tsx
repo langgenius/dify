@@ -1,6 +1,5 @@
 'use client'
 import type { Member } from '@/models/common'
-import { cn } from '@langgenius/dify-ui/cn'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -9,7 +8,7 @@ import {
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
 import { toast } from '@langgenius/dify-ui/toast'
-import { memo, useMemo, useState } from 'react'
+import { memo, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useProviderContext } from '@/context/provider-context'
 import { deleteMemberOrCancelInvitation, updateMemberRole } from '@/service/common'
@@ -26,8 +25,10 @@ const roleI18nKeyMap = {
   dataset_operator: { label: 'members.datasetOperator', tip: 'members.datasetOperatorTip' },
 } as const
 type OperationRoleKey = keyof typeof roleI18nKeyMap
+const nonOwnerRoles = ['admin', 'editor', 'normal'] as const
+const isNonOwnerRole = (role: Member['role']) => role !== 'owner'
+
 const Operation = ({ member, operatorRole, onOperate }: IOperationProps) => {
-  const [open, setOpen] = useState(false)
   const { t } = useTranslation()
   const { datasetOperatorEnabled } = useProviderContext()
   const RoleMap = {
@@ -48,15 +49,14 @@ const Operation = ({ member, operatorRole, onOperate }: IOperationProps) => {
     }
     if (operatorRole === 'admin') {
       return [
-        'editor',
-        'normal',
+        ...nonOwnerRoles,
         ...(datasetOperatorEnabled ? ['dataset_operator'] as const : []),
       ]
     }
     return []
   }, [operatorRole, datasetOperatorEnabled])
+  const canRemoveMember = operatorRole === 'owner' || (operatorRole === 'admin' && isNonOwnerRole(member.role))
   const handleDeleteMemberOrCancelInvitation = async () => {
-    setOpen(false)
     try {
       await deleteMemberOrCancelInvitation({ url: `/workspaces/current/members/${member.id}` })
       onOperate()
@@ -66,7 +66,6 @@ const Operation = ({ member, operatorRole, onOperate }: IOperationProps) => {
     }
   }
   const handleUpdateMemberRole = async (role: string) => {
-    setOpen(false)
     try {
       await updateMemberRole({
         url: `/workspaces/current/members/${member.id}/update-role`,
@@ -79,12 +78,12 @@ const Operation = ({ member, operatorRole, onOperate }: IOperationProps) => {
     }
   }
   return (
-    <DropdownMenu open={open} onOpenChange={setOpen}>
+    <DropdownMenu>
       <DropdownMenuTrigger
-        render={<div className={cn('group flex h-full w-full cursor-pointer items-center justify-between px-3 system-sm-regular text-text-secondary hover:bg-state-base-hover', open && 'bg-state-base-hover')} />}
+        className="group flex size-full cursor-pointer items-center justify-between border-none bg-transparent px-3 text-left system-sm-regular text-text-secondary hover:bg-state-base-hover data-popup-open:bg-state-base-hover"
       >
         {RoleMap[member.role] || RoleMap.normal}
-        <span aria-hidden className={cn('i-ri-arrow-down-s-line h-4 w-4 shrink-0 group-hover:block', open ? 'block' : 'hidden')} />
+        <span aria-hidden className="i-ri-arrow-down-s-line hidden size-4 shrink-0 group-hover:block group-data-popup-open:block" />
       </DropdownMenuTrigger>
       <DropdownMenuContent
         placement="bottom-end"
@@ -108,19 +107,23 @@ const Operation = ({ member, operatorRole, onOperate }: IOperationProps) => {
             </DropdownMenuItem>
           ))}
         </div>
-        <DropdownMenuSeparator className="my-0" />
-        <div className="p-1">
-          <DropdownMenuItem
-            className="h-auto items-start gap-2 rounded-lg px-3 py-2"
-            onClick={handleDeleteMemberOrCancelInvitation}
-          >
-            <span aria-hidden className="mt-[2px] h-4 w-4 shrink-0" />
-            <div>
-              <div className="system-sm-semibold whitespace-nowrap text-text-secondary">{t('members.removeFromTeam', { ns: 'common' })}</div>
-              <div className="system-xs-regular whitespace-nowrap text-text-tertiary">{t('members.removeFromTeamTip', { ns: 'common' })}</div>
+        {canRemoveMember && (
+          <>
+            <DropdownMenuSeparator className="my-0" />
+            <div className="p-1">
+              <DropdownMenuItem
+                className="h-auto items-start gap-2 rounded-lg px-3 py-2"
+                onClick={handleDeleteMemberOrCancelInvitation}
+              >
+                <span aria-hidden className="mt-[2px] h-4 w-4 shrink-0" />
+                <div>
+                  <div className="system-sm-semibold whitespace-nowrap text-text-secondary">{t('members.removeFromTeam', { ns: 'common' })}</div>
+                  <div className="system-xs-regular whitespace-nowrap text-text-tertiary">{t('members.removeFromTeamTip', { ns: 'common' })}</div>
+                </div>
+              </DropdownMenuItem>
             </div>
-          </DropdownMenuItem>
-        </div>
+          </>
+        )}
       </DropdownMenuContent>
     </DropdownMenu>
   )

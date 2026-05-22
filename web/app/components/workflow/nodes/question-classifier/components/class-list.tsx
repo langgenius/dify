@@ -117,20 +117,25 @@ const ClassList: FC<Props> = ({
 
   return (
     <>
-      <div className="mb-2 flex items-center justify-between" onClick={handleCollapse}>
-        <div className="flex cursor-pointer items-center text-xs font-semibold text-text-secondary uppercase">
+      <div className="mb-2 flex items-center justify-between">
+        <button
+          type="button"
+          className="flex cursor-pointer items-center border-none bg-transparent p-0 text-left text-xs font-semibold text-text-secondary uppercase focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
+          onClick={handleCollapse}
+        >
           {t(`${i18nPrefix}.class`, { ns: 'workflow' })}
           {' '}
           <span className="text-text-destructive">*</span>
           {list.length > 0 && (
             <ArrowDownRoundFill
               className={cn(
-                'h-4 w-4 text-text-quaternary transition-transform duration-200',
+                'size-4 text-text-quaternary transition-transform duration-200',
                 collapsed && '-rotate-90',
               )}
+              aria-hidden="true"
             />
           )}
-        </div>
+        </button>
       </div>
       {shouldShowRenameHint && (
         <div className="mb-2 rounded-lg border border-divider-subtle bg-components-panel-bg px-3 py-2 text-xs text-text-tertiary">
@@ -169,7 +174,7 @@ const ClassList: FC<Props> = ({
                     <div>
                       {canDrag && (
                         <RiDraggable className={cn(
-                          'handle absolute top-3 left-2 hidden h-3 w-3 cursor-pointer text-text-tertiary',
+                          'handle absolute top-3 left-2 hidden size-3 cursor-pointer text-text-tertiary',
                           'group-hover:block',
                         )}
                         />

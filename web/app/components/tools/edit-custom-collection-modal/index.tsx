@@ -216,7 +216,7 @@ const EditCustomCollectionModal: FC<Props> = ({
               className={cn(
                 'data-[swipe-direction=right]:top-2 data-[swipe-direction=right]:bottom-2 data-[swipe-direction=right]:h-auto data-[swipe-direction=right]:w-160 data-[swipe-direction=right]:max-w-[calc(100vw-1rem)] data-[swipe-direction=right]:rounded-xl data-[swipe-direction=right]:border-r-[0.5px] data-[swipe-direction=right]:border-divider-subtle',
                 isAdd && !positionLeft
-                  ? 'data-[swipe-direction=right]:right-[max(0.5rem,calc(50%_-_320px))]'
+                  ? 'data-[swipe-direction=right]:right-[max(0.5rem,calc(50%-320px))]'
                   : 'data-[swipe-direction=right]:right-2',
               )}
             >
@@ -228,7 +228,7 @@ const EditCustomCollectionModal: FC<Props> = ({
                     </DrawerTitle>
                     <DrawerCloseButton
                       aria-label={t('operation.close', { ns: 'common' })}
-                      className="h-6 w-6 rounded-md"
+                      className="size-6 rounded-md"
                     />
                   </div>
                 </div>
@@ -273,7 +273,7 @@ const EditCustomCollectionModal: FC<Props> = ({
                               className="flex h-[18px] items-center space-x-1 text-text-accent"
                             >
                               <div className="text-xs font-normal">{t('createTool.viewSchemaSpec', { ns: 'tools' })}</div>
-                              <LinkExternal02 className="h-3 w-3" />
+                              <LinkExternal02 className="size-3" />
                             </a>
                           </div>
                           <GetSchema onChange={setSchema} />
@@ -331,7 +331,7 @@ const EditCustomCollectionModal: FC<Props> = ({
                         <div className="py-2 system-sm-medium text-text-primary">{t('createTool.authMethod.title', { ns: 'tools' })}</div>
                         <div className="flex h-9 cursor-pointer items-center justify-between rounded-lg bg-components-input-bg-normal px-2.5" onClick={() => setCredentialsModalShow(true)}>
                           <div className="system-xs-regular text-text-primary">{t(`createTool.authMethod.types.${credential.auth_type}`, { ns: 'tools' })}</div>
-                          <RiSettings2Line className="h-4 w-4 text-text-secondary" />
+                          <RiSettings2Line className="size-4 text-text-secondary" />
                         </div>
                       </div>
 

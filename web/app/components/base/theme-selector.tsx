@@ -12,7 +12,12 @@ import { useTheme } from 'next-themes'
 import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
 
-export type Theme = 'light' | 'dark' | 'system'
+const THEMES = ['light', 'dark', 'system'] as const
+export type Theme = typeof THEMES[number]
+
+const isTheme = (value: string): value is Theme => {
+  return (THEMES as readonly string[]).includes(value)
+}
 
 export default function ThemeSelector() {
   const { t } = useTranslation()
@@ -22,11 +27,16 @@ export default function ThemeSelector() {
     setTheme(newTheme)
   }
 
+  const handleThemeValueChange = (value: string) => {
+    if (isTheme(value))
+      handleThemeChange(value)
+  }
+
   const getCurrentIcon = () => {
     switch (theme) {
-      case 'light': return <span className="i-ri-sun-line h-4 w-4 text-text-tertiary" />
-      case 'dark': return <span className="i-ri-moon-line h-4 w-4 text-text-tertiary" />
-      default: return <span className="i-ri-computer-line h-4 w-4 text-text-tertiary" />
+      case 'light': return <span className="i-ri-sun-line size-4 text-text-tertiary" />
+      case 'dark': return <span className="i-ri-moon-line size-4 text-text-tertiary" />
+      default: return <span className="i-ri-computer-line size-4 text-text-tertiary" />
     }
   }
 
@@ -43,19 +53,19 @@ export default function ThemeSelector() {
         {getCurrentIcon()}
       </DropdownMenuTrigger>
       <DropdownMenuContent placement="bottom-end" sideOffset={6} popupClassName="w-[144px]">
-        <DropdownMenuRadioGroup value={theme || 'system'} onValueChange={value => handleThemeChange(value as Theme)}>
+        <DropdownMenuRadioGroup value={theme || 'system'} onValueChange={handleThemeValueChange}>
           <DropdownMenuRadioItem value="light" closeOnClick>
-            <span className="i-ri-sun-line h-4 w-4 text-text-tertiary" />
+            <span className="i-ri-sun-line size-4 text-text-tertiary" />
             <span className="grow px-1 system-md-regular">{t('theme.light', { ns: 'common' })}</span>
             <DropdownMenuRadioItemIndicator data-testid="light-icon" />
           </DropdownMenuRadioItem>
           <DropdownMenuRadioItem value="dark" closeOnClick>
-            <span className="i-ri-moon-line h-4 w-4 text-text-tertiary" />
+            <span className="i-ri-moon-line size-4 text-text-tertiary" />
             <span className="grow px-1 system-md-regular">{t('theme.dark', { ns: 'common' })}</span>
             <DropdownMenuRadioItemIndicator data-testid="dark-icon" />
           </DropdownMenuRadioItem>
           <DropdownMenuRadioItem value="system" closeOnClick>
-            <span className="i-ri-computer-line h-4 w-4 text-text-tertiary" />
+            <span className="i-ri-computer-line size-4 text-text-tertiary" />
             <span className="grow px-1 system-md-regular">{t('theme.auto', { ns: 'common' })}</span>
             <DropdownMenuRadioItemIndicator data-testid="system-icon" />
           </DropdownMenuRadioItem>

@@ -36,7 +36,7 @@ const SearchInput: FC<SearchInputProps> = ({
 
   return (
     <div className="flex items-center gap-3 border-b border-divider-subtle bg-components-panel-bg-blur px-4 py-3">
-      <RiSearchLine className="h-4 w-4 text-text-quaternary" />
+      <RiSearchLine className="size-4 text-text-quaternary" />
       <div className="flex flex-1 items-center gap-2">
         <Input
           ref={inputRef}

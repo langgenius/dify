@@ -3,6 +3,7 @@
 Shared UI primitives, design tokens, CSS-first Tailwind styles, and the `cn()` utility consumed by Dify's `web/` app.
 
 The primitives are thin, opinionated wrappers around [Base UI] headless components, styled with `cva` + `cn` and Dify design tokens.
+For upstream component docs, start from the [Base UI docs index].
 
 > `private: true` — this package is consumed by `web/` via the pnpm workspace and is not published to npm. Treat the API as internal to Dify, but stable within the workspace.
 
@@ -29,6 +30,8 @@ import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Dialog, DialogContent, DialogTrigger } from '@langgenius/dify-ui/dialog'
 import { Drawer, DrawerPopup, DrawerTrigger } from '@langgenius/dify-ui/drawer'
+import { FieldControl, FieldLabel, FieldRoot } from '@langgenius/dify-ui/field'
+import { Form } from '@langgenius/dify-ui/form'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import '@langgenius/dify-ui/styles.css' // once, in the app root
 ```
@@ -37,17 +40,51 @@ Importing from `@langgenius/dify-ui` (no subpath) is intentionally not supported
 
 ## Primitives
 
-| Category | Subpath                                                                                                                                                        | Notes                                             |
-| -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------- |
-| Overlay  | `./alert-dialog`, `./autocomplete`, `./combobox`, `./context-menu`, `./dialog`, `./drawer`, `./dropdown-menu`, `./popover`, `./select`, `./toast`, `./tooltip` | Portalled. See [Overlay & portal contract] below. |
-| Form     | `./autocomplete`, `./combobox`, `./number-field`, `./slider`, `./switch`                                                                                       | Controlled / uncontrolled per Base UI defaults.   |
-| Layout   | `./scroll-area`                                                                                                                                                | Custom-styled scrollbar over the host viewport.   |
-| Media    | `./avatar`, `./button`                                                                                                                                         | Button exposes `cva` variants.                    |
+| Category         | Subpath                                                                                                                                                          | Notes                                                |
+| ---------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------- |
+| Actions          | `./button`                                                                                                                                                       | Design-system CTA primitive with `cva` variants.     |
+| Feedback         | `./meter`, `./toast`                                                                                                                                             | Meter is inline status; Toast owns the `z-60` layer. |
+| Form             | `./form`, `./field`, `./fieldset`, `./input`, `./checkbox`, `./checkbox-group`, `./radio`, `./radio-group`, `./number-field`, `./select`, `./slider`, `./switch` | Native form boundary, field semantics, and controls. |
+| Layout           | `./scroll-area`                                                                                                                                                  | Custom-styled scrollbar over the host viewport.      |
+| Media            | `./avatar`                                                                                                                                                       | Avatar root, image, and fallback primitives.         |
+| Navigation       | `./tabs`, `./toggle-group`                                                                                                                                       | Tabs for panels; ToggleGroup for segmented modes.    |
+| Overlay / menu   | `./alert-dialog`, `./context-menu`, `./dialog`, `./drawer`, `./dropdown-menu`, `./popover`, `./preview-card`, `./tooltip`                                        | Portalled. See [Overlay & portal contract] below.    |
+| Search / pickers | `./autocomplete`, `./combobox`, `./select`                                                                                                                       | Search input, searchable picker, and closed picker.  |
 
 Utilities:
 
 - `./cn` — `clsx` + `tailwind-merge` wrapper. Use this for conditional class composition.
 - `./styles.css` — the one CSS entry that ships the design tokens, theme variables, and project utilities/components. Import it once from the app root.
+
+## Form contract
+
+Dify UI's form primitives are a Base UI composition layer for native form semantics, field accessibility, and design-system styling. They are intentionally not a form state-management framework. See the upstream [Base UI Form], [Base UI Field], and [Base UI Fieldset] docs for the underlying component contracts.
+
+Use `Form` for the submit boundary. It renders a native `<form>`, preserves Enter-to-submit and submit-button behavior, and adds Base UI's `onFormSubmit`, `errors`, `actionsRef`, and `validationMode` APIs for structured values and consolidated field validation. Prefer it over a bare `<form>` when the form is composed with Dify UI fields.
+
+Use `FieldRoot` for each named field. A field must have a stable `name`, a visible `FieldLabel`, and either a `FieldControl` or another control that participates in the same Base UI field context. `FieldLabel`, `FieldDescription`, and `FieldError` provide the label and message relationships that screen readers need, while the Dify wrapper adds the default Form Input Set styling from the design system.
+
+Use `FieldsetRoot` and `FieldsetLegend` when one field is represented by a group of related controls, such as checkbox groups, radio groups, or multi-thumb sliders. Compose group controls with the Base UI pattern:
+
+```tsx
+<FieldRoot name="allowedNetworkProtocols">
+  <FieldsetRoot render={<CheckboxGroup />}>
+    <FieldsetLegend>Allowed network protocols</FieldsetLegend>
+    <FieldItem>
+      <FieldLabel className="flex items-center gap-2">
+        <Checkbox value="https" />
+        HTTPS
+      </FieldLabel>
+    </FieldItem>
+  </FieldsetRoot>
+</FieldRoot>
+```
+
+`FieldsetRoot` provides the group semantics and legend relationship. It does not own the interactive state of the grouped control. Pass `disabled`, `value`, `defaultValue`, and change handlers to the actual group primitive (`CheckboxGroup`, radio group, slider root, etc.) instead of relying on the fieldset wrapper to manage them.
+
+For complex business forms, keep state ownership outside these primitives. TanStack Form, zod, server validation, dialog reset behavior, and schema-driven rendering belong to the feature layer in `web/`; they should pass `name`, `invalid`, `dirty`, `touched`, `value`, `onValueChange`, and errors into these primitives rather than replacing the field semantics.
+
+Migration rule for `web/`: if a UI has a save/submit action, do not leave it as unrelated `Input` and `Button` pieces. Give it a real submit boundary with `Form` or a native `<form>`, attach visible field names through `FieldLabel`, expose helper/error text through `FieldDescription` / `FieldError`, and keep non-submit buttons as `type="button"`.
 
 ## Tailwind CSS v4 integration
 
@@ -138,6 +175,10 @@ See `[AGENTS.md](./AGENTS.md)` for:
 - Application state (`jotai`, `zustand`), data fetching (`ky`, `@tanstack/react-query`, `@orpc/*`), i18n (`next-i18next` / `react-i18next`), and routing (`next`) all live in `web/`. This package has zero dependencies on them and must stay that way so it can eventually be consumed by other apps or extracted.
 - Business components (chat, workflow, dataset views, etc.). Those belong in `web/app/components/...`.
 
+[Base UI Field]: https://base-ui.com/react/components/field
+[Base UI Fieldset]: https://base-ui.com/react/components/fieldset
+[Base UI Form]: https://base-ui.com/react/components/form
 [Base UI Portal]: https://base-ui.com/react/overview/quick-start#portals
+[Base UI docs index]: https://base-ui.com/llms.txt
 [Base UI]: https://base-ui.com/react
 [Overlay & portal contract]: #overlay--portal-contract

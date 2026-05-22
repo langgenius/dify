@@ -222,6 +222,10 @@ export const HUMAN_INPUT_OUTPUT_STRUCT: Var[] = [
     type: VarType.string,
   },
   {
+    variable: '__action_value',
+    type: VarType.string,
+  },
+  {
     variable: '__rendered_content',
     type: VarType.string,
   },

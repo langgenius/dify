@@ -37,8 +37,8 @@ const CredentialSelector = ({
   return (
     <Select value={currentCredential?.credentialId ?? null} onValueChange={nextValue => nextValue && onSelect(nextValue)}>
       <SelectTrigger
+        aria-label={currentDisplayName}
         className="w-[168px]"
-        data-testid="notion-credential-selector-btn"
       >
         <span className="flex min-w-0 items-center">
           <CredentialIcon

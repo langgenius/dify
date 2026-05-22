@@ -335,9 +335,9 @@ const BasicAppPreview: FC<Props> = ({
   return (
     <ConfigContext.Provider value={value as any}>
       <FeaturesProvider features={featuresData}>
-        <div className="flex h-full w-full flex-col bg-components-panel-on-panel-item-bg">
+        <div className="flex size-full flex-col bg-components-panel-on-panel-item-bg">
           <div className="relative flex h-[200px] grow">
-            <div className="flex h-full w-full shrink-0 flex-col sm:w-1/2">
+            <div className="flex size-full shrink-0 flex-col sm:w-1/2">
               <Config />
             </div>
             {!isMobile && (

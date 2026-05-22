@@ -269,12 +269,12 @@ class AnnotationApi(Resource):
                     "message": "annotation_ids are required if the parameter is provided.",
                 }, 400
 
-            result = AppAnnotationService.delete_app_annotations_in_batch(str(app_id), annotation_ids)
-            return result, 204
+            AppAnnotationService.delete_app_annotations_in_batch(str(app_id), annotation_ids)
+            return "", 204
         # If no annotation_ids are provided, handle clearing all annotations
         else:
             AppAnnotationService.clear_all_annotations(str(app_id))
-            return {"result": "success"}, 204
+            return "", 204
 
 
 @console_ns.route("/apps/<uuid:app_id>/annotations/export")
@@ -335,7 +335,7 @@ class AnnotationUpdateDeleteApi(Resource):
     @edit_permission_required
     def delete(self, app_id: UUID, annotation_id: UUID):
         AppAnnotationService.delete_app_annotation(str(app_id), str(annotation_id))
-        return {"result": "success"}, 204
+        return "", 204
 
 
 @console_ns.route("/apps/<uuid:app_id>/annotations/batch-import")

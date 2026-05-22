@@ -52,7 +52,7 @@ const FileUpload = ({
     <FeatureCard
       icon={(
         <div className="shrink-0 rounded-lg border-[0.5px] border-divider-subtle bg-util-colors-indigo-indigo-600 p-1 shadow-xs">
-          <RiImage2Fill className="h-4 w-4 text-text-primary-on-surface" />
+          <RiImage2Fill className="size-4 text-text-primary-on-surface" />
         </div>
       )}
       title={(
@@ -100,7 +100,7 @@ const FileUpload = ({
                 onChange={onChange}
               >
                 <Button className="w-full" disabled={disabled}>
-                  <RiEqualizer2Line className="mr-1 h-4 w-4" />
+                  <RiEqualizer2Line className="mr-1 size-4" />
                   {t('operation.settings', { ns: 'common' })}
                 </Button>
               </SettingModal>

@@ -263,7 +263,7 @@ describe('human-input/delivery-method/test-email-sender', () => {
 
     expect(screen.getByPlaceholderText('message')).toBeInTheDocument()
 
-    await user.click(screen.getByText('workflow.nodes.humanInput.deliveryMethod.emailSender.vars'))
+    await user.click(screen.getByRole('button', { name: 'workflow.nodes.humanInput.deliveryMethod.emailSender.vars' }))
 
     expect(screen.queryByPlaceholderText('message')).not.toBeInTheDocument()
 

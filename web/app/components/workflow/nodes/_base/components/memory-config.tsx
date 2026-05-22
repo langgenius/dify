@@ -183,7 +183,7 @@ const MemoryConfig: FC<Props> = ({
             </div>
             {canSetRoleName && (
               <div className="mt-4">
-                <div className="text-xs leading-6 font-medium text-text-tertiary uppercase">{t(`${i18nPrefix}.conversationRoleName`, { ns: 'workflow' })}</div>
+                <div className="text-xs/6 font-medium text-text-tertiary uppercase">{t(`${i18nPrefix}.conversationRoleName`, { ns: 'workflow' })}</div>
                 <div className="mt-1 space-y-2">
                   <RoleItem
                     readonly={readonly}

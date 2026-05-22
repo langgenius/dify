@@ -16,8 +16,8 @@ const Placeholder = ({
 
   return (
     <div className={cn(
-      'pointer-events-none absolute top-0 left-0 h-full w-full text-sm text-components-input-text-placeholder select-none',
-      compact ? 'text-[13px] leading-5' : 'text-sm leading-6',
+      'pointer-events-none absolute top-0 left-0 size-full text-sm text-components-input-text-placeholder select-none',
+      compact ? 'text-[13px] leading-5' : 'text-sm/6',
       className,
     )}
     >

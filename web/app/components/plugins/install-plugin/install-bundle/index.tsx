@@ -57,8 +57,8 @@ const InstallBundle: FC<Props> = ({
           foldAnimInto()
       }}
     >
-      <DialogContent className={cn('relative w-full max-w-[480px] overflow-hidden! text-left align-middle', cn(modalClassName, 'shadows-shadow-xl flex min-w-[560px] flex-col items-start rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg p-0'))}>
-        <DialogCloseButton data-testid="modal-close-button" />
+      <DialogContent className={cn('w-full max-w-[480px] overflow-hidden! text-left align-middle', cn(modalClassName, 'shadows-shadow-xl flex max-h-[calc(100dvh-48px)] min-w-[560px] flex-col items-start rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg p-0'))}>
+        <DialogCloseButton />
 
         <div className="flex items-start gap-2 self-stretch pt-6 pr-14 pb-3 pl-6">
           <div className="self-stretch title-2xl-semi-bold text-text-primary">

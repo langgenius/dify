@@ -21,14 +21,19 @@ const ConfirmModal = ({ show, onConfirm, onClose }: ConfirmModalProps) => {
         backdropProps={{ forceRender: true }}
         className={cn('w-[600px]! max-w-[600px]! p-8!')}
       >
-        <div className="absolute top-4 right-4 cursor-pointer p-2" onClick={onClose}>
-          <span className="i-ri-close-line h-4 w-4 text-text-tertiary" />
-        </div>
+        <button
+          type="button"
+          aria-label={t('operation.close', { ns: 'common' })}
+          className="absolute top-4 right-4 cursor-pointer border-none bg-transparent p-2"
+          onClick={onClose}
+        >
+          <span aria-hidden className="i-ri-close-line size-4 text-text-tertiary" />
+        </button>
         <div className="h-12 w-12 rounded-xl border-[0.5px] border-divider-regular bg-background-section p-3 shadow-xl">
           <AlertTriangle className="h-6 w-6 text-[rgb(247,144,9)]" />
         </div>
         <DialogTitle className="relative mt-3 text-xl leading-[30px] font-semibold text-text-primary">{t('createTool.confirmTitle', { ns: 'tools' })}</DialogTitle>
-        <div className="my-1 text-sm leading-5 text-text-tertiary">
+        <div className="my-1 text-sm/5 text-text-tertiary">
           {t('createTool.confirmTip', { ns: 'tools' })}
         </div>
         <div className="flex items-center justify-end pt-6">

@@ -220,7 +220,7 @@ services:
   # API service
   api:
     <<: *shared-api-worker-config
-    image: langgenius/dify-api:1.14.0
+    image: langgenius/dify-api:1.14.2
     environment:
       MODE: api
       SENTRY_DSN: ${API_SENTRY_DSN:-}
@@ -261,11 +261,36 @@ services:
       - ssrf_proxy_network
       - default
 
+  # WebSocket service for workflow collaboration.
+  api_websocket:
+    <<: *shared-api-worker-config
+    image: langgenius/dify-api:1.14.2
+    profiles:
+      - collaboration
+    environment:
+      MODE: api
+      SERVER_WORKER_AMOUNT: 1
+      SERVER_WORKER_CLASS: ${API_WEBSOCKET_WORKER_CLASS:-geventwebsocket.gunicorn.workers.GeventWebSocketWorker}
+      SERVER_WORKER_CONNECTIONS: ${API_WEBSOCKET_WORKER_CONNECTIONS:-1000}
+      GUNICORN_TIMEOUT: ${API_WEBSOCKET_GUNICORN_TIMEOUT:-360}
+    depends_on:
+      db_postgres:
+        condition: service_healthy
+        required: false
+      db_mysql:
+        condition: service_healthy
+        required: false
+      redis:
+        condition: service_started
+    networks:
+      - ssrf_proxy_network
+      - default
+
   # worker service
   # The Celery worker for processing all queues (dataset, workflow, mail, etc.)
   worker:
     <<: *shared-worker-config
-    image: langgenius/dify-api:1.14.0
+    image: langgenius/dify-api:1.14.2
     environment:
       MODE: worker
       SENTRY_DSN: ${API_SENTRY_DSN:-}
@@ -308,7 +333,7 @@ services:
   # Celery beat for scheduling periodic tasks.
   worker_beat:
     <<: *shared-worker-beat-config
-    image: langgenius/dify-api:1.14.0
+    image: langgenius/dify-api:1.14.2
     environment:
       MODE: beat
     depends_on:
@@ -341,7 +366,7 @@ services:
 
   # Frontend web application.
   web:
-    image: langgenius/dify-web:1.14.0
+    image: langgenius/dify-web:1.14.2
     restart: always
     env_file:
       - path: ./envs/core-services/web.env
@@ -493,7 +518,7 @@ services:
 
   # plugin daemon
   plugin_daemon:
-    image: langgenius/dify-plugin-daemon:0.6.0-local
+    image: langgenius/dify-plugin-daemon:0.6.1-local
     restart: always
     env_file:
       - path: ./envs/core-services/shared.env
@@ -661,6 +686,7 @@ services:
       NGINX_PROXY_READ_TIMEOUT: ${NGINX_PROXY_READ_TIMEOUT:-3600s}
       NGINX_PROXY_SEND_TIMEOUT: ${NGINX_PROXY_SEND_TIMEOUT:-3600s}
       NGINX_ENABLE_CERTBOT_CHALLENGE: ${NGINX_ENABLE_CERTBOT_CHALLENGE:-false}
+      NGINX_SOCKET_IO_UPSTREAM: ${NGINX_SOCKET_IO_UPSTREAM:-api_websocket:5001}
       CERTBOT_DOMAIN: ${CERTBOT_DOMAIN:-}
     depends_on:
       - api

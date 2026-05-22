@@ -124,7 +124,7 @@ const Card = ({
       <div className="flex items-center p-3 pb-2">
         <img
           src={icon}
-          className="mr-3 flex h-10 w-10 shrink-0 items-center justify-center"
+          className="mr-3 flex size-10 shrink-0 items-center justify-center"
         />
         <div className="grow">
           <div className="system-md-semibold text-text-primary">

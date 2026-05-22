@@ -27,8 +27,8 @@ const ToolsNav = ({
     >
       {
         activated
-          ? <RiHammerFill className="h-4 w-4" />
-          : <RiHammerLine className="h-4 w-4" />
+          ? <RiHammerFill className="size-4" />
+          : <RiHammerLine className="size-4" />
       }
       <div className="ml-2 max-[1024px]:hidden">
         {t('menus.tools', { ns: 'common' })}

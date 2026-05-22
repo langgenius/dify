@@ -118,7 +118,7 @@ const ParamsConfig = ({
         }}
         disabled={disabled}
       >
-        <RiEqualizer2Line className="mr-1 h-3.5 w-3.5" />
+        <RiEqualizer2Line className="mr-1 size-3.5" />
         {t('retrievalSettings', { ns: 'dataset' })}
       </Button>
       {
@@ -131,7 +131,7 @@ const ParamsConfig = ({
               }
             }}
           >
-            <DialogContent className="w-full max-w-[480px] overflow-hidden! border-none text-left align-middle sm:min-w-[528px]">
+            <DialogContent className="w-full max-w-[480px] border-none text-left align-middle sm:min-w-[528px]">
 
               <ConfigContent
                 datasetConfigs={tempDataSetConfigs}

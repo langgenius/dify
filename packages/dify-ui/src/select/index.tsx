@@ -21,7 +21,7 @@ export const SelectGroup = BaseSelect.Group
 const selectTriggerVariants = cva(
   [
     'group flex w-full items-center border-0 bg-components-input-bg-normal text-left text-components-input-text-filled outline-hidden',
-    'hover:bg-state-base-hover-alt focus-visible:bg-state-base-hover-alt data-open:bg-state-base-hover-alt',
+    'hover:bg-state-base-hover-alt focus-visible:bg-state-base-hover-alt data-popup-open:bg-state-base-hover-alt',
     'data-placeholder:text-components-input-text-placeholder',
     'data-readonly:cursor-default data-readonly:bg-transparent data-readonly:hover:bg-transparent',
     'data-disabled:cursor-not-allowed data-disabled:bg-components-input-bg-disabled data-disabled:text-components-input-text-filled-disabled data-disabled:hover:bg-components-input-bg-disabled',
@@ -60,7 +60,7 @@ export function SelectTrigger({
       <span className="min-w-0 grow truncate">
         {children}
       </span>
-      <BaseSelect.Icon className="shrink-0 text-text-quaternary transition-colors group-hover:text-text-secondary group-data-readonly:hidden data-open:text-text-secondary">
+      <BaseSelect.Icon className="shrink-0 text-text-quaternary transition-colors group-hover:text-text-secondary group-data-readonly:hidden data-popup-open:text-text-secondary">
         <span className="i-ri-arrow-down-s-line h-4 w-4" aria-hidden="true" />
       </BaseSelect.Icon>
     </BaseSelect.Trigger>

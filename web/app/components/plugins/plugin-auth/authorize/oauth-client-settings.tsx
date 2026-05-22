@@ -150,8 +150,7 @@ const OAuthClientSettings = ({
               {t('auth.oauthClientSettings', { ns: 'plugin' })}
             </DialogTitle>
             <DialogCloseButton
-              data-testid="modal-x-close"
-              className="top-5 right-5 h-8 w-8 rounded-lg"
+              className="top-5 right-5 size-8 rounded-lg"
             />
           </div>
           <div className="min-h-0 flex-1 overflow-y-auto px-6 py-3 pt-0">
@@ -182,7 +181,6 @@ const OAuthClientSettings = ({
             </div>
             <div className="flex items-center">
               <Button
-                data-testid="modal-close"
                 variant="secondary"
                 onClick={() => handleOpenChange(false)}
                 disabled={isDisabled}

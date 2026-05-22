@@ -79,7 +79,7 @@ function CreateApp({ onClose, onSuccess, onCreateFromTemplate, defaultAppMode }:
         mode: appMode,
       })
 
-      trackCreateApp({ appMode: app.mode })
+      trackCreateApp({ source: 'studio_blank', appMode: app.mode })
 
       toast.success(t('newApp.appCreated', { ns: 'app' }))
       onSuccess()
@@ -119,8 +119,8 @@ function CreateApp({ onClose, onSuccess, onCreateFromTemplate, defaultAppMode }:
                     title={t('types.workflow', { ns: 'app' })}
                     description={t('newApp.workflowShortDescription', { ns: 'app' })}
                     icon={(
-                      <div className="flex h-6 w-6 items-center justify-center rounded-md bg-components-icon-bg-indigo-solid">
-                        <RiExchange2Fill className="h-4 w-4 text-components-avatar-shape-fill-stop-100" />
+                      <div className="flex size-6 items-center justify-center rounded-md bg-components-icon-bg-indigo-solid">
+                        <RiExchange2Fill className="size-4 text-components-avatar-shape-fill-stop-100" />
                       </div>
                     )}
                     onClick={() => {
@@ -132,8 +132,8 @@ function CreateApp({ onClose, onSuccess, onCreateFromTemplate, defaultAppMode }:
                     title={t('types.advanced', { ns: 'app' })}
                     description={t('newApp.advancedShortDescription', { ns: 'app' })}
                     icon={(
-                      <div className="flex h-6 w-6 items-center justify-center rounded-md bg-components-icon-bg-blue-light-solid">
-                        <BubbleTextMod className="h-4 w-4 text-components-avatar-shape-fill-stop-100" />
+                      <div className="flex size-6 items-center justify-center rounded-md bg-components-icon-bg-blue-light-solid">
+                        <BubbleTextMod className="size-4 text-components-avatar-shape-fill-stop-100" />
                       </div>
                     )}
                     onClick={() => {
@@ -146,11 +146,11 @@ function CreateApp({ onClose, onSuccess, onCreateFromTemplate, defaultAppMode }:
                 <div className="mb-2 flex items-center">
                   <button
                     type="button"
-                    className="flex cursor-pointer items-center border-0 bg-transparent p-0"
+                    className="flex cursor-pointer items-center border-0 bg-transparent p-0 text-left focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
                     onClick={() => setIsAppTypeExpanded(!isAppTypeExpanded)}
                   >
                     <span className="system-2xs-medium-uppercase text-text-tertiary">{t('newApp.forBeginners', { ns: 'app' })}</span>
-                    <RiArrowRightSLine className={`ml-1 h-4 w-4 text-text-tertiary transition-transform ${isAppTypeExpanded ? 'rotate-90' : ''}`} />
+                    <RiArrowRightSLine className={`ml-1 size-4 text-text-tertiary transition-transform ${isAppTypeExpanded ? 'rotate-90' : ''}`} aria-hidden="true" />
                   </button>
                 </div>
                 {isAppTypeExpanded && (
@@ -160,8 +160,8 @@ function CreateApp({ onClose, onSuccess, onCreateFromTemplate, defaultAppMode }:
                       title={t('types.chatbot', { ns: 'app' })}
                       description={t('newApp.chatbotShortDescription', { ns: 'app' })}
                       icon={(
-                        <div className="flex h-6 w-6 items-center justify-center rounded-md bg-components-icon-bg-blue-solid">
-                          <ChatBot className="h-4 w-4 text-components-avatar-shape-fill-stop-100" />
+                        <div className="flex size-6 items-center justify-center rounded-md bg-components-icon-bg-blue-solid">
+                          <ChatBot className="size-4 text-components-avatar-shape-fill-stop-100" />
                         </div>
                       )}
                       onClick={() => {
@@ -173,8 +173,8 @@ function CreateApp({ onClose, onSuccess, onCreateFromTemplate, defaultAppMode }:
                       title={t('types.agent', { ns: 'app' })}
                       description={t('newApp.agentShortDescription', { ns: 'app' })}
                       icon={(
-                        <div className="flex h-6 w-6 items-center justify-center rounded-md bg-components-icon-bg-violet-solid">
-                          <Logic className="h-4 w-4 text-components-avatar-shape-fill-stop-100" />
+                        <div className="flex size-6 items-center justify-center rounded-md bg-components-icon-bg-violet-solid">
+                          <Logic className="size-4 text-components-avatar-shape-fill-stop-100" />
                         </div>
                       )}
                       onClick={() => {
@@ -186,8 +186,8 @@ function CreateApp({ onClose, onSuccess, onCreateFromTemplate, defaultAppMode }:
                       title={t('newApp.completeApp', { ns: 'app' })}
                       description={t('newApp.completionShortDescription', { ns: 'app' })}
                       icon={(
-                        <div className="flex h-6 w-6 items-center justify-center rounded-md bg-components-icon-bg-teal-solid">
-                          <ListSparkle className="h-4 w-4 text-components-avatar-shape-fill-stop-100" />
+                        <div className="flex size-6 items-center justify-center rounded-md bg-components-icon-bg-teal-solid">
+                          <ListSparkle className="size-4 text-components-avatar-shape-fill-stop-100" />
                         </div>
                       )}
                       onClick={() => {
@@ -249,12 +249,16 @@ function CreateApp({ onClose, onSuccess, onCreateFromTemplate, defaultAppMode }:
             </div>
             {isAppsFull && <AppsFull className="mt-4" loc="app-create" />}
             <div className="flex items-center justify-between pt-5 pb-10">
-              <div className="flex cursor-pointer items-center gap-1 system-xs-regular text-text-tertiary" onClick={onCreateFromTemplate}>
+              <button
+                type="button"
+                className="flex cursor-pointer items-center gap-1 border-none bg-transparent p-0 text-left system-xs-regular text-text-tertiary focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
+                onClick={onCreateFromTemplate}
+              >
                 <span>{t('newApp.noIdeaTip', { ns: 'app' })}</span>
                 <div className="p-px">
-                  <RiArrowRightLine className="h-3.5 w-3.5" />
+                  <RiArrowRightLine className="size-3.5" aria-hidden="true" />
                 </div>
-              </div>
+              </button>
               <div className="flex gap-2">
                 <Button onClick={onClose}>{t('newApp.Cancel', { ns: 'app' })}</Button>
                 <Button disabled={isAppsFull || !name} className="gap-1" variant="primary" onClick={handleCreateApp}>
@@ -270,7 +274,7 @@ function CreateApp({ onClose, onSuccess, onCreateFromTemplate, defaultAppMode }:
           <div className="max-w-[760px] border-x border-x-divider-subtle">
             <div className="h-6 2xl:h-[139px]" />
             <AppPreview mode={appMode} />
-            <div className="absolute right-0 left-0 border-b border-b-divider-subtle"></div>
+            <div className="absolute inset-x-0 border-b border-b-divider-subtle"></div>
             <div className="flex h-[448px] w-[664px] items-center justify-center" style={{ background: 'repeating-linear-gradient(135deg, transparent, transparent 2px, rgba(16,24,40,0.04) 4px,transparent 3px, transparent 6px)' }}>
               <AppScreenShot show={appMode === AppModeEnum.CHAT} mode={AppModeEnum.CHAT} />
               <AppScreenShot show={appMode === AppModeEnum.ADVANCED_CHAT} mode={AppModeEnum.ADVANCED_CHAT} />
@@ -278,7 +282,7 @@ function CreateApp({ onClose, onSuccess, onCreateFromTemplate, defaultAppMode }:
               <AppScreenShot show={appMode === AppModeEnum.COMPLETION} mode={AppModeEnum.COMPLETION} />
               <AppScreenShot show={appMode === AppModeEnum.WORKFLOW} mode={AppModeEnum.WORKFLOW} />
             </div>
-            <div className="absolute right-0 left-0 border-b border-b-divider-subtle"></div>
+            <div className="absolute inset-x-0 border-b border-b-divider-subtle"></div>
           </div>
         </div>
       </div>

@@ -179,23 +179,6 @@ vi.mock('@/app/components/plugins/marketplace/search-box', () => ({
   ),
 }))
 
-// Mock Checkbox component
-vi.mock('@/app/components/base/checkbox', () => ({
-  default: ({ checked, onCheck, className }: {
-    checked?: boolean
-    onCheck: () => void
-    className?: string
-  }) => (
-    <input
-      type="checkbox"
-      checked={checked}
-      onChange={onCheck}
-      className={className}
-      data-testid="checkbox"
-    />
-  ),
-}))
-
 // Mock Icon component
 vi.mock('@/app/components/plugins/card/base/card-icon', () => ({
   default: ({ size, src }: { size: string, src: string }) => (
@@ -739,7 +722,7 @@ describe('auto-update-setting', () => {
         render(<ToolItem {...defaultProps} isChecked={false} />)
 
         // Assert
-        expect(screen.getByTestId('checkbox')).not.toBeChecked()
+        expect(screen.getByRole('checkbox')).not.toBeChecked()
       })
 
       it('should render checkbox checked when isChecked is true', () => {
@@ -747,7 +730,7 @@ describe('auto-update-setting', () => {
         render(<ToolItem {...defaultProps} isChecked={true} />)
 
         // Assert
-        expect(screen.getByTestId('checkbox')).toBeChecked()
+        expect(screen.getByRole('checkbox')).toBeChecked()
       })
     })
 
@@ -758,7 +741,7 @@ describe('auto-update-setting', () => {
 
         // Act
         render(<ToolItem {...defaultProps} onCheckChange={onCheckChange} />)
-        fireEvent.click(screen.getByTestId('checkbox'))
+        fireEvent.click(screen.getByRole('checkbox'))
 
         // Assert
         expect(onCheckChange).toHaveBeenCalledTimes(1)
@@ -1008,7 +991,7 @@ describe('auto-update-setting', () => {
 
         // Act
         renderWithQueryClient(<ToolPicker {...defaultProps} isShow={true} onChange={onChange} />)
-        fireEvent.click(screen.getByTestId('checkbox'))
+        fireEvent.click(screen.getByRole('checkbox'))
 
         // Assert
         expect(onChange).toHaveBeenCalledWith(['test-plugin'])
@@ -1029,7 +1012,7 @@ describe('auto-update-setting', () => {
         renderWithQueryClient(
           <ToolPicker {...defaultProps} isShow={true} value={['test-plugin']} onChange={onChange} />,
         )
-        fireEvent.click(screen.getByTestId('checkbox'))
+        fireEvent.click(screen.getByRole('checkbox'))
 
         // Assert
         expect(onChange).toHaveBeenCalledWith([])
@@ -1054,7 +1037,7 @@ describe('auto-update-setting', () => {
         )
 
         // Click to select
-        fireEvent.click(screen.getByTestId('checkbox'))
+        fireEvent.click(screen.getByRole('checkbox'))
         expect(onChange).toHaveBeenCalledWith(['plugin-1'])
 
         // Rerender with new value
@@ -1066,7 +1049,7 @@ describe('auto-update-setting', () => {
         )
 
         // Click to unselect
-        fireEvent.click(screen.getByTestId('checkbox'))
+        fireEvent.click(screen.getByRole('checkbox'))
         expect(onChange).toHaveBeenCalledWith([])
       })
     })
@@ -1104,7 +1087,7 @@ describe('auto-update-setting', () => {
 
         // Assert
         expect(screen.getByText('plugin.autoUpdate.partialUPdate:{"num":2}')).toBeInTheDocument()
-        expect(screen.getByText('plugin.autoUpdate.operation.clearAll')).toBeInTheDocument()
+        expect(screen.getByRole('button', { name: 'plugin.autoUpdate.operation.clearAll' })).toBeInTheDocument()
       })
 
       it('should render select button', () => {
@@ -1143,7 +1126,7 @@ describe('auto-update-setting', () => {
             onChange={onChange}
           />,
         )
-        fireEvent.click(screen.getByText('plugin.autoUpdate.operation.clearAll'))
+        fireEvent.click(screen.getByRole('button', { name: 'plugin.autoUpdate.operation.clearAll' }))
 
         // Assert
         expect(onChange).toHaveBeenCalledWith([])
@@ -1350,10 +1333,10 @@ describe('auto-update-setting', () => {
         render(<AutoUpdateSetting payload={payload} onChange={onChange} />)
 
         // Click time picker trigger
-        fireEvent.click(screen.getByTestId('time-picker').querySelector('[data-testid="time-input"]')!.parentElement!)
+        fireEvent.click(screen.getByRole('button', { name: /GMT-5/ }))
 
         // Set time
-        fireEvent.click(screen.getByTestId('time-picker-set'))
+        fireEvent.click(screen.getByRole('button', { name: 'Set 10:30' }))
 
         // Assert
         expect(onChange).toHaveBeenCalled()
@@ -1368,10 +1351,10 @@ describe('auto-update-setting', () => {
         render(<AutoUpdateSetting payload={payload} onChange={onChange} />)
 
         // Click time picker trigger
-        fireEvent.click(screen.getByTestId('time-picker').querySelector('[data-testid="time-input"]')!.parentElement!)
+        fireEvent.click(screen.getByRole('button', { name: /GMT-5/ }))
 
         // Clear time
-        fireEvent.click(screen.getByTestId('time-picker-clear'))
+        fireEvent.click(screen.getByRole('button', { name: 'Clear' }))
 
         // Assert
         expect(onChange).toHaveBeenCalled()
@@ -1390,7 +1373,7 @@ describe('auto-update-setting', () => {
         render(<AutoUpdateSetting payload={payload} onChange={onChange} />)
 
         // Click clear all
-        fireEvent.click(screen.getByText('plugin.autoUpdate.operation.clearAll'))
+        fireEvent.click(screen.getByRole('button', { name: 'plugin.autoUpdate.operation.clearAll' }))
 
         // Assert
         expect(onChange).toHaveBeenCalledWith(expect.objectContaining({
@@ -1411,7 +1394,7 @@ describe('auto-update-setting', () => {
         render(<AutoUpdateSetting payload={payload} onChange={onChange} />)
 
         // Click clear all
-        fireEvent.click(screen.getByText('plugin.autoUpdate.operation.clearAll'))
+        fireEvent.click(screen.getByRole('button', { name: 'plugin.autoUpdate.operation.clearAll' }))
 
         // Assert
         expect(onChange).toHaveBeenCalledWith(expect.objectContaining({
@@ -1426,7 +1409,6 @@ describe('auto-update-setting', () => {
         // Act
         render(<AutoUpdateSetting {...defaultProps} payload={payload} />)
 
-        // Assert - timezone Trans component is rendered
         expect(screen.getByText('autoUpdate.changeTimezone')).toBeInTheDocument()
       })
     })
@@ -1459,7 +1441,7 @@ describe('auto-update-setting', () => {
         render(<AutoUpdateSetting payload={payload} onChange={onChange} />)
 
         // Trigger a change (clear plugins)
-        fireEvent.click(screen.getByText('plugin.autoUpdate.operation.clearAll'))
+        fireEvent.click(screen.getByRole('button', { name: 'plugin.autoUpdate.operation.clearAll' }))
 
         // Assert - other values should be preserved
         expect(onChange).toHaveBeenCalledWith(expect.objectContaining({

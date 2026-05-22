@@ -96,7 +96,7 @@ export const EditSlice: FC<EditSliceProps> = (props) => {
                 }}
                 state={ActionButtonState.Destructive}
               >
-                <RiDeleteBinLine className="h-4 w-4" />
+                <RiDeleteBinLine className="size-4" />
               </ActionButton>
             </span>
           </FloatingFocusManager>

@@ -729,7 +729,7 @@ describe('PublishAsKnowledgePipelineModal', () => {
     it('should call onCancel when close icon is clicked', () => {
       render(<PublishAsKnowledgePipelineModal {...defaultProps} />)
 
-      fireEvent.click(screen.getByTestId('publish-modal-close-btn'))
+      fireEvent.click(screen.getByRole('button', { name: 'common.operation.close' }))
 
       expect(mockOnCancel).toHaveBeenCalledTimes(1)
     })

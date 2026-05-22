@@ -176,6 +176,48 @@ class TestStreamsBroadcastChannel:
         assert topic.as_producer() is topic
         assert topic.as_subscriber() is topic
 
+    def test_join_timeout_ms_propagates_from_channel_to_subscription(self, fake_redis: FakeStreamsRedis):
+        channel = StreamsBroadcastChannel(fake_redis, retention_seconds=60, join_timeout_ms=150)
+        topic = channel.topic("join-timeout-prop")
+
+        assert topic._join_timeout_ms == 150
+
+        sub = topic.subscribe()
+        try:
+            assert sub._join_timeout_ms == 150
+        finally:
+            sub.close()
+
+    def test_join_timeout_ms_defaults_to_2000(self, fake_redis: FakeStreamsRedis):
+        channel = StreamsBroadcastChannel(fake_redis, retention_seconds=60)
+        topic = channel.topic("join-timeout-default")
+
+        assert topic._join_timeout_ms == 2000
+
+    def test_small_join_timeout_makes_close_return_promptly(self, fake_redis: FakeStreamsRedis):
+        """close() should respect the configured join timeout.
+
+        Regression test for SSE close tail latency: when an idle listener is
+        blocked on its poll cycle, close() with a small join_timeout_ms must
+        not wait for the full poll window. The orphaned daemon listener
+        cleans itself up later.
+        """
+        channel = StreamsBroadcastChannel(fake_redis, retention_seconds=60, join_timeout_ms=50)
+        topic = channel.topic("join-timeout-prompt-close")
+        sub = topic.subscribe()
+
+        # Drive listener startup so the thread is actually blocked in xread.
+        assert sub.receive(timeout=0.05) is None
+        time.sleep(0.05)
+
+        started = time.monotonic()
+        sub.close()
+        elapsed = time.monotonic() - started
+
+        # 50ms timeout + scheduling slack; pick a ceiling well under the
+        # default poll window (1000ms) to make the regression meaningful.
+        assert elapsed < 0.5, f"close() took {elapsed:.3f}s; expected prompt return"
+
     def test_publish_logs_warning_when_expire_fails(self, caplog: pytest.LogCaptureFixture):
         channel = StreamsBroadcastChannel(FailExpireRedis(), retention_seconds=60)
         topic = channel.topic("expire-warning")
@@ -342,10 +384,17 @@ class TestStreamsSubscription:
 
         assert next(iter(subscription)) == b"event"
 
-    def test_close_logs_warning_when_listener_does_not_stop_in_time(
+    def test_close_logs_debug_when_listener_does_not_stop_in_time(
         self,
         caplog: pytest.LogCaptureFixture,
     ):
+        """When a low join_timeout elapses with the listener still alive,
+        close() should log at DEBUG (not WARNING) - with a deliberately small
+        timeout this is expected, not anomalous; the orphaned daemon thread
+        cleans itself up on the next poll boundary.
+        """
+        import logging
+
         blocking_redis = BlockingRedis()
         subscription = _StreamsSubscription(blocking_redis, "stream:slow-close")
 
@@ -363,8 +412,10 @@ class TestStreamsSubscription:
         listener.is_alive = lambda: True  # type: ignore[method-assign]
 
         try:
-            subscription.close()
-            assert "did not stop within timeout" in caplog.text
+            with caplog.at_level(logging.DEBUG, logger="libs.broadcast_channel.redis.streams_channel"):
+                subscription.close()
+            assert "did not stop within" in caplog.text
+            assert "daemon thread will exit on its own" in caplog.text
         finally:
             listener.join = original_join  # type: ignore[method-assign]
             listener.is_alive = original_is_alive  # type: ignore[method-assign]

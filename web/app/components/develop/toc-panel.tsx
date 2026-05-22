@@ -22,7 +22,7 @@ const TocPanel = ({ toc, activeSection, isTocExpanded, onToggle, onItemClick }: 
         className="group flex h-11 w-11 items-center justify-center rounded-full border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg transition-all duration-150 hover:bg-background-default-hover hover:shadow-xl"
         aria-label="Open table of contents"
       >
-        <span className="i-ri-list-unordered h-5 w-5 text-text-tertiary transition-colors group-hover:text-text-secondary" />
+        <span className="i-ri-list-unordered size-5 text-text-tertiary transition-colors group-hover:text-text-secondary" />
       </button>
     )
   }
@@ -36,17 +36,17 @@ const TocPanel = ({ toc, activeSection, isTocExpanded, onToggle, onItemClick }: 
         <button
           type="button"
           onClick={() => onToggle(false)}
-          className="group flex h-6 w-6 items-center justify-center rounded-md transition-colors hover:bg-state-base-hover"
+          className="group flex size-6 items-center justify-center rounded-md transition-colors hover:bg-state-base-hover"
           aria-label="Close"
         >
-          <span className="i-ri-close-line h-3 w-3 text-text-quaternary transition-colors group-hover:text-text-secondary" />
+          <span className="i-ri-close-line size-3 text-text-quaternary transition-colors group-hover:text-text-secondary" />
         </button>
       </div>
 
       <div className="pointer-events-none absolute top-[41px] right-0 left-0 z-10 h-2 bg-linear-to-b from-components-panel-border-subtle/20 to-transparent"></div>
       <div className="pointer-events-none absolute top-[43px] right-0 left-0 z-10 h-3 bg-linear-to-b from-background-default-hover to-transparent"></div>
 
-      <div className="relative flex-1 overflow-y-auto px-3 py-3 pt-1">
+      <div className="relative flex-1 overflow-y-auto p-3 pt-1">
         {toc.length === 0
           ? (
               <div className="px-2 py-8 text-center text-xs text-text-quaternary">
@@ -71,7 +71,7 @@ const TocPanel = ({ toc, activeSection, isTocExpanded, onToggle, onItemClick }: 
                       >
                         <span
                           className={cn(
-                            'mr-2 h-1.5 w-1.5 rounded-full transition-all duration-200',
+                            'mr-2 size-1.5 rounded-full transition-all duration-200',
                             isActive
                               ? 'scale-100 bg-text-accent'
                               : 'scale-75 bg-components-panel-border',
@@ -88,7 +88,7 @@ const TocPanel = ({ toc, activeSection, isTocExpanded, onToggle, onItemClick }: 
             )}
       </div>
 
-      <div className="pointer-events-none absolute right-0 bottom-0 left-0 z-10 h-4 rounded-b-xl bg-linear-to-t from-background-default-hover to-transparent"></div>
+      <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 h-4 rounded-b-xl bg-linear-to-t from-background-default-hover to-transparent"></div>
     </nav>
   )
 }
