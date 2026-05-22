@@ -7,14 +7,15 @@ type DatePickerProps = {
   value: number | null
   onChange: (value: number) => void
   className?: string
+  label?: string
 }
 
 // Mock the base date-picker component
 vi.mock('../../base/date-picker', () => ({
-  default: ({ value, onChange, className }: DatePickerProps) => (
-    <div data-testid="date-picker" className={className} onClick={() => onChange(Date.now())}>
+  default: ({ value, onChange, className, label }: DatePickerProps) => (
+    <button type="button" aria-label={label} data-testid="date-picker" className={className} onClick={() => onChange(Date.now())}>
       {value || 'Pick date'}
-    </div>
+    </button>
   ),
 }))
 
@@ -143,6 +144,15 @@ describe('InputCombined', () => {
       )
 
       expect(screen.getByTestId('date-picker')).toBeInTheDocument()
+    })
+
+    it('should label the date picker trigger with the metadata field name', () => {
+      const handleChange = vi.fn()
+      render(
+        <InputCombined label="Metadata field" type={DataType.time} value={1234567890} onChange={handleChange} />,
+      )
+
+      expect(screen.getByRole('button', { name: 'Metadata field' })).toBeInTheDocument()
     })
 
     it('should call onChange when date is selected', () => {

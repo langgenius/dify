@@ -35,6 +35,7 @@ const InputCombined: FC<Props> = ({
   if (type === DataType.time) {
     return (
       <Datepicker
+        label={label}
         className={className}
         value={value}
         onChange={onChange}
