@@ -19,13 +19,13 @@ describe('TopKItem', () => {
     vi.clearAllMocks()
   })
 
-  const getSlider = () => screen.getByLabelText('appDebug.datasetConfig.top_k')
+  const getSlider = () => screen.getByLabelText('appDebug.datasetConfig.top_k slider')
 
   describe('Rendering', () => {
     it('should render the translated parameter name', () => {
       render(<TopKItem {...defaultProps} />)
 
-      expect(screen.getByText('appDebug.datasetConfig.top_k')).toBeInTheDocument()
+      expect(screen.getByText('appDebug.datasetConfig.top_k', { selector: 'span' })).toBeInTheDocument()
     })
 
     it('should render tooltip trigger', () => {

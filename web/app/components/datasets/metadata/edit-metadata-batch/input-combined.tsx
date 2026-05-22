@@ -1,6 +1,7 @@
 'use client'
 import type { FC } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Input } from '@langgenius/dify-ui/input'
 import {
   NumberField,
   NumberFieldControls,
@@ -10,7 +11,6 @@ import {
   NumberFieldInput,
 } from '@langgenius/dify-ui/number-field'
 import * as React from 'react'
-import Input from '@/app/components/base/input'
 import Datepicker from '../base/date-picker'
 import { DataType } from '../types'
 
@@ -51,6 +51,7 @@ const InputCombined: FC<Props> = ({
         >
           <NumberFieldGroup>
             <NumberFieldInput
+              aria-label="Metadata number value"
               className={cn(className, 'rounded-l-md')}
             />
             <NumberFieldControls className="overflow-hidden">
@@ -64,8 +65,7 @@ const InputCombined: FC<Props> = ({
   }
   return (
     <Input
-      wrapperClassName={configClassName}
-      className={cn(className, 'rounded-md')}
+      className={cn(configClassName, className, 'rounded-md')}
       value={value}
       onChange={e => onChange(e.target.value)}
       readOnly={readOnly}

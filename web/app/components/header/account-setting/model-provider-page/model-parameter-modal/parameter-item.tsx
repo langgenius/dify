@@ -165,58 +165,90 @@ function ParameterItem({
           step = 10
       }
 
-      return (
-        <>
-          {numberInputWithSlide && (
-            <Slider
-              className="w-[120px]"
-              value={renderValue as number}
-              min={parameterRule.min}
-              max={parameterRule.max}
-              step={step}
-              onValueChange={handleSlideChange}
-              aria-label={sliderLabel}
-            />
-          )}
+      if (!numberInputWithSlide) {
+        return (
           <input
+            aria-label={sliderLabel}
             ref={numberInputRef}
             className="ml-4 block h-8 w-16 shrink-0 appearance-none rounded-lg bg-components-input-bg-normal pl-3 system-sm-regular text-components-input-text-filled outline-hidden"
             type="number"
             max={parameterRule.max}
             min={parameterRule.min}
-            step={numberInputWithSlide ? step : +`0.${parameterRule.precision || 0}`}
+            step={+`0.${parameterRule.precision || 0}`}
             onChange={handleNumberInputChange}
             onBlur={handleNumberInputBlur}
           />
-        </>
+        )
+      }
+
+      return (
+        <FieldsetRoot className="flex items-center">
+          <FieldsetLegend className="sr-only">{sliderLabel}</FieldsetLegend>
+          <Slider
+            className="w-[120px]"
+            value={renderValue as number}
+            min={parameterRule.min}
+            max={parameterRule.max}
+            step={step}
+            onValueChange={handleSlideChange}
+            aria-label={`${sliderLabel} slider`}
+          />
+          <input
+            aria-label={`${sliderLabel} input`}
+            ref={numberInputRef}
+            className="ml-4 block h-8 w-16 shrink-0 appearance-none rounded-lg bg-components-input-bg-normal pl-3 system-sm-regular text-components-input-text-filled outline-hidden"
+            type="number"
+            max={parameterRule.max}
+            min={parameterRule.min}
+            step={step}
+            onChange={handleNumberInputChange}
+            onBlur={handleNumberInputBlur}
+          />
+        </FieldsetRoot>
       )
     }
 
     if (parameterRule.type === 'float') {
-      return (
-        <>
-          {numberInputWithSlide && (
-            <Slider
-              className="w-[120px]"
-              value={renderValue as number}
-              min={parameterRule.min}
-              max={parameterRule.max}
-              step={0.1}
-              onValueChange={handleSlideChange}
-              aria-label={sliderLabel}
-            />
-          )}
+      if (!numberInputWithSlide) {
+        return (
           <input
+            aria-label={sliderLabel}
             ref={numberInputRef}
             className="ml-4 block h-8 w-16 shrink-0 appearance-none rounded-lg bg-components-input-bg-normal pl-3 system-sm-regular text-components-input-text-filled outline-hidden"
             type="number"
             max={parameterRule.max}
             min={parameterRule.min}
-            step={numberInputWithSlide ? 0.1 : +`0.${parameterRule.precision || 0}`}
+            step={+`0.${parameterRule.precision || 0}`}
             onChange={handleNumberInputChange}
             onBlur={handleNumberInputBlur}
           />
-        </>
+        )
+      }
+
+      return (
+        <FieldsetRoot className="flex items-center">
+          <FieldsetLegend className="sr-only">{sliderLabel}</FieldsetLegend>
+          <Slider
+            className="w-[120px]"
+            value={renderValue as number}
+            min={parameterRule.min}
+            max={parameterRule.max}
+            step={0.1}
+            onValueChange={handleSlideChange}
+            aria-label={`${sliderLabel} slider`}
+          />
+          <input
+            aria-label={`${sliderLabel} input`}
+            ref={numberInputRef}
+            className="ml-4 block h-8 w-16 shrink-0 appearance-none rounded-lg bg-components-input-bg-normal pl-3 system-sm-regular text-components-input-text-filled outline-hidden"
+            type="number"
+            max={parameterRule.max}
+            min={parameterRule.min}
+            step={0.1}
+            onChange={handleNumberInputChange}
+            onBlur={handleNumberInputBlur}
+          />
+        </FieldsetRoot>
       )
     }
 

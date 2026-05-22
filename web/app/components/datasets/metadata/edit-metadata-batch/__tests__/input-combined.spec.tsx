@@ -43,7 +43,7 @@ describe('InputCombined', () => {
       render(
         <InputCombined type={DataType.number} value={42} onChange={handleChange} />,
       )
-      const input = screen.getByRole('textbox')
+      const input = screen.getByLabelText('Metadata number value')
       expect(input).toBeInTheDocument()
       expect(input).toHaveValue('42')
     })

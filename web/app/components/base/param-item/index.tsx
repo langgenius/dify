@@ -1,5 +1,6 @@
 'use client'
 import type { FC } from 'react'
+import { FieldsetLegend, FieldsetRoot } from '@langgenius/dify-ui/fieldset'
 import {
   NumberField,
   NumberFieldControls,
@@ -30,7 +31,8 @@ type Props = {
 
 const ParamItem: FC<Props> = ({ className, id, name, noTooltip, tip, step = 0.1, min = 0, max, value, enable, onChange, hasSwitch, onSwitchChange }) => {
   return (
-    <div className={className}>
+    <FieldsetRoot className={className}>
+      <FieldsetLegend className="sr-only">{name}</FieldsetLegend>
       <div className="flex items-center justify-between">
         <div className="flex h-6 items-center">
           {hasSwitch && (
@@ -62,7 +64,7 @@ const ParamItem: FC<Props> = ({ className, id, name, noTooltip, tip, step = 0.1,
             onValueChange={nextValue => onChange(id, nextValue ?? min)}
           >
             <NumberFieldGroup>
-              <NumberFieldInput className="w-[72px]" />
+              <NumberFieldInput aria-label={`${name} input`} className="w-18" />
               <NumberFieldControls>
                 <NumberFieldIncrement />
                 <NumberFieldDecrement />
@@ -78,11 +80,11 @@ const ParamItem: FC<Props> = ({ className, id, name, noTooltip, tip, step = 0.1,
             min={min < 1 ? min * 100 : min}
             max={max < 5 ? max * 100 : max}
             onValueChange={value => onChange(id, value / (max < 5 ? 100 : 1))}
-            aria-label={name}
+            aria-label={`${name} slider`}
           />
         </div>
       </div>
-    </div>
+    </FieldsetRoot>
   )
 }
 export default ParamItem
