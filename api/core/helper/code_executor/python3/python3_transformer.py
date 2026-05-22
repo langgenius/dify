@@ -1,3 +1,5 @@
+from typing import override
+
 from textwrap import dedent
 from typing import override
 

@@ -274,6 +274,7 @@ class PluginModelRuntime(ModelRuntime):
         return schema
 
     @overload
+    @override
     def invoke_llm(
         self,
         *,
@@ -288,6 +289,7 @@ class PluginModelRuntime(ModelRuntime):
     ) -> LLMResult: ...
 
     @overload
+    @override
     def invoke_llm(
         self,
         *,
@@ -338,6 +340,7 @@ class PluginModelRuntime(ModelRuntime):
         )
 
     @overload
+    @override
     def invoke_llm_with_structured_output(
         self,
         *,
@@ -352,6 +355,7 @@ class PluginModelRuntime(ModelRuntime):
     ) -> LLMResultWithStructuredOutput: ...
 
     @overload
+    @override
     def invoke_llm_with_structured_output(
         self,
         *,

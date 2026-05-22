@@ -1,3 +1,5 @@
+from typing import override
+
 from collections.abc import Mapping
 from typing import override
 
