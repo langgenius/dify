@@ -7,7 +7,7 @@ authentication failures and retries operations after refreshing tokens.
 
 import logging
 from collections.abc import Callable
-from typing import Any
+from typing import Any, override
 
 from sqlalchemy.orm import Session
 
@@ -159,6 +159,7 @@ class MCPClientWithAuthRetry(MCPClient):
             # Reset retry flag after operation completes
             self._has_retried = False
 
+    @override
     def __enter__(self):
         """Enter the context manager with retry support."""
 
@@ -168,6 +169,7 @@ class MCPClientWithAuthRetry(MCPClient):
 
         return self._execute_with_retry(initialize_with_retry)
 
+    @override
     def list_tools(self) -> list[Tool]:
         """
         List available tools from the MCP server with auth retry.
@@ -180,6 +182,7 @@ class MCPClientWithAuthRetry(MCPClient):
         """
         return self._execute_with_retry(super().list_tools)
 
+    @override
     def invoke_tool(self, tool_name: str, tool_args: dict[str, Any]) -> CallToolResult:
         """
         Invoke a tool on the MCP server with auth retry.
