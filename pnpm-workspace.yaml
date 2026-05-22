@@ -93,12 +93,6 @@ catalog:
   '@napi-rs/keyring': 1.1.6
   '@next/eslint-plugin-next': 16.2.6
   '@next/mdx': 16.2.6
-  '@oclif/core': 4.11.1
-  '@oclif/plugin-autocomplete': 3.2.6
-  '@oclif/plugin-help': 6.2.10
-  '@oclif/plugin-not-found': 3.2.18
-  '@oclif/plugin-version': 2.2.16
-  '@oclif/plugin-warn-if-update-available': 3.1.13
   '@orpc/client': 1.14.3
   '@orpc/contract': 1.14.3
   '@orpc/openapi-client': 1.14.3
@@ -212,7 +206,6 @@ catalog:
   next: 16.2.6
   next-themes: 0.4.6
   nuqs: 2.8.9
-  oclif: 4.15.5
   open: 10.1.0
   ora: 8.1.0
   picocolors: 1.1.0

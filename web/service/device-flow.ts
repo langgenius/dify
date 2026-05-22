@@ -22,9 +22,14 @@ const DEVICE_BASE = '/openapi/v1/oauth/device'
 // switches on `code` to choose user-facing copy / view; never render
 // `status` or raw body to the user.
 export class DeviceFlowError extends Error {
-  constructor(public code: string, public status: number) {
+  code: string
+  status: number
+
+  constructor(code: string, status: number) {
     super(code)
     this.name = 'DeviceFlowError'
+    this.code = code
+    this.status = status
   }
 }
 
@@ -35,7 +40,8 @@ async function failFromResponse(res: Response): Promise<never> {
   let serverCode = ''
   try {
     const body = await res.clone().json()
-    if (body && typeof body.error === 'string') serverCode = body.error
+    if (body && typeof body.error === 'string')
+      serverCode = body.error
   }
   catch { /* non-JSON body — fall through to status mapping */ }
 
@@ -44,12 +50,18 @@ async function failFromResponse(res: Response): Promise<never> {
 }
 
 function statusFallbackCode(status: number): string {
-  if (status === 429) return 'rate_limited'
-  if (status === 401) return 'no_session'
-  if (status === 403) return 'forbidden'
-  if (status === 404) return 'not_found'
-  if (status === 409) return 'conflict'
-  if (status >= 500) return 'server_error'
+  if (status === 429)
+    return 'rate_limited'
+  if (status === 401)
+    return 'no_session'
+  if (status === 403)
+    return 'forbidden'
+  if (status === 404)
+    return 'not_found'
+  if (status === 409)
+    return 'conflict'
+  if (status >= 500)
+    return 'server_error'
   return 'unknown'
 }
 
@@ -69,7 +81,8 @@ export async function deviceLookup(user_code: string): Promise<DeviceLookupReply
   const res = await fetch(`${DEVICE_BASE}/lookup?user_code=${encodeURIComponent(user_code)}`, {
     method: 'GET',
   })
-  if (!res.ok) await failFromResponse(res)
+  if (!res.ok)
+    await failFromResponse(res)
   return res.json()
 }
 
@@ -83,7 +96,8 @@ export async function deviceApproveAccount(user_code: string): Promise<{ status:
     },
     body: JSON.stringify({ user_code }),
   })
-  if (!res.ok) await failFromResponse(res)
+  if (!res.ok)
+    await failFromResponse(res)
   return res.json()
 }
 
@@ -97,7 +111,8 @@ export async function deviceDenyAccount(user_code: string): Promise<{ status: 'd
     },
     body: JSON.stringify({ user_code }),
   })
-  if (!res.ok) await failFromResponse(res)
+  if (!res.ok)
+    await failFromResponse(res)
   return res.json()
 }
 
@@ -116,7 +131,8 @@ export async function fetchApprovalContext(): Promise<ApprovalContext> {
     method: 'GET',
     credentials: 'include',
   })
-  if (!res.ok) await failFromResponse(res)
+  if (!res.ok)
+    await failFromResponse(res)
   return res.json()
 }
 
@@ -130,5 +146,6 @@ export async function approveExternal(ctx: ApprovalContext, user_code: string): 
     },
     body: JSON.stringify({ user_code }),
   })
-  if (!res.ok) await failFromResponse(res)
+  if (!res.ok)
+    await failFromResponse(res)
 }
