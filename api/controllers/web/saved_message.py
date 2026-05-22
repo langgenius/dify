@@ -112,4 +112,4 @@ class SavedMessageApi(WebApiResource):
 
         SavedMessageService.delete(app_model, end_user, message_id)
 
-        return ResultResponse(result="success").model_dump(mode="json"), 204
+        return "", 204

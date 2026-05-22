@@ -1,5 +1,6 @@
 from flask_restx import fields
 
+from fields.base import ResponseModel
 from libs.helper import TimestampField
 
 dataset_fields = {
@@ -13,6 +14,38 @@ dataset_fields = {
     "created_at": TimestampField,
     "permission_keys": fields.List(fields.String),
 }
+
+
+class DatasetMetadataResponse(ResponseModel):
+    id: str
+    type: str
+    name: str
+
+
+class DatasetMetadataListItemResponse(ResponseModel):
+    id: str
+    name: str
+    type: str
+    count: int = 0
+
+
+class DatasetMetadataListResponse(ResponseModel):
+    doc_metadata: list[DatasetMetadataListItemResponse]
+    built_in_field_enabled: bool
+
+
+class DatasetMetadataBuiltInFieldResponse(ResponseModel):
+    name: str
+    type: str
+
+
+class DatasetMetadataBuiltInFieldsResponse(ResponseModel):
+    fields: list[DatasetMetadataBuiltInFieldResponse]
+
+
+class DatasetMetadataActionResponse(ResponseModel):
+    result: str
+
 
 reranking_model_fields = {"reranking_provider_name": fields.String, "reranking_model_name": fields.String}
 
@@ -134,10 +167,4 @@ dataset_query_detail_fields = {
     "created_by_role": fields.String,
     "created_by": fields.String,
     "created_at": TimestampField,
-}
-
-dataset_metadata_fields = {
-    "id": fields.String,
-    "type": fields.String,
-    "name": fields.String,
 }

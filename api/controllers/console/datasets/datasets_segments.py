@@ -251,7 +251,7 @@ class DatasetDocumentSegmentListApi(Resource):
         except services.errors.account.NoPermissionError as e:
             raise Forbidden(str(e))
         SegmentService.delete_segments(segment_ids, document, dataset)
-        return {"result": "success"}, 204
+        return "", 204
 
 
 @console_ns.route("/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/segment/<string:action>")
@@ -467,7 +467,7 @@ class DatasetDocumentSegmentUpdateApi(Resource):
         except services.errors.account.NoPermissionError as e:
             raise Forbidden(str(e))
         SegmentService.delete_segment(segment, document, dataset)
-        return {"result": "success"}, 204
+        return "", 204
 
 
 @console_ns.route(
@@ -754,7 +754,7 @@ class ChildChunkUpdateApi(Resource):
             SegmentService.delete_child_chunk(child_chunk, dataset)
         except ChildChunkDeleteIndexServiceError as e:
             raise ChildChunkDeleteIndexError(str(e))
-        return {"result": "success"}, 204
+        return "", 204
 
     @setup_required
     @login_required

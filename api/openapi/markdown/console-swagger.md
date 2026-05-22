@@ -4413,9 +4413,9 @@ Initialize dataset with documents
 #### GET
 ##### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Built-in fields retrieved successfully | [DatasetMetadataBuiltInFieldsResponse](#datasetmetadatabuiltinfieldsresponse) |
 
 ### /datasets/notion-indexing-estimate
 
@@ -4730,9 +4730,9 @@ then asynchronously generates summary indexes for the provided documents.
 
 ##### Responses
 
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Success | [SimpleResultResponse](#simpleresultresponse) |
+| Code | Description |
+| ---- | ----------- |
+| 204 | Documents metadata updated successfully |
 
 ### /datasets/{dataset_id}/documents/status/{action}/batch
 
@@ -5342,9 +5342,9 @@ Get dataset indexing status
 
 ##### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Metadata retrieved successfully | [DatasetMetadataListResponse](#datasetmetadatalistresponse) |
 
 #### POST
 ##### Parameters
@@ -5356,9 +5356,9 @@ Get dataset indexing status
 
 ##### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 201 | Metadata created successfully | [DatasetMetadataResponse](#datasetmetadataresponse) |
 
 ### /datasets/{dataset_id}/metadata/built-in/{action}
 
@@ -5372,9 +5372,9 @@ Get dataset indexing status
 
 ##### Responses
 
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Success | [SimpleResultResponse](#simpleresultresponse) |
+| Code | Description |
+| ---- | ----------- |
+| 204 | Action completed successfully |
 
 ### /datasets/{dataset_id}/metadata/{metadata_id}
 
@@ -5403,9 +5403,9 @@ Get dataset indexing status
 
 ##### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Metadata updated successfully | [DatasetMetadataResponse](#datasetmetadataresponse) |
 
 ### /datasets/{dataset_id}/notion/sync
 
@@ -5692,6 +5692,23 @@ Get feature configuration for current tenant
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | [FeatureModel](#featuremodel) |
+
+### /features/vector-space
+
+#### GET
+##### Summary
+
+Get vector-space usage and limit for current tenant
+
+##### Description
+
+Get vector-space usage and limit for current tenant
+
+##### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | [LimitationModel](#limitationmodel) |
 
 ### /files/support-type
 
@@ -11732,6 +11749,43 @@ Condition detail
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | keyword_weight | number |  | No |
+
+#### DatasetMetadataBuiltInFieldResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| name | string |  | Yes |
+| type | string |  | Yes |
+
+#### DatasetMetadataBuiltInFieldsResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| fields | [ [DatasetMetadataBuiltInFieldResponse](#datasetmetadatabuiltinfieldresponse) ] |  | Yes |
+
+#### DatasetMetadataListItemResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| count | integer |  | No |
+| id | string |  | Yes |
+| name | string |  | Yes |
+| type | string |  | Yes |
+
+#### DatasetMetadataListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| built_in_field_enabled | boolean |  | Yes |
+| doc_metadata | [ [DatasetMetadataListItemResponse](#datasetmetadatalistitemresponse) ] |  | Yes |
+
+#### DatasetMetadataResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| id | string |  | Yes |
+| name | string |  | Yes |
+| type | string |  | Yes |
 
 #### DatasetPermissionEnum
 

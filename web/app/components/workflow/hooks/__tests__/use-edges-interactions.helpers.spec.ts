@@ -45,12 +45,12 @@ describe('use-edges-interactions.helpers', () => {
 
   it('clearEdgeMenuIfNeeded should return true only when the open menu belongs to a removed edge', () => {
     expect(clearEdgeMenuIfNeeded({
-      edgeMenu: { edgeId: 'edge-1' },
+      contextMenuTarget: { type: 'edge', edgeId: 'edge-1' },
       edgeIds: ['edge-1', 'edge-2'],
     })).toBe(true)
 
     expect(clearEdgeMenuIfNeeded({
-      edgeMenu: { edgeId: 'edge-3' },
+      contextMenuTarget: { type: 'edge', edgeId: 'edge-3' },
       edgeIds: ['edge-1', 'edge-2'],
     })).toBe(false)
 

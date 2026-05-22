@@ -105,7 +105,7 @@ class ConversationApi(InstalledAppResource):
         except ConversationNotExistsError:
             raise NotFound("Conversation Not Exists.")
 
-        return ResultResponse(result="success").model_dump(mode="json"), 204
+        return "", 204
 
 
 @console_ns.route(

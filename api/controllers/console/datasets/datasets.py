@@ -560,7 +560,7 @@ class DatasetApi(Resource):
         try:
             if DatasetService.delete_dataset(dataset_id_str, current_user):
                 DatasetPermissionService.clear_partial_member_list(dataset_id_str)
-                return {"result": "success"}, 204
+                return "", 204
             else:
                 raise NotFound("Dataset not found.")
         except services.errors.dataset.DatasetInUseError:
@@ -898,7 +898,7 @@ class DatasetApiDeleteApi(Resource):
         db.session.delete(key)
         db.session.commit()
 
-        return {"result": "success"}, 204
+        return "", 204
 
 
 @console_ns.route("/datasets/<uuid:dataset_id>/api-keys/<string:status>")

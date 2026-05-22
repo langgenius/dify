@@ -146,7 +146,7 @@ class BaseApiKeyResource(Resource):
         db.session.execute(delete(ApiToken).where(ApiToken.id == api_key_id))
         db.session.commit()
 
-        return {"result": "success"}, 204
+        return "", 204
 
 
 @console_ns.route("/apps/<uuid:resource_id>/api-keys")

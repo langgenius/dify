@@ -678,7 +678,7 @@ class AppApi(Resource):
         app_service = AppService()
         app_service.delete_app(app_model)
 
-        return {"result": "success"}, 204
+        return "", 204
 
 
 @console_ns.route("/apps/<uuid:app_id>/copy")

@@ -3,12 +3,12 @@ from werkzeug.exceptions import Unauthorized
 
 from controllers.common.schema import register_response_schema_models
 from libs.login import current_account_with_tenant, current_user, login_required
-from services.feature_service import FeatureModel, FeatureService, SystemFeatureModel
+from services.feature_service import FeatureModel, FeatureService, LimitationModel, SystemFeatureModel
 
 from . import console_ns
 from .wraps import account_initialization_required, cloud_utm_record, setup_required
 
-register_response_schema_models(console_ns, FeatureModel, SystemFeatureModel)
+register_response_schema_models(console_ns, FeatureModel, LimitationModel, SystemFeatureModel)
 
 
 @console_ns.route("/features")
@@ -28,7 +28,32 @@ class FeatureApi(Resource):
         """Get feature configuration for current tenant"""
         _, current_tenant_id = current_account_with_tenant()
 
-        return FeatureService.get_features(current_tenant_id).model_dump()
+        payload = FeatureService.get_features(
+            current_tenant_id,
+            exclude_vector_space=True,
+        ).model_dump()
+        payload.pop("vector_space", None)
+        return payload
+
+
+@console_ns.route("/features/vector-space")
+class FeatureVectorSpaceApi(Resource):
+    @console_ns.doc("get_tenant_feature_vector_space")
+    @console_ns.doc(description="Get vector-space usage and limit for current tenant")
+    @console_ns.response(
+        200,
+        "Success",
+        console_ns.models[LimitationModel.__name__],
+    )
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @cloud_utm_record
+    def get(self):
+        """Get vector-space usage and limit for current tenant"""
+        _, current_tenant_id = current_account_with_tenant()
+
+        return FeatureService.get_vector_space(current_tenant_id).model_dump()
 
 
 @console_ns.route("/system-features")
