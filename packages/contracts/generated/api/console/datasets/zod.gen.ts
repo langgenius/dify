@@ -531,6 +531,13 @@ export const zDocumentStatusListResponse = z.object({
 })
 
 /**
+ * HitTestingQuery
+ */
+export const zHitTestingQuery = z.object({
+  content: z.string(),
+})
+
+/**
  * DatasetMetadataListItemResponse
  */
 export const zDatasetMetadataListItemResponse = z.object({
@@ -632,22 +639,22 @@ export const zMetadataOperationData = z.object({
  * HitTestingChildChunk
  */
 export const zHitTestingChildChunk = z.object({
-  content: z.string().nullish(),
-  id: z.string().nullish(),
-  position: z.int().nullish(),
-  score: z.number().nullish(),
+  content: z.string(),
+  id: z.string(),
+  position: z.int(),
+  score: z.number(),
 })
 
 /**
  * HitTestingFile
  */
 export const zHitTestingFile = z.object({
-  extension: z.string().nullish(),
-  id: z.string().nullish(),
-  mime_type: z.string().nullish(),
-  name: z.string().nullish(),
-  size: z.int().nullish(),
-  source_url: z.string().nullish(),
+  extension: z.string(),
+  id: z.string(),
+  mime_type: z.string(),
+  name: z.string(),
+  size: z.int(),
+  source_url: z.string(),
 })
 
 /**
@@ -1036,60 +1043,60 @@ export const zHitTestingPayload = z.object({
  * HitTestingDocument
  */
 export const zHitTestingDocument = z.object({
-  data_source_type: z.string().nullish(),
-  doc_metadata: z.unknown().optional(),
-  doc_type: z.string().nullish(),
-  id: z.string().nullish(),
-  name: z.string().nullish(),
+  data_source_type: z.string(),
+  doc_metadata: z.unknown(),
+  doc_type: z.string().nullable(),
+  id: z.string(),
+  name: z.string(),
 })
 
 /**
  * HitTestingSegment
  */
 export const zHitTestingSegment = z.object({
-  answer: z.string().nullish(),
-  completed_at: z.int().nullish(),
-  content: z.string().nullish(),
-  created_at: z.int().nullish(),
-  created_by: z.string().nullish(),
-  disabled_at: z.int().nullish(),
-  disabled_by: z.string().nullish(),
-  document: zHitTestingDocument.optional(),
-  document_id: z.string().nullish(),
-  enabled: z.boolean().nullish(),
-  error: z.string().nullish(),
-  hit_count: z.int().nullish(),
-  id: z.string().nullish(),
-  index_node_hash: z.string().nullish(),
-  index_node_id: z.string().nullish(),
-  indexing_at: z.int().nullish(),
-  keywords: z.array(z.string()).optional(),
-  position: z.int().nullish(),
-  sign_content: z.string().nullish(),
-  status: z.string().nullish(),
-  stopped_at: z.int().nullish(),
-  tokens: z.int().nullish(),
-  word_count: z.int().nullish(),
+  answer: z.string().nullable(),
+  completed_at: z.int().nullable(),
+  content: z.string(),
+  created_at: z.int(),
+  created_by: z.string(),
+  disabled_at: z.int().nullable(),
+  disabled_by: z.string().nullable(),
+  document: zHitTestingDocument,
+  document_id: z.string(),
+  enabled: z.boolean(),
+  error: z.string().nullable(),
+  hit_count: z.int(),
+  id: z.string(),
+  index_node_hash: z.string().nullable(),
+  index_node_id: z.string().nullable(),
+  indexing_at: z.int().nullable(),
+  keywords: z.array(z.string()),
+  position: z.int(),
+  sign_content: z.string().nullable(),
+  status: z.string(),
+  stopped_at: z.int().nullable(),
+  tokens: z.int(),
+  word_count: z.int(),
 })
 
 /**
  * HitTestingRecord
  */
 export const zHitTestingRecord = z.object({
-  child_chunks: z.array(zHitTestingChildChunk).optional(),
-  files: z.array(zHitTestingFile).optional(),
-  score: z.number().nullish(),
-  segment: zHitTestingSegment.optional(),
-  summary: z.string().nullish(),
-  tsne_position: z.unknown().optional(),
+  child_chunks: z.array(zHitTestingChildChunk),
+  files: z.array(zHitTestingFile),
+  score: z.number().nullable(),
+  segment: zHitTestingSegment,
+  summary: z.string().nullable(),
+  tsne_position: z.unknown(),
 })
 
 /**
  * HitTestingResponse
  */
 export const zHitTestingResponse = z.object({
-  query: z.string(),
-  records: z.array(zHitTestingRecord).optional(),
+  query: zHitTestingQuery,
+  records: z.array(zHitTestingRecord),
 })
 
 /**

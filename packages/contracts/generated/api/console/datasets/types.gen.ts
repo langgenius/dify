@@ -396,8 +396,8 @@ export type HitTestingPayload = {
 }
 
 export type HitTestingResponse = {
-  query: string
-  records?: Array<HitTestingRecord>
+  query: HitTestingQuery
+  records: Array<HitTestingRecord>
 }
 
 export type DocumentStatusListResponse = {
@@ -666,13 +666,17 @@ export type DocumentStatusResponse = {
   total_segments?: number | null
 }
 
+export type HitTestingQuery = {
+  content: string
+}
+
 export type HitTestingRecord = {
-  child_chunks?: Array<HitTestingChildChunk>
-  files?: Array<HitTestingFile>
-  score?: number | null
-  segment?: HitTestingSegment
-  summary?: string | null
-  tsne_position?: unknown
+  child_chunks: Array<HitTestingChildChunk>
+  files: Array<HitTestingFile>
+  score: number | null
+  segment: HitTestingSegment
+  summary: string | null
+  tsne_position: unknown
 }
 
 export type DatasetMetadataListItemResponse = {
@@ -768,45 +772,45 @@ export type MetadataDetail = {
 }
 
 export type HitTestingChildChunk = {
-  content?: string | null
-  id?: string | null
-  position?: number | null
-  score?: number | null
+  content: string
+  id: string
+  position: number
+  score: number
 }
 
 export type HitTestingFile = {
-  extension?: string | null
-  id?: string | null
-  mime_type?: string | null
-  name?: string | null
-  size?: number | null
-  source_url?: string | null
+  extension: string
+  id: string
+  mime_type: string
+  name: string
+  size: number
+  source_url: string
 }
 
 export type HitTestingSegment = {
-  answer?: string | null
-  completed_at?: number | null
-  content?: string | null
-  created_at?: number | null
-  created_by?: string | null
-  disabled_at?: number | null
-  disabled_by?: string | null
-  document?: HitTestingDocument
-  document_id?: string | null
-  enabled?: boolean | null
-  error?: string | null
-  hit_count?: number | null
-  id?: string | null
-  index_node_hash?: string | null
-  index_node_id?: string | null
-  indexing_at?: number | null
-  keywords?: Array<string>
-  position?: number | null
-  sign_content?: string | null
-  status?: string | null
-  stopped_at?: number | null
-  tokens?: number | null
-  word_count?: number | null
+  answer: string | null
+  completed_at: number | null
+  content: string
+  created_at: number
+  created_by: string
+  disabled_at: number | null
+  disabled_by: string | null
+  document: HitTestingDocument
+  document_id: string
+  enabled: boolean
+  error: string | null
+  hit_count: number
+  id: string
+  index_node_hash: string | null
+  index_node_id: string | null
+  indexing_at: number | null
+  keywords: Array<string>
+  position: number
+  sign_content: string | null
+  status: string
+  stopped_at: number | null
+  tokens: number
+  word_count: number
 }
 
 export type DatasetQueryContentResponse = {
@@ -898,11 +902,11 @@ export type WeightVectorSetting = {
 }
 
 export type HitTestingDocument = {
-  data_source_type?: string | null
-  doc_metadata?: unknown
-  doc_type?: string | null
-  id?: string | null
-  name?: string | null
+  data_source_type: string
+  doc_metadata: unknown
+  doc_type: string | null
+  id: string
+  name: string
 }
 
 export type DatasetQueryFileInfoResponse = {

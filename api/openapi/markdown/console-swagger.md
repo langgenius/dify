@@ -12806,31 +12806,31 @@ Request payload for bulk downloading documents as a zip archive.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| content | string |  | No |
-| id | string |  | No |
-| position | integer |  | No |
-| score | number |  | No |
+| content | string |  | Yes |
+| id | string |  | Yes |
+| position | integer |  | Yes |
+| score | number |  | Yes |
 
 #### HitTestingDocument
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| data_source_type | string |  | No |
-| doc_metadata |  |  | No |
-| doc_type | string |  | No |
-| id | string |  | No |
-| name | string |  | No |
+| data_source_type | string |  | Yes |
+| doc_metadata |  |  | Yes |
+| doc_type | string |  | Yes |
+| id | string |  | Yes |
+| name | string |  | Yes |
 
 #### HitTestingFile
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| extension | string |  | No |
-| id | string |  | No |
-| mime_type | string |  | No |
-| name | string |  | No |
-| size | integer |  | No |
-| source_url | string |  | No |
+| extension | string |  | Yes |
+| id | string |  | Yes |
+| mime_type | string |  | Yes |
+| name | string |  | Yes |
+| size | integer |  | Yes |
+| source_url | string |  | Yes |
 
 #### HitTestingPayload
 
@@ -12841,51 +12841,57 @@ Request payload for bulk downloading documents as a zip archive.
 | query | string |  | Yes |
 | retrieval_model | [RetrievalModel](#retrievalmodel) |  | No |
 
+#### HitTestingQuery
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| content | string |  | Yes |
+
 #### HitTestingRecord
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| child_chunks | [ [HitTestingChildChunk](#hittestingchildchunk) ] |  | No |
-| files | [ [HitTestingFile](#hittestingfile) ] |  | No |
-| score | number |  | No |
-| segment | [HitTestingSegment](#hittestingsegment) |  | No |
-| summary | string |  | No |
-| tsne_position |  |  | No |
+| child_chunks | [ [HitTestingChildChunk](#hittestingchildchunk) ] |  | Yes |
+| files | [ [HitTestingFile](#hittestingfile) ] |  | Yes |
+| score | number |  | Yes |
+| segment | [HitTestingSegment](#hittestingsegment) |  | Yes |
+| summary | string |  | Yes |
+| tsne_position |  |  | Yes |
 
 #### HitTestingResponse
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| query | string |  | Yes |
-| records | [ [HitTestingRecord](#hittestingrecord) ] |  | No |
+| query | [HitTestingQuery](#hittestingquery) |  | Yes |
+| records | [ [HitTestingRecord](#hittestingrecord) ] |  | Yes |
 
 #### HitTestingSegment
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| answer | string |  | No |
-| completed_at | integer |  | No |
-| content | string |  | No |
-| created_at | integer |  | No |
-| created_by | string |  | No |
-| disabled_at | integer |  | No |
-| disabled_by | string |  | No |
-| document | [HitTestingDocument](#hittestingdocument) |  | No |
-| document_id | string |  | No |
-| enabled | boolean |  | No |
-| error | string |  | No |
-| hit_count | integer |  | No |
-| id | string |  | No |
-| index_node_hash | string |  | No |
-| index_node_id | string |  | No |
-| indexing_at | integer |  | No |
-| keywords | [ string ] |  | No |
-| position | integer |  | No |
-| sign_content | string |  | No |
-| status | string |  | No |
-| stopped_at | integer |  | No |
-| tokens | integer |  | No |
-| word_count | integer |  | No |
+| answer | string |  | Yes |
+| completed_at | integer |  | Yes |
+| content | string |  | Yes |
+| created_at | integer |  | Yes |
+| created_by | string |  | Yes |
+| disabled_at | integer |  | Yes |
+| disabled_by | string |  | Yes |
+| document | [HitTestingDocument](#hittestingdocument) |  | Yes |
+| document_id | string |  | Yes |
+| enabled | boolean |  | Yes |
+| error | string |  | Yes |
+| hit_count | integer |  | Yes |
+| id | string |  | Yes |
+| index_node_hash | string |  | Yes |
+| index_node_id | string |  | Yes |
+| indexing_at | integer |  | Yes |
+| keywords | [ string ] |  | Yes |
+| position | integer |  | Yes |
+| sign_content | string |  | Yes |
+| status | string |  | Yes |
+| stopped_at | integer |  | Yes |
+| tokens | integer |  | Yes |
+| word_count | integer |  | Yes |
 
 #### HumanInputContent
 
