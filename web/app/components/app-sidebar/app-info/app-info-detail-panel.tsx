@@ -14,8 +14,9 @@ import * as React from 'react'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import CardView from '@/app/(commonLayout)/app/(appDetailLayout)/[appId]/overview/card-view'
+import { useSelector as useAppContextWithSelector } from '@/context/app-context'
 import { AppModeEnum } from '@/types/app'
-import { getAppACLCapabilities } from '@/utils/permission'
+import { getAppACLCapabilities, hasPermission } from '@/utils/permission'
 import AppIcon from '../../base/app-icon'
 import { AppInfoDetailDrawer } from './app-info-detail-drawer'
 import { getAppModeLabel } from './app-mode-labels'
@@ -37,7 +38,9 @@ const AppInfoDetailPanel = ({
   exportCheck,
 }: AppInfoDetailPanelProps) => {
   const { t } = useTranslation()
+  const workspacePermissionKeys = useAppContextWithSelector(state => state.workspacePermissionKeys)
   const appACLCapabilities = useMemo(() => getAppACLCapabilities(appDetail.permission_keys), [appDetail.permission_keys])
+  const canCreateApp = hasPermission(workspacePermissionKeys, 'app.create')
 
   const primaryOperations = useMemo<Operation[]>(() => [
     ...(appACLCapabilities.canEdit
@@ -48,12 +51,14 @@ const AppInfoDetailPanel = ({
           onClick: () => openModal('edit'),
         }]
       : []),
-    {
-      id: 'duplicate',
-      title: t('duplicate', { ns: 'app' }),
-      icon: <RiFileCopy2Line />,
-      onClick: () => openModal('duplicate'),
-    },
+    ...(canCreateApp
+      ? [{
+          id: 'duplicate',
+          title: t('duplicate', { ns: 'app' }),
+          icon: <RiFileCopy2Line />,
+          onClick: () => openModal('duplicate'),
+        }]
+      : []),
     ...(appACLCapabilities.canImportExportDSL
       ? [{
           id: 'export',
@@ -62,7 +67,7 @@ const AppInfoDetailPanel = ({
           onClick: exportCheck,
         }]
       : []),
-  ], [appACLCapabilities, t, openModal, exportCheck])
+  ], [appACLCapabilities, canCreateApp, t, openModal, exportCheck])
 
   const secondaryOperations = useMemo<Operation[]>(() => [
     ...(appACLCapabilities.canImportExportDSL && (appDetail.mode === AppModeEnum.ADVANCED_CHAT || appDetail.mode === AppModeEnum.WORKFLOW)
