@@ -1,6 +1,7 @@
 import type { AgentNodeType } from '../types'
 import type { StrategyParamItem } from '@/app/components/plugins/types'
-import { act, renderHook, waitFor } from '@testing-library/react'
+import { act, waitFor } from '@testing-library/react'
+import { renderHookWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
 import { FormTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { BlockEnum, VarType as WorkflowVarType } from '@/app/components/workflow/types'
 import { VarType } from '../../tool/types'
@@ -123,6 +124,12 @@ const createData = (overrides: Partial<AgentNodeType> = {}): AgentNodeType => ({
   },
   meta: { version: '1.0.0' } as AgentNodeType['meta'],
   ...overrides,
+})
+
+const renderHook = <Result, Props = void>(
+  callback: (props: Props) => Result,
+) => renderHookWithSystemFeatures(callback, {
+  systemFeatures: { enable_marketplace: true },
 })
 
 describe('agent/use-config', () => {
