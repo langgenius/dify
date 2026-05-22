@@ -1,3 +1,4 @@
+import type { ButtonHTMLAttributes } from 'react'
 import type { NodeDefault } from '../../types'
 import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -63,7 +64,10 @@ describe('NodeSelector', () => {
       />,
     )
 
-    await user.click(screen.getByRole('button', { name: 'selector-closed' }))
+    const trigger = screen.getByRole('button', { name: 'selector-closed' })
+    expect(trigger.closest('[aria-haspopup="dialog"]')).toBe(trigger)
+
+    await user.click(trigger)
 
     const searchInput = screen.getByPlaceholderText('workflow.tabs.searchBlock')
     expect(screen.getByText('LLM')).toBeInTheDocument()
@@ -157,6 +161,34 @@ describe('NodeSelector', () => {
 
     await user.click(screen.getByRole('button', { name: 'open-from-shell' }))
 
+    expect(screen.getByPlaceholderText('workflow.tabs.searchBlock')).toBeInTheDocument()
+  })
+
+  it('can render a prop-forwarding button component as the popover root', async () => {
+    const user = userEvent.setup()
+
+    function ForwardingButtonTrigger(props: ButtonHTMLAttributes<HTMLButtonElement>) {
+      return (
+        <button type="button" data-testid="selector-root-trigger" {...props}>
+          open-selector-root
+        </button>
+      )
+    }
+
+    renderWorkflowComponent(
+      <NodeSelector
+        onSelect={vi.fn()}
+        blocks={[createBlock(BlockEnum.LLM, 'LLM')]}
+        availableBlocksTypes={[BlockEnum.LLM]}
+        renderTriggerAsButtonRoot
+        trigger={() => <ForwardingButtonTrigger />}
+      />,
+    )
+
+    const trigger = screen.getByTestId('selector-root-trigger')
+    await user.click(trigger)
+
+    expect(trigger.closest('[aria-haspopup="dialog"]')).toBe(trigger)
     expect(screen.getByPlaceholderText('workflow.tabs.searchBlock')).toBeInTheDocument()
   })
 })

@@ -33,11 +33,13 @@ import TipPopup from './tip-popup'
 
 type AddBlockProps = {
   renderTrigger?: (open: boolean) => React.ReactNode
+  renderTriggerAsButtonRoot?: boolean
   offset?: OffsetOptions
   onClose?: () => void
 }
 const AddBlock = ({
   renderTrigger,
+  renderTriggerAsButtonRoot,
   offset,
   onClose,
 }: AddBlockProps) => {
@@ -115,6 +117,7 @@ const AddBlock = ({
         crossAxis: -8,
       }}
       trigger={renderTrigger || renderTriggerElement}
+      renderTriggerAsButtonRoot={renderTriggerAsButtonRoot}
       popupClassName="min-w-[256px]!"
       availableBlocksTypes={availableNextBlocks}
       showStartTab={showStartTab}

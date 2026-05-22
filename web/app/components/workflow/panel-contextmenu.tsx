@@ -46,10 +46,12 @@ export function PanelContextmenu({
   const renderAddBlockTrigger = useCallback(() => {
     return (
       <ContextMenuItem
+        nativeButton
         closeOnClick={false}
+        render={<button type="button" />}
         className={cn(
           'w-[calc(100%-8px)]',
-          'justify-between gap-4 px-3 text-text-secondary',
+          'justify-between gap-4 border-0 bg-transparent px-3 text-left text-text-secondary',
         )}
       >
         {t('common.addBlock', { ns: 'workflow' })}
@@ -77,6 +79,7 @@ export function PanelContextmenu({
       <ContextMenuGroup>
         <AddBlock
           renderTrigger={renderAddBlockTrigger}
+          renderTriggerAsButtonRoot
           onClose={onClose}
           offset={{
             mainAxis: -36,
