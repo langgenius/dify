@@ -13,7 +13,7 @@ vi.mock('@/i18n-config/language', () => ({
 }))
 
 const mockIsCurrentWorkspaceManager = vi.fn(() => true)
-let mockWorkspacePermissionKeys: string[] = ['tool.manage']
+let mockWorkspacePermissionKeys: string[] = ['tool.manage', 'credential.manage']
 vi.mock('@/context/app-context', () => ({
   useAppContext: () => ({
     isCurrentWorkspaceManager: mockIsCurrentWorkspaceManager(),
@@ -165,7 +165,8 @@ describe('ProviderDetail', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
-    mockWorkspacePermissionKeys = ['tool.manage']
+    mockIsCurrentWorkspaceManager.mockReturnValue(true)
+    mockWorkspacePermissionKeys = ['tool.manage', 'credential.manage']
     mockFetchBuiltInToolList.mockResolvedValue([
       { name: 'tool-1', label: { en_US: 'Tool 1' }, description: { en_US: 'desc' }, parameters: [], labels: [], author: '', output_schema: {} },
       { name: 'tool-2', label: { en_US: 'Tool 2' }, description: { en_US: 'desc' }, parameters: [], labels: [], author: '', output_schema: {} },
@@ -413,6 +414,36 @@ describe('ProviderDetail', () => {
   })
 
   describe('BuiltIn Auth Flow', () => {
+    it('opens ConfigCredential when user has credential.manage but is not workspace manager', async () => {
+      mockIsCurrentWorkspaceManager.mockReturnValue(false)
+      mockWorkspacePermissionKeys = ['credential.manage']
+      render(
+        <ProviderDetail
+          collection={createMockCollection({ allow_delete: true, is_team_authorization: false })}
+          onHide={mockOnHide}
+          onRefreshData={mockOnRefreshData}
+        />,
+      )
+      await waitFor(() => {
+        expect(screen.getByText('tools.auth.unauthorized'))!.toBeInTheDocument()
+      })
+      fireEvent.click(screen.getByText('tools.auth.unauthorized'))
+      expect(screen.getByTestId('config-credential'))!.toBeInTheDocument()
+    })
+
+    it('keeps credential setup disabled when user lacks credential.manage', async () => {
+      mockWorkspacePermissionKeys = ['tool.manage']
+      render(
+        <ProviderDetail
+          collection={createMockCollection({ allow_delete: true, is_team_authorization: false })}
+          onHide={mockOnHide}
+          onRefreshData={mockOnRefreshData}
+        />,
+      )
+      const setupButton = await screen.findByRole('button', { name: 'tools.auth.unauthorized' })
+      expect(setupButton).toBeDisabled()
+    })
+
     it('opens ConfigCredential when clicking auth button for builtIn type', async () => {
       render(
         <ProviderDetail
@@ -471,6 +502,23 @@ describe('ProviderDetail', () => {
     })
 
     it('opens auth modal from Authorized button for builtIn type', async () => {
+      render(
+        <ProviderDetail
+          collection={createMockCollection({ allow_delete: true, is_team_authorization: true })}
+          onHide={mockOnHide}
+          onRefreshData={mockOnRefreshData}
+        />,
+      )
+      await waitFor(() => {
+        expect(screen.getByText('tools.auth.authorized'))!.toBeInTheDocument()
+      })
+      fireEvent.click(screen.getByText('tools.auth.authorized'))
+      expect(screen.getByTestId('config-credential'))!.toBeInTheDocument()
+    })
+
+    it('opens auth modal from Authorized button when user has credential.manage but is not workspace manager', async () => {
+      mockIsCurrentWorkspaceManager.mockReturnValue(false)
+      mockWorkspacePermissionKeys = ['credential.manage']
       render(
         <ProviderDetail
           collection={createMockCollection({ allow_delete: true, is_team_authorization: true })}

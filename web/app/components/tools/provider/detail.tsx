@@ -35,7 +35,7 @@ import Title from '@/app/components/plugins/card/base/title'
 import EditCustomToolModal from '@/app/components/tools/edit-custom-collection-modal'
 import ConfigCredential from '@/app/components/tools/setting/build-in/config-credentials'
 import { WorkflowToolDrawer } from '@/app/components/tools/workflow-tool'
-import { useAppContext, useSelector as useAppContextWithSelector } from '@/context/app-context'
+import { useSelector as useAppContextWithSelector } from '@/context/app-context'
 import { useLocale } from '@/context/i18n'
 import { useModalContext } from '@/context/modal-context'
 
@@ -79,9 +79,9 @@ const ProviderDetail = ({
   const isAuthed = collection.is_team_authorization
   const isBuiltIn = collection.type === CollectionType.builtIn
   const isModel = collection.type === CollectionType.model
-  const { isCurrentWorkspaceManager } = useAppContext()
   const workspacePermissionKeys = useAppContextWithSelector(state => state.workspacePermissionKeys)
   const canManageTools = hasPermission(workspacePermissionKeys, 'tool.manage')
+  const canManageCredentials = hasPermission(workspacePermissionKeys, 'credential.manage')
   const invalidateAllWorkflowTools = useInvalidateAllWorkflowTools()
   const [isDetailLoading, setIsDetailLoading] = useState(false)
 
@@ -341,7 +341,7 @@ const ProviderDetail = ({
                                   if (collection.type === CollectionType.builtIn || collection.type === CollectionType.model)
                                     showSettingAuthModal()
                                 }}
-                                disabled={!isCurrentWorkspaceManager}
+                                disabled={!canManageCredentials}
                               >
                                 <Indicator className="mr-2" color="green" />
                                 {t('auth.authorized', { ns: 'tools' })}
@@ -363,7 +363,7 @@ const ProviderDetail = ({
                                 if (collection.type === CollectionType.builtIn || collection.type === CollectionType.model)
                                   showSettingAuthModal()
                               }}
-                              disabled={!isCurrentWorkspaceManager}
+                              disabled={!canManageCredentials}
                             >
                               {t('auth.unauthorized', { ns: 'tools' })}
                             </Button>
