@@ -58,11 +58,24 @@ Utilities:
 
 ## Form contract
 
-Dify UI's form primitives are a Base UI composition layer for native form semantics, field accessibility, and design-system styling. They are intentionally not a form state-management framework. See the upstream [Base UI Form], [Base UI Field], and [Base UI Fieldset] docs for the underlying component contracts.
+Dify UI's form primitives are a Base UI composition layer for native form semantics, field accessibility, and design-system styling. They are intentionally not a form state-management framework. See the upstream [Base UI forms handbook], [Base UI Form], [Base UI Field], and [Base UI Fieldset] docs for the underlying component contracts.
 
 Use `Form` for the submit boundary. It renders a native `<form>`, preserves Enter-to-submit and submit-button behavior, and adds Base UI's `onFormSubmit`, `errors`, `actionsRef`, and `validationMode` APIs for structured values and consolidated field validation. Prefer it over a bare `<form>` when the form is composed with Dify UI fields.
 
-Use `FieldRoot` for each named field. A field must have a stable `name`, a visible `FieldLabel`, and either a `FieldControl` or another control that participates in the same Base UI field context. `FieldLabel`, `FieldDescription`, and `FieldError` provide the label and message relationships that screen readers need, while the Dify wrapper adds the default Form Input Set styling from the design system.
+Use `FieldRoot` for each named field. A field must have a stable `name`, a visible label, and either a `FieldControl` or another control that participates in the same Base UI field context. `FieldDescription` and `FieldError` provide the message relationships that screen readers need, while the Dify wrapper adds the default Form Input Set styling from the design system.
+
+Choose the label primitive by the control semantics:
+
+| Control shape                                                                 | Label pattern                                                                                                                             |
+| ----------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| Text-like inputs rendered by `FieldControl`                                   | `FieldRoot name="..."` + `FieldLabel` + `FieldControl`                                                                                    |
+| Input-based `Combobox`, `Autocomplete`, `Checkbox`, `Radio`, `Switch` fields  | `FieldRoot name="..."` + `FieldLabel` around or near the actual input/control                                                             |
+| Trigger-based `Select` fields                                                 | `FieldRoot name="..."` + `Select` + `SelectLabel` + `SelectTrigger`; use `SelectGroupLabel` only for option groups inside `SelectContent` |
+| Trigger-based `Combobox` fields with search input inside the popup            | `ComboboxLabel` names the trigger; popup search inputs need their own label or accessible name                                            |
+| Autocomplete option groups                                                    | `AutocompleteGroupLabel` only labels grouped suggestions inside `AutocompleteContent`; it is not a field label                            |
+| Slider fields                                                                 | `SliderLabel`; use `aria-label` on `SliderThumb` only when no visible label is rendered                                                   |
+| Checkbox groups, radio groups, or multi-control fields sharing one group name | `FieldsetRoot` + `FieldsetLegend`, with each option wrapped in `FieldItem` and its own label                                              |
+| Icon-only or visually unlabeled controls                                      | Put `aria-label` on the actual interactive control                                                                                        |
 
 Use `FieldsetRoot` and `FieldsetLegend` when one field is represented by a group of related controls, such as checkbox groups, radio groups, or multi-thumb sliders. Compose group controls with the Base UI pattern:
 
@@ -82,7 +95,7 @@ Use `FieldsetRoot` and `FieldsetLegend` when one field is represented by a group
 
 `FieldsetRoot` provides the group semantics and legend relationship. It does not own the interactive state of the grouped control. Pass `disabled`, `value`, `defaultValue`, and change handlers to the actual group primitive (`CheckboxGroup`, radio group, slider root, etc.) instead of relying on the fieldset wrapper to manage them.
 
-For complex business forms, keep state ownership outside these primitives. TanStack Form, zod, server validation, dialog reset behavior, and schema-driven rendering belong to the feature layer in `web/`; they should pass `name`, `invalid`, `dirty`, `touched`, `value`, `onValueChange`, and errors into these primitives rather than replacing the field semantics.
+For complex business forms, keep state ownership outside these primitives. TanStack Form, zod, server validation, dialog reset behavior, and schema-driven rendering belong to the feature layer in `web/`; they should pass `name`, `invalid`, `dirty`, `touched`, `value`, `onValueChange`, and errors into these primitives rather than replacing the field semantics. In this repo, `web/app/components/base/form` is the TanStack/schema runtime adapter; `packages/dify-ui` remains the primitive layer.
 
 Migration rule for `web/`: if a UI has a save/submit action, do not leave it as unrelated `Input` and `Button` pieces. Give it a real submit boundary with `Form` or a native `<form>`, attach visible field names through `FieldLabel`, expose helper/error text through `FieldDescription` / `FieldError`, and keep non-submit buttons as `type="button"`.
 
@@ -180,5 +193,6 @@ See `[AGENTS.md](./AGENTS.md)` for:
 [Base UI Form]: https://base-ui.com/react/components/form
 [Base UI Portal]: https://base-ui.com/react/overview/quick-start#portals
 [Base UI docs index]: https://base-ui.com/llms.txt
+[Base UI forms handbook]: https://base-ui.com/react/handbook/forms
 [Base UI]: https://base-ui.com/react
 [Overlay & portal contract]: #overlay--portal-contract
