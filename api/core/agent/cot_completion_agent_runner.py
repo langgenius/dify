@@ -1,3 +1,5 @@
+from typing import override
+
 import json
 
 from core.agent.cot_agent_runner import CotAgentRunner
@@ -51,6 +53,7 @@ class CotCompletionAgentRunner(CotAgentRunner):
 
         return historic_prompt
 
+    @override
     def _organize_prompt_messages(self) -> list[PromptMessage]:
         """
         Organize prompt messages

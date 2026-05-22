@@ -1,3 +1,5 @@
+from typing import override
+
 from textwrap import dedent
 
 from core.helper.code_executor.code_executor import CodeLanguage
@@ -6,10 +8,12 @@ from core.helper.code_executor.code_node_provider import CodeNodeProvider
 
 class Python3CodeProvider(CodeNodeProvider):
     @staticmethod
+    @override
     def get_language() -> str:
         return CodeLanguage.PYTHON3
 
     @classmethod
+    @override
     def get_default_code(cls) -> str:
         return dedent(
             """

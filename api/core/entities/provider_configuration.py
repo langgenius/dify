@@ -6,7 +6,7 @@ import re
 from collections import defaultdict
 from collections.abc import Iterator, Sequence
 from json import JSONDecodeError
-from typing import Any
+from typing import Any, override
 
 from pydantic import BaseModel, ConfigDict, Field, PrivateAttr, model_validator
 from sqlalchemy import func, select
@@ -1889,6 +1889,7 @@ class ProviderConfigurations(BaseModel):
             key = str(ModelProviderID(key))
         return key in self.configurations
 
+    @override
     def __iter__(self):
         # Return an iterator of (key, value) tuples to match BaseModel's __iter__
         yield from self.configurations.items()

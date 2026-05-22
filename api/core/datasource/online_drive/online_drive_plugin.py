@@ -1,3 +1,5 @@
+from typing import override
+
 from collections.abc import Generator
 
 from core.datasource.__base.datasource_plugin import DatasourcePlugin
@@ -67,5 +69,6 @@ class OnlineDriveDatasourcePlugin(DatasourcePlugin):
             provider_type=provider_type,
         )
 
+    @override
     def datasource_provider_type(self) -> str:
         return DatasourceProviderType.ONLINE_DRIVE

@@ -1,3 +1,5 @@
+from typing import override
+
 from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
 from core.app.apps.exc import GenerateTaskStoppedError
 from core.app.entities.app_invoke_entities import InvokeFrom
@@ -19,6 +21,7 @@ class PipelineQueueManager(AppQueueManager):
 
         self._app_mode = app_mode
 
+    @override
     def _publish(self, event: AppQueueEvent, pub_from: PublishFrom) -> None:
         """
         Publish event to queue

@@ -1,6 +1,6 @@
 import queue
 from datetime import timedelta
-from typing import Any, Protocol
+from typing import Any, Protocol, override
 
 from pydantic import AnyUrl, TypeAdapter
 
@@ -159,6 +159,7 @@ class ClientSession(
             types.EmptyResult,
         )
 
+    @override
     def send_progress_notification(self, progress_token: str | int, progress: float, total: float | None = None):
         """Send a progress notification."""
         self.send_notification(
@@ -326,6 +327,7 @@ class ClientSession(
             )
         )
 
+    @override
     def _received_request(self, responder: RequestResponder[types.ServerRequest, types.ClientResult]):
         ctx = RequestContext[ClientSession, Any](
             request_id=responder.request_id,
@@ -351,6 +353,7 @@ class ClientSession(
                 with responder:
                     return responder.respond(types.ClientResult(root=types.EmptyResult()))
 
+    @override
     def _handle_incoming(
         self,
         req: RequestResponder[types.ServerRequest, types.ClientResult] | types.ServerNotification | Exception,
@@ -358,6 +361,7 @@ class ClientSession(
         """Handle incoming messages by forwarding to the message handler."""
         self._message_handler(req)
 
+    @override
     def _received_notification(self, notification: types.ServerNotification):
         """Handle notifications from the server."""
         # Process specific notification types

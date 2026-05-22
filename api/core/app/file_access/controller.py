@@ -1,3 +1,5 @@
+from typing import override
+
 from __future__ import annotations
 
 from collections.abc import Callable
@@ -30,9 +32,11 @@ class DatabaseFileAccessController(FileAccessControllerProtocol):
     ) -> None:
         self._scope_getter = scope_getter
 
+    @override
     def current_scope(self) -> FileAccessScope | None:
         return self._scope_getter()
 
+    @override
     def apply_upload_file_filters(
         self,
         stmt: Select[tuple[UploadFile]],
@@ -52,6 +56,7 @@ class DatabaseFileAccessController(FileAccessControllerProtocol):
             UploadFile.created_by == resolved_scope.user_id,
         )
 
+    @override
     def apply_tool_file_filters(
         self,
         stmt: Select[tuple[ToolFile]],
@@ -68,6 +73,7 @@ class DatabaseFileAccessController(FileAccessControllerProtocol):
 
         return scoped_stmt.where(ToolFile.user_id == resolved_scope.user_id)
 
+    @override
     def get_upload_file(
         self,
         *,
@@ -85,6 +91,7 @@ class DatabaseFileAccessController(FileAccessControllerProtocol):
         )
         return session.scalar(stmt)
 
+    @override
     def get_tool_file(
         self,
         *,

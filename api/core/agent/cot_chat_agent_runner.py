@@ -1,3 +1,5 @@
+from typing import override
+
 import json
 
 from core.agent.cot_agent_runner import CotAgentRunner
@@ -66,6 +68,7 @@ class CotChatAgentRunner(CotAgentRunner):
 
         return prompt_messages
 
+    @override
     def _organize_prompt_messages(self) -> list[PromptMessage]:
         """
         Organize

@@ -2,7 +2,7 @@ import base64
 import logging
 import time
 from abc import ABC, abstractmethod
-from typing import Any
+from typing import Any, override
 
 from sqlalchemy import select
 
@@ -72,15 +72,19 @@ class _LazyEmbeddings(Embeddings):
             self._real = CacheEmbedding(embedding_model)
         return self._real
 
+    @override
     def embed_documents(self, texts: list[str]) -> list[list[float]]:
         return self._ensure().embed_documents(texts)
 
+    @override
     def embed_multimodal_documents(self, multimodel_documents: list[dict[str, Any]]) -> list[list[float]]:
         return self._ensure().embed_multimodal_documents(multimodel_documents)
 
+    @override
     def embed_query(self, text: str) -> list[float]:
         return self._ensure().embed_query(text)
 
+    @override
     def embed_multimodal_query(self, multimodel_document: dict[str, Any]) -> list[float]:
         return self._ensure().embed_multimodal_query(multimodel_document)
 
