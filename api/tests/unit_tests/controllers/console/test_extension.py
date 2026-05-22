@@ -11,7 +11,7 @@ from flask.views import MethodView as FlaskMethodView
 
 _NEEDS_METHOD_VIEW_CLEANUP = False
 if not hasattr(builtins, "MethodView"):
-    builtins.MethodView = FlaskMethodView
+    builtins.__dict__["MethodView"] = FlaskMethodView
     _NEEDS_METHOD_VIEW_CLEANUP = True
 
 from constants import HIDDEN_VALUE
@@ -22,7 +22,7 @@ from controllers.console.extension import (
 )
 
 if _NEEDS_METHOD_VIEW_CLEANUP:
-    del builtins.MethodView
+    del builtins.__dict__["MethodView"]
 from models.account import AccountStatus
 from models.api_based_extension import APIBasedExtension
 
@@ -242,5 +242,5 @@ def test_api_based_extension_detail_delete_removes_extension(app: Flask, monkeyp
         response, status = APIBasedExtensionDetailAPI().delete(extension_id)
 
     delete_mock.assert_called_once_with(existing_extension)
-    assert response == {"result": "success"}
     assert status == 204
+    assert response == ""

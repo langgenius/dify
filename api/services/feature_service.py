@@ -6,7 +6,7 @@ from configs import dify_config
 from constants.dsl_version import CURRENT_APP_DSL_VERSION
 from enums.cloud_plan import CloudPlan
 from enums.hosted_provider import HostedTrialProvider
-from services.billing_service import BillingService
+from services.billing_service import BillingInfo, BillingService
 from services.enterprise.enterprise_service import EnterpriseService
 
 
@@ -186,13 +186,17 @@ class SystemFeatureModel(FeatureResponseModel):
 
 class FeatureService:
     @classmethod
-    def get_features(cls, tenant_id: str) -> FeatureModel:
+    def get_features(cls, tenant_id: str, exclude_vector_space: bool = False) -> FeatureModel:
         features = FeatureModel()
 
         cls._fulfill_params_from_env(features)
 
         if dify_config.BILLING_ENABLED and tenant_id:
-            cls._fulfill_params_from_billing_api(features, tenant_id)
+            cls._fulfill_params_from_billing_api(
+                features,
+                tenant_id,
+                exclude_vector_space=exclude_vector_space,
+            )
 
         if dify_config.ENTERPRISE_ENABLED:
             features.webapp_copyright_enabled = True
@@ -205,6 +209,18 @@ class FeatureService:
         )
 
         return features
+
+    @classmethod
+    def get_vector_space(cls, tenant_id: str) -> LimitationModel:
+        vector_space = LimitationModel(size=0, limit=5)
+        if dify_config.BILLING_ENABLED and tenant_id:
+            billing_vector_space = BillingService.get_vector_space(tenant_id)
+            # NOTE: billing API returns vector_space.size as float (e.g. 0.0),
+            # but feature API keeps LimitationModel.size as int for compatibility.
+            vector_space.size = int(billing_vector_space["size"])
+            vector_space.limit = billing_vector_space["limit"]
+
+        return vector_space
 
     @classmethod
     def get_knowledge_rate_limit(cls, tenant_id: str):
@@ -289,8 +305,16 @@ class FeatureService:
             features.workspace_members.enabled = workspace_info["WorkspaceMembers"]["enabled"]
 
     @classmethod
-    def _fulfill_params_from_billing_api(cls, features: FeatureModel, tenant_id: str):
-        billing_info = BillingService.get_info(tenant_id)
+    def _fulfill_params_from_billing_api(
+        cls,
+        features: FeatureModel,
+        tenant_id: str,
+        exclude_vector_space: bool = False,
+    ):
+        if exclude_vector_space:
+            billing_info = BillingService.get_info(tenant_id, exclude_vector_space=True)
+        else:
+            billing_info = BillingService.get_info(tenant_id)
 
         features_usage_info = BillingService.get_quota_info(tenant_id)
 
@@ -322,12 +346,8 @@ class FeatureService:
             features.apps.size = billing_info["apps"]["size"]
             features.apps.limit = billing_info["apps"]["limit"]
 
-        if "vector_space" in billing_info:
-            # NOTE (hj24): billing API returns vector_space.size as float (e.g. 0.0)
-            # but LimitationModel.size is int; truncate here for compatibility
-            features.vector_space.size = int(billing_info["vector_space"]["size"])
-            # NOTE END
-            features.vector_space.limit = billing_info["vector_space"]["limit"]
+        if not exclude_vector_space:
+            cls._fulfill_vector_space_from_billing_info(features.vector_space, billing_info)
 
         if "documents_upload_quota" in billing_info:
             features.documents_upload_quota.size = billing_info["documents_upload_quota"]["size"]
@@ -358,6 +378,16 @@ class FeatureService:
 
         if "next_credit_reset_date" in billing_info:
             features.next_credit_reset_date = billing_info["next_credit_reset_date"]
+
+    @classmethod
+    def _fulfill_vector_space_from_billing_info(cls, vector_space: LimitationModel, billing_info: BillingInfo):
+        if "vector_space" not in billing_info:
+            return
+
+        # NOTE: billing API returns vector_space.size as float (e.g. 0.0),
+        # but feature API keeps LimitationModel.size as int for compatibility.
+        vector_space.size = int(billing_info["vector_space"]["size"])
+        vector_space.limit = billing_info["vector_space"]["limit"]
 
     @classmethod
     def _fulfill_params_from_enterprise(cls, features: SystemFeatureModel, is_authenticated: bool = False):

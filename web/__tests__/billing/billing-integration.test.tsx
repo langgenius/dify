@@ -53,6 +53,9 @@ vi.mock('@/service/use-billing', () => ({
     refetch: mockRefetch,
   }),
   useBindPartnerStackInfo: () => ({ mutateAsync: vi.fn() }),
+  useCurrentPlanVectorSpace: () => ({
+    data: undefined,
+  }),
 }))
 
 vi.mock('@/service/use-education', () => ({

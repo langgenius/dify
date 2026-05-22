@@ -311,7 +311,7 @@ class WorkflowCommentDetailApi(Resource):
             user_id=current_user.id,
         )
 
-        return {"result": "success"}, 204
+        return "", 204
 
 
 @console_ns.route("/apps/<uuid:app_id>/workflow/comments/<string:comment_id>/resolve")
@@ -431,7 +431,7 @@ class WorkflowCommentReplyDetailApi(Resource):
             user_id=current_user.id,
         )
 
-        return {"result": "success"}, 204
+        return "", 204
 
 
 @console_ns.route("/apps/<uuid:app_id>/workflow/comments/mention-users")

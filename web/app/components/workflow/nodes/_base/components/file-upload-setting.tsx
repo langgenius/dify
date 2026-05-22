@@ -161,6 +161,7 @@ const FileUploadSetting: FC<Props> = ({
             </div>
 
             <InputNumberWithSlider
+              label={t('variableConfig.maxNumberOfUploads', { ns: 'appDebug' })!}
               value={max_length}
               min={1}
               max={maxFileUploadLimit}

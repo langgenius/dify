@@ -504,7 +504,7 @@ class DatasetDocumentListApi(Resource):
         except services.errors.document.DocumentIndexingError:
             raise DocumentIndexingError("Cannot delete document during indexing.")
 
-        return {"result": "success"}, 204
+        return "", 204
 
 
 @console_ns.route("/datasets/init")
@@ -966,7 +966,7 @@ class DocumentApi(DocumentResource):
         except services.errors.document.DocumentIndexingError:
             raise DocumentIndexingError("Cannot delete document during indexing.")
 
-        return {"result": "success"}, 204
+        return "", 204
 
 
 @console_ns.route("/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/download")
@@ -1204,7 +1204,7 @@ class DocumentPauseApi(DocumentResource):
         except services.errors.document.DocumentIndexingError:
             raise DocumentIndexingError("Cannot pause completed document.")
 
-        return {"result": "success"}, 204
+        return "", 204
 
 
 @console_ns.route("/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/processing/resume")
@@ -1236,7 +1236,7 @@ class DocumentRecoverApi(DocumentResource):
         except services.errors.document.DocumentIndexingError:
             raise DocumentIndexingError("Document is not in paused status.")
 
-        return {"result": "success"}, 204
+        return "", 204
 
 
 @console_ns.route("/datasets/<uuid:dataset_id>/retry")
@@ -1279,7 +1279,7 @@ class DocumentRetryApi(DocumentResource):
         # retry document
         DocumentService.retry_document(dataset_id, retry_documents)
 
-        return {"result": "success"}, 204
+        return "", 204
 
 
 @console_ns.route("/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/rename")

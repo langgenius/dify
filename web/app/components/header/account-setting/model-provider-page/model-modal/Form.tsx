@@ -17,7 +17,7 @@ import { FieldItem, FieldLabel, FieldRoot } from '@langgenius/dify-ui/field'
 import { FieldsetLegend, FieldsetRoot } from '@langgenius/dify-ui/fieldset'
 import { Radio } from '@langgenius/dify-ui/radio'
 import { RadioGroup } from '@langgenius/dify-ui/radio-group'
-import { Select, SelectContent, SelectItem, SelectItemIndicator, SelectItemText, SelectTrigger } from '@langgenius/dify-ui/select'
+import { Select, SelectContent, SelectItem, SelectItemIndicator, SelectItemText, SelectLabel, SelectTrigger } from '@langgenius/dify-ui/select'
 import { useCallback, useState } from 'react'
 import { Infotip } from '@/app/components/base/infotip'
 import { AppSelector } from '@/app/components/plugins/plugin-detail-panel/app-selector'
@@ -293,11 +293,12 @@ function Form<
         ? formSchema.default
         : value[variable]
       const selectedOption = filteredOptions.find(option => option.value === currentValue)
+      const translatedLabel = label[language] || label.en_US
 
       return (
         <div key={variable} className={cn(itemClassName, 'py-3')}>
           <div className={cn(fieldLabelClassName, 'flex items-center py-2 system-sm-semibold text-text-secondary')}>
-            {label[language] || label.en_US}
+            {translatedLabel}
 
             {required && (
               <span className="ml-1 text-red-500">*</span>
@@ -313,6 +314,7 @@ function Form<
               handleFormChange(variable, nextValue)
             }}
           >
+            <SelectLabel className="sr-only">{translatedLabel}</SelectLabel>
             <SelectTrigger size="medium" className={cn(inputClassName)}>
               {selectedOption?.name ?? placeholder?.[language] ?? placeholder?.en_US}
             </SelectTrigger>

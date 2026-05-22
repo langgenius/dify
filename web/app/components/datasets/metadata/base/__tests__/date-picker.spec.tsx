@@ -92,6 +92,21 @@ describe('WrappedDatePicker', () => {
       )
       expect(screen.getByRole('button', { name: 'common.operation.clear' })).toBeInTheDocument()
     })
+
+    it('should include the field label in the trigger accessible name', () => {
+      const handleChange = vi.fn()
+      render(<WrappedDatePicker label="Metadata field" onChange={handleChange} />)
+
+      expect(screen.getByRole('button', { name: 'Metadata field: dataset.metadata.chooseTime' })).toBeInTheDocument()
+    })
+
+    it('should include the field label in the clear button accessible name', () => {
+      const handleChange = vi.fn()
+      const timestamp = 1609459200
+      render(<WrappedDatePicker label="Metadata field" value={timestamp} onChange={handleChange} />)
+
+      expect(screen.getByRole('button', { name: 'Metadata field: common.operation.clear' })).toBeInTheDocument()
+    })
   })
 
   describe('Props', () => {

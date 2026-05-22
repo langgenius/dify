@@ -4,9 +4,9 @@ import {
   Select,
   SelectContent,
   SelectGroup,
+  SelectGroupLabel,
   SelectItem,
   SelectItemText,
-  SelectLabel,
   SelectTrigger,
 } from '@langgenius/dify-ui/select'
 import { toast } from '@langgenius/dify-ui/toast'
@@ -50,9 +50,9 @@ export const WorkplaceSelectorContent = memo(({
   return (
     <SelectContent popupClassName={popupClassName}>
       <SelectGroup>
-        <SelectLabel>
+        <SelectGroupLabel>
           {t('userProfile.workspace', { ns: 'common' })}
-        </SelectLabel>
+        </SelectGroupLabel>
         {workspaces.map(workspace => (
           <WorkplaceSelectorItem key={workspace.id} workspace={workspace} />
         ))}

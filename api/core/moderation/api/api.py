@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, override
 
 from pydantic import BaseModel, Field
 from sqlalchemy import select
@@ -25,6 +25,7 @@ class ApiModeration(Moderation):
     name: str = "api"
 
     @classmethod
+    @override
     def validate_config(cls, tenant_id: str, config: dict[str, Any]):
         """
         Validate the incoming form config data.
@@ -43,6 +44,7 @@ class ApiModeration(Moderation):
         if not extension:
             raise ValueError("API-based Extension not found. Please check it again.")
 
+    @override
     def moderation_for_inputs(self, inputs: dict[str, Any], query: str = "") -> ModerationInputsResult:
         flagged = False
         preset_response = ""
@@ -59,6 +61,7 @@ class ApiModeration(Moderation):
             flagged=flagged, action=ModerationAction.DIRECT_OUTPUT, preset_response=preset_response
         )
 
+    @override
     def moderation_for_outputs(self, text: str) -> ModerationOutputsResult:
         flagged = False
         preset_response = ""

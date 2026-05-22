@@ -48,6 +48,7 @@ vi.mock('@langgenius/dify-ui/select', async () => {
         <div>{children}</div>
       </SelectContext.Provider>
     ),
+    SelectLabel: () => null,
     SelectTrigger: ({ children, className }: { children: React.ReactNode, className?: string }) => {
       const context = React.useContext(SelectContext)
       return (
