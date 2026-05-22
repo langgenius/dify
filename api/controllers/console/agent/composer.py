@@ -1,5 +1,6 @@
-from flask_restx import Resource
 from typing import override
+
+from flask_restx import Resource
 
 from controllers.common.schema import register_schema_models
 from controllers.console import console_ns
