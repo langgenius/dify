@@ -42,6 +42,17 @@ export const zAnnotationReplyActionPayload = z.object({
 })
 
 /**
+ * AppInfoResponse
+ */
+export const zAppInfoResponse = z.object({
+  author_name: z.string().nullable(),
+  description: z.string().nullable(),
+  mode: z.string(),
+  name: z.string(),
+  tags: z.array(z.string()),
+})
+
+/**
  * ChatRequestPayload
  */
 export const zChatRequestPayload = z.object({
@@ -199,6 +210,55 @@ export const zDatasetListQuery = z.object({
 })
 
 /**
+ * DatasetMetadataActionResponse
+ */
+export const zDatasetMetadataActionResponse = z.object({
+  result: z.string(),
+})
+
+/**
+ * DatasetMetadataBuiltInFieldResponse
+ */
+export const zDatasetMetadataBuiltInFieldResponse = z.object({
+  name: z.string(),
+  type: z.string(),
+})
+
+/**
+ * DatasetMetadataBuiltInFieldsResponse
+ */
+export const zDatasetMetadataBuiltInFieldsResponse = z.object({
+  fields: z.array(zDatasetMetadataBuiltInFieldResponse),
+})
+
+/**
+ * DatasetMetadataListItemResponse
+ */
+export const zDatasetMetadataListItemResponse = z.object({
+  count: z.int().optional().default(0),
+  id: z.string(),
+  name: z.string(),
+  type: z.string(),
+})
+
+/**
+ * DatasetMetadataListResponse
+ */
+export const zDatasetMetadataListResponse = z.object({
+  built_in_field_enabled: z.boolean(),
+  doc_metadata: z.array(zDatasetMetadataListItemResponse),
+})
+
+/**
+ * DatasetMetadataResponse
+ */
+export const zDatasetMetadataResponse = z.object({
+  id: z.string(),
+  name: z.string(),
+  type: z.string(),
+})
+
+/**
  * DatasetPermissionEnum
  */
 export const zDatasetPermissionEnum = z.enum(['all_team_members', 'only_me', 'partial_members'])
@@ -230,6 +290,28 @@ export const zDocumentListQuery = z.object({
   limit: z.int().optional().default(20),
   page: z.int().optional().default(1),
   status: z.string().nullish(),
+})
+
+/**
+ * EndUserDetail
+ *
+ * Full EndUser record for API responses.
+ *
+ * Note: The SQLAlchemy model defines an `is_anonymous` property for Flask-Login semantics
+ * (always False). The database column is exposed as `_is_anonymous`, so this DTO maps
+ * `is_anonymous` from `_is_anonymous` to return the stored value.
+ */
+export const zEndUserDetail = z.object({
+  app_id: z.string().nullish(),
+  created_at: z.iso.datetime(),
+  external_user_id: z.string().nullish(),
+  id: z.string(),
+  is_anonymous: z.boolean(),
+  name: z.string().nullish(),
+  session_id: z.string(),
+  tenant_id: z.string(),
+  type: z.string(),
+  updated_at: z.iso.datetime(),
 })
 
 /**
@@ -265,6 +347,15 @@ export const zFileResponse = z.object({
   source_url: z.string().nullish(),
   tenant_id: z.string().nullish(),
   user_id: z.string().nullish(),
+})
+
+/**
+ * IndexInfoResponse
+ */
+export const zIndexInfoResponse = z.object({
+  api_version: z.string(),
+  server_version: z.string(),
+  welcome: z.string(),
 })
 
 export const zJsonValue = z.unknown()
@@ -375,6 +466,13 @@ export const zRerankingModel = z.object({
 })
 
 /**
+ * ResultResponse
+ */
+export const zResultResponse = z.object({
+  result: z.string(),
+})
+
+/**
  * RetrievalMethod
  */
 export const zRetrievalMethod = z.enum([
@@ -466,6 +564,41 @@ export const zSimpleEndUser = z.object({
 })
 
 /**
+ * SimpleResultResponse
+ */
+export const zSimpleResultResponse = z.object({
+  result: z.string(),
+})
+
+/**
+ * SimpleResultStringListResponse
+ */
+export const zSimpleResultStringListResponse = z.object({
+  data: z.array(z.string()),
+  result: z.string(),
+})
+
+/**
+ * Site
+ */
+export const zSite = z.object({
+  chat_color_theme: z.string().nullish(),
+  chat_color_theme_inverted: z.boolean(),
+  copyright: z.string().nullish(),
+  custom_disclaimer: z.string().nullish(),
+  default_language: z.string(),
+  description: z.string().nullish(),
+  icon: z.string().nullish(),
+  icon_background: z.string().nullish(),
+  icon_type: z.string().nullish(),
+  icon_url: z.string().readonly().nullable(),
+  privacy_policy: z.string().nullish(),
+  show_workflow_steps: z.boolean(),
+  title: z.string(),
+  use_icon_as_answer_icon: z.boolean(),
+})
+
+/**
  * TagBindingPayload
  */
 export const zTagBindingPayload = z.object({
@@ -514,6 +647,13 @@ export const zTextToAudioPayload = z.object({
   streaming: z.boolean().nullish(),
   text: z.string().nullish(),
   voice: z.string().nullish(),
+})
+
+/**
+ * UrlResponse
+ */
+export const zUrlResponse = z.object({
+  url: z.string(),
 })
 
 /**
@@ -711,9 +851,28 @@ export const zWorkflowRunResponse = z.object({
 })
 
 /**
+ * Site
+ */
+export const zSiteWritable = z.object({
+  chat_color_theme: z.string().nullish(),
+  chat_color_theme_inverted: z.boolean(),
+  copyright: z.string().nullish(),
+  custom_disclaimer: z.string().nullish(),
+  default_language: z.string(),
+  description: z.string().nullish(),
+  icon: z.string().nullish(),
+  icon_background: z.string().nullish(),
+  icon_type: z.string().nullish(),
+  privacy_policy: z.string().nullish(),
+  show_workflow_steps: z.boolean(),
+  title: z.string(),
+  use_icon_as_answer_icon: z.boolean(),
+})
+
+/**
  * Success
  */
-export const zGetRootResponse = z.record(z.string(), z.unknown())
+export const zGetRootResponse = zIndexInfoResponse
 
 export const zGetAppFeedbacksQuery = z.object({
   limit: z.int().gte(1).lte(101).optional().default(20),
@@ -800,7 +959,7 @@ export const zPostChatMessagesByTaskIdStopPath = z.object({
 /**
  * Task stopped successfully
  */
-export const zPostChatMessagesByTaskIdStopResponse = z.record(z.string(), z.unknown())
+export const zPostChatMessagesByTaskIdStopResponse = zSimpleResultResponse
 
 export const zPostCompletionMessagesBody = zCompletionRequestPayload
 
@@ -816,7 +975,7 @@ export const zPostCompletionMessagesByTaskIdStopPath = z.object({
 /**
  * Task stopped successfully
  */
-export const zPostCompletionMessagesByTaskIdStopResponse = z.record(z.string(), z.unknown())
+export const zPostCompletionMessagesByTaskIdStopResponse = zSimpleResultResponse
 
 export const zGetConversationsQuery = z.object({
   last_id: z.string().nullish(),
@@ -1050,7 +1209,7 @@ export const zPostDatasetsByDatasetIdDocumentsMetadataPath = z.object({
 /**
  * Documents metadata updated successfully
  */
-export const zPostDatasetsByDatasetIdDocumentsMetadataResponse = z.record(z.string(), z.unknown())
+export const zPostDatasetsByDatasetIdDocumentsMetadataResponse = zDatasetMetadataActionResponse
 
 export const zPatchDatasetsByDatasetIdDocumentsStatusByActionPath = z.object({
   action: z.string(),
@@ -1060,10 +1219,7 @@ export const zPatchDatasetsByDatasetIdDocumentsStatusByActionPath = z.object({
 /**
  * Document status updated successfully
  */
-export const zPatchDatasetsByDatasetIdDocumentsStatusByActionResponse = z.record(
-  z.string(),
-  z.unknown(),
-)
+export const zPatchDatasetsByDatasetIdDocumentsStatusByActionResponse = zSimpleResultResponse
 
 export const zGetDatasetsByDatasetIdDocumentsByBatchIndexingStatusPath = z.object({
   batch: z.string(),
@@ -1125,10 +1281,7 @@ export const zGetDatasetsByDatasetIdDocumentsByDocumentIdDownloadPath = z.object
 /**
  * Download URL generated successfully
  */
-export const zGetDatasetsByDatasetIdDocumentsByDocumentIdDownloadResponse = z.record(
-  z.string(),
-  z.unknown(),
-)
+export const zGetDatasetsByDatasetIdDocumentsByDocumentIdDownloadResponse = zUrlResponse
 
 export const zGetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsPath = z.object({
   dataset_id: z.string(),
@@ -1349,7 +1502,7 @@ export const zGetDatasetsByDatasetIdMetadataPath = z.object({
 /**
  * Metadata retrieved successfully
  */
-export const zGetDatasetsByDatasetIdMetadataResponse = z.record(z.string(), z.unknown())
+export const zGetDatasetsByDatasetIdMetadataResponse = zDatasetMetadataListResponse
 
 export const zPostDatasetsByDatasetIdMetadataBody = zMetadataArgs
 
@@ -1360,7 +1513,7 @@ export const zPostDatasetsByDatasetIdMetadataPath = z.object({
 /**
  * Metadata created successfully
  */
-export const zPostDatasetsByDatasetIdMetadataResponse = z.record(z.string(), z.unknown())
+export const zPostDatasetsByDatasetIdMetadataResponse = zDatasetMetadataResponse
 
 export const zGetDatasetsByDatasetIdMetadataBuiltInPath = z.object({
   dataset_id: z.string(),
@@ -1369,7 +1522,7 @@ export const zGetDatasetsByDatasetIdMetadataBuiltInPath = z.object({
 /**
  * Built-in fields retrieved successfully
  */
-export const zGetDatasetsByDatasetIdMetadataBuiltInResponse = z.record(z.string(), z.unknown())
+export const zGetDatasetsByDatasetIdMetadataBuiltInResponse = zDatasetMetadataBuiltInFieldsResponse
 
 export const zPostDatasetsByDatasetIdMetadataBuiltInByActionPath = z.object({
   action: z.string(),
@@ -1379,10 +1532,8 @@ export const zPostDatasetsByDatasetIdMetadataBuiltInByActionPath = z.object({
 /**
  * Action completed successfully
  */
-export const zPostDatasetsByDatasetIdMetadataBuiltInByActionResponse = z.record(
-  z.string(),
-  z.unknown(),
-)
+export const zPostDatasetsByDatasetIdMetadataBuiltInByActionResponse
+  = zDatasetMetadataActionResponse
 
 export const zDeleteDatasetsByDatasetIdMetadataByMetadataIdPath = z.object({
   dataset_id: z.string(),
@@ -1407,10 +1558,7 @@ export const zPatchDatasetsByDatasetIdMetadataByMetadataIdPath = z.object({
 /**
  * Metadata updated successfully
  */
-export const zPatchDatasetsByDatasetIdMetadataByMetadataIdResponse = z.record(
-  z.string(),
-  z.unknown(),
-)
+export const zPatchDatasetsByDatasetIdMetadataByMetadataIdResponse = zDatasetMetadataResponse
 
 export const zGetDatasetsByDatasetIdPipelineDatasourcePluginsPath = z.object({
   dataset_id: z.string(),
@@ -1477,7 +1625,7 @@ export const zGetEndUsersByEndUserIdPath = z.object({
 /**
  * End user retrieved successfully
  */
-export const zGetEndUsersByEndUserIdResponse = z.record(z.string(), z.unknown())
+export const zGetEndUsersByEndUserIdResponse = zEndUserDetail
 
 /**
  * File uploaded successfully
@@ -1520,7 +1668,7 @@ export const zPostFormHumanInputByFormTokenResponse = z.record(z.string(), z.unk
 /**
  * Application info retrieved successfully
  */
-export const zGetInfoResponse = z.record(z.string(), z.unknown())
+export const zGetInfoResponse = zAppInfoResponse
 
 export const zGetMessagesQuery = z.object({
   conversation_id: z.string(),
@@ -1542,7 +1690,7 @@ export const zPostMessagesByMessageIdFeedbacksPath = z.object({
 /**
  * Feedback submitted successfully
  */
-export const zPostMessagesByMessageIdFeedbacksResponse = z.record(z.string(), z.unknown())
+export const zPostMessagesByMessageIdFeedbacksResponse = zResultResponse
 
 export const zGetMessagesByMessageIdSuggestedPath = z.object({
   message_id: z.string(),
@@ -1551,7 +1699,7 @@ export const zGetMessagesByMessageIdSuggestedPath = z.object({
 /**
  * Suggested questions retrieved successfully
  */
-export const zGetMessagesByMessageIdSuggestedResponse = z.record(z.string(), z.unknown())
+export const zGetMessagesByMessageIdSuggestedResponse = zSimpleResultStringListResponse
 
 /**
  * Metadata retrieved successfully
@@ -1566,7 +1714,7 @@ export const zGetParametersResponse = z.record(z.string(), z.unknown())
 /**
  * Site configuration retrieved successfully
  */
-export const zGetSiteResponse = z.record(z.string(), z.unknown())
+export const zGetSiteResponse = zSite
 
 export const zPostTextToAudioBody = zTextToAudioPayload
 
@@ -1629,7 +1777,7 @@ export const zPostWorkflowsTasksByTaskIdStopPath = z.object({
 /**
  * Task stopped successfully
  */
-export const zPostWorkflowsTasksByTaskIdStopResponse = z.record(z.string(), z.unknown())
+export const zPostWorkflowsTasksByTaskIdStopResponse = zSimpleResultResponse
 
 export const zPostWorkflowsByWorkflowIdRunBody = zWorkflowRunPayload
 

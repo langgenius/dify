@@ -80,11 +80,20 @@ type ApiReadinessSurfaceStats = {
   total: number
 }
 
+type ApiSurface = 'console' | 'service' | 'web'
+
+type ApiOperationContext = {
+  method: string
+  routePath: string
+  runtimeBodyRequired: boolean
+}
+
 const currentDir = path.dirname(fileURLToPath(import.meta.url))
 const apiOpenApiDir = path.resolve(currentDir, 'openapi')
-const apiReadinessStatsPath = path.resolve(currentDir, 'generated/api/readiness.json')
+const apiControllersDir = path.resolve(currentDir, '../../api/controllers')
 
 const operationMethods = new Set(['delete', 'get', 'patch', 'post', 'put'])
+const requestBodyMethods = new Set(['delete', 'patch', 'post', 'put'])
 const noBodyResponseStatuses = new Set(['204', '205', '304'])
 
 const apiSpecs: ApiSpec[] = [
@@ -180,6 +189,174 @@ const readApiSwagger = (filename: string): SwaggerDocument => {
 const clone = <T>(value: T): T => {
   return JSON.parse(JSON.stringify(value)) as T
 }
+
+const apiOperationKey = (surface: string, method: string, routePath: string) => {
+  return `${surface}:${method.toLowerCase()}:${routePath}`
+}
+
+// Swagger cannot tell whether an undocumented POST/PATCH/PUT/DELETE body is truly absent or
+// just missing @expect(). Scan controllers so readiness stays conservative for those routes.
+const listPythonFiles = (directory: string): string[] => {
+  if (!fs.existsSync(directory))
+    return []
+
+  return fs.readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
+    const entryPath = path.join(directory, entry.name)
+    if (entry.isDirectory())
+      return listPythonFiles(entryPath)
+    if (entry.isFile() && entry.name.endsWith('.py'))
+      return [entryPath]
+    return []
+  })
+}
+
+const leadingWhitespaceLength = (value: string) => {
+  return value.length - value.trimStart().length
+}
+
+const parenthesesDelta = (value: string) => {
+  return [...value].reduce((total, char) => {
+    if (char === '(')
+      return total + 1
+    if (char === ')')
+      return total - 1
+    return total
+  }, 0)
+}
+
+const collectDecorator = (lines: string[], startIndex: number) => {
+  const decoratorLines = [lines[startIndex] ?? '']
+  let index = startIndex
+  let balance = parenthesesDelta(decoratorLines[0] ?? '')
+
+  while (balance > 0 && index + 1 < lines.length) {
+    index += 1
+    const line = lines[index] ?? ''
+    decoratorLines.push(line)
+    balance += parenthesesDelta(line)
+  }
+
+  return {
+    decorator: decoratorLines.join('\n'),
+    endIndex: index,
+  }
+}
+
+const routePathFromControllerPath = (controllerPath: string) => {
+  return controllerPath
+    .replace(/<(?:[^:<>]+:)?([^<>]+)>/g, '{$1}')
+    .replace(/\/+/g, '/')
+}
+
+const routePathsFromDecorator = (decorator: string) => {
+  if (!decorator.includes('.route('))
+    return []
+
+  return [...decorator.matchAll(/(['"])(.*?)\1/g)]
+    .map(([, , routePath]) => routePath)
+    .filter((routePath): routePath is string => typeof routePath === 'string' && routePath.startsWith('/'))
+    .map(routePathFromControllerPath)
+}
+
+const methodBodyFrom = (lines: string[], methodLineIndex: number, methodIndent: number) => {
+  const bodyLines: string[] = []
+
+  for (let index = methodLineIndex + 1; index < lines.length; index += 1) {
+    const line = lines[index] ?? ''
+    if (line.trim() && leadingWhitespaceLength(line) <= methodIndent)
+      break
+
+    bodyLines.push(line)
+  }
+
+  return bodyLines.join('\n')
+}
+
+const usesRuntimeJsonBody = (body: string) => {
+  return /\b(?:console_ns|service_api_ns|web_ns)\.payload\b/.test(body)
+    || /\brequest\.get_json\s*\(/.test(body)
+    || /\brequest\.json\b/.test(body)
+}
+
+const collectRuntimeBodyOperationKeysFromFile = (surface: ApiSurface, filePath: string) => {
+  const operationKeys = new Set<string>()
+  const lines = fs.readFileSync(filePath, 'utf8').split(/\r?\n/)
+  let pendingDecorators: string[] = []
+  let currentRoutes: string[] = []
+  let currentClassIndent: number | undefined
+
+  for (let index = 0; index < lines.length; index += 1) {
+    const line = lines[index] ?? ''
+    const trimmed = line.trim()
+
+    if (!trimmed)
+      continue
+
+    if (trimmed.startsWith('@')) {
+      const { decorator, endIndex } = collectDecorator(lines, index)
+      pendingDecorators.push(decorator)
+      index = endIndex
+      continue
+    }
+
+    const indent = leadingWhitespaceLength(line)
+    const classMatch = line.match(/^(\s*)class\s+\w+/)
+    if (classMatch) {
+      currentClassIndent = indent
+      currentRoutes = pendingDecorators.flatMap(routePathsFromDecorator)
+      pendingDecorators = []
+      continue
+    }
+
+    if (currentClassIndent !== undefined && indent <= currentClassIndent)
+      currentRoutes = []
+
+    const methodMatch = line.match(/^\s*def\s+(delete|get|patch|post|put)\s*\(/)
+    if (!methodMatch) {
+      pendingDecorators = []
+      continue
+    }
+
+    pendingDecorators = []
+
+    const method = methodMatch[1]
+    if (!method || !requestBodyMethods.has(method))
+      continue
+
+    if (currentRoutes.length === 0)
+      continue
+
+    const body = methodBodyFrom(lines, index, indent)
+    if (!usesRuntimeJsonBody(body))
+      continue
+
+    for (const routePath of currentRoutes)
+      operationKeys.add(apiOperationKey(surface, method, routePath))
+  }
+
+  return operationKeys
+}
+
+const collectRuntimeBodyOperationKeys = () => {
+  const surfaces = {
+    console: path.join(apiControllersDir, 'console'),
+    service: path.join(apiControllersDir, 'service_api'),
+    web: path.join(apiControllersDir, 'web'),
+  } satisfies Record<ApiSurface, string>
+
+  const operationKeys = new Set<string>()
+
+  for (const [surface, directory] of Object.entries(surfaces) as [ApiSurface, string][]) {
+    for (const filePath of listPythonFiles(directory)) {
+      for (const operationKey of collectRuntimeBodyOperationKeysFromFile(surface, filePath))
+        operationKeys.add(operationKey)
+    }
+  }
+
+  return operationKeys
+}
+
+const runtimeBodyOperationKeys = collectRuntimeBodyOperationKeys()
 
 const collectDefinitionRefs = (value: unknown, refs: Set<string>, visited = new WeakSet<object>()) => {
   if (!value || typeof value !== 'object')
@@ -531,6 +708,7 @@ const hasLooseSchema = (
 const hasPossiblyInaccurateGeneratedContractTypes = (
   operation: SwaggerOperation,
   definitions: Record<string, SwaggerSchema>,
+  context: ApiOperationContext,
 ) => {
   const successResponses = Object.entries(operation.responses ?? {})
     .filter(([status]) => /^2\d\d$/.test(status))
@@ -540,6 +718,9 @@ const hasPossiblyInaccurateGeneratedContractTypes = (
 
   const successResponsesWithBody = successResponses.filter(([status]) => !noBodyResponseStatuses.has(status))
   if (successResponsesWithBody.some(([, response]) => hasLooseSchema(response.schema, definitions)))
+    return true
+
+  if (context.runtimeBodyRequired && !operation.parameters?.some(parameter => parameter.in === 'body'))
     return true
 
   return operation.parameters?.some((parameter) => {
@@ -569,6 +750,10 @@ const recordApiReadiness = (surface: string, isReady: boolean) => {
     stats.notReady += 1
 }
 
+const formatPercent = (ready: number, total: number) => {
+  return total === 0 ? '0.0%' : `${((ready / total) * 100).toFixed(1)}%`
+}
+
 const normalizeOperations = (document: SwaggerDocument, surface: string) => {
   const definitions = document.definitions ??= {}
 
@@ -581,7 +766,11 @@ const normalizeOperations = (document: SwaggerDocument, surface: string) => {
       swaggerOperation.operationId = operationId(method, routePath)
 
       normalizeResponses(swaggerOperation)
-      const hasPossiblyInaccurateTypes = hasPossiblyInaccurateGeneratedContractTypes(swaggerOperation, definitions)
+      const hasPossiblyInaccurateTypes = hasPossiblyInaccurateGeneratedContractTypes(swaggerOperation, definitions, {
+        method,
+        routePath,
+        runtimeBodyRequired: runtimeBodyOperationKeys.has(apiOperationKey(surface, method, routePath)),
+      })
       recordApiReadiness(surface, !hasPossiblyInaccurateTypes)
 
       if (method === 'get')
@@ -607,18 +796,29 @@ const normalizeApiSwagger = (document: SwaggerDocument, surface: string) => {
   return document
 }
 
-const writeApiReadinessStats = () => {
+const printApiReadinessStats = () => {
   const sortedSurfaces = Object.entries(apiReadinessStats)
     .sort(([left], [right]) => left.localeCompare(right))
 
-  fs.mkdirSync(path.dirname(apiReadinessStatsPath), { recursive: true })
-  fs.writeFileSync(
-    apiReadinessStatsPath,
-    `${JSON.stringify({
-      surfaces: Object.fromEntries(sortedSurfaces),
-      warning: inaccurateGeneratedContractDescription,
-    }, null, 2)}\n`,
+  const totals = sortedSurfaces.reduce(
+    (summary, [, stats]) => {
+      summary.notReady += stats.notReady
+      summary.total += stats.total
+      return summary
+    },
+    { notReady: 0, total: 0 },
   )
+  const totalReady = totals.total - totals.notReady
+  const rows = sortedSurfaces.map(([surface, stats]) => {
+    const ready = stats.total - stats.notReady
+    return `  ${surface}: ${ready}/${stats.total} ready (${formatPercent(ready, stats.total)}), ${stats.notReady} not ready`
+  })
+
+  console.log([
+    'API OpenAPI readiness:',
+    ...rows,
+    `  total: ${totalReady}/${totals.total} ready (${formatPercent(totalReady, totals.total)}), ${totals.notReady} not ready`,
+  ].join('\n'))
 }
 
 const topLevelPathSegment = (routePath: string) => {
@@ -748,7 +948,7 @@ const createApiJobs = (spec: ApiSpec): ApiJob[] => {
 }
 
 const apiJobs = apiSpecs.flatMap(createApiJobs)
-writeApiReadinessStats()
+printApiReadinessStats()
 
 const createApiConfig = (job: ApiJob): UserConfig => ({
   input: job.document,

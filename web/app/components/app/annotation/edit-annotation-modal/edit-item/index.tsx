@@ -22,7 +22,7 @@ type Props = {
 
 export const EditTitle: FC<{ className?: string, title: string }> = ({ className, title }) => (
   <div className={cn(className, 'flex h-[18px] items-center system-xs-medium text-text-tertiary')}>
-    <RiEditFill className="mr-1 h-3.5 w-3.5" />
+    <RiEditFill className="mr-1 size-3.5" />
     <div>{title}</div>
     <div
       className="ml-2 h-px grow"
@@ -42,7 +42,7 @@ const EditItem: FC<Props> = ({
   const { t } = useTranslation()
   const [newContent, setNewContent] = useState('')
   const showNewContent = newContent && newContent !== content
-  const avatar = type === EditItemType.Query ? <User className="h-6 w-6" /> : <Robot className="h-6 w-6" />
+  const avatar = type === EditItemType.Query ? <User className="size-6" /> : <Robot className="size-6" />
   const name = type === EditItemType.Query ? t('editModal.queryName', { ns: 'appAnnotation' }) : t('editModal.answerName', { ns: 'appAnnotation' })
   const editTitle = type === EditItemType.Query ? t('editModal.yourQuery', { ns: 'appAnnotation' }) : t('editModal.yourAnswer', { ns: 'appAnnotation' })
   const placeholder = type === EditItemType.Query ? t('editModal.queryPlaceholder', { ns: 'appAnnotation' }) : t('editModal.answerPlaceholder', { ns: 'appAnnotation' })
@@ -94,7 +94,7 @@ const EditItem: FC<Props> = ({
                         setIsEdit(true)
                       }}
                     >
-                      <RiEditLine className="mr-1 h-3.5 w-3.5" />
+                      <RiEditLine className="mr-1 size-3.5" />
                       <div>{t('operation.edit', { ns: 'common' })}</div>
                     </div>
                   )}
@@ -116,8 +116,8 @@ const EditItem: FC<Props> = ({
                           }
                         }}
                       >
-                        <div className="h-3.5 w-3.5">
-                          <RiDeleteBinLine className="h-3.5 w-3.5" />
+                        <div className="size-3.5">
+                          <RiDeleteBinLine className="size-3.5" />
                         </div>
                         <div>{t('operation.delete', { ns: 'common' })}</div>
                       </div>

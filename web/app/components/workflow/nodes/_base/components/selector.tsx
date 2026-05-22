@@ -69,7 +69,7 @@ const TypeSelector: FC<Props> = ({
               className={cn(showOption && 'bg-state-base-hover', 'flex h-5 cursor-pointer items-center rounded-md pr-0.5 pl-1 text-xs font-semibold text-text-secondary hover:bg-state-base-hover')}
             >
               <div className={cn('text-sm font-semibold', uppercase && 'uppercase', noValue && 'text-text-tertiary', triggerClassName)}>{!noValue ? item?.label : placeholder}</div>
-              {!readonly && <DropDownIcon className="h-3 w-3" />}
+              {!readonly && <DropDownIcon className="size-3" />}
             </div>
           )}
 
@@ -85,7 +85,7 @@ const TypeSelector: FC<Props> = ({
               className={cn(itemClassName, uppercase && 'uppercase', 'flex h-[30px] min-w-[44px] cursor-pointer items-center justify-between rounded-lg px-3 text-[13px] font-medium text-text-secondary hover:bg-state-base-hover')}
             >
               <div>{item.label}</div>
-              {showChecked && item.value === value && <Check className="h-4 w-4 text-text-primary" />}
+              {showChecked && item.value === value && <Check className="size-4 text-text-primary" />}
             </div>
           ))}
         </div>

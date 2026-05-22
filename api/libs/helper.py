@@ -16,7 +16,7 @@ from zoneinfo import available_timezones
 
 from flask import Response, stream_with_context
 from flask_restx import fields
-from pydantic import BaseModel, TypeAdapter
+from pydantic import BaseModel, ConfigDict, TypeAdapter, with_config
 from pydantic.functional_validators import AfterValidator
 from typing_extensions import TypedDict
 
@@ -33,13 +33,29 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
+@with_config(ConfigDict(extra="allow"))
 class _TokenData(TypedDict, total=False):
+    """Shared baseline token payload.
+
+    `extra='allow'` keeps TokenManager from silently stripping business-
+    specific metadata keys while still validating the common auth fields.
+    Business flows that need stronger guarantees should validate again at
+    their own boundary with a dedicated Pydantic model.
+
+    For the change-email flow specifically, `email_change_phase` is the
+    discriminator used by `services.entities.auth_entities.ChangeEmailTokenData`.
+    It is declared here so the shared token adapter can still provide baseline
+    validation for the state-machine key without taking over the full business
+    model.
+    """
+
     account_id: str | None
     email: str
     token_type: str
     code: str
     old_email: str
     phase: str
+    email_change_phase: str
 
 
 _token_data_adapter: TypeAdapter[_TokenData] = TypeAdapter(_TokenData)
@@ -466,7 +482,7 @@ class TokenManager:
             raise ValueError("Account or email must be provided")
 
         account_id = account.id if account else None
-        account_email = account.email if account else email
+        account_email = email if email is not None else account.email if account else None
 
         if account_id:
             old_token = cls._get_current_token_for_account(account_id, token_type)
@@ -508,8 +524,7 @@ class TokenManager:
         if token_data_json is None:
             logger.warning("%s token %s not found with key %s", token_type, token, key)
             return None
-        token_data = dict(_token_data_adapter.validate_json(token_data_json))
-        return token_data
+        return dict(_token_data_adapter.validate_json(token_data_json))
 
     @classmethod
     def _get_current_token_for_account(cls, account_id: str, token_type: str) -> str | None:

@@ -3,6 +3,13 @@
 import * as z from 'zod'
 
 /**
+ * ApiBaseUrlResponse
+ */
+export const zApiBaseUrlResponse = z.object({
+  api_base_url: z.string(),
+})
+
+/**
  * ApiKeyItem
  */
 export const zApiKeyItem = z.object({
@@ -18,6 +25,14 @@ export const zApiKeyItem = z.object({
  */
 export const zApiKeyList = z.object({
   data: z.array(zApiKeyItem),
+})
+
+/**
+ * SegmentBatchImportStatusResponse
+ */
+export const zSegmentBatchImportStatusResponse = z.object({
+  job_id: z.string(),
+  job_status: z.string(),
 })
 
 /**
@@ -47,6 +62,14 @@ export const zExternalKnowledgeApiPayload = z.object({
 })
 
 /**
+ * UsageCountResponse
+ */
+export const zUsageCountResponse = z.object({
+  count: z.int(),
+  is_using: z.boolean(),
+})
+
+/**
  * IndexingEstimatePayload
  */
 export const zIndexingEstimatePayload = z.object({
@@ -59,6 +82,13 @@ export const zIndexingEstimatePayload = z.object({
 })
 
 /**
+ * TextContentResponse
+ */
+export const zTextContentResponse = z.object({
+  content: z.string(),
+})
+
+/**
  * NotionEstimatePayload
  */
 export const zNotionEstimatePayload = z.object({
@@ -66,6 +96,13 @@ export const zNotionEstimatePayload = z.object({
   doc_language: z.string().optional().default('English'),
   notion_info_list: z.array(z.record(z.string(), z.unknown())),
   process_rule: z.record(z.string(), z.unknown()),
+})
+
+/**
+ * SimpleResultResponse
+ */
+export const zSimpleResultResponse = z.object({
+  result: z.string(),
 })
 
 /**
@@ -85,11 +122,26 @@ export const zGenerateSummaryPayload = z.object({
 })
 
 /**
+ * UrlResponse
+ */
+export const zUrlResponse = z.object({
+  url: z.string(),
+})
+
+/**
  * DocumentMetadataUpdatePayload
  */
 export const zDocumentMetadataUpdatePayload = z.object({
   doc_metadata: z.unknown().optional(),
   doc_type: z.string().nullish(),
+})
+
+/**
+ * SimpleResultMessageResponse
+ */
+export const zSimpleResultMessageResponse = z.object({
+  message: z.string(),
+  result: z.string(),
 })
 
 /**
@@ -153,6 +205,15 @@ export const zMetadataArgs = z.object({
 })
 
 /**
+ * DatasetMetadataResponse
+ */
+export const zDatasetMetadataResponse = z.object({
+  id: z.string(),
+  name: z.string(),
+  type: z.string(),
+})
+
+/**
  * MetadataUpdatePayload
  */
 export const zMetadataUpdatePayload = z.object({
@@ -164,6 +225,13 @@ export const zMetadataUpdatePayload = z.object({
  */
 export const zDocumentRetryPayload = z.object({
   document_ids: z.array(z.string()),
+})
+
+/**
+ * UsageCheckResponse
+ */
+export const zUsageCheckResponse = z.object({
+  is_using: z.boolean(),
 })
 
 /**
@@ -261,6 +329,21 @@ export const zDatasetResponse = z.object({
 })
 
 /**
+ * DatasetMetadataBuiltInFieldResponse
+ */
+export const zDatasetMetadataBuiltInFieldResponse = z.object({
+  name: z.string(),
+  type: z.string(),
+})
+
+/**
+ * DatasetMetadataBuiltInFieldsResponse
+ */
+export const zDatasetMetadataBuiltInFieldsResponse = z.object({
+  fields: z.array(zDatasetMetadataBuiltInFieldResponse),
+})
+
+/**
  * DocumentMetadataResponse
  */
 export const zDocumentMetadataResponse = z.object({
@@ -307,6 +390,24 @@ export const zDatasetAndDocumentResponse = z.object({
   batch: z.string(),
   dataset: zDatasetResponse,
   documents: z.array(zDocumentResponse),
+})
+
+/**
+ * DatasetMetadataListItemResponse
+ */
+export const zDatasetMetadataListItemResponse = z.object({
+  count: z.int().optional().default(0),
+  id: z.string(),
+  name: z.string(),
+  type: z.string(),
+})
+
+/**
+ * DatasetMetadataListResponse
+ */
+export const zDatasetMetadataListResponse = z.object({
+  built_in_field_enabled: z.boolean(),
+  doc_metadata: z.array(zDatasetMetadataListItemResponse),
 })
 
 export const zAppDetailKernel = z.object({
@@ -777,7 +878,7 @@ export const zPostDatasetsResponse = z.record(z.string(), z.unknown())
 /**
  * API base info retrieved successfully
  */
-export const zGetDatasetsApiBaseInfoResponse = z.record(z.string(), z.unknown())
+export const zGetDatasetsApiBaseInfoResponse = zApiBaseUrlResponse
 
 /**
  * API keys retrieved successfully
@@ -803,9 +904,9 @@ export const zGetDatasetsBatchImportStatusByJobIdPath = z.object({
 })
 
 /**
- * Success
+ * Batch import status
  */
-export const zGetDatasetsBatchImportStatusByJobIdResponse = z.record(z.string(), z.unknown())
+export const zGetDatasetsBatchImportStatusByJobIdResponse = zSegmentBatchImportStatusResponse
 
 export const zPostDatasetsBatchImportStatusByJobIdBody = zBatchImportPayload
 
@@ -814,9 +915,9 @@ export const zPostDatasetsBatchImportStatusByJobIdPath = z.object({
 })
 
 /**
- * Success
+ * Batch import started
  */
-export const zPostDatasetsBatchImportStatusByJobIdResponse = z.record(z.string(), z.unknown())
+export const zPostDatasetsBatchImportStatusByJobIdResponse = zSegmentBatchImportStatusResponse
 
 export const zPostDatasetsExternalBody = zExternalDatasetCreatePayload
 
@@ -848,11 +949,11 @@ export const zDeleteDatasetsExternalKnowledgeApiByExternalKnowledgeApiIdPath = z
 })
 
 /**
- * Success
+ * External knowledge API deleted successfully
  */
 export const zDeleteDatasetsExternalKnowledgeApiByExternalKnowledgeApiIdResponse = z.record(
   z.string(),
-  z.unknown(),
+  z.never(),
 )
 
 export const zGetDatasetsExternalKnowledgeApiByExternalKnowledgeApiIdPath = z.object({
@@ -889,10 +990,8 @@ export const zGetDatasetsExternalKnowledgeApiByExternalKnowledgeApiIdUseCheckPat
 /**
  * Usage check completed successfully
  */
-export const zGetDatasetsExternalKnowledgeApiByExternalKnowledgeApiIdUseCheckResponse = z.record(
-  z.string(),
-  z.unknown(),
-)
+export const zGetDatasetsExternalKnowledgeApiByExternalKnowledgeApiIdUseCheckResponse
+  = zUsageCountResponse
 
 export const zPostDatasetsIndexingEstimateBody = zIndexingEstimatePayload
 
@@ -909,14 +1008,14 @@ export const zPostDatasetsInitBody = zKnowledgeConfig
 export const zPostDatasetsInitResponse = zDatasetAndDocumentResponse
 
 /**
- * Success
+ * Built-in fields retrieved successfully
  */
-export const zGetDatasetsMetadataBuiltInResponse = z.record(z.string(), z.unknown())
+export const zGetDatasetsMetadataBuiltInResponse = zDatasetMetadataBuiltInFieldsResponse
 
 /**
  * Success
  */
-export const zGetDatasetsNotionIndexingEstimateResponse = z.record(z.string(), z.unknown())
+export const zGetDatasetsNotionIndexingEstimateResponse = zTextContentResponse
 
 export const zPostDatasetsNotionIndexingEstimateBody = zNotionEstimatePayload
 
@@ -953,9 +1052,9 @@ export const zDeleteDatasetsByDatasetIdPath = z.object({
 })
 
 /**
- * Success
+ * Dataset deleted successfully
  */
-export const zDeleteDatasetsByDatasetIdResponse = z.record(z.string(), z.unknown())
+export const zDeleteDatasetsByDatasetIdResponse = z.record(z.string(), z.never())
 
 export const zGetDatasetsByDatasetIdPath = z.object({
   dataset_id: z.string(),
@@ -985,7 +1084,7 @@ export const zPostDatasetsByDatasetIdApiKeysByStatusPath = z.object({
 /**
  * Success
  */
-export const zPostDatasetsByDatasetIdApiKeysByStatusResponse = z.record(z.string(), z.unknown())
+export const zPostDatasetsByDatasetIdApiKeysByStatusResponse = zSimpleResultResponse
 
 export const zGetDatasetsByDatasetIdAutoDisableLogsPath = z.object({
   dataset_id: z.string(),
@@ -1027,9 +1126,9 @@ export const zDeleteDatasetsByDatasetIdDocumentsPath = z.object({
 })
 
 /**
- * Success
+ * Documents deleted successfully
  */
-export const zDeleteDatasetsByDatasetIdDocumentsResponse = z.record(z.string(), z.unknown())
+export const zDeleteDatasetsByDatasetIdDocumentsResponse = z.record(z.string(), z.never())
 
 export const zGetDatasetsByDatasetIdDocumentsPath = z.object({
   dataset_id: z.string(),
@@ -1083,10 +1182,7 @@ export const zPostDatasetsByDatasetIdDocumentsGenerateSummaryPath = z.object({
 /**
  * Summary generation started successfully
  */
-export const zPostDatasetsByDatasetIdDocumentsGenerateSummaryResponse = z.record(
-  z.string(),
-  z.unknown(),
-)
+export const zPostDatasetsByDatasetIdDocumentsGenerateSummaryResponse = zSimpleResultResponse
 
 export const zPostDatasetsByDatasetIdDocumentsMetadataBody = zMetadataOperationData
 
@@ -1095,9 +1191,9 @@ export const zPostDatasetsByDatasetIdDocumentsMetadataPath = z.object({
 })
 
 /**
- * Success
+ * Documents metadata updated successfully
  */
-export const zPostDatasetsByDatasetIdDocumentsMetadataResponse = z.record(z.string(), z.unknown())
+export const zPostDatasetsByDatasetIdDocumentsMetadataResponse = z.record(z.string(), z.never())
 
 export const zPatchDatasetsByDatasetIdDocumentsStatusByActionBatchPath = z.object({
   action: z.string(),
@@ -1107,10 +1203,7 @@ export const zPatchDatasetsByDatasetIdDocumentsStatusByActionBatchPath = z.objec
 /**
  * Success
  */
-export const zPatchDatasetsByDatasetIdDocumentsStatusByActionBatchResponse = z.record(
-  z.string(),
-  z.unknown(),
-)
+export const zPatchDatasetsByDatasetIdDocumentsStatusByActionBatchResponse = zSimpleResultResponse
 
 export const zDeleteDatasetsByDatasetIdDocumentsByDocumentIdPath = z.object({
   dataset_id: z.string(),
@@ -1118,11 +1211,11 @@ export const zDeleteDatasetsByDatasetIdDocumentsByDocumentIdPath = z.object({
 })
 
 /**
- * Success
+ * Document deleted successfully
  */
 export const zDeleteDatasetsByDatasetIdDocumentsByDocumentIdResponse = z.record(
   z.string(),
-  z.unknown(),
+  z.never(),
 )
 
 export const zGetDatasetsByDatasetIdDocumentsByDocumentIdPath = z.object({
@@ -1148,12 +1241,9 @@ export const zGetDatasetsByDatasetIdDocumentsByDocumentIdDownloadPath = z.object
 })
 
 /**
- * Success
+ * Download URL generated successfully
  */
-export const zGetDatasetsByDatasetIdDocumentsByDocumentIdDownloadResponse = z.record(
-  z.string(),
-  z.unknown(),
-)
+export const zGetDatasetsByDatasetIdDocumentsByDocumentIdDownloadResponse = zUrlResponse
 
 export const zGetDatasetsByDatasetIdDocumentsByDocumentIdIndexingEstimatePath = z.object({
   dataset_id: z.string(),
@@ -1192,10 +1282,8 @@ export const zPutDatasetsByDatasetIdDocumentsByDocumentIdMetadataPath = z.object
 /**
  * Document metadata updated successfully
  */
-export const zPutDatasetsByDatasetIdDocumentsByDocumentIdMetadataResponse = z.record(
-  z.string(),
-  z.unknown(),
-)
+export const zPutDatasetsByDatasetIdDocumentsByDocumentIdMetadataResponse
+  = zSimpleResultMessageResponse
 
 export const zGetDatasetsByDatasetIdDocumentsByDocumentIdNotionSyncPath = z.object({
   dataset_id: z.string(),
@@ -1205,10 +1293,7 @@ export const zGetDatasetsByDatasetIdDocumentsByDocumentIdNotionSyncPath = z.obje
 /**
  * Success
  */
-export const zGetDatasetsByDatasetIdDocumentsByDocumentIdNotionSyncResponse = z.record(
-  z.string(),
-  z.unknown(),
-)
+export const zGetDatasetsByDatasetIdDocumentsByDocumentIdNotionSyncResponse = zSimpleResultResponse
 
 export const zGetDatasetsByDatasetIdDocumentsByDocumentIdPipelineExecutionLogPath = z.object({
   dataset_id: z.string(),
@@ -1229,11 +1314,11 @@ export const zPatchDatasetsByDatasetIdDocumentsByDocumentIdProcessingPausePath =
 })
 
 /**
- * Success
+ * Document paused successfully
  */
 export const zPatchDatasetsByDatasetIdDocumentsByDocumentIdProcessingPauseResponse = z.record(
   z.string(),
-  z.unknown(),
+  z.never(),
 )
 
 export const zPatchDatasetsByDatasetIdDocumentsByDocumentIdProcessingResumePath = z.object({
@@ -1242,11 +1327,11 @@ export const zPatchDatasetsByDatasetIdDocumentsByDocumentIdProcessingResumePath 
 })
 
 /**
- * Success
+ * Document resumed successfully
  */
 export const zPatchDatasetsByDatasetIdDocumentsByDocumentIdProcessingResumeResponse = z.record(
   z.string(),
-  z.unknown(),
+  z.never(),
 )
 
 export const zPatchDatasetsByDatasetIdDocumentsByDocumentIdProcessingByActionPath = z.object({
@@ -1258,10 +1343,8 @@ export const zPatchDatasetsByDatasetIdDocumentsByDocumentIdProcessingByActionPat
 /**
  * Processing status updated successfully
  */
-export const zPatchDatasetsByDatasetIdDocumentsByDocumentIdProcessingByActionResponse = z.record(
-  z.string(),
-  z.unknown(),
-)
+export const zPatchDatasetsByDatasetIdDocumentsByDocumentIdProcessingByActionResponse
+  = zSimpleResultResponse
 
 export const zPostDatasetsByDatasetIdDocumentsByDocumentIdRenameBody = zDocumentRenamePayload
 
@@ -1299,10 +1382,8 @@ export const zPatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentByActionPath =
 /**
  * Success
  */
-export const zPatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentByActionResponse = z.record(
-  z.string(),
-  z.unknown(),
-)
+export const zPatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentByActionResponse
+  = zSimpleResultResponse
 
 export const zDeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsPath = z.object({
   dataset_id: z.string(),
@@ -1310,11 +1391,11 @@ export const zDeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsPath = z.obj
 })
 
 /**
- * Success
+ * Segments deleted successfully
  */
 export const zDeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsResponse = z.record(
   z.string(),
-  z.unknown(),
+  z.never(),
 )
 
 export const zGetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsPath = z.object({
@@ -1336,12 +1417,10 @@ export const zGetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBatchImportPath
 })
 
 /**
- * Success
+ * Batch import status
  */
-export const zGetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBatchImportResponse = z.record(
-  z.string(),
-  z.unknown(),
-)
+export const zGetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBatchImportResponse
+  = zSegmentBatchImportStatusResponse
 
 export const zPostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBatchImportBody
   = zBatchImportPayload
@@ -1352,12 +1431,10 @@ export const zPostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBatchImportPat
 })
 
 /**
- * Success
+ * Batch import started
  */
-export const zPostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBatchImportResponse = z.record(
-  z.string(),
-  z.unknown(),
-)
+export const zPostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBatchImportResponse
+  = zSegmentBatchImportStatusResponse
 
 export const zDeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdPath = z.object({
   dataset_id: z.string(),
@@ -1366,11 +1443,11 @@ export const zDeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdP
 })
 
 /**
- * Success
+ * Segment deleted successfully
  */
 export const zDeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdResponse = z.record(
   z.string(),
-  z.unknown(),
+  z.never(),
 )
 
 export const zPatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdBody
@@ -1441,10 +1518,10 @@ export const zDeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdC
   })
 
 /**
- * Success
+ * Child chunk deleted successfully
  */
 export const zDeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdResponse
-  = z.record(z.string(), z.unknown())
+  = z.record(z.string(), z.never())
 
 export const zPatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdBody
   = zChildChunkUpdatePayload
@@ -1484,10 +1561,7 @@ export const zGetDatasetsByDatasetIdDocumentsByDocumentIdWebsiteSyncPath = z.obj
 /**
  * Success
  */
-export const zGetDatasetsByDatasetIdDocumentsByDocumentIdWebsiteSyncResponse = z.record(
-  z.string(),
-  z.unknown(),
-)
+export const zGetDatasetsByDatasetIdDocumentsByDocumentIdWebsiteSyncResponse = zSimpleResultResponse
 
 export const zGetDatasetsByDatasetIdErrorDocsPath = z.object({
   dataset_id: z.string(),
@@ -1534,9 +1608,9 @@ export const zGetDatasetsByDatasetIdMetadataPath = z.object({
 })
 
 /**
- * Success
+ * Metadata retrieved successfully
  */
-export const zGetDatasetsByDatasetIdMetadataResponse = z.record(z.string(), z.unknown())
+export const zGetDatasetsByDatasetIdMetadataResponse = zDatasetMetadataListResponse
 
 export const zPostDatasetsByDatasetIdMetadataBody = zMetadataArgs
 
@@ -1545,9 +1619,9 @@ export const zPostDatasetsByDatasetIdMetadataPath = z.object({
 })
 
 /**
- * Success
+ * Metadata created successfully
  */
-export const zPostDatasetsByDatasetIdMetadataResponse = z.record(z.string(), z.unknown())
+export const zPostDatasetsByDatasetIdMetadataResponse = zDatasetMetadataResponse
 
 export const zPostDatasetsByDatasetIdMetadataBuiltInByActionPath = z.object({
   action: z.string(),
@@ -1555,11 +1629,11 @@ export const zPostDatasetsByDatasetIdMetadataBuiltInByActionPath = z.object({
 })
 
 /**
- * Success
+ * Action completed successfully
  */
 export const zPostDatasetsByDatasetIdMetadataBuiltInByActionResponse = z.record(
   z.string(),
-  z.unknown(),
+  z.never(),
 )
 
 export const zDeleteDatasetsByDatasetIdMetadataByMetadataIdPath = z.object({
@@ -1568,11 +1642,11 @@ export const zDeleteDatasetsByDatasetIdMetadataByMetadataIdPath = z.object({
 })
 
 /**
- * Success
+ * Metadata deleted successfully
  */
 export const zDeleteDatasetsByDatasetIdMetadataByMetadataIdResponse = z.record(
   z.string(),
-  z.unknown(),
+  z.never(),
 )
 
 export const zPatchDatasetsByDatasetIdMetadataByMetadataIdBody = zMetadataUpdatePayload
@@ -1583,12 +1657,9 @@ export const zPatchDatasetsByDatasetIdMetadataByMetadataIdPath = z.object({
 })
 
 /**
- * Success
+ * Metadata updated successfully
  */
-export const zPatchDatasetsByDatasetIdMetadataByMetadataIdResponse = z.record(
-  z.string(),
-  z.unknown(),
-)
+export const zPatchDatasetsByDatasetIdMetadataByMetadataIdResponse = zDatasetMetadataResponse
 
 export const zGetDatasetsByDatasetIdNotionSyncPath = z.object({
   dataset_id: z.string(),
@@ -1597,7 +1668,7 @@ export const zGetDatasetsByDatasetIdNotionSyncPath = z.object({
 /**
  * Success
  */
-export const zGetDatasetsByDatasetIdNotionSyncResponse = z.record(z.string(), z.unknown())
+export const zGetDatasetsByDatasetIdNotionSyncResponse = zSimpleResultResponse
 
 export const zGetDatasetsByDatasetIdPermissionPartUsersPath = z.object({
   dataset_id: z.string(),
@@ -1633,9 +1704,9 @@ export const zPostDatasetsByDatasetIdRetryPath = z.object({
 })
 
 /**
- * Success
+ * Documents retry started successfully
  */
-export const zPostDatasetsByDatasetIdRetryResponse = z.record(z.string(), z.unknown())
+export const zPostDatasetsByDatasetIdRetryResponse = z.record(z.string(), z.never())
 
 export const zGetDatasetsByDatasetIdUseCheckPath = z.object({
   dataset_id: z.string(),
@@ -1644,7 +1715,7 @@ export const zGetDatasetsByDatasetIdUseCheckPath = z.object({
 /**
  * Dataset use status retrieved successfully
  */
-export const zGetDatasetsByDatasetIdUseCheckResponse = z.record(z.string(), z.unknown())
+export const zGetDatasetsByDatasetIdUseCheckResponse = zUsageCheckResponse
 
 export const zGetDatasetsByResourceIdApiKeysPath = z.object({
   resource_id: z.string(),

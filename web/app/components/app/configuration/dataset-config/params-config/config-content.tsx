@@ -246,7 +246,7 @@ const ConfigContent: FC<Props> = ({
                       <div className="truncate">{option.label}</div>
                       <Infotip
                         aria-label={option.tips}
-                        className="ml-0.5 h-3.5 w-3.5"
+                        className="ml-0.5 size-3.5"
                         iconClassName="h-3.5 w-3.5"
                         popupClassName="w-[200px]"
                       >

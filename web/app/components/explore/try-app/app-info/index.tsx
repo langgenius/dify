@@ -74,12 +74,12 @@ const AppInfo: FC<Props> = ({
           />
           <AppTypeIcon
             wrapperClassName="absolute -bottom-0.5 -right-0.5 w-4 h-4 shadow-sm"
-            className="h-3 w-3"
+            className="size-3"
             type={mode}
           />
         </div>
         <div className="w-0 grow py-px">
-          <div className="flex items-center text-sm leading-5 font-semibold text-text-secondary">
+          <div className="flex items-center text-sm/5 font-semibold text-text-secondary">
             <div className="truncate" title={appDetail.name}>{appDetail.name}</div>
           </div>
           <div className="flex items-center text-[10px] leading-[18px] font-medium text-text-tertiary">

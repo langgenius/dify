@@ -176,7 +176,7 @@ const SearchMethodOption = ({
                     {t('modelProvider.rerankModel.key', { ns: 'common' })}
                     <Infotip
                       aria-label={t('modelProvider.rerankModel.tip', { ns: 'common' })}
-                      className="ml-0.5 h-3.5 w-3.5 shrink-0"
+                      className="ml-0.5 size-3.5 shrink-0"
                       iconClassName="h-3.5 w-3.5"
                     >
                       {t('modelProvider.rerankModel.tip', { ns: 'common' })}
@@ -191,7 +191,7 @@ const SearchMethodOption = ({
               />
               {showMultiModalTip && (
                 <div className="mt-2 flex h-10 items-center gap-x-0.5 overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-2 shadow-xs backdrop-blur-[5px]">
-                  <div className="absolute top-0 right-0 bottom-0 left-0 bg-dataset-warning-message-bg opacity-40" />
+                  <div className="absolute inset-0 bg-dataset-warning-message-bg opacity-40" />
                   <div className="p-1">
                     <AlertTriangle className="size-4 text-text-warning-secondary" />
                   </div>

@@ -44,7 +44,7 @@ const NavLink = ({
 
   const renderIcon = () => (
     <div className={cn(mode !== 'expand' && '-ml-1')}>
-      <NavIcon className="h-4 w-4 shrink-0" aria-hidden="true" />
+      <NavIcon className="size-4 shrink-0" aria-hidden="true" />
     </div>
   )
 

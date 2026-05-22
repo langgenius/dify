@@ -13,7 +13,7 @@ import AppIcon from '@/app/components/base/app-icon'
 import EmojiPicker from '@/app/components/base/emoji-picker'
 import FormGeneration from '@/app/components/base/features/new-feature-panel/moderation/form-generation'
 import { BookOpen01 } from '@/app/components/base/icons/src/vender/line/education'
-import ApiBasedExtensionSelector from '@/app/components/header/account-setting/api-based-extension-page/selector'
+import { ApiBasedExtensionSelector } from '@/app/components/header/account-setting/api-based-extension-page/selector'
 import { useDocLink, useLocale } from '@/context/i18n'
 import { useCodeBasedExtensions } from '@/service/use-common'
 import {
@@ -116,7 +116,7 @@ const ExternalDataToolModal: FC<ExternalDataToolModalProps> = ({
           {`${action} ${t('variableConfig.apiBasedVar', { ns: 'appDebug' })}`}
         </div>
         <div className="py-2">
-          <div className="text-sm leading-9 font-medium text-text-primary">
+          <div className="text-sm/9 font-medium text-text-primary">
             {t('apiBasedExtension.type', { ns: 'common' })}
           </div>
           <Select
@@ -137,7 +137,7 @@ const ExternalDataToolModal: FC<ExternalDataToolModalProps> = ({
           </Select>
         </div>
         <div className="py-2">
-          <div className="text-sm leading-9 font-medium text-text-primary">
+          <div className="text-sm/9 font-medium text-text-primary">
             {t('feature.tools.modal.name.title', { ns: 'appDebug' })}
           </div>
           <div className="flex items-center">
@@ -157,7 +157,7 @@ const ExternalDataToolModal: FC<ExternalDataToolModalProps> = ({
           </div>
         </div>
         <div className="py-2">
-          <div className="text-sm leading-9 font-medium text-text-primary">
+          <div className="text-sm/9 font-medium text-text-primary">
             {t('feature.tools.modal.variableName.title', { ns: 'appDebug' })}
           </div>
           <input
@@ -178,7 +178,7 @@ const ExternalDataToolModal: FC<ExternalDataToolModalProps> = ({
                   rel="noopener noreferrer"
                   className="group flex items-center text-xs font-normal text-text-tertiary hover:text-text-accent"
                 >
-                  <BookOpen01 className="mr-1 h-3 w-3 text-text-tertiary group-hover:text-text-accent" />
+                  <BookOpen01 className="mr-1 size-3 text-text-tertiary group-hover:text-text-accent" />
                   {t('apiBasedExtension.link', { ns: 'common' })}
                 </a>
               </div>

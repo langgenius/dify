@@ -226,7 +226,7 @@ const ModelModal: FC<ModelModalProps> = ({
       return (
         <div className="mt-2 flex items-center">
           <ModelIcon
-            className="mr-2 h-4 w-4 shrink-0"
+            className="mr-2 size-4 shrink-0"
             provider={provider}
           />
           <div className="mr-1 system-md-regular text-text-secondary">{renderI18nObject(provider.label)}</div>
@@ -237,7 +237,7 @@ const ModelModal: FC<ModelModalProps> = ({
       return (
         <div className="mt-2 flex items-center">
           <ModelIcon
-            className="mr-2 h-4 w-4 shrink-0"
+            className="mr-2 size-4 shrink-0"
             provider={provider}
             modelName={model.model}
           />
@@ -297,7 +297,7 @@ const ModelModal: FC<ModelModalProps> = ({
         backdropProps={{ forceRender: true }}
         className="flex w-[640px] max-w-[640px] flex-col overflow-hidden p-0"
       >
-        <DialogCloseButton className="top-5 right-5 h-8 w-8" />
+        <DialogCloseButton className="top-5 right-5 size-8" />
         <div className="shrink-0 p-6 pb-3">
           {modalTitle}
           {modalDesc}
@@ -412,7 +412,7 @@ const ModelModal: FC<ModelModalProps> = ({
           (mode === ModelModalModeEnum.configCustomModel || mode === ModelModalModeEnum.configProviderCredential) && (
             <div className="shrink-0 border-t-[0.5px] border-t-divider-regular">
               <div className="flex items-center justify-center rounded-b-2xl bg-background-section-burn py-3 text-xs text-text-tertiary">
-                <Lock01 className="mr-1 h-3 w-3 text-text-tertiary" />
+                <Lock01 className="mr-1 size-3 text-text-tertiary" />
                 {t('modelProvider.encrypted.front', { ns: 'common' })}
                 <a
                   className="mx-1 text-text-accent"

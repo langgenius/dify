@@ -9,7 +9,8 @@ from werkzeug.exceptions import Unauthorized
 import services
 from configs import dify_config
 from constants.languages import get_valid_language
-from controllers.common.schema import register_schema_models
+from controllers.common.fields import SimpleResultDataResponse, SimpleResultOptionalDataResponse, SimpleResultResponse
+from controllers.common.schema import register_response_schema_models, register_schema_models
 from controllers.console import console_ns
 from controllers.console.auth.error import (
     AuthenticationFailedError,
@@ -81,6 +82,12 @@ class EmailCodeLoginPayload(BaseModel):
 
 
 register_schema_models(console_ns, LoginPayload, EmailPayload, EmailCodeLoginPayload)
+register_response_schema_models(
+    console_ns,
+    SimpleResultDataResponse,
+    SimpleResultOptionalDataResponse,
+    SimpleResultResponse,
+)
 
 
 @console_ns.route("/login")
@@ -90,6 +97,7 @@ class LoginApi(Resource):
     @setup_required
     @email_password_login_enabled
     @console_ns.expect(console_ns.models[LoginPayload.__name__])
+    @console_ns.response(200, "Success", console_ns.models[SimpleResultOptionalDataResponse.__name__])
     @decrypt_password_field
     def post(self):
         """Authenticate user and login."""
@@ -163,6 +171,7 @@ class LoginApi(Resource):
 @console_ns.route("/logout")
 class LogoutApi(Resource):
     @setup_required
+    @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
     def post(self):
         current_user, _ = current_account_with_tenant()
         account = current_user
@@ -186,6 +195,7 @@ class ResetPasswordSendEmailApi(Resource):
     @setup_required
     @email_password_login_enabled
     @console_ns.expect(console_ns.models[EmailPayload.__name__])
+    @console_ns.response(200, "Success", console_ns.models[SimpleResultDataResponse.__name__])
     def post(self):
         args = EmailPayload.model_validate(console_ns.payload)
         normalized_email = args.email.lower()
@@ -213,6 +223,7 @@ class ResetPasswordSendEmailApi(Resource):
 class EmailCodeLoginSendEmailApi(Resource):
     @setup_required
     @console_ns.expect(console_ns.models[EmailPayload.__name__])
+    @console_ns.response(200, "Success", console_ns.models[SimpleResultDataResponse.__name__])
     def post(self):
         args = EmailPayload.model_validate(console_ns.payload)
         normalized_email = args.email.lower()
@@ -245,6 +256,7 @@ class EmailCodeLoginSendEmailApi(Resource):
 class EmailCodeLoginApi(Resource):
     @setup_required
     @console_ns.expect(console_ns.models[EmailCodeLoginPayload.__name__])
+    @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
     @decrypt_code_field
     def post(self):
         args = EmailCodeLoginPayload.model_validate(console_ns.payload)
@@ -321,6 +333,7 @@ class EmailCodeLoginApi(Resource):
 
 @console_ns.route("/refresh-token")
 class RefreshTokenApi(Resource):
+    @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
     def post(self):
         # Get refresh token from cookie instead of request body
         refresh_token = extract_refresh_token(request)

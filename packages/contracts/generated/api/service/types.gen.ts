@@ -31,6 +31,14 @@ export type AnnotationReplyActionPayload = {
   score_threshold: number
 }
 
+export type AppInfoResponse = {
+  author_name: string | null
+  description: string | null
+  mode: string
+  name: string
+  tags: Array<string>
+}
+
 export type ChatRequestPayload = {
   auto_generate_name?: boolean
   conversation_id?: string | null
@@ -164,6 +172,37 @@ export type DatasetListQuery = {
   tag_ids?: Array<string>
 }
 
+export type DatasetMetadataActionResponse = {
+  result: string
+}
+
+export type DatasetMetadataBuiltInFieldResponse = {
+  name: string
+  type: string
+}
+
+export type DatasetMetadataBuiltInFieldsResponse = {
+  fields: Array<DatasetMetadataBuiltInFieldResponse>
+}
+
+export type DatasetMetadataListItemResponse = {
+  count?: number
+  id: string
+  name: string
+  type: string
+}
+
+export type DatasetMetadataListResponse = {
+  built_in_field_enabled: boolean
+  doc_metadata: Array<DatasetMetadataListItemResponse>
+}
+
+export type DatasetMetadataResponse = {
+  id: string
+  name: string
+  type: string
+}
+
 export type DatasetPermissionEnum = 'all_team_members' | 'only_me' | 'partial_members'
 
 export type DatasetUpdatePayload = {
@@ -232,6 +271,19 @@ export type DocumentTextUpdate = {
   text?: string | null
 }
 
+export type EndUserDetail = {
+  app_id?: string | null
+  created_at: string
+  external_user_id?: string | null
+  id: string
+  is_anonymous: boolean
+  name?: string | null
+  session_id: string
+  tenant_id: string
+  type: string
+  updated_at: string
+}
+
 export type FeedbackListQuery = {
   limit?: number
   page?: number
@@ -272,6 +324,12 @@ export type HumanInputFormSubmitPayload = {
   inputs: {
     [key: string]: JsonValue
   }
+}
+
+export type IndexInfoResponse = {
+  api_version: string
+  server_version: string
+  welcome: string
 }
 
 export type JsonValue = unknown
@@ -337,6 +395,10 @@ export type ProcessRule = {
 export type RerankingModel = {
   reranking_model_name?: string | null
   reranking_provider_name?: string | null
+}
+
+export type ResultResponse = {
+  result: string
 }
 
 export type RetrievalMethod
@@ -408,6 +470,32 @@ export type SimpleEndUser = {
   type: string
 }
 
+export type SimpleResultResponse = {
+  result: string
+}
+
+export type SimpleResultStringListResponse = {
+  data: Array<string>
+  result: string
+}
+
+export type Site = {
+  chat_color_theme?: string | null
+  chat_color_theme_inverted: boolean
+  copyright?: string | null
+  custom_disclaimer?: string | null
+  default_language: string
+  description?: string | null
+  icon?: string | null
+  icon_background?: string | null
+  icon_type?: string | null
+  readonly icon_url: string | null
+  privacy_policy?: string | null
+  show_workflow_steps: boolean
+  title: string
+  use_icon_as_answer_icon: boolean
+}
+
 export type TagBindingPayload = {
   tag_ids: Array<string>
   target_id: string
@@ -437,6 +525,10 @@ export type TextToAudioPayload = {
   streaming?: boolean | null
   text?: string | null
   voice?: string | null
+}
+
+export type UrlResponse = {
+  url: string
 }
 
 export type WeightKeywordSetting = {
@@ -525,6 +617,22 @@ export type WorkflowRunResponse = {
   workflow_id: string
 }
 
+export type SiteWritable = {
+  chat_color_theme?: string | null
+  chat_color_theme_inverted: boolean
+  copyright?: string | null
+  custom_disclaimer?: string | null
+  default_language: string
+  description?: string | null
+  icon?: string | null
+  icon_background?: string | null
+  icon_type?: string | null
+  privacy_policy?: string | null
+  show_workflow_steps: boolean
+  title: string
+  use_icon_as_answer_icon: boolean
+}
+
 export type GetRootData = {
   body?: never
   path?: never
@@ -533,9 +641,7 @@ export type GetRootData = {
 }
 
 export type GetRootResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: IndexInfoResponse
 }
 
 export type GetRootResponse = GetRootResponses[keyof GetRootResponses]
@@ -824,9 +930,7 @@ export type PostChatMessagesByTaskIdStopError
   = PostChatMessagesByTaskIdStopErrors[keyof PostChatMessagesByTaskIdStopErrors]
 
 export type PostChatMessagesByTaskIdStopResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: SimpleResultResponse
 }
 
 export type PostChatMessagesByTaskIdStopResponse
@@ -888,9 +992,7 @@ export type PostCompletionMessagesByTaskIdStopError
   = PostCompletionMessagesByTaskIdStopErrors[keyof PostCompletionMessagesByTaskIdStopErrors]
 
 export type PostCompletionMessagesByTaskIdStopResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: SimpleResultResponse
 }
 
 export type PostCompletionMessagesByTaskIdStopResponse
@@ -1595,9 +1697,7 @@ export type PostDatasetsByDatasetIdDocumentsMetadataError
   = PostDatasetsByDatasetIdDocumentsMetadataErrors[keyof PostDatasetsByDatasetIdDocumentsMetadataErrors]
 
 export type PostDatasetsByDatasetIdDocumentsMetadataResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: DatasetMetadataActionResponse
 }
 
 export type PostDatasetsByDatasetIdDocumentsMetadataResponse
@@ -1632,9 +1732,7 @@ export type PatchDatasetsByDatasetIdDocumentsStatusByActionError
   = PatchDatasetsByDatasetIdDocumentsStatusByActionErrors[keyof PatchDatasetsByDatasetIdDocumentsStatusByActionErrors]
 
 export type PatchDatasetsByDatasetIdDocumentsStatusByActionResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: SimpleResultResponse
 }
 
 export type PatchDatasetsByDatasetIdDocumentsStatusByActionResponse
@@ -1796,9 +1894,7 @@ export type GetDatasetsByDatasetIdDocumentsByDocumentIdDownloadError
   = GetDatasetsByDatasetIdDocumentsByDocumentIdDownloadErrors[keyof GetDatasetsByDatasetIdDocumentsByDocumentIdDownloadErrors]
 
 export type GetDatasetsByDatasetIdDocumentsByDocumentIdDownloadResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: UrlResponse
 }
 
 export type GetDatasetsByDatasetIdDocumentsByDocumentIdDownloadResponse
@@ -2284,9 +2380,7 @@ export type GetDatasetsByDatasetIdMetadataError
   = GetDatasetsByDatasetIdMetadataErrors[keyof GetDatasetsByDatasetIdMetadataErrors]
 
 export type GetDatasetsByDatasetIdMetadataResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: DatasetMetadataListResponse
 }
 
 export type GetDatasetsByDatasetIdMetadataResponse
@@ -2314,9 +2408,7 @@ export type PostDatasetsByDatasetIdMetadataError
   = PostDatasetsByDatasetIdMetadataErrors[keyof PostDatasetsByDatasetIdMetadataErrors]
 
 export type PostDatasetsByDatasetIdMetadataResponses = {
-  201: {
-    [key: string]: unknown
-  }
+  201: DatasetMetadataResponse
 }
 
 export type PostDatasetsByDatasetIdMetadataResponse
@@ -2341,9 +2433,7 @@ export type GetDatasetsByDatasetIdMetadataBuiltInError
   = GetDatasetsByDatasetIdMetadataBuiltInErrors[keyof GetDatasetsByDatasetIdMetadataBuiltInErrors]
 
 export type GetDatasetsByDatasetIdMetadataBuiltInResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: DatasetMetadataBuiltInFieldsResponse
 }
 
 export type GetDatasetsByDatasetIdMetadataBuiltInResponse
@@ -2372,9 +2462,7 @@ export type PostDatasetsByDatasetIdMetadataBuiltInByActionError
   = PostDatasetsByDatasetIdMetadataBuiltInByActionErrors[keyof PostDatasetsByDatasetIdMetadataBuiltInByActionErrors]
 
 export type PostDatasetsByDatasetIdMetadataBuiltInByActionResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: DatasetMetadataActionResponse
 }
 
 export type PostDatasetsByDatasetIdMetadataBuiltInByActionResponse
@@ -2434,9 +2522,7 @@ export type PatchDatasetsByDatasetIdMetadataByMetadataIdError
   = PatchDatasetsByDatasetIdMetadataByMetadataIdErrors[keyof PatchDatasetsByDatasetIdMetadataByMetadataIdErrors]
 
 export type PatchDatasetsByDatasetIdMetadataByMetadataIdResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: DatasetMetadataResponse
 }
 
 export type PatchDatasetsByDatasetIdMetadataByMetadataIdResponse
@@ -2605,9 +2691,7 @@ export type GetEndUsersByEndUserIdError
   = GetEndUsersByEndUserIdErrors[keyof GetEndUsersByEndUserIdErrors]
 
 export type GetEndUsersByEndUserIdResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: EndUserDetail
 }
 
 export type GetEndUsersByEndUserIdResponse
@@ -2766,9 +2850,7 @@ export type GetInfoErrors = {
 export type GetInfoError = GetInfoErrors[keyof GetInfoErrors]
 
 export type GetInfoResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: AppInfoResponse
 }
 
 export type GetInfoResponse = GetInfoResponses[keyof GetInfoResponses]
@@ -2825,9 +2907,7 @@ export type PostMessagesByMessageIdFeedbacksError
   = PostMessagesByMessageIdFeedbacksErrors[keyof PostMessagesByMessageIdFeedbacksErrors]
 
 export type PostMessagesByMessageIdFeedbacksResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: ResultResponse
 }
 
 export type PostMessagesByMessageIdFeedbacksResponse
@@ -2861,9 +2941,7 @@ export type GetMessagesByMessageIdSuggestedError
   = GetMessagesByMessageIdSuggestedErrors[keyof GetMessagesByMessageIdSuggestedErrors]
 
 export type GetMessagesByMessageIdSuggestedResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: SimpleResultStringListResponse
 }
 
 export type GetMessagesByMessageIdSuggestedResponse
@@ -2940,9 +3018,7 @@ export type GetSiteErrors = {
 export type GetSiteError = GetSiteErrors[keyof GetSiteErrors]
 
 export type GetSiteResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: Site
 }
 
 export type GetSiteResponse = GetSiteResponses[keyof GetSiteResponses]
@@ -3125,9 +3201,7 @@ export type PostWorkflowsTasksByTaskIdStopError
   = PostWorkflowsTasksByTaskIdStopErrors[keyof PostWorkflowsTasksByTaskIdStopErrors]
 
 export type PostWorkflowsTasksByTaskIdStopResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: SimpleResultResponse
 }
 
 export type PostWorkflowsTasksByTaskIdStopResponse

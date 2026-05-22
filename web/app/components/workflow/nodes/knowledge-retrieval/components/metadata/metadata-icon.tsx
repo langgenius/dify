@@ -19,17 +19,17 @@ const MetadataIcon = ({
     <>
       {
         (type === MetadataFilteringVariableType.string || type === MetadataFilteringVariableType.select) && (
-          <RiTextSnippet className={cn('h-3.5 w-3.5', className)} />
+          <RiTextSnippet className={cn('size-3.5', className)} />
         )
       }
       {
         type === MetadataFilteringVariableType.number && (
-          <RiHashtag className={cn('h-3.5 w-3.5', className)} />
+          <RiHashtag className={cn('size-3.5', className)} />
         )
       }
       {
         type === MetadataFilteringVariableType.time && (
-          <RiTimeLine className={cn('h-3.5 w-3.5', className)} />
+          <RiTimeLine className={cn('size-3.5', className)} />
         )
       }
     </>

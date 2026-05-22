@@ -1,8 +1,8 @@
-import { Field } from '@base-ui/react/field'
-import { Fieldset } from '@base-ui/react/fieldset'
 import { useState } from 'react'
 import { render } from 'vitest-browser-react'
 import { Checkbox } from '../../checkbox'
+import { FieldItem, FieldLabel, FieldRoot } from '../../field'
+import { FieldsetLegend, FieldsetRoot } from '../../fieldset'
 import { CheckboxGroup } from '../index'
 
 const asHTMLElement = (element: HTMLElement | SVGElement) => element as HTMLElement
@@ -43,26 +43,26 @@ describe('CheckboxGroup', () => {
     })
   })
 
-  it('should compose with Base UI Field and Fieldset without losing labels', async () => {
+  it('should compose with Dify UI Field and Fieldset without losing labels', async () => {
     const onValueChange = vi.fn()
     const screen = await render(
-      <Field.Root name="features">
-        <Fieldset.Root render={<CheckboxGroup value={['search']} onValueChange={onValueChange} />}>
-          <Fieldset.Legend>Features</Fieldset.Legend>
-          <Field.Item>
-            <Field.Label>
+      <FieldRoot name="features">
+        <FieldsetRoot render={<CheckboxGroup value={['search']} onValueChange={onValueChange} />}>
+          <FieldsetLegend>Features</FieldsetLegend>
+          <FieldItem>
+            <FieldLabel>
               <Checkbox value="search" />
               Search
-            </Field.Label>
-          </Field.Item>
-          <Field.Item>
-            <Field.Label>
+            </FieldLabel>
+          </FieldItem>
+          <FieldItem>
+            <FieldLabel>
               <Checkbox value="analytics" />
               Analytics
-            </Field.Label>
-          </Field.Item>
-        </Fieldset.Root>
-      </Field.Root>,
+            </FieldLabel>
+          </FieldItem>
+        </FieldsetRoot>
+      </FieldRoot>,
     )
 
     const analytics = screen.getByRole('checkbox', { name: 'Analytics' })

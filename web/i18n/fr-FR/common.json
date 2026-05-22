@@ -465,7 +465,7 @@
   "modelProvider.speechToTextModel.tip": "Définissez le modèle par défaut pour l'entrée de texte par la parole dans la conversation.",
   "modelProvider.systemModelSettings": "Paramètres du Modèle Système",
   "modelProvider.systemReasoningModel.key": "Modèle de Raisonnement du Système",
-  "modelProvider.systemReasoningModel.tip": "Définissez le modèle d'inférence par défaut à utiliser pour la création d'applications, ainsi que des fonctionnalités telles que la génération de noms de dialogue et la suggestion de la prochaine question utiliseront également le modèle d'inférence par défaut.",
+  "modelProvider.systemReasoningModel.tip": "Définissez le modèle de raisonnement par défaut pour créer des applications. Ce modèle est également utilisé pour des fonctionnalités comme la génération de noms de conversation et les suggestions de questions suivantes.",
   "modelProvider.toBeConfigured": "À configurer",
   "modelProvider.ttsModel.key": "Modèle de Texte-à-Parole",
   "modelProvider.ttsModel.tip": "Définissez le modèle par défaut pour l'entrée de texte à la parole dans une conversation.",

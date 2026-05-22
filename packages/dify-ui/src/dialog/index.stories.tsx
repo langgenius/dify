@@ -9,6 +9,8 @@ import {
   DialogTrigger,
 } from '.'
 import { Button } from '../button'
+import { FieldControl, FieldDescription, FieldError, FieldLabel, FieldRoot } from '../field'
+import { Form } from '../form'
 
 const triggerButtonClassName = 'rounded-lg border border-divider-subtle bg-components-button-secondary-bg px-3 py-1.5 text-sm text-text-secondary shadow-xs hover:bg-state-base-hover'
 
@@ -137,6 +139,89 @@ const ControlledDemo = () => {
 
 export const Controlled: Story = {
   render: () => <ControlledDemo />,
+}
+
+type ApiExtensionFormValues = {
+  name: string
+  endpoint: string
+  apiKey: string
+}
+
+const FormDialogDemo = () => {
+  const [open, setOpen] = useState(false)
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen} disablePointerDismissal>
+      <DialogTrigger
+        render={<button type="button" className={triggerButtonClassName} />}
+      >
+        Configure API extension
+      </DialogTrigger>
+      <DialogContent backdropProps={{ forceRender: true }} className="w-160">
+        <DialogCloseButton />
+        <div className="grid gap-2 pr-8">
+          <DialogTitle className="text-lg leading-7 font-semibold text-text-primary">
+            Configure API extension
+          </DialogTitle>
+          <DialogDescription className="text-sm leading-5 text-text-secondary">
+            Save the endpoint and credentials used by this workspace integration.
+          </DialogDescription>
+        </div>
+        <Form<ApiExtensionFormValues>
+          className="grid gap-4 pt-5"
+          onFormSubmit={() => setOpen(false)}
+        >
+          <FieldRoot name="name">
+            <FieldLabel>Name</FieldLabel>
+            <FieldControl required placeholder="Production API" />
+            <FieldError match="valueMissing">Name is required.</FieldError>
+          </FieldRoot>
+          <FieldRoot name="endpoint">
+            <FieldLabel>Endpoint</FieldLabel>
+            <FieldControl type="url" required placeholder="https://api.example.com" />
+            <FieldDescription>
+              <a
+                href="https://docs.dify.ai/use-dify/workspace/api-extension/api-extension"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex w-fit items-center text-text-accent focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
+              >
+                View API extension docs
+              </a>
+            </FieldDescription>
+            <FieldError match="valueMissing">Endpoint is required.</FieldError>
+            <FieldError match="typeMismatch">Enter a valid URL.</FieldError>
+          </FieldRoot>
+          <FieldRoot
+            name="apiKey"
+            validate={(value) => {
+              if (typeof value === 'string' && value.length > 0 && value.length < 5)
+                return 'API key must be at least 5 characters.'
+
+              return null
+            }}
+          >
+            <FieldLabel>API key</FieldLabel>
+            <FieldControl required placeholder="sk-..." />
+            <FieldError match="valueMissing">API key is required.</FieldError>
+            <FieldError match="customError" />
+          </FieldRoot>
+          <div className="mt-2 flex items-center justify-end gap-2">
+            <Button type="button" onClick={() => setOpen(false)}>
+              Cancel
+            </Button>
+            <Button type="submit" variant="primary">
+              Save
+            </Button>
+          </div>
+        </Form>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+export const FormDialog: Story = {
+  render: () => <FormDialogDemo />,
 }
 
 export const ScrollingContent: Story = {

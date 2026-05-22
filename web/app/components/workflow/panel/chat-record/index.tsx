@@ -102,13 +102,13 @@ const ChatRecord = () => {
           <div className="flex shrink-0 items-center justify-between p-4 pb-1 text-base font-semibold text-text-primary">
             {`TEST CHAT${formatWorkflowRunIdentifier(historyWorkflowData?.finished_at)}`}
             <div
-              className="flex h-6 w-6 cursor-pointer items-center justify-center"
+              className="flex size-6 cursor-pointer items-center justify-center"
               onClick={() => {
                 handleLoadBackupDraft()
                 workflowStore.setState({ historyWorkflowData: undefined })
               }}
             >
-              <RiCloseLine className="h-4 w-4 text-text-tertiary" />
+              <RiCloseLine className="size-4 text-text-tertiary" />
             </div>
           </div>
           <div className="h-0 grow">

@@ -46,6 +46,8 @@ const TopKAndScoreThreshold = ({
   hiddenScoreThreshold,
 }: TopKAndScoreThresholdProps) => {
   const { t } = useTranslation()
+  const topKLabel = t('datasetConfig.top_k', { ns: 'appDebug' })
+  const scoreThresholdLabel = t('datasetConfig.score_threshold', { ns: 'appDebug' })
   const handleTopKChange = useCallback((value: number) => {
     onTopKChange?.(Number.parseInt(value.toFixed(0)))
   }, [onTopKChange])
@@ -58,10 +60,10 @@ const TopKAndScoreThreshold = ({
     <div className="grid grid-cols-2 gap-4">
       <div>
         <div className="mb-0.5 flex h-6 items-center system-xs-medium text-text-secondary">
-          {t('datasetConfig.top_k', { ns: 'appDebug' })}
+          {topKLabel}
           <Infotip
             aria-label={t('datasetConfig.top_kTip', { ns: 'appDebug' })}
-            className="ml-0.5 h-3.5 w-3.5"
+            className="ml-0.5 size-3.5"
             iconClassName="h-3.5 w-3.5"
           >
             {t('datasetConfig.top_kTip', { ns: 'appDebug' })}
@@ -76,7 +78,7 @@ const TopKAndScoreThreshold = ({
           onValueChange={value => handleTopKChange(value ?? 0)}
         >
           <NumberFieldGroup>
-            <NumberFieldInput />
+            <NumberFieldInput aria-label={topKLabel} />
             <NumberFieldControls>
               <NumberFieldIncrement />
               <NumberFieldDecrement />
@@ -95,11 +97,11 @@ const TopKAndScoreThreshold = ({
                 disabled={readonly}
               />
               <div className="grow truncate system-sm-medium text-text-secondary">
-                {t('datasetConfig.score_threshold', { ns: 'appDebug' })}
+                {scoreThresholdLabel}
               </div>
               <Infotip
                 aria-label={t('datasetConfig.score_thresholdTip', { ns: 'appDebug' })}
-                className="ml-0.5 h-3.5 w-3.5"
+                className="ml-0.5 size-3.5"
                 iconClassName="h-3.5 w-3.5"
               >
                 {t('datasetConfig.score_thresholdTip', { ns: 'appDebug' })}
@@ -114,7 +116,7 @@ const TopKAndScoreThreshold = ({
               onValueChange={value => handleScoreThresholdChange(value ?? 0)}
             >
               <NumberFieldGroup>
-                <NumberFieldInput />
+                <NumberFieldInput aria-label={scoreThresholdLabel} />
                 <NumberFieldControls>
                   <NumberFieldIncrement />
                   <NumberFieldDecrement />

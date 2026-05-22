@@ -1,23 +1,50 @@
 import type { ApiBasedExtensionResponse } from '@dify/contracts/api/console/api-based-extension/types.gen'
-import type { UseQueryResult } from '@tanstack/react-query'
 import type { ModalContextState } from '@/context/modal-context'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
 import { useModalContext } from '@/context/modal-context'
-import { addApiBasedExtension } from '@/service/common'
-import { useApiBasedExtensions } from '@/service/use-common'
-import ApiBasedExtensionSelector from '../selector'
+import { ApiBasedExtensionSelector } from '../selector'
+
+const {
+  mockApiBasedExtensionsQuery,
+  mockCreateApiBasedExtension,
+  mockUpdateApiBasedExtension,
+} = vi.hoisted(() => ({
+  mockApiBasedExtensionsQuery: vi.fn(),
+  mockCreateApiBasedExtension: vi.fn(),
+  mockUpdateApiBasedExtension: vi.fn(),
+}))
 
 vi.mock('@/context/modal-context', () => ({
   useModalContext: vi.fn(),
 }))
 
-vi.mock('@/service/use-common', () => ({
-  useApiBasedExtensions: vi.fn(),
+vi.mock('@/service/client', () => ({
+  consoleQuery: {
+    apiBasedExtension: {
+      get: {
+        queryOptions: () => ({}),
+      },
+      post: {
+        mutationOptions: () => ({ mutationFn: mockCreateApiBasedExtension }),
+      },
+      byId: {
+        post: {
+          mutationOptions: () => ({ mutationFn: mockUpdateApiBasedExtension }),
+        },
+      },
+    },
+  },
 }))
 
-vi.mock('@/service/common', () => ({
-  addApiBasedExtension: vi.fn(),
+vi.mock('@tanstack/react-query', () => ({
+  useQuery: vi.fn(() => mockApiBasedExtensionsQuery()),
+  useMutation: vi.fn((options: { mutationFn: (variables: unknown) => Promise<unknown> }) => ({
+    isPending: false,
+    mutate: (variables: unknown, mutationOptions?: { onSuccess?: (data: unknown) => void }) => {
+      options.mutationFn(variables).then(data => mutationOptions?.onSuccess?.(data))
+    },
+  })),
 }))
 
 vi.mock('@langgenius/dify-ui/popover', async () => await import('@/__mocks__/base-ui-popover'))
@@ -25,7 +52,6 @@ vi.mock('@langgenius/dify-ui/popover', async () => await import('@/__mocks__/bas
 describe('ApiBasedExtensionSelector', () => {
   const mockOnChange = vi.fn()
   const mockSetShowAccountSettingModal = vi.fn()
-  const mockRefetch = vi.fn()
 
   const mockData: ApiBasedExtensionResponse[] = [
     { id: '1', name: 'Extension 1', api_endpoint: 'https://api1.test', api_key: 'key1' },
@@ -37,12 +63,11 @@ describe('ApiBasedExtensionSelector', () => {
     vi.mocked(useModalContext).mockReturnValue({
       setShowAccountSettingModal: mockSetShowAccountSettingModal,
     } as unknown as ModalContextState)
-    vi.mocked(useApiBasedExtensions).mockReturnValue({
+    mockApiBasedExtensionsQuery.mockReturnValue({
       data: mockData,
-      refetch: mockRefetch,
       isPending: false,
       isError: false,
-    } as unknown as UseQueryResult<ApiBasedExtensionResponse[], Error>)
+    })
   })
 
   describe('Rendering', () => {
@@ -105,9 +130,9 @@ describe('ApiBasedExtensionSelector', () => {
       })
     })
 
-    it('should open add modal when clicking add button and refetches on save', async () => {
+    it('should open add modal when clicking add button and close it after save', async () => {
       // Arrange
-      vi.mocked(addApiBasedExtension).mockResolvedValue({
+      mockCreateApiBasedExtension.mockResolvedValue({
         id: 'new-id',
         name: 'New Ext',
         api_endpoint: 'https://api.test',
@@ -127,7 +152,14 @@ describe('ApiBasedExtensionSelector', () => {
 
       // Assert
       await waitFor(() => {
-        expect(mockRefetch).toHaveBeenCalled()
+        expect(mockCreateApiBasedExtension).toHaveBeenCalledWith({
+          body: {
+            name: 'New Ext',
+            api_endpoint: 'https://api.test',
+            api_key: 'secret-key',
+          },
+        })
+        expect(screen.queryByRole('dialog', { name: 'common.apiBasedExtension.modal.title' })).not.toBeInTheDocument()
       })
     })
   })

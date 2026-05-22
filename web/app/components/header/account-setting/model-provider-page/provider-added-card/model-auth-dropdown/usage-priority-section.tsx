@@ -26,7 +26,7 @@ export default function UsagePrioritySection({ value, disabled, onSelect }: Usag
     <div className="p-1">
       <div className="flex items-center gap-1 rounded-lg p-1">
         <div className="shrink-0 px-0.5 py-1">
-          <span aria-hidden="true" className="i-ri-arrow-up-double-line block h-4 w-4 text-text-tertiary" />
+          <span aria-hidden="true" className="i-ri-arrow-up-double-line block size-4 text-text-tertiary" />
         </div>
         <div className="flex min-w-0 flex-1 items-center gap-0.5 py-0.5">
           <span className="truncate system-sm-medium text-text-secondary">

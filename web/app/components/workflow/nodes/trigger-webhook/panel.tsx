@@ -9,7 +9,7 @@ import {
   NumberFieldIncrement,
   NumberFieldInput,
 } from '@langgenius/dify-ui/number-field'
-import { Select, SelectContent, SelectItem, SelectItemIndicator, SelectItemText, SelectTrigger } from '@langgenius/dify-ui/select'
+import { Select, SelectContent, SelectItem, SelectItemIndicator, SelectItemText, SelectLabel, SelectTrigger } from '@langgenius/dify-ui/select'
 import { toast } from '@langgenius/dify-ui/toast'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import copy from 'copy-to-clipboard'
@@ -167,10 +167,10 @@ const Panel: FC<NodePanelProps<WebhookTriggerNodeType>> = ({
                       >
                         <span className="mt-0.5 w-0.5 bg-divider-regular" style={{ height: '28px' }} />
                         <span className="flex-1" style={{ width: '352px', height: '32px' }}>
-                          <span className="block text-xs leading-4 text-text-tertiary">
+                          <span className="block text-xs/4 text-text-tertiary">
                             {t(`${i18nPrefix}.debugUrlTitle`, { ns: 'workflow' })}
                           </span>
-                          <span className="block truncate text-xs leading-4 text-text-primary">
+                          <span className="block truncate text-xs/4 text-text-primary">
                             {inputs.webhook_debug_url}
                           </span>
                         </span>
@@ -203,6 +203,7 @@ const Panel: FC<NodePanelProps<WebhookTriggerNodeType>> = ({
               disabled={readOnly}
               onValueChange={value => value && handleContentTypeChange(value)}
             >
+              <SelectLabel className="sr-only">{t(`${i18nPrefix}.contentType`, { ns: 'workflow' })}</SelectLabel>
               <SelectTrigger className="h-8 w-full text-sm">
                 {selectedContentType?.name}
               </SelectTrigger>
@@ -267,6 +268,7 @@ const Panel: FC<NodePanelProps<WebhookTriggerNodeType>> = ({
               >
                 <NumberFieldGroup>
                   <NumberFieldInput
+                    aria-label={t(`${i18nPrefix}.statusCode`, { ns: 'workflow' })}
                     className="h-8"
                   />
                   <NumberFieldControls>
