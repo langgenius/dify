@@ -5,6 +5,7 @@ import { APP_LIST_SEARCH_DEBOUNCE_MS } from '../../constants'
 import { useAppsQueryState } from '../use-apps-query-state'
 
 const renderWithAdapter = (searchParams = '') => {
+  // eslint-disable-next-line react/use-state -- testing a custom URL query hook, not React.useState
   return renderHookWithNuqs(() => useAppsQueryState(), { searchParams })
 }
 
@@ -20,24 +21,24 @@ describe('useAppsQueryState', () => {
       category: 'all',
       tagIDs: [],
       keywords: '',
-      isCreatedByMe: false,
+      creatorID: '',
     })
     expect(typeof result.current.setCategory).toBe('function')
     expect(typeof result.current.setKeywords).toBe('function')
     expect(typeof result.current.setTagIDs).toBe('function')
-    expect(typeof result.current.setIsCreatedByMe).toBe('function')
+    expect(typeof result.current.setCreatorID).toBe('function')
   })
 
   it('should parse app list filters from URL', () => {
     const { result } = renderWithAdapter(
-      '?category=workflow&tagIDs=tag1;tag2&keywords=search+term&isCreatedByMe=true',
+      '?category=workflow&tagIDs=tag1;tag2&keywords=search+term&creatorID=creator-1',
     )
 
     expect(result.current.query).toEqual({
       category: AppModeEnum.WORKFLOW,
       tagIDs: ['tag1', 'tag2'],
       keywords: 'search term',
-      isCreatedByMe: true,
+      creatorID: 'creator-1',
     })
   })
 
@@ -144,30 +145,30 @@ describe('useAppsQueryState', () => {
     expect(update.searchParams.has('tagIDs')).toBe(false)
   })
 
-  it('should update created-by-me URL state', async () => {
+  it('should update creator ID URL state', async () => {
     const { result, onUrlUpdate } = renderWithAdapter()
 
     act(() => {
-      result.current.setIsCreatedByMe(true)
+      result.current.setCreatorID('creator-1')
     })
 
     await waitFor(() => expect(onUrlUpdate).toHaveBeenCalled())
     const update = onUrlUpdate.mock.calls.at(-1)![0]
-    expect(result.current.query.isCreatedByMe).toBe(true)
-    expect(update.searchParams.get('isCreatedByMe')).toBe('true')
+    expect(result.current.query.creatorID).toBe('creator-1')
+    expect(update.searchParams.get('creatorID')).toBe('creator-1')
     expect(update.options.history).toBe('push')
   })
 
-  it('should remove isCreatedByMe from URL when disabled', async () => {
-    const { result, onUrlUpdate } = renderWithAdapter('?isCreatedByMe=true')
+  it('should remove creatorID from URL when cleared', async () => {
+    const { result, onUrlUpdate } = renderWithAdapter('?creatorID=creator-1')
 
     act(() => {
-      result.current.setIsCreatedByMe(false)
+      result.current.setCreatorID('')
     })
 
     await waitFor(() => expect(onUrlUpdate).toHaveBeenCalled())
     const update = onUrlUpdate.mock.calls.at(-1)![0]
-    expect(result.current.query.isCreatedByMe).toBe(false)
-    expect(update.searchParams.has('isCreatedByMe')).toBe(false)
+    expect(result.current.query.creatorID).toBe('')
+    expect(update.searchParams.has('creatorID')).toBe(false)
   })
 })

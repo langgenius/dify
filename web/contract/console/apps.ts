@@ -9,7 +9,7 @@ export type AppListQuery = {
   name?: string
   mode?: AppModeEnum
   tag_ids?: string[]
-  is_created_by_me?: boolean
+  creator_id?: string
 }
 
 export const appListContract = base

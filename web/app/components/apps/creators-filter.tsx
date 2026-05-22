@@ -8,9 +8,9 @@ import {
   DropdownMenuContent,
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
+import { Input } from '@langgenius/dify-ui/input'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Input from '@/app/components/base/input'
 import { useAppContext } from '@/context/app-context'
 import { useMembers } from '@/service/use-common'
 
@@ -98,7 +98,8 @@ const CreatorsFilter = ({
     <DropdownMenu>
       <DropdownMenuTrigger
         render={(
-          <div
+          <button
+            type="button"
             className={cn(
               baseChipClassName,
               isSelected
@@ -158,14 +159,25 @@ const CreatorsFilter = ({
       </DropdownMenuTrigger>
       <DropdownMenuContent placement="bottom-start" popupClassName="w-[280px] p-0">
         <div className="flex items-center gap-1 p-2 pb-1">
-          <Input
-            showLeftIcon
-            showClearIcon
-            value={keywords}
-            onChange={e => setKeywords(e.target.value)}
-            onClear={() => setKeywords('')}
-            placeholder={t('studio.filters.searchCreators', { ns: 'app' })}
-          />
+          <div className="relative min-w-0 grow">
+            <span aria-hidden className="pointer-events-none absolute top-1/2 left-2 i-ri-search-line size-4 -translate-y-1/2 text-components-input-text-placeholder" />
+            <Input
+              className={cn('pl-6.5', keywords && 'pr-6.5')}
+              value={keywords}
+              onChange={e => setKeywords(e.target.value)}
+              placeholder={t('studio.filters.searchCreators', { ns: 'app' })}
+            />
+            {!!keywords && (
+              <button
+                type="button"
+                aria-label={t('operation.clear', { ns: 'common' })}
+                className="absolute top-1/2 right-2 flex size-4 -translate-y-1/2 items-center justify-center text-components-input-text-placeholder hover:text-components-input-text-filled"
+                onClick={() => setKeywords('')}
+              >
+                <span aria-hidden className="i-ri-close-circle-fill size-4" />
+              </button>
+            )}
+          </div>
           {isSelected && (
             <button
               type="button"
@@ -176,7 +188,7 @@ const CreatorsFilter = ({
             </button>
           )}
         </div>
-        <div className="max-h-[240px] overflow-y-auto px-1 pb-1">
+        <div className="max-h-60 overflow-y-auto px-1 pb-1">
           {filteredCreators.map((creator) => {
             const checked = value.includes(creator.id)
 

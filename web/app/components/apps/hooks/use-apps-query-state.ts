@@ -1,29 +1,19 @@
-import { debounce, parseAsArrayOf, parseAsBoolean, parseAsString, parseAsStringLiteral, useQueryStates } from 'nuqs'
+import type { AppListCategory } from '../app-type-filter-shared'
+import { debounce, parseAsArrayOf, parseAsString, useQueryStates } from 'nuqs'
 import { useCallback, useMemo } from 'react'
-import { AppModes } from '@/types/app'
+import { parseAsAppListCategory } from '../app-type-filter-shared'
 import { APP_LIST_SEARCH_DEBOUNCE_MS } from '../constants'
 
-const APP_LIST_CATEGORY_VALUES = ['all', ...AppModes] as const
-export type AppListCategory = typeof APP_LIST_CATEGORY_VALUES[number]
-
-const appListCategorySet = new Set<string>(APP_LIST_CATEGORY_VALUES)
-
-export const isAppListCategory = (value: string): value is AppListCategory => {
-  return appListCategorySet.has(value)
-}
-
 const appListQueryParsers = {
-  category: parseAsStringLiteral(APP_LIST_CATEGORY_VALUES)
-    .withDefault('all')
-    .withOptions({ history: 'push' }),
+  category: parseAsAppListCategory,
   tagIDs: parseAsArrayOf(parseAsString, ';')
     .withDefault([])
     .withOptions({ history: 'push' }),
   keywords: parseAsString.withDefault('').withOptions({
     limitUrlUpdates: debounce(APP_LIST_SEARCH_DEBOUNCE_MS),
   }),
-  isCreatedByMe: parseAsBoolean
-    .withDefault(false)
+  creatorID: parseAsString
+    .withDefault('')
     .withOptions({ history: 'push' }),
 }
 
@@ -42,8 +32,8 @@ export function useAppsQueryState() {
     setQuery({ tagIDs })
   }, [setQuery])
 
-  const setIsCreatedByMe = useCallback((isCreatedByMe: boolean) => {
-    setQuery({ isCreatedByMe })
+  const setCreatorID = useCallback((creatorID: string) => {
+    setQuery({ creatorID })
   }, [setQuery])
 
   return useMemo(() => ({
@@ -51,6 +41,6 @@ export function useAppsQueryState() {
     setCategory,
     setKeywords,
     setTagIDs,
-    setIsCreatedByMe,
-  }), [query, setCategory, setKeywords, setTagIDs, setIsCreatedByMe])
+    setCreatorID,
+  }), [query, setCategory, setKeywords, setTagIDs, setCreatorID])
 }

@@ -15,17 +15,17 @@ import { useTranslation } from 'react-i18next'
 import { AppModeEnum } from '@/types/app'
 import { isAppListCategory } from './app-type-filter-shared'
 
-const chipClassName = 'flex h-8 items-center gap-1 rounded-lg border-[0.5px] border-transparent bg-components-input-bg-normal px-2 text-[13px] leading-[18px] text-text-secondary hover:bg-components-input-bg-hover'
+const chipClassName = 'flex h-8 items-center rounded-lg border-[0.5px] px-2 text-[13px] leading-4 transition-colors'
 
 type AppTypeFilterProps = {
-  activeTab: AppListCategory
+  value: AppListCategory
   onChange: (value: AppListCategory) => void
 }
 
-const AppTypeFilter = ({
-  activeTab,
+export function AppTypeFilter({
+  value,
   onChange,
-}: AppTypeFilterProps) => {
+}: AppTypeFilterProps) {
   const { t } = useTranslation()
 
   const options = useMemo(() => ([
@@ -37,8 +37,9 @@ const AppTypeFilter = ({
     { value: AppModeEnum.COMPLETION, text: t('types.completion', { ns: 'app' }), iconClassName: 'i-ri-file-4-line' },
   ]), [t])
 
-  const activeOption = options.find(option => option.value === activeTab)
-  const triggerLabel = activeTab === 'all' ? t('studio.filters.types', { ns: 'app' }) : activeOption?.text
+  const activeOption = options.find(option => option.value === value)
+  const isSelected = value !== 'all'
+  const triggerLabel = isSelected ? activeOption?.text : t('studio.filters.types', { ns: 'app' })
 
   return (
     <DropdownMenu>
@@ -46,16 +47,21 @@ const AppTypeFilter = ({
         render={(
           <button
             type="button"
-            className={cn(chipClassName, activeTab !== 'all' && 'shadow-xs')}
+            className={cn(
+              chipClassName,
+              isSelected
+                ? 'border-components-button-secondary-border bg-components-button-secondary-bg shadow-xs hover:bg-state-base-hover'
+                : 'border-transparent bg-components-input-bg-normal text-text-tertiary hover:bg-components-input-bg-hover',
+            )}
           />
         )}
       >
         <span aria-hidden className={cn('h-4 w-4 shrink-0 text-text-tertiary', activeOption?.iconClassName ?? 'i-ri-apps-2-line')} />
-        <span>{triggerLabel}</span>
+        <span className="px-1 text-text-tertiary">{triggerLabel}</span>
         <span aria-hidden className="i-ri-arrow-down-s-line h-4 w-4 shrink-0 text-text-tertiary" />
       </DropdownMenuTrigger>
       <DropdownMenuContent placement="bottom-start" popupClassName="w-[220px]">
-        <DropdownMenuRadioGroup value={activeTab} onValueChange={value => isAppListCategory(value) && onChange(value)}>
+        <DropdownMenuRadioGroup value={value} onValueChange={nextValue => isAppListCategory(nextValue) && onChange(nextValue)}>
           {options.map(option => (
             <DropdownMenuRadioItem key={option.value} value={option.value}>
               <span aria-hidden className={cn('h-4 w-4 shrink-0 text-text-tertiary', option.iconClassName)} />
@@ -68,5 +74,3 @@ const AppTypeFilter = ({
     </DropdownMenu>
   )
 }
-
-export default AppTypeFilter

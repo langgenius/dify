@@ -3,28 +3,29 @@
 import type { FC } from 'react'
 import type { StudioPageType } from '.'
 import type { AppListQuery } from '@/contract/console/apps'
-import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Input } from '@langgenius/dify-ui/input'
 import { keepPreviousData, useInfiniteQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useDebounce } from 'ahooks'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Input from '@/app/components/base/input'
-import TabSliderNew from '@/app/components/base/tab-slider-new'
 import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
 import { useAppContext } from '@/context/app-context'
 import { TagFilter } from '@/features/tag-management/components/tag-filter'
 import { CheckModal } from '@/hooks/use-pay'
 import dynamic from '@/next/dynamic'
+import Link from '@/next/link'
 import { consoleQuery } from '@/service/client'
 import { systemFeaturesQueryOptions } from '@/service/system-features'
 import { AppModeEnum } from '@/types/app'
 import AppCard from './app-card'
 import { AppCardSkeleton } from './app-card-skeleton'
+import { AppTypeFilter } from './app-type-filter'
 import { APP_LIST_SEARCH_DEBOUNCE_MS } from './constants'
+import CreatorsFilter from './creators-filter'
 import Empty from './empty'
 import Footer from './footer'
-import { isAppListCategory, useAppsQueryState } from './hooks/use-apps-query-state'
+import { useAppsQueryState } from './hooks/use-apps-query-state'
 import { useDSLDragDrop } from './hooks/use-dsl-drag-drop'
 import { useWorkflowOnlineUsers } from './hooks/use-workflow-online-users'
 import NewAppCard from './new-app-card'
@@ -50,11 +51,11 @@ const List: FC<Props> = ({
 
   // eslint-disable-next-line react/use-state -- custom URL query hook, not React.useState
   const {
-    query: { category, tagIDs, keywords, isCreatedByMe },
+    query: { category, tagIDs, keywords, creatorID },
     setCategory,
     setKeywords,
     setTagIDs,
-    setIsCreatedByMe,
+    setCreatorID,
   } = useAppsQueryState()
   const debouncedKeywords = useDebounce(keywords, { wait: APP_LIST_SEARCH_DEBOUNCE_MS })
   const newAppCardRef = useRef<HTMLDivElement>(null)
@@ -79,9 +80,9 @@ const List: FC<Props> = ({
     limit: 30,
     name: debouncedKeywords,
     ...(tagIDs.length ? { tag_ids: tagIDs } : {}),
-    ...(isCreatedByMe ? { is_created_by_me: isCreatedByMe } : {}),
+    ...(creatorID ? { creator_id: creatorID } : {}),
     ...(category !== 'all' ? { mode: category } : {}),
-  }), [category, debouncedKeywords, isCreatedByMe, tagIDs])
+  }), [category, creatorID, debouncedKeywords, tagIDs])
 
   const {
     data,
@@ -115,14 +116,6 @@ const List: FC<Props> = ({
   }, [controlRefreshList, refetch])
 
   const anchorRef = useRef<HTMLDivElement>(null)
-  const options = [
-    { value: 'all', text: t('types.all', { ns: 'app' }), icon: <span className="mr-1 i-ri-apps-2-line h-[14px] w-[14px]" /> },
-    { value: AppModeEnum.WORKFLOW, text: t('types.workflow', { ns: 'app' }), icon: <span className="mr-1 i-ri-exchange-2-line h-[14px] w-[14px]" /> },
-    { value: AppModeEnum.ADVANCED_CHAT, text: t('types.advanced', { ns: 'app' }), icon: <span className="mr-1 i-ri-message-3-line h-[14px] w-[14px]" /> },
-    { value: AppModeEnum.CHAT, text: t('types.chatbot', { ns: 'app' }), icon: <span className="mr-1 i-ri-message-3-line h-[14px] w-[14px]" /> },
-    { value: AppModeEnum.AGENT_CHAT, text: t('types.agent', { ns: 'app' }), icon: <span className="mr-1 i-ri-robot-3-line h-[14px] w-[14px]" /> },
-    { value: AppModeEnum.COMPLETION, text: t('types.completion', { ns: 'app' }), icon: <span className="mr-1 i-ri-file-4-line h-[14px] w-[14px]" /> },
-  ]
 
   useEffect(() => {
     if (localStorage.getItem(NEED_REFRESH_APP_LIST_KEY) === '1') {
@@ -161,9 +154,9 @@ const List: FC<Props> = ({
     return () => observer?.disconnect()
   }, [isLoading, isFetchingNextPage, fetchNextPage, error, hasNextPage, isCurrentWorkspaceDatasetOperator])
 
-  const handleCreatedByMeChange = useCallback((checked: boolean) => {
-    setIsCreatedByMe(checked)
-  }, [setIsCreatedByMe])
+  const handleCreatorsChange = useCallback((creatorIDs: string[]) => {
+    setCreatorID(creatorIDs.at(-1) ?? '')
+  }, [setCreatorID])
 
   const pages = useMemo(() => data?.pages ?? [], [data?.pages])
   const apps = useMemo(() => pages.flatMap(({ data: pageApps }) => pageApps), [pages])
@@ -196,32 +189,45 @@ const List: FC<Props> = ({
           </div>
         )}
 
-        <div className="sticky top-0 z-10 flex flex-wrap items-center justify-between gap-y-2 bg-background-body px-12 pt-7 pb-5">
-          <TabSliderNew
-            value={category}
-            onChange={(nextValue) => {
-              if (isAppListCategory(nextValue))
-                setCategory(nextValue)
-            }}
-            options={options}
-          />
-          <div className="flex items-center gap-2">
-            <label className="mr-2 flex h-7 items-center space-x-2">
-              <Checkbox checked={isCreatedByMe} onCheckedChange={handleCreatedByMeChange} />
-              <div className="text-sm font-normal text-text-secondary">
-                {t('showMyCreatedAppsOnly', { ns: 'app' })}
-              </div>
-            </label>
-            <TagFilter type="app" value={tagIDs} onChange={setTagIDs} onOpenTagManagement={() => setShowTagManagementModal(true)} />
-            <Input
-              showLeftIcon
-              showClearIcon
-              wrapperClassName="w-[200px]"
-              value={keywords}
-              onChange={e => setKeywords(e.target.value)}
-              onClear={() => setKeywords('')}
+        <div className="sticky top-0 z-10 flex flex-wrap items-center justify-between gap-x-4 gap-y-2 bg-background-body px-12 pt-7 pb-5">
+          <div className="flex flex-wrap items-center gap-2">
+            <AppTypeFilter
+              value={category}
+              onChange={setCategory}
             />
+            <CreatorsFilter
+              value={creatorID ? [creatorID] : []}
+              onChange={handleCreatorsChange}
+            />
+            <TagFilter type="app" value={tagIDs} onChange={setTagIDs} onOpenTagManagement={() => setShowTagManagementModal(true)} />
+            <div className="relative w-50">
+              <span aria-hidden className="pointer-events-none absolute top-1/2 left-2 i-ri-search-line size-4 -translate-y-1/2 text-components-input-text-placeholder" />
+              <Input
+                className={cn('pl-6.5', keywords && 'pr-6.5')}
+                value={keywords}
+                onChange={e => setKeywords(e.target.value)}
+                placeholder={t('operation.search', { ns: 'common' })}
+              />
+              {!!keywords && (
+                <button
+                  type="button"
+                  aria-label={t('operation.clear', { ns: 'common' })}
+                  className="absolute top-1/2 right-2 flex size-4 -translate-y-1/2 items-center justify-center text-components-input-text-placeholder hover:text-components-input-text-filled"
+                  onClick={() => setKeywords('')}
+                >
+                  <span aria-hidden className="i-ri-close-circle-fill size-4" />
+                </button>
+              )}
+            </div>
           </div>
+          {pageType === 'apps' && (
+            <Link
+              href="/snippets"
+              className="flex h-8 items-center rounded-lg px-3 text-sm font-semibold text-text-secondary hover:bg-state-base-hover hover:text-text-primary"
+            >
+              {t('studio.viewSnippets', { ns: 'app' })}
+            </Link>
+          )}
         </div>
         <div className={cn(
           'relative grid grow grid-cols-1 content-start gap-4 px-12 pt-2 2k:grid-cols-6 sm:grid-cols-1 md:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-5',
