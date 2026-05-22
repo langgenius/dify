@@ -71,9 +71,7 @@ def test_parallel_iteration_collects_child_event_output_when_variable_pool_lacks
 
     iteration_success = next(event for event in events if isinstance(event, NodeRunIterationSucceededEvent))
     completed = next(
-        event
-        for event in events
-        if isinstance(event, NodeRunSucceededEvent) and event.node_id == "iteration-node"
+        event for event in events if isinstance(event, NodeRunSucceededEvent) and event.node_id == "iteration-node"
     )
 
     assert iteration_success.outputs == {"output": ["first", "second"]}
