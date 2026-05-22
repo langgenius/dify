@@ -134,4 +134,29 @@ describe('NodeSelector', () => {
     expect(onTriggerClick).toHaveBeenCalledTimes(1)
     expect(screen.getByPlaceholderText('workflow.tabs.searchBlock')).toBeInTheDocument()
   })
+
+  it('opens when a custom component trigger does not forward props', async () => {
+    const user = userEvent.setup()
+
+    function TriggerShell() {
+      return (
+        <span>
+          open-from-shell
+        </span>
+      )
+    }
+
+    renderWorkflowComponent(
+      <NodeSelector
+        onSelect={vi.fn()}
+        blocks={[createBlock(BlockEnum.LLM, 'LLM')]}
+        availableBlocksTypes={[BlockEnum.LLM]}
+        trigger={() => <TriggerShell />}
+      />,
+    )
+
+    await user.click(screen.getByRole('button', { name: 'open-from-shell' }))
+
+    expect(screen.getByPlaceholderText('workflow.tabs.searchBlock')).toBeInTheDocument()
+  })
 })

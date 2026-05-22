@@ -194,7 +194,9 @@ const NodeSelector: FC<NodeSelectorProps> = ({
         onClick?: MouseEventHandler<HTMLElement>
       })
     : null
-  const resolvedTriggerElement = React.isValidElement(triggerElement)
+  const shouldRenderTriggerElementAsRoot = React.isValidElement(triggerElement)
+    && triggerElement.type === 'button'
+  const resolvedTriggerElement = shouldRenderTriggerElementAsRoot
     ? React.cloneElement(
         triggerElement as React.ReactElement<{
           onClick?: MouseEventHandler<HTMLElement>
@@ -212,8 +214,6 @@ const NodeSelector: FC<NodeSelectorProps> = ({
           {triggerElement}
         </div>
       )
-  const triggerRendersNativeButton = React.isValidElement(resolvedTriggerElement)
-    && resolvedTriggerElement.type === 'button'
   const resolvedOffset = typeof offset === 'number' || typeof offset === 'function' ? undefined : offset
   const sideOffset = typeof offset === 'number' ? offset : (resolvedOffset?.mainAxis ?? 0)
   const alignOffset = typeof offset === 'number' ? 0 : (resolvedOffset?.crossAxis ?? 0)
@@ -226,7 +226,7 @@ const NodeSelector: FC<NodeSelectorProps> = ({
       {trigger
         ? (
             <PopoverTrigger
-              nativeButton={triggerRendersNativeButton}
+              nativeButton={shouldRenderTriggerElementAsRoot}
               render={resolvedTriggerElement as React.ReactElement}
             />
           )
