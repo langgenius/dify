@@ -31,7 +31,7 @@ const DatasetAccessConfigPage = ({ datasetId }: DatasetAccessConfigPageProps) =>
       <div className="px-12 py-8">
         <h1 className="title-2xl-semi-bold text-text-primary">{t('settings.accessConfig', { ns: 'common' })}</h1>
         <div className="mt-6">
-          <AccessRulesEditor rules={datasetAccessRules} canManage={datasetACLCapabilities.canAccessConfig} />
+          <AccessRulesEditor resourceId={datasetId} rules={datasetAccessRules} canManage={datasetACLCapabilities.canAccessConfig} />
         </div>
       </div>
     </ScrollArea>

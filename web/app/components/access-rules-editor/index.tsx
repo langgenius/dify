@@ -7,23 +7,23 @@ import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AccessRuleRow from '@/app/components/header/account-setting/access-rules-page/access-rule-row'
 import AddRuleTargetsModal from '@/app/components/header/account-setting/access-rules-page/add-rule-targets-modal'
-import { useParams } from '@/next/navigation'
 import { useUpdateAppAccessRuleBindings } from '@/service/access-control/use-app-access-config'
 import { useUpdateDatasetAccessRuleBindings } from '@/service/access-control/use-dataset-access-config'
 
 export type AccessRulesEditorProps = {
+  resourceId: string
   rules: AccessPolicyWithBindings[]
   canManage: boolean
   className?: string
 }
 
 const AccessRulesEditor = ({
+  resourceId,
   rules,
   canManage,
   className,
 }: AccessRulesEditorProps) => {
   const { t } = useTranslation()
-  const { appId } = useParams() as { appId: string }
   const [currentRule, setCurrentRule] = useState<AccessPolicyWithBindings | null>(null)
 
   const handleAddRole = useCallback((rule: AccessPolicyWithBindings) => {
@@ -43,7 +43,7 @@ const AccessRulesEditor = ({
       const { id: policyId, resource_type } = policy || {}
       if (resource_type === 'app') {
         updateAppAccessRuleBindings({
-          appId,
+          appId: resourceId,
           policyId: policyId || '',
           role_ids: selection.roleIds,
           account_ids: selection.memberIds,
@@ -55,7 +55,7 @@ const AccessRulesEditor = ({
       }
       else if (resource_type === 'dataset') {
         updateDatasetAccessRuleBindings({
-          datasetId: appId,
+          datasetId: resourceId,
           policyId: policyId || '',
           role_ids: selection.roleIds,
           account_ids: selection.memberIds,
@@ -66,7 +66,7 @@ const AccessRulesEditor = ({
         })
       }
     },
-    [appId, currentRule, t, updateAppAccessRuleBindings, updateDatasetAccessRuleBindings],
+    [currentRule, resourceId, t, updateAppAccessRuleBindings, updateDatasetAccessRuleBindings],
   )
 
   const handleRemoveRole = useCallback(
@@ -74,7 +74,7 @@ const AccessRulesEditor = ({
       const { policy_id, role_ids, account_ids, resource_type } = payload
       if (resource_type === 'app') {
         updateAppAccessRuleBindings({
-          appId,
+          appId: resourceId,
           policyId: policy_id,
           role_ids,
           account_ids,
@@ -86,7 +86,7 @@ const AccessRulesEditor = ({
       }
       else if (resource_type === 'dataset') {
         updateDatasetAccessRuleBindings({
-          datasetId: appId,
+          datasetId: resourceId,
           policyId: policy_id,
           role_ids,
           account_ids,
@@ -97,7 +97,7 @@ const AccessRulesEditor = ({
         })
       }
     },
-    [appId, t, updateAppAccessRuleBindings, updateDatasetAccessRuleBindings],
+    [resourceId, t, updateAppAccessRuleBindings, updateDatasetAccessRuleBindings],
   )
 
   return (
