@@ -42,7 +42,7 @@ vi.mock('@/context/provider-context', () => ({
     selector({ plan: mockPlan, enableBilling: true }),
 }))
 
-vi.mock('@/app/components/billing/hooks/use-current-plan-vector-space', () => ({
+vi.mock('@/service/use-billing', () => ({
   useCurrentPlanVectorSpace: () => ({
     data: {
       size: mockPlan.usage.vectorSpace,

@@ -29,7 +29,7 @@ vi.mock('@/context/provider-context', () => ({
   }),
 }))
 
-vi.mock('@/app/components/billing/hooks/use-current-plan-vector-space', () => ({
+vi.mock('@/service/use-billing', () => ({
   useCurrentPlanVectorSpace: () => ({
     data: mockVectorSpaceApiData,
   }),
