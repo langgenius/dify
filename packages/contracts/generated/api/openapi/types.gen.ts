@@ -143,6 +143,23 @@ export type DevicePollRequest = {
   device_code: string
 }
 
+export type FileResponse = {
+  conversation_id?: string | null
+  created_at?: number | null
+  created_by?: string | null
+  extension?: string | null
+  file_key?: string | null
+  id: string
+  mime_type?: string | null
+  name: string
+  original_url?: string | null
+  preview_url?: string | null
+  size: number
+  source_url?: string | null
+  tenant_id?: string | null
+  user_id?: string | null
+}
+
 export type HumanInputFormSubmitPayload = {
   action: string
   inputs: {
@@ -376,6 +393,40 @@ export type GetAppsByAppIdDescribeResponses = {
 
 export type GetAppsByAppIdDescribeResponse
   = GetAppsByAppIdDescribeResponses[keyof GetAppsByAppIdDescribeResponses]
+
+export type PostAppsByAppIdFilesUploadData = {
+  body?: never
+  path: {
+    app_id: string
+  }
+  query?: never
+  url: '/apps/{app_id}/files/upload'
+}
+
+export type PostAppsByAppIdFilesUploadErrors = {
+  400: {
+    [key: string]: unknown
+  }
+  401: {
+    [key: string]: unknown
+  }
+  413: {
+    [key: string]: unknown
+  }
+  415: {
+    [key: string]: unknown
+  }
+}
+
+export type PostAppsByAppIdFilesUploadError
+  = PostAppsByAppIdFilesUploadErrors[keyof PostAppsByAppIdFilesUploadErrors]
+
+export type PostAppsByAppIdFilesUploadResponses = {
+  201: FileResponse
+}
+
+export type PostAppsByAppIdFilesUploadResponse
+  = PostAppsByAppIdFilesUploadResponses[keyof PostAppsByAppIdFilesUploadResponses]
 
 export type GetAppsByAppIdFormHumanInputByFormTokenData = {
   body?: never

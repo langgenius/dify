@@ -25,6 +25,15 @@ User-scoped operations
 | ---- | ----------- |
 | 200 | Success |
 
+### /_version
+
+#### GET
+##### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Server version | [ServerVersionResponse](#serverversionresponse) |
+
 ### /account
 
 #### GET
@@ -103,6 +112,29 @@ User-scoped operations
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | App description | [AppDescribeResponse](#appdescriberesponse) |
+
+### /apps/{app_id}/files/upload
+
+#### POST
+##### Description
+
+Upload a file to use as an input variable when running the app
+
+##### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string |
+
+##### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 201 | File uploaded successfully | [FileResponse](#fileresponse) |
+| 400 | Bad request — no file or filename missing |  |
+| 401 | Unauthorized — invalid or expired bearer token |  |
+| 413 | File too large |  |
+| 415 | Unsupported file type or blocked extension |  |
 
 ### /apps/{app_id}/form/human_input/{form_token}
 
@@ -462,6 +494,25 @@ mode is a closed enum.
 | client_id | string |  | Yes |
 | device_code | string |  | Yes |
 
+#### FileResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| conversation_id | string |  | No |
+| created_at | integer |  | No |
+| created_by | string |  | No |
+| extension | string |  | No |
+| file_key | string |  | No |
+| id | string |  | Yes |
+| mime_type | string |  | No |
+| name | string |  | Yes |
+| original_url | string |  | No |
+| preview_url | string |  | No |
+| size | integer |  | Yes |
+| source_url | string |  | No |
+| tenant_id | string |  | No |
+| user_id | string |  | No |
+
 #### HumanInputFormSubmitPayload
 
 | Name | Type | Description | Required |
@@ -508,6 +559,15 @@ Strict (extra='forbid').
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | status | string |  | Yes |
+
+#### ServerVersionResponse
+
+Meta endpoint payload for `GET /openapi/v1/_version` — no auth required.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| edition | string | *Enum:* `"CLOUD"`, `"SELF_HOSTED"` | Yes |
+| version | string |  | Yes |
 
 #### SessionListResponse
 

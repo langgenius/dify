@@ -26,6 +26,8 @@ import {
   zGetWorkspacesByWorkspaceIdPath,
   zGetWorkspacesByWorkspaceIdResponse,
   zGetWorkspacesResponse,
+  zPostAppsByAppIdFilesUploadPath,
+  zPostAppsByAppIdFilesUploadResponse,
   zPostAppsByAppIdFormHumanInputByFormTokenBody,
   zPostAppsByAppIdFormHumanInputByFormTokenPath,
   zPostAppsByAppIdFormHumanInputByFormTokenResponse,
@@ -169,6 +171,30 @@ export const describe = {
 }
 
 /**
+ * Upload a file to use as an input variable when running the app
+ */
+export const post = oc
+  .route({
+    description: 'Upload a file to use as an input variable when running the app',
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postAppsByAppIdFilesUpload',
+    path: '/apps/{app_id}/files/upload',
+    successStatus: 201,
+    tags: ['openapi'],
+  })
+  .input(z.object({ params: zPostAppsByAppIdFilesUploadPath }))
+  .output(zPostAppsByAppIdFilesUploadResponse)
+
+export const upload = {
+  post,
+}
+
+export const files = {
+  upload,
+}
+
+/**
  * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
  *
  * @deprecated
@@ -192,7 +218,7 @@ export const get6 = oc
  *
  * @deprecated
  */
-export const post = oc
+export const post2 = oc
   .route({
     deprecated: true,
     description:
@@ -213,7 +239,7 @@ export const post = oc
 
 export const byFormToken = {
   get: get6,
-  post,
+  post: post2,
 }
 
 export const humanInput = {
@@ -229,7 +255,7 @@ export const form = {
  *
  * @deprecated
  */
-export const post2 = oc
+export const post3 = oc
   .route({
     deprecated: true,
     description:
@@ -244,7 +270,7 @@ export const post2 = oc
   .output(zPostAppsByAppIdRunResponse)
 
 export const run = {
-  post: post2,
+  post: post3,
 }
 
 /**
@@ -275,7 +301,7 @@ export const events = {
  *
  * @deprecated
  */
-export const post3 = oc
+export const post4 = oc
   .route({
     deprecated: true,
     description:
@@ -290,7 +316,7 @@ export const post3 = oc
   .output(zPostAppsByAppIdTasksByTaskIdStopResponse)
 
 export const stop = {
-  post: post3,
+  post: post4,
 }
 
 export const byTaskId = {
@@ -304,6 +330,7 @@ export const tasks = {
 
 export const byAppId = {
   describe,
+  files,
   form,
   run,
   tasks,
@@ -325,7 +352,7 @@ export const apps = {
   byAppId,
 }
 
-export const post4 = oc
+export const post5 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -337,10 +364,10 @@ export const post4 = oc
   .output(zPostOauthDeviceApproveResponse)
 
 export const approve = {
-  post: post4,
+  post: post5,
 }
 
-export const post5 = oc
+export const post6 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -352,10 +379,10 @@ export const post5 = oc
   .output(zPostOauthDeviceCodeResponse)
 
 export const code = {
-  post: post5,
+  post: post6,
 }
 
-export const post6 = oc
+export const post7 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -367,7 +394,7 @@ export const post6 = oc
   .output(zPostOauthDeviceDenyResponse)
 
 export const deny = {
-  post: post6,
+  post: post7,
 }
 
 export const get9 = oc
@@ -390,7 +417,7 @@ export const lookup = {
  *
  * @deprecated
  */
-export const post7 = oc
+export const post8 = oc
   .route({
     deprecated: true,
     description:
@@ -405,7 +432,7 @@ export const post7 = oc
   .output(zPostOauthDeviceTokenResponse)
 
 export const token = {
-  post: post7,
+  post: post8,
 }
 
 export const device = {
