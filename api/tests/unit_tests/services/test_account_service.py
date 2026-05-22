@@ -5,7 +5,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from configs import dify_config
-from models.account import Account, AccountStatus, TenantStatus
+from models.account import Account, AccountStatus, TenantAccountRole, TenantStatus
 from services.account_service import AccountService, RegisterService, TenantService
 from services.errors.account import (
     AccountAlreadyInTenantError,
@@ -1803,7 +1803,9 @@ class TestRegisterService:
                 )
 
                 assert result == "rbac-token"
-                mock_create_member.assert_called_once_with(mock_tenant, mock_new_account, "rbac-role-id-123")
+                mock_create_member.assert_called_once_with(
+                    mock_tenant, mock_new_account, TenantAccountRole.NORMAL.value
+                )
                 mock_rbac_service.MemberRoles.replace.assert_called_once_with(
                     tenant_id=str(mock_tenant.id),
                     account_id=mock_inviter.id,
@@ -1850,7 +1852,9 @@ class TestRegisterService:
                 )
 
                 assert result == "rbac-token"
-                mock_create_member.assert_called_once_with(mock_tenant, mock_existing_account, "rbac-role-id-456")
+                mock_create_member.assert_called_once_with(
+                    mock_tenant, mock_existing_account, TenantAccountRole.NORMAL.value
+                )
                 mock_rbac_service.MemberRoles.replace.assert_called_once_with(
                     tenant_id=str(mock_tenant.id),
                     account_id=mock_inviter.id,
@@ -1896,7 +1900,9 @@ class TestRegisterService:
                         inviter=mock_inviter,
                     )
 
-                mock_create_member.assert_called_once_with(mock_tenant, mock_existing_account, "rbac-role-id-456")
+                mock_create_member.assert_called_once_with(
+                    mock_tenant, mock_existing_account, TenantAccountRole.NORMAL.value
+                )
                 mock_rbac_service.MemberRoles.replace.assert_called_once_with(
                     tenant_id=str(mock_tenant.id),
                     account_id=mock_inviter.id,

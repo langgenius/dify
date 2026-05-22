@@ -36,16 +36,13 @@ from models.account import (
 )
 from models.model import DifySetup
 from services.billing_service import BillingService
-
+from services.enterprise.rbac_service import ListOption, RBACService
 from services.entities.auth_entities import (
     ChangeEmailNewEmailToken,
     ChangeEmailOldEmailToken,
     ChangeEmailPhase,
     ChangeEmailTokenData,
 )
-
-from services.enterprise.rbac_service import ListOption, RBACService
-
 from services.errors.account import (
     AccountAlreadyInTenantError,
     AccountLoginError,
@@ -1657,6 +1654,7 @@ class RegisterService:
             raise ValueError("Inviter is required")
 
         normalized_email = email.lower()
+        tenant_join_role = TenantAccountRole.NORMAL.value if dify_config.RBAC_ENABLED else role
 
         """Invite new member"""
         # Check workspace permission for member invitations
@@ -1677,7 +1675,7 @@ class RegisterService:
                 status=AccountStatus.PENDING,
                 is_setup=True,
             )
-            TenantService.create_tenant_member(tenant, account, role)
+            TenantService.create_tenant_member(tenant, account, tenant_join_role)
             TenantService.switch_tenant(account, tenant.id)
         else:
             TenantService.check_member_permission(tenant, inviter, account, "add")
@@ -1688,7 +1686,7 @@ class RegisterService:
             )
 
             if not ta:
-                TenantService.create_tenant_member(tenant, account, role)
+                TenantService.create_tenant_member(tenant, account, tenant_join_role)
 
             # Support resend invitation email when the account is pending status
             if account.status != AccountStatus.PENDING:
