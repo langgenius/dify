@@ -29,6 +29,16 @@ const { mockUseQueryData, createTag, bindTag, unBindTag } = vi.hoisted(() => {
   }
 })
 
+const mockWorkspacePermissionKeys = vi.hoisted(() => ({
+  value: ['app.tag.manage', 'dataset.tag.manage'] as string[],
+}))
+
+vi.mock('@/context/app-context', () => ({
+  useSelector: <T,>(selector: (state: { workspacePermissionKeys: string[] }) => T): T => selector({
+    workspacePermissionKeys: mockWorkspacePermissionKeys.value,
+  }),
+}))
+
 vi.mock('@tanstack/react-query', () => ({
   useQuery: () => ({ data: mockUseQueryData.current }),
   useMutation: (mutationOptions: { mutationFn: (input: unknown) => Promise<unknown> }) => ({
@@ -100,6 +110,7 @@ const defaultProps = {
 describe('TagSelector', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockWorkspacePermissionKeys.value = ['app.tag.manage', 'dataset.tag.manage']
     mockUseQueryData.current = appTags
     vi.mocked(createTag).mockResolvedValue({ id: 'new-tag', name: 'NewTag', type: 'app', binding_count: 0 })
     vi.mocked(bindTag).mockResolvedValue(undefined)
@@ -239,5 +250,27 @@ describe('TagSelector', () => {
       expect(createTag).toHaveBeenCalledWith('NewKnowledgeTag', 'knowledge')
     })
     expect(bindTag).not.toHaveBeenCalled()
+  })
+
+  it('does not open the tag selector when neither tag management nor binding capability is available', async () => {
+    const user = userEvent.setup()
+    mockWorkspacePermissionKeys.value = []
+
+    render(<TagSelector {...defaultProps} />)
+
+    await user.click(screen.getByRole('combobox', { name: /Frontend/i }))
+
+    expect(screen.queryByRole('combobox', { name: i18n.selectorPlaceholder })).not.toBeInTheDocument()
+  })
+
+  it('opens the tag selector with binding capability even without workspace tag management permission', async () => {
+    const user = userEvent.setup()
+    mockWorkspacePermissionKeys.value = []
+
+    render(<TagSelector {...defaultProps} canBindOrUnbindTags />)
+
+    await user.click(screen.getByRole('combobox', { name: /Frontend/i }))
+
+    expect(await screen.findByRole('combobox', { name: i18n.selectorPlaceholder })).toBeInTheDocument()
   })
 })

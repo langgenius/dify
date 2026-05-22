@@ -27,6 +27,7 @@ import {
 import { useAppWorkflow } from '@/service/use-workflow'
 import { AppModeEnum } from '@/types/app'
 import { asyncRunSafe } from '@/utils'
+import { getAppACLCapabilities } from '@/utils/permission'
 
 type ICardViewProps = {
   appId: string
@@ -38,6 +39,7 @@ const CardView: FC<ICardViewProps> = ({ appId, isInPanel, className }) => {
   const { t } = useTranslation()
   const appDetail = useAppStore(state => state.appDetail)
   const setAppDetail = useAppStore(state => state.setAppDetail)
+  const canEditApp = useMemo(() => getAppACLCapabilities(appDetail?.permission_keys).canEdit, [appDetail?.permission_keys])
 
   const isWorkflowApp = appDetail?.mode === AppModeEnum.WORKFLOW
   const showMCPCard = isInPanel
@@ -126,6 +128,9 @@ const CardView: FC<ICardViewProps> = ({ appId, isInPanel, className }) => {
   }, [appId, updateAppDetail])
 
   const onChangeSiteStatus = async (value: boolean) => {
+    if (!canEditApp)
+      return
+
     const [err] = await asyncRunSafe<App>(
       updateAppSiteStatus({
         url: `/apps/${appId}/site-enable`,
@@ -137,6 +142,9 @@ const CardView: FC<ICardViewProps> = ({ appId, isInPanel, className }) => {
   }
 
   const onChangeApiStatus = async (value: boolean) => {
+    if (!canEditApp)
+      return
+
     const [err] = await asyncRunSafe<App>(
       updateAppSiteStatus({
         url: `/apps/${appId}/api-enable`,
@@ -148,6 +156,9 @@ const CardView: FC<ICardViewProps> = ({ appId, isInPanel, className }) => {
   }
 
   const onSaveSiteConfig: IAppCardProps['onSaveSiteConfig'] = async (params) => {
+    if (!canEditApp)
+      return
+
     const [err] = await asyncRunSafe<App>(
       updateAppSiteConfig({
         url: `/apps/${appId}/site`,
@@ -161,6 +172,9 @@ const CardView: FC<ICardViewProps> = ({ appId, isInPanel, className }) => {
   }
 
   const onGenerateCode = async () => {
+    if (!canEditApp)
+      return
+
     const [err] = await asyncRunSafe<UpdateAppSiteCodeResponse>(
       updateAppSiteAccessToken({
         url: `/apps/${appId}/site/access-token-reset`,

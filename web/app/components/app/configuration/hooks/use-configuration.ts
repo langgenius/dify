@@ -50,6 +50,7 @@ import { usePathname } from '@/next/navigation'
 import { updateAppModelConfig } from '@/service/apps'
 import { useFileUploadConfig } from '@/service/use-common'
 import { AppModeEnum, ModelModeType, Resolution, RETRIEVE_TYPE, TransferMethod } from '@/types/app'
+import { getAppACLCapabilities } from '@/utils/permission'
 import { supportFunctionCall } from '@/utils/tool-call'
 import { basePath } from '@/utils/var'
 import {
@@ -117,6 +118,10 @@ export const useConfiguration = (): ConfigurationViewModel => {
     showAppConfigureFeaturesModal: state.showAppConfigureFeaturesModal,
     setShowAppConfigureFeaturesModal: state.setShowAppConfigureFeaturesModal,
   })))
+  const appACLCapabilities = useMemo(
+    () => getAppACLCapabilities(appDetail?.permission_keys),
+    [appDetail?.permission_keys],
+  )
 
   const { data: fileUploadConfigResponse } = useFileUploadConfig()
   const latestPublishedAt = useMemo(() => appDetail?.model_config?.updated_at, [appDetail])
@@ -482,6 +487,9 @@ export const useConfiguration = (): ConfigurationViewModel => {
   ])
 
   const onPublish = useCallback(async (params?: ModelAndParameter | PublishWorkflowParams, features?: FeaturesData) => {
+    if (!appACLCapabilities.canReleaseAndVersion)
+      return
+
     const modelAndParameter = params && 'model' in params && 'provider' in params && 'parameters' in params
       ? params
       : undefined
@@ -541,6 +549,7 @@ export const useConfiguration = (): ConfigurationViewModel => {
     suggestedQuestionsAfterAnswerConfig,
     t,
     textToSpeechConfig,
+    appACLCapabilities.canReleaseAndVersion,
   ])
 
   const {
@@ -567,6 +576,7 @@ export const useConfiguration = (): ConfigurationViewModel => {
   }, [modelConfig, setModelConfig])
 
   const contextValue: DebugConfigurationValue = {
+    readonly: !appACLCapabilities.canEdit,
     appId,
     isAPIKeySet,
     isTrailFinished: false,
@@ -644,7 +654,7 @@ export const useConfiguration = (): ConfigurationViewModel => {
 
   return {
     appPublisherProps: {
-      publishDisabled: cannotPublish,
+      publishDisabled: cannotPublish || !appACLCapabilities.canReleaseAndVersion,
       publishedAt: (latestPublishedAt || 0) * 1000,
       debugWithMultipleModel,
       multipleModelConfigs,

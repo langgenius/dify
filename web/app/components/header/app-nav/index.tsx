@@ -2,19 +2,15 @@
 
 import type { NavItem } from '../nav/nav-selector'
 import type { AppListQuery } from '@/contract/console/apps'
-import {
-  RiRobot2Fill,
-  RiRobot2Line,
-} from '@remixicon/react'
 import { keepPreviousData, useInfiniteQuery } from '@tanstack/react-query'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useStore as useAppStore } from '@/app/components/app/store'
-import { useAppContext } from '@/context/app-context'
 import dynamic from '@/next/dynamic'
 import { useParams } from '@/next/navigation'
 import { consoleQuery } from '@/service/client'
 import { AppModeEnum } from '@/types/app'
+import { getAppACLCapabilities } from '@/utils/permission'
 import Nav from '../nav'
 
 const CreateAppTemplateDialog = dynamic(() => import('@/app/components/app/create-app-dialog'), { ssr: false })
@@ -27,8 +23,8 @@ const appNavListQuery = {
   name: '',
 } satisfies AppListQuery
 
-const getAppLink = (isCurrentWorkspaceEditor: boolean, appId: string, appMode: AppModeEnum) => {
-  if (!isCurrentWorkspaceEditor)
+const getAppLink = (canAccessLayout: boolean, appId: string, appMode: AppModeEnum) => {
+  if (!canAccessLayout)
     return `/app/${appId}/overview`
 
   if (appMode === AppModeEnum.WORKFLOW || appMode === AppModeEnum.ADVANCED_CHAT)
@@ -40,7 +36,6 @@ const getAppLink = (isCurrentWorkspaceEditor: boolean, appId: string, appMode: A
 const AppNav = () => {
   const { t } = useTranslation()
   const { appId } = useParams()
-  const { isCurrentWorkspaceEditor } = useAppContext()
   const appDetail = useAppStore(state => state.appDetail)
   const [showNewAppDialog, setShowNewAppDialog] = useState(false)
   const [showNewAppTemplateDialog, setShowNewAppTemplateDialog] = useState(false)
@@ -92,16 +87,16 @@ const AppNav = () => {
       icon_url: app.icon_url,
       name: appDetail?.id === app.id ? appDetail.name : app.name,
       mode: app.mode,
-      link: getAppLink(isCurrentWorkspaceEditor, app.id, app.mode),
+      link: getAppLink(getAppACLCapabilities(app.permission_keys).canAccessLayout, app.id, app.mode),
     }))
-  }, [appDetail?.id, appDetail?.name, appsData?.pages, isCurrentWorkspaceEditor])
+  }, [appDetail?.id, appDetail?.name, appsData?.pages])
 
   return (
     <>
       <Nav
         isApp
-        icon={<RiRobot2Line className="size-4" />}
-        activeIcon={<RiRobot2Fill className="size-4" />}
+        icon={<span className="i-ri-robot-2-line size-4" />}
+        activeIcon={<span className="i-ri-robot-2-fill size-4" />}
         text={t('menus.apps', { ns: 'common' })}
         activeSegment={['apps', 'app']}
         link="/apps"

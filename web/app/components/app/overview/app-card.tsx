@@ -13,7 +13,6 @@ import AppBasic from '@/app/components/app-sidebar/basic'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import SecretKeyButton from '@/app/components/develop/secret-key/secret-key-button'
 import Indicator from '@/app/components/header/indicator'
-import { useAppContext } from '@/context/app-context'
 import { useDocLink } from '@/context/i18n'
 import { AccessMode } from '@/models/access-control'
 import { usePathname, useRouter } from '@/next/navigation'
@@ -23,6 +22,7 @@ import { systemFeaturesQueryOptions } from '@/service/system-features'
 import { useAppWorkflow } from '@/service/use-workflow'
 import { AppModeEnum } from '@/types/app'
 import { asyncRunSafe } from '@/utils'
+import { getAppACLCapabilities } from '@/utils/permission'
 import {
   AppCardAccessControlSection,
   AppCardDialogs,
@@ -68,7 +68,8 @@ function AppCard({
 }: IAppCardProps) {
   const router = useRouter()
   const pathname = usePathname()
-  const { isCurrentWorkspaceManager, isCurrentWorkspaceEditor } = useAppContext()
+  const appACLCapabilities = useMemo(() => getAppACLCapabilities(appInfo.permission_keys), [appInfo.permission_keys])
+  const canEditApp = appACLCapabilities.canEdit
   const shouldFetchWorkflow = appInfo.mode === AppModeEnum.WORKFLOW || appInfo.mode === AppModeEnum.ADVANCED_CHAT
   const { data: currentWorkflow } = useAppWorkflow(shouldFetchWorkflow ? appInfo.id : '')
   const docLink = useDocLink()
@@ -93,8 +94,8 @@ function AppCard({
     appInfo,
     cardType,
     currentWorkflow,
-    isCurrentWorkspaceEditor,
-    isCurrentWorkspaceManager,
+    canManageWebApp: canEditApp,
+    canManageApi: canEditApp,
     triggerModeDisabled,
   })
 
@@ -160,8 +161,8 @@ function AppCard({
   const operationKeys = useMemo(() => getAppCardOperationKeys({
     cardType,
     appMode: cardState.appMode,
-    isCurrentWorkspaceEditor,
-  }), [cardState.appMode, cardType, isCurrentWorkspaceEditor])
+    canManageSettings: canEditApp,
+  }), [canEditApp, cardState.appMode, cardType])
 
   const handleLaunch = useCallback(() => {
     window.open(cardState.accessibleUrl, '_blank')
@@ -335,7 +336,7 @@ function AppCard({
               isApp={isApp}
               accessibleUrl={cardState.accessibleUrl}
               showConfirmDelete={showConfirmDelete}
-              isCurrentWorkspaceManager={isCurrentWorkspaceManager}
+              canRegenerateUrl={canEditApp}
               genLoading={genLoading}
               onRegenerate={() => {
                 onGenCode()
@@ -356,7 +357,7 @@ function AppCard({
         </div>
         {!cardState.isMinimalState && (
           <div className="flex items-center gap-1 self-stretch p-3">
-            {!isApp && <SecretKeyButton appId={appInfo.id} />}
+            {!isApp && <SecretKeyButton appId={appInfo.id} canManage={canEditApp} />}
             <AppCardOperations
               t={t}
               operations={operations}

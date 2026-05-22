@@ -2,6 +2,7 @@ import { render, waitFor } from '@testing-library/react'
 import * as React from 'react'
 import { fetchAppDetailDirect } from '@/service/apps'
 import { AppModeEnum } from '@/types/app'
+import { AppACLPermission } from '@/utils/permission'
 import AppDetailLayout from '../layout-main'
 
 const mockReplace = vi.fn()
@@ -100,11 +101,11 @@ describe('AppDetailLayout permissions', () => {
     } as unknown as Awaited<ReturnType<typeof fetchAppDetailDirect>>)
   })
 
-  it('redirects direct overview access when monitor permission is missing', async () => {
+  it('redirects direct overview access to app list when no app surface is available', async () => {
     render(<AppDetailLayout appId="app-1"><div>Child</div></AppDetailLayout>)
 
     await waitFor(() => {
-      expect(mockReplace).toHaveBeenCalledWith('/app/app-1/develop')
+      expect(mockReplace).toHaveBeenCalledWith('/apps')
     })
   })
 
@@ -117,5 +118,22 @@ describe('AppDetailLayout permissions', () => {
       expect(fetchAppDetailDirect).toHaveBeenCalledWith({ url: '/apps', id: 'app-1' })
     })
     expect(mockReplace).not.toHaveBeenCalledWith('/app/app-1/develop')
+  })
+
+  it('allows test-and-run users to access the workflow layout directly', async () => {
+    mockPathname = '/app/app-1/workflow'
+    vi.mocked(fetchAppDetailDirect).mockResolvedValue({
+      id: 'app-1',
+      name: 'Test App',
+      mode: AppModeEnum.WORKFLOW,
+      permission_keys: [AppACLPermission.TestAndRun],
+    } as unknown as Awaited<ReturnType<typeof fetchAppDetailDirect>>)
+
+    render(<AppDetailLayout appId="app-1"><div>Child</div></AppDetailLayout>)
+
+    await waitFor(() => {
+      expect(fetchAppDetailDirect).toHaveBeenCalledWith({ url: '/apps', id: 'app-1' })
+    })
+    expect(mockReplace).not.toHaveBeenCalledWith('/app/app-1/overview')
   })
 })

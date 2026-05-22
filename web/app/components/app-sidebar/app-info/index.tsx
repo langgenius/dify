@@ -96,7 +96,7 @@ export const AppInfoView = ({
           appDetail={appDetail}
           expand={expand}
           onClick={() => {
-            if (appACLCapabilities.canViewLayout || appACLCapabilities.canEdit)
+            if (appACLCapabilities.canAccessLayout)
               setPanelOpen(v => !v)
           }}
         />

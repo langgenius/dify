@@ -172,7 +172,7 @@ const AppCardOperationsMenu: React.FC<AppCardOperationsMenuProps> = ({
           </DropdownMenuItem>
         </>
       )}
-      {appACLCapabilities.canTestAndRun && shouldShowOpenInExploreOption && (
+      {shouldShowOpenInExploreOption && (
         <>
           <DropdownMenuSeparator />
           <DropdownMenuItem className="gap-2 px-3" onClick={handleOpenInstalledApp}>
@@ -241,12 +241,11 @@ const AppCard = ({ app, onlineUsers = [], onRefresh, onOpenTagManagement = () =>
   const workspacePermissionKeys = useAppContextWithSelector(state => state.workspacePermissionKeys)
   const appACLCapabilities = useMemo(() => getAppACLCapabilities(app.permission_keys), [app.permission_keys])
   const canDuplicateApp = hasPermission(workspacePermissionKeys, 'app.create')
-  const canOpenAppLayout = appACLCapabilities.canViewLayout || appACLCapabilities.canEdit
+  const canOpenAppLayout = appACLCapabilities.canAccessLayout
   const canShowOperations = appACLCapabilities.canEdit
     || appACLCapabilities.canImportExportDSL
     || appACLCapabilities.canDelete
     || appACLCapabilities.canAccessConfig
-    || appACLCapabilities.canTestAndRun
     || canDuplicateApp
   const { onPlanInfoChanged } = useProviderContext()
   const { push } = useRouter()
@@ -548,6 +547,7 @@ const AppCard = ({ app, onlineUsers = [], onRefresh, onOpenTagManagement = () =>
               <AppCardTags
                 appId={app.id}
                 tags={app.tags}
+                canBindOrUnbindTags={appACLCapabilities.canEdit}
                 onOpenTagManagement={onOpenTagManagement}
                 onTagsChange={onRefresh}
               />

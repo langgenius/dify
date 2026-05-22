@@ -5,6 +5,7 @@ import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features
 import { InputVarType } from '@/app/components/workflow/types'
 import { AccessMode } from '@/models/access-control'
 import { AppModeEnum } from '@/types/app'
+import { AppACLPermission } from '@/utils/permission'
 import { basePath } from '@/utils/var'
 import AppCard from '../app-card'
 
@@ -27,16 +28,6 @@ vi.mock('react-i18next', () => ({
     t: (key: string) => key,
   }),
   Trans: ({ i18nKey }: { i18nKey?: string }) => i18nKey ?? null,
-}))
-
-vi.mock('@/context/app-context', () => ({
-  useAppContext: () => ({
-    isCurrentWorkspaceManager: true,
-    isCurrentWorkspaceEditor: true,
-    langGeniusVersionInfo: {
-      current_env: 'TESTING',
-    },
-  }),
 }))
 
 vi.mock('@/context/i18n', () => ({
@@ -113,6 +104,7 @@ describe('AppCard', () => {
     icon: 'app-icon',
     icon_background: '#fff',
     api_base_url: 'https://api.example.com',
+    permission_keys: [AppACLPermission.Edit],
     site: {
       app_base_url: 'https://example.com',
       access_token: 'access-token',

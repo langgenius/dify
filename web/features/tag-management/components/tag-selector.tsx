@@ -45,6 +45,7 @@ type TagSelectorProps = TagSelectorRootProps & TagSelectorContentProps & {
   targetId: string
   type: TagType
   value: Tag[]
+  canBindOrUnbindTags?: boolean
   onOpenTagManagement?: () => void
   onTagsChange?: () => void
 }
@@ -53,6 +54,7 @@ export const TagSelector = ({
   targetId,
   type,
   value,
+  canBindOrUnbindTags,
   onOpenTagManagement = () => {},
   onTagsChange,
   placement = 'bottom-start',
@@ -70,6 +72,7 @@ export const TagSelector = ({
   const [inputValue, setInputValue] = useState('')
   const workspacePermissionKeys = useAppContextWithSelector(state => state.workspacePermissionKeys)
   const canManageTags = type === 'app' ? hasPermission(workspacePermissionKeys, 'app.tag.manage') : hasPermission(workspacePermissionKeys, 'dataset.tag.manage')
+
   const applyTagBindingsMutation = useApplyTagBindingsMutation()
   const {
     isPending: isCreatingTag,
@@ -216,7 +219,7 @@ export const TagSelector = ({
       isItemEqualToValue={isSameTag}
     >
       <ComboboxTrigger
-        disabled={!canManageTags}
+        disabled={!canManageTags && !canBindOrUnbindTags}
         aria-label={triggerLabel}
         className={cn(
           'block h-auto w-full rounded-lg border-0 bg-transparent p-0 text-left hover:bg-transparent focus:outline-hidden focus-visible:bg-transparent focus-visible:ring-1 focus-visible:ring-components-input-border-hover focus-visible:ring-inset data-popup-open:bg-state-base-hover data-popup-open:hover:bg-state-base-hover',

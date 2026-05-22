@@ -6,6 +6,7 @@ import { act, renderHook } from '@testing-library/react'
 import * as React from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { AppModeEnum } from '@/types/app'
+import { AppACLPermission } from '@/utils/permission'
 import { useMCPServiceCardState } from '../use-mcp-service-card'
 
 // Mutable mock data for MCP server detail
@@ -27,7 +28,6 @@ const mockRefreshMCPServerCode = vi.fn().mockResolvedValue({})
 const mockInvalidateMCPServerDetail = vi.fn()
 let mockUseMCPServerDetailAppID = ''
 let mockUseMCPServerDetailEnabled: boolean | undefined
-let mockWorkspacePermissionKeys: string[] = ['mcp.manage']
 
 // Mock service hooks
 vi.mock('@/service/use-tools', () => ({
@@ -63,13 +63,6 @@ vi.mock('@/service/use-workflow', () => ({
   }),
 }))
 
-// Mock app context
-vi.mock('@/context/app-context', () => ({
-  useSelector: (selector: (state: { workspacePermissionKeys: string[] }) => unknown) => selector({
-    workspacePermissionKeys: mockWorkspacePermissionKeys,
-  }),
-}))
-
 // Mock apps service
 vi.mock('@/service/apps', () => ({
   fetchAppDetail: vi.fn().mockResolvedValue({
@@ -93,11 +86,15 @@ describe('useMCPServiceCardState', () => {
       React.createElement(QueryClientProvider, { client: queryClient }, children)
   }
 
-  const createMockAppInfo = (mode: AppModeEnum = AppModeEnum.CHAT): AppDetailResponse & Partial<AppSSO> => ({
+  const createMockAppInfo = (
+    mode: AppModeEnum = AppModeEnum.CHAT,
+    permissionKeys: string[] = [AppACLPermission.Edit],
+  ): AppDetailResponse & Partial<AppSSO> => ({
     id: 'app-123',
     name: 'Test App',
     mode,
     api_base_url: 'https://api.example.com/v1',
+    permission_keys: permissionKeys,
   } as AppDetailResponse & Partial<AppSSO>)
 
   beforeEach(() => {
@@ -110,7 +107,6 @@ describe('useMCPServiceCardState', () => {
       description: 'Test server',
       parameters: {},
     }
-    mockWorkspacePermissionKeys = ['mcp.manage']
     mockUseMCPServerDetailAppID = ''
     mockUseMCPServerDetailEnabled = undefined
   })
@@ -163,7 +159,7 @@ describe('useMCPServiceCardState', () => {
   })
 
   describe('Permission Flags', () => {
-    it('should expose MCP manage capability from mcp.manage', () => {
+    it('should expose MCP manage capability from app edit ACL', () => {
       const appInfo = createMockAppInfo()
       const { result } = renderHook(
         () => useMCPServiceCardState(appInfo, false),
@@ -173,9 +169,8 @@ describe('useMCPServiceCardState', () => {
       expect(result.current.canManageMCP).toBe(true)
     })
 
-    it('should disable MCP server access without mcp.manage', async () => {
-      mockWorkspacePermissionKeys = []
-      const appInfo = createMockAppInfo()
+    it('should disable MCP server access without app edit ACL', async () => {
+      const appInfo = createMockAppInfo(AppModeEnum.CHAT, [])
       const { result } = renderHook(
         () => useMCPServiceCardState(appInfo, false),
         { wrapper: createWrapper() },

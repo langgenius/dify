@@ -3,7 +3,7 @@ import { DatasetPermission } from '@/models/datasets'
  * Test suite for permission utility functions
  * Tests dataset edit permission logic based on user roles and dataset settings
  */
-import { hasEditPermissionForDataset, hasPermission } from './permission'
+import { AppACLPermission, getAppACLCapabilities, hasEditPermissionForDataset, hasPermission } from './permission'
 
 describe('permission', () => {
   /**
@@ -102,6 +102,26 @@ describe('permission', () => {
 
     it('returns false when the permission key does not exist', () => {
       expect(hasPermission(['workspace.member.view'], permissionKey)).toBe(false)
+    })
+  })
+
+  describe('getAppACLCapabilities', () => {
+    it('allows test-and-run users to access layout and comment without edit', () => {
+      const capabilities = getAppACLCapabilities([AppACLPermission.TestAndRun])
+
+      expect(capabilities.canTestAndRun).toBe(true)
+      expect(capabilities.canAccessLayout).toBe(true)
+      expect(capabilities.canComment).toBe(true)
+      expect(capabilities.canEdit).toBe(false)
+    })
+
+    it('allows view-layout users to preview the app but not run/debug', () => {
+      const capabilities = getAppACLCapabilities([AppACLPermission.ViewLayout])
+
+      expect(capabilities.canPreviewApp).toBe(true)
+      expect(capabilities.canAccessLayout).toBe(true)
+      expect(capabilities.canComment).toBe(true)
+      expect(capabilities.canTestAndRun).toBe(false)
     })
   })
 })

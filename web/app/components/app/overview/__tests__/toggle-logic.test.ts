@@ -50,8 +50,8 @@ describe('app-card-utils', () => {
         appInfo: baseAppInfo,
         cardType: 'webapp',
         currentWorkflow: null,
-        isCurrentWorkspaceEditor: true,
-        isCurrentWorkspaceManager: true,
+        canManageWebApp: true,
+        canManageApi: true,
       })
 
       expect(state.appUnpublished).toBe(true)
@@ -70,8 +70,8 @@ describe('app-card-utils', () => {
             nodes: [{ data: { type: 'start' } }],
           },
         },
-        isCurrentWorkspaceEditor: true,
-        isCurrentWorkspaceManager: true,
+        canManageWebApp: true,
+        canManageApi: true,
       })
 
       expect(state.appUnpublished).toBe(false)
@@ -87,7 +87,7 @@ describe('app-card-utils', () => {
       expect(getAppCardOperationKeys({
         cardType: 'webapp',
         appMode: AppModeEnum.CHAT,
-        isCurrentWorkspaceEditor: true,
+        canManageSettings: true,
       })).toEqual(['launch', 'embedded', 'customize', 'settings'])
     })
 
@@ -95,7 +95,7 @@ describe('app-card-utils', () => {
       expect(getAppCardOperationKeys({
         cardType: 'api',
         appMode: AppModeEnum.COMPLETION,
-        isCurrentWorkspaceEditor: false,
+        canManageSettings: false,
       })).toEqual(['develop'])
     })
   })

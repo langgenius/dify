@@ -2,9 +2,9 @@ import { useInfiniteQuery } from '@tanstack/react-query'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useStore as useAppStore } from '@/app/components/app/store'
-import { useAppContext } from '@/context/app-context'
 import { useParams } from '@/next/navigation'
 import { AppModeEnum } from '@/types/app'
+import { AppACLPermission } from '@/utils/permission'
 import AppNav from '../index'
 
 const mockAppListInfiniteOptions = vi.hoisted(() => vi.fn((options: unknown) => options))
@@ -17,10 +17,6 @@ vi.mock('react-i18next', () => ({
   useTranslation: () => ({
     t: (key: string) => key,
   }),
-}))
-
-vi.mock('@/context/app-context', () => ({
-  useAppContext: vi.fn(),
 }))
 
 vi.mock('@/app/components/app/store', () => ({
@@ -140,11 +136,11 @@ const mockAppData = [
     icon: '🤖',
     icon_background: null,
     icon_url: null,
+    permission_keys: [] as string[],
   },
 ]
 
 const mockUseParams = vi.mocked(useParams)
-const mockUseAppContext = vi.mocked(useAppContext)
 const mockUseAppStore = vi.mocked(useAppStore)
 const mockUseInfiniteQuery = vi.mocked(useInfiniteQuery)
 let mockAppDetail: { id: string, name: string } | null = null
@@ -157,14 +153,12 @@ const setupDefaultMocks = (options?: {
   hasNextPage?: boolean
   refetch?: () => void
   fetchNextPage?: () => void
-  isEditor?: boolean
   appData?: typeof mockAppData
 }) => {
   const refetch = options?.refetch ?? vi.fn()
   const fetchNextPage = options?.fetchNextPage ?? vi.fn()
 
   mockUseParams.mockReturnValue({ appId: 'app-1' } as ReturnType<typeof useParams>)
-  mockUseAppContext.mockReturnValue({ isCurrentWorkspaceEditor: options?.isEditor ?? false } as ReturnType<typeof useAppContext>)
   mockUseAppStore.mockImplementation((selector: unknown) => (selector as (state: { appDetail: { id: string, name: string } | null }) => unknown)({ appDetail: mockAppDetail }))
   mockUseInfiniteQuery.mockReturnValue({
     data: { pages: [{ data: options?.appData ?? mockAppData }] },
@@ -201,9 +195,8 @@ describe('AppNav', () => {
     expect(options.getNextPageParam({ has_more: false, page: 3 })).toBeUndefined()
   })
 
-  it('should build editor links and update app name when app detail changes', async () => {
+  it('should build layout links from app ACL and update app name when app detail changes', async () => {
     setupDefaultMocks({
-      isEditor: true,
       appData: [
         {
           id: 'app-1',
@@ -213,6 +206,7 @@ describe('AppNav', () => {
           icon: '🤖',
           icon_background: null,
           icon_url: null,
+          permission_keys: [AppACLPermission.Edit],
         },
         {
           id: 'app-2',
@@ -222,6 +216,7 @@ describe('AppNav', () => {
           icon: '⚙️',
           icon_background: null,
           icon_url: null,
+          permission_keys: [AppACLPermission.TestAndRun],
         },
       ],
     })
@@ -302,10 +297,9 @@ describe('AppNav', () => {
     expect(fetchNextPage).not.toHaveBeenCalled()
   })
 
-  // Non-editor link path: isCurrentWorkspaceEditor=false → link ends with /overview
-  it('should build overview links when user is not editor', () => {
+  it('should build overview links when app layout ACL is missing', () => {
     // Arrange
-    setupDefaultMocks({ isEditor: false })
+    setupDefaultMocks()
 
     // Act
     render(<AppNav />)
@@ -339,7 +333,6 @@ describe('AppNav', () => {
   it('should build workflow link for ADVANCED_CHAT mode when user is editor', () => {
     // Arrange
     setupDefaultMocks({
-      isEditor: true,
       appData: [
         {
           id: 'app-3',
@@ -349,6 +342,7 @@ describe('AppNav', () => {
           icon: '💬',
           icon_background: null,
           icon_url: null,
+          permission_keys: [AppACLPermission.ViewLayout],
         },
       ],
     })
@@ -363,7 +357,20 @@ describe('AppNav', () => {
   // No-match update path: appDetail.id doesn't match any nav item
   it('should not change nav item names when appDetail id does not match any item', async () => {
     // Arrange
-    setupDefaultMocks({ isEditor: true })
+    setupDefaultMocks({
+      appData: [
+        {
+          id: 'app-1',
+          name: 'App 1',
+          mode: AppModeEnum.AGENT_CHAT,
+          icon_type: 'emoji',
+          icon: '🤖',
+          icon_background: null,
+          icon_url: null,
+          permission_keys: [AppACLPermission.Edit],
+        },
+      ],
+    })
     const { rerender } = render(<AppNav />)
 
     // Act - set appDetail to a non-matching id

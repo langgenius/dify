@@ -33,6 +33,9 @@ type AppACLCapabilities = {
   canViewLayout: boolean
   canTestAndRun: boolean
   canEdit: boolean
+  canAccessLayout: boolean
+  canComment: boolean
+  canPreviewApp: boolean
   canImportExportDSL: boolean
   canDelete: boolean
   canReleaseAndVersion: boolean
@@ -82,16 +85,25 @@ export const hasPermission = (permissionKeys: readonly PermissionKey[] | null | 
   return permissionKeys.includes(singlePermissionKey)
 }
 
-export const getAppACLCapabilities = (permissionKeys: readonly PermissionKey[] | null | undefined): AppACLCapabilities => ({
-  canViewLayout: hasPermission(permissionKeys, AppACLPermission.ViewLayout),
-  canTestAndRun: hasPermission(permissionKeys, AppACLPermission.TestAndRun),
-  canEdit: hasPermission(permissionKeys, AppACLPermission.Edit),
-  canImportExportDSL: hasPermission(permissionKeys, AppACLPermission.ImportExportDSL),
-  canDelete: hasPermission(permissionKeys, AppACLPermission.Delete),
-  canReleaseAndVersion: hasPermission(permissionKeys, AppACLPermission.ReleaseAndVersion),
-  canMonitor: hasPermission(permissionKeys, AppACLPermission.Monitor),
-  canAccessConfig: hasPermission(permissionKeys, AppACLPermission.AccessConfig),
-})
+export const getAppACLCapabilities = (permissionKeys: readonly PermissionKey[] | null | undefined): AppACLCapabilities => {
+  const canViewLayout = hasPermission(permissionKeys, AppACLPermission.ViewLayout)
+  const canTestAndRun = hasPermission(permissionKeys, AppACLPermission.TestAndRun)
+  const canEdit = hasPermission(permissionKeys, AppACLPermission.Edit)
+
+  return {
+    canViewLayout,
+    canTestAndRun,
+    canEdit,
+    canAccessLayout: canViewLayout || canTestAndRun || canEdit,
+    canComment: canViewLayout || canTestAndRun || canEdit,
+    canPreviewApp: canViewLayout || canTestAndRun,
+    canImportExportDSL: hasPermission(permissionKeys, AppACLPermission.ImportExportDSL),
+    canDelete: hasPermission(permissionKeys, AppACLPermission.Delete),
+    canReleaseAndVersion: hasPermission(permissionKeys, AppACLPermission.ReleaseAndVersion),
+    canMonitor: hasPermission(permissionKeys, AppACLPermission.Monitor),
+    canAccessConfig: hasPermission(permissionKeys, AppACLPermission.AccessConfig),
+  }
+}
 
 export const getDatasetACLCapabilities = (permissionKeys: readonly PermissionKey[] | null | undefined): DatasetACLCapabilities => ({
   canReadonly: hasPermission(permissionKeys, DatasetACLPermission.Readonly),

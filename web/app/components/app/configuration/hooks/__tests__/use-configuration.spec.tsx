@@ -2,6 +2,7 @@
 import { act, renderHook, waitFor } from '@testing-library/react'
 import { updateAppModelConfig } from '@/service/apps'
 import { AppModeEnum, ModelModeType } from '@/types/app'
+import { AppACLPermission } from '@/utils/permission'
 import { useConfiguration } from '../use-configuration'
 
 const mockSetShowAccountSettingModal = vi.fn()
@@ -27,6 +28,7 @@ let latestAdvancedPromptConfigOptions: AdvancedPromptConfigOptions | undefined
 let mockTempStopState: string[] = []
 let mockCurrentModelFeatures = ['vision']
 let mockCurrentModelMode = ModelModeType.chat
+let mockAppPermissionKeys: string[] = [AppACLPermission.Edit, AppACLPermission.ReleaseAndVersion]
 
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({
@@ -76,6 +78,7 @@ vi.mock('@/app/components/app/store', () => ({
         updated_at: 1710000000,
       },
       mode: AppModeEnum.CHAT,
+      permission_keys: mockAppPermissionKeys,
     },
     setAppSidebarExpand: mockSetAppSidebarExpand,
     showAppConfigureFeaturesModal: false,
@@ -176,6 +179,7 @@ describe('useConfiguration', () => {
     mockTempStopState = []
     mockCurrentModelFeatures = ['vision']
     mockCurrentModelMode = ModelModeType.chat
+    mockAppPermissionKeys = [AppACLPermission.Edit, AppACLPermission.ReleaseAndVersion]
     mockFetchCollectionList.mockResolvedValue([])
     mockFetchDatasets.mockResolvedValue({ data: [] })
     mockFetchAndMergeValidCompletionParams.mockResolvedValue({
@@ -268,6 +272,65 @@ describe('useConfiguration', () => {
       true,
     )
     expect(result.current.appPublisherProps.onPublish).toBeDefined()
+
+    await act(async () => {
+      await result.current.appPublisherProps.onPublish!(undefined, result.current.featuresData)
+    })
+
+    expect(updateAppModelConfig).toHaveBeenCalledWith(expect.objectContaining({
+      url: '/apps/app-1/model-config',
+    }))
+  })
+
+  it('should block publishing when app release permission is missing', async () => {
+    mockAppPermissionKeys = [AppACLPermission.ViewLayout]
+
+    const { result } = renderHook(() => useConfiguration())
+
+    await waitFor(() => {
+      expect(result.current.showLoading).toBe(false)
+    })
+
+    expect(result.current.contextValue.readonly).toBe(true)
+    expect(result.current.appPublisherProps.publishDisabled).toBe(true)
+
+    await act(async () => {
+      await result.current.appPublisherProps.onPublish!(undefined, result.current.featuresData)
+    })
+
+    expect(updateAppModelConfig).not.toHaveBeenCalled()
+  })
+
+  it('should keep configuration editable but block publishing when only app edit permission exists', async () => {
+    mockAppPermissionKeys = [AppACLPermission.Edit]
+
+    const { result } = renderHook(() => useConfiguration())
+
+    await waitFor(() => {
+      expect(result.current.showLoading).toBe(false)
+    })
+
+    expect(result.current.contextValue.readonly).toBe(false)
+    expect(result.current.appPublisherProps.publishDisabled).toBe(true)
+
+    await act(async () => {
+      await result.current.appPublisherProps.onPublish!(undefined, result.current.featuresData)
+    })
+
+    expect(updateAppModelConfig).not.toHaveBeenCalled()
+  })
+
+  it('should allow publishing with app release permission even when configuration is readonly', async () => {
+    mockAppPermissionKeys = [AppACLPermission.ReleaseAndVersion]
+
+    const { result } = renderHook(() => useConfiguration())
+
+    await waitFor(() => {
+      expect(result.current.showLoading).toBe(false)
+    })
+
+    expect(result.current.contextValue.readonly).toBe(true)
+    expect(result.current.appPublisherProps.publishDisabled).toBe(false)
 
     await act(async () => {
       await result.current.appPublisherProps.onPublish!(undefined, result.current.featuresData)

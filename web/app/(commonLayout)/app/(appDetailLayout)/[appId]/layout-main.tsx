@@ -74,7 +74,7 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
 
   const getNavigationConfig = useCallback((appId: string, mode: AppModeEnum) => {
     const navConfig = [
-      ...(appACLCapabilities.canViewLayout || appACLCapabilities.canEdit
+      ...(appACLCapabilities.canAccessLayout
         ? [{
             name: t('appMenus.promptEng', { ns: 'common' }),
             href: `/app/${appId}/${(mode === AppModeEnum.WORKFLOW || mode === AppModeEnum.ADVANCED_CHAT) ? 'workflow' : 'configuration'}`,
@@ -83,12 +83,15 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
           }]
         : []
       ),
-      {
-        name: t('appMenus.apiAccess', { ns: 'common' }),
-        href: `/app/${appId}/develop`,
-        icon: RiTerminalBoxLine,
-        selectedIcon: RiTerminalBoxFill,
-      },
+      ...(appACLCapabilities.canEdit
+        ? [{
+            name: t('appMenus.apiAccess', { ns: 'common' }),
+            href: `/app/${appId}/develop`,
+            icon: RiTerminalBoxLine,
+            selectedIcon: RiTerminalBoxFill,
+          }]
+        : []
+      ),
       ...(canAccessLog
         ? [{
             name: mode !== AppModeEnum.WORKFLOW
@@ -152,9 +155,14 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
       return
     const res = appDetailRes
     // redirection
-    const canAccessLayout = appACLCapabilities.canViewLayout || appACLCapabilities.canEdit
+    const canAccessLayout = appACLCapabilities.canAccessLayout
+    const layoutPath = `/app/${appId}/${(res.mode === AppModeEnum.WORKFLOW || res.mode === AppModeEnum.ADVANCED_CHAT) ? 'workflow' : 'configuration'}`
     if (!canAccessLayout && (pathname.endsWith('configuration') || pathname.endsWith('workflow'))) {
       router.replace(`/app/${appId}/overview`)
+      return
+    }
+    if (!appACLCapabilities.canEdit && pathname.endsWith('develop')) {
+      router.replace(canAccessLayout ? layoutPath : `/app/${appId}/overview`)
       return
     }
     if (!canAccessLog && pathname.endsWith('logs')) {
@@ -162,7 +170,7 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
       return
     }
     if (!canAccessMonitor && pathname.endsWith('overview')) {
-      router.replace(`/app/${appId}/develop`)
+      router.replace(appACLCapabilities.canEdit ? `/app/${appId}/develop` : (canAccessLayout ? layoutPath : '/apps'))
       return
     }
     if (!appACLCapabilities.canAccessConfig && pathname.endsWith('access-config')) {

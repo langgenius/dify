@@ -109,6 +109,7 @@ const ConfigurationView: FC<ConfigurationViewModel> = ({
                         isChatModel={contextValue.modelModeType === ModelModeType.chat}
                         agentConfig={modelConfig.agentConfig}
                         isFunctionCall={contextValue.isFunctionCall}
+                        disabled={contextValue.readonly}
                         onAgentSettingChange={onAgentSettingChange}
                       />
                     )}
@@ -119,6 +120,7 @@ const ConfigurationView: FC<ConfigurationViewModel> = ({
                           provider={modelConfig.provider}
                           completionParams={contextValue.completionParams}
                           modelId={modelConfig.model_id}
+                          readonly={contextValue.readonly}
                           setModel={onModelChange}
                           onCompletionParamsChange={onCompletionParamsChange}
                           debugWithMultipleModel={debugWithMultipleModel}
@@ -245,7 +247,7 @@ const ConfigurationView: FC<ConfigurationViewModel> = ({
               inWorkflow={false}
               showFileUpload={false}
               isChatMode={contextValue.mode !== AppModeEnum.COMPLETION}
-              disabled={false}
+              disabled={!!contextValue.readonly}
               onChange={onFeaturesChange}
               onClose={onCloseFeaturePanel}
               promptVariables={promptVariables}
