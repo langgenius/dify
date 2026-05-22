@@ -4,14 +4,14 @@ from collections.abc import Mapping, Sequence
 from datetime import UTC, datetime
 from typing import Any
 
-from sqlalchemy import func, select
+from sqlalchemy import delete, func, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.workflow.node_factory import LATEST_VERSION, NODE_TYPE_CLASSES_MAPPING
 from extensions.ext_database import db
 from graphon.enums import BuiltinNodeTypes, NodeType
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
-from models import Account
+from models import Account, TagBinding
 from models.enums import WorkflowRunTriggeredFrom
 from models.snippet import CustomizedSnippet, SnippetType
 from models.workflow import (
@@ -23,6 +23,7 @@ from models.workflow import (
 )
 from repositories.factory import DifyAPIRepositoryFactory
 from services.errors.app import IsDraftWorkflowError, WorkflowHashNotEqualError, WorkflowNotFoundError
+from services.tag_service import TagService
 from services.workflow_restore import apply_published_workflow_snapshot_to_draft
 
 logger = logging.getLogger(__name__)
@@ -88,6 +89,7 @@ class SnippetService:
         keyword: str | None = None,
         is_published: bool | None = None,
         creators: list[str] | None = None,
+        tag_ids: list[str] | None = None,
     ) -> tuple[Sequence[CustomizedSnippet], int, bool]:
         """
         Get paginated list of snippets with optional search.
@@ -98,6 +100,7 @@ class SnippetService:
         :param keyword: Optional search keyword for name/description
         :param is_published: Optional filter by published status (True/False/None for all)
         :param creators: Optional filter by creator account IDs
+        :param tag_ids: Optional filter by tag IDs
         :return: Tuple of (snippets list, total count, has_more flag)
         """
         stmt = (
@@ -116,6 +119,13 @@ class SnippetService:
 
         if creators:
             stmt = stmt.where(CustomizedSnippet.created_by.in_(creators))
+
+        if tag_ids:
+            target_ids = TagService.get_target_ids_by_tag_ids("snippet", tenant_id, tag_ids)
+            if target_ids:
+                stmt = stmt.where(CustomizedSnippet.id.in_(target_ids))
+            else:
+                return [], 0, False
 
         # Get total count
         count_stmt = select(func.count()).select_from(stmt.subquery())
@@ -261,6 +271,12 @@ class SnippetService:
         :param snippet: Snippet to delete
         :return: True if deleted successfully
         """
+        session.execute(
+            delete(TagBinding).where(
+                TagBinding.tenant_id == snippet.tenant_id,
+                TagBinding.target_id == snippet.id,
+            )
+        )
         session.delete(snippet)
         return True
 

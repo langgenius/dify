@@ -83,3 +83,14 @@ def test_restore_published_snippet_workflow_to_draft_raises_when_source_missing(
             workflow_id="missing-workflow",
             account=account,
         )
+
+
+def test_delete_snippet_removes_tag_bindings() -> None:
+    snippet = SimpleNamespace(id="snippet-1", tenant_id="tenant-1")
+    session = SimpleNamespace(execute=Mock(), delete=Mock())
+
+    result = SnippetService.delete_snippet(session=session, snippet=snippet)
+
+    assert result is True
+    session.execute.assert_called_once()
+    session.delete.assert_called_once_with(snippet)

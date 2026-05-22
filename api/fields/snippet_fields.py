@@ -3,6 +3,8 @@ from flask_restx import fields
 from fields.member_fields import simple_account_fields
 from libs.helper import TimestampField
 
+tag_fields = {"id": fields.String, "name": fields.String, "type": fields.String}
+
 # Snippet list item fields (lightweight for list display)
 snippet_list_fields = {
     "id": fields.String,
@@ -13,6 +15,7 @@ snippet_list_fields = {
     "use_count": fields.Integer,
     "is_published": fields.Boolean,
     "icon_info": fields.Raw,
+    "tags": fields.List(fields.Nested(tag_fields)),
     "created_by": fields.String,
     "created_at": TimestampField,
     "updated_by": fields.String,
@@ -31,6 +34,7 @@ snippet_fields = {
     "icon_info": fields.Raw,
     "graph": fields.Raw(attribute="graph_dict"),
     "input_fields": fields.Raw(attribute="input_fields_list"),
+    "tags": fields.List(fields.Nested(tag_fields)),
     "created_by": fields.Nested(simple_account_fields, attribute="created_by_account", allow_null=True),
     "created_at": TimestampField,
     "updated_by": fields.Nested(simple_account_fields, attribute="updated_by_account", allow_null=True),

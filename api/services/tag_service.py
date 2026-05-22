@@ -12,6 +12,7 @@ from extensions.ext_database import db
 from models.dataset import Dataset
 from models.enums import TagType
 from models.model import App, Tag, TagBinding
+from models.snippet import CustomizedSnippet
 
 
 class SaveTagPayload(BaseModel):
@@ -159,7 +160,14 @@ class TagService:
     @staticmethod
     def save_tag_binding(payload: TagBindingCreatePayload):
         TagService.check_target_exists(payload.type, payload.target_id)
-        for tag_id in payload.tag_ids:
+        valid_tag_ids = db.session.scalars(
+            select(Tag.id).where(
+                Tag.id.in_(payload.tag_ids),
+                Tag.tenant_id == current_user.current_tenant_id,
+                Tag.type == payload.type,
+            )
+        ).all()
+        for tag_id in valid_tag_ids:
             tag_binding = db.session.scalar(
                 select(TagBinding)
                 .where(TagBinding.tag_id == tag_id, TagBinding.target_id == payload.target_id)
@@ -186,6 +194,12 @@ class TagService:
                     TagBinding.target_id == payload.target_id,
                     TagBinding.tag_id.in_(payload.tag_ids),
                     TagBinding.tenant_id == current_user.current_tenant_id,
+                    TagBinding.tag_id.in_(
+                        select(Tag.id).where(
+                            Tag.tenant_id == current_user.current_tenant_id,
+                            Tag.type == payload.type,
+                        )
+                    ),
                 )
             ),
         )
@@ -209,5 +223,13 @@ class TagService:
             )
             if not app:
                 raise NotFound("App not found")
+        elif type == "snippet":
+            snippet = db.session.scalar(
+                select(CustomizedSnippet)
+                .where(CustomizedSnippet.tenant_id == current_user.current_tenant_id, CustomizedSnippet.id == target_id)
+                .limit(1)
+            )
+            if not snippet:
+                raise NotFound("Snippet not found")
         else:
             raise NotFound("Invalid binding type")

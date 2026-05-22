@@ -1,3 +1,4 @@
+import uuid
 from typing import Any, Literal
 
 from pydantic import BaseModel, Field, field_validator
@@ -11,17 +12,34 @@ class SnippetListQuery(BaseModel):
     keyword: str | None = None
     is_published: bool | None = Field(default=None, description="Filter by published status")
     creators: list[str] | None = Field(default=None, description="Filter by creator account IDs")
+    tag_ids: list[str] | None = Field(default=None, description="Filter by tag IDs")
 
     @field_validator("creators", mode="before")
     @classmethod
     def parse_creators(cls, value: object) -> list[str] | None:
         """Normalize creators filter from query string or list input."""
+        return cls._normalize_string_list(value)
+
+    @field_validator("tag_ids", mode="before")
+    @classmethod
+    def parse_tag_ids(cls, value: object) -> list[str] | None:
+        """Normalize and validate tag IDs from query string or list input."""
+        items = cls._normalize_string_list(value)
+        if not items:
+            return None
+        try:
+            return [str(uuid.UUID(item)) for item in items]
+        except ValueError as exc:
+            raise ValueError("Invalid UUID format in tag_ids.") from exc
+
+    @staticmethod
+    def _normalize_string_list(value: object) -> list[str] | None:
         if value is None:
             return None
         if isinstance(value, str):
-            return [creator.strip() for creator in value.split(",") if creator.strip()] or None
+            return [item.strip() for item in value.split(",") if item.strip()] or None
         if isinstance(value, list):
-            return [str(creator).strip() for creator in value if str(creator).strip()] or None
+            return [str(item).strip() for item in value if str(item).strip()] or None
         return None
 
 

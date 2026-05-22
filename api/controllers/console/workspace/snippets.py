@@ -1,9 +1,11 @@
 import logging
+import re
 from urllib.parse import quote
 
 from flask import Response, request
 from flask_restx import Resource, marshal
 from sqlalchemy.orm import Session
+from werkzeug.datastructures import MultiDict
 from werkzeug.exceptions import NotFound
 
 from controllers.common.schema import register_schema_models
@@ -29,6 +31,27 @@ from services.snippet_dsl_service import SnippetDslService
 from services.snippet_service import SnippetService
 
 logger = logging.getLogger(__name__)
+_TAG_IDS_BRACKET_PATTERN = re.compile(r"^tag_ids\[(\d+)\]$")
+
+
+def _normalize_snippet_list_query_args(query_args: MultiDict[str, str]) -> dict[str, str | list[str]]:
+    normalized: dict[str, str | list[str]] = {}
+    indexed_tag_ids: list[tuple[int, str]] = []
+
+    for key in query_args:
+        match = _TAG_IDS_BRACKET_PATTERN.fullmatch(key)
+        if match:
+            indexed_tag_ids.extend((int(match.group(1)), value) for value in query_args.getlist(key))
+            continue
+
+        value = query_args.get(key)
+        if value is not None:
+            normalized[key] = value
+
+    if indexed_tag_ids:
+        normalized["tag_ids"] = [value for _, value in sorted(indexed_tag_ids)]
+
+    return normalized
 
 # Register Pydantic models with Swagger
 register_schema_models(
@@ -58,8 +81,7 @@ class CustomizedSnippetsApi(Resource):
         """List customized snippets with pagination and search."""
         _, current_tenant_id = current_account_with_tenant()
 
-        query_params = request.args.to_dict()
-        query = SnippetListQuery.model_validate(query_params)
+        query = SnippetListQuery.model_validate(_normalize_snippet_list_query_args(request.args))
 
         snippets, total, has_more = SnippetService.get_snippets(
             tenant_id=current_tenant_id,
@@ -68,6 +90,7 @@ class CustomizedSnippetsApi(Resource):
             keyword=query.keyword,
             is_published=query.is_published,
             creators=query.creators,
+            tag_ids=query.tag_ids,
         )
 
         return {
