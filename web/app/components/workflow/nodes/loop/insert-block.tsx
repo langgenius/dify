@@ -49,7 +49,6 @@ const InsertBlock = ({
       <BlockSelector
         open={open}
         onOpenChange={handleOpenChange}
-        asChild
         onSelect={handleInsert}
         snippetInsertPayload={{
           nextNodeId: startNodeId,

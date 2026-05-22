@@ -1,5 +1,16 @@
 import { render } from 'vitest-browser-react'
-import { Select, SelectContent, SelectItem, SelectItemIndicator, SelectItemText, SelectTrigger, SelectValue } from '../index'
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectGroupLabel,
+  SelectItem,
+  SelectItemIndicator,
+  SelectItemText,
+  SelectLabel,
+  SelectTrigger,
+  SelectValue,
+} from '../index'
 
 const asHTMLElement = (element: HTMLElement | SVGElement) => element as HTMLElement
 const renderWithSafeViewport = (ui: import('react').ReactNode) => render(
@@ -84,6 +95,26 @@ describe('Select wrappers', () => {
   })
 
   describe('SelectTrigger', () => {
+    it('should use SelectLabel as the trigger accessible name', async () => {
+      const screen = await renderWithSafeViewport(
+        <Select defaultValue="seattle">
+          <SelectLabel>City</SelectLabel>
+          <SelectTrigger>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="seattle">
+              <SelectItemText>Seattle</SelectItemText>
+              <SelectItemIndicator />
+            </SelectItem>
+          </SelectContent>
+        </Select>,
+      )
+
+      await expect.element(screen.getByRole('combobox', { name: 'City' })).toBeInTheDocument()
+      await expect.element(screen.getByText('City')).toHaveClass('py-1', 'system-sm-medium', 'text-text-secondary')
+    })
+
     it('should forward native trigger props when trigger props are provided', async () => {
       const screen = await renderOpenSelect({
         triggerProps: {
@@ -179,6 +210,28 @@ describe('Select wrappers', () => {
   })
 
   describe('SelectContent', () => {
+    it('should render SelectGroupLabel for grouped options without naming the trigger', async () => {
+      const screen = await renderWithSafeViewport(
+        <Select open defaultValue="seattle">
+          <SelectTrigger aria-label="city select">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent listProps={{ 'role': 'listbox', 'aria-label': 'select list' }}>
+            <SelectGroup>
+              <SelectGroupLabel className="custom-label">Popular cities</SelectGroupLabel>
+              <SelectItem value="seattle">
+                <SelectItemText>Seattle</SelectItemText>
+                <SelectItemIndicator />
+              </SelectItem>
+            </SelectGroup>
+          </SelectContent>
+        </Select>,
+      )
+
+      await expect.element(screen.getByRole('combobox', { name: 'city select' })).toBeInTheDocument()
+      await expect.element(screen.getByText('Popular cities')).toHaveClass('custom-label')
+    })
+
     it('should use positioning attributes when placement is not provided', async () => {
       const screen = await renderOpenSelect()
 

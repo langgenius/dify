@@ -161,7 +161,6 @@ const CustomEdge = ({
           <BlockSelector
             open={open}
             onOpenChange={handleOpenChange}
-            asChild
             onSelect={handleInsert}
             snippetInsertPayload={{
               prevNodeId: source,

@@ -114,7 +114,6 @@ export const NodeTargetHandle = memo(({
                 nextNodeId: id,
                 nextNodeTargetHandle: handleId,
               }}
-              asChild
               placement="left"
               triggerClassName={open => `
                 absolute left-0 top-0 opacity-0 pointer-events-none transition-opacity duration-150
@@ -237,7 +236,6 @@ export const NodeSourceHandle = memo(({
               prevNodeId: id,
               prevNodeSourceHandle: handleId,
             }}
-            asChild
             triggerClassName={open => `
               absolute top-0 left-0 opacity-0 pointer-events-none transition-opacity duration-150
               ${nodeSelectorClassName}

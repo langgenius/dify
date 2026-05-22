@@ -2,8 +2,8 @@
 
 import type { PluginDeclaration, UpdateFromGitHubPayload } from '../../../types'
 import { Button } from '@langgenius/dify-ui/button'
-import { FieldLabel, FieldRoot } from '@langgenius/dify-ui/field'
-import { Select, SelectContent, SelectItem, SelectItemIndicator, SelectItemText, SelectTrigger } from '@langgenius/dify-ui/select'
+import { FieldRoot } from '@langgenius/dify-ui/field'
+import { Select, SelectContent, SelectItem, SelectItemIndicator, SelectItemText, SelectLabel, SelectTrigger } from '@langgenius/dify-ui/select'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import Badge from '@/app/components/base/badge'
@@ -79,9 +79,6 @@ const SelectPackage: React.FC<SelectPackageProps> = ({
   return (
     <>
       <FieldRoot name="version" className="gap-4 self-stretch">
-        <FieldLabel className="flex w-full flex-col items-start justify-center p-0 text-text-secondary">
-          <span className="system-sm-semibold">{t(`${i18nPrefix}.selectVersion`, { ns: 'plugin' })}</span>
-        </FieldLabel>
         <Select
           value={selectedVersionOption ? String(selectedVersionOption.value) : null}
           onValueChange={(value) => {
@@ -92,6 +89,9 @@ const SelectPackage: React.FC<SelectPackageProps> = ({
               onSelectVersion(selectedItem)
           }}
         >
+          <SelectLabel className="flex w-full flex-col items-start justify-center p-0 text-text-secondary">
+            <span className="system-sm-semibold">{t(`${i18nPrefix}.selectVersion`, { ns: 'plugin' })}</span>
+          </SelectLabel>
           <SelectTrigger className="h-9 text-components-input-text-filled">
             <div className="flex items-center justify-between gap-2">
               <span className="truncate">
@@ -122,9 +122,6 @@ const SelectPackage: React.FC<SelectPackageProps> = ({
         </Select>
       </FieldRoot>
       <FieldRoot name="package" className="gap-4 self-stretch">
-        <FieldLabel className="flex w-full flex-col items-start justify-center p-0 text-text-secondary">
-          <span className="system-sm-semibold">{t(`${i18nPrefix}.selectPackage`, { ns: 'plugin' })}</span>
-        </FieldLabel>
         <Select
           value={selectedPackageOption ? String(selectedPackageOption.value) : null}
           readOnly={!selectedVersion}
@@ -136,6 +133,9 @@ const SelectPackage: React.FC<SelectPackageProps> = ({
               onSelectPackage(selectedItem)
           }}
         >
+          <SelectLabel className="flex w-full flex-col items-start justify-center p-0 text-text-secondary">
+            <span className="system-sm-semibold">{t(`${i18nPrefix}.selectPackage`, { ns: 'plugin' })}</span>
+          </SelectLabel>
           <SelectTrigger className="h-9 text-components-input-text-filled">
             {selectedPackageOption?.name ?? t(`${i18nPrefix}.selectPackagePlaceholder`, { ns: 'plugin' }) ?? ''}
           </SelectTrigger>
