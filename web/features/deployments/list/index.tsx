@@ -50,34 +50,30 @@ function DeploymentsListEmpty() {
 
 function InstanceCardSkeleton() {
   return (
-    <div className="relative col-span-1 inline-flex h-40 flex-col rounded-xl border border-solid border-components-card-border bg-components-card-bg shadow-xs">
-      <div className="flex h-16.5 shrink-0 grow-0 items-center gap-3 px-3.5 pt-3.5 pb-3">
-        <div className="relative shrink-0">
-          <SkeletonRectangle className="my-0 size-10 animate-pulse rounded-lg" />
-          <SkeletonRectangle className="absolute -right-0.5 -bottom-0.5 my-0 size-4 animate-pulse rounded-sm shadow-xs" />
+    <div className="col-span-1 inline-flex h-40 min-w-0 flex-col rounded-xl border border-solid border-components-card-border bg-components-card-bg shadow-xs">
+      <div className="flex min-h-0 flex-1 flex-col">
+        <div className="min-w-0 px-4 pt-4">
+          <SkeletonRectangle className="my-0 h-4 w-2/5 animate-pulse" />
+          <div className="mt-2 flex min-h-9 flex-col gap-1.5">
+            <SkeletonRectangle className="my-0 h-3 w-4/5 animate-pulse" />
+            <SkeletonRectangle className="my-0 h-3 w-3/5 animate-pulse" />
+          </div>
         </div>
-        <div className="flex w-0 grow flex-col gap-1.5 py-px">
-          <SkeletonRectangle className="my-0 h-3.5 w-2/3 animate-pulse" />
-          <SkeletonRectangle className="my-0 h-2.5 w-1/3 animate-pulse" />
+
+        <div className="min-h-7 px-4 pt-1">
+          <div className="flex min-w-0 items-center gap-1.5">
+            <SkeletonRectangle className="my-0 h-5 w-18 animate-pulse rounded-md" />
+            <SkeletonRectangle className="my-0 h-5 w-22 animate-pulse rounded-md" />
+          </div>
         </div>
-      </div>
-      <div className="flex grow flex-col gap-2 px-3.5">
-        <div className="flex min-w-0 items-center gap-1.5">
-          <SkeletonRectangle className="my-0 h-5 w-18 animate-pulse rounded-md" />
+
+        <div className="mt-auto flex h-10.5 min-w-0 items-center border-t border-divider-subtle px-4">
+          <div className="flex min-w-0 grow items-center gap-2">
+            <SkeletonRectangle className="my-0 size-4 animate-pulse rounded-sm" />
+            <SkeletonRectangle className="my-0 size-4 animate-pulse rounded-sm" />
+          </div>
+          <SkeletonRectangle className="my-0 h-3 w-24 animate-pulse" />
         </div>
-        <div className="flex min-w-0 items-center gap-1.5">
-          <SkeletonRectangle className="my-0 size-3.5 animate-pulse rounded-sm" />
-          <SkeletonRectangle className="my-0 h-3 w-3/4 animate-pulse" />
-        </div>
-      </div>
-      <div className="absolute right-0 bottom-1 left-0 flex h-10.5 shrink-0 items-center pt-1 pr-12 pb-1.5 pl-3.5">
-        <div className="flex min-w-0 grow items-center gap-1.5">
-          <SkeletonRectangle className="my-0 size-3.5 animate-pulse rounded-sm" />
-          <SkeletonRectangle className="my-0 h-3 w-1/2 animate-pulse" />
-        </div>
-      </div>
-      <div className="absolute right-1.5 bottom-1 flex h-10.5 w-8 items-center justify-center">
-        <SkeletonRectangle className="my-0 h-1 w-4 animate-pulse rounded-full" />
       </div>
     </div>
   )
@@ -187,7 +183,7 @@ export function DeploymentsList() {
     <div ref={containerRef} className="relative flex h-0 shrink-0 grow flex-col overflow-y-auto bg-background-body">
       <DeploymentsListControls />
       <div className={cn(
-        'relative grid grow grid-cols-1 content-start gap-4 px-12 pt-2 2k:grid-cols-6 md:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-5',
+        'relative grid grow grid-cols-1 content-start gap-4 px-12 pt-2 2k:grid-cols-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5',
         showEmptyState && 'overflow-hidden',
       )}
       >

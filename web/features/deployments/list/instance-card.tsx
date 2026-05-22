@@ -1,38 +1,293 @@
 'use client'
 
-import type { AppInstance } from '@dify/contracts/enterprise/types.gen'
+import type {
+  AccessStatus,
+  AppInstance,
+  EnvironmentDeployment,
+  ReleaseRow,
+  ReleaseSummary,
+} from '@dify/contracts/enterprise/types.gen'
 import type { InstanceDetailTabKey } from '../detail/tabs'
 import { cn } from '@langgenius/dify-ui/cn'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuLinkItem,
-  DropdownMenuTrigger,
-} from '@langgenius/dify-ui/dropdown-menu'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useQuery } from '@tanstack/react-query'
-import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { AppTypeIcon } from '@/app/components/app/type-selector'
-import AppIcon from '@/app/components/base/app-icon'
+import { SkeletonRectangle } from '@/app/components/base/skeleton'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import Link from '@/next/link'
 import { consoleQuery } from '@/service/client'
-import { toAppMode } from '../app-mode'
+import { CreateReleaseControl } from '../detail/versions-tab/create-release-control'
 import { environmentName } from '../environment'
-import { deploymentStatus } from '../runtime-status'
+import { releaseLabel } from '../release'
+import {
+  deploymentStatus,
+  deploymentStatusPollingInterval,
+  isUndeployedDeploymentRow,
+} from '../runtime-status'
 
-const INSTANCE_CARD_MENU_TAB_KEYS = ['deploy', 'releases', 'settings'] satisfies InstanceDetailTabKey[]
-
-type EnvironmentStatusItem = {
-  key: 'failed' | 'deploying' | 'ready'
-  name: string
-  label: string
-  className: string
-}
+const VISIBLE_ENVIRONMENT_COUNT = 3
+const CARD_RELEASE_QUERY_PAGE_SIZE = 1
 
 function getInstanceTabHref(appInstanceId: string, tabKey: InstanceDetailTabKey) {
   return `/deployments/${appInstanceId}/${tabKey}`
+}
+
+function hasEnvironment(row: EnvironmentDeployment) {
+  return Boolean(row.environment?.id)
+}
+
+function isActiveDeployment(row: EnvironmentDeployment) {
+  return hasEnvironment(row) && !isUndeployedDeploymentRow(row)
+}
+
+function deploymentChipClasses(row: EnvironmentDeployment) {
+  const status = deploymentStatus(row)
+  if (status === 'deploy_failed') {
+    return {
+      container: 'bg-util-colors-red-red-50 text-util-colors-red-red-700',
+      dot: 'bg-util-colors-red-red-500',
+    }
+  }
+  if (status === 'deploying') {
+    return {
+      container: 'bg-util-colors-warning-warning-50 text-util-colors-warning-warning-700',
+      dot: 'bg-util-colors-warning-warning-500 animate-pulse',
+    }
+  }
+  if (status === 'ready') {
+    return {
+      container: 'bg-util-colors-green-green-50 text-util-colors-green-green-700',
+      dot: 'bg-util-colors-green-green-500',
+    }
+  }
+  return {
+    container: 'bg-background-section-burn text-text-tertiary',
+    dot: 'bg-text-quaternary',
+  }
+}
+
+function statusLabel(row: EnvironmentDeployment, t: ReturnType<typeof useTranslation<'deployments'>>['t']) {
+  const status = deploymentStatus(row)
+  if (status === 'deploy_failed')
+    return t('status.deployFailed')
+  if (status === 'deploying')
+    return t('status.deploying')
+  if (status === 'ready')
+    return t('status.ready')
+  return t('status.unknown')
+}
+
+function pickDisplayedRelease(rows: EnvironmentDeployment[]): ReleaseSummary | undefined {
+  const releases = rows
+    .map(row => row.currentRelease)
+    .filter((release): release is ReleaseSummary => Boolean(release?.id))
+
+  return releases.sort((a, b) => {
+    const aTime = a.createdAt ? Date.parse(a.createdAt) : 0
+    const bTime = b.createdAt ? Date.parse(b.createdAt) : 0
+    return bTime - aTime
+  })[0]
+}
+
+function EnvironmentChip({ row }: {
+  row: EnvironmentDeployment
+}) {
+  const { t } = useTranslation('deployments')
+  const name = environmentName(row.environment)
+  const classes = deploymentChipClasses(row)
+
+  return (
+    <Tooltip>
+      <TooltipTrigger
+        render={(
+          <span
+            className={cn(
+              'inline-flex h-5 max-w-32 cursor-default items-center gap-1 rounded-md px-1.5 system-xs-medium',
+              classes.container,
+            )}
+            title={name}
+          >
+            <span aria-hidden className={cn('size-1.5 shrink-0 rounded-full', classes.dot)} />
+            <span className="truncate">{name}</span>
+          </span>
+        )}
+      />
+      <TooltipContent>
+        <div className="flex min-w-40 flex-col gap-1">
+          <div className="flex justify-between gap-3">
+            <span className="truncate text-text-secondary">{name}</span>
+            <span className="shrink-0">{statusLabel(row, t)}</span>
+          </div>
+          {row.currentRelease?.id && (
+            <div className="flex justify-between gap-3 text-text-tertiary">
+              <span>{t('card.tooltip.release')}</span>
+              <span className="font-mono">{releaseLabel(row.currentRelease)}</span>
+            </div>
+          )}
+        </div>
+      </TooltipContent>
+    </Tooltip>
+  )
+}
+
+function EnvironmentOverflow({ rows }: {
+  rows: EnvironmentDeployment[]
+}) {
+  const { t } = useTranslation('deployments')
+
+  return (
+    <Tooltip>
+      <TooltipTrigger
+        render={(
+          <span className="inline-flex h-5 cursor-default items-center rounded-md bg-background-section-burn px-1.5 system-xs-medium text-text-tertiary">
+            {t('card.envOverflow', { count: rows.length })}
+          </span>
+        )}
+      />
+      <TooltipContent>
+        <div className="flex min-w-40 flex-col gap-1">
+          {rows.map(row => (
+            <div key={row.environment?.id} className="flex justify-between gap-3">
+              <span className="truncate text-text-secondary">{environmentName(row.environment)}</span>
+              <span className="shrink-0">{statusLabel(row, t)}</span>
+            </div>
+          ))}
+        </div>
+      </TooltipContent>
+    </Tooltip>
+  )
+}
+
+function DeploymentStatusContent({
+  appInstanceId,
+  rows,
+  hasRelease,
+  isLoading,
+  hasError,
+}: {
+  appInstanceId: string
+  rows: EnvironmentDeployment[]
+  hasRelease: boolean
+  isLoading: boolean
+  hasError: boolean
+}) {
+  const { t } = useTranslation('deployments')
+  const visibleRows = rows.slice(0, VISIBLE_ENVIRONMENT_COUNT)
+  const overflowRows = rows.slice(VISIBLE_ENVIRONMENT_COUNT)
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center gap-2">
+        <SkeletonRectangle className="my-0 h-5 w-20 animate-pulse rounded-md" />
+        <SkeletonRectangle className="my-0 h-5 w-24 animate-pulse rounded-md" />
+      </div>
+    )
+  }
+
+  if (hasError) {
+    return (
+      <span className="system-xs-regular text-text-tertiary">
+        {t('common.loadFailed')}
+      </span>
+    )
+  }
+
+  if (rows.length > 0) {
+    return (
+      <div className="flex min-w-0 flex-wrap items-center gap-1.5">
+        {visibleRows.map(row => (
+          <EnvironmentChip key={row.environment?.id} row={row} />
+        ))}
+        {overflowRows.length > 0 && <EnvironmentOverflow rows={overflowRows} />}
+      </div>
+    )
+  }
+
+  if (hasRelease) {
+    return (
+      <Link
+        href={getInstanceTabHref(appInstanceId, 'deploy')}
+        className="inline-flex h-6 items-center gap-1 system-xs-medium text-text-accent hover:underline"
+      >
+        <span aria-hidden className="i-ri-rocket-line size-3.5" />
+        {t('card.deploy')}
+      </Link>
+    )
+  }
+
+  return (
+    <CreateReleaseControl
+      appInstanceId={appInstanceId}
+      variant="secondary"
+      label={t('card.createFirstRelease')}
+      className="h-6 border-0 bg-transparent px-0 text-text-accent shadow-none hover:bg-transparent hover:underline"
+    />
+  )
+}
+
+function DeploymentAccessLinks({ appInstanceId, access, isLoading }: {
+  appInstanceId: string
+  access?: AccessStatus
+  isLoading?: boolean
+}) {
+  const { t } = useTranslation('deployments')
+
+  if (isLoading) {
+    return (
+      <div className="flex min-w-0 grow items-center gap-2">
+        <SkeletonRectangle className="my-0 size-4 animate-pulse rounded-sm" />
+        <SkeletonRectangle className="my-0 size-4 animate-pulse rounded-sm" />
+      </div>
+    )
+  }
+
+  const links = [
+    access?.accessChannelsEnabled && access.webappUrl
+      ? {
+          href: getInstanceTabHref(appInstanceId, 'overview'),
+          label: t('card.access.webApp'),
+          icon: 'i-ri-global-line',
+        }
+      : undefined,
+    access?.accessChannelsEnabled && access.cliUrl
+      ? {
+          href: getInstanceTabHref(appInstanceId, 'deploy'),
+          label: t('card.access.cli'),
+          icon: 'i-ri-terminal-box-line',
+        }
+      : undefined,
+    access?.developerApiEnabled && access.apiUrl
+      ? {
+          href: getInstanceTabHref(appInstanceId, 'settings'),
+          label: t('card.access.api'),
+          icon: 'i-ri-code-s-slash-line',
+        }
+      : undefined,
+  ].filter((link): link is { href: string, label: string, icon: string } => Boolean(link))
+
+  if (links.length === 0)
+    return <div className="min-w-0 grow" />
+
+  return (
+    <div className="flex min-w-0 grow items-center gap-2">
+      {links.map(link => (
+        <Tooltip key={link.href}>
+          <TooltipTrigger
+            render={(
+              <Link
+                href={link.href}
+                aria-label={link.label}
+                className="inline-flex size-5 items-center justify-center rounded-md text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary"
+              >
+                <span aria-hidden className={cn('size-3.5', link.icon)} />
+              </Link>
+            )}
+          />
+          <TooltipContent>{link.label}</TooltipContent>
+        </Tooltip>
+      ))}
+    </div>
+  )
 }
 
 export function InstanceCard({ app }: {
@@ -40,260 +295,101 @@ export function InstanceCard({ app }: {
 }) {
   const { t } = useTranslation('deployments')
   const { formatTimeFromNow } = useFormatTimeFromNow()
-  const [isStatusTooltipOpen, setIsStatusTooltipOpen] = useState(false)
   const appInstanceId = app.id ?? ''
   const appName = app.name ?? appInstanceId
-  const appMode = toAppMode(app.mode)
-  const detailHref = `/deployments/${appInstanceId}/overview`
+  const detailHref = getInstanceTabHref(appInstanceId, 'overview')
+  const input = { params: { appInstanceId } }
 
-  const statusCount = (status: string) =>
-    app.statuses?.find(item => item.status === status)?.count ?? 0
-  const failedCount = statusCount('failed') + statusCount('deploy_failed')
-  const deployingCount = statusCount('deploying')
-  const readyCount = statusCount('ready')
-  const envCount = failedCount + deployingCount + readyCount
-
-  const lastDeployedAt = app.lastDeployedAt
-    ? Date.parse(app.lastDeployedAt)
-    : null
-
-  const primaryStatus: 'none' | 'failed' | 'deploying' | 'ready' = envCount === 0
-    ? 'none'
-    : failedCount > 0
-      ? 'failed'
-      : deployingCount > 0
-        ? 'deploying'
-        : 'ready'
-
-  const environmentDeploymentsQuery = useQuery({
-    ...consoleQuery.enterprise.appDeploymentService.listEnvironmentDeployments.queryOptions({
-      input: {
-        params: { appInstanceId },
+  const overviewQuery = useQuery(consoleQuery.enterprise.appInstanceService.getAppInstanceOverview.queryOptions({
+    input,
+    enabled: Boolean(appInstanceId),
+  }))
+  const releaseHistoryQuery = useQuery(consoleQuery.enterprise.appReleaseService.listReleases.queryOptions({
+    input: {
+      ...input,
+      query: {
+        pageNumber: 1,
+        resultsPerPage: CARD_RELEASE_QUERY_PAGE_SIZE,
       },
-    }),
-    enabled: isStatusTooltipOpen && primaryStatus !== 'none' && !!appInstanceId,
-  })
-
-  const primaryText = primaryStatus === 'none'
-    ? t('card.notDeployed')
-    : primaryStatus === 'failed'
-      ? t('card.failed', { count: failedCount })
-      : primaryStatus === 'deploying'
-        ? t('card.deploying', { count: deployingCount })
-        : t('card.ready', { count: readyCount })
-
-  const secondaryParts: string[] = []
-  if (primaryStatus === 'failed' && deployingCount > 0)
-    secondaryParts.push(t('card.deploying', { count: deployingCount }))
-  if ((primaryStatus === 'failed' || primaryStatus === 'deploying') && readyCount > 0)
-    secondaryParts.push(t('card.ready', { count: readyCount }))
-
-  const environmentDeployments = environmentDeploymentsQuery.data?.data?.filter(row => row.environment?.id) ?? []
-  const environmentStatusItems = environmentDeployments.flatMap<EnvironmentStatusItem>((row) => {
-    const status = deploymentStatus(row)
-    if (status === 'deploy_failed') {
-      return [{
-        key: 'failed',
-        name: environmentName(row.environment),
-        label: t('status.deployFailed'),
-        className: 'text-util-colors-red-red-700',
-      }]
-    }
-    if (status === 'deploying') {
-      return [{
-        key: 'deploying',
-        name: environmentName(row.environment),
-        label: t('status.deploying'),
-        className: 'text-util-colors-warning-warning-700',
-      }]
-    }
-    if (status === 'ready') {
-      return [{
-        key: 'ready',
-        name: environmentName(row.environment),
-        label: t('status.ready'),
-        className: 'text-util-colors-green-green-700',
-      }]
-    }
-    return []
-  })
-
-  const statusTooltip = primaryStatus === 'none'
-    ? t('card.tooltip.notDeployed')
-    : (
-        <div className="flex min-w-45 flex-col gap-1">
-          {environmentStatusItems.map(item => (
-            <div key={`${item.key}-${item.name}`} className="flex min-w-0 justify-between gap-3">
-              <span className="truncate text-text-secondary" title={item.name}>{item.name}</span>
-              <span className={cn('shrink-0', item.className)}>{item.label}</span>
-            </div>
-          ))}
-          {environmentStatusItems.length === 0 && !environmentDeploymentsQuery.isLoading && !environmentDeploymentsQuery.isError && (
-            <>
-              {failedCount > 0 && (
-                <div className="flex justify-between gap-3">
-                  <span className="text-text-tertiary">{t('status.deployFailed')}</span>
-                  <span className="text-text-secondary">{failedCount}</span>
-                </div>
-              )}
-              {deployingCount > 0 && (
-                <div className="flex justify-between gap-3">
-                  <span className="text-text-tertiary">{t('status.deploying')}</span>
-                  <span className="text-text-secondary">{deployingCount}</span>
-                </div>
-              )}
-              {readyCount > 0 && (
-                <div className="flex justify-between gap-3">
-                  <span className="text-text-tertiary">{t('status.ready')}</span>
-                  <span className="text-text-secondary">{readyCount}</span>
-                </div>
-              )}
-            </>
-          )}
-          {environmentDeploymentsQuery.isLoading && (
-            <div className="text-text-quaternary">
-              {t('common.loading')}
-            </div>
-          )}
-          {environmentDeploymentsQuery.isError && (
-            <div className="text-util-colors-warning-warning-700">
-              {t('common.loadFailed')}
-            </div>
-          )}
-        </div>
-      )
+    },
+    enabled: Boolean(appInstanceId),
+  }))
+  const environmentDeploymentsQuery = useQuery(consoleQuery.enterprise.appDeploymentService.listEnvironmentDeployments.queryOptions({
+    input,
+    enabled: Boolean(appInstanceId),
+    refetchInterval: query => deploymentStatusPollingInterval(query.state.data),
+  }))
 
   if (!app.id)
     return null
 
-  const healthPillClass = primaryStatus === 'none'
-    ? 'text-text-tertiary bg-background-section-burn'
-    : primaryStatus === 'failed'
-      ? 'text-util-colors-red-red-700 bg-util-colors-red-red-50'
-      : primaryStatus === 'deploying'
-        ? 'text-util-colors-warning-warning-700 bg-util-colors-warning-warning-50'
-        : 'text-util-colors-green-green-700 bg-util-colors-green-green-50'
-
-  const healthDotClass = primaryStatus === 'none'
-    ? 'bg-text-quaternary'
-    : primaryStatus === 'failed'
-      ? 'bg-util-colors-red-red-500'
-      : primaryStatus === 'deploying'
-        ? 'bg-util-colors-warning-warning-500 animate-pulse'
-        : 'bg-util-colors-green-green-500'
-
-  const appModeLabel = t(`appMode.${appMode}`, { defaultValue: appMode })
+  const description = overviewQuery.data?.overview?.appInstance?.description?.trim()
+  const access = overviewQuery.data?.overview?.access
+  const releaseRows = releaseHistoryQuery.data?.data?.filter((release): release is ReleaseRow & { id: string } => Boolean(release.id)) ?? []
+  const hasRelease = releaseRows.length > 0
+  const activeDeploymentRows = environmentDeploymentsQuery.data?.data?.filter(isActiveDeployment) ?? []
+  const displayedRelease = pickDisplayedRelease(activeDeploymentRows)
+  const displayedTime = displayedRelease?.createdAt ?? app.lastDeployedAt
+  const displayedTimeMs = displayedTime ? Date.parse(displayedTime) : Number.NaN
+  const releaseMeta = displayedRelease
+    ? [
+        releaseLabel(displayedRelease),
+        Number.isNaN(displayedTimeMs) ? undefined : formatTimeFromNow(displayedTimeMs),
+      ].filter(Boolean).join(' · ')
+    : t('card.notDeployed')
+  const statusIsLoading = environmentDeploymentsQuery.isLoading || (!activeDeploymentRows.length && releaseHistoryQuery.isLoading)
+  const statusHasError = environmentDeploymentsQuery.isError || releaseHistoryQuery.isError
 
   return (
     <div
-      className="group relative col-span-1 inline-flex h-40 cursor-pointer flex-col rounded-xl border border-solid border-components-card-border bg-components-card-bg shadow-xs transition-all duration-200 ease-in-out hover:shadow-lg"
+      className="group relative col-span-1 inline-flex h-40 min-w-0 cursor-default flex-col rounded-xl border border-solid border-components-card-border bg-components-card-bg shadow-xs transition-all duration-200 ease-in-out hover:shadow-lg"
     >
-      <Link
-        href={detailHref}
-        className="flex h-full flex-col rounded-xl outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid"
-      >
-        <div className="flex h-16.5 shrink-0 grow-0 items-center gap-3 px-3.5 pt-3.5 pb-3">
-          <div className="relative shrink-0">
-            <AppIcon
-              size="large"
-              iconType="emoji"
-              icon={app.icon}
-              background={app.iconBackground}
-            />
-            <AppTypeIcon
-              type={appMode}
-              wrapperClassName="absolute -bottom-0.5 -right-0.5 size-4 shadow-xs"
-              className="size-3"
-            />
-          </div>
-          <div className="w-0 grow py-px">
-            <div className="flex items-center text-sm/5 font-semibold text-text-secondary">
-              <div className="truncate" title={appName}>{appName}</div>
-            </div>
-            <div className="truncate text-2xs/4.5 font-medium text-text-tertiary" title={appModeLabel}>
-              {appModeLabel}
-            </div>
-          </div>
-        </div>
-        <div className="flex grow flex-col gap-2 px-3.5">
-          <Tooltip open={isStatusTooltipOpen} onOpenChange={setIsStatusTooltipOpen}>
-            <TooltipTrigger
-              render={(
-                <div className="flex min-w-0 items-center gap-1.5">
-                  <span
-                    className={cn(
-                      'inline-flex h-5 shrink-0 items-center gap-1 rounded-md px-1.5 system-xs-medium',
-                      healthPillClass,
-                    )}
-                  >
-                    <span className={cn('size-1.5 rounded-full', healthDotClass)} />
-                    {primaryText}
-                  </span>
-                  {secondaryParts.length > 0 && (
-                    <span className="truncate system-xs-regular text-text-tertiary">
-                      {secondaryParts.join(' · ')}
-                    </span>
-                  )}
+      <div className="flex min-h-0 flex-1 flex-col">
+        <Link
+          href={detailHref}
+          className="block min-w-0 rounded-t-xl px-4 pt-4 outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+        >
+          <h3 className="truncate title-md-semi-bold text-text-primary" title={appName}>
+            {appName}
+          </h3>
+          {overviewQuery.isLoading
+            ? (
+                <div className="mt-2 flex min-h-9 flex-col gap-1.5">
+                  <SkeletonRectangle className="my-0 h-3 w-4/5 animate-pulse" />
+                  <SkeletonRectangle className="my-0 h-3 w-3/5 animate-pulse" />
                 </div>
+              )
+            : (
+                <p
+                  className="mt-2 line-clamp-2 min-h-9 system-xs-regular text-text-tertiary"
+                  title={description || t('card.noDescription')}
+                >
+                  {description || t('card.noDescription')}
+                </p>
               )}
-            />
-            <TooltipContent>{statusTooltip}</TooltipContent>
-          </Tooltip>
-          <div className="flex min-w-0 items-center gap-1.5 system-xs-regular text-text-tertiary">
-            <span aria-hidden className="i-ri-apps-2-line size-3.5 shrink-0 text-text-quaternary" />
-            <span className="truncate" title={app.sourceAppName ?? appName}>
-              {t('card.fromApp', { name: app.sourceAppName ?? appName })}
-            </span>
-          </div>
+        </Link>
+
+        <div className="min-h-7 px-4 pt-1">
+          <DeploymentStatusContent
+            appInstanceId={appInstanceId}
+            rows={activeDeploymentRows}
+            hasRelease={hasRelease}
+            isLoading={statusIsLoading}
+            hasError={statusHasError}
+          />
         </div>
-        <div className="absolute right-0 bottom-1 left-0 flex h-10.5 shrink-0 items-center pt-1 pr-12 pb-1.5 pl-3.5">
-          <div className="flex min-w-0 grow items-center gap-1.5 system-xs-regular text-text-tertiary">
-            <span aria-hidden className="i-ri-time-line size-3.5 shrink-0 text-text-quaternary" />
-            <span className="truncate">
-              {lastDeployedAt
-                ? t('card.lastDeployed', { time: formatTimeFromNow(lastDeployedAt) })
-                : t('card.neverDeployed')}
-            </span>
-          </div>
+
+        <div className="mt-auto flex h-10.5 min-w-0 items-center border-t border-divider-subtle px-4">
+          <DeploymentAccessLinks appInstanceId={appInstanceId} access={access} isLoading={overviewQuery.isLoading} />
+          <Link
+            href={displayedRelease ? getInstanceTabHref(appInstanceId, 'releases') : getInstanceTabHref(appInstanceId, 'deploy')}
+            className="min-w-0 shrink-0 truncate text-right system-xs-regular text-text-tertiary hover:text-text-secondary"
+            title={releaseMeta}
+          >
+            {releaseMeta}
+          </Link>
         </div>
-      </Link>
-      <div className="pointer-events-auto absolute right-1.5 bottom-1 flex h-10.5 items-center">
-        <InstanceCardActions appInstanceId={appInstanceId} />
       </div>
     </div>
-  )
-}
-
-function InstanceCardActions({ appInstanceId }: {
-  appInstanceId: string
-}) {
-  const { t } = useTranslation('deployments')
-
-  return (
-    <DropdownMenu modal={false}>
-      <DropdownMenuTrigger
-        aria-label={t('card.moreActions')}
-        className={cn(
-          'flex size-8 items-center justify-center rounded-md border-none bg-transparent p-2 hover:bg-state-base-hover data-popup-open:bg-state-base-hover data-popup-open:shadow-none',
-        )}
-      >
-        <span aria-hidden className="i-ri-more-fill size-4 text-text-tertiary" />
-      </DropdownMenuTrigger>
-      <DropdownMenuContent placement="bottom-end" sideOffset={4} popupClassName="w-54">
-        {INSTANCE_CARD_MENU_TAB_KEYS.map((tabKey) => {
-          const href = getInstanceTabHref(appInstanceId, tabKey)
-
-          return (
-            <DropdownMenuLinkItem
-              key={tabKey}
-              className="gap-2 px-3"
-              render={<Link href={href} />}
-            >
-              <span className="system-sm-regular text-text-secondary">{t(`tabs.${tabKey}.name`)}</span>
-            </DropdownMenuLinkItem>
-          )
-        })}
-      </DropdownMenuContent>
-    </DropdownMenu>
   )
 }

@@ -14,10 +14,12 @@ import { useSourceAppAvailability } from '../source-app-availability'
 const DESCRIPTION_MAX_LENGTH = 512
 const DESCRIPTION_WARN_THRESHOLD = 460
 
-export function CreateReleaseControl({ appInstanceId, variant = 'primary', size = 'small' }: {
+export function CreateReleaseControl({ appInstanceId, variant = 'primary', size = 'small', label, className }: {
   appInstanceId: string
   variant?: 'primary' | 'secondary'
   size?: 'small' | 'medium'
+  label?: string
+  className?: string
 }) {
   const { t } = useTranslation('deployments')
   const createRelease = useMutation(consoleQuery.enterprise.appReleaseService.createRelease.mutationOptions())
@@ -82,10 +84,11 @@ export function CreateReleaseControl({ appInstanceId, variant = 'primary', size 
       <Button
         size={size}
         variant={variant}
+        className={className}
         disabled={!canCreateRelease}
         onClick={() => setIsCreating(true)}
       >
-        {t('versions.createRelease')}
+        {label ?? t('versions.createRelease')}
       </Button>
 
       <Dialog
