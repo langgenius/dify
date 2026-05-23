@@ -5,7 +5,6 @@ import type { VariantProps } from 'class-variance-authority'
 import type { ComponentPropsWithRef } from 'react'
 import { Field as BaseField } from '@base-ui/react/field'
 import { cva } from 'class-variance-authority'
-import { useState } from 'react'
 import { cn } from '../cn'
 
 const textareaVariants = cva(
@@ -68,49 +67,23 @@ export type TextareaProps
       className?: string
     }
 
-function getTextareaValueLength(value: TextareaValue | undefined) {
-  return String(value ?? '').length
-}
-
 export function Textarea({
   className,
   defaultValue,
-  maxLength,
   onValueChange,
   ref,
   size = 'medium',
   value,
   ...props
 }: TextareaProps) {
-  const showCharacterCount = maxLength !== undefined
-  const [uncontrolledValueLength, setUncontrolledValueLength] = useState(() => getTextareaValueLength(defaultValue))
-  const valueLength = value === undefined ? uncontrolledValueLength : getTextareaValueLength(value)
-
   return (
-    <div className="relative w-full">
-      <BaseField.Control
-        className={cn(textareaVariants({ size }), showCharacterCount && 'pb-7', className)}
-        defaultValue={defaultValue}
-        maxLength={maxLength}
-        onValueChange={(nextValue, eventDetails) => {
-          if (showCharacterCount && value === undefined)
-            setUncontrolledValueLength(nextValue.length)
-
-          onValueChange?.(nextValue, eventDetails)
-        }}
-        ref={ref}
-        render={<textarea {...props} />}
-        value={value}
-      />
-      {showCharacterCount
-        ? (
-            <span className="pointer-events-none absolute right-2 bottom-2 rounded-sm bg-components-panel-bg px-1 py-0.5 text-text-tertiary system-2xs-medium">
-              {valueLength}
-              /
-              {maxLength}
-            </span>
-          )
-        : null}
-    </div>
+    <BaseField.Control
+      className={cn(textareaVariants({ size }), className)}
+      defaultValue={defaultValue}
+      onValueChange={onValueChange}
+      ref={ref}
+      render={<textarea {...props} />}
+      value={value}
+    />
   )
 }

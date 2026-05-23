@@ -115,7 +115,7 @@ describe('Textarea', () => {
     expect(onFormSubmit.mock.calls[0]?.[0]).toMatchObject({ summary: 'Long enough summary' })
   })
 
-  it('should render character count when maxLength is set', async () => {
+  it('should pass maxLength to the textarea without rendering a counter', async () => {
     const screen = await render(
       <label>
         Release notes
@@ -123,11 +123,8 @@ describe('Textarea', () => {
       </label>,
     )
 
-    await expect.element(screen.getByText('5/20')).toBeInTheDocument()
     const textarea = screen.getByRole('textbox', { name: 'Release notes' })
-    await expect.element(textarea).toHaveClass('pb-7')
-
-    setTextareaValue(textarea.element(), 'Published')
-    await expect.element(screen.getByText('9/20')).toBeInTheDocument()
+    await expect.element(textarea).toHaveAttribute('maxLength', '20')
+    expect(screen.container.textContent).not.toContain('5/20')
   })
 })

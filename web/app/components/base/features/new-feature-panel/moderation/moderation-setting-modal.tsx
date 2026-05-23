@@ -1,9 +1,10 @@
-import type { ChangeEvent, FC } from 'react'
+import type { FC } from 'react'
 import type { CodeBasedExtensionItem } from '@/models/common'
 import type { ModerationConfig, ModerationContentConfig } from '@/models/debug'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
+import { Textarea } from '@langgenius/dify-ui/textarea'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -103,9 +104,7 @@ const ModerationSettingModal: FC<ModerationSettingModalProps> = ({
     })
   }
 
-  const handleDataKeywordsChange = (e: ChangeEvent<HTMLTextAreaElement>) => {
-    const value = e.target.value
-
+  const handleDataKeywordsChange = (value: string) => {
     const arr = value.split('\n').reduce((prev: string[], next: string) => {
       if (next !== '')
         prev.push(next.slice(0, 100))
@@ -292,11 +291,13 @@ const ModerationSettingModal: FC<ModerationSettingModalProps> = ({
             <div className="py-2">
               <div className="mb-1 text-sm font-medium text-text-primary">{t('feature.moderation.modal.provider.keywords', { ns: 'appDebug' })}</div>
               <div className="mb-2 text-xs text-text-tertiary">{t('feature.moderation.modal.keywords.tip', { ns: 'appDebug' })}</div>
-              <div className="relative h-[88px] rounded-lg bg-components-input-bg-normal px-3 py-2">
-                <textarea
+              {/* Keep this counter composed locally; extract only if more textarea counter cases repeat. */}
+              <div className="relative h-[88px]">
+                <Textarea
+                  aria-label={t('feature.moderation.modal.provider.keywords', { ns: 'appDebug' }) as string}
                   value={localeData.config?.keywords || ''}
-                  onChange={handleDataKeywordsChange}
-                  className="block size-full resize-none appearance-none bg-transparent text-sm text-text-secondary outline-hidden"
+                  onValueChange={handleDataKeywordsChange}
+                  className="size-full resize-none pb-8"
                   placeholder={t('feature.moderation.modal.keywords.placeholder', { ns: 'appDebug' }) || ''}
                 />
                 <div className="absolute right-2 bottom-2 flex h-5 items-center rounded-md bg-background-section px-1 text-xs font-medium text-text-quaternary">
