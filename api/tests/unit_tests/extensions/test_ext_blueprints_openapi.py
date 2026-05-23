@@ -34,13 +34,13 @@ def fresh_openapi_cors_state() -> Iterator[None]:
     """
     had_flag = hasattr(openapi_bp, "_dify_cors_applied")
     if had_flag:
-        delattr(openapi_bp, "_dify_cors_applied")
+        del openapi_bp._dify_cors_applied
     yield
     # Leave the blueprint in a clean state regardless of branch taken,
     # so unrelated tests that import the production blueprint do not
     # observe leaked state from this module.
     if hasattr(openapi_bp, "_dify_cors_applied"):
-        delattr(openapi_bp, "_dify_cors_applied")
+        del openapi_bp._dify_cors_applied
 
 
 def _build_app() -> DifyApp:
