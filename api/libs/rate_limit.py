@@ -1,8 +1,9 @@
 """Typed rate-limit decorator over ``libs.helper.RateLimiter`` (sliding-
-window Redis ZSET). Apply after auth decorators so scopes can read
-``g.auth_ctx``. Use :func:`enforce` when the bucket key is computed
-in-handler. RFC-8628 ``slow_down`` is inline — its response shape isn't
-generic 429.
+window Redis ZSET). Apply after auth decorators so account/email/token-id
+scopes can read the openapi auth ContextVar (see
+:func:`libs.oauth_bearer.try_get_auth_ctx`). Use :func:`enforce` when the
+bucket key is computed in-handler. RFC-8628 ``slow_down`` is inline — its
+response shape isn't generic 429.
 """
 
 from __future__ import annotations
@@ -14,7 +15,7 @@ from enum import StrEnum
 from functools import wraps
 from typing import ParamSpec, TypeVar
 
-from flask import g, jsonify, make_response, request, session
+from flask import jsonify, make_response, request, session
 from werkzeug.exceptions import TooManyRequests
 
 from configs import dify_config
@@ -57,17 +58,23 @@ def _one_key(scope: RateLimitScope) -> str:
         case RateLimitScope.SESSION:
             return f"session:{session.get('_id', 'anon')}"
         case RateLimitScope.ACCOUNT:
-            ctx = getattr(g, "auth_ctx", None)
+            from libs.oauth_bearer import try_get_auth_ctx
+            
+            ctx = try_get_auth_ctx()
             if ctx and ctx.account_id:
                 return f"account:{ctx.account_id}"
             return "account:anon"
         case RateLimitScope.SUBJECT_EMAIL:
-            ctx = getattr(g, "auth_ctx", None)
+            from libs.oauth_bearer import try_get_auth_ctx
+
+            ctx = try_get_auth_ctx()
             if ctx and ctx.subject_email:
                 return f"subject:{ctx.subject_email}"
             return "subject:anon"
         case RateLimitScope.TOKEN_ID:
-            ctx = getattr(g, "auth_ctx", None)
+            from libs.oauth_bearer import try_get_auth_ctx
+
+            ctx = try_get_auth_ctx()
             if ctx and ctx.token_id:
                 return f"token:{ctx.token_id}"
             return "token:anon"

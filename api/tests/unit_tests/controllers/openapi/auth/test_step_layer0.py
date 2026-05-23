@@ -15,7 +15,7 @@ from libs.oauth_bearer import SubjectType
 
 
 def _ctx(*, subject_type, account_id, tenant_id, cached_verified_tenants=None, token_hash=None) -> Context:
-    c = Context(request=MagicMock(), required_scope="apps:read")
+    c = Context(required_scope="apps:read")
     c.subject_type = subject_type
     c.account_id = account_id
     c.tenant = SimpleNamespace(id=tenant_id) if tenant_id else None

@@ -15,11 +15,11 @@ from collections.abc import Callable
 from functools import wraps
 from typing import TypeVar
 
-from flask import g, request
+from flask import request
 from werkzeug.exceptions import Forbidden
 
 from controllers.openapi._audit import emit_wrong_surface
-from libs.oauth_bearer import SubjectType
+from libs.oauth_bearer import SubjectType, try_get_auth_ctx
 
 _CANONICAL_PATH: dict[SubjectType, str] = {
     SubjectType.ACCOUNT: "/openapi/v1/apps",
@@ -30,18 +30,19 @@ F = TypeVar("F", bound=Callable[..., object])
 
 
 def check_surface(accepted: frozenset[SubjectType]) -> None:
-    """Enforce that ``g.auth_ctx.subject_type`` is in ``accepted``.
+    """Enforce that the resolved subject is in ``accepted``.
 
-    Raises ``Forbidden`` with ``wrong_surface`` + canonical-path hint on
-    miss; emits ``openapi.wrong_surface_denied`` audit. If ``g.auth_ctx``
-    is missing the bearer layer didn't run — that's a wiring bug, not a
+    Reads the openapi auth ContextVar via :func:`try_get_auth_ctx`. Raises
+    ``Forbidden`` with ``wrong_surface`` + canonical-path hint on miss;
+    emits ``openapi.wrong_surface_denied`` audit. If no auth context is
+    set the bearer layer didn't run — that's a wiring bug, not a
     user-driven failure, so surface it as a ``RuntimeError`` instead of
     a silent 403.
     """
-    ctx = getattr(g, "auth_ctx", None)
+    ctx = try_get_auth_ctx()
     if ctx is None:
         raise RuntimeError(
-            "check_surface called without g.auth_ctx; stack validate_bearer or BearerCheck above the surface gate"
+            "check_surface called without an auth context; stack validate_bearer or BearerCheck above the surface gate"
         )
 
     subject = _coerce_subject_type(getattr(ctx, "subject_type", None))

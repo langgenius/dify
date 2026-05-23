@@ -1,5 +1,5 @@
 from types import SimpleNamespace
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 from werkzeug.exceptions import BadRequest, Forbidden, NotFound
@@ -9,10 +9,8 @@ from controllers.openapi.auth.steps import AppResolver
 from models import TenantStatus
 
 
-def _ctx(view_args):
-    req = MagicMock()
-    req.view_args = view_args
-    return Context(request=req, required_scope="apps:run")
+def _ctx(path_params: dict[str, str] | None) -> Context:
+    return Context(required_scope="apps:run", path_params=path_params or {})
 
 
 def _app(*, status="normal", enable_api=True):
@@ -28,7 +26,9 @@ def test_resolver_rejects_missing_path_param():
         AppResolver()(_ctx({}))
 
 
-def test_resolver_rejects_none_view_args():
+def test_resolver_rejects_empty_path_params():
+    # `Pipeline.guard` always seeds an empty dict when Flask reports no
+    # view args, so a missing `app_id` key surfaces here as BadRequest.
     with pytest.raises(BadRequest):
         AppResolver()(_ctx(None))
 

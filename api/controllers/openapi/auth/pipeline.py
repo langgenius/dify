@@ -12,7 +12,7 @@ from functools import wraps
 from flask import request
 
 from controllers.openapi.auth.context import Context, Step
-from libs.oauth_bearer import Scope
+from libs.oauth_bearer import Scope, extract_bearer, reset_auth_ctx
 
 
 class Pipeline:
@@ -27,14 +27,24 @@ class Pipeline:
         def decorator(view):
             @wraps(view)
             def decorated(*args, **kwargs):
-                ctx = Context(request=request, required_scope=scope)
-                self.run(ctx)
-                kwargs.update(
-                    app_model=ctx.app,
-                    caller=ctx.caller,
-                    caller_kind=ctx.caller_kind,
+                # Extract transport-level inputs at the boundary so steps
+                # stay decoupled from Flask's request object.
+                ctx = Context(
+                    required_scope=scope,
+                    bearer_token=extract_bearer(request),
+                    path_params=dict(request.view_args or {}),
                 )
-                return view(*args, **kwargs)
+                try:
+                    self.run(ctx)
+                    kwargs.update(
+                        app_model=ctx.app,
+                        caller=ctx.caller,
+                        caller_kind=ctx.caller_kind,
+                    )
+                    return view(*args, **kwargs)
+                finally:
+                    if ctx.auth_ctx_reset_token is not None:
+                        reset_auth_ctx(ctx.auth_ctx_reset_token)
 
             return decorated
 

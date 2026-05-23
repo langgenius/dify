@@ -1,17 +1,19 @@
 """Pipeline steps. Each is one responsibility.
 
 `BearerCheck` is the only step that touches the token registry; downstream
-steps see only the populated `Context`. `BearerCheck` also assigns
-``g.auth_ctx`` (the same way ``validate_bearer`` does) so the surface gate
-+ any handler reading the request-scoped context has a single source of
-truth across both auth-attach paths.
+steps see only the populated `Context`. `BearerCheck` also publishes the
+resolved identity to the openapi auth ``ContextVar`` (the same one the
+decorator-level :func:`libs.oauth_bearer.validate_bearer` writes to) so the
+surface gate and any handler reading the request-scoped context has a single
+source of truth across both auth-attach paths. The reset token is stashed
+on `ctx.auth_ctx_reset_token`; `Pipeline.guard` resets the ContextVar in
+its `finally` so worker-thread reuse can't leak identity across requests.
 """
 
 from __future__ import annotations
 
 from collections.abc import Callable
 
-from flask import g
 from werkzeug.exceptions import BadRequest, Forbidden, NotFound, Unauthorized
 
 from configs import dify_config
@@ -24,9 +26,9 @@ from libs.oauth_bearer import (
     InvalidBearerError,
     Scope,
     SubjectType,
-    _extract_bearer,  # type: ignore[attr-defined]
     check_workspace_membership,
     get_authenticator,
+    set_auth_ctx,
 )
 from models import App, Tenant, TenantStatus
 
@@ -34,17 +36,18 @@ from models import App, Tenant, TenantStatus
 class BearerCheck:
     """Resolve bearer → populate identity fields. Rate-limit is enforced
     inside `BearerAuthenticator.authenticate`, so no separate step here.
-    Also attaches the resolved `AuthContext` to ``g.auth_ctx`` — same shape
-    the decorator-level ``validate_bearer`` writes — so the surface gate
-    + downstream readers don't see two different identity sources."""
+    Also publishes the resolved `AuthContext` via
+    :func:`libs.oauth_bearer.set_auth_ctx` — same shape the decorator-level
+    ``validate_bearer`` writes — so the surface gate + downstream readers
+    don't see two different identity sources. The reset token is parked on
+    ``ctx.auth_ctx_reset_token`` for `Pipeline.guard` to consume."""
 
     def __call__(self, ctx: Context) -> None:
-        token = _extract_bearer(ctx.request)
-        if not token:
+        if not ctx.bearer_token:
             raise Unauthorized("bearer required")
 
         try:
-            authn = get_authenticator().authenticate(token)
+            authn = get_authenticator().authenticate(ctx.bearer_token)
         except InvalidBearerError as e:
             raise Unauthorized(str(e))
 
@@ -58,11 +61,7 @@ class BearerCheck:
         ctx.expires_at = authn.expires_at
         ctx.token_hash = authn.token_hash
         ctx.cached_verified_tenants = dict(authn.verified_tenants)
-
-        # Single source of truth for the request-scoped identity. Surface
-        # gate + handlers read `g.auth_ctx` regardless of whether the route
-        # ran the decorator path (`validate_bearer`) or the pipeline path.
-        g.auth_ctx = authn
+        ctx.auth_ctx_reset_token = set_auth_ctx(authn)
 
 
 class ScopeCheck:
@@ -75,12 +74,7 @@ class ScopeCheck:
 
 
 class SurfaceCheck:
-    """Reject the request if `g.auth_ctx.subject_type` is not in `accepted`.
-
-    Delegates to `surface_gate.check_surface` so the inline decorator and
-    the pipeline step emit identical audit events. Relies on `BearerCheck`
-    (above) having set `g.auth_ctx`.
-    """
+    """Reject the request if the resolved subject is not in `accepted`."""
 
     def __init__(self, *, accepted: frozenset[SubjectType]) -> None:
         self._accepted = accepted
@@ -90,15 +84,17 @@ class SurfaceCheck:
 
 
 class AppResolver:
-    """Read app_id from request.view_args, populate ctx.app + ctx.tenant.
+    """Read ``app_id`` from ``ctx.path_params``; populate ctx.app + ctx.tenant.
 
     Every endpoint using the OAuth bearer pipeline must declare
     ``<string:app_id>`` in its route — that is the design lock-in (no body /
-    header coupling).
+    header coupling). ``Pipeline.guard`` lifts ``request.view_args`` into
+    ``ctx.path_params`` at the boundary so this step doesn't need to know
+    about the request object.
     """
 
     def __call__(self, ctx: Context) -> None:
-        app_id = (ctx.request.view_args or {}).get("app_id")
+        app_id = ctx.path_params.get("app_id")
         if not app_id:
             raise BadRequest("app_id is required in path")
         app = db.session.get(App, app_id)

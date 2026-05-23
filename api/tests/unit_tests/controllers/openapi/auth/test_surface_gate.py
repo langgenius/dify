@@ -5,24 +5,40 @@ pipeline step (`SurfaceCheck`) — and both must:
 - 403 on mismatched subject type with a canonical-path hint
 - emit `openapi.wrong_surface_denied` once with the right payload
 - pass-through on match
-- raise RuntimeError (not 403) if g.auth_ctx is missing — that's a
-  wiring bug, not a user-driven failure
+- raise RuntimeError (not 403) if the auth ContextVar is unset — that's
+  a wiring bug, not a user-driven failure
+
+Identity is published via `libs.oauth_bearer.set_auth_ctx` / read with
+`try_get_auth_ctx`. Tests wrap the publish in a `_publish_auth_ctx`
+context manager so the ContextVar resets even when an assertion fails;
+that keeps state from leaking into the next test on the same worker.
 """
 
 from __future__ import annotations
 
 import uuid
+from collections.abc import Iterator
+from contextlib import contextmanager
 from datetime import UTC, datetime
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
-from flask import Flask, g
+from flask import Flask
 from werkzeug.exceptions import Forbidden
 
 from controllers.openapi.auth.context import Context
 from controllers.openapi.auth.steps import SurfaceCheck
 from controllers.openapi.auth.surface_gate import _coerce_subject_type, accept_subjects, check_surface
-from libs.oauth_bearer import AuthContext, Scope, SubjectType
+from libs.oauth_bearer import AuthContext, Scope, SubjectType, reset_auth_ctx, set_auth_ctx
+
+
+@contextmanager
+def _publish_auth_ctx(ctx: AuthContext) -> Iterator[None]:
+    token = set_auth_ctx(ctx)
+    try:
+        yield
+    finally:
+        reset_auth_ctx(token)
 
 
 def _account_ctx() -> AuthContext:
@@ -64,15 +80,13 @@ def _sso_ctx() -> AuthContext:
 
 def test_check_surface_passes_when_subject_in_accepted():
     app = Flask(__name__)
-    with app.test_request_context("/openapi/v1/apps"):
-        g.auth_ctx = _account_ctx()
+    with app.test_request_context("/openapi/v1/apps"), _publish_auth_ctx(_account_ctx()):
         check_surface(frozenset({SubjectType.ACCOUNT}))  # no raise
 
 
 def test_check_surface_rejects_on_wrong_subject_and_emits_audit():
     app = Flask(__name__)
-    with app.test_request_context("/openapi/v1/permitted-external-apps"):
-        g.auth_ctx = _account_ctx()
+    with app.test_request_context("/openapi/v1/permitted-external-apps"), _publish_auth_ctx(_account_ctx()):
         with patch("controllers.openapi.auth.surface_gate.emit_wrong_surface") as emit:
             with pytest.raises(Forbidden) as exc:
                 check_surface(frozenset({SubjectType.EXTERNAL_SSO}))
@@ -90,8 +104,7 @@ def test_check_surface_rejects_on_wrong_subject_and_emits_audit():
 
 def test_check_surface_rejects_sso_on_account_surface():
     app = Flask(__name__)
-    with app.test_request_context("/openapi/v1/apps"):
-        g.auth_ctx = _sso_ctx()
+    with app.test_request_context("/openapi/v1/apps"), _publish_auth_ctx(_sso_ctx()):
         with patch("controllers.openapi.auth.surface_gate.emit_wrong_surface") as emit:
             with pytest.raises(Forbidden):
                 check_surface(frozenset({SubjectType.ACCOUNT}))
@@ -99,11 +112,12 @@ def test_check_surface_rejects_sso_on_account_surface():
             assert kwargs["subject_type"] == SubjectType.EXTERNAL_SSO.value
 
 
-def test_check_surface_runtime_error_when_g_auth_ctx_missing():
-    """Missing g.auth_ctx means the bearer layer didn't run — wiring bug,
-    not a user-driven failure. Surface as RuntimeError (loud) so a future
-    refactor doesn't accidentally let a route skip authentication and
-    return a 403 that looks identical to a legitimate wrong-surface deny.
+def test_check_surface_runtime_error_when_auth_ctx_missing():
+    """Missing auth ContextVar means the bearer layer didn't run — wiring
+    bug, not a user-driven failure. Surface as RuntimeError (loud) so a
+    future refactor doesn't accidentally let a route skip authentication
+    and return a 403 that looks identical to a legitimate wrong-surface
+    deny.
     """
     app = Flask(__name__)
     with app.test_request_context("/openapi/v1/apps"):
@@ -134,8 +148,7 @@ def _make_app() -> Flask:
 
 def test_accept_subjects_decorator_passes_on_match():
     app = _make_app()
-    with app.test_request_context("/account-only"):
-        g.auth_ctx = _account_ctx()
+    with app.test_request_context("/account-only"), _publish_auth_ctx(_account_ctx()):
         # Re-route through the decorated function by reaching for view_function
         view = app.view_functions["_account_only"]
         assert view() == "ok"
@@ -143,8 +156,7 @@ def test_accept_subjects_decorator_passes_on_match():
 
 def test_accept_subjects_decorator_403_on_miss():
     app = _make_app()
-    with app.test_request_context("/external-only"):
-        g.auth_ctx = _account_ctx()
+    with app.test_request_context("/external-only"), _publish_auth_ctx(_account_ctx()):
         view = app.view_functions["_external_only"]
         with patch("controllers.openapi.auth.surface_gate.emit_wrong_surface"):
             with pytest.raises(Forbidden):
@@ -157,24 +169,22 @@ def test_accept_subjects_decorator_403_on_miss():
 
 
 def _pipeline_ctx() -> Context:
-    req = MagicMock()
-    req.path = "/openapi/v1/apps/<id>/run"
-    return Context(request=req, required_scope=Scope.APPS_RUN)
+    # SurfaceCheck reads ``request.path`` from Flask's global request — set up
+    # via ``app.test_request_context`` in the calling tests — not from Context.
+    return Context(required_scope=Scope.APPS_RUN)
 
 
 def test_surface_check_passes_on_match():
     step = SurfaceCheck(accepted=frozenset({SubjectType.ACCOUNT}))
     app = Flask(__name__)
-    with app.test_request_context("/openapi/v1/apps/x/run"):
-        g.auth_ctx = _account_ctx()
+    with app.test_request_context("/openapi/v1/apps/x/run"), _publish_auth_ctx(_account_ctx()):
         step(_pipeline_ctx())  # no raise
 
 
 def test_surface_check_rejects_on_miss_and_emits_audit():
     step = SurfaceCheck(accepted=frozenset({SubjectType.EXTERNAL_SSO}))
     app = Flask(__name__)
-    with app.test_request_context("/openapi/v1/apps/x/run"):
-        g.auth_ctx = _account_ctx()
+    with app.test_request_context("/openapi/v1/apps/x/run"), _publish_auth_ctx(_account_ctx()):
         with patch("controllers.openapi.auth.surface_gate.emit_wrong_surface") as emit:
             with pytest.raises(Forbidden):
                 step(_pipeline_ctx())

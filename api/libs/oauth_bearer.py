@@ -12,13 +12,14 @@ import json
 import logging
 import uuid
 from collections.abc import Callable, Iterable
+from contextvars import ContextVar, Token
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from enum import StrEnum
 from functools import wraps
 from typing import Literal, ParamSpec, Protocol, TypeVar
 
-from flask import g, request
+from flask import request
 from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden, ServiceUnavailable, Unauthorized
@@ -74,8 +75,10 @@ _SUBJECT_TO_ACCEPT: dict[SubjectType, Accepts] = {
 
 @dataclass(frozen=True, slots=True)
 class AuthContext:
-    """Attached to ``g.auth_ctx``. ``scopes`` / ``subject_type`` / ``source``
-    come from the TokenKind, not the DB — corrupt rows can't elevate scope.
+    """Per-request identity published via :data:`_auth_ctx_var`
+    (see :func:`set_auth_ctx` / :func:`get_auth_ctx`). ``scopes`` /
+    ``subject_type`` / ``source`` come from the TokenKind, not the DB —
+    corrupt rows can't elevate scope.
 
     `verified_tenants` is a snapshot of the Layer-0 verdict cache at
     authenticate time. Per-request mutations write through to Redis via
@@ -93,6 +96,24 @@ class AuthContext:
     expires_at: datetime | None
     token_hash: str
     verified_tenants: dict[str, bool] = field(default_factory=dict)
+
+_auth_ctx_var: ContextVar[AuthContext] = ContextVar("openapi_auth_ctx")
+
+
+def set_auth_ctx(ctx: AuthContext) -> Token[AuthContext]:
+    return _auth_ctx_var.set(ctx)
+
+
+def reset_auth_ctx(token: Token[AuthContext]) -> None:
+    _auth_ctx_var.reset(token)
+
+
+def get_auth_ctx() -> AuthContext:
+    return _auth_ctx_var.get()
+
+
+def try_get_auth_ctx() -> AuthContext | None:
+    return _auth_ctx_var.get(None)
 
 
 @dataclass(frozen=True, slots=True)
@@ -531,7 +552,14 @@ def get_authenticator() -> BearerAuthenticator:
     return _authenticator
 
 
-def _extract_bearer(req) -> str | None:
+def extract_bearer(req) -> str | None:
+    """Pull the bearer token out of an HTTP request's Authorization header.
+
+    Used by both attachment paths (the ``validate_bearer`` decorator and the
+    openapi ``Pipeline.guard``) so the parsing rule lives in one place. Pipeline
+    callers extract once at the boundary and pass the token through ``Context``
+    so steps stay independent of the request object.
+    """
     header = req.headers.get("Authorization", "")
     scheme, _, value = header.partition(" ")
     if scheme.lower() != "bearer" or not value:
@@ -554,7 +582,7 @@ def validate_bearer(*, accept: frozenset[Accepts]) -> Callable[[Callable[_DP, _D
     def wrap(fn: Callable[_DP, _DR]) -> Callable[_DP, _DR]:
         @wraps(fn)
         def inner(*args: _DP.args, **kwargs: _DP.kwargs) -> _DR:
-            token = _extract_bearer(request)
+            token = extract_bearer(request)
             if token is None:
                 raise Unauthorized("missing bearer token")
 
@@ -569,8 +597,14 @@ def validate_bearer(*, accept: frozenset[Accepts]) -> Callable[[Callable[_DP, _D
             if _SUBJECT_TO_ACCEPT[ctx.subject_type] not in accept:
                 raise Forbidden("token subject type not accepted here")
 
-            g.auth_ctx = ctx
-            return fn(*args, **kwargs)
+            # Try/finally pairing — the WSGI worker thread is reused
+            # across requests, so a leaked ContextVar would publish the
+            # previous caller's identity to the next request.
+            reset_token = set_auth_ctx(ctx)
+            try:
+                return fn(*args, **kwargs)
+            finally:
+                reset_auth_ctx(reset_token)
 
         return inner
 
@@ -593,14 +627,14 @@ def bearer_feature_required[**P, R](fn: Callable[P, R]) -> Callable[P, R]:
 
 def require_scope(scope: Scope) -> Callable:
     """Route-level scope gate — must run AFTER validate_bearer so that
-    g.auth_ctx is set. Raises Forbidden('insufficient_scope: <scope>')
-    when the bearer lacks both the requested scope and `Scope.FULL`.
+    the auth ContextVar is set. Raises ``Forbidden('insufficient_scope: <scope>')``
+    when the bearer lacks both the requested scope and ``Scope.FULL``.
     """
 
     def wrap(fn: Callable) -> Callable:
         @wraps(fn)
         def inner(*args, **kwargs):
-            ctx = getattr(g, "auth_ctx", None)
+            ctx = try_get_auth_ctx()
             if ctx is None:
                 raise RuntimeError(
                     "require_scope used without validate_bearer; stack @validate_bearer above @require_scope"

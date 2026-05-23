@@ -10,7 +10,6 @@ from __future__ import annotations
 
 from itertools import starmap
 
-from flask import g
 from flask_restx import Resource
 from sqlalchemy import select
 from werkzeug.exceptions import NotFound
@@ -22,6 +21,7 @@ from extensions.ext_database import db
 from libs.oauth_bearer import (
     ACCEPT_USER_ANY,
     SubjectType,
+    get_auth_ctx,
     validate_bearer,
 )
 from models import Tenant, TenantAccountJoin
@@ -33,7 +33,7 @@ class WorkspacesApi(Resource):
     @validate_bearer(accept=ACCEPT_USER_ANY)
     @accept_subjects(SubjectType.ACCOUNT)
     def get(self):
-        ctx = g.auth_ctx
+        ctx = get_auth_ctx()
 
         rows = db.session.execute(
             select(Tenant, TenantAccountJoin)
@@ -51,7 +51,7 @@ class WorkspaceByIdApi(Resource):
     @validate_bearer(accept=ACCEPT_USER_ANY)
     @accept_subjects(SubjectType.ACCOUNT)
     def get(self, workspace_id: str):
-        ctx = g.auth_ctx
+        ctx = get_auth_ctx()
 
         row = db.session.execute(
             select(Tenant, TenantAccountJoin)

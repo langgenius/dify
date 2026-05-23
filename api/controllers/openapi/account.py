@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 
-from flask import g, request
+from flask import request
 from flask_restx import Resource
 from sqlalchemy import and_, select, update
 from werkzeug.exceptions import BadRequest, NotFound
@@ -30,6 +30,7 @@ from libs.oauth_bearer import (
     TOKEN_CACHE_KEY_FMT,
     AuthContext,
     SubjectType,
+    get_auth_ctx,
     validate_bearer,
 )
 from libs.rate_limit import (
@@ -45,7 +46,7 @@ class AccountApi(Resource):
     @openapi_ns.response(200, "Account info", openapi_ns.models[AccountResponse.__name__])
     @validate_bearer(accept=ACCEPT_USER_ANY)
     def get(self):
-        ctx = g.auth_ctx
+        ctx = get_auth_ctx()
 
         if ctx.subject_type == SubjectType.EXTERNAL_SSO:
             enforce(LIMIT_ME_PER_EMAIL, key=f"subject:{ctx.subject_email}")
@@ -82,7 +83,7 @@ class AccountSessionsSelfApi(Resource):
     @openapi_ns.response(200, "Session revoked", openapi_ns.models[RevokeResponse.__name__])
     @validate_bearer(accept=ACCEPT_USER_ANY)
     def delete(self):
-        ctx = g.auth_ctx
+        ctx = get_auth_ctx()
         _require_oauth_subject(ctx)
         _revoke_token_by_id(str(ctx.token_id))
         return RevokeResponse(status="revoked").model_dump(mode="json"), 200
@@ -93,7 +94,7 @@ class AccountSessionsApi(Resource):
     @openapi_ns.response(200, "Session list", openapi_ns.models[SessionListResponse.__name__])
     @validate_bearer(accept=ACCEPT_USER_ANY)
     def get(self):
-        ctx = g.auth_ctx
+        ctx = get_auth_ctx()
         now = datetime.now(UTC)
         page = int(request.args.get("page", "1"))
         limit = min(int(request.args.get("limit", "100")), MAX_PAGE_LIMIT)
@@ -146,7 +147,7 @@ class AccountSessionByIdApi(Resource):
     @openapi_ns.response(200, "Session revoked", openapi_ns.models[RevokeResponse.__name__])
     @validate_bearer(accept=ACCEPT_USER_ANY)
     def delete(self, session_id: str):
-        ctx = g.auth_ctx
+        ctx = get_auth_ctx()
         _require_oauth_subject(ctx)
 
         # Subject-match guard. 404 (not 403) on cross-subject so the

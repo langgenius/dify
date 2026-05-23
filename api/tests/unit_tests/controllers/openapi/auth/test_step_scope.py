@@ -1,5 +1,3 @@
-from unittest.mock import MagicMock
-
 import pytest
 from werkzeug.exceptions import Forbidden
 
@@ -8,7 +6,7 @@ from controllers.openapi.auth.steps import ScopeCheck
 
 
 def _ctx(scopes, required):
-    c = Context(request=MagicMock(), required_scope=required)
+    c = Context(required_scope=required)
     c.scopes = frozenset(scopes)
     return c
 

@@ -1,7 +1,8 @@
 """GET /openapi/v1/apps and per-app reads.
 
 Decorator order: `method_decorators` is innermost-first. `validate_bearer`
-is last → outermost → sets `g.auth_ctx` before `require_scope` reads it.
+is last → outermost → publishes the auth ContextVar before `require_scope`
+reads it.
 """
 
 from __future__ import annotations
@@ -10,7 +11,7 @@ import uuid as _uuid
 from typing import Any, cast
 
 import sqlalchemy as sa
-from flask import g, request
+from flask import request
 from flask_restx import Resource
 from pydantic import ValidationError
 from werkzeug.exceptions import Conflict, NotFound, UnprocessableEntity
@@ -37,6 +38,7 @@ from libs.oauth_bearer import (
     AuthContext,
     Scope,
     SubjectType,
+    get_auth_ctx,
     require_scope,
     require_workspace_member,
     validate_bearer,
@@ -70,7 +72,7 @@ class AppReadResource(Resource):
     method_decorators = _APPS_READ_DECORATORS
 
     def _load(self, app_id: str, workspace_id: str | None = None) -> tuple[App, AuthContext]:
-        ctx: AuthContext = g.auth_ctx
+        ctx: AuthContext = get_auth_ctx()
 
         try:
             parsed_uuid = _uuid.UUID(app_id)
@@ -181,7 +183,7 @@ class AppListApi(Resource):
     @openapi_ns.doc(params=query_params_from_model(AppListQuery))
     @openapi_ns.response(200, "App list", openapi_ns.models[AppListResponse.__name__])
     def get(self):
-        ctx: AuthContext = g.auth_ctx
+        ctx: AuthContext = get_auth_ctx()
 
         try:
             query: AppListQuery = AppListQuery.model_validate(request.args.to_dict(flat=True))

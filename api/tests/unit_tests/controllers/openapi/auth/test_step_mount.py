@@ -1,5 +1,5 @@
 from types import SimpleNamespace
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 from werkzeug.exceptions import Unauthorized
@@ -12,7 +12,7 @@ from libs.oauth_bearer import SubjectType
 
 
 def _ctx(*, subject_type, account_id=None, subject_email=None):
-    c = Context(request=MagicMock(), required_scope="apps:run")
+    c = Context(required_scope="apps:run")
     c.subject_type = subject_type
     c.account_id = account_id
     c.subject_email = subject_email

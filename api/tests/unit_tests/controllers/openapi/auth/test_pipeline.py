@@ -1,5 +1,3 @@
-from unittest.mock import MagicMock
-
 import pytest
 from flask import Flask
 
@@ -17,7 +15,7 @@ def test_run_invokes_each_step_in_order():
         def __call__(self, ctx):
             calls.append(self.tag)
 
-    Pipeline(S("a"), S("b"), S("c")).run(Context(request=MagicMock(), required_scope="x"))
+    Pipeline(S("a"), S("b"), S("c")).run(Context(required_scope="x"))
     assert calls == ["a", "b", "c"]
 
 
@@ -33,7 +31,7 @@ def test_run_short_circuits_on_raise():
             calls.append("ran")
 
     with pytest.raises(RuntimeError):
-        Pipeline(Boom(), Tail()).run(Context(request=MagicMock(), required_scope="x"))
+        Pipeline(Boom(), Tail()).run(Context(required_scope="x"))
     assert calls == []
 
 

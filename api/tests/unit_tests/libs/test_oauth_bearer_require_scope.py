@@ -1,14 +1,18 @@
 """require_scope is a route-level gate run after validate_bearer.
-Tests use a fake auth_ctx attached directly to flask.g — no
-authenticator wiring needed.
+Tests use a fake auth_ctx published via the openapi auth ContextVar (no
+authenticator wiring needed). The `_publish_auth_ctx` helper guarantees
+the ContextVar is reset between tests so worker-thread reuse can't leak
+identity into the next test.
 """
 
 from __future__ import annotations
 
 import uuid
+from collections.abc import Iterator
+from contextlib import contextmanager
 
 import pytest
-from flask import Flask, g
+from flask import Flask
 from werkzeug.exceptions import Forbidden
 
 from libs.oauth_bearer import (
@@ -16,7 +20,18 @@ from libs.oauth_bearer import (
     Scope,
     SubjectType,
     require_scope,
+    reset_auth_ctx,
+    set_auth_ctx,
 )
+
+
+@contextmanager
+def _publish_auth_ctx(ctx: AuthContext) -> Iterator[None]:
+    token = set_auth_ctx(ctx)
+    try:
+        yield
+    finally:
+        reset_auth_ctx(token)
 
 
 @pytest.fixture
@@ -47,8 +62,7 @@ def test_require_scope_allows_when_scope_present(app: Flask):
     def view():
         return "ok"
 
-    with app.test_request_context():
-        g.auth_ctx = _ctx(frozenset({"apps:read"}))
+    with app.test_request_context(), _publish_auth_ctx(_ctx(frozenset({"apps:read"}))):
         assert view() == "ok"
 
 
@@ -57,8 +71,7 @@ def test_require_scope_rejects_when_scope_missing(app: Flask):
     def view():
         return "ok"
 
-    with app.test_request_context():
-        g.auth_ctx = _ctx(frozenset({"apps:read"}))
+    with app.test_request_context(), _publish_auth_ctx(_ctx(frozenset({"apps:read"}))):
         with pytest.raises(Forbidden) as exc:
             view()
     assert "insufficient_scope: apps:write" in str(exc.value.description)
@@ -69,8 +82,7 @@ def test_require_scope_full_passes_any_check(app: Flask):
     def view():
         return "ok"
 
-    with app.test_request_context():
-        g.auth_ctx = _ctx(frozenset({Scope.FULL}))
+    with app.test_request_context(), _publish_auth_ctx(_ctx(frozenset({Scope.FULL}))):
         assert view() == "ok"
 
 
@@ -80,6 +92,6 @@ def test_require_scope_without_validate_bearer_raises_runtime_error(app: Flask):
         return "ok"
 
     with app.test_request_context():
-        # No g.auth_ctx — validate_bearer was forgotten
+        # No auth ContextVar published — validate_bearer was forgotten.
         with pytest.raises(RuntimeError, match="stack @validate_bearer above @require_scope"):
             view()
