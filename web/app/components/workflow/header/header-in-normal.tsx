@@ -25,6 +25,7 @@ import VersionHistoryButton from './version-history-button'
 
 export type HeaderInNormalProps = {
   components?: {
+    title?: React.ReactNode
     left?: React.ReactNode
     middle?: React.ReactNode
     chatVariableTrigger?: React.ReactNode
@@ -70,12 +71,12 @@ const HeaderInNormal = ({
     setShowChatVariablePanel(false)
     setShowGlobalVariablePanel(false)
     closeAllInputFieldPanels()
-  }, [workflowStore, handleBackupDraft, selectedNode, handleNodeSelect, setShowWorkflowVersionHistoryPanel, setShowEnvPanel, setShowDebugAndPreviewPanel, setShowVariableInspectPanel, setShowChatVariablePanel, setShowGlobalVariablePanel])
+  }, [workflowStore, handleBackupDraft, selectedNode, handleNodeSelect, setShowWorkflowVersionHistoryPanel, setShowEnvPanel, setShowDebugAndPreviewPanel, setShowVariableInspectPanel, setShowChatVariablePanel, setShowGlobalVariablePanel, closeAllInputFieldPanels])
 
   return (
     <div className="flex w-full items-center justify-between">
       <div>
-        <EditingTitle />
+        {components?.title ?? <EditingTitle />}
       </div>
       <div>
         <ScrollToSelectedNodeButton />

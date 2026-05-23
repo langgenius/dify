@@ -1,40 +1,30 @@
 'use client'
 
 import type { HeaderProps } from '@/app/components/workflow/header'
-import type { SnippetDetailUIModel } from '@/models/snippet'
 import {
   memo,
   useMemo,
 } from 'react'
+import { useTranslation } from 'react-i18next'
 import Header from '@/app/components/workflow/header'
-import { useStore } from '@/app/components/workflow/store'
-import InputFieldButton from './input-field-button'
+import CancelChanges from './cancel-changes'
 import Publisher from './publisher'
 import RunMode from './run-mode'
 
 type SnippetHeaderProps = {
   snippetId: string
-  inputFieldCount: number
-  uiMeta: SnippetDetailUIModel
-  isPublishMenuOpen: boolean
   isPublishing: boolean
-  onToggleInputPanel: () => void
-  onPublishMenuOpenChange: (open: boolean) => void
+  onCancel: () => void
   onPublish: () => void
 }
 
 const SnippetHeader = ({
   snippetId,
-  inputFieldCount,
-  uiMeta,
-  isPublishMenuOpen,
   isPublishing,
-  onToggleInputPanel,
-  onPublishMenuOpenChange,
+  onCancel,
   onPublish,
 }: SnippetHeaderProps) => {
-  const draftUpdatedAt = useStore(state => state.draftUpdatedAt)
-  const publishedAt = useStore(state => state.publishedAt)
+  const { t } = useTranslation('snippet')
   const viewHistoryProps = useMemo(() => {
     return {
       historyUrl: `/snippets/${snippetId}/workflow-runs`,
@@ -45,16 +35,11 @@ const SnippetHeader = ({
     return {
       normal: {
         components: {
-          left: <InputFieldButton count={inputFieldCount} onClick={onToggleInputPanel} />,
+          title: <CancelChanges onCancel={onCancel} />,
           middle: (
             <Publisher
-              uiMeta={uiMeta}
-              draftUpdatedAt={draftUpdatedAt}
-              open={isPublishMenuOpen}
               isPublishing={isPublishing}
-              onOpenChange={onPublishMenuOpenChange}
               onPublish={onPublish}
-              publishedAt={publishedAt}
             />
           ),
         },
@@ -64,6 +49,7 @@ const SnippetHeader = ({
         },
         runAndHistoryProps: {
           showRunButton: true,
+          runButtonText: t('testRunButton'),
           viewHistoryProps,
           components: {
             RunMode,
@@ -74,7 +60,7 @@ const SnippetHeader = ({
         viewHistoryProps,
       },
     }
-  }, [draftUpdatedAt, inputFieldCount, isPublishMenuOpen, isPublishing, onPublish, onPublishMenuOpenChange, onToggleInputPanel, publishedAt, uiMeta, viewHistoryProps])
+  }, [isPublishing, onCancel, onPublish, t, viewHistoryProps])
 
   return <Header {...headerProps} />
 }

@@ -1,12 +1,21 @@
+import type { ReactNode } from 'react'
 import type { HeaderProps } from '@/app/components/workflow/header'
-import type { SnippetDetailUIModel } from '@/models/snippet'
 import { fireEvent, render, screen } from '@testing-library/react'
 import SnippetHeader from '..'
 
+vi.mock('@langgenius/dify-ui/alert-dialog', () => ({
+  AlertDialog: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+  AlertDialogActions: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+  AlertDialogCancelButton: ({ children }: { children: ReactNode }) => <button type="button">{children}</button>,
+  AlertDialogConfirmButton: ({ children, onClick }: { children: ReactNode, onClick?: () => void }) => <button type="button" onClick={onClick}>{children}</button>,
+  AlertDialogContent: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+  AlertDialogDescription: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+  AlertDialogTitle: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+  AlertDialogTrigger: ({ children }: { children: ReactNode }) => <button type="button">{children}</button>,
+}))
+
 vi.mock('@/app/components/workflow/header', () => ({
   default: (props: HeaderProps) => {
-    const CustomRunMode = props.normal?.runAndHistoryProps?.components?.RunMode
-
     return (
       <div
         data-testid="workflow-header"
@@ -14,8 +23,10 @@ vi.mock('@/app/components/workflow/header', () => ({
         data-show-global-variable={String(props.normal?.controls?.showGlobalVariableButton ?? true)}
         data-history-url={props.normal?.runAndHistoryProps?.viewHistoryProps?.historyUrl ?? ''}
       >
-        {props.normal?.components?.left}
-        {CustomRunMode && <CustomRunMode text={props.normal?.runAndHistoryProps?.runButtonText} />}
+        {props.normal?.components?.title}
+        <button type="button">
+          {props.normal?.runAndHistoryProps?.runButtonText ?? 'snippet.testRunButton'}
+        </button>
         {props.normal?.components?.middle}
       </div>
     )
@@ -23,14 +34,8 @@ vi.mock('@/app/components/workflow/header', () => ({
 }))
 
 describe('SnippetHeader', () => {
-  const mockToggleInputPanel = vi.fn()
-  const mockPublishMenuOpenChange = vi.fn()
+  const mockCancel = vi.fn()
   const mockPublish = vi.fn()
-  const uiMeta: SnippetDetailUIModel = {
-    inputFieldCount: 1,
-    checklistCount: 2,
-    autoSavedAt: 'Auto-saved · a few seconds ago',
-  }
 
   beforeEach(() => {
     vi.clearAllMocks()
@@ -42,12 +47,8 @@ describe('SnippetHeader', () => {
       render(
         <SnippetHeader
           snippetId="snippet-1"
-          inputFieldCount={3}
-          uiMeta={uiMeta}
-          isPublishMenuOpen={false}
           isPublishing={false}
-          onToggleInputPanel={mockToggleInputPanel}
-          onPublishMenuOpenChange={mockPublishMenuOpenChange}
+          onCancel={mockCancel}
           onPublish={mockPublish}
         />,
       )
@@ -56,34 +57,30 @@ describe('SnippetHeader', () => {
       expect(header).toHaveAttribute('data-show-env', 'false')
       expect(header).toHaveAttribute('data-show-global-variable', 'false')
       expect(header).toHaveAttribute('data-history-url', '/snippets/snippet-1/workflow-runs')
-      expect(screen.getByRole('button', { name: /snippet\.inputFieldButton/i })).toHaveTextContent('3')
-      expect(screen.getByRole('button', { name: /snippet\.publishButton/i })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: /snippet\.cancel/i })).toBeInTheDocument()
+      expect(screen.getByText('snippet.unsavedChanges')).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: /snippet\.save/i })).toBeInTheDocument()
       expect(screen.getByRole('button', { name: /snippet\.testRunButton/i })).toBeInTheDocument()
     })
   })
 
   // Verifies forwarded callbacks still drive the snippet-specific controls.
   describe('User Interactions', () => {
-    it('should invoke the snippet callbacks when input and publish trigger are clicked', () => {
+    it('should invoke the snippet callbacks when save and discard are clicked', () => {
       render(
         <SnippetHeader
           snippetId="snippet-1"
-          inputFieldCount={1}
-          uiMeta={uiMeta}
-          isPublishMenuOpen={false}
           isPublishing={false}
-          onToggleInputPanel={mockToggleInputPanel}
-          onPublishMenuOpenChange={mockPublishMenuOpenChange}
+          onCancel={mockCancel}
           onPublish={mockPublish}
         />,
       )
 
-      fireEvent.click(screen.getByRole('button', { name: /snippet\.inputFieldButton/i }))
-      fireEvent.click(screen.getByRole('button', { name: /snippet\.publishButton/i }))
+      fireEvent.click(screen.getByRole('button', { name: /snippet\.save/i }))
+      fireEvent.click(screen.getByRole('button', { name: /snippet\.discardChanges/i }))
 
-      expect(mockToggleInputPanel).toHaveBeenCalledTimes(1)
-      expect(mockPublishMenuOpenChange).toHaveBeenCalledTimes(1)
-      expect(mockPublishMenuOpenChange.mock.calls[0]![0]).toBe(true)
+      expect(mockPublish).toHaveBeenCalledTimes(1)
+      expect(mockCancel).toHaveBeenCalledTimes(1)
     })
   })
 })

@@ -2,8 +2,9 @@
 
 import type { WorkflowProps } from '@/app/components/workflow'
 import type { Shape as HooksStoreShape } from '@/app/components/workflow/hooks-store'
-import type { SnippetDetailPayload, SnippetDetailUIModel, SnippetInputField } from '@/models/snippet'
+import type { SnippetDetailPayload, SnippetInputField } from '@/models/snippet'
 import {
+  useCallback,
   useEffect,
   useMemo,
 } from 'react'
@@ -12,6 +13,7 @@ import { WorkflowWithInnerContext } from '@/app/components/workflow'
 import { useAvailableNodesMetaData } from '@/app/components/workflow-app/hooks'
 import { useSetWorkflowVarsWithValue } from '@/app/components/workflow/hooks/use-fetch-workflow-inspect-vars'
 import { BlockEnum } from '@/app/components/workflow/types'
+import { useSnippetPublishedWorkflow } from '@/service/use-snippet-workflows'
 import { useConfigsMap } from '../hooks/use-configs-map'
 import { useGetRunAndTraceUrl } from '../hooks/use-get-run-and-trace-url'
 import { useInspectVarsCrud } from '../hooks/use-inspect-vars-crud'
@@ -22,7 +24,9 @@ import { useSnippetStartRun } from '../hooks/use-snippet-start-run'
 import { useSnippetDetailStore } from '../store'
 import { useSnippetInputFieldActions } from './hooks/use-snippet-input-field-actions'
 import { useSnippetPublish } from './hooks/use-snippet-publish'
+import SnippetInputFieldEditor from './input-field-editor'
 import SnippetChildren from './snippet-children'
+import SnippetSidebar from './snippet-sidebar'
 
 type SnippetMainProps = {
   payload: SnippetDetailPayload
@@ -32,39 +36,17 @@ type SnippetMainProps = {
 type SnippetMainContentProps = {
   snippetId: string
   fields: SnippetInputField[]
-  uiMeta: SnippetDetailUIModel
-  editingField: SnippetInputField | null
-  isEditorOpen: boolean
-  isInputPanelOpen: boolean
-  onToggleInputPanel: () => void
-  onCloseInputPanel: () => void
-  onOpenEditor: (field?: SnippetInputField | null) => void
-  onCloseEditor: () => void
-  onSubmitField: (field: SnippetInputField) => void
-  onRemoveField: (index: number) => void
-  onSortChange: (fields: SnippetInputField[]) => void
+  onCancel: () => void
 }
 
 const SnippetMainContent = ({
   snippetId,
   fields,
-  uiMeta,
-  editingField,
-  isEditorOpen,
-  isInputPanelOpen,
-  onToggleInputPanel,
-  onCloseInputPanel,
-  onOpenEditor,
-  onCloseEditor,
-  onSubmitField,
-  onRemoveField,
-  onSortChange,
+  onCancel,
 }: SnippetMainContentProps) => {
   const {
     handlePublish,
-    isPublishMenuOpen,
     isPublishing,
-    setPublishMenuOpen,
   } = useSnippetPublish({
     snippetId,
   })
@@ -73,21 +55,9 @@ const SnippetMainContent = ({
     <SnippetChildren
       snippetId={snippetId}
       fields={fields}
-      uiMeta={uiMeta}
-      editingField={editingField}
-      isEditorOpen={isEditorOpen}
-      isInputPanelOpen={isInputPanelOpen}
-      isPublishMenuOpen={isPublishMenuOpen}
       isPublishing={isPublishing}
-      onToggleInputPanel={onToggleInputPanel}
-      onPublishMenuOpenChange={setPublishMenuOpen}
-      onCloseInputPanel={onCloseInputPanel}
+      onCancel={onCancel}
       onPublish={handlePublish}
-      onOpenEditor={onOpenEditor}
-      onCloseEditor={onCloseEditor}
-      onSubmitField={onSubmitField}
-      onRemoveField={onRemoveField}
-      onSortChange={onSortChange}
     />
   )
 }
@@ -99,11 +69,13 @@ const SnippetMain = ({
   edges,
   viewport,
 }: SnippetMainProps) => {
-  const { graph, uiMeta } = payload
+  const { graph, snippet } = payload
   const {
     doSyncWorkflowDraft,
+    syncInputFieldsDraft,
     syncWorkflowDraftWhenPageClose,
   } = useNodesSyncDraft(snippetId)
+  const publishedWorkflowQuery = useSnippetPublishedWorkflow(snippetId)
   const { handleRefreshWorkflowDraft } = useSnippetRefreshDraft(snippetId)
   const {
     handleBackupDraft,
@@ -162,14 +134,11 @@ const SnippetMain = ({
     editingField,
     fields,
     isEditorOpen,
-    isInputPanelOpen,
     openEditor,
     closeEditor,
-    handleCloseInputPanel,
     handleRemoveField,
     handleSortChange,
     handleSubmitField,
-    handleToggleInputPanel,
   } = useSnippetInputFieldActions({
     snippetId,
   })
@@ -189,6 +158,22 @@ const SnippetMain = ({
   useEffect(() => {
     setFields(payload.inputFields)
   }, [payload.inputFields, setFields, snippetId])
+
+  const handleCancelChanges = useCallback(() => {
+    const publishedWorkflow = publishedWorkflowQuery.data
+    if (!publishedWorkflow)
+      return
+
+    handleRestoreFromPublishedWorkflow(publishedWorkflow as never)
+
+    const publishedInputFields = Array.isArray(publishedWorkflow.input_fields)
+      ? publishedWorkflow.input_fields as SnippetInputField[]
+      : []
+    setFields(publishedInputFields)
+    void syncInputFieldsDraft(publishedInputFields, {
+      onRefresh: setFields,
+    })
+  }, [handleRestoreFromPublishedWorkflow, publishedWorkflowQuery.data, setFields, syncInputFieldsDraft])
 
   const hooksStore = useMemo(() => {
     return {
@@ -253,28 +238,39 @@ const SnippetMain = ({
   ])
 
   return (
-    <WorkflowWithInnerContext
-      nodes={nodes}
-      edges={edges}
-      viewport={viewport ?? graph.viewport}
-      hooksStore={hooksStore as unknown as Partial<HooksStoreShape>}
-    >
-      <SnippetMainContent
-        snippetId={snippetId}
+    <div className="relative flex h-full min-h-0 min-w-0">
+      <SnippetSidebar
+        snippet={snippet}
         fields={fields}
-        uiMeta={uiMeta}
-        editingField={editingField}
-        isEditorOpen={isEditorOpen}
-        isInputPanelOpen={isInputPanelOpen}
-        onToggleInputPanel={handleToggleInputPanel}
-        onCloseInputPanel={handleCloseInputPanel}
-        onOpenEditor={openEditor}
-        onCloseEditor={closeEditor}
-        onSubmitField={handleSubmitField}
-        onRemoveField={handleRemoveField}
+        onAdd={() => openEditor()}
+        onEdit={openEditor}
+        onRemove={handleRemoveField}
         onSortChange={handleSortChange}
       />
-    </WorkflowWithInnerContext>
+      <div className="relative min-h-0 min-w-0 grow">
+        <WorkflowWithInnerContext
+          nodes={nodes}
+          edges={edges}
+          viewport={viewport ?? graph.viewport}
+          hooksStore={hooksStore as unknown as Partial<HooksStoreShape>}
+        >
+          <SnippetMainContent
+            snippetId={snippetId}
+            fields={fields}
+            onCancel={handleCancelChanges}
+          />
+        </WorkflowWithInnerContext>
+      </div>
+      {isEditorOpen && (
+        <div className="absolute top-14 bottom-1 left-90 z-30">
+          <SnippetInputFieldEditor
+            field={editingField}
+            onClose={closeEditor}
+            onSubmit={handleSubmitField}
+          />
+        </div>
+      )}
+    </div>
   )
 }
 

@@ -8,7 +8,7 @@ let capturedPanelProps: PanelProps | null = null
 vi.mock('@/app/components/workflow/panel', () => ({
   default: (props: PanelProps) => {
     capturedPanelProps = props
-    return <div data-testid="workflow-panel">{props.components?.left}</div>
+    return <div data-testid="workflow-panel" />
   },
 }))
 
@@ -27,15 +27,6 @@ describe('SnippetWorkflowPanel', () => {
         <SnippetWorkflowPanel
           snippetId="snippet-1"
           fields={defaultFields}
-          editingField={null}
-          isEditorOpen={false}
-          isInputPanelOpen={false}
-          onCloseInputPanel={vi.fn()}
-          onOpenEditor={vi.fn()}
-          onCloseEditor={vi.fn()}
-          onSubmitField={vi.fn()}
-          onRemoveField={vi.fn()}
-          onSortChange={vi.fn()}
         />,
       )
 

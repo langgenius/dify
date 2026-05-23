@@ -1,4 +1,6 @@
 {
+  "cancel": "Cancel",
+  "continueEditing": "Continue Editing",
   "create": "CREATE SNIPPET",
   "createFailed": "Failed to create snippet",
   "createFromBlank": "Create from blank",
@@ -7,6 +9,9 @@
   "deleteConfirmTitle": "Delete Snippet?",
   "deleteFailed": "Failed to delete snippet",
   "deleted": "Snippet deleted",
+  "discardChanges": "Discard Changes",
+  "discardChangesDescription": "Your current changes won’t be saved to this snippet.",
+  "discardChangesTitle": "Discard current changes?",
   "draft": "Draft",
   "editDialogTitle": "Edit Snippet Info",
   "editDone": "Snippet info updated",
@@ -15,6 +20,8 @@
   "importFailed": "Failed to import snippet DSL",
   "importSuccess": "Snippet imported",
   "inputFieldButton": "Input Field",
+  "inputVariables": "Input Variables",
+  "management": "SNIPPET MANAGEMENT",
   "menu.deleteSnippet": "Delete",
   "menu.editInfo": "Edit Info",
   "menu.exportSnippet": "Export Snippet",
@@ -33,6 +40,7 @@
   "testRunButton": "Test run",
   "typeLabel": "Snippet",
   "unknownUser": "User",
+  "unsavedChanges": "Current changes are not saved.",
   "updatedBy": "{{name}} updated {{time}}",
   "usageCount": "Used {{count}} times",
   "variableInspect": "Variable Inspect"

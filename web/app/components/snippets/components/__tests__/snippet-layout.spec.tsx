@@ -1,65 +1,11 @@
-import type { ReactNode } from 'react'
 import type { SnippetDetail } from '@/models/snippet'
 import { render, screen } from '@testing-library/react'
 import SnippetLayout from '../snippet-layout'
 
-const mockSetAppSidebarExpand = vi.fn()
 const mockUseDocumentTitle = vi.fn()
-
-vi.mock('@/app/components/app/store', () => ({
-  useStore: (selector: (state: { setAppSidebarExpand: typeof mockSetAppSidebarExpand }) => unknown) => selector({
-    setAppSidebarExpand: mockSetAppSidebarExpand,
-  }),
-}))
-
-vi.mock('@/hooks/use-breakpoints', () => ({
-  default: () => 'desktop',
-  MediaType: {
-    mobile: 'mobile',
-    desktop: 'desktop',
-  },
-}))
 
 vi.mock('@/hooks/use-document-title', () => ({
   default: (title: string) => mockUseDocumentTitle(title),
-}))
-
-vi.mock('@/app/components/app-sidebar', () => ({
-  default: ({
-    renderHeader,
-    renderNavigation,
-  }: {
-    renderHeader?: (mode: string) => ReactNode
-    renderNavigation?: (mode: string) => ReactNode
-  }) => (
-    <div data-testid="app-sidebar">
-      {renderHeader?.('expand')}
-      {renderNavigation?.('expand')}
-    </div>
-  ),
-}))
-
-vi.mock('@/app/components/app-sidebar/nav-link', () => ({
-  default: ({ name, href, active, disabled }: { name: string, href: string, active: boolean, disabled?: boolean }) => (
-    disabled
-      ? (
-          <button type="button" disabled>
-            {name}
-          </button>
-        )
-      : (
-          <a
-            aria-current={active ? 'page' : undefined}
-            href={href}
-          >
-            {name}
-          </a>
-        )
-  ),
-}))
-
-vi.mock('@/app/components/app-sidebar/snippet-info', () => ({
-  default: ({ snippet }: { snippet: SnippetDetail }) => <div>{snippet.name}</div>,
 }))
 
 const createSnippet = (overrides: Partial<SnippetDetail> = {}): SnippetDetail => ({
@@ -95,8 +41,8 @@ describe('SnippetLayout', () => {
     })
   })
 
-  describe('Navigation', () => {
-    it('should render snippet navigation links', () => {
+  describe('Layout', () => {
+    it('should render the detail content without the app detail sidebar navigation', () => {
       render(
         <SnippetLayout
           snippetId="snippet-1"
@@ -107,8 +53,8 @@ describe('SnippetLayout', () => {
         </SnippetLayout>,
       )
 
-      expect(screen.getByRole('link', { name: 'snippet.sectionOrchestrate' })).toHaveAttribute('href', '/snippets/snippet-1/orchestrate')
-      expect(screen.getByRole('link', { name: 'snippet.sectionOrchestrate' })).toHaveAttribute('aria-current', 'page')
+      expect(screen.getByText('content')).toBeInTheDocument()
+      expect(screen.queryByRole('link', { name: 'snippet.sectionOrchestrate' })).not.toBeInTheDocument()
     })
   })
 })

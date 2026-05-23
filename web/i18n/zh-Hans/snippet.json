@@ -1,4 +1,6 @@
 {
+  "cancel": "取消",
+  "continueEditing": "继续编辑",
   "create": "创建 Snippet",
   "createFailed": "创建 Snippet 失败",
   "createFromBlank": "创建空白 Snippet",
@@ -7,6 +9,9 @@
   "deleteConfirmTitle": "删除 Snippet？",
   "deleteFailed": "删除 Snippet 失败",
   "deleted": "Snippet 已删除",
+  "discardChanges": "放弃更改",
+  "discardChangesDescription": "当前更改不会保存到此 Snippet。",
+  "discardChangesTitle": "放弃当前更改？",
   "draft": "草稿",
   "editDialogTitle": "编辑 Snippet 信息",
   "editDone": "Snippet 信息已更新",
@@ -15,6 +20,8 @@
   "importFailed": "导入 Snippet DSL 失败",
   "importSuccess": "Snippet 导入成功",
   "inputFieldButton": "输入字段",
+  "inputVariables": "输入变量",
+  "management": "SNIPPET 管理",
   "menu.deleteSnippet": "删除",
   "menu.editInfo": "编辑信息",
   "menu.exportSnippet": "导出 Snippet",
@@ -33,6 +40,7 @@
   "testRunButton": "测试运行",
   "typeLabel": "Snippet",
   "unknownUser": "用户",
+  "unsavedChanges": "当前更改未保存。",
   "updatedBy": "{{name}} 更新于 {{time}}",
   "usageCount": "已使用 {{count}} 次",
   "variableInspect": "变量查看"

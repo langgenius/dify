@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import type { WorkflowProps } from '@/app/components/workflow'
 import type { SnippetDetailPayload, SnippetInputField } from '@/models/snippet'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
@@ -15,6 +16,7 @@ const mockSetPublishMenuOpen = vi.fn()
 const mockToggleInputPanel = vi.fn()
 const mockTogglePublishMenu = vi.fn()
 const mockPublishSnippetMutateAsync = vi.fn()
+const mockUseSnippetPublishedWorkflow = vi.fn()
 const mockFetchInspectVars = vi.fn()
 const mockHandleBackupDraft = vi.fn()
 const mockHandleLoadBackupDraft = vi.fn()
@@ -66,6 +68,7 @@ vi.mock('@/service/use-snippet-workflows', () => ({
     mutateAsync: mockPublishSnippetMutateAsync,
     isPending: false,
   }),
+  useSnippetPublishedWorkflow: () => mockUseSnippetPublishedWorkflow(),
 }))
 
 vi.mock('@/app/components/snippets/hooks/use-configs-map', () => ({
@@ -128,7 +131,7 @@ vi.mock('@/app/components/workflow', () => ({
     children,
     hooksStore,
   }: {
-    children: React.ReactNode
+    children: ReactNode
     hooksStore?: Record<string, unknown>
   }) => {
     capturedHooksStore = hooksStore
@@ -141,29 +144,51 @@ vi.mock('@/app/components/workflow', () => ({
 
 vi.mock('@/app/components/snippets/components/snippet-children', () => ({
   default: ({
-    onRemoveField,
+    onCancel,
     onPublish,
-    onSubmitField,
   }: {
-    onRemoveField: (index: number) => void
+    onCancel: () => void
     onPublish: () => void
-    onSubmitField: (field: SnippetInputField) => void
   }) => (
     <div>
-      <button type="button" onClick={() => onRemoveField(0)}>remove</button>
       <button type="button" onClick={onPublish}>publish</button>
-      <button
-        type="button"
-        onClick={() => onSubmitField({
-          type: PipelineInputVarType.textInput,
-          label: 'New Field',
-          variable: 'new_field',
-          required: true,
-        })}
-      >
-        submit
-      </button>
+      <button type="button" onClick={onCancel}>cancel</button>
     </div>
+  ),
+}))
+
+vi.mock('@/app/components/snippets/components/snippet-sidebar', () => ({
+  default: ({
+    children,
+    onRemove,
+  }: {
+    children?: ReactNode
+    onRemove: (index: number) => void
+  }) => (
+    <div>
+      {children}
+      <button type="button" onClick={() => onRemove(0)}>remove</button>
+    </div>
+  ),
+}))
+
+vi.mock('@/app/components/snippets/components/input-field-editor', () => ({
+  default: ({
+    onSubmit,
+  }: {
+    onSubmit: (field: SnippetInputField) => void
+  }) => (
+    <button
+      type="button"
+      onClick={() => onSubmit({
+        type: PipelineInputVarType.textInput,
+        label: 'New Field',
+        variable: 'new_field',
+        required: true,
+      })}
+    >
+      submit
+    </button>
   ),
 }))
 
@@ -213,6 +238,12 @@ describe('SnippetMain', () => {
     vi.clearAllMocks()
     mockSyncInputFieldsDraft.mockResolvedValue(undefined)
     mockPublishSnippetMutateAsync.mockResolvedValue({ created_at: 1_744_000_000 })
+    mockUseSnippetPublishedWorkflow.mockReturnValue({
+      data: {
+        graph: payload.graph,
+        input_fields: payload.inputFields,
+      },
+    })
     mockHandleCheckBeforePublish.mockResolvedValue(true)
     capturedHooksStore = undefined
     snippetDetailStoreState = {
@@ -246,6 +277,7 @@ describe('SnippetMain', () => {
     })
 
     it('should sync draft input_fields when submitting a field from the editor', async () => {
+      snippetDetailStoreState.isEditorOpen = true
       renderSnippetMain()
 
       fireEvent.click(screen.getByRole('button', { name: 'submit' }))
@@ -278,6 +310,25 @@ describe('SnippetMain', () => {
         })
       })
       expect(mockSetPublishMenuOpen).toHaveBeenCalledWith(false)
+    })
+  })
+
+  describe('Cancel', () => {
+    it('should restore from the published workflow and reset published input fields', async () => {
+      renderSnippetMain()
+
+      fireEvent.click(screen.getByRole('button', { name: 'cancel' }))
+
+      await waitFor(() => {
+        expect(mockHandleRestoreFromPublishedWorkflow).toHaveBeenCalledWith({
+          graph: payload.graph,
+          input_fields: payload.inputFields,
+        })
+        expect(mockSetFields).toHaveBeenCalledWith(payload.inputFields)
+        expect(mockSyncInputFieldsDraft).toHaveBeenCalledWith(payload.inputFields, {
+          onRefresh: expect.any(Function),
+        })
+      })
     })
   })
 
