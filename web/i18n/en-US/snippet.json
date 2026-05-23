@@ -3,7 +3,7 @@
   "createFailed": "Failed to create snippet",
   "createFromBlank": "Create from blank",
   "defaultName": "Untitled Snippet",
-  "deleteConfirmContent": "Deleting this snippet is irreversible. Its draft workflow and published content will no longer be available.",
+  "deleteConfirmContent": "Once deleted, it cannot be recovered, and Workflows that reference this Snippet will not update automatically.",
   "deleteConfirmTitle": "Delete Snippet?",
   "deleteFailed": "Failed to delete snippet",
   "deleted": "Snippet deleted",

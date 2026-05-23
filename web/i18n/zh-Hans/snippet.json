@@ -3,7 +3,7 @@
   "createFailed": "创建 Snippet 失败",
   "createFromBlank": "创建空白 Snippet",
   "defaultName": "未命名 Snippet",
-  "deleteConfirmContent": "删除后不可恢复，草稿工作流和已发布内容都将无法继续使用。",
+  "deleteConfirmContent": "删除后不可恢复，引用此 Snippet 的工作流不会自动更新。",
   "deleteConfirmTitle": "删除 Snippet？",
   "deleteFailed": "删除 Snippet 失败",
   "deleted": "Snippet 已删除",

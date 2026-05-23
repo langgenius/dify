@@ -37,7 +37,7 @@ const SnippetCardSkeleton = ({ count }: SnippetCardSkeletonProps) => {
       {SNIPPET_CARD_SKELETON_KEYS.slice(0, count).map(key => (
         <div
           key={key}
-          className="col-span-1 h-40 animate-pulse rounded-xl bg-background-default-lighter"
+          className="col-span-1 h-55 animate-pulse rounded-xl bg-background-default-lighter"
         />
       ))}
     </>
@@ -169,6 +169,7 @@ const SnippetList = () => {
                   key={snippet.id}
                   snippet={snippet}
                   onOpenTagManagement={() => setShowTagManagementModal(true)}
+                  onRefresh={refetch}
                   onTagsChange={refetch}
                 />
               ))

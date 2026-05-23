@@ -19,7 +19,18 @@ vi.mock('@/service/use-snippets', () => ({
     mutate: vi.fn(),
     isPending: false,
   }),
+  useDeleteSnippetMutation: () => ({
+    mutate: vi.fn(),
+    isPending: false,
+  }),
+  useExportSnippetMutation: () => ({
+    mutateAsync: vi.fn(),
+  }),
   useInfiniteSnippetList: (params: unknown, options: unknown) => mockUseInfiniteSnippetList(params, options),
+  useUpdateSnippetMutation: () => ({
+    mutate: vi.fn(),
+    isPending: false,
+  }),
 }))
 
 vi.mock('../hooks/use-snippets-query-state', () => ({
