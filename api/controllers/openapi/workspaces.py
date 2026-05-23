@@ -11,7 +11,6 @@ from __future__ import annotations
 from itertools import starmap
 
 from flask_restx import Resource
-from sqlalchemy import select
 from werkzeug.exceptions import NotFound
 
 from controllers.openapi import openapi_ns
@@ -25,6 +24,7 @@ from libs.oauth_bearer import (
     validate_bearer,
 )
 from models import Tenant, TenantAccountJoin
+from services.account_service import TenantService
 
 
 @openapi_ns.route("/workspaces")
@@ -35,12 +35,7 @@ class WorkspacesApi(Resource):
     def get(self):
         ctx = get_auth_ctx()
 
-        rows = db.session.execute(
-            select(Tenant, TenantAccountJoin)
-            .join(TenantAccountJoin, TenantAccountJoin.tenant_id == Tenant.id)
-            .where(TenantAccountJoin.account_id == str(ctx.account_id))
-            .order_by(Tenant.created_at.asc())
-        ).all()
+        rows = TenantService.get_workspaces_for_account(db.session, str(ctx.account_id))
 
         return WorkspaceListResponse(workspaces=list(starmap(_workspace_summary, rows))).model_dump(mode="json"), 200
 
@@ -53,14 +48,7 @@ class WorkspaceByIdApi(Resource):
     def get(self, workspace_id: str):
         ctx = get_auth_ctx()
 
-        row = db.session.execute(
-            select(Tenant, TenantAccountJoin)
-            .join(TenantAccountJoin, TenantAccountJoin.tenant_id == Tenant.id)
-            .where(
-                Tenant.id == workspace_id,
-                TenantAccountJoin.account_id == str(ctx.account_id),
-            )
-        ).first()
+        row = TenantService.find_workspace_for_account(db.session, str(ctx.account_id), workspace_id)
         # 404 (not 403) on non-member so workspace IDs don't leak across tenants.
         if row is None:
             raise NotFound("workspace not found")

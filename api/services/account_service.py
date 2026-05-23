@@ -1220,6 +1220,48 @@ class TenantService:
         )
 
     @staticmethod
+    def get_workspaces_for_account(
+        session: Session | scoped_session,
+        account_id: str,
+    ) -> list[Row[tuple[Tenant, TenantAccountJoin]]]:
+        """``(Tenant, TenantAccountJoin)`` rows for every workspace the
+        account belongs to, ordered by ``Tenant.created_at`` ASC — the
+        canonical ordering for ``/openapi/v1/workspaces``.
+
+        Distinct from :meth:`get_account_memberships`: tuple order is
+        flipped (tenant first) and rows are sorted, so the workspace
+        listing is stable across requests.
+        """
+        return list(
+            session.execute(
+                select(Tenant, TenantAccountJoin)
+                .join(TenantAccountJoin, TenantAccountJoin.tenant_id == Tenant.id)
+                .where(TenantAccountJoin.account_id == account_id)
+                .order_by(Tenant.created_at.asc())
+            ).all()
+        )
+
+    @staticmethod
+    def find_workspace_for_account(
+        session: Session | scoped_session,
+        account_id: str,
+        workspace_id: str,
+    ) -> Row[tuple[Tenant, TenantAccountJoin]] | None:
+        """Single ``(Tenant, TenantAccountJoin)`` row scoped to the
+        account's membership in ``workspace_id``. ``None`` on non-member
+        — the caller maps that to 404 (not 403) so workspace IDs don't
+        leak across tenants via response codes.
+        """
+        return session.execute(
+            select(Tenant, TenantAccountJoin)
+            .join(TenantAccountJoin, TenantAccountJoin.tenant_id == Tenant.id)
+            .where(
+                Tenant.id == workspace_id,
+                TenantAccountJoin.account_id == account_id,
+            )
+        ).first()
+
+    @staticmethod
     def get_current_tenant_by_account(account: Account):
         """Get tenant by account and add the role"""
         tenant = account.current_tenant

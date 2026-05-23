@@ -1989,3 +1989,79 @@ class TestRegisterService:
 
         # Verify results
         assert result is None
+
+
+class TestSessionInjectedGetters:
+    """Coverage for the session-injected getters used by the openapi
+    surface. These methods bypass the Flask-scoped ``db.session``
+    proxy: callers (controllers) pass a session in. The tests simply
+    verify the delegation contract — that the method routes the call
+    through the *passed* session, not through ``db.session``.
+    """
+
+    def test_get_account_by_id_uses_passed_session_no_side_effects(self):
+        """``get_account_by_id`` must be a plain delegation to
+        ``session.get(Account, ...)`` — no banned-status raise, no
+        commit (those are the side-effects of ``load_user`` we
+        explicitly want to skip).
+        """
+        mock_session = MagicMock()
+        sentinel_account = MagicMock(spec=Account)
+        mock_session.get.return_value = sentinel_account
+
+        result = AccountService.get_account_by_id(mock_session, "user-123")
+
+        assert result is sentinel_account
+        mock_session.get.assert_called_once_with(Account, "user-123")
+        mock_session.commit.assert_not_called()
+
+    def test_get_account_by_id_returns_none_for_unknown_account(self):
+        mock_session = MagicMock()
+        mock_session.get.return_value = None
+
+        assert AccountService.get_account_by_id(mock_session, "missing") is None
+
+    def test_get_account_memberships_returns_join_tenant_pairs(self):
+        """Returns whatever ``session.query(...).join(...).filter(...).all()``
+        produces — ordering unspecified, callers pick the default
+        workspace from the join row.
+        """
+        mock_session = MagicMock()
+        rows = [(MagicMock(), MagicMock()), (MagicMock(), MagicMock())]
+        mock_session.query.return_value.join.return_value.filter.return_value.all.return_value = rows
+
+        out = TenantService.get_account_memberships(mock_session, "user-123")
+
+        assert out == rows
+        # No fall-through to the global db.session proxy.
+        assert mock_session.query.called
+
+    def test_get_workspaces_for_account_uses_session_execute(self):
+        """The list endpoint orders by ``Tenant.created_at``; the helper
+        passes the ordered query through ``session.execute(...).all()``.
+        """
+        mock_session = MagicMock()
+        rows = [(MagicMock(), MagicMock())]
+        mock_session.execute.return_value.all.return_value = rows
+
+        out = TenantService.get_workspaces_for_account(mock_session, "user-123")
+
+        assert out == rows
+        assert mock_session.execute.called
+
+    def test_find_workspace_for_account_returns_first_row_or_none(self):
+        """Per-id read returns ``session.execute(...).first()`` directly;
+        callers map ``None`` → 404 to avoid leaking workspace IDs across
+        tenants.
+        """
+        mock_session = MagicMock()
+        sentinel_row = (MagicMock(), MagicMock())
+        mock_session.execute.return_value.first.return_value = sentinel_row
+
+        assert (
+            TenantService.find_workspace_for_account(mock_session, "user-123", "ws-1")
+            is sentinel_row
+        )
+
+        mock_session.execute.return_value.first.return_value = None
+        assert TenantService.find_workspace_for_account(mock_session, "user-123", "ws-1") is None
