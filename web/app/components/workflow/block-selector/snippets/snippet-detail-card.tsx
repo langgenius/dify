@@ -59,13 +59,13 @@ const SnippetDetailCard: FC<SnippetDetailCardProps> = ({
   }, [workflow?.graph])
 
   return (
-    <div className="w-[224px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur px-3 pt-3 pb-4 shadow-lg backdrop-blur-[5px]">
+    <div className="w-56 rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur px-3 pt-3 pb-4 shadow-lg backdrop-blur-[5px]">
       <div className="flex flex-col gap-2">
         <div className="flex flex-col gap-2">
           <div className="system-md-medium text-text-primary">{name}</div>
         </div>
         {!!description && (
-          <div className="w-[200px] system-xs-regular text-text-secondary">
+          <div className="w-50 system-xs-regular text-text-secondary">
             {description}
           </div>
         )}

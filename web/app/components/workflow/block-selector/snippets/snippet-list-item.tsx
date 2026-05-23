@@ -22,15 +22,20 @@ const SnippetListItem = ({
     <div
       ref={ref}
       className={cn(
-        'flex h-8 cursor-pointer items-center rounded-lg px-3',
+        'flex cursor-pointer flex-col gap-1 rounded-xl px-3 py-2',
         isHovered && 'bg-background-default-hover',
         className,
       )}
       {...props}
     >
-      <div className="min-w-0 system-sm-medium text-text-secondary">
+      <div className="w-full truncate system-md-semibold text-text-secondary">
         {snippet.name}
       </div>
+      {!!snippet.description && (
+        <div className="line-clamp-1 w-full system-sm-regular text-text-tertiary">
+          {snippet.description}
+        </div>
+      )}
     </div>
   )
 }

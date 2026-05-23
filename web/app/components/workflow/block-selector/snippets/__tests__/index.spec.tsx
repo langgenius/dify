@@ -1,11 +1,8 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import Snippets from '../index'
 
 const mockUseInfiniteSnippetList = vi.fn()
 const mockHandleInsertSnippet = vi.fn()
-const mockHandleCreateSnippet = vi.fn()
-const mockHandleOpenCreateSnippetDialog = vi.fn()
-const mockHandleCloseCreateSnippetDialog = vi.fn()
 
 vi.mock('ahooks', async () => {
   const actual = await vi.importActual<typeof import('ahooks')>('ahooks')
@@ -25,19 +22,18 @@ vi.mock('../use-insert-snippet', () => ({
   }),
 }))
 
-vi.mock('@/app/components/snippets/hooks/use-create-snippet', () => ({
-  useCreateSnippet: () => ({
-    createSnippetMutation: { isPending: false },
-    handleCloseCreateSnippetDialog: mockHandleCloseCreateSnippetDialog,
-    handleCreateSnippet: mockHandleCreateSnippet,
-    handleOpenCreateSnippetDialog: mockHandleOpenCreateSnippetDialog,
-    isCreateSnippetDialogOpen: false,
-    isCreatingSnippet: false,
-  }),
-}))
-
-vi.mock('@/app/components/snippets/create-snippet-dialog', () => ({
-  default: ({ isOpen }: { isOpen: boolean }) => isOpen ? <div data-testid="create-snippet-dialog" /> : null,
+vi.mock('../snippet-tags-filter', () => ({
+  default: ({
+    value,
+    onChange,
+  }: {
+    value: string[]
+    onChange: (value: string[]) => void
+  }) => (
+    <button type="button" onClick={() => onChange(['tag-1'])}>
+      {`tag-filter:${value.join(',')}`}
+    </button>
+  ),
 }))
 
 describe('Snippets', () => {
@@ -64,6 +60,7 @@ describe('Snippets', () => {
       render(<Snippets searchText="" />)
 
       expect(screen.getByText('workflow.tabs.noSnippetsFound')).toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'workflow.tabs.createSnippet' })).not.toBeInTheDocument()
     })
 
     it('should render snippet rows from infinite list data', () => {
@@ -107,12 +104,19 @@ describe('Snippets', () => {
   })
 
   describe('User Interactions', () => {
-    it('should delegate create action from empty state', () => {
+    it('should filter snippets by selected snippet tags', async () => {
       render(<Snippets searchText="" />)
 
-      fireEvent.click(screen.getByRole('button', { name: 'workflow.tabs.createSnippet' }))
+      fireEvent.click(screen.getByRole('button', { name: 'tag-filter:' }))
 
-      expect(mockHandleOpenCreateSnippetDialog).toHaveBeenCalledTimes(1)
+      await waitFor(() => {
+        expect(mockUseInfiniteSnippetList).toHaveBeenLastCalledWith({
+          page: 1,
+          limit: 30,
+          tag_ids: ['tag-1'],
+          is_published: true,
+        })
+      })
     })
 
     it('should delegate insert action when snippet item is clicked', () => {

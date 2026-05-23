@@ -23,7 +23,7 @@ describe('SnippetListItem', () => {
   })
 
   describe('Rendering', () => {
-    it('should render snippet name', () => {
+    it('should render snippet title and description', () => {
       render(
         <SnippetListItem
           snippet={createSnippet()}
@@ -34,19 +34,24 @@ describe('SnippetListItem', () => {
       )
 
       expect(screen.getByText('Customer Review')).toBeInTheDocument()
+      expect(screen.getByText('Snippet description')).toBeInTheDocument()
     })
 
-    it('should not render metadata when hovered', () => {
+    it('should not render metadata or tags', () => {
       render(
         <SnippetListItem
-          snippet={createSnippet()}
-          isHovered
+          snippet={createSnippet({
+            tags: [{ id: 'tag-1', name: 'Search', type: 'snippet', binding_count: 1 }],
+          })}
+          isHovered={false}
           onMouseEnter={vi.fn()}
           onMouseLeave={vi.fn()}
         />,
       )
 
       expect(screen.getByText('Customer Review')).toBeInTheDocument()
+      expect(screen.queryByText('Search')).not.toBeInTheDocument()
+      expect(screen.queryByText('3')).not.toBeInTheDocument()
     })
   })
 

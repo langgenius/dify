@@ -22,12 +22,11 @@ import {
   useState,
 } from 'react'
 import Loading from '@/app/components/base/loading'
-import CreateSnippetDialog from '@/app/components/snippets/create-snippet-dialog'
-import { useCreateSnippet } from '@/app/components/snippets/hooks/use-create-snippet'
 import { useInfiniteSnippetList } from '@/service/use-snippets'
 import SnippetDetailCard from './snippet-detail-card'
 import SnippetEmptyState from './snippet-empty-state'
 import SnippetListItem from './snippet-list-item'
+import SnippetTagsFilter from './snippet-tags-filter'
 import { useInsertSnippet } from './use-insert-snippet'
 
 type SnippetsProps = {
@@ -66,18 +65,11 @@ const Snippets = ({
   insertPayload,
   onInserted,
 }: SnippetsProps) => {
-  const {
-    createSnippetMutation,
-    handleCloseCreateSnippetDialog,
-    handleCreateSnippet,
-    handleOpenCreateSnippetDialog,
-    isCreateSnippetDialogOpen,
-    isCreatingSnippet,
-  } = useCreateSnippet()
   const { handleInsertSnippet } = useInsertSnippet()
   const deferredSearchText = useDeferredValue(searchText)
   const viewportRef = useRef<HTMLDivElement>(null)
   const [hoveredSnippetId, setHoveredSnippetId] = useState<string | null>(null)
+  const [tagIds, setTagIds] = useState<string[]>([])
 
   const keyword = deferredSearchText.trim() || undefined
 
@@ -92,6 +84,7 @@ const Snippets = ({
     page: 1,
     limit: 30,
     keyword,
+    ...(tagIds.length ? { tag_ids: tagIds } : {}),
     is_published: true,
   })
 
@@ -117,18 +110,31 @@ const Snippets = ({
     {
       target: viewportRef,
       isNoMore: () => isNoMore,
-      reloadDeps: [isNoMore, isFetchingNextPage, keyword],
+      reloadDeps: [isNoMore, isFetchingNextPage, keyword, tagIds],
     },
   )
 
-  if (loading || isLoading || (isFetching && snippets.length === 0))
-    return <LoadingSkeleton />
+  const tagsFilter = (
+    <div className="flex justify-end border-b border-divider-subtle px-2 py-2">
+      <SnippetTagsFilter value={tagIds} onChange={setTagIds} />
+    </div>
+  )
+
+  if (loading || isLoading || (isFetching && snippets.length === 0)) {
+    return (
+      <>
+        {tagsFilter}
+        <LoadingSkeleton />
+      </>
+    )
+  }
 
   return (
     <>
+      {tagsFilter}
       {!snippets.length
         ? (
-            <SnippetEmptyState onCreate={handleOpenCreateSnippetDialog} />
+            <SnippetEmptyState />
           )
         : (
             <ScrollAreaRoot className="relative max-h-120 max-w-125 overflow-hidden">
@@ -175,12 +181,6 @@ const Snippets = ({
               </ScrollAreaScrollbar>
             </ScrollAreaRoot>
           )}
-      <CreateSnippetDialog
-        isOpen={isCreateSnippetDialogOpen}
-        isSubmitting={isCreatingSnippet || createSnippetMutation.isPending}
-        onClose={handleCloseCreateSnippetDialog}
-        onConfirm={handleCreateSnippet}
-      />
     </>
   )
 }
