@@ -520,7 +520,9 @@ def list_active_sessions(
                 )
             )
             .order_by(OAuthAccessToken.created_at.desc())
-        ).all()
+        )
+        .scalars()
+        .all()
     )
 
 

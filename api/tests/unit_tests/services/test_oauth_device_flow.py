@@ -115,13 +115,16 @@ def test_revoke_oauth_token_is_idempotent_when_already_revoked():
 
 def test_list_active_sessions_returns_session_execute_rows():
     """Thin delegation: the helper materialises whatever
-    ``session.execute(...).all()`` returns into a list.
+    ``session.execute(...).scalars().all()`` returns into a list. The
+    ``.scalars()`` step unwraps each one-element ``Row`` so callers see
+    bare ``OAuthAccessToken`` entities (matches the declared return
+    type).
     """
     from datetime import UTC, datetime
 
     session = MagicMock()
     fake_rows = [MagicMock(), MagicMock()]
-    session.execute.return_value.all.return_value = fake_rows
+    session.execute.return_value.scalars.return_value.all.return_value = fake_rows
 
     out = list_active_sessions(session, _account_ctx(), datetime.now(UTC))
 
