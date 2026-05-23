@@ -21,7 +21,7 @@ import {
 import { toast } from '@langgenius/dify-ui/toast'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import CreateSnippetDialog from '@/app/components/workflow/create-snippet-dialog'
+import CreateSnippetDialog from '@/app/components/snippets/create-snippet-dialog'
 import { useAppContext } from '@/context/app-context'
 import { TagSelector } from '@/features/tag-management/components/tag-selector'
 import Link from '@/next/link'

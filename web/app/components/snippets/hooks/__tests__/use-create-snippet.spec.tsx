@@ -1,4 +1,5 @@
 import { act, renderHook } from '@testing-library/react'
+import { PipelineInputVarType } from '@/models/pipeline'
 import { useCreateSnippet } from '../use-create-snippet'
 
 const mockPush = vi.fn()
@@ -69,6 +70,14 @@ describe('useCreateSnippet', () => {
         await result.current.handleCreateSnippet({
           name: 'My snippet',
           description: 'desc',
+          input_fields: [
+            {
+              label: 'topic',
+              variable: 'topic',
+              type: PipelineInputVarType.textInput,
+              required: true,
+            },
+          ],
           graph: {
             nodes: [],
             edges: [],
@@ -81,11 +90,27 @@ describe('useCreateSnippet', () => {
         body: {
           name: 'My snippet',
           description: 'desc',
+          input_fields: [
+            {
+              label: 'topic',
+              variable: 'topic',
+              type: PipelineInputVarType.textInput,
+              required: true,
+            },
+          ],
         },
       })
       expect(mockSyncDraftWorkflow).toHaveBeenCalledWith({
         params: { snippetId: 'snippet-123' },
         body: {
+          input_fields: [
+            {
+              label: 'topic',
+              variable: 'topic',
+              type: PipelineInputVarType.textInput,
+              required: true,
+            },
+          ],
           graph: {
             nodes: [],
             edges: [],
@@ -108,6 +133,7 @@ describe('useCreateSnippet', () => {
         await result.current.handleCreateSnippet({
           name: 'My snippet',
           description: '',
+          input_fields: [],
           graph: {
             nodes: [],
             edges: [],

@@ -93,7 +93,7 @@ vi.mock('@/next/dynamic', () => ({
   },
 }))
 
-vi.mock('@/app/components/workflow/create-snippet-dialog', () => ({
+vi.mock('@/app/components/snippets/create-snippet-dialog', () => ({
   default: () => null,
 }))
 

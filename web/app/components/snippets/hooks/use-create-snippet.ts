@@ -1,4 +1,4 @@
-import type { CreateSnippetDialogPayload } from '../../create-snippet-dialog'
+import type { CreateSnippetDialogPayload } from '@/app/components/snippets/create-snippet-dialog'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -25,6 +25,7 @@ export const useCreateSnippet = () => {
     name,
     description,
     graph,
+    input_fields,
   }: CreateSnippetDialogPayload) => {
     setIsCreatingSnippet(true)
 
@@ -33,12 +34,13 @@ export const useCreateSnippet = () => {
         body: {
           name,
           description: description || undefined,
+          input_fields,
         },
       })
 
       await consoleClient.snippets.syncDraftWorkflow({
         params: { snippetId: snippet.id },
-        body: { graph },
+        body: { graph, input_fields },
       })
 
       toast.success(t('snippet.createSuccess', { ns: 'workflow' }))

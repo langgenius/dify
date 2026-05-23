@@ -21,7 +21,7 @@ import {
 import { toast } from '@langgenius/dify-ui/toast'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import CreateSnippetDialog from '@/app/components/workflow/create-snippet-dialog'
+import CreateSnippetDialog from '@/app/components/snippets/create-snippet-dialog'
 import { useRouter } from '@/next/navigation'
 import { useDeleteSnippetMutation, useExportSnippetMutation, useUpdateSnippetMutation } from '@/service/use-snippets'
 
@@ -120,7 +120,7 @@ const SnippetInfoDropdown = ({ snippet }: SnippetInfoDropdownProps) => {
             <span aria-hidden className="i-ri-download-2-line size-4 shrink-0 text-text-tertiary" />
             <span className="grow">{t('menu.exportSnippet')}</span>
           </DropdownMenuItem>
-          <DropdownMenuSeparator className="!my-1 bg-divider-subtle" />
+          <DropdownMenuSeparator className="my-1! bg-divider-subtle" />
           <DropdownMenuItem
             className="mx-0 gap-2"
             variant="destructive"
@@ -148,7 +148,7 @@ const SnippetInfoDropdown = ({ snippet }: SnippetInfoDropdownProps) => {
       )}
 
       <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-        <AlertDialogContent className="w-[400px]">
+        <AlertDialogContent className="w-100">
           <div className="space-y-2 p-6">
             <AlertDialogTitle className="title-md-semi-bold text-text-primary">
               {t('deleteConfirmTitle')}

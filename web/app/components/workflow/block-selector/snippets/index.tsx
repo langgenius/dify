@@ -22,12 +22,12 @@ import {
   useState,
 } from 'react'
 import Loading from '@/app/components/base/loading'
+import CreateSnippetDialog from '@/app/components/snippets/create-snippet-dialog'
+import { useCreateSnippet } from '@/app/components/snippets/hooks/use-create-snippet'
 import { useInfiniteSnippetList } from '@/service/use-snippets'
-import CreateSnippetDialog from '../../create-snippet-dialog'
 import SnippetDetailCard from './snippet-detail-card'
 import SnippetEmptyState from './snippet-empty-state'
 import SnippetListItem from './snippet-list-item'
-import { useCreateSnippet } from './use-create-snippet'
 import { useInsertSnippet } from './use-insert-snippet'
 
 type SnippetsProps = {
@@ -50,7 +50,7 @@ const LoadingSkeleton = () => {
             )}
           >
             <div className="min-w-0 flex-1 px-1 py-1">
-              <div className="h-2 w-[200px] rounded-[2px] bg-text-quaternary" />
+              <div className="h-2 w-50 rounded-xs bg-text-quaternary" />
             </div>
           </div>
         ))}
@@ -131,7 +131,7 @@ const Snippets = ({
             <SnippetEmptyState onCreate={handleOpenCreateSnippetDialog} />
           )
         : (
-            <ScrollAreaRoot className="relative max-h-[480px] max-w-[500px] overflow-hidden">
+            <ScrollAreaRoot className="relative max-h-120 max-w-125 overflow-hidden">
               <ScrollAreaViewport ref={viewportRef}>
                 <ScrollAreaContent className="p-1">
                   {snippets.map((item) => {

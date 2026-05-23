@@ -1,20 +1,20 @@
 'use client'
 
-import type { FC } from 'react'
-import type { SnippetCanvasData } from '@/models/snippet'
+import type { SnippetCanvasData, SnippetInputField } from '@/models/snippet'
 import { Button } from '@langgenius/dify-ui/button'
-import { Dialog, DialogCloseButton, DialogContent, DialogPortal, DialogTitle } from '@langgenius/dify-ui/dialog'
+import { Dialog, DialogCloseButton, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
 import { Input } from '@langgenius/dify-ui/input'
 import { useKeyPress } from 'ahooks'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Textarea from '@/app/components/base/textarea'
-import ShortcutsName from './shortcuts-name'
+import ShortcutsName from '@/app/components/workflow/shortcuts-name'
 
 export type CreateSnippetDialogPayload = {
   name: string
   description: string
   graph: SnippetCanvasData
+  input_fields?: SnippetInputField[]
 }
 
 type CreateSnippetDialogInitialValue = {
@@ -25,6 +25,7 @@ type CreateSnippetDialogInitialValue = {
 type CreateSnippetDialogProps = {
   isOpen: boolean
   selectedGraph?: SnippetCanvasData
+  inputFields?: SnippetInputField[]
   onClose: () => void
   onConfirm: (payload: CreateSnippetDialogPayload) => void
   isSubmitting?: boolean
@@ -39,16 +40,17 @@ const defaultGraph: SnippetCanvasData = {
   viewport: { x: 0, y: 0, zoom: 1 },
 }
 
-const CreateSnippetDialog: FC<CreateSnippetDialogProps> = ({
+function CreateSnippetDialog({
   isOpen,
   selectedGraph,
+  inputFields,
   onClose,
   onConfirm,
   isSubmitting = false,
   title,
   confirmText,
   initialValue,
-}) => {
+}: CreateSnippetDialogProps) {
   const { t } = useTranslation()
   const [name, setName] = useState(initialValue?.name ?? '')
   const [description, setDescription] = useState(initialValue?.description ?? '')
@@ -74,10 +76,11 @@ const CreateSnippetDialog: FC<CreateSnippetDialogProps> = ({
       name: trimmedName,
       description: trimmedDescription,
       graph: selectedGraph ?? defaultGraph,
+      input_fields: inputFields,
     }
 
     onConfirm(payload)
-  }, [description, name, onConfirm, selectedGraph])
+  }, [description, inputFields, name, onConfirm, selectedGraph])
 
   useKeyPress(['meta.enter', 'ctrl.enter'], () => {
     if (!isOpen)
@@ -92,7 +95,7 @@ const CreateSnippetDialog: FC<CreateSnippetDialogProps> = ({
   return (
     <>
       <Dialog open={isOpen} onOpenChange={open => !open && handleClose()}>
-        <DialogContent className="w-[520px] max-w-[520px] p-0">
+        <DialogContent className="w-120 max-w-120 p-0">
           <DialogCloseButton />
 
           <div className="px-6 pt-6 pb-3">
@@ -144,14 +147,6 @@ const CreateSnippetDialog: FC<CreateSnippetDialogProps> = ({
             </Button>
           </div>
         </DialogContent>
-
-        <DialogPortal>
-          <div className="pointer-events-none fixed top-1/2 left-1/2 z-[1002] flex -translate-x-1/2 translate-y-[170px] items-center gap-1 body-xs-regular text-text-quaternary">
-            <span>{t('snippet.shortcuts.press', { ns: 'workflow' })}</span>
-            <ShortcutsName keys={['ctrl', 'enter']} textColor="secondary" />
-            <span>{t('snippet.shortcuts.toConfirm', { ns: 'workflow' })}</span>
-          </div>
-        </DialogPortal>
       </Dialog>
     </>
   )

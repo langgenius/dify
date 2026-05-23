@@ -25,7 +25,7 @@ vi.mock('../use-insert-snippet', () => ({
   }),
 }))
 
-vi.mock('../use-create-snippet', () => ({
+vi.mock('@/app/components/snippets/hooks/use-create-snippet', () => ({
   useCreateSnippet: () => ({
     createSnippetMutation: { isPending: false },
     handleCloseCreateSnippetDialog: mockHandleCloseCreateSnippetDialog,
@@ -36,7 +36,7 @@ vi.mock('../use-create-snippet', () => ({
   }),
 }))
 
-vi.mock('../../../create-snippet-dialog', () => ({
+vi.mock('@/app/components/snippets/create-snippet-dialog', () => ({
   default: ({ isOpen }: { isOpen: boolean }) => isOpen ? <div data-testid="create-snippet-dialog" /> : null,
 }))
 

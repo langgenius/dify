@@ -1,4 +1,4 @@
-import type { CreateSnippetDialogPayload } from '@/app/components/workflow/create-snippet-dialog'
+import type { CreateSnippetDialogPayload } from '@/app/components/snippets/create-snippet-dialog'
 import type { SnippetDetail } from '@/models/snippet'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -105,7 +105,7 @@ type MockCreateSnippetDialogProps = {
   onConfirm: (payload: CreateSnippetDialogPayload) => void
 }
 
-vi.mock('@/app/components/workflow/create-snippet-dialog', () => ({
+vi.mock('@/app/components/snippets/create-snippet-dialog', () => ({
   default: ({
     isOpen,
     title,

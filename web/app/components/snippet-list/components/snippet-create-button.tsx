@@ -4,7 +4,7 @@ import { Button } from '@langgenius/dify-ui/button'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import CreateSnippetDialog from '@/app/components/workflow/create-snippet-dialog'
+import CreateSnippetDialog from '@/app/components/snippets/create-snippet-dialog'
 import { useRouter } from '@/next/navigation'
 import {
   useCreateSnippetMutation,
