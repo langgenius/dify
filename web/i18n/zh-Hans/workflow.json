@@ -1163,7 +1163,7 @@
   "snippet.createSuccess": "Snippet 已创建",
   "snippet.descriptionLabel": "描述（可选）",
   "snippet.descriptionPlaceholder": "简要描述你的 snippet",
-  "snippet.nameLabel": "Snippet 名称和图标",
+  "snippet.nameLabel": "Snippet 名称",
   "snippet.namePlaceholder": "Snippet 名称",
   "snippet.shortcuts.press": "按下",
   "snippet.shortcuts.toConfirm": "确认",

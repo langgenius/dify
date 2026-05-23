@@ -1163,7 +1163,7 @@
   "snippet.createSuccess": "Snippet created",
   "snippet.descriptionLabel": "Description (Optional)",
   "snippet.descriptionPlaceholder": "Briefly describe your snippet",
-  "snippet.nameLabel": "Snippet Name & Icon",
+  "snippet.nameLabel": "Snippet Name",
   "snippet.namePlaceholder": "Snippet name",
   "snippet.shortcuts.press": "Press",
   "snippet.shortcuts.toConfirm": "to confirm",
