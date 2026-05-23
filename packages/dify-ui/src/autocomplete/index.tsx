@@ -316,7 +316,7 @@ export function AutocompleteItemText({
   )
 }
 
-export function AutocompleteLabel({
+export function AutocompleteGroupLabel({
   className,
   ...props
 }: BaseAutocomplete.GroupLabel.Props) {

@@ -6,8 +6,10 @@ import type { Placement } from '../placement'
 import { Select as BaseSelect } from '@base-ui/react/select'
 import { cva } from 'class-variance-authority'
 import { cn } from '../cn'
+import { formLabelClassName } from '../form-control-shared'
 import {
   overlayLabelClassName,
+  overlayPopupAnimationClassName,
   overlaySeparatorClassName,
 } from '../overlay-shared'
 import { parsePlacement } from '../placement'
@@ -68,6 +70,18 @@ export function SelectTrigger({
 }
 
 export function SelectLabel({
+  className,
+  ...props
+}: BaseSelect.Label.Props) {
+  return (
+    <BaseSelect.Label
+      className={cn(formLabelClassName, className)}
+      {...props}
+    />
+  )
+}
+
+export function SelectGroupLabel({
   className,
   ...props
 }: BaseSelect.GroupLabel.Props) {
@@ -141,7 +155,7 @@ export function SelectContent({
         <BaseSelect.Popup
           className={cn(
             'min-w-(--anchor-width) rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg',
-            'origin-(--transform-origin) transition-[transform,scale,opacity] data-ending-style:scale-95 data-ending-style:opacity-0 data-starting-style:scale-95 data-starting-style:opacity-0 motion-reduce:transition-none',
+            overlayPopupAnimationClassName,
             popupClassName,
           )}
           {...popupProps}

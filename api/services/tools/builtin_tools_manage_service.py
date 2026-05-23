@@ -13,6 +13,7 @@ from core.helper.name_generator import generate_incremental_name
 from core.helper.position_helper import is_filtered
 from core.helper.provider_cache import NoOpProviderCredentialCache, ToolProviderCredentialsCache
 from core.plugin.entities.plugin_daemon import CredentialType
+from core.plugin.plugin_service import PluginService
 from core.tools.builtin_tool.provider import BuiltinToolProviderController
 from core.tools.builtin_tool.providers._positions import BuiltinToolProviderSort
 from core.tools.entities.api_entities import (
@@ -31,7 +32,6 @@ from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from models.provider_ids import ToolProviderID
 from models.tools import BuiltinToolProvider, ToolOAuthSystemClient, ToolOAuthTenantClient
-from services.plugin.plugin_service import PluginService
 from services.tools.tools_transform_service import ToolTransformService
 
 logger = logging.getLogger(__name__)
