@@ -2,12 +2,12 @@
 import type { FC } from 'react'
 import type { ValueSelector, Var } from '@/app/components/workflow/types'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Textarea } from '@langgenius/dify-ui/textarea'
 import * as React from 'react'
 import { useCallback, useEffect, useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import VarReferencePicker from '@/app/components/workflow/nodes/_base/components/variable/var-reference-picker'
 import { VarType } from '@/app/components/workflow/types'
-import Textarea from '../../../textarea'
 import TagLabel from './tag-label'
 import TypeSwitch from './type-switch'
 
@@ -129,7 +129,7 @@ const PrePopulate: FC<Props> = ({
       <Textarea
         value={value || ''}
         className="h-[43px] min-h-[43px] rounded-none border-none bg-transparent px-3 hover:bg-transparent focus:bg-transparent focus:shadow-none"
-        onChange={e => onValueChange?.(e.target.value)}
+        onValueChange={value => onValueChange?.(value)}
         onFocus={() => {
           setOnPlaceholderClicked(true)
           setIsFocus(true)

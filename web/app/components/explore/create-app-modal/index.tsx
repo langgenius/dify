@@ -3,6 +3,7 @@ import type { AppIconType } from '@/types/app'
 import { Button } from '@langgenius/dify-ui/button'
 import { Dialog, DialogCloseButton, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
 import { Switch } from '@langgenius/dify-ui/switch'
+import { Textarea } from '@langgenius/dify-ui/textarea'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useDebounceFn, useKeyPress } from 'ahooks'
 import * as React from 'react'
@@ -10,7 +11,6 @@ import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
 import Input from '@/app/components/base/input'
-import Textarea from '@/app/components/base/textarea'
 import AppsFull from '@/app/components/billing/apps-full-in-dialog'
 import { useProviderContext } from '@/context/provider-context'
 import { AppModeEnum } from '@/types/app'
@@ -148,7 +148,7 @@ const CreateAppModal = ({
                 className="resize-none"
                 placeholder={t('newApp.appDescriptionPlaceholder', { ns: 'app' }) || ''}
                 value={description}
-                onChange={e => setDescription(e.target.value)}
+                onValueChange={value => setDescription(value)}
               />
             </div>
             {/* answer icon */}

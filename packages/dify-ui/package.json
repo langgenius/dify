@@ -113,6 +113,10 @@
       "types": "./src/tabs/index.tsx",
       "import": "./src/tabs/index.tsx"
     },
+    "./textarea": {
+      "types": "./src/textarea/index.tsx",
+      "import": "./src/textarea/index.tsx"
+    },
     "./toggle-group": {
       "types": "./src/toggle-group/index.tsx",
       "import": "./src/toggle-group/index.tsx"

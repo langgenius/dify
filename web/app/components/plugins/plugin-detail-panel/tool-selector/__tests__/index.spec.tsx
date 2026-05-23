@@ -523,9 +523,7 @@ describe('useToolSelectorState Hook', () => {
       )
 
       act(() => {
-        result.current.handleDescriptionChange({
-          target: { value: 'new description' },
-        } as React.ChangeEvent<HTMLTextAreaElement>)
+        result.current.handleDescriptionChange('new description')
       })
 
       expect(onSelect).toHaveBeenCalledWith(
@@ -1724,9 +1722,7 @@ describe('Edge Cases', () => {
       )
 
       act(() => {
-        result.current.handleDescriptionChange({
-          target: { value: '' },
-        } as React.ChangeEvent<HTMLTextAreaElement>)
+        result.current.handleDescriptionChange('')
       })
 
       expect(onSelect).toHaveBeenCalledWith(

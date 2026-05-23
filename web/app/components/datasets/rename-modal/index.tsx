@@ -5,12 +5,12 @@ import type { DataSet } from '@/models/datasets'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
+import { Textarea } from '@langgenius/dify-ui/textarea'
 import { toast } from '@langgenius/dify-ui/toast'
 import { RiCloseLine } from '@remixicon/react'
 import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Input from '@/app/components/base/input'
-import Textarea from '@/app/components/base/textarea'
 import { updateDatasetSetting } from '@/service/datasets'
 import AppIcon from '../../base/app-icon'
 import AppIconPicker from '../../base/app-icon-picker'
@@ -117,7 +117,7 @@ const RenameDatasetModal = ({ show, dataset, onSuccess, onClose }: RenameDataset
               {t('form.desc', { ns: 'datasetSettings' })}
             </div>
             <div className="w-full">
-              <Textarea value={description} onChange={e => setDescription(e.target.value)} className="resize-none" placeholder={t('form.descPlaceholder', { ns: 'datasetSettings' }) || ''} />
+              <Textarea value={description} onValueChange={value => setDescription(value)} className="resize-none" placeholder={t('form.descPlaceholder', { ns: 'datasetSettings' }) || ''} />
             </div>
           </div>
         </div>

@@ -144,14 +144,14 @@ export const useToolSelectorState = ({
     onSelectMultiple?.(toolValues)
   }, [getToolValue, onSelectMultiple])
 
-  const handleDescriptionChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
+  const handleDescriptionChange = useCallback((description: string) => {
     if (!value)
       return
     onSelect({
       ...value,
       extra: {
         ...value.extra,
-        description: e.target.value || '',
+        description: description || '',
       },
     })
   }, [value, onSelect])

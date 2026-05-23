@@ -148,7 +148,7 @@ export const AllStates: Story = {
   parameters: {
     docs: {
       description: {
-        story: 'Complete variant matrix: all sizes × all states, matching Figma design spec (node 2144:1210).',
+        story: 'Complete variant matrix: all sizes and states.',
       },
     },
   },

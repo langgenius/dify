@@ -1,6 +1,7 @@
 import type { AppIconSelection } from '@/app/components/base/app-icon-picker'
 import type { PipelineTemplate } from '@/models/pipeline'
 import { Button } from '@langgenius/dify-ui/button'
+import { Textarea } from '@langgenius/dify-ui/textarea'
 import { toast } from '@langgenius/dify-ui/toast'
 import { RiCloseLine } from '@remixicon/react'
 import * as React from 'react'
@@ -9,7 +10,6 @@ import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
 import AppIconPicker from '@/app/components/base/app-icon-picker'
 import Input from '@/app/components/base/input'
-import Textarea from '@/app/components/base/textarea'
 import { useInvalidCustomizedTemplateList, useUpdateTemplateInfo } from '@/service/use-pipeline'
 
 type EditPipelineInfoProps = {
@@ -57,8 +57,7 @@ const EditPipelineInfo = ({
     setShowAppIconPicker(false)
   }, [])
 
-  const handleDescriptionChange = useCallback((event: React.ChangeEvent<HTMLTextAreaElement>) => {
-    const value = event.target.value
+  const handleDescriptionChange = useCallback((value: string) => {
     setDescription(value)
   }, [])
 
@@ -133,7 +132,7 @@ const EditPipelineInfo = ({
             {t('knowledgeDescription', { ns: 'datasetPipeline' })}
           </label>
           <Textarea
-            onChange={handleDescriptionChange}
+            onValueChange={handleDescriptionChange}
             value={description}
             placeholder={t('knowledgeDescriptionPlaceholder', { ns: 'datasetPipeline' })}
           />

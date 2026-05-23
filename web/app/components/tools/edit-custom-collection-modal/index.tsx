@@ -13,6 +13,7 @@ import {
   DrawerTitle,
   DrawerViewport,
 } from '@langgenius/dify-ui/drawer'
+import { Textarea } from '@langgenius/dify-ui/textarea'
 import { toast } from '@langgenius/dify-ui/toast'
 import { RiSettings2Line } from '@remixicon/react'
 import { useDebounce, useGetState } from 'ahooks'
@@ -23,7 +24,6 @@ import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
 import EmojiPicker from '@/app/components/base/emoji-picker'
 import Input from '@/app/components/base/input'
-import Textarea from '@/app/components/base/textarea'
 import LabelSelector from '@/app/components/tools/labels/selector'
 import { parseParamsSchema } from '@/service/tools'
 import { LinkExternal02 } from '../../base/icons/src/vender/line/general'
@@ -282,7 +282,7 @@ const EditCustomCollectionModal: FC<Props> = ({
                         <Textarea
                           className="h-[240px] resize-none"
                           value={schema}
-                          onChange={e => setSchema(e.target.value)}
+                          onValueChange={value => setSchema(value)}
                           placeholder={t('createTool.schemaPlaceHolder', { ns: 'tools' })!}
                         />
                       </div>

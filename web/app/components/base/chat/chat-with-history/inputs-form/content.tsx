@@ -1,10 +1,10 @@
 import { Select, SelectContent, SelectItem, SelectItemIndicator, SelectItemText, SelectTrigger } from '@langgenius/dify-ui/select'
+import { Textarea } from '@langgenius/dify-ui/textarea'
 import * as React from 'react'
 import { memo, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { FileUploaderInAttachmentWrapper } from '@/app/components/base/file-uploader'
 import Input from '@/app/components/base/input'
-import Textarea from '@/app/components/base/textarea'
 import BoolInput from '@/app/components/workflow/nodes/_base/components/before-run-form/bool-input'
 import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
 import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
@@ -72,7 +72,7 @@ const InputsFormContent = ({ showTip }: Props) => {
           {form.type === InputVarType.paragraph && (
             <Textarea
               value={inputsFormValue?.[form.variable] || ''}
-              onChange={e => handleFormChange(form.variable, e.target.value)}
+              onValueChange={value => handleFormChange(form.variable, value)}
               placeholder={form.label}
             />
           )}

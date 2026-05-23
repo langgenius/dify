@@ -8,6 +8,7 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { Dialog, DialogCloseButton, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
 import { Select, SelectContent, SelectItem, SelectItemIndicator, SelectItemText, SelectTrigger } from '@langgenius/dify-ui/select'
 import { Switch } from '@langgenius/dify-ui/switch'
+import { Textarea } from '@langgenius/dify-ui/textarea'
 import { toast } from '@langgenius/dify-ui/toast'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import * as React from 'react'
@@ -18,7 +19,6 @@ import AppIconPicker from '@/app/components/base/app-icon-picker'
 import Divider from '@/app/components/base/divider'
 import Input from '@/app/components/base/input'
 import { PremiumBadgeButton } from '@/app/components/base/premium-badge'
-import Textarea from '@/app/components/base/textarea'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
 import { useModalContext } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
@@ -291,7 +291,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
               <Textarea
                 className="mt-1"
                 value={inputInfo.desc}
-                onChange={e => onDesChange(e.target.value)}
+                onValueChange={onDesChange}
                 placeholder={t(`${prefixSettings}.webDescPlaceholder`, { ns: 'appOverview' }) as string}
               />
               <p className={cn('pb-0.5 body-xs-regular text-text-tertiary')}>{t(`${prefixSettings}.webDescTip`, { ns: 'appOverview' })}</p>
@@ -466,7 +466,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
                   <Textarea
                     className="mt-1"
                     value={inputInfo.customDisclaimer}
-                    onChange={onChange('customDisclaimer')}
+                    onValueChange={value => setInputInfo(item => ({ ...item, customDisclaimer: value }))}
                     placeholder={t(`${prefixSettings}.more.customDisclaimerPlaceholder`, { ns: 'appOverview' }) as string}
                   />
                 </div>

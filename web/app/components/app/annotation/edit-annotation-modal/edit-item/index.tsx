@@ -2,12 +2,12 @@
 import type { FC } from 'react'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Textarea } from '@langgenius/dify-ui/textarea'
 import { RiDeleteBinLine, RiEditFill, RiEditLine } from '@remixicon/react'
 import * as React from 'react'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Robot, User } from '@/app/components/base/icons/src/public/avatar'
-import Textarea from '@/app/components/base/textarea'
 
 export enum EditItemType {
   Query = 'query',
@@ -131,7 +131,7 @@ const EditItem: FC<Props> = ({
                 <EditTitle title={editTitle} />
                 <Textarea
                   value={newContent}
-                  onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setNewContent(e.target.value)}
+                  onValueChange={value => setNewContent(value)}
                   placeholder={placeholder}
                   autoFocus
                 />

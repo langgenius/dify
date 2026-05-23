@@ -33,6 +33,7 @@ import { Drawer, DrawerPopup, DrawerTrigger } from '@langgenius/dify-ui/drawer'
 import { FieldControl, FieldLabel, FieldRoot } from '@langgenius/dify-ui/field'
 import { Form } from '@langgenius/dify-ui/form'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
+import { Textarea } from '@langgenius/dify-ui/textarea'
 import '@langgenius/dify-ui/styles.css' // once, in the app root
 ```
 
@@ -40,16 +41,16 @@ Importing from `@langgenius/dify-ui` (no subpath) is intentionally not supported
 
 ## Primitives
 
-| Category         | Subpath                                                                                                                                                          | Notes                                                |
-| ---------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------- |
-| Actions          | `./button`                                                                                                                                                       | Design-system CTA primitive with `cva` variants.     |
-| Feedback         | `./meter`, `./toast`                                                                                                                                             | Meter is inline status; Toast owns the `z-60` layer. |
-| Form             | `./form`, `./field`, `./fieldset`, `./input`, `./checkbox`, `./checkbox-group`, `./radio`, `./radio-group`, `./number-field`, `./select`, `./slider`, `./switch` | Native form boundary, field semantics, and controls. |
-| Layout           | `./scroll-area`                                                                                                                                                  | Custom-styled scrollbar over the host viewport.      |
-| Media            | `./avatar`                                                                                                                                                       | Avatar root, image, and fallback primitives.         |
-| Navigation       | `./tabs`, `./toggle-group`                                                                                                                                       | Tabs for panels; ToggleGroup for segmented modes.    |
-| Overlay / menu   | `./alert-dialog`, `./context-menu`, `./dialog`, `./drawer`, `./dropdown-menu`, `./popover`, `./preview-card`, `./tooltip`                                        | Portalled. See [Overlay & portal contract] below.    |
-| Search / pickers | `./autocomplete`, `./combobox`, `./select`                                                                                                                       | Search input, searchable picker, and closed picker.  |
+| Category         | Subpath                                                                                                                                                                        | Notes                                                |
+| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------- |
+| Actions          | `./button`                                                                                                                                                                     | Design-system CTA primitive with `cva` variants.     |
+| Feedback         | `./meter`, `./toast`                                                                                                                                                           | Meter is inline status; Toast owns the `z-60` layer. |
+| Form             | `./form`, `./field`, `./fieldset`, `./input`, `./textarea`, `./checkbox`, `./checkbox-group`, `./radio`, `./radio-group`, `./number-field`, `./select`, `./slider`, `./switch` | Native form boundary, field semantics, and controls. |
+| Layout           | `./scroll-area`                                                                                                                                                                | Custom-styled scrollbar over the host viewport.      |
+| Media            | `./avatar`                                                                                                                                                                     | Avatar root, image, and fallback primitives.         |
+| Navigation       | `./tabs`, `./toggle-group`                                                                                                                                                     | Tabs for panels; ToggleGroup for segmented modes.    |
+| Overlay / menu   | `./alert-dialog`, `./context-menu`, `./dialog`, `./drawer`, `./dropdown-menu`, `./popover`, `./preview-card`, `./tooltip`                                                      | Portalled. See [Overlay & portal contract] below.    |
+| Search / pickers | `./autocomplete`, `./combobox`, `./select`                                                                                                                                     | Search input, searchable picker, and closed picker.  |
 
 Utilities:
 
@@ -64,7 +65,7 @@ Use `Form` for the submit boundary. It renders a native `<form>`, preserves Ente
 
 Use `FieldRoot` for each standalone named field. A field must have a stable `name`, a label relationship, and either a `FieldControl` or another control that participates in the same Base UI field context. Prefer a visible label for normal form rows; when the surrounding UI already supplies the visible text, use the matching label primitive visually hidden or put `aria-label` on the actual interactive control. `FieldDescription` and `FieldError` provide the message relationships that screen readers need, while the Dify wrapper adds the default Form Input Set styling from the design system.
 
-Choose the label primitive by the control semantics. Text-like inputs, input-based `Combobox` / `Autocomplete`, single `Checkbox` / `Radio`, `Switch`, and `NumberField` use `FieldLabel`. Trigger-based `Select` fields use `SelectLabel`; `Slider` fields use `SliderLabel`, with per-thumb `aria-label` only when the thumbs need distinct names. `SelectGroupLabel` and `AutocompleteGroupLabel` only label grouped options inside their popup content; they are not field labels.
+Choose the label primitive by the control semantics. Text-like inputs, `Textarea`, input-based `Combobox` / `Autocomplete`, single `Checkbox` / `Radio`, `Switch`, and `NumberField` use `FieldLabel`. Trigger-based `Select` fields use `SelectLabel`; `Slider` fields use `SliderLabel`, with per-thumb `aria-label` only when the thumbs need distinct names. `SelectGroupLabel` and `AutocompleteGroupLabel` only label grouped options inside their popup content; they are not field labels.
 
 Use `FieldsetRoot` and `FieldsetLegend` when one field is represented by a group of related controls, such as checkbox groups, radio groups, multi-thumb sliders, or a section that combines several inputs. For checkbox and radio groups, wrap each option with `FieldItem` and give each option its own label:
 

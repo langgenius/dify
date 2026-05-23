@@ -4,6 +4,7 @@ import type { AppIconSelection } from '../../base/app-icon-picker'
 import { Button } from '@langgenius/dify-ui/button'
 
 import { cn } from '@langgenius/dify-ui/cn'
+import { Textarea } from '@langgenius/dify-ui/textarea'
 import { toast } from '@langgenius/dify-ui/toast'
 import { RiArrowRightLine, RiArrowRightSLine, RiExchange2Fill } from '@remixicon/react'
 import { useDebounceFn, useKeyPress } from 'ahooks'
@@ -13,7 +14,6 @@ import AppIcon from '@/app/components/base/app-icon'
 import Divider from '@/app/components/base/divider'
 import { BubbleTextMod, ChatBot, ListSparkle, Logic } from '@/app/components/base/icons/src/vender/solid/communication'
 import Input from '@/app/components/base/input'
-import Textarea from '@/app/components/base/textarea'
 import AppsFull from '@/app/components/billing/apps-full-in-dialog'
 import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
 import { useAppContext } from '@/context/app-context'
@@ -243,7 +243,7 @@ function CreateApp({ onClose, onSuccess, onCreateFromTemplate, defaultAppMode }:
                   className="resize-none"
                   placeholder={t('newApp.appDescriptionPlaceholder', { ns: 'app' }) || ''}
                   value={description}
-                  onChange={e => setDescription(e.target.value)}
+                  onValueChange={value => setDescription(value)}
                 />
               </div>
             </div>

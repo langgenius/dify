@@ -4,11 +4,11 @@ import type {
 } from '@/app/components/tools/types'
 import { Button } from '@langgenius/dify-ui/button'
 import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
+import { Textarea } from '@langgenius/dify-ui/textarea'
 import { RiCloseLine } from '@remixicon/react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import Divider from '@/app/components/base/divider'
-import Textarea from '@/app/components/base/textarea'
 import MCPServerParamItem from '@/app/components/tools/mcp/mcp-server-param-item'
 import { webSocketClient } from '@/app/components/workflow/collaboration/core/websocket-manager'
 import {
@@ -157,9 +157,8 @@ const MCPServerModal = ({
                 className="h-[96px] resize-none"
                 value={description}
                 placeholder={t('mcp.server.modal.descriptionPlaceholder', { ns: 'tools' })}
-                onChange={e => setDescription(e.target.value)}
-              >
-              </Textarea>
+                onValueChange={value => setDescription(value)}
+              />
             </div>
 
             {latestParams.length > 0 && (

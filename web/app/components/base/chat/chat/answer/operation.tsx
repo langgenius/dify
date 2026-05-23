@@ -6,6 +6,7 @@ import type {
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Dialog, DialogCloseButton, DialogContent, DialogDescription, DialogTitle } from '@langgenius/dify-ui/dialog'
+import { Textarea } from '@langgenius/dify-ui/textarea'
 import { toast } from '@langgenius/dify-ui/toast'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import copy from 'copy-to-clipboard'
@@ -21,7 +22,6 @@ import ActionButton, { ActionButtonState } from '@/app/components/base/action-bu
 import Log from '@/app/components/base/chat/chat/log'
 import AnnotationCtrlButton from '@/app/components/base/features/new-feature-panel/annotation-reply/annotation-ctrl-button'
 import NewAudioButton from '@/app/components/base/new-audio-button'
-import Textarea from '@/app/components/base/textarea'
 import { useChatContext } from '../context'
 
 type OperationProps = {
@@ -394,7 +394,7 @@ function Operation({
                   id={feedbackTextareaId}
                   name="feedback-content"
                   value={feedbackContent}
-                  onChange={e => setFeedbackContent(e.target.value)}
+                  onValueChange={value => setFeedbackContent(value)}
                   placeholder={t('feedback.placeholder', { ns: 'common' }) || 'Please describe what went wrong or how we can improve…'}
                   rows={4}
                   className="w-full"

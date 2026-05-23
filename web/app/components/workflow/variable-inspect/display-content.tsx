@@ -2,11 +2,11 @@ import type { VarType } from '../types'
 import type { ChunkInfo } from '@/app/components/rag-pipeline/components/chunk-card-list/types'
 import type { ParentMode } from '@/models/datasets'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Textarea } from '@langgenius/dify-ui/textarea'
 import { ToggleGroup, ToggleGroupItem } from '@langgenius/dify-ui/toggle-group'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Markdown } from '@/app/components/base/markdown'
-import Textarea from '@/app/components/base/textarea'
 import { ChunkCardList } from '@/app/components/rag-pipeline/components/chunk-card-list'
 import SchemaEditor from '@/app/components/workflow/nodes/llm/components/json-schema-config-modal/schema-editor'
 import { ChunkingMode } from '@/models/datasets'
@@ -95,7 +95,7 @@ export function DisplayContent(props: DisplayContentProps) {
                   disabled={readonly}
                   className="h-full border-none bg-transparent p-0 text-text-secondary hover:bg-transparent focus:bg-transparent focus:shadow-none"
                   value={mdString as any}
-                  onChange={e => handleTextChange?.(e.target.value)}
+                  onValueChange={value => handleTextChange?.(value)}
                   onFocus={() => setIsFocused(true)}
                   onBlur={() => setIsFocused(false)}
                 />

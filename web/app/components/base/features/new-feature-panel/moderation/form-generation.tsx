@@ -2,7 +2,7 @@ import type { FC } from 'react'
 import type { CodeBasedExtensionForm } from '@/models/common'
 import type { ModerationConfig } from '@/models/debug'
 import { Select, SelectContent, SelectItem, SelectItemIndicator, SelectItemText, SelectTrigger } from '@langgenius/dify-ui/select'
-import Textarea from '@/app/components/base/textarea'
+import { Textarea } from '@langgenius/dify-ui/textarea'
 import { useLocale } from '@/context/i18n'
 
 type FormGenerationProps = {
@@ -58,7 +58,7 @@ const FormGeneration: FC<FormGenerationProps> = ({
                       className="resize-none"
                       value={value?.[form.variable] || ''}
                       placeholder={form.placeholder}
-                      onChange={e => handleFormChange(form.variable, e.target.value)}
+                      onValueChange={value => handleFormChange(form.variable, value)}
                     />
                   </div>
                 )

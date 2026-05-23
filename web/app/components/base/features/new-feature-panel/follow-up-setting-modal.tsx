@@ -12,10 +12,10 @@ import { FieldItem, FieldRoot } from '@langgenius/dify-ui/field'
 import { FieldsetLegend, FieldsetRoot } from '@langgenius/dify-ui/fieldset'
 import { RadioControl, RadioRoot } from '@langgenius/dify-ui/radio'
 import { RadioGroup } from '@langgenius/dify-ui/radio-group'
+import { Textarea } from '@langgenius/dify-ui/textarea'
 import { produce } from 'immer'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Textarea from '@/app/components/base/textarea'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import ModelParameterModal from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
@@ -222,7 +222,7 @@ const FollowUpSettingModal = ({
                     <Textarea
                       className="mt-3 min-h-32 resize-y border-components-input-border-active bg-components-input-bg-normal"
                       value={prompt}
-                      onChange={e => setPrompt(e.target.value)}
+                      onValueChange={value => setPrompt(value)}
                       maxLength={CUSTOM_FOLLOW_UP_PROMPT_MAX_LENGTH}
                       placeholder={t('feature.suggestedQuestionsAfterAnswer.modal.promptPlaceholder', { ns: 'appDebug' }) || ''}
                     />
