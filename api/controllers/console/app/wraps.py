@@ -48,21 +48,15 @@ def with_session[T, **P, R](
 ) -> Callable[Concatenate[T, P], R]:
     """Inject a fresh SQLAlchemy session into one controller request.
 
-    The session is committed after the wrapped handler returns and rolled back
-    when the handler raises. It is intentionally request-scoped and should not
-    be treated as a replacement for the global Flask-SQLAlchemy scoped session.
+    The `sessionmaker.begin()` context owns commit/rollback and close handling.
+    The injected session is intentionally request-scoped and should not be
+    treated as a replacement for the global Flask-SQLAlchemy scoped session.
     """
 
     @wraps(view)
     def decorated(self: T, *args: P.args, **kwargs: P.kwargs) -> R:
-        with session_factory.create_session() as session:
-            try:
-                result = view(self, session, *args, **kwargs)
-                session.commit()
-                return result
-            except Exception:
-                session.rollback()
-                raise
+        with session_factory.get_session_maker().begin() as session:
+            return view(self, session, *args, **kwargs)
 
     return decorated
 
