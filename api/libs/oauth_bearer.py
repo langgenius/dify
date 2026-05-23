@@ -97,6 +97,7 @@ class AuthContext:
     token_hash: str
     verified_tenants: dict[str, bool] = field(default_factory=dict)
 
+
 _auth_ctx_var: ContextVar[AuthContext] = ContextVar("openapi_auth_ctx")
 
 

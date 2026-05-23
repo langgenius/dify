@@ -59,7 +59,7 @@ def _one_key(scope: RateLimitScope) -> str:
             return f"session:{session.get('_id', 'anon')}"
         case RateLimitScope.ACCOUNT:
             from libs.oauth_bearer import try_get_auth_ctx
-            
+
             ctx = try_get_auth_ctx()
             if ctx and ctx.account_id:
                 return f"account:{ctx.account_id}"
