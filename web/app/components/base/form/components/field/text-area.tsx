@@ -28,7 +28,6 @@ const TextAreaField = ({
         {...(labelOptions ?? {})}
       />
       <Textarea
-        aria-label={label}
         id={field.name}
         value={field.state.value}
         onValueChange={value => field.handleChange(value)}

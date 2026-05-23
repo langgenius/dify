@@ -391,7 +391,6 @@ function Operation({
                   {t('feedback.content', { ns: 'common' }) || 'Feedback Content'}
                 </label>
                 <Textarea
-                  aria-label={t('feedback.title', { ns: 'common' }) || 'Feedback'}
                   id={feedbackTextareaId}
                   name="feedback-content"
                   value={feedbackContent}

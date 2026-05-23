@@ -72,7 +72,6 @@ const WorkflowHiddenInputFields = ({
     ) {
       return (
         <Textarea
-          aria-label={label}
           id={fieldId}
           value={typeof fieldValue === 'string' ? fieldValue : ''}
           onValueChange={value => onValueChange(variable.variable, value)}
