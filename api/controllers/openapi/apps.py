@@ -10,7 +10,6 @@ from __future__ import annotations
 import uuid as _uuid
 from typing import Any, cast
 
-import sqlalchemy as sa
 from flask import request
 from flask_restx import Resource
 from pydantic import ValidationError
@@ -43,9 +42,9 @@ from libs.oauth_bearer import (
     require_workspace_member,
     validate_bearer,
 )
-from models import App, Tenant
+from models import App
+from services.account_service import TenantService
 from services.app_service import AppListParams, AppService
-from services.openapi.visibility import apply_openapi_gate, is_openapi_visible
 from services.tag_service import TagService
 
 _APPS_READ_DECORATORS = [
@@ -82,23 +81,14 @@ class AppReadResource(Resource):
             is_uuid = False
 
         if is_uuid:
-            app = db.session.get(App, str(parsed_uuid))  # normalised dashed form
-            if not app or app.status != "normal" or not is_openapi_visible(app):
+            # ``str(parsed_uuid)`` normalises to the canonical dashed form.
+            app = AppService.get_visible_app_by_id(db.session, str(parsed_uuid))
+            if app is None:
                 raise NotFound("app not found")
         else:
             if not workspace_id:
                 raise UnprocessableEntity("workspace_id is required for name-based lookup")
-            matches = list(
-                db.session.execute(
-                    apply_openapi_gate(
-                        sa.select(App).where(
-                            App.name == app_id,
-                            App.tenant_id == workspace_id,
-                            App.status == "normal",
-                        )
-                    )
-                ).scalars()
-            )
+            matches = AppService.find_visible_apps_by_name(db.session, name=app_id, tenant_id=workspace_id)
             if len(matches) == 0:
                 raise NotFound("app not found")
             if len(matches) > 1:
@@ -210,12 +200,10 @@ class AppListApi(Resource):
 
         tenant_name: str | None = None
         if parsed_uuid is not None:
-            app: App | None = db.session.get(App, str(parsed_uuid))
-            if not app or app.status != "normal" or str(app.tenant_id) != workspace_id or not is_openapi_visible(app):
+            app: App | None = AppService.get_visible_app_by_id(db.session, str(parsed_uuid))
+            if app is None or str(app.tenant_id) != workspace_id:
                 return empty
-            tenant_name = db.session.execute(
-                sa.select(Tenant.name).where(Tenant.id == workspace_id)
-            ).scalar_one_or_none()
+            tenant_name = TenantService.get_tenant_name(db.session, workspace_id)
             item = AppListRow(
                 id=str(app.id),
                 name=app.name,
@@ -255,9 +243,7 @@ class AppListApi(Resource):
 
         tenant_name = None
         if pagination.items:
-            tenant_name = db.session.execute(
-                sa.select(Tenant.name).where(Tenant.id == workspace_id)
-            ).scalar_one_or_none()
+            tenant_name = TenantService.get_tenant_name(db.session, workspace_id)
 
         items = [
             AppListRow(

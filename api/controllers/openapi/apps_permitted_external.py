@@ -7,7 +7,6 @@ EE blueprint chain so this module is unreachable there.
 
 from __future__ import annotations
 
-import sqlalchemy as sa
 from flask import request
 from flask_restx import Resource
 from pydantic import ValidationError
@@ -29,10 +28,11 @@ from libs.oauth_bearer import (
     require_scope,
     validate_bearer,
 )
-from models import App, Tenant
+from models import App
+from services.account_service import TenantService
+from services.app_service import AppService
 from services.enterprise.app_permitted_service import list_permitted_apps
 from services.openapi.license_gate import license_required
-from services.openapi.visibility import apply_openapi_gate
 
 
 @openapi_ns.route("/permitted-external-apps")
@@ -68,15 +68,10 @@ class PermittedExternalAppsListApi(Resource):
             return env.model_dump(mode="json"), 200
 
         apps_by_id: dict[str, App] = {
-            str(a.id): a
-            for a in db.session.execute(apply_openapi_gate(sa.select(App).where(App.id.in_(page_result.app_ids))))
-            .scalars()
-            .all()
+            str(a.id): a for a in AppService.find_visible_apps_by_ids(db.session, page_result.app_ids)
         }
-        tenant_ids = list({a.tenant_id for a in apps_by_id.values()})
-        tenants_by_id = {
-            str(t.id): t for t in db.session.execute(sa.select(Tenant).where(Tenant.id.in_(tenant_ids))).scalars().all()
-        }
+        tenant_ids = list({str(a.tenant_id) for a in apps_by_id.values()})
+        tenants_by_id = {str(t.id): t for t in TenantService.get_tenants_by_ids(db.session, tenant_ids)}
 
         items: list[AppListRow] = []
         for app_id in page_result.app_ids:

@@ -50,6 +50,7 @@ from libs.rate_limit import (
     LIMIT_LOOKUP_PUBLIC,
     rate_limit,
 )
+from services.account_service import TenantService
 from services.oauth_device_flow import (
     ACCOUNT_ISSUER_SENTINEL,
     DEFAULT_POLL_INTERVAL_SECONDS,
@@ -333,18 +334,7 @@ def _audit_cross_ip_if_needed(state) -> None:
 
 
 def _build_account_poll_payload(account, tenant, mint) -> PollPayload:
-    """Account branch of the shared `PollPayload` contract. SSO-only fields
-    (`subject_email`, `subject_issuer`) are intentionally omitted; see the
-    `PollPayload` docstring in `services.oauth_device_flow`.
-    """
-    from models import Tenant, TenantAccountJoin
-
-    rows = (
-        db.session.query(Tenant, TenantAccountJoin)
-        .join(TenantAccountJoin, TenantAccountJoin.tenant_id == Tenant.id)
-        .filter(TenantAccountJoin.account_id == account.id)
-        .all()
-    )
+    rows = TenantService.get_workspaces_for_account(db.session, str(account.id))
     workspaces = [WorkspacePayload(id=str(t.id), name=t.name, role=getattr(m, "role", "")) for t, m in rows]
     # Prefer active session tenant → DB-flagged current join → first membership.
     default_ws_id = None

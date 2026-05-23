@@ -1,11 +1,13 @@
 import json
 import logging
+from collections.abc import Sequence
 from typing import Any, Literal, TypedDict, cast
 
 import sqlalchemy as sa
 from flask_sqlalchemy.pagination import Pagination
 from pydantic import BaseModel, Field
 from sqlalchemy import select
+from sqlalchemy.orm import Session, scoped_session
 
 from configs import dify_config
 from constants.model_template import default_app_templates
@@ -26,6 +28,7 @@ from models.tools import ApiToolProvider
 from services.billing_service import BillingService
 from services.enterprise.enterprise_service import EnterpriseService
 from services.feature_service import FeatureService
+from services.openapi.visibility import apply_openapi_gate, is_openapi_visible
 from services.tag_service import TagService
 from tasks.remove_app_and_related_data_task import remove_app_and_related_data_task
 
@@ -56,6 +59,51 @@ class CreateAppParams(BaseModel):
 
 
 class AppService:
+    @staticmethod
+    def get_app_by_id(
+        session: Session | scoped_session,
+        app_id: str,
+    ) -> App | None:
+        return session.get(App, app_id)
+
+    @staticmethod
+    def get_visible_app_by_id(
+        session: Session | scoped_session,
+        app_id: str,
+    ) -> App | None:
+        app = session.get(App, app_id)
+        if not app or app.status != "normal" or not is_openapi_visible(app):
+            return None
+        return app
+
+    @staticmethod
+    def find_visible_apps_by_ids(
+        session: Session | scoped_session,
+        app_ids: Sequence[str],
+    ) -> list[App]:
+        if not app_ids:
+            return []
+        return list(session.execute(apply_openapi_gate(select(App).where(App.id.in_(list(app_ids))))).scalars().all())
+
+    @staticmethod
+    def find_visible_apps_by_name(
+        session: Session | scoped_session,
+        *,
+        name: str,
+        tenant_id: str,
+    ) -> list[App]:
+        return list(
+            session.execute(
+                apply_openapi_gate(
+                    select(App).where(
+                        App.name == name,
+                        App.tenant_id == tenant_id,
+                        App.status == "normal",
+                    )
+                )
+            ).scalars()
+        )
+
     def get_paginate_apps(self, user_id: str, tenant_id: str, params: AppListParams) -> Pagination | None:
         """
         Get app list with pagination

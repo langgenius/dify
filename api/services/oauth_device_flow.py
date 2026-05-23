@@ -12,7 +12,7 @@ from datetime import UTC, datetime, timedelta
 from enum import StrEnum
 from typing import Any, NotRequired, TypedDict
 
-from sqlalchemy import Row, and_, func, select, update
+from sqlalchemy import and_, func, select, update
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.orm import Session, scoped_session
 
@@ -492,6 +492,7 @@ def oauth_ttl_days(tenant_id: str | None = None) -> int:
         return MAX_TTL_DAYS
     return value
 
+
 def subject_match_clauses(ctx: AuthContext) -> tuple[Any, ...]:
     if ctx.subject_type == SubjectType.ACCOUNT:
         return (OAuthAccessToken.account_id == str(ctx.account_id),)
@@ -509,9 +510,7 @@ def list_active_sessions(
 ) -> list[OAuthAccessToken]:
     return list(
         session.execute(
-            select(
-                OAuthAccessToken
-            )
+            select(OAuthAccessToken)
             .where(
                 and_(
                     *subject_match_clauses(ctx),

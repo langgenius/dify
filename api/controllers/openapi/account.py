@@ -62,9 +62,7 @@ class AccountApi(Resource):
             ).model_dump(mode="json")
 
         account = AccountService.get_account_by_id(db.session, str(ctx.account_id)) if ctx.account_id else None
-        memberships = (
-            TenantService.get_account_memberships(db.session, str(ctx.account_id)) if ctx.account_id else []
-        )
+        memberships = TenantService.get_account_memberships(db.session, str(ctx.account_id)) if ctx.account_id else []
         default_ws_id = _pick_default_workspace(memberships)
 
         return AccountResponse(

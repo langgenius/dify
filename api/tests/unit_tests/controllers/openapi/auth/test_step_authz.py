@@ -52,11 +52,12 @@ def test_acl_strategy_subject_mode_matrix(ent, access_mode, subject_type, expect
     ent.WebAppAuth.is_user_allowed_to_access_webapp.assert_not_called()
 
 
-@patch("controllers.openapi.auth.strategies._has_tenant_membership")
-def test_membership_strategy_uses_join_lookup(member):
+@patch("controllers.openapi.auth.strategies.TenantService.account_belongs_to_tenant")
+@patch("controllers.openapi.auth.strategies.db")
+def test_membership_strategy_uses_join_lookup(db_mock, member):
     member.return_value = True
     assert MembershipStrategy().authorize(_ctx(subject_type=SubjectType.ACCOUNT)) is True
-    member.assert_called_once_with("acc1", "t1")
+    member.assert_called_once_with(db_mock.session, "acc1", "t1")
 
 
 def test_membership_strategy_rejects_external_sso():

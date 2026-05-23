@@ -17,7 +17,6 @@ import secrets
 from dataclasses import dataclass
 
 from flask import jsonify, make_response, redirect, request
-from sqlalchemy import func, select
 from werkzeug.exceptions import (
     BadGateway,
     BadRequest,
@@ -49,8 +48,7 @@ from libs.rate_limit import (
     enforce,
     rate_limit,
 )
-from models import Account
-from models.account import AccountStatus
+from services.account_service import AccountService
 from services.enterprise.enterprise_service import EnterpriseService
 from services.oauth_device_flow import (
     DeviceFlowRedis,
@@ -149,7 +147,7 @@ def sso_complete():
     if state.status is not DeviceFlowStatus.PENDING:
         raise Conflict("user_code_not_pending")
 
-    if _email_belongs_to_dify_account(claims["email"]):
+    if AccountService.has_active_account_with_email(db.session, claims["email"]):
         _emit_external_rejection_audit(
             state,
             _RejectedClaims(subject_email=claims["email"], subject_issuer=claims["issuer"]),
@@ -229,7 +227,7 @@ def approve_external():
     if state.status is not DeviceFlowStatus.PENDING:
         raise Conflict("user_code_not_pending")
 
-    if _email_belongs_to_dify_account(claims.subject_email):
+    if AccountService.has_active_account_with_email(db.session, claims.subject_email):
         _emit_external_rejection_audit(state, claims, reason="email_belongs_to_dify_account")
         raise Forbidden("email_belongs_to_dify_account")
 
@@ -306,29 +304,6 @@ class _RejectedClaims:
 
     subject_email: str
     subject_issuer: str
-
-
-def _email_belongs_to_dify_account(email: str) -> bool:
-    """External SSO subjects whose email matches an active Dify Account must
-    authenticate via the internal Dify login path (which mints dfoa_), not via
-    the external SSO device flow. Returning True here blocks dfoe_ minting.
-
-    Pending/uninitialized/banned/closed accounts do not block: pending and
-    uninitialized users may complete invitation via SSO; banned and closed
-    accounts are handled by separate enforcement paths.
-    """
-    if not email:
-        return False
-    normalized = email.strip().lower()
-    if not normalized:
-        return False
-    row = db.session.execute(
-        select(Account.id).where(
-            func.lower(Account.email) == normalized,
-            Account.status == AccountStatus.ACTIVE,
-        ),
-    ).scalar_one_or_none()
-    return row is not None
 
 
 def _emit_external_rejection_audit(state, claims, *, reason: str) -> None:

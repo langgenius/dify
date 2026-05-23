@@ -2021,6 +2021,44 @@ class TestSessionInjectedGetters:
 
         assert AccountService.get_account_by_id(mock_session, "missing") is None
 
+    def test_get_account_by_email_returns_scalar_or_none(self):
+        """Plain getter — case-sensitive equality (callers needing the
+        case-insensitive existence check use
+        :meth:`has_active_account_with_email`).
+        """
+        mock_session = MagicMock()
+        sentinel = MagicMock(spec=Account)
+        mock_session.execute.return_value.scalar_one_or_none.return_value = sentinel
+
+        assert AccountService.get_account_by_email(mock_session, "alice@example.com") is sentinel
+
+        mock_session.execute.return_value.scalar_one_or_none.return_value = None
+        assert AccountService.get_account_by_email(mock_session, "ghost@example.com") is None
+
+    def test_account_belongs_to_tenant_short_circuits_on_falsy_account_id(self):
+        """SSO bearers with no ``account_id`` (and any other falsy id)
+        must collapse to ``False`` without a DB round-trip — that's the
+        contract :class:`MembershipStrategy` relies on.
+        """
+        mock_session = MagicMock()
+
+        assert TenantService.account_belongs_to_tenant(mock_session, None, "tenant-1") is False
+        assert TenantService.account_belongs_to_tenant(mock_session, "", "tenant-1") is False
+        mock_session.execute.assert_not_called()
+
+    def test_account_belongs_to_tenant_true_when_join_row_exists(self):
+        mock_session = MagicMock()
+        mock_session.execute.return_value.scalar_one_or_none.return_value = "join-id"
+
+        assert TenantService.account_belongs_to_tenant(mock_session, "user-1", "tenant-1") is True
+        mock_session.execute.assert_called_once()
+
+    def test_account_belongs_to_tenant_false_when_no_join(self):
+        mock_session = MagicMock()
+        mock_session.execute.return_value.scalar_one_or_none.return_value = None
+
+        assert TenantService.account_belongs_to_tenant(mock_session, "user-1", "tenant-1") is False
+
     def test_get_account_memberships_returns_join_tenant_pairs(self):
         """Returns whatever ``session.query(...).join(...).filter(...).all()``
         produces — ordering unspecified, callers pick the default
@@ -2049,6 +2087,54 @@ class TestSessionInjectedGetters:
         assert out == rows
         assert mock_session.execute.called
 
+    def test_get_tenant_by_id_is_plain_session_get(self):
+        """``get_tenant_by_id`` must NOT apply a status filter — the
+        openapi auth pipeline needs to map ``status == ARCHIVE`` to a
+        403, distinct from a 404 for "missing".
+        """
+        from models import Tenant
+
+        mock_session = MagicMock()
+        sentinel = MagicMock(spec=Tenant)
+        mock_session.get.return_value = sentinel
+
+        assert TenantService.get_tenant_by_id(mock_session, "tenant-1") is sentinel
+        mock_session.get.assert_called_once_with(Tenant, "tenant-1")
+
+    def test_get_tenant_by_id_returns_none_when_missing(self):
+        mock_session = MagicMock()
+        mock_session.get.return_value = None
+
+        assert TenantService.get_tenant_by_id(mock_session, "missing") is None
+
+    def test_get_tenants_by_ids_short_circuits_on_empty_input(self):
+        """Empty id list must not emit ``WHERE id IN ()``."""
+        mock_session = MagicMock()
+
+        assert TenantService.get_tenants_by_ids(mock_session, []) == []
+        mock_session.execute.assert_not_called()
+
+    def test_get_tenants_by_ids_returns_scalars(self):
+        mock_session = MagicMock()
+        tenants = [MagicMock(), MagicMock()]
+        mock_session.execute.return_value.scalars.return_value.all.return_value = tenants
+
+        assert TenantService.get_tenants_by_ids(mock_session, ["t1", "t2"]) == tenants
+        mock_session.execute.assert_called_once()
+
+    def test_get_tenant_name_returns_scalar_or_none(self):
+        """Single-column lookup: ``session.execute(...).scalar_one_or_none()``
+        — used by openapi list endpoints to denormalise
+        ``workspace_name`` onto each row.
+        """
+        mock_session = MagicMock()
+        mock_session.execute.return_value.scalar_one_or_none.return_value = "Acme Inc."
+
+        assert TenantService.get_tenant_name(mock_session, "tenant-1") == "Acme Inc."
+
+        mock_session.execute.return_value.scalar_one_or_none.return_value = None
+        assert TenantService.get_tenant_name(mock_session, "missing") is None
+
     def test_find_workspace_for_account_returns_first_row_or_none(self):
         """Per-id read returns ``session.execute(...).first()`` directly;
         callers map ``None`` → 404 to avoid leaking workspace IDs across
@@ -2058,10 +2144,7 @@ class TestSessionInjectedGetters:
         sentinel_row = (MagicMock(), MagicMock())
         mock_session.execute.return_value.first.return_value = sentinel_row
 
-        assert (
-            TenantService.find_workspace_for_account(mock_session, "user-123", "ws-1")
-            is sentinel_row
-        )
+        assert TenantService.find_workspace_for_account(mock_session, "user-123", "ws-1") is sentinel_row
 
         mock_session.execute.return_value.first.return_value = None
         assert TenantService.find_workspace_for_account(mock_session, "user-123", "ws-1") is None

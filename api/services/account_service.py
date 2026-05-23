@@ -165,6 +165,29 @@ class AccountService:
         redis_client.delete(AccountService._get_account_refresh_token_key(account_id))
 
     @staticmethod
+    def get_account_by_email(session: Session | scoped_session, email: str) -> Account | None:
+        """Plain ``Account`` getter keyed by email. Case-sensitive — use
+        :meth:`has_active_account_with_email` for the case-insensitive
+        existence check that backs the SSO collision rule.
+        """
+        return session.execute(select(Account).where(Account.email == email)).scalar_one_or_none()
+
+    @staticmethod
+    def has_active_account_with_email(session: Session | scoped_session, email: str) -> bool:
+        if not email:
+            return False
+        normalized = email.strip().lower()
+        if not normalized:
+            return False
+        row = session.execute(
+            select(Account.id).where(
+                func.lower(Account.email) == normalized,
+                Account.status == AccountStatus.ACTIVE,
+            )
+        ).scalar_one_or_none()
+        return row is not None
+
+    @staticmethod
     def get_account_by_id(session: Session | scoped_session, account_id: str) -> Account | None:
         """Plain ``Account`` getter — no banned check, no tenant rotation,
         no ``last_active_at`` write. Use this from read-only identity
@@ -1240,6 +1263,61 @@ class TenantService:
                 .order_by(Tenant.created_at.asc())
             ).all()
         )
+
+    @staticmethod
+    def account_belongs_to_tenant(
+        session: Session | scoped_session,
+        account_id: uuid.UUID | str | None,
+        tenant_id: str,
+    ) -> bool:
+        """Existence check for ``TenantAccountJoin(account_id, tenant_id)``.
+        Backs the CE-deployment membership fallback in
+        ``controllers.openapi.auth.strategies.MembershipStrategy``.
+
+        ``None``/empty ``account_id`` short-circuits to ``False`` so SSO
+        bearers (no account) and missing identity collapse cleanly.
+        """
+        if not account_id:
+            return False
+        row = session.execute(
+            select(TenantAccountJoin.id).where(
+                TenantAccountJoin.tenant_id == tenant_id,
+                TenantAccountJoin.account_id == account_id,
+            )
+        ).scalar_one_or_none()
+        return row is not None
+
+    @staticmethod
+    def get_tenant_by_id(session: Session | scoped_session, tenant_id: str) -> Tenant | None:
+        """Plain ``session.get(Tenant, tenant_id)`` — no status filter.
+        Callers map ``status == ARCHIVE`` to their own error code (the
+        openapi auth pipeline raises 403 ``workspace unavailable``).
+        """
+        return session.get(Tenant, tenant_id)
+
+    @staticmethod
+    def get_tenants_by_ids(
+        session: Session | scoped_session,
+        tenant_ids: list[str],
+    ) -> list[Tenant]:
+        """Bulk ``Tenant`` fetch by primary-key list. Order is unspecified
+        — callers index by ``tenant.id`` (e.g. for cross-tenant denorm
+        in ``/openapi/v1/permitted-external-apps``).
+
+        Empty input short-circuits to ``[]`` to avoid emitting an
+        ``IN ()`` SQL fragment.
+        """
+        if not tenant_ids:
+            return []
+        return list(session.execute(select(Tenant).where(Tenant.id.in_(tenant_ids))).scalars().all())
+
+    @staticmethod
+    def get_tenant_name(session: Session | scoped_session, tenant_id: str) -> str | None:
+        """Single-column tenant name read. Used by openapi list endpoints
+        to denormalize ``workspace_name`` onto each row without dragging
+        the full ``Tenant`` ORM entity through.
+        """
+        return session.execute(select(Tenant.name).where(Tenant.id == tenant_id)).scalar_one_or_none()
 
     @staticmethod
     def find_workspace_for_account(

@@ -1,7 +1,6 @@
 """SSO-branch device-flow endpoints under /openapi/v1/oauth/device/."""
 
 import builtins
-from unittest.mock import MagicMock, patch
 
 import pytest
 from flask import Flask
@@ -9,7 +8,6 @@ from flask.views import MethodView
 
 from controllers.openapi import bp as openapi_bp
 from controllers.openapi.oauth_device_sso import (
-    _email_belongs_to_dify_account,
     approval_context,
     approve_external,
     sso_complete,
@@ -79,27 +77,3 @@ def test_sso_complete_idp_callback_url_uses_canonical_path():
     from controllers.openapi import oauth_device_sso
 
     assert oauth_device_sso._SSO_COMPLETE_PATH == "/openapi/v1/oauth/device/sso-complete"
-
-
-@pytest.mark.parametrize(
-    ("email", "row", "expected"),
-    [
-        ("alice@example.com", "acc1", True),
-        ("alice@example.com", None, False),
-        ("Alice@Example.COM", "acc1", True),  # case-insensitive lookup
-        ("  alice@example.com  ", "acc1", True),  # surrounding whitespace stripped
-        ("", "acc1", False),
-        ("   ", "acc1", False),
-        ("", None, False),
-    ],
-)
-@patch("controllers.openapi.oauth_device_sso.db")
-def test_email_belongs_to_dify_account(db_mock, email, row, expected):
-    exec_result = MagicMock()
-    exec_result.scalar_one_or_none.return_value = row
-    db_mock.session.execute.return_value = exec_result
-    assert _email_belongs_to_dify_account(email) is expected
-    if email.strip():
-        db_mock.session.execute.assert_called_once()
-    else:
-        db_mock.session.execute.assert_not_called()

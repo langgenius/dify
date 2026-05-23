@@ -30,7 +30,9 @@ from libs.oauth_bearer import (
     get_authenticator,
     set_auth_ctx,
 )
-from models import App, Tenant, TenantStatus
+from models import TenantStatus
+from services.account_service import TenantService
+from services.app_service import AppService
 
 
 class BearerCheck:
@@ -97,12 +99,12 @@ class AppResolver:
         app_id = ctx.path_params.get("app_id")
         if not app_id:
             raise BadRequest("app_id is required in path")
-        app = db.session.get(App, app_id)
+        app = AppService.get_app_by_id(db.session, app_id)
         if not app or app.status != "normal":
             raise NotFound("app not found")
         if not app.enable_api:
             raise Forbidden("service_api_disabled")
-        tenant = db.session.get(Tenant, app.tenant_id)
+        tenant = TenantService.get_tenant_by_id(db.session, str(app.tenant_id))
         if tenant is None or tenant.status == TenantStatus.ARCHIVE:
             raise Forbidden("workspace unavailable")
         ctx.app, ctx.tenant = app, tenant

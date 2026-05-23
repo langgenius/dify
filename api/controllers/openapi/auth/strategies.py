@@ -7,18 +7,16 @@ composition stays a flat list.
 
 from __future__ import annotations
 
-import uuid
 from typing import Protocol
 
 from flask import current_app
 from flask_login import user_logged_in
-from sqlalchemy import select
 
 from controllers.openapi.auth.context import Context
 from core.app.entities.app_invoke_entities import InvokeFrom
 from extensions.ext_database import db
 from libs.oauth_bearer import SubjectType
-from models import Account, TenantAccountJoin
+from services.account_service import AccountService, TenantService
 from services.end_user_service import EndUserService
 from services.enterprise.enterprise_service import (
     EnterpriseService,
@@ -106,9 +104,7 @@ class AclStrategy:
             return str(ctx.account_id) if ctx.account_id is not None else None
         if ctx.subject_email is None:
             return None
-        account = db.session.execute(
-            select(Account).where(Account.email == ctx.subject_email),
-        ).scalar_one_or_none()
+        account = AccountService.get_account_by_email(db.session, ctx.subject_email)
         return str(account.id) if account is not None else None
 
 
@@ -125,19 +121,7 @@ class MembershipStrategy:
             return False
         if ctx.tenant is None:
             return False
-        return _has_tenant_membership(ctx.account_id, ctx.tenant.id)
-
-
-def _has_tenant_membership(account_id: uuid.UUID | str | None, tenant_id: str) -> bool:
-    if not account_id:
-        return False
-    row = db.session.execute(
-        select(TenantAccountJoin.id).where(
-            TenantAccountJoin.tenant_id == tenant_id,
-            TenantAccountJoin.account_id == account_id,
-        )
-    ).scalar_one_or_none()
-    return row is not None
+        return TenantService.account_belongs_to_tenant(db.session, ctx.account_id, ctx.tenant.id)
 
 
 def _login_as(user) -> None:
@@ -159,7 +143,7 @@ class AccountMounter:
     def mount(self, ctx: Context) -> None:
         if ctx.account_id is None:
             raise RuntimeError("AccountMounter: account_id unset — BearerCheck did not run")
-        account = db.session.get(Account, ctx.account_id)
+        account = AccountService.get_account_by_id(db.session, str(ctx.account_id))
         if account is None:
             raise RuntimeError("AccountMounter: account row missing for resolved bearer")
         account.current_tenant = ctx.must_tenant
