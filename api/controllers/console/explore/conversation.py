@@ -1,4 +1,5 @@
 from typing import Any
+from uuid import UUID
 
 from flask import request
 from pydantic import BaseModel, Field, TypeAdapter
@@ -91,7 +92,7 @@ class ConversationListApi(InstalledAppResource):
 )
 class ConversationApi(InstalledAppResource):
     @console_ns.response(204, "Conversation deleted successfully")
-    def delete(self, installed_app, c_id):
+    def delete(self, installed_app, c_id: UUID):
         app_model = installed_app.app
         app_mode = AppMode.value_of(app_model.mode)
         if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:
@@ -114,7 +115,7 @@ class ConversationApi(InstalledAppResource):
 )
 class ConversationRenameApi(InstalledAppResource):
     @console_ns.expect(console_ns.models[ConversationRenamePayload.__name__])
-    def post(self, installed_app, c_id):
+    def post(self, installed_app, c_id: UUID):
         app_model = installed_app.app
         app_mode = AppMode.value_of(app_model.mode)
         if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:
@@ -145,7 +146,7 @@ class ConversationRenameApi(InstalledAppResource):
 )
 class ConversationPinApi(InstalledAppResource):
     @console_ns.response(200, "Success", console_ns.models[ResultResponse.__name__])
-    def patch(self, installed_app, c_id):
+    def patch(self, installed_app, c_id: UUID):
         app_model = installed_app.app
         app_mode = AppMode.value_of(app_model.mode)
         if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:
@@ -169,7 +170,7 @@ class ConversationPinApi(InstalledAppResource):
 )
 class ConversationUnPinApi(InstalledAppResource):
     @console_ns.response(200, "Success", console_ns.models[ResultResponse.__name__])
-    def patch(self, installed_app, c_id):
+    def patch(self, installed_app, c_id: UUID):
         app_model = installed_app.app
         app_mode = AppMode.value_of(app_model.mode)
         if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:

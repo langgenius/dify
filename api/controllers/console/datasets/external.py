@@ -1,3 +1,5 @@
+from uuid import UUID
+
 from flask import request
 from flask_restx import Resource, fields, marshal
 from pydantic import BaseModel, Field
@@ -175,11 +177,11 @@ class ExternalApiTemplateApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def get(self, external_knowledge_api_id):
+    def get(self, external_knowledge_api_id: UUID):
         _, current_tenant_id = current_account_with_tenant()
-        external_knowledge_api_id = str(external_knowledge_api_id)
+        external_knowledge_api_id_str = str(external_knowledge_api_id)
         external_knowledge_api = ExternalDatasetService.get_external_knowledge_api(
-            external_knowledge_api_id, current_tenant_id
+            external_knowledge_api_id_str, current_tenant_id
         )
         if external_knowledge_api is None:
             raise NotFound("API template not found.")
@@ -190,9 +192,9 @@ class ExternalApiTemplateApi(Resource):
     @login_required
     @account_initialization_required
     @console_ns.expect(console_ns.models[ExternalKnowledgeApiPayload.__name__])
-    def patch(self, external_knowledge_api_id):
+    def patch(self, external_knowledge_api_id: UUID):
         current_user, current_tenant_id = current_account_with_tenant()
-        external_knowledge_api_id = str(external_knowledge_api_id)
+        external_knowledge_api_id_str = str(external_knowledge_api_id)
 
         payload = ExternalKnowledgeApiPayload.model_validate(console_ns.payload or {})
         ExternalDatasetService.validate_api_list(payload.settings)
@@ -200,7 +202,7 @@ class ExternalApiTemplateApi(Resource):
         external_knowledge_api = ExternalDatasetService.update_external_knowledge_api(
             tenant_id=current_tenant_id,
             user_id=current_user.id,
-            external_knowledge_api_id=external_knowledge_api_id,
+            external_knowledge_api_id=external_knowledge_api_id_str,
             args=payload.model_dump(),
         )
 
@@ -210,14 +212,14 @@ class ExternalApiTemplateApi(Resource):
     @login_required
     @account_initialization_required
     @console_ns.response(204, "External knowledge API deleted successfully")
-    def delete(self, external_knowledge_api_id):
+    def delete(self, external_knowledge_api_id: UUID):
         current_user, current_tenant_id = current_account_with_tenant()
-        external_knowledge_api_id = str(external_knowledge_api_id)
+        external_knowledge_api_id_str = str(external_knowledge_api_id)
 
         if not (current_user.has_edit_permission or current_user.is_dataset_operator):
             raise Forbidden()
 
-        ExternalDatasetService.delete_external_knowledge_api(current_tenant_id, external_knowledge_api_id)
+        ExternalDatasetService.delete_external_knowledge_api(current_tenant_id, external_knowledge_api_id_str)
         return "", 204
 
 
@@ -230,12 +232,12 @@ class ExternalApiUseCheckApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def get(self, external_knowledge_api_id):
+    def get(self, external_knowledge_api_id: UUID):
         _, current_tenant_id = current_account_with_tenant()
-        external_knowledge_api_id = str(external_knowledge_api_id)
+        external_knowledge_api_id_str = str(external_knowledge_api_id)
 
         external_knowledge_api_is_using, count = ExternalDatasetService.external_knowledge_api_use_check(
-            external_knowledge_api_id, current_tenant_id
+            external_knowledge_api_id_str, current_tenant_id
         )
         return {"is_using": external_knowledge_api_is_using, "count": count}, 200
 
@@ -286,7 +288,7 @@ class ExternalKnowledgeHitTestingApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def post(self, dataset_id):
+    def post(self, dataset_id: UUID):
         current_user, _ = current_account_with_tenant()
         dataset_id_str = str(dataset_id)
         dataset = DatasetService.get_dataset(dataset_id_str)

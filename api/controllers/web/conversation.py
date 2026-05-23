@@ -1,4 +1,5 @@
 from typing import Literal
+from uuid import UUID
 
 from flask import request
 from pydantic import BaseModel, Field, TypeAdapter, field_validator
@@ -126,7 +127,7 @@ class ConversationApi(WebApiResource):
             500: "Internal Server Error",
         }
     )
-    def delete(self, app_model, end_user, c_id):
+    def delete(self, app_model, end_user, c_id: UUID):
         app_mode = AppMode.value_of(app_model.mode)
         if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:
             raise NotChatAppError()
@@ -165,7 +166,7 @@ class ConversationRenameApi(WebApiResource):
             500: "Internal Server Error",
         }
     )
-    def post(self, app_model, end_user, c_id):
+    def post(self, app_model, end_user, c_id: UUID):
         app_mode = AppMode.value_of(app_model.mode)
         if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:
             raise NotChatAppError()
@@ -203,7 +204,7 @@ class ConversationPinApi(WebApiResource):
         }
     )
     @web_ns.response(200, "Conversation pinned successfully", web_ns.models[ResultResponse.__name__])
-    def patch(self, app_model, end_user, c_id):
+    def patch(self, app_model, end_user, c_id: UUID):
         app_mode = AppMode.value_of(app_model.mode)
         if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:
             raise NotChatAppError()
@@ -234,7 +235,7 @@ class ConversationUnPinApi(WebApiResource):
         }
     )
     @web_ns.response(200, "Conversation unpinned successfully", web_ns.models[ResultResponse.__name__])
-    def patch(self, app_model, end_user, c_id):
+    def patch(self, app_model, end_user, c_id: UUID):
         app_mode = AppMode.value_of(app_model.mode)
         if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:
             raise NotChatAppError()
