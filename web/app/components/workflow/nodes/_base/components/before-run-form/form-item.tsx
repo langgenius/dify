@@ -170,6 +170,7 @@ const FormItem: FC<Props> = ({
         {
           type === InputVarType.paragraph && (
             <Textarea
+              aria-label={typeof payload.label === 'object' ? payload.label.variable : payload.label}
               value={value || ''}
               onValueChange={value => onChange(value)}
               placeholder={typeof payload.label === 'object' ? payload.label.variable : payload.label}

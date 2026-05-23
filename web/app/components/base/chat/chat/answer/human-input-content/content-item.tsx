@@ -42,6 +42,7 @@ const ContentItem = ({
     <div className="py-3">
       {formInputField.type === 'paragraph' && (
         <Textarea
+          aria-label={fieldName}
           className="h-[104px] sm:text-xs"
           value={inputs[fieldName]!}
           onValueChange={(value) => { onInputChange(fieldName, value) }}

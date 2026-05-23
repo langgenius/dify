@@ -303,6 +303,7 @@ export function WorkflowToolDrawer({
             <div>
               <div className="py-2 system-sm-medium text-text-primary">{t('createTool.description', { ns: 'tools' })}</div>
               <Textarea
+                aria-label={t('createTool.description', { ns: 'tools' })}
                 placeholder={t('createTool.descriptionPlaceholder', { ns: 'tools' }) || ''}
                 value={description}
                 onValueChange={value => setDescription(value)}

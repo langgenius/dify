@@ -46,6 +46,7 @@ export const TextEditorSection = ({
           )
         : (
             <Textarea
+              aria-label="Value"
               readOnly={textEditorDisabled}
               disabled={textEditorDisabled || isTruncated}
               className={cn('h-full', isTruncated && 'pt-[48px]')}

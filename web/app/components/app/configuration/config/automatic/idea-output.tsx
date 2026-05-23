@@ -40,6 +40,7 @@ const IdeaOutput: FC<Props> = ({
       </div>
       {!isFoldIdeaOutput && (
         <Textarea
+          aria-label={t(`${i18nPrefix}.idealOutput`, { ns: 'appDebug' })}
           className="h-[80px]"
           placeholder={t(`${i18nPrefix}.idealOutputPlaceholder`, { ns: 'appDebug' })}
           value={value}

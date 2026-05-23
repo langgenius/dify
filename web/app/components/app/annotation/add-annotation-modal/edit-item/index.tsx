@@ -33,6 +33,7 @@ const EditItem: FC<Props> = ({
       <div className="grow">
         <div className="mb-1 system-xs-semibold text-text-primary">{name}</div>
         <Textarea
+          aria-label={name}
           value={content}
           onValueChange={value => onChange(value)}
           placeholder={placeholder}

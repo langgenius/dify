@@ -90,6 +90,7 @@ const PromptEditor: FC<PromptEditorProps> = ({
         </div>
         <div className="flex items-center">
           <Textarea
+            aria-label={t('nodes.llm.jsonSchema.instruction', { ns: 'workflow' })}
             className="h-[364px] resize-none px-2 py-1"
             value={instruction}
             placeholder={t('nodes.llm.jsonSchema.promptPlaceholder', { ns: 'workflow' })}

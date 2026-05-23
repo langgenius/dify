@@ -289,6 +289,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
             <div className="relative">
               <div className={cn('py-1 system-sm-semibold text-text-secondary')}>{t(`${prefixSettings}.webDesc`, { ns: 'appOverview' })}</div>
               <Textarea
+                aria-label={t(`${prefixSettings}.webDesc`, { ns: 'appOverview' })}
                 className="mt-1"
                 value={inputInfo.desc}
                 onValueChange={onDesChange}
@@ -464,6 +465,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
                   <div className={cn('py-1 system-sm-semibold text-text-secondary')}>{t(`${prefixSettings}.more.customDisclaimer`, { ns: 'appOverview' })}</div>
                   <p className={cn('pb-0.5 body-xs-regular text-text-tertiary')}>{t(`${prefixSettings}.more.customDisclaimerTip`, { ns: 'appOverview' })}</p>
                   <Textarea
+                    aria-label={t(`${prefixSettings}.more.customDisclaimer`, { ns: 'appOverview' })}
                     className="mt-1"
                     value={inputInfo.customDisclaimer}
                     onValueChange={value => setInputInfo(item => ({ ...item, customDisclaimer: value }))}

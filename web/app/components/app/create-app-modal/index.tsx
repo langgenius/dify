@@ -240,6 +240,7 @@ function CreateApp({ onClose, onSuccess, onCreateFromTemplate, defaultAppMode }:
                   </span>
                 </div>
                 <Textarea
+                  aria-label={t('newApp.captionDescription', { ns: 'app' })}
                   className="resize-none"
                   placeholder={t('newApp.appDescriptionPlaceholder', { ns: 'app' }) || ''}
                   value={description}

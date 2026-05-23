@@ -121,6 +121,7 @@ const ConfigModalFormFields: FC<ConfigModalFormFieldsProps> = ({
       {type === InputVarType.paragraph && (
         <Field title={t('variableConfig.defaultValue', { ns: 'appDebug' })}>
           <Textarea
+            aria-label={t('variableConfig.defaultValue', { ns: 'appDebug' })}
             value={String(tempPayload.default ?? '')}
             onValueChange={value => onPayloadChange('default')(value || undefined)}
             placeholder={t('variableConfig.inputPlaceholder', { ns: 'appDebug' })}

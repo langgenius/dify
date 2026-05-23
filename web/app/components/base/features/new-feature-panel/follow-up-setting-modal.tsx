@@ -220,6 +220,7 @@ const FollowUpSettingModal = ({
                   </div>
                   {promptMode === PROMPT_MODE.custom && (
                     <Textarea
+                      aria-label={t('feature.suggestedQuestionsAfterAnswer.modal.customPromptOption', { ns: 'appDebug' })}
                       className="mt-3 min-h-32 resize-y border-components-input-border-active bg-components-input-bg-normal"
                       value={prompt}
                       onValueChange={value => setPrompt(value)}

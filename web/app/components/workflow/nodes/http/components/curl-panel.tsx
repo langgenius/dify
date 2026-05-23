@@ -56,6 +56,7 @@ const CurlPanel: FC<Props> = ({ nodeId, isShow, onHide, handleCurlImport }) => {
 
         <div>
           <Textarea
+            aria-label={t('nodes.http.curl.title', { ns: 'workflow' })}
             value={inputString}
             className="my-3 h-40 w-full grow"
             onValueChange={value => setInputString(value)}

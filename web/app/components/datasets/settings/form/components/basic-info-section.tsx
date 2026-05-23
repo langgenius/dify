@@ -85,6 +85,7 @@ const BasicInfoSection = ({
         </div>
         <div className="grow">
           <Textarea
+            aria-label={t('form.desc', { ns: 'datasetSettings' })}
             disabled={!currentDataset?.embedding_available}
             className="resize-none"
             placeholder={t('form.descPlaceholder', { ns: 'datasetSettings' }) || ''}

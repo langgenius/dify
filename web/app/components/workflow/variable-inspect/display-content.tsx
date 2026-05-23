@@ -91,6 +91,7 @@ export function DisplayContent(props: DisplayContentProps) {
           previewType === PreviewType.Markdown
             ? (
                 <Textarea
+                  aria-label="Markdown content"
                   readOnly={readonly}
                   disabled={readonly}
                   className="h-full border-none bg-transparent p-0 text-text-secondary hover:bg-transparent focus:bg-transparent focus:shadow-none"

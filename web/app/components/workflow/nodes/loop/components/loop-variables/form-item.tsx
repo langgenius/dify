@@ -96,6 +96,7 @@ const FormItem = ({
       {
         value_type === ValueType.constant && var_type === VarType.string && (
           <Textarea
+            aria-label={item.label}
             value={value}
             onValueChange={handleValueChange}
             className="min-h-12 w-full"

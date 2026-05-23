@@ -372,6 +372,7 @@ const MarkdownForm = ({ node }: { node: HastElement }) => {
             return null
           return (
             <Textarea
+              aria-label={name}
               key={key}
               name={name}
               placeholder={str(child.properties.placeholder)}

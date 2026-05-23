@@ -117,7 +117,7 @@ const RenameDatasetModal = ({ show, dataset, onSuccess, onClose }: RenameDataset
               {t('form.desc', { ns: 'datasetSettings' })}
             </div>
             <div className="w-full">
-              <Textarea value={description} onValueChange={value => setDescription(value)} className="resize-none" placeholder={t('form.descPlaceholder', { ns: 'datasetSettings' }) || ''} />
+              <Textarea aria-label={t('form.desc', { ns: 'datasetSettings' })} value={description} onValueChange={value => setDescription(value)} className="resize-none" placeholder={t('form.descPlaceholder', { ns: 'datasetSettings' }) || ''} />
             </div>
           </div>
         </div>

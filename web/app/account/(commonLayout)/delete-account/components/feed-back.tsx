@@ -63,6 +63,7 @@ export default function FeedBack(props: DeleteAccountProps) {
         </DialogTitle>
         <label className="mt-3 mb-1 flex items-center system-sm-semibold text-text-secondary">{t('account.feedbackLabel', { ns: 'common' })}</label>
         <Textarea
+          aria-label={t('account.feedbackLabel', { ns: 'common' }) as string}
           rows={6}
           value={userFeedback}
           placeholder={t('account.feedbackPlaceholder', { ns: 'common' }) as string}

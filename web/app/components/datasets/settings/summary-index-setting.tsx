@@ -94,6 +94,7 @@ const SummaryIndexSetting = ({
                 {t('form.summaryInstructions', { ns: 'datasetSettings' })}
               </div>
               <Textarea
+                aria-label={t('form.summaryInstructions', { ns: 'datasetSettings' })}
                 value={summaryIndexSetting?.summary_prompt ?? ''}
                 onValueChange={handleSummaryIndexPromptChange}
                 disabled={readonly}
@@ -165,6 +166,7 @@ const SummaryIndexSetting = ({
                 </div>
                 <div className="grow">
                   <Textarea
+                    aria-label={t('form.summaryInstructions', { ns: 'datasetSettings' })}
                     value={summaryIndexSetting?.summary_prompt ?? ''}
                     onValueChange={handleSummaryIndexPromptChange}
                     disabled={readonly}
@@ -213,6 +215,7 @@ const SummaryIndexSetting = ({
                 {t('form.summaryInstructions', { ns: 'datasetSettings' })}
               </div>
               <Textarea
+                aria-label={t('form.summaryInstructions', { ns: 'datasetSettings' })}
                 value={summaryIndexSetting?.summary_prompt ?? ''}
                 onValueChange={handleSummaryIndexPromptChange}
                 disabled={readonly}

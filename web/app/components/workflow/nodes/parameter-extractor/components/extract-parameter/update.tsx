@@ -175,6 +175,7 @@ const AddExtractParameter: FC<Props> = ({
                 )}
                 <Field title={t(`${i18nPrefix}.addExtractParameterContent.description`, { ns: 'workflow' })}>
                   <Textarea
+                    aria-label={t(`${i18nPrefix}.addExtractParameterContent.description`, { ns: 'workflow' })}
                     value={param.description}
                     onValueChange={value => handleParamChange('description')(value)}
                     placeholder={t(`${i18nPrefix}.addExtractParameterContent.descriptionPlaceholder`, { ns: 'workflow' })!}

@@ -224,6 +224,7 @@ const SettingsModal: FC<SettingsModalProps> = ({
           </div>
           <div className="w-full">
             <Textarea
+              aria-label={t('form.desc', { ns: 'datasetSettings' })}
               value={localeCurrentDataset.description || ''}
               onValueChange={value => handleValueChange('description', value)}
               className="resize-none"

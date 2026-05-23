@@ -145,6 +145,7 @@ const CreateAppModal = ({
             <div className="pt-2">
               <div className="py-2 text-sm leading-[20px] font-medium text-text-primary">{t('newApp.captionDescription', { ns: 'app' })}</div>
               <Textarea
+                aria-label={t('newApp.captionDescription', { ns: 'app' })}
                 className="resize-none"
                 placeholder={t('newApp.appDescriptionPlaceholder', { ns: 'app' }) || ''}
                 value={description}

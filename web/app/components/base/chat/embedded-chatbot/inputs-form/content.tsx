@@ -71,6 +71,7 @@ const InputsFormContent = ({ showTip }: Props) => {
           )}
           {form.type === InputVarType.paragraph && (
             <Textarea
+              aria-label={form.label}
               value={inputsFormValue?.[form.variable] || ''}
               onValueChange={value => handleFormChange(form.variable, value)}
               placeholder={form.label}

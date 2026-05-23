@@ -51,6 +51,7 @@ const AdvancedOptions: FC<AdvancedOptionsProps> = ({
             Enum
           </div>
           <Textarea
+            aria-label="Enum"
             size="small"
             className="min-h-6"
             value={enumValue}

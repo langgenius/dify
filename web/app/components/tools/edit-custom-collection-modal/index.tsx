@@ -280,6 +280,7 @@ const EditCustomCollectionModal: FC<Props> = ({
 
                         </div>
                         <Textarea
+                          aria-label={t('createTool.schema', { ns: 'tools' })}
                           className="h-[240px] resize-none"
                           value={schema}
                           onValueChange={value => setSchema(value)}

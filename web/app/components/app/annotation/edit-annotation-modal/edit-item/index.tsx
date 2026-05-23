@@ -130,6 +130,7 @@ const EditItem: FC<Props> = ({
               <div className="mt-3">
                 <EditTitle title={editTitle} />
                 <Textarea
+                  aria-label={editTitle}
                   value={newContent}
                   onValueChange={value => setNewContent(value)}
                   placeholder={placeholder}

@@ -72,6 +72,7 @@ const PrePopulate: FC<Props> = ({
   value,
   onValueChange,
 }) => {
+  const { t } = useTranslation()
   const [onPlaceholderClicked, setOnPlaceholderClicked] = useState(false)
   const handleTypeChange = useCallback((isVar: boolean) => {
     setOnPlaceholderClicked(true)
@@ -127,6 +128,7 @@ const PrePopulate: FC<Props> = ({
   return (
     <div className={cn('relative min-h-[80px] rounded-lg border border-transparent bg-components-input-bg-normal pb-1', isFocus && 'border-components-input-border-active bg-components-input-bg-active shadow-xs')}>
       <Textarea
+        aria-label={t(`${i18nPrefix}.staticContent`, { ns: 'workflow' })}
         value={value || ''}
         className="h-[43px] min-h-[43px] rounded-none border-none bg-transparent px-3 hover:bg-transparent focus:bg-transparent focus:shadow-none"
         onValueChange={value => onValueChange?.(value)}

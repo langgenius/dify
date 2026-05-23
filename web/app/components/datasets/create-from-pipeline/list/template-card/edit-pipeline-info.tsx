@@ -132,6 +132,7 @@ const EditPipelineInfo = ({
             {t('knowledgeDescription', { ns: 'datasetPipeline' })}
           </label>
           <Textarea
+            aria-label={t('knowledgeDescription', { ns: 'datasetPipeline' })}
             onValueChange={handleDescriptionChange}
             value={description}
             placeholder={t('knowledgeDescriptionPlaceholder', { ns: 'datasetPipeline' })}

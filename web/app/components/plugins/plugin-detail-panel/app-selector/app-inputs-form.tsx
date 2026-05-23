@@ -55,6 +55,7 @@ const AppInputsForm = ({
     if (form.type === InputVarType.paragraph) {
       return (
         <Textarea
+          aria-label={label}
           value={inputs[variable] || ''}
           onValueChange={value => handleFormChange(variable, value)}
           placeholder={label}

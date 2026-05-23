@@ -190,6 +190,7 @@ const VarList: FC<Props> = ({
                   )}
                   {assignedVarType === 'string' && (
                     <Textarea
+                      aria-label={item.variable_selector?.join('.') || t('nodes.assigner.setParameter', { ns: 'workflow' })}
                       value={item.value as string}
                       onValueChange={value => handleToAssignedVarChange(index)(value)}
                       className="w-full"

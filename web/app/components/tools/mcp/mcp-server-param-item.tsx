@@ -25,6 +25,7 @@ const MCPServerParamItem = ({
         <div className="max-w-full min-w-0 system-xs-medium wrap-break-word text-text-tertiary">{data.type}</div>
       </div>
       <Textarea
+        aria-label={data.label}
         className="h-8 resize-none"
         value={value}
         placeholder={t('mcp.server.modal.parametersPlaceholder', { ns: 'tools' })}

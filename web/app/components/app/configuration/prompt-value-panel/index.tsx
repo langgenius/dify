@@ -151,6 +151,7 @@ const PromptValuePanel: FC<IPromptValuePanelProps> = ({
                     )}
                     {type === 'paragraph' && (
                       <Textarea
+                        aria-label={name}
                         className="h-[120px] grow"
                         placeholder={name}
                         value={inputs[key] ? `${inputs[key]}` : ''}

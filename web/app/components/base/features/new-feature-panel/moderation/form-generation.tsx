@@ -55,6 +55,7 @@ const FormGeneration: FC<FormGenerationProps> = ({
                 form.type === 'paragraph' && (
                   <div className="relative">
                     <Textarea
+                      aria-label={locale === 'zh-Hans' ? form.label['zh-Hans'] : form.label['en-US']}
                       className="resize-none"
                       value={value?.[form.variable] || ''}
                       placeholder={form.placeholder}

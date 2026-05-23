@@ -159,6 +159,7 @@ const RunOnce: FC<IRunOnceProps> = ({
                     )}
                     {item.type === 'paragraph' && (
                       <Textarea
+                        aria-label={item.name}
                         className="h-[104px] sm:text-xs"
                         placeholder={item.name}
                         value={inputs[item.key] as string}

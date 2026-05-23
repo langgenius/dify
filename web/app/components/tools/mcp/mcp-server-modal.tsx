@@ -154,6 +154,7 @@ const MCPServerModal = ({
                 <div className="system-xs-regular text-text-destructive-secondary">*</div>
               </div>
               <Textarea
+                aria-label={t('mcp.server.modal.description', { ns: 'tools' })}
                 className="h-[96px] resize-none"
                 value={description}
                 placeholder={t('mcp.server.modal.descriptionPlaceholder', { ns: 'tools' })}
