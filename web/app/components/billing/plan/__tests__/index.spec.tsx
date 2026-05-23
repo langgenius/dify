@@ -39,6 +39,12 @@ vi.mock('@/service/billing', () => ({
   fetchSubscriptionUrls: vi.fn(),
 }))
 
+vi.mock('@/service/use-billing', () => ({
+  useCurrentPlanVectorSpace: () => ({
+    data: undefined,
+  }),
+}))
+
 const fetchSubscriptionUrlsMock = vi.mocked(fetchSubscriptionUrls)
 
 const mutateAsyncMock = vi.fn()

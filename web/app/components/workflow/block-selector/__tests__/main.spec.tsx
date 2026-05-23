@@ -1,5 +1,6 @@
 import type { ButtonHTMLAttributes } from 'react'
 import type { NodeDefault } from '../../types'
+import { Button } from '@langgenius/dify-ui/button'
 import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { renderWorkflowComponent } from '../../__tests__/workflow-test-env'
@@ -186,6 +187,30 @@ describe('NodeSelector', () => {
     )
 
     const trigger = screen.getByTestId('selector-root-trigger')
+    await user.click(trigger)
+
+    expect(trigger.closest('[aria-haspopup="dialog"]')).toBe(trigger)
+    expect(screen.getByPlaceholderText('workflow.tabs.searchBlock')).toBeInTheDocument()
+  })
+
+  it('can render the shared Button trigger as the popover root', async () => {
+    const user = userEvent.setup()
+
+    renderWorkflowComponent(
+      <NodeSelector
+        onSelect={vi.fn()}
+        blocks={[createBlock(BlockEnum.LLM, 'LLM')]}
+        availableBlocksTypes={[BlockEnum.LLM]}
+        renderTriggerAsButtonRoot
+        trigger={() => (
+          <Button variant="primary">
+            open-shared-button-trigger
+          </Button>
+        )}
+      />,
+    )
+
+    const trigger = screen.getByRole('button', { name: 'open-shared-button-trigger' })
     await user.click(trigger)
 
     expect(trigger.closest('[aria-haspopup="dialog"]')).toBe(trigger)

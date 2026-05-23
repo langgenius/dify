@@ -1,9 +1,18 @@
+"""Core plugin service and tenant-scoped plugin metadata cache ownership.
+
+This module owns plugin daemon management calls that are shared by API services
+and core runtimes. Plugin model provider discovery is cached here, alongside
+plugin install, uninstall, and upgrade invalidation, so all cache mutations for
+plugin-owned provider metadata stay tenant-scoped and in one place.
+"""
+
 import json
 import logging
 from collections.abc import Mapping, Sequence
 from mimetypes import guess_type
 
-from pydantic import BaseModel
+from pydantic import BaseModel, TypeAdapter, ValidationError
+from redis import RedisError
 from sqlalchemy import delete, select, update
 from sqlalchemy.orm import Session
 from yarl import URL
@@ -23,16 +32,20 @@ from core.plugin.entities.plugin import (
 from core.plugin.entities.plugin_daemon import (
     PluginDecodeResponse,
     PluginInstallTask,
+    PluginInstallTaskStatus,
     PluginListResponse,
+    PluginModelProviderEntity,
     PluginVerification,
 )
 from core.plugin.impl.asset import PluginAssetManager
 from core.plugin.impl.debugging import PluginDebuggingClient
+from core.plugin.impl.model import PluginModelClient
 from core.plugin.impl.plugin import PluginInstaller
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
+from graphon.model_runtime.entities.provider_entities import ProviderEntity
 from models.provider import Provider, ProviderCredential, TenantPreferredModelProvider
-from models.provider_ids import GenericProviderID
+from models.provider_ids import GenericProviderID, ModelProviderID
 from models.workflow import Workflow
 from services.enterprise.plugin_manager_service import (
     PluginManagerService,
@@ -42,6 +55,7 @@ from services.errors.plugin import PluginInstallationForbiddenError
 from services.feature_service import FeatureService, PluginInstallationScope
 
 logger = logging.getLogger(__name__)
+_provider_entities_adapter: TypeAdapter[list[ProviderEntity]] = TypeAdapter(list[ProviderEntity])
 
 
 class PluginService:
@@ -55,6 +69,102 @@ class PluginService:
 
     REDIS_KEY_PREFIX = "plugin_service:latest_plugin:"
     REDIS_TTL = 60 * 5  # 5 minutes
+    PLUGIN_MODEL_PROVIDERS_REDIS_KEY_PREFIX = "plugin_model_providers:tenant_id:"
+    PLUGIN_INSTALL_TASK_TERMINAL_STATUSES = (PluginInstallTaskStatus.Success, PluginInstallTaskStatus.Failed)
+
+    @classmethod
+    def _get_plugin_model_providers_cache_key(cls, tenant_id: str) -> str:
+        return f"{cls.PLUGIN_MODEL_PROVIDERS_REDIS_KEY_PREFIX}{tenant_id}"
+
+    @staticmethod
+    def _get_provider_short_name_alias(provider: PluginModelProviderEntity) -> str:
+        """
+        Expose a bare provider alias only for the canonical provider mapping.
+
+        Multiple plugins can publish the same short provider slug. If every
+        provider entity keeps that slug in ``provider_name``, callers that still
+        resolve by short name become order-dependent. Restrict the alias to the
+        provider selected by ``ModelProviderID`` so legacy short-name lookups
+        remain deterministic while the runtime surface stays canonical.
+        """
+        try:
+            canonical_provider_id = ModelProviderID(provider.provider)
+        except ValueError:
+            return ""
+
+        if canonical_provider_id.plugin_id != provider.plugin_id:
+            return ""
+        if canonical_provider_id.provider_name != provider.provider:
+            return ""
+
+        return provider.provider
+
+    @classmethod
+    def _to_provider_entity(cls, provider: PluginModelProviderEntity) -> ProviderEntity:
+        declaration = provider.declaration.model_copy(deep=True)
+        declaration.provider = f"{provider.plugin_id}/{provider.provider}"
+        declaration.provider_name = cls._get_provider_short_name_alias(provider)
+        return declaration
+
+    @classmethod
+    def _load_cached_plugin_model_providers(cls, tenant_id: str) -> tuple[ProviderEntity, ...] | None:
+        cache_key = cls._get_plugin_model_providers_cache_key(tenant_id)
+        try:
+            cached_providers = redis_client.get(cache_key)
+        except (RedisError, RuntimeError):
+            logger.warning("Failed to read cached plugin model providers for tenant %s.", tenant_id, exc_info=True)
+            return None
+
+        if not cached_providers:
+            return None
+
+        try:
+            return tuple(_provider_entities_adapter.validate_json(cached_providers))
+        except (TypeError, ValueError, ValidationError):
+            logger.warning(
+                "Invalid cached plugin model providers for tenant %s; deleting cache.", tenant_id, exc_info=True
+            )
+            cls.invalidate_plugin_model_providers_cache(tenant_id)
+            return None
+
+    @classmethod
+    def _store_cached_plugin_model_providers(cls, tenant_id: str, providers: Sequence[ProviderEntity]) -> None:
+        cache_key = cls._get_plugin_model_providers_cache_key(tenant_id)
+        try:
+            payload = _provider_entities_adapter.dump_json(list(providers)).decode("utf-8")
+            redis_client.setex(cache_key, dify_config.PLUGIN_MODEL_PROVIDERS_CACHE_TTL, payload)
+        except (RedisError, RuntimeError):
+            logger.warning("Failed to cache plugin model providers for tenant %s.", tenant_id, exc_info=True)
+
+    @classmethod
+    def invalidate_plugin_model_providers_cache(cls, tenant_id: str) -> None:
+        """Delete the tenant-scoped plugin model provider list cache."""
+        try:
+            redis_client.delete(cls._get_plugin_model_providers_cache_key(tenant_id))
+        except (RedisError, RuntimeError):
+            logger.warning("Failed to invalidate plugin model providers cache for tenant %s.", tenant_id, exc_info=True)
+
+    @classmethod
+    def fetch_plugin_model_providers(
+        cls, *, tenant_id: str, client: PluginModelClient | None = None
+    ) -> Sequence[ProviderEntity]:
+        """
+        Fetch plugin model providers through the tenant-scoped plugin cache.
+
+        Plugin daemon provider discovery and plugin lifecycle cache invalidation
+        are intentionally owned by this service so tenant isolation and cache
+        expiry are handled in one place.
+        """
+        cached_providers = cls._load_cached_plugin_model_providers(tenant_id)
+        if cached_providers is not None:
+            return cached_providers
+
+        model_client = client or PluginModelClient()
+        providers = tuple(
+            cls._to_provider_entity(provider) for provider in model_client.fetch_model_providers(tenant_id)
+        )
+        cls._store_cached_plugin_model_providers(tenant_id, providers)
+        return providers
 
     @staticmethod
     def fetch_latest_plugin_version(plugin_ids: Sequence[str]) -> Mapping[str, LatestPluginCache | None]:
@@ -250,12 +360,18 @@ class PluginService:
         Fetch plugin installation tasks
         """
         manager = PluginInstaller()
-        return manager.fetch_plugin_installation_tasks(tenant_id, page, page_size)
+        tasks = manager.fetch_plugin_installation_tasks(tenant_id, page, page_size)
+        if any(task.status in PluginService.PLUGIN_INSTALL_TASK_TERMINAL_STATUSES for task in tasks):
+            PluginService.invalidate_plugin_model_providers_cache(tenant_id)
+        return tasks
 
     @staticmethod
     def fetch_install_task(tenant_id: str, task_id: str) -> PluginInstallTask:
         manager = PluginInstaller()
-        return manager.fetch_plugin_installation_task(tenant_id, task_id)
+        task = manager.fetch_plugin_installation_task(tenant_id, task_id)
+        if task.status in PluginService.PLUGIN_INSTALL_TASK_TERMINAL_STATUSES:
+            PluginService.invalidate_plugin_model_providers_cache(tenant_id)
+        return task
 
     @staticmethod
     def delete_install_task(tenant_id: str, task_id: str) -> bool:
@@ -383,6 +499,7 @@ class PluginService:
         PluginService._migrate_workflow_plugin_unique_identifier(
             tenant_id, original_plugin_unique_identifier, new_plugin_unique_identifier
         )
+        PluginService.invalidate_plugin_model_providers_cache(tenant_id)
         return result
 
     @staticmethod
@@ -413,6 +530,7 @@ class PluginService:
         PluginService._migrate_workflow_plugin_unique_identifier(
             tenant_id, original_plugin_unique_identifier, new_plugin_unique_identifier
         )
+        PluginService.invalidate_plugin_model_providers_cache(tenant_id)
         return result
 
     @staticmethod
@@ -479,12 +597,14 @@ class PluginService:
             resp = manager.decode_plugin_from_identifier(tenant_id, plugin_unique_identifier)
             PluginService._check_plugin_installation_scope(resp.verification)
 
-        return manager.install_from_identifiers(
+        result = manager.install_from_identifiers(
             tenant_id,
             plugin_unique_identifiers,
             PluginInstallationSource.Package,
             [{}],
         )
+        PluginService.invalidate_plugin_model_providers_cache(tenant_id)
+        return result
 
     @staticmethod
     def install_from_github(tenant_id: str, plugin_unique_identifier: str, repo: str, version: str, package: str):
@@ -498,7 +618,7 @@ class PluginService:
         plugin_decode_response = manager.decode_plugin_from_identifier(tenant_id, plugin_unique_identifier)
         PluginService._check_plugin_installation_scope(plugin_decode_response.verification)
 
-        return manager.install_from_identifiers(
+        result = manager.install_from_identifiers(
             tenant_id,
             [plugin_unique_identifier],
             PluginInstallationSource.Github,
@@ -510,6 +630,8 @@ class PluginService:
                 }
             ],
         )
+        PluginService.invalidate_plugin_model_providers_cache(tenant_id)
+        return result
 
     @staticmethod
     def fetch_marketplace_pkg(tenant_id: str, plugin_unique_identifier: str) -> PluginDeclaration:
@@ -577,12 +699,14 @@ class PluginService:
                 actual_plugin_unique_identifiers.append(response.unique_identifier)
                 metas.append({"plugin_unique_identifier": response.unique_identifier})
 
-        return manager.install_from_identifiers(
+        result = manager.install_from_identifiers(
             tenant_id,
             actual_plugin_unique_identifiers,
             PluginInstallationSource.Marketplace,
             metas,
         )
+        PluginService.invalidate_plugin_model_providers_cache(tenant_id)
+        return result
 
     @staticmethod
     def uninstall(tenant_id: str, plugin_installation_id: str) -> bool:
@@ -593,7 +717,10 @@ class PluginService:
         plugin = next((p for p in plugins if p.installation_id == plugin_installation_id), None)
 
         if not plugin:
-            return manager.uninstall(tenant_id, plugin_installation_id)
+            result = manager.uninstall(tenant_id, plugin_installation_id)
+            if result:
+                PluginService.invalidate_plugin_model_providers_cache(tenant_id)
+            return result
 
         if dify_config.ENTERPRISE_ENABLED:
             PluginManagerService.try_pre_uninstall_plugin(
@@ -623,37 +750,39 @@ class PluginService:
 
             if not credential_ids:
                 logger.info("No credentials found for plugin: %s", plugin_id)
-                return manager.uninstall(tenant_id, plugin_installation_id)
+            else:
+                provider_ids = session.scalars(
+                    select(Provider.id).where(
+                        Provider.tenant_id == tenant_id,
+                        Provider.provider_name.like(f"{plugin_id}/%"),
+                        Provider.credential_id.in_(credential_ids),
+                    )
+                ).all()
 
-            provider_ids = session.scalars(
-                select(Provider.id).where(
-                    Provider.tenant_id == tenant_id,
-                    Provider.provider_name.like(f"{plugin_id}/%"),
-                    Provider.credential_id.in_(credential_ids),
+                session.execute(update(Provider).where(Provider.id.in_(provider_ids)).values(credential_id=None))
+
+                for provider_id in provider_ids:
+                    ProviderCredentialsCache(
+                        tenant_id=tenant_id,
+                        identity_id=provider_id,
+                        cache_type=ProviderCredentialsCacheType.PROVIDER,
+                    ).delete()
+
+                session.execute(
+                    delete(ProviderCredential).where(
+                        ProviderCredential.id.in_(credential_ids),
+                    )
                 )
-            ).all()
 
-            session.execute(update(Provider).where(Provider.id.in_(provider_ids)).values(credential_id=None))
-
-            for provider_id in provider_ids:
-                ProviderCredentialsCache(
-                    tenant_id=tenant_id,
-                    identity_id=provider_id,
-                    cache_type=ProviderCredentialsCacheType.PROVIDER,
-                ).delete()
-
-            session.execute(
-                delete(ProviderCredential).where(
-                    ProviderCredential.id.in_(credential_ids),
+                logger.info(
+                    "Completed deleting credentials and cleaning provider associations for plugin: %s",
+                    plugin_id,
                 )
-            )
 
-            logger.info(
-                "Completed deleting credentials and cleaning provider associations for plugin: %s",
-                plugin_id,
-            )
-
-        return manager.uninstall(tenant_id, plugin_installation_id)
+        result = manager.uninstall(tenant_id, plugin_installation_id)
+        if result:
+            PluginService.invalidate_plugin_model_providers_cache(tenant_id)
+        return result
 
     @staticmethod
     def check_tools_existence(tenant_id: str, provider_ids: Sequence[GenericProviderID]) -> Sequence[bool]:
