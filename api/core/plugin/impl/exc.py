@@ -1,4 +1,5 @@
 from collections.abc import Mapping
+from typing import override
 
 from pydantic import TypeAdapter
 
@@ -11,6 +12,7 @@ class PluginDaemonError(Exception):
     def __init__(self, description: str):
         self.description = description
 
+    @override
     def __str__(self) -> str:
         # returns the class name and description
         return f"req_id: {get_request_id()} {self.__class__.__name__}: {self.description}"

@@ -5,7 +5,7 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useMemo, useState } from 'react'
 import { isCreateTagOption } from '../components/tag-combobox-item'
-import { TagPanel } from '../components/tag-panel'
+import { TagSearchContent } from '../components/tag-search-content'
 
 const { onValueChangeSpy } = vi.hoisted(() => ({
   onValueChangeSpy: vi.fn(),
@@ -15,7 +15,7 @@ const i18n = {
   selectorPlaceholder: 'common.tag.selectorPlaceholder',
   operationClear: 'common.operation.clear',
   create: 'common.tag.create',
-  noTag: 'common.tag.noTag',
+  noTag: /common\.tag\.noTag/,
   manageTags: 'common.tag.manageTags',
 }
 
@@ -78,7 +78,7 @@ const PanelHarness = ({
       itemToStringLabel={tagToString}
       isItemEqualToValue={isSameTag}
     >
-      <TagPanel
+      <TagSearchContent
         type={type}
         inputValue={inputValue}
         onInputValueChange={setInputValue}
@@ -88,7 +88,7 @@ const PanelHarness = ({
   )
 }
 
-describe('TagPanel', () => {
+describe('TagSearchContent', () => {
   beforeEach(() => {
     vi.clearAllMocks()
   })

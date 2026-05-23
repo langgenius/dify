@@ -574,16 +574,10 @@ export const processRule = {
 
 /**
  * Get mock dataset retrieval settings by vector type
- *
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
  */
 export const get10 = oc
   .route({
-    deprecated: true,
-    description:
-      'Get mock dataset retrieval settings by vector type\n\nGenerated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
+    description: 'Get mock dataset retrieval settings by vector type',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getDatasetsRetrievalSettingByVectorType',
@@ -599,16 +593,10 @@ export const byVectorType = {
 
 /**
  * Get dataset retrieval settings
- *
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
  */
 export const get11 = oc
   .route({
-    deprecated: true,
-    description:
-      'Get dataset retrieval settings\n\nGenerated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
+    description: 'Get dataset retrieval settings',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getDatasetsRetrievalSetting',
@@ -643,16 +631,10 @@ export const apiKeys2 = {
 
 /**
  * Get dataset auto disable logs
- *
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
  */
 export const get12 = oc
   .route({
-    deprecated: true,
-    description:
-      'Get dataset auto disable logs\n\nGenerated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
+    description: 'Get dataset auto disable logs',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getDatasetsByDatasetIdAutoDisableLogs',
@@ -1522,16 +1504,10 @@ export const documents = {
 
 /**
  * Get dataset error documents
- *
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
  */
 export const get27 = oc
   .route({
-    deprecated: true,
-    description:
-      'Get dataset error documents\n\nGenerated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
+    description: 'Get dataset error documents',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getDatasetsByDatasetIdErrorDocs',
@@ -1607,16 +1583,10 @@ export const hitTesting = {
 
 /**
  * Get dataset indexing status
- *
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
  */
 export const get28 = oc
   .route({
-    deprecated: true,
-    description:
-      'Get dataset indexing status\n\nGenerated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
+    description: 'Get dataset indexing status',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getDatasetsByDatasetIdIndexingStatus',
@@ -1739,16 +1709,10 @@ export const notion2 = {
 
 /**
  * Get dataset permission user list
- *
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
  */
 export const get31 = oc
   .route({
-    deprecated: true,
-    description:
-      'Get dataset permission user list\n\nGenerated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
+    description: 'Get dataset permission user list',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getDatasetsByDatasetIdPermissionPartUsers',
@@ -1764,16 +1728,10 @@ export const permissionPartUsers = {
 
 /**
  * Get dataset query history
- *
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
  */
 export const get32 = oc
   .route({
-    deprecated: true,
-    description:
-      'Get dataset query history\n\nGenerated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
+    description: 'Get dataset query history',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getDatasetsByDatasetIdQueries',
@@ -1789,16 +1747,10 @@ export const queries = {
 
 /**
  * Get applications related to dataset
- *
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
  */
 export const get33 = oc
   .route({
-    deprecated: true,
-    description:
-      'Get applications related to dataset\n\nGenerated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
+    description: 'Get applications related to dataset',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getDatasetsByDatasetIdRelatedApps',
@@ -1870,16 +1822,10 @@ export const delete9 = oc
 
 /**
  * Get dataset details
- *
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
  */
 export const get35 = oc
   .route({
-    deprecated: true,
-    description:
-      'Get dataset details\n\nGenerated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
+    description: 'Get dataset details',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getDatasetsByDatasetId',
@@ -2003,16 +1949,10 @@ export const byResourceId = {
 
 /**
  * Get list of datasets
- *
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
  */
 export const get37 = oc
   .route({
-    deprecated: true,
-    description:
-      'Get list of datasets\n\nGenerated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
+    description: 'Get list of datasets',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getDatasets',
@@ -2024,16 +1964,10 @@ export const get37 = oc
 
 /**
  * Create a new dataset
- *
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
  */
 export const post23 = oc
   .route({
-    deprecated: true,
-    description:
-      'Create a new dataset\n\nGenerated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
+    description: 'Create a new dataset',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postDatasets',
