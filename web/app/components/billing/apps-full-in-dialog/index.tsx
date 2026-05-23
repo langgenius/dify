@@ -25,6 +25,7 @@ const AppsFull: FC<{ loc: string, className?: string }> = ({
   const total = plan.total.buildApps
   const percent = total > 0 ? (usage / total) * 100 : 0
   const tone: MeterTone = percent >= 80 ? 'error' : percent >= 50 ? 'warning' : 'neutral'
+  const buildAppsLabel = t('usagePage.buildApps', { ns: 'billing' })
   return (
     <div className={cn(
       'flex flex-col gap-3 rounded-xl border-[0.5px] border-components-panel-border-subtle bg-components-panel-on-panel-item-bg p-4 shadow-xs backdrop-blur-xs',
@@ -61,14 +62,14 @@ const AppsFull: FC<{ loc: string, className?: string }> = ({
       </div>
       <div className="flex flex-col gap-2">
         <div className="flex items-center justify-between system-xs-medium text-text-secondary">
-          <div>{t('usagePage.buildApps', { ns: 'billing' })}</div>
+          <div>{buildAppsLabel}</div>
           <div>
             {usage}
             /
             {total}
           </div>
         </div>
-        <MeterRoot value={Math.min(percent, 100)} max={100}>
+        <MeterRoot value={Math.min(percent, 100)} max={100} aria-label={buildAppsLabel}>
           <MeterTrack>
             <MeterIndicator tone={tone} />
           </MeterTrack>
