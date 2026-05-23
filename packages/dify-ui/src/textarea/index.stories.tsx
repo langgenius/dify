@@ -122,8 +122,7 @@ const ControlledDemo = () => {
       <FieldLabel>Prompt</FieldLabel>
       <Textarea
         value={value}
-        onValueChange={setValue}
-        maxLength={120}
+        onValueChange={nextValue => setValue(nextValue)}
         rows={4}
         className="resize-y"
       />
@@ -136,6 +135,40 @@ export const Controlled: Story = {
   render: () => (
     <div className="w-80">
       <ControlledDemo />
+    </div>
+  ),
+}
+
+const CharacterCounterDemo = () => {
+  const maxLength = 120
+  const [value, setValue] = useState('Summarize customer feedback into actionable product themes.')
+
+  return (
+    <FieldRoot name="limitedPrompt">
+      <FieldLabel>Prompt</FieldLabel>
+      <div className="relative">
+        <Textarea
+          value={value}
+          onValueChange={nextValue => setValue(nextValue)}
+          maxLength={maxLength}
+          rows={4}
+          className="resize-y pb-8"
+        />
+        <div className="pointer-events-none absolute right-2 bottom-2 flex h-5 items-center rounded-md bg-background-section px-1 text-text-quaternary system-xs-medium">
+          <span>{value.length}</span>
+          /
+          <span className="text-text-tertiary">{maxLength}</span>
+        </div>
+      </div>
+      <FieldDescription>Character counters are composed at the usage site when the workflow needs one.</FieldDescription>
+    </FieldRoot>
+  )
+}
+
+export const WithCharacterCounter: Story = {
+  render: () => (
+    <div className="w-80">
+      <CharacterCounterDemo />
     </div>
   ),
 }
