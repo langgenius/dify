@@ -1,15 +1,9 @@
-"""User-scoped account endpoints. /account is the bearer-authed
-identity read; /account/sessions and /account/sessions/<id> manage
-the user's active OAuth tokens.
-"""
-
 from __future__ import annotations
 
 from datetime import UTC, datetime
 
 from flask import request
 from flask_restx import Resource
-from sqlalchemy import and_, select, update
 from werkzeug.exceptions import BadRequest, NotFound
 
 from controllers.openapi import openapi_ns
@@ -27,7 +21,6 @@ from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from libs.oauth_bearer import (
     ACCEPT_USER_ANY,
-    TOKEN_CACHE_KEY_FMT,
     AuthContext,
     SubjectType,
     get_auth_ctx,
@@ -38,7 +31,12 @@ from libs.rate_limit import (
     LIMIT_ME_PER_EMAIL,
     enforce,
 )
-from models import Account, OAuthAccessToken, Tenant, TenantAccountJoin
+from services.account_service import AccountService, TenantService
+from services.oauth_device_flow import (
+    list_active_sessions,
+    revoke_oauth_token,
+    token_belongs_to_subject,
+)
 
 
 @openapi_ns.route("/account")
@@ -63,10 +61,10 @@ class AccountApi(Resource):
                 default_workspace_id=None,
             ).model_dump(mode="json")
 
-        account = (
-            db.session.query(Account).where(Account.id == ctx.account_id).one_or_none() if ctx.account_id else None
+        account = AccountService.get_account_by_id(db.session, str(ctx.account_id)) if ctx.account_id else None
+        memberships = (
+            TenantService.get_account_memberships(db.session, str(ctx.account_id)) if ctx.account_id else []
         )
-        memberships = _load_memberships(ctx.account_id) if ctx.account_id else []
         default_ws_id = _pick_default_workspace(memberships)
 
         return AccountResponse(
@@ -85,7 +83,7 @@ class AccountSessionsSelfApi(Resource):
     def delete(self):
         ctx = get_auth_ctx()
         _require_oauth_subject(ctx)
-        _revoke_token_by_id(str(ctx.token_id))
+        revoke_oauth_token(db.session, redis_client, str(ctx.token_id))
         return RevokeResponse(status="revoked").model_dump(mode="json"), 200
 
 
@@ -99,26 +97,7 @@ class AccountSessionsApi(Resource):
         page = int(request.args.get("page", "1"))
         limit = min(int(request.args.get("limit", "100")), MAX_PAGE_LIMIT)
 
-        all_rows = db.session.execute(
-            select(
-                OAuthAccessToken.id,
-                OAuthAccessToken.prefix,
-                OAuthAccessToken.client_id,
-                OAuthAccessToken.device_label,
-                OAuthAccessToken.created_at,
-                OAuthAccessToken.last_used_at,
-                OAuthAccessToken.expires_at,
-            )
-            .where(
-                and_(
-                    *_subject_match(ctx),
-                    OAuthAccessToken.revoked_at.is_(None),
-                    OAuthAccessToken.token_hash.is_not(None),
-                    OAuthAccessToken.expires_at > now,
-                )
-            )
-            .order_by(OAuthAccessToken.created_at.desc())
-        ).all()
+        all_rows = list_active_sessions(db.session, ctx, now)
 
         total = len(all_rows)
         sliced = all_rows[(page - 1) * limit : page * limit]
@@ -150,34 +129,13 @@ class AccountSessionByIdApi(Resource):
         ctx = get_auth_ctx()
         _require_oauth_subject(ctx)
 
-        # Subject-match guard. 404 (not 403) on cross-subject so the
-        # endpoint doesn't leak token IDs that belong to other subjects.
-        owns = db.session.execute(
-            select(OAuthAccessToken.id).where(
-                and_(
-                    OAuthAccessToken.id == session_id,
-                    *_subject_match(ctx),
-                )
-            )
-        ).first()
-        if owns is None:
+        # 404 (not 403) on cross-subject so the endpoint doesn't leak
+        # token IDs that belong to other subjects.
+        if not token_belongs_to_subject(db.session, session_id, ctx):
             raise NotFound("session not found")
 
-        _revoke_token_by_id(session_id)
+        revoke_oauth_token(db.session, redis_client, session_id)
         return RevokeResponse(status="revoked").model_dump(mode="json"), 200
-
-
-def _subject_match(ctx: AuthContext) -> tuple:
-    """Where-clauses that scope a query to the bearer's subject. Works
-    for both account (account_id) and external_sso (email + issuer).
-    """
-    if ctx.subject_type == SubjectType.ACCOUNT:
-        return (OAuthAccessToken.account_id == str(ctx.account_id),)
-    return (
-        OAuthAccessToken.subject_email == ctx.subject_email,
-        OAuthAccessToken.subject_issuer == ctx.subject_issuer,
-        OAuthAccessToken.account_id.is_(None),
-    )
 
 
 def _require_oauth_subject(ctx: AuthContext) -> None:
@@ -187,49 +145,12 @@ def _require_oauth_subject(ctx: AuthContext) -> None:
         )
 
 
-def _revoke_token_by_id(token_id: str) -> None:
-    # Snapshot pre-revoke hash for cache invalidation; UPDATE WHERE
-    # makes double-revoke idempotent.
-    row = (
-        db.session.query(OAuthAccessToken.token_hash)
-        .filter(
-            OAuthAccessToken.id == token_id,
-            OAuthAccessToken.revoked_at.is_(None),
-        )
-        .one_or_none()
-    )
-    pre_revoke_hash = row[0] if row else None
-
-    stmt = (
-        update(OAuthAccessToken)
-        .where(
-            OAuthAccessToken.id == token_id,
-            OAuthAccessToken.revoked_at.is_(None),
-        )
-        .values(revoked_at=datetime.now(UTC), token_hash=None)
-    )
-    db.session.execute(stmt)
-    db.session.commit()
-
-    if pre_revoke_hash:
-        redis_client.delete(TOKEN_CACHE_KEY_FMT.format(hash=pre_revoke_hash))
-
-
 def _iso(dt: datetime | None) -> str | None:
     if dt is None:
         return None
     if dt.tzinfo is None:
         dt = dt.replace(tzinfo=UTC)
     return dt.isoformat().replace("+00:00", "Z")
-
-
-def _load_memberships(account_id):
-    return (
-        db.session.query(TenantAccountJoin, Tenant)
-        .join(Tenant, Tenant.id == TenantAccountJoin.tenant_id)
-        .filter(TenantAccountJoin.account_id == account_id)
-        .all()
-    )
 
 
 def _pick_default_workspace(memberships) -> str | None:

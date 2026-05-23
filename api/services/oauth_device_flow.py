@@ -1,8 +1,3 @@
-"""Device-flow service layer: Redis state machine, OAuth token mint
-(DB upsert + plaintext generation), and TTL policy. Specs:
-docs/specs/v1.0/server/{device-flow.md, tokens.md}.
-"""
-
 from __future__ import annotations
 
 import hashlib
@@ -15,13 +10,13 @@ import uuid
 from dataclasses import asdict, dataclass, field
 from datetime import UTC, datetime, timedelta
 from enum import StrEnum
-from typing import NotRequired, TypedDict
+from typing import Any, NotRequired, TypedDict
 
-from sqlalchemy import func, select
+from sqlalchemy import Row, and_, func, select, update
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.orm import Session, scoped_session
 
-from libs.oauth_bearer import TOKEN_CACHE_KEY_FMT, SubjectType
+from libs.oauth_bearer import TOKEN_CACHE_KEY_FMT, AuthContext, SubjectType
 from models.oauth import OAuthAccessToken
 
 logger = logging.getLogger(__name__)
@@ -496,3 +491,81 @@ def oauth_ttl_days(tenant_id: str | None = None) -> int:
         logger.warning("%s=%d above max %d; clamping", _TTL_ENV_VAR, value, MAX_TTL_DAYS)
         return MAX_TTL_DAYS
     return value
+
+def subject_match_clauses(ctx: AuthContext) -> tuple[Any, ...]:
+    if ctx.subject_type == SubjectType.ACCOUNT:
+        return (OAuthAccessToken.account_id == str(ctx.account_id),)
+    return (
+        OAuthAccessToken.subject_email == ctx.subject_email,
+        OAuthAccessToken.subject_issuer == ctx.subject_issuer,
+        OAuthAccessToken.account_id.is_(None),
+    )
+
+
+def list_active_sessions(
+    session: Session | scoped_session,
+    ctx: AuthContext,
+    now: datetime,
+) -> list[OAuthAccessToken]:
+    return list(
+        session.execute(
+            select(
+                OAuthAccessToken
+            )
+            .where(
+                and_(
+                    *subject_match_clauses(ctx),
+                    OAuthAccessToken.revoked_at.is_(None),
+                    OAuthAccessToken.token_hash.is_not(None),
+                    OAuthAccessToken.expires_at > now,
+                )
+            )
+            .order_by(OAuthAccessToken.created_at.desc())
+        ).all()
+    )
+
+
+def token_belongs_to_subject(
+    session: Session | scoped_session,
+    token_id: str,
+    ctx: AuthContext,
+) -> bool:
+    row = session.execute(
+        select(OAuthAccessToken.id).where(
+            and_(
+                OAuthAccessToken.id == token_id,
+                *subject_match_clauses(ctx),
+            )
+        )
+    ).first()
+    return row is not None
+
+
+def revoke_oauth_token(
+    session: Session | scoped_session,
+    redis_client: Any,
+    token_id: str,
+) -> None:
+    row = (
+        session.query(OAuthAccessToken.token_hash)
+        .filter(
+            OAuthAccessToken.id == token_id,
+            OAuthAccessToken.revoked_at.is_(None),
+        )
+        .one_or_none()
+    )
+    pre_revoke_hash = row[0] if row else None
+
+    stmt = (
+        update(OAuthAccessToken)
+        .where(
+            OAuthAccessToken.id == token_id,
+            OAuthAccessToken.revoked_at.is_(None),
+        )
+        .values(revoked_at=datetime.now(UTC), token_hash=None)
+    )
+    session.execute(stmt)
+    session.commit()
+
+    if pre_revoke_hash:
+        redis_client.delete(TOKEN_CACHE_KEY_FMT.format(hash=pre_revoke_hash))

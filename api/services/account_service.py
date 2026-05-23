@@ -8,7 +8,8 @@ from hashlib import sha256
 from typing import Any, TypedDict, cast
 
 from pydantic import BaseModel, TypeAdapter, ValidationError
-from sqlalchemy import delete, func, select, update
+from sqlalchemy import Row, delete, func, select, update
+from sqlalchemy.orm import Session, scoped_session
 
 from core.db.session_factory import session_factory
 
@@ -162,6 +163,18 @@ class AccountService:
     def _delete_refresh_token(refresh_token: str, account_id: str):
         redis_client.delete(AccountService._get_refresh_token_key(refresh_token))
         redis_client.delete(AccountService._get_account_refresh_token_key(account_id))
+
+    @staticmethod
+    def get_account_by_id(session: Session | scoped_session, account_id: str) -> Account | None:
+        """Plain ``Account`` getter — no banned check, no tenant rotation,
+        no ``last_active_at`` write. Use this from read-only identity
+        endpoints (``/openapi/v1/account``) where ``load_user``'s
+        side-effects (current-tenant assignment, commit) are unwanted.
+
+        ``session`` is injected by the caller so this service stays free
+        of the Flask-scoped ``db.session`` import.
+        """
+        return session.get(Account, account_id)
 
     @staticmethod
     def load_user(user_id: str) -> None | Account:
@@ -1180,6 +1193,30 @@ class TenantService:
                 .join(TenantAccountJoin, Tenant.id == TenantAccountJoin.tenant_id)
                 .where(TenantAccountJoin.account_id == account.id, Tenant.status == TenantStatus.NORMAL)
             ).all()
+        )
+
+    @staticmethod
+    def get_account_memberships(
+        session: Session | scoped_session,
+        account_id: str,
+    ) -> list[Row[tuple[TenantAccountJoin, Tenant]]]:
+        """Return ``(TenantAccountJoin, Tenant)`` rows for every workspace
+        the account belongs to. Unlike :meth:`get_join_tenants` this keeps
+        the join row so callers can read ``role``/``current`` alongside the
+        tenant — used by ``/openapi/v1/account`` to render workspace
+        membership + pick the default workspace.
+
+        ``session`` is injected by the caller so this service stays free
+        of the Flask-scoped ``db.session`` import.
+
+        No tenant-status filter: parity with the legacy controller query
+        (the openapi identity endpoint listed all joined tenants).
+        """
+        return (
+            session.query(TenantAccountJoin, Tenant)
+            .join(Tenant, Tenant.id == TenantAccountJoin.tenant_id)
+            .filter(TenantAccountJoin.account_id == account_id)
+            .all()
         )
 
     @staticmethod

@@ -86,8 +86,8 @@ def test_subject_match_for_account_filters_by_account_id():
     """Account subject scopes queries via account_id."""
     import uuid as _uuid
 
-    from controllers.openapi.account import _subject_match
     from libs.oauth_bearer import AuthContext, SubjectType
+    from services.oauth_device_flow import subject_match_clauses
 
     aid = _uuid.uuid4()
     ctx = AuthContext(
@@ -103,7 +103,7 @@ def test_subject_match_for_account_filters_by_account_id():
         token_hash="h1",
         verified_tenants={},
     )
-    clauses = _subject_match(ctx)
+    clauses = subject_match_clauses(ctx)
     # One predicate, on account_id
     assert len(clauses) == 1
     assert "account_id" in str(clauses[0])
@@ -116,8 +116,8 @@ def test_subject_match_for_external_sso_filters_by_email_and_issuer():
     """
     import uuid as _uuid
 
-    from controllers.openapi.account import _subject_match
     from libs.oauth_bearer import AuthContext, SubjectType
+    from services.oauth_device_flow import subject_match_clauses
 
     ctx = AuthContext(
         subject_type=SubjectType.EXTERNAL_SSO,
@@ -132,7 +132,7 @@ def test_subject_match_for_external_sso_filters_by_email_and_issuer():
         token_hash="h1",
         verified_tenants={},
     )
-    clauses = _subject_match(ctx)
+    clauses = subject_match_clauses(ctx)
     assert len(clauses) == 3
     rendered = " ".join(str(c) for c in clauses)
     assert "subject_email" in rendered
