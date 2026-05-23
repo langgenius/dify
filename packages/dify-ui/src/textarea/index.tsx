@@ -98,7 +98,8 @@ export function Textarea({
 
           onValueChange?.(nextValue, eventDetails)
         }}
-        render={<textarea {...props} ref={ref} />}
+        ref={ref}
+        render={<textarea {...props} />}
         value={value}
       />
       {showCharacterCount
