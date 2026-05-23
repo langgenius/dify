@@ -2,19 +2,9 @@ import { act, renderHook } from '@testing-library/react'
 import { useTabs, useToolTabs } from '../hooks'
 import { TabsEnum, ToolTypeEnum } from '../types'
 
-const mockCanAccessSnippets = vi.fn(() => true)
-
-vi.mock('@/hooks/use-snippet-plan-access', () => ({
-  useSnippetPlanAccess: () => ({
-    canAccess: mockCanAccessSnippets(),
-    isReady: true,
-  }),
-}))
-
 describe('block-selector hooks', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockCanAccessSnippets.mockReturnValue(true)
   })
 
   it('falls back to the first valid tab when the preferred start tab is disabled', () => {
@@ -64,11 +54,9 @@ describe('block-selector hooks', () => {
     expect(hidden.current.some(tab => tab.key === ToolTypeEnum.MCP)).toBe(false)
   })
 
-  it('hides the snippets tab when snippet access is unavailable', () => {
-    mockCanAccessSnippets.mockReturnValue(false)
-
+  it('always includes the snippets tab', () => {
     const { result } = renderHook(() => useTabs({}))
 
-    expect(result.current.tabs.some(tab => tab.key === TabsEnum.Snippets)).toBe(false)
+    expect(result.current.tabs.some(tab => tab.key === TabsEnum.Snippets)).toBe(true)
   })
 })

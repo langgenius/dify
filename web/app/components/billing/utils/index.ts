@@ -1,7 +1,6 @@
 import type { BasicPlan, BillingQuota, CurrentPlanInfoBackend } from '../type'
 import dayjs from 'dayjs'
 import { ALL_PLANS, NUM_INFINITE } from '@/app/components/billing/config'
-import { Plan } from '../type'
 
 /**
  * Parse vectorSpace string from ALL_PLANS config and convert to MB
@@ -117,22 +116,4 @@ export const parseCurrentPlan = (data: CurrentPlanInfoBackend) => {
       triggerEvents: getQuotaResetInDays(data.trigger_event),
     },
   }
-}
-
-export const canAccessSnippets = ({
-  enableBilling,
-  isFetchedPlan,
-  planType,
-}: {
-  enableBilling: boolean
-  isFetchedPlan: boolean
-  planType: Plan
-}) => {
-  if (!isFetchedPlan)
-    return !enableBilling
-
-  if (!enableBilling)
-    return true
-
-  return planType === Plan.professional || planType === Plan.team || planType === Plan.enterprise
 }

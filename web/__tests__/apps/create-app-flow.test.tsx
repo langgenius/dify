@@ -59,13 +59,6 @@ vi.mock('@/context/provider-context', () => ({
   }),
 }))
 
-vi.mock('@/hooks/use-snippet-plan-access', () => ({
-  useSnippetPlanAccess: () => ({
-    canAccess: true,
-    isReady: true,
-  }),
-}))
-
 vi.mock('@/app/components/base/tag-management/store', () => ({
   useStore: (selector: (state: Record<string, unknown>) => unknown) => {
     const state = {
