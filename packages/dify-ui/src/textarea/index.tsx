@@ -27,28 +27,28 @@ const textareaVariants = cva(
         medium: 'rounded-lg px-3 py-2 system-sm-regular',
         large: 'rounded-[10px] px-4 py-2 system-md-regular',
       },
-      hasCount: {
-        true: 'pb-7',
-        false: '',
-      },
     },
     defaultVariants: {
       size: 'medium',
-      hasCount: false,
     },
   },
 )
 
 type TextareaValue = string | number
+export type TextareaSize = NonNullable<VariantProps<typeof textareaVariants>['size']>
+export type TextareaChangeEventDetails = BaseFieldNS.Control.ChangeEventDetails
+type TextareaOnValueChange = (value: string, eventDetails: TextareaChangeEventDetails) => void
 
 type ControlledTextareaProps = {
   value: TextareaValue
   defaultValue?: never
+  onValueChange: TextareaOnValueChange
 }
 
 type UncontrolledTextareaProps = {
   value?: never
   defaultValue?: TextareaValue
+  onValueChange?: TextareaOnValueChange
 }
 
 type NativeTextareaProps = Omit<
@@ -57,10 +57,7 @@ type NativeTextareaProps = Omit<
 >
 
 type TextareaControlProps = ControlledTextareaProps | UncontrolledTextareaProps
-type TextareaVariantProps = Omit<VariantProps<typeof textareaVariants>, 'hasCount'>
-
-export type TextareaSize = NonNullable<VariantProps<typeof textareaVariants>['size']>
-export type TextareaChangeEventDetails = BaseFieldNS.Control.ChangeEventDetails
+type TextareaVariantProps = VariantProps<typeof textareaVariants>
 
 export type TextareaProps
   = NativeTextareaProps
@@ -69,7 +66,6 @@ export type TextareaProps
     & {
       children?: never
       className?: string
-      onValueChange?: (value: string, eventDetails: TextareaChangeEventDetails) => void
     }
 
 function getTextareaValueLength(value: TextareaValue | undefined) {
@@ -86,26 +82,26 @@ export function Textarea({
   value,
   ...props
 }: TextareaProps) {
-  const [uncontrolledValue, setUncontrolledValue] = useState<TextareaValue | undefined>(defaultValue)
-  const valueLength = getTextareaValueLength(value ?? uncontrolledValue)
-  const hasCount = maxLength !== undefined
+  const showCharacterCount = maxLength !== undefined
+  const [uncontrolledValueLength, setUncontrolledValueLength] = useState(() => getTextareaValueLength(defaultValue))
+  const valueLength = value === undefined ? uncontrolledValueLength : getTextareaValueLength(value)
 
   return (
     <div className="relative w-full">
       <BaseField.Control
-        className={cn(textareaVariants({ hasCount, size }), className)}
+        className={cn(textareaVariants({ size }), showCharacterCount && 'pb-7', className)}
         defaultValue={defaultValue}
         maxLength={maxLength}
         onValueChange={(nextValue, eventDetails) => {
-          if (value === undefined)
-            setUncontrolledValue(nextValue)
+          if (showCharacterCount && value === undefined)
+            setUncontrolledValueLength(nextValue.length)
 
           onValueChange?.(nextValue, eventDetails)
         }}
         render={<textarea {...props} ref={ref} />}
         value={value}
       />
-      {hasCount
+      {showCharacterCount
         ? (
             <span className="pointer-events-none absolute right-2 bottom-2 rounded-sm bg-components-panel-bg px-1 py-0.5 text-text-tertiary system-2xs-medium">
               {valueLength}

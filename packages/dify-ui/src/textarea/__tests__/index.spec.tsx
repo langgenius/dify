@@ -124,6 +124,10 @@ describe('Textarea', () => {
     )
 
     await expect.element(screen.getByText('5/20')).toBeInTheDocument()
-    await expect.element(screen.getByRole('textbox', { name: 'Release notes' })).toHaveClass('pb-7')
+    const textarea = screen.getByRole('textbox', { name: 'Release notes' })
+    await expect.element(textarea).toHaveClass('pb-7')
+
+    setTextareaValue(textarea.element(), 'Published')
+    await expect.element(screen.getByText('9/20')).toBeInTheDocument()
   })
 })
