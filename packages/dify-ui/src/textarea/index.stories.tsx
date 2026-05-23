@@ -90,9 +90,17 @@ export const States: Story = {
   ),
 }
 
-export const WithField: Story = {
-  render: () => (
-    <Form aria-label="Dataset settings" className="grid w-80 gap-4" onFormSubmit={() => undefined}>
+const FormDemo = () => {
+  const [savedDescription, setSavedDescription] = useState<string | null>(null)
+
+  return (
+    <Form
+      aria-label="Dataset settings"
+      className="grid w-80 gap-4"
+      onFormSubmit={(values) => {
+        setSavedDescription(String(values.description ?? ''))
+      }}
+    >
       <FieldRoot name="description">
         <FieldLabel>Description</FieldLabel>
         <Textarea
@@ -110,8 +118,19 @@ export const WithField: Story = {
       <div className="flex justify-end">
         <Button type="submit" variant="primary">Save Settings</Button>
       </div>
+      {savedDescription && (
+        <div className="rounded-lg bg-background-section px-3 py-2 text-text-secondary system-xs-regular">
+          Saved:
+          {' '}
+          {savedDescription}
+        </div>
+      )}
     </Form>
-  ),
+  )
+}
+
+export const WithField: Story = {
+  render: () => <FormDemo />,
 }
 
 const ControlledDemo = () => {
