@@ -9,7 +9,7 @@ import { cn } from '../cn'
 
 const textareaVariants = cva(
   [
-    'min-h-20 w-full appearance-none border border-transparent bg-components-input-bg-normal text-components-input-text-filled caret-primary-600 outline-hidden transition-[background-color,border-color,box-shadow]',
+    'min-h-20 w-full appearance-none overflow-auto border border-transparent bg-components-input-bg-normal text-components-input-text-filled caret-primary-600 outline-hidden transition-[background-color,border-color,box-shadow]',
     'placeholder:text-components-input-text-placeholder',
     'hover:border-components-input-border-hover hover:bg-components-input-bg-hover',
     'focus:border-components-input-border-active focus:bg-components-input-bg-active focus:shadow-xs',

@@ -30,7 +30,7 @@ describe('Textarea', () => {
 
     await expect.element(textarea).toHaveValue('A workspace for support automation.')
     await expect.element(textarea).toHaveAccessibleDescription('Shown to workspace members.')
-    await expect.element(textarea).toHaveClass('min-h-20', 'rounded-lg', 'system-sm-regular')
+    await expect.element(textarea).toHaveClass('min-h-20', 'overflow-auto', 'rounded-lg', 'system-sm-regular')
     expect(asHTMLElement(textarea.element()).tagName).toBe('TEXTAREA')
   })
 
