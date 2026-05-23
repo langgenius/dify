@@ -76,7 +76,7 @@ def fresh_blueprints(monkeypatch: pytest.MonkeyPatch) -> Iterator[dict[str, Blue
             replacement.add_url_rule("/_probe", endpoint="_probe", view_func=_probe_view)
         monkeypatch.setattr(module, "bp", replacement)
         fresh[module_name] = replacement
-    yield fresh
+    return fresh
 
 
 def _build_app() -> DifyApp:
