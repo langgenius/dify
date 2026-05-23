@@ -389,17 +389,19 @@ class PluginMigration:
                     for plugin_id in batch_plugin_ids
                     if plugin_id not in installed_plugins_ids and plugin_id in plugins["plugins"]
                 ]
-                manager.install_from_identifiers(
-                    tenant_id,
-                    batch_plugin_identifiers,
-                    PluginInstallationSource.Marketplace,
-                    metas=[
-                        {
-                            "plugin_unique_identifier": identifier,
-                        }
-                        for identifier in batch_plugin_identifiers
-                    ],
-                )
+                if batch_plugin_identifiers:
+                    manager.install_from_identifiers(
+                        tenant_id,
+                        batch_plugin_identifiers,
+                        PluginInstallationSource.Marketplace,
+                        metas=[
+                            {
+                                "plugin_unique_identifier": identifier,
+                            }
+                            for identifier in batch_plugin_identifiers
+                        ],
+                    )
+                    PluginService.invalidate_plugin_model_providers_cache(tenant_id)
 
         with open(extracted_plugins) as f:
             """
@@ -595,6 +597,7 @@ class PluginMigration:
                         for identifier in batch_plugin_identifiers
                     ],
                 )
+                PluginService.invalidate_plugin_model_providers_cache(tenant_id)
             except Exception:
                 # add to failed
                 failed.extend(batch_plugin_identifiers)
@@ -609,6 +612,7 @@ class PluginMigration:
             while not done:
                 status = manager.fetch_plugin_installation_task(tenant_id, task_id)
                 if status.status in [PluginInstallTaskStatus.Failed, PluginInstallTaskStatus.Success]:
+                    PluginService.invalidate_plugin_model_providers_cache(tenant_id)
                     for plugin in status.plugins:
                         if plugin.status == PluginInstallTaskStatus.Success:
                             success.append(reverse_map[plugin.plugin_unique_identifier])

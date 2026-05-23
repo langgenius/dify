@@ -31,6 +31,7 @@ from core.plugin.entities.plugin import (
 from core.plugin.entities.plugin_daemon import (
     PluginDecodeResponse,
     PluginInstallTask,
+    PluginInstallTaskStatus,
     PluginListResponse,
     PluginModelProviderEntity,
     PluginVerification,
@@ -67,6 +68,7 @@ class PluginService:
     REDIS_KEY_PREFIX = "plugin_service:latest_plugin:"
     REDIS_TTL = 60 * 5  # 5 minutes
     PLUGIN_MODEL_PROVIDERS_REDIS_KEY_PREFIX = "plugin_model_providers:tenant_id:"
+    PLUGIN_INSTALL_TASK_TERMINAL_STATUSES = (PluginInstallTaskStatus.Success, PluginInstallTaskStatus.Failed)
 
     @classmethod
     def _get_plugin_model_providers_cache_key(cls, tenant_id: str) -> str:
@@ -356,12 +358,18 @@ class PluginService:
         Fetch plugin installation tasks
         """
         manager = PluginInstaller()
-        return manager.fetch_plugin_installation_tasks(tenant_id, page, page_size)
+        tasks = manager.fetch_plugin_installation_tasks(tenant_id, page, page_size)
+        if any(task.status in PluginService.PLUGIN_INSTALL_TASK_TERMINAL_STATUSES for task in tasks):
+            PluginService.invalidate_plugin_model_providers_cache(tenant_id)
+        return tasks
 
     @staticmethod
     def fetch_install_task(tenant_id: str, task_id: str) -> PluginInstallTask:
         manager = PluginInstaller()
-        return manager.fetch_plugin_installation_task(tenant_id, task_id)
+        task = manager.fetch_plugin_installation_task(tenant_id, task_id)
+        if task.status in PluginService.PLUGIN_INSTALL_TASK_TERMINAL_STATUSES:
+            PluginService.invalidate_plugin_model_providers_cache(tenant_id)
+        return task
 
     @staticmethod
     def delete_install_task(tenant_id: str, task_id: str) -> bool:

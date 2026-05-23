@@ -6,7 +6,7 @@ from unittest.mock import MagicMock, Mock, patch
 from pydantic import TypeAdapter
 from redis import RedisError
 
-from core.plugin.entities.plugin_daemon import PluginModelProviderEntity
+from core.plugin.entities.plugin_daemon import PluginInstallTask, PluginInstallTaskStatus, PluginModelProviderEntity
 from graphon.model_runtime.entities.common_entities import I18nObject
 from graphon.model_runtime.entities.provider_entities import ConfigurateMethod, ProviderEntity
 
@@ -52,6 +52,19 @@ def _build_plugin_model_provider(*, tenant_id: str = "tenant-1", provider: str =
             supported_model_types=[],
             configurate_methods=[ConfigurateMethod.PREDEFINED_MODEL],
         ),
+    )
+
+
+def _build_install_task(*, task_id: str = "task-1", status: PluginInstallTaskStatus) -> PluginInstallTask:
+    now = datetime.datetime.now()
+    return PluginInstallTask(
+        id=task_id,
+        created_at=now,
+        updated_at=now,
+        status=status,
+        total_plugins=1,
+        completed_plugins=1 if status != PluginInstallTaskStatus.Pending else 0,
+        plugins=[],
     )
 
 
@@ -209,6 +222,57 @@ class TestPluginModelProviderCache:
 
 
 class TestPluginModelProviderCacheInvalidation:
+    def test_fetch_install_task_invalidates_model_provider_cache_when_finished(self) -> None:
+        """Finished plugin install tasks invalidate tenant provider cache."""
+        task = _build_install_task(status=PluginInstallTaskStatus.Success)
+
+        with (
+            patch(f"{MODULE}.PluginInstaller") as installer_cls,
+            patch(f"{MODULE}.PluginService.invalidate_plugin_model_providers_cache") as invalidate_cache,
+        ):
+            installer_cls.return_value.fetch_plugin_installation_task.return_value = task
+
+            from core.plugin.plugin_service import PluginService
+
+            result = PluginService.fetch_install_task("tenant-1", "task-1")
+
+        assert result is task
+        invalidate_cache.assert_called_once_with("tenant-1")
+
+    def test_fetch_install_tasks_invalidates_model_provider_cache_for_finished_tasks(self) -> None:
+        """Finished tasks from task list polling also invalidate tenant provider cache."""
+        task = _build_install_task(status=PluginInstallTaskStatus.Success)
+
+        with (
+            patch(f"{MODULE}.PluginInstaller") as installer_cls,
+            patch(f"{MODULE}.PluginService.invalidate_plugin_model_providers_cache") as invalidate_cache,
+        ):
+            installer_cls.return_value.fetch_plugin_installation_tasks.return_value = [task]
+
+            from core.plugin.plugin_service import PluginService
+
+            result = PluginService.fetch_install_tasks("tenant-1", 1, 256)
+
+        assert result == [task]
+        invalidate_cache.assert_called_once_with("tenant-1")
+
+    def test_fetch_install_tasks_ignores_running_model_provider_cache_tasks(self) -> None:
+        """Running plugin install tasks do not invalidate provider cache until they reach a terminal state."""
+        task = _build_install_task(status=PluginInstallTaskStatus.Running)
+
+        with (
+            patch(f"{MODULE}.PluginInstaller") as installer_cls,
+            patch(f"{MODULE}.PluginService.invalidate_plugin_model_providers_cache") as invalidate_cache,
+        ):
+            installer_cls.return_value.fetch_plugin_installation_tasks.return_value = [task]
+
+            from core.plugin.plugin_service import PluginService
+
+            result = PluginService.fetch_install_tasks("tenant-1", 1, 256)
+
+        assert result == [task]
+        invalidate_cache.assert_not_called()
+
     def test_upgrade_plugin_with_marketplace_invalidates_model_provider_cache_for_tenant(self) -> None:
         """Marketplace upgrades invalidate only the mutated tenant provider cache."""
         with (
