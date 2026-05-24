@@ -180,7 +180,7 @@ export function PaginationRoot({
 
   const defaultProps: useRender.ElementProps<'nav'> = {
     'aria-label': 'Pagination',
-    'className': 'flex w-full min-w-0 items-center justify-between bg-components-panel-bg px-6 py-3 backdrop-blur-[8px] select-none',
+    'className': 'flex w-full min-w-0 items-center justify-between px-6 py-3 select-none',
     'children': (
       <PaginationContext.Provider value={context}>
         {children}
@@ -616,7 +616,7 @@ export function PaginationSkeleton({
 }: PaginationSkeletonProps) {
   const defaultProps: useRender.ElementProps<'div'> = {
     'aria-hidden': true,
-    'className': 'flex w-full min-w-0 items-center justify-between bg-components-panel-bg px-6 py-3 backdrop-blur-[8px] select-none',
+    'className': 'flex w-full min-w-0 items-center justify-between px-6 py-3 select-none',
     'children': (
       <div className="grid w-full min-w-0 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2">
         <div className="flex shrink-0 items-center justify-self-start gap-0.5 rounded-[10px] bg-background-section-burn p-0.5">
