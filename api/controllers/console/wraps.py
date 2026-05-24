@@ -1,11 +1,10 @@
-from models import Account
-from typing import Concatenate
 import contextlib
 import json
 import os
 import time
 from collections.abc import Callable
 from functools import wraps
+from typing import Concatenate
 
 from flask import abort, request
 from sqlalchemy import select
@@ -18,6 +17,7 @@ from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from libs.encryption import FieldEncryption
 from libs.login import current_account_with_tenant
+from models import Account
 from models.account import AccountStatus
 from models.dataset import RateLimitLog
 from models.model import DifySetup
@@ -305,7 +305,6 @@ def edit_permission_required[**P, R](f: Callable[P, R]) -> Callable[P, R]:
         from werkzeug.exceptions import Forbidden
 
         from libs.login import current_user
-        from models import Account
 
         user = current_user._get_current_object()  # type: ignore
         if not isinstance(user, Account):
@@ -323,7 +322,6 @@ def is_admin_or_owner_required[**P, R](f: Callable[P, R]) -> Callable[P, R]:
         from werkzeug.exceptions import Forbidden
 
         from libs.login import current_user
-        from models import Account
 
         user = current_user._get_current_object()
         if not isinstance(user, Account) or not user.is_admin_or_owner:
@@ -492,6 +490,7 @@ def decrypt_code_field[**P, R](view: Callable[P, R]) -> Callable[P, R]:
 
     return decorated
 
+
 def with_current_tenant_id[T, **P, R](
     view: Callable[Concatenate[T, str, P], R],
 ) -> Callable[Concatenate[T, P], R]:
@@ -499,4 +498,5 @@ def with_current_tenant_id[T, **P, R](
     def decorated(self: T, *args: P.args, **kwargs: P.kwargs) -> R:
         _, current_tenant_id = current_account_with_tenant()
         return view(self, current_tenant_id, *args, **kwargs)
+
     return decorated

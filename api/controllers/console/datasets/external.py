@@ -1,4 +1,3 @@
-from controllers.console.wraps import with_current_tenant_id
 from uuid import UUID
 
 from flask import request
@@ -11,7 +10,12 @@ from controllers.common.fields import UsageCountResponse
 from controllers.common.schema import get_or_create_model, register_response_schema_models, register_schema_models
 from controllers.console import console_ns
 from controllers.console.datasets.error import DatasetNameDuplicateError
-from controllers.console.wraps import account_initialization_required, edit_permission_required, setup_required
+from controllers.console.wraps import (
+    account_initialization_required,
+    edit_permission_required,
+    setup_required,
+    with_current_tenant_id,
+)
 from fields.dataset_fields import (
     dataset_detail_fields,
     dataset_retrieval_model_fields,
