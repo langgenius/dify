@@ -1,4 +1,3 @@
-import pytest
 from importlib import import_module
 from unittest.mock import MagicMock, PropertyMock, patch
 
