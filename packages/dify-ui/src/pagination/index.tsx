@@ -635,8 +635,7 @@ export function PaginationSkeleton({
             <div key={item} className="h-8 min-w-8 animate-pulse rounded-lg bg-state-base-hover motion-reduce:animate-none" />
           ))}
         </div>
-        <div className="col-start-3 flex shrink-0 items-center justify-self-end gap-2">
-          <div className="h-3 w-13 animate-pulse rounded bg-state-base-hover motion-reduce:animate-none" />
+        <div className="col-start-3 flex shrink-0 items-center justify-self-end">
           <div className="h-8 w-28 animate-pulse rounded-[10px] bg-state-base-hover motion-reduce:animate-none" />
         </div>
       </div>
