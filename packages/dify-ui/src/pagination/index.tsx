@@ -149,6 +149,7 @@ export function PaginationRoot({
   visiblePageCount = 8,
   render,
   children,
+  className,
   ...props
 }: PaginationRootProps) {
   const normalizedTotalPages = Math.max(Math.trunc(totalPages), 0)
@@ -180,7 +181,7 @@ export function PaginationRoot({
 
   const defaultProps: useRender.ElementProps<'nav'> = {
     'aria-label': 'Pagination',
-    'className': 'flex w-full min-w-0 items-center justify-between px-6 py-3 select-none',
+    'className': cn('flex w-full min-w-0 items-center justify-between px-6 py-3 select-none', className),
     'children': (
       <PaginationContext.Provider value={context}>
         {children}
@@ -207,10 +208,11 @@ export type PaginationContentProps = useRender.ComponentProps<'div'>
 
 export function PaginationContent({
   render,
+  className,
   ...props
 }: PaginationContentProps) {
   const defaultProps: useRender.ElementProps<'div'> = {
-    className: 'grid w-full min-w-0 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2',
+    className: cn('grid w-full min-w-0 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2', className),
   }
 
   return useRender({
@@ -483,11 +485,12 @@ export type PaginationEllipsisProps = useRender.ComponentProps<'span'>
 
 export function PaginationEllipsis({
   render,
+  className,
   ...props
 }: PaginationEllipsisProps) {
   const defaultProps: useRender.ElementProps<'span'> = {
     'aria-hidden': true,
-    'className': 'flex size-8 items-center justify-center px-1 py-2 system-sm-medium text-text-tertiary',
+    'className': cn('flex size-8 items-center justify-center px-1 py-2 system-sm-medium text-text-tertiary', className),
     'children': '…',
   }
 
@@ -619,11 +622,12 @@ export type PaginationSkeletonProps = useRender.ComponentProps<'div'>
 
 export function PaginationSkeleton({
   render,
+  className,
   ...props
 }: PaginationSkeletonProps) {
   const defaultProps: useRender.ElementProps<'div'> = {
     'aria-hidden': true,
-    'className': 'flex w-full min-w-0 items-center justify-between px-6 py-3 select-none',
+    'className': cn('flex w-full min-w-0 items-center justify-between px-6 py-3 select-none', className),
     'children': (
       <div className="grid w-full min-w-0 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2">
         <div className="flex shrink-0 items-center justify-self-start gap-0.5 rounded-[10px] bg-background-section-burn p-0.5">
