@@ -6,6 +6,9 @@ from services.hit_testing_service import HitTestingService
 def _retrieval_record(payload: dict):
     record = Mock()
     record.model_dump.return_value = payload
+    # Align the mock's .segment attribute with the dumped payload so that
+    # _dump_retrieval_records can safely inspect it for @property values.
+    record.segment = payload.get("segment")
     return record
 
 
@@ -86,3 +89,31 @@ class TestHitTestingServiceDumpRecords:
 
         assert result == []
         assert "Skipping hit-testing records with missing documents" in caplog.text
+
+    def test_dump_retrieval_records_populates_sign_content_from_property(self):
+        """sign_content is a @property on the Segment model that generates
+        signed URLs for embedded file previews.  Pydantic's model_dump() only
+        sees mapped columns, so _dump_retrieval_records must explicitly copy
+        the property value into the dumped dict."""
+        segment_mock = Mock()
+        segment_mock.sign_content = "signed preview content"
+        record = Mock()
+        record.segment = segment_mock
+        record.model_dump.return_value = {
+            "segment": {"id": "seg-1", "content": "![img](/files/abc/file-preview)", "sign_content": None},
+            "score": 0.9,
+        }
+
+        result = HitTestingService._dump_retrieval_records([record])
+
+        assert result[0]["segment"]["sign_content"] == "signed preview content"
+
+    def test_dump_retrieval_records_preserves_sign_content_when_no_segment(self):
+        """Records without a segment should pass through unchanged."""
+        record = Mock()
+        record.segment = None
+        record.model_dump.return_value = {"segment": None, "score": 0.8}
+
+        result = HitTestingService._dump_retrieval_records([record])
+
+        assert result == [{"segment": None, "score": 0.8}]

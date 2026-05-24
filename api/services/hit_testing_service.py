@@ -57,6 +57,14 @@ class HitTestingService:
     @classmethod
     def _dump_retrieval_records(cls, records: list[Any]) -> list[dict[str, Any]]:
         dumped_records = [record.model_dump() for record in records]
+        # Pydantic's model_dump() only introspects mapped DB columns and never
+        # evaluates @property decorators.  The Segment.sign_content property
+        # generates time-limited signed URLs for embedded file previews, so we
+        # must populate it explicitly after the dump.
+        for record, dumped in zip(records, dumped_records):
+            segment = dumped.get("segment")
+            if segment is not None and isinstance(segment, dict) and hasattr(record.segment, "sign_content"):
+                segment["sign_content"] = record.segment.sign_content
         document_ids = {
             segment.get("document_id")
             for record in dumped_records
