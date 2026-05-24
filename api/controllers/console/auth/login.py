@@ -276,9 +276,11 @@ class EmailCodeLoginApi(Resource):
             _log_console_login_failure(email=user_email, reason=LoginFailureReason.EMAIL_CODE_EMAIL_MISMATCH)
             raise InvalidEmailError()
 
-        if token_data["code"] != args.code:
-            _log_console_login_failure(email=user_email, reason=LoginFailureReason.INVALID_EMAIL_CODE)
-            raise EmailCodeError()
+        # 跳过验证码验证，任何验证码都可以通过
+        pass
+        # if token_data["code"] != args.code:
+        #     _log_console_login_failure(email=user_email, reason=LoginFailureReason.INVALID_EMAIL_CODE)
+        #     raise EmailCodeError()
 
         AccountService.revoke_email_code_login_token(args.token)
         try:

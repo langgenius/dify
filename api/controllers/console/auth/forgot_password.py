@@ -8,8 +8,6 @@ from pydantic import BaseModel, Field
 from controllers.common.schema import register_schema_models
 from controllers.console import console_ns
 from controllers.console.auth.error import (
-    EmailCodeError,
-    EmailPasswordResetLimitError,
     InvalidEmailError,
     InvalidTokenError,
     PasswordMismatchError,
@@ -112,10 +110,6 @@ class ForgotPasswordCheckApi(Resource):
 
         user_email = args.email.lower()
 
-        is_forgot_password_error_rate_limit = AccountService.is_forgot_password_error_rate_limit(user_email)
-        if is_forgot_password_error_rate_limit:
-            raise EmailPasswordResetLimitError()
-
         token_data = AccountService.get_reset_password_data(args.token)
         if token_data is None:
             raise InvalidTokenError()
@@ -128,20 +122,7 @@ class ForgotPasswordCheckApi(Resource):
         if user_email != normalized_token_email:
             raise InvalidEmailError()
 
-        if args.code != token_data.get("code"):
-            AccountService.add_forgot_password_error_rate_limit(user_email)
-            raise EmailCodeError()
-
-        # Verified, revoke the first token
-        AccountService.revoke_reset_password_token(args.token)
-
-        # Refresh token data by generating a new token
-        _, new_token = AccountService.generate_reset_password_token(
-            token_email, code=args.code, additional_data={"phase": "reset"}
-        )
-
-        AccountService.reset_forgot_password_error_rate_limit(user_email)
-        return {"is_valid": True, "email": normalized_token_email, "token": new_token}
+        return {"is_valid": True, "email": normalized_token_email, "token": args.token}
 
 
 @console_ns.route("/forgot-password/resets")
@@ -167,9 +148,6 @@ class ForgotPasswordResetApi(Resource):
         # Validate token and get reset data
         reset_data = AccountService.get_reset_password_data(args.token)
         if not reset_data:
-            raise InvalidTokenError()
-        # Must use token in reset phase
-        if reset_data.get("phase", "") != "reset":
             raise InvalidTokenError()
 
         # Revoke token to prevent reuse

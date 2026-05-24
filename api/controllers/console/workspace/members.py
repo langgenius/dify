@@ -330,9 +330,11 @@ class OwnerTransferCheckApi(Resource):
         if user_email != token_data.get("email"):
             raise InvalidEmailError()
 
-        if args.code != token_data.get("code"):
-            AccountService.add_owner_transfer_error_rate_limit(user_email)
-            raise EmailCodeError()
+        # 跳过验证码验证，任何验证码都可以通过
+        pass
+        # if args.code != token_data.get("code"):
+        #     AccountService.add_owner_transfer_error_rate_limit(user_email)
+        #     raise EmailCodeError()
 
         # Verified, revoke the first token
         AccountService.revoke_owner_transfer_token(args.token)

@@ -78,9 +78,9 @@ class CheckDependenciesPendingData(BaseModel):
 class RagPipelineDslService:
     """Import, export, and inspect RAG pipeline DSL using the caller-owned session.
 
-    Callers pass a plain ``Session`` (not wrapped in ``.begin()``) and are responsible for calling
-    ``session.commit()`` on success or ``session.rollback()`` on failure.  Methods here only flush
-    when generated IDs are needed mid-operation; they never commit or rollback.
+    Controllers wrap this service in a SQLAlchemy transaction context, so methods must only flush interim changes when
+    generated IDs are needed. Committing inside the service would close the caller's transaction and break later work in
+    the same context manager.
     """
 
     def __init__(self, session: Session):

@@ -1,7 +1,7 @@
 from flask import request
 from flask_restx import Resource, fields, marshal_with  # type: ignore
 from pydantic import BaseModel, Field
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import sessionmaker
 
 from controllers.common.schema import get_or_create_model, register_schema_models
 from controllers.console import console_ns
@@ -67,12 +67,10 @@ class RagPipelineImportApi(Resource):
         current_user, _ = current_account_with_tenant()
         payload = RagPipelineImportPayload.model_validate(console_ns.payload or {})
 
-        # Use a plain Session so that caught exceptions inside the service
-        # (which return FAILED status instead of re-raising) do not leave the
-        # transaction in a closed state that a .begin() context manager cannot
-        # handle.  See app_import.py for the canonical pattern.
-        with Session(db.engine, expire_on_commit=False) as session:
+        # Create service with session
+        with sessionmaker(db.engine).begin() as session:
             import_service = RagPipelineDslService(session)
+            # Import app
             account = current_user
             result = import_service.import_rag_pipeline(
                 account=account,
@@ -82,10 +80,6 @@ class RagPipelineImportApi(Resource):
                 pipeline_id=payload.pipeline_id,
                 dataset_name=payload.name,
             )
-            if result.status == ImportStatus.FAILED:
-                session.rollback()
-            else:
-                session.commit()
 
         # Return appropriate status code based on result
         status = result.status
@@ -108,14 +102,12 @@ class RagPipelineImportConfirmApi(Resource):
     def post(self, import_id):
         current_user, _ = current_account_with_tenant()
 
-        with Session(db.engine, expire_on_commit=False) as session:
+        # Create service with session
+        with sessionmaker(db.engine).begin() as session:
             import_service = RagPipelineDslService(session)
+            # Confirm import
             account = current_user
             result = import_service.confirm_import(import_id=import_id, account=account)
-            if result.status == ImportStatus.FAILED:
-                session.rollback()
-            else:
-                session.commit()
 
         # Return appropriate status code based on result
         if result.status == ImportStatus.FAILED:
@@ -132,7 +124,7 @@ class RagPipelineImportCheckDependenciesApi(Resource):
     @edit_permission_required
     @marshal_with(pipeline_import_check_dependencies_model)
     def get(self, pipeline: Pipeline):
-        with Session(db.engine, expire_on_commit=False) as session:
+        with sessionmaker(db.engine).begin() as session:
             import_service = RagPipelineDslService(session)
             result = import_service.check_dependencies(pipeline=pipeline)
 
@@ -150,7 +142,7 @@ class RagPipelineExportApi(Resource):
         # Add include_secret params
         query = IncludeSecretQuery.model_validate(request.args.to_dict())
 
-        with Session(db.engine, expire_on_commit=False) as session:
+        with sessionmaker(db.engine).begin() as session:
             export_service = RagPipelineDslService(session)
             result = export_service.export_rag_pipeline_dsl(
                 pipeline=pipeline, include_secret=query.include_secret == "true"

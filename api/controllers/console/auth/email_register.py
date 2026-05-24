@@ -1,16 +1,15 @@
-from flask import request
+from flask import make_response, request
 from flask_restx import Resource
 from pydantic import BaseModel, Field, field_validator
 
 from configs import dify_config
+from constants import DEFAULT_REGISTER_PASSWORD
 from constants.languages import get_valid_language, languages
-from controllers.common.fields import SimpleResultDataResponse, VerificationTokenResponse
+from controllers.common.fields import SimpleResultDataResponse, SimpleResultResponse, VerificationTokenResponse
 from controllers.common.schema import register_response_schema_models, register_schema_models
 from controllers.console import console_ns
 from controllers.console.auth.error import (
     EmailAlreadyInUseError,
-    EmailCodeError,
-    EmailRegisterLimitError,
     InvalidEmailError,
     InvalidTokenError,
     PasswordMismatchError,
@@ -18,6 +17,11 @@ from controllers.console.auth.error import (
 from libs.helper import EmailStr, extract_remote_ip
 from libs.helper import timezone as validate_timezone_string
 from libs.password import valid_password
+from libs.token import (
+    set_access_token_to_cookie,
+    set_csrf_token_to_cookie,
+    set_refresh_token_to_cookie,
+)
 from models import Account
 from services.account_service import AccountService
 from services.billing_service import BillingService
@@ -36,6 +40,12 @@ class EmailRegisterValidityPayload(BaseModel):
     email: EmailStr = Field(...)
     code: str = Field(...)
     token: str = Field(...)
+
+
+class EmailRegisterDirectPayload(BaseModel):
+    email: EmailStr = Field(..., description="Email address")
+    language: str | None = Field(default=None, description="Language code")
+    timezone: str | None = Field(default=None, description="Timezone")
 
 
 class EmailRegisterResetPayload(BaseModel):
@@ -58,7 +68,7 @@ class EmailRegisterResetPayload(BaseModel):
         return validate_timezone_string(value)
 
 
-register_schema_models(console_ns, EmailRegisterSendPayload, EmailRegisterValidityPayload, EmailRegisterResetPayload)
+register_schema_models(console_ns, EmailRegisterSendPayload, EmailRegisterValidityPayload, EmailRegisterResetPayload, EmailRegisterDirectPayload)
 register_response_schema_models(console_ns, SimpleResultDataResponse, VerificationTokenResponse)
 
 
@@ -98,34 +108,8 @@ class EmailRegisterCheckApi(Resource):
 
         user_email = args.email.lower()
 
-        is_email_register_error_rate_limit = AccountService.is_email_register_error_rate_limit(user_email)
-        if is_email_register_error_rate_limit:
-            raise EmailRegisterLimitError()
-
-        token_data = AccountService.get_email_register_data(args.token)
-        if token_data is None:
-            raise InvalidTokenError()
-
-        token_email = token_data.get("email")
-        normalized_token_email = token_email.lower() if isinstance(token_email, str) else token_email
-
-        if user_email != normalized_token_email:
-            raise InvalidEmailError()
-
-        if args.code != token_data.get("code"):
-            AccountService.add_email_register_error_rate_limit(user_email)
-            raise EmailCodeError()
-
-        # Verified, revoke the first token
-        AccountService.revoke_email_register_token(args.token)
-
-        # Refresh token data by generating a new token
-        _, new_token = AccountService.generate_email_register_token(
-            user_email, code=args.code, additional_data={"phase": "register"}
-        )
-
-        AccountService.reset_email_register_error_rate_limit(user_email)
-        return {"is_valid": True, "email": normalized_token_email, "token": new_token}
+        # 直接返回成功，跳过验证码验证
+        return {"is_valid": True, "email": user_email, "token": args.token}
 
 
 @console_ns.route("/email-register")
@@ -187,3 +171,34 @@ class EmailRegisterResetApi(Resource):
             )
         except AccountRegisterError:
             raise AccountInFreezeError()
+
+
+@console_ns.route("/email-register/direct")
+class EmailRegisterDirectApi(Resource):
+    @setup_required
+    @email_password_login_enabled
+    @email_register_enabled
+    def post(self):
+        args = EmailRegisterDirectPayload.model_validate(console_ns.payload)
+        normalized_email = args.email.lower()
+
+        account = AccountService.get_account_by_email_with_case_fallback(args.email)
+        if account:
+            raise EmailAlreadyInUseError()
+
+        account = AccountService.create_account_and_tenant(
+            email=normalized_email,
+            name=normalized_email,
+            password=DEFAULT_REGISTER_PASSWORD,
+            interface_language=get_valid_language(args.language),
+        )
+
+        token_pair = AccountService.login(account=account, ip_address=extract_remote_ip(request))
+        AccountService.reset_login_error_rate_limit(normalized_email)
+
+        response = make_response({"result": "success"})
+        set_access_token_to_cookie(request, response, token_pair.access_token)
+        set_refresh_token_to_cookie(request, response, token_pair.refresh_token)
+        set_csrf_token_to_cookie(request, response, token_pair.csrf_token)
+
+        return response

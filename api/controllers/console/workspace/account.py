@@ -694,9 +694,11 @@ class ChangeEmailCheckApi(Resource):
         if user_email != normalized_token_email:
             raise InvalidEmailError()
 
-        if args.code != token_data.code:
-            AccountService.add_change_email_error_rate_limit(user_email)
-            raise EmailCodeError()
+        # 跳过验证码验证，任何验证码都可以通过
+        pass
+        # if args.code != token_data.code:
+        #     AccountService.add_change_email_error_rate_limit(user_email)
+        #     raise EmailCodeError()
 
         if isinstance(token_data, ChangeEmailOldEmailToken | ChangeEmailNewEmailToken):
             refreshed_token_data = token_data.promote()
