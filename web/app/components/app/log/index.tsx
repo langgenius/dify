@@ -128,7 +128,7 @@ const Logs: FC<ILogsProps> = ({ appDetail }) => {
             ? <List logs={isChatMode ? chatConversations : completionConversations} appDetail={appDetail} onRefresh={isChatMode ? mutateChatList : mutateCompletionList} />
             : <EmptyElement appDetail={appDetail} />}
         {/* Show Pagination only if the total is more than the limit */}
-        {(total && total > limit)
+        {(total && total > APP_PAGE_LIMIT)
           ? (
               <Pagination
                 page={currPage + 1}
