@@ -532,7 +532,7 @@ class ModelProviderAvailableModelApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def get(self, model_type):
+    def get(self, model_type: str):
         _, tenant_id = current_account_with_tenant()
         model_provider_service = ModelProviderService()
         models = model_provider_service.get_models_by_model_type(tenant_id=tenant_id, model_type=model_type)
