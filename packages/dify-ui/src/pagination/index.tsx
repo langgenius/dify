@@ -1,0 +1,592 @@
+'use client'
+
+import type { Button as BaseButtonNS } from '@base-ui/react/button'
+import type { ReactNode } from 'react'
+import { Button as BaseButton } from '@base-ui/react/button'
+import { mergeProps } from '@base-ui/react/merge-props'
+import { useRender } from '@base-ui/react/use-render'
+import { createContext, useContext, useMemo, useState } from 'react'
+import { cn } from '../cn'
+import {
+  NumberField,
+  NumberFieldGroup,
+  NumberFieldInput,
+} from '../number-field'
+import {
+  ToggleGroup,
+  ToggleGroupItem,
+} from '../toggle-group'
+
+type PageItem = number | 'ellipsis-start' | 'ellipsis-end'
+
+type PaginationContextValue = {
+  page: number
+  totalPages: number
+  disabled: boolean
+  onPageChange: (page: number) => void
+  items: PageItem[]
+}
+
+const PaginationContext = createContext<PaginationContextValue | null>(null)
+
+function usePaginationContext(component: string) {
+  const context = useContext(PaginationContext)
+
+  if (!context)
+    throw new Error(`${component} must be used inside PaginationRoot.`)
+
+  return context
+}
+
+function clampPage(page: number, totalPages: number) {
+  if (!Number.isFinite(page))
+    return 1
+
+  return Math.min(Math.max(Math.trunc(page), 1), Math.max(totalPages, 1))
+}
+
+function range(start: number, end: number) {
+  if (end < start)
+    return []
+
+  return Array.from({ length: end - start + 1 }, (_, index) => start + index)
+}
+
+type GetPageItemsOptions = {
+  page: number
+  totalPages: number
+  siblingCount: number
+  boundaryCount: number
+  visiblePageCount: number
+}
+
+function getPageItems({
+  page,
+  totalPages,
+  siblingCount,
+  boundaryCount,
+  visiblePageCount,
+}: GetPageItemsOptions): PageItem[] {
+  if (totalPages <= 0)
+    return []
+
+  const normalizedPage = clampPage(page, totalPages)
+  const normalizedBoundaryCount = Math.max(Math.trunc(boundaryCount), 1)
+  const normalizedSiblingCount = Math.max(Math.trunc(siblingCount), 0)
+  const windowSize = Math.max(
+    Math.trunc(visiblePageCount),
+    normalizedSiblingCount * 2 + 1,
+  )
+
+  if (totalPages <= windowSize + normalizedBoundaryCount)
+    return range(1, totalPages)
+
+  const nearStartEnd = windowSize
+  const nearEndStart = totalPages - windowSize + 1
+  const middleStart = Math.max(
+    normalizedBoundaryCount + 1,
+    normalizedPage - normalizedSiblingCount,
+  )
+  const middleEnd = Math.min(
+    totalPages - normalizedBoundaryCount,
+    normalizedPage + normalizedSiblingCount,
+  )
+
+  const windowPages = normalizedPage <= nearStartEnd - normalizedSiblingCount
+    ? range(1, nearStartEnd)
+    : normalizedPage >= nearEndStart + normalizedSiblingCount
+      ? range(nearEndStart, totalPages)
+      : range(middleStart, middleEnd)
+
+  const pageSet = new Set([
+    ...range(1, normalizedBoundaryCount),
+    ...windowPages,
+    ...range(totalPages - normalizedBoundaryCount + 1, totalPages),
+  ])
+  const pages = Array.from(pageSet)
+    .filter(item => item >= 1 && item <= totalPages)
+    .sort((a, b) => a - b)
+
+  return pages.reduce<PageItem[]>((items, item, index) => {
+    const previous = pages[index - 1]
+
+    if (previous && item - previous === 2)
+      items.push(previous + 1)
+    else if (previous && item - previous > 2)
+      items.push(item < normalizedPage ? 'ellipsis-start' : 'ellipsis-end')
+
+    items.push(item)
+    return items
+  }, [])
+}
+
+type PaginationRootState = {
+  page: number
+  totalPages: number
+  disabled: boolean
+}
+
+export type PaginationRootProps = Omit<
+  useRender.ComponentProps<'nav', PaginationRootState>,
+  'onChange'
+> & {
+  page: number
+  totalPages: number
+  onPageChange: (page: number) => void
+  siblingCount?: number
+  boundaryCount?: number
+  visiblePageCount?: number
+}
+
+export function PaginationRoot({
+  page,
+  totalPages,
+  onPageChange,
+  siblingCount = 1,
+  boundaryCount = 1,
+  visiblePageCount = 8,
+  render,
+  children,
+  ...props
+}: PaginationRootProps) {
+  const normalizedTotalPages = Math.max(Math.trunc(totalPages), 0)
+  const normalizedPage = clampPage(page, normalizedTotalPages)
+  const disabled = normalizedTotalPages <= 1
+  const items = useMemo(() => getPageItems({
+    page: normalizedPage,
+    totalPages: normalizedTotalPages,
+    siblingCount,
+    boundaryCount,
+    visiblePageCount,
+  }), [
+    boundaryCount,
+    normalizedPage,
+    normalizedTotalPages,
+    siblingCount,
+    visiblePageCount,
+  ])
+
+  const context = useMemo<PaginationContextValue>(() => ({
+    page: normalizedPage,
+    totalPages: normalizedTotalPages,
+    disabled,
+    onPageChange: nextPage => onPageChange(clampPage(nextPage, normalizedTotalPages)),
+    items,
+  }), [disabled, items, normalizedPage, normalizedTotalPages, onPageChange])
+
+  const defaultProps: useRender.ElementProps<'nav'> = {
+    'aria-label': 'Pagination',
+    'className': 'flex w-full min-w-0 items-center px-6 py-3 select-none',
+    'children': (
+      <PaginationContext.Provider value={context}>
+        {children}
+      </PaginationContext.Provider>
+    ),
+  }
+
+  return useRender({
+    defaultTagName: 'nav',
+    render,
+    state: {
+      page: normalizedPage,
+      totalPages: normalizedTotalPages,
+      disabled,
+    },
+    props: mergeProps<'nav'>(defaultProps, props),
+  })
+}
+
+export type PaginationNavigationProps = useRender.ComponentProps<'div'>
+
+export function PaginationNavigation({
+  render,
+  ...props
+}: PaginationNavigationProps) {
+  const defaultProps: useRender.ElementProps<'div'> = {
+    className: 'flex shrink-0 items-center gap-0.5 rounded-[10px] bg-background-section-burn p-0.5',
+  }
+
+  return useRender({
+    defaultTagName: 'div',
+    render,
+    props: mergeProps<'div'>(defaultProps, props),
+  })
+}
+
+type PaginationButtonProps = Omit<BaseButtonNS.Props, 'children'> & {
+  children?: ReactNode
+}
+
+const paginationArrowButtonClassName = [
+  'inline-flex size-7 shrink-0 touch-manipulation items-center justify-center rounded-lg border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg text-components-button-secondary-text shadow-xs outline-hidden backdrop-blur-[5px] transition-[background-color,border-color,color,box-shadow]',
+  'hover:border-components-button-secondary-border-hover hover:bg-components-button-secondary-bg-hover',
+  'focus-visible:ring-2 focus-visible:ring-components-input-border-hover',
+  'disabled:cursor-not-allowed disabled:border-components-button-secondary-border-disabled disabled:bg-components-button-secondary-bg-disabled disabled:text-components-button-secondary-text-disabled disabled:shadow-none',
+  'motion-reduce:transition-none',
+]
+
+export function PaginationPrevious({
+  className,
+  children,
+  'aria-label': ariaLabel,
+  ...props
+}: PaginationButtonProps) {
+  const pagination = usePaginationContext('PaginationPrevious')
+  const disabled = props.disabled || pagination.page <= 1 || pagination.disabled
+
+  return (
+    <BaseButton
+      {...props}
+      type="button"
+      aria-label={ariaLabel ?? 'Previous page'}
+      className={cn(paginationArrowButtonClassName, className)}
+      disabled={disabled}
+      onClick={(event) => {
+        props.onClick?.(event)
+
+        if (!event.defaultPrevented && !disabled)
+          pagination.onPageChange(pagination.page - 1)
+      }}
+    >
+      {children ?? <span className="i-ri-arrow-left-line size-4" aria-hidden="true" />}
+    </BaseButton>
+  )
+}
+
+export function PaginationNext({
+  className,
+  children,
+  'aria-label': ariaLabel,
+  ...props
+}: PaginationButtonProps) {
+  const pagination = usePaginationContext('PaginationNext')
+  const disabled = props.disabled || pagination.page >= pagination.totalPages || pagination.disabled
+
+  return (
+    <BaseButton
+      {...props}
+      type="button"
+      aria-label={ariaLabel ?? 'Next page'}
+      className={cn(paginationArrowButtonClassName, className)}
+      disabled={disabled}
+      onClick={(event) => {
+        props.onClick?.(event)
+
+        if (!event.defaultPrevented && !disabled)
+          pagination.onPageChange(pagination.page + 1)
+      }}
+    >
+      {children ?? <span className="i-ri-arrow-right-line size-4" aria-hidden="true" />}
+    </BaseButton>
+  )
+}
+
+export type PaginationPageJumpProps = Omit<BaseButtonNS.Props, 'children'> & {
+  inputLabel?: string
+  children?: ReactNode
+}
+
+export function PaginationPageJump({
+  className,
+  inputLabel = 'Page number',
+  children,
+  'aria-label': ariaLabel,
+  ...props
+}: PaginationPageJumpProps) {
+  const pagination = usePaginationContext('PaginationPageJump')
+  const [editing, setEditing] = useState(false)
+
+  const commitInputValue = (value: string) => {
+    const nextPage = Number.parseInt(value, 10)
+
+    if (Number.isFinite(nextPage))
+      pagination.onPageChange(nextPage)
+
+    setEditing(false)
+  }
+
+  if (editing) {
+    return (
+      <NumberField
+        key={pagination.page}
+        defaultValue={pagination.page}
+        min={1}
+        max={Math.max(pagination.totalPages, 1)}
+      >
+        <NumberFieldGroup className="h-7 w-14 rounded-lg border-[0.5px] border-components-input-border-active bg-components-input-bg-active shadow-xs">
+          <NumberFieldInput
+            aria-label={inputLabel}
+            autoFocus
+            className="px-2 py-1 text-center tabular-nums"
+            onBlur={event => commitInputValue(event.currentTarget.value)}
+            onFocus={(event) => {
+              const input = event.currentTarget
+              requestAnimationFrame(() => input.select())
+            }}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter')
+                commitInputValue(event.currentTarget.value)
+
+              if (event.key === 'Escape') {
+                setEditing(false)
+              }
+            }}
+          />
+        </NumberFieldGroup>
+      </NumberField>
+    )
+  }
+
+  return (
+    <BaseButton
+      {...props}
+      type="button"
+      aria-label={ariaLabel ?? `Page ${pagination.page} of ${pagination.totalPages}`}
+      className={cn(
+        'inline-flex h-7 min-w-14 touch-manipulation items-center justify-center gap-0.5 rounded-lg px-2 system-xs-medium tabular-nums text-text-secondary outline-hidden transition-colors hover:cursor-text hover:bg-state-base-hover-alt focus-visible:ring-2 focus-visible:ring-components-input-border-hover motion-reduce:transition-none',
+        className,
+      )}
+      onClick={(event) => {
+        props.onClick?.(event)
+
+        if (!event.defaultPrevented)
+          setEditing(true)
+      }}
+    >
+      {children ?? (
+        <>
+          <span>{pagination.page}</span>
+          <span className="text-text-quaternary">/</span>
+          <span>{pagination.totalPages}</span>
+        </>
+      )}
+    </BaseButton>
+  )
+}
+
+export type PaginationPageListProps = useRender.ComponentProps<'ol'>
+
+export function PaginationPageList({
+  render,
+  ...props
+}: PaginationPageListProps) {
+  const pagination = usePaginationContext('PaginationPageList')
+  const defaultProps: useRender.ElementProps<'ol'> = {
+    className: 'flex min-w-0 grow list-none items-center justify-center gap-1',
+    children: pagination.items.map(item => (
+      <li key={item}>
+        {typeof item === 'number'
+          ? <PaginationPage page={item} />
+          : <PaginationEllipsis />}
+      </li>
+    )),
+  }
+
+  return useRender({
+    defaultTagName: 'ol',
+    render,
+    props: mergeProps<'ol'>(defaultProps, props),
+  })
+}
+
+export type PaginationPageProps = Omit<BaseButtonNS.Props, 'children'> & {
+  page: number
+  children?: ReactNode
+}
+
+export function PaginationPage({
+  page,
+  className,
+  children,
+  'aria-label': ariaLabel,
+  ...props
+}: PaginationPageProps) {
+  const pagination = usePaginationContext('PaginationPage')
+  const current = page === pagination.page
+
+  return (
+    <BaseButton
+      {...props}
+      type="button"
+      aria-current={current ? 'page' : undefined}
+      aria-label={ariaLabel ?? (current ? `Page ${page}, current page` : `Go to page ${page}`)}
+      className={cn(
+        'inline-flex size-8 touch-manipulation items-center justify-center rounded-lg px-1 py-2 system-sm-medium tabular-nums text-text-tertiary outline-hidden transition-colors hover:bg-components-button-ghost-bg-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-components-input-border-hover',
+        current && 'bg-components-button-tertiary-bg text-components-button-tertiary-text hover:bg-components-button-ghost-bg-hover',
+        'motion-reduce:transition-none',
+        className,
+      )}
+      onClick={(event) => {
+        props.onClick?.(event)
+
+        if (!event.defaultPrevented)
+          pagination.onPageChange(page)
+      }}
+    >
+      {children ?? page}
+    </BaseButton>
+  )
+}
+
+export type PaginationEllipsisProps = useRender.ComponentProps<'span'>
+
+export function PaginationEllipsis({
+  render,
+  ...props
+}: PaginationEllipsisProps) {
+  const defaultProps: useRender.ElementProps<'span'> = {
+    'aria-hidden': true,
+    'className': 'flex size-8 items-center justify-center px-1 py-2 system-sm-medium text-text-tertiary',
+    'children': '…',
+  }
+
+  return useRender({
+    defaultTagName: 'span',
+    render,
+    props: mergeProps<'span'>(defaultProps, props),
+  })
+}
+
+export type PaginationPageSizeProps<Value extends number = number> = {
+  'value': Value
+  'options': readonly Value[]
+  'onValueChange': (value: Value) => void
+  'label'?: ReactNode
+  'aria-label'?: string
+  'className'?: string
+}
+
+export function PaginationPageSize<Value extends number = number>({
+  value,
+  options,
+  onValueChange,
+  label = 'Items per page',
+  'aria-label': ariaLabel = 'Items per page',
+  className,
+}: PaginationPageSizeProps<Value>) {
+  return (
+    <div className={cn('group/page-size flex shrink-0 items-center gap-2', className)}>
+      <div className="min-w-12 shrink-0 text-end system-2xs-regular-uppercase text-text-tertiary opacity-0 transition-opacity group-hover/page-size:opacity-100 group-focus-within/page-size:opacity-100 motion-reduce:transition-none">
+        {label}
+      </div>
+      <ToggleGroup
+        value={[String(value)]}
+        aria-label={ariaLabel}
+        onValueChange={(nextValue) => {
+          const [selectedValue] = nextValue
+
+          if (!selectedValue)
+            return
+
+          const selectedOption = options.find(option => String(option) === selectedValue)
+
+          if (selectedOption !== undefined)
+            onValueChange(selectedOption)
+        }}
+      >
+        {options.map(option => (
+          <ToggleGroupItem
+            key={option}
+            value={String(option)}
+            className="min-w-9"
+          >
+            {option}
+          </ToggleGroupItem>
+        ))}
+      </ToggleGroup>
+    </div>
+  )
+}
+
+export type PaginationLabels = {
+  previous?: string
+  next?: string
+  pageSummary?: (page: number, totalPages: number) => string
+  pageNumberInput?: string
+}
+
+export type PaginationPageSizeConfig<Value extends number = number> = {
+  value: Value
+  options: readonly Value[]
+  onValueChange: (value: Value) => void
+  label?: ReactNode
+  ariaLabel?: string
+}
+
+export type PaginationProps<Value extends number = number> = Omit<PaginationRootProps, 'children'> & {
+  labels?: PaginationLabels
+  pageSize?: PaginationPageSizeConfig<Value>
+}
+
+export function Pagination<Value extends number = number>({
+  labels,
+  pageSize,
+  page,
+  totalPages,
+  onPageChange,
+  ...props
+}: PaginationProps<Value>) {
+  const normalizedTotalPages = Math.max(Math.trunc(totalPages), 0)
+  const normalizedPage = clampPage(page, normalizedTotalPages)
+
+  return (
+    <PaginationRoot
+      page={page}
+      totalPages={totalPages}
+      onPageChange={onPageChange}
+      {...props}
+    >
+      <PaginationNavigation>
+        <PaginationPrevious aria-label={labels?.previous} />
+        <PaginationPageJump
+          aria-label={labels?.pageSummary?.(normalizedPage, normalizedTotalPages)}
+          inputLabel={labels?.pageNumberInput}
+        />
+        <PaginationNext aria-label={labels?.next} />
+      </PaginationNavigation>
+      <PaginationPageList />
+      {pageSize && (
+        <PaginationPageSize
+          value={pageSize.value}
+          options={pageSize.options}
+          onValueChange={pageSize.onValueChange}
+          label={pageSize.label}
+          aria-label={pageSize.ariaLabel}
+        />
+      )}
+    </PaginationRoot>
+  )
+}
+
+export type PaginationSkeletonProps = useRender.ComponentProps<'div'>
+
+export function PaginationSkeleton({
+  render,
+  ...props
+}: PaginationSkeletonProps) {
+  const defaultProps: useRender.ElementProps<'div'> = {
+    'aria-hidden': true,
+    'className': 'flex w-full min-w-0 items-center px-6 py-3 select-none',
+    'children': (
+      <>
+        <div className="flex shrink-0 items-center gap-0.5 rounded-[10px] bg-background-section-burn p-0.5">
+          <div className="size-7 animate-pulse rounded-lg bg-state-base-hover motion-reduce:animate-none" />
+          <div className="h-7 w-14 animate-pulse rounded-lg bg-state-base-hover motion-reduce:animate-none" />
+          <div className="size-7 animate-pulse rounded-lg bg-state-base-hover motion-reduce:animate-none" />
+        </div>
+        <div className="flex grow items-center justify-center gap-1">
+          {range(1, 8).map(item => (
+            <div key={item} className="size-8 animate-pulse rounded-lg bg-state-base-hover motion-reduce:animate-none" />
+          ))}
+        </div>
+        <div className="h-8 w-24 animate-pulse rounded-[10px] bg-state-base-hover motion-reduce:animate-none" />
+      </>
+    ),
+  }
+
+  return useRender({
+    defaultTagName: 'div',
+    render,
+    props: mergeProps<'div'>(defaultProps, props),
+  })
+}
