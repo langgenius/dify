@@ -2421,7 +2421,7 @@ Condition detail
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| score_threshold | number |  | Yes |
+| score_threshold | number |  | No |
 | score_threshold_enabled | boolean |  | No |
 | top_k | integer |  | Yes |
 
