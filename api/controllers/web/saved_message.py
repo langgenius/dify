@@ -1,3 +1,5 @@
+from uuid import UUID
+
 from flask import request
 from pydantic import TypeAdapter
 from werkzeug.exceptions import NotFound
@@ -104,12 +106,12 @@ class SavedMessageApi(WebApiResource):
             500: "Internal Server Error",
         }
     )
-    def delete(self, app_model, end_user, message_id):
-        message_id = str(message_id)
+    def delete(self, app_model, end_user, message_id: UUID):
+        message_id_str = str(message_id)
 
         if app_model.mode != "completion":
             raise NotCompletionAppError()
 
-        SavedMessageService.delete(app_model, end_user, message_id)
+        SavedMessageService.delete(app_model, end_user, message_id_str)
 
         return "", 204
