@@ -64,6 +64,8 @@ class SegmentCreatePayload(BaseModel):
 class SegmentListQuery(BaseModel):
     status: list[str] = Field(default_factory=list)
     keyword: str | None = None
+    page: int = Field(default=1, ge=1)
+    limit: int = Field(default=20, ge=1)
 
 
 class SegmentUpdatePayload(BaseModel):
@@ -169,8 +171,6 @@ class SegmentApi(DatasetApiResource):
         _, current_tenant_id = current_account_with_tenant()
         """Get segments."""
         # check dataset
-        page = request.args.get("page", default=1, type=int)
-        limit = request.args.get("limit", default=20, type=int)
         dataset = db.session.scalar(
             select(Dataset).where(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id).limit(1)
         )
@@ -201,6 +201,8 @@ class SegmentApi(DatasetApiResource):
             {
                 "status": request.args.getlist("status"),
                 "keyword": request.args.get("keyword"),
+                "page": request.args.get("page"),
+                "limit": request.args.get("limit"),
             }
         )
 
@@ -209,17 +211,17 @@ class SegmentApi(DatasetApiResource):
             tenant_id=current_tenant_id,
             status_list=args.status,
             keyword=args.keyword,
-            page=page,
-            limit=limit,
+            page=args.page,
+            limit=args.limit,
         )
 
         response = {
             "data": _marshal_segments_with_summary(segments, dataset_id),
             "doc_form": document.doc_form,
             "total": total,
-            "has_more": len(segments) == limit,
-            "limit": limit,
-            "page": page,
+            "has_more": len(segments) == args.limit,
+            "limit": args.limit,
+            "page": args.page,
         }
 
         return response, 200
@@ -451,9 +453,9 @@ class ChildChunkApi(DatasetApiResource):
 
         args = ChildChunkListQuery.model_validate(
             {
-                "limit": request.args.get("limit", default=20, type=int),
+                "limit": request.args.get("limit"),
                 "keyword": request.args.get("keyword"),
-                "page": request.args.get("page", default=1, type=int),
+                "page": request.args.get("page"),
             }
         )
 
