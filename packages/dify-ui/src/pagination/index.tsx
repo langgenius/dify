@@ -291,19 +291,12 @@ export function PaginationPageJump({
   inputLabel = 'Page number',
   children,
   'aria-label': ariaLabel,
+  style,
   ...props
 }: PaginationPageJumpProps) {
   const pagination = usePaginationContext('PaginationPageJump')
   const [editing, setEditing] = useState(false)
-
-  const commitInputValue = (value: string) => {
-    const nextPage = Number.parseInt(value, 10)
-
-    if (Number.isFinite(nextPage))
-      pagination.onPageChange(nextPage)
-
-    setEditing(false)
-  }
+  const pageJumpWidth = `max(3.5rem, ${Math.max(String(pagination.page).length, String(pagination.totalPages).length) * 2 + 1}ch)`
 
   if (editing) {
     return (
@@ -312,22 +305,34 @@ export function PaginationPageJump({
         defaultValue={pagination.page}
         min={1}
         max={Math.max(pagination.totalPages, 1)}
+        onValueCommitted={(value) => {
+          if (value !== null)
+            pagination.onPageChange(value)
+
+          setEditing(false)
+        }}
       >
-        <NumberFieldGroup className="h-7 w-14 rounded-lg border-[0.5px] border-components-input-border-active bg-components-input-bg-active shadow-xs">
+        <NumberFieldGroup
+          className="h-7 rounded-lg border-[0.5px] border-components-input-border-active bg-components-input-bg-active shadow-xs"
+          style={{ width: pageJumpWidth }}
+        >
           <NumberFieldInput
             aria-label={inputLabel}
             autoFocus
             className="px-2 py-1 text-center tabular-nums"
-            onBlur={event => commitInputValue(event.currentTarget.value)}
+            onBlur={() => requestAnimationFrame(() => setEditing(false))}
             onFocus={(event) => {
               const input = event.currentTarget
               requestAnimationFrame(() => input.select())
             }}
             onKeyDown={(event) => {
-              if (event.key === 'Enter')
-                commitInputValue(event.currentTarget.value)
+              if (event.key === 'Enter') {
+                event.preventDefault()
+                event.currentTarget.blur()
+              }
 
               if (event.key === 'Escape') {
+                event.preventDefault()
                 setEditing(false)
               }
             }}
@@ -342,6 +347,7 @@ export function PaginationPageJump({
       {...props}
       type="button"
       aria-label={ariaLabel ?? `Page ${pagination.page} of ${pagination.totalPages}`}
+      style={{ width: pageJumpWidth, ...style }}
       className={cn(
         'inline-flex h-7 min-w-14 touch-manipulation items-center justify-center gap-0.5 rounded-lg px-2 system-xs-medium tabular-nums text-text-secondary outline-hidden transition-colors hover:cursor-text hover:bg-state-base-hover-alt focus-visible:ring-2 focus-visible:ring-components-input-border-hover motion-reduce:transition-none',
         className,
