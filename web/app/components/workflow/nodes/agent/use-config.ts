@@ -1,6 +1,7 @@
 import type { Memory, Var } from '../../types'
 import type { ToolVarInputs } from '../tool/types'
 import type { AgentNodeType } from './types'
+import { useQuery } from '@tanstack/react-query'
 import { produce } from 'immer'
 import { useCallback, useEffect, useMemo } from 'react'
 import { FormTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
@@ -9,6 +10,7 @@ import {
   useIsChatMode,
   useNodesReadOnly,
 } from '@/app/components/workflow/hooks'
+import { systemFeaturesQueryOptions } from '@/service/system-features'
 import { useCheckInstalled, useFetchPluginsInMarketPlaceByIds } from '@/service/use-plugins'
 import { useStrategyProviderDetail } from '@/service/use-strategy'
 import { VarType as VarKindType } from '../../types'
@@ -29,6 +31,10 @@ export const useStrategyInfo = (
   strategyProviderName?: string,
   strategyName?: string,
 ) => {
+  const { data: enableMarketplace } = useQuery({
+    ...systemFeaturesQueryOptions(),
+    select: s => s.enable_marketplace,
+  })
   const strategyProvider = useStrategyProviderDetail(
     strategyProviderName || '',
     { retry: false },
@@ -38,6 +44,7 @@ export const useStrategyInfo = (
   )
   const marketplace = useFetchPluginsInMarketPlaceByIds([strategyProviderName!], {
     retry: false,
+    enabled: enableMarketplace && !!strategyProviderName,
   })
   const strategyStatus: StrategyStatus | undefined = useMemo(() => {
     if (strategyProvider.isLoading || marketplace.isLoading)
