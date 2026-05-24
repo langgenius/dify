@@ -53,7 +53,7 @@ export type DataSet = {
   id: string
   name: string
   indexing_status: DocumentIndexingStatus
-  icon_info: IconInfo
+  icon_info: IconInfo | null
   description: string
   permission: DatasetPermission
   data_source_type: DataSourceType
