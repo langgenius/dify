@@ -105,7 +105,7 @@ class RagPipelineImportConfirmApi(Resource):
     @account_initialization_required
     @edit_permission_required
     @marshal_with(pipeline_import_model)
-    def post(self, import_id):
+    def post(self, import_id: str):
         current_user, _ = current_account_with_tenant()
 
         with Session(db.engine, expire_on_commit=False) as session:
