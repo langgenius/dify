@@ -1,6 +1,7 @@
 'use client'
 import type { FC } from 'react'
 import type { App } from '@/types/app'
+import { Pagination } from '@langgenius/dify-ui/pagination'
 import { useDebounce } from 'ahooks'
 import dayjs from 'dayjs'
 import timezone from 'dayjs/plugin/timezone'
@@ -11,7 +12,6 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import EmptyElement from '@/app/components/app/log/empty-element'
 import Loading from '@/app/components/base/loading'
-import Pagination from '@/app/components/base/pagination'
 import { APP_PAGE_LIMIT } from '@/config'
 import { useAppContext } from '@/context/app-context'
 import { useWorkflowLogs } from '@/service/use-log'
@@ -59,6 +59,7 @@ const Logs: FC<ILogsProps> = ({ appDetail }) => {
     params: query,
   })
   const total = workflowLogs?.total
+  const totalPages = total ? Math.max(Math.ceil(total / limit), 1) : 1
 
   return (
     <div className="flex h-full flex-col">
@@ -73,14 +74,25 @@ const Logs: FC<ILogsProps> = ({ appDetail }) => {
             ? <List logs={workflowLogs} appDetail={appDetail} onRefresh={mutate} />
             : <EmptyElement appDetail={appDetail} />}
         {/* Show Pagination only if the total is more than the limit */}
-        {(total && total > APP_PAGE_LIMIT)
+        {(total && total > limit)
           ? (
               <Pagination
-                current={currPage}
-                onChange={setCurrPage}
-                total={total}
-                limit={limit}
-                onLimitChange={setLimit}
+                page={currPage + 1}
+                totalPages={totalPages}
+                onPageChange={page => setCurrPage(page - 1)}
+                labels={{
+                  previous: t('pagination.previous', { ns: 'common' }),
+                  next: t('pagination.next', { ns: 'common' }),
+                  pageSummary: (page, totalPages) => t('pagination.pageSummary', { ns: 'common', page, totalPages }),
+                  pageNumberInput: t('pagination.pageNumber', { ns: 'common' }),
+                }}
+                pageSize={{
+                  value: limit,
+                  options: [10, 25, 50],
+                  onValueChange: setLimit,
+                  label: t('pagination.perPage', { ns: 'common' }),
+                  ariaLabel: t('pagination.perPage', { ns: 'common' }),
+                }}
               />
             )
           : null}
