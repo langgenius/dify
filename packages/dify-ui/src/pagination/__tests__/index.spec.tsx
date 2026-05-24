@@ -64,6 +64,7 @@ describe('Pagination primitive', () => {
     await expect.element(screen.getByRole('button', { name: 'Previous page' })).toBeInTheDocument()
     await expect.element(screen.getByRole('button', { name: 'Next page' })).toBeInTheDocument()
     await expect.element(screen.getByRole('button', { name: 'Page 2 of 200' })).toHaveTextContent('2/200')
+    await expect.element(screen.getByRole('button', { name: 'Page 2 of 200' })).toHaveClass('h-7', 'min-w-14', 'px-1.5')
     await expect.element(screen.getByRole('button', { name: 'Page 2, current page' })).toHaveAttribute('aria-current', 'page')
     await expect.element(screen.getByRole('button', { name: 'Page 2, current page' })).toHaveClass('bg-components-button-tertiary-bg')
     await expect.element(screen.getByText('…')).toBeInTheDocument()

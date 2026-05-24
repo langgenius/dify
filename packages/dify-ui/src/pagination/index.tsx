@@ -291,12 +291,10 @@ export function PaginationPageJump({
   inputLabel = 'Page number',
   children,
   'aria-label': ariaLabel,
-  style,
   ...props
 }: PaginationPageJumpProps) {
   const pagination = usePaginationContext('PaginationPageJump')
   const [editing, setEditing] = useState(false)
-  const pageJumpWidth = `max(3.5rem, ${Math.max(String(pagination.page).length, String(pagination.totalPages).length) * 2 + 1}ch)`
 
   if (editing) {
     return (
@@ -313,13 +311,12 @@ export function PaginationPageJump({
         }}
       >
         <NumberFieldGroup
-          className="h-7 rounded-lg border-[0.5px] border-components-input-border-active bg-components-input-bg-active shadow-xs"
-          style={{ width: pageJumpWidth }}
+          className="h-7 min-w-14 rounded-lg border-[0.5px] border-components-input-border-active bg-components-input-bg-active shadow-xs"
         >
           <NumberFieldInput
             aria-label={inputLabel}
             autoFocus
-            className="px-2 py-1 text-center tabular-nums"
+            className="px-1.5 py-1.5 text-center system-xs-medium tabular-nums"
             onBlur={() => requestAnimationFrame(() => setEditing(false))}
             onFocus={(event) => {
               const input = event.currentTarget
@@ -347,9 +344,8 @@ export function PaginationPageJump({
       {...props}
       type="button"
       aria-label={ariaLabel ?? `Page ${pagination.page} of ${pagination.totalPages}`}
-      style={{ width: pageJumpWidth, ...style }}
       className={cn(
-        'inline-flex h-7 min-w-14 touch-manipulation items-center justify-center gap-0.5 rounded-lg px-2 system-xs-medium tabular-nums text-text-secondary outline-hidden transition-colors hover:cursor-text hover:bg-state-base-hover-alt focus-visible:ring-2 focus-visible:ring-components-input-border-hover motion-reduce:transition-none',
+        'inline-flex h-7 min-w-14 touch-manipulation items-center justify-center gap-0.5 rounded-lg px-1.5 py-1.5 system-xs-medium tabular-nums text-text-secondary outline-hidden transition-colors hover:cursor-text hover:bg-state-base-hover-alt focus-visible:ring-2 focus-visible:ring-components-input-border-hover motion-reduce:transition-none',
         className,
       )}
       onClick={(event) => {
