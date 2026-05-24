@@ -60,11 +60,12 @@ describe('Pagination primitive', () => {
     const { screen } = await renderPagination()
 
     await expect.element(screen.getByRole('navigation', { name: 'Pagination' })).toHaveAttribute('data-page', '2')
-    await expect.element(screen.getByTestId('controls')).toHaveClass('rounded-[10px]', 'bg-background-section-burn')
+    await expect.element(screen.getByTestId('controls')).toHaveClass('w-45', 'items-start')
+    expect(screen.getByTestId('controls').element().firstElementChild).toHaveClass('rounded-[10px]', 'bg-background-section-burn')
     await expect.element(screen.getByRole('button', { name: 'Previous page' })).toBeInTheDocument()
     await expect.element(screen.getByRole('button', { name: 'Next page' })).toBeInTheDocument()
-    await expect.element(screen.getByRole('button', { name: 'Page 2 of 200' })).toHaveTextContent('2/200')
-    await expect.element(screen.getByRole('button', { name: 'Page 2 of 200' })).toHaveClass('h-7', 'min-w-14', 'px-1.5')
+    await expect.element(screen.getByRole('button', { name: 'Edit page number, current page 2 of 200' })).toHaveTextContent('2/200')
+    await expect.element(screen.getByRole('button', { name: 'Edit page number, current page 2 of 200' })).toHaveClass('h-7', 'min-w-14', 'px-1.5')
     await expect.element(screen.getByRole('button', { name: 'Page 2, current page' })).toHaveAttribute('aria-current', 'page')
     await expect.element(screen.getByRole('button', { name: 'Page 2, current page' })).toHaveClass('bg-components-button-tertiary-bg')
     await expect.element(screen.getByText('…')).toBeInTheDocument()
@@ -104,7 +105,7 @@ describe('Pagination primitive', () => {
   it('switches the page summary into a selected labelled number field', async () => {
     const { screen } = await renderPagination()
 
-    asHTMLElement(screen.getByRole('button', { name: 'Page 2 of 200' }).element()).click()
+    asHTMLElement(screen.getByRole('button', { name: 'Edit page number, current page 2 of 200' }).element()).click()
 
     await expect.element(screen.getByRole('textbox', { name: 'Page number' })).toBeInTheDocument()
     const input = asHTMLElement(screen.getByRole('textbox', { name: 'Page number' }).element()) as HTMLInputElement
@@ -120,11 +121,56 @@ describe('Pagination primitive', () => {
   it('returns to the summary button when the page input loses focus', async () => {
     const { screen } = await renderPagination()
 
-    asHTMLElement(screen.getByRole('button', { name: 'Page 2 of 200' }).element()).click()
+    asHTMLElement(screen.getByRole('button', { name: 'Edit page number, current page 2 of 200' }).element()).click()
     await expect.element(screen.getByRole('textbox', { name: 'Page number' })).toBeInTheDocument()
     asHTMLElement(screen.getByRole('textbox', { name: 'Page number' }).element()).blur()
 
-    await expect.element(screen.getByRole('button', { name: 'Page 2 of 200' })).toBeInTheDocument()
+    await expect.element(screen.getByRole('button', { name: 'Edit page number, current page 2 of 200' })).toBeInTheDocument()
+  })
+
+  it('commits the page input editing mode with Enter', async () => {
+    const { screen } = await renderPagination()
+
+    asHTMLElement(screen.getByRole('button', { name: 'Edit page number, current page 2 of 200' }).element()).click()
+    await expect.element(screen.getByRole('textbox', { name: 'Page number' })).toBeInTheDocument()
+    const input = asHTMLElement(screen.getByRole('textbox', { name: 'Page number' }).element()) as HTMLInputElement
+
+    await vi.waitFor(() => {
+      expect(document.activeElement).toBe(input)
+    })
+
+    input.dispatchEvent(new KeyboardEvent('keydown', {
+      key: 'Enter',
+      bubbles: true,
+      cancelable: true,
+    }))
+
+    await expect.element(screen.getByRole('button', { name: 'Edit page number, current page 2 of 200' })).toBeInTheDocument()
+  })
+
+  it('cancels the page input editing mode with Escape', async () => {
+    const { screen, onPageChange } = await renderPagination()
+
+    asHTMLElement(screen.getByRole('button', { name: 'Edit page number, current page 2 of 200' }).element()).click()
+    await expect.element(screen.getByRole('textbox', { name: 'Page number' })).toBeInTheDocument()
+    const input = asHTMLElement(screen.getByRole('textbox', { name: 'Page number' }).element()) as HTMLInputElement
+
+    await vi.waitFor(() => {
+      expect(document.activeElement).toBe(input)
+    })
+
+    input.dispatchEvent(new KeyboardEvent('keydown', {
+      key: 'Escape',
+      bubbles: true,
+      cancelable: true,
+    }))
+
+    const summaryButton = screen.getByRole('button', { name: 'Edit page number, current page 2 of 200' })
+    await expect.element(summaryButton).toBeInTheDocument()
+    await vi.waitFor(() => {
+      expect(document.activeElement).toBe(summaryButton.element())
+    })
+    expect(onPageChange).not.toHaveBeenCalled()
   })
 
   it('uses Base UI ToggleGroup semantics for page size', async () => {
@@ -132,6 +178,7 @@ describe('Pagination primitive', () => {
 
     await expect.element(screen.getByRole('group', { name: 'Items per page' })).toHaveClass('bg-components-segmented-control-bg-normal')
     await expect.element(screen.getByRole('button', { name: '25' })).toHaveAttribute('aria-pressed', 'true')
+    await expect.element(screen.getByRole('button', { name: '25' })).toHaveClass('data-pressed:text-text-primary')
 
     asHTMLElement(screen.getByRole('button', { name: '50' }).element()).click()
 
@@ -153,8 +200,29 @@ describe('Pagination primitive', () => {
       />,
     )
 
-    await expect.element(screen.getByRole('button', { name: 'Page 2 of 10' })).toBeInTheDocument()
+    await expect.element(screen.getByRole('button', { name: 'Edit page number, current page 2 of 10' })).toBeInTheDocument()
     await expect.element(screen.getByRole('group', { name: 'Items per page' })).toBeInTheDocument()
+  })
+
+  it('does not expose invalid page controls when there are no pages', async () => {
+    const screen = await render(
+      <Pagination
+        page={1}
+        totalPages={0}
+        onPageChange={vi.fn()}
+      />,
+    )
+
+    expect(screen.container.querySelector('nav[aria-label="Pagination"]')).not.toBeInTheDocument()
+    expect(screen.container.querySelector('button[aria-label*="current page 1 of 0"]')).not.toBeInTheDocument()
+  })
+
+  it('omits compound page jump and page list content for empty pagination state', async () => {
+    const { screen } = await renderPagination({ page: 1, totalPages: 0 })
+
+    await expect.element(screen.getByRole('navigation', { name: 'Pagination' })).toHaveAttribute('data-page', '1')
+    expect(screen.container.querySelector('button[aria-label*="current page 1 of 0"]')).not.toBeInTheDocument()
+    expect(screen.container.querySelector('ol')).not.toBeInTheDocument()
   })
 
   it('allows custom page rendering while keeping the shared context', async () => {
