@@ -403,6 +403,8 @@ export type SegmentCreatePayload = {
 
 export type SegmentListQuery = {
   keyword?: string | null
+  limit?: number
+  page?: number
   status?: Array<string>
 }
 
@@ -1877,6 +1879,8 @@ export type GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsData = {
   }
   query?: {
     keyword?: string | null
+    limit?: number
+    page?: number
     status?: Array<string>
   }
   url: '/datasets/{dataset_id}/documents/{document_id}/segments'

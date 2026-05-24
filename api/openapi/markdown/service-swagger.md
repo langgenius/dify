@@ -2610,6 +2610,8 @@ Metadata operation data
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | keyword | string |  | No |
+| limit | integer |  | No |
+| page | integer |  | No |
 | status | [ string ] |  | No |
 
 #### SegmentUpdateArgs
