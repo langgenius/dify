@@ -332,46 +332,52 @@ export function PaginationPageJump({
 
   if (editing) {
     return (
-      <NumberField
-        key={pagination.page}
-        defaultValue={pagination.page}
-        min={1}
-        max={Math.max(pagination.totalPages, 1)}
-        onValueCommitted={(value) => {
-          if (value !== null)
-            pagination.onPageChange(value)
-
-          setEditing(false)
-        }}
+      <span
+        data-page-summary={`${pagination.page}/${pagination.totalPages}`}
+        className="inline-grid h-7 system-xs-medium tabular-nums after:invisible after:col-start-1 after:row-start-1 after:py-1.5 after:pr-3 after:pl-2 after:content-[attr(data-page-summary)]"
       >
-        <NumberFieldGroup
-          className="h-7 min-w-14 rounded-lg border-[0.5px] border-components-input-border-active bg-components-input-bg-active shadow-xs"
-        >
-          <NumberFieldInput
-            aria-label={inputLabel}
-            autoFocus
-            className="px-1.5 py-1.5 text-center system-xs-medium tabular-nums"
-            onBlur={() => requestAnimationFrame(() => setEditing(false))}
-            onFocus={(event) => {
-              const input = event.currentTarget
-              requestAnimationFrame(() => input.select())
-            }}
-            onKeyDown={(event) => {
-              if (event.key === 'Enter') {
-                event.preventDefault()
-                event.currentTarget.blur()
-                return
-              }
+        <NumberField
+          key={pagination.page}
+          className="col-start-1 row-start-1 w-full"
+          defaultValue={pagination.page}
+          min={1}
+          max={Math.max(pagination.totalPages, 1)}
+          onValueCommitted={(value) => {
+            if (value !== null)
+              pagination.onPageChange(value)
 
-              if (event.key === 'Escape') {
-                event.preventDefault()
-                setEditing(false)
-                requestAnimationFrame(() => summaryButtonRef.current?.focus())
-              }
-            }}
-          />
-        </NumberFieldGroup>
-      </NumberField>
+            setEditing(false)
+          }}
+        >
+          <NumberFieldGroup
+            className="h-7 w-full min-w-0 rounded-lg border-[0.5px] border-components-input-border-active bg-components-input-bg-active shadow-xs"
+          >
+            <NumberFieldInput
+              aria-label={inputLabel}
+              autoFocus
+              className="px-2 py-1.5 text-center system-xs-medium tabular-nums"
+              onBlur={() => requestAnimationFrame(() => setEditing(false))}
+              onFocus={(event) => {
+                const input = event.currentTarget
+                requestAnimationFrame(() => input.select())
+              }}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter') {
+                  event.preventDefault()
+                  event.currentTarget.blur()
+                  return
+                }
+
+                if (event.key === 'Escape') {
+                  event.preventDefault()
+                  setEditing(false)
+                  requestAnimationFrame(() => summaryButtonRef.current?.focus())
+                }
+              }}
+            />
+          </NumberFieldGroup>
+        </NumberField>
+      </span>
     )
   }
 
@@ -382,7 +388,7 @@ export function PaginationPageJump({
       type="button"
       aria-label={ariaLabel ?? `Edit page number, current page ${pagination.page} of ${pagination.totalPages}`}
       className={cn(
-        'inline-flex h-7 min-w-14 touch-manipulation items-center justify-center gap-0.5 rounded-lg px-1.5 py-1.5 system-xs-medium tabular-nums text-text-secondary outline-hidden transition-colors hover:cursor-text hover:bg-state-base-hover-alt focus-visible:ring-2 focus-visible:ring-components-input-border-hover motion-reduce:transition-none',
+        'inline-flex h-7 touch-manipulation items-center justify-center gap-0.5 rounded-lg px-2 py-1.5 system-xs-medium tabular-nums text-text-secondary outline-hidden transition-colors hover:cursor-text hover:bg-state-base-hover-alt focus-visible:ring-2 focus-visible:ring-components-input-border-hover motion-reduce:transition-none',
         className,
       )}
       onClick={(event) => {
