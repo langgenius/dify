@@ -222,10 +222,11 @@ export function PaginationContent({
 
 export function PaginationNavigation({
   render,
+  className,
   ...props
 }: PaginationNavigationProps) {
   const defaultProps: useRender.ElementProps<'div'> = {
-    className: 'flex shrink-0 items-center gap-0.5 rounded-[10px] bg-background-section-burn p-0.5',
+    className: cn('flex shrink-0 items-center justify-self-start gap-0.5 rounded-[10px] bg-background-section-burn p-0.5', className),
   }
 
   return useRender({
@@ -413,6 +414,7 @@ export type PaginationPageListProps = useRender.ComponentProps<'ol'>
 
 export function PaginationPageList({
   render,
+  className,
   ...props
 }: PaginationPageListProps) {
   const pagination = usePaginationContext('PaginationPageList')
@@ -421,7 +423,7 @@ export function PaginationPageList({
     return null
 
   const defaultProps: useRender.ElementProps<'ol'> = {
-    className: 'flex min-w-0 list-none items-center gap-0.5',
+    className: cn('col-start-2 flex min-w-0 list-none items-center justify-self-center gap-0.5', className),
     children: pagination.items.map(item => (
       <li key={item}>
         {typeof item === 'number'
@@ -514,7 +516,7 @@ export function PaginationPageSize<Value extends number = number>({
   className,
 }: PaginationPageSizeProps<Value>) {
   return (
-    <div className={cn('group/page-size flex shrink-0 items-center justify-end gap-2', className)}>
+    <div className={cn('group/page-size col-start-3 flex shrink-0 items-center justify-end justify-self-end gap-2', className)}>
       <div className="w-13 shrink-0 text-end system-2xs-regular-uppercase text-text-tertiary opacity-0 transition-opacity group-hover/page-size:opacity-100 group-focus-within/page-size:opacity-100 motion-reduce:transition-none">
         {label}
       </div>
@@ -590,7 +592,7 @@ export function Pagination<Value extends number = number>({
       {...props}
     >
       <PaginationContent>
-        <PaginationNavigation className="justify-self-start">
+        <PaginationNavigation>
           <PaginationPrevious aria-label={labels?.previous} />
           <PaginationPageJump
             aria-label={editPageNumber}
@@ -598,7 +600,7 @@ export function Pagination<Value extends number = number>({
           />
           <PaginationNext aria-label={labels?.next} />
         </PaginationNavigation>
-        <PaginationPageList className="col-start-2 justify-self-center" />
+        <PaginationPageList />
         {pageSize && (
           <PaginationPageSize
             value={pageSize.value}
@@ -606,7 +608,6 @@ export function Pagination<Value extends number = number>({
             onValueChange={pageSize.onValueChange}
             label={pageSize.label}
             aria-label={pageSize.ariaLabel}
-            className="col-start-3 justify-self-end"
           />
         )}
       </PaginationContent>

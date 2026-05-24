@@ -64,7 +64,9 @@ describe('Pagination primitive', () => {
 
     await expect.element(screen.getByRole('navigation', { name: 'Pagination' })).toHaveAttribute('data-page', '2')
     await expect.element(screen.getByTestId('content')).toHaveClass('grid', 'grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]')
-    await expect.element(screen.getByTestId('controls')).toHaveClass('rounded-[10px]', 'bg-background-section-burn')
+    await expect.element(screen.getByTestId('controls')).toHaveClass('justify-self-start', 'rounded-[10px]', 'bg-background-section-burn')
+    await expect.element(screen.getByRole('list')).toHaveClass('col-start-2', 'justify-self-center')
+    expect(screen.getByRole('group', { name: 'Items per page' }).element().parentElement).toHaveClass('col-start-3', 'justify-self-end')
     await expect.element(screen.getByRole('button', { name: 'Previous page' })).toBeInTheDocument()
     await expect.element(screen.getByRole('button', { name: 'Next page' })).toBeInTheDocument()
     await expect.element(screen.getByRole('button', { name: 'Edit page number, current page 2 of 200' })).toHaveTextContent('2/200')
