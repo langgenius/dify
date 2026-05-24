@@ -1,8 +1,11 @@
 import re
+from unittest.mock import MagicMock
 
 import pytest
 
+from factories.file_factory import builders
 from factories.file_factory.remote import extract_filename, get_remote_file_info
+from graphon.file import FileTransferMethod
 
 
 class _FakeResponse:
@@ -291,3 +294,92 @@ class TestExtractFilename:
         """Test bare path (not full URL) with query string."""
         result = extract_filename("/path/to/file.txt?extra=params", None)
         assert result == "file.txt"
+
+
+class TestBuildFromDatasourceFile:
+    """Tests for _build_from_datasource_file extension handling."""
+
+    @staticmethod
+    def _patch_session(monkeypatch: pytest.MonkeyPatch, datasource_file):
+        """Stub session_factory.create_session() so it returns the given UploadFile-shaped record."""
+        session = MagicMock()
+        session.scalar.return_value = datasource_file
+        ctx = MagicMock()
+        ctx.__enter__ = MagicMock(return_value=session)
+        ctx.__exit__ = MagicMock(return_value=False)
+        monkeypatch.setattr(builders.session_factory, "create_session", lambda: ctx)
+
+    def _make_datasource_file(self, *, key: str, mime_type: str = "text/csv"):
+        f = MagicMock()
+        f.id = "file-id"
+        f.key = key
+        f.name = key.split("/")[-1]
+        f.mime_type = mime_type
+        f.size = 123
+        f.source_url = f"https://example.com/{key}"
+        return f
+
+    def test_extension_passed_without_doubled_dot(self, monkeypatch: pytest.MonkeyPatch):
+        """Regression: standardize_file_type must receive the extension exactly once-prefixed.
+
+        Previously the call was ``standardize_file_type(extension="." + extension, ...)`` while
+        ``extension`` already had a leading dot, producing ``"..csv"``. The mitigating
+        ``lstrip(".")`` inside ``standardize_file_type`` masked the bug from end users, but the
+        argument shape itself was wrong and showed up in any caller that didn't strip dots.
+        """
+        captured: dict = {}
+
+        def fake_standardize(*, extension: str = "", mime_type: str = ""):
+            from graphon.file import FileType
+
+            captured["extension"] = extension
+            captured["mime_type"] = mime_type
+            return FileType.DOCUMENT
+
+        monkeypatch.setattr(builders, "standardize_file_type", fake_standardize)
+
+        datasource_file = self._make_datasource_file(key="folder/data.csv", mime_type="text/csv")
+        self._patch_session(monkeypatch, datasource_file)
+
+        access_controller = MagicMock()
+        access_controller.apply_upload_file_filters = lambda stmt: stmt
+
+        file = builders._build_from_datasource_file(
+            mapping={"datasource_file_id": "file-id", "transfer_method": "datasource_file"},
+            tenant_id="tenant-id",
+            transfer_method=FileTransferMethod.DATASOURCE_FILE,
+            access_controller=access_controller,
+        )
+
+        assert captured["extension"] == ".csv", (
+            f"standardize_file_type received {captured['extension']!r}; expected single-dot '.csv'"
+        )
+        assert captured["mime_type"] == "text/csv"
+        assert file.extension == ".csv"
+
+    def test_extension_falls_back_to_bin_when_key_has_no_dot(self, monkeypatch: pytest.MonkeyPatch):
+        captured: dict = {}
+
+        def fake_standardize(*, extension: str = "", mime_type: str = ""):
+            from graphon.file import FileType
+
+            captured["extension"] = extension
+            return FileType.CUSTOM
+
+        monkeypatch.setattr(builders, "standardize_file_type", fake_standardize)
+
+        datasource_file = self._make_datasource_file(key="dotless-key", mime_type="application/octet-stream")
+        self._patch_session(monkeypatch, datasource_file)
+
+        access_controller = MagicMock()
+        access_controller.apply_upload_file_filters = lambda stmt: stmt
+
+        file = builders._build_from_datasource_file(
+            mapping={"datasource_file_id": "file-id", "transfer_method": "datasource_file"},
+            tenant_id="tenant-id",
+            transfer_method=FileTransferMethod.DATASOURCE_FILE,
+            access_controller=access_controller,
+        )
+
+        assert captured["extension"] == ".bin"
+        assert file.extension == ".bin"

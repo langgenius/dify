@@ -11,19 +11,44 @@ import { useTranslation } from 'react-i18next'
 import Input from '@/app/components/base/input'
 import Loading from '@/app/components/base/loading'
 import { LICENSE_LINK } from '@/constants/link'
-import { setLocaleOnClient } from '@/i18n-config'
-import { languages, LanguagesSupported } from '@/i18n-config/language'
+import { useLocale } from '@/context/i18n'
+import { i18n, setLocaleOnClient } from '@/i18n-config'
+import { languages } from '@/i18n-config/language'
 import Link from '@/next/link'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { activateMember } from '@/service/common'
 import { systemFeaturesQueryOptions } from '@/service/system-features'
 import { useInvitationCheck } from '@/service/use-common'
-import { timezones } from '@/utils/timezone'
+import { getBrowserTimezone, timezones } from '@/utils/timezone'
 import { resolvePostLoginRedirect } from '../utils/post-login-redirect'
 
-type SelectOption = {
+type LanguageSelectOption = {
+  value: Locale
+  name: string
+}
+
+type TimezoneSelectOption = {
   value: string
   name: string
+}
+
+const LANGUAGE_OPTIONS: LanguageSelectOption[] = languages
+  .filter(item => item.supported)
+  .map(item => ({
+    value: item.value,
+    name: item.name,
+  }))
+
+const TIMEZONE_OPTIONS: TimezoneSelectOption[] = timezones.map(item => ({
+  value: String(item.value),
+  name: item.name,
+}))
+
+const getInitialLanguage = (locale: Locale): Locale => {
+  if (LANGUAGE_OPTIONS.some(item => item.value === locale))
+    return locale
+
+  return i18n.defaultLocale
 }
 
 export default function InviteSettingsPage() {
@@ -32,12 +57,24 @@ export default function InviteSettingsPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const token = decodeURIComponent(searchParams.get('invite_token') as string)
+  const locale = useLocale()
   const [name, setName] = useState('')
-  const [language, setLanguage] = useState(LanguagesSupported[0])
-  const [timezone, setTimezone] = useState(() => Intl.DateTimeFormat().resolvedOptions().timeZone || 'America/Los_Angeles')
-  const languageOptions: SelectOption[] = languages.filter(item => item.supported)
-  const selectedLanguage = languageOptions.find(item => item.value === language)
-  const selectedTimezone = timezones.find(item => item.value === timezone)
+  const [language, setLanguage] = useState(() => getInitialLanguage(locale))
+  const [timezone, setTimezone] = useState(() => getBrowserTimezone() || 'America/Los_Angeles')
+  const selectedLanguage = LANGUAGE_OPTIONS.find(item => item.value === language)
+  const selectedTimezone = TIMEZONE_OPTIONS.find(item => item.value === timezone)
+
+  const handleLanguageChange = (nextValue: string | null) => {
+    const nextLanguage = LANGUAGE_OPTIONS.find(item => item.value === nextValue)
+    if (nextLanguage)
+      setLanguage(nextLanguage.value)
+  }
+
+  const handleTimezoneChange = (nextValue: string | null) => {
+    const nextTimezone = TIMEZONE_OPTIONS.find(item => item.value === nextValue)
+    if (nextTimezone)
+      setTimezone(nextTimezone.value)
+  }
 
   const checkParams = {
     url: '/activate/check',
@@ -80,7 +117,7 @@ export default function InviteSettingsPage() {
     return (
       <div className="flex flex-col md:w-[400px]">
         <div className="mx-auto w-full">
-          <div className="mb-3 flex h-14 w-14 items-center justify-center rounded-2xl border border-components-panel-border-subtle text-2xl font-bold shadow-lg">🤷‍♂️</div>
+          <div className="mb-3 flex size-14 items-center justify-center rounded-2xl border border-components-panel-border-subtle text-2xl font-bold shadow-lg">🤷‍♂️</div>
           <h2 className="title-4xl-semi-bold text-text-primary">{t('invalid', { ns: 'login' })}</h2>
         </div>
         <div className="mx-auto mt-6 w-full">
@@ -94,8 +131,8 @@ export default function InviteSettingsPage() {
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="inline-flex h-14 w-14 items-center justify-center rounded-2xl border border-components-panel-border-subtle bg-background-default-dodge shadow-lg">
-        <RiAccountCircleLine className="h-6 w-6 text-2xl text-text-accent-light-mode-only" />
+      <div className="inline-flex size-14 items-center justify-center rounded-2xl border border-components-panel-border-subtle bg-background-default-dodge shadow-lg">
+        <RiAccountCircleLine className="size-6 text-2xl text-text-accent-light-mode-only" />
       </div>
       <div className="pt-2 pb-4">
         <h2 className="title-4xl-semi-bold text-text-primary">{t('setYourAccount', { ns: 'login' })}</h2>
@@ -123,23 +160,19 @@ export default function InviteSettingsPage() {
           </div>
         </div>
         <div className="mb-5">
-          <label htmlFor="name" className="my-2 system-md-semibold text-text-secondary">
+          <label htmlFor="interface_language" className="my-2 system-md-semibold text-text-secondary">
             {t('interfaceLanguage', { ns: 'login' })}
           </label>
           <div className="mt-1">
             <Select
               value={selectedLanguage?.value ?? null}
-              onValueChange={(nextValue) => {
-                if (!nextValue)
-                  return
-                setLanguage(nextValue as Locale)
-              }}
+              onValueChange={handleLanguageChange}
             >
-              <SelectTrigger size="large">
+              <SelectTrigger id="interface_language" size="large">
                 {selectedLanguage?.name ?? t('placeholder.select', { ns: 'common' })}
               </SelectTrigger>
-              <SelectContent popupClassName="w-(--anchor-width)">
-                {languageOptions.map(item => (
+              <SelectContent>
+                {LANGUAGE_OPTIONS.map(item => (
                   <SelectItem key={item.value} value={item.value}>
                     <SelectItemText>{item.name}</SelectItemText>
                     <SelectItemIndicator />
@@ -156,19 +189,15 @@ export default function InviteSettingsPage() {
           </label>
           <div className="mt-1">
             <Select
-              value={selectedTimezone ? String(selectedTimezone.value) : null}
-              onValueChange={(nextValue) => {
-                if (!nextValue)
-                  return
-                setTimezone(nextValue as string)
-              }}
+              value={selectedTimezone?.value ?? null}
+              onValueChange={handleTimezoneChange}
             >
-              <SelectTrigger size="large">
+              <SelectTrigger id="timezone" size="large">
                 {selectedTimezone?.name ?? t('placeholder.select', { ns: 'common' })}
               </SelectTrigger>
               <SelectContent>
-                {timezones.map(item => (
-                  <SelectItem key={item.value} value={String(item.value)}>
+                {TIMEZONE_OPTIONS.map(item => (
+                  <SelectItem key={item.value} value={item.value}>
                     <SelectItemText>{item.name}</SelectItemText>
                     <SelectItemIndicator />
                   </SelectItem>

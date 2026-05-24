@@ -38,6 +38,7 @@ const EditMetadatabatchItem: FC<Props> = ({
           )
         : (
             <InputCombined
+              label={payload.name}
               type={payload.type}
               value={payload.value}
               onChange={v => onChange({ ...payload, value: v as string })}

@@ -1,8 +1,10 @@
 'use client'
 import type { FC } from 'react'
-import type { ProcessStatus } from '../segment-add'
 import type { SegmentListContextValue } from './segment-list-context'
+import type { SegmentImportStatus } from '@/types/dataset'
+import { CheckboxGroup } from '@langgenius/dify-ui/checkbox-group'
 import { useCallback, useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import Divider from '@/app/components/base/divider'
 import Pagination from '@/app/components/base/pagination'
 import {
@@ -13,8 +15,11 @@ import {
 import { useInvalid } from '@/service/use-base'
 import { useDocumentContext } from '../context'
 import BatchAction from './common/batch-action'
-import { DrawerGroup, FullDocModeContent, GeneralModeContent, MenuBar } from './components'
+import { DrawerGroup } from './components/drawer-group'
+import MenuBar from './components/menu-bar'
+import { FullDocModeContent, GeneralModeContent } from './components/segment-list-content'
 import {
+  mergeCurrentPageSelectedSegmentIds,
   useChildSegmentData,
   useModalState,
   useSearchFilter,
@@ -32,7 +37,7 @@ type ICompletedProps = {
   embeddingAvailable: boolean
   showNewSegmentModal: boolean
   onNewSegmentModalChange: (state: boolean) => void
-  importStatus: ProcessStatus | string | undefined
+  importStatus: SegmentImportStatus | undefined
   archived?: boolean
 }
 
@@ -47,6 +52,7 @@ const Completed: FC<ICompletedProps> = ({
   importStatus,
   archived,
 }) => {
+  const { t } = useTranslation()
   const docForm = useDocumentContext(s => s.docForm)
 
   // Pagination state
@@ -63,8 +69,8 @@ const Completed: FC<ICompletedProps> = ({
     onNewSegmentModalChange,
   })
 
-  // Selection state (need segments first, so we use a placeholder initially)
-  const [segmentsForSelection, setSegmentsForSelection] = useState<string[]>([])
+  // Selection state
+  const selectionState = useSegmentSelection()
 
   // Invalidation hooks for child segment data
   const invalidChunkListAll = useInvalid(useChunkListAllKey)
@@ -93,21 +99,29 @@ const Completed: FC<ICompletedProps> = ({
   const segmentListDataHook = useSegmentListData({
     searchValue: searchFilter.searchValue,
     selectedStatus: searchFilter.selectedStatus,
-    selectedSegmentIds: segmentsForSelection,
+    selectedSegmentIds: selectionState.selectedSegmentIds,
     importStatus,
     currentPage,
     limit,
     onCloseSegmentDetail: modalState.onCloseSegmentDetail,
-    clearSelection: () => setSegmentsForSelection([]),
+    clearSelection: selectionState.clearSelection,
   })
 
-  // Selection state (with actual segments)
-  const selectionState = useSegmentSelection(segmentListDataHook.segments)
-
-  // Sync selection state for segment list data hook
-  useMemo(() => {
-    setSegmentsForSelection(selectionState.selectedSegmentIds)
-  }, [selectionState.selectedSegmentIds])
+  const segmentIds = useMemo(
+    () => segmentListDataHook.segments.map(segment => segment.id),
+    [segmentListDataHook.segments],
+  )
+  const currentPageSegmentIdSet = useMemo(() => new Set(segmentIds), [segmentIds])
+  const currentPageSelectedSegmentIds = useMemo(() => {
+    return selectionState.selectedSegmentIds.filter(segmentId => currentPageSegmentIdSet.has(segmentId))
+  }, [currentPageSegmentIdSet, selectionState.selectedSegmentIds])
+  const handleCurrentPageSelectedSegmentIdsChange = useCallback((nextCurrentPageSelectedSegmentIds: string[]) => {
+    selectionState.onSelectedSegmentIdsChange(mergeCurrentPageSelectedSegmentIds({
+      selectedSegmentIds: selectionState.selectedSegmentIds,
+      currentPageSegmentIds: segmentIds,
+      nextCurrentPageSelectedSegmentIds,
+    }))
+  }, [segmentIds, selectionState.selectedSegmentIds, selectionState.onSelectedSegmentIdsChange])
 
   // Child segment data
   const childSegmentDataHook = useChildSegmentData({
@@ -151,24 +165,6 @@ const Completed: FC<ICompletedProps> = ({
 
   return (
     <SegmentListContext.Provider value={contextValue}>
-      {/* Menu Bar */}
-      {!segmentListDataHook.isFullDocMode && (
-        <MenuBar
-          isAllSelected={selectionState.isAllSelected}
-          isSomeSelected={selectionState.isSomeSelected}
-          onSelectedAll={selectionState.onSelectedAll}
-          isLoading={segmentListDataHook.isLoadingSegmentList}
-          totalText={segmentListDataHook.totalText}
-          statusList={searchFilter.statusList}
-          selectDefaultValue={searchFilter.selectDefaultValue}
-          onChangeStatus={searchFilter.onChangeStatus}
-          inputValue={searchFilter.inputValue}
-          onInputChange={searchFilter.handleInputChange}
-          isCollapsed={modalState.isCollapsed}
-          toggleCollapsed={modalState.toggleCollapsed}
-        />
-      )}
-
       {/* Segment list */}
       {segmentListDataHook.isFullDocMode
         ? (
@@ -190,22 +186,40 @@ const Completed: FC<ICompletedProps> = ({
             />
           )
         : (
-            <GeneralModeContent
-              segmentListRef={segmentListDataHook.segmentListRef}
-              embeddingAvailable={embeddingAvailable}
-              isLoadingSegmentList={segmentListDataHook.isLoadingSegmentList}
-              segments={segmentListDataHook.segments}
-              selectedSegmentIds={selectionState.selectedSegmentIds}
-              onSelected={selectionState.onSelected}
-              onChangeSwitch={segmentListDataHook.onChangeSwitch}
-              onDelete={segmentListDataHook.onDelete}
-              onClickCard={modalState.onClickCard}
-              archived={archived}
-              onDeleteChildChunk={childSegmentDataHook.onDeleteChildChunk}
-              handleAddNewChildChunk={modalState.handleAddNewChildChunk}
-              onClickSlice={modalState.onClickSlice}
-              onClearFilter={searchFilter.onClearFilter}
-            />
+            <CheckboxGroup
+              aria-label={t('segment.chunk', { ns: 'datasetDocuments' })}
+              value={currentPageSelectedSegmentIds}
+              onValueChange={nextSegmentIds => handleCurrentPageSelectedSegmentIdsChange(nextSegmentIds)}
+              allValues={segmentIds}
+              className="flex min-h-0 grow flex-col"
+            >
+              <MenuBar
+                hasSelectableSegments={segmentIds.length > 0}
+                isLoading={segmentListDataHook.isLoadingSegmentList}
+                totalText={segmentListDataHook.totalText}
+                statusList={searchFilter.statusList}
+                selectDefaultValue={searchFilter.selectDefaultValue}
+                onChangeStatus={searchFilter.onChangeStatus}
+                inputValue={searchFilter.inputValue}
+                onInputChange={searchFilter.handleInputChange}
+                isCollapsed={modalState.isCollapsed}
+                toggleCollapsed={modalState.toggleCollapsed}
+              />
+              <GeneralModeContent
+                segmentListRef={segmentListDataHook.segmentListRef}
+                embeddingAvailable={embeddingAvailable}
+                isLoadingSegmentList={segmentListDataHook.isLoadingSegmentList}
+                segments={segmentListDataHook.segments}
+                onChangeSwitch={segmentListDataHook.onChangeSwitch}
+                onDelete={segmentListDataHook.onDelete}
+                onClickCard={modalState.onClickCard}
+                archived={archived}
+                onDeleteChildChunk={childSegmentDataHook.onDeleteChildChunk}
+                handleAddNewChildChunk={modalState.handleAddNewChildChunk}
+                onClickSlice={modalState.onClickSlice}
+                onClearFilter={searchFilter.onClearFilter}
+              />
+            </CheckboxGroup>
           )}
 
       {/* Pagination */}
@@ -225,8 +239,6 @@ const Completed: FC<ICompletedProps> = ({
           currSegment={modalState.currSegment}
           onCloseSegmentDetail={modalState.onCloseSegmentDetail}
           onUpdateSegment={segmentListDataHook.handleUpdateSegment}
-          isRegenerationModalOpen={modalState.isRegenerationModalOpen}
-          setIsRegenerationModalOpen={modalState.setIsRegenerationModalOpen}
           showNewSegmentModal={showNewSegmentModal}
           onCloseNewSegmentModal={modalState.onCloseNewSegmentModal}
           onSaveNewSegment={segmentListDataHook.resetList}

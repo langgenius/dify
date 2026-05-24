@@ -6,11 +6,6 @@ import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { toast } from '@langgenius/dify-ui/toast'
 import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from '@langgenius/dify-ui/tooltip'
-import {
   RiDeleteBinLine,
   RiErrorWarningFill,
 } from '@remixicon/react'
@@ -25,6 +20,7 @@ import {
   Copy,
   CopyCheck,
 } from '@/app/components/base/icons/src/vender/line/files'
+import { Infotip } from '@/app/components/base/infotip'
 import PromptEditor from '@/app/components/base/prompt-editor'
 import { INSERT_VARIABLE_VALUE_BLOCK_COMMAND } from '@/app/components/base/prompt-editor/plugins/variable-block'
 import ConfigContext from '@/context/debug-configuration'
@@ -148,7 +144,7 @@ const AdvancedPromptInput: FC<Props> = ({
   const [editorHeight, setEditorHeight] = React.useState(isChatMode ? 200 : 508)
   const contextMissing = (
     <div
-      className="flex h-11 items-center justify-between rounded-tl-xl rounded-tr-xl pt-2 pr-3 pb-1 pl-4"
+      className="flex h-11 items-center justify-between rounded-t-xl pt-2 pr-3 pb-1 pl-4"
       style={{
         background: 'linear-gradient(180deg, #FEF0C7 0%, rgba(254, 240, 199, 0) 100%)',
       }}
@@ -172,7 +168,7 @@ const AdvancedPromptInput: FC<Props> = ({
         {isContextMissing
           ? contextMissing
           : (
-              <div className={cn(s.boxHeader, 'flex h-11 items-center justify-between rounded-tl-xl rounded-tr-xl bg-background-default pt-2 pr-3 pb-1 pl-4 hover:shadow-xs')}>
+              <div className={cn(s.boxHeader, 'flex h-11 items-center justify-between rounded-t-xl bg-background-default pt-2 pr-3 pb-1 pl-4 hover:shadow-xs')}>
                 {isChatMode
                   ? (
                       <MessageTypeSelector value={type} onChange={onTypeChange} />
@@ -183,28 +179,23 @@ const AdvancedPromptInput: FC<Props> = ({
                         <div className="text-sm font-semibold text-indigo-800 uppercase">
                           {t('pageTitle.line1', { ns: 'appDebug' })}
                         </div>
-                        <Tooltip>
-                          <TooltipTrigger
-                            render={(
-                              <span className="ml-1 i-ri-question-line h-4 w-4 shrink-0 text-text-quaternary" />
-                            )}
-                          />
-                          <TooltipContent>
-                            <div className="w-[180px]">
-                              {t('promptTip', { ns: 'appDebug' })}
-                            </div>
-                          </TooltipContent>
-                        </Tooltip>
+                        <Infotip
+                          aria-label={t('promptTip', { ns: 'appDebug' })}
+                          className="ml-1"
+                          popupClassName="w-[180px]"
+                        >
+                          {t('promptTip', { ns: 'appDebug' })}
+                        </Infotip>
                       </div>
                     )}
                 <div className={cn(s.optionWrap, 'items-center space-x-1')}>
                   {canDelete && (
-                    <RiDeleteBinLine onClick={onDelete} className="h-6 w-6 cursor-pointer p-1 text-text-tertiary" />
+                    <RiDeleteBinLine onClick={onDelete} className="size-6 cursor-pointer p-1 text-text-tertiary" />
                   )}
                   {!isCopied
                     ? (
                         <Copy
-                          className="h-6 w-6 cursor-pointer p-1 text-text-tertiary"
+                          className="size-6 cursor-pointer p-1 text-text-tertiary"
                           onClick={() => {
                             copy(value)
                             setIsCopied(true)
@@ -212,7 +203,7 @@ const AdvancedPromptInput: FC<Props> = ({
                         />
                       )
                     : (
-                        <CopyCheck className="h-6 w-6 p-1 text-text-tertiary" />
+                        <CopyCheck className="size-6 p-1 text-text-tertiary" />
                       )}
                 </div>
               </div>

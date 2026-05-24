@@ -1,10 +1,10 @@
 'use client'
 import type { FC } from 'react'
-import type { ModelConfig, PromptItem, Variable } from '../../../types'
+import type { ModelConfig, Node, NodeOutPutVar, PromptItem, Variable } from '../../../types'
 import * as React from 'react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import Tooltip from '@/app/components/base/tooltip'
+import { Infotip } from '@/app/components/base/infotip'
 import Editor from '@/app/components/workflow/nodes/_base/components/prompt/editor'
 import TypeSelector from '@/app/components/workflow/nodes/_base/components/selector'
 import { PromptRole } from '@/models/debug'
@@ -35,10 +35,10 @@ type Props = {
     history: boolean
     query: boolean
   }
-  availableVars: any
-  availableNodes: any
+  availableVars: NodeOutPutVar[]
+  availableNodes: Node[]
   varList: Variable[]
-  handleAddVariable: (payload: any) => void
+  handleAddVariable: (payload: Variable) => void
   modelConfig?: ModelConfig
 }
 
@@ -119,12 +119,14 @@ const ConfigPromptItem: FC<Props> = ({
                 />
               )}
 
-          <Tooltip
-            popupContent={
-              <div className="max-w-[180px]">{!!payload.role && t(`${i18nPrefix}.roleDescription.${payload.role}`, { ns: 'workflow' })}</div>
-            }
-            triggerClassName="w-4 h-4"
-          />
+          {!!payload.role && (
+            <Infotip
+              aria-label={t(`${i18nPrefix}.roleDescription.${payload.role}`, { ns: 'workflow' })}
+              popupClassName="w-[180px]"
+            >
+              {t(`${i18nPrefix}.roleDescription.${payload.role}`, { ns: 'workflow' })}
+            </Infotip>
+          )}
         </div>
       )}
       value={payload.edition_type === EditionType.jinja2 ? (payload.jinja2_text || '') : payload.text}

@@ -48,7 +48,7 @@ const InputsFormNode = ({
           isMobile && 'px-4 py-3',
         )}
         >
-          <div className="i-custom-public-other-message-3-fill h-6 w-6 shrink-0" />
+          <div className="i-custom-public-other-message-3-fill size-6 shrink-0" />
           <div className="grow system-xl-semibold text-text-secondary">{t('chat.chatSettingsTitle', { ns: 'share' })}</div>
           {collapsed && (
             <Button
@@ -56,7 +56,6 @@ const InputsFormNode = ({
               size="small"
               variant="ghost"
               onClick={() => setCollapsed(false)}
-              data-testid="inputs-form-edit-button"
             >
               {t('operation.edit', { ns: 'common' })}
             </Button>
@@ -67,7 +66,6 @@ const InputsFormNode = ({
               size="small"
               variant="ghost"
               onClick={() => setCollapsed(true)}
-              data-testid="inputs-form-close-button"
             >
               {t('operation.close', { ns: 'common' })}
             </Button>
@@ -84,7 +82,6 @@ const InputsFormNode = ({
               variant="primary"
               className="w-full"
               onClick={() => handleStartChat(() => setCollapsed(true))}
-              data-testid="inputs-form-start-chat-button"
               style={
                 themeBuilder?.theme
                   ? {

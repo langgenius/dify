@@ -11,6 +11,7 @@ from configs import dify_config
 from core.helper import encrypter
 from core.plugin.entities.plugin_daemon import CredentialType
 from core.plugin.impl.plugin import PluginInstaller
+from core.plugin.plugin_service import PluginService
 from core.tools.utils.system_encryption import encrypt_system_params
 from extensions.ext_database import db
 from models import Tenant
@@ -20,7 +21,6 @@ from models.source import DataSourceApiKeyAuthBinding, DataSourceOauthBinding
 from models.tools import ToolOAuthSystemClient
 from services.plugin.data_migration import PluginDataMigration
 from services.plugin.plugin_migration import PluginMigration
-from services.plugin.plugin_service import PluginService
 
 logger = logging.getLogger(__name__)
 
@@ -185,9 +185,9 @@ def transform_datasource_credentials(environment: str):
         firecrawl_plugin_id = "langgenius/firecrawl_datasource"
         jina_plugin_id = "langgenius/jina_datasource"
         if environment == "online":
-            notion_plugin_unique_identifier = plugin_migration._fetch_plugin_unique_identifier(notion_plugin_id)  # pyright: ignore[reportPrivateUsage]
-            firecrawl_plugin_unique_identifier = plugin_migration._fetch_plugin_unique_identifier(firecrawl_plugin_id)  # pyright: ignore[reportPrivateUsage]
-            jina_plugin_unique_identifier = plugin_migration._fetch_plugin_unique_identifier(jina_plugin_id)  # pyright: ignore[reportPrivateUsage]
+            notion_plugin_unique_identifier = plugin_migration._fetch_plugin_unique_identifier(notion_plugin_id)
+            firecrawl_plugin_unique_identifier = plugin_migration._fetch_plugin_unique_identifier(firecrawl_plugin_id)
+            jina_plugin_unique_identifier = plugin_migration._fetch_plugin_unique_identifier(jina_plugin_id)
         else:
             notion_plugin_unique_identifier = None
             firecrawl_plugin_unique_identifier = None

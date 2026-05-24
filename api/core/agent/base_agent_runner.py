@@ -532,7 +532,6 @@ class BaseAgentRunner(AppRunner):
         file_objs = file_factory.build_from_message_files(
             message_files=files,
             tenant_id=self.tenant_id,
-            config=file_extra_config,
             access_controller=_file_access_controller,
         )
         if not file_objs:

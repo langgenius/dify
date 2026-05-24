@@ -76,11 +76,11 @@ const CreateAppCard = ({
       <div className="grow rounded-t-xl p-2">
         <div className="px-6 pt-2 pb-1 text-xs leading-[18px] font-medium text-text-tertiary">{t('createApp', { ns: 'app' })}</div>
         <button type="button" className="mb-1 flex w-full cursor-pointer items-center rounded-lg px-6 py-[7px] text-[13px] leading-[18px] font-medium text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary" onClick={() => setShowNewAppModal(true)}>
-          <FilePlus01 className="mr-2 h-4 w-4 shrink-0" />
+          <FilePlus01 className="mr-2 size-4 shrink-0" />
           {t('newApp.startFromBlank', { ns: 'app' })}
         </button>
         <button type="button" className="flex w-full cursor-pointer items-center rounded-lg px-6 py-[7px] text-[13px] leading-[18px] font-medium text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary" onClick={() => setShowNewAppTemplateDialog(true)}>
-          <FilePlus02 className="mr-2 h-4 w-4 shrink-0" />
+          <FilePlus02 className="mr-2 size-4 shrink-0" />
           {t('newApp.startFromTemplate', { ns: 'app' })}
         </button>
         <button
@@ -88,7 +88,7 @@ const CreateAppCard = ({
           onClick={() => setShowCreateFromDSLModal(true)}
           className="flex w-full cursor-pointer items-center rounded-lg px-6 py-[7px] text-[13px] leading-[18px] font-medium text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary"
         >
-          <FileArrow01 className="mr-2 h-4 w-4 shrink-0" />
+          <FileArrow01 className="mr-2 size-4 shrink-0" />
           {t('importDSL', { ns: 'app' })}
         </button>
       </div>

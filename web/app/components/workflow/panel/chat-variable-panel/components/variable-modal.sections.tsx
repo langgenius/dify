@@ -120,7 +120,7 @@ export const ValueSection = ({
           className="text-text-tertiary"
           onClick={() => onEditorChange(!editInJSON)}
         >
-          {editInJSON ? <RiInputField className="mr-1 h-3.5 w-3.5" /> : <RiDraftLine className="mr-1 h-3.5 w-3.5" />}
+          {editInJSON ? <RiInputField className="mr-1 size-3.5" /> : <RiDraftLine className="mr-1 size-3.5" />}
           {t(toggleLabelKey, { ns: 'workflow' })}
         </Button>
       )}

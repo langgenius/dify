@@ -143,10 +143,10 @@ const QuotaPanel: FC<QuotaPanelProps> = ({
                     aria-label={tooltipText}
                     render={(
                       <div
-                        className={cn('relative h-6 w-6', !providerType && 'cursor-pointer hover:opacity-80')}
+                        className={cn('relative size-6', !providerType && 'cursor-pointer hover:opacity-80')}
                         onClick={() => handleIconClick(key)}
                       >
-                        <Icon className="h-6 w-6 rounded-lg" />
+                        <Icon className="size-6 rounded-lg" />
                         {!providerType && (
                           <div className="absolute inset-0 rounded-lg border-[0.5px] border-components-panel-border-subtle bg-background-default-dodge opacity-30" />
                         )}

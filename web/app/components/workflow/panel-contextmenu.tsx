@@ -1,15 +1,18 @@
 import { cn } from '@langgenius/dify-ui/cn'
-import { useClickAway } from 'ahooks'
 import {
-  memo,
-  useRef,
+  ContextMenuContent,
+  ContextMenuGroup,
+  ContextMenuItem,
+  ContextMenuSeparator,
+} from '@langgenius/dify-ui/context-menu'
+import {
+  useCallback,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import Divider from '../base/divider'
 import {
   useDSL,
+  useIsChatMode,
   useNodesInteractions,
-  usePanelInteractions,
   useWorkflowMoveMode,
   useWorkflowStartRun,
 } from './hooks'
@@ -18,75 +21,87 @@ import { useOperator } from './operator/hooks'
 import { ShortcutKbd } from './shortcuts/shortcut-kbd'
 import { useStore } from './store'
 
-const PanelContextmenu = () => {
+export function PanelContextmenu({
+  onClose,
+}: {
+  onClose: () => void
+}) {
   const { t } = useTranslation()
-  const ref = useRef(null)
-  const panelMenu = useStore(s => s.panelMenu)
+  const isPanelContextMenu = useStore(s => s.contextMenuTarget?.type === 'panel')
   const clipboardElements = useStore(s => s.clipboardElements)
   const setShowImportDSLModal = useStore(s => s.setShowImportDSLModal)
   const pendingComment = useStore(s => s.pendingComment)
   const setCommentPlacing = useStore(s => s.setCommentPlacing)
   const setCommentQuickAdd = useStore(s => s.setCommentQuickAdd)
   const { handleNodesPaste } = useNodesInteractions()
-  const { handlePaneContextmenuCancel } = usePanelInteractions()
-  const { handleStartWorkflowRun } = useWorkflowStartRun()
+  const {
+    handleStartWorkflowRun,
+    handleWorkflowStartRunInChatflow,
+  } = useWorkflowStartRun()
   const { handleAddNote } = useOperator()
   const { isCommentModeAvailable } = useWorkflowMoveMode()
   const { exportCheck } = useDSL()
+  const isChatMode = useIsChatMode()
 
-  useClickAway(() => {
-    handlePaneContextmenuCancel()
-  }, ref)
-
-  const renderTrigger = () => {
+  const renderAddBlockTrigger = useCallback(() => {
     return (
-      <button
-        type="button"
-        className="flex h-8 w-full cursor-pointer items-center justify-between rounded-lg px-3 text-sm text-text-secondary hover:bg-state-base-hover"
+      <ContextMenuItem
+        nativeButton
+        closeOnClick={false}
+        render={<button type="button" />}
+        className={cn(
+          'w-[calc(100%-8px)]',
+          'justify-between gap-4 border-0 bg-transparent px-3 text-left text-text-secondary',
+        )}
       >
         {t('common.addBlock', { ns: 'workflow' })}
-      </button>
+      </ContextMenuItem>
     )
-  }
+  }, [t])
 
-  if (!panelMenu)
+  const handleRunAction = useCallback(() => {
+    if (isChatMode)
+      handleWorkflowStartRunInChatflow()
+    else
+      handleStartWorkflowRun()
+
+    onClose()
+  }, [isChatMode, handleWorkflowStartRunInChatflow, handleStartWorkflowRun, onClose])
+
+  if (!isPanelContextMenu)
     return null
 
   return (
-    <div
-      className="absolute z-9 w-[200px] rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg"
-      style={{
-        left: panelMenu.left,
-        top: panelMenu.top,
-      }}
-      ref={ref}
+    <ContextMenuContent
+      popupClassName="w-[200px] rounded-lg"
+      sideOffset={4}
     >
-      <div className="p-1">
+      <ContextMenuGroup>
         <AddBlock
-          renderTrigger={renderTrigger}
+          renderTrigger={renderAddBlockTrigger}
+          renderTriggerAsButtonRoot
+          onClose={onClose}
           offset={{
             mainAxis: -36,
             crossAxis: -4,
           }}
         />
-        <button
-          type="button"
-          className="flex h-8 w-full cursor-pointer items-center justify-between rounded-lg px-3 text-sm text-text-secondary hover:bg-state-base-hover"
+        <ContextMenuItem
+          className="justify-between gap-4 px-3 text-text-secondary"
           onClick={(e) => {
             e.stopPropagation()
             handleAddNote()
-            handlePaneContextmenuCancel()
+            onClose()
           }}
         >
           {t('nodes.note.addNote', { ns: 'workflow' })}
-        </button>
+        </ContextMenuItem>
         {isCommentModeAvailable && (
-          <button
-            type="button"
+          <ContextMenuItem
             disabled={!!pendingComment}
             className={cn(
-              'flex h-8 w-full items-center justify-between rounded-lg px-3 text-sm text-text-secondary',
-              pendingComment ? 'cursor-not-allowed opacity-50' : 'cursor-pointer hover:bg-state-base-hover',
+              'justify-between gap-4 px-3 text-text-secondary',
+              pendingComment && 'cursor-not-allowed opacity-50',
             )}
             onClick={(e) => {
               e.stopPropagation()
@@ -94,63 +109,54 @@ const PanelContextmenu = () => {
                 return
               setCommentQuickAdd(true)
               setCommentPlacing(true)
-              handlePaneContextmenuCancel()
+              onClose()
             }}
           >
             {t('comments.actions.addComment', { ns: 'workflow' })}
-          </button>
+          </ContextMenuItem>
         )}
-        <button
-          type="button"
-          className="flex h-8 w-full cursor-pointer items-center justify-between rounded-lg px-3 text-sm text-text-secondary hover:bg-state-base-hover"
-          onClick={() => {
-            handleStartWorkflowRun()
-            handlePaneContextmenuCancel()
-          }}
+        <ContextMenuItem
+          className="justify-between gap-4 px-3 text-text-secondary"
+          onClick={handleRunAction}
         >
-          {t('common.run', { ns: 'workflow' })}
-          <ShortcutKbd shortcut="workflow.open-test-run-menu" />
-        </button>
-      </div>
-      <Divider className="m-0" />
-      <div className="p-1">
-        <button
-          type="button"
+          {isChatMode ? t('common.debugAndPreview', { ns: 'workflow' }) : t('common.run', { ns: 'workflow' })}
+          {!isChatMode && <ShortcutKbd shortcut="workflow.open-test-run-menu" />}
+        </ContextMenuItem>
+      </ContextMenuGroup>
+      <ContextMenuSeparator />
+      <ContextMenuGroup>
+        <ContextMenuItem
           disabled={!clipboardElements.length}
           className={cn(
-            'flex h-8 w-full cursor-pointer items-center justify-between rounded-lg px-3 text-sm text-text-secondary',
-            !clipboardElements.length ? 'cursor-not-allowed opacity-50' : 'hover:bg-state-base-hover',
+            'justify-between gap-4 px-3 text-text-secondary',
+            !clipboardElements.length && 'cursor-not-allowed opacity-50',
           )}
           onClick={() => {
             if (clipboardElements.length) {
               handleNodesPaste()
-              handlePaneContextmenuCancel()
+              onClose()
             }
           }}
         >
           {t('common.pasteHere', { ns: 'workflow' })}
           <ShortcutKbd shortcut="workflow.paste" />
-        </button>
-      </div>
-      <Divider className="m-0" />
-      <div className="p-1">
-        <button
-          type="button"
-          className="flex h-8 w-full cursor-pointer items-center justify-between rounded-lg px-3 text-sm text-text-secondary hover:bg-state-base-hover"
+        </ContextMenuItem>
+      </ContextMenuGroup>
+      <ContextMenuSeparator />
+      <ContextMenuGroup>
+        <ContextMenuItem
+          className="justify-between gap-4 px-3 text-text-secondary"
           onClick={() => exportCheck?.()}
         >
           {t('export', { ns: 'app' })}
-        </button>
-        <button
-          type="button"
-          className="flex h-8 w-full cursor-pointer items-center justify-between rounded-lg px-3 text-sm text-text-secondary hover:bg-state-base-hover"
+        </ContextMenuItem>
+        <ContextMenuItem
+          className="justify-between gap-4 px-3 text-text-secondary"
           onClick={() => setShowImportDSLModal(true)}
         >
           {t('importApp', { ns: 'app' })}
-        </button>
-      </div>
-    </div>
+        </ContextMenuItem>
+      </ContextMenuGroup>
+    </ContextMenuContent>
   )
 }
-
-export default memo(PanelContextmenu)

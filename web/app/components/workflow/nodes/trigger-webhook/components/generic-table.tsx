@@ -1,11 +1,11 @@
 'use client'
 import type { FC, ReactNode } from 'react'
+import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Select, SelectContent, SelectItem, SelectItemIndicator, SelectItemText, SelectTrigger } from '@langgenius/dify-ui/select'
 import { RiDeleteBinLine } from '@remixicon/react'
 import * as React from 'react'
 import { useCallback, useMemo } from 'react'
-import Checkbox from '@/app/components/base/checkbox'
 import Input from '@/app/components/base/input'
 import { replaceSpaceWithUnderscoreInVarNameInput } from '@/utils/var'
 
@@ -115,7 +115,7 @@ const renderInputCell = (
       disabled={readonly}
       wrapperClassName="w-full min-w-0"
       className={cn(
-        'h-6 rounded-none border-0 bg-transparent px-0 py-0 shadow-none',
+        'h-6 rounded-none border-0 bg-transparent p-0 shadow-none',
         'hover:border-transparent hover:bg-transparent focus:border-transparent focus:bg-transparent',
         'system-sm-regular text-text-secondary placeholder:text-text-quaternary',
       )}
@@ -147,7 +147,7 @@ const renderSelectCell = (
       >
         {selectedOption?.name ?? column.placeholder}
       </SelectTrigger>
-      <SelectContent className="-translate-x-3" popupClassName="z-60 w-26 min-w-26">
+      <SelectContent className="-translate-x-3" popupClassName="w-26 min-w-26">
         {options.map(option => (
           <SelectItem key={option.value} value={option.value}>
             <SelectItemText>{option.name}</SelectItemText>
@@ -169,9 +169,9 @@ const renderSwitchCell = (
   return (
     <div className="flex h-7 items-center">
       <Checkbox
-        id={`${column.key}-${String(dataIndex ?? 'v')}`}
         checked={Boolean(value)}
-        onCheck={() => handleChange(!value)}
+        aria-label={column.title}
+        onCheckedChange={handleChange}
         disabled={readonly}
       />
     </div>
@@ -315,7 +315,7 @@ const GenericTable: FC<GenericTableProps> = ({
                       aria-label="Delete row"
                     >
                       {/* eslint-disable-next-line hyoban/prefer-tailwind-icons */}
-                      <RiDeleteBinLine className="h-3.5 w-3.5 text-text-destructive" />
+                      <RiDeleteBinLine className="size-3.5 text-text-destructive" />
                     </button>
                   </div>
                 )}

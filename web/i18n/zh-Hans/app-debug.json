@@ -337,6 +337,8 @@
   "variableConfig.file.image.name": "图片",
   "variableConfig.file.supportFileTypes": "支持的文件类型",
   "variableConfig.file.video.name": "视频",
+  "variableConfig.hidden": "隐藏并预填",
+  "variableConfig.hiddenDescription": "对终端用户隐藏此字段，并由你预填字段值。与 必填 互斥。<docLink>了解更多</docLink>",
   "variableConfig.hide": "隐藏",
   "variableConfig.inputPlaceholder": "请输入",
   "variableConfig.json": "JSON",

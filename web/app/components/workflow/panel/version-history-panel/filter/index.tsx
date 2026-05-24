@@ -42,14 +42,15 @@ const Filter: FC<FilterProps> = ({
       onOpenChange={setOpen}
     >
       <PopoverTrigger
+        nativeButton={false}
         render={(
           <div
             className={cn(
-              'flex h-6 w-6 cursor-pointer items-center justify-center rounded-md p-0.5',
+              'flex size-6 cursor-pointer items-center justify-center rounded-md p-0.5',
               isFiltering ? 'bg-state-accent-active-alt' : 'hover:bg-state-base-hover',
             )}
           >
-            <RiFilter3Line className={cn('h-4 w-4', isFiltering ? 'text-text-accent' : 'text-text-tertiary')} />
+            <RiFilter3Line className={cn('size-4', isFiltering ? 'text-text-accent' : 'text-text-tertiary')} />
           </div>
         )}
       />

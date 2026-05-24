@@ -36,7 +36,7 @@ export const webDir = path.join(rootDir, 'web')
 
 export const middlewareComposeFile = path.join(dockerDir, 'docker-compose.middleware.yaml')
 export const middlewareEnvFile = path.join(dockerDir, 'middleware.env')
-export const middlewareEnvExampleFile = path.join(dockerDir, 'middleware.env.example')
+export const middlewareEnvExampleFile = path.join(dockerDir, 'envs', 'middleware.env.example')
 export const webEnvLocalFile = path.join(webDir, '.env.local')
 export const webEnvExampleFile = path.join(webDir, '.env.example')
 export const apiEnvExampleFile = path.join(apiDir, 'tests', 'integration_tests', '.env.example')

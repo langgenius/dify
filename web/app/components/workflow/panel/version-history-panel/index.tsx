@@ -107,7 +107,7 @@ export const VersionHistoryPanel = ({
     setIsOnlyShowNamedVersions(false)
   }, [])
 
-  const handleClickMenuItem = useCallback((item: VersionHistory, operation: VersionHistoryContextMenuOptions) => {
+  const handleClickActionMenuItem = useCallback((item: VersionHistory, operation: VersionHistoryContextMenuOptions) => {
     setOperatedItem(item)
     switch (operation) {
       case VersionHistoryContextMenuOptions.restore:
@@ -268,10 +268,10 @@ export const VersionHistoryPanel = ({
         />
         <Divider type="vertical" className="mx-1 h-3.5" />
         <div
-          className="flex h-6 w-6 cursor-pointer items-center justify-center p-0.5"
+          className="flex size-6 cursor-pointer items-center justify-center p-0.5"
           onClick={handleClose}
         >
-          <RiCloseLine className="h-4 w-4 text-text-tertiary" />
+          <RiCloseLine className="size-4 text-text-tertiary" />
         </div>
       </div>
       <div className="flex h-0 flex-1 flex-col">
@@ -292,7 +292,7 @@ export const VersionHistoryPanel = ({
                           currentVersion={currentVersion}
                           latestVersionId={latestVersionId || ''}
                           onClick={handleVersionClick}
-                          handleClickMenuItem={handleClickMenuItem.bind(null, item)}
+                          handleClickActionMenuItem={handleClickActionMenuItem.bind(null, item)}
                           isLast={isLast}
                         />
                       )
@@ -312,8 +312,8 @@ export const VersionHistoryPanel = ({
             >
               <div className="item-center flex justify-center p-0.5">
                 {isFetching
-                  ? <RiLoader2Line className="h-3.5 w-3.5 animate-spin text-text-accent" />
-                  : <RiArrowDownDoubleLine className="h-3.5 w-3.5 text-text-accent" />}
+                  ? <RiLoader2Line className="size-3.5 animate-spin text-text-accent" />
+                  : <RiArrowDownDoubleLine className="size-3.5 text-text-accent" />}
               </div>
               <div className="py-px system-xs-medium-uppercase text-text-accent">
                 {t('common.loadMore', { ns: 'workflow' })}

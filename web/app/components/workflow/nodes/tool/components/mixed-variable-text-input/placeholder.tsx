@@ -26,7 +26,7 @@ const Placeholder = ({ disableVariableInsertion = false, hideBadge = false }: Pl
   return (
     <div
       className={cn(
-        'pointer-events-auto flex h-full w-full cursor-text px-2',
+        'pointer-events-auto flex size-full cursor-text px-2',
         !hideBadge ? 'items-center' : 'items-start py-1',
       )}
       onClick={(e) => {
@@ -38,7 +38,7 @@ const Placeholder = ({ disableVariableInsertion = false, hideBadge = false }: Pl
         {t('nodes.tool.insertPlaceholder1', { ns: 'workflow' })}
         {(!disableVariableInsertion) && (
           <>
-            <div className="mx-0.5 flex h-4 w-4 items-center justify-center rounded-sm bg-components-kbd-bg-gray system-kbd text-text-placeholder">/</div>
+            <div className="mx-0.5 flex size-4 items-center justify-center rounded-sm bg-components-kbd-bg-gray system-kbd text-text-placeholder">/</div>
             <div
               className="cursor-pointer system-sm-regular text-components-input-text-placeholder underline decoration-dotted decoration-auto underline-offset-auto hover:text-text-tertiary"
               onMouseDown={((e) => {

@@ -2,7 +2,7 @@ import base64
 import logging
 import time
 from abc import ABC, abstractmethod
-from typing import Any
+from typing import Any, override
 
 from sqlalchemy import select
 
@@ -72,21 +72,27 @@ class _LazyEmbeddings(Embeddings):
             self._real = CacheEmbedding(embedding_model)
         return self._real
 
+    @override
     def embed_documents(self, texts: list[str]) -> list[list[float]]:
         return self._ensure().embed_documents(texts)
 
+    @override
     def embed_multimodal_documents(self, multimodel_documents: list[dict[str, Any]]) -> list[list[float]]:
         return self._ensure().embed_multimodal_documents(multimodel_documents)
 
+    @override
     def embed_query(self, text: str) -> list[float]:
         return self._ensure().embed_query(text)
 
+    @override
     def embed_multimodal_query(self, multimodel_document: dict[str, Any]) -> list[float]:
         return self._ensure().embed_multimodal_query(multimodel_document)
 
+    @override
     async def aembed_documents(self, texts: list[str]) -> list[list[float]]:
         return await self._ensure().aembed_documents(texts)
 
+    @override
     async def aembed_query(self, text: str) -> list[float]:
         return await self._ensure().aembed_query(text)
 
@@ -144,8 +150,20 @@ class Vector:
     def get_vector_factory(vector_type: str) -> type[AbstractVectorFactory]:
         return get_vector_factory_class(vector_type)
 
+    @staticmethod
+    def _filter_empty_text_documents(documents: list[Document]) -> list[Document]:
+        filtered_documents = [document for document in documents if document.page_content.strip()]
+        skipped_count = len(documents) - len(filtered_documents)
+        if skipped_count:
+            logger.warning("skip %d empty documents before vector embedding", skipped_count)
+        return filtered_documents
+
     def create(self, texts: list | None = None, **kwargs):
         if texts:
+            texts = self._filter_empty_text_documents(texts)
+            if not texts:
+                return
+
             start = time.time()
             logger.info("start embedding %s texts %s", len(texts), start)
             batch_size = 1000
@@ -203,8 +221,14 @@ class Vector:
             logger.info("Embedding %s files took %s s", len(file_documents), time.time() - start)
 
     def add_texts(self, documents: list[Document], **kwargs):
+        documents = self._filter_empty_text_documents(documents)
+        if not documents:
+            return
+
         if kwargs.get("duplicate_check", False):
             documents = self._filter_duplicate_texts(documents)
+            if not documents:
+                return
 
         embeddings = self._embeddings.embed_documents([document.page_content for document in documents])
         self._vector_processor.create(texts=documents, embeddings=embeddings, **kwargs)

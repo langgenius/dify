@@ -1,61 +1,56 @@
-import type { FC } from 'react'
-import type {
-  DefaultModel,
-  Model,
-  ModelItem,
-} from '../declarations'
+import type { DefaultModel, Model } from '../declarations'
+import type { ModelSelectorPreviewPayload } from './popup-item'
 import type { ModelProviderQuotaGetPaid } from '@/types/model-provider'
+import { ComboboxList } from '@langgenius/dify-ui/combobox'
+import { createPreviewCardHandle, PreviewCard, PreviewCardContent } from '@langgenius/dify-ui/preview-card'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useTheme } from 'next-themes'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
+import { ACCOUNT_SETTING_MODAL_ACTION, ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
 import checkTaskStatus from '@/app/components/plugins/install-plugin/base/check-task-status'
 import useRefreshPluginList from '@/app/components/plugins/install-plugin/hooks/use-refresh-plugin-list'
 import { useModalContext } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
+import { useSearchParams } from '@/next/navigation'
 import { systemFeaturesQueryOptions } from '@/service/system-features'
 import { useInstallPackageFromMarketPlace } from '@/service/use-plugins'
-import { supportFunctionCall } from '@/utils/tool-call'
-import {
-  CustomConfigurationStatusEnum,
-  ModelFeatureEnum,
-  ModelStatusEnum,
-} from '../declarations'
+import { CustomConfigurationStatusEnum, ModelFeatureEnum, ModelStatusEnum, ModelTypeEnum } from '../declarations'
 import { useLanguage, useMarketplaceAllPlugins } from '../hooks'
+import ModelBadge from '../model-badge'
+import ModelIcon from '../model-icon'
 import CreditsExhaustedAlert from '../provider-added-card/model-auth-dropdown/credits-exhausted-alert'
 import { useTrialCredits } from '../provider-added-card/use-trial-credits'
 import { providerSupportsCredits } from '../supports-credits'
-import { MODEL_PROVIDER_QUOTA_GET_PAID, providerKeyToPluginId } from '../utils'
+import { MODEL_PROVIDER_QUOTA_GET_PAID, modelTypeFormat, providerKeyToPluginId, sizeFormat } from '../utils'
+import FeatureIcon from './feature-icon'
 import MarketplaceSection from './marketplace-section'
+import { createModelSelectorSearchIndex, filterModelSelectorModels } from './model-search'
 import ModelSelectorEmptyState from './popup-empty-state'
 import PopupItem from './popup-item'
-import {
-  CompatibleModelsNotice,
-  ModelProviderSettingsFooter,
-  ModelSelectorPopupFrame,
-  ModelSelectorScrollBody,
-  ModelSelectorSearchHeader,
-} from './popup-layout'
+import { CompatibleModelsNotice, ModelProviderSettingsFooter, ModelSelectorPopupFrame, ModelSelectorScrollBody, ModelSelectorSearchHeader } from './popup-layout'
 
-type PopupProps = {
+export type PopupProps = {
   defaultModel?: DefaultModel
+  inputValue: string
   modelList: Model[]
-  onSelect: (provider: string, model: ModelItem) => void
   scopeFeatures?: ModelFeatureEnum[]
+  onInputValueChange: (value: string) => void
   onHide: () => void
 }
-const Popup: FC<PopupProps> = ({
+function Popup({
   defaultModel,
+  inputValue,
   modelList,
-  onSelect,
   scopeFeatures = [],
+  onInputValueChange,
   onHide,
-}) => {
+}: PopupProps) {
   const { t } = useTranslation()
+  const searchParams = useSearchParams()
   const { theme } = useTheme()
   const language = useLanguage()
-  const [searchText, setSearchText] = useState('')
+  const previewCardHandle = useMemo(() => createPreviewCardHandle<ModelSelectorPreviewPayload>(), [])
   const [marketplaceCollapsed, setMarketplaceCollapsed] = useState(false)
   const { setShowAccountSettingModal } = useModalContext()
   const { modelProviders } = useProviderContext()
@@ -142,57 +137,18 @@ const Popup: FC<PopupProps> = ({
     return [...installedMarketplaceModels, ...otherModels]
   }, [aiCreditVisibleProviders, installedProviderMap, modelList])
 
-  const filteredModelList = useMemo(() => {
-    const normalizedSearch = searchText.toLowerCase()
-    const matchesLabel = (label: Record<string, string>) => {
-      if (label[language] !== undefined)
-        return label[language].toLowerCase().includes(normalizedSearch)
-      return Object.values(label).some(value =>
-        value.toLowerCase().includes(normalizedSearch),
-      )
-    }
-
-    const filtered = installedModelList.map((model) => {
-      const providerMatched = !!searchText && (
-        matchesLabel(model.label)
-        || model.provider.toLowerCase().includes(normalizedSearch)
-      )
-
-      const filteredModels = model.models
-        .filter((modelItem) => {
-          if (!searchText || providerMatched)
-            return true
-          return matchesLabel(modelItem.label)
-        })
-        .filter((modelItem) => {
-          if (scopeFeatures.length === 0)
-            return true
-          return scopeFeatures.every((feature) => {
-            if (feature === ModelFeatureEnum.toolCall)
-              return supportFunctionCall(modelItem.features)
-            return modelItem.features?.includes(feature) ?? false
-          })
-        })
-      if (
-        (searchText && filteredModels.length === 0)
-        || (!searchText && filteredModels.length === 0 && !aiCreditVisibleProviders.has(model.provider))
-      ) {
-        return null
-      }
-
-      return { ...model, models: filteredModels }
-    }).filter((model): model is Model => model !== null)
-
-    if (defaultModel?.provider) {
-      filtered.sort((a, b) => {
-        const aSelected = a.provider === defaultModel.provider ? 0 : 1
-        const bSelected = b.provider === defaultModel.provider ? 0 : 1
-        return aSelected - bSelected
-      })
-    }
-
-    return filtered
-  }, [aiCreditVisibleProviders, defaultModel?.provider, installedModelList, language, scopeFeatures, searchText])
+  const searchIndex = useMemo(
+    () => createModelSelectorSearchIndex(installedModelList, language),
+    [installedModelList, language],
+  )
+  const filteredModelList = useMemo(() => filterModelSelectorModels({
+    aiCreditVisibleProviders,
+    defaultModel,
+    inputValue,
+    installedModelList,
+    scopeFeatures,
+    searchIndex,
+  }), [aiCreditVisibleProviders, defaultModel, inputValue, installedModelList, scopeFeatures, searchIndex])
 
   const marketplaceProviders = useMemo(() => {
     const installedProviders = new Set(modelProviders.map(provider => provider.provider))
@@ -203,37 +159,47 @@ const Popup: FC<PopupProps> = ({
     onHide()
     setShowAccountSettingModal({ payload: ACCOUNT_SETTING_TAB.PROVIDER })
   }, [onHide, setShowAccountSettingModal])
+  const handleClosePreviewCard = useCallback(() => {
+    previewCardHandle.close()
+  }, [previewCardHandle])
+  const isProviderSettingsCurrentPage = searchParams?.get('action') === ACCOUNT_SETTING_MODAL_ACTION
+    && searchParams?.get('tab') === ACCOUNT_SETTING_TAB.PROVIDER
 
   return (
     <ModelSelectorPopupFrame>
       <ModelSelectorSearchHeader
-        searchText={searchText}
-        onSearchTextChange={setSearchText}
+        inputValue={inputValue}
+        onInputValueChange={onInputValueChange}
       />
       {showCreditsExhaustedAlert && (
         <CreditsExhaustedAlert hasApiKeyFallback={hasApiKeyFallback} />
       )}
       <ModelSelectorScrollBody label={t('modelProvider.models', { ns: 'common' })}>
+        <ComboboxList className="max-h-none overflow-visible p-0">
+          <div className="pb-1">
+            {
+              filteredModelList.map(model => (
+                <PopupItem
+                  key={model.provider}
+                  defaultModel={defaultModel}
+                  model={model}
+                  previewCardHandle={previewCardHandle}
+                  onPreviewCardClose={handleClosePreviewCard}
+                  onHide={onHide}
+                />
+              ))
+            }
+          </div>
+        </ComboboxList>
         <div className="pb-1">
-          {
-            filteredModelList.map(model => (
-              <PopupItem
-                key={model.provider}
-                defaultModel={defaultModel}
-                model={model}
-                onSelect={onSelect}
-                onHide={onHide}
-              />
-            ))
-          }
           {!filteredModelList.length && !installedModelList.length && (
             <ModelSelectorEmptyState
               onConfigure={handleOpenSettings}
             />
           )}
           {!filteredModelList.length && installedModelList.length > 0 && (
-            <div className="px-3 py-1.5 text-center text-xs leading-[18px] break-all text-text-tertiary">
-              {`No model found for \u201C${searchText}\u201D`}
+            <div className="px-3 py-1.5 text-center text-xs/4.5 break-all text-text-tertiary">
+              {`No model found for \u201C${inputValue}\u201D`}
             </div>
           )}
           {scopeFeatures.length > 0 && (
@@ -250,8 +216,87 @@ const Popup: FC<PopupProps> = ({
           />
         </div>
       </ModelSelectorScrollBody>
-      <ModelProviderSettingsFooter onOpenSettings={handleOpenSettings} />
+      <PreviewCard handle={previewCardHandle}>
+        {({ payload }) => (
+          <ModelSelectorPreviewCard
+            capabilitiesLabel={t('model.capabilities', { ns: 'common' })}
+            language={language}
+            payload={payload as ModelSelectorPreviewPayload | undefined}
+          />
+        )}
+      </PreviewCard>
+      {!isProviderSettingsCurrentPage && (
+        <ModelProviderSettingsFooter onOpenSettings={handleOpenSettings} />
+      )}
     </ModelSelectorPopupFrame>
+  )
+}
+
+type ModelSelectorPreviewCardProps = {
+  capabilitiesLabel: string
+  language: string
+  payload?: ModelSelectorPreviewPayload
+}
+
+function ModelSelectorPreviewCard({
+  capabilitiesLabel,
+  language,
+  payload,
+}: ModelSelectorPreviewCardProps) {
+  if (!payload)
+    return null
+
+  const { provider, modelItem } = payload
+
+  return (
+    <PreviewCardContent
+      placement="right"
+      popupClassName="w-[206px] bg-components-panel-bg-blur p-3 shadow-none backdrop-blur-xs"
+    >
+      <div className="flex flex-col gap-1">
+        <div className="flex flex-col items-start gap-2">
+          <ModelIcon
+            className="size-5 shrink-0"
+            provider={provider}
+            modelName={modelItem.model}
+          />
+          <div className="system-md-medium text-wrap wrap-break-word text-text-primary">{modelItem.label[language] || modelItem.label.en_US}</div>
+        </div>
+        <div className="flex flex-wrap gap-1">
+          {!!modelItem.model_type && (
+            <ModelBadge>
+              {modelTypeFormat(modelItem.model_type)}
+            </ModelBadge>
+          )}
+          {!!modelItem.model_properties.mode && (
+            <ModelBadge>
+              {(modelItem.model_properties.mode as string).toLocaleUpperCase()}
+            </ModelBadge>
+          )}
+          {!!modelItem.model_properties.context_size && (
+            <ModelBadge>
+              {sizeFormat(modelItem.model_properties.context_size as number)}
+            </ModelBadge>
+          )}
+        </div>
+        {[ModelTypeEnum.textGeneration, ModelTypeEnum.textEmbedding, ModelTypeEnum.rerank].includes(modelItem.model_type as ModelTypeEnum)
+          && modelItem.features?.some(feature => [ModelFeatureEnum.vision, ModelFeatureEnum.audio, ModelFeatureEnum.video, ModelFeatureEnum.document].includes(feature))
+          && (
+            <div className="pt-2">
+              <div className="mb-1 system-2xs-medium-uppercase text-text-tertiary">{capabilitiesLabel}</div>
+              <div className="flex flex-wrap gap-1">
+                {modelItem.features?.map(feature => (
+                  <FeatureIcon
+                    key={feature}
+                    feature={feature}
+                    showFeaturesLabel
+                  />
+                ))}
+              </div>
+            </div>
+          )}
+      </div>
+    </PreviewCardContent>
   )
 }
 

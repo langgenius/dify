@@ -12,6 +12,15 @@ import {
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
+import {
+  Drawer,
+  DrawerBackdrop,
+  DrawerCloseButton,
+  DrawerContent,
+  DrawerPopup,
+  DrawerPortal,
+  DrawerViewport,
+} from '@langgenius/dify-ui/drawer'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import AppPublisher from '@/app/components/app/app-publisher/features-wrapper'
@@ -21,7 +30,6 @@ import AgentSettingButton from '@/app/components/app/configuration/config/agent-
 import SelectDataSet from '@/app/components/app/configuration/dataset-config/select-dataset'
 import Debug from '@/app/components/app/configuration/debug'
 import Divider from '@/app/components/base/divider'
-import Drawer from '@/app/components/base/drawer'
 import { FeaturesProvider } from '@/app/components/base/features'
 import NewFeaturePanel from '@/app/components/base/features/new-feature-panel'
 import Loading from '@/app/components/base/loading'
@@ -122,14 +130,14 @@ const ConfigurationView: FC<ConfigurationViewModel> = ({
                     {isMobile && (
                       <Button className="mr-2 h-8! text-[13px]! font-medium" onClick={onOpenDebugPanel}>
                         <span className="mr-1">{t('operation.debugConfig', { ns: 'appDebug' })}</span>
-                        <CodeBracketIcon className="h-4 w-4 text-text-tertiary" />
+                        <CodeBracketIcon className="size-4 text-text-tertiary" />
                       </Button>
                     )}
                     <AppPublisher {...appPublisherProps} />
                   </div>
                 </div>
               </div>
-              <div className={`flex h-full w-full shrink-0 flex-col sm:w-1/2 ${debugWithMultipleModel && 'max-w-[560px]'}`}>
+              <div className={`flex size-full shrink-0 flex-col sm:w-1/2 ${debugWithMultipleModel && 'max-w-[560px]'}`}>
                 <Config />
               </div>
               {!isMobile && (
@@ -174,14 +182,12 @@ const ConfigurationView: FC<ConfigurationViewModel> = ({
             </AlertDialogContent>
           </AlertDialog>
 
-          {isShowSelectDataSet && (
-            <SelectDataSet
-              isShow={isShowSelectDataSet}
-              onClose={onCloseSelectDataSet}
-              selectedIds={selectedIds}
-              onSelect={onSelectDataSets}
-            />
-          )}
+          <SelectDataSet
+            isShow={isShowSelectDataSet}
+            onClose={onCloseSelectDataSet}
+            selectedIds={selectedIds}
+            onSelect={onSelectDataSets}
+          />
 
           {isShowHistoryModal && (
             <EditHistoryModal
@@ -194,19 +200,42 @@ const ConfigurationView: FC<ConfigurationViewModel> = ({
           )}
 
           {isMobile && (
-            <Drawer showClose isOpen={isShowDebugPanel} onClose={onHideDebugPanel} mask footer={null}>
-              <Debug
-                isAPIKeySet={contextValue.isAPIKeySet}
-                onSetting={onOpenAccountSettings}
-                inputs={contextValue.inputs}
-                modelParameterParams={{
-                  setModel: onModelChange,
-                  onCompletionParamsChange,
-                }}
-                debugWithMultipleModel={!!debugWithMultipleModel}
-                multipleModelConfigs={multipleModelConfigs}
-                onMultipleModelConfigsChange={onMultipleModelConfigsChange}
-              />
+            <Drawer
+              open={isShowDebugPanel}
+              modal
+              swipeDirection="right"
+              onOpenChange={(open) => {
+                if (!open)
+                  onHideDebugPanel()
+              }}
+            >
+              <DrawerPortal>
+                <DrawerBackdrop className="bg-black/30" />
+                <DrawerViewport>
+                  <DrawerPopup className="data-[swipe-direction=right]:w-full data-[swipe-direction=right]:max-w-sm">
+                    <DrawerContent className="flex min-h-0 flex-1 flex-col">
+                      <div className="mb-4 flex shrink-0 justify-end">
+                        <DrawerCloseButton
+                          aria-label={t('operation.close', { ns: 'common' })}
+                          className="size-6 rounded-md"
+                        />
+                      </div>
+                      <Debug
+                        isAPIKeySet={contextValue.isAPIKeySet}
+                        onSetting={onOpenAccountSettings}
+                        inputs={contextValue.inputs}
+                        modelParameterParams={{
+                          setModel: onModelChange,
+                          onCompletionParamsChange,
+                        }}
+                        debugWithMultipleModel={!!debugWithMultipleModel}
+                        multipleModelConfigs={multipleModelConfigs}
+                        onMultipleModelConfigsChange={onMultipleModelConfigsChange}
+                      />
+                    </DrawerContent>
+                  </DrawerPopup>
+                </DrawerViewport>
+              </DrawerPortal>
             </Drawer>
           )}
 

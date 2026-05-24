@@ -3,6 +3,7 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock, PropertyMock
 
 import pytest
+from pytest_mock import MockerFixture
 
 import core.app.apps.pipeline.pipeline_generator as module
 from core.app.apps.exc import GenerateTaskStoppedError
@@ -23,7 +24,7 @@ class FakeRagPipelineGenerateEntity(SimpleNamespace):
 
 
 @pytest.fixture
-def generator(mocker):
+def generator(mocker: MockerFixture):
     gen = module.PipelineGenerator()
 
     mocker.patch.object(module, "RagPipelineGenerateEntity", FakeRagPipelineGenerateEntity)
@@ -88,7 +89,7 @@ class DummySession:
         return False
 
 
-def test_generate_dataset_missing(generator, mocker):
+def test_generate_dataset_missing(generator, mocker: MockerFixture):
     pipeline = _build_pipeline()
     pipeline.retrieve_dataset.return_value = None
 
@@ -106,7 +107,7 @@ def test_generate_dataset_missing(generator, mocker):
         )
 
 
-def test_generate_debugger_calls_generate(generator, mocker):
+def test_generate_debugger_calls_generate(generator, mocker: MockerFixture):
     pipeline = _build_pipeline()
     workflow = _build_workflow()
 
@@ -150,7 +151,7 @@ def test_generate_debugger_calls_generate(generator, mocker):
     assert result == {"result": "ok"}
 
 
-def test_generate_published_pipeline_creates_documents_and_delay(generator, mocker):
+def test_generate_published_pipeline_creates_documents_and_delay(generator, mocker: MockerFixture):
     pipeline = _build_pipeline()
     workflow = _build_workflow()
 
@@ -228,7 +229,7 @@ def test_generate_published_pipeline_creates_documents_and_delay(generator, mock
     task_proxy.delay.assert_called_once()
 
 
-def test_generate_is_retry_calls_generate(generator, mocker):
+def test_generate_is_retry_calls_generate(generator, mocker: MockerFixture):
     pipeline = _build_pipeline()
     workflow = _build_workflow()
 
@@ -273,7 +274,7 @@ def test_generate_is_retry_calls_generate(generator, mocker):
     assert result == {"result": "ok"}
 
 
-def test_generate_worker_handles_errors(generator, mocker):
+def test_generate_worker_handles_errors(generator, mocker: MockerFixture):
     flask_app = MagicMock()
     flask_app.app_context.return_value = contextlib.nullcontext()
     mocker.patch.object(module, "preserve_flask_contexts", _dummy_preserve)
@@ -308,7 +309,7 @@ def test_generate_worker_handles_errors(generator, mocker):
     queue_manager.publish_error.assert_called_once()
 
 
-def test_generate_worker_sets_system_user_id_for_external_call(generator, mocker):
+def test_generate_worker_sets_system_user_id_for_external_call(generator, mocker: MockerFixture):
     flask_app = MagicMock()
     flask_app.app_context.return_value = contextlib.nullcontext()
     mocker.patch.object(module, "preserve_flask_contexts", _dummy_preserve)
@@ -341,7 +342,7 @@ def test_generate_worker_sets_system_user_id_for_external_call(generator, mocker
     assert module.PipelineRunner.call_args.kwargs["system_user_id"] == "session"
 
 
-def test_generate_raises_when_workflow_not_found(generator, mocker):
+def test_generate_raises_when_workflow_not_found(generator, mocker: MockerFixture):
     flask_app = MagicMock()
     mocker.patch.object(module, "preserve_flask_contexts", _dummy_preserve)
 
@@ -369,7 +370,7 @@ def test_generate_raises_when_workflow_not_found(generator, mocker):
         )
 
 
-def test_generate_success_returns_converted(generator, mocker):
+def test_generate_success_returns_converted(generator, mocker: MockerFixture):
     flask_app = MagicMock()
     mocker.patch.object(module, "preserve_flask_contexts", _dummy_preserve)
 
@@ -409,7 +410,7 @@ def test_generate_success_returns_converted(generator, mocker):
     assert result == "converted"
 
 
-def test_single_iteration_generate_validates_inputs(generator, mocker):
+def test_single_iteration_generate_validates_inputs(generator, mocker: MockerFixture):
     with pytest.raises(ValueError):
         generator.single_iteration_generate(_build_pipeline(), _build_workflow(), "", _build_user(), {})
 
@@ -419,7 +420,7 @@ def test_single_iteration_generate_validates_inputs(generator, mocker):
         )
 
 
-def test_single_iteration_generate_dataset_required(generator, mocker):
+def test_single_iteration_generate_dataset_required(generator, mocker: MockerFixture):
     pipeline = _build_pipeline()
     pipeline.retrieve_dataset.return_value = None
 
@@ -436,7 +437,7 @@ def test_single_iteration_generate_dataset_required(generator, mocker):
         )
 
 
-def test_single_iteration_generate_success(generator, mocker):
+def test_single_iteration_generate_success(generator, mocker: MockerFixture):
     pipeline = _build_pipeline()
 
     session = DummySession()
@@ -476,7 +477,7 @@ def test_single_iteration_generate_success(generator, mocker):
     assert result == {"ok": True}
 
 
-def test_single_loop_generate_success(generator, mocker):
+def test_single_loop_generate_success(generator, mocker: MockerFixture):
     pipeline = _build_pipeline()
 
     session = DummySession()
@@ -516,7 +517,7 @@ def test_single_loop_generate_success(generator, mocker):
     assert result == {"ok": True}
 
 
-def test_handle_response_value_error_triggers_generate_task_stopped(generator, mocker):
+def test_handle_response_value_error_triggers_generate_task_stopped(generator, mocker: MockerFixture):
     pipeline = _build_pipeline()
     workflow = _build_workflow()
     app_entity = FakeRagPipelineGenerateEntity(task_id="t")
@@ -536,7 +537,7 @@ def test_handle_response_value_error_triggers_generate_task_stopped(generator, m
         )
 
 
-def test_build_document_sets_metadata_for_builtin_fields(generator, mocker):
+def test_build_document_sets_metadata_for_builtin_fields(generator, mocker: MockerFixture):
     class DummyDocument(SimpleNamespace):
         pass
 
@@ -620,7 +621,7 @@ def test_format_datasource_info_list_missing_node_data(generator):
         )
 
 
-def test_format_datasource_info_list_online_drive_folder(generator, mocker):
+def test_format_datasource_info_list_online_drive_folder(generator, mocker: MockerFixture):
     workflow = MagicMock(
         graph_dict={
             "nodes": [
@@ -716,3 +717,129 @@ def test_get_files_in_folder_recurses_and_collects(generator):
     )
 
     assert {f["id"] for f in all_files} == {"f1", "f2"}
+
+
+def test_get_files_in_folder_handles_empty_folder(generator):
+    """An empty folder must return an empty file list without recursion errors."""
+
+    class FilesPage:
+        def __init__(self, files, is_truncated=False, next_page_parameters=None):
+            self.files = files
+            self.is_truncated = is_truncated
+            self.next_page_parameters = next_page_parameters
+
+    class Result:
+        def __init__(self, result):
+            self.result = result
+
+    class Runtime:
+        def datasource_provider_type(self):
+            return DatasourceProviderType.ONLINE_DRIVE
+
+        def online_drive_browse_files(self, user_id, request, provider_type):
+            # Empty folder: returns a page with no files, not truncated
+            return iter([Result([FilesPage([], False, None)])])
+
+    runtime = Runtime()
+    all_files: list = []
+
+    generator._get_files_in_folder(
+        datasource_runtime=runtime,
+        prefix="empty-folder",
+        bucket="b",
+        user_id="user",
+        all_files=all_files,
+        datasource_info={},
+    )
+
+    assert all_files == []
+
+
+def test_get_files_in_folder_handles_empty_folder_with_false_truncation(generator):
+    """An empty folder that incorrectly reports is_truncated=True must not recurse forever."""
+
+    call_count = 0
+
+    class FilesPage:
+        def __init__(self, files, is_truncated=False, next_page_parameters=None):
+            self.files = files
+            self.is_truncated = is_truncated
+            self.next_page_parameters = next_page_parameters
+
+    class Result:
+        def __init__(self, result):
+            self.result = result
+
+    class Runtime:
+        def datasource_provider_type(self):
+            return DatasourceProviderType.ONLINE_DRIVE
+
+        def online_drive_browse_files(self, user_id, request, provider_type):
+            nonlocal call_count
+            call_count += 1
+            # Empty folder that incorrectly claims truncation
+            return iter([Result([FilesPage([], True, {"page": 2})])])
+
+    runtime = Runtime()
+    all_files: list = []
+
+    generator._get_files_in_folder(
+        datasource_runtime=runtime,
+        prefix="buggy-folder",
+        bucket="b",
+        user_id="user",
+        all_files=all_files,
+        datasource_info={},
+    )
+
+    assert all_files == []
+    # Should only be called once -- the empty-page guard prevents further recursion
+    assert call_count == 1
+
+
+def test_get_files_in_folder_handles_self_referencing_folder(generator):
+    """A folder that lists itself as a child must not recurse infinitely."""
+
+    class File:
+        def __init__(self, id, name, type):
+            self.id = id
+            self.name = name
+            self.type = type
+
+    class FilesPage:
+        def __init__(self, files, is_truncated=False, next_page_parameters=None):
+            self.files = files
+            self.is_truncated = is_truncated
+            self.next_page_parameters = next_page_parameters
+
+    class Result:
+        def __init__(self, result):
+            self.result = result
+
+    call_count = 0
+
+    class Runtime:
+        def datasource_provider_type(self):
+            return DatasourceProviderType.ONLINE_DRIVE
+
+        def online_drive_browse_files(self, user_id, request, provider_type):
+            nonlocal call_count
+            call_count += 1
+            # The folder returns itself as a child (self-reference)
+            return iter([Result([FilesPage([File("self-ref", "myfolder", "folder")], False, None)])])
+
+    runtime = Runtime()
+    all_files: list = []
+
+    generator._get_files_in_folder(
+        datasource_runtime=runtime,
+        prefix="self-ref",
+        bucket="b",
+        user_id="user",
+        all_files=all_files,
+        datasource_info={},
+    )
+
+    assert all_files == []
+    # Should only be called once -- the visited-set guard prevents re-entry
+    assert call_count == 1

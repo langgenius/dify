@@ -8,10 +8,10 @@ import type { ToolWithProvider, ValueSelector, Var } from '@/app/components/work
 import { cn } from '@langgenius/dify-ui/cn'
 import { Select, SelectContent, SelectItem, SelectItemIndicator, SelectItemText, SelectTrigger } from '@langgenius/dify-ui/select'
 import { useEffect, useMemo, useState } from 'react'
-import CheckboxList from '@/app/components/base/checkbox-list'
+import { CheckboxList } from '@/app/components/base/checkbox-list'
 import Input from '@/app/components/base/input'
 import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
-import AppSelector from '@/app/components/plugins/plugin-detail-panel/app-selector'
+import { AppSelector } from '@/app/components/plugins/plugin-detail-panel/app-selector'
 import ModelParameterModal from '@/app/components/plugins/plugin-detail-panel/model-selector'
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
 import VarReferencePicker from '@/app/components/workflow/nodes/_base/components/variable/var-reference-picker'
@@ -65,7 +65,6 @@ const FormInputItem: FC<Props> = ({
   schema,
   value,
   onChange,
-  inPanel,
   currentTool,
   currentProvider,
   showManageInputField,
@@ -306,6 +305,7 @@ const FormInputItem: FC<Props> = ({
       )}
       {isCheckbox && isConstant && (
         <CheckboxList
+          name={variable}
           title={schema.label?.[language] || schema.label?.en_US || variable}
           value={checkboxListValue}
           onChange={handleCheckboxListChange}
@@ -329,11 +329,11 @@ const FormInputItem: FC<Props> = ({
           <SelectTrigger className="h-8 grow">
             {selectedStaticOption?.name ?? placeholder?.[language] ?? placeholder?.en_US}
           </SelectTrigger>
-          <SelectContent popupClassName="w-(--anchor-width)">
+          <SelectContent>
             {staticSelectItems.map(item => (
               <SelectItem key={item.value} value={item.value}>
                 {item.icon && (
-                  <img src={item.icon} alt="" className="mr-2 h-4 w-4 shrink-0" />
+                  <img src={item.icon} alt="" className="mr-2 size-4 shrink-0" />
                 )}
                 <SelectItemText>{item.name}</SelectItemText>
                 <SelectItemIndicator />
@@ -361,11 +361,11 @@ const FormInputItem: FC<Props> = ({
           <SelectTrigger className="h-8 grow">
             {selectedDynamicOption?.name ?? (isLoadingOptions ? 'Loading...' : (placeholder?.[language] ?? placeholder?.en_US))}
           </SelectTrigger>
-          <SelectContent popupClassName="w-(--anchor-width)">
+          <SelectContent>
             {dynamicSelectItems.map(item => (
               <SelectItem key={item.value} value={item.value}>
                 {item.icon && (
-                  <img src={item.icon} alt="" className="mr-2 h-4 w-4 shrink-0" />
+                  <img src={item.icon} alt="" className="mr-2 size-4 shrink-0" />
                 )}
                 <SelectItemText>{item.name}</SelectItemText>
                 <SelectItemIndicator />
@@ -413,7 +413,6 @@ const FormInputItem: FC<Props> = ({
       )}
       {showVariableSelector && (
         <VarReferencePicker
-          zIndex={inPanel ? 1000 : undefined}
           className="h-8 grow"
           readonly={readOnly}
           isShowNodeName

@@ -11,7 +11,7 @@ import { SupportUploadFileTypes } from '@/app/components/workflow/types'
 import { TransferMethod } from '@/types/app'
 import { PreviewMode } from '../../base/features/types'
 import BoolValue from '../panel/chat-variable-panel/components/bool-value'
-import DisplayContent from './display-content'
+import { DisplayContent } from './display-content'
 import LargeDataAlert from './large-data-alert'
 import { PreviewType } from './types'
 
@@ -32,7 +32,7 @@ export const TextEditorSection = ({
 }: TextEditorSectionProps) => {
   return (
     <>
-      {isTruncated && <LargeDataAlert className="absolute top-1 right-3 left-3" />}
+      {isTruncated && <LargeDataAlert className="absolute inset-x-3 top-1" />}
       {currentVar.value_type === 'string'
         ? (
             <DisplayContent

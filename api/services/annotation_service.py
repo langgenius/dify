@@ -425,7 +425,7 @@ class AppAnnotationService:
         return {"deleted_count": deleted_count}
 
     @classmethod
-    def batch_import_app_annotations(cls, app_id, file: FileStorage):
+    def batch_import_app_annotations(cls, app_id: str, file: FileStorage):
         """
         Batch import annotations from CSV file with enhanced security checks.
 

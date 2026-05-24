@@ -106,7 +106,7 @@ const ConditionWrap: FC<Props> = ({
                 {!isSubVariable && (
                   <>
                     <RiDraggable className={cn(
-                      'handle absolute top-2 left-1 hidden h-3 w-3 cursor-pointer text-text-quaternary',
+                      'handle absolute top-2 left-1 hidden size-3 cursor-pointer text-text-quaternary',
                       casesLength > 1 && 'group-hover:block',
                     )}
                     />
@@ -180,7 +180,7 @@ const ConditionWrap: FC<Props> = ({
                               size="small"
                               disabled={readOnly}
                             >
-                              <RiAddLine className="mr-1 h-3.5 w-3.5" />
+                              <RiAddLine className="mr-1 size-3.5" />
                               {t('nodes.ifElse.addSubVariable', { ns: 'workflow' })}
                             </Button>
                           </SelectTrigger>
@@ -213,7 +213,7 @@ const ConditionWrap: FC<Props> = ({
                         onMouseEnter={() => setWillDeleteCaseId(item.case_id)}
                         onMouseLeave={() => setWillDeleteCaseId('')}
                       >
-                        <RiDeleteBinLine className="mr-1 h-3.5 w-3.5" />
+                        <RiDeleteBinLine className="mr-1 size-3.5" />
                         {t('operation.remove', { ns: 'common' })}
                       </Button>
                     )
@@ -233,7 +233,7 @@ const ConditionWrap: FC<Props> = ({
           disabled={readOnly}
           onClick={() => handleAddSubVariableCondition?.(caseId!, conditionId!)}
         >
-          <RiAddLine className="mr-1 h-3.5 w-3.5" />
+          <RiAddLine className="mr-1 size-3.5" />
           {t('nodes.ifElse.addSubVariable', { ns: 'workflow' })}
         </Button>
       )}

@@ -173,9 +173,7 @@ describe('useSelectionInteractions', () => {
 
   it('handleSelectionContextMenu should set menu only when clicking on selection rect', () => {
     const { result, store } = renderSelectionInteractions({
-      nodeMenu: { top: 10, left: 20, nodeId: 'n1' },
-      panelMenu: { top: 30, left: 40 },
-      edgeMenu: { clientX: 320, clientY: 180, edgeId: 'e1' },
+      contextMenuTarget: { type: 'node', nodeId: 'n1' },
     })
 
     const wrongTarget = document.createElement('div')
@@ -190,7 +188,7 @@ describe('useSelectionInteractions', () => {
       } as unknown as React.MouseEvent)
     })
 
-    expect(store.getState().selectionMenu).toBeUndefined()
+    expect(store.getState().contextMenuTarget).toEqual({ type: 'node', nodeId: 'n1' })
 
     const correctTarget = document.createElement('div')
     correctTarget.classList.add('react-flow__nodesselection-rect')
@@ -204,24 +202,6 @@ describe('useSelectionInteractions', () => {
       } as unknown as React.MouseEvent)
     })
 
-    expect(store.getState().selectionMenu).toEqual({
-      clientX: 300,
-      clientY: 200,
-    })
-    expect(store.getState().nodeMenu).toBeUndefined()
-    expect(store.getState().panelMenu).toBeUndefined()
-    expect(store.getState().edgeMenu).toBeUndefined()
-  })
-
-  it('handleSelectionContextmenuCancel should clear selectionMenu', () => {
-    const { result, store } = renderSelectionInteractions({
-      selectionMenu: { clientX: 50, clientY: 60 },
-    })
-
-    act(() => {
-      result.current.handleSelectionContextmenuCancel()
-    })
-
-    expect(store.getState().selectionMenu).toBeUndefined()
+    expect(store.getState().contextMenuTarget).toEqual({ type: 'selection' })
   })
 })

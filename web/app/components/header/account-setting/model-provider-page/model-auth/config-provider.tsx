@@ -5,6 +5,7 @@ import type {
 import {
   Button,
 } from '@langgenius/dify-ui/button'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import {
   RiEqualizer2Line,
 } from '@remixicon/react'
@@ -13,7 +14,6 @@ import {
   useCallback,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import Tooltip from '@/app/components/base/tooltip'
 import { ConfigurationMethodEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import Authorized from './authorized'
 import { useCredentialStatus } from './hooks'
@@ -45,7 +45,7 @@ const ConfigProvider = ({
         variant={!authorized ? 'secondary-accent' : 'secondary'}
         title={text}
       >
-        <RiEqualizer2Line className="mr-1 h-3.5 w-3.5 shrink-0" />
+        <RiEqualizer2Line className="mr-1 size-3.5 shrink-0" />
         <span className="w-0 grow truncate text-left">
           {text}
         </span>
@@ -53,11 +53,11 @@ const ConfigProvider = ({
     )
     if (notAllowCustomCredential && !hasCredential) {
       return (
-        <Tooltip
-          asChild
-          popupContent={t('auth.credentialUnavailable', { ns: 'plugin' })}
-        >
-          {Item}
+        <Tooltip>
+          <TooltipTrigger render={Item} />
+          <TooltipContent>
+            {t('auth.credentialUnavailable', { ns: 'plugin' })}
+          </TooltipContent>
         </Tooltip>
       )
     }

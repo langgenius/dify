@@ -712,7 +712,7 @@ class TestDatasetServiceRetrievalConfiguration:
 class TestDocumentServicePauseRecoverRetry:
     """Tests for pause/recover/retry orchestration using real DB and Redis."""
 
-    def _create_indexing_document(self, db_session_with_containers, indexing_status="indexing"):
+    def _create_indexing_document(self, db_session_with_containers: Session, indexing_status="indexing"):
         factory = DatasetServiceIntegrationDataFactory
         account, tenant = factory.create_account_with_tenant(db_session_with_containers)
         dataset = factory.create_dataset(db_session_with_containers, tenant.id, account.id)
@@ -721,7 +721,7 @@ class TestDocumentServicePauseRecoverRetry:
         db_session_with_containers.commit()
         return doc, account
 
-    def test_pause_document_success(self, db_session_with_containers):
+    def test_pause_document_success(self, db_session_with_containers: Session):
         from extensions.ext_redis import redis_client
         from services.dataset_service import DocumentService
 
@@ -740,7 +740,7 @@ class TestDocumentServicePauseRecoverRetry:
         assert redis_client.get(cache_key) is not None
         redis_client.delete(cache_key)
 
-    def test_pause_document_invalid_status_error(self, db_session_with_containers):
+    def test_pause_document_invalid_status_error(self, db_session_with_containers: Session):
         from services.dataset_service import DocumentService
         from services.errors.document import DocumentIndexingError
 
@@ -751,7 +751,7 @@ class TestDocumentServicePauseRecoverRetry:
             with pytest.raises(DocumentIndexingError):
                 DocumentService.pause_document(doc)
 
-    def test_recover_document_success(self, db_session_with_containers):
+    def test_recover_document_success(self, db_session_with_containers: Session):
         from extensions.ext_redis import redis_client
         from services.dataset_service import DocumentService
 
@@ -775,7 +775,7 @@ class TestDocumentServicePauseRecoverRetry:
         assert redis_client.get(cache_key) is None
         recover_task.delay.assert_called_once_with(doc.dataset_id, doc.id)
 
-    def test_retry_document_indexing_success(self, db_session_with_containers):
+    def test_retry_document_indexing_success(self, db_session_with_containers: Session):
         from extensions.ext_redis import redis_client
         from services.dataset_service import DocumentService
 

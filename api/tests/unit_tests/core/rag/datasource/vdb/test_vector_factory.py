@@ -102,7 +102,9 @@ def test_gen_index_struct_dict(vector_factory_module):
         ("HOLOGRES", "dify_vdb_hologres.hologres_vector", "HologresVectorFactory"),
     ],
 )
-def test_get_vector_factory_supported(vector_factory_module, monkeypatch, vector_type, module_path, class_name):
+def test_get_vector_factory_supported(
+    vector_factory_module, monkeypatch: pytest.MonkeyPatch, vector_type, module_path, class_name
+):
     expected_cls = _register_fake_factory_module(monkeypatch, module_path, class_name)
 
     result_cls = vector_factory_module.Vector.get_vector_factory(getattr(vector_factory_module.VectorType, vector_type))
@@ -119,7 +121,7 @@ class _PluginChromaFactory:
     """Stub used only for entry-point override test."""
 
 
-def test_get_vector_factory_entry_point_overrides_builtin(vector_factory_module, monkeypatch):
+def test_get_vector_factory_entry_point_overrides_builtin(vector_factory_module, monkeypatch: pytest.MonkeyPatch):
     from importlib.metadata import EntryPoint
 
     from core.rag.datasource.vdb import vector_backend_registry as reg
@@ -171,7 +173,7 @@ def test_vector_init_uses_default_and_custom_attributes(vector_factory_module):
     assert default_vector._vector_processor == "processor"
 
 
-def test_lazy_embeddings_defer_real_load_until_first_embed_call(vector_factory_module, monkeypatch):
+def test_lazy_embeddings_defer_real_load_until_first_embed_call(vector_factory_module, monkeypatch: pytest.MonkeyPatch):
     """``Vector(dataset)`` must not transitively call ``ModelManager`` during
     construction. The real embedding model should only be materialized on the
     first ``embed_*`` call (i.e. create / search paths) so cleanup paths
@@ -214,7 +216,7 @@ def test_lazy_embeddings_defer_real_load_until_first_embed_call(vector_factory_m
     inner_model.embed_documents.assert_called_once_with(["world"])
 
 
-def test_init_vector_prefers_dataset_index_struct(vector_factory_module, monkeypatch):
+def test_init_vector_prefers_dataset_index_struct(vector_factory_module, monkeypatch: pytest.MonkeyPatch):
     calls = {"vector_type": None, "init_args": None}
 
     class _Factory:
@@ -242,7 +244,7 @@ def test_init_vector_prefers_dataset_index_struct(vector_factory_module, monkeyp
     assert calls["init_args"] == (vector._dataset, ["doc_id"], "embeddings")
 
 
-def test_init_vector_uses_whitelist_override(vector_factory_module, monkeypatch):
+def test_init_vector_uses_whitelist_override(vector_factory_module, monkeypatch: pytest.MonkeyPatch):
     class _Expr:
         def __eq__(self, _other):
             return "expr"
@@ -279,7 +281,7 @@ def test_init_vector_uses_whitelist_override(vector_factory_module, monkeypatch)
     assert calls["vector_type"] == vector_factory_module.VectorType.TIDB_ON_QDRANT
 
 
-def test_init_vector_raises_when_vector_store_missing(vector_factory_module, monkeypatch):
+def test_init_vector_raises_when_vector_store_missing(vector_factory_module, monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setattr(vector_factory_module.dify_config, "VECTOR_STORE", None)
     monkeypatch.setattr(vector_factory_module.dify_config, "VECTOR_STORE_WHITELIST_ENABLE", False)
 
@@ -316,7 +318,34 @@ def test_create_batches_texts_and_skips_empty_input(vector_factory_module):
     vector._vector_processor.create.assert_not_called()
 
 
-def test_create_multimodal_filters_missing_uploads(vector_factory_module, monkeypatch):
+def test_create_skips_empty_text_documents_before_embedding(vector_factory_module):
+    vector = vector_factory_module.Vector.__new__(vector_factory_module.Vector)
+    vector._embeddings = MagicMock()
+    vector._embeddings.embed_documents.return_value = [[0.1], [0.2]]
+    vector._vector_processor = MagicMock()
+
+    docs = [
+        Document(page_content="foo", metadata={"doc_id": "id-1"}),
+        Document(page_content="", metadata={"doc_id": "id-empty"}),
+        Document(page_content="  \n", metadata={"doc_id": "id-blank"}),
+        Document(page_content="bar", metadata={"doc_id": "id-2"}),
+    ]
+
+    vector.create(texts=docs, request_id="r-1")
+
+    vector._embeddings.embed_documents.assert_called_once_with(["foo", "bar"])
+    vector._vector_processor.create.assert_called_once_with(
+        texts=[docs[0], docs[3]], embeddings=[[0.1], [0.2]], request_id="r-1"
+    )
+
+    vector._embeddings.embed_documents.reset_mock()
+    vector._vector_processor.create.reset_mock()
+    vector.create(texts=[docs[1], docs[2]])
+    vector._embeddings.embed_documents.assert_not_called()
+    vector._vector_processor.create.assert_not_called()
+
+
+def test_create_multimodal_filters_missing_uploads(vector_factory_module, monkeypatch: pytest.MonkeyPatch):
     class _Field:
         def in_(self, value):
             return value
@@ -396,6 +425,48 @@ def test_add_texts_with_optional_duplicate_check(vector_factory_module):
     vector._vector_processor.create.assert_called_once()
 
 
+def test_add_texts_skips_empty_text_documents(vector_factory_module):
+    vector = vector_factory_module.Vector.__new__(vector_factory_module.Vector)
+    vector._embeddings = MagicMock()
+    vector._embeddings.embed_documents.return_value = [[0.1]]
+    vector._vector_processor = MagicMock()
+
+    docs = [
+        Document(page_content="keep", metadata={"doc_id": "id-1"}),
+        Document(page_content="", metadata={"doc_id": "id-empty"}),
+    ]
+
+    vector.add_texts(docs, source="api")
+
+    vector._embeddings.embed_documents.assert_called_once_with(["keep"])
+    vector._vector_processor.create.assert_called_once_with(texts=[docs[0]], embeddings=[[0.1]], source="api")
+
+    vector._embeddings.embed_documents.reset_mock()
+    vector._vector_processor.create.reset_mock()
+    vector.add_texts([docs[1]])
+    vector._embeddings.embed_documents.assert_not_called()
+    vector._vector_processor.create.assert_not_called()
+
+
+def test_add_texts_filters_empty_documents_before_duplicate_check(vector_factory_module):
+    vector = vector_factory_module.Vector.__new__(vector_factory_module.Vector)
+    vector._embeddings = MagicMock()
+    vector._embeddings.embed_documents.return_value = [[0.1]]
+    vector._vector_processor = MagicMock()
+    vector._filter_duplicate_texts = MagicMock(return_value=[])
+
+    docs = [
+        Document(page_content="keep", metadata={"doc_id": "id-1"}),
+        Document(page_content="   ", metadata={"doc_id": "id-empty"}),
+    ]
+
+    vector.add_texts(docs, duplicate_check=True)
+
+    vector._filter_duplicate_texts.assert_called_once_with([docs[0]])
+    vector._embeddings.embed_documents.assert_not_called()
+    vector._vector_processor.create.assert_not_called()
+
+
 def test_vector_delegation_methods(vector_factory_module):
     vector = vector_factory_module.Vector.__new__(vector_factory_module.Vector)
     vector._embeddings = MagicMock()
@@ -415,7 +486,7 @@ def test_vector_delegation_methods(vector_factory_module):
     vector._vector_processor.delete_by_metadata_field.assert_called_once_with("doc_id", "doc-1")
 
 
-def test_search_by_file_handles_missing_and_existing_upload(vector_factory_module, monkeypatch):
+def test_search_by_file_handles_missing_and_existing_upload(vector_factory_module, monkeypatch: pytest.MonkeyPatch):
     vector = vector_factory_module.Vector.__new__(vector_factory_module.Vector)
     vector._embeddings = MagicMock()
     vector._vector_processor = MagicMock()
@@ -438,7 +509,7 @@ def test_search_by_file_handles_missing_and_existing_upload(vector_factory_modul
     assert payload["file_id"] == "file-2"
 
 
-def test_delete_clears_redis_cache_when_collection_exists(vector_factory_module, monkeypatch):
+def test_delete_clears_redis_cache_when_collection_exists(vector_factory_module, monkeypatch: pytest.MonkeyPatch):
     delete_mock = MagicMock()
     redis_delete = MagicMock()
     monkeypatch.setattr(vector_factory_module.redis_client, "delete", redis_delete)
@@ -457,7 +528,7 @@ def test_delete_clears_redis_cache_when_collection_exists(vector_factory_module,
     redis_delete.assert_not_called()
 
 
-def test_get_embeddings_builds_cache_embedding(vector_factory_module, monkeypatch):
+def test_get_embeddings_builds_cache_embedding(vector_factory_module, monkeypatch: pytest.MonkeyPatch):
     model_manager = MagicMock()
     model_manager.get_model_instance.return_value = "model-instance"
 

@@ -12,7 +12,6 @@ import type { ModelConfig } from '@/models/debug'
 import type { AgentTool } from '@/types/app'
 import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import copy from 'copy-to-clipboard'
 import * as React from 'react'
 import {
   useEffect,
@@ -27,6 +26,7 @@ import {
 } from '@/config'
 import ConfigContext from '@/context/debug-configuration'
 import { ModelModeType } from '@/types/app'
+import { writeTextToClipboard } from '@/utils/clipboard'
 import AgentTools from '../index'
 
 const formattingDispatcherMock = vi.fn()
@@ -99,9 +99,11 @@ vi.mock('../setting-built-in-tool', () => ({
   default: (props: SettingBuiltInToolProps) => <SettingBuiltInToolMock {...props} />,
 }))
 
-vi.mock('copy-to-clipboard')
+vi.mock('@/utils/clipboard', () => ({
+  writeTextToClipboard: vi.fn().mockResolvedValue(undefined),
+}))
 
-const copyMock = copy as Mock
+const writeTextToClipboardMock = writeTextToClipboard as Mock
 
 const createToolParameter = (overrides?: Partial<ToolParameter>): ToolParameter => ({
   name: 'api_key',
@@ -241,7 +243,7 @@ const renderAgentTools = (initialTools?: AgentTool[]) => {
 
 const hoverInfoIcon = async (rowIndex = 0) => {
   const rows = document.querySelectorAll('.group')
-  const infoTrigger = rows.item(rowIndex)?.querySelector('[data-testid="tool-info-tooltip"]')
+  const infoTrigger = rows.item(rowIndex)?.querySelector('[aria-label="search"]')
   if (!infoTrigger)
     throw new Error('Info trigger not found')
   await userEvent.hover(infoTrigger as HTMLElement)
@@ -343,13 +345,21 @@ describe('AgentTools', () => {
     expect(screen.getByText('Translate Tool')).toBeInTheDocument()
   })
 
-  it('should copy tool name from tooltip action', async () => {
+  it('should copy tool name from infotip action', async () => {
     renderAgentTools()
 
     await hoverInfoIcon()
     const copyButton = await screen.findByText('tools.copyToolName')
     await userEvent.click(copyButton)
-    expect(copyMock).toHaveBeenCalledWith('search')
+    expect(writeTextToClipboardMock).toHaveBeenCalledWith('search')
+  })
+
+  it('should expose the tool name infotip trigger', () => {
+    renderAgentTools()
+
+    const infoTrigger = screen.getByRole('button', { name: 'search' })
+
+    expect(infoTrigger).toBeInTheDocument()
   })
 
   it('should toggle tool enabled state via switch', async () => {
@@ -368,7 +378,7 @@ describe('AgentTools', () => {
 
   it('should remove tool when delete action is clicked', async () => {
     const { getModelConfig } = renderAgentTools()
-    const deleteButton = screen.getByTestId('delete-removed-tool')
+    const deleteButton = screen.getByRole('button', { name: /operation\.delete/i })
     if (!deleteButton)
       throw new Error('Delete button not found')
     await userEvent.click(deleteButton)

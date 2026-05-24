@@ -17,27 +17,27 @@ describe('ParamItem', () => {
     vi.clearAllMocks()
   })
 
-  const getSlider = () => screen.getByLabelText('Test Param')
+  const getSlider = () => screen.getByLabelText('Test Param', {
+    selector: 'input[type="range"]',
+  })
 
   describe('Rendering', () => {
     it('should render the parameter name', () => {
       render(<ParamItem {...defaultProps} />)
 
-      expect(screen.getByText('Test Param')).toBeInTheDocument()
+      expect(screen.getByText('Test Param', { selector: 'span' })).toBeInTheDocument()
     })
 
     it('should render a tooltip trigger by default', () => {
-      const { container } = render(<ParamItem {...defaultProps} tip="Some tip text" />)
+      render(<ParamItem {...defaultProps} tip="Some tip text" />)
 
-      // Tooltip trigger icon should be rendered (the data-state div)
-      expect(container.querySelector('[data-state]')).toBeInTheDocument()
+      expect(screen.getByLabelText('Some tip text')).toBeInTheDocument()
     })
 
     it('should not render tooltip trigger when noTooltip is true', () => {
-      const { container } = render(<ParamItem {...defaultProps} noTooltip tip="Hidden tip" />)
+      render(<ParamItem {...defaultProps} noTooltip tip="Hidden tip" />)
 
-      // No tooltip trigger icon should be rendered
-      expect(container.querySelector('[data-state]')).not.toBeInTheDocument()
+      expect(screen.queryByLabelText('Hidden tip')).not.toBeInTheDocument()
     })
 
     it('should render a switch when hasSwitch is true', () => {

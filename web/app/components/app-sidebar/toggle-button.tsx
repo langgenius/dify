@@ -1,20 +1,20 @@
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { RiArrowLeftSLine, RiArrowRightSLine } from '@remixicon/react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import Tooltip from '../base/tooltip'
 import ShortcutsName from '../workflow/shortcuts-name'
 
-type TooltipContentProps = {
+type ToggleTooltipContentProps = {
   expand: boolean
 }
 
 const TOGGLE_SHORTCUT = ['ctrl', 'B']
 
-const TooltipContent = ({
+const ToggleTooltipContent = ({
   expand,
-}: TooltipContentProps) => {
+}: ToggleTooltipContentProps) => {
   const { t } = useTranslation()
 
   return (
@@ -37,22 +37,21 @@ const ToggleButton = ({
   className,
 }: ToggleButtonProps) => {
   return (
-    <Tooltip
-      popupContent={<TooltipContent expand={expand} />}
-      popupClassName="p-1.5 rounded-lg"
-      position="right"
-    >
-      <Button
-        size="small"
-        onClick={handleToggle}
-        className={cn('rounded-full px-1', className)}
+    <Tooltip>
+      <TooltipTrigger
+        render={(
+          <Button
+            size="small"
+            onClick={handleToggle}
+            className={cn('rounded-full px-1', className)}
+          />
+        )}
       >
-        {
-          expand
-            ? <RiArrowLeftSLine className="size-4" />
-            : <RiArrowRightSLine className="size-4" />
-        }
-      </Button>
+        {expand ? <RiArrowLeftSLine className="size-4" /> : <RiArrowRightSLine className="size-4" />}
+      </TooltipTrigger>
+      <TooltipContent placement="right" className="rounded-lg p-1.5">
+        <ToggleTooltipContent expand={expand} />
+      </TooltipContent>
     </Tooltip>
   )
 }

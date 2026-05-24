@@ -5,8 +5,6 @@ export { default as CodeAssistant } from './CodeAssistant'
 export { default as Link03 } from './Link03'
 export { default as LinkExternal02 } from './LinkExternal02'
 
-export { default as LogOut01 } from './LogOut01'
-
 export { default as MagicEdit } from './MagicEdit'
 
 export { default as Pin02 } from './Pin02'

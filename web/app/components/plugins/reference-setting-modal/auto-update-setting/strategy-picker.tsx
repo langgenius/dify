@@ -53,12 +53,11 @@ const StrategyPicker = ({
     >
       <DropdownMenuTrigger render={<Button size="small" />}>
         {selectedOption?.label}
-        <span aria-hidden className="i-ri-arrow-down-s-line h-3.5 w-3.5" />
+        <span aria-hidden className="i-ri-arrow-down-s-line size-3.5" />
       </DropdownMenuTrigger>
       <DropdownMenuContent
         placement="top-end"
         sideOffset={4}
-        className="z-99"
         popupClassName="w-[280px] p-1"
       >
         <DropdownMenuRadioGroup

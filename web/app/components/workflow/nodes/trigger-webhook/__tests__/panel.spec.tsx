@@ -48,6 +48,7 @@ vi.mock('@langgenius/dify-ui/select', async () => {
         <div>{children}</div>
       </SelectContext.Provider>
     ),
+    SelectLabel: () => null,
     SelectTrigger: ({ children, className }: { children: React.ReactNode, className?: string }) => {
       const context = React.useContext(SelectContext)
       return (
@@ -92,10 +93,6 @@ vi.mock('@/app/components/base/input-with-copy', () => ({
       <button data-testid="copy-input" type="button" onClick={onCopy}>Copy</button>
     </div>
   ),
-}))
-
-vi.mock('@/app/components/base/tooltip', () => ({
-  default: ({ children }: { children: React.ReactNode }) => <>{children}</>,
 }))
 
 vi.mock('@/app/components/workflow/nodes/_base/components/field', () => ({

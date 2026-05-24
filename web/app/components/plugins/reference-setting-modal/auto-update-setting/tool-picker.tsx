@@ -101,7 +101,6 @@ const ToolPicker: FC<Props> = ({
         placement="top"
         sideOffset={0}
         popupClassName="border-none bg-transparent p-0 shadow-none backdrop-blur-none"
-        positionerProps={{ style: { zIndex: 1000 } }}
       >
         <div className="relative min-h-20 w-full rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur pb-2 shadow-lg backdrop-blur-xs">
           <div className="p-2 pb-1">

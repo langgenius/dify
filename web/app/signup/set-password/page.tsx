@@ -9,10 +9,12 @@ import { useTranslation } from 'react-i18next'
 import { trackEvent } from '@/app/components/base/amplitude'
 import Input from '@/app/components/base/input'
 import { validPassword } from '@/config'
+import { useLocale } from '@/context/i18n'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { useMailRegister } from '@/service/use-common'
 import { rememberCreateAppExternalAttribution } from '@/utils/create-app-tracking'
 import { sendGAEvent } from '@/utils/gtag'
+import { getBrowserTimezone } from '@/utils/timezone'
 
 const parseUtmInfo = () => {
   const utmInfoStr = Cookies.get('utm_info')
@@ -32,6 +34,7 @@ const ChangePasswordForm = () => {
   const router = useRouter()
   const searchParams = useSearchParams()
   const token = decodeURIComponent(searchParams.get('token') || '')
+  const locale = useLocale()
 
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
@@ -65,6 +68,8 @@ const ChangePasswordForm = () => {
         token,
         new_password: password,
         password_confirm: confirmPassword,
+        language: locale,
+        timezone: getBrowserTimezone(),
       })
       const { result } = res as MailRegisterResponse
       if (result === 'success') {
@@ -88,7 +93,7 @@ const ChangePasswordForm = () => {
     catch (error) {
       console.error(error)
     }
-  }, [password, token, valid, confirmPassword, register])
+  }, [password, token, valid, confirmPassword, register, locale])
 
   return (
     <div className={

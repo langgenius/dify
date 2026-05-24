@@ -60,11 +60,11 @@ const FileInAttachmentItem = ({
             window.open(url || base64Url || '', '_blank')
         }}
       >
-        <div className="flex h-12 w-12 items-center justify-center">
+        <div className="flex size-12 items-center justify-center">
           {
             isImageFile && (
               <FileImageRender
-                className="h-8 w-8"
+                className="size-8"
                 imageUrl={base64Url || url || ''}
               />
             )
@@ -118,21 +118,21 @@ const FileInAttachmentItem = ({
                 className="mr-1"
                 onClick={() => onReUpload?.(id)}
               >
-                <ReplayLine className="h-4 w-4 text-text-tertiary" />
+                <ReplayLine className="size-4 text-text-tertiary" />
               </ActionButton>
             )
           }
           {
             showDeleteAction && (
               <ActionButton onClick={() => onRemove?.(id)}>
-                <RiDeleteBinLine className="h-4 w-4" />
+                <RiDeleteBinLine className="size-4" />
               </ActionButton>
             )
           }
           {
             canPreview && isImageFile && (
               <ActionButton className="mr-1" onClick={() => setImagePreviewUrl(url || '')}>
-                <RiEyeLine className="h-4 w-4" />
+                <RiEyeLine className="size-4" />
               </ActionButton>
             )
           }
@@ -143,7 +143,7 @@ const FileInAttachmentItem = ({
                 downloadUrl({ url: url || base64Url || '', fileName: name, target: '_blank' })
               }}
               >
-                <RiDownloadLine className="h-4 w-4" />
+                <RiDownloadLine className="size-4" />
               </ActionButton>
             )
           }

@@ -63,7 +63,7 @@ export const AuthorizedItem = ({
             {
               model?.model && (
                 <ModelIcon
-                  className="mr-1 h-5 w-5 shrink-0"
+                  className="mr-1 size-5 shrink-0"
                   provider={provider}
                   modelName={model.model}
                 />

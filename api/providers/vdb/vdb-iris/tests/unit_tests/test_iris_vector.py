@@ -23,7 +23,7 @@ def _build_fake_iris_module():
 
 
 @pytest.fixture
-def iris_module(monkeypatch):
+def iris_module(monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setitem(sys.modules, "iris", _build_fake_iris_module())
 
     import dify_vdb_iris.iris_vector as module
@@ -249,7 +249,7 @@ def test_iris_vector_init_get_cursor_and_create(iris_module):
     vector._create_collection.assert_called_once_with(2)
 
 
-def test_iris_vector_crud_and_vector_search(iris_module, monkeypatch):
+def test_iris_vector_crud_and_vector_search(iris_module, monkeypatch: pytest.MonkeyPatch):
     with patch.object(iris_module, "get_iris_pool", return_value=MagicMock()):
         vector = iris_module.IrisVector("collection", _config(iris_module))
 
@@ -297,7 +297,7 @@ def test_iris_vector_crud_and_vector_search(iris_module, monkeypatch):
     assert docs[0].metadata["score"] == pytest.approx(0.9)
 
 
-def test_iris_vector_full_text_search_paths(iris_module, monkeypatch):
+def test_iris_vector_full_text_search_paths(iris_module, monkeypatch: pytest.MonkeyPatch):
     cfg = _config(iris_module, IRIS_TEXT_INDEX=True)
     with patch.object(iris_module, "get_iris_pool", return_value=MagicMock()):
         vector = iris_module.IrisVector("collection", cfg)
@@ -344,7 +344,7 @@ def test_iris_vector_full_text_search_paths(iris_module, monkeypatch):
     assert vector_like.search_by_full_text("100%", top_k=1) == []
 
 
-def test_iris_vector_delete_create_collection_and_factory(iris_module, monkeypatch):
+def test_iris_vector_delete_create_collection_and_factory(iris_module, monkeypatch: pytest.MonkeyPatch):
     with patch.object(iris_module, "get_iris_pool", return_value=MagicMock()):
         vector = iris_module.IrisVector("collection", _config(iris_module, IRIS_TEXT_INDEX=True))
 

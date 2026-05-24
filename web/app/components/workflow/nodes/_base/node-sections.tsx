@@ -45,18 +45,18 @@ export const NodeHeaderMeta = ({
         </div>
       )}
       {!!(data.type === BlockEnum.Loop && data._loopIndex) && loopIndex}
-      {isLoading && <span className="i-ri-loader-2-line h-3.5 w-3.5 animate-spin text-text-accent" />}
+      {isLoading && <span className="i-ri-loader-2-line size-3.5 animate-spin text-text-accent" />}
       {!isLoading && data._runningStatus === NodeRunningStatus.Failed && (
-        <span className="i-ri-error-warning-fill h-3.5 w-3.5 text-text-destructive" />
+        <span className="i-ri-error-warning-fill size-3.5 text-text-destructive" />
       )}
       {!isLoading && data._runningStatus === NodeRunningStatus.Exception && (
-        <span className="i-ri-alert-fill h-3.5 w-3.5 text-text-warning-secondary" />
+        <span className="i-ri-alert-fill size-3.5 text-text-warning-secondary" />
       )}
       {!isLoading && (data._runningStatus === NodeRunningStatus.Succeeded || (!data._runningStatus && hasVarValue)) && (
-        <span className="i-ri-checkbox-circle-fill h-3.5 w-3.5 text-text-success" />
+        <span className="i-ri-checkbox-circle-fill size-3.5 text-text-success" />
       )}
       {!isLoading && data._runningStatus === NodeRunningStatus.Paused && (
-        <span className="i-ri-pause-circle-fill h-3.5 w-3.5 text-text-warning-secondary" />
+        <span className="i-ri-pause-circle-fill size-3.5 text-text-warning-secondary" />
       )}
     </>
   )
@@ -73,7 +73,7 @@ export const NodeBody = ({
 }: NodeBodyProps) => {
   if (data.type === BlockEnum.Iteration || data.type === BlockEnum.Loop) {
     return (
-      <div className="grow pr-1 pb-1 pl-1">
+      <div className="grow px-1 pb-1">
         {child}
       </div>
     )

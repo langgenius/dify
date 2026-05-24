@@ -16,6 +16,7 @@ from controllers.common.errors import (
     TooManyFilesError,
     UnsupportedFileTypeError,
 )
+from controllers.common.schema import register_response_schema_models, register_schema_models
 from controllers.console import console_ns
 from controllers.console.admin import admin_required
 from controllers.console.error import AccountNotLinkTenantError
@@ -28,7 +29,7 @@ from controllers.console.wraps import (
 from enums.cloud_plan import CloudPlan
 from extensions.ext_database import db
 from fields.base import ResponseModel
-from libs.helper import TimestampField
+from libs.helper import TimestampField, to_timestamp
 from libs.login import current_account_with_tenant, login_required
 from models.account import Tenant, TenantCustomConfigDict, TenantStatus
 from services.account_service import TenantService
@@ -39,7 +40,6 @@ from services.file_service import FileService
 from services.workspace_service import WorkspaceService
 
 logger = logging.getLogger(__name__)
-DEFAULT_REF_TEMPLATE_SWAGGER_2_0 = "#/definitions/{model}"
 
 
 class WorkspaceListQuery(BaseModel):
@@ -86,20 +86,24 @@ class TenantInfoResponse(ResponseModel):
     @field_validator("created_at", mode="before")
     @classmethod
     def _normalize_created_at(cls, value: datetime | int | None):
-        if isinstance(value, datetime):
-            return int(value.timestamp())
-        return value
+        return to_timestamp(value)
 
 
-def reg(cls: type[BaseModel]):
-    console_ns.schema_model(cls.__name__, cls.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0))
+class WorkspacePermissionResponse(ResponseModel):
+    workspace_id: str
+    allow_member_invite: bool
+    allow_owner_transfer: bool
 
 
-reg(WorkspaceListQuery)
-reg(SwitchWorkspacePayload)
-reg(WorkspaceCustomConfigPayload)
-reg(WorkspaceInfoPayload)
-reg(TenantInfoResponse)
+register_schema_models(
+    console_ns,
+    WorkspaceListQuery,
+    SwitchWorkspacePayload,
+    WorkspaceCustomConfigPayload,
+    WorkspaceInfoPayload,
+    TenantInfoResponse,
+)
+register_response_schema_models(console_ns, WorkspacePermissionResponse)
 
 provider_fields = {
     "provider_name": fields.String,
@@ -322,7 +326,7 @@ class WebappLogoWorkspaceApi(Resource):
         try:
             upload_file = FileService(db.engine).upload_file(
                 filename=file.filename,
-                content=file.read(),
+                content=file.stream.read(),
                 mimetype=file.mimetype,
                 user=current_user,
             )
@@ -360,6 +364,7 @@ class WorkspaceInfoApi(Resource):
 class WorkspacePermissionApi(Resource):
     """Get workspace permissions for the current workspace."""
 
+    @console_ns.response(200, "Success", console_ns.models[WorkspacePermissionResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required

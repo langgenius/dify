@@ -337,6 +337,8 @@
   "variableConfig.file.image.name": "Citra",
   "variableConfig.file.supportFileTypes": "Jenis File Dukungan",
   "variableConfig.file.video.name": "Video",
+  "variableConfig.hidden": "Tersembunyi dan Diisi Sebelumnya",
+  "variableConfig.hiddenDescription": "Sembunyikan kolom ini dari pengguna akhir dan berikan nilainya sendiri. Saling eksklusif dengan Wajib. <docLink>Pelajari lebih lanjut</docLink>",
   "variableConfig.hide": "Menyembunyikan",
   "variableConfig.inputPlaceholder": "Silakan masukkan",
   "variableConfig.json": "Kode JSON",

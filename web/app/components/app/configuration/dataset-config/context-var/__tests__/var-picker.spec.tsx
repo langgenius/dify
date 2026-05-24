@@ -10,41 +10,41 @@ vi.mock('@/next/navigation', () => ({
   usePathname: () => '/test',
 }))
 
-type PortalToFollowElemProps = {
+type PopoverProps = {
   children: React.ReactNode
   open?: boolean
   onOpenChange?: (open: boolean) => void
 }
-type PortalToFollowElemTriggerProps = React.HTMLAttributes<HTMLElement> & { children?: React.ReactNode, asChild?: boolean }
-type PortalToFollowElemContentProps = React.HTMLAttributes<HTMLDivElement> & { children?: React.ReactNode }
+type PopoverTriggerProps = React.HTMLAttributes<HTMLElement> & { children?: React.ReactNode, asChild?: boolean }
+type PopoverContentProps = React.HTMLAttributes<HTMLDivElement> & { children?: React.ReactNode }
 
 vi.mock('@langgenius/dify-ui/popover', () => {
-  const PortalContext = React.createContext({
+  const PopoverContext = React.createContext({
     open: false,
     onOpenChange: undefined as ((open: boolean) => void) | undefined,
   })
 
-  const Popover = ({ children, open, onOpenChange }: PortalToFollowElemProps) => {
+  const Popover = ({ children, open, onOpenChange }: PopoverProps) => {
     return (
-      <PortalContext.Provider value={{ open: !!open, onOpenChange }}>
-        <div data-testid="portal">{children}</div>
-      </PortalContext.Provider>
+      <PopoverContext.Provider value={{ open: !!open, onOpenChange }}>
+        <div data-testid="popover">{children}</div>
+      </PopoverContext.Provider>
     )
   }
 
-  const PopoverContent = ({ children, ...props }: PortalToFollowElemContentProps) => {
-    const { open } = React.useContext(PortalContext)
+  const PopoverContent = ({ children, ...props }: PopoverContentProps) => {
+    const { open } = React.useContext(PopoverContext)
     if (!open)
       return null
     return (
-      <div data-testid="portal-content" {...props}>
+      <div data-testid="popover-content" {...props}>
         {children}
       </div>
     )
   }
 
-  const PopoverTrigger = ({ children, asChild, render, ...props }: PortalToFollowElemTriggerProps & { render?: React.ReactNode }) => {
-    const { open, onOpenChange } = React.useContext(PortalContext)
+  const PopoverTrigger = ({ children, asChild, render, ...props }: PopoverTriggerProps & { render?: React.ReactNode }) => {
+    const { open, onOpenChange } = React.useContext(PopoverContext)
     const content = render ?? children
     const handleClick = (e: React.MouseEvent<HTMLElement>) => {
       props.onClick?.(e)
@@ -56,7 +56,7 @@ vi.mock('@langgenius/dify-ui/popover', () => {
       return React.cloneElement(content, {
         ...props,
         'onClick': handleClick,
-        'data-testid': 'portal-trigger',
+        'data-testid': 'popover-trigger',
       } as React.HTMLAttributes<HTMLElement>)
     }
 
@@ -64,11 +64,11 @@ vi.mock('@langgenius/dify-ui/popover', () => {
       return React.cloneElement(children, {
         ...props,
         'onClick': handleClick,
-        'data-testid': 'portal-trigger',
+        'data-testid': 'popover-trigger',
       } as React.HTMLAttributes<HTMLElement>)
     }
     return (
-      <div data-testid="portal-trigger" {...props} onClick={handleClick}>
+      <div data-testid="popover-trigger" {...props} onClick={handleClick}>
         {content}
       </div>
     )
@@ -109,7 +109,7 @@ describe('VarPicker', () => {
 
       // Assert
       // Assert
-      expect(screen.getByTestId('portal-trigger'))!.toBeInTheDocument()
+      expect(screen.getByTestId('popover-trigger'))!.toBeInTheDocument()
       expect(screen.getByText('var1'))!.toBeInTheDocument()
     })
 
@@ -201,7 +201,7 @@ describe('VarPicker', () => {
 
       // Assert - Trigger should be present
       // Assert - Trigger should be present
-      expect(screen.getByTestId('portal-trigger'))!.toBeInTheDocument()
+      expect(screen.getByTestId('popover-trigger'))!.toBeInTheDocument()
     })
   })
 
@@ -234,7 +234,7 @@ describe('VarPicker', () => {
 
       // Assert
       // Assert
-      expect(screen.getByTestId('portal-trigger'))!.toHaveClass('custom-trigger-class')
+      expect(screen.getByTestId('popover-trigger'))!.toHaveClass('custom-trigger-class')
     })
 
     it('should display selected value with proper formatting', () => {
@@ -268,11 +268,11 @@ describe('VarPicker', () => {
 
       // Act
       render(<VarPicker {...props} />)
-      await user.click(screen.getByTestId('portal-trigger'))
+      await user.click(screen.getByTestId('popover-trigger'))
 
       // Assert
       // Assert
-      expect(screen.getByTestId('portal-content'))!.toBeInTheDocument()
+      expect(screen.getByTestId('popover-content'))!.toBeInTheDocument()
     })
 
     it('should call onChange and close dropdown when selecting an option', async () => {
@@ -285,8 +285,8 @@ describe('VarPicker', () => {
       render(<VarPicker {...props} />)
 
       // Open dropdown
-      await user.click(screen.getByTestId('portal-trigger'))
-      expect(screen.getByTestId('portal-content'))!.toBeInTheDocument()
+      await user.click(screen.getByTestId('popover-trigger'))
+      expect(screen.getByTestId('popover-content'))!.toBeInTheDocument()
 
       // Select a different option
       const options = screen.getAllByText('var2')
@@ -295,7 +295,7 @@ describe('VarPicker', () => {
 
       // Assert
       expect(onChange).toHaveBeenCalledWith('var2')
-      expect(screen.queryByTestId('portal-content')).not.toBeInTheDocument()
+      expect(screen.queryByTestId('popover-content')).not.toBeInTheDocument()
     })
 
     it('should toggle dropdown when clicking trigger button multiple times', async () => {
@@ -306,15 +306,15 @@ describe('VarPicker', () => {
       // Act
       render(<VarPicker {...props} />)
 
-      const trigger = screen.getByTestId('portal-trigger')
+      const trigger = screen.getByTestId('popover-trigger')
 
       // Open dropdown
       await user.click(trigger)
-      expect(screen.getByTestId('portal-content'))!.toBeInTheDocument()
+      expect(screen.getByTestId('popover-content'))!.toBeInTheDocument()
 
       // Close dropdown
       await user.click(trigger)
-      expect(screen.queryByTestId('portal-content')).not.toBeInTheDocument()
+      expect(screen.queryByTestId('popover-content')).not.toBeInTheDocument()
     })
   })
 
@@ -359,7 +359,7 @@ describe('VarPicker', () => {
       // Assert
       // Assert
       // Assert
-      expect(screen.queryByTestId('portal-content')).not.toBeInTheDocument()
+      expect(screen.queryByTestId('popover-content')).not.toBeInTheDocument()
     })
 
     it('should toggle dropdown state on trigger click', async () => {
@@ -370,16 +370,16 @@ describe('VarPicker', () => {
       // Act
       render(<VarPicker {...props} />)
 
-      const trigger = screen.getByTestId('portal-trigger')
-      expect(screen.queryByTestId('portal-content')).not.toBeInTheDocument()
+      const trigger = screen.getByTestId('popover-trigger')
+      expect(screen.queryByTestId('popover-content')).not.toBeInTheDocument()
 
       // Open dropdown
       await user.click(trigger)
-      expect(screen.getByTestId('portal-content'))!.toBeInTheDocument()
+      expect(screen.getByTestId('popover-content'))!.toBeInTheDocument()
 
       // Close dropdown
       await user.click(trigger)
-      expect(screen.queryByTestId('portal-content')).not.toBeInTheDocument()
+      expect(screen.queryByTestId('popover-content')).not.toBeInTheDocument()
     })
 
     it('should preserve selected value when dropdown is closed without selection', async () => {
@@ -391,7 +391,7 @@ describe('VarPicker', () => {
       render(<VarPicker {...props} />)
 
       // Open and close dropdown without selecting anything
-      const trigger = screen.getByTestId('portal-trigger')
+      const trigger = screen.getByTestId('popover-trigger')
       await user.click(trigger)
       await user.click(trigger)
 
@@ -416,7 +416,7 @@ describe('VarPicker', () => {
       // Assert
       // Assert
       expect(screen.getByText('appDebug.feature.dataSet.queryVariable.choosePlaceholder'))!.toBeInTheDocument()
-      expect(screen.getByTestId('portal-trigger'))!.toBeInTheDocument()
+      expect(screen.getByTestId('popover-trigger'))!.toBeInTheDocument()
     })
 
     it('should handle empty options array', () => {
@@ -432,7 +432,7 @@ describe('VarPicker', () => {
 
       // Assert
       // Assert
-      expect(screen.getByTestId('portal-trigger'))!.toBeInTheDocument()
+      expect(screen.getByTestId('popover-trigger'))!.toBeInTheDocument()
       expect(screen.getByText('appDebug.feature.dataSet.queryVariable.choosePlaceholder'))!.toBeInTheDocument()
     })
 
@@ -485,7 +485,7 @@ describe('VarPicker', () => {
       // Assert
       // Assert
       expect(screen.getByText('longVar'))!.toBeInTheDocument()
-      expect(screen.getByTestId('portal-trigger'))!.toBeInTheDocument()
+      expect(screen.getByTestId('popover-trigger'))!.toBeInTheDocument()
     })
   })
 })

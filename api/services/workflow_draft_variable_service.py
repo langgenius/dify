@@ -157,8 +157,8 @@ class DraftVarLoader(VariableLoader):
         # This approach reduces loading time by querying external systems concurrently.
         with ThreadPoolExecutor(max_workers=10) as executor:
             offloaded_variables = executor.map(self._load_offloaded_variable, offloaded_draft_vars)
-            for selector, variable in offloaded_variables:
-                variable_by_selector[selector] = variable
+            for selector, offloaded_variable in offloaded_variables:
+                variable_by_selector[selector] = offloaded_variable
 
         return list(variable_by_selector.values())
 

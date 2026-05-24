@@ -3,6 +3,7 @@ import type { FC } from 'react'
 import type { RetrievalConfig } from '@/types/app'
 import { cn } from '@langgenius/dify-ui/cn'
 
+import { RadioGroup } from '@langgenius/dify-ui/radio-group'
 import { Switch } from '@langgenius/dify-ui/switch'
 import { toast } from '@langgenius/dify-ui/toast'
 import * as React from 'react'
@@ -10,10 +11,10 @@ import { useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import WeightedScore from '@/app/components/app/configuration/dataset-config/params-config/weighted-score'
 import { AlertTriangle } from '@/app/components/base/icons/src/vender/solid/alertsAndFeedback'
+import { Infotip } from '@/app/components/base/infotip'
 import ScoreThresholdItem from '@/app/components/base/param-item/score-threshold-item'
 import TopKItem from '@/app/components/base/param-item/top-k-item'
 import RadioCard from '@/app/components/base/radio-card'
-import Tooltip from '@/app/components/base/tooltip'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useCurrentProviderAndModel, useModelListAndDefaultModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import ModelSelector from '@/app/components/header/account-setting/model-provider-page/model-selector'
@@ -127,11 +128,12 @@ const RetrievalParamConfig: FC<Props> = ({
             )}
             <div className="flex items-center">
               <span className="mr-0.5 system-sm-semibold text-text-secondary">{t('modelProvider.rerankModel.key', { ns: 'common' })}</span>
-              <Tooltip
-                popupContent={
-                  <div className="w-[200px]">{t('modelProvider.rerankModel.tip', { ns: 'common' })}</div>
-                }
-              />
+              <Infotip
+                aria-label={t('modelProvider.rerankModel.tip', { ns: 'common' })}
+                popupClassName="w-[200px]"
+              >
+                {t('modelProvider.rerankModel.tip', { ns: 'common' })}
+              </Infotip>
             </div>
           </div>
           {
@@ -152,7 +154,7 @@ const RetrievalParamConfig: FC<Props> = ({
                 />
                 {showMultiModalTip && (
                   <div className="mt-2 flex h-10 items-center gap-x-0.5 overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-2 shadow-xs backdrop-blur-[5px]">
-                    <div className="absolute top-0 right-0 bottom-0 left-0 bg-dataset-warning-message-bg opacity-40" />
+                    <div className="absolute inset-0 bg-dataset-warning-message-bg opacity-40" />
                     <div className="p-1">
                       <AlertTriangle className="size-4 text-text-warning-secondary" />
                     </div>
@@ -206,13 +208,17 @@ const RetrievalParamConfig: FC<Props> = ({
       {
         isHybridSearch && (
           <>
-            <div className="mb-4 flex gap-2">
+            <RadioGroup<RerankingModeEnum>
+              aria-label={t('modelProvider.rerankModel.key', { ns: 'common' })}
+              value={value.reranking_mode}
+              onValueChange={handleChangeRerankMode}
+              className="mb-4 flex gap-2"
+            >
               {
                 rerankingModeOptions.map(option => (
                   <RadioCard
                     key={option.value}
-                    isChosen={value.reranking_mode === option.value}
-                    onChosen={() => handleChangeRerankMode(option.value)}
+                    value={option.value}
                     icon={(
                       <img
                         src={
@@ -229,7 +235,7 @@ const RetrievalParamConfig: FC<Props> = ({
                   />
                 ))
               }
-            </div>
+            </RadioGroup>
             {
               value.reranking_mode === RerankingModeEnum.WeightedScore && (
                 <WeightedScore
@@ -276,7 +282,7 @@ const RetrievalParamConfig: FC<Props> = ({
                   />
                   {showMultiModalTip && (
                     <div className="mt-2 flex h-10 items-center gap-x-0.5 overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-2 shadow-xs backdrop-blur-[5px]">
-                      <div className="absolute top-0 right-0 bottom-0 left-0 bg-dataset-warning-message-bg opacity-40" />
+                      <div className="absolute inset-0 bg-dataset-warning-message-bg opacity-40" />
                       <div className="p-1">
                         <AlertTriangle className="size-4 text-text-warning-secondary" />
                       </div>

@@ -101,25 +101,6 @@ vi.mock('../../hooks/use-hide-logic', () => ({
 }))
 
 // Mock child components
-vi.mock('../steps/setURL', () => ({
-  default: ({ repoUrl, onChange, onNext, onCancel }: {
-    repoUrl: string
-    onChange: (value: string) => void
-    onNext: () => void
-    onCancel: () => void
-  }) => (
-    <div data-testid="set-url-step">
-      <input
-        data-testid="repo-url-input"
-        value={repoUrl}
-        onChange={e => onChange(e.target.value)}
-      />
-      <button data-testid="next-btn" onClick={onNext}>Next</button>
-      <button data-testid="cancel-btn" onClick={onCancel}>Cancel</button>
-    </div>
-  ),
-}))
-
 vi.mock('../steps/selectPackage', () => ({
   default: ({
     repoUrl,
@@ -236,6 +217,10 @@ vi.mock('../../base/installed', () => ({
   ),
 }))
 
+const getRepoUrlInput = () => screen.getByLabelText('plugin.installFromGitHub.gitHubRepo')
+const getNextButton = () => screen.getByRole('button', { name: 'plugin.installModal.next' })
+const getCancelButton = () => screen.getByRole('button', { name: 'plugin.installModal.cancel' })
+
 describe('InstallFromGitHub', () => {
   const defaultProps = {
     onClose: vi.fn(),
@@ -261,8 +246,8 @@ describe('InstallFromGitHub', () => {
     it('should render modal with correct initial state for new installation', () => {
       render(<InstallFromGitHub {...defaultProps} />)
 
-      expect(screen.getByTestId('set-url-step')).toBeInTheDocument()
-      expect(screen.getByTestId('repo-url-input')).toHaveValue('')
+      expect(getRepoUrlInput()).toBeInTheDocument()
+      expect(getRepoUrlInput()).toHaveValue('')
     })
 
     it('should render modal with selectPackage step when updatePayload is provided', () => {
@@ -312,7 +297,7 @@ describe('InstallFromGitHub', () => {
     it('should update repoUrl when user types in input', () => {
       render(<InstallFromGitHub {...defaultProps} />)
 
-      const input = screen.getByTestId('repo-url-input')
+      const input = getRepoUrlInput()
       fireEvent.change(input, { target: { value: 'https://github.com/test/repo' } })
 
       expect(input).toHaveValue('https://github.com/test/repo')
@@ -321,15 +306,29 @@ describe('InstallFromGitHub', () => {
     it('should transition from setUrl to selectPackage on successful URL submit', async () => {
       render(<InstallFromGitHub {...defaultProps} />)
 
-      const input = screen.getByTestId('repo-url-input')
+      const input = getRepoUrlInput()
       fireEvent.change(input, { target: { value: 'https://github.com/owner/repo' } })
 
-      const nextBtn = screen.getByTestId('next-btn')
+      const nextBtn = getNextButton()
       fireEvent.click(nextBtn)
 
       await waitFor(() => {
         expect(screen.getByTestId('select-package-step')).toBeInTheDocument()
       })
+    })
+
+    it('should submit the repo URL form from the set URL step', async () => {
+      render(<InstallFromGitHub {...defaultProps} />)
+
+      const input = getRepoUrlInput()
+      const form = input.closest('form')
+      fireEvent.change(input, { target: { value: 'https://github.com/owner/repo' } })
+
+      expect(form).toBeInTheDocument()
+      expect(getNextButton()).toHaveAttribute('type', 'submit')
+      fireEvent.submit(form!)
+
+      expect(await screen.findByRole('button', { name: 'Select Version' })).toBeInTheDocument()
     })
 
     it('should update selectedVersion when version is selected', async () => {
@@ -443,10 +442,10 @@ describe('InstallFromGitHub', () => {
     it('should show error toast for invalid GitHub URL', async () => {
       render(<InstallFromGitHub {...defaultProps} />)
 
-      const input = screen.getByTestId('repo-url-input')
+      const input = getRepoUrlInput()
       fireEvent.change(input, { target: { value: 'invalid-url' } })
 
-      const nextBtn = screen.getByTestId('next-btn')
+      const nextBtn = getNextButton()
       fireEvent.click(nextBtn)
 
       await waitFor(() => {
@@ -462,10 +461,10 @@ describe('InstallFromGitHub', () => {
 
       render(<InstallFromGitHub {...defaultProps} />)
 
-      const input = screen.getByTestId('repo-url-input')
+      const input = getRepoUrlInput()
       fireEvent.change(input, { target: { value: 'https://github.com/owner/repo' } })
 
-      const nextBtn = screen.getByTestId('next-btn')
+      const nextBtn = getNextButton()
       fireEvent.click(nextBtn)
 
       await waitFor(() => {
@@ -481,10 +480,10 @@ describe('InstallFromGitHub', () => {
 
       render(<InstallFromGitHub {...defaultProps} />)
 
-      const input = screen.getByTestId('repo-url-input')
+      const input = getRepoUrlInput()
       fireEvent.change(input, { target: { value: 'https://github.com/owner/repo' } })
 
-      const nextBtn = screen.getByTestId('next-btn')
+      const nextBtn = getNextButton()
       fireEvent.click(nextBtn)
 
       await waitFor(() => {
@@ -504,9 +503,9 @@ describe('InstallFromGitHub', () => {
       render(<InstallFromGitHub {...defaultProps} />)
 
       // Navigate to selectPackage
-      const input = screen.getByTestId('repo-url-input')
+      const input = getRepoUrlInput()
       fireEvent.change(input, { target: { value: 'https://github.com/owner/repo' } })
-      fireEvent.click(screen.getByTestId('next-btn'))
+      fireEvent.click(getNextButton())
 
       await waitFor(() => {
         expect(screen.getByTestId('select-package-step')).toBeInTheDocument()
@@ -516,7 +515,7 @@ describe('InstallFromGitHub', () => {
       fireEvent.click(screen.getByTestId('back-btn'))
 
       await waitFor(() => {
-        expect(screen.getByTestId('set-url-step')).toBeInTheDocument()
+        expect(getRepoUrlInput()).toBeInTheDocument()
       })
     })
 
@@ -546,7 +545,7 @@ describe('InstallFromGitHub', () => {
     it('should call onClose when cancel button is clicked', () => {
       render(<InstallFromGitHub {...defaultProps} />)
 
-      fireEvent.click(screen.getByTestId('cancel-btn'))
+      fireEvent.click(getCancelButton())
 
       expect(defaultProps.onClose).toHaveBeenCalledTimes(1)
     })
@@ -783,10 +782,10 @@ describe('InstallFromGitHub', () => {
     it('should handle URL without trailing slash', async () => {
       render(<InstallFromGitHub {...defaultProps} />)
 
-      const input = screen.getByTestId('repo-url-input')
+      const input = getRepoUrlInput()
       fireEvent.change(input, { target: { value: 'https://github.com/owner/repo' } })
 
-      fireEvent.click(screen.getByTestId('next-btn'))
+      fireEvent.click(getNextButton())
 
       await waitFor(() => {
         expect(mockFetchReleases).toHaveBeenCalledWith('owner', 'repo')
@@ -797,11 +796,11 @@ describe('InstallFromGitHub', () => {
       render(<InstallFromGitHub {...defaultProps} />)
 
       // Set URL
-      const input = screen.getByTestId('repo-url-input')
+      const input = getRepoUrlInput()
       fireEvent.change(input, { target: { value: 'https://github.com/test/myrepo' } })
 
       // Navigate to selectPackage
-      fireEvent.click(screen.getByTestId('next-btn'))
+      fireEvent.click(getNextButton())
 
       await waitFor(() => {
         expect(screen.getByTestId('select-package-step')).toBeInTheDocument()
@@ -980,12 +979,12 @@ describe('InstallFromGitHub', () => {
       render(<InstallFromGitHub {...defaultProps} />)
 
       // Start from setUrl step
-      expect(screen.getByTestId('set-url-step')).toBeInTheDocument()
+      expect(getRepoUrlInput()).toBeInTheDocument()
 
       // Enter URL
-      const input = screen.getByTestId('repo-url-input')
+      const input = getRepoUrlInput()
       fireEvent.change(input, { target: { value: 'https://github.com/owner/repo' } })
-      fireEvent.click(screen.getByTestId('next-btn'))
+      fireEvent.click(getNextButton())
 
       await waitFor(() => {
         expect(screen.getByTestId('select-package-step')).toBeInTheDocument()
@@ -1086,7 +1085,7 @@ describe('InstallFromGitHub', () => {
       render(<InstallFromGitHub {...defaultProps} />)
 
       // Verify we're on setUrl step
-      expect(screen.getByTestId('set-url-step')).toBeInTheDocument()
+      expect(getRepoUrlInput()).toBeInTheDocument()
 
       // The setUrl step doesn't expose onBack in the real component,
       // but our mock doesn't have it either - this is correct behavior
@@ -1097,9 +1096,9 @@ describe('InstallFromGitHub', () => {
       render(<InstallFromGitHub {...defaultProps} />)
 
       // Navigate to selectPackage
-      const input = screen.getByTestId('repo-url-input')
+      const input = getRepoUrlInput()
       fireEvent.change(input, { target: { value: 'https://github.com/owner/repo' } })
-      fireEvent.click(screen.getByTestId('next-btn'))
+      fireEvent.click(getNextButton())
 
       await waitFor(() => {
         expect(screen.getByTestId('select-package-step')).toBeInTheDocument()
@@ -1123,11 +1122,11 @@ describe('InstallFromGitHub', () => {
       fireEvent.click(screen.getByTestId('back-btn'))
 
       await waitFor(() => {
-        expect(screen.getByTestId('set-url-step')).toBeInTheDocument()
+        expect(getRepoUrlInput()).toBeInTheDocument()
       })
 
       // Verify URL is preserved after back navigation
-      expect(screen.getByTestId('repo-url-input')).toHaveValue('https://github.com/owner/repo')
+      expect(getRepoUrlInput()).toHaveValue('https://github.com/owner/repo')
     })
   })
 })
@@ -1368,114 +1367,6 @@ describe('Install Plugin Utils', () => {
 // Steps Components Tests
 // ================================
 
-// SetURL Component Tests
-describe('SetURL Component', () => {
-  // Import the real component for testing
-  const SetURL = vi.fn()
-
-  beforeEach(() => {
-    vi.clearAllMocks()
-    // Re-mock the SetURL component with a more testable version
-    vi.doMock('./steps/setURL', () => ({
-      default: SetURL,
-    }))
-  })
-
-  describe('Rendering', () => {
-    it('should render label with correct text', () => {
-      render(<InstallFromGitHub onClose={vi.fn()} onSuccess={vi.fn()} />)
-
-      // The mocked component should be rendered
-      expect(screen.getByTestId('set-url-step')).toBeInTheDocument()
-    })
-
-    it('should render input field with placeholder', () => {
-      render(<InstallFromGitHub onClose={vi.fn()} onSuccess={vi.fn()} />)
-
-      const input = screen.getByTestId('repo-url-input')
-      expect(input).toBeInTheDocument()
-    })
-
-    it('should render cancel and next buttons', () => {
-      render(<InstallFromGitHub onClose={vi.fn()} onSuccess={vi.fn()} />)
-
-      expect(screen.getByTestId('cancel-btn')).toBeInTheDocument()
-      expect(screen.getByTestId('next-btn')).toBeInTheDocument()
-    })
-  })
-
-  describe('Props', () => {
-    it('should display repoUrl value in input', () => {
-      render(<InstallFromGitHub onClose={vi.fn()} onSuccess={vi.fn()} />)
-
-      const input = screen.getByTestId('repo-url-input')
-      fireEvent.change(input, { target: { value: 'https://github.com/test/repo' } })
-
-      expect(input).toHaveValue('https://github.com/test/repo')
-    })
-
-    it('should call onChange when input value changes', () => {
-      render(<InstallFromGitHub onClose={vi.fn()} onSuccess={vi.fn()} />)
-
-      const input = screen.getByTestId('repo-url-input')
-      fireEvent.change(input, { target: { value: 'new-value' } })
-
-      expect(input).toHaveValue('new-value')
-    })
-  })
-
-  describe('User Interactions', () => {
-    it('should call onNext when next button is clicked', async () => {
-      mockFetchReleases.mockResolvedValue(createMockReleases())
-
-      render(<InstallFromGitHub onClose={vi.fn()} onSuccess={vi.fn()} />)
-
-      const input = screen.getByTestId('repo-url-input')
-      fireEvent.change(input, { target: { value: 'https://github.com/owner/repo' } })
-
-      fireEvent.click(screen.getByTestId('next-btn'))
-
-      await waitFor(() => {
-        expect(mockFetchReleases).toHaveBeenCalled()
-      })
-    })
-
-    it('should call onCancel when cancel button is clicked', () => {
-      const onClose = vi.fn()
-      render(<InstallFromGitHub onClose={onClose} onSuccess={vi.fn()} />)
-
-      fireEvent.click(screen.getByTestId('cancel-btn'))
-
-      expect(onClose).toHaveBeenCalledTimes(1)
-    })
-  })
-
-  describe('Edge Cases', () => {
-    it('should handle empty URL input', () => {
-      render(<InstallFromGitHub onClose={vi.fn()} onSuccess={vi.fn()} />)
-
-      const input = screen.getByTestId('repo-url-input')
-      expect(input).toHaveValue('')
-    })
-
-    it('should handle URL with whitespace only', () => {
-      render(<InstallFromGitHub onClose={vi.fn()} onSuccess={vi.fn()} />)
-
-      const input = screen.getByTestId('repo-url-input')
-      fireEvent.change(input, { target: { value: '   ' } })
-
-      // With whitespace only, next should still be submittable but validation will fail
-      fireEvent.click(screen.getByTestId('next-btn'))
-
-      // Should show error for invalid URL
-      expect(mockNotify).toHaveBeenCalledWith({
-        type: 'error',
-        message: 'plugin.error.inValidGitHubUrl',
-      })
-    })
-  })
-})
-
 // SelectPackage Component Tests
 describe('SelectPackage Component', () => {
   beforeEach(() => {
@@ -1513,9 +1404,9 @@ describe('SelectPackage Component', () => {
       render(<InstallFromGitHub onClose={vi.fn()} onSuccess={vi.fn()} />)
 
       // Navigate to selectPackage step
-      const input = screen.getByTestId('repo-url-input')
+      const input = getRepoUrlInput()
       fireEvent.change(input, { target: { value: 'https://github.com/owner/repo' } })
-      fireEvent.click(screen.getByTestId('next-btn'))
+      fireEvent.click(getNextButton())
 
       await waitFor(() => {
         expect(screen.getByTestId('back-btn')).toBeInTheDocument()
@@ -1590,9 +1481,9 @@ describe('SelectPackage Component', () => {
       render(<InstallFromGitHub onClose={vi.fn()} onSuccess={vi.fn()} />)
 
       // Navigate to selectPackage
-      const input = screen.getByTestId('repo-url-input')
+      const input = getRepoUrlInput()
       fireEvent.change(input, { target: { value: 'https://github.com/owner/repo' } })
-      fireEvent.click(screen.getByTestId('next-btn'))
+      fireEvent.click(getNextButton())
 
       await waitFor(() => {
         expect(screen.getByTestId('select-package-step')).toBeInTheDocument()
@@ -1601,7 +1492,7 @@ describe('SelectPackage Component', () => {
       fireEvent.click(screen.getByTestId('back-btn'))
 
       await waitFor(() => {
-        expect(screen.getByTestId('set-url-step')).toBeInTheDocument()
+        expect(getRepoUrlInput()).toBeInTheDocument()
       })
     })
 

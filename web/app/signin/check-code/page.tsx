@@ -13,6 +13,7 @@ import { useLocale } from '@/context/i18n'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { emailLoginWithCode, sendEMailLoginCode } from '@/service/common'
 import { encryptVerificationCode } from '@/utils/encryption'
+import { getBrowserTimezone } from '@/utils/timezone'
 import { resolvePostLoginRedirect } from '../utils/post-login-redirect'
 
 export default function CheckCode() {
@@ -39,7 +40,13 @@ export default function CheckCode() {
         return
       }
       setIsLoading(true)
-      const ret = await emailLoginWithCode({ email, code: encryptVerificationCode(code), token, language })
+      const ret = await emailLoginWithCode({
+        email,
+        code: encryptVerificationCode(code),
+        token,
+        language,
+        timezone: getBrowserTimezone(),
+      })
       if (ret.result === 'success') {
         // Track login success event
         trackEvent('user_login_success', {
@@ -85,8 +92,8 @@ export default function CheckCode() {
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="inline-flex h-14 w-14 items-center justify-center rounded-2xl border border-components-panel-border-subtle bg-background-default-dodge shadow-lg">
-        <RiMailSendFill className="h-6 w-6 text-2xl text-text-accent-light-mode-only" />
+      <div className="inline-flex size-14 items-center justify-center rounded-2xl border border-components-panel-border-subtle bg-background-default-dodge shadow-lg">
+        <RiMailSendFill className="size-6 text-2xl text-text-accent-light-mode-only" />
       </div>
       <div className="pt-2 pb-4">
         <h2 className="title-4xl-semi-bold text-text-primary">{t('checkCode.checkYourEmail', { ns: 'login' })}</h2>

@@ -36,6 +36,7 @@ describe('ChecklistNodeGroup', () => {
     expect(screen.getByText('Needs configuration')).toBeInTheDocument()
     expect(screen.getByText(/needConnectTip/i)).toBeInTheDocument()
     expect(screen.getAllByText(/goToFix/i)).toHaveLength(2)
+    expect(screen.getByRole('button', { name: /Needs configuration/i })).toHaveAttribute('title', 'Needs configuration')
 
     fireEvent.click(screen.getByText('Needs configuration'))
 
@@ -57,5 +58,7 @@ describe('ChecklistNodeGroup', () => {
 
     expect(onItemClick).not.toHaveBeenCalled()
     expect(screen.queryByText(/goToFix/i)).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /Needs configuration/i })).not.toBeInTheDocument()
+    expect(screen.getByText('Needs configuration').parentElement).toHaveAttribute('title', 'Needs configuration')
   })
 })

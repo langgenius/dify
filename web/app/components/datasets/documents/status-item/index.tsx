@@ -5,11 +5,12 @@ import type { DocumentDisplayStatus } from '@/models/datasets'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Switch } from '@langgenius/dify-ui/switch'
 import { toast } from '@langgenius/dify-ui/toast'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useDebounceFn } from 'ahooks'
 import * as React from 'react'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import Tooltip from '@/app/components/base/tooltip'
+import { Infotip } from '@/app/components/base/infotip'
 import Indicator from '@/app/components/header/indicator'
 import { useDocumentDelete, useDocumentDisable, useDocumentEnable } from '@/service/knowledge/use-document'
 import { asyncRunSafe } from '@/utils'
@@ -81,11 +82,33 @@ const StatusItem = ({ status, reverse = false, scene = 'list', textCls = '', err
       <span className={cn(`${STATUS_TEXT_COLOR_MAP[DOC_INDEX_STATUS_MAP[localStatus].color as keyof typeof STATUS_TEXT_COLOR_MAP]} text-sm`, textCls)}>
         {DOC_INDEX_STATUS_MAP[localStatus]?.text}
       </span>
-      {errorMessage && (<Tooltip popupContent={<div className="max-w-[260px] break-all">{errorMessage}</div>} triggerClassName="ml-1 w-4 h-4" triggerTestId="error-tooltip-trigger" />)}
+      {errorMessage && (
+        <Infotip
+          aria-label={errorMessage}
+          className="ml-1"
+          popupClassName="max-w-[260px] break-all"
+        >
+          {errorMessage}
+        </Infotip>
+      )}
       {scene === 'detail' && (
         <div className="ml-1.5 flex items-center justify-between">
-          <Tooltip popupContent={t('list.action.enableWarning', { ns: 'datasetDocuments' })} popupClassName="text-text-secondary system-xs-medium" disabled={!archived}>
-            <Switch checked={archived ? false : enabled} onCheckedChange={v => !archived && handleSwitch(v ? 'enable' : 'disable')} disabled={embedding || archived} size="md" />
+          <Tooltip disabled={!archived}>
+            <TooltipTrigger
+              render={(
+                <span className="flex">
+                  <Switch
+                    checked={archived ? false : enabled}
+                    onCheckedChange={v => !archived && handleSwitch(v ? 'enable' : 'disable')}
+                    disabled={embedding || archived}
+                    size="md"
+                  />
+                </span>
+              )}
+            />
+            <TooltipContent className="system-xs-medium text-text-secondary">
+              {t('list.action.enableWarning', { ns: 'datasetDocuments' })}
+            </TooltipContent>
           </Tooltip>
         </div>
       )}

@@ -1,5 +1,5 @@
 from collections.abc import Generator
-from typing import Any, cast
+from typing import Any, cast, override
 
 from pydantic import JsonValue
 
@@ -16,6 +16,7 @@ from core.app.entities.task_entities import (
 
 class AgentChatAppGenerateResponseConverter(AppGenerateResponseConverter[ChatbotAppBlockingResponse]):
     @classmethod
+    @override
     def convert_blocking_full_response(cls, blocking_response: ChatbotAppBlockingResponse):
         """
         Convert blocking full response.
@@ -37,6 +38,7 @@ class AgentChatAppGenerateResponseConverter(AppGenerateResponseConverter[Chatbot
         return response
 
     @classmethod
+    @override
     def convert_blocking_simple_response(cls, blocking_response: ChatbotAppBlockingResponse):
         """
         Convert blocking simple response.
@@ -54,6 +56,7 @@ class AgentChatAppGenerateResponseConverter(AppGenerateResponseConverter[Chatbot
         return response
 
     @classmethod
+    @override
     def convert_stream_full_response(
         cls, stream_response: Generator[AppStreamResponse, None, None]
     ) -> Generator[dict[str, Any] | str, None, None]:
@@ -85,6 +88,7 @@ class AgentChatAppGenerateResponseConverter(AppGenerateResponseConverter[Chatbot
             yield response_chunk
 
     @classmethod
+    @override
     def convert_stream_simple_response(
         cls, stream_response: Generator[AppStreamResponse, None, None]
     ) -> Generator[dict[str, Any] | str, None, None]:

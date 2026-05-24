@@ -53,7 +53,7 @@ def test_sql_config_rejects_min_connection_greater_than_max_connection():
         AnalyticdbVectorBySqlConfig.model_validate(values)
 
 
-def test_initialize_skips_when_cache_exists(monkeypatch):
+def test_initialize_skips_when_cache_exists(monkeypatch: pytest.MonkeyPatch):
     lock = MagicMock()
     lock.__enter__.return_value = None
     lock.__exit__.return_value = None
@@ -70,7 +70,7 @@ def test_initialize_skips_when_cache_exists(monkeypatch):
     vector._initialize_vector_database.assert_not_called()
 
 
-def test_initialize_runs_when_cache_is_missing(monkeypatch):
+def test_initialize_runs_when_cache_is_missing(monkeypatch: pytest.MonkeyPatch):
     lock = MagicMock()
     lock.__enter__.return_value = None
     lock.__exit__.return_value = None
@@ -88,7 +88,7 @@ def test_initialize_runs_when_cache_is_missing(monkeypatch):
     sql_module.redis_client.set.assert_called_once()
 
 
-def test_create_connection_pool_uses_psycopg2_pool(monkeypatch):
+def test_create_connection_pool_uses_psycopg2_pool(monkeypatch: pytest.MonkeyPatch):
     vector = AnalyticdbVectorBySql.__new__(AnalyticdbVectorBySql)
     vector.config = AnalyticdbVectorBySqlConfig(**_config_values())
     vector.databaseName = "knowledgebase"
@@ -119,7 +119,7 @@ def test_get_cursor_context_manager_handles_connection_lifecycle():
     pool.putconn.assert_called_once_with(connection)
 
 
-def test_add_texts_inserts_only_documents_with_metadata(monkeypatch):
+def test_add_texts_inserts_only_documents_with_metadata(monkeypatch: pytest.MonkeyPatch):
     vector = AnalyticdbVectorBySql.__new__(AnalyticdbVectorBySql)
     vector.table_name = "dify.collection"
 
@@ -273,7 +273,7 @@ def test_delete_drops_table():
     cursor.execute.assert_called_once()
 
 
-def test_init_normalizes_collection_name_and_creates_pool_when_missing(monkeypatch):
+def test_init_normalizes_collection_name_and_creates_pool_when_missing(monkeypatch: pytest.MonkeyPatch):
     config = AnalyticdbVectorBySqlConfig(**_config_values())
     created_pool = MagicMock()
 
@@ -288,7 +288,7 @@ def test_init_normalizes_collection_name_and_creates_pool_when_missing(monkeypat
     assert vector.pool is created_pool
 
 
-def test_initialize_vector_database_handles_existing_database_and_search_config(monkeypatch):
+def test_initialize_vector_database_handles_existing_database_and_search_config(monkeypatch: pytest.MonkeyPatch):
     vector = AnalyticdbVectorBySql.__new__(AnalyticdbVectorBySql)
     vector.config = AnalyticdbVectorBySqlConfig(**_config_values())
     vector.databaseName = "knowledgebase"
@@ -326,7 +326,7 @@ def test_initialize_vector_database_handles_existing_database_and_search_config(
     assert any("CREATE SCHEMA IF NOT EXISTS dify" in call.args[0] for call in worker_cursor.execute.call_args_list)
 
 
-def test_initialize_vector_database_raises_runtime_error_when_zhparser_fails(monkeypatch):
+def test_initialize_vector_database_raises_runtime_error_when_zhparser_fails(monkeypatch: pytest.MonkeyPatch):
     vector = AnalyticdbVectorBySql.__new__(AnalyticdbVectorBySql)
     vector.config = AnalyticdbVectorBySqlConfig(**_config_values())
     vector.databaseName = "knowledgebase"
@@ -353,7 +353,7 @@ def test_initialize_vector_database_raises_runtime_error_when_zhparser_fails(mon
     worker_connection.rollback.assert_called_once()
 
 
-def test_create_collection_if_not_exists_creates_table_indexes_and_cache(monkeypatch):
+def test_create_collection_if_not_exists_creates_table_indexes_and_cache(monkeypatch: pytest.MonkeyPatch):
     vector = AnalyticdbVectorBySql.__new__(AnalyticdbVectorBySql)
     vector.config = AnalyticdbVectorBySqlConfig(**_config_values())
     vector._collection_name = "collection"
@@ -381,7 +381,7 @@ def test_create_collection_if_not_exists_creates_table_indexes_and_cache(monkeyp
     sql_module.redis_client.set.assert_called_once()
 
 
-def test_create_collection_if_not_exists_raises_for_non_existing_error(monkeypatch):
+def test_create_collection_if_not_exists_raises_for_non_existing_error(monkeypatch: pytest.MonkeyPatch):
     vector = AnalyticdbVectorBySql.__new__(AnalyticdbVectorBySql)
     vector.config = AnalyticdbVectorBySqlConfig(**_config_values())
     vector._collection_name = "collection"

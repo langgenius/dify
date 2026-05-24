@@ -37,9 +37,9 @@ const Header = () => {
       </div>
       <div className="flex shrink-0 items-center gap-3">
         <Button className="gap-2 px-3 py-2 system-sm-medium" onClick={goToStudio}>
-          <RiRobot2Line className="h-4 w-4" />
+          <RiRobot2Line className="size-4" />
           <p>{t('account.studio', { ns: 'common' })}</p>
-          <RiArrowRightUpLine className="h-4 w-4" />
+          <RiArrowRightUpLine className="size-4" />
         </Button>
         <div className="h-4 w-px bg-divider-regular" />
         <Avatar />

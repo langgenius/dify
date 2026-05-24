@@ -8,7 +8,7 @@
  */
 
 import type { QueryParam } from '../index'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
 import Filter, { TIME_PERIOD_MAPPING } from '../filter'
@@ -162,18 +162,18 @@ describe('Filter', () => {
       const user = userEvent.setup()
       const setQueryParams = vi.fn()
 
-      const { container } = render(
+      render(
         <Filter
           queryParams={createDefaultQueryParams({ status: 'succeeded' })}
           setQueryParams={setQueryParams}
         />,
       )
 
-      // Find the clear icon (div with group/clear class) in the status chip
-      const clearIcon = container.querySelector('.group\\/clear')
+      const statusTrigger = screen.getByRole('combobox', { name: 'Success' })
+      const statusChip = statusTrigger.parentElement!
+      const clearButton = within(statusChip).getByRole('button', { name: 'common.operation.clear' })
 
-      expect(clearIcon)!.toBeInTheDocument()
-      await user.click(clearIcon!)
+      await user.click(clearButton)
 
       expect(setQueryParams).toHaveBeenCalledWith({
         status: 'all',
@@ -235,6 +235,24 @@ describe('Filter', () => {
       })
     })
 
+    it('should apply period chip sizing classes to trigger and panel', async () => {
+      const user = userEvent.setup()
+
+      render(
+        <Filter
+          queryParams={createDefaultQueryParams()}
+          setQueryParams={defaultSetQueryParams}
+        />,
+      )
+
+      const periodTrigger = screen.getByRole('combobox', { name: 'appLog.filter.period.last7days' })
+      expect(periodTrigger).toHaveClass('min-w-[150px]')
+
+      await user.click(periodTrigger)
+      const listbox = await screen.findByRole('listbox')
+      expect(listbox.parentElement).toHaveClass('w-[270px]')
+    })
+
     it('should call setQueryParams when period is selected', async () => {
       const user = userEvent.setup()
       const setQueryParams = vi.fn()
@@ -266,17 +284,15 @@ describe('Filter', () => {
         />,
       )
 
-      // Find the period chip's clear button
-      const periodChip = screen.getByText('appLog.filter.period.last7days').closest('div')
-      const clearButton = periodChip?.querySelector('button[type="button"]')
+      const periodTrigger = screen.getByRole('combobox', { name: 'appLog.filter.period.last7days' })
+      const periodChip = periodTrigger.parentElement!
+      const clearButton = within(periodChip).getByRole('button', { name: 'common.operation.clear' })
 
-      if (clearButton) {
-        await user.click(clearButton)
-        expect(setQueryParams).toHaveBeenCalledWith({
-          status: 'all',
-          period: '9',
-        })
-      }
+      await user.click(clearButton)
+      expect(setQueryParams).toHaveBeenCalledWith({
+        status: 'all',
+        period: '9',
+      })
     })
   })
 
@@ -297,13 +313,13 @@ describe('Filter', () => {
 
     it('should call setQueryParams when typing in search', async () => {
       const user = userEvent.setup()
-      const setQueryParams = vi.fn()
+      const onSetQueryParams = vi.fn()
 
       const Wrapper = () => {
-        const [queryParams, updateQueryParams] = useState<QueryParam>(createDefaultQueryParams())
+        const [queryParams, setQueryParams] = useState<QueryParam>(() => createDefaultQueryParams())
         const handleSetQueryParams = (next: QueryParam) => {
-          updateQueryParams(next)
           setQueryParams(next)
+          onSetQueryParams(next)
         }
         return (
           <Filter
@@ -319,7 +335,7 @@ describe('Filter', () => {
       await user.type(input, 'workflow')
 
       // Should call setQueryParams for each character typed
-      expect(setQueryParams).toHaveBeenLastCalledWith(
+      expect(onSetQueryParams).toHaveBeenLastCalledWith(
         expect.objectContaining({ keyword: 'workflow' }),
       )
     })
@@ -328,22 +344,16 @@ describe('Filter', () => {
       const user = userEvent.setup()
       const setQueryParams = vi.fn()
 
-      const { container } = render(
+      render(
         <Filter
           queryParams={createDefaultQueryParams({ keyword: 'test' })}
           setQueryParams={setQueryParams}
         />,
       )
 
-      // The Input component renders a clear icon div inside the input wrapper
-      // when showClearIcon is true and value exists
-      const inputWrapper = container.querySelector('.w-\\[200px\\]')
-
-      // Find the clear icon div (has cursor-pointer class and contains RiCloseCircleFill)
-      const clearIconDiv = inputWrapper?.querySelector('div.cursor-pointer')
-
-      expect(clearIconDiv)!.toBeInTheDocument()
-      await user.click(clearIconDiv!)
+      const searchInput = screen.getByPlaceholderText('common.operation.search')
+      const searchField = searchInput.closest('div')!
+      await user.click(within(searchField).getByRole('button', { name: 'common.operation.clear' }))
 
       expect(setQueryParams).toHaveBeenCalledWith({
         status: 'all',

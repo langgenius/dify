@@ -176,7 +176,7 @@ const ChunkContent: FC<IChunkContentProps> = ({
   if (!isEditMode) {
     return (
       <Markdown
-        className="h-full w-full text-text-secondary!"
+        className="size-full text-text-secondary!"
         content={question}
         customDisallowedElements={['input']}
       />

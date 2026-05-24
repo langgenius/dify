@@ -78,7 +78,7 @@ const CSVDownload: FC = () => {
         data={getTemplate()}
       >
         <div className="flex h-[18px] items-center space-x-1 system-xs-medium text-text-accent">
-          <DownloadIcon className="mr-1 h-3 w-3" />
+          <DownloadIcon className="mr-1 size-3" />
           {t('batchModal.template', { ns: 'appAnnotation' })}
         </div>
       </CSVDownloader>

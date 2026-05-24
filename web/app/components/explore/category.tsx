@@ -33,13 +33,18 @@ const Category: FC<ICategoryProps> = ({
     isSelected && 'border-components-main-nav-nav-button-border bg-components-main-nav-nav-button-bg-active text-components-main-nav-nav-button-text-active shadow-xs',
   )
 
+  const renderCategoryName = (name: AppCategory) => {
+    const categoryKey = `category.${name}` as keyof typeof exploreI18n
+    return categoryKey in exploreI18n ? t(categoryKey, { ns: 'explore' }) : name
+  }
+
   return (
     <div className={cn(className, 'flex flex-wrap gap-1 text-[13px]')}>
       <div
         className={itemClassName(isAllCategories)}
         onClick={() => onChange(allCategoriesEn)}
       >
-        <ThumbsUp className="mr-1 h-3.5 w-3.5" />
+        <ThumbsUp className="mr-1 size-3.5" />
         {t('apps.allCategories', { ns: 'explore' })}
       </div>
       {list.filter(name => name !== allCategoriesEn).map(name => (
@@ -48,7 +53,7 @@ const Category: FC<ICategoryProps> = ({
           className={itemClassName(name === value)}
           onClick={() => onChange(name)}
         >
-          {`category.${name}` in exploreI18n ? t(`category.${name}`, { ns: 'explore' }) : name}
+          {renderCategoryName(name)}
         </div>
       ))}
     </div>

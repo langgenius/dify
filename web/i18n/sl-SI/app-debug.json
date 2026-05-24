@@ -337,6 +337,8 @@
   "variableConfig.file.image.name": "Podoba",
   "variableConfig.file.supportFileTypes": "Podporne vrste datotek",
   "variableConfig.file.video.name": "Video",
+  "variableConfig.hidden": "Skrito in vnaprej izpolnjeno",
+  "variableConfig.hiddenDescription": "Skrijte to polje pred končnimi uporabniki in sami navedite vrednost. Se medsebojno izključuje z Zahtevano. <docLink>Več informacij</docLink>",
   "variableConfig.hide": "Skriti",
   "variableConfig.inputPlaceholder": "Prosimo, vnesite",
   "variableConfig.json": "JSON koda",

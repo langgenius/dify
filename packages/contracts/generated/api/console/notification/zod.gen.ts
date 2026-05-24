@@ -3,6 +3,13 @@
 import * as z from 'zod'
 
 /**
+ * SimpleResultResponse
+ */
+export const zSimpleResultResponse = z.object({
+  result: z.string(),
+})
+
+/**
  * Success — inspect should_show to decide whether to render the modal
  */
 export const zGetNotificationResponse = z.record(z.string(), z.unknown())
@@ -10,4 +17,4 @@ export const zGetNotificationResponse = z.record(z.string(), z.unknown())
 /**
  * Success
  */
-export const zPostNotificationDismissResponse = z.record(z.string(), z.unknown())
+export const zPostNotificationDismissResponse = zSimpleResultResponse
