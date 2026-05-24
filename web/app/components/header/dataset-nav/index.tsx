@@ -1,7 +1,7 @@
 'use client'
 
 import type { NavItem } from '../nav/nav-selector'
-import type { DataSet } from '@/models/datasets'
+import type { DataSet, IconInfo } from '@/models/datasets'
 import {
   RiBook2Fill,
   RiBook2Line,
@@ -13,6 +13,19 @@ import { useParams, useRouter } from '@/next/navigation'
 import { useDatasetDetail, useDatasetList } from '@/service/knowledge/use-dataset'
 import { basePath } from '@/utils/var'
 import Nav from '../nav'
+
+const DEFAULT_DATASET_ICON_INFO: IconInfo = {
+  icon: 'orange_book',
+  icon_type: 'emoji',
+  icon_background: '#FFF4ED',
+  icon_url: '',
+}
+
+const getDatasetIconInfo = (dataset: DataSet) => {
+  return dataset.icon_info
+    ? { ...DEFAULT_DATASET_ICON_INFO, ...dataset.icon_info }
+    : DEFAULT_DATASET_ICON_INFO
+}
 
 const DatasetNav = () => {
   const { t } = useTranslation()
@@ -33,13 +46,14 @@ const DatasetNav = () => {
   const curNav = useMemo(() => {
     if (!currentDataset)
       return
+    const iconInfo = getDatasetIconInfo(currentDataset)
     return {
       id: currentDataset.id,
       name: currentDataset.name,
-      icon: currentDataset.icon_info.icon,
-      icon_type: currentDataset.icon_info.icon_type,
-      icon_background: currentDataset.icon_info.icon_background,
-      icon_url: currentDataset.icon_info.icon_url,
+      icon: iconInfo.icon,
+      icon_type: iconInfo.icon_type,
+      icon_background: iconInfo.icon_background,
+      icon_url: iconInfo.icon_url,
     } as Omit<NavItem, 'link'>
   }, [currentDataset?.id, currentDataset?.name, currentDataset?.icon_info])
 
@@ -56,14 +70,15 @@ const DatasetNav = () => {
   const navigationItems = useMemo(() => {
     return datasetItems.map((dataset) => {
       const link = getDatasetLink(dataset)
+      const iconInfo = getDatasetIconInfo(dataset)
       return {
         id: dataset.id,
         name: dataset.name,
         link,
-        icon: dataset.icon_info.icon,
-        icon_type: dataset.icon_info.icon_type,
-        icon_background: dataset.icon_info.icon_background,
-        icon_url: dataset.icon_info.icon_url,
+        icon: iconInfo.icon,
+        icon_type: iconInfo.icon_type,
+        icon_background: iconInfo.icon_background,
+        icon_url: iconInfo.icon_url,
       }
     }) as NavItem[]
   }, [datasetItems, getDatasetLink])
