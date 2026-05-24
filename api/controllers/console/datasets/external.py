@@ -1,3 +1,4 @@
+from controllers.console.wraps import with_current_tenant_id
 from uuid import UUID
 
 from flask import request
@@ -126,9 +127,9 @@ class ExternalApiTemplateListApi(Resource):
     @console_ns.response(200, "External API templates retrieved successfully")
     @setup_required
     @login_required
+    @with_current_tenant_id
     @account_initialization_required
-    def get(self):
-        _, current_tenant_id = current_account_with_tenant()
+    def get(self, current_tenant_id: str):
         query = ExternalApiTemplateListQuery.model_validate(request.args.to_dict())
 
         external_knowledge_apis, total = ExternalDatasetService.get_external_knowledge_apis(

@@ -1,3 +1,5 @@
+from models import Account
+from typing import Concatenate
 import contextlib
 import json
 import os
@@ -488,4 +490,13 @@ def decrypt_code_field[**P, R](view: Callable[P, R]) -> Callable[P, R]:
         _decrypt_field(FIELD_NAME_CODE, EmailCodeError, ERROR_MSG_INVALID_ENCRYPTED_CODE)
         return view(*args, **kwargs)
 
+    return decorated
+
+def with_current_tenant_id[T, **P, R](
+    view: Callable[Concatenate[T, str, P], R],
+) -> Callable[Concatenate[T, P], R]:
+    @wraps(view)
+    def decorated(self: T, *args: P.args, **kwargs: P.kwargs) -> R:
+        _, current_tenant_id = current_account_with_tenant()
+        return view(self, current_tenant_id, *args, **kwargs)
     return decorated
