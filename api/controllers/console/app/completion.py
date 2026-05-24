@@ -131,7 +131,7 @@ class CompletionMessageStopApi(Resource):
     @login_required
     @account_initialization_required
     @get_app_model(mode=AppMode.COMPLETION)
-    def post(self, app_model, task_id):
+    def post(self, app_model, task_id: str):
         if not isinstance(current_user, Account):
             raise ValueError("current_user must be an Account instance")
 
@@ -212,7 +212,7 @@ class ChatMessageStopApi(Resource):
     @login_required
     @account_initialization_required
     @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT])
-    def post(self, app_model, task_id):
+    def post(self, app_model, task_id: str):
         if not isinstance(current_user, Account):
             raise ValueError("current_user must be an Account instance")
 

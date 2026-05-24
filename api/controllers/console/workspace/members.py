@@ -1,4 +1,5 @@
 from urllib import parse
+from uuid import UUID
 
 from flask import abort, request
 from flask_restx import Resource
@@ -219,7 +220,7 @@ class MemberCancelInviteApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def delete(self, member_id):
+    def delete(self, member_id: UUID):
         current_user, _ = current_account_with_tenant()
         if not current_user.current_tenant:
             raise ValueError("No current tenant")
@@ -252,7 +253,7 @@ class MemberUpdateRoleApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def put(self, member_id):
+    def put(self, member_id: UUID):
         payload = console_ns.payload or {}
         args = MemberRoleUpdatePayload.model_validate(payload)
         new_role = args.role
@@ -395,7 +396,7 @@ class OwnerTransfer(Resource):
     @login_required
     @account_initialization_required
     @is_allow_transfer_owner
-    def post(self, member_id):
+    def post(self, member_id: UUID):
         payload = console_ns.payload or {}
         args = OwnerTransferPayload.model_validate(payload)
 
