@@ -204,7 +204,7 @@ const ViewAnnotationModal: FC<Props> = ({
                   labels={{
                     previous: t('pagination.previous', { ns: 'common' }),
                     next: t('pagination.next', { ns: 'common' }),
-                    pageSummary: (page, totalPages) => t('pagination.pageSummary', { ns: 'common', page, totalPages }),
+                    editPageNumber: (page, totalPages) => t('pagination.editPageNumber', { ns: 'common', page, totalPages }),
                     pageNumberInput: t('pagination.pageNumber', { ns: 'common' }),
                   }}
                 />

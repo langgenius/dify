@@ -34,7 +34,7 @@ function PaginationExample({
 
 function PaginationDemo(props: ComponentProps<typeof PaginationExample>) {
   return (
-    <div className="w-236 max-w-full bg-background-default px-16 py-10">
+    <div className="w-236 max-w-full bg-components-panel-bg px-16 py-10">
       <PaginationExample {...props} />
     </div>
   )
@@ -42,13 +42,11 @@ function PaginationDemo(props: ComponentProps<typeof PaginationExample>) {
 
 function DesignSpecDemo() {
   return (
-    <div className="w-236 overflow-hidden rounded-3xl bg-components-panel-bg p-4">
-      <div className="flex min-h-80 flex-col justify-center gap-6 bg-background-default px-16">
-        <PaginationExample />
-        <PaginationExample initialPage={2} initialPageSize={25} />
-        <PaginationExample initialPage={2} initialPageSize={25} />
-        <PaginationExample initialPage={2} initialPageSize={25} />
-      </div>
+    <div className="flex w-236 max-w-full flex-col gap-6 bg-components-panel-bg px-16 py-10">
+      <PaginationExample />
+      <PaginationExample initialPage={2} initialPageSize={25} />
+      <PaginationExample initialPage={2} initialPageSize={25} />
+      <PaginationExample initialPage={2} initialPageSize={25} />
     </div>
   )
 }

@@ -1,6 +1,7 @@
 import { render } from 'vitest-browser-react'
 import {
   Pagination,
+  PaginationContent,
   PaginationNavigation,
   PaginationNext,
   PaginationPage,
@@ -34,17 +35,19 @@ async function renderPagination({
       onPageChange={onPageChange}
       data-testid="pagination"
     >
-      <PaginationNavigation data-testid="controls">
-        <PaginationPrevious />
-        <PaginationPageJump />
-        <PaginationNext />
-      </PaginationNavigation>
-      <PaginationPageList data-testid="pages" />
-      <PaginationPageSize
-        value={pageSize}
-        options={[10, 25, 50]}
-        onValueChange={onPageSizeChange}
-      />
+      <PaginationContent data-testid="content">
+        <PaginationNavigation data-testid="controls">
+          <PaginationPrevious />
+          <PaginationPageJump />
+          <PaginationNext />
+        </PaginationNavigation>
+        <PaginationPageList data-testid="pages" />
+        <PaginationPageSize
+          value={pageSize}
+          options={[10, 25, 50]}
+          onValueChange={onPageSizeChange}
+        />
+      </PaginationContent>
     </PaginationRoot>,
   )
 
@@ -60,8 +63,8 @@ describe('Pagination primitive', () => {
     const { screen } = await renderPagination()
 
     await expect.element(screen.getByRole('navigation', { name: 'Pagination' })).toHaveAttribute('data-page', '2')
-    await expect.element(screen.getByTestId('controls')).toHaveClass('w-45', 'items-start')
-    expect(screen.getByTestId('controls').element().firstElementChild).toHaveClass('rounded-[10px]', 'bg-background-section-burn')
+    await expect.element(screen.getByTestId('content')).toHaveClass('grid', 'grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]')
+    await expect.element(screen.getByTestId('controls')).toHaveClass('rounded-[10px]', 'bg-background-section-burn')
     await expect.element(screen.getByRole('button', { name: 'Previous page' })).toBeInTheDocument()
     await expect.element(screen.getByRole('button', { name: 'Next page' })).toBeInTheDocument()
     await expect.element(screen.getByRole('button', { name: 'Edit page number, current page 2 of 200' })).toHaveTextContent('2/200')
@@ -177,6 +180,7 @@ describe('Pagination primitive', () => {
     const { screen, onPageSizeChange } = await renderPagination()
 
     await expect.element(screen.getByRole('group', { name: 'Items per page' })).toHaveClass('bg-components-segmented-control-bg-normal')
+    await expect.element(screen.getByText('Items per page')).toHaveClass('opacity-0', 'group-hover/page-size:opacity-100', 'group-focus-within/page-size:opacity-100')
     await expect.element(screen.getByRole('button', { name: '25' })).toHaveAttribute('aria-pressed', 'true')
     await expect.element(screen.getByRole('button', { name: '25' })).toHaveClass('data-pressed:text-text-primary')
 
@@ -204,6 +208,35 @@ describe('Pagination primitive', () => {
     await expect.element(screen.getByRole('group', { name: 'Items per page' })).toBeInTheDocument()
   })
 
+  it('uses a localized action label for editing the page number', async () => {
+    const screen = await render(
+      <Pagination
+        page={2}
+        totalPages={10}
+        onPageChange={vi.fn()}
+        labels={{
+          editPageNumber: (page, totalPages) => `Change page, current page ${page} of ${totalPages}`,
+        }}
+      />,
+    )
+
+    await expect.element(screen.getByRole('button', { name: 'Change page, current page 2 of 10' })).toBeInTheDocument()
+  })
+
+  it('keeps facade page numbers centered when page size controls are omitted', async () => {
+    const screen = await render(
+      <Pagination
+        page={2}
+        totalPages={10}
+        onPageChange={vi.fn()}
+      />,
+    )
+
+    await expect.element(screen.getByRole('navigation', { name: 'Pagination' })).toBeInTheDocument()
+    expect(screen.container.querySelector('nav[aria-label="Pagination"] > div')).toHaveClass('grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]')
+    await expect.element(screen.getByRole('list')).toHaveClass('col-start-2', 'justify-self-center')
+  })
+
   it('does not expose invalid page controls when there are no pages', async () => {
     const screen = await render(
       <Pagination
@@ -222,6 +255,8 @@ describe('Pagination primitive', () => {
 
     await expect.element(screen.getByRole('navigation', { name: 'Pagination' })).toHaveAttribute('data-page', '1')
     expect(screen.container.querySelector('button[aria-label*="current page 1 of 0"]')).not.toBeInTheDocument()
+    expect(screen.container.querySelector('button[aria-label="Previous page"]')).not.toBeInTheDocument()
+    expect(screen.container.querySelector('button[aria-label="Next page"]')).not.toBeInTheDocument()
     expect(screen.container.querySelector('ol')).not.toBeInTheDocument()
   })
 

@@ -203,18 +203,29 @@ export function PaginationRoot({
 
 export type PaginationNavigationProps = useRender.ComponentProps<'div'>
 
+export type PaginationContentProps = useRender.ComponentProps<'div'>
+
+export function PaginationContent({
+  render,
+  ...props
+}: PaginationContentProps) {
+  const defaultProps: useRender.ElementProps<'div'> = {
+    className: 'grid w-full min-w-0 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2',
+  }
+
+  return useRender({
+    defaultTagName: 'div',
+    render,
+    props: mergeProps<'div'>(defaultProps, props),
+  })
+}
+
 export function PaginationNavigation({
   render,
-  children,
   ...props
 }: PaginationNavigationProps) {
   const defaultProps: useRender.ElementProps<'div'> = {
-    className: 'flex w-45 shrink-0 items-start',
-    children: (
-      <div className="flex shrink-0 items-center gap-0.5 rounded-[10px] bg-background-section-burn p-0.5">
-        {children}
-      </div>
-    ),
+    className: 'flex shrink-0 items-center gap-0.5 rounded-[10px] bg-background-section-burn p-0.5',
   }
 
   return useRender({
@@ -243,6 +254,10 @@ export function PaginationPrevious({
   ...props
 }: PaginationButtonProps) {
   const pagination = usePaginationContext('PaginationPrevious')
+
+  if (!pagination.hasPages)
+    return null
+
   const disabled = props.disabled || pagination.page <= 1 || pagination.disabled
 
   return (
@@ -271,6 +286,10 @@ export function PaginationNext({
   ...props
 }: PaginationButtonProps) {
   const pagination = usePaginationContext('PaginationNext')
+
+  if (!pagination.hasPages)
+    return null
+
   const disabled = props.disabled || pagination.page >= pagination.totalPages || pagination.disabled
 
   return (
@@ -475,6 +494,7 @@ export type PaginationPageSizeProps<Value extends number = number> = {
   'value': Value
   'options': readonly Value[]
   'onValueChange': (value: Value) => void
+  'label'?: ReactNode
   'aria-label'?: string
   'className'?: string
 }
@@ -483,11 +503,15 @@ export function PaginationPageSize<Value extends number = number>({
   value,
   options,
   onValueChange,
+  label = 'Items per page',
   'aria-label': ariaLabel = 'Items per page',
   className,
 }: PaginationPageSizeProps<Value>) {
   return (
-    <div className={cn('flex min-w-45 shrink-0 items-center justify-end', className)}>
+    <div className={cn('group/page-size flex shrink-0 items-center justify-end gap-2', className)}>
+      <div className="w-13 shrink-0 text-end system-2xs-regular-uppercase text-text-tertiary opacity-0 transition-opacity group-hover/page-size:opacity-100 group-focus-within/page-size:opacity-100 motion-reduce:transition-none">
+        {label}
+      </div>
       <ToggleGroup
         value={[String(value)]}
         aria-label={ariaLabel}
@@ -520,7 +544,7 @@ export function PaginationPageSize<Value extends number = number>({
 export type PaginationLabels = {
   previous?: string
   next?: string
-  pageSummary?: (page: number, totalPages: number) => string
+  editPageNumber?: (page: number, totalPages: number) => string
   pageNumberInput?: string
 }
 
@@ -528,6 +552,7 @@ export type PaginationPageSizeConfig<Value extends number = number> = {
   value: Value
   options: readonly Value[]
   onValueChange: (value: Value) => void
+  label?: ReactNode
   ariaLabel?: string
 }
 
@@ -546,6 +571,7 @@ export function Pagination<Value extends number = number>({
 }: PaginationProps<Value>) {
   const normalizedTotalPages = Math.max(Math.trunc(totalPages), 0)
   const normalizedPage = clampPage(page, normalizedTotalPages)
+  const editPageNumber = labels?.editPageNumber?.(normalizedPage, normalizedTotalPages)
 
   if (normalizedTotalPages <= 0)
     return null
@@ -557,23 +583,27 @@ export function Pagination<Value extends number = number>({
       onPageChange={onPageChange}
       {...props}
     >
-      <PaginationNavigation>
-        <PaginationPrevious aria-label={labels?.previous} />
-        <PaginationPageJump
-          aria-label={labels?.pageSummary?.(normalizedPage, normalizedTotalPages)}
-          inputLabel={labels?.pageNumberInput}
-        />
-        <PaginationNext aria-label={labels?.next} />
-      </PaginationNavigation>
-      <PaginationPageList />
-      {pageSize && (
-        <PaginationPageSize
-          value={pageSize.value}
-          options={pageSize.options}
-          onValueChange={pageSize.onValueChange}
-          aria-label={pageSize.ariaLabel}
-        />
-      )}
+      <PaginationContent>
+        <PaginationNavigation className="justify-self-start">
+          <PaginationPrevious aria-label={labels?.previous} />
+          <PaginationPageJump
+            aria-label={editPageNumber}
+            inputLabel={labels?.pageNumberInput}
+          />
+          <PaginationNext aria-label={labels?.next} />
+        </PaginationNavigation>
+        <PaginationPageList className="col-start-2 justify-self-center" />
+        {pageSize && (
+          <PaginationPageSize
+            value={pageSize.value}
+            options={pageSize.options}
+            onValueChange={pageSize.onValueChange}
+            label={pageSize.label}
+            aria-label={pageSize.ariaLabel}
+            className="col-start-3 justify-self-end"
+          />
+        )}
+      </PaginationContent>
     </PaginationRoot>
   )
 }
@@ -588,23 +618,22 @@ export function PaginationSkeleton({
     'aria-hidden': true,
     'className': 'flex w-full min-w-0 items-center justify-between bg-components-panel-bg px-6 py-3 backdrop-blur-[8px] select-none',
     'children': (
-      <>
-        <div className="flex min-w-45 shrink-0 items-start">
-          <div className="flex shrink-0 items-center gap-0.5 rounded-[10px] bg-background-section-burn p-0.5">
-            <div className="size-7 animate-pulse rounded-lg bg-state-base-hover motion-reduce:animate-none" />
-            <div className="h-7 min-w-14 animate-pulse rounded-lg bg-state-base-hover motion-reduce:animate-none" />
-            <div className="size-7 animate-pulse rounded-lg bg-state-base-hover motion-reduce:animate-none" />
-          </div>
+      <div className="grid w-full min-w-0 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2">
+        <div className="flex shrink-0 items-center justify-self-start gap-0.5 rounded-[10px] bg-background-section-burn p-0.5">
+          <div className="size-7 animate-pulse rounded-lg bg-state-base-hover motion-reduce:animate-none" />
+          <div className="h-7 min-w-14 animate-pulse rounded-lg bg-state-base-hover motion-reduce:animate-none" />
+          <div className="size-7 animate-pulse rounded-lg bg-state-base-hover motion-reduce:animate-none" />
         </div>
-        <div className="flex items-center gap-0.5">
+        <div className="col-start-2 flex items-center justify-self-center gap-0.5">
           {range(1, 8).map(item => (
             <div key={item} className="h-8 min-w-8 animate-pulse rounded-lg bg-state-base-hover motion-reduce:animate-none" />
           ))}
         </div>
-        <div className="flex min-w-45 shrink-0 justify-end">
+        <div className="col-start-3 flex shrink-0 items-center justify-self-end gap-2">
+          <div className="h-3 w-13 animate-pulse rounded bg-state-base-hover motion-reduce:animate-none" />
           <div className="h-8 w-28 animate-pulse rounded-[10px] bg-state-base-hover motion-reduce:animate-none" />
         </div>
-      </>
+      </div>
     ),
   }
 
