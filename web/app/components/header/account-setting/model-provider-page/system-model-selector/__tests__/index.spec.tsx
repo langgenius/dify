@@ -29,11 +29,14 @@ const mockUpdateModelList = vi.hoisted(() => vi.fn())
 const mockInvalidateDefaultModel = vi.hoisted(() => vi.fn())
 const mockUpdateDefaultModel = vi.hoisted(() => vi.fn(() => Promise.resolve({ result: 'success' })))
 
-let mockIsCurrentWorkspaceManager = true
+let mockWorkspacePermissionKeys: string[] = ['model.manage']
 
 vi.mock('@/context/app-context', () => ({
-  useAppContext: () => ({
-    isCurrentWorkspaceManager: mockIsCurrentWorkspaceManager,
+  useAppContext: () => {
+    throw new Error('legacy workspace manager state should not be used by system model selector')
+  },
+  useSelector: (selector: (state: { workspacePermissionKeys: string[] }) => unknown) => selector({
+    workspacePermissionKeys: mockWorkspacePermissionKeys,
   }),
 }))
 
@@ -98,7 +101,7 @@ const defaultProps = {
 describe('SystemModel', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockIsCurrentWorkspaceManager = true
+    mockWorkspacePermissionKeys = ['model.manage']
   })
 
   it('should render settings button', () => {
@@ -174,8 +177,18 @@ describe('SystemModel', () => {
     expect(mockUpdateModelList).not.toHaveBeenCalled()
   })
 
-  it('should disable save when user is not workspace manager', async () => {
-    mockIsCurrentWorkspaceManager = false
+  it('should disable save without model.manage permission', async () => {
+    mockWorkspacePermissionKeys = []
+    render(<SystemModel {...defaultProps} />)
+
+    fireEvent.click(screen.getByRole('button', { name: /system model settings/i }))
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /save/i })).toBeDisabled()
+    })
+  })
+
+  it('should disable save when user only has plugin.manage permission', async () => {
+    mockWorkspacePermissionKeys = ['plugin.manage']
     render(<SystemModel {...defaultProps} />)
 
     fireEvent.click(screen.getByRole('button', { name: /system model settings/i }))

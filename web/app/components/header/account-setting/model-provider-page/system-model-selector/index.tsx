@@ -14,9 +14,10 @@ import { toast } from '@langgenius/dify-ui/toast'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Infotip } from '@/app/components/base/infotip'
-import { useAppContext } from '@/context/app-context'
+import { useSelector as useAppContextWithSelector } from '@/context/app-context'
 import { useProviderContext } from '@/context/provider-context'
 import { updateDefaultModel } from '@/service/common'
+import { hasPermission } from '@/utils/permission'
 import { ModelTypeEnum } from '../declarations'
 import {
   useInvalidateDefaultModel,
@@ -60,7 +61,8 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
   isLoading,
 }) => {
   const { t } = useTranslation()
-  const { isCurrentWorkspaceManager } = useAppContext()
+  const workspacePermissionKeys = useAppContextWithSelector(state => state.workspacePermissionKeys)
+  const canManageModel = hasPermission(workspacePermissionKeys, 'model.manage')
   const { textGenerationModelList } = useProviderContext()
   const updateModelList = useUpdateModelList()
   const invalidateDefaultModel = useInvalidateDefaultModel()
@@ -235,7 +237,7 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
               className="min-w-18"
               variant="primary"
               onClick={handleSave}
-              disabled={!isCurrentWorkspaceManager}
+              disabled={!canManageModel}
             >
               {t('operation.save', { ns: 'common' })}
             </Button>
