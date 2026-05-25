@@ -14,7 +14,6 @@ import type {
   IWorkspace,
   LangGeniusVersionResponse,
   Member,
-  PluginProvider,
   StructuredOutputRulesRequestBody,
   StructuredOutputRulesResponse,
   UserProfileResponse,
@@ -49,7 +48,6 @@ export const commonQueryKeys = {
   defaultModel: (type: ModelTypeEnum) => [NAME_SPACE, 'default-model', type] as const,
   retrievalMethods: [NAME_SPACE, 'support-retrieval-methods'] as const,
   accountIntegrates: [NAME_SPACE, 'account-integrates'] as const,
-  pluginProviders: [NAME_SPACE, 'plugin-providers'] as const,
   notionConnection: [NAME_SPACE, 'notion-connection'] as const,
   codeBasedExtensions: (module?: string) => [NAME_SPACE, 'code-based-extensions', module] as const,
   invitationCheck: (params?: { workspace_id?: string, email?: string, token?: string }) => [
@@ -300,13 +298,6 @@ export const useAccountIntegrates = () => {
   return useQuery<{ data: AccountIntegrate[] | null }>({
     queryKey: commonQueryKeys.accountIntegrates,
     queryFn: () => get<{ data: AccountIntegrate[] | null }>('/account/integrates'),
-  })
-}
-
-export const usePluginProviders = () => {
-  return useQuery<PluginProvider[] | null>({
-    queryKey: commonQueryKeys.pluginProviders,
-    queryFn: () => get<PluginProvider[] | null>('/workspaces/current/tool-providers'),
   })
 }
 
