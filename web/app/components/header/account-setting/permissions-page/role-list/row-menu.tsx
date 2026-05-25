@@ -76,6 +76,7 @@ const RowMenu = ({
 
   const canManageRoles = hasPermission(workspacePermissionKeys, 'workspace.role.manage')
 
+  const hasViewAction = roleCategory === 'global_system_default' && role.role_tag === 'owner'
   const hasEditAction = (roleCategory === 'global_custom' || (roleCategory === 'global_system_default' && role.role_tag !== 'owner')) && canManageRoles
   const hasDuplicateAction = roleCategory === 'global_custom' && canManageRoles
   const hasDeleteAction = roleCategory === 'global_custom' && canManageRoles
@@ -87,9 +88,13 @@ const RowMenu = ({
           <span aria-hidden className="i-ri-more-fill h-4 w-4 text-text-tertiary" />
         </DropdownMenuTrigger>
         <DropdownMenuContent placement="bottom-end" sideOffset={4} popupClassName="min-w-[160px]">
-          <DropdownMenuItem className="system-sm-semibold text-text-secondary" onClick={handleView}>
-            {t('operation.view', { ns: 'common' })}
-          </DropdownMenuItem>
+          {
+            hasViewAction && (
+              <DropdownMenuItem className="system-sm-semibold text-text-secondary" onClick={handleView}>
+                {t('operation.view', { ns: 'common' })}
+              </DropdownMenuItem>
+            )
+          }
           {
             hasEditAction && (
               <DropdownMenuItem className="system-sm-semibold text-text-secondary" onClick={handleEdit}>
