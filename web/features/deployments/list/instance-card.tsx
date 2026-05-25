@@ -6,6 +6,7 @@ import type {
   EnvironmentDeployment,
   Release,
 } from '@dify/contracts/enterprise/types.gen'
+import type { ReactElement } from 'react'
 import type { InstanceDetailTabKey } from '../detail/tabs'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -19,7 +20,7 @@ import Link from '@/next/link'
 import { consoleQuery } from '@/service/client'
 import { CreateReleaseControl } from '../detail/versions-tab/create-release-control'
 import { environmentName } from '../environment'
-import { releaseLabel } from '../release'
+import { formatDate, releaseLabel } from '../release'
 import {
   deploymentStatus,
   deploymentStatusPollingInterval,
@@ -97,16 +98,61 @@ function statusLabel(row: EnvironmentDeployment, t: ReturnType<typeof useTransla
   return t('status.unknown')
 }
 
-function pickDisplayedRelease(rows: EnvironmentDeployment[]): Release | undefined {
-  const releases = rows
-    .map(row => row.currentRelease)
-    .filter((release): release is Release => Boolean(release?.id))
-
-  return releases.sort((a, b) => {
+function pickLatestRelease(rows: Release[]): Release | undefined {
+  return [...rows].sort((a, b) => {
     const aTime = a.createdAt ? Date.parse(a.createdAt) : 0
     const bTime = b.createdAt ? Date.parse(b.createdAt) : 0
     return bTime - aTime
   })[0]
+}
+
+function isReleaseDeployed(release: Release | undefined, rows: EnvironmentDeployment[]) {
+  if (!release?.id)
+    return false
+
+  return rows.some(row => row.currentRelease?.id === release.id)
+}
+
+function releaseSourceLabel(release: Release | undefined, t: ReturnType<typeof useTranslation<'deployments'>>['t']) {
+  if (release?.source === 'RELEASE_SOURCE_SOURCE_APP' || release?.sourceAppId)
+    return t('versions.sourceAppOption')
+  if (release?.source === 'RELEASE_SOURCE_UPLOAD')
+    return t('versions.manualDslOption')
+  return '—'
+}
+
+function ReleaseMetaTooltip({ release, deployed, children }: {
+  release?: Release
+  deployed: boolean
+  children: ReactElement
+}) {
+  const { t } = useTranslation('deployments')
+
+  if (!release?.id)
+    return children
+
+  const rows = [
+    { label: t('card.tooltip.releaseName'), value: releaseLabel(release) },
+    { label: t('card.tooltip.deploymentStatus'), value: deployed ? t('card.tooltip.deployed') : t('card.tooltip.notDeployedShort') },
+    { label: t('card.tooltip.source'), value: releaseSourceLabel(release, t) },
+    { label: t('card.tooltip.createdAt'), value: formatDate(release.createdAt) },
+  ]
+
+  return (
+    <Tooltip>
+      <TooltipTrigger render={children} />
+      <TooltipContent>
+        <div className="flex min-w-48 flex-col gap-1">
+          {rows.map(row => (
+            <div key={row.label} className="flex justify-between gap-4">
+              <span className="shrink-0 text-text-tertiary">{row.label}</span>
+              <span className="min-w-0 truncate text-right text-text-secondary">{row.value}</span>
+            </div>
+          ))}
+        </div>
+      </TooltipContent>
+    </Tooltip>
+  )
 }
 
 function EnvironmentChip({ row }: {
@@ -333,13 +379,14 @@ export function InstanceCard({ app }: {
   const releaseRows = releaseHistoryQuery.data?.data?.filter((release): release is Release & { id: string } => Boolean(release.id)) ?? []
   const hasRelease = releaseRows.length > 0
   const activeDeploymentRows = environmentDeploymentsQuery.data?.data?.filter(isActiveDeployment) ?? []
-  const displayedRelease = pickDisplayedRelease(activeDeploymentRows)
-  const displayedTime = displayedRelease?.createdAt
-  const displayedTimeMs = displayedTime ? Date.parse(displayedTime) : Number.NaN
-  const releaseMeta = displayedRelease
+  const latestRelease = pickLatestRelease(releaseRows)
+  const latestReleaseTime = latestRelease?.createdAt
+  const latestReleaseTimeMs = latestReleaseTime ? Date.parse(latestReleaseTime) : Number.NaN
+  const latestReleaseDeployed = isReleaseDeployed(latestRelease, activeDeploymentRows)
+  const releaseMeta = latestRelease
     ? [
-        releaseLabel(displayedRelease),
-        Number.isNaN(displayedTimeMs) ? undefined : formatTimeFromNow(displayedTimeMs),
+        releaseLabel(latestRelease),
+        Number.isNaN(latestReleaseTimeMs) ? undefined : formatTimeFromNow(latestReleaseTimeMs),
       ].filter(Boolean).join(' · ')
     : t('card.notDeployed')
   const statusIsLoading = environmentDeploymentsQuery.isLoading || (!activeDeploymentRows.length && releaseHistoryQuery.isLoading)
@@ -414,13 +461,14 @@ export function InstanceCard({ app }: {
                   </div>
                 )
               : <DeploymentAccessLinks appInstanceId={appInstanceId} access={access} isLoading={accessChannelsQuery.isLoading} />}
-          <Link
-            href={displayedRelease ? getInstanceTabHref(appInstanceId, 'releases') : getInstanceTabHref(appInstanceId, 'instances')}
-            className="min-w-0 shrink-0 truncate text-right system-xs-regular text-text-tertiary hover:text-text-secondary"
-            title={releaseMeta}
-          >
-            {releaseMeta}
-          </Link>
+          <ReleaseMetaTooltip release={latestRelease} deployed={latestReleaseDeployed}>
+            <Link
+              href={latestRelease ? getInstanceTabHref(appInstanceId, 'releases') : getInstanceTabHref(appInstanceId, 'instances')}
+              className="min-w-0 shrink-0 truncate text-right system-xs-regular text-text-tertiary hover:text-text-secondary"
+            >
+              {releaseMeta}
+            </Link>
+          </ReleaseMetaTooltip>
         </div>
       </div>
     </div>
