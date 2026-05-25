@@ -3,11 +3,11 @@ import * as z from 'zod'
 const commonSchema = {
   className: z.string().min(1).optional(),
 }
-export const withIconCardListPropsSchema = z.object(commonSchema).strict()
+const withIconCardListPropsSchema = z.object(commonSchema).strict()
 
 const HTTP_URL_REGEX = /^https?:\/\//i
 
-export const withIconCardItemPropsSchema = z.object({
+const withIconCardItemPropsSchema = z.object({
   ...commonSchema,
   icon: z.string().trim().url().refine(
     value => HTTP_URL_REGEX.test(value),

@@ -1,9 +1,9 @@
 import type { ViewHistoryProps } from './view-history'
+import { Button } from '@langgenius/dify-ui/button'
 import {
   useCallback,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
 import { ArrowNarrowLeft } from '@/app/components/base/icons/src/vender/line/arrows'
 import Divider from '../../base/divider'
 import {
@@ -45,7 +45,7 @@ const HeaderInHistory = ({
           variant="primary"
           onClick={handleGoBackToEdit}
         >
-          <ArrowNarrowLeft className="mr-1 h-4 w-4" />
+          <ArrowNarrowLeft className="mr-1 size-4" />
           {t('common.goBackToEdit', { ns: 'workflow' })}
         </Button>
       </div>

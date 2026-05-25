@@ -49,10 +49,10 @@ const BulkEdit: FC<Props> = ({
               className="flex cursor-pointer items-center space-x-1"
               onClick={handleSwitchToKeyValueEdit}
             >
-              <LayoutGrid02 className="h-3 w-3 text-gray-500" />
-              <div className="text-xs font-normal leading-[18px] text-gray-500">{t(`${i18nPrefix}.keyValueEdit`, { ns: 'workflow' })}</div>
+              <LayoutGrid02 className="size-3 text-gray-500" />
+              <div className="text-xs leading-[18px] font-normal text-gray-500">{t(`${i18nPrefix}.keyValueEdit`, { ns: 'workflow' })}</div>
             </div>
-            <div className="ml-3 mr-1.5 h-3 w-px bg-gray-200"></div>
+            <div className="mr-1.5 ml-3 h-3 w-px bg-gray-200"></div>
           </div>
         )}
         minHeight={150}

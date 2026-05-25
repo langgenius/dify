@@ -2,7 +2,6 @@ import logging
 
 from flask import request
 from flask_restx import Resource, fields
-from graphon.model_runtime.errors.invoke import InvokeError
 from pydantic import BaseModel, Field
 from werkzeug.exceptions import InternalServerError
 
@@ -23,6 +22,7 @@ from controllers.console.app.error import (
 from controllers.console.app.wraps import get_app_model
 from controllers.console.wraps import account_initialization_required, setup_required
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
+from graphon.model_runtime.errors.invoke import InvokeError
 from libs.login import login_required
 from models import App, AppMode
 from services.audio_service import AudioService
@@ -173,7 +173,7 @@ class TextModesApi(Resource):
     @account_initialization_required
     def get(self, app_model):
         try:
-            args = TextToSpeechVoiceQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
+            args = TextToSpeechVoiceQuery.model_validate(request.args.to_dict(flat=True))
 
             response = AudioService.transcript_tts_voices(
                 tenant_id=app_model.tenant_id,

@@ -1,8 +1,9 @@
 import uuid
+from typing import Literal
+from uuid import UUID
 
 from flask import request
 from flask_restx import Resource, marshal
-from graphon.model_runtime.entities.model_entities import ModelType
 from pydantic import BaseModel, Field
 from sqlalchemy import String, cast, func, or_, select
 from sqlalchemy.dialects.postgresql import JSONB
@@ -11,7 +12,8 @@ from werkzeug.exceptions import Forbidden, NotFound
 import services
 from configs import dify_config
 from controllers.common.controller_schemas import ChildChunkCreatePayload, ChildChunkUpdatePayload
-from controllers.common.schema import register_schema_models
+from controllers.common.fields import SimpleResultResponse
+from controllers.common.schema import register_response_schema_models, register_schema_models
 from controllers.console import console_ns
 from controllers.console.app.error import ProviderNotInitializeError
 from controllers.console.datasets.error import (
@@ -31,7 +33,9 @@ from core.model_manager import ModelManager
 from core.rag.index_processor.constant.index_type import IndexTechniqueType
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
+from fields.base import ResponseModel
 from fields.segment_fields import child_chunk_fields, segment_fields
+from graphon.model_runtime.entities.model_entities import ModelType
 from libs.helper import escape_like_pattern
 from libs.login import current_account_with_tenant, login_required
 from models.dataset import ChildChunk, DocumentSegment
@@ -83,6 +87,11 @@ class BatchImportPayload(BaseModel):
     upload_file_id: str
 
 
+class SegmentBatchImportStatusResponse(ResponseModel):
+    job_id: str
+    job_status: str
+
+
 class ChildChunkBatchUpdatePayload(BaseModel):
     chunks: list[ChildChunkUpdateArgs]
 
@@ -98,6 +107,7 @@ register_schema_models(
     ChildChunkBatchUpdatePayload,
     ChildChunkUpdateArgs,
 )
+register_response_schema_models(console_ns, SegmentBatchImportStatusResponse, SimpleResultResponse)
 
 
 @console_ns.route("/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/segments")
@@ -105,12 +115,12 @@ class DatasetDocumentSegmentListApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def get(self, dataset_id, document_id):
+    def get(self, dataset_id: UUID, document_id: UUID):
         current_user, current_tenant_id = current_account_with_tenant()
 
-        dataset_id = str(dataset_id)
-        document_id = str(document_id)
-        dataset = DatasetService.get_dataset(dataset_id)
+        dataset_id_str = str(dataset_id)
+        document_id_str = str(document_id)
+        dataset = DatasetService.get_dataset(dataset_id_str)
         if not dataset:
             raise NotFound("Dataset not found.")
 
@@ -119,7 +129,7 @@ class DatasetDocumentSegmentListApi(Resource):
         except services.errors.account.NoPermissionError as e:
             raise Forbidden(str(e))
 
-        document = DocumentService.get_document(dataset_id, document_id)
+        document = DocumentService.get_document(dataset_id_str, document_id_str)
 
         if not document:
             raise NotFound("Document not found.")
@@ -140,7 +150,7 @@ class DatasetDocumentSegmentListApi(Resource):
         query = (
             select(DocumentSegment)
             .where(
-                DocumentSegment.document_id == str(document_id),
+                DocumentSegment.document_id == document_id_str,
                 DocumentSegment.tenant_id == current_tenant_id,
             )
             .order_by(DocumentSegment.position.asc())
@@ -193,7 +203,9 @@ class DatasetDocumentSegmentListApi(Resource):
         if segment_ids:
             from services.summary_index_service import SummaryIndexService
 
-            summary_records = SummaryIndexService.get_segments_summaries(segment_ids=segment_ids, dataset_id=dataset_id)
+            summary_records = SummaryIndexService.get_segments_summaries(
+                segment_ids=segment_ids, dataset_id=dataset_id_str
+            )
             # Only include enabled summaries (already filtered by service)
             summaries = {chunk_id: summary.summary_content for chunk_id, summary in summary_records.items()}
 
@@ -217,19 +229,20 @@ class DatasetDocumentSegmentListApi(Resource):
     @login_required
     @account_initialization_required
     @cloud_edition_billing_rate_limit_check("knowledge")
-    def delete(self, dataset_id, document_id):
+    @console_ns.response(204, "Segments deleted successfully")
+    def delete(self, dataset_id: UUID, document_id: UUID):
         current_user, _ = current_account_with_tenant()
 
         # check dataset
-        dataset_id = str(dataset_id)
-        dataset = DatasetService.get_dataset(dataset_id)
+        dataset_id_str = str(dataset_id)
+        dataset = DatasetService.get_dataset(dataset_id_str)
         if not dataset:
             raise NotFound("Dataset not found.")
         # check user's model setting
         DatasetService.check_dataset_model_setting(dataset)
         # check document
-        document_id = str(document_id)
-        document = DocumentService.get_document(dataset_id, document_id)
+        document_id_str = str(document_id)
+        document = DocumentService.get_document(dataset_id_str, document_id_str)
         if not document:
             raise NotFound("Document not found.")
         segment_ids = request.args.getlist("segment_id")
@@ -242,7 +255,7 @@ class DatasetDocumentSegmentListApi(Resource):
         except services.errors.account.NoPermissionError as e:
             raise Forbidden(str(e))
         SegmentService.delete_segments(segment_ids, document, dataset)
-        return {"result": "success"}, 204
+        return "", 204
 
 
 @console_ns.route("/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/segment/<string:action>")
@@ -252,15 +265,16 @@ class DatasetDocumentSegmentApi(Resource):
     @account_initialization_required
     @cloud_edition_billing_resource_check("vector_space")
     @cloud_edition_billing_rate_limit_check("knowledge")
-    def patch(self, dataset_id, document_id, action):
+    @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
+    def patch(self, dataset_id: UUID, document_id: UUID, action: Literal["enable", "disable"]):
         current_user, current_tenant_id = current_account_with_tenant()
 
-        dataset_id = str(dataset_id)
-        dataset = DatasetService.get_dataset(dataset_id)
+        dataset_id_str = str(dataset_id)
+        dataset = DatasetService.get_dataset(dataset_id_str)
         if not dataset:
             raise NotFound("Dataset not found.")
-        document_id = str(document_id)
-        document = DocumentService.get_document(dataset_id, document_id)
+        document_id_str = str(document_id)
+        document = DocumentService.get_document(dataset_id_str, document_id_str)
         if not document:
             raise NotFound("Document not found.")
         # check user's model setting
@@ -311,17 +325,17 @@ class DatasetDocumentSegmentAddApi(Resource):
     @cloud_edition_billing_knowledge_limit_check("add_segment")
     @cloud_edition_billing_rate_limit_check("knowledge")
     @console_ns.expect(console_ns.models[SegmentCreatePayload.__name__])
-    def post(self, dataset_id, document_id):
+    def post(self, dataset_id: UUID, document_id: UUID):
         current_user, current_tenant_id = current_account_with_tenant()
 
         # check dataset
-        dataset_id = str(dataset_id)
-        dataset = DatasetService.get_dataset(dataset_id)
+        dataset_id_str = str(dataset_id)
+        dataset = DatasetService.get_dataset(dataset_id_str)
         if not dataset:
             raise NotFound("Dataset not found.")
         # check document
-        document_id = str(document_id)
-        document = DocumentService.get_document(dataset_id, document_id)
+        document_id_str = str(document_id)
+        document = DocumentService.get_document(dataset_id_str, document_id_str)
         if not document:
             raise NotFound("Document not found.")
         if not current_user.is_dataset_editor:
@@ -351,7 +365,7 @@ class DatasetDocumentSegmentAddApi(Resource):
         payload_dict = payload.model_dump(exclude_none=True)
         SegmentService.segment_create_args_validate(payload_dict, document)
         segment = SegmentService.create_segment(payload_dict, document, dataset)
-        return {"data": _get_segment_with_summary(segment, dataset_id), "doc_form": document.doc_form}, 200
+        return {"data": _get_segment_with_summary(segment, dataset_id_str), "doc_form": document.doc_form}, 200
 
 
 @console_ns.route("/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/segments/<uuid:segment_id>")
@@ -362,19 +376,19 @@ class DatasetDocumentSegmentUpdateApi(Resource):
     @cloud_edition_billing_resource_check("vector_space")
     @cloud_edition_billing_rate_limit_check("knowledge")
     @console_ns.expect(console_ns.models[SegmentUpdatePayload.__name__])
-    def patch(self, dataset_id, document_id, segment_id):
+    def patch(self, dataset_id: UUID, document_id: UUID, segment_id: UUID):
         current_user, current_tenant_id = current_account_with_tenant()
 
         # check dataset
-        dataset_id = str(dataset_id)
-        dataset = DatasetService.get_dataset(dataset_id)
+        dataset_id_str = str(dataset_id)
+        dataset = DatasetService.get_dataset(dataset_id_str)
         if not dataset:
             raise NotFound("Dataset not found.")
         # check user's model setting
         DatasetService.check_dataset_model_setting(dataset)
         # check document
-        document_id = str(document_id)
-        document = DocumentService.get_document(dataset_id, document_id)
+        document_id_str = str(document_id)
+        document = DocumentService.get_document(dataset_id_str, document_id_str)
         if not document:
             raise NotFound("Document not found.")
         if dataset.indexing_technique == IndexTechniqueType.HIGH_QUALITY:
@@ -394,10 +408,10 @@ class DatasetDocumentSegmentUpdateApi(Resource):
             except ProviderTokenNotInitError as ex:
                 raise ProviderNotInitializeError(ex.description)
             # check segment
-        segment_id = str(segment_id)
+        segment_id_str = str(segment_id)
         segment = db.session.scalar(
             select(DocumentSegment)
-            .where(DocumentSegment.id == str(segment_id), DocumentSegment.tenant_id == current_tenant_id)
+            .where(DocumentSegment.id == segment_id_str, DocumentSegment.tenant_id == current_tenant_id)
             .limit(1)
         )
         if not segment:
@@ -418,32 +432,33 @@ class DatasetDocumentSegmentUpdateApi(Resource):
         segment = SegmentService.update_segment(
             SegmentUpdateArgs.model_validate(payload.model_dump(exclude_none=True)), segment, document, dataset
         )
-        return {"data": _get_segment_with_summary(segment, dataset_id), "doc_form": document.doc_form}, 200
+        return {"data": _get_segment_with_summary(segment, dataset_id_str), "doc_form": document.doc_form}, 200
 
     @setup_required
     @login_required
     @account_initialization_required
     @cloud_edition_billing_rate_limit_check("knowledge")
-    def delete(self, dataset_id, document_id, segment_id):
+    @console_ns.response(204, "Segment deleted successfully")
+    def delete(self, dataset_id: UUID, document_id: UUID, segment_id: UUID):
         current_user, current_tenant_id = current_account_with_tenant()
 
         # check dataset
-        dataset_id = str(dataset_id)
-        dataset = DatasetService.get_dataset(dataset_id)
+        dataset_id_str = str(dataset_id)
+        dataset = DatasetService.get_dataset(dataset_id_str)
         if not dataset:
             raise NotFound("Dataset not found.")
         # check user's model setting
         DatasetService.check_dataset_model_setting(dataset)
         # check document
-        document_id = str(document_id)
-        document = DocumentService.get_document(dataset_id, document_id)
+        document_id_str = str(document_id)
+        document = DocumentService.get_document(dataset_id_str, document_id_str)
         if not document:
             raise NotFound("Document not found.")
         # check segment
-        segment_id = str(segment_id)
+        segment_id_str = str(segment_id)
         segment = db.session.scalar(
             select(DocumentSegment)
-            .where(DocumentSegment.id == str(segment_id), DocumentSegment.tenant_id == current_tenant_id)
+            .where(DocumentSegment.id == segment_id_str, DocumentSegment.tenant_id == current_tenant_id)
             .limit(1)
         )
         if not segment:
@@ -456,7 +471,7 @@ class DatasetDocumentSegmentUpdateApi(Resource):
         except services.errors.account.NoPermissionError as e:
             raise Forbidden(str(e))
         SegmentService.delete_segment(segment, document, dataset)
-        return {"result": "success"}, 204
+        return "", 204
 
 
 @console_ns.route(
@@ -464,6 +479,7 @@ class DatasetDocumentSegmentUpdateApi(Resource):
     "/datasets/batch_import_status/<uuid:job_id>",
 )
 class DatasetDocumentSegmentBatchImportApi(Resource):
+    @console_ns.response(200, "Batch import started", console_ns.models[SegmentBatchImportStatusResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -471,17 +487,17 @@ class DatasetDocumentSegmentBatchImportApi(Resource):
     @cloud_edition_billing_knowledge_limit_check("add_segment")
     @cloud_edition_billing_rate_limit_check("knowledge")
     @console_ns.expect(console_ns.models[BatchImportPayload.__name__])
-    def post(self, dataset_id, document_id):
+    def post(self, dataset_id: UUID, document_id: UUID):
         current_user, current_tenant_id = current_account_with_tenant()
 
         # check dataset
-        dataset_id = str(dataset_id)
-        dataset = DatasetService.get_dataset(dataset_id)
+        dataset_id_str = str(dataset_id)
+        dataset = DatasetService.get_dataset(dataset_id_str)
         if not dataset:
             raise NotFound("Dataset not found.")
         # check document
-        document_id = str(document_id)
-        document = DocumentService.get_document(dataset_id, document_id)
+        document_id_str = str(document_id)
+        document = DocumentService.get_document(dataset_id_str, document_id_str)
         if not document:
             raise NotFound("Document not found.")
 
@@ -505,8 +521,8 @@ class DatasetDocumentSegmentBatchImportApi(Resource):
             batch_create_segment_to_index_task.delay(
                 str(job_id),
                 upload_file_id,
-                dataset_id,
-                document_id,
+                dataset_id_str,
+                document_id_str,
                 current_tenant_id,
                 current_user.id,
             )
@@ -514,10 +530,11 @@ class DatasetDocumentSegmentBatchImportApi(Resource):
             return {"error": str(e)}, 500
         return {"job_id": job_id, "job_status": "waiting"}, 200
 
+    @console_ns.response(200, "Batch import status", console_ns.models[SegmentBatchImportStatusResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
-    def get(self, job_id=None, dataset_id=None, document_id=None):
+    def get(self, job_id=None, dataset_id: UUID | None = None, document_id: UUID | None = None):
         if job_id is None:
             raise NotFound("The job does not exist.")
         job_id = str(job_id)
@@ -538,24 +555,24 @@ class ChildChunkAddApi(Resource):
     @cloud_edition_billing_knowledge_limit_check("add_segment")
     @cloud_edition_billing_rate_limit_check("knowledge")
     @console_ns.expect(console_ns.models[ChildChunkCreatePayload.__name__])
-    def post(self, dataset_id, document_id, segment_id):
+    def post(self, dataset_id: UUID, document_id: UUID, segment_id: UUID):
         current_user, current_tenant_id = current_account_with_tenant()
 
         # check dataset
-        dataset_id = str(dataset_id)
-        dataset = DatasetService.get_dataset(dataset_id)
+        dataset_id_str = str(dataset_id)
+        dataset = DatasetService.get_dataset(dataset_id_str)
         if not dataset:
             raise NotFound("Dataset not found.")
         # check document
-        document_id = str(document_id)
-        document = DocumentService.get_document(dataset_id, document_id)
+        document_id_str = str(document_id)
+        document = DocumentService.get_document(dataset_id_str, document_id_str)
         if not document:
             raise NotFound("Document not found.")
         # check segment
-        segment_id = str(segment_id)
+        segment_id_str = str(segment_id)
         segment = db.session.scalar(
             select(DocumentSegment)
-            .where(DocumentSegment.id == str(segment_id), DocumentSegment.tenant_id == current_tenant_id)
+            .where(DocumentSegment.id == segment_id_str, DocumentSegment.tenant_id == current_tenant_id)
             .limit(1)
         )
         if not segment:
@@ -593,26 +610,26 @@ class ChildChunkAddApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def get(self, dataset_id, document_id, segment_id):
+    def get(self, dataset_id: UUID, document_id: UUID, segment_id: UUID):
         _, current_tenant_id = current_account_with_tenant()
 
         # check dataset
-        dataset_id = str(dataset_id)
-        dataset = DatasetService.get_dataset(dataset_id)
+        dataset_id_str = str(dataset_id)
+        dataset = DatasetService.get_dataset(dataset_id_str)
         if not dataset:
             raise NotFound("Dataset not found.")
         # check user's model setting
         DatasetService.check_dataset_model_setting(dataset)
         # check document
-        document_id = str(document_id)
-        document = DocumentService.get_document(dataset_id, document_id)
+        document_id_str = str(document_id)
+        document = DocumentService.get_document(dataset_id_str, document_id_str)
         if not document:
             raise NotFound("Document not found.")
         # check segment
-        segment_id = str(segment_id)
+        segment_id_str = str(segment_id)
         segment = db.session.scalar(
             select(DocumentSegment)
-            .where(DocumentSegment.id == str(segment_id), DocumentSegment.tenant_id == current_tenant_id)
+            .where(DocumentSegment.id == segment_id_str, DocumentSegment.tenant_id == current_tenant_id)
             .limit(1)
         )
         if not segment:
@@ -629,7 +646,9 @@ class ChildChunkAddApi(Resource):
         limit = min(args.limit, 100)
         keyword = args.keyword
 
-        child_chunks = SegmentService.get_child_chunks(segment_id, document_id, dataset_id, page, limit, keyword)
+        child_chunks = SegmentService.get_child_chunks(
+            segment_id_str, document_id_str, dataset_id_str, page, limit, keyword
+        )
         return {
             "data": marshal(child_chunks.items, child_chunk_fields),
             "total": child_chunks.total,
@@ -643,26 +662,26 @@ class ChildChunkAddApi(Resource):
     @account_initialization_required
     @cloud_edition_billing_resource_check("vector_space")
     @cloud_edition_billing_rate_limit_check("knowledge")
-    def patch(self, dataset_id, document_id, segment_id):
+    def patch(self, dataset_id: UUID, document_id: UUID, segment_id: UUID):
         current_user, current_tenant_id = current_account_with_tenant()
 
         # check dataset
-        dataset_id = str(dataset_id)
-        dataset = DatasetService.get_dataset(dataset_id)
+        dataset_id_str = str(dataset_id)
+        dataset = DatasetService.get_dataset(dataset_id_str)
         if not dataset:
             raise NotFound("Dataset not found.")
         # check user's model setting
         DatasetService.check_dataset_model_setting(dataset)
         # check document
-        document_id = str(document_id)
-        document = DocumentService.get_document(dataset_id, document_id)
+        document_id_str = str(document_id)
+        document = DocumentService.get_document(dataset_id_str, document_id_str)
         if not document:
             raise NotFound("Document not found.")
             # check segment
-        segment_id = str(segment_id)
+        segment_id_str = str(segment_id)
         segment = db.session.scalar(
             select(DocumentSegment)
-            .where(DocumentSegment.id == str(segment_id), DocumentSegment.tenant_id == current_tenant_id)
+            .where(DocumentSegment.id == segment_id_str, DocumentSegment.tenant_id == current_tenant_id)
             .limit(1)
         )
         if not segment:
@@ -691,39 +710,40 @@ class ChildChunkUpdateApi(Resource):
     @login_required
     @account_initialization_required
     @cloud_edition_billing_rate_limit_check("knowledge")
-    def delete(self, dataset_id, document_id, segment_id, child_chunk_id):
+    @console_ns.response(204, "Child chunk deleted successfully")
+    def delete(self, dataset_id: UUID, document_id: UUID, segment_id: UUID, child_chunk_id: UUID):
         current_user, current_tenant_id = current_account_with_tenant()
 
         # check dataset
-        dataset_id = str(dataset_id)
-        dataset = DatasetService.get_dataset(dataset_id)
+        dataset_id_str = str(dataset_id)
+        dataset = DatasetService.get_dataset(dataset_id_str)
         if not dataset:
             raise NotFound("Dataset not found.")
         # check user's model setting
         DatasetService.check_dataset_model_setting(dataset)
         # check document
-        document_id = str(document_id)
-        document = DocumentService.get_document(dataset_id, document_id)
+        document_id_str = str(document_id)
+        document = DocumentService.get_document(dataset_id_str, document_id_str)
         if not document:
             raise NotFound("Document not found.")
         # check segment
-        segment_id = str(segment_id)
+        segment_id_str = str(segment_id)
         segment = db.session.scalar(
             select(DocumentSegment)
-            .where(DocumentSegment.id == str(segment_id), DocumentSegment.tenant_id == current_tenant_id)
+            .where(DocumentSegment.id == segment_id_str, DocumentSegment.tenant_id == current_tenant_id)
             .limit(1)
         )
         if not segment:
             raise NotFound("Segment not found.")
         # check child chunk
-        child_chunk_id = str(child_chunk_id)
+        child_chunk_id_str = str(child_chunk_id)
         child_chunk = db.session.scalar(
             select(ChildChunk)
             .where(
-                ChildChunk.id == str(child_chunk_id),
+                ChildChunk.id == str(child_chunk_id_str),
                 ChildChunk.tenant_id == current_tenant_id,
                 ChildChunk.segment_id == segment.id,
-                ChildChunk.document_id == document_id,
+                ChildChunk.document_id == document_id_str,
             )
             .limit(1)
         )
@@ -740,7 +760,7 @@ class ChildChunkUpdateApi(Resource):
             SegmentService.delete_child_chunk(child_chunk, dataset)
         except ChildChunkDeleteIndexServiceError as e:
             raise ChildChunkDeleteIndexError(str(e))
-        return {"result": "success"}, 204
+        return "", 204
 
     @setup_required
     @login_required
@@ -748,39 +768,39 @@ class ChildChunkUpdateApi(Resource):
     @cloud_edition_billing_resource_check("vector_space")
     @cloud_edition_billing_rate_limit_check("knowledge")
     @console_ns.expect(console_ns.models[ChildChunkUpdatePayload.__name__])
-    def patch(self, dataset_id, document_id, segment_id, child_chunk_id):
+    def patch(self, dataset_id: UUID, document_id: UUID, segment_id: UUID, child_chunk_id: UUID):
         current_user, current_tenant_id = current_account_with_tenant()
 
         # check dataset
-        dataset_id = str(dataset_id)
-        dataset = DatasetService.get_dataset(dataset_id)
+        dataset_id_str = str(dataset_id)
+        dataset = DatasetService.get_dataset(dataset_id_str)
         if not dataset:
             raise NotFound("Dataset not found.")
         # check user's model setting
         DatasetService.check_dataset_model_setting(dataset)
         # check document
-        document_id = str(document_id)
-        document = DocumentService.get_document(dataset_id, document_id)
+        document_id_str = str(document_id)
+        document = DocumentService.get_document(dataset_id_str, document_id_str)
         if not document:
             raise NotFound("Document not found.")
             # check segment
-        segment_id = str(segment_id)
+        segment_id_str = str(segment_id)
         segment = db.session.scalar(
             select(DocumentSegment)
-            .where(DocumentSegment.id == str(segment_id), DocumentSegment.tenant_id == current_tenant_id)
+            .where(DocumentSegment.id == segment_id_str, DocumentSegment.tenant_id == current_tenant_id)
             .limit(1)
         )
         if not segment:
             raise NotFound("Segment not found.")
         # check child chunk
-        child_chunk_id = str(child_chunk_id)
+        child_chunk_id_str = str(child_chunk_id)
         child_chunk = db.session.scalar(
             select(ChildChunk)
             .where(
-                ChildChunk.id == str(child_chunk_id),
+                ChildChunk.id == str(child_chunk_id_str),
                 ChildChunk.tenant_id == current_tenant_id,
                 ChildChunk.segment_id == segment.id,
-                ChildChunk.document_id == document_id,
+                ChildChunk.document_id == document_id_str,
             )
             .limit(1)
         )

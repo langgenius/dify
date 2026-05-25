@@ -41,15 +41,15 @@ describe('PluginSection', () => {
     it('should render title and count', () => {
       render(<PluginSection {...defaultProps} />)
 
-      expect(screen.getByText(/installing plugins/i)).toBeInTheDocument()
+      expect(screen.getByText(/installing plugins/i))!.toBeInTheDocument()
       expect(screen.getByText(/installing plugins/i).textContent).toContain('2')
     })
 
     it('should render all plugin items', () => {
       render(<PluginSection {...defaultProps} />)
 
-      expect(screen.getByText('PluginA')).toBeInTheDocument()
-      expect(screen.getByText('PluginB')).toBeInTheDocument()
+      expect(screen.getByText('PluginA'))!.toBeInTheDocument()
+      expect(screen.getByText('PluginB'))!.toBeInTheDocument()
     })
 
     it('should render status icons for each plugin', () => {
@@ -72,14 +72,14 @@ describe('PluginSection', () => {
       const plugins = [createPlugin('p1', 'PluginA', 'Custom message')]
       render(<PluginSection {...defaultProps} plugins={plugins} count={1} />)
 
-      expect(screen.getByText('Custom message')).toBeInTheDocument()
+      expect(screen.getByText('Custom message'))!.toBeInTheDocument()
     })
 
     it('should use defaultStatusText when plugin has no message', () => {
       const plugins = [createPlugin('p1', 'PluginA', '')]
       render(<PluginSection {...defaultProps} plugins={plugins} count={1} />)
 
-      expect(screen.getByText('Default status')).toBeInTheDocument()
+      expect(screen.getByText('Default status'))!.toBeInTheDocument()
     })
 
     it('should apply statusClassName to items', () => {
@@ -104,7 +104,7 @@ describe('PluginSection', () => {
         />,
       )
 
-      expect(screen.getByRole('button', { name: /clear all/i })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: /clear all/i }))!.toBeInTheDocument()
     })
 
     it('should not render headerAction when not provided', () => {
@@ -123,8 +123,8 @@ describe('PluginSection', () => {
         />,
       )
 
-      expect(screen.getByRole('button', { name: /action plugina/i })).toBeInTheDocument()
-      expect(screen.getByRole('button', { name: /action pluginb/i })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: /action plugina/i }))!.toBeInTheDocument()
+      expect(screen.getByRole('button', { name: /action pluginb/i }))!.toBeInTheDocument()
     })
   })
 
@@ -140,7 +140,7 @@ describe('PluginSection', () => {
 
       // Clear buttons are rendered when onClearSingle is provided
       const clearButtons = screen.getAllByRole('button')
-      fireEvent.click(clearButtons[0])
+      fireEvent.click(clearButtons[0]!)
 
       expect(onClearSingle).toHaveBeenCalledWith('task-1', 'p1')
     })
@@ -157,8 +157,8 @@ describe('PluginSection', () => {
       const plugins = [createPlugin('p1', 'Solo')]
       render(<PluginSection {...defaultProps} plugins={plugins} count={1} />)
 
-      expect(screen.getByText('Solo')).toBeInTheDocument()
-      expect(screen.getByText(/solo/i).closest('.max-h-\\[300px\\]')).toBeInTheDocument()
+      expect(screen.getByText('Solo'))!.toBeInTheDocument()
+      expect(screen.getByText(/solo/i).closest('.max-h-\\[300px\\]'))!.toBeInTheDocument()
     })
   })
 })

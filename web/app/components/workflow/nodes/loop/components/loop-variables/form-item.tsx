@@ -41,6 +41,9 @@ const FormItem = ({
 }: FormItemProps) => {
   const { t } = useTranslation()
   const { value_type, var_type, value } = item
+  const normalizedVarValue = useMemo(() => {
+    return Array.isArray(value) ? value : []
+  }, [value])
 
   const handleInputChange = useCallback((e: any) => {
     onChange(e.target.value)
@@ -79,7 +82,7 @@ const FormItem = ({
             readonly={false}
             nodeId={nodeId}
             isShowNodeName
-            value={value}
+            value={normalizedVarValue}
             onChange={handleChange}
             filterVar={filterVar}
             placeholder={t('nodes.assigner.setParameter', { ns: 'workflow' }) as string}
@@ -117,7 +120,7 @@ const FormItem = ({
         value_type === ValueType.constant
         && (var_type === VarType.object || var_type === VarType.arrayString || var_type === VarType.arrayNumber || var_type === VarType.arrayObject)
         && (
-          <div className="w-full radius-lg bg-components-input-bg-normal py-2 pl-3 pr-1" style={{ height: editorMinHeight }}>
+          <div className="w-full rounded-[10px] bg-components-input-bg-normal py-2 pr-1 pl-3" style={{ height: editorMinHeight }}>
             <CodeEditor
               value={value}
               isExpand

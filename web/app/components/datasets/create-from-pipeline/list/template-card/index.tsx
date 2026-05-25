@@ -1,11 +1,19 @@
 import type { PipelineTemplate } from '@/models/pipeline'
+import {
+  AlertDialog,
+  AlertDialogActions,
+  AlertDialogCancelButton,
+  AlertDialogConfirmButton,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogTitle,
+} from '@langgenius/dify-ui/alert-dialog'
+import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
+import { toast } from '@langgenius/dify-ui/toast'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { trackEvent } from '@/app/components/base/amplitude'
-import Confirm from '@/app/components/base/confirm'
-import Modal from '@/app/components/base/modal'
-import { toast } from '@/app/components/base/ui/toast'
 import { usePluginDependencies } from '@/app/components/workflow/plugin-dependency/hooks'
 import { useRouter } from '@/next/navigation'
 import { useCreatePipelineDatasetFromCustomized } from '@/service/knowledge/use-create-dataset'
@@ -145,39 +153,58 @@ const TemplateCard = ({
         handleDelete={handleDelete}
       />
       {showEditModal && (
-        <Modal
-          isShow={showEditModal}
-          onClose={closeEditModal}
-          className="max-w-[520px] p-0"
+        <Dialog
+          open={showEditModal}
+          onOpenChange={(open) => {
+            if (!open)
+              closeEditModal()
+          }}
         >
-          <EditPipelineInfo
-            pipeline={pipeline}
-            onClose={closeEditModal}
-          />
-        </Modal>
+          <DialogContent className="w-[calc(100vw-2rem)] max-w-[520px]! overflow-hidden! border-none p-0 text-left align-middle">
+
+            <EditPipelineInfo
+              pipeline={pipeline}
+              onClose={closeEditModal}
+            />
+          </DialogContent>
+        </Dialog>
       )}
-      {showDeleteConfirm && (
-        <Confirm
-          title={t('deletePipeline.title', { ns: 'datasetPipeline' })}
-          content={t('deletePipeline.content', { ns: 'datasetPipeline' })}
-          isShow={showDeleteConfirm}
-          onConfirm={onConfirmDelete}
-          onCancel={onCancelDelete}
-        />
-      )}
+      <AlertDialog open={showDeleteConfirm} onOpenChange={open => !open && onCancelDelete()}>
+        <AlertDialogContent>
+          <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
+            <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
+              {t('deletePipeline.title', { ns: 'datasetPipeline' })}
+            </AlertDialogTitle>
+            <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
+              {t('deletePipeline.content', { ns: 'datasetPipeline' })}
+            </AlertDialogDescription>
+          </div>
+          <AlertDialogActions>
+            <AlertDialogCancelButton>{t('operation.cancel', { ns: 'common' })}</AlertDialogCancelButton>
+            <AlertDialogConfirmButton onClick={onConfirmDelete}>
+              {t('operation.confirm', { ns: 'common' })}
+            </AlertDialogConfirmButton>
+          </AlertDialogActions>
+        </AlertDialogContent>
+      </AlertDialog>
       {showDetailModal && (
-        <Modal
-          isShow={showDetailModal}
-          onClose={closeDetailsModal}
-          className="h-[calc(100vh-64px)] max-w-[1680px] rounded-3xl p-0"
+        <Dialog
+          open={showDetailModal}
+          onOpenChange={(open) => {
+            if (!open)
+              closeDetailsModal()
+          }}
         >
-          <Details
-            id={pipeline.id}
-            type={type}
-            onClose={closeDetailsModal}
-            onApplyTemplate={handleUseTemplate}
-          />
-        </Modal>
+          <DialogContent className="h-[calc(100dvh-64px)] max-h-[calc(100dvh-64px)] w-[calc(100vw-2rem)] max-w-[1680px]! overflow-hidden! rounded-3xl border-none p-0 text-left align-middle">
+
+            <Details
+              id={pipeline.id}
+              type={type}
+              onClose={closeDetailsModal}
+              onApplyTemplate={handleUseTemplate}
+            />
+          </DialogContent>
+        </Dialog>
       )}
     </div>
   )

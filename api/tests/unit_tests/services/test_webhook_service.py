@@ -140,7 +140,7 @@ class TestWebhookServiceUnit:
             assert args[1] == "text/plain"
             assert args[2] is webhook_trigger
 
-    def test_detect_binary_mimetype_uses_magic(self, monkeypatch):
+    def test_detect_binary_mimetype_uses_magic(self, monkeypatch: pytest.MonkeyPatch):
         """python-magic output should be used when available."""
         fake_magic = MagicMock()
         fake_magic.from_buffer.return_value = "image/png"
@@ -151,7 +151,7 @@ class TestWebhookServiceUnit:
         assert result == "image/png"
         fake_magic.from_buffer.assert_called_once()
 
-    def test_detect_binary_mimetype_fallback_without_magic(self, monkeypatch):
+    def test_detect_binary_mimetype_fallback_without_magic(self, monkeypatch: pytest.MonkeyPatch):
         """Fallback MIME type should be used when python-magic is unavailable."""
         monkeypatch.setattr("services.trigger.webhook_service.magic", None)
 
@@ -159,7 +159,7 @@ class TestWebhookServiceUnit:
 
         assert result == "application/octet-stream"
 
-    def test_detect_binary_mimetype_handles_magic_exception(self, monkeypatch):
+    def test_detect_binary_mimetype_handles_magic_exception(self, monkeypatch: pytest.MonkeyPatch):
         """Fallback MIME type should be used when python-magic raises an exception."""
         try:
             import magic as real_magic
@@ -268,8 +268,8 @@ class TestWebhookServiceUnit:
         }
 
         # Mock file reads
-        files["file1"].read.return_value = b"content1"
-        files["file2"].read.return_value = b"content2"
+        files["file1"].stream.read.return_value = b"content1"
+        files["file2"].stream.read.return_value = b"content2"
 
         webhook_trigger = MagicMock()
         webhook_trigger.tenant_id = "test_tenant"
@@ -304,8 +304,8 @@ class TestWebhookServiceUnit:
             "bad_file": MagicMock(filename="test.bad", content_type="text/plain"),
         }
 
-        files["good_file"].read.return_value = b"content"
-        files["bad_file"].read.side_effect = Exception("Read error")
+        files["good_file"].stream.read.return_value = b"content"
+        files["bad_file"].stream.read.side_effect = Exception("Read error")
 
         webhook_trigger = MagicMock()
         webhook_trigger.tenant_id = "test_tenant"

@@ -38,16 +38,29 @@ class ActivatePayload(BaseModel):
         return timezone(value)
 
 
-class ActivationCheckResponse(BaseModel):
-    is_valid: bool = Field(description="Whether token is valid")
-    data: dict | None = Field(default=None, description="Activation data if valid")
-
-
 class ActivationResponse(BaseModel):
     result: str = Field(description="Operation result")
 
 
-register_schema_models(console_ns, ActivateCheckQuery, ActivatePayload, ActivationCheckResponse, ActivationResponse)
+class ActivationCheckData(BaseModel):
+    workspace_name: str | None
+    workspace_id: str | None
+    email: str | None
+
+
+class ActivationCheckResponse(BaseModel):
+    is_valid: bool = Field(description="Whether token is valid")
+    data: ActivationCheckData | None = Field(default=None, description="Activation data if valid")
+
+
+register_schema_models(
+    console_ns,
+    ActivateCheckQuery,
+    ActivatePayload,
+    ActivationCheckData,
+    ActivationCheckResponse,
+    ActivationResponse,
+)
 
 
 @console_ns.route("/activate/check")
@@ -61,7 +74,7 @@ class ActivateCheckApi(Resource):
         console_ns.models[ActivationCheckResponse.__name__],
     )
     def get(self):
-        args = ActivateCheckQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
+        args = ActivateCheckQuery.model_validate(request.args.to_dict(flat=True))
 
         workspaceId = args.workspace_id
         token = args.token

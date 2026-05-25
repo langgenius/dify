@@ -35,9 +35,9 @@ describe('FieldItem', () => {
       />,
     )
 
-    expect(screen.getByText('field_name')).toBeInTheDocument()
-    expect(screen.getByText('Field Label')).toBeInTheDocument()
-    expect(screen.getByText('workflow.nodes.start.required')).toBeInTheDocument()
+    expect(screen.getByText('field_name'))!.toBeInTheDocument()
+    expect(screen.getByText('Field Label'))!.toBeInTheDocument()
+    expect(screen.getByText('workflow.nodes.start.required'))!.toBeInTheDocument()
   })
 
   it('should show edit and delete controls on hover and trigger both callbacks', () => {
@@ -54,8 +54,8 @@ describe('FieldItem', () => {
 
     fireEvent.mouseEnter(container.firstChild!)
     const buttons = screen.getAllByRole('button')
-    fireEvent.click(buttons[0])
-    fireEvent.click(buttons[1])
+    fireEvent.click(buttons[0]!)
+    fireEvent.click(buttons[1]!)
 
     expect(onClickEdit).toHaveBeenCalledWith('custom_field')
     expect(onRemove).toHaveBeenCalledWith(2)

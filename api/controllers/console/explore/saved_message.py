@@ -1,9 +1,11 @@
+from uuid import UUID
+
 from flask import request
 from pydantic import TypeAdapter
 from werkzeug.exceptions import NotFound
 
 from controllers.common.controller_schemas import SavedMessageCreatePayload, SavedMessageListQuery
-from controllers.common.schema import register_schema_models
+from controllers.common.schema import register_response_schema_models, register_schema_models
 from controllers.console import console_ns
 from controllers.console.explore.error import NotCompletionAppError
 from controllers.console.explore.wraps import InstalledAppResource
@@ -14,6 +16,7 @@ from services.errors.message import MessageNotExistsError
 from services.saved_message_service import SavedMessageService
 
 register_schema_models(console_ns, SavedMessageListQuery, SavedMessageCreatePayload)
+register_response_schema_models(console_ns, ResultResponse)
 
 
 @console_ns.route("/installed-apps/<uuid:installed_app_id>/saved-messages", endpoint="installed_app_saved_messages")
@@ -42,6 +45,7 @@ class SavedMessageListApi(InstalledAppResource):
         ).model_dump(mode="json")
 
     @console_ns.expect(console_ns.models[SavedMessageCreatePayload.__name__])
+    @console_ns.response(200, "Success", console_ns.models[ResultResponse.__name__])
     def post(self, installed_app):
         current_user, _ = current_account_with_tenant()
         app_model = installed_app.app
@@ -62,15 +66,16 @@ class SavedMessageListApi(InstalledAppResource):
     "/installed-apps/<uuid:installed_app_id>/saved-messages/<uuid:message_id>", endpoint="installed_app_saved_message"
 )
 class SavedMessageApi(InstalledAppResource):
-    def delete(self, installed_app, message_id):
+    @console_ns.response(204, "Saved message deleted successfully")
+    def delete(self, installed_app, message_id: UUID):
         current_user, _ = current_account_with_tenant()
         app_model = installed_app.app
 
-        message_id = str(message_id)
+        message_id_str = str(message_id)
 
         if app_model.mode != "completion":
             raise NotCompletionAppError()
 
-        SavedMessageService.delete(app_model, current_user, message_id)
+        SavedMessageService.delete(app_model, current_user, message_id_str)
 
-        return ResultResponse(result="success").model_dump(mode="json"), 204
+        return "", 204

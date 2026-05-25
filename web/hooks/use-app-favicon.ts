@@ -39,6 +39,6 @@ export function useAppFavicon(options: UseAppFaviconOptions) {
 
     link.rel = 'shortcut icon'
     link.type = 'image/svg'
-    document.getElementsByTagName('head')[0].appendChild(link)
+    document.getElementsByTagName('head')[0]!.appendChild(link)
   }, [enable, icon, icon_background])
 }

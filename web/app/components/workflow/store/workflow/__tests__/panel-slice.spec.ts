@@ -19,12 +19,10 @@ describe('createPanelSlice', () => {
 
     store.getState().setShowFeaturesPanel(true)
     store.getState().setShowDebugAndPreviewPanel(true)
-    store.getState().setPanelMenu({ top: 24, left: 48 })
-    store.getState().setEdgeMenu({ clientX: 80, clientY: 120, edgeId: 'edge-1' })
+    store.getState().setContextMenuTarget({ type: 'edge', edgeId: 'edge-1' })
 
     expect(store.getState().showFeaturesPanel).toBe(true)
     expect(store.getState().showDebugAndPreviewPanel).toBe(true)
-    expect(store.getState().panelMenu).toEqual({ top: 24, left: 48 })
-    expect(store.getState().edgeMenu).toEqual({ clientX: 80, clientY: 120, edgeId: 'edge-1' })
+    expect(store.getState().contextMenuTarget).toEqual({ type: 'edge', edgeId: 'edge-1' })
   })
 })

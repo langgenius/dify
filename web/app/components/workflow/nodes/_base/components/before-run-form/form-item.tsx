@@ -2,6 +2,8 @@
 import type { FC } from 'react'
 import type { InputVar } from '../../../../types'
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
+import { cn } from '@langgenius/dify-ui/cn'
+import { Select, SelectContent, SelectItem, SelectItemIndicator, SelectItemText, SelectTrigger } from '@langgenius/dify-ui/select'
 import {
   RiDeleteBinLine,
 } from '@remixicon/react'
@@ -16,12 +18,10 @@ import { Variable02 } from '@/app/components/base/icons/src/vender/solid/develop
 import TextGenerationImageUploader from '@/app/components/base/image-uploader/text-generation-image-uploader'
 import Input from '@/app/components/base/input'
 import { FILE_EXTS } from '@/app/components/base/prompt-editor/constants'
-import Select from '@/app/components/base/select'
 import Textarea from '@/app/components/base/textarea'
 import { VarBlockIcon } from '@/app/components/workflow/block-icon'
 import { useHooksStore } from '@/app/components/workflow/hooks-store'
 import { Resolution, TransferMethod } from '@/types/app'
-import { cn } from '@/utils/classnames'
 import { BlockEnum, InputVarType, SupportUploadFileTypes } from '../../../../types'
 import { CodeLanguage } from '../../../code/types'
 import CodeEditor from '../editor/code-editor'
@@ -89,8 +89,8 @@ const FormItem: FC<Props> = ({
             </div>
           )}
           <div className="flex items-center text-primary-600">
-            {!isChatVar && <Variable02 className="h-3.5 w-3.5" />}
-            {isChatVar && <BubbleX className="h-3.5 w-3.5 text-util-colors-teal-teal-700" />}
+            {!isChatVar && <Variable02 className="size-3.5" />}
+            {isChatVar && <BubbleX className="size-3.5 text-util-colors-teal-teal-700" />}
             <div className={cn('ml-0.5 max-w-[150px] truncate text-xs font-medium', isChatVar && 'text-text-secondary')} title={variable}>
               {variable}
             </div>
@@ -124,19 +124,19 @@ const FormItem: FC<Props> = ({
   return (
     <div className={cn(className)}>
       {!isArrayLikeType && !isBooleanType && (
-        <div className="mb-1 flex h-6 items-center gap-1 text-text-secondary system-sm-semibold">
+        <div className="mb-1 flex h-6 items-center gap-1 system-sm-semibold text-text-secondary">
           <div className="truncate">
             {typeof payload.label === 'object' ? nodeKey : payload.label}
           </div>
           {payload.hide === true
             ? (
-                <span className="text-text-tertiary system-xs-regular">
+                <span className="system-xs-regular text-text-tertiary">
                   {t('panel.optional_and_hidden', { ns: 'workflow' })}
                 </span>
               )
             : (
                 !payload.required && (
-                  <span className="text-text-tertiary system-xs-regular">
+                  <span className="system-xs-regular text-text-tertiary">
                     {t('panel.optional', { ns: 'workflow' })}
                   </span>
                 )
@@ -181,12 +181,25 @@ const FormItem: FC<Props> = ({
         {
           type === InputVarType.select && (
             <Select
-              className="w-full"
-              defaultValue={value || payload.default || ''}
-              items={payload.options?.map(option => ({ name: option, value: option })) || []}
-              onSelect={i => onChange(i.value)}
-              allowSearch={false}
-            />
+              value={value || payload.default || null}
+              onValueChange={(nextValue) => {
+                if (!nextValue)
+                  return
+                onChange(nextValue)
+              }}
+            >
+              <SelectTrigger className="w-full">
+                {String(value || payload.default || t('placeholder.select', { ns: 'common' }))}
+              </SelectTrigger>
+              <SelectContent>
+                {(payload.options || []).map(option => (
+                  <SelectItem key={option} value={option}>
+                    <SelectItemText>{option}</SelectItemText>
+                    <SelectItemIndicator />
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           )
         }
 
@@ -215,7 +228,7 @@ const FormItem: FC<Props> = ({
             language={CodeLanguage.json}
             onChange={onChange}
             noWrapper
-            className="bg h-[80px] overflow-y-auto radius-lg bg-components-input-bg-normal p-1"
+            className="bg h-[80px] overflow-y-auto rounded-[10px] bg-components-input-bg-normal p-1"
             placeholder={
               <div className="whitespace-pre">{jsonSchemaPlaceholder}</div>
             }
@@ -236,10 +249,10 @@ const FormItem: FC<Props> = ({
                 : payload.allowed_file_types,
               allowed_file_extensions: inStepRun && (!payload.allowed_file_extensions || payload.allowed_file_extensions.length === 0)
                 ? [
-                    ...FILE_EXTS[SupportUploadFileTypes.image],
-                    ...FILE_EXTS[SupportUploadFileTypes.document],
-                    ...FILE_EXTS[SupportUploadFileTypes.audio],
-                    ...FILE_EXTS[SupportUploadFileTypes.video],
+                    ...(FILE_EXTS[SupportUploadFileTypes.image] ?? []),
+                    ...(FILE_EXTS[SupportUploadFileTypes.document] ?? []),
+                    ...(FILE_EXTS[SupportUploadFileTypes.audio] ?? []),
+                    ...(FILE_EXTS[SupportUploadFileTypes.video] ?? []),
                   ]
                 : payload.allowed_file_extensions,
               allowed_file_upload_methods: inStepRun ? [TransferMethod.local_file, TransferMethod.remote_url] : payload.allowed_file_upload_methods,
@@ -263,10 +276,10 @@ const FormItem: FC<Props> = ({
                 : payload.allowed_file_types,
               allowed_file_extensions: (inStepRun || isIteratorItemFile) && (!payload.allowed_file_extensions || payload.allowed_file_extensions.length === 0)
                 ? [
-                    ...FILE_EXTS[SupportUploadFileTypes.image],
-                    ...FILE_EXTS[SupportUploadFileTypes.document],
-                    ...FILE_EXTS[SupportUploadFileTypes.audio],
-                    ...FILE_EXTS[SupportUploadFileTypes.video],
+                    ...(FILE_EXTS[SupportUploadFileTypes.image] ?? []),
+                    ...(FILE_EXTS[SupportUploadFileTypes.document] ?? []),
+                    ...(FILE_EXTS[SupportUploadFileTypes.audio] ?? []),
+                    ...(FILE_EXTS[SupportUploadFileTypes.video] ?? []),
                   ]
                 : payload.allowed_file_extensions,
               allowed_file_upload_methods: (inStepRun || isIteratorItemFile) ? [TransferMethod.local_file, TransferMethod.remote_url] : payload.allowed_file_upload_methods,
@@ -306,7 +319,7 @@ const FormItem: FC<Props> = ({
                       ? (
                           <RiDeleteBinLine
                             onClick={handleArrayItemRemove(index)}
-                            className="mr-1 h-3.5 w-3.5 cursor-pointer text-text-tertiary"
+                            className="mr-1 size-3.5 cursor-pointer text-text-tertiary"
                           />
                         )
                       : undefined
@@ -341,7 +354,7 @@ const FormItem: FC<Props> = ({
                       ? (
                           <RiDeleteBinLine
                             onClick={handleArrayItemRemove(index)}
-                            className="mr-1 h-3.5 w-3.5 cursor-pointer text-text-tertiary"
+                            className="mr-1 size-3.5 cursor-pointer text-text-tertiary"
                           />
                         )
                       : undefined

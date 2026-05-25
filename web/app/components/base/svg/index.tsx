@@ -1,5 +1,5 @@
+import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
-import { cn } from '@/utils/classnames'
 import ActionButton from '../action-button'
 import s from './style.module.css'
 
@@ -14,7 +14,7 @@ const SVGBtn = ({
 }: ISVGBtnProps) => {
   return (
     <ActionButton onClick={() => { setIsSVG(prevIsSVG => !prevIsSVG) }}>
-      <div className={cn('h-4 w-4', isSVG ? s.svgIconed : s.svgIcon)}></div>
+      <div className={cn('size-4', isSVG ? s.svgIconed : s.svgIcon)}></div>
     </ActionButton>
   )
 }

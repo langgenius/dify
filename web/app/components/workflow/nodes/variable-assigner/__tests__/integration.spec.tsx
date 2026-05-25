@@ -1,9 +1,9 @@
 /* eslint-disable ts/no-explicit-any, style/jsx-one-expression-per-line */
 import type { VariableAssignerNodeType } from '../types'
 import type { PanelProps } from '@/types/workflow'
+import { toast } from '@langgenius/dify-ui/toast'
 import { fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { toast } from '@/app/components/base/ui/toast'
 import { renderWorkflowFlowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
 import { BlockEnum, VarType } from '@/app/components/workflow/types'
 import AddVariable from '../components/add-variable'
@@ -19,7 +19,7 @@ const mockHandleGroupItemMouseEnter = vi.fn()
 const mockHandleGroupItemMouseLeave = vi.fn()
 const mockGetAvailableVars = vi.fn()
 
-vi.mock('@/app/components/base/ui/toast', () => ({
+vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: {
     success: vi.fn(),
     error: vi.fn(),
@@ -192,7 +192,7 @@ describe('variable-assigner path', () => {
         />,
       )
 
-      await user.click(container.querySelector('.h-4.w-4.cursor-pointer') as HTMLElement)
+      await user.click(container.querySelector('.size-4.cursor-pointer') as HTMLElement)
       await user.click(screen.getByRole('button', { name: 'confirm-add-variable' }))
 
       expect(mockHandleAssignVariableValueChange).toHaveBeenCalledWith(
@@ -434,7 +434,7 @@ describe('variable-assigner path', () => {
       expect(container).toHaveTextContent('Source Node:source-node.initialVar:false')
       expect(container.querySelector('.relative.rounded-lg')).toHaveClass('border-dashed!')
 
-      await user.click(container.querySelector('.h-4.w-4.cursor-pointer') as HTMLElement)
+      await user.click(container.querySelector('.size-4.cursor-pointer') as HTMLElement)
       await user.click(screen.getByRole('button', { name: 'confirm-add-variable' }))
       expect(mockHandleAssignVariableValueChange).toHaveBeenCalled()
     })

@@ -2,10 +2,6 @@ import { fireEvent, render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import Field from '../field'
 
-vi.mock('@/app/components/base/tooltip', () => ({
-  default: ({ popupContent }: { popupContent?: React.ReactNode }) => <div data-testid="tooltip">{popupContent}</div>,
-}))
-
 describe('WebsiteField', () => {
   const onChange = vi.fn()
 
@@ -30,7 +26,7 @@ describe('WebsiteField', () => {
 
   it('should render tooltip when provided', () => {
     render(<Field label="URL" value="" onChange={onChange} tooltip="Enter full URL" />)
-    expect(screen.getByTestId('tooltip')).toBeInTheDocument()
+    expect(screen.getByLabelText('Enter full URL')).toBeInTheDocument()
   })
 
   it('should pass value and onChange to Input', () => {

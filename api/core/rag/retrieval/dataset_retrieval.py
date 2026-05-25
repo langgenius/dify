@@ -9,11 +9,6 @@ from collections.abc import Generator, Mapping
 from typing import Any, Union, cast
 
 from flask import Flask, current_app
-from graphon.file import File, FileTransferMethod, FileType
-from graphon.model_runtime.entities.llm_entities import LLMMode, LLMResult, LLMUsage
-from graphon.model_runtime.entities.message_entities import PromptMessage, PromptMessageRole, PromptMessageTool
-from graphon.model_runtime.entities.model_entities import ModelFeature, ModelType
-from graphon.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
 from sqlalchemy import and_, func, literal, or_, select, update
 from sqlalchemy.orm import sessionmaker
 
@@ -24,6 +19,7 @@ from core.app.app_config.entities import (
     ModelConfig,
 )
 from core.app.entities.app_invoke_entities import InvokeFrom, ModelConfigWithCredentialsEntity
+from core.app.file_access import grant_retriever_segment_access, grant_upload_file_access
 from core.callback_handler.index_tool_callback_handler import DatasetIndexToolCallbackHandler
 from core.db.session_factory import session_factory
 from core.entities.agent_entities import PlanningStrategy
@@ -57,7 +53,7 @@ from core.rag.retrieval.template_prompts import (
     METADATA_FILTER_USER_PROMPT_2,
     METADATA_FILTER_USER_PROMPT_3,
 )
-from core.tools.signature import sign_upload_file
+from core.tools.signature import sign_upload_file_preview_url
 from core.tools.utils.dataset_retriever.dataset_retriever_base_tool import DatasetRetrieverBaseTool
 from core.workflow.file_reference import build_file_reference
 from core.workflow.nodes.knowledge_retrieval import exc
@@ -69,6 +65,11 @@ from core.workflow.nodes.knowledge_retrieval.retrieval import (
 )
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
+from graphon.file import File, FileTransferMethod, FileType
+from graphon.model_runtime.entities.llm_entities import LLMMode, LLMResult, LLMUsage
+from graphon.model_runtime.entities.message_entities import PromptMessage, PromptMessageRole, PromptMessageTool
+from graphon.model_runtime.entities.model_entities import ModelFeature, ModelType
+from graphon.model_runtime.model_providers.base.large_language_model import LargeLanguageModel
 from libs.helper import parse_uuid_str_or_none
 from libs.json_in_md_parser import parse_and_check_json_markdown
 from models import UploadFile
@@ -326,6 +327,7 @@ class DatasetRetrieval:
                         if record.summary:
                             source.summary = record.summary
 
+                        grant_retriever_segment_access([str(segment.id)])
                         retrieval_resource_list.append(source)
 
         if retrieval_resource_list:
@@ -515,13 +517,16 @@ class DatasetRetrieval:
                             )
                         ).all()
                         if attachments_with_bindings:
+                            grant_upload_file_access(
+                                str(upload_file.id) for _, upload_file in attachments_with_bindings
+                            )
                             for _, upload_file in attachments_with_bindings:
                                 attachment_info = File(
-                                    id=upload_file.id,
+                                    file_id=upload_file.id,
                                     filename=upload_file.name,
                                     extension="." + upload_file.extension,
                                     mime_type=upload_file.mime_type,
-                                    type=FileType.IMAGE,
+                                    file_type=FileType.IMAGE,
                                     transfer_method=FileTransferMethod.LOCAL_FILE,
                                     remote_url=upload_file.source_url,
                                     reference=build_file_reference(
@@ -529,7 +534,7 @@ class DatasetRetrieval:
                                     ),
                                     size=upload_file.size,
                                     storage_key=upload_file.key,
-                                    url=sign_upload_file(upload_file.id, upload_file.extension),
+                                    url=sign_upload_file_preview_url(upload_file.id, upload_file.extension),
                                 )
                                 context_files.append(attachment_info)
                 if show_retrieve_source:

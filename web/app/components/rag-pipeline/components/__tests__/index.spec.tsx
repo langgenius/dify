@@ -420,7 +420,7 @@ function getDescriptionTextarea() {
 }
 
 // Helper to find the AppIcon span in PublishAsKnowledgePipelineModal
-// HeadlessUI Dialog renders via portal to document.body, so we search the full document
+// The modal renders via portal to document.body, so we search the full document.
 function getAppIcon() {
   const emoji = document.querySelector('em-emoji')
   return emoji?.closest('span') as HTMLElement
@@ -472,21 +472,23 @@ describe('Conversion', () => {
       const convertButton = screen.getByRole('button', { name: /datasetPipeline\.operations\.convert/i })
       fireEvent.click(convertButton)
 
-      // Real Confirm renders title and content via portal
+      // AlertDialog renders title and content via portal.
       expect(screen.getByText('datasetPipeline.conversion.confirm.title')).toBeInTheDocument()
       expect(screen.getByText('datasetPipeline.conversion.confirm.content')).toBeInTheDocument()
     })
 
-    it('should hide confirm modal when cancel is clicked', () => {
+    it('should hide confirm modal when cancel is clicked', async () => {
       render(<Conversion />)
 
       const convertButton = screen.getByRole('button', { name: /datasetPipeline\.operations\.convert/i })
       fireEvent.click(convertButton)
       expect(screen.getByText('datasetPipeline.conversion.confirm.title')).toBeInTheDocument()
 
-      // Real Confirm renders cancel button with i18n text
+      // AlertDialog close is async because it unmounts after state updates.
       fireEvent.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
-      expect(screen.queryByText('datasetPipeline.conversion.confirm.title')).not.toBeInTheDocument()
+      await waitFor(() => {
+        expect(screen.queryByText('datasetPipeline.conversion.confirm.title')).not.toBeInTheDocument()
+      })
     })
   })
 
@@ -685,7 +687,7 @@ describe('PublishAsKnowledgePipelineModal', () => {
       render(<PublishAsKnowledgePipelineModal {...defaultProps} />)
 
       // Real AppIcon renders an em-emoji custom element inside a span
-      // HeadlessUI Dialog renders via portal, so search the full document
+      // The modal renders via portal, so search the full document.
       expect(document.querySelector('em-emoji')).toBeInTheDocument()
     })
 
@@ -727,7 +729,7 @@ describe('PublishAsKnowledgePipelineModal', () => {
     it('should call onCancel when close icon is clicked', () => {
       render(<PublishAsKnowledgePipelineModal {...defaultProps} />)
 
-      fireEvent.click(screen.getByTestId('publish-modal-close-btn'))
+      fireEvent.click(screen.getByRole('button', { name: 'common.operation.close' }))
 
       expect(mockOnCancel).toHaveBeenCalledTimes(1)
     })
@@ -843,7 +845,7 @@ describe('PublishAsKnowledgePipelineModal', () => {
       const { rerender } = render(<PublishAsKnowledgePipelineModal {...defaultProps} />)
 
       rerender(<PublishAsKnowledgePipelineModal {...defaultProps} />)
-      // HeadlessUI Dialog renders via portal, so search the full document
+      // The modal renders via portal, so search the full document.
       expect(document.querySelector('em-emoji')).toBeInTheDocument()
     })
   })

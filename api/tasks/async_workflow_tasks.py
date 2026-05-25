@@ -10,7 +10,6 @@ from datetime import UTC, datetime
 from typing import Any, NotRequired
 
 from celery import shared_task
-from graphon.runtime import GraphRuntimeState
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 from typing_extensions import TypedDict
@@ -24,6 +23,7 @@ from core.app.layers.trigger_post_layer import TriggerPostLayer
 from core.db.session_factory import session_factory
 from core.repositories import DifyCoreRepositoryFactory
 from extensions.ext_database import db
+from graphon.runtime import GraphRuntimeState
 from models.account import Account
 from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom, WorkflowTriggerStatus
 from models.model import App, EndUser, Tenant

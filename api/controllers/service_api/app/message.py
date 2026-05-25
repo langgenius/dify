@@ -1,4 +1,5 @@
 import logging
+from uuid import UUID
 
 from flask import request
 from flask_restx import Resource
@@ -7,7 +8,8 @@ from werkzeug.exceptions import BadRequest, InternalServerError, NotFound
 
 import services
 from controllers.common.controller_schemas import MessageFeedbackPayload, MessageListQuery
-from controllers.common.schema import register_schema_models
+from controllers.common.fields import SimpleResultStringListResponse
+from controllers.common.schema import register_response_schema_models, register_schema_models
 from controllers.service_api import service_api_ns
 from controllers.service_api.app.error import NotChatAppError
 from controllers.service_api.wraps import FetchUserArg, WhereisUserArg, validate_app_token
@@ -32,6 +34,7 @@ class FeedbackListQuery(BaseModel):
 
 
 register_schema_models(service_api_ns, MessageListQuery, MessageFeedbackPayload, FeedbackListQuery)
+register_response_schema_models(service_api_ns, ResultResponse, SimpleResultStringListResponse)
 
 
 @service_api_ns.route("/messages")
@@ -80,6 +83,7 @@ class MessageListApi(Resource):
 @service_api_ns.route("/messages/<uuid:message_id>/feedbacks")
 class MessageFeedbackApi(Resource):
     @service_api_ns.expect(service_api_ns.models[MessageFeedbackPayload.__name__])
+    @service_api_ns.response(200, "Feedback submitted successfully", service_api_ns.models[ResultResponse.__name__])
     @service_api_ns.doc("create_message_feedback")
     @service_api_ns.doc(description="Submit feedback for a message")
     @service_api_ns.doc(params={"message_id": "Message ID"})
@@ -91,19 +95,19 @@ class MessageFeedbackApi(Resource):
         }
     )
     @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.JSON, required=True))
-    def post(self, app_model: App, end_user: EndUser, message_id):
+    def post(self, app_model: App, end_user: EndUser, message_id: UUID):
         """Submit feedback for a message.
 
         Allows users to rate messages as like/dislike and provide optional feedback content.
         """
-        message_id = str(message_id)
+        message_id_str = str(message_id)
 
         payload = MessageFeedbackPayload.model_validate(service_api_ns.payload or {})
 
         try:
             MessageService.create_feedback(
                 app_model=app_model,
-                message_id=message_id,
+                message_id=message_id_str,
                 user=end_user,
                 rating=FeedbackRating(payload.rating) if payload.rating else None,
                 content=payload.content,
@@ -138,6 +142,11 @@ class AppGetFeedbacksApi(Resource):
 
 @service_api_ns.route("/messages/<uuid:message_id>/suggested")
 class MessageSuggestedApi(Resource):
+    @service_api_ns.response(
+        200,
+        "Suggested questions retrieved successfully",
+        service_api_ns.models[SimpleResultStringListResponse.__name__],
+    )
     @service_api_ns.doc("get_suggested_questions")
     @service_api_ns.doc(description="Get suggested follow-up questions for a message")
     @service_api_ns.doc(params={"message_id": "Message ID"})
@@ -151,19 +160,19 @@ class MessageSuggestedApi(Resource):
         }
     )
     @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.QUERY, required=True))
-    def get(self, app_model: App, end_user: EndUser, message_id):
+    def get(self, app_model: App, end_user: EndUser, message_id: UUID):
         """Get suggested follow-up questions for a message.
 
         Returns AI-generated follow-up questions based on the message content.
         """
-        message_id = str(message_id)
+        message_id_str = str(message_id)
         app_mode = AppMode.value_of(app_model.mode)
         if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:
             raise NotChatAppError()
 
         try:
             questions = MessageService.get_suggested_questions_after_answer(
-                app_model=app_model, user=end_user, message_id=message_id, invoke_from=InvokeFrom.SERVICE_API
+                app_model=app_model, user=end_user, message_id=message_id_str, invoke_from=InvokeFrom.SERVICE_API
             )
         except MessageNotExistsError:
             raise NotFound("Message Not Exists.")

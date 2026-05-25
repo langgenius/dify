@@ -185,6 +185,15 @@ describe('markdown-with-directive', () => {
       })
       expect(screen.getByText('Sanitized')).toBeInTheDocument()
       expectDecorativeIcon(container, 'https://example.com/safe.png')
+      sanitizeSpy.mockRestore()
+    })
+
+    it('should render markdown links without underline', () => {
+      render(<MarkdownWithDirective markdown="[Langfuse](https://langfuse.com)" />)
+
+      const link = screen.getByRole('link', { name: 'Langfuse' })
+      expect(link).toHaveClass('text-text-accent')
+      expect(link).toHaveStyle({ textDecoration: 'none' })
     })
 
     it('should render empty output and skip sanitizer when markdown is empty', () => {

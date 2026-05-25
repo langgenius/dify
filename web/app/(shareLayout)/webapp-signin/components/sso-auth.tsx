@@ -1,10 +1,10 @@
 'use client'
 import type { FC } from 'react'
+import { Button } from '@langgenius/dify-ui/button'
+import { toast } from '@langgenius/dify-ui/toast'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
 import { Lock01 } from '@/app/components/base/icons/src/vender/solid/security'
-import { toast } from '@/app/components/base/ui/toast'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { fetchMembersOAuth2SSOUrl, fetchMembersOIDCSSOUrl, fetchMembersSAMLSSOUrl } from '@/service/share'
 import { SSOProtocol } from '@/types/feature'
@@ -75,7 +75,7 @@ const SSOAuth: FC<SSOAuthProps> = ({
       disabled={isLoading}
       className="w-full"
     >
-      <Lock01 className="mr-2 h-5 w-5 text-text-accent-light-mode-only" />
+      <Lock01 className="mr-2 size-5 text-text-accent-light-mode-only" />
       <span className="truncate">{t('withSSO', { ns: 'login' })}</span>
     </Button>
   )

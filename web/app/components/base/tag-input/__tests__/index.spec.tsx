@@ -5,7 +5,7 @@ import TagInput from '../index'
 
 const mockNotify = vi.fn()
 
-vi.mock('@/app/components/base/ui/toast', () => ({
+vi.mock('@langgenius/dify-ui/toast', () => ({
   default: {
     notify: (args: unknown) => mockNotify(args),
   },
@@ -37,21 +37,35 @@ describe('TagInput', () => {
     it('should render existing tags and default placeholder', () => {
       renderTagInput({ items: ['alpha', 'beta'] })
 
-      expect(screen.getByText('alpha')).toBeInTheDocument()
-      expect(screen.getByText('beta')).toBeInTheDocument()
-      expect(screen.getByPlaceholderText('datasetDocuments.segment.addKeyWord')).toBeInTheDocument()
+      expect(screen.getByText('alpha'))!.toBeInTheDocument()
+      expect(screen.getByText('beta'))!.toBeInTheDocument()
+      expect(screen.getByPlaceholderText('datasetDocuments.segment.addKeyWord'))!.toBeInTheDocument()
     })
 
     it('should render special mode placeholder when confirm key is Tab', () => {
       renderTagInput({ customizedConfirmKey: 'Tab' })
 
-      expect(screen.getByPlaceholderText('common.model.params.stop_sequencesPlaceholder')).toBeInTheDocument()
+      expect(screen.getByPlaceholderText('common.model.params.stop_sequencesPlaceholder'))!.toBeInTheDocument()
     })
 
     it('should render custom placeholder when placeholder prop is provided', () => {
       renderTagInput({ placeholder: 'Custom placeholder' })
 
-      expect(screen.getByPlaceholderText('Custom placeholder')).toBeInTheDocument()
+      expect(screen.getByPlaceholderText('Custom placeholder'))!.toBeInTheDocument()
+    })
+
+    it('should apply input className and expose visible text for CSS sizing', async () => {
+      renderTagInput({ inputClassName: 'custom-input', placeholder: 'Tag' })
+      const input = screen.getByRole('textbox')
+      const inputContainer = input.parentElement
+
+      expect(input)!.toHaveClass('custom-input')
+      expect(input)!.not.toHaveAttribute('style')
+      expect(inputContainer).toHaveAttribute('data-input-value', 'Tag')
+
+      await userEvent.type(input, 'longer')
+
+      expect(inputContainer).toHaveAttribute('data-input-value', 'longer')
     })
 
     it('should hide input when add is disabled', () => {
@@ -63,7 +77,7 @@ describe('TagInput', () => {
     it('should hide remove controls when remove is disabled', () => {
       renderTagInput({ items: ['alpha'], disableRemove: true })
 
-      expect(screen.queryByTestId('remove-tag')).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'common.operation.remove alpha' })).not.toBeInTheDocument()
     })
 
     it('should apply focused style in special mode when input is focused', async () => {
@@ -71,11 +85,11 @@ describe('TagInput', () => {
       const input = screen.getByRole('textbox')
       const inputContainer = input.parentElement
 
-      expect(inputContainer).toHaveClass('border-transparent')
+      expect(inputContainer)!.toHaveClass('border-transparent')
 
       await userEvent.click(input)
 
-      expect(inputContainer).toHaveClass('border-dashed')
+      expect(inputContainer)!.toHaveClass('border-dashed')
     })
   })
 
@@ -83,7 +97,7 @@ describe('TagInput', () => {
     it('should remove item when remove control is clicked', async () => {
       const { onChange } = renderTagInput({ items: ['alpha', 'beta'] })
 
-      const removeControl = screen.getAllByTestId('remove-tag')[0]
+      const removeControl = screen.getByRole('button', { name: 'common.operation.remove alpha' })
 
       await userEvent.click(removeControl)
 
@@ -99,7 +113,7 @@ describe('TagInput', () => {
 
       expect(onChange).toHaveBeenCalledWith(['new-tag'])
       await waitFor(() => {
-        expect(input).toHaveValue('')
+        expect(input)!.toHaveValue('')
       })
     })
 
@@ -122,7 +136,7 @@ describe('TagInput', () => {
       await user.type(input, 'stop')
       await user.keyboard('{Enter}')
 
-      expect(input).toHaveValue('stop↵')
+      expect(input)!.toHaveValue('stop↵')
       expect(onChange).not.toHaveBeenCalled()
 
       // Low-level test for preventDefault

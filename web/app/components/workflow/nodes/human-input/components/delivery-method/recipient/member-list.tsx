@@ -2,11 +2,11 @@
 import type { FC } from 'react'
 import type { Recipient } from '@/app/components/workflow/nodes/human-input/types'
 import type { Member } from '@/models/common'
+import { Avatar } from '@langgenius/dify-ui/avatar'
+import { cn } from '@langgenius/dify-ui/cn'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import Input from '@/app/components/base/input'
-import { Avatar } from '@/app/components/base/ui/avatar'
-import { cn } from '@/utils/classnames'
 
 const i18nPrefix = 'nodes.humanInput'
 
@@ -56,7 +56,7 @@ const MemberList: FC<Props> = ({ searchValue, list, value, onSearchChange, onSel
             <div
               key={account.id}
               className={cn(
-                'group flex cursor-pointer items-center gap-2 rounded-lg py-1 pl-2 pr-3 hover:bg-state-base-hover',
+                'group flex cursor-pointer items-center gap-2 rounded-lg py-1 pr-3 pl-2 hover:bg-state-base-hover',
                 value.some(item => item.user_id === account.id) && 'bg-transparent hover:bg-transparent',
               )}
               onClick={() => {
@@ -69,13 +69,13 @@ const MemberList: FC<Props> = ({ searchValue, list, value, onSearchChange, onSel
               <div className={cn('grow', value.some(item => item.user_id === account.id) && 'opacity-50')}>
                 <div className="system-sm-medium text-text-secondary">
                   {account.name}
-                  {account.status === 'pending' && <span className="system-xs-medium ml-1 text-text-warning">{t('members.pending', { ns: 'common' })}</span>}
+                  {account.status === 'pending' && <span className="ml-1 system-xs-medium text-text-warning">{t('members.pending', { ns: 'common' })}</span>}
                   {email === account.email && <span className="system-xs-regular text-text-tertiary">{t('members.you', { ns: 'common' })}</span>}
                 </div>
                 <div className="system-xs-regular text-text-tertiary">{account.email}</div>
               </div>
               {!value.some(item => item.user_id === account.id) && (
-                <div className="system-xs-medium hidden text-text-accent group-hover:block">{t(`${i18nPrefix}.deliveryMethod.emailConfigure.memberSelector.add`, { ns: 'workflow' })}</div>
+                <div className="hidden system-xs-medium text-text-accent group-hover:block">{t(`${i18nPrefix}.deliveryMethod.emailConfigure.memberSelector.add`, { ns: 'workflow' })}</div>
               )}
               {value.some(item => item.user_id === account.id) && (
                 <div className="system-xs-regular text-text-tertiary">{t(`${i18nPrefix}.deliveryMethod.emailConfigure.memberSelector.added`, { ns: 'workflow' })}</div>

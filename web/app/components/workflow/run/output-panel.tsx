@@ -26,7 +26,7 @@ const OutputPanel: FC<OutputPanelProps> = ({
     if (!outputs || typeof outputs !== 'object')
       return false
     const keys = Object.keys(outputs)
-    const value = outputs[keys[0]]
+    const value = outputs[keys[0]!]
     return keys.length === 1 && (
       typeof value === 'string'
       || (Array.isArray(value) && value.every(item => typeof item === 'string'))
@@ -56,7 +56,7 @@ const OutputPanel: FC<OutputPanelProps> = ({
   return (
     <div className="p-2">
       {isRunning && (
-        <div className="pl-[26px] pt-4">
+        <div className="pt-4 pl-[26px]">
           <LoadingAnim type="text" />
         </div>
       )}
@@ -74,9 +74,9 @@ const OutputPanel: FC<OutputPanelProps> = ({
         <div className="px-4 py-2">
           <Markdown
             content={
-              Array.isArray(outputs[Object.keys(outputs)[0]])
-                ? outputs[Object.keys(outputs)[0]].join('\n')
-                : (outputs[Object.keys(outputs)[0]] || '')
+              Array.isArray(outputs[Object.keys(outputs)[0]!])
+                ? outputs[Object.keys(outputs)[0]!].join('\n')
+                : (outputs[Object.keys(outputs)[0]!] || '')
             }
           />
         </div>

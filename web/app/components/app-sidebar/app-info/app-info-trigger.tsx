@@ -1,8 +1,8 @@
 import type { App, AppSSO } from '@/types/app'
+import { cn } from '@langgenius/dify-ui/cn'
 import { RiEqualizer2Line } from '@remixicon/react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import { cn } from '@/utils/classnames'
 import AppIcon from '../../base/app-icon'
 import { getAppModeLabel } from './app-mode-labels'
 
@@ -36,25 +36,25 @@ const AppInfoTrigger = ({ appDetail, expand, onClick }: AppInfoTriggerProps) => 
           </div>
           {expand && (
             <div className="ml-auto flex items-center justify-center rounded-md p-0.5">
-              <div className="flex h-5 w-5 items-center justify-center">
-                <RiEqualizer2Line className="h-4 w-4 text-text-tertiary" />
+              <div className="flex size-5 items-center justify-center">
+                <RiEqualizer2Line className="size-4 text-text-tertiary" />
               </div>
             </div>
           )}
         </div>
         {!expand && (
           <div className="flex items-center justify-center">
-            <div className="flex h-5 w-5 items-center justify-center rounded-md p-0.5">
-              <RiEqualizer2Line className="h-4 w-4 text-text-tertiary" />
+            <div className="flex size-5 items-center justify-center rounded-md p-0.5">
+              <RiEqualizer2Line className="size-4 text-text-tertiary" />
             </div>
           </div>
         )}
         {expand && (
           <div className="flex flex-col items-start gap-1">
             <div className="flex w-full">
-              <div className="truncate whitespace-nowrap text-text-secondary system-md-semibold">{appDetail.name}</div>
+              <div className="truncate system-md-semibold whitespace-nowrap text-text-secondary">{appDetail.name}</div>
             </div>
-            <div className="whitespace-nowrap text-text-tertiary system-2xs-medium-uppercase">
+            <div className="system-2xs-medium-uppercase whitespace-nowrap text-text-tertiary">
               {getAppModeLabel(appDetail.mode, t)}
             </div>
           </div>

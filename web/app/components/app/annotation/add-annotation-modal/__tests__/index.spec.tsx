@@ -9,7 +9,7 @@ vi.mock('@/context/provider-context', () => ({
 }))
 
 const mockToastNotify = vi.fn()
-vi.mock('@/app/components/base/ui/toast', () => ({
+vi.mock('@langgenius/dify-ui/toast', () => ({
   default: {
     notify: vi.fn(args => mockToastNotify(args)),
   },
@@ -91,7 +91,7 @@ describe('AddAnnotationModal', () => {
 
     typeQuestion('Question value')
     typeAnswer('Answer value')
-    fireEvent.click(screen.getByTestId('checkbox-create-next-checkbox'))
+    fireEvent.click(screen.getByText('appAnnotation.addModal.createNext'))
 
     await act(async () => {
       fireEvent.click(screen.getByRole('button', { name: 'common.operation.add' }))
@@ -106,8 +106,7 @@ describe('AddAnnotationModal', () => {
 
     typeQuestion('Question value')
     typeAnswer('Answer value')
-    const createNextToggle = screen.getByText('appAnnotation.addModal.createNext').previousElementSibling as HTMLElement
-    fireEvent.click(createNextToggle)
+    fireEvent.click(screen.getByText('appAnnotation.addModal.createNext'))
 
     await act(async () => {
       fireEvent.click(screen.getByRole('button', { name: 'common.operation.add' }))

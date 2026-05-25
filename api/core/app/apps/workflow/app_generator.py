@@ -8,10 +8,6 @@ from collections.abc import Generator, Mapping, Sequence
 from typing import TYPE_CHECKING, Any, Literal, overload
 
 from flask import Flask, current_app
-from graphon.graph_engine.layers import GraphEngineLayer
-from graphon.model_runtime.errors.invoke import InvokeAuthorizationError
-from graphon.runtime import GraphRuntimeState
-from graphon.variable_loader import DUMMY_VARIABLE_LOADER, VariableLoader
 from pydantic import ValidationError
 from sqlalchemy import select
 from sqlalchemy.orm import sessionmaker
@@ -29,15 +25,23 @@ from core.app.apps.workflow.app_runner import WorkflowAppRunner
 from core.app.apps.workflow.generate_response_converter import WorkflowAppGenerateResponseConverter
 from core.app.apps.workflow.generate_task_pipeline import WorkflowAppGenerateTaskPipeline
 from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerateEntity
-from core.app.entities.task_entities import WorkflowAppBlockingResponse, WorkflowAppStreamResponse
+from core.app.entities.task_entities import (
+    WorkflowAppBlockingResponse,
+    WorkflowAppPausedBlockingResponse,
+    WorkflowAppStreamResponse,
+)
 from core.app.layers.pause_state_persist_layer import PauseStateLayerConfig, PauseStatePersistenceLayer
 from core.db.session_factory import session_factory
-from core.helper.trace_id_helper import extract_external_trace_id_from_args
+from core.helper.trace_id_helper import extract_external_trace_id_from_args, extract_parent_trace_context_from_args
 from core.ops.ops_trace_manager import TraceQueueManager
 from core.repositories import DifyCoreRepositoryFactory
 from core.repositories.factory import WorkflowExecutionRepository, WorkflowNodeExecutionRepository
 from extensions.ext_database import db
 from factories import file_factory
+from graphon.graph_engine.layers import GraphEngineLayer
+from graphon.model_runtime.errors.invoke import InvokeAuthorizationError
+from graphon.runtime import GraphRuntimeState
+from graphon.variable_loader import DUMMY_VARIABLE_LOADER, VariableLoader
 from libs.flask_utils import preserve_flask_contexts
 from models.account import Account
 from models.enums import WorkflowRunTriggeredFrom
@@ -162,6 +166,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
 
             extras = {
                 **extract_external_trace_id_from_args(args),
+                **extract_parent_trace_context_from_args(args),
             }
             workflow_run_id = str(workflow_run_id or uuid.uuid4())
             # FIXME (Yeuoly): we need to remove the SKIP_PREPARE_USER_INPUTS_KEY from the args
@@ -248,7 +253,20 @@ class WorkflowAppGenerator(BaseAppGenerator):
     ) -> Mapping[str, Any] | Generator[str | Mapping[str, Any], None, None]:
         """
         Resume a paused workflow execution using the persisted runtime state.
+
+        ``trace_manager`` is transient and excluded from generate-entity serialization,
+        so resumed executions rebuild it here before persistence layers receive the entity.
         """
+        if application_generate_entity.trace_manager is None:
+            application_generate_entity = application_generate_entity.model_copy(
+                update={
+                    "trace_manager": TraceQueueManager(
+                        app_id=app_model.id,
+                        user_id=user.id if isinstance(user, Account) else user.session_id,
+                    )
+                }
+            )
+
         return self._generate(
             app_model=app_model,
             workflow=workflow,
@@ -612,7 +630,11 @@ class WorkflowAppGenerator(BaseAppGenerator):
         user: Account | EndUser,
         draft_var_saver_factory: DraftVariableSaverFactory,
         stream: bool = False,
-    ) -> WorkflowAppBlockingResponse | Generator[WorkflowAppStreamResponse, None, None]:
+    ) -> (
+        WorkflowAppBlockingResponse
+        | WorkflowAppPausedBlockingResponse
+        | Generator[WorkflowAppStreamResponse, None, None]
+    ):
         """
         Handle response.
         :param application_generate_entity: application generate entity

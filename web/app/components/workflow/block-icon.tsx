@@ -1,4 +1,5 @@
 import type { FC } from 'react'
+import { cn } from '@langgenius/dify-ui/cn'
 import { memo } from 'react'
 import AppIcon from '@/app/components/base/app-icon'
 import {
@@ -28,7 +29,6 @@ import {
   WebhookLine,
 } from '@/app/components/base/icons/src/vender/workflow'
 import { API_PREFIX } from '@/config'
-import { cn } from '@/utils/classnames'
 import { BlockEnum } from './types'
 
 type BlockIconProps = {
@@ -160,7 +160,7 @@ const BlockIcon: FC<BlockIconProps> = ({
               typeof resolvedToolIcon === 'string'
                 ? (
                     <div
-                      className="h-full w-full shrink-0 rounded-md bg-cover bg-center"
+                      className="size-full shrink-0 rounded-md bg-cover bg-center"
                       style={{
                         backgroundImage: `url(${resolvedToolIcon})`,
                       }}
@@ -169,7 +169,7 @@ const BlockIcon: FC<BlockIconProps> = ({
                   )
                 : (
                     <AppIcon
-                      className="h-full! w-full! shrink-0"
+                      className="size-full! shrink-0"
                       size="tiny"
                       icon={resolvedToolIcon?.content}
                       background={resolvedToolIcon?.background}

@@ -9,7 +9,7 @@ const ResPlaceholder: FC = () => {
   return (
     <div className="flex h-full w-0 grow flex-col items-center justify-center space-y-3 px-8">
       <Generator className="size-8 text-text-quaternary" />
-      <div className="text-center text-[13px] font-normal leading-5 text-text-tertiary">
+      <div className="text-center text-[13px] leading-5 font-normal text-text-tertiary">
         <div>{t('generate.newNoDataLine1', { ns: 'appDebug' })}</div>
       </div>
     </div>

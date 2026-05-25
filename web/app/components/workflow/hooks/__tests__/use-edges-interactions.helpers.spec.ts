@@ -38,19 +38,19 @@ describe('use-edges-interactions.helpers', () => {
 
     const result = applyConnectedHandleNodeData(nodes, edgeChanges)
 
-    expect(result[0].data._connectedSourceHandleIds).toEqual(['branch-a'])
-    expect(result[1].data._connectedSourceHandleIds).toEqual([])
+    expect(result[0]!.data._connectedSourceHandleIds).toEqual(['branch-a'])
+    expect(result[1]!.data._connectedSourceHandleIds).toEqual([])
     expect(mockGetNodesConnectedSourceOrTargetHandleIdsMap).toHaveBeenCalledWith(edgeChanges, nodes)
   })
 
   it('clearEdgeMenuIfNeeded should return true only when the open menu belongs to a removed edge', () => {
     expect(clearEdgeMenuIfNeeded({
-      edgeMenu: { edgeId: 'edge-1' },
+      contextMenuTarget: { type: 'edge', edgeId: 'edge-1' },
       edgeIds: ['edge-1', 'edge-2'],
     })).toBe(true)
 
     expect(clearEdgeMenuIfNeeded({
-      edgeMenu: { edgeId: 'edge-3' },
+      contextMenuTarget: { type: 'edge', edgeId: 'edge-3' },
       edgeIds: ['edge-1', 'edge-2'],
     })).toBe(false)
 

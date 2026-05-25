@@ -1,5 +1,6 @@
 import type { Member } from '@/models/common'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import MemberSelector from '../member-selector'
 
 const mockMemberList = vi.hoisted(() => vi.fn())
@@ -34,7 +35,9 @@ describe('human-input/delivery-method/recipient/member-selector', () => {
     vi.clearAllMocks()
   })
 
-  it('should toggle the member list and forward selection props', () => {
+  it('should toggle the member list and forward selection props', async () => {
+    const user = userEvent.setup()
+
     render(
       <MemberSelector
         value={[{ type: 'member', user_id: 'member-1' }]}
@@ -50,16 +53,17 @@ describe('human-input/delivery-method/recipient/member-selector', () => {
 
     expect(screen.queryByTestId('member-list')).not.toBeInTheDocument()
 
-    fireEvent.click(trigger)
+    await user.click(trigger)
     expect(screen.getByTestId('member-list')).toBeInTheDocument()
-    expect(trigger).toHaveClass('bg-state-accent-hover')
+    expect(trigger).toHaveAttribute('data-popup-open')
+    expect(trigger).toHaveClass('data-popup-open:bg-state-accent-hover')
     expect(mockMemberList).toHaveBeenCalledWith(expect.objectContaining({
       searchValue: '',
       list: members,
       email: 'owner@example.com',
     }))
 
-    fireEvent.click(trigger)
+    await user.click(trigger)
     expect(screen.queryByTestId('member-list')).not.toBeInTheDocument()
   })
 })

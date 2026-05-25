@@ -132,8 +132,8 @@ describe('FormGeneration', () => {
     })
     render(<FormGeneration forms={[form]} value={{}} onChange={onChange} />)
 
-    fireEvent.click(screen.getByText(/placeholder\.select/))
-    fireEvent.click(screen.getByText('GPT-4'))
+    fireEvent.click(screen.getByRole('combobox'))
+    fireEvent.click(screen.getByRole('option', { name: 'GPT-4' }))
 
     expect(onChange).toHaveBeenCalledWith({ model: 'gpt-4' })
   })
@@ -152,7 +152,7 @@ describe('FormGeneration', () => {
     render(<FormGeneration forms={[form]} value={{}} onChange={vi.fn()} />)
 
     expect(screen.getByText('模型')).toBeInTheDocument()
-    fireEvent.click(screen.getByText(/placeholder\.select/))
-    expect(screen.getByText('智谱-4')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('combobox'))
+    expect(screen.getByRole('option', { name: '智谱-4' })).toBeInTheDocument()
   })
 })

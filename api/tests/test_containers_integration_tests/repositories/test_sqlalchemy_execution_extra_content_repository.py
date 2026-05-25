@@ -12,11 +12,11 @@ from decimal import Decimal
 from uuid import uuid4
 
 import pytest
-from graphon.nodes.human_input.entities import FormDefinition, UserAction
-from graphon.nodes.human_input.enums import HumanInputFormStatus
 from sqlalchemy import Engine, delete, select
 from sqlalchemy.orm import Session, sessionmaker
 
+from graphon.nodes.human_input.entities import FormDefinition, UserActionConfig
+from graphon.nodes.human_input.enums import HumanInputFormStatus
 from libs.datetime_utils import naive_utc_now
 from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.enums import ConversationFromSource, InvokeFrom
@@ -179,7 +179,7 @@ def _create_submitted_form(
     form_definition = FormDefinition(
         form_content="content",
         inputs=[],
-        user_actions=[UserAction(id=action_id, title=action_title)],
+        user_actions=[UserActionConfig(id=action_id, title=action_title)],
         rendered_content="rendered",
         expiration_time=expiration_time,
         node_title=node_title,
@@ -212,7 +212,7 @@ def _create_waiting_form(
     form_definition = FormDefinition(
         form_content="content",
         inputs=[],
-        user_actions=[UserAction(id="approve", title="Approve")],
+        user_actions=[UserActionConfig(id="approve", title="Approve")],
         rendered_content="rendered",
         expiration_time=expiration_time,
         default_values=default_values or {"name": "John"},
@@ -271,7 +271,7 @@ def _create_recipient(
 
 
 def _create_delivery(session: Session, *, form_id: str) -> HumanInputDelivery:
-    from core.workflow.human_input_compat import DeliveryMethodType
+    from core.workflow.human_input_adapter import DeliveryMethodType
     from models.human_input import ConsoleDeliveryPayload
 
     delivery = HumanInputDelivery(

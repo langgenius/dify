@@ -1,5 +1,5 @@
+import { cn } from '@langgenius/dify-ui/cn'
 import { memo } from 'react'
-import { cn } from '@/utils/classnames'
 
 type ProgressCircleProps = {
   className?: string

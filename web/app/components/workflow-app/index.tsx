@@ -78,15 +78,18 @@ const WorkflowAppWithAdditionalContext = () => {
   }, [workflowStore])
 
   const nodesData = useMemo(() => {
-    if (data)
-      return initialNodes(data.graph.nodes, data.graph.edges)
-
+    if (data) {
+      const processedNodes = initialNodes(data.graph.nodes, data.graph.edges)
+      return processedNodes
+    }
     return []
   }, [data])
-  const edgesData = useMemo(() => {
-    if (data)
-      return initialEdges(data.graph.edges, data.graph.nodes)
 
+  const edgesData = useMemo(() => {
+    if (data) {
+      const processedEdges = initialEdges(data.graph.edges, data.graph.nodes)
+      return processedEdges
+    }
     return []
   }, [data])
 
@@ -128,7 +131,7 @@ const WorkflowAppWithAdditionalContext = () => {
 
   if (!data || isLoading || isLoadingCurrentWorkspace || !currentWorkspace.id) {
     return (
-      <div className="relative flex h-full w-full items-center justify-center">
+      <div className="relative flex size-full items-center justify-center">
         <Loading />
       </div>
     )

@@ -113,7 +113,7 @@ describe('ProviderAddedCard', () => {
     mockFetchModelProviderModels.mockResolvedValue({ data: [{ model: 'gpt-4' }] })
     renderWithQueryClient(<ProviderAddedCard provider={mockProvider} />)
 
-    const showModelsBtn = screen.getByTestId('show-models-button')
+    const showModelsBtn = screen.getByRole('button', { name: /modelProvider\.showModels/i })
     fireEvent.click(showModelsBtn)
 
     await waitFor(() => {
@@ -127,7 +127,7 @@ describe('ProviderAddedCard', () => {
     await waitFor(() => expect(screen.queryByTestId('model-list')).not.toBeInTheDocument())
 
     // Explicitly re-find and click to re-open
-    fireEvent.click(screen.getByTestId('show-models-button'))
+    fireEvent.click(screen.getByRole('button', { name: /modelProvider\.showModels/i }))
     expect(await screen.findByTestId('model-list')).toBeInTheDocument()
     expect(mockFetchModelProviderModels).toHaveBeenCalledTimes(2) // Re-open fetches again with default stale/gc behavior
 
@@ -147,7 +147,7 @@ describe('ProviderAddedCard', () => {
     mockFetchModelProviderModels.mockReturnValue(promise)
 
     renderWithQueryClient(<ProviderAddedCard provider={mockProvider} />)
-    const showModelsBtn = screen.getByTestId('show-models-button')
+    const showModelsBtn = screen.getByRole('button', { name: /modelProvider\.showModels/i })
 
     // First call sets loading to true
     fireEvent.click(showModelsBtn)

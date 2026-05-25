@@ -39,7 +39,7 @@ const jsonResponse = (
     ...init,
     headers: {
       "content-type": "application/json",
-      ...(init.headers ?? {}),
+      ...init.headers,
     },
   });
 
@@ -47,7 +47,7 @@ const textResponse = (body: string, init: ResponseInit = {}): Response =>
   new Response(body, {
     ...init,
     headers: {
-      ...(init.headers ?? {}),
+      ...init.headers,
     },
   });
 

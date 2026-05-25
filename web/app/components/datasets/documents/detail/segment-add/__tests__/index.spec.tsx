@@ -1,9 +1,10 @@
-import type { ReactNode } from 'react'
+import type { SegmentImportStatus } from '@/types/dataset'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { Plan } from '@/app/components/billing/type'
+import { segmentImportStatus } from '@/types/dataset'
 
-import SegmentAdd, { ProcessStatus } from '../index'
+import { SegmentAdd } from '../index'
 
 // Mock provider context
 let mockPlan = { type: Plan.professional }
@@ -15,33 +16,6 @@ vi.mock('@/context/provider-context', () => ({
   }),
 }))
 
-// Mock PlanUpgradeModal
-vi.mock('@/app/components/billing/plan-upgrade-modal', () => ({
-  default: ({ show, onClose, title, description }: { show: boolean, onClose: () => void, title?: string, description?: string }) => (
-    show
-      ? (
-          <div data-testid="plan-upgrade-modal">
-            <span data-testid="modal-title">{title}</span>
-            <span data-testid="modal-description">{description}</span>
-            <button onClick={onClose} data-testid="close-modal">Close</button>
-          </div>
-        )
-      : null
-  ),
-}))
-
-// Mock Popover
-vi.mock('@/app/components/base/popover', () => ({
-  default: ({ htmlContent, btnElement, disabled }: { htmlContent: ReactNode, btnElement: ReactNode, disabled?: boolean }) => (
-    <div data-testid="popover">
-      <button data-testid="popover-btn" disabled={disabled}>
-        {btnElement}
-      </button>
-      <div data-testid="popover-content">{htmlContent}</div>
-    </div>
-  ),
-}))
-
 describe('SegmentAdd', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -50,8 +24,8 @@ describe('SegmentAdd', () => {
   })
 
   const defaultProps = {
-    importStatus: undefined as ProcessStatus | string | undefined,
-    clearProcessStatus: vi.fn(),
+    importStatus: undefined as SegmentImportStatus | undefined,
+    clearImportStatus: vi.fn(),
     showNewSegmentModal: vi.fn(),
     showBatchModal: vi.fn(),
     embedding: false,
@@ -70,43 +44,43 @@ describe('SegmentAdd', () => {
       expect(screen.getByText(/list\.action\.addButton/i)).toBeInTheDocument()
     })
 
-    it('should render popover for batch add', () => {
+    it('should render dropdown trigger for batch add', () => {
       render(<SegmentAdd {...defaultProps} />)
 
-      expect(screen.getByTestId('popover')).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: /list\.action\.batchAdd/i })).toBeInTheDocument()
     })
   })
 
   // Import Status displays
   describe('Import Status Display', () => {
     it('should show processing indicator when status is WAITING', () => {
-      render(<SegmentAdd {...defaultProps} importStatus={ProcessStatus.WAITING} />)
+      render(<SegmentAdd {...defaultProps} importStatus={segmentImportStatus.waiting} />)
 
       expect(screen.getByText(/list\.batchModal\.processing/i)).toBeInTheDocument()
     })
 
     it('should show processing indicator when status is PROCESSING', () => {
-      render(<SegmentAdd {...defaultProps} importStatus={ProcessStatus.PROCESSING} />)
+      render(<SegmentAdd {...defaultProps} importStatus={segmentImportStatus.processing} />)
 
       expect(screen.getByText(/list\.batchModal\.processing/i)).toBeInTheDocument()
     })
 
     it('should show completed status with ok button', () => {
-      render(<SegmentAdd {...defaultProps} importStatus={ProcessStatus.COMPLETED} />)
+      render(<SegmentAdd {...defaultProps} importStatus={segmentImportStatus.completed} />)
 
       expect(screen.getByText(/list\.batchModal\.completed/i)).toBeInTheDocument()
       expect(screen.getByText(/list\.batchModal\.ok/i)).toBeInTheDocument()
     })
 
     it('should show error status with ok button', () => {
-      render(<SegmentAdd {...defaultProps} importStatus={ProcessStatus.ERROR} />)
+      render(<SegmentAdd {...defaultProps} importStatus={segmentImportStatus.error} />)
 
       expect(screen.getByText(/list\.batchModal\.error/i)).toBeInTheDocument()
       expect(screen.getByText(/list\.batchModal\.ok/i)).toBeInTheDocument()
     })
 
     it('should not show add button when importStatus is set', () => {
-      render(<SegmentAdd {...defaultProps} importStatus={ProcessStatus.PROCESSING} />)
+      render(<SegmentAdd {...defaultProps} importStatus={segmentImportStatus.processing} />)
 
       expect(screen.queryByText(/list\.action\.addButton/i)).not.toBeInTheDocument()
     })
@@ -122,49 +96,64 @@ describe('SegmentAdd', () => {
       expect(mockShowNewSegmentModal).toHaveBeenCalledTimes(1)
     })
 
-    it('should call clearProcessStatus when ok is clicked on completed status', () => {
-      const mockClearProcessStatus = vi.fn()
+    it('should call clearImportStatus when ok is clicked on completed status', () => {
+      const mockClearImportStatus = vi.fn()
       render(
         <SegmentAdd
           {...defaultProps}
-          importStatus={ProcessStatus.COMPLETED}
-          clearProcessStatus={mockClearProcessStatus}
+          importStatus={segmentImportStatus.completed}
+          clearImportStatus={mockClearImportStatus}
         />,
       )
 
-      fireEvent.click(screen.getByText(/list\.batchModal\.ok/i))
+      fireEvent.click(screen.getByRole('button', { name: /list\.batchModal\.ok/i }))
 
-      expect(mockClearProcessStatus).toHaveBeenCalledTimes(1)
+      expect(mockClearImportStatus).toHaveBeenCalledTimes(1)
     })
 
-    it('should call clearProcessStatus when ok is clicked on error status', () => {
-      const mockClearProcessStatus = vi.fn()
+    it('should call clearImportStatus when ok is clicked on error status', () => {
+      const mockClearImportStatus = vi.fn()
       render(
         <SegmentAdd
           {...defaultProps}
-          importStatus={ProcessStatus.ERROR}
-          clearProcessStatus={mockClearProcessStatus}
+          importStatus={segmentImportStatus.error}
+          clearImportStatus={mockClearImportStatus}
         />,
       )
 
-      fireEvent.click(screen.getByText(/list\.batchModal\.ok/i))
+      fireEvent.click(screen.getByRole('button', { name: /list\.batchModal\.ok/i }))
 
-      expect(mockClearProcessStatus).toHaveBeenCalledTimes(1)
+      expect(mockClearImportStatus).toHaveBeenCalledTimes(1)
     })
 
-    it('should render batch add option in popover', () => {
+    it('should render batch add option in dropdown', async () => {
       render(<SegmentAdd {...defaultProps} />)
 
-      expect(screen.getByText(/list\.action\.batchAdd/i)).toBeInTheDocument()
+      fireEvent.click(screen.getByRole('button', { name: /list\.action\.batchAdd/i }))
+
+      expect(await screen.findByRole('menuitem', { name: /list\.action\.batchAdd/i })).toBeInTheDocument()
     })
 
-    it('should call showBatchModal when batch add is clicked', () => {
+    it('should call showBatchModal when batch add is clicked', async () => {
       const mockShowBatchModal = vi.fn()
       render(<SegmentAdd {...defaultProps} showBatchModal={mockShowBatchModal} />)
 
-      fireEvent.click(screen.getByText(/list\.action\.batchAdd/i))
+      fireEvent.click(screen.getByRole('button', { name: /list\.action\.batchAdd/i }))
+      fireEvent.click(await screen.findByRole('menuitem', { name: /list\.action\.batchAdd/i }))
 
       expect(mockShowBatchModal).toHaveBeenCalledTimes(1)
+    })
+
+    it('should show plan upgrade modal instead of batch modal for sandbox users', async () => {
+      mockPlan = { type: Plan.sandbox }
+      const mockShowBatchModal = vi.fn()
+      render(<SegmentAdd {...defaultProps} showBatchModal={mockShowBatchModal} />)
+
+      fireEvent.click(screen.getByRole('button', { name: /list\.action\.batchAdd/i }))
+      fireEvent.click(await screen.findByRole('menuitem', { name: /list\.action\.batchAdd/i }))
+
+      expect(screen.getByRole('dialog')).toBeInTheDocument()
+      expect(mockShowBatchModal).not.toHaveBeenCalled()
     })
   })
 
@@ -177,10 +166,10 @@ describe('SegmentAdd', () => {
       expect(addButton).toBeDisabled()
     })
 
-    it('should disable popover button when embedding is true', () => {
+    it('should disable batch menu trigger when embedding is true', () => {
       render(<SegmentAdd {...defaultProps} embedding={true} />)
 
-      expect(screen.getByTestId('popover-btn')).toBeDisabled()
+      expect(screen.getByRole('button', { name: /list\.action\.batchAdd/i })).toBeDisabled()
     })
 
     it('should apply disabled styling when embedding is true', () => {
@@ -199,7 +188,7 @@ describe('SegmentAdd', () => {
 
       fireEvent.click(screen.getByText(/list\.action\.addButton/i))
 
-      expect(screen.getByTestId('plan-upgrade-modal')).toBeInTheDocument()
+      expect(screen.getByRole('dialog')).toBeInTheDocument()
     })
 
     it('should not call showNewSegmentModal for sandbox users', () => {
@@ -229,25 +218,25 @@ describe('SegmentAdd', () => {
 
       // Show modal
       fireEvent.click(screen.getByText(/list\.action\.addButton/i))
-      expect(screen.getByTestId('plan-upgrade-modal')).toBeInTheDocument()
+      expect(screen.getByRole('dialog')).toBeInTheDocument()
 
-      fireEvent.click(screen.getByTestId('close-modal'))
+      fireEvent.click(screen.getByRole('button', { name: 'billing.triggerLimitModal.dismiss' }))
 
-      expect(screen.queryByTestId('plan-upgrade-modal')).not.toBeInTheDocument()
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
     })
   })
 
   // Progress bar width tests
   describe('Progress Bar', () => {
     it('should show 3/12 width progress bar for WAITING status', () => {
-      const { container } = render(<SegmentAdd {...defaultProps} importStatus={ProcessStatus.WAITING} />)
+      const { container } = render(<SegmentAdd {...defaultProps} importStatus={segmentImportStatus.waiting} />)
 
       const progressBar = container.querySelector('.w-3\\/12')
       expect(progressBar).toBeInTheDocument()
     })
 
     it('should show 2/3 width progress bar for PROCESSING status', () => {
-      const { container } = render(<SegmentAdd {...defaultProps} importStatus={ProcessStatus.PROCESSING} />)
+      const { container } = render(<SegmentAdd {...defaultProps} importStatus={segmentImportStatus.processing} />)
 
       const progressBar = container.querySelector('.w-2\\/3')
       expect(progressBar).toBeInTheDocument()
@@ -255,15 +244,6 @@ describe('SegmentAdd', () => {
   })
 
   describe('Edge Cases', () => {
-    it('should handle unknown importStatus string', () => {
-      // Arrange & Act - pass unknown status
-      const { container } = render(<SegmentAdd {...defaultProps} importStatus="unknown" />)
-
-      // Assert - empty fragment is rendered for unknown status (container exists but has no visible content)
-      expect(container).toBeInTheDocument()
-      expect(container.textContent).toBe('')
-    })
-
     it('should maintain structure when rerendered', () => {
       const { rerender } = render(<SegmentAdd {...defaultProps} />)
 

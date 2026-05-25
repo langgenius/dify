@@ -17,13 +17,13 @@ import type {
   VariableBlockType,
   WorkflowVariableBlockType,
 } from './types'
+import { cn } from '@langgenius/dify-ui/cn'
 import { ContentEditable } from '@lexical/react/LexicalContentEditable'
 import { LexicalErrorBoundary } from '@lexical/react/LexicalErrorBoundary'
 import { HistoryPlugin } from '@lexical/react/LexicalHistoryPlugin'
 import { OnChangePlugin } from '@lexical/react/LexicalOnChangePlugin'
 import { RichTextPlugin } from '@lexical/react/LexicalRichTextPlugin'
 import * as React from 'react'
-import { cn } from '@/utils/classnames'
 import ComponentPickerBlock from './plugins/component-picker-block'
 import {
   ContextBlock,
@@ -132,7 +132,7 @@ const PromptEditorContent: FC<PromptEditorContentProps> = ({
           <ContentEditable
             className={cn(
               'group/editable text-text-secondary outline-hidden group-[.clamp]:max-h-24 group-[.clamp]:overflow-y-auto',
-              compact ? 'text-[13px] leading-5' : 'text-sm leading-6',
+              compact ? 'text-[13px] leading-5' : 'text-sm/6',
               className,
             )}
             style={style || {}}

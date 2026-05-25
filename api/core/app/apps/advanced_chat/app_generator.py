@@ -18,11 +18,6 @@ from constants import UUID_NIL
 
 if TYPE_CHECKING:
     from controllers.console.app.workflow import LoopNodeRunPayload
-from graphon.graph_engine.layers import GraphEngineLayer
-from graphon.model_runtime.errors.invoke import InvokeAuthorizationError
-from graphon.runtime import GraphRuntimeState
-from graphon.variable_loader import DUMMY_VARIABLE_LOADER, VariableLoader
-
 from core.app.app_config.features.file_upload.manager import FileUploadConfigManager
 from core.app.apps.advanced_chat.app_config_manager import AdvancedChatAppConfigManager
 from core.app.apps.advanced_chat.app_runner import AdvancedChatAppRunner
@@ -39,7 +34,11 @@ from core.app.apps.exc import GenerateTaskStoppedError
 from core.app.apps.message_based_app_generator import MessageBasedAppGenerator
 from core.app.apps.message_based_app_queue_manager import MessageBasedAppQueueManager
 from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, InvokeFrom
-from core.app.entities.task_entities import ChatbotAppBlockingResponse, ChatbotAppStreamResponse
+from core.app.entities.task_entities import (
+    AdvancedChatPausedBlockingResponse,
+    ChatbotAppBlockingResponse,
+    ChatbotAppStreamResponse,
+)
 from core.app.layers.pause_state_persist_layer import PauseStateLayerConfig, PauseStatePersistenceLayer
 from core.helper.trace_id_helper import extract_external_trace_id_from_args
 from core.ops.ops_trace_manager import TraceQueueManager
@@ -48,10 +47,15 @@ from core.repositories import DifyCoreRepositoryFactory
 from core.repositories.factory import WorkflowExecutionRepository, WorkflowNodeExecutionRepository
 from extensions.ext_database import db
 from factories import file_factory
+from graphon.graph_engine.layers import GraphEngineLayer
+from graphon.model_runtime.errors.invoke import InvokeAuthorizationError
+from graphon.runtime import GraphRuntimeState
+from graphon.variable_loader import DUMMY_VARIABLE_LOADER, VariableLoader
 from libs.flask_utils import preserve_flask_contexts
 from models import Account, App, Conversation, EndUser, Message, Workflow, WorkflowNodeExecutionTriggeredFrom
 from models.enums import WorkflowRunTriggeredFrom
 from services.conversation_service import ConversationService
+from services.errors.conversation import ConversationNotExistsError
 from services.workflow_draft_variable_service import (
     DraftVarLoader,
     WorkflowDraftVariableService,
@@ -142,9 +146,15 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
         conversation = None
         conversation_id = args.get("conversation_id")
         if conversation_id:
-            conversation = ConversationService.get_conversation(
-                app_model=app_model, conversation_id=conversation_id, user=user
-            )
+            try:
+                conversation = ConversationService.get_conversation(
+                    app_model=app_model, conversation_id=conversation_id, user=user
+                )
+            except ConversationNotExistsError:
+                if invoke_from == InvokeFrom.SERVICE_API:
+                    conversation = None
+                else:
+                    raise
 
         # parse files
         # TODO(QuantumGhost): Move file parsing logic to the API controller layer
@@ -250,7 +260,20 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
     ):
         """
         Resume a paused advanced chat execution.
+
+        ``trace_manager`` is transient and excluded from generate-entity serialization,
+        so resumed executions rebuild it here before persistence layers receive the entity.
         """
+        if application_generate_entity.trace_manager is None:
+            application_generate_entity = application_generate_entity.model_copy(
+                update={
+                    "trace_manager": TraceQueueManager(
+                        app_id=app_model.id,
+                        user_id=user.id if isinstance(user, Account) else user.session_id,
+                    )
+                }
+            )
+
         return self._generate(
             workflow=workflow,
             user=user,
@@ -656,7 +679,11 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
         user: Account | EndUser,
         draft_var_saver_factory: DraftVariableSaverFactory,
         stream: bool = False,
-    ) -> ChatbotAppBlockingResponse | Generator[ChatbotAppStreamResponse, None, None]:
+    ) -> (
+        ChatbotAppBlockingResponse
+        | AdvancedChatPausedBlockingResponse
+        | Generator[ChatbotAppStreamResponse, None, None]
+    ):
         """
         Handle response.
         :param application_generate_entity: application generate entity

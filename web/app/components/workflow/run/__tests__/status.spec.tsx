@@ -1,10 +1,59 @@
 import type { WorkflowPausedDetailsResponse } from '@/models/log'
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
+import { cloneElement, isValidElement } from 'react'
 import { createDocLinkMock, resolveDocLink } from '../../__tests__/i18n'
 import Status from '../status'
 
 const mockDocLink = createDocLinkMock()
 const mockUseWorkflowPausedDetails = vi.fn()
+
+vi.mock('react-i18next', () => ({
+  useTranslation: () => ({
+    t: (key: string, options?: Record<string, unknown>) => {
+      const fullKey = options?.ns ? `${options.ns}.${key}` : key
+      if (fullKey === 'workflow.nodes.common.errorHandle.partialSucceeded.tip')
+        return 'There are {{num}} nodes in the process running abnormally, please go to TRACING to check the logs.'
+
+      const params = { ...options }
+      delete params.ns
+      const suffix = Object.keys(params).length > 0 ? `:${JSON.stringify(params)}` : ''
+      return `${fullKey}${suffix}`
+    },
+  }),
+  Trans: ({
+    i18nKey,
+    values,
+    components,
+  }: {
+    i18nKey: string
+    values?: {
+      num?: string | number
+    }
+    components?: Record<string, React.ReactNode>
+  }) => {
+    if (i18nKey !== 'nodes.common.errorHandle.partialSucceeded.tip')
+      return <span>{i18nKey}</span>
+
+    const tracingLink = components?.tracingLink
+    const tracingNode = isValidElement(tracingLink)
+      ? cloneElement(tracingLink, undefined, 'TRACING')
+      : 'TRACING'
+
+    return (
+      <span>
+        There are
+        {' '}
+        {values?.num}
+        {' '}
+        nodes in the process running abnormally, please go to
+        {' '}
+        {tracingNode}
+        {' '}
+        to check the logs.
+      </span>
+    )
+  },
+}))
 
 vi.mock('@/context/i18n', () => ({
   useDocLink: () => mockDocLink,
@@ -64,14 +113,24 @@ describe('Status', () => {
 
     expect(screen.getByText('FAIL')).toBeInTheDocument()
     expect(screen.getByText('Something broke')).toBeInTheDocument()
-    expect(screen.getByText('workflow.nodes.common.errorHandle.partialSucceeded.tip:{"num":2}')).toBeInTheDocument()
+    expect(screen.getAllByText((_, element) => element?.textContent === 'There are 2 nodes in the process running abnormally, please go to TRACING to check the logs.')).toHaveLength(2)
   })
 
   it('renders the partial-succeeded warning summary', () => {
     render(<Status status="partial-succeeded" exceptionCounts={3} />)
 
     expect(screen.getByText('PARTIAL SUCCESS')).toBeInTheDocument()
-    expect(screen.getByText('workflow.nodes.common.errorHandle.partialSucceeded.tip:{"num":3}')).toBeInTheDocument()
+    expect(screen.getAllByText((_, element) => element?.textContent === 'There are 3 nodes in the process running abnormally, please go to TRACING to check the logs.')).toHaveLength(2)
+  })
+
+  it('opens the tracing tab when clicking the TRACING link', () => {
+    const onOpenTracingTab = vi.fn()
+
+    render(<Status status="partial-succeeded" exceptionCounts={3} onOpenTracingTab={onOpenTracingTab} />)
+
+    fireEvent.click(screen.getByRole('link', { name: 'TRACING' }))
+
+    expect(onOpenTracingTab).toHaveBeenCalledTimes(1)
   })
 
   it('renders the exception learn-more link', () => {

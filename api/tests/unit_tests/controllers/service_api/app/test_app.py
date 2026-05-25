@@ -10,8 +10,14 @@ from flask import Flask
 
 from controllers.service_api.app.app import AppInfoApi, AppMetaApi, AppParameterApi
 from controllers.service_api.app.error import AppUnavailableError
+from models.account import TenantStatus
 from models.model import App, AppMode
-from tests.unit_tests.conftest import setup_mock_tenant_account_query
+from tests.unit_tests.conftest import setup_mock_tenant_owner_execute_result
+
+
+def _configure_current_app_mock(mock_current_app):
+    mock_current_app.login_manager = Mock()
+    mock_current_app._get_current_object = Mock(return_value=Mock())
 
 
 class TestAppParameterApi:
@@ -40,11 +46,11 @@ class TestAppParameterApi:
     @patch("controllers.service_api.wraps.validate_and_get_api_token")
     @patch("controllers.service_api.wraps.db")
     def test_get_parameters_for_chat_app(
-        self, mock_db, mock_validate_token, mock_current_app, mock_user_logged_in, app, mock_app_model
+        self, mock_db, mock_validate_token, mock_current_app, mock_user_logged_in, app: Flask, mock_app_model
     ):
         """Test retrieving parameters for a chat app."""
         # Arrange
-        mock_current_app.login_manager = Mock()
+        _configure_current_app_mock(mock_current_app)
 
         mock_config = Mock()
         mock_config.id = str(uuid.uuid4())
@@ -62,7 +68,7 @@ class TestAppParameterApi:
         mock_validate_token.return_value = mock_api_token
 
         mock_tenant = Mock()
-        mock_tenant.status = "normal"
+        mock_tenant.status = TenantStatus.NORMAL
 
         # Mock DB queries for app and tenant
         mock_db.session.get.side_effect = [
@@ -73,7 +79,7 @@ class TestAppParameterApi:
         # Mock tenant owner info for login
         mock_account = Mock()
         mock_account.current_tenant = mock_tenant
-        setup_mock_tenant_account_query(mock_db, mock_tenant, mock_account)
+        setup_mock_tenant_owner_execute_result(mock_db, mock_tenant, mock_account)
 
         # Act
         with app.test_request_context("/parameters", method="GET", headers={"Authorization": "Bearer test_token"}):
@@ -90,11 +96,11 @@ class TestAppParameterApi:
     @patch("controllers.service_api.wraps.validate_and_get_api_token")
     @patch("controllers.service_api.wraps.db")
     def test_get_parameters_for_workflow_app(
-        self, mock_db, mock_validate_token, mock_current_app, mock_user_logged_in, app, mock_app_model
+        self, mock_db, mock_validate_token, mock_current_app, mock_user_logged_in, app: Flask, mock_app_model
     ):
         """Test retrieving parameters for a workflow app."""
         # Arrange
-        mock_current_app.login_manager = Mock()
+        _configure_current_app_mock(mock_current_app)
 
         mock_app_model.mode = AppMode.WORKFLOW
         mock_workflow = Mock()
@@ -110,7 +116,7 @@ class TestAppParameterApi:
         mock_validate_token.return_value = mock_api_token
 
         mock_tenant = Mock()
-        mock_tenant.status = "normal"
+        mock_tenant.status = TenantStatus.NORMAL
 
         mock_db.session.get.side_effect = [
             mock_app_model,
@@ -119,7 +125,7 @@ class TestAppParameterApi:
 
         mock_account = Mock()
         mock_account.current_tenant = mock_tenant
-        setup_mock_tenant_account_query(mock_db, mock_tenant, mock_account)
+        setup_mock_tenant_owner_execute_result(mock_db, mock_tenant, mock_account)
 
         # Act
         with app.test_request_context("/parameters", method="GET", headers={"Authorization": "Bearer test_token"}):
@@ -135,11 +141,11 @@ class TestAppParameterApi:
     @patch("controllers.service_api.wraps.validate_and_get_api_token")
     @patch("controllers.service_api.wraps.db")
     def test_get_parameters_raises_error_when_chat_config_missing(
-        self, mock_db, mock_validate_token, mock_current_app, mock_user_logged_in, app, mock_app_model
+        self, mock_db, mock_validate_token, mock_current_app, mock_user_logged_in, app: Flask, mock_app_model
     ):
         """Test that AppUnavailableError is raised when chat app has no config."""
         # Arrange
-        mock_current_app.login_manager = Mock()
+        _configure_current_app_mock(mock_current_app)
 
         mock_app_model.app_model_config = None
         mock_app_model.workflow = None
@@ -151,7 +157,7 @@ class TestAppParameterApi:
         mock_validate_token.return_value = mock_api_token
 
         mock_tenant = Mock()
-        mock_tenant.status = "normal"
+        mock_tenant.status = TenantStatus.NORMAL
 
         mock_db.session.get.side_effect = [
             mock_app_model,
@@ -160,7 +166,7 @@ class TestAppParameterApi:
 
         mock_account = Mock()
         mock_account.current_tenant = mock_tenant
-        setup_mock_tenant_account_query(mock_db, mock_tenant, mock_account)
+        setup_mock_tenant_owner_execute_result(mock_db, mock_tenant, mock_account)
 
         # Act & Assert
         with app.test_request_context("/parameters", method="GET", headers={"Authorization": "Bearer test_token"}):
@@ -173,11 +179,11 @@ class TestAppParameterApi:
     @patch("controllers.service_api.wraps.validate_and_get_api_token")
     @patch("controllers.service_api.wraps.db")
     def test_get_parameters_raises_error_when_workflow_missing(
-        self, mock_db, mock_validate_token, mock_current_app, mock_user_logged_in, app, mock_app_model
+        self, mock_db, mock_validate_token, mock_current_app, mock_user_logged_in, app: Flask, mock_app_model
     ):
         """Test that AppUnavailableError is raised when workflow app has no workflow."""
         # Arrange
-        mock_current_app.login_manager = Mock()
+        _configure_current_app_mock(mock_current_app)
 
         mock_app_model.mode = AppMode.WORKFLOW
         mock_app_model.workflow = None
@@ -190,7 +196,7 @@ class TestAppParameterApi:
         mock_validate_token.return_value = mock_api_token
 
         mock_tenant = Mock()
-        mock_tenant.status = "normal"
+        mock_tenant.status = TenantStatus.NORMAL
 
         mock_db.session.get.side_effect = [
             mock_app_model,
@@ -199,7 +205,7 @@ class TestAppParameterApi:
 
         mock_account = Mock()
         mock_account.current_tenant = mock_tenant
-        setup_mock_tenant_account_query(mock_db, mock_tenant, mock_account)
+        setup_mock_tenant_owner_execute_result(mock_db, mock_tenant, mock_account)
 
         # Act & Assert
         with app.test_request_context("/parameters", method="GET", headers={"Authorization": "Bearer test_token"}):
@@ -233,11 +239,18 @@ class TestAppMetaApi:
     @patch("controllers.service_api.wraps.db")
     @patch("controllers.service_api.app.app.AppService")
     def test_get_app_meta(
-        self, mock_app_service, mock_db, mock_validate_token, mock_current_app, mock_user_logged_in, app, mock_app_model
+        self,
+        mock_app_service,
+        mock_db,
+        mock_validate_token,
+        mock_current_app,
+        mock_user_logged_in,
+        app: Flask,
+        mock_app_model,
     ):
         """Test retrieving app metadata via AppService."""
         # Arrange
-        mock_current_app.login_manager = Mock()
+        _configure_current_app_mock(mock_current_app)
 
         mock_service_instance = Mock()
         mock_service_instance.get_app_meta.return_value = {
@@ -253,7 +266,7 @@ class TestAppMetaApi:
         mock_validate_token.return_value = mock_api_token
 
         mock_tenant = Mock()
-        mock_tenant.status = "normal"
+        mock_tenant.status = TenantStatus.NORMAL
 
         mock_db.session.get.side_effect = [
             mock_app_model,
@@ -262,7 +275,7 @@ class TestAppMetaApi:
 
         mock_account = Mock()
         mock_account.current_tenant = mock_tenant
-        setup_mock_tenant_account_query(mock_db, mock_tenant, mock_account)
+        setup_mock_tenant_owner_execute_result(mock_db, mock_tenant, mock_account)
 
         # Act
         with app.test_request_context("/meta", method="GET", headers={"Authorization": "Bearer test_token"}):
@@ -309,10 +322,10 @@ class TestAppInfoApi:
     @patch("controllers.service_api.wraps.validate_and_get_api_token")
     @patch("controllers.service_api.wraps.db")
     def test_get_app_info(
-        self, mock_db, mock_validate_token, mock_current_app, mock_user_logged_in, app, mock_app_model
+        self, mock_db, mock_validate_token, mock_current_app, mock_user_logged_in, app: Flask, mock_app_model
     ):
         """Test retrieving basic app information."""
-        mock_current_app.login_manager = Mock()
+        _configure_current_app_mock(mock_current_app)
 
         # Mock authentication
         mock_api_token = Mock()
@@ -321,7 +334,7 @@ class TestAppInfoApi:
         mock_validate_token.return_value = mock_api_token
 
         mock_tenant = Mock()
-        mock_tenant.status = "normal"
+        mock_tenant.status = TenantStatus.NORMAL
 
         mock_db.session.get.side_effect = [
             mock_app_model,
@@ -330,7 +343,7 @@ class TestAppInfoApi:
 
         mock_account = Mock()
         mock_account.current_tenant = mock_tenant
-        setup_mock_tenant_account_query(mock_db, mock_tenant, mock_account)
+        setup_mock_tenant_owner_execute_result(mock_db, mock_tenant, mock_account)
 
         # Act
         with app.test_request_context("/info", method="GET", headers={"Authorization": "Bearer test_token"}):
@@ -353,7 +366,7 @@ class TestAppInfoApi:
     ):
         """Test retrieving app info with multiple tags."""
         # Arrange
-        mock_current_app.login_manager = Mock()
+        _configure_current_app_mock(mock_current_app)
 
         mock_app = Mock(spec=App)
         mock_app.id = str(uuid.uuid4())
@@ -378,7 +391,7 @@ class TestAppInfoApi:
         mock_validate_token.return_value = mock_api_token
 
         mock_tenant = Mock()
-        mock_tenant.status = "normal"
+        mock_tenant.status = TenantStatus.NORMAL
 
         mock_db.session.get.side_effect = [
             mock_app,
@@ -387,7 +400,7 @@ class TestAppInfoApi:
 
         mock_account = Mock()
         mock_account.current_tenant = mock_tenant
-        setup_mock_tenant_account_query(mock_db, mock_tenant, mock_account)
+        setup_mock_tenant_owner_execute_result(mock_db, mock_tenant, mock_account)
 
         # Act
         with app.test_request_context("/info", method="GET", headers={"Authorization": "Bearer test_token"}):
@@ -401,10 +414,12 @@ class TestAppInfoApi:
     @patch("controllers.service_api.wraps.current_app")
     @patch("controllers.service_api.wraps.validate_and_get_api_token")
     @patch("controllers.service_api.wraps.db")
-    def test_get_app_info_with_no_tags(self, mock_db, mock_validate_token, mock_current_app, mock_user_logged_in, app):
+    def test_get_app_info_with_no_tags(
+        self, mock_db, mock_validate_token, mock_current_app, mock_user_logged_in, app: Flask
+    ):
         """Test retrieving app info when app has no tags."""
         # Arrange
-        mock_current_app.login_manager = Mock()
+        _configure_current_app_mock(mock_current_app)
 
         mock_app = Mock(spec=App)
         mock_app.id = str(uuid.uuid4())
@@ -424,7 +439,7 @@ class TestAppInfoApi:
         mock_validate_token.return_value = mock_api_token
 
         mock_tenant = Mock()
-        mock_tenant.status = "normal"
+        mock_tenant.status = TenantStatus.NORMAL
 
         mock_db.session.get.side_effect = [
             mock_app,
@@ -433,7 +448,7 @@ class TestAppInfoApi:
 
         mock_account = Mock()
         mock_account.current_tenant = mock_tenant
-        setup_mock_tenant_account_query(mock_db, mock_tenant, mock_account)
+        setup_mock_tenant_owner_execute_result(mock_db, mock_tenant, mock_account)
 
         # Act
         with app.test_request_context("/info", method="GET", headers={"Authorization": "Bearer test_token"}):
@@ -452,11 +467,11 @@ class TestAppInfoApi:
     @patch("controllers.service_api.wraps.validate_and_get_api_token")
     @patch("controllers.service_api.wraps.db")
     def test_get_app_info_returns_correct_mode(
-        self, mock_db, mock_validate_token, mock_current_app, mock_user_logged_in, app, app_mode
+        self, mock_db, mock_validate_token, mock_current_app, mock_user_logged_in, app: Flask, app_mode
     ):
         """Test that all app modes are correctly returned."""
         # Arrange
-        mock_current_app.login_manager = Mock()
+        _configure_current_app_mock(mock_current_app)
 
         mock_app = Mock(spec=App)
         mock_app.id = str(uuid.uuid4())
@@ -476,7 +491,7 @@ class TestAppInfoApi:
         mock_validate_token.return_value = mock_api_token
 
         mock_tenant = Mock()
-        mock_tenant.status = "normal"
+        mock_tenant.status = TenantStatus.NORMAL
 
         mock_db.session.get.side_effect = [
             mock_app,
@@ -485,7 +500,7 @@ class TestAppInfoApi:
 
         mock_account = Mock()
         mock_account.current_tenant = mock_tenant
-        setup_mock_tenant_account_query(mock_db, mock_tenant, mock_account)
+        setup_mock_tenant_owner_execute_result(mock_db, mock_tenant, mock_account)
 
         # Act
         with app.test_request_context("/info", method="GET", headers={"Authorization": "Bearer test_token"}):

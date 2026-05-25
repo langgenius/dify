@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
+from extensions.redis_names import serialize_redis_name
 from libs.broadcast_channel.channel import Producer, Subscriber, Subscription
 from redis import Redis, RedisCluster
 
@@ -19,23 +20,34 @@ class ShardedRedisBroadcastChannel:
     def __init__(
         self,
         redis_client: Redis | RedisCluster,
+        *,
+        join_timeout_ms: int = 2000,
     ):
         self._client = redis_client
+        self._join_timeout_ms = max(int(join_timeout_ms or 0), 0)
 
     def topic(self, topic: str) -> ShardedTopic:
-        return ShardedTopic(self._client, topic)
+        return ShardedTopic(self._client, topic, join_timeout_ms=self._join_timeout_ms)
 
 
 class ShardedTopic:
-    def __init__(self, redis_client: Redis | RedisCluster, topic: str):
+    def __init__(
+        self,
+        redis_client: Redis | RedisCluster,
+        topic: str,
+        *,
+        join_timeout_ms: int = 2000,
+    ):
         self._client = redis_client
         self._topic = topic
+        self._redis_topic = serialize_redis_name(topic)
+        self._join_timeout_ms = max(int(join_timeout_ms or 0), 0)
 
     def as_producer(self) -> Producer:
         return self
 
     def publish(self, payload: bytes) -> None:
-        self._client.spublish(self._topic, payload)  # type: ignore[attr-defined,union-attr]
+        self._client.spublish(self._redis_topic, payload)  # type: ignore[attr-defined,union-attr]
 
     def as_subscriber(self) -> Subscriber:
         return self
@@ -44,7 +56,8 @@ class ShardedTopic:
         return _RedisShardedSubscription(
             client=self._client,
             pubsub=self._client.pubsub(),
-            topic=self._topic,
+            topic=self._redis_topic,
+            join_timeout_ms=self._join_timeout_ms,
         )
 
 

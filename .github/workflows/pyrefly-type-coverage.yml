@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   pyrefly-type-coverage:
-    runs-on: ubuntu-latest
+    runs-on: depot-ubuntu-24.04
     permissions:
       contents: read
       issues: write
@@ -22,7 +22,7 @@ jobs:
           fetch-depth: 0
 
       - name: Setup Python & UV
-        uses: astral-sh/setup-uv@cec208311dfd045dd5311c1add060b2062131d57 # v8.0.0
+        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
         with:
           enable-cache: true
 
@@ -65,6 +65,9 @@ jobs:
           # Save structured data for the fork-PR comment workflow
           cp /tmp/pyrefly_report_pr.json pr_report.json
           cp /tmp/pyrefly_report_base.json base_report.json
+          # Keep fork-PR comments correct while the trusted workflow_run job is
+          # still using the default-branch renderer, which resolves --base from api/.
+          cp /tmp/pyrefly_report_base.json api/base_report.json
 
       - name: Save PR number
         run: |
@@ -77,6 +80,7 @@ jobs:
           path: |
             pr_report.json
             base_report.json
+            api/base_report.json
             pr_number.txt
 
       - name: Comment PR with type coverage

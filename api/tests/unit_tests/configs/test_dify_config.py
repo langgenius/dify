@@ -8,6 +8,47 @@ from yarl import URL
 from configs.app_config import DifyConfig
 
 
+def _set_basic_config_env(monkeypatch: pytest.MonkeyPatch) -> None:
+    os.environ.clear()
+    monkeypatch.setenv("CONSOLE_API_URL", "https://example.com")
+    monkeypatch.setenv("CONSOLE_WEB_URL", "https://example.com")
+    monkeypatch.setenv("DB_TYPE", "postgresql")
+    monkeypatch.setenv("DB_USERNAME", "postgres")
+    monkeypatch.setenv("DB_PASSWORD", "postgres")
+    monkeypatch.setenv("DB_HOST", "localhost")
+    monkeypatch.setenv("DB_PORT", "5432")
+    monkeypatch.setenv("DB_DATABASE", "dify")
+
+
+def test_dify_config_keeps_secret_key_empty_when_missing(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path,
+) -> None:
+    _set_basic_config_env(monkeypatch)
+    monkeypatch.delenv("SECRET_KEY", raising=False)
+    monkeypatch.setenv("OPENDAL_FS_ROOT", str(tmp_path))
+
+    config = DifyConfig(_env_file=None)
+
+    assert config.SECRET_KEY == ""
+    assert not hasattr(config, "OPENDAL_FS_ROOT")
+    assert not (tmp_path / ".dify_secret_key").exists()
+
+
+def test_dify_config_preserves_explicit_secret_key(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path,
+) -> None:
+    _set_basic_config_env(monkeypatch)
+    monkeypatch.setenv("SECRET_KEY", "explicit")
+    monkeypatch.setenv("OPENDAL_FS_ROOT", str(tmp_path))
+
+    config = DifyConfig(_env_file=None)
+
+    assert config.SECRET_KEY == "explicit"
+    assert not (tmp_path / ".dify_secret_key").exists()
+
+
 def test_dify_config(monkeypatch: pytest.MonkeyPatch):
     # clear system environment variables
     os.environ.clear()
@@ -89,7 +130,7 @@ def test_flask_configs(monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setenv("CODE_EXECUTION_ENDPOINT", "http://127.0.0.1:8194/")
 
     # Disable `.env` loading to ensure test stability across environments
-    flask_app.config.from_mapping(DifyConfig(_env_file=None).model_dump())  # pyright: ignore
+    flask_app.config.from_mapping(DifyConfig(_env_file=None).model_dump())
     config = flask_app.config
 
     # configs read from pydantic-settings
@@ -114,8 +155,8 @@ def test_flask_configs(monkeypatch: pytest.MonkeyPatch):
         "pool_recycle": 3600,
         "pool_size": 30,
         "pool_use_lifo": False,
-        "pool_reset_on_return": None,
         "pool_timeout": 30,
+        "pool_reset_on_return": "rollback",
     }
 
     assert config["CONSOLE_WEB_URL"] == "https://example.com"
@@ -234,6 +275,41 @@ def test_pubsub_redis_url_required_when_default_unavailable(monkeypatch: pytest.
 
     with pytest.raises(ValueError, match="PUBSUB_REDIS_URL must be set"):
         _ = DifyConfig().normalized_pubsub_redis_url
+
+
+def test_dify_config_exposes_redis_key_prefix_default(monkeypatch: pytest.MonkeyPatch):
+    os.environ.clear()
+
+    monkeypatch.setenv("CONSOLE_API_URL", "https://example.com")
+    monkeypatch.setenv("CONSOLE_WEB_URL", "https://example.com")
+    monkeypatch.setenv("DB_TYPE", "postgresql")
+    monkeypatch.setenv("DB_USERNAME", "postgres")
+    monkeypatch.setenv("DB_PASSWORD", "postgres")
+    monkeypatch.setenv("DB_HOST", "localhost")
+    monkeypatch.setenv("DB_PORT", "5432")
+    monkeypatch.setenv("DB_DATABASE", "dify")
+
+    config = DifyConfig(_env_file=None)
+
+    assert config.REDIS_KEY_PREFIX == ""
+
+
+def test_dify_config_reads_redis_key_prefix_from_env(monkeypatch: pytest.MonkeyPatch):
+    os.environ.clear()
+
+    monkeypatch.setenv("CONSOLE_API_URL", "https://example.com")
+    monkeypatch.setenv("CONSOLE_WEB_URL", "https://example.com")
+    monkeypatch.setenv("DB_TYPE", "postgresql")
+    monkeypatch.setenv("DB_USERNAME", "postgres")
+    monkeypatch.setenv("DB_PASSWORD", "postgres")
+    monkeypatch.setenv("DB_HOST", "localhost")
+    monkeypatch.setenv("DB_PORT", "5432")
+    monkeypatch.setenv("DB_DATABASE", "dify")
+    monkeypatch.setenv("REDIS_KEY_PREFIX", "enterprise-a")
+
+    config = DifyConfig(_env_file=None)
+
+    assert config.REDIS_KEY_PREFIX == "enterprise-a"
 
 
 @pytest.mark.parametrize(

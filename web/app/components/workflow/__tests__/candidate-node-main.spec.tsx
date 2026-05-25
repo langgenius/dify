@@ -154,8 +154,8 @@ describe('CandidateNodeMain', () => {
 
     const { container } = render(<CandidateNodeMain candidateNode={candidateNode} />)
 
-    expect(screen.getByTestId('candidate-custom-node')).toHaveTextContent('candidate-webhook')
-    expect(container.firstChild).toHaveStyle({
+    expect(screen.getByTestId('candidate-custom-node'))!.toHaveTextContent('candidate-webhook')
+    expect(container.firstChild)!.toHaveStyle({
       left: '30px',
       top: '40px',
       transform: 'scale(1.5)',
@@ -193,7 +193,7 @@ describe('CandidateNodeMain', () => {
 
     render(<CandidateNodeMain candidateNode={candidateNode} />)
 
-    expect(screen.getByTestId('candidate-note-node')).toHaveTextContent('candidate-note')
+    expect(screen.getByTestId('candidate-note-node'))!.toHaveTextContent('candidate-note')
 
     eventHandlers.click?.({ preventDefault: vi.fn() })
 
@@ -225,7 +225,7 @@ describe('CandidateNodeMain', () => {
 
     eventHandlers.click?.({ preventDefault: vi.fn() })
     expect(mockGetIterationStartNode).toHaveBeenCalledWith('candidate-iteration')
-    expect(mockSetNodes.mock.calls[0][0]).toEqual(expect.arrayContaining([
+    expect(mockSetNodes.mock.calls[0]![0]).toEqual(expect.arrayContaining([
       expect.objectContaining({ id: 'candidate-iteration' }),
       expect.objectContaining({ id: 'iteration-start' }),
     ]))
@@ -234,7 +234,7 @@ describe('CandidateNodeMain', () => {
     eventHandlers.click?.({ preventDefault: vi.fn() })
 
     expect(mockGetLoopStartNode).toHaveBeenCalledWith('candidate-loop')
-    expect(mockSetNodes.mock.calls[1][0]).toEqual(expect.arrayContaining([
+    expect(mockSetNodes.mock.calls[1]![0]).toEqual(expect.arrayContaining([
       expect.objectContaining({ id: 'candidate-loop' }),
       expect.objectContaining({ id: 'loop-start' }),
     ]))

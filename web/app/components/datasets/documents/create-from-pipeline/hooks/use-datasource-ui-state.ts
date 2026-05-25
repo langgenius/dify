@@ -13,6 +13,7 @@ type DatasourceUIStateParams = {
   selectedFileIdsLength: number
   onlineDriveFileList: OnlineDriveFile[]
   isVectorSpaceFull: boolean
+  isCheckingVectorSpace?: boolean
   enableBilling: boolean
   currentWorkspacePagesLength: number
   fileUploadConfig: { file_size_limit: number, batch_count_limit: number }
@@ -30,6 +31,7 @@ export const useDatasourceUIState = ({
   selectedFileIdsLength,
   onlineDriveFileList,
   isVectorSpaceFull,
+  isCheckingVectorSpace = false,
   enableBilling,
   currentWorkspacePagesLength,
   fileUploadConfig,
@@ -59,14 +61,14 @@ export const useDatasourceUIState = ({
       return true
 
     const disabledConditions: Record<string, boolean> = {
-      [DatasourceType.localFile]: isShowVectorSpaceFull || localFileListLength === 0 || !allFileLoaded,
-      [DatasourceType.onlineDocument]: isShowVectorSpaceFull || onlineDocumentsLength === 0,
-      [DatasourceType.websiteCrawl]: isShowVectorSpaceFull || websitePagesLength === 0,
-      [DatasourceType.onlineDrive]: isShowVectorSpaceFull || selectedFileIdsLength === 0,
+      [DatasourceType.localFile]: isCheckingVectorSpace || isShowVectorSpaceFull || localFileListLength === 0 || !allFileLoaded,
+      [DatasourceType.onlineDocument]: isCheckingVectorSpace || isShowVectorSpaceFull || onlineDocumentsLength === 0,
+      [DatasourceType.websiteCrawl]: isCheckingVectorSpace || isShowVectorSpaceFull || websitePagesLength === 0,
+      [DatasourceType.onlineDrive]: isCheckingVectorSpace || isShowVectorSpaceFull || selectedFileIdsLength === 0,
     }
 
     return disabledConditions[datasourceType] ?? true
-  }, [datasource, datasourceType, isShowVectorSpaceFull, localFileListLength, allFileLoaded, onlineDocumentsLength, websitePagesLength, selectedFileIdsLength])
+  }, [datasource, datasourceType, isCheckingVectorSpace, isShowVectorSpaceFull, localFileListLength, allFileLoaded, onlineDocumentsLength, websitePagesLength, selectedFileIdsLength])
 
   // Check if select all should be shown
   const showSelect = useMemo(() => {
@@ -122,7 +124,7 @@ export const useDatasourceUIState = ({
 
   return {
     datasourceType,
-    isShowVectorSpaceFull,
+    isShowVectorSpaceFull: isShowVectorSpaceFull!,
     nextBtnDisabled,
     showSelect,
     totalOptions,

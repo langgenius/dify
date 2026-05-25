@@ -1,5 +1,6 @@
 'use client'
 
+import { cn } from '@langgenius/dify-ui/cn'
 import {
   RiPlanetFill,
   RiPlanetLine,
@@ -7,7 +8,6 @@ import {
 import { useTranslation } from 'react-i18next'
 import Link from '@/next/link'
 import { useSelectedLayoutSegment } from '@/next/navigation'
-import { cn } from '@/utils/classnames'
 
 type ExploreNavProps = {
   className?: string
@@ -27,8 +27,8 @@ const ExploreNav = ({
     >
       {
         activated
-          ? <RiPlanetFill className="h-4 w-4" />
-          : <RiPlanetLine className="h-4 w-4" />
+          ? <RiPlanetFill className="size-4" />
+          : <RiPlanetLine className="size-4" />
       }
       <div className="ml-2 max-[1024px]:hidden">
         {t('menus.explore', { ns: 'common' })}

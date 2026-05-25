@@ -1,6 +1,6 @@
 import type { PluginPayload } from './types'
+import { cn } from '@langgenius/dify-ui/cn'
 import { memo } from 'react'
-import { cn } from '@/utils/classnames'
 import Authorize from './authorize'
 import Authorized from './authorized'
 import { usePluginAuth } from './hooks/use-plugin-auth'

@@ -57,7 +57,7 @@ def payload():
 
 
 class TestInstalledAppWorkflowRunApi:
-    def test_not_workflow_app(self, app, non_workflow_installed_app):
+    def test_not_workflow_app(self, app: Flask, non_workflow_installed_app):
         api = InstalledAppWorkflowRunApi()
         method = unwrap(api.post)
 
@@ -71,7 +71,7 @@ class TestInstalledAppWorkflowRunApi:
             with pytest.raises(NotWorkflowAppError):
                 method(non_workflow_installed_app)
 
-    def test_success(self, app, installed_workflow_app, user, payload):
+    def test_success(self, app: Flask, installed_workflow_app, user, payload):
         api = InstalledAppWorkflowRunApi()
         method = unwrap(api.post)
 
@@ -91,7 +91,7 @@ class TestInstalledAppWorkflowRunApi:
             generate_mock.assert_called_once()
             assert result is not None
 
-    def test_rate_limit_error(self, app, installed_workflow_app, user, payload):
+    def test_rate_limit_error(self, app: Flask, installed_workflow_app, user, payload):
         api = InstalledAppWorkflowRunApi()
         method = unwrap(api.post)
 
@@ -109,7 +109,7 @@ class TestInstalledAppWorkflowRunApi:
             with pytest.raises(InvokeRateLimitHttpError):
                 method(installed_workflow_app)
 
-    def test_unexpected_exception(self, app, installed_workflow_app, user, payload):
+    def test_unexpected_exception(self, app: Flask, installed_workflow_app, user, payload):
         api = InstalledAppWorkflowRunApi()
         method = unwrap(api.post)
 

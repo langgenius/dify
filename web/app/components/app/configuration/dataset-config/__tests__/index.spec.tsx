@@ -61,7 +61,7 @@ vi.mock('es-toolkit/compat', () => ({
       return []
 
     // Start with first array and filter down
-    return validArrays[0].filter((item: any) => {
+    return validArrays[0]!.filter((item: any) => {
       if (!item || !item.name)
         return false
 
@@ -317,14 +317,14 @@ describe('DatasetConfig', () => {
     it('should render dataset configuration panel when component mounts', () => {
       renderDatasetConfig()
 
-      expect(screen.getByText('appDebug.feature.dataSet.title')).toBeInTheDocument()
+      expect(screen.getByText('appDebug.feature.dataSet.title'))!.toBeInTheDocument()
     })
 
     it('should display empty state message when no datasets are configured', () => {
       renderDatasetConfig()
 
-      expect(screen.getByText(/no.*data/i)).toBeInTheDocument()
-      expect(screen.getByTestId('params-config')).toBeDisabled()
+      expect(screen.getByText(/no.*data/i))!.toBeInTheDocument()
+      expect(screen.getByTestId('params-config'))!.toBeDisabled()
     })
 
     it('should render dataset cards and enable parameters when datasets exist', () => {
@@ -333,16 +333,16 @@ describe('DatasetConfig', () => {
         dataSets: [dataset],
       })
 
-      expect(screen.getByTestId(`card-item-${dataset.id}`)).toBeInTheDocument()
-      expect(screen.getByText(dataset.name)).toBeInTheDocument()
+      expect(screen.getByTestId(`card-item-${dataset.id}`))!.toBeInTheDocument()
+      expect(screen.getByText(dataset.name))!.toBeInTheDocument()
       expect(screen.getByTestId('params-config')).not.toBeDisabled()
     })
 
     it('should show configuration title and add dataset button in header', () => {
       renderDatasetConfig()
 
-      expect(screen.getByText('appDebug.feature.dataSet.title')).toBeInTheDocument()
-      expect(screen.getByText('common.operation.add')).toBeInTheDocument()
+      expect(screen.getByText('appDebug.feature.dataSet.title'))!.toBeInTheDocument()
+      expect(screen.getByText('common.operation.add'))!.toBeInTheDocument()
     })
 
     it('should hide parameters configuration when in agent mode', () => {
@@ -436,7 +436,7 @@ describe('DatasetConfig', () => {
         dataSets: [dataset],
       })
 
-      expect(screen.getByTestId(`card-item-${dataset.id}`)).toBeInTheDocument()
+      expect(screen.getByTestId(`card-item-${dataset.id}`))!.toBeInTheDocument()
     })
   })
 
@@ -456,9 +456,10 @@ describe('DatasetConfig', () => {
         },
       })
 
-      expect(screen.getByTestId('context-var')).toBeInTheDocument()
+      expect(screen.getByTestId('context-var'))!.toBeInTheDocument()
       // Should find the selected context variable in the options
-      expect(screen.getByText('Select context variable')).toBeInTheDocument()
+      // Should find the selected context variable in the options
+      expect(screen.getByText('Select context variable'))!.toBeInTheDocument()
     })
 
     it('should not show context variable selector in chat mode', () => {
@@ -514,8 +515,8 @@ describe('DatasetConfig', () => {
         dataSets: [dataset],
       })
 
-      expect(screen.getByTestId('metadata-filter')).toBeInTheDocument()
-      expect(screen.getByTestId('metadata-list-count')).toHaveTextContent('2') // both 'category' and 'priority'
+      expect(screen.getByTestId('metadata-filter'))!.toBeInTheDocument()
+      expect(screen.getByTestId('metadata-list-count'))!.toHaveTextContent('2') // both 'category' and 'priority'
     })
 
     it('should handle metadata filter mode change', async () => {
@@ -740,8 +741,8 @@ describe('DatasetConfig', () => {
         dataSets: [dataset],
       })
 
-      expect(screen.getByTestId('metadata-filter')).toBeInTheDocument()
-      expect(screen.getByTestId('metadata-list-count')).toHaveTextContent('0')
+      expect(screen.getByTestId('metadata-filter'))!.toBeInTheDocument()
+      expect(screen.getByTestId('metadata-list-count'))!.toHaveTextContent('0')
     })
 
     it('should handle empty doc_metadata array', () => {
@@ -753,8 +754,8 @@ describe('DatasetConfig', () => {
         dataSets: [dataset],
       })
 
-      expect(screen.getByTestId('metadata-filter')).toBeInTheDocument()
-      expect(screen.getByTestId('metadata-list-count')).toHaveTextContent('0')
+      expect(screen.getByTestId('metadata-filter'))!.toBeInTheDocument()
+      expect(screen.getByTestId('metadata-list-count'))!.toHaveTextContent('0')
     })
 
     it('should handle missing userProfile', () => {
@@ -769,7 +770,7 @@ describe('DatasetConfig', () => {
         dataSets: [dataset],
       })
 
-      expect(screen.getByTestId(`card-item-${dataset.id}`)).toBeInTheDocument()
+      expect(screen.getByTestId(`card-item-${dataset.id}`))!.toBeInTheDocument()
     })
 
     it('should handle missing datasetConfigsRef gracefully', () => {
@@ -816,10 +817,10 @@ describe('DatasetConfig', () => {
         dataSets: datasets,
       })
 
-      expect(screen.getByTestId('card-item-ds1')).toBeInTheDocument()
-      expect(screen.getByTestId('card-item-ds2')).toBeInTheDocument()
-      expect(screen.getByText('Dataset 1')).toBeInTheDocument()
-      expect(screen.getByText('Dataset 2')).toBeInTheDocument()
+      expect(screen.getByTestId('card-item-ds1'))!.toBeInTheDocument()
+      expect(screen.getByTestId('card-item-ds2'))!.toBeInTheDocument()
+      expect(screen.getByText('Dataset 1'))!.toBeInTheDocument()
+      expect(screen.getByText('Dataset 2'))!.toBeInTheDocument()
     })
 
     it('should integrate with params config component', () => {
@@ -833,8 +834,8 @@ describe('DatasetConfig', () => {
       })
 
       const paramsConfig = screen.getByTestId('params-config')
-      expect(paramsConfig).toBeInTheDocument()
-      expect(paramsConfig).toHaveTextContent('Params (2)')
+      expect(paramsConfig)!.toBeInTheDocument()
+      expect(paramsConfig)!.toHaveTextContent('Params (2)')
       expect(paramsConfig).not.toBeDisabled()
     })
 
@@ -860,9 +861,10 @@ describe('DatasetConfig', () => {
       })
 
       const metadataFilter = screen.getByTestId('metadata-filter')
-      expect(metadataFilter).toBeInTheDocument()
+      expect(metadataFilter)!.toBeInTheDocument()
       // Should show intersection (only 'category')
-      expect(screen.getByTestId('metadata-list-count')).toHaveTextContent('1')
+      // Should show intersection (only 'category')
+      expect(screen.getByTestId('metadata-list-count'))!.toHaveTextContent('1')
     })
   })
 
@@ -884,7 +886,7 @@ describe('DatasetConfig', () => {
       })
 
       const metadataFilter = screen.getByTestId('metadata-filter')
-      expect(metadataFilter).toBeInTheDocument()
+      expect(metadataFilter)!.toBeInTheDocument()
 
       fireEvent.click(within(metadataFilter).getByText('Change Metadata Model'))
 
@@ -915,7 +917,7 @@ describe('DatasetConfig', () => {
       })
 
       const metadataFilter = screen.getByTestId('metadata-filter')
-      expect(metadataFilter).toBeInTheDocument()
+      expect(metadataFilter)!.toBeInTheDocument()
 
       fireEvent.click(within(metadataFilter).getByText('Change Metadata Params'))
 
@@ -941,7 +943,8 @@ describe('DatasetConfig', () => {
       })
 
       // The editable property should be false when no permission
-      expect(screen.getByTestId(`card-item-${dataset.id}`)).toBeInTheDocument()
+      // The editable property should be false when no permission
+      expect(screen.getByTestId(`card-item-${dataset.id}`))!.toBeInTheDocument()
     })
 
     it('should show readonly state for non-editable datasets', () => {
@@ -956,7 +959,7 @@ describe('DatasetConfig', () => {
         dataSets: [dataset],
       })
 
-      expect(screen.getByTestId(`card-item-${dataset.id}`)).toBeInTheDocument()
+      expect(screen.getByTestId(`card-item-${dataset.id}`))!.toBeInTheDocument()
     })
 
     it('should allow editing when user has partial member permission', () => {
@@ -972,7 +975,7 @@ describe('DatasetConfig', () => {
         dataSets: [dataset],
       })
 
-      expect(screen.getByTestId(`card-item-${dataset.id}`)).toBeInTheDocument()
+      expect(screen.getByTestId(`card-item-${dataset.id}`))!.toBeInTheDocument()
     })
   })
 
@@ -989,9 +992,10 @@ describe('DatasetConfig', () => {
       })
 
       // Verify order is maintained
-      expect(screen.getByText('Dataset 1')).toBeInTheDocument()
-      expect(screen.getByText('Dataset 2')).toBeInTheDocument()
-      expect(screen.getByText('Dataset 3')).toBeInTheDocument()
+      // Verify order is maintained
+      expect(screen.getByText('Dataset 1'))!.toBeInTheDocument()
+      expect(screen.getByText('Dataset 2'))!.toBeInTheDocument()
+      expect(screen.getByText('Dataset 3'))!.toBeInTheDocument()
     })
 
     it('should handle multiple dataset operations correctly', async () => {
@@ -1007,7 +1011,7 @@ describe('DatasetConfig', () => {
 
       // Remove first dataset
       const removeButton1 = screen.getAllByText('Remove')[0]
-      await user.click(removeButton1)
+      await user.click(removeButton1!)
 
       expect(mockConfigContext.setDataSets).toHaveBeenCalledWith([datasets[1]])
     })
@@ -1050,7 +1054,7 @@ describe('DatasetConfig', () => {
         dataSets: datasets,
       })
 
-      expect(screen.getByTestId('params-config')).toHaveTextContent('Params (2)')
+      expect(screen.getByTestId('params-config'))!.toHaveTextContent('Params (2)')
     })
 
     it('should handle external knowledge base integration', () => {
@@ -1068,8 +1072,8 @@ describe('DatasetConfig', () => {
         dataSets: [externalDataset],
       })
 
-      expect(screen.getByTestId(`card-item-${externalDataset.id}`)).toBeInTheDocument()
-      expect(screen.getByText(externalDataset.name)).toBeInTheDocument()
+      expect(screen.getByTestId(`card-item-${externalDataset.id}`))!.toBeInTheDocument()
+      expect(screen.getByText(externalDataset.name))!.toBeInTheDocument()
     })
   })
 
@@ -1090,7 +1094,7 @@ describe('DatasetConfig', () => {
         dataSets: manyDatasets,
       })
 
-      expect(screen.getByTestId('params-config')).toHaveTextContent('Params (50)')
+      expect(screen.getByTestId('params-config'))!.toHaveTextContent('Params (50)')
     })
 
     it('should handle metadata intersection calculation efficiently', () => {
@@ -1118,7 +1122,8 @@ describe('DatasetConfig', () => {
       })
 
       // Should calculate intersection correctly
-      expect(screen.getByTestId('metadata-filter')).toBeInTheDocument()
+      // Should calculate intersection correctly
+      expect(screen.getByTestId('metadata-filter'))!.toBeInTheDocument()
     })
   })
 })

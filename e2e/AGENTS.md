@@ -31,7 +31,7 @@ pnpm -C e2e check
 
 `pnpm install` is resolved through the repository workspace and uses the shared root lockfile plus `pnpm-workspace.yaml`.
 
-Use `pnpm check` as the default local verification step after editing E2E TypeScript, Cucumber support code, or feature glue. It runs formatting, linting, and type checks for this package.
+Use `pnpm -C e2e check` as the default local verification step after editing E2E TypeScript, Cucumber support code, or feature glue. It runs formatting, linting, and type checks for this package.
 
 Common commands:
 
@@ -68,8 +68,8 @@ flowchart TD
   C --> D["Cucumber loads config, steps, and support modules"]
   D --> E["BeforeAll bootstraps shared auth state via /install"]
   E --> F{"Which command is running?"}
-  F -->|`pnpm e2e`| G["Run config default tags: not @fresh and not @skip"]
-  F -->|`pnpm e2e:full*`| H["Override tags to not @skip"]
+  F -->|`pnpm -C e2e e2e`| G["Run config default tags: not @fresh and not @skip"]
+  F -->|`pnpm -C e2e e2e:full*`| H["Override tags to not @skip"]
   G --> I["Per-scenario BrowserContext from shared browser"]
   H --> I
   I --> J["Failure artifacts written to cucumber-report/artifacts"]
@@ -99,7 +99,7 @@ Behavior depends on instance state:
 - uninitialized instance: completes install and stores authenticated state
 - initialized instance: signs in and reuses authenticated state
 
-Because of that, the `@fresh` install scenario only runs in the `pnpm e2e:full*` flows. The default `pnpm e2e*` flows exclude `@fresh` via Cucumber config tags so they can be re-run against an already initialized instance.
+Because of that, the `@fresh` install scenario only runs in the `pnpm -C e2e e2e:full*` flows. The default `pnpm -C e2e e2e*` flows exclude `@fresh` via Cucumber config tags so they can be re-run against an already initialized instance.
 
 Reset all persisted E2E state:
 
@@ -126,7 +126,7 @@ pnpm -C e2e e2e:middleware:up
 Stop the full middleware stack:
 
 ```bash
-pnpm e2e:middleware:down
+pnpm -C e2e e2e:middleware:down
 ```
 
 The middleware stack includes:
@@ -141,15 +141,15 @@ The middleware stack includes:
 Fresh install verification:
 
 ```bash
-pnpm e2e:full
+pnpm -C e2e e2e:full
 ```
 
 Run the Cucumber suite against an already running middleware stack:
 
 ```bash
-pnpm e2e:middleware:up
-pnpm e2e
-pnpm e2e:middleware:down
+pnpm -C e2e e2e:middleware:up
+pnpm -C e2e e2e
+pnpm -C e2e e2e:middleware:down
 ```
 
 Artifacts and diagnostics:
@@ -171,10 +171,10 @@ open cucumber-report/report.html
 ### Workflow
 
 1. Create a `.feature` file under `features/<capability>/`
-2. Add step definitions under `features/step-definitions/<capability>/`
-3. Reuse existing steps from `common/` and other definition files before writing new ones
-4. Run with `pnpm -C e2e e2e -- --tags @your-tag` to verify
-5. Run `pnpm -C e2e check` before committing
+1. Add step definitions under `features/step-definitions/<capability>/`
+1. Reuse existing steps from `common/` and other definition files before writing new ones
+1. Run with `pnpm -C e2e e2e -- --tags @your-tag` to verify
+1. Run `pnpm -C e2e check` before committing
 
 ### Feature file conventions
 
@@ -202,9 +202,9 @@ Keep scenarios short and declarative. Each step should describe **what** the use
 ### Step definition conventions
 
 ```typescript
-import { When, Then } from '@cucumber/cucumber'
-import { expect } from '@playwright/test'
 import type { DifyWorld } from '../../support/world'
+import { Then, When } from '@cucumber/cucumber'
+import { expect } from '@playwright/test'
 
 When('I open the datasets page', async function (this: DifyWorld) {
   await this.getPage().goto('/datasets')

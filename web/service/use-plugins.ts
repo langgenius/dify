@@ -162,7 +162,7 @@ export const useInstalledPluginList = (disable?: boolean, pageSize = 100) => {
   })
 
   const plugins = data?.pages.flatMap(page => page.plugins) ?? []
-  const total = data?.pages[0].total ?? 0
+  const total = data?.pages[0]!.total ?? 0
 
   return {
     data: disable
@@ -336,7 +336,7 @@ export const useInstallOrUpdate = ({
           }
           if (item.type === 'marketplace') {
             const data = item as GitHubItemAndMarketPlaceDependency
-            uniqueIdentifier = data.value.marketplace_plugin_unique_identifier! || plugin[i]?.plugin_id
+            uniqueIdentifier = data.value.marketplace_plugin_unique_identifier! || (plugin[i]?.latest_package_identifier ?? '') || (plugin[i]?.plugin_id ?? '')
             if (uniqueIdentifier === installedPayload?.uniqueIdentifier) {
               return {
                 status: TaskStatus.success,
@@ -569,15 +569,6 @@ export const usePluginManifestInfo = (pluginUID: string) => {
   })
 }
 
-export const useDownloadPlugin = (info: { organization: string, pluginName: string, version: string }, needDownload: boolean) => {
-  return useQuery({
-    queryKey: [NAME_SPACE, 'downloadPlugin', info],
-    queryFn: () => getMarketplace<Blob>(`/plugins/${info.organization}/${info.pluginName}/${info.version}/download`),
-    enabled: needDownload,
-    retry: 0,
-  })
-}
-
 export const useMutationCheckDependencies = () => {
   return useMutation({
     mutationFn: (appId: string) => {
@@ -615,7 +606,7 @@ export const usePluginInfo = (providerName?: string) => {
       const org = parts[0]
       const name = parts[1]
       try {
-        const response = await fetchPluginInfoFromMarketPlace({ org, name })
+        const response = await fetchPluginInfoFromMarketPlace({ org: org!, name: name! })
         return response.data.plugin.category === PluginCategoryEnum.model ? response.data.plugin : null
       }
       catch {
