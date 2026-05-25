@@ -162,9 +162,9 @@ class DatasetVectorSettingResponse(ResponseModel):
 
 
 class DatasetWeightedScoreResponse(ResponseModel):
-    weight_type: str | None
-    keyword_setting: DatasetKeywordSettingResponse | None
-    vector_setting: DatasetVectorSettingResponse | None
+    weight_type: str | None = None
+    keyword_setting: DatasetKeywordSettingResponse | None = None
+    vector_setting: DatasetVectorSettingResponse | None = None
 
 
 class DatasetRetrievalModelResponse(ResponseModel):
