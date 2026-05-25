@@ -4,13 +4,11 @@ import { useQueryClient } from '@tanstack/react-query'
 import { useKeyPress } from 'ahooks'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useShallow } from 'zustand/react/shallow'
 import { useChecklistBeforePublish } from '@/app/components/workflow/hooks/use-checklist'
 import { useWorkflowStore } from '@/app/components/workflow/store'
 import { getKeyboardKeyCodeBySystem } from '@/app/components/workflow/utils'
 import { consoleQuery } from '@/service/client'
 import { usePublishSnippetWorkflowMutation } from '@/service/use-snippet-workflows'
-import { useSnippetDetailStore } from '../../store'
 
 type UseSnippetPublishOptions = {
   snippetId: string
@@ -24,13 +22,6 @@ export const useSnippetPublish = ({
   const queryClient = useQueryClient()
   const publishSnippetMutation = usePublishSnippetWorkflowMutation(snippetId)
   const { handleCheckBeforePublish } = useChecklistBeforePublish()
-  const {
-    isPublishMenuOpen,
-    setPublishMenuOpen,
-  } = useSnippetDetailStore(useShallow(state => ({
-    isPublishMenuOpen: state.isPublishMenuOpen,
-    setPublishMenuOpen: state.setPublishMenuOpen,
-  })))
 
   const handlePublish = useCallback(async () => {
     try {
@@ -50,13 +41,12 @@ export const useSnippetPublish = ({
         old => old ? { ...old, is_published: true } : old,
       )
       workflowStore.getState().setPublishedAt(publishedWorkflow.created_at)
-      setPublishMenuOpen(false)
       toast.success(t('publishSuccess'))
     }
     catch (error) {
       toast.error(error instanceof Error ? error.message : t('publishFailed'))
     }
-  }, [handleCheckBeforePublish, publishSnippetMutation, queryClient, setPublishMenuOpen, snippetId, t, workflowStore])
+  }, [handleCheckBeforePublish, publishSnippetMutation, queryClient, snippetId, t, workflowStore])
 
   useKeyPress(`${getKeyboardKeyCodeBySystem('ctrl')}.shift.p`, (event) => {
     if (publishSnippetMutation.isPending)
@@ -68,8 +58,6 @@ export const useSnippetPublish = ({
 
   return {
     handlePublish,
-    isPublishMenuOpen,
     isPublishing: publishSnippetMutation.isPending,
-    setPublishMenuOpen,
   }
 }
