@@ -108,8 +108,11 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
             )
         except WorkflowAgentBindingError as error:
             yield self._failure_event(
-                inputs=inputs, process_data=process_data, metadata=metadata,
-                error=str(error), error_type=error.error_code,
+                inputs=inputs,
+                process_data=process_data,
+                metadata=metadata,
+                error=str(error),
+                error_type=error.error_code,
             )
             return
 
@@ -147,14 +150,20 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
                 )
             except WorkflowAgentRuntimeRequestBuildError as error:
                 yield self._failure_event(
-                    inputs=inputs, process_data=process_data, metadata=metadata,
-                    error=str(error), error_type=error.error_code,
+                    inputs=inputs,
+                    process_data=process_data,
+                    metadata=metadata,
+                    error=str(error),
+                    error_type=error.error_code,
                 )
                 return
             except Exception as error:
                 yield self._failure_event(
-                    inputs=inputs, process_data=process_data, metadata=metadata,
-                    error=str(error), error_type="agent_workflow_node_runtime_error",
+                    inputs=inputs,
+                    process_data=process_data,
+                    metadata=metadata,
+                    error=str(error),
+                    error_type="agent_workflow_node_runtime_error",
                 )
                 return
 
@@ -169,8 +178,11 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
                 create_response = self._agent_backend_client.create_run(runtime_request.request)
             except AgentBackendError as error:
                 yield self._failure_event(
-                    inputs=inputs, process_data=process_data, metadata=metadata,
-                    error=str(error), error_type=self._agent_backend_error_type(error),
+                    inputs=inputs,
+                    process_data=process_data,
+                    metadata=metadata,
+                    error=str(error),
+                    error_type=self._agent_backend_error_type(error),
                 )
                 return
 
@@ -189,7 +201,9 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
             if terminal_event is None:
                 yield StreamCompletedEvent(
                     node_run_result=self._output_adapter.build_stream_exhausted_result(
-                        inputs=inputs, process_data=process_data, metadata=metadata,
+                        inputs=inputs,
+                        process_data=process_data,
+                        metadata=metadata,
                     )
                 )
                 return
@@ -200,7 +214,9 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
                 yield StreamCompletedEvent(
                     node_run_result=self._output_adapter.build_failure_result(
                         event=terminal_event,
-                        inputs=inputs, process_data=process_data, metadata=metadata,
+                        inputs=inputs,
+                        process_data=process_data,
+                        metadata=metadata,
                     )
                 )
                 return
@@ -217,7 +233,9 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
                 yield StreamCompletedEvent(
                     node_run_result=self._output_adapter.build_success_result(
                         event=terminal_event,
-                        inputs=inputs, process_data=process_data, metadata=metadata,
+                        inputs=inputs,
+                        process_data=process_data,
+                        metadata=metadata,
                     )
                 )
                 return
@@ -245,7 +263,9 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
                 yield StreamCompletedEvent(
                     node_run_result=self._output_adapter.build_success_result(
                         event=patched_event,
-                        inputs=inputs, process_data=process_data, metadata=metadata,
+                        inputs=inputs,
+                        process_data=process_data,
+                        metadata=metadata,
                     )
                 )
                 return
@@ -256,8 +276,11 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
                 else "output_type_check_failed"
             )
             yield self._failure_event(
-                inputs=inputs, process_data=process_data, metadata=metadata,
-                error=outcome.primary_reason, error_type=error_type,
+                inputs=inputs,
+                process_data=process_data,
+                metadata=metadata,
+                error=outcome.primary_reason,
+                error_type=error_type,
             )
             return
 
@@ -296,13 +319,19 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
                     return internal_event, None
         except AgentBackendError as error:
             return None, self._failure_event(
-                inputs={}, process_data={}, metadata=metadata,
-                error=str(error), error_type=self._agent_backend_error_type(error),
+                inputs={},
+                process_data={},
+                metadata=metadata,
+                error=str(error),
+                error_type=self._agent_backend_error_type(error),
             )
         except Exception as error:
             return None, self._failure_event(
-                inputs={}, process_data={}, metadata=metadata,
-                error=str(error), error_type="agent_backend_stream_error",
+                inputs={},
+                process_data={},
+                metadata=metadata,
+                error=str(error),
+                error_type="agent_backend_stream_error",
             )
 
         return None, None

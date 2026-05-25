@@ -280,8 +280,7 @@ def test_serialize_workflow_state_passes_user_declared_outputs_through_effective
         workflow_id="workflow-1",
         node_id="node-1",
         node_job_config=(
-            '{"workflow_prompt":"work",'
-            '"declared_outputs":[{"name":"summary","type":"string","required":true}]}'
+            '{"workflow_prompt":"work","declared_outputs":[{"name":"summary","type":"string","required":true}]}'
         ),
     )
     agent = Agent(id="agent-1", name="Analyst", description="", scope=AgentScope.ROSTER, status=AgentStatus.ACTIVE)
@@ -621,9 +620,7 @@ def test_composer_validator_rejects_stage_4_declared_output_violations():
     """
     # Output name violates the JSON-schema-friendly identifier pattern.
     with pytest.raises(InvalidComposerConfigError):
-        ComposerConfigValidator.validate_node_job_dict(
-            {"declared_outputs": [{"name": "1bad", "type": "string"}]}
-        )
+        ComposerConfigValidator.validate_node_job_dict({"declared_outputs": [{"name": "1bad", "type": "string"}]})
 
     # Output check is enabled on a non-file output.
     with pytest.raises(InvalidComposerConfigError):
@@ -663,9 +660,5 @@ def test_composer_validator_rejects_stage_4_declared_output_violations():
     # Nested array_item is rejected outright.
     with pytest.raises(InvalidComposerConfigError):
         ComposerConfigValidator.validate_node_job_dict(
-            {
-                "declared_outputs": [
-                    {"name": "matrix", "type": "array", "array_item": {"type": "array"}}
-                ]
-            }
+            {"declared_outputs": [{"name": "matrix", "type": "array", "array_item": {"type": "array"}}]}
         )

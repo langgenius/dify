@@ -281,9 +281,7 @@ class WorkflowAgentRuntimeRequestBuilder:
 
     @staticmethod
     def _schema_for_declared_output(output: DeclaredOutputConfig) -> dict[str, Any]:
-        schema = WorkflowAgentRuntimeRequestBuilder._schema_for_type(
-            output.type, array_item=output.array_item
-        )
+        schema = WorkflowAgentRuntimeRequestBuilder._schema_for_type(output.type, array_item=output.array_item)
         if output.description:
             schema["description"] = output.description
         return schema
@@ -306,7 +304,7 @@ class WorkflowAgentRuntimeRequestBuilder:
             case DeclaredOutputType.ARRAY:
                 # Stage 4 §4.2: items shape mirrors the declared array_item.
                 # Validator guarantees array_item is set when type is array.
-                item_type = (array_item.type if array_item else DeclaredOutputType.OBJECT)
+                item_type = array_item.type if array_item else DeclaredOutputType.OBJECT
                 schema: dict[str, Any] = {
                     "type": "array",
                     "items": WorkflowAgentRuntimeRequestBuilder._schema_for_type(item_type),

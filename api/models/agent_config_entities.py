@@ -209,8 +209,7 @@ class DeclaredOutputFailureStrategy(BaseModel):
     def _require_default_value_when_default_strategy(self) -> "DeclaredOutputFailureStrategy":
         if self.on_failure == OutputErrorStrategy.DEFAULT_VALUE and self.default_value is None:
             raise ValueError(
-                "default_value must be provided when on_failure=default_value; "
-                "None is reserved for 'not set'."
+                "default_value must be provided when on_failure=default_value; None is reserved for 'not set'."
             )
         return self
 
@@ -248,8 +247,7 @@ class DeclaredOutputConfig(BaseModel):
     def _validate_shape(self) -> "DeclaredOutputConfig":
         if not _OUTPUT_NAME_PATTERN.fullmatch(self.name):
             raise ValueError(
-                f"output name {self.name!r} must match {_OUTPUT_NAME_PATTERN.pattern} "
-                "(JSON-schema-friendly identifier)"
+                f"output name {self.name!r} must match {_OUTPUT_NAME_PATTERN.pattern} (JSON-schema-friendly identifier)"
             )
 
         if self.type == DeclaredOutputType.FILE:
@@ -273,10 +271,7 @@ class DeclaredOutputConfig(BaseModel):
         # If the strategy is DEFAULT_VALUE, validate the default's shape against the
         # declared type so we fail at save-time rather than at runtime.
         strategy = self.failure_strategy
-        if (
-            strategy.on_failure == OutputErrorStrategy.DEFAULT_VALUE
-            and strategy.default_value is not None
-        ):
+        if strategy.on_failure == OutputErrorStrategy.DEFAULT_VALUE and strategy.default_value is not None:
             self._assert_default_value_matches_type(strategy.default_value)
 
         return self
@@ -299,8 +294,7 @@ class DeclaredOutputConfig(BaseModel):
             ok = False
         if not ok:
             raise ValueError(
-                f"default_value shape does not match output type {type_.value!r}: "
-                f"got {type(value).__name__}"
+                f"default_value shape does not match output type {type_.value!r}: got {type(value).__name__}"
             )
 
 

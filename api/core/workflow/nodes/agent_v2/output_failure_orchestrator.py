@@ -105,11 +105,7 @@ class OutputFailureOrchestrator:
         # all currently-failed outputs so retry continues until every output's
         # budget is spent (or it goes ready).
         retry_budget = max(
-            (
-                f.declared.failure_strategy.retry.max_retries
-                if f.declared.failure_strategy.retry.enabled
-                else 0
-            )
+            (f.declared.failure_strategy.retry.max_retries if f.declared.failure_strategy.retry.enabled else 0)
             for f in failures
         )
         if current_attempt < retry_budget:

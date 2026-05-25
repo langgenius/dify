@@ -40,9 +40,7 @@ class UploadFileTenantValidator:
             return False
         try:
             with session_factory.create_session() as session:
-                owner_tenant_id = session.scalar(
-                    select(UploadFile.tenant_id).where(UploadFile.id == file_id)
-                )
+                owner_tenant_id = session.scalar(select(UploadFile.tenant_id).where(UploadFile.id == file_id))
         except (DataError, SQLAlchemyError):
             return False
         return owner_tenant_id == tenant_id

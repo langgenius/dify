@@ -773,9 +773,7 @@ class AgentComposerService:
             # declared_outputs, surface the PRD defaults so the front-end can
             # render them as read-only chips. When user-defined outputs exist
             # this is the same list (so callers don't need to special-case).
-            "effective_declared_outputs": cls._serialize_effective_outputs(
-                cls._declared_outputs_from_binding(binding)
-            ),
+            "effective_declared_outputs": cls._serialize_effective_outputs(cls._declared_outputs_from_binding(binding)),
             "save_options": save_options,
             "impact_summary": cls.calculate_impact(
                 tenant_id=binding.tenant_id, current_snapshot_id=binding.current_snapshot_id

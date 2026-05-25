@@ -225,6 +225,5 @@ def test_idempotency_key_appends_retry_attempt_for_retries():
 def test_idempotency_key_handles_missing_workflow_run_id():
     assert retry_idempotency_key(workflow_run_id=None, node_execution_id="node-exec-9", attempt=0) == "node-exec-9"
     assert (
-        retry_idempotency_key(workflow_run_id=None, node_execution_id="node-exec-9", attempt=1)
-        == "node-exec-9:retry-1"
+        retry_idempotency_key(workflow_run_id=None, node_execution_id="node-exec-9", attempt=1) == "node-exec-9:retry-1"
     )

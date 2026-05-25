@@ -149,11 +149,7 @@ class WorkflowAgentNodeValidator:
             output_names.add(output.name)
             # Stage 4 §4.3: declared output carries a single optional check, gated by
             # ``check.enabled``. Only enabled checks need their benchmark file resolved.
-            if (
-                output.check is not None
-                and output.check.enabled
-                and output.check.benchmark_file_ref is not None
-            ):
+            if output.check is not None and output.check.enabled and output.check.benchmark_file_ref is not None:
                 cls._validate_file_ref(
                     session=session,
                     binding=binding,
