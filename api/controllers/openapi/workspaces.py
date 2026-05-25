@@ -15,7 +15,7 @@ from __future__ import annotations
 from itertools import starmap
 from urllib import parse
 
-from flask import g, jsonify, make_response, request
+from flask import jsonify, make_response, request
 from flask_restx import Resource
 from pydantic import BaseModel, ValidationError
 from sqlalchemy import select
@@ -190,7 +190,7 @@ class WorkspaceSwitchApi(Resource):
     @accept_subjects(SubjectType.ACCOUNT)
     @require_workspace_role()
     def post(self, workspace_id: str):
-        ctx = g.auth_ctx
+        ctx = get_auth_ctx()
         account = _load_account(ctx.account_id)
 
         try:
@@ -257,7 +257,7 @@ class WorkspaceMembersApi(Resource):
     @require_workspace_role(TenantAccountRole.OWNER, TenantAccountRole.ADMIN)
     def post(self, workspace_id: str):
         payload = _validate_body(MemberInvitePayload)
-        ctx = g.auth_ctx
+        ctx = get_auth_ctx()
         inviter = _load_account(ctx.account_id)
         tenant = _load_tenant(workspace_id)
 
@@ -309,7 +309,7 @@ class WorkspaceMemberApi(Resource):
     @accept_subjects(SubjectType.ACCOUNT)
     @require_workspace_role(TenantAccountRole.OWNER, TenantAccountRole.ADMIN)
     def delete(self, workspace_id: str, member_id: str):
-        ctx = g.auth_ctx
+        ctx = get_auth_ctx()
         operator = _load_account(ctx.account_id)
         tenant = _load_tenant(workspace_id)
         member = db.session.get(Account, member_id)
@@ -343,7 +343,7 @@ class WorkspaceMemberRoleApi(Resource):
     @require_workspace_role(TenantAccountRole.OWNER, TenantAccountRole.ADMIN)
     def put(self, workspace_id: str, member_id: str):
         payload = _validate_body(MemberRoleUpdatePayload)
-        ctx = g.auth_ctx
+        ctx = get_auth_ctx()
         operator = _load_account(ctx.account_id)
         tenant = _load_tenant(workspace_id)
         member = db.session.get(Account, member_id)

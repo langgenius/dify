@@ -29,11 +29,11 @@ from collections.abc import Callable
 from functools import wraps
 from typing import TypeVar
 
-from flask import g
 from sqlalchemy import select
 from werkzeug.exceptions import Forbidden, NotFound
 
 from extensions.ext_database import db
+from libs.oauth_bearer import try_get_auth_ctx
 from models import TenantAccountJoin
 from models.account import TenantAccountRole
 
@@ -52,8 +52,8 @@ def require_workspace_role(*allowed_roles: TenantAccountRole) -> Callable[[F], F
     def deco(fn: F) -> F:
         @wraps(fn)
         def wrapper(*args: object, **kwargs: object) -> object:
-            ctx = getattr(g, "auth_ctx", None)
-            if ctx is None or getattr(ctx, "account_id", None) is None:
+            ctx = try_get_auth_ctx()
+            if ctx is None or ctx.account_id is None:
                 raise RuntimeError(
                     "require_workspace_role called without account-bearer context; "
                     "stack validate_bearer + accept_subjects(SubjectType.ACCOUNT) above it"
