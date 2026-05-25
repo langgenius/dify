@@ -57,6 +57,10 @@ type NativeTextareaProps = Omit<
 
 type TextareaControlProps = ControlledTextareaProps | UncontrolledTextareaProps
 type TextareaVariantProps = VariantProps<typeof textareaVariants>
+type FieldControlTextareaProps = Omit<
+  BaseFieldNS.Control.Props,
+  'className' | 'defaultValue' | 'onValueChange' | 'render' | 'value'
+>
 
 export type TextareaProps
   = NativeTextareaProps
@@ -69,20 +73,27 @@ export type TextareaProps
 
 export function Textarea({
   className,
+  cols,
   defaultValue,
   onValueChange,
   ref,
+  rows,
   size = 'medium',
   value,
-  ...props
+  wrap,
+  ...controlProps
 }: TextareaProps) {
+  // Base UI types Field.Control as an input even when render replaces it with a textarea.
+  const fieldControlProps = controlProps as FieldControlTextareaProps
+
   return (
     <BaseField.Control
+      {...fieldControlProps}
       className={cn(textareaVariants({ size }), className)}
       defaultValue={defaultValue}
       onValueChange={onValueChange}
       ref={ref}
-      render={<textarea {...props} />}
+      render={<textarea cols={cols} rows={rows} wrap={wrap} />}
       value={value}
     />
   )

@@ -1,3 +1,4 @@
+import type { FocusEvent } from 'react'
 import { render } from 'vitest-browser-react'
 import {
   FieldDescription,
@@ -126,5 +127,61 @@ describe('Textarea', () => {
     const textarea = screen.getByRole('textbox', { name: 'Release notes' })
     await expect.element(textarea).toHaveAttribute('maxLength', '20')
     expect(screen.container.textContent).not.toContain('5/20')
+  })
+
+  it('should route field props through Base UI Field.Control and textarea-only props to textarea', async () => {
+    const onFormSubmit = vi.fn()
+    const onBlur = vi.fn((event: FocusEvent<HTMLTextAreaElement>) => {
+      expect(event.currentTarget.tagName).toBe('TEXTAREA')
+    })
+    const screen = await render(
+      <Form aria-label="profile form" onFormSubmit={onFormSubmit}>
+        <FieldRoot name="profileSummary">
+          <FieldLabel>Profile summary</FieldLabel>
+          <Textarea
+            id="profile-summary"
+            name="ignoredControlName"
+            defaultValue="Long enough summary"
+            rows={6}
+            cols={40}
+            wrap="soft"
+            maxLength={80}
+            onBlur={onBlur}
+          />
+        </FieldRoot>
+        <FieldRoot disabled>
+          <FieldLabel>Disabled note</FieldLabel>
+          <Textarea name="disabledNote" defaultValue="Disabled value" />
+        </FieldRoot>
+        <button type="submit">Save</button>
+      </Form>,
+    )
+
+    const profileSummary = screen.getByRole('textbox', { name: 'Profile summary' })
+    expect(
+      asHTMLElement(screen.getByText('Profile summary').element()).getAttribute('for'),
+    ).toBe('profile-summary')
+    await expect.element(profileSummary).toHaveAttribute('id', 'profile-summary')
+    await expect.element(profileSummary).toHaveAttribute('name', 'profileSummary')
+    await expect.element(profileSummary).toHaveAttribute('rows', '6')
+    await expect.element(profileSummary).toHaveAttribute('cols', '40')
+    await expect.element(profileSummary).toHaveAttribute('wrap', 'soft')
+    await expect.element(profileSummary).toHaveAttribute('maxLength', '80')
+
+    await expect.element(screen.getByRole('textbox', { name: 'Disabled note' })).toBeDisabled()
+
+    asHTMLElement(profileSummary.element()).focus()
+    const saveButton = asHTMLElement(screen.getByRole('button', { name: 'Save' }).element())
+    saveButton.focus()
+    expect(onBlur).toHaveBeenCalledTimes(1)
+
+    saveButton.click()
+
+    expect(onFormSubmit).toHaveBeenCalledTimes(1)
+    expect(onFormSubmit.mock.calls[0]?.[0]).toMatchObject({
+      profileSummary: 'Long enough summary',
+    })
+    expect(onFormSubmit.mock.calls[0]?.[0]).not.toHaveProperty('ignoredControlName')
+    expect(onFormSubmit.mock.calls[0]?.[0]).not.toHaveProperty('disabledNote')
   })
 })
