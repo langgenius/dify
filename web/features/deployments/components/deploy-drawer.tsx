@@ -26,7 +26,7 @@ export function DeployDrawer() {
       open={open}
       onOpenChange={next => !next && closeDeployDrawer()}
     >
-      <DialogContent className="w-140 max-w-[90vw]">
+      <DialogContent className="max-h-[calc(100dvh-2rem)] w-140 max-w-[90vw] overflow-hidden">
         <DialogCloseButton />
         {!drawerAppInstanceId
           ? <div className="p-4 text-text-tertiary">{t('deployDrawer.notFound')}</div>

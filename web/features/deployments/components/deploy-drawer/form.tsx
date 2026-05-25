@@ -147,7 +147,14 @@ function BindingOptionsPanel({
   return (
     <div className="overflow-hidden rounded-xl border border-divider-subtle bg-background-default-subtle">
       <div className="flex min-w-0 flex-col gap-0.5 px-3 py-2.5">
-        <div className="system-xs-medium-uppercase text-text-tertiary">{t('deployDrawer.runtimeCredentials')}</div>
+        <div className="flex min-w-0 items-center gap-2">
+          <div className="system-xs-medium-uppercase text-text-tertiary">{t('deployDrawer.runtimeCredentials')}</div>
+          {slots.length > 0 && (
+            <span className="shrink-0 rounded-md bg-background-default px-1.5 py-0.5 system-2xs-medium text-text-quaternary">
+              {slots.length}
+            </span>
+          )}
+        </div>
         <span className="system-xs-regular text-text-quaternary">{t('deployDrawer.bindingSelectionHint')}</span>
       </div>
       {slots.length === 0
@@ -156,51 +163,64 @@ function BindingOptionsPanel({
               {t('deployDrawer.noBindingRequired')}
             </div>
           )
-        : slots.map((slot) => {
-            const slotKey = credentialSlotKey(slot)
-            const candidates = bindingCandidateOptions(slot)
-            const selectedValue = selections[slotKey] ?? ''
-            const missing = hasMissingRequiredBinding(slot, selectedValue)
-            const slotName = slot.providerId || slotKey
-            return (
-              <div key={slotKey} className="flex flex-col gap-2 border-t border-divider-subtle px-3 py-3">
-                <div className="grid min-w-0 gap-2 sm:grid-cols-[minmax(0,1fr)_minmax(220px,0.9fr)] sm:items-start">
-                  <div className="flex min-w-0 flex-col gap-1">
-                    <div className="flex min-w-0 items-center gap-2">
-                      <span className="truncate system-sm-medium text-text-secondary" title={slotName}>
-                        {slotName}
-                      </span>
-                      <span className="shrink-0 rounded-md bg-background-default px-1.5 py-0.5 system-2xs-medium-uppercase text-text-tertiary">
-                        {t('deployDrawer.requiredBinding')}
-                      </span>
-                    </div>
-                    <span className="font-mono system-xs-regular break-all text-text-quaternary" title={slotKey}>
-                      {slotKey}
-                    </span>
-                  </div>
-                  {candidates.length === 0
-                    ? (
-                        <div className="rounded-lg border border-divider-subtle bg-background-default px-2 py-1.5 system-sm-regular text-text-quaternary">
-                          {t('deployDrawer.noCredentialCandidates')}
+        : (
+            <div className="max-h-[min(360px,34dvh)] overflow-y-auto border-t border-divider-subtle">
+              {slots.map((slot) => {
+                const slotKey = credentialSlotKey(slot)
+                const candidates = bindingCandidateOptions(slot)
+                const selectedValue = selections[slotKey] ?? ''
+                const missing = hasMissingRequiredBinding(slot, selectedValue)
+                const slotName = slot.providerId || slotKey
+                const categoryLabel = slot.category === 'PLUGIN_CATEGORY_MODEL'
+                  ? t('categorySingle.model', { ns: 'plugin' })
+                  : slot.category === 'PLUGIN_CATEGORY_TOOL'
+                    ? t('categorySingle.tool', { ns: 'plugin' })
+                    : undefined
+                return (
+                  <div key={slotKey} className="flex flex-col gap-2 border-b border-divider-subtle px-3 py-3 last:border-b-0">
+                    <div className="flex min-w-0 flex-col gap-2.5">
+                      <div className="flex min-w-0 flex-col gap-1.5">
+                        <div className="flex min-w-0 items-center gap-1.5">
+                          <span className="truncate font-mono system-xs-semibold text-text-primary" title={slotName}>
+                            {slotName}
+                          </span>
                         </div>
-                      )
-                    : (
-                        <DeploymentSelect
-                          value={selectedValue}
-                          onChange={value => onChange(slotKey, value)}
-                          options={candidates}
-                          placeholder={t('deployDrawer.selectCredential')}
-                        />
-                      )}
-                </div>
-                {missing && (
-                  <div className="system-xs-regular text-text-destructive">
-                    {t('deployDrawer.missingRequiredBinding')}
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          {categoryLabel && (
+                            <span className="shrink-0 rounded-md bg-util-colors-blue-light-blue-light-50 px-1.5 py-0.5 system-2xs-medium-uppercase text-util-colors-blue-blue-600">
+                              {categoryLabel}
+                            </span>
+                          )}
+                          <span className="shrink-0 rounded-md bg-background-default px-1.5 py-0.5 system-2xs-medium-uppercase text-text-tertiary">
+                            {t('deployDrawer.requiredBinding')}
+                          </span>
+                        </div>
+                      </div>
+                      {candidates.length === 0
+                        ? (
+                            <div className="rounded-lg border border-divider-subtle bg-background-default px-2 py-1.5 system-sm-regular text-text-quaternary">
+                              {t('deployDrawer.noCredentialCandidates')}
+                            </div>
+                          )
+                        : (
+                            <DeploymentSelect
+                              value={selectedValue}
+                              onChange={value => onChange(slotKey, value)}
+                              options={candidates}
+                              placeholder={t('deployDrawer.selectCredential')}
+                            />
+                          )}
+                    </div>
+                    {missing && (
+                      <div className="system-xs-regular text-text-destructive">
+                        {t('deployDrawer.missingRequiredBinding')}
+                      </div>
+                    )}
                   </div>
-                )}
-              </div>
-            )
-          })}
+                )
+              })}
+            </div>
+          )}
     </div>
   )
 }
