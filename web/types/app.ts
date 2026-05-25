@@ -10,29 +10,54 @@ import type {
 } from '@/models/datasets'
 import type { AnnotationReplyConfig, ChatPromptConfig, CompletionPromptConfig, DatasetConfigs, PromptMode } from '@/models/debug'
 
-// Canonic Studio-level types re-exported from the studio-frontend package
-export {
-  Theme,
-  ModelModeType,
-  RETRIEVE_TYPE,
-  RETRIEVE_METHOD,
+// Canonic Studio-level types — imported from studio-frontend, then re-exported
+import type {
+  AppIconType,
   AppModeEnum,
-  AppModes,
+  AppSSO,
+  CompletionParams,
+  ImageFile,
+  Model,
+  PromptVariable,
+  UserInputFormItem,
+  VisionFile,
+  VisionSettings,
+} from '@dify/studio-frontend/types/app'
+import {
   AgentStrategy,
+  ALLOW_FILE_EXTENSIONS,
+  AppModes,
+  ModelModeType,
   Resolution,
+  RETRIEVE_METHOD,
+  RETRIEVE_TYPE,
+  Theme,
   TransferMethod,
   TtsAutoPlay,
+} from '@dify/studio-frontend/types/app'
+
+export {
+  AgentStrategy,
   ALLOW_FILE_EXTENSIONS,
+  AppModes,
+  ModelModeType,
+  Resolution,
+  RETRIEVE_METHOD,
+  RETRIEVE_TYPE,
+  Theme,
+  TransferMethod,
+  TtsAutoPlay,
+  type AppIconType,
+  type AppModeEnum,
+  type AppSSO,
+  type CompletionParams,
+  type ImageFile,
+  type Model,
   type PromptVariable,
   type UserInputFormItem,
-  type CompletionParams,
-  type Model,
-  type AppIconType,
-  type AppSSO,
-  type VisionSettings,
-  type ImageFile,
   type VisionFile,
-} from '@dify/studio-frontend/types/app'
+  type VisionSettings,
+}
 
 export type AgentTool = {
   provider_id: string
