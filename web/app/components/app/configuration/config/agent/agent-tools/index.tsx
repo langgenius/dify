@@ -7,6 +7,7 @@ import type { AgentTool } from '@/types/app'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
+import { StatusDot } from '@langgenius/dify-ui/status-dot'
 import { Switch } from '@langgenius/dify-ui/switch'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import {
@@ -24,7 +25,6 @@ import AppIcon from '@/app/components/base/app-icon'
 import { DefaultToolIcon } from '@/app/components/base/icons/src/public/other'
 import { AlertTriangle } from '@/app/components/base/icons/src/vender/solid/alertsAndFeedback'
 import { Infotip } from '@/app/components/base/infotip'
-import Indicator from '@/app/components/header/indicator'
 import { CollectionType } from '@/app/components/tools/types'
 import { addDefaultValue, toolParametersToFormSchemas } from '@/app/components/tools/utils/to-form-schema'
 import ToolPicker from '@/app/components/workflow/block-selector/tool-picker'
@@ -340,7 +340,7 @@ const AgentTools: FC = () => {
                       }}
                     >
                       {t('notAuthorized', { ns: 'tools' })}
-                      <Indicator className="ml-2" color="orange" />
+                      <StatusDot className="ml-2" status="warning" />
                     </Button>
                   )}
                 </div>

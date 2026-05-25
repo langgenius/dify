@@ -9,6 +9,7 @@ import type {
   ModelProvider,
 } from '../declarations'
 import { cn } from '@langgenius/dify-ui/cn'
+import { StatusDot } from '@langgenius/dify-ui/status-dot'
 import { Switch } from '@langgenius/dify-ui/switch'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useCallback, useMemo } from 'react'
@@ -21,7 +22,6 @@ import s from '@/app/components/custom/style.module.css'
 import { AddCredentialInLoadBalancing } from '@/app/components/header/account-setting/model-provider-page/model-auth'
 import { IS_CE_EDITION } from '@/config'
 import { useProviderContextSelector } from '@/context/provider-context'
-import Indicator from '../../../indicator'
 import { ConfigurationMethodEnum } from '../declarations'
 import CooldownTimer from './cooldown-timer'
 
@@ -194,7 +194,7 @@ const ModelLoadBalancingConfigs = ({
                             <Tooltip>
                               <TooltipTrigger
                                 render={(
-                                  <Indicator color={credential?.not_allowed_to_use ? 'gray' : 'green'} />
+                                  <StatusDot status={credential?.not_allowed_to_use ? 'disabled' : 'success'} />
                                 )}
                               />
                               <TooltipContent>

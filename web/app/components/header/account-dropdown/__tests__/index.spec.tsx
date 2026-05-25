@@ -353,8 +353,7 @@ describe('AccountDropdown', () => {
       fireEvent.click(screen.getByRole('button'))
 
       // Assert
-      const indicator = screen.getByTestId('status-indicator')
-      expect(indicator).toHaveClass('bg-components-badge-status-light-warning-bg')
+      expect(document.querySelector('.bg-components-badge-status-light-warning-bg')).toBeInTheDocument()
     })
 
     it('should show green indicator when version is latest', () => {
@@ -374,8 +373,7 @@ describe('AccountDropdown', () => {
       fireEvent.click(screen.getByRole('button'))
 
       // Assert
-      const indicator = screen.getByTestId('status-indicator')
-      expect(indicator).toHaveClass('bg-components-badge-status-light-success-bg')
+      expect(document.querySelector('.bg-components-badge-status-light-success-bg')).toBeInTheDocument()
     })
   })
 })
