@@ -500,3 +500,14 @@ def with_current_tenant_id[T, **P, R](
         return view(self, current_tenant_id, *args, **kwargs)
 
     return decorated
+
+
+def with_current_user[T, **P, R](
+    view: Callable[Concatenate[T, Account, P], R],
+) -> Callable[Concatenate[T, P], R]:
+    @wraps(view)
+    def decorated(self: T, *args: P.args, **kwargs: P.kwargs) -> R:
+        current_user, _ = current_account_with_tenant()
+        return view(self, current_user, *args, **kwargs)
+
+    return decorated
