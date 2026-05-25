@@ -10,7 +10,7 @@ import threading
 from abc import ABC, abstractmethod
 from collections.abc import Callable, Generator
 from contextlib import AbstractContextManager, contextmanager
-from typing import Any, Protocol, final, runtime_checkable
+from typing import Any, Protocol, final, override, runtime_checkable
 
 from pydantic import BaseModel
 
@@ -133,10 +133,12 @@ class NullAppContext(AppContext):
         self._config = config or {}
         self._extensions: dict[str, Any] = {}
 
+    @override
     def get_config(self, key: str, default: Any = None) -> Any:
         """Get configuration value by key."""
         return self._config.get(key, default)
 
+    @override
     def get_extension(self, name: str) -> Any:
         """Get extension by name."""
         return self._extensions.get(name)
@@ -146,6 +148,7 @@ class NullAppContext(AppContext):
         self._extensions[name] = extension
 
     @contextmanager
+    @override
     def enter(self) -> Generator[None, None, None]:
         """Enter null context (no-op)."""
         yield

@@ -247,9 +247,8 @@ const Operations = ({ embeddingAvailable, datasetId, detail, selectedIds, onSele
                 isListScene ? s.actionIconWrapperList : s.actionIconWrapperDetail,
                 'inline-flex items-center justify-center',
                 !isListScene && 'h-8! w-8! rounded-lg backdrop-blur-[5px]',
-                isOperationsMenuOpen
-                  ? 'shadow-none! hover:bg-state-base-hover!'
-                  : isListScene && 'bg-transparent!',
+                isListScene && 'bg-transparent!',
+                'data-popup-open:shadow-none! data-popup-open:hover:bg-state-base-hover!',
               )}
               onClick={(e) => {
                 e.stopPropagation()

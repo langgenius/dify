@@ -97,7 +97,7 @@ class AppImportConfirmApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
-    def post(self, import_id):
+    def post(self, import_id: str):
         # Check user role first
         current_user, _ = current_account_with_tenant()
 

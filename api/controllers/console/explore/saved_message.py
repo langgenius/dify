@@ -1,3 +1,5 @@
+from uuid import UUID
+
 from flask import request
 from pydantic import TypeAdapter
 from werkzeug.exceptions import NotFound
@@ -65,15 +67,15 @@ class SavedMessageListApi(InstalledAppResource):
 )
 class SavedMessageApi(InstalledAppResource):
     @console_ns.response(204, "Saved message deleted successfully")
-    def delete(self, installed_app, message_id):
+    def delete(self, installed_app, message_id: UUID):
         current_user, _ = current_account_with_tenant()
         app_model = installed_app.app
 
-        message_id = str(message_id)
+        message_id_str = str(message_id)
 
         if app_model.mode != "completion":
             raise NotCompletionAppError()
 
-        SavedMessageService.delete(app_model, current_user, message_id)
+        SavedMessageService.delete(app_model, current_user, message_id_str)
 
-        return ResultResponse(result="success").model_dump(mode="json"), 204
+        return "", 204

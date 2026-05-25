@@ -37,6 +37,10 @@ from core.workflow.nodes.agent.plugin_strategy_adapter import (
     PluginAgentStrategyResolver,
 )
 from core.workflow.nodes.agent.runtime_support import AgentRuntimeSupport
+from core.workflow.nodes.agent_v2 import DifyAgentNode
+from core.workflow.nodes.agent_v2.binding_resolver import WorkflowAgentBindingResolver
+from core.workflow.nodes.agent_v2.output_adapter import WorkflowAgentOutputAdapter
+from core.workflow.nodes.agent_v2.runtime_request_builder import WorkflowAgentRuntimeRequestBuilder
 from core.workflow.system_variables import SystemVariableKey, get_system_text, system_variable_selector
 from core.workflow.template_rendering import CodeExecutorJinja2TemplateRenderer
 from graphon.entities.base_node_data import BaseNodeData
@@ -438,12 +442,7 @@ class DifyNodeFactory(NodeFactory):
                 "tool_file_manager": self._bound_tool_file_manager_factory(),
                 "runtime": self._tool_runtime,
             },
-            BuiltinNodeTypes.AGENT: lambda: {
-                "strategy_resolver": self._agent_strategy_resolver,
-                "presentation_provider": self._agent_strategy_presentation_provider,
-                "runtime_support": self._agent_runtime_support,
-                "message_transformer": self._agent_message_transformer,
-            },
+            BuiltinNodeTypes.AGENT: lambda: self._build_agent_node_init_kwargs(node_class=node_class),
         }
         node_init_kwargs = node_init_kwargs_factories.get(node_type, lambda: {})()
         constructor_node_data = resolved_node_data.model_dump(mode="python", by_alias=True)
@@ -468,6 +467,32 @@ class DifyNodeFactory(NodeFactory):
     @staticmethod
     def _resolve_node_class(*, node_type: NodeType, node_version: str) -> type[Node]:
         return resolve_workflow_node_class(node_type=node_type, node_version=node_version)
+
+    def _build_agent_node_init_kwargs(self, *, node_class: type[Node]) -> dict[str, object]:
+        if issubclass(node_class, DifyAgentNode):
+            from clients.agent_backend import AgentBackendRunEventAdapter, AgentBackendRunRequestBuilder
+            from clients.agent_backend.factory import create_agent_backend_run_client
+
+            return {
+                "binding_resolver": WorkflowAgentBindingResolver(),
+                "runtime_request_builder": WorkflowAgentRuntimeRequestBuilder(
+                    credentials_provider=self._llm_credentials_provider,
+                    request_builder=AgentBackendRunRequestBuilder(),
+                ),
+                "agent_backend_client": create_agent_backend_run_client(
+                    base_url=dify_config.AGENT_BACKEND_BASE_URL,
+                    use_fake=dify_config.AGENT_BACKEND_USE_FAKE,
+                    fake_scenario=dify_config.AGENT_BACKEND_FAKE_SCENARIO,
+                ),
+                "event_adapter": AgentBackendRunEventAdapter(),
+                "output_adapter": WorkflowAgentOutputAdapter(),
+            }
+        return {
+            "strategy_resolver": self._agent_strategy_resolver,
+            "presentation_provider": self._agent_strategy_presentation_provider,
+            "runtime_support": self._agent_runtime_support,
+            "message_transformer": self._agent_message_transformer,
+        }
 
     def _build_llm_compatible_node_init_kwargs(
         self,

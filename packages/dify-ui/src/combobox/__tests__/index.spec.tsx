@@ -273,6 +273,7 @@ describe('Combobox wrappers', () => {
     it('should render item text indicator status and empty wrappers with design classes', async () => {
       const screen = await renderSelectLikeCombobox({ open: true })
 
+      expect(screen.getByRole('option', { name: 'Workflow' }).element().className).not.toContain('mx-1')
       await expect.element(screen.getByTestId('list').getByText('Workflow')).toHaveClass('system-sm-medium')
       await expect.element(screen.getByTestId('status')).toHaveClass('text-text-tertiary')
       await expect.element(screen.getByTestId('empty')).toHaveClass('system-sm-regular')

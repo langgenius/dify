@@ -55,7 +55,7 @@ const ButtonStyleDropdown: FC<Props> = ({
     >
       <PopoverTrigger
         render={(
-          <div className={cn('flex items-center justify-center rounded-lg bg-components-button-tertiary-bg p-1', !readonly && 'cursor-pointer hover:bg-components-button-tertiary-bg-hover', open && 'bg-components-button-tertiary-bg-hover')}>
+          <div className={cn('flex items-center justify-center rounded-lg bg-components-button-tertiary-bg p-1 data-popup-open:bg-components-button-tertiary-bg-hover', !readonly && 'cursor-pointer hover:bg-components-button-tertiary-bg-hover')}>
             <Button size="small" className="pointer-events-none px-1" variant={currentStyle}>
               <RiFontSize className="size-4" />
             </Button>
