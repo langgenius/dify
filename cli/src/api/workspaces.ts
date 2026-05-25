@@ -13,9 +13,10 @@ export class WorkspacesClient {
   }
 
   /**
-   * Server-side workspace switch. Mirrors the console's POST
-   * `/workspaces/switch`: the server updates the caller's `current`
-   * tenant_account_join row. Callers MUST refresh their local
+   * Server-side workspace switch via OpenAPI POST
+   * `/workspaces/{id}/switch` — the bearer-authed equivalent of the
+   * console's POST `/workspaces/switch`. The server updates the caller's
+   * `current` tenant_account_join row. Callers MUST refresh their local
    * `hosts.yml` only after this resolves — never fall back to a local
    * write if the request fails, or `hosts.yml` will drift from the
    * server's state.

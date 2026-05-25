@@ -53,7 +53,7 @@ function resolveLimit(raw: string | undefined, env: (k: string) => string | unde
 
 /**
  * Fetches every session across all pages. Used by revoke paths so that a
- * session sitting on page 2+ is still findable / revokable. Uses the max
+ * session sitting on page 2+ is still findable / revocable. Uses the max
  * page size (LIMIT_MAX) to minimize round-trips.
  */
 export async function listAllSessions(client: AccountSessionsClient): Promise<readonly SessionRow[]> {
