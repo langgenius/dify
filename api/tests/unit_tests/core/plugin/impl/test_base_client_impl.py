@@ -67,6 +67,19 @@ class TestBasePluginClientImpl:
         assert result == ["hello", "world"]
         assert stream_mock.call_args.kwargs["data"] == {"k": "v"}
 
+    @pytest.mark.parametrize(
+        "path",
+        [
+            "plugin/tenant/%252e%252e%252ftarget",
+            "plugin/tenant/%2e%2e%252ftarget",
+        ],
+    )
+    def test_prepare_request_rejects_encoded_traversal_with_encoded_separator(self, path: str):
+        client = BasePluginClient()
+
+        with pytest.raises(ValueError, match="traversal sequence detected"):
+            client._prepare_request(path, None, None, None, None)
+
     def test_request_with_plugin_daemon_response_handles_request_exception(self, mocker: MockerFixture):
         client = BasePluginClient()
         mocker.patch.object(client, "_request", side_effect=RuntimeError("boom"))
