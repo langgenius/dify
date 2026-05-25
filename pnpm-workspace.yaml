@@ -190,7 +190,6 @@ catalog:
   qrcode.react: 4.2.0
   qs: 6.15.2
   react: 19.2.6
-  react-18-input-autosize: 3.0.0
   react-dom: 19.2.6
   react-easy-crop: 5.5.7
   react-hotkeys-hook: 5.3.2

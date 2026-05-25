@@ -444,9 +444,6 @@ catalogs:
     react:
       specifier: 19.2.6
       version: 19.2.6
-    react-18-input-autosize:
-      specifier: 3.0.0
-      version: 3.0.0
     react-dom:
       specifier: 19.2.6
       version: 19.2.6
@@ -1100,9 +1097,6 @@ importers:
       react:
         specifier: 'catalog:'
         version: 19.2.6
-      react-18-input-autosize:
-        specifier: 'catalog:'
-        version: 3.0.0(react@19.2.6)
       react-dom:
         specifier: 'catalog:'
         version: 19.2.6(react@19.2.6)
@@ -7660,11 +7654,6 @@ packages:
     peerDependencies:
       react: ^16.13.1 || ^17.0.0 || ^18.0.0 || ^19.0.0
       react-dom: ^16.13.1 || ^17.0.0 || ^18.0.0 || ^19.0.0
-
-  react-18-input-autosize@3.0.0:
-    resolution: {integrity: sha512-7tsUc9PJWg6Vsp8qYuzlKKBf7hbCoTBdNfjYZSprEPbxf3meuhjklg9QPBe9rIyoR3uDAzmG7NpoJ1+kP5ns+w==}
-    peerDependencies:
-      react: ^16.3.0 || ^17.0.0 || ^18.0.0
 
   react-docgen-typescript@2.4.0:
     resolution: {integrity: sha512-ZtAp5XTO5HRzQctjPU0ybY0RRCQO19X/8fxn3w7y2VVTUbGHDKULPTL4ky3vB05euSgG5NpALhEhDPvQ56wvXg==}
@@ -15667,11 +15656,6 @@ snapshots:
       react: 19.2.6
       react-dom: 19.2.6(react@19.2.6)
 
-  react-18-input-autosize@3.0.0(react@19.2.6):
-    dependencies:
-      prop-types: 15.8.1
-      react: 19.2.6
-
   react-docgen-typescript@2.4.0(typescript@6.0.3):
     dependencies:
       typescript: 6.0.3
@@ -17201,7 +17185,6 @@ time:
   postcss@8.5.15: '2026-05-19T09:51:29.843Z'
   qrcode.react@4.2.0: '2024-12-11T17:22:40.569Z'
   qs@6.15.2: '2026-05-16T23:19:19.539Z'
-  react-18-input-autosize@3.0.0: '2022-08-05T17:22:57.225Z'
   react-dom@19.2.6: '2026-05-06T16:16:56.080Z'
   react-easy-crop@5.5.7: '2026-03-24T09:41:01.114Z'
   react-hotkeys-hook@5.3.2: '2026-05-05T13:01:00.987Z'
