@@ -1,5 +1,8 @@
 from studio_api.blueprint import studio_api, studio_bp, studio_ns
 
+from .agent import composer as agent_composer
+from .agent import roster as agent_roster
+
 # Import all studio controllers so their route decorators are evaluated
 from .app import (
     advanced_prompt_template,
@@ -26,9 +29,6 @@ from .app import (
     workflow_statistic,
     workflow_trigger,
 )
-
-from .agent import composer as agent_composer, roster as agent_roster
-
 from .socketio import workflow as socketio_workflow
 
 studio_api.add_namespace(studio_ns)

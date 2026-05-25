@@ -2,10 +2,10 @@ from flask import request
 from flask_restx import Resource, fields
 from pydantic import BaseModel, Field
 
-from studio_api.blueprint import studio_ns
 from controllers.console.wraps import account_initialization_required, setup_required
 from libs.login import login_required
 from services.advanced_prompt_template_service import AdvancedPromptTemplateArgs, AdvancedPromptTemplateService
+from studio_api.blueprint import studio_ns
 
 
 class AdvancedPromptTemplateQuery(BaseModel):

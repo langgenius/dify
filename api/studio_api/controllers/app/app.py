@@ -12,12 +12,10 @@ from sqlalchemy.orm import Session
 from werkzeug.datastructures import MultiDict
 from werkzeug.exceptions import BadRequest
 
-from controllers.common.fields import RedirectUrlResponse, SimpleResultResponse
+from controllers.common.fields import LoadBalancingPayload, RedirectUrlResponse, SimpleResultResponse
 from controllers.common.helpers import FileInfo
 from controllers.common.schema import register_enum_models, register_response_schema_models, register_schema_models
-from studio_api.blueprint import studio_ns
 from controllers.console.app.wraps import get_app_model
-from controllers.common.fields import LoadBalancingPayload
 from controllers.console.wraps import (
     account_initialization_required,
     cloud_edition_billing_resource_check,
@@ -55,6 +53,7 @@ from services.entities.knowledge_entities.knowledge_entities import (
     WeightVectorSetting,
 )
 from services.feature_service import FeatureService
+from studio_api.blueprint import studio_ns
 
 ALLOW_CREATE_APP_MODES = ["chat", "agent-chat", "advanced-chat", "workflow", "completion"]
 

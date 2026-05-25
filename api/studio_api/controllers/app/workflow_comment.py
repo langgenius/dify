@@ -5,7 +5,6 @@ from flask_restx import Resource
 from pydantic import BaseModel, Field, TypeAdapter, computed_field, field_validator
 
 from controllers.common.schema import register_response_schema_models, register_schema_models
-from studio_api.blueprint import studio_ns
 from controllers.console.app.wraps import get_app_model
 from controllers.console.wraps import account_initialization_required, edit_permission_required, setup_required
 from fields.base import ResponseModel
@@ -15,6 +14,7 @@ from libs.login import current_user, login_required
 from models import App
 from services.account_service import TenantService
 from services.workflow_comment_service import WorkflowCommentService
+from studio_api.blueprint import studio_ns
 
 logger = logging.getLogger(__name__)
 

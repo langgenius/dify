@@ -7,7 +7,6 @@ from pydantic import BaseModel, Field, TypeAdapter, field_validator
 
 from controllers.common.errors import NoFileUploadedError, TooManyFilesError
 from controllers.common.schema import register_schema_models
-from studio_api.blueprint import studio_ns
 from controllers.console.wraps import (
     account_initialization_required,
     annotation_import_concurrency_limit,
@@ -33,6 +32,7 @@ from services.annotation_service import (
     UpdateAnnotationSettingArgs,
     UpsertAnnotationArgs,
 )
+from studio_api.blueprint import studio_ns
 
 
 class AnnotationReplyPayload(BaseModel):

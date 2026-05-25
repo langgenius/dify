@@ -5,14 +5,14 @@ from flask_restx import Resource, fields
 from pydantic import BaseModel, Field
 from werkzeug.exceptions import BadRequest
 
-from controllers.common.schema import register_schema_models
-from studio_api.blueprint import studio_ns
 from controllers.common.errors import TracingConfigCheckError, TracingConfigIsExist, TracingConfigNotExist
+from controllers.common.schema import register_schema_models
 from controllers.console.app.wraps import get_app_model
 from controllers.console.wraps import account_initialization_required, setup_required
 from libs.login import login_required
 from models import App
 from services.ops_service import OpsService
+from studio_api.blueprint import studio_ns
 
 
 class TraceProviderQuery(BaseModel):

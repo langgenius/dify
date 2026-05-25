@@ -7,9 +7,6 @@ from pydantic import BaseModel, Field, field_validator
 from werkzeug.exceptions import InternalServerError, NotFound
 
 import services
-from controllers.common.fields import SimpleResultResponse
-from controllers.common.schema import register_response_schema_models, register_schema_models
-from studio_api.blueprint import studio_ns
 from controllers.common.errors import (
     AppUnavailableError,
     CompletionRequestError,
@@ -18,6 +15,8 @@ from controllers.common.errors import (
     ProviderNotInitializeError,
     ProviderQuotaExceededError,
 )
+from controllers.common.fields import SimpleResultResponse
+from controllers.common.schema import register_response_schema_models, register_schema_models
 from controllers.console.app.wraps import get_app_model
 from controllers.console.wraps import account_initialization_required, edit_permission_required, setup_required
 from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpError
@@ -37,6 +36,7 @@ from models.model import AppMode
 from services.app_generate_service import AppGenerateService
 from services.app_task_service import AppTaskService
 from services.errors.llm import InvokeRateLimitError
+from studio_api.blueprint import studio_ns
 
 logger = logging.getLogger(__name__)
 

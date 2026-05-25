@@ -3,12 +3,12 @@ from flask_restx import Resource
 from pydantic import BaseModel, Field
 
 from controllers.common.schema import register_schema_models
-from studio_api.blueprint import studio_ns
 from controllers.console.wraps import account_initialization_required, edit_permission_required, setup_required
 from extensions.ext_database import db
 from libs.login import current_account_with_tenant, login_required
 from services.agent.roster_service import AgentRosterService
 from services.entities.agent_entities import RosterAgentCreatePayload, RosterAgentUpdatePayload, RosterListQuery
+from studio_api.blueprint import studio_ns
 
 
 class AgentInviteOptionsQuery(RosterListQuery):

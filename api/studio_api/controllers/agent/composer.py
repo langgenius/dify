@@ -1,7 +1,6 @@
 from flask_restx import Resource
 
 from controllers.common.schema import register_schema_models
-from studio_api.blueprint import studio_ns
 from controllers.console.app.wraps import get_app_model
 from controllers.console.wraps import account_initialization_required, edit_permission_required, setup_required
 from libs.login import current_account_with_tenant, login_required
@@ -9,6 +8,7 @@ from models.model import AppMode
 from services.agent.composer_service import AgentComposerService
 from services.agent.composer_validator import ComposerConfigValidator
 from services.entities.agent_entities import ComposerSavePayload
+from studio_api.blueprint import studio_ns
 
 register_schema_models(console_ns, ComposerSavePayload)
 

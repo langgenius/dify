@@ -10,7 +10,6 @@ from sqlalchemy import select
 from sqlalchemy.orm import sessionmaker
 
 from controllers.common.schema import register_schema_models
-from studio_api.blueprint import studio_ns
 from controllers.console.app.wraps import get_app_model
 from controllers.console.wraps import account_initialization_required, setup_required
 from extensions.ext_database import db
@@ -20,6 +19,7 @@ from libs.helper import to_timestamp
 from libs.login import login_required
 from models import ConversationVariable
 from models.model import AppMode
+from studio_api.blueprint import studio_ns
 
 
 class ConversationVariablesQuery(BaseModel):

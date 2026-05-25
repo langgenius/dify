@@ -3,7 +3,6 @@ from importlib import import_module
 from flask import Blueprint
 from flask_restx import Namespace
 
-from configs import dify_config
 from libs.external_api import ExternalApi
 
 bp = Blueprint("console", __name__, url_prefix="/console/api")
@@ -27,15 +26,42 @@ _SHARED_RESOURCE_MODULES = (
     "controllers.console.remote_files",
 )
 
-# App controllers are served by studio_api when ENABLE_STUDIO_API is True.
-# Only register them on the console blueprint for console-only deployments.
-_STUDIO_RESOURCE_MODULES = ("controllers.console.app.app_import",) if not dify_config.ENABLE_STUDIO_API else ()
-
-for module_name in (*_SHARED_RESOURCE_MODULES, *_STUDIO_RESOURCE_MODULES):
+for module_name in _SHARED_RESOURCE_MODULES:
     import_module(module_name)
 
 # Ensure resource modules are imported so route decorators are evaluated.
 # Import other controllers
+from controllers.common.app_namespace import app_ns
+
+# Import app controllers from the canonical studio_api path.
+# Routes are registered on the shared app_ns namespace, which is added to both
+# the console blueprint (/console/api/) and the studio blueprint (/studio/api/).
+from studio_api.controllers.app import (
+    advanced_prompt_template,
+    agent,
+    annotation,
+    app,
+    app_import,
+    audio,
+    completion,
+    conversation,
+    conversation_variables,
+    generator,
+    mcp_server,
+    message,
+    model_config,
+    ops_trace,
+    site,
+    statistic,
+    workflow,
+    workflow_app_log,
+    workflow_comment,
+    workflow_draft_variable,
+    workflow_run,
+    workflow_statistic,
+    workflow_trigger,
+)
+
 from . import (
     apikey,
     extension,
@@ -50,61 +76,6 @@ from . import (
 )
 from .agent import composer as agent_composer
 from .agent import roster as agent_roster
-
-# Import app controllers — only when Studio API is NOT enabled (console-only deployment).
-# When Studio API is enabled, the canonical controllers live in studio_api/controllers/app/.
-if dify_config.ENABLE_STUDIO_API:
-    # Re-export from studio_api so these names are available for __all__ and
-    # downstream consumers, but routes are registered on studio_ns, not console_ns.
-    from studio_api.controllers.app import (
-        advanced_prompt_template,
-        agent,
-        annotation,
-        app,
-        audio,
-        completion,
-        conversation,
-        conversation_variables,
-        generator,
-        mcp_server,
-        message,
-        model_config,
-        ops_trace,
-        site,
-        statistic,
-        workflow,
-        workflow_app_log,
-        workflow_comment,
-        workflow_draft_variable,
-        workflow_run,
-        workflow_statistic,
-        workflow_trigger,
-    )
-else:
-    from .app import (
-        advanced_prompt_template,
-        agent,
-        annotation,
-        app,
-        audio,
-        completion,
-        conversation,
-        conversation_variables,
-        generator,
-        mcp_server,
-        message,
-        model_config,
-        ops_trace,
-        site,
-        statistic,
-        workflow,
-        workflow_app_log,
-        workflow_comment,
-        workflow_draft_variable,
-        workflow_run,
-        workflow_statistic,
-        workflow_trigger,
-    )
 
 # Import auth controllers
 from .auth import (
@@ -172,6 +143,7 @@ from .workspace import (
 )
 
 api.add_namespace(console_ns)
+api.add_namespace(app_ns)
 
 __all__ = [
     "account",
@@ -185,6 +157,7 @@ __all__ = [
     "api",
     "apikey",
     "app",
+    "app_import",
     "audio",
     "banner",
     "billing",

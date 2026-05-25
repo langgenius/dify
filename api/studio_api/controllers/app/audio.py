@@ -6,8 +6,6 @@ from pydantic import BaseModel, Field
 from werkzeug.exceptions import InternalServerError
 
 import services
-from controllers.common.schema import register_schema_models
-from studio_api.blueprint import studio_ns
 from controllers.common.errors import (
     AppUnavailableError,
     AudioTooLargeError,
@@ -19,6 +17,7 @@ from controllers.common.errors import (
     ProviderQuotaExceededError,
     UnsupportedAudioTypeError,
 )
+from controllers.common.schema import register_schema_models
 from controllers.console.app.wraps import get_app_model
 from controllers.console.wraps import account_initialization_required, setup_required
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
@@ -32,6 +31,7 @@ from services.errors.audio import (
     ProviderNotSupportSpeechToTextServiceError,
     UnsupportedAudioTypeServiceError,
 )
+from studio_api.blueprint import studio_ns
 
 logger = logging.getLogger(__name__)
 

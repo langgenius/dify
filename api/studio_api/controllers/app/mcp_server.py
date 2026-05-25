@@ -8,7 +8,6 @@ from sqlalchemy import select
 from werkzeug.exceptions import NotFound
 
 from controllers.common.schema import register_schema_models
-from studio_api.blueprint import studio_ns
 from controllers.console.app.wraps import get_app_model
 from controllers.console.wraps import account_initialization_required, edit_permission_required, setup_required
 from extensions.ext_database import db
@@ -17,6 +16,7 @@ from libs.helper import to_timestamp
 from libs.login import current_account_with_tenant, login_required
 from models.enums import AppMCPServerStatus
 from models.model import AppMCPServer
+from studio_api.blueprint import studio_ns
 
 
 class MCPServerCreatePayload(BaseModel):

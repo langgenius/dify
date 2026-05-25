@@ -9,7 +9,6 @@ from sqlalchemy.orm import sessionmaker
 
 from configs import dify_config
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
-from studio_api.blueprint import studio_ns
 from controllers.console.app.wraps import get_app_model
 from controllers.console.wraps import account_initialization_required, setup_required
 from controllers.web.error import NotFoundError
@@ -35,6 +34,7 @@ from models.workflow import WorkflowRun
 from repositories.factory import DifyAPIRepositoryFactory
 from services.retention.workflow_run.constants import ARCHIVE_BUNDLE_NAME
 from services.workflow_run_service import WorkflowRunListArgs, WorkflowRunService
+from studio_api.blueprint import studio_ns
 
 
 def _build_backstage_input_url(form_token: str | None) -> str | None:

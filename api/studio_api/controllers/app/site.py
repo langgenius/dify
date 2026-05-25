@@ -7,7 +7,6 @@ from werkzeug.exceptions import NotFound
 
 from constants.languages import supported_language
 from controllers.common.schema import register_schema_models
-from studio_api.blueprint import studio_ns
 from controllers.console.app.wraps import get_app_model
 from controllers.console.wraps import (
     account_initialization_required,
@@ -20,6 +19,7 @@ from fields.base import ResponseModel
 from libs.datetime_utils import naive_utc_now
 from libs.login import current_account_with_tenant, login_required
 from models import Site
+from studio_api.blueprint import studio_ns
 
 
 class AppSiteUpdatePayload(BaseModel):

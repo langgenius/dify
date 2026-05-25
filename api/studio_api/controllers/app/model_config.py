@@ -6,7 +6,6 @@ from flask_restx import Resource
 from pydantic import BaseModel, Field
 
 from controllers.common.schema import register_schema_models
-from studio_api.blueprint import studio_ns
 from controllers.console.app.wraps import get_app_model
 from controllers.console.wraps import account_initialization_required, edit_permission_required, setup_required
 from core.agent.entities import AgentToolEntity
@@ -18,6 +17,7 @@ from libs.datetime_utils import naive_utc_now
 from libs.login import current_account_with_tenant, login_required
 from models.model import AppMode, AppModelConfig
 from services.app_model_config_service import AppModelConfigService
+from studio_api.blueprint import studio_ns
 
 
 class ModelConfigRequest(BaseModel):

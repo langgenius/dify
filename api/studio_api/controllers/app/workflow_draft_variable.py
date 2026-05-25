@@ -8,11 +8,10 @@ from flask_restx import Resource, fields, marshal, marshal_with
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import sessionmaker
 
-from controllers.common.schema import register_schema_models
-from studio_api.blueprint import studio_ns
 from controllers.common.errors import (
     DraftWorkflowNotExist,
 )
+from controllers.common.schema import register_schema_models
 from controllers.console.app.wraps import get_app_model
 from controllers.console.wraps import account_initialization_required, edit_permission_required, setup_required
 from controllers.web.error import InvalidArgumentError, NotFoundError
@@ -31,6 +30,7 @@ from models import App, AppMode
 from models.workflow import WorkflowDraftVariable
 from services.workflow_draft_variable_service import WorkflowDraftVariableList, WorkflowDraftVariableService
 from services.workflow_service import WorkflowService
+from studio_api.blueprint import studio_ns
 
 logger = logging.getLogger(__name__)
 _file_access_controller = DatabaseFileAccessController()

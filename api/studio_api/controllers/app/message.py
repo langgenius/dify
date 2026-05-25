@@ -9,17 +9,16 @@ from sqlalchemy import exists, func, select
 from werkzeug.exceptions import InternalServerError, NotFound
 
 from controllers.common.controller_schemas import MessageFeedbackPayload as _MessageFeedbackPayloadBase
-from controllers.common.fields import SimpleResultResponse
-from controllers.common.schema import register_response_schema_models, register_schema_models
-from studio_api.blueprint import studio_ns
 from controllers.common.errors import (
+    AppSuggestedQuestionsAfterAnswerDisabledError,
     CompletionRequestError,
     ProviderModelCurrentlyNotSupportError,
     ProviderNotInitializeError,
     ProviderQuotaExceededError,
 )
+from controllers.common.fields import SimpleResultResponse
+from controllers.common.schema import register_response_schema_models, register_schema_models
 from controllers.console.app.wraps import get_app_model
-from controllers.common.errors import AppSuggestedQuestionsAfterAnswerDisabledError
 from controllers.console.wraps import (
     account_initialization_required,
     edit_permission_required,
@@ -48,6 +47,7 @@ from models.model import AppMode, Conversation, Message, MessageAnnotation, Mess
 from services.errors.conversation import ConversationNotExistsError
 from services.errors.message import MessageNotExistsError, SuggestedQuestionsAfterAnswerDisabledError
 from services.message_service import MessageService, attach_message_extra_contents
+from studio_api.blueprint import studio_ns
 
 logger = logging.getLogger(__name__)
 

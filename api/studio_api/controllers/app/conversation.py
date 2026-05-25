@@ -9,7 +9,6 @@ from sqlalchemy.orm import selectinload
 from werkzeug.exceptions import NotFound
 
 from controllers.common.schema import register_schema_models
-from studio_api.blueprint import studio_ns
 from controllers.console.app.wraps import get_app_model
 from controllers.console.wraps import account_initialization_required, edit_permission_required, setup_required
 from core.app.entities.app_invoke_entities import InvokeFrom
@@ -38,6 +37,7 @@ from models import Conversation, EndUser, Message, MessageAnnotation
 from models.model import AppMode
 from services.conversation_service import ConversationService
 from services.errors.conversation import ConversationNotExistsError
+from studio_api.blueprint import studio_ns
 
 
 class BaseConversationQuery(BaseModel):

@@ -3,14 +3,13 @@ from collections.abc import Sequence
 from flask_restx import Resource
 from pydantic import BaseModel, Field
 
-from controllers.common.schema import register_enum_models, register_schema_models
-from studio_api.blueprint import studio_ns
 from controllers.common.errors import (
     CompletionRequestError,
     ProviderModelCurrentlyNotSupportError,
     ProviderNotInitializeError,
     ProviderQuotaExceededError,
 )
+from controllers.common.schema import register_enum_models, register_schema_models
 from controllers.console.wraps import account_initialization_required, setup_required
 from core.app.app_config.entities import ModelConfig
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
@@ -25,6 +24,7 @@ from graphon.model_runtime.errors.invoke import InvokeError
 from libs.login import current_account_with_tenant, login_required
 from models import App
 from services.workflow_service import WorkflowService
+from studio_api.blueprint import studio_ns
 
 
 class InstructionGeneratePayload(BaseModel):

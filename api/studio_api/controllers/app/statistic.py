@@ -6,7 +6,6 @@ from flask_restx import Resource, fields
 from pydantic import BaseModel, Field, field_validator
 
 from controllers.common.schema import register_schema_models
-from studio_api.blueprint import studio_ns
 from controllers.console.app.wraps import get_app_model
 from controllers.console.wraps import account_initialization_required, setup_required
 from core.app.entities.app_invoke_entities import InvokeFrom
@@ -15,6 +14,7 @@ from libs.datetime_utils import parse_time_range
 from libs.helper import convert_datetime_to_date
 from libs.login import current_account_with_tenant, login_required
 from models import AppMode
+from studio_api.blueprint import studio_ns
 
 
 class StatisticTimeRangeQuery(BaseModel):

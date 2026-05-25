@@ -8,7 +8,6 @@ from pydantic import BaseModel, Field, field_validator
 from sqlalchemy.orm import sessionmaker
 
 from controllers.common.schema import register_schema_models
-from studio_api.blueprint import studio_ns
 from controllers.console.app.wraps import get_app_model
 from controllers.console.wraps import account_initialization_required, setup_required
 from extensions.ext_database import db
@@ -21,6 +20,7 @@ from libs.login import login_required
 from models import App
 from models.model import AppMode
 from services.workflow_app_service import WorkflowAppService
+from studio_api.blueprint import studio_ns
 
 
 class WorkflowAppLogQuery(BaseModel):
