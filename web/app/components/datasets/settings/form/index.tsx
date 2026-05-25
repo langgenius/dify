@@ -12,7 +12,6 @@ const Form = () => {
   const {
     // Context values
     currentDataset,
-    isCurrentWorkspaceDatasetOperator,
     canEditSettings,
 
     // Loading state
@@ -73,7 +72,6 @@ const Form = () => {
     <div className="flex w-full flex-col gap-y-4 px-20 py-8 sm:w-[960px]">
       <BasicInfoSection
         currentDataset={currentDataset}
-        isCurrentWorkspaceDatasetOperator={isCurrentWorkspaceDatasetOperator}
         name={name}
         setName={setName}
         description={description}

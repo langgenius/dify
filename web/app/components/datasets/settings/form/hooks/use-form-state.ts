@@ -10,7 +10,6 @@ import { useTranslation } from 'react-i18next'
 import { isReRankModelSelected } from '@/app/components/datasets/common/check-rerank-model'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useModelList } from '@/app/components/header/account-setting/model-provider-page/hooks'
-import { useSelector as useAppContextWithSelector } from '@/context/app-context'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import { DatasetPermission } from '@/models/datasets'
 import { updateDatasetSetting } from '@/service/datasets'
@@ -28,7 +27,6 @@ const DEFAULT_APP_ICON: IconInfo = {
 
 export const useFormState = () => {
   const { t } = useTranslation()
-  const isCurrentWorkspaceDatasetOperator = useAppContextWithSelector(state => state.isCurrentWorkspaceDatasetOperator)
   const currentDataset = useDatasetDetailContextWithSelector(state => state.dataset)
   const mutateDatasets = useDatasetDetailContextWithSelector(state => state.mutateDatasetRes)
   const datasetACLCapabilities = useMemo(
@@ -218,7 +216,6 @@ export const useFormState = () => {
   return {
     // Context values
     currentDataset,
-    isCurrentWorkspaceDatasetOperator,
     canEditSettings,
 
     // Loading state

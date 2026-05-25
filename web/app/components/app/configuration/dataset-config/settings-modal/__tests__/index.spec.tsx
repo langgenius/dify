@@ -10,6 +10,7 @@ import { ChunkingMode, DatasetPermission, DataSourceType, RerankingModeEnum } fr
 import { updateDatasetSetting } from '@/service/datasets'
 import { useMembers } from '@/service/use-common'
 import { RETRIEVE_METHOD } from '@/types/app'
+import { DatasetACLPermission } from '@/utils/permission'
 import SettingsModal from '../index'
 
 const toastMocks = vi.hoisted(() => ({
@@ -33,7 +34,6 @@ vi.mock('@langgenius/dify-ui/toast', () => ({
 const mockOnCancel = vi.fn()
 const mockOnSave = vi.fn()
 const mockSetShowAccountSettingModal = vi.fn()
-let mockIsWorkspaceDatasetOperator = false
 
 const mockUseModelList = vi.fn()
 const mockUseModelListAndDefaultModel = vi.fn()
@@ -65,7 +65,9 @@ vi.mock('@/service/use-common', async () => ({
 }))
 
 vi.mock('@/context/app-context', () => ({
-  useAppContext: () => ({ isCurrentWorkspaceDatasetOperator: mockIsWorkspaceDatasetOperator }),
+  useAppContext: () => {
+    throw new Error('legacy workspace dataset_operator state should not be used by SettingsModal')
+  },
   useSelector: <T,>(selector: (value: { userProfile: { id: string, name: string, email: string, avatar_url: string } }) => T) => selector({
     userProfile: {
       id: 'user-1',
@@ -185,6 +187,7 @@ const createDataset = (overrides: Partial<DataSet> = {}, retrievalOverrides: Par
     runtime_mode: 'general',
     enable_api: true,
     is_multimodal: false,
+    permission_keys: [DatasetACLPermission.Edit],
     ...overrides,
     retrieval_model_dict: {
       ...retrievalConfig,
@@ -220,7 +223,6 @@ const renderSettingsModal = async (dataset: DataSet) => {
 describe('SettingsModal', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockIsWorkspaceDatasetOperator = false
     mockUseMembers.mockReturnValue({
       data: {
         accounts: [
@@ -376,6 +378,18 @@ describe('SettingsModal', () => {
 
       // Assert
       expect(mockSetShowAccountSettingModal).toHaveBeenCalledWith({ payload: ACCOUNT_SETTING_TAB.PROVIDER })
+    })
+  })
+
+  // Dataset ACL permissions control whether the legacy dataset permission selector is editable.
+  describe('Permission Handling', () => {
+    it('should disable permission selector when dataset lacks edit ACL permission', async () => {
+      const dataset = createDataset({ permission_keys: [DatasetACLPermission.Readonly] })
+
+      const { container } = renderWithProviders(dataset)
+      await waitFor(() => expect(mockUseMembers).toHaveBeenCalled())
+
+      expect(container.querySelector('[class*="cursor-not-allowed"]')).toBeInTheDocument()
     })
   })
 

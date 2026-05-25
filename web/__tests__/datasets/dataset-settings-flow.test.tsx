@@ -16,6 +16,7 @@ import { act, renderHook, waitFor } from '@testing-library/react'
 import { IndexingType } from '@/app/components/datasets/create/step-two'
 import { ChunkingMode, DatasetPermission, DataSourceType, WeightedScoreEnum } from '@/models/datasets'
 import { RETRIEVE_METHOD } from '@/types/app'
+import { DatasetACLPermission } from '@/utils/permission'
 
 // --- Mocks ---
 
@@ -28,7 +29,9 @@ const mockInvalidDatasetList = vi.fn()
 const mockUpdateDatasetSetting = vi.fn().mockResolvedValue({})
 
 vi.mock('@/context/app-context', () => ({
-  useSelector: () => false,
+  useSelector: () => {
+    throw new Error('legacy workspace role selector should not be used by dataset settings flow')
+  },
 }))
 
 vi.mock('@/service/datasets', () => ({
@@ -128,6 +131,7 @@ const createMockDataset = (overrides?: Partial<DataSet>): DataSet => ({
   runtime_mode: 'general',
   enable_api: true,
   is_multimodal: false,
+  permission_keys: [DatasetACLPermission.Edit],
   ...overrides,
 } as DataSet)
 

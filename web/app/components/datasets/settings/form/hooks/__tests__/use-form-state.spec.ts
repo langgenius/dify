@@ -17,7 +17,9 @@ const mockMutateDatasets = vi.fn()
 const mockInvalidDatasetList = vi.fn()
 
 vi.mock('@/context/app-context', () => ({
-  useSelector: () => false, // isCurrentWorkspaceDatasetOperator
+  useSelector: () => {
+    throw new Error('legacy workspace role selector should not be used by useFormState')
+  },
 }))
 
 const createDefaultMockDataset = (): DataSet => ({
@@ -184,6 +186,17 @@ describe('useFormState', () => {
 
       expect(result.current.currentDataset).toBeDefined()
       expect(result.current.currentDataset?.id).toBe('dataset-1')
+    })
+
+    it('should expose editability from dataset ACL permission keys without legacy role state', () => {
+      mockDataset = {
+        ...createDefaultMockDataset(),
+        permission_keys: [DatasetACLPermission.Readonly],
+      }
+      const { result } = renderHook(() => useFormState())
+
+      expect(result.current.canEditSettings).toBe(false)
+      expect('isCurrentWorkspaceDatasetOperator' in result.current).toBe(false)
     })
   })
 

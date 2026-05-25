@@ -26,7 +26,6 @@ const mockUserProfile = {
 vi.mock('@/context/app-context', () => ({
   useSelector: (selector: (state: unknown) => unknown) => {
     const state = {
-      isCurrentWorkspaceDatasetOperator: false,
       userProfile: mockUserProfile,
     }
     return selector(state)
@@ -186,7 +185,6 @@ vi.mock('@/context/provider-context', () => ({
     plan: { type: 'free' },
     enableBilling: false,
     onPlanInfoChanged: vi.fn(),
-    isCurrentWorkspaceDatasetOperator: false,
     supportRetrievalMethods: ['semantic_search', 'full_text_search', 'hybrid_search'],
   }),
 }))

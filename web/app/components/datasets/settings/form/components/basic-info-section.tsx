@@ -15,7 +15,6 @@ const labelClass = 'flex items-center shrink-0 w-[180px] h-7 pt-1'
 
 type BasicInfoSectionProps = {
   currentDataset: DataSet | undefined
-  isCurrentWorkspaceDatasetOperator: boolean
   name: string
   setName: (value: string) => void
   description: string
@@ -35,7 +34,6 @@ type BasicInfoSectionProps = {
 
 const BasicInfoSection = ({
   currentDataset,
-  isCurrentWorkspaceDatasetOperator,
   name,
   setName,
   description,
@@ -103,7 +101,7 @@ const BasicInfoSection = ({
         </div>
         <div className="grow">
           <PermissionSelector
-            disabled={!currentDataset?.embedding_available || isCurrentWorkspaceDatasetOperator || readonly}
+            disabled={!currentDataset?.embedding_available || readonly}
             permission={permission}
             value={selectedMemberIDs}
             onChange={v => setPermission(v)}
