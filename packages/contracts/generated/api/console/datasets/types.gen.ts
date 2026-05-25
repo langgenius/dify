@@ -504,7 +504,7 @@ export type DatasetExternalKnowledgeInfoResponse = {
 }
 
 export type DatasetExternalRetrievalModelResponse = {
-  score_threshold: number
+  score_threshold?: number | null
   score_threshold_enabled?: boolean | null
   top_k: number
 }
@@ -709,9 +709,9 @@ export type DatasetRerankingModelResponse = {
 }
 
 export type DatasetWeightedScoreResponse = {
-  keyword_setting: DatasetKeywordSettingResponse
-  vector_setting: DatasetVectorSettingResponse
-  weight_type: string | null
+  keyword_setting?: DatasetKeywordSettingResponse
+  vector_setting?: DatasetVectorSettingResponse
+  weight_type?: string | null
 }
 
 export type DatasetRerankingModel = {

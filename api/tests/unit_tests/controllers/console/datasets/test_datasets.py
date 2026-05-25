@@ -245,6 +245,55 @@ class TestDatasetList:
 
         assert status == 200
 
+    def test_get_allows_legacy_weighted_score_without_weight_type(self, app: Flask):
+        api = DatasetListApi()
+        method = unwrap(api.get)
+
+        current_user = self._mock_user()
+        datasets = [
+            make_dataset(
+                retrieval_model={
+                    "search_method": "hybrid_search",
+                    "reranking_enable": True,
+                    "reranking_mode": "weighted_score",
+                    "reranking_model": None,
+                    "weights": {
+                        "vector_setting": {
+                            "vector_weight": 0.7,
+                            "embedding_model_name": "text-embedding",
+                            "embedding_provider_name": "openai",
+                        },
+                        "keyword_setting": {"keyword_weight": 0.3},
+                    },
+                    "top_k": 3,
+                    "score_threshold_enabled": False,
+                    "score_threshold": 0.0,
+                }
+            )
+        ]
+
+        with app.test_request_context("/datasets"):
+            with (
+                patch(
+                    "controllers.console.datasets.datasets.current_account_with_tenant",
+                    return_value=(current_user, "tenant-1"),
+                ),
+                patch.object(
+                    DatasetService,
+                    "get_datasets",
+                    return_value=(datasets, 1),
+                ),
+                patch.object(
+                    ProviderManager,
+                    "get_configurations",
+                    return_value=MagicMock(get_models=lambda **_: []),
+                ),
+            ):
+                resp, status = method(api)
+
+        assert status == 200
+        assert resp["data"][0]["retrieval_model_dict"]["weights"]["weight_type"] is None
+
     def test_embedding_available_false(self, app: Flask):
         api = DatasetListApi()
         method = unwrap(api.get)
