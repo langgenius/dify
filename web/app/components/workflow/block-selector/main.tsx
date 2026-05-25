@@ -130,6 +130,7 @@ function NodeSelector({
   const defaultAllowUserInputSelection = !hasUserInputNode && !hasTriggerNode
   const canSelectUserInput = allowUserInputSelection ?? defaultAllowUserInputSelection
   const disableStartTab = flowType === FlowType.snippet
+  const disableSnippetsTab = flowType === FlowType.snippet
   const {
     activeTab,
     setActiveTab,
@@ -138,6 +139,7 @@ function NodeSelector({
     noBlocks,
     noSources: !dataSources.length,
     noTools,
+    noSnippets: disableSnippetsTab,
     noStart: !showStartTab,
     defaultActiveTab,
     hasUserInputNode,
@@ -330,14 +332,16 @@ function NodeSelector({
             noTools={noTools}
             onTagsChange={setTags}
             forceShowStartContent={forceShowStartContent}
-            snippetsElem={(
-              <Snippets
-                loading={snippetsLoading}
-                searchText={searchText}
-                insertPayload={snippetInsertPayload}
-                onInserted={() => handleOpenChange(false)}
-              />
-            )}
+            snippetsElem={disableSnippetsTab
+              ? undefined
+              : (
+                  <Snippets
+                    loading={snippetsLoading}
+                    searchText={searchText}
+                    insertPayload={snippetInsertPayload}
+                    onInserted={() => handleOpenChange(false)}
+                  />
+                )}
           />
         </div>
       </PopoverContent>
