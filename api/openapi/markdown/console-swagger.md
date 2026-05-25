@@ -11799,7 +11799,7 @@ Condition detail
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| score_threshold | number |  | Yes |
+| score_threshold | number |  | No |
 | score_threshold_enabled | boolean |  | No |
 | top_k | integer |  | Yes |
 
@@ -12085,9 +12085,9 @@ Condition detail
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| keyword_setting | [DatasetKeywordSettingResponse](#datasetkeywordsettingresponse) |  | Yes |
-| vector_setting | [DatasetVectorSettingResponse](#datasetvectorsettingresponse) |  | Yes |
-| weight_type | string |  | Yes |
+| keyword_setting | [DatasetKeywordSettingResponse](#datasetkeywordsettingresponse) |  | No |
+| vector_setting | [DatasetVectorSettingResponse](#datasetvectorsettingresponse) |  | No |
+| weight_type | string |  | No |
 
 #### DatasourceCredentialDeletePayload
 
