@@ -77,6 +77,10 @@
       "types": "./src/number-field/index.tsx",
       "import": "./src/number-field/index.tsx"
     },
+    "./pagination": {
+      "types": "./src/pagination/index.tsx",
+      "import": "./src/pagination/index.tsx"
+    },
     "./radio": {
       "types": "./src/radio/index.tsx",
       "import": "./src/radio/index.tsx"
