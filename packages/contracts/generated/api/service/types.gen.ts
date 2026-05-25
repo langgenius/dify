@@ -64,10 +64,33 @@ export type ChildChunkCreatePayload = {
   content: string
 }
 
+export type ChildChunkDetailResponse = {
+  data: ChildChunkResponse
+}
+
 export type ChildChunkListQuery = {
   keyword?: string | null
   limit?: number
   page?: number
+}
+
+export type ChildChunkListResponse = {
+  data: Array<ChildChunkResponse>
+  limit: number
+  page: number
+  total: number
+  total_pages: number
+}
+
+export type ChildChunkResponse = {
+  content: string
+  created_at: number
+  id: string
+  position: number
+  segment_id: string
+  type: string
+  updated_at: number
+  word_count: number
 }
 
 export type ChildChunkUpdatePayload = {
@@ -668,15 +691,80 @@ export type Rule = {
   subchunk_segmentation?: Segmentation
 }
 
+export type SegmentAttachmentResponse = {
+  extension: string
+  id: string
+  mime_type: string | null
+  name: string
+  size: number
+  source_url: string
+}
+
+export type SegmentCreateArgs = {
+  answer?: string | null
+  attachment_ids?: Array<string> | null
+  content?: string | null
+  keywords?: Array<string> | null
+}
+
+export type SegmentCreateListResponse = {
+  data: Array<SegmentResponse>
+  doc_form: string
+}
+
 export type SegmentCreatePayload = {
-  segments?: Array<{
-    [key: string]: unknown
-  }> | null
+  segments?: Array<SegmentCreateArgs> | null
+}
+
+export type SegmentDetailResponse = {
+  data: SegmentResponse
+  doc_form: string
 }
 
 export type SegmentListQuery = {
   keyword?: string | null
+  limit?: number
+  page?: number
   status?: Array<string>
+}
+
+export type SegmentListResponse = {
+  data: Array<SegmentResponse>
+  doc_form: string
+  has_more: boolean
+  limit: number
+  page: number
+  total: number
+}
+
+export type SegmentResponse = {
+  answer: string | null
+  attachments: Array<SegmentAttachmentResponse>
+  child_chunks: Array<ChildChunkResponse>
+  completed_at: number | null
+  content: string
+  created_at: number
+  created_by: string
+  disabled_at: number | null
+  disabled_by: string | null
+  document_id: string
+  enabled: boolean
+  error: string | null
+  hit_count: number
+  id: string
+  index_node_hash: string | null
+  index_node_id: string | null
+  indexing_at: number | null
+  keywords: Array<string> | null
+  position: number
+  sign_content: string
+  status: string
+  stopped_at: number | null
+  summary: string | null
+  tokens: number
+  updated_at: number
+  updated_by: string | null
+  word_count: number
 }
 
 export type SegmentUpdateArgs = {
@@ -2145,7 +2233,9 @@ export type GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsData = {
     document_id: string
   }
   query?: {
-    keyword?: string | null
+    keyword?: string
+    limit?: number
+    page?: number
     status?: Array<string>
   }
   url: '/datasets/{dataset_id}/documents/{document_id}/segments'
@@ -2164,9 +2254,7 @@ export type GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsError
   = GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsErrors[keyof GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsErrors]
 
 export type GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: SegmentListResponse
 }
 
 export type GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsResponse
@@ -2198,9 +2286,7 @@ export type PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsError
   = PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsErrors[keyof PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsErrors]
 
 export type PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: SegmentCreateListResponse
 }
 
 export type PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsResponse
@@ -2262,9 +2348,7 @@ export type GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdError
   = GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdErrors[keyof GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdErrors]
 
 export type GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: SegmentDetailResponse
 }
 
 export type GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdResponse
@@ -2294,9 +2378,7 @@ export type PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdError
   = PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdErrors[keyof PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdErrors]
 
 export type PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: SegmentDetailResponse
 }
 
 export type PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdResponse
@@ -2310,7 +2392,7 @@ export type GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildC
     segment_id: string
   }
   query?: {
-    keyword?: string | null
+    keyword?: string
     limit?: number
     page?: number
   }
@@ -2330,9 +2412,7 @@ export type GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildC
   = GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksErrors[keyof GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksErrors]
 
 export type GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: ChildChunkListResponse
 }
 
 export type GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksResponse
@@ -2362,9 +2442,7 @@ export type PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChild
   = PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksErrors[keyof PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksErrors]
 
 export type PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: ChildChunkDetailResponse
 }
 
 export type PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksResponse
@@ -2434,9 +2512,7 @@ export type PatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChil
 
 export type PatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdResponses
   = {
-    200: {
-      [key: string]: unknown
-    }
+    200: ChildChunkDetailResponse
   }
 
 export type PatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdResponse

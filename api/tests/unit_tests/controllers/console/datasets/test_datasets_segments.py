@@ -1,4 +1,3 @@
-from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -16,7 +15,6 @@ from controllers.console.datasets.datasets_segments import (
     DatasetDocumentSegmentBatchImportApi,
     DatasetDocumentSegmentListApi,
     DatasetDocumentSegmentUpdateApi,
-    _get_segment_with_summary,
 )
 from controllers.console.datasets.error import (
     ChildChunkDeleteIndexError,
@@ -25,9 +23,13 @@ from controllers.console.datasets.error import (
 )
 from core.errors.error import LLMBadRequestError, ProviderTokenNotInitError
 from core.rag.index_processor.constant.index_type import IndexStructureType
+from fields.segment_fields import segment_response_with_summary
 from libs.datetime_utils import naive_utc_now
 from models.dataset import ChildChunk, DocumentSegment
+from models.enums import SegmentStatus, SegmentType
 from models.model import UploadFile
+from services.errors.chunk import ChildChunkDeleteIndexError as ChildChunkDeleteIndexServiceError
+from services.errors.chunk import ChildChunkIndexingError as ChildChunkIndexingServiceError
 
 
 def unwrap(func):
@@ -37,49 +39,89 @@ def unwrap(func):
 
 
 def _segment():
-    return SimpleNamespace(
-        id="s1",
+    segment = DocumentSegment(
+        tenant_id="tenant-1",
+        dataset_id="ds-1",
+        document_id="doc-1",
         position=1,
-        document_id="d1",
         content="c",
-        sign_content="c",
-        answer="a",
         word_count=1,
         tokens=1,
-        keywords=[],
-        index_node_id="n1",
-        index_node_hash="h",
-        hit_count=0,
-        enabled=True,
-        disabled_at=None,
-        disabled_by=None,
-        status="normal",
         created_by="u1",
-        created_at=naive_utc_now(),
-        updated_at=naive_utc_now(),
-        updated_by="u1",
-        indexing_at=None,
-        completed_at=None,
-        error=None,
-        stopped_at=None,
-        child_chunks=[],
-        attachments=[],
-        summary=None,
     )
+    segment.id = "seg-1"
+    segment.answer = "a"
+    segment.keywords = ["test"]
+    segment.index_node_id = "n1"
+    segment.index_node_hash = "h"
+    segment.status = SegmentStatus.COMPLETED
+    segment.created_at = naive_utc_now()
+    segment.updated_at = naive_utc_now()
+    segment.updated_by = "u1"
+    return segment
 
 
-def test_get_segment_with_summary(monkeypatch: pytest.MonkeyPatch):
+def _child_chunk():
+    child_chunk = ChildChunk(
+        tenant_id="tenant-1",
+        dataset_id="ds-1",
+        document_id="doc-1",
+        segment_id="seg-1",
+        position=1,
+        content="child",
+        word_count=1,
+        created_by="u1",
+    )
+    child_chunk.id = "cc-1"
+    child_chunk.type = SegmentType.CUSTOMIZED
+    child_chunk.created_at = naive_utc_now()
+    child_chunk.updated_at = naive_utc_now()
+    return child_chunk
+
+
+def _segment_response_dict():
+    return {
+        "id": "seg-1",
+        "position": 1,
+        "document_id": "doc-1",
+        "content": "c",
+        "sign_content": "c",
+        "answer": "a",
+        "word_count": 1,
+        "tokens": 1,
+        "keywords": ["test"],
+        "index_node_id": "n1",
+        "index_node_hash": "h",
+        "hit_count": 0,
+        "enabled": True,
+        "disabled_at": None,
+        "disabled_by": None,
+        "status": "completed",
+        "created_by": "u1",
+        "created_at": 1779678000,
+        "updated_at": 1779678000,
+        "updated_by": "u1",
+        "indexing_at": None,
+        "completed_at": None,
+        "error": None,
+        "stopped_at": None,
+        "child_chunks": [],
+        "attachments": [],
+        "summary": None,
+    }
+
+
+def test_segment_response_with_summary():
     segment = _segment()
-    summary = SimpleNamespace(summary_content="summary")
 
-    monkeypatch.setattr(
-        "services.summary_index_service.SummaryIndexService.get_segment_summary",
-        lambda *_args, **_kwargs: summary,
-    )
+    with (
+        patch("models.dataset.db.session.scalar", return_value=None),
+        patch("models.dataset.db.session.execute", return_value=MagicMock(all=MagicMock(return_value=[]))),
+    ):
+        result = segment_response_with_summary(segment, "summary")
 
-    result = _get_segment_with_summary(segment, dataset_id="d1")
-
-    assert result["summary"] == "summary"
+    assert result.summary == "summary"
+    assert result.id == segment.id
 
 
 class TestDatasetDocumentSegmentListApi:
@@ -90,8 +132,7 @@ class TestDatasetDocumentSegmentListApi:
         dataset = MagicMock()
         document = MagicMock()
 
-        segment = MagicMock(spec=DocumentSegment)
-        segment.id = "seg-1"
+        segment = _segment()
 
         pagination = MagicMock()
         pagination.items = [segment]
@@ -124,10 +165,8 @@ class TestDatasetDocumentSegmentListApi:
                 "services.summary_index_service.SummaryIndexService.get_segments_summaries",
                 return_value={},
             ),
-            patch(
-                "controllers.console.datasets.datasets_segments.marshal",
-                return_value={"id": "seg-1"},
-            ),
+            patch("models.dataset.db.session.scalar", return_value=None),
+            patch("models.dataset.db.session.execute", return_value=MagicMock(all=MagicMock(return_value=[]))),
         ):
             response, status = method(api, "ds-1", "doc-1")
 
@@ -370,8 +409,7 @@ class TestDatasetDocumentSegmentAddApi:
         document = MagicMock()
         document.doc_form = IndexStructureType.PARAGRAPH_INDEX
 
-        segment = MagicMock()
-        segment.id = "seg-1"
+        segment = _segment()
 
         with (
             app.test_request_context("/", json=payload),
@@ -401,13 +439,11 @@ class TestDatasetDocumentSegmentAddApi:
                 return_value=segment,
             ),
             patch(
-                "controllers.console.datasets.datasets_segments.marshal",
-                return_value={"id": "seg-1"},
+                "controllers.console.datasets.datasets_segments.SummaryIndexService.get_segment_summary",
+                return_value=None,
             ),
-            patch(
-                "controllers.console.datasets.datasets_segments._get_segment_with_summary",
-                return_value={"id": "seg-1"},
-            ),
+            patch("models.dataset.db.session.scalar", return_value=None),
+            patch("models.dataset.db.session.execute", return_value=MagicMock(all=MagicMock(return_value=[]))),
         ):
             response, status = method(api, "ds-1", "doc-1")
 
@@ -509,7 +545,7 @@ class TestDatasetDocumentSegmentUpdateApi:
         document = MagicMock()
         document.doc_form = IndexStructureType.PARAGRAPH_INDEX
 
-        segment = MagicMock()
+        segment = _segment()
 
         with (
             app.test_request_context("/", json=payload),
@@ -528,7 +564,7 @@ class TestDatasetDocumentSegmentUpdateApi:
             ),
             patch(
                 "controllers.console.datasets.datasets_segments.db.session.scalar",
-                return_value=segment,
+                side_effect=[segment, None],
             ),
             patch(
                 "controllers.console.datasets.datasets_segments.DatasetService.check_dataset_permission",
@@ -543,9 +579,10 @@ class TestDatasetDocumentSegmentUpdateApi:
                 return_value=segment,
             ),
             patch(
-                "controllers.console.datasets.datasets_segments._get_segment_with_summary",
-                return_value={"id": "seg-1"},
+                "controllers.console.datasets.datasets_segments.SummaryIndexService.get_segment_summary",
+                return_value=None,
             ),
+            patch("models.dataset.db.session.execute", return_value=MagicMock(all=MagicMock(return_value=[]))),
         ):
             response, status = method(api, "ds-1", "doc-1", "seg-1")
 
@@ -814,7 +851,7 @@ class TestChildChunkAddApi:
 
         document = MagicMock()
         segment = MagicMock()
-        child_chunk = MagicMock(spec=ChildChunk)
+        child_chunk = _child_chunk()
 
         with (
             app.test_request_context("/", json=payload),
@@ -842,10 +879,6 @@ class TestChildChunkAddApi:
             patch(
                 "controllers.console.datasets.datasets_segments.SegmentService.create_child_chunk",
                 return_value=child_chunk,
-            ),
-            patch(
-                "controllers.console.datasets.datasets_segments.marshal",
-                return_value={"id": "cc-1"},
             ),
         ):
             response, status = method(api, "ds-1", "doc-1", "seg-1")
@@ -890,7 +923,7 @@ class TestChildChunkAddApi:
             ),
             patch(
                 "controllers.console.datasets.datasets_segments.SegmentService.create_child_chunk",
-                side_effect=services.errors.chunk.ChildChunkIndexingError("fail"),
+                side_effect=ChildChunkIndexingServiceError("fail"),
             ),
         ):
             with pytest.raises(ChildChunkIndexingError):
@@ -977,7 +1010,7 @@ class TestChildChunkUpdateApi:
             ),
             patch(
                 "controllers.console.datasets.datasets_segments.SegmentService.delete_child_chunk",
-                side_effect=services.errors.chunk.ChildChunkDeleteIndexError("fail"),
+                side_effect=ChildChunkDeleteIndexServiceError("fail"),
             ),
         ):
             with pytest.raises(ChildChunkDeleteIndexError):
@@ -992,10 +1025,7 @@ class TestSegmentListAdvancedCases:
         dataset = MagicMock()
         document = MagicMock()
 
-        segment = MagicMock(spec=DocumentSegment)
-        segment.id = "seg-1"
-        segment.keywords = ["test"]
-        segment.enabled = True
+        segment = _segment()
 
         pagination = MagicMock(items=[segment], total=1, pages=1)
 
@@ -1025,6 +1055,8 @@ class TestSegmentListAdvancedCases:
                 "services.summary_index_service.SummaryIndexService.get_segments_summaries",
                 return_value={},
             ),
+            patch("models.dataset.db.session.scalar", return_value=None),
+            patch("models.dataset.db.session.execute", return_value=MagicMock(all=MagicMock(return_value=[]))),
         ):
             result = method(api, "ds-1", "doc-1")
 
