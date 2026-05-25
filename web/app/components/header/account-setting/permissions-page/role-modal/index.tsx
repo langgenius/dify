@@ -9,9 +9,9 @@ import {
   DialogDescription,
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
+import { Input } from '@langgenius/dify-ui/input'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Input from '@/app/components/base/input'
 import Textarea from '@/app/components/base/textarea'
 import PermissionField from './permission-field'
 
@@ -67,7 +67,7 @@ const RoleModal = ({
       }}
     >
       <DialogContent
-        className="flex max-h-[85vh] w-140 flex-col overflow-hidden p-0"
+        className="flex h-[85vh] w-140 flex-col overflow-hidden p-0"
         backdropProps={{ forceRender: true }}
       >
         <div className="relative shrink-0 px-6 pt-6 pb-4">
@@ -83,7 +83,7 @@ const RoleModal = ({
         </div>
         <div className="border-t border-divider-subtle" />
         <div className="flex min-h-0 flex-1 flex-col gap-5 overflow-y-hidden px-6 py-5">
-          <div className="flex flex-col gap-1">
+          <div className="flex shrink-0 flex-col gap-1">
             <label htmlFor="role-name" className="system-sm-medium text-text-secondary">
               {t('role.modal.nameLabel', { ns: 'permission' })}
             </label>
@@ -95,7 +95,7 @@ const RoleModal = ({
               disabled={readonly}
             />
           </div>
-          <div className="flex flex-col gap-1">
+          <div className="flex shrink-0 flex-col gap-1">
             <label htmlFor="role-description" className="system-sm-medium text-text-secondary">
               {t('role.modal.descriptionLabel', { ns: 'permission' })}
             </label>

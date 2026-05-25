@@ -1,29 +1,25 @@
 'use client'
 
 import type { PermissionGroup } from '@/models/access-control'
+import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { cn } from '@langgenius/dify-ui/cn'
 import { ScrollArea } from '@langgenius/dify-ui/scroll-area'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Checkbox } from '@langgenius/dify-ui/checkbox'
 
 type PermissionGroupListProps = {
   groups: PermissionGroup[]
   value: string[]
   onChange: (next: string[]) => void
   className?: string
-  height?: number | string
   readonly?: boolean
 }
-
-const DEFAULT_HEIGHT = 320
 
 const PermissionGroupList = ({
   groups,
   value,
   onChange,
   className,
-  height = DEFAULT_HEIGHT,
   readonly = false,
 }: PermissionGroupListProps) => {
   const { t } = useTranslation()
@@ -80,10 +76,9 @@ const PermissionGroupList = ({
   }
 
   return (
-    <div className={cn('rounded-xl border border-components-panel-border bg-components-panel-bg shadow-xs', className)}>
+    <div className={cn('min-h-0 flex-1 rounded-xl border border-components-panel-border bg-components-panel-bg shadow-xs', className)}>
       <ScrollArea
-        className="overflow-hidden rounded-xl"
-        style={{ height }}
+        className="h-full overflow-hidden rounded-xl"
         slotClassNames={{ viewport: 'overscroll-contain' }}
       >
         {groups.length === 0
