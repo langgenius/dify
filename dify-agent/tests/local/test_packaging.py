@@ -8,7 +8,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
 CLIENT_SHARED_DTO_DEPENDENCIES = {
     "httpx>=0.28.1",
-    "pydantic>=2.13.3",
+    "pydantic>=2.12.5,<3",
     "pydantic-ai-slim>=1.85.1",
     "typing-extensions>=4.12.2",
 }
