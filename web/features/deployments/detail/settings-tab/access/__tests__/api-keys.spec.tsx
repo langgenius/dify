@@ -1,15 +1,38 @@
 import type { ApiKey } from '@dify/contracts/enterprise/types.gen'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { render, screen } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { ApiKeyList } from '../api-keys'
+
+const mocks = vi.hoisted(() => ({
+  deleteApiKey: vi.fn(),
+  toastError: vi.fn(),
+  toastSuccess: vi.fn(),
+}))
+
+vi.mock('@langgenius/dify-ui/toast', () => ({
+  toast: {
+    error: (...args: unknown[]) => mocks.toastError(...args),
+    success: (...args: unknown[]) => mocks.toastSuccess(...args),
+  },
+}))
 
 vi.mock('@/service/client', () => ({
   consoleQuery: {
     enterprise: {
       accessService: {
         deleteApiKey: {
-          mutationOptions: () => ({ mutationFn: vi.fn() }),
+          mutationOptions: () => ({ mutationFn: mocks.deleteApiKey }),
+        },
+        listApiKeys: {
+          key: ({ input }: { input?: { params?: { appInstanceId?: string, environmentId?: string } } } = {}) => [
+            'console',
+            'enterprise',
+            'accessService',
+            'listApiKeys',
+            input?.params?.appInstanceId,
+            input?.params?.environmentId,
+          ],
         },
       },
     },
@@ -19,6 +42,7 @@ vi.mock('@/service/client', () => ({
 function apiKey(overrides: Partial<ApiKey> = {}): ApiKey {
   return {
     id: 'key-1',
+    appInstanceId: 'instance-1',
     name: 'production-key-001',
     environmentId: 'env-1',
     maskedToken: 'app-****-abcd',
@@ -34,7 +58,7 @@ function renderApiKeyList(apiKeys: ApiKey[]) {
     },
   })
 
-  return render(
+  const renderResult = render(
     <QueryClientProvider client={queryClient}>
       <ApiKeyList
         apiKeys={apiKeys}
@@ -42,6 +66,11 @@ function renderApiKeyList(apiKeys: ApiKey[]) {
       />
     </QueryClientProvider>,
   )
+
+  return {
+    ...renderResult,
+    queryClient,
+  }
 }
 
 describe('ApiKeyList', () => {
@@ -119,6 +148,45 @@ describe('ApiKeyList', () => {
       )
       expect(row?.querySelector('[data-slot="deployment-detail-table-row-content"]')).toBeNull()
       expect(screen.getAllByLabelText('deployments.access.revoke')).toHaveLength(2)
+    })
+  })
+
+  // Revoking a key should show in-row progress and refresh the query-backed list when it succeeds.
+  describe('Revoke action', () => {
+    it('should show loading state, refresh API keys, and notify success when revoking an API key', async () => {
+      // Arrange
+      let resolveDeleteApiKey: () => void = () => undefined
+      mocks.deleteApiKey.mockReturnValue(new Promise<void>((resolve) => {
+        resolveDeleteApiKey = resolve
+      }))
+      const { queryClient } = renderApiKeyList([apiKey()])
+      const invalidateSpy = vi.spyOn(queryClient, 'invalidateQueries')
+      const revokeButton = screen.getAllByLabelText('deployments.access.revoke')[0]!
+
+      // Act
+      fireEvent.click(revokeButton)
+
+      // Assert
+      await waitFor(() => {
+        expect(revokeButton).toBeDisabled()
+        expect(revokeButton).toHaveAttribute('aria-busy', 'true')
+      })
+      expect(mocks.deleteApiKey).toHaveBeenCalledWith({
+        params: {
+          apiKeyId: 'key-1',
+        },
+      }, expect.anything())
+
+      await act(async () => {
+        resolveDeleteApiKey()
+      })
+
+      await waitFor(() => {
+        expect(invalidateSpy).toHaveBeenCalledWith({
+          queryKey: ['console', 'enterprise', 'accessService', 'listApiKeys', 'instance-1', 'env-1'],
+        })
+        expect(mocks.toastSuccess).toHaveBeenCalledWith('deployments.access.api.revokeSuccess')
+      })
     })
   })
 })

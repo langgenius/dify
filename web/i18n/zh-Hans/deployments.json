@@ -14,6 +14,8 @@
   "access.api.newTokenLabel": "密钥",
   "access.api.newTokenTitle": "API 密钥已创建",
   "access.api.noKeys": "尚无 API 密钥，创建一个即可调用 API。",
+  "access.api.revokeFailed": "撤销 API 密钥失败。",
+  "access.api.revokeSuccess": "API 密钥已撤销",
   "access.api.table.action": "操作",
   "access.api.table.environment": "环境",
   "access.api.table.key": "API 密钥",

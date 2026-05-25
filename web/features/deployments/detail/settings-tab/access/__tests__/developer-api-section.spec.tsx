@@ -1,6 +1,8 @@
-import { render, screen } from '@testing-library/react'
+import type { ReactNode } from 'react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { createStore, Provider as JotaiProvider } from 'jotai'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { DeveloperApiSection } from '../developer-api-section'
+import { DeveloperApiHeaderActions, DeveloperApiSection } from '../developer-api-section'
 
 type QueryOptions = {
   queryKey?: string[]
@@ -12,10 +14,19 @@ type QueryResult = {
   isError: boolean
 }
 
+type MutationOptions = {
+  mutationKey?: string[]
+}
+
 const mockUseQuery = vi.fn<(options: QueryOptions) => QueryResult>()
 
 vi.mock('@tanstack/react-query', () => ({
-  useMutation: () => ({ mutate: vi.fn() }),
+  useMutation: (options: MutationOptions) => ({
+    mutate: vi.fn((_variables: unknown, callbacks?: { onSuccess?: (response: { token?: string }) => void }) => {
+      if (options.mutationKey?.[0] === 'create-api-key')
+        callbacks?.onSuccess?.({ token: 'app-created-token' })
+    }),
+  }),
   useQueries: () => [],
   useQuery: (options: QueryOptions) => mockUseQuery(options),
 }))
@@ -25,16 +36,19 @@ vi.mock('@/service/client', () => ({
     enterprise: {
       accessService: {
         createApiKey: {
-          mutationOptions: () => ({ mutationFn: vi.fn() }),
+          mutationOptions: () => ({ mutationKey: ['create-api-key'] }),
         },
         deleteApiKey: {
-          mutationOptions: () => ({ mutationFn: vi.fn() }),
+          mutationOptions: () => ({ mutationKey: ['delete-api-key'] }),
         },
         getAccessChannels: {
           queryOptions: () => ({ queryKey: ['access-channels'] }),
         },
+        listApiKeys: {
+          queryOptions: () => ({ queryKey: ['api-keys'] }),
+        },
         updateAccessChannels: {
-          mutationOptions: () => ({ mutationFn: vi.fn() }),
+          mutationOptions: () => ({ mutationKey: ['update-access-channels'] }),
         },
       },
       deploymentService: {
@@ -53,6 +67,14 @@ function queryResult(overrides: Partial<QueryResult> = {}): QueryResult {
     isError: false,
     ...overrides,
   }
+}
+
+function renderWithJotai(node: ReactNode) {
+  return render(
+    <JotaiProvider store={createStore()}>
+      {node}
+    </JotaiProvider>,
+  )
 }
 
 describe('DeveloperApiSection', () => {
@@ -78,6 +100,56 @@ describe('DeveloperApiSection', () => {
       expect(container.querySelectorAll('[data-slot="deployment-developer-api-skeleton"]')).toHaveLength(1)
       expect(container.querySelectorAll('[data-slot="deployment-developer-api-desktop-row-skeleton"]')).toHaveLength(2)
       expect(container.querySelectorAll('[data-slot="deployment-developer-api-mobile-row-skeleton"]')).toHaveLength(2)
+    })
+  })
+
+  // The newly created token should block in a confirmation dialog because the raw token is shown only once.
+  describe('Created API token dialog', () => {
+    it('should show the generated token in a confirmation dialog after creating an API key', async () => {
+      // Arrange
+      mockUseQuery.mockImplementation((options: QueryOptions) => {
+        switch (options.queryKey?.[0]) {
+          case 'access-channels':
+            return queryResult({ data: { accessChannels: { developerApiEnabled: true } } })
+          case 'environment-deployments':
+            return queryResult({
+              data: {
+                data: [
+                  {
+                    environment: {
+                      id: 'env-1',
+                      name: 'Production',
+                    },
+                  },
+                ],
+              },
+            })
+          default:
+            return queryResult()
+        }
+      })
+
+      renderWithJotai(
+        <>
+          <DeveloperApiHeaderActions appInstanceId="instance-1" />
+          <DeveloperApiSection appInstanceId="instance-1" />
+        </>,
+      )
+
+      // Act
+      fireEvent.click(screen.getByRole('button', { name: 'deployments.access.api.newKey' }))
+      fireEvent.click(screen.getByText('deployments.access.api.newKeyForEnv:{"env":"Production"}'))
+
+      // Assert
+      const dialog = await screen.findByRole('dialog', { name: 'deployments.access.api.newTokenTitle' })
+      expect(within(dialog).getByText('deployments.access.api.newTokenDescription')).toBeInTheDocument()
+      expect(within(dialog).getByText('app-created-token')).toBeInTheDocument()
+
+      fireEvent.click(within(dialog).getByRole('button', { name: 'common.operation.confirm' }))
+
+      await waitFor(() => {
+        expect(screen.queryByRole('dialog', { name: 'deployments.access.api.newTokenTitle' })).not.toBeInTheDocument()
+      })
     })
   })
 })

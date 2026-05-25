@@ -4,6 +4,8 @@ import type {
   ApiKey,
   Environment,
 } from '@dify/contracts/enterprise/types.gen'
+import { Button } from '@langgenius/dify-ui/button'
+import { Dialog, DialogCloseButton, DialogContent, DialogDescription, DialogTitle } from '@langgenius/dify-ui/dialog'
 import { Switch, SwitchSkeleton } from '@langgenius/dify-ui/switch'
 import { useMutation, useQueries, useQuery } from '@tanstack/react-query'
 import { atom, useAtom, useSetAtom } from 'jotai'
@@ -138,37 +140,39 @@ export function DeveloperApiHeaderActions({ appInstanceId }: {
   )
 }
 
-function CreatedApiTokenCard({ token, onDismiss }: {
+function CreatedApiTokenDialog({ token, onDismiss }: {
   token: string
   onDismiss: () => void
 }) {
   const { t } = useTranslation('deployments')
 
   return (
-    <div className="flex flex-col gap-2 border-y border-divider-subtle bg-background-default-subtle px-3 py-2.5">
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex min-w-0 flex-col">
-          <span className="system-sm-medium text-text-primary">
+    <Dialog open={Boolean(token)} onOpenChange={open => !open && onDismiss()}>
+      <DialogContent className="w-120 max-w-[calc(100vw-32px)] overflow-hidden p-0">
+        <DialogCloseButton />
+        <div className="border-b border-divider-subtle px-6 py-5 pr-14">
+          <DialogTitle className="title-xl-semi-bold text-text-primary">
             {t('access.api.newTokenTitle')}
-          </span>
-          <span className="system-xs-regular text-text-tertiary">
+          </DialogTitle>
+          <DialogDescription className="mt-1 system-sm-regular text-text-tertiary">
             {t('access.api.newTokenDescription')}
-          </span>
+          </DialogDescription>
         </div>
-        <button
-          type="button"
-          onClick={onDismiss}
-          aria-label={t('access.api.dismissToken')}
-          className="flex size-6 shrink-0 items-center justify-center rounded-md text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary"
-        >
-          <span className="i-ri-close-line size-3.5" />
-        </button>
-      </div>
-      <CopyPill
-        label={t('access.api.newTokenLabel')}
-        value={token}
-      />
-    </div>
+
+        <div className="flex flex-col gap-5 px-6 py-5">
+          <CopyPill
+            label={t('access.api.newTokenLabel')}
+            value={token}
+          />
+        </div>
+
+        <div className="flex justify-end border-t border-divider-subtle bg-background-default-subtle px-6 py-4">
+          <Button variant="primary" onClick={onDismiss}>
+            {t('operation.confirm', { ns: 'common' })}
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
   )
 }
 
@@ -296,12 +300,6 @@ export function DeveloperApiSection({
                       value={apiUrl}
                     />
                   )}
-                  {visibleCreatedApiToken && (
-                    <CreatedApiTokenCard
-                      token={visibleCreatedApiToken}
-                      onDismiss={() => setCreatedApiToken(undefined)}
-                    />
-                  )}
                   {apiKeys.length === 0
                     ? (
                         <SectionState>
@@ -316,6 +314,12 @@ export function DeveloperApiSection({
                           environments={environments}
                         />
                       )}
+                  {visibleCreatedApiToken && (
+                    <CreatedApiTokenDialog
+                      token={visibleCreatedApiToken}
+                      onDismiss={() => setCreatedApiToken(undefined)}
+                    />
+                  )}
                 </div>
               )
             : (

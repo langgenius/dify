@@ -14,6 +14,8 @@
   "access.api.newTokenLabel": "Token",
   "access.api.newTokenTitle": "API key created",
   "access.api.noKeys": "No API keys yet. Create one to start calling the API.",
+  "access.api.revokeFailed": "Failed to revoke API key.",
+  "access.api.revokeSuccess": "API key revoked",
   "access.api.table.action": "Action",
   "access.api.table.environment": "Environment",
   "access.api.table.key": "API key",

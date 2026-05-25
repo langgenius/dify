@@ -11,7 +11,8 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
-import { useMutation } from '@tanstack/react-query'
+import { toast } from '@langgenius/dify-ui/toast'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { consoleQuery } from '@/service/client'
@@ -66,17 +67,50 @@ function RevokeApiKeyButton({ apiKey }: {
   apiKey: ApiKey
 }) {
   const { t } = useTranslation('deployments')
+  const queryClient = useQueryClient()
   const revokeApiKey = useMutation(consoleQuery.enterprise.accessService.deleteApiKey.mutationOptions())
+  const isRevoking = revokeApiKey.isPending
+
+  function invalidateApiKeys() {
+    if (apiKey.appInstanceId && apiKey.environmentId) {
+      return queryClient.invalidateQueries({
+        queryKey: consoleQuery.enterprise.accessService.listApiKeys.key({
+          type: 'query',
+          input: {
+            params: {
+              appInstanceId: apiKey.appInstanceId,
+              environmentId: apiKey.environmentId,
+            },
+          },
+        }),
+      })
+    }
+
+    return queryClient.invalidateQueries({
+      queryKey: consoleQuery.enterprise.accessService.listApiKeys.key({ type: 'query' }),
+    })
+  }
 
   function handleRevoke() {
-    if (!apiKey.id)
+    if (!apiKey.id || isRevoking)
       return
 
-    revokeApiKey.mutate({
-      params: {
-        apiKeyId: apiKey.id,
+    revokeApiKey.mutate(
+      {
+        params: {
+          apiKeyId: apiKey.id,
+        },
       },
-    })
+      {
+        onSuccess: async () => {
+          await invalidateApiKeys()
+          toast.success(t('access.api.revokeSuccess'))
+        },
+        onError: () => {
+          toast.error(t('access.api.revokeFailed'))
+        },
+      },
+    )
   }
 
   return (
@@ -84,9 +118,16 @@ function RevokeApiKeyButton({ apiKey }: {
       type="button"
       onClick={handleRevoke}
       aria-label={t('access.revoke')}
-      className="inline-flex size-8 shrink-0 items-center justify-center rounded-md text-text-tertiary outline-hidden hover:bg-state-destructive-hover hover:text-text-destructive focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+      aria-busy={isRevoking}
+      disabled={!apiKey.id || isRevoking}
+      className={cn(
+        'inline-flex size-8 shrink-0 items-center justify-center rounded-md text-text-tertiary outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid',
+        isRevoking
+          ? 'cursor-not-allowed opacity-60'
+          : 'hover:bg-state-destructive-hover hover:text-text-destructive',
+      )}
     >
-      <span className="i-ri-delete-bin-line size-3.5" />
+      <span className={cn(isRevoking ? 'i-ri-loader-2-line animate-spin' : 'i-ri-delete-bin-line', 'size-3.5')} />
     </button>
   )
 }
