@@ -74,9 +74,9 @@ const EndpointList = ({ detail }: Props) => {
               render={(
                 <button
                   type="button"
-                  className="flex h-4 w-4 shrink-0 items-center justify-center rounded-sm p-px outline-hidden hover:bg-state-base-hover focus-visible:ring-1 focus-visible:ring-components-input-border-hover"
+                  className="flex size-4 shrink-0 items-center justify-center rounded-sm p-px outline-hidden hover:bg-state-base-hover focus-visible:ring-1 focus-visible:ring-components-input-border-hover"
                 >
-                  <span aria-hidden className="i-ri-question-line h-3.5 w-3.5 text-text-quaternary hover:text-text-tertiary" />
+                  <span aria-hidden className="i-ri-question-line size-3.5 text-text-quaternary hover:text-text-tertiary" />
                 </button>
               )}
             />
@@ -86,7 +86,7 @@ const EndpointList = ({ detail }: Props) => {
             >
               <div className="flex flex-col gap-2">
                 <div className="flex h-8 w-8 items-center justify-center rounded-lg border-[0.5px] border-components-panel-border-subtle bg-background-default-subtle">
-                  <RiApps2AddLine className="h-4 w-4 text-text-tertiary" />
+                  <RiApps2AddLine className="size-4 text-text-tertiary" />
                 </div>
                 <div className="system-xs-regular text-text-tertiary">{t('detailPanel.endpointsTip', { ns: 'plugin' })}</div>
                 <a
@@ -95,7 +95,7 @@ const EndpointList = ({ detail }: Props) => {
                   rel="noopener noreferrer"
                   className="inline-flex cursor-pointer items-center gap-1 system-xs-regular text-text-accent"
                 >
-                  <RiBookOpenLine className="h-3 w-3" />
+                  <RiBookOpenLine className="size-3" />
                   {t('detailPanel.endpointsDocLink', { ns: 'plugin' })}
                 </a>
               </div>
@@ -106,7 +106,7 @@ const EndpointList = ({ detail }: Props) => {
           aria-label={t('detailPanel.endpointModalTitle', { ns: 'plugin' })}
           onClick={showEndpointModal}
         >
-          <RiAddLine className="h-4 w-4" />
+          <RiAddLine className="size-4" />
         </ActionButton>
       </div>
       {data.endpoints.length === 0 && (

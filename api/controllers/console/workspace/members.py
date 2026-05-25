@@ -1,4 +1,5 @@
 from urllib import parse
+from uuid import UUID
 
 from flask import abort, request
 from flask_restx import Resource
@@ -6,7 +7,8 @@ from pydantic import BaseModel, Field, TypeAdapter
 
 import services
 from configs import dify_config
-from controllers.common.schema import register_enum_models, register_schema_models
+from controllers.common.fields import SimpleResultDataResponse, VerificationTokenResponse
+from controllers.common.schema import register_enum_models, register_response_schema_models, register_schema_models
 from controllers.console import console_ns
 from controllers.console.auth.error import (
     CannotTransferOwnerToSelfError,
@@ -68,6 +70,7 @@ register_schema_models(
     OwnerTransferCheckPayload,
     OwnerTransferPayload,
 )
+register_response_schema_models(console_ns, SimpleResultDataResponse, VerificationTokenResponse)
 
 
 def _is_role_enabled(role: TenantAccountRole | str, tenant_id: str) -> bool:
@@ -173,7 +176,7 @@ class MemberCancelInviteApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def delete(self, member_id):
+    def delete(self, member_id: UUID):
         current_user, _ = current_account_with_tenant()
         if not current_user.current_tenant:
             raise ValueError("No current tenant")
@@ -206,7 +209,7 @@ class MemberUpdateRoleApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def put(self, member_id):
+    def put(self, member_id: UUID):
         payload = console_ns.payload or {}
         args = MemberRoleUpdatePayload.model_validate(payload)
         new_role = args.role
@@ -262,6 +265,7 @@ class SendOwnerTransferEmailApi(Resource):
     """Send owner transfer email."""
 
     @console_ns.expect(console_ns.models[OwnerTransferEmailPayload.__name__])
+    @console_ns.response(200, "Success", console_ns.models[SimpleResultDataResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -299,6 +303,7 @@ class SendOwnerTransferEmailApi(Resource):
 @console_ns.route("/workspaces/current/members/owner-transfer-check")
 class OwnerTransferCheckApi(Resource):
     @console_ns.expect(console_ns.models[OwnerTransferCheckPayload.__name__])
+    @console_ns.response(200, "Success", console_ns.models[VerificationTokenResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -347,7 +352,7 @@ class OwnerTransfer(Resource):
     @login_required
     @account_initialization_required
     @is_allow_transfer_owner
-    def post(self, member_id):
+    def post(self, member_id: UUID):
         payload = console_ns.payload or {}
         args = OwnerTransferPayload.model_validate(payload)
 

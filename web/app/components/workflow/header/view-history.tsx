@@ -79,10 +79,10 @@ const ViewHistory = ({
                     className={cn(
                       'flex h-8 items-center rounded-lg border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg px-3 shadow-xs',
                       'cursor-pointer text-[13px] font-medium text-components-button-secondary-text hover:bg-components-button-secondary-bg-hover',
-                      open && 'bg-components-button-secondary-bg-hover',
+                      'data-popup-open:bg-components-button-secondary-bg-hover',
                     )}
                   >
-                    <span className="mr-1 i-custom-vender-line-time-clock-play h-4 w-4" />
+                    <span className="mr-1 i-custom-vender-line-time-clock-play size-4" />
                     {t('common.showRunHistory', { ns: 'workflow' })}
                   </button>
                 )}
@@ -98,12 +98,12 @@ const ViewHistory = ({
                       <button
                         type="button"
                         aria-label={t('common.viewRunHistory', { ns: 'workflow' })}
-                        className={cn('group flex h-7 w-7 cursor-pointer items-center justify-center rounded-md hover:bg-state-accent-hover', open && 'bg-state-accent-hover')}
+                        className="group flex size-7 cursor-pointer items-center justify-center rounded-md hover:bg-state-accent-hover data-popup-open:bg-state-accent-hover"
                         onClick={() => {
                           onClearLogAndMessageModal?.()
                         }}
                       >
-                        <span className={cn('i-custom-vender-line-time-clock-play', 'h-4 w-4 group-hover:text-components-button-secondary-accent-text', open ? 'text-components-button-secondary-accent-text' : 'text-components-button-ghost-text')} />
+                        <span className="i-custom-vender-line-time-clock-play size-4 text-components-button-ghost-text group-hover:text-components-button-secondary-accent-text group-data-popup-open:text-components-button-secondary-accent-text" />
                       </button>
                     )}
                   />
@@ -130,13 +130,13 @@ const ViewHistory = ({
               <button
                 type="button"
                 aria-label={t('operation.close', { ns: 'common' })}
-                className="flex h-6 w-6 shrink-0 cursor-pointer items-center justify-center"
+                className="flex size-6 shrink-0 cursor-pointer items-center justify-center"
                 onClick={() => {
                   onClearLogAndMessageModal?.()
                   setOpen(false)
                 }}
               >
-                <span className="i-ri-close-line h-4 w-4 text-text-tertiary" />
+                <span className="i-ri-close-line size-4 text-text-tertiary" />
               </button>
             </div>
             {
@@ -152,7 +152,7 @@ const ViewHistory = ({
                   {
                     !data?.data.length && (
                       <div className="py-12">
-                        <span className="mx-auto mb-2 i-custom-vender-line-time-clock-play-slim h-8 w-8 text-text-quaternary" />
+                        <span className="mx-auto mb-2 i-custom-vender-line-time-clock-play-slim size-8 text-text-quaternary" />
                         <div className="text-center text-[13px] text-text-quaternary">
                           {t('common.notRunning', { ns: 'workflow' })}
                         </div>

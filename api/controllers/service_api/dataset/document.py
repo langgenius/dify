@@ -26,7 +26,8 @@ from controllers.common.errors import (
     TooManyFilesError,
     UnsupportedFileTypeError,
 )
-from controllers.common.schema import register_enum_models, register_schema_models
+from controllers.common.fields import UrlResponse
+from controllers.common.schema import register_enum_models, register_response_schema_models, register_schema_models
 from controllers.service_api import service_api_ns
 from controllers.service_api.app.error import ProviderNotInitializeError
 from controllers.service_api.dataset.error import (
@@ -120,6 +121,7 @@ register_schema_models(
     PreProcessingRule,
     Segmentation,
 )
+register_response_schema_models(service_api_ns, UrlResponse)
 
 
 def _create_document_by_text(tenant_id: str, dataset_id: UUID) -> tuple[Mapping[str, object], int]:
@@ -372,7 +374,7 @@ class DocumentAddByFileApi(DatasetApiResource):
     @cloud_edition_billing_resource_check("vector_space", "dataset")
     @cloud_edition_billing_resource_check("documents", "dataset")
     @cloud_edition_billing_rate_limit_check("knowledge", "dataset")
-    def post(self, tenant_id, dataset_id):
+    def post(self, tenant_id, dataset_id: UUID):
         """Create document by upload file."""
         dataset = db.session.scalar(
             select(Dataset).where(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id).limit(1)
@@ -393,7 +395,6 @@ class DocumentAddByFileApi(DatasetApiResource):
             args["doc_language"] = "English"
 
         # get dataset info
-        dataset_id = str(dataset_id)
         tenant_id = str(tenant_id)
 
         indexing_technique = args.get("indexing_technique") or dataset.indexing_technique
@@ -584,17 +585,17 @@ class DocumentListApi(DatasetApiResource):
             404: "Dataset not found",
         }
     )
-    def get(self, tenant_id, dataset_id):
-        dataset_id = str(dataset_id)
+    def get(self, tenant_id, dataset_id: UUID):
+        dataset_id_str = str(dataset_id)
         tenant_id = str(tenant_id)
         query_params = DocumentListQuery.model_validate(request.args.to_dict())
         dataset = db.session.scalar(
-            select(Dataset).where(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id).limit(1)
+            select(Dataset).where(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id_str).limit(1)
         )
         if not dataset:
             raise NotFound("Dataset not found.")
 
-        query = select(Document).where(Document.dataset_id == dataset_id, Document.tenant_id == tenant_id)
+        query = select(Document).where(Document.dataset_id == dataset_id_str, Document.tenant_id == tenant_id)
 
         if query_params.status:
             query = DocumentService.apply_display_status_filter(query, query_params.status)
@@ -644,7 +645,7 @@ class DocumentBatchDownloadZipApi(DatasetApiResource):
         }
     )
     @cloud_edition_billing_rate_limit_check("knowledge", "dataset")
-    def post(self, tenant_id, dataset_id):
+    def post(self, tenant_id, dataset_id: UUID):
         payload = DocumentBatchDownloadZipPayload.model_validate(service_api_ns.payload or {})
 
         upload_files, download_name = DocumentService.prepare_document_batch_download_zip(
@@ -679,18 +680,17 @@ class DocumentIndexingStatusApi(DatasetApiResource):
             404: "Dataset or documents not found",
         }
     )
-    def get(self, tenant_id, dataset_id, batch):
-        dataset_id = str(dataset_id)
-        batch = str(batch)
+    def get(self, tenant_id, dataset_id: UUID, batch: str):
+        dataset_id_str = str(dataset_id)
         tenant_id = str(tenant_id)
         # get dataset
         dataset = db.session.scalar(
-            select(Dataset).where(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id).limit(1)
+            select(Dataset).where(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id_str).limit(1)
         )
         if not dataset:
             raise NotFound("Dataset not found.")
         # get documents
-        documents = DocumentService.get_batch_documents(dataset_id, batch)
+        documents = DocumentService.get_batch_documents(dataset_id_str, batch)
         if not documents:
             raise NotFound("Documents not found.")
         documents_status = []
@@ -749,8 +749,13 @@ class DocumentDownloadApi(DatasetApiResource):
             404: "Document or upload file not found",
         }
     )
+    @service_api_ns.response(
+        200,
+        "Download URL generated successfully",
+        service_api_ns.models[UrlResponse.__name__],
+    )
     @cloud_edition_billing_rate_limit_check("knowledge", "dataset")
-    def get(self, tenant_id, dataset_id, document_id):
+    def get(self, tenant_id, dataset_id: UUID, document_id: UUID):
         dataset = self.get_dataset(str(dataset_id), str(tenant_id))
         document = DocumentService.get_document(dataset.id, str(document_id))
 
@@ -778,13 +783,13 @@ class DocumentApi(DatasetApiResource):
             404: "Document not found",
         }
     )
-    def get(self, tenant_id, dataset_id, document_id):
-        dataset_id = str(dataset_id)
-        document_id = str(document_id)
+    def get(self, tenant_id, dataset_id: UUID, document_id: UUID):
+        dataset_id_str = str(dataset_id)
+        document_id_str = str(document_id)
 
-        dataset = self.get_dataset(dataset_id, tenant_id)
+        dataset = self.get_dataset(dataset_id_str, tenant_id)
 
-        document = DocumentService.get_document(dataset.id, document_id)
+        document = DocumentService.get_document(dataset.id, document_id_str)
 
         if not document:
             raise NotFound("Document not found.")
@@ -801,15 +806,15 @@ class DocumentApi(DatasetApiResource):
         has_summary_index = dataset.summary_index_setting and dataset.summary_index_setting.get("enable") is True
         if has_summary_index and document.need_summary is True:
             summary_index_status = SummaryIndexService.get_document_summary_index_status(
-                document_id=document_id,
-                dataset_id=dataset_id,
+                document_id=document_id_str,
+                dataset_id=dataset_id_str,
                 tenant_id=tenant_id,
             )
 
         if metadata == "only":
             response = {"id": document.id, "doc_type": document.doc_type, "doc_metadata": document.doc_metadata_details}
         elif metadata == "without":
-            dataset_process_rules = DatasetService.get_process_rules(dataset_id)
+            dataset_process_rules = DatasetService.get_process_rules(dataset_id_str)
             document_process_rules = document.dataset_process_rule.to_dict() if document.dataset_process_rule else {}
             data_source_info = document.data_source_detail_dict
             response = {
@@ -844,7 +849,7 @@ class DocumentApi(DatasetApiResource):
                 "need_summary": document.need_summary if document.need_summary is not None else False,
             }
         else:
-            dataset_process_rules = DatasetService.get_process_rules(dataset_id)
+            dataset_process_rules = DatasetService.get_process_rules(dataset_id_str)
             document_process_rules = document.dataset_process_rule.to_dict() if document.dataset_process_rule else {}
             data_source_info = document.data_source_detail_dict
             response = {
@@ -911,21 +916,21 @@ class DocumentApi(DatasetApiResource):
         }
     )
     @cloud_edition_billing_rate_limit_check("knowledge", "dataset")
-    def delete(self, tenant_id, dataset_id, document_id):
+    def delete(self, tenant_id, dataset_id: UUID, document_id: UUID):
         """Delete document."""
-        document_id = str(document_id)
-        dataset_id = str(dataset_id)
+        document_id_str = str(document_id)
+        dataset_id_str = str(dataset_id)
         tenant_id = str(tenant_id)
 
         # get dataset info
         dataset = db.session.scalar(
-            select(Dataset).where(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id).limit(1)
+            select(Dataset).where(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id_str).limit(1)
         )
 
         if not dataset:
             raise ValueError("Dataset does not exist.")
 
-        document = DocumentService.get_document(dataset.id, document_id)
+        document = DocumentService.get_document(dataset.id, document_id_str)
 
         # 404 if document not found
         if document is None:

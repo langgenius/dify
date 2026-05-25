@@ -127,7 +127,7 @@ export const SwitchPluginVersion: FC<SwitchPluginVersionProps> = (props) => {
               text={(
                 <>
                   <div>{pluginDetail.version}</div>
-                  <RiArrowLeftRightLine className="ml-1 h-3 w-3 text-text-tertiary" />
+                  <RiArrowLeftRightLine className="ml-1 size-3 text-text-tertiary" />
                 </>
               )}
               hasRedCornerMark={true}

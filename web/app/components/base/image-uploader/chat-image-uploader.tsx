@@ -27,11 +27,11 @@ const UploadOnlyFromLocal: FC<UploadOnlyFromLocalProps> = ({
       {hovering => (
         <div
           className={`
-            relative flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg
+            relative flex size-8 cursor-pointer items-center justify-center rounded-lg
             ${hovering && 'bg-gray-100'}
           `}
         >
-          <span className="i-custom-vender-line-images-image-plus h-4 w-4 text-gray-500" />
+          <span className="i-custom-vender-line-images-image-plus size-4 text-gray-500" />
         </div>
       )}
     </Uploader>
@@ -77,9 +77,9 @@ const UploaderButton: FC<UploaderButtonProps> = ({
           <button
             type="button"
             disabled={disabled}
-            className="relative flex h-8 w-8 items-center justify-center rounded-lg enabled:hover:bg-gray-100 disabled:cursor-not-allowed"
+            className="relative flex size-8 items-center justify-center rounded-lg enabled:hover:bg-gray-100 disabled:cursor-not-allowed"
           >
-            <span className="i-custom-vender-line-images-image-plus h-4 w-4 text-gray-500" />
+            <span className="i-custom-vender-line-images-image-plus size-4 text-gray-500" />
           </button>
         )}
       />
@@ -109,7 +109,7 @@ const UploaderButton: FC<UploaderButtonProps> = ({
                       hovering && 'bg-primary-50',
                     )}
                   >
-                    <span className="mr-1 i-custom-vender-line-general-upload-03 h-4 w-4" />
+                    <span className="mr-1 i-custom-vender-line-general-upload-03 size-4" />
                     {t('imageUploader.uploadFromComputer', { ns: 'common' })}
                   </div>
                 )}

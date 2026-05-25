@@ -21,9 +21,9 @@ Service operations
 #### GET
 ##### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | [IndexInfoResponse](#indexinforesponse) |
 
 ### /app/feedbacks
 
@@ -264,11 +264,11 @@ Stop a running chat message generation
 
 ##### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Task stopped successfully |
-| 401 | Unauthorized - invalid API token |
-| 404 | Task not found |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Task stopped successfully | [SimpleResultResponse](#simpleresultresponse) |
+| 401 | Unauthorized - invalid API token |  |
+| 404 | Task not found |  |
 
 ### /completion-messages
 
@@ -318,11 +318,11 @@ Stop a running completion task
 
 ##### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Task stopped successfully |
-| 401 | Unauthorized - invalid API token |
-| 404 | Task not found |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Task stopped successfully | [SimpleResultResponse](#simpleresultresponse) |
+| 401 | Unauthorized - invalid API token |  |
+| 404 | Task not found |  |
 
 ### /conversations
 
@@ -469,12 +469,22 @@ Resource for getting datasets
 
 List all datasets
 
+##### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| include_all | query | Include all datasets | No | boolean |
+| keyword | query | Search keyword | No | string |
+| limit | query | Number of items per page | No | integer |
+| page | query | Page number | No | integer |
+| tag_ids | query | Filter by tag IDs | No | [ string ] |
+
 ##### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Datasets retrieved successfully |
-| 401 | Unauthorized - invalid API token |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Datasets retrieved successfully | [DatasetListResponse](#datasetlistresponse) |
+| 401 | Unauthorized - invalid API token |  |
 
 #### POST
 ##### Summary
@@ -493,11 +503,11 @@ Create a new dataset
 
 ##### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Dataset created successfully |
-| 400 | Bad request - invalid parameters |
-| 401 | Unauthorized - invalid API token |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Dataset created successfully | [DatasetDetailResponse](#datasetdetailresponse) |
+| 400 | Bad request - invalid parameters |  |
+| 401 | Unauthorized - invalid API token |  |
 
 ### /datasets/pipeline/file-upload
 
@@ -557,10 +567,10 @@ Get all knowledge type tags
 
 ##### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Tags retrieved successfully |
-| 401 | Unauthorized - invalid API token |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Tags retrieved successfully | [KnowledgeTagListResponse](#knowledgetaglistresponse) |
+| 401 | Unauthorized - invalid API token |  |
 
 #### PATCH
 ##### Description
@@ -575,11 +585,11 @@ Update a knowledge type tag
 
 ##### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Tag updated successfully |
-| 401 | Unauthorized - invalid API token |
-| 403 | Forbidden - insufficient permissions |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Tag updated successfully | [KnowledgeTagResponse](#knowledgetagresponse) |
+| 401 | Unauthorized - invalid API token |  |
+| 403 | Forbidden - insufficient permissions |  |
 
 #### POST
 ##### Summary
@@ -598,11 +608,11 @@ Add a knowledge type tag
 
 ##### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Tag created successfully |
-| 401 | Unauthorized - invalid API token |
-| 403 | Forbidden - insufficient permissions |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Tag created successfully | [KnowledgeTagResponse](#knowledgetagresponse) |
+| 401 | Unauthorized - invalid API token |  |
+| 403 | Forbidden - insufficient permissions |  |
 
 ### /datasets/tags/binding
 
@@ -696,12 +706,12 @@ Get a specific dataset by ID
 
 ##### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Dataset retrieved successfully |
-| 401 | Unauthorized - invalid API token |
-| 403 | Forbidden - insufficient permissions |
-| 404 | Dataset not found |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Dataset retrieved successfully | [DatasetDetailWithPartialMembersResponse](#datasetdetailwithpartialmembersresponse) |
+| 401 | Unauthorized - invalid API token |  |
+| 403 | Forbidden - insufficient permissions |  |
+| 404 | Dataset not found |  |
 
 #### PATCH
 ##### Description
@@ -717,12 +727,12 @@ Update an existing dataset
 
 ##### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Dataset updated successfully |
-| 401 | Unauthorized - invalid API token |
-| 403 | Forbidden - insufficient permissions |
-| 404 | Dataset not found |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Dataset updated successfully | [DatasetDetailWithPartialMembersResponse](#datasetdetailwithpartialmembersresponse) |
+| 401 | Unauthorized - invalid API token |  |
+| 403 | Forbidden - insufficient permissions |  |
+| 404 | Dataset not found |  |
 
 ### /datasets/{dataset_id}/document/create-by-file
 
@@ -875,11 +885,11 @@ Update metadata for multiple documents
 
 ##### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Documents metadata updated successfully |
-| 401 | Unauthorized - invalid API token |
-| 404 | Dataset not found |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Documents metadata updated successfully | [DatasetMetadataActionResponse](#datasetmetadataactionresponse) |
+| 401 | Unauthorized - invalid API token |  |
+| 404 | Dataset not found |  |
 
 ### /datasets/{dataset_id}/documents/status/{action}
 
@@ -914,13 +924,13 @@ Raises:
 
 ##### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Document status updated successfully |
-| 400 | Bad request - invalid action |
-| 401 | Unauthorized - invalid API token |
-| 403 | Forbidden - insufficient permissions |
-| 404 | Dataset not found |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Document status updated successfully | [SimpleResultResponse](#simpleresultresponse) |
+| 400 | Bad request - invalid action |  |
+| 401 | Unauthorized - invalid API token |  |
+| 403 | Forbidden - insufficient permissions |  |
+| 404 | Dataset not found |  |
 
 ### /datasets/{dataset_id}/documents/{batch}/indexing-status
 
@@ -1028,12 +1038,12 @@ Get a signed download URL for a document's original uploaded file
 
 ##### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Download URL generated successfully |
-| 401 | Unauthorized - invalid API token |
-| 403 | Forbidden - insufficient permissions |
-| 404 | Document or upload file not found |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Download URL generated successfully | [UrlResponse](#urlresponse) |
+| 401 | Unauthorized - invalid API token |  |
+| 403 | Forbidden - insufficient permissions |  |
+| 404 | Document or upload file not found |  |
 
 ### /datasets/{dataset_id}/documents/{document_id}/segments
 
@@ -1378,11 +1388,11 @@ Get all metadata for a dataset
 
 ##### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Metadata retrieved successfully |
-| 401 | Unauthorized - invalid API token |
-| 404 | Dataset not found |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Metadata retrieved successfully | [DatasetMetadataListResponse](#datasetmetadatalistresponse) |
+| 401 | Unauthorized - invalid API token |  |
+| 404 | Dataset not found |  |
 
 #### POST
 ##### Summary
@@ -1402,11 +1412,11 @@ Create metadata for a dataset
 
 ##### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 201 | Metadata created successfully |
-| 401 | Unauthorized - invalid API token |
-| 404 | Dataset not found |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 201 | Metadata created successfully | [DatasetMetadataResponse](#datasetmetadataresponse) |
+| 401 | Unauthorized - invalid API token |  |
+| 404 | Dataset not found |  |
 
 ### /datasets/{dataset_id}/metadata/built-in
 
@@ -1427,10 +1437,10 @@ Get all built-in metadata fields
 
 ##### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Built-in fields retrieved successfully |
-| 401 | Unauthorized - invalid API token |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Built-in fields retrieved successfully | [DatasetMetadataBuiltInFieldsResponse](#datasetmetadatabuiltinfieldsresponse) |
+| 401 | Unauthorized - invalid API token |  |
 
 ### /datasets/{dataset_id}/metadata/built-in/{action}
 
@@ -1452,11 +1462,11 @@ Enable or disable built-in metadata field
 
 ##### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Action completed successfully |
-| 401 | Unauthorized - invalid API token |
-| 404 | Dataset not found |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Action completed successfully | [DatasetMetadataActionResponse](#datasetmetadataactionresponse) |
+| 401 | Unauthorized - invalid API token |  |
+| 404 | Dataset not found |  |
 
 ### /datasets/{dataset_id}/metadata/{metadata_id}
 
@@ -1503,11 +1513,11 @@ Update metadata name
 
 ##### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Metadata updated successfully |
-| 401 | Unauthorized - invalid API token |
-| 404 | Dataset or metadata not found |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Metadata updated successfully | [DatasetMetadataResponse](#datasetmetadataresponse) |
+| 401 | Unauthorized - invalid API token |  |
+| 404 | Dataset or metadata not found |  |
 
 ### /datasets/{dataset_id}/pipeline/datasource-plugins
 
@@ -1629,10 +1639,10 @@ Get tags bound to a specific dataset
 
 ##### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Tags retrieved successfully |
-| 401 | Unauthorized - invalid API token |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Tags retrieved successfully | [DatasetBoundTagListResponse](#datasetboundtaglistresponse) |
+| 401 | Unauthorized - invalid API token |  |
 
 ### /end-users/{end_user_id}
 
@@ -1655,11 +1665,11 @@ cross-tenant/app access when an end-user ID is known.
 
 ##### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | End user retrieved successfully |
-| 401 | Unauthorized - invalid API token |
-| 404 | End user not found |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | End user retrieved successfully | [EndUserDetail](#enduserdetail) |
+| 401 | Unauthorized - invalid API token |  |
+| 404 | End user not found |  |
 
 ### /files/upload
 
@@ -1770,11 +1780,11 @@ Returns basic information about the application including name, description, tag
 
 ##### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Application info retrieved successfully |
-| 401 | Unauthorized - invalid API token |
-| 404 | Application not found |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Application info retrieved successfully | [AppInfoResponse](#appinforesponse) |
+| 401 | Unauthorized - invalid API token |  |
+| 404 | Application not found |  |
 
 ### /messages
 
@@ -1823,11 +1833,11 @@ Allows users to rate messages as like/dislike and provide optional feedback cont
 
 ##### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Feedback submitted successfully |
-| 401 | Unauthorized - invalid API token |
-| 404 | Message not found |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Feedback submitted successfully | [ResultResponse](#resultresponse) |
+| 401 | Unauthorized - invalid API token |  |
+| 404 | Message not found |  |
 
 ### /messages/{message_id}/suggested
 
@@ -1849,13 +1859,13 @@ Returns AI-generated follow-up questions based on the message content.
 
 ##### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Suggested questions retrieved successfully |
-| 400 | Suggested questions feature is disabled |
-| 401 | Unauthorized - invalid API token |
-| 404 | Message not found |
-| 500 | Internal server error |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Suggested questions retrieved successfully | [SimpleResultStringListResponse](#simpleresultstringlistresponse) |
+| 400 | Suggested questions feature is disabled |  |
+| 401 | Unauthorized - invalid API token |  |
+| 404 | Message not found |  |
+| 500 | Internal server error |  |
 
 ### /meta
 
@@ -1911,11 +1921,11 @@ Returns the site configuration for the application including theme, icons, and t
 
 ##### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Site configuration retrieved successfully |
-| 401 | Unauthorized - invalid API token |
-| 403 | Forbidden - site not found or tenant archived |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Site configuration retrieved successfully | [Site](#site) |
+| 401 | Unauthorized - invalid API token |  |
+| 403 | Forbidden - site not found or tenant archived |  |
 
 ### /text-to-audio
 
@@ -2068,11 +2078,11 @@ Stop a running workflow task
 
 ##### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Task stopped successfully |
-| 401 | Unauthorized - invalid API token |
-| 404 | Task not found |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Task stopped successfully | [SimpleResultResponse](#simpleresultresponse) |
+| 401 | Unauthorized - invalid API token |  |
+| 404 | Task not found |  |
 
 ### /workflows/{workflow_id}/run
 
@@ -2136,11 +2146,11 @@ Returns a list of available models for the specified model type.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| content |  |  | No |
-| created_at |  |  | No |
-| hit_count |  |  | No |
+| content | string |  | No |
+| created_at | integer |  | No |
+| hit_count | integer |  | No |
 | id | string |  | Yes |
-| question |  |  | No |
+| question | string |  | No |
 
 #### AnnotationCreatePayload
 
@@ -2167,18 +2177,28 @@ Returns a list of available models for the specified model type.
 | embedding_provider_name | string | Embedding provider name | Yes |
 | score_threshold | number | Score threshold for annotation matching | Yes |
 
+#### AppInfoResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| author_name | string |  | Yes |
+| description | string |  | Yes |
+| mode | string |  | Yes |
+| name | string |  | Yes |
+| tags | [ string ] |  | Yes |
+
 #### ChatRequestPayload
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | auto_generate_name | boolean | Auto generate conversation name | No |
-| conversation_id |  | Conversation UUID | No |
-| files |  |  | No |
+| conversation_id | string | Conversation UUID | No |
+| files | [ object ] |  | No |
 | inputs | object |  | Yes |
 | query | string |  | Yes |
-| response_mode |  |  | No |
+| response_mode | string | *Enum:* `"blocking"`, `"streaming"` | No |
 | retriever_from | string |  | No |
-| workflow_id |  | Workflow ID for advanced chat | No |
+| workflow_id | string | Workflow ID for advanced chat | No |
 
 #### ChildChunkCreatePayload
 
@@ -2190,7 +2210,7 @@ Returns a list of available models for the specified model type.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| keyword |  |  | No |
+| keyword | string |  | No |
 | limit | integer |  | No |
 | page | integer |  | No |
 
@@ -2204,10 +2224,10 @@ Returns a list of available models for the specified model type.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| files |  |  | No |
+| files | [ object ] |  | No |
 | inputs | object |  | Yes |
 | query | string |  | No |
-| response_mode |  |  | No |
+| response_mode | string | *Enum:* `"blocking"`, `"streaming"` | No |
 | retriever_from | string |  | No |
 
 #### Condition
@@ -2224,7 +2244,7 @@ Condition detail
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| last_id |  | Last conversation ID for pagination | No |
+| last_id | string | Last conversation ID for pagination | No |
 | limit | integer | Number of conversations to return | No |
 | sort_by | string | Sort order for conversations<br>*Enum:* `"-created_at"`, `"-updated_at"`, `"created_at"`, `"updated_at"` | No |
 
@@ -2233,7 +2253,7 @@ Condition detail
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | auto_generate | boolean |  | No |
-| name |  |  | No |
+| name | string |  | No |
 
 #### ConversationVariableInfiniteScrollPaginationResponse
 
@@ -2247,12 +2267,12 @@ Condition detail
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| created_at |  |  | No |
-| description |  |  | No |
+| created_at | integer |  | No |
+| description | string |  | No |
 | id | string |  | Yes |
 | name | string |  | Yes |
-| updated_at |  |  | No |
-| value |  |  | No |
+| updated_at | integer |  | No |
+| value | string |  | No |
 | value_type | string |  | Yes |
 
 #### ConversationVariableUpdatePayload
@@ -2265,44 +2285,223 @@ Condition detail
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| last_id |  | Last variable ID for pagination | No |
+| last_id | string | Last variable ID for pagination | No |
 | limit | integer | Number of variables to return | No |
-| variable_name |  | Filter variables by name | No |
+| variable_name | string | Filter variables by name | No |
 
-#### DataSetTag
+#### DatasetBoundTagListResponse
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| binding_count |  |  | No |
+| data | [ [DatasetBoundTagResponse](#datasetboundtagresponse) ] |  | Yes |
+| total | integer |  | Yes |
+
+#### DatasetBoundTagResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
 | id | string |  | Yes |
 | name | string |  | Yes |
-| type | string |  | Yes |
 
 #### DatasetCreatePayload
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | description | string | Dataset description (max 400 chars) | No |
-| embedding_model |  |  | No |
-| embedding_model_provider |  |  | No |
-| external_knowledge_api_id |  |  | No |
-| external_knowledge_id |  |  | No |
-| indexing_technique |  |  | No |
+| embedding_model | string |  | No |
+| embedding_model_provider | string |  | No |
+| external_knowledge_api_id | string |  | No |
+| external_knowledge_id | string |  | No |
+| indexing_technique | string | *Enum:* `"economy"`, `"high_quality"` | No |
 | name | string |  | Yes |
-| permission |  |  | No |
+| permission | [DatasetPermissionEnum](#datasetpermissionenum) |  | No |
 | provider | string |  | No |
-| retrieval_model |  |  | No |
-| summary_index_setting |  |  | No |
+| retrieval_model | [RetrievalModel](#retrievalmodel) |  | No |
+| summary_index_setting | object |  | No |
+
+#### DatasetDetailResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| app_count | integer |  | Yes |
+| author_name | string |  | Yes |
+| built_in_field_enabled | boolean |  | Yes |
+| chunk_structure | string |  | Yes |
+| created_at | integer |  | Yes |
+| created_by | string |  | Yes |
+| data_source_type | string |  | Yes |
+| description | string |  | Yes |
+| doc_form | string |  | Yes |
+| doc_metadata | [ [DatasetDocMetadataResponse](#datasetdocmetadataresponse) ] |  | Yes |
+| document_count | integer |  | Yes |
+| embedding_available | boolean |  | No |
+| embedding_model | string |  | Yes |
+| embedding_model_provider | string |  | Yes |
+| enable_api | boolean |  | Yes |
+| external_knowledge_info | [DatasetExternalKnowledgeInfoResponse](#datasetexternalknowledgeinforesponse) |  | Yes |
+| external_retrieval_model | [DatasetExternalRetrievalModelResponse](#datasetexternalretrievalmodelresponse) |  | Yes |
+| icon_info | [DatasetIconInfoResponse](#dataseticoninforesponse) |  | Yes |
+| id | string |  | Yes |
+| indexing_technique | string |  | Yes |
+| is_multimodal | boolean |  | Yes |
+| is_published | boolean |  | Yes |
+| name | string |  | Yes |
+| permission | string |  | Yes |
+| pipeline_id | string |  | Yes |
+| provider | string |  | Yes |
+| retrieval_model_dict | [DatasetRetrievalModelResponse](#datasetretrievalmodelresponse) |  | Yes |
+| runtime_mode | string |  | Yes |
+| summary_index_setting | [DatasetSummaryIndexSettingResponse](#datasetsummaryindexsettingresponse) |  | Yes |
+| tags | [ [DatasetTagResponse](#datasettagresponse) ] |  | Yes |
+| total_available_documents | integer |  | Yes |
+| total_documents | integer |  | Yes |
+| updated_at | integer |  | Yes |
+| updated_by | string |  | Yes |
+| word_count | integer |  | Yes |
+
+#### DatasetDetailWithPartialMembersResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| app_count | integer |  | Yes |
+| author_name | string |  | Yes |
+| built_in_field_enabled | boolean |  | Yes |
+| chunk_structure | string |  | Yes |
+| created_at | integer |  | Yes |
+| created_by | string |  | Yes |
+| data_source_type | string |  | Yes |
+| description | string |  | Yes |
+| doc_form | string |  | Yes |
+| doc_metadata | [ [DatasetDocMetadataResponse](#datasetdocmetadataresponse) ] |  | Yes |
+| document_count | integer |  | Yes |
+| embedding_available | boolean |  | No |
+| embedding_model | string |  | Yes |
+| embedding_model_provider | string |  | Yes |
+| enable_api | boolean |  | Yes |
+| external_knowledge_info | [DatasetExternalKnowledgeInfoResponse](#datasetexternalknowledgeinforesponse) |  | Yes |
+| external_retrieval_model | [DatasetExternalRetrievalModelResponse](#datasetexternalretrievalmodelresponse) |  | Yes |
+| icon_info | [DatasetIconInfoResponse](#dataseticoninforesponse) |  | Yes |
+| id | string |  | Yes |
+| indexing_technique | string |  | Yes |
+| is_multimodal | boolean |  | Yes |
+| is_published | boolean |  | Yes |
+| name | string |  | Yes |
+| partial_member_list | [ string ] |  | No |
+| permission | string |  | Yes |
+| pipeline_id | string |  | Yes |
+| provider | string |  | Yes |
+| retrieval_model_dict | [DatasetRetrievalModelResponse](#datasetretrievalmodelresponse) |  | Yes |
+| runtime_mode | string |  | Yes |
+| summary_index_setting | [DatasetSummaryIndexSettingResponse](#datasetsummaryindexsettingresponse) |  | Yes |
+| tags | [ [DatasetTagResponse](#datasettagresponse) ] |  | Yes |
+| total_available_documents | integer |  | Yes |
+| total_documents | integer |  | Yes |
+| updated_at | integer |  | Yes |
+| updated_by | string |  | Yes |
+| word_count | integer |  | Yes |
+
+#### DatasetDocMetadataResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| id | string |  | Yes |
+| name | string |  | Yes |
+| type | string |  | Yes |
+
+#### DatasetExternalKnowledgeInfoResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| external_knowledge_api_endpoint | string |  | Yes |
+| external_knowledge_api_id | string |  | Yes |
+| external_knowledge_api_name | string |  | Yes |
+| external_knowledge_id | string |  | Yes |
+
+#### DatasetExternalRetrievalModelResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| score_threshold | number |  | No |
+| score_threshold_enabled | boolean |  | No |
+| top_k | integer |  | Yes |
+
+#### DatasetIconInfoResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| icon | string |  | Yes |
+| icon_background | string |  | No |
+| icon_type | string |  | Yes |
+| icon_url | string |  | No |
+
+#### DatasetKeywordSettingResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| keyword_weight | number |  | Yes |
 
 #### DatasetListQuery
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | include_all | boolean | Include all datasets | No |
-| keyword |  | Search keyword | No |
+| keyword | string | Search keyword | No |
 | limit | integer | Number of items per page | No |
 | page | integer | Page number | No |
 | tag_ids | [ string ] | Filter by tag IDs | No |
+
+#### DatasetListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [DatasetDetailResponse](#datasetdetailresponse) ] |  | Yes |
+| has_more | boolean |  | Yes |
+| limit | integer |  | Yes |
+| page | integer |  | Yes |
+| total | integer |  | Yes |
+
+#### DatasetMetadataActionResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| result | string |  | Yes |
+
+#### DatasetMetadataBuiltInFieldResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| name | string |  | Yes |
+| type | string |  | Yes |
+
+#### DatasetMetadataBuiltInFieldsResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| fields | [ [DatasetMetadataBuiltInFieldResponse](#datasetmetadatabuiltinfieldresponse) ] |  | Yes |
+
+#### DatasetMetadataListItemResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| count | integer |  | No |
+| id | string |  | Yes |
+| name | string |  | Yes |
+| type | string |  | Yes |
+
+#### DatasetMetadataListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| built_in_field_enabled | boolean |  | Yes |
+| doc_metadata | [ [DatasetMetadataListItemResponse](#datasetmetadatalistitemresponse) ] |  | Yes |
+
+#### DatasetMetadataResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| id | string |  | Yes |
+| name | string |  | Yes |
+| type | string |  | Yes |
 
 #### DatasetPermissionEnum
 
@@ -2310,27 +2509,80 @@ Condition detail
 | ---- | ---- | ----------- | -------- |
 | DatasetPermissionEnum | string |  |  |
 
+#### DatasetRerankingModelResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| reranking_model_name | string |  | No |
+| reranking_provider_name | string |  | No |
+
+#### DatasetRetrievalModelResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| reranking_enable | boolean |  | Yes |
+| reranking_mode | string |  | No |
+| reranking_model | [DatasetRerankingModelResponse](#datasetrerankingmodelresponse) |  | Yes |
+| score_threshold | number |  | No |
+| score_threshold_enabled | boolean |  | Yes |
+| search_method | string |  | Yes |
+| top_k | integer |  | Yes |
+| weights | [DatasetWeightedScoreResponse](#datasetweightedscoreresponse) |  | No |
+
+#### DatasetSummaryIndexSettingResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| enable | boolean |  | No |
+| model_name | string |  | No |
+| model_provider_name | string |  | No |
+| summary_prompt | string |  | No |
+
+#### DatasetTagResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| id | string |  | Yes |
+| name | string |  | Yes |
+| type | string |  | Yes |
+
 #### DatasetUpdatePayload
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| description |  | Dataset description (max 400 chars) | No |
-| embedding_model |  |  | No |
-| embedding_model_provider |  |  | No |
-| external_knowledge_api_id |  |  | No |
-| external_knowledge_id |  |  | No |
-| external_retrieval_model |  |  | No |
-| indexing_technique |  |  | No |
-| name |  |  | No |
-| partial_member_list |  |  | No |
-| permission |  |  | No |
-| retrieval_model |  |  | No |
+| description | string | Dataset description (max 400 chars) | No |
+| embedding_model | string |  | No |
+| embedding_model_provider | string |  | No |
+| external_knowledge_api_id | string |  | No |
+| external_knowledge_id | string |  | No |
+| external_retrieval_model | object |  | No |
+| indexing_technique | string | *Enum:* `"economy"`, `"high_quality"` | No |
+| name | string |  | No |
+| partial_member_list | [ object ] |  | No |
+| permission | [DatasetPermissionEnum](#datasetpermissionenum) |  | No |
+| retrieval_model | [RetrievalModel](#retrievalmodel) |  | No |
+
+#### DatasetVectorSettingResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| embedding_model_name | string |  | Yes |
+| embedding_provider_name | string |  | Yes |
+| vector_weight | number |  | Yes |
+
+#### DatasetWeightedScoreResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| keyword_setting | [DatasetKeywordSettingResponse](#datasetkeywordsettingresponse) |  | No |
+| vector_setting | [DatasetVectorSettingResponse](#datasetvectorsettingresponse) |  | No |
+| weight_type | string |  | No |
 
 #### DatasourceNodeRunPayload
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| credential_id |  |  | No |
+| credential_id | string |  | No |
 | datasource_type | string |  | Yes |
 | inputs | object |  | Yes |
 | is_published | boolean |  | Yes |
@@ -2347,10 +2599,10 @@ Request payload for bulk downloading documents as a zip archive.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| keyword |  | Search keyword | No |
+| keyword | string | Search keyword | No |
 | limit | integer | Number of items per page | No |
 | page | integer | Page number | No |
-| status |  | Document status filter | No |
+| status | string | Document status filter | No |
 
 #### DocumentMetadataOperation
 
@@ -2366,13 +2618,13 @@ Request payload for bulk downloading documents as a zip archive.
 | ---- | ---- | ----------- | -------- |
 | doc_form | string |  | No |
 | doc_language | string |  | No |
-| embedding_model |  |  | No |
-| embedding_model_provider |  |  | No |
-| indexing_technique |  |  | No |
+| embedding_model | string |  | No |
+| embedding_model_provider | string |  | No |
+| indexing_technique | string |  | No |
 | name | string |  | Yes |
-| original_document_id |  |  | No |
-| process_rule |  |  | No |
-| retrieval_model |  |  | No |
+| original_document_id | string |  | No |
+| process_rule | [ProcessRule](#processrule) |  | No |
+| retrieval_model | [RetrievalModel](#retrievalmodel) |  | No |
 | text | string |  | Yes |
 
 #### DocumentTextUpdate
@@ -2381,10 +2633,31 @@ Request payload for bulk downloading documents as a zip archive.
 | ---- | ---- | ----------- | -------- |
 | doc_form | string |  | No |
 | doc_language | string |  | No |
-| name |  |  | No |
-| process_rule |  |  | No |
-| retrieval_model |  |  | No |
-| text |  |  | No |
+| name | string |  | No |
+| process_rule | [ProcessRule](#processrule) |  | No |
+| retrieval_model | [RetrievalModel](#retrievalmodel) |  | No |
+| text | string |  | No |
+
+#### EndUserDetail
+
+Full EndUser record for API responses.
+
+Note: The SQLAlchemy model defines an `is_anonymous` property for Flask-Login semantics
+(always False). The database column is exposed as `_is_anonymous`, so this DTO maps
+`is_anonymous` from `_is_anonymous` to return the stored value.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| app_id | string |  | No |
+| created_at | dateTime |  | Yes |
+| external_user_id | string |  | No |
+| id | string |  | Yes |
+| is_anonymous | boolean |  | Yes |
+| name | string |  | No |
+| session_id | string |  | Yes |
+| tenant_id | string |  | Yes |
+| type | string |  | Yes |
+| updated_at | dateTime |  | Yes |
 
 #### FeedbackListQuery
 
@@ -2403,29 +2676,29 @@ Request payload for bulk downloading documents as a zip archive.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| conversation_id |  |  | No |
-| created_at |  |  | No |
-| created_by |  |  | No |
-| extension |  |  | No |
-| file_key |  |  | No |
+| conversation_id | string |  | No |
+| created_at | integer |  | No |
+| created_by | string |  | No |
+| extension | string |  | No |
+| file_key | string |  | No |
 | id | string |  | Yes |
-| mime_type |  |  | No |
+| mime_type | string |  | No |
 | name | string |  | Yes |
-| original_url |  |  | No |
-| preview_url |  |  | No |
+| original_url | string |  | No |
+| preview_url | string |  | No |
 | size | integer |  | Yes |
-| source_url |  |  | No |
-| tenant_id |  |  | No |
-| user_id |  |  | No |
+| source_url | string |  | No |
+| tenant_id | string |  | No |
+| user_id | string |  | No |
 
 #### HitTestingPayload
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| attachment_ids |  |  | No |
-| external_retrieval_model |  |  | No |
+| attachment_ids | [ string ] |  | No |
+| external_retrieval_model | object |  | No |
 | query | string |  | Yes |
-| retrieval_model |  |  | No |
+| retrieval_model | [RetrievalModel](#retrievalmodel) |  | No |
 
 #### HumanInputFormSubmitPayload
 
@@ -2434,25 +2707,48 @@ Request payload for bulk downloading documents as a zip archive.
 | action | string |  | Yes |
 | inputs | object |  | Yes |
 
+#### IndexInfoResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| api_version | string |  | Yes |
+| server_version | string |  | Yes |
+| welcome | string |  | Yes |
+
 #### JsonValue
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | JsonValue |  |  |  |
 
+#### KnowledgeTagListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| KnowledgeTagListResponse | array |  |  |
+
+#### KnowledgeTagResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| binding_count | string |  | No |
+| id | string |  | Yes |
+| name | string |  | Yes |
+| type | string |  | Yes |
+
 #### MessageFeedbackPayload
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| content |  |  | No |
-| rating |  |  | No |
+| content | string |  | No |
+| rating | string | *Enum:* `"dislike"`, `"like"` | No |
 
 #### MessageListQuery
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | conversation_id | string | Conversation UUID | Yes |
-| first_id |  | First message ID for pagination | No |
+| first_id | string | First message ID for pagination | No |
 | limit | integer | Number of messages to return (1-100) | No |
 
 #### MetadataArgs
@@ -2476,8 +2772,8 @@ Metadata Filtering Condition.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| conditions |  |  | No |
-| logical_operator |  |  | No |
+| conditions | [ [Condition](#condition) ] |  | No |
+| logical_operator | string | *Enum:* `"and"`, `"or"` | No |
 
 #### MetadataOperationData
 
@@ -2516,14 +2812,20 @@ Metadata operation data
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | mode | string | *Enum:* `"automatic"`, `"custom"`, `"hierarchical"` | Yes |
-| rules |  |  | No |
+| rules | [Rule](#rule) |  | No |
 
 #### RerankingModel
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| reranking_model_name |  |  | No |
-| reranking_provider_name |  |  | No |
+| reranking_model_name | string |  | No |
+| reranking_provider_name | string |  | No |
+
+#### ResultResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| result | string |  | Yes |
 
 #### RetrievalMethod
 
@@ -2535,49 +2837,49 @@ Metadata operation data
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| metadata_filtering_conditions |  |  | No |
+| metadata_filtering_conditions | [MetadataFilteringCondition](#metadatafilteringcondition) |  | No |
 | reranking_enable | boolean |  | Yes |
-| reranking_mode |  |  | No |
-| reranking_model |  |  | No |
-| score_threshold |  |  | No |
+| reranking_mode | string |  | No |
+| reranking_model | [RerankingModel](#rerankingmodel) |  | No |
+| score_threshold | number |  | No |
 | score_threshold_enabled | boolean |  | Yes |
 | search_method | [RetrievalMethod](#retrievalmethod) |  | Yes |
 | top_k | integer |  | Yes |
-| weights |  |  | No |
+| weights | [WeightModel](#weightmodel) |  | No |
 
 #### Rule
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| parent_mode |  |  | No |
-| pre_processing_rules |  |  | No |
-| segmentation |  |  | No |
-| subchunk_segmentation |  |  | No |
+| parent_mode | string | *Enum:* `"full-doc"`, `"paragraph"` | No |
+| pre_processing_rules | [ [PreProcessingRule](#preprocessingrule) ] |  | No |
+| segmentation | [Segmentation](#segmentation) |  | No |
+| subchunk_segmentation | [Segmentation](#segmentation) |  | No |
 
 #### SegmentCreatePayload
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| segments |  |  | No |
+| segments | [ object ] |  | No |
 
 #### SegmentListQuery
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| keyword |  |  | No |
+| keyword | string |  | No |
 | status | [ string ] |  | No |
 
 #### SegmentUpdateArgs
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| answer |  |  | No |
-| attachment_ids |  |  | No |
-| content |  |  | No |
-| enabled |  |  | No |
-| keywords |  |  | No |
+| answer | string |  | No |
+| attachment_ids | [ string ] |  | No |
+| content | string |  | No |
+| enabled | boolean |  | No |
+| keywords | [ string ] |  | No |
 | regenerate_child_chunks | boolean |  | No |
-| summary |  |  | No |
+| summary | string |  | No |
 
 #### SegmentUpdatePayload
 
@@ -2607,8 +2909,40 @@ Metadata operation data
 | ---- | ---- | ----------- | -------- |
 | id | string |  | Yes |
 | is_anonymous | boolean |  | Yes |
-| session_id |  |  | No |
+| session_id | string |  | No |
 | type | string |  | Yes |
+
+#### SimpleResultResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| result | string |  | Yes |
+
+#### SimpleResultStringListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ string ] |  | Yes |
+| result | string |  | Yes |
+
+#### Site
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| chat_color_theme | string |  | No |
+| chat_color_theme_inverted | boolean |  | Yes |
+| copyright | string |  | No |
+| custom_disclaimer | string |  | No |
+| default_language | string |  | Yes |
+| description | string |  | No |
+| icon | string |  | No |
+| icon_background | string |  | No |
+| icon_type | string |  | No |
+| icon_url | string |  | Yes |
+| privacy_policy | string |  | No |
+| show_workflow_steps | boolean |  | Yes |
+| title | string |  | Yes |
+| use_icon_as_answer_icon | boolean |  | Yes |
 
 #### TagBindingPayload
 
@@ -2635,7 +2969,7 @@ Accept the legacy single-tag Service API payload while exposing a normalized tag
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| tag_id |  |  | No |
+| tag_id | string |  | No |
 | tag_ids | [ string ] |  | No |
 | target_id | string |  | Yes |
 
@@ -2650,10 +2984,16 @@ Accept the legacy single-tag Service API payload while exposing a normalized tag
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| message_id |  | Message ID | No |
-| streaming |  | Enable streaming response | No |
-| text |  | Text to convert to audio | No |
-| voice |  | Voice to use for TTS | No |
+| message_id | string | Message ID | No |
+| streaming | boolean | Enable streaming response | No |
+| text | string | Text to convert to audio | No |
+| voice | string | Voice to use for TTS | No |
+
+#### UrlResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| url | string |  | Yes |
 
 #### WeightKeywordSetting
 
@@ -2665,9 +3005,9 @@ Accept the legacy single-tag Service API payload while exposing a normalized tag
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| keyword_setting |  |  | No |
-| vector_setting |  |  | No |
-| weight_type |  |  | No |
+| keyword_setting | [WeightKeywordSetting](#weightkeywordsetting) |  | No |
+| vector_setting | [WeightVectorSetting](#weightvectorsetting) |  | No |
+| weight_type | string | *Enum:* `"customized"`, `"keyword_first"`, `"semantic_first"` | No |
 
 #### WeightVectorSetting
 
@@ -2691,64 +3031,64 @@ Accept the legacy single-tag Service API payload while exposing a normalized tag
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| created_at |  |  | No |
-| created_by_account |  |  | No |
-| created_by_end_user |  |  | No |
-| created_by_role |  |  | No |
-| created_from |  |  | No |
+| created_at | integer |  | No |
+| created_by_account | [SimpleAccount](#simpleaccount) |  | No |
+| created_by_end_user | [SimpleEndUser](#simpleenduser) |  | No |
+| created_by_role | string |  | No |
+| created_from | string |  | No |
 | details |  |  | No |
 | id | string |  | Yes |
-| workflow_run |  |  | No |
+| workflow_run | [WorkflowRunForLogResponse](#workflowrunforlogresponse) |  | No |
 
 #### WorkflowLogQuery
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| created_at__after |  |  | No |
-| created_at__before |  |  | No |
-| created_by_account |  |  | No |
-| created_by_end_user_session_id |  |  | No |
-| keyword |  |  | No |
+| created_at__after | string |  | No |
+| created_at__before | string |  | No |
+| created_by_account | string |  | No |
+| created_by_end_user_session_id | string |  | No |
+| keyword | string |  | No |
 | limit | integer |  | No |
 | page | integer |  | No |
-| status |  |  | No |
+| status | string | *Enum:* `"failed"`, `"stopped"`, `"succeeded"` | No |
 
 #### WorkflowRunForLogResponse
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| created_at |  |  | No |
+| created_at | integer |  | No |
 | elapsed_time |  |  | No |
-| error |  |  | No |
-| exceptions_count |  |  | No |
-| finished_at |  |  | No |
+| error | string |  | No |
+| exceptions_count | integer |  | No |
+| finished_at | integer |  | No |
 | id | string |  | Yes |
-| status |  |  | No |
-| total_steps |  |  | No |
-| total_tokens |  |  | No |
-| triggered_from |  |  | No |
-| version |  |  | No |
+| status | string |  | No |
+| total_steps | integer |  | No |
+| total_tokens | integer |  | No |
+| triggered_from | string |  | No |
+| version | string |  | No |
 
 #### WorkflowRunPayload
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| files |  |  | No |
+| files | [ object ] |  | No |
 | inputs | object |  | Yes |
-| response_mode |  |  | No |
+| response_mode | string | *Enum:* `"blocking"`, `"streaming"` | No |
 
 #### WorkflowRunResponse
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| created_at |  |  | No |
+| created_at | integer |  | No |
 | elapsed_time |  |  | No |
-| error |  |  | No |
-| finished_at |  |  | No |
+| error | string |  | No |
+| finished_at | integer |  | No |
 | id | string |  | Yes |
 | inputs |  |  | No |
 | outputs | object |  | No |
 | status | string |  | Yes |
-| total_steps |  |  | No |
-| total_tokens |  |  | No |
+| total_steps | integer |  | No |
+| total_tokens | integer |  | No |
 | workflow_id | string |  | Yes |

@@ -161,7 +161,6 @@ const CustomEdge = ({
           <BlockSelector
             open={open}
             onOpenChange={handleOpenChange}
-            asChild
             onSelect={handleInsert}
             availableBlocksTypes={intersection(availablePrevBlocks, availableNextBlocks)}
             triggerClassName={() => 'hover:scale-150 transition-all'}

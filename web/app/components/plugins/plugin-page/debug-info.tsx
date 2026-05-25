@@ -27,8 +27,8 @@ const DebugInfo: FC = () => {
 
   if (!info) {
     return (
-      <Button className="h-full w-full p-2 text-components-button-secondary-text" disabled>
-        <RiBugLine className="h-4 w-4" />
+      <Button className="size-full p-2 text-components-button-secondary-text" disabled>
+        <RiBugLine className="size-4" />
       </Button>
     )
   }
@@ -37,8 +37,8 @@ const DebugInfo: FC = () => {
     <Popover>
       <PopoverTrigger
         render={(
-          <Button className="h-full w-full p-2 text-components-button-secondary-text">
-            <RiBugLine className="h-4 w-4" />
+          <Button className="size-full p-2 text-components-button-secondary-text">
+            <RiBugLine className="size-4" />
           </Button>
         )}
       />
@@ -57,7 +57,7 @@ const DebugInfo: FC = () => {
             className="flex cursor-pointer items-center gap-0.5 text-text-accent-light-mode-only"
           >
             <span className="system-xs-medium">{t(`${i18nPrefix}.viewDocs`, { ns: 'plugin' })}</span>
-            <RiArrowRightUpLine className="h-3 w-3" />
+            <RiArrowRightUpLine className="size-3" />
           </a>
         </div>
         <div className="space-y-0.5">

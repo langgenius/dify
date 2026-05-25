@@ -415,7 +415,7 @@ describe('List', () => {
     it('should handle checkbox change', () => {
       renderList()
 
-      const checkbox = screen.getByTestId('checkbox-undefined')
+      const checkbox = screen.getByRole('checkbox', { name: 'app.showMyCreatedAppsOnly' })
       fireEvent.click(checkbox)
 
       expect(mockSetIsCreatedByMe).toHaveBeenCalledWith(true)

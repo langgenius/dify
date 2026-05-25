@@ -51,7 +51,7 @@ const LoopResultPanel: FC<Props> = ({
             aria-label={t('operation.close', { ns: 'common' })}
             onClick={onHide}
           >
-            <RiCloseLine className="h-4 w-4 text-text-tertiary" aria-hidden="true" />
+            <RiCloseLine className="size-4 text-text-tertiary" aria-hidden="true" />
           </button>
         </div>
         <button
@@ -59,7 +59,7 @@ const LoopResultPanel: FC<Props> = ({
           className="flex cursor-pointer items-center space-x-1 border-none bg-transparent px-0 py-2 text-left text-text-accent-secondary focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
           onClick={onBack}
         >
-          <ArrowNarrowLeft className="h-4 w-4" aria-hidden="true" />
+          <ArrowNarrowLeft className="size-4" aria-hidden="true" />
           <div className="system-sm-medium">{t(`${i18nPrefix}.back`, { ns: 'workflow' })}</div>
         </button>
       </div>
@@ -78,7 +78,7 @@ const LoopResultPanel: FC<Props> = ({
             >
               <div className={cn('flex grow items-center gap-2')}>
                 <div className="flex h-4 w-4 shrink-0 items-center justify-center rounded-[5px] border-divider-subtle bg-util-colors-cyan-cyan-500">
-                  <Loop className="h-3 w-3 text-text-primary-on-surface" />
+                  <Loop className="size-3 text-text-primary-on-surface" />
                 </div>
                 <span className="grow system-sm-semibold-uppercase text-text-primary">
                   {t(`${i18nPrefix}.loop`, { ns: 'workflow' })}
@@ -87,7 +87,7 @@ const LoopResultPanel: FC<Props> = ({
                 </span>
                 <RiArrowRightSLine
                   className={cn(
-                    'h-4 w-4 shrink-0 text-text-tertiary transition-transform duration-200',
+                    'size-4 shrink-0 text-text-tertiary transition-transform duration-200',
                     expandedLoops[index] && 'rotate-90',
                   )}
                   aria-hidden="true"

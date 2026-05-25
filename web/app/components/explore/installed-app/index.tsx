@@ -93,7 +93,7 @@ const InstalledApp = ({
   if (userCanAccessApp && !userCanAccessApp.result) {
     return (
       <div className="flex h-full flex-col items-center justify-center gap-y-2">
-        <AppUnavailable className="h-auto w-auto" code={403} unknownReason="no permission." />
+        <AppUnavailable className="size-auto" code={403} unknownReason="no permission." />
       </div>
     )
   }

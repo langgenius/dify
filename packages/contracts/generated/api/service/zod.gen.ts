@@ -42,6 +42,17 @@ export const zAnnotationReplyActionPayload = z.object({
 })
 
 /**
+ * AppInfoResponse
+ */
+export const zAppInfoResponse = z.object({
+  author_name: z.string().nullable(),
+  description: z.string().nullable(),
+  mode: z.string(),
+  name: z.string(),
+  tags: z.array(z.string()),
+})
+
+/**
  * ChatRequestPayload
  */
 export const zChatRequestPayload = z.object({
@@ -90,13 +101,43 @@ export const zCompletionRequestPayload = z.object({
 })
 
 /**
+ * Condition
+ *
+ * Condition detail
+ */
+export const zCondition = z.object({
+  comparison_operator: z.enum([
+    '<',
+    '=',
+    '>',
+    'after',
+    'before',
+    'contains',
+    'empty',
+    'end with',
+    'in',
+    'is',
+    'is not',
+    'not contains',
+    'not empty',
+    'not in',
+    'start with',
+    '≠',
+    '≤',
+    '≥',
+  ]),
+  name: z.string(),
+  value: z.unknown().optional(),
+})
+
+/**
  * ConversationListQuery
  */
 export const zConversationListQuery = z.object({
   last_id: z.string().nullish(),
   limit: z.int().gte(1).lte(100).optional().default(20),
   sort_by: z
-    .enum(['created_at', '-created_at', 'updated_at', '-updated_at'])
+    .enum(['-created_at', '-updated_at', 'created_at', 'updated_at'])
     .optional()
     .default('-updated_at'),
 })
@@ -148,12 +189,333 @@ export const zConversationVariablesQuery = z.object({
 })
 
 /**
+ * DatasetBoundTagResponse
+ */
+export const zDatasetBoundTagResponse = z.object({
+  id: z.string(),
+  name: z.string(),
+})
+
+/**
+ * DatasetBoundTagListResponse
+ */
+export const zDatasetBoundTagListResponse = z.object({
+  data: z.array(zDatasetBoundTagResponse),
+  total: z.int(),
+})
+
+/**
+ * DatasetDocMetadataResponse
+ */
+export const zDatasetDocMetadataResponse = z.object({
+  id: z.string(),
+  name: z.string(),
+  type: z.string(),
+})
+
+/**
+ * DatasetExternalKnowledgeInfoResponse
+ */
+export const zDatasetExternalKnowledgeInfoResponse = z.object({
+  external_knowledge_api_endpoint: z.string(),
+  external_knowledge_api_id: z.string(),
+  external_knowledge_api_name: z.string(),
+  external_knowledge_id: z.string(),
+})
+
+/**
+ * DatasetExternalRetrievalModelResponse
+ */
+export const zDatasetExternalRetrievalModelResponse = z.object({
+  score_threshold: z.number().nullish(),
+  score_threshold_enabled: z.boolean().nullish(),
+  top_k: z.int(),
+})
+
+/**
+ * DatasetIconInfoResponse
+ */
+export const zDatasetIconInfoResponse = z.object({
+  icon: z.string().nullable(),
+  icon_background: z.string().nullish(),
+  icon_type: z.string().nullable(),
+  icon_url: z.string().nullish(),
+})
+
+/**
+ * DatasetKeywordSettingResponse
+ */
+export const zDatasetKeywordSettingResponse = z.object({
+  keyword_weight: z.number(),
+})
+
+/**
+ * DatasetListQuery
+ */
+export const zDatasetListQuery = z.object({
+  include_all: z.boolean().optional().default(false),
+  keyword: z.string().nullish(),
+  limit: z.int().optional().default(20),
+  page: z.int().optional().default(1),
+  tag_ids: z.array(z.string()).optional(),
+})
+
+/**
+ * DatasetMetadataActionResponse
+ */
+export const zDatasetMetadataActionResponse = z.object({
+  result: z.string(),
+})
+
+/**
+ * DatasetMetadataBuiltInFieldResponse
+ */
+export const zDatasetMetadataBuiltInFieldResponse = z.object({
+  name: z.string(),
+  type: z.string(),
+})
+
+/**
+ * DatasetMetadataBuiltInFieldsResponse
+ */
+export const zDatasetMetadataBuiltInFieldsResponse = z.object({
+  fields: z.array(zDatasetMetadataBuiltInFieldResponse),
+})
+
+/**
+ * DatasetMetadataListItemResponse
+ */
+export const zDatasetMetadataListItemResponse = z.object({
+  count: z.int().optional().default(0),
+  id: z.string(),
+  name: z.string(),
+  type: z.string(),
+})
+
+/**
+ * DatasetMetadataListResponse
+ */
+export const zDatasetMetadataListResponse = z.object({
+  built_in_field_enabled: z.boolean(),
+  doc_metadata: z.array(zDatasetMetadataListItemResponse),
+})
+
+/**
+ * DatasetMetadataResponse
+ */
+export const zDatasetMetadataResponse = z.object({
+  id: z.string(),
+  name: z.string(),
+  type: z.string(),
+})
+
+/**
+ * DatasetPermissionEnum
+ */
+export const zDatasetPermissionEnum = z.enum(['all_team_members', 'only_me', 'partial_members'])
+
+/**
+ * DatasetRerankingModelResponse
+ */
+export const zDatasetRerankingModelResponse = z.object({
+  reranking_model_name: z.string().nullish(),
+  reranking_provider_name: z.string().nullish(),
+})
+
+/**
+ * DatasetSummaryIndexSettingResponse
+ */
+export const zDatasetSummaryIndexSettingResponse = z.object({
+  enable: z.boolean().nullish(),
+  model_name: z.string().nullish(),
+  model_provider_name: z.string().nullish(),
+  summary_prompt: z.string().nullish(),
+})
+
+/**
+ * DatasetTagResponse
+ */
+export const zDatasetTagResponse = z.object({
+  id: z.string(),
+  name: z.string(),
+  type: z.string(),
+})
+
+/**
+ * DatasetVectorSettingResponse
+ */
+export const zDatasetVectorSettingResponse = z.object({
+  embedding_model_name: z.string(),
+  embedding_provider_name: z.string(),
+  vector_weight: z.number(),
+})
+
+/**
+ * DatasetWeightedScoreResponse
+ */
+export const zDatasetWeightedScoreResponse = z.object({
+  keyword_setting: zDatasetKeywordSettingResponse.optional(),
+  vector_setting: zDatasetVectorSettingResponse.optional(),
+  weight_type: z.string().nullish(),
+})
+
+/**
+ * DatasetRetrievalModelResponse
+ */
+export const zDatasetRetrievalModelResponse = z.object({
+  reranking_enable: z.boolean(),
+  reranking_mode: z.string().nullish(),
+  reranking_model: zDatasetRerankingModelResponse,
+  score_threshold: z.number().nullish(),
+  score_threshold_enabled: z.boolean(),
+  search_method: z.string(),
+  top_k: z.int(),
+  weights: zDatasetWeightedScoreResponse.optional(),
+})
+
+/**
+ * DatasetDetailResponse
+ */
+export const zDatasetDetailResponse = z.object({
+  app_count: z.int(),
+  author_name: z.string().nullable(),
+  built_in_field_enabled: z.boolean(),
+  chunk_structure: z.string().nullable(),
+  created_at: z.int(),
+  created_by: z.string(),
+  data_source_type: z.string().nullable(),
+  description: z.string().nullable(),
+  doc_form: z.string().nullable(),
+  doc_metadata: z.array(zDatasetDocMetadataResponse),
+  document_count: z.int(),
+  embedding_available: z.boolean().nullish(),
+  embedding_model: z.string().nullable(),
+  embedding_model_provider: z.string().nullable(),
+  enable_api: z.boolean(),
+  external_knowledge_info: zDatasetExternalKnowledgeInfoResponse,
+  external_retrieval_model: zDatasetExternalRetrievalModelResponse,
+  icon_info: zDatasetIconInfoResponse,
+  id: z.string(),
+  indexing_technique: z.string().nullable(),
+  is_multimodal: z.boolean(),
+  is_published: z.boolean(),
+  name: z.string(),
+  permission: z.string(),
+  pipeline_id: z.string().nullable(),
+  provider: z.string(),
+  retrieval_model_dict: zDatasetRetrievalModelResponse,
+  runtime_mode: z.string().nullable(),
+  summary_index_setting: zDatasetSummaryIndexSettingResponse,
+  tags: z.array(zDatasetTagResponse),
+  total_available_documents: z.int(),
+  total_documents: z.int(),
+  updated_at: z.int(),
+  updated_by: z.string().nullable(),
+  word_count: z.int(),
+})
+
+/**
+ * DatasetDetailWithPartialMembersResponse
+ */
+export const zDatasetDetailWithPartialMembersResponse = z.object({
+  app_count: z.int(),
+  author_name: z.string().nullable(),
+  built_in_field_enabled: z.boolean(),
+  chunk_structure: z.string().nullable(),
+  created_at: z.int(),
+  created_by: z.string(),
+  data_source_type: z.string().nullable(),
+  description: z.string().nullable(),
+  doc_form: z.string().nullable(),
+  doc_metadata: z.array(zDatasetDocMetadataResponse),
+  document_count: z.int(),
+  embedding_available: z.boolean().nullish(),
+  embedding_model: z.string().nullable(),
+  embedding_model_provider: z.string().nullable(),
+  enable_api: z.boolean(),
+  external_knowledge_info: zDatasetExternalKnowledgeInfoResponse,
+  external_retrieval_model: zDatasetExternalRetrievalModelResponse,
+  icon_info: zDatasetIconInfoResponse,
+  id: z.string(),
+  indexing_technique: z.string().nullable(),
+  is_multimodal: z.boolean(),
+  is_published: z.boolean(),
+  name: z.string(),
+  partial_member_list: z.array(z.string()).nullish(),
+  permission: z.string(),
+  pipeline_id: z.string().nullable(),
+  provider: z.string(),
+  retrieval_model_dict: zDatasetRetrievalModelResponse,
+  runtime_mode: z.string().nullable(),
+  summary_index_setting: zDatasetSummaryIndexSettingResponse,
+  tags: z.array(zDatasetTagResponse),
+  total_available_documents: z.int(),
+  total_documents: z.int(),
+  updated_at: z.int(),
+  updated_by: z.string().nullable(),
+  word_count: z.int(),
+})
+
+/**
+ * DatasetListResponse
+ */
+export const zDatasetListResponse = z.object({
+  data: z.array(zDatasetDetailResponse),
+  has_more: z.boolean(),
+  limit: z.int(),
+  page: z.int(),
+  total: z.int(),
+})
+
+/**
+ * DatasourceNodeRunPayload
+ */
+export const zDatasourceNodeRunPayload = z.object({
+  credential_id: z.string().nullish(),
+  datasource_type: z.string(),
+  inputs: z.record(z.string(), z.unknown()),
+  is_published: z.boolean(),
+})
+
+/**
  * DocumentBatchDownloadZipPayload
  *
  * Request payload for bulk downloading documents as a zip archive.
  */
 export const zDocumentBatchDownloadZipPayload = z.object({
   document_ids: z.array(z.uuid()).min(1).max(100),
+})
+
+/**
+ * DocumentListQuery
+ */
+export const zDocumentListQuery = z.object({
+  keyword: z.string().nullish(),
+  limit: z.int().optional().default(20),
+  page: z.int().optional().default(1),
+  status: z.string().nullish(),
+})
+
+/**
+ * EndUserDetail
+ *
+ * Full EndUser record for API responses.
+ *
+ * Note: The SQLAlchemy model defines an `is_anonymous` property for Flask-Login semantics
+ * (always False). The database column is exposed as `_is_anonymous`, so this DTO maps
+ * `is_anonymous` from `_is_anonymous` to return the stored value.
+ */
+export const zEndUserDetail = z.object({
+  app_id: z.string().nullish(),
+  created_at: z.iso.datetime(),
+  external_user_id: z.string().nullish(),
+  id: z.string(),
+  is_anonymous: z.boolean(),
+  name: z.string().nullish(),
+  session_id: z.string(),
+  tenant_id: z.string(),
+  type: z.string(),
+  updated_at: z.iso.datetime(),
 })
 
 /**
@@ -192,11 +554,45 @@ export const zFileResponse = z.object({
 })
 
 /**
+ * IndexInfoResponse
+ */
+export const zIndexInfoResponse = z.object({
+  api_version: z.string(),
+  server_version: z.string(),
+  welcome: z.string(),
+})
+
+export const zJsonValue = z.unknown()
+
+/**
+ * HumanInputFormSubmitPayload
+ */
+export const zHumanInputFormSubmitPayload = z.object({
+  action: z.string(),
+  inputs: z.record(z.string(), zJsonValue),
+})
+
+/**
+ * KnowledgeTagResponse
+ */
+export const zKnowledgeTagResponse = z.object({
+  binding_count: z.string().nullish(),
+  id: z.string(),
+  name: z.string(),
+  type: z.string(),
+})
+
+/**
+ * KnowledgeTagListResponse
+ */
+export const zKnowledgeTagListResponse = z.array(zKnowledgeTagResponse)
+
+/**
  * MessageFeedbackPayload
  */
 export const zMessageFeedbackPayload = z.object({
   content: z.string().nullish(),
-  rating: z.enum(['like', 'dislike']).nullish(),
+  rating: z.enum(['dislike', 'like']).nullish(),
 })
 
 /**
@@ -213,7 +609,44 @@ export const zMessageListQuery = z.object({
  */
 export const zMetadataArgs = z.object({
   name: z.string(),
-  type: z.enum(['string', 'number', 'time']),
+  type: z.enum(['number', 'string', 'time']),
+})
+
+/**
+ * MetadataDetail
+ */
+export const zMetadataDetail = z.object({
+  id: z.string(),
+  name: z.string(),
+  value: z.unknown().optional(),
+})
+
+/**
+ * DocumentMetadataOperation
+ */
+export const zDocumentMetadataOperation = z.object({
+  document_id: z.string(),
+  metadata_list: z.array(zMetadataDetail),
+  partial_update: z.boolean().optional().default(false),
+})
+
+/**
+ * MetadataFilteringCondition
+ *
+ * Metadata Filtering Condition.
+ */
+export const zMetadataFilteringCondition = z.object({
+  conditions: z.array(zCondition).nullish(),
+  logical_operator: z.enum(['and', 'or']).nullish().default('and'),
+})
+
+/**
+ * MetadataOperationData
+ *
+ * Metadata operation data
+ */
+export const zMetadataOperationData = z.object({
+  operation_data: z.array(zDocumentMetadataOperation),
 })
 
 /**
@@ -222,6 +655,51 @@ export const zMetadataArgs = z.object({
 export const zMetadataUpdatePayload = z.object({
   name: z.string(),
 })
+
+/**
+ * PipelineRunApiEntity
+ */
+export const zPipelineRunApiEntity = z.object({
+  datasource_info_list: z.array(z.record(z.string(), z.unknown())),
+  datasource_type: z.string(),
+  inputs: z.record(z.string(), z.unknown()),
+  is_published: z.boolean(),
+  response_mode: z.string(),
+  start_node_id: z.string(),
+})
+
+/**
+ * PreProcessingRule
+ */
+export const zPreProcessingRule = z.object({
+  enabled: z.boolean(),
+  id: z.string(),
+})
+
+/**
+ * RerankingModel
+ */
+export const zRerankingModel = z.object({
+  reranking_model_name: z.string().nullish(),
+  reranking_provider_name: z.string().nullish(),
+})
+
+/**
+ * ResultResponse
+ */
+export const zResultResponse = z.object({
+  result: z.string(),
+})
+
+/**
+ * RetrievalMethod
+ */
+export const zRetrievalMethod = z.enum([
+  'full_text_search',
+  'hybrid_search',
+  'keyword_search',
+  'semantic_search',
+])
 
 /**
  * SegmentCreatePayload
@@ -239,246 +717,23 @@ export const zSegmentListQuery = z.object({
 })
 
 /**
- * TagBindingPayload
+ * SegmentUpdateArgs
  */
-export const zTagBindingPayload = z.object({
-  tag_ids: z.array(z.string()),
-  target_id: z.string(),
-})
-
-/**
- * TagCreatePayload
- */
-export const zTagCreatePayload = z.object({
-  name: z.string().min(1).max(50),
-})
-
-/**
- * TagDeletePayload
- */
-export const zTagDeletePayload = z.object({
-  tag_id: z.string(),
-})
-
-/**
- * TagUnbindingPayload
- */
-export const zTagUnbindingPayload = z.object({
-  tag_id: z.string(),
-  target_id: z.string(),
-})
-
-/**
- * TagUpdatePayload
- */
-export const zTagUpdatePayload = z.object({
-  name: z.string().min(1).max(50),
-  tag_id: z.string(),
-})
-
-/**
- * TextToAudioPayload
- */
-export const zTextToAudioPayload = z.object({
-  message_id: z.string().nullish(),
-  streaming: z.boolean().nullish(),
-  text: z.string().nullish(),
-  voice: z.string().nullish(),
-})
-
-/**
- * WorkflowLogQuery
- */
-export const zWorkflowLogQuery = z.object({
-  created_at__after: z.string().nullish(),
-  created_at__before: z.string().nullish(),
-  created_by_account: z.string().nullish(),
-  created_by_end_user_session_id: z.string().nullish(),
-  keyword: z.string().nullish(),
-  limit: z.int().gte(1).lte(100).optional().default(20),
-  page: z.int().gte(1).lte(99999).optional().default(1),
-  status: z.enum(['succeeded', 'failed', 'stopped']).nullish(),
-})
-
-/**
- * WorkflowRunPayload
- */
-export const zWorkflowRunPayload = z.object({
-  files: z.array(z.record(z.string(), z.unknown())).nullish(),
-  inputs: z.record(z.string(), z.unknown()),
-  response_mode: z.enum(['blocking', 'streaming']).nullish(),
-})
-
-/**
- * WorkflowRunResponse
- */
-export const zWorkflowRunResponse = z.object({
-  created_at: z.int().nullish(),
-  elapsed_time: z.unknown().optional(),
-  error: z.string().nullish(),
-  finished_at: z.int().nullish(),
-  id: z.string(),
-  inputs: z.unknown().optional(),
-  outputs: z.record(z.string(), z.unknown()).optional(),
-  status: z.string(),
-  total_steps: z.int().nullish(),
-  total_tokens: z.int().nullish(),
-  workflow_id: z.string(),
-})
-
-/**
- * Condition
- *
- * Condition detail
- */
-export const zCondition = z.object({
-  comparison_operator: z.enum([
-    'contains',
-    'not contains',
-    'start with',
-    'end with',
-    'is',
-    'is not',
-    'empty',
-    'not empty',
-    'in',
-    'not in',
-    '=',
-    '≠',
-    '>',
-    '<',
-    '≥',
-    '≤',
-    'before',
-    'after',
-  ]),
-  name: z.string(),
-  value: z.unknown().optional(),
-})
-
-/**
- * DatasetPermissionEnum
- */
-export const zDatasetPermissionEnum = z.enum(['only_me', 'all_team_members', 'partial_members'])
-
-/**
- * MetadataFilteringCondition
- *
- * Metadata Filtering Condition.
- */
-export const zMetadataFilteringCondition = z.object({
-  conditions: z.array(zCondition).nullish(),
-  logical_operator: z.enum(['and', 'or']).nullish().default('and'),
-})
-
-/**
- * RerankingModel
- */
-export const zRerankingModel = z.object({
-  reranking_model_name: z.string().nullish(),
-  reranking_provider_name: z.string().nullish(),
-})
-
-/**
- * RetrievalMethod
- */
-export const zRetrievalMethod = z.enum([
-  'semantic_search',
-  'full_text_search',
-  'hybrid_search',
-  'keyword_search',
-])
-
-/**
- * WeightKeywordSetting
- */
-export const zWeightKeywordSetting = z.object({
-  keyword_weight: z.number(),
-})
-
-/**
- * WeightVectorSetting
- */
-export const zWeightVectorSetting = z.object({
-  embedding_model_name: z.string(),
-  embedding_provider_name: z.string(),
-  vector_weight: z.number(),
-})
-
-/**
- * WeightModel
- */
-export const zWeightModel = z.object({
-  keyword_setting: zWeightKeywordSetting.optional(),
-  vector_setting: zWeightVectorSetting.optional(),
-  weight_type: z.enum(['semantic_first', 'keyword_first', 'customized']).nullish(),
-})
-
-/**
- * RetrievalModel
- */
-export const zRetrievalModel = z.object({
-  metadata_filtering_conditions: zMetadataFilteringCondition.optional(),
-  reranking_enable: z.boolean(),
-  reranking_mode: z.string().nullish(),
-  reranking_model: zRerankingModel.optional(),
-  score_threshold: z.number().nullish(),
-  score_threshold_enabled: z.boolean(),
-  search_method: zRetrievalMethod,
-  top_k: z.int(),
-  weights: zWeightModel.optional(),
-})
-
-/**
- * DatasetCreatePayload
- */
-export const zDatasetCreatePayload = z.object({
-  description: z.string().max(400).optional().default(''),
-  embedding_model: z.string().nullish(),
-  embedding_model_provider: z.string().nullish(),
-  external_knowledge_api_id: z.string().nullish(),
-  external_knowledge_id: z.string().nullish(),
-  indexing_technique: z.enum(['high_quality', 'economy']).nullish(),
-  name: z.string().min(1).max(40),
-  permission: zDatasetPermissionEnum.optional(),
-  provider: z.string().optional().default('vendor'),
-  retrieval_model: zRetrievalModel.optional(),
-  summary_index_setting: z.record(z.string(), z.unknown()).nullish(),
-})
-
-/**
- * DatasetUpdatePayload
- */
-export const zDatasetUpdatePayload = z.object({
-  description: z.string().max(400).nullish(),
-  embedding_model: z.string().nullish(),
-  embedding_model_provider: z.string().nullish(),
-  external_knowledge_api_id: z.string().nullish(),
-  external_knowledge_id: z.string().nullish(),
-  external_retrieval_model: z.record(z.string(), z.unknown()).nullish(),
-  indexing_technique: z.enum(['high_quality', 'economy']).nullish(),
-  name: z.string().min(1).max(40).nullish(),
-  partial_member_list: z.array(z.record(z.string(), z.string())).nullish(),
-  permission: zDatasetPermissionEnum.optional(),
-  retrieval_model: zRetrievalModel.optional(),
-})
-
-/**
- * HitTestingPayload
- */
-export const zHitTestingPayload = z.object({
+export const zSegmentUpdateArgs = z.object({
+  answer: z.string().nullish(),
   attachment_ids: z.array(z.string()).nullish(),
-  external_retrieval_model: z.record(z.string(), z.unknown()).nullish(),
-  query: z.string().max(250),
-  retrieval_model: zRetrievalModel.optional(),
+  content: z.string().nullish(),
+  enabled: z.boolean().nullish(),
+  keywords: z.array(z.string()).nullish(),
+  regenerate_child_chunks: z.boolean().optional().default(false),
+  summary: z.string().nullish(),
 })
 
 /**
- * PreProcessingRule
+ * SegmentUpdatePayload
  */
-export const zPreProcessingRule = z.object({
-  enabled: z.boolean(),
-  id: z.string(),
+export const zSegmentUpdatePayload = z.object({
+  segment: zSegmentUpdateArgs,
 })
 
 /**
@@ -509,6 +764,192 @@ export const zProcessRule = z.object({
 })
 
 /**
+ * SimpleAccount
+ */
+export const zSimpleAccount = z.object({
+  email: z.string(),
+  id: z.string(),
+  name: z.string(),
+})
+
+/**
+ * SimpleEndUser
+ */
+export const zSimpleEndUser = z.object({
+  id: z.string(),
+  is_anonymous: z.boolean(),
+  session_id: z.string().nullish(),
+  type: z.string(),
+})
+
+/**
+ * SimpleResultResponse
+ */
+export const zSimpleResultResponse = z.object({
+  result: z.string(),
+})
+
+/**
+ * SimpleResultStringListResponse
+ */
+export const zSimpleResultStringListResponse = z.object({
+  data: z.array(z.string()),
+  result: z.string(),
+})
+
+/**
+ * Site
+ */
+export const zSite = z.object({
+  chat_color_theme: z.string().nullish(),
+  chat_color_theme_inverted: z.boolean(),
+  copyright: z.string().nullish(),
+  custom_disclaimer: z.string().nullish(),
+  default_language: z.string(),
+  description: z.string().nullish(),
+  icon: z.string().nullish(),
+  icon_background: z.string().nullish(),
+  icon_type: z.string().nullish(),
+  icon_url: z.string().readonly().nullable(),
+  privacy_policy: z.string().nullish(),
+  show_workflow_steps: z.boolean(),
+  title: z.string(),
+  use_icon_as_answer_icon: z.boolean(),
+})
+
+/**
+ * TagBindingPayload
+ */
+export const zTagBindingPayload = z.object({
+  tag_ids: z.array(z.string()),
+  target_id: z.string(),
+})
+
+/**
+ * TagCreatePayload
+ */
+export const zTagCreatePayload = z.object({
+  name: z.string().min(1).max(50),
+})
+
+/**
+ * TagDeletePayload
+ */
+export const zTagDeletePayload = z.object({
+  tag_id: z.string(),
+})
+
+/**
+ * TagUnbindingPayload
+ *
+ * Accept the legacy single-tag Service API payload while exposing a normalized tag_ids list internally.
+ */
+export const zTagUnbindingPayload = z.object({
+  tag_id: z.string().nullish(),
+  tag_ids: z.array(z.string()).optional(),
+  target_id: z.string(),
+})
+
+/**
+ * TagUpdatePayload
+ */
+export const zTagUpdatePayload = z.object({
+  name: z.string().min(1).max(50),
+  tag_id: z.string(),
+})
+
+/**
+ * TextToAudioPayload
+ */
+export const zTextToAudioPayload = z.object({
+  message_id: z.string().nullish(),
+  streaming: z.boolean().nullish(),
+  text: z.string().nullish(),
+  voice: z.string().nullish(),
+})
+
+/**
+ * UrlResponse
+ */
+export const zUrlResponse = z.object({
+  url: z.string(),
+})
+
+/**
+ * WeightKeywordSetting
+ */
+export const zWeightKeywordSetting = z.object({
+  keyword_weight: z.number(),
+})
+
+/**
+ * WeightVectorSetting
+ */
+export const zWeightVectorSetting = z.object({
+  embedding_model_name: z.string(),
+  embedding_provider_name: z.string(),
+  vector_weight: z.number(),
+})
+
+/**
+ * WeightModel
+ */
+export const zWeightModel = z.object({
+  keyword_setting: zWeightKeywordSetting.optional(),
+  vector_setting: zWeightVectorSetting.optional(),
+  weight_type: z.enum(['customized', 'keyword_first', 'semantic_first']).nullish(),
+})
+
+/**
+ * RetrievalModel
+ */
+export const zRetrievalModel = z.object({
+  metadata_filtering_conditions: zMetadataFilteringCondition.optional(),
+  reranking_enable: z.boolean(),
+  reranking_mode: z.string().nullish(),
+  reranking_model: zRerankingModel.optional(),
+  score_threshold: z.number().nullish(),
+  score_threshold_enabled: z.boolean(),
+  search_method: zRetrievalMethod,
+  top_k: z.int(),
+  weights: zWeightModel.optional(),
+})
+
+/**
+ * DatasetCreatePayload
+ */
+export const zDatasetCreatePayload = z.object({
+  description: z.string().max(400).optional().default(''),
+  embedding_model: z.string().nullish(),
+  embedding_model_provider: z.string().nullish(),
+  external_knowledge_api_id: z.string().nullish(),
+  external_knowledge_id: z.string().nullish(),
+  indexing_technique: z.enum(['economy', 'high_quality']).nullish(),
+  name: z.string().min(1).max(40),
+  permission: zDatasetPermissionEnum.optional(),
+  provider: z.string().optional().default('vendor'),
+  retrieval_model: zRetrievalModel.optional(),
+  summary_index_setting: z.record(z.string(), z.unknown()).nullish(),
+})
+
+/**
+ * DatasetUpdatePayload
+ */
+export const zDatasetUpdatePayload = z.object({
+  description: z.string().max(400).nullish(),
+  embedding_model: z.string().nullish(),
+  embedding_model_provider: z.string().nullish(),
+  external_knowledge_api_id: z.string().nullish(),
+  external_knowledge_id: z.string().nullish(),
+  external_retrieval_model: z.record(z.string(), z.unknown()).nullish(),
+  indexing_technique: z.enum(['economy', 'high_quality']).nullish(),
+  name: z.string().min(1).max(40).nullish(),
+  partial_member_list: z.array(z.record(z.string(), z.string())).nullish(),
+  permission: zDatasetPermissionEnum.optional(),
+  retrieval_model: zRetrievalModel.optional(),
+})
+
+/**
  * DocumentTextCreatePayload
  */
 export const zDocumentTextCreatePayload = z.object({
@@ -536,80 +977,28 @@ export const zDocumentTextUpdate = z.object({
   text: z.string().nullish(),
 })
 
-export const zJsonValue = z.unknown()
-
 /**
- * HumanInputFormSubmitPayload
+ * HitTestingPayload
  */
-export const zHumanInputFormSubmitPayload = z.object({
-  action: z.string(),
-  inputs: z.record(z.string(), zJsonValue),
-})
-
-/**
- * MetadataDetail
- */
-export const zMetadataDetail = z.object({
-  id: z.string(),
-  name: z.string(),
-  value: z.unknown().optional(),
-})
-
-/**
- * DocumentMetadataOperation
- */
-export const zDocumentMetadataOperation = z.object({
-  document_id: z.string(),
-  metadata_list: z.array(zMetadataDetail),
-  partial_update: z.boolean().optional().default(false),
-})
-
-/**
- * MetadataOperationData
- *
- * Metadata operation data
- */
-export const zMetadataOperationData = z.object({
-  operation_data: z.array(zDocumentMetadataOperation),
-})
-
-/**
- * SegmentUpdateArgs
- */
-export const zSegmentUpdateArgs = z.object({
-  answer: z.string().nullish(),
+export const zHitTestingPayload = z.object({
   attachment_ids: z.array(z.string()).nullish(),
-  content: z.string().nullish(),
-  enabled: z.boolean().nullish(),
-  keywords: z.array(z.string()).nullish(),
-  regenerate_child_chunks: z.boolean().optional().default(false),
-  summary: z.string().nullish(),
+  external_retrieval_model: z.record(z.string(), z.unknown()).nullish(),
+  query: z.string().max(250),
+  retrieval_model: zRetrievalModel.optional(),
 })
 
 /**
- * SegmentUpdatePayload
+ * WorkflowLogQuery
  */
-export const zSegmentUpdatePayload = z.object({
-  segment: zSegmentUpdateArgs,
-})
-
-/**
- * SimpleAccount
- */
-export const zSimpleAccount = z.object({
-  email: z.string(),
-  id: z.string(),
-  name: z.string(),
-})
-
-/**
- * SimpleEndUser
- */
-export const zSimpleEndUser = z.object({
-  id: z.string(),
-  is_anonymous: z.boolean(),
-  session_id: z.string().nullish(),
-  type: z.string(),
+export const zWorkflowLogQuery = z.object({
+  created_at__after: z.string().nullish(),
+  created_at__before: z.string().nullish(),
+  created_by_account: z.string().nullish(),
+  created_by_end_user_session_id: z.string().nullish(),
+  keyword: z.string().nullish(),
+  limit: z.int().gte(1).lte(100).optional().default(20),
+  page: z.int().gte(1).lte(99999).optional().default(1),
+  status: z.enum(['failed', 'stopped', 'succeeded']).nullish(),
 })
 
 /**
@@ -655,9 +1044,54 @@ export const zWorkflowAppLogPaginationResponse = z.object({
 })
 
 /**
+ * WorkflowRunPayload
+ */
+export const zWorkflowRunPayload = z.object({
+  files: z.array(z.record(z.string(), z.unknown())).nullish(),
+  inputs: z.record(z.string(), z.unknown()),
+  response_mode: z.enum(['blocking', 'streaming']).nullish(),
+})
+
+/**
+ * WorkflowRunResponse
+ */
+export const zWorkflowRunResponse = z.object({
+  created_at: z.int().nullish(),
+  elapsed_time: z.unknown().optional(),
+  error: z.string().nullish(),
+  finished_at: z.int().nullish(),
+  id: z.string(),
+  inputs: z.unknown().optional(),
+  outputs: z.record(z.string(), z.unknown()).optional(),
+  status: z.string(),
+  total_steps: z.int().nullish(),
+  total_tokens: z.int().nullish(),
+  workflow_id: z.string(),
+})
+
+/**
+ * Site
+ */
+export const zSiteWritable = z.object({
+  chat_color_theme: z.string().nullish(),
+  chat_color_theme_inverted: z.boolean(),
+  copyright: z.string().nullish(),
+  custom_disclaimer: z.string().nullish(),
+  default_language: z.string(),
+  description: z.string().nullish(),
+  icon: z.string().nullish(),
+  icon_background: z.string().nullish(),
+  icon_type: z.string().nullish(),
+  privacy_policy: z.string().nullish(),
+  show_workflow_steps: z.boolean(),
+  title: z.string(),
+  use_icon_as_answer_icon: z.boolean(),
+})
+
+/**
  * Success
  */
-export const zGetRootResponse = z.record(z.string(), z.unknown())
+export const zGetRootResponse = zIndexInfoResponse
 
 export const zGetAppFeedbacksQuery = z.object({
   limit: z.int().gte(1).lte(101).optional().default(20),
@@ -712,7 +1146,7 @@ export const zDeleteAppsAnnotationsByAnnotationIdPath = z.object({
 /**
  * Annotation deleted successfully
  */
-export const zDeleteAppsAnnotationsByAnnotationIdResponse = z.record(z.string(), z.unknown())
+export const zDeleteAppsAnnotationsByAnnotationIdResponse = z.record(z.string(), z.never())
 
 export const zPutAppsAnnotationsByAnnotationIdBody = zAnnotationCreatePayload
 
@@ -744,7 +1178,7 @@ export const zPostChatMessagesByTaskIdStopPath = z.object({
 /**
  * Task stopped successfully
  */
-export const zPostChatMessagesByTaskIdStopResponse = z.record(z.string(), z.unknown())
+export const zPostChatMessagesByTaskIdStopResponse = zSimpleResultResponse
 
 export const zPostCompletionMessagesBody = zCompletionRequestPayload
 
@@ -760,13 +1194,13 @@ export const zPostCompletionMessagesByTaskIdStopPath = z.object({
 /**
  * Task stopped successfully
  */
-export const zPostCompletionMessagesByTaskIdStopResponse = z.record(z.string(), z.unknown())
+export const zPostCompletionMessagesByTaskIdStopResponse = zSimpleResultResponse
 
 export const zGetConversationsQuery = z.object({
   last_id: z.string().nullish(),
   limit: z.int().gte(1).lte(100).optional().default(20),
   sort_by: z
-    .enum(['created_at', '-created_at', 'updated_at', '-updated_at'])
+    .enum(['-created_at', '-updated_at', 'created_at', 'updated_at'])
     .optional()
     .default('-updated_at'),
 })
@@ -783,7 +1217,7 @@ export const zDeleteConversationsByCIdPath = z.object({
 /**
  * Conversation deleted successfully
  */
-export const zDeleteConversationsByCIdResponse = z.record(z.string(), z.unknown())
+export const zDeleteConversationsByCIdResponse = z.record(z.string(), z.never())
 
 export const zPostConversationsByCIdNameBody = zConversationRenamePayload
 
@@ -824,17 +1258,25 @@ export const zPutConversationsByCIdVariablesByVariableIdPath = z.object({
  */
 export const zPutConversationsByCIdVariablesByVariableIdResponse = zConversationVariableResponse
 
+export const zGetDatasetsQuery = z.object({
+  include_all: z.boolean().optional().default(false),
+  keyword: z.string().optional(),
+  limit: z.int().optional().default(20),
+  page: z.int().optional().default(1),
+  tag_ids: z.array(z.string()).optional(),
+})
+
 /**
  * Datasets retrieved successfully
  */
-export const zGetDatasetsResponse = z.record(z.string(), z.unknown())
+export const zGetDatasetsResponse = zDatasetListResponse
 
 export const zPostDatasetsBody = zDatasetCreatePayload
 
 /**
  * Dataset created successfully
  */
-export const zPostDatasetsResponse = z.record(z.string(), z.unknown())
+export const zPostDatasetsResponse = zDatasetDetailResponse
 
 /**
  * File uploaded successfully
@@ -846,40 +1288,40 @@ export const zDeleteDatasetsTagsBody = zTagDeletePayload
 /**
  * Tag deleted successfully
  */
-export const zDeleteDatasetsTagsResponse = z.record(z.string(), z.unknown())
+export const zDeleteDatasetsTagsResponse = z.record(z.string(), z.never())
 
 /**
  * Tags retrieved successfully
  */
-export const zGetDatasetsTagsResponse = z.record(z.string(), z.unknown())
+export const zGetDatasetsTagsResponse = zKnowledgeTagListResponse
 
 export const zPatchDatasetsTagsBody = zTagUpdatePayload
 
 /**
  * Tag updated successfully
  */
-export const zPatchDatasetsTagsResponse = z.record(z.string(), z.unknown())
+export const zPatchDatasetsTagsResponse = zKnowledgeTagResponse
 
 export const zPostDatasetsTagsBody = zTagCreatePayload
 
 /**
  * Tag created successfully
  */
-export const zPostDatasetsTagsResponse = z.record(z.string(), z.unknown())
+export const zPostDatasetsTagsResponse = zKnowledgeTagResponse
 
 export const zPostDatasetsTagsBindingBody = zTagBindingPayload
 
 /**
  * Tags bound successfully
  */
-export const zPostDatasetsTagsBindingResponse = z.record(z.string(), z.unknown())
+export const zPostDatasetsTagsBindingResponse = z.record(z.string(), z.never())
 
 export const zPostDatasetsTagsUnbindingBody = zTagUnbindingPayload
 
 /**
- * Tag unbound successfully
+ * Tags unbound successfully
  */
-export const zPostDatasetsTagsUnbindingResponse = z.record(z.string(), z.unknown())
+export const zPostDatasetsTagsUnbindingResponse = z.record(z.string(), z.never())
 
 export const zDeleteDatasetsByDatasetIdPath = z.object({
   dataset_id: z.string(),
@@ -888,7 +1330,7 @@ export const zDeleteDatasetsByDatasetIdPath = z.object({
 /**
  * Dataset deleted successfully
  */
-export const zDeleteDatasetsByDatasetIdResponse = z.record(z.string(), z.unknown())
+export const zDeleteDatasetsByDatasetIdResponse = z.record(z.string(), z.never())
 
 export const zGetDatasetsByDatasetIdPath = z.object({
   dataset_id: z.string(),
@@ -897,7 +1339,7 @@ export const zGetDatasetsByDatasetIdPath = z.object({
 /**
  * Dataset retrieved successfully
  */
-export const zGetDatasetsByDatasetIdResponse = z.record(z.string(), z.unknown())
+export const zGetDatasetsByDatasetIdResponse = zDatasetDetailWithPartialMembersResponse
 
 export const zPatchDatasetsByDatasetIdBody = zDatasetUpdatePayload
 
@@ -908,7 +1350,7 @@ export const zPatchDatasetsByDatasetIdPath = z.object({
 /**
  * Dataset updated successfully
  */
-export const zPatchDatasetsByDatasetIdResponse = z.record(z.string(), z.unknown())
+export const zPatchDatasetsByDatasetIdResponse = zDatasetDetailWithPartialMembersResponse
 
 export const zPostDatasetsByDatasetIdDocumentCreateByFilePath = z.object({
   dataset_id: z.string(),
@@ -994,24 +1436,21 @@ export const zPostDatasetsByDatasetIdDocumentsMetadataPath = z.object({
 /**
  * Documents metadata updated successfully
  */
-export const zPostDatasetsByDatasetIdDocumentsMetadataResponse = z.record(z.string(), z.unknown())
+export const zPostDatasetsByDatasetIdDocumentsMetadataResponse = zDatasetMetadataActionResponse
 
 export const zPatchDatasetsByDatasetIdDocumentsStatusByActionPath = z.object({
-  dataset_id: z.string(),
   action: z.string(),
+  dataset_id: z.string(),
 })
 
 /**
  * Document status updated successfully
  */
-export const zPatchDatasetsByDatasetIdDocumentsStatusByActionResponse = z.record(
-  z.string(),
-  z.unknown(),
-)
+export const zPatchDatasetsByDatasetIdDocumentsStatusByActionResponse = zSimpleResultResponse
 
 export const zGetDatasetsByDatasetIdDocumentsByBatchIndexingStatusPath = z.object({
-  dataset_id: z.string(),
   batch: z.string(),
+  dataset_id: z.string(),
 })
 
 /**
@@ -1032,7 +1471,7 @@ export const zDeleteDatasetsByDatasetIdDocumentsByDocumentIdPath = z.object({
  */
 export const zDeleteDatasetsByDatasetIdDocumentsByDocumentIdResponse = z.record(
   z.string(),
-  z.unknown(),
+  z.never(),
 )
 
 export const zGetDatasetsByDatasetIdDocumentsByDocumentIdPath = z.object({
@@ -1069,10 +1508,7 @@ export const zGetDatasetsByDatasetIdDocumentsByDocumentIdDownloadPath = z.object
 /**
  * Download URL generated successfully
  */
-export const zGetDatasetsByDatasetIdDocumentsByDocumentIdDownloadResponse = z.record(
-  z.string(),
-  z.unknown(),
-)
+export const zGetDatasetsByDatasetIdDocumentsByDocumentIdDownloadResponse = zUrlResponse
 
 export const zGetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsPath = z.object({
   dataset_id: z.string(),
@@ -1118,13 +1554,13 @@ export const zDeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdP
  */
 export const zDeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdResponse = z.record(
   z.string(),
-  z.unknown(),
+  z.never(),
 )
 
 export const zGetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdPath = z.object({
-  segment_id: z.string(),
-  document_id: z.string(),
   dataset_id: z.string(),
+  document_id: z.string(),
+  segment_id: z.string(),
 })
 
 /**
@@ -1190,27 +1626,27 @@ export const zPostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChi
 
 export const zDeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdPath
   = z.object({
+    child_chunk_id: z.string(),
     dataset_id: z.string(),
     document_id: z.string(),
     segment_id: z.string(),
-    child_chunk_id: z.string(),
   })
 
 /**
  * Child chunk deleted successfully
  */
 export const zDeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdResponse
-  = z.record(z.string(), z.unknown())
+  = z.record(z.string(), z.never())
 
 export const zPatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdBody
   = zChildChunkUpdatePayload
 
 export const zPatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdPath
   = z.object({
+    child_chunk_id: z.string(),
     dataset_id: z.string(),
     document_id: z.string(),
     segment_id: z.string(),
-    child_chunk_id: z.string(),
   })
 
 /**
@@ -1293,7 +1729,7 @@ export const zGetDatasetsByDatasetIdMetadataPath = z.object({
 /**
  * Metadata retrieved successfully
  */
-export const zGetDatasetsByDatasetIdMetadataResponse = z.record(z.string(), z.unknown())
+export const zGetDatasetsByDatasetIdMetadataResponse = zDatasetMetadataListResponse
 
 export const zPostDatasetsByDatasetIdMetadataBody = zMetadataArgs
 
@@ -1304,7 +1740,7 @@ export const zPostDatasetsByDatasetIdMetadataPath = z.object({
 /**
  * Metadata created successfully
  */
-export const zPostDatasetsByDatasetIdMetadataResponse = z.record(z.string(), z.unknown())
+export const zPostDatasetsByDatasetIdMetadataResponse = zDatasetMetadataResponse
 
 export const zGetDatasetsByDatasetIdMetadataBuiltInPath = z.object({
   dataset_id: z.string(),
@@ -1313,20 +1749,18 @@ export const zGetDatasetsByDatasetIdMetadataBuiltInPath = z.object({
 /**
  * Built-in fields retrieved successfully
  */
-export const zGetDatasetsByDatasetIdMetadataBuiltInResponse = z.record(z.string(), z.unknown())
+export const zGetDatasetsByDatasetIdMetadataBuiltInResponse = zDatasetMetadataBuiltInFieldsResponse
 
 export const zPostDatasetsByDatasetIdMetadataBuiltInByActionPath = z.object({
-  dataset_id: z.string(),
   action: z.string(),
+  dataset_id: z.string(),
 })
 
 /**
  * Action completed successfully
  */
-export const zPostDatasetsByDatasetIdMetadataBuiltInByActionResponse = z.record(
-  z.string(),
-  z.unknown(),
-)
+export const zPostDatasetsByDatasetIdMetadataBuiltInByActionResponse
+  = zDatasetMetadataActionResponse
 
 export const zDeleteDatasetsByDatasetIdMetadataByMetadataIdPath = z.object({
   dataset_id: z.string(),
@@ -1338,7 +1772,7 @@ export const zDeleteDatasetsByDatasetIdMetadataByMetadataIdPath = z.object({
  */
 export const zDeleteDatasetsByDatasetIdMetadataByMetadataIdResponse = z.record(
   z.string(),
-  z.unknown(),
+  z.never(),
 )
 
 export const zPatchDatasetsByDatasetIdMetadataByMetadataIdBody = zMetadataUpdatePayload
@@ -1351,10 +1785,7 @@ export const zPatchDatasetsByDatasetIdMetadataByMetadataIdPath = z.object({
 /**
  * Metadata updated successfully
  */
-export const zPatchDatasetsByDatasetIdMetadataByMetadataIdResponse = z.record(
-  z.string(),
-  z.unknown(),
-)
+export const zPatchDatasetsByDatasetIdMetadataByMetadataIdResponse = zDatasetMetadataResponse
 
 export const zGetDatasetsByDatasetIdPipelineDatasourcePluginsPath = z.object({
   dataset_id: z.string(),
@@ -1412,7 +1843,7 @@ export const zGetDatasetsByDatasetIdTagsPath = z.object({
 /**
  * Tags retrieved successfully
  */
-export const zGetDatasetsByDatasetIdTagsResponse = z.record(z.string(), z.unknown())
+export const zGetDatasetsByDatasetIdTagsResponse = zDatasetBoundTagListResponse
 
 export const zGetEndUsersByEndUserIdPath = z.object({
   end_user_id: z.string(),
@@ -1421,7 +1852,7 @@ export const zGetEndUsersByEndUserIdPath = z.object({
 /**
  * End user retrieved successfully
  */
-export const zGetEndUsersByEndUserIdResponse = z.record(z.string(), z.unknown())
+export const zGetEndUsersByEndUserIdResponse = zEndUserDetail
 
 /**
  * File uploaded successfully
@@ -1464,7 +1895,7 @@ export const zPostFormHumanInputByFormTokenResponse = z.record(z.string(), z.unk
 /**
  * Application info retrieved successfully
  */
-export const zGetInfoResponse = z.record(z.string(), z.unknown())
+export const zGetInfoResponse = zAppInfoResponse
 
 export const zGetMessagesQuery = z.object({
   conversation_id: z.string(),
@@ -1486,7 +1917,7 @@ export const zPostMessagesByMessageIdFeedbacksPath = z.object({
 /**
  * Feedback submitted successfully
  */
-export const zPostMessagesByMessageIdFeedbacksResponse = z.record(z.string(), z.unknown())
+export const zPostMessagesByMessageIdFeedbacksResponse = zResultResponse
 
 export const zGetMessagesByMessageIdSuggestedPath = z.object({
   message_id: z.string(),
@@ -1495,7 +1926,7 @@ export const zGetMessagesByMessageIdSuggestedPath = z.object({
 /**
  * Suggested questions retrieved successfully
  */
-export const zGetMessagesByMessageIdSuggestedResponse = z.record(z.string(), z.unknown())
+export const zGetMessagesByMessageIdSuggestedResponse = zSimpleResultStringListResponse
 
 /**
  * Metadata retrieved successfully
@@ -1510,7 +1941,7 @@ export const zGetParametersResponse = z.record(z.string(), z.unknown())
 /**
  * Site configuration retrieved successfully
  */
-export const zGetSiteResponse = z.record(z.string(), z.unknown())
+export const zGetSiteResponse = zSite
 
 export const zPostTextToAudioBody = zTextToAudioPayload
 
@@ -1524,9 +1955,9 @@ export const zGetWorkflowByTaskIdEventsPath = z.object({
 })
 
 export const zGetWorkflowByTaskIdEventsQuery = z.object({
-  user: z.string().optional(),
-  include_state_snapshot: z.string().optional(),
   continue_on_pause: z.string().optional(),
+  include_state_snapshot: z.string().optional(),
+  user: z.string().optional(),
 })
 
 /**
@@ -1542,7 +1973,7 @@ export const zGetWorkflowsLogsQuery = z.object({
   keyword: z.string().nullish(),
   limit: z.int().gte(1).lte(100).optional().default(20),
   page: z.int().gte(1).lte(99999).optional().default(1),
-  status: z.enum(['succeeded', 'failed', 'stopped']).nullish(),
+  status: z.enum(['failed', 'stopped', 'succeeded']).nullish(),
 })
 
 /**
@@ -1573,7 +2004,7 @@ export const zPostWorkflowsTasksByTaskIdStopPath = z.object({
 /**
  * Task stopped successfully
  */
-export const zPostWorkflowsTasksByTaskIdStopResponse = z.record(z.string(), z.unknown())
+export const zPostWorkflowsTasksByTaskIdStopResponse = zSimpleResultResponse
 
 export const zPostWorkflowsByWorkflowIdRunBody = zWorkflowRunPayload
 

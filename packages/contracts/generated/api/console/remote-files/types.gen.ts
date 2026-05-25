@@ -4,17 +4,35 @@ export type ClientOptions = {
   baseUrl: `${string}://${string}/console/api` | (string & {})
 }
 
+export type RemoteFileUploadPayload = {
+  url: string
+}
+
+export type FileWithSignedUrl = {
+  created_at: number | null
+  created_by: string | null
+  extension: string | null
+  id: string
+  mime_type: string | null
+  name: string
+  size: number
+  url: string | null
+}
+
+export type RemoteFileInfo = {
+  file_length: number
+  file_type: string
+}
+
 export type PostRemoteFilesUploadData = {
-  body?: never
+  body: RemoteFileUploadPayload
   path?: never
   query?: never
   url: '/remote-files/upload'
 }
 
 export type PostRemoteFilesUploadResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  201: FileWithSignedUrl
 }
 
 export type PostRemoteFilesUploadResponse
@@ -30,9 +48,7 @@ export type GetRemoteFilesByUrlData = {
 }
 
 export type GetRemoteFilesByUrlResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: RemoteFileInfo
 }
 
 export type GetRemoteFilesByUrlResponse

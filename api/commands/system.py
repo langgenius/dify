@@ -14,6 +14,7 @@ from libs.rsa import generate_key_pair
 from models import Tenant
 from models.model import App, AppMode, Conversation
 from models.provider import Provider, ProviderModel
+from models.tools import ApiToolProvider, BuiltinToolProvider, MCPToolProvider
 
 logger = logging.getLogger(__name__)
 
@@ -23,13 +24,16 @@ DB_UPGRADE_LOCK_TTL_SECONDS = 60
 @click.command(
     "reset-encrypt-key-pair",
     help="Reset the asymmetric key pair of workspace for encrypt LLM credentials. "
-    "After the reset, all LLM credentials will become invalid, "
-    "requiring re-entry."
+    "After the reset, all LLM credentials and tool provider credentials "
+    "(builtin / API / MCP) will be purged, requiring re-entry. "
     "Only support SELF_HOSTED mode.",
 )
 @click.confirmation_option(
     prompt=click.style(
-        "Are you sure you want to reset encrypt key pair? This operation cannot be rolled back!", fg="red"
+        "Are you sure you want to reset encrypt key pair? "
+        "This will also purge builtin / API / MCP tool provider records for every tenant. "
+        "This operation cannot be rolled back!",
+        fg="red",
     )
 )
 def reset_encrypt_key_pair():
@@ -52,6 +56,13 @@ def reset_encrypt_key_pair():
 
             session.execute(delete(Provider).where(Provider.provider_type == "custom", Provider.tenant_id == tenant.id))
             session.execute(delete(ProviderModel).where(ProviderModel.tenant_id == tenant.id))
+
+            # Purge tool provider records that hold credentials encrypted under the
+            # tenant key. Leaving them in place causes /console/api/workspaces/current/
+            # tool-providers to 500 because decryption fails on stale ciphertext (#35396).
+            session.execute(delete(BuiltinToolProvider).where(BuiltinToolProvider.tenant_id == tenant.id))
+            session.execute(delete(ApiToolProvider).where(ApiToolProvider.tenant_id == tenant.id))
+            session.execute(delete(MCPToolProvider).where(MCPToolProvider.tenant_id == tenant.id))
 
             click.echo(
                 click.style(

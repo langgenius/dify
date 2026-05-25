@@ -74,8 +74,8 @@ export const zGetOauthDataSourceByProviderPath = z.object({
 export const zGetOauthDataSourceByProviderResponse = zOAuthDataSourceResponse
 
 export const zGetOauthDataSourceByProviderByBindingIdSyncPath = z.object({
-  provider: z.string(),
   binding_id: z.string(),
+  provider: z.string(),
 })
 
 /**

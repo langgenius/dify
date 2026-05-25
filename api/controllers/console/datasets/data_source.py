@@ -1,6 +1,7 @@
 import json
 from collections.abc import Generator
 from typing import Any, Literal, cast
+from uuid import UUID
 
 from flask import request
 from flask_restx import Resource, fields, marshal_with
@@ -9,7 +10,8 @@ from sqlalchemy import select
 from sqlalchemy.orm import sessionmaker
 from werkzeug.exceptions import NotFound
 
-from controllers.common.schema import get_or_create_model, register_schema_model
+from controllers.common.fields import SimpleResultResponse, TextContentResponse
+from controllers.common.schema import get_or_create_model, register_response_schema_models, register_schema_model
 from core.datasource.entities.datasource_entities import DatasourceProviderType, OnlineDocumentPagesMessage
 from core.datasource.online_document.online_document_plugin import OnlineDocumentDatasourcePlugin
 from core.indexing_runner import IndexingRunner
@@ -54,6 +56,7 @@ class DataSourceNotionPreviewQuery(BaseModel):
 
 
 register_schema_model(console_ns, NotionEstimatePayload)
+register_response_schema_models(console_ns, SimpleResultResponse, TextContentResponse)
 
 
 integrate_icon_model = get_or_create_model("DataSourceIntegrateIcon", integrate_icon_fields)
@@ -157,6 +160,7 @@ class DataSourceApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
     def patch(self, binding_id, action: Literal["enable", "disable"]):
         _, current_tenant_id = current_account_with_tenant()
         binding_id = str(binding_id)
@@ -289,7 +293,8 @@ class DataSourceNotionApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def get(self, page_id, page_type):
+    @console_ns.response(200, "Success", console_ns.models[TextContentResponse.__name__])
+    def get(self, page_id: UUID, page_type: str):
         _, current_tenant_id = current_account_with_tenant()
 
         query = DataSourceNotionPreviewQuery.model_validate(request.args.to_dict())
@@ -302,11 +307,11 @@ class DataSourceNotionApi(Resource):
             plugin_id="langgenius/notion_datasource",
         )
 
-        page_id = str(page_id)
+        page_id_str = str(page_id)
 
         extractor = NotionExtractor(
             notion_workspace_id="",
-            notion_obj_id=page_id,
+            notion_obj_id=page_id_str,
             notion_page_type=page_type,
             notion_access_token=credential.get("integration_secret"),
             tenant_id=current_tenant_id,
@@ -362,7 +367,8 @@ class DataSourceNotionDatasetSyncApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def get(self, dataset_id):
+    @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
+    def get(self, dataset_id: UUID):
         dataset_id_str = str(dataset_id)
         dataset = DatasetService.get_dataset(dataset_id_str)
         if dataset is None:
@@ -379,7 +385,8 @@ class DataSourceNotionDocumentSyncApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def get(self, dataset_id, document_id):
+    @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
+    def get(self, dataset_id: UUID, document_id: UUID):
         dataset_id_str = str(dataset_id)
         document_id_str = str(document_id)
         dataset = DatasetService.get_dataset(dataset_id_str)

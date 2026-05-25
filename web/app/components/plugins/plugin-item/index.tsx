@@ -112,9 +112,9 @@ const PluginItem: FC<Props> = ({
         <CornerMark text={categoriesMap[category]!.label} />
         {/* Header */}
         <div className="flex">
-          <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-xl border border-components-panel-border-subtle">
+          <div className="flex size-10 items-center justify-center overflow-hidden rounded-xl border border-components-panel-border-subtle">
             <img
-              className="h-full w-full"
+              className="size-full"
               src={iconSrc}
               alt={`plugin-${plugin_unique_identifier}-logo`}
             />
@@ -122,15 +122,15 @@ const PluginItem: FC<Props> = ({
           <div className="ml-3 w-0 grow">
             <div className="flex h-5 items-center">
               <Title title={title} />
-              {verified && <Verified className="ml-0.5 h-4 w-4" text={t('marketplace.verifiedTip', { ns: 'plugin' })} />}
+              {verified && <Verified className="ml-0.5 size-4" text={t('marketplace.verifiedTip', { ns: 'plugin' })} />}
               {!isDifyVersionCompatible && (
                 <Popover>
                   <PopoverTrigger
                     openOnHover
                     aria-label={t('difyVersionNotCompatible', { ns: 'plugin', minimalDifyVersion: declarationMeta.minimum_dify_version })}
-                    className="ml-0.5 inline-flex h-4 w-4 shrink-0 border-0 bg-transparent p-0"
+                    className="ml-0.5 inline-flex size-4 shrink-0 border-0 bg-transparent p-0"
                   >
-                    <RiErrorWarningLine color="red" className="h-4 w-4 text-text-accent" />
+                    <RiErrorWarningLine color="red" className="size-4 text-text-accent" />
                   </PopoverTrigger>
                   <PopoverContent popupClassName="px-3 py-2 system-xs-regular text-text-tertiary">
                     {t('difyVersionNotCompatible', { ns: 'plugin', minimalDifyVersion: declarationMeta.minimum_dify_version })}
@@ -195,9 +195,9 @@ const PluginItem: FC<Props> = ({
                 <a href={`https://github.com/${meta!.repo}`} target="_blank" className="flex items-center gap-1">
                   <div className="system-2xs-medium-uppercase text-text-tertiary">{t('from', { ns: 'plugin' })}</div>
                   <div className="flex items-center space-x-0.5 text-text-secondary">
-                    <Github className="h-3 w-3" />
+                    <Github className="size-3" />
                     <div className="system-2xs-semibold-uppercase">GitHub</div>
-                    <RiArrowRightUpLine className="h-3 w-3" />
+                    <RiArrowRightUpLine className="size-3" />
                   </div>
                 </a>
               </>
@@ -211,7 +211,7 @@ const PluginItem: FC<Props> = ({
                     {' '}
                     <span className="text-text-secondary">marketplace</span>
                   </div>
-                  <RiArrowRightUpLine className="h-3 w-3 text-text-secondary" />
+                  <RiArrowRightUpLine className="size-3 text-text-secondary" />
                 </a>
               </>
             )}
@@ -219,7 +219,7 @@ const PluginItem: FC<Props> = ({
             && (
               <>
                 <div className="flex items-center gap-1">
-                  <RiHardDrive3Line className="h-3 w-3 text-text-tertiary" />
+                  <RiHardDrive3Line className="size-3 text-text-tertiary" />
                   <div className="system-2xs-medium-uppercase text-text-tertiary">Local Plugin</div>
                 </div>
               </>
@@ -228,7 +228,7 @@ const PluginItem: FC<Props> = ({
             && (
               <>
                 <div className="flex items-center gap-1">
-                  <RiBugLine className="h-3 w-3 text-text-warning" />
+                  <RiBugLine className="size-3 text-text-warning" />
                   <div className="system-2xs-medium-uppercase text-text-warning">Debugging Plugin</div>
                 </div>
               </>

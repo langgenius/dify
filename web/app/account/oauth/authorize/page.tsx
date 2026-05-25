@@ -127,14 +127,14 @@ export default function OAuthAuthorize() {
     <div className="bg-background-default-subtle">
       {authAppInfo?.app_icon && (
         <div className="w-max rounded-2xl border-[0.5px] border-components-panel-border bg-text-primary-on-surface p-3 shadow-lg">
-          <img src={authAppInfo.app_icon} alt="app icon" className="h-10 w-10 rounded-sm" />
+          <img src={authAppInfo.app_icon} alt="app icon" className="size-10 rounded-sm" />
         </div>
       )}
 
       <div className={`mt-5 mb-4 flex flex-col gap-2 ${isLoggedIn ? 'pb-2' : ''}`}>
         <div className="title-4xl-semi-bold">
           {isLoggedIn && <div className="text-text-primary">{t('connect', { ns: 'oauth' })}</div>}
-          <div className="text-(--color-saas-dify-blue-inverted)">{authAppInfo?.app_label[language] || authAppInfo?.app_label?.en_US || t('unknownApp', { ns: 'oauth' })}</div>
+          <div className="text-saas-dify-blue-inverted">{authAppInfo?.app_label[language] || authAppInfo?.app_label?.en_US || t('unknownApp', { ns: 'oauth' })}</div>
           {!isLoggedIn && <div className="text-text-primary">{t('tips.notLoggedIn', { ns: 'oauth' })}</div>}
         </div>
         <div className="body-md-regular text-text-secondary">{isLoggedIn ? `${authAppInfo?.app_label[language] || authAppInfo?.app_label?.en_US || t('unknownApp', { ns: 'oauth' })} ${t('tips.loggedIn', { ns: 'oauth' })}` : t('tips.needLogin', { ns: 'oauth' })}</div>
@@ -159,7 +159,7 @@ export default function OAuthAuthorize() {
             const Icon = SCOPE_INFO_MAP[scope]
             return (
               <div key={scope} className="flex items-center gap-2 body-sm-medium text-text-secondary">
-                {Icon ? <Icon.icon className="h-4 w-4" /> : <RiAccountCircleLine className="h-4 w-4" />}
+                {Icon ? <Icon.icon className="size-4" /> : <RiAccountCircleLine className="size-4" />}
                 {Icon!.label}
               </div>
             )

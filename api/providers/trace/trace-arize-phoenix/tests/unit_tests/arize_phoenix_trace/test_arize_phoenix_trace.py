@@ -1,3 +1,5 @@
+import json
+from collections.abc import Sequence
 from datetime import UTC, datetime, timedelta
 from types import SimpleNamespace
 from typing import Any, cast
@@ -8,8 +10,12 @@ import pytest
 from dify_trace_arize_phoenix.arize_phoenix_trace import (
     _NODE_TYPE_TO_SPAN_KIND,
     ArizePhoenixDataTrace,
+    _app_uses_phoenix_provider,
     _build_graph_parent_index,
+    _build_wrapper_groups,
     _get_node_span_kind,
+    _normalize_wrapper_index,
+    _parent_workflow_can_publish_span_context,
     _phoenix_parent_span_redis_key,
     _resolve_node_parent,
     _resolve_published_parent_span_context,
@@ -25,9 +31,13 @@ from dify_trace_arize_phoenix.arize_phoenix_trace import (
 )
 from dify_trace_arize_phoenix.config import ArizeConfig, PhoenixConfig
 from openinference.semconv.trace import OpenInferenceSpanKindValues, SpanAttributes
-from opentelemetry.sdk.trace import Tracer
+from opentelemetry.context import Context
+from opentelemetry.sdk import trace as trace_sdk
+from opentelemetry.sdk.trace import ReadableSpan, Tracer
+from opentelemetry.sdk.trace.export import SimpleSpanProcessor, SpanExporter, SpanExportResult
 from opentelemetry.semconv.trace import SpanAttributes as OTELSpanAttributes
-from opentelemetry.trace import StatusCode
+from opentelemetry.trace import NonRecordingSpan, SpanContext, StatusCode, TraceFlags, TraceState, use_span
+from opentelemetry.trace.propagation.tracecontext import TraceContextTextMapPropagator
 
 from core.ops.entities.trace_entity import (
     DatasetRetrievalTraceInfo,
@@ -41,7 +51,7 @@ from core.ops.entities.trace_entity import (
     WorkflowTraceInfo,
 )
 from core.ops.exceptions import PendingTraceParentContextError
-from graphon.enums import BUILT_IN_NODE_TYPES, BuiltinNodeTypes
+from graphon.enums import BUILT_IN_NODE_TYPES, BuiltinNodeTypes, WorkflowNodeExecutionStatus
 
 # --- Helpers ---
 
@@ -94,6 +104,32 @@ def _get_start_span_call(start_span_mock, *, span_name: str):
         if call.kwargs.get("name") == span_name:
             return call
     raise AssertionError(f"Could not find start_span call with name={span_name!r}")
+
+
+class _FakeQuery:
+    def __init__(self, result):
+        self._result = result
+
+    def filter(self, *args, **kwargs):
+        return self
+
+    def where(self, *args, **kwargs):
+        return self
+
+    def first(self):
+        return self._result
+
+
+class _CollectingSpanExporter(SpanExporter):
+    def __init__(self):
+        self.spans: list[ReadableSpan] = []
+
+    def export(self, spans: Sequence[ReadableSpan]) -> SpanExportResult:
+        self.spans.extend(spans)
+        return SpanExportResult.SUCCESS
+
+    def shutdown(self) -> None:
+        return None
 
 
 def _make_node_execution(**kwargs):
@@ -231,6 +267,71 @@ def test_safe_json_dumps():
 def test_wrap_span_metadata():
     res = wrap_span_metadata({"a": 1}, b=2)
     assert res == {"a": 1, "b": 2, "created_from": "Dify"}
+
+
+def test_app_uses_phoenix_provider_only_for_enabled_arize_or_phoenix():
+    assert _app_uses_phoenix_provider({"enabled": True, "tracing_provider": "phoenix"}) is True
+    assert _app_uses_phoenix_provider({"enabled": True, "tracing_provider": "arize"}) is True
+    assert _app_uses_phoenix_provider({"enabled": False, "tracing_provider": "phoenix"}) is False
+    assert _app_uses_phoenix_provider({"enabled": True, "tracing_provider": "langfuse"}) is False
+    assert _app_uses_phoenix_provider(None) is False
+
+
+def test_normalize_wrapper_index_accepts_stable_values():
+    assert _normalize_wrapper_index(0) == "0"
+    assert _normalize_wrapper_index(12) == "12"
+    assert _normalize_wrapper_index("01") == "01"
+    assert _normalize_wrapper_index("branch-1_A.2:3") == "branch-1_A.2:3"
+
+
+@pytest.mark.parametrize(
+    "value",
+    [
+        True,
+        False,
+        -1,
+        1.0,
+        "",
+        " 1",
+        "1 ",
+        "group/1",
+        "group]1",
+        None,
+    ],
+)
+def test_normalize_wrapper_index_rejects_unstable_values(value):
+    assert _normalize_wrapper_index(value) is None
+
+
+def test_parent_workflow_can_publish_span_context_keeps_unknown_parent_retryable(monkeypatch):
+    monkeypatch.setattr(
+        "dify_trace_arize_phoenix.arize_phoenix_trace.db.session.query",
+        lambda model: _FakeQuery(None),
+    )
+
+    assert _parent_workflow_can_publish_span_context("missing-run") is True
+
+
+def test_parent_workflow_can_publish_span_context_checks_parent_app_tracing(monkeypatch):
+    parent_run = SimpleNamespace(app_id="parent-app")
+    parent_app = SimpleNamespace(tracing=json.dumps({"enabled": True, "tracing_provider": "phoenix"}))
+
+    def fake_query(model):
+        if getattr(model, "__tablename__", None) == "workflow_runs":
+            return _FakeQuery(parent_run)
+        if getattr(model, "__tablename__", None) == "apps":
+            return _FakeQuery(parent_app)
+        raise AssertionError(f"Unexpected model query: {model}")
+
+    monkeypatch.setattr("dify_trace_arize_phoenix.arize_phoenix_trace.db.session.query", fake_query)
+
+    assert _parent_workflow_can_publish_span_context("parent-run") is True
+
+    parent_app.tracing = json.dumps({"enabled": False, "tracing_provider": "phoenix"})
+    assert _parent_workflow_can_publish_span_context("parent-run") is False
+
+    parent_app.tracing = json.dumps({"enabled": True, "tracing_provider": "langfuse"})
+    assert _parent_workflow_can_publish_span_context("parent-run") is False
 
 
 class TestGetNodeSpanKind:
@@ -484,6 +585,59 @@ class TestWorkflowHierarchyHelpers:
 
         assert structured_parent_execution_id == "iteration-execution-1"
 
+    def test_build_wrapper_groups_groups_loop_children_by_index(self):
+        loop = _make_workflow_node_trace_info(
+            node_execution_id="loop-execution-1",
+            node_id="loop-node-1",
+            node_type="loop",
+        )
+        first = _make_workflow_node_trace_info(
+            node_execution_id="first-execution-1",
+            node_id="body-node-1",
+            node_type="tool",
+            loop_id="loop-node-1",
+            loop_index=0,
+        )
+        second = _make_workflow_node_trace_info(
+            node_execution_id="second-execution-1",
+            node_id="body-node-2",
+            node_type="tool",
+            loop_id="loop-node-1",
+            loop_index=1,
+        )
+
+        groups = _build_wrapper_groups([loop, first, second])
+
+        assert [(group.key.wrapper_type, group.key.index) for group in groups.values()] == [
+            ("loop", "0"),
+            ("loop", "1"),
+        ]
+        assert [group.container_execution_id for group in groups.values()] == [
+            "loop-execution-1",
+            "loop-execution-1",
+        ]
+
+    def test_build_wrapper_groups_skips_ambiguous_container_graph_ids(self):
+        first_loop = _make_workflow_node_trace_info(
+            node_execution_id="loop-execution-1",
+            node_id="loop-node-1",
+            node_type="loop",
+        )
+        second_loop = _make_workflow_node_trace_info(
+            node_execution_id="loop-execution-2",
+            node_id="loop-node-1",
+            node_type="loop",
+        )
+        child = _make_workflow_node_trace_info(
+            node_execution_id="child-execution-1",
+            node_id="body-node-1",
+            node_type="tool",
+            loop_id="loop-node-1",
+            loop_index=0,
+        )
+
+        assert _build_wrapper_groups([first_loop, second_loop, child]) == {}
+
 
 @patch("dify_trace_arize_phoenix.arize_phoenix_trace.GrpcOTLPSpanExporter")
 @patch("dify_trace_arize_phoenix.arize_phoenix_trace.trace_sdk.TracerProvider")
@@ -694,6 +848,34 @@ def test_workflow_trace_uses_workflow_run_id_for_root_span_and_populates_root_in
 @patch("dify_trace_arize_phoenix.arize_phoenix_trace.db")
 @patch("dify_trace_arize_phoenix.arize_phoenix_trace.DifyCoreRepositoryFactory")
 @patch("dify_trace_arize_phoenix.arize_phoenix_trace.sessionmaker")
+def test_workflow_trace_propagates_workflow_error_to_root_span(
+    mock_sessionmaker,
+    mock_repo_factory,
+    mock_db,
+    trace_instance,
+):
+    mock_db.engine = MagicMock()
+    info = _make_workflow_info(
+        workflow_run_status="failed",
+        error="Traceback (most recent call last): RuntimeError: workflow failed",
+    )
+    repo = MagicMock()
+    repo.get_by_workflow_execution.return_value = []
+    mock_repo_factory.create_workflow_node_execution_repository.return_value = repo
+
+    with (
+        patch.object(trace_instance, "get_service_account_with_tenant", return_value=MagicMock()),
+        patch.object(trace_instance, "ensure_root_span", return_value={}) as mock_ensure_root_span,
+    ):
+        trace_instance.workflow_trace(info)
+
+    mock_ensure_root_span.assert_called_once()
+    assert mock_ensure_root_span.call_args.kwargs["root_span_error"] == info.error
+
+
+@patch("dify_trace_arize_phoenix.arize_phoenix_trace.db")
+@patch("dify_trace_arize_phoenix.arize_phoenix_trace.DifyCoreRepositoryFactory")
+@patch("dify_trace_arize_phoenix.arize_phoenix_trace.sessionmaker")
 def test_workflow_trace_falls_back_to_dify_name_when_workflow_run_id_is_blank(
     mock_sessionmaker,
     mock_repo_factory,
@@ -839,6 +1021,10 @@ def test_workflow_trace_raises_pending_parent_error_when_parent_node_context_is_
 
     with (
         patch.object(trace_instance, "get_service_account_with_tenant", return_value=MagicMock()),
+        patch(
+            "dify_trace_arize_phoenix.arize_phoenix_trace._parent_workflow_can_publish_span_context",
+            return_value=True,
+        ),
         patch.object(trace_instance, "ensure_root_span") as mock_ensure_root_span,
         pytest.raises(PendingTraceParentContextError) as exc_info,
     ):
@@ -848,6 +1034,102 @@ def test_workflow_trace_raises_pending_parent_error_when_parent_node_context_is_
     trace_instance._mock_redis_client.get.assert_called_once_with(
         _phoenix_parent_span_redis_key("outer-node-execution-1")
     )
+    mock_ensure_root_span.assert_not_called()
+
+
+@patch("dify_trace_arize_phoenix.arize_phoenix_trace.db")
+@patch("dify_trace_arize_phoenix.arize_phoenix_trace.DifyCoreRepositoryFactory")
+@patch("dify_trace_arize_phoenix.arize_phoenix_trace.sessionmaker")
+def test_workflow_trace_falls_back_when_parent_app_tracing_cannot_publish_parent_context(
+    mock_sessionmaker,
+    mock_repo_factory,
+    mock_db,
+    trace_instance,
+):
+    mock_db.engine = MagicMock()
+    info = _make_workflow_info(
+        message_id="message-1",
+        workflow_run_id="workflow-run-1",
+        metadata={
+            "app_id": "app1",
+            "parent_trace_context": {
+                "parent_workflow_run_id": "outer-workflow-run-1",
+                "parent_node_execution_id": "outer-node-execution-1",
+            },
+        },
+    )
+    repo = MagicMock()
+    repo.get_by_workflow_execution.return_value = []
+    mock_repo_factory.create_workflow_node_execution_repository.return_value = repo
+    trace_instance._mock_redis_client.get.return_value = None
+
+    parent_carrier = {}
+    parent_context = object()
+
+    with (
+        patch.object(trace_instance, "get_service_account_with_tenant", return_value=MagicMock()),
+        patch(
+            "dify_trace_arize_phoenix.arize_phoenix_trace._parent_workflow_can_publish_span_context",
+            return_value=False,
+        ),
+        patch.object(trace_instance, "ensure_root_span", return_value=parent_carrier) as mock_ensure_root_span,
+        patch.object(trace_instance.propagator, "extract", return_value=parent_context) as mock_extract,
+    ):
+        trace_instance.workflow_trace(info)
+
+    mock_ensure_root_span.assert_called_once_with(
+        "outer-workflow-run-1",
+        root_span_name="workflow-run-1",
+        root_span_attributes={
+            SpanAttributes.INPUT_VALUE: safe_json_dumps(info.workflow_run_inputs),
+            SpanAttributes.INPUT_MIME_TYPE: "application/json",
+            SpanAttributes.OUTPUT_VALUE: safe_json_dumps(info.workflow_run_outputs),
+            SpanAttributes.OUTPUT_MIME_TYPE: "application/json",
+        },
+    )
+    mock_extract.assert_called_once_with(carrier=parent_carrier)
+    workflow_span_call = _get_start_span_call(trace_instance.tracer.start_span, span_name="workflow_workflow-run-1")
+    assert workflow_span_call.kwargs["context"] is parent_context
+
+
+@patch("dify_trace_arize_phoenix.arize_phoenix_trace.db")
+@patch("dify_trace_arize_phoenix.arize_phoenix_trace.DifyCoreRepositoryFactory")
+@patch("dify_trace_arize_phoenix.arize_phoenix_trace.sessionmaker")
+def test_workflow_trace_still_retries_when_parent_app_can_publish_parent_context(
+    mock_sessionmaker,
+    mock_repo_factory,
+    mock_db,
+    trace_instance,
+):
+    mock_db.engine = MagicMock()
+    info = _make_workflow_info(
+        message_id="message-1",
+        workflow_run_id="workflow-run-1",
+        metadata={
+            "app_id": "app1",
+            "parent_trace_context": {
+                "parent_workflow_run_id": "outer-workflow-run-1",
+                "parent_node_execution_id": "outer-node-execution-1",
+            },
+        },
+    )
+    repo = MagicMock()
+    repo.get_by_workflow_execution.return_value = []
+    mock_repo_factory.create_workflow_node_execution_repository.return_value = repo
+    trace_instance._mock_redis_client.get.return_value = None
+
+    with (
+        patch.object(trace_instance, "get_service_account_with_tenant", return_value=MagicMock()),
+        patch(
+            "dify_trace_arize_phoenix.arize_phoenix_trace._parent_workflow_can_publish_span_context",
+            return_value=True,
+        ),
+        patch.object(trace_instance, "ensure_root_span") as mock_ensure_root_span,
+        pytest.raises(PendingTraceParentContextError) as exc_info,
+    ):
+        trace_instance.workflow_trace(info)
+
+    assert exc_info.value.parent_node_execution_id == "outer-node-execution-1"
     mock_ensure_root_span.assert_not_called()
 
 
@@ -1342,6 +1624,213 @@ def test_workflow_trace_keeps_duplicate_body_node_children_under_enclosing_struc
 @patch("dify_trace_arize_phoenix.arize_phoenix_trace.db")
 @patch("dify_trace_arize_phoenix.arize_phoenix_trace.DifyCoreRepositoryFactory")
 @patch("dify_trace_arize_phoenix.arize_phoenix_trace.sessionmaker")
+def test_workflow_trace_records_exception_node_event_without_failing_root_span(
+    mock_sessionmaker, mock_repo_factory, mock_db, trace_instance
+):
+    mock_db.engine = MagicMock()
+    info = _make_workflow_info(workflow_run_status="succeeded", error=None)
+    repo = MagicMock()
+    handled_error_node = _make_node_execution(
+        id="code-execution-1",
+        node_execution_id="code-execution-1",
+        node_id="code-node-1",
+        node_type="code",
+        title="Code with error handling",
+        status=WorkflowNodeExecutionStatus.EXCEPTION,
+        error="Traceback (most recent call last): RuntimeError: handled failure",
+        metadata={"error_strategy": "fail-branch"},
+    )
+    repo.get_by_workflow_execution.return_value = [handled_error_node]
+    mock_repo_factory.create_workflow_node_execution_repository.return_value = repo
+
+    root_span = MagicMock(name="root-span")
+    workflow_span = MagicMock(name="workflow-span")
+    node_span = MagicMock(name="node-span")
+    trace_instance.tracer.start_span.side_effect = [root_span, workflow_span, node_span]
+
+    with (
+        patch.object(trace_instance, "get_service_account_with_tenant", return_value=MagicMock()),
+        patch.object(trace_instance.propagator, "extract", return_value="root-context"),
+    ):
+        trace_instance.workflow_trace(info)
+
+    root_span.set_status.assert_called_once()
+    assert root_span.set_status.call_args.args[0].status_code == StatusCode.OK
+    workflow_span.set_status.assert_called_once()
+    assert workflow_span.set_status.call_args.args[0].status_code == StatusCode.OK
+    node_span.set_status.assert_called_once()
+    assert node_span.set_status.call_args.args[0].status_code == StatusCode.ERROR
+    node_span.add_event.assert_called_once()
+    assert node_span.add_event.call_args.kwargs["name"] == "exception"
+    assert node_span.add_event.call_args.kwargs["attributes"][OTELSpanAttributes.EXCEPTION_MESSAGE] == (
+        "Traceback (most recent call last): RuntimeError: handled failure"
+    )
+
+
+@patch("dify_trace_arize_phoenix.arize_phoenix_trace.db")
+@patch("dify_trace_arize_phoenix.arize_phoenix_trace.DifyCoreRepositoryFactory")
+@patch("dify_trace_arize_phoenix.arize_phoenix_trace.sessionmaker")
+def test_workflow_trace_groups_loop_iteration_children_under_wrapper_spans(
+    mock_sessionmaker, mock_repo_factory, mock_db, trace_instance
+):
+    mock_db.engine = MagicMock()
+    info = _make_workflow_info(conversation_id="conversation-1")
+    repo = MagicMock()
+    loop_node = _make_node_execution(
+        id="loop-execution-1",
+        node_execution_id="loop-execution-1",
+        node_id="loop-node-1",
+        node_type="loop",
+        title="Main Loop",
+    )
+    first_body_node = _make_node_execution(
+        id="body-execution-1",
+        node_execution_id="body-execution-1",
+        node_id="body-node-1",
+        node_type="tool",
+        loop_id="loop-node-1",
+        metadata={"loop_id": "loop-node-1", "loop_index": 0},
+    )
+    second_body_node = _make_node_execution(
+        id="body-execution-2",
+        node_execution_id="body-execution-2",
+        node_id="body-node-1",
+        node_type="tool",
+        loop_id="loop-node-1",
+        metadata={"loop_id": "loop-node-1", "loop_index": 1},
+    )
+    repo.get_by_workflow_execution.return_value = [loop_node, first_body_node, second_body_node]
+    mock_repo_factory.create_workflow_node_execution_repository.return_value = repo
+
+    workflow_span = MagicMock(name="workflow-span")
+    workflow_span._context_label = "workflow"
+    loop_span = MagicMock(name="loop-span")
+    loop_span._context_label = "loop"
+    first_wrapper_span = MagicMock(name="loop-wrapper-0")
+    first_wrapper_span._context_label = "loop-wrapper-0"
+    first_body_span = MagicMock(name="body-span-1")
+    first_body_span._context_label = "body-1"
+    second_wrapper_span = MagicMock(name="loop-wrapper-1")
+    second_wrapper_span._context_label = "loop-wrapper-1"
+    second_body_span = MagicMock(name="body-span-2")
+    second_body_span._context_label = "body-2"
+    trace_instance.tracer.start_span.side_effect = [
+        workflow_span,
+        loop_span,
+        first_wrapper_span,
+        first_body_span,
+        second_wrapper_span,
+        second_body_span,
+    ]
+
+    with (
+        patch.object(trace_instance, "get_service_account_with_tenant", return_value=MagicMock()),
+        patch.object(trace_instance, "ensure_root_span", return_value={}),
+        patch.object(trace_instance.propagator, "extract", return_value="root-context"),
+        patch(
+            "dify_trace_arize_phoenix.arize_phoenix_trace.set_span_in_context",
+            side_effect=lambda span: f"context:{span._context_label}",
+        ),
+    ):
+        trace_instance.workflow_trace(info)
+
+    first_wrapper_call = _get_start_span_call(trace_instance.tracer.start_span, span_name="loop[0]")
+    second_wrapper_call = _get_start_span_call(trace_instance.tracer.start_span, span_name="loop[1]")
+    first_body_call = trace_instance.tracer.start_span.call_args_list[3]
+    second_body_call = trace_instance.tracer.start_span.call_args_list[5]
+
+    assert first_wrapper_call.kwargs["context"] == "context:loop"
+    assert second_wrapper_call.kwargs["context"] == "context:loop"
+    assert first_wrapper_call.kwargs["attributes"]["dify.wrapper.synthetic"] is True
+    assert first_wrapper_call.kwargs["attributes"]["dify.wrapper.index"] == "0"
+    assert first_body_call.kwargs["context"] == "context:loop-wrapper-0"
+    assert second_body_call.kwargs["context"] == "context:loop-wrapper-1"
+    assert first_body_call.kwargs["attributes"][SpanAttributes.SESSION_ID] == "conversation-1"
+    assert json.loads(first_body_call.kwargs["attributes"][SpanAttributes.METADATA])["loop_index"] == 0
+    assert first_body_call.kwargs["attributes"]["dify.node.loop_index"] == 0
+
+
+@patch("dify_trace_arize_phoenix.arize_phoenix_trace.db")
+@patch("dify_trace_arize_phoenix.arize_phoenix_trace.DifyCoreRepositoryFactory")
+@patch("dify_trace_arize_phoenix.arize_phoenix_trace.sessionmaker")
+def test_workflow_trace_finalizes_loop_wrapper_with_child_time_bounds_and_error_status(
+    mock_sessionmaker, mock_repo_factory, mock_db, trace_instance
+):
+    mock_db.engine = MagicMock()
+    info = _make_workflow_info()
+    repo = MagicMock()
+    loop_node = _make_node_execution(
+        id="loop-execution-1",
+        node_execution_id="loop-execution-1",
+        node_id="loop-node-1",
+        node_type="loop",
+    )
+    first_body_node = _make_node_execution(
+        id="body-execution-1",
+        node_execution_id="body-execution-1",
+        node_id="body-node-1",
+        node_type="tool",
+        created_at=_dt() + timedelta(seconds=3),
+        elapsed_time=2.0,
+        loop_id="loop-node-1",
+        metadata={"loop_id": "loop-node-1", "loop_index": 0},
+    )
+    failed_body_node = _make_node_execution(
+        id="body-execution-2",
+        node_execution_id="body-execution-2",
+        node_id="body-node-2",
+        node_type="tool",
+        status=WorkflowNodeExecutionStatus.FAILED,
+        error="body failed",
+        created_at=_dt() + timedelta(seconds=4),
+        elapsed_time=5.0,
+        loop_id="loop-node-1",
+        metadata={"loop_id": "loop-node-1", "loop_index": 0},
+    )
+    repo.get_by_workflow_execution.return_value = [loop_node, first_body_node, failed_body_node]
+    mock_repo_factory.create_workflow_node_execution_repository.return_value = repo
+
+    workflow_span = MagicMock(name="workflow-span")
+    workflow_span._context_label = "workflow"
+    loop_span = MagicMock(name="loop-span")
+    loop_span._context_label = "loop"
+    wrapper_span = MagicMock(name="loop-wrapper-0")
+    wrapper_span._context_label = "loop-wrapper-0"
+    first_body_span = MagicMock(name="body-span-1")
+    first_body_span._context_label = "body-1"
+    failed_body_span = MagicMock(name="body-span-2")
+    failed_body_span._context_label = "body-2"
+    trace_instance.tracer.start_span.side_effect = [
+        workflow_span,
+        loop_span,
+        wrapper_span,
+        first_body_span,
+        failed_body_span,
+    ]
+
+    with (
+        patch.object(trace_instance, "get_service_account_with_tenant", return_value=MagicMock()),
+        patch.object(trace_instance, "ensure_root_span", return_value={}),
+        patch.object(trace_instance.propagator, "extract", return_value="root-context"),
+        patch(
+            "dify_trace_arize_phoenix.arize_phoenix_trace.set_span_in_context",
+            side_effect=lambda span: f"context:{span._context_label}",
+        ),
+    ):
+        trace_instance.workflow_trace(info)
+
+    wrapper_call = _get_start_span_call(trace_instance.tracer.start_span, span_name="loop[0]")
+    assert wrapper_call.kwargs["start_time"] == datetime_to_nanos(first_body_node.created_at)
+    wrapper_span.end.assert_called_once_with(
+        end_time=datetime_to_nanos(failed_body_node.created_at + timedelta(seconds=failed_body_node.elapsed_time))
+    )
+    wrapper_span.set_status.assert_called_once()
+    assert wrapper_span.set_status.call_args.args[0].status_code == StatusCode.ERROR
+
+
+@patch("dify_trace_arize_phoenix.arize_phoenix_trace.db")
+@patch("dify_trace_arize_phoenix.arize_phoenix_trace.DifyCoreRepositoryFactory")
+@patch("dify_trace_arize_phoenix.arize_phoenix_trace.sessionmaker")
 def test_workflow_trace_falls_back_to_workflow_span_for_parallel_like_ambiguous_predecessors(
     mock_sessionmaker, mock_repo_factory, mock_db, trace_instance
 ):
@@ -1544,6 +2033,38 @@ def test_ensure_root_span_basic(trace_instance):
     assert "tid" in trace_instance.dify_trace_ids
 
 
+def test_ensure_root_span_ignores_unsampled_ambient_otel_parent():
+    exporter = _CollectingSpanExporter()
+    provider = trace_sdk.TracerProvider()
+    provider.add_span_processor(SimpleSpanProcessor(exporter))
+    trace_instance = ArizePhoenixDataTrace.__new__(ArizePhoenixDataTrace)
+    trace_instance.tracer = cast(Tracer, provider.get_tracer("test-phoenix-root-span"))
+    trace_instance.propagator = TraceContextTextMapPropagator()
+    trace_instance.project = "p"
+    trace_instance.dify_trace_ids = set()
+    trace_instance.root_span_carriers = {}
+    trace_instance.carrier = {}
+
+    ambient_span_context = SpanContext(
+        trace_id=0x11111111111111111111111111111111,
+        span_id=0x2222222222222222,
+        is_remote=True,
+        trace_flags=TraceFlags(0),
+        trace_state=TraceState(),
+    )
+
+    with use_span(NonRecordingSpan(ambient_span_context), end_on_exit=False):
+        carrier = trace_instance.ensure_root_span("tid")
+
+    assert len(exporter.spans) == 1
+    root_span = exporter.spans[0]
+    root_span_context = root_span.get_span_context()
+    assert root_span_context is not None
+    assert root_span.parent is None
+    assert root_span_context.trace_id != ambient_span_context.trace_id
+    assert carrier["traceparent"].split("-")[1] == f"{root_span_context.trace_id:032x}"
+
+
 def test_ensure_root_span_uses_custom_name_and_attributes(trace_instance):
     root_attributes = {
         SpanAttributes.INPUT_VALUE: '{"input":"value"}',
@@ -1561,6 +2082,20 @@ def test_ensure_root_span_uses_custom_name_and_attributes(trace_instance):
             SpanAttributes.INPUT_VALUE: '{"input":"value"}',
             SpanAttributes.OUTPUT_VALUE: '{"output":"value"}',
         },
+        context=Context(),
+    )
+
+
+def test_ensure_root_span_records_error_status_and_exception_event(trace_instance):
+    trace_instance.ensure_root_span("tid", root_span_error="workflow failed")
+
+    root_span = trace_instance.tracer.start_span.return_value
+    root_span.set_status.assert_called_once()
+    assert root_span.set_status.call_args.args[0].status_code == StatusCode.ERROR
+    root_span.add_event.assert_called_once()
+    assert root_span.add_event.call_args.kwargs["name"] == "exception"
+    assert root_span.add_event.call_args.kwargs["attributes"][OTELSpanAttributes.EXCEPTION_MESSAGE] == (
+        "workflow failed"
     )
 
 

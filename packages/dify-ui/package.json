@@ -25,6 +25,14 @@
       "types": "./src/button/index.tsx",
       "import": "./src/button/index.tsx"
     },
+    "./checkbox": {
+      "types": "./src/checkbox/index.tsx",
+      "import": "./src/checkbox/index.tsx"
+    },
+    "./checkbox-group": {
+      "types": "./src/checkbox-group/index.tsx",
+      "import": "./src/checkbox-group/index.tsx"
+    },
     "./combobox": {
       "types": "./src/combobox/index.tsx",
       "import": "./src/combobox/index.tsx"
@@ -45,6 +53,22 @@
       "types": "./src/dropdown-menu/index.tsx",
       "import": "./src/dropdown-menu/index.tsx"
     },
+    "./field": {
+      "types": "./src/field/index.tsx",
+      "import": "./src/field/index.tsx"
+    },
+    "./fieldset": {
+      "types": "./src/fieldset/index.tsx",
+      "import": "./src/fieldset/index.tsx"
+    },
+    "./form": {
+      "types": "./src/form/index.tsx",
+      "import": "./src/form/index.tsx"
+    },
+    "./input": {
+      "types": "./src/input/index.tsx",
+      "import": "./src/input/index.tsx"
+    },
     "./meter": {
       "types": "./src/meter/index.tsx",
       "import": "./src/meter/index.tsx"
@@ -52,6 +76,18 @@
     "./number-field": {
       "types": "./src/number-field/index.tsx",
       "import": "./src/number-field/index.tsx"
+    },
+    "./pagination": {
+      "types": "./src/pagination/index.tsx",
+      "import": "./src/pagination/index.tsx"
+    },
+    "./radio": {
+      "types": "./src/radio/index.tsx",
+      "import": "./src/radio/index.tsx"
+    },
+    "./radio-group": {
+      "types": "./src/radio-group/index.tsx",
+      "import": "./src/radio-group/index.tsx"
     },
     "./popover": {
       "types": "./src/popover/index.tsx",

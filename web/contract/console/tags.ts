@@ -48,7 +48,7 @@ export const tagUpdateContract = base
       name: string
     }
   }>())
-  .output(type<unknown>())
+  .output(type<Tag>())
 
 export const tagDeleteContract = base
   .route({
