@@ -13,6 +13,7 @@ import {
   zDeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdPath,
   zDeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdResponse,
   zDeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsPath,
+  zDeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsQuery,
   zDeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsResponse,
   zDeleteDatasetsByDatasetIdDocumentsPath,
   zDeleteDatasetsByDatasetIdDocumentsResponse,
@@ -105,6 +106,7 @@ import {
   zPatchDatasetsByDatasetIdDocumentsByDocumentIdProcessingResumePath,
   zPatchDatasetsByDatasetIdDocumentsByDocumentIdProcessingResumeResponse,
   zPatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentByActionPath,
+  zPatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentByActionQuery,
   zPatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentByActionResponse,
   zPatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdBody,
   zPatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdBody,
@@ -1041,7 +1043,12 @@ export const patch6 = oc
     path: '/datasets/{dataset_id}/documents/{document_id}/segment/{action}',
     tags: ['console'],
   })
-  .input(z.object({ params: zPatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentByActionPath }))
+  .input(
+    z.object({
+      params: zPatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentByActionPath,
+      query: zPatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentByActionQuery.optional(),
+    }),
+  )
   .output(zPatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentByActionResponse)
 
 export const byAction3 = {
@@ -1254,7 +1261,12 @@ export const delete5 = oc
     successStatus: 204,
     tags: ['console'],
   })
-  .input(z.object({ params: zDeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsPath }))
+  .input(
+    z.object({
+      params: zDeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsPath,
+      query: zDeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsQuery.optional(),
+    }),
+  )
   .output(zDeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsResponse)
 
 export const get22 = oc

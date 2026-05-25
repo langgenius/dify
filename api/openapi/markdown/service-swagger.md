@@ -1114,7 +1114,7 @@ Delete a specific segment
 | ---- | ---------- | ----------- | -------- | ------ |
 | dataset_id | path | Dataset ID | Yes | string |
 | document_id | path | Document ID | Yes | string |
-| segment_id | path | Segment ID to delete | Yes | string |
+| segment_id | path | Segment ID | Yes | string |
 
 ##### Responses
 
@@ -1133,9 +1133,9 @@ Get a specific segment by ID
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| dataset_id | path |  | Yes | string |
-| document_id | path |  | Yes | string |
-| segment_id | path |  | Yes | string |
+| dataset_id | path | Dataset ID | Yes | string |
+| document_id | path | Document ID | Yes | string |
+| segment_id | path | Segment ID | Yes | string |
 
 ##### Responses
 
@@ -1157,7 +1157,7 @@ Update a specific segment
 | payload | body |  | Yes | [SegmentUpdatePayload](#segmentupdatepayload) |
 | dataset_id | path | Dataset ID | Yes | string |
 | document_id | path | Document ID | Yes | string |
-| segment_id | path | Segment ID to update | Yes | string |
+| segment_id | path | Segment ID | Yes | string |
 
 ##### Responses
 
@@ -1226,7 +1226,7 @@ Delete a specific child chunk
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| child_chunk_id | path | Child chunk ID to delete | Yes | string |
+| child_chunk_id | path | Child chunk ID | Yes | string |
 | dataset_id | path | Dataset ID | Yes | string |
 | document_id | path | Document ID | Yes | string |
 | segment_id | path | Parent segment ID | Yes | string |
@@ -1249,7 +1249,7 @@ Update a specific child chunk
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | payload | body |  | Yes | [ChildChunkUpdatePayload](#childchunkupdatepayload) |
-| child_chunk_id | path | Child chunk ID to update | Yes | string |
+| child_chunk_id | path | Child chunk ID | Yes | string |
 | dataset_id | path | Dataset ID | Yes | string |
 | document_id | path | Document ID | Yes | string |
 | segment_id | path | Parent segment ID | Yes | string |

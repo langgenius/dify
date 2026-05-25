@@ -1833,6 +1833,10 @@ export const zPatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentByActionPath =
   document_id: z.string(),
 })
 
+export const zPatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentByActionQuery = z.object({
+  segment_id: z.array(z.string()).optional(),
+})
+
 /**
  * Success
  */
@@ -1842,6 +1846,10 @@ export const zPatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentByActionRespon
 export const zDeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsPath = z.object({
   dataset_id: z.string(),
   document_id: z.string(),
+})
+
+export const zDeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsQuery = z.object({
+  segment_id: z.array(z.string()).optional(),
 })
 
 /**

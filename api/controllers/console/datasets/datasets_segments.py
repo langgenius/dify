@@ -71,6 +71,10 @@ class SegmentListQuery(BaseModel):
     page: int = Field(default=1, ge=1)
 
 
+class SegmentIdListQuery(BaseModel):
+    segment_id: list[str] = Field(default_factory=list, description="Segment IDs")
+
+
 class ChildChunkListQuery(BaseModel):
     limit: int = Field(default=20, ge=1, le=100)
     keyword: str | None = None
@@ -118,9 +122,18 @@ class ChildChunkBatchUpdatePayload(BaseModel):
     chunks: list[ChildChunkUpdateArgs]
 
 
+class SegmentDocParams:
+    DATASET_DOCUMENT = {"dataset_id": "Dataset ID", "document_id": "Document ID"}
+    DATASET_DOCUMENT_ACTION = {**DATASET_DOCUMENT, "action": "Action"}
+    DATASET_DOCUMENT_SEGMENT = {**DATASET_DOCUMENT, "segment_id": "Segment ID"}
+    DATASET_DOCUMENT_PARENT_SEGMENT = {**DATASET_DOCUMENT, "segment_id": "Parent segment ID"}
+    DATASET_DOCUMENT_CHILD_CHUNK = {**DATASET_DOCUMENT_PARENT_SEGMENT, "child_chunk_id": "Child chunk ID"}
+
+
 register_schema_models(
     console_ns,
     SegmentListQuery,
+    SegmentIdListQuery,
     ChildChunkListQuery,
     SegmentCreatePayload,
     SegmentUpdatePayload,
@@ -145,6 +158,7 @@ register_response_schema_models(
 
 @console_ns.route("/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/segments")
 class DatasetDocumentSegmentListApi(Resource):
+    @console_ns.doc(params=SegmentDocParams.DATASET_DOCUMENT)
     @console_ns.doc(params=query_params_from_model(SegmentListQuery))
     @console_ns.response(200, "Segments retrieved successfully", console_ns.models[ConsoleSegmentListResponse.__name__])
     @setup_required
@@ -257,6 +271,8 @@ class DatasetDocumentSegmentListApi(Resource):
     @login_required
     @account_initialization_required
     @cloud_edition_billing_rate_limit_check("knowledge")
+    @console_ns.doc(params=SegmentDocParams.DATASET_DOCUMENT)
+    @console_ns.doc(params=query_params_from_model(SegmentIdListQuery))
     @console_ns.response(204, "Segments deleted successfully")
     def delete(self, dataset_id: UUID, document_id: UUID):
         current_user, _ = current_account_with_tenant()
@@ -288,6 +304,8 @@ class DatasetDocumentSegmentListApi(Resource):
 
 @console_ns.route("/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/segment/<string:action>")
 class DatasetDocumentSegmentApi(Resource):
+    @console_ns.doc(params=SegmentDocParams.DATASET_DOCUMENT_ACTION)
+    @console_ns.doc(params=query_params_from_model(SegmentIdListQuery))
     @setup_required
     @login_required
     @account_initialization_required
@@ -346,6 +364,7 @@ class DatasetDocumentSegmentApi(Resource):
 
 @console_ns.route("/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/segment")
 class DatasetDocumentSegmentAddApi(Resource):
+    @console_ns.doc(params=SegmentDocParams.DATASET_DOCUMENT)
     @setup_required
     @login_required
     @account_initialization_required
@@ -404,6 +423,7 @@ class DatasetDocumentSegmentAddApi(Resource):
 
 @console_ns.route("/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/segments/<uuid:segment_id>")
 class DatasetDocumentSegmentUpdateApi(Resource):
+    @console_ns.doc(params=SegmentDocParams.DATASET_DOCUMENT_SEGMENT)
     @setup_required
     @login_required
     @account_initialization_required
@@ -478,6 +498,7 @@ class DatasetDocumentSegmentUpdateApi(Resource):
     @login_required
     @account_initialization_required
     @cloud_edition_billing_rate_limit_check("knowledge")
+    @console_ns.doc(params=SegmentDocParams.DATASET_DOCUMENT_SEGMENT)
     @console_ns.response(204, "Segment deleted successfully")
     def delete(self, dataset_id: UUID, document_id: UUID, segment_id: UUID):
         current_user, current_tenant_id = current_account_with_tenant()
@@ -589,6 +610,7 @@ class DatasetDocumentSegmentBatchImportApi(Resource):
 
 @console_ns.route("/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/segments/<uuid:segment_id>/child_chunks")
 class ChildChunkAddApi(Resource):
+    @console_ns.doc(params=SegmentDocParams.DATASET_DOCUMENT_PARENT_SEGMENT)
     @setup_required
     @login_required
     @account_initialization_required
@@ -649,6 +671,7 @@ class ChildChunkAddApi(Resource):
             raise ChildChunkIndexingError(str(e))
         return dump_response(ChildChunkDetailResponse, {"data": child_chunk}), 200
 
+    @console_ns.doc(params=SegmentDocParams.DATASET_DOCUMENT_PARENT_SEGMENT)
     @console_ns.doc(params=query_params_from_model(ChildChunkListQuery))
     @console_ns.response(200, "Child chunks retrieved successfully", console_ns.models[ChildChunkListResponse.__name__])
     @setup_required
@@ -701,6 +724,7 @@ class ChildChunkAddApi(Resource):
     @account_initialization_required
     @cloud_edition_billing_resource_check("vector_space")
     @cloud_edition_billing_rate_limit_check("knowledge")
+    @console_ns.doc(params=SegmentDocParams.DATASET_DOCUMENT_PARENT_SEGMENT)
     @console_ns.response(
         200,
         "Child chunks updated successfully",
@@ -754,6 +778,7 @@ class ChildChunkUpdateApi(Resource):
     @login_required
     @account_initialization_required
     @cloud_edition_billing_rate_limit_check("knowledge")
+    @console_ns.doc(params=SegmentDocParams.DATASET_DOCUMENT_CHILD_CHUNK)
     @console_ns.response(204, "Child chunk deleted successfully")
     def delete(self, dataset_id: UUID, document_id: UUID, segment_id: UUID, child_chunk_id: UUID):
         current_user, current_tenant_id = current_account_with_tenant()
@@ -811,6 +836,7 @@ class ChildChunkUpdateApi(Resource):
     @account_initialization_required
     @cloud_edition_billing_resource_check("vector_space")
     @cloud_edition_billing_rate_limit_check("knowledge")
+    @console_ns.doc(params=SegmentDocParams.DATASET_DOCUMENT_CHILD_CHUNK)
     @console_ns.expect(console_ns.models[ChildChunkUpdatePayload.__name__])
     @console_ns.response(200, "Child chunk updated successfully", console_ns.models[ChildChunkDetailResponse.__name__])
     def patch(self, dataset_id: UUID, document_id: UUID, segment_id: UUID, child_chunk_id: UUID):

@@ -2014,7 +2014,9 @@ export type PatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentByActionData = {
     dataset_id: string
     document_id: string
   }
-  query?: never
+  query?: {
+    segment_id?: Array<string>
+  }
   url: '/datasets/{dataset_id}/documents/{document_id}/segment/{action}'
 }
 
@@ -2031,7 +2033,9 @@ export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsData = {
     dataset_id: string
     document_id: string
   }
-  query?: never
+  query?: {
+    segment_id?: Array<string>
+  }
   url: '/datasets/{dataset_id}/documents/{document_id}/segments'
 }
 
