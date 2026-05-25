@@ -3,6 +3,7 @@ import type { FC } from 'react'
 import type { AliyunConfig, ArizeConfig, DatabricksConfig, LangFuseConfig, LangSmithConfig, MLflowConfig, OpikConfig, PhoenixConfig, TencentConfig, WeaveConfig } from './type'
 import type { TracingStatus } from '@/models/app'
 import { cn } from '@langgenius/dify-ui/cn'
+import { StatusDot } from '@langgenius/dify-ui/status-dot'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useBoolean } from 'ahooks'
 import * as React from 'react'
@@ -23,7 +24,6 @@ import {
   WeaveIcon,
 } from '@/app/components/base/icons/src/public/tracing'
 import Loading from '@/app/components/base/loading'
-import Indicator from '@/app/components/header/indicator'
 import { useSelector as useAppContextWithSelector } from '@/context/app-context'
 import { usePathname } from '@/next/navigation'
 import { fetchTracingConfig as doFetchTracingConfig, fetchTracingStatus, updateTracingStatus } from '@/service/apps'
@@ -302,7 +302,7 @@ const Panel: FC = () => {
             )}
           >
             <div className="mr-1 ml-4 flex items-center">
-              <Indicator color={enabled ? 'green' : 'gray'} />
+              <StatusDot status={enabled ? 'success' : 'disabled'} />
               <div className="ml-1.5 system-xs-semibold-uppercase text-text-tertiary">
                 {t(`${I18N_PREFIX}.${enabled ? 'enabled' : 'disabled'}`, { ns: 'app' })}
               </div>

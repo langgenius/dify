@@ -3,6 +3,7 @@
 import type { MouseEventHandler, ReactNode } from 'react'
 import { Avatar } from '@langgenius/dify-ui/avatar'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuLinkItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@langgenius/dify-ui/dropdown-menu'
+import { StatusDot } from '@langgenius/dify-ui/status-dot'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -23,7 +24,6 @@ import { useLogout } from '@/service/use-common'
 import { hasPermission } from '@/utils/permission'
 import AccountAbout from '../account-about'
 import GithubStar from '../github-star'
-import Indicator from '../indicator'
 import Compliance from './compliance'
 import { ExternalLinkIndicator, MenuItemContent } from './menu-item-content'
 import Support from './support'
@@ -218,7 +218,7 @@ export default function AppSelector() {
                       trailing={(
                         <div className="flex shrink-0 items-center">
                           <div className="mr-2 system-xs-regular text-text-tertiary">{langGeniusVersionInfo.current_version}</div>
-                          <Indicator color={langGeniusVersionInfo.current_version === langGeniusVersionInfo.latest_version ? 'green' : 'orange'} />
+                          <StatusDot status={langGeniusVersionInfo.current_version === langGeniusVersionInfo.latest_version ? 'success' : 'warning'} />
                         </div>
                       )}
                     />

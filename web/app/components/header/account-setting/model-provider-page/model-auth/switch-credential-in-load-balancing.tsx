@@ -1,3 +1,4 @@
+import type { StatusDotStatus } from '@langgenius/dify-ui/status-dot'
 import type { Dispatch, SetStateAction } from 'react'
 import type { IndicatorProps } from '../../../indicator'
 import type {
@@ -7,6 +8,7 @@ import type {
 } from '../declarations'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import { StatusDot } from '@langgenius/dify-ui/status-dot'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import {
   memo,
@@ -15,7 +17,6 @@ import {
 import { useTranslation } from 'react-i18next'
 import Badge from '@/app/components/base/badge'
 import { ConfigurationMethodEnum, ModelModalModeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import Indicator from '@/app/components/header/indicator'
 import { useSelector as useAppContextWithSelector } from '@/context/app-context'
 import { hasPermission } from '@/utils/permission'
 import Authorized from './authorized'
@@ -57,9 +58,9 @@ const SwitchCredentialInLoadBalancing = ({
     const authRemoved = selectedCredentialId && !currentCredential && !empty
     const unavailable = currentCredential?.not_allowed_to_use
 
-    let color: NonNullable<IndicatorProps['color']> = 'green'
+    let color: StatusDotStatus = 'success'
     if (authRemoved || unavailable)
-      color = 'red'
+      color = 'error'
 
     const Item = (
       <Button
@@ -72,9 +73,9 @@ const SwitchCredentialInLoadBalancing = ({
       >
         {
           !empty && (
-            <Indicator
+            <StatusDot
               className="mr-2"
-              color={color}
+              status={color}
             />
           )
         }

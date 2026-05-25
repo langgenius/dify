@@ -1,7 +1,7 @@
 from datetime import datetime
 
 from flask_restx import fields
-from pydantic import field_validator
+from pydantic import Field, field_validator
 
 from fields.base import ResponseModel
 from libs.helper import TimestampField, to_timestamp
@@ -154,30 +154,40 @@ class DatasetRerankingModelResponse(ResponseModel):
 
 
 class DatasetKeywordSettingResponse(ResponseModel):
-    keyword_weight: float
+    keyword_weight: float | None = None
 
 
 class DatasetVectorSettingResponse(ResponseModel):
-    vector_weight: float
-    embedding_model_name: str
-    embedding_provider_name: str
+    vector_weight: float | None = None
+    embedding_model_name: str | None = None
+    embedding_provider_name: str | None = None
 
 
 class DatasetWeightedScoreResponse(ResponseModel):
     weight_type: str | None = None
-    keyword_setting: DatasetKeywordSettingResponse | None = None
-    vector_setting: DatasetVectorSettingResponse | None = None
+    keyword_setting: DatasetKeywordSettingResponse = Field(default_factory=DatasetKeywordSettingResponse)
+    vector_setting: DatasetVectorSettingResponse = Field(default_factory=DatasetVectorSettingResponse)
+
+    @field_validator("keyword_setting", "vector_setting", mode="before")
+    @classmethod
+    def _expand_null_nested(cls, value: object) -> object:
+        return {} if value is None else value
 
 
 class DatasetRetrievalModelResponse(ResponseModel):
     search_method: str
     reranking_enable: bool
     reranking_mode: str | None = None
-    reranking_model: DatasetRerankingModelResponse | None
+    reranking_model: DatasetRerankingModelResponse = Field(default_factory=DatasetRerankingModelResponse)
     weights: DatasetWeightedScoreResponse | None = None
     top_k: int
     score_threshold_enabled: bool
     score_threshold: float | None = None
+
+    @field_validator("reranking_model", mode="before")
+    @classmethod
+    def _expand_null_nested(cls, value: object) -> object:
+        return {} if value is None else value
 
 
 class DatasetSummaryIndexSettingResponse(ResponseModel):
@@ -194,10 +204,10 @@ class DatasetTagResponse(ResponseModel):
 
 
 class DatasetExternalKnowledgeInfoResponse(ResponseModel):
-    external_knowledge_id: str
-    external_knowledge_api_id: str
-    external_knowledge_api_name: str
-    external_knowledge_api_endpoint: str
+    external_knowledge_id: str | None = None
+    external_knowledge_api_id: str | None = None
+    external_knowledge_api_name: str | None = None
+    external_knowledge_api_endpoint: str | None = None
 
 
 class DatasetExternalRetrievalModelResponse(ResponseModel):
@@ -213,8 +223,8 @@ class DatasetDocMetadataResponse(ResponseModel):
 
 
 class DatasetIconInfoResponse(ResponseModel):
-    icon_type: str | None
-    icon: str | None
+    icon_type: str | None = None
+    icon: str | None = None
     icon_background: str | None = None
     icon_url: str | None = None
 
@@ -239,17 +249,21 @@ class DatasetDetailResponse(ResponseModel):
     embedding_model_provider: str | None
     embedding_available: bool | None = None
     retrieval_model_dict: DatasetRetrievalModelResponse
-    summary_index_setting: DatasetSummaryIndexSettingResponse | None
+    summary_index_setting: DatasetSummaryIndexSettingResponse = Field(
+        default_factory=DatasetSummaryIndexSettingResponse
+    )
     tags: list[DatasetTagResponse]
     doc_form: str | None
-    external_knowledge_info: DatasetExternalKnowledgeInfoResponse | None
+    external_knowledge_info: DatasetExternalKnowledgeInfoResponse = Field(
+        default_factory=DatasetExternalKnowledgeInfoResponse
+    )
     external_retrieval_model: DatasetExternalRetrievalModelResponse | None
     doc_metadata: list[DatasetDocMetadataResponse]
     built_in_field_enabled: bool
     pipeline_id: str | None
     runtime_mode: str | None
     chunk_structure: str | None
-    icon_info: DatasetIconInfoResponse | None
+    icon_info: DatasetIconInfoResponse = Field(default_factory=DatasetIconInfoResponse)
     is_published: bool
     total_documents: int
     total_available_documents: int
@@ -260,3 +274,8 @@ class DatasetDetailResponse(ResponseModel):
     @classmethod
     def _normalize_timestamp(cls, value: datetime | int | None) -> int | None:
         return to_timestamp(value)
+
+    @field_validator("summary_index_setting", "external_knowledge_info", "icon_info", mode="before")
+    @classmethod
+    def _expand_null_nested(cls, value: object) -> object:
+        return {} if value is None else value
