@@ -1,12 +1,12 @@
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import { StatusDot } from '@langgenius/dify-ui/status-dot'
 import {
   RiEqualizer2Line,
   RiScales3Line,
 } from '@remixicon/react'
 import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
-import Indicator from '@/app/components/header/indicator'
 
 type ConfigModelProps = {
   onClick?: () => void
@@ -30,7 +30,7 @@ const ConfigModel = ({
       >
         <RiScales3Line className="mr-0.5 size-3" />
         {t('modelProvider.auth.authorizationError', { ns: 'common' })}
-        <Indicator color="orange" className="absolute -top-px -right-px size-1.5" />
+        <StatusDot status="warning" className="absolute -top-px -right-px size-1.5" />
       </div>
     )
   }
@@ -49,7 +49,7 @@ const ConfigModel = ({
         credentialRemoved && (
           <>
             {t('modelProvider.auth.credentialRemoved', { ns: 'common' })}
-            <Indicator color="red" className="ml-2" />
+            <StatusDot status="error" className="ml-2" />
           </>
         )
       }
