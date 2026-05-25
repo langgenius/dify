@@ -134,7 +134,7 @@ class CompletionConversationApi(Resource):
                 .join(  # type: ignore
                     MessageAnnotation, MessageAnnotation.conversation_id == Conversation.id
                 )
-                .distinct()
+                .group_by(Conversation.id)
             )
         elif args.annotation_status == "not_annotated":
             query = (
@@ -272,7 +272,7 @@ class ChatConversationApi(Resource):
                     .join(  # type: ignore
                         MessageAnnotation, MessageAnnotation.conversation_id == Conversation.id
                     )
-                    .distinct()
+                    .group_by(Conversation.id)
                 )
             case "not_annotated":
                 query = (

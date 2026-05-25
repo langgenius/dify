@@ -12,6 +12,7 @@ import {
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import { StatusDot } from '@langgenius/dify-ui/status-dot'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useBoolean } from 'ahooks'
 import copy from 'copy-to-clipboard'
@@ -19,7 +20,6 @@ import * as React from 'react'
 import { useCallback, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
-import Indicator from '@/app/components/header/indicator'
 import Icon from '@/app/components/plugins/card/base/card-icon'
 import { useAppContext } from '@/context/app-context'
 import { openOAuthPopup } from '@/hooks/use-oauth'
@@ -231,7 +231,7 @@ const MCPDetailContent: FC<Props> = ({
               onClick={handleAuthorize}
               disabled={!isCurrentWorkspaceManager}
             >
-              <Indicator className="mr-2" color="green" />
+              <StatusDot className="mr-2" status="success" />
               {t('auth.authorized', { ns: 'tools' })}
             </Button>
           )}
