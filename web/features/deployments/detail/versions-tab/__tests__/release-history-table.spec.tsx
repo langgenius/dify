@@ -1,6 +1,7 @@
 import type { EnvironmentDeployment, Release } from '@dify/contracts/enterprise/types.gen'
 import { render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { RUNTIME_INSTANCE_STATUS_READY } from '../../../runtime-status'
 import { ReleaseHistoryTable } from '../release-history-table'
 
 const mockUseQuery = vi.fn()
@@ -47,7 +48,7 @@ function runtimeInstance(overrides: Partial<EnvironmentDeployment> = {}): Enviro
   return {
     currentDeployment: { id: 'deployment-1' },
     environment: { id: 'env-1', name: 'default' },
-    status: 2,
+    status: RUNTIME_INSTANCE_STATUS_READY,
     currentRelease: { id: 'release-1' },
     ...overrides,
   }

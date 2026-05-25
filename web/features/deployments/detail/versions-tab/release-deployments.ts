@@ -14,7 +14,7 @@ function releaseDeploymentState(status?: string): ReleaseDeploymentState {
   const normalized = status?.toLowerCase() ?? ''
   if (normalized.includes('deploying') || normalized.includes('pending'))
     return 'deploying'
-  if (normalized.includes('fail') || normalized.includes('error'))
+  if (normalized.includes('fail') || normalized.includes('error') || normalized.includes('invalid'))
     return 'failed'
   return 'active'
 }

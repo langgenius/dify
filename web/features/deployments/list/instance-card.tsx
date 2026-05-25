@@ -53,6 +53,18 @@ function deploymentChipClasses(row: EnvironmentDeployment) {
       dot: 'bg-util-colors-warning-warning-500 animate-pulse',
     }
   }
+  if (status === 'drifted') {
+    return {
+      container: 'bg-util-colors-warning-warning-50 text-util-colors-warning-warning-700',
+      dot: 'bg-util-colors-warning-warning-500',
+    }
+  }
+  if (status === 'invalid') {
+    return {
+      container: 'bg-util-colors-red-red-50 text-util-colors-red-red-700',
+      dot: 'bg-util-colors-red-red-500',
+    }
+  }
   if (status === 'ready') {
     return {
       container: 'bg-util-colors-green-green-50 text-util-colors-green-green-700',
@@ -73,6 +85,12 @@ function statusLabel(row: EnvironmentDeployment, t: ReturnType<typeof useTransla
     return t('status.deploying')
   if (status === 'ready')
     return t('status.ready')
+  if (status === 'drifted')
+    return t('status.drifted')
+  if (status === 'invalid')
+    return t('status.invalid')
+  if (status === 'not_deployed')
+    return t('status.notDeployed')
   return t('status.unknown')
 }
 

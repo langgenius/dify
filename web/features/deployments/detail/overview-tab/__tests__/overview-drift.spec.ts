@@ -1,10 +1,11 @@
 import type { EnvironmentDeployment, Release } from '@dify/contracts/enterprise/types.gen'
 import { describe, expect, it } from 'vitest'
+import {
+  RUNTIME_INSTANCE_STATUS_DEPLOYING,
+  RUNTIME_INSTANCE_STATUS_FAILED,
+  RUNTIME_INSTANCE_STATUS_READY,
+} from '../../../runtime-status'
 import { computeDrift, computeOverviewStats, latestReleaseId } from '../overview-drift'
-
-const DEPLOYMENT_STATUS_DEPLOYING = 1
-const DEPLOYMENT_STATUS_READY = 2
-const DEPLOYMENT_STATUS_FAILED = 3
 
 function row(overrides: EnvironmentDeployment): EnvironmentDeployment {
   return overrides
@@ -45,7 +46,7 @@ describe('computeDrift', () => {
     // Arrange
     const runtime = row({
       environment: { id: 'env-1' },
-      status: DEPLOYMENT_STATUS_READY,
+      status: RUNTIME_INSTANCE_STATUS_READY,
       currentDeployment: { id: 'deployment-1' },
     })
 
@@ -60,7 +61,7 @@ describe('computeDrift', () => {
     // Arrange
     const runtime = row({
       environment: { id: 'env-1' },
-      status: DEPLOYMENT_STATUS_READY,
+      status: RUNTIME_INSTANCE_STATUS_READY,
       currentDeployment: { id: 'deployment-1' },
       currentRelease: { id: 'r-older' },
     })
@@ -76,7 +77,7 @@ describe('computeDrift', () => {
     // Arrange
     const runtime = row({
       environment: { id: 'env-1' },
-      status: DEPLOYMENT_STATUS_READY,
+      status: RUNTIME_INSTANCE_STATUS_READY,
       currentDeployment: { id: 'deployment-1' },
       currentRelease: { id: 'r-3' },
     })
@@ -96,7 +97,7 @@ describe('computeDrift', () => {
     // Arrange
     const runtime = row({
       environment: { id: 'env-1' },
-      status: DEPLOYMENT_STATUS_READY,
+      status: RUNTIME_INSTANCE_STATUS_READY,
       currentDeployment: { id: 'deployment-1' },
       currentRelease: { id: 'r-1' },
     })
@@ -116,7 +117,7 @@ describe('computeDrift', () => {
     // Arrange
     const runtime = row({
       environment: { id: 'env-1' },
-      status: DEPLOYMENT_STATUS_READY,
+      status: RUNTIME_INSTANCE_STATUS_READY,
       currentDeployment: { id: 'deployment-1' },
       currentRelease: { id: 'r-1' },
     })
@@ -149,10 +150,10 @@ describe('computeOverviewStats', () => {
   it('should classify each row into a single bucket', () => {
     // Arrange
     const rows: EnvironmentDeployment[] = [
-      row({ currentDeployment: { id: 'deployment-1' }, environment: { id: 'env-1' }, status: DEPLOYMENT_STATUS_READY, currentRelease: { id: 'r-3' } }),
-      row({ currentDeployment: { id: 'deployment-2' }, environment: { id: 'env-2' }, status: DEPLOYMENT_STATUS_READY, currentRelease: { id: 'r-1' } }),
-      row({ currentDeployment: { id: 'deployment-3' }, environment: { id: 'env-3' }, status: DEPLOYMENT_STATUS_DEPLOYING, currentRelease: { id: 'r-3' } }),
-      row({ currentDeployment: { id: 'deployment-4' }, environment: { id: 'env-4' }, status: DEPLOYMENT_STATUS_FAILED, currentRelease: { id: 'r-2' } }),
+      row({ currentDeployment: { id: 'deployment-1' }, environment: { id: 'env-1' }, status: RUNTIME_INSTANCE_STATUS_READY, currentRelease: { id: 'r-3' } }),
+      row({ currentDeployment: { id: 'deployment-2' }, environment: { id: 'env-2' }, status: RUNTIME_INSTANCE_STATUS_READY, currentRelease: { id: 'r-1' } }),
+      row({ currentDeployment: { id: 'deployment-3' }, environment: { id: 'env-3' }, status: RUNTIME_INSTANCE_STATUS_DEPLOYING, currentRelease: { id: 'r-3' } }),
+      row({ currentDeployment: { id: 'deployment-4' }, environment: { id: 'env-4' }, status: RUNTIME_INSTANCE_STATUS_FAILED, currentRelease: { id: 'r-2' } }),
       row({ environment: { id: 'env-5' } }),
     ]
 
@@ -166,7 +167,7 @@ describe('computeOverviewStats', () => {
   it('should not count failed envs as behind even when on an older release', () => {
     // Arrange
     const rows: EnvironmentDeployment[] = [
-      row({ currentDeployment: { id: 'deployment-1' }, environment: { id: 'env-1' }, status: DEPLOYMENT_STATUS_FAILED, currentRelease: { id: 'r-1' } }),
+      row({ currentDeployment: { id: 'deployment-1' }, environment: { id: 'env-1' }, status: RUNTIME_INSTANCE_STATUS_FAILED, currentRelease: { id: 'r-1' } }),
     ]
 
     // Act

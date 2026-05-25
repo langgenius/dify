@@ -35,14 +35,15 @@ export function DeploymentStatusSummary({ row }: {
   const status = deploymentStatus(row)
 
   if (status === 'deploying') {
-    const hasTargetRelease = !!(row.currentRelease?.name || row.currentRelease?.id)
+    const targetRelease = row.desiredRelease ?? row.currentRelease
+    const hasTargetRelease = !!(targetRelease?.name || targetRelease?.id)
     return (
       <span className="inline-flex items-center gap-1.5 text-util-colors-blue-blue-700">
         <StatusIconSlot>
           <span className="i-ri-loader-4-line size-2 animate-spin" />
         </StatusIconSlot>
         {hasTargetRelease
-          ? t('deployTab.status.deployingRelease', { release: releaseLabel(row.currentRelease) })
+          ? t('deployTab.status.deployingRelease', { release: releaseLabel(targetRelease) })
           : t('status.deploying')}
       </span>
     )
@@ -56,6 +57,29 @@ export function DeploymentStatusSummary({ row }: {
           <span className="i-ri-alert-line size-3" />
         </StatusIconSlot>
         {t(hasRunningRelease ? 'deployTab.status.runningWithFailed' : 'deployTab.status.deployFailed')}
+      </span>
+    )
+  }
+
+  if (status === 'drifted') {
+    const hasRunningRelease = !!row.currentRelease?.id
+    return (
+      <span className="inline-flex items-center gap-1.5 text-util-colors-warning-warning-700">
+        <StatusIconSlot>
+          <span className="i-ri-error-warning-line size-3" />
+        </StatusIconSlot>
+        {t(hasRunningRelease ? 'deployTab.status.runningOutOfSync' : 'status.drifted')}
+      </span>
+    )
+  }
+
+  if (status === 'invalid') {
+    return (
+      <span className="inline-flex items-center gap-1.5 text-util-colors-red-red-700">
+        <StatusIconSlot>
+          <span className="i-ri-error-warning-line size-3" />
+        </StatusIconSlot>
+        {t('status.invalid')}
       </span>
     )
   }

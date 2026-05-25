@@ -1,5 +1,9 @@
 import type { EnvironmentDeployment, Release } from '@dify/contracts/enterprise/types.gen'
 import { describe, expect, it } from 'vitest'
+import {
+  RUNTIME_INSTANCE_STATUS_DEPLOYING,
+  RUNTIME_INSTANCE_STATUS_READY,
+} from '../../../runtime-status'
 import { getReleaseDeployments } from '../release-deployments'
 
 describe('getReleaseDeployments', () => {
@@ -15,7 +19,7 @@ describe('getReleaseDeployments', () => {
           id: 'env-1',
           name: 'Production',
         },
-        status: 2,
+        status: RUNTIME_INSTANCE_STATUS_READY,
         currentRelease: {
           id: 'release-1',
         },
@@ -47,7 +51,7 @@ describe('getReleaseDeployments', () => {
           id: 'env-2',
           name: 'Staging',
         },
-        status: 1,
+        status: RUNTIME_INSTANCE_STATUS_DEPLOYING,
         currentRelease: {
           id: 'release-1',
         },

@@ -8,12 +8,13 @@ import type {
 import type { App } from '@/types/app'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Input } from '@langgenius/dify-ui/input'
 import { toast } from '@langgenius/dify-ui/toast'
 import { keepPreviousData, useInfiniteQuery, useMutation, useQuery } from '@tanstack/react-query'
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import Uploader from '@/app/components/app/create-from-dsl-modal/uploader'
 import AppIcon from '@/app/components/base/app-icon'
-import Input from '@/app/components/base/input'
 import { SkeletonRectangle, SkeletonRow } from '@/app/components/base/skeleton'
 import Link from '@/next/link'
 import { useRouter } from '@/next/navigation'
@@ -36,39 +37,26 @@ const sourceAppSkeletonKeys = ['first-source-app', 'second-source-app', 'third-s
 const targetEnvironmentSkeletonKeys = ['first-target-environment', 'second-target-environment']
 const targetBindingSkeletonKeys = ['first-target-binding', 'second-target-binding']
 
-const dslPreviewDeployTargetEnvironments: EnvironmentOption[] = [
-  {
-    id: 'env-prod',
-    name: 'Production',
-    mode: 2,
-    backend: 1,
-    status: 3,
-  },
-  {
-    id: 'env-staging',
-    name: 'Staging',
-    mode: 1,
-    backend: 2,
-    status: 3,
-  },
-]
-
-const dslPreviewBindingSlots: CredentialSlot[] = [
-  {
-    providerId: 'openai',
-    category: 1,
-    candidates: [
-      {
-        credentialId: 'openai-prod',
-        providerId: 'openai',
-        displayName: 'OpenAI production key',
-      },
-    ],
-  },
-]
-
 function hasEnvironmentId(environment?: Environment): environment is EnvironmentOption {
   return Boolean(environment?.id)
+}
+
+function encodeUtf8Base64(value: string) {
+  const bytes = new TextEncoder().encode(value)
+  const chunkSize = 0x8000
+  const chunks: string[] = []
+
+  for (let offset = 0; offset < bytes.length; offset += chunkSize)
+    chunks.push(String.fromCharCode(...bytes.subarray(offset, offset + chunkSize)))
+
+  return btoa(chunks.join(''))
+}
+
+function createDeploymentIdempotencyKey() {
+  if (globalThis.crypto?.randomUUID)
+    return globalThis.crypto.randomUUID()
+
+  return `deployment-${Date.now().toString(36)}`
 }
 
 function bindingSlotKey(slot: CredentialSlot) {
@@ -321,7 +309,6 @@ function MethodStep({ method, onSelect }: {
           icon="i-ri-file-code-line"
           title={t('createGuide.methods.importDsl.title')}
           description={t('createGuide.methods.importDsl.description')}
-          badge={t('createGuide.methods.mocked')}
           selected={method === 'importDsl'}
           onClick={() => onSelect('importDsl')}
         />
@@ -424,17 +411,27 @@ function SourceStep({
       hideHeader
     >
       <div className="flex flex-col gap-3">
-        <Input
-          id="create-guide-source-search"
-          aria-label={t('createGuide.source.sourceApp')}
-          value={searchText}
-          onChange={event => onSearchTextChange(event.target.value)}
-          placeholder={t('createGuide.source.searchPlaceholder')}
-          showLeftIcon
-          showClearIcon
-          onClear={() => onSearchTextChange('')}
-          className="h-9"
-        />
+        <div className="relative">
+          <span className="pointer-events-none absolute top-1/2 left-2.5 i-ri-search-line size-4 -translate-y-1/2 text-text-tertiary" aria-hidden="true" />
+          <Input
+            id="create-guide-source-search"
+            aria-label={t('createGuide.source.sourceApp')}
+            value={searchText}
+            onChange={event => onSearchTextChange(event.target.value)}
+            placeholder={t('createGuide.source.searchPlaceholder')}
+            className="h-9 pr-8 pl-8"
+          />
+          {searchText && (
+            <button
+              type="button"
+              aria-label={t('createGuide.source.clearSearch')}
+              onClick={() => onSearchTextChange('')}
+              className="absolute top-1/2 right-2.5 flex size-4 -translate-y-1/2 items-center justify-center text-text-quaternary hover:text-text-secondary"
+            >
+              <span className="i-ri-close-circle-fill size-4" aria-hidden="true" />
+            </button>
+          )}
+        </div>
         <div className="max-h-64 overflow-y-auto rounded-lg border border-divider-subtle bg-background-default">
           {isLoading
             ? <SourceAppSkeleton />
@@ -462,12 +459,22 @@ function SourceStep({
   )
 }
 
-function DslStep() {
+function DslStep({
+  dslFile,
+  isReadingDsl,
+  readError,
+  onDslFileChange,
+}: {
+  dslFile?: File
+  isReadingDsl: boolean
+  readError: boolean
+  onDslFileChange: (file?: File) => void
+}) {
   const { t } = useTranslation('deployments')
 
   return (
-    <StepShell title={t('createGuide.dsl.title')} description={t('createGuide.dsl.description')}>
-      <div className="flex flex-col gap-4 rounded-xl border border-dashed border-components-panel-border bg-components-panel-bg-blur p-5">
+    <StepShell title={t('createGuide.dsl.title')} description={t('createGuide.dsl.description')} hideHeader>
+      <div className="flex flex-col gap-4 rounded-xl border border-components-panel-border bg-components-panel-bg-blur p-5">
         <div className="flex items-start gap-3">
           <span className="mt-0.5 i-ri-upload-cloud-2-line size-5 shrink-0 text-text-tertiary" aria-hidden="true" />
           <div className="flex min-w-0 flex-col gap-1">
@@ -475,9 +482,21 @@ function DslStep() {
             <div className="system-sm-regular text-text-tertiary">{t('createGuide.dsl.dropDescription')}</div>
           </div>
         </div>
-        <div className="rounded-lg bg-background-default px-3 py-2 font-mono system-xs-regular text-text-tertiary">
-          app.workflow.yaml
-        </div>
+        <Uploader
+          className="mt-0"
+          file={dslFile}
+          updateFile={onDslFileChange}
+        />
+        {isReadingDsl && (
+          <div className="system-xs-regular text-text-tertiary">
+            {t('createGuide.dsl.reading')}
+          </div>
+        )}
+        {readError && (
+          <div className="system-xs-regular text-text-destructive">
+            {t('createGuide.dsl.readFailed')}
+          </div>
+        )}
       </div>
     </StepShell>
   )
@@ -958,6 +977,7 @@ function CreationSections({
   onSearchTextChange,
   onSelectMethod,
   onSelectSourceApp,
+  onDslFileChange,
   releaseDescription,
   releaseName,
   selectedApp,
@@ -966,6 +986,9 @@ function CreationSections({
   sourceName,
   sourceSearchText,
   stage,
+  dslFile,
+  isReadingDsl,
+  dslReadError,
 }: {
   children?: React.ReactNode
   defaultedReleaseName: string
@@ -979,6 +1002,7 @@ function CreationSections({
   onSearchTextChange: (value: string) => void
   onSelectMethod: (method: GuideMethod) => void
   onSelectSourceApp: (app: App) => void
+  onDslFileChange: (file?: File) => void
   releaseDescription: string
   releaseName: string
   selectedApp?: App
@@ -987,6 +1011,9 @@ function CreationSections({
   sourceName: string
   sourceSearchText: string
   stage: 'source' | 'release'
+  dslFile?: File
+  isReadingDsl: boolean
+  dslReadError: boolean
 }) {
   return (
     <div className="flex flex-col gap-7 pb-4">
@@ -1003,7 +1030,14 @@ function CreationSections({
               onSelectApp={onSelectSourceApp}
             />
           )}
-          {method === 'importDsl' && <DslStep />}
+          {method === 'importDsl' && (
+            <DslStep
+              dslFile={dslFile}
+              isReadingDsl={isReadingDsl}
+              readError={dslReadError}
+              onDslFileChange={onDslFileChange}
+            />
+          )}
         </>
       )}
       {stage === 'release' && method && (
@@ -1067,12 +1101,17 @@ function TargetReviewSections({
 export function CreateDeploymentGuide() {
   const { t } = useTranslation('deployments')
   const router = useRouter()
-  const createInitialDeployment = useMutation(consoleQuery.enterprise.deploymentService.createInitialDeploymentFromSourceApp.mutationOptions())
+  const createInitialDeploymentFromSourceApp = useMutation(consoleQuery.enterprise.deploymentService.createInitialDeploymentFromSourceApp.mutationOptions())
+  const createInitialDeploymentFromDsl = useMutation(consoleQuery.enterprise.deploymentService.createInitialDeploymentFromDsl.mutationOptions())
 
   const [step, setStep] = useState<GuideStep>('source')
   const [method, setMethod] = useState<GuideMethod>('bindApp')
   const [sourceSearchText, setSourceSearchText] = useState('')
   const [selectedApp, setSelectedApp] = useState<App>()
+  const [dslFile, setDslFile] = useState<File>()
+  const [dslContent, setDslContent] = useState('')
+  const [isReadingDsl, setIsReadingDsl] = useState(false)
+  const [dslReadError, setDslReadError] = useState(false)
   const [instanceName, setInstanceName] = useState('')
   const [instanceDescription, setInstanceDescription] = useState('')
   const [releaseName, setReleaseName] = useState('')
@@ -1080,6 +1119,7 @@ export function CreateDeploymentGuide() {
   const [selectedEnvironmentId, setSelectedEnvironmentId] = useState('')
   const [manualBindingSelections, setManualBindingSelections] = useState<BindingSelections>({})
   const [deployedEnvironmentName, setDeployedEnvironmentName] = useState('')
+  const dslReadTokenRef = useRef(0)
 
   const sourceAppsQuery = useInfiniteQuery({
     ...consoleQuery.apps.list.infiniteOptions({
@@ -1097,7 +1137,11 @@ export function CreateDeploymentGuide() {
   })
   const sourceApps = sourceAppsQuery.data?.pages.flatMap(page => page.data) ?? []
   const effectiveSelectedApp = selectedApp ?? sourceApps[0]
-  const shouldLoadDeploymentTarget = method === 'bindApp' && Boolean(effectiveSelectedApp?.id) && step === 'target'
+  const hasDslContent = Boolean(dslContent.trim())
+  const encodedDslContent = hasDslContent ? encodeUtf8Base64(dslContent) : ''
+  const shouldLoadSourceDeploymentTarget = method === 'bindApp' && Boolean(effectiveSelectedApp?.id) && step === 'target'
+  const shouldLoadDslDeploymentTarget = method === 'importDsl' && hasDslContent && step === 'target'
+  const shouldLoadDeploymentTarget = shouldLoadSourceDeploymentTarget || shouldLoadDslDeploymentTarget
 
   const deployableEnvironmentsQuery = useQuery(consoleQuery.enterprise.environmentService.listDeployableEnvironments.queryOptions({
     input: {
@@ -1105,25 +1149,31 @@ export function CreateDeploymentGuide() {
     },
     enabled: shouldLoadDeploymentTarget,
   }))
-  const deploymentOptionsQuery = useQuery(consoleQuery.enterprise.releaseService.getDeploymentOptionsFromSourceApp.queryOptions({
+  const sourceDeploymentOptionsQuery = useQuery(consoleQuery.enterprise.releaseService.getDeploymentOptionsFromSourceApp.queryOptions({
     input: {
       body: {
         sourceAppId: effectiveSelectedApp?.id ?? '',
       },
     },
-    enabled: shouldLoadDeploymentTarget,
+    enabled: shouldLoadSourceDeploymentTarget,
   }))
+  const dslDeploymentOptionsQuery = useQuery(consoleQuery.enterprise.releaseService.getDeploymentOptionsFromDsl.queryOptions({
+    input: {
+      body: {
+        dsl: encodedDslContent,
+      },
+    },
+    enabled: shouldLoadDslDeploymentTarget,
+  }))
+  const deploymentOptionsQuery = method === 'importDsl' ? dslDeploymentOptionsQuery : sourceDeploymentOptionsQuery
+  const deploymentOptions = deploymentOptionsQuery.data?.options
 
-  const environments = method === 'importDsl'
-    ? dslPreviewDeployTargetEnvironments
-    : method === 'bindApp' && shouldLoadDeploymentTarget
-      ? deployableEnvironmentsQuery.data?.data?.filter(hasEnvironmentId) ?? []
-      : []
-  const bindingSlots = method === 'importDsl'
-    ? dslPreviewBindingSlots
-    : method === 'bindApp' && shouldLoadDeploymentTarget
-      ? deploymentOptionsQuery.data?.options?.credentialSlots?.filter(slot => bindingSlotKey(slot)) ?? []
-      : []
+  const environments = shouldLoadDeploymentTarget
+    ? deployableEnvironmentsQuery.data?.data?.filter(hasEnvironmentId) ?? []
+    : []
+  const bindingSlots = shouldLoadDeploymentTarget
+    ? deploymentOptions?.credentialSlots?.filter(slot => bindingSlotKey(slot)) ?? []
+    : []
   const effectiveSelectedEnvironmentId = selectedEnvironmentId || environments[0]?.id || ''
   const selectedEnvironment = environments.find(env => env.id === effectiveSelectedEnvironmentId) ?? environments[0]
   const selectedTargetEnvironmentName = selectedEnvironment ? environmentName(selectedEnvironment) : ''
@@ -1131,7 +1181,7 @@ export function CreateDeploymentGuide() {
   const requiredBindingsReady = bindingSlots.every(slot => !hasMissingRequiredBinding(slot, bindingSelections[bindingSlotKey(slot)]))
   const isEnvironmentLoading = shouldLoadDeploymentTarget && (deployableEnvironmentsQuery.isLoading || (deployableEnvironmentsQuery.isFetching && !deployableEnvironmentsQuery.data))
   const isBindingLoading = shouldLoadDeploymentTarget && (deploymentOptionsQuery.isLoading || (deploymentOptionsQuery.isFetching && !deploymentOptionsQuery.data))
-  const isDeploying = createInitialDeployment.isPending
+  const isDeploying = createInitialDeploymentFromSourceApp.isPending || createInitialDeploymentFromDsl.isPending
   const sourceName = method === 'importDsl'
     ? t('createGuide.dsl.defaultAppName')
     : method === 'bindApp'
@@ -1154,6 +1204,40 @@ export function CreateDeploymentGuide() {
     setManualBindingSelections({})
   }
 
+  function handleDslFileChange(file?: File) {
+    const readToken = dslReadTokenRef.current + 1
+    dslReadTokenRef.current = readToken
+    setDslFile(file)
+    setDslContent('')
+    setDslReadError(false)
+    setSelectedEnvironmentId('')
+    setManualBindingSelections({})
+    resetCreatedArtifacts()
+
+    if (!file) {
+      setIsReadingDsl(false)
+      return
+    }
+
+    setIsReadingDsl(true)
+    void file.text()
+      .then((content) => {
+        if (dslReadTokenRef.current !== readToken)
+          return
+        setDslContent(content)
+      })
+      .catch(() => {
+        if (dslReadTokenRef.current !== readToken)
+          return
+        setDslReadError(true)
+      })
+      .finally(() => {
+        if (dslReadTokenRef.current !== readToken)
+          return
+        setIsReadingDsl(false)
+      })
+  }
+
   function handleSelectMethod(nextMethod: GuideMethod) {
     selectMethod(nextMethod)
     setStep('source')
@@ -1163,22 +1247,21 @@ export function CreateDeploymentGuide() {
     if (step === 'method')
       return Boolean(method)
     if (step === 'source')
-      return Boolean(method && (method === 'importDsl' || effectiveSelectedApp?.id))
+      return Boolean(method && (method === 'importDsl' ? hasDslContent && !isReadingDsl && !dslReadError : effectiveSelectedApp?.id))
     if (step === 'release') {
       return Boolean(
         method
-        && (method === 'importDsl' || effectiveSelectedApp?.id)
+        && (method === 'importDsl' ? hasDslContent && !isReadingDsl && !dslReadError : effectiveSelectedApp?.id)
         && displayedInstanceName.trim()
         && displayedReleaseName.trim(),
       )
     }
     if (step === 'target') {
-      const deploymentTargetReady = method === 'importDsl'
-        || (shouldLoadDeploymentTarget
-          && !isEnvironmentLoading
-          && !deployableEnvironmentsQuery.isError
-          && !isBindingLoading
-          && !deploymentOptionsQuery.isError)
+      const deploymentTargetReady = shouldLoadDeploymentTarget
+        && !isEnvironmentLoading
+        && !deployableEnvironmentsQuery.isError
+        && !isBindingLoading
+        && !deploymentOptionsQuery.isError
       return Boolean(
         selectedEnvironment?.id
         && deploymentTargetReady
@@ -1200,6 +1283,8 @@ export function CreateDeploymentGuide() {
   async function createReleaseArtifactsAndContinue() {
     if (method === 'bindApp' && (!effectiveSelectedApp?.id || isDeploying))
       return
+    if (method === 'importDsl' && (!hasDslContent || isReadingDsl || dslReadError || isDeploying))
+      return
 
     setSelectedEnvironmentId('')
     setManualBindingSelections({})
@@ -1208,13 +1293,7 @@ export function CreateDeploymentGuide() {
   }
 
   async function handleDeploy() {
-    if (method === 'importDsl') {
-      setDeployedEnvironmentName(selectedTargetEnvironmentName)
-      setStep('done')
-      return
-    }
-
-    if (!effectiveSelectedApp?.id || !selectedEnvironment?.id || isDeploying)
+    if (!selectedEnvironment?.id || isDeploying)
       return
 
     try {
@@ -1222,19 +1301,37 @@ export function CreateDeploymentGuide() {
       if (missingRequiredBinding)
         throw new Error('Missing required deployment binding.')
 
-      const response = await createInitialDeployment.mutateAsync({
-        body: {
-          sourceAppId: effectiveSelectedApp.id,
-          environmentId: selectedEnvironment.id,
-          appInstanceName: displayedInstanceName.trim(),
-          appInstanceDescription: instanceDescription.trim() || undefined,
-          releaseName: displayedReleaseName.trim(),
-          releaseDescription: displayedReleaseDescription.trim() || undefined,
-          credentials: selectedDeploymentCredentials(bindingSlots, bindingSelections),
-          expectedDslDigest: deploymentOptionsQuery.data?.options?.dslDigest,
-        },
-      })
-      const appInstanceId = response.appInstance?.id
+      const idempotencyKey = createDeploymentIdempotencyKey()
+      const response = method === 'importDsl'
+        ? await createInitialDeploymentFromDsl.mutateAsync({
+            body: {
+              dsl: encodedDslContent,
+              environmentId: selectedEnvironment.id,
+              appInstanceName: displayedInstanceName.trim(),
+              appInstanceDescription: instanceDescription.trim() || undefined,
+              releaseName: displayedReleaseName.trim(),
+              releaseDescription: displayedReleaseDescription.trim() || undefined,
+              credentials: selectedDeploymentCredentials(bindingSlots, bindingSelections),
+              idempotencyKey,
+              expectedDslDigest: deploymentOptions?.dslDigest,
+            },
+          })
+        : effectiveSelectedApp?.id
+          ? await createInitialDeploymentFromSourceApp.mutateAsync({
+              body: {
+                sourceAppId: effectiveSelectedApp.id,
+                environmentId: selectedEnvironment.id,
+                appInstanceName: displayedInstanceName.trim(),
+                appInstanceDescription: instanceDescription.trim() || undefined,
+                releaseName: displayedReleaseName.trim(),
+                releaseDescription: displayedReleaseDescription.trim() || undefined,
+                credentials: selectedDeploymentCredentials(bindingSlots, bindingSelections),
+                idempotencyKey,
+                expectedDslDigest: deploymentOptions?.dslDigest,
+              },
+            })
+          : undefined
+      const appInstanceId = response?.appInstance?.id ?? response?.release?.appInstanceId
       if (!appInstanceId)
         throw new Error('Create initial deployment did not return an app instance.')
 
@@ -1325,6 +1422,10 @@ export function CreateDeploymentGuide() {
                 defaultedReleaseName={defaultedReleaseName}
                 onSelectMethod={handleSelectMethod}
                 onSearchTextChange={setSourceSearchText}
+                dslFile={dslFile}
+                isReadingDsl={isReadingDsl}
+                dslReadError={dslReadError}
+                onDslFileChange={handleDslFileChange}
                 onSelectSourceApp={(app) => {
                   setSelectedApp(app)
                   resetCreatedArtifacts()
