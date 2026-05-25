@@ -48,11 +48,7 @@ export const zAccessChannels = z.object({
 
 export const zAccessSubject = z.object({
   subjectType: z
-    .enum([
-      'ACCESS_SUBJECT_TYPE_UNSPECIFIED',
-      'ACCESS_SUBJECT_TYPE_ACCOUNT',
-      'ACCESS_SUBJECT_TYPE_GROUP',
-    ])
+    .enum(['SUBJECT_TYPE_UNSPECIFIED', 'SUBJECT_TYPE_ACCOUNT', 'SUBJECT_TYPE_GROUP'])
     .optional(),
   subjectId: z.string().optional(),
 })
@@ -1507,7 +1503,9 @@ export const zGetWebAppWhitelistSubjectsRes = z.object({
  */
 export const zSubject = z.object({
   subjectId: z.string().optional(),
-  subjectType: z.string().optional(),
+  subjectType: z
+    .enum(['SUBJECT_TYPE_UNSPECIFIED', 'SUBJECT_TYPE_ACCOUNT', 'SUBJECT_TYPE_GROUP'])
+    .optional(),
   accountData: zSubjectAccountData.optional(),
   groupData: zSubjectGroupData.optional(),
 })
@@ -1943,6 +1941,8 @@ export const zAppInstanceServiceListAppInstancesQuery = z.object({
     .min(-2147483648, { error: 'Invalid value: Expected int32 to be >= -2147483648' })
     .max(2147483647, { error: 'Invalid value: Expected int32 to be <= 2147483647' })
     .optional(),
+  name: z.string().optional(),
+  environmentId: z.string().optional(),
 })
 
 /**
@@ -2021,6 +2021,7 @@ export const zDeploymentServiceListDeploymentsQuery = z.object({
     .min(-2147483648, { error: 'Invalid value: Expected int32 to be >= -2147483648' })
     .max(2147483647, { error: 'Invalid value: Expected int32 to be <= 2147483647' })
     .optional(),
+  environmentId: z.string().optional(),
 })
 
 /**
@@ -2157,6 +2158,7 @@ export const zReleaseServiceListReleasesQuery = z.object({
     .min(-2147483648, { error: 'Invalid value: Expected int32 to be >= -2147483648' })
     .max(2147483647, { error: 'Invalid value: Expected int32 to be <= 2147483647' })
     .optional(),
+  environmentId: z.string().optional(),
 })
 
 /**

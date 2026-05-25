@@ -1,5 +1,6 @@
 'use client'
 
+import type { Environment } from '@dify/contracts/enterprise/types.gen'
 import type { ReactNode } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
@@ -8,10 +9,18 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
+import { useQuery } from '@tanstack/react-query'
 import { useQueryState } from 'nuqs'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { envFilterQueryState } from './query-state'
+import { consoleQuery } from '@/service/client'
+import { environmentId, environmentName } from '../environment'
+import {
+  ALL_ENVIRONMENTS_FILTER_VALUE,
+  envFilterQueryState,
+  environmentIdFromFilterValue,
+  NOT_DEPLOYED_FILTER_VALUE,
+} from './query-state'
 
 type EnvironmentFilterOption = {
   value: string
@@ -19,26 +28,53 @@ type EnvironmentFilterOption = {
   icon: ReactNode
 }
 
+function hasEnvironmentId(environment?: Environment): environment is Environment & { id: string } {
+  return Boolean(environment?.id)
+}
+
+function EnvironmentOptionIcon() {
+  return <span className="i-ri-server-line size-[14px]" />
+}
+
 export function EnvironmentFilter() {
   const { t } = useTranslation('deployments')
   const [open, setOpen] = useState(false)
   const [envFilter, setEnvFilter] = useQueryState('env', envFilterQueryState)
-  const activeFilter = envFilter === 'all' || envFilter === 'not-deployed'
-    ? envFilter
-    : 'all'
+  const environmentsQuery = useQuery(consoleQuery.enterprise.environmentService.listDeployableEnvironments.queryOptions({
+    input: {
+      query: {},
+    },
+  }))
+  const environmentOptions: EnvironmentFilterOption[] = environmentsQuery.data?.data
+    ?.filter(hasEnvironmentId)
+    .map(environment => ({
+      value: environmentId(environment),
+      text: environmentName(environment),
+      icon: <EnvironmentOptionIcon />,
+    })) ?? []
   const filterOptions: EnvironmentFilterOption[] = [
     {
-      value: 'all',
+      value: ALL_ENVIRONMENTS_FILTER_VALUE,
       text: t('filter.allEnvs'),
       icon: <span className="i-ri-apps-2-line size-[14px]" />,
     },
+    ...environmentOptions,
     {
-      value: 'not-deployed',
+      value: NOT_DEPLOYED_FILTER_VALUE,
       text: t('filter.notDeployed'),
       icon: <span className="i-ri-inbox-line size-[14px]" />,
     },
   ]
-  const selectedOption = filterOptions.find(option => option.value === activeFilter) ?? filterOptions[0]
+  const selectedEnvironmentId = environmentIdFromFilterValue(envFilter)
+  const selectedOption = filterOptions.find(option => option.value === envFilter)
+    ?? (selectedEnvironmentId
+      ? {
+          value: selectedEnvironmentId,
+          text: selectedEnvironmentId,
+          icon: <EnvironmentOptionIcon />,
+        }
+      : filterOptions[0])
+  const activeFilter = selectedOption?.value ?? ALL_ENVIRONMENTS_FILTER_VALUE
 
   return (
     <DropdownMenu modal={false} open={open} onOpenChange={setOpen}>

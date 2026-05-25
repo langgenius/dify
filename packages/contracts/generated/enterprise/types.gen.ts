@@ -56,10 +56,7 @@ export type AccessPolicy = {
 }
 
 export type AccessSubject = {
-  subjectType?:
-    | 'ACCESS_SUBJECT_TYPE_UNSPECIFIED'
-    | 'ACCESS_SUBJECT_TYPE_ACCOUNT'
-    | 'ACCESS_SUBJECT_TYPE_GROUP'
+  subjectType?: 'SUBJECT_TYPE_UNSPECIFIED' | 'SUBJECT_TYPE_ACCOUNT' | 'SUBJECT_TYPE_GROUP'
   subjectId?: string
 }
 
@@ -1379,7 +1376,7 @@ export type SetDefaultWorkspaceReq = {
 
 export type Subject = {
   subjectId?: string
-  subjectType?: string
+  subjectType?: 'SUBJECT_TYPE_UNSPECIFIED' | 'SUBJECT_TYPE_ACCOUNT' | 'SUBJECT_TYPE_GROUP'
   accountData?: SubjectAccountData
   groupData?: SubjectGroupData
 }
@@ -1686,6 +1683,8 @@ export type AppInstanceServiceListAppInstancesData = {
   query?: {
     pageNumber?: number
     resultsPerPage?: number
+    name?: string
+    environmentId?: string
   }
   url: '/enterprise/app-deploy/app-instances'
 }
@@ -1799,6 +1798,7 @@ export type DeploymentServiceListDeploymentsData = {
   query?: {
     pageNumber?: number
     resultsPerPage?: number
+    environmentId?: string
   }
   url: '/enterprise/app-deploy/app-instances/{appInstanceId}/deployments'
 }
@@ -1988,6 +1988,7 @@ export type ReleaseServiceListReleasesData = {
     name?: string
     pageNumber?: number
     resultsPerPage?: number
+    environmentId?: string
   }
   url: '/enterprise/app-deploy/app-instances/{appInstanceId}/releases'
 }

@@ -1,4 +1,14 @@
 import { parseAsString } from 'nuqs'
 
-export const envFilterQueryState = parseAsString.withDefault('all').withOptions({ history: 'push' })
+export const ALL_ENVIRONMENTS_FILTER_VALUE = 'all'
+export const NOT_DEPLOYED_FILTER_VALUE = 'not-deployed'
+
+export const envFilterQueryState = parseAsString.withDefault(ALL_ENVIRONMENTS_FILTER_VALUE).withOptions({ history: 'push' })
 export const keywordsQueryState = parseAsString.withDefault('').withOptions({ history: 'push' })
+
+export function environmentIdFromFilterValue(filterValue: string) {
+  if (!filterValue || filterValue === ALL_ENVIRONMENTS_FILTER_VALUE || filterValue === NOT_DEPLOYED_FILTER_VALUE)
+    return undefined
+
+  return filterValue
+}

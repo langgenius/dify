@@ -14,7 +14,12 @@ import { getNextPageParamFromPagination, SOURCE_APPS_PAGE_SIZE } from '../data'
 import { CreateDeploymentButton } from './create-deployment-button'
 import { EnvironmentFilter } from './environment-filter'
 import { InstanceCard } from './instance-card'
-import { envFilterQueryState, keywordsQueryState } from './query-state'
+import {
+  envFilterQueryState,
+  environmentIdFromFilterValue,
+  keywordsQueryState,
+  NOT_DEPLOYED_FILTER_VALUE,
+} from './query-state'
 
 const INSTANCE_CARD_SKELETON_KEYS = ['first', 'second', 'third', 'fourth', 'fifth', 'sixth']
 const EMPTY_INSTANCE_CARD_KEYS = Array.from({ length: 36 }, (_, index) => `empty-instance-card-${index}`)
@@ -138,6 +143,7 @@ export function DeploymentsList() {
   const containerRef = useRef<HTMLDivElement>(null)
   const anchorRef = useRef<HTMLDivElement>(null)
   const queryKeywords = keywords.trim()
+  const queryEnvironmentId = environmentIdFromFilterValue(envFilter)
 
   const {
     data,
@@ -154,8 +160,9 @@ export function DeploymentsList() {
         query: {
           pageNumber: Number(pageParam),
           resultsPerPage: SOURCE_APPS_PAGE_SIZE,
-          ...(envFilter === 'not-deployed' ? { notDeployed: true } : {}),
-          ...(queryKeywords ? { query: queryKeywords } : {}),
+          ...(queryEnvironmentId ? { environmentId: queryEnvironmentId } : {}),
+          ...(envFilter === NOT_DEPLOYED_FILTER_VALUE ? { notDeployed: true } : {}),
+          ...(queryKeywords ? { name: queryKeywords } : {}),
         },
       }),
       getNextPageParam: lastPage => getNextPageParamFromPagination(lastPage.pagination),
