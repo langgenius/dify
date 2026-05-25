@@ -18,7 +18,9 @@ from core.workflow.system_variables import SystemVariableKey, get_system_text
 from graphon.variables.segments import Segment
 from models.agent import Agent, AgentConfigSnapshot, WorkflowAgentNodeBinding
 from models.agent_config_entities import (
+    DEFAULT_DECLARED_OUTPUTS,
     AgentSoulConfig,
+    DeclaredArrayItem,
     DeclaredOutputConfig,
     DeclaredOutputType,
     WorkflowNodeJobConfig,
@@ -237,11 +239,17 @@ class WorkflowAgentRuntimeRequestBuilder:
 
     @staticmethod
     def _build_output_config(declared_outputs: Sequence[DeclaredOutputConfig]) -> AgentBackendOutputConfig | None:
-        if not declared_outputs:
-            return None
+        """Build the structured-output layer config sent to Agent backend.
+
+        Stage 4 §4.1 (D-3): when the user hasn't declared any outputs, inject the
+        PRD-mandated defaults (text / files / json) at runtime so the backend
+        always receives a stable schema and the downstream Inspector + nodes
+        have consistent output names. The defaults are NOT persisted.
+        """
+        effective_outputs = WorkflowAgentRuntimeRequestBuilder.effective_declared_outputs(declared_outputs)
         properties: dict[str, Any] = {}
         required: list[str] = []
-        for output in declared_outputs:
+        for output in effective_outputs:
             properties[output.name] = WorkflowAgentRuntimeRequestBuilder._schema_for_declared_output(output)
             if output.required:
                 required.append(output.name)
@@ -251,20 +259,56 @@ class WorkflowAgentRuntimeRequestBuilder:
         return AgentBackendOutputConfig(json_schema=schema)
 
     @staticmethod
+    def effective_declared_outputs(
+        declared_outputs: Sequence[DeclaredOutputConfig],
+    ) -> Sequence[DeclaredOutputConfig]:
+        """Return ``declared_outputs`` unchanged, or PRD-defaults when empty.
+
+        Public so Composer load (stage 4 §10.1) and the Node Output Inspector
+        (§8) can surface the same effective set without re-implementing the
+        fallback logic.
+        """
+        if declared_outputs:
+            return declared_outputs
+        return DEFAULT_DECLARED_OUTPUTS
+
+    @staticmethod
     def _schema_for_declared_output(output: DeclaredOutputConfig) -> dict[str, Any]:
-        match output.type:
+        schema = WorkflowAgentRuntimeRequestBuilder._schema_for_type(
+            output.type, array_item=output.array_item
+        )
+        if output.description:
+            schema["description"] = output.description
+        return schema
+
+    @staticmethod
+    def _schema_for_type(
+        output_type: DeclaredOutputType,
+        *,
+        array_item: DeclaredArrayItem | None = None,
+    ) -> dict[str, Any]:
+        match output_type:
             case DeclaredOutputType.STRING:
-                schema: dict[str, Any] = {"type": "string"}
+                return {"type": "string"}
             case DeclaredOutputType.NUMBER:
-                schema = {"type": "number"}
+                return {"type": "number"}
             case DeclaredOutputType.BOOLEAN:
-                schema = {"type": "boolean"}
+                return {"type": "boolean"}
             case DeclaredOutputType.OBJECT:
-                schema = {"type": "object"}
+                return {"type": "object"}
             case DeclaredOutputType.ARRAY:
-                schema = {"type": "array"}
+                # Stage 4 §4.2: items shape mirrors the declared array_item.
+                # Validator guarantees array_item is set when type is array.
+                item_type = (array_item.type if array_item else DeclaredOutputType.OBJECT)
+                schema: dict[str, Any] = {
+                    "type": "array",
+                    "items": WorkflowAgentRuntimeRequestBuilder._schema_for_type(item_type),
+                }
+                if array_item is not None and array_item.description:
+                    schema["items"]["description"] = array_item.description
+                return schema
             case DeclaredOutputType.FILE:
-                schema = {
+                return {
                     "type": "object",
                     "properties": {
                         "file_id": {"type": "string"},
@@ -273,9 +317,6 @@ class WorkflowAgentRuntimeRequestBuilder:
                         "url": {"type": "string"},
                     },
                 }
-        if output.description:
-            schema["description"] = output.description
-        return schema
 
     @staticmethod
     def _normalize_credentials(credentials: Mapping[str, Any]) -> dict[str, str | int | float | bool | None]:

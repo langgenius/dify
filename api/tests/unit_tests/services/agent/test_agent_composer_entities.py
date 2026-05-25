@@ -105,6 +105,8 @@ def test_agent_soul_model_config_is_first_class_without_credentials():
 
 
 def test_declared_outputs_support_file_check_and_failure_strategy():
+    """Stage 4 §4.3 + §4.4: file output may carry a single ``check`` plus a
+    full LLM-node-parity ``failure_strategy``."""
     node_job = WorkflowNodeJobConfig.model_validate(
         {
             "declared_outputs": [
@@ -112,17 +114,14 @@ def test_declared_outputs_support_file_check_and_failure_strategy():
                     "name": "analysis_report",
                     "type": "file",
                     "file": {"extensions": [".pdf"], "mime_types": ["application/pdf"]},
-                    "checks": [
-                        {
-                            "type": "benchmark_file",
-                            "prompt": "Report must include risk summary.",
-                            "benchmark_file_ref": {"upload_file_id": "file-1"},
-                        }
-                    ],
+                    "check": {
+                        "enabled": True,
+                        "prompt": "Report must include risk summary.",
+                        "benchmark_file_ref": {"upload_file_id": "file-1"},
+                    },
                     "failure_strategy": {
-                        "on_type_check_failed": "fail_node",
-                        "on_output_check_failed": "retry",
-                        "max_retries": 1,
+                        "retry": {"enabled": True, "max_retries": 1, "retry_interval_ms": 500},
+                        "on_failure": "fail_branch",
                     },
                 }
             ]
@@ -133,9 +132,12 @@ def test_declared_outputs_support_file_check_and_failure_strategy():
     assert output.type == DeclaredOutputType.FILE
     assert output.file is not None
     assert output.file.extensions == [".pdf"]
-    assert output.checks[0].type == "benchmark_file"
-    assert output.failure_strategy is not None
-    assert output.failure_strategy.max_retries == 1
+    assert output.check is not None
+    assert output.check.enabled is True
+    assert output.check.prompt == "Report must include risk summary."
+    assert output.failure_strategy.retry.enabled is True
+    assert output.failure_strategy.retry.max_retries == 1
+    assert output.failure_strategy.on_failure.value == "fail_branch"
 
 
 def test_plaintext_secrets_are_rejected():
