@@ -6,11 +6,9 @@ import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import {
-  RiBookOpenLine,
   RiDragDropLine,
   RiEqualizer2Line,
 } from '@remixicon/react'
-import { useSuspenseQuery } from '@tanstack/react-query'
 import { useBoolean } from 'ahooks'
 import { noop } from 'es-toolkit/function'
 import { useEffect, useMemo, useState } from 'react'
@@ -18,12 +16,9 @@ import { useTranslation } from 'react-i18next'
 import TabSlider from '@/app/components/base/tab-slider'
 import ReferenceSettingModal from '@/app/components/plugins/reference-setting-modal'
 import { MARKETPLACE_API_PREFIX, SUPPORT_INSTALL_LOCAL_FILE_EXTENSIONS } from '@/config'
-import { useDocLink } from '@/context/i18n'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { usePluginInstallation } from '@/hooks/use-query-params'
-import Link from '@/next/link'
 import { fetchBundleInfoFromMarketPlace, fetchManifestFromMarketPlace } from '@/service/plugins'
-import { systemFeaturesQueryOptions } from '@/service/system-features'
 import { sleep } from '@/utils'
 import { PLUGIN_PAGE_TABS_MAP } from '../hooks'
 import InstallFromLocalPackage from '../install-plugin/install-from-local-package'
@@ -39,7 +34,6 @@ import { useUploader } from './use-uploader'
 
 const pluginPageTabSet = new Set<string>([
   PLUGIN_PAGE_TABS_MAP.plugins,
-  PLUGIN_PAGE_TABS_MAP.marketplace,
   ...Object.values(PLUGIN_TYPE_SEARCH_MAP),
 ])
 
@@ -49,14 +43,12 @@ const isPluginPageTab = (value: string): value is PluginPageTab => {
 
 export type PluginPageProps = {
   plugins: React.ReactNode
-  marketplace: React.ReactNode
+  marketplace?: React.ReactNode
 }
 const PluginPage = ({
   plugins,
-  marketplace,
 }: PluginPageProps) => {
   const { t } = useTranslation()
-  const docLink = useDocLink()
   useDocumentTitle(t('metadata.title', { ns: 'plugin' }))
 
   // Use nuqs hook for installation state
@@ -122,16 +114,8 @@ const PluginPage = ({
   const options = usePluginPageContext(v => v.options)
   const activeTab = usePluginPageContext(v => v.activeTab)
   const setActiveTab = usePluginPageContext(v => v.setActiveTab)
-  const { data: enable_marketplace } = useSuspenseQuery({
-    ...systemFeaturesQueryOptions(),
-    select: s => s.enable_marketplace,
-  })
 
   const isPluginsTab = useMemo(() => activeTab === PLUGIN_PAGE_TABS_MAP.plugins, [activeTab])
-  const isExploringMarketplace = useMemo(() => {
-    const values = Object.values(PLUGIN_TYPE_SEARCH_MAP)
-    return activeTab === PLUGIN_PAGE_TABS_MAP.marketplace || values.includes(activeTab)
-  }, [activeTab])
 
   const handleFileChange = (file: File | null) => {
     if (!file || !file.name.endsWith('.difypkg')) {
@@ -160,13 +144,12 @@ const PluginPage = ({
       <div
         className={cn(
           'sticky top-0 z-10 flex min-h-[60px] items-center gap-1 self-stretch bg-components-panel-bg px-12 pt-4 pb-2',
-          isExploringMarketplace && 'bg-background-body',
         )}
       >
         <div className="flex w-full items-center justify-between">
           <div className="flex-1">
             <TabSlider
-              value={isPluginsTab ? PLUGIN_PAGE_TABS_MAP.plugins : PLUGIN_PAGE_TABS_MAP.marketplace}
+              value={PLUGIN_PAGE_TABS_MAP.plugins}
               onChange={(nextTab) => {
                 if (isPluginPageTab(nextTab))
                   setActiveTab(nextTab)
@@ -175,30 +158,9 @@ const PluginPage = ({
             />
           </div>
           <div className="flex shrink-0 items-center gap-1">
-            {
-              isExploringMarketplace && (
-                <>
-                  <Link
-                    href={docLink('/develop-plugin/publishing/marketplace-listing/release-to-dify-marketplace')}
-                    target="_blank"
-                  >
-                    <Button
-                      className="px-3"
-                      variant="secondary-accent"
-                    >
-                      <RiBookOpenLine className="mr-1 size-4" />
-                      {t('publishPlugins', { ns: 'plugin' })}
-                    </Button>
-                  </Link>
-                  <div className="mx-1 h-3.5 w-px shrink-0 bg-divider-regular"></div>
-                </>
-              )
-            }
             <PluginTasks />
             {canManagement && (
-              <InstallPluginDropdown
-                onSwitchToMarketplaceTab={() => setActiveTab('discover')}
-              />
+              <InstallPluginDropdown />
             )}
             {
               canDebugger && (
@@ -259,10 +221,6 @@ const PluginPage = ({
           />
         </>
       )}
-      {
-        isExploringMarketplace && enable_marketplace && marketplace
-      }
-
       {showPluginSettingModal && (
         <ReferenceSettingModal
           payload={referenceSetting!}

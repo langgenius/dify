@@ -94,7 +94,6 @@ export const usePluginPageTabs = () => {
   const { t } = useTranslation()
   const tabs = [
     { value: PLUGIN_PAGE_TABS_MAP.plugins, text: t('menus.plugins', { ns: 'common' }) },
-    { value: PLUGIN_PAGE_TABS_MAP.marketplace, text: t('menus.exploreMarketplace', { ns: 'common' }) },
   ]
   return tabs
 }

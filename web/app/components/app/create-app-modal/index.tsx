@@ -5,7 +5,7 @@ import { Button } from '@langgenius/dify-ui/button'
 
 import { cn } from '@langgenius/dify-ui/cn'
 import { toast } from '@langgenius/dify-ui/toast'
-import { RiArrowRightLine, RiArrowRightSLine, RiExchange2Fill } from '@remixicon/react'
+import { RiArrowRightSLine, RiExchange2Fill } from '@remixicon/react'
 import { useDebounceFn, useKeyPress } from 'ahooks'
 import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -248,17 +248,7 @@ function CreateApp({ onClose, onSuccess, onCreateFromTemplate, defaultAppMode }:
               </div>
             </div>
             {isAppsFull && <AppsFull className="mt-4" loc="app-create" />}
-            <div className="flex items-center justify-between pt-5 pb-10">
-              <button
-                type="button"
-                className="flex cursor-pointer items-center gap-1 border-none bg-transparent p-0 text-left system-xs-regular text-text-tertiary focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
-                onClick={onCreateFromTemplate}
-              >
-                <span>{t('newApp.noIdeaTip', { ns: 'app' })}</span>
-                <div className="p-px">
-                  <RiArrowRightLine className="size-3.5" aria-hidden="true" />
-                </div>
-              </button>
+            <div className="flex items-center justify-end pt-5 pb-10">
               <div className="flex gap-2">
                 <Button onClick={onClose}>{t('newApp.Cancel', { ns: 'app' })}</Button>
                 <Button disabled={isAppsFull || !name} className="gap-1" variant="primary" onClick={handleCreateApp}>

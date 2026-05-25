@@ -14,15 +14,10 @@ import { useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { FileZip } from '@/app/components/base/icons/src/vender/solid/files'
 import { Github } from '@/app/components/base/icons/src/vender/solid/general'
-import { MagicBox } from '@/app/components/base/icons/src/vender/solid/mediaAndDevices'
 import InstallFromGitHub from '@/app/components/plugins/install-plugin/install-from-github'
 import InstallFromLocalPackage from '@/app/components/plugins/install-plugin/install-from-local-package'
 import { SUPPORT_INSTALL_LOCAL_FILE_EXTENSIONS } from '@/config'
 import { systemFeaturesQueryOptions } from '@/service/system-features'
-
-type Props = {
-  onSwitchToMarketplaceTab: () => void
-}
 
 type InstallMethod = {
   icon: React.FC<{ className?: string }>
@@ -30,17 +25,11 @@ type InstallMethod = {
   action: string
 }
 
-const InstallPluginDropdown = ({
-  onSwitchToMarketplaceTab,
-}: Props) => {
+const InstallPluginDropdown = () => {
   const { t } = useTranslation()
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [selectedAction, setSelectedAction] = useState<string | null>(null)
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
-  const { data: enable_marketplace } = useSuspenseQuery({
-    ...systemFeaturesQueryOptions(),
-    select: s => s.enable_marketplace,
-  })
   const { data: plugin_installation_permission } = useSuspenseQuery({
     ...systemFeaturesQueryOptions(),
     select: s => s.plugin_installation_permission,
@@ -77,8 +66,6 @@ const InstallPluginDropdown = ({
 
   const installMethods = useMemo<InstallMethod[]>(() => {
     const methods: InstallMethod[] = []
-    if (enable_marketplace)
-      methods.push({ icon: MagicBox, text: t('source.marketplace', { ns: 'plugin' }), action: 'marketplace' })
 
     if (plugin_installation_permission.restrict_to_marketplace_only)
       return methods
@@ -86,16 +73,11 @@ const InstallPluginDropdown = ({
     methods.push({ icon: Github, text: t('source.github', { ns: 'plugin' }), action: 'github' })
     methods.push({ icon: FileZip, text: t('source.local', { ns: 'plugin' }), action: 'local' })
     return methods
-  }, [plugin_installation_permission, enable_marketplace, t])
+  }, [plugin_installation_permission, t])
 
   const handleInstallMethodSelect = (action: string) => {
     if (action === 'local') {
       fileInputRef.current?.click()
-      return
-    }
-
-    if (action === 'marketplace') {
-      onSwitchToMarketplaceTab()
       return
     }
 

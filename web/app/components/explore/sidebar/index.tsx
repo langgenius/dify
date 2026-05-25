@@ -84,7 +84,7 @@ const SideBar = () => {
   ))
 
   return (
-    <div className={cn('flex h-full w-fit shrink-0 cursor-pointer flex-col px-3 pt-6 sm:w-[240px]', isFold && 'sm:w-[56px]')}>
+    <div className={cn('flex h-full w-fit shrink-0 cursor-pointer flex-col border-r border-divider-regular px-3 pt-6 sm:w-[240px]', isFold && 'sm:w-[56px]')}>
 
       {!isPending && installedApps.length === 0 && !isMobile && !isFold
         && (
