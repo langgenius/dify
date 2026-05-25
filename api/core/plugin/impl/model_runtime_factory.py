@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from core.plugin.impl.model import PluginModelClient
+from core.plugin.plugin_service import PluginService
 from graphon.model_runtime.entities.model_entities import ModelType
 from graphon.model_runtime.entities.provider_entities import ProviderEntity
 from graphon.model_runtime.model_providers.base.ai_model import AIModel
@@ -117,6 +118,7 @@ def create_plugin_model_runtime(*, tenant_id: str, user_id: str | None = None) -
         tenant_id=tenant_id,
         user_id=user_id,
         client=PluginModelClient(),
+        plugin_service=PluginService,
     )
 
 
