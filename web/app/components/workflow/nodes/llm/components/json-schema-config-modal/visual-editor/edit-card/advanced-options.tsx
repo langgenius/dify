@@ -48,10 +48,10 @@ const AdvancedOptions: FC<AdvancedOptionsProps> = ({
         </div>
         <div className="flex flex-col">
           <div className="flex h-6 items-center system-xs-medium text-text-secondary">
-            Enum
+            {t('nodes.llm.jsonSchema.enum', { ns: 'workflow' })}
           </div>
           <Textarea
-            aria-label="Enum"
+            aria-label={t('nodes.llm.jsonSchema.enum', { ns: 'workflow' })}
             size="small"
             className="min-h-6"
             value={enumValue}

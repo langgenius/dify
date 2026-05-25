@@ -10,7 +10,7 @@ type TextAreaFieldProps = {
   label: string
   labelOptions?: Omit<LabelProps, 'htmlFor' | 'label'>
   className?: string
-} & Omit<TextareaProps, 'className' | 'defaultValue' | 'onBlur' | 'value' | 'id'>
+} & Omit<TextareaProps, 'className' | 'defaultValue' | 'onBlur' | 'onValueChange' | 'value' | 'id'>
 
 const TextAreaField = ({
   label,
@@ -28,11 +28,11 @@ const TextAreaField = ({
         {...(labelOptions ?? {})}
       />
       <Textarea
+        {...inputProps}
         id={field.name}
         value={field.state.value}
         onValueChange={value => field.handleChange(value)}
         onBlur={field.handleBlur}
-        {...inputProps}
       />
     </div>
   )

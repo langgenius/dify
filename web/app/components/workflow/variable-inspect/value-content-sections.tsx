@@ -3,6 +3,7 @@ import type { FileUploadConfigResponse } from '@/models/common'
 import type { VarInInspect } from '@/types/workflow'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Textarea } from '@langgenius/dify-ui/textarea'
+import { useTranslation } from 'react-i18next'
 import { FileUploaderInAttachmentWrapper } from '@/app/components/base/file-uploader'
 import { FILE_EXTS } from '@/app/components/base/prompt-editor/constants'
 import ErrorMessage from '@/app/components/workflow/nodes/llm/components/json-schema-config-modal/error-message'
@@ -30,6 +31,8 @@ export const TextEditorSection = ({
   isTruncated,
   onTextChange,
 }: TextEditorSectionProps) => {
+  const { t } = useTranslation()
+
   return (
     <>
       {isTruncated && <LargeDataAlert className="absolute inset-x-3 top-1" />}
@@ -46,7 +49,7 @@ export const TextEditorSection = ({
           )
         : (
             <Textarea
-              aria-label="Value"
+              aria-label={t('errorMsg.fields.variableValue', { ns: 'workflow' })}
               readOnly={textEditorDisabled}
               disabled={textEditorDisabled || isTruncated}
               className={cn('h-full', isTruncated && 'pt-[48px]')}
