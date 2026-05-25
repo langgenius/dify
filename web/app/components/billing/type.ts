@@ -91,6 +91,7 @@ export type CurrentPlanInfoBackend = {
   }
   webapp_copyright_enabled: boolean
   workspace_members: {
+    enabled?: boolean
     size: number
     limit: number
   }

@@ -240,7 +240,11 @@ def test_publish_validation_accepts_tenant_scoped_file_ref():
                 {
                     "name": "report",
                     "type": "file",
-                    "checks": [{"type": "benchmark", "benchmark_file_ref": {"upload_file_id": "file-1"}}],
+                    "check": {
+                        "enabled": True,
+                        "prompt": "Report must include a risk summary.",
+                        "benchmark_file_ref": {"upload_file_id": "file-1"},
+                    },
                 }
             ]
         }

@@ -24,7 +24,7 @@ type BasicInfoSectionProps = {
   showAppIconPicker: boolean
   handleOpenAppIconPicker: () => void
   handleSelectAppIcon: (icon: AppIconSelection) => void
-  handleCloseAppIconPicker: () => void
+  setShowAppIconPicker: (show: boolean) => void
   permission: DatasetPermission | undefined
   setPermission: (value: DatasetPermission | undefined) => void
   selectedMemberIDs: string[]
@@ -43,7 +43,7 @@ const BasicInfoSection = ({
   showAppIconPicker,
   handleOpenAppIconPicker,
   handleSelectAppIcon,
-  handleCloseAppIconPicker,
+  setShowAppIconPicker,
   permission,
   setPermission,
   selectedMemberIDs,
@@ -114,8 +114,12 @@ const BasicInfoSection = ({
 
       {showAppIconPicker && (
         <AppIconPicker
+          open={showAppIconPicker}
+          initialEmoji={iconInfo.icon_type === 'emoji'
+            ? { icon: iconInfo.icon, background: iconInfo.icon_background }
+            : undefined}
+          onOpenChange={setShowAppIconPicker}
           onSelect={handleSelectAppIcon}
-          onClose={handleCloseAppIconPicker}
         />
       )}
     </>

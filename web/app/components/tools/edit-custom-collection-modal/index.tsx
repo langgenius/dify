@@ -387,12 +387,10 @@ const EditCustomCollectionModal: FC<Props> = ({
                     </div>
                     {showEmojiPicker && (
                       <EmojiPicker
+                        open={showEmojiPicker}
+                        onOpenChange={setShowEmojiPicker}
                         onSelect={(icon, icon_background) => {
                           setEmoji({ content: icon, background: icon_background })
-                          setShowEmojiPicker(false)
-                        }}
-                        onClose={() => {
-                          setShowEmojiPicker(false)
                         }}
                       />
                     )}

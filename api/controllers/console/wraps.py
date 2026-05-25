@@ -82,9 +82,7 @@ def only_edition_self_hosted[**P, R](view: Callable[P, R]) -> Callable[P, R]:
 def cloud_edition_billing_enabled[**P, R](view: Callable[P, R]) -> Callable[P, R]:
     @wraps(view)
     def decorated(*args: P.args, **kwargs: P.kwargs):
-        _, current_tenant_id = current_account_with_tenant()
-        features = FeatureService.get_features(current_tenant_id)
-        if not features.billing.enabled:
+        if not dify_config.BILLING_ENABLED:
             abort(403, "Billing feature is not enabled.")
         return view(*args, **kwargs)
 
@@ -198,15 +196,11 @@ def cloud_utm_record[**P, R](view: Callable[P, R]) -> Callable[P, R]:
     @wraps(view)
     def decorated(*args: P.args, **kwargs: P.kwargs):
         with contextlib.suppress(Exception):
-            _, current_tenant_id = current_account_with_tenant()
-            features = FeatureService.get_features(current_tenant_id)
-
-            if features.billing.enabled:
-                utm_info = request.cookies.get("utm_info")
-
-                if utm_info:
-                    utm_info_dict: UtmInfo = json.loads(utm_info)
-                    OperationService.record_utm(current_tenant_id, utm_info_dict)
+            utm_info = request.cookies.get("utm_info")
+            if dify_config.BILLING_ENABLED and utm_info:
+                _, current_tenant_id = current_account_with_tenant()
+                utm_info_dict: UtmInfo = json.loads(utm_info)
+                OperationService.record_utm(current_tenant_id, utm_info_dict)
 
         return view(*args, **kwargs)
 

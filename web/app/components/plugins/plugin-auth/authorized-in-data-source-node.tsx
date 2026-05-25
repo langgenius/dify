@@ -1,11 +1,11 @@
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import { StatusDot } from '@langgenius/dify-ui/status-dot'
 import { RiEqualizer2Line } from '@remixicon/react'
 import {
   memo,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import Indicator from '@/app/components/header/indicator'
 
 type AuthorizedInDataSourceNodeProps = {
   authorizationsNum: number
@@ -22,9 +22,9 @@ const AuthorizedInDataSourceNode = ({
       size="small"
       onClick={onJumpToDataSourcePage}
     >
-      <Indicator
+      <StatusDot
         className="mr-1.5"
-        color="green"
+        status="success"
       />
       {
         authorizationsNum > 1

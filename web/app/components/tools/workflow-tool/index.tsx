@@ -3,7 +3,6 @@ import type { DrawerRootProps } from '@langgenius/dify-ui/drawer'
 import type { Emoji, WorkflowToolProviderOutputParameter, WorkflowToolProviderOutputSchema, WorkflowToolProviderParameter, WorkflowToolProviderRequest } from '../types'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
-import { Dialog, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
 import {
   Drawer,
   DrawerBackdrop,
@@ -22,8 +21,7 @@ import * as React from 'react'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
-import Divider from '@/app/components/base/divider'
-import EmojiPickerInner from '@/app/components/base/emoji-picker/Inner'
+import AppIconPicker from '@/app/components/base/app-icon-picker'
 import { Infotip } from '@/app/components/base/infotip'
 import Input from '@/app/components/base/input'
 import LabelSelector from '@/app/components/tools/labels/selector'
@@ -123,51 +121,6 @@ const WorkflowToolDrawerFrame = ({ title, closeLabel, onHide, children }: Workfl
         </DrawerViewport>
       </DrawerPortal>
     </Drawer>
-  )
-}
-
-type WorkflowToolEmojiPickerProps = {
-  onSelect: (icon: string, background: string) => void
-  onClose: () => void
-}
-
-const WorkflowToolEmojiPicker = ({ onSelect, onClose }: WorkflowToolEmojiPickerProps) => {
-  const { t } = useTranslation()
-  const [selectedEmoji, setSelectedEmoji] = useState('')
-  const [selectedBackground, setSelectedBackground] = useState<string>()
-
-  return (
-    <Dialog open disablePointerDismissal>
-      <DialogContent
-        backdropProps={{ forceRender: true }}
-        className="flex max-h-[552px] w-[480px]! flex-col overflow-hidden rounded-xl border-[0.5px] border-divider-subtle p-0! shadow-xl"
-      >
-        <DialogTitle className="sr-only">
-          {t('iconPicker.emoji', { ns: 'app' })}
-        </DialogTitle>
-        <EmojiPickerInner
-          className="pt-3"
-          onSelect={(emoji, background) => {
-            setSelectedEmoji(emoji)
-            setSelectedBackground(background)
-          }}
-        />
-        <Divider className="mt-3 mb-0" />
-        <div className="flex w-full items-center justify-center gap-2 p-3">
-          <Button className="w-full" onClick={onClose}>
-            {t('iconPicker.cancel', { ns: 'app' })}
-          </Button>
-          <Button
-            disabled={selectedEmoji === '' || !selectedBackground}
-            variant="primary"
-            className="w-full"
-            onClick={() => onSelect(selectedEmoji, selectedBackground!)}
-          >
-            {t('iconPicker.ok', { ns: 'app' })}
-          </Button>
-        </div>
-      </DialogContent>
-    </Dialog>
   )
 }
 
@@ -450,17 +403,19 @@ export function WorkflowToolDrawer({
           </div>
         </div>
       </WorkflowToolDrawerFrame>
-      {showEmojiPicker && (
-        <WorkflowToolEmojiPicker
-          onSelect={(icon, icon_background) => {
-            setEmoji({ content: icon, background: icon_background })
-            setShowEmojiPicker(false)
-          }}
-          onClose={() => {
-            setShowEmojiPicker(false)
-          }}
-        />
-      )}
+      <AppIconPicker
+        open={showEmojiPicker}
+        enableImageUpload={false}
+        initialEmoji={{
+          icon: emoji.content,
+          background: emoji.background,
+        }}
+        onOpenChange={setShowEmojiPicker}
+        onSelect={(payload) => {
+          if (payload.type === 'emoji')
+            setEmoji({ content: payload.icon, background: payload.background })
+        }}
+      />
       {confirmModalOpen && (
         <ConfirmModal
           show={confirmModalOpen}

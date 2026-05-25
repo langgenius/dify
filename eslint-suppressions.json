@@ -1571,19 +1571,6 @@
       "count": 1
     }
   },
-  "web/app/components/base/pagination/index.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    },
-    "unicorn/prefer-number-properties": {
-      "count": 1
-    }
-  },
-  "web/app/components/base/pagination/type.ts": {
-    "ts/no-empty-object-type": {
-      "count": 1
-    }
-  },
   "web/app/components/base/prompt-editor/index.stories.tsx": {
     "no-console": {
       "count": 1
@@ -2539,7 +2526,7 @@
   },
   "web/app/components/header/account-setting/model-provider-page/model-auth/switch-credential-in-load-balancing.tsx": {
     "ts/no-explicit-any": {
-      "count": 3
+      "count": 2
     }
   },
   "web/app/components/header/account-setting/model-provider-page/model-modal/Input.tsx": {
@@ -2658,11 +2645,6 @@
       "count": 1
     }
   },
-  "web/app/components/plugins/plugin-auth/authorized-in-node.tsx": {
-    "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
   "web/app/components/plugins/plugin-auth/authorized/index.tsx": {
     "no-restricted-imports": {
       "count": 1
@@ -2687,11 +2669,6 @@
     },
     "react-refresh/only-export-components": {
       "count": 3
-    }
-  },
-  "web/app/components/plugins/plugin-auth/plugin-auth-in-agent.tsx": {
-    "ts/no-explicit-any": {
-      "count": 1
     }
   },
   "web/app/components/plugins/plugin-auth/types.ts": {
@@ -5260,11 +5237,6 @@
   "web/types/pipeline.tsx": {
     "ts/no-explicit-any": {
       "count": 3
-    }
-  },
-  "web/types/react-18-input-autosize.d.ts": {
-    "ts/no-explicit-any": {
-      "count": 1
     }
   },
   "web/types/workflow.ts": {
