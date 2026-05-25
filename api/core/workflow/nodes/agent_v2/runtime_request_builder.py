@@ -26,6 +26,7 @@ from models.agent_config_entities import (
     WorkflowNodeJobConfig,
 )
 
+from .output_failure_orchestrator import retry_idempotency_key
 from .runtime_feature_manifest import build_runtime_feature_manifest
 
 
@@ -58,6 +59,9 @@ class WorkflowAgentRuntimeBuildContext:
     binding: WorkflowAgentNodeBinding
     agent: Agent
     snapshot: AgentConfigSnapshot
+    # Stage 4 §7 / D-4: 0 for the first run, then incremented per retry. Drives the
+    # idempotency key so the backend treats each retry as a fresh request.
+    attempt: int = 0
 
 
 @dataclass(frozen=True, slots=True)
@@ -144,9 +148,13 @@ class WorkflowAgentRuntimeRequestBuilder:
 
     @staticmethod
     def _idempotency_key(context: WorkflowAgentRuntimeBuildContext) -> str:
-        if context.workflow_run_id:
-            return f"{context.workflow_run_id}:{context.node_execution_id}"
-        return context.node_execution_id
+        # Stage 4 §7 / D-4: retries get distinct keys (``...:retry-{attempt}``) so
+        # the Agent backend's protocol-level dedup can't replay a previous run.
+        return retry_idempotency_key(
+            workflow_run_id=context.workflow_run_id,
+            node_execution_id=context.node_execution_id,
+            attempt=context.attempt,
+        )
 
     @staticmethod
     def _build_metadata(
