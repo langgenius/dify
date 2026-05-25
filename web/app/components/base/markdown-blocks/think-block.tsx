@@ -93,7 +93,7 @@ const ThinkBlock = ({ children, ...props }: ThinkBlockProps) => {
       <summary className="flex cursor-pointer list-none items-center pl-2 font-bold whitespace-nowrap text-text-secondary select-none">
         <div className="flex shrink-0 items-center">
           <svg
-            className="mr-2 h-3 w-3 transition-transform duration-500 group-open:rotate-90"
+            className="mr-2 size-3 transition-transform duration-500 group-open:rotate-90"
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"

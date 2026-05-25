@@ -29,12 +29,12 @@ const Node: FC<NodeProps<HumanInputNodeType>> = (props) => {
               <div key={method.type} className="flex items-center gap-1 rounded-md bg-workflow-block-parma-bg p-1">
                 {method.type === DeliveryMethodType.WebApp && (
                   <div className="rounded-sm border border-divider-regular bg-components-icon-bg-indigo-solid p-0.5">
-                    <RiRobot2Fill className="h-3.5 w-3.5 text-text-primary-on-surface" />
+                    <RiRobot2Fill className="size-3.5 text-text-primary-on-surface" />
                   </div>
                 )}
                 {method.type === DeliveryMethodType.Email && (
                   <div className="rounded-sm border border-divider-regular bg-components-icon-bg-blue-solid p-0.5">
-                    <RiMailSendFill className="h-3.5 w-3.5 text-text-primary-on-surface" />
+                    <RiMailSendFill className="size-3.5 text-text-primary-on-surface" />
                   </div>
                 )}
                 <span className="system-xs-regular text-text-secondary capitalize">{method.type}</span>

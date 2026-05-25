@@ -17,7 +17,7 @@ import {
   RiLoader2Line,
   RiPauseCircleFill,
 } from '@remixicon/react'
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
 import ErrorHandleTip from '@/app/components/workflow/nodes/_base/components/error-handle/error-handle-tip'
@@ -68,16 +68,6 @@ const NodePanel: FC<Props> = ({
       return
     doSetCollapseState(state)
   }, [hideProcessDetail])
-  const titleRef = useRef<HTMLDivElement>(null)
-  const [isTooltipOpen, setIsTooltipOpen] = useState(false)
-  const handleTooltipOpenChange = useCallback((open: boolean) => {
-    if (open) {
-      const el = titleRef.current
-      if (!el || el.scrollWidth <= el.clientWidth)
-        return
-    }
-    setIsTooltipOpen(open)
-  }, [])
   const { t } = useTranslation()
   const docLink = useDocLink()
 
@@ -136,17 +126,16 @@ const NodePanel: FC<Props> = ({
           {!hideProcessDetail && (
             <RiArrowRightSLine
               className={cn(
-                'mr-1 h-4 w-4 shrink-0 text-text-quaternary transition-all group-hover:text-text-tertiary',
+                'mr-1 size-4 shrink-0 text-text-quaternary transition-all group-hover:text-text-tertiary',
                 !collapseState && 'rotate-90',
               )}
             />
           )}
           <BlockIcon size={inMessage ? 'xs' : 'sm'} className={cn('mr-2 shrink-0', inMessage && 'mr-1!')} type={nodeInfo.node_type} toolIcon={nodeInfo.extras?.icon || nodeInfo.extras} />
-          <Tooltip open={isTooltipOpen} onOpenChange={handleTooltipOpenChange}>
+          <Tooltip>
             <TooltipTrigger
               render={(
                 <div
-                  ref={titleRef}
                   className={cn(
                     'min-w-0 grow truncate system-xs-semibold-uppercase text-text-secondary',
                     hideInfo && 'text-xs!',
@@ -167,24 +156,24 @@ const NodePanel: FC<Props> = ({
             </div>
           )}
           {nodeInfo.status === 'succeeded' && (
-            <RiCheckboxCircleFill className="ml-2 h-3.5 w-3.5 shrink-0 text-text-success" />
+            <RiCheckboxCircleFill className="ml-2 size-3.5 shrink-0 text-text-success" />
           )}
           {nodeInfo.status === 'failed' && (
-            <RiErrorWarningFill className="ml-2 h-3.5 w-3.5 shrink-0 text-text-destructive" />
+            <RiErrorWarningFill className="ml-2 size-3.5 shrink-0 text-text-destructive" />
           )}
           {nodeInfo.status === 'stopped' && (
-            <RiAlertFill className={cn('ml-2 h-4 w-4 shrink-0 text-text-warning-secondary', inMessage && 'h-3.5 w-3.5')} />
+            <RiAlertFill className={cn('ml-2 size-4 shrink-0 text-text-warning-secondary', inMessage && 'size-3.5')} />
           )}
           {nodeInfo.status === 'paused' && (
-            <RiPauseCircleFill className={cn('ml-2 h-4 w-4 shrink-0 text-text-warning-secondary', inMessage && 'h-3.5 w-3.5')} />
+            <RiPauseCircleFill className={cn('ml-2 size-4 shrink-0 text-text-warning-secondary', inMessage && 'size-3.5')} />
           )}
           {nodeInfo.status === 'exception' && (
-            <RiAlertFill className={cn('ml-2 h-4 w-4 shrink-0 text-text-warning-secondary', inMessage && 'h-3.5 w-3.5')} />
+            <RiAlertFill className={cn('ml-2 size-4 shrink-0 text-text-warning-secondary', inMessage && 'size-3.5')} />
           )}
           {nodeInfo.status === 'running' && (
             <div className="flex shrink-0 items-center text-[13px] leading-[16px] font-medium text-text-accent">
               <span className="mr-2 text-xs font-normal">Running</span>
-              <RiLoader2Line className="h-3.5 w-3.5 animate-spin" />
+              <RiLoader2Line className="size-3.5 animate-spin" />
             </div>
           )}
         </div>
@@ -271,6 +260,7 @@ const NodePanel: FC<Props> = ({
               <div className={cn('mb-1')}>
                 <CodeEditor
                   readOnly
+                  showFileList
                   title={<div>{processDataTitle}</div>}
                   language={CodeLanguage.json}
                   value={nodeInfo.process_data}
@@ -282,6 +272,7 @@ const NodePanel: FC<Props> = ({
               <div>
                 <CodeEditor
                   readOnly
+                  showFileList
                   title={<div>{outputTitle}</div>}
                   language={CodeLanguage.json}
                   value={nodeInfo.outputs}

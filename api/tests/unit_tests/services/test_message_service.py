@@ -1,3 +1,4 @@
+import json
 from datetime import datetime
 from unittest.mock import MagicMock, patch
 
@@ -906,7 +907,7 @@ class TestMessageServiceSuggestedQuestions:
     ):
         """Test successful suggested questions generation in basic Chat mode."""
         # Arrange
-        app = factory.create_app_mock(mode=AppMode.CHAT.value)
+        app = factory.create_app_mock(mode=AppMode.CHAT)
         user = factory.create_end_user_mock()
         message = factory.create_message_mock()
         mock_get_message.return_value = message
@@ -953,7 +954,7 @@ class TestMessageServiceSuggestedQuestions:
         """Test suggested question generation uses frontend configured model and prompt."""
         from core.app.entities.app_invoke_entities import InvokeFrom
 
-        app = factory.create_app_mock(mode=AppMode.CHAT.value)
+        app = factory.create_app_mock(mode=AppMode.CHAT)
         app.tenant_id = "tenant-123"
         user = factory.create_end_user_mock()
         message = factory.create_message_mock()
@@ -1024,7 +1025,7 @@ class TestMessageServiceSuggestedQuestions:
         factory,
     ):
         """Test invalid frontend configured model falls back to tenant default model."""
-        app = factory.create_app_mock(mode=AppMode.CHAT.value)
+        app = factory.create_app_mock(mode=AppMode.CHAT)
         app.tenant_id = "tenant-123"
         user = factory.create_end_user_mock()
         message = factory.create_message_mock()
@@ -1055,6 +1056,117 @@ class TestMessageServiceSuggestedQuestions:
             model_type=ModelType.LLM,
         )
         mock_model_manager.return_value.get_model_instance.assert_not_called()
+
+    @patch("services.message_service.db")
+    @patch("services.message_service.ModelManager.for_tenant")
+    @patch("services.message_service.TokenBufferMemory")
+    @patch("services.message_service.LLMGenerator")
+    @patch("services.message_service.TraceQueueManager")
+    @patch.object(MessageService, "get_message")
+    @patch("services.message_service.ConversationService")
+    def test_get_suggested_questions_chat_app_uses_compatible_override_model_config(
+        self,
+        mock_conversation_service,
+        mock_get_message,
+        mock_trace_manager,
+        mock_llm_gen,
+        mock_memory,
+        mock_model_manager,
+        mock_db,
+        factory,
+    ):
+        """Test legacy override configs are normalized before suggested questions reads them."""
+        app = factory.create_app_mock(mode=AppMode.CHAT)
+        app.tenant_id = "tenant-123"
+        user = factory.create_end_user_mock()
+        message = factory.create_message_mock()
+        mock_get_message.return_value = message
+
+        conversation = MagicMock()
+        conversation.override_model_configs = json.dumps(
+            {
+                "speech_to_text": {"enabled": False},
+                "text_to_speech": {"enabled": False},
+                "retriever_resource": {"enabled": False},
+                "model": {"provider": "openai", "name": "gpt-4o-mini", "mode": "chat"},
+                "user_input_form": [],
+                "dataset_query_variable": "",
+                "pre_prompt": "",
+                "agent_mode": {
+                    "enabled": False,
+                    "max_iteration": 5,
+                    "strategy": "function_call",
+                    "tools": [],
+                },
+                "prompt_type": "simple",
+                "chat_prompt_config": {},
+                "completion_prompt_config": {},
+                "dataset_configs": {"retrieval_model": "single", "datasets": {"datasets": []}},
+                "file_upload": {
+                    "image": {
+                        "detail": "high",
+                        "enabled": False,
+                        "number_limits": 3,
+                        "transfer_methods": ["remote_url", "local_file"],
+                    }
+                },
+                "suggested_questions_after_answer": {
+                    "enabled": True,
+                    "prompt": "legacy prompt",
+                },
+            }
+        )
+        conversation.model_config = {
+            "opening_statement": None,
+            "suggested_questions": [],
+            "suggested_questions_after_answer": {
+                "enabled": True,
+                "prompt": "legacy prompt",
+            },
+            "speech_to_text": {"enabled": False},
+            "text_to_speech": {"enabled": False},
+            "retriever_resource": {"enabled": False},
+            "annotation_reply": {"enabled": False},
+            "more_like_this": {"enabled": False},
+            "sensitive_word_avoidance": {"enabled": False, "type": "", "config": {}},
+            "external_data_tools": [],
+            "model": {"provider": "openai", "name": "gpt-4o-mini", "mode": "chat"},
+            "user_input_form": [],
+            "dataset_query_variable": "",
+            "pre_prompt": "",
+            "agent_mode": {"enabled": False, "strategy": "function_call", "tools": [], "prompt": None},
+            "prompt_type": "simple",
+            "chat_prompt_config": {},
+            "completion_prompt_config": {},
+            "dataset_configs": {"retrieval_model": "single", "datasets": {"datasets": []}},
+            "file_upload": {
+                "image": {
+                    "detail": "high",
+                    "enabled": False,
+                    "number_limits": 3,
+                    "transfer_methods": ["remote_url", "local_file"],
+                }
+            },
+            "model_id": None,
+            "provider": None,
+        }
+        mock_conversation_service.get_conversation.return_value = conversation
+
+        mock_memory.return_value.get_history_prompt_text.return_value = "histories"
+        mock_llm_gen.generate_suggested_questions_after_answer.return_value = ["Q1?"]
+
+        result = MessageService.get_suggested_questions_after_answer(
+            app_model=app, user=user, message_id="msg-123", invoke_from=MagicMock()
+        )
+
+        assert result == ["Q1?"]
+        mock_db.session.scalar.assert_not_called()
+        mock_llm_gen.generate_suggested_questions_after_answer.assert_called_once_with(
+            tenant_id="tenant-123",
+            histories="histories",
+            instruction_prompt="legacy prompt",
+            model_config=None,
+        )
 
     # Test 30: get_suggested_questions_after_answer - Disabled Error
     @patch("services.message_service.WorkflowService")

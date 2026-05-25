@@ -73,13 +73,13 @@ const SubscriptionTriggerButton: React.FC<SubscriptionTriggerButtonProps> = ({
         className,
       )}
     >
-      <RiWebhookLine className={cn('h-3.5 w-3.5 shrink-0 text-text-secondary', statusConfig.color === 'red' && 'text-components-button-destructive-secondary-text')} />
+      <RiWebhookLine className={cn('size-3.5 shrink-0 text-text-secondary', statusConfig.color === 'red' && 'text-components-button-destructive-secondary-text')} />
       <span className={cn('truncate system-xs-medium text-components-button-ghost-text', statusConfig.color === 'red' && 'text-components-button-destructive-secondary-text')}>
         {statusConfig.label}
       </span>
       <RiArrowDownSLine
         className={cn(
-          'ml-auto h-4 w-4 shrink-0 text-text-quaternary transition-transform',
+          'ml-auto size-4 shrink-0 text-text-quaternary transition-transform',
           isOpen && 'rotate-180',
           statusConfig.color === 'red' && 'text-components-button-destructive-secondary-text',
         )}
@@ -110,7 +110,6 @@ export const SubscriptionSelectorEntry = ({ selectedId, onSelect }: {
         placement="bottom-start"
         sideOffset={4}
         popupClassName="border-none bg-transparent p-0 shadow-none backdrop-blur-none"
-        positionerProps={{ style: { zIndex: 11 } }}
       >
         <div className="rounded-xl border border-components-panel-border bg-components-panel-bg shadow-lg">
           <SubscriptionList

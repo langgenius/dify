@@ -2,12 +2,13 @@ from types import SimpleNamespace
 from unittest.mock import Mock
 
 import pytest
+from pytest_mock import MockerFixture
 
 from services.rag_pipeline.rag_pipeline_task_proxy import RagPipelineTaskProxy
 
 
 @pytest.fixture
-def proxy(mocker):
+def proxy(mocker: MockerFixture):
     """Create a RagPipelineTaskProxy with mocked dependencies."""
     mocker.patch("services.rag_pipeline.rag_pipeline_task_proxy.TenantIsolatedTaskQueue")
     entity = Mock()

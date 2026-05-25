@@ -1,13 +1,14 @@
 'use client'
 import type { TriggerSubscription } from '@/app/components/workflow/block-selector/types'
 import { cn } from '@langgenius/dify-ui/cn'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { RiCheckLine, RiDeleteBinLine, RiWebhookLine } from '@remixicon/react'
 import * as React from 'react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
-import { CreateButtonType, CreateSubscriptionButton } from './create'
+import { Infotip } from '@/app/components/base/infotip'
+import { CreateSubscriptionButton } from './create'
+import { CreateButtonType } from './create/types'
 import { DeleteConfirm } from './delete-confirm'
 import { useSubscriptionList } from './use-subscription-list'
 
@@ -33,18 +34,13 @@ export const SubscriptionSelectorView: React.FC<SubscriptionSelectorProps> = ({
             <span className="system-sm-semibold-uppercase text-text-secondary">
               {t('subscription.listNum', { ns: 'pluginTrigger', num: subscriptionCount })}
             </span>
-            <Tooltip>
-              <TooltipTrigger
-                render={(
-                  <span className="flex h-3.5 w-3.5 shrink-0 p-px">
-                    <span aria-hidden className="i-ri-question-line h-full w-full text-text-quaternary hover:text-text-tertiary" />
-                  </span>
-                )}
-              />
-              <TooltipContent>
-                {t('subscription.list.tip', { ns: 'pluginTrigger' })}
-              </TooltipContent>
-            </Tooltip>
+            <Infotip
+              aria-label={t('subscription.list.tip', { ns: 'pluginTrigger' })}
+              className="size-3.5"
+              iconClassName="h-full w-full"
+            >
+              {t('subscription.list.tip', { ns: 'pluginTrigger' })}
+            </Infotip>
           </div>
           <CreateSubscriptionButton
             buttonType={CreateButtonType.ICON_BUTTON}
@@ -69,9 +65,9 @@ export const SubscriptionSelectorView: React.FC<SubscriptionSelectorProps> = ({
             >
               <div className="flex items-center">
                 {selectedId === subscription.id && (
-                  <RiCheckLine className="mr-2 h-4 w-4 shrink-0 text-text-accent" />
+                  <RiCheckLine className="mr-2 size-4 shrink-0 text-text-accent" />
                 )}
-                <RiWebhookLine className={cn('mr-1.5 h-3.5 w-3.5 text-text-secondary', selectedId !== subscription.id && 'ml-6')} />
+                <RiWebhookLine className={cn('mr-1.5 size-3.5 text-text-secondary', selectedId !== subscription.id && 'ml-6')} />
                 <span className="system-md-regular leading-6 text-text-secondary">
                   {subscription.name}
                 </span>

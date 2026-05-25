@@ -842,24 +842,24 @@ class WorkflowResponseConverter:
             return []
 
         files: list[Mapping[str, Any]] = []
-        if isinstance(value, FileSegment):
-            files.append(value.value.to_dict())
-        elif isinstance(value, ArrayFileSegment):
-            files.extend([i.to_dict() for i in value.value])
-        elif isinstance(value, File):
-            files.append(value.to_dict())
-        elif isinstance(value, list):
-            for item in value:
-                file = cls._get_file_var_from_value(item)
+        match value:
+            case FileSegment():
+                files.append(value.value.to_dict())
+            case ArrayFileSegment():
+                files.extend([i.to_dict() for i in value.value])
+            case File():
+                files.append(value.to_dict())
+            case list():
+                for item in value:
+                    file = cls._get_file_var_from_value(item)
+                    if file:
+                        files.append(file)
+            case dict():
+                file = cls._get_file_var_from_value(value)
                 if file:
                     files.append(file)
-        elif isinstance(
-            value,
-            dict,
-        ):
-            file = cls._get_file_var_from_value(value)
-            if file:
-                files.append(file)
+            case _:
+                pass
 
         return files
 

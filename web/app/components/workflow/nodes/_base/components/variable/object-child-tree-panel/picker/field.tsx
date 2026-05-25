@@ -43,14 +43,14 @@ const Field: FC<Props> = ({
           disabled={depth !== MAX_DEPTH + 1}
           render={(
             <div
-              className={cn('flex items-center justify-between rounded-md pr-2 outline-none focus:outline-none focus-visible:outline-none', !readonly && 'hover:bg-state-base-hover', depth !== MAX_DEPTH + 1 && 'cursor-pointer')}
+              className={cn('flex items-center justify-between rounded-md pr-2 outline-hidden focus:outline-hidden focus-visible:outline-hidden', !readonly && 'hover:bg-state-base-hover', depth !== MAX_DEPTH + 1 && 'cursor-pointer')}
               onMouseDown={() => !readonly && onSelect?.([...valueSelector, name])}
             >
               <div className="flex grow items-stretch">
                 <TreeIndentLine depth={depth} />
                 {depth === MAX_DEPTH + 1
                   ? (
-                      <RiMoreFill className="h-3 w-3 text-text-tertiary" />
+                      <RiMoreFill className="size-3 text-text-tertiary" />
                     )
                   : (<div className={cn('h-6 w-0 grow truncate system-sm-medium leading-6 text-text-secondary', isHighlight && 'text-text-accent')}>{name}</div>)}
 

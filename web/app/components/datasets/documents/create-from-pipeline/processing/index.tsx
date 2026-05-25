@@ -23,7 +23,7 @@ const Processing = ({
   const retrievalMethod = useDatasetDetailContextWithSelector(s => s.dataset?.retrieval_model_dict?.search_method)
 
   return (
-    <div className="flex h-full w-full justify-center overflow-hidden">
+    <div className="flex size-full justify-center overflow-hidden">
       <div className="h-full w-3/5 overflow-y-auto pt-10 pb-8">
         <div className="max-w-[640px]">
           <EmbeddingProcess

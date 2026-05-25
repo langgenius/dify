@@ -42,7 +42,7 @@ const DependencyPicker: FC<Props> = ({
           <div className="grow cursor-pointer">
             <div className="flex h-8 items-center justify-between rounded-lg border-0 bg-gray-100 px-2.5 text-[13px] text-gray-900">
               <div className="w-0 grow truncate" title={value.name}>{value.name}</div>
-              <RiArrowDownSLine className="h-3.5 w-3.5 shrink-0 text-gray-700" />
+              <RiArrowDownSLine className="size-3.5 shrink-0 text-gray-700" />
             </div>
           </div>
         )}
@@ -51,7 +51,6 @@ const DependencyPicker: FC<Props> = ({
         placement="bottom-start"
         sideOffset={4}
         popupClassName="border-none bg-transparent p-0 shadow-none backdrop-blur-none"
-        positionerProps={{ style: { zIndex: 100 } }}
       >
         <div
           className="rounded-lg bg-white p-1 shadow-sm"
@@ -82,7 +81,7 @@ const DependencyPicker: FC<Props> = ({
                 onClick={handleChange(dependency)}
               >
                 <div className="w-0 grow truncate">{dependency.name}</div>
-                {dependency.name === value.name && <Check className="h-4 w-4 shrink-0 text-primary-600" />}
+                {dependency.name === value.name && <Check className="size-4 shrink-0 text-primary-600" />}
               </div>
             ))}
           </div>

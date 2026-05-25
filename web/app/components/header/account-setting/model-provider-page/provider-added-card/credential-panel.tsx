@@ -1,9 +1,9 @@
 import type { ModelProvider } from '../declarations'
 import type { CardVariant } from './use-credential-panel-state'
+import { StatusDot } from '@langgenius/dify-ui/status-dot'
 import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
 import Warning from '@/app/components/base/icons/src/vender/line/alertsAndFeedback/Warning'
-import Indicator from '@/app/components/header/indicator'
 import ModelAuthDropdown from './model-auth-dropdown'
 import SystemQuotaCard from './system-quota-card'
 import { useChangeProviderPriority } from './use-change-provider-priority'
@@ -38,7 +38,7 @@ const CredentialPanel = ({
       <SystemQuotaCard.Label className={needsGap ? 'gap-1' : undefined}>
         {isTextLabel
           ? <TextLabel variant={variant} />
-          : <StatusLabel variant={variant} credentialName={credentialName} />}
+          : <CredentialStatus variant={variant} credentialName={credentialName} />}
       </SystemQuotaCard.Label>
       <SystemQuotaCard.Actions>
         <ModelAuthDropdown
@@ -72,23 +72,23 @@ function TextLabel({ variant }: { variant: CardVariant }) {
         {t(labelKey, { ns: 'common' })}
       </span>
       {variant === 'credits-fallback' && (
-        <Warning className="h-3 w-3 shrink-0 text-text-warning" />
+        <Warning className="size-3 shrink-0 text-text-warning" />
       )}
     </>
   )
 }
 
-function StatusLabel({ variant, credentialName }: {
+function CredentialStatus({ variant, credentialName }: {
   variant: CardVariant
   credentialName: string | undefined
 }) {
   const isDestructive = isDestructiveVariant(variant)
-  const dotColor = isDestructive ? 'red' : 'green'
+  const dotColor = isDestructive ? 'error' : 'success'
   const showWarning = variant === 'api-fallback'
 
   return (
     <>
-      <Indicator className="shrink-0" color={dotColor} />
+      <StatusDot className="shrink-0" status={dotColor} />
       <span
         className={`truncate ${isDestructive ? 'text-text-destructive' : 'text-text-secondary'}`}
         title={credentialName}
@@ -96,7 +96,7 @@ function StatusLabel({ variant, credentialName }: {
         {credentialName}
       </span>
       {showWarning && (
-        <Warning className="ml-auto h-3 w-3 shrink-0 text-text-warning" />
+        <Warning className="ml-auto size-3 shrink-0 text-text-warning" />
       )}
     </>
   )

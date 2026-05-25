@@ -1,4 +1,4 @@
-import type { ReactElement } from 'react'
+import type { AnchorHTMLAttributes, ReactElement } from 'react'
 import { fireEvent, screen } from '@testing-library/react'
 import { vi } from 'vitest'
 import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
@@ -45,7 +45,7 @@ vi.mock('@/app/components/header/tools-nav', () => ({
 }))
 
 vi.mock('@/app/components/header/plan-badge', () => ({
-  default: ({ onClick, plan }: { onClick?: () => void, plan?: string }) => (
+  PlanBadge: ({ onClick, plan }: { onClick?: () => void, plan?: string }) => (
     <button data-testid="plan-badge" onClick={onClick} data-plan={plan} />
   ),
 }))
@@ -55,7 +55,7 @@ vi.mock('@/context/workspace-context-provider', () => ({
 }))
 
 vi.mock('@/next/link', () => ({
-  default: ({ children, href }: { children?: React.ReactNode, href?: string }) => <a href={href}>{children}</a>,
+  default: ({ children, href, ...props }: AnchorHTMLAttributes<HTMLAnchorElement> & { href?: string }) => <a href={href} {...props}>{children}</a>,
 }))
 
 let mockIsWorkspaceEditor = false
@@ -122,7 +122,9 @@ describe('Header', () => {
   it('should render header with main nav components', () => {
     renderHeader()
 
-    expect(screen.getByRole('img', { name: /dify logo/i })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Dify' })).toHaveAttribute('href', '/apps')
+    expect(screen.queryByRole('heading', { level: 1 })).not.toBeInTheDocument()
+    expect(screen.queryByRole('img', { name: /dify logo/i })).not.toBeInTheDocument()
     expect(screen.getByTestId('workplace-selector')).toBeInTheDocument()
     expect(screen.getByTestId('app-nav')).toBeInTheDocument()
     expect(screen.getByTestId('account-dropdown')).toBeInTheDocument()
@@ -166,7 +168,7 @@ describe('Header', () => {
     mockMedia = 'mobile'
     renderHeader()
 
-    expect(screen.getByRole('img', { name: /dify logo/i })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Dify' })).toHaveAttribute('href', '/apps')
     expect(screen.queryByTestId('env-nav')).not.toBeInTheDocument()
   })
 
@@ -177,8 +179,8 @@ describe('Header', () => {
 
     renderHeader()
 
-    expect(screen.getByText('Acme Workspace')).toBeInTheDocument()
-    expect(screen.getByRole('img', { name: /logo/i })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Acme Workspace' })).toHaveAttribute('href', '/apps')
+    expect(screen.queryByRole('img', { name: /logo/i })).not.toBeInTheDocument()
     expect(screen.queryByRole('img', { name: /dify logo/i })).not.toBeInTheDocument()
   })
 
@@ -189,18 +191,18 @@ describe('Header', () => {
 
     renderHeader()
 
-    expect(screen.getByText('Custom Title')).toBeInTheDocument()
-    expect(screen.getByRole('img', { name: /dify logo/i })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Custom Title' })).toHaveAttribute('href', '/apps')
+    expect(screen.queryByRole('img', { name: /dify logo/i })).not.toBeInTheDocument()
   })
 
-  it('should show default Dify text when branding enabled but no application_title', () => {
+  it('should use default Dify link label when branding enabled but no application_title', () => {
     mockBrandingEnabled = true
     mockBrandingTitle = null
     mockBrandingLogo = null
 
     renderHeader()
 
-    expect(screen.getByText('Dify')).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Dify' })).toHaveAttribute('href', '/apps')
   })
 
   it('should show dataset nav for editor who is not dataset operator', () => {

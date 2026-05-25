@@ -1,7 +1,7 @@
 import type { ToolVarInputs } from '../../types'
 import type { CredentialFormSchema } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { App } from '@/types/app'
-import { screen } from '@testing-library/react'
+import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
 import { createMockProviderContextValue } from '@/__mocks__/provider-context'
@@ -116,22 +116,29 @@ vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () 
 }))
 
 vi.mock('@/service/use-apps', () => ({
-  useInfiniteAppList: () => ({
-    data: {
-      pages: [{
-        data: mockApps,
-      }],
-    },
-    isLoading: false,
-    isFetchingNextPage: false,
-    fetchNextPage: mockFetchNextPage,
-    hasNextPage: false,
-  }),
   useAppDetail: (appId: string) => ({
     data: mockApps.find(app => app.id === appId),
     isFetching: false,
   }),
 }))
+
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@tanstack/react-query')>()
+  return {
+    ...actual,
+    useInfiniteQuery: () => ({
+      data: {
+        pages: [{
+          data: mockApps,
+        }],
+      },
+      isLoading: false,
+      isFetchingNextPage: false,
+      fetchNextPage: mockFetchNextPage,
+      hasNextPage: false,
+    }),
+  }
+})
 
 vi.mock('@/service/use-workflow', () => ({
   useAppWorkflow: () => ({
@@ -460,7 +467,6 @@ describe('InputVarList', () => {
     await user.click(screen.getAllByText('app.appSelector.placeholder')[0]!)
     await user.click(screen.getAllByText('app.appSelector.placeholder')[1]!)
     await user.click(screen.getByTitle('Weather Assistant (app-1)'))
-    await user.type(screen.getByPlaceholderText('Topic'), 'weather')
 
     expect(onChange).toHaveBeenNthCalledWith(1, {
       assistant: {
@@ -472,20 +478,27 @@ describe('InputVarList', () => {
         credential_id: 'credential-1',
       },
     })
-    expect(onChange).toHaveBeenLastCalledWith({
-      assistant: {
-        app_id: 'app-1',
-        inputs: { topic: 'weather' },
-        files: [],
-      },
-      model: {
-        credential_id: 'credential-1',
-      },
+
+    const topicInput = await screen.findByPlaceholderText('Topic')
+    await user.type(topicInput, 'weather')
+
+    await waitFor(() => {
+      expect(onChange).toHaveBeenLastCalledWith({
+        assistant: {
+          app_id: 'app-1',
+          inputs: { topic: 'weather' },
+          files: [],
+        },
+        model: {
+          credential_id: 'credential-1',
+        },
+      })
     })
 
+    await user.click(screen.getByRole('button', { name: 'app.appSelector.label' }))
     await user.click(screen.getByText('workflow:errorMsg.configureModel'))
-    await user.click(await screen.findByRole('button', { name: 'plugin.detailPanel.configureModel' }))
-    await user.click(await screen.findByRole('button', { name: /GPT-4o/i }))
+    await user.click(await screen.findByRole('combobox', { name: 'plugin.detailPanel.configureModel' }))
+    await user.click(await screen.findByRole('option', { name: /GPT-4o/i }))
 
     expect(onChange).toHaveBeenLastCalledWith({
       assistant: {

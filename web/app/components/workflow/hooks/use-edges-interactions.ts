@@ -45,8 +45,8 @@ export const useEdgesInteractions = () => {
       draft.splice(currentEdgeIndex, 1)
     })
     setEdges(newEdges)
-    if (clearEdgeMenuIfNeeded({ edgeMenu: workflowStore.getState().edgeMenu, edgeIds: [currentEdge!.id] }))
-      workflowStore.setState({ edgeMenu: undefined })
+    if (clearEdgeMenuIfNeeded({ contextMenuTarget: workflowStore.getState().contextMenuTarget, edgeIds: [currentEdge!.id] }))
+      workflowStore.setState({ contextMenuTarget: undefined })
     handleSyncWorkflowDraft()
     saveStateToHistory(WorkflowHistoryEvent.EdgeDelete)
   }, [collaborativeWorkflow, workflowStore, handleSyncWorkflowDraft, saveStateToHistory])
@@ -92,10 +92,10 @@ export const useEdgesInteractions = () => {
     })
     setEdges(newEdges)
     if (clearEdgeMenuIfNeeded({
-      edgeMenu: workflowStore.getState().edgeMenu,
+      contextMenuTarget: workflowStore.getState().contextMenuTarget,
       edgeIds: edgeWillBeDeleted.map(edge => edge.id),
     })) {
-      workflowStore.setState({ edgeMenu: undefined })
+      workflowStore.setState({ contextMenuTarget: undefined })
     }
     handleSyncWorkflowDraft()
     saveStateToHistory(WorkflowHistoryEvent.EdgeDeleteByDeleteBranch)
@@ -166,18 +166,20 @@ export const useEdgesInteractions = () => {
     })
     setEdges(newEdges)
     if (clearEdgeMenuIfNeeded({
-      edgeMenu: workflowStore.getState().edgeMenu,
+      contextMenuTarget: workflowStore.getState().contextMenuTarget,
       edgeIds: affectedEdges.map(edge => edge.id),
     })) {
-      workflowStore.setState({ edgeMenu: undefined })
+      workflowStore.setState({ contextMenuTarget: undefined })
     }
     handleSyncWorkflowDraft()
     saveStateToHistory(WorkflowHistoryEvent.EdgeSourceHandleChange)
   }, [getNodesReadOnly, collaborativeWorkflow, workflowStore, handleSyncWorkflowDraft, saveStateToHistory])
 
   const handleEdgeContextMenu = useCallback<EdgeMouseHandler>((e, edge) => {
-    if (getNodesReadOnly())
+    if (getNodesReadOnly()) {
+      e.stopPropagation()
       return
+    }
 
     e.preventDefault()
 
@@ -188,12 +190,8 @@ export const useEdgesInteractions = () => {
     }
 
     workflowStore.setState({
-      nodeMenu: undefined,
-      panelMenu: undefined,
-      selectionMenu: undefined,
-      edgeMenu: {
-        clientX: e.clientX,
-        clientY: e.clientY,
+      contextMenuTarget: {
+        type: 'edge',
         edgeId: edge.id,
       },
     })

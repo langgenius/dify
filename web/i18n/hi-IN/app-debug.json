@@ -337,6 +337,8 @@
   "variableConfig.file.image.name": "छवि",
   "variableConfig.file.supportFileTypes": "फ़ाइल प्रकारों का समर्थन करें",
   "variableConfig.file.video.name": "वीडियो",
+  "variableConfig.hidden": "छुपाया और पूर्व-भरा हुआ",
+  "variableConfig.hiddenDescription": "इस फ़ील्ड को अंतिम उपयोगकर्ताओं से छुपाएं और मान स्वयं प्रदान करें। आवश्यक के साथ परस्पर अनन्य है। <docLink>अधिक जानें</docLink>",
   "variableConfig.hide": "छुपाएँ",
   "variableConfig.inputPlaceholder": "कृपया इनपुट करें",
   "variableConfig.json": "JSON कोड",

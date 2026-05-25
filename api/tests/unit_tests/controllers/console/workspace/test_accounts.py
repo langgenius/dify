@@ -1,6 +1,7 @@
 from unittest.mock import MagicMock, PropertyMock, patch
 
 import pytest
+from flask import Flask
 from werkzeug.exceptions import NotFound
 
 from controllers.console import console_ns
@@ -41,7 +42,7 @@ def unwrap(func):
 
 
 class TestAccountInitApi:
-    def test_init_success(self, app):
+    def test_init_success(self, app: Flask):
         api = AccountInitApi()
         method = unwrap(api.post)
 
@@ -64,7 +65,7 @@ class TestAccountInitApi:
 
         assert resp["result"] == "success"
 
-    def test_init_already_initialized(self, app):
+    def test_init_already_initialized(self, app: Flask):
         api = AccountInitApi()
         method = unwrap(api.post)
 
@@ -79,7 +80,7 @@ class TestAccountInitApi:
 
 
 class TestAccountProfileApi:
-    def test_get_profile_success(self, app):
+    def test_get_profile_success(self, app: Flask):
         api = AccountProfileApi()
         method = unwrap(api.get)
 
@@ -113,7 +114,7 @@ class TestAccountUpdateApis:
             (AccountTimezoneApi, {"timezone": "UTC"}),
         ],
     )
-    def test_update_success(self, app, api_cls, payload):
+    def test_update_success(self, app: Flask, api_cls, payload):
         api = api_cls()
         method = unwrap(api.post)
 
@@ -140,7 +141,7 @@ class TestAccountUpdateApis:
 class TestAccountAvatarApiGet:
     """GET /account/avatar must not sign arbitrary upload_file IDs (IDOR)."""
 
-    def test_get_avatar_signed_url_when_upload_owned_by_current_account(self, app):
+    def test_get_avatar_signed_url_when_upload_owned_by_current_account(self, app: Flask):
         api = AccountAvatarApi()
         method = unwrap(api.get)
 
@@ -172,7 +173,7 @@ class TestAccountAvatarApiGet:
         assert result == {"avatar_url": "https://signed/example"}
         sign_mock.assert_called_once_with(upload_file_id=file_id)
 
-    def test_get_avatar_not_found_when_upload_created_by_other_account_same_tenant(self, app):
+    def test_get_avatar_not_found_when_upload_created_by_other_account_same_tenant(self, app: Flask):
         api = AccountAvatarApi()
         method = unwrap(api.get)
 
@@ -204,7 +205,7 @@ class TestAccountAvatarApiGet:
 
         sign_mock.assert_not_called()
 
-    def test_get_avatar_not_found_when_upload_belongs_to_other_tenant(self, app):
+    def test_get_avatar_not_found_when_upload_belongs_to_other_tenant(self, app: Flask):
         api = AccountAvatarApi()
         method = unwrap(api.get)
 
@@ -236,7 +237,7 @@ class TestAccountAvatarApiGet:
 
         sign_mock.assert_not_called()
 
-    def test_get_avatar_https_pass_through_without_signing(self, app):
+    def test_get_avatar_https_pass_through_without_signing(self, app: Flask):
         api = AccountAvatarApi()
         method = unwrap(api.get)
 
@@ -263,7 +264,7 @@ class TestAccountAvatarApiGet:
 
 
 class TestAccountPasswordApi:
-    def test_password_success(self, app):
+    def test_password_success(self, app: Flask):
         api = AccountPasswordApi()
         method = unwrap(api.post)
 
@@ -292,7 +293,7 @@ class TestAccountPasswordApi:
 
         assert result["id"] == "u1"
 
-    def test_password_wrong_current(self, app):
+    def test_password_wrong_current(self, app: Flask):
         api = AccountPasswordApi()
         method = unwrap(api.post)
 
@@ -317,7 +318,7 @@ class TestAccountPasswordApi:
 
 
 class TestAccountIntegrateApi:
-    def test_get_integrates(self, app):
+    def test_get_integrates(self, app: Flask):
         api = AccountIntegrateApi()
         method = unwrap(api.get)
 
@@ -336,7 +337,7 @@ class TestAccountIntegrateApi:
 
 
 class TestAccountDeleteApi:
-    def test_delete_verify_success(self, app):
+    def test_delete_verify_success(self, app: Flask):
         api = AccountDeleteVerifyApi()
         method = unwrap(api.get)
 
@@ -358,7 +359,7 @@ class TestAccountDeleteApi:
 
         assert result["result"] == "success"
 
-    def test_delete_invalid_code(self, app):
+    def test_delete_invalid_code(self, app: Flask):
         api = AccountDeleteApi()
         method = unwrap(api.post)
 
@@ -379,7 +380,7 @@ class TestAccountDeleteApi:
 
 
 class TestChangeEmailApis:
-    def test_check_email_code_invalid(self, app):
+    def test_check_email_code_invalid(self, app: Flask):
         api = ChangeEmailCheckApi()
         method = unwrap(api.post)
 
@@ -387,6 +388,10 @@ class TestChangeEmailApis:
 
         with (
             app.test_request_context("/", json=payload),
+            patch(
+                "controllers.console.workspace.account.current_account_with_tenant",
+                return_value=(MagicMock(id="acc-1"), "t1"),
+            ),
             patch.object(
                 type(console_ns),
                 "payload",
@@ -399,13 +404,17 @@ class TestChangeEmailApis:
             ),
             patch(
                 "controllers.console.workspace.account.AccountService.get_change_email_data",
-                return_value={"email": "a@test.com", "code": "y"},
+                return_value=MagicMock(
+                    email="a@test.com",
+                    code="y",
+                    is_bound_to_account=MagicMock(return_value=True),
+                ),
             ),
         ):
             with pytest.raises(EmailCodeError):
                 method(api)
 
-    def test_reset_email_already_used(self, app):
+    def test_reset_email_already_used(self, app: Flask):
         api = ChangeEmailResetApi()
         method = unwrap(api.post)
 
@@ -427,7 +436,7 @@ class TestChangeEmailApis:
 
 
 class TestCheckEmailUniqueApi:
-    def test_email_unique_success(self, app):
+    def test_email_unique_success(self, app: Flask):
         api = CheckEmailUnique()
         method = unwrap(api.post)
 
@@ -448,7 +457,7 @@ class TestCheckEmailUniqueApi:
 
         assert result["result"] == "success"
 
-    def test_email_in_freeze(self, app):
+    def test_email_in_freeze(self, app: Flask):
         api = CheckEmailUnique()
         method = unwrap(api.post)
 

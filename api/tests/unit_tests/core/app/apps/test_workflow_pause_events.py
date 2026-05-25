@@ -14,7 +14,7 @@ from core.workflow.system_variables import build_system_variables
 from graphon.entities import WorkflowStartReason
 from graphon.entities.pause_reason import HumanInputRequired
 from graphon.graph_events import GraphRunPausedEvent
-from graphon.nodes.human_input.entities import FormInput, UserAction
+from graphon.nodes.human_input.entities import ParagraphInputConfig, UserActionConfig
 from graphon.nodes.human_input.enums import FormInputType
 from models.account import Account
 from models.human_input import RecipientType
@@ -157,9 +157,9 @@ def test_queue_workflow_paused_event_to_stream_responses(monkeypatch: pytest.Mon
         form_id="form-1",
         form_content="Rendered",
         inputs=[
-            FormInput(type=FormInputType.TEXT_INPUT, output_variable_name="field", default=None),
+            ParagraphInputConfig(type=FormInputType.PARAGRAPH, output_variable_name="field", default=None),
         ],
-        actions=[UserAction(id="approve", title="Approve")],
+        actions=[UserActionConfig(id="approve", title="Approve")],
         node_id="node-id",
         node_title="Human Step",
     )

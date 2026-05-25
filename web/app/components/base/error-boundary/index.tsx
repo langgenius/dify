@@ -130,7 +130,7 @@ class ErrorBoundaryInner extends React.Component<
           )}
         >
           <div className="mb-4 flex items-center gap-2">
-            <RiAlertLine className="text-state-critical-solid h-8 w-8" />
+            <RiAlertLine className="text-state-critical-solid size-8" />
             <h2 className="text-xl font-semibold text-text-primary">
               {customTitle || copy.title}
             </h2>
@@ -144,7 +144,7 @@ class ErrorBoundaryInner extends React.Component<
             <details className="mb-6 w-full max-w-2xl">
               <summary className="mb-2 cursor-pointer text-sm font-medium text-text-tertiary hover:text-text-secondary">
                 <span className="inline-flex items-center gap-1">
-                  <RiBugLine className="h-4 w-4" />
+                  <RiBugLine className="size-4" />
                   {copy.details}
                 </span>
               </summary>

@@ -1,9 +1,11 @@
+import type { StatusDotStatus } from '@langgenius/dify-ui/status-dot'
 import type {
   Credential,
   PluginPayload,
 } from './types'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import { StatusDot } from '@langgenius/dify-ui/status-dot'
 import { RiArrowDownSLine } from '@remixicon/react'
 import {
   memo,
@@ -11,7 +13,6 @@ import {
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import Indicator from '@/app/components/header/indicator'
 import {
   Authorized,
   usePluginAuth,
@@ -41,7 +42,7 @@ const AuthorizedInNode = ({
     let label = ''
     let removed = false
     let unavailable = false
-    let color = 'green'
+    let color: StatusDotStatus = 'success'
     let defaultUnavailable = false
     if (!credentialId) {
       label = t('auth.workspaceDefault', { ns: 'plugin' })
@@ -49,7 +50,7 @@ const AuthorizedInNode = ({
       const defaultCredential = credentials.find(c => c.is_default)
 
       if (defaultCredential?.not_allowed_to_use) {
-        color = 'gray'
+        color = 'disabled'
         defaultUnavailable = true
       }
     }
@@ -60,9 +61,9 @@ const AuthorizedInNode = ({
       unavailable = !!credential?.not_allowed_to_use && !credential?.from_enterprise
 
       if (removed)
-        color = 'red'
+        color = 'error'
       else if (unavailable)
-        color = 'gray'
+        color = 'disabled'
     }
     return (
       <Button
@@ -73,9 +74,9 @@ const AuthorizedInNode = ({
         )}
         variant={(defaultUnavailable || unavailable) ? 'ghost' : 'secondary'}
       >
-        <Indicator
+        <StatusDot
           className="mr-1.5"
-          color={color as any}
+          status={color}
         />
         {label}
         {
@@ -88,7 +89,7 @@ const AuthorizedInNode = ({
         }
         <RiArrowDownSLine
           className={cn(
-            'h-3.5 w-3.5 text-components-button-ghost-text',
+            'size-3.5 text-components-button-ghost-text',
             removed && 'text-text-destructive',
           )}
         />

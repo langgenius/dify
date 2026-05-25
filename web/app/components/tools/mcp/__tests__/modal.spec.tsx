@@ -227,16 +227,8 @@ describe('MCPModal', () => {
       const onHide = vi.fn()
       render(<MCPModal {...defaultProps} onHide={onHide} />, { wrapper: createWrapper() })
 
-      // Find the close button by its parent div with cursor-pointer class
-      const closeButtons = document.querySelectorAll('.cursor-pointer')
-      const closeButton = Array.from(closeButtons).find(el =>
-        el.querySelector('svg'),
-      )
-
-      if (closeButton) {
-        fireEvent.click(closeButton)
-        expect(onHide).toHaveBeenCalled()
-      }
+      fireEvent.click(screen.getByRole('button', { name: /operation\.close/ }))
+      expect(onHide).toHaveBeenCalled()
     })
 
     it('should have confirm button disabled when form is empty', () => {

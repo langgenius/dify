@@ -3,9 +3,7 @@ import type {
   Placement,
 } from '@floating-ui/react'
 import type {
-  FC,
   MouseEventHandler,
-  MouseEvent as ReactMouseEvent,
 } from 'react'
 import type {
   CommonNodeType,
@@ -48,8 +46,8 @@ export type NodeSelectorProps = {
   triggerStyle?: React.CSSProperties
   triggerClassName?: (open: boolean) => string
   triggerInnerClassName?: string
+  renderTriggerAsButtonRoot?: boolean
   popupClassName?: string
-  asChild?: boolean
   availableBlocksTypes?: BlockEnum[]
   disabled?: boolean
   blocks?: NodeDefault[]
@@ -63,7 +61,7 @@ export type NodeSelectorProps = {
   forceEnableStartTab?: boolean // Force enabling Start tab regardless of existing trigger/user input nodes (e.g., when changing Start node type).
   allowUserInputSelection?: boolean // Override user-input availability; default logic blocks it when triggers exist.
 }
-const NodeSelector: FC<NodeSelectorProps> = ({
+function NodeSelector({
   open: openFromProps,
   onOpenChange,
   onSelect,
@@ -72,9 +70,9 @@ const NodeSelector: FC<NodeSelectorProps> = ({
   offset = 6,
   triggerClassName,
   triggerInnerClassName,
+  renderTriggerAsButtonRoot = false,
   triggerStyle,
   popupClassName,
-  asChild,
   availableBlocksTypes,
   disabled,
   blocks = [],
@@ -87,7 +85,7 @@ const NodeSelector: FC<NodeSelectorProps> = ({
   ignoreNodeIds = [],
   forceEnableStartTab = false,
   allowUserInputSelection,
-}) => {
+}: NodeSelectorProps) {
   const { t } = useTranslation()
   const nodes = useNodes()
   const [searchText, setSearchText] = useState('')
@@ -181,46 +179,29 @@ const NodeSelector: FC<NodeSelectorProps> = ({
     <PopoverTrigger
       aria-label={t('common.addBlock', { ns: 'workflow' })}
       className={cn(
-        'z-10 flex h-4 w-4 cursor-pointer items-center justify-center rounded-full border-0 bg-components-button-primary-bg p-0 text-text-primary-on-surface hover:bg-components-button-primary-bg-hover focus-visible:ring-1 focus-visible:ring-components-input-border-hover focus-visible:outline-hidden',
+        'z-10 flex size-4 cursor-pointer items-center justify-center rounded-full border-0 bg-components-button-primary-bg p-0 text-text-primary-on-surface hover:bg-components-button-primary-bg-hover focus-visible:ring-1 focus-visible:ring-components-input-border-hover focus-visible:outline-hidden',
         triggerClassName?.(open),
       )}
       style={triggerStyle}
       onClick={handleTrigger}
     >
-      <Plus02 aria-hidden className="h-2.5 w-2.5" />
+      <Plus02 aria-hidden className="size-2.5" />
     </PopoverTrigger>
   )
   const triggerElement = trigger?.(open)
-  const shouldRenderTriggerElementAsRoot = React.isValidElement(triggerElement)
-    && (asChild || triggerElement.type === 'button')
-  const triggerElementProps = React.isValidElement(triggerElement)
-    ? (triggerElement.props as {
-        onClick?: MouseEventHandler<HTMLElement>
-      })
-    : null
-  const resolvedTriggerElement = shouldRenderTriggerElementAsRoot
-    ? React.cloneElement(
-        triggerElement as React.ReactElement<{
-          onClick?: MouseEventHandler<HTMLElement>
-        }>,
-        {
-          onClick: (e: ReactMouseEvent<HTMLElement>) => {
-            handleTrigger(e)
-            if (typeof triggerElementProps?.onClick === 'function')
-              triggerElementProps.onClick(e)
-          },
-        },
-      )
+  const isValidTriggerElement = React.isValidElement(triggerElement)
+  const isNativeButtonTrigger = isValidTriggerElement && triggerElement.type === 'button'
+  const shouldRenderTriggerAsButtonRoot = isValidTriggerElement && (renderTriggerAsButtonRoot || isNativeButtonTrigger)
+  const resolvedTriggerElement = shouldRenderTriggerAsButtonRoot
+    ? triggerElement
     : (
-        <div className={triggerInnerClassName} onClick={handleTrigger}>
+        <div className={triggerInnerClassName}>
           {triggerElement}
         </div>
       )
   const resolvedOffset = typeof offset === 'number' || typeof offset === 'function' ? undefined : offset
   const sideOffset = typeof offset === 'number' ? offset : (resolvedOffset?.mainAxis ?? 0)
   const alignOffset = typeof offset === 'number' ? 0 : (resolvedOffset?.crossAxis ?? 0)
-  const nativeButton = shouldRenderTriggerElementAsRoot
-    && (typeof triggerElement.type !== 'string' || triggerElement.type === 'button')
 
   return (
     <Popover
@@ -228,7 +209,13 @@ const NodeSelector: FC<NodeSelectorProps> = ({
       onOpenChange={handleOpenChange}
     >
       {trigger
-        ? <PopoverTrigger nativeButton={nativeButton} render={resolvedTriggerElement as React.ReactElement} />
+        ? (
+            <PopoverTrigger
+              nativeButton={shouldRenderTriggerAsButtonRoot}
+              onClick={handleTrigger}
+              render={resolvedTriggerElement as React.ReactElement}
+            />
+          )
         : defaultTriggerElement}
       <PopoverContent
         placement={placement}

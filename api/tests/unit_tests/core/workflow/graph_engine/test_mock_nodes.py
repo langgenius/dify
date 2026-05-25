@@ -56,7 +56,7 @@ class MockNodeMixin:
     def __init__(
         self,
         node_id: str,
-        config: Any,
+        data: Any,
         *,
         graph_init_params: "GraphInitParams",
         graph_runtime_state: "GraphRuntimeState",
@@ -81,11 +81,11 @@ class MockNodeMixin:
         if isinstance(self, TemplateTransformNode):
             kwargs.setdefault("jinja2_template_renderer", _TestJinja2Renderer())
 
-        # Provide default tool_file_manager_factory for ToolNode subclasses
+        # Provide default ToolNode dependencies for ToolNode subclasses.
         from graphon.nodes.tool import ToolNode as _ToolNode  # local import to avoid cycles
 
         if isinstance(self, _ToolNode):
-            kwargs.setdefault("tool_file_manager_factory", MagicMock(spec=ToolFileManagerProtocol))
+            kwargs.setdefault("tool_file_manager", MagicMock(spec=ToolFileManagerProtocol))
             kwargs.setdefault("runtime", DifyToolNodeRuntime(graph_init_params.run_context))
 
         if isinstance(self, AgentNode):
@@ -98,7 +98,7 @@ class MockNodeMixin:
 
         super().__init__(
             node_id=node_id,
-            config=config,
+            data=data,
             graph_init_params=graph_init_params,
             graph_runtime_state=graph_runtime_state,
             **kwargs,

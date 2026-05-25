@@ -121,7 +121,7 @@ const CSVDownload: FC<{ docForm: ChunkingMode }> = ({ docForm }) => {
         data={getTemplate()}
       >
         <div className="flex h-[18px] items-center space-x-1 text-xs font-medium text-text-accent">
-          <DownloadIcon className="mr-1 h-3 w-3" />
+          <DownloadIcon className="mr-1 size-3" />
           {t('list.batchModal.template', { ns: 'datasetDocuments' })}
         </div>
       </CSVDownloader>

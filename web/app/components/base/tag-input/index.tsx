@@ -1,12 +1,9 @@
-import type { ChangeEvent, FC, KeyboardEvent } from 'react'
+import type { ChangeEvent, KeyboardEvent } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useCallback, useState } from 'react'
-import _AutosizeInput from 'react-18-input-autosize'
 import { useTranslation } from 'react-i18next'
-// CJS/ESM interop: Turbopack may resolve the module namespace object instead of the default export
-// eslint-disable-next-line ts/no-explicit-any
-const AutosizeInput = ('default' in (_AutosizeInput as any) ? (_AutosizeInput as any).default : _AutosizeInput) as typeof _AutosizeInput
+
 type TagInputProps = {
   items: string[]
   onChange: (items: string[]) => void
@@ -18,11 +15,13 @@ type TagInputProps = {
   required?: boolean
   inputClassName?: string
 }
-const TagInput: FC<TagInputProps> = ({ items, onChange, disableAdd, disableRemove, customizedConfirmKey = 'Enter', isInWorkflow, placeholder, required = false, inputClassName }) => {
+
+const TagInput = ({ items, onChange, disableAdd, disableRemove, customizedConfirmKey = 'Enter', isInWorkflow, placeholder, required = false, inputClassName }: TagInputProps) => {
   const { t } = useTranslation()
   const [value, setValue] = useState('')
   const [focused, setFocused] = useState(false)
   const isSpecialMode = customizedConfirmKey === 'Tab'
+  const inputPlaceholder = placeholder || (isSpecialMode ? t('model.params.stop_sequencesPlaceholder', { ns: 'common' }) : t('segment.addKeyWord', { ns: 'datasetDocuments' }))
   const handleRemove = (index: number) => {
     const copyItems = [...items]
     copyItems.splice(index, 1)
@@ -67,27 +66,36 @@ const TagInput: FC<TagInputProps> = ({ items, onChange, disableAdd, disableRemov
         <div key={item} className={cn('mt-1 mr-1 flex items-center rounded-md border border-divider-deep bg-components-badge-white-to-dark py-1 pr-1 pl-1.5 system-xs-regular text-text-secondary')}>
           {item}
           {!disableRemove && (
-            <div className="flex h-4 w-4 cursor-pointer items-center justify-center" onClick={() => handleRemove(index)}>
-              <span className="ml-0.5 i-ri-close-line h-3.5 w-3.5 text-text-tertiary" data-testid="remove-tag" />
-            </div>
+            <button
+              type="button"
+              aria-label={`${t('operation.remove', { ns: 'common' })} ${item}`}
+              className="flex size-4 cursor-pointer items-center justify-center border-none bg-transparent p-0 focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
+              onClick={() => handleRemove(index)}
+            >
+              <span className="ml-0.5 i-ri-close-line size-3.5 text-text-tertiary" aria-hidden="true" />
+            </button>
           )}
         </div>
       ))}
       {!disableAdd && (
         <div className={cn('group/tag-add mt-1 flex items-center gap-x-0.5', !isSpecialMode ? 'rounded-md border border-dashed border-divider-deep px-1.5' : '')}>
-          {!isSpecialMode && !focused && <span className="i-ri-add-line h-3.5 w-3.5 text-text-placeholder group-hover/tag-add:text-text-secondary" />}
-          <AutosizeInput
-            inputClassName={cn('appearance-none text-text-primary caret-[#295EFF] outline-none placeholder:text-text-placeholder group-hover/tag-add:placeholder:text-text-secondary', isSpecialMode ? 'bg-transparent' : '', inputClassName)}
-            className={cn(!isInWorkflow && 'max-w-[300px]', isInWorkflow && 'max-w-[146px]', 'overflow-hidden rounded-md py-1 system-xs-regular', isSpecialMode && 'border border-transparent px-1.5', focused && isSpecialMode && 'border-dashed border-divider-deep')}
-            onFocus={() => setFocused(true)}
-            onBlur={handleBlur}
-            value={value}
-            onChange={(e: ChangeEvent<HTMLInputElement>) => {
-              setValue(e.target.value)
-            }}
-            onKeyDown={handleKeyDown}
-            placeholder={placeholder || (isSpecialMode ? t('model.params.stop_sequencesPlaceholder', { ns: 'common' }) : t('segment.addKeyWord', { ns: 'datasetDocuments' }))}
-          />
+          {!isSpecialMode && !focused && <span className="i-ri-add-line size-3.5 text-text-placeholder group-hover/tag-add:text-text-secondary" />}
+          <span
+            data-input-value={value || inputPlaceholder}
+            className={cn(!isInWorkflow && 'max-w-[300px]', isInWorkflow && 'max-w-[146px]', 'grid overflow-hidden rounded-md py-1 system-xs-regular after:invisible after:col-start-1 after:row-start-1 after:whitespace-pre after:content-[attr(data-input-value)]', isSpecialMode && 'border border-transparent px-1.5', focused && isSpecialMode && 'border-dashed border-divider-deep')}
+          >
+            <input
+              className={cn('col-start-1 row-start-1 w-full min-w-0 appearance-none text-text-primary caret-[#295EFF] outline-hidden placeholder:text-text-placeholder group-hover/tag-add:placeholder:text-text-secondary', isSpecialMode ? 'bg-transparent' : '', inputClassName)}
+              onFocus={() => setFocused(true)}
+              onBlur={handleBlur}
+              value={value}
+              onChange={(e: ChangeEvent<HTMLInputElement>) => {
+                setValue(e.target.value)
+              }}
+              onKeyDown={handleKeyDown}
+              placeholder={inputPlaceholder}
+            />
+          </span>
         </div>
       )}
     </div>

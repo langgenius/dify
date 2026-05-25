@@ -4,11 +4,6 @@ import { act, renderHook } from '@testing-library/react'
 import { InputVarType } from '@/app/components/workflow/types'
 import { isParametersOutdated, useConfigureButton } from '../use-configure-button'
 
-const mockPush = vi.fn()
-vi.mock('@/next/navigation', () => ({
-  useRouter: () => ({ push: mockPush }),
-}))
-
 const mockIsCurrentWorkspaceManager = vi.fn(() => true)
 vi.mock('@/context/app-context', () => ({
   useAppContext: () => ({
@@ -98,6 +93,7 @@ const createMockDetail = (overrides: Partial<WorkflowToolProviderResponse> = {})
 })
 
 const createDefaultOptions = (overrides = {}) => ({
+  enabled: true,
   published: false,
   detailNeedUpdate: false,
   workflowAppId: 'app-123',
@@ -213,9 +209,9 @@ describe('useConfigureButton', () => {
   })
 
   describe('Initialization', () => {
-    it('should return showModal as false by default', () => {
+    it('should return workflow tool state without owning drawer visibility', () => {
       const { result } = renderHook(() => useConfigureButton(createDefaultOptions()))
-      expect(result.current.showModal).toBe(false)
+      expect(result.current.payload).toMatchObject({ workflow_app_id: 'app-123' })
     })
 
     it('should forward isCurrentWorkspaceManager from context', () => {
@@ -237,6 +233,11 @@ describe('useConfigureButton', () => {
 
     it('should call query hook with enabled=false when not published', () => {
       renderHook(() => useConfigureButton(createDefaultOptions({ published: false })))
+      expect(mockUseWorkflowToolDetailByAppID).toHaveBeenCalledWith('app-123', false)
+    })
+
+    it('should call query hook with enabled=false when controller is disabled', () => {
+      renderHook(() => useConfigureButton(createDefaultOptions({ enabled: false, published: true })))
       expect(mockUseWorkflowToolDetailByAppID).toHaveBeenCalledWith('app-123', false)
     })
   })
@@ -348,46 +349,13 @@ describe('useConfigureButton', () => {
     })
   })
 
-  // Modal controls
-  describe('Modal Controls', () => {
-    it('should open modal via openModal', () => {
-      const { result } = renderHook(() => useConfigureButton(createDefaultOptions()))
-      act(() => {
-        result.current.openModal()
-      })
-      expect(result.current.showModal).toBe(true)
-    })
-
-    it('should close modal via closeModal', () => {
-      const { result } = renderHook(() => useConfigureButton(createDefaultOptions()))
-      act(() => {
-        result.current.openModal()
-      })
-      act(() => {
-        result.current.closeModal()
-      })
-      expect(result.current.showModal).toBe(false)
-    })
-
-    it('should navigate to tools page', () => {
-      const { result } = renderHook(() => useConfigureButton(createDefaultOptions()))
-      act(() => {
-        result.current.navigateToTools()
-      })
-      expect(mockPush).toHaveBeenCalledWith('/tools?category=workflow')
-    })
-  })
-
   // Mutation handlers
   describe('handleCreate', () => {
-    it('should create provider, invalidate caches, refresh, and close modal', async () => {
+    it('should create provider, invalidate caches, refresh, and notify configured', async () => {
       mockCreateWorkflowToolProvider.mockResolvedValue({})
       const onRefreshData = vi.fn()
-      const { result } = renderHook(() => useConfigureButton(createDefaultOptions({ onRefreshData })))
-
-      act(() => {
-        result.current.openModal()
-      })
+      const onConfigured = vi.fn()
+      const { result } = renderHook(() => useConfigureButton(createDefaultOptions({ onRefreshData, onConfigured })))
 
       await act(async () => {
         await result.current.handleCreate(createMockRequest({ workflow_app_id: 'app-123' }) as WorkflowToolProviderRequest & { workflow_app_id: string })
@@ -398,7 +366,7 @@ describe('useConfigureButton', () => {
       expect(onRefreshData).toHaveBeenCalled()
       expect(mockInvalidateWorkflowToolDetailByAppID).toHaveBeenCalledWith('app-123')
       expect(mockToastNotify).toHaveBeenCalledWith({ type: 'success', message: expect.any(String) })
-      expect(result.current.showModal).toBe(false)
+      expect(onConfigured).toHaveBeenCalled()
     })
 
     it('should show error toast on failure', async () => {
@@ -414,19 +382,17 @@ describe('useConfigureButton', () => {
   })
 
   describe('handleUpdate', () => {
-    it('should publish, save, invalidate caches, and close modal', async () => {
+    it('should publish, save, invalidate caches, and notify configured', async () => {
       mockSaveWorkflowToolProvider.mockResolvedValue({})
       const handlePublish = vi.fn().mockResolvedValue(undefined)
       const onRefreshData = vi.fn()
+      const onConfigured = vi.fn()
       const { result } = renderHook(() => useConfigureButton(createDefaultOptions({
         published: true,
         handlePublish,
         onRefreshData,
+        onConfigured,
       })))
-
-      act(() => {
-        result.current.openModal()
-      })
 
       await act(async () => {
         await result.current.handleUpdate(createMockRequest({ workflow_tool_id: 'tool-456' }) as WorkflowToolProviderRequest & Partial<{ workflow_app_id: string, workflow_tool_id: string }>)
@@ -437,7 +403,7 @@ describe('useConfigureButton', () => {
       expect(onRefreshData).toHaveBeenCalled()
       expect(mockInvalidateAllWorkflowTools).toHaveBeenCalled()
       expect(mockInvalidateWorkflowToolDetailByAppID).toHaveBeenCalledWith('app-123')
-      expect(result.current.showModal).toBe(false)
+      expect(onConfigured).toHaveBeenCalled()
     })
 
     it('should show error toast when publish fails', async () => {
@@ -488,6 +454,16 @@ describe('useConfigureButton', () => {
       )
 
       rerender({ ...options })
+
+      expect(mockInvalidateWorkflowToolDetailByAppID).not.toHaveBeenCalled()
+    })
+
+    it('should not invalidate detail while disabled', () => {
+      renderHook(() => useConfigureButton(createDefaultOptions({
+        enabled: false,
+        published: true,
+        detailNeedUpdate: true,
+      })))
 
       expect(mockInvalidateWorkflowToolDetailByAppID).not.toHaveBeenCalled()
     })

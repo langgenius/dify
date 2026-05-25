@@ -44,7 +44,7 @@ const AnnotationCtrlButton: FC<Props> = ({ cached, query, answer, appId, message
           <TooltipTrigger
             render={(
               <ActionButton onClick={onEdit}>
-                <RiEditLine className="h-4 w-4" />
+                <RiEditLine className="size-4" />
               </ActionButton>
             )}
           />
@@ -58,7 +58,7 @@ const AnnotationCtrlButton: FC<Props> = ({ cached, query, answer, appId, message
           <TooltipTrigger
             render={(
               <ActionButton onClick={handleAdd}>
-                <RiFileEditLine className="h-4 w-4" />
+                <RiFileEditLine className="size-4" />
               </ActionButton>
             )}
           />

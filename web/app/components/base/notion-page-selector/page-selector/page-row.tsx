@@ -1,12 +1,12 @@
 import type { CSSProperties } from 'react'
 import type { NotionPageRow as NotionPageRowData, NotionPageSelectionMode } from './types'
+import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Radio } from '@langgenius/dify-ui/radio'
 import { RiArrowDownSLine, RiArrowRightSLine } from '@remixicon/react'
 import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
-import Checkbox from '@/app/components/base/checkbox'
 import NotionIcon from '@/app/components/base/notion-icon'
-import Radio from '@/app/components/base/radio/ui'
 
 type NotionPageRowProps = {
   checked: boolean
@@ -51,32 +51,32 @@ const NotionPageRow = ({
               className="mr-2 shrink-0"
               checked={checked}
               disabled={disabled}
-              onCheck={() => onSelect(pageId)}
-              id={`notion-page-checkbox-${pageId}`}
+              aria-label={row.page.page_name}
+              onCheckedChange={() => onSelect(pageId)}
             />
           )
         : (
             <Radio
               className="mr-2 shrink-0"
-              isChecked={checked}
+              value={pageId}
               disabled={disabled}
-              onCheck={() => onSelect(pageId)}
+              aria-label={row.page.page_name}
             />
           )}
       {!searchValue && row.hasChild && (
         <div
-          className="mr-1 flex h-5 w-5 shrink-0 items-center justify-center rounded-md hover:bg-components-button-ghost-bg-hover"
+          className="mr-1 flex size-5 shrink-0 items-center justify-center rounded-md hover:bg-components-button-ghost-bg-hover"
           style={{ marginLeft: row.depth * 8 }}
           onClick={() => onToggle(pageId)}
           data-testid={`notion-page-toggle-${pageId}`}
         >
           {row.expand
-            ? <RiArrowDownSLine className="h-4 w-4 text-text-tertiary" />
-            : <RiArrowRightSLine className="h-4 w-4 text-text-tertiary" />}
+            ? <RiArrowDownSLine className="size-4 text-text-tertiary" />
+            : <RiArrowRightSLine className="size-4 text-text-tertiary" />}
         </div>
       )}
       {!searchValue && !row.hasChild && row.parentExists && (
-        <div className="mr-1 h-5 w-5 shrink-0" style={{ marginLeft: row.depth * 8 }} />
+        <div className="mr-1 size-5 shrink-0" style={{ marginLeft: row.depth * 8 }} />
       )}
       <NotionIcon
         className="mr-1 shrink-0"

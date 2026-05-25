@@ -195,10 +195,10 @@ describe('AppIconPicker', () => {
       const { onSelect } = renderPicker()
 
       await waitFor(() => {
-        expect(screen.queryAllByTestId(/emoji-container-/i).length).toBeGreaterThan(0)
+        expect(document.querySelector('em-emoji')?.closest('button'))!.toBeInTheDocument()
       })
 
-      const firstEmoji = screen.queryAllByTestId(/emoji-container-/i)[0]
+      const firstEmoji = document.querySelector('em-emoji')?.closest('button')
       if (!firstEmoji)
         throw new Error('Could not find emoji option')
 

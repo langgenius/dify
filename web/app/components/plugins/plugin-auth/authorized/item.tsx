@@ -1,6 +1,7 @@
 import type { Credential } from '../types'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import { StatusDot } from '@langgenius/dify-ui/status-dot'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import {
   RiCheckLine,
@@ -17,7 +18,6 @@ import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
 import Badge from '@/app/components/base/badge'
 import Input from '@/app/components/base/input'
-import Indicator from '@/app/components/header/indicator'
 import { CredentialTypeEnum } from '../types'
 
 type ItemProps = {
@@ -117,18 +117,18 @@ const Item = ({
           <div className="flex w-0 grow items-center space-x-1.5">
             {
               showSelectedIcon && (
-                <div className="h-4 w-4">
+                <div className="size-4">
                   {
                     selectedCredentialId === credential.id && (
-                      <RiCheckLine className="h-4 w-4 text-text-accent" />
+                      <RiCheckLine className="size-4 text-text-accent" />
                     )
                   }
                 </div>
               )
             }
-            <Indicator
+            <StatusDot
               className="mr-1.5 ml-2 shrink-0"
-              color={credential.not_allowed_to_use ? 'gray' : 'green'}
+              status={credential.not_allowed_to_use ? 'disabled' : 'success'}
             />
             <div
               className="truncate system-md-regular text-text-secondary"
@@ -183,7 +183,7 @@ const Item = ({
                           setRenameValue(credential.name)
                         }}
                       >
-                        <RiEditLine className="h-4 w-4 text-text-tertiary" />
+                        <RiEditLine className="size-4 text-text-tertiary" />
                       </ActionButton>
                     )}
                   />
@@ -212,7 +212,7 @@ const Item = ({
                           )
                         }}
                       >
-                        <RiEqualizer2Line className="h-4 w-4 text-text-tertiary" />
+                        <RiEqualizer2Line className="size-4 text-text-tertiary" />
                       </ActionButton>
                     )}
                   />
@@ -235,7 +235,7 @@ const Item = ({
                           onDelete?.(credential.id)
                         }}
                       >
-                        <RiDeleteBinLine className="h-4 w-4 text-text-tertiary hover:text-text-destructive" />
+                        <RiDeleteBinLine className="size-4 text-text-tertiary hover:text-text-destructive" />
                       </ActionButton>
                     )}
                   />

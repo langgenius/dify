@@ -7,7 +7,7 @@ from datetime import UTC, datetime, timedelta
 from hashlib import sha256
 from typing import Any, TypedDict, cast
 
-from pydantic import BaseModel, TypeAdapter
+from pydantic import BaseModel, TypeAdapter, ValidationError
 from sqlalchemy import delete, func, select, update
 
 from core.db.session_factory import session_factory
@@ -29,6 +29,7 @@ from extensions.ext_database import db
 from extensions.ext_redis import redis_client, redis_fallback
 from libs.datetime_utils import naive_utc_now
 from libs.helper import RateLimiter, TokenManager
+from libs.helper import timezone as validate_timezone
 from libs.passport import PassportService
 from libs.password import compare_password, hash_password, valid_password
 from libs.rsa import generate_key_pair
@@ -45,6 +46,12 @@ from models.account import (
 )
 from models.model import DifySetup
 from services.billing_service import BillingService
+from services.entities.auth_entities import (
+    ChangeEmailNewEmailToken,
+    ChangeEmailOldEmailToken,
+    ChangeEmailPhase,
+    ChangeEmailTokenData,
+)
 from services.errors.account import (
     AccountAlreadyInTenantError,
     AccountLoginError,
@@ -83,6 +90,8 @@ from tasks.mail_reset_password_task import (
 
 logger = logging.getLogger(__name__)
 
+_change_email_token_adapter: TypeAdapter[ChangeEmailTokenData] = TypeAdapter(ChangeEmailTokenData)
+
 
 class InvitationDetailDict(TypedDict):
     account: Account
@@ -112,13 +121,10 @@ REFRESH_TOKEN_EXPIRY = timedelta(days=dify_config.REFRESH_TOKEN_EXPIRE_DAYS)
 
 
 class AccountService:
-    # Phase-bound token metadata for the change-email flow. Tokens carry the
-    # current phase so that downstream endpoints can enforce proper progression
-    CHANGE_EMAIL_TOKEN_PHASE_KEY = "email_change_phase"
-    CHANGE_EMAIL_PHASE_OLD = "old_email"
-    CHANGE_EMAIL_PHASE_OLD_VERIFIED = "old_email_verified"
-    CHANGE_EMAIL_PHASE_NEW = "new_email"
-    CHANGE_EMAIL_PHASE_NEW_VERIFIED = "new_email_verified"
+    CHANGE_EMAIL_PHASE_OLD = ChangeEmailPhase.OLD_EMAIL
+    CHANGE_EMAIL_PHASE_OLD_VERIFIED = ChangeEmailPhase.OLD_EMAIL_VERIFIED
+    CHANGE_EMAIL_PHASE_NEW = ChangeEmailPhase.NEW_EMAIL
+    CHANGE_EMAIL_PHASE_NEW_VERIFIED = ChangeEmailPhase.NEW_EMAIL_VERIFIED
 
     reset_password_rate_limiter = RateLimiter(prefix="reset_password_rate_limit", max_attempts=1, time_window=60 * 1)
     email_register_rate_limiter = RateLimiter(prefix="email_register_rate_limit", max_attempts=1, time_window=60 * 1)
@@ -271,8 +277,9 @@ class AccountService:
         password: str | None = None,
         interface_theme: str = "light",
         is_setup: bool | None = False,
+        timezone: str | None = None,
     ) -> Account:
-        """create account"""
+        """Create an account, preferring explicit user timezone over language-derived defaults."""
         if not FeatureService.get_system_features().is_allow_register and not is_setup:
             from controllers.console.error import AccountNotFound
 
@@ -302,6 +309,10 @@ class AccountService:
             password_to_set = base64_password_hashed
             salt_to_set = base64_salt
 
+        resolved_timezone = language_timezone_mapping.get(interface_language, "UTC")
+        if timezone is not None:
+            resolved_timezone = validate_timezone(timezone)
+
         account = Account(
             name=name,
             email=email,
@@ -309,7 +320,7 @@ class AccountService:
             password_salt=salt_to_set,
             interface_language=interface_language,
             interface_theme=interface_theme,
-            timezone=language_timezone_mapping.get(interface_language, "UTC"),
+            timezone=resolved_timezone,
         )
 
         db.session.add(account)
@@ -318,11 +329,15 @@ class AccountService:
 
     @staticmethod
     def create_account_and_tenant(
-        email: str, name: str, interface_language: str, password: str | None = None
+        email: str, name: str, interface_language: str, password: str | None = None, timezone: str | None = None
     ) -> Account:
-        """create account"""
+        """Create an account and owner workspace."""
         account = AccountService.create_account(
-            email=email, name=name, interface_language=interface_language, password=password
+            email=email,
+            name=name,
+            interface_language=interface_language,
+            password=password,
+            timezone=timezone,
         )
 
         try:
@@ -573,31 +588,42 @@ class AccountService:
     @classmethod
     def send_change_email_email(
         cls,
-        account: Account | None = None,
+        account: Account,
         email: str | None = None,
         old_email: str | None = None,
         language: str = "en-US",
         phase: str | None = None,
     ):
-        account_email = account.email if account else email
-        if account_email is None:
-            raise ValueError("Email must be provided.")
+        account_email = email if email is not None else account.email
         if not phase:
             raise ValueError("phase must be provided.")
         if phase not in (cls.CHANGE_EMAIL_PHASE_OLD, cls.CHANGE_EMAIL_PHASE_NEW):
             raise ValueError("phase must be one of old_email or new_email.")
+        if old_email is None:
+            raise ValueError("old_email must be provided.")
 
         if cls.change_email_rate_limiter.is_rate_limited(account_email):
             from controllers.console.auth.error import EmailChangeRateLimitExceededError
 
             raise EmailChangeRateLimitExceededError(int(cls.change_email_rate_limiter.time_window / 60))
 
-        code, token = cls.generate_change_email_token(
-            account_email,
-            account,
-            old_email=old_email,
-            additional_data={cls.CHANGE_EMAIL_TOKEN_PHASE_KEY: phase},
-        )
+        code = "".join([str(secrets.randbelow(exclusive_upper_bound=10)) for _ in range(6)])
+        token_data: ChangeEmailTokenData
+        if phase == cls.CHANGE_EMAIL_PHASE_OLD:
+            token_data = ChangeEmailOldEmailToken(
+                account_id=account.id,
+                email=account_email,
+                old_email=old_email,
+                code=code,
+            )
+        else:
+            token_data = ChangeEmailNewEmailToken(
+                account_id=account.id,
+                email=account_email,
+                old_email=old_email,
+                code=code,
+            )
+        token = cls.generate_change_email_token(token_data, account)
 
         send_change_mail_task.delay(
             language=language,
@@ -725,20 +751,16 @@ class AccountService:
     @classmethod
     def generate_change_email_token(
         cls,
-        email: str,
-        account: Account | None = None,
-        code: str | None = None,
-        old_email: str | None = None,
-        additional_data: dict[str, Any] = {},
-    ):
-        if not code:
-            code = "".join([str(secrets.randbelow(exclusive_upper_bound=10)) for _ in range(6)])
-        additional_data["code"] = code
-        additional_data["old_email"] = old_email
+        token_data: ChangeEmailTokenData,
+        account: Account,
+    ) -> str:
         token = TokenManager.generate_token(
-            account=account, email=email, token_type="change_email", additional_data=additional_data
+            account=account,
+            email=token_data.email,
+            token_type="change_email",
+            additional_data=token_data.to_token_manager_payload(),
         )
-        return code, token
+        return token
 
     @classmethod
     def generate_owner_transfer_token(
@@ -781,8 +803,15 @@ class AccountService:
         return TokenManager.get_token_data(token, "email_register")
 
     @classmethod
-    def get_change_email_data(cls, token: str) -> dict[str, Any] | None:
-        return TokenManager.get_token_data(token, "change_email")
+    def get_change_email_data(cls, token: str) -> ChangeEmailTokenData | None:
+        token_data = TokenManager.get_token_data(token, "change_email")
+        if token_data is None:
+            return None
+        try:
+            return _change_email_token_adapter.validate_python(token_data)
+        except ValidationError:
+            logger.warning("change_email token %s has invalid payload", token, exc_info=True)
+            return None
 
     @classmethod
     def get_owner_transfer_data(cls, token: str) -> dict[str, Any] | None:
@@ -1280,8 +1309,8 @@ class TenantService:
         """Check member permission"""
         perms = {
             "add": [TenantAccountRole.OWNER, TenantAccountRole.ADMIN],
-            "remove": [TenantAccountRole.OWNER],
-            "update": [TenantAccountRole.OWNER],
+            "remove": [TenantAccountRole.OWNER, TenantAccountRole.ADMIN],
+            "update": [TenantAccountRole.OWNER, TenantAccountRole.ADMIN],
         }
         if action not in {"add", "remove", "update"}:
             raise InvalidActionError("Invalid action.")
@@ -1298,6 +1327,15 @@ class TenantService:
 
         if not ta_operator or ta_operator.role not in perms[action]:
             raise NoPermissionError(f"No permission to {action} member.")
+
+        if action == "remove" and ta_operator.role == TenantAccountRole.ADMIN and member:
+            ta_member = db.session.scalar(
+                select(TenantAccountJoin)
+                .where(TenantAccountJoin.tenant_id == tenant.id, TenantAccountJoin.account_id == member.id)
+                .limit(1)
+            )
+            if ta_member and ta_member.role == TenantAccountRole.OWNER:
+                raise NoPermissionError(f"No permission to {action} member.")
 
     @staticmethod
     def remove_member_from_tenant(tenant: Tenant, account: Account, operator: Account):
@@ -1370,6 +1408,7 @@ class TenantService:
     def update_member_role(tenant: Tenant, member: Account, new_role: str, operator: Account):
         """Update member role"""
         TenantService.check_member_permission(tenant, operator, member, "update")
+        new_tenant_role = TenantAccountRole(new_role)
 
         target_member_join = db.session.scalar(
             select(TenantAccountJoin)
@@ -1379,6 +1418,11 @@ class TenantService:
 
         if not target_member_join:
             raise MemberNotInTenantError("Member not in tenant.")
+
+        operator_role = TenantService.get_user_role(operator, tenant)
+        target_role = TenantAccountRole(target_member_join.role)
+        if operator_role == TenantAccountRole.ADMIN and (TenantAccountRole.OWNER in {target_role, new_tenant_role}):
+            raise NoPermissionError("No permission to update member.")
 
         if target_member_join.role == new_role:
             raise RoleAlreadyAssignedError("The provided role is already assigned to the member.")
@@ -1394,7 +1438,7 @@ class TenantService:
                 current_owner_join.role = TenantAccountRole.ADMIN
 
         # Update the role of the target member
-        target_member_join.role = TenantAccountRole(new_role)
+        target_member_join.role = new_tenant_role
         db.session.commit()
 
     @staticmethod
@@ -1459,8 +1503,8 @@ class RegisterService:
     @classmethod
     def register(
         cls,
-        email,
-        name,
+        email: str,
+        name: str,
         password: str | None = None,
         open_id: str | None = None,
         provider: str | None = None,
@@ -1468,16 +1512,19 @@ class RegisterService:
         status: AccountStatus | None = None,
         is_setup: bool | None = False,
         create_workspace_required: bool | None = True,
+        timezone: str | None = None,
     ) -> Account:
-        db.session.begin_nested()
         """Register account"""
+        db.session.begin_nested()
         try:
+            interface_language = get_valid_language(language)
             account = AccountService.create_account(
                 email=email,
                 name=name,
-                interface_language=get_valid_language(language),
+                interface_language=interface_language,
                 password=password,
                 is_setup=is_setup,
+                timezone=timezone,
             )
             account.status = status or AccountStatus.ACTIVE
             account.initialized_at = naive_utc_now()

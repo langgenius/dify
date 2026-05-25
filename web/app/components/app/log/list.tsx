@@ -9,6 +9,15 @@ import {
   HandThumbUpIcon,
 } from '@heroicons/react/24/outline'
 import { cn } from '@langgenius/dify-ui/cn'
+import {
+  Drawer,
+  DrawerBackdrop,
+  DrawerContent,
+  DrawerPopup,
+  DrawerPortal,
+  DrawerViewport,
+} from '@langgenius/dify-ui/drawer'
+import { StatusDot } from '@langgenius/dify-ui/status-dot'
 import { toast } from '@langgenius/dify-ui/toast'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { RiCloseLine, RiEditFill } from '@remixicon/react'
@@ -28,7 +37,6 @@ import TextGeneration from '@/app/components/app/text-generate/item'
 import ActionButton from '@/app/components/base/action-button'
 import Chat from '@/app/components/base/chat/chat'
 import CopyIcon from '@/app/components/base/copy-icon'
-import Drawer from '@/app/components/base/drawer'
 import Loading from '@/app/components/base/loading'
 import MessageLogModal from '@/app/components/base/message-log-modal'
 import { WorkflowContextProvider } from '@/app/components/workflow/context'
@@ -40,7 +48,6 @@ import { AppSourceType } from '@/service/share'
 import { useChatConversationDetail, useCompletionConversationDetail } from '@/service/use-log'
 import { AppModeEnum } from '@/types/app'
 import PromptLogModal from '../../base/prompt-log-modal'
-import Indicator from '../../header/indicator'
 import {
   applyAnnotationAdded,
   applyAnnotationEdited,
@@ -94,7 +101,7 @@ const HandThumbIconWithCount: FC<{ count: number, iconType: 'up' | 'down' }> = (
   const Icon = iconType === 'up' ? HandThumbUpIcon : HandThumbDownIcon
   return (
     <div className={`inline-flex w-fit items-center rounded-md p-1 text-xs ${classname} mr-1 last:mr-0`}>
-      <Icon className="mr-0.5 h-3 w-3 rounded-md" />
+      <Icon className="mr-0.5 size-3 rounded-md" />
       {count > 0 ? count : null}
     </div>
   )
@@ -107,7 +114,7 @@ const statusTdRender = (statusCount: StatusCount) => {
   if (statusCount.paused > 0) {
     return (
       <div className="inline-flex items-center gap-1 system-xs-semibold-uppercase">
-        <Indicator color="yellow" />
+        <StatusDot status="warning" />
         <span className="text-util-colors-warning-warning-600">Pending</span>
       </div>
     )
@@ -115,7 +122,7 @@ const statusTdRender = (statusCount: StatusCount) => {
   else if (statusCount.partial_success + statusCount.failed === 0) {
     return (
       <div className="inline-flex items-center gap-1 system-xs-semibold-uppercase">
-        <Indicator color="green" />
+        <StatusDot status="success" />
         <span className="text-util-colors-green-green-600">Success</span>
       </div>
     )
@@ -123,7 +130,7 @@ const statusTdRender = (statusCount: StatusCount) => {
   else if (statusCount.failed === 0) {
     return (
       <div className="inline-flex items-center gap-1 system-xs-semibold-uppercase">
-        <Indicator color="green" />
+        <StatusDot status="success" />
         <span className="text-util-colors-green-green-600">Partial Success</span>
       </div>
     )
@@ -131,7 +138,7 @@ const statusTdRender = (statusCount: StatusCount) => {
   else {
     return (
       <div className="inline-flex items-center gap-1 system-xs-semibold-uppercase">
-        <Indicator color="red" />
+        <StatusDot status="error" />
         <span className="text-util-colors-red-red-600">
           {statusCount.failed}
           {' '}
@@ -429,8 +436,8 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
         <div className="flex grow flex-wrap items-center justify-end gap-y-1">
           {!isAdvanced && <ModelInfo model={detail.model_config.model} />}
         </div>
-        <ActionButton size="l" onClick={onClose}>
-          <RiCloseLine className="h-4 w-4 text-text-tertiary" />
+        <ActionButton size="l" aria-label={t('operation.close', { ns: 'common' })} onClick={onClose}>
+          <RiCloseLine className="size-4 text-text-tertiary" />
         </ActionButton>
       </div>
       {/* Panel Body */}
@@ -777,14 +784,14 @@ const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh })
       <Tooltip>
         <TooltipTrigger
           render={(
-            <div className={cn(isEmptyStyle ? 'text-text-quaternary' : 'text-text-secondary', !isHighlight ? '' : 'bg-orange-100', 'overflow-hidden system-sm-regular text-ellipsis whitespace-nowrap')}>
+            <div className={cn(isEmptyStyle ? 'text-text-quaternary' : 'text-text-secondary', !isHighlight ? '' : 'bg-orange-100', 'truncate system-sm-regular')}>
               {value || '-'}
             </div>
           )}
         />
         <TooltipContent className={(isHighlight && !isChatMode) ? '' : 'hidden!'}>
           <span className="inline-flex items-center text-xs text-text-tertiary">
-            <RiEditFill className="mr-1 h-3 w-3" />
+            <RiEditFill className="mr-1 size-3" />
             {`${t('detail.annotationTip', { ns: 'appLog', user: annotation?.account?.name })} ${formatTime(annotation?.created_at || dayjs().unix(), 'MM-DD hh:mm A')}`}
           </span>
         </TooltipContent>
@@ -828,7 +835,7 @@ const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh })
                 <td className="h-4">
                   {!log.read_at && (
                     <div className="flex items-center p-3 pr-0.5">
-                      <span className="inline-block h-1.5 w-1.5 rounded-sm bg-util-colors-blue-blue-500"></span>
+                      <span className="inline-block size-1.5 rounded-sm bg-util-colors-blue-blue-500"></span>
                     </div>
                   )}
                 </td>
@@ -872,21 +879,32 @@ const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh })
         </tbody>
       </table>
       <Drawer
-        isOpen={showDrawer}
-        onClose={onCloseDrawer}
-        mask={isMobile}
-        footer={null}
-        panelClassName="mt-16 mx-2 sm:mr-2 mb-4 p-0! max-w-[640px]! rounded-xl bg-components-panel-bg"
-      >
-        <DrawerContext.Provider value={{
-          onClose: onCloseDrawer,
-          appDetail,
+        open={showDrawer}
+        modal
+        swipeDirection="right"
+        onOpenChange={(open) => {
+          if (!open)
+            onCloseDrawer()
         }}
-        >
-          {isChatMode
-            ? <ChatConversationDetailComp appId={appDetail.id} conversationId={currentConversation?.id} />
-            : <CompletionConversationDetailComp appId={appDetail.id} conversationId={currentConversation?.id} />}
-        </DrawerContext.Provider>
+      >
+        <DrawerPortal>
+          <DrawerBackdrop className={cn(!isMobile && 'bg-transparent')} />
+          <DrawerViewport>
+            <DrawerPopup className="bg-components-panel-bg p-0! data-[swipe-direction=right]:top-16 data-[swipe-direction=right]:right-2 data-[swipe-direction=right]:bottom-4 data-[swipe-direction=right]:h-auto data-[swipe-direction=right]:w-full data-[swipe-direction=right]:max-w-[640px] data-[swipe-direction=right]:rounded-xl">
+              <DrawerContent className="flex min-h-0 flex-1 flex-col p-0 pb-0">
+                <DrawerContext.Provider value={{
+                  onClose: onCloseDrawer,
+                  appDetail,
+                }}
+                >
+                  {isChatMode
+                    ? <ChatConversationDetailComp appId={appDetail.id} conversationId={currentConversation?.id} />
+                    : <CompletionConversationDetailComp appId={appDetail.id} conversationId={currentConversation?.id} />}
+                </DrawerContext.Provider>
+              </DrawerContent>
+            </DrawerPopup>
+          </DrawerViewport>
+        </DrawerPortal>
       </Drawer>
     </div>
   )

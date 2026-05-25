@@ -5,10 +5,6 @@
   "private": true,
   "exports": {
     "./styles.css": "./src/styles/styles.css",
-    "./tailwind-preset": {
-      "types": "./src/tailwind-preset.ts",
-      "import": "./src/tailwind-preset.ts"
-    },
     "./cn": {
       "types": "./src/cn.ts",
       "import": "./src/cn.ts"
@@ -16,6 +12,10 @@
     "./alert-dialog": {
       "types": "./src/alert-dialog/index.tsx",
       "import": "./src/alert-dialog/index.tsx"
+    },
+    "./autocomplete": {
+      "types": "./src/autocomplete/index.tsx",
+      "import": "./src/autocomplete/index.tsx"
     },
     "./avatar": {
       "types": "./src/avatar/index.tsx",
@@ -25,6 +25,18 @@
       "types": "./src/button/index.tsx",
       "import": "./src/button/index.tsx"
     },
+    "./checkbox": {
+      "types": "./src/checkbox/index.tsx",
+      "import": "./src/checkbox/index.tsx"
+    },
+    "./checkbox-group": {
+      "types": "./src/checkbox-group/index.tsx",
+      "import": "./src/checkbox-group/index.tsx"
+    },
+    "./combobox": {
+      "types": "./src/combobox/index.tsx",
+      "import": "./src/combobox/index.tsx"
+    },
     "./context-menu": {
       "types": "./src/context-menu/index.tsx",
       "import": "./src/context-menu/index.tsx"
@@ -33,17 +45,53 @@
       "types": "./src/dialog/index.tsx",
       "import": "./src/dialog/index.tsx"
     },
+    "./drawer": {
+      "types": "./src/drawer/index.tsx",
+      "import": "./src/drawer/index.tsx"
+    },
     "./dropdown-menu": {
       "types": "./src/dropdown-menu/index.tsx",
       "import": "./src/dropdown-menu/index.tsx"
+    },
+    "./field": {
+      "types": "./src/field/index.tsx",
+      "import": "./src/field/index.tsx"
+    },
+    "./fieldset": {
+      "types": "./src/fieldset/index.tsx",
+      "import": "./src/fieldset/index.tsx"
+    },
+    "./form": {
+      "types": "./src/form/index.tsx",
+      "import": "./src/form/index.tsx"
+    },
+    "./input": {
+      "types": "./src/input/index.tsx",
+      "import": "./src/input/index.tsx"
     },
     "./meter": {
       "types": "./src/meter/index.tsx",
       "import": "./src/meter/index.tsx"
     },
+    "./progress": {
+      "types": "./src/progress/index.tsx",
+      "import": "./src/progress/index.tsx"
+    },
     "./number-field": {
       "types": "./src/number-field/index.tsx",
       "import": "./src/number-field/index.tsx"
+    },
+    "./pagination": {
+      "types": "./src/pagination/index.tsx",
+      "import": "./src/pagination/index.tsx"
+    },
+    "./radio": {
+      "types": "./src/radio/index.tsx",
+      "import": "./src/radio/index.tsx"
+    },
+    "./radio-group": {
+      "types": "./src/radio-group/index.tsx",
+      "import": "./src/radio-group/index.tsx"
     },
     "./popover": {
       "types": "./src/popover/index.tsx",
@@ -61,6 +109,10 @@
       "types": "./src/select/index.tsx",
       "import": "./src/select/index.tsx"
     },
+    "./status-dot": {
+      "types": "./src/status-dot/index.tsx",
+      "import": "./src/status-dot/index.tsx"
+    },
     "./slider": {
       "types": "./src/slider/index.tsx",
       "import": "./src/slider/index.tsx"
@@ -68,6 +120,14 @@
     "./switch": {
       "types": "./src/switch/index.tsx",
       "import": "./src/switch/index.tsx"
+    },
+    "./segmented-control": {
+      "types": "./src/segmented-control/index.tsx",
+      "import": "./src/segmented-control/index.tsx"
+    },
+    "./tabs": {
+      "types": "./src/tabs/index.tsx",
+      "import": "./src/tabs/index.tsx"
     },
     "./toast": {
       "types": "./src/toast/index.tsx",
@@ -107,6 +167,7 @@
     "@storybook/addon-themes": "catalog:",
     "@storybook/react-vite": "catalog:",
     "@tailwindcss/vite": "catalog:",
+    "@tanstack/react-virtual": "catalog:",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
     "@typescript/native-preview": "catalog:",

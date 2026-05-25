@@ -1,6 +1,6 @@
 'use client'
 import type { FC } from 'react'
-import type { MetadataItemWithValue } from '../types'
+import type { BuiltInMetadataItem, MetadataItemWithValue } from '../types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { RiDeleteBinLine } from '@remixicon/react'
 import * as React from 'react'
@@ -9,9 +9,8 @@ import Divider from '@/app/components/base/divider'
 import { Infotip } from '@/app/components/base/infotip'
 import useTimestamp from '@/hooks/use-timestamp'
 import { useRouter } from '@/next/navigation'
-import AddMetadataButton from '../add-metadata-button'
 import InputCombined from '../edit-metadata-batch/input-combined'
-import SelectMetadataModal from '../metadata-dataset/select-metadata-modal'
+import { DatasetMetadataPicker } from '../metadata-dataset/dataset-metadata-picker'
 import { DataType, isShowManageMetadataLocalStorageKey } from '../types'
 import Field from './field'
 
@@ -29,7 +28,7 @@ type Props = {
   onChange?: (item: MetadataItemWithValue) => void
   onDelete?: (item: MetadataItemWithValue) => void
   onSelect?: (item: MetadataItemWithValue) => void
-  onAdd?: (item: MetadataItemWithValue) => void
+  onAdd?: (item: BuiltInMetadataItem) => void
 }
 
 const InfoGroup: FC<Props> = ({
@@ -76,14 +75,11 @@ const InfoGroup: FC<Props> = ({
       <div className={cn('mt-3 space-y-1', contentClassName)}>
         {isEdit && (
           <div>
-            <SelectMetadataModal
+            <DatasetMetadataPicker
               datasetId={dataSetId}
-              trigger={
-                <AddMetadataButton />
-              }
-              onSelect={data => onSelect?.(data as MetadataItemWithValue)}
-              onSave={data => onAdd?.(data)}
-              onManage={handleMangeMetadata}
+              onSelectMetadata={data => onSelect?.(data as MetadataItemWithValue)}
+              onCreateMetadata={data => onAdd?.(data)}
+              onOpenMetadataManagement={handleMangeMetadata}
             />
             {list.length > 0 && <Divider className="my-3" bgStyle="gradient" />}
           </div>
@@ -95,13 +91,19 @@ const InfoGroup: FC<Props> = ({
                   <div className="flex items-center space-x-0.5">
                     <InputCombined
                       className="h-6"
+                      label={item.name}
                       type={item.type}
                       value={item.value}
                       onChange={value => onChange?.({ ...item, value })}
                     />
-                    <div className="shrink-0 cursor-pointer rounded-md p-1 text-text-tertiary hover:bg-state-destructive-hover hover:text-text-destructive">
-                      <RiDeleteBinLine className="size-4" onClick={() => onDelete?.(item)} />
-                    </div>
+                    <button
+                      type="button"
+                      aria-label={t('operation.remove', { ns: 'common' })}
+                      className="shrink-0 cursor-pointer rounded-md border-none bg-transparent p-1 text-text-tertiary hover:bg-state-destructive-hover hover:text-text-destructive focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
+                      onClick={() => onDelete?.(item)}
+                    >
+                      <RiDeleteBinLine className="size-4" aria-hidden="true" />
+                    </button>
                   </div>
                 )
               : (<div className="py-1 system-xs-regular text-text-secondary">{(item.value && item.type === DataType.time) ? formatTimestamp((item.value as number), t('metadata.dateTimeFormat', { ns: 'datasetDocuments' })) : item.value}</div>)}

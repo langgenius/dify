@@ -336,7 +336,7 @@ export const useInstallOrUpdate = ({
           }
           if (item.type === 'marketplace') {
             const data = item as GitHubItemAndMarketPlaceDependency
-            uniqueIdentifier = data.value.marketplace_plugin_unique_identifier! || plugin[i]?.plugin_id!
+            uniqueIdentifier = data.value.marketplace_plugin_unique_identifier! || (plugin[i]?.latest_package_identifier ?? '') || (plugin[i]?.plugin_id ?? '')
             if (uniqueIdentifier === installedPayload?.uniqueIdentifier) {
               return {
                 status: TaskStatus.success,
@@ -565,15 +565,6 @@ export const usePluginManifestInfo = (pluginUID: string) => {
     enabled: !!pluginUID,
     queryKey: [NAME_SPACE, 'manifest', pluginUID],
     queryFn: () => getMarketplace<{ data: { plugin: PluginInfoFromMarketPlace, version: { version: string } } }>(`/plugins/${pluginUID}`),
-    retry: 0,
-  })
-}
-
-export const useDownloadPlugin = (info: { organization: string, pluginName: string, version: string }, needDownload: boolean) => {
-  return useQuery({
-    queryKey: [NAME_SPACE, 'downloadPlugin', info],
-    queryFn: () => getMarketplace<Blob>(`/plugins/${info.organization}/${info.pluginName}/${info.version}/download`),
-    enabled: needDownload,
     retry: 0,
   })
 }

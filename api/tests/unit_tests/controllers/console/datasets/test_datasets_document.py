@@ -2,6 +2,7 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 import pytest
+from flask import Flask
 from werkzeug.exceptions import Forbidden, NotFound
 
 import services
@@ -94,7 +95,7 @@ def patch_permission():
 
 
 class TestGetProcessRuleApi:
-    def test_get_default_success(self, app, patch_tenant):
+    def test_get_default_success(self, app: Flask, patch_tenant):
         api = GetProcessRuleApi()
         method = unwrap(api.get)
 
@@ -103,7 +104,7 @@ class TestGetProcessRuleApi:
 
         assert "rules" in response
 
-    def test_get_with_document_dataset_not_found(self, app, patch_tenant):
+    def test_get_with_document_dataset_not_found(self, app: Flask, patch_tenant):
         api = GetProcessRuleApi()
         method = unwrap(api.get)
 
@@ -125,7 +126,7 @@ class TestGetProcessRuleApi:
 
 
 class TestDatasetDocumentListApi:
-    def test_get_with_fetch_true_counts_segments(self, app, patch_tenant, patch_dataset, patch_permission):
+    def test_get_with_fetch_true_counts_segments(self, app: Flask, patch_tenant, patch_dataset, patch_permission):
         api = DatasetDocumentListApi()
         method = unwrap(api.get)
 
@@ -157,7 +158,9 @@ class TestDatasetDocumentListApi:
 
         assert resp["data"]
 
-    def test_get_with_search_status_and_created_at_sort(self, app, patch_tenant, patch_dataset, patch_permission):
+    def test_get_with_search_status_and_created_at_sort(
+        self, app: Flask, patch_tenant, patch_dataset, patch_permission
+    ):
         api = DatasetDocumentListApi()
         method = unwrap(api.get)
 
@@ -186,7 +189,7 @@ class TestDatasetDocumentListApi:
 
         assert resp["total"] == 1
 
-    def test_get_success(self, app, patch_tenant, patch_dataset, patch_permission):
+    def test_get_success(self, app: Flask, patch_tenant, patch_dataset, patch_permission):
         api = DatasetDocumentListApi()
         method = unwrap(api.get)
 
@@ -211,7 +214,7 @@ class TestDatasetDocumentListApi:
 
         assert response["total"] == 1
 
-    def test_post_success(self, app, patch_tenant, patch_dataset, patch_permission):
+    def test_post_success(self, app: Flask, patch_tenant, patch_dataset, patch_permission):
         api = DatasetDocumentListApi()
         method = unwrap(api.post)
 
@@ -239,7 +242,7 @@ class TestDatasetDocumentListApi:
 
         assert "documents" in response
 
-    def test_post_forbidden(self, app):
+    def test_post_forbidden(self, app: Flask):
         api = DatasetDocumentListApi()
         method = unwrap(api.post)
 
@@ -260,7 +263,7 @@ class TestDatasetDocumentListApi:
             with pytest.raises(Forbidden):
                 method(api, "ds-1")
 
-    def test_get_with_fetch_true_and_invalid_fetch(self, app, patch_tenant, patch_dataset, patch_permission):
+    def test_get_with_fetch_true_and_invalid_fetch(self, app: Flask, patch_tenant, patch_dataset, patch_permission):
         api = DatasetDocumentListApi()
         method = unwrap(api.get)
 
@@ -285,7 +288,7 @@ class TestDatasetDocumentListApi:
 
         assert response["total"] == 1
 
-    def test_get_sort_hit_count(self, app, patch_tenant, patch_dataset, patch_permission):
+    def test_get_sort_hit_count(self, app: Flask, patch_tenant, patch_dataset, patch_permission):
         api = DatasetDocumentListApi()
         method = unwrap(api.get)
 
@@ -308,7 +311,7 @@ class TestDatasetDocumentListApi:
 
 
 class TestDocumentApi:
-    def test_get_success(self, app, patch_tenant):
+    def test_get_success(self, app: Flask, patch_tenant):
         api = DocumentApi()
         method = unwrap(api.get)
 
@@ -326,7 +329,7 @@ class TestDocumentApi:
 
         assert status == 200
 
-    def test_get_invalid_metadata(self, app, patch_tenant):
+    def test_get_invalid_metadata(self, app: Flask, patch_tenant):
         api = DocumentApi()
         method = unwrap(api.get)
 
@@ -334,7 +337,7 @@ class TestDocumentApi:
             with pytest.raises(InvalidMetadataError):
                 method(api, "ds-1", "doc-1")
 
-    def test_delete_success(self, app, patch_tenant, patch_dataset):
+    def test_delete_success(self, app: Flask, patch_tenant, patch_dataset):
         api = DocumentApi()
         method = unwrap(api.delete)
 
@@ -354,7 +357,7 @@ class TestDocumentApi:
 
         assert status == 204
 
-    def test_delete_indexing_error(self, app, patch_tenant, patch_dataset):
+    def test_delete_indexing_error(self, app: Flask, patch_tenant, patch_dataset):
         api = DocumentApi()
         method = unwrap(api.delete)
 
@@ -375,7 +378,7 @@ class TestDocumentApi:
 
 
 class TestDocumentDownloadApi:
-    def test_download_success(self, app, patch_tenant):
+    def test_download_success(self, app: Flask, patch_tenant):
         api = DocumentDownloadApi()
         method = unwrap(api.get)
 
@@ -395,7 +398,7 @@ class TestDocumentDownloadApi:
 
 
 class TestDocumentProcessingApi:
-    def test_processing_forbidden_when_not_editor(self, app):
+    def test_processing_forbidden_when_not_editor(self, app: Flask):
         api = DocumentProcessingApi()
         method = unwrap(api.patch)
 
@@ -412,7 +415,7 @@ class TestDocumentProcessingApi:
             with pytest.raises(Forbidden):
                 method(api, "ds-1", "doc-1", "pause")
 
-    def test_resume_from_error_state(self, app, patch_tenant):
+    def test_resume_from_error_state(self, app: Flask, patch_tenant):
         api = DocumentProcessingApi()
         method = unwrap(api.patch)
 
@@ -430,7 +433,7 @@ class TestDocumentProcessingApi:
 
         assert status == 200
 
-    def test_resume_success(self, app, patch_tenant):
+    def test_resume_success(self, app: Flask, patch_tenant):
         api = DocumentProcessingApi()
         method = unwrap(api.patch)
 
@@ -448,7 +451,7 @@ class TestDocumentProcessingApi:
 
         assert status == 200
 
-    def test_pause_success(self, app, patch_tenant):
+    def test_pause_success(self, app: Flask, patch_tenant):
         api = DocumentProcessingApi()
         method = unwrap(api.patch)
 
@@ -466,7 +469,7 @@ class TestDocumentProcessingApi:
 
         assert status == 200
 
-    def test_pause_invalid(self, app, patch_tenant):
+    def test_pause_invalid(self, app: Flask, patch_tenant):
         api = DocumentProcessingApi()
         method = unwrap(api.patch)
 
@@ -478,7 +481,7 @@ class TestDocumentProcessingApi:
 
 
 class TestDocumentMetadataApi:
-    def test_put_metadata_schema_filtering(self, app, patch_tenant):
+    def test_put_metadata_schema_filtering(self, app: Flask, patch_tenant):
         api = DocumentMetadataApi()
         method = unwrap(api.put)
 
@@ -507,7 +510,7 @@ class TestDocumentMetadataApi:
 
         assert doc.doc_metadata == {"amount": 10}
 
-    def test_put_success(self, app, patch_tenant):
+    def test_put_success(self, app: Flask, patch_tenant):
         api = DocumentMetadataApi()
         method = unwrap(api.put)
 
@@ -531,7 +534,7 @@ class TestDocumentMetadataApi:
 
         assert status == 200
 
-    def test_put_invalid_payload(self, app, patch_tenant):
+    def test_put_invalid_payload(self, app: Flask, patch_tenant):
         api = DocumentMetadataApi()
         method = unwrap(api.put)
 
@@ -539,7 +542,7 @@ class TestDocumentMetadataApi:
             with pytest.raises(ValueError):
                 method(api, "ds-1", "doc-1")
 
-    def test_put_invalid_doc_type(self, app, patch_tenant):
+    def test_put_invalid_doc_type(self, app: Flask, patch_tenant):
         api = DocumentMetadataApi()
         method = unwrap(api.put)
 
@@ -558,7 +561,7 @@ class TestDocumentMetadataApi:
 
 
 class TestDocumentStatusApi:
-    def test_patch_success(self, app, patch_tenant, patch_dataset):
+    def test_patch_success(self, app: Flask, patch_tenant, patch_dataset):
         api = DocumentStatusApi()
         method = unwrap(api.patch)
 
@@ -581,7 +584,7 @@ class TestDocumentStatusApi:
 
         assert status == 200
 
-    def test_patch_invalid_action(self, app, patch_tenant, patch_dataset):
+    def test_patch_invalid_action(self, app: Flask, patch_tenant, patch_dataset):
         api = DocumentStatusApi()
         method = unwrap(api.patch)
 
@@ -605,7 +608,7 @@ class TestDocumentStatusApi:
 
 
 class TestDocumentRetryApi:
-    def test_retry_archived_document_skipped(self, app, patch_tenant, patch_dataset):
+    def test_retry_archived_document_skipped(self, app: Flask, patch_tenant, patch_dataset):
         api = DocumentRetryApi()
         method = unwrap(api.post)
 
@@ -633,7 +636,7 @@ class TestDocumentRetryApi:
         assert status == 204
         retry_mock.assert_called_once_with("ds-1", [])
 
-    def test_retry_success(self, app, patch_tenant, patch_dataset):
+    def test_retry_success(self, app: Flask, patch_tenant, patch_dataset):
         api = DocumentRetryApi()
         method = unwrap(api.post)
 
@@ -662,7 +665,7 @@ class TestDocumentRetryApi:
         assert status == 204
         retry_mock.assert_called_once_with("ds-1", [document])
 
-    def test_retry_skips_completed_document(self, app, patch_tenant, patch_dataset):
+    def test_retry_skips_completed_document(self, app: Flask, patch_tenant, patch_dataset):
         api = DocumentRetryApi()
         method = unwrap(api.post)
 
@@ -689,7 +692,7 @@ class TestDocumentRetryApi:
 
 
 class TestDocumentPipelineExecutionLogApi:
-    def test_get_log_success(self, app, patch_tenant, patch_dataset):
+    def test_get_log_success(self, app: Flask, patch_tenant, patch_dataset):
         api = DocumentPipelineExecutionLogApi()
         method = unwrap(api.get)
 
@@ -717,7 +720,7 @@ class TestDocumentPipelineExecutionLogApi:
 
 
 class TestDocumentGenerateSummaryApi:
-    def test_generate_summary_missing_documents(self, app, patch_tenant, patch_permission):
+    def test_generate_summary_missing_documents(self, app: Flask, patch_tenant, patch_permission):
         api = DocumentGenerateSummaryApi()
         method = unwrap(api.post)
 
@@ -743,7 +746,7 @@ class TestDocumentGenerateSummaryApi:
             with pytest.raises(NotFound):
                 method(api, "ds-1")
 
-    def test_generate_not_enabled(self, app, patch_tenant, patch_permission):
+    def test_generate_not_enabled(self, app: Flask, patch_tenant, patch_permission):
         api = DocumentGenerateSummaryApi()
         method = unwrap(api.post)
 
@@ -762,7 +765,7 @@ class TestDocumentGenerateSummaryApi:
             with pytest.raises(ValueError):
                 method(api, "ds-1")
 
-    def test_generate_summary_success_with_qa_skip(self, app, patch_tenant, patch_permission):
+    def test_generate_summary_success_with_qa_skip(self, app: Flask, patch_tenant, patch_permission):
         api = DocumentGenerateSummaryApi()
         method = unwrap(api.post)
 
@@ -798,7 +801,7 @@ class TestDocumentGenerateSummaryApi:
 
 
 class TestDocumentSummaryStatusApi:
-    def test_get_success(self, app, patch_tenant, patch_permission):
+    def test_get_success(self, app: Flask, patch_tenant, patch_permission):
         api = DocumentSummaryStatusApi()
         method = unwrap(api.get)
 
@@ -819,7 +822,7 @@ class TestDocumentSummaryStatusApi:
 
 
 class TestDocumentIndexingEstimateApi:
-    def test_indexing_estimate_file_not_found(self, app, patch_tenant):
+    def test_indexing_estimate_file_not_found(self, app: Flask, patch_tenant):
         api = DocumentIndexingEstimateApi()
         method = unwrap(api.get)
 
@@ -843,7 +846,7 @@ class TestDocumentIndexingEstimateApi:
             with pytest.raises(NotFound):
                 method(api, "ds-1", "doc-1")
 
-    def test_indexing_estimate_generic_exception(self, app, patch_tenant):
+    def test_indexing_estimate_generic_exception(self, app: Flask, patch_tenant):
         api = DocumentIndexingEstimateApi()
         method = unwrap(api.get)
 
@@ -880,7 +883,7 @@ class TestDocumentIndexingEstimateApi:
             with pytest.raises(IndexingEstimateError):
                 method(api, "ds-1", "doc-1")
 
-    def test_get_finished(self, app, patch_tenant):
+    def test_get_finished(self, app: Flask, patch_tenant):
         api = DocumentIndexingEstimateApi()
         method = unwrap(api.get)
 
@@ -892,7 +895,7 @@ class TestDocumentIndexingEstimateApi:
 
 
 class TestDocumentBatchDownloadZipApi:
-    def test_post_no_documents(self, app, patch_tenant):
+    def test_post_no_documents(self, app: Flask, patch_tenant):
         api = DocumentBatchDownloadZipApi()
         method = unwrap(api.post)
 
@@ -904,7 +907,7 @@ class TestDocumentBatchDownloadZipApi:
 
 
 class TestDatasetDocumentListApiDelete:
-    def test_delete_success(self, app, patch_tenant, patch_dataset):
+    def test_delete_success(self, app: Flask, patch_tenant, patch_dataset):
         """Test successful deletion of documents"""
         api = DatasetDocumentListApi()
         method = unwrap(api.delete)
@@ -924,7 +927,7 @@ class TestDatasetDocumentListApiDelete:
 
         assert status == 204
 
-    def test_delete_indexing_error(self, app, patch_tenant, patch_dataset):
+    def test_delete_indexing_error(self, app: Flask, patch_tenant, patch_dataset):
         """Test deletion with indexing error"""
         api = DatasetDocumentListApi()
         method = unwrap(api.delete)
@@ -943,7 +946,7 @@ class TestDatasetDocumentListApiDelete:
             with pytest.raises(DocumentIndexingError):
                 method(api, "ds-1")
 
-    def test_delete_dataset_not_found(self, app, patch_tenant):
+    def test_delete_dataset_not_found(self, app: Flask, patch_tenant):
         """Test deletion when dataset not found"""
         api = DatasetDocumentListApi()
         method = unwrap(api.delete)
@@ -960,7 +963,7 @@ class TestDatasetDocumentListApiDelete:
 
 
 class TestDocumentBatchIndexingEstimateApi:
-    def test_batch_indexing_estimate_website(self, app, patch_tenant):
+    def test_batch_indexing_estimate_website(self, app: Flask, patch_tenant):
         api = DocumentBatchIndexingEstimateApi()
         method = unwrap(api.get)
 
@@ -989,7 +992,7 @@ class TestDocumentBatchIndexingEstimateApi:
 
         assert status == 200
 
-    def test_batch_indexing_estimate_notion(self, app, patch_tenant):
+    def test_batch_indexing_estimate_notion(self, app: Flask, patch_tenant):
         api = DocumentBatchIndexingEstimateApi()
         method = unwrap(api.get)
 
@@ -1017,7 +1020,7 @@ class TestDocumentBatchIndexingEstimateApi:
 
         assert status == 200
 
-    def test_batch_estimate_unsupported_datasource(self, app, patch_tenant):
+    def test_batch_estimate_unsupported_datasource(self, app: Flask, patch_tenant):
         api = DocumentBatchIndexingEstimateApi()
         method = unwrap(api.get)
 
@@ -1032,7 +1035,7 @@ class TestDocumentBatchIndexingEstimateApi:
             with pytest.raises(ValueError):
                 method(api, "ds-1", "batch-1")
 
-    def test_get_batch_estimate_invalid_batch(self, app, patch_tenant):
+    def test_get_batch_estimate_invalid_batch(self, app: Flask, patch_tenant):
         """Test batch estimation with invalid batch"""
         api = DocumentBatchIndexingEstimateApi()
         method = unwrap(api.get)
@@ -1043,7 +1046,7 @@ class TestDocumentBatchIndexingEstimateApi:
 
 
 class TestDocumentBatchIndexingStatusApi:
-    def test_get_batch_status_invalid_batch(self, app, patch_tenant):
+    def test_get_batch_status_invalid_batch(self, app: Flask, patch_tenant):
         """Test batch status with invalid batch"""
         api = DocumentBatchIndexingStatusApi()
         method = unwrap(api.get)
@@ -1054,7 +1057,7 @@ class TestDocumentBatchIndexingStatusApi:
 
 
 class TestDocumentIndexingStatusApi:
-    def test_get_status_document_not_found(self, app, patch_tenant):
+    def test_get_status_document_not_found(self, app: Flask, patch_tenant):
         """Test getting status for non-existent document"""
         api = DocumentIndexingStatusApi()
         method = unwrap(api.get)
@@ -1065,7 +1068,7 @@ class TestDocumentIndexingStatusApi:
 
 
 class TestDocumentApiMetadata:
-    def test_get_with_only_option(self, app, patch_tenant):
+    def test_get_with_only_option(self, app: Flask, patch_tenant):
         """Test get with 'only' metadata option"""
         api = DocumentApi()
         method = unwrap(api.get)
@@ -1084,7 +1087,7 @@ class TestDocumentApiMetadata:
 
         assert status == 200
 
-    def test_get_with_without_option(self, app, patch_tenant):
+    def test_get_with_without_option(self, app: Flask, patch_tenant):
         """Test get with 'without' metadata option"""
         api = DocumentApi()
         method = unwrap(api.get)
@@ -1105,7 +1108,7 @@ class TestDocumentApiMetadata:
 
 
 class TestDocumentGenerateSummaryApiSuccess:
-    def test_generate_not_enabled_high_quality(self, app, patch_tenant, patch_permission):
+    def test_generate_not_enabled_high_quality(self, app: Flask, patch_tenant, patch_permission):
         """Test summary generation on non-high-quality dataset"""
         api = DocumentGenerateSummaryApi()
         method = unwrap(api.post)
@@ -1127,7 +1130,7 @@ class TestDocumentGenerateSummaryApiSuccess:
 
 
 class TestDocumentProcessingApiResume:
-    def test_resume_invalid_status(self, app, patch_tenant):
+    def test_resume_invalid_status(self, app: Flask, patch_tenant):
         """Test resume on non-paused document"""
         api = DocumentProcessingApi()
         method = unwrap(api.patch)
@@ -1140,7 +1143,7 @@ class TestDocumentProcessingApiResume:
 
 
 class TestDocumentPermissionCases:
-    def test_document_batch_get_permission_denied(self, app, patch_tenant):
+    def test_document_batch_get_permission_denied(self, app: Flask, patch_tenant):
         api = DocumentBatchIndexingEstimateApi()
         method = unwrap(api.get)
 
@@ -1158,7 +1161,7 @@ class TestDocumentPermissionCases:
             with pytest.raises(Forbidden):
                 method(api, "ds-1", "batch-1")
 
-    def test_document_batch_get_documents_not_found(self, app, patch_tenant):
+    def test_document_batch_get_documents_not_found(self, app: Flask, patch_tenant):
         api = DocumentBatchIndexingEstimateApi()
         method = unwrap(api.get)
 
@@ -1185,7 +1188,7 @@ class TestDocumentPermissionCases:
             "preview": [],
         }
 
-    def test_document_tenant_mismatch(self, app):
+    def test_document_tenant_mismatch(self, app: Flask):
         api = DocumentApi()
         method = unwrap(api.get)
 
@@ -1217,7 +1220,7 @@ class TestDocumentPermissionCases:
             with pytest.raises(Forbidden):
                 method(api, "ds-1", "doc-1")
 
-    def test_process_rule_get_by_document_success(self, app, patch_tenant):
+    def test_process_rule_get_by_document_success(self, app: Flask, patch_tenant):
         api = GetProcessRuleApi()
         method = unwrap(api.get)
 
@@ -1253,7 +1256,7 @@ class TestDocumentPermissionCases:
         assert status == 200
         assert response["mode"] == "custom"
 
-    def test_process_rule_permission_denied(self, app):
+    def test_process_rule_permission_denied(self, app: Flask):
         api = GetProcessRuleApi()
         method = unwrap(api.get)
 
@@ -1283,7 +1286,7 @@ class TestDocumentPermissionCases:
 
 
 class TestDocumentListAdvancedCases:
-    def test_document_list_with_multiple_sort_options(self, app, patch_tenant, patch_dataset, patch_permission):
+    def test_document_list_with_multiple_sort_options(self, app: Flask, patch_tenant, patch_dataset, patch_permission):
         """Test document list with different sort options"""
         api = DatasetDocumentListApi()
         method = unwrap(api.get)
@@ -1309,7 +1312,7 @@ class TestDocumentListAdvancedCases:
 
         assert response["total"] == 1
 
-    def test_document_metadata_with_schema_validation(self, app, patch_tenant):
+    def test_document_metadata_with_schema_validation(self, app: Flask, patch_tenant):
         """Test document metadata update with schema validation"""
         api = DocumentMetadataApi()
         method = unwrap(api.put)
@@ -1341,7 +1344,7 @@ class TestDocumentListAdvancedCases:
 
 
 class TestDocumentIndexingEdgeCases:
-    def test_document_indexing_with_extraction_setting(self, app, patch_tenant):
+    def test_document_indexing_with_extraction_setting(self, app: Flask, patch_tenant):
         api = DocumentIndexingEstimateApi()
         method = unwrap(api.get)
 

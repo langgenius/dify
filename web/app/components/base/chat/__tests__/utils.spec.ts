@@ -321,47 +321,86 @@ describe('chat utils - url params and answer helpers', () => {
       expect(res).toEqual({ custom: '123', encoded: 'a b' })
     })
 
+    it('getRawInputsFromUrlParams keeps encoded launch params as decoded plain values', async () => {
+      setSearch(`?custom=${encodeURIComponent('YWJjZA==')}`)
+      const res = await getRawInputsFromUrlParams()
+      expect(res).toEqual({ custom: 'YWJjZA==' })
+    })
+
     it('getRawUserVariablesFromUrlParams extracts only user. prefixed params', async () => {
       setSearch('?custom=123&sys.param=456&user.param=789&user.encoded=a%20b')
       const res = await getRawUserVariablesFromUrlParams()
       expect(res).toEqual({ param: '789', encoded: 'a b' })
     })
 
+    it('getRawUserVariablesFromUrlParams keeps encoded user values as decoded plain values', async () => {
+      setSearch(`?user.param=${encodeURIComponent('YWJjZA==')}`)
+      const res = await getRawUserVariablesFromUrlParams()
+      expect(res).toEqual({ param: 'YWJjZA==' })
+    })
+
     it('getProcessedInputsFromUrlParams decompresses base64 inputs', async () => {
-      setSearch('?custom=123&sys.param=456&user.param=789')
+      setSearch(`?custom=${encodeURIComponent('YWJjZA==')}&sys.param=456&user.param=789`)
       const res = await getProcessedInputsFromUrlParams()
       expect(res).toEqual({ custom: 'decompressed_text' })
     })
 
+    it('getProcessedInputsFromUrlParams returns undefined for plain decoded values', async () => {
+      vi.stubGlobal('atob', () => {
+        throw new Error('invalid')
+      })
+      setSearch('?custom=a%20b')
+      const res = await getProcessedInputsFromUrlParams()
+      expect(res).toEqual({ custom: undefined })
+    })
+
     it('getProcessedSystemVariablesFromUrlParams decompresses sys. prefixed params', async () => {
-      setSearch('?custom=123&sys.param=456&user.param=789')
+      setSearch(`?custom=123&sys.param=${encodeURIComponent('YWJjZA==')}&user.param=789`)
       const res = await getProcessedSystemVariablesFromUrlParams()
       expect(res).toEqual({ param: 'decompressed_text' })
     })
 
+    it('getProcessedSystemVariablesFromUrlParams returns undefined for plain decoded values', async () => {
+      vi.stubGlobal('atob', () => {
+        throw new Error('invalid')
+      })
+      setSearch('?sys.param=a%20b')
+      const res = await getProcessedSystemVariablesFromUrlParams()
+      expect(res).toEqual({ param: undefined })
+    })
+
     it('getProcessedSystemVariablesFromUrlParams parses redirect_url without query string', async () => {
-      setSearch(`?redirect_url=${encodeURIComponent('http://example.com')}&sys.param=456`)
+      setSearch(`?redirect_url=${encodeURIComponent('http://example.com')}&sys.param=${encodeURIComponent('YWJjZA==')}`)
       const res = await getProcessedSystemVariablesFromUrlParams()
       expect(res).toEqual({ param: 'decompressed_text' })
     })
 
     it('getProcessedSystemVariablesFromUrlParams parses redirect_url', async () => {
-      setSearch(`?redirect_url=${encodeURIComponent('http://example.com?sys.redirected=abc')}&sys.param=456`)
+      setSearch(`?redirect_url=${encodeURIComponent(`http://example.com?sys.redirected=${encodeURIComponent('YWJjZA==')}`)}&sys.param=${encodeURIComponent('YWJjZA==')}`)
       const res = await getProcessedSystemVariablesFromUrlParams()
       expect(res).toEqual({ param: 'decompressed_text', redirected: 'decompressed_text' })
     })
 
     it('getProcessedUserVariablesFromUrlParams decompresses user. prefixed params', async () => {
-      setSearch('?custom=123&sys.param=456&user.param=789')
+      setSearch(`?custom=123&sys.param=456&user.param=${encodeURIComponent('YWJjZA==')}`)
       const res = await getProcessedUserVariablesFromUrlParams()
       expect(res).toEqual({ param: 'decompressed_text' })
+    })
+
+    it('getProcessedUserVariablesFromUrlParams returns undefined for plain decoded values', async () => {
+      vi.stubGlobal('atob', () => {
+        throw new Error('invalid')
+      })
+      setSearch('?user.param=a%20b')
+      const res = await getProcessedUserVariablesFromUrlParams()
+      expect(res).toEqual({ param: undefined })
     })
 
     it('decodeBase64AndDecompress failure returns undefined softly', async () => {
       vi.stubGlobal('atob', () => {
         throw new Error('invalid')
       })
-      setSearch('?custom=invalid_base64')
+      setSearch(`?custom=${encodeURIComponent('YWJjZA==')}`)
       const res = await getProcessedInputsFromUrlParams()
       expect(res).toEqual({ custom: undefined })
     })

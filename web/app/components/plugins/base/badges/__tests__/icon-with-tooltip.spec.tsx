@@ -99,7 +99,7 @@ describe('IconWithTooltip', () => {
       expect(icon).toHaveClass('custom-class')
     })
 
-    it('should apply default h-5 w-5 class to icon', () => {
+    it('should apply default size-5 class to icon', () => {
       render(
         <IconWithTooltip
           theme={Theme.light}
@@ -109,8 +109,7 @@ describe('IconWithTooltip', () => {
       )
 
       const icon = screen.getByTestId('light-icon')
-      expect(icon).toHaveClass('h-5')
-      expect(icon).toHaveClass('w-5')
+      expect(icon).toHaveClass('size-5')
     })
 
     it('should merge custom className with default classes', () => {
@@ -124,8 +123,7 @@ describe('IconWithTooltip', () => {
       )
 
       const icon = screen.getByTestId('light-icon')
-      expect(icon).toHaveClass('h-5')
-      expect(icon).toHaveClass('w-5')
+      expect(icon).toHaveClass('size-5')
       expect(icon).toHaveClass('ml-2')
     })
 

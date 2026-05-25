@@ -1,12 +1,18 @@
-from typing import Any, Literal, cast
+from typing import Any, Literal
+from uuid import UUID
 
 from flask import request
-from flask_restx import marshal
-from pydantic import BaseModel, Field, TypeAdapter, field_validator
+from pydantic import BaseModel, ConfigDict, Field, RootModel, field_validator, model_validator
 from werkzeug.exceptions import Forbidden, NotFound
 
 import services
-from controllers.common.schema import register_schema_models
+from controllers.common.fields import SimpleResultResponse
+from controllers.common.schema import (
+    query_params_from_model,
+    register_enum_models,
+    register_response_schema_models,
+    register_schema_models,
+)
 from controllers.console.wraps import edit_permission_required
 from controllers.service_api import service_api_ns
 from controllers.service_api.dataset.error import DatasetInUseError, DatasetNameDuplicateError, InvalidActionError
@@ -16,9 +22,10 @@ from controllers.service_api.wraps import (
 )
 from core.plugin.impl.model_runtime_factory import create_plugin_provider_manager
 from core.rag.index_processor.constant.index_type import IndexTechniqueType
-from fields.dataset_fields import dataset_detail_fields
-from fields.tag_fields import DataSetTag
+from fields.base import ResponseModel
+from fields.dataset_fields import DatasetDetailResponse
 from graphon.model_runtime.entities.model_entities import ModelType
+from libs.helper import dump_response
 from libs.login import current_user
 from models.account import Account
 from models.dataset import DatasetPermissionEnum
@@ -31,16 +38,12 @@ from services.tag_service import (
     TagBindingCreatePayload,
     TagBindingDeletePayload,
     TagService,
-    UpdateTagPayload,
+)
+from services.tag_service import (
+    UpdateTagPayload as UpdateTagServicePayload,
 )
 
-DEFAULT_REF_TEMPLATE_SWAGGER_2_0 = "#/definitions/{model}"
-
-
-service_api_ns.schema_model(
-    DatasetPermissionEnum.__name__,
-    TypeAdapter(DatasetPermissionEnum).json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0),
-)
+register_enum_models(service_api_ns, DatasetPermissionEnum)
 
 
 class DatasetCreatePayload(BaseModel):
@@ -100,8 +103,41 @@ class TagBindingPayload(BaseModel):
 
 
 class TagUnbindingPayload(BaseModel):
-    tag_id: str
+    """Accept the legacy single-tag Service API payload while exposing a normalized tag_ids list internally."""
+
+    tag_ids: list[str] = Field(default_factory=list)
+    tag_id: str | None = None
     target_id: str
+
+    @model_validator(mode="before")
+    @classmethod
+    def normalize_legacy_tag_id(cls, data: object) -> object:
+        if not isinstance(data, dict):
+            return data
+        if not data.get("tag_ids") and data.get("tag_id"):
+            return {**data, "tag_ids": [data["tag_id"]]}
+        return data
+
+    @model_validator(mode="after")
+    def validate_tag_ids(self) -> "TagUnbindingPayload":
+        if not self.tag_ids:
+            raise ValueError("Tag IDs is required.")
+        return self
+
+
+class KnowledgeTagResponse(ResponseModel):
+    model_config = ConfigDict(coerce_numbers_to_str=True)
+
+    id: str
+    name: str
+    type: str
+    # TODO: The public Service API docs expose binding_count as string|null.
+    # Keep matching the old RESTX fields.String coercion until that contract is intentionally migrated.
+    binding_count: str | None = None
+
+
+class KnowledgeTagListResponse(RootModel[list[KnowledgeTagResponse]]):
+    pass
 
 
 class DatasetListQuery(BaseModel):
@@ -110,6 +146,29 @@ class DatasetListQuery(BaseModel):
     keyword: str | None = Field(default=None, description="Search keyword")
     include_all: bool = Field(default=False, description="Include all datasets")
     tag_ids: list[str] = Field(default_factory=list, description="Filter by tag IDs")
+
+
+class DatasetDetailWithPartialMembersResponse(DatasetDetailResponse):
+    partial_member_list: list[str] | None = None
+
+
+# todo: duplicate code, but the partial_member_list has different nullability
+class DatasetListResponse(ResponseModel):
+    data: list[DatasetDetailResponse]
+    has_more: bool
+    limit: int
+    total: int
+    page: int
+
+
+class DatasetBoundTagResponse(ResponseModel):
+    id: str
+    name: str
+
+
+class DatasetBoundTagListResponse(ResponseModel):
+    data: list[DatasetBoundTagResponse]
+    total: int
 
 
 register_schema_models(
@@ -122,7 +181,16 @@ register_schema_models(
     TagBindingPayload,
     TagUnbindingPayload,
     DatasetListQuery,
-    DataSetTag,
+)
+register_response_schema_models(
+    service_api_ns,
+    SimpleResultResponse,
+    KnowledgeTagResponse,
+    KnowledgeTagListResponse,
+    DatasetDetailResponse,
+    DatasetDetailWithPartialMembersResponse,
+    DatasetListResponse,
+    DatasetBoundTagListResponse,
 )
 
 
@@ -138,9 +206,18 @@ class DatasetListApi(DatasetApiResource):
             401: "Unauthorized - invalid API token",
         }
     )
+    @service_api_ns.doc(params=query_params_from_model(DatasetListQuery))
+    @service_api_ns.response(
+        200,
+        "Datasets retrieved successfully",
+        service_api_ns.models[DatasetListResponse.__name__],
+    )
     def get(self, tenant_id):
         """Resource for getting datasets."""
-        query = DatasetListQuery.model_validate(request.args.to_dict())
+        query_params: dict[str, str | list[str]] = dict(request.args.to_dict())
+        if "tag_ids" in request.args:
+            query_params["tag_ids"] = request.args.getlist("tag_ids")
+        query = DatasetListQuery.model_validate(query_params)
         # provider = request.args.get("provider", default="vendor")
 
         datasets, total = DatasetService.get_datasets(
@@ -159,22 +236,17 @@ class DatasetListApi(DatasetApiResource):
         for embedding_model in embedding_models:
             model_names.append(f"{embedding_model.model}:{embedding_model.provider.provider}")
 
-        data = marshal(datasets, dataset_detail_fields)
+        data = [dump_response(DatasetDetailResponse, dataset) for dataset in datasets]
         for item in data:
-            if (
-                item["indexing_technique"] == IndexTechniqueType.HIGH_QUALITY  # pyrefly: ignore[bad-index]
-                and item["embedding_model_provider"]  # pyrefly: ignore[bad-index]
-            ):
-                item["embedding_model_provider"] = str(  # pyrefly: ignore[unsupported-operation]
-                    ModelProviderID(item["embedding_model_provider"])  # pyrefly: ignore[bad-index]
-                )
-                item_model = f"{item['embedding_model']}:{item['embedding_model_provider']}"  # pyrefly: ignore[bad-index]
+            if item["indexing_technique"] == IndexTechniqueType.HIGH_QUALITY and item["embedding_model_provider"]:
+                item["embedding_model_provider"] = str(ModelProviderID(item["embedding_model_provider"]))
+                item_model = f"{item['embedding_model']}:{item['embedding_model_provider']}"
                 if item_model in model_names:
-                    item["embedding_available"] = True  # type: ignore
+                    item["embedding_available"] = True
                 else:
-                    item["embedding_available"] = False  # type: ignore
+                    item["embedding_available"] = False
             else:
-                item["embedding_available"] = True  # type: ignore
+                item["embedding_available"] = True
         response = {
             "data": data,
             "has_more": len(datasets) == query.limit,
@@ -182,7 +254,7 @@ class DatasetListApi(DatasetApiResource):
             "total": total,
             "page": query.page,
         }
-        return response, 200
+        return dump_response(DatasetListResponse, response), 200
 
     @service_api_ns.expect(service_api_ns.models[DatasetCreatePayload.__name__])
     @service_api_ns.doc("create_dataset")
@@ -193,6 +265,11 @@ class DatasetListApi(DatasetApiResource):
             401: "Unauthorized - invalid API token",
             400: "Bad request - invalid parameters",
         }
+    )
+    @service_api_ns.response(
+        200,
+        "Dataset created successfully",
+        service_api_ns.models[DatasetDetailResponse.__name__],
     )
     @cloud_edition_billing_rate_limit_check("knowledge", "dataset")
     def post(self, tenant_id):
@@ -237,7 +314,7 @@ class DatasetListApi(DatasetApiResource):
         except services.errors.dataset.DatasetNameDuplicateError:
             raise DatasetNameDuplicateError()
 
-        return marshal(dataset, dataset_detail_fields), 200
+        return dump_response(DatasetDetailResponse, dataset), 200
 
 
 @service_api_ns.route("/datasets/<uuid:dataset_id>")
@@ -255,7 +332,12 @@ class DatasetApi(DatasetApiResource):
             404: "Dataset not found",
         }
     )
-    def get(self, _, dataset_id):
+    @service_api_ns.response(
+        200,
+        "Dataset retrieved successfully",
+        service_api_ns.models[DatasetDetailWithPartialMembersResponse.__name__],
+    )
+    def get(self, _, dataset_id: UUID):
         dataset_id_str = str(dataset_id)
         dataset = DatasetService.get_dataset(dataset_id_str)
         if dataset is None:
@@ -264,7 +346,7 @@ class DatasetApi(DatasetApiResource):
             DatasetService.check_dataset_permission(dataset, current_user)
         except services.errors.account.NoPermissionError as e:
             raise Forbidden(str(e))
-        data = cast(dict[str, Any], marshal(dataset, dataset_detail_fields))
+        data = dump_response(DatasetDetailResponse, dataset)
         # check embedding setting
         assert isinstance(current_user, Account)
         cid = current_user.current_tenant_id
@@ -296,7 +378,13 @@ class DatasetApi(DatasetApiResource):
             part_users_list = DatasetPermissionService.get_dataset_partial_member_list(dataset_id_str)
             data.update({"partial_member_list": part_users_list})
 
-        return data, 200
+        return (
+            DatasetDetailWithPartialMembersResponse.model_validate(data).model_dump(
+                mode="json",
+                exclude={"partial_member_list"} if "partial_member_list" not in data else set(),
+            ),
+            200,
+        )
 
     @service_api_ns.expect(service_api_ns.models[DatasetUpdatePayload.__name__])
     @service_api_ns.doc("update_dataset")
@@ -310,8 +398,13 @@ class DatasetApi(DatasetApiResource):
             404: "Dataset not found",
         }
     )
+    @service_api_ns.response(
+        200,
+        "Dataset updated successfully",
+        service_api_ns.models[DatasetDetailWithPartialMembersResponse.__name__],
+    )
     @cloud_edition_billing_rate_limit_check("knowledge", "dataset")
-    def patch(self, _, dataset_id):
+    def patch(self, _, dataset_id: UUID):
         dataset_id_str = str(dataset_id)
         dataset = DatasetService.get_dataset(dataset_id_str)
         if dataset is None:
@@ -360,7 +453,7 @@ class DatasetApi(DatasetApiResource):
         if dataset is None:
             raise NotFound("Dataset not found.")
 
-        result_data = cast(dict[str, Any], marshal(dataset, dataset_detail_fields))
+        result_data = dump_response(DatasetDetailResponse, dataset)
         assert isinstance(current_user, Account)
         tenant_id = current_user.current_tenant_id
 
@@ -373,7 +466,7 @@ class DatasetApi(DatasetApiResource):
         partial_member_list = DatasetPermissionService.get_dataset_partial_member_list(dataset_id_str)
         result_data.update({"partial_member_list": partial_member_list})
 
-        return result_data, 200
+        return DatasetDetailWithPartialMembersResponse.model_validate(result_data).model_dump(mode="json"), 200
 
     @service_api_ns.doc("delete_dataset")
     @service_api_ns.doc(description="Delete a dataset")
@@ -387,7 +480,7 @@ class DatasetApi(DatasetApiResource):
         }
     )
     @cloud_edition_billing_rate_limit_check("knowledge", "dataset")
-    def delete(self, _, dataset_id):
+    def delete(self, _, dataset_id: UUID):
         """
         Deletes a dataset given its ID.
 
@@ -420,6 +513,11 @@ class DatasetApi(DatasetApiResource):
 class DocumentStatusApi(DatasetApiResource):
     """Resource for batch document status operations."""
 
+    @service_api_ns.response(
+        200,
+        "Document status updated successfully",
+        service_api_ns.models[SimpleResultResponse.__name__],
+    )
     @service_api_ns.doc("update_document_status")
     @service_api_ns.doc(description="Batch update document status")
     @service_api_ns.doc(
@@ -437,7 +535,7 @@ class DocumentStatusApi(DatasetApiResource):
             400: "Bad request - invalid action",
         }
     )
-    def patch(self, tenant_id, dataset_id, action: Literal["enable", "disable", "archive", "un_archive"]):
+    def patch(self, tenant_id, dataset_id: UUID, action: Literal["enable", "disable", "archive", "un_archive"]):
         """
         Batch update document status.
 
@@ -481,7 +579,7 @@ class DocumentStatusApi(DatasetApiResource):
         except ValueError as e:
             raise InvalidActionError(str(e))
 
-        return {"result": "success"}, 200
+        return dump_response(SimpleResultResponse, {"result": "success"}), 200
 
 
 @service_api_ns.route("/datasets/tags")
@@ -494,14 +592,18 @@ class DatasetTagsApi(DatasetApiResource):
             401: "Unauthorized - invalid API token",
         }
     )
+    @service_api_ns.response(
+        200,
+        "Tags retrieved successfully",
+        service_api_ns.models[KnowledgeTagListResponse.__name__],
+    )
     def get(self, _):
         """Get all knowledge type tags."""
         assert isinstance(current_user, Account)
         cid = current_user.current_tenant_id
         assert cid is not None
         tags = TagService.get_tags("knowledge", cid)
-        tag_models = TypeAdapter(list[DataSetTag]).validate_python(tags, from_attributes=True)
-        return [tag.model_dump(mode="json") for tag in tag_models], 200
+        return dump_response(KnowledgeTagListResponse, tags), 200
 
     @service_api_ns.expect(service_api_ns.models[TagCreatePayload.__name__])
     @service_api_ns.doc("create_dataset_tag")
@@ -513,6 +615,11 @@ class DatasetTagsApi(DatasetApiResource):
             403: "Forbidden - insufficient permissions",
         }
     )
+    @service_api_ns.response(
+        200,
+        "Tag created successfully",
+        service_api_ns.models[KnowledgeTagResponse.__name__],
+    )
     def post(self, _):
         """Add a knowledge type tag."""
         assert isinstance(current_user, Account)
@@ -522,9 +629,10 @@ class DatasetTagsApi(DatasetApiResource):
         payload = TagCreatePayload.model_validate(service_api_ns.payload or {})
         tag = TagService.save_tags(SaveTagPayload(name=payload.name, type=TagType.KNOWLEDGE))
 
-        response = DataSetTag.model_validate(
-            {"id": tag.id, "name": tag.name, "type": tag.type, "binding_count": 0}
-        ).model_dump(mode="json")
+        response = dump_response(
+            KnowledgeTagResponse,
+            {"id": tag.id, "name": tag.name, "type": tag.type, "binding_count": 0},
+        )
         return response, 200
 
     @service_api_ns.expect(service_api_ns.models[TagUpdatePayload.__name__])
@@ -537,6 +645,11 @@ class DatasetTagsApi(DatasetApiResource):
             403: "Forbidden - insufficient permissions",
         }
     )
+    @service_api_ns.response(
+        200,
+        "Tag updated successfully",
+        service_api_ns.models[KnowledgeTagResponse.__name__],
+    )
     def patch(self, _):
         assert isinstance(current_user, Account)
         if not (current_user.has_edit_permission or current_user.is_dataset_editor):
@@ -544,13 +657,14 @@ class DatasetTagsApi(DatasetApiResource):
 
         payload = TagUpdatePayload.model_validate(service_api_ns.payload or {})
         tag_id = payload.tag_id
-        tag = TagService.update_tags(UpdateTagPayload(name=payload.name, type=TagType.KNOWLEDGE), tag_id)
+        tag = TagService.update_tags(UpdateTagServicePayload(name=payload.name), tag_id)
 
         binding_count = TagService.get_tag_binding_count(tag_id)
 
-        response = DataSetTag.model_validate(
-            {"id": tag.id, "name": tag.name, "type": tag.type, "binding_count": binding_count}
-        ).model_dump(mode="json")
+        response = dump_response(
+            KnowledgeTagResponse,
+            {"id": tag.id, "name": tag.name, "type": tag.type, "binding_count": binding_count},
+        )
         return response, 200
 
     @service_api_ns.expect(service_api_ns.models[TagDeletePayload.__name__])
@@ -601,11 +715,11 @@ class DatasetTagBindingApi(DatasetApiResource):
 @service_api_ns.route("/datasets/tags/unbinding")
 class DatasetTagUnbindingApi(DatasetApiResource):
     @service_api_ns.expect(service_api_ns.models[TagUnbindingPayload.__name__])
-    @service_api_ns.doc("unbind_dataset_tag")
-    @service_api_ns.doc(description="Unbind a tag from a dataset")
+    @service_api_ns.doc("unbind_dataset_tags")
+    @service_api_ns.doc(description="Unbind tags from a dataset")
     @service_api_ns.doc(
         responses={
-            204: "Tag unbound successfully",
+            204: "Tags unbound successfully",
             401: "Unauthorized - invalid API token",
             403: "Forbidden - insufficient permissions",
         }
@@ -618,7 +732,7 @@ class DatasetTagUnbindingApi(DatasetApiResource):
 
         payload = TagUnbindingPayload.model_validate(service_api_ns.payload or {})
         TagService.delete_tag_binding(
-            TagBindingDeletePayload(tag_id=payload.tag_id, target_id=payload.target_id, type=TagType.KNOWLEDGE)
+            TagBindingDeletePayload(tag_ids=payload.tag_ids, target_id=payload.target_id, type=TagType.KNOWLEDGE)
         )
 
         return "", 204
@@ -635,6 +749,11 @@ class DatasetTagsBindingStatusApi(DatasetApiResource):
             401: "Unauthorized - invalid API token",
         }
     )
+    @service_api_ns.response(
+        200,
+        "Tags retrieved successfully",
+        service_api_ns.models[DatasetBoundTagListResponse.__name__],
+    )
     def get(self, _, *args, **kwargs):
         """Get all knowledge type tags."""
         dataset_id = kwargs.get("dataset_id")
@@ -642,5 +761,4 @@ class DatasetTagsBindingStatusApi(DatasetApiResource):
         assert current_user.current_tenant_id is not None
         tags = TagService.get_tags_by_target_id("knowledge", current_user.current_tenant_id, str(dataset_id))
         tags_list = [{"id": tag.id, "name": tag.name} for tag in tags]
-        response = {"data": tags_list, "total": len(tags)}
-        return response, 200
+        return dump_response(DatasetBoundTagListResponse, {"data": tags_list, "total": len(tags)}), 200

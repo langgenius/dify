@@ -18,6 +18,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@langgenius/dify-ui/popover'
+import { StatusDot } from '@langgenius/dify-ui/status-dot'
 import { toast } from '@langgenius/dify-ui/toast'
 import {
   memo,
@@ -26,7 +27,6 @@ import {
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import Indicator from '@/app/components/header/indicator'
 import Authorize from '../authorize'
 import ApiKeyModal from '../authorize/api-key-modal'
 import {
@@ -204,7 +204,7 @@ const Authorized = ({
                           mergedIsOpen && 'bg-components-button-secondary-bg-hover',
                         )}
                       >
-                        <Indicator className="mr-2" color={unavailableCredential ? 'gray' : 'green'} />
+                        <StatusDot className="mr-2" status={unavailableCredential ? 'disabled' : 'success'} />
                         {credentials.length}
 &nbsp;
                         {
@@ -217,7 +217,7 @@ const Authorized = ({
                             ` (${unavailableCredentials.length} ${t('auth.unavailable', { ns: 'plugin' })})`
                           )
                         }
-                        <span className="ml-0.5 i-ri-arrow-down-s-line h-4 w-4" />
+                        <span className="ml-0.5 i-ri-arrow-down-s-line size-4" />
                       </Button>
                     )
               }

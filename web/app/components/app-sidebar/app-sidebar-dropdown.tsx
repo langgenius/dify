@@ -1,3 +1,4 @@
+import type { AppInfoActions } from './app-info/use-app-info-actions'
 import type { NavIcon } from './nav-link'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
@@ -27,9 +28,10 @@ type Props = {
     icon: NavIcon
     selectedIcon: NavIcon
   }>
+  appInfoActions?: AppInfoActions
 }
 
-const AppSidebarDropdown = ({ navigation }: Props) => {
+const AppSidebarDropdown = ({ navigation, appInfoActions }: Props) => {
   const { t } = useTranslation()
   const { isCurrentWorkspaceEditor } = useAppContext()
   const appDetail = useAppStore(state => state.appDetail)
@@ -47,7 +49,7 @@ const AppSidebarDropdown = ({ navigation }: Props) => {
             aria-label={t('operation.more', { ns: 'common' })}
             className={cn(
               'flex cursor-pointer items-center rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-1 shadow-lg backdrop-blur-xs hover:bg-background-default-hover',
-              open && 'bg-background-default-hover',
+              'data-popup-open:bg-background-default-hover',
             )}
           >
             <AppIcon
@@ -57,7 +59,7 @@ const AppSidebarDropdown = ({ navigation }: Props) => {
               background={appDetail.icon_background}
               imageUrl={appDetail.icon_url}
             />
-            <RiMenuLine className="h-4 w-4 text-text-tertiary" />
+            <RiMenuLine className="size-4 text-text-tertiary" />
           </DropdownMenuTrigger>
           <DropdownMenuContent
             placement="bottom-start"
@@ -69,7 +71,10 @@ const AppSidebarDropdown = ({ navigation }: Props) => {
                 <div
                   className={cn('flex flex-col gap-2 rounded-lg p-2 pb-2.5', isCurrentWorkspaceEditor && 'cursor-pointer hover:bg-state-base-hover')}
                   onClick={() => {
-                    setDetailExpand(true)
+                    if (appInfoActions)
+                      appInfoActions.setPanelOpen(true)
+                    else
+                      setDetailExpand(true)
                     setOpen(false)
                   }}
                 >
@@ -82,8 +87,8 @@ const AppSidebarDropdown = ({ navigation }: Props) => {
                       imageUrl={appDetail.icon_url}
                     />
                     <div className="flex items-center justify-center rounded-md p-0.5">
-                      <div className="flex h-5 w-5 items-center justify-center">
-                        <RiEqualizer2Line className="h-4 w-4 text-text-tertiary" />
+                      <div className="flex size-5 items-center justify-center">
+                        <RiEqualizer2Line className="size-4 text-text-tertiary" />
                       </div>
                     </div>
                   </div>
@@ -109,9 +114,11 @@ const AppSidebarDropdown = ({ navigation }: Props) => {
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
-      <div className="z-20">
-        <AppInfo expand onlyShowDetail openState={detailExpand} onDetailExpand={setDetailExpand} />
-      </div>
+      {!appInfoActions && (
+        <div className="z-20">
+          <AppInfo expand onlyShowDetail openState={detailExpand} onDetailExpand={setDetailExpand} />
+        </div>
+      )}
     </>
   )
 }

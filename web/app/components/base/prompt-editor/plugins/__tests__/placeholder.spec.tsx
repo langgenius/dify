@@ -28,15 +28,14 @@ describe('Placeholder', () => {
 
       expect(wrapper).toHaveClass('text-[13px]')
       expect(wrapper).toHaveClass('leading-5')
-      expect(wrapper).not.toHaveClass('leading-6')
+      expect(wrapper).not.toHaveClass('text-sm/6')
     })
 
     it('should apply default text classes when compact is false', () => {
       const { container } = render(<Placeholder compact={false} />)
       const wrapper = container.firstElementChild
 
-      expect(wrapper).toHaveClass('text-sm')
-      expect(wrapper).toHaveClass('leading-6')
+      expect(wrapper).toHaveClass('text-sm/6')
       expect(wrapper).not.toHaveClass('leading-5')
     })
 

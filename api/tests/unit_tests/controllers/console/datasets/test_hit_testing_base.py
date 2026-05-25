@@ -120,7 +120,7 @@ class TestParseArgs:
 class TestPerformHitTesting:
     def test_success(self, dataset):
         response = {
-            "query": "hello",
+            "query": {"content": "hello"},
             "records": [],
         }
 
@@ -134,7 +134,7 @@ class TestPerformHitTesting:
         assert result["query"] == "hello"
         assert result["records"] == []
 
-    def test_success_normalizes_legacy_query_and_nullable_list_fields(self, dataset):
+    def test_success_prepares_nullable_list_fields(self, dataset):
         response = {
             "query": {"content": "hello"},
             "records": [
@@ -169,6 +169,18 @@ class TestPerformHitTesting:
                 "score": 0.8,
             }
         ]
+
+    def test_invalid_query_response_raises_value_error(self):
+        with pytest.raises(ValueError, match="Invalid hit testing query response"):
+            DatasetsHitTestingBase._extract_hit_testing_query("hello")
+
+    def test_invalid_records_response_raises_value_error(self):
+        with pytest.raises(ValueError, match="Invalid hit testing records response"):
+            DatasetsHitTestingBase._prepare_hit_testing_records({"records": []})
+
+    def test_invalid_record_response_raises_value_error(self):
+        with pytest.raises(ValueError, match="Invalid hit testing record response"):
+            DatasetsHitTestingBase._prepare_hit_testing_records(["record"])
 
     def test_index_not_initialized(self, dataset):
         with patch.object(

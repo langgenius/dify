@@ -3,9 +3,12 @@ import type { FC } from 'react'
 import type { DocType } from '@/models/datasets'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import { FieldItem, FieldLabel, FieldRoot } from '@langgenius/dify-ui/field'
+import { FieldsetLegend, FieldsetRoot } from '@langgenius/dify-ui/fieldset'
+import { Radio } from '@langgenius/dify-ui/radio'
+import { RadioGroup } from '@langgenius/dify-ui/radio-group'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useTranslation } from 'react-i18next'
-import Radio from '@/app/components/base/radio'
 import { useMetadataMap } from '@/hooks/use-metadata'
 import { CUSTOMIZABLE_DOC_TYPES } from '@/models/datasets'
 import s from '../style.module.css'
@@ -20,12 +23,12 @@ const IconButton: FC<{ type: DocType, isChecked: boolean }> = ({ type, isChecked
     <Tooltip>
       <TooltipTrigger
         render={(
-          <button type="button" className={cn(s.iconWrapper, 'group', isChecked ? s.iconCheck : '')}>
+          <span className={cn(s.iconWrapper, 'group', isChecked ? s.iconCheck : '')}>
             <TypeIcon
               iconName={metadataMap[type].iconName || ''}
               className={`group-hover:bg-primary-600 ${isChecked ? 'bg-primary-600!' : ''}`}
             />
-          </button>
+          </span>
         )}
       />
       <TooltipContent>
@@ -53,6 +56,7 @@ const DocTypeSelector: FC<DocTypeSelectorProps> = ({
   onCancel,
 }) => {
   const { t } = useTranslation()
+  const metadataMap = useMetadataMap()
   const isFirstTime = !docType && !documentType
   const currValue = tempDocType ?? documentType
 
@@ -62,22 +66,44 @@ const DocTypeSelector: FC<DocTypeSelectorProps> = ({
         <div className={s.desc}>{t('metadata.desc', { ns: 'datasetDocuments' })}</div>
       )}
       <div className={s.operationWrapper}>
-        {isFirstTime && (
-          <span className={s.title}>{t('metadata.docTypeSelectTitle', { ns: 'datasetDocuments' })}</span>
-        )}
-        {documentType && (
-          <>
-            <span className={s.title}>{t('metadata.docTypeChangeTitle', { ns: 'datasetDocuments' })}</span>
-            <span className={s.changeTip}>{t('metadata.docTypeSelectWarning', { ns: 'datasetDocuments' })}</span>
-          </>
-        )}
-        <Radio.Group value={currValue ?? ''} onChange={onTempDocTypeChange} className={s.radioGroup}>
-          {CUSTOMIZABLE_DOC_TYPES.map(type => (
-            <Radio key={type} value={type} className={`${s.radio} ${currValue === type ? 'shadow-none' : ''}`}>
-              <IconButton type={type} isChecked={currValue === type} />
-            </Radio>
-          ))}
-        </Radio.Group>
+        <FieldRoot name="document_type" className="contents">
+          <FieldsetRoot
+            render={(
+              <RadioGroup
+                value={currValue ?? ''}
+                onValueChange={onTempDocTypeChange}
+                className={s.radioGroup}
+              />
+            )}
+          >
+            <FieldsetLegend className={s.title}>
+              {isFirstTime
+                ? t('metadata.docTypeSelectTitle', { ns: 'datasetDocuments' })
+                : t('metadata.docTypeChangeTitle', { ns: 'datasetDocuments' })}
+            </FieldsetLegend>
+            {documentType && (
+              <span className={s.changeTip}>{t('metadata.docTypeSelectWarning', { ns: 'datasetDocuments' })}</span>
+            )}
+            {CUSTOMIZABLE_DOC_TYPES.map(type => (
+              <FieldItem key={type}>
+                <FieldLabel
+                  className={cn(
+                    s.radio,
+                    'focus-within:ring-2 focus-within:ring-components-input-border-hover focus-within:ring-offset-1 focus-within:outline-hidden',
+                    currValue === type && 'shadow-none',
+                  )}
+                >
+                  <Radio
+                    value={type}
+                    aria-label={metadataMap[type].text}
+                    className="sr-only"
+                  />
+                  <IconButton type={type} isChecked={currValue === type} />
+                </FieldLabel>
+              </FieldItem>
+            ))}
+          </FieldsetRoot>
+        </FieldRoot>
         {isFirstTime && (
           <Button variant="primary" onClick={onConfirm} disabled={!tempDocType}>
             {t('metadata.firstMetaAction', { ns: 'datasetDocuments' })}
@@ -122,9 +148,13 @@ export const DocumentTypeDisplay: FC<DocumentTypeDisplayProps> = ({
           {showChangeLink && (
             <div className="ml-1 inline-flex items-center gap-1">
               ·
-              <div onClick={onChangeClick} className="cursor-pointer hover:text-text-accent">
+              <button
+                type="button"
+                className="inline cursor-pointer border-none bg-transparent p-0 text-left hover:text-text-accent"
+                onClick={onChangeClick}
+              >
                 {t('operation.change', { ns: 'common' })}
-              </div>
+              </button>
             </div>
           )}
         </>

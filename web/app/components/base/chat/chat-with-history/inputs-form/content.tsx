@@ -92,7 +92,7 @@ const InputsFormContent = ({ showTip }: Props) => {
               <SelectTrigger className="w-full">
                 {String(inputsFormValue?.[form.variable] ?? form.default ?? form.label)}
               </SelectTrigger>
-              <SelectContent popupClassName="z-[60] w-(--anchor-width)">
+              <SelectContent>
                 {form.options.map((option: string) => (
                   <SelectItem key={option} value={option}>
                     <SelectItemText>{option}</SelectItemText>

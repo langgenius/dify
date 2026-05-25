@@ -19,21 +19,17 @@ import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useShallow } from 'zustand/react/shallow'
 import AppSideBar from '@/app/components/app-sidebar'
+import { AppInfoDetailLayer } from '@/app/components/app-sidebar/app-info'
+import { useAppInfoActions } from '@/app/components/app-sidebar/app-info/use-app-info-actions'
 import { useStore } from '@/app/components/app/store'
 import Loading from '@/app/components/base/loading'
-import { useStore as useTagStore } from '@/app/components/base/tag-management/store'
 import { useAppContext } from '@/context/app-context'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import useDocumentTitle from '@/hooks/use-document-title'
-import dynamic from '@/next/dynamic'
 import { usePathname, useRouter } from '@/next/navigation'
 import { fetchAppDetailDirect } from '@/service/apps'
 import { AppModeEnum } from '@/types/app'
 import s from './style.module.css'
-
-const TagManagementModal = dynamic(() => import('@/app/components/base/tag-management'), {
-  ssr: false,
-})
 
 type IAppDetailLayoutProps = {
   children: React.ReactNode
@@ -51,12 +47,12 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
   const media = useBreakpoints()
   const isMobile = media === MediaType.mobile
   const { isCurrentWorkspaceEditor, isLoadingCurrentWorkspace, currentWorkspace } = useAppContext()
+  const appInfoActions = useAppInfoActions({ resetKey: appId })
   const { appDetail, setAppDetail, setAppSidebarExpand } = useStore(useShallow(state => ({
     appDetail: state.appDetail,
     setAppDetail: state.setAppDetail,
     setAppSidebarExpand: state.setAppSidebarExpand,
   })))
-  const showTagManagementModal = useTagStore(s => s.showTagManagementModal)
   const [isLoadingAppDetail, setIsLoadingAppDetail] = useState(false)
   const [appDetailRes, setAppDetailRes] = useState<App | null>(null)
   const [navigation, setNavigation] = useState<Array<{
@@ -169,14 +165,13 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
       {appDetail && (
         <AppSideBar
           navigation={navigation}
+          appInfoActions={appInfoActions}
         />
       )}
       <div className="grow overflow-hidden bg-components-panel-bg">
         {children}
       </div>
-      {showTagManagementModal && (
-        <TagManagementModal type="app" show={showTagManagementModal} />
-      )}
+      <AppInfoDetailLayer actions={appInfoActions} />
     </div>
   )
 }

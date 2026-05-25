@@ -199,9 +199,9 @@ const SettingsModal: FC<SettingsModalProps> = ({
         <div className="flex items-center">
           <div
             onClick={onCancel}
-            className="flex h-6 w-6 cursor-pointer items-center justify-center"
+            className="flex size-6 cursor-pointer items-center justify-center"
           >
-            <RiCloseLine className="h-4 w-4 text-text-tertiary" />
+            <RiCloseLine className="size-4 text-text-tertiary" />
           </div>
         </div>
       </div>
@@ -279,9 +279,15 @@ const SettingsModal: FC<SettingsModalProps> = ({
                   modelList={embeddingModelList}
                 />
               </div>
-              <div className="mt-2 w-full text-xs leading-6 text-text-tertiary">
+              <div className="mt-2 w-full text-xs/6 text-text-tertiary">
                 {t('form.embeddingModelTip', { ns: 'datasetSettings' })}
-                <span className="cursor-pointer text-text-accent" onClick={() => setShowAccountSettingModal({ payload: ACCOUNT_SETTING_TAB.PROVIDER })}>{t('form.embeddingModelTipLink', { ns: 'datasetSettings' })}</span>
+                <button
+                  type="button"
+                  className="cursor-pointer border-none bg-transparent p-0 text-left text-text-accent focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
+                  onClick={() => setShowAccountSettingModal({ payload: ACCOUNT_SETTING_TAB.PROVIDER })}
+                >
+                  {t('form.embeddingModelTipLink', { ns: 'datasetSettings' })}
+                </button>
               </div>
             </div>
           </div>

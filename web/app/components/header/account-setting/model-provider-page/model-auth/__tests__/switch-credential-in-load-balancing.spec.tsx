@@ -1,5 +1,6 @@
 import type { CustomModel, ModelProvider } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { fireEvent, render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import SwitchCredentialInLoadBalancing from '../switch-credential-in-load-balancing'
 
@@ -14,12 +15,13 @@ vi.mock('../authorized', () => ({
   ),
 }))
 
-vi.mock('@/app/components/header/indicator', () => ({
-  default: ({ color }: { color: string }) => <div data-testid={`indicator-${color}`} />,
+vi.mock('@langgenius/dify-ui/status-dot', () => ({
+  StatusDot: ({ status }: { status: string }) => <div data-testid={`indicator-${status}`} />,
 }))
 
 vi.mock('@remixicon/react', () => ({
   RiArrowDownSLine: () => <div data-testid="arrow-icon" />,
+  RiQuestionLine: () => <div data-testid="question-icon" />,
 }))
 
 describe('SwitchCredentialInLoadBalancing', () => {
@@ -56,7 +58,7 @@ describe('SwitchCredentialInLoadBalancing', () => {
     )
 
     expect(screen.getByText('Key 1'))!.toBeInTheDocument()
-    expect(screen.getByTestId('indicator-green'))!.toBeInTheDocument()
+    expect(screen.getByTestId('indicator-success'))!.toBeInTheDocument()
   })
 
   it('should render auth removed status when selected credential is not in list', () => {
@@ -71,7 +73,7 @@ describe('SwitchCredentialInLoadBalancing', () => {
     )
 
     expect(screen.getByText(/modelProvider.auth.authRemoved/))!.toBeInTheDocument()
-    expect(screen.getByTestId('indicator-red'))!.toBeInTheDocument()
+    expect(screen.getByTestId('indicator-error'))!.toBeInTheDocument()
   })
 
   it('should render unavailable status when credentials list is empty', () => {
@@ -104,7 +106,8 @@ describe('SwitchCredentialInLoadBalancing', () => {
     expect(mockSetCustomModelCredential).toHaveBeenCalledWith(mockCredentials[0])
   })
 
-  it('should show tooltip when empty and custom credentials not allowed', () => {
+  it('should show tooltip when empty and custom credentials not allowed', async () => {
+    const user = userEvent.setup()
     const restrictedProvider = { ...mockProvider, allow_custom_token: false }
     render(
       <SwitchCredentialInLoadBalancing
@@ -116,8 +119,8 @@ describe('SwitchCredentialInLoadBalancing', () => {
       />,
     )
 
-    fireEvent.mouseEnter(screen.getByText(/auth.credentialUnavailableInButton/))
-    expect(screen.getByText('plugin.auth.credentialUnavailable'))!.toBeInTheDocument()
+    await user.hover(screen.getByRole('button', { name: /auth.credentialUnavailableInButton/ }))
+    expect(await screen.findByText('plugin.auth.credentialUnavailable'))!.toBeInTheDocument()
   })
 
   // Empty credentials with allowed custom: no tooltip but still shows unavailable text
@@ -153,7 +156,7 @@ describe('SwitchCredentialInLoadBalancing', () => {
       />,
     )
 
-    expect(screen.getByTestId('indicator-red'))!.toBeInTheDocument()
+    expect(screen.getByTestId('indicator-error'))!.toBeInTheDocument()
     expect(screen.getByText(/auth.credentialUnavailableInButton/))!.toBeInTheDocument()
   })
 
@@ -241,9 +244,9 @@ describe('SwitchCredentialInLoadBalancing', () => {
       />,
     )
 
-    // indicator-green shown (not authRemoved, not unavailable, not empty)
-    // indicator-green shown (not authRemoved, not unavailable, not empty)
-    expect(screen.getByTestId('indicator-green'))!.toBeInTheDocument()
+    // indicator-success shown (not authRemoved, not unavailable, not empty)
+    // indicator-success shown (not authRemoved, not unavailable, not empty)
+    expect(screen.getByTestId('indicator-success'))!.toBeInTheDocument()
     // credential_name is empty so nothing printed for name
     // credential_name is empty so nothing printed for name
     // credential_name is empty so nothing printed for name

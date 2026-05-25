@@ -2,7 +2,7 @@ from flask_restx import Resource
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
-from controllers.common.schema import register_schema_models
+from controllers.common.schema import register_enum_models, register_schema_models
 from controllers.console.app.wraps import get_app_model
 from controllers.console.wraps import (
     account_initialization_required,
@@ -33,6 +33,7 @@ class AppImportPayload(BaseModel):
     app_id: str | None = Field(None)
 
 
+register_enum_models(console_ns, ImportStatus)
 register_schema_models(console_ns, AppImportPayload, Import, CheckDependenciesResult)
 
 
@@ -96,7 +97,7 @@ class AppImportConfirmApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
-    def post(self, import_id):
+    def post(self, import_id: str):
         # Check user role first
         current_user, _ = current_account_with_tenant()
 
