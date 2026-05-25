@@ -5,7 +5,15 @@ from typing import Any
 import httpx
 import pytest
 from pydantic_ai.exceptions import UnexpectedModelBehavior
-from pydantic_ai.messages import ModelMessage, ModelRequest, ModelResponse, SystemPromptPart, TextPart, ToolCallPart, UserPromptPart
+from pydantic_ai.messages import (
+    ModelMessage,
+    ModelRequest,
+    ModelResponse,
+    SystemPromptPart,
+    TextPart,
+    ToolCallPart,
+    UserPromptPart,
+)
 from pydantic_ai.models import ModelRequestParameters
 from pydantic_ai.models.test import TestModel
 from pydantic_ai.settings import ModelSettings
@@ -163,11 +171,15 @@ def _history_session_snapshot(
             runtime_state=PydanticAIHistoryRuntimeState(messages=messages).model_dump(mode="json"),
         ),
         LayerSessionSnapshot(name="plugin", lifecycle_state=LifecycleState.SUSPENDED, runtime_state={}),
-        LayerSessionSnapshot(name=DIFY_AGENT_MODEL_LAYER_ID, lifecycle_state=LifecycleState.SUSPENDED, runtime_state={}),
+        LayerSessionSnapshot(
+            name=DIFY_AGENT_MODEL_LAYER_ID, lifecycle_state=LifecycleState.SUSPENDED, runtime_state={}
+        ),
     ]
     if include_output:
         layers.append(
-            LayerSessionSnapshot(name=DIFY_AGENT_OUTPUT_LAYER_ID, lifecycle_state=LifecycleState.SUSPENDED, runtime_state={})
+            LayerSessionSnapshot(
+                name=DIFY_AGENT_OUTPUT_LAYER_ID, lifecycle_state=LifecycleState.SUSPENDED, runtime_state={}
+            )
         )
     return CompositorSessionSnapshot(layers=layers)
 
@@ -257,7 +269,11 @@ def test_runner_passes_temporary_system_prompt_prefix_without_history_layer(monk
     assert request_parts[1].content == "current user"
     terminal = sink.events["run-no-history"][-1]
     assert isinstance(terminal, RunSucceededEvent)
-    assert [layer.name for layer in terminal.data.session_snapshot.layers] == ["prompt", "plugin", DIFY_AGENT_MODEL_LAYER_ID]
+    assert [layer.name for layer in terminal.data.session_snapshot.layers] == [
+        "prompt",
+        "plugin",
+        DIFY_AGENT_MODEL_LAYER_ID,
+    ]
 
 
 def test_runner_prepends_current_system_prompt_to_stored_history_and_appends_only_new_messages(
