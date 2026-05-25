@@ -33,9 +33,60 @@ from controllers.service_api.dataset.segment import (
     SegmentListQuery,
 )
 from core.rag.index_processor.constant.index_type import IndexStructureType
+from libs.datetime_utils import naive_utc_now
 from models.dataset import ChildChunk, Dataset, Document, DocumentSegment
-from models.enums import IndexingStatus
+from models.enums import IndexingStatus, SegmentType
 from services.dataset_service import DocumentService, SegmentService
+
+
+def _segment_response_dict(summary: str | None = None):
+    return {
+        "id": "seg-1",
+        "position": 1,
+        "document_id": "doc-id",
+        "content": "segment content",
+        "sign_content": "segment content",
+        "answer": None,
+        "word_count": 2,
+        "tokens": 3,
+        "keywords": ["segment"],
+        "index_node_id": None,
+        "index_node_hash": None,
+        "hit_count": 0,
+        "enabled": True,
+        "disabled_at": None,
+        "disabled_by": None,
+        "status": "completed",
+        "created_by": "account-1",
+        "created_at": 1779678000,
+        "updated_at": 1779678000,
+        "updated_by": None,
+        "indexing_at": None,
+        "completed_at": None,
+        "error": None,
+        "stopped_at": None,
+        "child_chunks": [],
+        "attachments": [],
+        "summary": summary,
+    }
+
+
+def _child_chunk() -> ChildChunk:
+    child_chunk = ChildChunk(
+        tenant_id="tenant-1",
+        dataset_id="dataset-1",
+        document_id="doc-id",
+        segment_id="seg-id",
+        position=1,
+        content="child chunk content",
+        word_count=3,
+        created_by="account-1",
+    )
+    child_chunk.id = "child-1"
+    child_chunk.type = SegmentType.CUSTOMIZED
+    child_chunk.created_at = naive_utc_now()
+    child_chunk.updated_at = naive_utc_now()
+    return child_chunk
 
 
 class TestSegmentCreatePayload:
@@ -48,7 +99,8 @@ class TestSegmentCreatePayload:
             {"content": "Second segment", "keywords": ["key1", "key2"]},
         ]
         payload = SegmentCreatePayload(segments=segments)
-        assert payload.segments == segments
+        assert payload.segments is not None
+        assert [segment.model_dump(exclude_none=True) for segment in payload.segments] == segments
         assert len(payload.segments) == 2
 
     def test_payload_with_none_segments(self):
@@ -72,8 +124,9 @@ class TestSegmentCreatePayload:
             }
         ]
         payload = SegmentCreatePayload(segments=segments)
-        assert payload.segments[0]["content"] == "Complex segment"
-        assert payload.segments[0]["keywords"] == ["keyword1", "keyword2"]
+        assert payload.segments is not None
+        assert payload.segments[0].content == "Complex segment"
+        assert payload.segments[0].keywords == ["keyword1", "keyword2"]
 
 
 class TestSegmentListQuery:
@@ -117,7 +170,7 @@ class TestChildChunkCreatePayload:
     def test_payload_requires_content(self):
         """Test that content is required."""
         with pytest.raises(ValueError):
-            ChildChunkCreatePayload()
+            ChildChunkCreatePayload.model_validate({})
 
     def test_payload_with_long_content(self):
         """Test payload with very long content."""
@@ -157,12 +210,12 @@ class TestChildChunkListQuery:
     def test_query_limit_minimum(self):
         """Test query limit minimum validation."""
         with pytest.raises(ValueError):
-            ChildChunkListQuery(limit=0)
+            ChildChunkListQuery.model_validate({"limit": 0})
 
     def test_query_page_minimum(self):
         """Test query page minimum validation."""
         with pytest.raises(ValueError):
-            ChildChunkListQuery(page=0)
+            ChildChunkListQuery.model_validate({"page": 0})
 
     def test_query_with_keyword(self):
         """Test query with keyword filter."""
@@ -292,6 +345,7 @@ class TestSegmentServiceMockedBehavior:
             segments=[{"content": "Test"}, {"content": "Test 2"}], document=mock_document, dataset=mock_dataset
         )
 
+        assert result is not None
         assert len(result) == 2
         mock_create.assert_called_once()
 
@@ -301,7 +355,12 @@ class TestSegmentServiceMockedBehavior:
         mock_segments = [Mock(), Mock()]
         mock_get.return_value = (mock_segments, 2)
 
-        segments, count = SegmentService.get_segments(document_id=mock_document.id, page=1, limit=20)
+        segments, count = SegmentService.get_segments(
+            document_id=mock_document.id,
+            tenant_id=mock_document.tenant_id,
+            page=1,
+            limit=20,
+        )
 
         assert len(segments) == 2
         assert count == 2
@@ -429,13 +488,13 @@ class TestDocumentValidation:
         """Test that enabled=True is valid."""
         document = Mock(spec=Document)
         document.enabled = True
-        assert document.enabled is True
+        assert document.enabled
 
     def test_document_enabled_false_is_invalid(self):
         """Test that enabled=False is invalid for segment operations."""
         document = Mock(spec=Document)
         document.enabled = False
-        assert document.enabled is False
+        assert not document.enabled
 
 
 class TestDatasetModels:
@@ -462,7 +521,7 @@ class TestDatasetModels:
 
         assert segment.id is not None
         assert segment.document_id is not None
-        assert segment.content is not None
+        assert segment.content == "Test content"
 
     def test_child_chunk_has_required_fields(self):
         """Test ChildChunk model has required fields."""
@@ -473,7 +532,7 @@ class TestDatasetModels:
 
         assert chunk.id is not None
         assert chunk.segment_id is not None
-        assert chunk.content is not None
+        assert chunk.content == "Chunk content"
 
 
 class TestSegmentUpdatePayload:
@@ -594,6 +653,7 @@ class TestSegmentCreateArgs:
         from services.entities.knowledge_entities.knowledge_entities import SegmentCreateArgs
 
         args = SegmentCreateArgs(content="Test content", keywords=["machine learning", "AI", "neural networks"])
+        assert args.keywords is not None
         assert len(args.keywords) == 3
 
 
@@ -690,7 +750,7 @@ class TestSegmentIndexingRequirements:
 
         # Both conditions must be true
         assert document.indexing_status == "completed"
-        assert document.enabled is True
+        assert document.enabled
 
 
 class TestSegmentLimits:
@@ -753,7 +813,7 @@ class TestSegmentPagination:
 #
 # Strategy per decorator type:
 # - No billing decorator → call the method directly; only patch ``db``,
-#   services, ``current_account_with_tenant``, and ``marshal``.
+#   services, ``current_account_with_tenant``, and response helpers when needed.
 # - ``@cloud_edition_billing_rate_limit_check`` (preserves ``__wrapped__``)
 #   → call via ``method.__wrapped__(self, …)`` to skip the decorator.
 # - ``@cloud_edition_billing_resource_check`` (no ``__wrapped__``) → patch
@@ -766,11 +826,11 @@ class TestSegmentApiGet:
     """Test suite for SegmentApi.get() endpoint.
 
     ``get`` has no billing decorators but calls
-    ``current_account_with_tenant()`` and ``marshal``.
+    ``current_account_with_tenant()`` and response serialization.
     """
 
-    @patch("controllers.service_api.dataset.segment.SummaryIndexService")
-    @patch("controllers.service_api.dataset.segment.marshal")
+    @patch("controllers.service_api.dataset.segment.segment_responses_with_summaries")
+    @patch("controllers.service_api.dataset.segment.SummaryIndexService.get_segments_summaries")
     @patch("controllers.service_api.dataset.segment.SegmentService")
     @patch("controllers.service_api.dataset.segment.DocumentService")
     @patch("controllers.service_api.dataset.segment.current_account_with_tenant")
@@ -781,8 +841,8 @@ class TestSegmentApiGet:
         mock_account_fn,
         mock_doc_svc,
         mock_seg_svc,
-        mock_marshal,
-        mock_summary_svc,
+        mock_get_summaries,
+        mock_dump_segments,
         app: Flask,
         mock_tenant,
         mock_dataset,
@@ -794,8 +854,8 @@ class TestSegmentApiGet:
         mock_db.session.scalar.return_value = mock_dataset
         mock_doc_svc.get_document.return_value = Mock(doc_form=IndexStructureType.PARAGRAPH_INDEX)
         mock_seg_svc.get_segments.return_value = ([mock_segment], 1)
-        mock_marshal.return_value = {"id": mock_segment.id}
-        mock_summary_svc.get_segments_summaries.return_value = {}
+        mock_get_summaries.return_value = {}
+        mock_dump_segments.return_value = [_segment_response_dict()]
 
         # Act
         with app.test_request_context(
@@ -876,8 +936,8 @@ class TestSegmentApiPost:
         mock_rate_limit.enabled = False
         mock_feature_svc.get_knowledge_rate_limit.return_value = mock_rate_limit
 
-    @patch("controllers.service_api.dataset.segment.SummaryIndexService")
-    @patch("controllers.service_api.dataset.segment.marshal")
+    @patch("controllers.service_api.dataset.segment.segment_responses_with_summaries")
+    @patch("controllers.service_api.dataset.segment.SummaryIndexService.get_segments_summaries")
     @patch("controllers.service_api.dataset.segment.SegmentService")
     @patch("controllers.service_api.dataset.segment.DocumentService")
     @patch("controllers.service_api.dataset.segment.current_account_with_tenant")
@@ -892,8 +952,8 @@ class TestSegmentApiPost:
         mock_account_fn,
         mock_doc_svc,
         mock_seg_svc,
-        mock_marshal,
-        mock_summary_svc,
+        mock_get_summaries,
+        mock_dump_segments,
         app: Flask,
         mock_tenant,
         mock_dataset,
@@ -915,8 +975,8 @@ class TestSegmentApiPost:
 
         mock_seg_svc.segment_create_args_validate.return_value = None
         mock_seg_svc.multi_create_segment.return_value = [mock_segment]
-        mock_marshal.return_value = {"id": mock_segment.id}
-        mock_summary_svc.get_segments_summaries.return_value = {}
+        mock_get_summaries.return_value = {}
+        mock_dump_segments.return_value = [_segment_response_dict()]
 
         segments_data = [{"content": "Test segment content", "answer": "Test answer"}]
 
@@ -1213,8 +1273,8 @@ class TestDatasetSegmentApiUpdate:
         mock_rate_limit.enabled = False
         mock_feature_svc.get_knowledge_rate_limit.return_value = mock_rate_limit
 
-    @patch("controllers.service_api.dataset.segment.SummaryIndexService")
-    @patch("controllers.service_api.dataset.segment.marshal")
+    @patch("controllers.service_api.dataset.segment.segment_response_with_summary")
+    @patch("controllers.service_api.dataset.segment.SummaryIndexService.get_segment_summary")
     @patch("controllers.service_api.dataset.segment.SegmentService")
     @patch("controllers.service_api.dataset.segment.DocumentService")
     @patch("controllers.service_api.dataset.segment.DatasetService")
@@ -1231,8 +1291,8 @@ class TestDatasetSegmentApiUpdate:
         mock_dataset_svc,
         mock_doc_svc,
         mock_seg_svc,
-        mock_marshal,
-        mock_summary_svc,
+        mock_get_summary,
+        mock_dump_segment,
         app: Flask,
         mock_tenant,
         mock_dataset,
@@ -1244,12 +1304,13 @@ class TestDatasetSegmentApiUpdate:
         mock_dataset.indexing_technique = "economy"
         mock_db.session.scalar.return_value = mock_dataset
         mock_dataset_svc.check_dataset_model_setting.return_value = None
-        mock_doc_svc.get_document.return_value = Mock()
+        mock_doc_svc.get_document.return_value = Mock(doc_form=IndexStructureType.PARAGRAPH_INDEX)
         mock_seg_svc.get_segment_by_id.return_value = mock_segment
         updated = Mock()
+        updated.id = "updated-seg"
         mock_seg_svc.update_segment.return_value = updated
-        mock_marshal.return_value = {"id": mock_segment.id}
-        mock_summary_svc.get_segment_summary.return_value = None
+        mock_get_summary.return_value = None
+        mock_dump_segment.return_value = _segment_response_dict()
 
         with app.test_request_context(
             f"/datasets/{mock_dataset.id}/documents/doc-id/segments/{mock_segment.id}",
@@ -1356,11 +1417,11 @@ class TestDatasetSegmentApiGetSingle:
     """Test suite for DatasetSegmentApi.get() (single segment) endpoint.
 
     ``get`` has no billing decorators but calls
-    ``current_account_with_tenant()`` and ``marshal``.
+    ``current_account_with_tenant()`` and response serialization.
     """
 
-    @patch("controllers.service_api.dataset.segment.SummaryIndexService")
-    @patch("controllers.service_api.dataset.segment.marshal")
+    @patch("controllers.service_api.dataset.segment.segment_response_with_summary")
+    @patch("controllers.service_api.dataset.segment.SummaryIndexService.get_segment_summary")
     @patch("controllers.service_api.dataset.segment.SegmentService")
     @patch("controllers.service_api.dataset.segment.DocumentService")
     @patch("controllers.service_api.dataset.segment.DatasetService")
@@ -1373,8 +1434,8 @@ class TestDatasetSegmentApiGetSingle:
         mock_dataset_svc,
         mock_doc_svc,
         mock_seg_svc,
-        mock_marshal,
-        mock_summary_svc,
+        mock_get_summary,
+        mock_dump_segment,
         app: Flask,
         mock_tenant,
         mock_dataset,
@@ -1387,8 +1448,8 @@ class TestDatasetSegmentApiGetSingle:
         mock_doc = Mock(doc_form=IndexStructureType.PARAGRAPH_INDEX)
         mock_doc_svc.get_document.return_value = mock_doc
         mock_seg_svc.get_segment_by_id.return_value = mock_segment
-        mock_marshal.return_value = {"id": mock_segment.id}
-        mock_summary_svc.get_segment_summary.return_value = None
+        mock_get_summary.return_value = None
+        mock_dump_segment.return_value = _segment_response_dict()
 
         with app.test_request_context(
             f"/datasets/{mock_dataset.id}/documents/doc-id/segments/{mock_segment.id}",
@@ -1406,8 +1467,8 @@ class TestDatasetSegmentApiGetSingle:
         assert "data" in response
         assert response["doc_form"] == IndexStructureType.PARAGRAPH_INDEX
 
-    @patch("controllers.service_api.dataset.segment.SummaryIndexService")
-    @patch("controllers.service_api.dataset.segment.marshal")
+    @patch("controllers.service_api.dataset.segment.segment_response_with_summary")
+    @patch("controllers.service_api.dataset.segment.SummaryIndexService.get_segment_summary")
     @patch("controllers.service_api.dataset.segment.SegmentService")
     @patch("controllers.service_api.dataset.segment.DocumentService")
     @patch("controllers.service_api.dataset.segment.DatasetService")
@@ -1420,8 +1481,8 @@ class TestDatasetSegmentApiGetSingle:
         mock_dataset_svc,
         mock_doc_svc,
         mock_seg_svc,
-        mock_marshal,
-        mock_summary_svc,
+        mock_get_summary,
+        mock_dump_segment,
         app: Flask,
         mock_tenant,
         mock_dataset,
@@ -1434,11 +1495,9 @@ class TestDatasetSegmentApiGetSingle:
         mock_doc = Mock(doc_form=IndexStructureType.PARAGRAPH_INDEX)
         mock_doc_svc.get_document.return_value = mock_doc
         mock_seg_svc.get_segment_by_id.return_value = mock_segment
-        mock_marshal.return_value = {"id": mock_segment.id, "summary": None}
-
-        mock_summary_record = Mock()
-        mock_summary_record.summary_content = "This is the segment summary"
-        mock_summary_svc.get_segment_summary.return_value = mock_summary_record
+        mock_summary_record = Mock(summary_content="This is the segment summary")
+        mock_get_summary.return_value = mock_summary_record
+        mock_dump_segment.return_value = _segment_response_dict("This is the segment summary")
 
         with app.test_request_context(
             f"/datasets/{mock_dataset.id}/documents/doc-id/segments/{mock_segment.id}",
@@ -1556,10 +1615,9 @@ class TestChildChunkApiGet:
     """Test suite for ChildChunkApi.get() endpoint.
 
     ``get`` has no billing decorators but calls
-    ``current_account_with_tenant()``, ``marshal``, and ``db``.
+    ``current_account_with_tenant()``, response serialization, and ``db``.
     """
 
-    @patch("controllers.service_api.dataset.segment.marshal")
     @patch("controllers.service_api.dataset.segment.SegmentService")
     @patch("controllers.service_api.dataset.segment.DocumentService")
     @patch("controllers.service_api.dataset.segment.current_account_with_tenant")
@@ -1570,7 +1628,6 @@ class TestChildChunkApiGet:
         mock_account_fn,
         mock_doc_svc,
         mock_seg_svc,
-        mock_marshal,
         app: Flask,
         mock_tenant,
         mock_dataset,
@@ -1582,11 +1639,10 @@ class TestChildChunkApiGet:
         mock_seg_svc.get_segment_by_id.return_value = Mock()
 
         mock_pagination = Mock()
-        mock_pagination.items = [Mock(), Mock()]
+        mock_pagination.items = [_child_chunk(), _child_chunk()]
         mock_pagination.total = 2
         mock_pagination.pages = 1
         mock_seg_svc.get_child_chunks.return_value = mock_pagination
-        mock_marshal.return_value = [{"id": "c1"}, {"id": "c2"}]
 
         with app.test_request_context(
             f"/datasets/{mock_dataset.id}/documents/doc-id/segments/seg-id/child_chunks?page=1&limit=20",
@@ -1714,7 +1770,6 @@ class TestChildChunkApiPost:
         mock_rate_limit.enabled = False
         mock_feature_svc.get_knowledge_rate_limit.return_value = mock_rate_limit
 
-    @patch("controllers.service_api.dataset.segment.marshal")
     @patch("controllers.service_api.dataset.segment.SegmentService")
     @patch("controllers.service_api.dataset.segment.DocumentService")
     @patch("controllers.service_api.dataset.segment.current_account_with_tenant")
@@ -1729,7 +1784,6 @@ class TestChildChunkApiPost:
         mock_account_fn,
         mock_doc_svc,
         mock_seg_svc,
-        mock_marshal,
         app: Flask,
         mock_tenant,
         mock_dataset,
@@ -1741,9 +1795,8 @@ class TestChildChunkApiPost:
         mock_db.session.scalar.return_value = mock_dataset
         mock_doc_svc.get_document.return_value = Mock()
         mock_seg_svc.get_segment_by_id.return_value = Mock()
-        mock_child = Mock()
+        mock_child = _child_chunk()
         mock_seg_svc.create_child_chunk.return_value = mock_child
-        mock_marshal.return_value = {"id": "child-1"}
 
         with app.test_request_context(
             f"/datasets/{mock_dataset.id}/documents/doc-id/segments/seg-id/child_chunks",

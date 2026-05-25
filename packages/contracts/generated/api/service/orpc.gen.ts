@@ -1132,16 +1132,10 @@ export const delete4 = oc
 
 /**
  * Update a specific child chunk
- *
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
  */
 export const patch3 = oc
   .route({
-    deprecated: true,
-    description:
-      'Update a specific child chunk\n\nGenerated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
+    description: 'Update a specific child chunk',
     inputStructure: 'detailed',
     method: 'PATCH',
     operationId:
@@ -1167,16 +1161,10 @@ export const byChildChunkId = {
 
 /**
  * List child chunks for a segment
- *
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
  */
 export const get10 = oc
   .route({
-    deprecated: true,
-    description:
-      'List child chunks for a segment\n\nGenerated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
+    description: 'List child chunks for a segment',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunks',
@@ -1194,16 +1182,10 @@ export const get10 = oc
 
 /**
  * Create a new child chunk for a segment
- *
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
  */
 export const post19 = oc
   .route({
-    deprecated: true,
-    description:
-      'Create a new child chunk for a segment\n\nGenerated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
+    description: 'Create a new child chunk for a segment',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunks',
@@ -1244,16 +1226,10 @@ export const delete5 = oc
 
 /**
  * Get a specific segment by ID
- *
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
  */
 export const get11 = oc
   .route({
-    deprecated: true,
-    description:
-      'Get a specific segment by ID\n\nGenerated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
+    description: 'Get a specific segment by ID',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentId',
@@ -1265,16 +1241,10 @@ export const get11 = oc
 
 /**
  * Update a specific segment
- *
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
  */
 export const post20 = oc
   .route({
-    deprecated: true,
-    description:
-      'Update a specific segment\n\nGenerated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
+    description: 'Update a specific segment',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentId',
@@ -1298,16 +1268,10 @@ export const bySegmentId = {
 
 /**
  * List segments in a document
- *
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
  */
 export const get12 = oc
   .route({
-    deprecated: true,
-    description:
-      'List segments in a document\n\nGenerated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
+    description: 'List segments in a document',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getDatasetsByDatasetIdDocumentsByDocumentIdSegments',
@@ -1324,16 +1288,10 @@ export const get12 = oc
 
 /**
  * Create segments in a document
- *
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
  */
 export const post21 = oc
   .route({
-    deprecated: true,
-    description:
-      'Create segments in a document\n\nGenerated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
+    description: 'Create segments in a document',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postDatasetsByDatasetIdDocumentsByDocumentIdSegments',

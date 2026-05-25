@@ -1056,17 +1056,20 @@ List segments in a document
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [SegmentListQuery](#segmentlistquery) |
 | dataset_id | path | Dataset ID | Yes | string |
 | document_id | path | Document ID | Yes | string |
+| keyword | query |  | No | string |
+| limit | query |  | No | integer |
+| page | query |  | No | integer |
+| status | query |  | No | [ string ] |
 
 ##### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Segments retrieved successfully |
-| 401 | Unauthorized - invalid API token |
-| 404 | Dataset or document not found |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Segments retrieved successfully | [SegmentListResponse](#segmentlistresponse) |
+| 401 | Unauthorized - invalid API token |  |
+| 404 | Dataset or document not found |  |
 
 #### POST
 ##### Description
@@ -1083,12 +1086,12 @@ Create segments in a document
 
 ##### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Segments created successfully |
-| 400 | Bad request - segments data is missing |
-| 401 | Unauthorized - invalid API token |
-| 404 | Dataset or document not found |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Segments created successfully | [SegmentCreateListResponse](#segmentcreatelistresponse) |
+| 400 | Bad request - segments data is missing |  |
+| 401 | Unauthorized - invalid API token |  |
+| 404 | Dataset or document not found |  |
 
 ### /datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}
 
@@ -1128,11 +1131,11 @@ Get a specific segment by ID
 
 ##### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Segment retrieved successfully |
-| 401 | Unauthorized - invalid API token |
-| 404 | Dataset, document, or segment not found |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Segment retrieved successfully | [SegmentDetailResponse](#segmentdetailresponse) |
+| 401 | Unauthorized - invalid API token |  |
+| 404 | Dataset, document, or segment not found |  |
 
 #### POST
 ##### Description
@@ -1150,11 +1153,11 @@ Update a specific segment
 
 ##### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Segment updated successfully |
-| 401 | Unauthorized - invalid API token |
-| 404 | Dataset, document, or segment not found |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Segment updated successfully | [SegmentDetailResponse](#segmentdetailresponse) |
+| 401 | Unauthorized - invalid API token |  |
+| 404 | Dataset, document, or segment not found |  |
 
 ### /datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}/child_chunks
 
@@ -1167,18 +1170,20 @@ List child chunks for a segment
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [ChildChunkListQuery](#childchunklistquery) |
 | dataset_id | path | Dataset ID | Yes | string |
 | document_id | path | Document ID | Yes | string |
 | segment_id | path | Parent segment ID | Yes | string |
+| keyword | query |  | No | string |
+| limit | query |  | No | integer |
+| page | query |  | No | integer |
 
 ##### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Child chunks retrieved successfully |
-| 401 | Unauthorized - invalid API token |
-| 404 | Dataset, document, or segment not found |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Child chunks retrieved successfully | [ChildChunkListResponse](#childchunklistresponse) |
+| 401 | Unauthorized - invalid API token |  |
+| 404 | Dataset, document, or segment not found |  |
 
 #### POST
 ##### Description
@@ -1196,11 +1201,11 @@ Create a new child chunk for a segment
 
 ##### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Child chunk created successfully |
-| 401 | Unauthorized - invalid API token |
-| 404 | Dataset, document, or segment not found |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Child chunk created successfully | [ChildChunkDetailResponse](#childchunkdetailresponse) |
+| 401 | Unauthorized - invalid API token |  |
+| 404 | Dataset, document, or segment not found |  |
 
 ### /datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}/child_chunks/{child_chunk_id}
 
@@ -1243,11 +1248,11 @@ Update a specific child chunk
 
 ##### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Child chunk updated successfully |
-| 401 | Unauthorized - invalid API token |
-| 404 | Dataset, document, segment, or child chunk not found |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Child chunk updated successfully | [ChildChunkDetailResponse](#childchunkdetailresponse) |
+| 401 | Unauthorized - invalid API token |  |
+| 404 | Dataset, document, segment, or child chunk not found |  |
 
 ### /datasets/{dataset_id}/documents/{document_id}/update-by-file
 
@@ -2206,6 +2211,12 @@ Returns a list of available models for the specified model type.
 | ---- | ---- | ----------- | -------- |
 | content | string |  | Yes |
 
+#### ChildChunkDetailResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ChildChunkResponse](#childchunkresponse) |  | Yes |
+
 #### ChildChunkListQuery
 
 | Name | Type | Description | Required |
@@ -2213,6 +2224,29 @@ Returns a list of available models for the specified model type.
 | keyword | string |  | No |
 | limit | integer |  | No |
 | page | integer |  | No |
+
+#### ChildChunkListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [ChildChunkResponse](#childchunkresponse) ] |  | Yes |
+| limit | integer |  | Yes |
+| page | integer |  | Yes |
+| total | integer |  | Yes |
+| total_pages | integer |  | Yes |
+
+#### ChildChunkResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| content | string |  | Yes |
+| created_at | integer |  | Yes |
+| id | string |  | Yes |
+| position | integer |  | Yes |
+| segment_id | string |  | Yes |
+| type | string |  | Yes |
+| updated_at | integer |  | Yes |
+| word_count | integer |  | Yes |
 
 #### ChildChunkUpdatePayload
 
@@ -2856,18 +2890,97 @@ Metadata operation data
 | segmentation | [Segmentation](#segmentation) |  | No |
 | subchunk_segmentation | [Segmentation](#segmentation) |  | No |
 
+#### SegmentAttachmentResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| extension | string |  | Yes |
+| id | string |  | Yes |
+| mime_type | string |  | Yes |
+| name | string |  | Yes |
+| size | integer |  | Yes |
+| source_url | string |  | Yes |
+
+#### SegmentCreateArgs
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| answer | string |  | No |
+| attachment_ids | [ string ] |  | No |
+| content | string |  | No |
+| keywords | [ string ] |  | No |
+
+#### SegmentCreateListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [SegmentResponse](#segmentresponse) ] |  | Yes |
+| doc_form | string |  | Yes |
+
 #### SegmentCreatePayload
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| segments | [ object ] |  | No |
+| segments | [ [SegmentCreateArgs](#segmentcreateargs) ] |  | No |
+
+#### SegmentDetailResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [SegmentResponse](#segmentresponse) |  | Yes |
+| doc_form | string |  | Yes |
 
 #### SegmentListQuery
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | keyword | string |  | No |
+| limit | integer |  | No |
+| page | integer |  | No |
 | status | [ string ] |  | No |
+
+#### SegmentListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [SegmentResponse](#segmentresponse) ] |  | Yes |
+| doc_form | string |  | Yes |
+| has_more | boolean |  | Yes |
+| limit | integer |  | Yes |
+| page | integer |  | Yes |
+| total | integer |  | Yes |
+
+#### SegmentResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| answer | string |  | Yes |
+| attachments | [ [SegmentAttachmentResponse](#segmentattachmentresponse) ] |  | Yes |
+| child_chunks | [ [ChildChunkResponse](#childchunkresponse) ] |  | Yes |
+| completed_at | integer |  | Yes |
+| content | string |  | Yes |
+| created_at | integer |  | Yes |
+| created_by | string |  | Yes |
+| disabled_at | integer |  | Yes |
+| disabled_by | string |  | Yes |
+| document_id | string |  | Yes |
+| enabled | boolean |  | Yes |
+| error | string |  | Yes |
+| hit_count | integer |  | Yes |
+| id | string |  | Yes |
+| index_node_hash | string |  | Yes |
+| index_node_id | string |  | Yes |
+| indexing_at | integer |  | Yes |
+| keywords | [ string ] |  | Yes |
+| position | integer |  | Yes |
+| sign_content | string |  | Yes |
+| status | string |  | Yes |
+| stopped_at | integer |  | Yes |
+| summary | string |  | Yes |
+| tokens | integer |  | Yes |
+| updated_at | integer |  | Yes |
+| updated_by | string |  | Yes |
+| word_count | integer |  | Yes |
 
 #### SegmentUpdateArgs
 

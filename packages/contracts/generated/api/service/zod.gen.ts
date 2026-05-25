@@ -83,6 +83,38 @@ export const zChildChunkListQuery = z.object({
 })
 
 /**
+ * ChildChunkResponse
+ */
+export const zChildChunkResponse = z.object({
+  content: z.string(),
+  created_at: z.int(),
+  id: z.string(),
+  position: z.int(),
+  segment_id: z.string(),
+  type: z.string(),
+  updated_at: z.int(),
+  word_count: z.int(),
+})
+
+/**
+ * ChildChunkDetailResponse
+ */
+export const zChildChunkDetailResponse = z.object({
+  data: zChildChunkResponse,
+})
+
+/**
+ * ChildChunkListResponse
+ */
+export const zChildChunkListResponse = z.object({
+  data: z.array(zChildChunkResponse),
+  limit: z.int(),
+  page: z.int(),
+  total: z.int(),
+  total_pages: z.int(),
+})
+
+/**
  * ChildChunkUpdatePayload
  */
 export const zChildChunkUpdatePayload = z.object({
@@ -702,10 +734,32 @@ export const zRetrievalMethod = z.enum([
 ])
 
 /**
+ * SegmentAttachmentResponse
+ */
+export const zSegmentAttachmentResponse = z.object({
+  extension: z.string(),
+  id: z.string(),
+  mime_type: z.string().nullable(),
+  name: z.string(),
+  size: z.int(),
+  source_url: z.string(),
+})
+
+/**
+ * SegmentCreateArgs
+ */
+export const zSegmentCreateArgs = z.object({
+  answer: z.string().nullish(),
+  attachment_ids: z.array(z.string()).nullish(),
+  content: z.string().nullish(),
+  keywords: z.array(z.string()).nullish(),
+})
+
+/**
  * SegmentCreatePayload
  */
 export const zSegmentCreatePayload = z.object({
-  segments: z.array(z.record(z.string(), z.unknown())).nullish(),
+  segments: z.array(zSegmentCreateArgs).nullish(),
 })
 
 /**
@@ -713,7 +767,70 @@ export const zSegmentCreatePayload = z.object({
  */
 export const zSegmentListQuery = z.object({
   keyword: z.string().nullish(),
+  limit: z.int().gte(1).optional().default(20),
+  page: z.int().gte(1).optional().default(1),
   status: z.array(z.string()).optional(),
+})
+
+/**
+ * SegmentResponse
+ */
+export const zSegmentResponse = z.object({
+  answer: z.string().nullable(),
+  attachments: z.array(zSegmentAttachmentResponse),
+  child_chunks: z.array(zChildChunkResponse),
+  completed_at: z.int().nullable(),
+  content: z.string(),
+  created_at: z.int(),
+  created_by: z.string(),
+  disabled_at: z.int().nullable(),
+  disabled_by: z.string().nullable(),
+  document_id: z.string(),
+  enabled: z.boolean(),
+  error: z.string().nullable(),
+  hit_count: z.int(),
+  id: z.string(),
+  index_node_hash: z.string().nullable(),
+  index_node_id: z.string().nullable(),
+  indexing_at: z.int().nullable(),
+  keywords: z.array(z.string()).nullable(),
+  position: z.int(),
+  sign_content: z.string(),
+  status: z.string(),
+  stopped_at: z.int().nullable(),
+  summary: z.string().nullable(),
+  tokens: z.int(),
+  updated_at: z.int(),
+  updated_by: z.string().nullable(),
+  word_count: z.int(),
+})
+
+/**
+ * SegmentCreateListResponse
+ */
+export const zSegmentCreateListResponse = z.object({
+  data: z.array(zSegmentResponse),
+  doc_form: z.string(),
+})
+
+/**
+ * SegmentDetailResponse
+ */
+export const zSegmentDetailResponse = z.object({
+  data: zSegmentResponse,
+  doc_form: z.string(),
+})
+
+/**
+ * SegmentListResponse
+ */
+export const zSegmentListResponse = z.object({
+  data: z.array(zSegmentResponse),
+  doc_form: z.string(),
+  has_more: z.boolean(),
+  limit: z.int(),
+  page: z.int(),
+  total: z.int(),
 })
 
 /**
@@ -1516,17 +1633,16 @@ export const zGetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsPath = z.object
 })
 
 export const zGetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsQuery = z.object({
-  keyword: z.string().nullish(),
+  keyword: z.string().optional(),
+  limit: z.int().gte(1).optional().default(20),
+  page: z.int().gte(1).optional().default(1),
   status: z.array(z.string()).optional(),
 })
 
 /**
  * Segments retrieved successfully
  */
-export const zGetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsResponse = z.record(
-  z.string(),
-  z.unknown(),
-)
+export const zGetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsResponse = zSegmentListResponse
 
 export const zPostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBody = zSegmentCreatePayload
 
@@ -1538,10 +1654,8 @@ export const zPostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsPath = z.objec
 /**
  * Segments created successfully
  */
-export const zPostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsResponse = z.record(
-  z.string(),
-  z.unknown(),
-)
+export const zPostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsResponse
+  = zSegmentCreateListResponse
 
 export const zDeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdPath = z.object({
   dataset_id: z.string(),
@@ -1566,10 +1680,8 @@ export const zGetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdPath
 /**
  * Segment retrieved successfully
  */
-export const zGetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdResponse = z.record(
-  z.string(),
-  z.unknown(),
-)
+export const zGetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdResponse
+  = zSegmentDetailResponse
 
 export const zPostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdBody
   = zSegmentUpdatePayload
@@ -1583,10 +1695,8 @@ export const zPostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdPat
 /**
  * Segment updated successfully
  */
-export const zPostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdResponse = z.record(
-  z.string(),
-  z.unknown(),
-)
+export const zPostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdResponse
+  = zSegmentDetailResponse
 
 export const zGetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksPath
   = z.object({
@@ -1597,7 +1707,7 @@ export const zGetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChil
 
 export const zGetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksQuery
   = z.object({
-    keyword: z.string().nullish(),
+    keyword: z.string().optional(),
     limit: z.int().gte(1).optional().default(20),
     page: z.int().gte(1).optional().default(1),
   })
@@ -1606,7 +1716,7 @@ export const zGetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChil
  * Child chunks retrieved successfully
  */
 export const zGetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksResponse
-  = z.record(z.string(), z.unknown())
+  = zChildChunkListResponse
 
 export const zPostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksBody
   = zChildChunkCreatePayload
@@ -1622,7 +1732,7 @@ export const zPostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChi
  * Child chunk created successfully
  */
 export const zPostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksResponse
-  = z.record(z.string(), z.unknown())
+  = zChildChunkDetailResponse
 
 export const zDeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdPath
   = z.object({
@@ -1653,7 +1763,7 @@ export const zPatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdCh
  * Child chunk updated successfully
  */
 export const zPatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdResponse
-  = z.record(z.string(), z.unknown())
+  = zChildChunkDetailResponse
 
 export const zPostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFilePath = z.object({
   dataset_id: z.string(),

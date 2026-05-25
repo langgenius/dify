@@ -6,10 +6,11 @@ These helpers keep that translation centralized so models registered through
 `register_schema_models` emit resolvable Swagger 2.0 references.
 """
 
-from collections.abc import Mapping
+from collections.abc import Iterable, Mapping
 from enum import StrEnum
-from typing import Any, Literal, NotRequired, TypedDict
+from typing import Any, Literal, NotRequired, Protocol, TypedDict
 
+from flask import request
 from flask_restx import Namespace
 from pydantic import BaseModel, TypeAdapter
 
@@ -34,6 +35,12 @@ QueryParamDoc = TypedDict(
         "maxItems": NotRequired[int],
     },
 )
+
+
+class QueryArgs(Protocol):
+    def to_dict(self, flat: bool = True) -> dict[str, str]: ...
+
+    def getlist(self, key: str) -> list[str]: ...
 
 
 def _register_json_schema(namespace: Namespace, name: str, schema: dict) -> None:
@@ -167,6 +174,58 @@ def query_params_from_model(model: type[BaseModel]) -> dict[str, QueryParamDoc]:
     return params
 
 
+def query_params_from_request[ModelT: BaseModel](
+    model: type[ModelT],
+    *,
+    list_fields: Iterable[str] = (),
+    args: QueryArgs | None = None,
+    use_defaults_for_malformed_ints: bool = False,
+) -> ModelT:
+    """Validate query args with Pydantic while preserving Flask query parsing behavior.
+
+    Repeated params need explicit ``getlist()`` handling because Werkzeug's
+    ``to_dict()`` keeps only one value. For malformed scalar integers, Flask's
+    For endpoints migrated from ``request.args.get(..., type=int, default=...)``,
+    set ``use_defaults_for_malformed_ints`` to preserve Flask's fallback to
+    defaults for malformed optional integer params.
+    """
+
+    query_args = args or request.args
+    params: dict[str, Any] = query_args.to_dict()
+    for field_name in list_fields:
+        params[field_name] = query_args.getlist(field_name)
+
+    if use_defaults_for_malformed_ints:
+        _drop_malformed_defaulted_integer_params(model, params)
+    return model.model_validate(params)
+
+
+def _drop_malformed_defaulted_integer_params(model: type[BaseModel], params: dict[str, Any]) -> None:
+    properties = model.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0).get("properties", {})
+    if not isinstance(properties, Mapping):
+        return
+
+    for name, value in list(params.items()):
+        if not isinstance(value, str):
+            continue
+
+        field = model.model_fields.get(name)
+        if field is None or field.is_required():
+            continue
+
+        property_schema = properties.get(name)
+        if not isinstance(property_schema, Mapping):
+            continue
+
+        if _nullable_property_schema(property_schema).get("type") != "integer":
+            continue
+
+        try:
+            int(value)
+        except ValueError:
+            params.pop(name)
+
+
 def _query_param_from_property(property_schema: Mapping[str, Any], *, required: bool) -> QueryParamDoc:
     param_schema = _nullable_property_schema(property_schema)
     param_doc: QueryParamDoc = {"in": "query", "required": required}
@@ -239,6 +298,7 @@ __all__ = [
     "DEFAULT_REF_TEMPLATE_SWAGGER_2_0",
     "get_or_create_model",
     "query_params_from_model",
+    "query_params_from_request",
     "register_enum_models",
     "register_response_schema_model",
     "register_response_schema_models",
