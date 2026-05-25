@@ -697,7 +697,7 @@ class AppCopyApi(Resource):
     def post(self, app_model):
         """Copy app"""
         # The role of the current user in the ta table must be admin, owner, or editor
-        current_user, _ = current_account_with_tenant()
+        current_user, current_tenant_id = current_account_with_tenant()
 
         args = CopyAppPayload.model_validate(console_ns.payload or {})
 
@@ -737,6 +737,17 @@ class AppCopyApi(Resource):
 
             stmt = select(App).where(App.id == result.app_id)
             app = session.scalar(stmt)
+
+        if app and dify_config.RBAC_ENABLED:
+            app.permission_keys = _collect_app_access_permission_keys(
+                enterprise_rbac_service.RBACService.AppAccess.matrix(
+                    str(current_tenant_id),
+                    current_user.id,
+                    str(app.id),
+                )
+            )
+        elif app:
+            app.permission_keys = []
 
         response_model = AppDetailWithSite.model_validate(app, from_attributes=True)
         return response_model.model_dump(mode="json"), 201
