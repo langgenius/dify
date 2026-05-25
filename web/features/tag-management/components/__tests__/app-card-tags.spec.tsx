@@ -49,6 +49,16 @@ describe('AppCardTags', () => {
         value: tags,
       }))
     })
+
+    it('should keep the overflow mask independent from app card hover', () => {
+      const { container } = render(<AppCardTags appId="app-1" tags={tags} />)
+      const mask = container.querySelector('.bg-tag-selector-mask-bg')
+
+      expect(mask).toBeInTheDocument()
+      expect(mask).toHaveClass('group-hover/tag-area:hidden')
+      expect(mask).toHaveClass('group-focus-within/tag-area:hidden')
+      expect(mask).not.toHaveClass('group-hover:bg-tag-selector-mask-hover-bg')
+    })
   })
 
   describe('Callbacks', () => {
