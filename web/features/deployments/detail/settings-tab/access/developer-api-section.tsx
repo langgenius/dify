@@ -40,18 +40,32 @@ function deploymentEnvironment(row: { environment?: Environment }): Environment 
   return row.environment?.id ? row.environment : undefined
 }
 
-function useDeveloperApiResources(appInstanceId: string) {
+function useDeveloperApiStatus(appInstanceId: string) {
   const accessChannelsQuery = useQuery(consoleQuery.enterprise.accessService.getAccessChannels.queryOptions({
     input: {
       params: { appInstanceId },
     },
   }))
+  const apiEnabled = accessChannelsQuery.data?.accessChannels?.developerApiEnabled ?? false
+
+  return {
+    apiEnabled,
+    isLoading: accessChannelsQuery.isLoading,
+    isError: accessChannelsQuery.isError,
+  }
+}
+
+function useDeveloperApiResources(appInstanceId: string) {
+  const {
+    apiEnabled,
+    isLoading: accessChannelsLoading,
+    isError: accessChannelsError,
+  } = useDeveloperApiStatus(appInstanceId)
   const environmentDeploymentsQuery = useQuery(consoleQuery.enterprise.deploymentService.listEnvironmentDeployments.queryOptions({
     input: {
       params: { appInstanceId },
     },
   }))
-  const apiEnabled = accessChannelsQuery.data?.accessChannels?.developerApiEnabled ?? false
   const environments = environmentDeploymentsQuery.data?.data
     ?.map(deploymentEnvironment)
     .filter((environment): environment is Environment & { id: string } => Boolean(environment)) ?? []
@@ -74,8 +88,8 @@ function useDeveloperApiResources(appInstanceId: string) {
     apiEnabled,
     environments,
     apiKeys,
-    isLoading: accessChannelsQuery.isLoading || environmentDeploymentsQuery.isLoading || (apiEnabled && apiKeysLoading),
-    isError: accessChannelsQuery.isError || environmentDeploymentsQuery.isError || (apiEnabled && apiKeysError),
+    isLoading: accessChannelsLoading || environmentDeploymentsQuery.isLoading || (apiEnabled && apiKeysLoading),
+    isError: accessChannelsError || environmentDeploymentsQuery.isError || (apiEnabled && apiKeysError),
   }
 }
 
@@ -100,6 +114,27 @@ function DeveloperApiSwitch({ appInstanceId, checked, disabled }: {
   )
 }
 
+export function DeveloperApiHeaderSwitch({ appInstanceId }: {
+  appInstanceId: string
+}) {
+  const {
+    apiEnabled,
+    isLoading,
+    isError,
+  } = useDeveloperApiStatus(appInstanceId)
+
+  if (isLoading)
+    return <SwitchSkeleton />
+
+  return (
+    <DeveloperApiSwitch
+      appInstanceId={appInstanceId}
+      checked={apiEnabled}
+      disabled={isError}
+    />
+  )
+}
+
 export function DeveloperApiHeaderActions({ appInstanceId }: {
   appInstanceId: string
 }) {
@@ -109,34 +144,22 @@ export function DeveloperApiHeaderActions({ appInstanceId }: {
     apiKeys,
     environments,
     isLoading,
-    isError,
   } = useDeveloperApiResources(appInstanceId)
 
   if (isLoading) {
-    return (
-      <div className="flex items-center gap-2">
-        <SkeletonRectangle className="my-0 h-8 w-32 animate-pulse rounded-lg" />
-        <SwitchSkeleton />
-      </div>
-    )
+    return <SkeletonRectangle className="my-0 h-8 w-32 animate-pulse rounded-lg" />
   }
 
+  if (!apiEnabled)
+    return null
+
   return (
-    <div className="flex items-center gap-2">
-      {apiEnabled && (
-        <ApiKeyGenerateMenu
-          appInstanceId={appInstanceId}
-          environments={environments}
-          apiKeys={apiKeys}
-          onCreatedToken={token => setCreatedApiToken({ appInstanceId, token })}
-        />
-      )}
-      <DeveloperApiSwitch
-        appInstanceId={appInstanceId}
-        checked={apiEnabled}
-        disabled={isError}
-      />
-    </div>
+    <ApiKeyGenerateMenu
+      appInstanceId={appInstanceId}
+      environments={environments}
+      apiKeys={apiKeys}
+      onCreatedToken={token => setCreatedApiToken({ appInstanceId, token })}
+    />
   )
 }
 

@@ -90,21 +90,21 @@ export function Section({
 
   return (
     <section className={cn('py-6 first:pt-0 last:pb-0', showDivider && 'border-b border-divider-subtle last:border-b-0')}>
-      <div className="mb-3 flex items-start justify-between gap-4">
-        <div className="min-w-0">
+      <div className="mb-3 flex min-w-0 flex-col">
+        <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-2">
           <div className={titleClassName}>
             {title}
           </div>
-          {description && (
-            <p className={cn(descriptionClassName, 'max-w-150')}>
-              {description}
-            </p>
+          {action && (
+            <div className="shrink-0">
+              {action}
+            </div>
           )}
         </div>
-        {Boolean(action) && (
-          <div className="shrink-0">
-            {action}
-          </div>
+        {description && (
+          <p className={cn(descriptionClassName, 'max-w-150')}>
+            {description}
+          </p>
         )}
       </div>
       <div className="min-w-0">

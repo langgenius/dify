@@ -8,7 +8,7 @@ import { useSelectedLayoutSegment } from '@/next/navigation'
 import { DeployDrawer } from '../components/deploy-drawer'
 import { NewDeploymentButton } from './deploy-tab'
 import { DeploymentSidebar } from './deployment-sidebar'
-import { DeveloperApiHeaderActions } from './settings-tab/access/developer-api-section'
+import { DeveloperApiHeaderActions, DeveloperApiHeaderSwitch } from './settings-tab/access/developer-api-section'
 import { isInstanceDetailTabKey } from './tabs'
 import { CreateReleaseControl } from './versions-tab/create-release-control'
 
@@ -32,7 +32,14 @@ export function InstanceDetail({ appInstanceId, children }: {
             <div className="flex w-full flex-col gap-y-0.5 px-6 pt-3 pb-2">
               <div className="flex min-w-0 items-start justify-between gap-4">
                 <div className="min-w-0">
-                  <div className="system-xl-semibold text-text-primary">{t(`tabs.${activeTab}.name`)}</div>
+                  <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-2">
+                    <div className="system-xl-semibold text-text-primary">{t(`tabs.${activeTab}.name`)}</div>
+                    {activeTab === 'api' && (
+                      <div className="shrink-0">
+                        <DeveloperApiHeaderSwitch appInstanceId={appInstanceId} />
+                      </div>
+                    )}
+                  </div>
                   <div className="system-sm-regular text-text-tertiary">{t(`tabs.${activeTab}.description`)}</div>
                 </div>
                 {(activeTab === 'api' || activeTab === 'releases' || activeTab === 'instances') && (

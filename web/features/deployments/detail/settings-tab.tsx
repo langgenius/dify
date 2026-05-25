@@ -11,11 +11,11 @@ import {
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
+import { Input } from '@langgenius/dify-ui/input'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Input from '@/app/components/base/input'
 import { SkeletonRectangle, SkeletonRow } from '@/app/components/base/skeleton'
 import Textarea from '@/app/components/base/textarea'
 import { useRouter } from '@/next/navigation'
@@ -49,7 +49,7 @@ function SettingsFormSkeleton() {
 
 function DeleteInstanceSkeleton() {
   return (
-    <div className="flex min-h-9 flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+    <div className="flex min-h-9 flex-col gap-3 sm:flex-row sm:items-center sm:gap-x-3">
       <SkeletonRectangle className="h-3 w-3/5 animate-pulse" />
       <SkeletonRow className="items-center justify-between gap-2">
         <SkeletonRectangle className="h-3 w-48 animate-pulse" />
@@ -140,7 +140,7 @@ function DeleteInstanceControl({
   const { t } = useTranslation('deployments')
 
   return (
-    <div className="flex min-h-9 flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+    <div className="flex min-h-9 flex-col gap-3 sm:flex-row sm:items-center sm:gap-x-3">
       <div className="system-xs-regular text-text-secondary">
         {hasDeployments
           ? t('settings.undeployFirst')
@@ -246,7 +246,7 @@ function SettingsForm({ app }: {
             className="min-h-24"
           />
         </div>
-        <div className="flex justify-end gap-2">
+        <div className="flex flex-wrap gap-2">
           <Button
             variant="secondary"
             disabled={updateInstance.isPending || (name === initialName && description === initialDescription)}
