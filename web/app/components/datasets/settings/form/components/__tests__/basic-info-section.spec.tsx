@@ -126,7 +126,7 @@ describe('BasicInfoSection', () => {
     showAppIconPicker: false,
     handleOpenAppIconPicker: vi.fn(),
     handleSelectAppIcon: vi.fn(),
-    handleCloseAppIconPicker: vi.fn(),
+    setShowAppIconPicker: vi.fn(),
     permission: DatasetPermission.onlyMe,
     setPermission: vi.fn(),
     selectedMemberIDs: ['user-1'],
