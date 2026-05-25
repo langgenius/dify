@@ -16,14 +16,14 @@ from typing import ClassVar
 from agenton.compositor import CompositorSessionSnapshot
 from agenton.layers import ExitIntent
 from agenton_collections.layers.plain import PLAIN_PROMPT_LAYER_TYPE_ID, PromptLayerConfig
-from dify_agent.layers.execution_context import (
-    DIFY_EXECUTION_CONTEXT_LAYER_TYPE_ID,
-    DifyExecutionContextLayerConfig,
-)
 from dify_agent.layers.dify_plugin import (
     DIFY_PLUGIN_LLM_LAYER_TYPE_ID,
     DifyPluginCredentialValue,
     DifyPluginLLMLayerConfig,
+)
+from dify_agent.layers.execution_context import (
+    DIFY_EXECUTION_CONTEXT_LAYER_TYPE_ID,
+    DifyExecutionContextLayerConfig,
 )
 from dify_agent.layers.output import DIFY_OUTPUT_LAYER_TYPE_ID, DifyOutputLayerConfig
 from dify_agent.protocol import (
