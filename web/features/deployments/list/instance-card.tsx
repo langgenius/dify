@@ -228,10 +228,12 @@ function DeploymentStatusContent({
   rows,
   isLoading,
   hasError,
+  emptyAction,
 }: {
   rows: EnvironmentDeployment[]
   isLoading: boolean
   hasError: boolean
+  emptyAction?: ReactElement
 }) {
   const { t } = useTranslation('deployments')
   const visibleRows = rows.slice(0, VISIBLE_ENVIRONMENT_COUNT)
@@ -265,6 +267,9 @@ function DeploymentStatusContent({
     )
   }
 
+  if (emptyAction)
+    return <div className="flex min-w-0 items-center">{emptyAction}</div>
+
   return null
 }
 
@@ -277,7 +282,7 @@ function DeploymentAccessLinks({ appInstanceId, access, isLoading }: {
 
   if (isLoading) {
     return (
-      <div className="flex min-w-0 grow items-center gap-2">
+      <div role="group" aria-label={t('overview.accessStatus')} className="flex min-w-0 grow items-center gap-2">
         <SkeletonRectangle className="my-0 size-4 animate-pulse rounded-sm" />
         <SkeletonRectangle className="my-0 size-4 animate-pulse rounded-sm" />
       </div>
@@ -312,10 +317,10 @@ function DeploymentAccessLinks({ appInstanceId, access, isLoading }: {
   ].filter((link): link is { key: string, href: string, label: string, icon: string } => Boolean(link))
 
   if (links.length === 0)
-    return <div className="min-w-0 grow" />
+    return <div role="group" aria-label={t('overview.accessStatus')} className="min-w-0 grow" />
 
   return (
-    <div className="flex min-w-0 grow items-center gap-2">
+    <div role="group" aria-label={t('overview.accessStatus')} className="flex min-w-0 grow items-center gap-2">
       {links.map(link => (
         <Tooltip key={link.key}>
           <TooltipTrigger
@@ -391,7 +396,7 @@ export function InstanceCard({ app }: {
     : t('card.notDeployed')
   const statusIsLoading = environmentDeploymentsQuery.isLoading || (!activeDeploymentRows.length && releaseHistoryQuery.isLoading)
   const statusHasError = environmentDeploymentsQuery.isError || releaseHistoryQuery.isError
-  const showFooterDeployAction = !statusIsLoading && !statusHasError && hasRelease && activeDeploymentRows.length === 0
+  const showDeployAction = !statusIsLoading && !statusHasError && hasRelease && activeDeploymentRows.length === 0
   const showFooterCreateReleaseAction = !statusIsLoading && !statusHasError && !hasRelease
 
   return (
@@ -427,18 +432,13 @@ export function InstanceCard({ app }: {
               )}
         </Link>
 
-        <div className="min-h-7 px-4 pt-1">
+        <div role="group" aria-label={t('card.tooltip.deploymentStatus')} className="min-h-7 px-4 pt-1">
           <DeploymentStatusContent
             rows={activeDeploymentRows}
             isLoading={statusIsLoading}
             hasError={statusHasError}
-          />
-        </div>
-
-        <div className="mt-auto flex h-10.5 min-w-0 items-center border-t border-divider-subtle px-4">
-          {showFooterDeployAction
-            ? (
-                <div className="-ml-2 flex min-w-0 grow items-center">
+            emptyAction={showDeployAction
+              ? (
                   <Button
                     variant="secondary-accent"
                     size="small"
@@ -447,20 +447,24 @@ export function InstanceCard({ app }: {
                   >
                     <span className="truncate">{t('card.menu.deploy')}</span>
                   </Button>
+                )
+              : undefined}
+          />
+        </div>
+
+        <div className="mt-auto flex h-10.5 min-w-0 items-center border-t border-divider-subtle px-4">
+          {showFooterCreateReleaseAction
+            ? (
+                <div className="-ml-2 flex min-w-0 grow items-center">
+                  <CreateReleaseControl
+                    appInstanceId={appInstanceId}
+                    variant="secondary-accent"
+                    label={t('card.createFirstRelease')}
+                    className="max-w-full"
+                  />
                 </div>
               )
-            : showFooterCreateReleaseAction
-              ? (
-                  <div className="-ml-2 flex min-w-0 grow items-center">
-                    <CreateReleaseControl
-                      appInstanceId={appInstanceId}
-                      variant="secondary-accent"
-                      label={t('card.createFirstRelease')}
-                      className="max-w-full"
-                    />
-                  </div>
-                )
-              : <DeploymentAccessLinks appInstanceId={appInstanceId} access={access} isLoading={accessChannelsQuery.isLoading} />}
+            : <DeploymentAccessLinks appInstanceId={appInstanceId} access={access} isLoading={accessChannelsQuery.isLoading} />}
           <ReleaseMetaTooltip release={latestRelease} deployed={latestReleaseDeployed}>
             <Link
               href={latestRelease ? getInstanceTabHref(appInstanceId, 'releases') : getInstanceTabHref(appInstanceId, 'instances')}
