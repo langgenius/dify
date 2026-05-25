@@ -217,3 +217,79 @@ def test_invalid_previous_node_output_ref_fails_request_build():
         WorkflowAgentRuntimeRequestBuilder(credentials_provider=FakeCredentialsProvider()).build(context)
 
     assert exc_info.value.error_code == "invalid_previous_node_output_ref"
+
+
+def test_empty_declared_outputs_injects_prd_defaults_text_files_json():
+    """Stage 4 §4.1 (D-3): empty declared_outputs → backend receives the PRD defaults
+    (text / files / json) as a stable structured-output contract."""
+    context = _context()
+    binding = WorkflowAgentNodeBinding(
+        id="binding-1",
+        tenant_id="tenant-1",
+        app_id="app-1",
+        workflow_id="workflow-1",
+        node_id="agent-node",
+        agent_id="agent-1",
+        current_snapshot_id="snapshot-1",
+        node_job_config=WorkflowNodeJobConfig.model_validate({}),
+    )
+    context = replace(context, binding=binding)
+
+    result = WorkflowAgentRuntimeRequestBuilder(credentials_provider=FakeCredentialsProvider()).build(context)
+
+    dumped = result.request.model_dump(mode="json")
+    output_layer = dumped["composition"]["layers"][-1]["config"]
+    properties = output_layer["json_schema"]["properties"]
+    assert set(properties) == {"text", "files", "json"}
+    assert properties["text"]["type"] == "string"
+    assert properties["files"]["type"] == "array"
+    # `files` defaults to array<file> → items is a file ref object.
+    assert properties["files"]["items"]["properties"]["file_id"]["type"] == "string"
+    assert properties["json"]["type"] == "object"
+    # Defaults are all required=False so no `required:` key on the schema.
+    assert "required" not in output_layer["json_schema"]
+
+
+def test_array_output_emits_typed_items_per_array_item():
+    context = _context()
+    binding = WorkflowAgentNodeBinding(
+        id="binding-1",
+        tenant_id="tenant-1",
+        app_id="app-1",
+        workflow_id="workflow-1",
+        node_id="agent-node",
+        agent_id="agent-1",
+        current_snapshot_id="snapshot-1",
+        node_job_config=WorkflowNodeJobConfig.model_validate(
+            {
+                "declared_outputs": [
+                    {
+                        "name": "tags",
+                        "type": "array",
+                        "array_item": {"type": "string", "description": "topic tag"},
+                        "required": True,
+                    }
+                ],
+            }
+        ),
+    )
+    context = replace(context, binding=binding)
+
+    result = WorkflowAgentRuntimeRequestBuilder(credentials_provider=FakeCredentialsProvider()).build(context)
+
+    output_schema = result.request.model_dump(mode="json")["composition"]["layers"][-1]["config"]["json_schema"]
+    tags_schema = output_schema["properties"]["tags"]
+    assert tags_schema["type"] == "array"
+    assert tags_schema["items"]["type"] == "string"
+    assert tags_schema["items"]["description"] == "topic tag"
+    assert output_schema["required"] == ["tags"]
+
+
+def test_effective_declared_outputs_passthrough_when_user_declared():
+    """effective_declared_outputs() must return user-provided outputs verbatim
+    when non-empty; only empty input gets PRD defaults injected."""
+    from models.agent_config_entities import DeclaredOutputConfig
+
+    declared = [DeclaredOutputConfig(name="summary", type=DeclaredOutputType.STRING)]
+    effective = WorkflowAgentRuntimeRequestBuilder.effective_declared_outputs(declared)
+    assert list(effective) == declared

@@ -1436,7 +1436,8 @@ export type AgentSoulToolsConfig = {
 }
 
 export type DeclaredOutputConfig = {
-  checks?: Array<DeclaredOutputCheckConfig>
+  array_item?: DeclaredArrayItem
+  check?: DeclaredOutputCheckConfig
   description?: string | null
   failure_strategy?: DeclaredOutputFailureStrategy
   file?: DeclaredOutputFileConfig
@@ -1524,18 +1525,26 @@ export type AgentSoulModelCredentialRef = {
   type: string
 }
 
+export type DeclaredArrayItem = {
+  description?: string | null
+  type: DeclaredOutputType
+}
+
 export type DeclaredOutputCheckConfig = {
   benchmark_file_ref?: {
     [key: string]: unknown
   } | null
+  enabled?: boolean
+  model_ref?: {
+    [key: string]: unknown
+  } | null
   prompt?: string | null
-  type: string
 }
 
 export type DeclaredOutputFailureStrategy = {
-  max_retries?: number
-  on_output_check_failed?: string | null
-  on_type_check_failed?: string | null
+  default_value?: unknown
+  on_failure?: OutputErrorStrategy
+  retry?: DeclaredOutputRetryConfig
 }
 
 export type DeclaredOutputFileConfig = {
@@ -1552,6 +1561,14 @@ export type UserActionConfig = {
 }
 
 export type FormInputConfig = unknown
+
+export type OutputErrorStrategy = 'default_value' | 'fail_branch' | 'stop'
+
+export type DeclaredOutputRetryConfig = {
+  enabled?: boolean
+  max_retries?: number
+  retry_interval_ms?: number
+}
 
 export type ButtonStyle = 'accent' | 'default' | 'ghost' | 'primary'
 
