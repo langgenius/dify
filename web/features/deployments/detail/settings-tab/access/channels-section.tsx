@@ -45,34 +45,26 @@ function AccessChannelsSkeleton() {
       {ACCESS_CHANNEL_SKELETON_SECTIONS.map(section => (
         <SkeletonRow
           key={section.key}
-          className="grid gap-3 border-t border-divider-subtle px-4 py-4 first:border-t-0 lg:grid-cols-[minmax(220px,280px)_minmax(0,1fr)]"
+          className="flex flex-col gap-3 border-t border-divider-subtle px-4 py-4 first:border-t-0 lg:flex-row lg:items-start"
         >
-          <div className="flex flex-col gap-1.5">
-            <SkeletonRectangle className="h-3.5 w-24 animate-pulse" />
-            <SkeletonRectangle className="h-3 w-40 animate-pulse" />
+          <div className="flex min-w-0 gap-2.5 lg:w-70">
+            <SkeletonRectangle className="my-0 size-7 shrink-0 animate-pulse rounded-lg" />
+            <div className="flex min-w-0 flex-col gap-1.5">
+              <SkeletonRectangle className="h-3.5 w-24 animate-pulse" />
+              <SkeletonRectangle className="h-3 w-40 animate-pulse" />
+            </div>
           </div>
-          <SkeletonRectangle className="my-0 h-8 w-full animate-pulse rounded-lg" />
+          <SkeletonRectangle className="my-0 h-8 min-w-0 flex-1 animate-pulse rounded-lg" />
         </SkeletonRow>
       ))}
     </div>
   )
 }
 
-function ChannelStatusBadge() {
-  const { t } = useTranslation('deployments')
-
-  return (
-    <span className="inline-flex h-5 w-fit max-w-full items-center rounded-md bg-state-success-hover px-1.5 system-2xs-medium text-state-success-solid">
-      <span className="truncate">{t('access.channels.followPermission')}</span>
-    </span>
-  )
-}
-
-function ChannelInfo({ icon, title, description, status }: {
+function ChannelInfo({ icon, title, description }: {
   icon: ReactNode
   title: string
   description: string
-  status: ReactNode
 }) {
   return (
     <div className="flex min-w-0 items-start gap-2.5">
@@ -82,10 +74,36 @@ function ChannelInfo({ icon, title, description, status }: {
       <div className="min-w-0">
         <div className="flex min-w-0 flex-wrap items-center gap-2">
           <span className="system-sm-medium text-text-primary">{title}</span>
-          {status}
         </div>
         <div className="system-xs-regular text-text-tertiary">{description}</div>
       </div>
+    </div>
+  )
+}
+
+function ChannelRow({ info, children }: {
+  info: ReactNode
+  children: ReactNode
+}) {
+  return (
+    <div className="flex flex-col gap-3 border-t border-divider-subtle px-4 py-4 first:border-t-0 lg:flex-row lg:items-start">
+      <div className="min-w-0 lg:w-70">
+        {info}
+      </div>
+      <div className="min-w-0 flex-1">
+        {children}
+      </div>
+    </div>
+  )
+}
+
+function ChannelEmptyState({ children }: {
+  children: ReactNode
+}) {
+  return (
+    <div className="flex min-h-8 items-center rounded-lg bg-background-default-subtle px-3 system-xs-regular text-text-tertiary">
+      <span className="mr-1.5 i-ri-information-line size-3.5 shrink-0 text-text-quaternary" aria-hidden="true" />
+      <span className="min-w-0 truncate">{children}</span>
     </div>
   )
 }
@@ -139,13 +157,15 @@ export function AccessChannelsSection({
           : runEnabled
             ? (
                 <div className="overflow-hidden rounded-lg border border-divider-subtle bg-components-panel-bg">
-                  <div className="grid gap-3 px-4 py-4 lg:grid-cols-[minmax(220px,280px)_minmax(0,1fr)]">
-                    <ChannelInfo
-                      icon={<span className="i-ri-global-line size-3.5" aria-hidden="true" />}
-                      title={t('access.runAccess.webapp')}
-                      description={t('access.runAccess.webappDesc')}
-                      status={<ChannelStatusBadge />}
-                    />
+                  <ChannelRow
+                    info={(
+                      <ChannelInfo
+                        icon={<span className="i-ri-global-line size-3.5" aria-hidden="true" />}
+                        title={t('access.runAccess.webapp')}
+                        description={t('access.runAccess.webappDesc')}
+                      />
+                    )}
+                  >
                     {webappRows.length > 0
                       ? (
                           <div className="flex flex-col gap-1.5">
@@ -165,18 +185,20 @@ export function AccessChannelsSection({
                           </div>
                         )
                       : (
-                          <SectionState>
+                          <ChannelEmptyState>
                             {t('access.runAccess.webappEmpty')}
-                          </SectionState>
+                          </ChannelEmptyState>
                         )}
-                  </div>
-                  <div className="grid gap-3 border-t border-divider-subtle px-4 py-4 lg:grid-cols-[minmax(220px,280px)_minmax(0,1fr)]">
-                    <ChannelInfo
-                      icon={<span className="i-ri-terminal-box-line size-3.5" aria-hidden="true" />}
-                      title={t('access.cli.title')}
-                      description={t('access.cli.description')}
-                      status={<ChannelStatusBadge />}
-                    />
+                  </ChannelRow>
+                  <ChannelRow
+                    info={(
+                      <ChannelInfo
+                        icon={<span className="i-ri-terminal-box-line size-3.5" aria-hidden="true" />}
+                        title={t('access.cli.title')}
+                        description={t('access.cli.description')}
+                      />
+                    )}
+                  >
                     {cliDomain
                       ? (
                           <div className="flex flex-wrap items-center gap-2">
@@ -206,11 +228,11 @@ export function AccessChannelsSection({
                           </div>
                         )
                       : (
-                          <div className="system-xs-regular text-text-tertiary">
+                          <ChannelEmptyState>
                             {t('access.cli.empty')}
-                          </div>
+                          </ChannelEmptyState>
                         )}
-                  </div>
+                  </ChannelRow>
                 </div>
               )
             : (
