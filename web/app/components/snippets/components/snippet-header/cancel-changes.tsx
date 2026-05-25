@@ -10,21 +10,34 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@langgenius/dify-ui/alert-dialog'
-import { memo } from 'react'
+import { memo, useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 type CancelChangesProps = {
-  onCancel: () => void
+  onCancel: () => void | Promise<void>
 }
 
 const CancelChanges = ({
   onCancel,
 }: CancelChangesProps) => {
   const { t } = useTranslation('snippet')
+  const [open, setOpen] = useState(false)
+  const [isDiscarding, setIsDiscarding] = useState(false)
+
+  const handleDiscardChanges = useCallback(async () => {
+    setIsDiscarding(true)
+    try {
+      await onCancel()
+      setOpen(false)
+    }
+    finally {
+      setIsDiscarding(false)
+    }
+  }, [onCancel])
 
   return (
     <div className="flex items-center gap-2 system-sm-regular">
-      <AlertDialog>
+      <AlertDialog open={open} onOpenChange={setOpen}>
         <AlertDialogTrigger
           className="system-sm-semibold text-text-accent hover:text-text-accent-secondary"
         >
@@ -32,7 +45,7 @@ const CancelChanges = ({
         </AlertDialogTrigger>
         <AlertDialogContent className="w-160">
           <div className="space-y-2 p-8 pb-12">
-            <AlertDialogTitle className="title-md-semi-bold text-text-primary">
+            <AlertDialogTitle className="title-2xl-semi-bold text-text-primary">
               {t('discardChangesTitle')}
             </AlertDialogTitle>
             <AlertDialogDescription className="system-md-regular text-text-secondary">
@@ -40,10 +53,14 @@ const CancelChanges = ({
             </AlertDialogDescription>
           </div>
           <AlertDialogActions className="px-8 pt-0">
-            <AlertDialogCancelButton>
+            <AlertDialogCancelButton disabled={isDiscarding}>
               {t('continueEditing')}
             </AlertDialogCancelButton>
-            <AlertDialogConfirmButton onClick={onCancel}>
+            <AlertDialogConfirmButton
+              loading={isDiscarding}
+              disabled={isDiscarding}
+              onClick={handleDiscardChanges}
+            >
               {t('discardChanges')}
             </AlertDialogConfirmButton>
           </AlertDialogActions>

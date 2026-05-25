@@ -35,7 +35,7 @@ type SnippetMainProps = {
 type SnippetMainContentProps = {
   snippetId: string
   fields: SnippetInputField[]
-  onCancel: () => void
+  onCancel: () => void | Promise<void>
 }
 
 const SnippetMainContent = ({
@@ -104,6 +104,10 @@ const SnippetMain = ({
     invalidateConversationVarValues,
   } = useInspectVarsCrud(snippetId)
   const workflowAvailableNodesMetaData = useAvailableNodesMetaData()
+  const {
+    data: publishedWorkflow,
+    refetch: refetchPublishedWorkflow,
+  } = publishedWorkflowQuery
   const availableNodesMetaData = useMemo(() => {
     const nodes = workflowAvailableNodesMetaData.nodes.filter(node =>
       node.metaData.type !== BlockEnum.HumanInput && node.metaData.type !== BlockEnum.End)
@@ -152,21 +156,21 @@ const SnippetMain = ({
     setFields(payload.inputFields)
   }, [payload.inputFields, setFields, snippetId])
 
-  const handleCancelChanges = useCallback(() => {
-    const publishedWorkflow = publishedWorkflowQuery.data
-    if (!publishedWorkflow)
+  const handleCancelChanges = useCallback(async () => {
+    const workflow = publishedWorkflow ?? (await refetchPublishedWorkflow()).data
+    if (!workflow)
       return
 
-    handleRestoreFromPublishedWorkflow(publishedWorkflow as never)
+    handleRestoreFromPublishedWorkflow(workflow as never)
 
-    const publishedInputFields = Array.isArray(publishedWorkflow.input_fields)
-      ? publishedWorkflow.input_fields as SnippetInputField[]
+    const publishedInputFields = Array.isArray(workflow.input_fields)
+      ? workflow.input_fields as SnippetInputField[]
       : []
     setFields(publishedInputFields)
     void syncInputFieldsDraft(publishedInputFields, {
       onRefresh: setFields,
     })
-  }, [handleRestoreFromPublishedWorkflow, publishedWorkflowQuery.data, setFields, syncInputFieldsDraft])
+  }, [handleRestoreFromPublishedWorkflow, publishedWorkflow, refetchPublishedWorkflow, setFields, syncInputFieldsDraft])
 
   const hooksStore = useMemo(() => {
     return {

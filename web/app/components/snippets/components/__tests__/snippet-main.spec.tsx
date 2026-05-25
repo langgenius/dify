@@ -220,6 +220,7 @@ describe('SnippetMain', () => {
         graph: payload.graph,
         input_fields: payload.inputFields,
       },
+      refetch: vi.fn(),
     })
     mockHandleCheckBeforePublish.mockResolvedValue(true)
     capturedHooksStore = undefined
