@@ -102,6 +102,13 @@ describe('DatasetNav', () => {
             icon_info: { icon: 'pipeline' },
             provider: 'vendor',
           },
+          {
+            id: 'dataset-5',
+            name: 'Null Icon Dataset',
+            runtime_mode: 'general',
+            icon_info: null,
+            provider: 'vendor',
+          },
         ],
       },
     ],
@@ -141,6 +148,16 @@ describe('DatasetNav', () => {
       render(<DatasetNav />)
       expect(screen.getByText('common.menus.datasets')).toBeInTheDocument()
     })
+
+    it('should render current dataset when icon info is null', () => {
+      vi.mocked(useDatasetDetail).mockReturnValue({
+        data: { ...mockDataset, icon_info: null },
+      } as unknown as ReturnType<typeof useDatasetDetail>)
+
+      render(<DatasetNav />)
+
+      expect(screen.getByRole('button', { name: /Test Dataset/i })).toBeInTheDocument()
+    })
   })
 
   describe('Navigation Items logic', () => {
@@ -154,6 +171,7 @@ describe('DatasetNav', () => {
       expect(within(menu).getByText('Test Dataset')).toBeInTheDocument()
       expect(within(menu).getByText('Pipeline Dataset')).toBeInTheDocument()
       expect(within(menu).getByText('External Dataset')).toBeInTheDocument()
+      expect(within(menu).getByText('Null Icon Dataset')).toBeInTheDocument()
     })
 
     it('should navigate to correct link when an item is clicked', () => {
