@@ -169,7 +169,7 @@ describe('useMCPServiceCardState', () => {
       expect(result.current.canManageMCP).toBe(true)
     })
 
-    it('should disable MCP server access without app edit ACL', async () => {
+    it('should keep MCP server status readable and disable mutations without app edit ACL', async () => {
       const appInfo = createMockAppInfo(AppModeEnum.CHAT, [])
       const { result } = renderHook(
         () => useMCPServiceCardState(appInfo, false),
@@ -178,8 +178,11 @@ describe('useMCPServiceCardState', () => {
 
       expect(result.current.canManageMCP).toBe(false)
       expect(result.current.toggleDisabled).toBe(true)
+      expect(result.current.serverPublished).toBe(true)
+      expect(result.current.serverActivated).toBe(true)
+      expect(result.current.serverURL).toBe('https://api.example.com/mcp/server/abc123/mcp')
       expect(mockUseMCPServerDetailAppID).toBe('app-123')
-      expect(mockUseMCPServerDetailEnabled).toBe(false)
+      expect(mockUseMCPServerDetailEnabled).toBe(true)
 
       act(() => {
         result.current.openServerModal()
@@ -194,6 +197,20 @@ describe('useMCPServiceCardState', () => {
       })
       expect(mockRefreshMCPServerCode).not.toHaveBeenCalled()
       expect(mockUpdateMCPServer).not.toHaveBeenCalled()
+    })
+
+    it('should read workflow state without app edit ACL for workflow apps', () => {
+      const appInfo = createMockAppInfo(AppModeEnum.WORKFLOW, [])
+      const { result } = renderHook(
+        () => useMCPServiceCardState(appInfo, false),
+        { wrapper: createWrapper() },
+      )
+
+      expect(result.current.canManageMCP).toBe(false)
+      expect(result.current.isLoading).toBe(false)
+      expect(result.current.appUnpublished).toBe(false)
+      expect(result.current.missingStartNode).toBe(false)
+      expect(result.current.toggleDisabled).toBe(true)
     })
 
     it('should have toggleDisabled false when editor has permissions', () => {

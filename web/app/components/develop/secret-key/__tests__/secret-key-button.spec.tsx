@@ -3,11 +3,12 @@ import userEvent from '@testing-library/user-event'
 import SecretKeyButton from '../secret-key-button'
 
 vi.mock('@/app/components/develop/secret-key/secret-key-modal', () => ({
-  default: ({ isShow, onClose, appId }: { isShow: boolean, onClose: () => void, appId?: string }) => (
+  default: ({ isShow, onClose, appId, canManage }: { isShow: boolean, onClose: () => void, appId?: string, canManage: boolean }) => (
     isShow
       ? (
           <div data-testid="secret-key-modal">
             <span data-testid="modal-app-id">{`Modal for ${appId || 'no-app'}`}</span>
+            <span data-testid="modal-can-manage">{String(canManage)}</span>
             <button onClick={onClose} data-testid="close-modal">Close</button>
           </div>
         )
@@ -29,8 +30,8 @@ describe('SecretKeyButton', () => {
 
     it('should render the key icon', () => {
       const { container } = render(<SecretKeyButton />)
-      const svg = container.querySelector('svg')
-      expect(svg)!.toBeInTheDocument()
+      const icon = container.querySelector('.i-ri-key-2-line')
+      expect(icon)!.toBeInTheDocument()
     })
 
     it('should not show modal initially', () => {
@@ -124,6 +125,18 @@ describe('SecretKeyButton', () => {
       })
 
       expect(screen.getByText('Modal for no-app'))!.toBeInTheDocument()
+    })
+
+    it('should pass canManage to modal', async () => {
+      const user = userEvent.setup()
+      render(<SecretKeyButton appId="app-123" canManage />)
+
+      const button = screen.getByRole('button')
+      await act(async () => {
+        await user.click(button)
+      })
+
+      expect(screen.getByTestId('modal-can-manage')).toHaveTextContent('true')
     })
 
     it('should apply custom textCls', () => {

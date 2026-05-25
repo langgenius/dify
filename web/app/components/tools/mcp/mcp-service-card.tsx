@@ -80,25 +80,29 @@ const ServerURLSection: FC<ServerURLSectionProps> = ({
           <>
             <CopyFeedback content={serverURL} className="size-6!" />
             <Divider type="vertical" className="mx-0.5! h-3.5! shrink-0" />
-            {canManageMCP && (
-              <Tooltip>
-                <TooltipTrigger
-                  render={(
-                    <button
-                      type="button"
-                      className="cursor-pointer rounded-md p-1 outline-hidden hover:bg-state-base-hover focus-visible:ring-1 focus-visible:ring-components-input-border-hover"
-                      aria-label={t('overview.appInfo.regenerate', { ns: 'appOverview' }) || ''}
-                      onClick={onRegenerate}
-                    >
-                      <span className={cn('i-ri-loop-left-line', 'size-4 text-text-tertiary hover:text-text-secondary', genLoading && 'animate-spin')} />
-                    </button>
-                  )}
-                />
-                <TooltipContent>
-                  {t('overview.appInfo.regenerate', { ns: 'appOverview' })}
-                </TooltipContent>
-              </Tooltip>
-            )}
+            <Tooltip>
+              <TooltipTrigger
+                render={(
+                  <button
+                    type="button"
+                    className={cn(
+                      'rounded-md p-1 outline-hidden focus-visible:ring-1 focus-visible:ring-components-input-border-hover',
+                      canManageMCP
+                        ? 'cursor-pointer hover:bg-state-base-hover'
+                        : 'cursor-not-allowed',
+                    )}
+                    aria-label={t('overview.appInfo.regenerate', { ns: 'appOverview' }) || ''}
+                    disabled={!canManageMCP}
+                    onClick={onRegenerate}
+                  >
+                    <span className={cn('i-ri-loop-left-line', 'size-4 text-text-tertiary hover:text-text-secondary', genLoading && 'animate-spin')} />
+                  </button>
+                )}
+              />
+              <TooltipContent>
+                {t('overview.appInfo.regenerate', { ns: 'appOverview' })}
+              </TooltipContent>
+            </Tooltip>
           </>
         )}
       </div>
@@ -301,9 +305,6 @@ const MCPServiceCard: FC<IAppCardProps> = ({
   }, [appId])
 
   if (isLoading)
-    return null
-
-  if (!canManageMCP)
     return null
 
   const tooltipContent = getTooltipContent({

@@ -2,11 +2,19 @@ import { Popover } from '@langgenius/dify-ui/popover'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { DatasetACLPermission } from '@/utils/permission'
 
 import Card from '../card'
 import ServiceApi from '../index'
 
 // Mock Setup
+
+let mockDatasetPermissionKeys: string[] = [DatasetACLPermission.Edit]
+
+vi.mock('@/context/dataset-detail', () => ({
+  useDatasetDetailContextWithSelector: (selector: (state: { dataset?: { permission_keys: string[] } }) => unknown) =>
+    selector({ dataset: { permission_keys: mockDatasetPermissionKeys } }),
+}))
 
 vi.mock('@/next/navigation', () => ({
   useRouter: () => ({
@@ -31,10 +39,11 @@ vi.mock('@/hooks/use-api-access-url', () => ({
 
 // Mock SecretKeyModal to avoid complex modal rendering
 vi.mock('@/app/components/develop/secret-key/secret-key-modal', () => ({
-  default: ({ isShow, onClose }: { isShow: boolean, onClose: () => void }) => (
+  default: ({ isShow, onClose, canManage }: { isShow: boolean, onClose: () => void, canManage: boolean }) => (
     isShow
       ? (
           <div data-testid="secret-key-modal">
+            <span data-testid="secret-key-modal-can-manage">{String(canManage)}</span>
             <button onClick={onClose} data-testid="close-modal-btn">Close</button>
           </div>
         )
@@ -48,6 +57,7 @@ const renderCard = (ui: React.ReactElement) =>
 describe('ServiceApi', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockDatasetPermissionKeys = [DatasetACLPermission.Edit]
   })
 
   describe('Rendering', () => {
@@ -241,6 +251,51 @@ describe('ServiceApi Integration', () => {
     // Popover should be closed — Card title no longer in document
     await waitFor(() => {
       expect(screen.queryByText(/serviceApi\.card\.title/i)).not.toBeInTheDocument()
+    })
+  })
+
+  it('should pass dataset edit permission to secret key modal', async () => {
+    const user = userEvent.setup()
+
+    render(<ServiceApi apiBaseUrl="https://api.example.com" />)
+
+    const trigger = screen.getByText(/serviceApi\.title/i).closest('[class*="cursor-pointer"]')
+    if (trigger)
+      await user.click(trigger)
+
+    await waitFor(() => {
+      expect(screen.getByText(/serviceApi\.card\.apiKey/i)).toBeInTheDocument()
+    })
+
+    const apiKeyButton = screen.getByText(/serviceApi\.card\.apiKey/i).closest('button')
+    if (apiKeyButton)
+      await user.click(apiKeyButton)
+
+    await waitFor(() => {
+      expect(screen.getByTestId('secret-key-modal-can-manage')).toHaveTextContent('true')
+    })
+  })
+
+  it('should pass false to secret key modal without dataset edit permission', async () => {
+    const user = userEvent.setup()
+    mockDatasetPermissionKeys = [DatasetACLPermission.Readonly]
+
+    render(<ServiceApi apiBaseUrl="https://api.example.com" />)
+
+    const trigger = screen.getByText(/serviceApi\.title/i).closest('[class*="cursor-pointer"]')
+    if (trigger)
+      await user.click(trigger)
+
+    await waitFor(() => {
+      expect(screen.getByText(/serviceApi\.card\.apiKey/i)).toBeInTheDocument()
+    })
+
+    const apiKeyButton = screen.getByText(/serviceApi\.card\.apiKey/i).closest('button')
+    if (apiKeyButton)
+      await user.click(apiKeyButton)
+
+    await waitFor(() => {
+      expect(screen.getByTestId('secret-key-modal-can-manage')).toHaveTextContent('false')
     })
   })
 })

@@ -13,12 +13,6 @@ vi.mock('@/app/components/app/store', () => ({
   }),
 }))
 
-vi.mock('@/context/app-context', () => ({
-  useAppContext: () => ({
-    isCurrentWorkspaceEditor: true,
-  }),
-}))
-
 vi.mock('@langgenius/dify-ui/dropdown-menu', () => {
   const DropdownMenuContext = React.createContext<{ isOpen: boolean, setOpen: (open: boolean) => void } | null>(null)
 
@@ -175,9 +169,9 @@ describe('AppSidebarDropdown', () => {
     render(<AppSidebarDropdown navigation={navigation} />)
 
     const appName = screen.getByText('Test App')
-    const appInfoArea = appName.closest('[class*="cursor-pointer"]')
-    if (appInfoArea)
-      await user.click(appInfoArea)
+    await user.click(appName)
+
+    expect(screen.getByTestId('app-info')).toHaveAttribute('data-open', 'true')
   })
 
   it('should display workflow mode label', () => {

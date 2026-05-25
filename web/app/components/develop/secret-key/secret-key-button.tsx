@@ -12,7 +12,7 @@ type ISecretKeyButtonProps = {
 }
 
 const SecretKeyButton = ({ className, appId, textCls, canManage = true }: ISecretKeyButtonProps) => {
-  const [isVisible, setVisible] = useState(false)
+  const [isVisible, setIsVisible] = useState(false)
   const { t } = useTranslation()
   if (!canManage)
     return null
@@ -21,7 +21,7 @@ const SecretKeyButton = ({ className, appId, textCls, canManage = true }: ISecre
     <>
       <Button
         className={`px-3 ${className}`}
-        onClick={() => setVisible(true)}
+        onClick={() => setIsVisible(true)}
         size="small"
         variant="ghost"
       >
@@ -30,7 +30,7 @@ const SecretKeyButton = ({ className, appId, textCls, canManage = true }: ISecre
         </div>
         <div className={`px-[3px] system-xs-medium text-text-tertiary ${textCls}`}>{t('apiKey', { ns: 'appApi' })}</div>
       </Button>
-      <SecretKeyModal isShow={isVisible} onClose={() => setVisible(false)} appId={appId} />
+      <SecretKeyModal isShow={isVisible} onClose={() => setIsVisible(false)} appId={appId} canManage={canManage} />
     </>
   )
 }

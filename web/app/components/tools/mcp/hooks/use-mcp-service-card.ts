@@ -51,7 +51,7 @@ export const useMCPServiceCardState = (
   const isWorkflowApp = appInfo.mode === AppModeEnum.WORKFLOW
 
   // Workflow data for advanced apps
-  const { data: currentWorkflow } = useAppWorkflow(canManageMCP && isAdvancedApp ? appId : '')
+  const { data: currentWorkflow } = useAppWorkflow(isAdvancedApp ? appId : '')
 
   // Basic app config fetch using React Query
   const { data: basicAppConfig = {} } = useQuery<BasicAppConfig>({
@@ -60,11 +60,11 @@ export const useMCPServiceCardState = (
       const res = await fetchAppDetail({ url: '/apps', id: appId })
       return (res?.model_config as BasicAppConfig) || {}
     },
-    enabled: canManageMCP && isBasicApp && !!appId,
+    enabled: isBasicApp && !!appId,
   })
 
   // MCP server detail
-  const { data: detail } = useMCPServerDetail(appId, canManageMCP)
+  const { data: detail } = useMCPServerDetail(appId, !!appId)
   const { id, status, server_code } = detail ?? {}
 
   // Server state

@@ -1,10 +1,12 @@
 import { cn } from '@langgenius/dify-ui/cn'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import * as React from 'react'
-import { useCallback, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import SecretKeyModal from '@/app/components/develop/secret-key/secret-key-modal'
 import Indicator from '@/app/components/header/indicator'
+import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
+import { getDatasetACLCapabilities } from '@/utils/permission'
 import Card from './card'
 
 type ServiceApiProps = {
@@ -17,6 +19,11 @@ const ServiceApi = ({
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
   const [isSecretKeyModalVisible, setIsSecretKeyModalVisible] = useState(false)
+  const datasetPermissionKeys = useDatasetDetailContextWithSelector(state => state.dataset?.permission_keys)
+  const canManageSecretKey = useMemo(
+    () => getDatasetACLCapabilities(datasetPermissionKeys).canEdit,
+    [datasetPermissionKeys],
+  )
 
   const handleOpenSecretKeyModal = useCallback(() => {
     setIsSecretKeyModalVisible(true)
@@ -66,6 +73,7 @@ const ServiceApi = ({
       <SecretKeyModal
         isShow={isSecretKeyModalVisible}
         onClose={handleCloseSecretKeyModal}
+        canManage={canManageSecretKey}
       />
     </div>
   )

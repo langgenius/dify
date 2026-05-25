@@ -143,15 +143,26 @@ describe('MCPServiceCard', () => {
       expect(screen.getByRole('switch')).toBeInTheDocument()
     })
 
-    it('should render nothing without mcp.manage', () => {
+    it('should keep status visible and disable management controls without mcp.manage', () => {
       mockHookState = createDefaultHookState({
         canManageMCP: false,
         toggleDisabled: true,
       })
 
-      const { container } = render(<MCPServiceCard appInfo={createMockAppInfo()} />, { wrapper: createWrapper() })
+      render(<MCPServiceCard appInfo={createMockAppInfo()} />, { wrapper: createWrapper() })
 
-      expect(container.firstChild).toBeNull()
+      expect(screen.getByText('tools.mcp.server.title')).toBeInTheDocument()
+      expect(screen.getByText(/appOverview.overview.status/)).toBeInTheDocument()
+      expect(screen.getByText('https://api.example.com/mcp/server/abc123/mcp')).toBeInTheDocument()
+
+      const switchElement = screen.getByRole('switch')
+      expect(switchElement.className).toContain('cursor-not-allowed')
+
+      const editButton = screen.getByRole('button', { name: /tools\.mcp\.server\.edit/i })
+      expect(editButton).toBeDisabled()
+
+      const regenerateButton = screen.getByRole('button', { name: /appOverview\.overview\.appInfo\.regenerate/i })
+      expect(regenerateButton).toBeDisabled()
     })
 
     it('should render edit button in full state', () => {
