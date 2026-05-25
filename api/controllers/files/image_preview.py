@@ -20,6 +20,7 @@ class FileSignatureQuery(BaseModel):
     timestamp: str = Field(..., description="Unix timestamp used in the signature")
     nonce: str = Field(..., description="Random string for signature")
     sign: str = Field(..., description="HMAC signature")
+    tenant_id: str | None = Field(default=None, description="Tenant ID for cross-tenant isolation")
 
 
 class FilePreviewQuery(FileSignatureQuery):
@@ -57,6 +58,7 @@ class ImagePreviewApi(Resource):
         timestamp = args.timestamp
         nonce = args.nonce
         sign = args.sign
+        tenant_id = args.tenant_id
 
         try:
             generator, mimetype = FileService(db.engine).get_image_preview(
@@ -64,6 +66,7 @@ class ImagePreviewApi(Resource):
                 timestamp=timestamp,
                 nonce=nonce,
                 sign=sign,
+                tenant_id=tenant_id,
             )
         except services.errors.file.UnsupportedFileTypeError:
             raise UnsupportedFileTypeError()
@@ -103,6 +106,7 @@ class FilePreviewApi(Resource):
                 timestamp=args.timestamp,
                 nonce=args.nonce,
                 sign=args.sign,
+                tenant_id=args.tenant_id,
             )
         except services.errors.file.UnsupportedFileTypeError:
             raise UnsupportedFileTypeError()
