@@ -326,6 +326,7 @@
   "filter.searchPlaceholder": "搜索实例",
   "health.degraded": "降级",
   "health.ready": "就绪",
+  "list.clearSearch": "清空部署搜索",
   "list.createDeployment": "创建部署",
   "list.empty": "未找到应用实例。",
   "mode.isolated": "独立",

@@ -1,6 +1,7 @@
 'use client'
 
 import type { CreateReleaseReply } from '@dify/contracts/enterprise/types.gen'
+import type { ButtonProps } from '@langgenius/dify-ui/button'
 import type { App } from '@/types/app'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -38,8 +39,8 @@ function selectedReleaseSourceMode(value: readonly ReleaseSourceMode[] | undefin
 
 export function CreateReleaseControl({ appInstanceId, variant = 'primary', size = 'small', label, className }: {
   appInstanceId: string
-  variant?: 'primary' | 'secondary'
-  size?: 'small' | 'medium'
+  variant?: ButtonProps['variant']
+  size?: ButtonProps['size']
   label?: string
   className?: string
 }) {

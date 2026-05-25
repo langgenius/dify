@@ -2,13 +2,14 @@
 
 import type { ReactNode } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Input } from '@langgenius/dify-ui/input'
 import { keepPreviousData, useInfiniteQuery } from '@tanstack/react-query'
 import { debounce, useQueryState } from 'nuqs'
 import { useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
-import Input from '@/app/components/base/input'
 import { SkeletonRectangle } from '@/app/components/base/skeleton'
 import { consoleQuery } from '@/service/client'
+import { DeployDrawer } from '../components/deploy-drawer'
 import { getNextPageParamFromPagination, SOURCE_APPS_PAGE_SIZE } from '../data'
 import { CreateDeploymentButton } from './create-deployment-button'
 import { EnvironmentFilter } from './environment-filter'
@@ -96,15 +97,25 @@ function DeploymentsSearchInput() {
   }
 
   return (
-    <Input
-      showLeftIcon
-      showClearIcon
-      wrapperClassName="w-50"
-      placeholder={t('filter.searchPlaceholder')}
-      value={keywords}
-      onChange={e => handleKeywordsChange(e.target.value)}
-      onClear={() => handleKeywordsChange('')}
-    />
+    <div className="relative w-50">
+      <span aria-hidden className="pointer-events-none absolute top-1/2 left-2.5 i-ri-search-line size-4 -translate-y-1/2 text-text-tertiary" />
+      <Input
+        className="h-8 pr-8 pl-8"
+        placeholder={t('filter.searchPlaceholder')}
+        value={keywords}
+        onChange={e => handleKeywordsChange(e.target.value)}
+      />
+      {keywords && (
+        <button
+          type="button"
+          aria-label={t('list.clearSearch')}
+          className="absolute top-1/2 right-2.5 flex size-4 -translate-y-1/2 items-center justify-center text-text-quaternary hover:text-text-secondary"
+          onClick={() => handleKeywordsChange('')}
+        >
+          <span aria-hidden className="i-ri-close-circle-fill size-4" />
+        </button>
+      )}
+    </div>
   )
 }
 
@@ -180,30 +191,33 @@ export function DeploymentsList() {
   }, [error, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading])
 
   return (
-    <div ref={containerRef} className="relative flex h-0 shrink-0 grow flex-col overflow-y-auto bg-background-body">
-      <DeploymentsListControls />
-      <div className={cn(
-        'relative grid grow grid-cols-1 content-start gap-4 px-12 pt-2 2k:grid-cols-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5',
-        showEmptyState && 'overflow-hidden',
-      )}
-      >
-        {showSkeleton
-          ? <DeploymentsListSkeleton />
-          : isError
-            ? <DeploymentsListState>{t('common.loadFailed')}</DeploymentsListState>
-            : apps.length === 0
-              ? <DeploymentsListEmpty />
-              : apps.map(app => (
-                  <InstanceCard
-                    key={app.id}
-                    app={app}
-                  />
-                ))}
-        {isFetchingNextPage && <DeploymentsListSkeleton />}
-      </div>
+    <>
+      <div ref={containerRef} className="relative flex h-0 shrink-0 grow flex-col overflow-y-auto bg-background-body">
+        <DeploymentsListControls />
+        <div className={cn(
+          'relative grid grow grid-cols-1 content-start gap-4 px-12 pt-2 2k:grid-cols-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5',
+          showEmptyState && 'overflow-hidden',
+        )}
+        >
+          {showSkeleton
+            ? <DeploymentsListSkeleton />
+            : isError
+              ? <DeploymentsListState>{t('common.loadFailed')}</DeploymentsListState>
+              : apps.length === 0
+                ? <DeploymentsListEmpty />
+                : apps.map(app => (
+                    <InstanceCard
+                      key={app.id}
+                      app={app}
+                    />
+                  ))}
+          {isFetchingNextPage && <DeploymentsListSkeleton />}
+        </div>
 
-      <div ref={anchorRef} className="h-0" />
-      <div className="py-4" />
-    </div>
+        <div ref={anchorRef} className="h-0" />
+        <div className="py-4" />
+      </div>
+      <DeployDrawer />
+    </>
   )
 }

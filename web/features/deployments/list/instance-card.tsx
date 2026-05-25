@@ -7,9 +7,11 @@ import type {
   Release,
 } from '@dify/contracts/enterprise/types.gen'
 import type { InstanceDetailTabKey } from '../detail/tabs'
+import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useQuery } from '@tanstack/react-query'
+import { useSetAtom } from 'jotai'
 import { useTranslation } from 'react-i18next'
 import { SkeletonRectangle } from '@/app/components/base/skeleton'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
@@ -23,6 +25,7 @@ import {
   deploymentStatusPollingInterval,
   isUndeployedDeploymentRow,
 } from '../runtime-status'
+import { openDeployDrawerAtom } from '../store'
 
 const VISIBLE_ENVIRONMENT_COUNT = 3
 const CARD_RELEASE_QUERY_PAGE_SIZE = 1
@@ -176,15 +179,11 @@ function EnvironmentOverflow({ rows }: {
 }
 
 function DeploymentStatusContent({
-  appInstanceId,
   rows,
-  hasRelease,
   isLoading,
   hasError,
 }: {
-  appInstanceId: string
   rows: EnvironmentDeployment[]
-  hasRelease: boolean
   isLoading: boolean
   hasError: boolean
 }) {
@@ -220,26 +219,7 @@ function DeploymentStatusContent({
     )
   }
 
-  if (hasRelease) {
-    return (
-      <Link
-        href={getInstanceTabHref(appInstanceId, 'instances')}
-        className="inline-flex h-6 items-center gap-1 system-xs-medium text-text-accent hover:underline"
-      >
-        <span aria-hidden className="i-ri-rocket-line size-3.5" />
-        {t('card.deploy')}
-      </Link>
-    )
-  }
-
-  return (
-    <CreateReleaseControl
-      appInstanceId={appInstanceId}
-      variant="secondary"
-      label={t('card.createFirstRelease')}
-      className="h-6 border-0 bg-transparent px-0 text-text-accent shadow-none hover:bg-transparent hover:underline"
-    />
-  )
+  return null
 }
 
 function DeploymentAccessLinks({ appInstanceId, access, isLoading }: {
@@ -315,6 +295,7 @@ export function InstanceCard({ app }: {
 }) {
   const { t } = useTranslation('deployments')
   const { formatTimeFromNow } = useFormatTimeFromNow()
+  const openDeployDrawer = useSetAtom(openDeployDrawerAtom)
   const appInstanceId = app.id ?? ''
   const appName = app.name ?? appInstanceId
   const detailHref = getInstanceTabHref(appInstanceId, 'overview')
@@ -363,6 +344,8 @@ export function InstanceCard({ app }: {
     : t('card.notDeployed')
   const statusIsLoading = environmentDeploymentsQuery.isLoading || (!activeDeploymentRows.length && releaseHistoryQuery.isLoading)
   const statusHasError = environmentDeploymentsQuery.isError || releaseHistoryQuery.isError
+  const showFooterDeployAction = !statusIsLoading && !statusHasError && hasRelease && activeDeploymentRows.length === 0
+  const showFooterCreateReleaseAction = !statusIsLoading && !statusHasError && !hasRelease
 
   return (
     <div
@@ -399,16 +382,38 @@ export function InstanceCard({ app }: {
 
         <div className="min-h-7 px-4 pt-1">
           <DeploymentStatusContent
-            appInstanceId={appInstanceId}
             rows={activeDeploymentRows}
-            hasRelease={hasRelease}
             isLoading={statusIsLoading}
             hasError={statusHasError}
           />
         </div>
 
         <div className="mt-auto flex h-10.5 min-w-0 items-center border-t border-divider-subtle px-4">
-          <DeploymentAccessLinks appInstanceId={appInstanceId} access={access} isLoading={accessChannelsQuery.isLoading} />
+          {showFooterDeployAction
+            ? (
+                <div className="-ml-2 flex min-w-0 grow items-center">
+                  <Button
+                    variant="secondary-accent"
+                    size="small"
+                    className="max-w-full"
+                    onClick={() => openDeployDrawer({ appInstanceId })}
+                  >
+                    <span className="truncate">{t('card.menu.deploy')}</span>
+                  </Button>
+                </div>
+              )
+            : showFooterCreateReleaseAction
+              ? (
+                  <div className="-ml-2 flex min-w-0 grow items-center">
+                    <CreateReleaseControl
+                      appInstanceId={appInstanceId}
+                      variant="secondary-accent"
+                      label={t('card.createFirstRelease')}
+                      className="max-w-full"
+                    />
+                  </div>
+                )
+              : <DeploymentAccessLinks appInstanceId={appInstanceId} access={access} isLoading={accessChannelsQuery.isLoading} />}
           <Link
             href={displayedRelease ? getInstanceTabHref(appInstanceId, 'releases') : getInstanceTabHref(appInstanceId, 'instances')}
             className="min-w-0 shrink-0 truncate text-right system-xs-regular text-text-tertiary hover:text-text-secondary"

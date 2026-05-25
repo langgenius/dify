@@ -326,6 +326,7 @@
   "filter.searchPlaceholder": "Search instances",
   "health.degraded": "Degraded",
   "health.ready": "Ready",
+  "list.clearSearch": "Clear deployment search",
   "list.createDeployment": "Create deployment",
   "list.empty": "No app instances found.",
   "mode.isolated": "Isolated",
