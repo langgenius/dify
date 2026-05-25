@@ -1,3 +1,4 @@
+/* eslint-disable no-barrel-files/no-barrel-files, unused-imports/no-unused-vars */
 import type { CommonResponse } from '@/models/common'
 import { type } from '@orpc/contract'
 import { base } from '../base'

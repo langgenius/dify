@@ -849,6 +849,94 @@ importers:
         specifier: 'catalog:'
         version: 0.1.21(@types/node@25.9.0)(@vitest/coverage-v8@4.1.6(@types/node@25.9.0)(@voidzero-dev/vite-plus-core@0.1.21(@types/node@25.9.0)(esbuild@0.27.2)(jiti@2.7.0)(tsx@4.22.2)(typescript@6.0.3)(yaml@2.8.3))(esbuild@0.27.2)(happy-dom@20.9.0)(jiti@2.7.0)(tsx@4.22.2)(typescript@6.0.3)(yaml@2.8.3))(@voidzero-dev/vite-plus-core@0.1.21(@types/node@25.9.0)(esbuild@0.27.2)(jiti@2.7.0)(tsx@4.22.2)(typescript@6.0.3)(yaml@2.8.3))(esbuild@0.27.2)(happy-dom@20.9.0)(jiti@2.7.0)(tsx@4.22.2)(typescript@6.0.3)(yaml@2.8.3)
 
+  packages/studio-frontend:
+    dependencies:
+      '@dify/contracts':
+        specifier: workspace:*
+        version: link:../contracts
+      '@langgenius/dify-ui':
+        specifier: workspace:*
+        version: link:../dify-ui
+      '@lexical/code':
+        specifier: npm:lexical-code-no-prism@0.41.0
+        version: lexical-code-no-prism@0.41.0(@lexical/utils@0.44.0)(lexical@0.44.0)
+      '@lexical/link':
+        specifier: 'catalog:'
+        version: 0.44.0
+      '@lexical/list':
+        specifier: 'catalog:'
+        version: 0.44.0
+      '@lexical/react':
+        specifier: 'catalog:'
+        version: 0.44.0(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
+      '@lexical/selection':
+        specifier: 'catalog:'
+        version: 0.44.0
+      '@lexical/text':
+        specifier: 'catalog:'
+        version: 0.44.0
+      '@lexical/utils':
+        specifier: 'catalog:'
+        version: 0.44.0
+      '@monaco-editor/react':
+        specifier: 'catalog:'
+        version: 4.7.0(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
+      '@remixicon/react':
+        specifier: 'catalog:'
+        version: 4.9.0(react@19.2.6)
+      '@tanstack/react-form':
+        specifier: 'catalog:'
+        version: 1.32.0(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
+      '@tanstack/react-virtual':
+        specifier: 'catalog:'
+        version: 3.13.24(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
+      ahooks:
+        specifier: 'catalog:'
+        version: 3.9.7(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
+      class-variance-authority:
+        specifier: 'catalog:'
+        version: 0.7.1
+      elkjs:
+        specifier: 'catalog:'
+        version: 0.11.1
+      immer:
+        specifier: 'catalog:'
+        version: 11.1.8
+      jotai:
+        specifier: 'catalog:'
+        version: 2.20.0(@babel/core@7.29.0)(@babel/template@7.28.6)(@types/react@19.2.14)(react@19.2.6)
+      loro-crdt:
+        specifier: 'catalog:'
+        version: 1.12.1
+      react-hotkeys-hook:
+        specifier: 'catalog:'
+        version: 5.3.2(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
+      reactflow:
+        specifier: 'catalog:'
+        version: 11.11.4(@types/react@19.2.14)(immer@11.1.8)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
+      use-context-selector:
+        specifier: 'catalog:'
+        version: 2.0.0(react@19.2.6)(scheduler@0.27.0)
+      zundo:
+        specifier: 'catalog:'
+        version: 2.3.0(zustand@5.0.13(@types/react@19.2.14)(immer@11.1.8)(react@19.2.6)(use-sync-external-store@1.6.0(react@19.2.6)))
+      zustand:
+        specifier: 'catalog:'
+        version: 5.0.13(@types/react@19.2.14)(immer@11.1.8)(react@19.2.6)(use-sync-external-store@1.6.0(react@19.2.6))
+    devDependencies:
+      '@dify/tsconfig':
+        specifier: workspace:*
+        version: link:../tsconfig
+      '@types/react':
+        specifier: 'catalog:'
+        version: 19.2.14
+      '@types/react-dom':
+        specifier: 'catalog:'
+        version: 19.2.3(@types/react@19.2.14)
+      typescript:
+        specifier: 'catalog:'
+        version: 6.0.3
+
   packages/tsconfig: {}
 
   sdks/nodejs-client:
@@ -1214,6 +1302,9 @@ importers:
       '@dify/iconify-collections':
         specifier: workspace:*
         version: link:../packages/iconify-collections
+      '@dify/studio-frontend':
+        specifier: workspace:*
+        version: link:../packages/studio-frontend
       '@dify/tsconfig':
         specifier: workspace:*
         version: link:../packages/tsconfig

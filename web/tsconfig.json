@@ -8,6 +8,9 @@
       ],
       "~@/*": [
         "./*"
+      ],
+      "@dify/studio-frontend/*": [
+        "../packages/studio-frontend/src/*"
       ]
     },
     "resolveJsonModule": true,

@@ -1,3 +1,16 @@
+/* eslint-disable no-barrel-files/no-barrel-files */
+// Canonic Studio-level types — imported from studio-frontend, then re-exported
+import type {
+  AppIconType,
+  AppSSO,
+  CompletionParams,
+  ImageFile,
+  Model,
+  PromptVariable,
+  UserInputFormItem,
+  VisionFile,
+  VisionSettings,
+} from '@dify/studio-frontend/types/app'
 import type { CollectionType } from '@/app/components/tools/types'
 import type { UploadFileSetting } from '@/app/components/workflow/types'
 import type { Tag } from '@/contract/console/tags'
@@ -8,24 +21,12 @@ import type {
   RerankingModeEnum,
   WeightedScoreEnum,
 } from '@/models/datasets'
-import type { AnnotationReplyConfig, ChatPromptConfig, CompletionPromptConfig, DatasetConfigs, PromptMode } from '@/models/debug'
 
-// Canonic Studio-level types — imported from studio-frontend, then re-exported
-import type {
-  AppIconType,
-  AppModeEnum,
-  AppSSO,
-  CompletionParams,
-  ImageFile,
-  Model,
-  PromptVariable,
-  UserInputFormItem,
-  VisionFile,
-  VisionSettings,
-} from '@dify/studio-frontend/types/app'
+import type { AnnotationReplyConfig, ChatPromptConfig, CompletionPromptConfig, DatasetConfigs, PromptMode } from '@/models/debug'
 import {
   AgentStrategy,
   ALLOW_FILE_EXTENSIONS,
+  AppModeEnum,
   AppModes,
   ModelModeType,
   Resolution,
@@ -39,21 +40,21 @@ import {
 export {
   AgentStrategy,
   ALLOW_FILE_EXTENSIONS,
+  type AppIconType,
+  AppModeEnum,
   AppModes,
+  type AppSSO,
+  type CompletionParams,
+  type ImageFile,
+  type Model,
   ModelModeType,
+  type PromptVariable,
   Resolution,
   RETRIEVE_METHOD,
   RETRIEVE_TYPE,
   Theme,
   TransferMethod,
   TtsAutoPlay,
-  type AppIconType,
-  type AppModeEnum,
-  type AppSSO,
-  type CompletionParams,
-  type ImageFile,
-  type Model,
-  type PromptVariable,
   type UserInputFormItem,
   type VisionFile,
   type VisionSettings,
