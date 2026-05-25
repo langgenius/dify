@@ -35,11 +35,11 @@ export function InstanceDetail({ appInstanceId, children }: {
                   <div className="system-xl-semibold text-text-primary">{t(`tabs.${activeTab}.name`)}</div>
                   <div className="system-sm-regular text-text-tertiary">{t(`tabs.${activeTab}.description`)}</div>
                 </div>
-                {(activeTab === 'api' || activeTab === 'releases' || activeTab === 'deploy') && (
+                {(activeTab === 'api' || activeTab === 'releases' || activeTab === 'instances') && (
                   <div className="shrink-0 pt-1.5">
                     {activeTab === 'api'
                       ? <DeveloperApiHeaderActions appInstanceId={appInstanceId} />
-                      : activeTab === 'deploy'
+                      : activeTab === 'instances'
                         ? <NewDeploymentButton appInstanceId={appInstanceId} />
                         : <CreateReleaseControl appInstanceId={appInstanceId} size="medium" />}
                   </div>

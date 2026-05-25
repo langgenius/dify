@@ -223,7 +223,7 @@ function DeploymentStatusContent({
   if (hasRelease) {
     return (
       <Link
-        href={getInstanceTabHref(appInstanceId, 'deploy')}
+        href={getInstanceTabHref(appInstanceId, 'instances')}
         className="inline-flex h-6 items-center gap-1 system-xs-medium text-text-accent hover:underline"
       >
         <span aria-hidden className="i-ri-rocket-line size-3.5" />
@@ -410,7 +410,7 @@ export function InstanceCard({ app }: {
         <div className="mt-auto flex h-10.5 min-w-0 items-center border-t border-divider-subtle px-4">
           <DeploymentAccessLinks appInstanceId={appInstanceId} access={access} isLoading={accessChannelsQuery.isLoading} />
           <Link
-            href={displayedRelease ? getInstanceTabHref(appInstanceId, 'releases') : getInstanceTabHref(appInstanceId, 'deploy')}
+            href={displayedRelease ? getInstanceTabHref(appInstanceId, 'releases') : getInstanceTabHref(appInstanceId, 'instances')}
             className="min-w-0 shrink-0 truncate text-right system-xs-regular text-text-tertiary hover:text-text-secondary"
             title={releaseMeta}
           >

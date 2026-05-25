@@ -1,8 +1,11 @@
+import type { EnvironmentDeployment } from '@dify/contracts/enterprise/types.gen'
 import { describe, expect, it } from 'vitest'
 import {
   DEPLOYMENT_STATUS_POLLING_INTERVAL,
   deploymentStatus,
   deploymentStatusPollingInterval,
+  hasRuntimeInstanceDeployment,
+  isAvailableDeploymentTarget,
   isUndeployedDeploymentRow,
   RUNTIME_INSTANCE_STATUS_DEPLOYING,
   RUNTIME_INSTANCE_STATUS_DRIFTED,
@@ -55,6 +58,39 @@ describe('isUndeployedDeploymentRow', () => {
   it('should keep the empty-row fallback for rows without status values', () => {
     // Arrange & Act & Assert
     expect(isUndeployedDeploymentRow({})).toBe(true)
+  })
+})
+
+describe('runtime instance row helpers', () => {
+  it('should distinguish deployed instance rows from available deployment target rows', () => {
+    // Arrange
+    const readyRow = {
+      environment: { id: 'env-ready' },
+      status: RUNTIME_INSTANCE_STATUS_READY,
+      currentRelease: { id: 'release-1' },
+    } satisfies EnvironmentDeployment
+    const undeployedRow = {
+      environment: { id: 'env-empty' },
+      status: RUNTIME_INSTANCE_STATUS_UNDEPLOYED,
+    } satisfies EnvironmentDeployment
+
+    // Act & Assert
+    expect(hasRuntimeInstanceDeployment(readyRow)).toBe(true)
+    expect(isAvailableDeploymentTarget(readyRow)).toBe(false)
+    expect(hasRuntimeInstanceDeployment(undeployedRow)).toBe(false)
+    expect(isAvailableDeploymentTarget(undeployedRow)).toBe(true)
+  })
+
+  it('should ignore rows without an environment id', () => {
+    // Arrange
+    const readyRowWithoutEnvironment = {
+      status: RUNTIME_INSTANCE_STATUS_READY,
+      currentRelease: { id: 'release-1' },
+    } satisfies EnvironmentDeployment
+
+    // Act & Assert
+    expect(hasRuntimeInstanceDeployment(readyRowWithoutEnvironment)).toBe(false)
+    expect(isAvailableDeploymentTarget(readyRowWithoutEnvironment)).toBe(false)
   })
 })
 

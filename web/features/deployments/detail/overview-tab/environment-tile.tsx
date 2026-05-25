@@ -57,7 +57,7 @@ export function EnvironmentTile({ appInstanceId, row, releaseRows }: Environment
     if (config.intent === 'disabled')
       return
     if (config.intent === 'navigate') {
-      router.push(`/deployments/${appInstanceId}/deploy`)
+      router.push(`/deployments/${appInstanceId}/instances`)
       return
     }
     openDeployDrawer({ appInstanceId, environmentId: envId, releaseId: config.releaseId })

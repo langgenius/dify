@@ -14,12 +14,12 @@ import {
   ComboboxTrigger,
 } from '@langgenius/dify-ui/combobox'
 import { Dialog, DialogCloseButton, DialogContent, DialogDescription, DialogTitle } from '@langgenius/dify-ui/dialog'
+import { Input } from '@langgenius/dify-ui/input'
 import { toast } from '@langgenius/dify-ui/toast'
 import { keepPreviousData, useInfiniteQuery, useMutation } from '@tanstack/react-query'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
-import Input from '@/app/components/base/input'
 import { SkeletonRectangle, SkeletonRow } from '@/app/components/base/skeleton'
 import { useRouter } from '@/next/navigation'
 import { consoleQuery } from '@/service/client'
@@ -124,9 +124,10 @@ function SourceAppPickerSkeleton() {
   )
 }
 
-export function SourceAppPicker({ value, onChange }: {
+export function SourceAppPicker({ value, onChange, ariaLabel }: {
   value?: App
   onChange: (app: App) => void
+  ariaLabel?: string
 }) {
   const { t } = useTranslation('deployments')
   const [isShow, setIsShow] = useState(false)
@@ -174,7 +175,7 @@ export function SourceAppPicker({ value, onChange }: {
       disabled={false}
     >
       <ComboboxTrigger
-        aria-label={t('createModal.sourceApp')}
+        aria-label={ariaLabel ?? t('createModal.sourceApp')}
         icon={false}
         className="block h-auto w-full border-0 bg-transparent p-0 text-left hover:bg-transparent focus-visible:bg-transparent focus-visible:ring-0 data-open:bg-transparent"
       >

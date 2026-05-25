@@ -5,7 +5,7 @@ import { useSetAtom } from 'jotai'
 import { useTranslation } from 'react-i18next'
 import { SkeletonRectangle, SkeletonRow } from '@/app/components/base/skeleton'
 import { consoleQuery } from '@/service/client'
-import { deploymentStatusPollingInterval } from '../runtime-status'
+import { deploymentStatusPollingInterval, hasRuntimeInstanceDeployment } from '../runtime-status'
 import { openDeployDrawerAtom } from '../store'
 import {
   DetailListState,
@@ -38,6 +38,7 @@ export function NewDeploymentButton({ appInstanceId }: {
       className="gap-1.5"
       onClick={() => openDeployDrawer({ appInstanceId })}
     >
+      <span className="i-ri-rocket-line size-4 shrink-0" aria-hidden="true" />
       {t('deployTab.newDeployment')}
     </Button>
   )
@@ -120,7 +121,7 @@ export function DeployTab({ appInstanceId }: {
     refetchInterval: query => deploymentStatusPollingInterval(query.state.data),
   }))
   const environmentDeployments = environmentDeploymentsQuery.data
-  const rows = environmentDeployments?.data?.filter(row => row.environment?.id) ?? []
+  const rows = environmentDeployments?.data?.filter(hasRuntimeInstanceDeployment) ?? []
   const isLoading = environmentDeploymentsQuery.isLoading
   const hasError = environmentDeploymentsQuery.isError
 

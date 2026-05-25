@@ -41,10 +41,10 @@ function OverviewSelectedIcon({ className }: TailwindNavIconProps) {
   return <span aria-hidden className={cn('i-ri-dashboard-2-fill', className)} />
 }
 function DeployIcon({ className }: TailwindNavIconProps) {
-  return <span aria-hidden className={cn('i-ri-rocket-line', className)} />
+  return <span aria-hidden className={cn('i-ri-server-line', className)} />
 }
 function DeploySelectedIcon({ className }: TailwindNavIconProps) {
-  return <span aria-hidden className={cn('i-ri-rocket-fill', className)} />
+  return <span aria-hidden className={cn('i-ri-server-fill', className)} />
 }
 function VersionsIcon({ className }: TailwindNavIconProps) {
   return <span aria-hidden className={cn('i-ri-stack-line', className)} />
@@ -73,7 +73,7 @@ function SettingsSelectedIcon({ className }: TailwindNavIconProps) {
 
 const TABS: TabDef[] = [
   { key: 'overview', icon: OverviewIcon, selectedIcon: OverviewSelectedIcon },
-  { key: 'deploy', icon: DeployIcon, selectedIcon: DeploySelectedIcon },
+  { key: 'instances', icon: DeployIcon, selectedIcon: DeploySelectedIcon },
   { key: 'releases', icon: VersionsIcon, selectedIcon: VersionsSelectedIcon },
   { key: 'access', icon: AccessIcon, selectedIcon: AccessSelectedIcon },
   { key: 'api', icon: ApiIcon, selectedIcon: ApiSelectedIcon },

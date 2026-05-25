@@ -33,6 +33,14 @@ export function isUndeployedDeploymentRow(row?: EnvironmentDeployment) {
     || (!row?.currentRelease?.id && !row?.desiredRelease?.id && !row?.currentDeployment?.id)
 }
 
+export function hasRuntimeInstanceDeployment(row?: EnvironmentDeployment) {
+  return Boolean(row?.environment?.id && !isUndeployedDeploymentRow(row))
+}
+
+export function isAvailableDeploymentTarget(row?: EnvironmentDeployment) {
+  return Boolean(row?.environment?.id && isUndeployedDeploymentRow(row))
+}
+
 function normalizeRuntimeInstanceStatus(status?: RuntimeInstanceStatusValue): RuntimeInstanceStatus | undefined {
   if (typeof status === 'number') {
     switch (status) {

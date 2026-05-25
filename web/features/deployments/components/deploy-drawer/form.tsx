@@ -21,7 +21,7 @@ import { environmentBackend, environmentId, environmentMode, environmentName } f
 import { createDeploymentIdempotencyKey } from '../../idempotency'
 import { releaseCommit, releaseLabel } from '../../release'
 import { releaseDeploymentAction } from '../../release-action'
-import { isUndeployedDeploymentRow } from '../../runtime-status'
+import { hasRuntimeInstanceDeployment, isAvailableDeploymentTarget } from '../../runtime-status'
 import { closeDeployDrawerAtom } from '../../store'
 import {
   DeploymentSelect,
@@ -263,7 +263,7 @@ function DeployReadyForm({
   const selectedRelease = releases.find(release => release.id === selectedReleaseId)
   const targetReleaseId = displayedRelease?.id ?? selectedRelease?.id ?? selectedReleaseId
   const targetRelease = displayedRelease ?? selectedRelease ?? (targetReleaseId ? { id: targetReleaseId } : undefined)
-  const deploymentRows = runtimeRows.filter(row => Boolean(row.environment?.id) && !isUndeployedDeploymentRow(row))
+  const deploymentRows = runtimeRows.filter(hasRuntimeInstanceDeployment)
   const selectedDeploymentRow = deploymentRows.find(row => environmentId(row.environment) === selectedEnvironmentId)
   const action = releaseDeploymentAction({
     targetRelease,
@@ -404,17 +404,23 @@ function DeployReadyForm({
       >
         {lockedEnv
           ? <EnvironmentRow env={lockedEnv} />
-          : (
-              <DeploymentSelect
-                value={selectedEnvironmentId}
-                onChange={setSelectedEnvId}
-                options={environments.filter(env => env.id).map(env => ({
-                  value: env.id!,
-                  label: `${environmentName(env)} · ${t(environmentMode(env) === 'isolated' ? 'mode.isolated' : 'mode.shared')} · ${environmentBackend(env).toUpperCase()}`,
-                }))}
-                placeholder={t('deployDrawer.selectEnv')}
-              />
-            )}
+          : environments.length === 0
+            ? (
+                <div className="rounded-lg border border-dashed border-components-panel-border bg-components-panel-bg-blur px-3 py-3 system-sm-regular text-text-tertiary">
+                  {t('deployDrawer.noNewEnvironmentAvailable')}
+                </div>
+              )
+            : (
+                <DeploymentSelect
+                  value={selectedEnvironmentId}
+                  onChange={setSelectedEnvId}
+                  options={environments.filter(env => env.id).map(env => ({
+                    value: env.id!,
+                    label: `${environmentName(env)} · ${t(environmentMode(env) === 'isolated' ? 'mode.isolated' : 'mode.shared')} · ${environmentBackend(env).toUpperCase()}`,
+                  }))}
+                  placeholder={t('deployDrawer.selectEnv')}
+                />
+              )}
       </Field>
 
       {targetReleaseId && (
@@ -472,12 +478,14 @@ export function DeployForm({
     )
   }
 
-  const environments = runtimeInstancesQuery.data?.data
-    ?.map(row => row.environment)
-    .filter((environment): environment is EnvironmentOption => Boolean(environment?.id)) ?? []
+  const runtimeRows = runtimeInstancesQuery.data?.data ?? []
+  const selectableEnvironmentRows = runtimeRows
+    .filter(row => lockedEnvId ? Boolean(row.environment?.id) : isAvailableDeploymentTarget(row))
+  const environments = selectableEnvironmentRows
+    .map(row => row.environment)
+    .filter((environment): environment is EnvironmentOption => Boolean(environment?.id))
   const releases = releaseHistoryQuery.data?.data?.filter(release => release.id) ?? []
   const defaultReleaseId = releases[0]?.id
-  const runtimeRows = runtimeInstancesQuery.data?.data ?? []
   const formKey = `${appInstanceId}-${lockedEnvId ?? 'any'}-${presetReleaseId ?? 'new'}-${defaultReleaseId ?? 'none'}`
 
   return (
