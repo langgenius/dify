@@ -342,7 +342,9 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
                     ):
                         return internal_event, None
                     return None, self._failure_event(
-                        inputs={}, process_data={}, metadata=metadata,
+                        inputs={},
+                        process_data={},
+                        metadata=metadata,
                         error=f"Unexpected internal event type {internal_event.type!r}",
                         error_type="agent_backend_stream_error",
                     )
