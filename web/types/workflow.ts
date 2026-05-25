@@ -427,6 +427,8 @@ export type PublishWorkflowParams = {
   releaseNotes: string
 }
 
+export type WorkflowKind = 'standard'
+
 export type UpdateWorkflowParams = {
   url: string
   title: string

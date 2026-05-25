@@ -340,16 +340,11 @@ describe('App List Browsing Flow', () => {
 
   // -- Tab navigation --
   describe('Tab Navigation', () => {
-    it('should render all category tabs', () => {
+    it('should render the app type dropdown trigger', () => {
       mockPages = [createPage([createMockApp()])]
       renderList()
 
-      expect(screen.getByText('app.types.all')).toBeInTheDocument()
-      expect(screen.getByText('app.types.workflow')).toBeInTheDocument()
-      expect(screen.getByText('app.types.advanced')).toBeInTheDocument()
-      expect(screen.getByText('app.types.chatbot')).toBeInTheDocument()
-      expect(screen.getByText('app.types.agent')).toBeInTheDocument()
-      expect(screen.getByText('app.types.completion')).toBeInTheDocument()
+      expect(screen.getByText('app.studio.filters.types')).toBeInTheDocument()
     })
   })
 
@@ -380,21 +375,19 @@ describe('App List Browsing Flow', () => {
 
   // -- "Created by me" filter --
   describe('Created By Me Filter', () => {
-    it('should render the "created by me" checkbox', () => {
+    it('should not render a standalone "created by me" checkbox in the current header layout', () => {
       mockPages = [createPage([createMockApp()])]
       renderList()
 
-      expect(screen.getByText('app.showMyCreatedAppsOnly')).toBeInTheDocument()
+      expect(screen.queryByText('app.showMyCreatedAppsOnly')).not.toBeInTheDocument()
     })
 
-    it('should toggle the "created by me" filter on click', () => {
+    it('should keep the current layout stable without a "created by me" control', () => {
       mockPages = [createPage([createMockApp()])]
       renderList()
 
-      const checkbox = screen.getByText('app.showMyCreatedAppsOnly')
-      fireEvent.click(checkbox)
-
-      expect(screen.getByText('app.showMyCreatedAppsOnly')).toBeInTheDocument()
+      expect(screen.getByText('app.studio.filters.types')).toBeInTheDocument()
+      expect(screen.queryByText('app.showMyCreatedAppsOnly')).not.toBeInTheDocument()
     })
   })
 

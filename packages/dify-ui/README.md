@@ -40,16 +40,16 @@ Importing from `@langgenius/dify-ui` (no subpath) is intentionally not supported
 
 ## Primitives
 
-| Category         | Subpath                                                                                                                                                          | Notes                                                |
-| ---------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------- |
-| Actions          | `./button`                                                                                                                                                       | Design-system CTA primitive with `cva` variants.     |
-| Feedback         | `./meter`, `./toast`                                                                                                                                             | Meter is inline status; Toast owns the `z-60` layer. |
-| Form             | `./form`, `./field`, `./fieldset`, `./input`, `./checkbox`, `./checkbox-group`, `./radio`, `./radio-group`, `./number-field`, `./select`, `./slider`, `./switch` | Native form boundary, field semantics, and controls. |
-| Layout           | `./scroll-area`                                                                                                                                                  | Custom-styled scrollbar over the host viewport.      |
-| Media            | `./avatar`                                                                                                                                                       | Avatar root, image, and fallback primitives.         |
-| Navigation       | `./tabs`, `./toggle-group`                                                                                                                                       | Tabs for panels; ToggleGroup for segmented modes.    |
-| Overlay / menu   | `./alert-dialog`, `./context-menu`, `./dialog`, `./drawer`, `./dropdown-menu`, `./popover`, `./preview-card`, `./tooltip`                                        | Portalled. See [Overlay & portal contract] below.    |
-| Search / pickers | `./autocomplete`, `./combobox`, `./select`                                                                                                                       | Search input, searchable picker, and closed picker.  |
+| Category         | Subpath                                                                                                                                                          | Notes                                                                             |
+| ---------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------- |
+| Actions          | `./button`                                                                                                                                                       | Design-system CTA primitive with `cva` variants.                                  |
+| Feedback         | `./meter`, `./toast`                                                                                                                                             | Meter is inline status; Toast owns the `z-60` layer.                              |
+| Form             | `./form`, `./field`, `./fieldset`, `./input`, `./checkbox`, `./checkbox-group`, `./radio`, `./radio-group`, `./number-field`, `./select`, `./slider`, `./switch` | Native form boundary, field semantics, and controls.                              |
+| Layout           | `./scroll-area`                                                                                                                                                  | Custom-styled scrollbar over the host viewport.                                   |
+| Media            | `./avatar`                                                                                                                                                       | Avatar root, image, and fallback primitives.                                      |
+| Navigation       | `./pagination`, `./tabs`, `./toggle-group`                                                                                                                       | Pagination for page navigation; Tabs for panels; ToggleGroup for segmented modes. |
+| Overlay / menu   | `./alert-dialog`, `./context-menu`, `./dialog`, `./drawer`, `./dropdown-menu`, `./popover`, `./preview-card`, `./tooltip`                                        | Portalled. See [Overlay & portal contract] below.                                 |
+| Search / pickers | `./autocomplete`, `./combobox`, `./select`                                                                                                                       | Search input, searchable picker, and closed picker.                               |
 
 Utilities:
 

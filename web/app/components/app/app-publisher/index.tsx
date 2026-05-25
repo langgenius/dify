@@ -86,8 +86,10 @@ export type AppPublisherProps = {
 
 const PUBLISH_SHORTCUT = ['ctrl', '⇧', 'P']
 
+export type AppPublisherPublishParams = ModelAndParameter | PublishWorkflowParams
+
 type AppPublisherPublishHandler
-  = | ((params?: ModelAndParameter | PublishWorkflowParams) => Promise<unknown> | unknown)
+  = | ((params?: AppPublisherPublishParams) => Promise<unknown> | unknown)
     | ((params?: unknown) => Promise<unknown> | unknown)
 
 type AppPublisherRestoreHandler = () => Promise<unknown> | unknown

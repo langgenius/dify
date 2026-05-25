@@ -12085,9 +12085,9 @@ Condition detail
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| keyword_setting | [DatasetKeywordSettingResponse](#datasetkeywordsettingresponse) |  | Yes |
-| vector_setting | [DatasetVectorSettingResponse](#datasetvectorsettingresponse) |  | Yes |
-| weight_type | string |  | Yes |
+| keyword_setting | [DatasetKeywordSettingResponse](#datasetkeywordsettingresponse) |  | No |
+| vector_setting | [DatasetVectorSettingResponse](#datasetvectorsettingresponse) |  | No |
+| weight_type | string |  | No |
 
 #### DatasourceCredentialDeletePayload
 

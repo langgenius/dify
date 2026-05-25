@@ -45,18 +45,19 @@ vi.mock('@/context/app-context', () => ({
   useAppContext: () => ({
     isCurrentWorkspaceEditor: mockIsCurrentWorkspaceEditor(),
     isCurrentWorkspaceDatasetOperator: mockIsCurrentWorkspaceDatasetOperator(),
+    userProfile: { id: 'creator-1' },
   }),
 }))
 
 const mockSetKeywords = vi.fn()
 const mockSetTagIDs = vi.fn()
-const mockSetIsCreatedByMe = vi.fn()
+const mockSetCreatorID = vi.fn()
 const mockSetCategory = vi.fn()
 const mockQueryState = {
   category: 'all',
   tagIDs: [] as string[],
   keywords: '',
-  isCreatedByMe: false,
+  creatorID: '',
 }
 vi.mock('../hooks/use-apps-query-state', () => ({
   isAppListCategory: (value: string) => value === 'all' || Object.values(AppModeEnum).includes(value as AppModeEnum),
@@ -65,7 +66,18 @@ vi.mock('../hooks/use-apps-query-state', () => ({
     setCategory: mockSetCategory,
     setKeywords: mockSetKeywords,
     setTagIDs: mockSetTagIDs,
-    setIsCreatedByMe: mockSetIsCreatedByMe,
+    setCreatorID: mockSetCreatorID,
+  }),
+}))
+
+vi.mock('@/service/use-common', () => ({
+  useMembers: () => ({
+    data: {
+      accounts: [
+        { id: 'creator-1', name: 'Alice', avatar_url: null, status: 'active' },
+        { id: 'creator-2', name: 'Bob', avatar_url: null, status: 'active' },
+      ],
+    },
   }),
 }))
 
@@ -190,9 +202,9 @@ vi.mock('../app-card', () => ({
 }))
 
 vi.mock('../new-app-card', () => ({
-  default: React.forwardRef((_props: unknown, _ref: React.ForwardedRef<unknown>) => {
-    return React.createElement('div', { 'data-testid': 'new-app-card', 'role': 'button' }, 'New App Card')
-  }),
+  default: ({ ref: _ref }: { ref?: React.Ref<HTMLDivElement> }) => {
+    return React.createElement('div', { 'data-testid': 'new-app-card', 'role': 'button', 'ref': _ref }, 'New App Card')
+  },
 }))
 
 vi.mock('../empty', () => ({
@@ -229,11 +241,15 @@ beforeAll(() => {
 
 // Render helper wrapping with shared nuqs testing helper plus a seeded
 // systemFeatures cache so List can resolve its useSuspenseQuery.
-const renderList = (searchParams = '') => {
+const renderList = (searchParams = '', pageType: 'apps' | 'snippets' = 'apps') => {
   const { wrapper: SystemFeaturesWrapper } = createSystemFeaturesWrapper({
     systemFeatures: { branding: { enabled: false } },
   })
-  return renderWithNuqs(<SystemFeaturesWrapper><List /></SystemFeaturesWrapper>, { searchParams })
+  return renderWithNuqs(<SystemFeaturesWrapper><List pageType={pageType} /></SystemFeaturesWrapper>, { searchParams })
+}
+
+const openTypeFilter = () => {
+  fireEvent.click(screen.getByRole('button', { name: /^app\.(studio\.filters\.types|types\.)/ }))
 }
 
 type AppListInfiniteOptions = {
@@ -255,7 +271,7 @@ describe('List', () => {
     mockQueryState.category = 'all'
     mockQueryState.tagIDs = []
     mockQueryState.keywords = ''
-    mockQueryState.isCreatedByMe = false
+    mockQueryState.creatorID = ''
     mockUseWorkflowOnlineUsers.mockClear()
     intersectionCallback = null
     localStorage.clear()
@@ -264,11 +280,12 @@ describe('List', () => {
   describe('Rendering', () => {
     it('should render without crashing', () => {
       renderList()
-      expect(screen.getByText('app.types.all'))!.toBeInTheDocument()
+      expect(screen.getByText('app.studio.filters.types'))!.toBeInTheDocument()
     })
 
-    it('should render tab slider with all app types', () => {
+    it('should render app type dropdown with all app types', () => {
       renderList()
+      openTypeFilter()
 
       expect(screen.getByText('app.types.all'))!.toBeInTheDocument()
       expect(screen.getByText('app.types.workflow'))!.toBeInTheDocument()
@@ -288,9 +305,21 @@ describe('List', () => {
       expect(screen.getByText('common.tag.placeholder'))!.toBeInTheDocument()
     })
 
-    it('should render created by me checkbox', () => {
+    it('should render creators filter', () => {
       renderList()
-      expect(screen.getByText('app.showMyCreatedAppsOnly'))!.toBeInTheDocument()
+      expect(screen.getByText('app.studio.filters.allCreators'))!.toBeInTheDocument()
+    })
+
+    it('should render link to snippets on apps page', () => {
+      renderList()
+
+      expect(screen.getByRole('link', { name: 'app.studio.viewSnippets' })).toHaveAttribute('href', '/snippets')
+    })
+
+    it('should not render link to snippets on snippets page', () => {
+      renderList('', 'snippets')
+
+      expect(screen.queryByRole('link', { name: 'app.studio.viewSnippets' })).not.toBeInTheDocument()
     })
 
     it('should render app cards when apps exist', () => {
@@ -325,20 +354,22 @@ describe('List', () => {
     })
   })
 
-  describe('Tab Navigation', () => {
-    it('should update category when workflow tab is clicked', () => {
+  describe('Type Filter', () => {
+    it('should update category when workflow type is selected', () => {
       renderList()
+      openTypeFilter()
 
-      fireEvent.click(screen.getByText('app.types.workflow'))
+      fireEvent.click(screen.getByRole('menuitemradio', { name: 'app.types.workflow' }))
 
       expect(mockSetCategory).toHaveBeenCalledWith(AppModeEnum.WORKFLOW)
     })
 
-    it('should update category when all tab is clicked', () => {
+    it('should update category when all type is selected', () => {
       mockQueryState.category = AppModeEnum.WORKFLOW
       renderList()
+      openTypeFilter()
 
-      fireEvent.click(screen.getByText('app.types.all'))
+      fireEvent.click(screen.getByRole('menuitemradio', { name: 'app.types.all' }))
 
       expect(mockSetCategory).toHaveBeenCalledWith('all')
     })
@@ -364,10 +395,7 @@ describe('List', () => {
 
       renderList()
 
-      const clearButton = document.querySelector('.group')
-      expect(clearButton)!.toBeInTheDocument()
-      if (clearButton)
-        fireEvent.click(clearButton)
+      fireEvent.click(screen.getByRole('button', { name: 'common.operation.clear' }))
 
       expect(mockSetKeywords).toHaveBeenCalledWith('')
     })
@@ -377,7 +405,7 @@ describe('List', () => {
     it('should build paged query input from active filters', () => {
       mockQueryState.tagIDs = ['tag-1']
       mockQueryState.keywords = 'sales'
-      mockQueryState.isCreatedByMe = true
+      mockQueryState.creatorID = 'creator-1'
       mockQueryState.category = AppModeEnum.WORKFLOW
 
       renderList()
@@ -390,7 +418,7 @@ describe('List', () => {
           limit: 30,
           name: 'sales',
           tag_ids: ['tag-1'],
-          is_created_by_me: true,
+          creator_id: 'creator-1',
           mode: AppModeEnum.WORKFLOW,
         },
       })
@@ -406,19 +434,19 @@ describe('List', () => {
     })
   })
 
-  describe('Created By Me Filter', () => {
-    it('should render checkbox with correct label', () => {
+  describe('Creators Filter', () => {
+    it('should render creators filter with correct label', () => {
       renderList()
-      expect(screen.getByText('app.showMyCreatedAppsOnly'))!.toBeInTheDocument()
+      expect(screen.getByText('app.studio.filters.allCreators'))!.toBeInTheDocument()
     })
 
-    it('should handle checkbox change', () => {
+    it('should handle creator selection as a single creator filter', () => {
       renderList()
 
-      const checkbox = screen.getByRole('checkbox', { name: 'app.showMyCreatedAppsOnly' })
-      fireEvent.click(checkbox)
+      fireEvent.click(screen.getByRole('button', { name: 'app.studio.filters.allCreators' }))
+      fireEvent.click(screen.getByRole('button', { name: /Bob/ }))
 
-      expect(mockSetIsCreatedByMe).toHaveBeenCalledWith(true)
+      expect(mockSetCreatorID).toHaveBeenCalledWith('creator-2')
     })
   })
 
@@ -464,11 +492,11 @@ describe('List', () => {
   describe('Edge Cases', () => {
     it('should handle multiple renders without issues', () => {
       const { unmount } = renderList()
-      expect(screen.getByText('app.types.all'))!.toBeInTheDocument()
+      expect(screen.getByText('app.studio.filters.types'))!.toBeInTheDocument()
 
       unmount()
       renderList()
-      expect(screen.getByText('app.types.all'))!.toBeInTheDocument()
+      expect(screen.getByText('app.studio.filters.types'))!.toBeInTheDocument()
     })
 
     it('should render app cards correctly', () => {
@@ -481,9 +509,10 @@ describe('List', () => {
     it('should render with all filter options visible', () => {
       renderList()
 
+      expect(screen.getByText('app.studio.filters.types'))!.toBeInTheDocument()
       expect(screen.getByRole('textbox'))!.toBeInTheDocument()
+      expect(screen.getByText('app.studio.filters.allCreators'))!.toBeInTheDocument()
       expect(screen.getByText('common.tag.placeholder'))!.toBeInTheDocument()
-      expect(screen.getByText('app.showMyCreatedAppsOnly'))!.toBeInTheDocument()
     })
   })
 
@@ -500,9 +529,10 @@ describe('List', () => {
     })
   })
 
-  describe('App Type Tabs', () => {
-    it('should render all app type tabs', () => {
+  describe('App Type Dropdown', () => {
+    it('should render all app type options', () => {
       renderList()
+      openTypeFilter()
 
       expect(screen.getByText('app.types.all'))!.toBeInTheDocument()
       expect(screen.getByText('app.types.workflow'))!.toBeInTheDocument()
@@ -512,9 +542,7 @@ describe('List', () => {
       expect(screen.getByText('app.types.completion'))!.toBeInTheDocument()
     })
 
-    it('should update category for each app type tab click', () => {
-      renderList()
-
+    it('should update category for each app type option click', () => {
       const appTypeTexts = [
         { mode: AppModeEnum.WORKFLOW, text: 'app.types.workflow' },
         { mode: AppModeEnum.ADVANCED_CHAT, text: 'app.types.advanced' },
@@ -525,8 +553,11 @@ describe('List', () => {
 
       for (const { mode, text } of appTypeTexts) {
         mockSetCategory.mockClear()
-        fireEvent.click(screen.getByText(text))
+        const { unmount } = renderList()
+        openTypeFilter()
+        fireEvent.click(screen.getByRole('menuitemradio', { name: text }))
         expect(mockSetCategory).toHaveBeenCalledWith(mode)
+        unmount()
       }
     })
   })

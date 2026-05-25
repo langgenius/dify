@@ -26,20 +26,22 @@ export const useAvailableNodesMetaData = () => {
     },
   }), [isChatMode])
 
-  const mergedNodesMetaData = useMemo(() => [
-    ...WORKFLOW_COMMON_NODES,
-    startNodeMetaData,
-    ...(
-      isChatMode
-        ? [AnswerDefault]
-        : [
-            EndDefault,
-            TriggerWebhookDefault,
-            TriggerScheduleDefault,
-            TriggerPluginDefault,
-          ]
-    ),
-  ], [isChatMode, startNodeMetaData])
+  const mergedNodesMetaData = useMemo(() => {
+    return [
+      ...WORKFLOW_COMMON_NODES,
+      startNodeMetaData,
+      ...(
+        isChatMode
+          ? [AnswerDefault]
+          : [
+              EndDefault,
+              TriggerWebhookDefault,
+              TriggerScheduleDefault,
+              TriggerPluginDefault,
+            ]
+      ),
+    ]
+  }, [isChatMode, startNodeMetaData])
 
   const availableNodesMetaData = useMemo(() => mergedNodesMetaData.map((node) => {
     const { metaData } = node

@@ -103,8 +103,13 @@ const AppNav = () => {
         icon={<RiRobot2Line className="size-4" />}
         activeIcon={<RiRobot2Fill className="size-4" />}
         text={t('menus.apps', { ns: 'common' })}
-        activeSegment={['apps', 'app']}
+        activeSegment={['apps', 'app', 'snippets']}
         link="/apps"
+        activeLink={{
+          segment: 'snippets',
+          text: t('tabs.snippets', { ns: 'workflow' }),
+          link: '/snippets',
+        }}
         curNav={appDetail}
         navigationItems={navItems}
         createText={t('menus.newApp', { ns: 'common' })}

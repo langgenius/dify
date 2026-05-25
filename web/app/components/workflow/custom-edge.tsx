@@ -162,6 +162,12 @@ const CustomEdge = ({
             open={open}
             onOpenChange={handleOpenChange}
             onSelect={handleInsert}
+            snippetInsertPayload={{
+              prevNodeId: source,
+              prevNodeSourceHandle: sourceHandleId || 'source',
+              nextNodeId: target,
+              nextNodeTargetHandle: targetHandleId || 'target',
+            }}
             availableBlocksTypes={intersection(availablePrevBlocks, availableNextBlocks)}
             triggerClassName={() => 'hover:scale-150 transition-all'}
           />

@@ -1,4 +1,6 @@
 import type { Node, NodeOutPutVar, ValueSelector, Var } from '@/app/components/workflow/types'
+import { useTranslation } from 'react-i18next'
+import { useSnippetDetailStore } from '@/app/components/snippets/store'
 import {
   useIsChatMode,
   useWorkflow,
@@ -7,6 +9,7 @@ import {
 import { useStore as useWorkflowStore } from '@/app/components/workflow/store'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { inputVarTypeToVarType } from '../../data-source/utils'
+import { appendSnippetInputFieldVars } from './snippet-input-field-vars'
 import useNodeInfo from './use-node-info'
 
 type Params = {
@@ -28,10 +31,17 @@ const useAvailableVarList = (nodeId: string, {
   onlyLeafNodeVar: false,
   filterVar: () => true,
 }) => {
+  const { t } = useTranslation()
+  const snippetInputFields = useSnippetDetailStore(s => s.fields)
   const { getTreeLeafNodes, getNodeById, getBeforeNodesInSameBranchIncludeParent } = useWorkflow()
   const { getNodeAvailableVars } = useWorkflowVariables()
   const isChatMode = useIsChatMode()
   const availableNodes = passedInAvailableNodes || (onlyLeafNodeVar ? getTreeLeafNodes(nodeId) : getBeforeNodesInSameBranchIncludeParent(nodeId))
+  const snippetInputFieldAvailability = appendSnippetInputFieldVars({
+    availableNodes,
+    fields: snippetInputFields,
+    title: t('panelTitle', { ns: 'snippet' }),
+  })
   const {
     parentNode: iterationNode,
   } = useNodeInfo(nodeId)
@@ -63,20 +73,24 @@ const useAvailableVarList = (nodeId: string, {
       })
     }
   }
-  const availableVars = [...getNodeAvailableVars({
-    parentNode: iterationNode,
-    beforeNodes: availableNodes,
-    isChatMode,
-    filterVar,
-    hideEnv,
-    hideChatVar,
-  }), ...dataSourceRagVars]
+  const availableVars = [
+    ...snippetInputFieldAvailability.availableVars,
+    ...getNodeAvailableVars({
+      parentNode: iterationNode,
+      beforeNodes: availableNodes,
+      isChatMode,
+      filterVar,
+      hideEnv,
+      hideChatVar,
+    }),
+    ...dataSourceRagVars,
+  ]
 
   return {
     availableVars,
-    availableNodes,
+    availableNodes: snippetInputFieldAvailability.availableNodes,
     availableNodesWithParent: [
-      ...availableNodes,
+      ...snippetInputFieldAvailability.availableNodes,
       ...(isDataSourceNode ? [currNode] : []),
     ],
   }

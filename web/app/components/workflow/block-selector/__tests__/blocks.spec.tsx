@@ -6,6 +6,7 @@ import Blocks from '../blocks'
 import { BlockClassificationEnum } from '../types'
 
 const runtimeState = vi.hoisted(() => ({
+  appType: 'workflow' as string | undefined,
   nodes: [] as Array<{ data: { type?: BlockEnum } }>,
 }))
 
@@ -14,6 +15,14 @@ vi.mock('reactflow', () => ({
     getState: () => ({
       getNodes: () => runtimeState.nodes,
     }),
+  }),
+}))
+
+vi.mock('@/app/components/app/store', () => ({
+  useStore: (selector: (state: { appDetail: { type?: string } }) => unknown) => selector({
+    appDetail: {
+      type: runtimeState.appType,
+    },
   }),
 }))
 
@@ -32,10 +41,12 @@ const createBlock = (type: BlockEnum, title: string, classification = BlockClass
 
 describe('Blocks', () => {
   beforeEach(() => {
+    vi.clearAllMocks()
+    runtimeState.appType = 'workflow'
     runtimeState.nodes = []
   })
 
-  it('renders grouped blocks, filters duplicate knowledge-base nodes, and selects a block', async () => {
+  it('should render grouped blocks, filter duplicate knowledge-base nodes, and select a block', async () => {
     const user = userEvent.setup()
     const onSelect = vi.fn()
 
@@ -64,7 +75,7 @@ describe('Blocks', () => {
     expect(onSelect).toHaveBeenCalledWith(BlockEnum.LLM)
   })
 
-  it('shows the empty state when no block matches the search', () => {
+  it('should show the empty state when no block matches the search text', () => {
     render(
       <Blocks
         searchText="missing"

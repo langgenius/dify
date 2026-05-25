@@ -78,7 +78,7 @@ export const GetCodeGeneratorResModal: FC<IGetCodeGeneratorResProps> = (
   const [model, setModel] = React.useState<Model>(localModel || {
     name: '',
     provider: '',
-    mode: mode as unknown as ModelModeType.chat,
+    mode: mode as unknown as ModelModeType,
     completion_params: defaultCompletionParams,
   })
   const {

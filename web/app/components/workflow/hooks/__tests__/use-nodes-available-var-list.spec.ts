@@ -1,5 +1,7 @@
 import type { Node, NodeOutPutVar, Var } from '../../types'
 import { renderHook } from '@testing-library/react'
+import { useSnippetDetailStore } from '@/app/components/snippets/store'
+import { PipelineInputVarType } from '@/models/pipeline'
 import { BlockEnum, VarType } from '../../types'
 import useNodesAvailableVarList, { useGetNodesAvailableVarList } from '../use-nodes-available-var-list'
 
@@ -42,6 +44,8 @@ const outputVars: NodeOutPutVar[] = [{
 describe('useNodesAvailableVarList', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    globalThis.history.pushState({}, '', '/')
+    useSnippetDetailStore.getState().reset()
     mockGetBeforeNodesInSameBranchIncludeParent.mockImplementation((nodeId: string) => [createNode({ id: `before-${nodeId}` })])
     mockGetTreeLeafNodes.mockImplementation((nodeId: string) => [createNode({ id: `leaf-${nodeId}` })])
     mockGetNodeAvailableVars.mockReturnValue(outputVars)
@@ -76,13 +80,44 @@ describe('useNodesAvailableVarList', () => {
     expect(mockGetBeforeNodesInSameBranchIncludeParent).toHaveBeenCalledWith('loop-1')
     expect(mockGetBeforeNodesInSameBranchIncludeParent).toHaveBeenCalledWith('child-1')
     expect(result.current['loop-1']?.availableNodes.map(node => node.id)).toEqual(['before-loop-1', 'loop-1'])
-    expect(result.current['child-1']?.availableVars).toBe(outputVars)
+    expect(result.current['child-1']?.availableVars).toEqual(outputVars)
     expect(mockGetNodeAvailableVars).toHaveBeenNthCalledWith(2, expect.objectContaining({
       parentNode: loopNode,
       isChatMode: true,
       filterVar,
       hideEnv: true,
       hideChatVar: true,
+    }))
+  })
+
+  it('adds snippet input fields as virtual start variables on snippet canvases', () => {
+    globalThis.history.pushState({}, '', '/snippets/snippet-1/orchestrate')
+    useSnippetDetailStore.getState().setFields([{
+      type: PipelineInputVarType.textInput,
+      label: 'Topic',
+      variable: 'topic',
+      required: true,
+    }])
+
+    const currentNode = createNode({ id: 'node-a' })
+
+    const { result } = renderHook(() => useNodesAvailableVarList([currentNode], {
+      filterVar: () => true,
+    }))
+
+    expect(result.current['node-a']?.availableNodes[0]).toEqual(expect.objectContaining({
+      id: 'start',
+      data: expect.objectContaining({
+        type: BlockEnum.Start,
+      }),
+    }))
+    expect(result.current['node-a']?.availableVars[0]).toEqual(expect.objectContaining({
+      nodeId: 'start',
+      isStartNode: true,
+      vars: [expect.objectContaining({
+        variable: 'topic',
+        type: VarType.string,
+      })],
     }))
   })
 

@@ -104,12 +104,23 @@ vi.mock('../../nav', () => ({
     onCreate,
     onLoadMore,
     navigationItems,
+    activeSegment,
+    activeLink,
+    text,
   }: {
     onCreate: (state: string) => void
     onLoadMore?: () => void
     navigationItems?: Array<{ id: string, name: string, link: string }>
+    activeSegment?: string | string[]
+    activeLink?: { segment: string, text: string, link: string }
+    text?: string
   }) => (
     <div data-testid="nav">
+      <div data-testid="nav-text">{text}</div>
+      <div data-testid="nav-active-segment">{JSON.stringify(activeSegment)}</div>
+      {activeLink && (
+        <div data-testid="nav-active-link">{`${activeLink.segment}:${activeLink.text}->${activeLink.link}`}</div>
+      )}
       <ul data-testid="nav-items">
         {(navigationItems ?? []).map(item => (
           <li key={item.id}>{`${item.name} -> ${item.link}`}</li>
@@ -199,6 +210,15 @@ describe('AppNav', () => {
     })
     expect(options.getNextPageParam({ has_more: true, page: 3 })).toBe(4)
     expect(options.getNextPageParam({ has_more: false, page: 3 })).toBeUndefined()
+  })
+
+  it('should configure snippets as an active studio child link', () => {
+    setupDefaultMocks()
+    render(<AppNav />)
+
+    expect(screen.getByTestId('nav-text')).toHaveTextContent('menus.apps')
+    expect(screen.getByTestId('nav-active-segment')).toHaveTextContent(JSON.stringify(['apps', 'app', 'snippets']))
+    expect(screen.getByTestId('nav-active-link')).toHaveTextContent('snippets:tabs.snippets->/snippets')
   })
 
   it('should build editor links and update app name when app detail changes', async () => {

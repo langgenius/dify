@@ -709,9 +709,9 @@ export type DatasetRerankingModelResponse = {
 }
 
 export type DatasetWeightedScoreResponse = {
-  keyword_setting: DatasetKeywordSettingResponse
-  vector_setting: DatasetVectorSettingResponse
-  weight_type: string | null
+  keyword_setting?: DatasetKeywordSettingResponse
+  vector_setting?: DatasetVectorSettingResponse
+  weight_type?: string | null
 }
 
 export type DatasetRerankingModel = {

@@ -5,7 +5,6 @@ import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
 import { useState } from 'react'
 import { useStore as useAppStore } from '@/app/components/app/store'
-import { ArrowNarrowLeft } from '@/app/components/base/icons/src/vender/line/arrows'
 import Link from '@/next/link'
 import { useSelectedLayoutSegment } from '@/next/navigation'
 import NavSelector from './nav-selector'
@@ -16,6 +15,11 @@ type INavProps = {
   text: string
   activeSegment: string | string[]
   link: string
+  activeLink?: {
+    segment: string
+    text: string
+    link: string
+  }
   isApp: boolean
 } & INavSelectorProps
 
@@ -25,6 +29,7 @@ const Nav = ({
   text,
   activeSegment,
   link,
+  activeLink,
   curNav,
   navigationItems,
   createText,
@@ -37,10 +42,11 @@ const Nav = ({
   const [hovered, setHovered] = useState(false)
   const segment = useSelectedLayoutSegment()
   const isActivated = Array.isArray(activeSegment) ? activeSegment.includes(segment!) : segment === activeSegment
+  const shouldShowActiveLink = isActivated && activeLink && segment === activeLink.segment
 
   return (
     <div className={`
-      flex h-8 max-w-[670px] shrink-0 items-center rounded-xl px-0.5 text-sm font-medium max-[1024px]:max-w-[400px]
+      flex h-8 max-w-167.5 shrink-0 items-center rounded-xl px-0.5 text-sm font-medium max-[1024px]:max-w-100
       ${isActivated && 'bg-components-main-nav-nav-button-bg-active font-semibold shadow-md'}
       ${!curNav && !isActivated && 'hover:bg-components-main-nav-nav-button-bg-hover'}
     `}
@@ -51,6 +57,8 @@ const Nav = ({
             // Don't clear state if opening in new tab/window
             if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0)
               return
+            if (segment === 'snippets')
+              return
             setAppDetail()
           }}
           className={cn('flex h-7 cursor-pointer items-center rounded-[10px] px-2.5', isActivated ? 'text-components-main-nav-nav-button-text-active' : 'text-components-main-nav-nav-button-text', curNav && isActivated && 'hover:bg-components-main-nav-nav-button-bg-active-hover')}
@@ -60,7 +68,7 @@ const Nav = ({
           <div>
             {
               (hovered && curNav)
-                ? <ArrowNarrowLeft className="size-4" />
+                ? <span className="i-custom-vender-line-arrows-arrow-narrow-left size-4" />
                 : isActivated
                   ? activeIcon
                   : icon
@@ -84,6 +92,19 @@ const Nav = ({
               onLoadMore={onLoadMore}
               isLoadingMore={isLoadingMore}
             />
+          </>
+        )
+      }
+      {
+        !curNav && shouldShowActiveLink && (
+          <>
+            <div className="font-light text-divider-deep">/</div>
+            <Link
+              href={activeLink.link}
+              className="hover:bg-components-main-nav-nav-button-bg-active-hover flex h-7 cursor-pointer items-center rounded-[10px] px-2.5 text-components-main-nav-nav-button-text-active"
+            >
+              {activeLink.text}
+            </Link>
           </>
         )
       }

@@ -1,7 +1,6 @@
-import type { AppPublisherProps } from '@/app/components/app/app-publisher'
-import type { ModelAndParameter } from '@/app/components/app/configuration/debug/types'
-import type { FileUpload } from '@/app/components/base/features/types'
-import type { PublishWorkflowParams } from '@/types/workflow'
+import type { AppPublisherProps, AppPublisherPublishParams } from '@/app/components/app/app-publisher'
+import type { Features, FileUpload } from '@/app/components/base/features/types'
+import type { ModelConfig } from '@/models/debug'
 import {
   AlertDialog,
   AlertDialogActions,
@@ -21,9 +20,15 @@ import { FILE_EXTS } from '@/app/components/base/prompt-editor/constants'
 import { SupportUploadFileTypes } from '@/app/components/workflow/types'
 import { Resolution } from '@/types/app'
 
+type PublishedModelConfig = ModelConfig & {
+  resetAppConfig?: () => void
+}
+
 type Props = Omit<AppPublisherProps, 'onPublish'> & {
-  onPublish?: (params?: ModelAndParameter | PublishWorkflowParams, features?: any) => Promise<any> | any
-  publishedConfig?: any
+  onPublish?: (params?: AppPublisherPublishParams, features?: Features) => Promise<unknown> | unknown
+  publishedConfig: {
+    modelConfig: PublishedModelConfig
+  }
   resetAppConfig?: () => void
 }
 
@@ -71,7 +76,7 @@ const FeaturesWrappedAppPublisher = (props: Props) => {
     setRestoreConfirmOpen(false)
   }, [featuresStore, props])
 
-  const handlePublish = useCallback((params?: ModelAndParameter | PublishWorkflowParams) => {
+  const handlePublish = useCallback((params?: AppPublisherPublishParams) => {
     return props.onPublish?.(params, features)
   }, [features, props])
 
