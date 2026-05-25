@@ -171,7 +171,7 @@ function ToastCard({
           aria-hidden="true"
           className={cn('absolute -inset-px bg-linear-to-r opacity-40', getToneGradientClasses(toastType))}
         />
-        <BaseToast.Content className="relative flex items-start gap-1 overflow-hidden p-3 transition-opacity duration-200 data-behind:opacity-0 data-expanded:opacity-100">
+        <BaseToast.Content className="relative flex items-start gap-1 overflow-hidden p-3 transition-opacity duration-200 data-behind:opacity-0 data-expanded:opacity-100 motion-reduce:transition-none">
           <div className="flex shrink-0 items-center justify-center p-0.5">
             <ToastIcon type={toastType} />
           </div>
