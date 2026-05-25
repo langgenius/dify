@@ -165,3 +165,8 @@ class Site(BaseModel):
         if self.icon and self.icon_type == IconType.IMAGE:
             return file_helpers.get_signed_file_url(self.icon)
         return None
+
+
+class LoadBalancingPayload(BaseModel):
+    configs: list[dict[str, Any]] | None = None
+    enabled: bool | None = None

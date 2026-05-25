@@ -12,14 +12,14 @@ from controllers.common.controller_schemas import MessageFeedbackPayload as _Mes
 from controllers.common.fields import SimpleResultResponse
 from controllers.common.schema import register_response_schema_models, register_schema_models
 from studio_api.blueprint import studio_ns
-from controllers.console.app.error import (
+from controllers.common.errors import (
     CompletionRequestError,
     ProviderModelCurrentlyNotSupportError,
     ProviderNotInitializeError,
     ProviderQuotaExceededError,
 )
 from controllers.console.app.wraps import get_app_model
-from controllers.console.explore.error import AppSuggestedQuestionsAfterAnswerDisabledError
+from controllers.common.errors import AppSuggestedQuestionsAfterAnswerDisabledError
 from controllers.console.wraps import (
     account_initialization_required,
     edit_permission_required,

@@ -7,7 +7,7 @@ from werkzeug.exceptions import BadRequest
 
 from controllers.common.schema import register_schema_models
 from studio_api.blueprint import studio_ns
-from controllers.console.app.error import TracingConfigCheckError, TracingConfigIsExist, TracingConfigNotExist
+from controllers.common.errors import TracingConfigCheckError, TracingConfigIsExist, TracingConfigNotExist
 from controllers.console.app.wraps import get_app_model
 from controllers.console.wraps import account_initialization_required, setup_required
 from libs.login import login_required

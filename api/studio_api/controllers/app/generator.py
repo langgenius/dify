@@ -5,7 +5,7 @@ from pydantic import BaseModel, Field
 
 from controllers.common.schema import register_enum_models, register_schema_models
 from studio_api.blueprint import studio_ns
-from controllers.console.app.error import (
+from controllers.common.errors import (
     CompletionRequestError,
     ProviderModelCurrentlyNotSupportError,
     ProviderNotInitializeError,

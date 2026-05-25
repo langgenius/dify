@@ -19,7 +19,7 @@ from controllers.common.schema import (
     register_schema_models,
 )
 from studio_api.blueprint import studio_ns
-from controllers.console.app.error import ConversationCompletedError, DraftWorkflowNotExist, DraftWorkflowNotSync
+from controllers.common.errors import ConversationCompletedError, DraftWorkflowNotExist, DraftWorkflowNotSync
 from controllers.console.app.wraps import get_app_model
 from controllers.console.wraps import account_initialization_required, edit_permission_required, setup_required
 from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpError

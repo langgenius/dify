@@ -10,7 +10,7 @@ import services
 from controllers.common.fields import SimpleResultResponse
 from controllers.common.schema import register_response_schema_models, register_schema_models
 from studio_api.blueprint import studio_ns
-from controllers.console.app.error import (
+from controllers.common.errors import (
     AppUnavailableError,
     CompletionRequestError,
     ConversationCompletedError,

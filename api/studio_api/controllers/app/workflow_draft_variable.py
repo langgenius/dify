@@ -10,7 +10,7 @@ from sqlalchemy.orm import sessionmaker
 
 from controllers.common.schema import register_schema_models
 from studio_api.blueprint import studio_ns
-from controllers.console.app.error import (
+from controllers.common.errors import (
     DraftWorkflowNotExist,
 )
 from controllers.console.app.wraps import get_app_model

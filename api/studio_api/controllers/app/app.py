@@ -17,7 +17,7 @@ from controllers.common.helpers import FileInfo
 from controllers.common.schema import register_enum_models, register_response_schema_models, register_schema_models
 from studio_api.blueprint import studio_ns
 from controllers.console.app.wraps import get_app_model
-from controllers.console.workspace.models import LoadBalancingPayload
+from controllers.common.fields import LoadBalancingPayload
 from controllers.console.wraps import (
     account_initialization_required,
     cloud_edition_billing_resource_check,

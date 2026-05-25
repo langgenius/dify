@@ -8,7 +8,7 @@ from werkzeug.exceptions import InternalServerError
 import services
 from controllers.common.schema import register_schema_models
 from studio_api.blueprint import studio_ns
-from controllers.console.app.error import (
+from controllers.common.errors import (
     AppUnavailableError,
     AudioTooLargeError,
     CompletionRequestError,
