@@ -28,6 +28,10 @@ from services.entities.agent_entities import (
     WorkflowNodeJobConfig,
 )
 
+# WorkflowAgentNodeBinding.workflow_version tag for the draft workflow row.
+# Mirrors Workflow.version when it is "draft" (see models/workflow.py).
+_DRAFT_WORKFLOW_VERSION = "draft"
+
 
 class AgentComposerService:
     @classmethod
@@ -284,6 +288,7 @@ class AgentComposerService:
             tenant_id=tenant_id,
             app_id=app_id,
             workflow_id=workflow_id,
+            workflow_version=_DRAFT_WORKFLOW_VERSION,
             node_id=node_id,
             binding_type=WorkflowAgentBindingType.INLINE_AGENT,
             agent_id=agent.id,
@@ -387,6 +392,7 @@ class AgentComposerService:
                 tenant_id=tenant_id,
                 app_id=app_id,
                 workflow_id=workflow_id,
+                workflow_version=_DRAFT_WORKFLOW_VERSION,
                 node_id=node_id,
                 created_by=account_id,
             )
@@ -606,11 +612,16 @@ class AgentComposerService:
     def _get_workflow_binding(
         cls, *, tenant_id: str, workflow_id: str, node_id: str
     ) -> WorkflowAgentNodeBinding | None:
+        # Composer always operates against the draft workflow row, so this lookup
+        # is scoped to ``workflow_version="draft"``. Published bindings are
+        # materialized by WorkflowAgentPublishService.copy_agent_node_bindings_to_published
+        # and are not edited through the Composer.
         return db.session.scalar(
             select(WorkflowAgentNodeBinding)
             .where(
                 WorkflowAgentNodeBinding.tenant_id == tenant_id,
                 WorkflowAgentNodeBinding.workflow_id == workflow_id,
+                WorkflowAgentNodeBinding.workflow_version == _DRAFT_WORKFLOW_VERSION,
                 WorkflowAgentNodeBinding.node_id == node_id,
             )
             .limit(1)
