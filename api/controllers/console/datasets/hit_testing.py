@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime
 from typing import Any
+from uuid import UUID
 
 from flask_restx import Resource
 from pydantic import Field, field_validator
@@ -118,7 +119,7 @@ class HitTestingApi(Resource, DatasetsHitTestingBase):
     @login_required
     @account_initialization_required
     @cloud_edition_billing_rate_limit_check("knowledge")
-    def post(self, dataset_id):
+    def post(self, dataset_id: UUID):
         dataset_id_str = str(dataset_id)
 
         dataset = self.get_and_validate_dataset(dataset_id_str)

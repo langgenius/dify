@@ -1,4 +1,5 @@
 from typing import Literal
+from uuid import UUID
 
 from flask import request
 from flask_restx import Resource
@@ -106,10 +107,10 @@ class FilePreviewApi(Resource):
     @login_required
     @account_initialization_required
     @console_ns.response(200, "Success", console_ns.models[TextContentResponse.__name__])
-    def get(self, file_id):
-        file_id = str(file_id)
+    def get(self, file_id: UUID):
+        file_id_str = str(file_id)
         _, tenant_id = current_account_with_tenant()
-        text = FileService(db.engine).get_file_preview(file_id, tenant_id)
+        text = FileService(db.engine).get_file_preview(file_id_str, tenant_id)
         return {"content": text}
 
 

@@ -1,5 +1,6 @@
 from datetime import datetime
 from typing import Any
+from uuid import UUID
 
 from flask import request
 from flask_restx import Resource
@@ -511,7 +512,7 @@ class DatasetApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def get(self, dataset_id):
+    def get(self, dataset_id: UUID):
         current_user, current_tenant_id = current_account_with_tenant()
         dataset_id_str = str(dataset_id)
         dataset = DatasetService.get_dataset(dataset_id_str)
@@ -565,7 +566,7 @@ class DatasetApi(Resource):
     @login_required
     @account_initialization_required
     @cloud_edition_billing_rate_limit_check("knowledge")
-    def patch(self, dataset_id):
+    def patch(self, dataset_id: UUID):
         dataset_id_str = str(dataset_id)
         dataset = DatasetService.get_dataset(dataset_id_str)
         if dataset is None:
@@ -613,7 +614,7 @@ class DatasetApi(Resource):
     @account_initialization_required
     @cloud_edition_billing_rate_limit_check("knowledge")
     @console_ns.response(204, "Dataset deleted successfully")
-    def delete(self, dataset_id):
+    def delete(self, dataset_id: UUID):
         dataset_id_str = str(dataset_id)
         current_user, _ = current_account_with_tenant()
 
@@ -643,7 +644,7 @@ class DatasetUseCheckApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def get(self, dataset_id):
+    def get(self, dataset_id: UUID):
         dataset_id_str = str(dataset_id)
 
         dataset_is_using = DatasetService.dataset_use_check(dataset_id_str)
@@ -663,7 +664,7 @@ class DatasetQueryApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def get(self, dataset_id):
+    def get(self, dataset_id: UUID):
         current_user, _ = current_account_with_tenant()
         dataset_id_str = str(dataset_id)
         dataset = DatasetService.get_dataset(dataset_id_str)
@@ -803,7 +804,7 @@ class DatasetRelatedAppListApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def get(self, dataset_id):
+    def get(self, dataset_id: UUID):
         current_user, _ = current_account_with_tenant()
         dataset_id_str = str(dataset_id)
         dataset = DatasetService.get_dataset(dataset_id_str)
@@ -839,11 +840,11 @@ class DatasetIndexingStatusApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def get(self, dataset_id):
+    def get(self, dataset_id: UUID):
         _, current_tenant_id = current_account_with_tenant()
-        dataset_id = str(dataset_id)
+        dataset_id_str = str(dataset_id)
         documents = db.session.scalars(
-            select(Document).where(Document.dataset_id == dataset_id, Document.tenant_id == current_tenant_id)
+            select(Document).where(Document.dataset_id == dataset_id_str, Document.tenant_id == current_tenant_id)
         ).all()
         documents_status = []
         for document in documents:
@@ -951,15 +952,15 @@ class DatasetApiDeleteApi(Resource):
     @login_required
     @is_admin_or_owner_required
     @account_initialization_required
-    def delete(self, api_key_id):
+    def delete(self, api_key_id: UUID):
         _, current_tenant_id = current_account_with_tenant()
-        api_key_id = str(api_key_id)
+        api_key_id_str = str(api_key_id)
         key = db.session.scalar(
             select(ApiToken)
             .where(
                 ApiToken.tenant_id == current_tenant_id,
                 ApiToken.type == self.resource_type,
-                ApiToken.id == api_key_id,
+                ApiToken.id == api_key_id_str,
             )
             .limit(1)
         )
@@ -984,7 +985,7 @@ class DatasetEnableApiApi(Resource):
     @login_required
     @account_initialization_required
     @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
-    def post(self, dataset_id, status):
+    def post(self, dataset_id: UUID, status: str):
         dataset_id_str = str(dataset_id)
 
         DatasetService.update_dataset_api_status(dataset_id_str, status == "enable")
@@ -1036,7 +1037,7 @@ class DatasetRetrievalSettingMockApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def get(self, vector_type):
+    def get(self, vector_type: str):
         return dump_response(
             RetrievalSettingResponse,
             _get_retrieval_methods_by_vector_type(vector_type, is_mock=True),
@@ -1053,7 +1054,7 @@ class DatasetErrorDocs(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def get(self, dataset_id):
+    def get(self, dataset_id: UUID):
         dataset_id_str = str(dataset_id)
         dataset = DatasetService.get_dataset(dataset_id_str)
         if dataset is None:
@@ -1078,7 +1079,7 @@ class DatasetPermissionUserListApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def get(self, dataset_id):
+    def get(self, dataset_id: UUID):
         current_user, _ = current_account_with_tenant()
         dataset_id_str = str(dataset_id)
         dataset = DatasetService.get_dataset(dataset_id_str)
@@ -1108,7 +1109,7 @@ class DatasetAutoDisableLogApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def get(self, dataset_id):
+    def get(self, dataset_id: UUID):
         dataset_id_str = str(dataset_id)
         dataset = DatasetService.get_dataset(dataset_id_str)
         if dataset is None:
