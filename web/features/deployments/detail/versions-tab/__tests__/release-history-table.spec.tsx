@@ -8,6 +8,7 @@ const mockUseQuery = vi.fn()
 
 vi.mock('@tanstack/react-query', () => ({
   keepPreviousData: Symbol('keepPreviousData'),
+  skipToken: Symbol('skipToken'),
   useQuery: (options: { queryKey?: string[] }) => mockUseQuery(options),
 }))
 
@@ -19,7 +20,19 @@ vi.mock('@/hooks/use-format-time-from-now', () => ({
 
 vi.mock('@/service/client', () => ({
   consoleQuery: {
+    apps: {
+      byAppId: {
+        get: {
+          queryOptions: ({ input }: { input?: { params?: { app_id?: string } } }) => ({ queryKey: ['source-app', input?.params?.app_id] }),
+        },
+      },
+    },
     enterprise: {
+      appInstanceService: {
+        getAppInstance: {
+          queryOptions: () => ({ queryKey: ['app-instance'] }),
+        },
+      },
       releaseService: {
         listReleases: {
           queryOptions: () => ({ queryKey: ['release-history'] }),
@@ -38,6 +51,7 @@ function release(overrides: Partial<Release> = {}): Release {
   return {
     id: 'release-1',
     name: 'R-001',
+    sourceAppId: 'source-app-1',
     createdAt: '2026-05-05T10:00:00Z',
     createdBy: { name: 'App-runner-demo' },
     ...overrides,
@@ -71,6 +85,15 @@ describe('ReleaseHistoryTable', () => {
         case 'runtime-instances':
           return {
             data: { data: [runtimeInstance()] },
+            isLoading: false,
+            isError: false,
+          }
+        case 'source-app':
+          return {
+            data: {
+              id: options.queryKey[1],
+              name: 'Source app name',
+            },
             isLoading: false,
             isError: false,
           }
@@ -114,7 +137,7 @@ describe('ReleaseHistoryTable', () => {
       expect(tableShell).toHaveClass(
         'w-full',
         'max-w-full',
-        'min-w-[700px]',
+        'min-w-[840px]',
         'border-collapse',
         'border-0',
         'caption-bottom',
@@ -154,6 +177,9 @@ describe('ReleaseHistoryTable', () => {
       )
       expect(row?.querySelector('[data-slot="deployment-detail-table-row-content"]')).toBeNull()
       expect(screen.getAllByText('R-001')).toHaveLength(2)
+      const sourceAppLinks = screen.getAllByRole('link', { name: 'Source app name' })
+      expect(sourceAppLinks).toHaveLength(2)
+      expect(sourceAppLinks[0]).toHaveAttribute('href', '/app/source-app-1/workflow')
     })
   })
 })

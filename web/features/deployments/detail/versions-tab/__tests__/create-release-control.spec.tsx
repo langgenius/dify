@@ -22,13 +22,25 @@ type MutationResult = {
   mutate: (variables: MutationVariables, callbacks?: MutationCallbacks) => void
 }
 
+type QueryOptions = {
+  queryKey?: string[]
+}
+
+type LatestReleaseResponse = {
+  data: Array<{
+    sourceAppId?: string
+  }>
+}
+
 const mocks = vi.hoisted(() => ({
   createReleaseFromDslMutate: vi.fn(),
   createReleaseFromSourceAppMutate: vi.fn(),
+  latestReleaseResponse: undefined as LatestReleaseResponse | undefined,
 }))
 
 vi.mock('@tanstack/react-query', () => ({
   keepPreviousData: Symbol('keepPreviousData'),
+  skipToken: Symbol('skipToken'),
   useInfiniteQuery: () => ({
     data: {
       pages: [
@@ -50,6 +62,32 @@ vi.mock('@tanstack/react-query', () => ({
     fetchNextPage: vi.fn(),
     hasNextPage: false,
   }),
+  useQuery: (options: QueryOptions) => {
+    if (options.queryKey?.[0] === 'latest-release') {
+      return {
+        data: mocks.latestReleaseResponse,
+        isLoading: false,
+        isError: false,
+      }
+    }
+
+    if (options.queryKey?.[0] === 'source-app') {
+      return {
+        data: {
+          id: options.queryKey[1],
+          name: 'Previous source app',
+        },
+        isLoading: false,
+        isError: false,
+      }
+    }
+
+    return {
+      data: undefined,
+      isLoading: false,
+      isError: false,
+    }
+  },
   useMutation: (options: MutationOptions): MutationResult => {
     if (options.mutationKey?.[0] === 'create-release-from-dsl') {
       return {
@@ -71,9 +109,17 @@ vi.mock('@/service/client', () => ({
       list: {
         infiniteOptions: () => ({}),
       },
+      byAppId: {
+        get: {
+          queryOptions: ({ input }: { input?: { params?: { app_id?: string } } }) => ({ queryKey: ['source-app', input?.params?.app_id] }),
+        },
+      },
     },
     enterprise: {
       releaseService: {
+        listReleases: {
+          queryOptions: () => ({ queryKey: ['latest-release'] }),
+        },
         createReleaseFromDsl: {
           mutationOptions: () => ({ mutationKey: ['create-release-from-dsl'] }),
         },
@@ -88,6 +134,7 @@ vi.mock('@/service/client', () => ({
 describe('CreateReleaseControl', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mocks.latestReleaseResponse = undefined
   })
 
   // The release form should let users choose a manual DSL upload instead of a source app.
@@ -115,6 +162,47 @@ describe('CreateReleaseControl', () => {
             appInstanceId: 'instance-1',
             sourceAppId: 'source-app-1',
             name: 'Release 1',
+            description: undefined,
+            createAppInstance: false,
+          },
+        },
+        expect.objectContaining({
+          onSuccess: expect.any(Function),
+          onError: expect.any(Function),
+        }),
+      )
+      expect(mocks.createReleaseFromDslMutate).not.toHaveBeenCalled()
+    })
+
+    it('should default to the latest release source app when available', async () => {
+      // Arrange
+      const user = userEvent.setup()
+      mocks.latestReleaseResponse = {
+        data: [
+          {
+            sourceAppId: 'previous-source-app',
+          },
+        ],
+      }
+      render(<CreateReleaseControl appInstanceId="instance-1" />)
+
+      // Act
+      await user.click(screen.getByRole('button', { name: 'deployments.versions.createRelease' }))
+      const dialog = screen.getByRole('dialog', { name: 'deployments.versions.createRelease' })
+      await user.type(
+        within(dialog).getByRole('textbox', { name: 'deployments.versions.releaseNameLabel' }),
+        'Release 2',
+      )
+      await user.click(within(dialog).getByRole('button', { name: 'deployments.versions.create' }))
+
+      // Assert
+      expect(within(dialog).getByText('Previous source app')).toBeInTheDocument()
+      expect(mocks.createReleaseFromSourceAppMutate).toHaveBeenCalledWith(
+        {
+          body: {
+            appInstanceId: 'instance-1',
+            sourceAppId: 'previous-source-app',
+            name: 'Release 2',
             description: undefined,
             createAppInstance: false,
           },

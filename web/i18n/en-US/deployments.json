@@ -456,6 +456,7 @@
   "versions.col.createdAt": "Created at",
   "versions.col.deployedTo": "Deployed to",
   "versions.col.release": "Release",
+  "versions.col.sourceApp": "Source app",
   "versions.commitTooltip": "Commit {{commit}}",
   "versions.create": "Create",
   "versions.createFailed": "Failed to create release.",

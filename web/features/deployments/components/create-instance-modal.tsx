@@ -27,13 +27,15 @@ import { consoleQuery } from '@/service/client'
 const SOURCE_APP_PAGE_SIZE = 20
 const SOURCE_APP_PICKER_SKELETON_KEYS = ['first-source-app', 'second-source-app', 'third-source-app']
 
+export type SourceAppPickerValue = Pick<App, 'id' | 'name'> & Partial<Pick<App, 'icon_type' | 'icon' | 'icon_background' | 'icon_url'>>
+
 function sourceAppSearchText(app: App) {
   return `${app.name} ${app.id} ${app.mode}`.toLowerCase()
 }
 
 function SourceAppTrigger({ open, app }: {
   open: boolean
-  app?: App
+  app?: SourceAppPickerValue
 }) {
   const { t } = useTranslation('deployments')
 
@@ -125,7 +127,7 @@ function SourceAppPickerSkeleton() {
 }
 
 export function SourceAppPicker({ value, onChange, ariaLabel }: {
-  value?: App
+  value?: SourceAppPickerValue
   onChange: (app: App) => void
   ariaLabel?: string
 }) {

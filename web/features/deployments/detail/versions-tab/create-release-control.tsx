@@ -2,6 +2,7 @@
 
 import type { CreateReleaseReply } from '@dify/contracts/enterprise/types.gen'
 import type { ButtonProps } from '@langgenius/dify-ui/button'
+import type { SourceAppPickerValue } from '../../components/create-instance-modal'
 import type { App } from '@/types/app'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -9,7 +10,7 @@ import { Dialog, DialogCloseButton, DialogContent, DialogDescription, DialogTitl
 import { Input } from '@langgenius/dify-ui/input'
 import { toast } from '@langgenius/dify-ui/toast'
 import { ToggleGroup, ToggleGroupItem } from '@langgenius/dify-ui/toggle-group'
-import { useMutation } from '@tanstack/react-query'
+import { skipToken, useMutation, useQuery } from '@tanstack/react-query'
 import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Uploader from '@/app/components/app/create-from-dsl-modal/uploader'
@@ -21,6 +22,7 @@ type ReleaseSourceMode = 'sourceApp' | 'dsl'
 const DESCRIPTION_MAX_LENGTH = 512
 const DESCRIPTION_WARN_THRESHOLD = 460
 const DEFAULT_RELEASE_SOURCE_MODE: ReleaseSourceMode = 'sourceApp'
+const DEFAULT_SOURCE_RELEASE_PAGE_SIZE = 1
 
 function encodeUtf8Base64(value: string) {
   const bytes = new TextEncoder().encode(value)
@@ -56,6 +58,33 @@ export function CreateReleaseControl({ appInstanceId, variant = 'primary', size 
   const [dslReadError, setDslReadError] = useState(false)
   const [description, setDescription] = useState('')
   const dslReadTokenRef = useRef(0)
+
+  const latestReleaseQuery = useQuery(consoleQuery.enterprise.releaseService.listReleases.queryOptions({
+    input: {
+      params: { appInstanceId },
+      query: {
+        pageNumber: 1,
+        resultsPerPage: DEFAULT_SOURCE_RELEASE_PAGE_SIZE,
+      },
+    },
+    enabled: isCreating,
+  }))
+  const latestSourceAppId = latestReleaseQuery.data?.data?.[0]?.sourceAppId
+  const defaultSourceAppQuery = useQuery(consoleQuery.apps.byAppId.get.queryOptions({
+    input: isCreating && latestSourceAppId && !sourceApp
+      ? {
+          params: { app_id: latestSourceAppId },
+        }
+      : skipToken,
+  }))
+  const defaultSourceApp: SourceAppPickerValue | undefined = latestSourceAppId
+    ? {
+        id: latestSourceAppId,
+        name: defaultSourceAppQuery.data?.name || latestSourceAppId,
+      }
+    : undefined
+  const selectedSourceApp = sourceApp ?? defaultSourceApp
+  const selectedSourceAppId = selectedSourceApp?.id
 
   const isCreatePending = createReleaseFromSourceApp.isPending || createReleaseFromDsl.isPending
 
@@ -159,13 +188,13 @@ export function CreateReleaseControl({ appInstanceId, variant = 'primary', size 
       return
     }
 
-    if (!sourceApp?.id)
+    if (!selectedSourceAppId)
       return
 
     createReleaseFromSourceApp.mutate({
       body: {
         appInstanceId,
-        sourceAppId: sourceApp.id,
+        sourceAppId: selectedSourceAppId,
         name: releaseName,
         description: releaseDescription || undefined,
         createAppInstance: false,
@@ -179,7 +208,7 @@ export function CreateReleaseControl({ appInstanceId, variant = 'primary', size 
   const descriptionLength = description.length
   const isNearLimit = descriptionLength >= DESCRIPTION_WARN_THRESHOLD
   const hasDslContent = Boolean(dslContent.trim())
-  const canCreateFromSourceApp = releaseSourceMode === 'sourceApp' && Boolean(sourceApp?.id)
+  const canCreateFromSourceApp = releaseSourceMode === 'sourceApp' && Boolean(selectedSourceAppId)
   const canCreateFromDsl = releaseSourceMode === 'dsl' && hasDslContent && !isReadingDsl && !dslReadError
   const canCreate = Boolean(!isCreatePending && (canCreateFromSourceApp || canCreateFromDsl))
 
@@ -254,7 +283,7 @@ export function CreateReleaseControl({ appInstanceId, variant = 'primary', size 
                   {releaseSourceMode === 'sourceApp'
                     ? (
                         <SourceAppPicker
-                          value={sourceApp}
+                          value={selectedSourceApp}
                           onChange={setSourceApp}
                           ariaLabel={t('versions.sourceAppOption')}
                         />

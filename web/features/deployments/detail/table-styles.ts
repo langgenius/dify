@@ -9,10 +9,11 @@ export const DEPLOYMENT_DETAIL_TABLE_COLUMN_CLASS_NAMES = {
 
 export const RELEASE_DETAIL_TABLE_COLUMN_CLASS_NAMES = {
   action: 'w-14',
-  author: 'w-[18%]',
-  createdAt: 'w-[18%]',
-  deployedTo: 'w-[28%]',
-  release: 'w-[28%]',
+  author: 'w-[15%]',
+  createdAt: 'w-[16%]',
+  deployedTo: 'w-[22%]',
+  release: 'w-[24%]',
+  sourceApp: 'w-[18%]',
 }
 
 export const ACCESS_PERMISSION_DETAIL_TABLE_COLUMN_CLASS_NAMES = {

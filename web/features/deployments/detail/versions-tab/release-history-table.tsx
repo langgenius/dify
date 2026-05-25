@@ -3,12 +3,13 @@
 import type { EnvironmentDeployment, Release } from '@dify/contracts/enterprise/types.gen'
 import type { ReleaseDeployment } from './release-deployments'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
-import { keepPreviousData, useQuery } from '@tanstack/react-query'
+import { keepPreviousData, skipToken, useQuery } from '@tanstack/react-query'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Pagination from '@/app/components/base/pagination'
 import { SkeletonRectangle, SkeletonRow } from '@/app/components/base/skeleton'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
+import Link from '@/next/link'
 import { consoleQuery } from '@/service/client'
 import { RELEASE_HISTORY_PAGE_SIZE } from '../../data'
 import {
@@ -74,10 +75,11 @@ function ReleaseHistoryTableSkeleton() {
         ))}
       </DetailTableCardList>
       <div className="hidden pc:block">
-        <DetailTable>
+        <DetailTable className="min-w-[840px]">
           <DetailTableHeader>
             <DetailTableRow>
               <DetailTableHead className={RELEASE_DETAIL_TABLE_COLUMN_CLASS_NAMES.release}>{t('versions.col.release')}</DetailTableHead>
+              <DetailTableHead className={RELEASE_DETAIL_TABLE_COLUMN_CLASS_NAMES.sourceApp}>{t('versions.col.sourceApp')}</DetailTableHead>
               <DetailTableHead className={RELEASE_DETAIL_TABLE_COLUMN_CLASS_NAMES.createdAt}>{t('versions.col.createdAt')}</DetailTableHead>
               <DetailTableHead className={RELEASE_DETAIL_TABLE_COLUMN_CLASS_NAMES.author}>{t('versions.col.author')}</DetailTableHead>
               <DetailTableHead className={RELEASE_DETAIL_TABLE_COLUMN_CLASS_NAMES.deployedTo}>{t('versions.col.deployedTo')}</DetailTableHead>
@@ -89,6 +91,9 @@ function ReleaseHistoryTableSkeleton() {
               <DetailTableRow key={key}>
                 <DetailTableCell>
                   <SkeletonRectangle className="h-3 w-24 animate-pulse" />
+                </DetailTableCell>
+                <DetailTableCell>
+                  <SkeletonRectangle className="h-3 w-32 animate-pulse" />
                 </DetailTableCell>
                 <DetailTableCell>
                   <SkeletonRectangle className="h-3 w-24 animate-pulse" />
@@ -150,6 +155,15 @@ function ReleaseHistoryMobileRows({ appInstanceId, releaseRows, deploymentRows, 
                     <CreatedAtCell createdAt={release.createdAt} />
                     <span aria-hidden>·</span>
                     <span>{row.createdBy?.name ?? '—'}</span>
+                    {release.sourceAppId && (
+                      <>
+                        <span aria-hidden>·</span>
+                        <span className="inline-flex max-w-full min-w-0 items-baseline gap-1">
+                          <span className="shrink-0">{t('versions.col.sourceApp')}</span>
+                          <SourceAppCell sourceAppId={release.sourceAppId} />
+                        </span>
+                      </>
+                    )}
                   </div>
                 </div>
                 <div className="flex shrink-0 justify-end gap-1">
@@ -234,6 +248,36 @@ function CreatedAtCell({ createdAt }: {
   )
 }
 
+function SourceAppCell({ sourceAppId }: {
+  sourceAppId?: string
+}) {
+  const sourceAppQuery = useQuery(consoleQuery.apps.byAppId.get.queryOptions({
+    input: sourceAppId
+      ? {
+          params: { app_id: sourceAppId },
+        }
+      : skipToken,
+  }))
+
+  if (!sourceAppId)
+    return <span className="text-text-quaternary">—</span>
+
+  const sourceAppName = sourceAppQuery.data?.name
+  const label = sourceAppName || sourceAppId
+  const title = sourceAppName ? `${sourceAppName} (${sourceAppId})` : sourceAppId
+
+  return (
+    <Link
+      href={`/app/${encodeURIComponent(sourceAppId)}/workflow`}
+      title={title}
+      className="inline-flex max-w-full min-w-0 items-center gap-1 text-text-secondary hover:text-text-primary"
+    >
+      <span className="min-w-0 truncate">{label}</span>
+      <span className="i-ri-external-link-line size-3.5 shrink-0 text-text-quaternary" aria-hidden="true" />
+    </Link>
+  )
+}
+
 function ReleaseHistoryRows({ appInstanceId, releaseRows, deploymentRows, deployedToLoading, deployedToHasError }: {
   appInstanceId: string
   releaseRows: ReleaseRowWithId[]
@@ -253,10 +297,11 @@ function ReleaseHistoryRows({ appInstanceId, releaseRows, deploymentRows, deploy
         deployedToHasError={deployedToHasError}
       />
       <div className="hidden pc:block">
-        <DetailTable>
+        <DetailTable className="min-w-[840px]">
           <DetailTableHeader>
             <DetailTableRow>
               <DetailTableHead className={RELEASE_DETAIL_TABLE_COLUMN_CLASS_NAMES.release}>{t('versions.col.release')}</DetailTableHead>
+              <DetailTableHead className={RELEASE_DETAIL_TABLE_COLUMN_CLASS_NAMES.sourceApp}>{t('versions.col.sourceApp')}</DetailTableHead>
               <DetailTableHead className={RELEASE_DETAIL_TABLE_COLUMN_CLASS_NAMES.createdAt}>{t('versions.col.createdAt')}</DetailTableHead>
               <DetailTableHead className={RELEASE_DETAIL_TABLE_COLUMN_CLASS_NAMES.author}>{t('versions.col.author')}</DetailTableHead>
               <DetailTableHead className={RELEASE_DETAIL_TABLE_COLUMN_CLASS_NAMES.deployedTo}>{t('versions.col.deployedTo')}</DetailTableHead>
@@ -283,6 +328,9 @@ function ReleaseHistoryRows({ appInstanceId, releaseRows, deploymentRows, deploy
                         {t('versions.commitTooltip', { commit: releaseCommit(release) })}
                       </TooltipContent>
                     </Tooltip>
+                  </DetailTableCell>
+                  <DetailTableCell>
+                    <SourceAppCell sourceAppId={release.sourceAppId} />
                   </DetailTableCell>
                   <DetailTableCell className="text-text-secondary">
                     <CreatedAtCell createdAt={release.createdAt} />

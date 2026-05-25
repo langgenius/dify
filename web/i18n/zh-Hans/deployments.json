@@ -456,6 +456,7 @@
   "versions.col.createdAt": "创建时间",
   "versions.col.deployedTo": "已部署到",
   "versions.col.release": "发布版本",
+  "versions.col.sourceApp": "源应用",
   "versions.commitTooltip": "Commit {{commit}}",
   "versions.create": "创建",
   "versions.createFailed": "创建发布版本失败。",
