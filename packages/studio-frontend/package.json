@@ -1,0 +1,52 @@
+{
+  "name": "@dify/studio-frontend",
+  "type": "module",
+  "version": "0.0.1",
+  "private": true,
+  "exports": {
+    "./*": "./src/*"
+  },
+  "scripts": {
+    "type-check": "tsgo"
+  },
+  "peerDependencies": {
+    "@orpc/client": "catalog:",
+    "@orpc/contract": "catalog:",
+    "@tanstack/react-query": "catalog:",
+    "next": "catalog:",
+    "react": "catalog:",
+    "react-dom": "catalog:"
+  },
+  "dependencies": {
+    "@langgenius/dify-ui": "workspace:*",
+    "@dify/contracts": "workspace:*",
+    "@lexical/code": "catalog:",
+    "@lexical/link": "catalog:",
+    "@lexical/list": "catalog:",
+    "@lexical/react": "catalog:",
+    "@lexical/selection": "catalog:",
+    "@lexical/text": "catalog:",
+    "@lexical/utils": "catalog:",
+    "@monaco-editor/react": "catalog:",
+    "@remixicon/react": "catalog:",
+    "@tanstack/react-form": "catalog:",
+    "@tanstack/react-virtual": "catalog:",
+    "ahooks": "catalog:",
+    "class-variance-authority": "catalog:",
+    "elkjs": "catalog:",
+    "immer": "catalog:",
+    "jotai": "catalog:",
+    "loro-crdt": "catalog:",
+    "react-hotkeys-hook": "catalog:",
+    "reactflow": "catalog:",
+    "use-context-selector": "catalog:",
+    "zundo": "catalog:",
+    "zustand": "catalog:"
+  },
+  "devDependencies": {
+    "@dify/tsconfig": "workspace:*",
+    "@types/react": "catalog:",
+    "@types/react-dom": "catalog:",
+    "typescript": "catalog:"
+  }
+}

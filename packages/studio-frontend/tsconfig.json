@@ -1,0 +1,15 @@
+{
+  "extends": "@dify/tsconfig/react.json",
+  "compilerOptions": {
+    "paths": {
+      "@/*": ["./src/*"]
+    }
+  },
+  "include": [
+    "src/**/*.ts",
+    "src/**/*.tsx"
+  ],
+  "exclude": [
+    "node_modules"
+  ]
+}

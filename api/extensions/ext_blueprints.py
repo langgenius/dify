@@ -32,6 +32,7 @@ def init_app(app: DifyApp):
     from controllers.service_api import bp as service_api_bp
     from controllers.trigger import bp as trigger_bp
     from controllers.web import bp as web_bp
+    from studio_api.controllers import studio_bp
 
     _apply_cors_once(
         service_api_bp,
@@ -78,6 +79,16 @@ def init_app(app: DifyApp):
         expose_headers=list(EXPOSED_HEADERS),
     )
     app.register_blueprint(console_app_bp)
+
+    _apply_cors_once(
+        studio_bp,
+        resources={r"/*": {"origins": dify_config.CONSOLE_CORS_ALLOW_ORIGINS}},
+        supports_credentials=True,
+        allow_headers=list(AUTHENTICATED_HEADERS),
+        methods=["GET", "PUT", "POST", "DELETE", "OPTIONS", "PATCH"],
+        expose_headers=list(EXPOSED_HEADERS),
+    )
+    app.register_blueprint(studio_bp)
 
     _apply_cors_once(
         files_bp,

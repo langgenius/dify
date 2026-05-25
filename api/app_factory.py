@@ -62,16 +62,19 @@ def create_flask_app_with_configs() -> DifyApp:
         init_request_context()
         RecyclableContextVar.increment_thread_recycles()
 
-        # Enterprise license validation for API endpoints (both console and webapp)
+        # Enterprise license validation for API endpoints (console, studio, and webapp)
         # When license expires, block all API access except bootstrap endpoints needed
         # for the frontend to load the license expiration page without infinite reloads.
         if dify_config.ENTERPRISE_ENABLED:
             is_console_api = request.path.startswith("/console/api/")
+            is_studio_api = request.path.startswith("/studio/api/")
             is_webapp_api = request.path.startswith("/api/")
 
-            if is_console_api or is_webapp_api:
+            if is_console_api or is_studio_api or is_webapp_api:
                 if is_console_api:
                     is_exempt = any(request.path.startswith(p) for p in _CONSOLE_EXEMPT_PREFIXES)
+                elif is_studio_api:
+                    is_exempt = False  # Studio APIs require a valid license
                 else:  # webapp API
                     is_exempt = request.path.startswith("/api/system-features")
 

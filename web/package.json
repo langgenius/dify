@@ -157,6 +157,7 @@
     "@chromatic-com/storybook": "catalog:",
     "@dify/contracts": "workspace:*",
     "@dify/iconify-collections": "workspace:*",
+    "@dify/studio-frontend": "workspace:*",
     "@dify/tsconfig": "workspace:*",
     "@egoist/tailwindcss-icons": "catalog:",
     "@eslint-react/eslint-plugin": "catalog:",

@@ -4,9 +4,12 @@
 @source '../../context';
 @source '../../hooks';
 @source '../../../packages/dify-ui/src';
+@source '../../../packages/studio-frontend/src';
 @source '../../node_modules/streamdown/dist';
 @source '../../node_modules/@streamdown/math/dist';
 @source not '../../**/*.{spec,test}.{js,ts,jsx,tsx}';
 @source not '../../**/*.stories.{js,ts,jsx,tsx}';
 @source not '../../../packages/dify-ui/src/**/*.{spec,test}.{ts,tsx}';
 @source not '../../../packages/dify-ui/src/**/*.stories.{ts,tsx}';
+@source not '../../../packages/studio-frontend/src/**/*.{spec,test}.{js,ts,jsx,tsx}';
+@source not '../../../packages/studio-frontend/src/**/*.stories.{js,ts,jsx,tsx}';
