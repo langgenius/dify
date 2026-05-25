@@ -38,9 +38,9 @@ export type DatasetDetailResponse = {
   embedding_model: string | null
   embedding_model_provider: string | null
   enable_api: boolean
-  external_knowledge_info: DatasetExternalKnowledgeInfoResponse
+  external_knowledge_info?: DatasetExternalKnowledgeInfoResponse
   external_retrieval_model: DatasetExternalRetrievalModelResponse
-  icon_info: DatasetIconInfoResponse
+  icon_info?: DatasetIconInfoResponse
   id: string
   indexing_technique: string | null
   is_multimodal: boolean
@@ -51,7 +51,7 @@ export type DatasetDetailResponse = {
   provider: string
   retrieval_model_dict: DatasetRetrievalModelResponse
   runtime_mode: string | null
-  summary_index_setting: DatasetSummaryIndexSettingResponse
+  summary_index_setting?: DatasetSummaryIndexSettingResponse
   tags: Array<DatasetTagResponse>
   total_available_documents: number
   total_documents: number
@@ -231,9 +231,9 @@ export type DatasetDetailWithPartialMembersResponse = {
   embedding_model: string | null
   embedding_model_provider: string | null
   enable_api: boolean
-  external_knowledge_info: DatasetExternalKnowledgeInfoResponse
+  external_knowledge_info?: DatasetExternalKnowledgeInfoResponse
   external_retrieval_model: DatasetExternalRetrievalModelResponse
-  icon_info: DatasetIconInfoResponse
+  icon_info?: DatasetIconInfoResponse
   id: string
   indexing_technique: string | null
   is_multimodal: boolean
@@ -245,7 +245,7 @@ export type DatasetDetailWithPartialMembersResponse = {
   provider: string
   retrieval_model_dict: DatasetRetrievalModelResponse
   runtime_mode: string | null
-  summary_index_setting: DatasetSummaryIndexSettingResponse
+  summary_index_setting?: DatasetSummaryIndexSettingResponse
   tags: Array<DatasetTagResponse>
   total_available_documents: number
   total_documents: number
@@ -465,9 +465,9 @@ export type DatasetListItemResponse = {
   embedding_model: string | null
   embedding_model_provider: string | null
   enable_api: boolean
-  external_knowledge_info: DatasetExternalKnowledgeInfoResponse
+  external_knowledge_info?: DatasetExternalKnowledgeInfoResponse
   external_retrieval_model: DatasetExternalRetrievalModelResponse
-  icon_info: DatasetIconInfoResponse
+  icon_info?: DatasetIconInfoResponse
   id: string
   indexing_technique: string | null
   is_multimodal: boolean
@@ -479,7 +479,7 @@ export type DatasetListItemResponse = {
   provider: string
   retrieval_model_dict: DatasetRetrievalModelResponse
   runtime_mode: string | null
-  summary_index_setting: DatasetSummaryIndexSettingResponse
+  summary_index_setting?: DatasetSummaryIndexSettingResponse
   tags: Array<DatasetTagResponse>
   total_available_documents: number
   total_documents: number
@@ -497,10 +497,10 @@ export type DatasetDocMetadataResponse = {
 }
 
 export type DatasetExternalKnowledgeInfoResponse = {
-  external_knowledge_api_endpoint: string
-  external_knowledge_api_id: string
-  external_knowledge_api_name: string
-  external_knowledge_id: string
+  external_knowledge_api_endpoint?: string | null
+  external_knowledge_api_id?: string | null
+  external_knowledge_api_name?: string | null
+  external_knowledge_id?: string | null
 }
 
 export type DatasetExternalRetrievalModelResponse = {
@@ -510,16 +510,16 @@ export type DatasetExternalRetrievalModelResponse = {
 }
 
 export type DatasetIconInfoResponse = {
-  icon: string | null
+  icon?: string | null
   icon_background?: string | null
-  icon_type: string | null
+  icon_type?: string | null
   icon_url?: string | null
 }
 
 export type DatasetRetrievalModelResponse = {
   reranking_enable: boolean
   reranking_mode?: string | null
-  reranking_model: DatasetRerankingModelResponse
+  reranking_model?: DatasetRerankingModelResponse
   score_threshold?: number | null
   score_threshold_enabled: boolean
   search_method: string
@@ -816,13 +816,13 @@ export type DatasetQueryContentResponse = {
 }
 
 export type DatasetKeywordSettingResponse = {
-  keyword_weight: number
+  keyword_weight?: number | null
 }
 
 export type DatasetVectorSettingResponse = {
-  embedding_model_name: string
-  embedding_provider_name: string
-  vector_weight: number
+  embedding_model_name?: string | null
+  embedding_provider_name?: string | null
+  vector_weight?: number | null
 }
 
 export type DatasetKeywordSetting = {
