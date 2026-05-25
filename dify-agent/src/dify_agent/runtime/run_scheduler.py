@@ -6,10 +6,11 @@ task registry. Redis remains the durable source for status and event streams, bu
 there is no Redis job queue or cross-process handoff. If the process crashes,
 currently active runs are lost until an external operator marks or retries them.
 Create-run validation enters a lightweight Agenton run before persistence so the
-same transformed user prompts, optional structured output contract, and
-top-level ``on_exit`` policy used by execution are checked without relying on
-removed session/control APIs; Dify's default layers keep lifecycle hooks
-side-effect free so this validation does not open plugin daemon clients.
+same transformed user prompts, temporary system-prompt history assembly,
+optional structured output contract, and top-level ``on_exit`` policy used by
+execution are checked without relying on removed session/control APIs; Dify's
+default layers keep lifecycle hooks side-effect free so this validation does not
+open plugin daemon clients.
 """
 
 import asyncio
@@ -24,6 +25,7 @@ from dify_agent.protocol.schemas import CreateRunRequest, normalize_composition
 from dify_agent.runtime.agenton_validation import is_agenton_enter_validation_runtime_error
 from dify_agent.runtime.compositor_factory import build_pydantic_ai_compositor, create_default_layer_providers
 from dify_agent.runtime.event_sink import RunEventSink, emit_run_failed
+from dify_agent.runtime.history import build_run_message_history, get_history_layer, validate_history_layer_composition
 from dify_agent.runtime.layer_exit_signals import apply_layer_exit_signals, validate_layer_exit_signals
 from dify_agent.runtime.output_type import resolve_run_output_contract, validate_output_layer_composition
 from dify_agent.runtime.runner import AgentRunRunner
@@ -169,18 +171,20 @@ async def validate_run_request(
 ) -> None:
     """Validate create-run semantics that require an entered Agenton run.
 
-    This boundary rejects unsupported output-layer graph shapes, unknown
+    This boundary rejects unsupported output/history-layer graph shapes, unknown
     ``on_exit`` layer ids, effectively empty transformed user prompts, and known
     enter-time snapshot lifecycle errors before the scheduler persists a run
-    record. It also exercises provider config validation, structured output
-    contract construction, and snapshot hydration without touching external
-    services because Dify plugin daemon clients are owned by the FastAPI
-    lifespan, not Agenton lifecycle hooks.
+    record. It also exercises provider config validation, temporary
+    system-prompt history assembly, structured output contract construction, and
+    snapshot hydration without touching external services because Dify plugin
+    daemon clients are owned by the FastAPI lifespan, not Agenton lifecycle
+    hooks.
     """
     resolved_layer_providers = layer_providers if layer_providers is not None else create_default_layer_providers()
     entered_run = False
     try:
         validate_output_layer_composition(request.composition)
+        validate_history_layer_composition(request.composition)
         graph_config, layer_configs = normalize_composition(request.composition)
         compositor = build_pydantic_ai_compositor(
             graph_config,
@@ -190,6 +194,11 @@ async def validate_run_request(
         async with compositor.enter(configs=layer_configs, session_snapshot=request.session_snapshot) as run:
             entered_run = True
             apply_layer_exit_signals(run, request.on_exit)
+            history_layer = get_history_layer(run)
+            _ = await build_run_message_history(
+                system_prompts=run.prompts,
+                stored_history=history_layer.message_history if history_layer is not None else (),
+            )
             if not has_non_blank_user_prompt(run.user_prompts):
                 raise RunRequestValidationError(EMPTY_USER_PROMPTS_ERROR)
             _ = resolve_run_output_contract(run)

@@ -1,24 +1,24 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
 import type { ReactNode } from 'react'
 import {
-  ToggleGroup,
-  ToggleGroupDivider,
-  ToggleGroupItem,
+  SegmentedControl,
+  SegmentedControlDivider,
+  SegmentedControlItem,
 } from '.'
 
 const meta = {
-  title: 'Base/UI/ToggleGroup',
-  component: ToggleGroup,
+  title: 'Base/UI/SegmentedControl',
+  component: SegmentedControl,
   parameters: {
     layout: 'centered',
     docs: {
       description: {
-        component: 'Segmented control built on Base UI ToggleGroup and Toggle. Use this for mode, filter, and view selection that does not need tabpanel semantics.',
+        component: 'Segmented control built on Base UI ToggleGroup and Toggle. Use it for mode, filter, and view selection that does not need tabpanel semantics.',
       },
     },
   },
   tags: ['autodocs'],
-} satisfies Meta<typeof ToggleGroup>
+} satisfies Meta<typeof SegmentedControl>
 
 export default meta
 type Story = StoryObj<typeof meta>
@@ -41,21 +41,21 @@ const Item = () => (
   </>
 )
 
-function SegmentedControl({
+function SegmentedControlExample({
   defaultValue,
   values,
   iconOnly = false,
   noPadding = false,
 }: SegmentedControlProps) {
   return (
-    <ToggleGroup
+    <SegmentedControl
       defaultValue={[defaultValue]}
       aria-label="Segmented control"
       className={noPadding ? 'rounded-lg border-[0.5px] border-divider-subtle p-0' : undefined}
     >
       {values.map((itemValue, index) => (
         <span key={itemValue} className="relative flex items-center">
-          <ToggleGroupItem
+          <SegmentedControlItem
             value={itemValue}
             aria-label={iconOnly ? `Item ${index + 1}` : undefined}
           >
@@ -63,15 +63,15 @@ function SegmentedControl({
             {!iconOnly && (
               <span className="px-0.5">Item</span>
             )}
-          </ToggleGroupItem>
+          </SegmentedControlItem>
           {index === 1 && (
             <span className="pointer-events-none absolute top-0 -right-px flex h-full items-center" aria-hidden="true">
-              <ToggleGroupDivider />
+              <SegmentedControlDivider />
             </span>
           )}
         </span>
       ))}
-    </ToggleGroup>
+    </SegmentedControl>
   )
 }
 
@@ -80,10 +80,10 @@ function SpecColumn() {
 
   return (
     <div className="flex flex-col items-center gap-6">
-      <SegmentedControl defaultValue="one" values={values} />
-      <SegmentedControl defaultValue="one" values={values} iconOnly />
-      <SegmentedControl defaultValue="one" values={values} noPadding />
-      <SegmentedControl defaultValue="one" values={values} iconOnly noPadding />
+      <SegmentedControlExample defaultValue="one" values={values} />
+      <SegmentedControlExample defaultValue="one" values={values} iconOnly />
+      <SegmentedControlExample defaultValue="one" values={values} noPadding />
+      <SegmentedControlExample defaultValue="one" values={values} iconOnly noPadding />
     </div>
   )
 }
@@ -124,53 +124,53 @@ export const DesignSpec: Story = {
 export const DataAttributeStates: Story = {
   render: () => (
     <div className="flex flex-col gap-5">
-      <ToggleGroup defaultValue={['active']} aria-label="Basic states">
-        <ToggleGroupItem value="default">
+      <SegmentedControl defaultValue={['active']} aria-label="Basic states">
+        <SegmentedControlItem value="default">
           <Item />
-        </ToggleGroupItem>
-        <ToggleGroupItem value="active">
+        </SegmentedControlItem>
+        <SegmentedControlItem value="active">
           <Item />
-        </ToggleGroupItem>
-        <ToggleGroupItem value="disabled" disabled>
+        </SegmentedControlItem>
+        <SegmentedControlItem value="disabled" disabled>
           <Item />
-        </ToggleGroupItem>
-      </ToggleGroup>
+        </SegmentedControlItem>
+      </SegmentedControl>
 
-      <ToggleGroup defaultValue={['accent-light']} aria-label="Active states">
-        <ToggleGroupItem value="accent-light">
+      <SegmentedControl defaultValue={['accent-light']} aria-label="Active states">
+        <SegmentedControlItem value="accent-light">
           <Item />
-        </ToggleGroupItem>
-        <ToggleGroupItem
+        </SegmentedControlItem>
+        <SegmentedControlItem
           value="neutral"
           className="data-pressed:text-text-primary"
         >
           <Item />
-        </ToggleGroupItem>
-        <ToggleGroupItem
+        </SegmentedControlItem>
+        <SegmentedControlItem
           value="accent"
           className="data-pressed:border-components-segmented-control-item-active-accent-border data-pressed:bg-components-segmented-control-item-active-accent-bg data-pressed:text-text-accent"
         >
           <Item />
-        </ToggleGroupItem>
-      </ToggleGroup>
+        </SegmentedControlItem>
+      </SegmentedControl>
 
-      <ToggleGroup defaultValue={['one', 'three']} multiple aria-label="Multiple selection">
-        <ToggleGroupItem value="one">
+      <SegmentedControl defaultValue={['one', 'three']} multiple aria-label="Multiple selection">
+        <SegmentedControlItem value="one">
           <Item />
-        </ToggleGroupItem>
-        <ToggleGroupItem value="two">
+        </SegmentedControlItem>
+        <SegmentedControlItem value="two">
           <Item />
-        </ToggleGroupItem>
-        <ToggleGroupItem value="three">
+        </SegmentedControlItem>
+        <SegmentedControlItem value="three">
           <Item />
-        </ToggleGroupItem>
-      </ToggleGroup>
+        </SegmentedControlItem>
+      </SegmentedControl>
     </div>
   ),
   parameters: {
     docs: {
       description: {
-        story: '`ToggleGroupItem` gets `data-pressed` and `data-disabled` from Base UI. Accent, neutral, and multiple-selection examples are composed through props and className.',
+        story: '`SegmentedControlItem` gets `data-pressed` and `data-disabled` from Base UI Toggle. Accent, neutral, and multiple-selection examples are composed through props and className.',
       },
     },
   },
