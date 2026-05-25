@@ -26,6 +26,7 @@ import {
   environmentId,
   environmentName,
 } from '../../environment'
+import { createDeploymentIdempotencyKey } from '../../idempotency'
 import { releaseCommit, releaseLabel } from '../../release'
 import { deploymentStatus, isUndeployedDeploymentRow } from '../../runtime-status'
 import { openDeployDrawerAtom } from '../../store'
@@ -115,7 +116,11 @@ function DeploymentRowActions({ appInstanceId, envId, row }: {
     undeployDeployment.mutate(
       {
         params: { appInstanceId, environmentId: envId },
-        body: { appInstanceId, environmentId: envId },
+        body: {
+          appInstanceId,
+          environmentId: envId,
+          idempotencyKey: createDeploymentIdempotencyKey(),
+        },
       },
       {
         onSettled: () => {

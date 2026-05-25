@@ -22,6 +22,7 @@ import { consoleQuery } from '@/service/client'
 import { toAppMode } from '../app-mode'
 import { SOURCE_APPS_PAGE_SIZE } from '../data'
 import { environmentBackend, environmentMode, environmentName } from '../environment'
+import { createDeploymentIdempotencyKey } from '../idempotency'
 
 type GuideMethod = 'bindApp' | 'importDsl'
 type GuideStep = 'method' | 'source' | 'release' | 'target' | 'done'
@@ -50,13 +51,6 @@ function encodeUtf8Base64(value: string) {
     chunks.push(String.fromCharCode(...bytes.subarray(offset, offset + chunkSize)))
 
   return btoa(chunks.join(''))
-}
-
-function createDeploymentIdempotencyKey() {
-  if (globalThis.crypto?.randomUUID)
-    return globalThis.crypto.randomUUID()
-
-  return `deployment-${Date.now().toString(36)}`
 }
 
 function bindingSlotKey(slot: CredentialSlot) {

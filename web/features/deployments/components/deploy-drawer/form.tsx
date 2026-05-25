@@ -18,6 +18,7 @@ import { SkeletonContainer, SkeletonRectangle, SkeletonRow } from '@/app/compone
 import { consoleQuery } from '@/service/client'
 import { DEPLOYMENT_PAGE_SIZE } from '../../data'
 import { environmentBackend, environmentId, environmentMode, environmentName } from '../../environment'
+import { createDeploymentIdempotencyKey } from '../../idempotency'
 import { releaseCommit, releaseLabel } from '../../release'
 import { releaseDeploymentAction } from '../../release-action'
 import { isUndeployedDeploymentRow } from '../../runtime-status'
@@ -324,6 +325,7 @@ function DeployReadyForm({
     if (!canDeploy || !targetReleaseId)
       return
 
+    const idempotencyKey = createDeploymentIdempotencyKey()
     startDeploy.mutate(
       {
         params: {
@@ -335,6 +337,7 @@ function DeployReadyForm({
           environmentId: selectedEnvironmentId,
           releaseId: targetReleaseId,
           credentials: deploymentCredentials,
+          idempotencyKey,
         },
       },
       {
