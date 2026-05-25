@@ -2,12 +2,17 @@
 
 Only explicitly allowed provider type ids are constructible here. The default
 provider set contains prompt layers, the optional pydantic-ai history layer, the
-state-free Dify structured output layer, plus Dify plugin LLM layers. Public
-DTOs provide tenant/plugin/model data, while server-only plugin daemon settings
-are injected through the provider factory for ``DifyPluginLayer``. The resulting
-``Compositor`` remains Agenton state-only: live resources such as the plugin
-daemon HTTP client are supplied later by the runtime and never enter providers,
-layers, or session snapshots.
+state-free Dify structured output layer, and the Dify plugin layer family:
+
+- ``dify.plugin`` for shared tenant/user daemon context,
+- ``dify.plugin.llm`` for plugin-backed model selection, and
+- ``dify.plugin.tools`` for prepared plugin tool exposure.
+
+Public DTOs provide tenant/plugin/model/tool data, while server-only plugin
+daemon settings are injected through the provider factory for
+``DifyPluginLayer``. The resulting ``Compositor`` remains Agenton state-only:
+live resources such as the plugin daemon HTTP client are supplied later by the
+runtime and never enter providers, layers, or session snapshots.
 """
 
 from collections.abc import Mapping, Sequence
@@ -23,6 +28,7 @@ from agenton_collections.transformers.pydantic_ai import PYDANTIC_AI_TRANSFORMER
 from dify_agent.layers.dify_plugin.configs import DifyPluginLayerConfig
 from dify_agent.layers.dify_plugin.llm_layer import DifyPluginLLMLayer
 from dify_agent.layers.dify_plugin.plugin_layer import DifyPluginLayer
+from dify_agent.layers.dify_plugin.tools_layer import DifyPluginToolsLayer
 from dify_agent.layers.output.output_layer import DifyOutputLayer
 
 
@@ -48,6 +54,7 @@ def create_default_layer_providers(
             ),
         ),
         LayerProvider.from_layer_type(DifyPluginLLMLayer),
+        LayerProvider.from_layer_type(DifyPluginToolsLayer),
     )
 
 

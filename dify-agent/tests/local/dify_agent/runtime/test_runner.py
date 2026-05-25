@@ -1,9 +1,11 @@
 import asyncio
 from collections.abc import Mapping
-from typing import Any
+from typing import Any, cast
 
 import httpx
 import pytest
+from pydantic import JsonValue
+from pydantic_ai import Tool
 from pydantic_ai.exceptions import UnexpectedModelBehavior
 from pydantic_ai.messages import (
     ModelMessage,
@@ -18,12 +20,22 @@ from pydantic_ai.models import ModelRequestParameters
 from pydantic_ai.models.test import TestModel
 from pydantic_ai.settings import ModelSettings
 
-from agenton.compositor import CompositorSessionSnapshot, LayerSessionSnapshot
+from agenton.compositor import CompositorSessionSnapshot, LayerProvider, LayerSessionSnapshot
 from agenton.layers import ExitIntent, LifecycleState
 from agenton_collections.layers.pydantic_ai import PYDANTIC_AI_HISTORY_LAYER_TYPE_ID, PydanticAIHistoryRuntimeState
-from agenton_collections.layers.plain import PromptLayerConfig
-from dify_agent.layers.dify_plugin.configs import DifyPluginLLMLayerConfig, DifyPluginLayerConfig
+from agenton_collections.layers.plain import PromptLayerConfig, ToolsLayer
+from dify_agent.layers.dify_plugin.configs import (
+    DIFY_PLUGIN_TOOLS_LAYER_TYPE_ID,
+    DifyPluginLLMLayerConfig,
+    DifyPluginLayerConfig,
+    DifyPluginToolConfig,
+    DifyPluginToolParameter,
+    DifyPluginToolParameterForm,
+    DifyPluginToolParameterType,
+    DifyPluginToolsLayerConfig,
+)
 from dify_agent.layers.dify_plugin.llm_layer import DifyPluginLLMLayer
+from dify_agent.layers.dify_plugin.tools_layer import DifyPluginToolsLayer
 from dify_agent.layers.output import DIFY_OUTPUT_LAYER_TYPE_ID, DifyOutputLayerConfig
 from dify_agent.protocol import DIFY_AGENT_HISTORY_LAYER_ID, DIFY_AGENT_MODEL_LAYER_ID, DIFY_AGENT_OUTPUT_LAYER_ID
 from dify_agent.protocol.schemas import (
@@ -34,7 +46,12 @@ from dify_agent.protocol.schemas import (
     RunSucceededEvent,
 )
 from dify_agent.runtime.event_sink import InMemoryRunEventSink
+from dify_agent.runtime.compositor_factory import create_default_layer_providers
 from dify_agent.runtime.runner import AgentRunRunner, AgentRunValidationError
+
+
+class StaticToolsTestLayer(ToolsLayer):
+    type_id = "test.static.tools"
 
 
 def _request(
@@ -60,13 +77,14 @@ def _request(
         RunLayerSpec(
             name=plugin_layer_name,
             type="dify.plugin",
-            config=DifyPluginLayerConfig(tenant_id="tenant-1", plugin_id="langgenius/openai"),
+            config=DifyPluginLayerConfig(tenant_id="tenant-1"),
         ),
         RunLayerSpec(
             name=llm_layer_name,
             type="dify.plugin.llm",
             deps={"plugin": plugin_layer_name},
             config=DifyPluginLLMLayerConfig(
+                plugin_id="langgenius/openai",
                 model_provider="openai",
                 model="demo-model",
                 credentials={"api_key": "secret"},
@@ -100,6 +118,35 @@ def _recursive_output_schema() -> dict[str, object]:
             }
         },
         "additionalProperties": False,
+    }
+
+
+def _prepared_plugin_tool_parameters() -> list[DifyPluginToolParameter]:
+    return [
+        DifyPluginToolParameter(
+            name="query",
+            type=DifyPluginToolParameterType.STRING,
+            form=DifyPluginToolParameterForm.LLM,
+            required=True,
+            llm_description="Search query",
+        ),
+        DifyPluginToolParameter(
+            name="auth_scope",
+            type=DifyPluginToolParameterType.STRING,
+            form=DifyPluginToolParameterForm.FORM,
+            required=True,
+            llm_description="Hidden auth scope",
+        ),
+    ]
+
+
+def _prepared_plugin_tool_schema() -> dict[str, JsonValue]:
+    return {
+        "type": "object",
+        "properties": {
+            "query": {"type": "string", "description": "Search query"},
+        },
+        "required": ["query"],
     }
 
 
@@ -198,7 +245,7 @@ def test_runner_emits_terminal_success_and_snapshot(monkeypatch: pytest.MonkeyPa
 
     def fake_get_model(self: DifyPluginLLMLayer, *, http_client: httpx.AsyncClient):
         assert self.config.model == "demo-model"
-        assert self.deps.plugin.config.plugin_id == "langgenius/openai"
+        assert self.config.plugin_id == "langgenius/openai"
         seen_clients.append(http_client)
         return TestModel(custom_output_text="done")  # pyright: ignore[reportReturnType]
 
@@ -239,6 +286,315 @@ def test_runner_emits_terminal_success_and_snapshot(monkeypatch: pytest.MonkeyPa
         LifecycleState.SUSPENDED,
     ]
     assert sink.statuses["run-1"] == "succeeded"
+
+
+def test_runner_passes_dynamic_dify_plugin_tools_to_agent(monkeypatch: pytest.MonkeyPatch) -> None:
+    seen_tools: list[Tool[object]] = []
+
+    async def plugin_tool() -> str:
+        return "tool"
+
+    def fake_get_model(_self: DifyPluginLLMLayer, *, http_client: httpx.AsyncClient):
+        assert http_client.is_closed is False
+        return TestModel(custom_output_text="done")  # pyright: ignore[reportReturnType]
+
+    async def fake_get_tools(self: DifyPluginToolsLayer, *, http_client: httpx.AsyncClient) -> list[Tool[object]]:
+        assert self.config.tools[0].tool_name == "web_search"
+        assert http_client.is_closed is False
+        return [Tool(plugin_tool, name="web_search")]
+
+    class FakeResult:
+        output: str = "done"
+
+        def new_messages(self) -> list[ModelMessage]:
+            return []
+
+    class FakeAgent:
+        async def run(self, *_args: object, **_kwargs: object) -> FakeResult:
+            return FakeResult()
+
+    def fake_create_agent(model: object, *, tools: list[Tool[object]], output_type: object) -> FakeAgent:
+        del model, output_type
+        seen_tools.extend(tools)
+        return FakeAgent()
+
+    monkeypatch.setattr(DifyPluginLLMLayer, "get_model", fake_get_model)
+    monkeypatch.setattr(DifyPluginToolsLayer, "get_tools", fake_get_tools)
+    monkeypatch.setattr("dify_agent.runtime.runner.create_agent", fake_create_agent)
+
+    request = CreateRunRequest(
+        composition=RunComposition(
+            layers=[
+                RunLayerSpec(
+                    name="prompt",
+                    type="plain.prompt",
+                    config=PromptLayerConfig(prefix="system", user="hello"),
+                ),
+                RunLayerSpec(
+                    name="plugin",
+                    type="dify.plugin",
+                    config=DifyPluginLayerConfig(tenant_id="tenant-1"),
+                ),
+                RunLayerSpec(
+                    name=DIFY_AGENT_MODEL_LAYER_ID,
+                    type="dify.plugin.llm",
+                    deps={"plugin": "plugin"},
+                    config=DifyPluginLLMLayerConfig(
+                        plugin_id="langgenius/openai",
+                        model_provider="openai",
+                        model="demo-model",
+                        credentials={"api_key": "secret"},
+                    ),
+                ),
+                RunLayerSpec(
+                    name="tools",
+                    type=DIFY_PLUGIN_TOOLS_LAYER_TYPE_ID,
+                    deps={"plugin": "plugin"},
+                    config=DifyPluginToolsLayerConfig(
+                        tools=[
+                            DifyPluginToolConfig(
+                                plugin_id="langgenius/tools",
+                                provider="search",
+                                tool_name="web_search",
+                                credential_type="api-key",
+                                parameters=_prepared_plugin_tool_parameters(),
+                                parameters_json_schema=_prepared_plugin_tool_schema(),
+                            )
+                        ]
+                    ),
+                ),
+            ]
+        )
+    )
+    sink = InMemoryRunEventSink()
+
+    async def scenario() -> None:
+        async with httpx.AsyncClient() as client:
+            await AgentRunRunner(
+                sink=sink,
+                request=request,
+                run_id="run-tools",
+                plugin_daemon_http_client=client,
+            ).run()
+
+    asyncio.run(scenario())
+
+    assert [tool.name for tool in seen_tools] == ["web_search"]
+    terminal = sink.events["run-tools"][-1]
+    assert isinstance(terminal, RunSucceededEvent)
+    assert terminal.data.output == "done"
+
+
+def test_runner_rejects_duplicate_tool_names_across_dynamic_tool_layers(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    create_agent_called = False
+
+    async def duplicate_tool() -> str:
+        return "tool"
+
+    def fake_get_model(_self: DifyPluginLLMLayer, *, http_client: httpx.AsyncClient):
+        assert http_client.is_closed is False
+        return TestModel(custom_output_text="done")  # pyright: ignore[reportReturnType]
+
+    async def fake_get_tools(_self: DifyPluginToolsLayer, *, http_client: httpx.AsyncClient) -> list[Tool[object]]:
+        assert http_client.is_closed is False
+        return [Tool(duplicate_tool, name="shared_tool")]
+
+    def fake_create_agent(model: object, *, tools: list[Tool[object]], output_type: object) -> object:
+        del model, tools, output_type
+        nonlocal create_agent_called
+        create_agent_called = True
+        raise AssertionError("create_agent should not be called when duplicate tool names are detected")
+
+    monkeypatch.setattr(DifyPluginLLMLayer, "get_model", fake_get_model)
+    monkeypatch.setattr(DifyPluginToolsLayer, "get_tools", fake_get_tools)
+    monkeypatch.setattr("dify_agent.runtime.runner.create_agent", fake_create_agent)
+
+    request = CreateRunRequest(
+        composition=RunComposition(
+            layers=[
+                RunLayerSpec(
+                    name="prompt",
+                    type="plain.prompt",
+                    config=PromptLayerConfig(prefix="system", user="hello"),
+                ),
+                RunLayerSpec(
+                    name="plugin",
+                    type="dify.plugin",
+                    config=DifyPluginLayerConfig(tenant_id="tenant-1"),
+                ),
+                RunLayerSpec(
+                    name=DIFY_AGENT_MODEL_LAYER_ID,
+                    type="dify.plugin.llm",
+                    deps={"plugin": "plugin"},
+                    config=DifyPluginLLMLayerConfig(
+                        plugin_id="langgenius/openai",
+                        model_provider="openai",
+                        model="demo-model",
+                        credentials={"api_key": "secret"},
+                    ),
+                ),
+                RunLayerSpec(
+                    name="tools-1",
+                    type=DIFY_PLUGIN_TOOLS_LAYER_TYPE_ID,
+                    deps={"plugin": "plugin"},
+                    config=DifyPluginToolsLayerConfig(
+                        tools=[
+                            DifyPluginToolConfig(
+                                plugin_id="langgenius/tools",
+                                provider="search",
+                                tool_name="web_search",
+                                credential_type="api-key",
+                                parameters=_prepared_plugin_tool_parameters(),
+                                parameters_json_schema=_prepared_plugin_tool_schema(),
+                            )
+                        ]
+                    ),
+                ),
+                RunLayerSpec(
+                    name="tools-2",
+                    type=DIFY_PLUGIN_TOOLS_LAYER_TYPE_ID,
+                    deps={"plugin": "plugin"},
+                    config=DifyPluginToolsLayerConfig(
+                        tools=[
+                            DifyPluginToolConfig(
+                                plugin_id="langgenius/tools",
+                                provider="search",
+                                tool_name="web_search_two",
+                                credential_type="api-key",
+                                parameters=_prepared_plugin_tool_parameters(),
+                                parameters_json_schema=_prepared_plugin_tool_schema(),
+                            )
+                        ]
+                    ),
+                ),
+            ]
+        )
+    )
+    sink = InMemoryRunEventSink()
+
+    async def scenario() -> None:
+        async with httpx.AsyncClient() as client:
+            with pytest.raises(
+                AgentRunValidationError,
+                match="unique tool names across all layers, got duplicates: shared_tool",
+            ):
+                await AgentRunRunner(
+                    sink=sink,
+                    request=request,
+                    run_id="run-duplicate-tools",
+                    plugin_daemon_http_client=client,
+                ).run()
+
+    asyncio.run(scenario())
+
+    assert create_agent_called is False
+    assert [event.type for event in sink.events["run-duplicate-tools"]] == ["run_started", "run_failed"]
+    assert sink.statuses["run-duplicate-tools"] == "failed"
+
+
+def test_runner_rejects_duplicate_tool_names_between_static_and_dynamic_tools(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    create_agent_called = False
+
+    def web_search(query: str) -> str:
+        return query
+
+    async def dynamic_duplicate_tool() -> str:
+        return "tool"
+
+    def fake_get_model(_self: DifyPluginLLMLayer, *, http_client: httpx.AsyncClient):
+        assert http_client.is_closed is False
+        return TestModel(custom_output_text="done")  # pyright: ignore[reportReturnType]
+
+    async def fake_get_tools(_self: DifyPluginToolsLayer, *, http_client: httpx.AsyncClient) -> list[Tool[object]]:
+        assert http_client.is_closed is False
+        return [Tool(dynamic_duplicate_tool, name="web_search")]
+
+    def fake_create_agent(model: object, *, tools: list[Tool[object]], output_type: object) -> object:
+        del model, tools, output_type
+        nonlocal create_agent_called
+        create_agent_called = True
+        raise AssertionError("create_agent should not be called when duplicate tool names are detected")
+
+    monkeypatch.setattr(DifyPluginLLMLayer, "get_model", fake_get_model)
+    monkeypatch.setattr(DifyPluginToolsLayer, "get_tools", fake_get_tools)
+    monkeypatch.setattr("dify_agent.runtime.runner.create_agent", fake_create_agent)
+
+    static_tools_provider = LayerProvider.from_factory(
+        layer_type=StaticToolsTestLayer,
+        create=lambda _config: StaticToolsTestLayer(tool_entries=(web_search,)),
+    )
+    layer_providers = (*create_default_layer_providers(), static_tools_provider)
+
+    request = CreateRunRequest(
+        composition=RunComposition(
+            layers=[
+                RunLayerSpec(
+                    name="prompt",
+                    type="plain.prompt",
+                    config=PromptLayerConfig(prefix="system", user="hello"),
+                ),
+                RunLayerSpec(name="static-tools", type=cast(str, StaticToolsTestLayer.type_id)),
+                RunLayerSpec(
+                    name="plugin",
+                    type="dify.plugin",
+                    config=DifyPluginLayerConfig(tenant_id="tenant-1"),
+                ),
+                RunLayerSpec(
+                    name=DIFY_AGENT_MODEL_LAYER_ID,
+                    type="dify.plugin.llm",
+                    deps={"plugin": "plugin"},
+                    config=DifyPluginLLMLayerConfig(
+                        plugin_id="langgenius/openai",
+                        model_provider="openai",
+                        model="demo-model",
+                        credentials={"api_key": "secret"},
+                    ),
+                ),
+                RunLayerSpec(
+                    name="tools",
+                    type=DIFY_PLUGIN_TOOLS_LAYER_TYPE_ID,
+                    deps={"plugin": "plugin"},
+                    config=DifyPluginToolsLayerConfig(
+                        tools=[
+                            DifyPluginToolConfig(
+                                plugin_id="langgenius/tools",
+                                provider="search",
+                                tool_name="web_search",
+                                credential_type="api-key",
+                                parameters=_prepared_plugin_tool_parameters(),
+                                parameters_json_schema=_prepared_plugin_tool_schema(),
+                            )
+                        ]
+                    ),
+                ),
+            ]
+        )
+    )
+    sink = InMemoryRunEventSink()
+
+    async def scenario() -> None:
+        async with httpx.AsyncClient() as client:
+            with pytest.raises(
+                AgentRunValidationError,
+                match="unique tool names across all layers, got duplicates: web_search",
+            ):
+                await AgentRunRunner(
+                    sink=sink,
+                    request=request,
+                    run_id="run-static-dynamic-duplicate-tools",
+                    plugin_daemon_http_client=client,
+                    layer_providers=layer_providers,
+                ).run()
+
+    asyncio.run(scenario())
+
+    assert create_agent_called is False
+    assert [event.type for event in sink.events["run-static-dynamic-duplicate-tools"]] == ["run_started", "run_failed"]
+    assert sink.statuses["run-static-dynamic-duplicate-tools"] == "failed"
 
 
 def test_runner_passes_temporary_system_prompt_prefix_without_history_layer(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -684,13 +1040,14 @@ def test_runner_rejects_misnamed_output_layer_before_model_resolution(monkeypatc
                 RunLayerSpec(
                     name="plugin",
                     type="dify.plugin",
-                    config=DifyPluginLayerConfig(tenant_id="tenant-1", plugin_id="langgenius/openai"),
+                    config=DifyPluginLayerConfig(tenant_id="tenant-1"),
                 ),
                 RunLayerSpec(
                     name=DIFY_AGENT_MODEL_LAYER_ID,
                     type="dify.plugin.llm",
                     deps={"plugin": "plugin"},
                     config=DifyPluginLLMLayerConfig(
+                        plugin_id="langgenius/openai",
                         model_provider="openai",
                         model="demo-model",
                         credentials={"api_key": "secret"},
@@ -752,13 +1109,14 @@ def test_runner_rejects_multiple_output_layers_before_model_resolution(monkeypat
                 RunLayerSpec(
                     name="plugin",
                     type="dify.plugin",
-                    config=DifyPluginLayerConfig(tenant_id="tenant-1", plugin_id="langgenius/openai"),
+                    config=DifyPluginLayerConfig(tenant_id="tenant-1"),
                 ),
                 RunLayerSpec(
                     name=DIFY_AGENT_MODEL_LAYER_ID,
                     type="dify.plugin.llm",
                     deps={"plugin": "plugin"},
                     config=DifyPluginLLMLayerConfig(
+                        plugin_id="langgenius/openai",
                         model_provider="openai",
                         model="demo-model",
                         credentials={"api_key": "secret"},
@@ -842,13 +1200,14 @@ def test_runner_rejects_reserved_output_name_with_wrong_layer_type_before_model_
                 RunLayerSpec(
                     name="plugin",
                     type="dify.plugin",
-                    config=DifyPluginLayerConfig(tenant_id="tenant-1", plugin_id="langgenius/openai"),
+                    config=DifyPluginLayerConfig(tenant_id="tenant-1"),
                 ),
                 RunLayerSpec(
                     name=DIFY_AGENT_MODEL_LAYER_ID,
                     type="dify.plugin.llm",
                     deps={"plugin": "plugin"},
                     config=DifyPluginLLMLayerConfig(
+                        plugin_id="langgenius/openai",
                         model_provider="openai",
                         model="demo-model",
                         credentials={"api_key": "secret"},

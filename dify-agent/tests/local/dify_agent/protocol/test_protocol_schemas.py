@@ -6,7 +6,11 @@ from agenton.compositor import CompositorSessionSnapshot
 from agenton.layers import ExitIntent
 from agenton_collections.layers.plain import PLAIN_PROMPT_LAYER_TYPE_ID, PromptLayerConfig
 import dify_agent.protocol as protocol_exports
-from dify_agent.layers.dify_plugin import DIFY_PLUGIN_LAYER_TYPE_ID, DIFY_PLUGIN_LLM_LAYER_TYPE_ID
+from dify_agent.layers.dify_plugin import (
+    DIFY_PLUGIN_LAYER_TYPE_ID,
+    DIFY_PLUGIN_LLM_LAYER_TYPE_ID,
+    DIFY_PLUGIN_TOOLS_LAYER_TYPE_ID,
+)
 from dify_agent.layers.output import DIFY_OUTPUT_LAYER_TYPE_ID, DifyOutputLayerConfig
 from dify_agent.protocol import DIFY_AGENT_HISTORY_LAYER_ID, DIFY_AGENT_MODEL_LAYER_ID, DIFY_AGENT_OUTPUT_LAYER_ID
 from dify_agent.protocol.schemas import (
@@ -28,7 +32,15 @@ from dify_agent.protocol.schemas import (
     RunSucceededEventData,
     normalize_composition,
 )
-from dify_agent.layers.dify_plugin.configs import DifyPluginLLMLayerConfig, DifyPluginLayerConfig
+from dify_agent.layers.dify_plugin.configs import (
+    DifyPluginLLMLayerConfig,
+    DifyPluginLayerConfig,
+    DifyPluginToolConfig,
+    DifyPluginToolParameter,
+    DifyPluginToolParameterForm,
+    DifyPluginToolParameterType,
+    DifyPluginToolsLayerConfig,
+)
 
 
 def test_run_event_adapter_round_trips_typed_variants() -> None:
@@ -89,8 +101,9 @@ def test_create_run_request_rejects_old_compositor_payload_and_model_layer_id_is
 
 def test_create_run_request_accepts_dto_first_public_composition_and_normalizes_graph_config() -> None:
     prompt_config = PromptLayerConfig(prefix="system", user="hello")
-    plugin_config = DifyPluginLayerConfig(tenant_id="tenant-1", plugin_id="langgenius/openai")
+    plugin_config = DifyPluginLayerConfig(tenant_id="tenant-1")
     llm_config = DifyPluginLLMLayerConfig(
+        plugin_id="langgenius/openai",
         model_provider="openai",
         model="demo-model",
         credentials={"api_key": "secret"},
@@ -177,6 +190,110 @@ def test_create_run_request_accepts_dto_first_public_composition_and_normalizes_
         DIFY_AGENT_MODEL_LAYER_ID: llm_config,
         DIFY_AGENT_OUTPUT_LAYER_ID: output_config,
     }
+
+
+def test_create_run_request_accepts_plugin_tools_layer_with_prepared_parameters_and_schema() -> None:
+    request = CreateRunRequest.model_validate(
+        {
+            "composition": {
+                "layers": [
+                    {"name": "prompt", "type": PLAIN_PROMPT_LAYER_TYPE_ID, "config": {"user": "hello"}},
+                    {"name": "plugin", "type": DIFY_PLUGIN_LAYER_TYPE_ID, "config": {"tenant_id": "tenant-1"}},
+                    {
+                        "name": DIFY_AGENT_MODEL_LAYER_ID,
+                        "type": DIFY_PLUGIN_LLM_LAYER_TYPE_ID,
+                        "deps": {"plugin": "plugin"},
+                        "config": {
+                            "plugin_id": "langgenius/openai",
+                            "model_provider": "openai",
+                            "model": "demo-model",
+                            "credentials": {"api_key": "secret"},
+                        },
+                    },
+                    {
+                        "name": "tools",
+                        "type": DIFY_PLUGIN_TOOLS_LAYER_TYPE_ID,
+                        "deps": {"plugin": "plugin"},
+                        "config": {
+                            "tools": [
+                                {
+                                    "plugin_id": "langgenius/search",
+                                    "provider": "search",
+                                    "tool_name": "web_search",
+                                    "credential_type": "api-key",
+                                    "runtime_parameters": {"site": "docs.dify.ai"},
+                                    "parameters": [
+                                        {
+                                            "name": "query",
+                                            "type": "string",
+                                            "form": "llm",
+                                            "required": True,
+                                            "llm_description": "Search query",
+                                        },
+                                        {
+                                            "name": "site",
+                                            "type": "string",
+                                            "form": "form",
+                                            "required": True,
+                                            "llm_description": "Hidden site",
+                                        },
+                                    ],
+                                    "parameters_json_schema": {
+                                        "type": "object",
+                                        "properties": {
+                                            "query": {"type": "string", "description": "Search query"}
+                                        },
+                                        "required": ["query"],
+                                    },
+                                }
+                            ]
+                        },
+                    },
+                ]
+            }
+        }
+    )
+
+    graph_config, layer_configs = normalize_composition(request.composition)
+
+    assert [layer.type for layer in graph_config.layers] == [
+        PLAIN_PROMPT_LAYER_TYPE_ID,
+        DIFY_PLUGIN_LAYER_TYPE_ID,
+        DIFY_PLUGIN_LLM_LAYER_TYPE_ID,
+        DIFY_PLUGIN_TOOLS_LAYER_TYPE_ID,
+    ]
+    assert DifyPluginToolsLayerConfig.model_validate(layer_configs["tools"]) == DifyPluginToolsLayerConfig(
+        tools=[
+            DifyPluginToolConfig(
+                plugin_id="langgenius/search",
+                provider="search",
+                tool_name="web_search",
+                credential_type="api-key",
+                runtime_parameters={"site": "docs.dify.ai"},
+                parameters=[
+                    DifyPluginToolParameter(
+                        name="query",
+                        type=DifyPluginToolParameterType.STRING,
+                        form=DifyPluginToolParameterForm.LLM,
+                        required=True,
+                        llm_description="Search query",
+                    ),
+                    DifyPluginToolParameter(
+                        name="site",
+                        type=DifyPluginToolParameterType.STRING,
+                        form=DifyPluginToolParameterForm.FORM,
+                        required=True,
+                        llm_description="Hidden site",
+                    ),
+                ],
+                parameters_json_schema={
+                    "type": "object",
+                    "properties": {"query": {"type": "string", "description": "Search query"}},
+                    "required": ["query"],
+                },
+            )
+        ]
+    )
 
 
 def test_on_exit_default_to_suspend_and_are_public() -> None:

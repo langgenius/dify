@@ -52,18 +52,62 @@ async def main() -> None:
                         RunLayerSpec(
                             name="plugin",
                             type=DIFY_PLUGIN_LAYER_TYPE_ID,
-                            config=DifyPluginLayerConfig(tenant_id=TENANT_ID, plugin_id=PLUGIN_ID),
+                            config=DifyPluginLayerConfig(tenant_id=TENANT_ID),
                         ),
                         RunLayerSpec(
                             name=DIFY_AGENT_MODEL_LAYER_ID,
                             type=DIFY_PLUGIN_LLM_LAYER_TYPE_ID,
                             deps={"plugin": "plugin"},
                             config=DifyPluginLLMLayerConfig(
+                                plugin_id=PLUGIN_ID,
                                 model_provider=PLUGIN_PROVIDER,
                                 model=MODEL_NAME,
                                 credentials=MODEL_CREDENTIALS,
                             ),
                         ),
+                        # Minimal plugin-tools example. API callers should pass
+                        # prepared parameters + JSON schema instead of relying on
+                        # dify-agent to fetch and merge daemon declarations.
+                        # from dify_agent.layers.dify_plugin import (
+                        #     DifyPluginToolConfig,
+                        #     DifyPluginToolParameter,
+                        #     DifyPluginToolParameterForm,
+                        #     DifyPluginToolParameterType,
+                        #     DifyPluginToolsLayerConfig,
+                        # )
+                        # RunLayerSpec(
+                        #     name="tools",
+                        #     type="dify.plugin.tools",
+                        #     deps={"plugin": "plugin"},
+                        #     config=DifyPluginToolsLayerConfig(
+                        #         tools=[
+                        #             DifyPluginToolConfig(
+                        #                 plugin_id="langgenius/search",
+                        #                 provider="search",
+                        #                 tool_name="web_search",
+                        #                 credential_type="api-key",
+                        #                 credentials={"api_key": "replace-with-tool-key"},
+                        #                 runtime_parameters={"site": "docs.dify.ai"},
+                        #                 parameters=[
+                        #                     DifyPluginToolParameter(
+                        #                         name="query",
+                        #                         type=DifyPluginToolParameterType.STRING,
+                        #                         form=DifyPluginToolParameterForm.LLM,
+                        #                         required=True,
+                        #                         llm_description="Search query",
+                        #                     ),
+                        #                 ],
+                        #                 parameters_json_schema={
+                        #                     "type": "object",
+                        #                     "properties": {
+                        #                         "query": {"type": "string", "description": "Search query"}
+                        #                     },
+                        #                     "required": ["query"],
+                        #                 },
+                        #             )
+                        #         ]
+                        #     ),
+                        # ),
                     ],
                 ),
             )

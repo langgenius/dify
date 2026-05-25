@@ -7,15 +7,33 @@ dependencies. Keep this package root import-safe for client-only installs.
 from dify_agent.layers.dify_plugin.configs import (
     DIFY_PLUGIN_LAYER_TYPE_ID,
     DIFY_PLUGIN_LLM_LAYER_TYPE_ID,
+    DIFY_PLUGIN_TOOLS_LAYER_TYPE_ID,
     DifyPluginCredentialValue,
     DifyPluginLLMLayerConfig,
     DifyPluginLayerConfig,
+    DifyPluginToolCredentialType,
+    DifyPluginToolConfig,
+    DifyPluginToolOption,
+    DifyPluginToolParameter,
+    DifyPluginToolParameterForm,
+    DifyPluginToolParameterType,
+    DifyPluginToolsLayerConfig,
+    DifyPluginToolValue,
 )
 
 __all__ = [
     "DIFY_PLUGIN_LAYER_TYPE_ID",
     "DIFY_PLUGIN_LLM_LAYER_TYPE_ID",
+    "DIFY_PLUGIN_TOOLS_LAYER_TYPE_ID",
     "DifyPluginCredentialValue",
     "DifyPluginLLMLayerConfig",
     "DifyPluginLayerConfig",
+    "DifyPluginToolCredentialType",
+    "DifyPluginToolConfig",
+    "DifyPluginToolOption",
+    "DifyPluginToolParameter",
+    "DifyPluginToolParameterForm",
+    "DifyPluginToolParameterType",
+    "DifyPluginToolsLayerConfig",
+    "DifyPluginToolValue",
 ]

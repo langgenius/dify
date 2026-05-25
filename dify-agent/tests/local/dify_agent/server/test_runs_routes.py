@@ -106,13 +106,14 @@ def test_create_run_accepts_valid_full_plugin_graph() -> None:
                     {
                         "name": "plugin-renamed",
                         "type": "dify.plugin",
-                        "config": {"tenant_id": "tenant-1", "plugin_id": "langgenius/openai"},
+                        "config": {"tenant_id": "tenant-1"},
                     },
                     {
                         "name": DIFY_AGENT_MODEL_LAYER_ID,
                         "type": "dify.plugin.llm",
                         "deps": {"plugin": "plugin-renamed"},
                         "config": {
+                            "plugin_id": "langgenius/openai",
                             "model_provider": "openai",
                             "model": "gpt-4o-mini",
                             "credentials": {"api_key": "secret"},

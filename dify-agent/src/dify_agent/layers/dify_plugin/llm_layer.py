@@ -1,12 +1,13 @@
 """Dify plugin LLM model layer.
 
 This layer owns model capability resolution for Dify plugin-backed LLMs. It
-depends on ``DifyPluginLayer`` for daemon identity through Agenton's direct
-dependency binding and returns a Pydantic AI model adapter configured from the
-public LLM layer DTO. Runtime code supplies the FastAPI lifespan-owned shared
-HTTP client to ``get_model``; the layer does not own or discover live resources.
-The daemon provider carries plugin transport identity, while the DTO's
-``model_provider`` is passed to the adapter as request-level model identity.
+depends on ``DifyPluginLayer`` for shared daemon settings through Agenton's
+direct dependency binding and returns a Pydantic AI model adapter configured
+from the public LLM layer DTO. Runtime code supplies the FastAPI
+lifespan-owned shared HTTP client to ``get_model``; the layer does not own or
+discover live resources. The daemon provider carries plugin transport identity,
+while the DTO's ``model_provider`` is passed to the adapter as request-level
+model identity.
 """
 
 from dataclasses import dataclass
@@ -42,7 +43,7 @@ class DifyPluginLLMLayer(PlainLayer[DifyPluginLLMDeps, DifyPluginLLMLayerConfig]
 
     def get_model(self, *, http_client: httpx.AsyncClient) -> DifyLLMAdapterModel:
         """Return the configured model using the directly bound plugin dependency."""
-        provider = self.deps.plugin.create_daemon_provider(http_client=http_client)
+        provider = self.deps.plugin.create_daemon_provider(plugin_id=self.config.plugin_id, http_client=http_client)
         return DifyLLMAdapterModel(
             model=self.config.model,
             daemon_provider=provider,

@@ -149,7 +149,7 @@ def test_create_app_creates_scheduler_and_closes_after_shutdown(monkeypatch: pyt
         layer_providers = scheduler.layer_providers
         assert isinstance(layer_providers, tuple)
         plugin_provider = next(provider for provider in layer_providers if provider.type_id == "dify.plugin")
-        plugin_layer = plugin_provider.create_layer(DifyPluginLayerConfig(tenant_id="tenant-1", plugin_id="plugin-1"))
+        plugin_layer = plugin_provider.create_layer(DifyPluginLayerConfig(tenant_id="tenant-1"))
         assert isinstance(plugin_layer, DifyPluginLayer)
         assert plugin_layer.daemon_url == "http://plugin-daemon"
         assert plugin_layer.daemon_api_key == "daemon-secret"
