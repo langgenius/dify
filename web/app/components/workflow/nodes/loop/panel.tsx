@@ -92,6 +92,7 @@ const Panel: FC<NodePanelProps<LoopNodeType>> = ({
           >
             <div className="px-3 py-2">
               <InputNumberWithSlider
+                label={t(`${i18nPrefix}.loopMaxCount`, { ns: 'workflow' })}
                 min={1}
                 max={LOOP_NODE_MAX_COUNT}
                 value={inputs.loop_count}

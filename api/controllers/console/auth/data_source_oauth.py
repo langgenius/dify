@@ -1,4 +1,5 @@
 import logging
+from uuid import UUID
 
 import httpx
 from flask import current_app, redirect, request
@@ -158,16 +159,15 @@ class OAuthDataSourceSync(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def get(self, provider, binding_id):
-        provider = str(provider)
-        binding_id = str(binding_id)
+    def get(self, provider: str, binding_id: UUID):
+        binding_id_str = str(binding_id)
         OAUTH_DATASOURCE_PROVIDERS = get_oauth_providers()
         with current_app.app_context():
             oauth_provider = OAUTH_DATASOURCE_PROVIDERS.get(provider)
         if not oauth_provider:
             return {"error": "Invalid provider"}, 400
         try:
-            oauth_provider.sync_data_source(binding_id)
+            oauth_provider.sync_data_source(binding_id_str)
         except httpx.HTTPStatusError as e:
             logger.exception(
                 "An error occurred during the OAuthCallback process with %s: %s", provider, e.response.text

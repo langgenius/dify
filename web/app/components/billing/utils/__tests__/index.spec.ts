@@ -65,10 +65,6 @@ describe('billing utils', () => {
         size: 2,
         limit: 5,
       },
-      vector_space: {
-        size: 10,
-        limit: 50,
-      },
       annotation_quota_limit: {
         size: 5,
         limit: 10,
@@ -108,7 +104,7 @@ describe('billing utils', () => {
       const data = createMockPlanData()
       const result = parseCurrentPlan(data)
 
-      expect(result.usage.vectorSpace).toBe(10)
+      expect(result.usage.vectorSpace).toBe(0)
       expect(result.usage.buildApps).toBe(2)
       expect(result.usage.teamMembers).toBe(1)
       expect(result.usage.annotatedResponse).toBe(5)
@@ -123,6 +119,29 @@ describe('billing utils', () => {
       expect(result.total.buildApps).toBe(5)
       expect(result.total.teamMembers).toBe(1)
       expect(result.total.annotatedResponse).toBe(10)
+    })
+
+    it('should not read vector space usage from current plan info', () => {
+      const data = createMockPlanData()
+      const result = parseCurrentPlan(data)
+
+      expect(result.usage.vectorSpace).toBe(0)
+      expect(result.total.vectorSpace).toBe(50)
+    })
+
+    it('should derive vector space total from plan config', () => {
+      const data = createMockPlanData({
+        billing: {
+          enabled: true,
+          subscription: {
+            plan: Plan.professional,
+          },
+        },
+      })
+      const result = parseCurrentPlan(data)
+
+      expect(result.usage.vectorSpace).toBe(0)
+      expect(result.total.vectorSpace).toBe(5 * 1024)
     })
 
     it('should convert 0 limits to NUM_INFINITE (-1)', () => {

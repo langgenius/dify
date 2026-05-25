@@ -141,7 +141,7 @@ class TestSavedMessageApi:
 
         delete_mock.assert_called_once()
         assert status == 204
-        assert result == {"result": "success"}
+        assert result == ""
 
     def test_delete_not_completion_app(self):
         api = module.SavedMessageApi()

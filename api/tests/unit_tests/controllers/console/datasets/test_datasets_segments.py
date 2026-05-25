@@ -940,7 +940,7 @@ class TestChildChunkUpdateApi:
             response, status = method(api, "ds-1", "doc-1", "seg-1", "cc-1")
 
         assert status == 204
-        assert response["result"] == "success"
+        assert response == ""
 
     def test_delete_child_chunk_index_error(self, app: Flask):
         api = ChildChunkUpdateApi()
