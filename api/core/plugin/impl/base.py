@@ -104,8 +104,14 @@ class BasePluginClient:
         params: dict[str, Any] | None,
         files: dict[str, Any] | None,
     ) -> tuple[str, dict[str, str], bytes | dict[str, Any] | str | None, dict[str, Any] | None, dict[str, Any] | None]:
-        decoded_path = unquote(path)
-        if any(seg.lower() in ("..", "%2e%2e") for seg in decoded_path.split("/")):
+        decoded_path = path
+        while True:
+            next_decoded_path = unquote(decoded_path)
+            if next_decoded_path == decoded_path:
+                break
+            decoded_path = next_decoded_path
+
+        if any(seg == ".." for seg in decoded_path.split("/")):
             raise ValueError(f"Invalid plugin daemon path: traversal sequence detected in {path!r}")
         url = plugin_daemon_inner_api_baseurl / path
         prepared_headers = dict(headers or {})
