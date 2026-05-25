@@ -1,11 +1,12 @@
 import json
+from urllib.parse import quote
 
 import pytest
 from pytest_mock import MockerFixture
 
 from core.plugin.endpoint.exc import EndpointSetupFailedError
 from core.plugin.entities.plugin_daemon import PluginDaemonInnerError
-from core.plugin.impl.base import BasePluginClient
+from core.plugin.impl.base import PLUGIN_DAEMON_MAX_PATH_LENGTH, BasePluginClient
 from core.trigger.errors import (
     EventIgnoreError,
     TriggerInvokeError,
@@ -66,6 +67,36 @@ class TestBasePluginClientImpl:
 
         assert result == ["hello", "world"]
         assert stream_mock.call_args.kwargs["data"] == {"k": "v"}
+
+    @pytest.mark.parametrize(
+        "path",
+        [
+            "plugin/tenant/%252e%252e%252ftarget",
+            "plugin/tenant/%2e%2e%252ftarget",
+        ],
+    )
+    def test_prepare_request_rejects_encoded_traversal_with_encoded_separator(self, path: str):
+        client = BasePluginClient()
+
+        with pytest.raises(ValueError, match="traversal sequence detected"):
+            client._prepare_request(path, None, None, None, None)
+
+    def test_prepare_request_rejects_path_exceeding_max_length(self):
+        client = BasePluginClient()
+        path = "a" * (PLUGIN_DAEMON_MAX_PATH_LENGTH + 1)
+
+        with pytest.raises(ValueError, match="path length exceeds"):
+            client._prepare_request(path, None, None, None, None)
+
+    def test_prepare_request_rejects_excessively_encoded_path(self):
+        client = BasePluginClient()
+        segment = "..%2Ftarget"
+        for _ in range(9):
+            segment = quote(segment, safe="")
+        path = f"plugin/tenant/{segment}"
+
+        with pytest.raises(ValueError, match="too deeply encoded"):
+            client._prepare_request(path, None, None, None, None)
 
     def test_request_with_plugin_daemon_response_handles_request_exception(self, mocker: MockerFixture):
         client = BasePluginClient()

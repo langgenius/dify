@@ -3,6 +3,7 @@ import json
 import logging
 from collections.abc import Callable, Generator
 from typing import Any, cast
+from urllib.parse import unquote
 
 import httpx
 from pydantic import BaseModel
@@ -52,6 +53,9 @@ else:
     plugin_daemon_request_timeout = httpx.Timeout(_plugin_daemon_timeout_config)
 
 logger = logging.getLogger(__name__)
+
+PLUGIN_DAEMON_MAX_PATH_LENGTH = 4096
+PLUGIN_DAEMON_MAX_PATH_DECODE_DEPTH = 8
 
 _httpx_client: httpx.Client = get_pooled_http_client(
     "plugin_daemon",
@@ -103,6 +107,20 @@ class BasePluginClient:
         params: dict[str, Any] | None,
         files: dict[str, Any] | None,
     ) -> tuple[str, dict[str, str], bytes | dict[str, Any] | str | None, dict[str, Any] | None, dict[str, Any] | None]:
+        if len(path) > PLUGIN_DAEMON_MAX_PATH_LENGTH:
+            raise ValueError(f"Invalid plugin daemon path: path length exceeds {PLUGIN_DAEMON_MAX_PATH_LENGTH}")
+
+        decoded_path = path
+        for _ in range(PLUGIN_DAEMON_MAX_PATH_DECODE_DEPTH):
+            next_decoded_path = unquote(decoded_path)
+            if next_decoded_path == decoded_path:
+                break
+            decoded_path = next_decoded_path
+        else:
+            raise ValueError("Invalid plugin daemon path: path is too deeply encoded")
+
+        if any(seg == ".." for seg in decoded_path.split("/")):
+            raise ValueError(f"Invalid plugin daemon path: traversal sequence detected in {path!r}")
         url = plugin_daemon_inner_api_baseurl / path
         prepared_headers = dict(headers or {})
         prepared_headers["X-Api-Key"] = dify_config.PLUGIN_DAEMON_KEY
