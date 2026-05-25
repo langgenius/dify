@@ -70,7 +70,7 @@ def _validate_body[M: BaseModel](model: type[M]) -> M:
     try:
         return model.model_validate(body)
     except ValidationError as exc:
-        raise BadRequest(exc.json())
+        raise BadRequest(str(exc))
 
 
 def _member_response(account: Account) -> MemberResponse:
@@ -231,7 +231,7 @@ class WorkspaceMembersApi(Resource):
         try:
             query = MemberListQuery.model_validate(request.args.to_dict(flat=True))
         except ValidationError as exc:
-            raise BadRequest(exc.json())
+            raise BadRequest(str(exc))
 
         tenant = _load_tenant(workspace_id)
         # Members per workspace are bounded by SaaS plan caps (≤50) or EE
