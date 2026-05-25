@@ -851,7 +851,7 @@ class AppTraceApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @with_session()
+    @with_session
     @get_app_model
     def get(self, session: Session, app_model: App):
         """Get app trace"""

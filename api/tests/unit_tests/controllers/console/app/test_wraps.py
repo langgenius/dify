@@ -53,6 +53,32 @@ class FakeSessionBegin:
     def __exit__(self, exc_type: object | None, *_args: object) -> None:
         self.exited = True
         self.exc_type = exc_type
+        if exc_type is None:
+            self.session.commit()
+        else:
+            self.session.rollback()
+        self.session.closed = True
+
+
+class FakeSessionContext:
+    session: FakeSession
+    entered: bool
+    exited: bool
+    exc_type: object | None
+
+    def __init__(self, session: FakeSession) -> None:
+        self.session = session
+        self.entered = False
+        self.exited = False
+        self.exc_type = None
+
+    def __enter__(self) -> FakeSession:
+        self.entered = True
+        return self.session
+
+    def __exit__(self, exc_type: object | None, *_args: object) -> None:
+        self.exited = True
+        self.exc_type = exc_type
         self.session.closed = True
 
 
@@ -100,7 +126,7 @@ def test_get_app_model_requires_app_id() -> None:
         handler()
 
 
-def test_with_session_injects_session_for_get_app_model(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_with_session_defaults_to_write_session_for_get_app_model(monkeypatch: pytest.MonkeyPatch) -> None:
     app_model = SimpleNamespace(id="app-1", mode=AppMode.CHAT.value, status="normal", tenant_id="t1")
     session = FakeSession(app_model)
     session_maker = FakeSessionMaker(session)
@@ -121,7 +147,7 @@ def test_with_session_injects_session_for_get_app_model(monkeypatch: pytest.Monk
 
     assert Handler().get(app_id="app-1") == "app-1"
     assert session.scalar_called
-    assert not session.committed
+    assert session.committed
     assert not session.rolled_back
     assert session.closed
     assert session_maker.begin_context.entered
@@ -129,13 +155,55 @@ def test_with_session_injects_session_for_get_app_model(monkeypatch: pytest.Monk
     assert session_maker.begin_context.exc_type is None
 
 
-def test_with_session_lets_begin_context_handle_errors(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_with_session_read_mode_does_not_commit(monkeypatch: pytest.MonkeyPatch) -> None:
+    session = FakeSession()
+    session_context = FakeSessionContext(session)
+    monkeypatch.setattr(wraps_module.session_factory, "create_session", lambda: session_context)
+
+    class Handler:
+        @wraps_module.with_session(write=False)
+        def get(self, injected_session):
+            assert injected_session is session
+            return "ok"
+
+    assert Handler().get() == "ok"
+
+    assert session.closed
+    assert not session.committed
+    assert not session.rolled_back
+    assert session_context.entered
+    assert session_context.exited
+    assert session_context.exc_type is None
+
+
+def test_with_session_write_commits_on_success(monkeypatch: pytest.MonkeyPatch) -> None:
     session = FakeSession()
     session_maker = FakeSessionMaker(session)
     monkeypatch.setattr(wraps_module.session_factory, "get_session_maker", lambda: session_maker)
 
     class Handler:
-        @wraps_module.with_session
+        @wraps_module.with_session(write=True)
+        def post(self, injected_session):
+            assert injected_session is session
+            return "ok"
+
+    assert Handler().post() == "ok"
+
+    assert session.closed
+    assert session.committed
+    assert not session.rolled_back
+    assert session_maker.begin_context.entered
+    assert session_maker.begin_context.exited
+    assert session_maker.begin_context.exc_type is None
+
+
+def test_with_session_write_rolls_back_on_error(monkeypatch: pytest.MonkeyPatch) -> None:
+    session = FakeSession()
+    session_maker = FakeSessionMaker(session)
+    monkeypatch.setattr(wraps_module.session_factory, "get_session_maker", lambda: session_maker)
+
+    class Handler:
+        @wraps_module.with_session(write=True)
         def get(self, _session):
             raise RuntimeError("boom")
 
@@ -144,7 +212,7 @@ def test_with_session_lets_begin_context_handle_errors(monkeypatch: pytest.Monke
 
     assert session.closed
     assert not session.committed
-    assert not session.rolled_back
+    assert session.rolled_back
     assert session_maker.begin_context.entered
     assert session_maker.begin_context.exited
     assert session_maker.begin_context.exc_type is RuntimeError
