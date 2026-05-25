@@ -241,7 +241,6 @@ const AppCard = ({ app, onlineUsers = [], onRefresh, onOpenTagManagement = () =>
   const workspacePermissionKeys = useAppContextWithSelector(state => state.workspacePermissionKeys)
   const appACLCapabilities = useMemo(() => getAppACLCapabilities(app.permission_keys), [app.permission_keys])
   const canDuplicateApp = hasPermission(workspacePermissionKeys, 'app.create')
-  const canOpenAppLayout = appACLCapabilities.canAccessLayout
   const canShowOperations = appACLCapabilities.canEdit
     || appACLCapabilities.canImportExportDSL
     || appACLCapabilities.canDelete
@@ -375,7 +374,7 @@ const AppCard = ({ app, onlineUsers = [], onRefresh, onOpenTagManagement = () =>
       if (onRefresh)
         onRefresh()
       onPlanInfoChanged()
-      getRedirection(true, newApp, push)
+      getRedirection(newApp, push)
     }
     catch {
       toast.error(t('newApp.appCreateFailed', { ns: 'app' }))
@@ -459,7 +458,7 @@ const AppCard = ({ app, onlineUsers = [], onRefresh, onOpenTagManagement = () =>
       <div
         onClick={(e) => {
           e.preventDefault()
-          getRedirection(canOpenAppLayout, app, push)
+          getRedirection(app, push)
         }}
         className="group relative col-span-1 inline-flex h-40 cursor-pointer flex-col rounded-xl border border-solid border-components-card-border bg-components-card-bg shadow-sm transition-shadow duration-200 ease-in-out hover:shadow-lg"
       >

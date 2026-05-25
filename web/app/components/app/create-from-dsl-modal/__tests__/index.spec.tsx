@@ -174,6 +174,7 @@ describe('CreateFromDSLModal', () => {
       status: DSLImportStatus.COMPLETED,
       app_id: 'app-1',
       app_mode: AppModeEnum.CHAT,
+      permission_keys: ['app.acl.view_layout'],
     })
 
     render(
@@ -202,7 +203,11 @@ describe('CreateFromDSLModal', () => {
     expect(handleClose).toHaveBeenCalledTimes(1)
     expect(localStorage.getItem(NEED_REFRESH_APP_LIST_KEY)).toBe('1')
     expect(mockHandleCheckPluginDependencies).toHaveBeenCalledWith('app-1')
-    expect(mockGetRedirection).toHaveBeenCalledWith(true, { id: 'app-1', mode: 'chat' }, mockPush)
+    expect(mockGetRedirection).toHaveBeenCalledWith({
+      id: 'app-1',
+      mode: AppModeEnum.CHAT,
+      permission_keys: ['app.acl.view_layout'],
+    }, mockPush)
   })
 
   it('should import from a file with the loaded file content', async () => {
@@ -211,6 +216,7 @@ describe('CreateFromDSLModal', () => {
       status: DSLImportStatus.COMPLETED_WITH_WARNINGS,
       app_id: 'app-2',
       app_mode: AppModeEnum.CHAT,
+      permission_keys: ['app.acl.view_layout'],
     })
 
     render(
@@ -275,6 +281,7 @@ describe('CreateFromDSLModal', () => {
       status: DSLImportStatus.COMPLETED,
       app_id: 'app-3',
       app_mode: AppModeEnum.WORKFLOW,
+      permission_keys: ['app.acl.view_layout'],
     })
 
     render(
@@ -380,7 +387,7 @@ describe('CreateFromDSLModal', () => {
   })
 
   it('should ignore empty import responses and prevent duplicate submissions while a request is in flight', async () => {
-    let resolveImport!: (value: { id: string, status: DSLImportStatus, app_id: string, app_mode: string }) => void
+    let resolveImport!: (value: { id: string, status: DSLImportStatus, app_id: string, app_mode: string, permission_keys: string[] }) => void
     mockImportDSL.mockImplementationOnce(() => new Promise((resolve) => {
       resolveImport = resolve as typeof resolveImport
     }))
@@ -405,6 +412,7 @@ describe('CreateFromDSLModal', () => {
         status: DSLImportStatus.COMPLETED,
         app_id: 'app-1',
         app_mode: AppModeEnum.CHAT,
+        permission_keys: ['app.acl.view_layout'],
       })
     })
 
@@ -425,6 +433,7 @@ describe('CreateFromDSLModal', () => {
       status: DSLImportStatus.COMPLETED,
       app_id: 'app-shortcut',
       app_mode: 'chat',
+      permission_keys: ['app.acl.view_layout'],
     })
 
     render(

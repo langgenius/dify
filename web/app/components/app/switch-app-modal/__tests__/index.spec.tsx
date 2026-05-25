@@ -286,7 +286,10 @@ describe('SwitchAppModal', () => {
       const user = userEvent.setup()
       // Arrange
       const { appDetail, notify, onClose, onSuccess } = renderComponent()
-      mockSwitchApp.mockResolvedValueOnce({ new_app_id: 'new-app-001' })
+      mockSwitchApp.mockResolvedValueOnce({
+        new_app_id: 'new-app-001',
+        permission_keys: ['app.acl.view_layout'],
+      })
 
       // Act
       await user.click(screen.getByRole('button', { name: 'app.switchStart' }))
@@ -312,7 +315,10 @@ describe('SwitchAppModal', () => {
     it('should update the icon through the picker before switching apps', async () => {
       const user = userEvent.setup()
       const { appDetail } = renderComponent()
-      mockSwitchApp.mockResolvedValueOnce({ new_app_id: 'new-app-003' })
+      mockSwitchApp.mockResolvedValueOnce({
+        new_app_id: 'new-app-003',
+        permission_keys: ['app.acl.view_layout'],
+      })
 
       await user.click(screen.getByText('open-icon-picker'))
       expect(screen.getByTestId('app-icon-picker')).toBeInTheDocument()
@@ -360,7 +366,10 @@ describe('SwitchAppModal', () => {
       const user = userEvent.setup()
       // Arrange
       const { appDetail } = renderComponent({ inAppDetail: true })
-      mockSwitchApp.mockResolvedValueOnce({ new_app_id: 'new-app-002' })
+      mockSwitchApp.mockResolvedValueOnce({
+        new_app_id: 'new-app-002',
+        permission_keys: ['app.acl.view_layout'],
+      })
 
       // Act
       await user.click(screen.getByText('app.removeOriginal'))

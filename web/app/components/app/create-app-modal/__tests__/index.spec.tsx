@@ -175,7 +175,7 @@ describe('CreateAppModal', () => {
     expect(onSuccess).toHaveBeenCalled()
     expect(onClose).toHaveBeenCalled()
     await waitFor(() => expect(mockSetItem).toHaveBeenCalledWith(NEED_REFRESH_APP_LIST_KEY, '1'))
-    await waitFor(() => expect(mockGetRedirection).toHaveBeenCalledWith(true, mockApp, mockPush))
+    await waitFor(() => expect(mockGetRedirection).toHaveBeenCalledWith(mockApp, mockPush))
   })
 
   it('shows error toast when creation fails', async () => {

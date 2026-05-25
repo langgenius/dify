@@ -210,7 +210,7 @@ export function useAppInfoActions({ onDetailExpand, resetKey }: UseAppInfoAction
       toast(t('newApp.appCreated', { ns: 'app' }), { type: 'success' })
       localStorage.setItem(NEED_REFRESH_APP_LIST_KEY, '1')
       onPlanInfoChanged()
-      getRedirection(true, newApp, replace)
+      getRedirection(newApp, replace)
     }
     catch {
       toast(t('newApp.appCreateFailed', { ns: 'app' }), { type: 'error' })

@@ -482,7 +482,7 @@ describe('AppCard', () => {
       render(<AppCard app={mockApp} />)
       const card = screen.getByTitle('Test App').closest('[class*="cursor-pointer"]')!
       fireEvent.click(card)
-      expect(mockGetRedirection).toHaveBeenCalledWith(true, mockApp, mockPush)
+      expect(mockGetRedirection).toHaveBeenCalledWith(mockApp, mockPush)
     })
   })
 

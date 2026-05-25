@@ -1,10 +1,18 @@
 import { AppModeEnum } from '@/types/app'
+import { getAppACLCapabilities } from '@/utils/permission'
+
+type AppRedirectionTarget = {
+  id: string
+  mode: AppModeEnum
+  permission_keys?: string[]
+}
 
 export const getRedirectionPath = (
-  isCurrentWorkspaceEditor: boolean,
-  app: { id: string, mode: AppModeEnum },
+  app: AppRedirectionTarget,
 ) => {
-  if (!isCurrentWorkspaceEditor) {
+  const appACLCapabilities = getAppACLCapabilities(app.permission_keys)
+
+  if (!appACLCapabilities.canAccessLayout) {
     return `/app/${app.id}/overview`
   }
   else {
@@ -16,10 +24,9 @@ export const getRedirectionPath = (
 }
 
 export const getRedirection = (
-  isCurrentWorkspaceEditor: boolean,
-  app: { id: string, mode: AppModeEnum },
+  app: AppRedirectionTarget,
   redirectionFunc: (href: string) => void,
 ) => {
-  const redirectionPath = getRedirectionPath(isCurrentWorkspaceEditor, app)
+  const redirectionPath = getRedirectionPath(app)
   redirectionFunc(redirectionPath)
 }

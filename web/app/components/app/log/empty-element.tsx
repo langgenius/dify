@@ -38,7 +38,7 @@ const EmptyElement: FC<{ appDetail: App }> = ({ appDetail }) => {
             ns="appLog"
             components={{
               shareLink: <Link href={`${appDetail.site.app_base_url}${basePath}/${getWebAppType(appDetail.mode)}/${appDetail.site.access_token}`} className="text-util-colors-blue-blue-600" target="_blank" rel="noopener noreferrer" />,
-              testLink: <Link href={getRedirectionPath(true, appDetail)} className="text-util-colors-blue-blue-600" />,
+              testLink: <Link href={getRedirectionPath(appDetail)} className="text-util-colors-blue-blue-600" />,
             }}
           />
         </div>
