@@ -97,7 +97,8 @@ describe('SnippetCard', () => {
       render(<SnippetCard snippet={createSnippet()} />)
 
       expect(screen.getByText('Tone Rewriter')).toBeInTheDocument()
-      expect(screen.getByText('snippet.updatedBy:{"name":"Updater","time":"formatted-time"}')).toBeInTheDocument()
+      expect(screen.getByText('Updater')).toBeInTheDocument()
+      expect(screen.getByText('formatted-time')).toBeInTheDocument()
       expect(screen.queryByText('snippet.usageCount:{"count":19}')).not.toBeInTheDocument()
       expect(screen.queryByText('Creator')).not.toBeInTheDocument()
       expect(screen.queryByRole('img')).not.toBeInTheDocument()
@@ -106,7 +107,8 @@ describe('SnippetCard', () => {
     it('should fall back to creator name when updater is unavailable', () => {
       render(<SnippetCard snippet={createSnippet({ updated_by: 'missing-user' })} />)
 
-      expect(screen.getByText('snippet.updatedBy:{"name":"Creator","time":"formatted-time"}')).toBeInTheDocument()
+      expect(screen.getByText('Creator')).toBeInTheDocument()
+      expect(screen.getByText('formatted-time')).toBeInTheDocument()
     })
 
     it('should not render draft status for unpublished snippets', () => {

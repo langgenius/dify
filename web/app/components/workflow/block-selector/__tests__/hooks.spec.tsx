@@ -54,9 +54,19 @@ describe('block-selector hooks', () => {
     expect(hidden.current.some(tab => tab.key === ToolTypeEnum.MCP)).toBe(false)
   })
 
-  it('always includes the snippets tab', () => {
+  it('includes the snippets tab by default', () => {
     const { result } = renderHook(() => useTabs({}))
 
     expect(result.current.tabs.some(tab => tab.key === TabsEnum.Snippets)).toBe(true)
+  })
+
+  it('hides the snippets tab and falls back when snippets are disabled', () => {
+    const { result } = renderHook(() => useTabs({
+      defaultActiveTab: TabsEnum.Snippets,
+      noSnippets: true,
+    }))
+
+    expect(result.current.tabs.some(tab => tab.key === TabsEnum.Snippets)).toBe(false)
+    expect(result.current.activeTab).toBe(TabsEnum.Blocks)
   })
 })

@@ -3,13 +3,11 @@ import { act, renderHook, waitFor } from '@testing-library/react'
 import { useSnippetPublish } from '../use-snippet-publish'
 
 const mockMutateAsync = vi.fn()
-const mockSetPublishMenuOpen = vi.fn()
 const mockUseKeyPress = vi.fn()
 const mockSetPublishedAt = vi.fn()
 const mockSetQueryData = vi.fn()
 const mockHandleCheckBeforePublish = vi.fn<() => Promise<boolean>>()
 
-let isPublishMenuOpen = false
 let isPending = false
 let shortcutHandler: ((event: KeyboardEvent) => void) | undefined
 
@@ -51,20 +49,9 @@ vi.mock('@/app/components/workflow/hooks/use-checklist', () => ({
   }),
 }))
 
-vi.mock('../../../store', () => ({
-  useSnippetDetailStore: (selector: (state: {
-    isPublishMenuOpen: boolean
-    setPublishMenuOpen: typeof mockSetPublishMenuOpen
-  }) => unknown) => selector({
-    isPublishMenuOpen,
-    setPublishMenuOpen: mockSetPublishMenuOpen,
-  }),
-}))
-
 describe('useSnippetPublish', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    isPublishMenuOpen = false
     isPending = false
     shortcutHandler = undefined
     mockHandleCheckBeforePublish.mockResolvedValue(true)
@@ -75,7 +62,7 @@ describe('useSnippetPublish', () => {
   })
 
   describe('Publish action', () => {
-    it('should publish the snippet, close the menu, and show success feedback', async () => {
+    it('should publish the snippet and show success feedback', async () => {
       const { result } = renderHook(() => useSnippetPublish({
         snippetId: 'snippet-1',
       }))
@@ -94,7 +81,6 @@ describe('useSnippetPublish', () => {
       const updateSnippetDetail = setQueryDataCall![1] as (old: { is_published: boolean }) => { is_published: boolean }
       expect(updateSnippetDetail({ is_published: false })).toEqual({ is_published: true })
       expect(mockSetPublishedAt).toHaveBeenCalledWith(1_712_345_678)
-      expect(mockSetPublishMenuOpen).toHaveBeenCalledWith(false)
       expect(toast.success).toHaveBeenCalledWith('snippet.publishSuccess')
     })
 
@@ -113,7 +99,6 @@ describe('useSnippetPublish', () => {
       expect(mockMutateAsync).not.toHaveBeenCalled()
       expect(mockSetQueryData).not.toHaveBeenCalled()
       expect(mockSetPublishedAt).not.toHaveBeenCalled()
-      expect(mockSetPublishMenuOpen).not.toHaveBeenCalled()
       expect(toast.success).not.toHaveBeenCalled()
     })
 
@@ -129,7 +114,6 @@ describe('useSnippetPublish', () => {
       })
 
       expect(toast.error).toHaveBeenCalledWith('publish failed')
-      expect(mockSetPublishMenuOpen).not.toHaveBeenCalled()
     })
   })
 

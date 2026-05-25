@@ -24,7 +24,6 @@ import { useSnippetStartRun } from '../hooks/use-snippet-start-run'
 import { useSnippetDetailStore } from '../store'
 import { useSnippetInputFieldActions } from './hooks/use-snippet-input-field-actions'
 import { useSnippetPublish } from './hooks/use-snippet-publish'
-import SnippetInputFieldEditor from './input-field-editor'
 import SnippetChildren from './snippet-children'
 import SnippetSidebar from './snippet-sidebar'
 
@@ -36,7 +35,7 @@ type SnippetMainProps = {
 type SnippetMainContentProps = {
   snippetId: string
   fields: SnippetInputField[]
-  onCancel: () => void
+  onCancel: () => void | Promise<void>
 }
 
 const SnippetMainContent = ({
@@ -105,6 +104,10 @@ const SnippetMain = ({
     invalidateConversationVarValues,
   } = useInspectVarsCrud(snippetId)
   const workflowAvailableNodesMetaData = useAvailableNodesMetaData()
+  const {
+    data: publishedWorkflow,
+    refetch: refetchPublishedWorkflow,
+  } = publishedWorkflowQuery
   const availableNodesMetaData = useMemo(() => {
     const nodes = workflowAvailableNodesMetaData.nodes.filter(node =>
       node.metaData.type !== BlockEnum.HumanInput && node.metaData.type !== BlockEnum.End)
@@ -131,14 +134,8 @@ const SnippetMain = ({
     setFields: state.setFields,
   })))
   const {
-    editingField,
     fields,
-    isEditorOpen,
-    openEditor,
-    closeEditor,
-    handleRemoveField,
-    handleSortChange,
-    handleSubmitField,
+    handleFieldsChange,
   } = useSnippetInputFieldActions({
     snippetId,
   })
@@ -159,21 +156,21 @@ const SnippetMain = ({
     setFields(payload.inputFields)
   }, [payload.inputFields, setFields, snippetId])
 
-  const handleCancelChanges = useCallback(() => {
-    const publishedWorkflow = publishedWorkflowQuery.data
-    if (!publishedWorkflow)
+  const handleCancelChanges = useCallback(async () => {
+    const workflow = publishedWorkflow ?? (await refetchPublishedWorkflow()).data
+    if (!workflow)
       return
 
-    handleRestoreFromPublishedWorkflow(publishedWorkflow as never)
+    handleRestoreFromPublishedWorkflow(workflow as never)
 
-    const publishedInputFields = Array.isArray(publishedWorkflow.input_fields)
-      ? publishedWorkflow.input_fields as SnippetInputField[]
+    const publishedInputFields = Array.isArray(workflow.input_fields)
+      ? workflow.input_fields as SnippetInputField[]
       : []
     setFields(publishedInputFields)
     void syncInputFieldsDraft(publishedInputFields, {
       onRefresh: setFields,
     })
-  }, [handleRestoreFromPublishedWorkflow, publishedWorkflowQuery.data, setFields, syncInputFieldsDraft])
+  }, [handleRestoreFromPublishedWorkflow, publishedWorkflow, refetchPublishedWorkflow, setFields, syncInputFieldsDraft])
 
   const hooksStore = useMemo(() => {
     return {
@@ -242,10 +239,7 @@ const SnippetMain = ({
       <SnippetSidebar
         snippet={snippet}
         fields={fields}
-        onAdd={() => openEditor()}
-        onEdit={openEditor}
-        onRemove={handleRemoveField}
-        onSortChange={handleSortChange}
+        onFieldsChange={handleFieldsChange}
       />
       <div className="relative min-h-0 min-w-0 grow">
         <WorkflowWithInnerContext
@@ -261,15 +255,6 @@ const SnippetMain = ({
           />
         </WorkflowWithInnerContext>
       </div>
-      {isEditorOpen && (
-        <div className="absolute top-14 bottom-1 left-90 z-30">
-          <SnippetInputFieldEditor
-            field={editingField}
-            onClose={closeEditor}
-            onSubmit={handleSubmitField}
-          />
-        </div>
-      )}
     </div>
   )
 }

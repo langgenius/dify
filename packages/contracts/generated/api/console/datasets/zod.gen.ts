@@ -317,7 +317,7 @@ export const zDatasetExternalKnowledgeInfoResponse = z.object({
  * DatasetExternalRetrievalModelResponse
  */
 export const zDatasetExternalRetrievalModelResponse = z.object({
-  score_threshold: z.number(),
+  score_threshold: z.number().nullish(),
   score_threshold_enabled: z.boolean().nullish(),
   top_k: z.int(),
 })

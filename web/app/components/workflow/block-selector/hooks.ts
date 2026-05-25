@@ -26,6 +26,7 @@ export const useTabs = ({
   noBlocks,
   noSources,
   noTools,
+  noSnippets,
   noStart = true,
   defaultActiveTab,
   hasUserInputNode = false,
@@ -35,6 +36,7 @@ export const useTabs = ({
   noBlocks?: boolean
   noSources?: boolean
   noTools?: boolean
+  noSnippets?: boolean
   noStart?: boolean
   defaultActiveTab?: TabsEnum
   hasUserInputNode?: boolean
@@ -69,11 +71,11 @@ export const useTabs = ({
     }, {
       key: TabsEnum.Snippets,
       name: t('tabs.snippets', { ns: 'workflow' }),
-      show: true,
+      show: !noSnippets,
     }]
 
     return tabConfigs.filter(tab => tab.show)
-  }, [t, noBlocks, noSources, noTools, shouldShowStartTab, shouldDisableStartTab, startDisabledTip])
+  }, [t, noBlocks, noSources, noTools, noSnippets, shouldShowStartTab, shouldDisableStartTab, startDisabledTip])
 
   const getValidTabKey = useCallback((targetKey?: TabsEnum) => {
     if (!targetKey)
@@ -99,7 +101,8 @@ export const useTabs = ({
       preferredOrder.push(TabsEnum.Sources)
     if (!noStart)
       preferredOrder.push(TabsEnum.Start)
-    preferredOrder.push(TabsEnum.Snippets)
+    if (!noSnippets)
+      preferredOrder.push(TabsEnum.Snippets)
 
     for (const tabKey of preferredOrder) {
       const validKey = getValidTabKey(tabKey)
@@ -108,7 +111,7 @@ export const useTabs = ({
     }
 
     return fallbackTab
-  }, [defaultActiveTab, noBlocks, noSources, noTools, noStart, tabs, getValidTabKey])
+  }, [defaultActiveTab, noBlocks, noSources, noTools, noSnippets, noStart, tabs, getValidTabKey])
   const [activeTab, setActiveTab] = useState(initialTab)
 
   useEffect(() => {

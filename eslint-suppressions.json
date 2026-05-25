@@ -5257,11 +5257,6 @@
       "count": 3
     }
   },
-  "web/types/react-18-input-autosize.d.ts": {
-    "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
   "web/types/workflow.ts": {
     "ts/no-explicit-any": {
       "count": 17

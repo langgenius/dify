@@ -7,14 +7,8 @@ import { PipelineInputVarType } from '@/models/pipeline'
 import SnippetMain from '../snippet-main'
 
 const mockSyncInputFieldsDraft = vi.fn()
-const mockCloseEditor = vi.fn()
-const mockOpenEditor = vi.fn()
 const mockReset = vi.fn()
 const mockSetFields = vi.fn()
-const mockSetInputPanelOpen = vi.fn()
-const mockSetPublishMenuOpen = vi.fn()
-const mockToggleInputPanel = vi.fn()
-const mockTogglePublishMenu = vi.fn()
 const mockPublishSnippetMutateAsync = vi.fn()
 const mockUseSnippetPublishedWorkflow = vi.fn()
 const mockFetchInspectVars = vi.fn()
@@ -44,19 +38,9 @@ const mockInspectVarsCrud = {
 }
 let capturedHooksStore: Record<string, unknown> | undefined
 let snippetDetailStoreState: {
-  editingField: SnippetInputField | null
   fields: SnippetInputField[]
-  isEditorOpen: boolean
-  isInputPanelOpen: boolean
-  isPublishMenuOpen: boolean
-  closeEditor: typeof mockCloseEditor
-  openEditor: typeof mockOpenEditor
   reset: typeof mockReset
   setFields: typeof mockSetFields
-  setInputPanelOpen: typeof mockSetInputPanelOpen
-  setPublishMenuOpen: typeof mockSetPublishMenuOpen
-  toggleInputPanel: typeof mockToggleInputPanel
-  togglePublishMenu: typeof mockTogglePublishMenu
 }
 
 vi.mock('@/app/components/snippets/store', () => ({
@@ -159,36 +143,29 @@ vi.mock('@/app/components/snippets/components/snippet-children', () => ({
 
 vi.mock('@/app/components/snippets/components/snippet-sidebar', () => ({
   default: ({
-    children,
-    onRemove,
+    fields,
+    onFieldsChange,
   }: {
-    children?: ReactNode
-    onRemove: (index: number) => void
+    fields: SnippetInputField[]
+    onFieldsChange: (fields: SnippetInputField[]) => void
   }) => (
     <div>
-      {children}
-      <button type="button" onClick={() => onRemove(0)}>remove</button>
+      <button type="button" onClick={() => onFieldsChange([])}>remove</button>
+      <button
+        type="button"
+        onClick={() => onFieldsChange([
+          ...fields,
+          {
+            type: PipelineInputVarType.textInput,
+            label: 'New Field',
+            variable: 'new_field',
+            required: true,
+          },
+        ])}
+      >
+        submit
+      </button>
     </div>
-  ),
-}))
-
-vi.mock('@/app/components/snippets/components/input-field-editor', () => ({
-  default: ({
-    onSubmit,
-  }: {
-    onSubmit: (field: SnippetInputField) => void
-  }) => (
-    <button
-      type="button"
-      onClick={() => onSubmit({
-        type: PipelineInputVarType.textInput,
-        label: 'New Field',
-        variable: 'new_field',
-        required: true,
-      })}
-    >
-      submit
-    </button>
   ),
 }))
 
@@ -243,23 +220,14 @@ describe('SnippetMain', () => {
         graph: payload.graph,
         input_fields: payload.inputFields,
       },
+      refetch: vi.fn(),
     })
     mockHandleCheckBeforePublish.mockResolvedValue(true)
     capturedHooksStore = undefined
     snippetDetailStoreState = {
-      editingField: null,
       fields: [...payload.inputFields],
-      isEditorOpen: false,
-      isInputPanelOpen: true,
-      isPublishMenuOpen: false,
-      closeEditor: mockCloseEditor,
-      openEditor: mockOpenEditor,
       reset: mockReset,
       setFields: mockSetFields,
-      setInputPanelOpen: mockSetInputPanelOpen,
-      setPublishMenuOpen: mockSetPublishMenuOpen,
-      toggleInputPanel: mockToggleInputPanel,
-      togglePublishMenu: mockTogglePublishMenu,
     }
   })
 
@@ -276,8 +244,7 @@ describe('SnippetMain', () => {
       })
     })
 
-    it('should sync draft input_fields when submitting a field from the editor', async () => {
-      snippetDetailStoreState.isEditorOpen = true
+    it('should sync draft input_fields when adding a field from the sidebar', async () => {
       renderSnippetMain()
 
       fireEvent.click(screen.getByRole('button', { name: 'submit' }))
@@ -299,7 +266,7 @@ describe('SnippetMain', () => {
   })
 
   describe('Publish', () => {
-    it('should call the publish mutation and close the publish menu', async () => {
+    it('should call the publish mutation', async () => {
       renderSnippetMain()
 
       fireEvent.click(screen.getByRole('button', { name: 'publish' }))
@@ -309,7 +276,6 @@ describe('SnippetMain', () => {
           params: { snippetId: 'snippet-1' },
         })
       })
-      expect(mockSetPublishMenuOpen).toHaveBeenCalledWith(false)
     })
   })
 

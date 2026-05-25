@@ -1,12 +1,13 @@
 """Safe Agenton compositor construction for API-submitted configs.
 
 Only explicitly allowed provider type ids are constructible here. The default
-provider set contains prompt layers, the state-free Dify structured output
-layer, plus Dify plugin LLM layers. Public DTOs provide tenant/plugin/model
-data, while server-only plugin daemon settings are injected through the provider
-factory for ``DifyPluginLayer``. The resulting ``Compositor`` remains Agenton
-state-only: live resources such as the plugin daemon HTTP client are supplied
-later by the runtime and never enter providers, layers, or session snapshots.
+provider set contains prompt layers, the optional pydantic-ai history layer, the
+state-free Dify structured output layer, plus Dify plugin LLM layers. Public
+DTOs provide tenant/plugin/model data, while server-only plugin daemon settings
+are injected through the provider factory for ``DifyPluginLayer``. The resulting
+``Compositor`` remains Agenton state-only: live resources such as the plugin
+daemon HTTP client are supplied later by the runtime and never enter providers,
+layers, or session snapshots.
 """
 
 from collections.abc import Mapping, Sequence
@@ -16,6 +17,7 @@ from pydantic_ai.messages import UserContent
 
 from agenton.compositor import Compositor, CompositorConfig, LayerProvider, LayerProviderInput
 from agenton.layers.types import AllPromptTypes, AllToolTypes, AllUserPromptTypes, PydanticAIPrompt, PydanticAITool
+from agenton_collections.layers.pydantic_ai import PydanticAIHistoryLayer
 from agenton_collections.layers.plain.basic import PromptLayer
 from agenton_collections.transformers.pydantic_ai import PYDANTIC_AI_TRANSFORMERS
 from dify_agent.layers.dify_plugin.configs import DifyPluginLayerConfig
@@ -35,6 +37,7 @@ def create_default_layer_providers(
     """Return the server provider set of safe config-constructible layers."""
     return (
         LayerProvider.from_layer_type(PromptLayer),
+        LayerProvider.from_layer_type(PydanticAIHistoryLayer),
         LayerProvider.from_layer_type(DifyOutputLayer),
         LayerProvider.from_factory(
             layer_type=DifyPluginLayer,
