@@ -10,8 +10,8 @@ vi.mock('../authorized/credential-item', () => ({
   ),
 }))
 
-vi.mock('@/app/components/header/indicator', () => ({
-  default: () => <div data-testid="indicator" />,
+vi.mock('@langgenius/dify-ui/status-dot', () => ({
+  StatusDot: () => <div data-testid="indicator" />,
 }))
 
 vi.mock('@remixicon/react', () => ({

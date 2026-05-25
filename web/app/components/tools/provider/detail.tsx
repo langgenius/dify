@@ -20,6 +20,7 @@ import {
   DrawerPortal,
   DrawerViewport,
 } from '@langgenius/dify-ui/drawer'
+import { StatusDot } from '@langgenius/dify-ui/status-dot'
 import { toast } from '@langgenius/dify-ui/toast'
 import {
   RiCloseLine,
@@ -31,7 +32,6 @@ import ActionButton from '@/app/components/base/action-button'
 import { LinkExternal02, Settings01 } from '@/app/components/base/icons/src/vender/line/general'
 import Loading from '@/app/components/base/loading'
 import { ConfigurationMethodEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import Indicator from '@/app/components/header/indicator'
 import Icon from '@/app/components/plugins/card/base/card-icon'
 import Description from '@/app/components/plugins/card/base/description'
 import OrgInfo from '@/app/components/plugins/card/base/org-info'
@@ -325,7 +325,7 @@ const ProviderDetail = ({
                                 }}
                                 disabled={!isCurrentWorkspaceManager}
                               >
-                                <Indicator className="mr-2" color="green" />
+                                <StatusDot className="mr-2" status="success" />
                                 {t('auth.authorized', { ns: 'tools' })}
                               </Button>
                             )}
