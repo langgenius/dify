@@ -3,9 +3,6 @@
  *
  * Studio frontend package for Dify platform.
  * Contains workflow editor, app management, and related UI components.
- *
- * Phase 1: Types and contracts are canonical here; component re-exports come next.
- * Phase 2: Components and services physically moved to this package.
  */
 
 // Types — canonical home for Studio app-level enums & shapes
@@ -13,6 +10,12 @@ export * from './types'
 
 // Contracts — canonical home for Studio API contract type definitions
 export * from './contracts'
+
+// Utils — pure utility functions
+export * from './utils'
+
+// Components — physically migrated Studio components
+export * from './components'
 
 // App management
 export * from './apps'
