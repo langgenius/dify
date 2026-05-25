@@ -82,7 +82,7 @@ describe('DeveloperApiSection', () => {
     vi.clearAllMocks()
   })
 
-  // Loading should reserve the same shape as the enabled API page: endpoint copy row plus API key table.
+  // Loading should reserve the same shape as the enabled API key list.
   describe('Loading state', () => {
     it('should render the updated API tab skeleton while access config is loading', () => {
       // Arrange
@@ -92,7 +92,7 @@ describe('DeveloperApiSection', () => {
       const { container } = render(<DeveloperApiSection appInstanceId="instance-1" />)
 
       // Assert
-      expect(screen.getByText('deployments.access.api.endpoint')).toBeInTheDocument()
+      expect(screen.queryByText('deployments.access.api.endpoint')).not.toBeInTheDocument()
       expect(screen.getByRole('columnheader', { name: 'deployments.access.api.table.name' })).toBeInTheDocument()
       expect(screen.getByRole('columnheader', { name: 'deployments.access.api.table.environment' })).toBeInTheDocument()
       expect(screen.getByRole('columnheader', { name: 'deployments.access.api.table.key' })).toBeInTheDocument()

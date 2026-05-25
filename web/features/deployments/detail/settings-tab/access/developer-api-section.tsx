@@ -200,18 +200,8 @@ function CreatedApiTokenDialog({ token, onDismiss }: {
 }
 
 function DeveloperApiSkeleton() {
-  const { t } = useTranslation('deployments')
-
   return (
     <div className="flex flex-col gap-4" data-slot="deployment-developer-api-skeleton">
-      <div className="flex h-8 items-center gap-1 rounded-lg border border-components-input-border-active bg-components-input-bg-normal pr-1 pl-1.5">
-        <div className="flex h-5 shrink-0 items-center rounded-md border border-divider-subtle px-1.5 system-2xs-medium text-text-tertiary">
-          {t('access.api.endpoint')}
-        </div>
-        <SkeletonRectangle className="my-0 h-3 min-w-0 flex-1 animate-pulse" />
-        <div className="h-3.5 w-px shrink-0 bg-divider-regular" />
-        <SkeletonRectangle className="my-0 size-6 shrink-0 animate-pulse rounded-md" />
-      </div>
       <ApiKeyTableSkeleton />
     </div>
   )
