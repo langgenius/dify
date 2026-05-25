@@ -354,9 +354,9 @@ export const zDatasetVectorSettingResponse = z.object({
  * DatasetWeightedScoreResponse
  */
 export const zDatasetWeightedScoreResponse = z.object({
-  keyword_setting: zDatasetKeywordSettingResponse,
-  vector_setting: zDatasetVectorSettingResponse,
-  weight_type: z.string().nullable(),
+  keyword_setting: zDatasetKeywordSettingResponse.optional(),
+  vector_setting: zDatasetVectorSettingResponse.optional(),
+  weight_type: z.string().nullish(),
 })
 
 /**
