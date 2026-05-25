@@ -1,8 +1,8 @@
 # Plugin LLM layer
 
-The plugin LLM layer selects the model provider, model name, provider credentials,
-and optional model settings for the current run. Dify Agent reads the model from
-the reserved layer name `llm`.
+The plugin LLM layer selects the plugin package, model provider, model name,
+provider credentials, and optional model settings for the current run. Dify
+Agent reads the model from the reserved layer name `llm`.
 
 It must depend on a [plugin layer](../plugin-layer/index.md), because the plugin
 layer supplies the daemon identity and transport context.
@@ -11,7 +11,8 @@ layer supplies the daemon identity and transport context.
 
 | Field | Type | Meaning |
 | --- | --- | --- |
-| `model_provider` | `str` | Provider name inside the selected plugin. Use the value of `DIFY_AGENT_PROVIDER` from `dify-agent/.env`. |
+| `plugin_id` | `str` | Plugin package id, for example `langgenius/openai`. |
+| `model_provider` | `str` | Provider name inside `plugin_id`. Use the value of `DIFY_AGENT_PROVIDER` from `dify-agent/.env`. |
 | `model` | `str` | Model name. Use the value of `DIFY_AGENT_MODEL_NAME` from `dify-agent/.env`. |
 | `credentials` | `dict[str, str \| int \| float \| bool \| None]` | Provider-specific credential object. |
 | `model_settings` | `ModelSettings \| None` | Optional pydantic-ai model settings. |
@@ -27,12 +28,14 @@ from dify_agent.protocol import DIFY_AGENT_MODEL_LAYER_ID, RunLayerSpec
 
 MODEL_PROVIDER = "replace-with-provider-from-dify-agent-env"
 MODEL_NAME = "replace-with-model-from-dify-agent-env"
+PLUGIN_ID = "langgenius/openai"
 
 llm_layer = RunLayerSpec(
     name=DIFY_AGENT_MODEL_LAYER_ID,
     type=DIFY_PLUGIN_LLM_LAYER_TYPE_ID,
     deps={"plugin": "plugin"},
     config=DifyPluginLLMLayerConfig(
+        plugin_id=PLUGIN_ID,
         model_provider=MODEL_PROVIDER,
         model=MODEL_NAME,
         credentials={"api_key": "replace-with-provider-key"},
@@ -63,6 +66,7 @@ from dify_agent.protocol import DIFY_AGENT_MODEL_LAYER_ID, RunComposition, RunLa
 
 MODEL_PROVIDER = "replace-with-provider-from-dify-agent-env"
 MODEL_NAME = "replace-with-model-from-dify-agent-env"
+PLUGIN_ID = "langgenius/openai"
 
 composition = RunComposition(
     layers=[
@@ -76,7 +80,6 @@ composition = RunComposition(
             type=DIFY_PLUGIN_LAYER_TYPE_ID,
             config=DifyPluginLayerConfig(
                 tenant_id="replace-with-tenant-id",
-                plugin_id="langgenius/openai",
             ),
         ),
         RunLayerSpec(
@@ -84,6 +87,7 @@ composition = RunComposition(
             type=DIFY_PLUGIN_LLM_LAYER_TYPE_ID,
             deps={"plugin": "plugin"},
             config=DifyPluginLLMLayerConfig(
+                plugin_id=PLUGIN_ID,
                 model_provider=MODEL_PROVIDER,
                 model=MODEL_NAME,
                 credentials={"api_key": "replace-with-provider-key"},
@@ -96,6 +100,8 @@ composition = RunComposition(
 ## Notes
 
 - The model layer must use the reserved name `llm` (`DIFY_AGENT_MODEL_LAYER_ID`).
+- `plugin_id` belongs here because model calls are plugin-specific business
+  calls. The shared plugin layer only carries tenant/user daemon context.
 - Credential shape depends on the selected plugin provider; the OpenAI-style
   `api_key` field above is only an example.
 - Client-submitted model credentials remain in the scheduled request memory and

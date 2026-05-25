@@ -1,18 +1,19 @@
 # Plugin layer
 
-The plugin layer carries Dify plugin daemon identity for a run. It identifies the
-tenant, plugin, and optional user context; server settings provide the plugin
-daemon URL and API key.
+The plugin layer carries shared Dify plugin daemon context for a run. It
+identifies the tenant and optional user context; server settings provide the
+plugin daemon URL and API key.
 
-Use it together with a [plugin LLM layer](../plugin-llm-layer/index.md). The LLM
-layer depends on this layer to reach the plugin daemon.
+Use it together with a [plugin LLM layer](../plugin-llm-layer/index.md) and,
+when the caller wants Dify tools exposed to the model, a
+[plugin tool layer](../plugin-tool-layer/index.md). Both business layers depend
+on this layer to reach the plugin daemon.
 
 ## Config fields
 
 | Field | Type | Meaning |
 | --- | --- | --- |
 | `tenant_id` | `str` | Dify tenant/workspace id used when calling the plugin daemon. |
-| `plugin_id` | `str` | Plugin id, for example `langgenius/openai`. |
 | `user_id` | `str \| None` | Optional end-user id passed through to the plugin daemon. |
 
 The plugin layer type id is `dify.plugin`.
@@ -29,7 +30,6 @@ plugin_layer = RunLayerSpec(
     type=DIFY_PLUGIN_LAYER_TYPE_ID,
     config=DifyPluginLayerConfig(
         tenant_id="replace-with-tenant-id",
-        plugin_id="langgenius/openai",
         user_id="replace-with-user-id",
     ),
 )
@@ -53,7 +53,8 @@ session snapshots.
 ## Notes
 
 - The plugin layer does not open, cache, close, or snapshot HTTP clients.
-- `plugin_id` selects the plugin package. The business model provider and model
-  name belong to the plugin LLM layer, not this layer.
-- The conventional layer name is `plugin`. If you use another name, point the LLM
-  layer dependency at that name.
+- Concrete `plugin_id` values belong to the business layer that invokes the
+  daemon: the plugin LLM layer for model calls and each plugin tool config for
+  tool calls.
+- The conventional layer name is `plugin`. If you use another name, point the
+  LLM and tool layer dependencies at that name.

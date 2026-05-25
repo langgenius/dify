@@ -151,7 +151,6 @@ def build_request() -> CreateRunRequest:
                     type=DIFY_PLUGIN_LAYER_TYPE_ID,
                     config=DifyPluginLayerConfig(
                         tenant_id=TENANT_ID,
-                        plugin_id=PLUGIN_ID,
                         user_id=USER_ID,
                     ),
                 ),
@@ -160,6 +159,7 @@ def build_request() -> CreateRunRequest:
                     type=DIFY_PLUGIN_LLM_LAYER_TYPE_ID,
                     deps={"plugin": "plugin"},
                     config=DifyPluginLLMLayerConfig(
+                        plugin_id=PLUGIN_ID,
                         model_provider=MODEL_PROVIDER,
                         model=MODEL_NAME,
                         credentials=MODEL_CREDENTIALS,
