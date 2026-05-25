@@ -453,6 +453,7 @@ class TestAdditionalCoverage:
         result = runner.organize_agent_history([])
         assert isinstance(result, list)
 
+
 class TestConvertDatasetRetrieverTool:
     def test_required_param_added(self, runner, mocker: MockerFixture):
         ds_tool = mocker.MagicMock()

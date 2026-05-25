@@ -109,7 +109,9 @@ class DifyPluginToolInvokeMessage(BaseModel):
         BLOB_CHUNK = "blob_chunk"
 
     type: MessageType = MessageType.TEXT
-    message: TextMessage | JsonMessage | BlobChunkMessage | BlobMessage | LogMessage | FileMessage | VariableMessage | None
+    message: (
+        TextMessage | JsonMessage | BlobChunkMessage | BlobMessage | LogMessage | FileMessage | VariableMessage | None
+    )
     meta: dict[str, object] | None = None
 
     @field_validator("message", mode="before")
@@ -220,7 +222,9 @@ class DifyPluginDaemonToolClient:
                         message=resolved_error["message"],
                         status_code=response.status_code,
                     )
-                raise DifyPluginToolClientError(body or "Plugin daemon stream request failed.", status_code=response.status_code)
+                raise DifyPluginToolClientError(
+                    body or "Plugin daemon stream request failed.", status_code=response.status_code
+                )
 
             async for raw_line in response.aiter_lines():
                 line = raw_line.strip()

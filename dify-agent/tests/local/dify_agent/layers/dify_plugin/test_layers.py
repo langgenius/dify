@@ -598,6 +598,7 @@ def test_dify_plugin_tools_layer_propagates_unexpected_transport_errors() -> Non
                 LayerNode("tools", DifyPluginToolsLayer, deps={"plugin": "plugin"}),
             ]
         )
+
         def handler(request: httpx.Request) -> httpx.Response:
             if request.url.path.endswith("/dispatch/tool/invoke"):
                 raise RuntimeError("unexpected transport failure")

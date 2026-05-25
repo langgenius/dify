@@ -240,9 +240,7 @@ def test_create_run_request_accepts_plugin_tools_layer_with_prepared_parameters_
                                     ],
                                     "parameters_json_schema": {
                                         "type": "object",
-                                        "properties": {
-                                            "query": {"type": "string", "description": "Search query"}
-                                        },
+                                        "properties": {"query": {"type": "string", "description": "Search query"}},
                                         "required": ["query"],
                                     },
                                 }

@@ -105,9 +105,7 @@ def _validate_required_hidden_parameters(
     ]
     if missing_names:
         names = ", ".join(sorted(missing_names))
-        raise ValueError(
-            f"Tool '{tool_config.tool_name}' requires non-LLM runtime_parameters for: {names}."
-        )
+        raise ValueError(f"Tool '{tool_config.tool_name}' requires non-LLM runtime_parameters for: {names}.")
 
 
 def _build_pydantic_ai_tool(
@@ -334,4 +332,6 @@ def _convert_tool_response_to_text(tool_response: Sequence[DifyPluginToolInvokeM
         existing_parts = set(parts)
         parts.extend(part for part in json_parts if part not in existing_parts)
     return "".join(parts)
+
+
 __all__ = ["DifyPluginToolsDeps", "DifyPluginToolsLayer"]
